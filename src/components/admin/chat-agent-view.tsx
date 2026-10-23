@@ -7,6 +7,11 @@ import { aiFor, canSpeak } from "@/server/ai";
 import { getChatAgentForEdit } from "@/server/chat-agent";
 import { DOCUMENTS_MAX, knowledgeStatus, listDocuments } from "@/server/knowledge";
 import { PageHeader } from "@/components/admin/ui";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, type AdminLang } from "@/lib/admin-lang";
+import { adminText, adminTexts } from "@/lib/admin-text";
+
+import { AdminTextScope } from "./admin-text";
 
 import { ActionForm, SubmitButton, type FormState } from "./action-form";
 import { ChatAgentForm, type SaveChatAgent } from "./chat-agent-form";
@@ -29,6 +34,7 @@ export async function ChatAgentView({
   upload,
   addDocument,
   deleteDocument,
+  lang = "en",
 }: {
   storeId: string | null;
   siteName: string;
@@ -40,7 +46,11 @@ export async function ChatAgentView({
   upload: Upload | null;
   addDocument: (state: FormState, formData: FormData) => Promise<FormState>;
   deleteDocument: (id: string) => Promise<{ ok: true } | { ok: false; problems: string[] }>;
+  /** The reader's admin language (D312). */
+  lang?: AdminLang;
 }) {
+  const w = adminText(lang, "platformTools").chat;
+  const locale = ADMIN_LANG_FACTS[lang].locale;
   const [agent, connection, documents, status] = await Promise.all([
     getChatAgentForEdit(storeId),
     aiFor(storeId),
@@ -55,25 +65,27 @@ export async function ChatAgentView({
   const aiLink = (text: string) => (aiPage ? <Link href={aiPage} className="underline">{text}</Link> : text);
 
   return (
+    <AdminTextScope texts={adminTexts(lang, ["platformTools"])}>
     <div className="flex max-w-3xl flex-col gap-6">
       <PageHeader
-        title="Chat agent"
-        description={<>{agent?.enabled ? (ready ? `On: ${agent.name} answers visitors on ${siteName}.` : "On, but hidden until the site has an AI text model.") : "Off."}</>}
+        title={w.title}
+        description={<>{agent?.enabled ? (ready ? fillWords(w.onReady, { name: agent.name, site: siteName }) : w.onHidden) : w.off}</>}
       />
 
       <section aria-labelledby="about" className={card}>
-        <h2 id="about" className="mb-1 text-title text-ink">How it works</h2>
-        <p className="text-sm">
-          Visitors chat with an AI assistant in the corner of every page, in writing or aloud. It answers from the site&apos;s
-          published pages and articles{storeId ? ", its products with their prices and stock, shipping" : ""} and the knowledge
-          base below, opens pages for the visitor while you talk, and declines anything that is not about {siteName}. Visitors are
-          told it is AI. Conversations are kept only in the visitor&apos;s browser tab.
-        </p>
-        {!ready && <p className="mt-2 text-sm font-medium">The chat needs an AI provider with a text model: {aiLink("choose one on the AI page")}.</p>}
+        <h2 id="about" className="mb-1 text-title text-ink">{w.how}</h2>
+        <p className="text-sm">{fillWords(w.howText, { store: storeId ? w.howStore : "", site: siteName })}</p>
+        {!ready && (
+          <p className="mt-2 text-sm font-medium">
+            {w.needsAi.split("{link}")[0]}
+            {aiLink(w.needsAiLink)}
+            {w.needsAi.split("{link}")[1]}
+          </p>
+        )}
       </section>
 
       <section aria-labelledby="agent" className={card}>
-        <h2 id="agent" className="mb-4 text-title text-ink">The agent</h2>
+        <h2 id="agent" className="mb-4 text-title text-ink">{w.agent}</h2>
         <ChatAgentForm
           agent={
             agent
@@ -98,15 +110,14 @@ export async function ChatAgentView({
       </section>
 
       <section aria-labelledby="knowledge" className={card}>
-        <h2 id="knowledge" className="mb-1 text-title text-ink">Knowledge base</h2>
+        <h2 id="knowledge" className="mb-1 text-title text-ink">{w.knowledge}</h2>
         <p className="mb-4 text-sm text-muted">
-          What the agent should know beyond the site&apos;s pages: delivery and returns in detail, care guides, sizes, opening hours,
-          answers to common questions. It reads {status.passages} {status.passages === 1 ? "passage" : "passages"} from{" "}
-          {status.pages} {status.pages === 1 ? "page" : "pages"} and {status.documents} {status.documents === 1 ? "document" : "documents"}
-          {connection?.space
-            ? `; ${status.withMeaning} can be found by meaning (the rest within five minutes).`
-            : "; with an embedding model on the AI page it also finds them by meaning."}{" "}
-          Pages are read again within five minutes of being published.
+          {fillWords(w.knowledgeText, {
+            passages: countWords(status.passages, w.passage),
+            pages: countWords(status.pages, w.page),
+            documents: countWords(status.documents, w.document),
+          })}
+          {connection?.space ? fillWords(w.byMeaning, { n: status.withMeaning }) : w.noMeaning} {w.reread}
         </p>
 
         {documents.length > 0 && (
@@ -116,7 +127,7 @@ export async function ChatAgentView({
                 <div className="min-w-0">
                   <p className="truncate font-medium">{document.title}</p>
                   <p className="text-sm text-muted">
-                    {[document.fileName, `${document.chars.toLocaleString("en-GB")} characters`, `${document.passages} ${document.passages === 1 ? "passage" : "passages"}`]
+                    {[document.fileName, fillWords(w.characters, { n: document.chars.toLocaleString(locale) }), countWords(document.passages, w.passage)]
                       .filter(Boolean)
                       .join(" · ")}
                   </p>
@@ -125,7 +136,7 @@ export async function ChatAgentView({
                   compact
                   action={deleteDocument.bind(null, document.id)}
                   code={document.title}
-                  question={`Delete “${document.title}” from the knowledge base? The agent stops using it at once.`}
+                  question={fillWords(w.deleteDocument, { title: document.title })}
                 />
               </li>
             ))}
@@ -134,32 +145,29 @@ export async function ChatAgentView({
 
         {documents.length < DOCUMENTS_MAX ? (
           <ActionForm action={addDocument} className="flex flex-col gap-3">
-            <h3 className="text-body-strong text-ink">Add a document</h3>
+            <h3 className="text-body-strong text-ink">{w.addDocument}</h3>
             <label className="flex flex-col gap-1">
-              <span className="text-sm">Title</span>
-              <input name="title" maxLength={200} className={field} placeholder="Returns and exchanges" />
+              <span className="text-sm">{w.docTitle}</span>
+              <input name="title" maxLength={200} className={field} placeholder={w.docTitleHint} />
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-sm">
-                A file ({Object.values(DOCUMENT_TYPES).join(", ")}; up to 4 MB)
-              </span>
+              <span className="text-sm">{fillWords(w.docFile, { types: Object.values(DOCUMENT_TYPES).join(", ") })}</span>
               <input name="file" type="file" accept=".txt,.md,.pdf,.docx" className="text-sm" />
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-sm">Or its text</span>
+              <span className="text-sm">{w.docText}</span>
               <textarea name="content" rows={6} className={field} />
             </label>
-            <p className="text-sm text-muted">
-              Write only what may be told to anyone: the agent can quote it to visitors. No personal data.
-            </p>
+            <p className="text-sm text-muted">{w.docNote}</p>
             <div>
-              <SubmitButton>Add to the knowledge base</SubmitButton>
+              <SubmitButton>{w.add}</SubmitButton>
             </div>
           </ActionForm>
         ) : (
-          <p className="text-sm">The knowledge base is full ({DOCUMENTS_MAX} documents). Delete one to add another.</p>
+          <p className="text-sm">{fillWords(w.full, { n: DOCUMENTS_MAX })}</p>
         )}
       </section>
     </div>
+    </AdminTextScope>
   );
 }

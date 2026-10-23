@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { useAdminText } from "./admin-text";
 import { ImageUploadButton, type Upload } from "./image-upload";
 
 /**
@@ -9,11 +10,12 @@ import { ImageUploadButton, type Upload } from "./image-upload";
  * from it. The form sends `pictureUrl`; the server checks it (`isStarterPicture()`).
  */
 export function StarterPictureField({ initial, upload }: { initial: string | null; upload: Upload }) {
+  const f = useAdminText("platformSite").fields;
   const [url, setUrl] = useState(initial ?? "");
   return (
     <div className="flex flex-col gap-2 text-sm">
       <label className="flex flex-col gap-1 font-medium">
-        Picture <span className="font-normal text-muted">(optional: an address on this site, or https://…)</span>
+        {f.picture} <span className="font-normal text-muted">{f.pictureHint}</span>
         <input
           name="pictureUrl"
           value={url}
@@ -27,10 +29,10 @@ export function StarterPictureField({ initial, upload }: { initial: string | nul
         <img src={url} alt="" className="aspect-video w-60 rounded-md border border-line object-cover" />
       )}
       <div className="flex flex-wrap items-center gap-3">
-        <ImageUploadButton upload={upload} label={url ? "Upload another picture" : "Upload a picture"} onUploaded={(image) => setUrl(image.url)} />
+        <ImageUploadButton upload={upload} label={url ? f.uploadAnother : f.upload} onUploaded={(image) => setUrl(image.url)} />
         {url && (
           <button type="button" onClick={() => setUrl("")} className="min-h-10 rounded-pill border border-edge px-3">
-            Remove the picture
+            {f.removePicture}
           </button>
         )}
       </div>

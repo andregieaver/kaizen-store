@@ -13,8 +13,9 @@ import { mainCurrency } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import { PAYMENT_TERMS } from "@/lib/payment-terms";
 import { countWords, fillWords } from "@/lib/admin-fill";
+import { AdminTextScope } from "@/components/admin/admin-text";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import { formatPriceInput } from "@/lib/product-input";
 import { listTiers } from "@/server/customer-tiers";
 import { PageHeader } from "@/components/admin/ui";
@@ -55,6 +56,7 @@ export default async function CompanyPage({ params }: PageProps<"/admin/[store]/
   const employees = employeePercent(company);
 
   return (
+    <AdminTextScope texts={adminTexts(adminLangOf(current.account.adminLocale), ["bookings"])}>
     <div className="flex flex-col gap-6">
       <PageHeader
         back={{ href: `${base}/companies`, label: words.back }}
@@ -234,5 +236,6 @@ export default async function CompanyPage({ params }: PageProps<"/admin/[store]/
         </ActionForm>
       </section>
     </div>
+    </AdminTextScope>
   );
 }

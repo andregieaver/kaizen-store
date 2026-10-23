@@ -11,33 +11,43 @@ import { platformModes } from "@/server/stripe";
 import { savePlanAction, syncPlansAction } from "../actions";
 import { requirePlatformAdmin } from "@/server/auth";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
+import type { PlatformMessages } from "@/lib/admin-messages/platform.en";
 
 export const metadata: Metadata = { title: "Plans" };
 
 const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
-const INTERVAL_LABEL: Record<PlanInterval, string> = { month: "Per month", year: "Per year" };
+type W = PlatformMessages["plans"];
+const intervalLabel = (w: W, interval: PlanInterval) => (interval === "month" ? w.perMonth : w.perYear);
+const storesText = (w: W, n: number) => (n === 1 ? w.oneStore : fillWords(w.stores, { n }));
 
 /** Kaizen's plans for stores: tiers, prices and fees, kept in step with Stripe. */
 export default async function PlansPage() {
   // Per request: admin pages never read the database while the site is built.
   await connection();
-  await requirePlatformAdmin();
+  const account = await requirePlatformAdmin();
+  const lang = adminLangOf(account.adminLocale);
+  const w = adminText(lang, "platform").plans;
+  const locale = ADMIN_LANG_FACTS[lang].locale;
+  const intervals = adminText(lang, "billing").intervals;
   const [plans, currencies] = await Promise.all([listPlans(), planCurrencies()]);
   const modes = platformModes();
   return (
     <>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <PageHeader
-          title="Plans"
-          description={<>What stores pay Kaizena Flow: a price per month or year (excluding VAT; Norwegian stores are charged 25 % MVA on top) and a fee on each of their sales. Saving copies the plan to Stripe. A changed price applies to new subscriptions; stores on the old price keep it until you move them.{" "}<Link href="/admin/platform/plans/features" className="underline">Say what each plan includes</Link>.</>}
+          title={w.title}
+          description={<>{w.description}{" "}<Link href="/admin/platform/plans/features" className="underline">{w.sayIncludes}</Link>.</>}
         />
-        <ActionForm action={syncPlansAction} successMessage="Plans are up to date in Stripe." className="flex flex-col items-end gap-1">
-          <SubmitButton disabled={modes.length === 0}>Sync to Stripe</SubmitButton>
+        <ActionForm action={syncPlansAction} successMessage={w.synced} className="flex flex-col items-end gap-1">
+          <SubmitButton disabled={modes.length === 0}>{w.sync}</SubmitButton>
           <p className="text-sm text-muted">
             {modes.length === 0
-              ? "Needs Kaizena Flow's Stripe keys"
+              ? w.needsKeys
               : modes
-                  .map((mode) => `${plans.filter((plan) => plan.sync[mode]?.synced).length} of ${plans.length} plans in Stripe (${mode})`)
+                  .map((mode) => fillWords(w.inStripeCount, { n: plans.filter((plan) => plan.sync[mode]?.synced).length, total: plans.length, mode }))
                   .join(" · ")}
           </p>
         </ActionForm>
@@ -45,9 +55,7 @@ export default async function PlansPage() {
 
       {modes.length === 0 && (
         <p role="status" className="rounded-panel border border-line bg-card p-4 text-sm">
-          Kaizena Flow&apos;s Stripe keys are not set, so plans are saved here only. Once the keys are in
-          place (Platform → Stripe), press Sync to Stripe: each plan becomes a Stripe product with
-          a monthly and a yearly price in every currency.
+          {w.noKeys}
         </p>
       )}
 
@@ -60,38 +68,38 @@ export default async function PlansPage() {
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 id={`plan-${plan.id}`} className="text-title text-ink">
               {plan.name}
-              {!plan.active && <span className="ml-2 text-sm font-normal text-muted">(archived)</span>}
+              {!plan.active && <span className="ml-2 text-sm font-normal text-muted">{w.archived}</span>}
             </h2>
             <p className="text-sm text-muted">
-              {plan.stores === 1 ? "1 store" : `${plan.stores} stores`} · {formatBps(plan.saleFeeBps)} per sale ·{" "}
+              {storesText(w, plan.stores)} · {fillWords(w.perSale, { fee: formatBps(plan.saleFeeBps, locale) })} ·{" "}
               {modes.map((mode) => {
                 const sync = plan.sync[mode];
                 return (
                   <span key={mode} className={sync?.error ? "text-danger-text" : ""}>
-                    {sync?.synced ? `in Stripe (${mode})` : sync?.error ? `Stripe (${mode}): ${sync.error}` : `not in Stripe (${mode}) yet`}{" "}
+                    {sync?.synced ? fillWords(w.inStripe, { mode }) : sync?.error ? fillWords(w.stripeError, { mode, error: sync.error }) : fillWords(w.notInStripe, { mode })}{" "}
                   </span>
                 );
               })}
             </p>
           </div>
           <ActionForm action={savePlanAction.bind(null, plan.id)} className="flex flex-col gap-4">
-            <PlanFields plan={plan} currencies={currencies} />
+            <PlanFields plan={plan} currencies={currencies} w={w} />
             <div>
-              <SubmitButton>Save plan</SubmitButton>
+              <SubmitButton>{w.save}</SubmitButton>
             </div>
           </ActionForm>
-          <OldPrices plan={plan} />
+          <OldPrices plan={plan} w={w} intervals={intervals} />
         </section>
       ))}
 
       <section aria-labelledby="new-plan" className={`flex flex-col gap-4 p-5 ${CARD_CLASS}`}>
         <h2 id="new-plan" className="text-title text-ink">
-          New plan
+          {w.newPlan}
         </h2>
         <ActionForm action={savePlanAction.bind(null, null)} replaceOnSuccess className="flex flex-col gap-4">
-          <PlanFields plan={null} currencies={currencies} position={plans.length} />
+          <PlanFields plan={null} currencies={currencies} position={plans.length} w={w} />
           <div>
-            <SubmitButton>Create plan</SubmitButton>
+            <SubmitButton>{w.create}</SubmitButton>
           </div>
         </ActionForm>
       </section>
@@ -99,7 +107,7 @@ export default async function PlansPage() {
   );
 }
 
-function PlanFields({ plan, currencies, position = 0 }: { plan: Plan | null; currencies: string[]; position?: number }) {
+function PlanFields({ plan, currencies, position = 0, w }: { plan: Plan | null; currencies: string[]; position?: number; w: W }) {
   const id = plan?.id ?? "new";
   const current = (currency: string, interval: PlanInterval) =>
     plan?.prices.find((p) => p.active && p.currency === currency && p.interval === interval);
@@ -107,11 +115,11 @@ function PlanFields({ plan, currencies, position = 0 }: { plan: Plan | null; cur
     <>
       <div className="grid gap-4 sm:grid-cols-[2fr_1fr_1fr]">
         <label className="flex flex-col gap-1 text-sm font-medium">
-          Name
-          <input name="name" required defaultValue={plan?.name ?? ""} placeholder="e.g. Basic" className={control} />
+          {w.name}
+          <input name="name" required defaultValue={plan?.name ?? ""} placeholder={w.namePlaceholder} className={control} />
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium">
-          Fee per sale (%)
+          {w.fee}
           <input
             name="fee"
             required
@@ -121,7 +129,7 @@ function PlanFields({ plan, currencies, position = 0 }: { plan: Plan | null; cur
           />
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium">
-          Order
+          {w.order}
           <input
             name="position"
             type="number"
@@ -131,32 +139,32 @@ function PlanFields({ plan, currencies, position = 0 }: { plan: Plan | null; cur
             className={control}
           />
           <span id={`position-hint-${id}`} className="font-normal text-muted">
-            Lowest tier first
+            {w.orderHint}
           </span>
         </label>
       </div>
       <label className="flex flex-col gap-1 text-sm font-medium">
-        Description
+        {w.descriptionField}
         <textarea
           name="description"
           rows={2}
           defaultValue={plan?.description ?? ""}
-          placeholder="What the plan includes. Shown to store owners and on Stripe invoices."
+          placeholder={w.descriptionPlaceholder}
           className={`${control} py-2`}
         />
       </label>
       <fieldset>
-        <legend className="mb-2 text-sm font-medium">Price, excluding VAT</legend>
-        <p className="mb-2 text-sm text-muted">Leave a field empty to not offer that price.</p>
+        <legend className="mb-2 text-sm font-medium">{w.price}</legend>
+        <p className="mb-2 text-sm text-muted">{w.priceNote}</p>
         <table className="text-sm">
           <thead>
             <tr>
               <th scope="col" className="pr-4 text-left font-normal text-muted">
-                <span className="sr-only">Currency</span>
+                <span className="sr-only">{w.currency}</span>
               </th>
               {PLAN_INTERVALS.map((interval) => (
                 <th key={interval} scope="col" className="pr-4 text-left font-normal text-muted">
-                  {INTERVAL_LABEL[interval]}
+                  {intervalLabel(w, interval)}
                 </th>
               ))}
             </tr>
@@ -174,7 +182,7 @@ function PlanFields({ plan, currencies, position = 0 }: { plan: Plan | null; cur
                       <input
                         name={`price:${currency}:${interval}`}
                         inputMode="decimal"
-                        aria-label={`${INTERVAL_LABEL[interval]} in ${currency}`}
+                        aria-label={fillWords(w.priceIn, { interval: intervalLabel(w, interval), currency })}
                         defaultValue={price ? formatPriceInput(price.amountMinor, currency) : ""}
                         className={`${control} w-32`}
                       />
@@ -188,25 +196,25 @@ function PlanFields({ plan, currencies, position = 0 }: { plan: Plan | null; cur
       </fieldset>
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" name="active" defaultChecked={plan?.active ?? true} className="size-4" />
-        Offered to stores (uncheck to archive; stores on it keep it)
+        {w.offered}
       </label>
     </>
   );
 }
 
-function OldPrices({ plan }: { plan: Plan }) {
+function OldPrices({ plan, w, intervals }: { plan: Plan; w: W; intervals: Record<PlanInterval, string> }) {
   const old = plan.prices.filter((price) => !price.active && price.stores > 0);
   if (old.length === 0) return null;
   return (
     <p className="text-sm text-muted">
-      Older prices still paid by stores:{" "}
+      {w.older}{" "}
       {old
         .map(
           (price) =>
-            `${priceLabel(price.amountMinor, price.currency, price.interval)} (${price.stores === 1 ? "1 store" : `${price.stores} stores`})`,
+            `${priceLabel(price.amountMinor, price.currency, price.interval, intervals)} (${storesText(w, price.stores)})`,
         )
         .join(", ")}
-      . Move them on the store&apos;s page under Stores.
+      . {w.moveThem}
     </p>
   );
 }

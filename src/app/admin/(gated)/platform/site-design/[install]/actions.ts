@@ -1,5 +1,7 @@
 "use server";
 
+import { platformActionWords } from "@/server/platform-site-words";
+
 import { refresh } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
@@ -33,5 +35,5 @@ export async function savePlatformInstallCssAction(installId: string, _state: Fo
   const result = await savePlatformInstallLook(admin, String(installId), { css: String(formData.get("css") ?? "") });
   if (!result.ok) return { status: "error", messages: result.problems };
   refresh();
-  return { status: "ok", messages: ["Saved in this theme. Visitors see it once Kaizena Flow's site switches to it."] };
+  return { status: "ok", messages: [(await platformActionWords()).installSaved] };
 }

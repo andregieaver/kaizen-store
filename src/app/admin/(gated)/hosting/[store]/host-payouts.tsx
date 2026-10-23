@@ -7,13 +7,10 @@ import { platformPublishableKey } from "@/server/stripe";
 
 import { hostAccountSessionAction, hostCreateStripeAccountAction, hostRefreshStripeAccountAction } from "./actions";
 import { Card } from "@/components/admin/ui";
+import { fillWords } from "@/lib/admin-fill";
+import { adminText } from "@/lib/admin-text";
+import type { BookingsMessages } from "@/lib/admin-messages/bookings.en";
 
-const STAGE_TEXT: Record<AccountStage, string> = {
-  not_started: "Not set up yet: guests cannot pay for your listings until it is.",
-  needs_info: "Stripe needs a few more details before guests can pay you.",
-  in_review: "Stripe is checking your details. This usually takes minutes, sometimes a day or two.",
-  ready: "Ready: guests pay you directly, and Stripe pays out to your bank.",
-};
 
 /**
  * Where a host is paid (D71): their own Stripe account for the store's
@@ -27,6 +24,8 @@ export function HostPayouts({
   commissionPercent,
   earnings,
   locale,
+  words: w = adminText("en", "bookings").payouts,
+  dateLocale = "en-GB",
 }: {
   storeSlug: string;
   mode: PaymentModeName;
@@ -34,36 +33,36 @@ export function HostPayouts({
   commissionPercent: number;
   earnings: HostEarning[];
   locale: string;
+  /** The panel's words and dates (D312 A11); English when none are given. */
+  words?: BookingsMessages["payouts"];
+  dateLocale?: string;
 }) {
+  const STAGE_TEXT: Record<AccountStage, string> = w.stages;
   const stage = accountStage(account ?? null);
   const publishableKey = platformPublishableKey(mode);
-  const date = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  const date = new Intl.DateTimeFormat(dateLocale, { day: "numeric", month: "short", year: "numeric" });
   return (
     <Card
-      title={mode === "live" ? "Getting paid" : "Getting paid (test mode)"}
+      title={mode === "live" ? w.title : w.titleTest}
       description={
         <>
-          Guests pay your own Stripe account: you are the seller, and refunds come from it. The store keeps {commissionPercent} % of each payment as its
-          commission, no-show fees included.
-          {mode === "test" && " The store is in test mode, so no real money moves: Kaizena Flow set up a test account for you."}
+          {fillWords(w.description, { n: commissionPercent })}
+          {mode === "test" && ` ${w.testMode}`}
         </>
       }
       className="flex flex-col gap-4"
       compact
     >
       <p className="text-body text-ink">
-        <span className="sr-only">Status: </span>
+        <span className="sr-only">{w.status} </span>
         {STAGE_TEXT[stage]}
       </p>
 
       {stage === "not_started" && mode === "live" ? (
-        <ActionForm action={hostCreateStripeAccountAction.bind(null, storeSlug)} successMessage="Account created.">
+        <ActionForm action={hostCreateStripeAccountAction.bind(null, storeSlug)} successMessage={w.created}>
           <input type="hidden" name="mode" value={mode} />
-          <p className="mb-3 text-sm text-muted">
-            Stripe asks who you are and where to send your money; it takes about ten minutes. Have your ID and bank
-            account ready.
-          </p>
-          <SubmitButton>Set up Stripe</SubmitButton>
+          <p className="mb-3 text-sm text-muted">{w.setUpHint}</p>
+          <SubmitButton>{w.setUp}</SubmitButton>
         </ActionForm>
       ) : account && publishableKey && !account.managedByKaizen ? (
         <StripeConnect
@@ -77,29 +76,29 @@ export function HostPayouts({
       ) : null}
 
       <div className="flex flex-col gap-2">
-        <h3 className="text-body-strong text-ink">Payments</h3>
+        <h3 className="text-body-strong text-ink">{w.payments}</h3>
         {earnings.length === 0 ? (
-          <p className="text-sm text-muted">None yet.</p>
+          <p className="text-sm text-muted">{w.none}</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="text-left text-muted">
                 <tr>
-                  <th className="py-1 pr-3 font-normal">Order</th>
-                  <th className="py-1 pr-3 font-normal">For</th>
-                  <th className="py-1 pr-3 font-normal">Paid</th>
-                  <th className="py-1 pr-3 text-right font-normal">Guest paid</th>
-                  <th className="py-1 pr-3 text-right font-normal">Refunded</th>
-                  <th className="py-1 pr-3 text-right font-normal">Commission</th>
-                  <th className="py-1 pr-3 text-right font-normal">Kaizena Flow&apos;s fee</th>
-                  <th className="py-1 text-right font-normal">You get</th>
+                  <th className="py-1 pr-3 font-normal">{w.order}</th>
+                  <th className="py-1 pr-3 font-normal">{w.for}</th>
+                  <th className="py-1 pr-3 font-normal">{w.paid}</th>
+                  <th className="py-1 pr-3 text-right font-normal">{w.guestPaid}</th>
+                  <th className="py-1 pr-3 text-right font-normal">{w.refunded}</th>
+                  <th className="py-1 pr-3 text-right font-normal">{w.commission}</th>
+                  <th className="py-1 pr-3 text-right font-normal">{w.fee}</th>
+                  <th className="py-1 text-right font-normal">{w.youGet}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
                 {earnings.map((e) => (
                   <tr key={e.paymentId}>
                     <td className="py-1 pr-3">{e.number}</td>
-                    <td className="py-1 pr-3">{e.kind === "no_show" ? "No-show fee" : "Booking"}</td>
+                    <td className="py-1 pr-3">{e.kind === "no_show" ? w.noShowFee : w.booking}</td>
                     <td className="py-1 pr-3">{date.format(new Date(e.paidAt))}</td>
                     <td className="py-1 pr-3 text-right tabular-nums">{formatMoney(e.paidMinor, e.currency, locale)}</td>
                     <td className="py-1 pr-3 text-right tabular-nums">
@@ -114,7 +113,7 @@ export function HostPayouts({
             </table>
           </div>
         )}
-        <p className="text-xs text-muted">The commission and Kaizena Flow&apos;s fee come off each payment, and are given back in part with refunds. &quot;You get&quot; is before Stripe&apos;s own fees, which also come off what you are paid; see them in your Stripe Dashboard.</p>
+        <p className="text-xs text-muted">{w.footnote}</p>
       </div>
     </Card>
   );

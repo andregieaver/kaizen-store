@@ -8,6 +8,10 @@ import { cutoffWeekday, formatCutoff, formatDeliveryDate, WEEKDAYS, weekdayName,
 import { memberCan, requirePermission } from "@/server/permissions";
 import { deliveryRounds, listStandingOrders, type ScheduleView } from "@/server/standing-orders";
 import { PageHeader } from "@/components/admin/ui";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
+import type { BookingsMessages } from "@/lib/admin-messages/bookings.en";
 
 import { saveScheduleAction } from "./actions";
 
@@ -16,14 +20,6 @@ export const metadata: Metadata = { title: "Subscription boxes" };
 const card = "rounded-lg border border-line bg-card p-5";
 const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
 
-const LIST_STATUS: Record<string, string> = { active: "On", paused: "Paused", cancelled: "Ended", setup: "Saving card" };
-const ORDER_STATUS: Record<string, string> = {
-  pending_payment: "To send: charged when sent",
-  paid: "Paid, to send",
-  fulfilled: "Sent and paid",
-  cancelled: "Cancelled",
-  closed: "Closed",
-};
 
 /**
  * Weekly deliveries (D102): the store's delivery days, each round's orders
@@ -35,6 +31,11 @@ export default async function DeliveriesPage({ params }: PageProps<"/admin/[stor
   if (off) return off;
   const { store } = current;
   const owner = memberCan(current, "owner");
+  const lang = adminLangOf(current.account.adminLocale);
+  const w = adminText(lang, "bookings").boxes;
+  const LIST_STATUS: Record<string, string> = w.listStatus;
+  const ORDER_STATUS: Record<string, string> = w.orderStatus;
+  const dayLocale = lang === "en" ? "en-GB" : ADMIN_LANG_FACTS[lang].locale;
   const [rounds, lists] = await Promise.all([deliveryRounds(store.id), listStandingOrders(store.id)]);
   const locale = store.markets[0]?.locale ?? "nb-NO";
   const when = (at: number) => formatCutoff(at, locale, store.timeZone);
@@ -44,8 +45,8 @@ export default async function DeliveriesPage({ params }: PageProps<"/admin/[stor
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="Subscription boxes"
-        description={<>At each cutoff, shoppers&apos; lists become that delivery&apos;s orders at the day&apos;s prices, with their stock held. Send each order from its page: the customer&apos;s card is charged as you mark it sent. Times are in {store.timeZone.replace("_", " ")}.</>}
+        title={w.title}
+        description={fillWords(w.description, { zone: store.timeZone.replace("_", " ") })}
       />
 
       {rounds.map(({ schedule, current, next }) => (
@@ -53,30 +54,30 @@ export default async function DeliveriesPage({ params }: PageProps<"/admin/[stor
           <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
             <h2 className="text-title text-ink">
               {schedule.name} <span className="font-normal text-muted">· {schedule.marketCode}</span>
-              {!schedule.active && <span className="ml-2 rounded bg-sunken px-1.5 py-0.5 text-xs text-muted">Off</span>}
+              {!schedule.active && <span className="ml-2 rounded bg-sunken px-1.5 py-0.5 text-xs text-muted">{w.off}</span>}
             </h2>
             <p className="text-sm text-muted">
-              {schedule.lists} {schedule.lists === 1 ? "list" : "lists"} · next cutoff {when(next.cutoffAt)} for {day(next.date)}
+              {countWords(schedule.lists, w.lists)} · {fillWords(w.nextCutoff, { when: when(next.cutoffAt), day: day(next.date) })}
             </p>
           </div>
           {current ? (
             <>
               <h3 className="mb-2 text-body-strong text-ink">
-                {day(current.date)}: {current.orders.length} {current.orders.length === 1 ? "order" : "orders"}
-                {current.skipped > 0 && <span className="font-normal text-muted"> · {current.skipped} without a delivery (skipped, paused or empty)</span>}
+                {day(current.date)}: {countWords(current.orders.length, w.orders)}
+                {current.skipped > 0 && <span className="font-normal text-muted"> · {fillWords(w.skipped, { n: current.skipped })}</span>}
               </h3>
               {current.orders.length === 0 ? (
-                <p className="text-sm text-muted">No orders for this delivery.</p>
+                <p className="text-sm text-muted">{w.noOrders}</p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-sm">
                     <thead>
                       <tr className="border-b border-line">
-                        <th scope="col" className="py-2 pr-4 font-medium">Order</th>
-                        <th scope="col" className="py-2 pr-4 font-medium">Customer</th>
-                        <th scope="col" className="py-2 pr-4 text-right font-medium">Items</th>
-                        <th scope="col" className="py-2 pr-4 text-right font-medium">Total</th>
-                        <th scope="col" className="py-2 font-medium">Status</th>
+                        <th scope="col" className="py-2 pr-4 font-medium">{w.order}</th>
+                        <th scope="col" className="py-2 pr-4 font-medium">{w.customer}</th>
+                        <th scope="col" className="py-2 pr-4 text-right font-medium">{w.items}</th>
+                        <th scope="col" className="py-2 pr-4 text-right font-medium">{w.total}</th>
+                        <th scope="col" className="py-2 font-medium">{w.status}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -99,13 +100,13 @@ export default async function DeliveriesPage({ params }: PageProps<"/admin/[stor
               )}
             </>
           ) : (
-            <p className="text-sm text-muted">Nothing being packed now: the next orders are made at the cutoff.</p>
+            <p className="text-sm text-muted">{w.nothingPacked}</p>
           )}
           {owner && (
             <details className="mt-4">
-              <summary className="cursor-pointer text-sm underline">Change this delivery day</summary>
+              <summary className="cursor-pointer text-sm underline">{w.change}</summary>
               <div className="mt-3">
-                <ScheduleForm storeSlug={store.slug} schedule={schedule} markets={store.markets.map((m) => m.code)} />
+                <ScheduleForm words={w.form} dayLocale={dayLocale} storeSlug={store.slug} schedule={schedule} markets={store.markets.map((m) => m.code)} />
               </div>
             </details>
           )}
@@ -115,31 +116,29 @@ export default async function DeliveriesPage({ params }: PageProps<"/admin/[stor
       {owner && (
         <section aria-labelledby="add-day" className={card}>
           <h2 id="add-day" className="mb-1 text-title text-ink">
-            {rounds.length === 0 ? "Add your first delivery day" : "Add a delivery day"}
+            {rounds.length === 0 ? w.addFirst : w.add}
           </h2>
-          <p className="mb-4 text-sm text-muted">
-            One day of the week in one market. Shoppers choose it when they start their subscription box, and can change it later.
-          </p>
-          <ScheduleForm storeSlug={store.slug} schedule={null} markets={store.markets.map((m) => m.code)} />
+          <p className="mb-4 text-sm text-muted">{w.addHint}</p>
+          <ScheduleForm words={w.form} dayLocale={dayLocale} storeSlug={store.slug} schedule={null} markets={store.markets.map((m) => m.code)} />
         </section>
       )}
 
       <section aria-labelledby="lists" className={card}>
         <h2 id="lists" className="mb-3 text-title text-ink">
-          Lists
+          {w.listsTitle}
         </h2>
         {lists.length === 0 ? (
-          <p className="text-sm text-muted">No shopper has started a subscription box yet.</p>
+          <p className="text-sm text-muted">{w.noLists}</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-line">
-                  <th scope="col" className="py-2 pr-4 font-medium">Customer</th>
-                  <th scope="col" className="py-2 pr-4 font-medium">Delivery day</th>
-                  <th scope="col" className="py-2 pr-4 text-right font-medium">Items</th>
-                  <th scope="col" className="py-2 pr-4 font-medium">Card</th>
-                  <th scope="col" className="py-2 font-medium">Status</th>
+                  <th scope="col" className="py-2 pr-4 font-medium">{w.customer}</th>
+                  <th scope="col" className="py-2 pr-4 font-medium">{w.day}</th>
+                  <th scope="col" className="py-2 pr-4 text-right font-medium">{w.items}</th>
+                  <th scope="col" className="py-2 pr-4 font-medium">{w.card}</th>
+                  <th scope="col" className="py-2 font-medium">{w.status}</th>
                 </tr>
               </thead>
               <tbody>
@@ -152,7 +151,7 @@ export default async function DeliveriesPage({ params }: PageProps<"/admin/[stor
                     </td>
                     <td className="py-2 pr-4">{list.schedule}</td>
                     <td className="py-2 pr-4 text-right tabular-nums">
-                      {list.items} <span className="text-muted">({list.lines} kinds)</span>
+                      {list.items} <span className="text-muted">({countWords(list.lines, w.kinds)})</span>
                     </td>
                     <td className="py-2 pr-4">{list.cardLabel || "–"}</td>
                     <td className="py-2">{LIST_STATUS[list.status] ?? list.status}</td>
@@ -171,7 +170,11 @@ function ScheduleForm({
   storeSlug,
   schedule,
   markets,
+  words: w,
+  dayLocale,
 }: {
+  words: BookingsMessages["boxes"]["form"];
+  dayLocale: string;
   storeSlug: string;
   schedule: ScheduleView | null;
   markets: string[];
@@ -188,11 +191,11 @@ function ScheduleForm({
   return (
     <ActionForm action={saveScheduleAction.bind(null, storeSlug, schedule?.id ?? null)} className="grid gap-4 sm:grid-cols-2">
       <label className="flex flex-col gap-1 text-sm font-medium sm:col-span-2">
-        Name
-        <input name="name" required maxLength={80} defaultValue={values.name} placeholder="Thursday delivery" className={control} />
+        {w.name}
+        <input name="name" required maxLength={80} defaultValue={values.name} placeholder={w.namePlaceholder} className={control} />
       </label>
       <label className="flex flex-col gap-1 text-sm font-medium">
-        Market
+        {w.market}
         <select name="marketCode" defaultValue={values.marketCode} disabled={schedule !== null} className={control}>
           {markets.map((code) => (
             <option key={code} value={code}>
@@ -203,40 +206,39 @@ function ScheduleForm({
         {schedule && <input type="hidden" name="marketCode" value={values.marketCode} />}
       </label>
       <label className="flex flex-col gap-1 text-sm font-medium">
-        Delivery day
+        {w.day}
         <select name="deliveryWeekday" defaultValue={values.deliveryWeekday} className={control}>
           {WEEKDAYS.map((weekday) => (
             <option key={weekday} value={weekday}>
-              {weekdayName(weekday, "en-GB")}
+              {weekdayName(weekday, dayLocale)}
             </option>
           ))}
         </select>
       </label>
       <label className="flex flex-col gap-1 text-sm font-medium">
-        Cutoff
+        {w.cutoff}
         <select name="cutoffDays" defaultValue={values.cutoffDays} aria-describedby={`cutoff-help-${id}`} className={control}>
           {[1, 2, 3, 4, 5, 6, 7].map((days) => (
             <option key={days} value={days}>
-              {days === 1 ? "1 day before" : `${days} days before`}
-              {schedule ? ` (${weekdayName(cutoffWeekday({ deliveryWeekday: values.deliveryWeekday, cutoffDays: days }), "en-GB")})` : ""}
+              {countWords(days, w.daysBefore)}
+              {schedule ? ` (${weekdayName(cutoffWeekday({ deliveryWeekday: values.deliveryWeekday, cutoffDays: days }), dayLocale)})` : ""}
             </option>
           ))}
         </select>
       </label>
       <label className="flex flex-col gap-1 text-sm font-medium">
-        Cutoff time
+        {w.cutoffTime}
         <input name="cutoffTime" type="time" required defaultValue={values.cutoffTime} className={control} />
       </label>
       <p id={`cutoff-help-${id}`} className="text-xs text-muted sm:col-span-2">
-        At the cutoff each list becomes that delivery&apos;s order; changes after it go into the next delivery. Shoppers see the
-        cutoff with each delivery&apos;s date.
+        {w.cutoffHint}
       </p>
       <label className="flex items-center gap-2 text-sm font-medium sm:col-span-2">
         <input type="checkbox" name="active" defaultChecked={values.active} className="size-4" />
-        On: shoppers can choose it, and its lists are delivered
+        {w.on}
       </label>
       <div className="sm:col-span-2">
-        <SubmitButton>{schedule ? "Save" : "Add delivery day"}</SubmitButton>
+        <SubmitButton>{schedule ? w.save : w.add}</SubmitButton>
       </div>
     </ActionForm>
   );

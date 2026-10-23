@@ -47,14 +47,41 @@ export function lifecycleActions(facts: LifecycleFacts & { used: boolean }): ("p
 export type ListFilter = "current" | "archived";
 export const listFilterOf = (value: unknown): ListFilter => (value === "archived" ? "archived" : "current");
 
+/** The words of `deleteBlocker()`; `{count}` and `{reasons}` are filled in. English unless given (D312 A11). */
+export type DeleteBlockerWords = {
+  themeStores: { one: string; many: string };
+  demoStores: { one: string; many: string };
+  platform: string;
+  requests: { one: string; many: string };
+  theme: string;
+  demo: string;
+  and: string;
+};
+
+const BLOCKER_EN: DeleteBlockerWords = {
+  themeStores: { one: "{count} store applied it", many: "{count} stores applied it" },
+  demoStores: { one: "{count} store was made from it", many: "{count} stores were made from it" },
+  platform: "Kaizena Flow's own site has it installed",
+  requests: { one: "{count} access request names it", many: "{count} access requests name it" },
+  theme: "This theme cannot be deleted: {reasons}. Archive it instead.",
+  demo: "This demo store cannot be deleted: {reasons}. Archive it instead.",
+  and: "and",
+};
+
+const counted = (n: number, words: { one: string; many: string }) => (n === 1 ? words.one : words.many).replace("{count}", String(n));
+
 /** Why something cannot be deleted, in plain words, or null when it can. */
-export function deleteBlocker(kind: "demo store" | "theme", uses: { stores: number; requests: number; platform?: boolean }): string | null {
+export function deleteBlocker(
+  kind: "demo store" | "theme",
+  uses: { stores: number; requests: number; platform?: boolean },
+  words: DeleteBlockerWords = BLOCKER_EN,
+): string | null {
   const parts: string[] = [];
-  if (uses.stores > 0) parts.push(`${uses.stores} ${uses.stores === 1 ? "store" : "stores"} ${kind === "demo store" ? "were made from it" : "applied it"}`);
-  if (uses.platform) parts.push("Kaizena Flow's own site has it installed");
-  if (uses.requests > 0) parts.push(`${uses.requests} ${uses.requests === 1 ? "access request names" : "access requests name"} it`);
+  if (uses.stores > 0) parts.push(counted(uses.stores, kind === "demo store" ? words.demoStores : words.themeStores));
+  if (uses.platform) parts.push(words.platform);
+  if (uses.requests > 0) parts.push(counted(uses.requests, words.requests));
   if (parts.length === 0) return null;
-  return `This ${kind} cannot be deleted: ${parts.join(" and ")}. Archive it instead.`;
+  return (kind === "demo store" ? words.demo : words.theme).replace("{reasons}", parts.join(` ${words.and} `));
 }
 
 /** A stable text of a JSON value: object keys sorted, so two equal values always give the same text. */

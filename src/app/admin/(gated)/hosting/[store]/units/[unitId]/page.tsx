@@ -1,3 +1,5 @@
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -28,10 +30,12 @@ export const metadata: Metadata = { title: "Calendar" };
 /** A host's room or item (D71): its blocked dates and calendar sync, as the store has them. */
 export default async function HostUnitPage({ params }: PageProps<"/admin/hosting/[store]/units/[unitId]">) {
   const { store: slug, unitId } = await params;
-  const { store, host } = await requireHost(slug);
+  const { store, host, account } = await requireHost(slug);
   if (!z.uuid().safeParse(unitId).success) notFound();
   const unit = await getResource(store.id, unitId);
   if (!unit || unit.hostId !== host.id || unit.kind === "staff") notFound();
+  const lang = adminLangOf(account.adminLocale);
+  const w = adminText(lang, "bookings").hostUnit;
   const property = unit.kind === "unit" ? await getUnitProperty(store.id, unit.id) : null;
   const actions: CalendarActions = {
     addBlock: hostAddBlockAction.bind(null, store.slug, unit.id),
@@ -49,22 +53,22 @@ export default async function HostUnitPage({ params }: PageProps<"/admin/hosting
         </Link>
         <PageHeader title={<>{unit.name}</>} />
         </div>
-      <ResourceCalendar storeId={store.id} timeZone={store.timeZone} resource={unit} actions={actions} />
+      <ResourceCalendar storeId={store.id} timeZone={store.timeZone} lang={lang} resource={unit} actions={actions} />
       {property && (
-        <Card title="Where it is" description={<>The store reports each rented home&apos;s address to the tax authority once a year (DAC7). Guests do not see it here.</>} className="flex flex-col gap-3" compact>
+        <Card title={w.title} description={w.description} className="flex flex-col gap-3" compact>
           <ActionForm action={hostSavePropertyAction.bind(null, store.slug, unit.id)} className="flex flex-col gap-3">
             <label className={field}>
-              Address
+              {w.address}
               <textarea name="address" required rows={2} maxLength={400} defaultValue={property.address} className={`${control} py-2`} />
             </label>
             <label className={field}>
               <span>
-                Land registry number <span className="font-normal text-muted">(if it has one, e.g. gnr./bnr.)</span>
+                {w.land} <span className="font-normal text-muted">{w.landHint}</span>
               </span>
               <input name="landRegistryNumber" maxLength={80} defaultValue={property.landRegistryNumber} className={control} />
             </label>
             <div>
-              <SubmitButton>Save address</SubmitButton>
+              <SubmitButton>{w.save}</SubmitButton>
             </div>
           </ActionForm>
         </Card>

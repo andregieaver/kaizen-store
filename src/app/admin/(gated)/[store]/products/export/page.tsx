@@ -57,7 +57,7 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
   return (
     <>
       <ProblemAlert text={problem} />
-      <ProductExportForm slug={member.store.slug} terms={terms.map((t) => ({ id: t.id, name: t.name, kind: t.kind }))} />
+      <ProductExportForm slug={member.store.slug} terms={terms.map((t) => ({ id: t.id, name: t.name, kind: t.kind }))} words={adminText(adminLangOf(member.account.adminLocale), "bookings").exports} />
       <Notice title={w.notCarried}>
         <ul className="list-disc pl-5">
           {w.notInFile.map((line) => (

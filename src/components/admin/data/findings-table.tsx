@@ -1,6 +1,8 @@
 import Link from "next/link";
 
-import { SEVERITY_FILTERS, SEVERITY_WORDS, rowsPhrase, wholeNumber, type SeverityFilter } from "@/lib/data-admin";
+import { adminText, type AdminAreaMessages } from "@/lib/admin-text";
+import { fillWords } from "@/lib/admin-fill";
+import { SEVERITY_FILTERS, rowsPhrase, wholeNumber, type SeverityFilter } from "@/lib/data-admin";
 import type { Finding, ItemOutcome } from "@/lib/data-job";
 
 import { hint, tableShell, td, th } from "./ui";
@@ -8,24 +10,15 @@ import { hint, tableShell, td, th } from "./ui";
 /** One product's line of an import: what the file said about it and what happened (or would happen). */
 export type FindingItem = { seq: number; ref: string | null; rows: number[]; outcome: ItemOutcome; will: string | null; messages: Finding[] };
 
-const OUTCOME_WORDS: Record<string, string> = {
-  created: "Created",
-  updated: "Updated",
-  unchanged: "Unchanged",
-  skipped: "Skipped",
-  drafted: "Saved as a draft",
-  failed: "Failed",
-};
-const WILL_WORDS: Record<string, string> = {
-  created: "Would be created",
-  updated: "Would be updated",
-  unchanged: "Unchanged",
-  skipped: "Would be skipped",
-  drafted: "Would be saved as a draft",
-};
+/** The table's words; a page passes the account's language (D312 A11), English unless given. */
+export type FindingsWords = AdminAreaMessages["bookings"]["findings"];
+const EN: FindingsWords = adminText("en", "bookings").findings;
 
-export const outcomeWords = (item: Pick<FindingItem, "outcome" | "will">): string =>
-  item.outcome === "checked" ? (item.will ? (WILL_WORDS[item.will] ?? "Checked") : "Checked") : (OUTCOME_WORDS[item.outcome] ?? item.outcome);
+export const outcomeWords = (item: Pick<FindingItem, "outcome" | "will">, w: FindingsWords = EN): string => {
+  const will = w.will as Record<string, string>;
+  const outcome = w.outcome as Record<string, string>;
+  return item.outcome === "checked" ? (item.will ? (will[item.will] ?? w.checked) : w.checked) : (outcome[item.outcome] ?? item.outcome);
+};
 
 const SEVERITY_STYLE = { error: "text-danger-text", warning: "text-warning-text", info: "text-muted" } as const;
 
@@ -42,6 +35,7 @@ export function FindingsTable({
   pageSize,
   hrefFor,
   problemsHref,
+  words: w = EN,
 }: {
   items: FindingItem[];
   total: number;
@@ -50,48 +44,49 @@ export function FindingsTable({
   pageSize: number;
   hrefFor: (query: { severity?: SeverityFilter; page?: number }) => string;
   problemsHref: string | null;
+  words?: FindingsWords;
 }) {
   const pages = Math.max(1, Math.ceil(total / pageSize));
   return (
     <section aria-labelledby="findings-title" className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 id="findings-title" className="text-title text-ink">
-          What the file says, product by product
+          {w.title}
         </h2>
         {problemsHref && (
           <form method="post" action={problemsHref}>
             <button type="submit" className="text-sm underline underline-offset-2">
-              Download the problems as CSV
+              {w.download}
             </button>
           </form>
         )}
       </div>
-      <nav aria-label="Filter by severity" className="flex flex-wrap gap-2 text-sm">
+      <nav aria-label={w.filter} className="flex flex-wrap gap-2 text-sm">
         {SEVERITY_FILTERS.map((s) => (
           <Link key={s} href={hrefFor({ severity: s })} aria-current={severity === s ? "page" : undefined} className="rounded px-2 py-1 aria-[current=page]:bg-sunken aria-[current=page]:font-medium">
-            {s === "all" ? "All products" : `${SEVERITY_WORDS[s]}s`}
+            {s === "all" ? w.allProducts : w.severities[s]}
           </Link>
         ))}
       </nav>
       {items.length === 0 ? (
-        <p className="rounded-panel bg-sunken p-6 text-center text-sm">{severity === "all" ? "Nothing to show." : "No product has a finding of this kind."}</p>
+        <p className="rounded-panel bg-sunken p-6 text-center text-sm">{severity === "all" ? w.nothing : w.noneOfKind}</p>
       ) : (
         <div className={tableShell}>
           <table className="w-full text-sm">
-            <caption className="sr-only">Products of the file with what was found, {wholeNumber(total)} in all</caption>
+            <caption className="sr-only">{fillWords(w.caption, { n: wholeNumber(total) })}</caption>
             <thead>
               <tr className="border-b border-line">
                 <th scope="col" className={th}>
-                  Rows
+                  {w.rows}
                 </th>
                 <th scope="col" className={th}>
-                  Product
+                  {w.product}
                 </th>
                 <th scope="col" className={th}>
-                  Result
+                  {w.result}
                 </th>
                 <th scope="col" className={th}>
-                  Findings
+                  {w.findings}
                 </th>
               </tr>
             </thead>
@@ -100,15 +95,15 @@ export function FindingsTable({
                 <tr key={item.seq} className="border-b border-line last:border-0">
                   <td className={`${td} whitespace-nowrap`}>{rowsPhrase(item.rows)}</td>
                   <td className={`${td} break-all font-medium`}>{item.ref ?? ""}</td>
-                  <td className={td}>{outcomeWords(item)}</td>
+                  <td className={td}>{outcomeWords(item, w)}</td>
                   <td className={td}>
                     {item.messages.length === 0 ? (
-                      <span className={hint}>Nothing to note</span>
+                      <span className={hint}>{w.nothingToNote}</span>
                     ) : (
                       <ul className="flex flex-col gap-1">
                         {item.messages.map((m, i) => (
                           <li key={`${m.code}-${i}`}>
-                            <span className={`font-medium ${SEVERITY_STYLE[m.severity]}`}>{SEVERITY_WORDS[m.severity]}</span> <code className="text-xs text-muted">{m.code}</code> {m.text}
+                            <span className={`font-medium ${SEVERITY_STYLE[m.severity]}`}>{w.severity[m.severity]}</span> <code className="text-xs text-muted">{m.code}</code> {m.text}
                           </li>
                         ))}
                       </ul>
@@ -121,20 +116,20 @@ export function FindingsTable({
         </div>
       )}
       {pages > 1 && (
-        <nav aria-label="Pages" className="flex items-center justify-between text-sm">
+        <nav aria-label={w.pages} className="flex items-center justify-between text-sm">
           {page > 1 ? (
             <Link href={hrefFor({ severity, page: page - 1 })} className="underline underline-offset-2">
-              Earlier products
+              {w.earlier}
             </Link>
           ) : (
             <span />
           )}
           <span className={hint}>
-            Page {page} of {pages}
+            {fillWords(w.pageOf, { page, pages })}
           </span>
           {page < pages ? (
             <Link href={hrefFor({ severity, page: page + 1 })} className="underline underline-offset-2">
-              Later products
+              {w.later}
             </Link>
           ) : (
             <span />

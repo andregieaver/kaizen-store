@@ -1,12 +1,18 @@
-import { LIFECYCLE_WORDS, lifecycleActions, lifecycleState, type LifecycleFacts } from "@/lib/lifecycle";
+import { fillWords } from "@/lib/admin-fill";
+import { platformSiteEn } from "@/lib/admin-messages/platform-site.en";
+import type { PlatformSiteMessages } from "@/lib/admin-messages/platform-site.en";
+import { lifecycleActions, lifecycleState, type LifecycleFacts } from "@/lib/lifecycle";
 
 import { ActionForm, SubmitButton, type FormState } from "./action-form";
 
 type Action = (state: FormState, formData: FormData) => Promise<FormState>;
 
 /** The state of a theme or a demo store (D177, D273), as a small badge. */
-export function LifecycleBadge({ facts }: { facts: LifecycleFacts }) {
-  return <span className="ml-2 rounded bg-sunken px-1.5 py-0.5 text-xs font-normal">{LIFECYCLE_WORDS[lifecycleState(facts)]}</span>;
+/** The lifecycle's words; English unless the page hands in the admin's (D312 A11). */
+type Words = PlatformSiteMessages["lifecycle"];
+
+export function LifecycleBadge({ facts, words = platformSiteEn.lifecycle }: { facts: LifecycleFacts; words?: Words }) {
+  return <span className="ml-2 rounded bg-sunken px-1.5 py-0.5 text-xs font-normal">{words.states[lifecycleState(facts)]}</span>;
 }
 
 /**
@@ -19,11 +25,13 @@ export function LifecycleButtons({
   title,
   facts,
   actions,
+  words = platformSiteEn.lifecycle,
 }: {
   kind: "demo store" | "theme";
   title: string;
   facts: LifecycleFacts & { used: boolean };
   actions: { publish: Action; unpublish: Action; archive: Action; restore: Action; remove: Action };
+  words?: Words;
 }) {
   const offered = lifecycleActions(facts);
   const named = <span className="sr-only"> {title}</span>;
@@ -34,18 +42,18 @@ export function LifecycleButtons({
           // A theme's Publish takes What's new (D245), shown to the stores that installed it when the new version reaches them.
           <details className="rounded-md border border-line px-3 py-2 text-sm">
             <summary className="cursor-pointer">
-              {facts.published ? "Publish changes…" : "Publish…"}
+              {facts.published ? words.publishChangesOpen : words.publishOpen}
               {named}
             </summary>
             <ActionForm action={actions.publish} className="mt-2 flex max-w-md flex-col gap-2">
               <label className="flex flex-col gap-1">
-                <span>What&apos;s new (optional)</span>
+                <span>{words.whatsNew}</span>
                 <textarea name="notes" rows={3} maxLength={2000} className="rounded-lg border border-line bg-card px-3 py-2" />
-                <span className="text-muted">Stores that installed this theme see it beside what changed, when the new version reaches them.</span>
+                <span className="text-muted">{words.whatsNewHint}</span>
               </label>
               <div>
                 <SubmitButton>
-                  {facts.published ? "Publish changes" : "Publish"}
+                  {facts.published ? words.publishChanges : words.publish}
                   {named}
                 </SubmitButton>
               </div>
@@ -54,7 +62,7 @@ export function LifecycleButtons({
         ) : (
           <ActionForm action={actions.publish}>
             <SubmitButton>
-              {facts.published ? "Publish changes" : "Publish"}
+              {facts.published ? words.publishChanges : words.publish}
               {named}
             </SubmitButton>
           </ActionForm>
@@ -62,42 +70,45 @@ export function LifecycleButtons({
       {offered.includes("unpublish") && (
         <ActionForm action={actions.unpublish}>
           <SubmitButton variant="secondary">
-            Unpublish{named}
+            {words.unpublish}
+            {named}
           </SubmitButton>
         </ActionForm>
       )}
       {offered.includes("archive") && (
         <ActionForm action={actions.archive}>
           <SubmitButton variant="secondary">
-            Archive{named}
+            {words.archive}
+            {named}
           </SubmitButton>
         </ActionForm>
       )}
       {offered.includes("restore") && (
         <ActionForm action={actions.restore}>
           <SubmitButton variant="secondary">
-            Restore{named}
+            {words.restore}
+            {named}
           </SubmitButton>
         </ActionForm>
       )}
       {offered.includes("delete") && (
         <details className="rounded-md border border-line px-3 py-2 text-sm">
           <summary className="cursor-pointer">
-            Delete…{named}
+            {words.deleteOpen}
+            {named}
           </summary>
           <ActionForm action={actions.remove} className="mt-2 flex max-w-sm flex-col gap-2">
             <p className="text-muted">
-              {kind === "demo store"
-                ? "Deleting takes the demo store off the platform for good. Its store and its published copies are closed and kept, as stores always are."
-                : "Deleting takes the theme off the platform for good. Its workspace is closed and kept, as stores always are."}
+              {kind === "demo store" ? words.deleteDemo : words.deleteTheme}
             </p>
             <label className="flex items-start gap-2">
               <input type="checkbox" name="confirm" required className="mt-0.5 size-4" />
-              <span>I want to delete {title}; this cannot be undone.</span>
+              <span>{fillWords(words.deleteConfirm, { title })}</span>
             </label>
             <div>
               <SubmitButton variant="secondary">
-                Delete for good{named}
+                {words.deleteForGood}
+                {named}
               </SubmitButton>
             </div>
           </ActionForm>

@@ -62,7 +62,7 @@ function LanguageChoice({
 }
 
 /** A catalogue text with a language's name in it. */
-const named = (text: string, name: string) => text.replaceAll("{name}", name);
+const named = (text: string, value: string, key = "name") => text.replaceAll(`{${key}}`, value);
 
 /** A record's name as providers that add the domain themselves want it: `_kaizen.butikk` for `_kaizen.butikk.example.no`. */
 const relativeName = (name: string, apex: string | undefined) =>
@@ -81,6 +81,7 @@ export function DomainsPanel({
   configured,
   languages,
   words,
+  locale = "en-GB",
   actions,
 }: {
   /** The store's address in this deployment. */
@@ -97,6 +98,8 @@ export function DomainsPanel({
   languages: { lang: string; name: string }[];
   /** The page's words in the admin's language (D312: what is converted). */
   words: DomainsMessages;
+  /** The admin's date format (D312 A11). */
+  locale?: string;
   actions: { add: Action; check: Action; primary: Action; remove: Action; language: Action };
 }) {
   const primary = domains.find((d) => d.isPrimary);
@@ -105,7 +108,7 @@ export function DomainsPanel({
     <div className="flex flex-col gap-6">
       <section aria-labelledby="address-heading" className={card}>
         <h2 id="address-heading" className="text-title text-ink">
-          Your store&apos;s address
+          {words.address}
         </h2>
         <p className="text-sm">
           <a href={address} className="font-medium underline" target="_blank" rel="noopener">
@@ -114,40 +117,36 @@ export function DomainsPanel({
           {address !== hostAddress && (
             <span className="text-muted">
               {" "}
-              · {hostAddress.replace(/^https?:\/\//, "")} leads there too
+              · {named(words.leadsThere, hostAddress.replace(/^https?:\/\//, ""), "host")}
             </span>
           )}
         </p>
         {deploying && (
           <p role="status" className="rounded-md border border-line bg-sunken p-3 text-sm">
-            Your domains changed. Kaizena Flow is putting the change live, which takes a few minutes; this page updates by
-            itself.
+            {words.deploying}
             <RefreshWhile seconds={20} />
           </p>
         )}
         {owner && primary && (
-          <DomainButton action={actions.primary} id="" label={`Use ${hostAddress.replace(/^https?:\/\//, "")} as the address instead`} />
+          <DomainButton action={actions.primary} id="" label={named(words.useHost, hostAddress.replace(/^https?:\/\//, ""), "host")} />
         )}
       </section>
 
       <section aria-labelledby="domains-heading" className={card}>
         <div>
           <h2 id="domains-heading" className="text-title text-ink">
-            Your own domains
+            {words.ownDomains}
           </h2>
           <p className="text-sm text-muted">
-            Use a domain you own, like butikk.example.no or example.no. Add it here, then create the DNS records shown at
-            the company where you manage the domain&apos;s DNS. When they are in place, the domain becomes your
-            store&apos;s address, with a certificate for https, and your other addresses lead there. Up to {MAX_DOMAINS}{" "}
-            domains.
+            {named(words.ownDomainsNote, String(MAX_DOMAINS), "max")}
           </p>
         </div>
         {!configured ? (
-          <p className="text-sm">Custom domains are not set up on Kaizena Flow yet.</p>
+          <p className="text-sm">{words.notConfigured}</p>
         ) : owner ? (
           <ActionForm action={actions.add} className="flex flex-col gap-2 sm:flex-row sm:items-end">
             <label className="flex flex-1 flex-col gap-1 text-sm font-medium">
-              Domain
+              {words.domain}
               <input
                 name="hostname"
                 required
@@ -159,10 +158,10 @@ export function DomainsPanel({
                 className={input}
               />
             </label>
-            <SubmitButton>Add domain</SubmitButton>
+            <SubmitButton>{words.add}</SubmitButton>
           </ActionForm>
         ) : (
-          <p className="text-sm text-muted">Only an owner can add domains.</p>
+          <p className="text-sm text-muted">{words.ownerOnly}</p>
         )}
 
         {domains.length > 0 && (
@@ -173,12 +172,12 @@ export function DomainsPanel({
                   <span className="font-medium">{domain.hostname}</span>
                   <span className="rounded-full border border-line px-2 py-0.5 text-xs">
                     {domain.isPrimary
-                      ? "Your address"
+                      ? words.yourAddress
                       : domain.status === "active"
                         ? domain.language
                           ? named(words.activeInLanguage, nameOf(domain.language))
-                          : "Active: leads to your address"
-                        : "Waiting for DNS"}
+                          : words.activeLeads
+                        : words.waitingDns}
                   </span>
                   {domain.language && domain.status === "pending" && (
                     <span className="rounded-full border border-line px-2 py-0.5 text-xs">{named(words.forLanguage, nameOf(domain.language))}</span>
@@ -187,11 +186,10 @@ export function DomainsPanel({
                 {domain.status === "pending" && (
                   <>
                     <p className="text-sm text-muted">
-                      Create these records at your DNS provider, and remove other A, AAAA or CNAME records on the same
-                      name. Providers that add the domain themselves want only the first part of the name
+                      {words.createRecords}
                       {domain.checks.apexName ? (
                         <>
-                          , like <span className="font-mono">{relativeName(`_kaizen.${domain.hostname}`, domain.checks.apexName)}</span>
+                          {words.like}<span className="font-mono">{relativeName(`_kaizen.${domain.hostname}`, domain.checks.apexName)}</span>
                         </>
                       ) : null}
                       .
@@ -200,10 +198,10 @@ export function DomainsPanel({
                       <table className="w-full text-left text-sm">
                         <thead>
                           <tr className="border-b border-line text-muted">
-                            <th className="py-2 pr-3 font-normal">Type</th>
-                            <th className="py-2 pr-3 font-normal">Name</th>
-                            <th className="py-2 pr-3 font-normal">Value</th>
-                            <th className="py-2 font-normal">Found</th>
+                            <th className="py-2 pr-3 font-normal">{words.type}</th>
+                            <th className="py-2 pr-3 font-normal">{words.name}</th>
+                            <th className="py-2 pr-3 font-normal">{words.value}</th>
+                            <th className="py-2 font-normal">{words.found}</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -213,7 +211,7 @@ export function DomainsPanel({
                               <td className="py-2 pr-3 font-mono break-all">{record.name}</td>
                               <td className="py-2 pr-3 font-mono break-all">{record.value}</td>
                               <td className="py-2" title={record.why}>
-                                {record.done ? "Yes" : "Not yet"}
+                                {record.done ? words.yes : words.notYet}
                               </td>
                             </tr>
                           ))}
@@ -223,18 +221,18 @@ export function DomainsPanel({
                     {domain.checks.problem && <p className="text-sm text-danger-text">{domain.checks.problem}</p>}
                     <p className="text-xs text-muted">
                       {domain.checkedAt
-                        ? `Last checked ${new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" }).format(new Date(domain.checkedAt))}. `
+                        ? named(words.lastChecked, new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" }).format(new Date(domain.checkedAt)), "date")
                         : ""}
-                      Checked again each time you open this page; DNS changes can take up to a few hours to show.
+                      {words.checkedAgain}
                     </p>
                   </>
                 )}
                 <div className="flex flex-wrap gap-2">
-                  {domain.status === "pending" && <DomainButton action={actions.check} id={domain.id} label="Check now" />}
+                  {domain.status === "pending" && <DomainButton action={actions.check} id={domain.id} label={words.checkNow} />}
                   {owner && domain.status === "active" && !domain.isPrimary && (
-                    <DomainButton action={actions.primary} id={domain.id} label="Make this the address" />
+                    <DomainButton action={actions.primary} id={domain.id} label={words.makeAddress} />
                   )}
-                  {owner && <DomainButton action={actions.remove} id={domain.id} label="Remove" />}
+                  {owner && <DomainButton action={actions.remove} id={domain.id} label={words.remove} />}
                 </div>
                 {owner && !domain.isPrimary && (languages.length > 0 || domain.language) && (
                   <LanguageChoice action={actions.language} domain={domain} languages={languages} nameOf={nameOf} words={words} />

@@ -9,6 +9,8 @@ import { useId, useState, type ReactNode } from "react";
 import { HEX6, colourCss, isOpacity } from "@/lib/colour";
 import { isLinkAddress, type RichTextDoc } from "@/lib/page-content";
 
+import { fillWords } from "@/lib/admin-fill";
+import { useAdminText } from "./admin-text";
 import { ColorField } from "./colour-field";
 
 /**
@@ -149,6 +151,7 @@ export function RichTextToolbar({ editor, label }: { editor: Editor; label: stri
   const [linking, setLinking] = useState(false);
   const [colouring, setColouring] = useState(false);
   const chain = () => editor.chain().focus();
+  const w = useAdminText("builder").richText;
   /** Colours the selected words, or the coloured words the cursor is in (without taking the focus from the colour field). */
   const colour = (attrs: { color: string; opacity: number | null } | null) => {
     let next = editor.chain();
@@ -174,9 +177,9 @@ export function RichTextToolbar({ editor, label }: { editor: Editor; label: stri
 
   return (
     <div className="sticky top-0 z-10 rounded-t-md border-b border-line bg-card">
-      <div role="toolbar" aria-label={`Formatting for ${label}`} className="flex flex-wrap items-center gap-0.5 p-1">
+      <div role="toolbar" aria-label={fillWords(w.toolbar, { label })} className="flex flex-wrap items-center gap-0.5 p-1">
         <label className="sr-only" htmlFor={`${editor.instanceId}-style`}>
-          Text style
+          {w.style}
         </label>
         <select
           id={`${editor.instanceId}-style`}
@@ -188,18 +191,18 @@ export function RichTextToolbar({ editor, label }: { editor: Editor; label: stri
           }}
           className="min-h-9 rounded border border-line bg-card px-2 text-sm"
         >
-          <option value="p">Paragraph</option>
-          <option value="h2">Heading</option>
-          <option value="h3">Subheading</option>
-          <option value="h4">Small heading</option>
+          <option value="p">{w.paragraph}</option>
+          <option value="h2">{w.heading}</option>
+          <option value="h3">{w.subheading}</option>
+          <option value="h4">{w.smallHeading}</option>
         </select>
         <span aria-hidden className="mx-1 h-6 w-px bg-line" />
-        {button("Bold", state.bold, () => chain().toggleBold().run(), <strong>B</strong>)}
-        {button("Italic", state.italic, () => chain().toggleItalic().run(), <em className="font-serif">I</em>)}
-        {button("Underline", state.underline, () => chain().toggleUnderline().run(), <u>U</u>)}
-        {button("Link", state.link || linking, () => setLinking((open) => !open), <LinkIcon />)}
+        {button(w.bold, state.bold, () => chain().toggleBold().run(), <strong>B</strong>)}
+        {button(w.italic, state.italic, () => chain().toggleItalic().run(), <em className="font-serif">I</em>)}
+        {button(w.underline, state.underline, () => chain().toggleUnderline().run(), <u>U</u>)}
+        {button(w.link, state.link || linking, () => setLinking((open) => !open), <LinkIcon />)}
         {button(
-          "Text colour",
+          w.colour,
           Boolean(state.color) || colouring,
           () => setColouring((open) => !open),
           <span aria-hidden className="flex flex-col items-center leading-none">
@@ -208,26 +211,26 @@ export function RichTextToolbar({ editor, label }: { editor: Editor; label: stri
           </span>,
         )}
         <span aria-hidden className="mx-1 h-6 w-px bg-line" />
-        {button("Bulleted list", state.bulletList, () => chain().toggleBulletList().run(), <ListIcon />)}
-        {button("Numbered list", state.orderedList, () => chain().toggleOrderedList().run(), <NumberedIcon />)}
-        {button("Quote", state.blockquote, () => chain().toggleBlockquote().run(), <QuoteIcon />)}
-        {button("Line", undefined, () => chain().setHorizontalRule().run(), <span aria-hidden>―</span>)}
+        {button(w.bullets, state.bulletList, () => chain().toggleBulletList().run(), <ListIcon />)}
+        {button(w.numbers, state.orderedList, () => chain().toggleOrderedList().run(), <NumberedIcon />)}
+        {button(w.quote, state.blockquote, () => chain().toggleBlockquote().run(), <QuoteIcon />)}
+        {button(w.line, undefined, () => chain().setHorizontalRule().run(), <span aria-hidden>―</span>)}
         <span aria-hidden className="mx-1 h-6 w-px bg-line" />
-        {button("Undo", undefined, () => chain().undo().run(), <span aria-hidden>↶</span>, !state.canUndo)}
-        {button("Redo", undefined, () => chain().redo().run(), <span aria-hidden>↷</span>, !state.canRedo)}
+        {button(w.undo, undefined, () => chain().undo().run(), <span aria-hidden>↶</span>, !state.canUndo)}
+        {button(w.redo, undefined, () => chain().redo().run(), <span aria-hidden>↷</span>, !state.canRedo)}
       </div>
       {colouring && (
         <div className="flex flex-wrap items-end gap-3 border-t border-line p-2">
           <ColorField
-            label="Text colour"
+            label={w.colour}
             value={state.color}
-            placeholder="The text's own"
+            placeholder={w.ownColour}
             onChange={(color) => colour({ color, opacity: state.opacity ?? null })}
             onClear={() => colour(null)}
             opacity={{ value: state.opacity, onChange: (opacity) => state.color && colour({ color: state.color, opacity: opacity ?? null }) }}
           />
           <button type="button" onClick={() => setColouring(false)} className="min-h-9 px-2 text-sm underline">
-            Done
+            {w.done}
           </button>
         </div>
       )}
@@ -274,13 +277,14 @@ function LinkForm({
   onRemove: () => void;
   onCancel: () => void;
 }) {
+  const w = useAdminText("builder").richText;
   const id = useId();
   const [value, setValue] = useState(initial);
   const [problem, setProblem] = useState<string | null>(null);
   const apply = () => {
     const href = linkFromInput(value);
     if (!isLinkAddress(href)) {
-      setProblem("Use a web address (https://…), an email address, tel:+47… or a path on this site starting with /.");
+      setProblem(w.badLink);
       return;
     }
     onApply(href);
@@ -289,7 +293,7 @@ function LinkForm({
     <div className="flex flex-col gap-2 border-t border-line p-2">
       <div className="flex flex-wrap items-center gap-2">
         <label htmlFor={id} className="text-sm font-medium">
-          Link to
+          {w.linkTo}
         </label>
         <input
           id={id}
@@ -309,22 +313,22 @@ function LinkForm({
               onCancel();
             }
           }}
-          placeholder="https://… or /sign-up"
+          placeholder={w.linkPlaceholder}
           inputMode="url"
           aria-invalid={problem ? true : undefined}
           aria-describedby={problem ? `${id}-problem` : undefined}
           className="min-h-9 min-w-0 flex-1 rounded border border-line bg-card px-2 text-sm"
         />
         <button type="button" onClick={apply} className="min-h-9 rounded bg-brand px-3 text-sm text-brand-ink">
-          {active ? "Update" : "Add link"}
+          {active ? w.update : w.addLink}
         </button>
         {active && (
           <button type="button" onClick={onRemove} className="min-h-9 rounded border border-line px-3 text-sm">
-            Remove link
+            {w.removeLink}
           </button>
         )}
         <button type="button" onClick={onCancel} className="min-h-9 px-2 text-sm underline">
-          Cancel
+          {w.cancel}
         </button>
       </div>
       {problem && (

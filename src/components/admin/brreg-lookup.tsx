@@ -13,6 +13,8 @@ import {
 
 import type { BrregLookup as Lookup, BrregSearch as Search } from "@/server/brreg";
 
+import { fillWords } from "@/lib/admin-fill";
+import { useAdminText } from "./admin-text";
 import { control, errorText, hintText, secondaryButton } from "./work/work-parts";
 
 type Status =
@@ -21,7 +23,6 @@ type Status =
   | { kind: "hits"; hits: BrregHit[]; total: number; text: string }
   | { kind: "message"; text: string; tone: "info" | "error" };
 
-const UNAVAILABLE = "The company register did not answer. Type the details yourself, or try again in a moment.";
 
 /**
  * Fills in a form from Brønnøysundregistrene (`src/server/brreg.ts`): type an organisation number and the company
@@ -39,6 +40,7 @@ export function BrregLookup({
   search: (input: string) => Promise<Search>;
   onPick: (company: BrregCompany) => void;
 }) {
+  const w = useAdminText("bookings").brreg;
   const id = useId();
   const [input, setInput] = useState("");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
@@ -55,16 +57,16 @@ export function BrregLookup({
       setStatus({
         kind: "message",
         tone: "error",
-        text: "No company has that organisation number.",
+        text: w.notFound,
       });
     } else if (result.reason === "invalid") {
       setStatus({
         kind: "message",
         tone: "error",
-        text: "That is not a valid organisation number. Check the digits.",
+        text: w.invalid,
       });
     } else {
-      setStatus({ kind: "message", tone: "error", text: UNAVAILABLE });
+      setStatus({ kind: "message", tone: "error", text: w.unavailable });
     }
   };
 
@@ -73,7 +75,7 @@ export function BrregLookup({
     if (ticket !== latest.current) return;
     if (!result.ok) {
       setStatus(
-        result.reason === "too_short" ? { kind: "idle" } : { kind: "message", tone: "error", text: UNAVAILABLE },
+        result.reason === "too_short" ? { kind: "idle" } : { kind: "message", tone: "error", text: w.unavailable },
       );
     } else if (result.hits.length === 0) {
       setStatus({
@@ -95,7 +97,7 @@ export function BrregLookup({
         return setStatus({
           kind: "message",
           tone: "error",
-          text: "That is not a valid organisation number: it has nine digits, the last one a check digit.",
+          text: w.invalidDigits,
         });
       }
       setStatus({ kind: "busy" });
@@ -132,11 +134,10 @@ export function BrregLookup({
   return (
     <div className="rounded-panel bg-sunken p-4">
       <label htmlFor={`${id}-input`} className="mb-1 block text-sm font-medium">
-        Fill in from the company register
+        {w.label}
       </label>
       <p id={`${id}-hint`} className={`mb-2 ${hintText}`}>
-        For a Norwegian company: type its organisation number or its name. The registered name, address and VAT number
-        are filled in below, and you can change them.
+        {w.hint}
       </p>
       <div className="flex flex-wrap gap-2">
         <input
@@ -150,14 +151,14 @@ export function BrregLookup({
               void ask(input);
             }
           }}
-          placeholder="923 609 016 or a company name"
+          placeholder={w.placeholder}
           maxLength={100}
           autoComplete="off"
           aria-describedby={`${id}-hint ${id}-status`}
           className={`${control} min-w-0 flex-1`}
         />
         <button type="button" onClick={submit} disabled={busy || input.trim() === ""} className={secondaryButton}>
-          {busy ? "Looking …" : "Look up"}
+          {busy ? w.looking : w.lookUp}
         </button>
       </div>
 
@@ -171,7 +172,7 @@ export function BrregLookup({
         {status.kind === "hits" && (
           <>
             <ul
-              aria-label="Companies found"
+              aria-label={w.found}
               className="flex flex-col divide-y divide-line rounded-md border border-line bg-card"
             >
               {status.hits.map((hit) => (
@@ -208,18 +209,21 @@ export function BrregLookup({
  * the VAT register, no address, and a warning for a company that is bankrupt, being wound up or deleted.
  */
 export function RegisterNote({ company, fills }: { company: BrregCompany; fills: "client" | "company" }) {
+  const w = useAdminText("bookings").brreg;
   return (
     <div role="status" className="rounded-md border border-line px-3 py-2 text-sm">
       <p>
-        Filled in from the register: {company.legalName}, {formatOrganisationNumber(company.organisationNumber)}
-        {company.organisationFormName ? ` (${company.organisationFormName})` : ""}. Check the details below before you
-        save.
+        {fillWords(w.filled, {
+          name: company.legalName,
+          number: formatOrganisationNumber(company.organisationNumber),
+          form: company.organisationFormName ? ` (${company.organisationFormName})` : "",
+        })}
       </p>
       {fills === "client" && !company.vatRegistered && (
-        <p className={hintText}>Not in the VAT register, so no VAT number was filled in.</p>
+        <p className={hintText}>{w.noVat}</p>
       )}
       {fills === "client" && !company.address && (
-        <p className={hintText}>The register has no address for this company: fill it in yourself.</p>
+        <p className={hintText}>{w.noAddress}</p>
       )}
       {company.warnings.map((warning) => (
         <p key={warning} className="font-medium text-danger-text">

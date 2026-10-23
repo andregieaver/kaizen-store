@@ -29,6 +29,11 @@ import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 import { PlatformLegalCard } from "@/components/admin/platform-legal-card";
 import { adminLangOf } from "@/lib/admin-lang";
 import { platformLegalOverview } from "@/server/platform-legal";
+import { AdminTextScope } from "@/components/admin/admin-text";
+import { fillWords } from "@/lib/admin-fill";
+import type { PlatformSiteMessages } from "@/lib/admin-messages/platform-site.en";
+import { adminTexts } from "@/lib/admin-text";
+import { PLATFORM_SITE_AREAS, platformSiteWords } from "@/server/platform-site-words";
 
 import {
   choosePlatformSiteLayoutAction,
@@ -52,24 +57,20 @@ type Query = Promise<Record<string, string | string[] | undefined>>;
 
 type Params = Promise<{ pageId: string }>;
 
-const INTRO: Record<PageType, string> = {
-  page: "Kaizena Flow's own pages, each at its own address on the site, such as /about. Save a page as a draft while you work on it; publish it to put it on the site. Add pages to the menus under Header and footer. Choose any page as Kaizena Flow's front page, blog page or 404 page under Special pages.",
-  article:
-    "Kaizena Flow's blog: articles at /blog/{address}, listed newest first at /blog. Save an article as a draft while you work on it; publish it to put it in the blog.",
-  // Stores' own (D79); Kaizen has no products.
-  product_layout: "",
-  header:
-    "The top of Kaizena Flow's pages, built from components: the logo, menus, sign-in, the Start your store button and anything else. Publish a header, then choose it as the site's header; until you do, the standard one is shown.",
-  footer:
-    "The bottom of Kaizena Flow's pages, built from components: the logo, menus, business details, the cookies link and anything else. Publish a footer, then choose it as the site's footer; until you do, the standard one is shown. A footer shows the business details and the cookies link, as the law asks.",
-  // A store's A/B test copies (D148); Kaizen's own tests come later.
-  variant: "",
-};
+type TypeWords = PlatformSiteMessages["pages"]["types"]["page"];
+
+/** A type's words in the admin's language; Kaizena Flow has pages, articles, headers and footers (stores' product layouts and test versions are not its). */
+function typeWords(w: PlatformSiteMessages, type: PageType): TypeWords {
+  const types: Partial<Record<PageType, TypeWords>> = w.pages.types;
+  return types[type] ?? w.pages.types.page;
+}
 
 export async function PagesListView({ type, searchParams }: { type: PageType; searchParams: Query }) {
   // Per request: admin pages never read the database while the site is built.
   await connection();
   const admin = await requirePlatformAdmin();
+  const { lang, w } = await platformSiteWords();
+  const tw = typeWords(w, type);
   const copy = PAGE_TYPE_COPY[type];
   const base = `/admin/platform/${copy.segment}`;
   const [all, query, roles, legal] = await Promise.all([
@@ -86,35 +87,35 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
   const roleOf = Object.fromEntries(roles.map(([role, id]) => [role, id]));
   const offered = (role: PlatformRole) => pages.filter((p) => (!placedIds.has(p.id) || p.id === roleOf[role]) && (p.state !== "draft" || p.id === roleOf[role]));
   return (
-    <>
+    <AdminTextScope texts={adminTexts(lang, ["website", "platformSite"])}>
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <PageHeader title={<>{copy.list}</>} description={<>{INTRO[type]}</>} />
+        <PageHeader title={<>{tw.list}</>} description={<>{tw.intro}</>} />
         <div className="flex flex-wrap gap-3">
           {!LAYOUT_TYPES.includes(type) && (
             <Link href={`${base}/categories`} className="flex min-h-11 items-center rounded-pill border border-edge px-5 font-medium">
-              Categories and tags
+              {w.pages.categories}
             </Link>
           )}
           {type === "page" && (
             <Link href={`${base}/ai`} className="flex min-h-11 items-center rounded-pill border border-edge px-5 font-medium">
-              Create with AI
+              {w.pages.createAi}
             </Link>
           )}
           <Link href={`${base}/new`} className="flex min-h-11 items-center rounded-pill bg-brand px-5 font-medium text-brand-ink">
-            New {copy.one}
+            {tw.new}
           </Link>
         </div>
       </div>
 
       {query.deleted && (
         <p role="status" className="rounded-panel border border-line bg-card p-4 text-sm">
-          The {copy.one} was deleted.
+          {tw.deleted}
         </p>
       )}
 
       {pages.length === 0 ? (
         <p className={`p-5 text-sm text-muted ${CARD_CLASS}`}>
-          No {copy.many} yet. Make the first one with New {copy.one}.
+          {tw.none}
         </p>
       ) : type === "header" || type === "footer" ? (
         <SiteLayoutsTable layouts={pages} adminBase={base} current={(await siteLayoutChoice(null))[type]} />
@@ -123,7 +124,7 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
           pages={pages}
           adminBase={base}
           siteBase={copy.sitePrefix}
-          placed={Object.fromEntries(roles.map(([role, id]) => [id, { name: PLATFORM_ROLE_COPY[role].name, address: PLATFORM_ROLE_COPY[role].address }]))}
+          placed={Object.fromEntries(roles.map(([role, id]) => [id, { name: w.tables.roles[role].name, address: PLATFORM_ROLE_COPY[role].address }]))}
           duplicate={duplicatePageAction.bind(null, type)}
         />
       )}
@@ -131,18 +132,17 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
       {type === "page" && (
         <section className="flex flex-col gap-4" aria-labelledby="special-pages">
           <div className="flex flex-col gap-1">
-            <h2 id="special-pages" className="text-title text-ink">Special pages</h2>
-            <p className="max-w-2xl text-sm text-muted">
-              Kaizena Flow&apos;s front page, blog and 404 page have a standard look. Build any of them in the page builder instead: choose one
-              of your published pages for it, or start from a new page that looks like the standard one. The standard page shows until you do.
-            </p>
+            <h2 id="special-pages" className="text-title text-ink">
+              {w.pages.special}
+            </h2>
+            <p className="max-w-2xl text-sm text-muted">{w.pages.specialNote}</p>
           </div>
           {SPECIAL_ROLES.map((role) => (
             <PagePlaceForm
               key={role}
-              name={PLATFORM_ROLE_COPY[role].name}
-              hint={PLATFORM_ROLE_COPY[role].hint}
-              standard={PLATFORM_ROLE_COPY[role].standard}
+              name={w.tables.roles[role].name}
+              hint={w.tables.roles[role].hint}
+              standard={w.tables.roles[role].standard}
               current={roleOf[role] ?? null}
               pages={offered(role)}
               choose={setPlatformPageRoleAction.bind(null, role) as never}
@@ -156,29 +156,28 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
           type={type}
           layouts={pages}
           current={(await siteLayoutChoice(null))[type]}
-          siteName="Kaizena Flow's site"
+          siteName={w.pages.siteName}
           action={choosePlatformSiteLayoutAction.bind(null, type)}
         />
       )}
-    </>
+    </AdminTextScope>
   );
 }
 
 export async function PageTermsView({ type }: { type: PageType }) {
   await connection();
   await requirePlatformAdmin();
+  const { lang, w } = await platformSiteWords();
+  const tw = typeWords(w, type);
   const copy = PAGE_TYPE_COPY[type];
   const terms = await listTerms({ storeId: null, contentType: termContentOf(type) });
   return (
-    <>
+    <AdminTextScope texts={adminTexts(lang, ["products", "platformSite"])}>
       <div className="flex flex-col gap-1">
         <Link href={`/admin/platform/${copy.segment}`} className="w-fit text-sm underline">
-          {copy.list}
+          {tw.list}
         </Link>
-        <PageHeader
-          title="Categories and tags"
-          description={<>Sort Kaizena Flow&apos;s {copy.many} into categories and label them with tags. Choose them for each {copy.one} in the editor; a content grid can then show the {copy.many} of a category or tag. The choices go on the site when the {copy.one} is published.</>}
-        />
+        <PageHeader title={w.pages.categories} description={tw.terms} />
         </div>
       <TermsManager
         initial={terms}
@@ -189,7 +188,7 @@ export async function PageTermsView({ type }: { type: PageType }) {
           remove: deletePageTermAction.bind(null, type),
         }}
       />
-    </>
+    </AdminTextScope>
   );
 }
 
@@ -202,12 +201,13 @@ export async function NewPageView({ type }: { type: PageType }) {
     platformPageContext(type, admin.name ?? ""),
   ]);
   const gridTerms = await bothTerms(null);
+  const { lang, w } = await platformSiteWords();
   return (
-    <>
+    <AdminTextScope texts={adminTexts(lang, PLATFORM_SITE_AREAS)}>
       {/* Only for screen readers: the title is in the editor, and the list is in the menu. */}
-      <h1 className="sr-only">New {PAGE_TYPE_COPY[type].one}</h1>
+      <h1 className="sr-only">{typeWords(w, type).new}</h1>
       <PageEditor page={null} savedParts={saved} terms={terms} gridTerms={gridTerms} context={context} />
-    </>
+    </AdminTextScope>
   );
 }
 
@@ -262,21 +262,28 @@ export async function EditPageView({ type, params, searchParams, themeStore = fa
       }
     : base;
   const address = role ? PLATFORM_ROLE_COPY[role].address : `${context.siteBase}/${page.slug}`;
+  const { lang, w } = await platformSiteWords();
   return (
-    <>
-      <h1 className="sr-only">Edit {page.draft.title || `Untitled ${PAGE_TYPE_COPY[type].one}`}</h1>
+    <AdminTextScope texts={adminTexts(lang, PLATFORM_SITE_AREAS)}>
+      <h1 className="sr-only">{fillWords(w.tables.editTitle, { title: page.draft.title || `${w.tables.untitled} ${w.tables.pageTypes[type].one}` })}</h1>
       <PageEditor
         key={page.id}
         page={page}
         notice={
-          justSaved === "draft" ? "Draft saved." : justSaved === "published" ? (LAYOUT_TYPES.includes(type) ? "Published." : `Published at ${address}.`) : null
+          justSaved === "draft"
+            ? w.pages.draftSaved
+            : justSaved === "published"
+              ? LAYOUT_TYPES.includes(type)
+                ? w.pages.published
+                : fillWords(w.pages.publishedAt, { address })
+              : null
         }
         savedParts={saved}
         terms={terms}
         gridTerms={gridTerms}
         context={context}
       />
-    </>
+    </AdminTextScope>
   );
 }
 
@@ -293,20 +300,16 @@ export async function PreviewPageView({ type, params, searchParams, themeStore =
   const themeSlug = role === "theme" ? (typeof asked === "string" && asked ? asked : (await themeStoreView("theme")).slug) : null;
   const shownTheme = themeSlug ? await themeStorePage(themeSlug) : null;
   const back = role ? themeStorePageHref(page.id) : `/admin/platform/${PAGE_TYPE_COPY[type].segment}/${page.id}`;
-  const copy = PAGE_TYPE_COPY[type];
+  const { w } = await platformSiteWords();
   return (
     <>
       <p role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-brand px-4 py-3 text-sm text-brand-ink">
         <span>
-          Preview of the saved draft.{" "}
-          {page.state === "draft"
-            ? `The ${copy.one} is not on the site yet.`
-            : page.state === "changed"
-              ? "The site still shows the published version."
-              : "This is what the site shows."}
+          {w.pages.previewDraft}{" "}
+          {page.state === "draft" ? typeWords(w, type).notOnSite : page.state === "changed" ? w.pages.stillPublished : w.pages.thisIsShown}
         </span>
         <Link href={back} className="font-medium underline">
-          Back to editing
+          {w.pages.back}
         </Link>
       </p>
       {/* Kaizen's own CSS and the page's (D100), kept inside the preview. */}

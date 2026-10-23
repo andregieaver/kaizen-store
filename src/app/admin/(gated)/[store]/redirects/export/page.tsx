@@ -54,7 +54,7 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
   return (
     <>
       <ProblemAlert text={problem} />
-      <RedirectExportForm slug={member.store.slug} words={adminText(adminLangOf(member.account.adminLocale), "redirects")} />
+      <RedirectExportForm slug={member.store.slug} words={adminText(adminLangOf(member.account.adminLocale), "redirects")} exportWords={adminText(adminLangOf(member.account.adminLocale), "bookings").exports} />
       <Notice title={w.aboutTitle}>
         <ul className="list-disc pl-5">
           <li>

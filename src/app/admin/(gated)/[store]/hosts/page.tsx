@@ -6,6 +6,9 @@ import { memberCan, requirePermission } from "@/server/permissions";
 import { hostTaxStatus } from "@/server/dac7";
 import { listHosts } from "@/server/hosts";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 
 import { inviteHostAction } from "./actions";
 import { HostForm } from "./host-form";
@@ -21,24 +24,26 @@ export default async function HostsPage({ params }: PageProps<"/admin/[store]/ho
   const off = requireFeature(current, "bookings");
   if (off) return off;
   const { store } = current;
+  const t = adminText(adminLangOf(current.account.adminLocale), "bookings");
+  const w = t.hosts;
   const [hosts, taxes] = await Promise.all([listHosts(store.id), hostTaxStatus(store.id)]);
   const base = `/admin/${store.slug}/hosts`;
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="Hosts"
-        description={<>People whose rooms, homes or items the store lists, as a marketplace. Give a stay or rental and its rooms a host in the product and under Rooms and items; the host then keeps their calendar and sees their bookings in their own area.</>}
+        title={w.title}
+        description={w.description}
       />
       {hosts.length > 0 && (
         <p className="text-sm">
           <Link href={`${base}/dac7`} className="underline">
-            Yearly tax report (DAC7)
+            {w.dac7Link}
           </Link>
         </p>
       )}
       {hosts.length === 0 ? (
-        <p className="rounded-md border border-dashed border-line p-6 text-center text-sm text-muted">No hosts yet.</p>
+        <p className="rounded-md border border-dashed border-line p-6 text-center text-sm text-muted">{w.none}</p>
       ) : (
         <ul className={`divide-y divide-line ${CARD_CLASS}`}>
           {hosts.map((h) => (
@@ -47,20 +52,20 @@ export default async function HostsPage({ params }: PageProps<"/admin/[store]/ho
                 <Link href={`${base}/${h.id}`} className="font-medium underline-offset-2 hover:underline">
                   {h.name}
                 </Link>
-                {h.disabled && <span className="ml-2 rounded bg-sunken px-1.5 py-0.5 text-xs">No access</span>}
+                {h.disabled && <span className="ml-2 rounded bg-sunken px-1.5 py-0.5 text-xs">{w.noAccess}</span>}
                 <span className="block text-muted">{h.email}</span>
                 <span className="block text-xs text-muted">
-                  {h.commissionBps / 100} % commission · {h.listings === 1 ? "1 listing" : `${h.listings} listings`} ·{" "}
-                  {h.vatRegistered ? "VAT registered" : "No VAT"} · {h.signedInBefore ? "Has signed in" : "Not signed in yet"}
+                  {fillWords(w.commission, { n: h.commissionBps / 100 })} · {countWords(h.listings, w.listings)} ·{" "}
+                  {h.vatRegistered ? w.vat : w.noVat} · {h.signedInBefore ? w.signedIn : w.notSignedIn}
                 </span>
                 {(!taxes.get(h.id)?.details || (taxes.get(h.id)?.missingAddresses.length ?? 0) > 0) && (
                   <span className="block text-xs text-danger-text">
-                    {taxes.get(h.id)?.details ? "Addresses missing for the tax report" : "Tax details missing for the tax report"}
+                    {taxes.get(h.id)?.details ? w.addressesMissing : w.taxMissing}
                   </span>
                 )}
               </div>
               <Link href={`${base}/${h.id}`} className="min-h-10 rounded-pill px-3 py-2 hover:bg-sunken">
-                Edit <span className="sr-only">{h.name}</span>
+                {w.edit} <span className="sr-only">{h.name}</span>
               </Link>
             </li>
           ))}
@@ -69,12 +74,12 @@ export default async function HostsPage({ params }: PageProps<"/admin/[store]/ho
       {memberCan(current, "owner") ? (
         <section aria-labelledby="add-host" className="flex flex-col gap-3">
           <h2 id="add-host" className="text-title text-ink">
-            Add a host
+            {w.add}
           </h2>
-          <HostForm host={null} action={inviteHostAction.bind(null, store.slug)} />
+          <HostForm host={null} words={t.hostForm} action={inviteHostAction.bind(null, store.slug)} />
         </section>
       ) : (
-        <p className="text-sm text-muted">Only the store&apos;s owners add and change hosts.</p>
+        <p className="text-sm text-muted">{w.ownersOnly}</p>
       )}
     </div>
   );

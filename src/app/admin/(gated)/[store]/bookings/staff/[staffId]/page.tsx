@@ -1,3 +1,7 @@
+import { adminLangOf } from "@/lib/admin-lang";
+import { AdminTextScope } from "@/components/admin/admin-text";
+import { fillWords } from "@/lib/admin-fill";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { z } from "zod";
@@ -24,22 +28,26 @@ export default async function StaffMemberPage({ params }: PageProps<"/admin/[sto
   if (!z.uuid().safeParse(staffId).success) notFound();
   const staff = await getResource(store.id, staffId);
   if (!staff || staff.kind !== "staff") notFound();
+  const lang = adminLangOf(current.account.adminLocale);
+  const t = adminText(lang, "bookings");
 
   return (
+    <AdminTextScope texts={adminTexts(lang, ["settings"])}>
     <div className="flex flex-col gap-6">
-      <PageHeader back={{ href: `/admin/${store.slug}/bookings/staff`, label: "Staff and hours" }} title={<>{staff.name}</>} />
-      <StaffForm staff={staff} action={saveStaffAction.bind(null, store.slug, staff.id)} />
-      <ResourceCalendar storeId={store.id} timeZone={store.timeZone} resource={staff} actions={storeCalendarActions(store.slug, staff.id)} />
+      <PageHeader back={{ href: `/admin/${store.slug}/bookings/staff`, label: t.staff.title }} title={<>{staff.name}</>} />
+      <StaffForm staff={staff} words={t.staffForm} action={saveStaffAction.bind(null, store.slug, staff.id)} />
+      <ResourceCalendar storeId={store.id} timeZone={store.timeZone} lang={lang} resource={staff} actions={storeCalendarActions(store.slug, staff.id)} />
       <DeleteDiscountButton
         action={removeStaffAction.bind(null, store.slug, staff.id)}
         code={staff.name}
         question={
           staff.upcoming > 0
-            ? `Remove ${staff.name}? They stop taking bookings; their ${staff.upcoming} booked appointments stay, with them.`
-            : `Remove ${staff.name}? They stop taking bookings.`
+            ? fillWords(t.staff.removeAhead, { name: staff.name, n: staff.upcoming })
+            : fillWords(t.staff.removeAsk, { name: staff.name })
         }
-        label={`Remove ${staff.name}`}
+        label={fillWords(t.staff.remove, { name: staff.name })}
       />
     </div>
+    </AdminTextScope>
   );
 }

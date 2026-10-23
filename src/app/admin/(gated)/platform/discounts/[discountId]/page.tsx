@@ -11,12 +11,17 @@ import { deletePlatformDiscountAction, updatePlatformDiscountAction } from "../.
 import { deleteQuestion, PlatformDiscountFields } from "../discount-fields";
 import { requirePlatformAdmin } from "@/server/auth";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { countWords } from "@/lib/admin-fill";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 
 export const metadata: Metadata = { title: "Discount code" };
 
 /** Changes one of Kaizen's plan codes (D31). */
 export default async function PlatformDiscountPage({ params }: PageProps<"/admin/platform/discounts/[discountId]">) {
-  await requirePlatformAdmin();
+  const account = await requirePlatformAdmin();
+  const t = adminText(adminLangOf(account.adminLocale), "platform");
+  const w = t.discounts;
   const { discountId } = await params;
   if (!z.uuid().safeParse(discountId).success) notFound();
   const [discounts, currencies] = await Promise.all([listPlatformDiscounts(), planCurrencies()]);
@@ -26,20 +31,20 @@ export default async function PlatformDiscountPage({ params }: PageProps<"/admin
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        back={{ href: "/admin/platform/discounts", label: "Discounts" }}
+        back={{ href: "/admin/platform/discounts", label: w.back }}
         title={<span className="font-mono">{discount.code}</span>}
-        description={<>On {discount.stores} {discount.stores === 1 ? "store's plan" : "stores' plans"}. Changing what it gives makes a new coupon in Stripe for codes used from now on; plans that already have it keep what they got.</>}
+        description={<>{countWords(discount.stores, w.onPlans)} {w.editNote}</>}
       />
-      <section aria-label="Code" className={`p-5 ${CARD_CLASS}`}>
+      <section aria-label={w.code} className={`p-5 ${CARD_CLASS}`}>
         <ActionForm action={updatePlatformDiscountAction.bind(null, discount.id)} className="flex flex-col gap-4">
-          <PlatformDiscountFields discount={discount} currencies={currencies} />
-          <SubmitButton>Save</SubmitButton>
+          <PlatformDiscountFields discount={discount} currencies={currencies} w={t.discountFields} />
+          <SubmitButton>{w.save}</SubmitButton>
         </ActionForm>
       </section>
       <DeleteDiscountButton
         action={deletePlatformDiscountAction.bind(null, discount.id)}
         code={discount.code}
-        question={deleteQuestion(discount.code, discount.stores)}
+        question={deleteQuestion(discount.code, discount.stores, w)}
       />
     </div>
   );

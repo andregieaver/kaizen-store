@@ -11,6 +11,10 @@ import { bpsText, type AdminReferrer } from "@/lib/referrals";
 import { requirePlatformAdmin } from "@/server/auth";
 import { getReferralSettings, listReferrals, listReferrers, referralTotals } from "@/server/referrals";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
+import type { PlatformMessages } from "@/lib/admin-messages/platform.en";
 
 import {
   adjustReferralCreditAction,
@@ -27,51 +31,53 @@ const date = (iso: string) => iso.slice(0, 10);
 const control = "min-h-10 rounded-md border border-line bg-card px-3 text-sm";
 const label = "flex flex-col gap-1 text-sm font-medium";
 
-const amounts = (rows: { currency: string; minor: number }[]) =>
-  rows.length === 0 ? "—" : rows.map((r) => <span key={r.currency} className="block">{money(r.minor, r.currency)}</span>);
+type W = PlatformMessages["referrals"];
 
-function ReferrerActions({ referrer }: { referrer: AdminReferrer }) {
+const amounts = (rows: { currency: string; minor: number }[], locale: string) =>
+  rows.length === 0 ? "—" : rows.map((r) => <span key={r.currency} className="block">{money(r.minor, r.currency, locale)}</span>);
+
+function ReferrerActions({ referrer, w }: { referrer: AdminReferrer; w: W }) {
   const key = randomUUID();
   return (
     <div className="flex flex-col gap-2">
       {referrer.blockedAt ? (
         <form action={unblockReferrerAction.bind(null, referrer.accountId)}>
           <button type="submit" className="min-h-9 rounded-pill border border-edge px-3 text-sm">
-            Unblock<span className="sr-only"> {referrer.email}</span>
+            {w.unblock}<span className="sr-only"> {referrer.email}</span>
           </button>
         </form>
       ) : (
         <details>
-          <summary className="cursor-pointer text-sm underline">Block</summary>
-          <ActionForm action={blockReferrerAction.bind(null, referrer.accountId)} className="mt-2 flex flex-col gap-2" successMessage="Blocked.">
+          <summary className="cursor-pointer text-sm underline">{w.block}</summary>
+          <ActionForm action={blockReferrerAction.bind(null, referrer.accountId)} className="mt-2 flex flex-col gap-2" successMessage={w.blocked}>
             <label className={label}>
-              Why?
+              {w.why}
               <input name="reason" required minLength={3} maxLength={300} className={control} />
             </label>
             <div>
-              <SubmitButton variant="secondary">Block {referrer.email}</SubmitButton>
+              <SubmitButton variant="secondary">{fillWords(w.blockWho, { email: referrer.email })}</SubmitButton>
             </div>
           </ActionForm>
         </details>
       )}
       <details>
-        <summary className="cursor-pointer text-sm underline">Adjust credit</summary>
-        <ActionForm action={adjustReferralCreditAction.bind(null, referrer.accountId)} className="mt-2 flex flex-col gap-2" successMessage="Done.">
+        <summary className="cursor-pointer text-sm underline">{w.adjustCredit}</summary>
+        <ActionForm action={adjustReferralCreditAction.bind(null, referrer.accountId)} className="mt-2 flex flex-col gap-2" successMessage={w.done}>
           <input type="hidden" name="key" value={key} />
           <label className={label}>
-            Currency
+            {w.currency}
             <input name="currency" required maxLength={3} defaultValue={referrer.balances[0]?.currency ?? "EUR"} className={`${control} w-24 uppercase`} />
           </label>
           <label className={label}>
-            Amount (a minus removes)
+            {w.amount}
             <input name="amount" required inputMode="decimal" className={control} />
           </label>
           <label className={label}>
-            Reason (the referrer sees it)
+            {w.reason}
             <input name="reason" required minLength={3} maxLength={300} className={control} />
           </label>
           <div>
-            <SubmitButton variant="secondary">Adjust credit</SubmitButton>
+            <SubmitButton variant="secondary">{w.adjustCredit}</SubmitButton>
           </div>
         </ActionForm>
       </details>
@@ -85,73 +91,75 @@ function ReferrerActions({ referrer }: { referrer: AdminReferrer }) {
  */
 export default async function PlatformReferralsPage() {
   await connection();
-  await requirePlatformAdmin();
+  const account = await requirePlatformAdmin();
+  const lang = adminLangOf(account.adminLocale);
+  const w = adminText(lang, "platform").referrals;
+  const locale = ADMIN_LANG_FACTS[lang].locale;
   const [settings, totals, referrers, referrals] = await Promise.all([getReferralSettings(), referralTotals(), listReferrers(), listReferrals()]);
 
   return (
     <div className="flex flex-col gap-8">
       <PageHeader
-        title="Referrals"
-        description={<>Store owners refer other store owners and earn credit on their own Kaizena Flow invoices: a share of the plan and the sales fee the referred store pays Kaizena Flow, for a number of months. The terms a referral is made with are the ones below on the day the request is approved; changing them later does not change stores already referred.</>}
+        title={w.title}
+        description={w.description}
       />
 
-      <Section id="settings-heading" title="The program">
-        <ActionForm action={saveReferralSettingsAction} className={`flex max-w-xl flex-col gap-4 p-5 ${CARD_CLASS}`} successMessage="Saved.">
+      <Section id="settings-heading" title={w.program}>
+        <ActionForm action={saveReferralSettingsAction} className={`flex max-w-xl flex-col gap-4 p-5 ${CARD_CLASS}`} successMessage={w.saved}>
           <label className="flex items-center gap-2 text-sm font-medium">
             <input type="checkbox" name="enabled" defaultChecked={settings.enabled} className="size-4" />
-            The program is on
+            {w.on}
           </label>
           <p className="-mt-2 text-sm text-muted">
-            Off: no new referrals and no new commission. Credit already earned stays and can still be used. Turning it on also lists the referral
-            cookie on Kaizena Flow&apos;s cookie page and asks visitors about marketing cookies.
+            {w.onNote}
           </p>
           <label className={label}>
-            Commission, % of the fees the referred store pays
+            {w.commission}
             <input name="commissionPercent" required inputMode="decimal" defaultValue={bpsToPercentText(settings.commissionBps)} className={`${control} w-32`} />
           </label>
           <label className={label}>
-            Months a store earns it, from when it is opened
+            {w.months}
             <input name="months" type="number" min={1} max={60} required defaultValue={settings.months} className={`${control} w-32`} />
           </label>
           <label className={label}>
-            Days before earned credit can be used
+            {w.pendingDays}
             <input name="pendingDays" type="number" min={0} max={90} required defaultValue={settings.pendingDays} className={`${control} w-32`} />
-            <span className="font-normal text-muted">A fee can be refunded; credit waits this long.</span>
+            <span className="font-normal text-muted">{w.pendingNote}</span>
           </label>
           <label className={label}>
-            Days the referral cookie lasts (after the visitor allows it)
+            {w.cookieDays}
             <input name="cookieDays" type="number" min={1} max={90} required defaultValue={settings.cookieDays} className={`${control} w-32`} />
           </label>
           <div>
-            <SubmitButton>Save</SubmitButton>
+            <SubmitButton>{w.save}</SubmitButton>
           </div>
         </ActionForm>
       </Section>
 
       <StatGrid>
-        <Stat label="Referrers" value={totals.referrers} sub="Store owners with a code" />
-        <Stat label="Referred stores" value={totals.referredStores} />
-        <Stat label="Commission earned" value={amounts(totals.earned)} sub="After refunds, per currency" />
-        <Stat label="Credit used on invoices" value={amounts(totals.applied)} />
-        <Stat label="Credit owed" value={amounts(totals.outstanding)} sub="Usable and waiting, per currency" />
+        <Stat label={w.referrers} value={totals.referrers} sub={w.referrersSub} />
+        <Stat label={w.referredStores} value={totals.referredStores} />
+        <Stat label={w.earned} value={amounts(totals.earned, locale)} sub={w.earnedSub} />
+        <Stat label={w.applied} value={amounts(totals.applied, locale)} />
+        <Stat label={w.owed} value={amounts(totals.outstanding, locale)} sub={w.owedSub} />
       </StatGrid>
 
-      <Section id="referrers-heading" title="Referrers">
+      <Section id="referrers-heading" title={w.referrers}>
         {referrers.length === 0 ? (
           <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>
-            No one has opened Referrals yet.
+            {w.noReferrers}
           </p>
         ) : (
           <div className={`overflow-x-auto ${CARD_CLASS}`}>
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-line">
-                  <th scope="col" className="px-4 py-2 font-medium">Referrer</th>
-                  <th scope="col" className="px-4 py-2 font-medium">Brought in</th>
-                  <th scope="col" className="px-4 py-2 font-medium">Earned</th>
-                  <th scope="col" className="px-4 py-2 font-medium">Credit now</th>
+                  <th scope="col" className="px-4 py-2 font-medium">{w.referrer}</th>
+                  <th scope="col" className="px-4 py-2 font-medium">{w.broughtIn}</th>
+                  <th scope="col" className="px-4 py-2 font-medium">{w.earnedCol}</th>
+                  <th scope="col" className="px-4 py-2 font-medium">{w.creditNow}</th>
                   <th scope="col" className="px-4 py-2 font-medium">
-                    <span className="sr-only">Actions</span>
+                    <span className="sr-only">{w.actions}</span>
                   </th>
                 </tr>
               </thead>
@@ -165,28 +173,28 @@ export default async function PlatformReferralsPage() {
                       <span className="block font-mono text-muted">{r.code}</span>
                       {r.blockedAt && (
                         <span className="block text-danger-text">
-                          Blocked {date(r.blockedAt)}: {r.blockedReason}
+                          {fillWords(w.blockedOn, { date: date(r.blockedAt), reason: r.blockedReason ?? "" })}
                         </span>
                       )}
                     </td>
                     <td className="whitespace-nowrap px-4 py-2 text-muted">
-                      {r.visits} visits
-                      <span className="block">{r.requests} requests</span>
-                      <span className="block">{r.stores} stores</span>
+                      {fillWords(w.visits, { n: r.visits })}
+                      <span className="block">{fillWords(w.requests, { n: r.requests })}</span>
+                      <span className="block">{fillWords(w.stores, { n: r.stores })}</span>
                     </td>
-                    <td className="px-4 py-2 tabular-nums">{amounts(r.earned)}</td>
+                    <td className="px-4 py-2 tabular-nums">{amounts(r.earned, locale)}</td>
                     <td className="px-4 py-2 tabular-nums">
                       {r.balances.length === 0
                         ? "—"
                         : r.balances.map((b) => (
                             <span key={b.currency} className="block">
-                              {money(b.availableMinor, b.currency)}
-                              {b.pendingMinor > 0 && <span className="text-muted"> + {money(b.pendingMinor, b.currency)} waiting</span>}
+                              {money(b.availableMinor, b.currency, locale)}
+                              {b.pendingMinor > 0 && <span className="text-muted"> + {money(b.pendingMinor, b.currency, locale)} {w.waiting}</span>}
                             </span>
                           ))}
                     </td>
                     <td className="px-4 py-2">
-                      <ReferrerActions referrer={r} />
+                      <ReferrerActions referrer={r} w={w} />
                     </td>
                   </tr>
                 ))}
@@ -196,23 +204,23 @@ export default async function PlatformReferralsPage() {
         )}
       </Section>
 
-      <Section id="referred-heading" title="Referred stores">
+      <Section id="referred-heading" title={w.referredStores}>
         {referrals.length === 0 ? (
           <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>
-            No store has opened through a referral yet.
+            {w.noReferred}
           </p>
         ) : (
           <div className={`overflow-x-auto ${CARD_CLASS}`}>
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-line">
-                  <th scope="col" className="px-4 py-2 font-medium">Store</th>
-                  <th scope="col" className="px-4 py-2 font-medium">Referred by</th>
-                  <th scope="col" className="hidden px-4 py-2 font-medium md:table-cell">Terms</th>
-                  <th scope="col" className="px-4 py-2 font-medium">Commission</th>
-                  <th scope="col" className="hidden px-4 py-2 font-medium lg:table-cell">Fees behind it</th>
+                  <th scope="col" className="px-4 py-2 font-medium">{w.store}</th>
+                  <th scope="col" className="px-4 py-2 font-medium">{w.referredBy}</th>
+                  <th scope="col" className="hidden px-4 py-2 font-medium md:table-cell">{w.terms}</th>
+                  <th scope="col" className="px-4 py-2 font-medium">{w.commissionCol}</th>
+                  <th scope="col" className="hidden px-4 py-2 font-medium lg:table-cell">{w.feesBehind}</th>
                   <th scope="col" className="px-4 py-2 font-medium">
-                    <span className="sr-only">Actions</span>
+                    <span className="sr-only">{w.actions}</span>
                   </th>
                 </tr>
               </thead>
@@ -223,22 +231,22 @@ export default async function PlatformReferralsPage() {
                       <Link href={`/admin/platform/stores/${r.storeSlug}`} className="underline">
                         {r.storeName}
                       </Link>
-                      <span className="block text-muted">Opened {date(r.since)}</span>
+                      <span className="block text-muted">{fillWords(w.opened, { date: date(r.since) })}</span>
                       {r.status === "void" && (
-                        <span className="block text-danger-text">Void: {r.voidReason}</span>
+                        <span className="block text-danger-text">{fillWords(w.voided, { reason: r.voidReason ?? "" })}</span>
                       )}
                     </td>
                     <td className="px-4 py-2 text-muted">{r.referrerEmail}</td>
                     <td className="hidden whitespace-nowrap px-4 py-2 text-muted md:table-cell">
-                      {bpsText(r.commissionBps)} until {date(r.until)}
+                      {fillWords(w.until, { bps: bpsText(r.commissionBps), date: date(r.until) })}
                     </td>
-                    <td className="px-4 py-2 tabular-nums">{amounts(r.earned)}</td>
+                    <td className="px-4 py-2 tabular-nums">{amounts(r.earned, locale)}</td>
                     <td className="hidden px-4 py-2 tabular-nums text-muted lg:table-cell">
                       {r.earned.length === 0 || r.commissionBps === 0
                         ? "—"
                         : r.earned.map((e) => (
                             <span key={e.currency} className="block">
-                              about {money(Math.round((e.minor * 10000) / r.commissionBps), e.currency)}
+                              {fillWords(w.about, { amount: money(Math.round((e.minor * 10000) / r.commissionBps), e.currency, locale) })}
                             </span>
                           ))}
                     </td>
@@ -246,19 +254,19 @@ export default async function PlatformReferralsPage() {
                       {r.status === "void" ? (
                         <form action={restoreReferralAction.bind(null, r.id)}>
                           <button type="submit" className="min-h-9 rounded-pill border border-edge px-3 text-sm">
-                            Count again<span className="sr-only"> {r.storeName}</span>
+                            {w.countAgain}<span className="sr-only"> {r.storeName}</span>
                           </button>
                         </form>
                       ) : (
                         <details>
-                          <summary className="cursor-pointer text-sm underline">Void</summary>
-                          <ActionForm action={voidReferralAction.bind(null, r.id)} className="mt-2 flex flex-col gap-2" successMessage="Voided.">
+                          <summary className="cursor-pointer text-sm underline">{w.void}</summary>
+                          <ActionForm action={voidReferralAction.bind(null, r.id)} className="mt-2 flex flex-col gap-2" successMessage={w.voidedDone}>
                             <label className={label}>
-                              Why? (it earns nothing more; what it earned stays)
+                              {w.voidWhy}
                               <input name="reason" required minLength={3} maxLength={300} className={control} />
                             </label>
                             <div>
-                              <SubmitButton variant="secondary">Void the referral</SubmitButton>
+                              <SubmitButton variant="secondary">{w.voidSubmit}</SubmitButton>
                             </div>
                           </ActionForm>
                         </details>

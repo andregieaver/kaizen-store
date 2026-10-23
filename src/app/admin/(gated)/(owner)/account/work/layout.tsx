@@ -19,7 +19,7 @@ export default async function WorkLayout({ children }: LayoutProps<"/admin/accou
   const account = await requireAccount();
   const stores = (await storesOf(account)).map(({ slug, name, workOn }) => ({ slug, name, workOn }));
   return (
-    <AdminTextScope texts={adminTexts(adminLangOf(account.adminLocale), ["work"])}>
+    <AdminTextScope texts={adminTexts(adminLangOf(account.adminLocale), ["work", "bookings"])}>
       <WorkShell account={account}>
         <WorkNav stores={stores} />
         {children}

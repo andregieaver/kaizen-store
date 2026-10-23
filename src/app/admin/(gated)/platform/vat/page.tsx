@@ -9,6 +9,8 @@ import { ShippingRulesCard } from "@/components/admin/vat/shipping-rules-card";
 import { requirePlatformAdmin } from "@/server/auth";
 import { listShippingVatRules, unverifiedRates, vatCoverage } from "@/server/vat-admin";
 import { PageHeader } from "@/components/admin/ui";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 
 import { addVatCategoryAction, setShippingVatRuleAction, setVatCategoryActiveAction, setVatRateAction, verifyVatRateAction } from "./actions";
 
@@ -22,21 +24,24 @@ export const metadata: Metadata = { title: "VAT" };
 export default async function PlatformVatPage() {
   // Per request: admin pages never read the database while the site is built.
   await connection();
-  await requirePlatformAdmin();
+  const account = await requirePlatformAdmin();
+  const lang = adminLangOf(account.adminLocale);
+  const w = adminText(lang, "platformTools").vat;
+  const locale = ADMIN_LANG_FACTS[lang].locale;
   const [coverage, unverified, shippingRules] = await Promise.all([vatCoverage(), unverifiedRates(), listShippingVatRules()]);
   const names = new Map(coverage.categories.map((c) => [c.code, c.nameEn]));
   const countries = coverage.countries.map((c) => ({ code: c.code, name: c.name })).sort((a, b) => a.name.localeCompare(b.name));
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="VAT"
-        description={<>The rates every store charges. Prices include VAT, and each sale takes the VAT of the country it goes to. The rates here were read from public sources and start unverified: they are still charged, so work through the list with an accountant. This is not tax advice.</>}
+        title={w.title}
+        description={<>{w.intro}</>}
       />
-      <UnverifiedCard rows={unverified} categoryName={(code) => names.get(code) ?? code} verify={(c, k, from) => verifyVatRateAction.bind(null, c, k, from)} />
-      <CoverageCard categories={coverage.categories} countries={coverage.countries} />
-      <RateForm categories={coverage.categories.filter((c) => c.code !== "exempt")} countries={countries} action={setVatRateAction} />
-      <CategoriesCard categories={coverage.categories} addAction={addVatCategoryAction} activeAction={(code, active) => setVatCategoryActiveAction.bind(null, code, active)} />
-      <ShippingRulesCard rules={shippingRules} countries={countries} action={setShippingVatRuleAction} />
+      <UnverifiedCard rows={unverified} categoryName={(code) => names.get(code) ?? code} verify={(c, k, from) => verifyVatRateAction.bind(null, c, k, from)} words={w} locale={locale} />
+      <CoverageCard categories={coverage.categories} countries={coverage.countries} words={w} />
+      <RateForm categories={coverage.categories.filter((c) => c.code !== "exempt")} countries={countries} action={setVatRateAction} words={w} />
+      <CategoriesCard categories={coverage.categories} addAction={addVatCategoryAction} activeAction={(code, active) => setVatCategoryActiveAction.bind(null, code, active)} words={w} />
+      <ShippingRulesCard rules={shippingRules} countries={countries} action={setShippingVatRuleAction} words={w} locale={locale} />
     </div>
   );
 }

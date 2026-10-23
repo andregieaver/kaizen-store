@@ -39,7 +39,7 @@ export default async function EditProductPage({ params }: PageProps<"/admin/[sto
           {w.archived}
         </p>
       )}
-      <AdminTextScope texts={adminTexts(lang, ["product", "products", "fields"])}>
+      <AdminTextScope texts={adminTexts(lang, ["product", "products", "fields", "builder"])}>
         <ProductEditor {...editorProps(store, context, lang)} productId={productId} initial={initial} fields={fields} />
       </AdminTextScope>
       <form

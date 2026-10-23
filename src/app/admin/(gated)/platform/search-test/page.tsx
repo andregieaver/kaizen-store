@@ -6,23 +6,22 @@ import { DeleteDiscountButton } from "@/components/admin/delete-discount-button"
 import { MIN_PER_ARM, rate } from "@/lib/experiment-stats";
 import { experimentResults, listExperiments, type Comparison, type ExperimentResults, type Verdict } from "@/server/search-experiment";
 import { PageHeader } from "@/components/admin/ui";
+import { fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
+import type { PlatformToolsMessages } from "@/lib/admin-messages/platform-tools.en";
+import { requirePlatformAdmin } from "@/server/auth";
 
 import { startSearchTestAction, stopSearchTestAction } from "./actions";
 
 export const metadata: Metadata = { title: "Search test" };
 
 const card = "rounded-lg border border-line bg-card p-5";
+type Words = PlatformToolsMessages["searchTest"];
 const percent = (value: number, digits = 1) => `${(value * 100).toFixed(digits)} %`;
-const points = (value: number) => `${value >= 0 ? "+" : ""}${(value * 100).toFixed(1)} points`;
-const date = (iso: string) => new Date(iso).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });
-
-const VERDICTS: Record<Verdict, string> = {
-  few: `Too few searches yet: at least ${MIN_PER_ARM} in each arm.`,
-  better: "Hybrid is better: the whole interval is on hybrid's side.",
-  worse: "Hybrid is worse: the whole interval is on keyword's side.",
-  even: "No clear difference yet: the interval spans both sides.",
-  broken: "Not to be trusted: the split between the arms is off (see the check above).",
-};
+const points = (value: number, w: Words) => fillWords(w.points, { n: `${value >= 0 ? "+" : ""}${(value * 100).toFixed(1)}` });
+const dateIn = (locale: string) => (iso: string) => new Date(iso).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });
+const verdictWords = (verdict: Verdict, w: Words) => fillWords(w.verdicts[verdict], { n: MIN_PER_ARM });
 
 /**
  * The search test (Phase 2, S5, D77): start it with the share of searches
@@ -30,6 +29,10 @@ const VERDICTS: Record<Verdict, string> = {
  * compare. Every store's searches take part while it runs.
  */
 export default async function SearchTestPage({ searchParams }: PageProps<"/admin/platform/search-test">) {
+  const account = await requirePlatformAdmin();
+  const lang = adminLangOf(account.adminLocale);
+  const w = adminText(lang, "platformTools").searchTest;
+  const date = dateIn(ADMIN_LANG_FACTS[lang].locale);
   const { id } = await searchParams;
   const experiments = await listExperiments();
   const running = experiments.find((e) => e.endedAt === null) ?? null;
@@ -39,31 +42,28 @@ export default async function SearchTestPage({ searchParams }: PageProps<"/admin
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="Search test"
-        description={<>Does hybrid search (words, meaning and understanding) help shoppers more than keyword search alone? While a test runs, each search in every store is given one of the two at random. No cookie is set: the unit is the search, and opening a result is recorded by the result&apos;s link.</>}
+        title={w.title}
+        description={<>{w.intro}</>}
       />
 
       <section aria-labelledby="run" className={card}>
         <h2 id="run" className="mb-2 text-title text-ink">
-          {running ? "Running" : "Start a test"}
+          {running ? w.running : w.start}
         </h2>
         {running ? (
           <div className="flex flex-col gap-3 text-sm">
-            <p>
-              Since {date(running.startedAt)}, {percent(running.keywordShare, 0)} of searches get keyword search alone. Run it for
-              at least two full weeks, and read it week by week.
-            </p>
+            <p>{fillWords(w.since, { date: date(running.startedAt), share: percent(running.keywordShare, 0) })}</p>
             <DeleteDiscountButton
               action={stopSearchTestAction}
-              code="the search test"
-              label="Stop the test"
-              question="Stop the search test? Every search gets hybrid search again. The results stay."
+              code={w.stopCode}
+              label={w.stop}
+              question={w.stopQuestion}
             />
           </div>
         ) : (
           <ActionForm action={startSearchTestAction} className="flex flex-col gap-3">
             <label className="flex flex-col gap-1 text-sm font-medium">
-              Share of searches given keyword search alone (%)
+              {w.share}
               <input
                 name="keywordPercent"
                 type="number"
@@ -74,32 +74,29 @@ export default async function SearchTestPage({ searchParams }: PageProps<"/admin
                 required
                 className="min-h-10 w-32 rounded-md border border-line bg-card px-3"
               />
-              <span className="font-normal text-muted">
-                Half and half finds a difference soonest. A smaller share costs fewer shoppers the better search, if hybrid
-                is better, and takes longer.
-              </span>
+              <span className="font-normal text-muted">{w.shareText}</span>
             </label>
             <div>
-              <SubmitButton>Start the test</SubmitButton>
+              <SubmitButton>{w.startButton}</SubmitButton>
             </div>
           </ActionForm>
         )}
       </section>
 
-      {results && <Results results={results} />}
+      {results && <Results results={results} w={w} />}
 
       {experiments.length > 1 && (
         <section aria-labelledby="earlier" className={card}>
           <h2 id="earlier" className="mb-2 text-title text-ink">
-            Tests
+            {w.tests}
           </h2>
           <ul className="flex flex-col gap-1 text-sm">
             {experiments.map((e) => (
               <li key={e.id}>
                 <Link href={`/admin/platform/search-test?id=${e.id}`} className="underline" aria-current={e.id === shown?.id ? "page" : undefined}>
-                  {date(e.startedAt)} – {e.endedAt ? date(e.endedAt) : "running"}
+                  {date(e.startedAt)} – {e.endedAt ? date(e.endedAt) : w.runningLower}
                 </Link>{" "}
-                <span className="text-muted">({percent(e.keywordShare, 0)} keyword)</span>
+                <span className="text-muted">{fillWords(w.keywordShare, { share: percent(e.keywordShare, 0) })}</span>
               </li>
             ))}
           </ul>
@@ -109,7 +106,7 @@ export default async function SearchTestPage({ searchParams }: PageProps<"/admin
   );
 }
 
-function Results({ results }: { results: ExperimentResults }) {
+function Results({ results, w }: { results: ExperimentResults; w: Words }) {
   const { arms, srmP } = results;
   const row = (name: string, comparison: Comparison, betterIs: string) => (
     <tr key={name} className="border-t border-line align-top">
@@ -122,65 +119,60 @@ function Results({ results }: { results: ExperimentResults }) {
       <td className="py-2 pr-4 tabular-nums">
         {comparison.diff ? (
           <>
-            {points(comparison.diff.diff)}
-            <span className="block text-xs text-muted">
-              95 %: {points(comparison.diff.low)} to {points(comparison.diff.high)}
-            </span>
+            {points(comparison.diff.diff, w)}
+            <span className="block text-xs text-muted">{fillWords(w.interval, { low: points(comparison.diff.low, w), high: points(comparison.diff.high, w) })}</span>
           </>
         ) : (
           "–"
         )}
       </td>
-      <td className="py-2">{VERDICTS[comparison.verdict]}</td>
+      <td className="py-2">{verdictWords(comparison.verdict, w)}</td>
     </tr>
   );
   return (
     <section aria-labelledby="results" className={card}>
       <h2 id="results" className="mb-1 text-title text-ink">
-        Results{results.experiment.endedAt ? "" : " so far"}
+        {w.results}
+        {results.experiment.endedAt ? "" : w.soFar}
       </h2>
       <p className="mb-3 text-sm text-muted">
-        {arms.keyword.searches} searches with keyword search, {arms.hybrid.searches} with hybrid.{" "}
+        {fillWords(w.searches, { keyword: arms.keyword.searches, hybrid: arms.hybrid.searches })}{" "}
         {srmP < 0.001 ? (
-          <strong className="text-danger-text">
-            The split does not match the share asked for (p = {srmP.toExponential(1)}): something is dropping or double-counting
-            searches, and the results cannot be trusted until it is found.
-          </strong>
+          <strong className="text-danger-text">{fillWords(w.splitOff, { p: srmP.toExponential(1) })}</strong>
         ) : (
-          `The split matches the share asked for (p = ${srmP.toFixed(2)}).`
+          fillWords(w.splitOk, { p: srmP.toFixed(2) })
         )}
       </p>
       <div className="overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead>
             <tr>
-              <th scope="col" className="py-2 pr-4 font-medium">Measure</th>
-              <th scope="col" className="py-2 pr-4 font-medium">Keyword</th>
-              <th scope="col" className="py-2 pr-4 font-medium">Hybrid</th>
-              <th scope="col" className="py-2 pr-4 font-medium">Difference</th>
-              <th scope="col" className="py-2 font-medium">Reading</th>
+              <th scope="col" className="py-2 pr-4 font-medium">{w.measure}</th>
+              <th scope="col" className="py-2 pr-4 font-medium">{w.keyword}</th>
+              <th scope="col" className="py-2 pr-4 font-medium">{w.hybrid}</th>
+              <th scope="col" className="py-2 pr-4 font-medium">{w.difference}</th>
+              <th scope="col" className="py-2 font-medium">{w.reading}</th>
             </tr>
           </thead>
           <tbody>
-            {row("Searches where a result was opened", results.openRate, "Of searches with results; higher is better")}
-            {row("Searches that found nothing", results.zeroRate, "Lower is better")}
+            {row(w.opened, results.openRate, w.openedBetter)}
+            {row(w.zero, results.zeroRate, w.lowerBetter)}
           </tbody>
         </table>
       </div>
       <p className="mt-3 text-sm text-muted">
-        The first result opened was on average number {arms.keyword.firstPosition?.toFixed(1) ?? "–"} with keyword search and{" "}
-        {arms.hybrid.firstPosition?.toFixed(1) ?? "–"} with hybrid (nearer the top is better).
+        {fillWords(w.firstOpened, { keyword: arms.keyword.firstPosition?.toFixed(1) ?? "–", hybrid: arms.hybrid.firstPosition?.toFixed(1) ?? "–" })}
       </p>
       {results.weeks.length > 0 && (
         <div className="mt-4 overflow-x-auto">
-          <h3 className="mb-1 text-body-strong text-ink">Week by week</h3>
+          <h3 className="mb-1 text-body-strong text-ink">{w.weekByWeek}</h3>
           <table className="w-full text-left text-sm">
             <thead>
               <tr>
-                <th scope="col" className="py-1 pr-4 font-medium">Week</th>
-                <th scope="col" className="py-1 pr-4 font-medium">Searches (keyword / hybrid)</th>
-                <th scope="col" className="py-1 pr-4 font-medium">Opened (keyword / hybrid)</th>
-                <th scope="col" className="py-1 font-medium">Found nothing (keyword / hybrid)</th>
+                <th scope="col" className="py-1 pr-4 font-medium">{w.week}</th>
+                <th scope="col" className="py-1 pr-4 font-medium">{w.weekSearches}</th>
+                <th scope="col" className="py-1 pr-4 font-medium">{w.weekOpened}</th>
+                <th scope="col" className="py-1 font-medium">{w.weekZero}</th>
               </tr>
             </thead>
             <tbody>

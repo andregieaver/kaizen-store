@@ -1,31 +1,40 @@
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
 import type { Host } from "@/server/hosts";
 import { CARD_CLASS } from "@/components/admin/ui";
+import { adminText } from "@/lib/admin-text";
+import type { BookingsMessages } from "@/lib/admin-messages/bookings.en";
 
 const field = "flex flex-col gap-1 text-sm font-medium";
 const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
 
 /** A host's details (D71): who they are, the store's commission, and whether they charge VAT. */
-export function HostForm({ host, action }: { host: Host | null; action: (state: FormState, formData: FormData) => Promise<FormState> }) {
+export function HostForm({
+  host,
+  action,
+  words: w = adminText("en", "bookings").hostForm,
+}: {
+  host: Host | null;
+  action: (state: FormState, formData: FormData) => Promise<FormState>;
+  /** The form's words (D312 A11); English when none are given. */
+  words?: BookingsMessages["hostForm"];
+}) {
   return (
     <ActionForm action={action} className={`flex flex-col gap-4 p-5 ${CARD_CLASS}`}>
       <label className={field}>
-        Name
+        {w.name}
         <input name="name" required maxLength={120} defaultValue={host?.name ?? ""} className={control} />
-        <span className="font-normal text-muted">Shown to shoppers on the host&apos;s listings, such as “Kari’s cabins”.</span>
+        <span className="font-normal text-muted">{w.nameHint}</span>
       </label>
       {!host && (
         <label className={field}>
-          Email
+          {w.email}
           <input name="email" type="email" required maxLength={200} className={control} />
-          <span className="font-normal text-muted">
-            They sign in with it at the store admin&apos;s sign-in page, and see only their own listings and bookings.
-          </span>
+          <span className="font-normal text-muted">{w.emailHint}</span>
         </label>
       )}
       <label className={`${field} max-w-xs`}>
         <span>
-          Your commission <span className="font-normal text-muted">(%)</span>
+          {w.commission} <span className="font-normal text-muted">(%)</span>
         </span>
         <input
           name="commissionPercent"
@@ -37,19 +46,17 @@ export function HostForm({ host, action }: { host: Host | null; action: (state: 
           defaultValue={host ? host.commissionBps / 100 : 15}
           className={control}
         />
-        <span className="font-normal text-muted">The store&apos;s share of each booking, before Kaizena Flow&apos;s fee. The host is paid the rest.</span>
+        <span className="font-normal text-muted">{w.commissionHint}</span>
       </label>
       <label className="flex items-start gap-2 text-sm">
         <input type="checkbox" name="vatRegistered" defaultChecked={host?.vatRegistered ?? false} className="mt-0.5 size-4" />
         <span>
-          VAT registered
-          <span className="block text-muted">
-            If not, their listings are sold without VAT. If they are, each listing uses its own VAT category.
-          </span>
+          {w.vat}
+          <span className="block text-muted">{w.vatHint}</span>
         </span>
       </label>
       <div>
-        <SubmitButton>{host ? "Save" : "Add host"}</SubmitButton>
+        <SubmitButton>{host ? w.save : w.add}</SubmitButton>
       </div>
     </ActionForm>
   );

@@ -10,6 +10,11 @@ import { testPicture } from "@/server/ai-pictures";
 import { checkVisionFor } from "@/server/ai-vision";
 import { requirePlatformAdmin } from "@/server/auth";
 import { runUnderstandingEval } from "@/server/query-understanding";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
+import type { Account } from "@/server/auth";
+
+const wordsOf = (account: Account) => adminText(adminLangOf(account.adminLocale), "platformTools").aiActions;
 
 /** Kaizen's AI provider and models (D73): the default for every store. */
 export async function savePlatformAiAction(_state: FormState, formData: FormData): Promise<FormState> {
@@ -18,13 +23,13 @@ export async function savePlatformAiAction(_state: FormState, formData: FormData
   if (!result.ok) return { status: "error", messages: result.problems };
   updateTag(AI_TAG);
   refresh();
-  return { status: "ok", messages: ["Saved. Stores without their own provider use it now."] };
+  return { status: "ok", messages: [wordsOf(account).saved] };
 }
 
 export async function testPlatformAiAction(): Promise<AiTestResult> {
-  await requirePlatformAdmin();
+  const account = await requirePlatformAdmin();
   const connection = await ownConnection(null);
-  return connection ? testAi(connection) : { error: "Save a provider and key first." };
+  return connection ? testAi(connection) : { error: wordsOf(account).saveFirst };
 }
 
 export async function removePlatformAiAction(): Promise<{ ok: true } | { ok: false; problems: string[] }> {
@@ -37,17 +42,17 @@ export async function removePlatformAiAction(): Promise<{ ok: true } | { ok: fal
 
 /** The query-understanding eval (D75) against Kaizen's saved text model. */
 export async function evalPlatformAiAction(): Promise<AiEvalResult> {
-  await requirePlatformAdmin();
+  const account = await requirePlatformAdmin();
   const connection = await ownConnection(null);
-  if (!connection?.textModel) return { error: "Save a provider with a text model first." };
+  if (!connection?.textModel) return { error: wordsOf(account).textFirst };
   return runUnderstandingEval(connection);
 }
 
 /** One test picture from Kaizen's saved picture model (D92), not kept. */
 export async function testPlatformImageAction(): Promise<AiImageTestResult> {
-  await requirePlatformAdmin();
+  const account = await requirePlatformAdmin();
   const connection = await ownConnection(null);
-  return connection ? testPicture(connection) : { ok: false, message: "Save a provider and key first." };
+  return connection ? testPicture(connection) : { ok: false, message: wordsOf(account).saveFirst };
 }
 
 /** Whether a model (typed in the form, or the saved one) looks at pictures, tried with Kaizen's saved provider and key (D163). */

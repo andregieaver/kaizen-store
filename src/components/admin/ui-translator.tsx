@@ -4,6 +4,9 @@ import { useState, useTransition } from "react";
 
 import type { ChunkResult } from "@/server/ui-text";
 import { CARD_CLASS } from "@/components/admin/ui";
+import { fillWords } from "@/lib/admin-fill";
+
+import { useAdminText } from "./admin-text";
 
 const button = "min-h-10 rounded-pill border border-edge bg-card px-4 text-sm disabled:opacity-40";
 const primary = "min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-40";
@@ -28,6 +31,7 @@ export function UiTranslator({
   generate: (keys: string[]) => Promise<ChunkResult>;
 }) {
   const [busy, start] = useTransition();
+  const w = useAdminText("platformTools").languages.translator;
   const [progress, setProgress] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [summary, setSummary] = useState<string | null>(null);
@@ -40,17 +44,17 @@ export function UiTranslator({
       setLeft([]);
       const planned = await plan(mode);
       if (!planned.ok) return setProblem(planned.problem);
-      if (planned.keys.length === 0) return setSummary("Nothing to translate.");
+      if (planned.keys.length === 0) return setSummary(w.nothing);
       let saved = 0;
       const problems: { key: string; problem: string }[] = [];
       const size = 40;
       for (let i = 0; i < planned.keys.length; i += size) {
-        setProgress(`Translating ${Math.min(i + size, planned.keys.length)} of ${planned.keys.length} …`);
+        setProgress(fillWords(w.progress, { done: Math.min(i + size, planned.keys.length), total: planned.keys.length }));
         const result = await generate(planned.keys.slice(i, i + size));
         if (!result.ok) {
           setProblem(result.problem);
           setProgress(null);
-          setSummary(saved > 0 ? `${saved} texts were kept before it stopped.` : null);
+          setSummary(saved > 0 ? fillWords(w.keptBefore, { n: saved }) : null);
           return;
         }
         saved += result.saved;
@@ -58,25 +62,22 @@ export function UiTranslator({
       }
       setProgress(null);
       setLeft(problems);
-      setSummary(`${saved} of ${planned.keys.length} texts translated into ${name}${problems.length > 0 ? `; ${problems.length} left for you` : ""}. They are drafts until you read them.`);
+      setSummary(fillWords(w.summary, { saved, total: planned.keys.length, name, left: problems.length > 0 ? fillWords(w.leftForYou, { n: problems.length }) : "" }));
     });
 
   return (
     <div className={`flex flex-col gap-3 p-5 ${CARD_CLASS}`}>
-      <h2 className="text-title text-ink">Translate with AI</h2>
-      <p className="text-sm text-muted">
-        Kaizena Flow&apos;s AI translates the storefront&apos;s and the emails&apos; text from English. Every text is checked for its placeholders
-        and plural forms; one that fails is left for you. Texts you have edited yourself are never replaced.
-      </p>
+      <h2 className="text-title text-ink">{w.title}</h2>
+      <p className="text-sm text-muted">{w.text}</p>
       <div className="flex flex-wrap gap-2">
         <button type="button" className={primary} disabled={busy || counts.missing === 0} onClick={() => run("missing")}>
-          Translate the {counts.missing} missing
+          {fillWords(w.missing, { n: counts.missing })}
         </button>
         <button type="button" className={button} disabled={busy || counts.stale === 0} onClick={() => run("stale")}>
-          Update {counts.stale} whose English changed
+          {fillWords(w.stale, { n: counts.stale })}
         </button>
         <button type="button" className={button} disabled={busy || counts.ai === 0} onClick={() => run("all")}>
-          Translate {counts.ai} again
+          {fillWords(w.again, { n: counts.ai })}
         </button>
       </div>
       <div role="status" aria-live="polite" className="flex flex-col gap-1 text-sm">
@@ -90,7 +91,7 @@ export function UiTranslator({
                 {entry.key.replace(/^(ui|email):/, "")}: {entry.problem}
               </li>
             ))}
-            {left.length > 12 && <li>…and {left.length - 12} more.</li>}
+            {left.length > 12 && <li>{fillWords(w.more, { n: left.length - 12 })}</li>}
           </ul>
         )}
       </div>

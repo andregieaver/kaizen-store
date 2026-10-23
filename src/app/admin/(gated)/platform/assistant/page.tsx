@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { AiManagerPage } from "@/components/admin/ai-manager-page";
 import { requirePlatformAdmin } from "@/server/auth";
+import { adminLangOf } from "@/lib/admin-lang";
 import { assistantAbilities, getConversation, listConversations } from "@/server/owner-assistant";
 
 import {
@@ -27,6 +28,7 @@ export default async function PlatformAssistantPage({ searchParams }: PageProps<
   return (
     <AiManagerPage
       area="platform"
+      lang={adminLangOf(account.adminLocale)}
       base="/admin/platform/assistant"
       siteName="Kaizena Flow"
       settingsHref="/admin/platform/ai"

@@ -3,37 +3,36 @@ import { ButtonLink, Card, Chip, List, ListRow, RowActions, RowLead } from "@/co
 import { PLATFORM_ROLE_COPY } from "@/lib/platform-roles";
 import { themeStorePageHref } from "@/lib/theme-admin-paths";
 import type { ThemeStorePageState } from "@/server/platform-roles";
+import { fillWords } from "@/lib/admin-fill";
+import type { PlatformSiteMessages } from "@/lib/admin-messages/platform-site.en";
 
 import { createThemeStorePageAction } from "../pages/actions";
 
-const STATE_WORDS = {
-  published: { words: "Live", signal: "positive" },
-  changed: { words: "Live, with changes not published", signal: "warning" },
-  draft: { words: "Not published: the standard page shows", signal: "neutral" },
-} as const;
+const STATE_SIGNALS = { published: "positive", changed: "warning", draft: "neutral" } as const;
 
 /**
  * The theme store's own pages on Themes (D285): the list at `/themes` and the page drawn for every theme at `/themes/{theme}`, each built in
  * Kaizena Flow's page builder around the theme store's components, kept apart from its other pages. Until one is made and published, the
  * standard page shows; *Build it in the page builder* starts from a page that looks like it.
  */
-export function ThemeStorePagesCard({ states }: { states: ThemeStorePageState[] }) {
+export function ThemeStorePagesCard({ states, w }: { states: ThemeStorePageState[]; w: PlatformSiteMessages }) {
+  const p = w.storePages;
   return (
     <div id="theme-store-pages" className="scroll-mt-4">
       <Card
-        title="The theme store's pages"
-        description="The list of themes and the page each theme has, built in the page builder like Kaizena Flow's other pages: words, pictures and sections of your own around the themes, which stay up to date by themselves. Each is a draft until you publish it; until then, and after Unpublish, the standard page shows."
+        title={p.title}
+        description={p.description}
       >
-        <List label="The theme store's pages">
+        <List label={p.title}>
           {states.map(({ role, page }) => {
-            const copy = PLATFORM_ROLE_COPY[role];
-            const state = page ? STATE_WORDS[page.state] : null;
+            const copy = { ...PLATFORM_ROLE_COPY[role], ...w.tables.roles[role] };
+            const state = page ? { words: p.states[page.state], signal: STATE_SIGNALS[page.state] } : null;
             return (
               <ListRow key={role}>
                 <RowLead
                   title={copy.name}
                   href={page ? themeStorePageHref(page.id) : undefined}
-                  sub={`${copy.address} · ${page ? `edited ${page.updatedAt.slice(0, 10)}` : `${copy.standard} shows`}`}
+                  sub={`${copy.address} · ${page ? fillWords(p.edited, { date: page.updatedAt.slice(0, 10) }) : fillWords(p.shows, { standard: copy.standard })}`}
                 />
                 {state && (
                   <Chip signal={state.signal} dot>
@@ -44,7 +43,8 @@ export function ThemeStorePagesCard({ states }: { states: ThemeStorePageState[] 
                   {page ? (
                     <>
                       <ButtonLink href={themeStorePageHref(page.id)}>
-                        Edit<span className="sr-only"> {copy.name.toLowerCase()}</span>
+                        {p.edit}
+                        <span className="sr-only"> {copy.name.toLowerCase()}</span>
                       </ButtonLink>
                       <a
                         href={`${themeStorePageHref(page.id)}/preview`}
@@ -52,13 +52,18 @@ export function ThemeStorePagesCard({ states }: { states: ThemeStorePageState[] 
                         rel="noopener"
                         className="inline-flex min-h-10 items-center rounded-pill px-3 text-sm underline underline-offset-2"
                       >
-                        Preview<span className="sr-only"> {copy.name.toLowerCase()} (opens in a new window)</span>
+                        {p.preview}
+                        <span className="sr-only">
+                          {" "}
+                          {copy.name.toLowerCase()} {w.preview.opensNew}
+                        </span>
                       </a>
                     </>
                   ) : (
                     <ActionForm action={createThemeStorePageAction.bind(null, role) as never}>
                       <SubmitButton variant="secondary">
-                        Build it in the page builder<span className="sr-only"> for {copy.name.toLowerCase()}</span>
+                        {p.build}
+                        <span className="sr-only"> {fillWords(p.buildFor, { name: copy.name.toLowerCase() })}</span>
                       </SubmitButton>
                     </ActionForm>
                   )}

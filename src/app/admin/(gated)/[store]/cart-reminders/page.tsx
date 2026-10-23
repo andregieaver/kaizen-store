@@ -13,20 +13,14 @@ import {
   type AbandonedCheckoutRow,
 } from "@/server/cart-reminders";
 import { listDiscounts } from "@/server/discounts";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 import { Button, Card, CARD_CLASS, Chip, List, ListRow, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
 
 import { setCartRemindersAction } from "./actions";
 
 export const metadata: Metadata = { title: "Cart reminders" };
-
-const STATUS: Record<AbandonedCheckoutRow["status"], string> = {
-  waiting: "Waiting",
-  reminded: "Reminded",
-  recovered: "Bought after a reminder",
-  bought: "Bought",
-  opted_out: "Opted out",
-  expired: "No more reminders",
-};
 
 const STATUS_SIGNAL = { waiting: "insight", reminded: "warning", recovered: "positive", bought: "positive", opted_out: "neutral", expired: "neutral" } as const;
 
@@ -49,10 +43,13 @@ export default async function CartRemindersPage({ params }: PageProps<"/admin/[s
     listDiscounts(store.id),
   ]);
   const locale = store.markets[0]?.locale ?? "nb-NO";
+  const lang = adminLangOf(gated.account.adminLocale);
+  const w = adminText(lang, "bookings").cartReminders;
+  const STATUS: Record<AbandonedCheckoutRow["status"], string> = w.status;
   const base = `/admin/${store.slug}/cart-reminders`;
   const firstLocale = store.markets[0]?.locale ?? "";
   const codeOf = (id: string | null) => discounts.find((d) => d.id === id)?.code ?? null;
-  const date = (iso: string) => new Date(iso).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });
+  const date = (iso: string) => new Date(iso).toLocaleString(lang === "en" ? "en-GB" : ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });
   const recovered = Object.entries(stats.recoveredMinor)
     .map(([currency, minor]) => formatMoney(minor, currency, locale))
     .join(" + ");
@@ -61,16 +58,16 @@ export default async function CartRemindersPage({ params }: PageProps<"/admin/[s
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="Cart reminders"
-        description={<>Emails to shoppers who typed their email at checkout but did not pay, with a link back to the same cart.</>}
+        title={w.title}
+        description={w.description}
       />
 
       <Card
-        title={<>{settings.enabled ? (active > 0 ? "Reminders are on" : "On, but every reminder is switched off") : "Reminders are off"}</>}
+        title={settings.enabled ? (active > 0 ? w.on : w.onAllOff) : w.off}
         aside={
           <form action={setCartRemindersAction.bind(null, store.slug, !settings.enabled)}>
             <Button type="submit" kind={settings.enabled ? "secondary" : "main"}>
-              {settings.enabled ? "Turn off" : "Turn on"}
+              {settings.enabled ? w.turnOff : w.turnOn}
             </Button>
           </form>
         }
@@ -78,39 +75,32 @@ export default async function CartRemindersPage({ params }: PageProps<"/admin/[s
       >
         <div className="text-body text-ink-2">
           {settings.enabled ? (
-            <p>
-              Checkout keeps the email of shoppers who are not signed in as soon as they type it, and says under the email
-              field that a reminder may come, with a link to say no. Every reminder has a link to stop them, and they stop
-              as soon as the cart is bought. Emails and carts are erased after 60 days.
-            </p>
+            <p>{w.onText}</p>
           ) : (
-            <p>
-              Turn them on to start with three reminders, after an hour, a day and three days, which you can change. Nothing
-              is kept at checkout while they are off.
-            </p>
+            <p>{w.offText}</p>
           )}
         </div>
       </Card>
 
       <section aria-labelledby="stats-heading" className="flex flex-col gap-3">
         <h2 id="stats-heading" className="text-title text-ink">
-          The last 30 days
+          {w.last30}
         </h2>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <div className={tile}>
-            <span className="text-sm text-muted">Carts with an email</span>
+            <span className="text-sm text-muted">{w.captured}</span>
             <span className="text-metric text-ink tabular-nums">{stats.captured}</span>
           </div>
           <div className={tile}>
-            <span className="text-sm text-muted">Reminded</span>
+            <span className="text-sm text-muted">{w.reminded}</span>
             <span className="text-metric text-ink tabular-nums">{stats.reminded}</span>
           </div>
           <div className={tile}>
-            <span className="text-sm text-muted">Bought after a reminder</span>
+            <span className="text-sm text-muted">{w.recovered}</span>
             <span className="text-metric text-ink tabular-nums">{stats.recovered}</span>
           </div>
           <div className={tile}>
-            <span className="text-sm text-muted">Sales after reminders</span>
+            <span className="text-sm text-muted">{w.sales}</span>
             <span className="text-metric text-ink tabular-nums">{recovered || formatMoney(0, mainCurrency(store), locale)}</span>
           </div>
         </div>
@@ -119,30 +109,30 @@ export default async function CartRemindersPage({ params }: PageProps<"/admin/[s
       <section aria-labelledby="steps-heading" className="flex flex-col gap-3">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <h2 id="steps-heading" className="text-title text-ink">
-            Reminders
+            {w.reminders}
           </h2>
           <Link href={`${base}/new`} className="min-h-10 rounded-pill bg-brand px-4 py-2 text-sm font-medium text-brand-ink">
-            New reminder
+            {w.newReminder}
           </Link>
         </div>
         {settings.steps.length === 0 ? (
           <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>
-            No reminders yet. Turn reminders on to start with three, or make one.
+            {w.noReminders}
           </p>
         ) : (
           <Card compact>
-            <List label="Reminders">
+            <List label={w.reminders}>
               {settings.steps.map((step) => (
                 <ListRow key={step.id}>
                   <RowLead
-                    title={`After ${describeDelay(step.delayMinutes)}`}
+                    title={fillWords(w.after, { delay: describeDelay(step.delayMinutes, w.delay) })}
                     href={`${base}/${step.id}`}
                     sub={
                       <>
                         {(step.content[firstLocale]?.subject ?? Object.values(step.content)[0]?.subject ?? "").replaceAll("{store}", store.name)}
                         {codeOf(step.discountCodeId) && (
                           <>
-                            {" · code "}
+                            {` · ${w.code} `}
                             <span className="font-mono">{codeOf(step.discountCodeId)}</span>
                           </>
                         )}
@@ -150,7 +140,7 @@ export default async function CartRemindersPage({ params }: PageProps<"/admin/[s
                     }
                   />
                   <Chip signal={step.active ? "positive" : "neutral"} dot>
-                    {step.active ? "On" : "Switched off"}
+                    {step.active ? w.stepOn : w.stepOff}
                   </Chip>
                 </ListRow>
               ))}
@@ -161,28 +151,28 @@ export default async function CartRemindersPage({ params }: PageProps<"/admin/[s
 
       <section aria-labelledby="carts-heading" className="flex flex-col gap-3">
         <h2 id="carts-heading" className="text-title text-ink">
-          Latest carts
+          {w.latest}
         </h2>
         {carts.length === 0 ? (
           <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>
-            No carts yet. They show here once a shopper types their email at checkout.
+            {w.noCarts}
           </p>
         ) : (
           <Card compact>
-            <List label="Carts">
+            <List label={w.carts}>
               {carts.map((cart) => (
                 <ListRow key={cart.id}>
                   <RowLead
-                    title={<span className="block max-w-72 truncate">{cart.email ?? "Erased"}</span>}
+                    title={<span className="block max-w-72 truncate">{cart.email ?? w.erased}</span>}
                     sub={
                       <>
-                        {cart.items > 0 ? `${cart.items} ${cart.items === 1 ? "item" : "items"} · ${formatMoney(cart.subtotalMinor, cart.currency, locale)}` : "Empty cart"}
-                        {cart.capturedAt && ` · typed ${date(cart.capturedAt)}`}
+                        {cart.items > 0 ? `${countWords(cart.items, w.items)} · ${formatMoney(cart.subtotalMinor, cart.currency, locale)}` : w.empty}
+                        {cart.capturedAt && ` · ${fillWords(w.typed, { date: date(cart.capturedAt) })}`}
                       </>
                     }
                   />
-                  <RowFact className="hidden sm:block" sub={cart.clickedAt ? "opened the link" : undefined}>
-                    {cart.remindersSent === 1 ? "1 reminder" : `${cart.remindersSent} reminders`}
+                  <RowFact className="hidden sm:block" sub={cart.clickedAt ? w.opened : undefined}>
+                    {countWords(cart.remindersSent, w.sent)}
                   </RowFact>
                   {cart.recoveredOrderId ? (
                     <Link href={`/admin/${store.slug}/orders/${cart.recoveredOrderId}`} className="underline-offset-2 hover:underline">
@@ -202,11 +192,8 @@ export default async function CartRemindersPage({ params }: PageProps<"/admin/[s
         )}
       </section>
 
-      <Card title="For your privacy policy" className="text-sm" compact>
-        <p className="text-muted">
-          Say that when a shopper types their email at checkout and does not finish, you may email reminders about the
-          cart; that they can say no at checkout or in any reminder; and that the email and cart are erased after 60 days.
-        </p>
+      <Card title={w.privacy} className="text-sm" compact>
+        <p className="text-muted">{w.privacyText}</p>
       </Card>
     </div>
   );

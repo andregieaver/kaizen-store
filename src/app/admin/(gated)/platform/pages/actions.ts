@@ -1,5 +1,10 @@
 "use server";
 
+import { platformActionWords } from "@/server/platform-site-words";
+import { fillWords } from "@/lib/admin-fill";
+import { actionAdminLang } from "@/server/admin-request-lang";
+import { adminText } from "@/lib/admin-text";
+
 import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -9,7 +14,7 @@ import type { PageSaveState } from "@/components/admin/page-context";
 import { deletePage, getPageForEdit, PAGES_TAG, savePage, unpublishPage } from "@/server/pages";
 import { chooseSiteLayout, type SiteLayoutType } from "@/server/site-layouts";
 import { createPlatformRolePage, createThemeStorePage, setPlatformPageRole, themeStoreRoleOf } from "@/server/platform-roles";
-import { isSpecialRole, isThemeStoreRole, PLATFORM_ROLE_COPY } from "@/lib/platform-roles";
+import { isSpecialRole, isThemeStoreRole } from "@/lib/platform-roles";
 import { THEMES_ADMIN, themeStorePageHref } from "@/lib/theme-admin-paths";
 import type { FormState } from "@/components/admin/action-form";
 import { createSavedPart, deleteSavedPart, updateSavedPart, type SavedResult } from "@/server/saved-parts";
@@ -49,12 +54,12 @@ export async function savePageAction(
   acknowledged?: string[],
 ): Promise<PageSaveState> {
   const admin = await requirePlatformAdmin();
-  if (!isType(type) || (id !== null && !isId(id))) return { status: "error", problems: ["Unknown page."] };
+  if (!isType(type) || (id !== null && !isId(id))) return { status: "error", problems: [(await platformActionWords()).unknownPage] };
   let json: unknown;
   try {
     json = JSON.parse(payload);
   } catch {
-    return { status: "error", problems: ["The page could not be read. Reload and try again."] };
+    return { status: "error", problems: [(await platformActionWords()).pageUnread] };
   }
   const acknowledgedIssues = Array.isArray(acknowledged) ? acknowledged.filter((a): a is string => typeof a === "string" && a.length <= 120).slice(0, 200) : undefined;
   const result = await savePage(admin, null, id, json, { publish: publish === true, type, acknowledgedIssues });
@@ -62,24 +67,24 @@ export async function savePageAction(
   // Drafts are not on the site; publishing changes pages, menus, sitemap and llms.txt, and so does a global part's change (D98).
   if (publish || result.pages) updateTag(PAGES_TAG);
   const page = await getPageForEdit(null, result.id, type);
-  if (!page) return { status: "error", problems: ["The page was saved but could not be read back."] };
+  if (!page) return { status: "error", problems: [(await platformActionWords()).pageNotBack] };
   return { status: "saved", page };
 }
 
 export async function unpublishPageAction(type: PageType, id: string): Promise<PageSaveState> {
   const admin = await requirePlatformAdmin();
-  if (!isType(type) || !isId(id)) return { status: "error", problems: ["Unknown page."] };
+  if (!isType(type) || !isId(id)) return { status: "error", problems: [(await platformActionWords()).unknownPage] };
   await unpublishPage(admin, null, id, type);
   updateTag(PAGES_TAG);
   const page = await getPageForEdit(null, id, type);
-  if (!page) return { status: "error", problems: ["This page no longer exists."] };
+  if (!page) return { status: "error", problems: [(await platformActionWords()).pageGone] };
   return { status: "saved", page };
 }
 
 /** Deletes the page and goes back to the list; returns only when it could not. */
 export async function deletePageAction(type: PageType, id: string): Promise<{ problems: string[] } | void> {
   const admin = await requirePlatformAdmin();
-  if (!isType(type) || !isId(id)) return { problems: ["Unknown page."] };
+  if (!isType(type) || !isId(id)) return { problems: [(await platformActionWords()).unknownPage] };
   await deletePage(admin, null, id, type);
   updateTag(PAGES_TAG);
   redirect(`${listOf(type)}?deleted=1`);
@@ -91,7 +96,7 @@ export async function deletePageAction(type: PageType, id: string): Promise<{ pr
  */
 export async function createThemeStorePageAction(role: string): Promise<FormState> {
   const admin = await requirePlatformAdmin();
-  if (!isThemeStoreRole(role)) return { status: "error", messages: ["Unknown page."] };
+  if (!isThemeStoreRole(role)) return { status: "error", messages: [(await platformActionWords()).unknownPage] };
   const result = await createThemeStorePage(admin, role);
   if (!result.ok) return { status: "error", messages: result.problems };
   updateTag(PAGES_TAG);
@@ -101,8 +106,8 @@ export async function createThemeStorePageAction(role: string): Promise<FormStat
 /** Deletes a theme store page (D285) from its editor: the standard page shows again, and the way back is Themes. */
 export async function deleteThemeStorePageAction(id: string): Promise<{ problems: string[] } | void> {
   const admin = await requirePlatformAdmin();
-  if (!isId(id)) return { problems: ["Unknown page."] };
-  if (!(await themeStoreRoleOf(id))) return { problems: ["This page is not one of the theme store's."] };
+  if (!isId(id)) return { problems: [(await platformActionWords()).unknownPage] };
+  if (!(await themeStoreRoleOf(id))) return { problems: [(await platformActionWords()).notThemeStorePage] };
   await deletePage(admin, null, id, "page");
   updateTag(PAGES_TAG);
   redirect(`${THEMES_ADMIN}?deleted=store-page`);
@@ -163,7 +168,7 @@ export async function placePlatformThemeSectionAction(key: string): Promise<Sect
 /** Kaizen's own templates are always on in its builder, and their sharing is always the marketplace's (D125, D236). */
 export async function kaizenTemplateFixedAction(): Promise<{ ok: false; problems: string[] }> {
   await requirePlatformAdmin();
-  return { ok: false, problems: ["Kaizena Flow's own templates are always on, and always shared with the marketplace."] };
+  return { ok: false, problems: [(await platformActionWords()).ownTemplates] };
 }
 
 /** Kaizen's own CSS for every one of its pages (D100): live at once. */
@@ -185,7 +190,7 @@ export async function createSavedPartAction(input: unknown): Promise<SavedResult
 
 export async function updateSavedPartAction(id: string, input: unknown): Promise<SavedResult> {
   const admin = await requirePlatformAdmin();
-  if (!isId(id)) return { ok: false, problems: ["Unknown saved part."] };
+  if (!isId(id)) return { ok: false, problems: [(await platformActionWords()).unknownPart] };
   const result = await updateSavedPart(admin, null, id, input);
   if (result.ok && result.pages) updateTag(PAGES_TAG);
   return result;
@@ -193,7 +198,7 @@ export async function updateSavedPartAction(id: string, input: unknown): Promise
 
 export async function deleteSavedPartAction(id: string): Promise<SavedResult> {
   const admin = await requirePlatformAdmin();
-  if (!isId(id)) return { ok: false, problems: ["Unknown saved part."] };
+  if (!isId(id)) return { ok: false, problems: [(await platformActionWords()).unknownPart] };
   const result = await deleteSavedPart(admin, null, id);
   if (result.ok && result.pages) updateTag(PAGES_TAG);
   return result;
@@ -214,23 +219,23 @@ function termsChanged(type: PageType, result: TermsResult): TermsResult {
   return result;
 }
 
-const unknownTerm: TermsResult = { ok: false, problems: ["Unknown category or tag."] };
+const unknownTerm = async (): Promise<TermsResult> => ({ ok: false, problems: [(await platformActionWords()).unknownTerm] });
 
 export async function createPageTermAction(type: PageType, input: unknown): Promise<TermsResult> {
   const admin = await requirePlatformAdmin();
-  if (!isType(type)) return unknownTerm;
+  if (!isType(type)) return unknownTerm();
   return termsChanged(type, await createTerm(admin, termScope(type), input));
 }
 
 export async function updatePageTermAction(type: PageType, id: string, input: unknown): Promise<TermsResult> {
   const admin = await requirePlatformAdmin();
-  if (!isType(type) || !isId(id)) return unknownTerm;
+  if (!isType(type) || !isId(id)) return unknownTerm();
   return termsChanged(type, await updateTerm(admin, termScope(type), id, input));
 }
 
 export async function deletePageTermAction(type: PageType, id: string): Promise<TermsResult> {
   const admin = await requirePlatformAdmin();
-  if (!isType(type) || !isId(id)) return unknownTerm;
+  if (!isType(type) || !isId(id)) return unknownTerm();
   return termsChanged(type, await deleteTerm(admin, termScope(type), id));
 }
 
@@ -243,7 +248,7 @@ export async function gridPreviewAction(block: unknown, pageId: string | null): 
   await requirePlatformAdmin();
   const parsed = pageBlockSchema.safeParse(block);
   if (!parsed.success || parsed.data.type !== "contentGrid") {
-    return { problem: parsed.success ? "Not a content grid." : parsed.error.issues[0].message };
+    return { problem: parsed.success ? (await platformActionWords()).notGrid : parsed.error.issues[0].message };
   }
   return gridData(parsed.data, { pageId: pageId !== null && isId(pageId) ? pageId : null, owner: null });
 }
@@ -265,31 +270,32 @@ export async function platformLinkTargetsAction(): Promise<ItemLinkTargets> {
 export async function choosePlatformSiteLayoutAction(type: SiteLayoutType, _state: FormState, form: FormData): Promise<FormState> {
   const admin = await requirePlatformAdmin();
   const choice = String(form.get("layout") ?? "");
-  if (choice !== "" && !z.uuid().safeParse(choice).success) return { status: "error", messages: [`Unknown ${type}.`] };
+  if (choice !== "" && !z.uuid().safeParse(choice).success) return { status: "error", messages: [fillWords((await platformActionWords()).unknownLayout, { one: type })] };
   const result = await chooseSiteLayout(admin, null, type, choice || null);
   if (!result.ok) return { status: "error", messages: result.problems };
   updateTag(PAGES_TAG);
-  return { status: "ok", messages: [choice ? `Saved. Kaizena Flow's pages show this ${type} now.` : `Saved. Kaizena Flow's pages show the standard ${type} now.`] };
+  return { status: "ok", messages: [fillWords(choice ? (await platformActionWords()).layoutChosen : (await platformActionWords()).layoutStandard, { one: type })] };
 }
 
 /** Chooses the page Kaizen's front page, blog or 404 page shows (D143), or the standard one; the site follows at once. */
 export async function setPlatformPageRoleAction(role: string, _state: FormState, form: FormData): Promise<FormState> {
   const admin = await requirePlatformAdmin();
   // The Special pages only; the theme store's pages are made and taken away from Themes (D285).
-  if (!isSpecialRole(role)) return { status: "error", messages: ["Unknown page."] };
+  if (!isSpecialRole(role)) return { status: "error", messages: [(await platformActionWords()).unknownPage] };
   const choice = String(form.get("page") ?? "");
-  if (choice !== "" && !isId(choice)) return { status: "error", messages: ["Unknown page."] };
+  if (choice !== "" && !isId(choice)) return { status: "error", messages: [(await platformActionWords()).unknownPage] };
   const result = await setPlatformPageRole(admin, role, choice || null);
   if (!result.ok) return { status: "error", messages: result.problems };
   updateTag(PAGES_TAG);
-  const name = PLATFORM_ROLE_COPY[role].name.toLowerCase();
-  return { status: "ok", messages: [choice ? `Saved. Kaizena Flow's ${name} is this page now.` : `Saved. Kaizena Flow's ${name} is the standard one now.`] };
+  const site = adminText(await actionAdminLang(), "platformSite");
+  const name = site.tables.roles[role].name.toLowerCase();
+  return { status: "ok", messages: [fillWords(choice ? site.actions.roleChosen : site.actions.roleStandard, { name })] };
 }
 
 /** Makes a starter page for one of Kaizen's places, published and in place, to change in the builder (D143). */
 export async function createPlatformRolePageAction(role: string): Promise<FormState> {
   const admin = await requirePlatformAdmin();
-  if (!isSpecialRole(role)) return { status: "error", messages: ["Unknown page."] };
+  if (!isSpecialRole(role)) return { status: "error", messages: [(await platformActionWords()).unknownPage] };
   const result = await createPlatformRolePage(admin, role);
   if (!result.ok) return { status: "error", messages: result.problems };
   updateTag(PAGES_TAG);
@@ -303,13 +309,13 @@ export async function createPlatformRolePageAction(role: string): Promise<FormSt
 export async function translatePlatformPageAction(request: unknown): Promise<TranslateResult> {
   const admin = await requirePlatformAdmin();
   const parsed = translateRequest.safeParse(request);
-  if (!parsed.success) return { ok: false, problem: "The texts could not be read. Reload the page and try again." };
+  if (!parsed.success) return { ok: false, problem: (await platformActionWords()).textsUnread };
   const connection = await aiFor(null, { feature: "page_translation", accountId: admin.id });
-  if (!connection?.textModel) return { ok: false, problem: "Kaizena Flow has no AI text model. Choose one under AI." };
+  if (!connection?.textModel) return { ok: false, problem: (await platformActionWords()).noTextModel };
   try {
     const { done, skipped } = await translatePageTexts(connection, { accountId: admin.id, storeId: null }, parsed.data);
     return { ok: true, done, skipped };
   } catch (error) {
-    return { ok: false, problem: error instanceof AiError ? `The AI could not translate: ${error.message}` : "The AI could not translate. Try again." };
+    return { ok: false, problem: error instanceof AiError ? fillWords((await platformActionWords()).translateFailed, { message: error.message }) : (await platformActionWords()).translateRetry };
   }
 }

@@ -12,6 +12,7 @@ import { listCookieNotes } from "@/server/site-cookies";
 import { PageHeader } from "@/components/admin/ui";
 
 import { requestPlatformScanAction, savePlatformCookieNoteAction, savePlatformTrackingAction } from "./actions";
+import { platformSiteWords } from "@/server/platform-site-words";
 
 export const metadata: Metadata = { title: "Cookies and tracking" };
 
@@ -19,6 +20,7 @@ export const metadata: Metadata = { title: "Cookies and tracking" };
 export default async function PlatformCookiesPage() {
   await connection();
   await requirePlatformAdmin();
+  const { w } = await platformSiteWords();
   const [chrome, consents, scans, lastDone, notes] = await Promise.all([
     getPlatformChrome(),
     listConsents(null),
@@ -29,8 +31,8 @@ export default async function PlatformCookiesPage() {
   return (
     <>
       <PageHeader
-        title="Cookies and tracking"
-        description={<>What Kaizena Flow&apos;s own site stores in visitors&apos; browsers, the tools it uses to measure and market, and the choices visitors make. Each store sets its own under Cookies and tracking in its admin.</>}
+        title={w.misc.cookies.title}
+        description={w.misc.cookies.description}
       />
       <TrackingForm tracking={chrome.tracking} action={savePlatformTrackingAction} cookiePage="/cookies" />
       <CookieScanPanel

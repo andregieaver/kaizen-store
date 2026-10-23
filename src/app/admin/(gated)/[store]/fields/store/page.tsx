@@ -29,7 +29,7 @@ export default async function StoreFieldsPage({ params }: PageProps<"/admin/[sto
   const base = `/admin/${store.slug}/fields`;
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["fields"])}>
+    <AdminTextScope texts={adminTexts(lang, ["fields", "builder"])}>
     <div className="flex flex-col gap-6">
       <PageHeader back={{ href: base, label: t.title }} title={t.storeTitle} description={t.storeDescription} />
       {editor.groups.length === 0 ? (

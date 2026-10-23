@@ -17,17 +17,21 @@ import {
   type UsageSums,
 } from "@/lib/ai-usage";
 import { formatUsd } from "@/lib/ai-cost";
+import { fillWords } from "@/lib/admin-fill";
+import { platformToolsEn, type PlatformToolsMessages } from "@/lib/admin-messages/platform-tools.en";
 import type { DailyUsage } from "@/server/ai-usage";
 
-const number = new Intl.NumberFormat("en-GB");
-const n = (value: number) => number.format(value);
+/** The report's words with its reader's number format (D312 A11). */
+type Words = PlatformToolsMessages["usage"] & { n: (value: number) => string };
+type Catalogue = PlatformToolsMessages["usage"];
+const EN: Catalogue = platformToolsEn.usage;
 
 /** What a row used besides tokens: characters spoken, audio heard or on a call, pictures made. */
-function otherUse(row: Pick<UsageSums, "characters" | "audioSeconds" | "images">): string {
+function otherUse(row: Pick<UsageSums, "characters" | "audioSeconds" | "images">, w: Words): string {
   return [
-    row.characters > 0 && `${n(row.characters)} characters spoken`,
-    row.audioSeconds > 0 && `${n(Math.round(row.audioSeconds / 60))} min of audio`,
-    row.images > 0 && `${n(row.images)} ${row.images === 1 ? "picture" : "pictures"}`,
+    row.characters > 0 && fillWords(w.charactersSpoken, { count: w.n(row.characters) }),
+    row.audioSeconds > 0 && fillWords(w.minutesAudio, { count: w.n(Math.round(row.audioSeconds / 60)) }),
+    row.images > 0 && fillWords(row.images === 1 ? w.picture : w.pictures, { count: w.n(row.images) }),
   ]
     .filter(Boolean)
     .join(", ");
@@ -38,7 +42,7 @@ const thRight = "px-2 py-2 text-right font-medium text-muted";
 const td = "px-2 py-2 align-top";
 const tdRight = "px-2 py-2 text-right tabular-nums align-top";
 
-function Head({ first }: { first: string }) {
+function Head({ first, w }: { first: string; w: Words }) {
   return (
     <thead>
       <tr className="border-b border-line">
@@ -46,56 +50,56 @@ function Head({ first }: { first: string }) {
           {first}
         </th>
         <th scope="col" className={thRight}>
-          Requests
+          {w.requests}
         </th>
         <th scope="col" className={thRight}>
-          Failed
+          {w.failed}
         </th>
         <th scope="col" className={thRight}>
-          Input tokens
+          {w.inputTokens}
         </th>
         <th scope="col" className={thRight}>
-          Output tokens
+          {w.outputTokens}
         </th>
         <th scope="col" className={thRight}>
-          Cost
+          {w.cost}
         </th>
         <th scope="col" className={th}>
-          Also
+          {w.also}
         </th>
       </tr>
     </thead>
   );
 }
 
-function Cells({ sums }: { sums: UsageSums }) {
+function Cells({ sums, w }: { sums: UsageSums; w: Words }) {
   return (
     <>
-      <td className={tdRight}>{n(sums.requests)}</td>
-      <td className={tdRight}>{sums.failed > 0 ? n(sums.failed) : "–"}</td>
-      <td className={tdRight}>{sums.inputTokens > 0 ? n(sums.inputTokens) : "–"}</td>
-      <td className={tdRight}>{sums.outputTokens > 0 ? n(sums.outputTokens) : "–"}</td>
-      <td className={tdRight}>{!usedAnything(sums) ? "–" : sums.costMicros === 0 && sums.unpricedRequests > 0 ? <span className="text-muted">No price</span> : costWords(sums)}</td>
-      <td className={td}>{otherUse(sums) || "–"}</td>
+      <td className={tdRight}>{w.n(sums.requests)}</td>
+      <td className={tdRight}>{sums.failed > 0 ? w.n(sums.failed) : "–"}</td>
+      <td className={tdRight}>{sums.inputTokens > 0 ? w.n(sums.inputTokens) : "–"}</td>
+      <td className={tdRight}>{sums.outputTokens > 0 ? w.n(sums.outputTokens) : "–"}</td>
+      <td className={tdRight}>{!usedAnything(sums) ? "–" : sums.costMicros === 0 && sums.unpricedRequests > 0 ? <span className="text-muted">{w.noPrice}</span> : costWords(sums)}</td>
+      <td className={td}>{otherUse(sums, w) || "–"}</td>
     </>
   );
 }
 
 /** One line per provider, model and kind of call, with whose key paid where it differs. */
-const modelKey = (row: UsageRow) => ({
+const modelKey = (w: Words) => (row: UsageRow) => ({
   key: `${row.provider}\u0000${row.model}\u0000${row.kind}\u0000${row.source}`,
   label: row.model,
-  sub: `${row.provider} · ${KIND_WORDS[row.kind]} · ${SOURCE_WORDS[row.source]}`,
+  sub: `${row.provider} · ${w.kinds[row.kind] ?? KIND_WORDS[row.kind]} · ${w.sources[row.source] ?? SOURCE_WORDS[row.source]}`,
 });
 
 /** Provider and model lines of a set of rows. */
-function ModelTable({ rows, first = "Provider and model" }: { rows: UsageRow[]; first?: string }) {
-  const groups = groupUsage(rows, modelKey);
-  if (groups.length === 0) return <p className="text-sm text-muted">Nothing used in this period.</p>;
+function ModelTable({ rows, w, first = w.providerAndModel }: { rows: UsageRow[]; w: Words; first?: string }) {
+  const groups = groupUsage(rows, modelKey(w));
+  if (groups.length === 0) return <p className="text-sm text-muted">{w.nothing}</p>;
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[46rem] text-sm">
-        <Head first={first} />
+        <Head first={first} w={w} />
         <tbody>
           {groups.map((g) => (
             <tr key={g.key} className="border-b border-line last:border-0">
@@ -103,15 +107,15 @@ function ModelTable({ rows, first = "Provider and model" }: { rows: UsageRow[]; 
                 <span className="font-medium">{g.label}</span>
                 <span className="block text-xs text-muted">{g.sub}</span>
               </th>
-              <Cells sums={g.sums} />
+              <Cells sums={g.sums} w={w} />
             </tr>
           ))}
           {groups.length > 1 && (
             <tr className="border-t border-line font-medium">
               <th scope="row" className={`${td} text-left`}>
-                All
+                {w.all}
               </th>
-              <Cells sums={totalOf(rows)} />
+              <Cells sums={totalOf(rows)} w={w} />
             </tr>
           )}
         </tbody>
@@ -121,7 +125,7 @@ function ModelTable({ rows, first = "Provider and model" }: { rows: UsageRow[]; 
 }
 
 /** Groups (owner accounts, stores) that open to their own provider and model lines. */
-function GroupList({ groups, empty }: { groups: UsageGroup[]; empty: string }) {
+function GroupList({ groups, empty, w }: { groups: UsageGroup[]; empty: string; w: Words }) {
   if (groups.length === 0) return <p className="text-sm text-muted">{empty}</p>;
   return (
     <ul className="flex flex-col divide-y divide-line rounded-panel border border-line">
@@ -133,14 +137,14 @@ function GroupList({ groups, empty }: { groups: UsageGroup[]; empty: string }) {
                 <span className="font-medium">{g.label}</span>
                 {g.sub && <span className="ml-2 text-muted">{g.sub}</span>}
               </span>
-              <span className="tabular-nums">{n(g.sums.requests)} requests</span>
+              <span className="tabular-nums">{fillWords(w.requestsCount, { count: w.n(g.sums.requests) })}</span>
               <span className="tabular-nums text-muted">
-                {n(g.sums.inputTokens + g.sums.outputTokens)} tokens · {costWords(g.sums)}
-                {g.sums.failed > 0 ? ` · ${n(g.sums.failed)} failed` : ""}
+                {fillWords(w.tokensCount, { count: w.n(g.sums.inputTokens + g.sums.outputTokens) })} · {costWords(g.sums)}
+                {g.sums.failed > 0 ? ` · ${fillWords(w.failedCount, { count: w.n(g.sums.failed) })}` : ""}
               </span>
             </summary>
             <div className="border-t border-line p-3">
-              <ModelTable rows={g.rows} />
+              <ModelTable rows={g.rows} w={w} />
             </div>
           </details>
         </li>
@@ -160,15 +164,15 @@ function Tile({ label, value, note }: { label: string; value: string; note?: str
 }
 
 /** Tokens per day as bars: each with its day and figures for anyone reading it as text. */
-function DailyBars({ days }: { days: DailyUsage[] }) {
+function DailyBars({ days, w }: { days: DailyUsage[]; w: Words }) {
   const most = Math.max(1, ...days.map((d) => d.tokens));
   return (
     <figure className="flex flex-col gap-2">
-      <div className="flex h-24 items-end gap-px" role="img" aria-label={`Tokens used per day, ${days.length} days, the most ${n(most)}`}>
+      <div className="flex h-24 items-end gap-px" role="img" aria-label={fillWords(w.perDayLabel, { days: days.length, most: w.n(most) })}>
         {days.map((d) => (
           <div
             key={d.day}
-            title={`${d.day}: ${n(d.tokens)} tokens, ${formatUsd(d.costMicros)}, ${n(d.requests)} requests`}
+            title={fillWords(w.dayTitle, { day: d.day, tokens: w.n(d.tokens), cost: formatUsd(d.costMicros), requests: w.n(d.requests) })}
             className="min-w-px flex-1 rounded-t-sm bg-inverse/70"
             style={{ height: `${Math.max(d.tokens > 0 ? 3 : 0, Math.round((d.tokens / most) * 100))}%` }}
           />
@@ -176,16 +180,16 @@ function DailyBars({ days }: { days: DailyUsage[] }) {
       </div>
       <figcaption className="flex justify-between text-xs text-muted">
         <span>{days[0]?.day}</span>
-        <span>Tokens per day · {formatUsd(days.reduce((sum, d) => sum + d.costMicros, 0))} in all</span>
+        <span>{fillWords(w.perDayCaption, { cost: formatUsd(days.reduce((sum, d) => sum + d.costMicros, 0)) })}</span>
         <span>{days.at(-1)?.day}</span>
       </figcaption>
     </figure>
   );
 }
 
-export function PeriodLinks({ base, period, extra = "" }: { base: string; period: string; extra?: string }) {
+export function PeriodLinks({ base, period, extra = "", words = EN }: { base: string; period: string; extra?: string; words?: Catalogue }) {
   return (
-    <nav aria-label="Period" className="flex flex-wrap gap-1">
+    <nav aria-label={words.period} className="flex flex-wrap gap-1">
       {USAGE_PERIODS.map((p) => (
         <Link
           key={p.id}
@@ -193,7 +197,7 @@ export function PeriodLinks({ base, period, extra = "" }: { base: string; period
           aria-current={p.id === period ? "page" : undefined}
           className={`rounded-pill px-3 py-1.5 text-sm ${p.id === period ? "bg-sunken font-medium" : "text-muted hover:bg-sunken"}`}
         >
-          {p.label}
+          {words.periods[p.id] ?? p.label}
         </Link>
       ))}
     </nav>
@@ -221,7 +225,9 @@ function Section({ id, title, note, children }: { id: string; title: string; not
  * each opening to its own providers and models. Sums are worked out from the
  * recorded calls in `src/lib/ai-usage.ts`, never by the browser.
  */
-export function UsageReport({ rows, days, scope }: { rows: UsageRow[]; days: DailyUsage[]; scope: "platform" | "owner" }) {
+export function UsageReport({ rows, days, scope, words = EN, locale = "en-GB" }: { rows: UsageRow[]; days: DailyUsage[]; scope: "platform" | "owner"; words?: Catalogue; locale?: string }) {
+  const number = new Intl.NumberFormat(locale);
+  const w: Words = { ...words, n: (value) => number.format(value) };
   const total = totalOf(rows);
   const onKaizen = totalOf(rows.filter((r) => r.source === "platform"));
   const onOwn = totalOf(rows.filter((r) => r.source === "store"));
@@ -230,70 +236,68 @@ export function UsageReport({ rows, days, scope }: { rows: UsageRow[]; days: Dai
   const anyEstimated = total.estimatedRequests > 0;
   return (
     <div className="flex flex-col gap-6">
-      <section aria-label="Totals" className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-        <Tile label="Requests" value={n(total.requests)} note={total.failed > 0 ? `${n(total.failed)} failed` : undefined} />
-        <Tile label="Input tokens" value={n(total.inputTokens)} />
-        <Tile label="Output tokens" value={n(total.outputTokens)} />
+      <section aria-label={w.totals} className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+        <Tile label={w.requests} value={w.n(total.requests)} note={total.failed > 0 ? fillWords(w.failedCount, { count: w.n(total.failed) }) : undefined} />
+        <Tile label={w.inputTokens} value={w.n(total.inputTokens)} />
+        <Tile label={w.outputTokens} value={w.n(total.outputTokens)} />
         <Tile
-          label="Estimated cost"
+          label={w.estimatedCost}
           value={costWords(total)}
           note={
             total.unpricedRequests > 0
-              ? `${n(total.unpricedRequests)} requests have no price yet`
+              ? fillWords(w.noPriceYet, { count: w.n(total.unpricedRequests) })
               : onOwn.costMicros > 0
-                ? `${formatUsd(onKaizen.costMicros)} on Kaizena Flow's key, ${formatUsd(onOwn.costMicros)} on stores' own`
+                ? fillWords(w.keysSplit, { kaizen: formatUsd(onKaizen.costMicros), own: formatUsd(onOwn.costMicros) })
                 : undefined
           }
         />
         <Tile
-          label={scope === "platform" ? "On Kaizena Flow's key" : "On Kaizena Flow's AI"}
-          value={n(onKaizen.inputTokens + onKaizen.outputTokens)}
-          note={onOwn.requests > 0 ? `${n(onOwn.inputTokens + onOwn.outputTokens)} tokens on stores' own keys` : "tokens"}
+          label={scope === "platform" ? w.onKaizenKey : w.onKaizenAi}
+          value={w.n(onKaizen.inputTokens + onKaizen.outputTokens)}
+          note={onOwn.requests > 0 ? fillWords(w.tokensOnOwn, { count: w.n(onOwn.inputTokens + onOwn.outputTokens) }) : w.tokens}
         />
       </section>
-      {otherUse(total) && <p className="text-sm text-muted">Also: {otherUse(total)}.</p>}
+      {otherUse(total, w) && <p className="text-sm text-muted">{fillWords(w.alsoLine, { what: otherUse(total, w) })}</p>}
 
-      <Section id="daily" title="Per day">
-        <DailyBars days={days} />
+      <Section id="daily" title={w.perDay}>
+        <DailyBars days={days} w={w} />
       </Section>
 
       <Section
         id="models"
-        title="By provider and model"
-        note={scope === "platform" ? "Everything used in the period, whoever's key paid." : "Everything used by the stores you own, whoever's key paid."}
+        title={w.byModel}
+        note={scope === "platform" ? w.byModelPlatform : w.byModelOwner}
       >
-        <ModelTable rows={rows} />
+        <ModelTable rows={rows} w={w} />
       </Section>
 
       {scope === "platform" && (
-        <Section id="owners" title="By store owner account" note="Each owner account's stores together, with the providers and models they used. Kaizena Flow's own use (its AI manager and chat agent) is listed apart.">
-          <GroupList groups={perOwner} empty="Nothing used in this period." />
+        <Section id="owners" title={w.byOwner} note={w.byOwnerNote}>
+          <GroupList groups={perOwner} empty={w.nothing} w={w} />
         </Section>
       )}
 
       <Section
         id="stores"
-        title="By store"
-        note={scope === "platform" ? "Each store, with the providers and models used for it." : "Each of your stores, with the providers and models used for it."}
+        title={w.byStore}
+        note={scope === "platform" ? w.byStorePlatform : w.byStoreOwner}
       >
-        <GroupList groups={perStore} empty="Nothing used in this period." />
+        <GroupList groups={perStore} empty={w.nothing} w={w} />
       </Section>
 
-      <Section id="features" title="By what asked">
-        <GroupList groups={groupUsage(rows, withFeature)} empty="Nothing used in this period." />
+      <Section id="features" title={w.byFeature}>
+        <GroupList groups={groupUsage(rows, withFeature)} empty={w.nothing} w={w} />
       </Section>
 
       <p className="text-sm text-muted">
-        Counted from each call to a model as it is made. {anyEstimated && `${n(total.estimatedRequests)} requests are counted by Kaizena Flow (about four characters a token) because the provider did not report tokens. `}
-        Live voice calls are counted as one request with their length.
-        Cost is an estimate in US dollars: each call&apos;s tokens, pictures, minutes of audio and spoken characters at the prices set for its model on the day it was made
+        {w.countedFrom} {anyEstimated && `${fillWords(w.estimatedNote, { count: w.n(total.estimatedRequests) })} `}
+        {w.liveCalls} {w.costNote}
         {scope === "platform" ? (
           <>
-            {" "}(<Link href="/admin/platform/ai/prices" className="underline">AI prices</Link>)
+            {" "}(<Link href="/admin/platform/ai/prices" className="underline">{w.aiPrices}</Link>)
           </>
         ) : null}
-        ; a &quot;+&quot; means some usage has no price, so the real cost is higher.
-        Usage is kept for 400 days.
+        {w.plusNote} {w.kept}
       </p>
     </div>
   );

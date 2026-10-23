@@ -7,13 +7,13 @@ import { daysBetween } from "@/lib/platform-experiments";
 import { requirePlatformAdmin } from "@/server/auth";
 import { platformExperiments } from "@/server/platform-experiments";
 import { platformUnitTests } from "@/server/platform-unit-tests";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 import { Card, CARD_CLASS, Chip, List, ListRow, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "A/B tests" };
 
-const date = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "Europe/Oslo" });
-
-const KIND_WORDS: Record<string, string> = { page: "Page", layout: "Product layout", header: "Header", footer: "Footer" };
 
 /**
  * Every store's A/B tests (D148, phase 5): what is running, what waits for a decision and what needs a look. Read-only: a
@@ -21,7 +21,13 @@ const KIND_WORDS: Record<string, string> = { page: "Page", layout: "Product layo
  */
 export default async function PlatformExperimentsPage({ searchParams }: PageProps<"/admin/platform/experiments">) {
   await connection();
-  await requirePlatformAdmin();
+  const account = await requirePlatformAdmin();
+  const lang = adminLangOf(account.adminLocale);
+  const locale = ADMIN_LANG_FACTS[lang].locale;
+  const w = adminText(lang, "platformTools").experiments;
+  const ex = adminText(lang, "experiments");
+  const date = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: "Europe/Oslo" });
+  const kindName = (type: string) => (ex.kinds as Record<string, { name: string }>)[type]?.name ?? ex.kinds.page.name;
   const { show } = await searchParams;
   const everything = show === "all";
   const [{ tests, overview, truncated }, own] = await Promise.all([platformExperiments(everything), platformUnitTests()]);
@@ -30,16 +36,16 @@ export default async function PlatformExperimentsPage({ searchParams }: PageProp
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="A/B tests"
-        description={<>The A/B tests of every store. Tests that need a look come first: a version that lowers orders, visitors divided unevenly, a test nobody sees, one past its end or stopped and forgotten. You can read them here; the store&apos;s owner starts, stops and changes them.</>}
+        title={w.title}
+        description={<>{w.intro}</>}
       />
 
       <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
-          ["Running", overview.running, `in ${overview.stores} ${overview.stores === 1 ? "store" : "stores"}`],
-          ["Scheduled", overview.scheduled, "waiting for their start"],
-          ["Stopped", overview.stopped, "waiting for a decision"],
-          ["Need a look", overview.needAttention, "see the notes below"],
+          [w.running, overview.running, countWords(overview.stores, w.inStores)],
+          [w.scheduled, overview.scheduled, w.waitingStart],
+          [w.stopped, overview.stopped, w.waitingDecision],
+          [w.needLook, overview.needAttention, w.seeNotes],
         ].map(([label, value, note]) => (
           <div key={label} className={`p-4 ${CARD_CLASS}`}>
             <dt className="text-sm text-muted">{label}</dt>
@@ -51,20 +57,20 @@ export default async function PlatformExperimentsPage({ searchParams }: PageProp
 
       <div className="flex items-center gap-3 text-sm">
         <Link href="/admin/platform/experiments" aria-current={everything ? undefined : "page"} className={everything ? "underline" : "font-medium"}>
-          Active
+          {w.active}
         </Link>
         <Link href="/admin/platform/experiments?show=all" aria-current={everything ? "page" : undefined} className={everything ? "font-medium" : "underline"}>
-          Everything
+          {w.everything}
         </Link>
       </div>
 
       {tests.length === 0 ? (
         <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>
-          {everything ? "No store has made a test yet." : "No test is running, scheduled or waiting for a decision."}
+          {everything ? w.noneEver : w.noneActive}
         </p>
       ) : (
         <Card compact>
-          <List label="A/B tests">
+          <List label={w.list}>
             {tests.map((t) => (
               <ListRow key={t.id}>
                 <RowLead
@@ -75,8 +81,8 @@ export default async function PlatformExperimentsPage({ searchParams }: PageProp
                         {t.store.name}
                       </Link>
                       {" · "}
-                      {KIND_WORDS[t.target.type] ?? "Page"}
-                      {t.target.type === "page" ? ` /${t.target.slug}` : ""} · {t.versions} versions · {GOAL_WORDS[t.goal].label}
+                      {kindName(t.target.type)}
+                      {t.target.type === "page" ? ` /${t.target.slug}` : ""} · {fillWords(w.versions, { n: t.versions })} · {ex.goals[t.goal]?.label ?? GOAL_WORDS[t.goal].label}
                       {t.headline && <span className="block text-ink-2">{t.headline}</span>}
                       {t.flags.map((f) => (
                         <span key={f.kind} className="block text-danger-text">
@@ -87,36 +93,33 @@ export default async function PlatformExperimentsPage({ searchParams }: PageProp
                   }
                 />
                 <RowFact className="hidden sm:block">
-                  {t.startedAt ? `${daysBetween(t.startedAt, t.stoppedAt ?? now)} days` : t.scheduledStart ? `Starts ${date.format(t.scheduledStart)}` : "Not started"}
+                  {t.startedAt ? fillWords(w.days, { n: daysBetween(t.startedAt, t.stoppedAt ?? now) }) : t.scheduledStart ? fillWords(w.starts, { date: date.format(t.scheduledStart) }) : w.notStarted}
                 </RowFact>
-                <RowFact className="hidden sm:block" sub={t.split ? t.split.map((s) => `${s.key.toUpperCase()} ${s.visitors.toLocaleString("en-GB")}`).join(" · ") : undefined}>
-                  {t.exposed === 1 ? "1 visitor" : `${t.exposed.toLocaleString("en-GB")} visitors`}
+                <RowFact className="hidden sm:block" sub={t.split ? t.split.map((s) => `${s.key.toUpperCase()} ${s.visitors.toLocaleString(locale)}`).join(" · ") : undefined}>
+                  {countWords(t.exposed, w.visitors, { n: t.exposed.toLocaleString(locale) })}
                 </RowFact>
                 <Chip signal={STATUS_SIGNAL[t.status]} dot>
-                  {STATUS_WORDS[t.status]}
+                  {ex.status[t.status] ?? STATUS_WORDS[t.status]}
                   {t.status === "applied" && t.appliedVariant ? `: ${t.appliedVariant.toUpperCase()}` : ""}
-                  {t.stopReason === "guardrail" && t.status === "stopped" && " (guardrail)"}
+                  {t.stopReason === "guardrail" && t.status === "stopped" && w.guardrail}
                 </Chip>
               </ListRow>
             ))}
           </List>
         </Card>
       )}
-      {truncated && <p className="text-sm text-muted">Only the newest 300 tests are shown.</p>}
+      {truncated && <p className="text-sm text-muted">{w.newest}</p>}
 
       <section aria-labelledby="own" className="flex flex-col gap-3">
         <div>
           <h2 id="own" className="text-title text-ink">
-            Tests that run on their own
+            {w.own}
           </h2>
-          <p className="max-w-2xl text-sm text-muted">
-            The search test and each store&apos;s held-out recommendations. They count searches and tabs, not visitors who accepted cookies, and keep no id of
-            anyone; they are read here by the same arithmetic as a page test.
-          </p>
+          <p className="max-w-2xl text-sm text-muted">{w.ownText}</p>
         </div>
         {own.length === 0 ? (
           <p className={`p-6 text-center text-sm text-muted ${CARD_CLASS}`}>
-            No search test is running, and no store has recommendations with a held-out ranking and tabs to count.
+            {w.noOwn}
           </p>
         ) : (
           <ul className={`flex flex-col divide-y divide-line ${CARD_CLASS}`}>
@@ -135,7 +138,7 @@ export default async function PlatformExperimentsPage({ searchParams }: PageProp
                     )}
                   </span>
                   <span className="text-xs text-muted">
-                    {t.kind === "search" ? (t.status === "running" ? `Running since ${date.format(t.startedAt ?? now)} · every store` : "Ended") : "Running all the time · last 30 days"}
+                    {t.kind === "search" ? (t.status === "running" ? fillWords(w.runningSince, { date: date.format(t.startedAt ?? now) }) : w.ended) : w.allTheTime}
                   </span>
                 </div>
                 <span>{t.headline}</span>

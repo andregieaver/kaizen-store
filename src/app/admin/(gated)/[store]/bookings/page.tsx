@@ -12,6 +12,10 @@ import { requirePermission } from "@/server/permissions";
 import { NoShowForm } from "@/components/admin/no-show-form";
 import { listBookings, listResources, type StoreBooking } from "@/server/bookings";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { AdminTextScope } from "@/components/admin/admin-text";
+import { fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText, adminTexts } from "@/lib/admin-text";
 
 import { CancelBookingForm } from "./cancel-booking-form";
 
@@ -37,6 +41,9 @@ export default async function BookingsPage({ params, searchParams }: PageProps<"
   const off = requireFeature(current, ["appointments", "bookings"]);
   if (off) return off;
   const { store } = current;
+  const lang = adminLangOf(current.account.adminLocale);
+  const w = adminText(lang, "bookings").week;
+  const loc = lang === "en" ? "en-GB" : ADMIN_LANG_FACTS[lang].locale;
   // The week calendar is the appointments'; with only stays and rentals on (D178), their own calendar is the place.
   if (!featureOn(store, "appointments")) redirect(`/admin/${store.slug}/bookings/stays`);
   const query = await searchParams;
@@ -76,9 +83,9 @@ export default async function BookingsPage({ params, searchParams }: PageProps<"
   const endHour = Math.min(24, Math.ceil(last / 60));
   const height = (endHour - startHour) * HOUR;
 
-  const dayLabel = new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
-  const longDay = new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
-  const time = new Intl.DateTimeFormat("en-GB", { timeZone: tz, hour: "2-digit", minute: "2-digit" });
+  const dayLabel = new Intl.DateTimeFormat(loc, { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
+  const longDay = new Intl.DateTimeFormat(loc, { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
+  const time = new Intl.DateTimeFormat(loc, { timeZone: tz, hour: "2-digit", minute: "2-digit" });
   const noon = (date: string) => new Date(`${date}T12:00:00Z`);
   const href = (week: string, who: string | null = staffId) =>
     `/admin/${store.slug}/bookings?week=${week}${who ? `&staff=${who}` : ""}`;
@@ -86,26 +93,27 @@ export default async function BookingsPage({ params, searchParams }: PageProps<"
   const chip = "rounded-full border border-line px-3 py-1 text-sm";
 
   return (
+    <AdminTextScope texts={adminTexts(lang, ["bookings", "orders"])}>
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <PageHeader title="Bookings" description={<>Week of {longDay.format(noon(monday))}, in {tz.replace("_", " ")} time.</>} />
-        <nav aria-label="Weeks" className="flex flex-wrap gap-2 text-sm">
+        <PageHeader title={w.title} description={fillWords(w.weekOf, { day: longDay.format(noon(monday)), zone: tz.replace("_", " ") })} />
+        <nav aria-label={w.weeks} className="flex flex-wrap gap-2 text-sm">
           <Link href={href(addDays(monday, -7))} className={chip}>
-            ← Previous
+            {w.previous}
           </Link>
           <Link href={href(today)} className={chip} aria-current={monday === weekStart(today) ? "page" : undefined}>
-            This week
+            {w.thisWeek}
           </Link>
           <Link href={href(addDays(monday, 7))} className={chip}>
-            Next →
+            {w.next}
           </Link>
         </nav>
       </div>
 
       {staff.length > 1 && (
-        <nav aria-label="Staff" className="flex flex-wrap gap-2">
+        <nav aria-label={w.staff} className="flex flex-wrap gap-2">
           <Link href={href(monday, null)} className={`${chip} ${staffId ? "" : "bg-brand text-brand-ink"}`}>
-            Everyone
+            {w.everyone}
           </Link>
           {staff.map((member) => (
             <Link
@@ -185,7 +193,7 @@ export default async function BookingsPage({ params, searchParams }: PageProps<"
 
       {/* Every booking this week by day, with what can be done about it. */}
       {bookings.length === 0 ? (
-        <p className="rounded-md border border-dashed border-line p-6 text-center text-sm text-muted">No bookings this week.</p>
+        <p className="rounded-md border border-dashed border-line p-6 text-center text-sm text-muted">{w.none}</p>
       ) : (
         <div className="flex max-w-3xl flex-col gap-6">
           {days
@@ -207,18 +215,18 @@ export default async function BookingsPage({ params, searchParams }: PageProps<"
                         </div>
                         <div className="flex flex-col items-end gap-1 text-right">
                           {b.status === "held" ? (
-                            <span className="rounded bg-sunken px-1.5 py-0.5 text-xs">Being paid for</span>
+                            <span className="rounded bg-sunken px-1.5 py-0.5 text-xs">{w.beingPaid}</span>
                           ) : (
                             b.orderId && (
                               <Link href={`/admin/${store.slug}/orders/${b.orderId}`} className="underline">
-                                Order {b.orderNumber}
+                                {fillWords(w.order, { number: b.orderNumber ?? "" })}
                               </Link>
                             )
                           )}
-                          {b.noShowAt && <span className="rounded bg-sunken px-1.5 py-0.5 text-xs">No-show</span>}
+                          {b.noShowAt && <span className="rounded bg-sunken px-1.5 py-0.5 text-xs">{w.noShow}</span>}
                           {b.status === "confirmed" && !b.noShowAt && Date.parse(b.startsAt) <= now && (
                             <details className="text-left">
-                              <summary className="cursor-pointer text-right text-muted underline">No-show…</summary>
+                              <summary className="cursor-pointer text-right text-muted underline">{w.noShowMenu}</summary>
                               <NoShowForm
                                 storeSlug={store.slug}
                                 bookingId={b.id}
@@ -242,5 +250,6 @@ export default async function BookingsPage({ params, searchParams }: PageProps<"
         </div>
       )}
     </div>
+    </AdminTextScope>
   );
 }

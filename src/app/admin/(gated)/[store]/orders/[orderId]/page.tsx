@@ -237,7 +237,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
   ].sort((a, b) => b.at.localeCompare(a.at));
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["order", "drafts", "privacy"])}>
+    <AdminTextScope texts={adminTexts(lang, ["order", "drafts", "privacy", "builder"])}>
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <PageHeader

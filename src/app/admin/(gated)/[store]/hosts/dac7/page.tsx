@@ -6,6 +6,9 @@ import { decimalAmount } from "@/lib/dac7";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { dac7Report } from "@/server/dac7";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 
 export const metadata: Metadata = { title: "Tax report (DAC7)" };
 
@@ -25,6 +28,8 @@ export default async function Dac7Page({ params, searchParams }: PageProps<"/adm
   const off = requireFeature(staffer, "bookings");
   if (off) return off;
   const { store } = staffer;
+  const t = adminText(adminLangOf(staffer.account.adminLocale), "bookings");
+  const w = t.dac7;
   const current = thisYear();
   const asked = Number((await searchParams).year);
   const year = Number.isInteger(asked) && asked >= current - 3 && asked <= current ? asked : current - 1;
@@ -36,12 +41,12 @@ export default async function Dac7Page({ params, searchParams }: PageProps<"/adm
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        back={{ href: base, label: "Hosts" }}
-        title="Tax report (DAC7)"
-        description={<>As a marketplace, the store reports its hosts and what they were paid to the tax authority of the country it is based in, once a year, by 31 January for the year before (in Norway, to Skatteetaten). Here is what Kaizena Flow has gathered for {year}: check it, then file it in the tax authority&apos;s service. Amounts are what guests paid, refunds taken off, by quarter of payment; the commission is the store&apos;s. The host&apos;s net is what they earned after the commission and Kaizena Flow&apos;s fee (before Stripe&apos;s own fees); it is for your records, and not part of what the report asks for.</>}
+        back={{ href: base, label: t.hosts.title }}
+        title={w.title}
+        description={fillWords(w.description, { year })}
       />
 
-      <nav aria-label="Year" className="flex flex-wrap gap-2 text-sm">
+      <nav aria-label={w.year} className="flex flex-wrap gap-2 text-sm">
         {[current, current - 1, current - 2].map((y) => (
           <Link
             key={y}
@@ -50,43 +55,43 @@ export default async function Dac7Page({ params, searchParams }: PageProps<"/adm
             className={`min-h-10 rounded-pill border border-edge px-3 py-2 ${y === year ? "bg-sunken font-medium" : ""}`}
           >
             {y}
-            {y === current && " (so far)"}
+            {y === current && ` ${w.soFar}`}
           </Link>
         ))}
       </nav>
 
       {(missingDetails.length > 0 || missingAddresses.length > 0) && (
         <div role="alert" className="rounded-lg border border-danger-text/40 p-4 text-sm text-danger-text">
-          {missingDetails.length > 0 && <p>Tax details missing for: {missingDetails.map((s) => s.name).join(", ")}.</p>}
-          {missingAddresses.length > 0 && <p>Address missing for: {missingAddresses.map((p) => p.name).join(", ")}.</p>}
-          <p>Hosts give these in their area; remind them before you file.</p>
+          {missingDetails.length > 0 && <p>{fillWords(w.detailsMissing, { list: missingDetails.map((s) => s.name).join(", ") })}</p>}
+          {missingAddresses.length > 0 && <p>{fillWords(w.addressMissing, { list: missingAddresses.map((p) => p.name).join(", ") })}</p>}
+          <p>{w.remind}</p>
         </div>
       )}
 
       <section aria-labelledby="sellers-heading" className="flex flex-col gap-2">
         <h2 id="sellers-heading" className="text-title text-ink">
-          Hosts paid in {year}
+          {fillWords(w.paidIn, { year })}
         </h2>
         {report.sellers.length === 0 ? (
-          <p className="text-sm text-muted">No host was paid in {year}: there is nothing to report.</p>
+          <p className="text-sm text-muted">{fillWords(w.nothing, { year })}</p>
         ) : (
           <div className={`overflow-x-auto ${CARD_CLASS}`}>
             <table className="w-full text-sm">
               <thead className="text-left text-muted">
                 <tr>
-                  <th className="p-2 font-normal">Host</th>
-                  <th className="p-2 font-normal">Tax details</th>
-                  <th className="p-2 text-right font-normal">Paid</th>
-                  <th className="p-2 text-right font-normal">Commission</th>
-                  <th className="p-2 text-right font-normal">Host&apos;s net</th>
-                  <th className="p-2 text-right font-normal">Bookings</th>
+                  <th className="p-2 font-normal">{w.host}</th>
+                  <th className="p-2 font-normal">{w.details}</th>
+                  <th className="p-2 text-right font-normal">{w.paid}</th>
+                  <th className="p-2 text-right font-normal">{w.commission}</th>
+                  <th className="p-2 text-right font-normal">{w.net}</th>
+                  <th className="p-2 text-right font-normal">{w.bookings}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
                 {report.sellers.map((s) => (
                   <tr key={`${s.hostId}:${s.currency}`}>
                     <td className="p-2">{s.name}</td>
-                    <td className="p-2">{s.details ? `${s.details.legalName} (${s.details.tinCountry})` : "Missing"}</td>
+                    <td className="p-2">{s.details ? `${s.details.legalName} (${s.details.tinCountry})` : w.missing}</td>
                     <td className="p-2 text-right tabular-nums">
                       {decimalAmount(sum(s.considerationMinor), s.currency)} {s.currency}
                     </td>
@@ -108,17 +113,17 @@ export default async function Dac7Page({ params, searchParams }: PageProps<"/adm
       {report.properties.length > 0 && (
         <section aria-labelledby="properties-heading" className="flex flex-col gap-2">
           <h2 id="properties-heading" className="text-title text-ink">
-            Homes rented out
+            {w.homes}
           </h2>
           <ul className={`divide-y divide-line text-sm ${CARD_CLASS}`}>
             {report.properties.map((p) => (
               <li key={`${p.resourceId}:${p.currency}`} className="flex flex-wrap justify-between gap-2 p-3">
                 <span>
                   <span className="font-medium">{p.name}</span>
-                  <span className="block text-muted">{p.address || "No address yet"}</span>
+                  <span className="block text-muted">{p.address || w.noAddress}</span>
                 </span>
                 <span className="text-right tabular-nums">
-                  {sum(p.activities)} bookings · {p.nights} nights
+                  {countWords(sum(p.activities), w.bookingsCount)} · {countWords(p.nights, t.calendar.nights)}
                 </span>
               </li>
             ))}
@@ -130,22 +135,22 @@ export default async function Dac7Page({ params, searchParams }: PageProps<"/adm
         (memberCan(staffer, "owner") ? (
           <section aria-labelledby="download-heading" className="flex flex-col gap-2 text-sm">
             <h2 id="download-heading" className="text-title text-ink">
-              Download
+              {w.download}
             </h2>
-            <p className="text-muted">Spreadsheets with every field the report asks for, per quarter.</p>
+            <p className="text-muted">{w.downloadHint}</p>
             <div className="flex flex-wrap gap-3">
               <a href={`${base}/dac7/${year}/sellers.csv`} className="min-h-10 rounded-pill border border-edge px-3 py-2" download>
-                Hosts ({year})
+                {fillWords(w.hostsFile, { year })}
               </a>
               {report.properties.length > 0 && (
                 <a href={`${base}/dac7/${year}/properties.csv`} className="min-h-10 rounded-pill border border-edge px-3 py-2" download>
-                  Homes ({year})
+                  {fillWords(w.homesFile, { year })}
                 </a>
               )}
             </div>
           </section>
         ) : (
-          <p className="text-sm text-muted">The store&apos;s owners download the report, as it holds hosts&apos; tax numbers.</p>
+          <p className="text-sm text-muted">{w.ownersOnly}</p>
         ))}
     </div>
   );

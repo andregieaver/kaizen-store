@@ -1,5 +1,7 @@
 "use server";
 
+import { platformActionWords } from "@/server/platform-site-words";
+
 import { updateTag } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
@@ -15,14 +17,14 @@ export async function savePlatformTrackingAction(_state: FormState, form: FormDa
   if (!result.ok) return { status: "error", messages: result.problems };
   // Kaizen's layout loads the tools and asks about them, with its header and footer settings.
   updateTag(PLATFORM_NAVIGATION_TAG);
-  return { status: "ok", messages: ["Saved. Kaizena Flow's site asks and loads accordingly now."] };
+  return { status: "ok", messages: [(await platformActionWords()).cookiesSaved] };
 }
 
 /** Scans Kaizen's own site soon (D58). */
 export async function requestPlatformScanAction(): Promise<FormState> {
   const admin = await requirePlatformAdmin();
   const queued = await requestScan(admin, null);
-  return { status: "ok", messages: [queued ? "Scan asked for. It starts within a minute." : "A scan is already on its way."] };
+  return { status: "ok", messages: [queued ? (await platformActionWords()).scanAsked : (await platformActionWords()).scanOnWay] };
 }
 
 /** Describes an item the scan of Kaizen's site found (D58). */
@@ -31,5 +33,5 @@ export async function savePlatformCookieNoteAction(_state: FormState, form: Form
   const result = await saveCookieNote(admin, null, Object.fromEntries(form));
   if (!result.ok) return { status: "error", messages: result.problems };
   updateTag(cookiesTag(null));
-  return { status: "ok", messages: ["Saved. The cookie page lists it now."] };
+  return { status: "ok", messages: [(await platformActionWords()).cookieSaved] };
 }

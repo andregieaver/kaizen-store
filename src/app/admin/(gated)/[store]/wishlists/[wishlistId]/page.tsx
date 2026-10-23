@@ -11,6 +11,10 @@ import { requirePermission } from "@/server/permissions";
 import { customerSummary } from "@/server/customer-admin";
 import { getStoreWishlist, listCartAdds } from "@/server/wishlist-admin";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
+
 
 export const metadata: Metadata = { title: "Wishlist" };
 
@@ -37,35 +41,36 @@ export default async function WishlistPage({ params }: PageProps<"/admin/[store]
     listCartAdds(store.id, { wishlistId }),
   ]);
   const locale = market?.locale ?? "nb-NO";
+  const lang = adminLangOf(gated.account.adminLocale);
+  const t = adminText(lang, "bookings").wishlists;
+  const w = t.list;
+  const dateLocale = lang === "en" ? locale : ADMIN_LANG_FACTS[lang].locale;
   const base = `/admin/${store.slug}`;
-  const date = (iso: string) => new Date(iso).toLocaleDateString(locale, { dateStyle: "medium", timeZone: "Europe/Oslo" });
+  const date = (iso: string) => new Date(iso).toLocaleDateString(dateLocale, { dateStyle: "medium", timeZone: "Europe/Oslo" });
   const totalMinor = list.items.reduce((sum, i) => sum + (i.priceMinor ?? 0) * i.quantity, 0);
   const currency = list.items.find((i) => i.currency)?.currency;
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        back={{ href: `${base}/wishlists`, label: "Wishlists" }}
+        back={{ href: `${base}/wishlists`, label: t.title }}
         title={<>{list.name}</>}
-        description={<>{list.items.length === 1 ? "1 item" : `${list.items.length} items`}{currency && totalMinor > 0 && ` · ${formatMoney(totalMinor, currency, locale)} at today's prices`} · made {date(list.createdAt)} ·{" "}{list.keepAfterCart ? "items stay in the list when added to the cart" : "items leave the list when added to the cart"}</>}
+        description={<>{countWords(list.items.length, t.items)}{currency && totalMinor > 0 && ` · ${fillWords(w.today, { amount: formatMoney(totalMinor, currency, locale) })}`} · {fillWords(w.made, { date: date(list.createdAt) })} ·{" "}{list.keepAfterCart ? w.stay : w.leave}</>}
       />
 
       {customer ? (
         <CustomerBar customer={storeCustomerBar(store.slug, customer, locale)} />
       ) : (
-        <section aria-label="Shopper" className={`p-4 text-sm ${CARD_CLASS}`}>
-          <p className="font-medium">A guest, not signed in</p>
-          <p className="text-muted">
-            The list is kept in the shopper&apos;s browser and joins their account if they sign in. Who they are shows below
-            once they buy from it.
-          </p>
+        <section aria-label={w.shopper} className={`p-4 text-sm ${CARD_CLASS}`}>
+          <p className="font-medium">{w.guest}</p>
+          <p className="text-muted">{w.guestHint}</p>
         </section>
       )}
 
       <section aria-labelledby="items" className={card}>
-        <h2 id="items" className="mb-3 text-title text-ink">In the list</h2>
+        <h2 id="items" className="mb-3 text-title text-ink">{w.inList}</h2>
         {list.items.length === 0 ? (
-          <p className="text-sm text-muted">The list is empty.</p>
+          <p className="text-sm text-muted">{w.empty}</p>
         ) : (
           <ul className="divide-y divide-line text-sm">
             {list.items.map((item) => (
@@ -84,20 +89,20 @@ export default async function WishlistPage({ params }: PageProps<"/admin/[store]
                     {item.variant
                       ? variantText(item.variant.options, item.variant.sku)
                       : item.variants > 1
-                        ? "Variant not chosen yet"
-                        : "No variant to choose"}
-                    {item.productStatus !== "active" && " · no longer for sale"}
+                        ? w.noVariant
+                        : w.oneVariant}
+                    {item.productStatus !== "active" && ` · ${w.notForSale}`}
                   </span>
                   <span className="block text-xs text-muted">
-                    Saved {date(item.savedAt)}
-                    {item.available !== null && (item.available > 0 ? ` · ${item.available} in stock` : " · out of stock")}
+                    {fillWords(w.saved, { date: date(item.savedAt) })}
+                    {item.available !== null && (item.available > 0 ? ` · ${fillWords(w.inStock, { n: item.available })}` : ` · ${w.outOfStock}`)}
                   </span>
                 </span>
                 <span className="shrink-0 text-right">
                   {item.quantity > 1 && <span className="block text-xs text-muted">{item.quantity} ×</span>}
                   {item.priceMinor !== null && item.currency ? (
                     <>
-                      {!item.variant && item.variants > 1 && <span className="text-xs text-muted">from </span>}
+                      {!item.variant && item.variants > 1 && <span className="text-xs text-muted">{w.from} </span>}
                       {formatMoney(item.priceMinor, item.currency, locale)}
                     </>
                   ) : (
@@ -111,12 +116,12 @@ export default async function WishlistPage({ params }: PageProps<"/admin/[store]
       </section>
 
       <section aria-labelledby="to-cart" className={card}>
-        <h2 id="to-cart" className="mb-1 text-title text-ink">From this list to purchase</h2>
-        <p className="mb-3 text-sm text-muted">Each time the shopper put items from this list in the cart, and what came of it.</p>
+        <h2 id="to-cart" className="mb-1 text-title text-ink">{w.toPurchase}</h2>
+        <p className="mb-3 text-sm text-muted">{w.toPurchaseHint}</p>
         {adds.length === 0 ? (
-          <p className="text-sm text-muted">Nothing from this list has gone to the cart yet.</p>
+          <p className="text-sm text-muted">{w.nothingToCart}</p>
         ) : (
-          <CartAddTable rows={adds} storeSlug={store.slug} locale={locale} showList={false} showCustomer={!customer} />
+          <CartAddTable words={t} dateLocale={dateLocale} rows={adds} storeSlug={store.slug} locale={locale} showList={false} showCustomer={!customer} />
         )}
       </section>
     </div>

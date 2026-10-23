@@ -6,7 +6,9 @@ import { PLATFORM_BASE } from "@/lib/platform-nav";
 import { ratePercent } from "@/lib/vat";
 import type { VatRateRow } from "@/server/vat-admin";
 
-import { card, dayText } from "./styles";
+import { countWords, fillWords } from "@/lib/admin-fill";
+
+import { card, dayText, VAT_EN, type VatWords } from "./styles";
 
 type VerifyAction = (country: string, category: string, validFrom: string) => (state: FormState, form: FormData) => Promise<FormState>;
 
@@ -22,44 +24,41 @@ function Source({ source }: { source: string }) {
   return <span>{source}</span>;
 }
 
-const STATE_WORDS: Record<VatRateRow["state"], string> = { current: "In force", scheduled: "Scheduled", ended: "Ended" };
 
 /**
  * The rates nobody has verified yet (D157): current and scheduled rows, each with its source and the date it was checked, to work
  * through with an accountant. Marking a row verified records who and when. A rate is only relied on once a person has looked at it,
  * but an unverified rate is still the one that is charged: the list is the way to find them.
  */
-export function UnverifiedCard({ rows, categoryName, verify }: { rows: VatRateRow[]; categoryName: (code: string) => string; verify: VerifyAction }) {
+export function UnverifiedCard({ rows, categoryName, verify, words: w = VAT_EN, locale }: { rows: VatRateRow[]; categoryName: (code: string) => string; verify: VerifyAction; words?: VatWords; locale?: string }) {
+  const u = w.unverified;
   return (
     <section aria-labelledby="unverified" className={card}>
       <div>
         <h2 id="unverified" className="text-title text-ink">
-          Not verified yet
+          {u.title}
         </h2>
-        <p className="text-sm text-muted">
-          Every rate starts unverified: it carries its source and the day it was read, and nobody has confirmed it. These rates are still the ones charged. Work through them with an accountant and
-          mark each verified.
-        </p>
+        <p className="text-sm text-muted">{u.text}</p>
       </div>
       {rows.length === 0 ? (
-        <p className="text-sm text-muted">Every rate in force or scheduled has been verified.</p>
+        <p className="text-sm text-muted">{u.none}</p>
       ) : (
         <>
           <p className="text-sm" aria-live="polite">
-            {rows.length} {rows.length === 1 ? "rate" : "rates"} to verify.
+            {countWords(rows.length, u.count)}
           </p>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[40rem] text-left text-sm">
-              <caption className="sr-only">Rates not yet verified</caption>
+              <caption className="sr-only">{u.caption}</caption>
               <thead className="text-muted">
                 <tr>
-                  <th scope="col" className="py-2 pr-3 font-medium">Country</th>
-                  <th scope="col" className="py-2 pr-3 font-medium">Category</th>
-                  <th scope="col" className="py-2 pr-3 text-right font-medium">Rate</th>
-                  <th scope="col" className="py-2 pr-3 font-medium">From</th>
-                  <th scope="col" className="py-2 pr-3 font-medium">Source and date checked</th>
+                  <th scope="col" className="py-2 pr-3 font-medium">{w.country}</th>
+                  <th scope="col" className="py-2 pr-3 font-medium">{w.category}</th>
+                  <th scope="col" className="py-2 pr-3 text-right font-medium">{w.rate}</th>
+                  <th scope="col" className="py-2 pr-3 font-medium">{w.from}</th>
+                  <th scope="col" className="py-2 pr-3 font-medium">{u.sourceAndDate}</th>
                   <th scope="col" className="py-2 font-medium">
-                    <span className="sr-only">Action</span>
+                    <span className="sr-only">{u.action}</span>
                   </th>
                 </tr>
               </thead>
@@ -74,17 +73,17 @@ export function UnverifiedCard({ rows, categoryName, verify }: { rows: VatRateRo
                     <td className="py-2 pr-3">{categoryName(row.category)}</td>
                     <td className="py-2 pr-3 text-right tabular-nums">{ratePercent(row.rate)}</td>
                     <td className="py-2 pr-3">
-                      {dayText(row.validFrom)}
-                      {row.state === "scheduled" && <span className="block text-xs text-muted">Scheduled</span>}
+                      {dayText(row.validFrom, locale)}
+                      {row.state === "scheduled" && <span className="block text-xs text-muted">{w.states.scheduled}</span>}
                     </td>
                     <td className="py-2 pr-3">
                       <Source source={row.source} />
-                      <span className="block text-xs text-muted">Checked {dayText(row.checkedOn)}</span>
+                      <span className="block text-xs text-muted">{fillWords(w.checked, { date: dayText(row.checkedOn, locale) })}</span>
                       {row.note && <span className="block text-xs text-muted">{row.note}</span>}
                     </td>
                     <td className="py-2">
-                      <ActionForm action={verify(row.country, row.category, row.validFrom)} successMessage="Verified." className="flex flex-col gap-1">
-                        <SubmitButton variant="secondary">Mark verified</SubmitButton>
+                      <ActionForm action={verify(row.country, row.category, row.validFrom)} successMessage={w.verifiedDone} className="flex flex-col gap-1">
+                        <SubmitButton variant="secondary">{w.markVerified}</SubmitButton>
                       </ActionForm>
                     </td>
                   </tr>
@@ -102,29 +101,30 @@ export function UnverifiedCard({ rows, categoryName, verify }: { rows: VatRateRo
  * One country's rates with their history, newest first for each category: the rate, when it applied, whether it is in force now, its source
  * and who verified it and when. A rate is never edited: a change ends one period and begins another, so this is the full record.
  */
-export function RateHistory({ rows, categoryName, verify }: { rows: VatRateRow[]; categoryName: (code: string) => string; verify: VerifyAction }) {
+export function RateHistory({ rows, categoryName, verify, words: w = VAT_EN, locale }: { rows: VatRateRow[]; categoryName: (code: string) => string; verify: VerifyAction; words?: VatWords; locale?: string }) {
+  const hw = w.history;
   return (
     <section aria-labelledby="history" className={card}>
       <div>
         <h2 id="history" className="text-title text-ink">
-          Rates and history
+          {hw.title}
         </h2>
-        <p className="text-sm text-muted">Every period of every rate for this country. A category with no row takes the standard rate.</p>
+        <p className="text-sm text-muted">{hw.text}</p>
       </div>
       {rows.length === 0 ? (
-        <p className="text-sm text-muted">No rates are recorded for this country.</p>
+        <p className="text-sm text-muted">{hw.none}</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[44rem] text-left text-sm">
-            <caption className="sr-only">Rates and their history</caption>
+            <caption className="sr-only">{hw.caption}</caption>
             <thead className="text-muted">
               <tr>
-                <th scope="col" className="py-2 pr-3 font-medium">Category</th>
-                <th scope="col" className="py-2 pr-3 text-right font-medium">Rate</th>
-                <th scope="col" className="py-2 pr-3 font-medium">Applies</th>
-                <th scope="col" className="py-2 pr-3 font-medium">State</th>
-                <th scope="col" className="py-2 pr-3 font-medium">Source and date checked</th>
-                <th scope="col" className="py-2 font-medium">Verified</th>
+                <th scope="col" className="py-2 pr-3 font-medium">{w.category}</th>
+                <th scope="col" className="py-2 pr-3 text-right font-medium">{w.rate}</th>
+                <th scope="col" className="py-2 pr-3 font-medium">{hw.applies}</th>
+                <th scope="col" className="py-2 pr-3 font-medium">{hw.state}</th>
+                <th scope="col" className="py-2 pr-3 font-medium">{w.unverified.sourceAndDate}</th>
+                <th scope="col" className="py-2 font-medium">{w.verified}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
@@ -133,31 +133,31 @@ export function RateHistory({ rows, categoryName, verify }: { rows: VatRateRow[]
                   <td className="py-2 pr-3">{categoryName(row.category)}</td>
                   <td className="py-2 pr-3 text-right tabular-nums">{ratePercent(row.rate)}</td>
                   <td className="py-2 pr-3">
-                    {dayText(row.validFrom)}
-                    {" to "}
-                    {row.validTo ? dayText(row.validTo) : "now"}
-                    <span className="block text-xs text-muted">The end day is the first day it no longer applies.</span>
+                    {dayText(row.validFrom, locale)}
+                    {hw.to}
+                    {row.validTo ? dayText(row.validTo, locale) : hw.now}
+                    <span className="block text-xs text-muted">{hw.endDay}</span>
                   </td>
-                  <td className="py-2 pr-3">{STATE_WORDS[row.state]}</td>
+                  <td className="py-2 pr-3">{w.states[row.state]}</td>
                   <td className="py-2 pr-3">
                     <Source source={row.source} />
-                    <span className="block text-xs text-muted">Checked {dayText(row.checkedOn)}</span>
+                    <span className="block text-xs text-muted">{fillWords(w.checked, { date: dayText(row.checkedOn, locale) })}</span>
                     {row.note && <span className="block text-xs text-muted">{row.note}</span>}
                   </td>
                   <td className="py-2">
                     {row.verified ? (
                       <span>
-                        Verified
+                        {w.verified}
                         <span className="block text-xs text-muted">
                           {row.verified.by ? `${row.verified.by}, ` : ""}
-                          {dayText(row.verified.at.slice(0, 10))}
+                          {dayText(row.verified.at.slice(0, 10), locale)}
                         </span>
                       </span>
                     ) : row.state === "ended" ? (
-                      <span className="text-muted">Not verified</span>
+                      <span className="text-muted">{hw.notVerified}</span>
                     ) : (
-                      <ActionForm action={verify(row.country, row.category, row.validFrom)} successMessage="Verified." className="flex flex-col gap-1">
-                        <SubmitButton variant="secondary">Mark verified</SubmitButton>
+                      <ActionForm action={verify(row.country, row.category, row.validFrom)} successMessage={w.verifiedDone} className="flex flex-col gap-1">
+                        <SubmitButton variant="secondary">{w.markVerified}</SubmitButton>
                       </ActionForm>
                     )}
                   </td>

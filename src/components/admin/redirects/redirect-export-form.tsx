@@ -1,4 +1,4 @@
-import { DialectField } from "@/components/admin/data/export-forms";
+import { DialectField, type ExportWords } from "@/components/admin/data/export-forms";
 import { card, label, primary } from "@/components/admin/data/ui";
 import { hint } from "@/components/admin/data/ui";
 import { redirectsEn, type RedirectsMessages } from "@/lib/admin-messages/redirects.en";
@@ -7,7 +7,7 @@ import { redirectsEn, type RedirectsMessages } from "@/lib/admin-messages/redire
  * The redirect file's form (2.2.5): which redirects (the store's own by default, or all of them including the automatic ones) and the file's format. A plain
  * HTML form that POSTs to the page's file route, which answers with the file at once (up to 2,000 rows) or sends the member back with a job. No script is needed.
  */
-export function RedirectExportForm({ slug, words = redirectsEn }: { slug: string; words?: RedirectsMessages }) {
+export function RedirectExportForm({ slug, words = redirectsEn, exportWords }: { slug: string; words?: RedirectsMessages; exportWords?: ExportWords }) {
   const w = words.export;
   return (
     <form method="post" action={`/admin/${slug}/redirects/export/file`} className={`${card} flex flex-col gap-4`}>
@@ -28,7 +28,7 @@ export function RedirectExportForm({ slug, words = redirectsEn }: { slug: string
           </span>
         </label>
       </fieldset>
-      <DialectField defaultValue="standard" />
+      <DialectField defaultValue="standard" words={exportWords} />
       <div>
         <button type="submit" className={primary}>
           {w.submit}

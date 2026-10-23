@@ -9,17 +9,20 @@ import { designPreviewPath } from "@/lib/design-presets";
 import { latestDesignUse, listDesigns } from "@/server/design-presets";
 import { InvoiceList } from "@/components/admin/plan-invoices";
 import { PlanDiscount } from "@/components/admin/plan-discount";
-import { formatBps, isOnPlan, priceLabel, SUBSCRIPTION_LABELS } from "@/lib/plans";
+import { formatBps, isOnPlan, priceLabel } from "@/lib/plans";
 import { mainCurrency } from "@/lib/markets";
 import { billingMode, getStoreBilling, listPlans, listStoreInvoices } from "@/server/billing";
 import { listStorePeople } from "@/server/platform-customers";
-import { closureBlockers, STATUS_WORDS } from "@/lib/store-closure";
+import { closureBlockers } from "@/lib/store-closure";
 import { storeObligations, storeState } from "@/server/store-closure";
 import { getStore } from "@/server/stores";
 
 import { applyStoreDiscountAction, assignPlanAction, cancelPlanAction, setStoreFeeAction } from "../../actions";
 import { requirePlatformAdmin } from "@/server/auth";
 import { Card, PageHeader } from "@/components/admin/ui";
+import { fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 
 import { applyDesignToStoreAction, restoreDesignForStoreAction } from "../../themes/actions";
 import { closeStoreForPlatformAction, detachDryRunAction, reopenStoreForPlatformAction, suspendStoreAction } from "./actions";
@@ -30,7 +33,13 @@ const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal
 
 /** One store's plan with Kaizen: start, change or cancel it, and its fee. */
 export default async function PlatformStorePage({ params }: PageProps<"/admin/platform/stores/[store]">) {
-  await requirePlatformAdmin();
+  const account = await requirePlatformAdmin();
+  const lang = adminLangOf(account.adminLocale);
+  const w = adminText(lang, "platform").store;
+  const t = adminText(lang, "platform");
+  const billingWords = adminText(lang, "billing");
+  const locale = ADMIN_LANG_FACTS[lang].locale;
+  const roleWord = (role: string) => (adminText(lang, "staff").roles as Record<string, string>)[role] ?? role;
   const store = await getStore((await params).store);
   if (!store) notFound();
   const [billing, plans, people, invoices] = await Promise.all([
@@ -40,9 +49,9 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
     listStoreInvoices(store.id, 12),
   ]);
   const [state, obligations, designs, latestDesign] = await Promise.all([storeState(store.id), storeObligations(store.id), listDesigns(), latestDesignUse(store.id)]);
-  const blockers = closureBlockers(obligations);
+  const blockers = closureBlockers(obligations, adminText(lang, "settings").close);
   const owner = people.find((p) => p.role === "owner");
-  const date = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { dateStyle: "medium", timeZone: "Europe/Oslo" });
+  const date = (iso: string) => new Date(iso).toLocaleDateString(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeZone: "Europe/Oslo" });
   if (!billing) notFound();
   const mode = billingMode();
   const onPlan = isOnPlan(billing.status);
@@ -57,52 +66,53 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
       <div>
         <p className="text-sm">
           <Link href="/admin/platform/stores" className="underline">
-            Stores
+            {w.stores}
           </Link>
         </p>
         <PageHeader
           title={<>{store.name}</>}
-          description={<>{billing.ownerEmail ?? "No owner yet"} · {store.details.country ?? "country not set"} ·{" "}<Link href={`/admin/${store.slug}`} className="underline">Open the store&apos;s admin</Link></>}
+          description={<>{billing.ownerEmail ?? w.noOwner} · {store.details.country ?? w.noCountry} ·{" "}<Link href={`/admin/${store.slug}`} className="underline">{w.openAdmin}</Link></>}
         />
         </div>
 
       {owner && (
         <CustomerBar
+          words={adminText(lang, "customers")}
           customer={{
             href: `/admin/platform/customers/${owner.id}`,
             name: owner.name,
             email: owner.email,
             avatarPath: owner.avatarPath,
             account: "verified",
-            badge: `Owner of ${store.name}`,
-            facts: [people.length === 1 ? "Runs the store alone" : `${people.length} people run the store`],
+            badge: fillWords(w.ownerOf, { store: store.name }),
+            facts: [people.length === 1 ? w.alone : fillWords(w.people, { n: people.length })],
           }}
         />
       )}
 
-      <Card title="Current plan" className="text-sm" compact>
+      <Card title={w.currentPlan} className="text-sm" compact>
         {billing.planName && billing.status ? (
           <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1">
-            <dt className="text-muted">Plan</dt>
+            <dt className="text-muted">{w.plan}</dt>
             <dd>
               {billing.planName}
-              {billing.price && ` · ${priceLabel(billing.price.amountMinor, billing.price.currency, billing.price.interval)}`}
+              {billing.price && ` · ${priceLabel(billing.price.amountMinor, billing.price.currency, billing.price.interval, billingWords.intervals)}`}
             </dd>
-            <dt className="text-muted">Status</dt>
+            <dt className="text-muted">{w.status}</dt>
             <dd>
-              {SUBSCRIPTION_LABELS[billing.status] ?? billing.status}
-              {billing.cancelAtPeriodEnd && " · ends at the end of the period"}
-              {billing.mode === "test" && " · test mode"}
+              {billingWords.statuses[billing.status] ?? billing.status}
+              {billing.cancelAtPeriodEnd && w.endsAtPeriodEnd}
+              {billing.mode === "test" && w.testMode}
             </dd>
             {billing.currentPeriodEnd && billing.status !== "canceled" && (
               <>
-                <dt className="text-muted">{billing.cancelAtPeriodEnd ? "Ends" : "Next invoice"}</dt>
+                <dt className="text-muted">{billing.cancelAtPeriodEnd ? w.ends : w.nextInvoice}</dt>
                 <dd>{billing.currentPeriodEnd.slice(0, 10)}</dd>
               </>
             )}
             {billing.subscriptionId && (
               <>
-                <dt className="text-muted">In Stripe</dt>
+                <dt className="text-muted">{w.inStripe}</dt>
                 <dd>
                   <a
                     href={`https://dashboard.stripe.com/${billing.mode === "test" ? "test/" : ""}subscriptions/${billing.subscriptionId}`}
@@ -117,18 +127,18 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
             )}
           </dl>
         ) : (
-          <p>No plan. The store pays the default fee per sale.</p>
+          <p>{w.noPlan}</p>
         )}
       </Card>
 
-      <Card title={<>{onPlan ? "Change plan" : "Start a plan"}</>} compact>
+      <Card title={onPlan ? w.changePlan : w.startAPlan} compact>
         {!mode ? (
-          <p className="text-sm text-muted">Kaizena Flow&apos;s Stripe keys are not set (Platform → Stripe).</p>
+          <p className="text-sm text-muted">{w.noKeys}</p>
         ) : offered.length === 0 ? (
           <p className="text-sm text-muted">
-            There are no plans to offer yet.{" "}
+            {w.noPlans}{" "}
             <Link href="/admin/platform/plans" className="underline">
-              Create one
+              {w.createOne}
             </Link>
             .
           </p>
@@ -136,20 +146,22 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
           <ActionForm action={assignPlanAction.bind(null, store.slug)} className="flex flex-col gap-4">
             <p className="text-sm text-muted">
               {onPlan
-                ? "The change applies now; Stripe credits or charges the difference on the next invoice."
-                : `Stripe emails the store an invoice for each period, due in 14 days${(store.details.country ?? "NO") === "NO" ? ", with 25 % Norwegian VAT" : ", without VAT (reverse charge)"}.`}
-              {mode === "test" && " Kaizena Flow is in test mode: no real invoices are sent."}
+                ? w.changeNow
+                : (store.details.country ?? "NO") === "NO"
+                  ? w.invoiceNo
+                  : w.invoiceAbroad}
+              {mode === "test" && w.testNote}
             </p>
             <label className="flex flex-col gap-1 text-sm font-medium">
-              Plan and price
+              {w.planAndPrice}
               <select name="priceId" required defaultValue={suggested} className={control}>
                 {offered.map((plan) => (
-                  <optgroup key={plan.id} label={`${plan.name} (${formatBps(plan.saleFeeBps)} per sale)`}>
+                  <optgroup key={plan.id} label={fillWords(w.perSale, { plan: plan.name, fee: formatBps(plan.saleFeeBps, locale) })}>
                     {plan.prices
                       .filter((price) => price.active)
                       .map((price) => (
                         <option key={price.id} value={price.id}>
-                          {plan.name} · {priceLabel(price.amountMinor, price.currency, price.interval)}
+                          {plan.name} · {priceLabel(price.amountMinor, price.currency, price.interval, billingWords.intervals)}
                         </option>
                       ))}
                   </optgroup>
@@ -158,31 +170,31 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
             </label>
             {!onPlan && (
               <label className="flex flex-col gap-1 text-sm font-medium">
-                Free trial (days)
+                {w.trialDays}
                 <input name="trialDays" type="number" min={0} max={730} defaultValue={0} className={`${control} w-32`} />
               </label>
             )}
             <div>
-              <SubmitButton>{onPlan ? "Change plan" : "Start plan"}</SubmitButton>
+              <SubmitButton>{onPlan ? w.changePlan : w.startPlan}</SubmitButton>
             </div>
           </ActionForm>
         )}
       </Card>
 
       {onPlan && (
-        <Card title="Cancel plan" compact>
+        <Card title={w.cancelPlan} compact>
           <ActionForm action={cancelPlanAction.bind(null, store.id)} className="flex flex-wrap gap-3">
             {billing.cancelAtPeriodEnd ? (
               <SubmitButton name="when" value="undo" variant="secondary">
-                Keep the plan
+                {w.keepPlan}
               </SubmitButton>
             ) : (
               <SubmitButton name="when" value="period_end" variant="secondary">
-                Cancel at the end of the period
+                {w.cancelAtEnd}
               </SubmitButton>
             )}
             <SubmitButton name="when" value="now" variant="secondary">
-              Cancel now
+              {w.cancelNow}
             </SubmitButton>
           </ActionForm>
         </Card>
@@ -194,18 +206,19 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
           apply={applyStoreDiscountAction.bind(null, store.slug)}
           remove={null}
           canEdit
+          words={billingWords}
         />
       )}
 
-      <Card title="Fee per sale" compact>
+      <Card title={w.fee} compact>
         <p className="mb-3 text-sm text-muted">
-          Now {formatBps(billing.feeBps)}
-          {billing.saleFeeBpsOverride !== null ? " (the store's own fee)" : onPlan ? " (from its plan)" : " (the default)"}.
-          Set a fee for this store only, or leave it empty to use its plan&apos;s.
+          {fillWords(w.feeNow, { fee: formatBps(billing.feeBps, locale) })}
+          {billing.saleFeeBpsOverride !== null ? w.feeOwn : onPlan ? w.feePlan : w.feeDefault}.{" "}
+          {w.feeNote}
         </p>
         <ActionForm action={setStoreFeeAction.bind(null, store.id)} className="flex flex-wrap items-end gap-3">
           <label className="flex flex-col gap-1 text-sm font-medium">
-            Own fee (%)
+            {w.ownFee}
             <input
               name="fee"
               inputMode="decimal"
@@ -213,16 +226,16 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
               className={`${control} w-32`}
             />
           </label>
-          <SubmitButton>Save fee</SubmitButton>
+          <SubmitButton>{w.saveFee}</SubmitButton>
         </ActionForm>
       </Card>
-      <Card title={<>Store status: {STATUS_WORDS[state?.status ?? store.status]}</>} className="flex flex-col gap-3 text-sm" compact>
-        {state?.reason && <p className="text-muted">Reason on file: {state.reason}</p>}
+      <Card title={fillWords(w.storeStatus, { status: t.storeStatus[state?.status ?? store.status] })} className="flex flex-col gap-3 text-sm" compact>
+        {state?.reason && <p className="text-muted">{fillWords(w.reasonOnFile, { reason: state.reason })}</p>}
         {state && state.status !== "active" ? (
-          <ActionForm action={reopenStoreForPlatformAction.bind(null, store.id)} className="flex flex-col gap-2" successMessage="The store is open again.">
-            <p className="text-muted">Reopening starts sales again and tells the owners. A closed store&apos;s own domains were released when it closed and are not restored.</p>
+          <ActionForm action={reopenStoreForPlatformAction.bind(null, store.id)} className="flex flex-col gap-2" successMessage={w.reopened}>
+            <p className="text-muted">{w.reopenNote}</p>
             <div>
-              <SubmitButton>Reopen the store</SubmitButton>
+              <SubmitButton>{w.reopen}</SubmitButton>
             </div>
           </ActionForm>
         ) : (
@@ -234,35 +247,35 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
                 ))}
               </ul>
             )}
-            <ActionForm action={suspendStoreAction.bind(null, store.id)} className="flex flex-col gap-2" successMessage="The store is suspended.">
+            <ActionForm action={suspendStoreAction.bind(null, store.id)} className="flex flex-col gap-2" successMessage={w.suspended}>
               <label className="flex flex-col gap-1 font-medium">
-                Suspend: pause sales and changes, nothing else is touched
-                <textarea name="reason" required minLength={5} maxLength={500} rows={2} placeholder="Why? The owners are emailed this." className={`${control} py-2`} />
+                {w.suspendLabel}
+                <textarea name="reason" required minLength={5} maxLength={500} rows={2} placeholder={w.whyEmailed} className={`${control} py-2`} />
               </label>
               <div>
-                <SubmitButton>Suspend the store</SubmitButton>
+                <SubmitButton>{w.suspend}</SubmitButton>
               </div>
             </ActionForm>
-            <ActionForm action={closeStoreForPlatformAction.bind(null, store.id)} className="flex flex-col gap-2" successMessage="The store is closed.">
+            <ActionForm action={closeStoreForPlatformAction.bind(null, store.id)} className="flex flex-col gap-2" successMessage={w.closed}>
               <label className="flex flex-col gap-1 font-medium">
-                Close: stops sales, ends the plan with its period, releases the domains, cancels orders waiting for payment
-                <textarea name="reason" required minLength={5} maxLength={500} rows={2} placeholder="Why? The owners are emailed this." className={`${control} py-2`} />
+                {w.closeLabel}
+                <textarea name="reason" required minLength={5} maxLength={500} rows={2} placeholder={w.whyEmailed} className={`${control} py-2`} />
               </label>
               {blockers.length > 0 && (
                 <label className="flex items-center gap-2">
                   <input type="checkbox" name="force" />
-                  Close even though the above is still open
+                  {w.force}
                 </label>
               )}
               <div>
-                <SubmitButton>Close the store</SubmitButton>
+                <SubmitButton>{w.close}</SubmitButton>
               </div>
             </ActionForm>
           </>
         )}
       </Card>
-      <Card title="Invoices" compact>
-        <InvoiceList storeSlug={store.slug} invoices={invoices} date={date} />
+      <Card title={w.invoices} compact>
+        <InvoiceList storeSlug={store.slug} invoices={invoices} date={date} words={t.invoiceList} />
       </Card>
 
       {/* Design profiles (D176): a platform admin applies one to any store, a store template's included (an unpublished one only there). */}
@@ -274,24 +287,24 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
         apply={applyDesignToStoreAction.bind(null, store.slug)}
         restore={restoreDesignForStoreAction.bind(null, store.slug)}
         canChange={store.status === "active"}
-        closedNote="The store is not open, so its look cannot be changed."
+        closedNote={w.closedNote}
       />
 
       {/* The page migration of docs/theme-store.md 4.4 (D241): a dry run only in phase 1. */}
       <Card
-        title="Theme migration (dry run)"
-        description="How many settings on this store's pages only repeat its theme and would follow it once taken out, and how many are its own. Nothing is changed."
+        title={w.migration}
+        description={w.migrationNote}
         className="text-sm"
         compact
       >
         <ActionForm action={detachDryRunAction.bind(null, store.id)}>
-          <SubmitButton variant="secondary">Count the settings</SubmitButton>
+          <SubmitButton variant="secondary">{w.count}</SubmitButton>
         </ActionForm>
       </Card>
 
-      <Card title="People" className="text-sm" compact>
+      <Card title={w.peopleTitle} className="text-sm" compact>
         {people.length === 0 ? (
-          <p className="text-muted">Nobody runs the store yet.</p>
+          <p className="text-muted">{w.nobody}</p>
         ) : (
           <ul className="divide-y divide-line">
             {people.map((person) => (
@@ -299,7 +312,7 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
                 <Link href={`/admin/platform/customers/${person.id}`} className="underline">
                   {person.name || person.email}
                 </Link>
-                <span className="text-muted capitalize">{person.role}</span>
+                <span className="text-muted">{roleWord(person.role)}</span>
               </li>
             ))}
           </ul>

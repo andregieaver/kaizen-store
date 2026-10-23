@@ -1,23 +1,32 @@
 import type { PlatformDiscount } from "@/lib/discounts";
 import { formatPriceInput } from "@/lib/product-input";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { platformEn, type PlatformMessages } from "@/lib/admin-messages/platform.en";
 
 const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
 const label = "flex flex-col gap-1 text-sm font-medium";
 
 /** What deleting a code asks first. */
-export const deleteQuestion = (code: string, stores: number) =>
-  `Delete the code ${code}, here and in Stripe? Owners can no longer use it.` +
-  (stores > 0 ? ` The ${stores} ${stores === 1 ? "store" : "stores"} with it on their plan keep the discount until it runs out.` : "");
+export const deleteQuestion = (code: string, stores: number, w: PlatformMessages["discounts"] = platformEn.discounts) =>
+  fillWords(w.deleteQuestion, { code }) + (stores > 0 ? countWords(stores, w.deleteKeep) : "");
 
 /** `YYYY-MM-DD` of a time, in Norwegian time. */
 const osloDate = (iso: string) => new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Oslo" }).format(new Date(iso));
 
 /** The fields of one of Kaizen's plan codes, empty for a new one or filled in to edit one (D31). */
-export function PlatformDiscountFields({ discount, currencies }: { discount: PlatformDiscount | null; currencies: string[] }) {
+export function PlatformDiscountFields({
+  discount,
+  currencies,
+  w = platformEn.discountFields,
+}: {
+  discount: PlatformDiscount | null;
+  currencies: string[];
+  w?: PlatformMessages["discountFields"];
+}) {
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       <label className={label}>
-        Code
+        {w.code}
         <input
           name="code"
           required
@@ -26,17 +35,17 @@ export function PlatformDiscountFields({ discount, currencies }: { discount: Pla
           defaultValue={discount?.code}
           className={`${control} font-mono uppercase`}
         />
-        <span className="text-xs font-normal text-muted">3–40 letters A–Z, digits, - or _.</span>
+        <span className="text-xs font-normal text-muted">{w.codeHint}</span>
       </label>
       <label className={label}>
-        Gives
+        {w.gives}
         <select name="kind" defaultValue={discount?.kind ?? "percent"} className={control}>
-          <option value="percent">A percentage off</option>
-          <option value="fixed">An amount off</option>
+          <option value="percent">{w.percent}</option>
+          <option value="fixed">{w.fixed}</option>
         </select>
       </label>
       <label className={label}>
-        Percent off (for a percentage)
+        {w.percentOff}
         <input
           name="percent"
           type="number"
@@ -47,7 +56,7 @@ export function PlatformDiscountFields({ discount, currencies }: { discount: Pla
         />
       </label>
       <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1 text-sm font-medium">Amount off (for an amount), excluding VAT</legend>
+        <legend className="mb-1 text-sm font-medium">{w.amountOff}</legend>
         <div className="flex flex-wrap gap-2">
           {currencies.map((currency) => {
             const minor = discount?.amounts[currency.toLowerCase()];
@@ -66,28 +75,28 @@ export function PlatformDiscountFields({ discount, currencies }: { discount: Pla
         </div>
       </fieldset>
       <label className={label}>
-        How long
+        {w.howLong}
         <select name="duration" defaultValue={discount?.duration ?? "repeating"} className={control}>
-          <option value="once">The first payment</option>
-          <option value="repeating">Some months</option>
-          <option value="forever">Every payment</option>
+          <option value="once">{w.once}</option>
+          <option value="repeating">{w.repeating}</option>
+          <option value="forever">{w.forever}</option>
         </select>
       </label>
       <label className={label}>
-        Months (for some months)
+        {w.months}
         <input name="durationMonths" type="number" min={1} max={36} defaultValue={discount?.durationMonths ?? 3} className={control} />
       </label>
       <label className={label}>
-        Expires (optional)
+        {w.expires}
         <input name="expiresAt" type="date" defaultValue={discount?.expiresAt ? osloDate(discount.expiresAt) : ""} className={control} />
       </label>
       <label className={label}>
-        Uses in all (optional)
+        {w.uses}
         <input
           name="maxRedemptions"
           type="number"
           min={1}
-          placeholder="No limit"
+          placeholder={w.noLimit}
           defaultValue={discount?.maxRedemptions ?? ""}
           className={control}
         />
@@ -95,7 +104,7 @@ export function PlatformDiscountFields({ discount, currencies }: { discount: Pla
       {discount && (
         <label className="flex items-center gap-3 text-sm font-medium sm:col-span-2">
           <input type="checkbox" name="active" defaultChecked={discount.active} className="size-4" />
-          Switched on
+          {w.on}
         </label>
       )}
     </div>

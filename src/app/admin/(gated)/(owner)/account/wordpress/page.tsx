@@ -4,6 +4,9 @@ import { connection } from "next/server";
 import { primaryButton, secondaryButton } from "@/components/admin/work/work-parts";
 import { WORDPRESS_PLUGIN_FILE, WORDPRESS_PLUGIN_VERSION } from "@/lib/wordpress-plugin";
 import { requireAccount } from "@/server/auth";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
+import { fillWords } from "@/lib/admin-fill";
 import { connectionsOf } from "@/server/wordpress";
 import { Card, CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
@@ -11,7 +14,7 @@ import { revokeConnectionAction } from "./actions";
 
 export const metadata: Metadata = { title: "WordPress" };
 
-const when = (iso: string | null) => (iso ? iso.slice(0, 16).replace("T", " ") : "never");
+const when = (iso: string | null, never: string) => (iso ? iso.slice(0, 16).replace("T", " ") : never);
 
 /**
  * The WordPress sites connected to the account's stores (D169, `docs/wordpress-plugin.md`): the plugin to download, and each site that
@@ -22,32 +25,33 @@ export default async function WordpressPage() {
   await connection();
   const account = await requireAccount();
   const sites = await connectionsOf(account.id);
+  const w = adminText(adminLangOf(account.adminLocale), "bookings").wordpress;
   return (
     <div className="flex flex-col gap-8">
       <PageHeader
         title="WordPress"
-        description={<>Show products from your stores on a WordPress site, as a grid or a carousel, with a shortcode. Install the plugin on the site, choose Connect, and approve here. The site can read the products, prices and pictures your stores show shoppers, for the stores you belong to, and a shopper there can put them in a cart that opens in your store to be paid. The site reads no orders, customers or settings, and changes no product, price, order or setting.</>}
+        description={w.intro}
       />
 
-      <Card title="The plugin" className="flex max-w-3xl flex-col gap-3" compact>
+      <Card title={w.plugin} className="flex max-w-3xl flex-col gap-3" compact>
         <ol className="list-decimal pl-5 text-sm text-muted">
-          <li>Download the plugin (version {WORDPRESS_PLUGIN_VERSION}).</li>
-          <li>In WordPress, open Plugins, Add New Plugin, Upload Plugin, choose the file and activate it.</li>
-          <li>Open Kaizena Flow in the WordPress menu, choose Connect to Kaizena Flow, and approve the connection on the page that opens here.</li>
+          <li>{fillWords(w.step1, { version: WORDPRESS_PLUGIN_VERSION })}</li>
+          <li>{w.step2}</li>
+          <li>{w.step3}</li>
         </ol>
         <div>
           <a href={WORDPRESS_PLUGIN_FILE} download className={primaryButton}>
-            Download the plugin
+            {w.download}
           </a>
         </div>
       </Card>
 
       <section aria-labelledby="sites-heading" className="flex max-w-3xl flex-col gap-3">
         <h2 id="sites-heading" className="text-title text-ink">
-          Connected sites
+          {w.sites}
         </h2>
         {sites.length === 0 ? (
-          <p className={`p-4 text-sm text-muted ${CARD_CLASS}`}>No site is connected.</p>
+          <p className={`p-4 text-sm text-muted ${CARD_CLASS}`}>{w.noSites}</p>
         ) : (
           <ul className="flex flex-col gap-3">
             {sites.map((site) => (
@@ -56,12 +60,12 @@ export default async function WordpressPage() {
                   <p className="truncate font-medium">{site.siteName}</p>
                   <p className="truncate text-sm text-muted">{site.siteUrl}</p>
                   <p className="text-xs text-muted">
-                    Connected {when(site.connectedAt)}. Last read {when(site.lastUsedAt)}.
+                    {fillWords(w.connected, { at: when(site.connectedAt, w.never), read: when(site.lastUsedAt, w.never) })}
                   </p>
                 </div>
                 <form action={revokeConnectionAction.bind(null, site.id)}>
                   <button type="submit" className={secondaryButton}>
-                    Disconnect
+                    {w.disconnect}
                   </button>
                 </form>
               </li>
@@ -69,8 +73,7 @@ export default async function WordpressPage() {
           </ul>
         )}
         <p className="text-sm text-muted">
-          Disconnecting ends the site&apos;s access at once. Its shortcodes stop showing products as soon as the site&apos;s saved lists run out (within ten
-          minutes), until it is connected again. The site reads as you, so it sees the stores you belong to now, and loses a store when you do.
+          {w.disconnectHint}
         </p>
       </section>
     </div>

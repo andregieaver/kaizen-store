@@ -1,3 +1,6 @@
+import { adminLangOf } from "@/lib/admin-lang";
+import { fillWords } from "@/lib/admin-fill";
+import { adminText } from "@/lib/admin-text";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { z } from "zod";
@@ -26,21 +29,23 @@ export default async function UnitPage({ params }: PageProps<"/admin/[store]/boo
   const unit = await getResource(store.id, unitId);
   if (!unit || unit.kind === "staff") notFound();
   const kind = unit.kind;
+  const lang = adminLangOf(current.account.adminLocale);
+  const t = adminText(lang, "bookings");
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader back={{ href: `/admin/${store.slug}/bookings/units`, label: "Rooms and rental items" }} title={<>{unit.name}</>} />
-      <UnitForm kind={kind} unit={unit} hosts={await hostChoices(store.id)} action={saveUnitAction.bind(null, store.slug, kind, unit.id)} />
-      <ResourceCalendar storeId={store.id} timeZone={store.timeZone} resource={unit} actions={storeCalendarActions(store.slug, unit.id)} />
+      <PageHeader back={{ href: `/admin/${store.slug}/bookings/units`, label: t.units.title }} title={<>{unit.name}</>} />
+      <UnitForm kind={kind} unit={unit} words={t.unitForm} hosts={await hostChoices(store.id)} action={saveUnitAction.bind(null, store.slug, kind, unit.id)} />
+      <ResourceCalendar storeId={store.id} timeZone={store.timeZone} lang={lang} resource={unit} actions={storeCalendarActions(store.slug, unit.id)} />
       <DeleteDiscountButton
         action={removeUnitAction.bind(null, store.slug, unit.id)}
         code={unit.name}
         question={
           unit.upcoming > 0
-            ? `Remove ${unit.name}? It stops taking bookings; its ${unit.upcoming} bookings ahead stay.`
-            : `Remove ${unit.name}? It stops taking bookings.`
+            ? fillWords(t.units.removeAhead, { name: unit.name, n: unit.upcoming })
+            : fillWords(t.units.removeAsk, { name: unit.name })
         }
-        label={`Remove ${unit.name}`}
+        label={fillWords(t.units.remove, { name: unit.name })}
       />
     </div>
   );

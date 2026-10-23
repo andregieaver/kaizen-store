@@ -5,6 +5,9 @@ import { siteUrl } from "@/lib/site";
 import type { ResourceKind } from "@/server/bookings";
 import { calendarPath, listBlocks, listFeeds } from "@/server/calendar-sync";
 import { Card } from "@/components/admin/ui";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, type AdminLang } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 
 /**
  * What the panel does, as server actions already bound to the store and
@@ -34,49 +37,54 @@ export async function ResourceCalendar({
   timeZone,
   resource,
   actions,
+  lang = "en",
 }: {
   storeId: string;
   timeZone: string;
   resource: { id: string; kind: ResourceKind; name: string; calendarToken: string | null };
   actions: CalendarActions;
+  /** The admin's language (D312 A11); English when none is given. */
+  lang?: AdminLang;
 }) {
+  const w = adminText(lang, "bookings").calendar;
+  const loc = lang === "en" ? "en-GB" : ADMIN_LANG_FACTS[lang].locale;
   const [blocks, feeds] = await Promise.all([listBlocks(storeId, resource.id), listFeeds(storeId, resource.id)]);
   const unit = resource.kind === "unit";
   const staff = resource.kind === "staff";
-  const day = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
-  const when = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone });
+  const day = new Intl.DateTimeFormat(loc, { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+  const when = new Intl.DateTimeFormat(loc, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone });
   const noon = (date: string) => new Date(`${date}T12:00:00Z`);
   const span = (startsAt: string, endsAt: string) => {
     const { start, end } = exportDates(resource.kind, Date.parse(startsAt), Date.parse(endsAt), timeZone);
     const last = addDays(end, -1);
     const count = Math.round((Date.parse(`${end}T12:00:00Z`) - Date.parse(`${start}T12:00:00Z`)) / 86_400_000);
-    const length = unit ? (count === 1 ? "1 night" : `${count} nights`) : count === 1 ? "1 day" : `${count} days`;
+    const length = countWords(count, unit ? w.nights : w.days);
     return `${day.formatRange(noon(start), noon(last))} (${length})`;
   };
   const address = resource.calendarToken ? `${siteUrl()}${calendarPath(resource.calendarToken)}` : null;
 
   return (
     <>
-      <Card title={<>{staff ? "Time off" : "Blocked dates"}</>} description={<>{staff ? "Days they take no appointments, such as holidays." : unit ? "Nights it cannot be booked here: your own use, repairs, or bookings made elsewhere." : "Days it cannot be rented here: repairs, or rentals made elsewhere."}</>} className="flex flex-col gap-3" compact>
+      <Card title={staff ? w.timeOff : w.blocked} description={staff ? w.timeOffHint : unit ? w.blockedUnitHint : w.blockedItemHint} className="flex flex-col gap-3" compact>
         {blocks.length > 0 && (
           <ul className="divide-y divide-line rounded-md border border-line text-sm">
             {blocks.map((b) => (
               <li key={b.id} className="flex flex-wrap items-start justify-between gap-2 p-3">
                 <div>
                   <span className="font-medium tabular-nums">{span(b.startsAt, b.endsAt)}</span>
-                  <span className="block text-muted">{[b.feed && `From ${b.feed}`, b.note].filter(Boolean).join(" · ")}</span>
+                  <span className="block text-muted">{[b.feed && fillWords(w.from, { site: b.feed }), b.note].filter(Boolean).join(" · ")}</span>
                   {b.clashes > 0 && (
                     <span role="alert" className="block text-danger-text">
-                      Overlaps {b.clashes === 1 ? "a booking" : `${b.clashes} bookings`} here: booked twice. Cancel one of them.
+                      {countWords(b.clashes, w.overlaps)}
                     </span>
                   )}
                 </div>
                 {b.feed ? (
-                  <span className="text-xs text-muted">Goes when {b.feed} drops it</span>
+                  <span className="text-xs text-muted">{fillWords(w.goesWhen, { site: b.feed })}</span>
                 ) : (
                   <form action={actions.removeBlock.bind(null, b.id)}>
                     <button type="submit" className={small}>
-                      Open again <span className="sr-only">{span(b.startsAt, b.endsAt)}</span>
+                      {w.openAgain} <span className="sr-only">{span(b.startsAt, b.endsAt)}</span>
                     </button>
                   </form>
                 )}
@@ -87,55 +95,52 @@ export async function ResourceCalendar({
         <ActionForm action={actions.addBlock} className="flex flex-col gap-3">
           <div className="flex flex-wrap gap-3">
             <label className={field}>
-              {unit ? "First night" : "First day"}
+              {unit ? w.firstNight : w.firstDay}
               <input type="date" name="from" required className={control} />
             </label>
             <label className={field}>
-              {unit ? "Last night" : "Last day"}
+              {unit ? w.lastNight : w.lastDay}
               <input type="date" name="to" required className={control} />
             </label>
             <label className={`${field} min-w-48 flex-1`}>
-              Note <span className="font-normal text-muted">(only you see it)</span>
+              {w.note} <span className="font-normal text-muted">{w.noteHint}</span>
               <input name="note" maxLength={200} className={control} />
             </label>
           </div>
           <div>
-            <SubmitButton>Block</SubmitButton>
+            <SubmitButton>{w.block}</SubmitButton>
           </div>
         </ActionForm>
       </Card>
 
       {!staff && (
-        <Card title="Calendar sync" description={<>Listed on Airbnb, Booking.com or another site too? Give each site this {unit ? "room's" : "item's"} calendar address, and add theirs below, so a booking made on one closes the dates on the others. Other sites are read every 15 minutes.</>} className="flex flex-col gap-4" compact>
+        <Card title={w.syncTitle} description={unit ? w.syncUnitHint : w.syncItemHint} className="flex flex-col gap-4" compact>
           <div className="flex flex-col gap-2 text-sm">
-            <h3 className="text-body-strong text-ink">This {unit ? "room's" : "item's"} calendar</h3>
+            <h3 className="text-body-strong text-ink">{unit ? w.thisRoom : w.thisItem}</h3>
             {address ? (
               <>
                 <label className={field}>
-                  <span className="sr-only">Calendar address</span>
+                  <span className="sr-only">{w.address}</span>
                   <input readOnly value={address} className={`${control} font-mono text-xs`} />
                 </label>
-                <p className="text-muted">
-                  Paste it where the other site imports a calendar. It shows only when it is taken (whole days, or the
-                  hours of rentals by the half day or hour), never who booked.
-                </p>
+                <p className="text-muted">{w.addressHint}</p>
                 <form action={actions.resetCalendar}>
                   <button type="submit" className={small}>
-                    Make a new address (the old one stops working)
+                    {w.newAddress}
                   </button>
                 </form>
               </>
             ) : (
               <form action={actions.resetCalendar}>
                 <button type="submit" className={small}>
-                  Make a calendar address
+                  {w.makeAddress}
                 </button>
               </form>
             )}
           </div>
 
           <div className="flex flex-col gap-2 text-sm">
-            <h3 className="text-body-strong text-ink">Other sites&apos; calendars</h3>
+            <h3 className="text-body-strong text-ink">{w.others}</h3>
             {feeds.length > 0 && (
               <ul className="divide-y divide-line rounded-md border border-line">
                 {feeds.map((f) => (
@@ -144,8 +149,8 @@ export async function ResourceCalendar({
                       <span className="font-medium">{f.name}</span>
                       <span className="block truncate font-mono text-xs text-muted">{f.url}</span>
                       <span className="block text-muted">
-                        {f.syncedAt ? `Read ${when.format(new Date(f.syncedAt))}` : "Not read yet"}
-                        {!f.error && f.syncedAt && ` · ${f.events === 1 ? "1 event" : `${f.events} events`}`}
+                        {f.syncedAt ? fillWords(w.read, { when: when.format(new Date(f.syncedAt)) }) : w.notRead}
+                        {!f.error && f.syncedAt && ` · ${countWords(f.events, w.events)}`}
                       </span>
                       {f.error && (
                         <span role="alert" className="block text-danger-text">
@@ -156,12 +161,12 @@ export async function ResourceCalendar({
                     <div className="flex gap-2">
                       <form action={actions.syncFeed.bind(null, f.id)}>
                         <button type="submit" className={small}>
-                          Read now <span className="sr-only">{f.name}</span>
+                          {w.readNow} <span className="sr-only">{f.name}</span>
                         </button>
                       </form>
                       <form action={actions.removeFeed.bind(null, f.id)}>
                         <button type="submit" className={small}>
-                          Remove <span className="sr-only">{f.name}</span>
+                          {w.remove} <span className="sr-only">{f.name}</span>
                         </button>
                       </form>
                     </div>
@@ -172,16 +177,16 @@ export async function ResourceCalendar({
             <ActionForm action={actions.addFeed} className="flex flex-col gap-3">
               <div className="flex flex-wrap gap-3">
                 <label className={`${field} w-40`}>
-                  Site
+                  {w.site}
                   <input name="name" required maxLength={80} placeholder="Airbnb" className={control} />
                 </label>
                 <label className={`${field} min-w-64 flex-1`}>
-                  Its calendar address
+                  {w.siteAddress}
                   <input name="url" type="url" required maxLength={2000} placeholder="https://…" className={control} />
                 </label>
               </div>
               <div>
-                <SubmitButton>Add calendar</SubmitButton>
+                <SubmitButton>{w.add}</SubmitButton>
               </div>
             </ActionForm>
           </div>

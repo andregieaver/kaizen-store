@@ -6,6 +6,9 @@ import { useEffect, useId, useState } from "react";
 import { SLOT_BRIEF_MAX } from "@/lib/picture-direction";
 import type { PackSlotView } from "@/server/content-packs";
 
+import { countWords, fillWords } from "@/lib/admin-fill";
+
+import { useAdminText } from "./admin-text";
 import { Modal } from "./modal";
 import { Button } from "./ui";
 
@@ -38,6 +41,7 @@ export function PackPictures({
   stop: () => Promise<PackPictureResult>;
 }) {
   const router = useRouter();
+  const w = useAdminText("platformSite").pictures;
   const [busy, setBusy] = useState(false);
   const [said, setSaid] = useState<string | null>(null);
   const left = total - made;
@@ -49,7 +53,7 @@ export function PackPictures({
       const result = await action();
       if (!result.ok) setSaid(result.problems.join(" "));
     } catch {
-      setSaid("That did not reach Kaizena Flow. Check your connection and try again.");
+      setSaid(w.noReach);
     } finally {
       setBusy(false);
       router.refresh();
@@ -61,25 +65,22 @@ export function PackPictures({
     <div aria-busy={busy} className="flex flex-wrap items-center gap-2 text-sm">
       {left > 0 && !asked && (
         <Button kind="secondary" disabled={busy} onClick={() => press(ask)}>
-          {made === 0 ? "Make the pictures" : "Make the rest"}
-          <span className="sr-only"> of {title}</span>
+          {made === 0 ? w.make : w.makeRest}
+          <span className="sr-only"> {fillWords(w.of, { title })}</span>
         </Button>
       )}
       {left > 0 && asked && (
         <Button kind="quiet" disabled={busy} onClick={() => press(stop)}>
-          Stop<span className="sr-only"> making the pictures of {title}</span>
+          {w.stop}
+          <span className="sr-only"> {fillWords(w.stopMaking, { title })}</span>
         </Button>
       )}
       <span role="status" className="text-muted">
-        {left === 0
-          ? "Every picture is made."
-          : asked
-            ? `Making the pictures: ${made} of ${total} made. You can leave this page.`
-            : `${made} of ${total} pictures made.`}
+        {left === 0 ? w.allMade : fillWords(asked ? w.making : w.made, { made, total })}
       </span>
       {shown && (
         <span role="alert" className="text-danger-text">
-          {said ? shown : `Stopped: ${shown}`}
+          {said ? shown : fillWords(w.stopped, { problem: shown })}
         </span>
       )}
     </div>
@@ -89,6 +90,7 @@ export function PackPictures({
 /** *Make every picture*: asks for the pictures of every pack that lacks some, in one press. */
 export function AllPackPictures({ ask }: { ask: () => Promise<PackPictureResult> }) {
   const router = useRouter();
+  const w = useAdminText("platformSite").pictures;
   const [busy, setBusy] = useState(false);
   const [said, setSaid] = useState<string | null>(null);
   return (
@@ -103,14 +105,14 @@ export function AllPackPictures({ ask }: { ask: () => Promise<PackPictureResult>
             const result = await ask();
             if (!result.ok) setSaid(result.problems.join(" "));
           } catch {
-            setSaid("That did not reach Kaizena Flow. Check your connection and try again.");
+            setSaid(w.noReach);
           } finally {
             setBusy(false);
             router.refresh();
           }
         }}
       >
-        Make every picture
+        {w.makeAll}
       </Button>
       {said && (
         <span role="alert" className="text-danger-text">
@@ -132,12 +134,6 @@ export function PackPicturesWatch({ active }: { active: boolean }) {
   return null;
 }
 
-const STATE_WORDS: Record<PackSlotView["state"], string | null> = {
-  made: null,
-  art: "Drawn art stands in until its photograph is made.",
-  drawn: "Drawn art, part of the theme.",
-  missing: "Not made yet.",
-};
 
 /**
  * A pack's pictures one by one (D283), on a theme's Content tab: each with *Make again*, which asks the job to make that one again from its
@@ -160,6 +156,8 @@ export function PackSlotPictures({
   stop: () => Promise<PackPictureResult>;
 }) {
   const router = useRouter();
+  const w = useAdminText("platformSite").pictures;
+  const stateWords = (state: PackSlotView["state"]): string | null => (state === "made" ? null : w.slotStates[state]);
   const [busy, setBusy] = useState<string | null>(null);
   const [said, setSaid] = useState<string | null>(null);
   const [open, setOpen] = useState<PackSlotView | null>(null);
@@ -173,7 +171,7 @@ export function PackSlotPictures({
       if (!result.ok) setSaid(result.problems.join(" "));
       return result.ok;
     } catch {
-      setSaid("That did not reach Kaizena Flow. Check your connection and try again.");
+      setSaid(w.noReach);
       return false;
     } finally {
       setBusy(null);
@@ -189,16 +187,17 @@ export function PackSlotPictures({
           {making > 0 && (
             <>
               <span role="status" className="text-muted">
-                {`Making ${making === 1 ? "one picture" : `${making} pictures`} again, a minute or two each. You can leave this page.`}
+                {countWords(making, w.makingAgain)}
               </span>
               <Button kind="quiet" disabled={busy !== null} onClick={() => void press("stop", stop)}>
-                Stop<span className="sr-only"> making the pictures of {title} again</span>
+                {w.stop}
+                <span className="sr-only"> {fillWords(w.stopAgain, { title })}</span>
               </Button>
             </>
           )}
           {(said ?? (making === 0 ? problem : null)) && (
             <span role="alert" className="text-danger-text">
-              {said ?? `Stopped: ${problem}`}
+              {said ?? fillWords(w.stopped, { problem: problem ?? "" })}
             </span>
           )}
         </div>
@@ -216,25 +215,25 @@ export function PackSlotPictures({
               <p className="text-body-strong text-ink">{slot.label}</p>
               {slot.again ? (
                 <p role="status" className="text-muted">
-                  Being made again …
+                  {w.beingMade}
                 </p>
               ) : (
-                STATE_WORDS[slot.state] && <p className="text-muted">{STATE_WORDS[slot.state]}</p>
+                stateWords(slot.state) && <p className="text-muted">{stateWords(slot.state)}</p>
               )}
               {slot.state === "made" && !slot.again && (
                 <div className="flex flex-wrap gap-1">
-                  <Button kind="secondary" size="dense" disabled={busy !== null} aria-label={`Make again: ${slot.label}`} onClick={() => setOpen(slot)}>
-                    Make again
+                  <Button kind="secondary" size="dense" disabled={busy !== null} aria-label={fillWords(w.makeAgainOf, { label: slot.label })} onClick={() => setOpen(slot)}>
+                    {w.makeAgain}
                   </Button>
                   {slot.previous && (
                     <Button
                       kind="quiet"
                       size="dense"
                       disabled={busy !== null}
-                      aria-label={`Put back the one before: ${slot.label}`}
+                      aria-label={fillWords(w.putBackOf, { label: slot.label })}
                       onClick={() => void press(slot.slot, () => putBack(slot.slot))}
                     >
-                      Put back the one before
+                      {w.putBack}
                     </Button>
                   )}
                 </div>
@@ -270,9 +269,10 @@ function RemakeDialog({
   onRemake: (brief: string) => Promise<void>;
 }) {
   const id = useId();
+  const w = useAdminText("platformSite").pictures;
   const [brief, setBrief] = useState(slot.brief);
   return (
-    <Modal open onClose={onClose} title={`Make again: ${slot.label}`}>
+    <Modal open onClose={onClose} title={fillWords(w.makeAgainOf, { label: slot.label })}>
       <form
         aria-busy={busy}
         className="flex flex-col gap-4"
@@ -286,7 +286,7 @@ function RemakeDialog({
           <img src={slot.picture.url} alt="" className="max-h-56 w-full rounded-panel border border-line bg-sunken object-contain" />
         )}
         <label htmlFor={`${id}-brief`} className="flex flex-col gap-1 text-sm">
-          <span className="text-body-strong text-ink">What it shows</span>
+          <span className="text-body-strong text-ink">{w.shows}</span>
           <textarea
             id={`${id}-brief`}
             rows={6}
@@ -295,19 +295,15 @@ function RemakeDialog({
             onChange={(event) => setBrief(event.target.value)}
             className="rounded-md border border-line bg-card px-3 py-2 text-sm"
           />
-          <span className="text-xs text-muted">
-            The theme&apos;s photography and its rules are added, as for every picture of it. Change the words to change what is in it.
-          </span>
+          <span className="text-xs text-muted">{w.showsHint}</span>
         </label>
-        <p className="text-xs text-muted">
-          Made by the job in a minute or two; this picture stays until then. The theme store shows the new one once the content is published.
-        </p>
+        <p className="text-xs text-muted">{w.jobNote}</p>
         <div className="flex flex-wrap justify-end gap-2">
           <Button kind="quiet" onClick={onClose}>
-            Cancel
+            {w.cancel}
           </Button>
           <Button kind="main" type="submit" disabled={busy || brief.trim().length < 3}>
-            Make it again
+            {w.makeIt}
           </Button>
         </div>
       </form>

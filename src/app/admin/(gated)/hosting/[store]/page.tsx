@@ -10,6 +10,10 @@ import { hostTaxStatus } from "@/server/dac7";
 import { ensureHostTestAccount, getHostStripeAccounts, hostEarnings, storePaymentMode } from "@/server/host-payments";
 import { hostListings, hostResources, requireHost } from "@/server/hosts";
 import { Card, CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { AdminTextScope } from "@/components/admin/admin-text";
+import { fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText, adminTexts } from "@/lib/admin-text";
 
 import { HostPayouts } from "./host-payouts";
 
@@ -25,7 +29,11 @@ const todayIn = (timeZone: string) => zonedDate(Date.now(), timeZone);
  * Nothing of the store's own or other hosts' is shown.
  */
 export default async function HostOverviewPage({ params }: PageProps<"/admin/hosting/[store]">) {
-  const { store, host } = await requireHost((await params).store);
+  const { store, host, account } = await requireHost((await params).store);
+  const lang = adminLangOf(account.adminLocale);
+  const loc = lang === "en" ? "en-GB" : ADMIN_LANG_FACTS[lang].locale;
+  const t = adminText(lang, "bookings");
+  const w = t.hosting;
   const tz = store.timeZone;
   const today = todayIn(tz);
   const [listings, resources, bookings, mode, accounts, earnings, taxes] = await Promise.all([
@@ -43,16 +51,17 @@ export default async function HostOverviewPage({ params }: PageProps<"/admin/hos
     const ip = await requestIp();
     after(() => ensureHostTestAccount(store.id, host.id, ip));
   }
-  const when = new Intl.DateTimeFormat("en-GB", { timeZone: tz, day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  const when = new Intl.DateTimeFormat(loc, { timeZone: tz, day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
   const base = `/admin/hosting/${store.slug}`;
 
   return (
+    <AdminTextScope texts={adminTexts(lang, ["payments"])}>
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-8">
       <div>
         <p className="text-sm text-muted">{store.name}</p>
         <PageHeader
           title={<>{host.name}</>}
-          description={<>The store keeps {host.commissionBps / 100} % of each booking; you are paid the rest.</>}
+          description={fillWords(w.keeps, { n: host.commissionBps / 100 })}
         />
         </div>
 
@@ -63,30 +72,32 @@ export default async function HostOverviewPage({ params }: PageProps<"/admin/hos
           account={accounts[mode]}
           commissionPercent={host.commissionBps / 100}
           earnings={earnings}
-          locale={store.markets[0]?.locale ?? "en-GB"}
+          locale={lang === "en" ? (store.markets[0]?.locale ?? "en-GB") : loc}
+          words={t.payouts}
+          dateLocale={loc}
         />
       )}
 
-      <Card title="Tax details" className="flex flex-col gap-1 text-sm" compact>
+      <Card title={w.tax} className="flex flex-col gap-1 text-sm" compact>
         {tax?.details ? (
-          <p>Given. The store reports them once a year with what you were paid (DAC7).</p>
+          <p>{w.taxGiven}</p>
         ) : (
-          <p role="alert">The store must report its hosts to the tax authority each year (DAC7): give your details.</p>
+          <p role="alert">{w.taxAsk}</p>
         )}
         {tax && tax.missingAddresses.length > 0 && (
-          <p>Add the address of: {tax.missingAddresses.join(", ")} (under Calendar).</p>
+          <p>{fillWords(w.addAddress, { list: tax.missingAddresses.join(", ") })}</p>
         )}
         <Link href={`${base}/tax`} className="underline">
-          {tax?.details ? "Change your tax details" : "Give your tax details"}
+          {tax?.details ? w.changeTax : w.giveTax}
         </Link>
       </Card>
 
       <section aria-labelledby="bookings-heading" className="flex flex-col gap-2">
         <h2 id="bookings-heading" className="text-title text-ink">
-          Bookings, the next three months
+          {w.bookings}
         </h2>
         {bookings.length === 0 ? (
-          <p className="text-sm text-muted">None yet.</p>
+          <p className="text-sm text-muted">{w.noneYet}</p>
         ) : (
           <ul className={`divide-y divide-line text-sm ${CARD_CLASS}`}>
             {bookings.map((b) => (
@@ -100,8 +111,8 @@ export default async function HostOverviewPage({ params }: PageProps<"/admin/hos
                   </span>
                 </span>
                 <span className="text-right text-muted">
-                  {b.status === "held" ? "Being paid for" : b.customer}
-                  {b.orderNumber && <span className="block text-xs">Order {b.orderNumber}</span>}
+                  {b.status === "held" ? t.week.beingPaid : b.customer}
+                  {b.orderNumber && <span className="block text-xs">{fillWords(t.week.order, { number: b.orderNumber })}</span>}
                 </span>
               </li>
             ))}
@@ -111,18 +122,18 @@ export default async function HostOverviewPage({ params }: PageProps<"/admin/hos
 
       <section aria-labelledby="calendars-heading" className="flex flex-col gap-2">
         <h2 id="calendars-heading" className="text-title text-ink">
-          Your rooms and items
+          {w.rooms}
         </h2>
-        <p className="text-sm text-muted">Block dates, and link your Airbnb or Booking.com calendars, so nothing is booked twice.</p>
+        <p className="text-sm text-muted">{w.roomsHint}</p>
         {resources.length === 0 ? (
-          <p className="text-sm text-muted">The store has not given you any yet.</p>
+          <p className="text-sm text-muted">{w.noRooms}</p>
         ) : (
           <ul className={`divide-y divide-line text-sm ${CARD_CLASS}`}>
             {resources.map((r) => (
               <li key={r.id} className="flex justify-between gap-3 p-3">
                 <span>{r.name}</span>
                 <Link href={`${base}/units/${r.id}`} className="underline">
-                  Calendar <span className="sr-only">for {r.name}</span>
+                  {w.calendar} <span className="sr-only">{fillWords(w.calendarFor, { name: r.name })}</span>
                 </Link>
               </li>
             ))}
@@ -132,10 +143,10 @@ export default async function HostOverviewPage({ params }: PageProps<"/admin/hos
 
       <section aria-labelledby="listings-heading" className="flex flex-col gap-2">
         <h2 id="listings-heading" className="text-title text-ink">
-          Your listings
+          {w.listings}
         </h2>
         {listings.length === 0 ? (
-          <p className="text-sm text-muted">The store has not listed anything for you yet.</p>
+          <p className="text-sm text-muted">{w.noListings}</p>
         ) : (
           <ul className={`divide-y divide-line text-sm ${CARD_CLASS}`}>
             {listings.map((l) => (
@@ -143,17 +154,18 @@ export default async function HostOverviewPage({ params }: PageProps<"/admin/hos
                 <span>{l.title}</span>
                 {l.status === "active" && store.markets[0] ? (
                   <a href={storeHref(store.slug, marketPath(store.slug, store.markets[0].slug, `/p/${l.handle}`))} className="underline">
-                    See it in the store
+                    {w.seeIt}
                   </a>
                 ) : (
-                  <span className="text-muted">Not for sale yet</span>
+                  <span className="text-muted">{w.notForSale}</span>
                 )}
               </li>
             ))}
           </ul>
         )}
-        <p className="text-sm text-muted">To change a listing&apos;s text, pictures or prices, ask the store.</p>
+        <p className="text-sm text-muted">{w.askStore}</p>
       </section>
     </div>
+    </AdminTextScope>
   );
 }

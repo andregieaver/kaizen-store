@@ -46,6 +46,7 @@ export default async function DomainsPage({ params }: PageProps<"/admin/[store]/
         configured={domainsConfigured()}
         languages={domainLanguages(store, ADMIN_LANG_FACTS[lang].locale)}
         words={adminText(lang, "domains")}
+        locale={ADMIN_LANG_FACTS[lang].locale}
         actions={{
           add: addDomainAction.bind(null, store.slug),
           check: checkDomainAction.bind(null, store.slug),

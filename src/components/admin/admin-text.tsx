@@ -12,6 +12,10 @@ import { privacyEn } from "@/lib/admin-messages/privacy.en";
 import { marketingEn } from "@/lib/admin-messages/marketing.en";
 import { discountsEn } from "@/lib/admin-messages/discounts.en";
 import { loyaltyEn } from "@/lib/admin-messages/loyalty.en";
+import { platformEn } from "@/lib/admin-messages/platform.en";
+import { platformSiteEn } from "@/lib/admin-messages/platform-site.en";
+import { platformToolsEn } from "@/lib/admin-messages/platform-tools.en";
+import { bookingsEn } from "@/lib/admin-messages/bookings.en";
 import { supportEn } from "@/lib/admin-messages/support.en";
 import { workEn } from "@/lib/admin-messages/work.en";
 import { assistantEn } from "@/lib/admin-messages/assistant.en";
@@ -62,7 +66,7 @@ import type { AdminArea, AdminAreaMessages } from "@/lib/admin-text";
 
 type Provided = { lang: AdminLang; texts: Partial<AdminAreaMessages> };
 
-const ENGLISH: AdminAreaMessages = { common: commonEn, domains: domainsEn, home: homeEn, customers: customersEn, privacy: privacyEn, marketing: marketingEn, discounts: discountsEn, loyalty: loyaltyEn, support: supportEn, work: workEn, assistant: assistantEn, staffEmails: staffEmailsEn, analytics: analyticsEn, finance: financeEn, taxReports: taxReportsEn, reports: reportsEn, settings: settingsEn, tax: taxEn, payments: paymentsEn, shipping: shippingEn, notifications: notificationsEn, legal: legalEn, staff: staffEn, billing: billingEn, builder: builderEn, blocks: blocksEn, website: websiteEn, design: designEn, redirects: redirectsEn, experiments: experimentsEn, products: productsEn, product: productEn, inventory: inventoryEn, giftCards: giftCardsEn, reviews: reviewsEn, fields: fieldsEn, orders: ordersEn, order: orderEn, drafts: draftsEn, returns: returnsEn, invoices: invoicesEn, platformLegal: platformLegalEn, setup: setupEn, shell: shellEn, signIn: signInEn };
+const ENGLISH: AdminAreaMessages = { common: commonEn, domains: domainsEn, home: homeEn, customers: customersEn, privacy: privacyEn, marketing: marketingEn, discounts: discountsEn, loyalty: loyaltyEn, platform: platformEn, platformSite: platformSiteEn, platformTools: platformToolsEn, bookings: bookingsEn, support: supportEn, work: workEn, assistant: assistantEn, staffEmails: staffEmailsEn, analytics: analyticsEn, finance: financeEn, taxReports: taxReportsEn, reports: reportsEn, settings: settingsEn, tax: taxEn, payments: paymentsEn, shipping: shippingEn, notifications: notificationsEn, legal: legalEn, staff: staffEn, billing: billingEn, builder: builderEn, blocks: blocksEn, website: websiteEn, design: designEn, redirects: redirectsEn, experiments: experimentsEn, products: productsEn, product: productEn, inventory: inventoryEn, giftCards: giftCardsEn, reviews: reviewsEn, fields: fieldsEn, orders: ordersEn, order: orderEn, drafts: draftsEn, returns: returnsEn, invoices: invoicesEn, platformLegal: platformLegalEn, setup: setupEn, shell: shellEn, signIn: signInEn };
 
 const AdminTextContext = createContext<Provided>({ lang: "en", texts: {} });
 

@@ -9,6 +9,10 @@ import { EVAL_CASES, PASS_RATE } from "@/lib/query-eval";
 import { countStoresWithOwnAi, getAiSettings } from "@/server/ai";
 import { requirePlatformAdmin } from "@/server/auth";
 import { PageHeader } from "@/components/admin/ui";
+import { AdminTextScope } from "@/components/admin/admin-text";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText, adminTexts } from "@/lib/admin-text";
 
 import { checkPlatformVisionAction, evalPlatformAiAction, removePlatformAiAction, savePlatformAiAction, testPlatformAiAction, testPlatformImageAction } from "./actions";
 
@@ -22,62 +26,60 @@ const card = "rounded-lg border border-line bg-card p-5";
  * products are embedded again with a new search model.
  */
 export default async function PlatformAiPage() {
-  await requirePlatformAdmin();
+  const account = await requirePlatformAdmin();
+  const lang = adminLangOf(account.adminLocale);
+  const w = adminText(lang, "platformTools").ai;
+  const shared = adminText(lang, "settings").ai;
   const [settings, ownCount] = await Promise.all([getAiSettings(null), countStoresWithOwnAi()]);
   const status = settings
-    ? `${settings.enabled ? "On" : "Off"} · ${providerInfo(settings.provider).name}` +
+    ? `${settings.enabled ? w.on : w.off} · ${providerInfo(settings.provider).name}` +
       [settings.embeddingModel, settings.textModel].filter(Boolean).map((model) => ` · ${model}`).join("")
-    : "Not set up: stores have keyword search only, unless they bring their own AI.";
+    : w.notSetUp;
 
   return (
+    <AdminTextScope texts={adminTexts(lang, ["settings"])}>
     <div className="flex flex-col gap-6">
       <div>
-        <PageHeader title="AI" description={<>{status}</>} />
-        <p className="text-sm text-muted">{pictureLine(settings, "Kaizena Flow's AI")}</p>
+        <PageHeader title={w.title} description={<>{status}</>} />
+        <p className="text-sm text-muted">{pictureLine(settings, w.whose, undefined, shared.pictures)}</p>
         <p className="mt-1 text-sm">
           <Link href="/admin/platform/ai/usage" className="underline">
-            AI usage
+            {w.usageLink}
           </Link>
-          : what every store and Kaizena Flow itself used, per provider and model.
+          {w.usageEnd}
         </p>
       </div>
 
       <section aria-labelledby="provider" className={card}>
-        <h2 id="provider" className="mb-1 text-title text-ink">Provider and models</h2>
-        <p className="mb-4 text-sm text-muted">
-          Every store uses these unless its owner chooses their own ({ownCount} {ownCount === 1 ? "store does" : "stores do"}). Keep
-          data in the EU where a model allows it, and add any new provider to the residency register before saving it. Shoppers&apos;
-          searches are sent to the search model.
-        </p>
+        <h2 id="provider" className="mb-1 text-title text-ink">{w.provider}</h2>
+        <p className="mb-4 text-sm text-muted">{fillWords(w.providerText, { count: countWords(ownCount, { one: w.storeDoes, many: w.storesDo }) })}</p>
         <AiProviderForm action={savePlatformAiAction} settings={settings} checkVision={checkPlatformVisionAction} />
       </section>
 
       {settings && (
         <section aria-labelledby="test" className={card}>
-          <h2 id="test" className="mb-1 text-title text-ink">Test</h2>
-          <p className="mb-3 text-sm text-muted">Tries the saved models now, even while off.</p>
+          <h2 id="test" className="mb-1 text-title text-ink">{w.test}</h2>
+          <p className="mb-3 text-sm text-muted">{w.testText}</p>
           <AiTestButton action={testPlatformAiAction} />
           <div className="mt-4 border-t border-line pt-4">
-            <p className="mb-2 text-sm text-muted">
-              Searches such as &ldquo;lampe under 500 kr&rdquo; are read by the text model as filters. This runs the eval: {EVAL_CASES.length} searches in
-              Norwegian, Swedish, Danish and English, with the filters a good answer gives; a model passes at {Math.round(PASS_RATE * 100)} %.
-            </p>
+            <p className="mb-2 text-sm text-muted">{fillWords(shared.evalText, { n: EVAL_CASES.length, rate: Math.round(PASS_RATE * 100) })}</p>
             <AiEvalButton action={evalPlatformAiAction} />
           </div>
           <div className="mt-4 border-t border-line pt-4">
-            <p className="mb-2 text-sm text-muted">Makes one small picture with the saved picture model, to see it works and how it looks. It costs one picture.</p>
+            <p className="mb-2 text-sm text-muted">{shared.imageText}</p>
             <AiImageTestButton action={testPlatformImageAction} />
           </div>
           <div className="mt-4">
             <DeleteDiscountButton
               action={removePlatformAiAction}
-              code="Kaizena Flow's AI"
-              label="Remove Kaizena Flow's provider"
-              question="Remove Kaizena Flow's AI provider and its key? Stores without their own AI keep keyword search only."
+              code={w.removeCode}
+              label={w.remove}
+              question={w.removeQuestion}
             />
           </div>
         </section>
       )}
     </div>
+    </AdminTextScope>
   );
 }

@@ -1,10 +1,12 @@
 import { ButtonLink, Card, Chip, List, ListRow, RowLead } from "@/components/admin/ui";
 import { NEW_DEMO_STORE, demoStoreHref } from "@/lib/theme-admin-paths";
 import type { DemoStore } from "@/server/demo-stores";
+import { fillWords } from "@/lib/admin-fill";
+import { platformSiteEn, type PlatformSiteMessages } from "@/lib/admin-messages/platform-site.en";
 
 /** "Calm · Coast", or "its own look" for a demo store that wears no theme. */
-export function wearsWords(wears: DemoStore["wears"]): string {
-  if (!wears) return "its own look";
+export function wearsWords(wears: DemoStore["wears"], ownLook: string = platformSiteEn.demo.ownLook): string {
+  if (!wears) return ownLook;
   return wears.presetName ? `${wears.title} · ${wears.presetName}` : wears.title;
 }
 
@@ -13,27 +15,28 @@ export function wearsWords(wears: DemoStore["wears"]): string {
  * wearing a theme customised in its own store admin, listed under *See it live* on that theme's page once published. *New demo store* is
  * the one main action.
  */
-export function LiveDemoStoresCard({ demos }: { demos: DemoStore[] }) {
+export function LiveDemoStoresCard({ demos, w }: { demos: DemoStore[]; w: PlatformSiteMessages }) {
+  const l = w.live;
   return (
     <div id="demo-stores" className="scroll-mt-4">
       <Card
-        title="Demo stores"
-        description="Live stores you dress in a theme and customise like any store. Published, each shows under See it live on the page of the theme it wears, and its look can become a new theme, a preset or a theme's next version. They take no orders and send no emails to shoppers."
+        title={l.title}
+        description={l.description}
         aside={
           <ButtonLink href={NEW_DEMO_STORE} kind="strong">
-            New demo store
+            {l.new}
           </ButtonLink>
         }
       >
         {demos.length === 0 ? (
-          <p className="text-sm text-muted">No demo stores yet.</p>
+          <p className="text-sm text-muted">{l.none}</p>
         ) : (
-          <List label="Demo stores">
+          <List label={l.title}>
             {demos.map((demo) => (
               <ListRow key={demo.id}>
-                <RowLead title={demo.storeName} href={demoStoreHref(demo.id)} sub={`Wears ${wearsWords(demo.wears)} · /s/${demo.storeSlug}`} />
+                <RowLead title={demo.storeName} href={demoStoreHref(demo.id)} sub={fillWords(l.wears, { look: wearsWords(demo.wears, w.demo.ownLook), slug: demo.storeSlug })} />
                 <Chip signal={demo.published ? "positive" : "neutral"} dot>
-                  {demo.published ? "Live" : "Not published"}
+                  {demo.published ? l.live : l.notPublished}
                 </Chip>
               </ListRow>
             ))}

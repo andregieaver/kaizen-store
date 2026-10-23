@@ -263,16 +263,28 @@ export function buildReminderEmail(input: {
 }
 
 /** "1 hour", "3 days": how long after the email was typed, in English for the admin. */
-export function describeDelay(minutes: number): string {
+export type DelayWords = {
+  day: string;
+  days: string;
+  hour: string;
+  hours: string;
+  minutes: string;
+};
+
+/** The English words of `describeDelay()`; an admin catalogue gives its own (D312 A11), `{n}` the number. */
+export const DELAY_WORDS: DelayWords = { day: "1 day", days: "{n} days", hour: "1 hour", hours: "{n} hours", minutes: "{n} minutes" };
+
+export function describeDelay(minutes: number, words: DelayWords = DELAY_WORDS): string {
+  const n = (template: string, value: number) => template.replace("{n}", String(value));
   if (minutes % (24 * 60) === 0) {
     const days = minutes / (24 * 60);
-    return days === 1 ? "1 day" : `${days} days`;
+    return days === 1 ? words.day : n(words.days, days);
   }
   if (minutes % 60 === 0) {
     const hours = minutes / 60;
-    return hours === 1 ? "1 hour" : `${hours} hours`;
+    return hours === 1 ? words.hour : n(words.hours, hours);
   }
-  return `${minutes} minutes`;
+  return n(words.minutes, minutes);
 }
 
 const text = z.object({

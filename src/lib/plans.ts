@@ -40,8 +40,9 @@ export function percentToBps(text: string): number | null {
 }
 
 /** 150 → "1.5 %". */
-export function formatBps(bps: number): string {
-  return `${(bps / 100).toLocaleString("en", { maximumFractionDigits: 2 })} %`;
+/** `locale` is the admin's number format (D312 A11); English as ever without it. */
+export function formatBps(bps: number, locale = "en"): string {
+  return `${(bps / 100).toLocaleString(locale, { maximumFractionDigits: 2 })} %`;
 }
 
 /** What Stripe's subscription status means to a person. */
@@ -57,6 +58,7 @@ export const SUBSCRIPTION_LABELS: Record<string, string> = {
 };
 
 /** "kr 299,00 / month". */
-export function priceLabel(amountMinor: number, currency: string, interval: PlanInterval): string {
-  return `${formatMoney(amountMinor, currency, "nb-NO")} / ${interval}`;
+/** `intervals` are the account's words for month and year (D312 A11, the billing catalogue's `intervals`); the English key without them. */
+export function priceLabel(amountMinor: number, currency: string, interval: PlanInterval, intervals?: Record<PlanInterval, string>): string {
+  return `${formatMoney(amountMinor, currency, "nb-NO")} / ${intervals?.[interval] ?? interval}`;
 }

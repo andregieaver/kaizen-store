@@ -6,12 +6,14 @@ import { CSS_MAX } from "@/lib/custom-css";
 import { designWorkspacePage } from "../data";
 import { DesignShell } from "../shell";
 import { saveWorkspaceCssFormAction } from "../workspace-actions";
+import { platformSiteWords } from "@/server/platform-site-words";
 
 export const metadata: Metadata = { title: "Theme CSS" };
 
 /** A design profile's own CSS for every page (D100, D177): checked when saved, kept in the profile's draft. */
 export default async function DesignCssPage({ params }: PageProps<"/admin/platform/themes/[presetId]/css">) {
   const page = await designWorkspacePage((await params).presetId);
+  const { w } = await platformSiteWords();
   return (
     <DesignShell design={page.design} facts={page.facts} tab="css">
       {page.problem !== null ? (
@@ -19,10 +21,9 @@ export default async function DesignCssPage({ params }: PageProps<"/admin/platfo
       ) : (
         <ActionForm action={saveWorkspaceCssFormAction.bind(null, page.workspace.presetId)} className="flex flex-col gap-3">
           <label htmlFor="profile-css" className="flex flex-col gap-1 text-sm font-medium">
-            CSS for every page
+            {w.css.label}
             <span id="profile-css-hint" className="font-normal text-muted">
-              Applied with the theme, it replaces the store&apos;s own CSS. Style parts by the classes and ids given under Advanced in the
-              builder. Pictures and fonts come from the site only; CSS that reaches into a store&apos;s files is left out of the theme.
+              {w.css.hint}
             </span>
           </label>
           <textarea
@@ -38,7 +39,7 @@ export default async function DesignCssPage({ params }: PageProps<"/admin/platfo
             className="w-full rounded-md border border-line bg-sunken p-3 font-mono text-[13px] leading-relaxed"
           />
           <div>
-            <SubmitButton>Save</SubmitButton>
+            <SubmitButton>{w.css.save}</SubmitButton>
           </div>
         </ActionForm>
       )}

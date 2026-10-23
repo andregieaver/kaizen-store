@@ -128,13 +128,22 @@ export function targetProblems(target: readonly string[]): string[] {
  * What a store template switches on, in a few words for its card (D178 step 6): "Online shop with Appointments and Several countries",
  * "Online shop", or "Website (no online shop)".
  */
-export function featureSummary(source: FeatureSource): string {
-  if (!featureOn(source, "shop")) {
-    const world = FEATURE_IDS.filter((id) => id !== "shop" && featureOn(source, id)).map((id) => FEATURES_BY_ID[id].label);
-    return world.length > 0 ? `Website (no online shop) with ${listWords(world)}` : "Website (no online shop)";
-  }
-  const on = FEATURE_IDS.filter((id) => id !== "shop" && featureOn(source, id)).map((id) => FEATURES_BY_ID[id].label);
-  return on.length > 0 ? `Online shop with ${listWords(on)}` : "Online shop";
+export type FeatureSummaryWords = { website: string; websiteWith: string; shop: string; shopWith: string; and: string };
+const SUMMARY_EN: FeatureSummaryWords = {
+  website: "Website (no online shop)",
+  websiteWith: "Website (no online shop) with {list}",
+  shop: "Online shop",
+  shopWith: "Online shop with {list}",
+  and: "and",
+};
+
+/** `labels` names each feature in the admin's language (`common.features.labels`); English unless given (D312 A11). */
+export function featureSummary(source: FeatureSource, words: FeatureSummaryWords = SUMMARY_EN, labels?: Partial<Record<string, string>>): string {
+  const name = (id: (typeof FEATURE_IDS)[number]) => labels?.[id] ?? FEATURES_BY_ID[id].label;
+  const on = FEATURE_IDS.filter((id) => id !== "shop" && featureOn(source, id)).map(name);
+  const list = listWords(on, words.and);
+  if (!featureOn(source, "shop")) return on.length > 0 ? words.websiteWith.replace("{list}", list) : words.website;
+  return on.length > 0 ? words.shopWith.replace("{list}", list) : words.shop;
 }
 
-const listWords = (words: string[]) => (words.length <= 1 ? words.join("") : `${words.slice(0, -1).join(", ")} and ${words[words.length - 1]}`);
+const listWords = (words: string[], and = "and") => (words.length <= 1 ? words.join("") : `${words.slice(0, -1).join(", ")} ${and} ${words[words.length - 1]}`);

@@ -7,6 +7,9 @@ import { formatMoney } from "@/lib/money";
 import { planSummary, renewalState, SUBSCRIPTION_STATUS_LABELS } from "@/lib/subscriptions";
 import { requirePermission } from "@/server/permissions";
 import { listSubscriptions } from "@/server/subscriptions";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 import { Card, CARD_CLASS, Chip, List, ListRow, PageHeader, RowAmount, RowFact, RowLead } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Subscriptions" };
@@ -20,9 +23,10 @@ export default async function SubscriptionsPage({ params }: Props) {
   const off = requireFeature(current, "subscriptions");
   if (off) return off;
   const { store } = current;
+  const w = adminText(adminLangOf(current.account.adminLocale), "bookings").subscriptions;
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Subscriptions" />
+      <PageHeader title={w.title} />
       <Suspense fallback={<div className="h-40 animate-pulse rounded-lg bg-card" />}>
         <SubscriptionList storeSlug={store.slug} />
       </Suspense>
@@ -31,23 +35,25 @@ export default async function SubscriptionsPage({ params }: Props) {
 }
 
 async function SubscriptionList({ storeSlug }: { storeSlug: string }) {
-  const { store } = await requirePermission(storeSlug, "orders:read");
+  const member = await requirePermission(storeSlug, "orders:read");
+  const { store } = member;
+  const lang = adminLangOf(member.account.adminLocale);
+  const w = adminText(lang, "bookings").subscriptions;
   const subscriptions = await listSubscriptions(store.id);
   const locale = store.markets[0]?.locale ?? "en";
   const base = `/admin/${store.slug}/subscriptions`;
-  const date = (iso: string) => new Date(iso).toLocaleDateString(locale, { dateStyle: "medium", timeZone: "Europe/Oslo" });
+  const date = (iso: string) => new Date(iso).toLocaleDateString(lang === "en" ? locale : ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeZone: "Europe/Oslo" });
 
   if (subscriptions.length === 0) {
     return (
       <p className={`p-8 text-center text-sm ${CARD_CLASS}`}>
-        No subscriptions yet. Offer one under a product&apos;s Subscriptions section; each shopper who
-        subscribes appears here.
+        {w.none}
       </p>
     );
   }
   return (
     <Card compact>
-      <List label="Subscriptions">
+      <List label={w.title}>
         {subscriptions.map((s) => {
           const state = s.status === "cancelled" ? null : renewalState(s);
           const when = state ? date(state.date.toISOString()) : null;
@@ -58,8 +64,7 @@ async function SubscriptionList({ storeSlug }: { storeSlug: string }) {
                 href={`${base}/${s.id}`}
                 sub={
                   <>
-                    {planSummary({ interval: s.interval, intervalCount: s.intervalCount, discountPercent: 0 })} · {s.items}{" "}
-                    {s.items === 1 ? "item" : "items"}
+                    {planSummary({ interval: s.interval, intervalCount: s.intervalCount, discountPercent: 0 })} · {countWords(s.items, w.items)}
                   </>
                 }
               />
@@ -69,16 +74,16 @@ async function SubscriptionList({ storeSlug }: { storeSlug: string }) {
                     {s.name || s.email}
                   </Link>
                 ) : (
-                  "No customer yet"
+                  w.noCustomer
                 )}
               </RowFact>
               {state && when && (
                 <RowFact className="hidden md:block">
-                  {{ ends: `Ends ${when}`, paused: `Paused, then ${when}`, trial: `Trial, then ${when}`, renews: `Renews ${when}` }[state.kind]}
+                  {fillWords(w.when[state.kind], { when })}
                 </RowFact>
               )}
               <Chip signal={SUBSCRIPTION_SIGNAL[s.status]} dot>
-                {SUBSCRIPTION_STATUS_LABELS[s.status]}
+                {w.status[s.status] ?? SUBSCRIPTION_STATUS_LABELS[s.status]}
               </Chip>
               <RowAmount>{formatMoney(s.totalMinor, s.currency, locale)}</RowAmount>
             </ListRow>

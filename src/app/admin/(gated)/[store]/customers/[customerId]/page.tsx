@@ -95,7 +95,7 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
   const address = customer.address;
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["customers", "privacy", "loyalty"])}>
+    <AdminTextScope texts={adminTexts(lang, ["customers", "privacy", "loyalty", "builder"])}>
     <div className="flex flex-col gap-6">
       <PageHeader
         back={{ href: `${base}/customers`, label: words.back }}

@@ -2,25 +2,26 @@ import { ActionForm, SubmitButton, type FormState } from "@/components/admin/act
 import { Card, Chip } from "@/components/admin/ui";
 import { StarterPictureField } from "@/components/admin/starter-picture-field";
 import type { Upload } from "@/components/admin/image-upload";
-import { HIGHLIGHT_KINDS, HIGHLIGHT_NAMES } from "@/lib/theme-highlights";
-import { OWN_SLOTS, OWN_SLOT_NAMES, type OwnPictures, type OwnSlot } from "@/lib/theme-store";
+import { HIGHLIGHT_KINDS } from "@/lib/theme-highlights";
+import { OWN_SLOTS, type OwnPictures, type OwnSlot } from "@/lib/theme-store";
 import type { ShotKind } from "@/lib/theme-shots";
 import type { ShotStatus } from "@/server/theme-shots";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { platformSiteEn, type PlatformSiteMessages } from "@/lib/admin-messages/platform-site.en";
 
 /** A look of the theme as the panel names it: its own (`key` null) or a preset. */
 export type ShotLook = { key: string | null; name: string };
 
-const KIND_WORDS: Record<ShotKind, string> = { computer: "Computer", phone: "Phone" };
 
-const STATUS: Record<ShotStatus["status"], { words: string; signal: "positive" | "neutral" | "insight" | "danger" }> = {
-  done: { words: "Made", signal: "positive" },
-  waiting: { words: "Waiting to be made", signal: "neutral" },
-  running: { words: "Being made", signal: "insight" },
-  failed: { words: "Could not be made", signal: "danger" },
-  superseded: { words: "Replaced", signal: "neutral" },
+const SIGNALS: Record<ShotStatus["status"], "positive" | "neutral" | "insight" | "danger"> = {
+  done: "positive",
+  waiting: "neutral",
+  running: "insight",
+  failed: "danger",
+  superseded: "neutral",
 };
 
-const when = (iso: string) => new Date(iso).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
+const whenIn = (locale: string) => (iso: string) => new Date(iso).toLocaleString(locale, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
 
 /**
  * A theme's photographs on its page in the platform's admin (`docs/theme-showcase-phase-2.md` step 1): each look at each width, what it
@@ -35,6 +36,9 @@ export function ThemeShotsPanel({
   own = {},
   ownAction,
   upload,
+  words: w = platformSiteEn.shots,
+  tables = platformSiteEn.tables,
+  locale = "en-GB",
 }: {
   looks: ShotLook[];
   shots: ShotStatus[];
@@ -44,7 +48,12 @@ export function ThemeShotsPanel({
   own?: OwnPictures;
   ownAction?: (slot: OwnSlot, state: FormState, formData: FormData) => Promise<FormState>;
   upload?: Upload;
+  words?: PlatformSiteMessages["shots"];
+  tables?: PlatformSiteMessages["tables"];
+  /** `ADMIN_LANG_FACTS[lang].locale`, for the dates. */
+  locale?: string;
 }) {
+  const when = whenIn(locale);
   const of = (key: string | null, kind: ShotKind) => shots.find((shot) => shot.variation === key && shot.kind === kind) ?? null;
   const highlights = shots.find((shot) => shot.variation === null && shot.kind === "highlights") ?? null;
   const failed = shots.filter((shot) => shot.status === "failed").length;
@@ -54,18 +63,14 @@ export function ThemeShotsPanel({
   const inUse = OWN_SLOTS.filter((slot) => own[slot]).length;
   return (
     <Card
-      title="Pictures"
-      description={
-        published
-          ? "Photographs of each look on its demo store, taken after every Publish, for the theme store's cards, pages and share images. Nothing to do: publishing is enough."
-          : "Each look is photographed on its demo store once the theme is published, for the theme store's cards, pages and share images."
-      }
-      aside={waiting > 0 ? `${waiting} being made` : undefined}
+      title={w.title}
+      description={published ? w.published : w.unpublished}
+      aside={waiting > 0 ? fillWords(w.beingMade, { n: waiting }) : undefined}
     >
       <ul className="flex flex-col divide-y divide-line" data-theme-shots="">
         {looks.map((look) => (
           <li key={look.key ?? ""} className="flex flex-col gap-3 py-4 first:pt-0 last:pb-0">
-            <p className="text-body-strong text-ink">{look.key === null ? `${look.name} (its own look)` : look.name}</p>
+            <p className="text-body-strong text-ink">{look.key === null ? fillWords(w.ownLook, { name: look.name }) : look.name}</p>
             <div className="flex flex-wrap items-start gap-6">
               {(["computer", "phone"] as const).map((kind) => {
                 const shot = of(look.key, kind);
@@ -76,7 +81,7 @@ export function ThemeShotsPanel({
                       // eslint-disable-next-line @next/next/no-img-element -- a made picture in Kaizena Flow's own bucket
                       <img
                         src={picture.url}
-                        alt={`${look.name} on a ${kind}`}
+                        alt={fillWords(w.onA[kind], { name: look.name })}
                         width={picture.width}
                         height={picture.height}
                         loading="lazy"
@@ -86,17 +91,16 @@ export function ThemeShotsPanel({
                       <div aria-hidden className={`rounded-panel border border-dashed border-line bg-sunken ${kind === "computer" ? "aspect-[4/3] w-52" : "aspect-[390/844] w-24"}`} />
                     )}
                     <figcaption className="flex flex-col items-start gap-1 text-caption text-muted">
-                      <span>{KIND_WORDS[kind]}</span>
-                      {shot ? <Chip signal={STATUS[shot.status].signal}>{STATUS[shot.status].words}</Chip> : <Chip>{published ? "Waiting to be made" : "Not made yet"}</Chip>}
+                      <span>{w.kinds[kind]}</span>
+                      {shot ? <Chip signal={SIGNALS[shot.status]}>{w.status[shot.status]}</Chip> : <Chip>{published ? w.status.waiting : w.notMade}</Chip>}
                       {shot?.status === "done" && shot.finishedAt && (
-                        <span>
-                          Version {shot.version}, {when(shot.finishedAt)} UTC
-                        </span>
+                        <span>{fillWords(w.version, { version: shot.version, when: when(shot.finishedAt) })}</span>
                       )}
                       {shot?.status === "failed" && shot.problem && <span className="max-w-52 text-danger-text">{shot.problem}</span>}
                       {shot?.status === "waiting" && shot.retryAt && (
                         <span className="max-w-52">
-                          Tried again by itself {when(shot.retryAt)} UTC{shot.problem ? `. Last time: ${shot.problem}` : ""}
+                          {fillWords(w.triedAgain, { when: when(shot.retryAt) })}
+                          {shot.problem ? fillWords(w.lastTime, { problem: shot.problem }) : ""}
                         </span>
                       )}
                     </figcaption>
@@ -110,8 +114,8 @@ export function ThemeShotsPanel({
       {/* The three highlights, composed from the theme's own look once its two photographs are made (step 2). */}
       <div className="mt-4 flex flex-col gap-3 border-t border-line pt-4" data-theme-highlights="">
         <div className="flex flex-wrap items-center gap-2">
-          <p className="text-body-strong text-ink">Highlights</p>
-          {highlights ? <Chip signal={STATUS[highlights.status].signal}>{STATUS[highlights.status].words}</Chip> : <Chip>{published ? "Made after the photographs" : "Not made yet"}</Chip>}
+          <p className="text-body-strong text-ink">{w.highlights}</p>
+          {highlights ? <Chip signal={SIGNALS[highlights.status]}>{w.status[highlights.status]}</Chip> : <Chip>{published ? w.afterPhotos : w.notMade}</Chip>}
         </div>
         {highlights?.status === "done" && (
           <div className="flex flex-wrap gap-4">
@@ -119,7 +123,7 @@ export function ThemeShotsPanel({
               const picture = highlights.pictures[kind];
               return picture ? (
                 // eslint-disable-next-line @next/next/no-img-element -- a made picture in Kaizena Flow's own bucket
-                <img key={kind} src={picture.url} alt={HIGHLIGHT_NAMES[kind]} width={picture.width} height={picture.height} loading="lazy" className="aspect-[8/5] w-52 rounded-panel border border-line object-cover" />
+                <img key={kind} src={picture.url} alt={tables.highlights[kind]} width={picture.width} height={picture.height} loading="lazy" className="aspect-[8/5] w-52 rounded-panel border border-line object-cover" />
               ) : null;
             })}
           </div>
@@ -127,7 +131,8 @@ export function ThemeShotsPanel({
         {highlights?.status === "failed" && highlights.problem && <p className="text-caption text-danger-text">{highlights.problem}</p>}
         {highlights?.status === "waiting" && highlights.retryAt && (
           <p className="text-caption text-muted">
-            Tried again by itself {when(highlights.retryAt)} UTC{highlights.problem ? `. Last time: ${highlights.problem}` : ""}
+            {fillWords(w.triedAgain, { when: when(highlights.retryAt) })}
+            {highlights.problem ? fillWords(w.lastTime, { problem: highlights.problem }) : ""}
           </p>
         )}
       </div>
@@ -136,23 +141,21 @@ export function ThemeShotsPanel({
         // Never opened from the props: a value that changed after a save would close it under the person.
         <details className="mt-4 border-t border-line pt-4" data-own-pictures="">
           <summary className="cursor-pointer text-body-strong text-ink">
-            Use your own pictures
-            {inUse > 0 && <span className="ml-2 text-caption text-muted">{inUse === 1 ? "1 in use" : `${inUse} in use`}</span>}
+            {w.own}
+            {inUse > 0 && <span className="ml-2 text-caption text-muted">{countWords(inUse, w.ownInUse)}</span>}
           </summary>
-          <p className="mt-2 text-caption text-muted">
-            Put your own picture in place of a made one; remove it to show the made one again. The card&apos;s own picture is the main picture under Details.
-          </p>
+          <p className="mt-2 text-caption text-muted">{w.ownNote}</p>
           <ul className="mt-3 flex flex-col gap-4">
             {OWN_SLOTS.map((slot) => {
               const made = slot === "share" ? of(null, "computer")?.pictures.share : highlights?.pictures[slot];
               return (
                 <li key={slot} className="flex flex-col gap-2" data-own-slot={slot}>
-                  <p className="text-body-strong text-ink">{OWN_SLOT_NAMES[slot]}</p>
-                  <p className="text-caption text-muted">{own[slot] ? "Your own picture shows in place of the made one." : made ? "The made picture shows." : "Nothing made yet."}</p>
+                  <p className="text-body-strong text-ink">{tables.ownSlots[slot]}</p>
+                  <p className="text-caption text-muted">{own[slot] ? w.ownShows : made ? w.madeShows : w.nothingMade}</p>
                   <ActionForm action={ownAction.bind(null, slot)} className="flex flex-col gap-2">
                     <StarterPictureField initial={own[slot] ?? null} upload={upload} />
                     <div>
-                      <SubmitButton variant="secondary">Save</SubmitButton>
+                      <SubmitButton variant="secondary">{w.save}</SubmitButton>
                     </div>
                   </ActionForm>
                 </li>
@@ -163,11 +166,9 @@ export function ThemeShotsPanel({
       )}
       {failed + resting > 0 && (
         <ActionForm action={retry} className="mt-4 flex flex-wrap items-center gap-3">
-          <SubmitButton>Try again now</SubmitButton>
+          <SubmitButton>{w.retry}</SubmitButton>
           <span className="text-caption text-muted">
-            {failed > 0
-              ? `${failed === 1 ? "One picture" : `${failed} pictures`} could not be made after every try.`
-              : `${resting === 1 ? "One picture" : `${resting} pictures`} will be tried again by itself.`}
+            {failed > 0 ? countWords(failed, w.failed) : countWords(resting, w.resting)}
           </span>
         </ActionForm>
       )}

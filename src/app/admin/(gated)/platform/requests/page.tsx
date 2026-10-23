@@ -11,6 +11,12 @@ import { requirePlatformAdmin } from "@/server/auth";
 import { isSlugTaken, listAccessRequests, type AccessRequest } from "@/server/platform";
 import { designChoices } from "@/server/design-presets";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { fillWords } from "@/lib/admin-fill";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
+import type { PlatformMessages } from "@/lib/admin-messages/platform.en";
+
+type W = PlatformMessages["requests"];
 
 import { decideAction } from "../actions";
 
@@ -22,7 +28,8 @@ const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal
 export default async function PlatformPage() {
   // Per request: admin pages never read the database while the site is built.
   await connection();
-  await requirePlatformAdmin();
+  const account = await requirePlatformAdmin();
+  const w = adminText(adminLangOf(account.adminLocale), "platform").requests;
   // The themes offered, each look with the demo store it starts a store with (D273); the first card is Standard.
   const [requests, { cards }] = await Promise.all([listAccessRequests(), designChoices()]);
   const designs = cards.filter((card) => card.id);
@@ -32,41 +39,41 @@ export default async function PlatformPage() {
   return (
     <>
       <PageHeader
-        title="Access requests"
-        description={<>Approving creates the store from the theme chosen (its look and its demo store, or the Standard store), makes the requester its owner, and emails them a sign-in link.</>}
+        title={w.title}
+        description={w.description}
       />
 
       <section aria-labelledby="pending-heading" className="flex flex-col gap-4">
         <h2 id="pending-heading" className="text-title text-ink">
-          Waiting ({pending.length})
+          {fillWords(w.waiting, { n: pending.length })}
         </h2>
         {pending.length === 0 ? (
-          <p className="text-sm text-muted">No requests are waiting.</p>
+          <p className="text-sm text-muted">{w.none}</p>
         ) : (
-          pending.map((request) => <PendingRequest key={request.id} request={request} designs={designs} />)
+          pending.map((request) => <PendingRequest key={request.id} request={request} designs={designs} w={w} />)
         )}
       </section>
 
       {decided.length > 0 && (
         <section aria-labelledby="decided-heading">
           <h2 id="decided-heading" className="mb-3 text-title text-ink">
-            Recently decided
+            {w.decided}
           </h2>
           <ul className={`divide-y divide-line text-sm ${CARD_CLASS}`}>
             {decided.map((request) => (
               <li key={request.id} className="flex flex-wrap justify-between gap-2 px-4 py-2">
                 <span>
                   {request.name} · {request.email} · {request.storeName}
-                  {request.designTitle && <span className="text-muted"> · theme {request.designTitle}</span>}
-                  {request.starterTitle && <span className="text-muted"> · demo store {request.starterTitle}</span>}
+                  {request.designTitle && <span className="text-muted">{fillWords(w.theme, { name: request.designTitle })}</span>}
+                  {request.starterTitle && <span className="text-muted">{fillWords(w.demo, { name: request.starterTitle })}</span>}
                 </span>
                 <span className="text-muted">
                   {request.status === "approved" && request.storeSlug ? (
                     <Link href={storeHref(request.storeSlug, storeBase(request.storeSlug))} className="underline">
-                      approved: {request.storeSlug}
+                      {fillWords(w.approved, { slug: request.storeSlug })}
                     </Link>
                   ) : (
-                    request.status
+                    (w.status[request.status as keyof W["status"]] ?? request.status)
                   )}
                 </span>
               </li>
@@ -78,7 +85,7 @@ export default async function PlatformPage() {
   );
 }
 
-async function PendingRequest({ request, designs }: { request: AccessRequest; designs: DesignCard[] }) {
+async function PendingRequest({ request, designs, w }: { request: AccessRequest; designs: DesignCard[]; w: W }) {
   // A theme the requester chose that is no longer offered (unpublished or archived, D177) gives way to the Standard store, and is said.
   const designGone = request.designPresetId && !designs.some((d) => d.id === request.designPresetId);
   // Suggest a free address; the admin can still change it.
@@ -102,7 +109,7 @@ async function PendingRequest({ request, designs }: { request: AccessRequest; de
           <time dateTime={request.createdAt} className="text-muted">
             {request.createdAt.slice(0, 10)}
           </time>
-          {request.hasAccount && <span className="text-muted"> · already has an account</span>}
+          {request.hasAccount && <span className="text-muted">{w.hasAccount}</span>}
         </p>
         {request.message && <p className="mt-2 whitespace-pre-line text-sm text-muted">{request.message}</p>}
       </div>
@@ -113,11 +120,11 @@ async function PendingRequest({ request, designs }: { request: AccessRequest; de
       >
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="flex flex-col gap-1 text-sm font-medium">
-            Store name
+            {w.storeName}
             <input name="storeName" required defaultValue={request.storeName} className={control} />
           </label>
           <label className="flex flex-col gap-1 text-sm font-medium">
-            Store address
+            {w.storeAddress}
             <span className="flex items-center gap-1 font-normal">
               <span className="text-muted">/s/</span>
               <input
@@ -133,20 +140,20 @@ async function PendingRequest({ request, designs }: { request: AccessRequest; de
           </label>
         </div>
         <label className="flex max-w-md flex-col gap-1 text-sm font-medium">
-          Theme
+          {w.themeField}
           <select
             name="design"
             defaultValue={designGone || !request.designPresetId ? "" : designLookValue(request.designPresetId, request.designVariation)}
             className={control}
           >
-            <option value="">Standard (the standard demo products)</option>
+            <option value="">{w.standard}</option>
             {designs.map((design) => (
               <Fragment key={design.id}>
-                <option value={design.id}>{lookOption(design.title, design.demo)}</option>
+                <option value={design.id}>{lookOption(design.title, design.demo, w)}</option>
                 {/* Its presets (`docs/theme-showcase-phase-1.md` step 4), each with the demo store it starts with (D273). */}
                 {(design.looks ?? []).map((look) => (
                   <option key={look.key} value={designLookValue(design.id, look.key)}>
-                    {lookOption(`${design.title} · ${look.name}`, look.demo)}
+                    {lookOption(`${design.title} · ${look.name}`, look.demo, w)}
                   </option>
                 ))}
               </Fragment>
@@ -154,18 +161,18 @@ async function PendingRequest({ request, designs }: { request: AccessRequest; de
           </select>
           <span className="font-normal text-muted">
             {designGone
-              ? `The requester chose ${request.designTitle ?? "a theme"}, which is no longer offered: the store gets the standard look and demo products unless you choose another.`
+              ? fillWords(w.gone, { name: request.designTitle ?? w.aTheme })
               : request.designPresetId
-                ? "Chosen by the requester: the store starts with its look and its demo store."
-                : "The requester chose none."}
+                ? w.chosen
+                : w.choseNone}
           </span>
         </label>
         <div className="flex flex-wrap gap-3">
           <SubmitButton name="decision" value="approve">
-            Approve and create store
+            {w.approve}
           </SubmitButton>
           <SubmitButton name="decision" value="decline" variant="secondary" skipValidation>
-            Decline
+            {w.decline}
           </SubmitButton>
         </div>
       </ActionForm>
@@ -174,4 +181,4 @@ async function PendingRequest({ request, designs }: { request: AccessRequest; de
 }
 
 /** A look as the Theme field lists it: its name and the demo store it starts a store with (D273). */
-const lookOption = (name: string, demo: string | null | undefined) => (demo ? `${name} (demo: ${demo})` : name);
+const lookOption = (name: string, demo: string | null | undefined, w: W) => (demo ? fillWords(w.withDemo, { name, demo }) : name);

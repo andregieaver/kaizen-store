@@ -4,8 +4,9 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { CompanyFields } from "@/components/admin/company-fields";
 import { fillWords } from "@/lib/admin-fill";
+import { AdminTextScope } from "@/components/admin/admin-text";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import { requirePermission } from "@/server/permissions";
 import { listCompanies, employeePercent } from "@/server/companies";
 import { listTiers } from "@/server/customer-tiers";
@@ -31,6 +32,7 @@ export default async function CompaniesPage({ params }: PageProps<"/admin/[store
   const base = `/admin/${store.slug}`;
 
   return (
+    <AdminTextScope texts={adminTexts(adminLangOf(current.account.adminLocale), ["bookings"])}>
     <div className="flex flex-col gap-8">
       <PageHeader
         title={words.title}
@@ -83,5 +85,6 @@ export default async function CompaniesPage({ params }: PageProps<"/admin/[store
         </ActionForm>
       </Card>
     </div>
+    </AdminTextScope>
   );
 }

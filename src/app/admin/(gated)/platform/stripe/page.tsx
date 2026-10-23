@@ -9,6 +9,9 @@ import { platformModes, WEBHOOK_KINDS } from "@/server/stripe";
 import { connectWebhooksAction, saveCheckoutUiAction, saveSaleFeeAction } from "../actions";
 import { requirePlatformAdmin } from "@/server/auth";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { fillWords } from "@/lib/admin-fill";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 
 export const metadata: Metadata = { title: "Stripe" };
 
@@ -17,7 +20,8 @@ const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal
 export default async function PlatformStripePage() {
   // Per request: admin pages never read the database while the site is built.
   await connection();
-  await requirePlatformAdmin();
+  const account = await requirePlatformAdmin();
+  const w = adminText(adminLangOf(account.adminLocale), "platform").stripe;
   const [webhooks, saleFeeBps, checkoutUi] = await Promise.all([
     listPlatformWebhooks(),
     getSaleFeeBps(),
@@ -27,8 +31,20 @@ export default async function PlatformStripePage() {
   return (
     <>
       <PageHeader
-        title="Stripe"
-        description={<>Kaizena Flow is a Stripe Connect platform: each store sells through its own Stripe account, and Kaizena Flow bills stores for their plans from its own. Keys come from Vercel (<code>STRIPE_SECRET_KEY_TEST</code>, <code>STRIPE_PUBLISHABLE_KEY_TEST</code> and the{" "}<code>_LIVE</code> pair). Plans are billed in live mode once live keys are set.</>}
+        title={w.title}
+        description={(() => {
+          const [before, rest] = w.description.split("{keys}");
+          const [middle, after] = rest.split("{live}");
+          return (
+            <>
+              {before}
+              <code>STRIPE_SECRET_KEY_TEST</code>, <code>STRIPE_PUBLISHABLE_KEY_TEST</code>
+              {middle}
+              <code>_LIVE</code>
+              {after}
+            </>
+          );
+        })()}
       />
       <ul className="grid gap-3 sm:grid-cols-2">
         {PAYMENT_MODES.map((mode) => {
@@ -37,20 +53,20 @@ export default async function PlatformStripePage() {
           const connected = WEBHOOK_KINDS.every((kind) => hooks.some((hook) => hook.kind === kind));
           return (
             <li key={mode} className="flex flex-col gap-3 rounded-panel border border-line bg-card p-4 text-sm">
-              <h2 className="text-title text-ink">{mode === "test" ? "Test mode" : "Live mode"}</h2>
-              <p>{configured ? "Keys are set." : "Keys are not set."}</p>
+              <h2 className="text-title text-ink">{mode === "test" ? w.testMode : w.liveMode}</h2>
+              <p>{configured ? w.keysSet : w.keysNotSet}</p>
               <p className={connected ? "" : "text-muted"}>
                 {connected
-                  ? `Webhooks connected ${hooks[0].updatedAt.slice(0, 10)} (${new URL(hooks[0].url).host}).`
+                  ? fillWords(w.connected, { date: hooks[0].updatedAt.slice(0, 10), host: new URL(hooks[0].url).host })
                   : hooks.length > 0
-                    ? "Webhooks need reconnecting: plan events do not reach Kaizena Flow yet."
-                    : "Webhooks are not connected: payments, account changes and plans will not reach Kaizena Flow."}
+                    ? w.reconnectNeeded
+                    : w.notConnected}
               </p>
               {configured && (
                 <ActionForm action={connectWebhooksAction}>
                   <input type="hidden" name="mode" value={mode} />
                   <SubmitButton variant={connected ? "secondary" : "primary"}>
-                    {connected ? "Reconnect webhooks" : "Connect webhooks"}
+                    {connected ? w.reconnect : w.connect}
                   </SubmitButton>
                 </ActionForm>
               )}
@@ -60,36 +76,33 @@ export default async function PlatformStripePage() {
       </ul>
       <ActionForm
         action={saveCheckoutUiAction}
-        successMessage="Saved. New checkouts use it from now on."
+        successMessage={w.savedUi}
         className={`flex flex-col gap-3 p-4 ${CARD_CLASS}`}
       >
         <fieldset className="flex flex-col gap-2 text-sm">
-          <legend className="mb-1 font-medium">Where shoppers pay</legend>
+          <legend className="mb-1 font-medium">{w.wherePay}</legend>
           <label className="flex items-start gap-2">
             <input type="radio" name="ui" value="custom" defaultChecked={checkoutUi === "custom"} className="mt-0.5 size-4" />
             <span>
-              Kaizena Flow&apos;s checkout page
-              <span className="block text-muted">
-                On the store&apos;s own site, with Stripe&apos;s payment form: the payment methods each
-                store has turned on in Stripe, plus Apple Pay and Google Pay where the shopper has them.
-              </span>
+              {w.custom}
+              <span className="block text-muted">{w.customNote}</span>
             </span>
           </label>
           <label className="flex items-start gap-2">
             <input type="radio" name="ui" value="hosted" defaultChecked={checkoutUi === "hosted"} className="mt-0.5 size-4" />
             <span>
-              Stripe&apos;s checkout page
-              <span className="block text-muted">The fallback: shoppers are sent to a page on stripe.com.</span>
+              {w.hosted}
+              <span className="block text-muted">{w.hostedNote}</span>
             </span>
           </label>
         </fieldset>
         <div>
-          <SubmitButton>Save</SubmitButton>
+          <SubmitButton>{w.save}</SubmitButton>
         </div>
       </ActionForm>
       <ActionForm action={saveSaleFeeAction} className={`flex flex-col gap-2 p-4 ${CARD_CLASS}`}>
         <label className="flex flex-col gap-1 text-sm font-medium">
-          Default fee on each sale (%)
+          {w.defaultFee}
           <input
             name="percent"
             inputMode="decimal"
@@ -99,11 +112,10 @@ export default async function PlatformStripePage() {
           />
         </label>
         <p id="fee-hint" className="text-sm text-muted">
-          For stores without a plan. A plan&apos;s own fee, or a fee set for one store, takes its
-          place. Stores pay Stripe&apos;s own fees themselves. 0 means no fee.
+          {w.feeHint}
         </p>
         <div>
-          <SubmitButton>Save fee</SubmitButton>
+          <SubmitButton>{w.saveFee}</SubmitButton>
         </div>
       </ActionForm>
     </>

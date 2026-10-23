@@ -9,6 +9,10 @@ import { requirePermission } from "@/server/permissions";
 import { listBookings, listResources, type StoreBooking } from "@/server/bookings";
 import { blocksBetween } from "@/server/calendar-sync";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { AdminTextScope } from "@/components/admin/admin-text";
+import { fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText, adminTexts } from "@/lib/admin-text";
 
 import { CancelBookingForm } from "../cancel-booking-form";
 
@@ -31,6 +35,10 @@ export default async function StaysPage({ params, searchParams }: PageProps<"/ad
   const off = requireFeature(current, "bookings");
   if (off) return off;
   const { store } = current;
+  const lang = adminLangOf(current.account.adminLocale);
+  const t = adminText(lang, "bookings");
+  const w = t.stays;
+  const loc = lang === "en" ? "en-GB" : ADMIN_LANG_FACTS[lang].locale;
   const query = await searchParams;
   const tz = store.timeZone;
   const today = todayIn(tz);
@@ -55,48 +63,49 @@ export default async function StaysPage({ params, searchParams }: PageProps<"/ad
   for (const b of bookings) for (const day of taken(b)) used.set(`${b.resourceId}|${day}`, (used.get(`${b.resourceId}|${day}`) ?? 0) + 1);
 
   const noon = (date: string) => new Date(`${date}T12:00:00Z`);
-  const dayHead = new Intl.DateTimeFormat("en-GB", { weekday: "narrow", day: "numeric", timeZone: "UTC" });
-  const longDay = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", timeZone: "UTC" });
-  const when = new Intl.DateTimeFormat("en-GB", { timeZone: tz, day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  const dayHead = new Intl.DateTimeFormat(loc, { weekday: "narrow", day: "numeric", timeZone: "UTC" });
+  const longDay = new Intl.DateTimeFormat(loc, { day: "numeric", month: "long", timeZone: "UTC" });
+  const when = new Intl.DateTimeFormat(loc, { timeZone: tz, day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
   const href = (date: string) => `/admin/${store.slug}/bookings/stays?from=${date}`;
   const chip = "rounded-full border border-line px-3 py-1 text-sm";
 
   return (
+    <AdminTextScope texts={adminTexts(lang, ["bookings"])}>
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <PageHeader
-          title="Stays and rentals"
-          description={<>{longDay.format(noon(from))} to {longDay.format(noon(addDays(from, DAYS - 1)))}, in {tz.replace("_", " ")} time.</>}
+          title={w.title}
+          description={fillWords(w.span, { from: longDay.format(noon(from)), to: longDay.format(noon(addDays(from, DAYS - 1))), zone: tz.replace("_", " ") })}
         />
-        <nav aria-label="Weeks" className="flex flex-wrap gap-2 text-sm">
+        <nav aria-label={t.week.weeks} className="flex flex-wrap gap-2 text-sm">
           <Link href={href(addDays(from, -DAYS))} className={chip}>
-            ← Earlier
+            {w.earlier}
           </Link>
           <Link href={href(today)} className={chip} aria-current={from === today ? "page" : undefined}>
-            Today
+            {w.today}
           </Link>
           <Link href={href(addDays(from, DAYS))} className={chip}>
-            Later →
+            {w.later}
           </Link>
         </nav>
       </div>
 
       {units.length === 0 ? (
         <p className="rounded-md border border-dashed border-line p-6 text-center text-sm text-muted">
-          No rooms or rental items yet.{" "}
+          {w.noUnits}{" "}
           <Link href={`/admin/${store.slug}/bookings/units`} className="underline">
-            Add them
+            {w.addThem}
           </Link>
-          , then choose them in a stay or a rental.
+          {w.thenChoose}
         </p>
       ) : (
         <div className={`overflow-x-auto ${CARD_CLASS}`}>
           <table className="w-full min-w-[40rem] border-collapse text-sm">
-            <caption className="sr-only">Nights and days taken</caption>
+            <caption className="sr-only">{w.caption}</caption>
             <thead>
               <tr>
                 <th scope="col" className="border-b border-line p-2 text-left font-medium">
-                  Room or item
+                  {w.unit}
                 </th>
                 {days.map((day) => (
                   <th
@@ -116,7 +125,7 @@ export default async function StaysPage({ params, searchParams }: PageProps<"/ad
                     <Link href={`/admin/${store.slug}/bookings/units/${u.id}`} className="underline-offset-2 hover:underline">
                       {u.name}
                     </Link>
-                    <span className="block text-xs text-muted">{u.kind === "unit" ? "Stays" : "Rentals"}</span>
+                    <span className="block text-xs text-muted">{u.kind === "unit" ? w.stays : w.rentals}</span>
                   </th>
                   {days.map((day) => {
                     const count = used.get(`${u.id}|${day}`) ?? 0;
@@ -130,9 +139,9 @@ export default async function StaysPage({ params, searchParams }: PageProps<"/ad
                         }`}
                       >
                         {count > 0 ? (
-                          u.capacity > 1 ? `${count}/${u.capacity}` : <span aria-label="Taken">●</span>
+                          u.capacity > 1 ? `${count}/${u.capacity}` : <span aria-label={w.taken}>●</span>
                         ) : closed ? (
-                          <span aria-label="Blocked">×</span>
+                          <span aria-label={w.blocked}>×</span>
                         ) : (
                           ""
                         )}
@@ -147,7 +156,7 @@ export default async function StaysPage({ params, searchParams }: PageProps<"/ad
       )}
 
       {bookings.length === 0 ? (
-        <p className="rounded-md border border-dashed border-line p-6 text-center text-sm text-muted">No bookings in these two weeks.</p>
+        <p className="rounded-md border border-dashed border-line p-6 text-center text-sm text-muted">{w.none}</p>
       ) : (
         <ul className={`flex max-w-3xl flex-col divide-y divide-line ${CARD_CLASS}`}>
           {bookings.map((b) => (
@@ -163,11 +172,11 @@ export default async function StaysPage({ params, searchParams }: PageProps<"/ad
               </div>
               <div className="flex flex-col items-end gap-1 text-right">
                 {b.status === "held" ? (
-                  <span className="rounded bg-sunken px-1.5 py-0.5 text-xs">Being paid for</span>
+                  <span className="rounded bg-sunken px-1.5 py-0.5 text-xs">{t.week.beingPaid}</span>
                 ) : (
                   b.orderId && (
                     <Link href={`/admin/${store.slug}/orders/${b.orderId}`} className="underline">
-                      Order {b.orderNumber}
+                      {fillWords(t.week.order, { number: b.orderNumber ?? "" })}
                     </Link>
                   )
                 )}
@@ -180,5 +189,6 @@ export default async function StaysPage({ params, searchParams }: PageProps<"/ad
         </ul>
       )}
     </div>
+    </AdminTextScope>
   );
 }

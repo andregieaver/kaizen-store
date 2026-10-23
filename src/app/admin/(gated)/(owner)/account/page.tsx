@@ -6,7 +6,8 @@ import { PasswordField } from "@/components/admin/password-field";
 import { AppearanceField } from "@/components/admin/admin-colors";
 import { SchemeField } from "@/components/admin/admin-scheme";
 import { AdminLanguageField, AdminTextProvider } from "@/components/admin/admin-text";
-import { adminLangOf } from "@/lib/admin-lang";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { fillWords } from "@/lib/admin-fill";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { ManageTwoStep } from "@/components/admin/two-step-panel";
 import { AvatarPicker } from "@/components/avatar-picker";
@@ -43,6 +44,8 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
   // The admin's language for this account (D312 A0): the Language section's words are already in it.
   const lang = adminLangOf(account.adminLocale);
   const words = adminText(lang, "common").language;
+  const w = adminText(lang, "bookings").account;
+  const dateLocale = lang === "en" ? "en-GB" : ADMIN_LANG_FACTS[lang].locale;
   const query = await searchParams;
   const status = query["kaizen-life"];
   const assistantStatus = query["life-assistant"];
@@ -56,23 +59,23 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
   ]);
   return (
     <div className="flex flex-col gap-8">
-      <PageHeader title="Your account" description={<>Signed in as {account.name ? `${account.name} (${account.email})` : account.email}.</>} />
+      <PageHeader title={w.title} description={fillWords(w.signedInAs, { who: account.name ? `${account.name} (${account.email})` : account.email })} />
 
       <section aria-labelledby="picture-heading" className="flex max-w-md flex-col gap-3">
         <h2 id="picture-heading" className="text-title text-ink">
-          Profile picture
+          {w.picture}
         </h2>
         <AvatarPicker
           avatar={avatarFor(account)}
           ownPicture={Boolean(account.avatarPath)}
           action={accountAvatarAction}
           labels={{
-            choose: "Choose a picture",
-            change: "Change picture",
-            remove: "Remove picture",
-            working: "Saving …",
-            hint: "Shown to you and to the people you work with. Without a picture of your own, your Gravatar is shown if your email has one, else your initials.",
-            unreadable: "That file could not be read as a picture. Use a JPEG, PNG, WebP or AVIF.",
+            choose: w.choose,
+            change: w.change,
+            remove: w.removePicture,
+            working: w.saving,
+            hint: w.pictureHint,
+            unreadable: w.unreadable,
           }}
         />
       </section>
@@ -88,42 +91,41 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
 
       <section aria-labelledby="appearance-heading" className="flex max-w-md flex-col gap-3">
         <h2 id="appearance-heading" className="text-title text-ink">
-          Light or dark
+          {w.mode}
         </h2>
-        <p className="text-sm text-muted">How the admin looks for you. Your stores keep the colours set under Design.</p>
+        <p className="text-sm text-muted">{w.modeHint}</p>
         <AppearanceField saved={account.colorMode ?? "system"} save={colorModeAction} />
       </section>
 
       <section aria-labelledby="scheme-heading" className="flex max-w-md flex-col gap-3">
         <h2 id="scheme-heading" className="text-title text-ink">
-          Colour scheme
+          {w.scheme}
         </h2>
-        <p className="text-sm text-muted">The admin&apos;s colours, in light and in dark. Your stores keep the colours set under Design.</p>
+        <p className="text-sm text-muted">{w.schemeHint}</p>
         <SchemeField saved={account.adminScheme ?? "meadow"} save={adminSchemeAction} />
         <Link href="/admin/account/appearance" className="w-fit text-sm underline underline-offset-2">
-          See every scheme side by side
+          {w.allSchemes}
         </Link>
       </section>
 
       {owner && (
         <section aria-labelledby="usage-heading" className="flex max-w-md flex-col gap-3">
           <h2 id="usage-heading" className="text-title text-ink">
-            AI usage
+            {w.usage}
           </h2>
-          <p className="text-sm text-muted">What the AI used for your stores, per provider and model and per store.</p>
+          <p className="text-sm text-muted">{w.usageHint}</p>
           <Link href="/admin/account/usage" className={`${smallButton} inline-flex w-fit items-center`}>
-            See AI usage
+            {w.seeUsage}
           </Link>
         </section>
       )}
 
       <section aria-labelledby="password-heading" className="flex max-w-md flex-col gap-3">
         <h2 id="password-heading" className="text-title text-ink">
-          Password
+          {w.password}
         </h2>
         <p className="text-sm text-muted">
-          Set a password to sign in without waiting for an email. You can still use a sign-in
-          link whenever you like.
+          {w.passwordHint}
         </p>
         <ActionForm action={setPasswordAction} replaceOnSuccess className="flex flex-col gap-3">
           {/* Lets password managers save the new password with the right email. */}
@@ -136,20 +138,20 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
             hidden
           />
           <PasswordField
-            label="New password"
+            label={w.newPassword}
             autoComplete="new-password"
             minLength={MIN_PASSWORD_LENGTH}
-            hint={`At least ${MIN_PASSWORD_LENGTH} characters. A few unrelated words make a strong, memorable password.`}
+            hint={fillWords(w.passwordRule, { n: MIN_PASSWORD_LENGTH })}
           />
           <div>
-            <SubmitButton>Save password</SubmitButton>
+            <SubmitButton>{w.savePassword}</SubmitButton>
           </div>
         </ActionForm>
       </section>
 
       <section aria-labelledby="two-step-heading" className="flex max-w-md flex-col gap-3">
         <h2 id="two-step-heading" className="text-title text-ink">
-          Two-step sign-in
+          {w.twoStep}
         </h2>
         {twoStep ? (
           // Its words are the sign-in area's (D312 A1), handed down here only.
@@ -167,7 +169,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
             />
           </AdminTextProvider>
         ) : (
-          <p className="text-sm text-muted">Sign in again to see your two-step sign-in.</p>
+          <p className="text-sm text-muted">{w.twoStepAgain}</p>
         )}
       </section>
 
@@ -178,29 +180,28 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
           </h2>
           {status === "failed" && (
             <p role="alert" className="text-sm">
-              That did not go through. Try again.
+              {w.failed}
             </p>
           )}
           {identity ? (
             <>
               <p className="text-sm">
-                Connected{typeof identity.identity_data?.email === "string" ? ` as ${identity.identity_data.email}` : ""}: you can sign in here with
-                your Kaizen Life account.
+                {fillWords(w.lifeConnected, { as: typeof identity.identity_data?.email === "string" ? fillWords(w.as, { email: identity.identity_data.email }) : "" })}
               </p>
               <form action={disconnectKaizenLifeAction}>
                 <button type="submit" className={smallButton}>
-                  Disconnect Kaizen Life
+                  {w.lifeDisconnect}
                 </button>
               </form>
             </>
           ) : (
             <>
               <p className="text-sm text-muted">
-                Connect your Kaizen Life account to sign in here with it, even if it uses another email address.
+                {w.lifeHint}
               </p>
               <form action={connectKaizenLifeAction}>
                 <button type="submit" className={smallButton}>
-                  Connect Kaizen Life
+                  {w.lifeConnect}
                 </button>
               </form>
             </>
@@ -211,34 +212,32 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
       {owner && lifeLinkOn() && (
         <section aria-labelledby="life-assistant-heading" className="flex max-w-md flex-col gap-3">
           <h2 id="life-assistant-heading" className="text-title text-ink">
-            Kaizen Life for your assistant
+            {w.assistant}
           </h2>
           {assistantStatus === "failed" && (
             <p role="alert" className="text-sm">
-              Kaizen Life was not connected. Try again.
+              {w.assistantFailed}
             </p>
           )}
           {link ? (
             <>
               <p className="text-sm">
-                Connected{link.email ? ` as ${link.email}` : ""}: your store assistant can ask your Kaizen Life assistant about
-                your calendar, tasks and plans when you ask it to.
+                {fillWords(w.assistantConnected, { as: link.email ? fillWords(w.as, { email: link.email }) : "" })}
               </p>
               <form action={disconnectLifeAssistantAction}>
                 <button type="submit" className={smallButton}>
-                  Disconnect it from your assistant
+                  {w.assistantDisconnect}
                 </button>
               </form>
             </>
           ) : (
             <>
               <p className="text-sm text-muted">
-                Let your store assistant ask your Kaizen Life assistant about your calendar, tasks and plans. Kaizen Life asks
-                you first, and your store works just the same without it.
+                {w.assistantHint}
               </p>
               <form action={connectLifeAssistantAction}>
                 <button type="submit" className={smallButton}>
-                  Connect it to your assistant
+                  {w.assistantConnect}
                 </button>
               </form>
             </>
@@ -249,19 +248,19 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
       {grants.length > 0 && (
         <section aria-labelledby="apps-heading" className="flex max-w-md flex-col gap-3">
           <h2 id="apps-heading" className="text-title text-ink">
-            Apps you sign in to with Kaizena Flow
+            {w.apps}
           </h2>
           <ul className="flex flex-col gap-2">
             {grants.map((grant) => (
               <li key={grant.client.id} className="flex items-center justify-between gap-3 rounded-md border border-line p-3 text-sm">
                 <span>
-                  {grant.client.name || "An app"}
-                  <span className="block text-xs text-muted">Since {new Date(grant.granted_at).toLocaleDateString("en-GB", { dateStyle: "medium" })}</span>
+                  {grant.client.name || w.anApp}
+                  <span className="block text-xs text-muted">{fillWords(w.since, { date: new Date(grant.granted_at).toLocaleDateString(dateLocale, { dateStyle: "medium" }) })}</span>
                 </span>
                 <form action={revokeAppAction}>
                   <input type="hidden" name="client" value={grant.client.id} />
                   <button type="submit" className={smallButton}>
-                    Remove
+                    {w.remove}
                   </button>
                 </form>
               </li>

@@ -26,6 +26,9 @@ import {
   unpublishStarterAction,
 } from "../actions";
 import { DemoStoreView } from "./demo-store-view";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { platformSiteWords } from "@/server/platform-site-words";
+import { adminText } from "@/lib/admin-text";
 
 export const metadata: Metadata = { title: "Demo store" };
 
@@ -37,6 +40,9 @@ export const metadata: Metadata = { title: "Demo store" };
 export default async function DemoStorePage({ params, searchParams }: PageProps<"/admin/platform/themes/demo-stores/[starterId]">) {
   await connection();
   await requirePlatformAdmin();
+  const { lang, w } = await platformSiteWords();
+  const labels = adminText(lang, "common").features.labels;
+  const t = w.starter;
   const { starterId } = await params;
   const starter = await getStarter(starterId);
   if (!starter) notFound();
@@ -45,11 +51,11 @@ export default async function DemoStorePage({ params, searchParams }: PageProps<
     const demo = await getDemoStore(starterId);
     if (!demo) notFound();
     const [query, preset] = await Promise.all([searchParams, presetCheck(demo)]);
-    return <DemoStoreView demo={demo} preset={preset.ok ? { ok: true } : preset} unthemed={Boolean(query.unthemed)} />;
+    return <DemoStoreView demo={demo} preset={preset.ok ? { ok: true } : preset} unthemed={Boolean(query.unthemed)} w={w} />;
   }
   const shown = shownDetails(starter);
   const facts = starterLifecycle(starter);
-  const blocker = deleteBlocker("demo store", { stores: starter.storesMade, requests: starter.requests });
+  const blocker = deleteBlocker("demo store", { stores: starter.storesMade, requests: starter.requests }, w.tables.blocker);
   // What switching off one of its features would mean (D178 step 6), for the form's tick, as on a store's Features page.
   const counted = await featureFacts(starter.storeId);
   const warnings = STORE_FEATURES.filter((f) => featureOn(starter.features, f.id)).flatMap((f) => {
@@ -60,41 +66,39 @@ export default async function DemoStorePage({ params, searchParams }: PageProps<
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        back={{ href: STARTING_CONTENT_HREF, label: "Themes" }}
+        back={{ href: STARTING_CONTENT_HREF, label: t.back }}
         title={shown.title}
-        status={<LifecycleBadge facts={facts} />}
+        status={<LifecycleBadge facts={facts} words={w.lifecycle} />}
         meta={[
-          `Its store is /s/${starter.storeSlug}`,
-          starter.publishedAt && `Last published ${starter.publishedAt.slice(0, 10)}`,
-          starter.publishedSlug && `New stores are copied from /s/${starter.publishedSlug}`,
-          `${starter.storesMade} ${starter.storesMade === 1 ? "store" : "stores"} made from it`,
+          fillWords(t.itsStore, { slug: starter.storeSlug }),
+          starter.publishedAt && fillWords(t.lastPublished, { date: starter.publishedAt.slice(0, 10) }),
+          starter.publishedSlug && fillWords(t.copiedFrom, { slug: starter.publishedSlug }),
+          countWords(starter.storesMade, t.made),
         ]}
       />
 
-      <Card title="Publishing" className="flex flex-col gap-3" compact>
+      <Card title={t.publishing} className="flex flex-col gap-3" compact>
         <ul className="list-disc pl-5 text-sm text-muted">
-          <li>
-            Publish keeps a copy of its store as it is now: new stores that start from a look shown on it are made from that copy, and the
-            theme store shows it. Changes you make in its store after reach no one until you publish again.
-          </li>
-          <li>Unpublish takes it away at once: looks shown on it start new stores from the Standard store, and the theme store shows them there.</li>
-          <li>Archive leaves it out of the demo stores; Restore brings it back, unpublished.</li>
-          <li>{blocker ?? "Nothing used it yet, so it can be deleted."}</li>
+          <li>{t.pubCopy}</li>
+          <li>{t.pubUnpublish}</li>
+          <li>{t.pubArchive}</li>
+          <li>{blocker ?? t.pubDeletable}</li>
         </ul>
-        {starter.changedInStore && <p className="text-sm">Its store changed since it was last published (from its activity log).</p>}
+        {starter.changedInStore && <p className="text-sm">{t.changedInStore}</p>}
         {starter.published && !starter.publishedSlug && (
-          <p className="text-sm">Published before copies were kept: new stores copy its store as it is now. Publish it again to keep a copy.</p>
+          <p className="text-sm">{t.noCopy}</p>
         )}
         <div className="flex flex-wrap items-center gap-2">
           <ActionForm action={openStarterAdminAction.bind(null, starter.id)}>
-            <SubmitButton variant="secondary">Open the store&apos;s admin</SubmitButton>
+            <SubmitButton variant="secondary">{t.openAdmin}</SubmitButton>
           </ActionForm>
-          <PreviewLink href={starterPreviewHref(starter.storeSlug)} label="Preview its store" title={shown.title} />
-          {starter.publishedSlug && <PreviewLink href={starterPreviewHref(starter.publishedSlug)} label="Preview as published" title={shown.title} />}
+          <PreviewLink href={starterPreviewHref(starter.storeSlug)} label={w.preview.itsStore} title={shown.title} of={w.preview.of} />
+          {starter.publishedSlug && <PreviewLink href={starterPreviewHref(starter.publishedSlug)} label={w.preview.asPublished} title={shown.title} of={w.preview.of} />}
           <LifecycleButtons
             kind="demo store"
             title={shown.title}
             facts={facts}
+            words={w.lifecycle}
             actions={{
               publish: publishStarterAction.bind(null, starter.id),
               unpublish: unpublishStarterAction.bind(null, starter.id),
@@ -107,18 +111,18 @@ export default async function DemoStorePage({ params, searchParams }: PageProps<
       </Card>
 
       <Card
-        title="Features"
-        description={<>What a store made from this demo store starts with switched on (its store&apos;s Settings, Features). The owner&apos;s setup asks what they will sell with these chosen, and they can change everything after. New stores get them once you publish.</>}
+        title={t.features}
+        description={t.featuresDescription}
         className="flex flex-col gap-3"
         compact
       >
         <p className="text-sm">
-          Now: {featureSummary(starter.features)}.
-          {starter.publishedFeatures && ` As published: ${featureSummary(starter.publishedFeatures)}.`}
+          {fillWords(t.now, { summary: featureSummary(starter.features, w.tables.summary, labels) })}
+          {starter.publishedFeatures && fillWords(t.asPublished, { summary: featureSummary(starter.publishedFeatures, w.tables.summary, labels) })}
         </p>
         <ActionForm action={setStarterFeaturesAction.bind(null, starter.id)} className="flex max-w-3xl flex-col gap-3">
           <fieldset className="flex flex-col gap-2">
-            <legend className="sr-only">Switched on</legend>
+            <legend className="sr-only">{t.switchedOn}</legend>
             {STORE_FEATURES.map((feature) => (
               <label key={feature.id} className="flex items-start gap-2 text-sm">
                 <input type="checkbox" name="features" value={feature.id} defaultChecked={featureKept(starter.features, feature.id)} className="mt-1" />
@@ -126,7 +130,7 @@ export default async function DemoStorePage({ params, searchParams }: PageProps<
                   <span className="font-medium">{feature.label}</span>
                   <span className="text-muted">
                     {feature.words}
-                    {feature.needs.length > 0 && ` Needs ${feature.needs.map((need) => FEATURES_BY_ID[need].label).join(" and ")}.`}
+                    {feature.needs.length > 0 && fillWords(t.needs, { features: feature.needs.map((need) => FEATURES_BY_ID[need].label).join(t.and) })}
                   </span>
                 </span>
               </label>
@@ -134,7 +138,7 @@ export default async function DemoStorePage({ params, searchParams }: PageProps<
           </fieldset>
           {warnings.length > 0 && (
             <div className="flex flex-col gap-2 rounded-md border border-line p-3 text-sm">
-              <p className="font-medium">If you switch off something that is on now:</p>
+              <p className="font-medium">{t.ifOff}</p>
               <ul className="list-disc pl-5">
                 {warnings.map((warning) => (
                   <li key={warning.label}>
@@ -144,12 +148,12 @@ export default async function DemoStorePage({ params, searchParams }: PageProps<
               </ul>
               <label className="flex items-start gap-2">
                 <input type="checkbox" name="confirm" className="mt-1" />
-                <span>Switch off what I left out.</span>
+                <span>{t.switchOff}</span>
               </label>
             </div>
           )}
           <div>
-            <SubmitButton>Save features</SubmitButton>
+            <SubmitButton>{t.save}</SubmitButton>
           </div>
         </ActionForm>
       </Card>

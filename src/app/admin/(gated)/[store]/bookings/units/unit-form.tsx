@@ -2,6 +2,8 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import type { FormState } from "@/components/admin/action-form";
 import type { BookingResource } from "@/server/bookings";
 import { CARD_CLASS } from "@/components/admin/ui";
+import { adminText } from "@/lib/admin-text";
+import type { BookingsMessages } from "@/lib/admin-messages/bookings.en";
 
 const field = "flex flex-col gap-1 text-sm font-medium";
 const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
@@ -12,50 +14,54 @@ export function UnitForm({
   unit,
   hosts = [],
   action,
+  words = adminText("en", "bookings").unitForm,
 }: {
   kind: "unit" | "item";
   unit: BookingResource | null;
   /** The store's hosts (D71): a room or item may be one of theirs. */
   hosts?: { id: string; name: string }[];
   action: (state: FormState, formData: FormData) => Promise<FormState>;
+  /** The form's words (D312 A11); English when none are given. */
+  words?: BookingsMessages["unitForm"];
 }) {
+  const w = words;
   const stay = kind === "unit";
   return (
     <ActionForm action={action} className={`flex flex-col gap-4 p-5 ${CARD_CLASS}`}>
       <label className={field}>
-        Name
+        {w.name}
         <input name="name" required maxLength={120} defaultValue={unit?.name ?? ""} className={control} />
         <span className="font-normal text-muted">
-          {stay ? "Such as “Room 2” or “The cabin”." : "Such as “City bike” or “Kayak”."} Shoppers see it on their booking.
+          {stay ? w.nameRoom : w.nameItem}
         </span>
       </label>
       <label className={`${field} max-w-xs`}>
-        {stay ? "Bookings at once" : "How many there are"}
+        {stay ? w.atOnce : w.howMany}
         <input name="capacity" type="number" min={1} max={500} required defaultValue={unit?.capacity ?? 1} className={control} />
         <span className="font-normal text-muted">
-          {stay ? "1 for a room or a home; more for beds in a dormitory." : "Each booking takes one of them."}
+          {stay ? w.atOnceHint : w.howManyHint}
         </span>
       </label>
       {hosts.length > 0 && (
         <label className={`${field} max-w-xs`}>
-          Host
+          {w.host}
           <select name="hostId" defaultValue={unit?.hostId ?? ""} className={control}>
-            <option value="">The store itself</option>
+            <option value="">{w.storeItself}</option>
             {hosts.map((h) => (
               <option key={h.id} value={h.id}>
                 {h.name}
               </option>
             ))}
           </select>
-          <span className="font-normal text-muted">A host keeps the calendar of their own rooms and items.</span>
+          <span className="font-normal text-muted">{w.hostHint}</span>
         </label>
       )}
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" name="active" defaultChecked={unit?.active ?? true} className="size-4" />
-        Takes bookings
+        {w.takes}
       </label>
       <div>
-        <SubmitButton>{unit ? "Save" : "Add"}</SubmitButton>
+        <SubmitButton>{unit ? w.save : w.add}</SubmitButton>
       </div>
     </ActionForm>
   );

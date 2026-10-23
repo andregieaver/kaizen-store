@@ -9,6 +9,7 @@ import { listMarketplaceTemplates } from "@/server/templates";
 import { PageHeader } from "@/components/admin/ui";
 
 import { setTemplateHiddenAction } from "./actions";
+import { platformSiteWords } from "@/server/platform-site-words";
 
 export const metadata: Metadata = { title: "Templates" };
 
@@ -21,14 +22,15 @@ export default async function PlatformTemplatesPage() {
   // Per request: admin pages never read the database while the site is built.
   await connection();
   await requirePlatformAdmin();
+  const { w } = await platformSiteWords();
   const templates = await listMarketplaceTemplates();
   const hidden = templates.filter((t) => t.hidden).length;
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="Templates"
-        description={<>Whole page layouts, rows, columns and components that store owners share with every store, live as soon as they are shared, with the store&apos;s name on them, and Kaizena Flow&apos;s own saved parts. Hide one and it is in no store&apos;s list; pages that already have a copy keep it.</>}
+        title={w.misc.templates.title}
+        description={w.misc.templates.description}
       />
       <p className="text-sm text-muted">
         {templates.length === 0
@@ -45,7 +47,7 @@ export default async function PlatformTemplatesPage() {
               <span className="font-medium">
                 {template.name}
                 {template.hidden && (
-                  <span className="ml-2 rounded bg-sunken px-1.5 py-0.5 text-xs font-normal">Hidden</span>
+                  <span className="ml-2 rounded bg-sunken px-1.5 py-0.5 text-xs font-normal">{w.misc.templates.hidden}</span>
                 )}
               </span>
               <span className="text-muted">

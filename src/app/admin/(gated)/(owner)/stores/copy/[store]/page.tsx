@@ -3,6 +3,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { StoreCopyWizard } from "@/components/admin/store-copy-wizard";
+import { AdminTextScope } from "@/components/admin/admin-text";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminTexts } from "@/lib/admin-text";
 import { listStores } from "@/server/auth";
 import { memberCan, requireMemberAny } from "@/server/permissions";
 import { MAX_STORES_PER_OWNER } from "@/server/platform";
@@ -16,13 +19,17 @@ export const metadata: Metadata = { title: "Duplicate a store" };
  * Duplicating one of the account's stores (D129): the owner chooses what comes along. Only owners (and the platform's
  * admins) may; anyone else gets a 404 like any store they do not run. The server actions check again.
  */
-export default async function DuplicateStorePage({ params }: PageProps<"/admin/stores/copy/[store]">) {
+export default async function DuplicateStorePage({
+  params,
+}: PageProps<"/admin/stores/copy/[store]">) {
   const { store: slug } = await params;
   const member = await requireMemberAny(slug);
   const { account } = member;
   if (!memberCan(member, "owner") && !account.platformAdmin) notFound();
 
-  const owned = (await listStores(account)).filter((store) => store.role === "owner").length;
+  const owned = (await listStores(account)).filter(
+    (store) => store.role === "owner",
+  ).length;
   const full = !account.platformAdmin && owned >= MAX_STORES_PER_OWNER;
   const result = full ? null : await copyChoicesAction(slug);
   if (result && !result.ok) notFound();
@@ -36,15 +43,30 @@ export default async function DuplicateStorePage({ params }: PageProps<"/admin/s
           </Link>
         </p>
         <PageHeader
-          title={<>Duplicate {result?.ok ? result.choices.source.name : "a store"}</>}
-          description={<>Make a new store from this one. Choose what comes along; the new store starts closed and you are its owner.</>}
+          title={
+            <>Duplicate {result?.ok ? result.choices.source.name : "a store"}</>
+          }
+          description={
+            <>
+              Make a new store from this one. Choose what comes along; the new
+              store starts closed and you are its owner.
+            </>
+          }
         />
-        </div>
+      </div>
       {result?.ok ? (
-        <StoreCopyWizard choices={result.choices} start={startStoreCopyAction} />
+        <AdminTextScope
+          texts={adminTexts(adminLangOf(account.adminLocale), ["platform"])}
+        >
+          <StoreCopyWizard
+            choices={result.choices}
+            start={startStoreCopyAction}
+          />
+        </AdminTextScope>
       ) : (
         <p role="status" className={`max-w-xl p-5 text-sm ${CARD_CLASS}`}>
-          You can own up to {MAX_STORES_PER_OWNER} stores. Contact Kaizena Flow for more.
+          You can own up to {MAX_STORES_PER_OWNER} stores. Contact Kaizena Flow
+          for more.
         </p>
       )}
     </div>

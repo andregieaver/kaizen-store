@@ -6,6 +6,9 @@ import { isoCountries } from "@/lib/iso-countries";
 import { getHostTaxDetails } from "@/server/dac7";
 import { requireHost } from "@/server/hosts";
 import { PageHeader } from "@/components/admin/ui";
+import { fillWords } from "@/lib/admin-fill";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 
 import { hostSaveTaxDetailsAction } from "../actions";
 
@@ -21,7 +24,8 @@ const hint = "font-normal text-muted";
  * here. Only the host and the store's staff see them.
  */
 export default async function HostTaxPage({ params }: PageProps<"/admin/hosting/[store]/tax">) {
-  const { store, host } = await requireHost((await params).store);
+  const { store, host, account } = await requireHost((await params).store);
+  const w = adminText(adminLangOf(account.adminLocale), "bookings").hostTax;
   const details = await getHostTaxDetails(store.id, host.id);
   const countries = isoCountries();
   const home = store.details.country ?? "NO";
@@ -42,72 +46,72 @@ export default async function HostTaxPage({ params }: PageProps<"/admin/hosting/
           {host.name}
         </Link>
         <PageHeader
-          title="Tax details"
-          description={<>EU rules (DAC7) make {store.name} report to the tax authority, once a year, who its hosts are and what they were paid. Only you and the store see these details.</>}
+          title={w.title}
+          description={fillWords(w.description, { store: store.name })}
         />
         </div>
       <ActionForm action={hostSaveTaxDetailsAction.bind(null, store.slug)} className="flex flex-col gap-4">
         <fieldset className="flex flex-col gap-2 text-sm">
-          <legend className="mb-1 font-medium">You rent out as</legend>
+          <legend className="mb-1 font-medium">{w.as}</legend>
           <label className="flex items-center gap-2">
-            <input type="radio" name="kind" value="individual" defaultChecked={details?.kind !== "entity"} /> A private person
+            <input type="radio" name="kind" value="individual" defaultChecked={details?.kind !== "entity"} /> {w.person}
           </label>
           <label className="flex items-center gap-2">
-            <input type="radio" name="kind" value="entity" defaultChecked={details?.kind === "entity"} /> A business
+            <input type="radio" name="kind" value="entity" defaultChecked={details?.kind === "entity"} /> {w.business}
           </label>
         </fieldset>
         <label className={field}>
-          Full name, or the business&apos;s legal name
+          {w.legalName}
           <input name="legalName" required maxLength={200} defaultValue={details?.legalName ?? ""} className={control} />
         </label>
         <div className="flex flex-wrap gap-4">
           <label className={field}>
             <span>
-              Date of birth <span className={hint}>(people)</span>
+              {w.birth} <span className={hint}>{w.birthHint}</span>
             </span>
             <input type="date" name="dateOfBirth" defaultValue={details?.dateOfBirth ?? ""} className={control} />
           </label>
           <label className={`${field} min-w-48 flex-1`}>
             <span>
-              Business registration number <span className={hint}>(businesses)</span>
+              {w.businessNumber} <span className={hint}>{w.businessNumberHint}</span>
             </span>
             <input name="businessNumber" maxLength={40} defaultValue={details?.businessNumber ?? ""} className={control} />
           </label>
         </div>
         <label className={field}>
-          Address <span className={hint}>where you live, or the business&apos;s registered address</span>
+          {w.address} <span className={hint}>{w.addressHint}</span>
           <textarea name="address" required rows={3} maxLength={400} defaultValue={details?.address ?? ""} className={`${control} py-2`} />
         </label>
         <label className={field}>
-          Country
+          {w.country}
           {countrySelect("country", details?.country ?? home)}
         </label>
         <div className="flex flex-wrap gap-4">
           <label className={`${field} min-w-48 flex-1`}>
             <span>
-              Tax identification number <span className={hint}>(in Norway, your national identity or organisation number)</span>
+              {w.tin} <span className={hint}>{w.tinHint}</span>
             </span>
             <input name="tin" required maxLength={40} autoComplete="off" defaultValue={details?.tin ?? ""} className={control} />
           </label>
           <label className={field}>
-            Issued by
+            {w.issuedBy}
             {countrySelect("tinCountry", details?.tinCountry ?? home)}
           </label>
         </div>
         <label className={field}>
           <span>
-            VAT number <span className={hint}>(if you have one)</span>
+            {w.vat} <span className={hint}>{w.vatHint}</span>
           </span>
           <input name="vatNumber" maxLength={40} defaultValue={details?.vatNumber ?? ""} className={control} />
         </label>
         <label className={field}>
           <span>
-            Bank account (IBAN) you are paid to <span className={hint}>(as in your Stripe account)</span>
+            {w.iban} <span className={hint}>{w.ibanHint}</span>
           </span>
           <input name="iban" maxLength={50} autoComplete="off" defaultValue={details?.iban ?? ""} className={`${control} font-mono`} />
         </label>
         <div>
-          <SubmitButton>Save</SubmitButton>
+          <SubmitButton>{w.save}</SubmitButton>
         </div>
       </ActionForm>
     </div>

@@ -5,6 +5,9 @@ import { connection } from "next/server";
 import { primaryButton, secondaryButton } from "@/components/admin/work/work-parts";
 import { readApproval } from "@/lib/wordpress";
 import { getAccount } from "@/server/auth";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
+import { fillWords } from "@/lib/admin-fill";
 import { storesOf } from "@/server/wordpress";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
@@ -25,13 +28,14 @@ export default async function ConnectWordpressPage({ searchParams }: PageProps<"
     for (const [key, value] of Object.entries(query)) if (typeof value === "string") params.set(key, value);
     redirect(`/admin/sign-in?next=${encodeURIComponent(`/admin/account/wordpress/connect?${params}`)}`);
   }
+  const w = adminText(adminLangOf(account.adminLocale), "bookings").wordpress;
   const read = readApproval(query);
   if (!read.ok) {
     return (
       <div className="flex max-w-xl flex-col gap-3">
-        <PageHeader title="Connect a WordPress site" />
+        <PageHeader title={w.connectTitle} />
         <p role="alert" className="rounded-lg border border-danger-text p-4 text-sm">
-          This request cannot be used: {read.reason} Start again from the plugin&apos;s settings in WordPress.
+          {fillWords(w.unusable, { reason: read.reason })}
         </p>
       </div>
     );
@@ -42,29 +46,29 @@ export default async function ConnectWordpressPage({ searchParams }: PageProps<"
   return (
     <div className="flex max-w-xl flex-col gap-5">
       <PageHeader
-        title={<>Connect {host} to your stores?</>}
-        description={<>The Kaizena Flow plugin on <strong className="text-ink">{request.name}</strong> ({request.site}) asks to read the products of your stores, so it can show them on its pages. Only approve a site you run.</>}
+        title={fillWords(w.connectHost, { host })}
+        description={<>{w.asksBefore} <strong className="text-ink">{request.name}</strong> {fillWords(w.asksAfter, { site: request.site })}</>}
       />
       <section aria-labelledby="reads-heading" className={`flex flex-col gap-2 p-4 text-sm ${CARD_CLASS}`}>
         <h2 id="reads-heading" className="text-title text-ink">
-          What it can read
+          {w.reads}
         </h2>
         <ul className="list-disc pl-5 text-muted">
           <li>
-            The products, prices, pictures, categories and tags your stores show shoppers
+            {w.readsProducts}
             {stores.length > 0 ? `: ${stores.map((store) => store.name).join(", ")}` : ""}.
           </li>
-          <li>The stores you belong to when it asks, so a store you leave is no longer shown.</li>
+          <li>{w.readsStores}</li>
         </ul>
-        <h2 className="mt-2 text-title text-ink">What else it can do</h2>
+        <h2 className="mt-2 text-title text-ink">{w.else}</h2>
         <ul className="list-disc pl-5 text-muted">
-          <li>Make a shopping cart in a store for a shopper who presses Checkout on the site, which opens in the store to be paid there.</li>
+          <li>{w.cart}</li>
         </ul>
-        <h2 className="mt-2 text-title text-ink">What it cannot do</h2>
+        <h2 className="mt-2 text-title text-ink">{w.cannot}</h2>
         <ul className="list-disc pl-5 text-muted">
-          <li>Read orders, customers, settings or anything private, or change a product, price, order or setting.</li>
+          <li>{w.private}</li>
         </ul>
-        <p className="mt-2 text-muted">You can disconnect it at any time under Account, WordPress.</p>
+        <p className="mt-2 text-muted">{w.anyTime}</p>
       </section>
       <form action={answerApprovalAction} className="flex flex-wrap gap-3">
         <input type="hidden" name="site" value={request.site} />
@@ -73,10 +77,10 @@ export default async function ConnectWordpressPage({ searchParams }: PageProps<"
         <input type="hidden" name="state" value={request.state} />
         <input type="hidden" name="challenge" value={request.challenge} />
         <button type="submit" name="answer" value="approve" className={primaryButton}>
-          Approve and connect
+          {w.approve}
         </button>
         <button type="submit" name="answer" value="deny" className={secondaryButton}>
-          Cancel
+          {w.cancel}
         </button>
       </form>
     </div>

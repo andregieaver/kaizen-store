@@ -7,7 +7,7 @@ import { parseSiteFonts } from "@/lib/fonts-schema";
 import { parsePageContent, type PageContent } from "@/lib/page-content";
 import { themeLayersOf } from "@/lib/section-styles";
 import type { StoreTheme } from "@/lib/theme";
-import { whatChanges, type LookFacts, type PageFacts, type WhatChanges } from "@/lib/theme-changes";
+import { whatChanges, type ChangesWords, type LookFacts, type PageFacts, type WhatChanges } from "@/lib/theme-changes";
 import { themeFontFamilies } from "@/lib/theme-elements";
 
 import { platformTheme } from "./platform-navigation";
@@ -105,7 +105,7 @@ async function lookFacts(title: string, look: PlatformLook): Promise<LookFacts> 
  * *What changes* when Kaizena Flow's site switches from its live theme to an installed one: `whatChanges()` over the two looks and Kaizena
  * Flow's pages and articles as visitors see them (published, else the draft). Null for an id that is not an install, or the live one.
  */
-export async function whatChangesForPlatform(installId: string): Promise<{ live: string; target: string; changes: WhatChanges } | null> {
+export async function whatChangesForPlatform(installId: string, words?: ChangesWords): Promise<{ live: string; target: string; changes: WhatChanges } | null> {
   const [live, target] = await Promise.all([livePlatformInstall(), platformInstallLook(installId)]);
   if (!live || !target || target.live) return null;
   const rows = await db().execute<Row>(sql`
@@ -116,5 +116,5 @@ export async function whatChangesForPlatform(installId: string): Promise<{ live:
     return content ? [{ title: content.title, rows: content.rows }] : [];
   });
   const [from, to] = await Promise.all([lookFacts(live.title, live.look), lookFacts(target.title, target.look)]);
-  return { live: live.title, target: target.title, changes: whatChanges(from, to, pages) };
+  return { live: live.title, target: target.title, changes: whatChanges(from, to, pages, words) };
 }

@@ -1,4 +1,8 @@
 import { ReminderEditor } from "@/components/admin/reminder-editor";
+import { AdminTextScope } from "@/components/admin/admin-text";
+import { adminTexts } from "@/lib/admin-text";
+import { requestAdminLang } from "@/server/admin-request-lang";
+import { adminText } from "@/lib/admin-text";
 import type { ReminderText } from "@/lib/cart-reminders";
 import { platformDiscountSummary } from "@/lib/discounts";
 import { formatMoney } from "@/lib/money";
@@ -11,22 +15,53 @@ import { savePlanReminderAction, sendTestPlanReminderAction } from "./actions";
 export async function PlanReminderForm({
   step,
 }: {
-  step: { id: string | null; delayMinutes: number; active: boolean; discountCodeId: string | null; content: Record<string, ReminderText> };
+  step: {
+    id: string | null;
+    delayMinutes: number;
+    active: boolean;
+    discountCodeId: string | null;
+    content: Record<string, ReminderText>;
+  };
 }) {
-  const [preview, discounts] = await Promise.all([planReminderPreview(), listPlatformDiscounts()]);
-  const money = (minor: number, currency: string) => formatMoney(minor, currency, "nb-NO");
+  const [preview, discounts] = await Promise.all([
+    planReminderPreview(),
+    listPlatformDiscounts(),
+  ]);
+  const money = (minor: number, currency: string) =>
+    formatMoney(minor, currency, "nb-NO");
+  const lang = await requestAdminLang();
   return (
-    <ReminderEditor
-      initial={step}
-      storeName={preview.storeName}
-      languages={[{ locale: "en", label: "English", currency: preview.currency, footer: ["Kaizena Flow · kaizenaflow.com"], sample: preview.sample }]}
-      discounts={discounts
-        .filter((d) => d.active || d.id === step.discountCodeId)
-        .map((d) => ({ id: d.id, code: d.code, gives: platformDiscountSummary(d, money) }))}
-      save={savePlanReminderAction.bind(null, step.id)}
-      sendTest={step.id ? sendTestPlanReminderAction.bind(null, step.id) : null}
-      back="/admin/platform/plan-reminders"
-      purpose="plan"
-    />
+    <AdminTextScope texts={adminTexts(lang, ["platform"])}>
+      <ReminderEditor
+        initial={step}
+        storeName={preview.storeName}
+        languages={[
+          {
+            locale: "en",
+            label: "English",
+            currency: preview.currency,
+            footer: ["Kaizena Flow · kaizenaflow.com"],
+            sample: preview.sample,
+          },
+        ]}
+        discounts={discounts
+          .filter((d) => d.active || d.id === step.discountCodeId)
+          .map((d) => ({
+            id: d.id,
+            code: d.code,
+            gives: platformDiscountSummary(
+              d,
+              money,
+              adminText(lang, "billing").discount,
+            ),
+          }))}
+        save={savePlanReminderAction.bind(null, step.id)}
+        sendTest={
+          step.id ? sendTestPlanReminderAction.bind(null, step.id) : null
+        }
+        back="/admin/platform/plan-reminders"
+        purpose="plan"
+      />
+    </AdminTextScope>
   );
 }

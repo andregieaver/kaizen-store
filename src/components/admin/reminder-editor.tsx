@@ -11,6 +11,8 @@ import {
 } from "@/lib/cart-reminders";
 import { renderEmail } from "@/lib/email-layout";
 import { CARD_CLASS } from "@/components/admin/ui";
+import { useAdminText } from "@/components/admin/admin-text";
+import { fillWords } from "@/lib/admin-fill";
 
 type Save = (input: ReminderStepInput) => Promise<{ ok: true; id?: string } | { ok: false; problems: string[] }>;
 type SendTest = (locale: string) => Promise<{ ok: boolean; message: string }>;
@@ -64,6 +66,7 @@ export function ReminderEditor({
   purpose?: "cart" | "plan";
 }) {
   const router = useRouter();
+  const w = useAdminText("platform").reminderEditor;
   const id = useId();
   const start = split(initial.delayMinutes);
   const [amount, setAmount] = useState(start.amount);
@@ -129,7 +132,7 @@ export function ReminderEditor({
       >
         {problems.length > 0 && (
           <div role="alert" className="rounded-lg border border-danger-text p-4 text-sm">
-            <p className="font-medium">Nothing was saved yet. Please fix:</p>
+            <p className="font-medium">{w.fix}</p>
             <ul className="mt-2 list-disc pl-5">
               {problems.map((problem) => (
                 <li key={problem}>{problem}</li>
@@ -140,10 +143,10 @@ export function ReminderEditor({
 
         <section aria-labelledby={`${id}-when`} className={card}>
           <h2 id={`${id}-when`} className="text-title text-ink">
-            When it goes
+            {w.when}
           </h2>
           <fieldset className="flex flex-col gap-1">
-            <legend className="mb-1 text-sm font-medium">Send it after</legend>
+            <legend className="mb-1 text-sm font-medium">{w.sendAfter}</legend>
             <div className="flex gap-2">
               <input
                 type="number"
@@ -152,35 +155,35 @@ export function ReminderEditor({
                 onChange={(event) => setAmount(event.target.value)}
                 required
                 inputMode="numeric"
-                aria-label="How long"
+                aria-label={w.howLong}
                 className={`${input} max-w-28`}
               />
-              <select value={unit} onChange={(event) => setUnit(event.target.value as Unit)} aria-label="Unit" className={`${input} max-w-40`}>
-                <option value="minutes">minutes</option>
-                <option value="hours">hours</option>
-                <option value="days">days</option>
+              <select value={unit} onChange={(event) => setUnit(event.target.value as Unit)} aria-label={w.unit} className={`${input} max-w-40`}>
+                <option value="minutes">{w.minutes}</option>
+                <option value="hours">{w.hours}</option>
+                <option value="days">{w.days}</option>
               </select>
             </div>
             <p className={hint}>
               {purpose === "plan"
-                ? "Counted from when the owner went to pay. At least 30 minutes, at most 30 days. Reminders stop as soon as the store is on a plan."
-                : "Counted from when the shopper typed their email at checkout. At least 30 minutes, at most 30 days. Reminders stop as soon as the cart is bought."}
+                ? w.planWhen
+                : w.cartWhen}
             </p>
           </fieldset>
           <label className="flex items-center gap-3 text-sm font-medium">
             <input type="checkbox" checked={active} onChange={(event) => setActive(event.target.checked)} className="size-4" />
-            Switched on
+            {w.on}
           </label>
         </section>
 
         <section aria-labelledby={`${id}-code`} className={card}>
           <h2 id={`${id}-code`} className="text-title text-ink">
-            Discount code (optional)
+            {w.code}
           </h2>
           <label className={label}>
-            Code in this reminder
+            {w.codeIn}
             <select value={discountCodeId} onChange={(event) => setDiscountCodeId(event.target.value)} className={input}>
-              <option value="">None</option>
+              <option value="">{w.none}</option>
               {discounts.map((d) => (
                 <option key={d.id} value={d.id}>
                   {d.code} ({d.gives})
@@ -190,17 +193,17 @@ export function ReminderEditor({
           </label>
           <p className={hint}>
             {purpose === "plan"
-              ? "Shown in the email and applied to the plan when the owner follows the link. Make codes under Discounts; a code that is switched off is left out."
-              : "Shown in the email and added to the cart when the shopper follows the link. Make codes under Coupons; a code that is switched off is left out."}
+              ? w.planCode
+              : w.cartCode}
           </p>
         </section>
 
         <section aria-labelledby={`${id}-text`} className={card}>
           <h2 id={`${id}-text`} className="text-title text-ink">
-            The email
+            {w.email}
           </h2>
           {languages.length > 1 && (
-            <div role="group" aria-label="Language" className="flex flex-wrap gap-1 rounded-full bg-sunken p-1">
+            <div role="group" aria-label={w.language} className="flex flex-wrap gap-1 rounded-full bg-sunken p-1">
               {languages.map((l) => (
                 <button
                   key={l.locale}
@@ -215,15 +218,15 @@ export function ReminderEditor({
             </div>
           )}
           <label className={label}>
-            Subject
+            {w.subject}
             <input value={text.subject} onChange={(event) => setText("subject", event.target.value)} required maxLength={150} className={input} />
           </label>
           <label className={label}>
-            Heading
+            {w.heading}
             <input value={text.heading} onChange={(event) => setText("heading", event.target.value)} required maxLength={150} className={input} />
           </label>
           <label className={label}>
-            Message
+            {w.message}
             <textarea
               value={text.body}
               onChange={(event) => setText("body", event.target.value)}
@@ -234,14 +237,12 @@ export function ReminderEditor({
             />
           </label>
           <label className={label}>
-            Button
+            {w.button}
             <input value={text.button} onChange={(event) => setText("button", event.target.value)} required maxLength={60} className={input} />
           </label>
           <p className={hint}>
-            {"{store}"} becomes the store&apos;s name and {"{code}"} the discount code. A blank line starts a new paragraph.
-            {purpose === "plan"
-              ? " The plan, its price and the link to stop reminders are added for you."
-              : " The cart, its total and the link to stop reminders are added for you."}
+            {w.placeholders}
+            {purpose === "plan" ? w.planAdded : w.cartAdded}
           </p>
         </section>
 
@@ -251,10 +252,10 @@ export function ReminderEditor({
             disabled={saving}
             className="min-h-11 rounded-pill bg-brand px-5 font-medium text-brand-ink disabled:opacity-50"
           >
-            {saving ? "Saving …" : "Save reminder"}
+            {saving ? w.saving : w.save}
           </button>
           <a href={back} className="text-sm underline">
-            Cancel
+            {w.cancel}
           </a>
         </div>
       </form>
@@ -262,7 +263,7 @@ export function ReminderEditor({
       <section aria-labelledby={`${id}-preview`} className="flex flex-col gap-3 lg:sticky lg:top-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 id={`${id}-preview`} className="text-title text-ink">
-            Preview{languages.length > 1 && language ? `: ${language.label}` : ""}
+            {languages.length > 1 && language ? fillWords(w.previewOf, { language: language.label }) : w.preview}
           </h2>
           {sendTest && (
             <button
@@ -271,7 +272,7 @@ export function ReminderEditor({
               onClick={() => startTesting(async () => setTestMessage(await sendTest(locale)))}
               className="min-h-10 rounded-pill border border-edge px-3 text-sm disabled:opacity-50"
             >
-              {testing ? "Sending …" : "Send a test to me"}
+              {testing ? w.sending : w.sendTest}
             </button>
           )}
         </div>
@@ -280,13 +281,13 @@ export function ReminderEditor({
             {testMessage.message}
           </p>
         )}
-        {sendTest && <p className={hint}>The test sends the saved version, with a sample {purpose === "plan" ? "plan" : "cart"}.</p>}
+        {sendTest && <p className={hint}>{purpose === "plan" ? w.testPlan : w.testCart}</p>}
         {preview && (
           <div className={`overflow-hidden ${CARD_CLASS}`}>
             <p className="border-b border-line px-4 py-2 text-sm">
-              <span className="text-muted">Subject:</span> {preview.subject}
+              <span className="text-muted">{w.subjectLabel}</span> {preview.subject}
             </p>
-            <iframe title="Email preview" srcDoc={preview.html} sandbox="" className="h-[36rem] w-full bg-white" />
+            <iframe title={w.previewTitle} srcDoc={preview.html} sandbox="" className="h-[36rem] w-full bg-white" />
           </div>
         )}
       </section>

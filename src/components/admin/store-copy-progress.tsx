@@ -4,9 +4,12 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { copiedStoreAdminPath, copiedStoreSetupPath, copyWizardPath } from "@/lib/store-copy-paths";
-import { PHASE_STATE_WORDS, countRows, countText, leftOutText, phaseSteps, pollDelay } from "@/lib/store-copy-progress";
-import { COPY_PHASE_LABELS, type StoreCopyActions, type StoreCopyProgress as Progress } from "@/lib/store-copy";
+import { countRows, phaseSteps, pollDelay } from "@/lib/store-copy-progress";
+import { type StoreCopyActions, type StoreCopyProgress as Progress } from "@/lib/store-copy";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { useAdminLang, useAdminText } from "@/components/admin/admin-text";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 
 const linkButton = "inline-flex min-h-10 items-center rounded-md px-4 text-sm font-medium";
 const MARKS = { done: "✓", current: "→", waiting: "○", stopped: "✕" } as const;
@@ -17,20 +20,23 @@ const MARKS = { done: "✓", current: "→", waiting: "○", stopped: "✕" } as
  */
 export function StoreCopyProgressView({ progress, trouble = false }: { progress: Progress; trouble?: boolean }) {
   const { status } = progress;
+  const w = useAdminText("platform").copyProgress;
+  const lang = useAdminLang();
+  const num = (n: number) => n.toLocaleString(lang === "en" ? "en" : ADMIN_LANG_FACTS[lang].locale);
   const rows = countRows(progress.counts);
   const steps = phaseSteps(progress);
   const heading =
     status === "done"
-      ? "Your new store is ready"
+      ? w.ready
       : status === "failed"
-        ? "The copy did not finish"
-        : `Copying ${progress.sourceName} to ${progress.newName}`;
+        ? w.failed
+        : fillWords(w.copying, { source: progress.sourceName, name: progress.newName });
   const line =
     status === "done"
-      ? `${progress.newName} has been copied from ${progress.sourceName}.`
+      ? fillWords(w.copied, { name: progress.newName, source: progress.sourceName })
       : status === "failed"
-        ? "The copy stopped."
-        : `${COPY_PHASE_LABELS[progress.phase]} …`;
+        ? w.stopped
+        : `${w.phases[progress.phase]} …`;
 
   return (
     <div className="flex max-w-2xl flex-col gap-5">
@@ -43,7 +49,7 @@ export function StoreCopyProgressView({ progress, trouble = false }: { progress:
 
       {trouble && status === "running" && (
         <p className={`p-3 text-sm ${CARD_CLASS}`}>
-          The latest news could not be fetched. The copy carries on in the background, and this page keeps trying.
+          {w.trouble}
         </p>
       )}
 
@@ -53,14 +59,14 @@ export function StoreCopyProgressView({ progress, trouble = false }: { progress:
           className="flex flex-col gap-2 rounded-lg border border-danger-text p-4 text-sm"
         >
           <p className="font-medium text-danger-text">
-            {progress.problem ?? "Something went wrong while copying."}
+            {progress.problem ?? w.wrong}
           </p>
           <p>
-            You can{" "}
+            {w.youCan}{" "}
             <Link href={copyWizardPath(progress.sourceSlug)} className="underline underline-offset-2">
-              start a new copy
+              {w.startNew}
             </Link>
-            . The new store may be partly there. It stays closed, so nobody can see it.
+            {w.partly}
           </p>
         </div>
       )}
@@ -71,23 +77,23 @@ export function StoreCopyProgressView({ progress, trouble = false }: { progress:
           className={`flex flex-col gap-3 p-5 ${CARD_CLASS}`}
         >
           <h2 id="copy-next" className="text-title text-ink">
-            What next
+            {w.next}
           </h2>
           <p className="text-sm text-muted">
-            The new store is closed until you open it. Look it over, then finish its setup.
+            {w.nextNote}
           </p>
           <div className="flex flex-wrap gap-2">
             <Link
               href={copiedStoreAdminPath(progress.newSlug)}
               className={`${linkButton} bg-brand text-brand-ink`}
             >
-              Open {progress.newName}
+              {fillWords(w.open, { name: progress.newName })}
             </Link>
             <Link href={copiedStoreSetupPath(progress.newSlug)} className={`${linkButton} border border-line`}>
-              Continue setup
+              {w.continue}
             </Link>
             <Link href="/admin/stores" className={`${linkButton} border border-line`}>
-              All stores
+              {w.allStores}
             </Link>
           </div>
         </section>
@@ -95,7 +101,7 @@ export function StoreCopyProgressView({ progress, trouble = false }: { progress:
 
       <section aria-labelledby="copy-steps" className="flex flex-col gap-2">
         <h2 id="copy-steps" className="text-title text-ink">
-          Steps
+          {w.steps}
         </h2>
         <ol className={`divide-y divide-line text-sm ${CARD_CLASS}`}>
           {steps.map((step) => (
@@ -107,8 +113,8 @@ export function StoreCopyProgressView({ progress, trouble = false }: { progress:
               <span aria-hidden className="w-4 text-center">
                 {MARKS[step.state]}
               </span>
-              <span className={step.state === "waiting" ? "flex-1 text-muted" : "flex-1"}>{step.label}</span>
-              <span className="text-muted">{PHASE_STATE_WORDS[step.state]}</span>
+              <span className={step.state === "waiting" ? "flex-1 text-muted" : "flex-1"}>{w.phases[step.phase]}</span>
+              <span className="text-muted">{w.states[step.state]}</span>
             </li>
           ))}
         </ol>
@@ -117,14 +123,14 @@ export function StoreCopyProgressView({ progress, trouble = false }: { progress:
       {rows.length > 0 && (
         <section aria-labelledby="copy-counts" className="flex flex-col gap-2">
           <h2 id="copy-counts" className="text-title text-ink">
-            What is copied
+            {w.whatCopied}
           </h2>
           <ul className={`flex flex-col gap-3 p-4 text-sm ${CARD_CLASS}`}>
             {rows.map((row) => (
               <li key={row.key} className="flex flex-col gap-1">
                 <span className="flex justify-between gap-3">
-                  <span id={`copy-count-${row.key}`}>{row.label}</span>
-                  <span>{countText(row)}</span>
+                  <span id={`copy-count-${row.key}`}>{w.counts[row.key]}</span>
+                  <span>{fillWords(w.of, { done: num(row.done), total: num(row.total) })}</span>
                 </span>
                 <progress
                   value={row.done}
@@ -140,7 +146,7 @@ export function StoreCopyProgressView({ progress, trouble = false }: { progress:
 
       {progress.mediaLeftOut > 0 && (
         <p className={`p-3 text-sm ${CARD_CLASS}`}>
-          {leftOutText(progress.mediaLeftOut)}
+          {countWords(progress.mediaLeftOut, w.leftOut, { n: num(progress.mediaLeftOut) })}
         </p>
       )}
     </div>

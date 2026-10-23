@@ -12,7 +12,7 @@ import { adminText } from "@/lib/admin-text";
 export function StockExportForm({ slug, lang = "en" }: { slug: string; lang?: AdminLang }) {
   return (
     <form method="post" action={`/admin/${slug}/inventory/export/file`} className={`${card} flex flex-col gap-4`}>
-      <DialectField defaultValue="standard" />
+      <DialectField defaultValue="standard" words={adminText(lang, "bookings").exports} />
       <div>
         <button type="submit" className={primary}>
           {adminText(lang, "inventory").export.button}

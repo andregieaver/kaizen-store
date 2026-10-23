@@ -11,27 +11,10 @@ import { designWorkspacePage } from "./data";
 import { DesignShell } from "./shell";
 import { chooseWorkspaceLayoutAction } from "./workspace-actions";
 import { Card } from "@/components/admin/ui";
+import { fillWords } from "@/lib/admin-fill";
+import { platformSiteWords } from "@/server/platform-site-words";
 
-const WORDS: Record<DesignLayoutKind, { one: string; tab: "header" | "footer" | "productLayout"; standard: string; intro: string }> = {
-  header: {
-    one: "header",
-    tab: "header",
-    standard: "Kaizena Flow's standard header",
-    intro: "The top of every page of a store that applies the theme: its logo, menus, search, account, cart and the rest, with the store's own logo and menus.",
-  },
-  footer: {
-    one: "footer",
-    tab: "footer",
-    standard: "Kaizena Flow's standard footer",
-    intro: "The bottom of every page of a store that applies the theme, with the store's own logo, menus, business details and cookies link.",
-  },
-  productLayout: {
-    one: "product page layout",
-    tab: "productLayout",
-    standard: "Kaizena Flow's standard product page",
-    intro: "How product pages are laid out in a store that applies the theme: rows and columns of product components with anything around them.",
-  },
-};
+const TABS: Record<DesignLayoutKind, "header" | "footer" | "productLayout"> = { header: "header", footer: "footer", productLayout: "productLayout" };
 
 /**
  * A design profile's header, footer or product page (D177): the standard one, or its own built in the page builder on the profile's
@@ -39,7 +22,9 @@ const WORDS: Record<DesignLayoutKind, { one: string; tab: "header" | "footer" | 
  */
 export async function LayoutTab({ presetId, kind }: { presetId: string; kind: DesignLayoutKind }) {
   const page = await designWorkspacePage(presetId);
-  const words = WORDS[kind];
+  const { w } = await platformSiteWords();
+  const words = { ...w.layout[kind], tab: TABS[kind] };
+  const l = w.layout;
   const type = LAYOUT_PAGE_TYPE[kind];
   if (page.problem !== null) {
     return (
@@ -56,10 +41,19 @@ export async function LayoutTab({ presetId, kind }: { presetId: string; kind: De
         <Card className="flex max-w-3xl flex-col gap-3" compact>
           <p className="text-sm text-muted">{words.intro}</p>
           <p className="text-sm">
-            The theme uses <strong>{words.standard}</strong>: a store that applies it shows the standard {words.one}.
+            {(() => {
+              const [before, after = ""] = fillWords(l.uses, { one: words.one }).split("{standard}");
+              return (
+                <>
+                  {before}
+                  <strong>{words.standard}</strong>
+                  {after}
+                </>
+              );
+            })()}
           </p>
           <ActionForm action={choose("build")}>
-            <SubmitButton>Build the theme&apos;s own {words.one}</SubmitButton>
+            <SubmitButton>{fillWords(l.build, { one: words.one })}</SubmitButton>
           </ActionForm>
         </Card>
       </DesignShell>
@@ -74,15 +68,17 @@ export async function LayoutTab({ presetId, kind }: { presetId: string; kind: De
   return (
     <DesignShell design={page.design} facts={page.facts} tab={words.tab}>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="max-w-3xl text-sm text-muted">{words.intro} Every save is the theme&apos;s draft; stores get it when the theme is published.</p>
+        <p className="max-w-3xl text-sm text-muted">
+          {words.intro} {l.draftNote}
+        </p>
         <ActionForm action={choose("standard")}>
-          <SubmitButton variant="secondary">Use {words.standard} instead</SubmitButton>
+          <SubmitButton variant="secondary">{fillWords(l.useStandard, { standard: words.standard })}</SubmitButton>
         </ActionForm>
       </div>
       {editable ? (
         <PageEditor key={editable.id} page={editable} savedParts={saved} terms={[]} gridTerms={gridTerms} fieldRoles={[]} context={context} />
       ) : (
-        <p role="alert" className="text-sm">The {words.one} could not be opened. Reload the page.</p>
+        <p role="alert" className="text-sm">{fillWords(l.cannotOpen, { one: words.one })}</p>
       )}
     </DesignShell>
   );

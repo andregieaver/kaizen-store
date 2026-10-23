@@ -1,5 +1,7 @@
 "use server";
 
+import { platformActionWords } from "@/server/platform-site-words";
+
 import { refresh, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -27,7 +29,7 @@ const text = (value: FormDataEntryValue | null) => (typeof value === "string" ? 
 export async function createDemoStoreAction(_state: FormState, formData: FormData): Promise<FormState> {
   const admin = await requirePlatformAdmin();
   const look = designLookChoice(formData.get("design"));
-  if (!look) return { status: "error", messages: ["Choose the theme it wears."] };
+  if (!look) return { status: "error", messages: [(await platformActionWords()).chooseWears] };
   const result = await createDemoStore(admin, {
     name: text(formData.get("name")),
     slug: text(formData.get("slug")).toLowerCase(),
@@ -46,7 +48,7 @@ export async function publishDemoStoreAction(starterId: string): Promise<FormSta
   const result = await publishDemoStore(admin, starterId);
   if (!result.ok) return { status: "error", messages: result.problems };
   liveChanged();
-  return { status: "ok", messages: ["Published: it is live, every change in its store shows at once, and the theme's page lists it under See it live."] };
+  return { status: "ok", messages: [(await platformActionWords()).demoPublished] };
 }
 
 /** Takes a demo store down (D277): no longer listed under *See it live*. */
@@ -55,7 +57,7 @@ export async function unpublishDemoStoreAction(starterId: string): Promise<FormS
   const result = await unpublishStarter(admin, starterId);
   if (!result.ok) return { status: "error", messages: result.problems };
   liveChanged();
-  return { status: "ok", messages: ["Unpublished: the theme's page no longer lists it. Its store and everything in it stay."] };
+  return { status: "ok", messages: [(await platformActionWords()).demoUnpublished] };
 }
 
 export async function archiveDemoStoreAction(starterId: string): Promise<FormState> {
@@ -63,7 +65,7 @@ export async function archiveDemoStoreAction(starterId: string): Promise<FormSta
   const result = await archiveStarter(admin, starterId);
   if (!result.ok) return { status: "error", messages: result.problems };
   liveChanged();
-  return { status: "ok", messages: ["Archived: unpublished and left out of the demo stores until you restore it."] };
+  return { status: "ok", messages: [(await platformActionWords()).demoArchived] };
 }
 
 export async function restoreDemoStoreAction(starterId: string): Promise<FormState> {
@@ -71,13 +73,13 @@ export async function restoreDemoStoreAction(starterId: string): Promise<FormSta
   const result = await restoreStarter(admin, starterId);
   if (!result.ok) return { status: "error", messages: result.problems };
   liveChanged();
-  return { status: "ok", messages: ["Restored, unpublished. Publish it when it is ready."] };
+  return { status: "ok", messages: [(await platformActionWords()).restored] };
 }
 
 /** Deletes a demo store after the admin confirmed: its store is closed and kept (D171), only its row goes. */
 export async function deleteDemoStoreAction(starterId: string, _state: FormState, formData: FormData): Promise<FormState> {
   const admin = await requirePlatformAdmin();
-  if (formData.get("confirm") !== "on") return { status: "error", messages: ["Tick the box to confirm that it is deleted for good."] };
+  if (formData.get("confirm") !== "on") return { status: "error", messages: [(await platformActionWords()).confirmDelete] };
   const result = await deleteStarter(admin, starterId);
   if (!result.ok) return { status: "error", messages: result.problems };
   liveChanged();
@@ -92,15 +94,15 @@ export async function saveDemoDetailsAction(starterId: string, _state: FormState
   const result = await saveDemoDetails(admin, starterId, details.details);
   if (!result.ok) return { status: "error", messages: result.problems };
   liveChanged();
-  return { status: "ok", messages: ["Saved."] };
+  return { status: "ok", messages: [(await platformActionWords()).saved] };
 }
 
 /** *Publish this look… → As a new theme*: an unpublished theme with the demo store's look and a copy of its content, opened to name and publish. */
 export async function demoAsThemeAction(starterId: string, _state: FormState, formData: FormData): Promise<FormState> {
   const admin = await requirePlatformAdmin();
   const title = text(formData.get("title"));
-  if (!title) return { status: "error", messages: ["Give the new theme a name."] };
-  if (title.length > 80) return { status: "error", messages: ["Keep the name under 81 characters."] };
+  if (!title) return { status: "error", messages: [(await platformActionWords()).nameTheme] };
+  if (title.length > 80) return { status: "error", messages: [(await platformActionWords()).nameShort] };
   const result = await demoLookAsTheme(admin, starterId, { title, summary: "", description: "", pictureUrl: null });
   if (!result.ok) return { status: "error", messages: result.problems };
   updateTag(STARTERS_TAG);
@@ -120,7 +122,7 @@ export async function demoAsPresetAction(starterId: string, _state: FormState, f
 /** *Publish this look… → Into {theme}'s next version*: the theme's draft look becomes the demo store's, to review and publish. */
 export async function demoIntoNextVersionAction(starterId: string, _state: FormState, formData: FormData): Promise<FormState> {
   const admin = await requirePlatformAdmin();
-  if (formData.get("confirm") !== "on") return { status: "error", messages: ["Tick the box to confirm that the theme's draft look is replaced."] };
+  if (formData.get("confirm") !== "on") return { status: "error", messages: [(await platformActionWords()).confirmThemeReplace] };
   const result = await demoLookIntoNextVersion(admin, starterId);
   if (!result.ok) return { status: "error", messages: result.problems };
   redirect(`${designTabHref(result.presetId, "details")}?copied=1${result.notes.length > 0 ? "&notes=1" : ""}`);

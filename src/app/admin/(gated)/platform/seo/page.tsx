@@ -11,6 +11,7 @@ import { getPlatformSeo, PLATFORM_DEFAULTS } from "@/server/seo";
 import { savePlatformSeoAction, uploadPlatformImageAction } from "../actions";
 import { requirePlatformAdmin } from "@/server/auth";
 import { PageHeader } from "@/components/admin/ui";
+import { platformSiteWords } from "@/server/platform-site-words";
 
 export const metadata: Metadata = { title: "Search" };
 
@@ -24,19 +25,37 @@ export default async function PlatformSeoPage() {
   // Per request: admin pages never read the database while the site is built.
   await connection();
   await requirePlatformAdmin();
+  const { w } = await platformSiteWords();
+  const t = w.seo;
   const seo = await getPlatformSeo();
   const origin = siteUrl();
   return (
     <>
       <PageHeader
-        title="Search"
-        description={<>How Kaizena Flow&apos;s own pages show up in search results, when shared and to AI assistants. Each store sets its own under Search in its admin; the site&apos;s{" "}<a href="/robots.txt" className="underline">robots.txt</a>,{" "}<a href="/sitemap.xml" className="underline">sitemap</a>{" "}and{" "}<a href="/llms.txt" className="underline">llms.txt</a>{" "}bring Kaizena Flow&apos;s and every open store&apos;s together.</>}
+        title={t.title}
+        description={
+          <>
+            {t.descriptionBefore}{" "}
+            <a href="/robots.txt" className="underline">
+              robots.txt
+            </a>
+            ,{" "}
+            <a href="/sitemap.xml" className="underline">
+              {t.sitemap}
+            </a>{" "}
+            {t.descriptionAnd}{" "}
+            <a href="/llms.txt" className="underline">
+              llms.txt
+            </a>{" "}
+            {t.descriptionAfter}
+          </>
+        }
       />
 
-      <ActionForm action={savePlatformSeoAction} successMessage="Search and sharing saved." className="flex flex-col gap-6">
+      <ActionForm action={savePlatformSeoAction} successMessage={t.saved} className="flex flex-col gap-6">
         <section aria-labelledby="home-heading" className={card}>
           <h2 id="home-heading" className="text-title text-ink">
-            Front page in search results
+            {t.front}
           </h2>
           <SearchTextFields
             locale="en"
@@ -48,7 +67,7 @@ export default async function PlatformSeoPage() {
 
         <section aria-labelledby="share-heading" className={card}>
           <h2 id="share-heading" className="text-title text-ink">
-            Share picture
+            {t.share}
           </h2>
           <ShareImageField
             upload={uploadsEnabled() ? uploadPlatformImageAction : null}
@@ -61,11 +80,11 @@ export default async function PlatformSeoPage() {
 
         <section aria-labelledby="more-heading" className={card}>
           <h2 id="more-heading" className="text-title text-ink">
-            Profiles, AI assistants and crawlers
+            {t.more}
           </h2>
           <label className={label}>
             <span>
-              Kaizena Flow&apos;s profiles elsewhere <span className={hint}>(one address per line)</span>
+              {t.profiles} <span className={hint}>{t.profilesHint}</span>
             </span>
             <textarea
               name="sameAs"
@@ -77,13 +96,13 @@ export default async function PlatformSeoPage() {
           </label>
           <label className={label}>
             <span>
-              Text for AI assistants <span className={hint}>(Markdown, added to llms.txt above the list of stores)</span>
+              {t.llms} <span className={hint}>{t.llmsHint}</span>
             </span>
             <textarea name="llms" rows={5} maxLength={LLMS_MAX} defaultValue={seo.llms} className={`${input} py-2`} />
           </label>
           <label className={label}>
             <span>
-              Extra crawler rules for the whole site <span className={hint}>(robots.txt)</span>
+              {t.robots} <span className={hint}>(robots.txt)</span>
             </span>
             <textarea
               name="robots"
@@ -94,25 +113,22 @@ export default async function PlatformSeoPage() {
               spellCheck={false}
               className={`${input} py-2 font-mono`}
             />
-            <span className={hint}>
-              Admin, sign-in and API addresses, carts and order pages are always left out, and each
-              store&apos;s own rules are added. Sitemap lines are allowed here.
-            </span>
+            <span className={hint}>{t.robotsNote}</span>
           </label>
           <div className="grid gap-4 sm:grid-cols-2">
             <label className={label}>
-              Google Search Console code
+              {t.google}
               <input name="google" defaultValue={seo.verification.google} spellCheck={false} className={`${input} font-mono`} />
             </label>
             <label className={label}>
-              Bing Webmaster Tools code
+              {t.bing}
               <input name="bing" defaultValue={seo.verification.bing} spellCheck={false} className={`${input} font-mono`} />
             </label>
           </div>
         </section>
 
         <div>
-          <SubmitButton>Save search and sharing</SubmitButton>
+          <SubmitButton>{t.save}</SubmitButton>
         </div>
       </ActionForm>
     </>

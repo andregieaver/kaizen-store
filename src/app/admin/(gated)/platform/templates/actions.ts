@@ -1,5 +1,7 @@
 "use server";
 
+import { platformActionWords } from "@/server/platform-site-words";
+
 import { refresh } from "next/cache";
 import { z } from "zod";
 
@@ -13,9 +15,9 @@ import { setTemplateHidden } from "@/server/templates";
  */
 export async function setTemplateHiddenAction(id: string, hidden: boolean): Promise<FormState> {
   const admin = await requirePlatformAdmin();
-  if (!z.uuid().safeParse(id).success) return { status: "error", messages: ["Unknown template."] };
+  if (!z.uuid().safeParse(id).success) return { status: "error", messages: [(await platformActionWords()).unknownTemplate] };
   const result = await setTemplateHidden(admin, id, hidden === true);
   if (!result.ok) return { status: "error", messages: result.problems };
   refresh();
-  return { status: "ok", messages: [hidden ? "Hidden. No store can find it now." : "Shown again."] };
+  return { status: "ok", messages: [hidden ? (await platformActionWords()).hidden : (await platformActionWords()).shownAgain] };
 }

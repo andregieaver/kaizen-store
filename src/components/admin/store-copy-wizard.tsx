@@ -19,10 +19,7 @@ import type { CopyChoices, StoreCopyActions } from "@/lib/store-copy";
 import { suggestSlug } from "@/lib/slug";
 import {
   COPY_KINDS,
-  KIND_WORDS,
   LIST_STEP,
-  NEVER_COPIED,
-  STATE_LABELS,
   addIds,
   buildInput,
   clearIds,
@@ -37,14 +34,20 @@ import {
   wizardProblems,
   type CopyKind,
   type CopyMode,
+  type CopyWizardWords,
   type WizardProblem,
   type WizardState,
 } from "@/lib/store-copy-wizard";
 import { CARD_CLASS } from "@/components/admin/ui";
+import { useAdminLang, useAdminText } from "@/components/admin/admin-text";
+import { fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 
-const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
+const control =
+  "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
 const errorText = "text-sm text-danger-text";
-const button = "min-h-10 rounded-pill border border-edge bg-card px-3 text-sm disabled:opacity-40";
+const button =
+  "min-h-10 rounded-pill border border-edge bg-card px-3 text-sm disabled:opacity-40";
 
 /** Where a problem sends the person: the field that has to change. */
 const fieldId = (problem: WizardProblem): string => {
@@ -60,16 +63,26 @@ const fieldId = (problem: WizardProblem): string => {
   }
 };
 
-type Row = { id: string; title: string; secondary: string; badge: string; image: string | null };
+type Row = {
+  id: string;
+  title: string;
+  secondary: string;
+  badge: string;
+  image: string | null;
+};
 
 /** The light rows of each list, as the checklist draws them. */
-function rowsOf(choices: CopyChoices, kind: CopyKind): Row[] {
+function rowsOf(
+  choices: CopyChoices,
+  kind: CopyKind,
+  words: CopyWizardWords,
+): Row[] {
   if (kind === "products") {
     return choices.products.map((p) => ({
       id: p.id,
       title: p.title,
       secondary: p.handle,
-      badge: statusLabel(p.status),
+      badge: statusLabel(p.status, words),
       image: p.image,
     }));
   }
@@ -77,7 +90,7 @@ function rowsOf(choices: CopyChoices, kind: CopyKind): Row[] {
     id: p.id,
     title: p.title,
     secondary: `/${p.slug}`,
-    badge: STATE_LABELS[p.state],
+    badge: words.states[p.state],
     image: null,
   }));
 }
@@ -107,15 +120,25 @@ const ChecklistRow = memo(function ChecklistRow({
         {thumbnail &&
           (row.image ? (
             // eslint-disable-next-line @next/next/no-img-element -- a small admin thumbnail
-            <img src={row.image} alt="" loading="lazy" className="size-10 shrink-0 rounded object-cover" />
+            <img
+              src={row.image}
+              alt=""
+              loading="lazy"
+              className="size-10 shrink-0 rounded object-cover"
+            />
           ) : (
-            <span aria-hidden className="size-10 shrink-0 rounded bg-inverse/10" />
+            <span
+              aria-hidden
+              className="size-10 shrink-0 rounded bg-inverse/10"
+            />
           ))}
         <span className="flex min-w-0 flex-1 flex-col text-sm">
           <span className="truncate font-medium">{row.title}</span>
           <span className="truncate text-muted">{row.secondary}</span>
         </span>
-        <span className="shrink-0 rounded-full border border-line px-2 py-0.5 text-xs text-muted">{row.badge}</span>
+        <span className="shrink-0 rounded-full border border-line px-2 py-0.5 text-xs text-muted">
+          {row.badge}
+        </span>
       </label>
     </li>
   );
@@ -137,13 +160,16 @@ function Checklist({
   invalid: boolean;
   errorId: string;
 }) {
-  const words = KIND_WORDS[kind];
+  const w = useAdminText("platform").copyWizard;
+  const locale = ADMIN_LANG_FACTS[useAdminLang()].locale;
+  const words = w.kinds[kind];
   const [query, setQuery] = useState("");
   const [limit, setLimit] = useState(LIST_STEP);
   const shown = useMemo(() => filterRows(rows, query, rowText), [rows, query]);
   const ticked = useMemo(() => new Set(picked), [picked]);
   const onToggle = useCallback(
-    (id: string, on: boolean) => update((state) => toggleId(state, kind, id, on)),
+    (id: string, on: boolean) =>
+      update((state) => toggleId(state, kind, id, on)),
     [update, kind],
   );
   const visible = shown.slice(0, limit);
@@ -151,7 +177,7 @@ function Checklist({
   return (
     <div className="mt-3 flex flex-col gap-2 rounded-md border border-line p-3">
       <label className="flex flex-col gap-1 text-sm font-medium">
-        Search {words.many}
+        {fillWords(w.search, { many: words.many })}
         <input
           id={`copy-${kind}-search`}
           type="search"
@@ -180,7 +206,7 @@ function Checklist({
             )
           }
         >
-          Select all shown ({shown.length.toLocaleString("en")})
+          {fillWords(w.selectShown, { n: shown.length.toLocaleString(locale) })}
         </button>
         <button
           type="button"
@@ -188,18 +214,20 @@ function Checklist({
           disabled={picked.length === 0}
           onClick={() => update((state) => clearIds(state, kind))}
         >
-          Clear
+          {w.clear}
         </button>
         <p role="status" aria-live="polite" className="text-sm text-muted">
-          {selectedLine(ticked.size, rows.length)}
+          {selectedLine(ticked.size, rows.length, w.lib, locale)}
         </p>
       </div>
       {shown.length === 0 ? (
-        <p className="text-sm text-muted">No {words.many} match the search.</p>
+        <p className="text-sm text-muted">
+          {fillWords(w.noMatch, { many: words.many })}
+        </p>
       ) : (
         <div
           role="group"
-          aria-label={`${words.title} to copy`}
+          aria-label={fillWords(w.toCopy, { title: words.title })}
           className="max-h-80 overflow-y-auto rounded-md border border-line"
         >
           <ul className="divide-y divide-line">
@@ -215,9 +243,18 @@ function Checklist({
           </ul>
           {shown.length > visible.length && (
             <div className="border-t border-line p-2">
-              <button type="button" className={button} onClick={() => setLimit((n) => n + LIST_STEP)}>
-                Show {Math.min(LIST_STEP, shown.length - visible.length).toLocaleString("en")} more (
-                {(shown.length - visible.length).toLocaleString("en")} left)
+              <button
+                type="button"
+                className={button}
+                onClick={() => setLimit((n) => n + LIST_STEP)}
+              >
+                {fillWords(w.showMore, {
+                  n: Math.min(
+                    LIST_STEP,
+                    shown.length - visible.length,
+                  ).toLocaleString(locale),
+                  left: (shown.length - visible.length).toLocaleString(locale),
+                })}
               </button>
             </div>
           )}
@@ -227,11 +264,7 @@ function Checklist({
   );
 }
 
-const MODE_LABELS: { mode: CopyMode; label: string }[] = [
-  { mode: "all", label: "All" },
-  { mode: "selected", label: "Selected" },
-  { mode: "none", label: "None" },
-];
+const MODES: CopyMode[] = ["all", "selected", "none"];
 
 /** All, Selected or None for one kind, with the checklist under Selected. */
 function KindChoice({
@@ -249,8 +282,13 @@ function KindChoice({
   problem: WizardProblem | undefined;
   hint: string;
 }) {
-  const words = KIND_WORDS[kind];
-  const rows = useMemo(() => rowsOf(choices, kind), [choices, kind]);
+  const w = useAdminText("platform").copyWizard;
+  const locale = ADMIN_LANG_FACTS[useAdminLang()].locale;
+  const words = w.kinds[kind];
+  const rows = useMemo(
+    () => rowsOf(choices, kind, w.lib),
+    [choices, kind, w.lib],
+  );
   const mode = state.options[kind].mode;
   const errorId = `copy-${kind}-error`;
   return (
@@ -258,22 +296,33 @@ function KindChoice({
       <legend className="px-1 text-base font-medium">{words.title}</legend>
       <p className="text-sm text-muted">{hint}</p>
       {rows.length === 0 ? (
-        <p className="text-sm">This store has no {words.many} to copy.</p>
+        <p className="text-sm">
+          {fillWords(w.noneToCopy, { many: words.many })}
+        </p>
       ) : (
         <>
           <div className="flex flex-wrap gap-x-5 gap-y-2">
-            {MODE_LABELS.map(({ mode: value, label }) => (
-              <label key={value} className="flex min-h-10 items-center gap-2 text-sm">
+            {MODES.map((value) => (
+              <label
+                key={value}
+                className="flex min-h-10 items-center gap-2 text-sm"
+              >
                 <input
                   type="radio"
                   name={`copy-${kind}-mode`}
                   value={value}
                   checked={mode === value}
-                  onChange={() => update((current) => setMode(current, kind, value))}
+                  onChange={() =>
+                    update((current) => setMode(current, kind, value))
+                  }
                   className="size-4"
                 />
-                {label}
-                {value === "all" && <span className="text-muted">({rows.length.toLocaleString("en")})</span>}
+                {w.modes[value]}
+                {value === "all" && (
+                  <span className="text-muted">
+                    ({rows.length.toLocaleString(locale)})
+                  </span>
+                )}
               </label>
             ))}
           </div>
@@ -299,7 +348,13 @@ function KindChoice({
 }
 
 /** A collapsed list of what is or is not copied. */
-function Details({ summary, children }: { summary: string; children: ReactNode }) {
+function Details({
+  summary,
+  children,
+}: {
+  summary: string;
+  children: ReactNode;
+}) {
   return (
     <details className="rounded-panel border border-line bg-card p-4 text-sm">
       <summary className="cursor-pointer font-medium">{summary}</summary>
@@ -325,23 +380,32 @@ export function StoreCopyWizard({
   initialMessages?: string[];
 }) {
   const router = useRouter();
-  const [state, setState] = useState<WizardState>(() => initial ?? initialWizard(choices.source.name));
-  const [showErrors, setShowErrors] = useState(Boolean(initialMessages?.length));
+  const w = useAdminText("platform").copyWizard;
+  const locale = ADMIN_LANG_FACTS[useAdminLang()].locale;
+  const [state, setState] = useState<WizardState>(
+    () => initial ?? initialWizard(choices.source.name, w.lib),
+  );
+  const [showErrors, setShowErrors] = useState(
+    Boolean(initialMessages?.length),
+  );
   const [messages, setMessages] = useState<string[]>(initialMessages ?? []);
   const [pending, startPending] = useTransition();
   const [sent, setSent] = useState(false);
   const alertRef = useRef<HTMLDivElement>(null);
   const hintId = useId();
   const reasonId = useId();
-  const update = useCallback((change: (state: WizardState) => WizardState) => setState(change), []);
+  const update = useCallback(
+    (change: (state: WizardState) => WizardState) => setState(change),
+    [],
+  );
 
-  const problems = wizardProblems(state);
+  const problems = wizardProblems(state, w.lib, locale);
   const blocked = problems.length > 0;
   const busy = pending || sent;
   const problemFor = (field: WizardProblem["field"]) =>
     showErrors ? problems.find((p) => p.field === field) : undefined;
   const { options } = state;
-  const sentence = summarySentence(state, choices);
+  const sentence = summarySentence(state, choices, w.lib, locale);
   const slugHint = suggestSlug(state.name);
 
   useEffect(() => {
@@ -364,9 +428,12 @@ export function StoreCopyWizard({
         if (result.ok) {
           setSent(true);
           router.push(copyProgressPath(result.id));
-        } else setMessages(result.problems.length > 0 ? result.problems : ["The copy could not be started."]);
+        } else
+          setMessages(
+            result.problems.length > 0 ? result.problems : [w.couldNotStart],
+          );
       } catch {
-        setMessages(["The copy could not be started. Try again in a moment."]);
+        setMessages([w.tryAgain]);
       }
     });
   };
@@ -376,7 +443,12 @@ export function StoreCopyWizard({
   const confirmProblem = problemFor("confirmDataUse");
 
   return (
-    <form onSubmit={submit} noValidate aria-busy={busy} className="flex max-w-3xl flex-col gap-5">
+    <form
+      onSubmit={submit}
+      noValidate
+      aria-busy={busy}
+      className="flex max-w-3xl flex-col gap-5"
+    >
       {(messages.length > 0 || (showErrors && blocked)) && (
         <div
           ref={alertRef}
@@ -385,10 +457,13 @@ export function StoreCopyWizard({
           className="rounded-lg border border-danger-text p-4 text-sm text-danger-text"
         >
           <p className="font-medium">
-            {messages.length > 0 ? "The copy was not started." : "Some choices need another look."}
+            {messages.length > 0 ? w.notStarted : w.anotherLook}
           </p>
           <ul className="list-disc pl-5">
-            {(messages.length > 0 ? messages : problems.map((p) => p.message)).map((message) => (
+            {(messages.length > 0
+              ? messages
+              : problems.map((p) => p.message)
+            ).map((message) => (
               <li key={message}>{message}</li>
             ))}
           </ul>
@@ -396,14 +471,16 @@ export function StoreCopyWizard({
       )}
 
       <fieldset className={`flex min-w-0 flex-col gap-3 p-5 ${CARD_CLASS}`}>
-        <legend className="px-1 text-base font-medium">The new store</legend>
+        <legend className="px-1 text-base font-medium">{w.newStore}</legend>
         <label className="flex flex-col gap-1 text-sm font-medium">
-          Store name
+          {w.name}
           <input
             id="copy-name"
             name="name"
             value={state.name}
-            onChange={(event) => update((s) => ({ ...s, name: event.target.value }))}
+            onChange={(event) =>
+              update((s) => ({ ...s, name: event.target.value }))
+            }
             required
             aria-required
             maxLength={80}
@@ -418,7 +495,7 @@ export function StoreCopyWizard({
           </p>
         )}
         <label className="flex flex-col gap-1 text-sm font-medium">
-          Store address
+          {w.address}
           <span className="flex items-center gap-1">
             <span className="text-muted" aria-hidden>
               /s/
@@ -427,16 +504,22 @@ export function StoreCopyWizard({
               id="copy-slug"
               name="slug"
               value={state.slug}
-              onChange={(event) => update((s) => ({ ...s, slug: event.target.value }))}
+              onChange={(event) =>
+                update((s) => ({ ...s, slug: event.target.value }))
+              }
               placeholder={slugHint}
               pattern="[a-z0-9][a-z0-9-]{1,38}[a-z0-9]"
               aria-invalid={slugProblem ? true : undefined}
-              aria-describedby={slugProblem ? "copy-slug-hint copy-slug-error" : "copy-slug-hint"}
+              aria-describedby={
+                slugProblem
+                  ? "copy-slug-hint copy-slug-error"
+                  : "copy-slug-hint"
+              }
               className={`${control} flex-1`}
             />
           </span>
           <span id="copy-slug-hint" className="font-normal text-muted">
-            Lowercase letters, numbers and hyphens. Leave empty to make one from the name.
+            {w.slugHint}
           </span>
         </label>
         {slugProblem && (
@@ -445,8 +528,7 @@ export function StoreCopyWizard({
           </p>
         )}
         <p className="text-sm text-muted">
-          A copy of {choices.source.name}. It starts closed, with you as its owner, so you can look it over before
-          opening it.
+          {fillWords(w.copyOf, { name: choices.source.name })}
         </p>
       </fieldset>
 
@@ -458,18 +540,12 @@ export function StoreCopyWizard({
           state={state}
           update={update}
           problem={problemFor(kind)}
-          hint={
-            kind === "pages"
-              ? "Pages come with what they use: menus, header and footer, categories, tags and pictures."
-              : kind === "products"
-                ? "Products come with their variants, prices, pictures, categories, tags and subscription plans."
-                : "Blog posts come with their categories, tags and pictures."
-          }
+          hint={w.hints[kind]}
         />
       ))}
 
       <fieldset className={`flex min-w-0 flex-col gap-3 p-5 ${CARD_CLASS}`}>
-        <legend className="px-1 text-base font-medium">People and orders</legend>
+        <legend className="px-1 text-base font-medium">{w.people}</legend>
         <div className="flex flex-col gap-1">
           <label className="flex min-h-10 items-center gap-2 text-sm font-medium">
             <input
@@ -477,17 +553,21 @@ export function StoreCopyWizard({
               checked={options.customers && choices.customers > 0}
               disabled={choices.customers === 0}
               onChange={(event) =>
-                update((s) => ({ ...s, options: { ...s.options, customers: event.target.checked } }))
+                update((s) => ({
+                  ...s,
+                  options: { ...s.options, customers: event.target.checked },
+                }))
               }
               aria-describedby="copy-customers-note"
               className="size-4"
             />
-            Customers
-            <span className="font-normal text-muted">({choices.customers.toLocaleString("en")})</span>
+            {w.customers}
+            <span className="font-normal text-muted">
+              ({choices.customers.toLocaleString(locale)})
+            </span>
           </label>
           <p id="copy-customers-note" className="pl-6 text-sm text-muted">
-            The shoppers, with their addresses, groups and companies. Passwords, sessions, carts, wish lists and
-            marketing consents are not copied, and people who unsubscribed stay unsubscribed.
+            {w.customersNote}
           </p>
         </div>
         <div className="flex flex-col gap-1">
@@ -496,18 +576,22 @@ export function StoreCopyWizard({
               type="checkbox"
               checked={options.orders && choices.orders > 0}
               disabled={choices.orders === 0}
-              onChange={(event) => update((s) => ({ ...s, options: { ...s.options, orders: event.target.checked } }))}
+              onChange={(event) =>
+                update((s) => ({
+                  ...s,
+                  options: { ...s.options, orders: event.target.checked },
+                }))
+              }
               aria-describedby="copy-orders-note"
               className="size-4"
             />
-            Order history
-            <span className="font-normal text-muted">({choices.orders.toLocaleString("en")})</span>
+            {w.orders}
+            <span className="font-normal text-muted">
+              ({choices.orders.toLocaleString(locale)})
+            </span>
           </label>
           <p id="copy-orders-note" className="pl-6 text-sm text-muted">
-            Read-only history: lines, totals, dates and the customer are kept, and each order is marked as copied and
-            numbered C-, then the original number. No payments, refunds, invoices or emails are copied, nothing is sent
-            and stock does not change. The new store&apos;s own order numbers start fresh. An order whose customer is
-            not copied keeps the contact details written on the order.
+            {w.ordersNote}
           </p>
         </div>
         {needsDataConfirmation(options) && (
@@ -518,14 +602,22 @@ export function StoreCopyWizard({
                 type="checkbox"
                 checked={options.confirmDataUse}
                 onChange={(event) =>
-                  update((s) => ({ ...s, options: { ...s.options, confirmDataUse: event.target.checked } }))
+                  update((s) => ({
+                    ...s,
+                    options: {
+                      ...s.options,
+                      confirmDataUse: event.target.checked,
+                    },
+                  }))
                 }
                 aria-required
                 aria-invalid={confirmProblem ? true : undefined}
-                aria-describedby={confirmProblem ? "copy-confirm-error" : undefined}
+                aria-describedby={
+                  confirmProblem ? "copy-confirm-error" : undefined
+                }
                 className="mt-1 size-4"
               />
-              I confirm that I may use this customer data in the new store.
+              {w.confirm}
             </label>
             {confirmProblem && (
               <p id="copy-confirm-error" className={errorText}>
@@ -538,57 +630,64 @@ export function StoreCopyWizard({
 
       {/* The owner's own wording of the customer emails (D238): a copy group of its own, off unless ticked. */}
       <fieldset className={`flex min-w-0 flex-col gap-3 p-5 ${CARD_CLASS}`}>
-        <legend className="px-1 text-base font-medium">Email texts</legend>
+        <legend className="px-1 text-base font-medium">{w.emailTexts}</legend>
         <div className="flex flex-col gap-1">
           <label className="flex min-h-10 items-center gap-2 text-sm font-medium">
             <input
               type="checkbox"
               name="emailTexts"
               checked={options.emailTexts === true}
-              onChange={(event) => update((s) => ({ ...s, options: { ...s.options, emailTexts: event.target.checked } }))}
+              onChange={(event) =>
+                update((s) => ({
+                  ...s,
+                  options: { ...s.options, emailTexts: event.target.checked },
+                }))
+              }
               aria-describedby="copy-email-texts-note"
               className="size-4"
             />
-            Email texts: your own wording of the customer emails
+            {w.emailTextsLabel}
           </label>
           <p id="copy-email-texts-note" className="pl-6 text-sm text-muted">
-            The subjects, headings and texts you wrote for the order and return emails, in each language. Without it the new store
-            sends Kaizena Flow&apos;s standard texts. Which emails are switched on is a setting and always comes along.
+            {w.emailTextsNote}
           </p>
         </div>
       </fieldset>
 
-      <Details summary="Always copied">
-        <p>The store&apos;s settings come with every copy, except secrets:</p>
+      <Details summary={w.always}>
+        <p>{w.alwaysNote}</p>
         {choices.settings.length > 0 ? (
           <ul className="list-disc pl-5">
             {choices.settings.map((setting) => (
               <li key={setting.label}>
-                {setting.label} ({setting.count.toLocaleString("en")})
+                {w.lib.settingLabels[setting.label] ?? setting.label} (
+                {setting.count.toLocaleString(locale)})
               </li>
             ))}
           </ul>
         ) : (
-          <p className="text-muted">
-            Design, menus, markets, languages, shipping and the rest of the store&apos;s settings.
-          </p>
+          <p className="text-muted">{w.alwaysFallback}</p>
         )}
       </Details>
-      <Details summary="Never copied">
+      <Details summary={w.never}>
         <ul className="list-disc pl-5">
-          {NEVER_COPIED.map((line) => (
+          {w.lib.neverCopied.map((line) => (
             <li key={line}>{line}</li>
           ))}
         </ul>
       </Details>
 
-      <section aria-label="Summary" className={`flex flex-col gap-3 p-5 ${CARD_CLASS}`}>
+      <section
+        aria-label={w.summary}
+        className={`flex flex-col gap-3 p-5 ${CARD_CLASS}`}
+      >
         <p id={hintId} className="text-sm">
           {sentence}
         </p>
         {blocked && (
           <p id={reasonId} className="text-sm">
-            <span className="font-medium">Not ready to start:</span> {problems[0].message}
+            <span className="font-medium">{w.notReady}</span>{" "}
+            {problems[0].message}
           </p>
         )}
         <div>
@@ -598,7 +697,7 @@ export function StoreCopyWizard({
             aria-describedby={blocked ? `${hintId} ${reasonId}` : hintId}
             className={`min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink ${blocked || busy ? "opacity-40" : ""}`}
           >
-            {busy ? "Starting the copy …" : "Start copy"}
+            {busy ? w.starting : w.start}
           </button>
         </div>
       </section>

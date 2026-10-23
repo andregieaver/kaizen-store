@@ -1,5 +1,8 @@
 "use server";
 
+import { platformActionWords } from "@/server/platform-site-words";
+import { countWords, fillWords } from "@/lib/admin-fill";
+
 import { refresh, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
@@ -38,7 +41,7 @@ export async function publishStarterAction(starterId: string): Promise<FormState
   offeredChanged();
   return {
     status: "ok",
-    messages: [[`Published: new stores that start from a look shown on it are copied from its store as it is now (kept as /s/${result.copySlug}), and the theme store shows that.`, ...result.notes].join(" ")],
+    messages: [[fillWords((await platformActionWords()).starterPublished, { slug: result.copySlug }), ...result.notes].join(" ")],
   };
 }
 
@@ -48,11 +51,9 @@ export async function unpublishStarterAction(starterId: string): Promise<FormSta
   const result = await unpublishStarter(admin, starterId);
   if (!result.ok) return { status: "error", messages: result.problems };
   offeredChanged();
-  const pending =
-    result.pendingRequests > 0
-      ? ` ${result.pendingRequests} pending ${result.pendingRequests === 1 ? "access request starts" : "access requests start"} from it: approved, ${result.pendingRequests === 1 ? "it gets" : "they get"} the Standard store.`
-      : "";
-  return { status: "ok", messages: [`Unpublished: looks shown on it start new stores from the Standard store; stores made from it keep what they got.${pending}`] };
+  const a = await platformActionWords();
+  const pending = result.pendingRequests > 0 ? ` ${countWords(result.pendingRequests, a.starterPending, { count: result.pendingRequests })}` : "";
+  return { status: "ok", messages: [`${a.starterUnpublished}${pending}`] };
 }
 
 /** Archives a demo store (D177): unpublished and out of the list until restored. */
@@ -61,7 +62,7 @@ export async function archiveStarterAction(starterId: string): Promise<FormState
   const result = await archiveStarter(admin, starterId);
   if (!result.ok) return { status: "error", messages: result.problems };
   offeredChanged();
-  return { status: "ok", messages: ["Archived: it is left out of the demo stores until you restore it."] };
+  return { status: "ok", messages: [(await platformActionWords()).starterArchived] };
 }
 
 /** Restores an archived demo store (D177), unpublished. */
@@ -70,13 +71,13 @@ export async function restoreStarterAction(starterId: string): Promise<FormState
   const result = await restoreStarter(admin, starterId);
   if (!result.ok) return { status: "error", messages: result.problems };
   offeredChanged();
-  return { status: "ok", messages: ["Restored, unpublished. Publish it when it is ready."] };
+  return { status: "ok", messages: [(await platformActionWords()).restored] };
 }
 
 /** Deletes a demo store nothing used (D177), after the admin confirmed; its stores are closed and kept. */
 export async function deleteStarterAction(starterId: string, _state: FormState, formData: FormData): Promise<FormState> {
   const admin = await requirePlatformAdmin();
-  if (formData.get("confirm") !== "on") return { status: "error", messages: ["Tick the box to confirm that it is deleted for good."] };
+  if (formData.get("confirm") !== "on") return { status: "error", messages: [(await platformActionWords()).confirmDelete] };
   const result = await deleteStarter(admin, starterId);
   if (!result.ok) return { status: "error", messages: result.problems };
   offeredChanged();
@@ -102,11 +103,11 @@ export async function setStarterFeaturesAction(starterId: string, _state: FormSt
   if (!result.ok) {
     return {
       status: "error",
-      messages: "needsConfirmation" in result ? [...result.warnings, "Tick “Switch off what I left out” to go on."] : result.problems,
+      messages: "needsConfirmation" in result ? [...result.warnings, (await platformActionWords()).switchOffConfirm] : result.problems,
     };
   }
   refresh();
-  return { status: "ok", messages: ["Saved. New stores get these features once you publish the demo store again."] };
+  return { status: "ok", messages: [(await platformActionWords()).featuresSaved] };
 }
 
 /**
@@ -119,9 +120,9 @@ export async function syncContentPacksAction(): Promise<FormState> {
   refreshPackStores(result.stores);
   refresh();
   const said = [
-    result.made.length > 0 && `Set up: ${result.made.join(", ")}.`,
-    result.updated.length > 0 && `Brought up to date: ${result.updated.join(", ")}.`,
-    result.made.length + result.updated.length === 0 && result.problems.length === 0 && "All the starting content is up to date.",
+    result.made.length > 0 && fillWords((await platformActionWords()).packsMade, { list: result.made.join(", ") }),
+    result.updated.length > 0 && fillWords((await platformActionWords()).packsUpdated, { list: result.updated.join(", ") }),
+    result.made.length + result.updated.length === 0 && result.problems.length === 0 && (await platformActionWords()).packsCurrent,
   ].filter((line): line is string => typeof line === "string");
   if (result.problems.length > 0) return { status: "error", messages: [...said, ...result.problems] };
   return { status: "ok", messages: said };

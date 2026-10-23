@@ -7,7 +7,6 @@ import { z } from "zod";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { Avatar } from "@/components/avatar";
 import { InvoiceList } from "@/components/admin/plan-invoices";
-import { SUBSCRIPTION_LABELS } from "@/lib/plans";
 import { listStoreInvoices } from "@/server/billing";
 import { listEmails } from "@/server/email";
 import { getPlatformCustomer } from "@/server/platform-customers";
@@ -16,6 +15,9 @@ import { requirePlatformAdmin } from "@/server/auth";
 import { twoStepOfAccount } from "@/server/team";
 import { avatarFor } from "@/server/avatars";
 import { CARD_CLASS, List, ListRow, PageHeader, RowDate, RowFact, RowLead } from "@/components/admin/ui";
+import { fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 
 import { resetTwoStepAction } from "./actions";
 
@@ -31,6 +33,11 @@ const card = "rounded-lg border border-line bg-card p-5";
 export default async function PlatformCustomerPage({ params }: PageProps<"/admin/platform/customers/[accountId]">) {
   await connection();
   const admin = await requirePlatformAdmin();
+  const lang = adminLangOf(admin.adminLocale);
+  const w = adminText(lang, "platform").customer;
+  const billingWords = adminText(lang, "billing");
+  const roleWord = (role: string) => (adminText(lang, "staff").roles as Record<string, string>)[role] ?? role;
+  const invoiceWords = adminText(lang, "platform").invoiceList;
   const { accountId } = await params;
   if (!z.uuid().safeParse(accountId).success) notFound();
   const customer = await getPlatformCustomer(accountId);
@@ -46,30 +53,30 @@ export default async function PlatformCustomerPage({ params }: PageProps<"/admin
     ),
     listEmails({ storeId: null, to: customer.email, limit: 20 }),
   ]);
-  const date = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { dateStyle: "medium", timeZone: "Europe/Oslo" });
+  const date = (iso: string) => new Date(iso).toLocaleDateString(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeZone: "Europe/Oslo" });
   const kaizenEmails = emails.filter((e) => e.storeName === null);
   const twoStep = await twoStepOfAccount(accountId);
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        back={{ href: "/admin/platform/customers", label: "Customers" }}
+        back={{ href: "/admin/platform/customers", label: w.customers }}
         title={<span className="flex items-center gap-3"><Avatar avatar={avatarFor(customer)} size={48} /> <span className="min-w-0 break-words">{customer.name || customer.email}</span></span>}
         meta={[
           <a key="email" href={`mailto:${customer.email}`} className="underline">
             {customer.email}
           </a>,
-          `Since ${date(customer.createdAt)}`,
-          customer.platformAdmin && "Platform admin",
-          customer.disabled && "Disabled",
+          fillWords(w.since, { date: date(customer.createdAt) }),
+          customer.platformAdmin && w.platformAdmin,
+          customer.disabled && w.disabled,
         ]}
       />
 
       <div className="grid grid-cols-3 gap-3">
         {[
-          ["Stores", String(customer.stores.length)],
-          ["On a plan", String(customer.onPlan)],
-          ["Plan reminders", customer.planRemindersOptedOut ? "Said no" : "Allowed"],
+          [w.stores, String(customer.stores.length)],
+          [w.onPlan, String(customer.onPlan)],
+          [w.planReminders, customer.planRemindersOptedOut ? w.saidNo : w.allowed],
         ].map(([label, value]) => (
           <div key={label} className={`flex flex-col gap-1 p-4 ${CARD_CLASS}`}>
             <span className="text-sm text-muted">{label}</span>
@@ -80,36 +87,36 @@ export default async function PlatformCustomerPage({ params }: PageProps<"/admin
 
       <section aria-labelledby="two-step" className={card}>
         <h2 id="two-step" className="mb-1 text-title text-ink">
-          Two-step sign-in
+          {w.twoStep}
         </h2>
         <p className="mb-3 text-sm text-muted">
           {twoStep?.waitingToSetUp
-            ? "Their second step was removed. They set it up again when they next sign in."
+            ? w.waiting
             : twoStep?.seen
-              ? "On, as last seen. If they have lost their phone and their recovery codes, you can take it away: they are emailed and set it up again at their next sign-in."
-              : "Not seen to be on."}
+              ? w.seen
+              : w.notSeen}
         </p>
         {customer.id === admin.id ? (
-          <p className="text-sm text-muted">This is you. Change your own two-step sign-in on Your account; another platform admin can reset it if you are locked out.</p>
+          <p className="text-sm text-muted">{w.you}</p>
         ) : (
           <ActionForm action={resetTwoStepAction.bind(null, accountId)} className="flex flex-col gap-3">
             <label className="flex items-start gap-2 text-sm">
               <input type="checkbox" name="confirm" className="mt-1 size-4" />
-              <span>I have checked that this is the person, and that they have lost their phone and their recovery codes.</span>
+              <span>{w.confirm}</span>
             </label>
             <div>
-              <SubmitButton variant="secondary">Remove their two-step sign-in</SubmitButton>
+              <SubmitButton variant="secondary">{w.reset}</SubmitButton>
             </div>
           </ActionForm>
         )}
       </section>
 
       <section aria-labelledby="stores" className={card}>
-        <h2 id="stores" className="mb-3 text-title text-ink">Stores and plans</h2>
+        <h2 id="stores" className="mb-3 text-title text-ink">{w.storesAndPlans}</h2>
         {customer.stores.length === 0 ? (
-          <p className="text-sm text-muted">Works in no store.</p>
+          <p className="text-sm text-muted">{w.noStore}</p>
         ) : (
-          <List label="Stores">
+          <List label={w.stores}>
             {customer.stores.map((s) => (
               <ListRow key={s.slug}>
                 <RowLead
@@ -117,9 +124,9 @@ export default async function PlatformCustomerPage({ params }: PageProps<"/admin
                   href={`/admin/platform/stores/${s.slug}`}
                   sub={
                     <>
-                      <span className="capitalize">{s.role}</span> ·{" "}
+                      <span>{roleWord(s.role)}</span> ·{" "}
                       <Link href={`/admin/${s.slug}`} className="underline">
-                        Store admin
+                        {w.storeAdmin}
                       </Link>
                     </>
                   }
@@ -127,15 +134,15 @@ export default async function PlatformCustomerPage({ params }: PageProps<"/admin
                 <RowFact
                   sub={
                     s.planName && s.status
-                      ? [SUBSCRIPTION_LABELS[s.status] ?? s.status, s.cancelAtPeriodEnd && "ends with the period", s.mode === "test" && "test mode"]
+                      ? [billingWords.statuses[s.status] ?? s.status, s.cancelAtPeriodEnd && w.endsWithPeriod, s.mode === "test" && w.testMode]
                           .filter(Boolean)
                           .join(" · ")
                       : undefined
                   }
                 >
-                  {s.planName && s.status ? s.planName : "No plan"}
+                  {s.planName && s.status ? s.planName : w.noPlan}
                 </RowFact>
-                <RowDate>{s.currentPeriodEnd && s.status !== "canceled" ? `Next invoice ${date(s.currentPeriodEnd)}` : "No invoice due"}</RowDate>
+                <RowDate>{s.currentPeriodEnd && s.status !== "canceled" ? fillWords(w.nextInvoice, { date: date(s.currentPeriodEnd) }) : w.noInvoiceDue}</RowDate>
               </ListRow>
             ))}
           </List>
@@ -143,15 +150,15 @@ export default async function PlatformCustomerPage({ params }: PageProps<"/admin
       </section>
 
       <section aria-labelledby="invoices" className={card}>
-        <h2 id="invoices" className="mb-3 text-title text-ink">Invoices</h2>
+        <h2 id="invoices" className="mb-3 text-title text-ink">{w.invoices}</h2>
         {owned.length === 0 ? (
-          <p className="text-sm text-muted">Owns no store, so gets no invoices.</p>
+          <p className="text-sm text-muted">{w.ownsNone}</p>
         ) : (
           <div className="flex flex-col gap-4">
             {invoices.map(({ store, invoices: list }) => (
               <div key={store.slug}>
                 {owned.length > 1 && <h3 className="mb-1 text-body-strong text-ink">{store.name}</h3>}
-                <InvoiceList storeSlug={store.slug} invoices={list} date={date} />
+                <InvoiceList storeSlug={store.slug} invoices={list} date={date} words={invoiceWords} />
               </div>
             ))}
           </div>
@@ -160,18 +167,18 @@ export default async function PlatformCustomerPage({ params }: PageProps<"/admin
 
       {customer.unpaidPlans.length > 0 && (
         <section aria-labelledby="unpaid" className={card}>
-          <h2 id="unpaid" className="mb-3 text-title text-ink">Went to pay for a plan</h2>
+          <h2 id="unpaid" className="mb-3 text-title text-ink">{w.wentToPay}</h2>
           <ul className="divide-y divide-line text-sm">
             {customer.unpaidPlans.map((u) => (
               <li key={`${u.storeSlug}-${u.capturedAt}`} className="flex flex-wrap justify-between gap-2 py-2">
                 <span>
-                  {u.planName} for{" "}
+                  {fillWords(w.planFor, { plan: u.planName })}{" "}
                   <Link href={`/admin/platform/stores/${u.storeSlug}`} className="underline">
                     {u.storeName}
                   </Link>
                 </span>
                 <span className="text-muted">
-                  {date(u.capturedAt)} · {u.recovered ? "paid" : "not paid"} · {u.remindersSent} reminders
+                  {date(u.capturedAt)} · {u.recovered ? w.paid : w.notPaid} · {fillWords(w.reminders, { n: u.remindersSent })}
                 </span>
               </li>
             ))}
@@ -180,9 +187,9 @@ export default async function PlatformCustomerPage({ params }: PageProps<"/admin
       )}
 
       <section aria-labelledby="emails" className={card}>
-        <h2 id="emails" className="mb-3 text-title text-ink">Emails from Kaizena Flow</h2>
+        <h2 id="emails" className="mb-3 text-title text-ink">{w.emails}</h2>
         {kaizenEmails.length === 0 ? (
-          <p className="text-sm text-muted">No emails yet.</p>
+          <p className="text-sm text-muted">{w.noEmails}</p>
         ) : (
           <ul className="divide-y divide-line text-sm">
             {kaizenEmails.map((email) => (

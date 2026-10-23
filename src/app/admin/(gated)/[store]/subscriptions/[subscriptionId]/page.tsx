@@ -16,6 +16,9 @@ import { customerSummary } from "@/server/customer-admin";
 import type { OrderStatus } from "@/server/orders";
 import { allowedChanges, getSubscription, swapChoices } from "@/server/subscriptions";
 import { Card, PageHeader } from "@/components/admin/ui";
+import { fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 
 import { changeContentsAction } from "../actions";
 
@@ -35,9 +38,13 @@ export default async function SubscriptionPage({
     customerSummary(store.id, subscriptionId),
   ]);
   if (!subscription) notFound();
+  const lang = adminLangOf(current.account.adminLocale);
+  const t = adminText(lang, "bookings").subscriptions;
+  const w = t.page;
+  const statuses = adminText(lang, "common").orderStatus;
   const locale = store.markets[0]?.locale ?? subscription.locale;
   const money = (minor: number) => formatMoney(minor, subscription.currency, locale);
-  const date = (iso: string) => new Date(iso).toLocaleDateString(locale, { dateStyle: "medium", timeZone: "Europe/Oslo" });
+  const date = (iso: string) => new Date(iso).toLocaleDateString(lang === "en" ? locale : ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeZone: "Europe/Oslo" });
   const live = ["active", "past_due", "paused"].includes(subscription.status);
   const allowed = allowedChanges(subscription);
   const choices = allowed.contents ? await swapChoices(store.id, subscription.id) : null;
@@ -54,23 +61,23 @@ export default async function SubscriptionPage({
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        back={{ href: `/admin/${store.slug}/subscriptions`, label: "Subscriptions" }}
-        title={<>Subscription #{subscription.number}</>}
-        description={<>{SUBSCRIPTION_STATUS_LABELS[subscription.status]} ·{" "}{planSummary({ interval: subscription.interval, intervalCount: subscription.intervalCount, discountPercent: 0 })}{" "}· started {date(subscription.createdAt)} · {subscription.marketCode}</>}
+        back={{ href: `/admin/${store.slug}/subscriptions`, label: t.title }}
+        title={fillWords(w.title, { number: subscription.number })}
+        description={<>{t.status[subscription.status] ?? SUBSCRIPTION_STATUS_LABELS[subscription.status]} ·{" "}{planSummary({ interval: subscription.interval, intervalCount: subscription.intervalCount, discountPercent: 0 })}{" "}· {fillWords(w.started, { date: date(subscription.createdAt) })} · {subscription.marketCode}</>}
       />
 
       {customer && <CustomerBar customer={storeCustomerBar(store.slug, customer, locale)} />}
 
       <div className="grid gap-6 md:grid-cols-[1fr_18rem]">
         <div className="flex flex-col gap-6">
-          <Card title="Each renewal" compact>
+          <Card title={w.each} compact>
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-line">
-                  <th scope="col" className="py-2 font-medium">Product</th>
+                  <th scope="col" className="py-2 font-medium">{w.product}</th>
                   <th scope="col" className="py-2 font-medium">SKU</th>
-                  <th scope="col" className="py-2 text-right font-medium">Qty</th>
-                  <th scope="col" className="py-2 text-right font-medium">Total</th>
+                  <th scope="col" className="py-2 text-right font-medium">{w.qty}</th>
+                  <th scope="col" className="py-2 text-right font-medium">{w.total}</th>
                 </tr>
               </thead>
               <tbody>
@@ -78,7 +85,7 @@ export default async function SubscriptionPage({
                   <tr key={line.id} className="border-b border-line">
                     <td className="py-2">
                       {line.title}
-                      {line.delivery === "digital" && <span className="block text-xs text-muted">Digital download</span>}
+                      {line.delivery === "digital" && <span className="block text-xs text-muted">{w.digital}</span>}
                     </td>
                     <td className="py-2 font-mono text-xs">{line.sku}</td>
                     <td className="py-2 text-right">{line.quantity}</td>
@@ -89,21 +96,20 @@ export default async function SubscriptionPage({
             </table>
             <dl className="mt-3 flex flex-col gap-1 text-sm">
               {subscription.shippingMinor > 0 && (
-                <div className="flex justify-between"><dt>Shipping per delivery</dt><dd>{money(subscription.shippingMinor)}</dd></div>
+                <div className="flex justify-between"><dt>{w.shipping}</dt><dd>{money(subscription.shippingMinor)}</dd></div>
               )}
-              <div className="flex justify-between font-medium"><dt>Total per renewal</dt><dd>{money(subscription.totalMinor)}</dd></div>
-              <div className="flex justify-between text-muted"><dt>VAT included</dt><dd>{money(subscription.taxMinor)}</dd></div>
+              <div className="flex justify-between font-medium"><dt>{w.perRenewal}</dt><dd>{money(subscription.totalMinor)}</dd></div>
+              <div className="flex justify-between text-muted"><dt>{w.vat}</dt><dd>{money(subscription.taxMinor)}</dd></div>
             </dl>
             <p className="mt-3 text-xs text-muted">
-              The customer keeps these prices for as long as the subscription runs, unless the items are changed.
+              {w.keepsPrices}
             </p>
           </Card>
 
           {choices && (
-            <Card title="Change the next deliveries" className="text-sm" compact>
+            <Card title={w.change} className="text-sm" compact>
               <p className="mb-3 text-muted">
-                A swapped item takes today&apos;s price with the purchase option&apos;s discount. Nothing is charged now; the
-                customer is emailed.
+                {w.changeHint}
               </p>
               <SubscriptionContentsForm
                 action={changeContentsAction.bind(null, store.slug, subscription.id)}
@@ -120,19 +126,19 @@ export default async function SubscriptionPage({
                   })),
                 }))}
                 labels={{
-                  variant: "Variant",
-                  quantity: "Quantity",
-                  remove: "Remove",
-                  save: "Save changes",
-                  saving: "Saving …",
-                  saved: "Saved. The customer was emailed.",
-                  failed: "The change could not be saved. Check it and try again.",
+                  variant: w.form.variant,
+                  quantity: w.form.quantity,
+                  remove: w.form.remove,
+                  save: w.form.save,
+                  saving: w.form.saving,
+                  saved: w.form.saved,
+                  failed: w.form.failed,
                 }}
               />
             </Card>
           )}
 
-          <Card title="Orders" className="text-sm" compact>
+          <Card title={w.orders} className="text-sm" compact>
             <ul className="flex flex-col gap-1">
               {subscription.orders.map((order) => (
                 <li key={order.id} className="flex justify-between gap-4">
@@ -140,7 +146,7 @@ export default async function SubscriptionPage({
                     #{order.number}
                   </Link>
                   <span className="text-muted">
-                    {date(order.placedAt)} · {ORDER_STATUS_LABELS[order.status as OrderStatus] ?? order.status} ·{" "}
+                    {date(order.placedAt)} · {statuses[order.status as OrderStatus] ?? ORDER_STATUS_LABELS[order.status as OrderStatus] ?? order.status} ·{" "}
                     {money(order.totalMinor)}
                   </span>
                 </li>
@@ -154,10 +160,10 @@ export default async function SubscriptionPage({
             title={
               customer ? (
                 <Link href={`/admin/${store.slug}/customers/${customer.key}`} className="underline">
-                  {customer.name || "Customer"}
+                  {customer.name || w.customer}
                 </Link>
               ) : (
-                "Customer"
+                w.customer
               )
             }
             className="text-sm"
@@ -166,27 +172,28 @@ export default async function SubscriptionPage({
             {subscription.email ? (
               <a href={`mailto:${subscription.email}`} className="underline">{subscription.email}</a>
             ) : (
-              <p className="text-muted">Not known until payment.</p>
+              <p className="text-muted">{w.unknown}</p>
             )}
           </Card>
-          <Card title="Renewal" className="text-sm" compact>
+          <Card title={w.renewal} className="text-sm" compact>
             <ul className="mb-3 flex flex-col gap-1">
               <li>
                 {!live
                   ? subscription.cancelledAt
-                    ? `Ended ${date(subscription.cancelledAt)}.`
-                    : "Not running."
+                    ? fillWords(w.ended, { date: date(subscription.cancelledAt) })
+                    : w.notRunning
                   : subscription.endsAt
-                    ? `Ends ${date(subscription.endsAt)}${subscription.cancelAtPeriodEnd ? "" : ", when the commitment is met"}; no more charges.`
+                    ? fillWords(subscription.cancelAtPeriodEnd ? w.ends : w.endsCommitment, { date: date(subscription.endsAt) })
                     : subscription.nextChargeAt
-                      ? `${subscription.pausedUntil ? "Paused. Next charge" : "Renews"} ${date(subscription.nextChargeAt)}.`
-                      : "Renewal date not known yet."}
+                      ? fillWords(subscription.pausedUntil ? w.pausedNext : w.renews, { date: date(subscription.nextChargeAt) })
+                      : w.unknownDate}
               </li>
-              {trialRunning && subscription.trialEndsAt && <li>Free trial until {date(subscription.trialEndsAt)}.</li>}
+              {trialRunning && subscription.trialEndsAt && <li>{fillWords(w.trial, { date: date(subscription.trialEndsAt) })}</li>}
               {subscription.minCycles > 0 && (
                 <li>
-                  Commitment: {subscription.paidCycles} of {subscription.minCycles} payments made
-                  {subscription.commitmentEndsAt ? `, until ${date(subscription.commitmentEndsAt)}` : ""}.
+                  {subscription.commitmentEndsAt
+                    ? fillWords(w.commitmentUntil, { paid: subscription.paidCycles, of: subscription.minCycles, date: date(subscription.commitmentEndsAt) })
+                    : fillWords(w.commitment, { paid: subscription.paidCycles, of: subscription.minCycles })}
                 </li>
               )}
             </ul>

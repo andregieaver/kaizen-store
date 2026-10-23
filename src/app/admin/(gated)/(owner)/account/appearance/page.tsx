@@ -6,6 +6,8 @@ import { SchemePreview } from "@/components/admin/scheme-preview";
 import { PageHeader } from "@/components/admin/ui";
 import { offeredSchemes } from "@/lib/admin-schemes";
 import { requireAccount } from "@/server/auth";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 
 import { adminSchemeAction, colorModeAction } from "../actions";
 
@@ -18,6 +20,7 @@ export const metadata: Metadata = { title: "Appearance" };
  */
 export default async function AppearancePage() {
   const account = await requireAccount();
+  const previewWords = adminText(adminLangOf(account.adminLocale), "bookings").schemePreview;
   const schemes = offeredSchemes();
   return (
     <div className="flex flex-col gap-10">
@@ -49,8 +52,8 @@ export default async function AppearancePage() {
         </div>
         {schemes.map((scheme) => (
           <div key={scheme.id} className="grid gap-6 xl:grid-cols-2">
-            <SchemePreview scheme={scheme} mode="light" />
-            <SchemePreview scheme={scheme} mode="dark" />
+            <SchemePreview scheme={scheme} mode="light" words={previewWords} />
+            <SchemePreview scheme={scheme} mode="dark" words={previewWords} />
           </div>
         ))}
       </section>

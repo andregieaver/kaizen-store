@@ -6,6 +6,8 @@ import { emailEventsSetup } from "@/lib/email-settings";
 import { emailSettings, listEmails } from "@/server/email";
 import { requirePlatformAdmin } from "@/server/auth";
 import { Card, PageHeader } from "@/components/admin/ui";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 
 export const metadata: Metadata = { title: "Emails" };
 
@@ -13,47 +15,48 @@ export const metadata: Metadata = { title: "Emails" };
 export default async function PlatformEmailsPage() {
   // Per request: admin pages never read the database while the site is built.
   await connection();
-  await requirePlatformAdmin();
+  const account = await requirePlatformAdmin();
+  const lang = adminLangOf(account.adminLocale);
+  const w = adminText(lang, "platform").emails;
   const [emails, settings] = await Promise.all([listEmails({ limit: 200 }), Promise.resolve(emailSettings())]);
   const webhook = emailEventsSetup() === "ok";
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Emails" />
-      <Card title="Sending" className="text-sm" compact>
+      <PageHeader title={w.title} />
+      <Card title={w.sending} className="text-sm" compact>
         {settings ? (
           <div className="flex flex-col gap-2">
             <p>
-              Sending through Resend from <strong>{settings.from}</strong>, with each store&apos;s name as the sender
-              and its contact address for replies.
+              {w.via.split("{from}")[0]}
+              <strong>{settings.from}</strong>
+              {w.via.split("{from}")[1]}
             </p>
             {!webhook && (
               <p className="text-muted">
-                Deliveries and bounces are not reported back yet: add a webhook in Resend (Webhooks → Add endpoint,{" "}
-                <span className="font-mono text-xs">https://kaizenaflow.com/api/resend/webhook</span>, all email
-                events) and put its signing secret in Vercel as <span className="font-mono text-xs">RESEND_WEBHOOK_SECRET</span>.
+                {w.noWebhook}{" "}
+                <span className="font-mono text-xs">https://kaizenaflow.com/api/resend/webhook</span>
+                {w.noWebhookEnd} <span className="font-mono text-xs">RESEND_WEBHOOK_SECRET</span>.
               </p>
             )}
           </div>
         ) : (
           <div className="flex flex-col gap-2">
             <p>
-              Email is not set up, so emails are only recorded below. To send them, add these in Vercel (Settings →
-              Environment Variables) and redeploy:
+              {w.notSetUp}
             </p>
             <ul className="list-disc pl-5 font-mono text-xs">
-              <li>RESEND_API_KEY (a sending-access key, starts with re_)</li>
-              <li>EMAIL_FROM (an address on the domain verified in Resend, e.g. butikk@kaizenaflow.com)</li>
-              <li>RESEND_WEBHOOK_SECRET (the webhook&apos;s signing secret, starts with whsec_)</li>
+              <li>RESEND_API_KEY {w.keyNote}</li>
+              <li>EMAIL_FROM {w.fromNote}</li>
+              <li>RESEND_WEBHOOK_SECRET {w.secretNote}</li>
             </ul>
             <p className="text-muted">
-              In Resend: add the domain in the Ireland (eu-west-1) region and put its DNS records at the domain&apos;s
-              DNS host.
+              {w.region}
             </p>
           </div>
         )}
       </Card>
       <Card compact>
-        <EmailLog emails={emails} base="/admin/platform/emails" showStore />
+        <EmailLog emails={emails} base="/admin/platform/emails" showStore locale={ADMIN_LANG_FACTS[lang].locale} words={adminText(lang, "notifications")} />
       </Card>
     </div>
   );

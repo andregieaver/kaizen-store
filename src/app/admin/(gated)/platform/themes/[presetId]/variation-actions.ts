@@ -1,5 +1,7 @@
 "use server";
 
+import { platformActionWords } from "@/server/platform-site-words";
+
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -29,7 +31,7 @@ export async function renameVariationAction(presetId: string, key: string, _stat
   const result = await renameVariation(admin, presetId, key, formData.get("name"));
   if (!result.ok) return failed(result.problems);
   refresh();
-  return { status: "ok", messages: ["Renamed, in the theme's draft."] };
+  return { status: "ok", messages: [(await platformActionWords()).renamed] };
 }
 
 export async function moveVariationAction(presetId: string, key: string, direction: "up" | "down"): Promise<void> {

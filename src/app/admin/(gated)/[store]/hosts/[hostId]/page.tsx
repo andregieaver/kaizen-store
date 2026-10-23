@@ -11,6 +11,9 @@ import { getHostTaxDetails, hostTaxStatus } from "@/server/dac7";
 import { getHostStripeAccounts, hostEarnings, storePaymentMode } from "@/server/host-payments";
 import { getHost, hostListings } from "@/server/hosts";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 
 import { setHostDisabledAction, updateHostAction } from "../actions";
 import { HostForm } from "../host-form";
@@ -23,6 +26,9 @@ export default async function HostPage({ params }: PageProps<"/admin/[store]/hos
   const off = requireFeature(current, "bookings");
   if (off) return off;
   const { store } = current;
+  const lang = adminLangOf(current.account.adminLocale);
+  const t = adminText(lang, "bookings");
+  const w = t.host;
   if (!z.uuid().safeParse(hostId).success) notFound();
   const host = await getHost(store.id, hostId);
   if (!host) notFound();
@@ -37,8 +43,8 @@ export default async function HostPage({ params }: PageProps<"/admin/[store]/hos
   const missing = taxes.get(host.id)?.missingAddresses ?? [];
   const owner = memberCan(current, "owner");
   const stage = mode ? accountStage(accounts[mode] ?? null) : null;
-  const locale = store.markets[0]?.locale ?? "en-GB";
-  const date = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  const locale = lang === "en" ? (store.markets[0]?.locale ?? "en-GB") : ADMIN_LANG_FACTS[lang].locale;
+  const date = new Intl.DateTimeFormat(lang === "en" ? "en-GB" : ADMIN_LANG_FACTS[lang].locale, { day: "numeric", month: "short", year: "numeric" });
   // What the host got from the payments listed, per currency.
   const netByCurrency = new Map<string, number>();
   for (const e of earnings) netByCurrency.set(e.currency, (netByCurrency.get(e.currency) ?? 0) + e.netMinor);
@@ -46,23 +52,23 @@ export default async function HostPage({ params }: PageProps<"/admin/[store]/hos
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        back={{ href: `/admin/${store.slug}/hosts`, label: "Hosts" }}
+        back={{ href: `/admin/${store.slug}/hosts`, label: t.hosts.title }}
         title={<>{host.name}</>}
-        description={<>{host.email} · {host.signedInBefore ? "Has signed in" : "Not signed in yet"}</>}
+        description={<>{host.email} · {host.signedInBefore ? t.hosts.signedIn : t.hosts.notSignedIn}</>}
       />
       {owner ? (
-        <HostForm host={host} action={updateHostAction.bind(null, store.slug, host.id)} />
+        <HostForm host={host} words={t.hostForm} action={updateHostAction.bind(null, store.slug, host.id)} />
       ) : (
         <p className="text-sm text-muted">
-          {host.commissionBps / 100} % commission · {host.vatRegistered ? "VAT registered" : "No VAT"}
+          {fillWords(t.hosts.commission, { n: host.commissionBps / 100 })} · {host.vatRegistered ? t.hosts.vat : t.hosts.noVat}
         </p>
       )}
       <section aria-labelledby="listings-heading" className="flex flex-col gap-2">
         <h2 id="listings-heading" className="text-title text-ink">
-          Listings
+          {w.listings}
         </h2>
         {listings.length === 0 ? (
-          <p className="text-sm text-muted">None yet. Choose this host in a stay or rental.</p>
+          <p className="text-sm text-muted">{w.noListings}</p>
         ) : (
           <ul className={`divide-y divide-line text-sm ${CARD_CLASS}`}>
             {listings.map((l) => (
@@ -70,7 +76,7 @@ export default async function HostPage({ params }: PageProps<"/admin/[store]/hos
                 <Link href={`/admin/${store.slug}/products/${l.id}`} className="underline-offset-2 hover:underline">
                   {l.title}
                 </Link>
-                <span className="text-muted">{l.status === "active" ? "For sale" : "Draft"}</span>
+                <span className="text-muted">{l.status === "active" ? w.forSale : w.draft}</span>
               </li>
             ))}
           </ul>
@@ -78,25 +84,24 @@ export default async function HostPage({ params }: PageProps<"/admin/[store]/hos
       </section>
       <section aria-labelledby="payments-heading" className="flex flex-col gap-2">
         <h2 id="payments-heading" className="text-title text-ink">
-          Payments
+          {w.payments}
         </h2>
         <p className="text-sm text-muted">
           {stage === "ready"
-            ? "Guests pay the host's own Stripe account; your commission is sent on to your Stripe account."
+            ? w.ready
             : stage === null
-              ? "Payments are off in the store."
+              ? w.paymentsOff
               : mode === "test"
-                ? "Kaizena Flow sets up the host's test account; it is ready within a few minutes."
-                : "The host has not finished setting up Stripe in their area, so their listings cannot be paid for yet."}
+                ? w.testAccount
+                : w.notSetUp}
         </p>
         {earnings.length > 0 && (
           <p>
-            The host got{" "}
+            {w.gotBefore}{" "}
             <span className="font-medium tabular-nums">
               {[...netByCurrency].map(([currency, net]) => formatMoney(net, currency, locale)).join(" + ")}
             </span>{" "}
-            from {earnings.length === 1 ? "this payment" : `these ${earnings.length} payments`}, after refunds, your commission and
-            Kaizena Flow&apos;s fee (before Stripe&apos;s own fees).
+            {countWords(earnings.length, w.gotAfter)}
           </p>
         )}
         {earnings.length > 0 && (
@@ -105,17 +110,17 @@ export default async function HostPage({ params }: PageProps<"/admin/[store]/hos
               <li key={e.paymentId} className="flex flex-wrap justify-between gap-3 p-3">
                 <Link href={`/admin/${store.slug}/orders/${e.orderId}`} className="underline-offset-2 hover:underline">
                   {e.number} · {date.format(new Date(e.paidAt))}
-                  {e.kind === "no_show" && <span className="block text-xs text-muted">No-show fee</span>}
+                  {e.kind === "no_show" && <span className="block text-xs text-muted">{w.noShowFee}</span>}
                   <span className="block text-xs text-muted tabular-nums">
-                    Guest paid {formatMoney(e.paidMinor - e.refundedMinor, e.currency, locale)}
-                    {e.refundedMinor > 0 && " after refunds"} · Kaizena Flow&apos;s fee {formatMoney(e.kaizenFeeMinor, e.currency, locale)} ·
-                    Host got {formatMoney(e.netMinor, e.currency, locale)}
+                    {fillWords(e.refundedMinor > 0 ? w.guestPaidRefunded : w.guestPaid, { amount: formatMoney(e.paidMinor - e.refundedMinor, e.currency, locale) })} ·{" "}
+                    {fillWords(w.kaizenFee, { amount: formatMoney(e.kaizenFeeMinor, e.currency, locale) })} ·{" "}
+                    {fillWords(w.hostGot, { amount: formatMoney(e.netMinor, e.currency, locale) })}
                   </span>
                 </Link>
                 <span className="text-right tabular-nums">
-                  Commission {formatMoney(e.commissionMinor, e.currency, locale)}
+                  {fillWords(w.commissionAmount, { amount: formatMoney(e.commissionMinor, e.currency, locale) })}
                   <span className="block text-xs text-muted">
-                    {e.sent ? "Sent to your Stripe account" : e.problem ? `Not sent yet: ${e.problem}` : "Not sent yet"}
+                    {e.sent ? w.sent : e.problem ? fillWords(w.notSentProblem, { problem: e.problem }) : w.notSent}
                   </span>
                 </span>
               </li>
@@ -125,28 +130,28 @@ export default async function HostPage({ params }: PageProps<"/admin/[store]/hos
       </section>
       <section aria-labelledby="tax-heading" className="flex flex-col gap-1 text-sm">
         <h2 id="tax-heading" className="text-title text-ink">
-          Tax details (DAC7)
+          {w.tax}
         </h2>
         {tax ? (
           <p>
-            {tax.legalName} · {tax.kind === "entity" ? `Business ${tax.businessNumber}` : "Private person"} · TIN ending{" "}
-            {tax.tin.slice(-4)} ({tax.tinCountry})
+            {tax.legalName} · {tax.kind === "entity" ? fillWords(w.business, { number: tax.businessNumber ?? "" }) : w.privatePerson} ·{" "}
+            {fillWords(w.tin, { last: tax.tin.slice(-4), country: tax.tinCountry })}
           </p>
         ) : (
-          <p className="text-danger-text">Not given yet. The host gives them in their area.</p>
+          <p className="text-danger-text">{w.taxMissing}</p>
         )}
-        {missing.length > 0 && <p className="text-danger-text">No address yet for: {missing.join(", ")}.</p>}
+        {missing.length > 0 && <p className="text-danger-text">{fillWords(w.noAddress, { list: missing.join(", ") })}</p>}
         <Link href={`/admin/${store.slug}/hosts/dac7`} className="underline">
-          Yearly tax report
+          {w.yearly}
         </Link>
       </section>
       {owner && (
         <form action={setHostDisabledAction.bind(null, store.slug, host.id, !host.disabled)}>
           <button type="submit" className="min-h-10 rounded-pill border border-edge px-3 text-sm">
-            {host.disabled ? "Give access back" : "Take away access"}
+            {host.disabled ? w.giveBack : w.takeAway}
           </button>
           <span className="ml-2 text-sm text-muted">
-            {host.disabled ? "They can sign in again." : "Their listings stay; they can no longer sign in to their area."}
+            {host.disabled ? w.giveBackHint : w.takeAwayHint}
           </span>
         </form>
       )}

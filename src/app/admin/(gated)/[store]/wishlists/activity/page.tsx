@@ -6,14 +6,12 @@ import { CartAddTable, WishlistTabs } from "@/components/admin/wishlist-admin";
 import { requirePermission } from "@/server/permissions";
 import { listCartAdds } from "@/server/wishlist-admin";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 
 export const metadata: Metadata = { title: "From wishlist to purchase" };
 
-const FILTERS = [
-  { key: "all", label: "Everything" },
-  { key: "bought", label: "Bought" },
-  { key: "not_bought", label: "Not bought" },
-] as const;
+const FILTERS = [{ key: "all" }, { key: "bought" }, { key: "not_bought" }] as const;
 
 /**
  * The record of items put in the cart from a wishlist (D36), newest first,
@@ -30,17 +28,19 @@ export default async function WishlistActivityPage({ params, searchParams }: Pag
   const show = FILTERS.find((f) => f.key === raw)?.key ?? "all";
   const rows = await listCartAdds(store.id, { outcome: show === "all" ? undefined : show });
   const locale = store.markets[0]?.locale ?? "nb-NO";
+  const lang = adminLangOf(gated.account.adminLocale);
+  const w = adminText(lang, "bookings").wishlists;
   const base = `/admin/${store.slug}/wishlists/activity`;
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="Wishlists"
-        description={<>Every item a shopper put in the cart from one of their lists, and whether it was bought. An item counts as bought when the order it went into is paid.</>}
+        title={w.title}
+        description={w.activity.description}
       />
-      <WishlistTabs storeSlug={store.slug} current="activity" />
+      <WishlistTabs storeSlug={store.slug} current="activity" words={w} />
 
-      <nav aria-label="Filter" className="flex flex-wrap gap-2 text-sm">
+      <nav aria-label={w.activity.filter} className="flex flex-wrap gap-2 text-sm">
         {FILTERS.map((f) => (
           <Link
             key={f.key}
@@ -48,7 +48,7 @@ export default async function WishlistActivityPage({ params, searchParams }: Pag
             aria-current={f.key === show ? "page" : undefined}
             className="rounded-full border border-line px-3 py-1 aria-[current=page]:border-brand aria-[current=page]:font-medium"
           >
-            {f.label}
+            {w.activity.filters[f.key]}
           </Link>
         ))}
       </nav>
@@ -56,15 +56,15 @@ export default async function WishlistActivityPage({ params, searchParams }: Pag
       {rows.length === 0 ? (
         <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>
           {show === "all"
-            ? "Nothing has gone from a wishlist to the cart yet. It shows here the moment a shopper adds items from a list."
-            : "Nothing here."}
+            ? w.activity.none
+            : w.activity.nothing}
         </p>
       ) : (
         <div className={`px-4 ${CARD_CLASS}`}>
-          <CartAddTable rows={rows} storeSlug={store.slug} locale={locale} />
+          <CartAddTable rows={rows} storeSlug={store.slug} locale={locale} words={w} dateLocale={lang === "en" ? locale : ADMIN_LANG_FACTS[lang].locale} />
         </div>
       )}
-      {rows.length === 200 && <p className="text-sm text-muted">Showing the latest 200.</p>}
+      {rows.length === 200 && <p className="text-sm text-muted">{w.activity.latest}</p>}
     </div>
   );
 }

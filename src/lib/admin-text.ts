@@ -77,6 +77,14 @@ import { assistantEn, type AssistantMessages } from "./admin-messages/assistant.
 import { assistantNb } from "./admin-messages/assistant.nb";
 import { staffEmailsEn, type StaffEmailsMessages } from "./admin-messages/staff-emails.en";
 import { staffEmailsNb } from "./admin-messages/staff-emails.nb";
+import { platformEn, type PlatformMessages } from "./admin-messages/platform.en";
+import { platformNb } from "./admin-messages/platform.nb";
+import { platformSiteEn, type PlatformSiteMessages } from "./admin-messages/platform-site.en";
+import { platformSiteNb } from "./admin-messages/platform-site.nb";
+import { platformToolsEn, type PlatformToolsMessages } from "./admin-messages/platform-tools.en";
+import { platformToolsNb } from "./admin-messages/platform-tools.nb";
+import { bookingsEn, type BookingsMessages } from "./admin-messages/bookings.en";
+import { bookingsNb } from "./admin-messages/bookings.nb";
 import { loyaltyEn, type LoyaltyMessages } from "./admin-messages/loyalty.en";
 import { loyaltyNb } from "./admin-messages/loyalty.nb";
 import { homeEn, type HomeMessages } from "./admin-messages/home.en";
@@ -104,6 +112,10 @@ export type AdminAreaMessages = {
   marketing: MarketingMessages;
   discounts: DiscountsMessages;
   loyalty: LoyaltyMessages;
+  platform: PlatformMessages;
+  platformSite: PlatformSiteMessages;
+  platformTools: PlatformToolsMessages;
+  bookings: BookingsMessages;
   support: SupportMessages;
   work: WorkMessages;
   assistant: AssistantMessages;
@@ -154,6 +166,10 @@ const CATALOGUES: { [A in AdminArea]: Record<AdminLang, AdminAreaMessages[A]> } 
   marketing: { en: marketingEn, nb: marketingNb },
   discounts: { en: discountsEn, nb: discountsNb },
   loyalty: { en: loyaltyEn, nb: loyaltyNb },
+  platform: { en: platformEn, nb: platformNb },
+  platformSite: { en: platformSiteEn, nb: platformSiteNb },
+  platformTools: { en: platformToolsEn, nb: platformToolsNb },
+  bookings: { en: bookingsEn, nb: bookingsNb },
   support: { en: supportEn, nb: supportNb },
   work: { en: workEn, nb: workNb },
   assistant: { en: assistantEn, nb: assistantNb },

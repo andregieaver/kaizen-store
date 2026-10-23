@@ -64,7 +64,7 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
   return (
     <>
       <ProblemAlert text={problem} />
-      <CustomerExportForm slug={member.store.slug} />
+      <CustomerExportForm slug={member.store.slug} words={adminText(adminLangOf(member.account.adminLocale), "bookings").exports} />
       <ExportSection member={member} kind="customer_export" jobId={first(query.job)} base={`/admin/${member.store.slug}/customers/export`} now={new Date()} />
     </>
   );

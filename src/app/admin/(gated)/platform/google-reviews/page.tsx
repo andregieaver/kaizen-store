@@ -5,17 +5,19 @@ import { getGoogleSettings } from "@/server/google-reviews";
 import { PageHeader } from "@/components/admin/ui";
 
 import { choosePlatformPlaceAction, findPlatformPlacesAction, removePlatformGoogleAction, savePlatformGoogleKeyAction } from "./actions";
+import { platformSiteWords } from "@/server/platform-site-words";
 
 export const metadata: Metadata = { title: "Google reviews" };
 
 /** Kaizen's own Google reviews (D91), for testimonials on Kaizen's pages; stores set up their own. */
 export default async function PlatformGoogleReviewsPage() {
+  const { w } = await platformSiteWords();
   const settings = await getGoogleSettings(null);
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="Google reviews"
-        description={<>Kaizena Flow&apos;s rating and reviews on Google, for Testimonials components on Kaizena Flow&apos;s own pages. Stores set up their own under Integrations.</>}
+        title={w.misc.googleReviews.title}
+        description={w.misc.googleReviews.description}
       />
       <GoogleReviewsSettings
         hint={settings?.hint ?? null}

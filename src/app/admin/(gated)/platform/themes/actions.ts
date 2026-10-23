@@ -1,5 +1,8 @@
 "use server";
 
+import { platformActionWords } from "@/server/platform-site-words";
+import { countWords, fillWords } from "@/lib/admin-fill";
+
 import { refresh, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -64,7 +67,7 @@ export async function createDesignAction(_state: FormState, formData: FormData):
   let origin: { kind: "store"; storeId: string } | { kind: "scratch" } = { kind: "scratch" };
   if (formData.get("origin") === "store") {
     const storeId = z.uuid().safeParse(formData.get("store"));
-    if (!storeId.success) return { status: "error", messages: ["Choose the store whose look it starts from."] };
+    if (!storeId.success) return { status: "error", messages: [(await platformActionWords()).chooseStoreFrom] };
     origin = { kind: "store", storeId: storeId.data };
   }
   const result = await createDesign(admin, { origin, details: details.details });
@@ -87,19 +90,19 @@ export async function saveDesignDraftAction(presetId: string, _state: FormState,
   const result = await saveDesignDraft(admin, presetId, details.details);
   if (!result.ok) return { status: "error", messages: result.problems };
   refresh();
-  return { status: "ok", messages: ["Draft saved. Stores see the published details until you publish."] };
+  return { status: "ok", messages: [(await platformActionWords()).draftSaved] };
 }
 
 /** Replaces the profile's draft look with a store's look as it is now (D177). */
 export async function copyStoreLookAction(presetId: string, _state: FormState, formData: FormData): Promise<FormState> {
   const admin = await requirePlatformAdmin();
   const storeId = z.uuid().safeParse(formData.get("store"));
-  if (!storeId.success) return { status: "error", messages: ["Choose the store whose look it takes."] };
-  if (formData.get("confirm") !== "on") return { status: "error", messages: ["Tick the box to confirm that the draft look is replaced."] };
+  if (!storeId.success) return { status: "error", messages: [(await platformActionWords()).chooseStoreTakes] };
+  if (formData.get("confirm") !== "on") return { status: "error", messages: [(await platformActionWords()).confirmReplace] };
   const result = await copyStoreLookToDraft(admin, presetId, storeId.data);
   if (!result.ok) return { status: "error", messages: result.problems };
   refresh();
-  return { status: "ok", messages: withNotes("The draft look is the store's now. Stores keep the published theme until you publish.", result.notes) };
+  return { status: "ok", messages: withNotes((await platformActionWords()).lookTaken, result.notes) };
 }
 
 /** Publishes a design profile (D177): its draft details, and the look in its workspace as the snapshot stores apply. */
@@ -109,7 +112,7 @@ export async function publishDesignAction(presetId: string, _state?: FormState, 
   const result = await publishDesign(admin, presetId, typeof notes === "string" ? notes : null);
   if (!result.ok) return { status: "error", messages: result.problems };
   offeredChanged();
-  return { status: "ok", messages: withNotes("Published: every store can apply it as it is now. Stores that installed it get the new version by itself unless they switched that off, with their own changes kept.", result.notes) };
+  return { status: "ok", messages: withNotes((await platformActionWords()).themePublished, result.notes) };
 }
 
 /** Stops offering a design profile at once (D177). */
@@ -118,11 +121,9 @@ export async function unpublishDesignAction(presetId: string): Promise<FormState
   const result = await unpublishDesign(admin, presetId);
   if (!result.ok) return { status: "error", messages: result.problems };
   offeredChanged();
-  const pending =
-    result.pendingRequests > 0
-      ? ` ${result.pendingRequests} pending ${result.pendingRequests === 1 ? "access request chose" : "access requests chose"} it: approved, ${result.pendingRequests === 1 ? "its store keeps" : "their stores keep"} the Standard store's look unless you choose another theme on the request.`
-      : "";
-  return { status: "ok", messages: [`Unpublished: no store can apply it now; stores that applied it keep their look.${pending}`] };
+  const a = await platformActionWords();
+  const pending = result.pendingRequests > 0 ? ` ${countWords(result.pendingRequests, a.themePending, { count: result.pendingRequests })}` : "";
+  return { status: "ok", messages: [`${a.themeUnpublished}${pending}`] };
 }
 
 /** Archives a theme (D177). */
@@ -131,7 +132,7 @@ export async function archiveDesignAction(presetId: string): Promise<FormState> 
   const result = await archiveDesign(admin, presetId);
   if (!result.ok) return { status: "error", messages: result.problems };
   offeredChanged();
-  return { status: "ok", messages: ["Archived: it is under Archived now, and can be restored there."] };
+  return { status: "ok", messages: [(await platformActionWords()).themeArchived] };
 }
 
 /** Restores an archived design profile (D177), unpublished. */
@@ -140,13 +141,13 @@ export async function unarchiveDesignAction(presetId: string): Promise<FormState
   const result = await restoreDesign(admin, presetId);
   if (!result.ok) return { status: "error", messages: result.problems };
   offeredChanged();
-  return { status: "ok", messages: ["Restored, unpublished. Publish it when it is ready."] };
+  return { status: "ok", messages: [(await platformActionWords()).restored] };
 }
 
 /** Deletes a design profile nothing used (D177), after the admin confirmed. */
 export async function deleteDesignAction(presetId: string, _state: FormState, formData: FormData): Promise<FormState> {
   const admin = await requirePlatformAdmin();
-  if (formData.get("confirm") !== "on") return { status: "error", messages: ["Tick the box to confirm that it is deleted for good."] };
+  if (formData.get("confirm") !== "on") return { status: "error", messages: [(await platformActionWords()).confirmDelete] };
   const result = await deleteDesign(admin, presetId);
   if (!result.ok) return { status: "error", messages: result.problems };
   offeredChanged();
@@ -160,7 +161,7 @@ export async function moveDesignAction(presetId: string, direction: "up" | "down
   if (!result.ok) return { status: "error", messages: result.problems };
   updateTag(DESIGNS_TAG);
   refresh();
-  return { status: "ok", messages: ["Moved."] };
+  return { status: "ok", messages: [(await platformActionWords()).moved] };
 }
 
 /** A platform admin applies a design profile to any store from its page on the platform (D176), a store template included. */
@@ -168,26 +169,26 @@ export async function applyDesignToStoreAction(storeSlug: string, _state: FormSt
   const admin = await requirePlatformAdmin();
   const store = await getStore(storeSlug);
   const presetId = designChoice(formData.get("design"));
-  if (!store) return { status: "error", messages: ["That store no longer exists."] };
-  if (!presetId) return { status: "error", messages: ["Choose a theme."] };
+  if (!store) return { status: "error", messages: [(await platformActionWords()).storeGone] };
+  if (!presetId) return { status: "error", messages: [(await platformActionWords()).chooseTheme] };
   // A premium theme applied by Kaizena Flow is given, never charged to the store (D286).
   const result = await applyDesignPreset(store.id, presetId, admin.id, {}, presetChoice(formData.get("preset")), "grant");
   if (!result.ok) return { status: "error", messages: result.problems };
   for (const tag of designTags(store)) updateTag(tag);
   refresh();
-  return { status: "ok", messages: withNotes(`Applied. The look from before stays in the store's theme library as “${result.previous}” and can be put back. A premium theme applied here is the store's without charge.`, result.notes) };
+  return { status: "ok", messages: withNotes(fillWords((await platformActionWords()).applied, { previous: result.previous }), result.notes) };
 }
 
 /** Puts back the look a store had before its latest design profile, from its page on the platform. */
 export async function restoreDesignForStoreAction(storeSlug: string): Promise<FormState> {
   const admin = await requirePlatformAdmin();
   const store = await getStore(storeSlug);
-  if (!store) return { status: "error", messages: ["That store no longer exists."] };
+  if (!store) return { status: "error", messages: [(await platformActionWords()).storeGone] };
   const result = await restoreDesignLook(store.id, admin.id);
   if (!result.ok) return { status: "error", messages: result.problems };
   for (const tag of designTags(store)) updateTag(tag);
   refresh();
-  return { status: "ok", messages: [`The look from before ${result.presetTitle} is back.`] };
+  return { status: "ok", messages: [fillWords((await platformActionWords()).lookBack, { title: result.presetTitle })] };
 }
 
 /** Adds Kaizena Flow's launch themes not there yet and publishes newer versions of those that are (D246, `syncLaunchThemes()`). */
@@ -195,11 +196,12 @@ export async function syncLaunchThemesAction(): Promise<FormState> {
   const admin = await requirePlatformAdmin();
   const result = await syncLaunchThemes(admin);
   if (result.made.length + result.updated.length > 0) offeredChanged();
+  const a = await platformActionWords();
   const said = [
-    result.made.length > 0 && `Added and published: ${result.made.join(", ")}.`,
-    result.updated.length > 0 && `Published a new version of ${result.updated.join(", ")}; stores that follow updates get it by themselves.`,
-    result.made.length + result.updated.length === 0 && result.problems.length === 0 && "Every launch theme is up to date.",
-    result.skipped.length > 0 && `Left alone because archived: ${result.skipped.join(", ")}.`,
+    result.made.length > 0 && fillWords(a.launchAdded, { list: result.made.join(", ") }),
+    result.updated.length > 0 && fillWords(a.launchUpdated, { list: result.updated.join(", ") }),
+    result.made.length + result.updated.length === 0 && result.problems.length === 0 && a.launchCurrent,
+    result.skipped.length > 0 && fillWords(a.launchSkipped, { list: result.skipped.join(", ") }),
   ].filter((line): line is string => typeof line === "string");
   if (result.problems.length > 0) return { status: "error", messages: [...said, ...result.problems] };
   return { status: "ok", messages: said };
@@ -235,7 +237,7 @@ export async function saveThemeListingAction(presetId: string, _state: FormState
   if (!result.ok) return { status: "error", messages: result.problems };
   updateTag(DESIGNS_TAG);
   refresh();
-  return { status: "ok", messages: ["Saved. The theme store shows it at once while the theme is published."] };
+  return { status: "ok", messages: [(await platformActionWords()).listingSaved] };
 }
 
 /**
@@ -250,10 +252,11 @@ export async function saveThemePricesAction(presetId: string, _state: FormState,
   if (!result.ok) return { status: "error", messages: result.problems };
   updateTag(DESIGNS_TAG);
   refresh();
+  const a = await platformActionWords();
   const note =
     parsed.prices.length === 0
-      ? `The theme is free.${result.cancelled ? ` ${result.cancelled} ${result.cancelled === 1 ? "store that had not been invoiced pays" : "stores that had not been invoiced pay"} nothing for it.` : ""}`
-      : `The theme is premium.${result.granted ? ` ${result.granted} ${result.granted === 1 ? "store that has it keeps" : "stores that have it keep"} it free.` : ""}`;
+      ? `${a.free}${result.cancelled ? ` ${countWords(result.cancelled, a.freeCancelled, { count: result.cancelled })}` : ""}`
+      : `${a.premium}${result.granted ? ` ${countWords(result.granted, a.premiumGranted, { count: result.granted })}` : ""}`;
   return { status: "ok", messages: [note] };
 }
 
@@ -269,27 +272,27 @@ export async function giveThemeContentAction(presetId: string, _state: FormState
   updateTag(STARTERS_TAG);
   updateTag(DESIGNS_TAG);
   refresh();
-  return { status: "ok", messages: ["Copied. Edit it in its store admin, then publish it (or publish the theme) to show it in the theme store."] };
+  return { status: "ok", messages: [(await platformActionWords()).contentCopied] };
 }
 
 /** Publishes a theme's own content now (D275, `publishStarter()`): its frozen copy is what the preview, photographs and new stores read. */
 export async function publishThemeContentAction(presetId: string, _state: FormState): Promise<FormState> {
   const admin = await requirePlatformAdmin();
   const content = await themeContentOf(presetId);
-  if (!content) return { status: "error", messages: ["This theme has no content yet. Give it content first."] };
+  if (!content) return { status: "error", messages: [(await platformActionWords()).noContent] };
   const result = await publishStarter(admin, content.starterId);
   if (!result.ok) return { status: "error", messages: result.problems };
   updateTag(STARTERS_TAG);
   updateTag(DESIGNS_TAG);
   refresh();
-  return { status: "ok", messages: ["Published. The theme store, its photographs and new stores use this content now.", ...result.notes] };
+  return { status: "ok", messages: [(await platformActionWords()).contentPublished, ...result.notes] };
 }
 
 /** Opens a theme's own content in its store admin (D275): the platform admin is made its owner if they were not (`joinStarter()`). */
 export async function openThemeContentAction(presetId: string): Promise<FormState> {
   const admin = await requirePlatformAdmin();
   const content = await themeContentOf(presetId);
-  if (!content) return { status: "error", messages: ["This theme has no content yet. Give it content first."] };
+  if (!content) return { status: "error", messages: [(await platformActionWords()).noContent] };
   const joined = await joinStarter(admin, content.starterId);
   if (!joined.ok) return { status: "error", messages: joined.problems };
   redirect(`/admin/${joined.slug}`);
@@ -301,8 +304,8 @@ export async function retryThemeShotsAction(presetId: string, _state: FormState)
   const count = await retryThemeShots(admin, presetId);
   refresh();
   return count > 0
-    ? { status: "ok", messages: [`${count === 1 ? "It is" : `All ${count} are`} waiting again; the pictures are made within a few minutes.`] }
-    : { status: "ok", messages: ["Nothing was waiting to be tried again."] };
+    ? { status: "ok", messages: [countWords(count, (await platformActionWords()).waitingAgain, { count })] }
+    : { status: "ok", messages: [(await platformActionWords()).nothingWaiting] };
 }
 
 /** *Suggest words* for a theme's highlights: the text model's suggestion, put in the fields unsaved (`suggestHighlightWords()`). */
@@ -319,5 +322,5 @@ export async function saveThemeOwnPictureAction(presetId: string, slot: OwnSlot,
   if (!result.ok) return { status: "error", messages: result.problems };
   updateTag(DESIGNS_TAG);
   refresh();
-  return { status: "ok", messages: [url ? "Saved: the theme store shows your picture in its place." : "Saved: the made picture shows again."] };
+  return { status: "ok", messages: [url ? (await platformActionWords()).ownSaved : (await platformActionWords()).madeAgain] };
 }

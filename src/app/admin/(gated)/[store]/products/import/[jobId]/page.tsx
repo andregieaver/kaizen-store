@@ -142,6 +142,7 @@ async function Body({ storeSlug, jobId, searchParams }: { storeSlug: string; job
           pageSize={PAGE_SIZE}
           hrefFor={hrefFor}
           problemsHref={`${base}/problems`}
+          words={adminText(lang, "bookings").findings}
         />
       )}
       <p className="text-sm">

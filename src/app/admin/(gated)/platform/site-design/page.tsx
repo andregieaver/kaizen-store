@@ -7,6 +7,10 @@ import { requirePlatformAdmin } from "@/server/auth";
 import { ThemeUpdates } from "@/components/admin/theme-updates";
 import { THEME_UPDATE_KEEP_DAYS, listOfferedDesigns, platformThemeUpdates } from "@/server/design-presets";
 import { listPlatformInstalls } from "@/server/platform-theme-installs";
+import { AdminTextScope } from "@/components/admin/admin-text";
+import { fillWords } from "@/lib/admin-fill";
+import { adminTexts } from "@/lib/admin-text";
+import { platformSiteWords } from "@/server/platform-site-words";
 
 import {
   addPlatformThemeAction,
@@ -27,43 +31,45 @@ export const metadata: Metadata = { title: "Themes for Kaizena Flow's site" };
 export default async function PlatformThemesPage() {
   await connection();
   await requirePlatformAdmin();
+  const { lang, w } = await platformSiteWords();
+  const d = w.siteDesign;
   const [installs, offered, updates] = await Promise.all([listPlatformInstalls(), listOfferedDesigns(), platformThemeUpdates()]);
   const installed = new Set(installs.map((install) => install.presetId).filter(Boolean));
   return (
-    <>
-      <PageHeader
-        title="Themes"
-        description="The looks installed on Kaizena Flow's own site: one is live. Switching changes the colours, fonts, buttons, header, footer and the site's CSS at once; every page, article, menu, word and picture stays. The look you switch away from is kept here with every change made to it."
-      />
-      <Card title="Installed on Kaizena Flow's site">
-        <List label="Installed themes">
+    <AdminTextScope texts={adminTexts(lang, ["design", "platformSite"])}>
+      <PageHeader title={d.title} description={d.description} />
+      <Card title={d.installed}>
+        <List label={d.installedList}>
           {installs.map((install) => (
             <ListRow key={install.id}>
               <RowLead
                 title={install.title}
                 sub={
                   <>
-                    {install.live && <Chip signal="positive">Live</Chip>}
-                    {install.version !== null && <span className="ml-2">Version {install.version}</span>}
-                    <span className="ml-2">Added {install.installedAt.slice(0, 10)}</span>
+                    {install.live && <Chip signal="positive">{d.live}</Chip>}
+                    {install.version !== null && <span className="ml-2">{fillWords(d.version, { version: install.version })}</span>}
+                    <span className="ml-2">{fillWords(d.added, { date: install.installedAt.slice(0, 10) })}</span>
                   </>
                 }
               />
               {!install.live && (
                 <RowActions>
                   <ButtonLink href={`/admin/platform/site-design/${install.id}`}>
-                    Preview and customise<span className="sr-only"> {install.title}</span>
+                    {d.customise}
+                    <span className="sr-only"> {install.title}</span>
                   </ButtonLink>
                   <ActionForm action={switchPlatformThemeAction}>
                     <input type="hidden" name="install" value={install.id} />
                     <SubmitButton>
-                      Switch to it<span className="sr-only"> ({install.title})</span>
+                      {d.switch}
+                      <span className="sr-only"> ({install.title})</span>
                     </SubmitButton>
                   </ActionForm>
                   <ActionForm action={removePlatformThemeAction}>
                     <input type="hidden" name="install" value={install.id} />
                     <SubmitButton variant="secondary">
-                      Remove<span className="sr-only"> {install.title}</span>
+                      {d.remove}
+                      <span className="sr-only"> {install.title}</span>
                     </SubmitButton>
                   </ActionForm>
                 </RowActions>
@@ -80,13 +86,14 @@ export default async function PlatformThemesPage() {
         update={updatePlatformThemeAction}
         undo={undoPlatformThemeUpdateAction}
         follow={followPlatformUpdatesAction}
-        description={`When a theme installed here gets a new version, it can update by itself or wait for you. An update keeps every change made to it on Kaizena Flow's site: its own settings, fonts and CSS stay, and a header or footer that was edited stays, with the new one added as a draft beside it. Pages, articles, menus, words and pictures are never touched. An update can be undone for ${THEME_UPDATE_KEEP_DAYS} days, as long as the theme has not changed since.`}
+        description={fillWords(d.updates, { days: THEME_UPDATE_KEEP_DAYS })}
+        lang={lang}
       />
-      <Card title="Add a theme" description="A published theme is added without going live: its header and footer become Kaizena Flow's pages and its pictures are copied into Kaizena Flow's media library. A theme's product page is for stores and is left out.">
+      <Card title={d.addTitle} description={d.addDescription}>
         {offered.length === 0 ? (
-          <p className="text-sm text-muted">No theme is published yet.</p>
+          <p className="text-sm text-muted">{d.noneOffered}</p>
         ) : (
-          <List label="Published themes">
+          <List label={d.offeredList}>
             {/* Each theme's own look, then each of its presets (docs/theme-showcase-phase-1.md), added on its own. */}
             {offered.flatMap((design) => [null, ...(design.presets ?? [])].map((preset) => {
               const name = preset ? `${design.title} · ${preset.name}` : design.title;
@@ -94,14 +101,14 @@ export default async function PlatformThemesPage() {
                 <ListRow key={`${design.id}:${preset?.key ?? ""}`}>
                   <RowLead
                     title={name}
-                    sub={!preset && installed.has(design.id) ? <Chip>Installed</Chip> : preset ? `A preset of ${design.title}` : design.summary || undefined}
+                    sub={!preset && installed.has(design.id) ? <Chip>{d.installedChip}</Chip> : preset ? fillWords(d.presetOf, { theme: design.title }) : design.summary || undefined}
                   />
                   <RowActions>
                     <ActionForm action={addPlatformThemeAction}>
                       <input type="hidden" name="design" value={design.id} />
                       {preset && <input type="hidden" name="preset" value={preset.key} />}
                       <SubmitButton variant="secondary">
-                        {!preset && installed.has(design.id) ? "Add another copy" : "Add"}
+                        {!preset && installed.has(design.id) ? d.addCopy : d.add}
                         <span className="sr-only"> ({name})</span>
                       </SubmitButton>
                     </ActionForm>
@@ -112,6 +119,6 @@ export default async function PlatformThemesPage() {
           </List>
         )}
       </Card>
-    </>
+    </AdminTextScope>
   );
 }

@@ -5,6 +5,9 @@ import { redirect } from "next/navigation";
 import { requireAccount } from "@/server/auth";
 import { listHostings } from "@/server/hosts";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { fillWords } from "@/lib/admin-fill";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 
 export const metadata: Metadata = { title: "Hosting" };
 
@@ -13,11 +16,12 @@ export default async function HostingPage() {
   const account = await requireAccount();
   const hostings = await listHostings(account);
   if (hostings.length === 1) redirect(`/admin/hosting/${hostings[0].slug}`);
+  const w = adminText(adminLangOf(account.adminLocale), "bookings").hosting;
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
-      <PageHeader title="Hosting" />
+      <PageHeader title={w.title} />
       {hostings.length === 0 ? (
-        <p className="text-sm text-muted">You do not host for any store.</p>
+        <p className="text-sm text-muted">{w.none}</p>
       ) : (
         <ul className={`divide-y divide-line ${CARD_CLASS}`}>
           {hostings.map((h) => (
@@ -25,7 +29,7 @@ export default async function HostingPage() {
               <Link href={`/admin/hosting/${h.slug}`} className="font-medium underline-offset-2 hover:underline">
                 {h.name}
               </Link>
-              <span className="block text-muted">As {h.hostName}</span>
+              <span className="block text-muted">{fillWords(w.as, { name: h.hostName })}</span>
             </li>
           ))}
         </ul>

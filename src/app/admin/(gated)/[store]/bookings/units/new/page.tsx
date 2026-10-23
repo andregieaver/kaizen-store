@@ -4,6 +4,8 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { requirePermission } from "@/server/permissions";
 import { hostChoices } from "@/server/hosts";
 import { PageHeader } from "@/components/admin/ui";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 
 import { saveUnitAction } from "../../actions";
 import { UnitForm } from "../unit-form";
@@ -16,13 +18,14 @@ export default async function NewUnitPage({ params, searchParams }: PageProps<"/
   if (off) return off;
   const { store } = current;
   const kind = (await searchParams).kind === "item" ? "item" : "unit";
+  const t = adminText(adminLangOf(current.account.adminLocale), "bookings");
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        back={{ href: `/admin/${store.slug}/bookings/units`, label: "Rooms and rental items" }}
-        title={<>{kind === "unit" ? "Add a room or home" : "Add a rental item"}</>}
+        back={{ href: `/admin/${store.slug}/bookings/units`, label: t.units.title }}
+        title={kind === "unit" ? t.units.addRoom : t.units.addItem}
       />
-      <UnitForm kind={kind} unit={null} hosts={await hostChoices(store.id)} action={saveUnitAction.bind(null, store.slug, kind, null)} />
+      <UnitForm kind={kind} unit={null} words={t.unitForm} hosts={await hostChoices(store.id)} action={saveUnitAction.bind(null, store.slug, kind, null)} />
     </div>
   );
 }

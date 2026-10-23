@@ -11,6 +11,9 @@ import { uiCoverage } from "@/server/ui-text";
 import { getPlatformLangs } from "@/server/platform-navigation";
 import { PLATFORM_LANG_FACTS, PLATFORM_LANGS, platformPath } from "@/lib/platform-lang";
 import { Card, PageHeader } from "@/components/admin/ui";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 
 import { addLanguageAction, saveLocalesAction, setEnabledAction, setSiteLanguageAction } from "./actions";
 
@@ -26,7 +29,8 @@ const input = "min-h-10 rounded-md border border-line bg-card px-3 text-sm";
 export default async function LanguagesPage() {
   // Per request: admin pages never read the database while the site is built.
   await connection();
-  await requirePlatformAdmin();
+  const account = await requirePlatformAdmin();
+  const w = adminText(adminLangOf(account.adminLocale), "platformTools").languages;
   const [languages, coverage, siteLangs] = await Promise.all([listLanguages(), uiCoverage(), getPlatformLangs()]);
   const uses = new Map(await Promise.all(languages.map(async (l) => [l.lang, await storesUsing(l.lang)] as const)));
   const have = new Set(languages.map((l) => l.lang));
@@ -36,13 +40,13 @@ export default async function LanguagesPage() {
   return (
     <div className="flex flex-col gap-8">
       <PageHeader
-        title="Languages"
-        description={<>The languages store owners can offer under Languages and currencies. Products, pages and menus can be written or translated in any of them; the interface (buttons, cart, checkout and the emails shoppers get) is written by hand in Norwegian, Swedish, Danish and English, and translated by AI and reviewed here for the others. A language without interface text shows English there.</>}
+        title={w.title}
+        description={<>{w.intro}</>}
       />
 
       <Card
-        title="Kaizena Flow's own site"
-        description="The languages the site itself is offered in, English at its usual addresses and each other one under its own (Norwegian at /no).."
+        title={w.site}
+        description={w.siteText}
         className="flex flex-col gap-3"
         compact
       >
@@ -56,12 +60,12 @@ export default async function LanguagesPage() {
                     {PLATFORM_LANG_FACTS[lang].name} <span className="text-muted">· {platformPath(lang, "/")}</span>
                   </span>
                   <span className="text-muted">
-                    {lang === "en" ? "Always offered." : on ? "Offered." : "Not offered."}
+                    {lang === "en" ? w.always : on ? w.offered : w.notOffered}
                   </span>
                 </div>
                 {lang !== "en" && (
                   <ActionForm action={setSiteLanguageAction.bind(null, lang, !on)}>
-                    <SubmitButton variant={on ? "secondary" : "primary"}>{on ? "Stop offering" : "Offer the site in it"}</SubmitButton>
+                    <SubmitButton variant={on ? "secondary" : "primary"}>{on ? w.stopOffering : w.offer}</SubmitButton>
                   </ActionForm>
                 )}
               </li>
@@ -70,23 +74,23 @@ export default async function LanguagesPage() {
         </ul>
       </Card>
 
-      <Card title="Add a language" className="flex flex-col gap-3" compact>
+      <Card title={w.add} className="flex flex-col gap-3" compact>
         <ActionForm action={addLanguageAction} className="flex flex-wrap items-end gap-3">
           <label className="flex flex-col gap-1 text-sm font-medium">
-            From the world&apos;s languages
+            {w.fromWorld}
             <select name="lang" defaultValue="" className={`${input} min-w-64`}>
-              <option value="">Choose …</option>
+              <option value="">{w.choose}</option>
               {addable.map((l) => (
                 <option key={l.lang} value={l.lang}>{l.name} ({l.lang})</option>
               ))}
             </select>
           </label>
-          <SubmitButton>Add</SubmitButton>
+          <SubmitButton>{w.addButton}</SubmitButton>
         </ActionForm>
       </Card>
 
       <section aria-labelledby="list-heading" className="flex flex-col gap-3">
-        <h2 id="list-heading" className="sr-only">Languages</h2>
+        <h2 id="list-heading" className="sr-only">{w.list}</h2>
         <ul className="flex flex-col gap-3">
           {languages.map((language) => {
             const c = coverage[language.lang];
@@ -96,33 +100,33 @@ export default async function LanguagesPage() {
                 <div className="flex flex-col gap-1 text-sm">
                   <span className="font-medium">
                     {language.name} <span className="font-normal text-muted">· {nativeName(language.lang)} · {language.lang}</span>
-                    {language.direction === "rtl" && <span className="ml-2 rounded bg-sunken px-1.5 py-0.5 text-xs">right to left</span>}
+                    {language.direction === "rtl" && <span className="ml-2 rounded bg-sunken px-1.5 py-0.5 text-xs">{w.rtl}</span>}
                   </span>
                   <span className="text-muted">
                     {builtIn
-                      ? "Interface written by hand."
+                      ? w.byHand
                       : c
-                        ? `Interface: ${c.translated} of ${total} translated${c.stale > 0 ? `, ${c.stale} out of date` : ""}, ${c.reviewed} reviewed.`
-                        : "Interface: not translated yet (shows English)."}
+                        ? fillWords(w.coverage, { translated: c.translated, total, stale: c.stale > 0 ? fillWords(w.outOfDate, { n: c.stale }) : "", reviewed: c.reviewed })
+                        : w.notTranslated}
                     {" "}
-                    {uses.get(language.lang) ?? 0} {uses.get(language.lang) === 1 ? "store uses" : "stores use"} it.
+                    {countWords(uses.get(language.lang) ?? 0, w.uses)}
                   </span>
                   <ActionForm action={saveLocalesAction.bind(null, language.lang)} className="mt-1 flex flex-wrap items-center gap-2">
                     <label className="flex items-center gap-2 text-xs text-muted">
-                      Locales, the main one first
+                      {w.locales}
                       <input name="locales" defaultValue={language.locales.join(", ")} className={`${input} min-h-8 w-56 text-ink`} />
                     </label>
-                    <SubmitButton variant="secondary">Save</SubmitButton>
+                    <SubmitButton variant="secondary">{w.save}</SubmitButton>
                   </ActionForm>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   {!builtIn && (
                     <Link href={`/admin/platform/languages/${language.lang}`} className="flex min-h-10 items-center rounded-pill border border-edge px-4 text-sm">
-                      Translate and review
+                      {w.translate}
                     </Link>
                   )}
                   <ActionForm action={setEnabledAction.bind(null, language.lang, !language.enabled)}>
-                    <SubmitButton variant={language.enabled ? "secondary" : "primary"}>{language.enabled ? "Switch off" : "Switch on"}</SubmitButton>
+                    <SubmitButton variant={language.enabled ? "secondary" : "primary"}>{language.enabled ? w.switchOff : w.switchOn}</SubmitButton>
                   </ActionForm>
                 </div>
               </li>

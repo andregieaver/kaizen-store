@@ -7089,9 +7089,10 @@ function HiddenNote({ hideAt }: { hideAt: Size[] | undefined }) {
 /** The store's search on the canvas: a box, and where its results go. */
 function SearchStandIn({ block }: { block: SearchBlock }) {
   const sw = useAdminText("builder").standIns;
+  const shop = useAdminText("builder").shopStandIns;
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex min-h-11 items-center rounded-md border border-border bg-background px-3 text-sm text-muted">Search the store …</div>
+      <div className="flex min-h-11 items-center rounded-md border border-border bg-background px-3 text-sm text-muted">{shop.searchStore}</div>
       <p className="text-xs text-muted">{block.results === false ? sw.searchBox : sw.searchResults}</p>
     </div>
   );
@@ -7298,6 +7299,7 @@ function SiteFields({ block, onChange }: { block: SiteBlock; onChange: (patch: B
  * preview draws it with the site's own logo, menus and details.
  */
 function SiteStandIn({ block }: { block: SiteBlock }) {
+  const shop = useAdminText("builder").shopStandIns;
   const icon = (d: string) => (
     <span className="flex size-10 items-center justify-center rounded-full border border-border">
       <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -7324,7 +7326,7 @@ function SiteStandIn({ block }: { block: SiteBlock }) {
       case "menuButton":
         return (
           <span className="flex items-center gap-2 text-xs text-muted">
-            {icon("M4 7h16M4 12h16M4 17h16")} Phones only
+            {icon("M4 7h16M4 12h16M4 17h16")} {shop.phonesOnly}
           </span>
         );
       case "search":
@@ -7338,23 +7340,23 @@ function SiteStandIn({ block }: { block: SiteBlock }) {
       case "markets":
         return block.display === "list" ? links(["Norge", "Sverige", "Danmark"]) : <span className="text-sm">Norge ▾</span>;
       case "buyerSwitch":
-        return <span className="rounded-full border border-border px-3 py-1 text-xs">Private · Business</span>;
+        return <span className="rounded-full border border-border px-3 py-1 text-xs">{shop.buyer}</span>;
       case "colorMode":
         return icon("M12 3a6 6 0 009 9 9 9 0 11-9-9z");
       case "signUp":
-        return <span className="rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background">Start your store</span>;
+        return <span className="rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background">{shop.startStore}</span>;
       case "business":
         return (
           <span className="flex flex-col gap-1 text-sm text-muted">
-            <span>Business name · Org. 123 456 789</span>
-            <span>Street 1, 0150 City</span>
+            <span>{shop.business}</span>
+            <span>{shop.street}</span>
             <span className="underline">hello@example.com</span>
           </span>
         );
       case "cookies":
-        return <span className="text-sm text-muted underline">Cookies</span>;
+        return <span className="text-sm text-muted underline">{shop.cookies}</span>;
       case "withdrawal":
-        return <span className="text-sm text-muted underline">Withdraw from contract</span>;
+        return <span className="text-sm text-muted underline">{shop.withdraw}</span>;
     }
   })();
   return (
@@ -7462,6 +7464,7 @@ function ProductFields({ block, onChange }: { block: ProductBlock; onChange: (pa
  * as no product is chosen yet; the layout's preview shows it with one.
  */
 function ProductStandIn({ block }: { block: ProductBlock }) {
+  const shop = useAdminText("builder").shopStandIns;
   const lines = (n: number) => (
     <span className="flex flex-col gap-1.5">
       {Array.from({ length: n }, (_, i) => (
@@ -7474,7 +7477,7 @@ function ProductStandIn({ block }: { block: ProductBlock }) {
   const body = (() => {
     switch (block.part) {
       case "back":
-        return <span className="text-sm underline">Back to products</span>;
+        return <span className="text-sm underline">{shop.back}</span>;
       case "gallery":
         return (
           <span className="flex flex-col gap-2">
@@ -7498,7 +7501,7 @@ function ProductStandIn({ block }: { block: ProductBlock }) {
         return (
           <span className="flex items-start justify-between gap-4">
             <span data-kz-stand-in="title" className="font-heading text-3xl tracking-tight">
-              Product name
+              {shop.productName}
             </span>
             {block.wishlist !== false && <span className="size-11 shrink-0 rounded-full border border-border" />}
           </span>
@@ -7507,13 +7510,13 @@ function ProductStandIn({ block }: { block: ProductBlock }) {
         return (
           <span>
             <span className={block.large !== false ? "text-2xl font-semibold" : "font-semibold"}>499,00</span>{" "}
-            <span className="text-sm text-muted">incl. VAT</span>
+            <span className="text-sm text-muted">{shop.inclVat}</span>
           </span>
         );
       case "campaigns":
         return (
           <span className="block rounded-lg bg-accent p-3 text-sm text-accent-foreground">
-            <span className="block font-medium">Summer sale: 3 for 2</span>
+            <span className="block font-medium">{shop.sale}</span>
             <span className="block opacity-90">The offer is taken off in the cart. (Shown while a campaign reaches the product.)</span>
           </span>
         );
@@ -7522,8 +7525,8 @@ function ProductStandIn({ block }: { block: ProductBlock }) {
       case "reviews":
         return (
           <span className="block rounded-lg border border-border p-4 text-sm">
-            <span className="block font-medium">Reviews</span>
-            <span className="block">★★★★★ Fits well, good fabric. Kari N. · Verified purchase</span>
+            <span className="block font-medium">{shop.reviews}</span>
+            <span className="block">{shop.review}</span>
             <span className="block opacity-80">The product&apos;s published reviews, newest first. (Shown once there is one.)</span>
           </span>
         );
@@ -7534,15 +7537,15 @@ function ProductStandIn({ block }: { block: ProductBlock }) {
       case "buy":
         return (
           <span className="flex flex-col gap-2">
-            <span className="font-medium">Variants</span>
+            <span className="font-medium">{shop.variants}</span>
             <span className="divide-y divide-border rounded-lg border border-border">
               {["Variant one", "Variant two"].map((name) => (
                 <span key={name} className="flex items-center justify-between gap-4 p-3 text-sm">
                   <span>
                     {name}
-                    <span className="block text-muted">In stock</span>
+                    <span className="block text-muted">{shop.inStock}</span>
                   </span>
-                  <span className="button-primary rounded-button px-4 py-2 text-sm">Add to cart</span>
+                  <span className="button-primary rounded-button px-4 py-2 text-sm">{shop.addToCart}</span>
                 </span>
               ))}
             </span>

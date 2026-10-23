@@ -24,6 +24,7 @@ import {
   writePlatformAltTextAction,
   writePlatformAltTextsAction,
 } from "./actions";
+import { platformSiteWords } from "@/server/platform-site-words";
 
 export const metadata: Metadata = { title: "Media library" };
 
@@ -32,11 +33,12 @@ export default async function PlatformMediaPage({ searchParams }: PageProps<"/ad
   // Per request: admin pages never read the database while the site is built.
   await connection();
   await requirePlatformAdmin();
+  const { w } = await platformSiteWords();
   return (
     <>
       <PageHeader
-        title="Media library"
-        description={<>Every picture and video uploaded for Kaizena Flow&apos;s own site, here or in any editor. Add many at once, find them by name or alt text, give pictures alt texts (or let the AI write them), and see where each one is used on the site.</>}
+        title={w.misc.media.title}
+        description={w.misc.media.description}
       />
       {/* The search in the address is read per request. */}
       <Suspense fallback={<div className="h-96 animate-pulse rounded-lg bg-card" />}>

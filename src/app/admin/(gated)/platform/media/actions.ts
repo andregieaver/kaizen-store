@@ -1,5 +1,7 @@
 "use server";
 
+import { platformActionWords } from "@/server/platform-site-words";
+
 import { updateTag } from "next/cache";
 import { z } from "zod";
 
@@ -31,7 +33,7 @@ export async function describePlatformMediaAction(mediaId: string, texts: unknow
 /** Writes one picture's alt text with Kaizen's AI (D89). */
 export async function writePlatformAltTextAction(mediaId: string): Promise<AltResult> {
   const admin = await requirePlatformAdmin();
-  if (!id.safeParse(mediaId).success) return { ok: false, problem: "That file is no longer in the library." };
+  if (!id.safeParse(mediaId).success) return { ok: false, problem: (await platformActionWords()).fileGone };
   const result = await writeAltText(KAIZEN, mediaId, { replace: true });
   if (result.ok) {
     await audit(admin.id, null, "platform.media_alt_written", { mediaId, count: 1 });
@@ -44,7 +46,7 @@ export async function writePlatformAltTextAction(mediaId: string): Promise<AltRe
 export async function writePlatformAltTextsAction(run: unknown): Promise<AltRun> {
   const admin = await requirePlatformAdmin();
   const parsed = altRunInput.safeParse(run);
-  if (!parsed.success) return { written: 0, failed: 0, remaining: 0, problem: "Start the run again." };
+  if (!parsed.success) return { written: 0, failed: 0, remaining: 0, problem: (await platformActionWords()).startAgain };
   const result = await writeAltTexts(KAIZEN, { since: new Date(parsed.data.since), rewrite: parsed.data.rewrite });
   if (result.written > 0) {
     await audit(admin.id, null, "platform.media_alt_written", { count: result.written });
@@ -56,7 +58,7 @@ export async function writePlatformAltTextsAction(run: unknown): Promise<AltRun>
 /** Deletes a file from Kaizen's media library and from Storage. */
 export async function deletePlatformMediaAction(mediaId: string): Promise<{ ok: true } | { ok: false; problem: string }> {
   const admin = await requirePlatformAdmin();
-  if (!id.safeParse(mediaId).success) return { ok: false, problem: "That file is no longer in the library." };
+  if (!id.safeParse(mediaId).success) return { ok: false, problem: (await platformActionWords()).fileGone };
   return deleteMedia(KAIZEN, admin.id, mediaId);
 }
 
@@ -64,7 +66,7 @@ export async function deletePlatformMediaAction(mediaId: string): Promise<{ ok: 
 export async function deleteManyPlatformMediaAction(mediaIds: unknown): Promise<{ deleted: number; kept: number; problem?: string }> {
   const admin = await requirePlatformAdmin();
   const parsed = z.array(id).min(1).max(MEDIA_DELETE_MAX).safeParse(mediaIds);
-  if (!parsed.success) return { deleted: 0, kept: 0, problem: "Choose between 1 and 100 files." };
+  if (!parsed.success) return { deleted: 0, kept: 0, problem: (await platformActionWords()).chooseFiles };
   const result = await deleteMediaMany(KAIZEN, admin.id, parsed.data);
   if (result.deleted > 0) updateTag(pagesTag(null));
   return result;
@@ -95,7 +97,7 @@ export async function compressPlatformPictureAction(mediaId: string, formData: F
   const admin = await requirePlatformAdmin();
   const image = formData.get("image");
   const thumbnail = formData.get("thumbnail");
-  if (!id.safeParse(mediaId).success || !(image instanceof File) || !(thumbnail instanceof File)) return { ok: false, problem: "Compress it again." };
+  if (!id.safeParse(mediaId).success || !(image instanceof File) || !(thumbnail instanceof File)) return { ok: false, problem: (await platformActionWords()).compressAgain };
   const outcome = await replacePicture(KAIZEN, admin.id, mediaId, image, thumbnail);
   if (outcome.ok) addressesMoved();
   return outcome;
@@ -105,7 +107,7 @@ export async function compressPlatformPictureAction(mediaId: string, formData: F
 export async function startCompressedPlatformVideoAction(mediaId: string, file: unknown): Promise<VideoUpload> {
   await requirePlatformAdmin();
   const parsed = z.object({ type: z.literal("video/mp4"), size: z.number().int().positive() }).safeParse(file);
-  if (!id.safeParse(mediaId).success || !parsed.success) return { ok: false, problem: "Compress it again." };
+  if (!id.safeParse(mediaId).success || !parsed.success) return { ok: false, problem: (await platformActionWords()).compressAgain };
   return startVideoReplacement(KAIZEN, mediaId, parsed.data);
 }
 
@@ -113,7 +115,7 @@ export async function startCompressedPlatformVideoAction(mediaId: string, file: 
 export async function finishCompressedPlatformVideoAction(mediaId: string, path: unknown): Promise<CompressOutcome> {
   const admin = await requirePlatformAdmin();
   const parsed = z.string().min(3).max(300).safeParse(path);
-  if (!id.safeParse(mediaId).success || !parsed.success) return { ok: false, problem: "Compress it again." };
+  if (!id.safeParse(mediaId).success || !parsed.success) return { ok: false, problem: (await platformActionWords()).compressAgain };
   const outcome = await replaceVideo(KAIZEN, admin.id, mediaId, parsed.data);
   if (outcome.ok) addressesMoved();
   return outcome;

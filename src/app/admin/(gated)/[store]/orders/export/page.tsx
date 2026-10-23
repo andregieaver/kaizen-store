@@ -64,7 +64,7 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
   return (
     <>
       <ProblemAlert text={problem} />
-      <OrderExportForm slug={member.store.slug} defaultNumbers={numbers} today={todayIn(member.store.timeZone)} />
+      <OrderExportForm slug={member.store.slug} defaultNumbers={numbers} today={todayIn(member.store.timeZone)} words={adminText(adminLangOf(member.account.adminLocale), "bookings").exports} />
       <Notice title={w.amounts}>
         <p>{MAIN_CURRENCY_NOTE}</p>
         <p className="mt-1">{TEST_PAYMENT_NOTE}</p>
