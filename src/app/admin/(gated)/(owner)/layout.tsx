@@ -8,6 +8,7 @@ import { LEVEL_LAYOUTS } from "@/lib/admin-layouts";
 import { adminText } from "@/lib/admin-text";
 import { ownerAreas, ownerTabs } from "@/lib/owner-nav";
 import { requireAccount } from "@/server/auth";
+import { holdsDomains } from "@/server/domain-account";
 import { waitingCount } from "@/server/support";
 import { ownerDesks } from "@/server/support-desk";
 
@@ -30,7 +31,7 @@ export default async function OwnerLayout({ children }: LayoutProps<"/admin">) {
   // Work (D123): the owner's, across their stores, so owners always have it (to switch it on); staff only where it is on.
   // Support (D216): the combined inbox of the stores whose support the account may read, with the number waiting.
   const desks = await ownerDesks(account);
-  const who = { owner, work: owner || stores.some((store) => store.workOn), support: desks.length > 0 };
+  const who = { owner, work: owner || stores.some((store) => store.workOn), support: desks.length > 0, domains: owner || (await holdsDomains(account.id)) };
   const waiting = desks.length > 0 ? await waitingCount(desks.map((d) => d.desk)) : 0;
   const tabs: NavItem[] = ownerTabs(who, { support: waiting });
   const areas: NavArea[] = ownerAreas(who);

@@ -1,7 +1,9 @@
 # Domains on their own: a domain shop, and a way in (D317)
 
-Status: plan, 2026-10-23. Nothing built. The decisions in section 13 are open; section 12 lists what must be read or asked before any
-code. It builds on D315 (`docs/domains.md`), which is built through phase 6: everything here reuses it.
+Status: being built, 2026-10-23. The owner took every recommendation of section 13 ("Let's go with your recommendations. Build it.").
+It builds on D315 (`docs/domains.md`), which is built through phase 6: everything here reuses it. Section 17 says what each phase
+built. Selling to the public stays off (`platform_settings.domains_public`) until the spikes of section 12 are answered: Vercel's written
+yes to reselling (S1), the accountant on VAT (S2), the lawyer on the consent words (S3).
 
 ## 0. What this is
 
@@ -245,3 +247,20 @@ Phase 1 is worth building even if the rest never is: it makes a domain the perso
 
 Paid mailboxes, web hosting outside a store, premium or aftermarket names, bulk tools for domain investors, a "privacy" product beyond
 the registries' own redaction, and lower prices than the registrar market. Country endings follow D315's phase 5, not this plan.
+
+## 17. What is built
+
+**Phase 1 (2026-10-23).** Every registration, purchase, registrant and zone has an `account_id` (the holder, backfilled from whoever
+made it, else the store's first owner) and a nullable `store_id` (the store that uses it), checked by `{table}_holder`. Every reader and
+writer takes a `HolderRef` (`src/server/domain-holder.ts`: a store's id, as before, or `accountHolder(id)`; `heldBy()` is the one
+condition). *Your domains* (`/admin/account/domains`, in Account for owners and anyone holding a domain, `holdsDomains()`) lists them
+with the store that uses each (`heldDomains()`), moves one to another of the person's open stores (`linkDomain()`, the plan's room
+checked, connected at once when its DNS is kept here) and back (`unlinkDomain()`: only while the store isn't connected to it, and never
+for a domain bought for a store, which has no VAT terms of the person on file and stays billed to a store), and holds renewal, the DNS
+editor and moving away (`/admin/account/domains/move/{domain}`) as the store's page does. The purchase path takes a holder too: an
+account's purchase goes through `gate()` (the public switch, the new-account limit, `vatFor()`, VIES, a consumer's consent kept with
+its words, `nameNeedsReview()`), is invoiced to the account's own customer on Kaizena Flow's Stripe account (`accountCustomer()`,
+`accounts.stripe_customer_{mode}`) with MVA, or none with *Reverse charge* or *Outside the scope of Norwegian VAT* on the invoice, and
+waits after payment for a platform admin's yes when it is in review (`claim()` skips it). Renewals of an account's domain carry the VAT
+terms of its last purchase.
+

@@ -13,10 +13,10 @@ import { domainPricingRows, storeDomainCurrency } from "@/server/domain-prices";
 import { chargeDomainPurchases, renewDomainNow, setDomainRenewal, startDomainPurchase } from "@/server/domain-purchases";
 import { storeRegistrations } from "@/server/domain-registrations";
 import { searchDomains, type SearchAnswer } from "@/server/domain-search";
-import { applyDnsChange, previewDnsChange, setDnsAuto, undoDnsChange, zoneRecords } from "@/server/domain-dns";
-import { effectText, type DnsChange } from "@/lib/dns-plan";
+import { applyDnsChange, previewDnsChange, setDnsAuto, undoDnsChange } from "@/server/domain-dns";
+import { draftChanges, type DnsDraft } from "@/server/dns-draft";
+import { effectText } from "@/lib/dns-plan";
 import { describeRecord } from "@/lib/dns-records";
-import { parseRecordLines, recipeChanges, RECIPE_IDS, type RecipeId } from "@/lib/dns-recipes";
 
 /** A store's own domains (P8) are the owner's: they decide where the store lives. */
 const asOwner = (storeSlug: string) => checkOwnerRole(storeSlug);
@@ -143,25 +143,9 @@ export async function renewDomainAction(storeSlug: string, _state: FormState, fo
 // DNS kept by Kaizena Flow (D315 phase 3): owners only, every change checked first.
 // ---------------------------------------------------------------------------
 
-export type DnsDraft =
-  | { kind: "records"; add: string; remove: string[] }
-  | { kind: "recipe"; recipe: RecipeId; values: Record<string, string> };
+export type { DnsDraft } from "@/server/dns-draft";
 
 export type DnsCheck = { ok: true; effects: string[]; lines: string[]; rev: string; touchesEmail: boolean } | { ok: false; problems: string[] };
-
-/** The changes a draft stands for, on the zone's live records. */
-async function draftChanges(storeId: string, apex: string, draft: DnsDraft): Promise<{ ok: true; changes: DnsChange[] } | { ok: false; problems: string[] }> {
-  const read = await zoneRecords(storeId, apex);
-  if (!read.ok) return read;
-  if (draft.kind === "recipe") {
-    if (!(RECIPE_IDS as string[]).includes(draft.recipe)) return { ok: false, problems: ["Choose what to set up."] };
-    return recipeChanges(draft.recipe, draft.values ?? {}, read.records);
-  }
-  const parsed = parseRecordLines(String(draft.add ?? "").slice(0, 8000));
-  if (parsed.problems.length > 0) return { ok: false, problems: parsed.problems };
-  const removes = read.records.filter((r) => (draft.remove ?? []).includes(r.id));
-  return { ok: true, changes: [...removes.map((r): DnsChange => ({ op: "remove", record: r })), ...parsed.records.map((r): DnsChange => ({ op: "add", record: r }))] };
-}
 
 /** Checks a DNS change and says what it does, in the owner's language; nothing is changed. */
 export async function checkDnsAction(storeSlug: string, apex: string, draft: DnsDraft): Promise<DnsCheck> {

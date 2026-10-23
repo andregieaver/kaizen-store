@@ -31,6 +31,7 @@ const READERS: Record<string, "real" | "template" | "both"> = {
   // Domains (D315): a template or a store template never buys one, and is never opened for buying.
   "src/server/domain-purchases.ts": "real",
   "src/server/domain-admin.ts": "real",
+  "src/server/domain-account.ts": "real",
   // Design profiles (D176): the Standard store a preview is drawn on, and the default template named among the stores a snapshot is taken from.
   "src/server/design-presets.ts": "template",
   "src/server/cookie-scans.ts": "real",

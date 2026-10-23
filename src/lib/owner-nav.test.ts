@@ -29,9 +29,12 @@ describe("the store owner's sections (D147)", () => {
   it("has a sidebar for Account (owners' pages only for owners) and for no other section", () => {
     const owner = ownerAreas({ owner: true, work: true });
     expect(owner.filter((a) => a.groups.length > 0)).toHaveLength(1);
-    expect(owner.find((a) => a.groups.length > 0)!.groups[0].items.map((i) => i.label)).toEqual(["Your account", "Appearance", "Kaizena Flow support", "Billing", "AI usage", "Usage and limits", "Referrals", "WordPress"]);
+    expect(owner.find((a) => a.groups.length > 0)!.groups[0].items.map((i) => i.label)).toEqual(["Your account", "Appearance", "Kaizena Flow support", "Your domains", "Billing", "AI usage", "Usage and limits", "Referrals", "WordPress"]);
     const staff = ownerAreas({ owner: false, work: true });
     expect(staff.every((a) => a.groups.length === 0)).toBe(true);
+    // Someone who holds a domain but owns no store (D317) sees their account's pages and Your domains, not the owners' pages.
+    const holder = ownerAreas({ owner: false, work: false, domains: true });
+    expect(holder.find((a) => a.groups.length > 0)!.groups[0].items.map((i) => i.label)).toEqual(["Your account", "Appearance", "Kaizena Flow support", "Your domains"]);
   });
 
   it("links only pages the admin map knows", () => {

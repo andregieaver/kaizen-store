@@ -11,13 +11,14 @@ import { WORK_ROOT } from "./work-paths";
 
 export const OWNER_BASE = "/admin";
 
-export type OwnerItem = { path: string; label: string; description: string; exact?: boolean; owner?: boolean };
+export type OwnerItem = { path: string; label: string; description: string; exact?: boolean; owner?: boolean; holder?: boolean };
 
 /** The Account section's pages, after `/admin`: the person's own first, then what concerns the stores they own. */
 export const ACCOUNT_ITEMS: OwnerItem[] = [
   { path: "/account", label: "Your account", description: "Your name, picture, password, light or dark, and Kaizen Life.", exact: true },
   { path: "/account/appearance", label: "Appearance", description: "Light or dark and the admin's colour scheme, with every scheme shown side by side." },
   { path: "/account/kaizen-support", label: "Kaizena Flow support", description: "Ask Kaizena Flow for help with your stores or your account, and read the answers." },
+  { path: "/account/domains", label: "Your domains", description: "Every domain you hold, which store uses it, renewal, DNS and moving it.", holder: true },
   { path: "/account/billing", label: "Billing", description: "The plan of each store you own, what it costs and when it renews.", owner: true },
   { path: "/account/usage", label: "AI usage", description: "What the AI used for the stores you own, with what it cost.", owner: true },
   { path: "/account/limits", label: "Usage and limits", description: "What each store you own has used this month, against what its plan includes.", owner: true },
@@ -30,12 +31,12 @@ export const ACCOUNT_EXTRA = ["/account/kaizen-life", "/account/themes"];
 
 type Link = { href: string; label: string; exact?: boolean };
 /** Who the person is at this level: an owner of a store, someone with Work in a store, someone who may read a store's support inbox (D216). */
-export type OwnerWho = { owner: boolean; work: boolean; support?: boolean };
+export type OwnerWho = { owner: boolean; work: boolean; support?: boolean; domains?: boolean };
 
 /** The owner's combined support inbox (D216): every store where the person may read support. */
 export const SUPPORT_PATH = "/account/support";
 
-const accountItems = (who: OwnerWho) => ACCOUNT_ITEMS.filter((i) => who.owner || !i.owner);
+const accountItems = (who: OwnerWho) => ACCOUNT_ITEMS.filter((i) => (i.holder ? who.owner || who.domains : who.owner || !i.owner));
 const accountPaths = (who: OwnerWho) => [...accountItems(who).map((i) => i.path), ...ACCOUNT_EXTRA];
 
 /** The tabs: Home (owners), Stores, Support (where the person may read a store's inbox, with the number waiting), Work (owners, or where a store has it on) and Account. */
@@ -59,7 +60,7 @@ export function ownerAreas(who: OwnerWho): { prefixes: string[]; exact?: string[
     { prefixes: [WORK_ROOT], groups: [] },
     {
       prefixes: accountPaths(who).map((p) => `${OWNER_BASE}${p}`),
-      groups: who.owner ? [{ heading: "Account", items: accountItems(who).map((i) => ({ href: `${OWNER_BASE}${i.path}`, label: i.label, ...(i.exact && { exact: true as const }) })) }] : [],
+      groups: who.owner || who.domains ? [{ heading: "Account", items: accountItems(who).map((i) => ({ href: `${OWNER_BASE}${i.path}`, label: i.label, ...(i.exact && { exact: true as const }) })) }] : [],
     },
   ];
 }

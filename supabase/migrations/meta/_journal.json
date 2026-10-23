@@ -2976,6 +2976,20 @@
       "when": 1792780182957,
       "tag": "20261023182942_domains_moving_in",
       "breakpoints": true
+    },
+    {
+      "idx": 425,
+      "version": "7",
+      "when": 1792788830204,
+      "tag": "20261023205350_domains_held_by_accounts",
+      "breakpoints": true
+    },
+    {
+      "idx": 426,
+      "version": "7",
+      "when": 1792788978383,
+      "tag": "20261023205618_domains_standalone",
+      "breakpoints": true
     }
   ]
 }

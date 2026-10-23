@@ -532,6 +532,14 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     keywords: ["plan", "abonnement", "faktura", "fakturering", "fornyes", "gebyr", "kostnad"],
   },
   "account:account.appearance": { title: "Utseende", keywords: ["utseende", "farger", "tema", "fargeskjema", "mørk", "lys"] },
+  "account:account.domains": {
+    title: "Domenene dine",
+    keywords: ["domener", "domene", "dns", "forny", "fornyelse", "registrering", "mine domener", "flytt domene", "navnetjenere"],
+  },
+  "account:account.domains.move": {
+    title: "Flytt et domene",
+    keywords: ["flytt domene", "overfør domene", "overføringskode", "autorisasjonskode", "navnetjenere"],
+  },
   "account:account.usage": {
     title: "KI-bruk",
     keywords: ["ki-bruk", "tokens", "kostnad", "forbruk", "forespørsler", "modell", "leverandør"],

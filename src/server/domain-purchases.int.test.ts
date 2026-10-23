@@ -321,3 +321,117 @@ describe("moving a registration here (D315 8.5)", () => {
     expect(fake.notes).toHaveLength(1);
   });
 });
+
+describe("domains held by an account (D317)", () => {
+  const holderDeps = (fake: ReturnType<typeof fakeStripe>) => ({
+    ...deps(fake),
+    taxRates: async (country: string | null) => (country === "NO" ? ["txr_mva"] : []),
+    customer: async () => "cus_holder",
+  });
+  const person = { ...registrant, kind: "person", companyName: undefined };
+  const holder = () => ({ kind: "account" as const, accountId: owner.id });
+  const setPublic = (on: boolean) => db().execute(sql`update commerce.platform_settings set domains_public = ${on}`);
+
+  it("is refused until Kaizena Flow sells domains on their own, and to consumers outside Norway", async () => {
+    const domain = `alone-${run}.shop`;
+    const q = await purchases.quoteDomain(holder(), domain, 1, { country: "NO" });
+    if (!q.ok) throw new Error(q.problems.join());
+    const input = { domain, years: 1, agreed: `NOK:${q.quote.amountMinor}`, connect: true, registrant: person, buyer: { kind: "consumer" as const, country: "NO" }, consent: { given: true, lang: "nb" as const } };
+    await setPublic(false);
+    expect(await purchases.startDomainPurchase(owner, holder(), input)).toMatchObject({ ok: false });
+    await setPublic(true);
+    expect(await purchases.startDomainPurchase(owner, holder(), { ...input, buyer: { kind: "consumer", country: "SE" } })).toMatchObject({ ok: false });
+    expect(await purchases.startDomainPurchase(owner, holder(), { ...input, consent: { given: false, lang: "nb" } })).toMatchObject({ ok: false });
+  });
+
+  it("is invoiced to the account with Norwegian MVA for a Norwegian consumer, registered to the account, and used by no store", async () => {
+    const domain = `alone-${run}.shop`;
+    const q = await purchases.quoteDomain(holder(), domain, 1, { country: "NO" });
+    if (!q.ok) throw new Error(q.problems.join());
+    const started = await purchases.startDomainPurchase(owner, holder(), {
+      domain, years: 1, agreed: `NOK:${q.quote.amountMinor}`, connect: true, registrant: person,
+      buyer: { kind: "consumer", country: "NO" }, consent: { given: true, lang: "nb" },
+    });
+    if (!started.ok) throw new Error(started.problems.join());
+    const [row] = await db().execute<Row>(sql`select store_id, account_id, buyer, vat_kind, consent_at, consent_text, connect from commerce.domain_purchases where id = ${started.purchase.id}::uuid`);
+    expect(row).toMatchObject({ store_id: null, account_id: owner.id, buyer: "consumer", vat_kind: "mva", connect: false });
+    expect(row.consent_at).not.toBeNull();
+    expect(String(row.consent_text)).toMatch(/angreretten/);
+
+    const fake = fakeStripe();
+    expect(await purchases.chargeDomainPurchases({ purchaseId: started.purchase.id }, holderDeps(fake))).toEqual({ invoiced: 1, failed: 0 });
+    const invoice = [...fake.invoices.values()].at(-1)!;
+    expect(invoice).toMatchObject({ customer: "cus_holder", collection_method: "send_invoice", default_tax_rates: ["txr_mva"] });
+    expect(invoice.customer_account).toBeUndefined();
+    await paid(domain, fake);
+    await purchases.registerPaidDomains({}, holderDeps(fake));
+    await dueNow(domain);
+    await purchases.registerPaidDomains({}, holderDeps(fake));
+    expect(await statusOf(domain)).toBe("done");
+    const [reg] = await db().execute<Row>(sql`select store_id, account_id from commerce.domain_registrations where apex = ${domain}`);
+    expect(reg).toMatchObject({ store_id: null, account_id: owner.id });
+    const [zone] = await db().execute<Row>(sql`select store_id, account_id from commerce.dns_zones where apex = ${domain}`);
+    expect(zone).toMatchObject({ store_id: null, account_id: owner.id });
+    expect(connected).not.toContain(domain);
+  });
+
+  it("reverse-charges an EU business with a VAT number VIES confirms, and holds one VIES can't confirm for a person", async () => {
+    const buyer = { kind: "business" as const, country: "DE", vatNumber: "DE123456789" };
+    const company = { ...registrant, country: "DE", postalCode: "10115", city: "Berlin" };
+    for (const [name, vies, review] of [[`berlin-${run}.shop`, "valid", null], [`munich-${run}.shop`, "unavailable", "risk"]] as const) {
+      const q = await purchases.quoteDomain(holder(), name, 1, { country: "DE" });
+      if (!q.ok) throw new Error(q.problems.join());
+      expect(q.quote.currency).toBe("EUR");
+      const started = await purchases.startDomainPurchase(owner, holder(), { domain: name, years: 1, agreed: `EUR:${q.quote.amountMinor}`, connect: false, registrant: company, buyer }, { vies: async () => ({ status: vies }) });
+      if (!started.ok) throw new Error(started.problems.join());
+      const [row] = await db().execute<Row>(sql`select vat_kind, vat_number, review from commerce.domain_purchases where id = ${started.purchase.id}::uuid`);
+      expect(row).toMatchObject({ vat_kind: "reverse_charge", vat_number: "DE123456789", review });
+    }
+    expect(
+      await purchases.startDomainPurchase(owner, holder(), { domain: `hamburg-${run}.shop`, years: 1, agreed: "EUR:1", connect: false, registrant: company, buyer }, { vies: async () => ({ status: "invalid" }) }),
+    ).toMatchObject({ ok: false });
+    const fake = fakeStripe();
+    await purchases.chargeDomainPurchases({}, holderDeps(fake));
+    const invoice = [...fake.invoices.values()].find((i) => (i.metadata as Record<string, string>).kaizen_account_id === owner.id && i.currency === "eur")!;
+    expect(invoice.default_tax_rates).toBeUndefined();
+    expect(invoice.custom_fields).toEqual(expect.arrayContaining([{ name: "VAT", value: "Reverse charge" }]));
+  });
+
+  it("waits for a person's yes before registering a name that looks like a bank's or a brand's", async () => {
+    const domain = `paypal-help-${run}.shop`;
+    const q = await purchases.quoteDomain(holder(), domain, 1, { country: "NO" });
+    if (!q.ok) throw new Error(q.problems.join());
+    const started = await purchases.startDomainPurchase(owner, holder(), {
+      domain, years: 1, agreed: `NOK:${q.quote.amountMinor}`, connect: false, registrant: person, buyer: { kind: "consumer", country: "NO" }, consent: { given: true, lang: "en" },
+    });
+    if (!started.ok) throw new Error(started.problems.join());
+    expect(started.purchase.inReview).toBe(true);
+    const fake = fakeStripe();
+    await purchases.chargeDomainPurchases({ purchaseId: started.purchase.id }, holderDeps(fake));
+    await paid(domain, fake);
+    await purchases.registerPaidDomains({}, holderDeps(fake));
+    expect(calls).not.toContain(`buy ${domain}`);
+    await db().execute(sql`update commerce.domain_purchases set review_outcome = 'approved', reviewed_at = now() where id = ${started.purchase.id}::uuid`);
+    await dueNow(domain);
+    await purchases.registerPaidDomains({}, holderDeps(fake));
+    expect(calls).toContain(`buy ${domain}`);
+    await setPublic(false);
+  });
+
+  it("is linked to one of the holder's stores and back; a store's own domain stays billed to it", async () => {
+    const { heldDomains, linkDomain, unlinkDomain } = await import("./domain-account");
+    const domain = `alone-${run}.shop`;
+    const held = await heldDomains(owner.id);
+    expect(held.find((d) => d.apex === domain)).toMatchObject({ store: null, billable: true });
+    expect(held.find((d) => d.apex === `nordisk-${run}.shop`)).toMatchObject({ store: { id: storeId }, billable: false });
+    const linked = await linkDomain(owner, domain, storeId, { connect: (async () => ({ ok: true, domain: {} })) as never });
+    expect(linked).toEqual({ ok: true, connected: true });
+    const [reg] = await db().execute<Row>(sql`select store_id from commerce.domain_registrations where apex = ${domain}`);
+    expect(reg.store_id).toBe(storeId);
+    expect(await unlinkDomain(owner, domain)).toEqual({ ok: true });
+    expect(await unlinkDomain(owner, `nordisk-${run}.shop`)).toMatchObject({ ok: false });
+    expect(await linkDomain(owner, domain, "00000000-0000-0000-0000-000000000000")).toMatchObject({ ok: false });
+    const stranger = await account(`stranger-${run}@example.com`);
+    expect(await linkDomain(stranger, domain, storeId)).toMatchObject({ ok: false });
+  });
+});

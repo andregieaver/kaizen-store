@@ -10,11 +10,26 @@ import type { PaymentModeName } from "@/lib/stripe-account";
 import { invoicePaidAt, type InvoiceShape } from "@/lib/referral-billing";
 import { nextTryDelayMs } from "@/lib/theme-prices";
 
+import {
+  CONSENT_TEXT,
+  currencyForCountry,
+  nameNeedsReview,
+  newAccountRoom,
+  NEW_ACCOUNT_DAYS,
+  NEW_ACCOUNT_DOMAINS,
+  vatFor,
+  VAT_PROBLEM_TEXT,
+  type BuyerKind,
+  type VatKind,
+} from "@/lib/domain-buyer";
+
 import { audit, type Account } from "./auth";
 import { billingMode, billingTaxRates } from "./billing";
 import { connectOwnedDomain } from "./domains";
+import { accountHolder, heldBy, holderColumns, storeOf, type HolderRef } from "./domain-holder";
 import { domainPricingRows, priceContext, priceIn, storeDomainCurrency } from "./domain-prices";
 import { toRegistration, type Registration } from "./domain-registrations";
+import { checkVatNumber } from "./vies";
 import { limitRefusal } from "@/lib/usage-format";
 import { decryptSecret, encryptSecret, parseKey } from "@/lib/secret-box";
 
@@ -49,6 +64,8 @@ export type DomainPurchase = {
   amountMinor: number;
   invoiceUrl: string | null;
   problem: string | null;
+  /** Waiting for a platform admin's yes before the registrar is asked (D317 10), until it is given. */
+  inReview: boolean;
   createdAt: string;
 };
 
@@ -62,13 +79,14 @@ const toPurchase = (r: Row): DomainPurchase => ({
   amountMinor: Number(r.amount_minor),
   invoiceUrl: r.invoice_url ? String(r.invoice_url) : null,
   problem: r.problem ? String(r.problem) : null,
+  inReview: r.review != null && r.review_outcome == null,
   createdAt: new Date(String(r.created_at)).toISOString(),
 });
 
-/** The store's purchases still under way, and the last few finished, newest first. */
-export async function storeDomainPurchases(storeId: string): Promise<DomainPurchase[]> {
+/** The holder's purchases still under way, and the last few finished, newest first. */
+export async function storeDomainPurchases(holder: HolderRef): Promise<DomainPurchase[]> {
   const rows = await db().execute<Row>(sql`
-    select * from commerce.domain_purchases where store_id = ${storeId}::uuid
+    select * from commerce.domain_purchases where ${heldBy(holder)}
      order by (status in ('quoted', 'invoiced', 'paid', 'registering')) desc, created_at desc limit 20
   `);
   return rows.map(toPurchase);
@@ -80,11 +98,21 @@ export async function storeDomainPurchases(storeId: string): Promise<DomainPurch
 
 export type Quote = { domain: string; years: number; currency: string; amountMinor: number; renewalMinor: number | null; cost: number; costCurrency: string };
 
+/** Who is buying, for a purchase made without a store (D317): consumer or business, their country, a business's VAT number. */
+export type BuyerInput = { kind: BuyerKind; country: string; vatNumber?: string | null };
+
+/** The currency a holder pays in: a store's (its plan's, else its country's), an account's by the buyer's country (D317 6). */
+async function holderCurrency(holder: HolderRef, priced: readonly string[], country?: string | null): Promise<string | null> {
+  const storeId = storeOf(holder);
+  if (storeId) return storeDomainCurrency(storeId, priced);
+  return currencyForCountry(country ?? "NO", priced);
+}
+
 /**
- * What a name costs the store now for `years`, read live from its registrar: refused when it is taken, premium, not sold, or the store's
- * currency cannot be priced. The quote is what the buy button names.
+ * What a name costs now for `years`, read live from its registrar: refused when it is taken, premium, not sold, or the holder's currency
+ * cannot be priced. The quote is what the buy button names, without VAT (a consumer's price with VAT is `withVat()` of it).
  */
-export async function quoteDomain(storeId: string, domain: string, years: number): Promise<Result<{ quote: Quote }>> {
+export async function quoteDomain(holder: HolderRef, domain: string, years: number, opts: { country?: string | null } = {}): Promise<Result<{ quote: Quote }>> {
   const name = domain.trim().toLowerCase().replace(/\.$/, "");
   if (!(DOMAIN_YEARS as readonly number[]).includes(years)) return { ok: false, problems: ["Choose 1, 2, 3 or 5 years."] };
   const registrar = await registrarFor(name);
@@ -93,14 +121,14 @@ export async function quoteDomain(storeId: string, domain: string, years: number
   if (!found) return { ok: false, problems: ["The registrar can't be reached just now. Try again in a moment."] };
   if (!found.available) return { ok: false, problems: [`${name} is taken.`] };
   if (found.premium) return { ok: false, problems: [`${name} is a premium name, priced by its registry, which Kaizena Flow doesn't sell.`] };
-  return quoteWith(storeId, registrar, name, years);
+  return quoteWith(holder, registrar, name, years, opts.country);
 }
 
-async function quoteWith(storeId: string, registrar: DomainRegistrar, name: string, years: number): Promise<Result<{ quote: Quote }>> {
+async function quoteWith(holder: HolderRef, registrar: DomainRegistrar, name: string, years: number, country?: string | null): Promise<Result<{ quote: Quote }>> {
   const priced = (await domainPricingRows()).map((p) => p.currency);
-  const currency = await storeDomainCurrency(storeId, priced);
+  const currency = await holderCurrency(holder, priced, country);
   const ctx = await priceContext(currency);
-  if (!ctx || !currency) return { ok: false, problems: ["Domains can't be priced in your store's currency yet."] };
+  if (!ctx || !currency) return { ok: false, problems: ["Domains can't be priced in your currency yet."] };
   let price;
   try {
     price = await registrar.price(name, years);
@@ -108,7 +136,7 @@ async function quoteWith(storeId: string, registrar: DomainRegistrar, name: stri
     return { ok: false, problems: [error instanceof RegistrarError ? error.message : "The registrar can't be reached just now."] };
   }
   const amountMinor = priceIn(ctx, price.purchase, price.currency, years);
-  if (amountMinor === null) return { ok: false, problems: ["Domains can't be priced in your store's currency yet."] };
+  if (amountMinor === null) return { ok: false, problems: ["Domains can't be priced in your currency yet."] };
   return {
     ok: true,
     quote: { domain: name, years, currency, amountMinor, renewalMinor: priceIn(ctx, price.renewal, price.currency, 1), cost: price.purchase, costCurrency: price.currency },
@@ -124,13 +152,24 @@ export type BuyInput = {
   years: number;
   /** The price the button named, `{currency}:{minor}`: a different price now is refused, so nobody pays a price they weren't shown. */
   agreed: string;
-  /** Connect the store to it once registered (the default). */
+  /** Connect the store to it once registered (the default); never for a domain bought without a store. */
   connect: boolean;
   registrant: unknown;
+  /** Without a store (D317): who buys, and a consumer's consent that registration starts at once (`CONSENT_TEXT`), in their language. */
+  buyer?: BuyerInput;
+  consent?: { given: boolean; lang: "en" | "nb" };
 };
 
-/** Whether buying is open for a store: to every store once moving away is built (decision 9), until then where a platform admin opened it. */
-export async function buyingOpen(storeId: string): Promise<boolean> {
+/**
+ * Whether buying is open: for a store, to every store once moving away is built (decision 9), until then where a platform admin opened it;
+ * for an account without a store, while the platform sells domains to the public (D317, `platform_settings.domains_public`).
+ */
+export async function buyingOpen(holder: HolderRef): Promise<boolean> {
+  const storeId = storeOf(holder);
+  if (!storeId) {
+    const [row] = await db().execute<Row>(sql`select coalesce((select domains_public from commerce.platform_settings limit 1), false) as open`);
+    return row?.open === true;
+  }
   const [row] = await db().execute<Row>(sql`
     select coalesce((select domains_open from commerce.platform_settings limit 1), false) or s.domain_buying as open
       from commerce.stores s where s.id = ${storeId}::uuid
@@ -138,50 +177,126 @@ export async function buyingOpen(storeId: string): Promise<boolean> {
   return row?.open === true;
 }
 
+type Terms = { buyer: BuyerKind | null; vatKind: VatKind | null; vatNumber: string | null; consentAt: boolean; consentText: string | null };
+
 /**
- * Starts buying a name for a store: the owner's (the caller checks), the store open for business or being set up, buying open for it, the
- * plan's domain room left when it will be connected, the price the same as the one named, the registrant complete. Makes the registrant and
- * the purchase, then invoices it (`chargeDomainPurchases()`, run by the caller in `after()`).
+ * The checks before a purchase or transfer starts, by holder. A store: open, buying open, the plan's room when it will be connected. An
+ * account (D317): buying open to the public, the new-account limit, who buys and the VAT the invoice will carry (decision 1), a business's
+ * VAT number checked with VIES (refused when VIES says it is invalid; when VIES can't answer, the purchase waits for a person), a consumer's
+ * express consent.
  */
-export async function startDomainPurchase(account: Account, storeId: string, input: BuyInput): Promise<Result<{ purchase: DomainPurchase; quote: Quote }>> {
-  const [store] = await db().execute<Row>(sql`select status, is_template, starter from commerce.stores where id = ${storeId}::uuid`);
-  if (!store || store.status !== "active" || store.is_template || store.starter) return { ok: false, problems: ["Domains can be bought for an open store only."] };
-  if (!(await buyingOpen(storeId))) return { ok: false, problems: ["Buying domains isn't open for this store yet."] };
+async function gate(account: Account, holder: HolderRef, input: { connect: boolean; domain: string; buyer?: BuyerInput; consent?: BuyInput["consent"] }, deps: GateDeps): Promise<Result<{ terms: Terms; review: "name" | "risk" | null }>> {
+  const storeId = storeOf(holder);
+  if (storeId) {
+    const [store] = await db().execute<Row>(sql`select status, is_template, starter from commerce.stores where id = ${storeId}::uuid`);
+    if (!store || store.status !== "active" || store.is_template || store.starter) return { ok: false, problems: ["Domains can be bought for an open store only."] };
+    if (!(await buyingOpen(storeId))) return { ok: false, problems: ["Buying domains isn't open for this store yet."] };
+    if (input.connect) {
+      const [connected] = await db().execute<Row>(sql`select 1 as on from commerce.store_domains where store_id = ${storeId}::uuid and hostname = ${input.domain}`);
+      if (!connected) {
+        const room = await checkLimit(storeId, "custom_domains");
+        if (!room.ok) return { ok: false, problems: [limitRefusal("custom_domains", room.limit)] };
+      }
+    }
+    return { ok: true, terms: { buyer: null, vatKind: null, vatNumber: null, consentAt: false, consentText: null }, review: null };
+  }
+  if (!(await buyingOpen(holder))) return { ok: false, problems: ["Kaizena Flow doesn't sell domains on their own yet."] };
+  const [facts] = await db().execute<Row>(sql`
+    select a.created_at,
+           (select count(*)::int from commerce.domain_purchases p where p.account_id = a.id and p.store_id is null and p.kind <> 'renew'
+              and p.status not in ('void', 'failed', 'refunded')) as bought,
+           exists (select 1 from commerce.domain_purchases p where p.account_id = a.id and p.kind = 'renew' and p.status = 'done')
+             or exists (select 1 from commerce.store_members m where m.account_id = a.id and m.role = 'owner' and m.disabled_at is null) as trusted
+      from commerce.accounts a where a.id = ${account.id}::uuid
+  `);
+  if (!facts) return { ok: false, problems: ["That account is gone."] };
+  if (!newAccountRoom({ createdAt: new Date(String(facts.created_at)), bought: Number(facts.bought), renewedOrStore: facts.trusted === true }, deps.now?.() ?? new Date())) {
+    return { ok: false, problems: [`A new account can hold ${NEW_ACCOUNT_DOMAINS} domains bought here in its first ${NEW_ACCOUNT_DAYS} days. Write to Kaizena Flow's support for more.`] };
+  }
+  if (!input.buyer) return { ok: false, problems: ["Say whether you buy as a private person or a business."] };
+  const vat = vatFor(input.buyer);
+  if (!vat.ok) return { ok: false, problems: [VAT_PROBLEM_TEXT[vat.problem]] };
+  let review: "name" | "risk" | null = nameNeedsReview(input.domain) ? "name" : null;
+  if (vat.vatKind === "reverse_charge" && vat.vatNumber) {
+    const answer = await (deps.vies ?? checkVatNumber)(vat.vatNumber);
+    if (answer.status === "invalid") return { ok: false, problems: ["The EU's VAT register (VIES) says that VAT number isn't valid."] };
+    if (answer.status !== "valid") review ??= "risk";
+  }
+  const consumer = input.buyer.kind === "consumer";
+  if (consumer && !input.consent?.given) return { ok: false, problems: ["Tick the box to ask for the registration to start once it is paid."] };
+  return {
+    ok: true,
+    terms: {
+      buyer: input.buyer.kind,
+      vatKind: vat.vatKind,
+      vatNumber: vat.vatNumber,
+      consentAt: consumer,
+      consentText: consumer ? CONSENT_TEXT[input.consent?.lang ?? "en"] : null,
+    },
+    review,
+  };
+}
+
+export type GateDeps = { vies?: (number: string) => Promise<{ status: string }>; now?: () => Date };
+
+/** Makes the registrant and the purchase in one transaction, held by `holder`. */
+async function begin(
+  account: Account,
+  holder: HolderRef,
+  kind: "register" | "transfer",
+  quote: Quote,
+  registrant: RegistrantInput,
+  extra: { connect: boolean; terms: Terms; review: "name" | "risk" | null; authCodeBox?: string },
+): Promise<DomainPurchase> {
+  const who = await holderColumns(holder, account.id);
+  const t = extra.terms;
+  return db().transaction(async (tx) => {
+    const r = registrant;
+    const [made] = await tx.execute<Row>(sql`
+      insert into commerce.domain_registrants (store_id, account_id, kind, first_name, last_name, company_name, org_number, email, phone, address1, address2, city, state, postal_code, country, created_by)
+      values (${who.storeId}::uuid, ${who.accountId}::uuid, ${r.kind}, ${r.firstName}, ${r.lastName}, ${r.companyName ?? null}, ${r.orgNumber ?? null}, ${r.email}, ${r.phone},
+        ${r.address1}, ${r.address2 ?? null}, ${r.city}, ${r.state}, ${r.postalCode}, ${r.country}, ${account.id}::uuid)
+      returning id
+    `);
+    const [row] = await tx.execute<Row>(sql`
+      insert into commerce.domain_purchases (store_id, account_id, registrant_id, apex, kind, years, currency, amount_minor, registrar, cost, cost_currency, connect,
+        chosen_by, auth_code_box, buyer, vat_kind, vat_number, consent_at, consent_text, review)
+      values (${who.storeId}::uuid, ${who.accountId}::uuid, ${String(made.id)}::uuid, ${quote.domain}, ${kind}, ${quote.years}, ${quote.currency}, ${quote.amountMinor},
+        ${(await registrarFor(quote.domain))!.id}, ${quote.cost}, ${quote.costCurrency}, ${who.storeId ? extra.connect : false}, ${account.id}::uuid,
+        ${extra.authCodeBox ?? null}, ${t.buyer}, ${t.vatKind}, ${t.vatNumber}, ${t.consentAt ? sql`now()` : sql`null`}, ${t.consentText}, ${extra.review})
+      returning *
+    `);
+    return toPurchase(row);
+  });
+}
+
+const duplicate = (error: unknown) => {
+  const cause = (error as { cause?: { constraint?: string; constraint_name?: string } })?.cause;
+  return [cause?.constraint, cause?.constraint_name].includes("domain_purchases_open_idx");
+};
+
+/**
+ * Starts buying a name: the owner's or the holder's own (the caller checks), past `gate()`, the price the same as the one named, the
+ * registrant complete. Makes the registrant and the purchase, then invoices it (`chargeDomainPurchases()`, run by the caller).
+ */
+export async function startDomainPurchase(account: Account, holder: HolderRef, input: BuyInput, deps: GateDeps = {}): Promise<Result<{ purchase: DomainPurchase; quote: Quote }>> {
   const registrant = registrantInput.safeParse(input.registrant);
   if (!registrant.success) return { ok: false, problems: [...new Set(registrant.error.issues.map((i) => i.message))] };
-  if (input.connect) {
-    const room = await checkLimit(storeId, "custom_domains");
-    if (!room.ok) return { ok: false, problems: [limitRefusal("custom_domains", room.limit)] };
-  }
-  const quoted = await quoteDomain(storeId, input.domain, input.years);
+  const domain = input.domain.trim().toLowerCase().replace(/\.$/, "");
+  const checked = await gate(account, holder, { connect: input.connect, domain, buyer: input.buyer, consent: input.consent }, deps);
+  if (!checked.ok) return checked;
+  const quoted = await quoteDomain(holder, domain, input.years, { country: input.buyer?.country });
   if (!quoted.ok) return quoted;
   const { quote } = quoted;
   if (input.agreed !== `${quote.currency}:${quote.amountMinor}`) {
     return { ok: false, problems: [`The price is now ${formatMoney(quote.amountMinor, quote.currency, "en-GB")}. Look at it again and confirm to buy.`] };
   }
-  const registrar = (await registrarFor(quote.domain))!;
   try {
-    const purchase = await db().transaction(async (tx) => {
-      const r = registrant.data;
-      const [made] = await tx.execute<Row>(sql`
-        insert into commerce.domain_registrants (store_id, kind, first_name, last_name, company_name, org_number, email, phone, address1, address2, city, state, postal_code, country, created_by)
-        values (${storeId}::uuid, ${r.kind}, ${r.firstName}, ${r.lastName}, ${r.companyName ?? null}, ${r.orgNumber ?? null}, ${r.email}, ${r.phone},
-          ${r.address1}, ${r.address2 ?? null}, ${r.city}, ${r.state}, ${r.postalCode}, ${r.country}, ${account.id}::uuid)
-        returning id
-      `);
-      const [row] = await tx.execute<Row>(sql`
-        insert into commerce.domain_purchases (store_id, registrant_id, apex, kind, years, currency, amount_minor, registrar, cost, cost_currency, connect, chosen_by)
-        values (${storeId}::uuid, ${String(made.id)}::uuid, ${quote.domain}, 'register', ${quote.years}, ${quote.currency}, ${quote.amountMinor},
-          ${registrar.id}, ${quote.cost}, ${quote.costCurrency}, ${input.connect}, ${account.id}::uuid)
-        returning *
-      `);
-      return toPurchase(row);
-    });
-    await audit(account.id, storeId, "store.domain_purchase_started", { domain: quote.domain, years: quote.years, amount: `${quote.currency} ${quote.amountMinor}` });
+    const purchase = await begin(account, holder, "register", quote, registrant.data as RegistrantInput, { connect: input.connect, terms: checked.terms, review: checked.review });
+    await audit(account.id, storeOf(holder), "store.domain_purchase_started", { domain: quote.domain, years: quote.years, amount: `${quote.currency} ${quote.amountMinor}` });
     return { ok: true, purchase, quote };
   } catch (error) {
-    const cause = (error as { cause?: { constraint?: string; constraint_name?: string } })?.cause;
-    if ([cause?.constraint, cause?.constraint_name].includes("domain_purchases_open_idx")) return { ok: false, problems: [`${quote.domain} is already being bought.`] };
+    if (duplicate(error)) return { ok: false, problems: [`${quote.domain} is already being bought.`] };
     throw error;
   }
 }
@@ -194,10 +309,10 @@ export async function startDomainPurchase(account: Account, storeId: string, inp
 const AUTH_CODE = /^[\x21-\x7e]{4,64}$/;
 
 /**
- * What moving a name here costs the store now: refused for a name nobody holds (buy it instead), one already registered here, an ending
- * not sold, or a currency that can't be priced. A transfer adds a year to the registration, so the price is the registrar's transfer price.
+ * What moving a name here costs now: refused for a name nobody holds (buy it instead), one already registered here, an ending not sold, or a
+ * currency that can't be priced. A transfer adds a year to the registration, so the price is the registrar's transfer price.
  */
-export async function quoteTransfer(storeId: string, domain: string): Promise<Result<{ quote: Quote }>> {
+export async function quoteTransfer(holder: HolderRef, domain: string, opts: { country?: string | null } = {}): Promise<Result<{ quote: Quote }>> {
   const name = domain.trim().toLowerCase().replace(/\.$/, "");
   const registrar = await registrarFor(name);
   if (!registrar) return { ok: false, problems: [`Kaizena Flow can't hold names ending in .${name.split(".").slice(1).join(".")} yet.`] };
@@ -211,9 +326,9 @@ export async function quoteTransfer(storeId: string, domain: string): Promise<Re
   }
   if (free) return { ok: false, problems: [`Nobody has registered ${name}: buy it instead.`] };
   const priced = (await domainPricingRows()).map((p) => p.currency);
-  const currency = await storeDomainCurrency(storeId, priced);
+  const currency = await holderCurrency(holder, priced, opts.country);
   const ctx = await priceContext(currency);
-  if (!ctx || !currency) return { ok: false, problems: ["Domains can't be priced in your store's currency yet."] };
+  if (!ctx || !currency) return { ok: false, problems: ["Domains can't be priced in your currency yet."] };
   let price;
   try {
     price = await registrar.price(name, 1);
@@ -222,63 +337,43 @@ export async function quoteTransfer(storeId: string, domain: string): Promise<Re
   }
   if (price.transfer === null) return { ok: false, problems: [`${name} can't be moved to Kaizena Flow's registrar.`] };
   const amountMinor = priceIn(ctx, price.transfer, price.currency, 1);
-  if (amountMinor === null) return { ok: false, problems: ["Domains can't be priced in your store's currency yet."] };
+  if (amountMinor === null) return { ok: false, problems: ["Domains can't be priced in your currency yet."] };
   return { ok: true, quote: { domain: name, years: 1, currency, amountMinor, renewalMinor: priceIn(ctx, price.renewal, price.currency, 1), cost: price.transfer, costCurrency: price.currency } };
 }
 
-export type TransferInput = { domain: string; authCode: string; agreed: string; connect: boolean; registrant: unknown };
+export type TransferInput = { domain: string; authCode: string; agreed: string; connect: boolean; registrant: unknown; buyer?: BuyerInput; consent?: BuyInput["consent"] };
 
 /**
- * Starts moving a name here (D315 8.5), the owner's (the caller checks), as buying does: the store open, buying open for it, the registrant
- * complete, the price the one named. The code from the current registrar is kept encrypted only until the transfer is handed over, and
- * nowhere else; nothing is asked of the registrar before the invoice is paid.
+ * Starts moving a name here (D315 8.5), as buying does, past `gate()`, the price the one named. The code from the current registrar is kept
+ * encrypted only until the transfer is handed over, and nowhere else; nothing is asked of the registrar before the invoice is paid.
  */
-export async function startDomainTransfer(account: Account, storeId: string, input: TransferInput): Promise<Result<{ purchase: DomainPurchase; quote: Quote }>> {
-  const [store] = await db().execute<Row>(sql`select status, is_template, starter from commerce.stores where id = ${storeId}::uuid`);
-  if (!store || store.status !== "active" || store.is_template || store.starter) return { ok: false, problems: ["Domains can be moved here for an open store only."] };
-  if (!(await buyingOpen(storeId))) return { ok: false, problems: ["Buying domains isn't open for this store yet."] };
+export async function startDomainTransfer(account: Account, holder: HolderRef, input: TransferInput, deps: GateDeps = {}): Promise<Result<{ purchase: DomainPurchase; quote: Quote }>> {
   const code = input.authCode.trim();
   if (!AUTH_CODE.test(code)) return { ok: false, problems: ["Paste the transfer code exactly as your current registrar gave it."] };
   const key = parseKey(process.env.SETTINGS_ENCRYPTION_KEY);
   if (!key) return { ok: false, problems: ["Transfers can't be taken just now."] };
   const registrant = registrantInput.safeParse(input.registrant);
   if (!registrant.success) return { ok: false, problems: [...new Set(registrant.error.issues.map((i) => i.message))] };
-  const quoted = await quoteTransfer(storeId, input.domain);
+  const domain = input.domain.trim().toLowerCase().replace(/\.$/, "");
+  const checked = await gate(account, holder, { connect: input.connect, domain, buyer: input.buyer, consent: input.consent }, deps);
+  if (!checked.ok) return checked;
+  const quoted = await quoteTransfer(holder, domain, { country: input.buyer?.country });
   if (!quoted.ok) return quoted;
   const { quote } = quoted;
   if (input.agreed !== `${quote.currency}:${quote.amountMinor}`) {
     return { ok: false, problems: [`The price is now ${formatMoney(quote.amountMinor, quote.currency, "en-GB")}. Look at it again and confirm to move it.`] };
   }
-  if (input.connect) {
-    const [connected] = await db().execute<Row>(sql`select 1 as on from commerce.store_domains where store_id = ${storeId}::uuid and hostname = ${quote.domain}`);
-    if (!connected) {
-      const room = await checkLimit(storeId, "custom_domains");
-      if (!room.ok) return { ok: false, problems: [limitRefusal("custom_domains", room.limit)] };
-    }
-  }
-  const registrar = (await registrarFor(quote.domain))!;
   try {
-    const purchase = await db().transaction(async (tx) => {
-      const r = registrant.data;
-      const [made] = await tx.execute<Row>(sql`
-        insert into commerce.domain_registrants (store_id, kind, first_name, last_name, company_name, org_number, email, phone, address1, address2, city, state, postal_code, country, created_by)
-        values (${storeId}::uuid, ${r.kind}, ${r.firstName}, ${r.lastName}, ${r.companyName ?? null}, ${r.orgNumber ?? null}, ${r.email}, ${r.phone},
-          ${r.address1}, ${r.address2 ?? null}, ${r.city}, ${r.state}, ${r.postalCode}, ${r.country}, ${account.id}::uuid)
-        returning id
-      `);
-      const [row] = await tx.execute<Row>(sql`
-        insert into commerce.domain_purchases (store_id, registrant_id, apex, kind, years, currency, amount_minor, registrar, cost, cost_currency, connect, chosen_by, auth_code_box)
-        values (${storeId}::uuid, ${String(made.id)}::uuid, ${quote.domain}, 'transfer', 1, ${quote.currency}, ${quote.amountMinor},
-          ${registrar.id}, ${quote.cost}, ${quote.costCurrency}, ${input.connect}, ${account.id}::uuid, ${encryptSecret(code, key)})
-        returning *
-      `);
-      return toPurchase(row);
+    const purchase = await begin(account, holder, "transfer", quote, registrant.data as RegistrantInput, {
+      connect: input.connect,
+      terms: checked.terms,
+      review: checked.review,
+      authCodeBox: encryptSecret(code, key),
     });
-    await audit(account.id, storeId, "store.domain_transfer_requested", { domain: quote.domain, amount: `${quote.currency} ${quote.amountMinor}` });
+    await audit(account.id, storeOf(holder), "store.domain_transfer_requested", { domain: quote.domain, amount: `${quote.currency} ${quote.amountMinor}` });
     return { ok: true, purchase, quote };
   } catch (error) {
-    const cause = (error as { cause?: { constraint?: string; constraint_name?: string } })?.cause;
-    if ([cause?.constraint, cause?.constraint_name].includes("domain_purchases_open_idx")) return { ok: false, problems: [`${quote.domain} is already on its way here.`] };
+    if (duplicate(error)) return { ok: false, problems: [`${quote.domain} is already on its way here.`] };
     throw error;
   }
 }
@@ -292,6 +387,8 @@ export type DomainBillingDeps = {
   stripe?: ThemeBillingStripe & { creditNotes?: Pick<Stripe["creditNotes"], "create"> };
   taxRates?: (country: string | null) => Promise<string[]>;
   account?: (storeId: string, mode: PaymentModeName) => Promise<string | null>;
+  /** An account's Stripe customer on Kaizena Flow's account, for a domain held without a store (D317), made when missing. */
+  customer?: (accountId: string, mode: PaymentModeName) => Promise<string | null>;
   registrar?: (id: string) => DomainRegistrar | null;
   connect?: typeof connectOwnedDomain;
   now?: () => Date;
@@ -300,14 +397,16 @@ export type DomainBillingDeps = {
 class BillingProblem extends Error {}
 
 /** Takes one purchase in `status` no other run holds and that is due a try. */
-async function claim(statuses: readonly PurchaseStatus[], storeId?: string): Promise<Row | null> {
+async function claim(statuses: readonly PurchaseStatus[], storeId?: string, purchaseId?: string): Promise<Row | null> {
   const list = sql.join(statuses.map((s) => sql`${s}`), sql`, `);
   const [row] = await db().execute<Row>(sql`
     update commerce.domain_purchases set claimed_until = now() + interval '3 minutes', tries = tries + 1, updated_at = now()
      where id = (
        select p.id from commerce.domain_purchases p
         where p.status in (${list}) and (p.claimed_until is null or p.claimed_until < now()) and (p.next_try_at is null or p.next_try_at <= now())
+          and (p.status <> 'paid' or p.review is null or p.review_outcome = 'approved')
           ${storeId && isUuid(storeId) ? sql`and p.store_id = ${storeId}::uuid` : sql``}
+          ${purchaseId && isUuid(purchaseId) ? sql`and p.id = ${purchaseId}::uuid` : sql``}
         order by p.created_at limit 1
         for update of p skip locked)
     returning *
@@ -329,14 +428,14 @@ const stripeWords = (error: unknown) => (error instanceof Stripe.errors.StripeEr
  * Invoices quoted purchases, a few a run: one Stripe invoice on Kaizena Flow's account to the store's account, with VAT as on its plan, paid
  * at once by the plan's card when there is one, otherwise sent to pay (registration waits for it). Safe to repeat. Never throws.
  */
-export async function chargeDomainPurchases(scope: { storeId?: string; limit?: number } = {}, deps: DomainBillingDeps = {}): Promise<{ invoiced: number; failed: number }> {
+export async function chargeDomainPurchases(scope: { storeId?: string; purchaseId?: string; limit?: number } = {}, deps: DomainBillingDeps = {}): Promise<{ invoiced: number; failed: number }> {
   const mode = deps.mode ?? billingMode();
   const stripe = deps.stripe ?? (mode ? (platformStripe(mode) as unknown as ThemeBillingStripe) : null);
   if (!mode || !stripe) return { invoiced: 0, failed: 0 };
   let invoiced = 0;
   let failed = 0;
   for (let n = 0; n < (scope.limit ?? 10); n++) {
-    const row = await claim(["quoted"], scope.storeId).catch(() => null);
+    const row = await claim(["quoted"], scope.storeId, scope.purchaseId).catch(() => null);
     if (!row) break;
     try {
       await invoiceOne(row, mode, stripe, deps);
@@ -349,30 +448,78 @@ export async function chargeDomainPurchases(scope: { storeId?: string; limit?: n
   return { invoiced, failed };
 }
 
+/**
+ * Who an invoice is to: a store's Stripe account (as its plan and themes are), or for a domain held without a store an account's own
+ * customer on Kaizena Flow's account (D317 6), with the VAT the purchase was quoted with: Norwegian MVA, or none with the reverse-charge
+ * words or as outside the scope of Norwegian VAT. A store pays by its plan's card when it has one; an account always pays by invoice.
+ */
+async function billTo(row: Row, mode: PaymentModeName, stripe: ThemeBillingStripe, deps: DomainBillingDeps) {
+  if (row.store_id) {
+    const storeId = String(row.store_id);
+    const [facts] = await db().execute<Row>(sql`select s.name, s.country from commerce.stores s where s.id = ${storeId}::uuid`);
+    if (!facts) throw new BillingProblem("The store no longer exists.");
+    const account = await (deps.account ?? billedAccount)(storeId, mode);
+    if (!account) throw new BillingProblem("The store has no Stripe account to bill yet, and one could not be made.");
+    const { card } = await collectionFor(storeId, mode, stripe);
+    const taxRates = await (deps.taxRates ?? ((country) => billingTaxRates(stripe as unknown as Stripe, mode, country)))(facts.country ? String(facts.country) : null);
+    return { to: { customer_account: account }, card, taxRates, name: String(facts.name), fields: [] as { name: string; value: string }[] };
+  }
+  const accountId = String(row.account_id);
+  const customer = await (deps.customer ?? ((id, m) => accountCustomer(id, m)))(accountId, mode);
+  if (!customer) throw new BillingProblem("The account has no Stripe customer yet, and one could not be made.");
+  const vatKind = row.vat_kind ? String(row.vat_kind) : null;
+  if (!vatKind) throw new BillingProblem("The purchase doesn't say what VAT it carries.");
+  const taxRates = vatKind === "mva" ? await (deps.taxRates ?? ((country) => billingTaxRates(stripe as unknown as Stripe, mode, country)))("NO") : [];
+  const fields =
+    vatKind === "reverse_charge"
+      ? [
+          { name: "VAT number", value: String(row.vat_number ?? "").slice(0, 140) },
+          { name: "VAT", value: "Reverse charge" },
+        ]
+      : vatKind === "outside_scope"
+        ? [{ name: "VAT", value: "Outside the scope of Norwegian VAT" }]
+        : [];
+  return { to: { customer }, card: null, taxRates, name: null, fields };
+}
+
+/** An account's customer on Kaizena Flow's Stripe account in `mode`, made once and kept on the account. */
+export async function accountCustomer(accountId: string, mode: PaymentModeName): Promise<string | null> {
+  const column = sql.raw(mode === "live" ? "stripe_customer_live" : "stripe_customer_test");
+  const [row] = await db().execute<Row>(sql`select email, name, ${column} as customer from commerce.accounts where id = ${accountId}::uuid`);
+  if (!row) return null;
+  if (row.customer) return String(row.customer);
+  const stripe = platformStripe(mode);
+  if (!stripe) return null;
+  const made = await stripe.customers.create(
+    { email: String(row.email), ...(row.name ? { name: String(row.name) } : {}), metadata: { kaizen_account_id: accountId } },
+    { idempotencyKey: `kaizen-account-customer-${mode}-${accountId}` },
+  );
+  await db().execute(sql`update commerce.accounts set ${column} = coalesce(${column}, ${made.id}) where id = ${accountId}::uuid`);
+  const [kept] = await db().execute<Row>(sql`select ${column} as customer from commerce.accounts where id = ${accountId}::uuid`);
+  return kept?.customer ? String(kept.customer) : made.id;
+}
+
 async function invoiceOne(row: Row, mode: PaymentModeName, stripe: ThemeBillingStripe, deps: DomainBillingDeps): Promise<void> {
   const id = String(row.id);
-  const storeId = String(row.store_id);
-  const [facts] = await db().execute<Row>(sql`select s.name, s.country from commerce.stores s where s.id = ${storeId}::uuid`);
-  if (!facts) throw new BillingProblem("The store no longer exists.");
-  const account = await (deps.account ?? billedAccount)(storeId, mode);
-  if (!account) throw new BillingProblem("The store has no Stripe account to bill yet, and one could not be made.");
+  const storeId = row.store_id ? String(row.store_id) : null;
+  const bill = await billTo(row, mode, stripe, deps);
   const currency = String(row.currency).trim().toLowerCase();
   const amount = Number(row.amount_minor);
   const label = `${row.kind === "renew" ? "Renewal" : row.kind === "transfer" ? "Transfer of" : "Domain"} ${String(row.apex)}, ${Number(row.years)} ${Number(row.years) === 1 ? "year" : "years"}`;
-  const metadata = { kaizen_store_id: storeId, kaizen_domain_purchase: id };
+  const metadata = { ...(storeId ? { kaizen_store_id: storeId } : { kaizen_account_id: String(row.account_id) }), kaizen_domain_purchase: id };
   let invoiceId = row.stripe_invoice_id ? String(row.stripe_invoice_id) : null;
   if (!invoiceId) {
-    const { card } = await collectionFor(storeId, mode, stripe);
-    const taxRates = await (deps.taxRates ?? ((country) => billingTaxRates(stripe as unknown as Stripe, mode, country)))(facts.country ? String(facts.country) : null);
+    const { card, taxRates } = bill;
     const made = await stripe.invoices.create(
       {
-        customer_account: account,
+        ...bill.to,
         currency,
         ...(card ? { collection_method: "charge_automatically", default_payment_method: card } : { collection_method: "send_invoice", days_until_due: 7 }),
         pending_invoice_items_behavior: "exclude",
         auto_advance: false,
         ...(taxRates.length > 0 && { default_tax_rates: taxRates }),
-        description: `Kaizena Flow: ${label} for ${String(facts.name)}. The domain is registered once this is paid.`,
+        ...(bill.fields.length > 0 && { custom_fields: bill.fields }),
+        description: `Kaizena Flow: ${label}${bill.name ? ` for ${bill.name}` : ""}. The domain is registered once this is paid.`,
         metadata,
       },
       { idempotencyKey: `kaizen-domain-invoice-${id}` },
@@ -388,7 +535,7 @@ async function invoiceOne(row: Row, mode: PaymentModeName, stripe: ThemeBillingS
   if (invoice.status === "draft") {
     const items = await stripe.invoiceItems.list({ invoice: invoiceId, limit: 10 });
     if (!items.data.some((item) => item.metadata?.kaizen_domain_purchase === id)) {
-      await stripe.invoiceItems.create({ customer_account: account, invoice: invoiceId, amount, currency, description: label, metadata }, { idempotencyKey: `kaizen-domain-item-${id}` });
+      await stripe.invoiceItems.create({ ...bill.to, invoice: invoiceId, amount, currency, description: label, metadata }, { idempotencyKey: `kaizen-domain-item-${id}` });
     }
     invoice = await stripe.invoices.finalizeInvoice(invoiceId, { auto_advance: true });
     if (invoice.status === "open" && invoice.collection_method === "charge_automatically") {
@@ -485,7 +632,8 @@ async function fail(id: string, problem: string): Promise<"failed"> {
 
 async function registerOne(row: Row, deps: DomainBillingDeps): Promise<"done" | "failed" | "waiting"> {
   const id = String(row.id);
-  const storeId = String(row.store_id);
+  const storeId = row.store_id ? String(row.store_id) : null;
+  const accountId = row.account_id ? String(row.account_id) : null;
   const apex = String(row.apex);
   if (row.mode === "test") return fail(id, "A test payment: nothing is registered with test money, so it is refunded.");
   const registrar = (deps.registrar ?? registrarById)(String(row.registrar));
@@ -500,7 +648,7 @@ async function registerOne(row: Row, deps: DomainBillingDeps): Promise<"done" | 
       await tx.execute(sql`
         update commerce.domain_registrations set expires_at = coalesce(${info?.expiresAt ?? null}::timestamptz, expires_at + make_interval(years => ${years})),
           status = 'active', updated_at = now()
-         where store_id = ${storeId}::uuid and apex = ${apex} and status <> 'transferred_out'
+         where id = ${String(row.registration_id)}::uuid
       `);
       await tx.execute(sql`
         update commerce.domain_purchases set status = 'done', done_at = now(), problem = null, claimed_until = null, next_try_at = null, updated_at = now()
@@ -544,14 +692,15 @@ async function registerOne(row: Row, deps: DomainBillingDeps): Promise<"done" | 
   const info = await registrar.domain(apex).catch(() => null);
   const registration = await db().transaction(async (tx) => {
     const [reg] = await tx.execute<Row>(sql`
-      insert into commerce.domain_registrations (store_id, apex, registrar, status, registrant_id, registered_at, expires_at, renew, registrar_renews, created_by)
-      values (${storeId}::uuid, ${apex}, ${registrar.id}, 'active', ${row.registrant_id ? String(row.registrant_id) : null}::uuid, now(),
+      insert into commerce.domain_registrations (store_id, account_id, apex, registrar, status, registrant_id, registered_at, expires_at, renew, registrar_renews, created_by)
+      values (${storeId}::uuid, ${accountId}::uuid, ${apex}, ${registrar.id}, 'active', ${row.registrant_id ? String(row.registrant_id) : null}::uuid, now(),
         coalesce(${info?.expiresAt ?? null}::timestamptz, now() + make_interval(years => ${years})), true, true, ${row.chosen_by ? String(row.chosen_by) : null}::uuid)
       returning *
     `);
     // Bought through Vercel, the domain is on Vercel's nameservers in Kaizena Flow's team: its DNS is kept here.
     await tx.execute(sql`
-      insert into commerce.dns_zones (store_id, apex, created_by, arrived_at) values (${storeId}::uuid, ${apex}, ${row.chosen_by ? String(row.chosen_by) : null}::uuid, now())
+      insert into commerce.dns_zones (store_id, account_id, apex, created_by, arrived_at)
+      values (${storeId}::uuid, ${accountId}::uuid, ${apex}, ${row.chosen_by ? String(row.chosen_by) : null}::uuid, now())
       on conflict do nothing
     `);
     await tx.execute(sql`
@@ -562,7 +711,7 @@ async function registerOne(row: Row, deps: DomainBillingDeps): Promise<"done" | 
     return toRegistration(reg);
   });
   await audit(null, storeId, "store.domain_registered", { domain: apex, years, registration: registration.id });
-  if (row.connect === true) {
+  if (row.connect === true && storeId) {
     const connected = await (deps.connect ?? connectOwnedDomain)(null, storeId, apex);
     if (!connected.ok) await audit(null, storeId, "store.domain_connect_failed", { domain: apex, problem: connected.problems.join(" ").slice(0, 300) });
   }
@@ -599,7 +748,8 @@ async function contactOf(row: Row) {
  */
 async function transferOne(row: Row, registrar: DomainRegistrar, deps: DomainBillingDeps): Promise<"done" | "failed" | "waiting"> {
   const id = String(row.id);
-  const storeId = String(row.store_id);
+  const storeId = row.store_id ? String(row.store_id) : null;
+  const accountId = row.account_id ? String(row.account_id) : null;
   const apex = String(row.apex);
   if (row.status === "paid") {
     const key = parseKey(process.env.SETTINGS_ENCRYPTION_KEY);
@@ -640,8 +790,8 @@ async function transferOne(row: Row, registrar: DomainRegistrar, deps: DomainBil
   const info = await registrar.domain(apex).catch(() => null);
   const registration = await db().transaction(async (tx) => {
     const [reg] = await tx.execute<Row>(sql`
-      insert into commerce.domain_registrations (store_id, apex, registrar, status, registrant_id, registered_at, expires_at, renew, registrar_renews, created_by)
-      values (${storeId}::uuid, ${apex}, ${registrar.id}, 'active', ${row.registrant_id ? String(row.registrant_id) : null}::uuid, now(),
+      insert into commerce.domain_registrations (store_id, account_id, apex, registrar, status, registrant_id, registered_at, expires_at, renew, registrar_renews, created_by)
+      values (${storeId}::uuid, ${accountId}::uuid, ${apex}, ${registrar.id}, 'active', ${row.registrant_id ? String(row.registrant_id) : null}::uuid, now(),
         ${info?.expiresAt ?? null}::timestamptz, true, true, ${row.chosen_by ? String(row.chosen_by) : null}::uuid)
       returning *
     `);
@@ -653,7 +803,7 @@ async function transferOne(row: Row, registrar: DomainRegistrar, deps: DomainBil
     return toRegistration(reg);
   });
   await audit(null, storeId, "store.domain_transferred_in", { domain: apex, registration: registration.id });
-  if (row.connect === true) {
+  if (row.connect === true && storeId) {
     const connected = await (deps.connect ?? connectOwnedDomain)(null, storeId, apex);
     if (!connected.ok) await audit(null, storeId, "store.domain_connect_failed", { domain: apex, problem: connected.problems.join(" ").slice(0, 300) });
   }
@@ -687,7 +837,7 @@ async function refundFailed(deps: DomainBillingDeps): Promise<void> {
         );
       }
       await db().execute(sql`update commerce.domain_purchases set status = 'refunded', updated_at = now() where id = ${String(row.id)}::uuid and status = 'failed'`);
-      await audit(null, String(row.store_id), "store.domain_refunded", { purchase: String(row.id) });
+      await audit(null, row.store_id ? String(row.store_id) : null, "store.domain_refunded", { purchase: String(row.id) });
     } catch (error) {
       await db().execute(sql`
         update commerce.domain_purchases set next_try_at = now() + interval '1 hour', problem = ${`Refund: ${error instanceof Stripe.errors.StripeError ? error.message : error instanceof Error ? error.message : "Stripe could not be reached."}`.slice(0, 500)}, updated_at = now()
@@ -714,7 +864,11 @@ export async function runDomainRenewals(deps: DomainBillingDeps = {}): Promise<{
   let quoted = 0;
   let stopped = 0;
   const due = await db().execute<Row>(sql`
-    select r.* from commerce.domain_registrations r join commerce.stores s on s.id = r.store_id
+    select r.*, g.country as registrant_country, last.buyer, last.vat_kind, last.vat_number
+      from commerce.domain_registrations r
+      left join commerce.domain_registrants g on g.id = r.registrant_id
+      left join lateral (select p.buyer, p.vat_kind, p.vat_number from commerce.domain_purchases p
+                          where p.apex = r.apex and p.status = 'done' and p.vat_kind is not null order by p.created_at desc limit 1) last on true
      where r.status = 'active' and r.renew and r.expires_at < now() + make_interval(days => ${RENEW_AHEAD_DAYS})
        and not exists (select 1 from commerce.domain_purchases p where p.apex = r.apex and p.kind = 'renew'
                         and p.created_at > r.expires_at - make_interval(days => ${RENEW_AHEAD_DAYS + 5}) and p.status not in ('void', 'failed', 'refunded'))
@@ -724,17 +878,22 @@ export async function runDomainRenewals(deps: DomainBillingDeps = {}): Promise<{
     try {
       const registrar = (deps.registrar ?? registrarById)(String(reg.registrar));
       if (!registrar) continue;
-      const q = await quoteWith(String(reg.store_id), registrar, String(reg.apex), 1);
+      const q = await quoteWith(registrationHolder(reg), registrar, String(reg.apex), 1, reg.registrant_country ? String(reg.registrant_country) : null);
       if (!q.ok) continue;
       // A renewal is priced at the registrar's renewal price, which `price()` gives as `renewal` for one year.
       const price = await registrar.price(String(reg.apex), 1);
       const ctx = await priceContext(q.quote.currency);
       const amount = ctx ? priceIn(ctx, price.renewal, price.currency, 1) : null;
       if (!amount) continue;
+      // Held without a store, the renewal is invoiced with the VAT its first purchase was (D317 6); one without it isn't renewed by itself.
+      if (!reg.store_id && !reg.vat_kind) continue;
       await db().execute(sql`
-        insert into commerce.domain_purchases (store_id, registration_id, registrant_id, apex, kind, years, currency, amount_minor, registrar, cost, cost_currency, connect)
-        values (${String(reg.store_id)}::uuid, ${String(reg.id)}::uuid, ${reg.registrant_id ? String(reg.registrant_id) : null}::uuid, ${String(reg.apex)}, 'renew', 1,
-          ${q.quote.currency}, ${amount}, ${registrar.id}, ${price.renewal}, ${price.currency}, false)
+        insert into commerce.domain_purchases (store_id, account_id, registration_id, registrant_id, apex, kind, years, currency, amount_minor, registrar, cost, cost_currency, connect,
+          buyer, vat_kind, vat_number)
+        values (${reg.store_id ? String(reg.store_id) : null}::uuid, ${reg.account_id ? String(reg.account_id) : null}::uuid, ${String(reg.id)}::uuid,
+          ${reg.registrant_id ? String(reg.registrant_id) : null}::uuid, ${String(reg.apex)}, 'renew', 1,
+          ${q.quote.currency}, ${amount}, ${registrar.id}, ${price.renewal}, ${price.currency}, false,
+          ${reg.store_id ? null : (reg.buyer ?? null)}, ${reg.store_id ? null : (reg.vat_kind ?? null)}, ${reg.store_id ? null : (reg.vat_number ?? null)})
         on conflict do nothing
       `);
       quoted++;
@@ -766,13 +925,13 @@ export async function runDomainRenewals(deps: DomainBillingDeps = {}): Promise<{
 }
 
 /** The owner turns renewal on or off (owners only, checked by the caller). On again also turns the registrar's auto-renew back on. */
-export async function setDomainRenewal(account: Account, storeId: string, apex: string, renew: boolean, deps: DomainBillingDeps = {}): Promise<Result<{ registration: Registration }>> {
+export async function setDomainRenewal(account: Account, holder: HolderRef, apex: string, renew: boolean, deps: DomainBillingDeps = {}): Promise<Result<{ registration: Registration }>> {
   const [row] = await db().execute<Row>(sql`
     update commerce.domain_registrations set renew = ${renew}, updated_at = now()
-     where store_id = ${storeId}::uuid and apex = ${apex.toLowerCase()} and status in ('active', 'expired')
+     where ${heldBy(holder)} and apex = ${apex.toLowerCase()} and status in ('active', 'expired')
     returning *
   `);
-  if (!row) return { ok: false, problems: ["That domain isn't registered by this store through Kaizena Flow."] };
+  if (!row) return { ok: false, problems: ["That domain isn't registered by you through Kaizena Flow."] };
   const registrar = (deps.registrar ?? registrarById)(String(row.registrar));
   try {
     if (renew && !row.registrar_renews) {
@@ -786,27 +945,34 @@ export async function setDomainRenewal(account: Account, storeId: string, apex: 
   } catch {
     // The daily run sets the registrar's switch from `renew` if this did not reach it.
   }
-  await audit(account.id, storeId, "store.domain_renewal_set", { domain: apex, renew });
+  await audit(account.id, row.store_id ? String(row.store_id) : null, "store.domain_renewal_set", { domain: apex, renew });
   return { ok: true, registration: toRegistration({ ...row, renew }) };
 }
 
 /** Starts a renewal now for `years` at today's renewal price, which the owner was shown (`agreed`), then invoices it. */
-export async function renewDomainNow(account: Account, storeId: string, apex: string, years: number, agreed: string): Promise<Result<{ purchase: DomainPurchase }>> {
+export async function renewDomainNow(account: Account, holder: HolderRef, apex: string, years: number, agreed: string): Promise<Result<{ purchase: DomainPurchase }>> {
   const [reg] = await db().execute<Row>(sql`
-    select * from commerce.domain_registrations where store_id = ${storeId}::uuid and apex = ${apex.toLowerCase()} and status in ('active', 'expired')
+    select r.*, last.buyer, last.vat_kind, last.vat_number from commerce.domain_registrations r
+      left join lateral (select p.buyer, p.vat_kind, p.vat_number from commerce.domain_purchases p
+                          where p.apex = r.apex and p.status = 'done' and p.vat_kind is not null order by p.created_at desc limit 1) last on true
+     where ${heldBy(holder, "r")} and r.apex = ${apex.toLowerCase()} and r.status in ('active', 'expired')
   `);
-  if (!reg) return { ok: false, problems: ["That domain isn't registered by this store through Kaizena Flow."] };
-  const offer = await renewalOffer(storeId, String(reg.apex), String(reg.registrar), years);
+  if (!reg) return { ok: false, problems: ["That domain isn't registered by you through Kaizena Flow."] };
+  if (!reg.store_id && !reg.vat_kind) return { ok: false, problems: ["This domain can't be renewed from here. Write to Kaizena Flow's support."] };
+  const offer = await renewalOffer(registrationHolder(reg), String(reg.apex), String(reg.registrar), years);
   if (!offer) return { ok: false, problems: ["The renewal can't be priced just now. Try again in a moment."] };
   if (agreed !== `${offer.currency}:${offer.amountMinor}`) return { ok: false, problems: [`The renewal is now ${formatMoney(offer.amountMinor, offer.currency, "en-GB")}. Look at it again to renew.`] };
   try {
     const [row] = await db().execute<Row>(sql`
-      insert into commerce.domain_purchases (store_id, registration_id, registrant_id, apex, kind, years, currency, amount_minor, registrar, cost, cost_currency, connect, chosen_by)
-      values (${storeId}::uuid, ${String(reg.id)}::uuid, ${reg.registrant_id ? String(reg.registrant_id) : null}::uuid, ${String(reg.apex)}, 'renew', ${years},
-        ${offer.currency}, ${offer.amountMinor}, ${String(reg.registrar)}, ${offer.cost}, ${offer.costCurrency}, false, ${account.id}::uuid)
+      insert into commerce.domain_purchases (store_id, account_id, registration_id, registrant_id, apex, kind, years, currency, amount_minor, registrar, cost, cost_currency,
+        connect, chosen_by, buyer, vat_kind, vat_number)
+      values (${reg.store_id ? String(reg.store_id) : null}::uuid, ${reg.account_id ? String(reg.account_id) : null}::uuid, ${String(reg.id)}::uuid,
+        ${reg.registrant_id ? String(reg.registrant_id) : null}::uuid, ${String(reg.apex)}, 'renew', ${years},
+        ${offer.currency}, ${offer.amountMinor}, ${String(reg.registrar)}, ${offer.cost}, ${offer.costCurrency}, false, ${account.id}::uuid,
+        ${reg.store_id ? null : (reg.buyer ?? null)}, ${reg.store_id ? null : (reg.vat_kind ?? null)}, ${reg.store_id ? null : (reg.vat_number ?? null)})
       returning *
     `);
-    await audit(account.id, storeId, "store.domain_renewal_started", { domain: String(reg.apex), years });
+    await audit(account.id, reg.store_id ? String(reg.store_id) : null, "store.domain_renewal_started", { domain: String(reg.apex), years });
     return { ok: true, purchase: toPurchase(row) };
   } catch {
     return { ok: false, problems: [`A renewal of ${String(reg.apex)} is already under way.`] };
@@ -814,10 +980,11 @@ export async function renewDomainNow(account: Account, storeId: string, apex: st
 }
 
 /** What renewing a registration for `years` costs now. */
-export async function renewalOffer(storeId: string, apex: string, registrarId: string, years: number) {
+export async function renewalOffer(holder: HolderRef, apex: string, registrarId: string, years: number) {
   const registrar = registrarById(registrarId);
   if (!registrar) return null;
-  const currency = await storeDomainCurrency(storeId, (await domainPricingRows()).map((p) => p.currency));
+  const country = storeOf(holder) ? null : await registrantCountry(apex);
+  const currency = await holderCurrency(holder, (await domainPricingRows()).map((p) => p.currency), country);
   const ctx = await priceContext(currency);
   if (!ctx || !currency) return null;
   const price = await registrar.price(apex, 1).catch(() => null);
@@ -825,4 +992,16 @@ export async function renewalOffer(storeId: string, apex: string, registrarId: s
   const cost = Math.round(price.renewal * years * 100) / 100;
   const amountMinor = priceIn(ctx, cost, price.currency, years);
   return amountMinor === null ? null : { currency, amountMinor, cost, costCurrency: price.currency };
+}
+
+/** Who holds a registration row: its store while a store uses it, else its account. */
+export const registrationHolder = (reg: Row): HolderRef => (reg.store_id ? String(reg.store_id) : accountHolder(String(reg.account_id)));
+
+/** The registrant's country of a registration, which an account's currency follows. */
+async function registrantCountry(apex: string): Promise<string | null> {
+  const [row] = await db().execute<Row>(sql`
+    select g.country from commerce.domain_registrations r join commerce.domain_registrants g on g.id = r.registrant_id
+     where r.apex = ${apex} and r.status <> 'transferred_out' limit 1
+  `);
+  return row?.country ? String(row.country) : null;
 }

@@ -13,6 +13,7 @@ import { writeZone } from "@/lib/zone-file";
 
 import { audit, type Account } from "./auth";
 import { leaveZones, markZoneBack, markZoneLeaving, zoneRecords } from "./domain-dns";
+import { heldBy, storeOf, type HolderRef } from "./domain-holder";
 import { setDomainRenewal } from "./domain-purchases";
 import { storeRegistration } from "./domain-registrations";
 import { listStoreDomains, removeStoreDomain } from "./domains";
@@ -31,18 +32,22 @@ type Result<T = object> = ({ ok: true } & T) | { ok: false; problems: string[] }
 
 export type MoveDeps = { host?: DnsHostApi; registrar?: (id: string) => DomainRegistrar | null; ask?: AskNameservers; now?: Date };
 
-/** The domain as a move reads it: the registration here (if any), the zone here (if any), whether the store uses it, and the checks. */
-export async function moveFacts(storeId: string, apex: string, now = new Date()) {
+/**
+ * The domain as a move reads it: the registration here (if any), the zone here (if any), whether a store uses it (the holder's store, or for
+ * an account the store the domain is linked to, D317), and the checks.
+ */
+export async function moveFacts(holder: HolderRef, apex: string, now = new Date()) {
   const name = apex.trim().toLowerCase();
-  const [registration, zone, domains, [renewal]] = await Promise.all([
-    storeRegistration(storeId, name),
-    storeZoneAny(storeId, name),
-    listStoreDomains(storeId),
+  const [registration, zone, [renewal]] = await Promise.all([
+    storeRegistration(holder, name),
+    storeZoneAny(holder, name),
     db().execute<Row>(sql`
       select 1 as under_way from commerce.domain_purchases
-       where store_id = ${storeId}::uuid and apex = ${name} and kind = 'renew' and status in ('invoiced', 'paid', 'registering') limit 1
+       where ${heldBy(holder)} and apex = ${name} and kind = 'renew' and status in ('invoiced', 'paid', 'registering') limit 1
     `),
   ]);
+  const usedBy = storeOf(holder) ?? registration?.storeId ?? zone?.storeId ?? null;
+  const domains = usedBy ? await listStoreDomains(usedBy) : [];
   const connected = domains.filter((d) => d.hostname === name || d.hostname.endsWith(`.${name}`));
   const facts: TransferFacts | null = registration
     ? {
@@ -61,16 +66,17 @@ export async function moveFacts(storeId: string, apex: string, now = new Date())
         select g.email from commerce.domain_registrations r join commerce.domain_registrants g on g.id = r.registrant_id where r.id = ${registration.id}::uuid
       `)
     : [];
-  return { apex: name, registration, zone, connected, transfer: checks, registrantEmail: registrant ? String(registrant.email) : null };
+  return { apex: name, registration, zone, connected, usedBy, transfer: checks, registrantEmail: registrant ? String(registrant.email) : null };
 }
 
 /** The zone's row whatever its state, `left` aside. */
-async function storeZoneAny(storeId: string, apex: string) {
+async function storeZoneAny(holder: HolderRef, apex: string) {
   const [row] = await db().execute<Row>(sql`
-    select id, apex, status, leaving_at, moved_to from commerce.dns_zones where store_id = ${storeId}::uuid and apex = ${apex} and status <> 'left'
+    select id, apex, status, leaving_at, moved_to, store_id from commerce.dns_zones where ${heldBy(holder)} and apex = ${apex} and status <> 'left'
   `);
   if (!row) return null;
   return {
+    storeId: row.store_id ? String(row.store_id) : null,
     status: String(row.status) as "active" | "leaving",
     leavingAt: row.leaving_at ? new Date(String(row.leaving_at)).toISOString() : null,
     movedTo: Array.isArray(row.moved_to) ? (row.moved_to as unknown[]).map(String) : [],
@@ -78,9 +84,9 @@ async function storeZoneAny(storeId: string, apex: string) {
 }
 
 /** The checklist of a move the owner chose, as the page and `plan_domain_move` show it. */
-export async function movePlan(storeId: string, apex: string, goal: MoveGoal): Promise<Result<{ steps: MoveStep[]; facts: Awaited<ReturnType<typeof moveFacts>> }>> {
-  const facts = await moveFacts(storeId, apex);
-  if (!facts.registration && !facts.zone && facts.connected.length === 0) return { ok: false, problems: [`${apex} isn't one of this store's domains.`] };
+export async function movePlan(holder: HolderRef, apex: string, goal: MoveGoal): Promise<Result<{ steps: MoveStep[]; facts: Awaited<ReturnType<typeof moveFacts>> }>> {
+  const facts = await moveFacts(holder, apex);
+  if (!facts.registration && !facts.zone && facts.connected.length === 0) return { ok: false, problems: [`${apex} isn't one of your domains.`] };
   const steps = moveSteps(goal, {
     registeredHere: Boolean(facts.registration),
     registrationStatus: facts.registration?.status ?? null,
@@ -92,8 +98,8 @@ export async function movePlan(storeId: string, apex: string, goal: MoveGoal): P
 }
 
 /** The zone's records to take along, as a BIND zone file or a spreadsheet, with the store's own records marked. */
-export async function exportZone(storeId: string, apex: string, format: "bind" | "csv", deps: MoveDeps = {}): Promise<Result<{ filename: string; body: string; type: string }>> {
-  const read = await zoneRecords(storeId, apex, deps);
+export async function exportZone(holder: HolderRef, apex: string, format: "bind" | "csv", deps: MoveDeps = {}): Promise<Result<{ filename: string; body: string; type: string }>> {
+  const read = await zoneRecords(holder, apex, deps);
   if (!read.ok) return read;
   const kept = (r: DnsRecordInput) => isProtected(r, read.connected);
   if (format === "bind") return { ok: true, filename: `${read.zone.apex}.zone`, body: writeZone(read.zone.apex, read.records, { at: deps.now, kept }), type: "text/plain; charset=utf-8" };
@@ -161,10 +167,10 @@ export type SwitchCheck = { nameservers: string[]; missing: DnsRecordInput[]; un
  * Before the nameservers move (8.2): the new nameservers are asked for every record the zone has, so the owner sees what would stop working.
  * The store's own records are asked too: a store that should stay on the domain needs them at the new provider.
  */
-export async function nameserverSwitchCheck(storeId: string, apex: string, text: string, deps: MoveDeps = {}): Promise<Result<SwitchCheck>> {
+export async function nameserverSwitchCheck(holder: HolderRef, apex: string, text: string, deps: MoveDeps = {}): Promise<Result<SwitchCheck>> {
   const { nameservers, problem } = cleanNameservers(text);
   if (problem) return { ok: false, problems: [problem] };
-  const read = await zoneRecords(storeId, apex, deps);
+  const read = await zoneRecords(holder, apex, deps);
   if (!read.ok) return read;
   const answers = await (deps.ask ?? askNameservers)(nameservers, read.zone.apex, questionsFor(read.records));
   const { missing, unanswered } = missingRecords(read.records, answers);
@@ -178,17 +184,17 @@ export async function nameserverSwitchCheck(storeId: string, apex: string, text:
  */
 export async function switchNameservers(
   account: Account | null,
-  storeId: string,
+  holder: HolderRef,
   apex: string,
   text: string,
   options: { acceptMissing?: boolean } = {},
   deps: MoveDeps = {},
 ): Promise<Result<{ how: "registrar" | "watched"; check: SwitchCheck }>> {
-  const check = await nameserverSwitchCheck(storeId, apex, text, deps);
+  const check = await nameserverSwitchCheck(holder, apex, text, deps);
   if (!check.ok) return check;
   if (check.unanswered.length > 0) return { ok: false, problems: [`The new nameservers didn't answer for ${check.unanswered.join(", ")}. Check they are set up for ${apex}, then try again.`] };
   if (check.missing.length > 0 && !options.acceptMissing) return { ok: false, problems: [`The new DNS provider doesn't have ${check.missing.length} of the records yet. Add them there, or say they may go.`] };
-  const facts = await moveFacts(storeId, apex);
+  const facts = await moveFacts(holder, apex);
   if (facts.zone?.status !== "active") return { ok: false, problems: [`Kaizena Flow doesn't keep the DNS of ${apex} now.`] };
   const registration = facts.registration && facts.registration.status !== "transferred_out" ? facts.registration : null;
   if (registration) {
@@ -199,7 +205,7 @@ export async function switchNameservers(
     } catch {
       return { ok: false, problems: ["The registrar refused the new nameservers. Check them, then try again."] };
     }
-    await markZoneLeaving(account, storeId, facts.apex, check.nameservers);
+    await markZoneLeaving(account, holder, facts.apex, check.nameservers);
     return { ok: true, how: "registrar", check };
   }
   // Registered elsewhere: the owner sets the nameservers there; we take the zone as leaving once public DNS says so.
@@ -207,13 +213,13 @@ export async function switchNameservers(
   const live = await systemDns().ns(facts.apex);
   const moved = live !== null && live.length > 0 && live.every((ns) => check.nameservers.includes(ns.replace(/\.$/, "")));
   if (!moved) return { ok: false, problems: [`Set these nameservers for ${facts.apex} where it is registered: ${check.nameservers.join(", ")}. Public DNS doesn't show them yet; it can take a few hours.`] };
-  await markZoneLeaving(account, storeId, facts.apex, check.nameservers);
+  await markZoneLeaving(account, holder, facts.apex, check.nameservers);
   return { ok: true, how: "watched", check };
 }
 
 /** *Switch back* within 30 days: Vercel's nameservers again (set at the registrar when it is here), and the zone is live again. */
-export async function switchBack(account: Account, storeId: string, apex: string, deps: MoveDeps = {}): Promise<Result> {
-  const facts = await moveFacts(storeId, apex);
+export async function switchBack(account: Account, holder: HolderRef, apex: string, deps: MoveDeps = {}): Promise<Result> {
+  const facts = await moveFacts(holder, apex);
   if (facts.zone?.status !== "leaving") return { ok: false, problems: [`${apex}'s DNS isn't on its way out.`] };
   const registration = facts.registration && facts.registration.status !== "transferred_out" ? facts.registration : null;
   if (registration) {
@@ -224,7 +230,7 @@ export async function switchBack(account: Account, storeId: string, apex: string
       return { ok: false, problems: ["The registrar refused Kaizena Flow's nameservers just now. Try again in a moment."] };
     }
   }
-  await markZoneBack(account, storeId, facts.apex);
+  await markZoneBack(account, holder, facts.apex);
   return { ok: true };
 }
 
@@ -233,8 +239,8 @@ export async function switchBack(account: Account, storeId: string, apex: string
  * blocks the move, read live from the registrar each time. It is returned to the page and nowhere else: never stored, logged, emailed or
  * given to the AI manager (a canary test holds that). The registration is watched as moving from now on; the audit says who and when.
  */
-export async function revealTransferCode(account: Account, storeId: string, apex: string, deps: MoveDeps = {}): Promise<Result<{ code: string }>> {
-  const facts = await moveFacts(storeId, apex, deps.now);
+export async function revealTransferCode(account: Account, holder: HolderRef, apex: string, deps: MoveDeps = {}): Promise<Result<{ code: string }>> {
+  const facts = await moveFacts(holder, apex, deps.now);
   if (!facts.registration) return { ok: false, problems: [`${apex} isn't registered through Kaizena Flow, so its code is at its own registrar.`] };
   if (facts.transfer.blockers.length > 0) return { ok: false, problems: ["The domain can't move to another registrar yet. See what stops it on the page."] };
   const registrar = (deps.registrar ?? registrarById)(facts.registration.registrar);
@@ -247,21 +253,21 @@ export async function revealTransferCode(account: Account, storeId: string, apex
   }
   await db().execute(sql`
     update commerce.domain_registrations set status = 'transferring_out', transfer_started_at = now(), updated_at = now()
-     where store_id = ${storeId}::uuid and apex = ${facts.apex} and status in ('active', 'transferring_out')
+     where id = ${facts.registration.id}::uuid and status in ('active', 'transferring_out')
   `);
-  await audit(account.id, storeId, "store.domain_transfer_code_shown", { domain: facts.apex });
+  await audit(account.id, facts.registration.storeId, "store.domain_transfer_code_shown", { domain: facts.apex });
   return { ok: true, code };
 }
 
 /** The owner decides not to move after all: the registration is active here again and renews as before. */
-export async function stayHere(account: Account, storeId: string, apex: string): Promise<Result> {
+export async function stayHere(account: Account, holder: HolderRef, apex: string): Promise<Result> {
   const [row] = await db().execute<Row>(sql`
     update commerce.domain_registrations set status = 'active', transfer_started_at = null, updated_at = now()
-     where store_id = ${storeId}::uuid and apex = ${apex.toLowerCase()} and status = 'transferring_out'
-    returning id
+     where ${heldBy(holder)} and apex = ${apex.toLowerCase()} and status = 'transferring_out'
+    returning id, store_id
   `);
   if (!row) return { ok: false, problems: [`${apex} isn't moving.`] };
-  await audit(account.id, storeId, "store.domain_transfer_stopped", { domain: apex.toLowerCase() });
+  await audit(account.id, row.store_id ? String(row.store_id) : null, "store.domain_transfer_stopped", { domain: apex.toLowerCase() });
   return { ok: true };
 }
 
@@ -292,7 +298,7 @@ export async function watchTransfers(deps: MoveDeps = {}): Promise<{ moved: numb
          where id = ${String(row.id)}::uuid and status = 'transferring_out'
       `);
       await db().execute(sql`update commerce.domain_purchases set status = 'void' where apex = ${apex} and kind = 'renew' and status = 'quoted'`);
-      await audit(null, String(row.store_id), "store.domain_transferred_out", { domain: apex });
+      await audit(null, row.store_id ? String(row.store_id) : null, "store.domain_transferred_out", { domain: apex });
       moved++;
     } else if (row.transfer_started_at && now.getTime() - new Date(String(row.transfer_started_at)).getTime() > TRANSFER_WAIT_DAYS * 86_400_000) {
       await db().execute(sql`

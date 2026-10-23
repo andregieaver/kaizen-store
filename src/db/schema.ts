@@ -442,11 +442,22 @@ export const accounts = commerce.table(
      * requires two-step: a decision the server made, so unlike the mirror it is read for access.
      */
     twoStepReenrolAt: timestamp("two_step_reenrol_at", { withTimezone: true }),
+    /**
+     * How the account came (D317): `store` through a store (an approved request, an invitation, the platform's own), `domain` by buying a
+     * domain without a store, so the domain shop can be counted as a way in.
+     */
+    origin: text("origin").notNull().default("store"),
+    /** The holder lets the AI manager change DNS records of the domains they hold without asking (D317, as `stores.domain_dns_auto`). */
+    domainDnsAuto: boolean("domain_dns_auto").notNull().default(false),
+    /** Kaizena Flow's Stripe customer for what the account buys without a store (D317: domains), per mode. */
+    stripeCustomerTest: text("stripe_customer_test"),
+    stripeCustomerLive: text("stripe_customer_live"),
     createdAt: createdAt(),
     disabledAt: timestamp("disabled_at", { withTimezone: true }),
   },
   (t) => [
     uniqueIndex("accounts_email_idx").on(sql`lower(${t.email})`),
+    check("accounts_origin", sql`${t.origin} in ('store', 'domain')`),
     check("accounts_color_mode", sql`${t.colorMode} in ('system', 'light', 'dark')`),
     check("accounts_admin_scheme", sql`${t.adminScheme} in ('meadow', 'indigo')`),
     check("accounts_admin_locale", sql`${t.adminLocale} in ('en', 'nb-NO')`),
@@ -467,6 +478,8 @@ export const accessRequests = commerce.table(
     decidedAt: timestamp("decided_at", { withTimezone: true }),
     /** The store created when the request was approved. */
     storeId: uuid("store_id").references((): AnyPgColumn => stores.id),
+    /** A domain the requester holds, to connect to the store when it is approved (D317 4: *Start a store on {domain}*). */
+    domain: text("domain"),
     /** The referral code the request came with (D131), checked against `referrers` when the request is approved. */
     referralCode: text("referral_code"),
     /**
@@ -1490,6 +1503,11 @@ export const platformSettings = commerce.table(
     saleFeeBps: integer("sale_fee_bps").notNull().default(0),
     /** Buying domains is open to every store (D315 decision 9: once moving away is built); until then only where `stores.domain_buying` is on. */
     domainsOpen: boolean("domains_open").notNull().default(false),
+    /**
+     * Domains are sold to people without a store (D317, `docs/domains-standalone.md`): off until the spikes of its section 12 are answered
+     * (Vercel's written yes, VAT, withdrawal), then turned on from Platform → Settings → Domains.
+     */
+    domainsPublic: boolean("domains_public").notNull().default(false),
     /** Search and sharing for Kaizen's own pages (`StoreSeo` in lib/seo, locale `en`). */
     seo: jsonb("seo").notNull().default({}),
     /**
@@ -7054,9 +7072,10 @@ export const domainRegistrants = commerce.table(
   "domain_registrants",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    storeId: uuid("store_id")
-      .notNull()
-      .references(() => stores.id),
+    /** The store that uses it (D317: a domain may be held by an account and used by no store). */
+    storeId: uuid("store_id").references(() => stores.id),
+    /** Who holds it (D317, `docs/domains-standalone.md` 2): the account, whether or not a store uses it. */
+    accountId: uuid("account_id").references(() => accounts.id),
     kind: text("kind").notNull(),
     firstName: text("first_name").notNull(),
     lastName: text("last_name").notNull(),
@@ -7087,6 +7106,8 @@ export const domainRegistrants = commerce.table(
     ),
     index("domain_registrants_store_idx").on(t.storeId),
     index("domain_registrants_created_by_idx").on(t.createdBy),
+    check("domain_registrants_holder", sql`${t.storeId} is not null or ${t.accountId} is not null`),
+    index("domain_registrants_account_idx").on(t.accountId),
   ],
 );
 
@@ -7098,9 +7119,10 @@ export const domainRegistrations = commerce.table(
   "domain_registrations",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    storeId: uuid("store_id")
-      .notNull()
-      .references(() => stores.id),
+    /** The store that uses it (D317: a domain may be held by an account and used by no store). */
+    storeId: uuid("store_id").references(() => stores.id),
+    /** Who holds it (D317, `docs/domains-standalone.md` 2): the account, whether or not a store uses it. */
+    accountId: uuid("account_id").references(() => accounts.id),
     apex: text("apex").notNull(),
     registrar: text("registrar").notNull(),
     status: text("status").notNull().default("active"),
@@ -7128,6 +7150,8 @@ export const domainRegistrations = commerce.table(
     index("domain_registrations_expiry_idx").on(t.expiresAt).where(sql`${t.status} = 'active'`),
     index("domain_registrations_registrant_idx").on(t.registrantId),
     index("domain_registrations_created_by_idx").on(t.createdBy),
+    check("domain_registrations_holder", sql`${t.storeId} is not null or ${t.accountId} is not null`),
+    index("domain_registrations_account_idx").on(t.accountId),
   ],
 );
 
@@ -7141,9 +7165,10 @@ export const domainPurchases = commerce.table(
   "domain_purchases",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    storeId: uuid("store_id")
-      .notNull()
-      .references(() => stores.id),
+    /** The store that uses it (D317: a domain may be held by an account and used by no store). */
+    storeId: uuid("store_id").references(() => stores.id),
+    /** Who holds it (D317, `docs/domains-standalone.md` 2): the account, whether or not a store uses it. */
+    accountId: uuid("account_id").references(() => accounts.id),
     registrationId: uuid("registration_id").references(() => domainRegistrations.id),
     registrantId: uuid("registrant_id").references(() => domainRegistrants.id),
     apex: text("apex").notNull(),
@@ -7168,6 +7193,19 @@ export const domainPurchases = commerce.table(
      * payment, and cleared the moment it is handed to the registrar, or when the purchase fails or is voided. Never shown or logged.
      */
     authCodeBox: text("auth_code_box"),
+    /** Who buys, for a purchase made without a store (D317 6): a consumer or a business; null for a store's (billed as a business). */
+    buyer: text("buyer"),
+    /** The VAT the invoice carries (D317 6): Norwegian MVA, reverse charge (the buyer's number), or outside the scope of VAT. */
+    vatKind: text("vat_kind"),
+    vatNumber: text("vat_number"),
+    /** A consumer's express consent that registration starts now and the right of withdrawal ends with it (D317 7), and its words. */
+    consentAt: timestamp("consent_at", { withTimezone: true }),
+    consentText: text("consent_text"),
+    /** Why a paid purchase waits for a platform admin before the registrar is asked (D317 10): a name to look at, or a risky payment. */
+    review: text("review"),
+    reviewOutcome: text("review_outcome"),
+    reviewedBy: uuid("reviewed_by").references(() => accounts.id, { onDelete: "set null" }),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
     problem: text("problem"),
     tries: integer("tries").notNull().default(0),
     nextTryAt: timestamp("next_try_at", { withTimezone: true }),
@@ -7197,6 +7235,12 @@ export const domainPurchases = commerce.table(
     index("domain_purchases_registration_idx").on(t.registrationId),
     index("domain_purchases_registrant_idx").on(t.registrantId),
     index("domain_purchases_chosen_by_idx").on(t.chosenBy),
+    check("domain_purchases_holder", sql`${t.storeId} is not null or ${t.accountId} is not null`),
+    index("domain_purchases_account_idx").on(t.accountId),
+    check("domain_purchases_buyer", sql`${t.buyer} is null or ${t.buyer} in ('consumer', 'business')`),
+    check("domain_purchases_vat_kind", sql`${t.vatKind} is null or ${t.vatKind} in ('mva', 'reverse_charge', 'outside_scope')`),
+    check("domain_purchases_review", sql`${t.review} is null or ${t.review} in ('name', 'risk')`),
+    check("domain_purchases_review_outcome", sql`${t.reviewOutcome} is null or ${t.reviewOutcome} in ('approved', 'refused')`),
   ],
 );
 
@@ -7233,9 +7277,10 @@ export const dnsZones = commerce.table(
   "dns_zones",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    storeId: uuid("store_id")
-      .notNull()
-      .references(() => stores.id),
+    /** The store that uses it (D317: a domain may be held by an account and used by no store). */
+    storeId: uuid("store_id").references(() => stores.id),
+    /** Who holds it (D317, `docs/domains-standalone.md` 2): the account, whether or not a store uses it. */
+    accountId: uuid("account_id").references(() => accounts.id),
     apex: text("apex").notNull(),
     host: text("host").notNull().default("vercel"),
     status: text("status").notNull().default("active"),
@@ -7249,6 +7294,9 @@ export const dnsZones = commerce.table(
     /** The nameservers it moved to, as the owner gave them. */
     movedTo: jsonb("moved_to"),
     leftAt: timestamp("left_at", { withTimezone: true }),
+    /** What the domain shows while no store uses it (D317 8): a holding page, a redirect to `holding_redirect`, or nothing. */
+    holding: text("holding").notNull().default("parked"),
+    holdingRedirect: text("holding_redirect"),
     createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
@@ -7259,6 +7307,9 @@ export const dnsZones = commerce.table(
     uniqueIndex("dns_zones_live_idx").on(t.apex).where(sql`${t.status} <> 'left'`),
     index("dns_zones_store_idx").on(t.storeId),
     index("dns_zones_created_by_idx").on(t.createdBy),
+    check("dns_zones_holder", sql`${t.storeId} is not null or ${t.accountId} is not null`),
+    index("dns_zones_account_idx").on(t.accountId),
+    check("dns_zones_holding", sql`${t.holding} in ('parked', 'redirect', 'off') and (${t.holding} <> 'redirect' or ${t.holdingRedirect} is not null)`),
   ],
 );
 
@@ -7273,9 +7324,8 @@ export const dnsChanges = commerce.table(
     zoneId: uuid("zone_id")
       .notNull()
       .references(() => dnsZones.id),
-    storeId: uuid("store_id")
-      .notNull()
-      .references(() => stores.id),
+    /** The store that uses it (D317: a domain may be held by an account and used by no store). */
+    storeId: uuid("store_id").references(() => stores.id),
     source: text("source").notNull(),
     summary: text("summary").notNull(),
     before: jsonb("before").notNull(),
