@@ -8,7 +8,7 @@ start any step, and read the step in full before you write code for it.
 | Phase | What it gives | Status |
 |---|---|---|
 | 1 | Measuring what each store uses (storage, traffic, emails, AI, catalogue size), shown read-only | built; the drain waits on the owner |
-| 2 | Limits per plan, owner and store; enforcement of the costly actions; alerts | built; no limits set yet |
+| 2 | Limits per plan, owner and store; enforcement of the costly actions; alerts | built; the four plans' limits seeded (2026-10-23) |
 | 3 | Protection inside the shared setup: timeouts, per-store budgets, firewall, read replica | 3.2, 3.4 (off) and 3.5 built; 3.1 and 3.3 wait on the owner |
 | 4 | Peaks and reliability: peak calendar, checkout queue, load tests, SLOs, restore drills | 4.1, 4.3 and 4.5 built; 4.2 and 4.4 wait on the owner |
 | 5 | Hosting levels: cells, moving a store, the first Dedicated store | spike written (`docs/cells.md`), waiting on the owner |
@@ -51,7 +51,8 @@ These are decisions made while building. Where this file and the code disagree b
 
 ### Waiting on the owner
 
-1. The numbers per plan (section 9, question 1). Until they are set on Plans → Limits, every store is unlimited and nothing is refused.
+1. ~~The numbers per plan~~: decided 2026-10-23 (section 9, question 1), seeded by migration `20261023122903_capacity_plan_limits`.
+   Overage (question 2): decided, only the offer of a bigger plan; nothing to build.
 2. Creating the Vercel log drain (step 1.4, settings below) and setting `USAGE_DRAIN_SECRET` (and `USAGE_DRAIN_SAMPLE_RATE` if
    sampling) in Vercel's production environment.
 3. Statement timeouts (3.1), the firewall (3.3), a read replica and `READ_DATABASE_URL` (3.4), the checkout queue (4.2), service levels
@@ -1031,7 +1032,27 @@ Ask these at the gates named above, one at a time, with the recommendation given
      | Stores per owner | 1 | 3 | 10 |
 
    - The default for stores without a plan: Start's.
-2. **Overage.** Should traffic over a soft limit be billed (a metered Stripe price), or only answered with an offer
+
+   **Decided (2026-10-23, the owner's go-ahead on the recommendation).** Production's plans are Basic, Grow, Advanced and Plus, so
+   the three tiers became four. Migration `20261023122903_capacity_plan_limits` writes them by plan name (a database without those
+   plans gets nothing) and keeps any limit an admin set first:
+
+   | Limit | Basic | Grow | Advanced | Plus |
+   |---|---|---|---|---|
+   | Storage | 5 GB | 50 GB | 250 GB | 1,000 GB |
+   | Products | 500 | 10,000 | unlimited | unlimited |
+   | Staff | 3 | 15 | 50 | unlimited |
+   | Domains | 1 | 5 | 20 | 50 |
+   | Marketing emails a month | 2,000 | 25,000 | 150,000 | 500,000 |
+   | AI on Kaizena Flow's key a month | $5 | $20 | $75 | $250 |
+   | Visits a month (warns only) | 1 million | 5 million | 25 million | unlimited |
+   | Stores per owner | 1 | 3 | 10 | 25 |
+
+   Bandwidth is left unset (not measured). **No platform default is set**, unlike the recommendation: a default would also limit
+   the owner's own development stores, which have no plan, and every test database. A store without a plan stays unlimited until
+   it chooses one; set a default on Plans → Limits if that should change. Real stores' usage on the day was far under every limit
+   (at most 9 products, 1 staff, 1 domain, 1 MB of files), so nothing in use is refused.
+2. **Overage.** **Decided: only the offer of a bigger plan**; nothing is billed for traffic. Should traffic over a soft limit be billed (a metered Stripe price), or only answered with an offer
    of the next plan? Recommendation: only the offer for now. Billing overage is a later step on `syncPlans()`.
 3. **The Vercel log drain.** Is its cost per GB acceptable, at which sampling rate? Recommendation: start at 100 % and
    lower it if the bill says so; the figures are then marked estimated.

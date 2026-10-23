@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
 import type { PGlite } from "@electric-sql/pglite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -6306,6 +6309,22 @@ describe("usage and limits (D314)", () => {
     await expect(db.query("insert into commerce.limit_overrides (store_id, key, value, reason) values ($1, 'products', 2000, 'Again')", [store])).rejects.toThrow();
     await expect(db.query("insert into commerce.limit_overrides (key, value, reason) values ('products', 1, 'Nobody')")).rejects.toThrow();
     await expect(db.query("insert into commerce.limit_overrides (store_id, key, value, reason) values ($1, 'staff_seats', 1, ' ')", [store])).rejects.toThrow();
+  });
+
+  it("gives the four plans their recommended limits by name, keeps an admin's own, and sets no default", async () => {
+    const seed = readFileSync(path.join(process.cwd(), "supabase/migrations/20261023122903_capacity_plan_limits.sql"), "utf8");
+    // The migration ran before any plan existed here: nothing was written.
+    expect(Number((await one<{ n: number }>("select count(*)::int as n from commerce.plan_limits where key = 'storage_bytes' and plan_id is not null")).n)).toBe(0);
+    const { id: basic } = await one<{ id: string }>("insert into commerce.plans (name) values ('Basic') returning id");
+    const { id: plus } = await one<{ id: string }>("insert into commerce.plans (name) values ('Plus') returning id");
+    await db.query("insert into commerce.plan_limits (plan_id, key, value) values ($1, 'products', 42)", [basic]);
+    await db.exec(seed);
+    const value = async (plan: string, key: string) => (await one<{ value: string | null }>("select value from commerce.plan_limits where plan_id = $1 and key = $2", [plan, key]))?.value;
+    expect(Number(await value(basic, "storage_bytes"))).toBe(5 * 1024 ** 3);
+    expect(Number(await value(basic, "products"))).toBe(42);
+    expect(await value(plus, "products")).toBeNull();
+    expect(Number(await value(plus, "stores_owned"))).toBe(25);
+    expect(Number((await one<{ n: number }>("select count(*)::int as n from commerce.plan_limits where plan_id is null and key = 'storage_bytes'")).n)).toBe(0);
   });
 
   it("keeps a busy time to at most 14 days", async () => {

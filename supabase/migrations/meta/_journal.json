@@ -2934,6 +2934,13 @@
       "when": 1792752440381,
       "tag": "20261023104720_capacity_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 419,
+      "version": "7",
+      "when": 1792758543863,
+      "tag": "20261023122903_capacity_plan_limits",
+      "breakpoints": true
     }
   ]
 }
