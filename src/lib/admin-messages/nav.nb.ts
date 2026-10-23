@@ -318,6 +318,8 @@ export const NAV_NB: Record<string, string> = {
   "Kaizena Flow's default AI provider and models.": "Kaizena Flows standard KI-leverandør og modeller.",
   "AI usage": "KI-bruk",
   "Usage and limits": "Bruk og grenser",
+  "Domains stores buy through Kaizena Flow: prices per currency, which stores may buy, registrations and purchases that need a look.":
+    "Domener butikker kjøper gjennom Kaizena Flow: priser per valuta, hvilke butikker som kan kjøpe, registreringer og kjøp som må ses på.",
   Limits: "Grenser",
   "What each plan includes of storage, products, staff, domains, emails, AI and traffic, and the default for stores without a plan.":
     "Hva hvert abonnement inkluderer av lagring, produkter, ansatte, domener, e-post, KI og trafikk, og standarden for butikker uten abonnement.",

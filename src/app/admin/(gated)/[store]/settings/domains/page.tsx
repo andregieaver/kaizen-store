@@ -1,13 +1,18 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
+import { DomainBuyer } from "@/components/admin/domain-buyer";
 import { DomainHealthCard } from "@/components/admin/domain-health-card";
+import { DomainRegistrationsCard } from "@/components/admin/domain-registrations-card";
 import { DomainsPanel } from "@/components/admin/domains-panel";
 import { hostOrigin, storeBase, storeDomain, storeHref } from "@/lib/paths";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { checkWaitingDomains, deployIfBehind, listStoreDomains, routedAsSaved } from "@/server/domains";
 import { storeDomainHealth } from "@/server/domain-health";
-import { registrationFacts } from "@/server/domain-registrations";
+import { buyingOpen, renewalOffer, storeDomainPurchases } from "@/server/domain-purchases";
+import { suggestedRegistrant } from "@/server/domain-registrant";
+import { registrationFacts, storeRegistrations } from "@/server/domain-registrations";
+import type { Membership } from "@/server/auth";
 import { domainsConfigured } from "@/server/vercel";
 import { PageHeader } from "@/components/admin/ui";
 
@@ -15,7 +20,17 @@ import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { domainLanguages } from "@/lib/custom-domains";
 
-import { addDomainAction, checkDomainAction, languageDomainAction, primaryDomainAction, removeDomainAction } from "./actions";
+import {
+  addDomainAction,
+  buyDomainAction,
+  checkDomainAction,
+  domainRenewalAction,
+  languageDomainAction,
+  primaryDomainAction,
+  removeDomainAction,
+  renewDomainAction,
+  searchDomainsAction,
+} from "./actions";
 
 export const metadata: Metadata = { title: "Domains" };
 
@@ -43,6 +58,9 @@ export default async function DomainsPage({ params }: PageProps<"/admin/[store]/
       <PageHeader title="Domains" description={<>Where shoppers find your store: its address on Kaizena Flow, or a domain of your own.</>} />
       <Suspense fallback={<div className="h-24 animate-pulse rounded-card bg-sunken" />}>
         <DomainHealth storeId={store.id} lang={lang} />
+      </Suspense>
+      <Suspense fallback={<div className="h-24 animate-pulse rounded-card bg-sunken" />}>
+        <GetADomain member={current} lang={lang} />
       </Suspense>
       <DomainsPanel
         address={storeHref(store.slug, storeBase(store.slug))}
@@ -82,5 +100,46 @@ async function DomainHealth({ storeId, lang }: { storeId: string; lang: ReturnTy
       words={adminText(lang, "domains")}
       locale={ADMIN_LANG_FACTS[lang].locale}
     />
+  );
+}
+
+/** Getting a domain here (D315 phase 2), and what the store registered and is buying. */
+async function GetADomain({ member, lang }: { member: Membership; lang: ReturnType<typeof adminLangOf> }) {
+  const { store } = member;
+  const words = adminText(lang, "domains");
+  const locale = ADMIN_LANG_FACTS[lang].locale;
+  const owner = memberCan(member, "owner");
+  const [open, registrations, purchases] = await Promise.all([buyingOpen(store.id), storeRegistrations(store.id), storeDomainPurchases(store.id)]);
+  const renewals = await Promise.all(
+    registrations.map((r) => (owner && r.status !== "transferring_out" ? renewalOffer(store.id, r.apex, r.registrar, 1).catch(() => null) : Promise.resolve(null))),
+  );
+  return (
+    <>
+      <DomainRegistrationsCard
+        registrations={registrations.map((r, i) => ({
+          apex: r.apex,
+          status: r.status,
+          expiresAt: r.expiresAt,
+          renew: r.renew,
+          contactVerified: r.contactVerified,
+          renewal: renewals[i] ? { currency: renewals[i].currency, amountMinor: renewals[i].amountMinor } : null,
+        }))}
+        purchases={purchases}
+        owner={owner}
+        words={words}
+        locale={locale}
+        actions={{ renewal: domainRenewalAction.bind(null, store.slug), renew: renewDomainAction.bind(null, store.slug) }}
+      />
+      <DomainBuyer
+        search={searchDomainsAction.bind(null, store.slug)}
+        buy={buyDomainAction.bind(null, store.slug)}
+        words={words.get}
+        locale={locale}
+        initialQuery={store.name}
+        canBuy={owner && open}
+        closedWhy={!owner ? words.get.ownerOnly : !open ? words.get.notOpen : null}
+        registrant={suggestedRegistrant(member)}
+      />
+    </>
   );
 }

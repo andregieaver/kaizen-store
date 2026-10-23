@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import type Stripe from "stripe";
 
 import { PAYMENT_MODES, type PaymentModeName } from "@/lib/stripe-account";
@@ -5,6 +6,7 @@ import { applySubscription } from "@/server/billing";
 import { getPlatformWebhookSecret } from "@/server/connect";
 import { handleReferralEvent } from "@/server/referral-billing";
 import { stripeFor } from "@/server/stripe";
+import { applyDomainInvoiceEvent, registerPaidDomains } from "@/server/domain-purchases";
 import { applyThemeInvoiceEvent } from "@/server/theme-prices";
 
 /**
@@ -34,8 +36,11 @@ export async function POST(request: Request, { params }: RouteContext<"/api/stri
   if (event.type.startsWith("invoice.") || event.type.startsWith("credit_note.")) {
     try {
       const theme = await applyThemeInvoiceEvent(mode as PaymentModeName, event);
+      // A domain's invoice paid (D315): the registration starts at once, after the answer.
+      const domain = await applyDomainInvoiceEvent(event);
+      if (domain.detail === "domain paid") after(() => registerPaidDomains().then(() => undefined));
       const result = await handleReferralEvent(mode as PaymentModeName, event);
-      return Response.json({ received: true, ...(result.handled || theme.handled ? {} : { ignored: event.type }) });
+      return Response.json({ received: true, ...(result.handled || theme.handled || domain.handled ? {} : { ignored: event.type }) });
     } catch {
       // Stripe retries on errors, with backoff, for up to three days; every step is safe to repeat.
       return new Response("Could not process the event", { status: 500 });

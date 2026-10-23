@@ -47,11 +47,11 @@ import {
  * A tool with a `gate` never runs from the model alone: the call is kept as
  * a pending approval and runs when the owner says yes (the approval gate,
  * as Kaizen Life's): anything sent in the store's name (`send`), made
- * public (`public`) or costing money (`spend`). Everything else, reading and
+ * public (`public`), costing money (`spend`) or changing a domain's DNS or renewal (`domain`, D315). Everything else, reading and
  * notes inside the admin, runs freely.
  */
 
-export type GateCategory = "send" | "public" | "spend";
+export type GateCategory = "send" | "public" | "spend" | "domain";
 
 export type OwnerTool<I extends z.ZodType = z.ZodType, N extends string = string> = {
   name: N;
@@ -983,6 +983,36 @@ export const OWNER_TOOLS = [
     z.object({ domain: z.string().trim().min(3).max(253).describe("The domain, such as example.no, as list_domains gives it.") }),
   ),
   tool(
+    "search_domains",
+    "Searches for domains to buy (D315): the name typed and the same name under a few endings, each free, taken, a premium name (not sold) or an ending not sold yet, with what a free one costs the first year and each year after, in the store's billing currency, from Kaizena Flow's own prices. Never give a price it did not give, and never say a name is free that it did not say is. Read-only: to buy one, call buy_domain.",
+    z.object({ query: z.string().trim().min(1).max(200).describe("The name to look for, such as the store's name or nordiskbutikk.shop.") }),
+  ),
+  tool(
+    "buy_domain",
+    "Buys a domain for the store (D315): it is registered to the owner or their company from the store's business details and the owner's account (never details you invent), paid on Kaizena Flow's invoice first, then registered, and the store moves to it by itself unless connect is false. Only a name search_domains said is free. The owner's yes is asked with the price; the registration can't be undone once made, and if it can't be made the money goes back. The registrant needs a phone number: ask the owner for it and pass it. Needs the owner's approval.",
+    z.object({
+      domain: z.string().trim().min(3).max(253).describe("The name to buy, exactly as search_domains gave it."),
+      connect: z.boolean().default(true).describe("Use it as the store's address once registered (the default)."),
+      phone: z.string().trim().max(30).optional().describe("The registrant's phone number with its country code, as the owner gave it."),
+    }),
+    "spend",
+  ),
+  tool(
+    "renew_domain",
+    "Renews one of the store's domains registered through Kaizena Flow for a year now (D315), at today's renewal price, paid on Kaizena Flow's invoice first. A domain that renews by itself needs nothing: say when it renews instead. Needs the owner's approval with the price.",
+    z.object({ domain: z.string().trim().min(3).max(253).describe("The domain, as list_domains gives it.") }),
+    "spend",
+  ),
+  tool(
+    "set_domain_renewal",
+    "Turns a registered domain's renewal on or off (D315). Off: it is not renewed, and stops on its expiry date (say the date). On: it renews by itself, invoiced 30 days ahead. Needs the owner's approval.",
+    z.object({
+      domain: z.string().trim().min(3).max(253).describe("The domain, as list_domains gives it."),
+      renew: z.boolean().describe("true to renew by itself, false to let it stop."),
+    }),
+    "domain",
+  ),
+  tool(
     "list_support_conversations",
     "The store's support conversations, most recent first: each one's title and summary (written by AI for staff), whether it is waiting, with the AI, with a person or ended, its outcome, topics, tone alert, rating and the link that opens it in the inbox. Never the words of a conversation: to read one, give the link. Read-only.",
     z.object({ status: z.enum(["open", "ended", "all"]).default("all").describe("Open ones only, ended ones only, or all."), limit: limit(20, 10) }),
@@ -1018,6 +1048,7 @@ export const GATE_WORDS: Record<GateCategory, string> = {
   send: "Sends something in the store's name",
   public: "Changes what the site shows",
   spend: "Costs money",
+  domain: "Changes your domain: where it points, its email or its renewal",
 };
 
 /**
@@ -1039,6 +1070,12 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
       return input.archived === false ? `Put the product "${text("product")}" back as a draft.` : `Take the product "${text("product")}" off the site.`;
     case "add_redirect":
       return redirectSummary(text("from"), text("to"));
+    case "set_domain_renewal":
+      return input.renew === false ? `Stop renewing ${text("domain")}: it stops working on its expiry date.` : `Renew ${text("domain")} by itself each year, invoiced 30 days ahead.`;
+    case "buy_domain":
+      return `Buy ${text("domain")} for a year${input.connect === false ? "" : " and make it the store's address"}.`;
+    case "renew_domain":
+      return `Renew ${text("domain")} for a year.`;
     // A product's own title and currencies are put in by the server (`productApprovalWords()`); these words name it as given.
     case "update_product":
     case "set_prices":

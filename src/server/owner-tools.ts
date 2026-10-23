@@ -64,7 +64,7 @@ import { NOT_EDIT_REFUND } from "./analytics-sql";
 import { ordersToSend, pickListData } from "./pick-list";
 import { textList } from "./sql-arrays";
 import { explainImportProblemsTool, listDataJobsTool } from "./data-job-tools";
-import { checkDomainTool, listDomainsTool } from "./domain-tools";
+import { buyDomainTool, checkDomainTool, listDomainsTool, preflightDomainTool, renewDomainTool, searchDomainsTool, setDomainRenewalTool } from "./domain-tools";
 import { addRedirectTool, preflightRedirectTool, redirectOverviewTool } from "./redirect-tools";
 import { ossReturnDataTool, vatReportTool } from "./tax-report-tools";
 import { customerInsights, productPerformance, restockSuggestions, salesFunnel, salesTrend } from "./owner-insights";
@@ -1900,6 +1900,13 @@ export async function preflightOwnerTool(ctx: OwnerToolContext, name: string, ra
     if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
     return preflightReturnTool(ctx, name, input.input as Record<string, unknown>);
   }
+  // A domain that can't be bought, renewed or changed is refused now, never kept for a yes (D315).
+  if (name === "buy_domain" || name === "renew_domain" || name === "set_domain_renewal") {
+    const tool = OWNER_TOOLS_BY_NAME[name];
+    const input = readToolInput(tool, raw);
+    if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
+    return preflightDomainTool(ctx, name, input.input as Record<string, unknown>);
+  }
   // A redirect that could not be added, or is already there, is refused now, never kept for a yes (D168).
   if (name === "add_redirect") {
     const tool = OWNER_TOOLS_BY_NAME[name];
@@ -2106,6 +2113,10 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   usage_and_limits: usageAndLimitsTool,
   list_domains: listDomainsTool,
   check_domain: checkDomainTool,
+  search_domains: searchDomainsTool,
+  buy_domain: buyDomainTool,
+  renew_domain: renewDomainTool,
+  set_domain_renewal: setDomainRenewalTool,
   list_data_jobs: listDataJobsTool,
   explain_import_problems: explainImportProblemsTool,
   redirect_overview: redirectOverviewTool,
@@ -2150,7 +2161,9 @@ export async function runOwnerTool(ctx: OwnerToolContext, name: string, raw: unk
         : SETUP_TOOLS.has(name)
           ? { area: "settings" as const }
           : {};
-    await audit(ctx.account.id, ctx.store.id, `store.assistant.${name}`, { args: input.input as Record<string, unknown> }, area);
+    // A domain's registrant phone is a person's detail: never in the activity log (D315).
+    const args = name === "buy_domain" ? { ...(input.input as Record<string, unknown>), phone: undefined } : (input.input as Record<string, unknown>);
+    await audit(ctx.account.id, ctx.store.id, `store.assistant.${name}`, { args }, area);
   }
   return result;
 }

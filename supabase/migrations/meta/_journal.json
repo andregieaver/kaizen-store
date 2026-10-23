@@ -2955,6 +2955,13 @@
       "when": 1792769054597,
       "tag": "20261023152414_domains_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 422,
+      "version": "7",
+      "when": 1792770634357,
+      "tag": "20261023155034_domains_buying",
+      "breakpoints": true
     }
   ]
 }

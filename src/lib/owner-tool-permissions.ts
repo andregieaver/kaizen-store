@@ -22,6 +22,10 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   // Domains (D315) are a Settings page: read with `settings:read`; buying, renewing, DNS changes and moves are the owner's.
   list_domains: "settings:read",
   check_domain: "settings:read",
+  search_domains: "owner",
+  buy_domain: "owner",
+  renew_domain: "owner",
+  set_domain_renewal: "owner",
   // Looking (the page's `read`)
   store_overview: "owner",
   sales_summary: "analytics:read",

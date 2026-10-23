@@ -143,6 +143,50 @@ export async function addStoreDomain(
 }
 
 /**
+ * Connects a domain Kaizena Flow registered for the store, or whose DNS it keeps (D315 4.4): no TXT proof is needed (the registration or the
+ * zone is the store's), so it is added to the project and is active at once, the store's address if it has none, and a deployment is asked
+ * for. The plan's domain limit was checked before anything was charged; it is not checked again here, so a paid domain always connects.
+ */
+export async function connectOwnedDomain(
+  account: Account | null,
+  storeId: string,
+  hostname: string,
+  services: DomainServices = vercelDomains,
+): Promise<Result<{ domain: StoreDomain }>> {
+  const [existing] = await db().execute<Row>(sql`
+    select id, store_id, status from commerce.store_domains where hostname = ${hostname} and (store_id = ${storeId}::uuid or status = 'active')
+    order by (store_id = ${storeId}::uuid) desc limit 1
+  `);
+  if (existing && String(existing.store_id) !== storeId) return { ok: false, problems: [`${hostname} is another store's address on Kaizena Flow.`] };
+  let found;
+  try {
+    found = (await services.get(hostname)) ?? (await services.add(hostname));
+    if (!found.verified) found = await services.verify(hostname).catch(() => found!);
+  } catch (error) {
+    return { ok: false, problems: [problemText(error)] };
+  }
+  const checks: DomainChecks = { txt: true, vercelVerified: found.verified, apexName: found.apexName ?? undefined, misconfigured: false, challenges: found.verification };
+  const [row] = existing
+    ? await db().execute<Row>(sql`
+        update commerce.store_domains d set status = 'active', checks = ${JSON.stringify(checks)}::jsonb, checked_at = now(),
+          activated_at = coalesce(d.activated_at, now()),
+          is_primary = d.is_primary or (d.language is null and not exists (select 1 from commerce.store_domains p where p.store_id = d.store_id and p.is_primary))
+         where d.id = ${String(existing.id)}::uuid
+        returning id, hostname, token, status, is_primary, language, checks, checked_at, activated_at
+      `)
+    : await db().execute<Row>(sql`
+        insert into commerce.store_domains (store_id, hostname, token, status, checks, checked_at, activated_at, created_by, is_primary)
+        values (${storeId}::uuid, ${hostname}, ${randomBytes(12).toString("hex")}, 'active', ${JSON.stringify(checks)}::jsonb, now(), now(), ${account?.id ?? null}::uuid,
+          not exists (select 1 from commerce.store_domains p where p.store_id = ${storeId}::uuid and p.is_primary))
+        returning id, hostname, token, status, is_primary, language, checks, checked_at, activated_at
+      `);
+  const domain = toDomain(row);
+  await audit(account?.id ?? null, storeId, "store.domain_activated", { hostname, primary: domain.isPrimary, registered: true });
+  await requestDeploy(services).catch(() => {});
+  return { ok: true, domain };
+}
+
+/**
  * Checks a waiting domain's DNS: our TXT record, Vercel's verification and
  * where it points. With all three in place it becomes active, the store's
  * primary if it has none, and a deployment is asked for.

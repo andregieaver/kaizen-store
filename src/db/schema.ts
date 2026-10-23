@@ -580,6 +580,8 @@ export const stores = commerce.table(
     openCartOnAdd: boolean("open_cart_on_add").notNull().default(false),
     /** The AI manager may change DNS records of the store's kept zones without asking (D315 decision 5, `docs/domains.md` 7.1). */
     domainDnsAuto: boolean("domain_dns_auto").notNull().default(false),
+    /** A platform admin opened buying domains for this store before it opens to all (D315 decision 9). */
+    domainBuying: boolean("domain_buying").notNull().default(false),
     /**
      * What checkout says about the store's terms (wave 1, 1e): `link` (a sentence with links, the default), `checkbox`
      * (the same with a required tick) or `off` (nothing drawn, nothing recorded). A copy of a store starts with `link`.
@@ -1486,6 +1488,8 @@ export const platformSettings = commerce.table(
     id: boolean("id").primaryKey().default(true),
     /** Kaizen's fee on each storefront sale, in basis points (100 = 1 %). */
     saleFeeBps: integer("sale_fee_bps").notNull().default(0),
+    /** Buying domains is open to every store (D315 decision 9: once moving away is built); until then only where `stores.domain_buying` is on. */
+    domainsOpen: boolean("domains_open").notNull().default(false),
     /** Search and sharing for Kaizen's own pages (`StoreSeo` in lib/seo, locale `en`). */
     seo: jsonb("seo").notNull().default({}),
     /**
@@ -8242,7 +8246,7 @@ export const assistantApprovals = commerce.table(
     index("assistant_approvals_conversation_idx").on(t.conversationId, t.createdAt),
     index("assistant_approvals_store_idx").on(t.storeId, t.status),
     index("assistant_approvals_account_idx").on(t.accountId),
-    check("assistant_approvals_category", sql`${t.category} in ('send', 'public', 'spend')`),
+    check("assistant_approvals_category", sql`${t.category} in ('send', 'public', 'spend', 'domain')`),
     check("assistant_approvals_status", sql`${t.status} in ('pending', 'done', 'declined', 'failed')`),
   ],
 );

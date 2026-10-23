@@ -978,6 +978,9 @@ const PAGES: readonly AdminPage[] = [
   platform("language", "/languages/[lang]", "Translate a language", "Platform", "One language's interface text: translate it with AI, read it, edit it and mark it reviewed.", {
     keywords: ["interface text", "review", "translation"],
   }),
+  platform("domains", "/domains", "Domains", "Platform", "Domains stores buy through Kaizena Flow (D315): the margin, floor and rounding of prices per currency, opening buying for a store, every registration with its expiry, and purchases that failed or wait.", {
+    keywords: ["domain", "registrar", "dns", "buy domain", "domain prices", "renewal"],
+  }),
   platform("ai.prices", "/ai/prices", "AI prices", "Platform", "What each AI model costs per million tokens in US dollars: set a price, see earlier ones, and the models used without a price. The usage pages show cost from these.", {
     keywords: ["cost", "price", "dollars", "model"],
   }),

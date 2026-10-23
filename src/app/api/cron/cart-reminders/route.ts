@@ -29,6 +29,7 @@ import { refreshKnowledge } from "@/server/knowledge";
 import { refreshMediaEmbeddings } from "@/server/media-library";
 import { PAGES_TAG, pagesTag } from "@/server/pages";
 import { DESIGNS_TAG, designTags, runPlatformThemeUpdates, runThemeUpdates } from "@/server/design-presets";
+import { chargeDomainPurchases, registerPaidDomains } from "@/server/domain-purchases";
 import { chargeDueThemePurchases } from "@/server/theme-prices";
 import { PLATFORM_NAVIGATION_TAG } from "@/server/platform-navigation";
 import { payHostCommissions } from "@/server/host-payments";
@@ -148,12 +149,15 @@ async function run(request: Request) {
   if (platformThemeUpdates.updated > 0) for (const tag of [PLATFORM_NAVIGATION_TAG, PAGES_TAG, DESIGNS_TAG]) revalidateTag(tag, "max");
   // Premium themes due to be paid (D286, never throws): invoiced through Kaizena Flow's billing, a few a run; a try that failed waits.
   const themePurchases = await chargeDueThemePurchases();
+  // Domains (D315, never throw): purchases invoiced, paid ones registered and followed until done (connecting the store), failed ones refunded.
+  const domainPurchases = await chargeDomainPurchases().catch((error) => (console.error("[domains] invoicing failed", error), { invoiced: 0, failed: 0 }));
+  const domainRegistrations = await registerPaidDomains().catch((error) => (console.error("[domains] registering failed", error), { done: 0, failed: 0 }));
   for (const owner of altTexts.owners) {
     revalidateTag(pagesTag(owner.storeId), "max");
     if (owner.storeId) revalidateTag(catalogTag(owner.storeId), "max");
   }
   return Response.json(
-    { carts, plans, bookings, calendars, commissions, searches, embeddings, cache, knowledge, chat, media, altTexts: altTexts.written, forms, deliveries, recurring, storeCopies, bonus, affiliates, recommendations, experiments, replications, returns, invoices, dataJobs, lowStock, draftExpiry, autoArchive, editExpiry, supportIdle, tracking, summaries, payments, themeUpdates: { updated: themeUpdates.updated, refused: themeUpdates.refused }, platformThemeUpdates: { updated: platformThemeUpdates.updated, refused: platformThemeUpdates.refused }, themePurchases },
+    { carts, plans, bookings, calendars, commissions, searches, embeddings, cache, knowledge, chat, media, altTexts: altTexts.written, forms, deliveries, recurring, storeCopies, bonus, affiliates, recommendations, experiments, replications, returns, invoices, dataJobs, lowStock, draftExpiry, autoArchive, editExpiry, supportIdle, tracking, summaries, payments, themeUpdates: { updated: themeUpdates.updated, refused: themeUpdates.refused }, platformThemeUpdates: { updated: platformThemeUpdates.updated, refused: platformThemeUpdates.refused }, themePurchases, domainPurchases, domainRegistrations },
     { headers: { "Cache-Control": "no-store" } },
   );
 }

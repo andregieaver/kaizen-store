@@ -287,7 +287,7 @@ export type ThemeBillingDeps = {
 class BillingProblem extends Error {}
 
 /** The store's Stripe account as Kaizena Flow's customer in the mode, made as choosing a plan makes it when the store has none yet. */
-async function billedAccount(storeId: string, mode: PaymentModeName): Promise<string | null> {
+export async function billedAccount(storeId: string, mode: PaymentModeName): Promise<string | null> {
   const existing = (await getStripeAccounts(storeId))[mode]?.accountId;
   if (existing) return existing;
   const [row] = await db().execute<Row>(sql`
@@ -307,7 +307,7 @@ async function billedAccount(storeId: string, mode: PaymentModeName): Promise<st
 }
 
 /** How the store pays Kaizena Flow: by its plan's card when the plan is paid by card in this mode, else by invoice. */
-async function collectionFor(storeId: string, mode: PaymentModeName, stripe: ThemeBillingStripe): Promise<{ card: string | null }> {
+export async function collectionFor(storeId: string, mode: PaymentModeName, stripe: ThemeBillingStripe): Promise<{ card: string | null }> {
   const billing = await getStoreBilling(storeId);
   if (!billing?.subscriptionId || billing.mode !== mode) return { card: null };
   try {

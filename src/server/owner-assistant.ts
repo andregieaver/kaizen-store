@@ -21,6 +21,7 @@ import { draftApprovalDetails } from "./order-ops-tools";
 import { featureApprovalDetails } from "./feature-tools";
 import { setFeatureInput } from "@/lib/feature-tools";
 import { gateNeeded, OwnerToolError, preflightOwnerTool, runOwnerTool } from "./owner-tools";
+import { domainApprovalDetails } from "./domain-tools";
 import { productApprovalWords } from "./product-tools";
 import { headerFooterApprovalWords, menuApprovalWords, placeApprovalWords, publishApprovalWords } from "./site-tools";
 import { setupApprovalWords } from "./setup-tools";
@@ -649,6 +650,15 @@ export async function keepForApproval(
       const details = await featureApprovalDetails(store, parsed.data);
       summary = details.summary;
       args = { ...args, approved_warnings: details.warnings };
+    }
+  }
+  // A domain's purchase or renewal is described with today's price, which is kept with the call (a value the model passed is replaced): the
+  // owner's yes is for that price only, and a different price later is refused (D315).
+  if (store && (tool === "buy_domain" || tool === "renew_domain")) {
+    const details = await domainApprovalDetails({ account: ctx.account, store }, tool, args);
+    if (details) {
+      summary = details.summary;
+      args = details.args;
     }
   }
   const [row] = await db().execute<Row>(sql`

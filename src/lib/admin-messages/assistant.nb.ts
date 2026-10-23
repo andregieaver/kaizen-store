@@ -81,7 +81,7 @@ export const assistantNb: AssistantMessages = {
   },
   approval: {
     region: "Venter på godkjenningen din",
-    gates: { send: "Sender noe i butikkens navn", public: "Endrer det nettstedet viser", spend: "Koster penger" },
+    gates: { send: "Sender noe i butikkens navn", public: "Endrer det nettstedet viser", spend: "Koster penger", domain: "Endrer domenet ditt: hvor det peker, e-posten eller fornyelsen" },
     approve: "Godkjenn",
     decline: "Avslå",
     declined: "Avslått.",

@@ -686,6 +686,7 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
   },
   "platform:languages": { title: "Språk", keywords: ["språk", "oversett", "flerspråklig", "legg til språk", "verdens språk"] },
   "platform:language": { title: "Oversett et språk", keywords: ["oversett", "oversettelse", "grensesnittekst", "gjennomgang", "språk"] },
+  "platform:domains": { title: "Domener", keywords: ["domene", "domener", "registrar", "dns", "kjøp domene", "domenepriser", "fornyelse"] },
   "platform:ai.prices": { title: "KI-priser", keywords: ["ki-priser", "pris", "kostnad", "dollar", "modell"] },
   "platform:chat": { title: "Chatassistent", keywords: ["chatassistent", "chatbot", "kunnskapsbase", "chat"] },
   "platform:google-reviews": { title: "Google-omtaler", keywords: ["google-omtaler", "google", "omtaler", "anmeldelser", "attester"] },
