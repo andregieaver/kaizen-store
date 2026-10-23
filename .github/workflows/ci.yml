@@ -27,6 +27,11 @@ concurrency:
   group: ci-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+
+# The type check and the build need more than Node's default heap once the admin's catalogues are typed (D312).
+env:
+  NODE_OPTIONS: --max-old-space-size=7168
+
 jobs:
   # The checks run side by side (about 10 minutes once a runner is free). Every job below is one runner to wait for
   # when GitHub's queue is long, so the gate is these three jobs themselves (`release` needs them) and not a
