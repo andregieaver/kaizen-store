@@ -1,11 +1,12 @@
-# Domains: buying, DNS by the AI manager, and moving away (D315, proposed)
+# Domains: buying, DNS by the AI manager, and moving away (D315)
 
 The owner (22 October 2026): "If we wanted to implement a new domain search, and the ability purchase domain directly on our platform.
 How could we offer such a service?" and then: "One big headache i want to release along the way is handling dns settings and other domain
 related actions. The store's ai assistant needs to be able to handle this on behalf of the owner. Also, should the store owner choose to
 move their domain elsewhere, let's make this easy too. Make the plan, touch no code."
 
-This is a plan. Nothing here is built. The decision number is taken when section 12 is settled; its row then goes in `docs/decisions.md`.
+This is a plan. Nothing here is built. The owner settled most of section 12 on 23 October 2026 (D315 in `docs/decisions.md`); the rest is
+marked open there, with a recommendation.
 
 ## 1. What is there today, and what we found
 
@@ -43,13 +44,18 @@ A domain is three things. Each may be with us or elsewhere, and the owner can mo
 | Layer | With Kaizena Flow | Elsewhere | What the AI manager may do |
 |---|---|---|---|
 | **Registration**: who the domain is registered with and who renews it | bought here, through a registrar adapter (4.1) | at the owner's own registrar | with us: renew, set renewal, prepare a move. Elsewhere: read its expiry (RDAP) and warn |
-| **DNS**: who answers for its records | Vercel DNS in Kaizena Flow's team | at the owner's DNS provider | with us: change records, always after the owner's yes. Elsewhere: read, explain, write out the exact records, Domain Connect where the provider supports it |
+| **DNS**: who answers for its records | Vercel DNS in Kaizena Flow's team | at the owner's DNS provider | with us: change records, after the owner's yes, or at once where the owner set DNS changes to automatic (7.1). Elsewhere: read, explain, write out the exact records, Domain Connect where the provider supports it |
 | **Connection**: whether the store is served on it | `store_domains` (P8, as today) | (n/a) | connect, make primary, give a language (D313) |
 
-The rule that follows: **the AI changes only what we host, and only after the owner says yes.** For everything else it reads, explains and
-prepares, and the owner does the one step. Every combination is allowed and stays working. Registration elsewhere with DNS here, and
-registration here with DNS elsewhere, are both normal states, not errors. That is also what makes moving away easy (section 8): a move is one
-layer at a time, each step checked by code before the next.
+The rule that follows: **the AI changes only what we host, and only as the owner allows: after their yes by default, or at once if they set
+DNS changes to automatic.** For everything else it reads, explains and prepares, and the owner does the one step. Every combination is
+allowed and stays working. Registration elsewhere with DNS here, and registration here with DNS elsewhere, are both normal states, not
+errors. That is also what makes moving away easy (section 8): a move is one layer at a time, each step checked by code before the next.
+
+**Cells (decided 23 October 2026).** If a store has a cell of its own (D314, `docs/cells.md`), only the **connection** follows it: the domain
+is attached to the cell's Vercel project. Registrations and DNS zones stay in the control plane's Vercel team, whatever cell the store is in.
+So moving a store between cells switches the connection and never touches its registration or its DNS. Registrar and DNS calls are made
+from the control plane only.
 
 ## 3. What the owner sees (Homer first, Lisa one step away)
 
@@ -79,9 +85,18 @@ names them. Which registrar sells a TLD is data, read daily from each registrar'
 
 * **Vercel first**, for generic TLDs: `com`, `shop`, `store`, `online`, `net` and the rest. The domain lands on Vercel DNS in our team, so
   connecting it needs nothing from the owner.
-* **An EU registrar second**, for `no`, `se`, `dk`, `fi`, `eu` and `de`. Which one is spike S2. It must keep the registrant's data in the
-  EU and support those TLDs through a reseller API. At registration it sets Vercel's nameservers, so the domain joins the same DNS layer and
-  connects the same way.
+* **An EU registrar second** (decided 23 October 2026), for `se`, `dk`, `fi`, `eu` and `de`. Which one is spike S2. It must keep the
+  registrant's data in the EU and support those TLDs through a reseller API. At registration it sets Vercel's nameservers, so the domain
+  joins the same DNS layer and connects the same way.
+* **`.no` goes through Norid.** Norid accepts an application for a `.no` name only from a registrar that has an agreement with Norid
+  (policy 7.1), and takes no payment from the holder (13.2). So every `.no` we sell is registered either by Kaizena Flow as a Norid registrar
+  of its own, or by a registrar that is one. This is decision 2a in section 12. Section 13, S2, has what each route takes. The adapter is
+  the same either way:
+  * a `norid` adapter speaks Norid's EPP;
+  * otherwise the EU registrar's adapter sells `.no` too.
+
+  Norid checks a name's nameservers when it is registered, so the zone is made on Vercel DNS *before* the registration asks for Vercel's
+  nameservers.
 
 The owner never sees which registrar sells a name.
 
@@ -91,7 +106,8 @@ Search is keyword only, never a model call. It is rate-limited per store and acc
 is (D157).
 
 The suggestions come from the store's own facts in code: its name and slug, its countries' TLDs and a few generic ones (`shop`, `store`,
-`com`). The owner can also type their own name. Each answer is `available`, `taken` (with *I own this one* leading to 6 or 8.5), or
+`com`). A country's TLD is suggested only where the store's business can hold one (`mayHold()`, pure, from the registry's rules in 4.5): a
+`.no` only for a business registered in Norway with a Norwegian address. The owner can also type their own name. Each answer is `available`, `taken` (with *I own this one* leading to 6 or 8.5), or
 `premium`, which phase 1 doesn't offer. Every price shown comes from `commerce.domain_prices` (4.3) and nowhere else. A name the store
 already holds says so.
 
@@ -109,10 +125,11 @@ A store pays in its plan's currency, else its own country's, as for themes (D286
 
 Registration cannot be undone, so the money comes first. A domain purchase is `commerce.domain_purchases`: kind `register`, `renew` or
 `transfer_in`, years, our price, the registrar's quoted cost, and a status that only moves forward (`quoted`, `invoiced`, `paid`,
-`registering`, `done`, or `refunded`, `failed`).
+`awaiting_declaration` for a `.no` (4.5), `registering`, `done`, or `refunded`, `failed`).
 
-1. **Quote.** The registrar's price and availability are read again, and the owner presses a button that names the price (*Buy example.com
-   for NOK 199 a year*).
+1. **Quote.** The registrar's price and availability are read again. The plan's domain limit (D314, `checkLimit(storeId,
+   "custom_domains")`) is checked **before** anything is charged; a store at its limit gets the limit's own sentence and a link to Billing,
+   never an invoice. Then the owner presses a button that names the price (*Buy example.com for NOK 199 a year*).
 2. **Invoice.** Kaizena Flow's Stripe account invoices the store's account, as `invoiceOne()` does for themes: the plan's card at once,
    or a hosted invoice to pay now. Nothing is registered before it is paid.
 3. **Register.** On `invoice.paid` (the billing webhook, with the five-minute job as a fallback), a job claims the purchase and calls
@@ -130,13 +147,32 @@ Registration cannot be undone, so the money comes first. A domain purchase is `c
 
 ### 4.5 The registrant
 
-The domain is registered to **the store's owner or their company, never to Kaizena Flow**. The form is filled in from the store's
-business details and the owner's account, and Homer only confirms. The extra fields a TLD needs come from `contactSchema` and are drawn
-from it (`.no`, for example, wants an organisation number and Norid's own rules, which S2 reads). The registrant is kept in
-`commerce.domain_registrants`.
+The domain is registered to **the store's owner or their company, never to Kaizena Flow** (decided 23 October 2026). The form is filled in
+from the store's business details and the owner's account, and Homer only confirms. The extra fields a TLD needs come from `contactSchema`
+and are drawn from it. The registrant is kept in `commerce.domain_registrants`.
 
 ICANN requires the registrant's email to be verified, or the domain is suspended. Kaizena Flow reads `contactVerification` and puts it on
 Home's attention list with the date the registrar gives, plus a button to send the email again.
+
+**`.no` has Norid's own rules** (read 23 October 2026, section 13, S2):
+
+* **Who may hold one.**
+  * An organisation must be in Enhetsregisteret, with activity and a presence in Norway, and a Norwegian postal address (policy 5.1). It
+    may hold 100 names directly under `.no` (5.2).
+  * A private person must be over 18, in Folkeregisteret with a Norwegian national identity number, and have a Norwegian postal address
+    (5.3). They may hold 5 names (5.4).
+* **Names must match the registers.** An organisation's name must match Brønnøysundregistrene, and a person's the population register,
+  with æ, ø and å as written. The registrant form fills an organisation from the lookup we already have (D124, `src/server/brreg.ts`) and
+  refuses a mismatch before anything is charged.
+* **A person needs a Norid person identifier** (`N.PRI.…`). The person makes it themselves with Norid's own tool. The form links there and
+  waits for it.
+* **The applicant's declaration** (policy 15.1, Appendix G) binds the holder to Norid's terms. It is signed by the person, or by someone
+  authorised by the organisation. It is the owner's step, never the AI's.
+  * Until it is signed, the purchase waits (`awaiting_declaration`), and Home says so with the date it lapses.
+  * If it is never signed, nothing is registered and the purchase is refunded in full. One registrar's flow cancels after 30 days; the
+    time limit is whatever our route's is.
+* **A holder change is a new registration.** Moving a `.no` to another holder ends the subscription and starts a new one with a new date
+  (11.1 to 11.3). Changing **registrar** keeps it (10.1).
 
 ### 4.6 Records the store needs
 
@@ -260,6 +296,22 @@ owner tools, they are also served to Kaizen Life over `/api/mcp`, where gated ca
 Gate `domain` is a new `GateCategory`. Its `GATE_WORDS` are "Changes your domain: where it points, its email or its renewal". `spend` and
 `public` are the existing gates.
 
+**DNS changes can be set to automatic** (decided 23 October 2026: "Yes, but can be set to auto"):
+
+* **The switch.** *Ask me first* is the default. *Let the AI manager change DNS without asking* is a store setting, owner only, behind
+  *Customise* on the Domains page, kept as `stores.domain_dns_auto` and audited `domain.dns_auto_set`. It applies wherever the AI manager
+  runs: in the admin, and for Kaizen Life over `/api/mcp`.
+* **What it covers.** Only the four record tools: `change_dns`, `set_up_email`, `verify_domain_for` and `undo_dns_change`. They then run at
+  once.
+* **What it never covers.** Buying, renewing, `set_domain_renewal`, `switch_nameservers`, `connect_domain` and anything in section 8.
+* **What stays the same.** An automatic change is still made only through `planDns()`, with the same refusals. It never touches a protected
+  record, and it is kept in `dns_changes` with `source = ai_manager` and its *Undo*. Each one is shown on Home for seven days ("The AI
+  manager changed 2 records on example.com · Undo"), and in Activity as the AI's.
+* **One case still asks** (a recommendation, open as decision 5a): a change whose effects stop email for the domain. That means removing
+  every MX record, or replacing the mail provider.
+* **Later.** When unit B's autonomy levels exist (D309, `docs/ai-autopilot.md` 7), this switch becomes the level of a *Domains* area (*Ask
+  me first*, *Just do it*), with the same limits. Nothing else changes.
+
 | Tool | Gate | Who | What it does |
 |---|---|---|---|
 | `list_domains` | (none) | `settings:read` | Each domain: connection, primary, language, where it is registered and its DNS hosted, expiry, renewal, health in one line |
@@ -279,8 +331,8 @@ Gate `domain` is a new `GateCategory`. Its `GATE_WORDS` are "Changes your domain
 | `switch_nameservers` | `domain` | owner | Moves DNS away (8.2), only after `nameserverSwitchCheck()` passed |
 
 **Never from the AI.** The transfer code; the registrant's identity; deleting a registration or a zone; anything on a domain the store
-does not hold. A DNS change always waits for a yes. The only exception is the store's own records when the owner connects a domain, because
-connecting is the yes.
+does not hold; a `.no` applicant's declaration. A DNS change waits for a yes unless the owner set DNS changes to automatic (above). The
+store's own records are written without asking when the owner connects a domain, because connecting is the yes.
 
 **Grounding.** The model never writes a record value it was not given by a tool (a recipe, a finding) or by the owner in the conversation,
 and never a price. Changes on a busy store go through the same plan, revision and undo as the editor's.
@@ -303,7 +355,8 @@ owner never has to guess whether it is safe to take the next one. The page is in
 
 1. **Checks** (`transferBlockers()`, pure):
    * the registrar's lock after registration or an earlier transfer (we show its end date; ICANN's rules set it, 60 days for most gTLDs
-     today);
+     today). A `.no` has none: Norid lets a holder change registrar at any time with the code (policy 10.1). A registrar's documentation
+     lists no lock and no waiting period, and the move does not extend the subscription;
    * a renewal or transfer already in progress;
    * an unverified registrant;
    * expiry within 15 days, where the advice is to renew first or ask the new registrar.
@@ -352,12 +405,17 @@ The owner's renewal choice is ours to carry out. Thirty days before expiry the r
 and 1 days (owner emails in the account's admin language).
 
 The registrar's own auto-renew stays on as a safety net while renewal is on and paid. It is turned off when the owner turns renewal off,
-or when a renewal is still unpaid three days before expiry (decision 4). Then the owner is told the date the domain stops, and what the
-registry's grace and redemption periods allow, as the registrar states them.
+or when a renewal is still unpaid three days before expiry (decision 4, decided 23 October 2026). Then the owner is told the date the domain
+stops, and what the registry's grace and redemption periods allow, as the registrar states them.
+
+**A `.no` gets no second chance.** Norid deletes a name whose subscription expires (policy 12.1, item 6), and a registrar's documentation
+for `.no` lists no grace or redemption period (S2). So for a `.no` the reminders say plainly that the name is **deleted** on the date, and
+can then be registered by anyone. The last reminder goes to every owner of the store, not only the one who bought it.
 
 ### 9.2 Expiry
 
-An expired domain stays visible with the registrar's own way back, priced as the registrar prices it. Nothing is deleted.
+An expired domain stays visible with the registrar's own way back, if the registry has one, priced as the registrar prices it. Our own row
+is never deleted.
 
 ### 9.3 Closing a store (D171)
 
@@ -409,6 +467,9 @@ All are `never` in `COPY_RULES`. Domains are never copied.
     linked at the buy button, as resellers must.
   * Vercel is a US company. The EU registrar for ccTLDs keeps those registrations in the EU (CLAUDE.md: keep data processing in the EU
     when adding a vendor).
+  * As a Norid registrar of its own (decision 2a), Kaizena Flow would be an **independent data controller** for `.no` holders' data, as
+    Norid requires of every registrar. It would not be a processor. The privacy notice says so, and the registrar test and the agreement's
+    duties to holders become Kaizena Flow's.
 * **Plans and parity.** `plan_features` gets *Buy and manage domains* (decision 3). The parity tracker gets one new row,
   `platform.buy-domains` (Shopify sells domains natively), rated as the phases land, with `pnpm parity:write`.
 
@@ -424,26 +485,35 @@ platform's admins choose.
 | 2. Buying (generic TLDs) | Search, prices, purchases, registration job, automatic connection, renewals, contact verification, `search_domains`, `buy_domain`, `renew_domain`, `set_domain_renewal`, the platform's domains page | A test store buys a domain and is live on it with no DNS step. A failed registration refunds by itself |
 | 3. DNS by hand and by the AI | `planDns()`, the record editor, recipes, history and undo, `change_dns`, `set_up_email`, `verify_domain_for`, `undo_dns_change`, the `domain` gate | The AI sets up Google Workspace email on a test domain after one yes, and *Undo* puts it back |
 | 4. Moving away | Zone export, `nameserverSwitchCheck()`, the transfer code page, watching transfers, the move checklists, closing a store (9.3) | A test domain is moved to another registrar and DNS host with the store working throughout. Then buying opens to all stores |
-| 5. Country TLDs | The EU registrar's adapter (S2): `no`, `se`, `dk`, `fi`, `eu`, `de` | A Norwegian test company buys a `.no` and is live on it |
+| 5a. `.no` | By the route of decision 2a: the EU registrar's adapter, or a `norid` adapter (EPP) after Kaizena Flow is accredited. Either way: `mayHold()`, the register-name checks, the person identifier and the applicant's declaration (4.5), the deletion warnings (9.1) | A Norwegian test company buys a `.no`, signs the declaration and is live on it |
+| 5b. Other country TLDs | The EU registrar's adapter (S2): `se`, `dk`, `fi`, `eu`, `de`, each with its registry's rules read first | A test store buys one of each it may hold |
 | 6. Moving in | Move DNS here with zone import and comparison (5.4), Domain Connect (S3), transfer in | A domain with live email at another provider moves its DNS here with no lost record |
 
-Phase 5 is what makes buying useful to most Nordic stores. Because it sits behind the adapter, it can start as soon as S2 is answered,
-alongside phase 3 or 4.
+Phase 5a is what makes buying useful to most stores, which sell from Norway first. Because it sits behind the adapter, it can start as soon
+as decision 2a and S2 are answered, alongside phase 3 or 4. Norid's accreditation (section 13, S2) takes weeks of paperwork and a test, so
+if 2a is "our own", apply early.
 
 ## 12. Decisions for the owner
 
-| # | Question | Recommendation |
-|---|---|---|
-| 1 | Who is the registrant? | The store's owner or their company, never Kaizena Flow. They own their domain |
-| 2 | Country TLDs (`.no`, `.se`, `.dk`, `.eu`), which Vercel does not sell? | A second registrar, in the EU, behind the same adapter (phase 5) |
-| 3 | Pricing and plans | Platform admins set prices per TLD (cost plus a margin, rounded). On every plan. No free first year for now |
-| 4 | A renewal not paid | Don't renew unpaid. Remind at 30, 14, 7 and 1 days, then turn the registrar's auto-renew off three days before expiry |
-| 5 | The AI and DNS | Every change after the owner's yes (the new `domain` gate), except the store's own records when connecting |
-| 6 | Staff | Only owners buy, renew, change DNS and move. Staff with `settings:read` see |
-| 7 | Referral credit on domains | None: a domain is a registrar's cost passed on, not Kaizena Flow's fee |
-| 8 | Closing a store | It keeps its domains with its owners (registration and DNS), renewal off unless kept: a change to D171 |
-| 9 | Opening buying | Only once moving away (phase 4) exists |
-| 10 | Premium names (registry-priced) | Not offered in phase 2 |
+The owner answered on 23 October 2026: "For Cells, let's go with your recommendation. 1. Correct 2. Yes. And i think we need norid for .no.
+4. Correct 5. Yes, but can be set to auto. 8. Correct 9. Correct".
+
+| # | Question | Status | The answer, or the recommendation |
+|---|---|---|---|
+| (cells) | Where registrations and DNS live when a store has a cell of its own | **Decided** | In the control plane's Vercel team; only the connection follows the store (section 2) |
+| 1 | Who is the registrant? | **Decided** | The store's owner or their company, never Kaizena Flow |
+| 2 | Country TLDs, which Vercel does not sell | **Decided** | A second registrar, in the EU, behind the same adapter; `.no` through Norid (4.1) |
+| 2a | `.no`: become a Norid registrar, or use one? | Open | Recommendation: through the EU registrar first (one integration for every country TLD, no accreditation before the first sale). Then apply to Norid when `.no` sales near 100 a year, the point where Norid's minimum fee stops costing anything extra (S2). At that point new `.no` names go direct, and existing ones move over by a change of registrar, which Norid allows at any time (policy 10.1). If you'd rather own the `.no` route from the start, apply now: the money is small, the work is an EPP client and the registrar test |
+| 3 | Pricing and plans | Open | Platform admins set prices per TLD (cost plus a margin, rounded). On every plan. No free first year for now |
+| 4 | A renewal not paid | **Decided** | Don't renew unpaid. Remind at 30, 14, 7 and 1 days, then turn the registrar's auto-renew off three days before expiry. A `.no` is deleted at expiry, and its reminders say so (9.1) |
+| 5 | The AI and DNS | **Decided** | After the owner's yes by default; the owner can set DNS changes to automatic (7.1) |
+| 5a | With DNS changes automatic, does a change that stops email still ask? | Open | Recommendation: yes, that one case still asks (7.1) |
+| 6 | Staff | Open | Only owners buy, renew, change DNS and move. Staff with `settings:read` see |
+| 7 | Referral credit on domains | Open | None: a domain is a registrar's cost passed on, not Kaizena Flow's fee |
+| 8 | Closing a store | **Decided** | It keeps its domains with its owners (registration and DNS), renewal off unless kept: a change to D171 (9.3) |
+| 9 | Opening buying | **Decided** | Only once moving away (phase 4) exists |
+| 10 | Premium names (registry-priced) | Open | Not offered in phase 2 |
+| 11 | Does a bought domain take one of the plan's domains (D314: Basic 1, Grow 5, Advanced 20, Plus 50)? | Open | Yes, once it is connected to the store, as any domain does. The limit is checked before charging (4.4) |
 
 ## 13. Spikes before code
 
@@ -467,6 +537,49 @@ alongside phase 3 or 4.
 
   Also read Norid's, the Swedish Internet Foundation's and Punktum dk's rules: who may hold a domain, the declarations a holder signs, and
   organisation numbers.
+
+  **Norid: read 23 October 2026.** Norid's own pages are cited by section. The two registrar pages are other companies' documentation,
+  marked as such, to confirm with Norid or the chosen registrar.
+
+  * **The policy** (<https://www.norid.no/en/om-domenenavn/regelverk-for-no/>; the Norwegian text governs):
+    * **Through registrars only.** Applications only through a registrar with an agreement with Norid (7.1). Norid takes no payment from
+      the holder (13.2).
+    * **Who may hold a name.** Organisations: in Enhetsregisteret, with activity and a presence, and a Norwegian postal address (5.1), up
+      to 100 names (5.2). People: over 18, in Folkeregisteret with a national identity number, and a Norwegian postal address (5.3), up to
+      5 names (5.4).
+    * **The declaration.** The applicant's declaration binds the holder to the terms (15.1, Appendix G). Its page does not say how it is
+      signed.
+    * **Changing registrar** keeps the name (10.1). A new holder is a new subscription with a new date (11.1 to 11.3).
+    * **Not ownership.** A name is a right to use, not ownership (1.4).
+    * **Ending.** An expired subscription is a reason to delete (12.1, item 6). A name the holder deletes is unavailable for at least 30
+      days after it leaves DNS (11.5).
+  * **The fee** (Appendix K, <https://www.norid.no/en/om-domenenavn/regelverk-for-no/vedlegg-k/>, updated 1 April 2023): NOK 65 excluding
+    VAT per subscription, for an extension of 1 to 12 months.
+  * **Becoming a registrar** (<https://teknisk.norid.no/en/bli-forhandler/slik-blir-du-forhandler/>):
+    * **Applying.** Apply by email to info@norid.no and sign the Registrar Agreement digitally. Norid processes the application once it
+      is signed.
+    * **People.** A primary contact. The primary contact and everyone with admin rights on the registrar web pass Norid's registrar test.
+    * **Role.** The registrar is an independent data controller under the GDPR. It must help holders quickly and keep an address on
+      Norid's registrar list.
+    * **Fees.** A start-up fee of NOK 5,000 plus VAT. Then at least 100 subscriptions' fees a calendar year, or an annual registrar fee
+      for the shortfall: at most 100 × NOK 65 = NOK 6,500 a year at today's fee
+      (<https://teknisk.norid.no/en/registrar/nytt/annual-registrar-fee>).
+    * **Billing.** Norid invoices monthly, due in 14 days, and blocks a registrar that does not pay
+      (<https://teknisk.norid.no/en/administrere-domenenavn/betaling-for-domeneabonnementer/>).
+    * **Not stated.** That page does not require a Norwegian company. It names EPP and the registrar web, but not which is required.
+  * **How registrars handle `.no`:**
+    * One registrar's documentation (OpusDNS, <https://developers.opusdns.com/tld-knowledge-base/cctlds/no>) says:
+      * names must match Brønnøysundregistrene or the population register exactly, æ, ø and å included;
+      * a person makes their `N.PRI` identifier with Norid's own tool;
+      * the declaration is signed through an emailed link, with reminders, and cancelled and refunded after 30 days unsigned;
+      * a reseller may send a declaration it collected itself;
+      * no privacy proxy;
+      * 2 to 10 nameservers, which the registry checks;
+      * transfers by AuthInfo code, with no lock, no waiting and no extension;
+      * deletion is immediate, with no grace or redemption period.
+    * Another (DNSimple, <https://support.dnsimple.com/articles/domains-no/>) confirms the organisation number and person identifier.
+  * **Still to read.** Norid's Registrar Agreement and EPP documentation, for what being our own registrar takes in engineering. Then
+    which of S2's candidates sells `.no` through its API, at what cost.
 * **S3, Domain Connect.** What becoming a service provider takes (a template in the Domain Connect templates repository, signing keys),
   and which providers our owners use support it (Domeneshop, one.com, Loopia, Simply, GoDaddy, Cloudflare, …).
 * **S4, Recipes.** Read each email provider's own set-up page (Google Workspace, Microsoft 365, Zoho, Proton, Fastmail, and the Nordic
