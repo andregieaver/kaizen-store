@@ -52,6 +52,8 @@ describe("order export, a range of the store's days across a change of the clock
     const [zone] = await db().execute<Row>(sql`select time_zone from commerce.stores where id = ${fx.storeId}::uuid`);
     expect(String(zone.time_zone)).toBe("Europe/Oslo");
     const a = subject.ids.signedInOrder;
+    // The fixture's other orders were placed now: on a run during 25 October in Oslo they would be on that day too. Move them well away from it.
+    await db().execute(sql`update commerce.orders set placed_at = '2026-01-15T12:00:00Z' where store_id = ${fx.storeId}::uuid and id <> ${a.orderId}::uuid and copied_from is null`);
     // 22:30 UTC is 23:30 on the 25th in Oslo (UTC+1 after the change): it belongs to the 25th.
     await db().execute(sql`update commerce.orders set placed_at = '2026-10-25T22:30:00Z' where id = ${a.orderId}::uuid`);
     const day25 = await ordersOf("2026-10-25", "2026-10-25");
