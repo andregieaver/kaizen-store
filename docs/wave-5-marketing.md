@@ -851,7 +851,7 @@ product page shows it.
   nothing without a published review, so a store's pages are unchanged until it has one. The browser e2e of a buyer writing and staff publishing
   comes with G3, whose token page lets a test write without a shopper's sign-in.
 
-## 10. Units H to J, outlined
+## 10. Units H to J, outlined (J is detailed in section 11)
 
 - **H, feeds (D302).** One normalised feed per store and market (title, description, price as shown with VAT, availability, GTIN/brand from custom
   fields, pictures, unit price), written as Google Merchant Center XML and the Meta, TikTok and Pinterest CSVs at a private, token-addressed URL.
@@ -859,3 +859,70 @@ product page shows it.
   `ConsentManager`), their server-side conversion events sent only for orders whose cart had that consent, and UTM parameters kept on D152's visit.
 - **J, accounts and incentives (D304).** Several saved addresses, search in My account's orders, the shopper's own data export from My account (the
   D162 export, signed in afresh); a form can give a single-use code once per address after confirmation, and tag its subscribers.
+
+## 11. Unit J (D304): accounts in depth and sign-up incentives
+
+What the code had before J (surveyed at HEAD): one address on `customers.address` (edited by `updateCustomerDetails()`, falling back to
+`lastShippingAddress()` on My account); checkout does not prefill it for a signed-in customer (only the D293 terms path reads it);
+`listCustomerOrders()` returns at most 200 orders, no paging, no search; the shopper's own export **already exists** (D162,
+`account/privacy/export`, a fresh sign-in, `EXPORTS_PER_HOUR`), so the parity row's "data export" gap is stale and is closed by re-rating, not
+by building; forms (D93) call `joinList()` on confirmation but give no code and set no tag; single-use codes (`generateCodes()`) are staff-only
+and tied to no one; customer tags (`addTag()`) are keyed by address. J has three parts, each its own commit.
+
+### 11.1 J1: saved addresses
+
+- **Model.** `commerce.customer_addresses` (`id`, `store_id`, `customer_id`, `label` (the shopper's own word, optional), `address` jsonb in the
+  shape orders keep, `country` (ISO, from the address), `is_default_shipping`, `is_default_billing`, `created_at`, `updated_at`), composite key
+  with `store_id`, at most `ADDRESSES_MAX` (20) per customer, one default of each kind per customer (partial unique indexes). Written only by
+  `src/server/customer-addresses.ts` (`saveAddress()`, `removeAddress()`, `setDefault()`), each checking the address belongs to the signed-in
+  customer of that store (another's is `not_found`, never a different answer).
+- **Moving in.** A migration copies every non-empty `customers.address` into a row marked default for both; `customers.address` stays (add, never
+  drop) and is kept equal to the default shipping address by the writer, so code still reading it keeps working until a later cleanup.
+  `updateCustomerDetails()` stops writing it directly and goes through `saveAddress()`.
+- **My account.** An *Addresses* page (`/account/addresses`, a shop component `account_addresses`, `afterSale`): the list, add, edit, remove, make
+  default. Homer sees his addresses and *Add an address*; labels and the billing default are one step away.
+- **Checkout.** A signed-in customer's checkout offers the saved addresses (`Dropdown`, never a native select), the default shipping one chosen;
+  the choice fills the same fields the shopper could type, so `placeOrder()` still reads what was sent and the order keeps its snapshot (an
+  address edited later never changes an order). Only addresses in the market's country are offered for shipping (D237's rule); a *Save this
+  address* tick on a new one writes it after the order is paid, never before. No zod in the pay route (the picker's list is plain data).
+- **Personal data.** `PERSONAL_DATA` (export section `addresses`, erasure `delete`), `COPY_RULES` `never` (store copies carry customers without
+  credentials; addresses go with the copied customer only if D129 copies `customers.address` today: follow it), the AI support tools read the
+  default address only where they read `customers.address` now.
+- **Tests.** One store cannot read or write another's address; one default of each kind; the migration's copy; checkout prefill and the order
+  snapshot; erasure removes them; the export carries them.
+
+### 11.2 J2: finding an order in My account
+
+- `listCustomerOrders()` gains keyset paging (`placed_at`, `id`; 20 a page) and a search `q` that matches the order number, a line's title or SKU
+  and a tracking number, every `LIKE` word escaped and bound (D173's `escapeLike()`), within the customer's own orders only; a filter by state
+  (`open`, `sent`, `delivered`, `returned`) from the order's own fields. The address carries `q`, `state` and the cursor (`parseAccountOrderParams()`,
+  pure, unknown keys dropped). The support tool keeps its own call (first page, no search).
+- Words in `m.account` (nb, sv, da, en by hand). Tests: paging without gaps or repeats, search scoped to the customer, a restricted order (D162)
+  never found by another account.
+
+### 11.3 J3: forms that give a code and tag their subscribers
+
+- **The form's settings.** A newsletter block gains `incentive` (a discount of the store with `uniqueCodes`, chosen by id; kept through
+  `ownProducts()`-style id checks: `keepOwnRuleIds()` drops another store's) and `tags` (up to 5 customer tags, `normaliseTag()`). Both are
+  kept in the page, never sent to the browser (`publicForm()` leaves them out, like `recipients`), and dropped by `sanitizeTemplate()` and
+  `withoutRecipients()` when a page is copied to another owner.
+- **When a code is given.** Only when the address is confirmed (the link press that calls `joinList()`), never on the typed address; once per
+  store, discount and address (`signup_incentives`: `store_id`, `discount_id`, `email_hash`, `code_item_id`, `given_at`; unique on the first three),
+  so signing up again, from another form or after unsubscribing gives nothing new. The code is one new `discount_code_items` row made by
+  `issueIncentiveCode()` in `discounts.ts` (the same generator and uniqueness as `generateCodes()`, under the discount's lock, batch
+  `signup:{form}`), shown on the confirmation page and sent in the `marketing.welcome_code` email (a new `EMAIL_KINDS` entry, transactional: it
+  is what the person asked for, and goes even with automations off). A discount that has ended, is used up or lost `uniqueCodes` gives no code,
+  and the page says only that they are subscribed (never why not). The confirmation page never says whether the address had a code before.
+- **Tags.** On the same confirmation, the form's tags are added with `addTag()` by the confirmed address (actor: none, audited as
+  `marketing.form_tagged` with the form and count, never the address); unsubscribing removes no tag.
+- **Popups.** A modal row holding the form (D121) needs nothing new; its report is a later unit (the parity row keeps that gap, said plainly).
+- **Personal data.** `signup_incentives` in `PERSONAL_DATA` (by the address's hash; export section `marketing`, erasure `delete`), `COPY_RULES`
+  `never`. Words: the confirmation and email in `m.news` and `email-text.ts`, hand-written, `HAND_WRITTEN_ONLY`.
+- **Tests.** No code before confirmation; one code per address and discount across forms and repeats; a used-up discount gives none and says
+  nothing more; tags land on the confirmed address; copying a page drops the incentive and tags; one store's form cannot name another's discount.
+
+### 11.4 Rows
+
+J1 and J2 with the stale export gap close `customers.customer-accounts` except social sign-in (said in its gap; bucket B). J3 closes
+`customers.signup-forms-and-popups-building-a-list` except the popup report. Each part re-rates its rows with a `history` entry and runs
+`pnpm parity:write`.
