@@ -3116,6 +3116,13 @@
       "when": 1792874936026,
       "tag": "20261024204856_assistant_follow_ups_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 445,
+      "version": "7",
+      "when": 1792877609753,
+      "tag": "20261024213329_revoke_rls_auto_enable",
+      "breakpoints": true
     }
   ]
 }

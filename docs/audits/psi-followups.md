@@ -68,8 +68,10 @@ maturity for the run-up to launch. Point IDs are the audit's.
 
 ## Leave for the launch run-up
 
-- [ ] **REL-04** Confirm point-in-time recovery (five minutes in the Supabase dashboard: worth doing now), run the restore drill, write
-      RPO and RTO, back up the `documents` bucket. Lifts the audit's only gating cap.
+- [ ] **REL-04** Confirm point-in-time recovery (five minutes in the Supabase dashboard, the owner's) and run the first drill:
+      `docs/runbooks/restore.md` now has the targets (RPO 2 minutes with PITR, RTO 1 hour proposed), the copy's scheduled jobs as the
+      first step, the replay of Stripe, Mollie, carriers and emails, and `scripts/restore-check.mjs` for the checks. Still to do: the drill
+      itself (lifts the audit's only gating cap) and a daily copy of `product-media`, `documents` and `digital-files` to a second EU bucket.
 - [ ] **REG-06, REG-07, REG-08** Sign the pending DPAs, move the platform's AI to the EU path, write the breach runbook, a DPIA for the
       AI features and an AI Act note; tell customers about tone scoring.
 - [ ] **REG-02** Legal review of the platform's terms, privacy notice and DPA; fill in the company name.
@@ -78,6 +80,6 @@ maturity for the run-up to launch. Point IDs are the audit's.
       bundle budgets.
 - [ ] **SEC-05, SEC-02, SEC-10, SEC-11** Nonce-based CSP on admin and storefront (Report-Only first); leaked-password protection;
       budgets on `/api/consent` and `/api/ab/*`; logging failed sign-ins and permission denials.
-- [ ] **SEC (advisor)** `public.rls_auto_enable()` is executable by `anon` and `authenticated` (Supabase's security advisor). It is a
-      dashboard-made event-trigger function, not in the repository, so it cannot be called directly; revoke `EXECUTE` from both roles.
+- [x] **SEC (advisor)** `public.rls_auto_enable()`: EXECUTE revoked from PUBLIC, `anon` and `authenticated` (migration
+      `revoke_rls_auto_enable`; the event trigger still fires, tested).
 - [ ] **ACC-09, UX-12** A recorded manual screen-reader pass of checkout, the builder and the inbox; WebKit in the storefront e2e.
