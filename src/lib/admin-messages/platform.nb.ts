@@ -312,6 +312,11 @@ export const platformNb: PlatformMessages = {
       many: "{n} KI-forespørsler feilet de siste 7 dagene.",
     },
     seeAi: "Se KI-bruk",
+    jobs: {
+      one: "{n} planlagt jobb er forsinket eller feiler.",
+      many: "{n} planlagte jobber er forsinket eller feiler.",
+    },
+    seeJobs: "Se jobbene",
     empty:
       "Ingenting venter. Ingen forespørsler, forfalte abonnementer eller feilede e-poster.",
     storesAndPlans: "Butikker og abonnementer",

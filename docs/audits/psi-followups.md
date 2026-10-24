@@ -29,8 +29,12 @@ maturity for the run-up to launch. Point IDs are the audit's.
 
 ## Build into development (conventions that compound)
 
-- [ ] **REL-02, REL-06** A JSON `log()` helper (level, store id, request id from `x-vercel-id`) for new code, and a `cron_runs` row per
-      dispatcher run with a "not run in 15 minutes" banner on the platform home; `maxDuration` on every cron route.
+- [x] **REL-02, REL-06** `log()` (`src/server/log.ts`, JSON lines) for new code; `commerce.cron_jobs` keeps the last run of every cron
+      route and of each dispatcher job (`tracked()`, `runJobs()`, `trackedRoute()`), a throwing job no longer fails the others, the
+      platform home lists jobs that are late or failing (`src/lib/cron-health.ts`) and Usage and limits shows them all; `maxDuration`
+      on every cron route, held by `cron-routes.scan.test.ts`.
+- [ ] **REL-02** Move the remaining `console.error` lines in `src/server` to `log()` as each module is touched; send an alert (email
+      to platform admins) when a job turns failing.
 - [ ] **CODE-02** Typed database reads for new code and money queries (zod `.parse` or `sql<T>`), with a line in CLAUDE.md. No rewrite
       of the existing calls.
 - [ ] **AGT-10, AGT-14, AST-09** An eval harness for the AI manager and the chat (stored turns, thumbs as labels, the injection

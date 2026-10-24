@@ -6,6 +6,7 @@ import { runBroadcasts } from "@/server/broadcasts";
 import { deliverGiftCards } from "@/server/gift-card-delivery";
 import { runReviewRequests } from "@/server/review-requests";
 import { cronAuthorised } from "@/server/cron-auth";
+import { trackedRoute } from "@/server/cron-runs";
 
 export const maxDuration = 120;
 
@@ -37,5 +38,6 @@ async function run(request: Request) {
   return Response.json({ started: true }, { headers: { "Cache-Control": "no-store" } });
 }
 
-export const GET = run;
-export const POST = run;
+// Kept in commerce.cron_jobs (PSI 2026-10-24, REL-06): the platform home says when it is late or failing.
+export const GET = trackedRoute("route.broadcasts", 60, run);
+export const POST = GET;

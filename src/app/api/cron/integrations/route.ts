@@ -1,9 +1,13 @@
 import { connection } from "next/server";
 
 import { cronAuthorised } from "@/server/cron-auth";
+import { trackedRoute } from "@/server/cron-runs";
 import { deliverDue } from "@/server/integrations";
 import { processStoreEvents } from "@/server/staff-alerts";
 import { sendSupportEmails } from "@/server/support-email";
+
+/** Room before Vercel stops the run (PSI 2026-10-24, REL-06). */
+export const maxDuration = 120;
 
 /**
  * Every minute, from Supabase's scheduler: the stores' events due to go to Zapier and Make (D41), and support's emails (D216): the
@@ -17,5 +21,6 @@ async function run(request: Request) {
   return Response.json({ ...integrations, support, storeEvents }, { headers: { "Cache-Control": "no-store" } });
 }
 
-export const GET = run;
-export const POST = run;
+// Kept in commerce.cron_jobs (PSI 2026-10-24, REL-06): the platform home says when it is late or failing.
+export const GET = trackedRoute("route.integrations", 60, run);
+export const POST = GET;

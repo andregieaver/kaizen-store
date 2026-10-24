@@ -5,6 +5,8 @@ import { connection } from "next/server";
 import { Attention, Section, Stat, StatGrid, type AttentionItem } from "@/components/admin/overview-parts";
 import { requirePlatformAdmin } from "@/server/auth";
 import { platformOverview } from "@/server/platform-overview";
+import { cronJobRows } from "@/server/cron-runs";
+import { jobsNeedingLook } from "@/lib/cron-health";
 import { PageHeader } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
@@ -18,7 +20,8 @@ export default async function PlatformOverviewPage() {
   await connection();
   const account = await requirePlatformAdmin();
   const w = adminText(adminLangOf(account.adminLocale), "platform").overview;
-  const o = await platformOverview();
+  const [o, jobs] = await Promise.all([platformOverview(), cronJobRows()]);
+  const lateJobs = jobsNeedingLook(jobs);
 
   const attention: AttentionItem[] = [];
   if (o.requests.waiting > 0) {
@@ -28,6 +31,9 @@ export default async function PlatformOverviewPage() {
       action: w.review,
       urgent: true,
     });
+  }
+  if (lateJobs.length > 0) {
+    attention.push({ text: countWords(lateJobs.length, w.jobs), href: "/admin/platform/capacity#jobs", action: w.seeJobs, urgent: lateJobs.some((j) => j.health === "failing") });
   }
   if (o.stores.overdue > 0) attention.push({ text: countWords(o.stores.overdue, w.overdue), href: "/admin/platform/stores", action: w.openStores, urgent: true });
   if (o.emails.failed > 0) attention.push({ text: countWords(o.emails.failed, w.emailsFailed), href: "/admin/platform/emails", action: w.openEmails });

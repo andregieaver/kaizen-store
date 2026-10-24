@@ -2,6 +2,7 @@ import { revalidateTag } from "next/cache";
 import { after, connection } from "next/server";
 
 import { cronAuthorised } from "@/server/cron-auth";
+import { trackedRoute } from "@/server/cron-runs";
 import { DESIGNS_TAG } from "@/server/design-presets";
 import { browserPhotographer } from "@/server/theme-shot-runner";
 import { runThemeShots } from "@/server/theme-shots";
@@ -30,5 +31,6 @@ async function run(request: Request) {
   return Response.json({ started: true }, { headers: { "Cache-Control": "no-store" } });
 }
 
-export const GET = run;
-export const POST = run;
+// Kept in commerce.cron_jobs (PSI 2026-10-24, REL-06): the platform home says when it is late or failing.
+export const GET = trackedRoute("route.theme-shots", 60, run);
+export const POST = GET;

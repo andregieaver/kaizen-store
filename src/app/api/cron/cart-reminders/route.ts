@@ -12,6 +12,7 @@ import { endIdleConversations } from "@/server/support";
 import { expireActions } from "@/server/support-actions";
 import { summarisePending } from "@/server/support-summary";
 import { cronAuthorised } from "@/server/cron-auth";
+import { runJobs, tracked } from "@/server/cron-runs";
 import { expireDrafts } from "@/server/draft-orders";
 import { archiveFinishedOrders } from "@/server/order-archive";
 import { expireOrderEdits } from "@/server/order-edits";
@@ -43,6 +44,12 @@ import { prepareDueDeliveries } from "@/server/standing-orders";
 import { runStoreCopies } from "@/server/store-copy";
 import { prepareDueRecurringWork } from "@/server/work-recurring";
 
+/** Room for the slower jobs (a store copy, the embeddings) before Vercel stops the run (PSI 2026-10-24, REL-06). */
+export const maxDuration = 300;
+
+/** Supabase's scheduler runs this every five minutes. */
+const EVERY = 300;
+
 /**
  * Every five minutes, from Supabase's scheduler: the stores' cart reminders
  * and Kaizen's plan reminders that are due (D33), reminders before
@@ -69,95 +76,82 @@ import { prepareDueRecurringWork } from "@/server/work-recurring";
 async function run(request: Request) {
   await connection();
   if (!(await cronAuthorised(request))) return new Response("Unauthorized", { status: 401 });
-  const [carts, plans, bookings, calendars, commissions, searches, embeddings, cache, knowledge, chat, media, altTexts, forms, deliveries, recurring, storeCopies, bonus, affiliates, recommendations, experiments, replications, returns, invoices, dataJobs, lowStock, draftExpiry, autoArchive, editExpiry, supportIdle, , , tracking, summaries, payments] = await Promise.all([
-    sendDueCartReminders(),
-    sendDuePlanReminders(),
-    sendDueBookingReminders(),
-    syncDueFeeds(),
-    payHostCommissions(),
-    pruneSearchLog(),
-    refreshEmbeddings(),
-    pruneSearchCache(),
-    refreshKnowledge(),
-    pruneChatUsage(),
-    refreshMediaEmbeddings(),
-    refreshAltTexts(),
-    pruneFormSubmissions(),
-    prepareDueDeliveries(),
-    prepareDueRecurringWork(),
-    runStoreCopies(),
-    runBonusJobs(),
-    runAffiliateJobs(),
-    pruneRecommendEvents(),
-    runExperimentJobs(),
-    pruneReplications(),
-    runReturnJobs(),
-    invoiceJobs(),
-    runDataJobs(),
-    sendLowStockNotices(),
-    expireDrafts().catch((error) => {
-      console.error("[cron] draft expiry failed", error);
-      return null;
-    }),
-    archiveFinishedOrders().catch((error) => {
-      console.error("[cron] automatic archiving failed", error);
-      return null;
-    }),
+  return (await tracked("route.cart-reminders", EVERY, () => dispatch())) ?? Response.json({ failed: true }, { status: 500, headers: { "Cache-Control": "no-store" } });
+}
+
+/**
+ * The jobs, side by side, each kept in `commerce.cron_jobs` as `dispatcher.{name}` in kebab case (PSI 2026-10-24, REL-06): one that throws is logged
+ * and recorded and answers null, and the others finish. The platform home lists a job that is late or keeps failing.
+ */
+async function dispatch() {
+  const r = await runJobs("dispatcher", EVERY, {
+    carts: () => sendDueCartReminders(),
+    plans: () => sendDuePlanReminders(),
+    bookings: () => sendDueBookingReminders(),
+    calendars: () => syncDueFeeds(),
+    commissions: () => payHostCommissions(),
+    searches: () => pruneSearchLog(),
+    embeddings: () => refreshEmbeddings(),
+    cache: () => pruneSearchCache(),
+    knowledge: () => refreshKnowledge(),
+    chat: () => pruneChatUsage(),
+    media: () => refreshMediaEmbeddings(),
+    altTexts: () => refreshAltTexts(),
+    forms: () => pruneFormSubmissions(),
+    deliveries: () => prepareDueDeliveries(),
+    recurring: () => prepareDueRecurringWork(),
+    storeCopies: () => runStoreCopies(),
+    bonus: () => runBonusJobs(),
+    affiliates: () => runAffiliateJobs(),
+    recommendations: () => pruneRecommendEvents(),
+    experiments: () => runExperimentJobs(),
+    replications: () => pruneReplications(),
+    returns: () => runReturnJobs(),
+    invoices: () => invoiceJobs(),
+    dataJobs: () => runDataJobs(),
+    lowStock: () => sendLowStockNotices(),
+    draftExpiry: () => expireDrafts(),
+    autoArchive: () => archiveFinishedOrders(),
     // Order changes whose pay link ran out (D174): sessions closed first, a change paid in the last minute applied, the held units released.
-    expireOrderEdits().catch((error) => {
-      console.error("[cron] order change expiry failed", error);
-      return null;
-    }),
+    editExpiry: () => expireOrderEdits(),
     // Support (D216): conversations with the AI that nobody has written in for the desk's time end, so their period begins.
-    endIdleConversations().catch((error) => {
-      console.error("[cron] ending idle support conversations failed", error);
-      return null;
-    }),
+    supportIdle: () => endIdleConversations(),
     // Support (D216, step 7): the summaries of ended conversations not yet written, each tried again until it is done or failed.
-    summarisePending().catch((error) => {
-      console.error("[cron] support summaries failed", error);
-      return null;
-    }),
+    supportSummaries: () => summarisePending(),
     // Support (D216, step 10): proposals nobody confirmed in time are marked expired.
-    expireActions().catch((error) => {
-      console.error("[cron] support action expiry failed", error);
-      return null;
-    }),
+    supportActions: () => expireActions(),
     // Notifications (D238): parcels followed at their carriers, and the staff summaries that are due.
-    pollTracking().catch((error) => {
-      console.error("[cron] parcel tracking failed", error);
-      return null;
-    }),
-    sendDueSummaries().catch((error) => {
-      console.error("[cron] staff summaries failed", error);
-      return null;
-    }),
+    tracking: () => pollTracking(),
+    summaries: () => sendDueSummaries(),
     // Payments (D288): what a captured Stripe payment was, for any the reply missed, and disputes whose evidence is due within three days.
-    runPaymentJobs(),
-  ]);
-  // Installed themes that follow updates and are behind their theme's latest version (D245, never throws); the stores' pages then show it.
-  const themeUpdates = await runThemeUpdates().catch((error) => {
-    console.error("[cron] theme updates failed", error);
-    return { updated: 0, refused: 0, stores: [] };
+    payments: () => runPaymentJobs(),
   });
+  // Installed themes that follow updates and are behind their theme's latest version (D245); the stores' pages then show it.
+  const themeUpdates = (await tracked("dispatcher.theme-updates", EVERY, () => runThemeUpdates())) ?? { updated: 0, refused: 0, stores: [] };
   for (const store of themeUpdates.stores) for (const tag of designTags(store)) revalidateTag(tag, "max");
-  // Kaizena Flow's own installed themes that follow updates (D253, never throws); its site shows the new look when the live one moved.
-  const platformThemeUpdates = await runPlatformThemeUpdates().catch((error) => {
-    console.error("[cron] Kaizena Flow's theme updates failed", error);
-    return { updated: 0, refused: 0, live: false };
-  });
+  // Kaizena Flow's own installed themes that follow updates (D253); its site shows the new look when the live one moved.
+  const platformThemeUpdates = (await tracked("dispatcher.platform-theme-updates", EVERY, () => runPlatformThemeUpdates())) ?? { updated: 0, refused: 0, live: false };
   if (platformThemeUpdates.updated > 0) for (const tag of [PLATFORM_NAVIGATION_TAG, PAGES_TAG, DESIGNS_TAG]) revalidateTag(tag, "max");
-  // Premium themes due to be paid (D286, never throws): invoiced through Kaizena Flow's billing, a few a run; a try that failed waits.
-  const themePurchases = await chargeDueThemePurchases();
-  // Domains (D315, never throw): purchases invoiced, paid ones registered and followed until done (connecting the store), failed ones refunded.
-  const domainPurchases = await chargeDomainPurchases().catch((error) => (console.error("[domains] invoicing failed", error), { invoiced: 0, failed: 0 }));
-  const domainRegistrations = await registerPaidDomains().catch((error) => (console.error("[domains] registering failed", error), { done: 0, failed: 0 }));
-  for (const owner of altTexts.owners) {
+  // Premium themes due to be paid (D286): invoiced through Kaizena Flow's billing, a few a run; a try that failed waits.
+  const themePurchases = await tracked("dispatcher.theme-purchases", EVERY, () => chargeDueThemePurchases());
+  // Domains (D315): purchases invoiced, paid ones registered and followed until done (connecting the store), failed ones refunded.
+  const domainPurchases = (await tracked("dispatcher.domain-purchases", EVERY, () => chargeDomainPurchases())) ?? { invoiced: 0, failed: 0 };
+  const domainRegistrations = (await tracked("dispatcher.domain-registrations", EVERY, () => registerPaidDomains())) ?? { done: 0, failed: 0 };
+  for (const owner of r.altTexts?.owners ?? []) {
     revalidateTag(pagesTag(owner.storeId), "max");
     if (owner.storeId) revalidateTag(catalogTag(owner.storeId), "max");
   }
+  const { altTexts, ...rest } = r;
   return Response.json(
-    { carts, plans, bookings, calendars, commissions, searches, embeddings, cache, knowledge, chat, media, altTexts: altTexts.written, forms, deliveries, recurring, storeCopies, bonus, affiliates, recommendations, experiments, replications, returns, invoices, dataJobs, lowStock, draftExpiry, autoArchive, editExpiry, supportIdle, tracking, summaries, payments, themeUpdates: { updated: themeUpdates.updated, refused: themeUpdates.refused }, platformThemeUpdates: { updated: platformThemeUpdates.updated, refused: platformThemeUpdates.refused }, themePurchases, domainPurchases, domainRegistrations },
+    {
+      ...rest,
+      altTexts: altTexts?.written ?? null,
+      themeUpdates: { updated: themeUpdates.updated, refused: themeUpdates.refused },
+      platformThemeUpdates: { updated: platformThemeUpdates.updated, refused: platformThemeUpdates.refused },
+      themePurchases,
+      domainPurchases,
+      domainRegistrations,
+    },
     { headers: { "Cache-Control": "no-store" } },
   );
 }

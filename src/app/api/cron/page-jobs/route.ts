@@ -1,6 +1,7 @@
 import { after, connection } from "next/server";
 
 import { cronAuthorised } from "@/server/cron-auth";
+import { trackedRoute } from "@/server/cron-runs";
 import { runPageJobs } from "@/server/site-tools";
 
 /** A build plans and writes for a minute or two, a picture takes the model up to 150 seconds: a run starts none after `RUN_MS`. */
@@ -20,5 +21,6 @@ async function run(request: Request) {
   return Response.json({ started: true }, { headers: { "Cache-Control": "no-store" } });
 }
 
-export const GET = run;
-export const POST = run;
+// Kept in commerce.cron_jobs (PSI 2026-10-24, REL-06): the platform home says when it is late or failing.
+export const GET = trackedRoute("route.page-jobs", 60, run);
+export const POST = GET;

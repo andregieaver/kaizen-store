@@ -12808,3 +12808,30 @@ export const feedSettings = commerce.table(
   },
   (t) => [unique("feed_settings_token_hash").on(t.tokenHash), check("feed_settings_hash", sql`${t.tokenHash} ~ '^[0-9a-f]{64}$'`)],
 );
+
+/**
+ * The last run of each scheduled job (PSI 2026-10-24, REL-06): one row per cron route and per job of the five-minute dispatcher,
+ * written only by `src/server/cron-runs.ts` after each run, so the platform home can say which job is late or failing
+ * (`src/lib/cron-health.ts`). A row a run, kept in place: nothing grows. `last_error` is an error's message, never a person's data.
+ */
+export const cronJobs = commerce.table(
+  "cron_jobs",
+  {
+    job: text("job").primaryKey(),
+    everySeconds: integer("every_seconds").notNull(),
+    lastStartedAt: timestamp("last_started_at", { withTimezone: true }),
+    lastFinishedAt: timestamp("last_finished_at", { withTimezone: true }),
+    lastOkAt: timestamp("last_ok_at", { withTimezone: true }),
+    lastError: text("last_error"),
+    lastErrorAt: timestamp("last_error_at", { withTimezone: true }),
+    lastDurationMs: integer("last_duration_ms"),
+    runs: integer("runs").notNull().default(0),
+    failures: integer("failures").notNull().default(0),
+  },
+  (t) => [
+    check("cron_jobs_job", sql`${t.job} ~ '^[a-z0-9][a-z0-9_.:-]{0,63}$'`),
+    check("cron_jobs_every", sql`${t.everySeconds} between 60 and 604800`),
+    check("cron_jobs_error", sql`${t.lastError} is null or length(${t.lastError}) <= 1000`),
+    check("cron_jobs_counts", sql`${t.runs} >= 0 and ${t.failures} >= 0`),
+  ],
+);

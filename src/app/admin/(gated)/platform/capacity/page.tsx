@@ -11,6 +11,8 @@ import { shiftMonth, usageMonth } from "@/lib/usage-month";
 import { requirePlatformAdmin } from "@/server/auth";
 import { upcomingPeaks } from "@/server/capacity-events";
 import { databaseGlance, drainConnected, platformUsage } from "@/server/usage";
+import { cronJobRows } from "@/server/cron-runs";
+import { cronHealth } from "@/lib/cron-health";
 
 export const metadata: Metadata = { title: "Usage and limits" };
 
@@ -28,7 +30,8 @@ export default async function PlatformCapacityPage({ searchParams }: PageProps<"
   const lang = adminLangOf(admin.adminLocale);
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const w = adminText(lang, "capacity");
-  const [rows, glance, drain, peaks] = await Promise.all([platformUsage(month), databaseGlance(), drainConnected(), upcomingPeaks()]);
+  const [rows, glance, drain, peaks, jobs] = await Promise.all([platformUsage(month), databaseGlance(), drainConnected(), upcomingPeaks(), cronJobRows()]);
+  const now = new Date();
   const ordered = sort ? [...rows].sort((a, b) => (b.values[sort] ?? 0) - (a.values[sort] ?? 0)) : rows;
   const cell = (metric: UsageMetric, value: number | undefined) => (value === undefined ? "" : formatUsage(metric, value, locale));
   const current = new Date().toISOString().slice(0, 7);
@@ -45,6 +48,44 @@ export default async function PlatformCapacityPage({ searchParams }: PageProps<"
         </p>
         {!drain && <p className="mt-2 text-body text-muted">{w.platform.drainOff}</p>}
       </Card>
+      {/* Scheduled jobs (PSI 2026-10-24, REL-06): the platform home links here when one is late or failing. */}
+      <div id="jobs">
+        <Card title={w.jobs.title} description={w.jobs.description} compact>
+          {jobs.length === 0 ? (
+            <p className="text-body text-muted">{w.jobs.none}</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-caption">
+                <thead className="text-muted">
+                  <tr>
+                    <th scope="col" className="py-2 pr-4">{w.jobs.job}</th>
+                    <th scope="col" className="py-2 pr-4">{w.jobs.lastRun}</th>
+                    <th scope="col" className="py-2 pr-4">{w.jobs.status}</th>
+                    <th scope="col" className="py-2 pr-4">{w.jobs.lastError}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-line">
+                  {jobs.map((job) => {
+                    const health = cronHealth(job, now);
+                    return (
+                      <tr key={job.job}>
+                        <th scope="row" className="py-2 pr-4 font-mono text-ink">{job.job}</th>
+                        <td className="py-2 pr-4 text-ink-2 tabular-nums">
+                          {job.lastFinishedAt ? new Date(job.lastFinishedAt).toLocaleString(locale, { dateStyle: "short", timeStyle: "short" }) : w.jobs.never}
+                        </td>
+                        <td className={`py-2 pr-4 ${health === "ok" ? "text-ink-2" : "text-danger-text"}`}>{w.jobs[health]}</td>
+                        <td className="max-w-md truncate py-2 pr-4 text-muted" title={job.failures > 0 ? (job.lastError ?? "") : ""}>
+                          {job.failures > 0 ? job.lastError : ""}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
+      </div>
       {peaks.length > 0 && (
         <Card title={w.peaks.upcoming} compact>
           <ul className="grid gap-2 text-body">

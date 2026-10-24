@@ -242,6 +242,7 @@ export const PERSONAL_DATA: PersonalEntry[] = [
 
 /** Tables the detectors matched (by a column name such as `name`, `note` or `content`, or a foreign key) that hold no person's data, and why. */
 export const NOT_PERSONAL: Record<string, string> = {
+  cron_jobs: "The last run of each scheduled job (PSI 2026-10-24): its name, times, run counts and the last error's message; no person.",
   ad_connections: "A store's connection to an ad platform (D303 I2): the platform's id and the owner's encrypted token; no shopper.",
   feed_settings: "A store's product feeds (D302): the hash and the encrypted secret of their address and a switch; no person.",
   ad_conversions: "That an order's event was sent to an ad platform (D303 I2): order id, platform, event, status and the platform's answer code; the payload, with the ids, is built when sent and never kept.",

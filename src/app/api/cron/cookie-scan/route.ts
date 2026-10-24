@@ -4,6 +4,7 @@ import { after, connection } from "next/server";
 import { runScan } from "@/server/cookie-scan-runner";
 import { claimScan } from "@/server/cookie-scans";
 import { cronAuthorised } from "@/server/cron-auth";
+import { trackedRoute } from "@/server/cron-runs";
 import { cookiesTag } from "@/server/site-cookies";
 
 /** A scan opens up to twelve pages in Chromium, which takes a while to start on a cold function. */
@@ -28,5 +29,6 @@ async function run(request: Request) {
   return Response.json({ scan: scan?.id ?? null }, { headers: { "Cache-Control": "no-store" } });
 }
 
-export const GET = run;
-export const POST = run;
+// Kept in commerce.cron_jobs (PSI 2026-10-24, REL-06): the platform home says when it is late or failing.
+export const GET = trackedRoute("route.cookie-scan", 60, run);
+export const POST = GET;

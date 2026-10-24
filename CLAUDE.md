@@ -1263,6 +1263,11 @@ stand-in is the only fake, and only it is told it is one.
 - Environment variables are validated in `src/lib/env.ts` when used, not at
   import, so builds and tests run without secrets.
 - Server-only modules import `server-only`.
+- New server code logs through `log(level, event, fields, error)` (`src/server/log.ts`: one JSON line, ids and counts, never a
+  person's data or a secret); older `console.error` lines move over when touched. Every cron route has a `maxDuration` and runs
+  inside `trackedRoute()`/`tracked()`, and the five-minute dispatcher runs each job through `runJobs()` (`src/server/cron-runs.ts`):
+  each run is kept in `commerce.cron_jobs`, a job that throws is logged and the others finish, and the platform home and
+  Usage and limits say which job is late or failing (`src/lib/cron-health.ts`); `cron-routes.scan.test.ts` holds new routes to it.
 - AI features must stay grounded: the model never states a price, stock level or
   product it was not given by a tool; arithmetic happens in code; model output is
   rendered as text, never as HTML. Every system prompt carries the rule in

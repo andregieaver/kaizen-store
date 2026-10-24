@@ -3,6 +3,7 @@ import { connection } from "next/server";
 import { utcDay } from "@/lib/usage-metrics";
 import { prunePeaks, sendPeakNotices } from "@/server/capacity-events";
 import { cronAuthorised } from "@/server/cron-auth";
+import { trackedRoute } from "@/server/cron-runs";
 import { sendUsageAlerts } from "@/server/usage-alerts";
 import { pruneUsageDaily, measureDay } from "@/server/usage-meter";
 
@@ -26,5 +27,6 @@ async function run(request: Request) {
   return Response.json({ yesterday, today, pruned, alerts, peakNotices, peaksPruned }, { headers: { "Cache-Control": "no-store" } });
 }
 
-export const GET = run;
-export const POST = run;
+// Kept in commerce.cron_jobs (PSI 2026-10-24, REL-06): the platform home says when it is late or failing.
+export const GET = trackedRoute("route.usage", 86400, run);
+export const POST = GET;

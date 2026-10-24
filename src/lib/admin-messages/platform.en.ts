@@ -305,6 +305,11 @@ export const platformEn = {
       many: "{n} AI requests failed in the last 7 days.",
     },
     seeAi: "See AI usage",
+    jobs: {
+      one: "{n} scheduled job is late or failing.",
+      many: "{n} scheduled jobs are late or failing.",
+    },
+    seeJobs: "See jobs",
     empty: "Nothing is waiting. No requests, overdue plans or failed emails.",
     storesAndPlans: "Stores and plans",
     allStores: "All stores",
