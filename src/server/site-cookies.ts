@@ -27,12 +27,12 @@ type Row = Record<string, unknown>;
 export const cookiesTag = (storeId: string | null) => `cookies:${storeId ?? "kaizen"}`;
 
 /** The features a store keeps on (D178), cached with the cookie list: a switch refreshes `cookiesTag` (`refreshFeatureTags()`). */
-async function storeFeatures(storeId: string): Promise<string[]> {
+async function storeFeatures(storeId: string): Promise<{ features: string[]; visitCounting: boolean }> {
   "use cache";
   cacheLife("hours");
   cacheTag(cookiesTag(storeId));
-  const [row] = await readDb().execute<Row>(sql`select features from commerce.stores where id = ${storeId}::uuid`);
-  return ((row?.features ?? []) as unknown[]).map(String);
+  const [row] = await readDb().execute<Row>(sql`select features, visit_counting from commerce.stores where id = ${storeId}::uuid`);
+  return { features: ((row?.features ?? []) as unknown[]).map(String), visitCounting: Boolean(row?.visit_counting) };
 }
 
 /** A site's latest finished scan and the owner's notes, cached until either changes. */
@@ -84,7 +84,8 @@ export async function siteCookies(
 ): Promise<{ cookies: ListedCookie[]; categories: OptionalCategory[] }> {
   const listed = new Map<string, ListedCookie>();
   // A cookie of a store feature that is off (D178) is not the site's while it is: left out, even when an earlier scan found it.
-  const features = storeId === null ? null : await storeFeatures(storeId);
+  const facts = storeId === null ? null : await storeFeatures(storeId);
+  const features = facts?.features ?? null;
   const offFeature = (cookie: KnownCookie) => Boolean(cookie.feature && features && !featureOn(features, cookie.feature));
   const list = (cookie: KnownCookie) => {
     const { name, provider, category, days, purpose } = cookie;
@@ -107,10 +108,7 @@ export async function siteCookies(
   // Kaizena Flow's own site in more than one language remembers a closed language suggestion, as a preference (D312).
   const languages = storeId === null && (await getPlatformLangs()).length > 1;
   // A store that counts visits and already asks about statistics keeps a visitor's first visit in 30 days once they allow it (D303 I3).
-  const touch =
-    storeId !== null &&
-    (toolCategories(tracking).includes("statistics") || experiments) &&
-    Boolean((await db().execute<Record<string, unknown>>(sql`select visit_counting from commerce.stores where id = ${storeId}::uuid`))[0]?.visit_counting);
+  const touch = Boolean(facts?.visitCounting) && (toolCategories(tracking).includes("statistics") || experiments);
   declaredCookies(storeId === null ? "platform" : "store", tracking, { ...options, chat, modals, referrals: referral?.enabled ?? false, affiliate, recommendations, experiments, languages, touch })
     .map((cookie) => (cookie.referrals && referral ? { ...cookie, days: referral.cookieDays } : cookie))
     .map((cookie) => (cookie.affiliate && site ? { ...cookie, days: site.cookieDays } : cookie))

@@ -13,6 +13,8 @@ import { lazyView } from "./lazy-view";
 export const ConsentManager = lazyView(dynamic(() => import("../consent/consent-manager").then((m) => m.ConsentManager)));
 export const StoreCustomCode = lazyView(dynamic(() => import("../consent/store-custom-code").then((m) => m.StoreCustomCode)));
 export const ChatWidget = whenIdle(lazyView(dynamic(() => import("../chat-widget").then((m) => m.ChatWidget))));
+// The keeper of a first visit (D303 I3) reads the consent cookie and the address only, so it waits for the browser to be idle too.
+export const TouchKeeper = whenIdle(lazyView(dynamic(() => import("../touch-keeper").then((m) => m.TouchKeeper))));
 export const AffiliateCapture = whenIdle(lazyView(dynamic(() => import("../affiliate-capture").then((m) => m.AffiliateCapture))));
 
 /** Draws nothing until the browser is idle (or two seconds have passed), on the server too, so the first render agrees. */

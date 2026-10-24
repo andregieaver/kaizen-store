@@ -18,6 +18,7 @@ import { parseCsv, recordsOf } from "@/lib/csv";
 import { mainCurrency } from "@/lib/markets";
 
 import { audit, type Membership } from "./auth";
+import { cookiesTag } from "./site-cookies";
 import { storeTag } from "./stores";
 import { can } from "@/lib/permissions";
 
@@ -112,6 +113,8 @@ export async function setVisitCounting({ account, store, role }: Membership, ena
   await db().execute(sql`update commerce.stores set visit_counting = ${enabled} where id = ${store.id}::uuid`);
   await audit(account.id, store.id, "analytics.visit_counting", { enabled });
   refreshTag(storeTag(store.slug));
+  // The cookie page lists the first-visit cookie only while visits are counted (D303 I3).
+  refreshTag(cookiesTag(store.id));
   return { ok: true, enabled };
 }
 

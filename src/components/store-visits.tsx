@@ -1,4 +1,4 @@
-import { TouchKeeper } from "@/components/touch-keeper";
+import { TouchKeeper } from "@/components/lazy/extras";
 import { VisitBeacon } from "@/components/visit-beacon";
 
 /**
