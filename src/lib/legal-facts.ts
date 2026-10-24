@@ -77,7 +77,7 @@ export type LegalFactsInput = {
     audience: LegalAudience;
     visitCounting: boolean;
     modules: readonly string[];
-    tracking: { ga4?: string; gtm?: string; metaPixel?: string };
+    tracking: Partial<Record<keyof typeof TRACKING_TOOL_NAMES, string>>;
   };
   /** From `taxFactsOf()`: null until the store has a tax profile. */
   tax: { vatNumber: string | null; registered: boolean | null } | null;
@@ -95,7 +95,14 @@ export type LegalFactsInput = {
   phone?: string | null;
 };
 
-export const TRACKING_TOOL_NAMES = { ga4: "Google Analytics 4", gtm: "Google Tag Manager", metaPixel: "Meta Pixel" } as const;
+export const TRACKING_TOOL_NAMES = {
+  ga4: "Google Analytics 4",
+  gtm: "Google Tag Manager",
+  metaPixel: "Meta Pixel",
+  googleAds: "Google Ads",
+  tiktokPixel: "TikTok Pixel",
+  pinterestTag: "Pinterest Tag",
+} as const;
 
 /** The facts as the starters read them. */
 export function assembleLegalFacts(input: LegalFactsInput): LegalFacts {

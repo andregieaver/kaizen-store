@@ -158,6 +158,14 @@ export const legalNb: LegalMessages = {
       gtmHint:
         "Statistikk og markedsføring: lastes når en besøkende tillater en av dem, og sender valgene videre som Google Consent Mode-signaler til containerens tagger.",
       metaHint: "Markedsføring. Piksel-ID-en, i Meta Events Manager.",
+      googleAdsHint: "Markedsføring. Tagg-ID-en (AW-…), under Verktøy → Databehandling → Google-tagg i Google Ads.",
+      tiktokHint: "Markedsføring. Pikselkoden, i TikTok Events Manager.",
+      pinterestHint: "Markedsføring. Tagg-ID-en, under Konverteringer i Pinterest Ads.",
+      /** The ads tags by their own names (D303 I1). */
+      names: { googleAds: "Google Ads", tiktokPixel: "TikTok Pixel", pinterestTag: "Pinterest Tag" },
+      googleAdsPlaceholder: "AW-123456789",
+      tiktokPlaceholder: "C4ABCDEFGHIJ1234567",
+      events: "Med samtykke får verktøyene vite om produktvisninger, listevisninger, søk og varer lagt i handlekurven, bare med produkt-ID-er og priser. Kassen og kjøp sendes fra vår server, så de telles også med annonseblokkering.",
       save: "Lagre verktøy",
       noneAsked: "Ingen valgfrie verktøy er på, så besøkende ser ikke noe samtykkebanner: nettstedet bruker bare nødvendige informasjonskapsler.",
       asked: "Besøkende blir spurt om {categories} ved første besøk.",

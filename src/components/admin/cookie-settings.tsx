@@ -25,8 +25,11 @@ export function TrackingForm({
   action,
   cookiePage,
   words = legalEn,
+  ads = false,
 }: {
   tracking: TrackingSettings;
+  /** A store's form also offers the ads tags (D303 I1); Kaizena Flow's own site has none. */
+  ads?: boolean;
   action: (state: FormState, form: FormData) => Promise<FormState>;
   cookiePage: string;
   /** The words, in the account's language (D312 A8); English unless given. */
@@ -58,6 +61,26 @@ export function TrackingForm({
           <input name="metaPixel" defaultValue={tracking.metaPixel ?? ""} placeholder="1234567890" inputMode="numeric" className={input} />
           <span className={hint}>{w.metaHint}</span>
         </label>
+        {ads && (
+          <>
+            <label className={label}>
+              {w.names.googleAds}
+              <input name="googleAds" defaultValue={tracking.googleAds ?? ""} placeholder={w.googleAdsPlaceholder} className={input} />
+              <span className={hint}>{w.googleAdsHint}</span>
+            </label>
+            <label className={label}>
+              {w.names.tiktokPixel}
+              <input name="tiktokPixel" defaultValue={tracking.tiktokPixel ?? ""} placeholder={w.tiktokPlaceholder} className={input} />
+              <span className={hint}>{w.tiktokHint}</span>
+            </label>
+            <label className={label}>
+              {w.names.pinterestTag}
+              <input name="pinterestTag" defaultValue={tracking.pinterestTag ?? ""} placeholder="2612345678901" inputMode="numeric" className={input} />
+              <span className={hint}>{w.pinterestHint}</span>
+            </label>
+            <p className={hint}>{w.events}</p>
+          </>
+        )}
         <div>
           <SubmitButton>{w.save}</SubmitButton>
         </div>

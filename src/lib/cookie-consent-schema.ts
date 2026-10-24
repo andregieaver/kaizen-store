@@ -20,6 +20,9 @@ export const trackingSchema = z
     ga4: optionalId(/^G-[A-Z0-9]{4,15}$/, "A Google Analytics 4 id looks like G-XXXXXXXXXX."),
     gtm: optionalId(/^GTM-[A-Z0-9]{4,12}$/, "A Google Tag Manager id looks like GTM-XXXXXXX."),
     metaPixel: optionalId(/^\d{6,20}$/, "A Meta Pixel id is a number of 6 to 20 digits."),
+    googleAds: optionalId(/^AW-\d{6,12}$/, "A Google Ads tag id looks like AW-123456789."),
+    tiktokPixel: optionalId(/^[A-Z0-9]{15,25}$/, "A TikTok pixel code is 15 to 25 letters and digits."),
+    pinterestTag: optionalId(/^\d{10,16}$/, "A Pinterest tag id is a number of 10 to 16 digits."),
   })
   // Empty fields are tools switched off.
   .transform((value) =>

@@ -1,6 +1,10 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+
+import { trackShop } from "@/lib/shop-events";
+
+import { TrackContext, trackedItem, type ShopTrack } from "./shop-track";
 
 import { AddToCart, type AddToCartLabels } from "./add-to-cart";
 import { AddToDelivery, type AddToDeliveryLabels } from "./add-to-delivery";
@@ -13,6 +17,7 @@ type Choice = [string, (id: string) => void];
 
 const ChosenVariant = createContext<Choice | null>(null);
 
+
 /**
  * The variant chosen on a product page, shared by its picker and the phone's
  * bottom bar, so both add the same one; choosing one shows its picture in
@@ -22,18 +27,34 @@ export function VariantChoice({
   initial,
   productId,
   pictures,
+  track = null,
   children,
 }: {
   initial: string;
   productId: string;
   pictures: Record<string, VariantPicture | null>;
+  /** The variants as the store's tags hear of them (D303 I1). */
+  track?: ShopTrack | null;
   children: ReactNode;
 }) {
   const choice = useState(initial);
   const chosen = choice[0];
+  const viewed = useRef(new Set<string>());
   useEffect(() => showVariantPicture(productId, pictures[chosen] ?? null), [productId, pictures, chosen]);
   useEffect(() => announceVariant(productId, chosen), [productId, chosen]);
-  return <ChosenVariant.Provider value={choice}>{children}</ChosenVariant.Provider>;
+  // Each variant shown is one view, once.
+  useEffect(() => {
+    if (viewed.current.has(chosen)) return;
+    const event = trackedItem(track, chosen, 1);
+    if (!event) return;
+    viewed.current.add(chosen);
+    trackShop({ kind: "view_item", ...event });
+  }, [track, chosen]);
+  return (
+    <TrackContext.Provider value={track}>
+      <ChosenVariant.Provider value={choice}>{children}</ChosenVariant.Provider>
+    </TrackContext.Provider>
+  );
 }
 
 /** The page's chosen variant, or one of the component's own outside a `VariantChoice`. */

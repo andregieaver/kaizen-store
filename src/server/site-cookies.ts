@@ -6,7 +6,7 @@ import { cacheLife, cacheTag } from "next/cache";
 
 import type { ListedCookie } from "@/components/consent/cookie-policy";
 import { db, readDb } from "@/db/client";
-import { declaredCookies, OPTIONAL_CATEGORIES, toolCategories, type KnownCookie, type OptionalCategory, type TrackingSettings } from "@/lib/cookie-consent";
+import { declaredCookies, OPTIONAL_CATEGORIES, STORE_ONLY_TOOLS, toolCategories, type KnownCookie, type OptionalCategory, type TrackingSettings } from "@/lib/cookie-consent";
 import { trackingSchema } from "@/lib/cookie-consent-schema";
 import { cookieNoteInput, parseScannedItems, reviewFindings, type CookieNote, type ScannedItem } from "@/lib/cookie-scan";
 import { codeCategories, type CustomCode } from "@/lib/custom-code";
@@ -173,6 +173,8 @@ export async function saveTracking(
 ): Promise<{ ok: true; tracking: TrackingSettings } | { ok: false; problems: string[] }> {
   const parsed = trackingSchema.safeParse(input);
   if (!parsed.success) return { ok: false, problems: [...new Set(parsed.error.issues.map((i) => i.message))] };
+  // Kaizena Flow's own site has no ads tags (D303 I1).
+  if (storeId === null) for (const key of STORE_ONLY_TOOLS) delete parsed.data[key];
   const json = JSON.stringify(parsed.data);
   if (storeId === null) {
     await db().execute(sql`

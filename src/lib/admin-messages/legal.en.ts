@@ -160,6 +160,14 @@ export const legalEn = {
       gtmHint:
         "Statistics and marketing: loads once a visitor allows either, and passes their choices on as Google Consent Mode signals for the container's tags.",
       metaHint: "Marketing. The pixel id, in Meta Events Manager.",
+      googleAdsHint: "Marketing. The tag id (AW-…), under Tools → Data manager → Google tag in Google Ads.",
+      tiktokHint: "Marketing. The pixel code, in TikTok Events Manager.",
+      pinterestHint: "Marketing. The tag id, under Conversions in Pinterest Ads.",
+      /** The ads tags by their own names (D303 I1). */
+      names: { googleAds: "Google Ads", tiktokPixel: "TikTok Pixel", pinterestTag: "Pinterest Tag" },
+      googleAdsPlaceholder: "AW-123456789",
+      tiktokPlaceholder: "C4ABCDEFGHIJ1234567",
+      events: "With consent, the tools hear product views, list views, searches and adds to the cart, with product ids and prices only. Checkout and purchases are sent from our server, so they are counted even with ad blockers.",
       save: "Save tools",
       noneAsked: "No optional tools are on, so visitors see no cookie banner: the site uses only necessary cookies.",
       asked: "Visitors are asked about {categories} on their first visit.",

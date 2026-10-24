@@ -21,6 +21,7 @@ import {
 } from "@/lib/cookie-consent";
 import { addCustomCode, type CustomCode } from "@/lib/custom-code";
 import { MODAL_STORAGE_PREFIX } from "@/lib/page-modal";
+import { SHOP_EVENT, mapEvent, takeRecentShopEvents, type ShopEvent, type ShopTool } from "@/lib/shop-events";
 
 /** The widget's words, in the site's language (from `i18n`, picked on the server). */
 export type ConsentTexts = {
@@ -54,7 +55,8 @@ type Props = {
 
 type Gtag = (...args: unknown[]) => void;
 type Fbq = ((...args: unknown[]) => void) & { callMethod?: (...args: unknown[]) => void; queue: unknown[][] };
-type Tracked = Window & { dataLayer?: unknown[]; gtag?: Gtag; fbq?: Fbq; _fbq?: Fbq };
+type Queued = ((...args: unknown[]) => void) & { queue?: unknown[][] };
+type Tracked = Window & { dataLayer?: unknown[]; gtag?: Gtag; fbq?: Fbq; _fbq?: Fbq; ttq?: Queued & Record<string, unknown>; pintrk?: Queued };
 
 const loaded = new Set<string>();
 
@@ -75,7 +77,7 @@ const consentState = (granted: boolean) => (granted ? "granted" : "denied");
  */
 function applyChoices(tracking: TrackingSettings, choices: ConsentChoices) {
   const w = window as Tracked;
-  if (tracking.ga4 || tracking.gtm) {
+  if (tracking.ga4 || tracking.gtm || tracking.googleAds) {
     w.dataLayer = w.dataLayer ?? [];
     if (!w.gtag) {
       w.gtag = function gtag() {
@@ -108,6 +110,31 @@ function applyChoices(tracking: TrackingSettings, choices: ConsentChoices) {
     w.gtag!("config", tracking.ga4);
     loadScript(`https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(tracking.ga4)}`);
   }
+  // Google Ads shares Google's tag (D303 I1): one gtag.js, a `config` per id.
+  if (tracking.googleAds && choices.marketing && !loaded.has("googleAds")) {
+    loaded.add("googleAds");
+    if (!loaded.has("ga4")) w.gtag!("js", new Date());
+    w.gtag!("config", tracking.googleAds);
+    loadScript(`https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(tracking.googleAds)}`);
+  }
+  if (tracking.tiktokPixel && choices.marketing && !loaded.has("tiktok")) {
+    loaded.add("tiktok");
+    // TikTok's stub: calls wait in its queue until the script arrives.
+    const ttq = (w.ttq ?? Object.assign((...args: unknown[]) => ttq.queue!.push(args), { queue: [] as unknown[][] })) as NonNullable<Tracked["ttq"]>;
+    for (const method of ["page", "track", "identify"]) ttq[method] = (...args: unknown[]) => ttq.queue!.push([method, ...args]);
+    w.ttq = ttq;
+    ttq.queue!.push(["load", tracking.tiktokPixel]);
+    (ttq.page as () => void)();
+    loadScript(`https://analytics.tiktok.com/i18n/pixel/events.js?sdkid=${encodeURIComponent(tracking.tiktokPixel)}&lib=ttq`);
+  }
+  if (tracking.pinterestTag && choices.marketing && !loaded.has("pinterest")) {
+    loaded.add("pinterest");
+    const pintrk = (w.pintrk ?? Object.assign((...args: unknown[]) => pintrk.queue!.push(args), { queue: [] as unknown[][], version: "3.0" })) as Queued;
+    w.pintrk = pintrk;
+    pintrk("load", tracking.pinterestTag);
+    pintrk("page");
+    loadScript("https://s.pinimg.com/ct/core.js");
+  }
   if (tracking.gtm && (choices.statistics || choices.marketing) && !loaded.has("gtm")) {
     loaded.add("gtm");
     w.dataLayer!.push({ "gtm.start": Date.now(), event: "gtm.js" });
@@ -132,6 +159,26 @@ function applyChoices(tracking: TrackingSettings, choices: ConsentChoices) {
     w.fbq("track", "PageView");
     loadScript("https://connect.facebook.net/en_US/fbevents.js");
   }
+}
+
+/**
+ * Passes a shop event (D303 I1) to each tag that is loaded, in its own words; a tag the visitor did not allow is not loaded, so it hears
+ * nothing. Google Ads hears gtag's events with GA4.
+ */
+function sendShopEvent(event: ShopEvent) {
+  const w = window as Tracked;
+  const calls: [ShopTool, ((...args: unknown[]) => void) | undefined][] = [
+    ["ga4", loaded.has("ga4") || loaded.has("googleAds") ? w.gtag : undefined],
+    ["meta", loaded.has("meta") ? w.fbq : undefined],
+    // TikTok's calls are methods: `["track", name, data]` is `ttq.track(name, data)`.
+    ["tiktok", loaded.has("tiktok") ? (...args: unknown[]) => (w.ttq!.track as (...a: unknown[]) => void)(...args.slice(1)) : undefined],
+    ["pinterest", loaded.has("pinterest") ? w.pintrk : undefined],
+  ];
+  for (const [tool, fn] of calls) {
+    const call = fn && mapEvent(tool, event);
+    if (call) fn(...call);
+  }
+  if (loaded.has("gtm") && w.dataLayer) for (const entry of mapEvent("dataLayer", event) ?? []) w.dataLayer.push(entry);
 }
 
 const noSubscription = () => () => {};
@@ -229,11 +276,25 @@ export function ConsentManager({ storeId, tracking, code = {}, categories, texts
     else dialog.current?.close();
   }, [choosing]);
 
-  // Meta counts each page; the storefront moves between pages without loading them.
+  // Meta, TikTok and Pinterest count each page; the storefront moves between pages without loading them.
   useEffect(() => {
     if (pathname === firstPath.current) return;
-    (window as Tracked).fbq?.("track", "PageView");
+    const w = window as Tracked;
+    w.fbq?.("track", "PageView");
+    if (loaded.has("tiktok")) (w.ttq?.page as (() => void) | undefined)?.();
+    if (loaded.has("pinterest")) w.pintrk?.("page");
   }, [pathname]);
+
+  // What the shopper does goes to the loaded tags (D303 I1); before consent nothing is loaded, so nothing is sent. Events of this page that
+  // came before this listener are heard first, once.
+  useEffect(() => {
+    for (const event of takeRecentShopEvents()) sendShopEvent(event);
+    const listener = () => {
+      for (const event of takeRecentShopEvents()) sendShopEvent(event);
+    };
+    window.addEventListener(SHOP_EVENT, listener);
+    return () => window.removeEventListener(SHOP_EVENT, listener);
+  }, []);
 
   const decide = (choices: ConsentChoices) => {
     const stored = read();

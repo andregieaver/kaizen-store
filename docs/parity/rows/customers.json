@@ -1008,7 +1008,7 @@
       "rechecked": true,
       "was": null
     },
-    "gap": "GA4, GTM and Meta Pixel load only after consent (D58, `ConsentManager`) and send page views only (gtag config, `fbq('track','PageView')`): no view-item, add-to-cart, begin-checkout or purchase events, no server-side Conversions API, no TikTok or Pinterest tags. The owner's own code (D61) can add more, after consent.",
+    "gap": "GA4, GTM and Meta Pixel load only after consent (D58, `ConsentManager`) and send page views only (gtag config, `fbq('track','PageView')`): no view-item, add-to-cart, begin-checkout or purchase events, no server-side Conversions API, no TikTok or Pinterest tags. The owner's own code (D61) can add more, after consent. From D303 I1: Google Ads, TikTok and Pinterest tags (store only, after marketing consent, cookies listed) and browser events view-item, view-item-list, search and add-to-cart to every tag switched on (GA4, GTM's data layer, Meta, TikTok, Pinterest) with ids, prices as shown and the currency (e2e). Still missing: begin-checkout and purchase, which pay routes do not send from the browser by design (D158) and the server will send with consent (I2), and the server-side Conversions API.",
     "bucket": "A",
     "wave": 5,
     "criteria": [
@@ -1021,12 +1021,16 @@
         "src/components/consent/consent-manager.tsx",
         "src/lib/cookie-consent.ts",
         "src/server/consents.ts",
-        "src/components/consent/store-custom-code.tsx"
+        "src/components/consent/store-custom-code.tsx",
+        "src/lib/shop-events.ts",
+        "src/components/consent/consent-manager.tsx"
       ],
       "tests": [
         "src/lib/cookie-consent.test.ts",
         "src/server/consents.int.test.ts",
-        "e2e/cookies.spec.ts"
+        "e2e/cookies.spec.ts",
+        "src/lib/shop-events.test.ts",
+        "e2e/ad-events.spec.ts"
       ],
       "untested": false
     },

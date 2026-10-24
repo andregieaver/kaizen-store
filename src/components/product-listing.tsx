@@ -23,6 +23,9 @@ import type { GridProduct } from "@/server/catalog";
 import { listingFacets, listingProducts, type ListingFacets, type ListingScope } from "@/server/listing";
 import type { Store } from "@/server/stores";
 import { siteTerms } from "@/server/taxonomy";
+import { TrackOnView } from "@/components/track-on-view";
+import { toolCategories } from "@/lib/cookie-consent";
+import { LIST_ITEMS_MAX, majorAmount } from "@/lib/shop-events";
 
 /**
  * A product listing with its sort and filters (D78): the products of the
@@ -84,6 +87,17 @@ export async function ProductListing({
         count={(countText ?? m.listing.count)(products.length)}
         live={!tracked}
       />
+      {/* The list's first products, for the store's tags (D303 I1), only while it has one. */}
+      {products.length > 0 && toolCategories(store.tracking).length > 0 && (
+        <TrackOnView
+          event={{
+            kind: "view_item_list",
+            list: path,
+            currency: products[0].price.currency,
+            items: products.slice(0, LIST_ITEMS_MAX).map((p) => ({ id: p.id, name: p.title, price: majorAmount(p.price.amountMinor, p.price.currency), quantity: 1 })),
+          }}
+        />
+      )}
       {products.length === 0 ? (
         <p>{chosen.length > 0 ? m.listing.none : m.noProducts}</p>
       ) : (

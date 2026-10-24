@@ -20,6 +20,8 @@ import { getRecommendSettings } from "@/server/recommend-settings";
 import { drawArm, runningExperiment } from "@/server/search-experiment";
 import { logSearch, searchProducts } from "@/server/search";
 import { siteTerms } from "@/server/taxonomy";
+import { TrackOnView } from "@/components/track-on-view";
+import { toolCategories } from "@/lib/cookie-consent";
 
 /**
  * The store's search on the site (Phase 2, S1, S2; a page component since
@@ -85,6 +87,7 @@ async function Search({ place, results }: { place: GridPlace; results: boolean }
   return (
     <div className="flex flex-col gap-6">
       {remember && <RecommendTracker query={typed} />}
+      {query && toolCategories(store.tracking).length > 0 && <TrackOnView event={{ kind: "search", words: typed }} />}
       <SearchBox store={store.slug} market={market.slug} base={base} defaultValue={typed} autoFocus={!query} labels={labels} />
       {!query ? (
         <p className="text-muted">{m.search.start}</p>

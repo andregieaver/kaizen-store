@@ -22,7 +22,18 @@ export const FULL_CONSENT: ConsentChoices = { preferences: true, statistics: tru
 // ---------------------------------------------------------------------------
 
 /** Analytics and marketing tools, by the id each service gives; none is loaded without consent. */
-export type TrackingSettings = { ga4?: string; gtm?: string; metaPixel?: string };
+export type TrackingSettings = {
+  ga4?: string;
+  gtm?: string;
+  metaPixel?: string;
+  /** Google Ads' tag (`AW-…`, D303 I1): remarketing and the shop events; purchases are measured through GA4 linking. */
+  googleAds?: string;
+  tiktokPixel?: string;
+  pinterestTag?: string;
+};
+
+/** The ads tags only a store may switch on (D303 I1); Kaizena Flow's own site keeps GA4, Tag Manager and the Meta Pixel. */
+export const STORE_ONLY_TOOLS = ["googleAds", "tiktokPixel", "pinterestTag"] as const;
 
 /** The categories a set of tools needs consent for: Analytics is statistics; the Pixel marketing; Tag Manager may run either. */
 export function toolCategories(tracking: TrackingSettings): OptionalCategory[] {
@@ -32,7 +43,7 @@ export function toolCategories(tracking: TrackingSettings): OptionalCategory[] {
     used.add("statistics");
     used.add("marketing");
   }
-  if (tracking.metaPixel) used.add("marketing");
+  if (tracking.metaPixel || tracking.googleAds || tracking.tiktokPixel || tracking.pinterestTag) used.add("marketing");
   return OPTIONAL_CATEGORIES.filter((c) => used.has(c));
 }
 
@@ -101,7 +112,8 @@ export type KnownCookie = {
   /** Where it is set: Kaizen's site, stores, or both. */
   on: "platform" | "store" | "both";
   /** Set only by this tool, when switched on. */
-  tool?: keyof TrackingSettings;
+  /** The tool (or any of the tools) that sets it. */
+  tool?: keyof TrackingSettings | (keyof TrackingSettings)[];
   /** Set only in stores selling to both private shoppers and businesses (D63). */
   buyers?: boolean;
   /**
@@ -548,12 +560,12 @@ export const KNOWN_COOKIES: KnownCookie[] = [
   },
   {
     name: "_gcl_au",
-    pattern: /^_gcl_(au|aw|dc)$/,
+    pattern: /^_gcl_(au|aw|dc|gb|ag)$/,
     provider: "Google Ads",
     category: "marketing",
     days: 90,
     on: "both",
-    tool: "gtm",
+    tool: ["gtm", "googleAds"],
     purpose: {
       en: "Measures which ads lead to visits and purchases.",
       nb: "Måler hvilke annonser som fører til besøk og kjøp.",
@@ -589,6 +601,36 @@ export const KNOWN_COOKIES: KnownCookie[] = [
       nb: "Husker hvilken Meta-annonse en besøkende kom fra.",
       sv: "Kommer ihåg vilken Meta-annons en besökare kom från.",
       da: "Husker, hvilken Meta-annonce en besøgende kom fra.",
+    },
+  },
+  {
+    name: "_ttp",
+    pattern: /^(_ttp|_tt_enable_cookie|ttcsid.*)$/,
+    provider: "TikTok",
+    category: "marketing",
+    days: 390,
+    on: "store",
+    tool: "tiktokPixel",
+    purpose: {
+      en: "Lets TikTok show and measure ads to people who visited the site.",
+      nb: "Lar TikTok vise og måle annonser til folk som har besøkt nettstedet.",
+      sv: "Låter TikTok visa och mäta annonser för personer som har besökt webbplatsen.",
+      da: "Lader TikTok vise og måle annoncer til personer, der har besøgt webstedet.",
+    },
+  },
+  {
+    name: "_pin_unauth",
+    pattern: /^(_pin_unauth|_pinterest_ct_ua|_epik|_derived_epik)$/,
+    provider: "Pinterest",
+    category: "marketing",
+    days: 365,
+    on: "store",
+    tool: "pinterestTag",
+    purpose: {
+      en: "Lets Pinterest show and measure ads to people who visited the site.",
+      nb: "Lar Pinterest vise og måle annonser til folk som har besøkt nettstedet.",
+      sv: "Låter Pinterest visa och mäta annonser för personer som har besökt webbplatsen.",
+      da: "Lader Pinterest vise og måle annoncer til personer, der har besøgt webstedet.",
     },
   },
 ];
@@ -632,6 +674,6 @@ export function declaredCookies(
       !cookie.staff &&
       (!cookie.referrals || referrals) &&
       (!cookie.languages || languages) &&
-      (cookie.tool ? Boolean(tracking[cookie.tool]) : cookie.provider !== "Stripe"),
+      (cookie.tool ? [cookie.tool].flat().some((tool) => Boolean(tracking[tool])) : cookie.provider !== "Stripe"),
   );
 }

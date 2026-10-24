@@ -16,6 +16,9 @@ import { ProductGrid } from "@/components/product-listing";
 import { PlanAmount, PlanPrice, PurchaseOptions } from "@/components/purchase-options";
 import { RangePicker } from "@/components/range-picker";
 import { VariantChoice, VariantPurchase } from "@/components/variant-choice";
+import type { ShopTrack } from "@/components/shop-track";
+import { toolCategories } from "@/lib/cookie-consent";
+import { majorAmount } from "@/lib/shop-events";
 import { VariantFields } from "@/components/variant-fields";
 import { WishlistHeart } from "@/components/wishlist-heart";
 import { noticesFor, type CampaignNotices as Notices } from "@/lib/campaign-notices";
@@ -739,6 +742,18 @@ async function notifyOffer(store: Store, product: ProductDetail, availability: A
   return { variants, email: customer?.email ?? "", labels: m.backInStock };
 }
 
+/** What the store's tags hear of a product's variants (D303 I1): only while the store has a tag; SKU else id, the price as shown. */
+function shopTrack(store: Store, product: ProductDetail): ShopTrack | null {
+  if (toolCategories(store.tracking).length === 0 || product.variants.length === 0) return null;
+  return {
+    name: product.title,
+    currency: product.variants[0].price.currency,
+    variants: Object.fromEntries(
+      product.variants.map((v) => [v.id, { id: v.sku || v.id, price: majorAmount(v.price.amountMinor, v.price.currency) }]),
+    ),
+  };
+}
+
 async function VariantsWithStock({
   store,
   product,
@@ -800,6 +815,7 @@ async function VariantsWithStock({
         initial={(product.variants.find(available) ?? product.variants[0]).id}
         productId={product.id}
         pictures={Object.fromEntries(product.variants.map((variant) => [variant.id, variant.image]))}
+        track={shopTrack(store, product)}
       >
         <VariantPurchase
           store={store.slug}

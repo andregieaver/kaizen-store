@@ -1061,6 +1061,12 @@ I has three parts, each its own commit: **I1** events in the browser and the new
 - **Tests.** Unit: campaign rows, the builder's links and channel. Integration: campaign revenue in a euro scenario, copied and host orders out,
   spend import idempotent. E2E: the touch cookie only after `statistics` consent.
 
+**As built (I1).** As 12.2, with these differences: a Google Ads conversion label is not kept (with no purchase in the browser there is
+nothing to attach it to; Google Ads purchases come from GA4 linking until I2's server events); `view_item` carries the product's title and no
+variant name; the product page gives its variants' data only while the store has a tag (`shopTrack()`); `ConsentManager` replays this page
+view's events that came before it listened (`takeRecentShopEvents()`, in memory, at most ten), so a product page's first view is heard on a
+returning visitor's page load. Tests: `src/lib/shop-events.test.ts`, `e2e/ad-events.spec.ts`.
+
 ### 12.5 Rows
 
 I1 and I2 close `customers.ad-pixels-and-conversion-events` and `analytics.third-party-analytics-and-pixels-with-consent` except a purchase event

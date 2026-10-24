@@ -47,6 +47,7 @@ export default async function StoreCookiesPage({ params }: PageProps<"/admin/[st
         action={saveStoreTrackingAction.bind(null, store.slug)}
         cookiePage={market ? storeHref(store.slug, marketPath(store.slug, market.slug, "/cookies")) : "/"}
         words={words}
+        ads
       />
       <CustomCodeForm
         code={store.customCode}

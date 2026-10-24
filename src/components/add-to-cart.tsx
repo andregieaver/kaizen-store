@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef } from "react";
+
+import { trackShop } from "@/lib/shop-events";
 
 import { addToCart, type AddToCartState } from "@/app/s/[store]/[market]/cart/actions";
 
@@ -9,6 +11,7 @@ import { AffiliateField } from "./affiliate-field";
 import { RecommendField } from "./recommend-field";
 import { useOpenCartAfterAdd } from "./cart-drawer";
 import { useChosenPlan } from "./purchase-options";
+import { trackedItem, useShopTrack } from "./shop-track";
 
 export type AddToCartLabels = {
   addToCart: string;
@@ -48,6 +51,14 @@ export function AddToCart({
   const [state, action, pending] = useActionState(addToCart, initial);
   useOpenCartAfterAdd(openCart, cartHref, state);
   const plan = useChosenPlan();
+  const track = useShopTrack();
+  // What was asked for, so the tags hear the units added (D303 I1), once the server accepted them.
+  const asked = useRef(1);
+  useEffect(() => {
+    if (state.outcome !== "added") return;
+    const event = trackedItem(track, variantId, asked.current);
+    if (event) trackShop({ kind: "add_to_cart", ...event });
+  }, [state, track, variantId]);
   const message =
     state.outcome === "added"
       ? labels.added
@@ -62,7 +73,13 @@ export function AddToCart({
             : null;
 
   return (
-    <form action={action} className="flex flex-col items-end gap-1">
+    <form
+      action={action}
+      onSubmit={(event) => {
+        asked.current = Math.max(1, Number(new FormData(event.currentTarget).get("quantity") ?? 1) || 1);
+      }}
+      className="flex flex-col items-end gap-1"
+    >
       <input type="hidden" name="store" value={store} />
       <input type="hidden" name="market" value={market} />
       <input type="hidden" name="variantId" value={variantId} />
