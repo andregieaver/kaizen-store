@@ -121,6 +121,7 @@ export const STORE_SECTIONS: StoreSection[] = [
           item("/automations", "Email automations", "Emails that go by themselves: a welcome, after a purchase, win-back, and back in stock."),
           item("/broadcasts", "Broadcasts", "Emails with news and offers to everyone who wants them, or to a segment, with what happened after."),
           item("/segments", "Segments", "Groups of customers and subscribers by what they did, counted as you open them."),
+          item("/ads", "Ads and conversions", "Checkouts and purchases sent to your ad platforms from the server, for shoppers who allowed marketing."),
           item("/subscribers", "Subscribers", "People who asked for your emails with news and offers, with what they agreed to and when."),
           item("/cart-reminders", "Cart reminders", "Emails to people who left items in their cart.", { feature: "shop" }),
           item("/bonus", "Bonus credits", "Credits customers earn on what they pay and use as a price reduction.", { feature: "bonus" }),

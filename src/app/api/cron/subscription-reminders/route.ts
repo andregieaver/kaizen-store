@@ -1,3 +1,4 @@
+import { pruneAdSignals } from "@/server/ad-conversions";
 import { revalidateTag } from "next/cache";
 import { connection } from "next/server";
 
@@ -43,6 +44,8 @@ export async function GET(request: Request) {
   await connection();
   if (!(await cronAuthorised(request))) return new Response("Unauthorized", { status: 401 });
   const [run, memories, usage, company, rates, visits, withdrawals, security, vatRates, vatChecks, ecb] = await Promise.all([sendDueReminders(), fadeMemories(), pruneUsage(), pruneCompanyRecords(), refreshAutoRates(), pruneVisits(), expireWithdrawalRequests(), runSecurityJobs(), syncStandardRates(), pruneVatChecks(), storeEcbRates()]);
+  // Ad platforms' ids on orders go 90 days after (D303 I2).
+  await pruneAdSignals();
   // GDPR (wave 1, 1g): the retention schedule, erasures that began and did not finish, and the reminders about requests due. Each never throws.
   // Domains (D315, never throws): renewals invoiced 30 days ahead, the registrar's auto-renew turned off where renewal is off or unpaid.
   const domainRenewals = await runDomainRenewals().catch((error) => (console.error("[domains] renewals failed", error), { quoted: 0, stopped: 0 }));

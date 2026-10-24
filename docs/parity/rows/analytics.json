@@ -1390,22 +1390,28 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": "full"
+      "was": "partial"
     },
     "weight": 4,
-    "gap": "Consent-gated loading works (GA4, GTM, Meta Pixel, store custom code, Consent Mode v2), but no ecommerce events (view item, add to cart, checkout, purchase) are sent and no server-side conversion events exist. From D303 I1: Google Ads, TikTok and Pinterest tags (store only, after marketing consent, cookies listed) and browser events view-item, view-item-list, search and add-to-cart to every tag switched on (GA4, GTM's data layer, Meta, TikTok, Pinterest) with ids, prices as shown and the currency (e2e). Still missing: begin-checkout and purchase, which pay routes do not send from the browser by design (D158) and the server will send with consent (I2), and the server-side Conversions API.",
+    "gap": "Consent-gated loading works (GA4, GTM, Meta Pixel, store custom code, Consent Mode v2), but no ecommerce events (view item, add to cart, checkout, purchase) are sent and no server-side conversion events exist. From D303 I1: Google Ads, TikTok and Pinterest tags (store only, after marketing consent, cookies listed) and browser events view-item, view-item-list, search and add-to-cart to every tag switched on (GA4, GTM's data layer, Meta, TikTok, Pinterest) with ids, prices as shown and the currency (e2e). From D303 I2: begin-checkout and purchase are sent server-side to Meta's Conversions API, GA4's Measurement Protocol, TikTok's Events API and Pinterest's Conversions API, once per order and platform with the order id as event id, only for orders whose cart had marketing consent, never copied, host, test-mode or restricted orders, tokens encrypted, hashed email and phone only at the owner's Enhanced level. Still missing: a purchase event in the browser, which pay routes forbid by design (D158; the server event is the measure), Google Ads conversions by API (bucket B), and refund events.",
     "history": [
       {
         "on": "2026-10-03",
         "from": "full",
         "to": "partial",
         "why": "Read the loader: `ConsentManager` loads GA4, GTM and the Meta Pixel only after consent and sets Google Consent Mode v2, and a store's own code is added after consent (D61), but the site pushes no commerce events anywhere: the only calls are gtag consent, gtag config, the GTM start event and fbq init and PageView, with no view_item, add_to_cart, begin_checkout, purchase or Meta Purchase event and no server-side events. A pixel that sees page views but no purchases cannot measure ads, so the row is partial."
+      },
+      {
+        "from": "partial",
+        "to": "full",
+        "why": "D303 I1 and I2: tags after consent, browser shop events, and server-side checkout and purchase events with consent; the browser purchase is replaced by the server event by design.",
+        "on": "2026-10-24"
       }
     ],
-    "bucket": "A",
-    "wave": 5,
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "With consent, the storefront sends view item, add to cart, begin checkout and purchase events to GA4 or GTM's data layer and to the Meta Pixel, with item, value and currency from the order.",
       "Nothing is sent, and no script loads, before the category is accepted; withdrawing consent stops it.",
@@ -1421,7 +1427,10 @@
         "src/lib/custom-code.ts",
         "src/server/consents.ts",
         "src/lib/shop-events.ts",
-        "src/components/consent/consent-manager.tsx"
+        "src/components/consent/consent-manager.tsx",
+        "src/server/ad-conversions.ts",
+        "src/lib/ad-payloads.ts",
+        "src/server/ad-connections.ts"
       ],
       "tests": [
         "src/lib/cookie-consent.test.ts",
@@ -1429,7 +1438,9 @@
         "src/server/consents.int.test.ts",
         "e2e/cookies.spec.ts",
         "src/lib/shop-events.test.ts",
-        "e2e/ad-events.spec.ts"
+        "e2e/ad-events.spec.ts",
+        "src/server/ad-conversions.int.test.ts",
+        "src/lib/ad-payloads.test.ts"
       ],
       "untested": false
     },

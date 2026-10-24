@@ -3025,6 +3025,20 @@
       "when": 1792843360597,
       "tag": "20261024120240_signup_incentives_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 432,
+      "version": "7",
+      "when": 1792847499083,
+      "tag": "20261024131139_ad_conversions",
+      "breakpoints": true
+    },
+    {
+      "idx": 433,
+      "version": "7",
+      "when": 1792847528982,
+      "tag": "20261024131208_ad_conversions_rules",
+      "breakpoints": true
     }
   ]
 }

@@ -478,6 +478,10 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["automation", "flow", "welcome email", "win-back", "winback", "back in stock", "notify me", "restock", "lifecycle email", "velkomstmail"],
     tasks: ["Send a welcome email to new subscribers", "Tell customers when a sold-out product is back"],
   }),
+  store("ads", "/ads", "Ads and conversions", "Sales", "Ads and conversions: server-side conversion events to Meta, Google Analytics 4, TikTok and Pinterest. Per platform the connection (its id and token), what it sends (standard, or enhanced with hashed email and phone), a test code, and the last seven days' sent, not sent and failed counts. Only for orders whose shopper allowed marketing cookies.", {
+    keywords: ["conversions api", "capi", "meta pixel", "facebook pixel", "tiktok events api", "pinterest conversions", "server-side tracking", "ad tracking", "measurement protocol"],
+    tasks: ["Send purchases to Meta from the server", "Connect TikTok's Events API"],
+  }),
   store("email-automation", "/automations/[kind]", "Email automation", "Sales", "One email automation: its days, its words per language, a test to yourself, and the switch."),
   store("broadcast.new", "/broadcasts/new", "New broadcast", "Sales", "Writes a new broadcast: its name, who it is for, and per language its subject and what it says."),
   store("broadcast", "/broadcasts/[broadcastId]", "Broadcast", "Sales", "One broadcast: its words, a test to yourself, send now or schedule; once sent, how many it went to, delivered, bounced, unsubscribed and presses on its links."),

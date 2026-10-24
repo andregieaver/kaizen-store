@@ -101,3 +101,25 @@ describe("sign-up welcome codes (D304 J3)", () => {
     expect((await db.query<{ n: number }>("select count(*)::int as n from commerce.signup_incentives where discount_id = $1", [id])).rows[0].n).toBe(0);
   });
 });
+
+describe("ad consent on orders (D303 I2)", () => {
+  it("is copied from the order's cart when it is made, and only its ids may be cleared after", async () => {
+    const cart = await scalar<string>(
+      `insert into commerce.carts (store_id, market_code, currency, locale, expires_at, ad_consent_at, ad_signals)
+       values ($1, 'NO', 'NOK', 'nb-NO', now() + interval '1 day', now(), '{"fbp": "fb.1.1760000000000.1"}') returning id`,
+      [store],
+    );
+    // An order made through its cart.
+    const id = await scalar<string>(
+      `insert into commerce.orders (store_id, number, market_code, currency, locale, cart_id, email, subtotal_minor, shipping_minor, discount_minor, tax_minor, total_minor, billing_address, shipping_address, ad_consent_at)
+       values ($1, 'AD-1', 'NO', 'NOK', 'nb-NO', $2, 'kari@example.com', 0, 0, 0, 0, 0, '{}', '{}', null) returning id`,
+      [store, cart],
+    );
+    expect(await scalar("select ad_signals->>'fbp' from commerce.orders where id = $1", [id])).toBe("fb.1.1760000000000.1");
+    expect(await scalar("select ad_consent_at is not null from commerce.orders where id = $1", [id])).toBe(true);
+    await rejects("update commerce.orders set ad_consent_at = null where id = $1", [id], /ad_consent_fixed/);
+    await rejects(`update commerce.orders set ad_signals = '{"fbp": "x"}' where id = $1`, [id], /ad_signals_fixed/);
+    await db.query("update commerce.orders set ad_signals = null where id = $1", [id]);
+    expect(await scalar("select ad_signals from commerce.orders where id = $1", [id])).toBeNull();
+  });
+});

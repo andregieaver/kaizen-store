@@ -19,6 +19,7 @@ import {
   type OptionalCategory,
   type TrackingSettings,
 } from "@/lib/cookie-consent";
+import { readAdSignals } from "@/lib/ad-signals";
 import { addCustomCode, type CustomCode } from "@/lib/custom-code";
 import { MODAL_STORAGE_PREFIX } from "@/lib/page-modal";
 import type { ShopTool } from "@/lib/shop-event-map";
@@ -185,6 +186,20 @@ async function sendShopEvent(event: ShopEvent) {
   if (loaded.has("gtm") && w.dataLayer) for (const entry of mapEvent("dataLayer", event) ?? []) w.dataLayer.push(entry);
 }
 
+/**
+ * Keeps the shopper's marketing choice and the ad platforms' ids on their own carts of this store (D303 I2), so the server sends checkout and
+ * purchase events only for a shopper who allowed them. Only a store with an ads tag; a withdrawn choice clears them.
+ */
+function shareAdSignals(storeId: string | null, tracking: TrackingSettings, marketing: boolean) {
+  if (!storeId || !(tracking.metaPixel || tracking.googleAds || tracking.tiktokPixel || tracking.pinterestTag || tracking.ga4)) return;
+  void fetch("/api/ads/signals", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ store: storeId, consent: marketing, signals: marketing ? readAdSignals(document.cookie, location.search) : {} }),
+    keepalive: true,
+  }).catch(() => {});
+}
+
 const noSubscription = () => () => {};
 
 /** Pop-ups that remember being closed keep it in the browser's storage as a preference (D121). */
@@ -258,6 +273,8 @@ export function ConsentManager({ storeId, tracking, code = {}, categories, texts
     if (categories.length > 0 && consentIsCurrent(stored, version)) {
       applyChoices(tracking, stored!.choices);
       addCustomCode(code, stored!.choices);
+      // The tags set their ids as they load; read them a moment later.
+      if (stored!.choices.marketing) window.setTimeout(() => shareAdSignals(storeId, tracking, true), 2000);
     }
   });
   useEffect(() => start(), []);
@@ -290,12 +307,14 @@ export function ConsentManager({ storeId, tracking, code = {}, categories, texts
   }, [pathname]);
 
   // What the shopper does goes to the loaded tags (D303 I1); before consent nothing is loaded, so nothing is sent. Events of this page that
-  // came before this listener are heard first, once.
+  // came before this listener are heard first, once. A cart made after the choice gets the choice too (D303 I2).
+  const onShop = useEffectEvent((e: Event) => {
+    for (const event of takeRecentShopEvents()) void sendShopEvent(event);
+    if ((e as CustomEvent<ShopEvent>).detail?.kind === "add_to_cart" && read()?.choices.marketing) shareAdSignals(storeId, tracking, true);
+  });
   useEffect(() => {
     for (const event of takeRecentShopEvents()) void sendShopEvent(event);
-    const listener = () => {
-      for (const event of takeRecentShopEvents()) void sendShopEvent(event);
-    };
+    const listener = (e: Event) => onShop(e);
     window.addEventListener(SHOP_EVENT, listener);
     return () => window.removeEventListener(SHOP_EVENT, listener);
   }, []);
@@ -319,6 +338,7 @@ export function ConsentManager({ storeId, tracking, code = {}, categories, texts
     setChoosing(false);
     window.dispatchEvent(new Event(CONSENT_CHANGED_EVENT));
     const withdrawn = stored ? OPTIONAL_CATEGORIES.filter((c) => stored.choices[c] && !allowed[c]) : [];
+    if (stored?.choices.marketing || allowed.marketing) window.setTimeout(() => shareAdSignals(storeId, tracking, allowed.marketing), allowed.marketing ? 2000 : 0);
     if (withdrawn.length > 0) {
       // A tool already running cannot be stopped: its cookies go, and the page starts again without it.
       forget(withdrawn);

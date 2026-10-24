@@ -1067,6 +1067,13 @@ variant name; the product page gives its variants' data only while the store has
 view's events that came before it listened (`takeRecentShopEvents()`, in memory, at most ten), so a product page's first view is heard on a
 returning visitor's page load. Tests: `src/lib/shop-events.test.ts`, `e2e/ad-events.spec.ts`.
 
+**As built (I2).** As 12.3, with these differences: events are queued by the every-minute job (`queueAdConversions()`) from the orders
+themselves rather than at the checkout and payment paths, so they go within a minute; an order takes its cart's consent by trigger
+(`orders_ad_consent()`) rather than in `placeOrder()`; GA4's Measurement Protocol is sent to its EU host with the order's id as the client id
+(the visitor's `_ga` is never read); Pinterest has no checkout-started event, so it gets the purchase only; a platform with nothing to match an
+event by (no click id and the standard level) is `skipped` with `nothing_to_match`. Staff with `marketing:read` see the page, only the owner
+changes it. Tests: `src/lib/ad-payloads.test.ts`, `src/server/ad-conversions.int.test.ts`, the trigger in `src/db/discount-codes.test.ts`.
+
 ### 12.5 Rows
 
 I1 and I2 close `customers.ad-pixels-and-conversion-events` and `analytics.third-party-analytics-and-pixels-with-consent` except a purchase event

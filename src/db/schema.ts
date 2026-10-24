@@ -3371,6 +3371,9 @@ export const carts = commerce.table(
      * its channel and device. The visit is deleted after 25 months; the cart then keeps nothing.
      */
     visitId: uuid("visit_id").references((): AnyPgColumn => visits.id, { onDelete: "set null" }),
+    /** When the shopper allowed marketing while this cart was open (D303 I2), and the ad platforms' ids then (`cleanAdSignals()`); null without. */
+    adConsentAt: timestamp("ad_consent_at", { withTimezone: true }),
+    adSignals: jsonb("ad_signals"),
     /**
      * A cart made on another site (D170, the WordPress plugin) is opened here by a one-time link: the hash of its secret, when it
      * runs out, and where it goes (the cart or the checkout). The link sets the browser's cart cookie once and is then cleared.
@@ -3477,6 +3480,9 @@ export const cartLines = commerce.table(
 export const orders = commerce.table(
   "orders",
   {
+    /** Copied from its cart when the order is made (D303 I2, trigger `orders_ad_consent()`), set once; the ids are cleared 90 days after the purchase was sent. */
+    adConsentAt: timestamp("ad_consent_at", { withTimezone: true }),
+    adSignals: jsonb("ad_signals"),
     id: uuid("id").primaryKey().defaultRandom(),
     storeId: storeId(),
     /** The customer-facing order number, unique within the store. */
@@ -12679,5 +12685,71 @@ export const signupIncentives = commerce.table(
     }),
     check("signup_incentives_email", sql`${t.email} = lower(${t.email}) and char_length(${t.email}) between 3 and 254`),
     check("signup_incentives_form", sql`char_length(${t.formId}) between 1 and 64`),
+  ],
+);
+
+/**
+ * A store's server-side connection to an ad platform (wave 5 unit I2, D303, `docs/wave-5-marketing.md` 12.3): the platform's own id and the
+ * owner's token, encrypted (`secret-box.ts`), never sent to a page. Written only by `src/server/ad-connections.ts`. Not personal data.
+ */
+export const adConnections = commerce.table(
+  "ad_connections",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id),
+    platform: text("platform").notNull(),
+    accountId: text("account_id").notNull(),
+    token: text("token").notNull(),
+    tokenHint: text("token_hint").notNull(),
+    /** `standard` sends no personal data; `enhanced` adds hashed email and phone. */
+    dataLevel: text("data_level").notNull().default("standard"),
+    testCode: text("test_code"),
+    on: boolean("on").notNull().default(true),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("ad_connections_store_platform").on(t.storeId, t.platform),
+    unique("ad_connections_store_id_key").on(t.storeId, t.id),
+    check("ad_connections_platform", sql`${t.platform} in ('meta', 'ga4', 'tiktok', 'pinterest')`),
+    check("ad_connections_level", sql`${t.dataLevel} in ('standard', 'enhanced')`),
+    check("ad_connections_account", sql`char_length(${t.accountId}) between 4 and 40`),
+    check("ad_connections_test_code", sql`${t.testCode} is null or char_length(${t.testCode}) between 1 and 40`),
+  ],
+);
+
+/**
+ * One server-side conversion event of an order for a platform (D303 I2): made only by `queueAdConversions()`, sent only by
+ * `sendAdConversions()`, once per order, platform and event. No personal field: the payload is built when sent.
+ */
+export const adConversions = commerce.table(
+  "ad_conversions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id),
+    orderId: uuid("order_id").notNull(),
+    platform: text("platform").notNull(),
+    event: text("event").notNull(),
+    status: text("status").notNull().default("pending"),
+    tries: integer("tries").notNull().default(0),
+    nextAt: timestamp("next_at", { withTimezone: true }).notNull().defaultNow(),
+    /** Why it was skipped, or the platform's answer code when it failed. */
+    answer: text("answer"),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("ad_conversions_once").on(t.storeId, t.orderId, t.platform, t.event),
+    index("ad_conversions_due_idx").on(t.status, t.nextAt),
+    index("ad_conversions_store_idx").on(t.storeId, t.createdAt),
+    foreignKey({ name: "ad_conversions_order_fk", columns: [t.storeId, t.orderId], foreignColumns: [orders.storeId, orders.id] }).onDelete("cascade"),
+    check("ad_conversions_platform", sql`${t.platform} in ('meta', 'ga4', 'tiktok', 'pinterest')`),
+    check("ad_conversions_event", sql`${t.event} in ('begin_checkout', 'purchase')`),
+    check("ad_conversions_status", sql`${t.status} in ('pending', 'sent', 'skipped', 'failed')`),
+    check("ad_conversions_answer", sql`${t.answer} is null or char_length(${t.answer}) <= 200`),
   ],
 );

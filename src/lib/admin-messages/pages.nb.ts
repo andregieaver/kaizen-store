@@ -275,6 +275,10 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     title: "Automatiske e-poster",
     keywords: ["automatisering", "velkomst-e-post", "velkomstmail", "gjenvinning", "tilbake på lager", "gi meg beskjed", "flyt"],
   },
+  "store:ads": {
+    title: "Annonser og konverteringer",
+    keywords: ["konverteringer", "conversions api", "meta-piksel", "facebook-piksel", "tiktok", "pinterest", "sporing på serveren", "annonsesporing"],
+  },
   "store:email-automation": { title: "E-postautomatisering", keywords: ["e-postautomatisering", "automatisering", "test-e-post", "slå på"] },
   "store:broadcast.new": { title: "Ny utsendelse", keywords: ["ny utsendelse", "nytt nyhetsbrev", "skriv e-post", "utsendelse"] },
   "store:broadcast": { title: "Utsendelse", keywords: ["utsendelse", "nyhetsbrev", "send nå", "planlegg", "test-e-post"] },
