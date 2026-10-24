@@ -217,6 +217,30 @@ export const platformEn = {
     description: "The cookies Kaizena Flow's site uses, who sets them, why and for how long.",
   },
   notFound: { title: "This page does not exist.", home: "Kaizena Flow's front page" },
+  domainEmails: {
+    registered: {
+      subject: "{domain} is yours",
+      preview: "Registered to {holder} until {date}.",
+      heading: "{domain} is registered",
+      body: "{domain} is registered to {holder} until {date}. It renews by itself each year unless you turn renewal off, and we write before it does.",
+      consent: "When you bought it you asked: “{consent}” The registration is complete, so it can't be withdrawn from; you can stop it renewing at any time.",
+      button: "Your domains",
+    },
+    unpaid: {
+      subject: "Renew {domain} before {date}",
+      preview: "The renewal isn't paid yet.",
+      heading: "{domain} expires on {date}",
+      body: "The renewal invoice for {domain} isn't paid yet. Pay it and the domain renews; if it isn't paid, the domain stops on {date}, with the website and email on it.",
+      button: "Pay the renewal",
+    },
+    stopping: {
+      subject: "{domain} stops on {date}",
+      preview: "Renewal is off.",
+      heading: "{domain} stops on {date}",
+      body: "Renewal is off for {domain}, so it stops on {date}, with the website and email on it. Turn renewal on to keep it, or move it elsewhere before then.",
+      button: "Your domains",
+    },
+  },
   accessEmails: {
     received: {
       subject: "We got your request for {store}",

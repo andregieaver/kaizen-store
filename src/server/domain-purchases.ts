@@ -29,6 +29,7 @@ import { connectOwnedDomain } from "./domains";
 import { accountHolder, heldBy, holderColumns, storeOf, type HolderRef } from "./domain-holder";
 import { domainPricingRows, priceContext, priceIn, storeDomainCurrency } from "./domain-prices";
 import { toRegistration, type Registration } from "./domain-registrations";
+import { sendRegisteredEmail } from "./domain-emails";
 import { serveHolding } from "./holding";
 import { checkVatNumber } from "./vies";
 import { limitRefusal } from "@/lib/usage-format";
@@ -716,6 +717,7 @@ async function registerOne(row: Row, deps: DomainBillingDeps): Promise<"done" | 
     return toRegistration(reg);
   });
   await audit(null, storeId, "store.domain_registered", { domain: apex, years, registration: registration.id });
+  await sendRegisteredEmail(id);
   // No store uses it: its holding page is served from now on (D317 8).
   if (!storeId) await (deps.serveHolding ?? serveHolding)(apex);
   if (row.connect === true && storeId) {
@@ -810,6 +812,7 @@ async function transferOne(row: Row, registrar: DomainRegistrar, deps: DomainBil
     return toRegistration(reg);
   });
   await audit(null, storeId, "store.domain_transferred_in", { domain: apex, registration: registration.id });
+  await sendRegisteredEmail(id);
   if (row.connect === true && storeId) {
     const connected = await (deps.connect ?? connectOwnedDomain)(null, storeId, apex);
     if (!connected.ok) await audit(null, storeId, "store.domain_connect_failed", { domain: apex, problem: connected.problems.join(" ").slice(0, 300) });

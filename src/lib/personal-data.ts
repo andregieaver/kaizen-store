@@ -232,15 +232,15 @@ export const PERSONAL_DATA: PersonalEntry[] = [
   entry("store_locations", "owner", via("none"), ["name", "phone", "notes"], null, "none", "The store's own places. " + OWN),
   entry("store_roles", "staff", via("none"), ["name"], null, "none", OWN),
   entry("stores", "owner", via("none"), ["name", "legal_name", "contact_email", "postal_address"], null, "none", "The store itself. " + OWN),
+  entry("domain_purchases", "owner", via("none"), ["vat_number", "consent_text", "buyer"], null, "none", "What a store or a person paid Kaizena Flow for a domain (D315, D317): the name, prices and invoice, and for a buyer without a store whether they bought as a private person, their business's VAT number and the consent they gave. " + OWN),
   entry("domain_registrants", "owner", via("none"), ["first_name", "last_name", "company_name", "email", "phone", "address1", "address2", "city", "postal_code"], null, "none", "Who the store's domains are registered to (D315): the owner or their company, sent to the registrar and the registry by the nature of a registration. " + OWN),
   entry("products", "host", via("none"), ["host_id"], null, "none", "A product may belong to a host. " + OWN),
 ];
 
 /** Tables the detectors matched (by a column name such as `name`, `note` or `content`, or a foreign key) that hold no person's data, and why. */
 export const NOT_PERSONAL: Record<string, string> = {
-  domain_registrations: "A store's domain registered by Kaizena Flow (D315): the name, its dates and renewal; the registrant is its own entry.",
-  domain_purchases: "What a store paid Kaizena Flow for a domain (D315): the name, years, prices and invoice; no person.",
-  dns_zones: "A domain whose DNS Kaizena Flow keeps (D315): its name and state; no person.",
+  domain_registrations: "A domain registered by Kaizena Flow (D315, D317), held by an account and maybe used by a store: the name, its dates and renewal; the registrant is its own entry.",
+  dns_zones: "A domain whose DNS Kaizena Flow keeps (D315, D317): its name, state and what it shows while no store uses it; no person.",
   dns_changes: "DNS records changed (D315): record types, names and values of the store's own zone, and who changed them (a staff account id).",
   store_usage_daily: "What a store used per day (D314): counts and bytes per metric; no person, address, path or query.",
   plan_limits: "A plan's limits (D314): numbers per limit; the account id is the platform admin who changed it.",
@@ -424,6 +424,9 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   "capacity.upcoming": "staff",
   "referral.store_opened": "staff",
   // To someone who asked to open a store (D312 P6)
+  "domain.registered": "staff",
+  "domain.renewal_unpaid": "staff",
+  "domain.renewal_stopping": "staff",
   "platform.access_received": "staff",
   "platform.access_approved": "staff",
   "platform.access_declined": "staff",

@@ -216,6 +216,30 @@ export const platformNb: PlatformMessages = {
     description: "Informasjonskapslene Kaizena Flows nettsted bruker, hvem som setter dem, hvorfor og hvor lenge.",
   },
   notFound: { title: "Denne siden finnes ikke.", home: "Forsiden til Kaizena Flow" },
+  domainEmails: {
+    registered: {
+      subject: "{domain} er ditt",
+      preview: "Registrert på {holder} til {date}.",
+      heading: "{domain} er registrert",
+      body: "{domain} er registrert på {holder} til {date}. Det fornyes av seg selv hvert år hvis du ikke slår av fornyelsen, og vi skriver før det skjer.",
+      consent: "Da du kjøpte det, ba du om dette: «{consent}» Registreringen er fullført, så angreretten gjelder ikke lenger; du kan når som helst stoppe fornyelsen.",
+      button: "Domenene dine",
+    },
+    unpaid: {
+      subject: "Forny {domain} før {date}",
+      preview: "Fornyelsen er ikke betalt ennå.",
+      heading: "{domain} går ut {date}",
+      body: "Fakturaen for fornyelsen av {domain} er ikke betalt ennå. Betal den, så fornyes domenet; blir den ikke betalt, slutter domenet å virke {date}, med nettstedet og e-posten på det.",
+      button: "Betal fornyelsen",
+    },
+    stopping: {
+      subject: "{domain} slutter å virke {date}",
+      preview: "Fornyelsen er slått av.",
+      heading: "{domain} slutter å virke {date}",
+      body: "Fornyelsen er slått av for {domain}, så det slutter å virke {date}, med nettstedet og e-posten på det. Slå på fornyelsen for å beholde det, eller flytt det før den tid.",
+      button: "Domenene dine",
+    },
+  },
   accessEmails: {
     received: {
       subject: "Vi har fått forespørselen din om {store}",

@@ -497,3 +497,23 @@ describe("the way to a store (D317 phase 4)", () => {
     expect(reg.store_id).toBe(result.storeId);
   });
 });
+
+describe("the holder's emails (D315 9.1, D317)", () => {
+  it("says a registration is done, and reminds of a renewal switched off once per step", async () => {
+    const { sendRenewalReminders } = await import("./domain-emails");
+    const domain = `alone-${run}.shop`;
+    const [registered] = await db().execute<Row>(sql`
+      select m.kind from commerce.email_messages m join commerce.domain_purchases p on m.idempotency_key = 'domain-registered:' || p.id
+       where p.apex = ${domain} and p.kind = 'register'
+    `);
+    expect(registered).toMatchObject({ kind: "domain.registered" });
+    await db().execute(sql`update commerce.domain_registrations set expires_at = now() + interval '10 days', renew = false where apex = ${domain}`);
+    await sendRenewalReminders();
+    await sendRenewalReminders();
+    const reminders = await db().execute<Row>(sql`
+      select m.kind from commerce.email_messages m join commerce.domain_registrations r on m.idempotency_key like 'domain-reminder:' || r.id || ':%'
+       where r.apex = ${domain}
+    `);
+    expect(reminders).toEqual([{ kind: "domain.renewal_stopping" }]);
+  });
+});

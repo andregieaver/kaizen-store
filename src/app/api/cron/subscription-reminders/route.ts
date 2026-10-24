@@ -29,6 +29,7 @@ import { pruneBroadcastRecipients } from "@/server/broadcasts";
 import { pruneStockRequests } from "@/server/stock-requests";
 import { pruneSubscribers } from "@/server/marketing-subscribers";
 import { runDomainRenewals } from "@/server/domain-purchases";
+import { sendRenewalReminders } from "@/server/domain-emails";
 import { runDomainMoves } from "@/server/domain-move";
 import { checkArrivals } from "@/server/domain-move-in";
 
@@ -45,6 +46,8 @@ export async function GET(request: Request) {
   // GDPR (wave 1, 1g): the retention schedule, erasures that began and did not finish, and the reminders about requests due. Each never throws.
   // Domains (D315, never throws): renewals invoiced 30 days ahead, the registrar's auto-renew turned off where renewal is off or unpaid.
   const domainRenewals = await runDomainRenewals().catch((error) => (console.error("[domains] renewals failed", error), { quoted: 0, stopped: 0 }));
+  // The holder hears of a renewal not paid or switched off at 30, 14, 7 and 1 days (D315 9.1), after the renewals are invoiced.
+  const domainReminders = await sendRenewalReminders().catch((error) => (console.error("[domains] reminders failed", error), 0));
   // Domains moving away (D315 8, never throws): transfers followed until done, zones kept 30 days after their nameservers moved let go.
   const domainMoves = await runDomainMoves().catch((error) => (console.error("[domains] moves failed", error), { moved: 0, given_up: 0, zonesLeft: 0 }));
   // Zones moving here (D315 5.4, never throws): arrived once public DNS shows only Vercel's nameservers for them.
@@ -54,7 +57,7 @@ export async function GET(request: Request) {
     revalidateTag(storeTag(store.slug), "max");
     revalidateTag(catalogTag(store.id), "max");
   }
-  return Response.json({ ...run, memories, usageDeleted: usage, companyRecordsDeleted: company, ratesRefreshed: rates.length, visitsDeleted: visits.visits, productViewsDeleted: visits.productViews, withdrawalRequestsExpired: withdrawals, ...security, vatRatesChanged: vatRates.changed, vatRatesLately: vatRates.recent, vatChecksDeleted: vatChecks.deleted, vatCartsCleared: vatChecks.cartsCleared, retention: { counts: retention.counts, errors: retention.errors, filesLeft: retention.filesLeft.length }, erasuresResumed: erasures.resumed, erasuresFailed: erasures.failed, privacyRemindersDueSoon: privacyReminders.dueSoon, privacyRemindersOverdue: privacyReminders.overdue, ecbRatesStored: ecb.inserted, ecbRatesDiffering: ecb.differing, ecbRatesOk: ecb.ok, dataJobs, notFoundDeleted, themeDetachesDeleted, themeUpdatesDeleted, subscribersPruned, broadcastsPruned, automationsPruned, stockRequestsPruned, giftCardsExpired, pageJobsPruned, domainRenewals, domainMoves, domainsArrived }, { headers: { "Cache-Control": "no-store" } });
+  return Response.json({ ...run, memories, usageDeleted: usage, companyRecordsDeleted: company, ratesRefreshed: rates.length, visitsDeleted: visits.visits, productViewsDeleted: visits.productViews, withdrawalRequestsExpired: withdrawals, ...security, vatRatesChanged: vatRates.changed, vatRatesLately: vatRates.recent, vatChecksDeleted: vatChecks.deleted, vatCartsCleared: vatChecks.cartsCleared, retention: { counts: retention.counts, errors: retention.errors, filesLeft: retention.filesLeft.length }, erasuresResumed: erasures.resumed, erasuresFailed: erasures.failed, privacyRemindersDueSoon: privacyReminders.dueSoon, privacyRemindersOverdue: privacyReminders.overdue, ecbRatesStored: ecb.inserted, ecbRatesDiffering: ecb.differing, ecbRatesOk: ecb.ok, dataJobs, notFoundDeleted, themeDetachesDeleted, themeUpdatesDeleted, subscribersPruned, broadcastsPruned, automationsPruned, stockRequestsPruned, giftCardsExpired, pageJobsPruned, domainRenewals, domainReminders, domainMoves, domainsArrived }, { headers: { "Cache-Control": "no-store" } });
 }
 
 export const POST = GET;
