@@ -1,5 +1,10 @@
+import { randomBytes } from "node:crypto";
+
 import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+
+// A gift card's code is kept as an HMAC of the settings key (D300).
+process.env.SETTINGS_ENCRYPTION_KEY ??= randomBytes(32).toString("base64");
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {}, refresh: () => {} }));
@@ -85,5 +90,20 @@ describe("the marketing tools", () => {
     const automations = (await run("list_email_automations", {})) as { automations: { kind: string; on: boolean }[] };
     expect(automations.automations.map((a) => a.kind)).toEqual(["welcome", "after_purchase", "win_back", "back_in_stock"]);
     expect(automations.automations.every((a) => a.on === false)).toBe(true);
+  });
+
+  it("issues a gift card only by email, and never answers with its code", async () => {
+    await db().execute(sql`update commerce.stores set features = array_append(features, 'gift_cards') where id = ${store.id}::uuid and not ('gift_cards' = any(features))`);
+    const fresh = await ctx();
+    await expect(ownerTools.preflightOwnerTool(fresh, "issue_gift_card", { amount: "0", to: "friend@example.com", reason: "Goodwill" })).rejects.toThrow(/above zero/);
+    await expect(ownerTools.preflightOwnerTool(fresh, "issue_gift_card", { amount: "100", currency: "JPY", to: "friend@example.com", reason: "Goodwill" })).rejects.toThrow(/does not sell in JPY/);
+    const issued = await ownerTools.runOwnerTool(fresh, "issue_gift_card", { amount: "250", to: "friend@example.com", name: "Kari", reason: "Goodwill after a late parcel" });
+    expect(issued).toMatchObject({ done: expect.stringContaining("emailed it to friend@example.com"), link: expect.stringContaining("/gift-cards/") });
+    // A code is four groups of four: none in the answer.
+    expect(JSON.stringify(issued)).not.toMatch(/[A-Z0-9]{4}-[A-Z0-9]{4}/);
+    const [card] = await db().execute<{ initial_minor: string; recipient_email: string }>(sql`
+      select initial_minor, recipient_email from commerce.gift_cards where store_id = ${store.id}::uuid order by created_at desc limit 1
+    `);
+    expect(card).toMatchObject({ recipient_email: "friend@example.com" });
   });
 });

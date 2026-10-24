@@ -21,7 +21,7 @@ import { parsePrice } from "@/lib/product-input";
 
 import { storeUsageLines } from "./usage";
 import { audit, type Account } from "./auth";
-import { draftBroadcastTool, listAutomationsTool, listBroadcastsTool, listSegmentsTool, preflightSendBroadcast, sendBroadcastTool, switchAutomationTool, tagCustomerTool } from "./marketing-tools";
+import { draftBroadcastTool, issueGiftCardTool, preflightIssueGiftCard, listAutomationsTool, listBroadcastsTool, listSegmentsTool, preflightSendBroadcast, sendBroadcastTool, switchAutomationTool, tagCustomerTool } from "./marketing-tools";
 import { OwnerToolError } from "./owner-tool-error";
 import {
   applyWinnerTool,
@@ -2006,6 +2006,12 @@ export async function preflightOwnerTool(ctx: OwnerToolContext, name: string, ra
     if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
     return preflightFeatureTool(ctx, input.input as OwnerToolInput<"set_feature">);
   }
+  // A gift card whose value or currency the store would refuse is refused now (PSI AGT-01).
+  if (name === "issue_gift_card") {
+    const input = readToolInput(OWNER_TOOLS_BY_NAME[name], raw);
+    if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
+    return preflightIssueGiftCard(ctx, input.input as OwnerToolInput<"issue_gift_card">);
+  }
   // A broadcast that could not be sent (gone, sent already, nobody to reach) is refused now, never kept for a yes (PSI AGT-01).
   if (name === "send_broadcast") {
     const input = readToolInput(OWNER_TOOLS_BY_NAME[name], raw);
@@ -2166,6 +2172,7 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   list_support_conversations: listSupportConversationsTool,
   gift_card_overview: giftCardOverviewTool,
   reviews_overview: reviewsOverviewTool,
+  issue_gift_card: issueGiftCardTool,
   list_broadcasts: listBroadcastsTool,
   draft_broadcast: draftBroadcastTool,
   send_broadcast: sendBroadcastTool,

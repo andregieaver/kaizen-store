@@ -6,6 +6,7 @@ import { BONUS_EXPIRY_MONTHS_MAX, BONUS_PENDING_DAYS_MAX, BONUS_REDEEM_PERCENT_M
 import { adjustmentPhrase } from "./bonus-admin";
 import { AUTOMATION_KINDS } from "./automation-kinds";
 import { GOALS } from "./experiments";
+import { GIFT_CARD_NOTE_MAX } from "./gift-card-admin";
 import { SIMPLE_FIELD_TYPES, TOOL_FIELD_ENTITIES } from "./field-tools";
 import { MAX_INSTRUCTIONS } from "./withdrawal";
 import { approveSummary, declineSummary } from "./return-tools";
@@ -1162,6 +1163,19 @@ export const OWNER_TOOLS = [
     z.object({}),
   ),
   tool(
+    "issue_gift_card",
+    "Issues a gift card by hand (a goodwill gesture, a prize) and emails it to the person it is for: its code goes only in that email and is never shown here or kept. In a currency the store sells in, the store's main one unless said; the store's expiry applies. A card is money the store owes until it is spent. Needs the owner's approval.",
+    z.object({
+      amount: z.string().trim().min(1).max(30).describe("The card's value as the owner writes it, such as 500."),
+      currency: z.string().trim().length(3).optional().describe("ISO code, such as NOK; leave out for the store's main currency."),
+      to: z.email().max(254).describe("The email address the card goes to, as the owner gave it."),
+      name: z.string().trim().max(80).optional().describe("Their name, for the email."),
+      message: z.string().trim().max(500).optional().describe("A greeting in the email, in the owner's words."),
+      reason: z.string().trim().min(3).max(GIFT_CARD_NOTE_MAX).describe("Why it is issued, for the store's own record."),
+    }),
+    "spend",
+  ),
+  tool(
     "switch_email_automation",
     "Switches an email automation on or off. On, it writes to people on the list from now on (never to the past beyond its catch-up days), with its saved words or the starter words. Needs the owner's approval.",
     z.object({ kind: z.enum(AUTOMATION_KINDS), on: z.boolean() }),
@@ -1204,6 +1218,8 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
   switch (name) {
     case "send_broadcast":
       return input.at ? `Send the broadcast "${text("broadcast")}" at ${text("at")} (the store's time) to the people on the list who asked for your emails.` : `Send the broadcast "${text("broadcast")}" now to the people on the list who asked for your emails.`;
+    case "issue_gift_card":
+      return `Issue a gift card of ${text("amount")}${input.currency ? ` ${text("currency").toUpperCase()}` : ""} and email it to ${text("to")} (${text("reason")}).`;
     case "switch_email_automation":
       return `${input.on ? "Switch on" : "Switch off"} the ${text("kind").replace(/_/g, " ")} email automation.`;
     case "mark_order_sent":

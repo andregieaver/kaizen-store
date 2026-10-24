@@ -5,6 +5,7 @@ import { AUTOMATION_WORDS } from "@/lib/automations";
 import { suggestionBlocks } from "@/lib/broadcasts";
 import { localInstant } from "@/lib/follow-ups";
 import { mainCurrency } from "@/lib/markets";
+import { parseAmount } from "@/lib/field-money";
 import { formatMoney } from "@/lib/money";
 import type { OwnerToolInput } from "@/lib/owner-tools";
 import { describeRules } from "@/lib/segments";
@@ -12,6 +13,7 @@ import { describeRules } from "@/lib/segments";
 import { automationStats, getAutomations, switchAutomation } from "./automations";
 import { audienceCount, getBroadcast, listBroadcasts, saveBroadcast, scheduleBroadcast, startBroadcast, suggestBroadcast, type Broadcast } from "./broadcasts";
 import { listTiers } from "./customer-tiers";
+import { issueGiftCard } from "./gift-cards-admin";
 import { OwnerToolError } from "./owner-tool-error";
 import { addTag, evaluateSegment, listSegments, removeTag, type SavedSegment } from "./segments";
 import { storeById } from "./shopper-emails";
@@ -199,4 +201,46 @@ export async function switchAutomationTool({ account, store }: Ctx, { kind, on }
   const result = await switchAutomation(store, account.id, kind, on);
   if (!result.ok) return fail(result.problem);
   return { done: `${AUTOMATION_WORDS[kind].title} is ${on ? "on" : "off"}.`, link: adminLink(store, "/automations") };
+}
+
+// Gift cards (D300 F4) -------------------------------------------------------------------------------
+
+/** The card's amount and currency as the store will issue it, or why not: the store's main currency unless one it sells in is named. */
+function giftCardValue(store: Store, input: Pick<OwnerToolInput<"issue_gift_card">, "amount" | "currency">): { amountMinor: number; currency: string } {
+  const currency = (input.currency ?? mainCurrency(store)).toUpperCase();
+  if (!store.localization.currencies.some((c) => c.currency === currency)) return fail(`The store does not sell in ${currency}.`);
+  const amountMinor = parseAmount(input.amount, currency);
+  if (amountMinor === null || amountMinor <= 0) return fail("Give the card's value as a number above zero, such as 500.");
+  return { amountMinor, currency };
+}
+
+/** Checks an issue before it is kept for a yes: the value, the currency and that the store issues cards (its feature). */
+export async function preflightIssueGiftCard({ store }: Ctx, input: OwnerToolInput<"issue_gift_card">): Promise<void> {
+  giftCardValue(store, input);
+}
+
+/**
+ * Issues the card through the Gift cards page's own `issueGiftCard()`, emailed to the address given. The code is never in the answer: it reached the
+ * person by email, and the AI manager's conversation keeps nothing it could be spent with.
+ */
+export async function issueGiftCardTool({ account, store }: Ctx, input: OwnerToolInput<"issue_gift_card">) {
+  const { amountMinor, currency } = giftCardValue(store, input);
+  const outcome = await issueGiftCard(store, account.id, {
+    amountMinor,
+    currency,
+    recipientEmail: input.to,
+    recipientName: input.name ?? null,
+    message: input.message ?? null,
+    lang: (store.localization.locales[0] ?? "en").slice(0, 2),
+    note: input.reason,
+  });
+  if (!outcome.ok) return fail(outcome.problem === "currency" ? `The store does not sell in ${currency}.` : outcome.problem === "amount" ? "The value must be above zero." : "No code could be made just now. Try again.");
+  const value = formatMoney(amountMinor, currency, store.localization.locales[0] ?? "en-GB");
+  return {
+    done:
+      outcome.emailed === "sent"
+        ? `Issued a gift card of ${value} and emailed it to ${input.to}. Its code is only in that email.`
+        : `Issued a gift card of ${value}, but its email to ${input.to} did not go. Its code is not shown here: open the card's page to see what to do.`,
+    link: adminLink(store, `/gift-cards/${outcome.cardId}`),
+  };
 }

@@ -268,6 +268,7 @@ export const assistantNb: AssistantMessages = {
     set_referral_program: "Forbereder vervingsendringen",
     get_my_referrals: "Ser på vervingene dine",
     follow_up: "Tar vare på oppfølgingen",
+    issue_gift_card: "Forbereder gavekortet",
     list_broadcasts: "Ser på nyhetsbrevene",
     draft_broadcast: "Skriver utkastet til nyhetsbrevet",
     send_broadcast: "Forbereder utsendelsen",

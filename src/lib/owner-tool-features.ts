@@ -17,6 +17,7 @@ export const TOOL_FEATURES: Partial<Record<OwnerToolName, FeatureRequirement>> =
   // Several currencies (D178): the Currencies page is hidden while it is off.
   set_currencies: "currencies",
   reviews_overview: "reviews",
+  issue_gift_card: "gift_cards",
   get_bonus_program: "bonus",
   set_bonus_program: "bonus",
   adjust_customer_credits: "bonus",

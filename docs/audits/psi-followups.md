@@ -50,7 +50,8 @@ maturity for the run-up to launch. Point IDs are the audit's.
 - [x] **AGT-01 (marketing)** Broadcasts (`list_broadcasts`, `draft_broadcast`, `send_broadcast` gated, now or at a time), segments
       (`list_segments`), customer tags (`tag_customer`) and email automations (`list_email_automations`, `switch_email_automation` gated);
       this also gives scheduled broadcasts (AGT-04).
-- [ ] **AGT-01 (the rest)** Staff and roles, billing and plan changes, gift cards, order edits, exchanges, support replies and Work, gated like
+- [x] **AGT-01 (gift cards)** `issue_gift_card` (gated `spend`): emailed to the person it is for, its code never in the AI manager's answer.
+- [ ] **AGT-01 (the rest)** Staff and roles, billing and plan changes, order edits, exchanges, support replies and Work, gated like
       the others. Review moderation stays on the Reviews page: a review's words are never sent to a model (D301), so the agent could
       not judge one.
 - [x] **ACC-01** Axe on the `signed-in` Playwright project: `e2e/signed-in/a11y.spec.ts`, ten owner pages and four platform pages, no
