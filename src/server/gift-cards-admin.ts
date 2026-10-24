@@ -1,6 +1,7 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 
 import { db } from "@/db/client";
 import { cardState, type GiftCardState, type LiabilityLine, liabilityLines, GIFT_CARD_NOTE_MAX } from "@/lib/gift-card-admin";
@@ -14,6 +15,7 @@ import { audit } from "./auth";
 import { sendIssuedCard } from "./gift-card-delivery";
 import { newGiftCode } from "./gift-card-codes";
 import { storePaymentMode } from "./host-payments";
+import { col, typedRows } from "./typed-rows";
 import type { Store } from "./stores";
 
 /**
@@ -25,6 +27,11 @@ import type { Store } from "./stores";
  */
 
 type Row = Record<string, unknown>;
+
+/** What customers hold in one currency (typed read: money, PSI 2026-10-24 CODE-02). */
+const OUTSTANDING_ROW = z.object({ currency: col.currency, amount: col.minor, cards: col.int });
+/** One currency's sum of one kind of ledger entry in a period. */
+const MOVEMENT_ROW = z.object({ currency: col.currency, kind: col.text, amount: col.minor });
 
 export const GIFT_CARDS_PAGE = 50;
 
@@ -110,15 +117,15 @@ export async function listGiftCards(
  */
 export async function giftCardOutstanding(storeId: string): Promise<{ currency: string; amountMinor: number; cards: number }[]> {
   const test = (await storePaymentMode(storeId)) === "test";
-  const rows = await db().execute<Row>(sql`
-    select trim(currency) as currency, sum(balance)::bigint as amount, count(*) filter (where balance > 0)::int as cards
+  const rows = await typedRows(OUTSTANDING_ROW, sql`
+    select trim(currency) as currency, coalesce(sum(balance), 0)::bigint as amount, count(*) filter (where balance > 0)::int as cards
     from (
       select g.currency, commerce.gift_card_balance(g.id) as balance from commerce.gift_cards g
       where g.store_id = ${storeId}::uuid and g.test_mode = ${test} and g.status = 'active' and g.sent_at is not null and (g.expires_at is null or g.expires_at > now())
     ) c
     group by 1 order by 2 desc
   `);
-  return rows.map((r) => ({ currency: String(r.currency), amountMinor: Number(r.amount), cards: Number(r.cards) }));
+  return rows.map((r) => ({ currency: r.currency, amountMinor: r.amount, cards: r.cards }));
 }
 
 /** How many cards are in each state (test cards too: the list shows them). */
@@ -372,9 +379,9 @@ export type GiftCardLiability = { lines: LiabilityLine[] };
 export async function giftCardLiability(store: Store, period: AnalyticsPeriod): Promise<GiftCardLiability> {
   const test = (await storePaymentMode(store.id)) === "test";
   const [movements, outstanding] = await Promise.all([
-    db().execute<Row>(sql`
+    typedRows(MOVEMENT_ROW, sql`
       select trim(g.currency) as currency, e.kind,
-        sum(case when e.kind = 'spend' then commerce.gift_card_order_held(e.card_id, e.order_id) else e.amount_minor end)::bigint as amount
+        coalesce(sum(case when e.kind = 'spend' then commerce.gift_card_order_held(e.card_id, e.order_id) else e.amount_minor end), 0)::bigint as amount
       from commerce.gift_card_entries e
       join commerce.gift_cards g on g.store_id = e.store_id and g.id = e.card_id
       where e.store_id = ${store.id}::uuid and g.test_mode = ${test} and e.kind in ('issue', 'spend', 'refund', 'adjust', 'expire', 'void')
@@ -383,7 +390,7 @@ export async function giftCardLiability(store: Store, period: AnalyticsPeriod): 
     `),
     giftCardOutstanding(store.id),
   ]);
-  return { lines: liabilityLines(movements.map((m) => ({ currency: String(m.currency), kind: String(m.kind), amountMinor: Number(m.amount) })), outstanding) };
+  return { lines: liabilityLines(movements.map((m) => ({ currency: m.currency, kind: m.kind, amountMinor: m.amount })), outstanding) };
 }
 
 /** The AI manager's read-only overview: how many cards are in each state and what customers hold per currency; never a code or a person. */

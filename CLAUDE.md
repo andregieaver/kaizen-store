@@ -1263,6 +1263,10 @@ stand-in is the only fake, and only it is told it is one.
 - Environment variables are validated in `src/lib/env.ts` when used, not at
   import, so builds and tests run without secrets.
 - Server-only modules import `server-only`.
+- New reads, and every read that carries money, describe their row with `col` and go through `typedRows()`/`typedRow()`
+  (`src/server/typed-rows.ts`: each row checked with zod; a `bigint` sum is `col.minor`, a `char(3)` code `col.currency`; a row of
+  another shape throws `RowShapeError`, naming the column, never the value); `coalesce()` a sum that may meet no rows. Older
+  `execute<Row>()` reads move over when touched (`gift-cards-admin.ts` is the first).
 - New server code logs through `log(level, event, fields, error)` (`src/server/log.ts`: one JSON line, ids and counts, never a
   person's data or a secret); older `console.error` lines move over when touched. Every cron route has a `maxDuration` and runs
   inside `trackedRoute()`/`tracked()`, and the five-minute dispatcher runs each job through `runJobs()` (`src/server/cron-runs.ts`):
@@ -1273,5 +1277,9 @@ stand-in is the only fake, and only it is told it is one.
   rendered as text, never as HTML. Every system prompt carries the rule in
   `src/lib/prompt-safety.ts` (`UNTRUSTED_TEXT`, or `RULES_STAND` where the input is
   meant to steer); `prompt-safety.scan.test.ts` fails for a new prompt without it.
+  The agents' safety eval (`src/lib/agent-eval.ts`, run by `src/server/agent-eval.ts` from Platform → AI, kept per model in
+  `commerce.ai_eval_runs`) plays the shopper chat and the AI manager with their real prompts and tools on scripted tool answers that
+  hide instructions; run it after changing a prompt, a tool's description or the platform's model, and add a case with any new way
+  outside text reaches a prompt (`agent-eval.test.ts` checks every tool a case names exists).
 - Deferred work from the PSI audit is tracked in `docs/audits/psi-followups.md`: tick
   an item there when a change does it.

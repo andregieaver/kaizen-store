@@ -531,6 +531,10 @@ export const settingsNb: SettingsMessages = {
     evalText:
       "Søk som «lampe under 500 kr» leses av tekstmodellen som filtre. Dette kjører testen: {n} søk på norsk, svensk, dansk og engelsk, med filtrene et godt svar gir; en modell består ved {rate} %.",
     imageText: "Lager ett lite bilde med den lagrede bildemodellen, for å se at den virker og hvordan det ser ut. Det koster ett bilde.",
+    agentsText:
+      "Sjekker at butikkchatten og KI-lederen behandler det produkter, sider, kunder og andre nettsteder sier som data, aldri som ordre: {n} tilfeller med deres egne instrukser og verktøy, besvart fra et manus, så ingenting leses, sendes eller endres. Alle tilfeller bør bestå.",
+    agentsRuns: "Tidligere kjøringer",
+    agentsRun: "{date}: {model}, {passed} av {total}",
     goBack: "Gå tilbake til Kaizena Flows KI",
     goBackCode: "KI-leverandøren din",
     goBackQuestion: "Glemme din egen KI-leverandør og nøkkelen, og bruke Kaizena Flows igjen?",
@@ -613,6 +617,8 @@ export const settingsNb: SettingsMessages = {
       test: "Test",
       checking: "Sjekker … (opptil ett minutt)",
       checkUnderstanding: "Sjekk forståelsen av søk",
+      checkAgents: "Sjekk assistentenes sikkerhet",
+      agentsResult: ": {model} besto {passed} av {total} tilfeller på {s} s.",
       passes: "✓ Består",
       fails: "✗ Består ikke",
       understood: ": {model} forsto {passed} av {total} søk ({share} %) på {s} s.",

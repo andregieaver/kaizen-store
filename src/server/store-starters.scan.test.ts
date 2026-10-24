@@ -20,6 +20,8 @@ const READERS: Record<string, "real" | "template" | "both"> = {
   "src/app/s/[store]/[market]/layout.tsx": "real",
   "src/db/health.ts": "template",
   "src/db/schema.ts": "both",
+  // The agents' safety eval plays its cases on the template store (PSI 2026-10-24, AST-09).
+  "src/server/agent-eval.ts": "template",
   "src/server/ai-usage.ts": "real",
   "src/server/auth.ts": "real",
   "src/server/billing.ts": "both",

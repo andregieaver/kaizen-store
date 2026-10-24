@@ -70,6 +70,7 @@ export const platformToolsNb: PlatformToolsMessages = {
     saved: "Lagret. Butikker uten egen leverandør bruker den nå.",
     saveFirst: "Lagre en leverandør og en nøkkel først.",
     textFirst: "Lagre en leverandør med en tekstmodell først.",
+    noTemplate: "Malbutikken mangler, så testen har ingen butikk å spille på.",
   },
   chat: {
     title: "Chatagent",

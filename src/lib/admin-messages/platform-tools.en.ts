@@ -71,6 +71,7 @@ export const platformToolsEn = {
     saved: "Saved. Stores without their own provider use it now.",
     saveFirst: "Save a provider and key first.",
     textFirst: "Save a provider with a text model first.",
+    noTemplate: "The template store is missing, so there is no store for the eval to play on.",
   },
   chat: {
     title: "Chat agent",

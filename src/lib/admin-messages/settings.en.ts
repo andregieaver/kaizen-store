@@ -536,6 +536,10 @@ export const settingsEn = {
     evalText:
       "Searches such as “lampe under 500 kr” are read by the text model as filters. This runs the eval: {n} searches in Norwegian, Swedish, Danish and English, with the filters a good answer gives; a model passes at {rate} %.",
     imageText: "Makes one small picture with the saved picture model, to see it works and how it looks. It costs one picture.",
+    agentsText:
+      "Checks that the shopper chat and the AI manager treat what products, pages, customers and other sites say as data, never as orders: {n} cases with their real prompts and tools, answered from a script, so nothing is read, sent or changed. Every case should pass.",
+    agentsRuns: "Earlier runs",
+    agentsRun: "{date}: {model}, {passed} of {total}",
     goBack: "Go back to Kaizena Flow's AI",
     goBackCode: "your AI provider",
     goBackQuestion: "Forget your own AI provider and its key, and use Kaizena Flow's again?",
@@ -618,6 +622,8 @@ export const settingsEn = {
       test: "Test",
       checking: "Checking … (up to a minute)",
       checkUnderstanding: "Check query understanding",
+      checkAgents: "Check the assistants' safety",
+      agentsResult: ": {model} passed {passed} of {total} cases in {s} s.",
       passes: "✓ Passes",
       fails: "✗ Does not pass",
       understood: ": {model} understood {passed} of {total} searches ({share} %) in {s} s.",

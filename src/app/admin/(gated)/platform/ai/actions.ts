@@ -5,7 +5,9 @@ import { refresh, updateTag } from "next/cache";
 import type { FormState } from "@/components/admin/action-form";
 import type { AiEvalResult, AiImageTestResult, AiTestResult, AiVisionCheckResult } from "@/components/admin/ai-provider-form";
 import { aiFormValues } from "@/lib/ai-provider";
-import { AI_TAG, ownConnection, removeAiSettings, saveAiSettings, testAi } from "@/server/ai";
+import { AI_TAG, AiError, ownConnection, removeAiSettings, saveAiSettings, testAi } from "@/server/ai";
+import type { AgentEvalOutcome } from "@/components/admin/agent-eval-button";
+import { evalPrincipal, runAgentEval } from "@/server/agent-eval";
 import { testPicture } from "@/server/ai-pictures";
 import { checkVisionFor } from "@/server/ai-vision";
 import { requirePlatformAdmin } from "@/server/auth";
@@ -46,6 +48,26 @@ export async function evalPlatformAiAction(): Promise<AiEvalResult> {
   const connection = await ownConnection(null);
   if (!connection?.textModel) return { error: wordsOf(account).textFirst };
   return runUnderstandingEval(connection);
+}
+
+/**
+ * The agents' safety eval (PSI 2026-10-24, AST-09) against Kaizena Flow's saved text model: the shopper chat and the AI manager with
+ * their real prompts and tools, every tool answered from a script, played on the template store. The run is kept per model.
+ */
+export async function evalPlatformAgentsAction(): Promise<AgentEvalOutcome> {
+  const account = await requirePlatformAdmin();
+  const connection = await ownConnection(null);
+  if (!connection?.textModel) return { error: wordsOf(account).textFirst };
+  const principal = await evalPrincipal(account);
+  if (!principal) return { error: wordsOf(account).noTemplate };
+  try {
+    const result = await runAgentEval({ ...connection, usage: { storeId: null, feature: "ai_test", accountId: account.id } }, principal);
+    refresh();
+    return result;
+  } catch (error) {
+    if (error instanceof AiError) return { error: error.message };
+    throw error;
+  }
 }
 
 /** One test picture from Kaizen's saved picture model (D92), not kept. */

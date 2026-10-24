@@ -6,6 +6,9 @@ import { DeleteDiscountButton } from "@/components/admin/delete-discount-button"
 import { providerInfo } from "@/lib/ai-provider";
 import { pictureLine } from "@/lib/ai-vision";
 import { EVAL_CASES, PASS_RATE } from "@/lib/query-eval";
+import { AGENT_EVAL_CASES } from "@/lib/agent-eval";
+import { AgentEvalButton } from "@/components/admin/agent-eval-button";
+import { recentAgentEvalRuns } from "@/server/agent-eval";
 import { countStoresWithOwnAi, getAiSettings } from "@/server/ai";
 import { requirePlatformAdmin } from "@/server/auth";
 import { PageHeader } from "@/components/admin/ui";
@@ -14,7 +17,10 @@ import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 
-import { checkPlatformVisionAction, evalPlatformAiAction, removePlatformAiAction, savePlatformAiAction, testPlatformAiAction, testPlatformImageAction } from "./actions";
+import { checkPlatformVisionAction, evalPlatformAiAction, evalPlatformAgentsAction, removePlatformAiAction, savePlatformAiAction, testPlatformAiAction, testPlatformImageAction } from "./actions";
+
+/** The evals run in this page's actions and take up to a few minutes (PSI 2026-10-24, AST-09). */
+export const maxDuration = 300;
 
 export const metadata: Metadata = { title: "AI" };
 
@@ -30,6 +36,7 @@ export default async function PlatformAiPage() {
   const lang = adminLangOf(account.adminLocale);
   const w = adminText(lang, "platformTools").ai;
   const shared = adminText(lang, "settings").ai;
+  const agentRuns = await recentAgentEvalRuns();
   const [settings, ownCount] = await Promise.all([getAiSettings(null), countStoresWithOwnAi()]);
   const status = settings
     ? `${settings.enabled ? w.on : w.off} · ${providerInfo(settings.provider).name}` +
@@ -64,6 +71,22 @@ export default async function PlatformAiPage() {
           <div className="mt-4 border-t border-line pt-4">
             <p className="mb-2 text-sm text-muted">{fillWords(shared.evalText, { n: EVAL_CASES.length, rate: Math.round(PASS_RATE * 100) })}</p>
             <AiEvalButton action={evalPlatformAiAction} />
+          </div>
+          <div className="mt-4 border-t border-line pt-4">
+            <p className="mb-2 text-sm text-muted">{fillWords(shared.agentsText, { n: AGENT_EVAL_CASES.length })}</p>
+            <AgentEvalButton action={evalPlatformAgentsAction} />
+            {agentRuns.length > 0 && (
+              <div className="mt-3 text-sm">
+                <p className="text-muted">{shared.agentsRuns}</p>
+                <ul className="mt-1 flex flex-col gap-0.5">
+                  {agentRuns.map((run) => (
+                    <li key={run.ranAt} className={run.passed < run.total ? "text-danger-text" : "text-ink-2"}>
+                      {fillWords(shared.agentsRun, { date: run.ranAt.slice(0, 16).replace("T", " "), model: run.model, passed: run.passed, total: run.total })}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
           <div className="mt-4 border-t border-line pt-4">
             <p className="mb-2 text-sm text-muted">{shared.imageText}</p>

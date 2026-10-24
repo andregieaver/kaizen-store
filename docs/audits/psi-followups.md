@@ -35,10 +35,14 @@ maturity for the run-up to launch. Point IDs are the audit's.
       on every cron route, held by `cron-routes.scan.test.ts`.
 - [ ] **REL-02** Move the remaining `console.error` lines in `src/server` to `log()` as each module is touched; send an alert (email
       to platform admins) when a job turns failing.
-- [ ] **CODE-02** Typed database reads for new code and money queries (zod `.parse` or `sql<T>`), with a line in CLAUDE.md. No rewrite
-      of the existing calls.
-- [ ] **AGT-10, AGT-14, AST-09** An eval harness for the AI manager and the chat (stored turns, thumbs as labels, the injection
-      corpus), before widening the agent's reach.
+- [x] **CODE-02** `typedRows()`/`typedRow()` and `col` (`src/server/typed-rows.ts`) for new reads and money reads, a rule in CLAUDE.md,
+      and the gift card liability reads converted first.
+- [ ] **CODE-02** Convert the other money reads as they are touched (analytics, payouts, refunds, tax reports first).
+- [x] **AGT-10, AST-09** The agents' safety eval (`src/lib/agent-eval.ts`, `src/server/agent-eval.ts`): the chat and the manager with
+      their real prompts and tools on scripted tool answers that hide instructions (product text, knowledge, a customer's note, a
+      support message, a page), plus off-topic, invented prices, prompt extraction and an asked-for refund; run from Platform → AI,
+      each run kept per model (`commerce.ai_eval_runs`).
+- [ ] **AGT-14** Replay stored manager turns with thumbs as labels; run the evals in CI against a recorded model; version the prompts.
 - [ ] **AGT-04, AGT-11** Scheduling and follow-ups the agent can write (scheduled experiments and broadcasts, "follow up on"), then
       event-triggered turns.
 - [ ] **AGT-01** Task parity, gated like the existing tools: staff and roles, billing, broadcasts, segments, automations, reviews,
@@ -69,4 +73,6 @@ maturity for the run-up to launch. Point IDs are the audit's.
       bundle budgets.
 - [ ] **SEC-05, SEC-02, SEC-10, SEC-11** Nonce-based CSP on admin and storefront (Report-Only first); leaked-password protection;
       budgets on `/api/consent` and `/api/ab/*`; logging failed sign-ins and permission denials.
+- [ ] **SEC (advisor)** `public.rls_auto_enable()` is executable by `anon` and `authenticated` (Supabase's security advisor). It is a
+      dashboard-made event-trigger function, not in the repository, so it cannot be called directly; revoke `EXECUTE` from both roles.
 - [ ] **ACC-09, UX-12** A recorded manual screen-reader pass of checkout, the builder and the inbox; WebKit in the storefront e2e.

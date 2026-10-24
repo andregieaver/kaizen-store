@@ -32,6 +32,7 @@ const DELEGATES: Record<string, string> = {
 /** Modules whose prompts read no outside text, and why. */
 const EXEMPT: Record<string, string> = {
   "src/lib/ui-translate.ts": "translates Kaizena Flow's own English interface catalogue, written by the team",
+  "src/server/agent-eval.ts": "the safety eval: it sends the chat's and the manager's own prompts (src/lib/chat.ts, src/server/owner-assistant.ts), which carry the rule, to test them",
 };
 
 function sources(dir: string): string[] {

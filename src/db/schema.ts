@@ -12835,3 +12835,29 @@ export const cronJobs = commerce.table(
     check("cron_jobs_counts", sql`${t.runs} >= 0 and ${t.failures} >= 0`),
   ],
 );
+
+/**
+ * Runs of the AI evals per model (PSI 2026-10-24, AST-09): the agents' safety eval (`src/lib/agent-eval.ts`) run from Platform → AI,
+ * so a model change can be compared with the runs before it. Written only by `src/server/agent-eval.ts`. `failures` holds each failed
+ * case's id, problems and the start of the model's answer to scripted cases: no person's data.
+ */
+export const aiEvalRuns = commerce.table(
+  "ai_eval_runs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    suite: text("suite").notNull(),
+    provider: text("provider").notNull(),
+    model: text("model").notNull(),
+    passed: integer("passed").notNull(),
+    total: integer("total").notNull(),
+    failures: jsonb("failures").notNull().default(sql`'[]'::jsonb`),
+    durationMs: integer("duration_ms").notNull(),
+    ranBy: uuid("ran_by").references(() => accounts.id, { onDelete: "set null" }),
+    ranAt: timestamp("ran_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("ai_eval_runs_ran_idx").on(t.suite, t.ranAt),
+    check("ai_eval_runs_suite", sql`${t.suite} in ('agents')`),
+    check("ai_eval_runs_counts", sql`${t.passed} >= 0 and ${t.passed} <= ${t.total} and ${t.durationMs} >= 0`),
+  ],
+);
