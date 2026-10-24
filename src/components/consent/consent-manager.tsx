@@ -21,7 +21,8 @@ import {
 } from "@/lib/cookie-consent";
 import { addCustomCode, type CustomCode } from "@/lib/custom-code";
 import { MODAL_STORAGE_PREFIX } from "@/lib/page-modal";
-import { SHOP_EVENT, mapEvent, takeRecentShopEvents, type ShopEvent, type ShopTool } from "@/lib/shop-events";
+import type { ShopTool } from "@/lib/shop-event-map";
+import { SHOP_EVENT, takeRecentShopEvents, type ShopEvent } from "@/lib/shop-events";
 
 /** The widget's words, in the site's language (from `i18n`, picked on the server). */
 export type ConsentTexts = {
@@ -165,7 +166,10 @@ function applyChoices(tracking: TrackingSettings, choices: ConsentChoices) {
  * Passes a shop event (D303 I1) to each tag that is loaded, in its own words; a tag the visitor did not allow is not loaded, so it hears
  * nothing. Google Ads hears gtag's events with GA4.
  */
-function sendShopEvent(event: ShopEvent) {
+async function sendShopEvent(event: ShopEvent) {
+  if (loaded.size === 0) return;
+  // The mapping loads only when a tag is on and something happened (it is not in a visitor's first scripts).
+  const { mapEvent } = await import("@/lib/shop-event-map");
   const w = window as Tracked;
   const calls: [ShopTool, ((...args: unknown[]) => void) | undefined][] = [
     ["ga4", loaded.has("ga4") || loaded.has("googleAds") ? w.gtag : undefined],
@@ -288,9 +292,9 @@ export function ConsentManager({ storeId, tracking, code = {}, categories, texts
   // What the shopper does goes to the loaded tags (D303 I1); before consent nothing is loaded, so nothing is sent. Events of this page that
   // came before this listener are heard first, once.
   useEffect(() => {
-    for (const event of takeRecentShopEvents()) sendShopEvent(event);
+    for (const event of takeRecentShopEvents()) void sendShopEvent(event);
     const listener = () => {
-      for (const event of takeRecentShopEvents()) sendShopEvent(event);
+      for (const event of takeRecentShopEvents()) void sendShopEvent(event);
     };
     window.addEventListener(SHOP_EVENT, listener);
     return () => window.removeEventListener(SHOP_EVENT, listener);

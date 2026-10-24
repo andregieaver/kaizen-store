@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { mapEvent, majorAmount, searchWordsSendable, type ShopEvent, type ShopTool } from "./shop-events";
+import { mapEvent, type ShopTool } from "./shop-event-map";
+import { majorAmount, searchWordsSendable, type ShopEvent } from "./shop-events";
 
 const items = [
   { id: "SKU-1", name: "Mug", price: 199, quantity: 2 },
