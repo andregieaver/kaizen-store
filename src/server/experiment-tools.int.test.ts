@@ -193,6 +193,23 @@ describe("the AI manager's A/B test tools (D148)", () => {
     });
   });
 
+  it("can be kept for approval to start at a time, and goes back to a draft when taken back (PSI AGT-04)", async () => {
+    const day = new Intl.DateTimeFormat("en-CA", { timeZone: member.store.timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(Date.now() + 3 * 86_400_000));
+    const at = `${day} 09:00`;
+    await expect(ownerTools.preflightOwnerTool(ctx(), "start_experiment", { experiment: "Varmere overskrift", at: "soon" })).rejects.toThrow(/YYYY-MM-DD HH:MM/);
+    await expect(ownerTools.preflightOwnerTool(ctx(), "start_experiment", { experiment: "Varmere overskrift", at: "2020-01-01 09:00" })).rejects.toThrow(/in the future/);
+    const { queued } = await keptAndApproved("start_experiment", { experiment: "Varmere overskrift", at });
+    expect(queued.summary).toContain('Start the A/B test "Varmere overskrift"');
+    expect(queued.summary).toContain("by itself");
+    expect(queued.summary).toContain("09:00");
+    const decided = await assistant.decideApproval(member, queued.id, true, (tag) => void tags.push(tag));
+    expect(decided).toMatchObject({ status: "done", outcome: expect.stringContaining("starts by itself") });
+    const scheduled = (await admin.getExperiment(member.store.id, testId))!;
+    expect(scheduled.status).toBe("scheduled");
+    expect(await admin.unscheduleExperiment(member.account, member.store.id, testId)).toEqual({ ok: true });
+    expect((await admin.getExperiment(member.store.id, testId))!.status).toBe("draft");
+  });
+
   it("is kept for approval to start, described from the test, and starts only on a yes", async () => {
     const { queued } = await keptAndApproved("start_experiment", { experiment: "Varmere overskrift" });
     expect(queued.summary).toContain('Start the A/B test "Varmere overskrift"');

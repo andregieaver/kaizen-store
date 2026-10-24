@@ -198,6 +198,22 @@ export const staffEmailsEn = {
     reopenedText:
       "{name} was reopened{by}. The shop takes orders again. If you had closed it, add its own domains again under Settings, Domains, and check that its Kaizena Flow plan is still on.",
   },
+  /** A follow-up the AI manager was asked for has run (PSI AGT-04): never the answer's words, only where to read it. */
+  followUp: {
+    subject: 'The AI manager followed up: "{task}"',
+    preview: "Its answer is waiting in your conversation.",
+    heading: "Your follow-up is answered",
+    done: 'You asked the AI manager to follow up on "{task}"{where}. It has looked, and its answer is in your conversation.',
+    where: " in {store}",
+    waiting: "A change is waiting for your yes there.",
+    next: "It follows up again {when}.",
+    button: "Read the answer",
+    failedSubject: 'The AI manager could not follow up: "{task}"',
+    failedPreview: "It tried three times and stopped.",
+    failedHeading: "Your follow-up could not be done",
+    failed: 'You asked the AI manager to follow up on "{task}"{where}. It could not get an answer from the AI three times in a row, so it stopped. Ask it again when the AI works.',
+    failedButton: "Open the AI manager",
+  },
 };
 
 export type StaffEmailsMessages = Widen<typeof staffEmailsEn>;

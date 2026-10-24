@@ -8,6 +8,7 @@ import { applyChanges, offeredBlocks, partOf } from "@/lib/experiment-tools";
 import { compareToOriginal, estimateRuntime, normalQuantile } from "@/lib/experiment-results";
 import { GOAL_WORDS, MAX_RUNNING_PER_STORE, STATUS_WORDS, type Goal } from "@/lib/experiments";
 import { findClaims } from "@/lib/claims";
+import { localInstant } from "@/lib/follow-ups";
 import { formatMoney } from "@/lib/money";
 import type { OwnerToolInput } from "@/lib/owner-tools";
 
@@ -23,6 +24,7 @@ import {
   listExperiments,
   publishedContentOf,
   applyVariant,
+  scheduleExperiment,
   startExperiment,
   startProblemsOf,
   stopExperiment,
@@ -312,8 +314,26 @@ export async function draftExperimentTool(ctx: Ctx, input: OwnerToolInput<"draft
 
 // Deciding (gated) ---------------------------------------------------------------------------------
 
-export async function startExperimentTool(ctx: Ctx, { experiment }: OwnerToolInput<"start_experiment">) {
+/** A scheduled start's time, from the tool's `at` in the store's time zone; null when it is not a time. */
+const startAt = (store: Store, at: string): Date | null => {
+  const ms = localInstant(at, store.timeZone);
+  return ms === null ? null : new Date(ms);
+};
+const timeWords = (store: Store, at: Date) =>
+  `${new Intl.DateTimeFormat("en-GB", { dateStyle: "full", timeStyle: "short", timeZone: store.timeZone }).format(at)} (${store.timeZone})`;
+
+export async function startExperimentTool(ctx: Ctx, { experiment, at }: OwnerToolInput<"start_experiment">) {
   const test = await findTest(ctx.store, experiment);
+  if (at) {
+    const when = startAt(ctx.store, at);
+    if (!when) return fail("Give the time as YYYY-MM-DD HH:MM in the store's time zone.");
+    const scheduled = await scheduleExperiment(ctx.account, ctx.store.id, test.id, when);
+    if (!scheduled.ok) return fail(scheduled.problems.join(" "));
+    return {
+      done: `The A/B test "${test.name}" starts by itself ${timeWords(ctx.store, when)}, after the same checks again. Until then it can be changed back to a draft on its page.`,
+      admin: adminLink(ctx.store, `/experiments/${test.id}`),
+    };
+  }
   const result = await startExperiment(ctx.account, ctx.store.id, test.id);
   if (!result.ok) return fail(result.problems.join(" "));
   return { done: `The A/B test "${test.name}" is running. It needs at least ${test.minDays} days before it says anything.`, admin: adminLink(ctx.store, `/experiments/${test.id}`) };
@@ -349,6 +369,12 @@ export async function preflightExperimentTool(ctx: Ctx, name: string, input: Rec
   const test = await findTest(ctx.store, String(input.experiment ?? ""));
   if (name === "start_experiment") {
     if (test.status !== "draft" && test.status !== "scheduled") return fail(`"${test.name}" is ${STATUS_WORDS[test.status].toLowerCase()}, not a draft.`);
+    if (typeof input.at === "string" && input.at) {
+      const when = startAt(ctx.store, input.at);
+      if (!when) return fail("Give the time as YYYY-MM-DD HH:MM in the store's time zone.");
+      if (when.getTime() <= Date.now() + 60_000) return fail("Choose a time in the future.");
+      if (when.getTime() > Date.now() + 90 * 86_400_000) return fail("A test can be scheduled at most 90 days ahead.");
+    }
     const problems = await startProblemsOf(ctx.store.id, test.id);
     if (problems.length > 0) return fail(`It cannot start yet: ${problems.join(" ")}`);
     return;
@@ -371,6 +397,10 @@ export async function experimentApprovalSummary(store: Store, tool: string, args
   }
   const what = `"${test.name}" (${targetWords(test)}; ${GOAL_WORDS[test.goal].label.toLowerCase()})`;
   if (tool === "start_experiment") {
+    const when = typeof args.at === "string" && args.at ? startAt(store, args.at) : null;
+    if (when) {
+      return `Start the A/B test ${what} by itself ${timeWords(store, when)}: ${test.variants.length} versions, ${Math.round(test.trafficShare * 100)} % of the visitors who accepted statistics cookies, at least ${test.minDays} days. The same checks run again then; you can take it back to a draft before.`;
+    }
     return `Start the A/B test ${what}: ${test.variants.length} versions, ${Math.round(test.trafficShare * 100)} % of the visitors who accepted statistics cookies, at least ${test.minDays} days. They see their version from their next page view; you can stop it at any time.`;
   }
   if (tool === "stop_experiment") return `Stop the A/B test ${what}: everyone sees the original again, and what was counted is kept.`;

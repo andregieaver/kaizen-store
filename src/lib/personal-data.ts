@@ -222,6 +222,7 @@ export const PERSONAL_DATA: PersonalEntry[] = [
   entry("accessibility_settings", "owner", via("none"), ["contact_email"], null, "none", "The store's own contact for its accessibility statement. " + OWN),
   entry("assistant_memories", "staff", via("none"), ["content"], null, "none", "The AI manager's memory of a staff member; a retention period is the AI manager owner's decision (docs/wave-1g-gdpr.md section 7)."),
   entry("assistant_messages", "staff", via("none"), ["content"], null, "none", "The AI manager's conversations hold what its tools returned; a retention period is the owner's decision (docs/wave-1g-gdpr.md section 7)."),
+  entry("assistant_follow_ups", "staff", via("none"), ["task"], null, "none", "Follow-ups a staff member asked the AI manager for, in their own words; they go with the account or its conversation."),
   entry("audit_log", "none", none, [], null, "keep", "The activity log holds ids, counts and kinds, never an email or a name (a test scans it); kept 24 months as the record of who did what.", { until: "audit_log" }),
   entry("booking_resources", "staff", via("none"), ["name", "email", "property_address"], null, "none", "A member of staff, a room or a host's property. " + OWN),
   entry("economic_operators", "owner", via("none"), ["name", "electronic_address", "postal_address"], null, "none", "The store's own manufacturer or importer details. " + OWN),
@@ -427,6 +428,8 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   "return.exchange_wished": "staff",
   "stock.low": "staff",
   "experiment.guardrail": "staff",
+  /** A follow-up the AI manager was asked for ran (PSI AGT-04): the person's own task and a link, never the answer. */
+  "assistant.follow_up": "staff",
   "store.status": "staff",
   // Usage and limits (D314): to a store's owners when it nears or reaches a limit; to platform admins before a very busy time.
   "usage.near": "staff",

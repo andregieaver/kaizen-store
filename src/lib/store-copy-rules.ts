@@ -189,6 +189,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   assistant_conversations: never(
     "The AI manager's conversations belong to the account and the store they happened in.",
   ),
+  assistant_follow_ups: never("The AI manager's follow-ups belong to the account and the conversation they were asked in."),
   assistant_memories: never("The AI manager's memories are personal to the account."),
   assistant_messages: never("The AI manager's conversations belong to the account and the store they happened in."),
   audit_log: never("The original's audit trail."),

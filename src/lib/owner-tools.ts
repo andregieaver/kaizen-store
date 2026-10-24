@@ -922,8 +922,11 @@ export const OWNER_TOOLS = [
   ),
   tool(
     "start_experiment",
-    "Starts a draft A/B test, now: visitors who accepted statistics cookies are split between the versions from their next page view. The store checks it can start (a version that is still the original, an unpublished page and the like are refused with the reason). It runs at least 14 days before it says anything, and can be stopped at any time. Needs the owner's approval.",
-    z.object({ experiment: z.string().trim().min(1).max(200).describe("The test's name or id, from list_experiments.") }),
+    "Starts a draft A/B test, now or at a time (at): visitors who accepted statistics cookies are split between the versions from their next page view. The store checks it can start (a version that is still the original, an unpublished page and the like are refused with the reason), and checks again at the time; a scheduled test that cannot start then goes back to a draft with the reason. It runs at least 14 days before it says anything, and can be stopped at any time. Needs the owner's approval.",
+    z.object({
+      experiment: z.string().trim().min(1).max(200).describe("The test's name or id, from list_experiments."),
+      at: z.string().trim().max(20).optional().describe("To start it later: YYYY-MM-DD HH:MM in the store's time zone, at most 90 days ahead. Leave out to start now."),
+    }),
     "public",
   ),
   tool(
@@ -1284,7 +1287,9 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
       return `Set the custom fields of ${input.entity === "store" ? "the store" : `the ${text("entity") || "product"} "${text("item")}"`}: ${values.map(([name, v]) => `${name} ${v === null ? "" : "= "}${show(v)}`).join("; ")}.`;
     }
     case "start_experiment":
-      return `Start the A/B test "${text("experiment")}": visitors who accepted statistics cookies are shown the versions from their next page view.`;
+      return input.at
+        ? `Start the A/B test "${text("experiment")}" at ${text("at")} (the store's time): visitors who accepted statistics cookies are shown the versions from then.`
+        : `Start the A/B test "${text("experiment")}": visitors who accepted statistics cookies are shown the versions from their next page view.`;
     case "stop_experiment":
       return `Stop the A/B test "${text("experiment")}": everyone sees the original again.`;
     case "apply_winner":

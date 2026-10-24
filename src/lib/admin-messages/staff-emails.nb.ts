@@ -195,4 +195,19 @@ export const staffEmailsNb: StaffEmailsMessages = {
     reopenedText:
       "{name} ble åpnet igjen{by}. Butikken tar imot bestillinger igjen. Hvis du hadde stengt den, legger du til butikkens egne domener igjen under Innstillinger, Domener, og sjekker at Kaizena Flow-abonnementet fortsatt er aktivt.",
   },
+  followUp: {
+    subject: "KI-assistenten fulgte opp: «{task}»",
+    preview: "Svaret venter i samtalen din.",
+    heading: "Oppfølgingen din er besvart",
+    done: "Du ba KI-assistenten følge opp «{task}»{where}. Den har sett på det, og svaret står i samtalen din.",
+    where: " i {store}",
+    waiting: "En endring venter på ditt ja der.",
+    next: "Den følger opp igjen {when}.",
+    button: "Les svaret",
+    failedSubject: "KI-assistenten kunne ikke følge opp: «{task}»",
+    failedPreview: "Den prøvde tre ganger og stoppet.",
+    failedHeading: "Oppfølgingen din kunne ikke gjøres",
+    failed: "Du ba KI-assistenten følge opp «{task}»{where}. Den fikk ikke svar fra KI-en tre ganger på rad, så den stoppet. Be den igjen når KI-en virker.",
+    failedButton: "Åpne KI-assistenten",
+  },
 };

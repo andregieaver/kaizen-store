@@ -43,8 +43,9 @@ maturity for the run-up to launch. Point IDs are the audit's.
       support message, a page), plus off-topic, invented prices, prompt extraction and an asked-for refund; run from Platform → AI,
       each run kept per model (`commerce.ai_eval_runs`).
 - [ ] **AGT-14** Replay stored manager turns with thumbs as labels; run the evals in CI against a recorded model; version the prompts.
-- [ ] **AGT-04, AGT-11** Scheduling and follow-ups the agent can write (scheduled experiments and broadcasts, "follow up on"), then
-      event-triggered turns.
+- [x] **AGT-04, AGT-11** The AI manager can start an A/B test at a time (`start_experiment` with `at`) and keep follow-ups
+      (`follow_up`, daily or weekly too, which also covers a weekly "what needs a look"); D318.
+- [ ] **AGT-04** Scheduled broadcasts (with the broadcast tools, AGT-01) and turns started by events (an `order_rules` action).
 - [ ] **AGT-01** Task parity, gated like the existing tools: staff and roles, billing, broadcasts, segments, automations, reviews,
       order edits, exchanges, support replies, Work.
 - [x] **ACC-01** Axe on the `signed-in` Playwright project: `e2e/signed-in/a11y.spec.ts`, ten owner pages and four platform pages, no

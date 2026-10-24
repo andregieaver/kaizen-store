@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { SITE_TOOLS, tool, type OwnerTool } from "./owner-tools";
 import { savePlatformMenuInput, setPlatformPlaceInput } from "./site-tools";
+import { FOLLOW_UP_REPEATS, TASK_MAX } from "./follow-ups";
 import { REFERRAL_COMMISSION_BPS_MAX, REFERRAL_COOKIE_DAYS_MAX, REFERRAL_MONTHS_MAX, REFERRAL_PENDING_DAYS_MAX } from "./referrals";
 
 /**
@@ -68,6 +69,22 @@ export const MANAGER_TOOLS = [
     "decide_approval",
     "Carries out the person's answer to a change waiting for their yes (listed in your instructions with its id), when they answer it in words, spoken or typed, in this message. Approving needs a plain yes from them in this message; never approve what they did not clearly agree to.",
     z.object({ approval: z.uuid(), approve: z.boolean() }),
+  ),
+  tool(
+    "follow_up",
+    "Comes back to something later (PSI AGT-04): at the time, you are given the task in this conversation, do it with your tools, and they get an email that your answer is there. Use it when they ask you to remind them, check something again later, or check something regularly (\"every Monday, tell me what needs a look\": repeat weekly, with analytics_alerts and store_checkup then). It never approves anything: what needs their yes still waits for them.",
+    z.object({
+      task: z.string().trim().min(3).max(TASK_MAX).describe("What to do then, as a note to yourself in their words, such as 'Check whether order 1042 has been sent'."),
+      at: z.string().trim().max(20).optional().describe("When, as YYYY-MM-DD HH:MM in the time zone of your instructions."),
+      in_hours: z.number().min(0.1).max(8760).optional().describe("Or: how many hours from now."),
+      repeat: z.enum(FOLLOW_UP_REPEATS).default("none").describe("none, daily or weekly: the same time of day again."),
+    }),
+  ),
+  tool("list_follow_ups", "The follow-ups waiting for this person here: what, when and how often, with their ids.", z.object({})),
+  tool(
+    "cancel_follow_up",
+    "Cancels a waiting follow-up, by its id from list_follow_ups. Use it when they no longer want it.",
+    z.object({ follow_up: z.uuid() }),
   ),
 ] as const satisfies readonly OwnerTool[];
 
@@ -322,6 +339,9 @@ export const TOOL_WORDS: Record<string, string> = {
   stop_experiment: "Preparing to stop the test",
   apply_winner: "Preparing the choice",
   decide_approval: "Carrying out your answer",
+  follow_up: "Keeping the follow-up",
+  list_follow_ups: "Looking at your follow-ups",
+  cancel_follow_up: "Cancelling the follow-up",
   contact_kaizen_support: "Writing to Kaizena Flow support",
   add_order_note: "Adding a note",
   mark_order_sent: "Preparing the shipment",

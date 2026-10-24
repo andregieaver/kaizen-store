@@ -32,6 +32,7 @@ import { keepMemory, memoriesFor, deleteMemory } from "./assistant-memory";
 import { audit, type Account } from "./auth";
 import { getStoreBilling, listPlans, listStoreBilling } from "./billing";
 import { listEmails } from "./email";
+import { cancelFollowUpTool, followUpTool, listFollowUpsTool } from "./follow-ups";
 import { OwnerToolError } from "./owner-tools";
 import { planReminderStats } from "./plan-reminders";
 import { ensureBillingEvents } from "./referral-billing";
@@ -84,6 +85,8 @@ export type ManagerContext = {
     /** Runs the person's answer (`decideApproval()`), reporting it to their browser. */
     decide: (approvalId: string, approve: boolean) => Promise<{ status: string; outcome: string | null } | null>;
   };
+  /** A follow-up's turn (`src/server/follow-up-runner.ts`): nobody is there, so it sets no further follow-up. */
+  scheduled?: boolean;
 };
 
 const fail = (message: string): never => {
@@ -163,6 +166,7 @@ async function recallTool(ctx: ManagerContext, { query }: ManagerToolInput<"reca
 async function decideApprovalTool(ctx: ManagerContext, { approval, approve }: ManagerToolInput<"decide_approval">) {
   const turn = ctx.turn;
   if (!turn) return fail("Answers are given with the buttons here.");
+  if (ctx.scheduled) return fail("They are not here: a change waits for their own answer.");
   const [row] = await db().execute<Row>(sql`
     select summary, status, created_at from commerce.assistant_approvals
     where id = ${approval}::uuid and conversation_id = ${turn.conversationId}::uuid and account_id = ${ctx.account.id}::uuid
@@ -224,6 +228,9 @@ const MANAGER_HANDLERS: Record<ManagerToolName, Handler> = {
   forget: forgetTool,
   recall: recallTool,
   decide_approval: decideApprovalTool,
+  follow_up: followUpTool,
+  list_follow_ups: listFollowUpsTool,
+  cancel_follow_up: cancelFollowUpTool,
   // Gated (`send`): never run from the model; the approval runs it (`decideApproval()` in owner-assistant.ts).
   contact_kaizen_support: async () => fail("This needs the person's approval first."),
 };

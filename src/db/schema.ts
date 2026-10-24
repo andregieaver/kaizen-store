@@ -12861,3 +12861,44 @@ export const aiEvalRuns = commerce.table(
     check("ai_eval_runs_counts", sql`${t.passed} >= 0 and ${t.passed} <= ${t.total} and ${t.durationMs} >= 0`),
   ],
 );
+
+/**
+ * Follow-ups the AI manager keeps for a person (PSI AGT-04, AGT-11; `src/lib/follow-ups.ts`): at `due_at` the five-minute job gives
+ * `task` back to the AI manager in its conversation, in the person's name with their role's tools, and emails them. A repeating one is
+ * due again at the same time of day in `time_zone`. Written only by `src/server/follow-ups.ts`. `task` is the person's own words.
+ */
+export const assistantFollowUps = commerce.table(
+  "assistant_follow_ups",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** Null for the platform's AI manager. */
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    accountId: uuid("account_id")
+      .notNull()
+      .references(() => accounts.id, { onDelete: "cascade" }),
+    conversationId: uuid("conversation_id").notNull(),
+    task: text("task").notNull(),
+    dueAt: timestamp("due_at", { withTimezone: true }).notNull(),
+    repeat: text("repeat").notNull().default("none"),
+    timeZone: text("time_zone").notNull(),
+    status: text("status").notNull().default("waiting"),
+    tries: integer("tries").notNull().default(0),
+    runs: integer("runs").notNull().default(0),
+    lastRunAt: timestamp("last_run_at", { withTimezone: true }),
+    lastProblem: text("last_problem"),
+    claimedUntil: timestamp("claimed_until", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    foreignKey({ name: "assistant_follow_ups_conversation_fk", columns: [t.conversationId], foreignColumns: [assistantConversations.id] }).onDelete("cascade"),
+    index("assistant_follow_ups_due_idx").on(t.status, t.dueAt),
+    index("assistant_follow_ups_account_idx").on(t.accountId, t.storeId, t.status),
+    index("assistant_follow_ups_conversation_idx").on(t.conversationId),
+    index("assistant_follow_ups_store_idx").on(t.storeId),
+    check("assistant_follow_ups_repeat", sql`${t.repeat} in ('none', 'daily', 'weekly')`),
+    check("assistant_follow_ups_status", sql`${t.status} in ('waiting', 'done', 'cancelled', 'failed')`),
+    check("assistant_follow_ups_task", sql`length(${t.task}) between 1 and 500`),
+    check("assistant_follow_ups_counts", sql`${t.tries} >= 0 and ${t.runs} >= 0`),
+    check("assistant_follow_ups_problem", sql`${t.lastProblem} is null or length(${t.lastProblem}) <= 500`),
+  ],
+);
