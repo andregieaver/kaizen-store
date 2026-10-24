@@ -7,7 +7,8 @@ import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { ruleAnswerText } from "@/lib/notification-words";
 import { actionAdminLang } from "@/server/admin-request-lang";
-import type { Membership } from "@/server/auth";
+import { can } from "@/lib/permissions";
+import { holderOf, type Membership } from "@/server/auth";
 import { checkPermission } from "@/server/permissions";
 import { deleteRule, listRules, orderRules, saveRule, setRuleEnabled } from "@/server/order-rules";
 
@@ -24,7 +25,7 @@ export async function saveRuleAction(storeSlug: string, ruleId: string | null, i
   const member = await checkPermission(storeSlug, "settings:write");
   const words = await wordsOf(member);
   if (!member) return { ok: false, message: words.rules.answers.noAccess };
-  const result = await saveRule(member.store.id, ruleId, input, member.account.id);
+  const result = await saveRule(member.store.id, ruleId, input, member.account.id, { owner: can(holderOf(member), "owner") });
   if (!result.ok) return { ok: false, message: ruleAnswerText(result.message, words.rules) };
   refresh();
   return { ok: true, id: result.rule.id, message: words.common.saved };

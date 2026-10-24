@@ -12887,9 +12887,15 @@ export const assistantFollowUps = commerce.table(
     lastRunAt: timestamp("last_run_at", { withTimezone: true }),
     lastProblem: text("last_problem"),
     claimedUntil: timestamp("claimed_until", { withTimezone: true }),
+    /** `person`: asked for in a conversation; `rule`: an order rule's *Ask the AI manager* (PSI AGT-04), for its order. */
+    origin: text("origin").notNull().default("person"),
+    orderId: uuid("order_id").references(() => orders.id, { onDelete: "set null" }),
     createdAt: createdAt(),
   },
   (t) => [
+    check("assistant_follow_ups_origin", sql`${t.origin} in ('person', 'rule')`),
+    index("assistant_follow_ups_rule_idx").on(t.storeId, t.createdAt).where(sql`${t.origin} = 'rule'`),
+    index("assistant_follow_ups_order_idx").on(t.orderId),
     foreignKey({ name: "assistant_follow_ups_conversation_fk", columns: [t.conversationId], foreignColumns: [assistantConversations.id] }).onDelete("cascade"),
     index("assistant_follow_ups_due_idx").on(t.status, t.dueAt),
     index("assistant_follow_ups_account_idx").on(t.accountId, t.storeId, t.status),

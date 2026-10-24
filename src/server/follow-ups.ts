@@ -3,10 +3,13 @@ import "server-only";
 import { sql } from "drizzle-orm";
 import { z } from "zod";
 
-import { db } from "@/db/client";
-import { dueFrom, dueWords, FOLLOW_UP_REPEATS, FOLLOW_UPS_MAX } from "@/lib/follow-ups";
+import { db, type Db } from "@/db/client";
+import { dueFrom, dueWords, FOLLOW_UP_REPEATS, FOLLOW_UPS_MAX, TASK_MAX } from "@/lib/follow-ups";
+import { RULE_LIMITS } from "@/lib/order-rules";
+import { can } from "@/lib/permissions";
 import type { ManagerToolInput } from "@/lib/manager-tools";
 
+import { holderOf, passMembership } from "./auth";
 import type { ManagerContext } from "./manager-tools";
 import { OwnerToolError } from "./owner-tools";
 import { col, typedRows } from "./typed-rows";
@@ -77,4 +80,44 @@ export async function cancelFollowUpTool(ctx: ManagerContext, { follow_up }: Man
     returning 1
   `);
   return rows.length > 0 ? { done: "Cancelled." } : fail("There is no such follow-up waiting.");
+}
+
+export type AskOutcome = "ok" | "ask_limit" | "no_owner" | "not_found";
+
+/**
+ * An order rule's *Ask the AI manager* (PSI AGT-04, `docs/wave-3-notifications.md` rules): a follow-up due at once, in a conversation of its own, in
+ * the name of whoever last saved the rule while they are an owner of the store (the AI manager is the owners'). The runner gives it to the AI manager
+ * within five minutes and emails them. At most `RULE_LIMITS.asksPerDay` in a store in 24 hours, counted under the store's lock in the rule's own
+ * transaction, so a busy day cannot run up the store's AI.
+ */
+export async function askAiManager(
+  tx: Db,
+  input: { storeId: string; orderId: string; ruleId: string; ruleName: string; question: string; orderNumber: string },
+): Promise<AskOutcome> {
+  const [rule] = await tx.execute<{ account: string | null; slug: string; time_zone: string }>(sql`
+    select coalesce(r.updated_by, r.created_by) as account, s.slug, s.time_zone from commerce.order_rules r join commerce.stores s on s.id = r.store_id
+    where r.id = ${input.ruleId}::uuid and r.store_id = ${input.storeId}::uuid
+  `);
+  if (!rule) return "not_found";
+  if (!rule.account) return "no_owner";
+  const member = await passMembership(rule.slug, rule.account);
+  if (!member || !can(holderOf(member), "owner")) return "no_owner";
+  await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`follow-ups:rule:${input.storeId}`}))`);
+  const [asked] = await tx.execute<{ n: number }>(sql`
+    select count(*)::int as n from commerce.assistant_follow_ups
+    where store_id = ${input.storeId}::uuid and origin = 'rule' and created_at > now() - interval '24 hours'
+  `);
+  if (Number(asked.n) >= RULE_LIMITS.asksPerDay) return "ask_limit";
+  const [conversation] = await tx.execute<{ id: string }>(sql`
+    insert into commerce.assistant_conversations (store_id, account_id, title)
+    values (${input.storeId}::uuid, ${rule.account}::uuid, ${`${input.ruleName}: order ${input.orderNumber}`.slice(0, 80)})
+    returning id
+  `);
+  const task = `Order ${input.orderNumber} was paid, and the automation rule "${input.ruleName}" asks you: ${input.question} Read the order with your tools first.`;
+  await tx.execute(sql`
+    insert into commerce.assistant_follow_ups (store_id, account_id, conversation_id, task, due_at, time_zone, origin, order_id)
+    values (${input.storeId}::uuid, ${rule.account}::uuid, ${String(conversation.id)}::uuid, ${task.slice(0, TASK_MAX)}, now(), ${rule.time_zone}, 'rule',
+      ${input.orderId}::uuid)
+  `);
+  return "ok";
 }

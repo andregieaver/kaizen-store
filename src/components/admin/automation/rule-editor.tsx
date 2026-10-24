@@ -85,7 +85,7 @@ export function draftOfRule(rule: Pick<OrderRule, "conditions" | "actions"> | nu
         return d;
     }
   });
-  const actions = (rule?.actions ?? []).map((a): ActionDraft => ({ kind: a.kind, text: a.kind === "tag" ? a.label : a.kind === "notify" ? a.note : a.reason }));
+  const actions = (rule?.actions ?? []).map((a): ActionDraft => ({ kind: a.kind, text: a.kind === "tag" ? a.label : a.kind === "notify" ? a.note : a.kind === "ask" ? a.question : a.reason }));
   return { conditions, actions: actions.length > 0 ? actions : [{ kind: "tag", text: "" }] };
 }
 
@@ -132,7 +132,7 @@ export function ruleBody(input: { name: string; match: "all" | "any"; enabled: b
           return { kind: c.kind };
       }
     }),
-    actions: input.actions.map((a) => (a.kind === "tag" ? { kind: "tag", label: a.text } : a.kind === "notify" ? { kind: "notify", note: a.text } : { kind: "hold", reason: a.text })),
+    actions: input.actions.map((a) => (a.kind === "tag" ? { kind: "tag", label: a.text } : a.kind === "notify" ? { kind: "notify", note: a.text } : a.kind === "ask" ? { kind: "ask", question: a.text } : { kind: "hold", reason: a.text })),
   };
 }
 
@@ -379,12 +379,12 @@ export function RuleEditor({
                   </select>
                 </label>
                 <label className="flex min-w-60 flex-1 flex-col gap-1 text-sm font-medium">
-                  {a.kind === "tag" ? e.tagLabel : a.kind === "notify" ? e.notifyLabel : e.holdLabel}
+                  {a.kind === "tag" ? e.tagLabel : a.kind === "notify" ? e.notifyLabel : a.kind === "ask" ? e.askLabel : e.holdLabel}
                   <input
                     value={a.text}
                     list={a.kind === "tag" ? `${uid}-tags` : undefined}
                     onChange={(e) => patchAction(i, { text: e.target.value })}
-                    maxLength={a.kind === "tag" ? 40 : RULE_LIMITS.note}
+                    maxLength={a.kind === "tag" ? 40 : a.kind === "ask" ? RULE_LIMITS.question : RULE_LIMITS.note}
                     className={field}
                   />
                 </label>
@@ -404,6 +404,7 @@ export function RuleEditor({
             </div>
           )}
           <p className="text-xs text-muted">{footnote(e)}</p>
+          {actions.some((a) => a.kind === "ask") && <p className="text-xs text-muted">{fillWords(e.askNote, { max: RULE_LIMITS.asksPerDay })}</p>}
         </section>
       </fieldset>
 

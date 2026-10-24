@@ -31,6 +31,7 @@ export function ruleAnswerText(message: string, w: NotificationsMessages["rules"
   const a = w.answers;
   const exact: Record<string, string> = {
     "Choose products of this store.": a.ownProducts,
+    "Only an owner can make a rule that asks the AI manager: it runs in their name.": a.askOwnerOnly,
     "Choose countries the store sells to.": a.ownCountries,
     "This rule no longer exists.": a.gone,
     "The order could not be read. Load the page again.": a.unreadable,

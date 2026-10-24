@@ -53,6 +53,7 @@ export const ruleActionInput: z.ZodType<RuleAction, unknown> = z.union([
   z.object({ kind: z.literal("tag"), label: tagText }).transform(({ label }) => ({ kind: "tag" as const, label: label.label })),
   z.object({ kind: z.literal("notify"), note: text(RULE_LIMITS.note, "Write what staff should know.") }),
   z.object({ kind: z.literal("hold"), reason: text(RULE_LIMITS.reason, "Write why the order is held.") }),
+  z.object({ kind: z.literal("ask"), question: text(RULE_LIMITS.question, "Write what the AI manager should look at.") }),
 ]);
 
 export const orderRuleInput = z.object({

@@ -45,7 +45,8 @@ maturity for the run-up to launch. Point IDs are the audit's.
 - [ ] **AGT-14** Replay stored manager turns with thumbs as labels; run the evals in CI against a recorded model; version the prompts.
 - [x] **AGT-04, AGT-11** The AI manager can start an A/B test at a time (`start_experiment` with `at`) and keep follow-ups
       (`follow_up`, daily or weekly too, which also covers a weekly "what needs a look"); D318.
-- [ ] **AGT-04** Turns started by events (an `order_rules` action that asks the AI manager to look).
+- [x] **AGT-04** Turns started by events: the order rule action *Ask the AI manager* queues a follow-up for the paid order in the name of
+      whoever saved the rule (owners only, at most 20 a store a day); D318.
 - [x] **AGT-01 (marketing)** Broadcasts (`list_broadcasts`, `draft_broadcast`, `send_broadcast` gated, now or at a time), segments
       (`list_segments`), customer tags (`tag_customer`) and email automations (`list_email_automations`, `switch_email_automation` gated);
       this also gives scheduled broadcasts (AGT-04).

@@ -202,3 +202,44 @@ describe("the editor's input (2.5)", () => {
     await allRules(store);
   });
 });
+
+describe("a rule asks the AI manager (PSI AGT-04)", () => {
+  it("is an owner's to make, queues a follow-up for the paid order in their name, and stops at the day's limit", async () => {
+    await allRules(store);
+    const body = { name: "Look at big orders", match: "all", conditions: [], actions: [{ kind: "ask", question: "Is anything unusual about this order?" }] };
+    expect(await rules.saveRule(store.storeId, null, body, store.accountId)).toMatchObject({ ok: false, message: rules.ASK_OWNER_ONLY });
+    const saved = await rules.saveRule(store.storeId, null, body, store.accountId, { owner: true });
+    expect(saved.ok).toBe(true);
+    if (!saved.ok) return;
+
+    const order = await paidOrder(store, [["DEMO-TOTE", 1]]);
+    await drain();
+    const [run] = await runsOf(order.orderId);
+    expect((run.outcome as { actions: { kind: string; ok: boolean }[] }).actions).toEqual([{ kind: "ask", ok: true }]);
+    const followUps = await db().execute<Row>(sql`
+      select f.account_id, f.origin, f.status, f.task, f.due_at <= now() as due, c.title from commerce.assistant_follow_ups f
+      join commerce.assistant_conversations c on c.id = f.conversation_id
+      where f.store_id = ${store.storeId}::uuid and f.order_id = ${order.orderId}::uuid
+    `);
+    expect(followUps).toHaveLength(1);
+    expect(followUps[0]).toMatchObject({ account_id: store.accountId, origin: "rule", status: "waiting", due: true });
+    expect(String(followUps[0].task)).toContain("Is anything unusual about this order?");
+    expect(String(followUps[0].title)).toContain("Look at big orders");
+
+    // At the day's limit the rule says so in its log and queues nothing.
+    const conversation = await db().execute<Row>(sql`select conversation_id from commerce.assistant_follow_ups where order_id = ${order.orderId}::uuid`);
+    await db().execute(sql`
+      insert into commerce.assistant_follow_ups (store_id, account_id, conversation_id, task, due_at, time_zone, origin, status)
+      select ${store.storeId}::uuid, ${store.accountId}::uuid, ${String(conversation[0].conversation_id)}::uuid, 'x', now(), 'Europe/Oslo', 'rule', 'done'
+      from generate_series(1, 19)
+    `);
+    const late = await paidOrder(store, [["DEMO-TOTE", 1]]);
+    await drain();
+    const [limited] = await runsOf(late.orderId);
+    expect((limited.outcome as { actions: { kind: string; ok: boolean; problem?: string }[] }).actions).toEqual([{ kind: "ask", ok: false, problem: "ask_limit" }]);
+    expect(await db().execute(sql`select 1 from commerce.assistant_follow_ups where order_id = ${late.orderId}::uuid`)).toHaveLength(0);
+
+    await db().execute(sql`delete from commerce.assistant_follow_ups where store_id = ${store.storeId}::uuid`);
+    await allRules(store);
+  });
+});

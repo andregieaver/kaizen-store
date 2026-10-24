@@ -27,6 +27,7 @@ import { ALERT_KEYS } from "@/lib/staff-alerts";
 import { audit } from "./auth";
 import { sendEmail, type SendOutcome } from "./email";
 import { SYSTEM_ACTOR } from "./order-actor";
+import { askAiManager } from "./follow-ups";
 import { holdOrder } from "./order-hold";
 import { changeOrderTags } from "./order-tags";
 import { emailFooter, storeById } from "./shopper-emails";
@@ -95,15 +96,26 @@ export type SaveRuleResult = { ok: true; rule: OrderRule } | { ok: false; proble
 
 const isLimit = (error: unknown) => error instanceof Error && /order_rules\.limit/.test(`${error.message} ${(error as { cause?: { message?: string } }).cause?.message ?? ""}`);
 
+/** The refusal for a rule that asks the AI manager, saved by someone who is not an owner. */
+export const ASK_OWNER_ONLY = "Only an owner can make a rule that asks the AI manager: it runs in their name.";
+
 /**
  * Creates (`ruleId` null) or changes a rule, checked by `orderRuleInput` (the editor's own schema) and then kept to the store's own: every product of a
  * `has_product` must be the store's and every country one of its markets. A change raises the rule's `version`. At most 50 a store (the database holds
  * it too). Audited `automation.rule_saved`.
  */
-export async function saveRule(storeId: string, ruleId: string | null, input: unknown, accountId: string | null): Promise<SaveRuleResult> {
+export async function saveRule(
+  storeId: string,
+  ruleId: string | null,
+  input: unknown,
+  accountId: string | null,
+  /** Whether the person saving is an owner: only an owner's rule may ask the AI manager, which runs in their name (PSI AGT-04). */
+  options: { owner?: boolean } = {},
+): Promise<SaveRuleResult> {
   const parsed = orderRuleInput.safeParse(input);
   if (!parsed.success) return { ok: false, problem: "invalid", message: parsed.error.issues[0]?.message ?? "Check the rule and try again." };
   const rule = parsed.data;
+  if (rule.actions.some((a) => a.kind === "ask") && !options.owner) return { ok: false, problem: "invalid", message: ASK_OWNER_ONLY };
   const products = rule.conditions.flatMap((c) => (c.kind === "has_product" ? c.productIds : []));
   if (products.length > 0) {
     const own = await db().execute<Row>(sql`select id from commerce.products where store_id = ${storeId}::uuid and id = any(${uuidList(products)})`);
@@ -264,7 +276,7 @@ type EventRef = { id: string; storeId: string; subjectId: string };
 const outcome = (kind: ActionOutcome["kind"], problem?: ActionProblem): ActionOutcome => (problem ? { kind, ok: false, problem } : { kind, ok: true });
 
 /** Runs one action inside the rule's transaction (tag, hold); a notify is sent after it commits. */
-async function act(tx: Db, storeId: string, orderId: string, rule: OrderRule, action: RuleAction): Promise<ActionOutcome> {
+async function act(tx: Db, storeId: string, orderId: string, rule: OrderRule, action: RuleAction, orderNumber: string): Promise<ActionOutcome> {
   switch (action.kind) {
     case "tag": {
       const tag = normaliseTag(action.label);
@@ -283,6 +295,11 @@ async function act(tx: Db, storeId: string, orderId: string, rule: OrderRule, ac
     case "notify":
       // Sent after the transaction (below), so an email never goes for a run that did not commit.
       return outcome("notify");
+    case "ask": {
+      // A follow-up in the rule's transaction, so it exists only for a run that committed; the runner takes it within five minutes (PSI AGT-04).
+      const asked = await askAiManager(tx, { storeId, orderId, ruleId: rule.id, ruleName: rule.name, question: action.question, orderNumber });
+      return asked === "ok" ? outcome("ask") : outcome("ask", asked);
+    }
   }
 }
 
@@ -338,7 +355,7 @@ export async function runRulesFor(event: EventRef): Promise<{ runs: number; matc
       if (matched) {
         for (const action of rule.actions) {
           try {
-            actions.push(await act(tx, event.storeId, event.subjectId, rule, action));
+            actions.push(await act(tx, event.storeId, event.subjectId, rule, action, facts.number));
           } catch {
             actions.push(outcome(action.kind, "failed"));
           }

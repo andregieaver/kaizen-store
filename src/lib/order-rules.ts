@@ -14,6 +14,10 @@ export const RULE_LIMITS = {
   /** A *Notify staff* note and a *Hold* reason. */
   note: 200,
   reason: 200,
+  /** What an *Ask the AI manager* asks it to look at. */
+  question: 300,
+  /** Turns *Ask the AI manager* may start in a store in 24 hours (each is a model's turn). */
+  asksPerDay: 20,
   /** Products of one `has_product` and countries of one `country_in`. */
   products: 50,
   countries: 40,
@@ -39,7 +43,7 @@ export const CONDITION_KINDS = [
 ] as const;
 export type ConditionKind = (typeof CONDITION_KINDS)[number];
 
-export const ACTION_KINDS = ["tag", "notify", "hold"] as const;
+export const ACTION_KINDS = ["tag", "notify", "hold", "ask"] as const;
 export type ActionKind = (typeof ACTION_KINDS)[number];
 
 export const RULE_DELIVERIES = ["shipping", "pickup", "local", "none"] as const;
@@ -71,7 +75,12 @@ export type RuleAction =
   /** A tag as `normaliseTag()` made it. */
   | { kind: "tag"; label: string }
   | { kind: "notify"; note: string }
-  | { kind: "hold"; reason: string };
+  | { kind: "hold"; reason: string }
+  /**
+   * PSI AGT-04: the AI manager looks at the order and answers in a conversation of its own, as a follow-up in the name of whoever last saved the
+   * rule (`askAiManager()` in `src/server/follow-ups.ts`); they are emailed where the answer is.
+   */
+  | { kind: "ask"; question: string };
 
 export type OrderRule = {
   id: string;
@@ -111,7 +120,7 @@ export type RuleFacts = {
 };
 
 export type ConditionOutcome = { kind: ConditionKind; met: boolean; why?: "no_rate" | "unknown" | "unread" };
-export type ActionProblem = "not_found" | "limit" | "already_held" | "sent" | "invalid" | "no_recipients" | "failed";
+export type ActionProblem = "not_found" | "limit" | "already_held" | "sent" | "invalid" | "no_recipients" | "failed" | "ask_limit" | "no_owner";
 export type ActionOutcome = { kind: ActionKind; ok: boolean; problem?: ActionProblem };
 /** `order_rule_runs.outcome`. */
 export type RunOutcome = { conditions: ConditionOutcome[]; actions: ActionOutcome[] };
@@ -200,6 +209,7 @@ export const RULE_SENTENCE_EN = {
   actionTag: 'tag "{tag}"',
   actionNotify: "notify staff",
   actionHold: "hold it",
+  actionAsk: "ask the AI manager to look",
   whenPaid: "When an order is paid{when}, {actions}.",
   whenAnd: " and {conditions}",
   joinAll: " and ",
@@ -254,6 +264,8 @@ export function describeAction(a: RuleAction, w: RuleSentenceWords = RULE_SENTEN
       return w.actionNotify;
     case "hold":
       return w.actionHold;
+    case "ask":
+      return w.actionAsk;
   }
 }
 
@@ -277,4 +289,6 @@ export const OUTCOME_WORDS: Record<NonNullable<ConditionOutcome["why"]> | Action
   invalid: "The action is not valid any more",
   no_recipients: "Nobody is chosen for automation emails",
   failed: "It could not be done",
+  ask_limit: `The AI manager was already asked ${RULE_LIMITS.asksPerDay} times by rules in the last 24 hours`,
+  no_owner: "Whoever saved the rule is no longer an owner of the store",
 };
