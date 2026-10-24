@@ -4,6 +4,14 @@
  * A new text a visitor's client component reads goes here and in `nb-browser.ts`, `sv-browser.ts` and `da-browser.ts`.
  */
 export const enBrowser = {
+/** Shown when a store page fails to render (`[market]/error.tsx`). Plain strings: the AI catalogue translates them for other languages. */
+pageError: {
+  title: "This page could not be shown",
+  body: "Something went wrong on our side. Try again in a moment.",
+  retry: "Try again",
+  home: "Go to the front page",
+  reference: "Reference",
+},
 gift: {
   title: "This is a gift",
   to: "To",

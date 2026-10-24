@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { CSP_ENFORCE, checkoutCsp, payHeaders, payRouteHeaders, storageOrigin } from "./csp";
+import { CSP_ENFORCE, SITE_HEADERS, adminFrameHeaders, baseRouteHeaders, checkoutCsp, payHeaders, payRouteHeaders, storageOrigin } from "./csp";
 
 const directives = (policy: string) =>
   Object.fromEntries(
@@ -102,5 +102,28 @@ describe("the headers sent with it", () => {
     expect(entries[2].source.startsWith("/s/:store/:route(")).toBe(true);
     expect(entries[3].source.startsWith("/:route(")).toBe(true);
     for (const entry of entries) expect(entry.headers[0].value).toBe(checkoutCsp(env));
+  });
+});
+
+describe("the headers every route gets (PSI 2026-10-24, SEC-07)", () => {
+  it("sends nosniff everywhere and leaves Referrer-Policy to the routes that set a stricter one", () => {
+    const [all] = baseRouteHeaders(null);
+    expect(all.source).toBe("/:path*");
+    expect(all.headers).toEqual([{ key: "X-Content-Type-Options", value: "nosniff" }]);
+    expect(SITE_HEADERS.some((h) => h.key === "Referrer-Policy")).toBe(false);
+  });
+
+  it("lets only Kaizena Flow frame the admin, and the theme store's own host when there is one", () => {
+    const admin = baseRouteHeaders(null)[1];
+    expect(admin.source).toBe("/admin/:path*");
+    expect(admin.headers).toEqual([{ key: "Content-Security-Policy", value: "frame-ancestors 'self'" }]);
+    expect(adminFrameHeaders("https://themes.kaizenaflow.com")).toEqual([
+      { key: "Content-Security-Policy", value: "frame-ancestors 'self' https://themes.kaizenaflow.com" },
+    ]);
+  });
+
+  it("restricts nothing on the admin but who may frame it", () => {
+    const policy = adminFrameHeaders(null)[0].value;
+    expect(policy.split(";").map((d) => d.trim().split(" ")[0])).toEqual(["frame-ancestors"]);
   });
 });

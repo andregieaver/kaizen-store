@@ -2,6 +2,13 @@
 import type { BrowserMessages } from "./en-browser";
 
 export const svBrowser: BrowserMessages = {
+pageError: {
+  title: "Den här sidan kunde inte visas",
+  body: "Något gick fel hos oss. Försök igen om en stund.",
+  retry: "Försök igen",
+  home: "Gå till startsidan",
+  reference: "Referens",
+},
 gift: {
   title: "Det här är en present",
   to: "Till",

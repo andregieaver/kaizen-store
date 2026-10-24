@@ -2,6 +2,13 @@
 import type { BrowserMessages } from "./en-browser";
 
 export const nbBrowser: BrowserMessages = {
+pageError: {
+  title: "Denne siden kunne ikke vises",
+  body: "Noe gikk galt hos oss. Prøv igjen om litt.",
+  retry: "Prøv igjen",
+  home: "Gå til forsiden",
+  reference: "Referanse",
+},
 gift: {
   title: "Dette er en gave",
   to: "Til",

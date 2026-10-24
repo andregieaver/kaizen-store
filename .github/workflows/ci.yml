@@ -52,6 +52,21 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
 
+  # Known advisories in what production runs (PSI 2026-10-24, SEC-08). A job of its own and in no job's `needs`, so a new
+  # advisory shows red here and never holds back a deploy or a migration. Dev-only tools are left to the follow-up list.
+  audit:
+    if: github.event_name != 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      # No install: the audit reads the lockfile, so there is no pnpm store to cache.
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - run: pnpm audit --prod --audit-level high
+
   integration:
     if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest

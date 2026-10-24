@@ -16,7 +16,7 @@ phased build plan are in `docs/plan.md`; read it before architectural work.
 
 ## Stack
 
-- Next.js 16.3 (App Router, `cacheComponents` on), React 19, TypeScript, Tailwind 4, pnpm.
+- Next.js 16.4 (App Router, `cacheComponents` on), React 19, TypeScript, Tailwind 4, pnpm.
 - Supabase project "Kaizen Store" (`ybsozesfuxuitoacntfo`, eu-west-1 Ireland).
 - Vercel functions pinned to `dub1` (Dublin) in `vercel.json` to sit next to the
   database. Keep data processing in the EU when adding any vendor.
@@ -1265,4 +1265,8 @@ stand-in is the only fake, and only it is told it is one.
 - Server-only modules import `server-only`.
 - AI features must stay grounded: the model never states a price, stock level or
   product it was not given by a tool; arithmetic happens in code; model output is
-  rendered as text, never as HTML.
+  rendered as text, never as HTML. Every system prompt carries the rule in
+  `src/lib/prompt-safety.ts` (`UNTRUSTED_TEXT`, or `RULES_STAND` where the input is
+  meant to steer); `prompt-safety.scan.test.ts` fails for a new prompt without it.
+- Deferred work from the PSI audit is tracked in `docs/audits/psi-followups.md`: tick
+  an item there when a change does it.

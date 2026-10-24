@@ -92,3 +92,27 @@ export function payHeaders(env: CspEnv = {}, enforce: boolean = CSP_ENFORCE): He
 export function payRouteHeaders(env: CspEnv = {}, enforce: boolean = CSP_ENFORCE): { source: string; headers: HeaderEntry[] }[] {
   return PAY_SOURCES.map((source) => ({ source, headers: payHeaders(env, enforce) }));
 }
+
+/**
+ * Sent with every response (PSI 2026-10-24, SEC-07): a file is only ever taken as the type it says it is. `Referrer-Policy` is left
+ * out on purpose: the browsers' default is already `strict-origin-when-cross-origin`, and routes that need `no-referrer` set it
+ * themselves, which a site-wide entry could override.
+ */
+export const SITE_HEADERS: HeaderEntry[] = [{ key: "X-Content-Type-Options", value: "nosniff" }];
+
+/**
+ * The admin may be framed only by Kaizena Flow itself and, when the theme store has a host of its own, by that host: its pages show
+ * a theme's look in frames of the admin's public preview (`designPreviewPath(…, embed)`). Only `frame-ancestors`, so the admin's
+ * scripts and styles are as they were; anyone else framing an admin page to trick a click is refused.
+ */
+export function adminFrameHeaders(themesOrigin: string | null): HeaderEntry[] {
+  return [{ key: "Content-Security-Policy", value: `frame-ancestors 'self'${themesOrigin ? ` ${themesOrigin}` : ""}` }];
+}
+
+/** The entries `next.config.ts` returns before the pay routes', whose stricter set comes later and so wins where both match. */
+export function baseRouteHeaders(themesOrigin: string | null): { source: string; headers: HeaderEntry[] }[] {
+  return [
+    { source: "/:path*", headers: SITE_HEADERS },
+    { source: "/admin/:path*", headers: adminFrameHeaders(themesOrigin) },
+  ];
+}

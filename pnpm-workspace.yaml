@@ -1,3 +1,8 @@
 ignoredBuiltDependencies:
   - sharp
   - unrs-resolver
+# Transitive packages held above a version with a known advisory (pnpm audit), until their parents require it themselves.
+overrides:
+  source-map-js: ">=1.2.2"
+  # @vercel/functions > @vercel/oidc > @vercel/cli-config pins zod 4.1.11 (reads local Vercel CLI config only); same major as ours.
+  "@vercel/cli-config>zod": "4.6.7"

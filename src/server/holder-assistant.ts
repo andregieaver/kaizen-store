@@ -20,6 +20,7 @@ import type { DnsHostApi } from "./vercel-dns";
 /** What tests swap: the DNS host, the model and the hourly count. */
 export type HolderDeps = { host?: DnsHostApi; take?: (bucket: string) => Promise<number>; connection?: AiConnection | null; chat?: typeof chatWithTools };
 import { storeRegistrations } from "./domain-registrations";
+import { UNTRUSTED_TEXT } from "@/lib/prompt-safety";
 
 /**
  * The AI manager for a domain's holder (D317 phase 5, decision 9): on *Your domains*, for anyone holding a domain, with or without a store.
@@ -66,6 +67,7 @@ const SYSTEM = [
   "Every fact comes from a tool you called: never guess a domain, a date, a price or a record. Values for records come only from the person or a tool.",
   "A DNS change is never made by you: call the tool, and tell the person to look at the proposal shown below your answer and press Confirm if it is right.",
   "Answer in the person's language, plainly and briefly, as text without HTML.",
+  UNTRUSTED_TEXT,
 ].join(" ");
 
 /** A proposal's token: the plan and the records it was planned on, signed so the page can't change it (HMAC, with the settings key). */

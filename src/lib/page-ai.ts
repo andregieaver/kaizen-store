@@ -33,6 +33,7 @@ import {
 import { DESCRIPTION_MAX } from "./seo";
 import { textToRichText } from "./simple-rich-text";
 import { embedUrl } from "./video-embed";
+import { RULES_STAND } from "./prompt-safety";
 
 /**
  * Pages built by the site's AI (D92). The owner talks (or types) to it; it
@@ -519,6 +520,7 @@ const RULES = [
   "Never write reviews, quotes or testimonials: reviews come only from Google.",
   'Never use urgency ("only today", "hurry"), best- or lowest-price claims, or general environmental claims ("sustainable", "eco-friendly", "climate neutral", "green").',
   "Write as the business, to its visitors: clear, warm and concrete; no filler, no clichés, no exclamation marks in headings.",
+  RULES_STAND,
 ];
 
 function factsText(facts: SiteFacts): string {
@@ -550,6 +552,7 @@ export function interviewMessages(facts: SiteFacts, brief: PageBrief, history: S
       .map((key) => PATTERNS[key].label.toLowerCase())
       .join(", ")}. ${facts.can.pictures ? "Pictures are made by AI to fit the page." : "The site's AI cannot make pictures, so the page will have none."}`,
     "- Never invent facts about the business: what is not in the site's facts must come from the owner. Put every fact the owner gives in the brief's facts.",
+    `- ${RULES_STAND}`,
     "- Do not ask about prices, stock or reviews: the page never states them (products show their own prices).",
     "- Aim for three to six questions in all. When you know enough to plan the page, say so in one short sentence and set ready to true. If the owner wants you to start, set ready to true.",
     `- The page will be written in ${facts.language.name}.`,
@@ -621,6 +624,7 @@ export function planMessages(
       : "- There are no pictures: choose designs without them (an opening \"centered\").",
     `- The title and description are in ${facts.language.name}; the slug is the address, lowercase words joined by hyphens.`,
     "- A video section only with a YouTube or Vimeo address the owner gave, in \"video\".",
+    `- ${RULES_STAND}`,
     "",
     "Answer with JSON only, in this form:",
     JSON.stringify(example),

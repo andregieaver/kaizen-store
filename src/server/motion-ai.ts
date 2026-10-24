@@ -16,6 +16,7 @@ import { PAGE_TYPES, pageRowSchema, ROWS_MAX, type PageRow, type PageType } from
 import { parseModelJson } from "@/lib/query-understanding";
 
 import { completeText, type AiConnection, type ChatMessage } from "./ai";
+import { UNTRUSTED_TEXT } from "@/lib/prompt-safety";
 
 /**
  * "Make my page cool" (D128): the site's text model looks at an outline of the page and chooses motion for it, within
@@ -46,6 +47,7 @@ export function motionSystemPrompt(): string {
     "You are a motion designer for a web page builder. You are given the outline of one page and choose tasteful motion for it: entrances (when a part comes into view or the page loads), hover effects, scroll effects and moving backgrounds.",
     "",
     "Rules:",
+    `- ${UNTRUSTED_TEXT}`,
     '- Choose ONE style for the whole page and stay in it: "subtle", "elegant" or "lively".',
     STYLE_GUIDE,
     "- Be restrained. Animate about one part in three at most, and use at most two different kinds of entrance on the page besides text effects. A page must never feel like a circus.",

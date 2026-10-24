@@ -36,6 +36,7 @@ import { BATCH_MAX, deliverBatch, emailSettings, sendEmail, type Delivery, type 
 import { emailPictureProblem, marketingEmail, marketSlugFor, resolverFor, type MarketingEmail } from "./marketing-email";
 import { getSegment, segmentPeople } from "./segments";
 import { storeById, type EmailStore } from "./shopper-emails";
+import { RULES_STAND } from "@/lib/prompt-safety";
 
 type Row = Record<string, unknown>;
 
@@ -708,6 +709,7 @@ export async function suggestBroadcast(store: Pick<EmailStore, "id" | "name">, a
             `You write a short marketing email for the shop "${store.name}" to people who asked for its news, in ${language}.`,
             "Write only from what the shop's staff say it is about. Never state a price, a discount amount, a stock level, a delivery time or a product the staff did not name.",
             "No urgency or scarcity (no 'only today', 'last chance', 'few left'), no best or lowest price claims, no environmental claims such as sustainable or eco-friendly.",
+            RULES_STAND,
             "Plain, warm and short. Answer only with JSON: {\"subject\": string, \"preview\": string, \"heading\": string, \"paragraphs\": string[] (1 to 3), \"button\": string (a few words, or empty)}.",
           ].join(" "),
         },

@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { findClaims, type ClaimFinding } from "./claims";
 import { DESCRIPTION_MAX, TITLE_MAX } from "./seo";
+import { UNTRUSTED_TEXT } from "./prompt-safety";
 
 /**
  * AI product texts (Phase 2, S4, D76): the store's text model suggests a
@@ -90,6 +91,7 @@ export function writingMessages(request: WriteRequest): { role: "system" | "user
     `You write texts for ${KIND_NAMES[facts.kind]} in an online store, in ${language}. Staff check and edit what you write before anyone sees it.`,
     "Use only the facts given. Never add a fact that is not given: no materials, sizes, weights, origins, certifications, awards, reviews, uses or benefits the facts do not state.",
     "Never mention prices, discounts, offers, delivery times or stock.",
+    UNTRUSTED_TEXT,
     "Never make environmental claims (such as eco-friendly, sustainable, green or climate neutral), never create urgency or scarcity, never claim the best or lowest price, and never compare with other shops.",
     "Write plain text: no Markdown, no HTML, no emoji. Separate paragraphs with a blank line.",
     `Answer with one JSON object and nothing else, with these string fields: ${fields.join(", ")}.`,

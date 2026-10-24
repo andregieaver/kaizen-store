@@ -13,6 +13,7 @@ import { THEME_FEATURES, themeFeatures } from "@/lib/theme-store";
 import { AiError, aiFor, completeText } from "./ai";
 import type { Account } from "./auth";
 import { themeContentOf } from "./store-starters";
+import { UNTRUSTED_TEXT } from "@/lib/prompt-safety";
 
 /**
  * *Suggest words* for a theme's highlights (`docs/theme-showcase-phase-2.md` step 2): Kaizena Flow's text model writes a title and a line
@@ -27,6 +28,7 @@ export type HighlightSuggestion = { ok: true; words: HighlightWords; leftOut: Hi
 
 const SYSTEM = [
   "You write short captions for three pictures of a website theme in a theme store.",
+  UNTRUSTED_TEXT,
   "Use only the facts you are given about the theme. Never mention a price, a discount, stock, speed, sales, rankings or comparisons with other themes,",
   "never promise results, and never use words like best, perfect, guaranteed, eco, green or sustainable.",
   `Each caption is a title of at most ${HIGHLIGHT_WORDS_MAX.title} characters and a line of at most ${HIGHLIGHT_WORDS_MAX.text} characters, in plain British English, no emoji.`,
