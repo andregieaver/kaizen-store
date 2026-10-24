@@ -975,6 +975,8 @@ export const da: Messages = {
     subscriptions: "Abonnementer",
     noSubscriptions: "Du har ingen abonnementer.",
     manage: "Administrer",
+    // Finding an order (D304 J2).
+    orderList: {title: "Dine ordrer", all: "Alle", open: "Under forberedelse", sent: "På vej", delivered: "Leveret", returned: "Returneret", search: "Søg i dine ordrer", searchHint: "Ordrenummer, produkt eller trackingnummer", find: "Søg", none: "Ingen ordrer passer.", more: "Vis ældre ordrer", seeAll: "Se alle ordrer"},
     // Saved addresses (D304).
     addresses: {title: "Adresser", intro: "Gem de steder, du sender til, og vælg hvilken kassen starter med.", none: "Du har ingen gemte adresser endnu.", add: "Tilføj en adresse", edit: "Ret", remove: "Fjern", label: "Giv den et navn (valgfrit)", labelHint: "For eksempel Hjemme eller Arbejde", name: "Navn", line1: "Adresse", line2: "Adresse, linje 2 (valgfrit)", postalCode: "Postnummer", city: "By", country: "Land", save: "Gem adressen", defaultShipping: "Leveringsadressen kassen starter med", defaultBilling: "Faktureringsadresse", makeShipping: "Brug til levering", makeBilling: "Brug til fakturering", saved: "Adressen er gemt.", removed: "Adressen er fjernet.", tooMany: "Du kan gemme op til 20 adresser. Fjern en først.", missing: "Udfyld adresse, postnummer og by.", manage: "Gemte adresser", choose: "Gemt adresse", typeNew: "Skriv en anden adresse"},
     details: "Mine oplysninger",

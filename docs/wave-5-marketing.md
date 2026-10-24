@@ -905,6 +905,9 @@ built yet.
 - Words in `m.account` (nb, sv, da, en by hand). Tests: paging without gaps or repeats, search scoped to the customer, a restricted order (D162)
   never found by another account.
 
+**As built (J2, D304):** a page of its own, *Your orders* (`/account/orders`), with state chips as links (no form control to choose) and a
+search box; My account shows the newest five. The search drops D173's email and name arms (the customer's own orders only).
+
 ### 11.3 J3: forms that give a code and tag their subscribers
 
 - **The form's settings.** A newsletter block gains `incentive` (a discount of the store with `uniqueCodes`, chosen by id; kept through

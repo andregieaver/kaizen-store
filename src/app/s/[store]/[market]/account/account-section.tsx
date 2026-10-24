@@ -143,7 +143,7 @@ async function Account({ store, market, query }: { store: Store; market: Market;
           <p className="text-muted">{a.noOrders}</p>
         ) : (
           <ul className="divide-y divide-border rounded-lg border border-border">
-            {orders.map((order) => (
+            {orders.slice(0, 5).map((order) => (
               <li key={order.id}>
                 <Link
                   href={`${base}/account/orders/${order.id}`}
@@ -163,6 +163,11 @@ async function Account({ store, market, query }: { store: Store; market: Market;
               </li>
             ))}
           </ul>
+        )}
+        {orders.length > 0 && (
+          <Link href={`${base}/account/orders`} className="self-start text-sm underline">
+            {a.orderList.seeAll}
+          </Link>
         )}
       </section>
 

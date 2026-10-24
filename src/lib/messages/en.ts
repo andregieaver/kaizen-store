@@ -987,6 +987,8 @@ export const en = {
     subscriptions: "Subscriptions",
     noSubscriptions: "You have no subscriptions.",
     manage: "Manage",
+    // Finding an order (D304 J2).
+    orderList: {title: "Your orders", all: "All", open: "Being prepared", sent: "On the way", delivered: "Delivered", returned: "Returned", search: "Search your orders", searchHint: "Order number, product or tracking number", find: "Search", none: "No orders match.", more: "Show older orders", seeAll: "See all orders"},
     // Saved addresses (D304).
     addresses: {title: "Addresses", intro: "Save the places you send to, and choose which one checkout starts with.", none: "You have no saved addresses yet.", add: "Add an address", edit: "Change", remove: "Remove", label: "Name it (optional)", labelHint: "For example Home or Work", name: "Name", line1: "Address", line2: "Address, line 2 (optional)", postalCode: "Postcode", city: "City", country: "Country", save: "Save address", defaultShipping: "Delivery address checkout starts with", defaultBilling: "Billing address", makeShipping: "Use for delivery", makeBilling: "Use for billing", saved: "Address saved.", removed: "Address removed.", tooMany: "You can save up to 20 addresses. Remove one first.", missing: "Fill in the address, postcode and city.", manage: "Saved addresses", choose: "Saved address", typeNew: "Type another address"},
     details: "My details",

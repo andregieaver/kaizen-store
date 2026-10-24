@@ -3,10 +3,11 @@ import "server-only";
 import { createHash, randomBytes, randomInt, scrypt, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 
-import { sql } from "drizzle-orm";
+import { sql, type SQL } from "drizzle-orm";
 import { cookies } from "next/headers";
 
 import { db } from "@/db/client";
+import { ACCOUNT_ORDERS_PAGE, type AccountOrderCursor, type AccountOrderQuery } from "@/lib/account-orders";
 import { cleanAddress } from "@/lib/customer-addresses";
 import { isFresh } from "@/lib/privacy-request";
 
@@ -589,6 +590,57 @@ export async function listCustomerOrders(storeId: string, customerId: string): P
     marketCode: String(row.market_code),
     items: Number(row.items),
   }));
+}
+
+/** What `findCustomerOrders()` gives: a page of the customer's orders and the cursor of the next, if there is one. */
+export type CustomerOrderPage = { orders: CustomerOrder[]; next: AccountOrderCursor | null };
+
+/**
+ * My account's order list (D304 J2): the signed-in customer's own orders only, searched by number, a line's title or SKU and a tracking
+ * number (D173's words, each bound and escaped), filtered by state, newest first, `ACCOUNT_ORDERS_PAGE` at a time by keyset.
+ */
+export async function findCustomerOrders(storeId: string, customerId: string, query: AccountOrderQuery): Promise<CustomerOrderPage> {
+  const conditions: SQL[] = [];
+  for (const word of query.search.words) {
+    const contains = `%${word.like}%`;
+    const arms: SQL[] = [];
+    if (word.numberLike !== null) arms.push(sql`upper(regexp_replace(o.number, '\\s', '', 'g')) like ${`${word.numberLike}%`}`);
+    arms.push(sql`exists (select 1 from commerce.order_lines l where l.store_id = o.store_id and l.order_id = o.id
+      and (lower(l.title) like lower(${contains}) or lower(l.sku) like lower(${contains})))`);
+    arms.push(sql`exists (select 1 from commerce.shipments sh where sh.store_id = o.store_id and sh.order_id = o.id and sh.undone_at is null
+      and lower(sh.tracking_number) = ${word.key})`);
+    conditions.push(sql`(${sql.join(arms, sql` or `)})`);
+  }
+  const shipped = sql`exists (select 1 from commerce.shipments sh where sh.store_id = o.store_id and sh.order_id = o.id and sh.undone_at is null)`;
+  const returned = sql`exists (select 1 from commerce.returns r where r.store_id = o.store_id and r.order_id = o.id)`;
+  if (query.state === "open") conditions.push(sql`o.status in ('paid', 'authorized') and not ${shipped}`);
+  if (query.state === "sent") conditions.push(sql`${shipped} and o.delivered_at is null`);
+  if (query.state === "delivered") conditions.push(sql`o.delivered_at is not null`);
+  if (query.state === "returned") conditions.push(returned);
+  if (query.after) conditions.push(sql`(o.placed_at, o.id) < (${query.after.placedAt}::timestamptz, ${query.after.id}::uuid)`);
+  const rows = await db().execute<Row>(sql`
+    select o.id, o.number, o.status, o.placed_at, o.total_minor, o.currency, o.market_code,
+      (select coalesce(sum(quantity), 0)::int from commerce.order_lines l where l.order_id = o.id) as items
+    from commerce.orders o
+    where o.store_id = ${storeId}::uuid and o.customer_id = ${customerId}::uuid and o.status <> 'pending_payment'
+      and o.copied_from is null
+      and (o.status <> 'cancelled' or exists (select 1 from commerce.payments p where p.order_id = o.id and p.status = 'captured'))
+      ${conditions.length ? sql`and ${sql.join(conditions, sql` and `)}` : sql``}
+    order by o.placed_at desc, o.id desc
+    limit ${ACCOUNT_ORDERS_PAGE + 1}
+  `);
+  const orders = rows.slice(0, ACCOUNT_ORDERS_PAGE).map((row) => ({
+    id: String(row.id),
+    number: String(row.number),
+    status: String(row.status),
+    placedAt: new Date(String(row.placed_at)).toISOString(),
+    totalMinor: Number(row.total_minor),
+    currency: String(row.currency),
+    marketCode: String(row.market_code),
+    items: Number(row.items),
+  }));
+  const last = orders.at(-1);
+  return { orders, next: rows.length > ACCOUNT_ORDERS_PAGE && last ? { placedAt: last.placedAt, id: last.id } : null };
 }
 
 /** Where the customer's latest order went, to start their saved address from. */
