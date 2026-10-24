@@ -318,7 +318,8 @@ async function styles(page: Page): Promise<Styles> {
     const round = (n: number) => String(Math.round(n * 2) / 2);
     const walk = (el: Element, path: string) => {
       const tag = el.tagName.toLowerCase();
-      if (["script", "style", "link", "meta", "noscript", "template", "next-route-announcer"].includes(tag)) return;
+      // A streamed page's <title> lands in the body wherever its chunk arrives, so its place varies from load to load; it is never drawn.
+      if (["script", "style", "link", "meta", "title", "noscript", "template", "next-route-announcer"].includes(tag)) return;
       const css = getComputedStyle(el);
       const box = el.getBoundingClientRect();
       const entry: Record<string, string> = { x: round(box.left), y: round(box.top + window.scrollY), w: round(box.width), h: round(box.height) };
