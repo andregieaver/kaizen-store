@@ -3039,6 +3039,13 @@
       "when": 1792847528982,
       "tag": "20261024131208_ad_conversions_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 434,
+      "version": "7",
+      "when": 1792848909624,
+      "tag": "20261024133509_visits_first_touch",
+      "breakpoints": true
     }
   ]
 }

@@ -357,15 +357,22 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "partial"
     },
     "weight": 4,
-    "gap": "A visit is tied to a cart made the same day and the channel follows the order (`carts.visit_id`); channel table has sessions, orders, revenue, CAC, ROAS and profit ROAS, with spend entered by hand per day and channel. No campaign-level table from the UTM tags the visit already holds, no multi-touch or model comparison, no ad-platform spend sync (a third-party credential, bucket B) and no UTM builder.",
-    "history": [],
-    "bucket": "A",
-    "wave": 5,
+    "gap": "D303 I3: a campaign table per UTM source and campaign (sessions, paid orders, revenue without VAT in the main currency, new customers, spend entered under the campaign's name, CAC, ROAS; CSV `marketing.campaigns`), by the last visit or the first visit in 30 days for visitors who accepted statistics (`kaizen_touch_{store}`, in `KNOWN_COOKIES`; the page says how many orders know their first visit), a campaign-link builder for the store's own addresses, and spend imported from a CSV file. Spend synced from an ad platform needs each platform's credential (bucket B) and is not built.",
+    "history": [
+      {
+        "on": "2026-10-24",
+        "from": "partial",
+        "to": "full",
+        "why": "D303 I3: campaign table with a last-visit and a first-visit-in-30-days model that states its coverage, a link builder and spend imported from CSV; spend sync from ad platforms stays out by the spec (bucket B, a credential per platform)."
+      }
+    ],
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "Marketing shows a campaign table (UTM campaign and source) with sessions, orders, revenue, spend, CAC and ROAS from data the visit already keeps.",
       "The owner can choose last-touch or a first-touch comparison for a period, and the page states which model it uses.",
@@ -381,19 +388,28 @@
         "src/components/admin/analytics/marketing-view.tsx",
         "src/components/admin/analytics/spend-form.tsx",
         "src/app/admin/(gated)/[store]/analytics/marketing/page.tsx",
-        "src/server/analytics-visits.ts"
+        "src/server/analytics-visits.ts",
+        "src/lib/analytics-campaigns.ts",
+        "src/lib/first-touch.ts",
+        "src/components/touch-keeper.tsx",
+        "src/app/api/visit/touch/route.ts",
+        "src/components/admin/analytics/campaigns-view.tsx",
+        "src/components/admin/analytics/campaign-link-builder.tsx",
+        "src/server/analytics-settings.ts"
       ],
       "tests": [
         "src/lib/analytics-traffic.test.ts",
         "src/server/analytics-traffic-data.int.test.ts",
         "src/server/analytics-visits.int.test.ts",
         "src/components/admin/analytics/marketing-view.test.ts",
-        "src/components/admin/analytics/spend-form.test.ts"
+        "src/components/admin/analytics/spend-form.test.ts",
+        "src/lib/analytics-campaigns.test.ts"
       ],
       "untested": false
     },
     "decisions": [
-      "D152"
+      "D152",
+      "D303"
     ]
   },
   {

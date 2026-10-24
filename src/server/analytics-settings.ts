@@ -14,6 +14,7 @@ import {
   parseTarget,
   type AnalyticsSettings,
 } from "@/lib/analytics-settings";
+import { parseCsv, recordsOf } from "@/lib/csv";
 import { mainCurrency } from "@/lib/markets";
 
 import { audit, type Membership } from "./auth";
@@ -248,4 +249,58 @@ export async function deleteSpend({ account, store }: Membership, id: string): P
     });
   }
   return { ok: true, deleted: rows.length > 0 };
+}
+
+/** How many rows one spend file may hold. */
+export const SPEND_IMPORT_MAX = 2000;
+
+export type SpendImport = { added: number; existing: number; refused: { line: number; problem: string }[] };
+
+const pick = (record: Record<string, string>, names: readonly string[]): string => {
+  for (const [key, value] of Object.entries(record)) if (names.includes(key.trim().toLowerCase())) return value.trim();
+  return "";
+};
+
+/**
+ * Ad spend from a CSV file (D303 I3): columns `day` (or `date`), `channel`, `campaign`, `amount` (or `spend`, `cost`) and an optional
+ * `currency`, which must be the store's main one. A row already entered for its day, channel and campaign is left as it is (`existing`),
+ * so the same file imported twice adds nothing; every refused row is named by its line. One audit entry with the counts.
+ */
+export async function importSpend({ account, store }: Membership, input: string | Uint8Array): Promise<AnalyticsResult<SpendImport>> {
+  const currency = mainCurrency(store);
+  const parsed = parseCsv(input);
+  const { header, records } = recordsOf(parsed.rows);
+  const names = header.map((h) => h.toLowerCase());
+  if (!names.some((n) => n === "day" || n === "date") || !names.includes("channel") || !names.some((n) => ["amount", "spend", "cost"].includes(n))) {
+    return refuse("The file needs the columns day, channel, campaign and amount.");
+  }
+  if (records.length === 0) return refuse("The file has no rows.");
+  if (records.length > SPEND_IMPORT_MAX) return refuse(`A file may hold at most ${SPEND_IMPORT_MAX} rows.`);
+  const refused: SpendImport["refused"] = [];
+  const rows: { line: number; day: string; channel: string; campaign: string; amountMinor: number }[] = [];
+  records.forEach((record, i) => {
+    const line = i + 2;
+    if (Object.values(record).every((v) => v.trim() === "")) return;
+    const own = pick(record, ["currency"]).toUpperCase();
+    if (own && own !== currency) return void refused.push({ line, problem: `Amounts must be in ${currency}.` });
+    const spend = parseSpend(
+      { day: pick(record, ["day", "date"]), channel: pick(record, ["channel"]).toLowerCase(), campaign: pick(record, ["campaign"]), amount: pick(record, ["amount", "spend", "cost"]) },
+      currency,
+    );
+    if (!spend.ok) return void refused.push({ line, problem: spend.problems[0] ?? "Not a row of spend." });
+    rows.push({ line, ...spend.value });
+  });
+  let added = 0;
+  for (const r of rows) {
+    const done = await db().execute<Row>(sql`
+      insert into commerce.marketing_spend (store_id, day, channel, campaign, amount_minor)
+      values (${store.id}::uuid, ${r.day}::date, ${r.channel}, ${r.campaign}, ${r.amountMinor})
+      on conflict (store_id, day, channel, campaign) do nothing
+      returning 1
+    `);
+    added += done.length;
+  }
+  const result = { added, existing: rows.length - added, refused };
+  await audit(account.id, store.id, "analytics.spend_import", { added, existing: result.existing, refused: refused.length, currency });
+  return { ok: true, ...result };
 }

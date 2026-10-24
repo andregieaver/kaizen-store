@@ -1,5 +1,7 @@
 import "server-only";
 
+import { campaignRows } from "@/lib/analytics-campaigns";
+
 import { ANALYTICS_TABLES, lastDayOf, OWNER_ONLY_TABLES, tableFileName, tableFileRows, type AnalyticsTable, type ExportPeriod, type TableData } from "@/lib/analytics-export";
 import { COHORT_OFFSETS } from "@/lib/analytics-customers";
 import { financeStatement } from "@/lib/analytics-finance";
@@ -38,7 +40,7 @@ import { listSpend, listTargets } from "./analytics-settings";
 import { subscriptionsReport } from "./analytics-subscriptions-data";
 import { timeReport } from "./analytics-time-data";
 import { overviewHead, periodTotals, seriesByBucket, topProducts, type SeriesPoint } from "./analytics-totals";
-import { marketingReport, sessionTotals, trafficReport } from "./analytics-traffic-data";
+import { campaignReport, marketingReport, sessionTotals, trafficReport } from "./analytics-traffic-data";
 import { audit, type Membership } from "./auth";
 import { giftCardLiability } from "./gift-cards-admin";
 import { memberCan } from "./permissions";
@@ -309,6 +311,25 @@ const BUILDERS: Record<string, (x: Run) => Promise<Built>> = {
         contribution: contributionProfit(r),
       })),
       leftOut: left(m),
+    };
+  },
+  "marketing.campaigns": async (x) => {
+    const model = x.query.model === "first" ? "first" : "last";
+    const c = await campaignReport(x.ctx.store, x.period, model, x.ctx.now);
+    return {
+      rows: campaignRows(c.rows).map((r) => ({
+        campaign: r.campaign,
+        source: r.source,
+        sessions: r.sessions,
+        orders: r.orders,
+        revenue: r.revenueMinor,
+        conversion: r.conversion,
+        newCustomers: r.newCustomers,
+        spend: r.spendMinor > 0 ? r.spendMinor : null,
+        cac: r.cacMinor,
+        roas: r.roas,
+      })),
+      leftOut: { orders: 0, currencies: c.missingCurrencies },
     };
   },
   "marketing.revenue_by_channel": async (x) => {

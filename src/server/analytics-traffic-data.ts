@@ -686,3 +686,107 @@ export async function marketingReport(store: Store, period: AnalyticsPeriod, now
     notes: [...notes, ...(anyUnknown ? ["Product costs are missing for some channels' sales, so their contribution and the blended one are not shown."] : []), ...(totalSpend > inRange ? ["Spend entered for days with no counted visits is left out of CAC and ROAS."] : [])],
   };
 }
+
+/** Which visit an order's campaign is read from (D303 I3, `docs/analytics.md` "Campaign"): the day's visit, or its first visit in 30 days. */
+export type AttributionModel = "last" | "first";
+
+export type CampaignRowData = { source: string; campaign: string; sessions: number; orders: number; revenueMinor: number; newCustomers: number; spendMinor: number };
+
+export type CampaignReport = {
+  model: AttributionModel;
+  currency: string;
+  counting: boolean;
+  rows: CampaignRowData[];
+  /** Under `first`: the period's paid checkout orders, and how many of them have a first visit known. */
+  covered: { orders: number; known: number } | null;
+  /** Currencies with no rate, whose orders are left out and counted. */
+  missingCurrencies: string[];
+};
+
+const SEP = "\u0001";
+
+/**
+ * The Marketing page's campaign table (D303 I3, `docs/analytics.md` "Campaign"): per source and campaign its sessions, the paid orders and
+ * revenue of its visits, new customers and the spend entered for the campaign; CAC and ROAS are worked out by `campaignRows()`. Under the
+ * first-visit model only orders whose visit knows its first visit count, and the report says how many that is.
+ */
+export async function campaignReport(store: Store, period: AnalyticsPeriod, model: AttributionModel, now?: Date): Promise<CampaignReport> {
+  const firstDay = store.visitCounting ? await firstCountedDay(store) : null;
+  const { coverage, range } = coverageOf(store, period, firstDay, now);
+  const base = { model, currency: mainCurrency(store), counting: coverage.counting, missingCurrencies: [] as string[] };
+  if (!range) return { ...base, rows: [], covered: null };
+  const src = model === "first" ? sql`v.first_source` : sql`v.source`;
+  const camp = model === "first" ? sql`v.first_campaign` : sql`v.campaign`;
+  const key = sql`coalesce(${src}, '') || ${SEP} || coalesce(${camp}, '')`;
+  const withCampaign = sql`and coalesce(${camp}, '') <> ''`;
+  const [sessionRows, orderRows, newRows, spendRows, coveredRows] = await Promise.all([
+    db().execute<Row>(sql`select ${key} as k, count(*) as n from commerce.visits v where ${visitsIn(store, range)} ${withCampaign} group by 1`),
+    ordersBy(store, range, key, { extra: withCampaign }),
+    setBased<Row>(sql`
+      with ko as materialized (
+        select ${CUSTOMER_KEY} as k, o.placed_at, o.id, o.cart_id
+        from commerce.orders o ${CUSTOMER_JOIN}
+        where o.store_id = ${store.id}::uuid and ${PAID} and ${HAS_CUSTOMER} and o.placed_at < ${dayStart(store, range.to)}
+      ),
+      q as (select k, min(placed_at) as first_at from ko group by k having min(placed_at) >= ${dayStart(store, range.from)}),
+      fr as (select distinct on (q.k) q.k, ko.cart_id from q join ko on ko.k = q.k and ko.placed_at = q.first_at order by q.k, ko.placed_at, ko.id)
+      select ${key} as k, count(*) as n
+      from fr
+      join commerce.carts c on c.store_id = ${store.id}::uuid and c.id = fr.cart_id
+      join commerce.visits v on v.store_id = ${store.id}::uuid and v.id = c.visit_id
+      where coalesce(${camp}, '') <> ''
+      group by 1
+    `),
+    db().execute<Row>(sql`
+      select lower(btrim(s.campaign)) as campaign, sum(s.amount_minor) as amount from commerce.marketing_spend s
+      where s.store_id = ${store.id}::uuid and s.day >= ${range.from}::date and s.day < ${range.to}::date and s.campaign <> ''
+      group by 1
+    `),
+    model === "first"
+      ? setBased<Row>(sql`
+          select count(*) as orders, count(*) filter (where v.first_channel is not null) as known
+          from commerce.orders o ${ORDER_VISIT}
+          where o.store_id = ${store.id}::uuid and ${PAID} and ${FROM_CHECKOUT} and ${inPeriod(store, sql`o.placed_at`, range)}
+        `)
+      : Promise.resolve([] as Row[]),
+  ]);
+  const rows = new Map<string, CampaignRowData>();
+  const at = (k: string) => {
+    let r = rows.get(k);
+    if (!r) {
+      const [source, campaign] = k.split(SEP);
+      rows.set(k, (r = { source: source ?? "", campaign: campaign ?? "", sessions: 0, orders: 0, revenueMinor: 0, newCustomers: 0, spendMinor: 0 }));
+    }
+    return r;
+  };
+  for (const r of sessionRows) at(String(r.k)).sessions = num(r, "n");
+  const missing = new Set<string>();
+  const groups = new Map<string, Row[]>();
+  for (const r of orderRows) groups.set(String(r.k), [...(groups.get(String(r.k)) ?? []), r]);
+  for (const [k, list] of groups) {
+    const row = at(k);
+    row.orders = list.reduce((s, r) => s + num(r, "orders"), 0);
+    const converted = inMain(store, list.map((r) => ({ ...r, currency: String(r.currency) })), ["revenue"]);
+    row.revenueMinor = converted.values.revenue;
+    for (const c of converted.missing) missing.add(c);
+  }
+  for (const r of newRows) at(String(r.k)).newCustomers = num(r, "n");
+  // Spend is entered per campaign name, whatever source: each campaign row of that name shares it; a name with no visit is a row of its own.
+  const spend = new Map(spendRows.map((r) => [String(r.campaign), num(r, "amount")]));
+  const used = new Set<string>();
+  for (const row of rows.values()) {
+    const name = row.campaign.trim().toLowerCase();
+    if (spend.has(name) && !used.has(name)) {
+      row.spendMinor = spend.get(name)!;
+      used.add(name);
+    }
+  }
+  for (const [name, amount] of spend) if (!used.has(name)) at(`${SEP}${name}`).spendMinor = amount;
+  const covered = model === "first" && coveredRows[0] ? { orders: num(coveredRows[0], "orders"), known: num(coveredRows[0], "known") } : null;
+  return {
+    ...base,
+    missingCurrencies: [...missing].sort(),
+    rows: [...rows.values()].sort((a, b) => b.revenueMinor - a.revenueMinor || b.sessions - a.sessions || a.campaign.localeCompare(b.campaign)),
+    covered,
+  };
+}

@@ -6,18 +6,22 @@ import { ExportScope } from "@/components/admin/analytics/export-scope";
 import { DiscountsView } from "@/components/admin/analytics/discounts-view";
 import { MarketingView, marketingLtv } from "@/components/admin/analytics/marketing-view";
 import { SpendSection } from "@/components/admin/analytics/spend-form";
+import { CampaignsView } from "@/components/admin/analytics/campaigns-view";
+import { CampaignLinkBuilder, SpendImportForm } from "@/components/admin/analytics/campaign-link-builder";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { queryText } from "@/lib/analytics-export";
 import { todayIn } from "@/lib/analytics-period";
 import { mainCurrency } from "@/lib/markets";
+import { storeHref, storeHome, storeOrigins } from "@/lib/paths";
+import { siteUrl } from "@/lib/site";
 import { analyticsContext } from "@/server/analytics-context";
 import { customersReport } from "@/server/analytics-customers-data";
 import { discountsReport } from "@/server/analytics-discounts-data";
 import { listSpend } from "@/server/analytics-settings";
-import { marketingReport } from "@/server/analytics-traffic-data";
+import { campaignReport, marketingReport } from "@/server/analytics-traffic-data";
 
-import { addSpendAction, deleteSpendAction } from "./actions";
+import { addSpendAction, deleteSpendAction, importSpendAction } from "./actions";
 
 export const metadata: Metadata = { title: "Marketing analytics" };
 
@@ -39,14 +43,26 @@ export default async function AnalyticsMarketingPage({ params, searchParams }: P
   const { period, compare } = ctx.params;
   const against = compare.previous ?? compare.lastYear;
 
-  const [report, previous, discounts, spend, customers] = await Promise.all([
+  const model = query.model === "first" ? "first" : "last";
+  const [report, previous, discounts, spend, customers, campaigns] = await Promise.all([
     marketingReport(store, period, now),
     against && compare.mode !== "none" ? marketingReport(store, against, now) : Promise.resolve(null),
     discountsReport(store, period),
     listSpend(store.id, { limit: SPEND_LISTED }),
     // The heaviest read of the page, and only one card needs it: the page is right without it.
     customersReport(store, period, settings, now).catch(() => null),
+    campaignReport(store, period, model, now),
   ]);
+  const start = storeHref(store.slug, storeHome(store.slug));
+  const origins = storeOrigins(store.slug);
+  const linkOrigins = origins.length > 0 ? origins : [new URL(siteUrl()).origin];
+  const modelHref = (m: "last" | "first") => {
+    const q = new URLSearchParams(queryText(query));
+    if (m === "first") q.set("model", "first");
+    else q.delete("model");
+    const text = q.toString();
+    return `${ctx.base}/analytics/marketing${text ? `?${text}` : ""}#campaigns`;
+  };
   const currency = mainCurrency(store);
   const locale = ctx.lang === "en" ? (store.markets[0]?.locale ?? "en") : ctx.locale;
   const w = adminText(ctx.lang, "reports");
@@ -71,6 +87,12 @@ export default async function AnalyticsMarketingPage({ params, searchParams }: P
           words={w.marketing}
           channelWords={w.channels}
         />
+        <CampaignsView report={campaigns} currency={currency} locale={locale} modelHref={modelHref} words={w.campaigns}>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <CampaignLinkBuilder origins={linkOrigins} start={start.startsWith("http") ? start : `${linkOrigins[0]}${start}`} />
+            <SpendImportForm action={importSpendAction.bind(null, store.slug)} currency={currency} />
+          </div>
+        </CampaignsView>
         <SpendSection
           currency={currency}
           locale={locale}

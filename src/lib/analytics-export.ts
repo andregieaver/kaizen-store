@@ -138,6 +138,9 @@ const REGISTRY: AnalyticsTable[] = [
   table("marketing.channels", "marketing", "marketing-view.tsx", "Channels with sessions, orders, revenue, conversion, spend, CAC, ROAS and profit", [
     text("channel"), int("sessions"), int("orders"), amount("revenue"), pct("conversion"), amount("aov", "average_order"), int("newCustomers", "new_customers"), amount("spend", "ad_spend"), amount("cac"), dec("roas"), dec("profitRoas", "profit_roas"), amount("contribution", "contribution_profit"),
   ], true),
+  table("marketing.campaigns", "marketing", "campaigns-view.tsx", "Campaigns with sessions, orders, revenue, new customers, spend, CAC and ROAS", [
+    text("campaign"), text("source"), int("sessions"), int("orders"), amount("revenue"), pct("conversion"), int("newCustomers", "new_customers"), amount("spend", "ad_spend"), amount("cac"), dec("roas"),
+  ], true),
   bars("marketing.revenue_by_channel", "marketing", "marketing-view.tsx", "Revenue by channel"),
   bars("marketing.spend_by_channel", "marketing", "marketing-view.tsx", "Ad spend by channel"),
   table("marketing.discount_codes", "marketing", "discounts-view.tsx", "Discount codes used in the period", [
@@ -300,7 +303,7 @@ export const tableFileName = (t: AnalyticsTable, period: ExportPeriod): string =
  * The parts of a page's address an export repeats: the period and the comparison (`period`, `compare`, `from`, `to`), the sort and "show all"
  * of the products and inventory tables, and the inventory's status filter. Anything else in an address is dropped, never trusted.
  */
-export const EXPORT_QUERY_KEYS = ["period", "compare", "from", "to", "sort", "dir", "limit", "status"] as const;
+export const EXPORT_QUERY_KEYS = ["period", "compare", "from", "to", "sort", "dir", "limit", "status", "model"] as const;
 
 type Query = Record<string, string | string[] | undefined>;
 

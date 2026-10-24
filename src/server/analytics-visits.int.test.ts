@@ -18,7 +18,7 @@ vi.mock("next/headers", () => ({
 }));
 vi.mock("next/server", async (importOriginal) => ({ ...(await importOriginal<typeof import("next/server")>()), connection: async () => {} }));
 
-const { recordVisit, attachVisitToCart, pruneVisits } = await import("./analytics-visits");
+const { recordVisit, recordTouch, attachVisitToCart, pruneVisits } = await import("./analytics-visits");
 const { NEW_VISITS_PER_ADDRESS_WINDOW, NEW_VISITS_PER_STORE_DAY } = await import("@/lib/visit-record");
 const { POST } = await import("@/app/api/visit/route");
 const route = await import("@/app/api/visit/route");
@@ -484,5 +484,20 @@ describe("POST /api/visit", () => {
 
   it("is for POST only", () => {
     expect(Object.keys(route).filter((k) => /^(GET|PUT|PATCH|DELETE|HEAD|OPTIONS)$/.test(k))).toEqual([]);
+  });
+});
+
+describe("recording a first visit (D303 I3)", () => {
+  it("writes the first visit's channel and campaign onto today's visit once, and nothing for a robot", async () => {
+    await recordVisit({ headers: asRequest(), body: view(page()), now: EVENING });
+    const touch = { store: slug, day: "2026-09-20", source: "facebook", medium: "paid_social", campaign: "autumn" };
+    expect(await recordTouch({ headers: asRequest({}, "Googlebot/2.1"), body: touch, now: EVENING })).toBe(false);
+    expect(await recordTouch({ headers: asRequest(), body: touch, now: EVENING })).toBe(true);
+    expect(await recordTouch({ headers: asRequest(), body: { ...touch, source: "google", campaign: "other" }, now: EVENING })).toBe(false);
+    const [row] = await visits();
+    expect(row).toMatchObject({ first_channel: "paid_social", first_source: "facebook", first_campaign: "autumn" });
+    expect(String(row.first_day).slice(0, 10)).toBe("2026-09-20");
+    // Older than 30 days: no first visit.
+    expect(await recordTouch({ headers: asRequest(), body: { ...touch, day: "2026-08-01" }, now: EVENING })).toBe(false);
   });
 });

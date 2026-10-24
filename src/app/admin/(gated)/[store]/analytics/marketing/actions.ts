@@ -8,7 +8,7 @@ import { fillWords } from "@/lib/admin-fill";
 import { adminText } from "@/lib/admin-text";
 import { channelLabel } from "@/lib/analytics-traffic";
 import { actionAdminLang } from "@/server/admin-request-lang";
-import { addSpend, deleteSpend } from "@/server/analytics-settings";
+import { addSpend, deleteSpend, importSpend } from "@/server/analytics-settings";
 import { NO_ACCESS, checkPermission } from "@/server/permissions";
 
 /**
@@ -44,4 +44,20 @@ export async function deleteSpendAction(storeSlug: string, _state: FormState, fo
   refresh();
   const w = adminText(await actionAdminLang(), "reports").spendAnswers;
   return { status: "ok", messages: [result.deleted ? w.removed : w.alreadyGone] };
+}
+
+/** Reads ad spend from a CSV file (`file`, at most 1 MB): rows already entered are left as they are. */
+export async function importSpendAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
+  const member = await checkPermission(storeSlug, "analytics:write");
+  if (!member) return { status: "error", messages: [NO_ACCESS] };
+  const w = adminText(await actionAdminLang(), "reports").campaigns;
+  const file = form.get("file");
+  if (!(file instanceof File) || file.size === 0) return failed([w.importNoFile]);
+  if (file.size > 1_000_000) return failed([w.importTooBig]);
+  const result = await importSpend(member, new Uint8Array(await file.arrayBuffer()));
+  if (!result.ok) return failed(result.problems);
+  refresh();
+  const refused = result.refused.slice(0, 10).map((r) => fillWords(w.importRefusedLine, { line: String(r.line), problem: r.problem }));
+  const summary = fillWords(w.importDone, { added: String(result.added), existing: String(result.existing), refused: String(result.refused.length) });
+  return result.refused.length > 0 ? { status: "error", messages: [summary, ...refused] } : { status: "ok", messages: [summary] };
 }

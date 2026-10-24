@@ -106,7 +106,12 @@ export async function siteCookies(
   const experiments = storeId === null ? false : await storeHasExperiments(storeId);
   // Kaizena Flow's own site in more than one language remembers a closed language suggestion, as a preference (D312).
   const languages = storeId === null && (await getPlatformLangs()).length > 1;
-  declaredCookies(storeId === null ? "platform" : "store", tracking, { ...options, chat, modals, referrals: referral?.enabled ?? false, affiliate, recommendations, experiments, languages })
+  // A store that counts visits and already asks about statistics keeps a visitor's first visit in 30 days once they allow it (D303 I3).
+  const touch =
+    storeId !== null &&
+    (toolCategories(tracking).includes("statistics") || experiments) &&
+    Boolean((await db().execute<Record<string, unknown>>(sql`select visit_counting from commerce.stores where id = ${storeId}::uuid`))[0]?.visit_counting);
+  declaredCookies(storeId === null ? "platform" : "store", tracking, { ...options, chat, modals, referrals: referral?.enabled ?? false, affiliate, recommendations, experiments, languages, touch })
     .map((cookie) => (cookie.referrals && referral ? { ...cookie, days: referral.cookieDays } : cookie))
     .map((cookie) => (cookie.affiliate && site ? { ...cookie, days: site.cookieDays } : cookie))
     .forEach(list);

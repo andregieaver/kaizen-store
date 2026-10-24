@@ -12,9 +12,9 @@ type Row = Record<string, unknown>;
 
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {} }));
 
-const { sessionTotals, trafficReport, marketingReport } = await import("./analytics-traffic-data");
+const { campaignReport, sessionTotals, trafficReport, marketingReport } = await import("./analytics-traffic-data");
 const { periodTotals } = await import("./analytics-totals");
-const { getAnalyticsSettings } = await import("./analytics-settings");
+const { getAnalyticsSettings, importSpend } = await import("./analytics-settings");
 
 /**
  * Visits, the funnel and the channel table (D152, docs/analytics.md) against a small hand-made shop, every expectation worked
@@ -410,5 +410,49 @@ describe("marketingReport", () => {
     expect(off.counting).toBe(false);
     expect(off.spend.totalMinor).toBe(15_000);
     expect(off.notes.join(" ")).toContain("Visit counting is off");
+  });
+});
+
+describe("campaignReport (D303 I3)", () => {
+  it("counts the last visit's campaign, with the spend entered under its name", async () => {
+    const report = await campaignReport(store, PERIOD, "last", NOW);
+    expect(report.covered).toBeNull();
+    expect(report.rows).toEqual([{ source: "google", campaign: "spring", sessions: 1, orders: 1, revenueMinor: 8_000, newCustomers: 0, spendMinor: 5_000 }]);
+  });
+
+  it("counts the first visit in 30 days where it is known, and says how many orders know theirs", async () => {
+    await db().execute(sql`
+      update commerce.visits set first_channel = 'paid_social', first_source = 'facebook', first_campaign = 'autumn', first_day = '2026-09-01'
+      where id = ${visit[`${store.id}:v7`]}::uuid
+    `);
+    const report = await campaignReport(store, PERIOD, "first", NOW);
+    const autumn = report.rows.find((r) => r.campaign === "autumn");
+    expect(autumn).toEqual({ source: "facebook", campaign: "autumn", sessions: 1, orders: 1, revenueMinor: 17_390, newCustomers: 1, spendMinor: 0 });
+    // Spend entered for a campaign no first visit names is a row of its own.
+    expect(report.rows.find((r) => r.campaign === "spring")).toMatchObject({ sessions: 0, orders: 0, spendMinor: 5_000 });
+    expect(report.covered?.known).toBe(1);
+    expect(report.covered!.orders).toBeGreaterThanOrEqual(3);
+  });
+});
+
+describe("importSpend (D303 I3)", () => {
+  it("adds rows once, leaves entered ones and names refused lines", async () => {
+    const [account] = await db().execute<Row>(sql`insert into commerce.accounts (email, name) values (${`spend-${run}@example.com`}, 'Spend') returning id`);
+    const member = { account: { id: String(account.id) }, store: other, role: "owner" } as unknown as Parameters<typeof importSpend>[0];
+    const file = [
+      "Day;Channel;Campaign;Amount;Currency",
+      "2026-09-02;paid_social;autumn;120,50;NOK",
+      "2026-09-03;paid_search;;80;",
+      "2026-09-04;paid_search;x;10;EUR",
+      "2026-09-05;tv;x;10;NOK",
+      "",
+    ].join("\n");
+    const first = await importSpend(member, file);
+    expect(first).toEqual({ ok: true, added: 2, existing: 0, refused: [{ line: 4, problem: "Amounts must be in NOK." }, { line: 5, problem: "Choose a channel." }] });
+    const again = await importSpend(member, file);
+    expect(again).toMatchObject({ ok: true, added: 0, existing: 2 });
+    const rows = await db().execute<Row>(sql`select amount_minor from commerce.marketing_spend where store_id = ${other.id}::uuid order by day`);
+    expect(rows.map((r) => Number(r.amount_minor))).toEqual([12_050, 8_000]);
+    expect(await importSpend(member, "a,b\n1,2")).toMatchObject({ ok: false });
   });
 });

@@ -10276,6 +10276,14 @@ export const visits = commerce.table(
     checkoutAt: timestamp("checkout_at", { withTimezone: true }),
     firstSeen: timestamp("first_seen", { withTimezone: true }).notNull().defaultNow(),
     lastSeen: timestamp("last_seen", { withTimezone: true }).notNull().defaultNow(),
+    /**
+     * The visitor's first visit in the last 30 days (D303 I3), only for one who allowed statistics cookies: its channel, source,
+     * campaign and day, from the first-party `kaizen_touch_{store}` cookie (`recordTouch()`); null without consent.
+     */
+    firstChannel: text("first_channel"),
+    firstSource: text("first_source"),
+    firstCampaign: text("first_campaign"),
+    firstDay: date("first_day", { mode: "string" }),
   },
   (t) => [
     unique("visits_day_visitor_key").on(t.storeId, t.day, t.visitor),
@@ -10285,6 +10293,8 @@ export const visits = commerce.table(
     check("visits_channel", sql`${t.channel} in (${channelList})`),
     check("visits_text_lengths", sql`length(${t.source}) <= 100 and length(${t.campaign}) <= 100 and length(${t.landingPath}) <= 300`),
     check("visits_counts", sql`${t.pageViews} >= 0 and ${t.productViews} >= 0`),
+    check("visits_first_channel", sql`${t.firstChannel} is null or ${t.firstChannel} in (${channelList})`),
+    check("visits_first_lengths", sql`length(${t.firstSource}) <= 100 and length(${t.firstCampaign}) <= 100`),
   ],
 );
 

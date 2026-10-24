@@ -137,6 +137,8 @@ export type KnownCookie = {
   recommendations?: boolean;
   /** Set only in stores with a running A/B test (D148). */
   experiments?: boolean;
+  /** Only in a store that counts visits and asks about statistics (D303 I3). */
+  touch?: boolean;
   /**
    * Set only for signed-in staff, by something they press (D193): known, so a scan that meets it calls it necessary, but never part
    * of what a visitor's cookie page declares, as no visitor is given it.
@@ -277,6 +279,22 @@ export const KNOWN_COOKIES: KnownCookie[] = [
       nb: "Husker i denne fanen hvilke produkter du så på, hva du søkte etter og hvilke anbefalte produkter du åpnet, slik at butikken kan foreslå produkter som passer deg; forsvinner når du lukker fanen og kobles aldri til hvem du er.",
       sv: "Kommer ihåg i den här fliken vilka produkter du tittade på, vad du sökte efter och vilka rekommenderade produkter du öppnade, så att butiken kan föreslå produkter som passar dig; försvinner när du stänger fliken och kopplas aldrig till vem du är.",
       da: "Husker i denne fane, hvilke produkter du så på, hvad du søgte efter, og hvilke anbefalede produkter du åbnede, så butikken kan foreslå produkter, der passer til dig; forsvinder, når du lukker fanen, og knyttes aldrig til, hvem du er.",
+    },
+  },
+  {
+    // Only in a store that counts visits and already asks about statistics, once a visitor has allowed it (D303 I3).
+    name: "kaizen_touch_…",
+    pattern: /^kaizen_touch_[0-9a-f-]{36}$/,
+    provider: "Kaizena Flow",
+    category: "statistics",
+    days: 30,
+    on: "store",
+    touch: true,
+    purpose: {
+      en: "Remembers where your first visit in the last 30 days came from (an ad, a search, another site), so the store can see which of its campaigns bring customers; no number that identifies you, never joined to who you are.",
+      nb: "Husker hvor ditt første besøk de siste 30 dagene kom fra (en annonse, et søk, et annet nettsted), slik at butikken kan se hvilke kampanjer som gir kunder; ingen nummer som identifiserer deg, og kobles aldri til hvem du er.",
+      sv: "Kommer ihåg var ditt första besök de senaste 30 dagarna kom från (en annons, en sökning, en annan webbplats), så att butiken kan se vilka kampanjer som ger kunder; inget nummer som identifierar dig, och kopplas aldrig till vem du är.",
+      da: "Husker, hvor dit første besøg de seneste 30 dage kom fra (en annonce, en søgning, et andet websted), så butikken kan se, hvilke kampagner der giver kunder; intet nummer, der identificerer dig, og knyttes aldrig til, hvem du er.",
     },
   },
   {
@@ -659,7 +677,8 @@ export function declaredCookies(
     recommendations = false,
     experiments = false,
     languages = false,
-  }: { buyers?: boolean; chat?: boolean; colorMode?: boolean; modals?: boolean; referrals?: boolean; affiliate?: boolean; recommendations?: boolean; experiments?: boolean; languages?: boolean } = {},
+    touch = false,
+  }: { buyers?: boolean; chat?: boolean; colorMode?: boolean; modals?: boolean; referrals?: boolean; affiliate?: boolean; recommendations?: boolean; experiments?: boolean; languages?: boolean; touch?: boolean } = {},
 ): KnownCookie[] {
   return KNOWN_COOKIES.filter(
     (cookie) =>
@@ -674,6 +693,7 @@ export function declaredCookies(
       !cookie.staff &&
       (!cookie.referrals || referrals) &&
       (!cookie.languages || languages) &&
+      (!cookie.touch || touch) &&
       (cookie.tool ? [cookie.tool].flat().some((tool) => Boolean(tracking[tool])) : cookie.provider !== "Stripe"),
   );
 }

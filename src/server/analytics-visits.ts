@@ -202,6 +202,54 @@ export async function recordVisit({ headers: h, body, now = new Date() }: { head
 }
 
 /**
+ * The visitor's first visit in 30 days (D303 I3), sent by `TouchKeeper` only while they allow statistics cookies, kept on today's visit
+ * of the same visitor (the same daily key `recordVisit()` makes) if it has none yet: classified as a visit's channel is, never an id. The
+ * same checks as a page view (robots, privacy signals, the store's own pages, counting on). Answers only whether it was kept.
+ */
+export async function recordTouch({ headers: h, body, now = new Date() }: { headers: Headers; body: unknown; now?: Date }): Promise<boolean> {
+  if (!body || typeof body !== "object") return false;
+  const b = body as Record<string, unknown>;
+  const text = (key: string, max: number) => (typeof b[key] === "string" ? String(b[key]).trim().slice(0, max) : "");
+  const storeSlug = text("store", 40);
+  const touchDay = text("day", 10);
+  if (!/^[a-z0-9-]{3,40}$/.test(storeSlug) || !/^\d{4}-\d{2}-\d{2}$/.test(touchDay)) return false;
+  const age = (now.getTime() - Date.parse(`${touchDay}T00:00:00Z`)) / 86_400_000;
+  if (!(age >= -1 && age <= 31)) return false;
+  const userAgent = h.get("user-agent");
+  if (isBot(userAgent) || wantsPrivacy(h)) return false;
+  const store = await getOpenStore(storeSlug);
+  if (!store?.visitCounting) return false;
+  const secret = visitSecret();
+  if (!secret) return false;
+  const requestHost = h.get("x-forwarded-host") ?? h.get("host");
+  const own = fromStoresOwnPage({
+    origin: h.get("origin"),
+    referer: h.get("referer"),
+    requestHost,
+    slug: store.slug,
+    ownHosts: storeOrigins(store.slug).map((origin) => new URL(origin).host),
+    storesOnPlatformHost: storeDomain() === null,
+  });
+  if (!own) return false;
+  const channel = classifyChannel({
+    referrerHost: text("ref", 120),
+    ownHosts: ownHostsOf(store.slug, requestHost),
+    utmSource: text("source", 60) || undefined,
+    utmMedium: text("medium", 30) || undefined,
+    utmCampaign: text("campaign", 80) || undefined,
+    clickIds: {},
+  });
+  const day = storeDayKey(now, store.timeZone);
+  const visitor = visitorHash(store.id, addressOf(h), userAgent, day, secret);
+  const rows = await db().execute<Row>(sql`
+    update commerce.visits set first_channel = ${channel.channel}, first_source = ${clip(channel.source, 100)}, first_campaign = ${clip(channel.campaign, 100)}, first_day = ${touchDay}::date
+    where store_id = ${store.id}::uuid and day = ${day}::date and visitor = ${visitor} and first_channel is null
+    returning 1
+  `);
+  return rows.length > 0;
+}
+
+/**
  * Ties a cart that has just been made to the visitor-day that made it (D152): the order paid from the cart then knows its
  * channel and device. Called by `openCart()` inside its transaction, after inserting a cart; it does nothing when the store
  * is not counting visits, when the request is a robot's or sends a privacy signal, or when no visit of the store's day was

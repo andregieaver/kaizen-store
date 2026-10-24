@@ -1065,13 +1065,13 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "partial"
     },
-    "gap": "D152 (Analytics, Marketing) sorts each visit into a channel with its source and `utm_campaign` and reports channels with sessions, orders, revenue, CAC and ROAS. Spend is typed by hand per day, channel and campaign; a visit counts only for a cart made the same store day (cookieless), and sales are reported per channel, not per named campaign.",
-    "bucket": "A",
-    "wave": 5,
+    "gap": "D303 I3: a campaign table per UTM source and campaign (sessions, paid orders, revenue without VAT in the main currency, new customers, spend entered under the campaign's name, CAC, ROAS; CSV `marketing.campaigns`), by the last visit or the first visit in 30 days for visitors who accepted statistics (`kaizen_touch_{store}`, in `KNOWN_COOKIES`; the page says how many orders know their first visit), a campaign-link builder for the store's own addresses, and spend imported from a CSV file. Spend synced from an ad platform needs each platform's credential (bucket B) and is not built.",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "A campaign link builder makes UTM-tagged addresses, and visits with `utm_campaign` are reported per named campaign with sessions, orders, revenue and spend.",
       "For visitors who accepted marketing or statistics cookies, attribution covers a stated lookback window through a cookie listed in `KNOWN_COOKIES`; without consent it stays same-day and the report says which it used.",
@@ -1087,7 +1087,13 @@
         "src/server/analytics-settings.ts",
         "src/components/admin/analytics/marketing-view.tsx",
         "src/components/admin/analytics/spend-form.tsx",
-        "src/app/admin/(gated)/[store]/analytics/marketing/page.tsx"
+        "src/app/admin/(gated)/[store]/analytics/marketing/page.tsx",
+        "src/lib/analytics-campaigns.ts",
+        "src/lib/first-touch.ts",
+        "src/components/touch-keeper.tsx",
+        "src/app/api/visit/touch/route.ts",
+        "src/components/admin/analytics/campaigns-view.tsx",
+        "src/components/admin/analytics/campaign-link-builder.tsx"
       ],
       "tests": [
         "src/lib/analytics-traffic.test.ts",
@@ -1096,14 +1102,23 @@
         "src/server/analytics-settings.int.test.ts",
         "src/components/admin/analytics/marketing-view.test.ts",
         "src/components/admin/analytics/spend-form.test.ts",
-        "src/lib/visit-record.test.ts"
+        "src/lib/visit-record.test.ts",
+        "src/lib/analytics-campaigns.test.ts"
       ],
       "untested": false
     },
     "decisions": [
-      "D152"
+      "D152",
+      "D303"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-24",
+        "from": "partial",
+        "to": "full",
+        "why": "D303 I3: campaign table, last or first visit in 30 days with statistics consent, link builder and spend import, held by analytics-traffic-data.int.test.ts (euro order, copied and host orders out) and analytics-visits.int.test.ts."
+      }
+    ]
   },
   {
     "id": "customers.product-reviews-and-ugc",

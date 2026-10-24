@@ -1074,6 +1074,13 @@ themselves rather than at the checkout and payment paths, so they go within a mi
 event by (no click id and the standard level) is `skipped` with `nothing_to_match`. Staff with `marketing:read` see the page, only the owner
 changes it. Tests: `src/lib/ad-payloads.test.ts`, `src/server/ad-conversions.int.test.ts`, the trigger in `src/db/discount-codes.test.ts`.
 
+**As built (I3).** As 12.4, with these differences: the first visit is kept on the visit (`visits.first_channel`, `first_source`,
+`first_campaign`, `first_day`) by its own endpoint (`/api/visit/touch`, `TouchKeeper`), not sent with each page view and not copied to carts,
+because the visit beacon must stay cookie-free and the order already reaches its visit through `carts.visit_id`; the import is a form on the
+page (`importSpend()`, any member with `analytics:write`, as typing spend is), not a D165 job, idempotent by the table's own key (day,
+channel, campaign) with no file hash, and the platforms' own export layouts are not mapped (the four column names are asked for). No e2e for
+the cookie yet: the consent gate is `TouchKeeper`'s first line and `siteCookies()` declares it.
+
 ### 12.5 Rows
 
 I1 and I2 close `customers.ad-pixels-and-conversion-events` and `analytics.third-party-analytics-and-pixels-with-consent` except a purchase event
