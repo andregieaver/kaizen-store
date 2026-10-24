@@ -39,11 +39,25 @@ export const daReviews: ReviewMessages = {
   failed: "Anmeldelserne kunne ikke indlæses. Prøv igen.",
   checked: {
     heading: "Sådan tjekkes anmeldelserne",
-    buyers: "Kun dem, der har købt et produkt i denne butik og modtaget det, kan anmelde det, fra deres konto.",
+    buyers: "Kun dem, der har købt et produkt i denne butik og modtaget det, kan anmelde det, fra deres konto eller det link, butikken mailer efter et køb.",
     afterCheck: "Butikken læser hver anmeldelse, før den vises. Den viser ikke en anmeldelse, der ikke handler om produktet, er krænkende, indeholder personoplysninger eller er spam, og skjuler aldrig en anmeldelse, fordi den er negativ.",
     atOnce: "Anmeldelserne vises, så snart de er skrevet. Butikken skjuler en anmeldelse, der ikke handler om produktet, er krænkende, indeholder personoplysninger eller er spam, og aldrig en, fordi den er negativ.",
     reward: "Ingen får betaling eller belønning for en anmeldelse.",
     imported: "En anmeldelse markeret som hentet er skrevet på en anden tjeneste og er ikke tjekket mod et køb her.",
+  },
+  // Mailen, der beder om en anmeldelse efter modtagelsen (G3), og siden linket åbner, hvor en ordres varer kan anmeldes uden at logge ind.
+  request: {
+    subject: (store: string) => `Hvordan var din bestilling fra ${store}?`,
+    heading: "Fortæl andre, hvad du synes",
+    intro: (store: string) => `Din bestilling fra ${store} er nået frem. Har du et øjeblik, kan du anmelde det, du købte: det hjælper andre med at vælge.`,
+    products: "Du kan anmelde:",
+    button: "Skriv en anmeldelse",
+    noReward: "Ingen får betaling eller belønning for en anmeldelse.",
+    pageTitle: "Anmeld din bestilling",
+    pageIntro: (number: string) => `Ordre ${number}. Anmeld det, du vil, af dette. Butikken kan læse en anmeldelse, før den vises, og ingen får betaling eller belønning for en.`,
+    none: "Alt i denne ordre er anmeldt eller kan ikke længere anmeldes.",
+    expired: "Dette link virker ikke længere. Har du en konto i butikken, kan du anmelde det, du købte, derfra.",
+    back: "Din bestilling",
   },
   problem: {
     rating: "Vælg fra en til fem stjerner.",

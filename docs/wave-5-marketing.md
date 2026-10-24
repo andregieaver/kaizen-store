@@ -850,6 +850,9 @@ product page shows it.
   of its own was not needed. *Rating* sits under the title and *Reviews* at the end of the details column of the default layout, both drawing
   nothing without a published review, so a store's pages are unchanged until it has one. The browser e2e of a buyer writing and staff publishing
   comes with G3, whose token page lets a test write without a shopper's sign-in.
+- **G3a** (D301, 24 October): the request email and its page, as 9.6, with `review_invitations` folded into the one `review_requests` row per
+  order (claim, token hash, expiry, outcome); the kind is `marketing.review_request`, so it is counted with the other marketing emails against the
+  plan's month. Imports and exports, the AI manager's tool and the control center's line are G3b.
 
 ## 10. Units H to J, outlined (J is detailed in section 11, I in section 12)
 

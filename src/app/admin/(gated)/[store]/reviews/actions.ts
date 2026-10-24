@@ -8,7 +8,7 @@ import { adminLangOf } from "@/lib/admin-lang";
 import type { ReviewsMessages } from "@/lib/admin-messages/reviews.en";
 import { adminText } from "@/lib/admin-text";
 import { reviewsTag } from "@/lib/reviews";
-import { answerReview, hideReview, publishReview, savePublishMode, type Decided } from "@/server/reviews-admin";
+import { answerReview, hideReview, publishReview, savePublishMode, saveRequestSettings, type Decided } from "@/server/reviews-admin";
 import { requirePermission } from "@/server/permissions";
 
 type Words = ReviewsMessages["actions"];
@@ -63,4 +63,14 @@ export async function savePublishModeAction(storeSlug: string, _state: FormState
   if (!ok) return { status: "error", messages: [w.chooseOne] };
   refresh();
   return { status: "ok", messages: [w.saved] };
+}
+
+/** Whether review request emails go, and how many days after receipt (D301 G3). */
+export async function saveRequestSettingsAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
+  const member = await requirePermission(storeSlug, "products:write");
+  const w = wordsOf(member);
+  const ok = await saveRequestSettings(member.store.id, member.account.id, { on: form.get("requests") === "on", days: Number(form.get("days")) });
+  if (!ok) return { status: "error", messages: [w.days] };
+  refresh();
+  return { status: "ok", messages: [w.requestsSaved] };
 }

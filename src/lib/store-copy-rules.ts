@@ -173,6 +173,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   abandoned_plan_checkouts: never("Plan checkouts of accounts."),
   access_requests: never("Sign-up requests belong to the platform."),
   bonus_allocations: never("What each use of credits took from which grant: part of a customer's ledger (D130)."),
+  review_requests: never("Which orders were asked for a review (D301 G3): people's data."),
   product_reviews: never("Product reviews (D301) are buyers' own words about the original store's sales: a copy gathers its own."),
   gift_cards: never("Gift cards (D300) are money customers hold with the original store, like their payments."),
   gift_card_entries: never("A gift card's ledger (D300): part of the card, never copied."),

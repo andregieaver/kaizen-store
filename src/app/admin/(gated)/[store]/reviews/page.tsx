@@ -6,13 +6,14 @@ import { Button, Card, CARD_CLASS, Chip, KpiTile, PageHeader } from "@/component
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
-import { HIDE_REASONS, REVIEW_ANSWER_MAX, REVIEW_STATUSES, type ReviewStatus } from "@/lib/review-status";
+import { HIDE_REASONS, REQUEST_DAYS_MAX, REQUEST_DAYS_MIN, REVIEW_ANSWER_MAX, REVIEW_STATUSES, type ReviewStatus } from "@/lib/review-status";
 import { featureOn } from "@/lib/store-features";
 import { listReviews, reviewCounts } from "@/server/reviews-admin";
+import { requestsSent } from "@/server/review-requests";
 import { reviewSettings } from "@/server/reviews";
 import { memberCan, requirePermission } from "@/server/permissions";
 
-import { answerReviewAction, hideReviewAction, publishReviewAction, savePublishModeAction } from "./actions";
+import { answerReviewAction, hideReviewAction, publishReviewAction, savePublishModeAction, saveRequestSettingsAction } from "./actions";
 
 export const metadata: Metadata = { title: "Reviews" };
 
@@ -43,7 +44,11 @@ export default async function ReviewsPage({ params, searchParams }: PageProps<"/
   const starFilter = Number.isInteger(starsAsked) && starsAsked >= 1 && starsAsked <= 5 ? starsAsked : null;
   const [at, id] = first(query.before).split("_");
   const before = at && id && !Number.isNaN(Date.parse(at)) && /^[0-9a-f-]{36}$/.test(id) ? { at, id } : null;
-  const [page, settings] = await Promise.all([listReviews(store.id, { status: state, query: q, stars: starFilter, before }), reviewSettings(store.id)]);
+  const [page, settings, sent] = await Promise.all([
+    listReviews(store.id, { status: state, query: q, stars: starFilter, before }),
+    reviewSettings(store.id),
+    requestsSent(store.id),
+  ]);
   const base = `/admin/${store.slug}/reviews`;
   const canChange = memberCan(member, "products:write");
   const canOrders = memberCan(member, "orders:read");
@@ -258,6 +263,35 @@ export default async function ReviewsPage({ params, searchParams }: PageProps<"/
         ) : (
           <p className="text-body text-ink">{settings.publish === "at_once" ? w.isAtOnce : w.isChecked}</p>
         )}
+      </Card>
+
+      <Card title={w.requestsTitle} description={w.requestsDescription} compact>
+        {canChange ? (
+          <ActionForm action={saveRequestSettingsAction.bind(null, store.slug)} className="flex flex-col gap-3">
+            <label className="flex items-center gap-2 text-body text-ink">
+              <input type="checkbox" name="requests" defaultChecked={settings.requestsOn} />
+              {w.requestsOn}
+            </label>
+            <label className="flex flex-col gap-1 text-body">
+              <span className="text-ink">{w.requestDays}</span>
+              <input
+                type="number"
+                name="days"
+                min={REQUEST_DAYS_MIN}
+                max={REQUEST_DAYS_MAX}
+                defaultValue={settings.requestDays}
+                className="w-28 rounded-lg border border-line bg-card px-3 py-2"
+              />
+              <span className="text-caption text-muted">{w.requestDaysHint(REQUEST_DAYS_MIN, REQUEST_DAYS_MAX)}</span>
+            </label>
+            <div>
+              <SubmitButton>{w.save}</SubmitButton>
+            </div>
+          </ActionForm>
+        ) : (
+          <p className="text-body text-ink">{settings.requestsOn ? w.requestsIsOn(settings.requestDays) : w.requestsIsOff}</p>
+        )}
+        {settings.requestsOn && <p className="mt-3 text-caption text-muted">{w.requestsSent(sent)}</p>}
       </Card>
     </div>
   );

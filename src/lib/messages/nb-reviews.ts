@@ -39,11 +39,25 @@ export const nbReviews: ReviewMessages = {
   failed: "Omtalene kunne ikke lastes. Prøv igjen.",
   checked: {
     heading: "Slik sjekkes omtalene",
-    buyers: "Bare de som har kjøpt et produkt i denne butikken og mottatt det, kan skrive omtale av det, fra kontoen sin.",
+    buyers: "Bare de som har kjøpt et produkt i denne butikken og mottatt det, kan skrive omtale av det, fra kontoen sin eller lenken butikken sender dem på e-post etter et kjøp.",
     afterCheck: "Butikken leser hver omtale før den vises. Den viser ikke en omtale som ikke handler om produktet, er krenkende, inneholder personopplysninger eller er spam, og skjuler aldri en omtale fordi den er negativ.",
     atOnce: "Omtalene vises så snart de er skrevet. Butikken skjuler en omtale som ikke handler om produktet, er krenkende, inneholder personopplysninger eller er spam, og aldri en omtale fordi den er negativ.",
     reward: "Ingen får betalt eller belønning for en omtale.",
     imported: "En omtale merket som hentet er skrevet på en annen tjeneste og er ikke sjekket mot et kjøp her.",
+  },
+  // E-posten som ber om en omtale etter mottak (G3), og siden lenken åpner, der en ordres varer kan omtales uten å logge inn.
+  request: {
+    subject: (store: string) => `Hvordan var bestillingen fra ${store}?`,
+    heading: "Fortell andre hva du synes",
+    intro: (store: string) => `Bestillingen din fra ${store} har kommet fram. Har du et øyeblikk, kan du skrive en omtale av det du kjøpte: det hjelper andre å velge.`,
+    products: "Du kan omtale:",
+    button: "Skriv en omtale",
+    noReward: "Ingen får betalt eller belønning for en omtale.",
+    pageTitle: "Omtal bestillingen din",
+    pageIntro: (number: string) => `Ordre ${number}. Omtal hva du vil av dette. Butikken kan lese en omtale før den vises, og ingen får betalt eller belønning for en.`,
+    none: "Alt i denne ordren er omtalt, eller kan ikke lenger omtales.",
+    expired: "Denne lenken virker ikke lenger. Har du konto i butikken, kan du omtale det du kjøpte derfra.",
+    back: "Bestillingen din",
   },
   problem: {
     rating: "Velg fra én til fem stjerner.",

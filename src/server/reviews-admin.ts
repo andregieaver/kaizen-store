@@ -3,7 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
-import { HIDE_REASONS, PUBLISH_MODES, REVIEW_STATUSES, type HideReason, type PublishMode, type ReviewSource, type ReviewStatus } from "@/lib/review-status";
+import { HIDE_REASONS, PUBLISH_MODES, REQUEST_DAYS_MAX, REQUEST_DAYS_MIN, REVIEW_STATUSES, type HideReason, type PublishMode, type ReviewSource, type ReviewStatus } from "@/lib/review-status";
 
 import { audit } from "./auth";
 
@@ -164,5 +164,25 @@ export async function savePublishMode(storeId: string, accountId: string, publis
     on conflict (store_id) do update set publish = excluded.publish, updated_at = now()
   `);
   await audit(accountId, storeId, "review.settings", { publish: publish as PublishMode });
+  return true;
+}
+
+/**
+ * Whether review request emails go (D301 G3, 9.6) and how many days after receipt. Switching them on starts the clock (`requests_enabled_at`):
+ * only orders received after it are asked; staying on keeps it.
+ */
+export async function saveRequestSettings(storeId: string, accountId: string, input: { on: boolean; days: number }): Promise<boolean> {
+  if (!Number.isInteger(input.days) || input.days < REQUEST_DAYS_MIN || input.days > REQUEST_DAYS_MAX) return false;
+  await db().execute(sql`
+    insert into commerce.review_settings (store_id, requests_on, requests_enabled_at, request_days)
+    values (${storeId}::uuid, ${input.on}, case when ${input.on} then now() end, ${input.days})
+    on conflict (store_id) do update set
+      requests_on = excluded.requests_on,
+      requests_enabled_at = case when excluded.requests_on and not commerce.review_settings.requests_on then now()
+                                 when excluded.requests_on then commerce.review_settings.requests_enabled_at end,
+      request_days = excluded.request_days,
+      updated_at = now()
+  `);
+  await audit(accountId, storeId, "review.settings", { requests: input.on, requestDays: input.days });
   return true;
 }

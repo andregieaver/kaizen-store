@@ -54,6 +54,14 @@ export const reviewsEn = {
     save: "Save",
     isAtOnce: "Reviews are published at once.",
     isChecked: "Each review is checked first.",
+    requestsTitle: "Ask buyers for a review",
+    requestsDescription: "One email per order, some days after everything in it was received, with a link to review it without signing in. Only to buyers on your subscriber list: asking for a review is marketing.",
+    requestsOn: "Send review requests",
+    requestDays: "Days after receipt",
+    requestDaysHint: (min: number, max: number) => `From ${min} to ${max} days. Orders received before you switch this on are not asked.`,
+    requestsSent: (n: number) => (n === 1 ? "1 request sent in the last 30 days." : `${n} requests sent in the last 30 days.`),
+    requestsIsOn: (days: number) => `Requests go ${days} days after receipt.`,
+    requestsIsOff: "No review requests are sent.",
   },
   actions: {
     unknown: "That review is not in this store.",
@@ -66,6 +74,8 @@ export const reviewsEn = {
     answerRemoved: "Answer taken away.",
     chooseOne: "Choose one of the two.",
     saved: "Saved. Reviews already written keep their state.",
+    days: "Choose a number of days within the range.",
+    requestsSaved: "Saved.",
   },
 };
 

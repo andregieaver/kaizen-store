@@ -12582,6 +12582,32 @@ export const reviewSettings = commerce.table(
 );
 
 /**
+ * The review request emails (D301 G3, `docs/wave-5-marketing.md` 9.6): one row per order, claimed before the email is sent so an order is asked
+ * once, holding the hash of the email's token for `/account/review/{token}` (90 days) and what became of the email. Deleted on the
+ * buyer's erasure and 400 days after it was made.
+ */
+export const reviewRequests = commerce.table(
+  "review_requests",
+  {
+    storeId: storeId().references(() => stores.id),
+    orderId: uuid("order_id").notNull(),
+    /** sha256 hex of the token the email carries; the token itself is kept nowhere. */
+    tokenHash: text("token_hash").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    outcome: text("outcome"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.orderId] }),
+    unique("review_requests_token_key").on(t.tokenHash),
+    foreignKey({ name: "review_requests_order_fk", columns: [t.storeId, t.orderId], foreignColumns: [orders.storeId, orders.id] }),
+    index("review_requests_created_idx").on(t.storeId, t.createdAt),
+    check("review_requests_hash", sql`${t.tokenHash} ~ '^[0-9a-f]{64}$'`),
+    check("review_requests_outcome", sql`${t.outcome} is null or ${t.outcome} in (${sqlList(SEND_OUTCOMES)})`),
+  ],
+);
+
+/**
  * The AI manager's work on pages that runs after its answer (D308, `docs/ai-autopilot.md` 4.1): a page built from a brief (`build`: the
  * page studio's plan and words, `input` the brief, `page_id` once its draft is saved) and each picture of a page it built or changed
  * (`picture`: the studio's picture job as built, placed in the page's draft by the studio's own `fillPicture()`). Taken one at a time by

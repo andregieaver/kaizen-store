@@ -7,8 +7,8 @@ import { storePageRows, testDb } from "./db";
  * would move with but that do not wobble as a score does. `pnpm perf` runs Lighthouse itself.
  */
 
-/** The first scripts of the demo store's front page may not grow past this, raw (before compression): 893 KB when this was set (D212; 1.01 MB while every language's whole interface text came with it); 965 KB from D303 (the consent manager's ads tags and shop-event bus; the events' mapping loads only when a tag is on). */
-const FIRST_SCRIPTS_MAX = 965_000;
+/** The first scripts of the demo store's front page may not grow past this, raw (before compression): 893 KB when this was set (D212; 1.01 MB while every language's whole interface text came with it); 965 KB from D303 (the consent manager's ads tags and shop-event bus; the events' mapping loads only when a tag is on); 972 KB from D303 I2 and I3 (the consent manager posting the ad platforms' ids after a choice, and the first-visit keeper's idle wrapper; the keeper itself loads only where drawn). */
+const FIRST_SCRIPTS_MAX = 972_000;
 
 const base = `http://localhost:${process.env.PORT ?? 3000}`;
 

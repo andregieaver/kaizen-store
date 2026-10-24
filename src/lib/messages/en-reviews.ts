@@ -39,11 +39,25 @@ export const enReviews = {
   failed: "The reviews could not be loaded. Try again.",
   checked: {
     heading: "How reviews are checked",
-    buyers: "Only people who bought a product in this store and received it can review it, from their account.",
+    buyers: "Only people who bought a product in this store and received it can review it, from their account or the link the store emails them after a purchase.",
     afterCheck: "The store reads each review before it is shown. It does not show a review that is not about the product, is offensive, holds personal details or is spam, and never hides one because it is negative.",
     atOnce: "Reviews are shown as soon as they are written. The store hides a review that is not about the product, is offensive, holds personal details or is spam, and never one because it is negative.",
     reward: "No one is paid or rewarded for a review.",
     imported: "A review marked as imported was written on another service and has not been checked against a purchase here.",
+  },
+  // The request email after receipt (G3) and the page its link opens, where an order's things are reviewed without signing in.
+  request: {
+    subject: (store: string) => `How was your order from ${store}?`,
+    heading: "Tell others what you think",
+    intro: (store: string) => `Your order from ${store} has reached you. If you have a moment, review what you bought: it helps others choose.`,
+    products: "You can review:",
+    button: "Write a review",
+    noReward: "No one is paid or rewarded for a review.",
+    pageTitle: "Review your order",
+    pageIntro: (number: string) => `Order ${number}. Review any of these. The store may check a review before it is shown, and no one is paid or rewarded for one.`,
+    none: "Everything in this order has been reviewed, or can no longer be reviewed.",
+    expired: "This link no longer works. If you have an account with the store, you can review what you bought from it.",
+    back: "Your order",
   },
   problem: {
     rating: "Choose from one to five stars.",

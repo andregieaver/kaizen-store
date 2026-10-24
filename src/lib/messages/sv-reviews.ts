@@ -39,11 +39,25 @@ export const svReviews: ReviewMessages = {
   failed: "Recensionerna kunde inte laddas. Försök igen.",
   checked: {
     heading: "Så granskas recensionerna",
-    buyers: "Bara den som har köpt en produkt i den här butiken och fått den kan recensera den, från sitt konto.",
+    buyers: "Bara den som har köpt en produkt i den här butiken och fått den kan recensera den, från sitt konto eller länken butiken mejlar efter ett köp.",
     afterCheck: "Butiken läser varje recension innan den visas. Den visar inte en recension som inte handlar om produkten, är kränkande, innehåller personuppgifter eller är spam, och döljer aldrig en recension för att den är negativ.",
     atOnce: "Recensionerna visas så snart de är skrivna. Butiken döljer en recension som inte handlar om produkten, är kränkande, innehåller personuppgifter eller är spam, och aldrig en för att den är negativ.",
     reward: "Ingen får betalt eller belöning för en recension.",
     imported: "En recension som är märkt som hämtad skrevs på en annan tjänst och har inte kontrollerats mot ett köp här.",
+  },
+  // Mejlet som ber om en recension efter mottagandet (G3), och sidan länken öppnar, där en orders varor kan recenseras utan inloggning.
+  request: {
+    subject: (store: string) => `Hur var din beställning från ${store}?`,
+    heading: "Berätta för andra vad du tycker",
+    intro: (store: string) => `Din beställning från ${store} har kommit fram. Om du har en stund kan du recensera det du köpte: det hjälper andra att välja.`,
+    products: "Du kan recensera:",
+    button: "Skriv en recension",
+    noReward: "Ingen får betalt eller belöning för en recension.",
+    pageTitle: "Recensera din beställning",
+    pageIntro: (number: string) => `Order ${number}. Recensera det du vill av detta. Butiken kan läsa en recension innan den visas, och ingen får betalt eller belöning för en.`,
+    none: "Allt i den här ordern är recenserat, eller kan inte längre recenseras.",
+    expired: "Den här länken fungerar inte längre. Har du ett konto i butiken kan du recensera det du köpte därifrån.",
+    back: "Din beställning",
   },
   problem: {
     rating: "Välj från en till fem stjärnor.",

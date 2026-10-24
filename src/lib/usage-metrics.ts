@@ -25,7 +25,7 @@ export const USAGE_METRICS = {
   server_errors: { kind: "counter", unit: "count", source: "traffic" },
   /** Every email sent for the store. */
   emails: { kind: "counter", unit: "count", source: "email" },
-  /** Broadcasts and automations only (`MARKETING_EMAIL_KINDS`). */
+  /** Broadcasts, automations and review requests only (`MARKETING_EMAIL_KINDS`). */
   marketing_emails: { kind: "counter", unit: "count", source: "email" },
   /** The AI used on Kaizena Flow's key (never a store's own key). */
   ai_cost_micros: { kind: "counter", unit: "micros", source: "ai" },
@@ -38,7 +38,7 @@ export const USAGE_METRIC_IDS = Object.keys(USAGE_METRICS) as UsageMetric[];
 export const TRAFFIC_METRICS = USAGE_METRIC_IDS.filter((m) => USAGE_METRICS[m].source === "traffic");
 
 /** The email kinds that count as marketing (D297 broadcasts, D298 automations), written out: never a prefix match. */
-export const MARKETING_EMAIL_KINDS = ["marketing.broadcast", "marketing.automation"] as const;
+export const MARKETING_EMAIL_KINDS = ["marketing.broadcast", "marketing.automation", "marketing.review_request"] as const;
 
 export type UsageDay = { day: string; value: number };
 

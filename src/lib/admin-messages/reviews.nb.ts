@@ -51,6 +51,14 @@ export const reviewsNb: ReviewsMessages = {
     save: "Lagre",
     isAtOnce: "Omtaler publiseres med en gang.",
     isChecked: "Hver omtale kontrolleres først.",
+    requestsTitle: "Be kjøpere om en omtale",
+    requestsDescription: "Én e-post per ordre, noen dager etter at alt i den er mottatt, med en lenke for å omtale den uten å logge inn. Bare til kjøpere på abonnentlisten din: å be om en omtale er markedsføring.",
+    requestsOn: "Send forespørsler om omtale",
+    requestDays: "Dager etter mottak",
+    requestDaysHint: (min: number, max: number) => `Fra ${min} til ${max} dager. Ordrer mottatt før du slår dette på, blir ikke spurt.`,
+    requestsSent: (n: number) => (n === 1 ? "1 forespørsel sendt de siste 30 dagene." : `${n} forespørsler sendt de siste 30 dagene.`),
+    requestsIsOn: (days: number) => `Forespørsler sendes ${days} dager etter mottak.`,
+    requestsIsOff: "Det sendes ingen forespørsler om omtale.",
   },
   actions: {
     unknown: "Den omtalen finnes ikke i denne butikken.",
@@ -63,5 +71,7 @@ export const reviewsNb: ReviewsMessages = {
     answerRemoved: "Svaret er tatt bort.",
     chooseOne: "Velg ett av de to.",
     saved: "Lagret. Omtaler som allerede er skrevet, beholder tilstanden sin.",
+    days: "Velg et antall dager innenfor rammen.",
+    requestsSaved: "Lagret.",
   },
 };

@@ -126,5 +126,20 @@ export function isExchangeLinkPath(pathname: string): boolean {
   return parts[0] === "account" && parts[1] === "exchange" && parts.length > 2;
 }
 
+/**
+ * The page a review request email opens, `/s/{store}/{market}/account/review/{token}` and its lines (D301 G3, `docs/wave-5-marketing.md` 9.6), on either shape of address. Its address holds
+ * a bearer token that lets the buyer review an order without signing in, so no tracking, owner code, chat or referral capture is drawn on it.
+ */
+export function isReviewLinkPath(pathname: string): boolean {
+  const parts = afterMarketParts(pathname);
+  return parts[0] === "account" && parts[1] === "review" && parts.length > 2;
+}
+
 export const isNoExtrasPath = (pathname: string): boolean =>
-  isPayPath(pathname) || isDocumentPath(pathname) || isPayLinkPath(pathname) || isChangeLinkPath(pathname) || isSupportLinkPath(pathname) || isExchangeLinkPath(pathname);
+  isPayPath(pathname) ||
+  isDocumentPath(pathname) ||
+  isPayLinkPath(pathname) ||
+  isChangeLinkPath(pathname) ||
+  isSupportLinkPath(pathname) ||
+  isExchangeLinkPath(pathname) ||
+  isReviewLinkPath(pathname);

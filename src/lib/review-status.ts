@@ -41,3 +41,12 @@ export function mayModerate(from: ReviewStatus, to: ReviewStatus): boolean {
   if (from === "published") return to === "hidden";
   return to === "published";
 }
+
+/** A request email's link works this long (9.6). */
+export const REQUEST_LINK_DAYS = 90;
+/** How many products a request email names; the page lists every one of the order's. */
+export const REQUEST_PRODUCTS_SHOWN = 5;
+/** Orders asked per store and run of the every-minute job. */
+export const REQUEST_BATCH = 50;
+/** Request rows are kept this long (a link's life is long past), then deleted daily. */
+export const REQUESTS_KEEP_DAYS = 400;

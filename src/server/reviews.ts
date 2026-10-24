@@ -52,7 +52,7 @@ export async function reviewSettings(storeId: string, executor: Db = db()): Prom
 }
 
 /** Reviews can be written in the store now: the feature on (with the shop) and a real store that is open. */
-async function reviewsOpen(storeId: string, executor: Db): Promise<boolean> {
+export async function reviewsOpen(storeId: string, executor: Db = db()): Promise<boolean> {
   const [row] = await executor.execute<Row>(sql`
     select commerce.feature_on(s.id, 'reviews') and commerce.store_is_active(s.id) and not (s.is_template or s.starter) as open
     from commerce.stores s where s.id = ${storeId}::uuid
@@ -102,15 +102,24 @@ const ownReview = (r: Row): OwnReview | null =>
     : null;
 
 /**
- * What the signed-in customer may review in the store, newest received first, one line per product (the newest it was received on), with their
- * review of it when they wrote one. The one reader of who may review what (9.2); `lineId` asks for one line, `lock` locks it for a write.
+ * Who writes (9.3, 9.6): the signed-in customer, from any of their orders, or the holder of a request email's link, from that one order (the
+ * customer's key when the order has an account, else the hash of the order's email, so a guest's review is still one per product and buyer).
  */
-export async function reviewableLines(
+export type Reviewer = { kind: "customer"; customerId: string } | { kind: "invitation"; orderId: string; customerId: string | null; buyerKey: string };
+
+const keyOf = (who: Reviewer) => (who.kind === "customer" ? `c:${who.customerId}` : who.buyerKey);
+
+/**
+ * What the reviewer may review in the store, newest received first, one line per product (the newest it was received on), with their review of
+ * it when they wrote one. The one reader of who may review what (9.2); `lineId` asks for one line, `lock` locks it for a write.
+ */
+export async function reviewableLinesFor(
   storeId: string,
-  customerId: string,
+  who: Reviewer,
   options: { lineId?: string; executor?: Db; lock?: boolean } = {},
 ): Promise<ReviewableLine[]> {
   const executor = options.executor ?? db();
+  const whose = who.kind === "customer" ? sql`o.customer_id = ${who.customerId}::uuid` : sql`o.id = ${who.orderId}::uuid`;
   const one = options.lineId ? sql`and l.id = ${options.lineId}::uuid` : sql``;
   const lock = options.lock ? sql`for update of l` : sql``;
   const rows = await executor.execute<Row>(sql`
@@ -120,7 +129,7 @@ export async function reviewableLines(
       join commerce.order_lines l on l.store_id = o.store_id and l.order_id = o.id
       join commerce.product_variants v on v.store_id = l.store_id and v.id = l.variant_id
       join commerce.products p on p.store_id = v.store_id and p.id = v.product_id
-      where o.store_id = ${storeId}::uuid and o.customer_id = ${customerId}::uuid and ${SOLD} and p.kind <> 'gift_card' ${one}
+      where o.store_id = ${storeId}::uuid and ${whose} and ${SOLD} and p.kind <> 'gift_card' ${one}
       ${lock}
     ), received as (
       select distinct on (b.product_id) b.* from bought b
@@ -131,7 +140,7 @@ export async function reviewableLines(
       pr.answer, pr.created_at as review_created_at, pr.edited_at
     from received r
     left join commerce.product_reviews pr on pr.store_id = ${storeId}::uuid and pr.product_id = r.product_id and pr.source = 'buyer'
-      and pr.buyer_key = ${`c:${customerId}`}
+      and pr.buyer_key = ${keyOf(who)}
     order by r.received_at desc
   `);
   return rows.map((r) => ({
@@ -147,17 +156,23 @@ export async function reviewableLines(
   }));
 }
 
+/** What the signed-in customer may review (`reviewableLinesFor()` for their account). */
+export function reviewableLines(storeId: string, customerId: string, options: { lineId?: string; executor?: Db; lock?: boolean } = {}): Promise<ReviewableLine[]> {
+  return reviewableLinesFor(storeId, { kind: "customer", customerId }, options);
+}
+
 /** Whether the store takes reviews now, and how many lines the customer could review (for My account's link). */
 export async function reviewsForAccount(storeId: string, customerId: string): Promise<{ open: boolean; lines: ReviewableLine[] }> {
   const open = await reviewsOpen(storeId, db());
   return { open, lines: open ? await reviewableLines(storeId, customerId) : [] };
 }
 
-/** One write from a customer's day of `REVIEW_WRITES_A_DAY`, atomically (`commerce.chat_usage`, bucket `review:{customer}`). */
-async function takeWrite(executor: Db, storeId: string, customerId: string): Promise<boolean> {
+/** One write from a reviewer's day of `REVIEW_WRITES_A_DAY`, atomically (`commerce.chat_usage`, bucket `review:{customer}` or the guest's key). */
+async function takeWrite(executor: Db, storeId: string, who: Reviewer): Promise<boolean> {
+  const bucket = `review:${who.customerId ?? keyOf(who)}`;
   const [row] = await executor.execute<Row>(sql`
     insert into commerce.chat_usage (store_id, bucket, "window", count)
-    values (${storeId}::uuid, ${`review:${customerId}`}, date_trunc('day', now()), 1)
+    values (${storeId}::uuid, ${bucket}, date_trunc('day', now()), 1)
     on conflict (store_id, bucket, "window") do update set count = commerce.chat_usage.count + 1
     returning count
   `);
@@ -173,12 +188,18 @@ export type WriteOutcome =
  * store's `after_check` it waits for staff (an edit goes back to the queue); with `at_once` a new one is published and an edit of a shown one stays
  * shown. The line is checked again under its lock; the words come cleaned (`cleanReview()`), in the market's language.
  */
-export async function writeReview(storeId: string, customerId: string, lineId: string, input: ReviewInput, locale: string): Promise<WriteOutcome> {
+export function writeReview(storeId: string, customerId: string, lineId: string, input: ReviewInput, locale: string): Promise<WriteOutcome> {
+  return writeReviewAs(storeId, { kind: "customer", customerId }, lineId, input, locale);
+}
+
+/** `writeReview()` for any reviewer: the signed-in customer, or a request email's link for its order (9.6). */
+export async function writeReviewAs(storeId: string, who: Reviewer, lineId: string, input: ReviewInput, locale: string): Promise<WriteOutcome> {
+  const customerId = who.customerId;
   return db().transaction(async (tx) => {
     if (!(await reviewsOpen(storeId, tx))) return { ok: false, problem: "closed" } as const;
-    const [line] = await reviewableLines(storeId, customerId, { lineId, executor: tx, lock: true });
+    const [line] = await reviewableLinesFor(storeId, who, { lineId, executor: tx, lock: true });
     if (!line) return { ok: false, problem: "not_reviewable" } as const;
-    if (!(await takeWrite(tx, storeId, customerId))) return { ok: false, problem: "limit" } as const;
+    if (!(await takeWrite(tx, storeId, who))) return { ok: false, problem: "limit" } as const;
     const { publish } = await reviewSettings(storeId, tx);
     const existing = line.review;
     if (!existing) {
@@ -188,7 +209,7 @@ export async function writeReview(storeId: string, customerId: string, lineId: s
         insert into commerce.product_reviews (store_id, product_id, variant_id, source, order_id, order_line_id, buyer_key, customer_id,
           author_name, rating, title, body, locale, status)
         values (${storeId}::uuid, ${line.productId}::uuid, ${line.variantId}::uuid, 'buyer', ${line.orderId}::uuid, ${line.lineId}::uuid,
-          ${`c:${customerId}`}, ${customerId}::uuid, ${input.name}, ${input.rating}, ${input.title}, ${input.body}, ${locale}, ${status})
+          ${keyOf(who)}, ${customerId}::uuid, ${input.name}, ${input.rating}, ${input.title}, ${input.body}, ${locale}, ${status})
         returning id
       `);
       return { ok: true, reviewId: String(row.id), status, shownChanged: status === "published" } as const;

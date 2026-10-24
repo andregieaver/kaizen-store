@@ -136,6 +136,7 @@ export async function planErasure(subject: PrivacySubject, now: Date = new Date(
         (select count(*) from commerce.automation_sends x join commerce.marketing_subscribers m on m.store_id = x.store_id and m.id = x.subscriber_id
            where x.store_id = ${sid}::uuid and (lower(m.email) = any(${addresses}) or m.customer_id = ${cid}::uuid))::int as automation_sends,
         (select count(*) from commerce.stock_requests where store_id = ${sid}::uuid and (email = any(${addresses}) or customer_id = ${cid}::uuid))::int as stock_requests,
+        (select count(*) from commerce.review_requests where store_id = ${sid}::uuid and order_id = any(${orderIds}))::int as review_requests,
         (select count(*) from commerce.product_reviews where store_id = ${sid}::uuid and source = 'buyer' and buyer_key = any(${textList(buyerKeysOf(cid, subject.addresses))}))::int as product_reviews,
         (select count(*) from commerce.support_conversations where store_id = ${sid}::uuid and customer_id = ${cid}::uuid and anonymised_at is null)::int as support_conversations,
         (select count(*) from commerce.support_messages m join commerce.support_conversations c on c.id = m.conversation_id
@@ -205,6 +206,7 @@ export async function planErasure(subject: PrivacySubject, now: Date = new Date(
       broadcast_recipients: n(c.broadcast_recipients),
       automation_sends: n(c.automation_sends),
       stock_requests: n(c.stock_requests),
+      review_requests: n(c.review_requests),
       product_reviews: n(c.product_reviews),
       support_conversations: n(c.support_conversations),
       support_messages: n(c.support_messages),
@@ -704,6 +706,8 @@ async function eraseRows(tx: Tx, s: PrivacySubject, store: PrivacyStore): Promis
     where x.store_id = ${sid}::uuid and m.store_id = x.store_id and m.id = x.subscriber_id and (lower(m.email) = any(${addresses}) or m.customer_id = ${cid}::uuid)
   `);
   await tx.execute(sql`delete from commerce.stock_requests where store_id = ${sid}::uuid and (email = any(${addresses}) or customer_id = ${cid}::uuid)`);
+  // The review request emails for the person's orders (D301 G3), and with them their links.
+  await tx.execute(sql`delete from commerce.review_requests where store_id = ${sid}::uuid and order_id = any(${orderIds})`);
   // The person's product reviews (D301): their words go; the products' averages follow. The database deletes a review only where this is marked.
   await tx.execute(sql`select set_config('kaizen.review_delete', 'on', true)`);
   await tx.execute(sql`

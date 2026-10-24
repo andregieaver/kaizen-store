@@ -172,6 +172,7 @@ export const PERSONAL_DATA: PersonalEntry[] = [
   entry("broadcast_recipients", "shopper", via("email", "email"), ["email"], "marketing", "delete", "The addresses a broadcast went to (D297), frozen when its send started: listed in the marketing export, deleted on erasure and 90 days after the send ended (its figures kept)."),
   entry("automation_sends", "shopper", via("customer", "subscriber_id"), ["subscriber_id", "order_id"], "marketing", "delete", "Which automation emails (D298) went to a subscriber and when: listed in the marketing export, deleted with the subscriber on erasure and after 90 days."),
   entry("product_reviews", "shopper", via("customer", "customer_id", "buyer_key"), ["customer_id", "buyer_key", "author_name", "title", "body", "locale"], "reviews", "delete", "A product review the person wrote (D301): their stars and words and the name they chose, found by the account; exported, and deleted on erasure (the words are theirs, and the product's average follows)."),
+  entry("review_requests", "shopper", via("order", "order_id"), ["order_id"], "emails", "delete", "That a review request email (D301 G3) went for an order and when, with the hash of its link (the email itself is in the export's emails): deleted on the buyer's erasure and 400 days after it was made."),
   entry("stock_requests", "shopper", via("customer", "customer_id", "email"), ["email", "customer_id", "locale", "market_code", "visitor"], "marketing", "delete", "A request to hear once when a sold-out variant is back (D298): the address, the product and its status, exported with the marketing data and deleted on erasure; unconfirmed ones go when their link runs out, waiting ones after 180 days, sent ones after 30."),
   entry("marketing_consent_events", "shopper", via("customer", "subscriber_id"), ["consent_text"], "marketing", "delete", "A subscriber's consent history (D295): each request, subscription and unsubscription with its source and words; exported with the subscriber and deleted with it."),
   entry("email_opt_outs", "shopper", via("email", "email"), ["email"], "consents", "keep", "A suppression record: kept so the store does not email the person again (their own wish); erasing it would undo it."),
@@ -365,6 +366,7 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   "marketing.broadcast": "shopper",
   "marketing.broadcast.test": "staff",
   "marketing.automation": "shopper",
+  "marketing.review_request": "shopper",
   "marketing.automation.test": "staff",
   /** A back-in-stock request's confirmation link, and the one email when the variant is back (D298). */
   "stock.confirm": "shopper",
