@@ -716,6 +716,10 @@ export const nb: Messages = {
     expired: "Vi fant ikke denne lenken. Den kan være for gammel eller allerede brukt.",
     unsubscribeIntro: "Vil du slutte å få e-post med nyheter og tilbud fra denne butikken?",
     unsubscribed: "Du er meldt av. Du får ikke flere e-poster med nyheter og tilbud fra oss.",
+    welcomeSubject: (store: string) => `Velkomstkoden din fra ${store}`,
+    welcomeHeading: "Takk for at du abonnerer",
+    welcomeText: (store: string) => `Her er koden din hos ${store}. Skriv den inn i handlekurven når du går til kassen. Den kan brukes én gang.`,
+    welcomeShop: "Gå til butikken",
     emailReason: (store: string) => `Du får denne e-posten fordi du har bedt om nyheter og tilbud fra ${store}.`,
   },
   // legal: needs review. Back in stock (D298, 6.4 and 6.5): the confirmation email, its page and the email when stock is back.

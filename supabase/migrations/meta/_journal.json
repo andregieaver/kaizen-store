@@ -3011,6 +3011,20 @@
       "when": 1792835552410,
       "tag": "20261024095232_customer_addresses_backfill",
       "breakpoints": true
+    },
+    {
+      "idx": 430,
+      "version": "7",
+      "when": 1792843332972,
+      "tag": "20261024120212_signup_incentives",
+      "breakpoints": true
+    },
+    {
+      "idx": 431,
+      "version": "7",
+      "when": 1792843360597,
+      "tag": "20261024120240_signup_incentives_rls",
+      "breakpoints": true
     }
   ]
 }

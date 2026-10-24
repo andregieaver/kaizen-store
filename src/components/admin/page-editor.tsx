@@ -73,6 +73,7 @@ import { ColourLibraryProvider } from "./colour-library";
 import { ColourSwatches } from "./colour-field";
 import { LibraryButton, MediaPickerProvider } from "./media-picker";
 import { PictureMakerProvider } from "./picture-maker";
+import { SignupCodesContext } from "./block-fields";
 import { ColorField, newId, PageBuilder } from "./page-builder";
 import { PageIssuesPanel, PublishWithIssuesDialog } from "./page-issues-panel";
 import { FindReplaceDialog } from "./find-replace-dialog";
@@ -483,6 +484,7 @@ export function PageEditor({
     <MediaPickerProvider list={context.media}>
     {/* Every picture field can make its picture by prompt in the site's look (D283) where the site's AI has a picture model. */}
     <PictureMakerProvider maker={context.pictures}>
+    <SignupCodesContext value={context.signupCodes ?? null}>
     {/* The store's saved colours and gradients (D183), kept on its theme; none on Kaizen's own pages. */}
     <ColourLibraryProvider
       initial={context.theme?.settings?.library}
@@ -1048,6 +1050,7 @@ export function PageEditor({
       </div>
     </div>
     </ColourLibraryProvider>
+    </SignupCodesContext>
     </PictureMakerProvider>
     </MediaPickerProvider>
     </ColourSwatches>

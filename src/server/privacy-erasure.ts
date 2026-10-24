@@ -130,6 +130,7 @@ export async function planErasure(subject: PrivacySubject, now: Date = new Date(
         (select count(*) from commerce.marketing_consent_events e join commerce.marketing_subscribers m on m.store_id = e.store_id and m.id = e.subscriber_id
            where m.store_id = ${sid}::uuid and (lower(m.email) = any(${addresses}) or m.customer_id = ${cid}::uuid))::int as marketing_consent_events,
         (select count(*) from commerce.customer_tags where store_id = ${sid}::uuid and email = any(${addresses}))::int as customer_tags,
+        (select count(*) from commerce.signup_incentives where store_id = ${sid}::uuid and email = any(${addresses}))::int as signup_incentives,
         (select count(*) from commerce.broadcast_recipients r join commerce.marketing_subscribers m on m.store_id = r.store_id and m.id = r.subscriber_id
            where r.store_id = ${sid}::uuid and (r.email = any(${addresses}) or lower(m.email) = any(${addresses}) or m.customer_id = ${cid}::uuid))::int as broadcast_recipients,
         (select count(*) from commerce.automation_sends x join commerce.marketing_subscribers m on m.store_id = x.store_id and m.id = x.subscriber_id
@@ -200,6 +201,7 @@ export async function planErasure(subject: PrivacySubject, now: Date = new Date(
       marketing_subscribers: n(c.marketing_subscribers),
       marketing_consent_events: n(c.marketing_consent_events),
       customer_tags: n(c.customer_tags),
+      signup_incentives: n(c.signup_incentives),
       broadcast_recipients: n(c.broadcast_recipients),
       automation_sends: n(c.automation_sends),
       stock_requests: n(c.stock_requests),
@@ -689,6 +691,8 @@ async function eraseRows(tx: Tx, s: PrivacySubject, store: PrivacyStore): Promis
   await tx.execute(sql`delete from commerce.form_submissions where store_id = ${sid}::uuid and lower(email) = any(${addresses})`);
   // Staff's tags on the person (D296).
   await tx.execute(sql`delete from commerce.customer_tags where store_id = ${sid}::uuid and email = any(${addresses})`);
+  // Welcome codes sign-up forms gave the person (D304 J3); the code itself stays in the discount's list, used or not.
+  await tx.execute(sql`delete from commerce.signup_incentives where store_id = ${sid}::uuid and email = any(${addresses})`);
   // The broadcasts sent to the person (D297): their addresses go (the subscriber's own go with it below too); the broadcasts' figures stay.
   await tx.execute(sql`delete from commerce.broadcast_recipients where store_id = ${sid}::uuid and email = any(${addresses})`);
   // The automation emails sent to the person and their back-in-stock requests (D298).

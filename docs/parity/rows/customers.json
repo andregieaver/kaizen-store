@@ -356,7 +356,7 @@
       "rechecked": true,
       "was": null
     },
-    "gap": "D295: a confirmed newsletter sign-up (and checkout's box and My account's switch) now keeps a subscriber with the consent words, time, source form, language and confirmation time, listed at Marketing → Subscribers. Still missing: an incentive code for signing up, tags from a form, and a popup's own report (D121 modal rows already hold a form).",
+    "gap": "D295: a confirmed newsletter sign-up (and checkout's box and My account's switch) now keeps a subscriber with the consent words, time, source form, language and confirmation time, listed at Marketing → Subscribers. From D304 J3: a newsletter form can name a discount with single-use codes and up to five tags; once an address confirms, it is emailed one code (once per store, discount and address, whichever form) and tagged for segments. Still missing: a popup's own report (D121 modal rows already hold a form), and a code when the form's email confirmation is off.",
     "bucket": "A",
     "wave": 5,
     "criteria": [
@@ -378,7 +378,8 @@
         "src/lib/marketing-consent.ts",
         "src/server/marketing-subscribers.ts",
         "src/app/admin/(gated)/[store]/subscribers/page.tsx",
-        "src/app/s/[store]/[market]/account/news/[token]/page.tsx"
+        "src/app/s/[store]/[market]/account/news/[token]/page.tsx",
+        "src/server/discounts.ts"
       ],
       "tests": [
         "src/lib/forms.test.ts",
@@ -387,7 +388,8 @@
         "e2e/ab-form-goal.spec.ts",
         "src/db/marketing-subscribers.test.ts",
         "src/server/marketing-subscribers.int.test.ts",
-        "e2e/signed-in/subscribers.spec.ts"
+        "e2e/signed-in/subscribers.spec.ts",
+        "src/server/signup-codes.int.test.ts"
       ],
       "untested": false
     },

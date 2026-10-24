@@ -929,6 +929,16 @@ search box; My account shows the newest five. The search drops D173's email and 
 - **Tests.** No code before confirmation; one code per address and discount across forms and repeats; a used-up discount gives none and says
   nothing more; tags land on the confirmed address; copying a page drops the incentive and tags; one store's form cannot name another's discount.
 
+**As built (J3).** The settings are `NewsletterBlock.incentive` (a discount id) and `tags` (up to `SIGNUP_TAGS_MAX`, 5), checked by the
+schema; another store's discount is refused where the code is made (`issueSignupCode()` reads the discount by the form's store), not on save.
+`publicForm()`, `withoutRecipients()` and `sanitizeTemplate()` drop both. The table keeps the lower-case address (as `customer_tags` does) rather
+than a hash, so export and erasure match it like the other marketing tables, with `form_id` and `created_at`; the code items of one discount's
+sign-ups share one numeric batch. The code goes **by email only** (`form.welcome_code`, prefixed with the discount's own code, logged without
+it through `secrets`), not on the confirmation page, which stays as it was. A code is given only by `confirmSignup()`, so a form with its email
+confirmation switched off gives none (the builder's hint says so). Tags are `tagFromForm()` (no actor, one `marketing.form_tagged` audit entry with
+the count). The builder offers the store's discounts with single-use codes (`signupCodeChoices()`, `PageOwnerContext.signupCodes`); Kaizena
+Flow's own pages offer neither field. Tests: `src/server/signup-codes.int.test.ts`, the table's checks in `src/db/discount-codes.test.ts`.
+
 ### 11.4 Rows
 
 J1 and J2 with the stale export gap close `customers.customer-accounts` except social sign-in (said in its gap; bucket B). J3 closes

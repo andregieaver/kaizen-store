@@ -722,6 +722,10 @@ export const en = {
     expired: "We could not find this link. It may be too old or already used.",
     unsubscribeIntro: "Stop getting emails with news and offers from this store?",
     unsubscribed: "You are unsubscribed. You will get no more emails with news and offers from us.",
+    welcomeSubject: (store: string) => `Your welcome code from ${store}`,
+    welcomeHeading: "Thank you for subscribing",
+    welcomeText: (store: string) => `Here is your code for ${store}. Type it in the cart when you check out. It works once.`,
+    welcomeShop: "Go to the shop",
     emailReason: (store: string) => `You get this email because you asked for news and offers from ${store}.`,
   },
   // legal: needs review. Back in stock (D298, 6.4 and 6.5): the confirmation email, its page and the email when stock is back.

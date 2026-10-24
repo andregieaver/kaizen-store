@@ -90,3 +90,14 @@ describe("several codes on one order (D299 E2)", () => {
     await rejects("delete from commerce.order_discount_codes where order_id = $1", [order.id], /stay as they were used/);
   });
 });
+
+describe("sign-up welcome codes (D304 J3)", () => {
+  it("are one per store, discount and address, in lower case, and go with their discount", async () => {
+    const [{ id }] = (await db.query<{ id: string }>("insert into commerce.discount_codes (store_id, code, kind, percent, unique_codes) values ($1, 'HELLO', 'percent', 10, true) returning id", [store])).rows;
+    await db.query("insert into commerce.signup_incentives (store_id, discount_id, email, form_id) values ($1, $2, 'kari@example.com', 'f1')", [store, id]);
+    await rejects("insert into commerce.signup_incentives (store_id, discount_id, email, form_id) values ($1, $2, 'kari@example.com', 'f2')", [store, id], /signup_incentives_once/);
+    await rejects("insert into commerce.signup_incentives (store_id, discount_id, email, form_id) values ($1, $2, 'Ola@example.com', 'f1')", [store, id], /signup_incentives_email/);
+    await db.query("delete from commerce.discount_codes where id = $1", [id]);
+    expect((await db.query<{ n: number }>("select count(*)::int as n from commerce.signup_incentives where discount_id = $1", [id])).rows[0].n).toBe(0);
+  });
+});

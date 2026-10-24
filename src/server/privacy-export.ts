@@ -914,6 +914,15 @@ async function loadReviews(s: PrivacySubject): Promise<ReviewExportRow[]> {
   }));
 }
 
+/** Welcome codes sign-up forms gave the person (D304 J3): the discount's own code and when; never the code given. */
+async function loadSignupCodes(s: PrivacySubject): Promise<{ discount: string; givenAt: string }[]> {
+  const rows = await db().execute<Row>(sql`
+    select d.code, x.created_at from commerce.signup_incentives x join commerce.discount_codes d on d.store_id = x.store_id and d.id = x.discount_id
+    where x.store_id = ${s.storeId}::uuid and x.email = any(${textList(s.addresses)}) order by x.created_at
+  `);
+  return rows.map((r) => ({ discount: strs(r.code), givenAt: new Date(String(r.created_at)).toISOString() }));
+}
+
 /** Staff's tags on the person (D296), by the subject's addresses. */
 async function loadCustomerTags(s: PrivacySubject): Promise<string[]> {
   const rows = await db().execute<Row>(sql`
@@ -981,7 +990,7 @@ export async function gatherExport(s: PrivacySubject, language: string, now: Dat
     loadForms(s),
     loadCompany(s),
   ]);
-  const [consents, customFields, support, marketing, customerTags, broadcasts, automations, stockRequests, reviews, savedAddresses] = await Promise.all([
+  const [consents, customFields, support, marketing, customerTags, broadcasts, automations, stockRequests, reviews, savedAddresses, signupCodes] = await Promise.all([
     loadConsents(s, orders),
     loadCustomFields(s, orders, store.mainLocale),
     loadSupport(s),
@@ -992,6 +1001,7 @@ export async function gatherExport(s: PrivacySubject, language: string, now: Dat
     loadStockRequests(s),
     loadReviews(s),
     loadSavedAddresses(s),
+    loadSignupCodes(s),
   ]);
   const today = now.toISOString().slice(0, 10);
   return {
@@ -1025,6 +1035,7 @@ export async function gatherExport(s: PrivacySubject, language: string, now: Dat
     support,
     marketing,
     customerTags,
+    signupCodes,
     broadcasts,
     automations,
     stockRequests,

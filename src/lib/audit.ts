@@ -89,6 +89,8 @@ const PREFIXES: Record<string, AuditArea> = {
   "broadcast.": "marketing",
   // Marketing automations (D298); `automation.` is wave 3's order rules.
   "marketing_automation.": "marketing",
+  // A sign-up form tagging confirmed addresses (D304 J3): the count, never an address.
+  "marketing.form_tagged": "marketing",
   "recommendations.": "marketing",
   "experiment.": "marketing",
   "search_test.": "marketing",

@@ -729,3 +729,62 @@ export async function customerEmailsOf(storeId: string, ids: string[]): Promise<
   `);
   return rows.map((r) => String(r.email));
 }
+
+// ---------------------------------------------------------------------------
+// Sign-up codes (D304 J3)
+// ---------------------------------------------------------------------------
+
+/** The store's discounts with single-use codes, as a newsletter form's welcome code can be (the builder's choice). */
+export async function signupCodeChoices(storeId: string): Promise<{ id: string; code: string }[]> {
+  const rows = await db().execute<Row>(sql`
+    select id, code from commerce.discount_codes where store_id = ${storeId}::uuid and unique_codes order by active desc, code
+  `);
+  return rows.map((r) => ({ id: String(r.id), code: String(r.code) }));
+}
+
+/**
+ * One single-use code of the form's discount for an address that has just confirmed its sign-up (D304 J3), or null: once per store, discount
+ * and address whichever form asked (`signup_incentives`), only for the store's own discount with single-use codes, on and inside its dates, and
+ * never past `CODE_ITEMS_MAX`. The code's text is returned for its email and kept nowhere but the code list.
+ */
+export async function issueSignupCode(storeId: string, discountId: string, email: string, formId: string): Promise<string | null> {
+  const address = email.trim().toLowerCase();
+  const discount = await getDiscount(storeId, discountId);
+  if (!discount || !discount.uniqueCodes || !discount.active) return null;
+  const now = Date.now();
+  if (discount.startsAt && Date.parse(discount.startsAt) > now) return null;
+  if (discount.endsAt && Date.parse(discount.endsAt) <= now) return null;
+  return db().transaction(async (tx) => {
+    await tx.execute(sql`select 1 from commerce.discount_codes where store_id = ${storeId}::uuid and id = ${discountId}::uuid for update`);
+    const [state] = await tx.execute<Row>(sql`
+      select count(*)::int as n, coalesce(max(batch), 0)::int as batch,
+        (select max(i.batch) from commerce.signup_incentives s join commerce.discount_code_items i on i.store_id = s.store_id and i.id = s.code_item_id
+          where s.store_id = ${storeId}::uuid and s.discount_id = ${discountId}::uuid)::int as signup_batch
+      from commerce.discount_code_items where store_id = ${storeId}::uuid and discount_id = ${discountId}::uuid
+    `);
+    if (Number(state.n) >= CODE_ITEMS_MAX) return null;
+    const [kept] = await tx.execute<Row>(sql`
+      insert into commerce.signup_incentives (store_id, discount_id, email, form_id)
+      values (${storeId}::uuid, ${discountId}::uuid, ${address}, ${formId.slice(0, 64)})
+      on conflict (store_id, discount_id, email) do nothing
+      returning id
+    `);
+    if (!kept) return null;
+    // Every sign-up code of a discount shares one batch, so the code list shows them together.
+    const batch = state.signup_batch == null ? Number(state.batch) + 1 : Number(state.signup_batch);
+    for (let round = 0; round < 10; round++) {
+      const code = generatedCode(discount.code, (n) => new Uint8Array(randomBytes(n)));
+      const [item] = await tx.execute<Row>(sql`
+        insert into commerce.discount_code_items (store_id, discount_id, code, batch)
+        select ${storeId}::uuid, ${discountId}::uuid, ${code}, ${batch}
+        where not exists (select 1 from commerce.discount_codes d where d.store_id = ${storeId}::uuid and d.code = ${code})
+        on conflict (store_id, code) do nothing
+        returning id
+      `);
+      if (!item) continue;
+      await tx.execute(sql`update commerce.signup_incentives set code_item_id = ${String(item.id)}::uuid where id = ${String(kept.id)}::uuid`);
+      return code;
+    }
+    throw new Error("No free code text after ten tries.");
+  });
+}

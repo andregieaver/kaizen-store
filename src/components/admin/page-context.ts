@@ -77,6 +77,8 @@ export type PageOwnerContext = {
    * elsewhere (a theme's workspace, whose pictures are the theme's).
    */
   pictures?: PictureMaker | null;
+  /** The store's discounts with single-use codes, for a newsletter form's welcome code (D304 J3); absent on Kaizena Flow's own pages. */
+  signupCodes?: { id: string; code: string }[];
   /** Starts a row's background video upload from the browser; null where uploads are not set up. */
   startVideo: StartVideo | null;
   /** Stores whose products a content grid can show; empty on a store's pages, which show their own. */

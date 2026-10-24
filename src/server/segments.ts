@@ -282,3 +282,28 @@ export async function removeTag(storeId: string, accountId: string, email: strin
   await audit(accountId, storeId, "customer.tag_removed", { tag: String(rows[0].label) });
   return true;
 }
+
+/**
+ * Puts a sign-up form's tags on an address that has just confirmed (D304 J3): no person did it, so no actor; tags that are not a tag are skipped,
+ * as is any past a person's 50. One audit entry with the count, never the address.
+ */
+export async function tagFromForm(storeId: string, email: string, typed: string[]): Promise<number> {
+  let added = 0;
+  for (const words of typed) {
+    const result = normaliseTag(words);
+    if (!result.ok) continue;
+    try {
+      const rows = await db().execute<Row>(sql`
+        insert into commerce.customer_tags (store_id, email, key, label)
+        values (${storeId}::uuid, ${normal(email)}, ${result.tag.key}, ${result.tag.label})
+        on conflict do nothing returning key
+      `);
+      if (rows[0]) added++;
+    } catch (error) {
+      if (errorText(error).includes("customer_tags.limit")) break;
+      throw error;
+    }
+  }
+  if (added) await audit(null, storeId, "marketing.form_tagged", { count: added });
+  return added;
+}

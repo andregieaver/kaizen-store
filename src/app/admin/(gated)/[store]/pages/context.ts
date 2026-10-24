@@ -50,6 +50,7 @@ import {
 import { duplicateStorePageAction } from "./duplicate-action";
 import { storePageVersionAction, storePageVersionsAction } from "./version-actions";
 import { planMotionAction } from "./motion-action";
+import { signupCodeChoices } from "@/server/discounts";
 
 /** Where a store's pages (or articles, D57) are edited. */
 export const storePagesBase = (store: Pick<Store, "slug">, type: PageType = "page") =>
@@ -92,6 +93,8 @@ export async function storePageContext(store: Store, type: PageType = "page", au
     media: pickMediaAction.bind(null, store.slug),
     // Pictures made by prompt in the store's look (D283), through its own route, while its AI has a picture model.
     pictures: (await canMakePictures(store.id)) ? { endpoint: `/admin/${store.slug}/media/make` } : null,
+    // A newsletter form's welcome code is one of the store's discounts with single-use codes (D304 J3).
+    signupCodes: await signupCodeChoices(store.id),
     startVideo: uploadsEnabled() ? startVideoUploadAction.bind(null, store.slug) : null,
     // A store's grids show its own products.
     gridStores: [],

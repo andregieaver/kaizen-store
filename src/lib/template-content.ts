@@ -255,8 +255,10 @@ function sanitizeBlock(block: PageBlock, from: ForeignStore, trusted: boolean): 
         ...(block.loop ? { loop: without(block.loop, ["slots"]) } : {}),
       } as PageBlock;
     case "emailForm":
-    case "newsletter":
       return { ...block, recipients: [] };
+    case "newsletter":
+      // Another store's discount and tags mean nothing here (D304 J3).
+      return { ...without(block, ["incentive", "tags"]), recipients: [] } as PageBlock;
     case "html":
       // Code from another owner does not run on this store's pages unless it is Kaizen's.
       return trusted ? block : { ...block, html: "" };

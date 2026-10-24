@@ -64,6 +64,7 @@ import {
   type FormField,
   type FormFieldKind,
   type NewsletterBlock,
+  SIGNUP_TAGS_MAX,
   ICON_LIST_LAYOUTS,
   ICON_LIST_TEXT_MAX,
   TABLE_CELL_MAX,
@@ -2570,12 +2571,49 @@ function FormStyleFields({ block, onChange }: BlockEditorProps<EmailFormBlock> |
 }
 
 /** A newsletter sign-up (D93). */
+/** A store's discounts with single-use codes (D304 J3), from the page editor; null on Kaizena Flow's own pages. */
+export const SignupCodesContext = createContext<{ id: string; code: string }[] | null>(null);
+
 function NewsletterFields({ block, onChange }: BlockEditorProps<NewsletterBlock>) {
   const en = usualForm(useAdminLang());
   const w = useAdminText("blocks").form;
+  const codes = useContext(SignupCodesContext);
+  const [tagsText, setTagsText] = useState((block.tags ?? []).join(", "));
   return (
     <>
       <RecipientsField value={block.recipients} onChange={(recipients) => onChange({ recipients })} />
+      {codes && (
+        <>
+          <label className="block text-sm">
+            <span className="text-ink-2">{w.welcomeCode}</span>
+            <select
+              className="mt-1 w-full rounded-lg border border-edge bg-card px-3 py-2"
+              value={block.incentive ?? ""}
+              onChange={(event) => onChange({ incentive: event.target.value || undefined })}
+            >
+              <option value="">{w.welcomeCodeNone}</option>
+              {block.incentive && !codes.some((c) => c.id === block.incentive) && <option value={block.incentive}>?</option>}
+              {codes.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.code}
+                </option>
+              ))}
+            </select>
+            <span className="mt-1 block text-xs text-muted">{w.welcomeCodeHint}</span>
+          </label>
+          <TextField
+            label={w.tagsLabel}
+            value={tagsText}
+            max={SIGNUP_TAGS_MAX * 41}
+            hint={w.tagsHint.replace("{max}", String(SIGNUP_TAGS_MAX))}
+            onChange={(text) => {
+              setTagsText(text);
+              const tags = text.split(",").map((tag) => tag.trim().slice(0, 40)).filter(Boolean).slice(0, SIGNUP_TAGS_MAX);
+              onChange({ tags: tags.length ? tags : undefined });
+            }}
+          />
+        </>
+      )}
       <Check
         label={w.doubleOptIn}
         hint={w.doubleOptInHint}

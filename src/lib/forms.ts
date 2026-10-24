@@ -14,13 +14,15 @@ import type { FormRequest } from "./forms-schema";
 
 /** A form as the site's pages carry it: where it sends to stays on the server. */
 export type PublicEmailForm = Omit<EmailFormBlock, "recipients" | "subject">;
-export type PublicNewsletter = Omit<NewsletterBlock, "recipients">;
+export type PublicNewsletter = Omit<NewsletterBlock, "recipients" | "incentive" | "tags">;
 export type PublicForm = PublicEmailForm | PublicNewsletter;
 
 export function publicForm(block: EmailFormBlock | NewsletterBlock): PublicForm {
   if (block.type === "newsletter") {
-    const form: PublicNewsletter & { recipients?: string[] } = { ...block };
+    const form: PublicNewsletter & { recipients?: string[]; incentive?: string; tags?: string[] } = { ...block };
     delete form.recipients;
+    delete form.incentive;
+    delete form.tags;
     return form;
   }
   const form: PublicEmailForm & { recipients?: string[]; subject?: string } = { ...block };
@@ -167,6 +169,8 @@ export function returnPath(path: string, blockId: string, result: "confirmed" | 
 /** A copy with every form's recipients taken out: Kaizen's saved parts, as stores' builders are offered them. */
 export function withoutRecipients<T>(value: T): T {
   return JSON.parse(JSON.stringify(value), (_key, part: unknown) =>
-    part && typeof part === "object" && "type" in part && (part.type === "emailForm" || part.type === "newsletter") ? { ...part, recipients: [] } : part,
+    part && typeof part === "object" && "type" in part && (part.type === "emailForm" || part.type === "newsletter")
+      ? { ...part, recipients: [], ...(part.type === "newsletter" ? { incentive: undefined, tags: undefined } : {}) }
+      : part,
   ) as T;
 }

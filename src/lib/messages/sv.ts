@@ -710,6 +710,10 @@ export const sv: Messages = {
     expired: "Vi hittade inte den här länken. Den kan vara för gammal eller redan använd.",
     unsubscribeIntro: "Vill du sluta få e-post med nyheter och erbjudanden från den här butiken?",
     unsubscribed: "Din prenumeration är avslutad. Du får inga fler e-postmeddelanden med nyheter och erbjudanden från oss.",
+    welcomeSubject: (store: string) => `Din välkomstkod från ${store}`,
+    welcomeHeading: "Tack för att du prenumererar",
+    welcomeText: (store: string) => `Här är din kod hos ${store}. Skriv in den i varukorgen när du går till kassan. Den kan användas en gång.`,
+    welcomeShop: "Till butiken",
     emailReason: (store: string) => `Du får det här e-postmeddelandet för att du har bett om nyheter och erbjudanden från ${store}.`,
   },
   // legal: needs review. Back in stock (D298, 6.4 and 6.5): the confirmation email, its page and the email when stock is back.

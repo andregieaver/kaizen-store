@@ -16,7 +16,9 @@ import { siteUrl } from "@/lib/site";
 
 import { sendEmail, type SendOutcome } from "./email";
 import { recordFormSent } from "./experiments";
+import { issueSignupCode } from "./discounts";
 import { joinList } from "./marketing-subscribers";
+import { tagFromForm } from "./segments";
 import { storeById, type EmailStore } from "./shopper-emails";
 
 type Row = Record<string, unknown>;
@@ -262,6 +264,46 @@ async function keepOnList(storeId: string, blockId: string, email: string, paylo
   }
 }
 
+/**
+ * What a store's form gives an address once it confirmed (D304 J3): its tags, and one code of its discount emailed to the address it confirmed.
+ * Never fails the confirmation: a problem is logged.
+ */
+async function welcomeSignup(found: FoundForm, email: string, lang: string, id: string) {
+  const { owner, block } = found;
+  if (!owner.storeId || block.type !== "newsletter") return;
+  try {
+    if (block.tags?.length) await tagFromForm(owner.storeId, email, block.tags);
+    if (!block.incentive) return;
+    const code = await issueSignupCode(owner.storeId, block.incentive, email, block.id);
+    if (!code) return;
+    const n = t(lang).news;
+    const message = renderEmail({
+      subject: n.welcomeSubject(owner.name),
+      preview: n.welcomeHeading,
+      blocks: [
+        { type: "heading", text: n.welcomeHeading },
+        { type: "paragraph", text: n.welcomeText(owner.name) },
+        { type: "heading", text: code },
+        { type: "button", text: n.welcomeShop, url: owner.origin },
+      ],
+      footer: [...ownerFooter(owner), n.emailReason(owner.name)],
+      lang,
+    });
+    await sendEmail({
+      storeId: owner.storeId,
+      kind: "form.welcome_code",
+      to: email,
+      email: message,
+      fromName: owner.name,
+      replyTo: owner.store?.details.contactEmail ?? null,
+      idempotencyKey: `form-welcome:${id}`,
+      secrets: [code],
+    });
+  } catch (error) {
+    console.error("forms: the welcome code or tags could not be given", error instanceof Error ? error.message : error);
+  }
+}
+
 /** The sign-up emailed to the recipients: who, the words they agreed to, and when. */
 function relaySignup(found: FoundForm, email: string, payload: SignupPayload, confirmedAt: Date | null, path: string, id: string) {
   const { owner } = found;
@@ -314,6 +356,7 @@ export async function confirmSignup(token: string): Promise<{ location: string }
     return back("expired");
   }
   if (storeId) await keepOnList(storeId, blockId, String(row.email), row.payload as SignupPayload, String(row.locale), "confirmed");
+  if (storeId && found.block.type === "newsletter") await welcomeSignup(found, String(row.email), String(row.locale), String(row.id));
   const status = await relaySignup(found, String(row.email), row.payload as SignupPayload, new Date(String(row.confirmed_at)), path, String(row.id));
   await db().execute(sql`update commerce.form_submissions set status = ${status}, payload = null where id = ${String(row.id)}::uuid`);
   return back("confirmed");

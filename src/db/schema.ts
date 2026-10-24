@@ -12642,3 +12642,42 @@ export const customerAddresses = commerce.table(
     check("customer_addresses_shape", sql`jsonb_typeof(${t.address}) = 'object'`),
   ],
 );
+
+/**
+ * A sign-up form's welcome code (wave 5 unit J3, D304, `docs/wave-5-marketing.md` 11.3): one single-use code of the form's discount, made for an
+ * address once it confirmed its sign-up, once per store, discount and address. Written only by `issueSignupCode()` in `src/server/discounts.ts`.
+ * Personal data (export section `marketing`, deleted on erasure).
+ */
+export const signupIncentives = commerce.table(
+  "signup_incentives",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id),
+    discountId: uuid("discount_id").notNull(),
+    /** Lower case. */
+    email: text("email").notNull(),
+    codeItemId: uuid("code_item_id"),
+    /** The form's block id. */
+    formId: text("form_id").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("signup_incentives_once").on(t.storeId, t.discountId, t.email),
+    index("signup_incentives_email_idx").on(t.storeId, t.email),
+    index("signup_incentives_item_idx").on(t.storeId, t.codeItemId),
+    foreignKey({
+      name: "signup_incentives_discount_fk",
+      columns: [t.storeId, t.discountId],
+      foreignColumns: [discountCodes.storeId, discountCodes.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "signup_incentives_item_fk",
+      columns: [t.storeId, t.codeItemId],
+      foreignColumns: [discountCodeItems.storeId, discountCodeItems.id],
+    }),
+    check("signup_incentives_email", sql`${t.email} = lower(${t.email}) and char_length(${t.email}) between 3 and 254`),
+    check("signup_incentives_form", sql`char_length(${t.formId}) between 1 and 64`),
+  ],
+);

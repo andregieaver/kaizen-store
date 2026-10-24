@@ -347,6 +347,8 @@ export type ExportInput = {
   reviews?: ReviewExportRow[];
   /** Staff's tags on the person (D296); absent is none. */
   customerTags?: string[];
+  /** Welcome codes a sign-up form gave the person (D304 J3): the discount and when; absent is none. */
+  signupCodes?: { discount: string; givenAt: string }[];
   /** The broadcasts sent to the person (D297): staff's name for each and when; absent is none. */
   broadcasts?: { broadcast: string; sentAt: string | null }[];
   /** The automation emails sent to the person (D298): which and when; absent is none. */
@@ -715,7 +717,7 @@ export function countsOf(input: ExportInput): ExportCounts {
     customFields: input.customFields.length,
     support: (input.support ?? []).length,
     reviews: (input.reviews ?? []).length,
-    marketing: (input.marketing ?? []).length + ((input.customerTags ?? []).length > 0 ? 1 : 0) + (input.broadcasts ?? []).length + (input.automations ?? []).length + (input.stockRequests ?? []).length,
+    marketing: (input.marketing ?? []).length + ((input.customerTags ?? []).length > 0 ? 1 : 0) + (input.broadcasts ?? []).length + (input.automations ?? []).length + (input.stockRequests ?? []).length + (input.signupCodes ?? []).length,
   };
 }
 
@@ -808,6 +810,7 @@ export function shapeExport(input: ExportInput): ExportFile {
       ...((input.customerTags ?? []).length > 0 ? [{ kind: "tags", tags: [...(input.customerTags ?? [])] }] : []),
       ...(input.broadcasts ?? []).map((b) => ({ kind: "broadcast", broadcast: b.broadcast, sentAt: b.sentAt })),
       ...(input.automations ?? []).map((a) => ({ kind: "automation", automation: a.automation, sentAt: a.sentAt })),
+      ...(input.signupCodes ?? []).map((c) => ({ kind: "signup_code", discount: c.discount, givenAt: c.givenAt })),
       ...(input.stockRequests ?? []).map((r) => ({ kind: "back_in_stock", product: r.product, status: r.status, askedAt: r.askedAt, notifiedAt: r.notifiedAt })),
     ],
   };

@@ -1806,7 +1806,14 @@ export type NewsletterBlock = PartBase & {
     confirm?: boolean;
     layout?: NewsletterLayout;
     button?: FormButton;
+    /** A discount with single-use codes (D304 J3): each confirmed address is emailed one code, once. The store's own only. */
+    incentive?: string;
+    /** Customer tags put on each confirmed address (D304 J3), at most `SIGNUP_TAGS_MAX`. */
+    tags?: string[];
   };
+
+/** Tags a sign-up form puts on an address (D304 J3). */
+export const SIGNUP_TAGS_MAX = 5;
 
 /** A form that shows: it has somewhere to send to, and something to ask. */
 export const formShows = (block: EmailFormBlock | NewsletterBlock) =>
@@ -3410,6 +3417,8 @@ const newsletterBlock = z.object({
   confirm: z.boolean().optional(),
   layout: z.enum(Object.keys(NEWSLETTER_LAYOUTS) as [NewsletterLayout, ...NewsletterLayout[]]).optional(),
   button: formButton,
+  incentive: z.string().uuid().optional(),
+  tags: z.array(z.string().trim().min(1).max(40)).max(SIGNUP_TAGS_MAX).optional(),
   ...partBase,
 });
 
