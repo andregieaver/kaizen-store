@@ -981,6 +981,8 @@ export const nb: Messages = {
     subscriptions: "Abonnementer",
     noSubscriptions: "Du har ingen abonnementer.",
     manage: "Administrer",
+    // Saved addresses (D304).
+    addresses: {title: "Adresser", intro: "Lagre stedene du sender til, og velg hvilken kassen starter med.", none: "Du har ingen lagrede adresser ennå.", add: "Legg til en adresse", edit: "Endre", remove: "Fjern", label: "Gi den et navn (valgfritt)", labelHint: "For eksempel Hjemme eller Jobb", name: "Navn", line1: "Adresse", line2: "Adresse, linje 2 (valgfritt)", postalCode: "Postnummer", city: "Sted", country: "Land", save: "Lagre adressen", defaultShipping: "Leveringsadressen kassen starter med", defaultBilling: "Fakturaadresse", makeShipping: "Bruk til levering", makeBilling: "Bruk til faktura", saved: "Adressen er lagret.", removed: "Adressen er fjernet.", tooMany: "Du kan lagre opptil 20 adresser. Fjern en først.", missing: "Fyll inn adresse, postnummer og sted.", manage: "Lagrede adresser", choose: "Lagret adresse", typeNew: "Skriv en annen adresse"},
     details: "Mine opplysninger",
     name: "Navn",
     phone: "Telefon",

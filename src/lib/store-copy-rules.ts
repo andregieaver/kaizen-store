@@ -161,6 +161,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   automation_sends: never("Which automation emails went to whom (D298): people's data."),
   stock_requests: never("Shoppers' back-in-stock requests (D298): people's data."),
   segments: never("Segments name the store's own customer groups and tags (D296); a copy starts without them."),
+  customer_addresses: never("Shoppers' saved addresses (D304); a copied customer keeps `customers.address`."),
   customer_tags: never("Staff's tags on the store's people (D296)."),
   marketing_subscribers: never("People who asked for the store's marketing email: their consent was given to that store (D295)."),
   marketing_consent_events: never("A subscriber's consent history (D295)."),

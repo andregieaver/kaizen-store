@@ -1,3 +1,5 @@
+import { choicesFor } from "@/lib/customer-addresses";
+import { listAddresses } from "@/server/customer-addresses";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -98,6 +100,8 @@ async function loadCartView(store: Store, market: Market, m: Messages) {
           template: termsDisplay ? termsTemplate(m.terms, termsDisplay) : "",
         }
       : null;
+  // A signed-in customer's saved addresses in the market's country (D304), offered where this page asks the address itself.
+  const addressChoices = customer && (asksPayer || onTerms) ? choicesFor(await listAddresses(store.id, customer.id), market.code) : [];
   const companyNeeded = companyRequired(
     store.audience,
     cart.lines.map((line) => line.audience),
@@ -129,6 +133,7 @@ async function loadCartView(store: Store, market: Market, m: Messages) {
     net,
     sumNet,
     saved,
+    addressChoices,
     companyNeeded,
     company,
     terms,
@@ -690,7 +695,7 @@ function creditsForm({ store, market, m, view }: Draw) {
 }
 
 function checkoutAction({ store, market, m, view }: Draw) {
-  const { summary, business, money, saved, companyNeeded, company, every, cart, vatWords, onTerms, cardsPayAll } = view;
+  const { summary, business, money, saved, addressChoices, companyNeeded, company, every, cart, vatWords, onTerms, cardsPayAll } = view;
   const { checkout, blocked, atVenueOnly, digital, renewal, plan, tax } = summary;
   const asksCompany = business || companyNeeded;
   // The EU VAT number (D157): offered under the company's fields when the cart could take the VAT off; the sentence under
@@ -792,6 +797,7 @@ function checkoutAction({ store, market, m, view }: Draw) {
               : undefined
           }
           cardsPayAll={cardsPayAll && !atVenueOnly ? cardsPayAll : undefined}
+          savedAddresses={addressChoices.length ? { choices: addressChoices, label: m.account.addresses.choose, typeNew: m.account.addresses.typeNew } : undefined}
           company={{
             // Asked of businesses, and of anyone whose order needs it.
             ask: asksCompany,

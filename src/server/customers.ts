@@ -7,9 +7,11 @@ import { sql } from "drizzle-orm";
 import { cookies } from "next/headers";
 
 import { db } from "@/db/client";
+import { cleanAddress } from "@/lib/customer-addresses";
 import { isFresh } from "@/lib/privacy-request";
 
 import { chooseBusinessBuyer } from "./b2b";
+import { saveDefaultAddress } from "./customer-addresses";
 import type { Address } from "./orders";
 import { eraseSubject } from "./privacy-erasure";
 
@@ -476,9 +478,11 @@ export async function updateCustomerDetails(
   customerId: string,
   details: { name: string; phone: string; address: Address; company?: { name: string; number: string } },
 ): Promise<void> {
+  // The address is the default shipping address of the saved ones (D304), which keeps `customers.address` in step.
+  const cleaned = cleanAddress({ ...details.address });
+  if (cleaned.ok) await saveDefaultAddress(storeId, customerId, cleaned.address);
   await db().execute(sql`
     update commerce.customers set name = ${details.name}, phone = ${details.phone},
-      address = ${JSON.stringify(details.address)}::jsonb,
       ${details.company ? sql`company_name = ${details.company.name}, organisation_number = ${details.company.number},` : sql``}
       updated_at = now()
     where store_id = ${storeId}::uuid and id = ${customerId}::uuid

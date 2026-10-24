@@ -891,6 +891,11 @@ and tied to no one; customer tags (`addTag()`) are keyed by address. J has three
 - **Tests.** One store cannot read or write another's address; one default of each kind; the migration's copy; checkout prefill and the order
   snapshot; erasure removes them; the export carries them.
 
+**As built (J1, D304):** the Addresses page is a plain My account route (`/account/addresses`, server forms), not a shop component; new
+addresses take the market's country (no country choice yet); checkout offers saved addresses where Kaizena Flow asks the address itself
+(Mollie, gift cards paying it all, payment terms), since Stripe's hosted page asks its own; the *Save this address* tick after payment is not
+built yet.
+
 ### 11.2 J2: finding an order in My account
 
 - `listCustomerOrders()` gains keyset paging (`placed_at`, `id`; 20 a page) and a search `q` that matches the order number, a line's title or SKU

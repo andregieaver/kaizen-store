@@ -674,6 +674,8 @@ async function eraseRows(tx: Tx, s: PrivacySubject, store: PrivacyStore): Promis
     await tx.execute(sql`delete from commerce.standing_orders where store_id = ${sid}::uuid and customer_id = ${cid}::uuid`);
     await tx.execute(sql`update commerce.wishlist_cart_adds set wishlist_name = '', customer_id = null where store_id = ${sid}::uuid and customer_id = ${cid}::uuid`);
     await tx.execute(sql`delete from commerce.wishlists where store_id = ${sid}::uuid and customer_id = ${cid}::uuid`);
+    // Saved addresses (D304).
+    await tx.execute(sql`delete from commerce.customer_addresses where store_id = ${sid}::uuid and customer_id = ${cid}::uuid`);
     await tx.execute(sql`delete from commerce.customer_sessions where store_id = ${sid}::uuid and customer_id = ${cid}::uuid`);
     await tx.execute(sql`delete from commerce.customer_sign_in_links where store_id = ${sid}::uuid and customer_id = ${cid}::uuid`);
     await tx.execute(sql`delete from commerce.checkout_accounts where store_id = ${sid}::uuid and customer_id = ${cid}::uuid`);

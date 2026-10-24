@@ -198,6 +198,9 @@ async function Account({ store, market, query }: { store: Store; market: Market;
 
       <section aria-labelledby="details-heading" className="flex flex-col gap-3">
         <h2 id="details-heading" className="text-xl font-heading">{a.details}</h2>
+        <Link href={`${base}/account/addresses`} className="self-start text-sm underline">
+          {a.addresses.manage}
+        </Link>
         <DetailsForm
           store={store.slug}
           market={market.slug}

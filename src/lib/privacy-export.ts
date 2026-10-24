@@ -317,6 +317,8 @@ export type ExportInput = {
   bookkeepingYears: number;
   authority?: string | null;
   profile: ProfileRow | null;
+  /** The account's saved addresses (D304), with the shopper's label as the reference; absent is none. */
+  savedAddresses?: { address: unknown; label: string }[];
   orders: OrderRow[];
   invoices: DocumentRow[];
   creditNotes: DocumentRow[];
@@ -359,7 +361,7 @@ export type ExportInput = {
 
 export type AddressEntry = {
   address: Json;
-  sources: { source: "account" | "order_billing" | "order_shipping" | "subscription" | "standing_list"; reference: string | null }[];
+  sources: { source: "account" | "saved" | "order_billing" | "order_shipping" | "subscription" | "standing_list"; reference: string | null }[];
 };
 
 export type ExportSections = {
@@ -460,7 +462,7 @@ const canonical = (v: Json): string => {
 };
 
 /** The distinct addresses, with where each came from (the account, an order's billing or delivery address, a subscription, a standing list). */
-export function collectAddresses(input: Pick<ExportInput, "profile" | "orders" | "subscriptions" | "standingLists">): AddressEntry[] {
+export function collectAddresses(input: Pick<ExportInput, "profile" | "savedAddresses" | "orders" | "subscriptions" | "standingLists">): AddressEntry[] {
   const found = new Map<string, AddressEntry>();
   const add = (raw: unknown, source: AddressEntry["sources"][number]["source"], reference: string | null) => {
     const address = addressOf(raw);
@@ -471,6 +473,7 @@ export function collectAddresses(input: Pick<ExportInput, "profile" | "orders" |
     found.set(key, entry);
   };
   if (input.profile) add(input.profile.address, "account", null);
+  for (const a of input.savedAddresses ?? []) add(a.address, "saved", a.label || null);
   for (const o of input.orders) {
     add(o.billingAddress, "order_billing", o.number);
     add(o.shippingAddress, "order_shipping", o.number);

@@ -4,10 +4,12 @@ import { useActionState, useEffect, useState, useTransition } from "react";
 
 import { checkoutAction, vatNumberAction, type CheckoutState } from "@/app/s/[store]/[market]/cart/actions";
 import { payHeld, type TermsDisplay } from "@/lib/checkout-terms";
+import type { AddressChoice } from "@/lib/customer-addresses";
 import type { VatNumberMessage } from "@/lib/vat-text";
 import type { CheckoutProblem } from "@/server/checkout";
 
 import { CheckoutTerms } from "./checkout-terms";
+import { Dropdown } from "./dropdown";
 import { termsKey, useTicked } from "./terms-choice";
 import { VatNumberField, type VatNumberFieldLabels } from "./vat-number-field";
 
@@ -135,6 +137,7 @@ export function CheckoutButton({
   vat,
   terms,
   cardsPayAll,
+  savedAddresses,
 }: {
   store: string;
   market: string;
@@ -153,6 +156,8 @@ export function CheckoutButton({
   terms?: CheckoutTermsChoice;
   /** Gift cards pay it all (D300 F3): no payment page follows, so the store's terms of sale are shown here and the button places the order. */
   cardsPayAll?: { display: TermsDisplay | null; template: string; newTab: string; place: string };
+  /** A signed-in customer's saved addresses in the market's country (D304): choosing one fills the address fields, which stay editable. */
+  savedAddresses?: { choices: AddressChoice[]; label: string; typeNew: string };
 }) {
   const [way, setWay] = useState<"now" | "terms">(terms?.onlyWay ? "terms" : "now");
   const onTerms = Boolean(terms) && way === "terms";
@@ -371,6 +376,17 @@ export function CheckoutButton({
           {shownPayer.needs.address && (
             <>
               <p className="mt-2 font-medium">{shownPayer.labels.address}</p>
+              {savedAddresses && (
+                <Dropdown
+                  label={savedAddresses.label}
+                  value={savedAddresses.choices.find((c) => c.line1 === pays.line1 && c.postalCode === pays.postalCode && c.city === pays.city && c.line2 === pays.line2)?.id ?? ""}
+                  options={[...savedAddresses.choices.map((c) => ({ value: c.id, label: c.label })), { value: "", label: savedAddresses.typeNew }]}
+                  onChange={(id) => {
+                    const chosen = savedAddresses.choices.find((c) => c.id === id);
+                    setPays({ ...pays, ...(chosen ? { line1: chosen.line1, line2: chosen.line2, postalCode: chosen.postalCode, city: chosen.city } : { line1: "", line2: "", postalCode: "", city: "" }) });
+                  }}
+                />
+              )}
               {(
                 [
                   ["line1", "payerLine1", shownPayer.labels.line1, "address-line1", true, 200],

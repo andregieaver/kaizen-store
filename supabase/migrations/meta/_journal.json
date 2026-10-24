@@ -2997,6 +2997,20 @@
       "when": 1792792832055,
       "tag": "20261023220032_domains_reviewed_by_index",
       "breakpoints": true
+    },
+    {
+      "idx": 428,
+      "version": "7",
+      "when": 1792835520252,
+      "tag": "20261024095200_customer_addresses",
+      "breakpoints": true
+    },
+    {
+      "idx": 429,
+      "version": "7",
+      "when": 1792835552410,
+      "tag": "20261024095232_customer_addresses_backfill",
+      "breakpoints": true
     }
   ]
 }

@@ -12605,3 +12605,40 @@ export const pageAiJobs = commerce.table(
     index("page_ai_jobs_asked_by_idx").on(t.askedBy),
   ],
 );
+
+/**
+ * A shopper's saved addresses (wave 5 unit J1, D304, `docs/wave-5-marketing.md` 11.1): up to `ADDRESSES_MAX` per customer, one default for
+ * shipping and one for billing (partial unique indexes). Written only by `src/server/customer-addresses.ts`, which keeps `customers.address`
+ * equal to the default shipping address for older readers. Personal data (export section `addresses`, deleted on erasure); never copied.
+ */
+export const customerAddresses = commerce.table(
+  "customer_addresses",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    customerId: uuid("customer_id").notNull(),
+    /** The shopper's own word for it ("Home", "Work"), or empty. */
+    label: text("label").notNull().default(""),
+    /** In the shape orders keep (`name`, `line1`, `line2`, `postalCode`, `city`, `country`). */
+    address: jsonb("address").notNull(),
+    country: text("country").notNull(),
+    isDefaultShipping: boolean("is_default_shipping").notNull().default(false),
+    isDefaultBilling: boolean("is_default_billing").notNull().default(false),
+    createdAt: createdAt(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique("customer_addresses_store_id_key").on(t.storeId, t.id),
+    foreignKey({
+      name: "customer_addresses_customer_fk",
+      columns: [t.storeId, t.customerId],
+      foreignColumns: [customers.storeId, customers.id],
+    }).onDelete("cascade"),
+    index("customer_addresses_customer_idx").on(t.storeId, t.customerId),
+    uniqueIndex("customer_addresses_default_shipping_idx").on(t.storeId, t.customerId).where(sql`${t.isDefaultShipping}`),
+    uniqueIndex("customer_addresses_default_billing_idx").on(t.storeId, t.customerId).where(sql`${t.isDefaultBilling}`),
+    check("customer_addresses_label", sql`char_length(${t.label}) <= 40`),
+    check("customer_addresses_country", sql`${t.country} ~ '^[A-Z]{2}$'`),
+    check("customer_addresses_shape", sql`jsonb_typeof(${t.address}) = 'object'`),
+  ],
+);

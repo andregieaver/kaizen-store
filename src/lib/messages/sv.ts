@@ -977,6 +977,8 @@ export const sv: Messages = {
     subscriptions: "Prenumerationer",
     noSubscriptions: "Du har inga prenumerationer.",
     manage: "Hantera",
+    // Saved addresses (D304).
+    addresses: {title: "Adresser", intro: "Spara platserna du skickar till och välj vilken kassan börjar med.", none: "Du har inga sparade adresser än.", add: "Lägg till en adress", edit: "Ändra", remove: "Ta bort", label: "Namnge den (valfritt)", labelHint: "Till exempel Hemma eller Jobbet", name: "Namn", line1: "Adress", line2: "Adress, rad 2 (valfritt)", postalCode: "Postnummer", city: "Ort", country: "Land", save: "Spara adressen", defaultShipping: "Leveransadressen kassan börjar med", defaultBilling: "Fakturaadress", makeShipping: "Använd för leverans", makeBilling: "Använd för faktura", saved: "Adressen är sparad.", removed: "Adressen är borttagen.", tooMany: "Du kan spara upp till 20 adresser. Ta bort en först.", missing: "Fyll i adress, postnummer och ort.", manage: "Sparade adresser", choose: "Sparad adress", typeNew: "Skriv en annan adress"},
     details: "Mina uppgifter",
     name: "Namn",
     phone: "Telefon",

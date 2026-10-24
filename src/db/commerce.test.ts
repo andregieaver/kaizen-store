@@ -6333,3 +6333,33 @@ describe("usage and limits (D314)", () => {
     await expect(db.query("insert into commerce.capacity_events (store_id, starts_at, ends_at, expected) values ($1, '2026-11-02', '2026-11-01', 'busy')", [store])).rejects.toThrow();
   });
 });
+
+describe("saved addresses (D304)", () => {
+  it("keeps a customer's addresses in their own store, one default of each kind, at most 20", async () => {
+    const other = await createStore("addresses-other", ["NO"]);
+    const { id: customer } = await one<{ id: string }>(
+      "insert into commerce.customers (store_id, email) values ($1, 'addresses@example.com') returning id",
+      [store],
+    );
+    const add = (storeId: string, shipping = false) =>
+      db.query(
+        `insert into commerce.customer_addresses (store_id, customer_id, address, country, is_default_shipping)
+         values ($1, $2, '{"line1":"Gate 1","postalCode":"0150","city":"Oslo"}', 'NO', $3)`,
+        [storeId, customer, shipping],
+      );
+    await add(store, true);
+    // Another store cannot hold this customer's address.
+    await expect(add(other)).rejects.toThrow();
+    // Only one default for shipping.
+    await expect(add(store, true)).rejects.toThrow();
+    await expect(
+      db.query(`insert into commerce.customer_addresses (store_id, customer_id, address, country) values ($1, $2, '{}', 'norway')`, [store, customer]),
+    ).rejects.toThrow();
+    for (let n = 1; n < 20; n++) await add(store);
+    await expect(add(store)).rejects.toThrow(/too_many/);
+    // Deleting the customer takes their addresses.
+    await db.query("delete from commerce.customers where store_id = $1 and id = $2", [store, customer]);
+    const { n } = await one<{ n: number }>("select count(*)::int as n from commerce.customer_addresses where customer_id = $1", [customer]);
+    expect(n).toBe(0);
+  });
+});

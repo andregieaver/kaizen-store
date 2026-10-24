@@ -98,6 +98,7 @@ async function countRows(s: PrivacySubject): Promise<number> {
       (select count(*) from commerce.withdrawal_requests where store_id = ${store}::uuid and order_id = any(${orders})) +
       (select count(*) from commerce.standing_orders where store_id = ${store}::uuid and customer_id = ${s.customerId}::uuid) +
       (select count(*) from commerce.wishlists where store_id = ${store}::uuid and customer_id = ${s.customerId}::uuid) +
+      (select count(*) from commerce.customer_addresses where store_id = ${store}::uuid and customer_id = ${s.customerId}::uuid) +
       (select count(*) from commerce.wishlist_cart_adds where store_id = ${store}::uuid and customer_id = ${s.customerId}::uuid) +
       (select count(*) from commerce.bonus_entries where store_id = ${store}::uuid and customer_id = ${s.customerId}::uuid) +
       (select count(*) from commerce.email_messages where store_id = ${store}::uuid and lower(to_address) = any(${addresses})) +
@@ -949,6 +950,15 @@ async function loadCustomFields(s: PrivacySubject, orders: OrderRow[], main: str
 // The file
 // ---------------------------------------------------------------------------------------------------------------------------------
 
+/** The account's saved addresses (D304), oldest first, with the shopper's own labels. */
+async function loadSavedAddresses(s: PrivacySubject): Promise<{ address: unknown; label: string }[]> {
+  if (!s.customerId) return [];
+  const rows = await db().execute<Row>(sql`
+    select address, label from commerce.customer_addresses where store_id = ${s.storeId}::uuid and customer_id = ${s.customerId}::uuid order by created_at, id
+  `);
+  return rows.map((r) => ({ address: r.address, label: String(r.label ?? "") }));
+}
+
 /** What `exportCustomerData()` reads for a subject, shaped but not yet written down. Exported for the erasure's own checks. */
 export async function gatherExport(s: PrivacySubject, language: string, now: Date): Promise<ExportInput | null> {
   const store = await privacyStore(s.storeId);
@@ -971,7 +981,7 @@ export async function gatherExport(s: PrivacySubject, language: string, now: Dat
     loadForms(s),
     loadCompany(s),
   ]);
-  const [consents, customFields, support, marketing, customerTags, broadcasts, automations, stockRequests, reviews] = await Promise.all([
+  const [consents, customFields, support, marketing, customerTags, broadcasts, automations, stockRequests, reviews, savedAddresses] = await Promise.all([
     loadConsents(s, orders),
     loadCustomFields(s, orders, store.mainLocale),
     loadSupport(s),
@@ -981,6 +991,7 @@ export async function gatherExport(s: PrivacySubject, language: string, now: Dat
     loadAutomations(s),
     loadStockRequests(s),
     loadReviews(s),
+    loadSavedAddresses(s),
   ]);
   const today = now.toISOString().slice(0, 10);
   return {
@@ -991,6 +1002,7 @@ export async function gatherExport(s: PrivacySubject, language: string, now: Dat
     bookkeepingYears: yearsOf(periodFor("bookkeeping", store.country, today, rules)),
     authority: null,
     profile,
+    savedAddresses,
     orders,
     invoices,
     creditNotes,

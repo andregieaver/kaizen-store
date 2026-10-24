@@ -1271,7 +1271,7 @@
       "rechecked": true,
       "was": null
     },
-    "gap": "Verified at HEAD (D28, D153): sign-in by emailed code or password; orders, subscriptions, one saved address, company, bonus and referral pages, wishlist, account deletion; from D153 the account's order page also shows the order's withdrawals and returns and links to the withdrawal function, so the first report's 'no self-serve returns' is closed. Still missing: several saved addresses, social sign-in, data export, order-history search.",
+    "gap": "Verified at HEAD (D28, D153): sign-in by emailed code or password; orders, subscriptions, one saved address, company, bonus and referral pages, wishlist, account deletion; from D153 the account's order page also shows the order's withdrawals and returns and links to the withdrawal function, so the first report's 'no self-serve returns' is closed. From D304 J1: several saved addresses (up to 20, defaults for delivery and billing) on My account's Addresses page, offered where checkout asks the address itself (Stripe's hosted page asks its own); the shopper's own data export already exists (D162, My account → Privacy). Still missing: order-history search (J2), social sign-in.",
     "bucket": "A",
     "wave": 5,
     "criteria": [
