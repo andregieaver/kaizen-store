@@ -55,10 +55,13 @@ describe("the notification tools in the owner assistant's catalogue", () => {
 
   it("no tool switches an email, edits its words, changes a rule or holds an order", () => {
     const names = [...OWNER_TOOLS.map((t) => t.name), ...MANAGER_TOOLS.map((t) => t.name)];
+    // The marketing email automations (D298, PSI AGT-01) are the list's emails, not an order's notifications or rules.
     expect(names.filter((n) => /notification|template|email_text|order_rule|automation|hold|release|staff_alert|check_parcel|track/.test(n))).toEqual([
       "notification_settings",
       "order_rules",
       "parcel_tracking",
+      "list_email_automations",
+      "switch_email_automation",
     ]);
   });
 

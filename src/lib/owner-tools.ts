@@ -4,6 +4,7 @@ import { AFFILIATE_COOKIE_DAYS_MAX, AFFILIATE_FRIEND_PERCENT_MAX } from "./affil
 import { EMAIL_PROVIDERS, toolRecord } from "./domain-tools";
 import { BONUS_EXPIRY_MONTHS_MAX, BONUS_PENDING_DAYS_MAX, BONUS_REDEEM_PERCENT_MAX } from "./bonus";
 import { adjustmentPhrase } from "./bonus-admin";
+import { AUTOMATION_KINDS } from "./automation-kinds";
 import { GOALS } from "./experiments";
 import { SIMPLE_FIELD_TYPES, TOOL_FIELD_ENTITIES } from "./field-tools";
 import { MAX_INSTRUCTIONS } from "./withdrawal";
@@ -1117,6 +1118,55 @@ export const OWNER_TOOLS = [
     z.object({ page: z.uuid("A page is given by its id, from list_pages."), type: z.enum(["page", "article"]).default("page") }),
     "public",
   ),
+  // Marketing (PSI AGT-01; D295-D298): broadcasts, segments, customer tags and automations, through the screens' own functions.
+  tool(
+    "list_broadcasts",
+    "The store's broadcasts (marketing emails), newest first: each one's name, status (draft, scheduled, sending, sent, stopped), audience, when it is scheduled or was sent, and to how many people. Never the recipients. Read-only.",
+    z.object({ limit: limit(20, 10) }),
+  ),
+  tool(
+    "draft_broadcast",
+    "Writes a draft broadcast from a few words about what it should say: the store's AI writes the subject and words in the store's main language (no prices, discounts, stock or claims it was not told; checked by the claims filter), saved as a draft for everyone on the list or one segment. Nothing is sent: the owner reads and changes it on the Broadcasts page (the link), then it is sent with send_broadcast.",
+    z.object({
+      brief: z.string().trim().min(5).max(1000).describe("What the email is about, in the owner's words."),
+      name: z.string().trim().min(1).max(80).describe("The broadcast's name in the admin, such as 'Autumn news'."),
+      segment: z.string().trim().max(120).optional().describe("A segment's name or id from list_segments; leave out for everyone on the list."),
+    }),
+  ),
+  tool(
+    "send_broadcast",
+    "Sends a draft broadcast to the people on the list who asked for the store's emails (everyone, or its segment), now or at a time (at). The store checks it can be sent (its words, the store open, the month's marketing emails) and freezes the recipients when it starts. Needs the owner's approval.",
+    z.object({
+      broadcast: z.string().trim().min(1).max(120).describe("The broadcast's name or id, from list_broadcasts."),
+      at: z.string().trim().max(20).optional().describe("To send it later: YYYY-MM-DD HH:MM in the store's time zone. Leave out to send now."),
+    }),
+    "send",
+  ),
+  tool(
+    "list_segments",
+    "The store's saved customer segments: each one's name, its rules in words and how many people match now, counted in code. Never who they are. Read-only.",
+    z.object({}),
+  ),
+  tool(
+    "tag_customer",
+    "Adds a tag to a customer, or takes it off (remove), by their email address: tags are the store's own labels, used in segments and the customer list. Only for an address the owner gave.",
+    z.object({
+      email: z.email().max(254),
+      tag: z.string().trim().min(1).max(40),
+      remove: z.boolean().default(false),
+    }),
+  ),
+  tool(
+    "list_email_automations",
+    "The store's email automations (welcome, after a purchase, win-back, back in stock): each one's on or off, when it sends, and how many it has sent; and how many people wait for a product to be back. Read-only.",
+    z.object({}),
+  ),
+  tool(
+    "switch_email_automation",
+    "Switches an email automation on or off. On, it writes to people on the list from now on (never to the past beyond its catch-up days), with its saved words or the starter words. Needs the owner's approval.",
+    z.object({ kind: z.enum(AUTOMATION_KINDS), on: z.boolean() }),
+    "send",
+  ),
 ] as const satisfies readonly OwnerTool[];
 
 export type OwnerToolName = (typeof OWNER_TOOLS)[number]["name"];
@@ -1152,6 +1202,10 @@ export const GATE_WORDS: Record<GateCategory, string> = {
 export function approvalSummary(name: string, input: Record<string, unknown>): string {
   const text = (key: string) => String(input[key] ?? "");
   switch (name) {
+    case "send_broadcast":
+      return input.at ? `Send the broadcast "${text("broadcast")}" at ${text("at")} (the store's time) to the people on the list who asked for your emails.` : `Send the broadcast "${text("broadcast")}" now to the people on the list who asked for your emails.`;
+    case "switch_email_automation":
+      return `${input.on ? "Switch on" : "Switch off"} the ${text("kind").replace(/_/g, " ")} email automation.`;
     case "mark_order_sent":
       return `Mark order ${text("order")} as sent with ${text("carrier")}${text("tracking_number") ? `, tracking number ${text("tracking_number")}` : ""}${input.notify === false ? "" : ", and email the customer"}.`;
     case "send_draft_order":

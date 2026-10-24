@@ -17,6 +17,7 @@ import type { Account, Membership, Role } from "./auth";
 import { askLife, lifeLink, lifeLinkOn, LifeLinkError } from "./kaizen-life-link";
 import { platformGateNeeded, preflightPlatformTool, runManagerTool, runPlatformTool, type ManagerContext } from "./manager-tools";
 import { experimentApprovalSummary } from "./experiment-tools";
+import { broadcastApprovalSummary } from "./marketing-tools";
 import { draftApprovalDetails } from "./order-ops-tools";
 import { featureApprovalDetails } from "./feature-tools";
 import { setFeatureInput } from "@/lib/feature-tools";
@@ -645,6 +646,8 @@ export async function keepForApproval(
   if (store && (tool === "start_experiment" || tool === "stop_experiment" || tool === "apply_winner")) {
     summary = (await experimentApprovalSummary(store, tool, args)) ?? summary;
   }
+  // A broadcast's send is described from the broadcast itself: its name, subject, audience and how many it reaches now (PSI AGT-01).
+  if (store && tool === "send_broadcast") summary = (await broadcastApprovalSummary(store, args)) ?? summary;
   // A draft order's send is described from the draft itself: its customer, goods and total as the store prices it now (D173).
   // The draft's version is kept with the call, always the one the summary describes (a value the model passed is replaced): the send is of that version or none.
   if (store && tool === "send_draft_order") {

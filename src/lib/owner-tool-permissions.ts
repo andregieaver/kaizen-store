@@ -19,6 +19,15 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   // Gift cards (D300 F4): the Gift cards page is the Products section's.
   gift_card_overview: "products:read",
   reviews_overview: "products:read",
+  // Marketing (PSI AGT-01): the Broadcasts and Automations pages are read with `marketing:read`, changed with `marketing:write`; segments
+  // and customer tags are the Customers section's.
+  list_broadcasts: "marketing:read",
+  draft_broadcast: "marketing:write",
+  send_broadcast: "marketing:write",
+  list_email_automations: "marketing:read",
+  switch_email_automation: "marketing:write",
+  list_segments: "customers:read",
+  tag_customer: "customers:write",
   usage_and_limits: "billing:read",
   // Domains (D315) are a Settings page: read with `settings:read`; buying, renewing, DNS changes and moves are the owner's.
   list_domains: "settings:read",

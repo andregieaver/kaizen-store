@@ -45,9 +45,13 @@ maturity for the run-up to launch. Point IDs are the audit's.
 - [ ] **AGT-14** Replay stored manager turns with thumbs as labels; run the evals in CI against a recorded model; version the prompts.
 - [x] **AGT-04, AGT-11** The AI manager can start an A/B test at a time (`start_experiment` with `at`) and keep follow-ups
       (`follow_up`, daily or weekly too, which also covers a weekly "what needs a look"); D318.
-- [ ] **AGT-04** Scheduled broadcasts (with the broadcast tools, AGT-01) and turns started by events (an `order_rules` action).
-- [ ] **AGT-01** Task parity, gated like the existing tools: staff and roles, billing, broadcasts, segments, automations, reviews,
-      order edits, exchanges, support replies, Work.
+- [ ] **AGT-04** Turns started by events (an `order_rules` action that asks the AI manager to look).
+- [x] **AGT-01 (marketing)** Broadcasts (`list_broadcasts`, `draft_broadcast`, `send_broadcast` gated, now or at a time), segments
+      (`list_segments`), customer tags (`tag_customer`) and email automations (`list_email_automations`, `switch_email_automation` gated);
+      this also gives scheduled broadcasts (AGT-04).
+- [ ] **AGT-01 (the rest)** Staff and roles, billing and plan changes, gift cards, order edits, exchanges, support replies and Work, gated like
+      the others. Review moderation stays on the Reviews page: a review's words are never sent to a model (D301), so the agent could
+      not judge one.
 - [x] **ACC-01** Axe on the `signed-in` Playwright project: `e2e/signed-in/a11y.spec.ts`, ten owner pages and four platform pages, no
       serious or critical finding at the start.
 - [x] **ACC-02, UX-11** Focus stays on the button that sent a buy form (`useKeepFocus()`, `src/components/keep-focus.ts`: add to cart,

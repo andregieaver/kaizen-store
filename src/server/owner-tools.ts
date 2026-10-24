@@ -21,6 +21,7 @@ import { parsePrice } from "@/lib/product-input";
 
 import { storeUsageLines } from "./usage";
 import { audit, type Account } from "./auth";
+import { draftBroadcastTool, listAutomationsTool, listBroadcastsTool, listSegmentsTool, preflightSendBroadcast, sendBroadcastTool, switchAutomationTool, tagCustomerTool } from "./marketing-tools";
 import { OwnerToolError } from "./owner-tool-error";
 import {
   applyWinnerTool,
@@ -2005,6 +2006,12 @@ export async function preflightOwnerTool(ctx: OwnerToolContext, name: string, ra
     if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
     return preflightFeatureTool(ctx, input.input as OwnerToolInput<"set_feature">);
   }
+  // A broadcast that could not be sent (gone, sent already, nobody to reach) is refused now, never kept for a yes (PSI AGT-01).
+  if (name === "send_broadcast") {
+    const input = readToolInput(OWNER_TOOLS_BY_NAME[name], raw);
+    if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
+    return preflightSendBroadcast(ctx, input.input as OwnerToolInput<"send_broadcast">);
+  }
   // A test that could not be started, stopped or decided is refused now, never kept for a yes (D148).
   if (name === "start_experiment" || name === "stop_experiment" || name === "apply_winner") {
     const tool = OWNER_TOOLS_BY_NAME[name];
@@ -2159,6 +2166,13 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   list_support_conversations: listSupportConversationsTool,
   gift_card_overview: giftCardOverviewTool,
   reviews_overview: reviewsOverviewTool,
+  list_broadcasts: listBroadcastsTool,
+  draft_broadcast: draftBroadcastTool,
+  send_broadcast: sendBroadcastTool,
+  list_segments: listSegmentsTool,
+  tag_customer: tagCustomerTool,
+  list_email_automations: listAutomationsTool,
+  switch_email_automation: switchAutomationTool,
   usage_and_limits: usageAndLimitsTool,
   list_domains: listDomainsTool,
   check_domain: checkDomainTool,
