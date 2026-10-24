@@ -965,13 +965,13 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "missing"
     },
-    "gap": "Profile links only (the social media buttons block, D91). No catalogue sync, no Meta Shops or Instagram Shopping feed, no TikTok or Pinterest catalogue.",
-    "bucket": "B",
-    "wave": 5,
+    "gap": "Meta, TikTok and Pinterest catalogue CSVs from the same normalised list as the Google feed (D302), at the store's secret address per market, cached 15 minutes and budgeted, with products not for sale left out and named on the admin's page; the pixels and server-side conversions are D303. The channel accounts are the owner's: each fetches the address on its own schedule (a catalogue API sync or TikTok Shop orders would be bucket B).",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "One normalised product list produces a Meta catalogue feed, a TikTok catalogue feed and a Pinterest catalogue feed with price with VAT in the market's currency, availability and images; unit-tested against each format.",
       "Products not for sale (draft, unavailable, no price, restricted) are left out with a report of why.",
@@ -980,16 +980,31 @@
     ],
     "evidence": {
       "files": [
-        "src/lib/social-links.ts",
-        "src/lib/page-content.ts"
+        "src/lib/feeds.ts",
+        "src/server/feeds.ts",
+        "src/server/feed-settings.ts",
+        "src/app/api/feeds/[token]/[file]/route.ts",
+        "src/app/admin/(gated)/[store]/feeds/page.tsx"
       ],
-      "tests": [],
+      "tests": [
+        "src/lib/feeds.test.ts",
+        "src/server/feeds.int.test.ts"
+      ],
       "untested": false
     },
     "decisions": [
+      "D302",
+      "D303",
       "D91"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-24",
+        "from": "missing",
+        "to": "full",
+        "why": "Wave 5 unit H (D302): the three catalogue feeds with the left-out report, beside D303's pixels and conversions."
+      }
+    ]
   },
   {
     "id": "customers.ad-pixels-and-conversion-events",

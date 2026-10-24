@@ -1357,11 +1357,11 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "partial",
       "rechecked": true,
-      "was": "partial"
+      "was": "missing"
     },
-    "gap": "No feed route, no channel admin and no sync (verified: no feed or merchant route under `src/app`). Credit elsewhere is only GTIN data on variants and product JSON-LD (`structured-data.ts`) that Google can read from the page, which is not a feed. One row for the one Shopify feature: it replaces the two feed rows in the AI and Customers domains. Planned in `docs/plan.md` (Phase 4, channels).",
+    "gap": "A secret feed address per store (`feed_settings`, D302) serves each offered market as Google Merchant Center RSS (id, group, title, description, link, pictures, availability from stock, price with VAT in the market's currency with the 30-day reference as `price` and the current as `sale_price` for a genuine reduction, brand, GTIN or `identifier_exists`, unit pricing, shipping by country), built from the storefront's own cached reads, cached 15 minutes; products that cannot be advertised are listed on the admin's Product feeds page with their reasons. Not done: custom label mapping, and no API sync: the owner adds the address in Merchant Center as a scheduled fetch (an API connection is bucket B).",
     "bucket": "B",
     "wave": 5,
     "criteria": [
@@ -1373,17 +1373,21 @@
     ],
     "evidence": {
       "files": [
-        "src/lib/structured-data.ts",
-        "src/server/seo.ts"
+        "src/lib/feeds.ts",
+        "src/server/feeds.ts",
+        "src/server/feed-settings.ts",
+        "src/app/api/feeds/[token]/[file]/route.ts",
+        "src/app/admin/(gated)/[store]/feeds/page.tsx"
       ],
       "tests": [
-        "src/lib/structured-data.test.ts",
-        "src/server/seo.int.test.ts"
+        "src/lib/feeds.test.ts",
+        "src/server/feeds.int.test.ts"
       ],
       "untested": false
     },
     "decisions": [
-      "D21"
+      "D21",
+      "D302"
     ],
     "history": [
       {
@@ -1397,6 +1401,12 @@
         "from": "partial",
         "to": "missing",
         "why": "No feed exists; JSON-LD is not a feed. Merged with ai.product-feed-to-merchant-center and customers.google-shopping-and-merchant-center-feed (same Shopify feature), both already rated missing"
+      },
+      {
+        "on": "2026-10-24",
+        "from": "missing",
+        "to": "partial",
+        "why": "Wave 5 unit H (D302): the Google feed, the admin's left-out list and the euro scenario are built; custom labels and the API sync are not, so partial."
       }
     ]
   },

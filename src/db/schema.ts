@@ -12763,3 +12763,22 @@ export const adConversions = commerce.table(
     check("ad_conversions_answer", sql`${t.answer} is null or char_length(${t.answer}) <= 200`),
   ],
 );
+
+/**
+ * A store's product feeds (D302, `docs/wave-5-marketing.md` 13): the secret part of their address, kept as a hash to find the store by and
+ * encrypted with `SETTINGS_ENCRYPTION_KEY` so the owner can see the address again. Written only by `src/server/feed-settings.ts`.
+ */
+export const feedSettings = commerce.table(
+  "feed_settings",
+  {
+    storeId: uuid("store_id")
+      .primaryKey()
+      .references(() => stores.id),
+    tokenHash: text("token_hash").notNull(),
+    token: text("token").notNull(),
+    on: boolean("on").notNull().default(true),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [unique("feed_settings_token_hash").on(t.tokenHash), check("feed_settings_hash", sql`${t.tokenHash} ~ '^[0-9a-f]{64}$'`)],
+);

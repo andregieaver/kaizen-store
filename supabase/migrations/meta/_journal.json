@@ -3046,6 +3046,20 @@
       "when": 1792848909624,
       "tag": "20261024133509_visits_first_touch",
       "breakpoints": true
+    },
+    {
+      "idx": 435,
+      "version": "7",
+      "when": 1792853071263,
+      "tag": "20261024144431_feed_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 436,
+      "version": "7",
+      "when": 1792853099374,
+      "tag": "20261024144459_feed_settings_rules",
+      "breakpoints": true
     }
   ]
 }

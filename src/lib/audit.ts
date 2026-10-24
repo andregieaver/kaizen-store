@@ -93,6 +93,7 @@ const PREFIXES: Record<string, AuditArea> = {
   "marketing.form_tagged": "marketing",
   // The ad platforms' server connections (D303 I2): which platform and what it sends, never a token.
   "marketing.ad_connection_": "marketing",
+  "marketing.feed_": "marketing",
   "recommendations.": "marketing",
   "experiment.": "marketing",
   "search_test.": "marketing",

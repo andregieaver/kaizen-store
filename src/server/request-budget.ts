@@ -17,6 +17,8 @@ export type BudgetWindow = "minute" | "hour";
 /** The ceilings, per window: what one visitor and one store may ask of an endpoint. */
 export const BUDGETS = {
   suggest: { window: "minute", visitor: 120, store: 6000 },
+  // A product feed (D302): channels fetch a few times a day; the visitor is the feed's address.
+  feed: { window: "hour", visitor: 60, store: 600 },
 } as const satisfies Record<string, { window: BudgetWindow; visitor: number; store: number }>;
 
 export type BudgetEndpoint = keyof typeof BUDGETS;

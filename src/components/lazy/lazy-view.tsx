@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, type ComponentType, type ReactNode } from "react";
+import { Suspense, useEffect, useState, type ComponentType, type ReactNode } from "react";
 
 /**
  * A client component loaded only where it is drawn (D211). Every client component a route's server code imports joins one group of
@@ -23,3 +23,21 @@ export function lazyView<P extends object>(View: ComponentType<P>, fallback: (pr
 
 /** The fallback of a component that wraps the server's content: the content itself. */
 export const showChildren = (props: { children?: ReactNode }) => props.children;
+
+/** Draws nothing until the browser is idle (or two seconds have passed), on the server too, so the first render agrees. */
+export function whenIdle<P extends object>(View: ComponentType<P>) {
+  function Idle(props: P) {
+    const [ready, setReady] = useState(false);
+    useEffect(() => {
+      const ready = () => setReady(true);
+      if ("requestIdleCallback" in window) {
+        const id = window.requestIdleCallback(ready, { timeout: 2000 });
+        return () => window.cancelIdleCallback(id);
+      }
+      const id = setTimeout(ready, 1000);
+      return () => clearTimeout(id);
+    }, []);
+    return ready ? <View {...props} /> : null;
+  }
+  return Idle;
+}

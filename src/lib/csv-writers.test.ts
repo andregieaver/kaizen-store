@@ -30,6 +30,7 @@ const BY_HAND = [
 
 // Not CSV: these join a list for another purpose in a module that also writes CSV (a SQL list, a header value). A new entry needs a reason.
 const ALLOWED: Record<string, string> = {
+  "src/lib/feeds.ts": "joins a cell's picture addresses, as the catalogues take them; the rows go through writeCsv()",
   "src/lib/csv.ts": "the writer itself",
   "src/lib/dac7.ts": "the older writer, kept with its tests",
 };

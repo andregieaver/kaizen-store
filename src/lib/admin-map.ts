@@ -482,6 +482,10 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["conversions api", "capi", "meta pixel", "facebook pixel", "tiktok events api", "pinterest conversions", "server-side tracking", "ad tracking", "measurement protocol"],
     tasks: ["Send purchases to Meta from the server", "Connect TikTok's Events API"],
   }),
+  store("feeds", "/feeds", "Product feeds", "Sales", "Product feeds: the store's products as Google Merchant Center, Meta, TikTok and Pinterest files at a secret address, one per country and channel, with price as shown (with VAT), stock, GTIN, brand, pictures and the flat shipping rate. Lists the products left out and why. Make a new address to stop the old one.", {
+    keywords: ["product feed", "google shopping", "merchant center", "meta catalogue", "facebook shop", "instagram shopping", "tiktok catalog", "pinterest catalog", "xml feed", "csv feed"],
+    tasks: ["Show my products on Google Shopping", "Get a catalogue feed for Meta"],
+  }),
   store("email-automation", "/automations/[kind]", "Email automation", "Sales", "One email automation: its days, its words per language, a test to yourself, and the switch."),
   store("broadcast.new", "/broadcasts/new", "New broadcast", "Sales", "Writes a new broadcast: its name, who it is for, and per language its subject and what it says."),
   store("broadcast", "/broadcasts/[broadcastId]", "Broadcast", "Sales", "One broadcast: its words, a test to yourself, send now or schedule; once sent, how many it went to, delivered, bounced, unsubscribed and presses on its links."),

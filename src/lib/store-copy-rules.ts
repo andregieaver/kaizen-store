@@ -154,6 +154,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   store_roles: derived("The new store gets the role templates from ensureStoreRoles() (wave 1, 1f); custom roles name people's powers and are not copied."),
 
   // Never ------------------------------------------------------------------------------------------------------
+  feed_settings: never("A store's feed address (D302) is its own secret; a copy makes its own."),
   ad_connections: never("A store's ad platform tokens (D303 I2) are its owner's secrets; a copy connects its own."),
   ad_conversions: never("What the original's orders sent to ad platforms (D303 I2)."),
   broadcasts: never("A store's broadcasts are sent to its own list (D297); a copy starts without them."),

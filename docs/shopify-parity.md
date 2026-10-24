@@ -10,11 +10,11 @@ D152 (the store analytics cockpit) and D153 (the EU withdrawal function and the 
 
 <!-- parity:generated:start since -->
 
-- **Headline now 71.1%** (first report 59.5%), **must-have 81.5%** (first report 69.1%), over 221 core rows (first report 232).
-- Where the change comes from: +10.1 points from the 82 rating moves on core rows recorded below, and +1.5 points because the re-read changed which rows count as core (the tracker has 252 rows, the first report 232 core ones).
+- **Headline now 71.7%** (first report 59.5%), **must-have 81.5%** (first report 69.1%), over 221 core rows (first report 232).
+- Where the change comes from: +10.7 points from the 84 rating moves on core rows recorded below, and +1.5 points because the re-read changed which rows count as core (the tracker has 252 rows, the first report 232 core ones).
 - 251 of 252 rows have their Shopify side read from a page; the others are listed under evidence debt.
 
-Rated higher (62):
+Rated higher (64):
 
 - AI or rule-based customer segmentation (AI): missing to partial. D296 (wave 5 unit B): saved rule-based segments over customers and subscribers, counted live with a member list, and customer tags; read segments.ts and ran segments.test.ts, segments.int.test.ts (PGlite and integration, passed).
 - AI-written marketing email (AI): missing to partial. D297: Write with AI in the broadcast editor suggests the email's words through the claims filter, as a suggestion only; it does not yet read the store's products or campaigns.
@@ -30,6 +30,7 @@ Rated higher (62):
 - Bulk product import and export (CSV) (Catalogue): missing to full. Wave 2, first run (D165 proposed, docs/wave-2-data.md; working tree not yet committed, migrations not yet applied).
 - Bulk editing (Catalogue): missing to partial. Wave 2, first run (docs/wave-2-data.md; working tree not yet committed).
 - Bulk editing (Catalogue): partial to full. Criterion 2 is now driven in a browser: e2e/signed-in/products-grid.spec.ts opens two products in the grid, changes a SKU, a price and a cost, reviews the three changed cells before and after (nothing written until Apply), applies them (th…
+- Product feeds to Google and other channels (Catalogue): missing to partial. Wave 5 unit H (D302): the Google feed, the admin's left-out list and the euro scenario are built; custom labels and the API sync are not, so partial.
 - Third-party and multiple payment gateways (Checkout): missing to full. The payment-provider adapter (E1) and Mollie behind it (E2, D292): a store chooses its checkout provider per mode, and a Mollie order is paid, refunded and charged back through the same order code as Stripe's, in tests.
 - Vipps (Checkout, not core): missing to partial. Mollie behind the payment-provider adapter (D292) offers Vipps where the store's Mollie account has it; a Mollie order's payment and refund are tested against a fake of Mollie's API, live access waits for Kaizena Flow's Mollie app.
 - Swish (Checkout): missing to partial. Mollie behind the payment-provider adapter (D292) offers Swish where the store's Mollie account has it; a Mollie order's payment and refund are tested against a fake of Mollie's API, live access waits for Kaizena Flow's Mollie app.
@@ -45,6 +46,7 @@ Rated higher (62):
 - Automatic discounts (Customers): partial to full. D299 E3: campaigns of an amount off per market (with an optional threshold), free shipping (with an optional threshold) and tiers by items or spend, held together by `cartSummary()` and `placeOrder()` in NOK and euro scenarios, announced f…
 - Buy X get Y (Customers): partial to full. D299 E4: a buy X get Y campaign (a buy set by items or an amount per market, a get set of its own or the same, free, a percentage or an amount off per unit, cheapest first, never a unit counted as bought, uses per order), on its own order…
 - Gift cards (Customers): missing to partial. Wave 5 unit F (D300): gift cards sold, spent, issued by hand and reported; a custom amount is not built.
+- Social channels (Facebook, Instagram, TikTok, Pinterest) (Customers): missing to full. Wave 5 unit H (D302): the three catalogue feeds with the left-out report, beside D303's pixels and conversions.
 - Ad pixels and conversion events (Customers): partial to full. D303 I1 and I2: tags after consent, browser shop events, and server-side checkout and purchase events with consent; the browser purchase is replaced by the server event by design.
 - Marketing campaign tracking and attribution (Customers): partial to full. D303 I3: campaign table, last or first visit in 30 days with statistics consent, link builder and spend import, held by analytics-traffic-data.int.test.ts (euro order, copied and host orders out) and analytics-visits.int.test.ts.
 - Product reviews and UGC (Customers, not core): missing to partial. Wave 5 unit G steps 1 and 2 (D301): verified-purchase reviews written from My account, checked and answered in the admin, shown with the rating and in the JSON-LD; the request email, imports and pictures follow.
@@ -115,7 +117,7 @@ Rated lower (27):
 
 <!-- parity:generated:start summary -->
 
-Kaizena Flow has **71.1%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 221 core features weighted by importance to an EU small or mid-size merchant, and **81.5%** on the must-haves (the 89 features with weight 4 or 5). The unweighted figures are 67.4% overall and 81.5% for must-haves. Counting app-only features gives 70.5%; counting Plus-only as well gives 70.1%. Kaizena Flow is strongest on storefront, themes and content (85.0%) and weakest on platform, extensibility and operations (52.9%), ai and automation (61.9%), customers, marketing and loyalty (62.7%). Of the 221 core features, 101 are full, 96 partial and 24 missing, so half-built features, not absent ones, are the main shape of the gap.
+Kaizena Flow has **71.7%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 221 core features weighted by importance to an EU small or mid-size merchant, and **81.5%** on the must-haves (the 89 features with weight 4 or 5). The unweighted figures are 68.1% overall and 81.5% for must-haves. Counting app-only features gives 71.1%; counting Plus-only as well gives 70.7%. Kaizena Flow is strongest on storefront, themes and content (85.0%) and weakest on platform, extensibility and operations (52.9%), ai and automation (61.9%), customers, marketing and loyalty (67.2%). Of the 221 core features, 102 are full, 97 partial and 22 missing, so half-built features, not absent ones, are the main shape of the gap.
 
 <!-- parity:generated:end summary -->
 
@@ -125,10 +127,10 @@ The method is simple: a full match scores 1, a partial match 0.5, a missing feat
 
 | Measure | Features | Weighted parity | Unweighted parity | Full / partial / missing |
 | --- | --- | --- | --- | --- |
-| Headline: core (Shopify native, Basic to Advanced) | 221 | **71.1%** | 67.4% | 101 / 96 / 24 |
+| Headline: core (Shopify native, Basic to Advanced) | 221 | **71.7%** | 68.1% | 102 / 97 / 22 |
 | Must-have (core, weight 4 or 5) | 89 | **81.5%** | 81.5% | 56 / 33 / 0 |
-| Core plus app-only features | 246 | 70.5% | 67.3% | 111 / 109 / 26 |
-| Everything, including Plus-only | 252 | 70.1% | 66.5% | 112 / 111 / 29 |
+| Core plus app-only features | 246 | 71.1% | 67.9% | 112 / 110 / 24 |
+| Everything, including Plus-only | 252 | 70.7% | 67.1% | 113 / 112 / 27 |
 
 <!-- parity:generated:end headline -->
 
@@ -140,16 +142,16 @@ Counts are core features only. Weighted parity uses weights 1 to 5; must-have is
 
 | Domain | Core features | Full | Partial | Missing | Weighted parity | Must-have features | Must-have parity |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Catalogue and products | 28 | 13 | 9 | 6 | 66.3% | 8 | 79.4% |
+| Catalogue and products | 28 | 13 | 10 | 5 | 68.0% | 8 | 79.4% |
 | Storefront, themes and content | 33 | 22 | 9 | 2 | 85.0% | 15 | 97.0% |
 | Checkout and payments | 21 | 8 | 13 | 0 | 68.2% | 12 | 66.3% |
 | Orders, shipping, fulfilment and returns | 28 | 17 | 10 | 1 | 81.5% | 14 | 90.2% |
-| Customers, marketing and loyalty | 20 | 6 | 12 | 2 | 62.7% | 8 | 69.1% |
+| Customers, marketing and loyalty | 20 | 7 | 12 | 1 | 67.2% | 8 | 69.1% |
 | Analytics, reporting and finance | 26 | 15 | 8 | 3 | 78.0% | 11 | 89.1% |
 | International, compliance and trust | 20 | 7 | 13 | 0 | 68.8% | 12 | 72.1% |
 | Platform, extensibility and operations | 22 | 4 | 13 | 5 | 52.9% | 7 | 72.4% |
 | AI and automation | 23 | 9 | 9 | 5 | 61.9% | 2 | 100.0% |
-| **Total** | **221** | **101** | **96** | **24** | **71.1%** | **89** | **81.5%** |
+| **Total** | **221** | **102** | **97** | **22** | **71.7%** | **89** | **81.5%** |
 
 <!-- parity:generated:end domains -->
 
@@ -161,7 +163,7 @@ A row is Full only when it lists code and tests that exist (or says it is untest
 
 | Evidence | Rows |
 | --- | ---: |
-| Full, with tests | 106 |
+| Full, with tests | 107 |
 | Full, untested (debt, not hidden) | 6 |
 | Shopify side not read from a page | 1 |
 | Rows in the tracker | 252 |
@@ -171,7 +173,7 @@ Untested Full rows: `ai.assistant-voice-mode`, `checkout.abandoned-checkout-reco
 | Bucket | What it means | Rows not Full | Core rows | Core headline points lacking |
 | --- | --- | ---: | ---: | ---: |
 | A | Build in-house | 95 | 83 | 19.3 |
-| B | Build, live only with a third party | 19 | 16 | 4.4 |
+| B | Build, live only with a third party | 18 | 15 | 3.7 |
 | C | Strategy decision first | 12 | 9 | 2.1 |
 | D | Not reachable by code | 14 | 12 | 3.1 |
 
@@ -183,21 +185,21 @@ The waves are those of `docs/parity-plan.md` section 3. This table is produced f
 
 <!-- parity:generated:start projection -->
 
-Now: **71.1%** core, 81.5% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 15 rows (12 core) have no wave yet and are not in them.
+Now: **71.7%** core, 81.5% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 15 rows (12 core) have no wave yet and are not in them.
 
 | Wave | Scope | Rows (core) | Core if every row of waves 1 to N is Full | Must-have | Adds (points) | Core if only bucket A rows are | Must-have |
 | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | Compliance and money | 11 (8) | 73.2% | 84.8% | +2.1 | 72.5% | 83.8% |
-| 2 | Data in and out | 3 (1) | 73.4% | 84.8% | +0.2 | 72.7% | 83.8% |
-| 3 | Inventory and orders | 14 (13) | 76.4% | 87.0% | +3.0 | 74.1% | 84.9% |
-| 4 | Payments | 8 (6) | 77.8% | 88.6% | +1.4 | 74.4% | 84.9% |
-| 5 | Customers and marketing | 24 (20) | 83.1% | 93.2% | +5.3 | 78.6% | 89.5% |
-| 6 | Catalogue | 13 (12) | 86.0% | 94.4% | +2.9 | 81.5% | 90.7% |
-| 7 | Storefront and international | 17 (16) | 89.5% | 95.4% | +3.5 | 84.8% | 91.8% |
-| 8 | Analytics and AI | 20 (20) | 93.8% | 96.1% | +4.3 | 88.5% | 92.4% |
-| 9 | Platform and extensibility | 15 (12) | 96.9% | 97.1% | +3.1 | 90.4% | 92.9% |
+| 1 | Compliance and money | 11 (8) | 73.9% | 84.8% | +2.1 | 73.1% | 83.8% |
+| 2 | Data in and out | 3 (1) | 74.1% | 84.8% | +0.2 | 73.3% | 83.8% |
+| 3 | Inventory and orders | 14 (13) | 77.0% | 87.0% | +3.0 | 74.7% | 84.9% |
+| 4 | Payments | 8 (6) | 78.4% | 88.6% | +1.4 | 75.0% | 84.9% |
+| 5 | Customers and marketing | 23 (19) | 83.1% | 93.2% | +4.6 | 79.2% | 89.5% |
+| 6 | Catalogue | 13 (12) | 86.0% | 94.4% | +2.9 | 82.1% | 90.7% |
+| 7 | Storefront and international | 17 (16) | 89.5% | 95.4% | +3.5 | 85.4% | 91.8% |
+| 8 | Analytics and AI | 20 (20) | 93.8% | 96.1% | +4.3 | 89.1% | 92.4% |
+| 9 | Platform and extensibility | 15 (12) | 96.9% | 97.1% | +3.1 | 91.0% | 92.9% |
 
-Ceiling with every bucket A row Full and buckets B, C and D as they are: **90.4%** core, 92.9% must-have. With bucket B built and approved as well: 94.7% core, 96.1% must-have.
+Ceiling with every bucket A row Full and buckets B, C and D as they are: **91.0%** core, 92.9% must-have. With bucket B built and approved as well: 94.7% core, 96.1% must-have.
 
 <!-- parity:generated:end projection -->
 
@@ -310,7 +312,7 @@ Legend. **Shopify**: Native = included on Basic to Advanced and scored in the he
 | Search quality: type-ahead, typos, stemming | Native. [page](https://apps.shopify.com/search-and-discovery) | Full | 4 |  | Evidence: `src/server/search.ts`, `src/lib/search.ts`, `src/server/embeddings.ts` and 3 more; 6 test files; D72, D74, D75. |
 | Search merchandising: synonyms, boosts, pins | Native. [page](https://help.shopify.com/manual/online-store/search-and-discovery/search) | Missing | 2 | A, wave 6 | `/admin/{store}/search` shows counts, zero-result queries and meaning help only (verified, `src/app/admin/(gated)/[store]/search/page.tsx`); no synonym, boost, bury or pin controls and none in `src/server/search.ts`. Listing filters and sorting (D78) are other rows. One row for the one Shopify feature (it replaces ai.search-merchandising, which was rated partial for filters only). Code: `src/server/search.ts`, `src/lib/search.ts`. |
 | Search analytics | Native. [page](https://apps.shopify.com/search-and-discovery) | Full | 2 |  | Evidence: `src/server/search.ts`, `src/server/analytics-search-data.ts`, `src/app/admin/(gated)/[store]/search/page.tsx` and 1 more; 3 test files; D72, D77, D152. |
-| Product feeds to Google and other channels | Native. [page](https://help.shopify.com/en/manual/online-sales-channels/google) | Missing (was partial) | 3 | B, wave 5 | No feed route, no channel admin and no sync (verified: no feed or merchant route under `src/app`). Credit elsewhere is only GTIN data on variants and product JSON-LD (`structured-data.ts`) that Google can read from the page, which is not a feed. One row for the one Shopify feature: it replaces the two feed rows in the AI and Customers domains. Planned in `docs/plan.md` (Phase 4, channels). Code: `src/lib/structured-data.ts`, `src/server/seo.ts`. |
+| Product feeds to Google and other channels | Native. [page](https://help.shopify.com/en/manual/online-sales-channels/google) | Partial (was missing) | 3 | B, wave 5 | A secret feed address per store (`feed_settings`, D302) serves each offered market as Google Merchant Center RSS (id, group, title, description, link, pictures, availability from stock, price with VAT in the market's currency with the 30-day reference as `price` and the current as `sale_price` for a genuine reduction, brand, GTIN or `identifier_exists`, unit pricing, shipping by country), built from the storefront's own cached reads, cached 15 minutes; products that cannot be advertised are listed on the admin's Product feeds page with their reasons. Not done: custom label mapping, and no API sync: the owner adds the address in Merchant Center as a scheduled fetch (an API connection is bucket B). Code: `src/lib/feeds.ts`, `src/server/feeds.ts`. |
 | Standard product taxonomy | Native. [page](https://help.shopify.com/en/manual/products/details/product-category) | Missing (was partial) | 2 | A, wave 6 | No standard product category or attributes: nothing exists that Shopify's or Google's taxonomy would map to. Kaizen has its own categories and tags (D50) and a Stripe product tax code per product (`txcd_…`), which classifies for tax and is not a browse taxonomy; no standard category list with attributes, so nothing to map to channels. Code: `src/lib/product-input.ts`, `src/components/admin/product-editor.tsx`. |
 | AI product descriptions | Native. [page](https://help.shopify.com/en/manual/products/details/product-descriptions/shopify-magic) | Full | 2 |  | Evidence: `src/server/product-writer.ts`, `src/lib/product-writing.ts`, `src/components/admin/ai-writer.tsx` and 1 more; 3 test files; D73, D76, D106. |
 | Combined listings | Plus. [page](https://help.shopify.com/en/manual/products/combined-listings-app) | Missing | 1 | A, wave 6 | None: no way to show separate products as one listing with shared options (verified: variants live inside one product only). |
@@ -455,7 +457,7 @@ Legend. **Shopify**: Native = included on Basic to Advanced and scored in the he
 | Loyalty and rewards | App. [page](https://apps.shopify.com/smile-io) | Partial (was full) | 3 | A, wave 5 | The bonus program (D130) earns credits on paid goods (5 % by default) for signed-in customers, holds them pending then usable, expires them, redeems them as a last price reduction and keeps an append-only ledger with refund reversals and manual adjustment. Missing next to a loyalty app: VIP tiers or tier multipliers (listed as not built in `docs/bonus.md`), points for actions (account creation, birthday, review, sign-up) and reward kinds beyond a price reduction (free shipping, free product). Code: `src/lib/bonus.ts`, `src/server/bonus.ts`. |
 | Customer referral program | App. [page](https://apps.shopify.com/refertech) | Full | 2 |  | Caveat: rewards are bonus credits, not cash; the friend's welcome discount applies to the first paid order of a signed-in customer; the program works only while the bonus program is on. Evidence: `src/lib/affiliates.ts`, `src/server/affiliates.ts`, `src/server/affiliate-emails.ts` and 5 more; 6 test files; D131. |
 | Affiliate and creator programme | Native. [page](https://apps.shopify.com/collabs) | Partial | 2 | A, wave 5 | D131's store program is customers referring friends for a welcome discount and bonus credits, with no approval. Missing: a creator or affiliate application and approval, per-affiliate commission rates paid in money, a commission ledger with payouts, and a dashboard of clicks and sales for the creator. Code: `src/lib/affiliates.ts`, `src/server/affiliates.ts`. |
-| Social channels (Facebook, Instagram, TikTok, Pinterest) | Native. [page](https://help.shopify.com/en/manual/online-sales-channels/facebook) | Missing | 3 | B, wave 5 | Profile links only (the social media buttons block, D91). No catalogue sync, no Meta Shops or Instagram Shopping feed, no TikTok or Pinterest catalogue. Code: `src/lib/social-links.ts`, `src/lib/page-content.ts`. |
+| Social channels (Facebook, Instagram, TikTok, Pinterest) | Native. [page](https://help.shopify.com/en/manual/online-sales-channels/facebook) | Full (was missing) | 3 |  | Meta, TikTok and Pinterest catalogue CSVs from the same normalised list as the Google feed (D302), at the store's secret address per market, cached 15 minutes and budgeted, with products not for sale left out and named on the admin's page; the pixels and server-side conversions are D303. The channel accounts are the owner's: each fetches the address on its own schedule (a catalogue API sync or TikTok Shop orders would be bucket B). Evidence: `src/lib/feeds.ts`, `src/server/feeds.ts`, `src/server/feed-settings.ts` and 2 more; 2 test files; D302, D303, D91. |
 | Ad pixels and conversion events | Native. [page](https://help.shopify.com/en/manual/online-sales-channels/facebook) | Full (was partial) | 3 |  | GA4, GTM and Meta Pixel load only after consent (D58, `ConsentManager`) and send page views only (gtag config, `fbq('track','PageView')`): no view-item, add-to-cart, begin-checkout or purchase events, no server-side Conversions API, no TikTok or Pinterest tags. The owner's own code (D61) can add more, after consent. From D303 I1: Google Ads, TikTok and Pinterest tags (store only, after marketing consent, cookies listed) and browser events view-item, view-item-list, search and add-to-cart to every tag switched on (GA4, GTM's data layer, Meta, TikTok, Pinterest) with ids, prices as shown and the currency (e2e). From D303 I2: begin-checkout and purchase are sent server-side to Meta's Conversions API, GA4's Measurement Protocol, TikTok's Events API and Pinterest's Conversions API, once per order and platform with the order id as event id, only for orders whose cart had marketing consent, never copied, host, test-mode or restricted orders, tokens encrypted, hashed email and phone only at the owner's Enhanced level. Still missing: a purchase event in the browser, which pay routes forbid by design (D158; the server event is the measure), Google Ads conversions by API (bucket B), and refund events. Evidence: `src/components/consent/consent-manager.tsx`, `src/lib/cookie-consent.ts`, `src/server/consents.ts` and 6 more; 7 test files; D58, D61. |
 | Marketing campaign tracking and attribution | Native. [page](https://help.shopify.com/en/manual/promoting-marketing/managing-marketing/marketing-campaigns) | Full (was partial) | 3 |  | D303 I3: a campaign table per UTM source and campaign (sessions, paid orders, revenue without VAT in the main currency, new customers, spend entered under the campaign's name, CAC, ROAS; CSV `marketing.campaigns`), by the last visit or the first visit in 30 days for visitors who accepted statistics (`kaizen_touch_{store}`, in `KNOWN_COOKIES`; the page says how many orders know their first visit), a campaign-link builder for the store's own addresses, and spend imported from a CSV file. Spend synced from an ad platform needs each platform's credential (bucket B) and is not built. Evidence: `src/lib/analytics-traffic.ts`, `src/lib/analytics-channels.ts`, `src/server/analytics-traffic-data.ts` and 11 more; 8 test files; D152, D303. |
 | Product reviews and UGC | App. [page](https://community.shopify.com/t/shopify-product-reviews-app-discontinued/262560) | Partial (was missing) | 4 | A, wave 5 | Buyers review what they bought and received (goods delivered, downloads paid, bookings ended) from My account, so every written review is a verified purchase; reviews wait in Products → Reviews unless the owner publishes at once, are published, hidden with a reason or answered by staff, who can never change a word or a star (the database refuses it), and the product page shows the stars, the average, the newest reviews and how reviews are checked, with aggregateRating in the JSON-LD from published reviews only. Not yet: the review-request email after delivery, CSV import, pictures, stars on product cards. Code: `src/server/reviews.ts`, `src/server/reviews-admin.ts`. |

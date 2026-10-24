@@ -1087,3 +1087,39 @@ I1 and I2 close `customers.ad-pixels-and-conversion-events` and `analytics.third
 in the browser, which pay routes forbid by design (said in both gaps, with the server event as the measure); I3 closes
 `customers.marketing-campaign-tracking-and-attribution` and moves `analytics.marketing-and-channel-attribution` to full except ad-platform spend
 sync (bucket B). Each part re-rates its rows with a `history` entry and runs `pnpm parity:write`.
+
+## 13. Unit H (D302): product feeds
+
+What the code had before H (surveyed at HEAD): no feed route, no channel admin; variants carry `gtin` (8 to 14 digits), products a
+manufacturer (D125's economic operator), and `productJsonLd()` already says what Google reads from a page (brand = manufacturer, else the
+store). H is one normalised list written four ways, behind a secret address per store.
+
+- **The item.** `feedItems(store, market)` (`src/server/feeds.ts`) reads the store's offered products through the catalogue's own cached
+  reads (`listProducts()`, `getProduct()`; stock per request through `getVariantStock()`), one `FeedItem` per active variant: id (SKU, else
+  the variant id), item group (the product id), title (with the variant's options), description (plain text), link (`marketUrl()` to the
+  product), pictures (the variant's own first, then the product's, absolute), price **as the storefront shows it** (with VAT, in the market's
+  currency through the same `PriceView`), the 30-day reference when it is a genuine reduction (then `price` is the reference and
+  `sale_price` the price, Google's rule), the unit price's measure (D160: `unit_pricing_measure` and `unit_pricing_base_measure`), GTIN,
+  brand (manufacturer, else the store's name), condition new, availability from stock (`in_stock`, `out_of_stock`, `backorder`), shipping (the
+  market's flat rate and free-over amount from `getShippingFacts()`, for goods only) and the country.
+- **What is left out, with why.** `feedProblems()` (pure, `src/lib/feeds.ts`) names each reason: not goods or a download (appointments,
+  stays, rentals and gift cards are not catalogue ads), sold only by subscription, for businesses only, no picture, no price, a title or
+  description too long for a channel (cut to the channel's limit instead, not refused). The admin lists every left-out product with its
+  reasons.
+- **The files.** `googleFeed()` (RSS 2.0 with the `g:` namespace, escaped, Google's required attributes), `metaFeed()`, `tiktokFeed()` and
+  `pinterestFeed()` (CSV through `writeCsv()`; their own column names), each from the same items, unit-tested against each format's
+  required columns. Amounts are written `123.45 NOK` from minor units in code.
+- **The address.** `commerce.feed_settings` (one row per store: `token_hash`, the token encrypted with `SETTINGS_ENCRYPTION_KEY` so the owner
+  can see the address again, `on`, timestamps), written only by `src/server/feed-settings.ts` (switch on, make a new address, switch off;
+  `marketing:write`, audited without the token). `/api/feeds/{token}/{market}-{channel}.{xml|csv}` finds the store by the token's hash only,
+  answers a 404 for anything else (an unknown token, a store that is not open, a template or demo store, the shop switched off, a market not
+  offered), and is cached for 15 minutes (`s-maxage=900`), the stated refresh time; `takeBudget()` limits each token to 60 requests an hour.
+- **The page.** Marketing → *Product feeds* (`/admin/{store}/feeds`): Homer sees a switch and, when on, one address per country and channel to
+  copy; Lisa sees the products left out and why, and *Make a new address* (the old one stops at once). Live in a channel only once the owner
+  connects their own Merchant Center, Meta Commerce Manager, TikTok or Pinterest account to the address (bucket B: no channel API is called).
+- **Tests.** Unit: each writer's columns and escaping, `feedProblems()`, the sale price rule, the amounts. Integration: the feed's price equals
+  `shown()` in a euro market, a left-out product is reported, the route answers only with the right token and a 404 otherwise.
+- **Rows.** Closes `catalogue.product-feeds-to-google-and-other-channels` and `customers.social-channels-facebook-instagram-tiktok-pinterest`
+  except syncing through each channel's API (bucket B), said in both gaps.
+
+**As built (24 October 2026, D302).** As above. The Google feed's shipping is the market's flat rate (methods and carriers' prices are not in it); a product's brand is its manufacturer, else the store's name; custom labels are not mapped yet. Migrations `20261024144431_feed_settings`, `20261024144459_feed_settings_rules`.

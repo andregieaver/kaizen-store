@@ -14,6 +14,7 @@ import { describe, expect, it } from "vitest";
 const ROOT = process.cwd();
 
 const READERS: Record<string, "real" | "template" | "both"> = {
+  "src/app/api/feeds/[token]/[file]/route.ts": "real",
   "src/app/admin/(gated)/[store]/settings/seo/page.tsx": "real",
   "src/app/s/[store]/(chooser)/layout.tsx": "real",
   "src/app/s/[store]/[market]/layout.tsx": "real",

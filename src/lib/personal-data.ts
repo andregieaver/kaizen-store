@@ -242,6 +242,7 @@ export const PERSONAL_DATA: PersonalEntry[] = [
 /** Tables the detectors matched (by a column name such as `name`, `note` or `content`, or a foreign key) that hold no person's data, and why. */
 export const NOT_PERSONAL: Record<string, string> = {
   ad_connections: "A store's connection to an ad platform (D303 I2): the platform's id and the owner's encrypted token; no shopper.",
+  feed_settings: "A store's product feeds (D302): the hash and the encrypted secret of their address and a switch; no person.",
   ad_conversions: "That an order's event was sent to an ad platform (D303 I2): order id, platform, event, status and the platform's answer code; the payload, with the ids, is built when sent and never kept.",
   domain_registrations: "A domain registered by Kaizena Flow (D315, D317), held by an account and maybe used by a store: the name, its dates and renewal; the registrant is its own entry.",
   dns_zones: "A domain whose DNS Kaizena Flow keeps (D315, D317): its name, state and what it shows while no store uses it; no person.",
