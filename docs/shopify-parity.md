@@ -14,7 +14,7 @@ D152 (the store analytics cockpit) and D153 (the EU withdrawal function and the 
 - Where the change comes from: +10.7 points from the 84 rating moves on core rows recorded below, and +1.5 points because the re-read changed which rows count as core (the tracker has 252 rows, the first report 232 core ones).
 - 251 of 252 rows have their Shopify side read from a page; the others are listed under evidence debt.
 
-Rated higher (64):
+Rated higher (65):
 
 - AI or rule-based customer segmentation (AI): missing to partial. D296 (wave 5 unit B): saved rule-based segments over customers and subscribers, counted live with a member list, and customer tags; read segments.ts and ran segments.test.ts, segments.int.test.ts (PGlite and integration, passed).
 - AI-written marketing email (AI): missing to partial. D297: Write with AI in the broadcast editor suggests the email's words through the claims filter, as a suggestion only; it does not yet read the store's products or campaigns.
@@ -50,6 +50,7 @@ Rated higher (64):
 - Ad pixels and conversion events (Customers): partial to full. D303 I1 and I2: tags after consent, browser shop events, and server-side checkout and purchase events with consent; the browser purchase is replaced by the server event by design.
 - Marketing campaign tracking and attribution (Customers): partial to full. D303 I3: campaign table, last or first visit in 30 days with statistics consent, link builder and spend import, held by analytics-traffic-data.int.test.ts (euro order, copied and host orders out) and analytics-visits.int.test.ts.
 - Product reviews and UGC (Customers, not core): missing to partial. Wave 5 unit G steps 1 and 2 (D301): verified-purchase reviews written from My account, checked and answered in the admin, shown with the rating and in the JSON-LD; the request email, imports and pictures follow.
+- Product reviews and UGC (Customers, not core): partial to full. Wave 5 unit G3 (D301): the request email after receipt, to subscribed buyers with the unsubscribe link, and CSV import and export: every criterion met.
 - Back-in-stock notifications (Customers, not core): missing to partial. D298 built the notify-me form with double opt-in, one email per waiting address when stock returns by any path, store scope, export, erasure and pruning, and the staff's waiting counts; the email does not show the live price, a waiting req…
 - IOSS (International): missing to partial. Unit 1a (docs/wave-1a-tax.md): read the code and ran ioss, tax-profile and vat-engine tests: the IOSS number, intermediary and markets are recorded, an order of at most 150 EUR from outside the EU is marked IOSS in the cart and order, abov…
 - Legal page templates and policy generator (International): missing to partial. Read src/lib/legal-starters/{nb,sv,da,en}.ts, src/lib/checkout-terms.ts, src/server/checkout-terms.ts and the order page; ran legal-starters.test.ts, checkout-terms.test.ts, legal-roles.test.ts, src/db/trust.test.ts, legal-starters.int.tes…
@@ -117,7 +118,7 @@ Rated lower (27):
 
 <!-- parity:generated:start summary -->
 
-Kaizena Flow has **71.7%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 221 core features weighted by importance to an EU small or mid-size merchant, and **81.5%** on the must-haves (the 89 features with weight 4 or 5). The unweighted figures are 68.1% overall and 81.5% for must-haves. Counting app-only features gives 71.1%; counting Plus-only as well gives 70.7%. Kaizena Flow is strongest on storefront, themes and content (85.0%) and weakest on platform, extensibility and operations (52.9%), ai and automation (61.9%), customers, marketing and loyalty (67.2%). Of the 221 core features, 102 are full, 97 partial and 22 missing, so half-built features, not absent ones, are the main shape of the gap.
+Kaizena Flow has **71.7%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 221 core features weighted by importance to an EU small or mid-size merchant, and **81.5%** on the must-haves (the 89 features with weight 4 or 5). The unweighted figures are 68.1% overall and 81.5% for must-haves. Counting app-only features gives 71.4%; counting Plus-only as well gives 70.9%. Kaizena Flow is strongest on storefront, themes and content (85.0%) and weakest on platform, extensibility and operations (52.9%), ai and automation (61.9%), customers, marketing and loyalty (67.2%). Of the 221 core features, 102 are full, 97 partial and 22 missing, so half-built features, not absent ones, are the main shape of the gap.
 
 <!-- parity:generated:end summary -->
 
@@ -129,8 +130,8 @@ The method is simple: a full match scores 1, a partial match 0.5, a missing feat
 | --- | --- | --- | --- | --- |
 | Headline: core (Shopify native, Basic to Advanced) | 221 | **71.7%** | 68.1% | 102 / 97 / 22 |
 | Must-have (core, weight 4 or 5) | 89 | **81.5%** | 81.5% | 56 / 33 / 0 |
-| Core plus app-only features | 246 | 71.1% | 67.9% | 112 / 110 / 24 |
-| Everything, including Plus-only | 252 | 70.7% | 67.1% | 113 / 112 / 27 |
+| Core plus app-only features | 246 | 71.4% | 68.1% | 113 / 109 / 24 |
+| Everything, including Plus-only | 252 | 70.9% | 67.3% | 114 / 111 / 27 |
 
 <!-- parity:generated:end headline -->
 
@@ -163,7 +164,7 @@ A row is Full only when it lists code and tests that exist (or says it is untest
 
 | Evidence | Rows |
 | --- | ---: |
-| Full, with tests | 107 |
+| Full, with tests | 108 |
 | Full, untested (debt, not hidden) | 6 |
 | Shopify side not read from a page | 1 |
 | Rows in the tracker | 252 |
@@ -172,7 +173,7 @@ Untested Full rows: `ai.assistant-voice-mode`, `checkout.abandoned-checkout-reco
 
 | Bucket | What it means | Rows not Full | Core rows | Core headline points lacking |
 | --- | --- | ---: | ---: | ---: |
-| A | Build in-house | 95 | 83 | 19.3 |
+| A | Build in-house | 94 | 83 | 19.3 |
 | B | Build, live only with a third party | 18 | 15 | 3.7 |
 | C | Strategy decision first | 12 | 9 | 2.1 |
 | D | Not reachable by code | 14 | 12 | 3.1 |
@@ -193,7 +194,7 @@ Now: **71.7%** core, 81.5% must-have. The projections are what the score would b
 | 2 | Data in and out | 3 (1) | 74.1% | 84.8% | +0.2 | 73.3% | 83.8% |
 | 3 | Inventory and orders | 14 (13) | 77.0% | 87.0% | +3.0 | 74.7% | 84.9% |
 | 4 | Payments | 8 (6) | 78.4% | 88.6% | +1.4 | 75.0% | 84.9% |
-| 5 | Customers and marketing | 23 (19) | 83.1% | 93.2% | +4.6 | 79.2% | 89.5% |
+| 5 | Customers and marketing | 22 (19) | 83.1% | 93.2% | +4.6 | 79.2% | 89.5% |
 | 6 | Catalogue | 13 (12) | 86.0% | 94.4% | +2.9 | 82.1% | 90.7% |
 | 7 | Storefront and international | 17 (16) | 89.5% | 95.4% | +3.5 | 85.4% | 91.8% |
 | 8 | Analytics and AI | 20 (20) | 93.8% | 96.1% | +4.3 | 89.1% | 92.4% |
@@ -460,7 +461,7 @@ Legend. **Shopify**: Native = included on Basic to Advanced and scored in the he
 | Social channels (Facebook, Instagram, TikTok, Pinterest) | Native. [page](https://help.shopify.com/en/manual/online-sales-channels/facebook) | Full (was missing) | 3 |  | Meta, TikTok and Pinterest catalogue CSVs from the same normalised list as the Google feed (D302), at the store's secret address per market, cached 15 minutes and budgeted, with products not for sale left out and named on the admin's page; the pixels and server-side conversions are D303. The channel accounts are the owner's: each fetches the address on its own schedule (a catalogue API sync or TikTok Shop orders would be bucket B). Evidence: `src/lib/feeds.ts`, `src/server/feeds.ts`, `src/server/feed-settings.ts` and 2 more; 2 test files; D302, D303, D91. |
 | Ad pixels and conversion events | Native. [page](https://help.shopify.com/en/manual/online-sales-channels/facebook) | Full (was partial) | 3 |  | GA4, GTM and Meta Pixel load only after consent (D58, `ConsentManager`) and send page views only (gtag config, `fbq('track','PageView')`): no view-item, add-to-cart, begin-checkout or purchase events, no server-side Conversions API, no TikTok or Pinterest tags. The owner's own code (D61) can add more, after consent. From D303 I1: Google Ads, TikTok and Pinterest tags (store only, after marketing consent, cookies listed) and browser events view-item, view-item-list, search and add-to-cart to every tag switched on (GA4, GTM's data layer, Meta, TikTok, Pinterest) with ids, prices as shown and the currency (e2e). From D303 I2: begin-checkout and purchase are sent server-side to Meta's Conversions API, GA4's Measurement Protocol, TikTok's Events API and Pinterest's Conversions API, once per order and platform with the order id as event id, only for orders whose cart had marketing consent, never copied, host, test-mode or restricted orders, tokens encrypted, hashed email and phone only at the owner's Enhanced level. Still missing: a purchase event in the browser, which pay routes forbid by design (D158; the server event is the measure), Google Ads conversions by API (bucket B), and refund events. Evidence: `src/components/consent/consent-manager.tsx`, `src/lib/cookie-consent.ts`, `src/server/consents.ts` and 6 more; 7 test files; D58, D61. |
 | Marketing campaign tracking and attribution | Native. [page](https://help.shopify.com/en/manual/promoting-marketing/managing-marketing/marketing-campaigns) | Full (was partial) | 3 |  | D303 I3: a campaign table per UTM source and campaign (sessions, paid orders, revenue without VAT in the main currency, new customers, spend entered under the campaign's name, CAC, ROAS; CSV `marketing.campaigns`), by the last visit or the first visit in 30 days for visitors who accepted statistics (`kaizen_touch_{store}`, in `KNOWN_COOKIES`; the page says how many orders know their first visit), a campaign-link builder for the store's own addresses, and spend imported from a CSV file. Spend synced from an ad platform needs each platform's credential (bucket B) and is not built. Evidence: `src/lib/analytics-traffic.ts`, `src/lib/analytics-channels.ts`, `src/server/analytics-traffic-data.ts` and 11 more; 8 test files; D152, D303. |
-| Product reviews and UGC | App. [page](https://community.shopify.com/t/shopify-product-reviews-app-discontinued/262560) | Partial (was missing) | 4 | A, wave 5 | Buyers review what they bought and received (goods delivered, downloads paid, bookings ended) from My account, so every written review is a verified purchase; reviews wait in Products → Reviews unless the owner publishes at once, are published, hidden with a reason or answered by staff, who can never change a word or a star (the database refuses it), and the product page shows the stars, the average, the newest reviews and how reviews are checked, with aggregateRating in the JSON-LD from published reviews only. Not yet: the review-request email after delivery, CSV import, pictures, stars on product cards. Code: `src/server/reviews.ts`, `src/server/reviews-admin.ts`. |
+| Product reviews and UGC | App. [page](https://community.shopify.com/t/shopify-product-reviews-app-discontinued/262560) | Full (was partial) | 4 |  | Buyers review what they bought and received from My account or the link of the request email the store sends once per order some days after receipt (only to subscribed buyers, with the unsubscribe link), so every written review is a verified purchase; reviews wait in Products → Reviews unless the owner publishes at once, are published, hidden with a reason or answered by staff, who can never change a word or a star, and the product page shows the stars, the average, the newest reviews and how reviews are checked, with aggregateRating in the JSON-LD from published reviews only. Reviews written elsewhere are imported from CSV (marked imported, never verified, a file imported twice adds nothing) and all are exported as CSV. Not yet: pictures in reviews (G4) and stars on product cards. Evidence: `src/server/reviews.ts`, `src/server/reviews-admin.ts`, `src/server/review-facts.ts` and 8 more; 7 test files; D301, D91. |
 | Wishlists | App. [page](https://community.shopify.com/t/will-shopify-launch-a-native-wishlist-app-soon/159761) | Full | 2 |  | Caveat: lists are private, with no way to share one, and nothing is emailed from them (no price-drop or back-in-stock mail); at most 20 lists and 200 items per list. Evidence: `src/server/wishlists.ts`, `src/server/wishlist-admin.ts`, `src/components/wishlist-heart.tsx` and 5 more; 3 test files; D34, D36. |
 | Back-in-stock notifications | App. [page](https://apps.shopify.com/back-in-stock) | Partial (was missing) | 3 | A, wave 5 | D298: a sold-out physical variant that does not keep selling shows *Email me when it is back* while the store has back in stock on; a typed address confirms from its link first (a verified signed-in customer's waits at once), one open request per store, variant and address, limited per visitor key and address. Every run, the waiting requests whose variant is in stock again by any path (read through `variant_availability`) and still offered get one email each, claimed before it goes so none is sent twice; requests are store-scoped, exported, erased and pruned (unconfirmed after 7 days, waiting after 180, sent after 30). Staff see how many wait and the products most asked for. Still missing: the live price in the email, a link to cancel a waiting request, and the AI manager reading the count. Code: `src/server/stock-requests.ts`, `src/lib/stock-request-check.ts`. |
 | Customer accounts | Native. [page](https://help.shopify.com/en/manual/customers/customer-accounts) | Partial | 4 | A, wave 5 | Verified at HEAD (D28, D153): sign-in by emailed code or password; orders, subscriptions, one saved address, company, bonus and referral pages, wishlist, account deletion; from D153 the account's order page also shows the order's withdrawals and returns and links to the withdrawal function, so the first report's 'no self-serve returns' is closed. From D304 J1: several saved addresses (up to 20, defaults for delivery and billing) on My account's Addresses page, offered where checkout asks the address itself (Stripe's hosted page asks its own); the shopper's own data export already exists (D162, My account → Privacy). From D304 J2: My account → Your orders (`/account/orders`) searches the customer's own orders by order number, product or SKU and tracking number, filters by state (being prepared, on the way, delivered, returned) and pages 20 at a time. Still missing: social sign-in. Code: `src/server/customers.ts`, `src/app/s/[store]/[market]/account/page.tsx`. |

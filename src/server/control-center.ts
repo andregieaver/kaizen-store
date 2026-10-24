@@ -90,7 +90,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
   const supportIds = idsWith(storeRows, "support:read");
 
   const none = <T>() => Promise.resolve<T[]>([]);
-  const [salesRows, sendRows, stockRows, owedRows, latestRows, usage, workItems, returnItems, taxItems, invoiceItems, taxReturnItems, privacyItems, draftRows, partlyRows, changeRows, supportRows, handRows, termsRows] = await Promise.all([
+  const [salesRows, sendRows, stockRows, owedRows, latestRows, usage, workItems, returnItems, taxItems, invoiceItems, taxReturnItems, privacyItems, draftRows, partlyRows, changeRows, supportRows, handRows, termsRows, reviewRows] = await Promise.all([
     orderIds.length === 0 ? none<Row>() : db().execute<Row>(sql`
       select o.store_id, o.currency,
         coalesce(sum(o.total_minor) filter (where o.placed_at >= now() - interval '7 days'), 0)::bigint as week,
@@ -216,6 +216,13 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
         and t.due_on < commerce.store_day(t.store_id, now())
       group by t.store_id
     `),
+    // Reviews waiting to be checked (D301 G3), where the feature is on and the member may read products: a count only, never an author.
+    productIds.length === 0 ? none<Row>() : db().execute<Row>(sql`
+      select r.store_id, count(*)::int as waiting
+      from commerce.product_reviews r
+      where r.store_id in (${idList(productIds)}) and r.status = 'pending' and commerce.feature_on(r.store_id, 'reviews')
+      group by r.store_id
+    `),
   ]);
 
   const salesBy = new Map<string, SalesFigure[]>();
@@ -232,6 +239,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
   const changesBy = new Map(changeRows.map((r) => [String(r.store_id), r]));
   const supportBy = new Map(supportRows.map((r) => [String(r.store_id), Number(r.waiting)]));
   const handBy = new Map(handRows.filter((r) => Number(r.pickup) > 0 || Number(r.local) > 0).map((r) => [String(r.store_id), r]));
+  const reviewsBy = new Map(reviewRows.filter((r) => Number(r.waiting) > 0).map((r) => [String(r.store_id), Number(r.waiting)]));
   const termsBy = new Map(termsRows.filter((r) => Number(r.overdue) > 0).map((r) => [String(r.store_id), Number(r.overdue)]));
   // Limits of the plan used up (D314), where the member may read the plan; nothing is read for a store whose plan sets none.
   const limitsBy = new Map(await Promise.all([...billingIds].map(async (id) => [id, await limitsReachedCount(id).catch(() => 0)] as const)));
@@ -286,6 +294,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
         : {}),
       ...(changesBy.has(id) ? { orderChanges: { waiting: Number(changesBy.get(id)!.waiting), expiringSoon: Number(changesBy.get(id)!.expiring) } } : {}),
       ...(termsBy.has(id) ? { termsOverdue: termsBy.get(id) } : {}),
+      ...(reviewsBy.has(id) ? { reviewsWaiting: reviewsBy.get(id) } : {}),
       ...((limitsBy.get(id) ?? 0) > 0 ? { limitsReached: limitsBy.get(id) } : {}),
     };
   });

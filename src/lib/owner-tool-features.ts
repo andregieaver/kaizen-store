@@ -16,6 +16,7 @@ export const TOOL_FEATURES: Partial<Record<OwnerToolName, FeatureRequirement>> =
   cancel_booking: BOOKED,
   // Several currencies (D178): the Currencies page is hidden while it is off.
   set_currencies: "currencies",
+  reviews_overview: "reviews",
   get_bonus_program: "bonus",
   set_bonus_program: "bonus",
   adjust_customer_credits: "bonus",
