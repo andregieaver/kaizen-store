@@ -12,6 +12,7 @@ import { describeRecord } from "@/lib/dns-records";
 import { requireAccount } from "@/server/auth";
 import { linkableStores, linkDomain, unlinkDomain } from "@/server/domain-account";
 import { setHolding } from "@/server/holding";
+import { confirmHolderProposal, holderTurn, type HolderAnswer, type HolderMessage } from "@/server/holder-assistant";
 import { createAccessRequest } from "@/server/platform";
 import { heldDomains } from "@/server/domain-account";
 import { applyDnsChange, previewDnsChange, setDnsAuto, undoDnsChange } from "@/server/domain-dns";
@@ -136,4 +137,21 @@ export async function startStoreAction(_state: FormState, form: FormData): Promi
     domain: apex,
   });
   return done([fillWords(words.account.startStoreSent, { domain: apex })]);
+}
+
+/** A message to the holder's assistant (D317 phase 5): the tab's conversation and the new message; nothing is changed by it. */
+export async function askHolderAction(history: HolderMessage[], message: string): Promise<HolderAnswer> {
+  const { account } = await holderNow();
+  const clean = (Array.isArray(history) ? history : [])
+    .filter((m) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
+    .slice(-12);
+  return holderTurn(account, clean, String(message ?? ""));
+}
+
+/** The person's yes to a change the assistant proposed. */
+export async function confirmHolderAction(token: string): Promise<FormState> {
+  const { account, words } = await holderNow();
+  const result = await confirmHolderProposal(account, String(token ?? ""));
+  if (!result.ok) return { status: "error", messages: result.problems };
+  return done([fillWords(words.assistant.confirmed, { domain: result.domain })]);
 }

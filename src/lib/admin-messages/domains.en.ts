@@ -134,6 +134,18 @@ export const domainsEn = {
     closed: "Kaizena Flow doesn't sell domains on their own yet.",
     priceChanged: "Look at the price again.",
   },
+  assistant: {
+    title: "Ask about your domains",
+    intro: "Set up email, verify a domain for a service, or ask what your records are. Nothing changes until you confirm it.",
+    placeholder: "Set up Google Workspace email on my domain",
+    send: "Ask",
+    thinking: "Thinking…",
+    confirm: "Confirm the change",
+    confirmed: "Changed the DNS of {domain}. It's live now; some networks may show the old answer for up to an hour.",
+    emailWarning: "This changes where email to the domain goes.",
+    you: "You",
+    assistant: "Assistant",
+  },
   account: {
     notYours: "{domain} isn't one of your domains without a store.",
     startStore: "Start a store on {domain}",

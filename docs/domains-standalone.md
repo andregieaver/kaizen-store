@@ -288,7 +288,16 @@ the admin and leaves the store as made). Platform → Domains shows the way in, 
 domains no store uses, how many asked for and opened a store, and the owner's bar, the share that opened one within 90 days, once any
 account is 90 days old (decision 10).
 
-**Phase 5: not built in this release.** Decision 9 puts the AI manager for domain-only accounts in the second release. It needs a third
-kind of principal for the assistant (an account with no store and no platform), with the domain tools only; until then a domain-only
-holder does everything on *Your domains*.
+**Phase 5 (2026-10-24).** *Ask about your domains* on *Your domains* (`HolderAssistant`, `src/server/holder-assistant.ts`) is a small
+assistant of its own beside the store's and the platform's (whose `store: null` means the platform): the domain tools only
+(`list_my_domains`, `list_dns_records`, and the store's `change_dns`, `set_up_email` and `verify_domain_for` schemas), every one acting as
+the account's holder, facts only from the tools, Kaizena Flow's key, at most 30 turns an hour. It never changes anything itself: a DNS
+change is a signed proposal (an hour, the account's own) shown with what it does and *Confirm*, planned again on the live records and
+refused if they moved (`confirmHolderProposal()`). The conversation stays in the tab.
+
+**Emails to the holder (2026-10-24, D315 9.1 and D317 7).** *{domain} is yours* when a registration or transfer in is done, repeating a
+consumer's consent; a renewal switched off or not yet paid at 30, 14, 7 and 1 days before expiry (`src/server/domain-emails.ts`, in the
+daily job), in the holder's admin language. `domain_purchases` is in the personal data register (a buyer's VAT number and consent).
+
+**What is left is the owner's:** `docs/domains-finishing.md` lists it step by step.
 

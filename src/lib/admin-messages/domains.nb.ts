@@ -129,6 +129,18 @@ export const domainsNb: DomainsMessages = {
     closed: "Kaizena Flow selger ikke domener alene ennå.",
     priceChanged: "Se på prisen igjen.",
   },
+  assistant: {
+    title: "Spør om domenene dine",
+    intro: "Sett opp e-post, bekreft et domene for en tjeneste, eller spør hvilke oppføringer du har. Ingenting endres før du bekrefter det.",
+    placeholder: "Sett opp Google Workspace-e-post på domenet mitt",
+    send: "Spør",
+    thinking: "Tenker …",
+    confirm: "Bekreft endringen",
+    confirmed: "DNS for {domain} er endret. Det gjelder nå; noen nettverk kan vise det gamle svaret i opptil en time.",
+    emailWarning: "Dette endrer hvor e-post til domenet går.",
+    you: "Du",
+    assistant: "Assistent",
+  },
   account: {
     notYours: "{domain} er ikke et av domenene dine uten nettbutikk.",
     startStore: "Start en nettbutikk på {domain}",

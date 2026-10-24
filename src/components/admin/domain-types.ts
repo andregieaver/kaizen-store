@@ -53,3 +53,11 @@ export type CheckoutQuote =
   | { ok: false; problems: string[] };
 export type CheckoutBuyer = { kind: "consumer" | "business"; country: string; vatNumber: string };
 export type CheckoutActions = { search: DomainSearch; quote: (domain: string, buyer: CheckoutBuyer) => Promise<CheckoutQuote>; buy: DomainAction };
+
+/** The holder's assistant on Your domains (D317 phase 5): the tab's conversation, and the DNS changes it proposes for a yes. */
+export type HolderChatMessage = { role: "user" | "assistant"; content: string };
+export type HolderProposalShape = { token: string; domain: string; summary: string; lines: string[]; touchesEmail: boolean };
+export type HolderActions = {
+  ask: (history: HolderChatMessage[], message: string) => Promise<{ ok: true; reply: string; proposals: HolderProposalShape[] } | { ok: false; problem: string }>;
+  confirm: (token: string) => Promise<FormState>;
+};

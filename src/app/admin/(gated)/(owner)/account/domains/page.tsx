@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { DnsZoneCard } from "@/components/admin/dns-zone-card";
 import { DomainRegistrationsCard } from "@/components/admin/domain-registrations-card";
+import { HolderAssistant } from "@/components/admin/holder-assistant";
 import { ButtonLink, Card, List, ListRow, PageHeader, RowActions, RowLead } from "@/components/admin/ui";
 import { ADMIN_LANG_FACTS, adminLangOf, type AdminLang } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
@@ -24,6 +25,8 @@ import {
   accountRenewAction,
   accountRenewalAction,
   accountUndoDnsAction,
+  askHolderAction,
+  confirmHolderAction,
   holdingAction,
   linkDomainAction,
   startStoreAction,
@@ -135,6 +138,7 @@ export default async function YourDomainsPage() {
           </List>
         )}
       </Card>
+      {held.some((d) => d.zoneId) && <HolderAssistant words={words.assistant} ask={askHolderAction} confirm={confirmHolderAction} />}
       <Suspense fallback={<div className="h-24 animate-pulse rounded-card bg-sunken" />}>
         <Registrations account={account} lang={lang} />
       </Suspense>
