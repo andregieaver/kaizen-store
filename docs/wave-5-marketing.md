@@ -30,7 +30,7 @@ everything here keeps email as the only channel so a second one is a new sender,
 | J | D304 | Accounts in depth: several addresses, order history search, the shopper's own data export from My account; forms that give a code for signing up and tag their subscribers | `customers.customer-accounts`, `customers.signup-forms-and-popups-building-a-list` |
 
 Each unit is its own commit (or a few) with its own migration(s), tests and decision row, shipped before the next starts. Each unit's detailed
-section is written here before it is built; units H to J are outlined in section 10.
+section is written here before it is built; units H to J are outlined in section 10, J detailed in section 11 and I in section 12.
 
 ## 2. Rules for every unit
 
@@ -851,7 +851,7 @@ product page shows it.
   nothing without a published review, so a store's pages are unchanged until it has one. The browser e2e of a buyer writing and staff publishing
   comes with G3, whose token page lets a test write without a shopper's sign-in.
 
-## 10. Units H to J, outlined (J is detailed in section 11)
+## 10. Units H to J, outlined (J is detailed in section 11, I in section 12)
 
 - **H, feeds (D302).** One normalised feed per store and market (title, description, price as shown with VAT, availability, GTIN/brand from custom
   fields, pictures, unit price), written as Google Merchant Center XML and the Meta, TikTok and Pinterest CSVs at a private, token-addressed URL.
@@ -944,3 +944,126 @@ Flow's own pages offer neither field. Tests: `src/server/signup-codes.int.test.t
 J1 and J2 with the stale export gap close `customers.customer-accounts` except social sign-in (said in its gap; bucket B). J3 closes
 `customers.signup-forms-and-popups-building-a-list` except the popup report. Each part re-rates its rows with a `history` entry and runs
 `pnpm parity:write`.
+
+## 12. Unit I (D303): ad pixels, conversion events and campaigns
+
+What the code has before I (surveyed at HEAD, 24 October 2026):
+
+- **Tracking tools (D58).** `stores.tracking` and `platform_settings.tracking` hold `ga4`, `gtm` and `metaPixel` ids (`TrackingSettings` in
+  `cookie-consent.ts`, edited in `cookie-settings.tsx`). `ConsentManager` loads them only after consent (GA4 with Consent Mode v2 under
+  `statistics`, Meta under `marketing`) and sends **page views only** (`gtag('config')`, `fbq('track','PageView')`, again on client navigation).
+  No view-item, add-to-cart, checkout or purchase event; no Google Ads, TikTok or Pinterest tag; no server-side event.
+- **Pay routes (D158).** `/cart`, `/checkout` and `/order` draw nothing from `OffPayRoutes` (so no `ConsentManager`) under `checkoutCsp()`. A
+  purchase therefore **cannot** be sent from the browser on the order page, and must not be: the server sends it (12.3).
+- **Visits (D152).** `/api/visit` keeps per store day a hashed visitor, device, `channel`, `source`, `campaign` (from `utm_*`, tidied), landing
+  page and whether `gclid`/`fbclid`/`ttclid` were present (booleans only, never the value); a cart made that day is tied to its visit
+  (`carts.visit_id`), so an order knows its channel. No cookie, no storage.
+- **Marketing page (D152).** Channels with sessions, orders, revenue, conversion, spend, CAC, ROAS and profit ROAS; `marketing_spend` is typed by
+  hand per day, channel and **campaign**. No per-campaign table, no UTM builder, no spend import, last-touch same-day only.
+- **Consent records.** `commerce.consents` keeps each choice by a random visitor id (the consent cookie's); carts and orders know nothing of it.
+
+I has three parts, each its own commit: **I1** events in the browser and the new tags, **I2** consent on the cart and server-side conversions,
+**I3** campaigns and attribution.
+
+### 12.1 Rules for I
+
+1. **Consent first, always.** No tag loads and no event is sent, from the browser or the server, for a visitor who has not accepted the category
+   the tool needs: `marketing` for Meta, Google Ads, TikTok and Pinterest, `statistics` for GA4 (and GTM by what it is set to carry, as today).
+   Withdrawing consent stops the browser at once and stops server events for carts made after it.
+2. **Kaizena Flow states the facts, the tool counts.** Events carry product ids (the variant's SKU, else its id), quantity, value and currency
+   **as the shopper was charged** (the order's own currency, VAT included, as the platforms expect), never a margin, a cost or a guess.
+3. **No personal data unless the owner chose it.** The default data level is *Standard*: no email, phone, name or address leaves Kaizena Flow.
+   *Enhanced* (the owner's explicit choice, per store, with the words *Send hashed email and phone with purchases*) adds SHA-256 hashes of the
+   normalised email and phone to server events only, never in the browser. Hashes are made in code at send time and never stored.
+4. **Never for orders that are not sales**: copied (`C-…`), host, Stripe test-mode, draft-made-by-staff-without-a-visit, gift-card-only and
+   `restricted_at` orders send nothing; an order sends its purchase once per platform (`event_id` = the order id, shared with any browser event
+   so the platform deduplicates).
+5. **Secrets are store settings** (D15): access tokens are encrypted with `SETTINGS_ENCRYPTION_KEY` (`secret-box.ts`), shown as hints, never sent
+   to a page; every call to a platform goes through one module per platform with an injectable fetch, a fixed host list and a 5 s timeout.
+6. **Data in the EU where we choose.** The platforms are the owner's own processors, named in the privacy starter (`legalFacts().trackingTools`
+   lists every tool switched on, so the new ones are added there and in `TRACKING_TOOL_NAMES`).
+
+### 12.2 I1: events in the browser and the new tags
+
+- **Settings.** `TrackingSettings` gains `googleAds` (`AW-…`, with an optional `googleAdsPurchaseLabel`), `tiktokPixel` and `pinterestTag`
+  (ids checked by shape in `cookie-consent-schema.ts`). Each is a `marketing` tool: `usedCategories()` adds `marketing`, `KNOWN_COOKIES` lists
+  their cookies (`_gcl_*`, `_ttp`, `_pin_unauth`, `_epik`) with purpose and category, the cookie scan knows them, and `TRACKING_TOOL_NAMES` names
+  them for the privacy starter. Kaizena Flow's own site keeps GA4, GTM and Meta only (no ads tags offered there).
+- **Loading.** `ConsentManager` loads each by its official snippet, only from the tool's own host (added to no CSP: storefront pages have none;
+  pay routes never load them). Google Ads shares the gtag loaded for GA4 (one `gtag.js`, `config` per id, Consent Mode v2's `ad_storage`,
+  `ad_user_data` and `ad_personalization` granted only with `marketing`).
+- **Events.** A small typed bus, `trackShop(event)` (`src/lib/shop-events.ts`, pure shape and mapping; the client part in `consent-manager.tsx`),
+  that components call without knowing which tools exist: `view_item` (the product page, once per variant shown, from `VariantChoice`),
+  `view_item_list` (a category, tag, products or search page's first page), `search` (the search page, the words only when longer than 2 and
+  never containing a digit run of 6+, which could be a person's number), and `add_to_cart` (after the server accepted the add, with the quantity
+  added and its price as shown). The bus drops events when no tool is loaded and queues none before consent. `mapEvent()` writes each tool's own
+  name and shape (GA4 `items[]`, Meta `ViewContent`/`AddToCart`/`Search` with `content_ids`, TikTok `ViewContent`/`AddToCart`, Pinterest
+  `pagevisit`/`addtocart`, the data layer's GA4 ecommerce object for GTM); a unit test holds every mapping.
+- **Not in the browser:** `begin_checkout` and `purchase`, which happen on pay routes. They are sent by the server (12.3); the settings page says
+  so in one line (*Checkout and purchases are sent from our server, so they are counted even with ad blockers*).
+- **Tests.** Unit: mappings, the number filter on search words. E2E (`e2e/ad-events.spec.ts`, tools pointed at a stub host): nothing loads or is
+  sent before consent; after `marketing` consent a product view and an add send one event each to every switched-on tool; a pay route loads none.
+
+### 12.3 I2: consent on the cart and server-side conversions
+
+- **Consent on the cart.** When the shopper's current choice includes `marketing`, the browser (from `ConsentManager`, never on a pay route)
+  posts to `/api/ads/signals` the platforms' click and browser ids that the tags set or the landing address carried: Meta `fbp`/`fbc`, Google
+  `gclid`/`gbraid`/`wbraid`, TikTok `ttclid`/`_ttp`, Pinterest `epik`, each checked by shape and length in `cleanAdSignals()` (`src/lib/ad-signals.ts`,
+  no zod: it is imported near the cart). The route finds the store's open cart by its cookie (never another's), writes `carts.ad_consent_at` and
+  `carts.ad_signals` (only those keys), and with `marketing` withdrawn clears both. A cart without `ad_consent_at` never sends anything.
+  `placeOrder()` copies them to `orders.ad_consent_at`/`ad_signals` (set once, by trigger), so a later change of mind on another device does not
+  rewrite an order.
+- **Connections.** `commerce.ad_connections` (store, `platform` in `meta`, `ga4`, `tiktok`, `pinterest`; the platform's id (pixel id, GA4
+  measurement id, TikTok pixel code, Pinterest ad account id), the encrypted token (Meta access token, GA4 Measurement Protocol API secret, TikTok
+  access token, Pinterest conversion token) with its hint, `data_level` `standard`/`enhanced`, `test_code` for the platform's test events, `on`),
+  written only by `src/server/ad-connections.ts` (owner-only, audited without the token), `settings` in `COPY_RULES` **without** the token
+  (`duplicate_store()` blanks it). Google Ads conversions by API (OAuth and a developer token) are bucket B; Google Ads is measured through the
+  gtag tag and GA4 linking, which the settings page says.
+- **The queue.** `commerce.ad_conversions` (store, order, platform, `event` `begin_checkout` or `purchase`, `event_id`, status `pending`, `sent`,
+  `skipped`, `failed`, tries, `next_at`, the platform's answer code; unique on order, platform and event): rows are made only by
+  `queueAdConversions()` (when a checkout starts, `begin_checkout`; when an order becomes paid with a captured payment, `purchase`, from
+  `applyPaymentAnswer()`'s paid path and the terms/manual paths through the same function), for each connection that is on, only when the order
+  passes `conversionEligible()` (12.1 rule 4 and `ad_consent_at`). `sendAdConversions()` in the every-minute marketing job sends due rows through
+  `src/server/ad-platforms/{meta,ga4,tiktok,pinterest}.ts` (request built by a pure `*Payload()` in `src/lib/ad-payloads.ts`, tested), three tries
+  with backoff, then `failed` with the answer code shown to the owner. A payload holds the event id, time, the order's value and currency, the
+  lines (SKU or id, quantity, unit price as charged), the click ids, the page address of the store's order page without its key, and only at
+  *Enhanced* the hashes. The client's IP address and user agent are **not** sent (we never keep them); the settings page says this lowers match
+  rates.
+- **Refunds** send nothing in I (the platforms' refund events are optional); said in the as-built note.
+- **Personal data.** `ad_signals` on carts and orders are personal data (pseudonymous ids): `PERSONAL_DATA` entries (export section `marketing`,
+  erasure clears them and deletes the order's `ad_conversions`), cleared from orders 90 days after the purchase was sent (`pruneAdSignals()` in the
+  daily job) and from carts with the cart. `ad_conversions` keeps no personal field. `EMAIL_KINDS` is untouched.
+- **What the owner sees.** Marketing → *Ads and pixels* (`/admin/{store}/marketing/ads`, `marketing:write`, the token fields owner-only): per
+  platform its browser tag id, its server connection, *Send a test event*, and the last 7 days' sent, skipped (by reason) and failed counts, never a
+  person.
+- **Tests.** Unit: payloads per platform (euro and NOK), eligibility, hashing normalisation. Integration (`ad-conversions.int.test.ts`, platforms
+  stubbed): a consented cart's paid order sends one purchase per connected platform with the same event id; an order without consent, a copied,
+  host or test-mode order sends nothing; a failure retries then fails; erasure clears signals; another store's cart cannot be written.
+
+### 12.4 I3: campaigns and attribution
+
+- **Campaign table.** Marketing gains *Campaigns*: rows by `source` and `campaign` from `visits` (only visits with a campaign), with sessions,
+  orders and revenue through `carts.visit_id` (D152's `PAID`, without VAT, main currency, copied and host orders out), spend from
+  `marketing_spend` where its campaign matches (case-insensitive, tidied as visits are), CAC and ROAS by `docs/analytics.md`'s definitions (the
+  campaign rows are defined there first). A campaign with no spend shows *No spend entered*, never 0 ROAS. CSV `marketing.campaigns`.
+- **UTM builder.** *Make a campaign link* on Marketing: a store page (the store's own addresses only, through `marketLink()`), source, medium (a
+  choice that matches a channel rule), campaign name; it shows the link and the channel the visit will be sorted into (`classifyChannel()`), and
+  copies it. Nothing is stored.
+- **Spend import.** A CSV of day, channel, campaign, amount, currency (the platforms' exports mapped by a header choice) as a D165 job
+  `spend_import`, through `csv.ts`, owner-only, adding to `marketing_spend` with a source note; a re-import of the same file adds nothing (rows
+  keyed by day, channel, campaign and a file hash). Syncing spend from an ad platform is bucket B.
+- **First touch, with consent only.** For a visitor who accepted `statistics`, `VisitBeacon` keeps the first channel, source and campaign of the
+  last 30 days in `kaizen_touch_{storeId}` (first-party, a `statistics` entry in `KNOWN_COOKIES`, no id, only the three words and a date), sent
+  with each visit; a cart made with it keeps `carts.first_touch` (copied to the order). Without consent nothing changes: same-day, no cookie,
+  and D152's claims stay true. The Marketing page offers **Last visit** (default, as today) or **First visit in 30 days** for the period; the
+  first-touch view counts only orders that have one and says how many orders it covers (*First visit known for 312 of 480 orders*), never filling
+  the rest.
+- **Tests.** Unit: campaign rows, the builder's links and channel. Integration: campaign revenue in a euro scenario, copied and host orders out,
+  spend import idempotent. E2E: the touch cookie only after `statistics` consent.
+
+### 12.5 Rows
+
+I1 and I2 close `customers.ad-pixels-and-conversion-events` and `analytics.third-party-analytics-and-pixels-with-consent` except a purchase event
+in the browser, which pay routes forbid by design (said in both gaps, with the server event as the measure); I3 closes
+`customers.marketing-campaign-tracking-and-attribution` and moves `analytics.marketing-and-channel-attribution` to full except ad-platform spend
+sync (bucket B). Each part re-rates its rows with a `history` entry and runs `pnpm parity:write`.
