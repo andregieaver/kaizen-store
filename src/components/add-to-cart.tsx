@@ -12,6 +12,7 @@ import { RecommendField } from "./recommend-field";
 import { useOpenCartAfterAdd } from "./cart-drawer";
 import { useChosenPlan } from "./purchase-options";
 import { trackedItem, useShopTrack } from "./shop-track";
+import { useKeepFocus } from "./keep-focus";
 
 export type AddToCartLabels = {
   addToCart: string;
@@ -49,6 +50,7 @@ export function AddToCart({
   capped?: string;
 }) {
   const [state, action, pending] = useActionState(addToCart, initial);
+  const keepFocus = useKeepFocus(pending);
   useOpenCartAfterAdd(openCart, cartHref, state);
   const plan = useChosenPlan();
   const track = useShopTrack();
@@ -76,6 +78,7 @@ export function AddToCart({
     <form
       action={action}
       onSubmit={(event) => {
+        keepFocus(event);
         asked.current = Math.max(1, Number(new FormData(event.currentTarget).get("quantity") ?? 1) || 1);
       }}
       className="flex flex-col items-end gap-1"

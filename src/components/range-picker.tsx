@@ -18,6 +18,7 @@ import { useOpenCartAfterAdd } from "./cart-drawer";
 import { Dropdown } from "./dropdown";
 import { VatAmount } from "./price";
 import { showVariantPicture, type VariantPicture } from "./variant-picture";
+import { useKeepFocus } from "./keep-focus";
 
 export type RangePickerLabels = AddToCartLabels & {
   chooseDates: string;
@@ -159,6 +160,7 @@ export function RangePicker({
     }
     return result;
   }, initialState);
+  const keepFocus = useKeepFocus(pending);
   useOpenCartAfterAdd(openCart, cartHref, state);
 
   const count = byDay ? (start && end ? rangeCount(kind, start, end) : 0) : time ? (period === "hour" ? hours : 1) : 0;
@@ -360,7 +362,7 @@ export function RangePicker({
         </p>
       )}
 
-      <form action={action} className="flex flex-col items-start gap-1">
+      <form action={action} onSubmit={keepFocus} className="flex flex-col items-start gap-1">
         <input type="hidden" name="store" value={store} />
         <input type="hidden" name="market" value={market} />
         <input type="hidden" name="variantId" value={variantId} />

@@ -18,7 +18,8 @@ const MOST_AT_ONCE = 8;
 /**
  * Brands as a carousel (D204): a strip that keeps moving (CSS only, so it runs without a script; `speed` is the seconds each logo
  * takes to pass) or one that steps a logo at a time every `interval` seconds. Both stop for a visitor who prefers less motion (the
- * strip is then a row to scroll) and pause under the pointer or focus. The logos in view are `--brand-cols`,
+ * strip is then a row to scroll) and pause under the pointer or focus, and a moving one has a Pause button (PSI 2026-10-24, ACC-06:
+ * WCAG 2.2.2 asks for a way to stop motion that lasts more than five seconds). The logos in view are `--brand-cols`,
  * set per screen size by the block's rules (`blockStyle()`).
  */
 export function BrandsCarousel({
@@ -39,6 +40,7 @@ export function BrandsCarousel({
   const m = t(usePageLanguage());
   const [held, setHeld] = useState(false);
   const [calm, setCalm] = useState(false);
+  const [paused, setPaused] = useState(false);
   const track = useRef<HTMLUListElement>(null);
 
   useEffect(() => {
@@ -49,7 +51,7 @@ export function BrandsCarousel({
     return () => query.removeEventListener("change", read);
   }, []);
 
-  const still = held || calm;
+  const still = held || calm || paused;
   // Moved by the visitor only (D205): arrows on a computer, a swipe on a phone; an arrow is off at its end.
   const [ends, setEnds] = useState({ start: true, end: false });
   useEffect(() => {
@@ -197,6 +199,30 @@ export function BrandsCarousel({
         >
           {set("a", false)}
         </ul>
+      )}
+      {movement !== "none" && !calm && (
+        <div className="kz-brands-controls">
+          <button
+            type="button"
+            className="kz-brands-arrow"
+            aria-label={paused ? m.carouselPlay : m.carouselPause}
+            aria-pressed={paused}
+            onClick={() => setPaused((was) => !was)}
+          >
+            <svg
+              viewBox="0 0 24 24"
+              className="size-5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+            >
+              {paused ? <path d="m8 5 11 7-11 7z" /> : <path d="M9 5v14M15 5v14" />}
+            </svg>
+          </button>
+        </div>
       )}
     </div>
   );

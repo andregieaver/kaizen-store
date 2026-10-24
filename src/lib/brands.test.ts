@@ -64,12 +64,14 @@ describe("Brands (D204)", () => {
     expect(pageBlockSchema.safeParse(block({ items: [{ id: "i1", name: "A", picture: null, href: "javascript:alert(1)" }] })).success).toBe(false);
   });
 
-  it("draws greys, with colour on hover when asked, and arrows without a Pause button when visitors move it", () => {
+  it("draws greys, with colour on hover when asked, arrows when visitors move it, and a Pause button when it moves by itself", () => {
     expect(renderToStaticMarkup(createElement(BrandsView, { block: block({ greyscale: true }) }))).toContain('data-grey="always"');
     expect(renderToStaticMarkup(createElement(BrandsView, { block: block({ greyscale: true, colourOnHover: true }) }))).toContain('data-grey="hover"');
     const still = renderToStaticMarkup(createElement(BrandsView, { block: block({ view: "carousel", movement: "none" }) }));
     expect(still.match(/kz-brands-arrow/g)).toHaveLength(2);
     expect(still).not.toContain("kz-brands-marquee");
-    expect(renderToStaticMarkup(createElement(BrandsView, { block: block({ view: "carousel" }) }))).not.toContain("aria-pressed");
+    expect(still).not.toContain("aria-pressed");
+    // A strip that moves by itself can be stopped for good (WCAG 2.2.2, PSI 2026-10-24 ACC-06).
+    expect(renderToStaticMarkup(createElement(BrandsView, { block: block({ view: "carousel" }) }))).toContain('aria-pressed="false"');
   });
 });

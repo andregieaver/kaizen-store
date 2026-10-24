@@ -14,6 +14,7 @@ export const shellEn = {
     sections: "Sections",
     thisSection: "This section",
     loading: "Loading …",
+    skipToContent: "Skip to content",
   },
   rail: {
     narrowSidebar: "Narrow the sidebar",

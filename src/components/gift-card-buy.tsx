@@ -10,6 +10,7 @@ import type { BrowserMessages } from "@/lib/messages/en-browser";
 
 import type { AddToCartLabels } from "./add-to-cart";
 import { useOpenCartAfterAdd } from "./cart-drawer";
+import { useKeepFocus } from "./keep-focus";
 
 export type GiftCardBuyLabels = BrowserMessages["giftCard"];
 
@@ -43,6 +44,7 @@ export function GiftCardBuy({
 }) {
   const id = useId();
   const [state, action, pending] = useActionState(addToCart, initial);
+  const keepFocus = useKeepFocus(pending);
   useOpenCartAfterAdd(openCart, cartHref, state);
   const [variantId, setVariantId] = useState(amounts[0]?.variantId ?? "");
   const [send, setSend] = useState(false);
@@ -82,7 +84,7 @@ export function GiftCardBuy({
   const inputClass = "min-h-11 w-full rounded-md border border-border bg-background px-3 text-base";
 
   return (
-    <form action={action} className="flex flex-col gap-4">
+    <form action={action} onSubmit={keepFocus} className="flex flex-col gap-4">
       <input type="hidden" name="store" value={store} />
       <input type="hidden" name="market" value={market} />
       <input type="hidden" name="variantId" value={variantId} />

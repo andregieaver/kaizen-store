@@ -136,6 +136,16 @@ export function AdminFrame({
     </MobileMenu>
   );
 
+  // The first stop for a keyboard: past the rail, the bar and the sidebar to the page (PSI 2026-10-24, ACC-02).
+  const skip = (
+    <a
+      href="#admin-main"
+      className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-pill focus:bg-card focus:px-4 focus:py-2 focus:text-ink focus:shadow"
+    >
+      {w.skipToContent}
+    </a>
+  );
+
   // A page in the `focus` layout keeps the level's account menu and nothing of its navigation.
   const focused = (normal: ReactNode, inFocus: ReactNode) =>
     focus ? <ByPath pattern={focus.pattern} match={inFocus} otherwise={normal} /> : normal;
@@ -156,6 +166,7 @@ export function AdminFrame({
     // The rail (docs/admin-style.md 5.3, 5.4): the sections down the left, then a plain bar over the page, no background or line.
     return (
       <>
+        {skip}
         {before}
         <div data-admin-layout="rail" className="flex min-h-dvh w-full flex-1">
           {focused(<AdminRail items={tabs} home={home ?? { href: "/admin", label: "Kaizena Flow" }} label={tabsLabel} collapseOn={workspace} />, null)}
@@ -188,6 +199,7 @@ export function AdminFrame({
 
   return (
     <>
+      {skip}
       {before}
       <HidingHeader>
         <header className="border-b border-line bg-card">

@@ -9,6 +9,7 @@ export const shellNb: ShellMessages = {
     sections: "Seksjoner",
     thisSection: "Denne seksjonen",
     loading: "Laster …",
+    skipToContent: "Hopp til innhold",
   },
   rail: {
     narrowSidebar: "Gjør sidefeltet smalere",

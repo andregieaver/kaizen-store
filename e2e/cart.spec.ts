@@ -14,9 +14,14 @@ test("add to cart, change quantity within stock, and remove", async ({ page }) =
   await black.click();
   await expect(choose).toContainText("Farge: Svart");
   await expect(variants.getByRole("listbox")).toBeHidden();
-  await variants.getByRole("button", { name: "Legg i handlekurven" }).click();
+  // Pressed from the keyboard, the button keeps the focus once added (PSI 2026-10-24, ACC-02): it is disabled while the cart is
+  // asked, and the browser would otherwise leave the focus on the page itself.
+  const add = variants.getByRole("button", { name: "Legg i handlekurven" });
+  await add.focus();
+  await page.keyboard.press("Enter");
   await expect(variants.getByRole("status")).toContainText("Lagt i handlekurven.");
   await expect(page.getByRole("link", { name: "Handlekurv (1)" })).toBeVisible();
+  await expect(add).toBeFocused();
 
   await variants.getByRole("link", { name: "Gå til handlekurven" }).click();
   await expect(page).toHaveURL("/s/demo/no/cart");

@@ -14,6 +14,7 @@ import type { AddToCartLabels } from "./add-to-cart";
 import { useOpenCartAfterAdd } from "./cart-drawer";
 import { Dropdown } from "./dropdown";
 import { showVariantPicture, type VariantPicture } from "./variant-picture";
+import { useKeepFocus } from "./keep-focus";
 
 export type AppointmentPickerLabels = AddToCartLabels & {
   chooseTime: string;
@@ -104,6 +105,7 @@ export function AppointmentPicker({
     if (result.outcome === "slot_taken") await fetchWeek(week.from, resourceId);
     return result;
   }, initialState);
+  const keepFocus = useKeepFocus(pending);
   useOpenCartAfterAdd(openCart, cartHref, state);
 
   const day = week.days.find((d) => d.date === date);
@@ -243,7 +245,7 @@ export function AppointmentPicker({
         </div>
       </fieldset>
 
-      <form action={action} className="flex flex-col items-start gap-1">
+      <form action={action} onSubmit={keepFocus} className="flex flex-col items-start gap-1">
         <input type="hidden" name="store" value={store} />
         <input type="hidden" name="market" value={market} />
         <input type="hidden" name="variantId" value={variantId} />

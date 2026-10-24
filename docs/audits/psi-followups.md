@@ -39,11 +39,18 @@ maturity for the run-up to launch. Point IDs are the audit's.
       event-triggered turns.
 - [ ] **AGT-01** Task parity, gated like the existing tools: staff and roles, billing, broadcasts, segments, automations, reviews,
       order edits, exchanges, support replies, Work.
-- [ ] **ACC-01** Axe on the `signed-in` Playwright project.
-- [ ] **ACC-02, UX-11** Keep focus on the buy button after adding to the cart (it falls to `<body>` today); a skip link in the admin
-      shell; a Pause control on the brands marquee (ACC-06).
-- [ ] **DATA-02, PERF-04** A scan test pairing every writer of `stores` with a `storeTag` refresh; a taxonomy version in the search
-      cache key for `understand` entries.
+- [x] **ACC-01** Axe on the `signed-in` Playwright project: `e2e/signed-in/a11y.spec.ts`, ten owner pages and four platform pages, no
+      serious or critical finding at the start.
+- [x] **ACC-02, UX-11** Focus stays on the button that sent a buy form (`useKeepFocus()`, `src/components/keep-focus.ts`: add to cart,
+      the phone's bar, gift cards, bookings, box deliveries); a skip link in the admin shell (`#admin-main`); a Pause button on a moving
+      brands strip (ACC-06, reversing D204's choice of none).
+- [ ] **ACC-02** The other storefront forms that disable their button while sending (account, company, privacy, codes, withdrawal,
+      reviews, exchanges, pay links: about 25) take `useKeepFocus()` too.
+- [x] **DATA-02, PERF-04** `src/server/store-writers.scan.test.ts`: a new writer of `commerce.stores` must refresh `storeTag(slug)`;
+      the 23 that rely on their callers are listed and the list only shrinks. The search cache's `understand` entries were already keyed
+      on the store's categories and tags (the instructions are part of the key, `src/server/query-understanding.ts`): the audit's doubt
+      there was unfounded.
+- [ ] **DATA-02** Move the 23 listed writers to refreshing the tag themselves, as each is next touched.
 - [ ] Dev-only advisories (Vitest's and drizzle-kit's local dev servers: vite, `@vitest/mocker`, esbuild) at the next Vitest upgrade.
 
 ## Leave for the launch run-up

@@ -24,7 +24,7 @@ test("logos in a row follow the screen size, and are held to their height", asyn
   for (const h of heights) expect(h).toBeLessThanOrEqual(40.5);
 });
 
-test("a carousel that keeps moving moves, and stops under the pointer", async ({ page }) => {
+test("a carousel that keeps moving moves, stops under the pointer, and stops for good with its Pause button", async ({ page }) => {
   const url = await storePageWith("merker-rull", [brands("b2", { view: "carousel", speed: 2, columns: 3 })]);
   await page.setViewportSize({ width: 1200, height: 800 });
   await page.goto(url);
@@ -33,8 +33,7 @@ test("a carousel that keeps moving moves, and stops under the pointer", async ({
   // The strip loops back to its start every turn, so one late sample can land past the wrap: wait until it is seen moving.
   const first = await x();
   await expect.poll(async () => Math.abs((await x()) - first), { timeout: 5000, intervals: [200] }).toBeGreaterThan(5);
-  // It stops under the pointer; there is no Pause button.
-  await expect(page.getByRole("button", { name: /pause/i })).toHaveCount(0);
+  // It stops under the pointer.
   const window = (await page.locator(".kz-brands-window").boundingBox())!;
   await page.mouse.move(window.x + window.width / 2, window.y + window.height / 2);
   // The pause follows the pointer's arrival (a state the carousel sets): measure once it has.
@@ -43,6 +42,21 @@ test("a carousel that keeps moving moves, and stops under the pointer", async ({
   const held = await x();
   await page.waitForTimeout(500);
   expect(Math.abs((await x()) - held)).toBeLessThan(1);
+  // Its Pause button (WCAG 2.2.2) keeps it still after the pointer and the focus have gone, until pressed again.
+  const toggle = page.locator(".kz-brands-controls button");
+  await expect(toggle).toHaveAttribute("aria-pressed", "false");
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-pressed", "true");
+  await page.mouse.move(5, 790);
+  await toggle.blur();
+  await expect(page.locator(".kz-brands-carousel")).toHaveAttribute("data-still", "");
+  const paused = await x();
+  await page.waitForTimeout(500);
+  expect(Math.abs((await x()) - paused)).toBeLessThan(1);
+  await toggle.click();
+  await page.mouse.move(5, 790);
+  await toggle.blur();
+  await expect(page.locator(".kz-brands-carousel")).not.toHaveAttribute("data-still", "");
 });
 
 test("a carousel that steps moves one logo at a time", async ({ page }) => {

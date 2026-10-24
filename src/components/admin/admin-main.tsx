@@ -35,7 +35,7 @@ export function AdminMain({
   const y = railed ? "pt-2 pb-10" : "py-8";
   if (focus && new RegExp(focus).test(path)) {
     return (
-      <main data-admin-layout="focus" className="mx-auto flex w-full max-w-[760px] min-w-0 flex-1 flex-col px-4 pt-2 pb-16">
+      <main id="admin-main" tabIndex={-1} data-admin-layout="focus" className="mx-auto flex w-full max-w-[760px] min-w-0 flex-1 flex-col px-4 pt-2 pb-16">
         {children}
       </main>
     );
@@ -43,7 +43,7 @@ export function AdminMain({
   if (new RegExp(fullWidth).test(path)) {
     // The `workspace` layout (docs/admin-style.md 6.3): the tool's own columns take the width; beside the narrowed rail, less room at the sides.
     return (
-      <main data-admin-layout={railed ? "workspace" : undefined} className={`flex w-full min-w-0 flex-1 flex-col ${railed ? "px-4 md:px-6" : pad} ${y}`}>
+      <main id="admin-main" tabIndex={-1} data-admin-layout={railed ? "workspace" : undefined} className={`flex w-full min-w-0 flex-1 flex-col ${railed ? "px-4 md:px-6" : pad} ${y}`}>
         {children}
       </main>
     );
@@ -51,7 +51,7 @@ export function AdminMain({
   return (
     <div className={`mx-auto flex w-full flex-1 gap-10 ${pad} ${wide ? "" : "max-w-7xl"}`}>
       {sidebar}
-      <main className={`min-w-0 flex-1 ${y}`}>
+      <main id="admin-main" tabIndex={-1} className={`min-w-0 flex-1 ${y}`}>
         {children}
       </main>
     </div>

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState } from "react";
 
 import { addToDeliveryAction, type AddToDeliveryState } from "@/app/s/[store]/[market]/deliveries/actions";
+import { useKeepFocus } from "./keep-focus";
 
 export type AddToDeliveryLabels = {
   add: string;
@@ -34,6 +35,7 @@ export function AddToDelivery({
   labels: AddToDeliveryLabels;
 }) {
   const [state, action, pending] = useActionState(addToDeliveryAction, initial);
+  const keepFocus = useKeepFocus(pending);
   const message = {
     idle: null,
     added: labels.added,
@@ -46,7 +48,7 @@ export function AddToDelivery({
   const linked = state.outcome === "added" || state.outcome === "sign_in" || state.outcome === "no_list";
 
   return (
-    <form action={action} className="flex flex-col items-end gap-1">
+    <form action={action} onSubmit={keepFocus} className="flex flex-col items-end gap-1">
       <input type="hidden" name="store" value={store} />
       <input type="hidden" name="market" value={market} />
       <input type="hidden" name="variantId" value={variantId} />

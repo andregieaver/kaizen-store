@@ -18,6 +18,7 @@ import { useChosenPlan } from "./purchase-options";
 import { Dropdown } from "./dropdown";
 import { HidingBottomBar } from "./store-chrome";
 import { useVariantChoice } from "./variant-choice";
+import { useKeepFocus } from "./keep-focus";
 
 export type BarVariant = {
   id: string;
@@ -62,6 +63,7 @@ export function ProductBar({
   labels: AddToCartLabels & { chooseVariant: string; soldOut: string; goCart: string };
 }) {
   const [state, action, pending] = useActionState(addToCart, initial);
+  const keepFocus = useKeepFocus(pending);
   useOpenCartAfterAdd(openCart, cartHref, state);
   const plan = useChosenPlan();
   const buyer = useBuyer(storeAudience);
@@ -98,7 +100,7 @@ export function ProductBar({
 
   return (
     <HidingBottomBar product>
-      <form action={action} className="relative flex items-center gap-3 px-4 py-3">
+      <form action={action} onSubmit={keepFocus} className="relative flex items-center gap-3 px-4 py-3">
         <input type="hidden" name="store" value={store} />
         <input type="hidden" name="market" value={market} />
         <input type="hidden" name="variantId" value={variant.id} />

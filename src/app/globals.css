@@ -738,6 +738,15 @@ dialog .kz-table-box[data-fixed="popup"] .kz-th-section {
     display: none;
   }
 }
+/* A moving strip's Pause button (WCAG 2.2.2), at its end, under the logos. */
+.kz-brands-controls {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+}
+.kz-brands-controls .kz-brands-arrow {
+  display: inline-flex;
+}
 /* Moved by the visitor (D205): arrows beside the strip where there is a mouse, a swipe where there is a finger. */
 .kz-brands-stepper {
   display: flex;
