@@ -121,6 +121,7 @@ export const assistantNb: AssistantMessages = {
     support_overview: "Ser på kundestøtte",
     list_support_conversations: "Ser på kundestøttesamtaler",
     gift_card_overview: "Ser på gavekort",
+    reviews_overview: "Ser på omtaler",
     store_overview: "Ser på butikken",
     sales_summary: "Summerer salget",
     list_orders: "Ser på bestillinger",

@@ -64,6 +64,7 @@ const READ_ONLY_ROUTES = new Set([
   "src/app/admin/(gated)/[store]/redirects/export/file/route.ts",
   "src/app/admin/(gated)/[store]/redirects/export/[jobId]/tick/route.ts",
   "src/app/admin/(gated)/[store]/redirects/404s/export/route.ts",
+  "src/app/admin/(gated)/[store]/reviews/export/route.ts",
   // The stock file (wave 3, D172): a POST so it is never cached or fetched by a link, and it only reads.
   "src/app/admin/(gated)/[store]/inventory/export/file/route.ts",
   "src/app/admin/(gated)/[store]/inventory/export/[jobId]/tick/route.ts",

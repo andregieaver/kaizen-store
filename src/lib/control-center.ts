@@ -96,6 +96,8 @@ export type StoreFigures = {
   handOver?: HandOverFigures;
   /** Invoices on payment terms past their due day and not paid (D293), only when some are and only for a member who may read orders. A count only. */
   termsOverdue?: number;
+  /** Reviews waiting to be checked (D301 G3), only when some do, the feature is on and the member may read products. A count only. */
+  reviewsWaiting?: number;
 };
 
 /** Orders to hand over (D237): to be collected (and when the oldest was placed), and local deliveries not delivered yet. */
@@ -189,6 +191,10 @@ export function attentionFor(stores: StoreFigures[], now = Date.now(), w: Attent
     }
     if (s.supportWaiting && s.supportWaiting > 0) {
       items.push({ text: say(w.supportWaiting, { n: s.supportWaiting }), href: `${base}/support`, action: a.answer, urgent: true });
+    }
+    // Reviews waiting to be checked (D301 G3): not urgent, but a buyer is waiting to see theirs shown.
+    if (s.reviewsWaiting && s.reviewsWaiting > 0) {
+      items.push({ text: count(s.reviewsWaiting, w.reviewsWaiting), href: `${base}/reviews?state=pending`, action: a.check });
     }
     if (returns && returns.requested > 0) {
       items.push({ text: count(returns.requested, w.returnRequests), href: `${base}/returns?status=requested`, action: a.answer });

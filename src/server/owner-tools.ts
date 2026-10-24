@@ -60,6 +60,7 @@ import { ownedStores, usageRows } from "./ai-usage";
 import { analyticsAlertsTool, analyticsOverviewTool, explainChangeTool } from "./analytics-tools";
 import { listSupportConversationsTool, supportOverviewTool } from "./support-manager-tools";
 import { giftCardOverview } from "./gift-cards-admin";
+import { reviewsOverview } from "./review-import";
 import { NOT_EDIT_REFUND } from "./analytics-sql";
 import { ordersToSend, pickListData } from "./pick-list";
 import { textList } from "./sql-arrays";
@@ -228,6 +229,19 @@ async function giftCardOverviewTool(ctx: OwnerToolContext) {
     held_by_customers: outstanding.map((o) => ({ currency: o.currency, amount: money(ctx.store, o.amountMinor, o.currency), cards_with_money: o.cards })),
     note: "Gift cards sold are money the store owes until they are spent; they are not sales. What customers hold counts the cards of the store's payment mode now (test cards while it takes test payments).",
     link: `/admin/${ctx.store.slug}/gift-cards`,
+  };
+}
+
+/** `reviews_overview` (D301 G3b): counts by state, the average and the best and worst products, counted in code; never an author or a review's words. */
+async function reviewsOverviewTool(ctx: OwnerToolContext) {
+  const o = await reviewsOverview(ctx.store.id);
+  return {
+    reviews: { waiting_to_be_checked: o.counts.pending, published: o.counts.published, hidden: o.counts.hidden, imported: o.imported },
+    average_stars: o.average === null ? "no published reviews yet" : `${o.average} out of 5`,
+    best_products: o.best.map((p) => ({ product: p.product, average: p.average, reviews: p.count })),
+    worst_products: o.worst.map((p) => ({ product: p.product, average: p.average, reviews: p.count })),
+    note: "Only products with at least three published reviews are ranked. A review is never hidden because it is negative.",
+    link: `/admin/${ctx.store.slug}/reviews`,
   };
 }
 
@@ -2144,6 +2158,7 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   support_overview: supportOverviewTool,
   list_support_conversations: listSupportConversationsTool,
   gift_card_overview: giftCardOverviewTool,
+  reviews_overview: reviewsOverviewTool,
   usage_and_limits: usageAndLimitsTool,
   list_domains: listDomainsTool,
   check_domain: checkDomainTool,

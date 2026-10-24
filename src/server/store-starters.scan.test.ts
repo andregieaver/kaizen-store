@@ -27,6 +27,7 @@ const READERS: Record<string, "real" | "template" | "both"> = {
   "src/server/broadcasts.ts": "real",
   "src/server/automations.ts": "real",
   "src/server/stock-requests.ts": "real",
+  "src/server/review-import.ts": "real",
   "src/server/review-requests.ts": "real",
   "src/server/reviews.ts": "real",
   "src/server/content-grid.ts": "real",

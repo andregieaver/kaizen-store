@@ -99,6 +99,10 @@ export const homeNb: HomeMessages = {
       one: "{store}: {n} faktura med betalingsfrist har forfalt.",
       many: "{store}: {n} fakturaer med betalingsfrist har forfalt.",
     },
+    reviewsWaiting: {
+      one: "{store}: {n} omtale venter på kontroll.",
+      many: "{store}: {n} omtaler venter på kontroll.",
+    },
     drafts: {
       one: "{store}: {n} utkast til bestilling venter på betaling{late}.",
       many: "{store}: {n} utkast til bestillinger venter på betaling{late}.",
@@ -161,6 +165,7 @@ export const homeNb: HomeMessages = {
       sendAgain: "Send på nytt",
       answer: "Svar",
       seeOrders: "Se bestillinger",
+      check: "Kontroller",
       openDrafts: "Åpne utkast",
       sendTheRest: "Send resten",
       openOrders: "Åpne bestillinger",

@@ -235,6 +235,11 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["reviews", "product reviews", "ratings", "stars", "moderation", "verified purchase", "answer review", "omtaler", "anmeldelser", "recensioner", "testimonials"],
     feature: "reviews",
   }),
+  store("reviews.import", "/reviews/import", "Import reviews", "Main", "Brings reviews written on another service in from a CSV file with the columns product_handle, rating, title, body, author, date and source (Shopify's and Judge.me's exports read as they are): each for one of your products by its handle, marked imported and never verified, published at once or waiting for a check. Check the file first, then import; every refused row is named with its line. A file imported twice adds nothing the second time. Download all published and waiting reviews as a CSV from the Reviews page.", {
+    tasks: ["Import reviews from Shopify or Judge.me", "Import product reviews from a CSV file", "Export product reviews"],
+    keywords: ["import reviews", "export reviews", "review csv", "judge.me", "shopify reviews", "trustpilot", "importer omtaler"],
+    feature: "reviews",
+  }),
   store("inventory.history", "/inventory/history", "Stock history", "Main", "Every change of a stock level, newest first: when, which variant and location, the change and the new figure, the reason and who or what made it (a staff member, an order, a return, a file, the AI manager). Filter by SKU, location, reason and dates. Kept 24 months; a wrong change is corrected by a new one.", {
     tasks: ["See why a stock figure changed", "Find the order or return behind a change", "Filter the history by SKU, location, reason or dates"],
     keywords: ["stock history", "inventory history", "movements", "adjustment history", "audit", "who changed the stock", "lagerhistorikk"],

@@ -83,6 +83,10 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     title: "Omtaler",
     keywords: ["omtaler", "anmeldelser", "produktomtaler", "vurderinger", "stjerner", "moderering", "verifisert kjøp", "svar på omtale"],
   },
+  "store:reviews.import": {
+    title: "Importer omtaler",
+    keywords: ["importer omtaler", "eksporter omtaler", "omtaler csv", "judge.me", "shopify-omtaler", "trustpilot"],
+  },
   "store:inventory.history": {
     title: "Lagerhistorikk",
     keywords: ["lagerhistorikk", "lagerbevegelser", "justeringer", "hvem endret lageret", "historikk"],

@@ -969,6 +969,11 @@ export const OWNER_TOOLS = [
     z.object({}),
   ),
   tool(
+    "reviews_overview",
+    "The store's product reviews in figures: how many wait to be checked, are published and are hidden, how many were imported from another service, the average of the published stars, and the products with at least three published reviews, best and worst ten. Never an author's name or a review's words. Read-only; reviews are checked on the Reviews page.",
+    z.object({}),
+  ),
+  tool(
     "usage_and_limits",
     "What the store has used this month against what its plan includes (D314), measured by Kaizena Flow: storage, products, staff, its own domains, visits, bandwidth, marketing emails and AI on Kaizena Flow's key, each with its limit (or no limit), where the limit comes from and whether it is close or used up. Visits and bandwidth only ever warn: the shop is never taken offline. A figure not measured yet says so; never give it as zero. Read-only: limits are changed by choosing another plan on the Billing page, or by Kaizena Flow.",
     z.object({}),

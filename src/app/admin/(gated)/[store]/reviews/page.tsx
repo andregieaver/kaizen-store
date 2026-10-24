@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
-import { Button, Card, CARD_CLASS, Chip, KpiTile, PageHeader } from "@/components/admin/ui";
-import { fillWords } from "@/lib/admin-fill";
+import { Button, ButtonLink, Card, CARD_CLASS, Chip, KpiTile, PageHeader } from "@/components/admin/ui";
+import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { HIDE_REASONS, REQUEST_DAYS_MAX, REQUEST_DAYS_MIN, REVIEW_ANSWER_MAX, REVIEW_STATUSES, type ReviewStatus } from "@/lib/review-status";
@@ -282,16 +282,31 @@ export default async function ReviewsPage({ params, searchParams }: PageProps<"/
                 defaultValue={settings.requestDays}
                 className="w-28 rounded-lg border border-line bg-card px-3 py-2"
               />
-              <span className="text-caption text-muted">{w.requestDaysHint(REQUEST_DAYS_MIN, REQUEST_DAYS_MAX)}</span>
+              <span className="text-caption text-muted">{fillWords(w.requestDaysHint, { min: REQUEST_DAYS_MIN, max: REQUEST_DAYS_MAX })}</span>
             </label>
             <div>
               <SubmitButton>{w.save}</SubmitButton>
             </div>
           </ActionForm>
         ) : (
-          <p className="text-body text-ink">{settings.requestsOn ? w.requestsIsOn(settings.requestDays) : w.requestsIsOff}</p>
+          <p className="text-body text-ink">{settings.requestsOn ? fillWords(w.requestsIsOn, { days: settings.requestDays }) : w.requestsIsOff}</p>
         )}
-        {settings.requestsOn && <p className="mt-3 text-caption text-muted">{w.requestsSent(sent)}</p>}
+        {settings.requestsOn && <p className="mt-3 text-caption text-muted">{countWords(sent, w.requestsSent)}</p>}
+      </Card>
+
+      <Card title={words.move.title} description={words.move.description} compact>
+        <div className="flex flex-wrap items-center gap-3">
+          {canChange && (
+            <ButtonLink href={`${base}/import`} kind="secondary">
+              {words.move.importLink}
+            </ButtonLink>
+          )}
+          <form method="post" action={`${base}/export`}>
+            <Button type="submit" kind="secondary">
+              {words.move.export}
+            </Button>
+          </form>
+        </div>
       </Card>
     </div>
   );

@@ -104,6 +104,10 @@ export const homeEn = {
       one: "{store}: {n} invoice on payment terms is overdue.",
       many: "{store}: {n} invoices on payment terms are overdue.",
     },
+    reviewsWaiting: {
+      one: "{store}: {n} review is waiting to be checked.",
+      many: "{store}: {n} reviews are waiting to be checked.",
+    },
     drafts: {
       one: "{store}: {n} draft order is waiting for payment{late}.",
       many: "{store}: {n} draft orders are waiting for payment{late}.",
@@ -163,6 +167,7 @@ export const homeEn = {
       sendAgain: "Send again",
       answer: "Answer",
       seeOrders: "See orders",
+      check: "Check",
       openDrafts: "Open drafts",
       sendTheRest: "Send the rest",
       openOrders: "Open orders",
