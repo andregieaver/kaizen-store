@@ -27,6 +27,7 @@ import { publishedPageNames } from "./pages";
 import { getPlatformChrome } from "./platform-navigation";
 import type { Store } from "./stores";
 import { siteTerms } from "./taxonomy";
+import { termsIn } from "@/lib/term-texts";
 
 /** The names Kaizen's own links take without a text of their own. */
 const PLATFORM_BUILT_IN = { home: "Home", signUp: "Start your store", signIn: "Sign in", blog: "Blog" };
@@ -247,7 +248,7 @@ export async function storeMenuPreviews(store: Pick<Store, "id" | "menus" | "fro
     publishedPageNames(store.id, locale, "article"),
     siteTerms(store.id, "article"),
   ]);
-  const names = { ...termNames(terms), page: new Map(pages), article: new Map(articles), blogCategory: termNames(blogTerms).category };
+  const names = { ...termNames(termsIn(terms, locale)), page: new Map(pages), article: new Map(articles), blogCategory: termNames(blogTerms).category };
   const builtIn = { home: store.frontPageId ? m.home : m.allProducts, products: m.allProducts, account: m.account.title, cart: m.cart, blog: m.blog };
   return store.menus.map((menu) => ({
     id: menu.id,

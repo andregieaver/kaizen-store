@@ -701,10 +701,14 @@ export const GRID_SORTS = {
   title: "Title, A to Z",
   priceLow: "Price, low to high",
   priceHigh: "Price, high to low",
+  /** The owner's order of the grid's one category or tag (D319); with none or several, newest first. */
+  manual: "Your order (one category or tag)",
 } as const;
 export type GridSort = keyof typeof GRID_SORTS;
 /** Sorts that need prices: products only. */
 export const PRICE_SORTS: readonly GridSort[] = ["priceLow", "priceHigh"];
+/** Sorts a grid of products only can have: the price sorts and the owner's order of a category or tag (D319). */
+export const PRODUCT_SORTS: readonly GridSort[] = [...PRICE_SORTS, "manual"];
 export const GRID_LIMIT_MAX = 48;
 /** The most custom fields a content grid's tile shows (D120). */
 export const TILE_FIELDS_MAX = 3;

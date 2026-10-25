@@ -16,6 +16,8 @@ import {
 } from "@/lib/taxonomy";
 
 import { termSeoInput, parseTermSeo, type TermSeo } from "@/lib/term-seo";
+import { cleanTermDescription, parseTermDescription, parseTermTexts, termTextsInput, type TermTexts } from "@/lib/term-texts";
+import type { RichTextDoc } from "@/lib/page-content";
 
 import { audit, type Account } from "./auth";
 import { refreshRedirects } from "./redirect-live";
@@ -41,7 +43,15 @@ const toTerm = (row: Row): Term => ({
   slug: String(row.slug),
   ...(row.requires_unit_price === undefined ? {} : { requiresUnitPrice: Boolean(row.requires_unit_price) }),
   ...(row.seo === undefined ? {} : { seo: parseTermSeo(row.seo) }),
+  ...(row.texts === undefined ? {} : { texts: parseTermTexts(row.texts) }),
+  ...(row.description === undefined ? {} : { description: parseTermDescription(row.description) }),
+  ...(row.image_url === undefined
+    ? {}
+    : { image: row.image_url == null ? null : { url: String(row.image_url), thumbnailUrl: row.image_thumbnail_url == null ? null : String(row.image_thumbnail_url) } }),
 });
+
+/** The columns every reader of terms selects. */
+const TERM_COLUMNS = sql.raw("id, kind, parent_id, name, slug, requires_unit_price, seo, description, image_url, image_thumbnail_url, texts");
 
 const scopeWhere = (scope: TermScope) =>
   sql`store_id is not distinct from ${scope.storeId}::uuid and content_type = ${scope.contentType}`;
@@ -49,7 +59,7 @@ const scopeWhere = (scope: TermScope) =>
 /** Every category and tag of a scope, by name: for the admin. */
 export async function listTerms(scope: TermScope): Promise<Term[]> {
   const rows = await db().execute<Row>(sql`
-    select id, kind, parent_id, name, slug, requires_unit_price, seo from commerce.terms
+    select ${TERM_COLUMNS} from commerce.terms
     where ${scopeWhere(scope)}
     order by kind, lower(name)
   `);
@@ -62,7 +72,7 @@ export async function siteTerms(storeId: string | null, contentType: ContentType
   cacheLife("hours");
   cacheTag(termsTag({ storeId, contentType }));
   const rows = await readDb().execute<Row>(sql`
-    select id, kind, parent_id, name, slug, requires_unit_price, seo from commerce.terms
+    select ${TERM_COLUMNS} from commerce.terms
     where ${scopeWhere({ storeId, contentType })}
     order by kind, lower(name)
   `);
@@ -75,7 +85,7 @@ export async function siteTerms(storeId: string | null, contentType: ContentType
  */
 export async function currentTerms(storeId: string | null, contentType: ContentType): Promise<Term[]> {
   const rows = await readDb().execute<Row>(sql`
-    select id, kind, parent_id, name, slug, requires_unit_price, seo from commerce.terms
+    select ${TERM_COLUMNS} from commerce.terms
     where ${scopeWhere({ storeId, contentType })}
   `);
   return rows.map(toTerm);
@@ -130,6 +140,40 @@ async function checkedSeo(scope: TermScope, raw: TermSeo | undefined): Promise<{
   return { ok: true, seo: parsed.data };
 }
 
+/** A term's own page (D319) is a store's product categories' and tags' only: the database refuses it anywhere else. */
+const PAGE_SCOPE_PROBLEM = "Only a store's product categories and tags have a description, a picture and names in other languages.";
+
+type PageParts = { description: RichTextDoc | null | undefined; image: { url: string; thumbnailUrl: string | null } | null | undefined; texts: TermTexts | undefined };
+
+/**
+ * The term's own page as sent, checked (D319): the description cleaned (`cleanTermDescription()`), the other languages against the store's own
+ * (`termTextsInput()`: the languages it keeps, never its main one, which is the term's own columns). Undefined parts were not sent (the term keeps
+ * what it has).
+ */
+async function checkedPage(
+  scope: TermScope,
+  raw: { description?: unknown; image?: { url: string; thumbnailUrl: string | null } | null; texts?: Record<string, unknown> },
+): Promise<{ ok: true; page: PageParts } | { ok: false; problems: string[] }> {
+  const sent = raw.description !== undefined || raw.image !== undefined || raw.texts !== undefined;
+  if (!sent) return { ok: true, page: { description: undefined, image: undefined, texts: undefined } };
+  if (scope.storeId === null || scope.contentType !== "product") {
+    const empty = raw.description == null && raw.image == null && (raw.texts === undefined || Object.keys(raw.texts).length === 0);
+    return empty ? { ok: true, page: { description: undefined, image: undefined, texts: undefined } } : { ok: false, problems: [PAGE_SCOPE_PROBLEM] };
+  }
+  const description = raw.description === undefined ? undefined : cleanTermDescription(raw.description);
+  if (description && !description.ok) return { ok: false, problems: [description.problem] };
+  let texts: TermTexts | undefined;
+  if (raw.texts !== undefined) {
+    const [row] = await db().execute<Row>(sql`select slug from commerce.stores where id = ${scope.storeId}::uuid`);
+    const store = row ? await getStore(String(row.slug)) : null;
+    if (!store) return { ok: false, problems: ["This store could not be found."] };
+    const parsed = termTextsInput(store.localization.keptLocales, store.localization.locales[0] ?? "").safeParse(raw.texts);
+    if (!parsed.success) return { ok: false, problems: [...new Set(parsed.error.issues.map((i) => i.message))] };
+    texts = parsed.data;
+  }
+  return { ok: true, page: { description: description?.doc, image: raw.image, texts } };
+}
+
 const takenProblem = (kind: TermKind, slug: string) =>
   `Another ${TERM_LABELS[kind].one.toLowerCase()} already has the address ${slug}. Choose another.`;
 
@@ -171,13 +215,17 @@ export async function createTerm(account: Account, scope: TermScope, input: unkn
   const seoChecked = await checkedSeo(scope, term.seo);
   if (!seoChecked.ok) return seoChecked;
   const seo = seoChecked.seo ?? {};
+  const pageChecked = await checkedPage(scope, term);
+  if (!pageChecked.ok) return pageChecked;
+  const page = pageChecked.page;
   const chosen = (input as { slug?: unknown }).slug;
   const slug = await freeSlug(scope, term.kind, term.slug, typeof chosen === "string" && chosen.trim() !== "");
   if (!slug) return { ok: false, problems: [takenProblem(term.kind, term.slug)] };
   try {
     const [row] = await db().execute<Row>(sql`
-      insert into commerce.terms (store_id, content_type, kind, parent_id, name, slug, requires_unit_price, seo)
-      values (${scope.storeId}::uuid, ${scope.contentType}, ${term.kind}, ${term.parentId}::uuid, ${term.name}, ${slug}, ${term.requiresUnitPrice === true}, ${JSON.stringify(seo)}::jsonb)
+      insert into commerce.terms (store_id, content_type, kind, parent_id, name, slug, requires_unit_price, seo, description, image_url, image_thumbnail_url, texts)
+      values (${scope.storeId}::uuid, ${scope.contentType}, ${term.kind}, ${term.parentId}::uuid, ${term.name}, ${slug}, ${term.requiresUnitPrice === true}, ${JSON.stringify(seo)}::jsonb,
+        ${page.description ? JSON.stringify(page.description) : null}::jsonb, ${page.image?.url ?? null}, ${page.image?.thumbnailUrl ?? null}, ${JSON.stringify(page.texts ?? {})}::jsonb)
       returning id
     `);
     const id = String(row.id);
@@ -187,6 +235,7 @@ export async function createTerm(account: Account, scope: TermScope, input: unkn
       slug,
       ...(term.requiresUnitPrice ? { requiresUnitPrice: true } : {}),
       ...(Object.keys(seo).length > 0 ? { seo: true } : {}),
+      ...(page.description || page.image || (page.texts && Object.keys(page.texts).length > 0) ? { page: true } : {}),
     });
     return { ok: true, id, terms: await listTerms(scope) };
   } catch (error) {
@@ -199,7 +248,7 @@ export async function createTerm(account: Account, scope: TermScope, input: unkn
 /** Renames, re-addresses or moves a category or tag; its kind stays. */
 export async function updateTerm(account: Account, scope: TermScope, id: string, input: unknown): Promise<TermsResult> {
   const [existing] = await db().execute<Row>(sql`
-    select kind, slug, requires_unit_price, seo from commerce.terms where ${scopeWhere(scope)} and id = ${id}::uuid
+    select kind, slug, requires_unit_price, seo, description, image_url, texts from commerce.terms where ${scopeWhere(scope)} and id = ${id}::uuid
   `);
   if (!existing) return { ok: false, problems: ["This category or tag no longer exists. It may have been deleted."] };
   const kind = existing.kind as TermKind;
@@ -218,10 +267,23 @@ export async function updateTerm(account: Account, scope: TermScope, id: string,
   const seoChecked = await checkedSeo(scope, term.seo);
   if (!seoChecked.ok) return seoChecked;
   const seoChanged = seoChecked.seo !== undefined && JSON.stringify(seoChecked.seo) !== JSON.stringify(parseTermSeo(existing.seo));
+  // The term's own page (D319): each part left out stays as it was.
+  const pageChecked = await checkedPage(scope, term);
+  if (!pageChecked.ok) return pageChecked;
+  const page = pageChecked.page;
+  const pageChanged =
+    (page.description !== undefined && JSON.stringify(page.description) !== JSON.stringify(parseTermDescription(existing.description))) ||
+    (page.image !== undefined && (page.image?.url ?? null) !== (existing.image_url == null ? null : String(existing.image_url))) ||
+    (page.texts !== undefined && JSON.stringify(page.texts) !== JSON.stringify(parseTermTexts(existing.texts)));
   try {
     await db().execute(sql`
       update commerce.terms set name = ${term.name}, slug = ${term.slug}, parent_id = ${term.parentId}::uuid,
-        requires_unit_price = ${marked}, seo = ${seoChecked.seo === undefined ? sql`seo` : sql`${JSON.stringify(seoChecked.seo)}::jsonb`}, updated_at = now()
+        requires_unit_price = ${marked}, seo = ${seoChecked.seo === undefined ? sql`seo` : sql`${JSON.stringify(seoChecked.seo)}::jsonb`},
+        description = ${page.description === undefined ? sql`description` : sql`${page.description ? JSON.stringify(page.description) : null}::jsonb`},
+        image_url = ${page.image === undefined ? sql`image_url` : sql`${page.image?.url ?? null}`},
+        image_thumbnail_url = ${page.image === undefined ? sql`image_thumbnail_url` : sql`${page.image?.thumbnailUrl ?? null}`},
+        texts = ${page.texts === undefined ? sql`texts` : sql`${JSON.stringify(page.texts)}::jsonb`},
+        updated_at = now()
       where ${scopeWhere(scope)} and id = ${id}::uuid
     `);
     await audit(account.id, scope.storeId, `${scope.contentType}.${kind}_updated`, {
@@ -230,6 +292,7 @@ export async function updateTerm(account: Account, scope: TermScope, id: string,
       slug: term.slug,
       ...(marked !== Boolean(existing.requires_unit_price) ? { requiresUnitPrice: marked } : {}),
       ...(seoChanged ? { seo: true } : {}),
+      ...(pageChanged ? { page: true } : {}),
     });
     // A changed address left a redirect from the old one (the database's trigger): the lookup of a missing address is refreshed for it.
     if (scope.storeId !== null && String(existing.slug) !== term.slug) refreshRedirects(scope.storeId);
@@ -272,4 +335,65 @@ export async function bothTerms(storeId: string | null): Promise<{ page: Term[];
     listTerms({ storeId, contentType: "article" }),
   ]);
   return { page, article };
+}
+
+/** A product as a category's or tag's order lists it (D319): its title in the main language and its picture. */
+export type TermProduct = { id: string; title: string; status: string; imageUrl: string | null; placed: boolean };
+
+/** What the categories page hands its order panel (D319): the term's own products in order, and saving a new order. */
+export type TermOrderActions = {
+  products: (termId: string) => Promise<TermProduct[]>;
+  saveOrder: (termId: string, productIds: string[]) => Promise<{ ok: true } | { ok: false; problems: string[] }>;
+};
+
+/** The most products a term's order lists and takes. */
+export const TERM_ORDER_MAX = 500;
+
+/**
+ * A store's product category's or tag's own products (not its subcategories'), in the owner's order (wave 6 unit A, D319): placed products by
+ * their place, then the others by when they were made. For the admin's panel; drafts and archived products are listed too.
+ */
+export async function termProducts(storeId: string, termId: string): Promise<TermProduct[]> {
+  const rows = await db().execute<Row>(sql`
+    select p.id, p.status, pt.position,
+      coalesce((select title from commerce.product_translations tr where tr.product_id = p.id order by tr.locale limit 1), p.handle) as title,
+      (select coalesce(m.thumbnail_url, m.url) from commerce.product_media m where m.product_id = p.id order by m.position limit 1) as image_url
+    from commerce.product_terms pt
+    join commerce.products p on p.store_id = pt.store_id and p.id = pt.product_id
+    where pt.store_id = ${storeId}::uuid and pt.content_type = 'product' and pt.term_id = ${termId}::uuid
+    order by pt.position asc nulls last, p.created_at, p.handle
+    limit ${TERM_ORDER_MAX}
+  `);
+  return rows.map((row) => ({
+    id: String(row.id),
+    title: String(row.title),
+    status: String(row.status),
+    imageUrl: row.image_url == null ? null : String(row.image_url),
+    placed: row.position != null,
+  }));
+}
+
+/**
+ * Puts a store's product category's or tag's products in the owner's order (D319): `productIds` first to last become places 0, 1, 2 …; the term's
+ * products not named keep no place (listed after, by when they were made). Ids that are not the term's own products are ignored. One statement,
+ * audited once; the term's `updated_at` moves, so the demo content's removal (D260) keeps a term whose order was set.
+ */
+export async function setTermOrder(account: Account, storeId: string, termId: string, productIds: readonly string[]): Promise<{ ok: true } | { ok: false; problems: string[] }> {
+  const ids = [...new Set(productIds)].filter((id) => /^[0-9a-f-]{36}$/i.test(id)).slice(0, TERM_ORDER_MAX);
+  const [term] = await db().execute<Row>(sql`
+    select kind, name from commerce.terms where store_id = ${storeId}::uuid and content_type = 'product' and id = ${termId}::uuid
+  `);
+  if (!term) return { ok: false, problems: ["This category or tag no longer exists. It may have been deleted."] };
+  await db().transaction(async (tx) => {
+    await tx.execute(sql`
+      update commerce.product_terms pt set position = case when o.place is null then null else o.place - 1 end
+      from (select pt2.product_id, x.place from commerce.product_terms pt2
+            left join unnest(${`{${ids.join(",")}}`}::uuid[]) with ordinality as x(id, place) on x.id = pt2.product_id
+            where pt2.store_id = ${storeId}::uuid and pt2.term_id = ${termId}::uuid) o
+      where pt.store_id = ${storeId}::uuid and pt.term_id = ${termId}::uuid and pt.product_id = o.product_id
+    `);
+    await tx.execute(sql`update commerce.terms set updated_at = now() where store_id = ${storeId}::uuid and id = ${termId}::uuid`);
+  });
+  await audit(account.id, storeId, `product.${String(term.kind)}_ordered`, { id: termId, name: term.name, products: ids.length }, { area: "products", target: { type: "term", id: termId } });
+  return { ok: true };
 }

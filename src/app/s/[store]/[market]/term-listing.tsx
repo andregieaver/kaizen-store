@@ -12,6 +12,8 @@ import type { Market } from "@/lib/markets";
 import { inView } from "@/lib/markets";
 import { marketMetaPath, marketPath } from "@/lib/paths";
 import { termMetaDescription, termMetaTitle, termShare } from "@/lib/term-seo";
+import { descriptionSummary, termsIn, termTextFor } from "@/lib/term-texts";
+import { RichText } from "@/components/rich-text";
 import type { StoreQuery } from "@/lib/store-parts";
 import { featureOn } from "@/lib/store-features";
 import { byName, withDescendants, type TermKind } from "@/lib/taxonomy";
@@ -23,6 +25,8 @@ import { listIndexedTerms, storeShareImage, storeShareTags } from "@/server/seo"
 import { marketMoved, resolveShop } from "@/server/shop";
 import type { Store } from "@/server/stores";
 import { siteTerms } from "@/server/taxonomy";
+import { libraryAlts } from "@/server/media-alts";
+import type { LibraryAlt } from "@/lib/page-images";
 
 /**
  * A store's products in one category (with its subcategories) or with one
@@ -46,7 +50,8 @@ async function load(kind: TermKind, params: Params) {
   const shop = await resolveShop(storeSlug, marketSlug);
   // A website (D178 step 5: the online shop off) has no category or tag pages of products: `missed()` gives the 404, or a manual redirect.
   if (!shop || !featureOn(shop.store, "shop")) return null;
-  const terms = await siteTerms(shop.store.id, "product");
+  // The names and descriptions as the market's language has them (D319).
+  const terms = termsIn(await siteTerms(shop.store.id, "product"), shop.market.locale);
   const term = terms.find((t) => t.kind === kind && t.slug === slug);
   return term ? { ...shop, terms, term } : null;
 }
@@ -61,7 +66,9 @@ export async function termMetadata(kind: TermKind, params: Params): Promise<Meta
   if (!loaded) return {};
   const { store, market, term } = loaded;
   const path = (m: Market) => marketMetaPath(store.slug, m.slug, `/${kind}/${term.slug}`);
-  const fallback = store.seo.description[market.locale] || t(market.lang).storeSummary(store.name, market.name);
+  // Without a search description of its own, the page is described by its own description's first sentences (D319), else the store's.
+  const fallback =
+    descriptionSummary(termTextFor(term, market.locale).description) || store.seo.description[market.locale] || t(market.lang).storeSummary(store.name, market.name);
   const description = termMetaDescription(term, market.locale, fallback);
   const share = termShare(term, market.locale, fallback);
   // The language's own title is used as written; without one the name goes in and the layout's template adds the store (`Name · Store`, once).
@@ -86,7 +93,8 @@ export async function termMetadata(kind: TermKind, params: Params): Promise<Meta
       title: share.title,
       description: share.description,
       url: path(market),
-      images: [storeShareImage(store, market.locale)],
+      // The category's own picture shares it (D319), described by its name; else the store's.
+      images: [term.image ? { url: term.image.url, alt: term.name } : storeShareImage(store, market.locale)],
     }),
   };
 }
@@ -124,27 +132,34 @@ export async function TermProducts({ kind, params, searchParams }: { kind: TermK
  * tag page, and the component a page built for them draws.
  */
 export async function TermListing({ store, market, kind, slug, query }: { store: Store; market: Market; kind: TermKind; slug: string; query: Promise<StoreQuery> }) {
-  const terms = await siteTerms(store.id, "product");
+  const terms = termsIn(await siteTerms(store.id, "product"), market.locale);
   const term = terms.find((t) => t.kind === kind && t.slug === slug);
   if (!term) return null;
   const m = t(market.lang);
   const scope = {
     categoryIds: kind === "category" ? withDescendants(terms, [term.id]) : [],
     tagIds: kind === "tag" ? [term.id] : [],
+    // Featured follows the owner's order of this category or tag (D319).
+    orderTerm: term.id,
   };
-  const [products, notices, fields] = await Promise.all([
-    listGridProducts(store.id, market, { ...scope, sort: "oldest", limit: 48 }),
+  const { description } = termTextFor(term, market.locale);
+  const [products, notices, fields, alts] = await Promise.all([
+    listGridProducts(store.id, market, { ...scope, sort: "manual", limit: 48 }),
     campaignNotices(store.id, market),
     // The category's or tag's own public custom fields (D118), under its name.
     shownFieldsFor(store.id, "term", term.id, market.locale, market.lang, market.slug),
+    // The picture's words from the media library (D89), in this language where it has them.
+    term.image ? libraryAlts([term.image.url]) : Promise.resolve(new Map<string, LibraryAlt>()),
   ]);
+  const libraryAlt = term.image ? alts.get(term.image.url) : undefined;
+  const imageAlt = libraryAlt ? libraryAlt.translations[market.locale] || libraryAlt.alt : "";
   const termFields = groupsToShow(fields);
   const subcategories = kind === "category" ? terms.filter((t) => t.parentId === term.id).sort(byName) : [];
   const base = marketPath(store.slug, market.slug);
 
   return (
     <>
-      <h1 className="mb-4 text-3xl font-heading tracking-tight">{term.name}</h1>
+      <TermHeader name={term.name} image={term.image ?? null} imageAlt={imageAlt} description={description} />
       {termFields.length > 0 && (
         <div className="mb-6">
           <CustomFieldGroups groups={termFields} showLabel idPrefix={`term-${term.id}`} headingFor={() => null} />
@@ -181,5 +196,27 @@ export async function TermListing({ store, market, kind, slug, query }: { store:
         />
       </Suspense>
     </>
+  );
+}
+
+/**
+ * A category's or tag's own header (wave 6 unit A, D319): its name, its picture and its description in the page's language, above its products. Drawn
+ * by the standard page and by the Category products component a built page holds, so a store's own category page gets it too.
+ */
+function TermHeader({ name, image, imageAlt, description }: { name: string; image: { url: string } | null; imageAlt: string; description: ReturnType<typeof termTextFor>["description"] }) {
+  return (
+    <header className="mb-6 flex flex-col gap-4" data-term-header>
+      {image && (
+        // The library's own address, drawn at its size within the page's width; the first screen's picture loads at once.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={image.url} alt={imageAlt} className="max-h-96 w-full rounded-lg object-cover" fetchPriority="high" />
+      )}
+      <h1 className="text-3xl font-heading tracking-tight">{name}</h1>
+      {description && (
+        <div className="rich-text max-w-prose text-muted-foreground">
+          <RichText doc={description} />
+        </div>
+      )}
+    </header>
   );
 }

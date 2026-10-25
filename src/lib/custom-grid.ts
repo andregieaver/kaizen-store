@@ -2,7 +2,7 @@ import type { GridData, GridItem } from "./content-grid";
 import { menuHref, type MenuLink } from "./navigation";
 import {
   GRID_LIMIT_MAX,
-  PRICE_SORTS,
+  PRODUCT_SORTS,
   CUSTOM_ITEMS_MAX,
   CUSTOM_TEXT_MAX,
   CUSTOM_TITLE_MAX,
@@ -103,7 +103,7 @@ export function sourceChoice(
   // Leaving custom items keeps a limit a lookup allows; the items themselves stay for now.
   const leaving = block.source.type === "custom" ? { limit: Math.min(block.limit, GRID_LIMIT_MAX) } : {};
   if (type === "pages" || type === "articles") {
-    return { source: { type }, categories: [], tags: [], sort: PRICE_SORTS.includes(block.sort) ? "newest" : block.sort, ...leaving };
+    return { source: { type }, categories: [], tags: [], sort: PRODUCT_SORTS.includes(block.sort) ? "newest" : block.sort, ...leaving };
   }
   return { source: products, categories: [], tags: [], ...leaving };
 }

@@ -29,7 +29,7 @@ import {
   type VideoUpload,
 } from "@/server/media";
 import { registerVideo, uploadToLibrary } from "@/server/media-library";
-import { createTerm, deleteTerm, termsTag, updateTerm, type TermsResult } from "@/server/taxonomy";
+import { TERM_ORDER_MAX, createTerm, deleteTerm, setTermOrder, termProducts, termsTag, updateTerm, type TermProduct, type TermsResult } from "@/server/taxonomy";
 import { storageRefusal } from "@/server/limits";
 import {
   getEditorContext,
@@ -199,6 +199,27 @@ export async function updateProductTermAction(storeSlug: string, id: string, inp
   if (!result.ok) return result;
   const change = await addressChangedAfter(member.store.id, before).catch(() => null);
   return change ? { ...result, note: addressChangeWords(change) } : result;
+}
+
+/** A category's or tag's own products in the owner's order (wave 6 unit A, D319), for its panel, which only those who may change the order open. */
+export async function termProductsAction(storeSlug: string, termId: string): Promise<TermProduct[]> {
+  const member = await checkPermission(storeSlug, "products:write");
+  if (!member || !z.uuid().safeParse(termId).success) return [];
+  return termProducts(member.store.id, termId);
+}
+
+/** Saves the owner's order of a category's or tag's products (D319); the catalogue is refreshed, so its page and grids follow at once. */
+export async function saveTermOrderAction(storeSlug: string, termId: string, productIds: unknown): Promise<{ ok: true } | { ok: false; problems: string[] }> {
+  const member = await checkPermission(storeSlug, "products:write");
+  if (!member) return { ok: false, problems: [NO_ACCESS] };
+  const ids = z.array(z.uuid()).max(TERM_ORDER_MAX).safeParse(productIds);
+  if (!z.uuid().safeParse(termId).success || !ids.success) return { ok: false, problems: ["Unknown category or tag."] };
+  const result = await setTermOrder(member.account, member.store.id, termId, ids.data);
+  if (result.ok) {
+    updateTag(termsTag(productTerms(member)));
+    refreshCatalogue(member);
+  }
+  return result;
 }
 
 export async function deleteProductTermAction(storeSlug: string, id: string): Promise<TermsResult> {

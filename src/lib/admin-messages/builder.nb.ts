@@ -523,6 +523,7 @@ export const builderNb: BuilderMessages = {
       title: "Tittel, A til Å",
       priceLow: "Pris, lav til høy",
       priceHigh: "Pris, høy til lav",
+      manual: "Din rekkefølge (én kategori eller etikett)",
     },
     howMany: "Hvor mange",
     atMost: "høyst {max}",

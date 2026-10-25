@@ -152,7 +152,7 @@ describe("categories and tags (wave 2, D168)", () => {
   };
   const seoOf = async (id: string) => (await db().execute<Row>(sql`select seo from commerce.terms where id = ${id}::uuid`))[0].seo as Record<string, { title: string; description: string }>;
 
-  it("lists a term whose main-language search text exists and whose other language has none, and not one with no main text", async () => {
+  it("lists a term's name (D319) and its main-language search texts where the other language has none", async () => {
     const withText = await term("category", `ts-text-${run}`, { "nb-NO": { title: "Hjem og hage", description: "Alt til hjemmet" } });
     const half = await term("tag", `ts-half-${run}`, { "nb-NO": { title: "Nytt", description: "Nye ting" }, "sv-SE": { title: "Nytt", description: "" } });
     const none = await term("category", `ts-none-${run}`, {});
@@ -161,15 +161,16 @@ describe("categories and tags (wave 2, D168)", () => {
     const ids = units.map((u) => u.id);
     expect(ids).toContain(`term:${withText}`);
     expect(ids).toContain(`term:${half}`);
-    expect(ids).not.toContain(`term:${none}`);
-    expect(ids).not.toContain(`term:${onlyOther}`);
-    // Only what is missing: the half-translated tag brings its description alone.
-    expect(units.find((u) => u.id === `term:${half}`)!.items.map((i) => i.key)).toEqual(["description"]);
-    expect(units.find((u) => u.id === `term:${withText}`)!.items.map((i) => i.key)).toEqual(["title", "description"]);
+    // Every term has a name in the main language (wave 6 unit A, D319), so one with no search text brings its name alone.
+    expect(units.find((u) => u.id === `term:${none}`)!.items.map((i) => i.key)).toEqual(["name"]);
+    expect(units.find((u) => u.id === `term:${onlyOther}`)!.items.map((i) => i.key)).toEqual(["name"]);
+    // Only what is missing: the half-translated tag brings its name and its description.
+    expect(units.find((u) => u.id === `term:${half}`)!.items.map((i) => i.key)).toEqual(["name", "description"]);
+    expect(units.find((u) => u.id === `term:${withText}`)!.items.map((i) => i.key)).toEqual(["name", "title", "description"]);
     expect(units.every((u) => u.scope === "terms" && !u.legal)).toBe(true);
     // Everything again, with the mode `all`.
     const again = await translate.translationWorklist(await asMember(), "sv-SE", ["terms"], "all", null);
-    expect(again.units.find((u) => u.id === `term:${half}`)!.items.map((i) => i.key)).toEqual(["title", "description"]);
+    expect(again.units.find((u) => u.id === `term:${half}`)!.items.map((i) => i.key)).toEqual(["name", "title", "description"]);
     // The coverage counts them.
     expect((await translate.translationCoverage(await asMember()))["sv-SE"].terms).toBeGreaterThanOrEqual(2);
   });

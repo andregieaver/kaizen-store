@@ -246,6 +246,8 @@ export type IndexedTerm = {
   /** Market codes (upper case) in which the term has at least one live product. */
   markets: string[];
   seo: TermSeo;
+  /** Its own picture (D319), listed with its page in the sitemap. */
+  image: string | null;
 };
 
 /**
@@ -263,7 +265,7 @@ export async function listIndexedTerms(storeId: string): Promise<IndexedTerm[]> 
       union all
       select tree.root_id, c.id from tree join commerce.terms c on c.parent_id = tree.id and c.store_id = ${storeId}::uuid and c.content_type = 'product'
     )
-    select t.kind, t.slug, t.name, t.seo, greatest(t.updated_at, max(p.updated_at)) as updated_at,
+    select t.kind, t.slug, t.name, t.seo, t.image_url, greatest(t.updated_at, max(p.updated_at)) as updated_at,
       array_agg(distinct cp.market_code) as markets
     from commerce.terms t
     join tree on tree.root_id = t.id
@@ -282,6 +284,7 @@ export async function listIndexedTerms(storeId: string): Promise<IndexedTerm[]> 
     updatedAt: new Date(String(row.updated_at)).toISOString(),
     markets: ((row.markets ?? []) as string[]).map((code) => String(code).trim().toUpperCase()),
     seo: parseTermSeo(row.seo),
+    image: row.image_url == null ? null : String(row.image_url),
   }));
 }
 
@@ -590,7 +593,9 @@ export async function storeSitemap(slug: string): Promise<string | null> {
     ...terms.flatMap((term) => {
       const markets = store.markets.filter((m) => term.markets.includes(m.code));
       const versions = versionsOf(markets, `/${term.kind}/${term.slug}`);
-      return versions.map((version) => entry(version.href, versions, { lastmod: term.updatedAt, xDefault: versions.length > 1 ? versions[0].href : undefined }));
+      return versions.map((version) =>
+        entry(version.href, versions, { lastmod: term.updatedAt, xDefault: versions.length > 1 ? versions[0].href : undefined, images: term.image ? [term.image] : [] }),
+      );
     }),
     // Its pages (D54) open to search engines, in every market; the front page is the markets' own address.
     ...pages

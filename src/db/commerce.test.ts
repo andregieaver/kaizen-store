@@ -2485,6 +2485,42 @@ describe("categories and tags (D50)", () => {
   });
 });
 
+describe("a category's own page and its products' order (wave 6 unit A, D319)", () => {
+  const term = (values: { store?: string | null; type?: string; slug: string }) =>
+    one<{ id: string }>(
+      `insert into commerce.terms (store_id, content_type, kind, name, slug) values ($1, $2, 'category', $3, $3) returning id`,
+      [values.store ?? null, values.type ?? "page", values.slug],
+    );
+
+  it("are a store's product categories' and tags' only, keep a picture with its small copy, and are copied with the store", async () => {
+    const { productId, storeId } = await createProduct();
+    const lamps = await term({ store: storeId, type: "product", slug: "lamps-own" });
+    const doc = JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Lys til hjemmet." }] }] });
+    const texts = JSON.stringify({ "sv-SE": { name: "Lampor" } });
+    await db.query("update commerce.terms set description = $2, image_url = '/demo/lamp.webp', texts = $3 where id = $1", [lamps.id, doc, texts]);
+    // Kaizena Flow's own page categories have no page of their own, and a small copy needs its picture.
+    const pageTerm = await term({ type: "page", slug: "page-own" });
+    await expect(db.query("update commerce.terms set texts = $2 where id = $1", [pageTerm.id, texts])).rejects.toThrow(/terms_page_parts/);
+    await expect(db.query("update commerce.terms set image_url = null, image_thumbnail_url = '/x.webp' where id = $1", [lamps.id])).rejects.toThrow(/terms_image_pair/);
+    await expect(db.query("update commerce.terms set texts = '[]'::jsonb where id = $1", [lamps.id])).rejects.toThrow(/terms_texts_object/);
+    // A product's place in the order: none until placed, never below 0.
+    await db.query("insert into commerce.product_terms (store_id, product_id, term_id) values ($1, $2, $3)", [storeId, productId, lamps.id]);
+    expect((await one<{ position: number | null }>("select position from commerce.product_terms where term_id = $1", [lamps.id])).position).toBeNull();
+    await expect(db.query("update commerce.product_terms set position = -1 where term_id = $1", [lamps.id])).rejects.toThrow(/product_terms_position/);
+    await db.query("update commerce.product_terms set position = 3 where term_id = $1", [lamps.id]);
+    // A store made from this one gets the page and the order.
+    const owner = await createAccount("terms-page-owner@example.com");
+    const { id: copy } = await one<{ id: string }>("select commerce.clone_store($1, 'terms-page-copy', 'Copy', $2) as id", [storeId, owner]);
+    const copied = await one<{ description: unknown; image_url: string; texts: unknown; position: number }>(
+      `select t.description, t.image_url, t.texts, pt.position from commerce.terms t join commerce.product_terms pt on pt.term_id = t.id
+       where t.store_id = $1 and t.slug = 'lamps-own'`,
+      [copy],
+    );
+    expect(copied).toMatchObject({ image_url: "/demo/lamp.webp", texts: { "sv-SE": { name: "Lampor" } }, position: 3 });
+    expect(JSON.stringify(copied.description)).toContain("Lys til hjemmet.");
+  });
+});
+
 describe("consents (D58)", () => {
   it("keep a visitor's choices per site, and keep the cookie page's address free", async () => {
     const storeId = await createStore("consent-store", ["NO"]);

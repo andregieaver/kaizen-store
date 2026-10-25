@@ -776,11 +776,16 @@ export async function saveProduct(
       await saveFiles(tx, store.id, saved, input);
       // Kept as they are while Subscriptions is off (D178); a product that becomes a booking still loses them (it cannot be subscribed to).
       if (subscriptionsOn || isBooked(input.kind)) await savePlans(tx, store.id, saved, input, context.markets, context.audience);
-      await tx.execute(sql`delete from commerce.product_terms where store_id = ${store.id}::uuid and product_id = ${saved}::uuid`);
+      // Only the terms it leaves or joins are written, so its place in an owner's order of a category or tag (D319) stays where it was.
+      const keep = `{${termIds.join(",")}}`;
+      await tx.execute(sql`
+        delete from commerce.product_terms where store_id = ${store.id}::uuid and product_id = ${saved}::uuid and not (term_id = any(${keep}::uuid[]))
+      `);
       for (const termId of termIds) {
         await tx.execute(sql`
           insert into commerce.product_terms (store_id, product_id, term_id)
           values (${store.id}::uuid, ${saved}::uuid, ${termId}::uuid)
+          on conflict (product_id, term_id) do nothing
         `);
       }
       // Custom fields (D118): those of the groups the finished product gets, in the same transaction.

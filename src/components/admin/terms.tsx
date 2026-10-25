@@ -20,6 +20,7 @@ import type { TermSeo } from "@/lib/term-seo";
 import { useAdminText } from "./admin-text";
 import { TermFieldsButton, type TermFieldsSetup } from "./term-fields";
 import { TermSeoFields, seoLanguagesOf, type TermSeoSetup } from "./term-seo-fields";
+import { TermPageFields, TermProductOrder, type TermPageDraft, type TermPageSetup } from "./term-page-fields";
 import { Card } from "@/components/admin/ui";
 
 /**
@@ -41,7 +42,10 @@ export type TermActions = {
     /** Unit price (D160): a product category's products need a content. Only the product categories screen sends it. */
     requiresUnitPrice?: boolean;
   }) => Promise<TermsResult>;
-  update: (id: string, input: { name: string; slug: string; parentId: string | null; requiresUnitPrice?: boolean; seo?: TermSeo }) => Promise<TermsOutcome>;
+  update: (
+    id: string,
+    input: { name: string; slug: string; parentId: string | null; requiresUnitPrice?: boolean; seo?: TermSeo } & Partial<TermPageDraft>,
+  ) => Promise<TermsOutcome>;
   remove: (id: string) => Promise<TermsResult>;
 };
 
@@ -216,6 +220,7 @@ export function TermsManager({
   fields,
   unitPrice,
   seo,
+  page,
 }: {
   initial: Term[];
   actions: TermActions;
@@ -226,6 +231,8 @@ export function TermsManager({
   unitPrice?: UnitPriceCategories;
   /** Only a store's product categories and tags (wave 2, D168): a title and a description for search results, in each of the store's languages. */
   seo?: TermSeoSetup;
+  /** Only a store's product categories and tags (wave 6 unit A, D319): a picture, a description, names in other languages and the order of products. */
+  page?: TermPageSetup;
 }) {
   const w = useAdminText("products").terms;
   const [terms, setTerms] = useState(initial);
@@ -249,7 +256,17 @@ export function TermsManager({
             ) : (
               <ul className="flex flex-col divide-y divide-line border-y border-line">
                 {list.map((term) => (
-                  <TermRow key={term.id} term={term} terms={terms} actions={actions} onTerms={setTerms} fields={fields} unitPrice={kind === "category" ? unitPrice : undefined} seo={seo} />
+                  <TermRow
+                    key={term.id}
+                    term={term}
+                    terms={terms}
+                    actions={actions}
+                    onTerms={setTerms}
+                    fields={fields}
+                    unitPrice={kind === "category" ? unitPrice : undefined}
+                    seo={seo}
+                    page={page}
+                  />
                 ))}
               </ul>
             )}
@@ -365,6 +382,7 @@ function TermRow({
   fields,
   unitPrice,
   seo,
+  page,
 }: {
   term: Term & { depth: number };
   terms: Term[];
@@ -375,13 +393,16 @@ function TermRow({
   unitPrice?: UnitPriceCategories;
   /** Set on a store's product categories and tags (D168): the search texts. */
   seo?: TermSeoSetup;
+  /** Set on a store's product categories and tags (D319): its own page and its products' order. */
+  page?: TermPageSetup;
 }) {
   const w = useAdminText("products").terms;
   const id = useId();
   const [editing, setEditing] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const marked = term.requiresUnitPrice === true;
-  const [draft, setDraft] = useState({ name: term.name, slug: term.slug, parentId: term.parentId, requiresUnitPrice: marked, seo: term.seo ?? ({} as TermSeo) });
+  const pageOf = (t: Term): TermPageDraft => ({ description: t.description ?? null, image: t.image ?? null, texts: t.texts ?? {} });
+  const [draft, setDraft] = useState({ name: term.name, slug: term.slug, parentId: term.parentId, requiresUnitPrice: marked, seo: term.seo ?? ({} as TermSeo), page: pageOf(term) });
   const [problems, setProblems] = useState<string[]>([]);
   const [note, setNote] = useState<string | null>(null);
   const [busy, start] = useTransition();
@@ -404,9 +425,15 @@ function TermRow({
           onSubmit={(event) => {
             event.preventDefault();
             // Only a screen that offers the mark sends it, and only one that offers search texts sends those: left out, they stay as they were.
-            const { requiresUnitPrice, seo: drafted, ...rest } = draft;
+            const { requiresUnitPrice, seo: drafted, page: pageDraft, ...rest } = draft;
             run(
-              () => actions.update(term.id, { ...rest, ...(unitPrice ? { requiresUnitPrice } : {}), ...(seo ? { seo: drafted } : {}) }),
+              () =>
+                actions.update(term.id, {
+                  ...rest,
+                  ...(unitPrice ? { requiresUnitPrice } : {}),
+                  ...(seo ? { seo: drafted } : {}),
+                  ...(page ? pageDraft : {}),
+                }),
               () => setEditing(false),
             );
           }}
@@ -457,6 +484,7 @@ function TermRow({
           {unitPrice && (
             <UnitPriceMark id={`${id}-unit-price`} checked={draft.requiresUnitPrice} onChange={(requiresUnitPrice) => setDraft({ ...draft, requiresUnitPrice })} />
           )}
+          {page && <TermPageFields setup={page} value={draft.page} onChange={(next) => setDraft({ ...draft, page: next })} />}
           {seo && (
             <TermSeoFields setup={seo} name={draft.name || term.name} kind={term.kind} slug={draft.slug || term.slug} value={draft.seo} onChange={(next) => setDraft({ ...draft, seo: next })} />
           )}
@@ -469,7 +497,7 @@ function TermRow({
               type="button"
               onClick={() => {
                 setEditing(false);
-                setDraft({ name: term.name, slug: term.slug, parentId: term.parentId, requiresUnitPrice: marked, seo: term.seo ?? {} });
+                setDraft({ name: term.name, slug: term.slug, parentId: term.parentId, requiresUnitPrice: marked, seo: term.seo ?? {}, page: pageOf(term) });
                 setProblems([]);
               }}
               className={button}
@@ -513,7 +541,8 @@ function TermRow({
               </button>
             </span>
           ) : (
-            <span className="flex gap-2">
+            <span className="flex flex-wrap gap-2">
+              {page && <TermProductOrder termId={term.id} setup={page} />}
               {fields && <TermFieldsButton term={term} setup={fields} />}
               <button type="button" onClick={() => setEditing(true)} className={button} aria-label={fillWords(w.changeAria[term.kind], { name: term.name })}>
                 {w.change}

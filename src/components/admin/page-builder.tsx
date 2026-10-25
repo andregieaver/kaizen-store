@@ -124,7 +124,7 @@ import {
   GRID_GAP_MAX,
   GRID_LIMIT_MAX,
   GRID_SORTS,
-  PRICE_SORTS,
+  PRODUCT_SORTS,
   HEADING_DEFAULT_SIZE,
   HEADING_MAX,
   HEADING_SIZES,
@@ -6118,7 +6118,7 @@ function ContentGridFields({
   const store = source.type === "products" ? grid.stores.find((s) => s.id === source.storeId) : undefined;
   const products = traits.products;
   const recommend = source.type === "products" ? source.recommend : undefined;
-  const sorts = (Object.keys(GRID_SORTS) as GridSort[]).filter((sort) => products || !PRICE_SORTS.includes(sort));
+  const sorts = (Object.keys(GRID_SORTS) as GridSort[]).filter((sort) => products || !PRODUCT_SORTS.includes(sort));
   const productsOf = (s: GridStore | undefined): GridSource => ({
     type: "products",
     storeId: s?.id ?? "",

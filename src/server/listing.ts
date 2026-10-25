@@ -16,7 +16,7 @@ import { categoryTree, withDescendants, type Term } from "@/lib/taxonomy";
 
 import { CATALOG_TAG, catalogTag, listGridProducts, type GridProduct } from "./catalog";
 import { activeFieldGroups, fieldsTag } from "./custom-fields";
-import { convertedSql, inCategories, inStockNow, OFFERED, shownPrice, textList, withTags } from "./product-conditions";
+import { convertedSql, inCategories, inStockNow, manualPlace, OFFERED, shownPrice, textList, withTags } from "./product-conditions";
 import { siteTerms, termsTag } from "./taxonomy";
 
 /**
@@ -30,7 +30,8 @@ import { siteTerms, termsTag } from "./taxonomy";
 
 type Row = Record<string, unknown>;
 
-export type ListingScope = { categoryIds?: string[]; tagIds?: string[]; ids?: string[] };
+/** A listing's products: in these categories and tags, or these ids; `orderTerm` is the category or tag whose owner's order "featured" follows (D319). */
+export type ListingScope = { categoryIds?: string[]; tagIds?: string[]; ids?: string[]; orderTerm?: string };
 
 /** Who is looking: prices are compared as shown to them, and a store selling to both shows each kind only its products. */
 export type Viewer = { buyer: Buyer; audienceBoth: boolean };
@@ -158,7 +159,8 @@ function filtersClause(filters: ListingFilters, market: Market, viewer: Viewer, 
 /**
  * The products of a page that meet the filters, sorted, as product cards
  * show them. "featured" keeps the page's own order: search results'
- * relevance, else the order products were added.
+ * relevance, a category's or tag's owner's order (D319), else the order
+ * products were added.
  */
 export async function listingProducts(
   storeId: string,
@@ -183,7 +185,9 @@ export async function listingProducts(
             ? sql`${title}, p.handle`
             : scope.ids
               ? sql`array_position(${uuids(scope.ids)}::uuid[], p.id)`
-              : sql`p.created_at, p.handle`;
+              : scope.orderTerm && /^[0-9a-f-]{36}$/i.test(scope.orderTerm)
+                ? sql`${manualPlace(scope.orderTerm)}, p.created_at, p.handle`
+                : sql`p.created_at, p.handle`;
   const fieldDefs = filters.fields.length > 0 || filters.ranges.length > 0 ? filterableFields(await activeFieldGroups(storeId, "product")) : [];
   const rows = await readDb().execute<Row>(sql`
     select p.id from commerce.products p

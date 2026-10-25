@@ -110,7 +110,7 @@
       "rechecked": true,
       "was": "full"
     },
-    "gap": "Staff put products into nested categories and flat tags by hand (`product_terms`) and shoppers browse, filter and sort them. A term (`commerce.terms`) has a name, slug, parent, position, a product layout (D79), `requires_unit_price` (D160) and its own SEO title and description per language (`terms.seo`, D168, in the translation worklist as scope `terms`, counted in catalogue.seo-fields-title-description-handle-sitemap-hreflang). Still lacking: (1) a description and picture of its own shown on its page (possible only through a custom field on the term bound to a block, D119); (2) the term's name itself is not translatable: the worklist's `terms` scope translates only the SEO title and description (`termWork()` in `src/server/store-translate.ts`), so a category's heading, breadcrumb and filter facet stay in the main language; (3) no manual order of products inside a term: `product_terms` has no position and `LISTING_SORTS` are featured, newest, priceLow, priceHigh and title (`src/lib/listing-filters.ts`). Rated Full in the first report; re-rated Partial because collection content, translated names and manual ordering are what a merchant uses a collection for.",
+    "gap": "Built in wave 6 unit A1 (D319, docs/wave-6-catalogue.md 3.7): a store's product category or tag has a description, a picture and its name and description per language (`terms.texts`, `termTextFor()`), shown above its products on its page (`TermHeader` in `term-listing.tsx`), in its metadata and share picture and in the sitemap, and by name in menus, filters and the chat; names and descriptions are in the translation worklist (`termUnit()`), and the owner orders a term's products (`product_terms.position`, `setTermOrder()`), followed by the page's Featured and a grid's Your order and kept across a product save (`collections.int.test.ts`). Still partial: criterion 1 asks for an e2e of the page's header, which comes with A2.",
     "bucket": "A",
     "wave": 6,
     "criteria": [
@@ -127,13 +127,18 @@
         "src/app/s/[store]/[market]/term-listing.tsx",
         "src/app/s/[store]/[market]/category/[slug]/page.tsx",
         "src/lib/page-roles.ts",
-        "src/db/schema.ts"
+        "src/db/schema.ts",
+        "src/lib/term-texts.ts",
+        "src/components/admin/term-page-fields.tsx",
+        "src/server/product-conditions.ts"
       ],
       "tests": [
         "src/lib/taxonomy.test.ts",
         "src/server/taxonomy.int.test.ts",
         "e2e/terms.spec.ts",
-        "e2e/page-roles.spec.ts"
+        "e2e/page-roles.spec.ts",
+        "src/server/collections.int.test.ts",
+        "src/lib/term-texts.test.ts"
       ],
       "untested": false
     },
@@ -144,7 +149,8 @@
       "D140",
       "D168",
       "D79",
-      "D160"
+      "D160",
+      "D319"
     ],
     "history": [
       {

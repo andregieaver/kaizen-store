@@ -82,8 +82,8 @@ collections for: a page of their own that says something, products in the order 
   `terms.texts` (`{ "sv-SE": { "name": "…", "description": {…} } }`, keyed by the store's locale strings as `terms.seo` is), read through
   `termTextFor(term, locale)` (the language's own, else the main language's; never another language's). A slug stays one per term (D168's
   redirects keep working).
-- **Shown.** The term's page draws the picture and description above its products (`TermHeader`, a new part of the `category` and `tag`
-  page roles, D140, so a store that built its own term page places it); its metadata uses the description's first sentences where the SEO
+- **Shown.** The term's page draws the picture and description above its products (`TermHeader`, drawn by `TermListing`, which the
+  *Category products* component of a built `category` or `tag` page (D140) draws too, so a store's own term page has it); its metadata uses the description's first sentences where the SEO
   description is empty (`termMetaDescription()`), and the picture as its share image where none is set. The sitemap lists the picture
   (`image:image`). Menus, content grids and the chat agent (`navigate`) show the translated name.
 - **Translated.** The worklist's `terms` scope adds the name and the description (`termWork()`), applied by `applyTranslations()` like
@@ -96,11 +96,13 @@ collections for: a page of their own that says something, products in the order 
 - `product_terms.position` (integer, not null, default the next number for that term): the order of a product within a category or tag. A
   product added to a term comes last; saving a product keeps the positions of the terms it stays in (`saveProduct()` writes only rows it
   adds or removes).
-- The term's panel lists its products in order with drag handles (dnd-kit, as the menu editor) and *Move to top* / *Move to bottom*;
-  saving writes the positions in one statement (`setTermOrder()`, only the store's own products of that term, positions 0..n-1).
-- On a term's page `featured` (the default sort, *Featured* to shoppers) follows the manual order, then the newest; the other sorts are as
-  today. A content grid choosing one category or tag with sort `featured` follows it too. Search results and the All products page are
-  unchanged.
+- The term's row has *Order products*: its own products (not its subcategories') in order, each with *Move to top*, *up*, *down* and
+  *Move to bottom*; saving writes the positions in one statement (`setTermOrder()`, only the store's own products of that term, positions
+  0..n-1, the rest none).
+- On a term's page `featured` (the default sort, *Featured* to shoppers) follows the manual order, then the others by when they were made
+  (as `featured` was before); the other sorts are as today. A content grid of products choosing exactly one category or tag with the sort
+  *Your order* (`manual`) follows it too (with none or several chosen there is no one order: newest first). Search results and the All
+  products page are unchanged.
 - A product's nearest category for its layout (D79) is unchanged by order.
 
 ### 3.3 A2: collections filled by rules
@@ -147,6 +149,32 @@ page and in metadata, a translated name in the worklist and a menu, the manual o
 product save, a rule collection following a price change, a stock change, a tag removed and an archived product with nothing re-run, a
 rule naming another store's tag dropped, a trigger refusing a manual member of a rule collection, the copy remapping rules; e2e: the
 term page's header and order, the panel's drag and live count (signed-in project).
+
+### 3.7 As built: A1 (2026-10-25)
+
+- `terms.description`, `image_url`, `image_thumbnail_url`, `texts` and `product_terms.position` (migration `collections`; checks: page parts
+  only on a store's product terms, `terms_page_parts`; a small copy needs its picture; positions from 0). `collections_copy` patches
+  `clone_store()` and `duplicate_store()` to carry them; the store copy's picture step moves a term's picture (`store-copy-media.ts`), and
+  the media library counts it as a use and moves it on Compress (`mediaUses()`, `rewriteAddresses()`).
+- `src/lib/term-texts.ts` (pure): `cleanTermDescription()`, `termTextsInput(locales, main)`, `parseTermTexts()`, `termTextFor()`,
+  `termsIn()`, `descriptionSummary()`. `termInput` carries the page parts unchecked (a cycle with `page-content` is avoided); the server
+  checks them (`checkedPage()` in `src/server/taxonomy.ts`); a part left out of a save stays as it is.
+- The order: `setTermOrder()` and `termProducts()` (`src/server/taxonomy.ts`), `manualPlace()` (`src/server/product-conditions.ts`) read by
+  `listGridProducts()` (sort `manual` with `orderTerm`) and `listingProducts()` (`ListingScope.orderTerm`); `saveProduct()` now writes only
+  the product terms it adds or removes, so a place survives a save.
+- The storefront: `TermHeader` in `term-listing.tsx` (picture with the library's alt text in the page's language, name, description); the
+  metadata's description falls back to the description's first sentences (`descriptionSummary()`) and its share picture to the term's own;
+  the sitemap lists the picture. Names in the shopper's language in menus (`store-layout.tsx`, the builder's menu preview), the listing's
+  filters and the chat's `navigate`.
+- Translation: the `terms` scope lists each term's name and description (as runs) beside its search texts (`termUnit()`'s `page`), applied
+  into `terms.texts` by `writeTerm()`; a description changed since it was translated is left out.
+- The admin: the categories page passes `page` to `TermsManager`: `TermPageFields` (picture, description per language, other languages'
+  names) in a term's edit form and `TermProductOrder` (*Order products*) on its row, with words in the `products` catalogue (`termPage`, en
+  and nb). Content grids offer *Your order (one category or tag)*.
+- Tests: `term-texts.test.ts`, `store-translate.test.ts`, `commerce.test.ts` (the rules and the copy), `collections.int.test.ts` (the page
+  per language and its refusals, the worklist and the apply, the order on the grid and the listing, kept across a product save, another
+  store's product never placed), `store-translate.int.test.ts` updated (every term now brings its name).
+- Not yet: A2 (collections by rules), the AI manager's tools (3.4) and an e2e of the term page's header and the panel; both come with A2.
 
 ## 4. Units B to I, outlined
 
@@ -222,7 +250,7 @@ A product may be given a category from a standard taxonomy (decision 1) kept apa
 Google's id where the taxonomy maps to it). A model may suggest a category from the product's own words, which staff accept (feature
 `product_taxonomy`, through the D76 writer's rules).
 
-## 5. Decisions needed from the owner
+## 5. Decisions (taken by the owner on 2026-10-25: all as recommended)
 
 | # | Decision | Options | Recommendation |
 |---|---|---|---|

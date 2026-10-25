@@ -1,7 +1,10 @@
 import { z } from "zod";
 
+import type { RichTextDoc } from "./page-content";
+import { isPictureAddress } from "./picture-address";
 import { slugify } from "./slug";
 import { termSeoShape, type TermSeo } from "./term-seo";
+import type { TermTexts } from "./term-texts";
 
 /**
  * Categories and tags (D50), shared by the admin (in the browser) and the
@@ -36,6 +39,13 @@ export type Term = {
    * (Kaizen's own terms); `{}` when the term has none.
    */
   seo?: TermSeo;
+  /**
+   * A store's product category's or tag's own page (wave 6 unit A, D319): its description in the main language, its picture with its small
+   * copy, and its name and description in the other languages (`termTextFor()`). Absent where they are not read (Kaizen's own terms).
+   */
+  description?: RichTextDoc | null;
+  image?: { url: string; thumbnailUrl: string | null } | null;
+  texts?: TermTexts;
 };
 
 /** What an item is in: category and tag ids. */
@@ -81,6 +91,19 @@ export const termInput = z
      * The shape is held here; the server checks the languages against the store's own (`termSeoInput(locales)`).
      */
     seo: termSeoShape.optional(),
+    /**
+     * The term's own page (D319), for a store's product categories and tags: left out means unchanged on an update and none on a new one. The
+     * shapes are checked on the server (`cleanTermDescription()`, `termTextsInput()` with the store's languages, the picture as a library file).
+     */
+    description: z.unknown().optional(),
+    image: z
+      .object({
+        url: z.string().trim().max(1000).refine(isPictureAddress, "The picture has an invalid address."),
+        thumbnailUrl: z.string().trim().max(1000).refine(isPictureAddress, "The picture has an invalid address.").nullable().default(null),
+      })
+      .nullable()
+      .optional(),
+    texts: z.record(z.string(), z.unknown()).optional(),
   })
   .transform((term, ctx) => {
     const slug = term.slug || slugify(term.name, TERM_SLUG_MAX);

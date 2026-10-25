@@ -23,6 +23,7 @@ import type { GridProduct } from "@/server/catalog";
 import { listingFacets, listingProducts, type ListingFacets, type ListingScope } from "@/server/listing";
 import type { Store } from "@/server/stores";
 import { siteTerms } from "@/server/taxonomy";
+import { termsIn } from "@/lib/term-texts";
 import { TrackOnView } from "@/components/track-on-view";
 import { toolCategories } from "@/lib/cookie-consent";
 import { LIST_ITEMS_MAX, majorAmount } from "@/lib/shop-events";
@@ -71,7 +72,8 @@ export async function ProductListing({
   const [facets, products, terms, notices] = await Promise.all([
     listingFacets(store.id, market, scope, viewer, m.options as Record<string, string>),
     given && chosen.length === 0 && filters.sort === "featured" ? given : listingProducts(store.id, market, scope, filters, viewer),
-    siteTerms(store.id, "product"),
+    // Names as this language has them (D319), for the filters' words.
+    siteTerms(store.id, "product").then((list) => termsIn(list, market.locale)),
     campaignNotices(store.id, market),
   ]);
 

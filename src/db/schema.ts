@@ -6750,6 +6750,18 @@ export const terms = commerce.table(
      * the languages and the lengths are `termSeoInput`'s (`src/lib/term-seo.ts`). Empty is `{}`: the page uses the term's name.
      */
     seo: jsonb("seo").notNull().default({}),
+    /**
+     * A store's product category's or tag's own page (wave 6 unit A, D319, `docs/wave-6-catalogue.md` 3.1): a description in the main language (Tiptap JSON,
+     * cleaned by `cleanRichText()`, null when none) and a picture from the media library with its small copy.
+     */
+    description: jsonb("description"),
+    imageUrl: text("image_url"),
+    imageThumbnailUrl: text("image_thumbnail_url"),
+    /**
+     * The name and description in the store's other languages (D319): `{ "sv-SE": { "name": "…", "description": {…} } }`, keyed as `seo` is, read only
+     * through `termTextFor()` (`src/lib/term-texts.ts`): a language's own, else the main language's, never another language's.
+     */
+    texts: jsonb("texts").notNull().default({}),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -6770,6 +6782,13 @@ export const terms = commerce.table(
     ),
     check("terms_not_own_parent", sql`${t.parentId} is null or ${t.parentId} <> ${t.id}`),
     check("terms_seo_object", sql`jsonb_typeof(${t.seo}) = 'object'`),
+    check("terms_texts_object", sql`jsonb_typeof(${t.texts}) = 'object'`),
+    check("terms_description_doc", sql`${t.description} is null or jsonb_typeof(${t.description}) = 'object'`),
+    check(
+      "terms_page_parts",
+      sql`(${t.description} is null and ${t.imageUrl} is null and ${t.texts} = '{}'::jsonb) or (${t.contentType} = 'product' and ${t.storeId} is not null)`,
+    ),
+    check("terms_image_pair", sql`${t.imageThumbnailUrl} is null or ${t.imageUrl} is not null`),
     check("terms_name", sql`length(trim(${t.name})) between 1 and 80`),
     check("terms_slug_format", sql`${t.slug} ~ '^[a-z0-9]+(?:-[a-z0-9]+)*$' and length(${t.slug}) <= 80`),
   ],
@@ -6783,6 +6802,11 @@ export const productTerms = commerce.table(
     productId: uuid("product_id").notNull(),
     termId: uuid("term_id").notNull(),
     contentType: text("content_type").notNull().default("product"),
+    /**
+     * The product's place in the owner's order of the term (wave 6 unit A, D319): 0, 1, 2 … as `setTermOrder()` wrote them; null is not placed by hand
+     * (a product added since), listed after the placed ones by when it was made.
+     */
+    position: integer("position"),
   },
   (t) => [
     primaryKey({ columns: [t.productId, t.termId] }),
@@ -6790,6 +6814,7 @@ export const productTerms = commerce.table(
     index("product_terms_product_idx").on(t.storeId, t.productId),
     index("product_terms_term_idx").on(t.storeId, t.contentType, t.termId),
     check("product_terms_content_type", sql`${t.contentType} = 'product'`),
+    check("product_terms_position", sql`${t.position} is null or ${t.position} >= 0`),
     foreignKey({
       name: "product_terms_product_fk",
       columns: [t.storeId, t.productId],

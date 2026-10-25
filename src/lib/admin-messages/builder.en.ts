@@ -561,6 +561,7 @@ export const builderEn = {
       title: "Title, A to Z",
       priceLow: "Price, low to high",
       priceHigh: "Price, high to low",
+      manual: "Your order (one category or tag)",
     },
     howMany: "How many",
     atMost: "at most {max}",

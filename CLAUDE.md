@@ -949,6 +949,13 @@ stand-in is the only fake, and only it is told it is one.
   (`src/components/admin/terms.tsx`) manage and choose them; changes
   `updateTag(termsTag(scope))`. Menus link to them by address (D52), to
   `/s/{store}/{market}/category|tag/{slug}` and Kaizen's `/category|tag/{slug}`.
+  A store's product category or tag has its own page (wave 6 unit A, D319, `docs/wave-6-catalogue.md` 3): a description, a picture and its
+  name and description in the other languages (`terms.texts`, read only through `termTextFor()`/`termsIn()` in `src/lib/term-texts.ts`: the
+  language's own, else the main language's; a new place that shows a term's name to a shopper names it so), checked on the server by
+  `checkedPage()`, in the translation worklist (`termUnit()`'s `page`); and the owner's order of its products (`product_terms.position`,
+  written only by `setTermOrder()`, read through `manualPlace()`: `listGridProducts()` sort `manual`, the listing's `featured` with
+  `orderTerm`). `saveProduct()` writes only the product terms it adds or removes, so a place survives a save; a term's picture is in
+  `mediaUses()`, `rewriteAddresses()` and the store copy's picture step.
 - Campaigns (D114, `src/lib/campaigns.ts`, `src/server/campaigns.ts`,
   `/admin/{store}/campaigns` under Sales): offers without a code, for a time: a
   percentage off, "buy N pay for M", a free product over an amount, for the

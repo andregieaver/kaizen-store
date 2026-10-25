@@ -3235,6 +3235,20 @@
       "when": 1792950887273,
       "tag": "20261025175447_legal_ai_settings_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 462,
+      "version": "7",
+      "when": 1792958870720,
+      "tag": "20261025200750_collections",
+      "breakpoints": true
+    },
+    {
+      "idx": 463,
+      "version": "7",
+      "when": 1792958908702,
+      "tag": "20261025200828_collections_copy",
+      "breakpoints": true
     }
   ]
 }

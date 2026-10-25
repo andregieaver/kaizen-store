@@ -94,9 +94,9 @@ const col = (name: string) => sql.raw(`"${name}"`);
 const tbl = (name: string) => sql.raw(`commerce."${name}"`);
 const like = (storeId: string) => `%${storeId.toLowerCase()}%`;
 
-/** Pictures in their own columns: a product's pictures and its variants'. */
+/** Pictures in their own columns: a product's pictures and its variants', and a category's or tag's own (D319). */
 async function pictureRows(newId: string, sourceId: string) {
-  const [media, variants] = await Promise.all([
+  const [media, variants, terms] = await Promise.all([
     db().execute<Row>(sql`
       select id, url, thumbnail_url from commerce.product_media
       where store_id = ${newId}::uuid and (url like ${like(sourceId)} or thumbnail_url like ${like(sourceId)})
@@ -105,8 +105,12 @@ async function pictureRows(newId: string, sourceId: string) {
       select id, image_url, image_thumbnail_url from commerce.product_variants
       where store_id = ${newId}::uuid and (image_url like ${like(sourceId)} or image_thumbnail_url like ${like(sourceId)})
     `),
+    db().execute<Row>(sql`
+      select id, image_url, image_thumbnail_url from commerce.terms
+      where store_id = ${newId}::uuid and (image_url like ${like(sourceId)} or image_thumbnail_url like ${like(sourceId)})
+    `),
   ]);
-  return { media, variants };
+  return { media, variants, terms };
 }
 
 /** Every address of a file in the original's folder that the copy holds, once each. */
@@ -123,12 +127,12 @@ async function discover(ctx: MediaCopyContext): Promise<string[]> {
     `);
     for (const row of rows) add(row.body);
   }
-  const { media, variants } = await pictureRows(ctx.newId, ctx.sourceId);
+  const { media, variants, terms } = await pictureRows(ctx.newId, ctx.sourceId);
   for (const row of media) {
     add(row.url);
     add(row.thumbnail_url);
   }
-  for (const row of variants) {
+  for (const row of [...variants, ...terms]) {
     add(row.image_url);
     add(row.image_thumbnail_url);
   }
@@ -297,7 +301,7 @@ async function rewriteAll(ctx: MediaCopyContext, mapped: Map<string, string | nu
     }
   }
 
-  const { media, variants } = await pictureRows(ctx.newId, ctx.sourceId);
+  const { media, variants, terms } = await pictureRows(ctx.newId, ctx.sourceId);
   const own = (url: unknown) => (typeof url === "string" && isStoreFile(url, ctx.sourceId) ? url : null);
   const other = (url: unknown) => (typeof url === "string" ? url : null);
   for (const row of media) {
@@ -320,6 +324,17 @@ async function rewriteAll(ctx: MediaCopyContext, mapped: Map<string, string | nu
     const thumb = own(row.image_thumbnail_url);
     await db().execute(sql`
       update commerce.product_variants
+         set image_url = ${next}, image_thumbnail_url = ${next === null ? null : thumb ? (mapped.get(thumb) ?? null) : other(row.image_thumbnail_url)}
+       where id = ${String(row.id)}::uuid
+    `);
+  }
+  // A category's or tag's picture that could not be copied is left out; its page shows its name and description as before.
+  for (const row of terms) {
+    const url = own(row.image_url);
+    const next = url ? (mapped.get(url) ?? null) : other(row.image_url);
+    const thumb = own(row.image_thumbnail_url);
+    await db().execute(sql`
+      update commerce.terms
          set image_url = ${next}, image_thumbnail_url = ${next === null ? null : thumb ? (mapped.get(thumb) ?? null) : other(row.image_thumbnail_url)}
        where id = ${String(row.id)}::uuid
     `);

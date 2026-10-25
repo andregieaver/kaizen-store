@@ -27,6 +27,14 @@ export const OFFERED = sql`(commerce.feature_on(p.store_id, 'shop')
   and ((p.kind = 'goods' and not p.subscription_only) or commerce.kind_offered(p.store_id, p.kind, p.subscription_only)))`;
 
 /**
+ * The product `p`'s place in the owner's order of the category or tag `termId` (wave 6 unit A, D319), as an ORDER BY term: placed products by
+ * their place, then those not placed by hand (added since, or in a subcategory only). Follow it with the reader's own tie-break.
+ */
+export const manualPlace = (termId: string): SQL => sql`(
+  select pt.position from commerce.product_terms pt where pt.store_id = p.store_id and pt.product_id = p.id and pt.term_id = ${termId}::uuid
+) asc nulls last`;
+
+/**
  * Purchase options (selling plans, D25) are offered while the store feature Subscriptions is on (D178), for the store whose id is given
  * (`sp.store_id`, `cl.store_id`, `p.store_id`). A product sold only as a subscription is not offered at all while it is off (`OFFERED`);
  * one sold both ways is sold once only, and a cart line on a plan is unavailable.

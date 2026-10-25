@@ -38,6 +38,7 @@ import { pickupFacts } from "./pickup-facts";
 import { getShippingFacts } from "./seo";
 import type { Store } from "./stores";
 import { siteTerms } from "./taxonomy";
+import { termTextFor } from "@/lib/term-texts";
 import { settingsOf } from "./support";
 
 type Row = Record<string, unknown>;
@@ -419,7 +420,7 @@ async function navigateStore(site: Extract<ChatSite, { kind: "store" }>, raw: Re
     case "category":
     case "tag": {
       const term = (await siteTerms(store.id, "product")).find((candidate) => candidate.kind === to && candidate.slug === slug);
-      return term ? go(`/${to}/${term.slug}`, term.name) : missing(to);
+      return term ? go(`/${to}/${term.slug}`, termTextFor(term, market.locale).name) : missing(to);
     }
   }
   return { result: json({ error: "The agent cannot open that." }) };

@@ -17,7 +17,7 @@ import { shownMeasureFromColumns } from "@/lib/unit-price-rules";
 import { stockOf, UNLIMITED, type VariantStock } from "@/lib/stock-availability";
 
 import { fieldsTag, shownFieldsFor, shownFieldsForVariants } from "./custom-fields";
-import { OFFERED, STORE_AUDIENCE, plansOffered } from "./product-conditions";
+import { OFFERED, STORE_AUDIENCE, manualPlace, plansOffered } from "./product-conditions";
 
 /**
  * Cache tags. Revalidate a store's catalogue tag after any product or price
@@ -384,12 +384,14 @@ export type GridProduct = ProductSummary & { description: string; /** Its own sh
  * Active products with a price in the market for a content grid (D51):
  * only those in one of `categoryIds` (when given) and one of `tagIds`
  * (when given), sorted and at most `limit`. With `ids` (search results),
- * only those products, in that order.
+ * only those products, in that order. Sort `manual` is the owner's order of
+ * the category or tag `orderTerm` (D319): placed products by their place,
+ * then the others by when they were made.
  */
 export async function listGridProducts(
   storeId: string,
   market: Market,
-  filter: { categoryIds: string[]; tagIds: string[]; sort: string; limit: number; ids?: string[] },
+  filter: { categoryIds: string[]; tagIds: string[]; sort: string; limit: number; ids?: string[]; orderTerm?: string },
 ): Promise<GridProduct[]> {
   "use cache";
   cacheLife("hours");
@@ -405,9 +407,12 @@ export async function listGridProducts(
           where pt.store_id = p.store_id and pt.product_id = p.id and pt.term_id = any(${ids(list)}::uuid[])
         )`;
   const given = filter.ids ? ids(filter.ids) : null;
+  const orderTerm = filter.sort === "manual" && filter.orderTerm && /^[0-9a-f-]{36}$/i.test(filter.orderTerm) ? filter.orderTerm : null;
   const order = given && filter.sort === "given"
     ? sql`array_position(${given}::uuid[], p.id)`
-    : filter.sort === "oldest"
+    : orderTerm
+      ? sql`${manualPlace(orderTerm)}, p.created_at, p.handle`
+      : filter.sort === "oldest"
       ? sql`p.created_at, p.handle`
       : filter.sort === "title"
         ? sql`lower(coalesce(tl.title, tf.title)), p.handle`

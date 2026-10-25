@@ -1,4 +1,5 @@
-import type { TranslateItem } from "./page-translate-ai";
+import type { RichTextDoc } from "./page-content";
+import { richRuns, type TranslateItem } from "./page-translate-ai";
 import { DESCRIPTION_MAX, TITLE_MAX } from "./seo";
 import type { TermSeoText } from "./term-seo";
 import { LABEL_MAX } from "./navigation";
@@ -155,18 +156,46 @@ export const TERM_FIELDS = [
 ] as const;
 
 /**
- * A category's or tag's search title and description to translate: the main language's that have words, and with `missing` only where the language has none.
- * A term with no main-language text is not listed (there is nothing to translate from). Never legal: a search text is the owner's own marketing words.
+ * A category's own page in another language (wave 6 unit A, D319): its name (always there in the main language) and its description (a rich text,
+ * as runs), each with its language's own text where it has one.
  */
-export function termUnit(id: string, name: string, kind: "category" | "tag", source: TermSeoText | null, target: TermSeoText | null, mode: "missing" | "all"): Unit | null {
-  if (!source) return null;
-  const items = TERM_FIELDS.filter((f) => source[f.key].trim() !== "" && (mode === "all" || !target || target[f.key].trim() === "")).map((f) => ({
-    key: f.key,
-    label: f.label,
-    max: f.max,
-    rich: false,
-    runs: [source[f.key]],
-  }));
+export type TermPageTexts = { name: { source: string; target: string | null }; description: { source: RichTextDoc | null; target: RichTextDoc | null } };
+
+/** The name's longest length, repeated here so the browser needs no other module. */
+const TERM_NAME_MAX = 80;
+
+/**
+ * A category's or tag's texts to translate: its name and description (D319, `page`) and its search title and description (D168), the main language's that have
+ * words, and with `missing` only where the language has none. Unit keys are `name`, `body` (the description, as runs), `title` and `description` (the search
+ * texts). Never legal: these are the owner's own words about their products.
+ */
+export function termUnit(
+  id: string,
+  name: string,
+  kind: "category" | "tag",
+  source: TermSeoText | null,
+  target: TermSeoText | null,
+  mode: "missing" | "all",
+  page?: TermPageTexts,
+): Unit | null {
+  const missing = (value: string | null | undefined) => mode === "all" || !value || value.trim() === "";
+  const items: TranslateItem[] = [];
+  if (page && page.name.source.trim() !== "" && missing(page.name.target)) {
+    items.push({ key: "name", label: "Name", max: TERM_NAME_MAX, rich: false, runs: [page.name.source] });
+  }
+  if (page?.description.source) {
+    const runs = richRuns(page.description.source);
+    if (runs.some((run) => run.trim() !== "") && (mode === "all" || !page.description.target)) {
+      items.push({ key: "body", label: "Description", max: 0, rich: true, runs });
+    }
+  }
+  if (source) {
+    for (const f of TERM_FIELDS) {
+      if (source[f.key].trim() !== "" && (mode === "all" || !target || target[f.key].trim() === "")) {
+        items.push({ key: f.key, label: f.label, max: f.max, rich: false, runs: [source[f.key]] });
+      }
+    }
+  }
   if (items.length === 0) return null;
   return { id: `term:${id}`, scope: "terms", title: name, kind: kind === "category" ? "Category" : "Tag", legal: false, items };
 }

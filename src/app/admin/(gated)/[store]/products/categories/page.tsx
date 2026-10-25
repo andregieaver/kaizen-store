@@ -15,7 +15,14 @@ import { PageHeader } from "@/components/admin/ui";
 
 import { storeLanguages, termFieldsSetup } from "../../fields/data";
 
-import { createProductTermAction, deleteProductTermAction, updateProductTermAction } from "../actions";
+import {
+  createProductTermAction,
+  deleteProductTermAction,
+  saveTermOrderAction,
+  termProductsAction,
+  updateProductTermAction,
+  uploadImageAction,
+} from "../actions";
 
 export const metadata: Metadata = { title: "Product categories and tags" };
 
@@ -51,6 +58,14 @@ export default async function ProductTermsPage({ params }: PageProps<"/admin/[st
           usedBy={w.usedBy}
           fields={fields}
           seo={seo}
+          // A category's or tag's own page and its products' order (wave 6 unit A, D319).
+          page={{
+            locales: store.localization.locales,
+            languageNames: seo.languageNames,
+            upload: uploadImageAction.bind(null, store.slug),
+            products: termProductsAction.bind(null, store.slug),
+            saveOrder: saveTermOrderAction.bind(null, store.slug),
+          }}
           // A category can need a price per kg or litre of its products (unit price, D160); the counts are of active products still without content.
           unitPrice={{ gaps: Object.fromEntries(gaps), needsHref: `/admin/${store.slug}/products?needs=unit-price` }}
           actions={{

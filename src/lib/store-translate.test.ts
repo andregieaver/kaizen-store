@@ -114,6 +114,12 @@ describe("categories and tags (wave 2, D168)", () => {
   });
 
   it("do not list a term with no main-language text, or one the language has already (unless all is asked for)", () => {
+    // A category's name and description (D319) are translated too: the name always, the description as runs.
+    const page = { name: { source: "Hem", target: null }, description: { source: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Allt för hemmet." }] }] } as never, target: null } };
+    const withPage = termUnit("t1", "Hem", "category", null, null, "missing", page)!;
+    expect(withPage.items.map((i) => [i.key, i.rich])).toEqual([["name", false], ["body", true]]);
+    expect(withPage.items[1].runs).toEqual(["Allt för hemmet."]);
+    expect(termUnit("t1", "Hem", "category", null, null, "missing", { ...page, name: { source: "Hem", target: "Home" }, description: { ...page.description, target: page.description.source } })).toBeNull();
     expect(termUnit("t1", "Hem", "category", null, null, "all")).toBeNull();
     expect(termUnit("t1", "Hem", "category", { title: "", description: " " }, null, "all")).toBeNull();
     expect(termUnit("t1", "Hem", "category", sv, { title: "Home", description: "All for the home." }, "missing")).toBeNull();

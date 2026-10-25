@@ -5,7 +5,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { LEGAL_ROLES } from "@/lib/legal-roles";
 import { parsePageContent, type PageType } from "@/lib/page-content";
-import { applyTranslated, translationItems, type TranslateMode } from "@/lib/page-translate-ai";
+import { applyTranslated, translationItems, withRichRuns, type TranslateMode } from "@/lib/page-translate-ai";
 import { withTranslation } from "@/lib/page-translation";
 import {
   emailUnit,
@@ -28,6 +28,7 @@ import {
 
 import { INFO_MAX, INSTRUCTIONS_MAX, NAME_MAX } from "@/lib/shipping-limits";
 import { parseTermSeo, termSeoFor, termSeoInput, type TermSeo } from "@/lib/term-seo";
+import { parseTermDescription, parseTermTexts, termTextsInput, type TermTexts } from "@/lib/term-texts";
 
 import { audit, type Membership } from "./auth";
 import { fieldWork, writeFieldUnit } from "./field-translate";
@@ -130,17 +131,22 @@ async function returnsWork(storeId: string, to: string, mode: TranslateMode): Pr
 }
 
 /**
- * The store's product categories and tags whose search title or description exists in the main language (wave 2, D168): listed where the other language has
- * none (or all of them again). A term with no main-language text is not listed. Never legal.
+ * The store's product categories and tags: their names and descriptions (wave 6 unit A, D319: the term's own columns are the main language, `texts` the
+ * others) and their search titles and descriptions (wave 2, D168), listed where the other language has none (or all of them again). Never legal.
  */
 async function termWork(storeId: string, from: string, to: string, mode: TranslateMode): Promise<Unit[]> {
   const rows = await db().execute<Row>(sql`
-    select id, kind, name, seo from commerce.terms
+    select id, kind, name, seo, description, texts from commerce.terms
     where store_id = ${storeId}::uuid and content_type = 'product' order by kind, lower(name), id
   `);
   return rows.flatMap((row) => {
     const seo = parseTermSeo(row.seo);
-    const unit = termUnit(String(row.id), String(row.name), row.kind === "tag" ? "tag" : "category", termSeoFor(seo, from), termSeoFor(seo, to), mode);
+    const own = parseTermTexts(row.texts)[to];
+    const page = {
+      name: { source: String(row.name), target: own?.name ?? null },
+      description: { source: parseTermDescription(row.description), target: own?.description ?? null },
+    };
+    const unit = termUnit(String(row.id), String(row.name), row.kind === "tag" ? "tag" : "category", termSeoFor(seo, from), termSeoFor(seo, to), mode, page);
     return unit ? [unit] : [];
   });
 }
@@ -332,7 +338,7 @@ export async function applyTranslations(member: Membership, to: string, accepted
       menus.set(menuId, [...(menus.get(menuId) ?? []), { index: Number(index), text: String(ok.label).trim() }]);
     } else if (unit.scope === "terms") {
       const id = unitId.split(":")[1];
-      terms.set(id, { ...terms.get(id), ...(ok as Partial<Record<"title" | "description", string>>) });
+      terms.set(id, { ...terms.get(id), ...(ok as Partial<TermAccepted>) });
     } else if (unit.scope === "returns") {
       const text = String(ok.instructions ?? "").trim();
       if (!text) {
@@ -398,25 +404,44 @@ async function writeProduct(storeId: string, productId: string, from: string, to
   return true;
 }
 
+/** What staff accepted of a term's unit: its name, its description as runs, its search title and description. */
+type TermAccepted = { name: string; body: string[]; title: string; description: string };
+
 /**
- * Puts the accepted search texts of a category or tag in the language `to`: only the fields accepted, the rest of the term's search texts (other languages'
- * too) kept as they are, checked against the store's languages and the lengths again. A term whose main-language text is gone, or that is not the store's, is
- * left out. The suggestion was read and ticked by a person before it got here.
+ * Puts the accepted texts of a category or tag in the language `to`: its name and description into `texts` (D319) and its search texts into `seo` (D168),
+ * only the fields accepted, the rest (other languages' too) kept as they are, checked against the store's languages and the lengths again. A term that is
+ * not the store's is left out, and so is a search text whose main-language text is gone. The suggestion was read and ticked by a person before it got here.
  */
-async function writeTerm(member: Membership, termId: string, from: string, to: string, texts: Partial<Record<"title" | "description", string>>): Promise<true | string> {
+async function writeTerm(member: Membership, termId: string, from: string, to: string, texts: Partial<TermAccepted>): Promise<true | string> {
   const { store } = member;
   const [row] = await db().execute<Row>(sql`
-    select name, seo from commerce.terms where id = ${termId}::uuid and store_id = ${store.id}::uuid and content_type = 'product'
+    select name, seo, description, texts from commerce.terms where id = ${termId}::uuid and store_id = ${store.id}::uuid and content_type = 'product'
   `);
   if (!row) return "A category or tag was gone, so it was left out.";
   const seo = parseTermSeo(row.seo);
-  if (!termSeoFor(seo, from)) return `${String(row.name)}: the main language has no search text any more.`;
-  const current = termSeoFor(seo, to);
-  const next: TermSeo = { ...seo, [to]: { title: texts.title ?? current?.title ?? "", description: texts.description ?? current?.description ?? "" } };
-  const checked = termSeoInput(store.localization.locales).safeParse(next);
-  if (!checked.success) return `${String(row.name)}: ${checked.error.issues[0]?.message ?? "the text could not be saved."}`;
+  let nextSeo: TermSeo = seo;
+  if (texts.title !== undefined || texts.description !== undefined) {
+    if (!termSeoFor(seo, from)) return `${String(row.name)}: the main language has no search text any more.`;
+    const current = termSeoFor(seo, to);
+    const next: TermSeo = { ...seo, [to]: { title: texts.title ?? current?.title ?? "", description: texts.description ?? current?.description ?? "" } };
+    const checked = termSeoInput(store.localization.locales).safeParse(next);
+    if (!checked.success) return `${String(row.name)}: ${checked.error.issues[0]?.message ?? "the text could not be saved."}`;
+    nextSeo = checked.data;
+  }
+  const pageTexts = parseTermTexts(row.texts);
+  let nextTexts: TermTexts = pageTexts;
+  if (texts.name !== undefined || texts.body !== undefined) {
+    const own = pageTexts[to] ?? {};
+    const source = parseTermDescription(row.description);
+    const body = texts.body === undefined ? own.description : source ? (withRichRuns(source, texts.body) ?? undefined) : undefined;
+    if (texts.body !== undefined && !body) return `${String(row.name)}: the description changed since it was translated, so it was left out.`;
+    const raw = { ...pageTexts, [to]: { name: texts.name?.trim() || own.name, description: body } };
+    const checked = termTextsInput(store.localization.keptLocales, store.localization.locales[0] ?? "").safeParse(raw);
+    if (!checked.success) return `${String(row.name)}: ${checked.error.issues[0]?.message ?? "the text could not be saved."}`;
+    nextTexts = checked.data;
+  }
   await db().execute(sql`
-    update commerce.terms set seo = ${JSON.stringify(checked.data)}::jsonb, updated_at = now()
+    update commerce.terms set seo = ${JSON.stringify(nextSeo)}::jsonb, texts = ${JSON.stringify(nextTexts)}::jsonb, updated_at = now()
     where id = ${termId}::uuid and store_id = ${store.id}::uuid and content_type = 'product'
   `);
   refreshTag(termsTag({ storeId: store.id, contentType: "product" }));

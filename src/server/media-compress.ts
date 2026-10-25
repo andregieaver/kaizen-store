@@ -222,6 +222,9 @@ export function rewriteAddresses(storeId: string | null, pairs: [string, string]
     json(sql`commerce.saved_parts`, sql`content`),
     json(sql`commerce.chat_agents`, sql`avatar`, sql`avatar is not null`),
     json(sql`commerce.terms`, sql`seo`),
+    // A category's or tag's own picture (wave 6 unit A, D319).
+    ...exact(sql`commerce.terms`, sql`image_url`),
+    ...exact(sql`commerce.terms`, sql`image_thumbnail_url`),
     json(sql`commerce.field_values`, sql`values`),
     json(sql`commerce.cart_reminder_steps`, sql`content`),
     // The look a store's installed theme keeps while it is not live (D241): its theme and CSS name the same files.

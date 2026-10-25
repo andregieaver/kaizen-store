@@ -299,6 +299,10 @@ export async function mediaUses(owner: MediaOwner, ids: string[]): Promise<Map<s
     from m join commerce.pages pg on ${owned(storeId, sql`pg.store_id`)}
     where ${found(sql`pg.draft::text`)} or (pg.published is not null and ${found(sql`pg.published::text`)})
     union all
+    -- A store's product category's or tag's own picture (wave 6 unit A, D319): live on its page.
+    select m.id, 'term', t.id::text, t.name, t.kind, t.slug, true from m join commerce.terms t on ${owned(storeId, sql`t.store_id`)}
+    where t.image_url in (m.url, m.thumbnail_url) or t.image_thumbnail_url in (m.url, m.thumbnail_url)
+    union all
     select m.id, 'menu', mn.id::text, mn.name, null, null, null from m join commerce.menus mn on ${owned(storeId, sql`mn.store_id`)} where ${found(sql`mn.items::text`)}
     union all
     select m.id, 'saved', sp.id::text, sp.name, null, null, null from m join commerce.saved_parts sp on ${owned(storeId, sql`sp.store_id`)} where ${found(sql`sp.content::text`)}
@@ -386,6 +390,8 @@ function siteUrlOf(row: UseRow, site: SiteAddresses | null, store: boolean): str
     case "navigation":
     case "seo":
       return home;
+    case "term":
+      return store && row.slug && (row.type === "category" || row.type === "tag") ? at(`/${row.type}/${row.slug}`) : null;
     default:
       return null;
   }
@@ -407,6 +413,8 @@ function describePlace(row: UseRow, base: string, store: boolean): MediaUse {
     }
     case "menu":
       return { label: `Menu: ${label}`, href: `${base}/menus?menu=${row.ref_id}` };
+    case "term":
+      return { label: `${row.type === "tag" ? "Tag" : "Category"}: ${label}`, href: `${base}/products/categories` };
     case "saved":
       return { label: `Saved part: ${label}`, href: null };
     case "chat":

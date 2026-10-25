@@ -12,6 +12,7 @@ import { darkBehindLogo, type HeaderBackground, type LogoPlace } from "@/lib/the
 import { publishedPageNames } from "@/server/pages";
 import type { Store } from "@/server/stores";
 import { siteTerms } from "@/server/taxonomy";
+import { termsIn } from "@/lib/term-texts";
 
 import { BuyerSwitch } from "./buyer";
 import { CartLink, CartLinkShell } from "./cart-link";
@@ -67,7 +68,8 @@ export async function MenuLinks({
     siteTerms(store.id, "article"),
   ]);
   const names = {
-    ...termNames(terms),
+    // A link with no text of its own is named as the market's language names the category or tag (D319).
+    ...termNames(termsIn(terms, market.locale)),
     page: new Map(pages),
     article: new Map(articles),
     blogCategory: termNames(blogTerms).category,

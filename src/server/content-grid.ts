@@ -285,7 +285,10 @@ async function gridProducts(storeId: string, marketCode: string | null, filter: 
 
   const scope = await gridScope(storeId, filter);
   if (!scope) return { items: [], lang: market.lang, locale: market.locale };
-  const products = await listGridProducts(storeId, market, { ...scope, sort: filter.sort, limit: filter.limit });
+  // The owner's order (D319) is a single category's or tag's: with none or several chosen there is no one order, so newest first.
+  const single = [...filter.categories, ...filter.tags];
+  const manual = filter.sort === "manual" && single.length === 1 ? { sort: "manual", orderTerm: single[0] } : filter.sort === "manual" ? { sort: "newest" } : { sort: filter.sort };
+  const products = await listGridProducts(storeId, market, { ...scope, ...manual, limit: filter.limit });
   const items = products.map((product) => productItem(store.slug, market.slug, product));
   return { lang: market.lang, locale: market.locale, items: await withTileFields(storeId, "product", market, filter.tileFields, items) };
 }
