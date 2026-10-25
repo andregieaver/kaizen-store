@@ -116,6 +116,11 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   // The store's features (D178): reading them is the owner's like the store's overview; switching is the owner's alone, as on the Features page.
   list_features: "owner",
   set_feature: "owner",
+  // The store's look (D308): as Design settings asks, reading `website:read` and changing `website:write`.
+  list_themes: "website:read",
+  try_theme: "website:read",
+  add_theme: "website:write",
+  make_theme_live: "website:write",
   store_checkup: "owner",
   list_customers: "customers:read",
   get_customer: "customers:read",

@@ -1,10 +1,12 @@
 import "server-only";
 
 import { autonomyDecision, discountDepth, type AutonomyDecision, type AutonomySettings } from "@/lib/autopilot-autonomy";
+import type { MakeThemeLiveInput } from "@/lib/design-tools";
 import type { GateCategory } from "@/lib/owner-tools";
 import type { SetPricesInput } from "@/lib/product-tools";
 
 import type { Account } from "./auth";
+import { liveCostsMoney } from "./design-tools";
 import { priceChangePercent } from "./product-tools";
 import type { Store } from "./stores";
 
@@ -25,6 +27,8 @@ export async function autopilotDecision(
       ? { priceChangePercent: await priceChangePercent(p.store, p.account, args as SetPricesInput) }
       : tool === "create_discount" || tool === "create_campaign"
         ? { discountPercent: discountDepth(tool, args) }
-        : {};
+        : tool === "make_theme_live" && p.store
+          ? { costsMoney: await liveCostsMoney(p.store, p.account, args as MakeThemeLiveInput) }
+          : {};
   return autonomyDecision(settings, tool, gate, facts);
 }

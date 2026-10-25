@@ -41,6 +41,8 @@ import { dnsApprovalDetails, domainApprovalDetails, moveApprovalDetails } from "
 import { productApprovalWords } from "./product-tools";
 import { headerFooterApprovalWords, menuApprovalWords, placeApprovalWords, publishApprovalWords } from "./site-tools";
 import { setupApprovalWords } from "./setup-tools";
+import { liveApprovalDetails } from "./design-tools";
+import type { MakeThemeLiveInput } from "@/lib/design-tools";
 import { SETUP_TOOLS } from "@/lib/setup-tools";
 import type { Store } from "./stores";
 import { effectiveFeatures } from "@/lib/store-features";
@@ -758,6 +760,17 @@ export async function keepForApproval(
     const { approved_version: _ignored, ...rest } = args;
     void _ignored;
     args = details ? { ...rest, approved_version: details.version } : rest;
+  }
+  // A theme's going live is described with its name, what it replaces and what it costs, and that charge is kept with the call (a value the
+  // model passed is replaced): the yes makes it live at that charge or not at all, and a theme that costs money is a `spend` (D308).
+  if (store && tool === "make_theme_live") {
+    const parsed = OWNER_TOOLS_BY_NAME.make_theme_live.input.safeParse(args);
+    const details = parsed.success ? await liveApprovalDetails({ account: ctx.account, store, invalidate: ctx.invalidate }, parsed.data as MakeThemeLiveInput) : null;
+    const { approved_charge: _ignored, ...rest } = args;
+    void _ignored;
+    summary = details?.summary ?? summary;
+    category = details?.category ?? category;
+    args = details ? details.args : rest;
   }
   // A feature switch is described from the registry and the store's own warnings, which are kept with the call (a value the model passed is
   // replaced): the owner's yes confirms exactly those, and the switch is refused if they have changed (D178).

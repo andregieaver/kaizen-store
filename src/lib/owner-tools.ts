@@ -19,6 +19,7 @@ import { FROM_MAX, OVERVIEW_ROWS_DEFAULT, OVERVIEW_ROWS_MAX, TO_MAX, redirectSum
 import { ADJUST_REASONS, BACKORDER_DAYS_MAX, BACKORDER_DAYS_MIN, MOVEMENT_REASONS, NOTE_MAX, STOCK_MAX } from "./inventory";
 import { backorderSummary, setStockSummary } from "./stock-tools";
 import { featureSwitchSummaryOf, listFeaturesInput, setFeatureInput } from "./feature-tools";
+import { addThemeInput, listThemesInput, makeThemeLiveInput, tryThemeInput } from "./design-tools";
 import { archiveOrdersInput, createDraftOrderInput, listDraftOrdersInput, listOrdersInput, sendDraftOrderInput, sendDraftSummary, tagOrdersInput } from "./order-ops-tools";
 import { createProductInput, productApprovalSummary, setPricesInput, setProductStatusInput, updateProductInput, writeProductTextsInput } from "./product-tools";
 import {
@@ -445,6 +446,28 @@ export const OWNER_TOOLS = [
     "open_store",
     "Opens the store to shoppers, as the setup wizard's last step does: its pages become public and search engines may list it. It needs the business details and a country (setup_progress says what is left), and takes no payment until payments are switched on. Needs the owner's approval.",
     z.object({}),
+    "public",
+  ),
+  // The store's look (D308, `docs/ai-autopilot.md` 6): themes added to its library at once, made live only on the owner's yes.
+  tool(
+    "list_themes",
+    "The themes on offer (Settings, Design) with their presets and what making each live would cost the store (free, already the store's, or its price, charged now or when the store opens), and the store's theme library: each installed theme with whether it is live. Read it before suggesting a theme.",
+    listThemesInput,
+  ),
+  tool(
+    "add_theme",
+    "Adds a theme, or one of its presets, to the store's theme library without making it live, as Add to my themes does: visitors see nothing of it. Answers with its install id and the address where the person can see the store's own pages in it (try_theme). Use a theme's id and a preset's key from list_themes.",
+    addThemeInput,
+  ),
+  tool(
+    "try_theme",
+    "Where the person sees an installed theme on the store's own pages before it goes live, and where they customise it. Open the preview for them (open_admin_page) rather than describing a theme's look; the person judges it.",
+    tryThemeInput,
+  ),
+  tool(
+    "make_theme_live",
+    "Makes a theme live, as Design settings does: an installed theme by its install id (with every change made to it), or a theme and preset from list_themes installed and made live at once. Visitors see its colours, fonts, header, footer and product page at once; the store's words, pages and products stay, and the theme it replaces is kept in the library. A premium theme the store does not have costs its price (list_themes says what). Needs the owner's approval.",
+    makeThemeLiveInput,
     "public",
   ),
   tool(
@@ -1472,6 +1495,9 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
       return `${input.method ? "Change" : "Make"} a shipping method in ${text("country").toUpperCase()}.`;
     case "open_store":
       return "Open the store to shoppers.";
+    // The theme's own name and charge are put in by the server (`liveApprovalDetails()`); these words stand when it cannot be read.
+    case "make_theme_live":
+      return "Make a theme live: visitors see its look at once.";
     case "approve_return":
       return approveSummary(text("return"), text("instructions") || null);
     case "decline_return":

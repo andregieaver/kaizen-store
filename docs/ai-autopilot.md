@@ -223,6 +223,28 @@ not live, ungated), `try_theme` (the install's preview address for the person) a
 `spend` when the theme costs money and the store does not own it, with the charge the owner was shown). Tests: adding never changes the
 live look; going live through the tool equals going live from Design settings; a premium theme is never made live without its charge.
 
+### 6.1 As built (2026-10-25)
+
+- `src/lib/design-tools.ts` (pure: the arguments, `chargeCosts()`, `chargeKey()`, `chargeTokenFor()`, `liveSummary()`) and
+  `src/server/design-tools.ts`; owner tools only (a store's look), `website:read` for `list_themes` and `try_theme`, `website:write` for
+  `add_theme` and `make_theme_live`, as Design settings asks. Kaizena Flow's own site's themes stay with a person (Website, Design).
+- `list_themes` reads `listOfferedDesigns()` with `themeCharges()` (the price in words, `chargeLine()`) and the store's library
+  (`listInstalls()`), each install with its page. `add_theme` is `installDesignPreset()`, at once and ungated (the function audits
+  `store.theme_installed`); it answers with the install and its preview. `try_theme` gives the install's preview and page, for the manager
+  to open (`open_admin_page`) rather than describe.
+- `make_theme_live` takes an install (`switchToInstall()`) or a theme and preset (`applyDesignPreset()`), always gated, checked first by
+  `preflightDesignTool()` (not installed, live already, not on offer, an unknown preset, the library full, a store not open or kept by the
+  platform). `liveApprovalDetails()` writes the owner's question (`liveSummary()`), keeps the charge as `approved_charge` (`chargeKey()`:
+  kind and price, a value the model passed replaced) and makes the approval a `spend` when the theme costs money now or when the store opens,
+  else `public`. When the yes runs the charge is read again: any other charge is refused with `CHARGE_CHANGED` and nothing changes; a theme
+  charged at once passes its price token to the database (`setThemeCharge()`) and is invoiced after the answer (`chargeDueThemePurchases()`).
+- The autopilot (D309): `make_theme_live` is in the Design area; `autopilotDecision()` reads `liveCostsMoney()` first and a theme that costs
+  money, or whose cost cannot be read, always waits for a yes.
+- Tests: `src/lib/design-tools.test.ts`; `src/server/design-tools.int.test.ts` (adding never changes the store's look or charges anything,
+  the tool's live theme equals Design settings' `applyDesignPreset()` on a twin store and its switch is the page's, a premium theme is
+  refused without, or with another, charge and goes live with the kept one, the approval keeps the charge as a `spend`, the autopilot's
+  decisions).
+
 ## 7. Unit B (D309): goals, plans and the work loop
 
 Written in full on 2026-10-25, before B1 is built, from a read of `runTurn()`, `callTool()`, `keepForApproval()`, `decideApproval()`,

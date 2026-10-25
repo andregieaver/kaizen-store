@@ -117,6 +117,7 @@ import {
   setupGateNeeded,
   setupProgressTool,
 } from "./setup-tools";
+import { addThemeTool, listThemesTool, makeThemeLiveTool, preflightDesignTool, tryThemeTool } from "./design-tools";
 import { deliveryRounds } from "./standing-orders";
 import { listSubscriptions } from "./subscriptions";
 import { mostWishedProducts, wishlistFigures } from "./wishlist-admin";
@@ -2012,6 +2013,12 @@ export async function preflightOwnerTool(ctx: OwnerToolContext, name: string, ra
     if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
     return preflightSetupTool(ctx, name, input.input);
   }
+  // A theme that could not go live (not installed, live already, not on offer, the library full, a store not open) is refused now (D308).
+  if (name === "make_theme_live") {
+    const input = readToolInput(OWNER_TOOLS_BY_NAME[name], raw);
+    if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
+    return preflightDesignTool(ctx, name, input.input);
+  }
   // A feature switch that could not be made (a need off, customers who would be hit) is refused now, never kept for a yes (D178).
   if (name === "set_feature") {
     const tool = OWNER_TOOLS_BY_NAME[name];
@@ -2169,6 +2176,10 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   open_store: (ctx: OwnerToolContext) => openStoreTool(ctx),
   list_features: listFeaturesTool,
   set_feature: setFeatureTool,
+  list_themes: (ctx: OwnerToolContext) => listThemesTool(ctx),
+  add_theme: (ctx: OwnerToolContext, input: OwnerToolInput<"add_theme">) => addThemeTool(ctx, input),
+  try_theme: (ctx: OwnerToolContext, input: OwnerToolInput<"try_theme">) => tryThemeTool(ctx, input),
+  make_theme_live: (ctx: OwnerToolContext, input: OwnerToolInput<"make_theme_live">) => makeThemeLiveTool(ctx, input),
   store_checkup: storeCheckup,
   get_tax_profile: getTaxProfileTool,
   tax_readiness: taxReadinessTool,
@@ -2294,7 +2305,7 @@ export async function runOwnerTool(ctx: OwnerToolContext, name: string, raw: unk
     // The catalogue tools' entries are the Products area's, the page tools' the Website's and the setup tools' the Settings' (D308), so a member who may read those sees them in the activity log.
     const area = PRODUCT_TOOLS.has(name)
       ? { area: "products" as const }
-      : PAGE_TOOLS.has(name)
+      : PAGE_TOOLS.has(name) || name === "make_theme_live"
         ? { area: "website" as const }
         : SETUP_TOOLS.has(name)
           ? { area: "settings" as const }

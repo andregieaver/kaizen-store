@@ -38,6 +38,8 @@ export const TOOL_AREAS: Readonly<Record<string, AutonomyArea>> = {
   set_recommendations: "website",
   add_recommendation_rule: "website",
   remove_recommendation_rule: "website",
+  // Design: a theme that costs money always waits (`costsMoney`)
+  make_theme_live: "design",
   // Setup
   set_store_details: "setup",
   set_countries: "setup",
@@ -134,8 +136,8 @@ export function readAutonomy(raw: unknown): AutonomySettings {
 
 export const levelOf = (settings: AutonomySettings, area: AutonomyArea): AutonomyLevel => settings.levels[area] ?? "ask";
 
-/** What the code read for a call before deciding: a price change's size, a discount's depth (percent). */
-export type AutonomyFacts = { priceChangePercent?: number | null; discountPercent?: number | null };
+/** What the code read for a call before deciding: a price change's size, a discount's depth (percent), whether a theme costs money. */
+export type AutonomyFacts = { priceChangePercent?: number | null; discountPercent?: number | null; costsMoney?: boolean | null };
 
 export type AutonomyDecision = { run: true; tell: boolean; area: AutonomyArea } | { run: false; why: string };
 
@@ -154,6 +156,11 @@ export function autonomyDecision(settings: AutonomySettings, tool: string, gate:
     if (facts.priceChangePercent > settings.budgets.priceChangePercent) {
       return { run: false, why: `It changes a price by ${round(facts.priceChangePercent)} %, more than your limit of ${settings.budgets.priceChangePercent} %.` };
     }
+  }
+  // A premium theme the store does not have is money out: never without a yes, whatever the level (D308).
+  if (tool === "make_theme_live") {
+    if (facts.costsMoney === undefined || facts.costsMoney === null) return { run: false, why: "What the theme costs could not be read." };
+    if (facts.costsMoney) return { run: false, why: "This theme costs money, which always waits for your yes." };
   }
   if (tool === "create_discount" || tool === "create_campaign") {
     if (facts.discountPercent === undefined || facts.discountPercent === null) return { run: false, why: "How deep the offer goes could not be measured." };
