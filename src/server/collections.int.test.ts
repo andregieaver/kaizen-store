@@ -199,6 +199,14 @@ describe("a collection filled by rules (A2)", () => {
     expect(await taxonomy.setTermOrder(owner.account, fx.storeId, made.id, [products[0].id])).toMatchObject({ ok: false });
   });
 
+  it("is a choice in the listing's filters like one filled by hand, and choosing it filters to what its rules hold (A3)", async () => {
+    const { listingFacets } = await import("./listing");
+    const facets = await listingFacets(fx.storeId, await marketOf(), {}, viewer);
+    expect(facets.tags.find((t) => t.value === "rimelig")?.count).toBe(2);
+    const chosen = await listingProducts(fx.storeId, await marketOf(), {}, parseListingParams({ tag: "rimelig" }), viewer);
+    expect(chosen.map((p) => p.id).sort()).toEqual([products[0].id, products[1].id].sort());
+  });
+
   it("counts what it holds as the shop lists it, and each condition alone", async () => {
     const { checkedRules, countRuleMembers } = await import("./term-rules");
     const checked = await checkedRules(fx.storeId, null, { match: "all", conditions: [{ kind: "price", max: 10250 }, { kind: "inStock" }] });

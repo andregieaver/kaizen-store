@@ -17,6 +17,7 @@ const TAG = { name: "E2E Utvalgt", slug: "e2e-utvalgt" };
 const PICTURE = "/demo/lamp.svg";
 let storefront = "";
 let titles: string[] = [];
+let productIds: string[] = [];
 
 test.beforeAll(async () => {
   const sql = testDb();
@@ -33,6 +34,7 @@ test.beforeAll(async () => {
        order by p.created_at, p.handle limit 2`;
     expect(products).toHaveLength(2);
     titles = products.map((p) => p.title);
+    productIds = products.map((p) => p.id);
     // Its picture from the library is set here (the upload is held by the media library's own tests); the panel writes the description.
     const [category] = await sql`
       insert into commerce.terms (store_id, content_type, kind, name, slug, image_url)
@@ -84,4 +86,40 @@ test("fills a tag by rules with the count of what it holds, and its page lists w
   await page.goto(`${storefront}/tag/${TAG.slug}`);
   await expect(page.locator("[data-term-header]").getByRole("heading", { level: 1, name: TAG.name })).toBeVisible();
   for (const title of titles) await expect(page.getByText(title, { exact: true }).first()).toBeVisible();
+});
+
+test("drags a category's products into the owner's order and saves it (A3)", async ({ page }) => {
+  await page.goto(`/admin/${E2E_STORE}/products/categories`);
+  const row = page.locator("li", { has: page.getByText(CATEGORY.slug, { exact: true }) }).first();
+  await row.getByRole("button", { name: "Order products", exact: true }).click();
+  const panel = page.getByRole("region", { name: "The order of its products" });
+  await expect(panel.locator("[data-order-product]").first()).toHaveAttribute("data-order-product", productIds[0]);
+  // The second product up by the keyboard on its handle, as dnd-kit's keyboard sensor moves it.
+  // Named by the product's title in the panel's language of titles, so found by its row.
+  const handle = panel.locator(`[data-order-product="${productIds[1]}"]`).getByRole("button", { name: /^Drag .+ to its place$/ });
+  await handle.focus();
+  await page.keyboard.press("Space");
+  // Picked up once dnd-kit says so in words (it measures the list after the lift, and an arrow pressed before that moves nothing, so the arrow
+  // is pressed until it says the product is over the first place), then dropped: what it says is the product's name and place, never its id.
+  const said = page.locator("[id^=DndLiveRegion]");
+  await expect(said).toHaveText(/(^Picked up .+, in place 2 of 2| is over place 2 of 2)\.$/);
+  await expect(async () => {
+    await page.keyboard.press("ArrowUp");
+    await expect(said).toHaveText(/ is over place 1 of 2\.$/, { timeout: 500 });
+  }).toPass({ timeout: 5000 });
+  await page.keyboard.press("Space");
+  await expect(said).toHaveText(/ dropped in place 1 of 2\.$/);
+  await expect(panel.locator("[data-order-product]").first()).toHaveAttribute("data-order-product", productIds[1]);
+  await panel.getByRole("button", { name: "Save the order", exact: true }).click();
+  await expect(panel.getByText("Saved.", { exact: true })).toBeVisible();
+  const sql = testDb();
+  try {
+    const placed = await sql<{ product_id: string; position: number }[]>`
+      select pt.product_id, pt.position from commerce.product_terms pt join commerce.terms t on t.id = pt.term_id
+      join commerce.stores s on s.id = t.store_id and s.slug = ${E2E_STORE}
+      where t.slug = ${CATEGORY.slug} order by pt.position`;
+    expect(placed.map((p) => p.product_id)).toEqual([productIds[1], productIds[0]]);
+  } finally {
+    await sql.end();
+  }
 });

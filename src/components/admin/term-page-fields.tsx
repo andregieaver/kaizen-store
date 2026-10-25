@@ -1,6 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent, type UniqueIdentifier } from "@dnd-kit/core";
+import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { useId, useState, useTransition } from "react";
 
 import { useAdminText } from "@/components/admin/admin-text";
 import { ImageUploadButton, type Upload } from "@/components/admin/image-upload";
@@ -99,7 +102,10 @@ export function TermPageFields({ setup, value, onChange }: { setup: TermPageSetu
   );
 }
 
-/** The owner's order of a term's own products (3.2): a list with buttons to move each, saved in one press. Products added later come last. */
+/**
+ * The owner's order of a term's own products (3.2): a list to drag by each row's handle (or move with the keyboard on it), with buttons to move
+ * each, saved in one press. Products added later come last.
+ */
 export function TermProductOrder({ termId, setup }: { termId: string; setup: TermPageSetup }) {
   const w = useAdminText("products").termPage;
   const [open, setOpen] = useState(false);
@@ -107,6 +113,21 @@ export function TermProductOrder({ termId, setup }: { termId: string; setup: Ter
   const [problems, setProblems] = useState<string[]>([]);
   const [saved, setSaved] = useState(false);
   const [busy, start] = useTransition();
+  const dndId = useId();
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+  const onDragEnd = ({ active, over }: DragEndEvent) => {
+    if (!products || !over || active.id === over.id) return;
+    move(
+      products.findIndex((p) => p.id === active.id),
+      products.findIndex((p) => p.id === over.id),
+    );
+  };
+  // What a screen reader hears while a product is moved: its name and place, never its id.
+  const nameOf = (id: UniqueIdentifier) => products?.find((p) => p.id === id)?.title ?? "";
+  const placeOf = (id: UniqueIdentifier) => (products?.findIndex((p) => p.id === id) ?? -1) + 1;
   const load = () =>
     start(async () => {
       setProducts(await setup.products(termId));
@@ -133,41 +154,31 @@ export function TermProductOrder({ termId, setup }: { termId: string; setup: Ter
       {!products || products.length === 0 ? (
         <p className="text-sm text-muted">{w.orderEmpty}</p>
       ) : (
-        <ol className="flex flex-col divide-y divide-line">
-          {products.map((product, index) => (
-            <li key={product.id} className="flex items-center gap-2 py-1.5 text-sm">
-              <span className="w-6 text-right text-xs text-muted">{index + 1}</span>
-              {product.imageUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={product.imageUrl} alt="" className="size-8 rounded object-cover" />
-              ) : (
-                <span className="size-8 rounded bg-card" />
-              )}
-              <span className="min-w-0 flex-1 truncate">
-                {product.title}
-                {product.status !== "active" && <span className="text-xs text-muted"> · {w.notLive}</span>}
-              </span>
-              <button type="button" onClick={() => move(index, 0)} disabled={index === 0} className={button} aria-label={fillWords(w.toTop, { name: product.title })}>
-                ⤒
-              </button>
-              <button type="button" onClick={() => move(index, index - 1)} disabled={index === 0} className={button} aria-label={fillWords(w.up, { name: product.title })}>
-                ↑
-              </button>
-              <button type="button" onClick={() => move(index, index + 1)} disabled={index === products.length - 1} className={button} aria-label={fillWords(w.down, { name: product.title })}>
-                ↓
-              </button>
-              <button
-                type="button"
-                onClick={() => move(index, products.length - 1)}
-                disabled={index === products.length - 1}
-                className={button}
-                aria-label={fillWords(w.toBottom, { name: product.title })}
-              >
-                ⤓
-              </button>
-            </li>
-          ))}
-        </ol>
+        <DndContext
+          id={dndId}
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={onDragEnd}
+          accessibility={{
+            announcements: {
+              onDragStart: ({ active }) => fillWords(w.dragPicked, { name: nameOf(active.id), place: String(placeOf(active.id)), count: String(products.length) }),
+              onDragOver: ({ active, over }) =>
+                over ? fillWords(w.dragOver, { name: nameOf(active.id), place: String(placeOf(over.id)), count: String(products.length) }) : undefined,
+              onDragEnd: ({ active, over }) =>
+                fillWords(w.dragDropped, { name: nameOf(active.id), place: String(placeOf(over?.id ?? active.id)), count: String(products.length) }),
+              onDragCancel: ({ active }) => fillWords(w.dragCancelled, { name: nameOf(active.id) }),
+            },
+            screenReaderInstructions: { draggable: w.dragInstructions },
+          }}
+        >
+          <SortableContext items={products.map((p) => p.id)} strategy={verticalListSortingStrategy}>
+            <ol className="flex flex-col divide-y divide-line">
+              {products.map((product, index) => (
+                <OrderRow key={product.id} product={product} index={index} count={products.length} move={move} />
+              ))}
+            </ol>
+          </SortableContext>
+        </DndContext>
       )}
       <div className="flex flex-wrap items-center gap-2">
         {products && products.length > 1 && (
@@ -202,5 +213,59 @@ export function TermProductOrder({ termId, setup }: { termId: string; setup: Ter
         </p>
       )}
     </section>
+  );
+}
+
+/** One product in the order: a handle to drag it, its place, its picture and name, and buttons to move it. */
+function OrderRow({ product, index, count, move }: { product: TermProduct; index: number; count: number; move: (from: number, to: number) => void }) {
+  const w = useAdminText("products").termPage;
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: product.id });
+  return (
+    <li
+      ref={setNodeRef}
+      style={{ transform: CSS.Translate.toString(transform ? { ...transform, x: 0 } : null), transition }}
+      className={`flex items-center gap-2 py-1.5 text-sm ${isDragging ? "relative z-10 bg-card shadow-md" : ""}`}
+      data-order-product={product.id}
+    >
+      <button
+        type="button"
+        {...attributes}
+        {...listeners}
+        aria-label={fillWords(w.drag, { name: product.title })}
+        className="flex size-9 shrink-0 cursor-grab touch-none items-center justify-center rounded-pill text-muted hover:bg-card active:cursor-grabbing"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden className="size-4" fill="currentColor">
+          <circle cx="9" cy="6" r="1.5" />
+          <circle cx="15" cy="6" r="1.5" />
+          <circle cx="9" cy="12" r="1.5" />
+          <circle cx="15" cy="12" r="1.5" />
+          <circle cx="9" cy="18" r="1.5" />
+          <circle cx="15" cy="18" r="1.5" />
+        </svg>
+      </button>
+      <span className="w-6 text-right text-xs text-muted">{index + 1}</span>
+      {product.imageUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={product.imageUrl} alt="" className="size-8 rounded object-cover" />
+      ) : (
+        <span className="size-8 rounded bg-card" />
+      )}
+      <span className="min-w-0 flex-1 truncate">
+        {product.title}
+        {product.status !== "active" && <span className="text-xs text-muted"> · {w.notLive}</span>}
+      </span>
+      <button type="button" onClick={() => move(index, 0)} disabled={index === 0} className={button} aria-label={fillWords(w.toTop, { name: product.title })}>
+        ⤒
+      </button>
+      <button type="button" onClick={() => move(index, index - 1)} disabled={index === 0} className={button} aria-label={fillWords(w.up, { name: product.title })}>
+        ↑
+      </button>
+      <button type="button" onClick={() => move(index, index + 1)} disabled={index === count - 1} className={button} aria-label={fillWords(w.down, { name: product.title })}>
+        ↓
+      </button>
+      <button type="button" onClick={() => move(index, count - 1)} disabled={index === count - 1} className={button} aria-label={fillWords(w.toBottom, { name: product.title })}>
+        ⤓
+      </button>
+    </li>
   );
 }

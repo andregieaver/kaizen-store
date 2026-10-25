@@ -211,7 +211,19 @@ term page's header and order, the panel's drag and live count (signed-in project
   rules with its live count, its page listing what the rules hold).
 - Fixed on the way: A1's term page read its picture's alt text uncached, which broke the page's render for a term with a picture (found
   by the e2e); it is now read once and cached with the catalogue (`pictureAlt()` in `term-listing.tsx`).
-- Not built: dragging in the order panel (buttons move a product); rule collections as choices in the listing's filter dialog.
+- What A2 left (dragging in the order panel, collections filled by rules as filter choices) is A3 (3.9).
+
+### 3.9 As built: A3 (2026-10-25)
+
+- The order panel (`TermProductOrder`, `src/components/admin/term-page-fields.tsx`) is a dnd-kit sortable list: each row (`OrderRow`) has a
+  handle to drag it, which the keyboard moves too (Space, the arrows, Space), beside the buttons that were there; the order is still saved
+  in one press through `setTermOrder()`. A screen reader hears the product's name and place while it moves (`accessibility.announcements`,
+  never dnd-kit's own words, which name ids) and how to move one. Words: `termPage.drag*` and the hint, en and nb.
+- The shop's filter dialog lists a collection filled by rules beside those filled by hand, with its count: `listingFacets()` adds the
+  collections each product of the page meets (`commerce.product_matches_rules()`) to the products' terms; choosing one filters through
+  `inCategories()`/`withTags()`, which read rules since A2.
+- Tests: `collections.int.test.ts` (the facet and its filter), `e2e/signed-in/collections.spec.ts` (a product dragged up by the keyboard and
+  the order saved, waiting for what dnd-kit says before each key, since it measures the list after the lift).
 
 ## 4. Units B to I, outlined
 

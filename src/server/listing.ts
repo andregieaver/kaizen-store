@@ -271,6 +271,11 @@ export async function listingFacets(
     readDb().execute<Row>(sql`
       select pt.product_id, pt.term_id from commerce.product_terms pt
       where pt.store_id = ${storeId}::uuid and pt.product_id = any(${ids}::uuid[])
+      union
+      -- The collections filled by rules each product meets (D319), so they are choices like those filled by hand.
+      select p.id, rt.id from commerce.products p
+      join commerce.terms rt on rt.store_id = p.store_id and rt.content_type = 'product' and rt.rules is not null
+      where p.store_id = ${storeId}::uuid and p.id = any(${ids}::uuid[]) and commerce.product_matches_rules(p.store_id, p.id, rt.rules)
     `),
     readDb().execute<Row>(sql`
       select o.key as name, o.value, count(distinct v.product_id)::int as count
