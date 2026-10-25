@@ -20,6 +20,7 @@ export const TOOL_AREAS: Readonly<Record<string, AutonomyArea>> = {
   update_product: "catalogue",
   set_prices: "catalogue",
   set_product_status: "catalogue",
+  update_category: "catalogue",
   archive_product: "catalogue",
   set_stock: "catalogue",
   set_backorder: "catalogue",

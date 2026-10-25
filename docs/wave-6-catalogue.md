@@ -111,9 +111,9 @@ collections for: a page of their own that says something, products in the order 
   conditions), checked by `termRulesSchema` (`src/lib/term-rules.ts`, pure). Its products are never `product_terms` rows (a trigger refuses
   one for a term with rules); they are worked out each time the term is read, so membership follows every change to a product (price,
   stock, tags, status, fields) with nothing re-run.
-- **Conditions** (each a case in `ruleCondition()`, `describeRule()` for the words, `ruleClause()` for SQL):
+- **Conditions** (each a case in `conditionSchema`, `describeCondition()` for the words and `commerce.product_matches_condition()` for SQL):
   - in or not in a category (with its subcategories) or tag; a rule collection cannot name another rule collection (no loops);
-  - price in the store's home market, as shown with VAT, at least and/or at most (minor units, `current_prices`);
+  - price in the store's home market, as shown with VAT, at least and/or at most (minor units, `current_prices`; any active variant in range);
   - in stock (any active variant sellable, `variant_availability`);
   - manufacturer is one of (`products.manufacturer_id`);
   - a variant option has a value (`options->>'size' = 'M'`, the option's name as the store writes it);
@@ -125,8 +125,9 @@ collections for: a page of their own that says something, products in the order 
 - **The editor:** in the term's panel, *Fill this automatically* turns rules on; each condition is a row with a live count of the products
   that match (`countRuleMembers()`, debounced, the store's own products only); turning rules off keeps no members (the owner chooses
   products by hand again, or the panel offers to keep the current matches as manual members).
-- **Store-scoped by construction:** `ruleClause()` binds the store id and resolves every id (category, tag, manufacturer, field) against the
-  store before it is used; an id of another store is dropped on save (`keepOwnRuleIds()`, as D179's visibility rules do).
+- **Store-scoped by construction:** the evaluator reads only the store's own rows, and `checkedRules()` resolves every id (category, tag,
+  manufacturer, field) against the store before it is saved; an id of another store is dropped on save (`keepOwnIds()`, as D179's visibility
+  rules do).
 
 ### 3.4 The AI manager
 
@@ -174,7 +175,43 @@ term page's header and order, the panel's drag and live count (signed-in project
 - Tests: `term-texts.test.ts`, `store-translate.test.ts`, `commerce.test.ts` (the rules and the copy), `collections.int.test.ts` (the page
   per language and its refusals, the worklist and the apply, the order on the grid and the listing, kept across a product save, another
   store's product never placed), `store-translate.int.test.ts` updated (every term now brings its name).
-- Not yet: A2 (collections by rules), the AI manager's tools (3.4) and an e2e of the term page's header and the panel; both come with A2.
+- A2, the AI manager's tools (3.4) and the e2e came next (3.8).
+
+### 3.8 As built: A2 and the AI manager's tools (2026-10-25)
+
+- `terms.rules` (migration `collection_rules`; check `terms_rules`: a store's product term only, never one that needs a unit price) and
+  `collection_rules_sql`: the one evaluator, `commerce.product_matches_rules(store, product, rules)` over
+  `commerce.product_matches_condition()` (plpgsql, `STABLE`, every value read by its JSON type so a wrong shape is no match and never
+  raises, only active products, a `term` condition reading only `product_terms` so a collection cannot loop); triggers
+  `product_terms_not_rules` (no products placed in a collection filled by rules) and `terms_rules_without_members` (rules only once the
+  products placed by hand are out); `commerce.clone_term_rules()` remaps term and manufacturer ids, patched into `clone_store()` and
+  `duplicate_store()`.
+- Readers: `inTerms(ids)` in `src/server/product-conditions.ts` (placed by hand, or a collection whose rules the product meets) is what
+  `listGridProducts()`, `listingProducts()`/`listingFacets()` and content grids ask; `inCategories()`/`withTags()` (search's and the
+  listing's filters by address) and the sitemap's `listIndexedTerms()` read rules too; `termsOfProducts()` (campaigns and codes, so cart
+  and checkout agree) and the campaign notices count the collections a product meets. `manualPlace()` puts a collection filled by rules
+  newest first, so its page, *Featured* and a grid's *Your order* need nothing else. `scopedTermIds()` never places a product or page in
+  one, so the product editor and imports cannot; the product editor shows it greyed (*filled by rules*), and the AI manager's product
+  tools refuse to name it.
+- Server: `src/server/term-rules.ts` (`ruleChoices()`, `checkedRules()`, `namedByRules()`, `countRuleMembers()` with each condition's
+  count, `ruleMemberIds()`); `createTerm()`/`updateTerm()` take `rules` (turning on deletes the products placed by hand in the same
+  transaction; turning off with `keepMatches` places what matched); a term another collection's rules name stays filled by hand;
+  `termProducts()` lists what the rules hold; `setTermOrder()` refuses.
+- Admin: `TermRulesFields` (`src/components/admin/term-rules-fields.tsx`) in the term's form: *Fill this automatically*, all or any, a row
+  per condition with its own count and the whole count (debounced, the server's), the warning that hand-placed products are taken out,
+  and *Keep the products that match now* when turning off; words in the `products` catalogue (`termRules`, en and nb). The row says
+  *Filled by rules: n conditions* and offers no order.
+- The AI manager: `list_categories` (`products:read`: names, addresses, counts, rules in words) and `update_category` (`products:write`,
+  gated `public`: description through `findClaims()`, picture from the library, order by handle, rules with every name found in the store)
+  in `src/lib/category-tools.ts` and `src/server/category-tools.ts`, through `updateTerm()` and `setTermOrder()`; preflight and approval
+  words from the store; autonomy area `catalogue`.
+- Tests: `term-rules.test.ts`; `commerce.test.ts` (the evaluator, the triggers, the copy); `collections.int.test.ts` (grid, listing and
+  sitemap, a change followed at once, the count, campaigns' reach, foreign ids dropped, no loops, a product's save never placing, turning
+  on and off, the AI tools); `e2e/signed-in/collections.spec.ts` (a description written in the panel shown on the page; a tag filled by
+  rules with its live count, its page listing what the rules hold).
+- Fixed on the way: A1's term page read its picture's alt text uncached, which broke the page's render for a term with a picture (found
+  by the e2e); it is now read once and cached with the catalogue (`pictureAlt()` in `term-listing.tsx`).
+- Not built: dragging in the order panel (buttons move a product); rule collections as choices in the listing's filter dialog.
 
 ## 4. Units B to I, outlined
 

@@ -183,6 +183,8 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   set_prices: "products:write",
   set_product_status: "products:write",
   write_product_texts: "products:write",
+  list_categories: "products:read",
+  update_category: "products:write",
   refund_order: "orders:write",
   approve_return: "orders:write",
   decline_return: "orders:write",

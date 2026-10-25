@@ -956,6 +956,13 @@ stand-in is the only fake, and only it is told it is one.
   written only by `setTermOrder()`, read through `manualPlace()`: `listGridProducts()` sort `manual`, the listing's `featured` with
   `orderTerm`). `saveProduct()` writes only the product terms it adds or removes, so a place survives a save; a term's picture is in
   `mediaUses()`, `rewriteAddresses()` and the store copy's picture step.
+  A collection filled by rules (A2) is a term with `terms.rules` (`termRulesSchema`, `src/lib/term-rules.ts`), whose products are worked out
+  when read by the one evaluator `commerce.product_matches_rules()`, never `product_terms` rows (triggers refuse them): every reader of a
+  term's products asks `inTerms()` (`src/server/product-conditions.ts`) or the evaluator, campaigns and codes reach it through
+  `termsOfProducts()`, a product or page is placed only in a term `scopedTermIds()` gives (never one filled by rules), and rules are saved
+  only through `checkedRules()` (`src/server/term-rules.ts`: the store's own ids, never a term filled by rules). A new condition is a case
+  in `conditionSchema`, `describeCondition()`, `newCondition()`, `TermRulesFields`, the SQL evaluator and the AI manager's
+  `update_category` (`src/server/category-tools.ts`), with a test.
 - Campaigns (D114, `src/lib/campaigns.ts`, `src/server/campaigns.ts`,
   `/admin/{store}/campaigns` under Sales): offers without a code, for a time: a
   percentage off, "buy N pay for M", a free product over an amount, for the

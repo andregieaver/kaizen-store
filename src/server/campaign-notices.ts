@@ -154,6 +154,10 @@ async function productTerms(storeId: string): Promise<Map<string, Set<string>>> 
       join commerce.products p on p.store_id = pt.store_id and p.id = pt.product_id and p.status = 'active'
       where pt.store_id = ${storeId}::uuid
       union
+      -- The collections filled by rules each product meets (D319), as the cart's termsOfProducts() reads them.
+      select p.id, rt.id from commerce.products p join commerce.terms rt on rt.store_id = p.store_id and rt.rules is not null
+      where p.store_id = ${storeId}::uuid and p.status = 'active' and commerce.product_matches_rules(p.store_id, p.id, rt.rules)
+      union
       select t.product_id, tm.parent_id from t join commerce.terms tm on tm.id = t.term_id where tm.parent_id is not null
     )
     select product_id, term_id from t

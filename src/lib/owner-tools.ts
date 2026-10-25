@@ -21,6 +21,7 @@ import { backorderSummary, setStockSummary } from "./stock-tools";
 import { featureSwitchSummaryOf, listFeaturesInput, setFeatureInput } from "./feature-tools";
 import { addThemeInput, listThemesInput, makeThemeLiveInput, tryThemeInput } from "./design-tools";
 import { archiveOrdersInput, createDraftOrderInput, listDraftOrdersInput, listOrdersInput, sendDraftOrderInput, sendDraftSummary, tagOrdersInput } from "./order-ops-tools";
+import { categoryApprovalSummary, listCategoriesInput, updateCategoryInput } from "./category-tools";
 import { createProductInput, productApprovalSummary, setPricesInput, setProductStatusInput, updateProductInput, writeProductTextsInput } from "./product-tools";
 import {
   saveShippingMethodInput,
@@ -304,6 +305,17 @@ export const OWNER_TOOLS = [
     "write_product_texts",
     "Writes a product's description, its search title and description, and its words in the store's other languages with the store's AI writer, from the product's own title, words, options, categories and tags and nothing else (never a price, stock or a fact it was not given). By default only empty texts are written; `rewrite` writes them again. Phrases the claims filter finds (green claims, urgency, best price) are left out and named. On a draft the texts are saved at once; on a product on the site they are only given back, to put on it with update_product (which needs the owner's approval).",
     writeProductTextsInput,
+  ),
+  tool(
+    "list_categories",
+    "The store's product categories and tags: each one's name, address, the category it is inside, how many products shoppers can see in it (its subcategories' included), whether it is filled by hand or by rules (the rules in words), and whether it has a description and a picture. Read-only.",
+    listCategoriesInput,
+  ),
+  tool(
+    "update_category",
+    "Changes a product category or tag, saved as the categories page saves it: its description above its products (plain sentences in the store's main language, passed through the claims filter), its picture from the media library, the order of its own products (by handle; Featured follows it), or its rules: filled automatically with the products that meet all or any of the conditions (in a category or tag filled by hand, a price in the store's own currency with VAT, in stock, a manufacturer, a variant option, a public filter field, a kind of product, added in the last N days), or null to fill it by hand again keeping what matched. Every name is looked up in the store; one not found refuses the call. Read list_categories first. Needs the owner's approval.",
+    updateCategoryInput,
+    "public",
   ),
   tool(
     "unit_price_gaps",
@@ -1490,6 +1502,9 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
       return productApprovalSummary(name, input, text("product"), []);
     case "set_feature":
       return featureSwitchSummaryOf(input);
+    // The category's own name and its rules in words are put in by the server (`categoryApprovalWords()`).
+    case "update_category":
+      return categoryApprovalSummary(input);
     case "unpublish_page":
       return `Take the ${input.type === "article" ? "article" : "page"} ${text("page")} off the site, keeping its draft.`;
     // The page's own title is put in by the server (`publishApprovalWords()`); these words name it as given.

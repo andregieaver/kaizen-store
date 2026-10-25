@@ -16,7 +16,7 @@ import { categoryTree, withDescendants, type Term } from "@/lib/taxonomy";
 
 import { CATALOG_TAG, catalogTag, listGridProducts, type GridProduct } from "./catalog";
 import { activeFieldGroups, fieldsTag } from "./custom-fields";
-import { convertedSql, inCategories, inStockNow, manualPlace, OFFERED, shownPrice, textList, withTags } from "./product-conditions";
+import { convertedSql, inCategories, inStockNow, inTerms, manualPlace, OFFERED, shownPrice, textList, withTags } from "./product-conditions";
 import { siteTerms, termsTag } from "./taxonomy";
 
 /**
@@ -45,16 +45,12 @@ const uuids = (list: string[]) => `{${list.filter((id) => /^[0-9a-f-]{36}$/i.tes
 
 /** The page's products: active, with a price in the market, in its scope, shown to this viewer. */
 function scopeClause(storeId: string, marketCode: string, scope: ListingScope, viewer: Viewer): SQL {
-  const inTerms = (ids: string[] | undefined) =>
-    ids && ids.length > 0
-      ? sql`exists (select 1 from commerce.product_terms pt where pt.store_id = p.store_id and pt.product_id = p.id and pt.term_id = any(${uuids(ids)}::uuid[]))`
-      : sql`true`;
-  return sql`p.store_id = ${storeId}::uuid and p.status = 'active' and ${OFFERED}
+    return sql`p.store_id = ${storeId}::uuid and p.status = 'active' and ${OFFERED}
     and exists (
       select 1 from commerce.current_prices cp join commerce.product_variants v on v.id = cp.variant_id
       where v.product_id = p.id and v.active and cp.market_code = ${marketCode}
     )
-    and ${inTerms(scope.categoryIds)} and ${inTerms(scope.tagIds)}
+    and ${inTerms(scope.categoryIds ?? [])} and ${inTerms(scope.tagIds ?? [])}
     and ${scope.ids ? sql`p.id = any(${uuids(scope.ids)}::uuid[])` : sql`true`}
     and ${viewer.audienceBoth ? sql`p.audience in ('all', ${viewer.buyer === "business" ? "businesses" : "consumers"})` : sql`true`}`;
 }

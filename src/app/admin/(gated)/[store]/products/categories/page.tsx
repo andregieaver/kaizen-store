@@ -20,6 +20,8 @@ import {
   deleteProductTermAction,
   saveTermOrderAction,
   termProductsAction,
+  ruleChoicesAction,
+  countRulesAction,
   updateProductTermAction,
   uploadImageAction,
 } from "../actions";
@@ -65,6 +67,9 @@ export default async function ProductTermsPage({ params }: PageProps<"/admin/[st
             upload: uploadImageAction.bind(null, store.slug),
             products: termProductsAction.bind(null, store.slug),
             saveOrder: saveTermOrderAction.bind(null, store.slug),
+            // Filled by rules (D319, wave 6 unit A2): what a rule may name, and a live count of what it holds.
+            ruleChoices: ruleChoicesAction.bind(null, store.slug),
+            countRules: countRulesAction.bind(null, store.slug),
           }}
           // A category can need a price per kg or litre of its products (unit price, D160); the counts are of active products still without content.
           unitPrice={{ gaps: Object.fromEntries(gaps), needsHref: `/admin/${store.slug}/products?needs=unit-price` }}

@@ -80,6 +80,8 @@ export const TOOL_FEATURES: Partial<Record<OwnerToolName, FeatureRequirement>> =
   set_prices: "shop",
   set_product_status: "shop",
   write_product_texts: "shop",
+  list_categories: "shop",
+  update_category: "shop",
   refund_order: "shop",
   approve_return: "shop",
   decline_return: "shop",

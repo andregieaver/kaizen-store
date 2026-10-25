@@ -4,6 +4,7 @@ import type { RichTextDoc } from "./page-content";
 import { isPictureAddress } from "./picture-address";
 import { slugify } from "./slug";
 import { termSeoShape, type TermSeo } from "./term-seo";
+import type { TermRules } from "./term-rules";
 import type { TermTexts } from "./term-texts";
 
 /**
@@ -46,6 +47,11 @@ export type Term = {
   description?: RichTextDoc | null;
   image?: { url: string; thumbnailUrl: string | null } | null;
   texts?: TermTexts;
+  /**
+   * A store's product category or tag filled by rules (wave 6 unit A2, D319): its conditions, null for one the owner fills by hand. Absent where it is
+   * not read.
+   */
+  rules?: TermRules | null;
 };
 
 /** What an item is in: category and tag ids. */
@@ -104,6 +110,13 @@ export const termInput = z
       .nullable()
       .optional(),
     texts: z.record(z.string(), z.unknown()).optional(),
+    /**
+     * Filled by rules (D319): left out means unchanged; null fills it by hand again; the conditions are checked on the server against the store
+     * (`checkedRules()`). Turning rules on takes out the products placed by hand; turning them off keeps the products that matched as placed
+     * products when `keepMatches` is set.
+     */
+    rules: z.unknown().optional(),
+    keepMatches: z.boolean().optional(),
   })
   .transform((term, ctx) => {
     const slug = term.slug || slugify(term.name, TERM_SLUG_MAX);

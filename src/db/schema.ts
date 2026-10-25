@@ -6762,6 +6762,11 @@ export const terms = commerce.table(
      * through `termTextFor()` (`src/lib/term-texts.ts`): a language's own, else the main language's, never another language's.
      */
     texts: jsonb("texts").notNull().default({}),
+    /**
+     * A collection filled by rules (D319, `docs/wave-6-catalogue.md` 3.3): `{ match, conditions }` as `termRulesSchema` (`src/lib/term-rules.ts`) checks
+     * it, null for one the owner fills by hand. Its products are worked out when read (`commerce.product_matches_rules()`), never `product_terms` rows.
+     */
+    rules: jsonb("rules"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -6789,6 +6794,10 @@ export const terms = commerce.table(
       sql`(${t.description} is null and ${t.imageUrl} is null and ${t.texts} = '{}'::jsonb) or (${t.contentType} = 'product' and ${t.storeId} is not null)`,
     ),
     check("terms_image_pair", sql`${t.imageThumbnailUrl} is null or ${t.imageUrl} is not null`),
+    check(
+      "terms_rules",
+      sql`${t.rules} is null or (jsonb_typeof(${t.rules}) = 'object' and ${t.contentType} = 'product' and ${t.storeId} is not null and not ${t.requiresUnitPrice})`,
+    ),
     check("terms_name", sql`length(trim(${t.name})) between 1 and 80`),
     check("terms_slug_format", sql`${t.slug} ~ '^[a-z0-9]+(?:-[a-z0-9]+)*$' and length(${t.slug}) <= 80`),
   ],

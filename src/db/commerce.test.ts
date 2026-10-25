@@ -2521,6 +2521,74 @@ describe("a category's own page and its products' order (wave 6 unit A, D319)", 
   });
 });
 
+describe("collections filled by rules (wave 6 unit A2, D319)", () => {
+  const term = (storeId: string, slug: string, rules: unknown = null) =>
+    one<{ id: string }>(
+      `insert into commerce.terms (store_id, content_type, kind, name, slug, rules) values ($1, 'product', 'category', $2, $2, $3) returning id`,
+      [storeId, slug, rules === null ? null : JSON.stringify(rules)],
+    );
+  const matches = async (storeId: string, productId: string, rules: unknown) =>
+    (await one<{ m: boolean }>("select commerce.product_matches_rules($1, $2, $3) as m", [storeId, productId, JSON.stringify(rules)])).m;
+
+  it("are worked out by the one evaluator: all or any, active products only, nothing for a shape it does not know", async () => {
+    const storeId = await createStore("rules-store", ["NO"]);
+    const a = await createProduct({ storeId });
+    const b = await createProduct({ storeId });
+    await db.query("update commerce.products set status = 'active' where id = any($1)", [[a.productId, b.productId]]);
+    await db.query(`update commerce.product_variants set options = '{"Size": "M"}' where id = $1`, [a.variantId]);
+    const manual = await term(storeId, "rules-manual");
+    await db.query("insert into commerce.product_terms (store_id, product_id, term_id) values ($1, $2, $3)", [storeId, b.productId, manual.id]);
+    const maker = await one<{ manufacturer_id: string }>("select manufacturer_id from commerce.products where id = $1", [a.productId]);
+
+    const option = { kind: "option", name: "size", value: "m" };
+    const inManual = { kind: "term", termId: manual.id };
+    expect(await matches(storeId, a.productId, { match: "all", conditions: [option] })).toBe(true);
+    expect(await matches(storeId, b.productId, { match: "all", conditions: [option] })).toBe(false);
+    expect(await matches(storeId, b.productId, { match: "any", conditions: [option, inManual] })).toBe(true);
+    expect(await matches(storeId, b.productId, { match: "all", conditions: [option, inManual] })).toBe(false);
+    expect(await matches(storeId, a.productId, { conditions: [{ ...inManual, not: true }] })).toBe(true);
+    expect(await matches(storeId, a.productId, { conditions: [{ kind: "manufacturer", ids: [maker.manufacturer_id] }] })).toBe(true);
+    expect(await matches(storeId, a.productId, { conditions: [{ kind: "kind", values: ["goods"] }, { kind: "newWithin", days: 7 }] })).toBe(true);
+    // Unknown kinds and shapes hold nothing and never raise; a term id that is not one is no match.
+    expect(await matches(storeId, a.productId, { conditions: [{ kind: "sql", where: "true" }] })).toBe(false);
+    expect(await matches(storeId, a.productId, { conditions: [{ kind: "term", termId: "x'; drop table commerce.terms; --" }] })).toBe(false);
+    expect(await matches(storeId, a.productId, { conditions: [] })).toBe(false);
+    expect(await matches(storeId, a.productId, { conditions: [{ kind: "manufacturer", ids: "all" }] })).toBe(false);
+    // Another store's product is never a member, and nor is a draft.
+    expect(await matches(other, a.productId, { conditions: [option] })).toBe(false);
+    await db.query("update commerce.products set status = 'draft' where id = $1", [a.productId]);
+    expect(await matches(storeId, a.productId, { conditions: [option] })).toBe(false);
+  });
+
+  it("have no products of their own, never need a unit price, and are copied naming the copy's own terms and manufacturers", async () => {
+    const storeId = await createStore("rules-copy", ["NO"]);
+    const { productId } = await createProduct({ storeId });
+    const maker = await one<{ manufacturer_id: string }>("select manufacturer_id from commerce.products where id = $1", [productId]);
+    const manual = await term(storeId, "rules-copy-manual");
+    const rules = { match: "all", conditions: [{ kind: "term", termId: manual.id }, { kind: "manufacturer", ids: [maker.manufacturer_id] }, { kind: "inStock" }] };
+    const ruled = await term(storeId, "rules-copy-ruled", rules);
+    await expect(
+      db.query("insert into commerce.product_terms (store_id, product_id, term_id) values ($1, $2, $3)", [storeId, productId, ruled.id]),
+    ).rejects.toThrow(/no products of its own/);
+    await db.query("insert into commerce.product_terms (store_id, product_id, term_id) values ($1, $2, $3)", [storeId, productId, manual.id]);
+    await expect(db.query("update commerce.terms set rules = $2 where id = $1", [manual.id, JSON.stringify(rules)])).rejects.toThrow(/Take the products out/);
+    await expect(db.query("update commerce.terms set requires_unit_price = true where id = $1", [ruled.id])).rejects.toThrow(/terms_rules/);
+    const owner = await createAccount("rules-copy-owner@example.com");
+    const { id: copy } = await one<{ id: string }>("select commerce.clone_store($1, 'rules-copy-clone', 'Copy', $2) as id", [storeId, owner]);
+    const copied = await one<{ rules: { conditions: { kind: string; termId?: string; ids?: string[] }[] } }>(
+      "select rules from commerce.terms where store_id = $1 and slug = 'rules-copy-ruled'",
+      [copy],
+    );
+    const copiedManual = await one<{ id: string }>("select id from commerce.terms where store_id = $1 and slug = 'rules-copy-manual'", [copy]);
+    const copiedMaker = await one<{ manufacturer_id: string }>("select manufacturer_id from commerce.products where store_id = $1 limit 1", [copy]);
+    expect(copied.rules.conditions).toEqual([
+      { kind: "term", termId: copiedManual.id },
+      { kind: "manufacturer", ids: [copiedMaker.manufacturer_id] },
+      { kind: "inStock" },
+    ]);
+  });
+});
+
 describe("consents (D58)", () => {
   it("keep a visitor's choices per site, and keep the cookie page's address free", async () => {
     const storeId = await createStore("consent-store", ["NO"]);

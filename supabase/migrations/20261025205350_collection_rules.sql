@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."terms" ADD COLUMN "rules" jsonb;--> statement-breakpoint
+ALTER TABLE "commerce"."terms" ADD CONSTRAINT "terms_rules" CHECK ("commerce"."terms"."rules" is null or (jsonb_typeof("commerce"."terms"."rules") = 'object' and "commerce"."terms"."content_type" = 'product' and "commerce"."terms"."store_id" is not null and not "commerce"."terms"."requires_unit_price"));

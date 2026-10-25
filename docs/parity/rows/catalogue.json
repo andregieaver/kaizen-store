@@ -106,13 +106,13 @@
       "checkedOn": "2026-10-02"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": "full"
+      "was": "partial"
     },
-    "gap": "Built in wave 6 unit A1 (D319, docs/wave-6-catalogue.md 3.7): a store's product category or tag has a description, a picture and its name and description per language (`terms.texts`, `termTextFor()`), shown above its products on its page (`TermHeader` in `term-listing.tsx`), in its metadata and share picture and in the sitemap, and by name in menus, filters and the chat; names and descriptions are in the translation worklist (`termUnit()`), and the owner orders a term's products (`product_terms.position`, `setTermOrder()`), followed by the page's Featured and a grid's Your order and kept across a product save (`collections.int.test.ts`). Still partial: criterion 1 asks for an e2e of the page's header, which comes with A2.",
-    "bucket": "A",
-    "wave": 6,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "A category or tag has its own description and picture, kept per language, shown on its page and in its metadata (e2e). Its SEO title and description are counted once, in `catalogue.seo-fields-title-description-handle-sitemap-hreflang` (D168).",
       "Category and tag names are translatable per language and appear in the store translation worklist (integration test).",
@@ -130,7 +130,9 @@
         "src/db/schema.ts",
         "src/lib/term-texts.ts",
         "src/components/admin/term-page-fields.tsx",
-        "src/server/product-conditions.ts"
+        "src/server/product-conditions.ts",
+        "src/components/admin/term-rules-fields.tsx",
+        "src/server/category-tools.ts"
       ],
       "tests": [
         "src/lib/taxonomy.test.ts",
@@ -138,7 +140,8 @@
         "e2e/terms.spec.ts",
         "e2e/page-roles.spec.ts",
         "src/server/collections.int.test.ts",
-        "src/lib/term-texts.test.ts"
+        "src/lib/term-texts.test.ts",
+        "e2e/signed-in/collections.spec.ts"
       ],
       "untested": false
     },
@@ -158,6 +161,12 @@
         "from": "full",
         "to": "partial",
         "why": "Read the schema and storefront: a category or tag is a name, slug, parent and position; no own description, picture, SEO text, translation or manual product order. Staff can still group products by hand, so Partial, not Missing."
+      },
+      {
+        "on": "2026-10-25",
+        "from": "partial",
+        "to": "full",
+        "why": "Wave 6 unit A (D319, docs/wave-6-catalogue.md 3.7, 3.8): a category or tag has a description, a picture and its name and description per language, shown above its products on its page and in its metadata and share picture (e2e/signed-in/collections.spec.ts writes the description in the panel and reads the page, its picture and its meta tags); names and descriptions are in the translation worklist and the owner orders a term's products, followed by its page and grids and kept across a product save (collections.int.test.ts). The e2e found and fixed a picture's uncached alt read that broke the page's render."
       }
     ]
   },
@@ -174,13 +183,13 @@
       "checkedOn": "2026-10-02"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "missing"
     },
-    "gap": "No rules fill a category or tag: `product_terms` is the only membership and there is no rule table (verified 2026-10-25). The nearest: a product content grid picks products by categories and tags with a sort and a limit (D51, `GridSource` in `src/lib/page-content.ts`), and shopper filters (D78) apply per request from the address; neither is a saved collection with its own page and menu target, nor matches price, stock, manufacturer, variant options or custom fields as rules. Customer segments (D296, `src/lib/segments.ts`) show the pattern a build could follow (rules matched in code on read, never a stored member list), but cover people, not products.",
-    "bucket": "A",
-    "wave": 6,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "An owner defines a collection by rules (product category, tag, price range, availability, manufacturer, variant option, a public custom field) joined by all or any, with a live preview count.",
       "Membership follows product changes (price, stock, tags, status) without anyone re-running it, and unpublished or archived products are never members (integration test).",
@@ -189,22 +198,36 @@
     ],
     "evidence": {
       "files": [
-        "src/server/listing.ts",
-        "src/lib/listing-filters.ts",
-        "src/server/product-conditions.ts"
+        "src/lib/term-rules.ts",
+        "src/server/term-rules.ts",
+        "src/server/product-conditions.ts",
+        "src/server/taxonomy.ts",
+        "src/components/admin/term-rules-fields.tsx",
+        "src/server/category-tools.ts",
+        "supabase/migrations/20261025205409_collection_rules_sql.sql"
       ],
       "tests": [
-        "src/server/listing.int.test.ts",
-        "src/lib/listing-filters.test.ts"
+        "src/lib/term-rules.test.ts",
+        "src/db/commerce.test.ts",
+        "src/server/collections.int.test.ts",
+        "e2e/signed-in/collections.spec.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D78",
       "D51",
-      "D296"
+      "D296",
+      "D319"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-25",
+        "from": "missing",
+        "to": "full",
+        "why": "Wave 6 unit A2 (D319, docs/wave-6-catalogue.md 3.8): a category or tag can be filled by rules (in a category or tag, price, in stock, manufacturer, variant option, a public filter field, kind, new arrivals; all or any) with a live count per condition, worked out on every read by one SQL evaluator so membership follows price, stock, terms and status with nothing re-run and drafts are never members; it is a term page, a menu link and a grid source like a manual one, reached by campaigns and codes; ids are checked against the store and another store's are dropped (term-rules.test.ts, commerce.test.ts, collections.int.test.ts, e2e/signed-in/collections.spec.ts)."
+      }
+    ]
   },
   {
     "id": "catalogue.bundles",

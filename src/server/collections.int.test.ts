@@ -163,3 +163,121 @@ describe("the owner's order of a category's products", () => {
     expect(await taxonomy.setTermOrder(owner.account, fx.storeId, theirs.id, [products[0].id])).toMatchObject({ ok: false });
   });
 });
+
+describe("a collection filled by rules (A2)", () => {
+  const viewer = { buyer: "private" as const, audienceBoth: false };
+  let picked: string;
+  const marketOf = async () => (await getStore(fx.slug))!.markets.find((m) => m.code === "NO")!;
+  const gridOf = async (termId: string) =>
+    (await listGridProducts(fx.storeId, await marketOf(), { categoryIds: [termId], tagIds: [], sort: "manual", limit: 48, orderTerm: termId })).map((p) => p.id);
+
+  beforeAll(async () => {
+    picked = ok(await taxonomy.createTerm(owner.account, scopeOf(fx), { kind: "category", name: "Plukket" })).id;
+    await db().execute(sql`insert into commerce.product_terms (store_id, product_id, term_id) values (${fx.storeId}::uuid, ${products[1].id}::uuid, ${picked}::uuid)`);
+  });
+
+  it("lists what its rules hold on its page, in a grid and in the sitemap, newest first, and follows a product's change at once", async () => {
+    const made = ok(
+      await taxonomy.createTerm(owner.account, scopeOf(fx), {
+        kind: "tag",
+        name: "Rimelig",
+        rules: { match: "any", conditions: [{ kind: "price", max: 10150 }, { kind: "term", termId: picked }] },
+      }),
+    );
+    // Product 1 costs 101 kr in Norway, product 2 is in Plukket by hand; product 3 is neither.
+    expect(await gridOf(made.id)).toEqual([products[1].id, products[0].id]);
+    const featured = await listingProducts(fx.storeId, await marketOf(), { tagIds: [made.id], orderTerm: made.id }, parseListingParams({}), viewer);
+    expect(featured.map((p) => p.id)).toEqual([products[1].id, products[0].id]);
+    const { listIndexedTerms } = await import("./seo");
+    expect((await listIndexedTerms(fx.storeId)).find((t) => t.slug === "rimelig")?.markets).toEqual(["NO"]);
+    // Taken out of Plukket, product 2 leaves the collection with nothing re-run.
+    await db().execute(sql`delete from commerce.product_terms where product_id = ${products[1].id}::uuid and term_id = ${picked}::uuid`);
+    expect(await gridOf(made.id)).toEqual([products[0].id]);
+    await db().execute(sql`insert into commerce.product_terms (store_id, product_id, term_id) values (${fx.storeId}::uuid, ${products[1].id}::uuid, ${picked}::uuid)`);
+    // Its panel lists what it holds, and it has no order of the owner's.
+    expect((await taxonomy.termProducts(fx.storeId, made.id)).map((p) => p.placed)).toEqual([false, false]);
+    expect(await taxonomy.setTermOrder(owner.account, fx.storeId, made.id, [products[0].id])).toMatchObject({ ok: false });
+  });
+
+  it("counts what it holds as the shop lists it, and each condition alone", async () => {
+    const { checkedRules, countRuleMembers } = await import("./term-rules");
+    const checked = await checkedRules(fx.storeId, null, { match: "all", conditions: [{ kind: "price", max: 10250 }, { kind: "inStock" }] });
+    if (!checked.ok) throw new Error(checked.problems.join(" "));
+    // The store's demo products are in stock too: the price alone holds the two seeds under 102,50 kr, both together the same two.
+    const count = await countRuleMembers(fx.storeId, checked.rules);
+    expect(count.total).toBe(2);
+    expect(count.each[0]).toBe(2);
+    expect(count.each[1]).toBeGreaterThanOrEqual(3);
+  });
+
+  it("is reached by campaigns and codes as its page lists it, the cart and checkout reading the same terms", async () => {
+    const { termsOfProducts } = await import("./campaigns");
+    const [rimelig] = await db().execute<Row>(sql`select id from commerce.terms where store_id = ${fx.storeId}::uuid and slug = 'rimelig'`);
+    const terms = await termsOfProducts(db(), fx.storeId, products.map((p) => p.id));
+    expect(terms.get(products[0].id)).toContain(String(rimelig.id));
+    expect(terms.get(products[1].id)).toEqual(expect.arrayContaining([picked, String(rimelig.id)]));
+    expect(terms.get(products[2].id) ?? []).not.toContain(String(rimelig.id));
+  });
+
+  it("keeps only the store's own ids, never itself or another collection filled by rules, and never a product placed in it by hand", async () => {
+    const theirs = ok(await taxonomy.createTerm((await ownerOf(other)).account, scopeOf(other), { kind: "category", name: "Fremmed" }));
+    // Another store's category alone names nothing of this store's.
+    expect(await taxonomy.createTerm(owner.account, scopeOf(fx), { kind: "tag", name: "Fremmede", rules: { conditions: [{ kind: "term", termId: theirs.id }] } })).toMatchObject({
+      ok: false,
+    });
+    // With one of its own beside it, the foreign condition is dropped.
+    const kept = ok(
+      await taxonomy.createTerm(owner.account, scopeOf(fx), {
+        kind: "tag",
+        name: "Blandet",
+        rules: { conditions: [{ kind: "term", termId: theirs.id }, { kind: "newWithin", days: 30 }] },
+      }),
+    );
+    expect((await termOf(kept.id)).rules?.conditions).toEqual([{ kind: "newWithin", days: 30 }]);
+    // A collection filled by rules cannot be named by another's rules, nor can a term another's rules name be filled by rules.
+    expect(await taxonomy.createTerm(owner.account, scopeOf(fx), { kind: "tag", name: "Kjede", rules: { conditions: [{ kind: "term", termId: kept.id }] } })).toMatchObject({ ok: false });
+    const naming = ok(await taxonomy.createTerm(owner.account, scopeOf(fx), { kind: "tag", name: "Navngir", rules: { conditions: [{ kind: "term", termId: picked }] } }));
+    expect(await taxonomy.updateTerm(owner.account, scopeOf(fx), picked, { name: "Plukket", slug: "plukket", rules: { conditions: [{ kind: "inStock" }] } })).toMatchObject({
+      ok: false,
+      problems: [expect.stringMatching(/is filled by rules that name this one/)],
+    });
+    // A product's save never places it in one (the editor's stale choice is dropped).
+    const { getEditorContext, getProductForEdit, saveProduct } = await import("./products");
+    const store = (await getStore(fx.slug))!;
+    const editor = await getEditorContext(store);
+    const input = (await getProductForEdit(store, editor, products[2].id))!;
+    input.tags = [...input.tags, naming.id];
+    expect(await saveProduct(store, editor, products[2].id, input)).toMatchObject({ ok: true });
+    const [row] = await db().execute<Row>(sql`select count(*)::int as n from commerce.product_terms where term_id = ${naming.id}::uuid`);
+    expect(row.n).toBe(0);
+  });
+
+  it("takes out the products placed by hand when turned on, and keeps what matched when turned off if asked", async () => {
+    const term = ok(await taxonomy.createTerm(owner.account, scopeOf(fx), { kind: "category", name: "Skifter" })).id;
+    await db().execute(sql`insert into commerce.product_terms (store_id, product_id, term_id) values (${fx.storeId}::uuid, ${products[2].id}::uuid, ${term}::uuid)`);
+    ok(await taxonomy.updateTerm(owner.account, scopeOf(fx), term, { name: "Skifter", slug: "skifter", rules: { conditions: [{ kind: "price", max: 10150 }] } }));
+    const placed = async () => (await db().execute<Row>(sql`select product_id from commerce.product_terms where term_id = ${term}::uuid`)).map((r) => String(r.product_id));
+    expect(await placed()).toEqual([]);
+    expect(await gridOf(term)).toEqual([products[0].id]);
+    ok(await taxonomy.updateTerm(owner.account, scopeOf(fx), term, { name: "Skifter", slug: "skifter", rules: null, keepMatches: true }));
+    expect(await placed()).toEqual([products[0].id]);
+    expect((await termOf(term)).rules).toBeNull();
+  });
+
+  it("is read and changed by the AI manager through the categories page's own save, every name found in the store first", async () => {
+    const { listCategoriesTool, updateCategoryTool, preflightUpdateCategory } = await import("./category-tools");
+    const store = (await getStore(fx.slug))!;
+    const ctx = { account: owner.account, store, invalidate: () => {} };
+    await expect(preflightUpdateCategory(ctx, { category: "Plukket", rules: { match: "all", conditions: [{ kind: "manufacturer", names: ["Nobody"] }] } })).rejects.toThrow(/No manufacturer/);
+    await expect(preflightUpdateCategory(ctx, { category: "Plukket", description: "The best price in Norway, only 3 left!" })).rejects.toThrow(/claims/);
+    const made = await updateCategoryTool(ctx, {
+      category: "Utvalg",
+      description: "Lys til hjemmet.\n\nLaget for lange kvelder.",
+    });
+    expect(made.done).toMatch(/^Changed the category "Utvalg": set its description/);
+    const listed = await listCategoriesTool(ctx, { kind: "tag" });
+    expect(listed.categories.find((c) => c.name === "Rimelig")).toMatchObject({ products: 2, filled: expect.stringContaining("priced up to") });
+    const auto = await updateCategoryTool(ctx, { category: "Blandet", kind: "tag", rules: { match: "all", conditions: [{ kind: "term", name: "plukket" }] } });
+    expect(auto.done).toContain("in category Plukket");
+  });
+});

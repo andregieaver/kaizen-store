@@ -18,10 +18,12 @@ import {
 import { termSeoInput, parseTermSeo, type TermSeo } from "@/lib/term-seo";
 import { cleanTermDescription, parseTermDescription, parseTermTexts, termTextsInput, type TermTexts } from "@/lib/term-texts";
 import type { RichTextDoc } from "@/lib/page-content";
+import { parseTermRules, type TermRules } from "@/lib/term-rules";
 
 import { audit, type Account } from "./auth";
 import { refreshRedirects } from "./redirect-live";
 import { getStore } from "./stores";
+import { checkedRules, namedByRules, ruleMemberIds, type RuleChoices, type RuleCount } from "./term-rules";
 
 /**
  * Categories and tags (D50): Kaizen's for its pages, and each store's for
@@ -48,10 +50,11 @@ const toTerm = (row: Row): Term => ({
   ...(row.image_url === undefined
     ? {}
     : { image: row.image_url == null ? null : { url: String(row.image_url), thumbnailUrl: row.image_thumbnail_url == null ? null : String(row.image_thumbnail_url) } }),
+  ...(row.rules === undefined ? {} : { rules: parseTermRules(row.rules) }),
 });
 
 /** The columns every reader of terms selects. */
-const TERM_COLUMNS = sql.raw("id, kind, parent_id, name, slug, requires_unit_price, seo, description, image_url, image_thumbnail_url, texts");
+const TERM_COLUMNS = sql.raw("id, kind, parent_id, name, slug, requires_unit_price, seo, description, image_url, image_thumbnail_url, texts, rules");
 
 const scopeWhere = (scope: TermScope) =>
   sql`store_id is not distinct from ${scope.storeId}::uuid and content_type = ${scope.contentType}`;
@@ -91,13 +94,13 @@ export async function currentTerms(storeId: string | null, contentType: ContentT
   return rows.map(toTerm);
 }
 
-/** Only the ids that are this scope's categories (or tags), each once. */
+/** Only the ids that are this scope's categories (or tags) an item can be placed in, each once: never one filled by rules (D319). */
 export async function scopedTermIds(scope: TermScope, kind: TermKind, ids: readonly string[]): Promise<string[]> {
   const unique = [...new Set(ids)].filter((id) => /^[0-9a-f-]{36}$/i.test(id));
   if (unique.length === 0) return [];
   const rows = await db().execute<Row>(sql`
     select id from commerce.terms
-    where ${scopeWhere(scope)} and kind = ${kind}
+    where ${scopeWhere(scope)} and kind = ${kind} and rules is null
       and id = any(${`{${unique.join(",")}}`}::uuid[])
   `);
   const known = new Set(rows.map((r) => String(r.id)));
@@ -174,6 +177,31 @@ async function checkedPage(
   return { ok: true, page: { description: description?.doc, image: raw.image, texts } };
 }
 
+/** Rules are a store's product categories' and tags' (D319): the database refuses them anywhere else. */
+const RULES_SCOPE_PROBLEM = "Only a store's product categories and tags can be filled by rules.";
+const RULES_UNIT_PRICE_PROBLEM = "A category filled by rules cannot need a price per kg or litre: mark the categories its products are placed in.";
+
+/**
+ * Rules as sent (D319): undefined when the form sent none (the term keeps what it has), null to fill it by hand, else checked against the store
+ * (`checkedRules()`). A term another collection's rules name cannot be filled by rules itself.
+ */
+async function rulesFor(
+  scope: TermScope,
+  termId: string | null,
+  raw: unknown,
+  marked: boolean,
+): Promise<{ ok: true; rules: TermRules | null | undefined } | { ok: false; problems: string[] }> {
+  if (raw === undefined) return { ok: true, rules: undefined };
+  if (raw === null) return { ok: true, rules: null };
+  if (scope.storeId === null || scope.contentType !== "product") return { ok: false, problems: [RULES_SCOPE_PROBLEM] };
+  if (marked) return { ok: false, problems: [RULES_UNIT_PRICE_PROBLEM] };
+  if (termId) {
+    const naming = await namedByRules(scope.storeId, termId);
+    if (naming) return { ok: false, problems: [`${naming} is filled by rules that name this one, so this one is filled by hand.`] };
+  }
+  return checkedRules(scope.storeId, termId, raw);
+}
+
 const takenProblem = (kind: TermKind, slug: string) =>
   `Another ${TERM_LABELS[kind].one.toLowerCase()} already has the address ${slug}. Choose another.`;
 
@@ -218,14 +246,18 @@ export async function createTerm(account: Account, scope: TermScope, input: unkn
   const pageChecked = await checkedPage(scope, term);
   if (!pageChecked.ok) return pageChecked;
   const page = pageChecked.page;
+  const rulesChecked = await rulesFor(scope, null, term.rules, term.requiresUnitPrice === true);
+  if (!rulesChecked.ok) return rulesChecked;
+  const rules = rulesChecked.rules ?? null;
   const chosen = (input as { slug?: unknown }).slug;
   const slug = await freeSlug(scope, term.kind, term.slug, typeof chosen === "string" && chosen.trim() !== "");
   if (!slug) return { ok: false, problems: [takenProblem(term.kind, term.slug)] };
   try {
     const [row] = await db().execute<Row>(sql`
-      insert into commerce.terms (store_id, content_type, kind, parent_id, name, slug, requires_unit_price, seo, description, image_url, image_thumbnail_url, texts)
+      insert into commerce.terms (store_id, content_type, kind, parent_id, name, slug, requires_unit_price, seo, description, image_url, image_thumbnail_url, texts, rules)
       values (${scope.storeId}::uuid, ${scope.contentType}, ${term.kind}, ${term.parentId}::uuid, ${term.name}, ${slug}, ${term.requiresUnitPrice === true}, ${JSON.stringify(seo)}::jsonb,
-        ${page.description ? JSON.stringify(page.description) : null}::jsonb, ${page.image?.url ?? null}, ${page.image?.thumbnailUrl ?? null}, ${JSON.stringify(page.texts ?? {})}::jsonb)
+        ${page.description ? JSON.stringify(page.description) : null}::jsonb, ${page.image?.url ?? null}, ${page.image?.thumbnailUrl ?? null}, ${JSON.stringify(page.texts ?? {})}::jsonb,
+        ${rules ? JSON.stringify(rules) : null}::jsonb)
       returning id
     `);
     const id = String(row.id);
@@ -236,6 +268,7 @@ export async function createTerm(account: Account, scope: TermScope, input: unkn
       ...(term.requiresUnitPrice ? { requiresUnitPrice: true } : {}),
       ...(Object.keys(seo).length > 0 ? { seo: true } : {}),
       ...(page.description || page.image || (page.texts && Object.keys(page.texts).length > 0) ? { page: true } : {}),
+      ...(rules ? { rules: rules.conditions.length } : {}),
     });
     return { ok: true, id, terms: await listTerms(scope) };
   } catch (error) {
@@ -248,7 +281,7 @@ export async function createTerm(account: Account, scope: TermScope, input: unkn
 /** Renames, re-addresses or moves a category or tag; its kind stays. */
 export async function updateTerm(account: Account, scope: TermScope, id: string, input: unknown): Promise<TermsResult> {
   const [existing] = await db().execute<Row>(sql`
-    select kind, slug, requires_unit_price, seo, description, image_url, texts from commerce.terms where ${scopeWhere(scope)} and id = ${id}::uuid
+    select kind, slug, requires_unit_price, seo, description, image_url, texts, rules from commerce.terms where ${scopeWhere(scope)} and id = ${id}::uuid
   `);
   if (!existing) return { ok: false, problems: ["This category or tag no longer exists. It may have been deleted."] };
   const kind = existing.kind as TermKind;
@@ -275,17 +308,40 @@ export async function updateTerm(account: Account, scope: TermScope, id: string,
     (page.description !== undefined && JSON.stringify(page.description) !== JSON.stringify(parseTermDescription(existing.description))) ||
     (page.image !== undefined && (page.image?.url ?? null) !== (existing.image_url == null ? null : String(existing.image_url))) ||
     (page.texts !== undefined && JSON.stringify(page.texts) !== JSON.stringify(parseTermTexts(existing.texts)));
+  // Filled by rules (D319): left out, as it was.
+  const before = parseTermRules(existing.rules);
+  const rulesChecked = await rulesFor(scope, id, term.rules, marked);
+  if (!rulesChecked.ok) return rulesChecked;
+  const rules = rulesChecked.rules;
+  if (marked && (rules === undefined ? before : rules)) return { ok: false, problems: [RULES_UNIT_PRICE_PROBLEM] };
+  const rulesChanged = rules !== undefined && JSON.stringify(rules) !== JSON.stringify(before);
   try {
-    await db().execute(sql`
-      update commerce.terms set name = ${term.name}, slug = ${term.slug}, parent_id = ${term.parentId}::uuid,
-        requires_unit_price = ${marked}, seo = ${seoChecked.seo === undefined ? sql`seo` : sql`${JSON.stringify(seoChecked.seo)}::jsonb`},
-        description = ${page.description === undefined ? sql`description` : sql`${page.description ? JSON.stringify(page.description) : null}::jsonb`},
-        image_url = ${page.image === undefined ? sql`image_url` : sql`${page.image?.url ?? null}`},
-        image_thumbnail_url = ${page.image === undefined ? sql`image_thumbnail_url` : sql`${page.image?.thumbnailUrl ?? null}`},
-        texts = ${page.texts === undefined ? sql`texts` : sql`${JSON.stringify(page.texts)}::jsonb`},
-        updated_at = now()
-      where ${scopeWhere(scope)} and id = ${id}::uuid
-    `);
+    await db().transaction(async (tx) => {
+      if (rulesChanged && rules && !before) {
+        // Turned on: the products placed by hand are taken out (the editor said so first); the rules hold its products from now on.
+        await tx.execute(sql`delete from commerce.product_terms where store_id = ${scope.storeId}::uuid and term_id = ${id}::uuid`);
+      }
+      await tx.execute(sql`
+        update commerce.terms set name = ${term.name}, slug = ${term.slug}, parent_id = ${term.parentId}::uuid,
+          requires_unit_price = ${marked}, seo = ${seoChecked.seo === undefined ? sql`seo` : sql`${JSON.stringify(seoChecked.seo)}::jsonb`},
+          description = ${page.description === undefined ? sql`description` : sql`${page.description ? JSON.stringify(page.description) : null}::jsonb`},
+          image_url = ${page.image === undefined ? sql`image_url` : sql`${page.image?.url ?? null}`},
+          image_thumbnail_url = ${page.image === undefined ? sql`image_thumbnail_url` : sql`${page.image?.thumbnailUrl ?? null}`},
+          texts = ${page.texts === undefined ? sql`texts` : sql`${JSON.stringify(page.texts)}::jsonb`},
+          rules = ${rules === undefined ? sql`rules` : sql`${rules ? JSON.stringify(rules) : null}::jsonb`},
+          updated_at = now()
+        where ${scopeWhere(scope)} and id = ${id}::uuid
+      `);
+      if (rulesChanged && rules === null && before && term.keepMatches && scope.storeId !== null) {
+        // Turned off, keeping what matched: those products are placed in it by hand (in no order of the owner's yet).
+        await tx.execute(sql`
+          insert into commerce.product_terms (store_id, product_id, term_id)
+          select p.store_id, p.id, ${id}::uuid from commerce.products p
+          where p.store_id = ${scope.storeId}::uuid and commerce.product_matches_rules(p.store_id, p.id, ${JSON.stringify(before)}::jsonb)
+          on conflict do nothing
+        `);
+      }
+    });
     await audit(account.id, scope.storeId, `${scope.contentType}.${kind}_updated`, {
       id,
       name: term.name,
@@ -293,6 +349,7 @@ export async function updateTerm(account: Account, scope: TermScope, id: string,
       ...(marked !== Boolean(existing.requires_unit_price) ? { requiresUnitPrice: marked } : {}),
       ...(seoChanged ? { seo: true } : {}),
       ...(pageChanged ? { page: true } : {}),
+      ...(rulesChanged ? { rules: rules ? rules.conditions.length : 0, ...(rules === null && term.keepMatches ? { keptMatches: true } : {}) } : {}),
     });
     // A changed address left a redirect from the old one (the database's trigger): the lookup of a missing address is refreshed for it.
     if (scope.storeId !== null && String(existing.slug) !== term.slug) refreshRedirects(scope.storeId);
@@ -344,6 +401,9 @@ export type TermProduct = { id: string; title: string; status: string; imageUrl:
 export type TermOrderActions = {
   products: (termId: string) => Promise<TermProduct[]>;
   saveOrder: (termId: string, productIds: string[]) => Promise<{ ok: true } | { ok: false; problems: string[] }>;
+  /** Filled by rules (D319): what a rule may name, and how many products the rules being written hold. */
+  ruleChoices?: (termId: string | null) => Promise<RuleChoices | null>;
+  countRules?: (termId: string | null, rules: unknown) => Promise<({ ok: true } & RuleCount) | { ok: false; problems: string[] }>;
 };
 
 /** The most products a term's order lists and takes. */
@@ -354,6 +414,24 @@ export const TERM_ORDER_MAX = 500;
  * their place, then the others by when they were made. For the admin's panel; drafts and archived products are listed too.
  */
 export async function termProducts(storeId: string, termId: string): Promise<TermProduct[]> {
+  // A collection filled by rules (D319) lists what its rules hold now, newest first, as its page does; none is placed.
+  const ruled = await ruleMemberIds(storeId, termId, TERM_ORDER_MAX);
+  if (ruled.length > 0) {
+    const rows = await db().execute<Row>(sql`
+      select p.id, p.status,
+        coalesce((select title from commerce.product_translations tr where tr.product_id = p.id order by tr.locale limit 1), p.handle) as title,
+        (select coalesce(m.thumbnail_url, m.url) from commerce.product_media m where m.product_id = p.id order by m.position limit 1) as image_url
+      from commerce.products p where p.store_id = ${storeId}::uuid and p.id = any(${`{${ruled.join(",")}}`}::uuid[])
+      order by array_position(${`{${ruled.join(",")}}`}::uuid[], p.id)
+    `);
+    return rows.map((row) => ({
+      id: String(row.id),
+      title: String(row.title),
+      status: String(row.status),
+      imageUrl: row.image_url == null ? null : String(row.image_url),
+      placed: false,
+    }));
+  }
   const rows = await db().execute<Row>(sql`
     select p.id, p.status, pt.position,
       coalesce((select title from commerce.product_translations tr where tr.product_id = p.id order by tr.locale limit 1), p.handle) as title,
@@ -381,9 +459,10 @@ export async function termProducts(storeId: string, termId: string): Promise<Ter
 export async function setTermOrder(account: Account, storeId: string, termId: string, productIds: readonly string[]): Promise<{ ok: true } | { ok: false; problems: string[] }> {
   const ids = [...new Set(productIds)].filter((id) => /^[0-9a-f-]{36}$/i.test(id)).slice(0, TERM_ORDER_MAX);
   const [term] = await db().execute<Row>(sql`
-    select kind, name from commerce.terms where store_id = ${storeId}::uuid and content_type = 'product' and id = ${termId}::uuid
+    select kind, name, rules from commerce.terms where store_id = ${storeId}::uuid and content_type = 'product' and id = ${termId}::uuid
   `);
   if (!term) return { ok: false, problems: ["This category or tag no longer exists. It may have been deleted."] };
+  if (term.rules != null) return { ok: false, problems: ["This category is filled by rules: its products are listed newest first."] };
   await db().transaction(async (tx) => {
     await tx.execute(sql`
       update commerce.product_terms pt set position = case when o.place is null then null else o.place - 1 end

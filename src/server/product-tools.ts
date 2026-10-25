@@ -120,6 +120,7 @@ async function termIds(ctx: Ctx, terms: readonly Term[], kind: "category" | "tag
   for (const name of names) {
     const wanted = name.trim().toLowerCase();
     const found = terms.find((t) => t.kind === kind && (t.name.toLowerCase() === wanted || t.slug === slugify(name)));
+    if (found?.rules) return fail(`The ${kind} "${found.name}" is filled by its rules: a product joins it by meeting them, never by naming it.`);
     if (found) {
       ids.push(found.id);
       continue;

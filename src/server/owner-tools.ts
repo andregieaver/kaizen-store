@@ -196,6 +196,7 @@ import {
   writeProductTextsTool,
 } from "./product-tools";
 import { GATED_WHEN_LIVE } from "@/lib/product-tools";
+import { listCategoriesTool, preflightUpdateCategory, updateCategoryTool } from "./category-tools";
 import { SETUP_TOOLS } from "@/lib/setup-tools";
 import {
   buildPageTool,
@@ -2000,6 +2001,12 @@ export async function preflightOwnerTool(ctx: OwnerToolContext, name: string, ra
     if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
     return preflightProductTool(ctx, name, input.input as Record<string, unknown>);
   }
+  // A category change naming something the store does not have, or with claims, is refused now, never kept for a yes (D319).
+  if (name === "update_category") {
+    const input = readToolInput(OWNER_TOOLS_BY_NAME[name], raw);
+    if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
+    return preflightUpdateCategory(ctx, input.input as OwnerToolInput<"update_category">);
+  }
   // A page that could not be published (gone, in a running test, with a problem the checker blocks on) is refused now, never kept for a yes (D308).
   if (name === "publish_page" || name === "set_page_place" || name === "save_menu" || name === "set_header_footer") {
     const input = readToolInput(OWNER_TOOLS_BY_NAME[name], raw);
@@ -2167,6 +2174,8 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   set_prices: setPricesTool,
   set_product_status: setProductStatusTool,
   write_product_texts: writeProductTextsTool,
+  list_categories: (ctx: OwnerToolContext, input: OwnerToolInput<"list_categories">) => listCategoriesTool(ctx, input),
+  update_category: (ctx: OwnerToolContext, input: OwnerToolInput<"update_category">) => updateCategoryTool(ctx, input),
   unpublish_page: unpublishPageTool,
   setup_progress: (ctx: OwnerToolContext) => setupProgressTool(ctx),
   set_store_details: (ctx: OwnerToolContext, input: OwnerToolInput<"set_store_details">) => setStoreDetailsTool(ctx, input),
@@ -2325,7 +2334,7 @@ export async function runOwnerTool(ctx: OwnerToolContext, name: string, raw: unk
 
 /** Tools that change the store without a gate, written down all the same: a note on an order, products made or written for, pages built or changed (D308). */
 const AUDITED_UNGATED = new Set(["add_order_note", "create_product", "write_product_texts", "build_page", "edit_page", "add_support_note", "end_support_conversation", "log_time"]);
-const PRODUCT_TOOLS = new Set(["create_product", "update_product", "set_prices", "set_product_status", "write_product_texts"]);
+const PRODUCT_TOOLS = new Set(["create_product", "update_product", "set_prices", "set_product_status", "write_product_texts", "update_category"]);
 const PAGE_TOOLS = new Set(["build_page", "edit_page", "publish_page", "set_page_place", "save_menu", "set_header_footer"]);
 
 /**

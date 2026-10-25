@@ -40,6 +40,7 @@ import type { OwnerToolInput } from "@/lib/owner-tools";
 import { dnsApprovalDetails, domainApprovalDetails, moveApprovalDetails } from "./domain-tools";
 import { productApprovalWords } from "./product-tools";
 import { headerFooterApprovalWords, menuApprovalWords, placeApprovalWords, publishApprovalWords } from "./site-tools";
+import { categoryApprovalWords } from "./category-tools";
 import { setupApprovalWords } from "./setup-tools";
 import { liveApprovalDetails } from "./design-tools";
 import type { MakeThemeLiveInput } from "@/lib/design-tools";
@@ -705,6 +706,8 @@ export async function keepForApproval(
   if (tool === "set_page_place") summary = (await placeApprovalWords(site, args)) ?? summary;
   if (tool === "save_menu") summary = (await menuApprovalWords(site, args)) ?? summary;
   if (tool === "set_header_footer") summary = (await headerFooterApprovalWords(site, args)) ?? summary;
+  // A category's change is described with its own name and its rules in words (D319).
+  if (store && tool === "update_category") summary = await categoryApprovalWords({ account: ctx.account, store, invalidate: ctx.invalidate }, args);
   // A setup change is described from the store as it is: its details, countries, languages, currencies and shipping (D308).
   if (store && SETUP_TOOLS.has(tool)) summary = (await setupApprovalWords({ account: ctx.account, store, invalidate: ctx.invalidate }, tool, args)) ?? summary;
   if (store && tool === "unpublish_page") {

@@ -319,6 +319,8 @@ export const assistantNb: AssistantMessages = {
     set_prices: "Setter prisene",
     set_product_status: "Forbereder endringen",
     write_product_texts: "Skriver tekstene",
+    list_categories: "Ser på kategoriene",
+    update_category: "Forbereder endringen",
     unpublish_page: "Forbereder endringen",
     get_page: "Leser siden",
     list_page_builds: "Ser på sidene som bygges",

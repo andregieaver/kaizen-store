@@ -264,12 +264,19 @@ export async function listIndexedTerms(storeId: string): Promise<IndexedTerm[]> 
       select t.id, t.id from commerce.terms t where t.store_id = ${storeId}::uuid and t.content_type = 'product'
       union all
       select tree.root_id, c.id from tree join commerce.terms c on c.parent_id = tree.id and c.store_id = ${storeId}::uuid and c.content_type = 'product'
+    ),
+    -- A term's products: those placed in it or below it by hand, and those meeting the rules of one filled by rules (D319).
+    members (root_id, product_id) as (
+      select tree.root_id, pt.product_id from tree join commerce.product_terms pt on pt.store_id = ${storeId}::uuid and pt.term_id = tree.id
+      union
+      select tree.root_id, rp.id from tree
+      join commerce.terms rt on rt.id = tree.id and rt.rules is not null
+      join commerce.products rp on rp.store_id = ${storeId}::uuid and rp.status = 'active' and commerce.product_matches_rules(${storeId}::uuid, rp.id, rt.rules)
     )
     select t.kind, t.slug, t.name, t.seo, t.image_url, greatest(t.updated_at, max(p.updated_at)) as updated_at,
       array_agg(distinct cp.market_code) as markets
     from commerce.terms t
-    join tree on tree.root_id = t.id
-    join commerce.product_terms pt on pt.store_id = ${storeId}::uuid and pt.term_id = tree.id
+    join members pt on pt.root_id = t.id
     join commerce.products p on p.store_id = ${storeId}::uuid and p.id = pt.product_id and p.status = 'active' and ${OFFERED}
     join commerce.product_variants v on v.product_id = p.id and v.active
     join commerce.current_prices cp on cp.variant_id = v.id

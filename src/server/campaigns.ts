@@ -392,7 +392,10 @@ export function shownIn(c: Campaign, market: Market): Campaign {
   };
 }
 
-/** Each product's categories, their parents and its tags, so a campaign for "Shoes" reaches what is in "Sneakers". */
+/**
+ * Each product's categories, their parents and its tags, so a campaign for "Shoes" reaches what is in "Sneakers"; and the collections filled by
+ * rules it meets (D319), so a campaign or code for one reaches what its page lists.
+ */
 export async function termsOfProducts(runner: Runner, storeId: string, productIds: string[]): Promise<Map<string, string[]>> {
   const out = new Map<string, string[]>();
   if (productIds.length === 0) return out;
@@ -400,6 +403,10 @@ export async function termsOfProducts(runner: Runner, storeId: string, productId
     with recursive t (product_id, term_id) as (
       select pt.product_id, pt.term_id from commerce.product_terms pt
       where pt.store_id = ${storeId}::uuid and pt.product_id in (${sql.join(productIds.map((p) => sql`${p}::uuid`), sql`, `)})
+      union
+      select p.id, rt.id from commerce.products p join commerce.terms rt on rt.store_id = p.store_id and rt.rules is not null
+      where p.store_id = ${storeId}::uuid and p.id in (${sql.join(productIds.map((p) => sql`${p}::uuid`), sql`, `)})
+        and commerce.product_matches_rules(p.store_id, p.id, rt.rules)
       union
       select t.product_id, tm.parent_id from t join commerce.terms tm on tm.id = t.term_id where tm.parent_id is not null
     )

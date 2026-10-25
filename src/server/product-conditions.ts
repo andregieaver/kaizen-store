@@ -28,11 +28,14 @@ export const OFFERED = sql`(commerce.feature_on(p.store_id, 'shop')
 
 /**
  * The product `p`'s place in the owner's order of the category or tag `termId` (wave 6 unit A, D319), as an ORDER BY term: placed products by
- * their place, then those not placed by hand (added since, or in a subcategory only). Follow it with the reader's own tie-break.
+ * their place, then those not placed by hand (added since, or in a subcategory only). A collection filled by rules has no order of the owner's:
+ * its products come newest first. Follow it with the reader's own tie-break.
  */
 export const manualPlace = (termId: string): SQL => sql`(
   select pt.position from commerce.product_terms pt where pt.store_id = p.store_id and pt.product_id = p.id and pt.term_id = ${termId}::uuid
-) asc nulls last`;
+) asc nulls last, (
+  case when exists (select 1 from commerce.terms rt where rt.id = ${termId}::uuid and rt.rules is not null) then p.created_at end
+) desc nulls last`;
 
 /**
  * Purchase options (selling plans, D25) are offered while the store feature Subscriptions is on (D178), for the store whose id is given
@@ -41,28 +44,48 @@ export const manualPlace = (termId: string): SQL => sql`(
  */
 export const plansOffered = (storeId: SQL) => sql`commerce.feature_on(${storeId}, 'subscriptions')`;
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * The product `p` is in one of the store's categories or tags `ids` (wave 6 unit A2, D319): placed in one by hand (`product_terms`), or meeting the
+ * rules of one filled by rules (`commerce.product_matches_rules()`, the one evaluator). Every reader of a category's or tag's products asks this, so
+ * a collection filled by rules lists where a manual one does. No ids is every product.
+ */
+export function inTerms(ids: readonly string[]): SQL {
+  const list = `{${ids.filter((id) => UUID.test(id)).join(",")}}`;
+  if (list === "{}") return ids.length === 0 ? sql`true` : sql`false`;
+  return sql`(exists (
+    select 1 from commerce.product_terms pt where pt.store_id = p.store_id and pt.product_id = p.id and pt.term_id = any(${list}::uuid[])
+  ) or exists (
+    select 1 from commerce.terms rt
+    where rt.store_id = p.store_id and rt.id = any(${list}::uuid[]) and rt.rules is not null and commerce.product_matches_rules(p.store_id, p.id, rt.rules)
+  ))`;
+}
+
 export const textList = (values: string[]) => sql`array[${sql.join(values.map((v) => sql`${v}`), sql`, `)}]::text[]`;
 
-/** In one of the store's product categories (by address), or one below it. */
+/** In one of the store's product categories (by address), or one below it; a category filled by rules by its rules (D319). */
 export function inCategories(slugs: string[]): SQL {
   return sql`exists (
     with recursive picked as (
-      select id from commerce.terms
+      select id, rules from commerce.terms
       where store_id = p.store_id and content_type = 'product' and kind = 'category' and slug = any(${textList(slugs)})
       union
-      select t.id from commerce.terms t join picked on t.parent_id = picked.id
+      select t.id, t.rules from commerce.terms t join picked on t.parent_id = picked.id
     )
-    select 1 from commerce.product_terms pt
-    where pt.store_id = p.store_id and pt.product_id = p.id and pt.term_id in (select id from picked)
+    select 1 from picked
+    where exists (select 1 from commerce.product_terms pt where pt.store_id = p.store_id and pt.product_id = p.id and pt.term_id = picked.id)
+      or (picked.rules is not null and commerce.product_matches_rules(p.store_id, p.id, picked.rules))
   )`;
 }
 
-/** With one of the store's product tags (by address). */
+/** With one of the store's product tags (by address); a tag filled by rules by its rules (D319). */
 export function withTags(slugs: string[]): SQL {
   return sql`exists (
-    select 1 from commerce.product_terms pt join commerce.terms te on te.id = pt.term_id
-    where pt.store_id = p.store_id and pt.product_id = p.id and te.content_type = 'product' and te.kind = 'tag'
-      and te.slug = any(${textList(slugs)})
+    select 1 from commerce.terms te
+    where te.store_id = p.store_id and te.content_type = 'product' and te.kind = 'tag' and te.slug = any(${textList(slugs)})
+      and (exists (select 1 from commerce.product_terms pt where pt.store_id = p.store_id and pt.product_id = p.id and pt.term_id = te.id)
+        or (te.rules is not null and commerce.product_matches_rules(p.store_id, p.id, te.rules)))
   )`;
 }
 

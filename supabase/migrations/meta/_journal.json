@@ -3249,6 +3249,20 @@
       "when": 1792958908702,
       "tag": "20261025200828_collections_copy",
       "breakpoints": true
+    },
+    {
+      "idx": 464,
+      "version": "7",
+      "when": 1792961630175,
+      "tag": "20261025205350_collection_rules",
+      "breakpoints": true
+    },
+    {
+      "idx": 465,
+      "version": "7",
+      "when": 1792961649426,
+      "tag": "20261025205409_collection_rules_sql",
+      "breakpoints": true
     }
   ]
 }

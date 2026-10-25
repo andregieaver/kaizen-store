@@ -21,6 +21,7 @@ import { useAdminText } from "./admin-text";
 import { TermFieldsButton, type TermFieldsSetup } from "./term-fields";
 import { TermSeoFields, seoLanguagesOf, type TermSeoSetup } from "./term-seo-fields";
 import { TermPageFields, TermProductOrder, type TermPageDraft, type TermPageSetup } from "./term-page-fields";
+import { TermRulesFields, type TermRulesDraft } from "./term-rules-fields";
 import { Card } from "@/components/admin/ui";
 
 /**
@@ -110,10 +111,13 @@ export function TermPicker({
                       <input
                         type="checkbox"
                         checked={chosen.has(term.id)}
+                        // One filled by rules (D319) holds what its rules say: nothing is placed in it by hand.
+                        disabled={Boolean(term.rules)}
                         onChange={(event) => toggle(kind, term.id, event.target.checked)}
                         className="size-4"
                       />
                       {term.name}
+                      {term.rules ? <span className="text-xs text-muted">· {w.byRules}</span> : null}
                     </label>
                   </li>
                 ))}
@@ -397,12 +401,22 @@ function TermRow({
   page?: TermPageSetup;
 }) {
   const w = useAdminText("products").terms;
+  const rw = useAdminText("products").termRules;
   const id = useId();
   const [editing, setEditing] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const marked = term.requiresUnitPrice === true;
   const pageOf = (t: Term): TermPageDraft => ({ description: t.description ?? null, image: t.image ?? null, texts: t.texts ?? {} });
-  const [draft, setDraft] = useState({ name: term.name, slug: term.slug, parentId: term.parentId, requiresUnitPrice: marked, seo: term.seo ?? ({} as TermSeo), page: pageOf(term) });
+  const rulesOf = (t: Term): TermRulesDraft => ({ rules: t.rules ?? null, keepMatches: false });
+  const [draft, setDraft] = useState({
+    name: term.name,
+    slug: term.slug,
+    parentId: term.parentId,
+    requiresUnitPrice: marked,
+    seo: term.seo ?? ({} as TermSeo),
+    page: pageOf(term),
+    rules: rulesOf(term),
+  });
   const [problems, setProblems] = useState<string[]>([]);
   const [note, setNote] = useState<string | null>(null);
   const [busy, start] = useTransition();
@@ -425,7 +439,9 @@ function TermRow({
           onSubmit={(event) => {
             event.preventDefault();
             // Only a screen that offers the mark sends it, and only one that offers search texts sends those: left out, they stay as they were.
-            const { requiresUnitPrice, seo: drafted, page: pageDraft, ...rest } = draft;
+            const { requiresUnitPrice, seo: drafted, page: pageDraft, rules: rulesDraft, ...rest } = draft;
+            // Rules are sent only when they changed (D319), so a rename never re-checks them.
+            const rulesChanged = JSON.stringify(rulesDraft.rules) !== JSON.stringify(term.rules ?? null);
             run(
               () =>
                 actions.update(term.id, {
@@ -433,6 +449,7 @@ function TermRow({
                   ...(unitPrice ? { requiresUnitPrice } : {}),
                   ...(seo ? { seo: drafted } : {}),
                   ...(page ? pageDraft : {}),
+                  ...(page?.countRules && rulesChanged ? { rules: rulesDraft.rules, keepMatches: rulesDraft.keepMatches } : {}),
                 }),
               () => setEditing(false),
             );
@@ -485,6 +502,9 @@ function TermRow({
             <UnitPriceMark id={`${id}-unit-price`} checked={draft.requiresUnitPrice} onChange={(requiresUnitPrice) => setDraft({ ...draft, requiresUnitPrice })} />
           )}
           {page && <TermPageFields setup={page} value={draft.page} onChange={(next) => setDraft({ ...draft, page: next })} />}
+          {page && !draft.requiresUnitPrice && (
+            <TermRulesFields setup={page} termId={term.id} before={term.rules ?? null} value={draft.rules} onChange={(next) => setDraft({ ...draft, rules: next })} />
+          )}
           {seo && (
             <TermSeoFields setup={seo} name={draft.name || term.name} kind={term.kind} slug={draft.slug || term.slug} value={draft.seo} onChange={(next) => setDraft({ ...draft, seo: next })} />
           )}
@@ -497,7 +517,7 @@ function TermRow({
               type="button"
               onClick={() => {
                 setEditing(false);
-                setDraft({ name: term.name, slug: term.slug, parentId: term.parentId, requiresUnitPrice: marked, seo: term.seo ?? {}, page: pageOf(term) });
+                setDraft({ name: term.name, slug: term.slug, parentId: term.parentId, requiresUnitPrice: marked, seo: term.seo ?? {}, page: pageOf(term), rules: rulesOf(term) });
                 setProblems([]);
               }}
               className={button}
@@ -511,6 +531,7 @@ function TermRow({
           <span className="flex min-w-0 flex-col">
             <span className="text-sm font-medium">{term.name}</span>
             <span className="font-mono text-xs text-muted">{term.slug}</span>
+            {term.rules && <span className="text-xs text-muted">{countWords(term.rules.conditions.length, rw.summary)}</span>}
             {seo && (
               <span className="text-xs text-muted">{seoLanguages.length > 0 ? fillWords(w.seoIn, { languages: seoLanguages.join(", ") }) : w.seoNone}</span>
             )}
@@ -542,7 +563,7 @@ function TermRow({
             </span>
           ) : (
             <span className="flex flex-wrap gap-2">
-              {page && <TermProductOrder termId={term.id} setup={page} />}
+              {page && !term.rules && <TermProductOrder termId={term.id} setup={page} />}
               {fields && <TermFieldsButton term={term} setup={fields} />}
               <button type="button" onClick={() => setEditing(true)} className={button} aria-label={fillWords(w.changeAria[term.kind], { name: term.name })}>
                 {w.change}

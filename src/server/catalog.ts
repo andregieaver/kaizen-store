@@ -17,7 +17,7 @@ import { shownMeasureFromColumns } from "@/lib/unit-price-rules";
 import { stockOf, UNLIMITED, type VariantStock } from "@/lib/stock-availability";
 
 import { fieldsTag, shownFieldsFor, shownFieldsForVariants } from "./custom-fields";
-import { OFFERED, STORE_AUDIENCE, manualPlace, plansOffered } from "./product-conditions";
+import { OFFERED, STORE_AUDIENCE, inTerms, manualPlace, plansOffered } from "./product-conditions";
 
 /**
  * Cache tags. Revalidate a store's catalogue tag after any product or price
@@ -399,13 +399,6 @@ export async function listGridProducts(
   const { code: marketCode, locale } = market;
 
   const ids = (list: string[]) => `{${list.filter((id) => /^[0-9a-f-]{36}$/i.test(id)).join(",")}}`;
-  const inTerms = (list: string[]) =>
-    list.length === 0
-      ? sql`true`
-      : sql`exists (
-          select 1 from commerce.product_terms pt
-          where pt.store_id = p.store_id and pt.product_id = p.id and pt.term_id = any(${ids(list)}::uuid[])
-        )`;
   const given = filter.ids ? ids(filter.ids) : null;
   const orderTerm = filter.sort === "manual" && filter.orderTerm && /^[0-9a-f-]{36}$/i.test(filter.orderTerm) ? filter.orderTerm : null;
   const order = given && filter.sort === "given"

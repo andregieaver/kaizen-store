@@ -448,6 +448,8 @@ export const TOOL_WORDS: Record<string, string> = {
   set_prices: "Setting the prices",
   set_product_status: "Preparing the change",
   write_product_texts: "Writing the texts",
+  list_categories: "Looking at the categories",
+  update_category: "Preparing the change",
   unpublish_page: "Preparing the change",
   get_page: "Reading the page",
   list_page_builds: "Looking at the pages being built",

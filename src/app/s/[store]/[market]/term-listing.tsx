@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cacheLife, cacheTag } from "next/cache";
 import Link from "next/link";
 import { Suspense } from "react";
 
@@ -18,7 +19,7 @@ import type { StoreQuery } from "@/lib/store-parts";
 import { featureOn } from "@/lib/store-features";
 import { byName, withDescendants, type TermKind } from "@/lib/taxonomy";
 import { campaignNotices } from "@/server/campaign-notices";
-import { listGridProducts } from "@/server/catalog";
+import { CATALOG_TAG, catalogTag, listGridProducts } from "@/server/catalog";
 import { shownFieldsFor } from "@/server/custom-fields";
 import { missOrRedirect } from "@/server/redirect-resolve";
 import { listIndexedTerms, storeShareImage, storeShareTags } from "@/server/seo";
@@ -139,7 +140,7 @@ export async function TermListing({ store, market, kind, slug, query }: { store:
   const scope = {
     categoryIds: kind === "category" ? withDescendants(terms, [term.id]) : [],
     tagIds: kind === "tag" ? [term.id] : [],
-    // Featured follows the owner's order of this category or tag (D319).
+    // Featured follows the owner's order of this category or tag (D319); one filled by rules has none and lists the newest first (`manualPlace()`).
     orderTerm: term.id,
   };
   const { description } = termTextFor(term, market.locale);
@@ -149,9 +150,9 @@ export async function TermListing({ store, market, kind, slug, query }: { store:
     // The category's or tag's own public custom fields (D118), under its name.
     shownFieldsFor(store.id, "term", term.id, market.locale, market.lang, market.slug),
     // The picture's words from the media library (D89), in this language where it has them.
-    term.image ? libraryAlts([term.image.url]) : Promise.resolve(new Map<string, LibraryAlt>()),
+    term.image ? pictureAlt(store.id, term.image.url) : Promise.resolve(null),
   ]);
-  const libraryAlt = term.image ? alts.get(term.image.url) : undefined;
+  const libraryAlt = alts ?? undefined;
   const imageAlt = libraryAlt ? libraryAlt.translations[market.locale] || libraryAlt.alt : "";
   const termFields = groupsToShow(fields);
   const subcategories = kind === "category" ? terms.filter((t) => t.parentId === term.id).sort(byName) : [];
@@ -197,6 +198,17 @@ export async function TermListing({ store, market, kind, slug, query }: { store:
       </Suspense>
     </>
   );
+}
+
+/**
+ * The words the media library keeps for a term's picture (D89), read once and cached with the catalogue (alt text changes refresh it), so the
+ * page prerenders: a plain read here is runtime data in a prerender.
+ */
+async function pictureAlt(storeId: string, url: string): Promise<LibraryAlt | null> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(CATALOG_TAG, catalogTag(storeId));
+  return (await libraryAlts([url])).get(url) ?? null;
 }
 
 /**

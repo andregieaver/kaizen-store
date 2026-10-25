@@ -14,7 +14,7 @@ const CHANGING = new Set([
   "draft_broadcast", "send_broadcast", "tag_customer", "switch_email_automation", "issue_gift_card",
   "add_support_note", "reply_to_support", "end_support_conversation",
   "invite_staff", "change_staff_role", "remove_staff", "change_plan", "end_plan", "change_order", "propose_exchange", "process_exchange", "log_time", "issue_work_invoice",
-  "create_product", "update_product", "set_prices", "set_product_status", "write_product_texts",
+  "create_product", "update_product", "set_prices", "set_product_status", "write_product_texts", "update_category",
   "build_page", "edit_page", "publish_page", "set_page_place", "save_menu", "set_header_footer",
   "set_store_details", "set_countries", "set_languages", "set_currencies", "set_flat_shipping", "save_shipping_method", "open_store",
   "add_theme", "make_theme_live",

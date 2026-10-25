@@ -31,6 +31,7 @@ import {
 import { registerVideo, uploadToLibrary } from "@/server/media-library";
 import { TERM_ORDER_MAX, createTerm, deleteTerm, setTermOrder, termProducts, termsTag, updateTerm, type TermProduct, type TermsResult } from "@/server/taxonomy";
 import { storageRefusal } from "@/server/limits";
+import { checkedRules, countRuleMembers, ruleChoices, type RuleChoices, type RuleCount } from "@/server/term-rules";
 import {
   getEditorContext,
   getProductForEdit,
@@ -206,6 +207,23 @@ export async function termProductsAction(storeSlug: string, termId: string): Pro
   const member = await checkPermission(storeSlug, "products:write");
   if (!member || !z.uuid().safeParse(termId).success) return [];
   return termProducts(member.store.id, termId);
+}
+
+/** What a category's or tag's rules may name (wave 6 unit A2, D319): the store's own manual categories and tags, manufacturers and filter fields. */
+export async function ruleChoicesAction(storeSlug: string, termId: string | null): Promise<RuleChoices | null> {
+  const member = await checkPermission(storeSlug, "products:write");
+  if (!member || (termId !== null && !z.uuid().safeParse(termId).success)) return null;
+  return ruleChoices(member.store.id, termId);
+}
+
+/** How many products the rules being written hold, and each condition alone (D319): checked as a save checks them, counted by the database. */
+export async function countRulesAction(storeSlug: string, termId: string | null, rules: unknown): Promise<({ ok: true } & RuleCount) | { ok: false; problems: string[] }> {
+  const member = await checkPermission(storeSlug, "products:write");
+  if (!member) return { ok: false, problems: [NO_ACCESS] };
+  if (termId !== null && !z.uuid().safeParse(termId).success) return { ok: false, problems: ["Unknown category or tag."] };
+  const checked = await checkedRules(member.store.id, termId, rules);
+  if (!checked.ok) return checked;
+  return { ok: true, ...(await countRuleMembers(member.store.id, checked.rules)) };
 }
 
 /** Saves the owner's order of a category's or tag's products (D319); the catalogue is refreshed, so its page and grids follow at once. */
