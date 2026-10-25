@@ -341,7 +341,7 @@ only (the platform's by platform admins):
 
 ### 7.5 Decisions and reports (B3)
 
-- The Autopilot page (`/admin/{store}/autopilot`, `/admin/platform/autopilot`): **Decisions** first (Homer's view: what waits on the
+- The Autopilot page (`/admin/{store}/assistant/autopilot`, `/admin/platform/assistant/autopilot`, beside the AI manager's page and, like it, the owner's): **Decisions** first (Homer's view: what waits on the
   owner, each with its buttons: the kept calls with Approve and Decline, the questions with their options, and what only the owner can do,
   from `getSetupProgress()`), then **Plans** (each plan with its steps, statuses and results; Start, Pause, Resume, Stop), **Goals** (each
   with its progress from `goalProgress()`) and **Settings** (the switch, levels per area and budgets; owners only).
@@ -393,7 +393,20 @@ shows it beside the person's name.
 - The page check is "published", which carries the builder's accessibility check (`publish_page` refuses a blocking issue).
 - Settings have no AI manager tool: they are the owner's, on the page (B3).
 
-### 7.9 Tests
+### 7.9 As built: B3a, the page (2026-10-25)
+
+- `/admin/{store}/assistant/autopilot` (`requireOwnerRole()`, as the AI manager's page) and `/admin/platform/assistant/autopilot`
+  (`requirePlatformAdmin()`), linked as a third tab of the AI manager's page; one component, `AutopilotPage`
+  (`src/components/admin/autopilot/autopilot-page.tsx`), with tabs Decisions (the count of what waits in its tab), Plans, Goals and
+  Settings; words in the `assistant` catalogue's `autopilot` (both languages).
+- What it reads is `autopilotOverview()` (`src/server/autopilot-overview.ts`): the person's own pending calls in the scope (with the plan a
+  call came from), the questions of plans not finished, what only the owner can do (payments onboarding and the plan with Kaizena Flow, from
+  `getSetupProgress()`), plans with their steps, goals with their progress, the settings and the month's AI cost.
+- Its buttons are `src/server/autopilot-actions.ts` (`decideCall()` through `decideApproval()`, `answerStep()`, `changePlan()`: a press on
+  Start or Resume is the person's yes for the version the page showed, `dropGoalFrom()`, `saveSettings()`), bound by each route's
+  `actions.ts`, refreshing the page after a change.
+
+### 7.10 Tests
 
 PGlite: the plan and step life cycles the database holds, the audit `by` check. Unit: `checkPlan()` (unknown tool, bad arguments, a loop,
 a missing key, too many steps, a tool the role may not use), `goalProgress()`'s arithmetic on fixed figures, `autonomyDecision()` for every

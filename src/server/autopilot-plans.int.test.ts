@@ -11,6 +11,8 @@ const { runManagerTool } = await import("./manager-tools");
 const assistant = await import("./owner-assistant");
 const { actingAs } = await import("./actor");
 const { audit } = await import("./auth");
+const pageActions = await import("./autopilot-actions");
+const { autonomyFor } = await import("./autopilot-settings");
 type Membership = import("./auth").Membership;
 
 type Row = Record<string, unknown>;
@@ -169,5 +171,26 @@ describe("the activity log", () => {
     // The plan tools ran inside the turn's tool calls only in a real turn; here they were called directly, so a person made them.
     const [made] = await db().execute<Row>(sql`select acted_by from commerce.audit_log where store_id = ${store.id}::uuid and action = 'ai.plan_made' order by id desc limit 1`);
     expect(made.acted_by).toBe("person");
+  });
+});
+
+describe("the Autopilot page's buttons", () => {
+  const form = (fields: Record<string, string>) => {
+    const f = new FormData();
+    for (const [k, v] of Object.entries(fields)) f.set(k, v);
+    return f;
+  };
+
+  it("start a plan only for the version the page showed, and save the settings as the form says", async () => {
+    const made = (await tool(owner, "make_autopilot_plan", { ...PLAN, title: "From the page" })) as { plan: { id: string } };
+    expect(await pageActions.changePlan(owner, form({ plan: made.plan.id, do: "start", version: "7" }))).toMatchObject({ status: "error", messages: [expect.stringContaining("changed after you saw it")] });
+    expect(await pageActions.changePlan(owner, form({ plan: made.plan.id, do: "start", version: "1" }))).toEqual({ status: "ok", messages: [] });
+    expect((await planRow(made.plan.id)).status).toBe("running");
+    expect(await pageActions.changePlan(owner, form({ plan: made.plan.id, do: "stop" }))).toEqual({ status: "ok", messages: [] });
+
+    const saved = await pageActions.saveSettings(owner, form({ running: "on", level_website: "tell", level_money: "fly", ai_monthly: "", discount_percent: "15", price_change_percent: "5" }));
+    expect(saved).toEqual({ status: "ok", messages: [] });
+    expect(await autonomyFor(store.id)).toEqual({ paused: false, levels: { website: "tell" }, budgets: { aiMonthlyUsd: null, discountPercent: 15, priceChangePercent: 5 } });
+    expect(await pageActions.saveSettings(staff, form({ running: "on" }))).toMatchObject({ status: "error", messages: ["Only an owner sets how far the autopilot may go."] });
   });
 });

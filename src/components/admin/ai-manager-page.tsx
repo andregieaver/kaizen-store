@@ -61,6 +61,9 @@ export async function AiManagerPage({
         <Link href={`${base}?tab=memory`} className={tabClass(memory)} aria-current={memory ? "page" : undefined}>
           {w.page.memory}
         </Link>
+        <Link href={`${base}/autopilot`} className={tabClass(false)}>
+          {w.autopilot.tab}
+        </Link>
       </nav>
       {memory ? (
         <AiMemory

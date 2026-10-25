@@ -91,6 +91,11 @@ const PAGES: readonly AdminPage[] = [
     needs: "owner",
     keywords: ["assistant", "ai", "chat", "memory"],
   }),
+  store("assistant.autopilot", "/assistant/autopilot", "Autopilot", "Main", "The work the AI manager does on its own (D309): Decisions (changes waiting for your yes, the plans' questions, what only you can do), Plans (each step, its status and result; start, pause, resume, stop), Goals (progress from the store's own figures) and Settings (on or off, how far it may go per area, and its limits). ?tab= opens a tab.", {
+    needs: "owner",
+    keywords: ["autopilot", "plans", "goals", "decisions", "autonomy", "approvals"],
+    tasks: ["See what waits for my yes", "Answer a plan's question", "Start or pause a plan", "Set how far the autopilot may go (?tab=settings)"],
+  }),
   store("orders", "/orders", "Orders", "Main", "Every order, newest first, with a search (order number, email, name, product title or SKU, tag, tracking number), filters (payment, fulfilment, status, tag, market, source, gifts, a date range, archived) kept in the address, saved views, a column choice, and bulk actions on ticked orders: add or remove tags, archive, mark as sent, print packing slips or a pick list. Partly sent orders and changes waiting for the customer's payment are fulfilment filters.", {
     tasks: [
       "Find an order (?q=)",
@@ -1035,6 +1040,9 @@ const PAGES: readonly AdminPage[] = [
   }),
   platform("assistant", "/assistant", "AI manager", "Platform", "The platform's AI manager: conversations and what it has learned about you.", {
     keywords: ["assistant", "ai", "memory"],
+  }),
+  platform("assistant.autopilot", "/assistant/autopilot", "Autopilot", "Platform", "The work the platform's AI manager does on its own for Kaizena Flow's site (D309): decisions waiting for you, plans, goals and how far it may go. ?tab= opens a tab.", {
+    keywords: ["autopilot", "plans", "goals", "decisions", "autonomy"],
   }),
 ];
 

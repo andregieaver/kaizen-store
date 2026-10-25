@@ -5,6 +5,7 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
   "store:setup": { title: "Oppsett", keywords: ["oppsett", "veiviser", "kom i gang", "lansering", "åpne butikken"] },
   "store:setup.step": { title: "Steg i oppsettet", keywords: ["oppsett", "steg", "veiviser", "kom i gang"] },
   "store:assistant": { title: "KI-assistent", keywords: ["ki-assistent", "assistent", "ki", "chat", "minne", "kunstig intelligens"] },
+  "store:assistant.autopilot": { title: "Autopilot", keywords: ["autopilot", "planer", "mål", "beslutninger", "godkjenninger", "selvstendighet"] },
 
   // Orders
   "store:orders": {
@@ -732,4 +733,5 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     keywords: ["aktivitetslogg", "revisjonslogg", "historikk", "hvem gjorde", "totrinnsbekreftelse", "sikkerhetshendelser"],
   },
   "platform:assistant": { title: "KI-assistent", keywords: ["ki-assistent", "assistent", "ki", "minne"] },
+  "platform:assistant.autopilot": { title: "Autopilot", keywords: ["autopilot", "planer", "mål", "beslutninger"] },
 };
