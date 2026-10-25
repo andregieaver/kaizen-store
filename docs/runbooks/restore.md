@@ -7,26 +7,28 @@ quarterly drill. Supabase project `ybsozesfuxuitoacntfo` (eu-west-1). Supabase's
 
 - **Physical backups are on** (Postgres 17, WAL archived with WAL-G; read from the database's settings on 24 October 2026). That is
   true of daily backups and of point-in-time recovery alike, so it does not say which one we have.
-- **Point-in-time recovery (PITR):** _not yet confirmed by the owner_. Check in the dashboard (Database → Backups → Point in Time) and
-  write here whether it is on and its recovery period (7, 14 or 28 days). It is a paid add-on and needs at least the Small compute.
-- Without PITR, Supabase keeps **daily backups** (Pro: the last 7 days), and a restore can only go back to one of them.
+- **Point-in-time recovery (PITR): off, by the owner's decision (25 October 2026).** It is a paid add-on that needs at least the Small
+  compute, and before real stores take real orders a lost day costs a day of setup and tests, not customers' orders. Revisit it at launch,
+  or as soon as one day of real orders lost would cost more than the add-on a month (Stripe keeps the payments, not the orders and
+  customers behind them).
+- So we have Supabase's **daily backups** (Pro: the last 7 days), and a restore can only go back to one of them.
 - **Storage is not in any backup.** The database keeps only the files' rows; the files themselves (`product-media`, `documents`,
   `page-videos`, `digital-files`, `imports`, `exports`, `avatars`, `field-files`) are not restored, and a file deleted after the moment
   stays deleted. See *Files* below.
 
 ## Targets
 
-|  | With PITR | Daily backups only |
+| Today: daily backups only | If PITR is turned on later |
 |---|---|---|
-| **RPO** (data we can lose) | 2 minutes (Supabase's worst case: WAL is shipped every two minutes, or sooner when busy) | up to 24 hours |
-| **RTO** (time to be back) | 1 hour for today's size (251 MB on 24 October 2026); the drill measures it | the same, plus re-entering a day's work |
+| **RPO** (data we can lose) | up to 24 hours | 2 minutes (Supabase's worst case: WAL is shipped every two minutes, or sooner when busy) |
+| **RTO** (time to be back) | 1 hour for today's size (251 MB on 24 October 2026), plus re-entering a day's work; the drill measures it | 1 hour |
 
 The RTO is a proposal until the first drill measures it: write the real figure in the log, and move the target if it is wrong.
 
 ## The drill (every quarter, and before launch)
 
-1. In the dashboard: Database → Backups → **Restore to a New Project**. Choose a moment in the last day (PITR) or the newest daily
-   backup. Never restore over production for a drill. The new project costs as much as production while it lives.
+1. In the dashboard: Database → Backups → **Restore to a New Project**. Choose the newest daily backup (or a moment in the last day,
+   once PITR is on). Never restore over production for a drill. The new project costs as much as production while it lives.
 2. **Before anything else, stop the copy's scheduled jobs.** The copy carries `pg_cron`, `pg_net` and the Vault secret, so its jobs
    still post to production's own cron routes with production's secret. In the copy's SQL editor:
 
