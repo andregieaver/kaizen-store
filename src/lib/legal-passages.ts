@@ -62,7 +62,7 @@ export function elementAt(markup: string, start: number, name: string): string |
 const MARKERS = /[▼►]\s*[A-Z]\d*|◄/g;
 
 /**
- * The articles (`art_9`) and annexes (`anx_I`) of an EU act. Each is a `div` with that id (`eli-subdivision` for an article); the notes of which act changed a
+ * The articles (`art_9`), annexes (`anx_I`) and starred footnotes (`fn_star1`) of an EU act. Each article or annex is a `div` with that id (`eli-subdivision` for an article); the notes of which act changed a
  * paragraph (`p.modref`) and the consolidation markers are left out. The ids are the same in every language.
  */
 export function cellarPassages(xhtml: string): Passage[] {
@@ -81,6 +81,16 @@ export function cellarPassages(xhtml: string): Passage[] {
     seen.add(key);
     const title = key.startsWith("anx_") ? `Annex ${key.slice(4)}` : [heading.replace(MARKERS, "").trim(), subtitle.replace(MARKERS, "").trim()].filter(Boolean).join(" — ");
     out.push({ key, title, text });
+  }
+  // A starred footnote is part of the text it marks (the model withdrawal form's `(*) Delete as appropriate.`): kept as `fn_star1`.
+  for (const m of xhtml.matchAll(/<p class="footnote">([\s\S]*?)<\/p>/g)) {
+    const star = /<span class="superscript">\s*\*(\d+)\s*<\/span>/.exec(m[1]);
+    if (!star) continue;
+    const key = `fn_star${star[1]}`;
+    const text = plain(m[1].replace(/<a\b[\s\S]*?<\/a>/, " ")).replace(/^\(\s*\)\s*/, "");
+    if (!text || seen.has(key)) continue;
+    seen.add(key);
+    out.push({ key, title: `(*${star[1]})`, text });
   }
   return out;
 }

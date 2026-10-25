@@ -274,4 +274,25 @@ export const legalNb: LegalMessages = {
     scanAsked: "Skanning bestilt. Den starter innen et minutt.",
     scanAlready: "En skanning er allerede på vei.",
   },
+  ai: {
+    title: "Skrevet av KI",
+    intro:
+      "KI kan skrive hver av disse sidene ut fra den offisielle lovteksten (EU, Norge, Sverige og Danmark, lest fra kildene selv) og butikkens innstillinger. Hvert utsagn om loven kontrolleres mot lovens egne ord, og hver opplysning kommer fra butikken, så ingen person gjennomgår hver tekst. Den skriver et utkast: les det, publiser det og velg det her. Som selger er butikken ansvarlig for sidene sine.",
+    write: "Skriv med KI",
+    writeAgain: "Skriv på nytt med KI",
+    writeOf: " {name}",
+    writing: "KI skriver denne siden. Det tar noen minutter; skjermen oppdateres av seg selv.",
+    ready: "KI-utkast klart: ",
+    readyIn: "Skrevet på {languages}.",
+    missing: "Den viser en [[plassholder i hakeparentes]] for opplysninger butikken ikke har gitt.",
+    failed: "KI kunne ikke skrive denne siden: ",
+    partly: "Noen språk ble utelatt: ",
+    asked: "KI skriver siden. Den blir et utkast under Sider.",
+    already: "KI skriver allerede denne siden.",
+    unavailable: {
+      country: "KI skriver foreløpig juridiske sider for butikker etablert i Norge, Sverige eller Danmark.",
+      ai: "Sett opp en tekstmodell i KI-innstillingene for å la KI skrive juridiske sider.",
+      sources: "De offisielle kildene er ikke lest ennå. Prøv igjen om en time.",
+    },
+  },
 };

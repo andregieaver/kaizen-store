@@ -24,7 +24,9 @@ const WORDS: Record<string, string> = { en: "the trader and the consumer", sv: "
 
 function cellar(key: string, language: string, extra = ""): string {
   const divs = passagesNamed(key).map((p) =>
-    p.startsWith("anx_")
+    p.startsWith("fn_star")
+      ? `<p class="footnote">(<a href="#src" id="E1"><span class="superscript">*${p.slice(7)}</span></a>) ${WORDS[language]}</p>`
+      : p.startsWith("anx_")
       ? `<div id="${p}"><p class="title-annex-1">ANNEX</p><p>${WORDS[language]} ${extra}</p></div>`
       : `<div class="eli-subdivision" id="${p}"><p class="title-article-norm">Article ${p.slice(4)}</p><div class="eli-title"><p class="stitle-article-norm">Title</p></div><div class="norm">${WORDS[language]} ${extra}</div></div>`,
   );

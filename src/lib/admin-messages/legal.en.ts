@@ -276,6 +276,27 @@ export const legalEn = {
     scanAsked: "Scan asked for. It starts within a minute.",
     scanAlready: "A scan is already on its way.",
   },
+  ai: {
+    title: "Written by AI",
+    intro:
+      "The AI can write each of these pages from the official law (EU, Norwegian, Swedish and Danish, read from the sources themselves) and your store's settings. Every statement of the law is checked against the law's own words and every detail comes from your store, so no person reviews each text. It writes a draft: read it, then publish it and choose it here. As the seller, your store is responsible for its pages.",
+    write: "Write with AI",
+    writeAgain: "Write again with AI",
+    writeOf: " the {name}",
+    writing: "The AI is writing this page. It takes a few minutes; this screen updates by itself.",
+    ready: "AI draft ready: ",
+    readyIn: "Written in {languages}.",
+    missing: "It shows a [[bracketed]] placeholder for details the store has not given.",
+    failed: "The AI could not write this page: ",
+    partly: "Some languages were left out: ",
+    asked: "The AI is writing the page. It will be a draft under Pages.",
+    already: "The AI is already writing this page.",
+    unavailable: {
+      country: "The AI writes legal pages for stores established in Norway, Sweden or Denmark so far.",
+      ai: "Set up a text model in the AI settings to have the AI write legal pages.",
+      sources: "The official sources have not been read yet. Try again in an hour.",
+    },
+  },
 };
 
 export type LegalMessages = Widen<typeof legalEn>;

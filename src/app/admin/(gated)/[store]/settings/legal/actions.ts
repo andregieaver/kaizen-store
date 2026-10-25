@@ -1,6 +1,7 @@
 "use server";
 
 import { refresh } from "next/cache";
+import { after } from "next/server";
 import { z } from "zod";
 
 import type { FormState } from "@/components/admin/action-form";
@@ -12,6 +13,7 @@ import { languageNames } from "@/lib/legal-admin-words";
 import { isStarterRole } from "@/lib/legal-starters";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { createLegalStarter, setLegalRole, setTermsMode } from "@/server/legal-starters";
+import { askForLegalPage, runLegalWrites } from "@/server/legal-writer";
 import { checkOwnerRole } from "@/server/permissions";
 
 /**
@@ -39,6 +41,24 @@ export async function createStarterAction(storeSlug: string, kind: string): Prom
     status: "ok",
     messages: [fillWords(w.madeIn, { language: languageNames([result.language], lang), others, notice: result.translatedNotice ? w.englishNotice : "" })],
   };
+}
+
+/**
+ * Asks the AI to write one kind of legal page (D311, unit L2): the write runs after the answer (and in the five-minute dispatcher should it
+ * not finish) and saves a draft, never a published page.
+ */
+export async function writeWithAiAction(storeSlug: string, kind: string): Promise<FormState> {
+  const member = await checkOwnerRole(storeSlug);
+  if (!member) return denied();
+  const w = adminText(adminLangOf(member.account.adminLocale), "legal").ai;
+  const asked = await askForLegalPage(member, kind);
+  if (!asked.ok) {
+    const reason = asked.problems[0];
+    return refused([reason === "country" || reason === "ai" || reason === "sources" ? w.unavailable[reason] : reason]);
+  }
+  if (!asked.already) after(() => runLegalWrites({}, 240_000));
+  refresh();
+  return { status: "ok", messages: [asked.already ? w.already : w.asked] };
 }
 
 /** Chooses one of the store's published pages for a legal role, or none. */

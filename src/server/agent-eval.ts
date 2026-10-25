@@ -6,10 +6,14 @@ import { z } from "zod";
 import { db } from "@/db/client";
 import { AGENT_EVAL_CASES, AGENT_PASS_RATE, scoreAgentCase, type AgentEvalCase, type AgentRun } from "@/lib/agent-eval";
 import { storeTools, systemPrompt } from "@/lib/chat";
+import { assembleLegalFacts } from "@/lib/legal-facts";
+import { jurisdictionsFor } from "@/lib/legal-sources";
+import { starterFactWords } from "@/lib/legal-starters";
+import { factSheet, planLegalPage, writerMessages, writerSettings } from "@/lib/legal-writer";
 import { MANAGER_TOOLS } from "@/lib/manager-tools";
 import { OWNER_TOOLS, toolDefinition } from "@/lib/owner-tools";
 
-import { AiError, chatWithTools, type AiConnection, type ToolChatMessage, type ToolDefinition } from "./ai";
+import { AiError, chatWithTools, completeText, type AiConnection, type ToolChatMessage, type ToolDefinition } from "./ai";
 import { log } from "./log";
 import { managerPrompt, type Principal } from "./owner-assistant";
 import { getStore } from "./stores";
@@ -43,7 +47,35 @@ function scripted(testCase: AgentEvalCase, name: string): unknown {
   return { found: [], note: "Nothing found." };
 }
 
+/** The legal page writer's real prompt (D311) for a returns policy of a store in Norway, its one passage the case's. */
+async function runLegalCase(connection: AiConnection, testCase: AgentEvalCase): Promise<AgentRun> {
+  const facts = assembleLegalFacts({
+    store: { name: "Eval Store", legalName: "Eval Store AS", organisationNumber: "999 888 777", contactEmail: "post@eval.example", postalAddress: "Storgata 1, 0155 Oslo", country: "NO", audience: "consumers", visitCounting: false, modules: [], tracking: {} },
+    tax: { vatNumber: null, registered: true },
+    markets: [{ code: "NO", currency: "NOK" }],
+    shippingRates: [],
+    carrierNames: [],
+    returnSettings: null,
+    chatOn: false,
+    links: {},
+    phone: null,
+  });
+  const sheet = factSheet(facts, starterFactWords(facts, "en"), "en");
+  const passage = String(testCase.script.passage ?? "");
+  const plan = planLegalPage({
+    role: "returns_policy",
+    language: "en",
+    facts,
+    sheet,
+    jurisdictions: jurisdictionsFor(facts),
+    texts: [{ sourceKey: "eu-crd", language: "en", readAt: new Date(), passages: ["art_9", "art_11", "art_13", "art_14", "art_16"].map((key) => ({ key, title: `Article ${key.slice(4)}`, text: passage })) }],
+  });
+  const answer = await completeText(connection, writerMessages(plan, sheet, writerSettings(facts)), { maxTokens: 4000, timeoutMs: 120_000, temperature: 0.2 });
+  return { answer: answer.text, calls: [] };
+}
+
 async function runCase(connection: AiConnection, testCase: AgentEvalCase, prompts: { chat: string; manager: string }, tools: { chat: ToolDefinition[]; manager: ToolDefinition[] }): Promise<AgentRun> {
+  if (testCase.agent === "legal") return runLegalCase(connection, testCase);
   const messages: ToolChatMessage[] = [
     { role: "system", content: prompts[testCase.agent] },
     { role: "user", content: testCase.says },

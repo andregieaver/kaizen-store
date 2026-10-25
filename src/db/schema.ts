@@ -13120,6 +13120,47 @@ export const pageLooks = commerce.table(
 );
 
 /**
+ * The AI writing one of a store's legal pages (D311, unit L, `docs/ai-autopilot.md` 8.3, 8.4): asked for by an owner (`asked`; L3 adds the
+ * upkeep's reasons), taken by the job one language at a time (`results` holds each language's page as code made it, or why it could not),
+ * then saved as a draft page. Written only by `src/server/legal-writer.ts`. One write of a kind runs at a time per store.
+ */
+export const legalAiWrites = commerce.table(
+  "legal_ai_writes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id, { onDelete: "cascade" }),
+    accountId: uuid("account_id").references(() => accounts.id, { onDelete: "set null" }),
+    /** A kind of legal page with a starter (`STARTER_ROLES`). */
+    role: text("role").notNull(),
+    why: text("why").notNull().default("asked"),
+    status: text("status").notNull().default("queued"),
+    pageId: uuid("page_id").references(() => pages.id, { onDelete: "set null" }),
+    /** By language: the page's sections as code made them, with what was missing and cited, or the problems that stopped it. */
+    results: jsonb("results").notNull().default({}),
+    /** The languages the saved page holds. */
+    languages: text("languages").array(),
+    model: text("model"),
+    /** Why the write failed, or what a language could not do (`string[]`). */
+    problems: jsonb("problems"),
+    claimedUntil: timestamp("claimed_until", { withTimezone: true }),
+    createdAt: createdAt(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("legal_ai_writes_queue_idx").on(t.status, t.createdAt),
+    index("legal_ai_writes_store_idx").on(t.storeId, t.role, t.createdAt),
+    index("legal_ai_writes_account_idx").on(t.accountId),
+    index("legal_ai_writes_page_idx").on(t.pageId),
+    uniqueIndex("legal_ai_writes_active_idx").on(t.storeId, t.role).where(sql`${t.status} in ('queued', 'running')`),
+    check("legal_ai_writes_role", sql`${t.role} in ('terms', 'privacy', 'returns_policy', 'shipping_policy', 'withdrawal_info', 'imprint')`),
+    check("legal_ai_writes_why", sql`${t.why} in ('asked', 'first', 'source_changed', 'facts_changed')`),
+    check("legal_ai_writes_status", sql`${t.status} in ('queued', 'running', 'written', 'failed')`),
+  ],
+);
+
+/**
  * The official legal texts the AI's legal pages rest on (D311, unit L, `docs/ai-autopilot.md` 8.2), cut into passages by code
  * (`src/lib/legal-passages.ts`): one row per distinct text, by the hash of its passages, so an act read again unchanged is stored once.
  * Kaizena Flow's, no store. Written only by `src/server/legal-sources.ts`; never changed (a trigger), deleted only when no read names it.

@@ -595,8 +595,8 @@ instruction (the canary must not appear in the page).
 
 - **L1, the sources** (built, 8.10): the register, the fetch routes, the cutters, `legal_source_reads` and the weekly read. No model,
   nothing on pages.
-- **L2, the writer**: plan, prompt, `checkLegalDraft()`, the form and Sources section; *Write with AI* on the Legal page makes a draft of one
-  kind (never published), so the result can be read before anything is automatic.
+- **L2, the writer** (built, 8.11): plan, prompt, `checkLegalDraft()`, the form and Sources section; *Write with AI* on the Legal page makes a
+  draft of one kind (never published), so the result can be read before anything is automatic.
 - **L3, kept current**: turning it on, publishing, `runLegalUpkeep()`, the Legal page's lines, `legal_pages_status`, the report.
 
 ### 8.9 Decided by the owner (2026-10-25)
@@ -628,6 +628,34 @@ instruction (the canary must not appear in the page).
   gives it no text and no Norwegian page may cite it; the read refused it until the register stopped naming it.
 - All 21 source and language pairs read in full from the sandbox. Migrations `20261025163153_legal_sources` and
   `20261025163212_legal_sources_rules`.
+
+### 8.11 As built: L2 (2026-10-25)
+
+- `src/lib/legal-writer.ts` (pure): `planLegalPage()` (the kind's topics in the starters' order, each with the passages `refsFor()` offers in
+  the page's language first and the tokens it must use, `TOPIC_NEEDS`; the model withdrawal form left to code), `writerMessages()` (the
+  rules with `UNTRUSTED_TEXT`, the store's settings as values, the tokens by name and description only, the passages between `<source-data>`
+  markers; a second call adds the refused answer and the reasons), `readWriterAnswer()`, `checkLegalDraft()` and `renderLegalPage()`. The
+  checks refuse: sections not exactly the plan's; a quote not word for word in its passage (both normalised) or a passage not offered for that
+  section; a statement without a cite or a practical block without a token; a needed token missing; a token not offered; a brace, markup,
+  an email or web address written out; a number (digits, or a number word from two up in the four languages) in no quote the block cites;
+  the ODR platform; a claim (`findClaims()`); lengths. Tokens are filled by code from `starterFactWords()` (`src/lib/legal-starters.ts`, the
+  starters' own hand-written words: values, the settings sentences such as who pays for returns, the rate lists) and the register's bodies;
+  a value the store lacks is the starters' `[[Add: …]]`. The form is the directive's Annex I(B) as read in sv, da and en, with the trader's
+  details where it asks for them and its starred footnote (`fn_star1`, now cut from Cellar's answer), and the starter's in nb. Sources lists
+  every passage cited with its act, the day read and the act's address, after the line that the page was prepared with AI on the day.
+- `src/server/legal-writer.ts`: `askForLegalPage()` (owners of an open, real store; `legalWriterAvailability()`: a covered country, a good
+  read of one of its sources, a text model) queues a row of `commerce.legal_ai_writes` (one active per kind); `runLegalWrites()` (after the
+  press with four minutes, and in the five-minute dispatcher, `legalWrites`) claims it and writes one language a step, in the asker's name
+  read again (`passMembership()`), then saves the page through `makeDraftPage()` with no review notice: the main language, the others as its
+  texts (D55). A main language that fails ends the write; another that fails is left out and named. Audit `store.legal_ai_asked`,
+  `store.legal_ai_draft_made` (with the model); the overview's newest draft includes AI drafts. AI usage is the feature `legal_pages`.
+- The Legal page (`LegalPagesPanel`): *Written by AI* says what it does and that the store is responsible, or why it cannot (country, no
+  text model, sources not read); each kind with a starter has *Write with AI* (*Write again* after one) and a line for its newest write
+  (writing, with the screen refreshing; the draft to open and its languages; or why not). English and Norwegian words in the `legal` catalogue.
+- The safety eval has a third agent, `legal`: the writer's real prompt with an official passage that hides an instruction
+  (`legal-source-text`).
+- Tested with a stand-in model (`legal-writer.test.ts`, `legal-writer.int.test.ts`, `legal-pages-panel.test.ts`); no real model has written a
+  page here, as this sandbox has no AI key. Migrations `20261025171423_legal_ai_writes` and `20261025171450_legal_ai_writes_rules`.
 
 ## 9. Unit C (D310): eyes
 

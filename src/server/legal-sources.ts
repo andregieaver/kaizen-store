@@ -244,6 +244,12 @@ export async function pruneLegalSourceReads(now: Date = new Date()): Promise<num
   return gone.length;
 }
 
+/** The sources with a good read in some language: what availability asks, without loading any text. */
+export async function readSourceKeys(): Promise<string[]> {
+  const rows = await typedRows(z.object({ source_key: z.string() }), sql`select distinct source_key from commerce.legal_source_reads where status = 'ok'`);
+  return rows.map((r) => r.source_key);
+}
+
 export type LegalText = { sourceKey: string; language: LegalLanguage; version: string | null; readAt: Date; passages: Passage[] };
 
 const passageRow = z.object({ key: z.string(), title: z.string(), text: z.string() });

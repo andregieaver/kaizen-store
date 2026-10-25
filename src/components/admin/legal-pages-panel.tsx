@@ -2,14 +2,23 @@ import Link from "next/link";
 
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
 import { FeatureOffNote } from "@/components/admin/feature-off";
+import { RefreshWhile } from "@/components/admin/refresh-while";
 import { Card, CARD_CLASS } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
+import type { AdminLang } from "@/lib/admin-lang";
+import { languageNames } from "@/lib/legal-admin-words";
 import { legalEn, type LegalMessages } from "@/lib/admin-messages/legal.en";
 import { TERMS_MODES, termsSettingNotice, type TermsMode } from "@/lib/checkout-terms";
 import { isLegalRole } from "@/lib/legal-roles";
 import type { LegalOverview } from "@/server/legal-starters";
+import type { LegalWriteState } from "@/server/legal-writer";
 
 type Action = (state: FormState, formData: FormData) => Promise<FormState>;
+/** An action bound to a kind of page or role first. */
+type KindAction = (kind: string, ...rest: Parameters<Action>) => ReturnType<Action>;
+
+/** Whether the AI can write the store's legal pages (D311, unit L2), why not, and its newest write of each kind. */
+export type LegalAiState = { available: boolean; reason: "country" | "ai" | "sources" | null; writes: Record<string, LegalWriteState> };
 
 const field = "min-h-10 rounded-md border border-line bg-card px-3 text-sm font-normal";
 
@@ -37,17 +46,28 @@ function noticeWord(text: string | null, words: LegalMessages): string | null {
  */
 export function LegalPagesPanel({
   overview,
+  ai,
   storeSlug,
   actions,
   words = legalEn,
+  lang = "en",
 }: {
   overview: LegalOverview;
+  ai?: LegalAiState;
   storeSlug: string;
-  actions: { createStarter: (kind: string, state: FormState, formData: FormData) => Promise<FormState>; setRole: (role: string, state: FormState, formData: FormData) => Promise<FormState>; setTerms: Action };
+  actions: {
+    createStarter: KindAction;
+    setRole: KindAction;
+    setTerms: Action;
+    writeWithAi?: KindAction;
+  };
   /** The words, in the account's language (D312 A8); English unless given. */
   words?: LegalMessages;
+  lang?: AdminLang;
 }) {
   const w = words.pages;
+  const a = words.ai;
+  const writing = ai ? Object.values(ai.writes).some((write) => write.status === "queued" || write.status === "running") : false;
   const t = words.terms;
   const roleName = (role: string, fallback: string) => (isLegalRole(role) ? w.roles[role].name : fallback);
   const base = `/admin/${storeSlug}`;
@@ -63,6 +83,21 @@ export function LegalPagesPanel({
       <p role="note" className="rounded-panel border border-line bg-card p-4 text-sm">
         <strong className="font-medium">{w.reviewLead}</strong> {w.notice}
       </p>
+
+      {ai && (
+        <section aria-labelledby="ai-heading" className={`p-4 text-sm ${CARD_CLASS}`}>
+          <h2 id="ai-heading" className="mb-1 text-title text-ink">
+            {a.title}
+          </h2>
+          <p className="text-muted">{a.intro}</p>
+          {!ai.available && ai.reason && (
+            <p role="note" className="mt-2">
+              {a.unavailable[ai.reason]}
+            </p>
+          )}
+          {writing && <RefreshWhile seconds={10} />}
+        </section>
+      )}
 
       {overview.missing.length > 0 && (
         <section aria-labelledby="missing-heading" className={`p-4 text-sm ${CARD_CLASS}`}>
@@ -127,7 +162,18 @@ export function LegalPagesPanel({
                     </SubmitButton>
                   </div>
                 </ActionForm>
-              ) : (
+              ) : null}
+              {entry.starter && ai?.available && actions.writeWithAi && !isActive(ai.writes[entry.role]) && (
+                <ActionForm action={actions.writeWithAi.bind(null, entry.role)} className="flex flex-col gap-1">
+                  <div>
+                    <SubmitButton variant="secondary">
+                      {ai.writes[entry.role] ? a.writeAgain : a.write}
+                      <span className="sr-only">{fillWords(a.writeOf, { name: roleName(entry.role, entry.name) })}</span>
+                    </SubmitButton>
+                  </div>
+                </ActionForm>
+              )}
+              {!entry.starter && (
                 <p className="text-sm">
                   <Link href={`${base}/settings/accessibility`} className="underline">
                     {w.onAccessibility}
@@ -135,6 +181,7 @@ export function LegalPagesPanel({
                 </p>
               )}
             </div>
+            {ai?.writes[entry.role] && <WriteLine write={ai.writes[entry.role]} words={words} lang={lang} base={base} />}
             {entry.draft && (
               <p className="mt-3 text-sm text-muted">
                 {w.latest}<Link href={`${base}/pages/${entry.draft.id}`} className="underline">{entry.draft.title}</Link>{" "}
@@ -180,5 +227,45 @@ export function LegalPagesPanel({
       </Card>
       )}
     </div>
+  );
+}
+
+const isActive = (write: LegalWriteState | undefined) => write?.status === "queued" || write?.status === "running";
+
+/** Where the AI's newest write of a kind stands: writing, a draft to open, or why it could not. */
+function WriteLine({ write, words, lang, base }: { write: LegalWriteState; words: LegalMessages; lang: AdminLang; base: string }) {
+  const a = words.ai;
+  if (isActive(write)) {
+    return (
+      <p role="status" className="mt-3 text-sm">
+        {a.writing}
+      </p>
+    );
+  }
+  if (write.status === "failed") {
+    return (
+      <p role="status" className="mt-3 text-sm">
+        {a.failed}
+        {write.problems.join(" ")}
+      </p>
+    );
+  }
+  return (
+    <p role="status" className="mt-3 text-sm">
+      {a.ready}
+      {write.page ? (
+        <Link href={`${base}/pages/${write.page.id}`} className="underline">
+          {write.page.title}
+        </Link>
+      ) : null}
+      . {write.languages.length > 0 && fillWords(a.readyIn, { languages: languageNames(write.languages, lang) })}
+      {write.problems.length > 0 && (
+        <>
+          {" "}
+          {a.partly}
+          {write.problems.join(" ")}
+        </>
+      )}
+    </p>
   );
 }

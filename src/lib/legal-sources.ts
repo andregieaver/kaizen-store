@@ -240,7 +240,7 @@ export const TOPIC_REFS: Readonly<Record<string, readonly TopicRef[]>> = {
   "withdrawal_info.how": [crd("art_11", "art_11a"), seDistans("2:10", "2:10a"), dkFal("20"), noArl("20")],
   "withdrawal_info.effects": [crd("art_12", "art_13", "art_14"), seDistans("2:13", "2:14", "2:15"), dkFal("21", "22", "24"), noArl("23", "24", "25")],
   "withdrawal_info.exclusions": [crd("art_16"), seDistans("2:11"), dkFal("18"), noArl("22")],
-  "withdrawal_info.model_form": [crd("anx_I"), noArl("8")],
+  "withdrawal_info.model_form": [crd("anx_I", "fn_star1"), noArl("8")],
   "imprint.legal_name": [ecd("art_5"), seEhandel("8"), noEhl("8")],
   "imprint.org_number": [ecd("art_5"), seEhandel("8"), noEhl("8")],
   "imprint.vat_number": [ecd("art_5"), seEhandel("8"), noEhl("8")],

@@ -182,7 +182,7 @@ export async function legalOverview(member: Membership): Promise<LegalOverview> 
     db().execute<Row>(sql`
       select distinct on (l.details ->> 'role') l.details ->> 'role' as role, p.id, coalesce(nullif(p.draft ->> 'title', ''), p.slug) as title, p.slug, p.published_at is not null as published
       from commerce.audit_log l join commerce.pages p on p.id::text = l.details ->> 'page' and p.store_id = l.store_id
-      where l.store_id = ${store.id}::uuid and l.action = 'store.legal_starter_made'
+      where l.store_id = ${store.id}::uuid and l.action in ('store.legal_starter_made', 'store.legal_ai_draft_made')
       order by l.details ->> 'role', l.id desc
     `),
     db().execute<Row>(sql`

@@ -349,6 +349,78 @@ export function legalStarterSections(role: StarterRole, language: StarterLanguag
   }));
 }
 
+/**
+ * The store's facts in a language, in the starters' own hand-written words, for the AI's legal pages (D311, unit L, `docs/ai-autopilot.md`
+ * 8.3): code fills each token the model writes (`{fact:seller.name}`, `{list:shipping.rates}`, a settings sentence such as who pays for
+ * returns) from these, so no fact on an AI page is the model's. A value the store does not hold is null (`missing` has its placeholder).
+ */
+export type StarterFactWords = {
+  values: Record<string, string | null>;
+  /** The placeholder for each value, `[[Add: Legal name]]`, used where it is null. */
+  missing: Record<string, string>;
+  /** Whole sentences chosen by the store's settings. */
+  sentences: Record<string, string>;
+  lists: Record<string, string[]>;
+};
+
+export function starterFactWords(facts: LegalFacts, language: StarterLanguage): StarterFactWords {
+  const text = STARTER_TEXTS[language];
+  const h = helpersFor(text);
+  const say = (key: string, args?: Args) => fill(text.m[key], args);
+  const known = (value: string | null | undefined) => (value && value.trim() !== "" ? defang(value.trim()) : null);
+  const labels: Record<string, string> = {
+    store: "storeName",
+    "seller.name": "legalName",
+    "seller.number": "orgNumber",
+    "seller.vat": "vatNumber",
+    "seller.address": "address",
+    "seller.email": "email",
+    "seller.phone": "phone",
+    "seller.country": "country",
+    markets: "markets",
+    currencies: "currency",
+    "returns.address": "returnAddress",
+    "returns.instructions": "returnInstructions",
+  };
+  const values: Record<string, string | null> = {
+    store: known(facts.storeName),
+    "seller.name": known(facts.legalName),
+    "seller.number": known(facts.organisationNumber),
+    "seller.vat": facts.vat.registered === false ? null : known(facts.vat.number),
+    "seller.address": known(facts.address),
+    "seller.email": known(facts.email),
+    "seller.phone": known(facts.phone),
+    "seller.country": facts.country ? h.country(facts.country) : null,
+    markets: facts.markets.length > 0 ? h.list(facts.markets.map((m) => h.country(m.code))) : null,
+    currencies: facts.markets.length > 0 ? h.list([...new Set(facts.markets.map((m) => m.currency))]) : null,
+    "returns.days": String(facts.returns.windowDays),
+    "withdrawal.days": "14",
+    "returns.address": known(facts.returns.address) ?? known(facts.address),
+    "returns.instructions": known(facts.returns.instructions),
+  };
+  const missing = Object.fromEntries(Object.entries(labels).map(([key, label]) => [key, h.add(label)]));
+  return {
+    values,
+    missing,
+    sentences: {
+      return_shipping: say(facts.returns.whoPays === "store" ? "returns.pays.store" : "returns.pays.shopper"),
+      refund_timing: say(facts.returns.refundWhen === "request" ? "returns.refund.request" : "returns.refund.received"),
+      withdrawal_return_cost: say(facts.returns.whoPays === "store" ? "withdrawal.effects.pays.store" : "withdrawal.effects.pays.shopper"),
+      vat: facts.vat.registered === false ? say("vat.no") : say("vat.yes", { vat: h.value(facts.vat.number, "vatNumber") }),
+    },
+    lists: {
+      "shipping.rates": rateItems(facts, h).map((i) => say(i.key, i.args)),
+      pickup: facts.pickup.map((pl) => (pl.amountMinor === 0 ? say("pickup.zero", { place: pl.place }) : say("pickup.plain", { place: pl.place, rate: h.money(pl.amountMinor, pl.currency) }))),
+      local: facts.local.map((a) => {
+        const i = localItem(a, h);
+        return say(i.key, i.args);
+      }),
+      carriers: [...facts.carriers],
+      "tracking.tools": [...facts.trackingTools],
+    },
+  };
+}
+
 /** The keys a role and facts use, for the tests that hold every language to the shape. */
 export function starterKeys(role: StarterRole, facts: LegalFacts): string[] {
   const keys = new Set<string>();
@@ -406,18 +478,19 @@ function doc(blocks: RenderedBlock[]): RichTextDoc {
 export type StarterPage = { title: string; slug: string; rows: PageRow[]; language: StarterLanguage };
 
 /**
- * The rows of a draft page made of sections: the draft notice first, in a row of its own, then the title and each section as
+ * The rows of a draft page made of sections: the draft notice first (when there is one), in a row of its own, then the title and each section as
  * a heading (with an address of its own, `t-{topic}`) and its text. Shared by the starters and the accessibility statement.
  */
-export function draftRows(title: string, notice: string, sections: readonly RenderedSection[], id: NewId): PageRow[] {
-  const noticeBlock: PageBlock = { id: id(), type: "richText", className: LEGAL_NOTICE_CLASS, doc: doc([{ p: notice }]) };
+export function draftRows(title: string, notice: string | null, sections: readonly RenderedSection[], id: NewId): PageRow[] {
+  // An AI page (D311) has no review notice: no person reviews each text.
+  const noticeBlock: PageBlock | null = notice === null ? null : { id: id(), type: "richText", className: LEGAL_NOTICE_CLASS, doc: doc([{ p: notice }]) };
   const blocks: PageBlock[] = [{ id: id(), type: "heading", level: 1, text: title }];
   for (const section of sections) {
     blocks.push({ id: id(), type: "heading", level: 2, text: section.heading, htmlId: `t-${section.topic}` });
     blocks.push({ id: id(), type: "richText", doc: doc(section.blocks) });
   }
   const row = (inside: PageBlock[]): PageRow => ({ id: id(), type: "row", layout: "1", columns: [{ id: id(), blocks: inside }] });
-  return [row([noticeBlock]), row(blocks)];
+  return noticeBlock ? [row([noticeBlock]), row(blocks)] : [row(blocks)];
 }
 
 /**
