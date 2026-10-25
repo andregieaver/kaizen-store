@@ -319,7 +319,7 @@ describe("a normal store", () => {
   it("says how customers are counted and in what currency", () => {
     expect(text).toContain("How customers are counted");
     expect(text).toContain("Amounts are in NOK without VAT, after refunds");
-    expect(text).toContain("Refunds made only in Stripe's own dashboard are not seen");
+    expect(text).toContain("Refunds made in the payment provider's own dashboard are counted once it reports them");
   });
 
   it("has no notes of trouble when nothing is wrong", () => {

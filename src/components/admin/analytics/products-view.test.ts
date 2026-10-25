@@ -180,7 +180,7 @@ describe("ProductsView for a store with sales", () => {
     expect(out).toContain("profit as a share of revenue after refunds");
     expect(out).toContain("refunds as a share of the product's revenue");
     expect(out).toContain("a view is a page view, not a visitor");
-    expect(out).toContain("Stripe's own dashboard");
+    expect(out).toContain("payment provider's own dashboard");
   });
 
   it("has a name for every chart and the table", () => {

@@ -27,7 +27,7 @@ const adminLink = (store: Store, path: string) => `/admin/${store.slug}${path}`;
 const periodWords = (p: AnalyticsPeriod) => ({ label: p.label, from: p.from, to: addDays(p.to, -1) });
 
 /** What the figures are, said once so the model repeats it. */
-const BASIS = "Amounts are in the store's main currency, without VAT, counted from paid orders. Refunds made only in Stripe's dashboard are not seen.";
+const BASIS = "Amounts are in the store's main currency, without VAT, counted from paid orders. Refunds made in the payment provider's own dashboard are counted once the provider reports them.";
 
 /**
  * The store's figures for a period with their changes (`overviewData()`'s own cards), what is missing for the rest and where to add it.

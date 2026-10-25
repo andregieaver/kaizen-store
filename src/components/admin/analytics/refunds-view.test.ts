@@ -21,7 +21,7 @@ const BAD = /\bNaN\b|Infinity|undefined|\[object|\bnull\b/;
 
 const money = (minor: number) => moneyWriter("NOK", "nb-NO")(minor).replace(/[  ]/g, " ");
 
-const NOT_SEEN = "Refunds made only in Stripe's dashboard are not included: Kaizena Flow only sees refunds made from its own admin, and the reasons are free text.";
+const NOT_SEEN = "Refunds made in Stripe's or Mollie's own dashboard are included once the provider reports them, with the reason it was given there; a refund the provider cannot match to an order here is not. Other reasons are what staff wrote.";
 
 function emptyReport(over: Partial<RefundsReport> = {}): RefundsReport {
   return {
@@ -117,7 +117,7 @@ describe("refundCards", () => {
   it("calls sales with no refunds a real 0.0 %", () => {
     const cards = refundCards(props(emptyReport({ revenueMinor: 1_000_000, orders: 10, refundRate: 0, cohort: { orders: 10, refundedOrders: 0, share: 0 } })));
     expect(cards[1].value).toBe("0.0 %");
-    expect(cards[0].hint).toMatch(/No refund was made from Kaizena Flow/);
+    expect(cards[0].hint).toMatch(/No refund was recorded in this period/);
   });
 
   it("explains each figure in a title", () => {
@@ -130,14 +130,14 @@ describe("RefundsView, an empty store", () => {
 
   it("is calm: no tables, no chart, no NaN", () => {
     expect(out).toContain("Refunds");
-    expect(out).toContain("No refund was made from Kaizena Flow in this period, so there are no reasons, products or markets to show.");
+    expect(out).toContain("No refund was recorded in this period, so there are no reasons, products or markets to show.");
     expect(out).not.toMatch(BAD);
     expect(out).not.toContain("<svg");
     expect(out).not.toContain("<table");
   });
 
   it("still says that refunds made at the payment provider are not seen", () => {
-    expect(out).toContain("Refunds made only at your payment provider are not seen");
+    expect(out).toContain("Refunds made at your payment provider");
     expect(out).toContain(NOT_SEEN);
   });
 });

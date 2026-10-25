@@ -446,7 +446,7 @@ export const KPI_CARDS: readonly KpiCard[] = [
     needs: null,
     missingText: null,
     fixPage: null,
-    help: "Refunds made in the period as a share of revenue. Refunds made only in Stripe's dashboard are not seen.",
+    help: "Refunds made in the period as a share of revenue, refunds made in the payment provider's own dashboard included.",
   },
   {
     id: "sessions",

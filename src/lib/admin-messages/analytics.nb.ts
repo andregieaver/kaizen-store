@@ -129,7 +129,7 @@ export const analyticsNb: AnalyticsMessages = {
       returningCustomers: { label: "Gjenkommende kunder", help: "Kunder med en betalt ordre i perioden og en tidligere første ordre.", missing: "" },
       refundRate: {
         label: "Andel tilbakebetalt",
-        help: "Tilbakebetalinger gjort i perioden som andel av salgsinntekten. Tilbakebetalinger gjort bare i Stripes kontrollpanel er ikke med.",
+        help: "Tilbakebetalinger gjort i perioden som andel av salgsinntekten, også de som er gjort i betalingsleverandørens eget kontrollpanel.",
         missing: "",
       },
       sessions: {
@@ -159,7 +159,7 @@ export const analyticsNb: AnalyticsMessages = {
   overview: {
     title: "Oversikt",
     description: "Tjener vi penger, hvorfor endrer salget seg, og er det noe å gjøre i dag? Hvert tall lenker til siden som forklarer det.",
-    footer: "Alle beløp er i {currency} ekskl. mva. Tilbakebetalinger gjort bare i Stripes kontrollpanel er ikke med. Historikken er verdsatt til dagens valutakurser.",
+    footer: "Alle beløp er i {currency} ekskl. mva., også tilbakebetalinger gjort i betalingsleverandørens eget kontrollpanel. Historikken er verdsatt til dagens valutakurser.",
     loading: {
       alerts: "det som trenger deg i dag",
       why: "hvorfor salget endret seg",

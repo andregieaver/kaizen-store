@@ -270,7 +270,7 @@ describe("FinanceView, a normal store", () => {
     expect(words).toContain("VAT collected");
     expect(words).toContain(money(300_000));
     expect(words).toContain("Not income");
-    expect(words).toContain("Refunds made only in the payment provider's dashboard are not seen");
+    expect(words).toContain("refunds made in the payment provider's own dashboard included");
   });
 
   it("closes with every definition in a disclosure", () => {

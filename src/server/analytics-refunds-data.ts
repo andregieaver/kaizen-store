@@ -19,7 +19,8 @@ import type { Store } from "./stores";
  *
  * - **Refunds** are succeeded `refunds`, dated by their own date, each scaled to without VAT by its order's
  *   `(total - tax) / total`, exactly as the totals module counts them, so the figure here is the Finance page's. Copied orders'
- *   and hosts' orders never count. Refunds made only in Stripe's dashboard are not seen (`notSeen`).
+ *   and hosts' orders never count. Refunds made in Stripe's or Mollie's own dashboard are counted once the provider reports them
+ *   (D159, `applyStripeRefund()`/`applyRefundReport()`); one it cannot match to a payment here is not (`notSeenNote`).
  * - **Refund rate** is refunds over revenue of the same period (refunds by their own date, revenue by order date). **Share of
  *   orders with a refund** is the cohort of paid orders placed in the period that have any succeeded refund, whenever it was
  *   made, so it keeps growing while the cohort's refunds arrive.
@@ -126,7 +127,7 @@ export type RefundsReport = {
   productsTruncated: boolean;
   segments: RefundSegment[];
   markets: RefundMarket[];
-  /** Always true: Kaizen has no refund webhook, so a refund made only in Stripe's dashboard is not here. */
+  /** Always true: the note says which refunds made at the payment provider are counted and which are not. */
   notSeen: true;
   notSeenNote: string;
   /** Refunds (and the paid orders of the cohort) left out because their currency has no rate, and those currencies. */
@@ -136,7 +137,7 @@ export type RefundsReport = {
 };
 
 export const NOT_SEEN_NOTE =
-  "Refunds made only in Stripe's dashboard are not included: Kaizena Flow only sees refunds made from its own admin, and the reasons are free text.";
+  "Refunds made in Stripe's or Mollie's own dashboard are included once the provider reports them, with the reason it was given there; a refund the provider cannot match to an order here is not. Other reasons are what staff wrote.";
 
 // ---------------------------------------------------------------------------
 // Pure parts

@@ -142,7 +142,7 @@ export const analyticsEn = {
       },
       newCustomers: { label: "New customers", help: "Customers whose first paid order is in the period.", missing: "" },
       returningCustomers: { label: "Returning customers", help: "Customers with a paid order in the period and an earlier first one.", missing: "" },
-      refundRate: { label: "Refund rate", help: "Refunds made in the period as a share of revenue. Refunds made only in Stripe's dashboard are not seen.", missing: "" },
+      refundRate: { label: "Refund rate", help: "Refunds made in the period as a share of revenue, refunds made in the payment provider's own dashboard included.", missing: "" },
       sessions: {
         label: "Visits",
         help: "Visitor-days: one visitor on one day, without bots and without people who ask not to be counted.",
@@ -166,7 +166,7 @@ export const analyticsEn = {
   overview: {
     title: "Overview",
     description: "Are we making money, why are sales moving, and is there anything to do today? Each figure links to the page that explains it.",
-    footer: "All amounts are in {currency} without VAT. Refunds made only in Stripe's dashboard are not counted. History is valued at today's exchange rates.",
+    footer: "All amounts are in {currency} without VAT, refunds made in the payment provider's own dashboard included. History is valued at today's exchange rates.",
     loading: {
       alerts: "what needs you today",
       why: "why sales changed",

@@ -154,7 +154,7 @@ export const reportsEn = {
     topCaption: "Top customers by revenue in this period",
     topEmpty: "Nobody placed a paid order in this period.",
     countedTitle: "How customers are counted",
-    counted: "A customer is a person by their email: an account's orders go together, and a guest is told apart by the email they gave. Someone who orders with two different emails counts as two customers. Amounts are in {currency} without VAT, after refunds, and orders in other currencies are converted at today's rates. Refunds made only in Stripe's own dashboard are not seen.",
+    counted: "A customer is a person by their email: an account's orders go together, and a guest is told apart by the email they gave. Someone who orders with two different emails counts as two customers. Amounts are in {currency} without VAT, after refunds, and orders in other currencies are converted at today's rates. Refunds made in the payment provider's own dashboard are counted once it reports them.",
   },
   /** The Subscriptions page (`SubscriptionsView`). */
   subscriptions: {
@@ -803,7 +803,7 @@ export const reportsEn = {
     conversionTerm: "Conversion: ",
     conversionDef: "orders divided by product page views. A rough measure: a view is a page view, not a visitor.",
     linesShare: "Products and other lines make {share} of the period's revenue; the rest is shipping income. ",
-    stripeRefunds: "Refunds made only in Stripe's own dashboard are not seen here, so a refund rate can be lower than it really is.",
+    stripeRefunds: "Refunds made in the payment provider's own dashboard are counted here once it reports them.",
     changeAgainst: " Change is against {from} to {to}.",
   },
   inventory: {

@@ -99,7 +99,7 @@ describe("the page's order and the places kept while loading", () => {
     const at = ["alerts", "answer", "why", "charts", "funnel", "products", "channels", "target", "forecast"].map((w) => out.indexOf(`<i>${w}</i>`));
     expect(at.every((n) => n >= 0)).toBe(true);
     expect([...at].sort((a, b) => a - b)).toEqual(at);
-    expect(out).toContain("All amounts are in NOK without VAT.");
+    expect(out).toContain("All amounts are in NOK without VAT,");
   });
 
   it("holds 'Needs you today' above the answer with a fixed-height placeholder while it loads", () => {

@@ -148,7 +148,7 @@ export const reportsNb: ReportsMessages = {
     topCaption: "Toppkunder etter omsetning i perioden",
     topEmpty: "Ingen la inn en betalt bestilling i perioden.",
     countedTitle: "Slik telles kunder",
-    counted: "En kunde er en person etter e-postadressen: en kontos bestillinger hører sammen, og en gjest skilles ut etter e-postadressen de oppga. Den som bestiller med to ulike e-postadresser, telles som to kunder. Beløpene er i {currency} ekskl. mva., etter refusjoner, og bestillinger i andre valutaer regnes om etter dagens kurser. Refusjoner gjort bare i Stripes eget dashbord er ikke med.",
+    counted: "En kunde er en person etter e-postadressen: en kontos bestillinger hører sammen, og en gjest skilles ut etter e-postadressen de oppga. Den som bestiller med to ulike e-postadresser, telles som to kunder. Beløpene er i {currency} ekskl. mva., etter refusjoner, og bestillinger i andre valutaer regnes om etter dagens kurser. Refusjoner gjort i betalingsleverandørens eget kontrollpanel telles når leverandøren melder dem.",
   },
   subscriptions: {
     lessThanDay: "mindre enn en dag",
@@ -792,7 +792,7 @@ export const reportsNb: ReportsMessages = {
     conversionTerm: "Konvertering: ",
     conversionDef: "bestillinger delt på visninger av produktsiden. Et grovt mål: en visning er en sidevisning, ikke en besøkende.",
     linesShare: "Produkter og andre linjer utgjør {share} av periodens omsetning; resten er fraktinntekter. ",
-    stripeRefunds: "Refusjoner gjort bare i Stripes eget dashbord er ikke med her, så en refusjonsandel kan være lavere enn den egentlig er.",
+    stripeRefunds: "Refusjoner gjort i betalingsleverandørens eget kontrollpanel telles her når leverandøren melder dem.",
     changeAgainst: " Endringen er mot {from} til {to}.",
   },
   inventory: {
