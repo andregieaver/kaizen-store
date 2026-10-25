@@ -67,7 +67,13 @@ rules below disagree.
    `international.b2b-vat-id-validation-and-reverse-charge` into `checkout.b2b-vat-id-reverse-charge-exemption`;
    `platform.b2b-companies-catalogs-terms` (an umbrella over four other rows) into `catalogue.b2b-catalogs-and-price-lists`;
    `ai.search-merchandising` into `catalogue.search-merchandising-synonyms-boosts-pins`. Merged on 2026-10-07 (wave 3,
-   run 3): `checkout.order-editing-after-purchase` into `orders.edit-an-order-after-placement`. A survivor keeps its own
+   run 3): `checkout.order-editing-after-purchase` into `orders.edit-an-order-after-placement`. Merged on 2026-10-25 (the
+   re-rate after the autopilot): `platform.admin-ai-assistant` into `ai.admin-ai-assistant-that-performs-tasks`;
+   `storefront.headless-storefront-api-hydrogen` into `platform.storefront-api-and-headless`; `customers.workflow-automation-flow`
+   into `platform.workflow-automation-flow`; `customers.ai-assistant-discoverability-and-agentic-commerce` into
+   `ai.agentic-storefronts-chatgpt-gemini-copilot`; `analytics.dynamic-segments-for-marketing` into
+   `customers.customer-segments-and-tags`; `international.vipps-and-mobilepay` into `checkout.vipps`; `platform.metaobjects` into
+   `catalogue.metaobjects`. A survivor keeps its own
    weight (rule 6), so a pair that disagreed on weight is for the next weight review.
 
 ## Waves

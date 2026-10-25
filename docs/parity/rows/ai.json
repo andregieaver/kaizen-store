@@ -16,14 +16,18 @@
       "was": null
     },
     "weight": 3,
-    "gap": "Owner tools plus manager tools (D94, D103 to D105, D153); calls that send, publish or spend are only kept for the owner's yes. Since D308 it makes and changes products (A1: create_product, update_product, set_prices, set_product_status, write_product_texts, through the product editor's own save) and the website (A2: build_page from a brief by the page studio after the answer with its pictures one by one, edit_page, publish_page, set_page_place, save_menu, set_header_footer, for a store and for Kaizena Flow's own site, through the builder's and the menu editor's own saves) and the setup (A3: set_store_details, set_countries, set_languages, set_currencies, set_flat_shipping, save_shipping_method, open_store, through the wizard's and Settings pages' own saves, with setup_progress saying what only the owner can do); drafts, new menus and a store not yet open are changed at once, what shoppers see waits for a yes. Since D318 (PSI AGT-01, AGT-04) it also acts in every other admin area on the person's yes: marketing (broadcasts sent or scheduled, segments, customer tags, automations, gift cards issued by email), support (reads a conversation, notes, replies in the person's name, ends it), the team and the plan (owner only, a new gate `access` for staff changes), order changes and exchanges through the editor's and the builder's own functions (the order's state kept with the approval), and Work (time, invoices issued and emailed); it keeps follow-ups that come back as background turns at their time, daily or weekly, and emails the person where the answer is, and an order rule can ask it to look at a paid order. Since D309 (unit B) the owner sets goals with targets measured by code, the assistant makes a plan of steps checked against the tools it offers, and the autopilot works through it every minute on the maker's yes, in their name with their role read again, by the owner's autonomy level per area and budgets, asking when a step fails three times; the Autopilot page shows what waits (calls, questions, what only the owner can do), the plans, goals and settings, and a daily digest and weekly report are emailed. Since A4 (D308) it also lists, adds, previews and makes themes live, a premium theme only at the charge the owner was shown. Still missing: a notice outside the Autopilot page (the header, the panel) when background work is ready.",
+    "gap": "Owner tools plus manager tools (D94, D103 to D105, D153); calls that send, publish, spend or change access are only kept for the owner's yes. D308: it makes and changes products (A1: create_product, update_product, set_prices, set_product_status, write_product_texts, set_stock, through saveProduct()), the website (A2: build_page by the page studio after the answer with its pictures one by one, list_page_builds, edit_page, publish_page, unpublish_page, set_page_place, save_menu, set_header_footer, for a store and for Kaizena Flow's own site, through the builder's and the menu editor's own saves), the setup (A3: set_store_details, set_countries, set_languages, set_currencies, set_flat_shipping, save_shipping_method, open_store, with setup_progress saying what only the owner can do) and themes (A4: list_themes, add_theme, try_theme, make_theme_live, a premium theme only at the charge the owner was shown). D318 (PSI AGT-01, AGT-04): marketing (broadcasts, segments, customer tags, automations, gift cards), support (read, note, reply, end), the team and the plan (owner only, gate `access`), order changes and exchanges, Work, and follow-ups that come back as background turns at their time and email the person where the answer is; an order rule can ask it to look at a paid order. D309: goals with targets measured by code, plans checked against the tools it offers, the autopilot working through them every minute on the maker's yes by the owner's autonomy level and budgets, the Autopilot page and a daily digest and weekly report by email. D310: it photographs a page's draft or the live store and judges it before asking to publish (look_at_page, look_at_store). D311: legal pages written and kept current by the AI (legal_pages_status). D315: domains (search, buy, renew, DNS changes, moves) through domain-tools.ts, buying and DNS behind their gates. Still missing (criterion 3): the owner is told about finished background work only on the Autopilot page, in the conversation or by email; nothing in the admin's header or the assistant's launcher says that a build, follow-up or plan step is ready for review. Merged on 2026-10-25 (README rule 8): `platform.admin-ai-assistant` was the same Shopify feature (rated partial); its criteria and evidence are here.",
     "bucket": "A",
     "wave": 8,
     "criteria": [
       "The assistant can create and edit a product (title, description, price per market through commerce.set_price, variants, stock) through a gated tool whose approval summary shows the whole change.",
       "The assistant can create, edit and publish a page, and edit a menu, through gated tools that use the same validation as the editors (pageInput, menu rules) and call updateTag.",
       "A long request (for example a bulk change across many products) runs as a background job that survives closing the panel, and the owner is told in the admin when it is ready for review.",
-      "A tool that changes a store appears in the store MCP server (D96) too, and the owner-tool coverage test fails when it has no TOOL_WORDS line."
+      "A tool that changes a store appears in the store MCP server (D96) too, and the owner-tool coverage test fails when it has no TOOL_WORDS line.",
+      "Gated tools create and update a product draft and a page draft; nothing is published or priced without the owner's yes, and the model never states a price or stock it was not given by a tool.",
+      "A tool edits a menu and a page's rows through the same validation as the editor (`productInput`, `pageInput`), with every text passing `findClaims()`.",
+      "A long job (translating a store, building a page) runs in the background with progress the owner can read, and survives closing the panel.",
+      "Each new tool has zod arguments, a `TOOL_WORDS` line and a `gate`, and is served by the store MCP server like the rest."
     ],
     "evidence": {
       "files": [
@@ -58,7 +62,16 @@
         "src/server/autopilot-gate.ts",
         "src/server/autopilot-overview.ts",
         "src/components/admin/autopilot/autopilot-page.tsx",
-        "src/server/design-tools.ts"
+        "src/server/design-tools.ts",
+        "src/server/page-looks.ts",
+        "src/server/legal-writer.ts",
+        "src/server/domain-tools.ts",
+        "src/lib/autopilot-autonomy.ts",
+        "src/server/assistant-memory.ts",
+        "src/server/live-voice.ts",
+        "src/server/ai-usage.ts",
+        "src/lib/assistant-skills.ts",
+        "src/lib/page-jobs.ts"
       ],
       "tests": [
         "src/server/owner-assistant.int.test.ts",
@@ -82,7 +95,16 @@
         "src/lib/follow-ups.test.ts",
         "src/server/autopilot-plans.int.test.ts",
         "src/server/autopilot-runner.int.test.ts",
-        "src/server/design-tools.int.test.ts"
+        "src/server/design-tools.int.test.ts",
+        "src/server/page-looks.int.test.ts",
+        "src/server/legal-writer.int.test.ts",
+        "src/lib/autopilot-autonomy.test.ts",
+        "src/lib/experiment-tool-catalogue.test.ts",
+        "src/lib/owner-tool-permissions.test.ts",
+        "src/server/live-voice.int.test.ts",
+        "src/server/ai-usage.int.test.ts",
+        "src/lib/speech-text.test.ts",
+        "src/lib/admin-map.test.ts"
       ],
       "untested": false
     },
@@ -94,7 +116,13 @@
       "D153",
       "D308",
       "D318",
-      "D309"
+      "D309",
+      "D310",
+      "D311",
+      "D315",
+      "D105",
+      "D106",
+      "D145"
     ],
     "history": []
   },
@@ -164,7 +192,7 @@
       "was": null
     },
     "weight": 2,
-    "gap": "Memory is complete: per account, found by keyword and meaning, learned after each turn and from thumbs, shown and editable on the Memory tab, learning can be switched off (D103). Skills are 24 fixed store playbooks in code (and 4 for the platform) (ASSISTANT_SKILLS) loaded by use_skill; an owner cannot save a request as a skill, edit one or delete one.",
+    "gap": "Memory is complete: per account, found by keyword and meaning, learned after each turn and from thumbs, shown and editable on the Memory tab, learning can be switched off (D103). Skills are 41 fixed playbooks in code (36 for a store, 5 for the platform; ASSISTANT_SKILLS in src/lib/assistant-skills.ts) loaded by use_skill; there is no table, tool or screen to save a request as a skill, or to edit or delete one.",
     "bucket": "A",
     "wave": 8,
     "criteria": [
@@ -303,7 +331,7 @@
       "was": null
     },
     "weight": 2,
-    "gap": "generateImage()/makePicture() (the picture model named in the AI settings, never in code) is used by the AI page studio (src/server/page-ai.ts), the content packs (D257, D270) and, since D283, every picture field of the page builder: Make with AI and Make again with AI, in the site's look (pictureDirection()), metered as `page_pictures`, kept in the media library with alt text from the request (src/server/picture-maker.ts, /admin/{store}/media/make). Still short: (1) the media library and the product editor have no generate-picture action (criterion 1); (2) a made picture is not marked as AI-made in the library (criterion 3); the alt text is the request's first sentence, which the claims filter does not check.",
+    "gap": "generateImage()/makePicture() (the picture model named in the AI settings, never in code) is used by the AI page studio (src/server/page-ai.ts), the content packs (D257, D270), every picture field of the page builder since D283 (Make with AI and Make again with AI, in the site's look by pictureDirection(), metered as `page_pictures`, kept in the media library with alt text from the request; src/server/picture-maker.ts, /admin/{store}/media/make) and, since D308, the AI manager's create_product, which can make a product's picture from a brief through makeSitePicture(). Still short: (1) the media library and the product editor themselves have no generate-picture action (criterion 1); (2) a made picture is not marked as AI-made in the library, and its alt text (the request's first sentence, altFromBrief()) does not pass the claims filter (criterion 3).",
     "bucket": "A",
     "wave": 8,
     "criteria": [
@@ -320,14 +348,16 @@
         "src/server/ai.ts",
         "src/server/page-ai.ts",
         "src/server/picture-maker.ts",
-        "src/server/picture-route.ts"
+        "src/server/picture-route.ts",
+        "src/server/product-tools.ts"
       ],
       "tests": [
         "src/lib/picture-direction.test.ts",
         "src/server/ai-pictures.test.ts",
         "src/server/ai-usage.int.test.ts",
         "src/server/ai.int.test.ts",
-        "src/server/page-ai.int.test.ts"
+        "src/server/page-ai.int.test.ts",
+        "src/server/product-tools.int.test.ts"
       ],
       "untested": false
     },
@@ -335,7 +365,8 @@
       "D92",
       "D106",
       "D146",
-      "D283"
+      "D283",
+      "D308"
     ],
     "history": []
   },
@@ -608,7 +639,7 @@
       "was": null
     },
     "weight": 2,
-    "gap": "Kaizen's AI page studio interviews, plans sections from PATTERNS, writes the words, builds rows and makes the pictures as a draft (D92), plus Make my page cool (D128), AI page translation and copying another site's page (D150). Missing: conversational edits of an existing page or of the theme (\"make the hero shorter\", \"use warmer colours\"), and a whole-store redesign. Since D283 the builder's picture fields make and remake a picture from a description in the site's look; that is pictures, not edits of the page or the theme. Since A4 (D308) the AI manager lists the themes and presets with their prices, adds one to the store's library, opens its preview and makes it live on the owner's yes (a premium theme only at the charge they were shown): choosing among made themes, not changing a theme's settings. Since D310 the AI manager looks at what it builds: a page's draft (or the live store) photographed on a phone and a computer, judged by the model that sees pictures against a fixed list, with code's measurements, the accessibility checker and the claims filter, so it can fix a page before asking to publish; the autopilot sends a page back for at most two more rounds. That checks pages; it does not yet edit a page or the theme from a person's description in the builder.",
+    "gap": "The AI page studio (D92) interviews, plans sections from PATTERNS, writes the words, builds rows and makes the pictures as a draft, plus Make my page cool (D128), AI page translation and copying another site's page (D150); the builder's picture fields make and remake a picture from a description in the site's look (D283). Since D308 (A2) the AI manager builds a page from a brief and changes an existing page from a person's words (edit_page: texts through mapTexts() and replaceInPage() and the row edits, tried first by dryRunEdits(), saved as a draft by savePage(); publishing gated; src/server/site-tools.ts), and since D310 it photographs the draft on a phone and a computer and fixes what the checks find before asking to publish; since A4 it chooses among made themes and presets (list_themes, add_theme, try_theme, make_theme_live). Still short: (1) a described change is saved as a draft from the assistant's panel, not applied unsaved in the open builder (criterion 1); (2) nothing changes a theme's settings from a description ('use warmer colours'): the AI can only pick an existing theme or preset (criterion 2); (3) no whole-store redesign.",
     "bucket": "A",
     "wave": 8,
     "criteria": [
@@ -631,7 +662,9 @@
         "src/server/design-tools.ts",
         "src/lib/page-look.ts",
         "src/lib/page-look-shoot.ts",
-        "src/server/page-looks.ts"
+        "src/server/page-looks.ts",
+        "src/lib/site-tools.ts",
+        "src/server/site-tools.ts"
       ],
       "tests": [
         "src/lib/page-ai.test.ts",
@@ -643,7 +676,9 @@
         "src/lib/design-tools.test.ts",
         "src/lib/page-look.test.ts",
         "src/server/page-looks.int.test.ts",
-        "e2e/page-look.spec.ts"
+        "e2e/page-look.spec.ts",
+        "src/lib/site-tools.test.ts",
+        "src/server/site-tools.int.test.ts"
       ],
       "untested": false
     },
@@ -729,7 +764,7 @@
       "was": null
     },
     "weight": 3,
-    "gap": "The assistant answers from fixed, code-counted tools: analytics_overview, explain_change, analytics_alerts, sales_summary, sales_trend, sales_funnel, product_performance, customer_insights and restock_suggestions (D104, D152). No arbitrary cut (by variant, category, channel, country, payment method), no saved or custom report and no query layer for the model to use; that rests on the analytics report builder, which is missing.",
+    "gap": "The assistant answers only from fixed, code-counted tools: analytics_overview, explain_change, analytics_alerts, sales_summary, sales_trend, sales_funnel, product_performance, customer_insights, restock_suggestions, search_insights, cart_reminder_stats, vat_report and oss_return_data among them (D104, D152, D161). No arbitrary cut (by variant, category, channel, country, payment method), no saved or custom report and no query layer for the model to use; the analytics pages are fixed views, and the report builder this would rest on is missing.",
     "bucket": "A",
     "wave": 8,
     "criteria": [
@@ -756,7 +791,8 @@
     },
     "decisions": [
       "D104",
-      "D152"
+      "D152",
+      "D161"
     ],
     "history": []
   },
@@ -777,7 +813,7 @@
       "was": "missing"
     },
     "weight": 3,
-    "gap": "D296: rule-based segments (orders, spend, dates, country, group, RFM class, tags) saved per store, the count and list worked out in code, store-owned, never readable on the shopper's side. Still missing: the AI manager turning a sentence into a rule set, and a segment as the audience of a broadcast or a discount.",
+    "gap": "D296: rule-based segments (orders, spend, dates, country, group, RFM class, tags) saved per store, matched in code each time they are read, never readable on the shopper's side (criteria 1 and 4). D297: a broadcast's audience can be a segment, sent only to subscribed addresses (criterion 3; a discount code still reaches groups and named customers only, D299). Since D318 the AI manager lists segments with their counts (list_segments) and drafts a broadcast for one. Still missing (criterion 2): the assistant turning a sentence into a rule set; no tool makes or changes a segment.",
     "bucket": "A",
     "wave": 5,
     "criteria": [
@@ -797,7 +833,9 @@
         "src/server/segments.ts",
         "src/app/admin/(gated)/[store]/segments/page.tsx",
         "src/app/admin/(gated)/[store]/segments/[segmentId]/page.tsx",
-        "src/components/admin/segment-editor.tsx"
+        "src/components/admin/segment-editor.tsx",
+        "src/server/broadcasts.ts",
+        "src/server/marketing-tools.ts"
       ],
       "tests": [
         "src/server/owner-insights.int.test.ts",
@@ -805,7 +843,8 @@
         "src/lib/segments.test.ts",
         "src/db/segments.test.ts",
         "src/server/segments.int.test.ts",
-        "e2e/signed-in/segments.spec.ts"
+        "e2e/signed-in/segments.spec.ts",
+        "src/server/marketing-tools.int.test.ts"
       ],
       "untested": false
     },
@@ -813,7 +852,9 @@
       "D104",
       "D108",
       "D152",
-      "D296"
+      "D296",
+      "D297",
+      "D318"
     ],
     "history": [
       {
@@ -842,12 +883,12 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "partial",
       "rechecked": true,
-      "was": "partial"
+      "was": "missing"
     },
     "weight": 3,
-    "gap": "No trigger, condition and action builder, so nothing for the AI to generate. Outbound event webhooks to Zapier and Make with a queue and retries (D41), Slack messages (D101) and fixed cron jobs are credited in platform.outgoing-webhooks and platform.workflow-automation-flow, not here. Waits for the wave 9 Flow engine. The autopilot's plans (D309) are one-off steps toward an owner's goals, not workflows started by an event, so they do not count here.",
+    "gap": "D238's order rules (Settings -> Automation, src/lib/order-rules.ts, src/server/order-rules.ts, src/components/admin/automation/) are an owner-made workflow for one trigger: when an order is paid (RULE_EVENTS), up to ten conditions from a closed list (total, country, buyer, first order, product, delivery, backorder, gift, source, tag, seller, Stripe risk) and actions tag, notify staff, hold fulfilment and ask the AI manager (D318); saved, switched on and off and ordered, at most 50 a store and 20 AI asks a day, each run logged with what each condition and action came to. Still missing: other triggers (customer, stock, return events), actions that email a customer, call a webhook, post to Slack or create a task, a test run before switching a rule on, and the assistant drafting a rule from a description (order_rules is a read-only tool; rules are made only on the Automation page). Outbound webhooks (D41) and Slack (D101) are credited in platform.outgoing-webhooks; the autopilot's plans (D309) are one-off steps toward goals, not event workflows.",
     "bucket": "A",
     "wave": 9,
     "criteria": [
@@ -861,18 +902,27 @@
         "src/lib/integrations.ts",
         "src/lib/slack.ts",
         "src/server/slack.ts",
-        "src/app/api/cron/integrations/route.ts"
+        "src/app/api/cron/integrations/route.ts",
+        "src/lib/order-rules.ts",
+        "src/server/order-rules.ts",
+        "src/components/admin/automation/rule-editor.tsx",
+        "src/app/admin/(gated)/[store]/settings/automation/page.tsx"
       ],
       "tests": [
         "src/server/integrations.int.test.ts",
         "src/lib/integrations.test.ts",
-        "src/lib/slack.test.ts"
+        "src/lib/slack.test.ts",
+        "src/lib/order-rules.test.ts",
+        "src/server/order-rules.int.test.ts",
+        "e2e/signed-in/automation.spec.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D41",
-      "D101"
+      "D101",
+      "D238",
+      "D318"
     ],
     "history": [
       {
@@ -880,6 +930,12 @@
         "from": "partial",
         "to": "missing",
         "why": "No builder exists; the webhook queue is credited in platform.outgoing-webhooks"
+      },
+      {
+        "on": "2026-10-25",
+        "from": "missing",
+        "to": "partial",
+        "why": "Read src/lib/order-rules.ts, src/server/order-rules.ts and Settings -> Automation (D238): an owner-made trigger-condition-action rule for one trigger (order paid), a closed list of conditions, actions tag, notify staff, hold and ask the AI manager (D318), saved on or off, at most 50 a store, every run logged in order_rule_runs; held by src/lib/order-rules.test.ts, src/server/order-rules.int.test.ts (run, passing) and e2e/signed-in/automation.spec.ts. Criteria 1 and 2 hold in part; criterion 3 (AI drafts a workflow) is not built: order_rules is a read-only tool."
       }
     ]
   },
@@ -948,7 +1004,7 @@
       "was": "missing"
     },
     "weight": 3,
-    "gap": "D297: the broadcast editor's Write with AI suggests a subject, preview, heading, paragraphs and a button's words in the chosen language from the staff's own words, every text through findClaims() (a claim refuses the suggestion), never saved or sent: the person reads it and sends with their own press, only to subscribed addresses with an unsubscribe link. Still missing: writing from the store's own facts through tools (products, campaigns) and for a chosen segment, and the AI manager drafting a broadcast.",
+    "gap": "D297: the broadcast editor's Write with AI (suggestBroadcast()) suggests a subject, preview, heading, paragraphs and a button's words in the chosen language from the staff's own words, every text through findClaims() (a claim refuses the suggestion), never saved or sent; the person sends with their own press, only to subscribed addresses with an unsubscribe link. Since D318 the AI manager drafts one too (draft_broadcast, for everyone or one segment, saved as a draft) and sends only behind the send gate (send_broadcast). Still missing (criterion 1): writing from the store's own facts through tools (products, campaigns); the writer is given only the staff's words and told never to name a product or price it was not told.",
     "bucket": "A",
     "wave": 8,
     "criteria": [
@@ -964,18 +1020,21 @@
         "src/server/email.ts",
         "src/server/broadcasts.ts",
         "src/lib/broadcasts.ts",
-        "src/components/admin/broadcast-editor.tsx"
+        "src/components/admin/broadcast-editor.tsx",
+        "src/server/marketing-tools.ts"
       ],
       "tests": [
         "src/server/owner-insights.int.test.ts",
         "src/lib/claims.test.ts",
-        "src/lib/broadcasts.test.ts"
+        "src/lib/broadcasts.test.ts",
+        "src/server/marketing-tools.int.test.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D104",
-      "D297"
+      "D297",
+      "D318"
     ],
     "history": [
       {
@@ -1010,27 +1069,61 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "partial",
       "rechecked": true,
-      "was": null
+      "was": "missing"
     },
     "weight": 3,
-    "gap": "No syndication to any AI channel and no feed (no feed, merchant or agent route under src/app); in-chat checkout is deferred. Kaizen only publishes llms.txt, crawler switches and JSON-LD (see AI discovery signals).",
+    "gap": "D302 serves a normalised feed per store and market (storeFeed(), src/server/feeds.ts): offered goods only, VAT-inclusive prices in the market's currency as the storefront shows them, as Google Merchant Center RSS (which Google's AI shopping surfaces read) and Meta, TikTok and Pinterest CSVs, every product left out named with its reason on Marketing -> Product feeds; llms.txt, crawler switches and JSON-LD besides (ai.ai-discovery-signals). Still missing: a feed in the AI channels' own specs (ChatGPT, Copilot, Perplexity) and a per-channel opt-in (the feeds are on or off for the store as a whole, criterion 1); attribution of an order to an agent channel (criterion 3). In-chat checkout stays off. Merged on 2026-10-25 (README rule 8): `customers.ai-assistant-discoverability-and-agentic-commerce` was the same Shopify feature (rated partial); its criteria and evidence are here.",
     "bucket": "B",
     "wave": 8,
     "criteria": [
       "A store can opt in per channel and a normalised product feed is served per market with the attributes each channel requires, only for published products with VAT-inclusive prices in the market's currency.",
       "Products the feed cannot carry are listed in the admin with the reason, and the feed validates against the channel's own spec in a test.",
       "An order that comes from an agent channel is attributed to it in analytics without any cookie or storage.",
-      "In-chat checkout stays off until a payment path exists; a channel's switch is per store and defaults to off."
+      "In-chat checkout stays off until a payment path exists; a channel's switch is per store and defaults to off.",
+      "A product feed for AI shopping channels is built from the same normalised list as the Merchant Center feed: price with VAT in the market's currency, availability and images; products not for sale are left out.",
+      "A read-only shopper-facing endpoint (MCP or the channels' own protocol) answers catalogue search and product details from the store's own data, without personal data, rate-limited, with checkout staying on the store.",
+      "The owner switches each channel off; a switched-off channel gets nothing and robots.txt says so.",
+      "Live only once each channel's programme accepts the store (bucket B)."
     ],
     "evidence": {
-      "files": [],
-      "tests": [],
+      "files": [
+        "src/lib/feeds.ts",
+        "src/server/feeds.ts",
+        "src/server/feed-settings.ts",
+        "src/app/api/feeds/[token]/[file]/route.ts",
+        "src/app/admin/(gated)/[store]/feeds/page.tsx",
+        "src/lib/seo.ts",
+        "src/server/seo.ts",
+        "src/app/llms.txt/route.ts",
+        "src/app/s/[store]/llms.txt/route.ts",
+        "src/app/robots.txt/route.ts",
+        "src/lib/structured-data.ts",
+        "src/app/api/mcp/route.ts"
+      ],
+      "tests": [
+        "src/lib/feeds.test.ts",
+        "src/server/feeds.int.test.ts",
+        "src/lib/seo.test.ts",
+        "src/server/seo.int.test.ts",
+        "src/lib/structured-data.test.ts"
+      ],
       "untested": false
     },
-    "decisions": [],
-    "history": []
+    "decisions": [
+      "D302",
+      "D21",
+      "D96"
+    ],
+    "history": [
+      {
+        "on": "2026-10-25",
+        "from": "missing",
+        "to": "partial",
+        "why": "Read src/server/feeds.ts, src/lib/feeds.ts, src/app/api/feeds/[token]/[file]/route.ts and the Product feeds page (D302): a normalised feed per store and market of offered goods at the storefront's VAT-inclusive price, as Google Merchant Center RSS (read by Google's AI shopping surfaces) and Meta, TikTok and Pinterest CSVs, with every product left out listed with its reason; held by src/lib/feeds.test.ts and src/server/feeds.int.test.ts (run, passing). The gap's 'no feed' no longer holds; no feed in an AI channel's own spec, no per-channel opt-in and no agent-channel attribution, so partial."
+      }
+    ]
   },
   {
     "id": "ai.agent-ready-ucp-or-mcp-endpoints",
@@ -1049,7 +1142,7 @@
       "was": null
     },
     "weight": 2,
-    "gap": "`/api/mcp` serves the owner tools to Kaizen Life only (D96) and answers 401 without a Kaizen Life token. There is no public, read-only endpoint for shopping agents and no /.well-known/ucp profile or /agents.md.",
+    "gap": "`/api/mcp` serves the owner tools to Kaizen Life only (D96) and answers 401 without a Kaizen Life token. The WordPress plugin's API (D169, D170: products, terms, a cart quote and a hand-off to the store's own checkout) answers only a site an owner connected, with that connection's token. There is no public, rate-limited endpoint for shopping agents, no /.well-known/ucp profile and no /agents.md; agents get llms.txt, JSON-LD and the product feeds (D302) only.",
     "bucket": "A",
     "wave": 8,
     "criteria": [
@@ -1069,7 +1162,9 @@
       "untested": false
     },
     "decisions": [
-      "D96"
+      "D96",
+      "D169",
+      "D302"
     ],
     "history": []
   },

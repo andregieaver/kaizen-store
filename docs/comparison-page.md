@@ -45,7 +45,7 @@ have kept the page for a short time; `first_published_at` stays set, which only 
 | **Pre-orders with a release date** | `catalogue.pre-orders` | **Missing: wave 3, second run** |
 | **Tiered and volume discounts** | `customers.tiered-and-volume-discounts` | **Partial: wave 5** |
 | **Scheduled report emails** | `analytics.scheduled-report-emails` | **Missing: wave 2** |
-| **Vipps and MobilePay at checkout** | `checkout.vipps`, `international.vipps-and-mobilepay` | **Missing or partial: wave 4** |
+| **Vipps and MobilePay at checkout** | `checkout.vipps` | **Missing or partial: wave 4** |
 | Labels also for PostNord | none | The page does not claim it: PostNord cannot book yet (D136) |
 
 ## Before it is published

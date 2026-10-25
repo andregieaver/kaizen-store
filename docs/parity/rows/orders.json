@@ -202,7 +202,7 @@
       "was": null
     },
     "weight": 3,
-    "gap": "Built and held by tests (D174, docs/wave-3-fulfilment.md): staff add, remove and lower lines of a paid order with nothing sent at `/admin/{store}/orders/{orderId}/edit` (`previewOrderEdit()`/`applyOrderEdit()`/`sendOrderEdit()` in `src/server/order-edits.ts`, priced by `priceOrderEdit()` in `src/lib/order-edit.ts`); kept units keep their sold price and discounts, added goods equal `cartSummary()` in a krone market and a euro view; a lower total is refunded through `refundOrder()` under the order lock before Stripe is asked (`refundChange()`), split over the order's payments (`splitRefund()`); a higher total is applied only when the customer pays the link (`/s/{store}/{market}/account/change/{token}`, `src/server/order-edit-pay.ts`) or staff record it as paid outside Kaizen (cash ceiling included); one `order.edit_applied` event, the number unchanged; a credit note and an additional invoice referring to the original. Rechecked on 2026-10-14: e2e/order-change.spec.ts now expects the reworded withdrawal sentence and runs green in CI. Verified on 2026-10-07 on a fresh database: the cited unit, PGlite, view and integration tests pass (118 integration tests in 12 files, 317 unit tests in 17 files). Still short of Full: (1) the consumer texts of docs/wave-3-fulfilment.md section 8 (the change emails, the change pay page, the edit invoice and credit note words, the cash-ceiling question 8) are hand-written and not yet read by a person; (2) no change has been paid in Stripe test mode on a real store (spec 9.7): the pay link is held only by the repo's fake Stripe; (3) a refund owed after a change's pending refund fails shows on the order page and in the store checkup but not in the control center; a lower-total change holds the order's row lock while Stripe answers, and a database failure after Stripe's answer leaves that refund for the webhook to record; no test covers a D153 return refund after a paid change, and `tax-reports.int.test.ts` has no edit made in a later quarter (the reconciliation case is in `analytics-edits.int.test.ts`). Merged here on 2026-10-07: `checkout.order-editing-after-purchase` (the same Shopify feature and page, README rule 8); its criteria are criteria 3 to 5 below.",
+    "gap": "Built and held by tests (D174, `docs/wave-3-fulfilment.md`): staff add, remove and lower lines of a paid, unsent order at `/admin/{store}/orders/{orderId}/edit` (`previewOrderEdit()`/`applyOrderEdit()`/`sendOrderEdit()` in `src/server/order-edits.ts`, priced by `priceOrderEdit()`, equal to `cartSummary()` in kroner and a euro view); kept units keep their price and discounts; a lower total is refunded through `refundOrder()` under the order lock, a higher one applies only when the customer pays the link (`/account/change/{token}`) or staff record it paid outside under the cash ceiling; one `order.edit_applied` event, the number unchanged; an edit credit note and an additional invoice; the revised confirmation emailed. The AI manager previews and makes the same changes through the editor's own functions, gated as `spend` and refused when the order moved since the owner saw it (D318, `src/server/order-change-tools.ts`, `order-change-tools.int.test.ts`). Still short of Full: (1) the consumer texts (change emails, pay page, edit invoice and credit-note words, the cash-ceiling question) are hand-written and not yet read by a person (spec section 8); (2) no change has been paid in Stripe test mode on a real store, only against the repo's fake Stripe; (3) a refund owed after a change's pending refund fails shows on the order page and store checkup, not in the control center, and no test covers a D153 return refund after a paid change. Merged here on 2026-10-07: `checkout.order-editing-after-purchase` (README rule 8); its criteria are criteria 3 to 5.",
     "bucket": "A",
     "wave": 3,
     "criteria": [
@@ -230,7 +230,8 @@
         "src/app/s/[store]/[market]/account/change/[token]/page.tsx",
         "src/app/s/[store]/[market]/account/change/[token]/change-view.tsx",
         "src/components/documents/order-document-view.tsx",
-        "supabase/migrations/20261006235336_fulfilment_rules.sql"
+        "supabase/migrations/20261006235336_fulfilment_rules.sql",
+        "src/server/order-change-tools.ts"
       ],
       "tests": [
         "src/lib/order-edit.test.ts",
@@ -247,14 +248,16 @@
         "src/components/admin/orders/fulfilment-views.test.ts",
         "src/app/s/[store]/[market]/account/change/[token]/change-view.test.ts",
         "src/components/documents/order-document-view-edit.test.ts",
-        "e2e/order-change.spec.ts"
+        "e2e/order-change.spec.ts",
+        "src/server/order-change-tools.int.test.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D27",
       "D141",
-      "D174"
+      "D174",
+      "D318"
     ],
     "history": []
   },
@@ -368,7 +371,7 @@
       "was": "missing"
     },
     "weight": 3,
-    "gap": "Built and held by tests (wave 3 run 2, D173, in production since 6 October 2026): staff make a draft (`D-n`, its own counter) with goods, custom service items, a custom price, a staff discount, shipping (rate, free or set) and a market, priced only by `priceDraft()` (equal to `cartSummary()` for the same goods in kroner and in a euro view, `checkout-kinds` draft scenarios); Send makes the order from the one shared insert `order-insert.ts` (next number of D141's sequence, stock held to the draft's expiry), emails a pay link (hashed token, `/account/pay/{token}`, Stripe's hosted page) and `applySession()` completes it; staff can instead record money taken outside Kaizen (a `manual` payment with a method, a received day, owner-only unless the owner allows staff, cash ceilings as data), which the invoice states as paid outside and whose refund is recorded with no Stripe call, capped under the order lock and by a trigger, and gets a credit note; an expired draft cancels its order, releases the stock and leaves the numbers whole; a staff-made order counts in sales, VAT and customers and not in conversion, the funnel or channels. The 16 findings of the review are fixed, each with a test (`draft-security.review.int.test.ts`, 7 tests). Run on a fresh database 2026-10-06: the integration files named in the evidence, the PGlite and unit files and `e2e/draft-pay.spec.ts` on a fresh production build (8 passed) all passed. Held at Partial for these reasons. (1) Consumer legal text nobody has read (spec section 8 items 1 to 3, 5, 6, 10 to 12): the pay page's states and right-of-withdrawal sentence, the 'Pay now' button against CRD Art. 8(2), the pay-link email and the store's quoted note, the invoice and credit-note wording for a payment taken outside Kaizen, the cash warnings, the staff-discount line, the retention of a draft's contact data, and the received-day rule that decides the VAT and OSS period; and the cash ceilings in `cash-limits.ts` are `verified: false` (Norway's 40,000 NOK is enforced, Denmark's warns, no other country is held, which is not a statement that there is no rule). A person must read them. (2) The Stripe link flow has run only against the repo's fake Stripe (a hosted session, the webhook path through `applySession()`, the refund); no real test-mode session, webhook or refund has run, and the e2e cannot follow the button to Stripe (spec 9.7 item 2). (3) No test clicks the signed-in admin: the draft editor, send dialog and paid-outside dialog are held by `renderToString` view tests, and the draft actions (`saveDraftAction`, `sendDraftAction`, `recordPaidOutsideAction` and the rest) are not exercised directly. (4) The criterion that a draft-created order is in the customer's history rests on `linkOrderToCustomer()` and `listCustomerOrders()` reading `customer_id`, and no test asserts that a paid draft order appears there (the analytics test counts the customer, the privacy test exports drafts). (5) Product limits that are decisions, not bugs: a custom service item is sold to businesses only (`custom_consumer`) because the withdrawal function answers any service as a booking; a delivery address must be in the market's country (a blocking problem; the field is not locked); `payments.received_on` dates the invoice and the VAT and OSS reports but the `order.paid` event and analytics still date the sale by the day it was recorded, so Finance and the VAT report can place a late-recorded payment in different periods. Not built, deliberately (spec section 7): subscriptions, appointments, stays, downloads and hosts' listings on a draft, codes, campaigns, credits and VAT-number checks, carrier quotes, deposits and payment terms, card details by phone, a reminder before the link expires.",
+    "gap": "Built and held by tests (D173): staff make a draft (`D-n`) with goods, custom service items, a custom price, a staff discount, shipping and a market, priced only by `priceDraft()` (equal to `cartSummary()` in kroner and a euro view); Send makes the order through `order-insert.ts` (next D141 number, stock held to the draft's expiry) and emails a pay link to Stripe's hosted page, completed by `applySession()`; money taken outside Kaizena Flow is a `manual` payment (owner-only unless allowed, cash ceilings as data), stated on the invoice, its refund recorded with no Stripe call, capped, with a credit note; an expired draft cancels its order and releases the stock with the sequence whole; staff-made orders count in sales, VAT and customers, not in conversion or channels (`draft-orders.int.test.ts`, `draft-security.review.int.test.ts`, `e2e/draft-pay.spec.ts`). Held at Partial: (1) consumer legal text nobody has read (the pay page and its withdrawal sentence, the pay-link email, invoice and credit-note wording for money taken outside, cash warnings, staff-discount line, the received-day rule for VAT periods), and the cash ceilings in `cash-limits.ts` are `verified: false` (bucket D: a person must read them); (2) the Stripe link flow has run only against the repo's fake Stripe; (3) no signed-in browser test drives the draft editor, send or paid-outside dialogs, and the draft actions are not exercised directly; (4) no test asserts that a paid draft order appears in the customer's order history (criterion 5); (5) decided limits: custom service items for businesses only, the delivery address in the market's country, and a late-recorded payment dated by its received day on the invoice but by the recording day in analytics. Not built by the spec: subscriptions, bookings, downloads, hosts' listings, codes, campaigns, credits, VAT-number checks, carrier quotes, deposits, payment terms and card details by phone on a draft.",
     "bucket": "D",
     "wave": 3,
     "criteria": [
@@ -449,7 +452,7 @@
       "was": "full"
     },
     "weight": 4,
-    "gap": "Built and held by tests (wave 3 run 3, docs/wave-3-fulfilment.md, D174): parcels name their lines and units (`shipment_lines`, `markSent()`), an order stays paid and Partly sent while units are left, each parcel has its own carrier, tracking and email listing its lines, the shopper's order pages list the parcels, bulk Mark as sent sends the remainder and names each refusal, and withdrawn units are never sent. Units refunded before they were sent leave what is to send when staff tick *These units were not sent* (`commerce.unsent_closures`, `refundOrder({ notSent })`, `src/server/unsent-closures.int.test.ts` in kroner and euros: an order of 3 with 1 sent and 2 closed becomes Sent, its slip, the pick list and bulk send leave them out, and a closed unit is never offered for withdrawal); criterion 5 is held. Since then a parcel without lines is refused at commit (`shipments_have_lines`) and a parcel can be undone (`undoShipment()`, `src/server/shipment-undo.int.test.ts`). Still short of Full: (1) Spec 6.2 F2 names \"carrier bookings pass their lines (fake carrier)\": `bring-shipping.int.test.ts`, `helthjem-shipping.int.test.ts` and `porterbuddy-shipping.int.test.ts` never book a part of an order, so a carrier-booked partial parcel is held by no test; Bring also refuses a second booking of the same order within two minutes, so two Bring parcels of one order cannot be booked back to back. (2) The staff Send card is now driven in a browser (e2e/signed-in/order-send.spec.ts, 2026-10-19: one of two sweaters sent, the order stays paid with 2 units to send, a card opened before that parcel is refused with the order-changed sentence and writes nothing, the rest goes in a second parcel and the order is fulfilled). (3) The receipt sentence and the parcel words shown to consumers (spec section 8 items 6 and 7) are not yet read by a person.",
+    "gap": "Built and held by tests (D174): parcels name their lines and units (`shipment_lines`, `markSent()`; a parcel without lines is refused at commit), an order stays paid and Partly sent while units are left, each parcel has its own carrier, tracking and email listing its lines, the shopper's order pages list the parcels, bulk Mark as sent sends the remainder and names each refusal, withdrawn units are never sent, units refunded before sending are closed (`commerce.unsent_closures`, `unsent-closures.int.test.ts` in kroner and euros), a parcel can be undone (`undoShipment()`), a held card is captured before anything is sent (D289 `captureForSending()`), and the staff Send card is driven in a browser (`e2e/signed-in/order-send.spec.ts`). Still short of Full: (1) no carrier booking of part of an order is tested (`bring-shipping.int.test.ts`, `helthjem-shipping.int.test.ts`, `porterbuddy-shipping.int.test.ts` book whole orders), and Bring refuses a second booking of the same order within two minutes, so two Bring parcels of one order cannot be booked back to back; (2) the receipt sentence and parcel words shown to consumers (spec section 8 items 6 and 7) are not yet read by a person.",
     "bucket": "A",
     "wave": 3,
     "criteria": [
@@ -499,7 +502,8 @@
     "decisions": [
       "D27",
       "D153",
-      "D174"
+      "D174",
+      "D289"
     ],
     "history": [
       {
@@ -674,7 +678,7 @@
       "was": null
     },
     "weight": 3,
-    "gap": "Live prices from Bring and Porterbuddy for Norway (D135, D137); PostNord and Helthjem services are priced by the store, not by the carrier; Sweden and Denmark have no live rates. Nothing has been checked against a real carrier's production service.",
+    "gap": "Live prices from Bring's Shipping Guide and Porterbuddy's availability for Norway (D134, D135, D137; `CHECKOUT_PRICING` in `src/lib/delivery-options.ts` is `carrier` for these two only); PostNord and Helthjem services are priced by what the store enters (`store`), and D237's shipping methods are the store's own rate tables, so Sweden and Denmark have no carrier-calculated price. A carrier that fails leaves the flat rate (tested). Nothing has been checked against a carrier's production service (bucket B).",
     "bucket": "B",
     "wave": 3,
     "criteria": [
@@ -708,7 +712,8 @@
       "D135",
       "D136",
       "D137",
-      "D138"
+      "D138",
+      "D237"
     ],
     "history": []
   },
@@ -729,7 +734,7 @@
       "was": null
     },
     "weight": 4,
-    "gap": "Booking with Bring (D134), Porterbuddy (D137) and Helthjem (D138), for parcels to Norway; the label is fetched from the carrier when printed and never stored. Since D174 a booked parcel names its lines, like any shipment. PostNord cannot book (D136, waiting for its EDI specification). In the store's test environment nothing real is booked. Bulk actions print packing slips and pick lists and mark orders sent (D173, D174, `BULK_ACTIONS`), but do not book or print carrier labels. Undoing a parcel does not cancel the carrier's booking (D174). Nothing has been verified against a carrier's live service.",
+    "gap": "Booking from the order with Bring (D134), Porterbuddy (D137) and Helthjem (D138) for parcels in Norway; the booked parcel names its lines (D174), and the label is fetched from the carrier's own host when printed and never stored (`carrier-label.ts`). PostNord cannot book (D136, waiting for its EDI specification). In the store's test environment nothing real is booked. Bulk actions (`BULK_ACTIONS`: tags, archive, mark sent, slips, pick list, ready for pickup) do not book or print carrier labels (criterion 3). Undoing a parcel does not cancel the carrier's booking. Nothing has been verified against a carrier's live service (bucket B).",
     "bucket": "B",
     "wave": 3,
     "criteria": [
@@ -763,7 +768,8 @@
     "decisions": [
       "D134",
       "D137",
-      "D138"
+      "D138",
+      "D174"
     ],
     "history": []
   },
@@ -784,7 +790,7 @@
       "was": null
     },
     "weight": 4,
-    "gap": "Pickup points for Bring (service 5800), PostNord and Helthjem collect (D135, D136, D138), chosen at checkout and kept on the order; Nordic only, nothing for DPD, InPost, Packeta or GLS. Criteria 1 and 2 are held by `delivery-options.int.test.ts`; criterion 3 is breadth beyond Shopify and needs no new agreement to be left out.",
+    "gap": "Pickup points for Bring (service 5800), PostNord and Helthjem collect (D135, D136, D138), chosen at checkout and kept on the order; criteria 1 and 2 are held by `delivery-options.int.test.ts`. Nordic carriers only, none verified against a carrier's production service (bucket B); nothing for DPD, InPost, Packeta or GLS (criterion 3, optional breadth beyond Shopify). Pickup at the store's own places is its own row (D237, `orders.local-pickup-at-own-location`).",
     "bucket": "B",
     "wave": 3,
     "criteria": [
@@ -1108,7 +1114,7 @@
       "was": "full"
     },
     "weight": 3,
-    "gap": "Built and tested against a faked carrier only (D238): `pollTracking()` keeps Bring's events in `shipment_tracking`, both order pages show them, a verified delivered code records `delivered_at` through `record_carrier_delivery()`, and the out-for-delivery and delivered emails go once per parcel when switched on. The code has never read an answer from Bring's live Tracking API: the parser's fixtures and the integration test's adapter were written by hand from developer.bring.com, and no real parcel has been followed to delivery (spec 9.6), although a carrier's delivered event starts the 14 days of D153. PostNord's, Helthjem's and Porterbuddy's codes are unverified, so their parcels are shown but never record a delivery or send an email.",
+    "gap": "Built and tested against a faked carrier only (D238): `pollTracking()` keeps Bring's events in `shipment_tracking`, both order pages show them from the stored rows, a verified delivered code records `delivered_at` through `record_carrier_delivery()` (starting D153's 14 days), and the out-for-delivery and delivered emails go once per parcel when switched on. Short of Full (bucket B): the code has never read an answer from Bring's live Tracking API (the fixtures were written by hand from developer.bring.com) and no real parcel has been followed to delivery; PostNord's, Helthjem's and Porterbuddy's codes are unverified, so their parcels are shown but never record a delivery or send an email; the parcel emails and `m.tracking.*` await legal review.",
     "bucket": "B",
     "wave": 3,
     "criteria": [
@@ -1500,7 +1506,7 @@
       "was": "missing"
     },
     "weight": 3,
-    "gap": "Built in wave 3 against a faked carrier (`docs/wave-3-exchanges.md` 2.3, 2.4, 4.7, 4.8): Bring's `bookReturn()` (return service 9300) is booked from an approved return's page (`LabelCard`, `label-actions.ts`) or, for a withdrawal return with `return_settings.label_auto`, by the five-minute job (`bookPendingLabels()`), one booking at a time under a lock; the booking is kept in `returns.label_*`; the shopper gets an email button and a status-page link to `/returns/{token}/label`, which fetches from Bring's own host with the store's keys, answers no-store and keeps nothing; the label's cost is recorded at booking and taken off only at refund when staff confirm the parcel came with that label, never above the cost and never for a test label (`labelDeduction()` into `refundFor()`); a refused or timed-out booking leaves the return approved and the pasted address working. Tests re-run on 2026-10-15 pass (return-labels.int.test.ts, return-label.test.ts, bring-returns.test.ts, the label route's test). Stays partial (bucket B): no label has been booked and printed with a real Mybring test user and a store's return agreement (Bring's `BOOK-INPUT-043`; the party roles of a standalone return, the label link's host and billing on use are unconfirmed, spec 9.6); only Bring books returns (PostNord, Porterbuddy and Helthjem do not); booking is a separate press on the approved return's page, not part of the approve form (spec 2.3's preselection on approval is not built), and no browser test drives that admin press; whether the label was used is staff's word, not carrier tracking; the label texts need legal review (spec 8 item 7).",
+    "gap": "Built against a faked carrier (D239, `docs/wave-3-exchanges.md`): Bring's `bookReturn()` (service 9300) is booked from an approved return's page (`LabelCard`, `label-actions.ts`) or, for a withdrawal return with `return_settings.label_auto`, by `bookPendingLabels()` in the five-minute job, one at a time under a lock; kept in `returns.label_*`; the shopper's email button and status-page link open `/returns/{token}/label`, which fetches from Bring's own host with the store's keys and keeps nothing; the label's cost is taken off the refund only through `labelDeduction()` when staff confirm the parcel came with it, never above the cost or for a test label; a failed booking leaves the pasted-address path working (`return-labels.int.test.ts`, `return-label.test.ts`, `bring-returns.test.ts`, the label route's test). Short of Full (bucket B): no label has been booked with a real Mybring user and return agreement; only Bring books returns; booking is a separate press after approval (spec 2.3's preselection on approval is not built) and no signed-in browser test drives it; whether a label was used is staff's word; the label texts need legal review.",
     "bucket": "B",
     "wave": 3,
     "criteria": [
@@ -1573,7 +1579,7 @@
       "was": "missing"
     },
     "weight": 2,
-    "gap": "Built in wave 3 (`docs/wave-3-exchanges.md`) and each criterion is held by tests re-run on 2026-10-15 against a fresh database: staff add catalogue replacements to a return on its page (`ExchangeBuilder`, `exchange-actions.ts`), priced by `priceExchange()` over `priceDraft()` and equal to `cartSummary()` in kroner and in a euro view, netted against the credit `refundFor()` gives (`exchanges.int.test.ts`, `exchange.test.ts`, the signed-in `admin-exchange.spec.ts`); processing makes an order with `source = 'exchange'` through `insertOrder()`, the next number of the D141 sequence, stock held only then (`exchanges.int.test.ts`, `src/db/exchanges.test.ts`); a difference owed goes out as a pay link to Stripe's hosted page (settled by `applySession()`), or is recorded as paid outside Kaizen, and a difference due is refunded through `refundOrder()` (fake Stripe); a withdrawal's exchange needs the customer's own press on `/account/exchange/{token}` (staff records refused by the database, and since the review no share link is handed to staff for a withdrawal). Partial because: (1) the consumer texts (the exchange page, the proposal and pay emails, the agreement and withdrawal-right sentences, the `settled_by_return` invoice wording and the `return_exchange` credit note) are hand-written and not yet read by a person (spec section 8); (2) no pay link has been paid in Stripe test mode on a real store, only against the repo's fake Stripe, and e2e cannot reach Stripe's page (spec 9.6); (3) the euro scenario is in `exchanges.int.test.ts`, not in `checkout-kinds.int.test.ts` as spec 6.1 and 6.3 say. A once-shown share link that a refresh could lose (found while re-rating) is fixed: `ExchangeLinkHolder` keeps it on screen.",
+    "gap": "Built and held by tests (D239, `docs/wave-3-exchanges.md`): staff add catalogue replacements to a return (`ExchangeBuilder`), priced by `priceExchange()` over `priceDraft()` and equal to `cartSummary()` in kroner and a euro view, netted against `refundFor()`'s credit; processing makes an order with `source = 'exchange'` through `insertOrder()` (next D141 number, stock held only then); a difference owed goes out as a pay link to Stripe's hosted page or is recorded paid outside, one due is refunded through `refundOrder()`; a withdrawal's exchange needs the customer's own press on `/account/exchange/{token}` (`exchanges.int.test.ts`, `exchange-admin.int.test.ts`, `src/db/exchanges.test.ts`, `e2e/signed-in/admin-exchange.spec.ts`). The AI manager previews, proposes (emailed only) and processes exchanges through the same functions, gated (D318, `src/server/exchange-tools.ts`, `order-change-tools.int.test.ts`). Partial because: (1) the consumer texts (exchange page, proposal and pay emails, agreement and withdrawal-right sentences, `settled_by_return` invoice wording, the `return_exchange` credit note) are hand-written and not yet read by a person; (2) no pay link has been paid in Stripe test mode on a real store; (3) the euro scenario is in `exchanges.int.test.ts`, not in `checkout-kinds.int.test.ts` as the spec says.",
     "bucket": "A",
     "wave": 3,
     "criteria": [
@@ -1602,7 +1608,8 @@
         "src/app/s/[store]/[market]/account/exchange/[token]/exchange-view.tsx",
         "supabase/migrations/20261015050012_exchanges.sql",
         "supabase/migrations/20261015050226_exchanges_rules.sql",
-        "supabase/migrations/20261015083910_exchanges_bonus_base.sql"
+        "supabase/migrations/20261015083910_exchanges_bonus_base.sql",
+        "src/server/exchange-tools.ts"
       ],
       "tests": [
         "src/lib/exchange.test.ts",
@@ -1617,13 +1624,15 @@
         "src/components/admin/returns/exchange-views.test.ts",
         "src/app/s/[store]/[market]/account/exchange/[token]/exchange-view.test.ts",
         "e2e/exchange.spec.ts",
-        "e2e/signed-in/admin-exchange.spec.ts"
+        "e2e/signed-in/admin-exchange.spec.ts",
+        "src/server/order-change-tools.int.test.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D153",
-      "D239"
+      "D239",
+      "D318"
     ],
     "history": [
       {
@@ -1651,7 +1660,7 @@
       "was": "missing"
     },
     "weight": 2,
-    "gap": "Only outbound order events through Zapier, Make and Slack (D41, D101); a warehouse cannot send tracking or stock levels back, because there is no public API. Weak partial.",
+    "gap": "Only outbound order events through Zapier, Make and Slack (D41, D101), and stock files a person imports (D172 `inventory_import` jobs). A warehouse cannot read orders, post shipments with tracking or post stock levels: there is no public Admin API with scoped tokens (wave 9; the MCP server of D96 serves only Kaizen Life). Weak partial.",
     "bucket": "C",
     "wave": 9,
     "criteria": [
@@ -1671,7 +1680,9 @@
       "untested": false
     },
     "decisions": [
-      "D41"
+      "D41",
+      "D101",
+      "D172"
     ],
     "history": [
       {
@@ -1699,7 +1710,7 @@
       "was": "partial"
     },
     "weight": 3,
-    "gap": "No duty collection: HS code and country of origin are stored per variant (`product_variants.hs_code`, `origin_country`, edited in the product editor) but nothing uses them: no duty or import-VAT estimate at checkout, no customs data in carrier bookings, no IOSS. The fields are the prerequisite, not partial credit.",
+    "gap": "No duty collection. HS code and country of origin are stored per variant (`product_variants.hs_code`, `origin_country`), edited in the product editor and carried by the product CSV (D165) and the AI manager's product tools (D308), but nothing prices or declares with them: no duty or import-VAT estimate for a non-EU destination at checkout, no customs lines in any carrier booking, no DDP or DAP choice. The IOSS registration and intermediary are recorded per store and low-value consignments into the EU are charged destination VAT and marked IOSS (D157, counted in `checkout.oss-and-ioss-support`), which covers criterion 4 only; the fields are the prerequisite, not partial credit.",
     "bucket": "A",
     "wave": 7,
     "criteria": [
@@ -1720,7 +1731,10 @@
       ],
       "untested": false
     },
-    "decisions": [],
+    "decisions": [
+      "D157",
+      "D165"
+    ],
     "history": [
       {
         "on": "2026-10-03",
@@ -1747,7 +1761,7 @@
       "was": null
     },
     "weight": 2,
-    "gap": "Built and tested (wave 3, D172, in production since 6 October 2026): stock locations (add, rename, change country, rank by `priority`, owner-only deactivate and reactivate, never deleted, at least one active, at most 20); `allocate()` (`src/lib/stock-routing.ts`) names the rule once (keep an order together, else by rank, the backordered remainder at the first location that stocks the variant) and `placeOrder()` applies it with level rows locked in (variant, location) order, so two checkouts cannot deadlock (a race for the last unit is tested); `variant_availability` sells the sum of the active locations, each floored at zero; refund, cancel and return restock to the location the units came from or one staff choose (`restockPlan()`, `restockRoom()`), falling back to the first active location; `locationImpact()` reports units, variants and live holds before a deactivation, which is refused while checkouts hold stock there. Held by `stock-routing.test.ts`, `stock-routing.int.test.ts`, `inventory-locations.int.test.ts`, `stock-restock.test.ts`, `returns.int.test.ts`, the PGlite location guards and the view tests; every one passed in my runs. Why it stays Partial: (1) the locations page, the deactivate dialog and the refund dialog's 'Put back at' select have never been clicked (no signed-in admin fixture, D158): they are held by `renderToString` tests and by integration tests of the server functions; (2) criterion 4's guard is not reliable: `src/server/inventory-perf.int.test.ts` (the C4 guard) is not reliable: its 20-line `placeOrder()` timed out at 60 s in most of my runs against a database that already held an earlier perf store or ran other test files at the same time (probably stale planner statistics; the statement caught running for minutes was `orderLineRows()`'s cart-line read in `src/server/checkout.ts`, unchanged by this wave apart from two columns) and passed in 7 s alone on a fresh database, as in the Gates run; the cause is not found. (3) a hold's physical part is not re-checked against the shelf at payment, so staff who lower a level below live holds make those orders go negative with no backorder note (the Inventory page shows negative available; docs/wave-3-inventory.md 3.13); (4) with several active locations the product editor shows the total read-only and the bulk grid refuses a stock column, so stock per location is edited only on the Inventory page or by file; (5) one routing rule only: no closest-location or custom rules, no locations that do not fulfil online orders, no per-product or per-market locations, no transfers; a location's country is a label.",
+    "gap": "Built and tested (D172): stock locations (add, rename, change country, rank, owner-only deactivate and reactivate, never deleted, at least one active, at most 20); `allocate()` (`src/lib/stock-routing.ts`: keep an order together, else by rank, the backordered remainder at the first location that stocks the variant) applied by `placeOrder()` with level rows locked in (variant, location) order; the storefront sells the sum of active locations, each floored at zero; refunds, cancels and returns restock to the original location or one staff choose; `locationImpact()` reports what is held before a deactivation, refused while checkouts hold stock there (`stock-routing.int.test.ts`, `inventory-locations.int.test.ts`, `returns.int.test.ts`). Why it stays Partial: (1) criterion 4's guard is not reliable: `inventory-perf.int.test.ts`'s 20-line order failed again on 2026-10-25 on a fresh copy of the seeded database (29.5 s against its 3 s bound, while other test runs shared the server) and is noted as flaky in CLAUDE.md; (2) no signed-in browser test drives the locations page, the deactivate dialog or the refund dialog's 'Put back at' select (render and server tests only); (3) a hold's physical part is not re-checked against the shelf at payment, so a level lowered below live holds makes those orders go negative with no backorder note; (4) with several locations, stock per location is edited only on the Inventory page or by file; (5) one routing rule only: no closest-location or custom rules, no locations that do not fulfil online orders, no transfers.",
     "bucket": "A",
     "wave": 3,
     "criteria": [
@@ -1929,7 +1943,7 @@
       "was": null
     },
     "weight": 4,
-    "gap": "Built and held by tests (unit 1b, D159, in production): `commerce.issue_order_invoice()` is called inside `complete_order_payment()` in a sub-block, so every paid path (checkout, renewal, standing delivery, venue booking) gets one invoice in the store's own gap-free series, frozen as a JSON snapshot, immutable (one-time `pdf_path` aside), with no delete and no direct insert; copied, host, Stripe-test-mode and invoicing-off orders get none, and a store with incomplete seller details, a non-registered seller whose order charged VAT or no exchange rate waits and is issued later; the shopper's order page and the hosted page `/account/documents/{token}` draw it from the snapshot, the PDF is the same view rendered by Chromium and stored once with the print page as fallback, the confirmation and shipped emails link it and attach the PDF when it exists, staff list, reprint, export and resend, and a reverse-charge or IOSS order says so with the numbers (checked through checkout in `vat-engine.int.test.ts`). I ran these in my own database on 2026-10-04: 283 unit, PGlite and render tests, 314 integration tests and the 4 e2e tests (a rebuilt app, real Chromium) passed. Still short of Full: (1) every consumer-visible text of the invoice (`src/lib/invoice-text.ts`, nb, sv, da, en) and the admin warnings are hand-written and unreviewed, and the content list (4.3 of the spec) rests on Art. 226 read through the UK legislation mirror (EUR-Lex would not load), Norway's bokforingsforskriften 5-1-1, Skatteverket and Denmark's guidance, with Germany from a secondary source and every other member state unread, so by docs/parity/WAVES.md step 4 the row is not Full until a person has read them (spec section 8); the national-currency VAT line, the buyer-address rule for downloads and the not-registered rendering (read for Denmark only) are the points most likely to change; (2) the order of the e2e is a fixture: `e2e/invoices.spec.ts` pays an order built by SQL through `complete_order_payment()` and proves the real Chromium PDF holds the number and total, the not-found for a foreign token, the print fallback and no cookie, but no spec presses Checkout (a test database has no Stripe); the checkout kinds scenarios in `checkout-kinds.int.test.ts` pay with a fake Stripe, and issue the invoice only after the store's test account is switched to live for one call; (3) never exercised: a PDF stored in Supabase Storage, Chromium on Vercel for the three new routes (`outputFileTracingIncludes`), `/api/cron/document-pdfs` is not scheduled anywhere, and nothing ran against production; (4) invoicing is off for stores that already have real orders until the owner turns it on, and no invoice is made for earlier orders (stated in the spec, section 7); (5) a venue-only booking's snapshot still stores a payment day and supply date equal to the confirmation day; the document no longer draws them, and unit 1c does not read them; (6) not built, by the spec: simplified invoices, exemption references for exempt lines, custom templates, structured e-invoices, other languages, and any country beyond NO, SE, DK, DE and the Directive.",
+    "gap": "Built and held by tests (D159): `commerce.issue_order_invoice()` inside `complete_order_payment()` gives every paid path one invoice in the store's gap-free series, a frozen immutable snapshot; copied, host, Stripe-test-mode, Mollie test-mode and invoicing-off orders get none, and a store missing details or a rate waits; the shopper's order page and `/account/documents/{token}` draw it, the PDF is the same view rendered by Chromium, emails link and attach it, staff list, reprint, export and resend; reverse charge and IOSS state the numbers; money taken outside is stated (D173), an order on terms carries its due date (D293), an edit gets an additional invoice (D174). Still short of Full: (1) every consumer-visible invoice text (`src/lib/invoice-text.ts`, marked `legal: needs review`) is hand-written and unreviewed, and the content list rests on a partly secondary reading of Art. 226 and the Nordic and German rules (WAVES.md step 4); (2) `e2e/invoices.spec.ts` pays a fixture order built by SQL, no spec presses Checkout; (3) never exercised in production: a PDF stored in Supabase Storage and Chromium on Vercel for the PDF routes, and `/api/cron/document-pdfs` has no schedule of its own (`cron-routes.scan.test.ts`: run by staff and the dispatcher's invoice job), so PDFs are made only when someone asks; (4) invoicing is off for stores with earlier real orders until the owner turns it on, with nothing issued for those orders; (5) not built by the spec: simplified invoices, exemption references, custom templates, structured e-invoices, and countries beyond NO, SE, DK, DE and the Directive.",
     "bucket": "A",
     "wave": 1,
     "criteria": [
@@ -1998,7 +2012,10 @@
     },
     "decisions": [
       "D141",
-      "D159"
+      "D159",
+      "D173",
+      "D174",
+      "D293"
     ],
     "history": []
   },
@@ -2019,7 +2036,7 @@
       "was": "missing"
     },
     "weight": 3,
-    "gap": "Built and held by tests (unit 1b, D159, in production): a deferred constraint trigger on refunds issues one credit note, in its own gap-free series, at commit for every refund that becomes `succeeded`, by any path (`refundOrder()`, order cancel, booking cancel, the AI tool, D153 returns, the new Stripe `refund.created`/`refund.updated` handler `applyStripeRefund()`, a refund made in Stripe's Dashboard, raw SQL), allocated by the largest-remainder method over the invoice's VAT rates (`creditAllocation()`), never above what the invoice has left per rate (a database trigger), with the VAT in the seller's currency summing exactly to the invoice's; a return's refund is one note with its working (`returns.refund_working`: goods at their rates, deduction, delivery, return shipping, adjustment), a return refunded outside Kaizen gets its note from the return, and the refund email links it and attaches the PDF when it exists. I ran these in my own database on 2026-10-04: the PGlite, unit and integration tests listed all passed. Still short of Full: (1) the credit note's wording, the treatment of a deduction and of return shipping (do they reduce the credited VAT) and the not-registered rendering are hand-written and unreviewed, and the legal basis is the same partly secondary reading as the invoice's, so by WAVES.md step 4 the row is not Full until a person has read them; (2) the Stripe webhook endpoint must be told to send `refund.created` and `refund.updated` in test and live (only the lead can check it in Stripe's Dashboard); until then a refund Stripe reports later, or a refund made in the Dashboard, is seen only by the job that asks Stripe about Kaizen's own pending refunds, and the handler was tested against a fake Stripe only; (3) the rule that a refund of a payment that is not on the invoice (a no-show fee) gets no credit note (`payment_on_invoice()`: made no later than the invoice and named by no `booking.no_show` event) is a heuristic that a future fee payment of another kind could slip past; (4) a refund Stripe reports as failed after it succeeded changes nothing and is only reported by the checkup, with no corrective document (stated in the spec, section 7); a staff retry of a refund the webhook already recorded is refused when nothing is left to refund; (5) no manual credit note, no credit for a cancelled order that was never refunded, no corrective invoice or void (wave 3); (6) the PDF, Storage, Chromium on Vercel and production are unproven as for the invoice row.",
+    "gap": "Built and held by tests (D159): a deferred constraint trigger on refunds issues one credit note, in its own gap-free series, at commit for every refund that becomes `succeeded` by any path (`refundOrder()`, cancels, returns, the Stripe `refund.*` handler `applyStripeRefund()`, a refund made in Stripe's Dashboard, a Mollie refund through `applyRefundReport()` (D292), a manual refund of money taken outside (D173)), allocated over the invoice's rates (`creditAllocation()`), never above what is left per rate (a trigger); a return's refund carries its working; the refund email links and attaches it; an edit's refund gets none and the edit's own documents are issued instead (D174). Still short of Full: (1) the credit note's wording, the treatment of deductions and return shipping, and the not-registered rendering are hand-written and unreviewed (WAVES.md step 4); (2) the five-minute job adds missing refund events to the platform's Stripe webhook endpoint (`ensureSubscriptionEvents()` in `invoiceJobs()`), but that is untested and unchecked in Stripe's Dashboard, and the handler was tested against a fake Stripe only; (3) the rule that a refund of a payment not on the invoice gets no credit note (`payment_on_invoice()`) is a heuristic; (4) a refund Stripe reports as failed after it succeeded has no corrective document; (5) no manual credit note and no credit for a cancelled order never refunded; (6) PDFs, Storage and Chromium on Vercel are unproven as for the invoice row.",
     "bucket": "A",
     "wave": 1,
     "criteria": [
@@ -2086,7 +2103,10 @@
     },
     "decisions": [
       "D122",
-      "D159"
+      "D159",
+      "D173",
+      "D174",
+      "D292"
     ],
     "history": [
       {

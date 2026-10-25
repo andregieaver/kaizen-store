@@ -16,7 +16,7 @@
       "was": null
     },
     "weight": 3,
-    "gap": "No app model: no installable third-party apps, no app directory, no OAuth apps with scopes and no extension points inside the admin or the page builder. Integrations are a fixed list (Zapier, Make, Slack: D41, D101) and the owner's own code is limited to CSS (D100), an HTML block (D91) and consent-gated head and body code (D61). Understated by the weight: this is the structural gap. Plan section 5 decision 2: API, webhooks and scoped custom apps first, a public directory only when outside developers ask.",
+    "gap": "No app model: no installable third-party apps, no app directory, no OAuth apps with scopes and no extension points inside the admin or the page builder. Integrations are a fixed list Kaizena Flow builds (Zapier, Make, Slack: D41, D101; shipping carriers D133 to D138; Mollie D292; the WordPress plugin D169), and the owner's own code is limited to CSS (D100, D306), an HTML block (D91) and consent-gated head and body code (D61). Understated by the weight: this is the structural gap. Plan section 5 decision 2: API, webhooks and scoped custom apps first, a public directory only when outside developers ask.",
     "bucket": "C",
     "wave": null,
     "criteria": [
@@ -50,7 +50,7 @@
       "was": "partial"
     },
     "weight": 3,
-    "gap": "No merchant-facing API: an owner cannot create a token or choose scopes, and there are no REST or GraphQL endpoints over products, orders or customers. `/api/mcp` (D96) accepts only access tokens issued to Kaizen Life (`mcpCaller()` compares the token's client id with `KAIZEN_LIFE_CLIENT_ID`), so it is a first-party integration, not an Admin API; one-way events go to Zapier, Make and Slack (D41). Re-rated from partial: nothing here is usable by a merchant or a developer of theirs.",
+    "gap": "No merchant-facing API: an owner cannot create a token or choose scopes, and there are no REST or GraphQL endpoints that read or write products, orders or customers. `/api/mcp` (D96) accepts only access tokens issued to Kaizen Life (`mcpCaller()` compares the token's client id with `KAIZEN_LIFE_CLIENT_ID`), so it is a first-party integration; the WordPress plugin's API (D169, D170) reads only what a shopper can see, for a site an owner connected; one-way events go to Zapier, Make and Slack (D41). Re-rated from partial earlier: nothing here lets a merchant or their developer manage the store.",
     "bucket": "A",
     "wave": 9,
     "criteria": [
@@ -73,7 +73,8 @@
     },
     "decisions": [
       "D95",
-      "D96"
+      "D96",
+      "D169"
     ],
     "history": [
       {
@@ -102,26 +103,55 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "partial",
       "rechecked": true,
-      "was": null
+      "was": "missing"
     },
     "weight": 2,
-    "gap": "Only Kaizen's own storefront renders a store: it reads its own database server-side. There is no public catalogue, cart or checkout API; the only machine interfaces are the owner MCP server (`/api/mcp`, Kaizen Life only) and `/api/recommendations` for Kaizen's own grids. Plan section 5 decision 4: cheap once the Admin API exists, weight 2.",
+    "gap": "The WordPress plugin's API (D169, D170; `/api/wordpress/v1/*`, src/server/wordpress-route.ts, src/server/wordpress-shop.ts, src/server/cart-handoff.ts) is a storefront API in practice: a store's products, terms and one product as a market shows them (prices by wordpressPrice() from <Price>'s rules, never a cost or a private field), a cart quote at live price and stock, and a hand-off that makes a cart with the same checks as adding in the store and returns a once-only link that opens the store's own checkout; rate-limited, a store that is not the connection's is a 404. Still short: a token is issued only to a WordPress site an owner approved (exchangeCode() with a verifier), not a public token per store and market a developer can make for a front end of their own (criterion 1); the cart is goods and downloads only (no bookings, plans or gift cards) and is quoted and handed over rather than changed through the API (criterion 2); no documented, versioned public contract. Plan section 5 decision 4: cheap once the Admin API exists. Merged on 2026-10-25 (README rule 8): `storefront.headless-storefront-api-hydrogen` was the same Shopify feature (rated partial); its criteria and evidence are here.",
     "bucket": "C",
     "wave": 9,
     "criteria": [
       "A read endpoint returns a store's published products, categories and prices as a given market shows them (VAT label and currency included) with a public token tied to that store and market; hidden, draft and business-only products are never returned.",
       "A cart can be created and changed through the API with live stock checks and the same caps as the site, and the checkout hand-off URL opens Kaizen's own checkout with that cart.",
-      "Responses never contain cost, exact stock beyond an available flag, or other stores' data, and the endpoint is rate limited and cached by store tag."
+      "Responses never contain cost, exact stock beyond an available flag, or other stores' data, and the endpoint is rate limited and cached by store tag.",
+      "Decision recorded (docs/parity-plan.md section 5, decision 4) to build or skip.",
+      "If built: a read API for catalogue, prices (per market, VAT-inclusive), stock and a cart, behind per-store public tokens, rate-limited and cached, with the same prices as the storefront (euro scenario).",
+      "A cart created by the API reaches checkout through `placeOrder()` and agrees with `cartSummary()`."
     ],
     "evidence": {
-      "files": [],
-      "tests": [],
+      "files": [
+        "src/app/api/wordpress/v1/stores/[slug]/products/route.ts",
+        "src/app/api/wordpress/v1/stores/[slug]/cart/handoff/route.ts",
+        "src/app/api/wordpress/v1/stores/[slug]/cart/quote/route.ts",
+        "src/server/wordpress-route.ts",
+        "src/server/wordpress-shop.ts",
+        "src/server/cart-handoff.ts",
+        "src/lib/wordpress.ts",
+        "src/lib/wordpress-cart.ts",
+        "src/app/api/mcp/route.ts",
+        "src/server/store-mcp.ts"
+      ],
+      "tests": [
+        "src/server/wordpress.int.test.ts",
+        "src/lib/wordpress.test.ts",
+        "src/lib/wordpress-cart.test.ts"
+      ],
       "untested": false
     },
-    "decisions": [],
-    "history": []
+    "decisions": [
+      "D169",
+      "D170",
+      "D96"
+    ],
+    "history": [
+      {
+        "on": "2026-10-25",
+        "from": "missing",
+        "to": "partial",
+        "why": "Read src/app/api/wordpress/v1/stores/[slug]/{products,product,terms,view,cart/quote,cart/handoff}/route.ts, src/server/wordpress-route.ts, src/server/wordpress-shop.ts and src/server/cart-handoff.ts (D169, D170): a token-gated, rate-limited, read-only storefront API with prices from <Price>'s rules per market, a live cart quote and a hand-off that creates a cart with the store's own checks and opens its checkout; held by src/server/wordpress.int.test.ts (run, passing), src/lib/wordpress.test.ts and src/lib/wordpress-cart.test.ts. Criteria 1 and 2 hold in part (the token belongs to an owner-connected WordPress site, not a public per-store token)."
+      }
+    ]
   },
   {
     "id": "platform.outgoing-webhooks",
@@ -140,7 +170,7 @@
       "was": null
     },
     "weight": 3,
-    "gap": "Zapier, Make and Slack hosts only (`checkWebhookUrl()` refuses any other address, D41); seven events (order paid, sent, cancelled, refunded, customer created, subscription started and cancelled) where the report said about eight; no signing secret or signature on deliveries; no events for products, stock, returns or withdrawals (D153) or discounts. What exists is solid: queued by the database, five retries over about 8.6 hours (60 s, 5 min, 30 min, 2 h, 6 h), a delivery log kept 30 days, encrypted addresses, a test send.",
+    "gap": "Zapier, Make and Slack hosts only (`checkWebhookUrl()` refuses any other address, D41); eight events (order paid, sent, cancelled, refunded, customer created, subscription started and cancelled, and since D216 someone waiting in support; `EVENTS` in src/lib/integrations.ts); no signing secret or signature on deliveries; no events for products, stock, returns or withdrawals, or discounts; no payload version or per-endpoint topic choice beyond the event list. What exists is solid: queued by the database, five retries over about 8.6 hours (60 s, 5 min, 30 min, 2 h, 6 h), a delivery log kept 30 days, encrypted addresses, a test send.",
     "bucket": "A",
     "wave": 9,
     "criteria": [
@@ -166,7 +196,8 @@
     },
     "decisions": [
       "D41",
-      "D101"
+      "D101",
+      "D216"
     ],
     "history": []
   },
@@ -228,26 +259,44 @@
       "was": null
     },
     "weight": 3,
-    "gap": "Fixed automations only: abandoned-cart and plan reminders (D33), events to Zapier, Make and Slack (D41, D101), subscription and delivery jobs in the five-minute cron, and the AI manager's gated tools on request (D94, D103). No trigger-condition-action builder, no automation an owner defines, no run log. Zapier or Make give an owner a builder outside Kaizen over the seven events.",
+    "gap": "Order rules (D238, Settings -> Automation, src/lib/order-rules.ts, src/server/order-rules.ts) are an owner-made trigger-condition-action builder for one trigger, an order paid: a closed list of conditions, actions tag, notify staff, hold fulfilment and ask the AI manager (D318), switched on or off, at most 50 a store and 20 AI asks a day, each run logged with what each condition and action came to. Fixed automations besides: cart and plan reminders (D33), email automations (D298), events to Zapier, Make and Slack (D41, D101), the AI manager's follow-ups (D318) and the autopilot's plans (D309). Still missing: triggers other than an order paid (return, customer, stock, schedule), actions that email, post to Slack or send an HTTP request through the address guard (criterion 1), and the AI manager drafting a workflow from a sentence (order_rules is a read-only tool, criterion 4). Merged on 2026-10-25 (README rule 8): `customers.workflow-automation-flow` was the same Shopify feature (rated partial); its criteria and evidence are here.",
     "bucket": "A",
     "wave": 9,
     "criteria": [
       "An owner builds a workflow from a trigger (an order, return, customer, stock or schedule event), conditions on its data and actions (email, tag, note, post to Slack, send an HTTP request through the address guard) and switches it on or off.",
       "Each run is logged with the trigger, the path taken and each action's result; a failing action does not run twice and the owner sees it.",
       "Per-store limits stop loops and floods (runs per hour, actions per run), and no action can spend money, refund or change prices without the assistant's approval gate.",
-      "The AI manager can draft a workflow from a sentence, which is only saved off and shown for the owner to read and switch on; copy it passes `findClaims()`."
+      "The AI manager can draft a workflow from a sentence, which is only saved off and shown for the owner to read and switch on; copy it passes `findClaims()`.",
+      "An owner builds a workflow in the admin from one trigger (order paid, customer created, low stock, return requested), conditions on the event's fields and one or more actions (tag a customer, email staff, post to Slack, send a webhook).",
+      "A workflow runs once per event (idempotency key), its runs and outcomes are logged with retries, and a loop or runaway is stopped by a depth and rate cap (test).",
+      "An action that emails a customer or moves money is gated and waits for a person's yes, like the AI manager's gated tools.",
+      "A workflow never sees another store's events, and is not copied with a store (`never` in `COPY_RULES`)."
     ],
     "evidence": {
       "files": [
         "src/server/cart-reminders.ts",
         "src/server/integrations.ts",
         "src/server/owner-assistant.ts",
-        "src/server/manager-tools.ts"
+        "src/server/manager-tools.ts",
+        "src/lib/order-rules.ts",
+        "src/server/order-rules.ts",
+        "src/components/admin/automation/rule-editor.tsx",
+        "src/lib/integrations.ts",
+        "src/server/slack.ts",
+        "src/lib/slack.ts",
+        "src/app/admin/(gated)/[store]/integrations/page.tsx",
+        "src/app/admin/(gated)/[store]/settings/automation/page.tsx",
+        "src/app/admin/(gated)/[store]/settings/automation/log/page.tsx"
       ],
       "tests": [
         "src/server/cart-reminders.int.test.ts",
         "src/server/integrations.int.test.ts",
-        "src/server/owner-assistant.int.test.ts"
+        "src/server/owner-assistant.int.test.ts",
+        "src/lib/order-rules.test.ts",
+        "src/server/order-rules.int.test.ts",
+        "e2e/signed-in/automation.spec.ts",
+        "src/lib/integrations.test.ts",
+        "src/lib/slack.test.ts"
       ],
       "untested": false
     },
@@ -255,7 +304,12 @@
       "D33",
       "D41",
       "D94",
-      "D103"
+      "D103",
+      "D238",
+      "D298",
+      "D309",
+      "D318",
+      "D101"
     ],
     "history": []
   },
@@ -315,54 +369,6 @@
     "history": []
   },
   {
-    "id": "platform.metaobjects",
-    "domain": "platform",
-    "feature": "Metaobjects",
-    "shopify": {
-      "tier": "native",
-      "text": "Native. Metaobjects are custom data structures of several related fields that stand on their own and can be \"referenced from multiple resources\"; merchants manage merchant-owned types in the admin, and a type can have optional features such as publishable or renderable. The page names no plan restriction or limits.",
-      "url": "https://shopify.dev/docs/apps/build/custom-data/metaobjects",
-      "fetched": true,
-      "checkedOn": "2026-10-03"
-    },
-    "kaizen": {
-      "rating": "partial",
-      "rechecked": true,
-      "was": null
-    },
-    "weight": 2,
-    "gap": "Group, repeater and flexible-content fields (D119, D120) hold structured data inside a thing that already exists, and relation fields point at products, pages and terms; there is no standalone entry type: no definition of a content type of its own, no entries listed and edited apart from a product or page, no entry reused by reference across things, no entry page with its own address.",
-    "bucket": "A",
-    "wave": 6,
-    "criteria": [
-      "An owner defines an entry type (name, fields from the existing field types) and creates, edits, translates and deletes entries on a page of their own.",
-      "A relation field on a product, page, article or another entry points at entries by id; deleting an entry clears the references, and the site reads only entries of the store.",
-      "A content grid or loop block lists a type's entries, and an entry type can be switched to have a page at its own address with a title, search texts and a sitemap entry.",
-      "Entries and types are copied with the store (a `COPY_RULES` decision) and appear in the translation worklist."
-    ],
-    "evidence": {
-      "files": [
-        "src/lib/custom-fields.ts",
-        "src/server/custom-fields.ts",
-        "src/lib/field-loop.ts",
-        "src/lib/field-group-editor.ts"
-      ],
-      "tests": [
-        "src/server/custom-fields-flexible.int.test.ts",
-        "src/lib/custom-fields-flexible.test.ts",
-        "src/lib/field-loop.test.ts",
-        "e2e/custom-fields-flexible.spec.ts",
-        "e2e/custom-fields-loop.spec.ts"
-      ],
-      "untested": false
-    },
-    "decisions": [
-      "D119",
-      "D120"
-    ],
-    "history": []
-  },
-  {
     "id": "platform.staff-accounts-and-roles",
     "domain": "platform",
     "feature": "Staff accounts and roles",
@@ -379,7 +385,7 @@
       "was": null
     },
     "weight": 4,
-    "gap": "Criteria 1, 2 and 4 are built and tested (roles of per-section permissions assigned from the Team page and refused by every page, action and route; collaborators with a role and an expiry, badged in the staff list, ignored by getMembership() once expired and ended by the daily job; an Activity log by person, area, action and period that holds every role change). Criterion 3 is Partial for the reason of international.staff-two-step-authentication: nothing has run against a real Supabase Auth, and the platform admin's real enrolment in production is still to be recorded. Also not built: a staff limit by plan (Shopify limits users by plan), passkeys (dropped from the criterion), and an agency account that invites itself (collaborators are invited by the owner). Merged on 2026-10-04 (parity README rule 8) with international.staff-roles-and-permissions, which was the same Shopify feature in the international domain and had reached Full on its own four criteria (roles, guards on every page and action, the AI manager and MCP respecting permissions, one owner and audited role changes: all built and tested); the survivor takes both rows' criteria and the larger weight, and stays Partial until the two-step criterion is shown against real Supabase Auth.",
+    "gap": "Criteria 1, 2 and 4 are built and tested (roles of per-section permissions assigned from the Team page and refused by every page, action and route; collaborators with a role and an expiry, badged in the staff list, ignored by getMembership() once expired and ended by the daily job; an Activity log by person, area, action and period that holds every role change). Criterion 3 is Partial for the reason of international.staff-two-step-authentication: nothing has run against a real Supabase Auth, and the platform admin's real enrolment in production is still to be recorded. A staff limit by plan is built since D314 (`staff_seats` in LIMITS, checked when an invitation is made, src/server/settings.ts, held by limits-enforce.int.test.ts). Not built: passkeys (dropped from the criterion) and an agency account that invites itself (collaborators are invited by the owner). Merged on 2026-10-04 (parity README rule 8) with international.staff-roles-and-permissions, which was the same Shopify feature in the international domain and had reached Full on its own four criteria (roles, guards on every page and action, the AI manager and MCP respecting permissions, one owner and audited role changes: all built and tested); the survivor takes both rows' criteria and the larger weight, and stays Partial until the two-step criterion is shown against real Supabase Auth.",
     "bucket": "A",
     "wave": 1,
     "criteria": [
@@ -435,12 +441,14 @@
         "src/server/store-mcp.int.test.ts",
         "src/server/store-members-expiry.test.ts",
         "src/server/store-roles.int.test.ts",
-        "src/server/two-step.int.test.ts"
+        "src/server/two-step.int.test.ts",
+        "src/server/limits-enforce.int.test.ts"
       ],
       "untested": false
     },
     "decisions": [
-      "D158"
+      "D158",
+      "D314"
     ],
     "history": []
   },
@@ -513,7 +521,7 @@
       "was": null
     },
     "weight": 3,
-    "gap": "D129 duplicates a whole store and D126 duplicates pages; A/B versions of pages (D148). Themes now keep versions: every Publish of a theme is a `design_preset_versions` row (D241), a store's installed themes keep the look they placed and an update keeps the look before for undo (D245), switching puts the live look away whole (D241, D244), and letting pages follow the theme keeps each page before and after for undo (D243). Still short: no revision history or restore of pages, headers, footers, product layouts or settings; no staging copy of a store merged back; no shareable preview address of an unpublished page for someone without a sign-in (the theme preview of an installed theme is for the store's staff only).",
+    "gap": "D129 duplicates a whole store and D126 duplicates pages; A/B versions of pages (D148). Since D305 every save, publish and live-site edit of a page keeps a version (`commerce.page_versions`, written only by keepVersion(), the newest fifty kept; headers, footers and product layouts are pages, so theirs too), listed in the editor with who and when, and Use this version puts one back in the editor as unsaved changes; the editor has undo and redo. Themes keep versions (D241), an install's update keeps the look before for undo (D245), switching puts the live look away whole (D241, D244), and letting pages follow the theme keeps each page before and after (D243). Still short: no comparison of two versions, and a store's own theme settings and site CSS keep no revision history (criterion 1); no shareable, expiring preview address of an unpublished page or theme for someone without a sign-in (the agent's look tokens, D310, are for its own photographs; the installed-theme preview is for staff); no staging copy of a store merged back.",
     "bucket": "A",
     "wave": 9,
     "criteria": [
@@ -529,7 +537,9 @@
         "src/server/page-duplicate.ts",
         "src/lib/page-duplicate.ts",
         "src/server/themes.ts",
-        "src/lib/theme.ts"
+        "src/lib/theme.ts",
+        "src/server/page-versions.ts",
+        "src/lib/edit-history.ts"
       ],
       "tests": [
         "src/server/store-copy.int.test.ts",
@@ -537,7 +547,10 @@
         "src/server/themes.int.test.ts",
         "src/lib/page-duplicate.test.ts",
         "src/lib/store-copy-rules.test.ts",
-        "e2e/themes.spec.ts"
+        "e2e/themes.spec.ts",
+        "src/server/page-versions.int.test.ts",
+        "src/lib/edit-history.test.ts",
+        "e2e/signed-in/page-history.spec.ts"
       ],
       "untested": false
     },
@@ -548,7 +561,8 @@
       "D148",
       "D241",
       "D243",
-      "D245"
+      "D245",
+      "D305"
     ],
     "history": []
   },
@@ -631,7 +645,7 @@
       "was": null
     },
     "weight": 2,
-    "gap": "Owners write CSS for one page and for the whole site (D100, checked by `cssProblem()`), an HTML block (D91), and head and body code that loads only after consent and only on a store's own host (D61, `liveCustomCode()`). No templating language, no theme files, no CLI or Git workflow, no way for a developer to change markup the page builder does not expose. The builder's model (rows, columns, blocks) is a deliberate alternative to theme code, which is why the plan leaves it unplaced.",
+    "gap": "Owners write CSS for one page and for the whole site (D100, checked by `cssProblem()`, also on the live site since D306), an HTML block (D91), and head and body code that loads only after consent and only on a store's own host (D61, `liveCustomCode()`). No templating language, no theme files, no CLI or Git workflow, no way for a developer to change markup the page builder does not expose. The builder's model (rows, columns, blocks) is a deliberate alternative to theme code, which is why the plan leaves it unplaced.",
     "bucket": "C",
     "wave": null,
     "criteria": [
@@ -656,7 +670,8 @@
     "decisions": [
       "D61",
       "D91",
-      "D100"
+      "D100",
+      "D306"
     ],
     "history": []
   },
@@ -758,7 +773,7 @@
       "was": null
     },
     "weight": 3,
-    "gap": "The page replicator (D150) copies another site's pages into the builder, store copy (D129) duplicates one Kaizen store, and `scripts/import-life-work.mjs` imports Work history from Kaizen Life. Since wave 2 (D165) the product import job also reads Shopify's product CSV: a check step lists findings before anything is saved (a dry run), it asks whether prices include VAT and which market the plain Price column is for, fetches pictures only through `safeFetch()`, matches products by handle so a repeated import updates rather than duplicates, and never imports the compare-at price or turns Vendor into a manufacturer; a redirect import reads Shopify's `Redirect from`/`Redirect to` file. Still missing: a WooCommerce product file; any customer import (deferred to wave 5 with consent, `customers.customer-profiles-notes-csv-import-and-export`); redirects made automatically from a product import's old addresses (only a separate redirect file does this); and order history import. Shopify's own migration app imports no orders either, so the missing order import is a gap against third-party tools, not against the native feature.",
+    "gap": "The page replicator (D150) copies another site's pages into the builder, store copy (D129) duplicates one Kaizena Flow store, and `scripts/import-life-work.mjs` imports Work history from Kaizen Life. Since wave 2 (D165) the product import job reads Shopify's product CSV: a check step lists findings before anything is saved (a dry run), it asks whether prices include VAT and which market the plain Price column is for, fetches pictures only through `safeFetch()`, matches products by handle so a repeated import updates rather than duplicates, and never imports the compare-at price or turns Vendor into a manufacturer; a redirect import reads Shopify's `Redirect from`/`Redirect to` file (D168), a stock file is imported per location (D172), and reviews are imported from a file (D301 G3b, src/server/review-import.ts, never marked verified). Still missing: a WooCommerce product file; any customer or subscriber import (customers.customer-profiles-notes-csv-import-and-export); redirects made automatically from a product import's old addresses; and order history import (Shopify's own migration app imports no orders either).",
     "bucket": "A",
     "wave": 2,
     "criteria": [
@@ -778,7 +793,8 @@
         "src/server/product-import.ts",
         "src/server/data-jobs.ts",
         "src/lib/redirect-csv.ts",
-        "src/server/redirect-import.ts"
+        "src/server/redirect-import.ts",
+        "src/server/review-import.ts"
       ],
       "tests": [
         "src/server/replicate.int.test.ts",
@@ -789,13 +805,18 @@
         "src/server/product-import.int.test.ts",
         "src/lib/product-import.test.ts",
         "src/server/redirect-import.int.test.ts",
-        "src/lib/redirect-csv.test.ts"
+        "src/lib/redirect-csv.test.ts",
+        "src/server/review-import.int.test.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D129",
-      "D150"
+      "D150",
+      "D165",
+      "D168",
+      "D172",
+      "D301"
     ],
     "history": []
   },
@@ -956,7 +977,7 @@
       "was": "missing"
     },
     "weight": 3,
-    "gap": "An admin shell with a few responsive classes (`admin-frame.tsx`; no test holds the admin at phone width, the phone e2e tests cover the storefront only) and an AI manager with voice and live voice that works from a phone (D104, D105); order events reach a phone only through Slack (D101). No web app manifest or service worker (none under `src/app` or `public`), so the admin cannot be installed, and no push notification for new orders. Plan section 5 decision 6: an installable PWA with push, native apps not worth it yet.",
+    "gap": "An admin shell with a few responsive classes (`admin-frame.tsx`; no test holds the admin at phone width, the phone e2e tests cover the storefront only) and an AI manager with voice and live voice that works from a phone (D104, D105); order events reach a phone only as staff alert emails (D238) or Slack messages (D101). No web app manifest or service worker (none under `src/app` or `public`), so the admin cannot be installed, and no push notification for new orders. Plan section 5 decision 6: an installable PWA with push, native apps not worth it yet.",
     "bucket": "C",
     "wave": 9,
     "criteria": [
@@ -982,7 +1003,8 @@
     "decisions": [
       "D101",
       "D104",
-      "D105"
+      "D105",
+      "D238"
     ],
     "history": [
       {
@@ -1029,74 +1051,6 @@
     "history": []
   },
   {
-    "id": "platform.admin-ai-assistant",
-    "domain": "platform",
-    "feature": "Admin AI assistant",
-    "shopify": {
-      "tier": "native",
-      "text": "Native. Sidekick can analyze data, manage orders and edit products, write blog posts, product descriptions and images, generate custom apps, remembers past conversations and saves repeated prompts as shortcuts, and works on desktop, mobile and Apple Watch by text, voice or screen sharing; the page names no plan restriction.",
-      "url": "https://help.shopify.com/en/manual/shopify-admin/productivity-tools/sidekick",
-      "fetched": true,
-      "checkedOn": "2026-10-03"
-    },
-    "kaizen": {
-      "rating": "partial",
-      "rechecked": true,
-      "was": "full"
-    },
-    "weight": 2,
-    "gap": "The AI manager (D94, D103) has about 70 owner tools with approval gates for sending, publishing and spending, memory and skills, voice and live voice (D104, D105), usage and cost (D106, D145), and the same tools are served to Kaizen Life (D96). It reads and acts on orders, returns, discounts, campaigns, stock, recommendations, experiments and fields, but has no tool to create or edit products, pages, menus or themes (those are separate AI studios), no background tasks and no screen sharing. The AI domain rates the same capability partial (w3), and plan wave 8 names the missing editing tools.",
-    "bucket": "A",
-    "wave": 8,
-    "criteria": [
-      "Gated tools create and update a product draft and a page draft; nothing is published or priced without the owner's yes, and the model never states a price or stock it was not given by a tool.",
-      "A tool edits a menu and a page's rows through the same validation as the editor (`productInput`, `pageInput`), with every text passing `findClaims()`.",
-      "A long job (translating a store, building a page) runs in the background with progress the owner can read, and survives closing the panel.",
-      "Each new tool has zod arguments, a `TOOL_WORDS` line and a `gate`, and is served by the store MCP server like the rest."
-    ],
-    "evidence": {
-      "files": [
-        "src/server/owner-assistant.ts",
-        "src/server/assistant-route.ts",
-        "src/lib/owner-tools.ts",
-        "src/server/owner-tools.ts",
-        "src/server/manager-tools.ts",
-        "src/lib/manager-tools.ts",
-        "src/server/assistant-memory.ts",
-        "src/server/live-voice.ts",
-        "src/server/ai-usage.ts",
-        "src/lib/assistant-skills.ts"
-      ],
-      "tests": [
-        "src/server/owner-assistant.int.test.ts",
-        "src/server/ai-manager.int.test.ts",
-        "src/server/live-voice.int.test.ts",
-        "src/server/ai-usage.int.test.ts",
-        "src/server/owner-tools-fields.int.test.ts",
-        "src/lib/speech-text.test.ts",
-        "src/lib/admin-map.test.ts"
-      ],
-      "untested": false
-    },
-    "decisions": [
-      "D94",
-      "D96",
-      "D103",
-      "D104",
-      "D105",
-      "D106",
-      "D145"
-    ],
-    "history": [
-      {
-        "on": "2026-10-03",
-        "from": "full",
-        "to": "partial",
-        "why": "Read at HEAD: OWNER_TOOLS (src/lib/owner-tools.ts) has reads, orders, discounts, campaigns, stock, experiments and fields but no create or edit tool for products, pages, menus or themes, which Sidekick has ('editing products'); the AI domain row already says partial. The two rows now agree."
-      }
-    ]
-  },
-  {
     "id": "platform.custom-domains-and-ssl",
     "domain": "platform",
     "feature": "Custom domains and SSL",
@@ -1139,7 +1093,11 @@
       ],
       "untested": false
     },
-    "decisions": [],
+    "decisions": [
+      "D313",
+      "D315",
+      "D317"
+    ],
     "history": []
   },
   {
@@ -1159,7 +1117,7 @@
       "was": null
     },
     "weight": 4,
-    "gap": "Vercel's network serves the storefront, with functions in Dublin next to a single-region Supabase database (D6), and `/api/health` reports the database, email and key checks (`src/lib/health.ts`). No public status page, no error tracking (D13 chose none until needed), no SLA or uptime promise, no restore test recorded in the repo, and pushes go straight to production (D5: 'revisit before launch'). The uptime promise is a contract, so the row can be built as far as software goes and then declared, never Full.",
+    "gap": "Vercel's network serves the storefront, with functions in Dublin next to a single-region Supabase database (D6); `/api/health` reports the database, email and key checks (`src/lib/health.ts`). Since D314 each store's use is measured per day (requests and server errors from Vercel's log drain), with per-store budgets on costly public endpoints, a read replica option, a capacity runbook and a restore runbook (docs/runbooks/restore.md); since D318 every scheduled job is recorded and the platform's home says which is late or failing (src/server/cron-runs.ts, src/lib/cron-health.ts) and server code logs one JSON line through log(). Still missing: a public status page with history and incidents (criteria 1 and 2); error tracking in an EU-hosted tool and an alert to platform admins when a health check fails (D13 chose none until needed); a restore drill recorded (the runbook's drill log is empty); and pushes still go straight to production (D5). The uptime promise is a contract, so the row can be built as far as software goes and then declared, never Full.",
     "bucket": "D",
     "wave": 9,
     "criteria": [
@@ -1172,17 +1130,24 @@
       "files": [
         "src/app/api/health/route.ts",
         "src/lib/health.ts",
-        "vercel.json"
+        "vercel.json",
+        "src/lib/cron-health.ts",
+        "src/server/cron-runs.ts",
+        "docs/runbooks/restore.md"
       ],
       "tests": [
-        "src/lib/health.test.ts"
+        "src/lib/health.test.ts",
+        "src/lib/cron-health.test.ts",
+        "src/server/cron-runs.int.test.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D5",
       "D6",
-      "D13"
+      "D13",
+      "D314",
+      "D318"
     ],
     "history": []
   },
@@ -1314,7 +1279,7 @@
       "was": null
     },
     "weight": 4,
-    "gap": "Invite-only beta with manual approval (P3 in `docs/platform.md`): `/sign-up` stores an access request, a platform admin approves it at `/admin/platform`, which calls `commerce.approve_access_request()` (account, `clone_store()` and decision in one transaction) and emails a sign-in link. After approval a setup wizard (`/admin/{store}/setup/{step}`, progress derived from data in `src/server/setup.ts`) guides the owner. No instant store creation, no trial or plan checkout at sign-up.",
+    "gap": "Opening a store is invite-only with manual approval (P3 in `docs/platform.md`): `/sign-up` stores an access request with a theme and preset chosen (D259, D273), a platform admin approves it at `/admin/platform`, which calls `commerce.approve_access_request()` (account, `clone_store()` of the theme's content and decision in one transaction) and emails a sign-in link in the request's language (D312); a setup wizard (`/admin/{store}/setup/{step}`, progress derived from data in `src/server/setup.ts`, \"What will you sell?\" first, D178) then guides the owner. Since D317 a domain-only account is self-serve (`/get-domain`, behind a public switch that is off), but a store still needs a person's approval (D317 kept it so). No instant store creation, no trial or plan checkout at sign-up.",
     "bucket": "A",
     "wave": 9,
     "criteria": [
@@ -1337,7 +1302,13 @@
       ],
       "untested": false
     },
-    "decisions": [],
+    "decisions": [
+      "D178",
+      "D259",
+      "D273",
+      "D312",
+      "D317"
+    ],
     "history": []
   }
 ]

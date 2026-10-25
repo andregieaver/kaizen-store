@@ -85,7 +85,7 @@
       "was": null
     },
     "weight": 5,
-    "gap": "Caveat, not a gap in the editor: nesting is fixed at three levels (row, column, block), with at most 50 rows and 100 blocks per page (`ROWS_MAX`, `BLOCKS_MAX`); Shopify allows 25 sections, 1,250 blocks and up to eight nested levels per template.",
+    "gap": "Caveat, not a gap in the editor: a page is rows of columns of blocks, with one more level where a column holds a Columns component (D294, one level deep) or an FAQ answer holds components (D208); at most 50 rows and 100 blocks a page (`ROWS_MAX`, `BLOCKS_MAX` in `src/lib/page-content.ts`), where Shopify allows 25 sections, 1,250 blocks and up to eight nested levels per template. Built since the first read: undo, redo and page versions (D305), find and replace (D307), words edited in place on the canvas and the live site (D191 to D193).",
     "bucket": null,
     "wave": null,
     "criteria": [
@@ -102,7 +102,10 @@
         "src/lib/page-rows.ts",
         "src/lib/page-content.ts",
         "src/lib/global-parts.ts",
-        "src/server/pages.ts"
+        "src/server/pages.ts",
+        "src/lib/edit-history.ts",
+        "src/lib/page-find-replace.ts",
+        "src/lib/inline-edit.ts"
       ],
       "tests": [
         "src/lib/page-rows.test.ts",
@@ -110,7 +113,11 @@
         "src/lib/page-components.test.ts",
         "src/lib/global-parts.test.ts",
         "src/server/global-parts.int.test.ts",
-        "e2e/pages.spec.ts"
+        "e2e/pages.spec.ts",
+        "src/lib/nested-columns.test.ts",
+        "src/lib/page-find-replace.test.ts",
+        "src/lib/inline-edit.test.ts",
+        "src/lib/edit-history.test.ts"
       ],
       "untested": false
     },
@@ -124,7 +131,12 @@
       "D49",
       "D91",
       "D98",
-      "D151"
+      "D151",
+      "D191",
+      "D208",
+      "D294",
+      "D305",
+      "D307"
     ],
     "history": []
   },
@@ -306,7 +318,7 @@
       "was": null
     },
     "weight": 3,
-    "gap": "Articles are pages of type `article` built in the full page builder (D57), with a free-text author name, categories and tags, `Article` JSON-LD, one `/blog` per store (a page role, D112). No second blog, no author records, no comments, and no RSS or Atom feed route exists.",
+    "gap": "Articles are pages of type `article` built in the full page builder (D57), with a free-text author name, categories and tags, `Article` JSON-LD and one `/blog` per store (a page role, D112). Verified 2026-10-25: no second blog, no author records, no comments, and no RSS or Atom route.",
     "bucket": "A",
     "wave": 7,
     "criteria": [
@@ -504,7 +516,7 @@
       "was": null
     },
     "weight": 2,
-    "gap": "Caveat: no upload of an owner's own font files; about 1,800 Google families are self-hosted. Shopify's picker also offers licensed Monotype fonts, which Kaizen does not.",
+    "gap": "Caveat: no upload of an owner's own font files; about 1,800 Google families are self-hosted. Shopify's picker also offers licensed Monotype fonts, which Kaizen does not. A family with no stylesheet is served empty so a streamed page never breaks (D316, `e2e/missing-font.spec.ts`).",
     "bucket": null,
     "wave": null,
     "criteria": [
@@ -522,12 +534,14 @@
       "tests": [
         "src/lib/fonts.test.ts",
         "src/server/fonts.int.test.ts",
-        "e2e/fonts.spec.ts"
+        "e2e/fonts.spec.ts",
+        "e2e/missing-font.spec.ts"
       ],
       "untested": false
     },
     "decisions": [
-      "D59"
+      "D59",
+      "D316"
     ],
     "history": []
   },
@@ -716,7 +730,7 @@
       "was": null
     },
     "weight": 4,
-    "gap": "Prerendered Next.js pages on Vercel's network, functions pinned to Dublin next to the database, and guarded budgets (`e2e/performance.spec.ts`: the first scripts' bytes and eager first pictures; campaign notices under 0.5 s; A/B proxy overhead by `scripts/ab-ttfb.mjs`). Pictures are compressed in the browser at upload to the smallest quality that measures the same (D213: WebP, AVIF for page pictures, at most 1600 px with a 480 px copy), videos to at most 1080p, and background pictures carry a `srcset` of the two (D211). No merchant-facing speed report (`pnpm perf` is a developer's Lighthouse run), and product pictures are not offered per device size beyond the two copies.",
+    "gap": "Prerendered Next.js pages on Vercel's network, functions pinned to Dublin next to the database, and guarded budgets (`e2e/performance.spec.ts`: the first scripts' bytes and eager first pictures; campaign notices under 0.5 s; A/B proxy overhead by `scripts/ab-ttfb.mjs`). Pictures are compressed in the browser at upload to the smallest quality that measures the same (D213: WebP, AVIF for page pictures, at most 1600 px with a 480 px copy), videos to at most 1080p, and background pictures carry a `srcset` of the two (D211). Missing: a merchant-facing speed report (`pnpm perf` is a developer's Lighthouse run), and pictures at the visitor's device size: a product card draws one picture at 400 px with `unoptimized` (`src/components/product-card.tsx`), without a `srcset`.",
     "bucket": "A",
     "wave": 7,
     "criteria": [
@@ -754,44 +768,6 @@
     "history": []
   },
   {
-    "id": "storefront.headless-storefront-api-hydrogen",
-    "domain": "storefront",
-    "feature": "Headless: Storefront API, Hydrogen",
-    "shopify": {
-      "tier": "native",
-      "text": "Native.",
-      "url": "https://shopify.dev/docs/storefronts/headless/hydrogen/fundamentals",
-      "fetched": true,
-      "checkedOn": "2026-10-02"
-    },
-    "kaizen": {
-      "rating": "missing",
-      "rechecked": true,
-      "was": null
-    },
-    "weight": 2,
-    "gap": "No public catalogue, cart or checkout API: the storefront reads its own database server-side. The only machine interfaces are the owner MCP server (`/api/mcp`, for the owner's assistant) and internal routes. Plan section 5 decision 4: build a read API after the Admin API exists.",
-    "bucket": "C",
-    "wave": 9,
-    "criteria": [
-      "Decision recorded (docs/parity-plan.md section 5, decision 4) to build or skip.",
-      "If built: a read API for catalogue, prices (per market, VAT-inclusive), stock and a cart, behind per-store public tokens, rate-limited and cached, with the same prices as the storefront (euro scenario).",
-      "A cart created by the API reaches checkout through `placeOrder()` and agrees with `cartSummary()`."
-    ],
-    "evidence": {
-      "files": [
-        "src/app/api/mcp/route.ts",
-        "src/server/store-mcp.ts"
-      ],
-      "tests": [],
-      "untested": false
-    },
-    "decisions": [
-      "D96"
-    ],
-    "history": []
-  },
-  {
     "id": "storefront.customer-account-pages",
     "domain": "storefront",
     "feature": "Customer account pages",
@@ -808,7 +784,7 @@
       "was": null
     },
     "weight": 4,
-    "gap": "Caveat: one saved address (the last order's until saved); no returns list in My account (a withdrawal or return is reached from the order page and email, D153). Account depth is its own row in the customers domain.",
+    "gap": "Caveat: no list of returns in My account (a withdrawal or return is reached from the order page and its email, D153). Built since the first read: saved addresses, up to 20 with a default for shipping and one for billing (D304, `src/server/customer-addresses.ts`), *Your orders* with search and paging (D304 J2, `account/orders`), reviews to write (D301), the data export (D162) and support conversations (D216). Account depth is its own row in the customers domain.",
     "bucket": null,
     "wave": null,
     "criteria": [
@@ -823,14 +799,17 @@
         "src/app/s/[store]/[market]/account/page.tsx",
         "src/components/account-forms.tsx",
         "src/server/customers.ts",
-        "src/lib/store-parts.ts"
+        "src/lib/store-parts.ts",
+        "src/server/customer-addresses.ts"
       ],
       "tests": [
         "e2e/account.spec.ts",
         "e2e/wishlist.spec.ts",
         "e2e/company.spec.ts",
         "e2e/deliveries.spec.ts",
-        "e2e/page-roles.spec.ts"
+        "e2e/page-roles.spec.ts",
+        "src/server/customer-addresses.int.test.ts",
+        "src/server/account-orders.int.test.ts"
       ],
       "untested": false
     },
@@ -841,7 +820,10 @@
       "D108",
       "D113",
       "D130",
-      "D131"
+      "D131",
+      "D162",
+      "D301",
+      "D304"
     ],
     "history": []
   },
@@ -918,7 +900,7 @@
       "was": null
     },
     "weight": 2,
-    "gap": "Pages, headers, footers and themes have draft and published only (`pages.published_at`); scheduling exists for A/B tests (`experiments.scheduled_start`, started by `runExperimentJobs()`) and campaigns, not for content or the look. No end time and no automatic revert.",
+    "gap": "Pages, headers, footers and themes have draft and published only: no publish or unpublish time on `commerce.pages` and no job that publishes content or switches a look by itself (verified 2026-10-25). Scheduling exists elsewhere: A/B tests start by themselves (`experiments.scheduled_start`, `runExperimentJobs()`), campaigns and discount codes have start and end times, broadcasts can be scheduled (D297), and a theme install that follows updates is updated by the five-minute job (D245); none of these is a scheduled page, header, footer or theme change with an automatic revert.",
     "bucket": "A",
     "wave": 7,
     "criteria": [
@@ -941,7 +923,9 @@
     },
     "decisions": [
       "D53",
-      "D148"
+      "D148",
+      "D245",
+      "D297"
     ],
     "history": []
   },
@@ -962,7 +946,7 @@
       "was": null
     },
     "weight": 3,
-    "gap": "D305: every save, publish and change made on the live site keeps a version of the page (the newest fifty, with who and when), listed in the builder's Versions and taken back as unsaved changes, never over the published page; the builder has undo and redo (buttons and keys). Missing: a preview link a client can open without signing in (expiring, revocable, noindex), and versions of the theme's own settings saves (a theme's published versions are kept, D241, the store's edits to its live look are not).",
+    "gap": "Built (D305): every save, publish, text edit and CSS edit on the live site keeps a version (`keepVersion()` in `src/server/page-versions.ts`, the newest 50 per page, `VERSIONS_KEPT`, with who and when), listed in the builder's Versions and taken back as unsaved changes, never over the published page; the builder has undo and redo (buttons and keys). Missing: (1) a preview link an outsider opens without signing in (expiring, revocable, noindex): the signed tokens that exist open one replicator job's draft (`replicate-token.ts`, D150) or one page's draft for the AI manager's look for ten minutes (`/admin/account/look/{page}`, D310), and neither is offered to owners to share; (2) versions of the store's own theme settings: a theme's published versions (D241) and the look before an update (`theme_install_updates`, D245) are kept, but each save of the live look in Design settings or the builder's Theme tab is not.",
     "bucket": "A",
     "wave": 7,
     "criteria": [
@@ -995,7 +979,10 @@
       "D150",
       "D305",
       "D53",
-      "D60"
+      "D60",
+      "D241",
+      "D245",
+      "D310"
     ],
     "history": []
   },
@@ -1064,7 +1051,7 @@
       "was": null
     },
     "weight": 5,
-    "gap": "Evidence debt: `storeSitemap()` writes `xhtml:link` hreflang alternates, x-default and `image:image` entries (`src/server/seo.ts`), but no listed test asserts x-default or the picture entries (only hreflang da-DK is asserted in `e2e/smoke.spec.ts`).",
+    "gap": "Evidence debt, narrower now: hreflang alternates and x-default are asserted (`src/server/seo.int.test.ts` for categories and tags, `e2e/smoke.spec.ts` for the store sitemap), but no test asserts the `image:image` picture entries `storeSitemap()` writes (`src/server/seo.ts`).",
     "bucket": null,
     "wave": null,
     "criteria": [
@@ -1086,7 +1073,8 @@
     },
     "decisions": [
       "D21",
-      "D56"
+      "D56",
+      "D168"
     ],
     "history": []
   },
@@ -1376,7 +1364,7 @@
       "was": null
     },
     "weight": 3,
-    "gap": "D295: sign-ups feed the store's subscriber list with consent (words, time, source, language, double opt-in time), unsubscribe by the subscriber's own link or one-click, and are in the person's export and erasure. Still missing: contact messages in an admin inbox linked to the customer, and form tags selectable in segments.",
+    "gap": "D295: a confirmed newsletter sign-up feeds the store's subscriber list with consent (words, time, source, language, confirmation time), unsubscribes by the subscriber's own link or one-click, and is in the person's export and erasure. D304 J3: a form's tags are put on the confirmed address as customer tags (`tagFromForm()`), which segments select (`kind: 'tag'`, D296), held by `signup-codes.int.test.ts` and `segments.int.test.ts`. Still missing: contact messages in an admin inbox: the email form only emails its recipients and counts a row in `form_submissions` (`src/server/forms.ts`), with no status and no link to the customer with that address (the support inbox, D216, takes chat conversations, not form messages).",
     "bucket": "A",
     "wave": 5,
     "criteria": [
@@ -1396,7 +1384,8 @@
         "src/lib/marketing-consent.ts",
         "src/server/marketing-subscribers.ts",
         "src/app/admin/(gated)/[store]/subscribers/page.tsx",
-        "src/app/s/[store]/[market]/account/news/[token]/page.tsx"
+        "src/app/s/[store]/[market]/account/news/[token]/page.tsx",
+        "src/server/segments.ts"
       ],
       "tests": [
         "src/lib/forms.test.ts",
@@ -1405,14 +1394,18 @@
         "e2e/ab-form-goal.spec.ts",
         "src/db/marketing-subscribers.test.ts",
         "src/server/marketing-subscribers.int.test.ts",
-        "e2e/signed-in/subscribers.spec.ts"
+        "e2e/signed-in/subscribers.spec.ts",
+        "src/server/signup-codes.int.test.ts",
+        "src/server/segments.int.test.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D93",
       "D148",
-      "D295"
+      "D295",
+      "D296",
+      "D304"
     ],
     "history": []
   },
@@ -1433,7 +1426,7 @@
       "was": null
     },
     "weight": 5,
-    "gap": "Caveat: category and tag names are not translatable yet (`commerce.terms.name`; `TRANSLATE_SCOPES` are products, menus, pages, fields and returns), so a category page, breadcrumb or filter facet name stays in the main language (see catalogue.collections-manual).",
+    "gap": "Caveat: category and tag names are not translatable (`commerce.terms.name`; the worklist's `terms` scope translates only their SEO title and description, D168), so a category's heading, breadcrumb or filter facet stays in the main language (see catalogue.collections-manual). A language may also have a domain of its own (D313).",
     "bucket": null,
     "wave": null,
     "criteria": [
@@ -1471,7 +1464,9 @@
       "D55",
       "D109",
       "D110",
-      "D111"
+      "D111",
+      "D168",
+      "D313"
     ],
     "history": []
   },
@@ -1598,7 +1593,7 @@
       "was": "full"
     },
     "weight": 2,
-    "gap": "AI builds pages: the page studio interviews, plans, writes and makes pictures into a draft (D92), the replicator copies another site's page (D150), translation and motion plans are suggestions. It has no tool for the look (theme colours, fonts), the header or footer, or menus (`OWNER_TOOLS` has none), and nothing builds a whole store from one description.",
+    "gap": "Built since the last read (D308 to D310): the AI manager builds and edits page drafts (`build_page`, `edit_page`; built after the answer by `runPageJobs()`, `publish_page` gated), makes menus of the store's own links only (`save_menu`, gated while a menu is shown), chooses the standard header's and footer's menus and logo (`set_header_footer`, gated), adds, previews and makes a theme or preset live (`add_theme`, `try_theme`, `make_theme_live`, gated, the charge kept with the approval), sets the store's details, countries, languages, currencies and shipping (setup tools, at once while the store is being set up), and looks at what it built (`look_at_page`, `look_at_store`); the page studio (D92), the replicator (D150) and a theme's starting content (D275) remain. Still short: (1) no theme change from a description: the tools choose among published themes and presets and never set the Theme tab's colours, fonts or buttons or warn on contrast; (2) no custom header or footer layout from AI, only the standard one's menus and logo; (3) no single flow from one description to theme, front page, pages and menus as drafts: the owner, or a plan the owner approves (D309), drives it tool by tool.",
     "bucket": "A",
     "wave": 8,
     "criteria": [
@@ -1615,14 +1610,22 @@
         "src/lib/replicate.ts",
         "src/server/replicate.ts",
         "src/lib/motion-plan.ts",
-        "src/server/page-translate.ts"
+        "src/server/page-translate.ts",
+        "src/server/site-tools.ts",
+        "src/server/design-tools.ts",
+        "src/server/setup-tools.ts",
+        "src/server/page-looks.ts"
       ],
       "tests": [
         "src/lib/page-ai.test.ts",
         "src/server/page-ai.int.test.ts",
         "src/server/replicate.int.test.ts",
         "src/lib/replicate-build.test.ts",
-        "e2e/replicate.spec.ts"
+        "e2e/replicate.spec.ts",
+        "src/server/site-tools.int.test.ts",
+        "src/server/design-tools.int.test.ts",
+        "src/server/setup-tools.int.test.ts",
+        "src/server/page-looks.int.test.ts"
       ],
       "untested": false
     },
@@ -1631,7 +1634,11 @@
       "D94",
       "D110",
       "D128",
-      "D150"
+      "D150",
+      "D275",
+      "D308",
+      "D309",
+      "D310"
     ],
     "history": [
       {
@@ -1659,7 +1666,7 @@
       "was": "missing"
     },
     "weight": 2,
-    "gap": "A store whose setup is not finished (or with `seo.hidden`) is noindexed and left out of sitemaps and llms.txt, but anyone with the address can view it. No password, no coming-soon landing page, and no way to put an open store back in private mode.",
+    "gap": "A store whose setup is not finished (or with `seo.hidden`) is noindexed and left out of sitemaps, llms.txt and feeds, but anyone with the address can view it; a suspended or closed store is a 404 (D171) and a store with its shop off is a website (D178), neither a private mode. No password, no coming-soon page built in the builder, no unlock cookie, and no way to put an open store back in private mode (verified 2026-10-25: no such column, setting or route).",
     "bucket": "A",
     "wave": 7,
     "criteria": [
@@ -1680,7 +1687,9 @@
       "untested": false
     },
     "decisions": [
-      "D21"
+      "D21",
+      "D171",
+      "D178"
     ],
     "history": [
       {
@@ -1708,7 +1717,7 @@
       "was": null
     },
     "weight": 3,
-    "gap": "All four criteria are built and tested; Partial only because the independent audit is bucket D and the payment form is not scanned. e2e/a11y.spec.ts (axe, light and dark, serious and critical fail) covers the pages CI can reach; the builder's Checks tab (src/lib/page-a11y.ts: missing alt text, empty links and buttons, heading order, contrast, placeholders, translations too) links each issue to its block; savePage() asks before publishing a page with a blocking issue and records the owner's choice (needs_confirmation, acknowledgedIssues, audit entry page.published_with_issues); the statement is generated from facts the site holds and flagged for review. Missing: (1) the independent audit; (2) the Stripe payment form and signed-in admin screens are not scanned in CI and the manual axe run has not been recorded (docs/pci.md); (3) the checker reads a page's own content only (a picture behind text is not checked, owner CSS is not read) and a translation made stale by a later edit is not noticed; (4) nothing here is applied to production until the lead applies the migrations and ships. Skeptic check (2026-10-03): no e2e renders the checkout page itself. a11y.spec.ts's checkout test only follows the demo store's redirect to the cart (the demo takes no payments) and scans the cart, and csp.spec.ts reads the checkout's headers only, so the checkout's own markup (address, delivery choice, terms sentence and tick box, pay button) is not scanned by axe at all, in addition to Stripe's form; the manual run recorded nowhere is therefore the only check of it.",
+    "gap": "All four criteria are built and tested; Partial because the independent audit is bucket D and the checkout's own markup and Stripe's form are not scanned. `e2e/a11y.spec.ts` (axe up to `wcag22aa`, light and dark, serious and critical fail) covers the signed-out pages CI reaches, and since PSI ACC-01 `e2e/signed-in/a11y.spec.ts` scans the owner's and platform admin's most-used pages and the skip link; the builder's Checks tab (`src/lib/page-a11y.ts`: alt text, empty links and buttons, heading order, contrast with opacity, placeholders, translations) links each issue to its block; `savePage()` asks before publishing with a blocking issue and records the choice (`page.published_with_issues`); the statement is generated from facts the site holds and flagged for review. Missing: (1) the independent audit (bucket D); (2) the checkout page itself: the demo store takes no payments, so `a11y.spec.ts`'s checkout test follows the redirect to the cart and scans that, and `csp.spec.ts` reads headers only, so the address, delivery choice, terms tick box and pay button are scanned by nobody, nor is Stripe's form, and the manual run is recorded nowhere (docs/pci.md); (3) the checker reads a page's own content only (owner CSS and a picture behind text are not read) and does not notice a translation made stale by a later edit.",
     "bucket": "D",
     "wave": null,
     "criteria": [
@@ -1740,7 +1749,8 @@
         "src/components/admin/activity-and-legal.test.ts",
         "src/lib/a11y-statement.test.ts",
         "src/server/accessibility.int.test.ts",
-        "e2e/a11y.spec.ts"
+        "e2e/a11y.spec.ts",
+        "e2e/signed-in/a11y.spec.ts"
       ],
       "untested": false
     },
@@ -1748,7 +1758,8 @@
       "D11",
       "D128",
       "D158",
-      "D89"
+      "D89",
+      "D180"
     ],
     "history": []
   }

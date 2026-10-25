@@ -16,7 +16,7 @@
       "was": "full"
     },
     "weight": 3,
-    "gap": "The page around the payment form is the store's own: theme, header and footer, builder pieces, custom CSS (D60, D100, D113, D117). But Stripe's payment form is drawn by `appearance()` in `src/components/checkout-form.tsx` with fixed light and dark colours, a system font and a 6 px radius, so the store's accent colour, fonts and corner style stop at the payment fields; there is no checkout-specific logo, background or button setting. Rated partial on re-reading the code (first report: full, not rechecked).",
+    "gap": "The page around the payment form is the store's own: theme, header and footer, builder pieces and custom CSS (D60, D100, D113, D117). Stripe's payment form is still drawn by `appearance()` in `src/components/checkout-form.tsx` with fixed light and dark colours, a system font and a 6 px radius (rechecked 2026-10-25), so the store's accent colour, fonts and corner style stop at the payment fields (criterion 1); there is no checkout-specific logo, background or button setting in one place (criterion 4).",
     "bucket": "A",
     "wave": 7,
     "criteria": [
@@ -77,7 +77,7 @@
       "was": null
     },
     "weight": 2,
-    "gap": "The checkout's layout is editable and testable (cart, checkout and order are page roles split into pieces, D113 and D117, A/B tested, D148). There is no extension API, no store-defined fields collected from the shopper at checkout and no hook for rules (shipping, payment or discount logic). Fields (D118) are never shown to the shopper at checkout.",
+    "gap": "The checkout's layout is editable and testable (cart, checkout and order are page roles split into pieces, D113 and D117, A/B tested, D148). No extension API and no store-defined field the shopper fills in at checkout: custom fields for orders exist only for staff (D120, `staffGroupProblem()`), never shown to the shopper. Order rules (D238, `src/lib/order-rules.ts`) are a closed list that acts after payment, not a hook on shipping, payment or discount logic at checkout. There is no public Admin API with scoped tokens (wave 9); the MCP server (D96) serves only Kaizen Life.",
     "bucket": "C",
     "wave": 9,
     "criteria": [
@@ -104,7 +104,9 @@
       "D113",
       "D117",
       "D118",
-      "D148"
+      "D148",
+      "D120",
+      "D238"
     ],
     "history": []
   },
@@ -125,7 +127,7 @@
       "was": "full"
     },
     "weight": 5,
-    "gap": "Guest checkout and optional account creation work; no store setting to require sign-in or disable accounts, and no configurable checkout contact fields.",
+    "gap": "Guest checkout and optional account creation at checkout work (criteria 1 to 4); signed-in shoppers are offered their saved addresses (D304). Missing: a store setting to require sign-in or turn customer accounts off, obeyed by checkout, express payment and the cart (criterion 5), and configurable checkout contact fields.",
     "bucket": "A",
     "wave": 5,
     "criteria": [
@@ -152,7 +154,8 @@
     },
     "decisions": [
       "D28",
-      "D32"
+      "D32",
+      "D304"
     ],
     "history": [
       {
@@ -180,7 +183,7 @@
       "was": null
     },
     "weight": 4,
-    "gap": "Stripe's `ExpressCheckoutElement` (Apple Pay, Google Pay, Link, Klarna where Stripe offers them) is drawn at the top of Kaizen's checkout page only (D22), and each store host's domain is registered with Stripe once (`ensurePaymentDomain()`), tested. No express buttons on the product page or the cart, no admin view of which wallets are live for a store, no test that the buttons confirm an order, and no cross-store wallet network like Shop Pay (bucket D for that part).",
+    "gap": "Stripe's `ExpressCheckoutElement` (Apple Pay, Google Pay, Link, Klarna where Stripe offers them) is drawn at the top of the checkout page only (D22, `src/components/checkout-form.tsx`, the only user), and the store's host is registered with Stripe by `ensurePaymentDomain()` when a session opens. The Payments page (D291) shows the state of cards (with Apple Pay and Google Pay together) and Link at Stripe, but not each wallet or each domain's registration. Missing: express buttons on the product page and the cart, a per-domain status, a test that an express payment ends as a paid order carrying the wallet's address and delivery choice, and a cross-store wallet like Shop Pay (bucket D for that part).",
     "bucket": "B",
     "wave": 4,
     "criteria": [
@@ -193,7 +196,9 @@
       "files": [
         "src/components/checkout-form.tsx",
         "src/server/connect.ts",
-        "src/server/checkout.ts"
+        "src/server/checkout.ts",
+        "src/server/payment-session.ts",
+        "src/components/admin/payment-methods-card.tsx"
       ],
       "tests": [
         "src/server/checkout-stripe.int.test.ts"
@@ -202,7 +207,8 @@
     },
     "decisions": [
       "D22",
-      "D23"
+      "D23",
+      "D291"
     ],
     "history": []
   },
@@ -344,7 +350,7 @@
       "was": null
     },
     "weight": 4,
-    "gap": "Kaizena Flow requests `klarna_payments` for every store account, the Payments page shows its state at Stripe with the reason, and the owner switches it off per country (D291: excluded from that country's sessions, tested). Missing: Klarna's payment messaging on product and cart pages, and a test that Stripe offers it to an eligible checkout (Stripe decides that, outside Kaizena Flow).",
+    "gap": "Kaizena Flow requests `klarna_payments` for every store account, the Payments page shows its state at Stripe with the reason, and the owner switches it off per country, which leaves it out of that country's sessions (D291, `payment-methods.int.test.ts`): criteria 1 and 2 are held. Missing: Klarna's payment messaging on product and cart pages (nothing in the code draws it), and a test that an eligible checkout is offered Klarna (Stripe decides that, outside Kaizena Flow).",
     "bucket": "B",
     "wave": 4,
     "criteria": [
@@ -358,17 +364,23 @@
         "src/server/connect.ts",
         "src/lib/stripe-account.ts",
         "src/server/checkout.ts",
-        "src/app/admin/(gated)/[store]/settings/payments/page.tsx"
+        "src/app/admin/(gated)/[store]/settings/payments/page.tsx",
+        "src/lib/payment-methods.ts",
+        "src/server/payment-methods.ts",
+        "src/components/admin/payment-methods-card.tsx"
       ],
       "tests": [
         "src/server/billing.int.test.ts",
-        "src/lib/stripe-account.test.ts"
+        "src/lib/stripe-account.test.ts",
+        "src/server/payment-methods.int.test.ts",
+        "src/lib/payment-methods.test.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D22",
-      "D23"
+      "D23",
+      "D291"
     ],
     "history": []
   },
@@ -389,31 +401,45 @@
       "was": "missing"
     },
     "weight": 3,
-    "gap": "Through Mollie (D292): a store on Mollie's checkout is offered every method Mollie has active for it, Vipps included; Mollie offers it in NOK once the store has its own Vipps agreement and a Nordic business. The Payments page lists Mollie's methods with their state and an Activate button where Mollie allows it. Built and tested against a recorded fake of Mollie's API; live payments wait for Kaizena Flow's Mollie app (bucket B).",
+    "gap": "Through Mollie (D292): a store on Mollie's checkout is offered every method Mollie has active for it, Vipps included; Mollie offers it in NOK once the store has its own Vipps agreement and a Nordic business. The Payments page lists Mollie's methods with their state and an Activate button where Mollie allows it. Built and tested against a recorded fake of Mollie's API; live payments wait for Kaizena Flow's Mollie app (bucket B). Merged on 2026-10-25 (README rule 8): `international.vipps-and-mobilepay` was the same Shopify feature (rated partial); its criteria and evidence are here.",
     "bucket": "B",
     "wave": 4,
     "criteria": [
       "Vipps is offered at checkout for Norwegian shoppers in NOK once the provider enables it for the store's account.",
       "The admin shows Vipps's state and what is needed to switch it on.",
-      "A Vipps payment, and its refund, end as a paid and a refunded order (tested against the provider's sandbox)."
+      "A Vipps payment, and its refund, end as a paid and a refunded order (tested against the provider's sandbox).",
+      "Every store account requests MobilePay and the admin shows per method whether it is on and why not (requirements), already true for MobilePay.",
+      "When Stripe opens Vipps to Kaizen's platform account, the capability is requested and the method is offered to Norwegian shoppers without code outside the payment list.",
+      "A payment-method switch per market is shown in the admin and never uses payment_method_types.",
+      "Live only after Stripe grants access (bucket B); alternatively through a second payment provider if the strategy decision allows it."
     ],
     "evidence": {
       "files": [
         "src/server/payment-providers/mollie.ts",
         "src/server/mollie.ts",
         "src/lib/mollie.ts",
-        "src/components/admin/mollie-card.tsx"
+        "src/components/admin/mollie-card.tsx",
+        "src/lib/stripe-account.ts",
+        "src/server/connect.ts",
+        "src/lib/payment-methods.ts",
+        "src/server/payment-methods.ts",
+        "src/components/admin/payment-methods-card.tsx"
       ],
       "tests": [
         "src/lib/mollie.test.ts",
         "src/server/mollie.int.test.ts",
-        "src/lib/payment-providers.test.ts"
+        "src/lib/payment-providers.test.ts",
+        "src/lib/stripe-account.test.ts",
+        "src/server/checkout-stripe.int.test.ts",
+        "src/lib/payment-methods.test.ts",
+        "src/server/payment-methods.int.test.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D23",
-      "D292"
+      "D292",
+      "D291"
     ],
     "history": [
       {
@@ -441,7 +467,7 @@
       "was": "full"
     },
     "weight": 3,
-    "gap": "Kaizena Flow requests `mobilepay_payments`, the Payments page shows its state at Stripe with the reason, and the owner switches it off per country (D291, tested). Missing: a test that Stripe offers it to a Danish or Finnish checkout (Stripe decides that), and subscription boxes are card-only. Through Mollie (D292) too, where the store has its own MobilePay agreement.",
+    "gap": "Kaizena Flow requests `mobilepay_payments`, the Payments page shows its state at Stripe with the reason, and the owner switches it off per country (D291, `payment-methods.int.test.ts`): criteria 1 and 4 are held. Missing: a test that a Danish or Finnish checkout is offered MobilePay and others are not (Stripe decides which methods suit a country), a MobilePay payment and refund taken to a paid and refunded order in a test, and subscription boxes stay card-only. Also through Mollie (D292) where the store has its own MobilePay agreement, live only with Kaizena Flow's Mollie app.",
     "bucket": "A",
     "wave": 4,
     "criteria": [
@@ -454,16 +480,23 @@
       "files": [
         "src/server/connect.ts",
         "src/lib/stripe-account.ts",
-        "src/server/checkout.ts"
+        "src/server/checkout.ts",
+        "src/lib/payment-methods.ts",
+        "src/server/payment-methods.ts",
+        "src/components/admin/payment-methods-card.tsx"
       ],
       "tests": [
         "src/server/billing.int.test.ts",
-        "src/lib/stripe-account.test.ts"
+        "src/lib/stripe-account.test.ts",
+        "src/server/payment-methods.int.test.ts",
+        "src/lib/payment-methods.test.ts"
       ],
       "untested": false
     },
     "decisions": [
-      "D23"
+      "D23",
+      "D291",
+      "D292"
     ],
     "history": [
       {
@@ -883,7 +916,7 @@
       "was": null
     },
     "weight": 5,
-    "gap": "Unit 1a (D157 proposed, docs/wave-1a-tax.md) built criteria 1 to 4 and the audit half of 6: `commerce.vat_categories` (standard, exempt, accommodation, food, books, periodicals, medicines, culture_events, children_goods; the product's category is a foreign key), `commerce.vat_rates` with validity dates, source, checked-on date and a verified flag, written only by `commerce.set_vat_rate()` (a period ends, a new one begins, audit-logged) and read only through `commerce.vat_rate(country, category, at)` (`vat-readers.test.ts` scans the source), a per-country shipping VAT rule that only applies once a person has verified it, the product editor's category select, and the platform page `/admin/platform/vat`. Tests: `src/db/vat.test.ts`, `vat-admin.int.test.ts`, and `checkout-kinds.int.test.ts` (each category, a mixed basket, in the market's currency and in euro view, `cartSummary()` equal to `placeOrder()`, a rate change that leaves placed orders alone). Unit 1c (D161 proposed) built criterion 5 and the reconciliation half of criterion 6: the VAT report per country and rate for a period with refunds netted through credit notes, exported as CSV in the owner's period, and a bridge to Finance and to the sum of `tax_minor` of paid orders that names every difference and leaves out copied and host orders (`tax-reports.int.test.ts`, `src/db/tax-reports.test.ts`); unit 1b's invoice takes the line's rate (the snapshot's buckets, `checkout-kinds.int.test.ts`). Still missing: (1) the rate data is thin and unverified: besides the 28 standard rates only Norway, Sweden, Finland and Germany have reduced rows for food, books, periodicals and culture (13 reduced-rate rows in all, none for medicines or children's goods, plus three accommodation rows), every row is unverified (no person has checked it against TEDB or with an accountant; the TEDB was not readable), and a country with no row charges the standard rate, so a French or Spanish food product is taxed at the standard rate until a platform admin enters the rate; (2) every shipping VAT rule is the standard one, none verified; (3) the platform VAT page and the product editor's category select are now driven in a browser (e2e/signed-in/vat-screens.spec.ts, 2026-10-19: a platform admin schedules a rate, which starts unverified; an owner moves a product to Books and saves); (4) the catalogue's cached VAT label can lag a scheduled rate change by up to the cache lifetime between the country's midnight and the daily 07:00 UTC job. Stripe Tax is not used.",
+    "gap": "Built (D157, `docs/wave-1a-tax.md`; D161): VAT categories as rows, rates with validity, source and checked-on date written only by `commerce.set_vat_rate()` (audited) and read only through `commerce.vat_rate()` (`vat-readers.test.ts`), per-country shipping rules applied only once verified, the product editor's category select and `/admin/platform/vat` (both driven in `e2e/signed-in/vat-screens.spec.ts`), every category's rate taken by cart, order and invoice (`checkout-kinds.int.test.ts`, euro view included), and the VAT report per country and rate with refunds netted through credit notes and reconciled to paid orders' `tax_minor` (`tax-reports.int.test.ts`). Still short of Full: (1) the rate data is thin and unverified: in the seeded database on 2026-10-25, besides the 28 standard rates (and D300's `voucher` category at the standard rate) there are 5 food, 4 periodicals, 3 books, 1 culture and 3 accommodation rows, none for medicines or children's goods, and no row has `verified_at` set, so a French or Spanish food product is taxed at the standard rate until a platform admin enters the rate (criterion 4); (2) every shipping VAT rule is the standard one, none verified (criterion 3); (3) the catalogue's cached VAT label can lag a scheduled rate change by up to the cache lifetime. Stripe Tax is not used.",
     "bucket": "A",
     "wave": 1,
     "criteria": [
@@ -935,7 +968,9 @@
       "D16",
       "D63",
       "D65",
-      "D157"
+      "D157",
+      "D161",
+      "D300"
     ],
     "history": []
   },
@@ -956,7 +991,7 @@
       "was": "missing"
     },
     "weight": 4,
-    "gap": "Unit 1a (D157 proposed) records the registration and marks the order: `commerce.store_tax_profile` holds the VAT registration, the OSS scheme (Union with its member state, or non-Union with its EU number) and the IOSS number, intermediary, markets and date, with format checks, owners only, edited at `/admin/{store}/settings/tax`; checkout charges destination VAT on every consumer sale, and a consignment of at most 150 EUR sent from outside the EU to a private buyer in a listed market is marked `vat_kind = 'ioss'` with the IOSS number on the order, page and email; above 150.00 EUR, a business buyer, an unlisted market, a store sending from inside the EU, downloads and a currency with no euro rate are not marked. Unit 1b's invoice and credit note carry the IOSS statement and the number (D159, `treatment.iossNumber`, `order-document-view.test.ts`). Unit 1c (D161 proposed, `docs/wave-1c-reports.md`) built the return data: `/admin/{store}/analytics/tax?view=oss|ioss` gives the quarterly Union and non-Union and the monthly IOSS data per Member State of consumption and rate (Part 2 with the Member State of dispatch for 2b and 2d, Part 3 corrections, Part 4, Part 5) in euro at the ECB's reference rate of the period's last day (or the owner's audited override), from invoices and credit notes only, with a formula-safe CSV that is refused while a rate is missing, an export log with a drift line, deadlines, registration warnings and read-only AI tools; a refund reduces the period through its credit note (books mode in its own month, filing mode a Part 3 correction of the sale's period). Tests: `tax-reports.int.test.ts` (a worked example from real orders, IOSS with an above-150 order, a business buyer and a next-month credit), `oss-return.test.ts`, `tax-csv.test.ts`, `tax-report-admin.int.test.ts`, `oss-view.test.ts`. Still short of Full: (1) bucket B: live only with an OSS or IOSS registration the owner holds, and no number is checked against any register; (2) Kaizen files nothing: the data is what a return asks for in its boxes, for the owner's accountant, and which part of a return a sale belongs in (`classify()`, spec 4.3: goods dispatched from outside the EU that were not IOSS sales, booked services, business buyers charged VAT, fee lines, a Norwegian store using the Union scheme) has not been read by an accountant; (3) a refund of an order with no invoice (invoicing off, waiting, test mode) is in no return and shows only in the informational refunds line; (4) the OSS registration changes nothing in checkout (destination VAT was already the rule; the 10,000 EUR threshold and the origin-country rule are not applied, said on the screen); (5) neither the tax screen nor the report page was opened in a browser with data (render and action tests only, the admin needs a sign-in); (6) the IOSS statement and import notice are hand-written and unreviewed, and what counts as intrinsic value for the 150 EUR test is an open question for an accountant; (7) the EC Sales List and each state's own return mapping are not built (wave 2).",
+    "gap": "Built (D157, D159, D161): the store's registration (`commerce.store_tax_profile`: VAT number, Union or non-Union OSS, IOSS number and intermediary) edited by owners at `/admin/{store}/settings/tax` (driven in `e2e/signed-in/vat-screens.spec.ts`); destination VAT on every consumer sale; a consignment of at most 150 EUR sent from outside the EU to a private buyer in a listed market marked `vat_kind = 'ioss'` with the number on the order, email, invoice and credit note; `/admin/{store}/analytics/tax?view=oss|ioss` gives the quarterly and monthly return data per Member State and rate (Parts 2 to 5) in euro at the ECB reference rate, from documents only, with a CSV refused while a rate is missing and refunds reducing the period through credit notes (`tax-reports.int.test.ts`, `oss-return.test.ts`, `tax-report-admin.int.test.ts`). Still short of Full: (1) bucket B: live only with a registration the owner holds, and no number is checked against a register; (2) Kaizena Flow files nothing, and `classify()` (which part of a return a sale belongs in) and the 150 EUR intrinsic-value test have not been read by an accountant; (3) a refund of an order with no invoice is in no return, only the refunds line; (4) the 10,000 EUR threshold and origin-country rule are not applied (said on the screen); (5) the report page has not been opened in a browser with data; (6) the IOSS statement and import notice are hand-written and unreviewed; (7) the EC Sales List and national return mappings are not built.",
     "bucket": "B",
     "wave": 1,
     "criteria": [
@@ -1067,7 +1102,7 @@
       "was": "missing"
     },
     "weight": 3,
-    "gap": "Unit 1a (D157 proposed) built the checkout side: a business in another EU country enters its VAT number in the cart's `cart_checkout` piece, `src/server/vies.ts` checks it (one constant host, an injectable fetch, 4 s, one retry, a 24-hour cache in `commerce.vat_checks`, limits taken atomically), and `vatTreatment()` (pure, one reason code per refusal) decides; a valid number for the delivery country takes the VAT off (`orders.vat_kind = 'reverse_charge'`, the VAT not charged is `vat_relief_minor` inside the discount, the total is exactly the old total minus the old tax), the check, number and time are kept on the order, Stripe is sent the net amounts, and the order page, the confirmation email and the staff order page say 'Reverse charge' with both numbers in nb, sv, da and en. A VIES failure, a stale check, an invalid number, a consumer, the seller's own country, a seller number not checked valid, a booking, a subscription, a host's listing, goods sent from outside the EU or from the delivery country all charge VAT with the reason said. Tests: `vat-treatment.test.ts` (matrix), `vat-engine.int.test.ts` (cart equals order, Stripe lines equal the amount due, euro and koruna views, with a code, a campaign, a group discount and credits), `vies.test.ts`, `vat-security.int.test.ts`, `e2e/vat-reverse-charge.spec.ts` (valid takes the VAT off, a 503 charges VAT, own country shows no field). Still missing: (1) the invoice and credit note carry the reverse-charge statement and both numbers (D159: `order-document-view.test.ts`, `invoice-snapshot.test.ts`, `invoice-issue.int.test.ts`, `invoice-refunds.int.test.ts`); the wording is hand-written and unreviewed; (2) VIES was never called live: every test uses an injected fetch or the stub server, so the live service's answers are known only from its published specification read on 2026-10-03; (3) the e2e does not press Checkout (a test database has no Stripe), the payment step is held by the integration tests against a fake Stripe; (4) the store's tax screen is now driven in a browser (e2e/signed-in/vat-screens.spec.ts, 2026-10-19: registered, a Swedish number refused for a Norwegian store, a Norwegian one saved); (5) the reverse-charge wording and the VAT-number texts are hand-written and unreviewed (legal review), and open questions remain for an accountant (credits used at their VAT-inclusive value, downloads sold to a business in another member state, a per-location dispatch country); (6) a Norwegian store cannot use reverse charge and a non-EU buyer's number is never accepted (stated limits); (7) the exemption is given automatically on a valid registration: a buyer counts as a business when it types a company name and an organisation number, and VIES says only that the number is registered, not whose it is, so a private buyer who types any company and a third party's public VAT number gets the VAT taken off; the staff order page flags a VIES name that differs from the typed company, but only after the order, and nothing in code compares them; (8) the VIES limits bound the harm and do not remove it: a visitor with several addresses can spend the store's 60 requests an hour for shoppers (a client is held to 20, a cart to 10), after which real business buyers see 'could not be checked' and are charged VAT until the hour turns (said in docs/wave-1a-tax.md section 3.5).",
+    "gap": "Built (D157, D159): a business in another EU country enters its VAT number in the cart's `cart_checkout` piece, `src/server/vies.ts` checks it (one constant host, injectable fetch, 4 s, one retry, 24-hour cache, atomic limits) and `vatTreatment()` decides; a valid number for the delivery country takes the VAT off (`vat_kind = 'reverse_charge'`, `vat_relief_minor` inside the discount), the check, number and time are kept on the order, Stripe gets net amounts, and the order page, emails, invoice and credit note say 'Reverse charge' with both numbers; every refusal (VIES down, stale check, invalid number, consumer, own country, unchecked seller number, booking, subscription, host listing, dispatch outside the EU or from the delivery country) charges VAT with the reason (`vat-treatment.test.ts`, `vat-engine.int.test.ts`, `vat-security.int.test.ts`, `invoice-snapshot.test.ts`, `e2e/vat-reverse-charge.spec.ts`; the store's tax screen in `e2e/signed-in/vat-screens.spec.ts`). Still short of Full: (1) VIES was never called live (every test uses an injected fetch or the stub server); (2) the reverse-charge and VAT-number wording on documents and pages is hand-written and unreviewed, with open questions for an accountant (credits at their VAT-inclusive value, downloads to a business in another member state, a per-location dispatch country); (3) the exemption is automatic on a valid registration: VIES says the number is registered, not whose it is, so a buyer typing any company and a third party's public number gets the VAT off; staff see a differing VIES name only after the order; (4) the VIES limits bound the harm: a visitor with several addresses can spend a store's 60 shopper checks an hour, after which real business buyers are charged VAT until the hour turns; (5) the e2e does not press Checkout (no Stripe in a test database); (6) stated limits: a Norwegian store cannot use reverse charge and a non-EU buyer's number is never accepted.",
     "bucket": "A",
     "wave": 1,
     "criteria": [
@@ -1124,7 +1159,8 @@
     },
     "decisions": [
       "D63",
-      "D157"
+      "D157",
+      "D159"
     ],
     "history": [
       {
@@ -1152,7 +1188,7 @@
       "was": "missing"
     },
     "weight": 2,
-    "gap": "Built (D293): a company has payment terms (15, 30 or 60 days) and an optional credit limit; its accounts choose Pay by invoice at checkout, the order is confirmed with nothing paid, its stock drawn and its invoice issued with the due date; reminders go three days before and the day after, staff get an overdue alert, the control center and Finance show what is due and overdue, and the order is paid from its page on Stripe's hosted page or recorded as paid outside. Left: a paid order is dated by the day it was placed, as every order in Kaizena Flow's figures is, not the day it was paid (criterion 3); a balance cannot be paid in part; a store on Mollie alone has no Pay now; no browser test of the checkout choice yet.",
+    "gap": "Built (D293): a company has payment terms (15, 30 or 60 days) and an optional credit limit; its accounts choose Pay by invoice at checkout, the order is confirmed with nothing paid, its stock drawn and its invoice issued with the due date; reminders go three days before and the day after, staff get an overdue alert, the control center and Finance show what is due and overdue, and the order is paid from its page on Stripe's hosted page or recorded as paid outside (`payment-terms.int.test.ts`, `checkout-kinds.int.test.ts`). Left: a paid order counts in sales dated by the day it was placed, as every order in Kaizena Flow's figures is, not the day it was paid (criterion 3, `docs/analytics.md`); a balance cannot be paid in part; a store on Mollie alone has no Pay now; the shopper and email words (`m.paymentTerms`, `TERMS_EMAIL_TEXT`) are hand-written and need legal review; no browser test of the checkout choice.",
     "bucket": "A",
     "wave": 4,
     "criteria": [
@@ -1258,7 +1294,7 @@
       "was": "full"
     },
     "weight": 4,
-    "gap": "Both mechanisms work: codes (percent, fixed amount per market, free shipping, minimum order and minimum number of items, dates, total and per-customer limits, recurring; products, categories and tags; customer groups or named customers; generated single-use codes with a CSV, D299 E1; up to five on one order under each code's combination choice, the best for the shopper where two cannot combine, D299 E2) and automatic campaigns (D114 to D116: percentage, buy N pay M, free product, categories and tags, customer groups, stacking; D299 E3: an amount off, free shipping and tiers by items or spend; E4: buy X get Y). Campaigns do not yet follow the codes' combination choices: they always come first and compete among themselves.",
+    "gap": "Codes (D31, D299): percent, fixed amount per market, free shipping, minimum amount and number of items, dates, total and per-customer limits; products, categories and tags; customer groups or named customers (E1); generated single-use codes with a CSV (E1); up to five on one order under each code's combination choice (`combines_with`, `stackCodes()`), the best for the shopper where two cannot combine (E2). Automatic campaigns (D114 to D116, D299 E3 and E4): percentage, buy N pay M, free product, an amount off, free shipping, tiers by items or spend and buy X get Y, for categories, tags and customer groups, each optionally stacking with other campaigns. All with scenarios in `checkout-kinds.int.test.ts`, euro included. Left (criterion 3): a campaign and a code always combine (campaigns come first, codes count what is left), so an owner cannot say a code is not to be used with a campaign, or a campaign with codes, as Shopify's combinations allow.",
     "bucket": "A",
     "wave": 5,
     "criteria": [
@@ -1286,7 +1322,8 @@
         "src/server/discounts.int.test.ts",
         "src/server/checkout-kinds.int.test.ts",
         "e2e/discounts.spec.ts",
-        "e2e/campaigns.spec.ts"
+        "e2e/campaigns.spec.ts",
+        "src/server/campaigns.int.test.ts"
       ],
       "untested": false
     },
@@ -1325,7 +1362,7 @@
       "was": "full"
     },
     "weight": 5,
-    "gap": "Refund, restock, partial refund, cancel and customer email work (order-admin.int.test.ts); no refund as store credit.",
+    "gap": "Refunds, partial refunds, restock, cancel and the customer's email work (`order-admin.int.test.ts`); returns and withdrawals refund through the same path (D153), a refund is split over the order's captured payments and sent to each payment's provider (D174 `splitRefund()`, D292), and an uncaptured card is released rather than refunded (D289). Missing (criterion 5): a refund as store credit. Gift cards exist and staff can issue one by hand (D300 F4), but a refund cannot be paid to one, and bonus credits (D130) are earned, not refunded to.",
     "bucket": "A",
     "wave": 5,
     "criteria": [
@@ -1351,7 +1388,10 @@
     },
     "decisions": [
       "D27",
-      "D153"
+      "D153",
+      "D289",
+      "D292",
+      "D300"
     ],
     "history": [
       {

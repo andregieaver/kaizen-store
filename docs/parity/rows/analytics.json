@@ -67,7 +67,7 @@
       "was": null
     },
     "weight": 2,
-    "gap": "Visits are one row per hashed visitor and store day (`visits`, no timestamps of activity); nothing is real-time. Confirmed: no live page, route or query in the code.",
+    "gap": "No live page, route or query. A visit row (one per hashed visitor and store day) now keeps `first_seen` and `last_seen` (`analytics-visits.ts`), which an active-now figure could read without new personal data, but nothing reads it for a live view.",
     "history": [],
     "bucket": "A",
     "wave": 8,
@@ -109,7 +109,7 @@
       "was": "full"
     },
     "weight": 5,
-    "gap": "No sales cut by variant or SKU, product category or type, vendor, shopper currency or payment method; no saved or custom cuts (see the report builder row). Time, product, channel, discount, country, customer, market and device are covered.",
+    "gap": "Covered: time, product, channel, discount, country, customer, market and device, and payment method (D288's *Payments by method* on Finance, `paymentsByMethod()`). Still missing: sales cut by variant or SKU, by product category (term), type or vendor, and by the currency the shopper saw (`analytics-products-data.ts` groups by product only); no saved or custom cuts (see the report builder row).",
     "history": [
       {
         "on": "2026-10-03",
@@ -136,7 +136,9 @@
         "src/server/analytics-customers-data.ts",
         "src/components/admin/analytics/products-view.tsx",
         "src/app/admin/(gated)/[store]/analytics/products/page.tsx",
-        "docs/analytics.md"
+        "docs/analytics.md",
+        "src/server/analytics-payments-data.ts",
+        "src/lib/analytics-payments.ts"
       ],
       "tests": [
         "src/server/analytics-products-data.int.test.ts",
@@ -144,12 +146,14 @@
         "src/server/analytics-geo-data.int.test.ts",
         "src/server/analytics-time-data.int.test.ts",
         "src/server/analytics-discounts-data.int.test.ts",
-        "src/components/admin/analytics/products-view.test.ts"
+        "src/components/admin/analytics/products-view.test.ts",
+        "src/lib/analytics-payments.test.ts"
       ],
       "untested": false
     },
     "decisions": [
-      "D152"
+      "D152",
+      "D288"
     ]
   },
   {
@@ -169,7 +173,7 @@
       "was": null
     },
     "weight": 3,
-    "gap": "Reports are fixed pages; no saved reports, no report builder and no analytics API. Confirmed by listing `src/app/admin/(gated)/[store]/analytics/`: only fixed pages.",
+    "gap": "Reports are fixed pages (`src/app/admin/(gated)/[store]/analytics/` lists only fixed pages); no saved reports, no report builder and no analytics API.",
     "history": [],
     "bucket": "A",
     "wave": 8,
@@ -211,7 +215,7 @@
       "was": null
     },
     "weight": 2,
-    "gap": "The AI manager answers from fixed read-only tools (`analytics_overview`, `explain_change`, `analytics_alerts` and D104's insight tools); it cannot cut the data in a new way.",
+    "gap": "The AI manager answers from fixed read-only tools (`analytics_overview`, `explain_change`, `analytics_alerts`, D104's insights, D161's `vat_report`/`oss_return_data`, D216's `support_overview`); every figure is the code's, but it cannot cut the data in a new way, as there is no report builder's safe query layer to turn a question into.",
     "history": [],
     "bucket": "A",
     "wave": 8,
@@ -238,7 +242,9 @@
     "decisions": [
       "D152",
       "D104",
-      "D103"
+      "D103",
+      "D161",
+      "D216"
     ]
   },
   {
@@ -429,7 +435,7 @@
       "was": null
     },
     "weight": 4,
-    "gap": "Residual: profit is an estimate from 30 to under 100 % cost coverage and missing under 30 %; per-product and per-channel profit is on known costs only (the pages say so).",
+    "gap": "Caveat: profit is an estimate from 30 to under 100 % cost coverage and missing under 30 %; per-product and per-channel profit is on known costs only (the pages say so). Payment fees are Stripe's real fees where every captured payment of an order has one (D290, `Totals.realFeeOrders`), the owner's estimate otherwise, and labelled which.",
     "history": [],
     "bucket": null,
     "wave": null,
@@ -462,7 +468,8 @@
       "untested": false
     },
     "decisions": [
-      "D152"
+      "D152",
+      "D290"
     ]
   },
   {
@@ -482,7 +489,7 @@
       "was": null
     },
     "weight": 4,
-    "gap": "Residual: refunds made only in the Stripe Dashboard are not seen (no refund webhook; the page says so); no payments or liabilities section (separate rows).",
+    "gap": "Caveat: refunds made in the Stripe Dashboard now reach the refunds table (D159, `applyStripeRefund()`), but the refunds report still says they are not included (`NOT_SEEN_NOTE` in `analytics-refunds-data.ts`). Finance also carries D288's lost disputes and payments by method and D300's gift card liability.",
     "history": [],
     "bucket": null,
     "wave": null,
@@ -510,7 +517,10 @@
       "untested": false
     },
     "decisions": [
-      "D152"
+      "D152",
+      "D159",
+      "D288",
+      "D300"
     ]
   },
   {
@@ -529,7 +539,7 @@
       "rechecked": true
     },
     "weight": 5,
-    "gap": "The four criteria are built and held by tests (see the evidence), but an accountant has not read the part-assignment rules of classify(), the payment-day dating (Directive Art. 63 and 65), the euro rounding or the Part 3 handling (docs/wave-1c-reports.md section 8), so this is held at Partial like the other tax and legal rows. No browser has opened the page with data (the admin needs a sign-in; e2e/admin.spec.ts only checks the signed-out refusal). The migrations are not yet in production and the daily ECB rate job has not run there. Finance's PAID includes Stripe test-mode orders, which are never invoiced; the reconciliation names them as their own cause.",
+    "gap": "The four criteria are built and held by tests (see the evidence), and the migrations reached production (`docs/decisions.md` Migration versions), but an accountant has not read the part-assignment rules of `classify()`, the payment-day dating (Directive Art. 63 and 65), the euro rounding or the Part 3 handling (`docs/wave-1c-reports.md` section 8), so this is held at Partial like the other tax and legal rows (bucket D). No browser test opens the page with data (`e2e/admin.spec.ts` checks only the signed-out refusal). Finance's PAID includes Stripe test-mode orders, which are never invoiced; the reconciliation names them as their own cause.",
     "history": [],
     "bucket": "D",
     "wave": null,
@@ -726,7 +736,7 @@
       "was": "missing"
     },
     "weight": 2,
-    "gap": "Gift cards are a liability report of their own on Finance (D300 F4): what customers hold now per currency and the period's issued, spent, refunded back, changed, expired and deactivated, with its CSV, never converted or added across currencies; gift cards sold are left out of sales. Outstanding bonus credit is still shown only at `/admin/{store}/bonus` (`outstandingMinor`), not in Finance, and neither has an opening and closing roll-forward.",
+    "gap": "Gift cards are a liability report of their own on Finance (D300 F4, `giftCardLiability()`): what customers hold now per currency and the period's issued, spent, refunded back, changed, expired and deactivated, with its CSV, never converted or added across currencies. Still missing: outstanding bonus credit on Finance (shown only at `/admin/{store}/bonus`, `outstandingMinor`), and an opening balance for either, so no roll-forward that adds up from opening to closing.",
     "history": [
       {
         "on": "2026-10-02",
@@ -870,7 +880,7 @@
       "was": null
     },
     "weight": 3,
-    "gap": "D296: an RFM group is a segment condition (the same `rfm()` as the Customers page, over paid orders), so a segment of one group lists its customers with last order and orders; money outside the converted currencies is counted, not judged. Still missing: a click-through from the analytics group to its list, a paged list beyond the first 100, CSV of a segment, and a test that the counts agree.",
+    "gap": "D296: an RFM group is a segment condition (the same `rfm()` as the Customers page, over paid orders), so a segment of one group lists its customers (first 100, by last order) with last order and orders, for staff with customers:read; money outside the converted currencies is counted, not judged. Still missing: a click-through from the analytics group to its list, a paged list beyond the first 100, a CSV of a segment's people, and a test that the counts agree.",
     "history": [],
     "bucket": "A",
     "wave": 5,
@@ -894,64 +904,6 @@
         "src/lib/analytics-customers.test.ts",
         "src/server/analytics-customers-data.int.test.ts",
         "src/components/admin/analytics/customers-view.test.ts",
-        "src/lib/segments.test.ts",
-        "src/db/segments.test.ts",
-        "src/server/segments.int.test.ts",
-        "e2e/signed-in/segments.spec.ts"
-      ],
-      "untested": false
-    },
-    "decisions": [
-      "D152",
-      "D296"
-    ]
-  },
-  {
-    "id": "analytics.dynamic-segments-for-marketing",
-    "domain": "analytics",
-    "feature": "Dynamic segments for marketing",
-    "shopify": {
-      "tier": "native",
-      "text": "Native. Segments are dynamic, rule-based customer lists written with ShopifyQL filters that update automatically, used for analysis and marketing (page read 2026-10-03; plan limits not stated).",
-      "url": "https://help.shopify.com/en/manual/customers/customer-segmentation",
-      "fetched": true,
-      "checkedOn": "2026-10-03"
-    },
-    "kaizen": {
-      "rating": "partial",
-      "rechecked": true,
-      "was": "missing"
-    },
-    "weight": 3,
-    "gap": "D296: a segment builder from a closed list of conditions (orders, spend, first and last order, country, customer group, RFM group, consent, tags, account, company), saved per store, counted from live data and never another store's people; its member list needs customers:read. Still missing: a segment as the audience of a broadcast or automation (units C and D).",
-    "history": [
-      {
-        "on": "2026-10-20",
-        "from": "missing",
-        "to": "partial",
-        "why": "D296 (wave 5 unit B): saved rule-based segments over customers and subscribers, counted live with a member list, and customer tags; read segments.ts and ran segments.test.ts, segments.int.test.ts (PGlite and integration, passed)."
-      }
-    ],
-    "bucket": "A",
-    "wave": 5,
-    "criteria": [
-      "An owner builds a segment from a closed list of filters (orders, spend, last order date, country, customer group, RFM group, subscribed) and saves it per store.",
-      "A segment's member count and list update from live data and never include another store's customers.",
-      "Marketing consent is a filter, and a segment never reveals a customer to anyone who may not see customers.",
-      "A segment is selectable as the audience of a broadcast or automation (wave 5)."
-    ],
-    "evidence": {
-      "files": [
-        "src/lib/analytics-customers.ts",
-        "src/server/analytics-customers-data.ts",
-        "src/lib/segments.ts",
-        "src/server/segments.ts",
-        "src/app/admin/(gated)/[store]/segments/page.tsx",
-        "src/app/admin/(gated)/[store]/segments/[segmentId]/page.tsx",
-        "src/components/admin/segment-editor.tsx"
-      ],
-      "tests": [
-        "src/server/analytics-customers-data.int.test.ts",
         "src/lib/segments.test.ts",
         "src/db/segments.test.ts",
         "src/server/segments.int.test.ts",
@@ -1025,7 +977,7 @@
       "was": "partial"
     },
     "weight": 3,
-    "gap": "Residual: refunds made only in the Stripe Dashboard and returns made without Kaizen's withdrawal or return request are not seen (no refund webhook; the pages say so).",
+    "gap": "Caveat: returns made outside Kaizena Flow's withdrawal or return request are not seen. Refunds made in the Stripe Dashboard now reach the refunds table (D159, `applyStripeRefund()`), but the refunds report still says they are not included (`NOT_SEEN_NOTE`, `analytics-refunds-data.ts`).",
     "history": [
       {
         "on": "2026-10-03",
@@ -1064,7 +1016,8 @@
     },
     "decisions": [
       "D152",
-      "D153"
+      "D153",
+      "D159"
     ]
   },
   {
@@ -1129,7 +1082,7 @@
       "was": null
     },
     "weight": 2,
-    "gap": "Searches, no-result queries and click-through are reported (`analytics-search-data.ts`, on the Traffic page); revenue after a search is not tracked because a search is not tied to a visit or an order (`revenueTracked`).",
+    "gap": "Searches, no-result queries and click-through are reported on the Traffic page (`analytics-search-data.ts`); revenue after a search is not tracked because a search is not tied to a visit or an order (`revenueTracked: false`, held by `analytics-search-data.int.test.ts`).",
     "history": [],
     "bucket": "A",
     "wave": 8,
@@ -1175,7 +1128,7 @@
       "was": null
     },
     "weight": 2,
-    "gap": "One monthly net-revenue target; alerts and the forecast exist (`alertsFor()`, `forecastMonth()`) but alerts are only visible in the admin and are never emailed or pushed; the forecast covers month revenue only.",
+    "gap": "One monthly net-revenue target; alerts and the forecast exist (`alertsFor()`, `forecastMonth()`) and the AI manager repeats them, but alerts are shown only in the admin, never emailed or pushed (the autopilot's weekly report, D309, carries figures and goals, not alerts), and the forecast covers month revenue only.",
     "history": [],
     "bucket": "A",
     "wave": 8,
@@ -1204,7 +1157,8 @@
       "untested": false
     },
     "decisions": [
-      "D152"
+      "D152",
+      "D309"
     ]
   },
   {
@@ -1330,7 +1284,7 @@
       "was": null
     },
     "weight": 2,
-    "gap": "None: no report email exists; the five-minute cron has no report job.",
+    "gap": "No owner-scheduled report email. The nearest thing is the autopilot's weekly report (D309, `sendAutopilotReports()`), which only people with an autopilot plan get, with the week's figures from `periodTotals()` and their goals: no choice of report, schedule or recipients.",
     "history": [],
     "bucket": "A",
     "wave": 2,
@@ -1346,7 +1300,8 @@
       "untested": false
     },
     "decisions": [
-      "D41"
+      "D41",
+      "D309"
     ]
   },
   {
@@ -1366,7 +1321,7 @@
       "was": null
     },
     "weight": 4,
-    "gap": "Webhooks to Zapier, Make and Slack send order, customer and subscription events (D41, D101); Tripletex is listed as coming soon and exists only as the design proposal `docs/tripletex.md` (nothing built); no ledger export.",
+    "gap": "No accounting connector: Tripletex is listed as coming soon and exists only as the proposal `docs/tripletex.md`. Webhooks to Zapier, Make and Slack carry order, customer and subscription events (D41, D101). Files an accountant can take instead: invoices and credit notes CSV (D159), VAT, OSS and IOSS CSVs (D161), payouts CSV (D290) and order exports (D165); no voucher or ledger export (SAF-T), no VAT code mapping.",
     "history": [],
     "bucket": "B",
     "wave": 2,
@@ -1391,7 +1346,11 @@
     },
     "decisions": [
       "D41",
-      "D101"
+      "D101",
+      "D159",
+      "D161",
+      "D165",
+      "D290"
     ]
   },
   {
@@ -1411,7 +1370,7 @@
       "was": "partial"
     },
     "weight": 4,
-    "gap": "Consent-gated loading works (GA4, GTM, Meta Pixel, store custom code, Consent Mode v2), but no ecommerce events (view item, add to cart, checkout, purchase) are sent and no server-side conversion events exist. From D303 I1: Google Ads, TikTok and Pinterest tags (store only, after marketing consent, cookies listed) and browser events view-item, view-item-list, search and add-to-cart to every tag switched on (GA4, GTM's data layer, Meta, TikTok, Pinterest) with ids, prices as shown and the currency (e2e). From D303 I2: begin-checkout and purchase are sent server-side to Meta's Conversions API, GA4's Measurement Protocol, TikTok's Events API and Pinterest's Conversions API, once per order and platform with the order id as event id, only for orders whose cart had marketing consent, never copied, host, test-mode or restricted orders, tokens encrypted, hashed email and phone only at the owner's Enhanced level. Still missing: a purchase event in the browser, which pay routes forbid by design (D158; the server event is the measure), Google Ads conversions by API (bucket B), and refund events.",
+    "gap": "Caveat: tags load only after consent (D58, Consent Mode v2; D303 I1 adds Google Ads, TikTok and Pinterest) and get view-item, view-item-list, search and add-to-cart in the browser; begin-checkout and purchase go server-side only (D303 I2, once per order and platform, consented carts only, never copied, host, test-mode or restricted orders), because pay routes load no third-party script (D158). Not built: Google Ads conversions by API (bucket B) and refund events.",
     "history": [
       {
         "on": "2026-10-03",
@@ -1443,7 +1402,6 @@
         "src/lib/custom-code.ts",
         "src/server/consents.ts",
         "src/lib/shop-events.ts",
-        "src/components/consent/consent-manager.tsx",
         "src/server/ad-conversions.ts",
         "src/lib/ad-payloads.ts",
         "src/server/ad-connections.ts"
@@ -1463,7 +1421,9 @@
     "decisions": [
       "D58",
       "D61",
-      "D14"
+      "D14",
+      "D303",
+      "D158"
     ]
   },
   {

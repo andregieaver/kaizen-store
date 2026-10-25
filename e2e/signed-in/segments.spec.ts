@@ -4,7 +4,7 @@ import { testDb } from "../db";
 import { OWNER } from "./accounts";
 
 /**
- * The owner's Segments pages (wave 5 unit B, D296; rows customers.customer-segments-and-tags and analytics.dynamic-segments-for-marketing). Who a
+ * The owner's Segments pages (wave 5 unit B, D296; row customers.customer-segments-and-tags). Who a
  * segment holds is held by segments.int.test.ts; this holds the screens: a ready segment chosen, its live count, saving it and its page.
  */
 

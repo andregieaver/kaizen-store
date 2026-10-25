@@ -16,7 +16,7 @@
       "rechecked": true,
       "was": null
     },
-    "gap": "Same 3 options but 100 variants (`MAX_VARIANTS` in `src/lib/product-input.ts`), so large matrices do not fit; the editor offers every combination of option values but has no matrix grid for thousands of rows.",
+    "gap": "Still at most 3 options and 100 variants a product: `MAX_OPTIONS = 3` and `MAX_VARIANTS = 100` in `src/lib/product-input.ts`, enforced by `productInput` (zod: 'Use at most 100 variants.'), by the CSV import (`src/lib/product-import.ts`, `options.too_many`) and by the AI manager's catalogue tools (`src/lib/product-tools.ts`, D308); no database check and no limit on option values beyond the variant count. The editor turns every combination of option values into variants (`combineOptions()`) and lists them one row each, not a paged or virtualised matrix with bulk fill per option value; the products grid (D165, `src/components/admin/products-grid.tsx`) edits price, SKU, stock and cost across variants but is not built for thousands of rows of one product. Nothing tests cart, listing, search, JSON-LD or stock reads at 2,048 variants. The storefront chooses with one `Dropdown` per option (D82) and the variant's own picture (D84); unavailable combinations are not marked as such in the picker.",
     "bucket": "A",
     "wave": 6,
     "criteria": [
@@ -29,7 +29,9 @@
       "files": [
         "src/lib/product-input.ts",
         "src/components/admin/product-editor.tsx",
-        "src/server/products.ts"
+        "src/server/products.ts",
+        "src/lib/product-import.ts",
+        "src/lib/product-tools.ts"
       ],
       "tests": [
         "src/lib/product-input.test.ts",
@@ -38,7 +40,10 @@
       "untested": false
     },
     "decisions": [
-      "D82"
+      "D82",
+      "D84",
+      "D165",
+      "D308"
     ],
     "history": []
   },
@@ -105,7 +110,7 @@
       "rechecked": true,
       "was": "full"
     },
-    "gap": "Staff put products into nested categories and flat tags by hand (`product_terms`) and shoppers browse, filter and sort them, but a term is only a name, a slug, a parent and a position (`commerce.terms`): no description or picture of its own (SEO title and description and the names' translation came with D168, row `catalogue.seo-fields-title-description-handle-sitemap-hreflang`), and no manual order of products inside one (`product_terms` has no position; sorts are featured, newest, price, title). A description or picture is possible only through a custom field on the term bound to a block (D119). Rated Full in the first report; re-rated Partial because collection content, SEO and manual ordering are what a merchant uses a collection for.",
+    "gap": "Staff put products into nested categories and flat tags by hand (`product_terms`) and shoppers browse, filter and sort them. A term (`commerce.terms`) has a name, slug, parent, position, a product layout (D79), `requires_unit_price` (D160) and its own SEO title and description per language (`terms.seo`, D168, in the translation worklist as scope `terms`, counted in catalogue.seo-fields-title-description-handle-sitemap-hreflang). Still lacking: (1) a description and picture of its own shown on its page (possible only through a custom field on the term bound to a block, D119); (2) the term's name itself is not translatable: the worklist's `terms` scope translates only the SEO title and description (`termWork()` in `src/server/store-translate.ts`), so a category's heading, breadcrumb and filter facet stay in the main language; (3) no manual order of products inside a term: `product_terms` has no position and `LISTING_SORTS` are featured, newest, priceLow, priceHigh and title (`src/lib/listing-filters.ts`). Rated Full in the first report; re-rated Partial because collection content, translated names and manual ordering are what a merchant uses a collection for.",
     "bucket": "A",
     "wave": 6,
     "criteria": [
@@ -137,7 +142,9 @@
       "D52",
       "D119",
       "D140",
-      "D168"
+      "D168",
+      "D79",
+      "D160"
     ],
     "history": [
       {
@@ -165,7 +172,7 @@
       "rechecked": true,
       "was": null
     },
-    "gap": "No rules fill a category or tag; terms are set by hand (verified: `product_terms` is the only membership, no rule table); shopper filters (D78) are applied per request, not saved as a collection.",
+    "gap": "No rules fill a category or tag: `product_terms` is the only membership and there is no rule table (verified 2026-10-25). The nearest: a product content grid picks products by categories and tags with a sort and a limit (D51, `GridSource` in `src/lib/page-content.ts`), and shopper filters (D78) apply per request from the address; neither is a saved collection with its own page and menu target, nor matches price, stock, manufacturer, variant options or custom fields as rules. Customer segments (D296, `src/lib/segments.ts`) show the pattern a build could follow (rules matched in code on read, never a stored member list), but cover people, not products.",
     "bucket": "A",
     "wave": 6,
     "criteria": [
@@ -187,7 +194,9 @@
       "untested": false
     },
     "decisions": [
-      "D78"
+      "D78",
+      "D51",
+      "D296"
     ],
     "history": []
   },
@@ -208,7 +217,7 @@
       "rechecked": true,
       "was": null
     },
-    "gap": "Only campaigns (D114): percentage off, 'buy N pay for M' and a free product over an amount, applied to ordinary products. There is no bundle product with components, no fixed bundle price and no stock tied to its parts (verified: no bundle table or kind in `src/db/schema.ts`).",
+    "gap": "No bundle product: `PRODUCT_KINDS` are goods, appointment, stay, rental and gift_card (`src/lib/product-input.ts`); no component table, no fixed bundle price, no stock derived from its parts and no components on an order line (verified in `src/db/schema.ts`). What exists is pricing over ordinary products, agreed by `cartSummary()` and `placeOrder()`: campaigns (D114, D299 E3 and E4: percentage, buy N pay for M, amount off, free shipping, tiered steps, a free product over an amount, and buy X get Y through `bxgyOff()`) and discount codes reaching products, categories and tags (D299). They discount a mix the shopper puts together; they do not sell a bundle as one product.",
     "bucket": "A",
     "wave": 6,
     "criteria": [
@@ -232,7 +241,8 @@
     "decisions": [
       "D114",
       "D115",
-      "D116"
+      "D116",
+      "D299"
     ],
     "history": []
   },
@@ -370,11 +380,11 @@
       "checkedOn": "2026-10-02"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "partial",
       "rechecked": true,
-      "was": null
+      "was": "missing"
     },
-    "gap": "No pre-order mode, release date or back-in-stock list (verified: no such table, column or route). Shopify itself offers pre-orders only through apps, so this is stretch.",
+    "gap": "Back in stock is built (D298, `src/server/stock-requests.ts`, `/api/stock-requests`, `src/components/back-in-stock.tsx`, `/account/stock/{token}`): a shopper asks on a sold-out variant, a typed address confirms by its link first and a verified customer waits at once, the answer never says whether an address was known, one email goes when `variant_availability` says it is back and the product is offered, and a request never subscribes anyone (held by `automations.int.test.ts` and `e2e/back-in-stock.spec.ts`). Selling at zero with stated days is row catalogue.sell-when-out-of-stock (D172). Missing: a pre-order mode (no release date, deposit or pay-later rule per variant; nothing says pre-order on cards, the product page, the cart or the order), no flag that keeps pre-order orders apart from shippable stock or lists them by expected date, and no `checkout-kinds.int.test.ts` scenario for one (verified: no such column, kind or route). Shopify itself offers pre-orders only through apps.",
     "bucket": "A",
     "wave": 3,
     "criteria": [
@@ -384,12 +394,30 @@
       "`cartSummary()` and `placeOrder()` agree for a pre-order, euro included."
     ],
     "evidence": {
-      "files": [],
-      "tests": [],
+      "files": [
+        "src/server/stock-requests.ts",
+        "src/server/automations.ts",
+        "src/app/api/stock-requests/route.ts",
+        "src/components/back-in-stock.tsx"
+      ],
+      "tests": [
+        "src/server/automations.int.test.ts",
+        "e2e/back-in-stock.spec.ts"
+      ],
       "untested": false
     },
-    "decisions": [],
-    "history": []
+    "decisions": [
+      "D172",
+      "D298"
+    ],
+    "history": [
+      {
+        "on": "2026-10-25",
+        "from": "missing",
+        "to": "partial",
+        "why": "Back in stock, the row's third criterion, is built (D298): src/server/stock-requests.ts (only writer of stock_requests), /api/stock-requests, src/components/back-in-stock.tsx and /account/stock/{token}, a typed address confirmed by its link first, one email when variant_availability says it is back; held by src/server/automations.int.test.ts and e2e/back-in-stock.spec.ts (integration tests run, passing). Pre-order mode itself is still absent (no column, kind or route), so Partial, not Full."
+      }
+    ]
   },
   {
     "id": "catalogue.product-media-video-and-3d",
@@ -408,7 +436,7 @@
       "rechecked": true,
       "was": null
     },
-    "gap": "The product gallery takes pictures only, 12 at most (`MAX_MEDIA`, `product_media` has a url, thumbnail and alt). Video reaches a product page through a 'Video' custom field (YouTube or Vimeo embed, D119) or a video block in a product layout; there is no 3D model support and no uploaded video in the gallery.",
+    "gap": "The product gallery takes pictures only, at most 12 (`MAX_MEDIA` in `src/lib/product-input.ts`; `product_media` holds a url, a thumbnail, a position and alt text per language), compressed in the browser at upload (D213); the editor hides its add button at 12. Video reaches a product page only through a 'Video' custom field (YouTube or Vimeo, D119) or a video or gallery block placed in a product layout (D209's gallery takes uploaded videos and YouTube or Vimeo, but a layout's block is the same for every product that uses it). No uploaded or embedded video in the product's own gallery and no 3D model (glTF or GLB) anywhere (verified).",
     "bucket": "A",
     "wave": 6,
     "criteria": [
@@ -434,7 +462,9 @@
     "decisions": [
       "D88",
       "D91",
-      "D119"
+      "D119",
+      "D209",
+      "D213"
     ],
     "history": []
   },
@@ -504,30 +534,39 @@
       "rechecked": true,
       "was": null
     },
-    "gap": "Repeaters, flexible content and relation fields exist (D119, D120), so structured data can sit inside a thing; there are no standalone entries of a defined type with their own admin list, publishing state and public pages or templates.",
+    "gap": "Repeaters, groups, flexible content and relation fields (D119, D120) and the store's own field groups (entity `store`) let structured data sit inside a product, page, term or the store, and pages nested under a parent can be listed by a content grid (`GridSource` `pages` with `parent`, D51). There are no standalone entries of an owner-defined type: `FIELD_ENTITIES` are product, variant, page, article, term, store, customer and order (`src/lib/custom-fields.ts`) and `PAGE_TYPES` has no type of the owner's (verified), so no list of entries of their own, no draft and published state per entry, no entry page template and no sitemap entry. Merged on 2026-10-25 (README rule 8): `platform.metaobjects` was the same Shopify feature (rated partial); its criteria and evidence are here.",
     "bucket": "A",
     "wave": 6,
     "criteria": [
       "An owner defines a content type (fields) and creates entries of it in a list of their own, with draft and published states and per-language texts.",
       "An entry can be referenced from fields and builder blocks and drawn by a content grid or its own page template.",
       "Entries are per store, included in the store translation worklist, and in store copies per `COPY_RULES` (test).",
-      "An entry's public page is in the sitemap only when published."
+      "An entry's public page is in the sitemap only when published.",
+      "An owner defines an entry type (name, fields from the existing field types) and creates, edits, translates and deletes entries on a page of their own.",
+      "A relation field on a product, page, article or another entry points at entries by id; deleting an entry clears the references, and the site reads only entries of the store.",
+      "A content grid or loop block lists a type's entries, and an entry type can be switched to have a page at its own address with a title, search texts and a sitemap entry.",
+      "Entries and types are copied with the store (a `COPY_RULES` decision) and appear in the translation worklist."
     ],
     "evidence": {
       "files": [
         "src/lib/custom-fields.ts",
-        "src/server/custom-fields.ts"
+        "src/server/custom-fields.ts",
+        "src/lib/field-loop.ts",
+        "src/lib/field-group-editor.ts"
       ],
       "tests": [
         "src/server/custom-fields-flexible.int.test.ts",
         "src/lib/custom-fields-flexible.test.ts",
-        "e2e/custom-fields-flexible.spec.ts"
+        "e2e/custom-fields-flexible.spec.ts",
+        "src/lib/field-loop.test.ts",
+        "e2e/custom-fields-loop.spec.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D119",
-      "D120"
+      "D120",
+      "D51"
     ],
     "history": []
   },
@@ -772,7 +811,7 @@
       "rechecked": true,
       "was": null
     },
-    "gap": "Built and tested (wave 3, D172, in production since 6 October 2026): every change of `inventory_levels.on_hand` is an append-only `inventory_movements` row written by a trigger (reason, source, account, order, return; `inventory_ledger_check()` proves the movements add up to the level and still does after the 24-month clean-up, which keeps each level's newest movement), an Inventory page with on hand, committed to checkouts in progress, available and owed per variant and location, adjust with a reason (Set to or Adjust by, reviewed, a stale row is a conflict), a history page, stock files as D165 jobs with a dry run (`inventory_import`, `inventory_export`), a per-variant low-stock level that sends the owners one digest email per crossing (`stock_alerts`, `sendLowStockNotices()`), negative stock in the analytics and the control center, and the AI manager's `stock_levels`, `stock_history`, `set_stock` with location and reason. Why it stays Partial: (1) no signed-in screen has been clicked: there is no signed-in admin fixture (D158), so the Inventory table, the review list, the history page, the stock-file pages and the product editor's stock rules are held by `renderToString` tests and by integration tests of the server functions the actions call (`adjustStock()`, `inventoryPage()`, `stockHistory()`), not by the screen a merchant uses (D165's bulk editor stayed Partial for the same reason); (2) the stock export has no `on_hand_was` column, so a file counted from an export has no conflict check unless the person adds that column; (3) a variant created with stock already at or under its level sends no first email until it recovers and crosses again; (4) the history page and the pending crossings are not load-tested at 100,000 movements; (5) `src/server/inventory-perf.int.test.ts` (the C4 guard) is not reliable: its 20-line `placeOrder()` timed out at 60 s in most of my runs against a database that already held an earlier perf store or ran other test files at the same time (probably stale planner statistics; the statement caught running for minutes was `orderLineRows()`'s cart-line read in `src/server/checkout.ts`, unchanged by this wave apart from two columns) and passed in 7 s alone on a fresh database, as in the Gates run; the cause is not found. Not matching Shopify: no unavailable or incoming states, no transfers or purchase orders (`catalogue.inventory-transfers-and-purchase-orders`), no untracked variants; 'committed' is the live checkout holds only, because a paid order has already drawn its units here.",
+    "gap": "Built and tested (wave 3, D172): every change of `inventory_levels.on_hand` is an append-only `inventory_movements` row written by a trigger (reason, source, account, order, return; `inventory_ledger_check()` proves the movements add up to the level, also after the 24-month clean-up), an Inventory page with on hand, committed to checkouts in progress, available and owed per variant and location, adjust with a reason (Set to or Adjust by, reviewed, a stale row is a conflict), a history page, stock files as D165 jobs with a dry run (`inventory_import`, `inventory_export`), a per-variant low-stock level with one digest email per crossing (`stock_alerts`, `sendLowStockNotices()`), negative stock in analytics and the control center, and the AI manager's `stock_levels`, `stock_history` and `set_stock`. Why it stays Partial: (1) the signed-in e2e fixture exists since D234 (`e2e/signed-in/`), but no spec there opens the Inventory pages, so the table, review list, history and stock-file pages are held by `renderToString` tests and integration tests of `adjustStock()`, `inventoryPage()` and `stockHistory()` only; (2) the stock export has no `on_hand_was` column (`EXPORT_COLUMNS` in `src/lib/inventory-csv.ts`; the import reads one), so a file counted from an export gets no conflict check unless the person adds it; (3) a variant created at or under its level sends no first email until it recovers and crosses again; (4) the history page and pending crossings are not load-tested at 100,000 movements; (5) `src/server/inventory-perf.int.test.ts` (the 20-line `placeOrder()` guard) is flaky on a busy or long-lived database, cause not found. Not matching Shopify: no unavailable or incoming states, no transfers or purchase orders (`catalogue.inventory-transfers-and-purchase-orders`), no untracked variants; 'committed' is live checkout holds only, because a paid order has already drawn its units.",
     "bucket": "A",
     "wave": 3,
     "criteria": [
@@ -839,7 +878,8 @@
       "D27",
       "D152",
       "D153",
-      "D172"
+      "D172",
+      "D234"
     ],
     "history": []
   },
@@ -860,7 +900,7 @@
       "rechecked": true,
       "was": null
     },
-    "gap": "No transfers and no purchase orders: no transfer or purchase order table or screen (verified); Kaizen has stock locations with a rank and a history of every stock change (wave 3, D172) but nothing moves stock between them. One row for the one Shopify feature (it replaces orders.inventory-transfers).",
+    "gap": "No transfers and no purchase orders: no transfer or purchase-order table, screen or tool (verified 2026-10-25). Kaizen has ranked stock locations and an append-only history of every stock change with a reason (wave 3, D172, `inventory_movements`), so a build has the ledger to write to, but nothing moves stock between locations or receives it from a supplier, and variant cost (`product_variants.cost_minor`, D152) has no history of its own beyond what order lines froze. One row for the one Shopify feature (it replaces orders.inventory-transfers).",
     "bucket": "A",
     "wave": 3,
     "criteria": [
@@ -874,7 +914,10 @@
       "tests": [],
       "untested": false
     },
-    "decisions": [],
+    "decisions": [
+      "D152",
+      "D172"
+    ],
     "history": []
   },
   {
@@ -993,7 +1036,7 @@
       "rechecked": true,
       "was": null
     },
-    "gap": "Companies with a customer group, invited employees, a company number filled in at checkout and a group discount (D108, D63) exist (`customer_companies` has name, tier, employee share, member cap). No company locations, no buyer roles beyond owner and employee, no order approvals and no PO number at checkout (verified in `src/db/schema.ts`). Net payment terms are the row checkout.b2b-payment-terms (wave 4) and are not counted here.",
+    "gap": "Companies (D108) with a customer group, an employee share of its discount, a member cap, an owner and invited employees (`company_role`), a company number at checkout (D63, `companyRequired()`), the Brønnøysund lookup on company fields (D124) and payment terms with a credit limit (D293, counted in checkout.b2b-payment-terms, not here). Missing (verified in `customer_companies` and `orders` in `src/db/schema.ts`): company locations with their own billing and shipping addresses, buyer roles beyond owner and employee and assignment to locations, order approval over a company-set limit, and a PO number asked at checkout and kept on the order and its documents.",
     "bucket": "A",
     "wave": 6,
     "criteria": [
@@ -1022,7 +1065,9 @@
     },
     "decisions": [
       "D63",
-      "D108"
+      "D108",
+      "D124",
+      "D293"
     ],
     "history": []
   },
@@ -1043,7 +1088,7 @@
       "rechecked": true,
       "was": null
     },
-    "gap": "One whole percentage per customer group, off what is bought once (`customer_tiers.percent`, `memberLineOff()`); no price lists with their own prices, no per-group product visibility, no wholesale price per variant (verified). The umbrella row platform.b2b-companies-catalogs-terms is removed: its four parts are this row (price lists), catalogue.b2b-company-accounts (companies, locations, PO number), checkout.b2b-payment-terms (net terms) and catalogue.volume-pricing-and-quantity-rules (quantity rules and breaks).",
+    "gap": "A group's or company's discount is one whole percentage off what is bought once (`customer_tiers.percent`, `memberLineOff()`, D108); campaigns can be limited to customer groups (`campaigns.tier_ids`, D115), including tiered steps by quantity or spend (D299 E3), and discount codes to groups and named customers (D299). No price list with its own prices per variant and currency (fixed, or a percentage over the market price), and no catalogue limiting which products or categories a group sees: a product can only be for consumers, businesses or both (D63, `OFFERED`), verified in `src/db/schema.ts`. The umbrella row platform.b2b-companies-catalogs-terms was removed: its four parts are this row (price lists), catalogue.b2b-company-accounts (companies, locations, PO number), checkout.b2b-payment-terms (net terms) and catalogue.volume-pricing-and-quantity-rules (quantity rules and breaks).",
     "bucket": "A",
     "wave": 6,
     "criteria": [
@@ -1065,7 +1110,10 @@
       "untested": false
     },
     "decisions": [
-      "D108"
+      "D108",
+      "D63",
+      "D115",
+      "D299"
     ],
     "history": []
   },
@@ -1082,11 +1130,11 @@
       "checkedOn": "2026-10-02"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "partial",
       "rechecked": true,
-      "was": null
+      "was": "missing"
     },
-    "gap": "No quantity breaks, minimums, maximums or increments (verified: the cart only caps to stock and `MAX_LINE_QUANTITY`); 'buy N pay for M' campaigns (D114) are the nearest thing.",
+    "gap": "Quantity breaks exist as campaigns (D299 E3): a `tiered` campaign with `tier_basis = 'quantity'` gives two to five percentage steps (`tierPercent()` in `src/lib/campaigns.ts`) on chosen products, categories or tags, optionally only for customer groups (`tier_ids`) and with no end date; the product page shows its ladder (`describeCampaign()`, `noticeText()` in `src/lib/campaign-notices.ts`, `e2e/campaigns.spec.ts`), the cart says how far the next step is (`nextSteps()`), and `cartSummary()` and `placeOrder()` agree in `checkout-kinds.int.test.ts` (by items, by spend, in euro). Missing: a break as a unit price per variant or price list (a tier is only a percentage off, set on a campaign rather than the variant), and any minimum, maximum or increment per variant: the cart caps a line only at `MAX_LINE_QUANTITY` (20, `src/lib/cart.ts`) and at stock, and a discount code's `minQuantity` (D299) is a condition for the code, not a quantity rule.",
     "bucket": "A",
     "wave": 6,
     "criteria": [
@@ -1095,14 +1143,33 @@
       "`cartSummary()` and `placeOrder()` agree on tier prices, euro included."
     ],
     "evidence": {
-      "files": [],
-      "tests": [],
+      "files": [
+        "src/lib/campaigns.ts",
+        "src/lib/campaign-notices.ts",
+        "src/server/campaigns.ts",
+        "src/lib/cart.ts"
+      ],
+      "tests": [
+        "src/lib/campaigns.test.ts",
+        "src/lib/campaign-notices.test.ts",
+        "src/server/campaigns.int.test.ts",
+        "src/server/checkout-kinds.int.test.ts",
+        "e2e/campaigns.spec.ts"
+      ],
       "untested": false
     },
     "decisions": [
-      "D114"
+      "D114",
+      "D299"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-25",
+        "from": "missing",
+        "to": "partial",
+        "why": "Quantity breaks are built as tiered campaigns (D299 E3): tier_basis 'quantity', two to five percentage steps (tierPercent() in src/lib/campaigns.ts) on chosen products, categories or tags, optionally per customer group; the product page shows the ladder (e2e/campaigns.spec.ts), and cartSummary()/placeOrder() agree in checkout-kinds.int.test.ts (by items, by spend, in euro; the three tiered scenarios run and pass). No minimum, maximum or increment per variant, so Partial."
+      }
+    ]
   },
   {
     "id": "catalogue.product-recommendations",
@@ -1272,7 +1339,7 @@
       "rechecked": true,
       "was": null
     },
-    "gap": "`/admin/{store}/search` shows counts, zero-result queries and meaning help only (verified, `src/app/admin/(gated)/[store]/search/page.tsx`); no synonym, boost, bury or pin controls and none in `src/server/search.ts`. Listing filters and sorting (D78) are other rows. One row for the one Shopify feature (it replaces ai.search-merchandising, which was rated partial for filters only).",
+    "gap": "`/admin/{store}/search` shows counts, zero-result queries and meaning help only (`src/app/admin/(gated)/[store]/search/page.tsx`); no synonym, boost, bury or pin anywhere (verified 2026-10-25: no such table or code in `src/server/search.ts`). Manual redirects exist (D168) but the zero-result report does not offer one. Listing filters and sorting (D78) are other rows. One row for the one Shopify feature (it replaces ai.search-merchandising, which was rated partial for filters only).",
     "bucket": "A",
     "wave": 6,
     "criteria": [
@@ -1294,7 +1361,8 @@
       "untested": false
     },
     "decisions": [
-      "D72"
+      "D72",
+      "D168"
     ],
     "history": []
   },
@@ -1361,7 +1429,7 @@
       "rechecked": true,
       "was": "missing"
     },
-    "gap": "A secret feed address per store (`feed_settings`, D302) serves each offered market as Google Merchant Center RSS (id, group, title, description, link, pictures, availability from stock, price with VAT in the market's currency with the 30-day reference as `price` and the current as `sale_price` for a genuine reduction, brand, GTIN or `identifier_exists`, unit pricing, shipping by country), built from the storefront's own cached reads, cached 15 minutes; products that cannot be advertised are listed on the admin's Product feeds page with their reasons. Not done: custom label mapping, and no API sync: the owner adds the address in Merchant Center as a scheduled fetch (an API connection is bucket B).",
+    "gap": "Built (D302): a secret feed address per store (`feed_settings`) serves each offered market view (country, language, currency) as a Google Merchant Center RSS file and as Meta, TikTok and Pinterest CSVs (`FEED_CHANNELS`, `feedFile()` in `src/lib/feeds.ts`), from the storefront's own cached reads (`storeFeed()`), cached 15 minutes under the `feed` budget: availability from stock, price with VAT in the market's currency (the 30-day reference as `price` and the current as `sale_price` for a genuine reduction), brand, GTIN or `identifier_exists`, unit pricing and shipping by country; a euro view is held to `shown()` (`feeds.int.test.ts`) and Google's required attributes by `feeds.test.ts`; products left out are listed on the Product feeds page with a `FEED_PROBLEMS` reason. Missing: custom label mapping, a Google product category (row catalogue.standard-product-taxonomy), and any API sync: the owner adds the address in Merchant Center or Meta's Commerce Manager as a scheduled fetch (a Content API connection needs Google's credentials, bucket B).",
     "bucket": "B",
     "wave": 5,
     "criteria": [
@@ -1427,7 +1495,7 @@
       "rechecked": true,
       "was": "partial"
     },
-    "gap": "No standard product category or attributes: nothing exists that Shopify's or Google's taxonomy would map to. Kaizen has its own categories and tags (D50) and a Stripe product tax code per product (`txcd_…`), which classifies for tax and is not a browse taxonomy; no standard category list with attributes, so nothing to map to channels.",
+    "gap": "No standard product category or attributes (verified 2026-10-25): Kaizen has its own categories and tags (D50) and a Stripe product tax code per product (`txcd_…`), which classifies for tax and is not a browse taxonomy. No standard category list with stable ids and attributes, so feeds (D302) carry no `google_product_category` and there is nothing to map to channels.",
     "bucket": "A",
     "wave": 6,
     "criteria": [
@@ -1448,7 +1516,8 @@
       "untested": false
     },
     "decisions": [
-      "D50"
+      "D50",
+      "D302"
     ],
     "history": [
       {
@@ -1489,19 +1558,24 @@
         "src/server/product-writer.ts",
         "src/lib/product-writing.ts",
         "src/components/admin/ai-writer.tsx",
-        "src/lib/claims.ts"
+        "src/lib/claims.ts",
+        "src/server/product-tools.ts",
+        "src/lib/product-tools.ts"
       ],
       "tests": [
         "src/lib/product-writing.test.ts",
         "src/server/product-writer.int.test.ts",
-        "src/lib/claims.test.ts"
+        "src/lib/claims.test.ts",
+        "src/server/product-tools.int.test.ts",
+        "src/lib/product-tools.test.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D73",
       "D76",
-      "D106"
+      "D106",
+      "D308"
     ],
     "history": []
   },
@@ -1522,7 +1596,7 @@
       "rechecked": true,
       "was": null
     },
-    "gap": "None: no way to show separate products as one listing with shared options (verified: variants live inside one product only).",
+    "gap": "None: no way to show separate products as one listing with a shared option (verified 2026-10-25: variants live inside one product only, no product group or sibling table).",
     "bucket": "A",
     "wave": 6,
     "criteria": [

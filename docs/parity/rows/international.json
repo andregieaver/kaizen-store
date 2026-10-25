@@ -60,7 +60,7 @@
       "was": null
     },
     "weight": 3,
-    "gap": "Availability is implied by a price row (the product editor says: leave a country empty to not sell there); there is no catalog object, no per-market switch that keeps the price, and no per-market product set shared across countries.",
+    "gap": "Availability is still implied by a price row: the product editor says to leave a country empty to not sell there, and the AI manager's set_prices reports the unpriced countries as not_sold_in (src/server/product-tools.ts). D178's Countries switch hides whole countries while keeping their prices (offeredMarkets(), commerce.market_offered()), but nothing switches one product or variant off in one market while keeping its price: no catalog object, no per-market product set shared across countries, so none of the four criteria is met beyond what deleting a price does.",
     "bucket": "A",
     "wave": 7,
     "criteria": [
@@ -74,7 +74,9 @@
         "src/server/catalog.ts",
         "src/server/listing.ts",
         "src/components/admin/product-editor.tsx",
-        "src/db/schema.ts"
+        "src/db/schema.ts",
+        "src/server/product-tools.ts",
+        "src/lib/store-features.ts"
       ],
       "tests": [
         "src/server/listing.int.test.ts",
@@ -82,7 +84,9 @@
       ],
       "untested": false
     },
-    "decisions": [],
+    "decisions": [
+      "D178"
+    ],
     "history": []
   },
   {
@@ -102,7 +106,7 @@
       "was": null
     },
     "weight": 4,
-    "gap": "Prices are entered by hand per country (and converted per D109 when shown in another currency, rounded to the store's step); there is no percentage rule per market and no bulk adjustment.",
+    "gap": "Prices are entered by hand per country and converted when shown in another currency (D109, rounded to the store's step). Criteria 2 and 3 are now met for one-off changes by D165's bulk editor (src/lib/bulk-edit.ts, src/server/bulk-edit.ts, the Products list's bulk bar): a percentage (basis points, half up in BigInt) or an amount per market over the chosen products, previewed with old and new prices (previewBulk()) before it runs, saved through getProductForEdit()/saveProduct() so prices change only through commerce.set_price and the 30-day reference stays genuine, one audit entry per batch and an undo (bulk-edit.test.ts, bulk-edit.int.test.ts, e2e/signed-in/products-bulk.spec.ts). Missing: criterion 1, a standing market rule (percentage and rounding step) that derives a market's prices from a base price with a fixed price overriding it, and so criterion 4's scenario for derived prices.",
     "bucket": "A",
     "wave": 7,
     "criteria": [
@@ -116,17 +120,24 @@
         "src/components/admin/product-editor.tsx",
         "src/db/schema.ts",
         "src/lib/currency.ts",
-        "src/lib/markets.ts"
+        "src/lib/markets.ts",
+        "src/lib/bulk-edit.ts",
+        "src/server/bulk-edit.ts",
+        "src/app/admin/(gated)/[store]/products/bulk/actions.ts"
       ],
       "tests": [
         "src/db/commerce.test.ts",
         "src/lib/currency.test.ts",
-        "src/server/checkout-kinds.int.test.ts"
+        "src/server/checkout-kinds.int.test.ts",
+        "src/lib/bulk-edit.test.ts",
+        "src/server/bulk-edit.int.test.ts",
+        "e2e/signed-in/products-bulk.spec.ts"
       ],
       "untested": false
     },
     "decisions": [
-      "D109"
+      "D109",
+      "D165"
     ],
     "history": []
   },
@@ -147,7 +158,7 @@
       "was": null
     },
     "weight": 3,
-    "gap": "Path-per-market (/s/{store}/{market}) and up to 5 domains per store with one primary (P7, P8); a market cannot have its own domain or ccTLD, so no.example.com and de.example.com cannot be set per country.",
+    "gap": "Path per market (/s/{store}/{market}, short addresses for one-country stores, D181) and up to 5 verified domains per store with one primary (P7, P8). Since D313 (docs/language-domains.md) an owner can give a LANGUAGE a domain of its own: verified like the others, served there, the other addresses of that language moved to it (308, languageHostDecision()), and canonical, hreflang, emails, Stripe return addresses, sitemap and structured data built on it (marketUrl(), marketMetaPath(), marketLink()); a store without one behaves as before (language-domains.test.ts, domains.int.test.ts, e2e/store-hosts.spec.ts). Still missing, as the criteria ask: a domain per market (country): no.example.com and de.example.com cannot be set per country, only per language, and a language's domain serves that language in every country.",
     "bucket": "A",
     "wave": 7,
     "criteria": [
@@ -162,16 +173,24 @@
         "src/lib/custom-domains.ts",
         "src/lib/store-hosts.ts",
         "src/lib/store-hosts-build.ts",
-        "src/lib/paths.ts"
+        "src/lib/paths.ts",
+        "src/lib/store-address.ts",
+        "src/server/redirect-resolve.ts",
+        "docs/language-domains.md"
       ],
       "tests": [
         "src/lib/custom-domains.test.ts",
         "src/lib/store-hosts.test.ts",
-        "src/server/domains.int.test.ts"
+        "src/server/domains.int.test.ts",
+        "src/lib/language-domains.test.ts",
+        "e2e/store-hosts.spec.ts"
       ],
       "untested": false
     },
-    "decisions": [],
+    "decisions": [
+      "D181",
+      "D313"
+    ],
     "history": []
   },
   {
@@ -250,7 +269,7 @@
       "was": null
     },
     "weight": 2,
-    "gap": "A store's pages, menus and product texts vary by language, not by country: a German-speaking shopper in Austria and in Germany sees the same page. Only campaigns can be limited to some countries (D116).",
+    "gap": "Part of criterion 1 is now built by D179 phase 4: any row, column or block can be shown only for chosen countries (the market's country), languages or currencies (visibility.show conditions, src/lib/visibility.ts), drawn by <VisiblePart> from visitorFacts() so hidden words are never in the HTML (visibility.test.ts, visibility.int.test.ts, e2e/visibility.spec.ts). Missing: a whole page limited to chosen markets and left out of their sitemap; product texts and menus that differ by market on top of their language (they vary by language only, so a German-speaking shopper in Austria and in Germany sees the same text); the builder showing which market a view is for, and per-market overrides in the translation worklist. Campaigns can be limited to countries (D116).",
     "bucket": "A",
     "wave": 7,
     "criteria": [
@@ -262,15 +281,23 @@
       "files": [
         "src/lib/page-translation.ts",
         "src/lib/page-content.ts",
-        "src/lib/campaigns.ts"
+        "src/lib/campaigns.ts",
+        "src/lib/visibility.ts",
+        "src/server/visibility.ts"
       ],
       "tests": [
         "src/lib/page-translation.test.ts",
-        "src/lib/campaigns.test.ts"
+        "src/lib/campaigns.test.ts",
+        "src/lib/visibility.test.ts",
+        "src/server/visibility.int.test.ts",
+        "e2e/visibility.spec.ts"
       ],
       "untested": false
     },
-    "decisions": [],
+    "decisions": [
+      "D116",
+      "D179"
+    ],
     "history": []
   },
   {
@@ -378,7 +405,7 @@
       "was": null
     },
     "weight": 2,
-    "gap": "A visitor's country (x-vercel-ip-country) is suggested only on the store's country chooser; no banner or popup on other pages, and it never redirects, by design (Geo-blocking Regulation).",
+    "gap": "A visitor's country (x-vercel-ip-country) is read only on the store's country chooser (src/app/s/[store]/(chooser)/page.tsx), which suggests and never redirects (Geo-blocking Regulation). There is no dismissible suggestion on other store pages; the visibility rules' country (D179) is the market's, not the visitor's location, and LanguageHint (D312) serves Kaizena Flow's own site only.",
     "bucket": "A",
     "wave": 7,
     "criteria": [
@@ -396,7 +423,9 @@
       ],
       "untested": false
     },
-    "decisions": [],
+    "decisions": [
+      "D109"
+    ],
     "history": []
   },
   {
@@ -520,7 +549,7 @@
       "was": null
     },
     "weight": 3,
-    "gap": "Variants store an HS code and country of origin (validated digits); nothing is calculated: no duty or import VAT estimate, no DDP quote at checkout, no customs data on documents.",
+    "gap": "Variants store an HS code and country of origin (validated digits), edited in the product editor, carried in the product CSV import and export (D165) and the AI manager's catalogue tools. Nothing is calculated: no duty or import VAT estimate, no DDP quote at checkout, no duties on the order, no customs data on carrier bookings or documents, and the EU's removal of the 150 EUR customs-duty exemption from 1 July 2026 is not handled. A duty-rate source would be a third party (bucket B).",
     "bucket": "B",
     "wave": 7,
     "criteria": [
@@ -533,7 +562,9 @@
       "files": [
         "src/db/schema.ts",
         "src/lib/product-input.ts",
-        "src/components/admin/product-editor.tsx"
+        "src/components/admin/product-editor.tsx",
+        "src/lib/product-csv.ts",
+        "src/lib/product-import.ts"
       ],
       "tests": [
         "src/lib/product-input.test.ts",
@@ -542,7 +573,8 @@
       "untested": false
     },
     "decisions": [
-      "D12"
+      "D12",
+      "D165"
     ],
     "history": []
   },
@@ -563,7 +595,7 @@
       "was": "missing"
     },
     "weight": 4,
-    "gap": "Built and tested, not Full, because no person has read the texts and nothing here may be called Full on the strength of hand-written legal text alone (docs/parity/WAVES.md step 4). Starters for terms, privacy, returns, shipping, withdrawal information and an imprint exist in nb, sv, da and en (src/lib/legal-starters/*), are filled from legalFacts(), are made as drafts with a review notice and [[placeholders]] that the builder's checker blocks publishing over, and stay out of the sitemap until published. Checkout shows a terms and privacy link or a required checkbox (stores.terms_at_checkout) and the pay press records order_terms with immutable legal_snapshots. Missing: (1) a person's review of every text, and the eight questions in docs/wave-1-trust.md section 8 (the pay button's wording under CRD Art. 8(2), the durable-medium duty, guarantee periods and complaint bodies per country, the Swedish and Danish statutes, the privacy starter's recipients and transfers); (2) the checkout sentence, tick box and recording are held by component and integration tests only: the demo store takes no payments, so no end-to-end run reaches the pay button; (3) the order confirmation email does not link the accepted terms yet (the lead adds the line at merge), and orders confirmed wholly at the venue and subscription renewals have no sentence and no record; (4) the goods exclusions are printed for every store with a [[Check]] line rather than filtered by what the store sells, and a translation made stale by a later edit of the main text is still shown as it was (D55). The migrations legal_terms and legal_terms_rules are not yet applied to production. Skeptic check (2026-10-03): (5) the sitemap clause of criterion 4 (a draft starter is left out until published) is held only indirectly: e2e/legal-pages.spec.ts says in a comment that it does not check the sitemap, and legal-starters.int.test.ts asserts only that a legal page is not in the list of role pages kept out of the sitemap; no test reads the sitemap output with a draft and a published starter. (6) The tick box in checkbox mode is enforced in the browser only: recordTermsAcceptance() runs before Stripe's confirm and the browser does not start the payment when it fails, but nothing on the server refuses to complete an order that has no order_terms record (staff are only shown the missing record), so a client that skips the page's script pays without ticking.",
+    "gap": "Built and tested; not Full because no person has read the hand-written texts (docs/parity/WAVES.md step 4, bucket D). Starters for terms, privacy, returns, shipping, withdrawal information and an imprint exist in nb, sv, da and en (src/lib/legal-starters/*), filled from legalFacts(), made as drafts with a review notice and [[placeholders]] that the builder's checker blocks publishing over, out of the sitemap until published (held only indirectly: legal-starters.int.test.ts checks the sitemap reader's page lists, no test reads the sitemap with a draft and a published starter). Checkout shows a link or a required checkbox (stores.terms_at_checkout) and records order_terms with immutable legal_snapshots, also for draft pay links, exchanges, orders on payment terms and orders paid wholly by gift cards (migrations applied 2026-10-04). New since: D311 (owner's decision reversing D158's no-model rule) writes legal pages with AI from official sources fetched by code (src/lib/legal-sources.ts, src/server/legal-sources.ts: Cellar, Riksdagen, Retsinformation, Lovdata, read weekly), every quote checked word for word and every fact filled by code (src/lib/legal-writer.ts, src/server/legal-writer.ts), turned on once on the Legal page (legal-pages-panel.tsx) and kept current daily when a store fact or a cited passage changes (runLegalUpkeep()), never over a person's page; tested with a stand-in model only (legal-writer.int.test.ts, legal-sources.int.test.ts), no real model has written a page yet. Still missing: (1) a person's review of the starters and the eight questions in docs/wave-1-trust.md section 8 (D311 decides AI pages need none, but the starters and the checkout words remain hand-written legal text); (2) the checkbox is enforced in the browser only: nothing on the server refuses an order without an order_terms record; (3) orders confirmed wholly at the venue and subscription renewals have no sentence and no record, and the order confirmation email does not link the accepted terms; (4) the goods exclusions are printed for every store with a [[Check]] line rather than filtered by what it sells, and a translation made stale by a later edit is still shown (D55); (5) no end-to-end run reaches the pay button (the demo store takes no payments).",
     "bucket": "D",
     "wave": null,
     "criteria": [
@@ -590,7 +622,13 @@
         "src/components/admin/legal-pages-panel.tsx",
         "src/app/admin/(gated)/[store]/settings/legal/page.tsx",
         "supabase/migrations/20261003194725_legal_terms.sql",
-        "supabase/migrations/20261003194748_legal_terms_rules.sql"
+        "supabase/migrations/20261003194748_legal_terms_rules.sql",
+        "src/lib/legal-sources.ts",
+        "src/lib/legal-passages.ts",
+        "src/server/legal-sources.ts",
+        "src/lib/legal-writer.ts",
+        "src/server/legal-writer.ts",
+        "docs/ai-autopilot.md"
       ],
       "tests": [
         "src/lib/legal-starters.test.ts",
@@ -600,13 +638,20 @@
         "src/server/legal-starters.int.test.ts",
         "src/server/checkout-terms.int.test.ts",
         "src/db/trust.test.ts",
-        "e2e/legal-pages.spec.ts"
+        "e2e/legal-pages.spec.ts",
+        "src/lib/legal-sources.test.ts",
+        "src/lib/legal-passages.test.ts",
+        "src/lib/legal-writer.test.ts",
+        "src/server/legal-sources.int.test.ts",
+        "src/server/legal-writer.int.test.ts",
+        "src/components/admin/legal-pages-panel.test.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D112",
-      "D158"
+      "D158",
+      "D311"
     ],
     "history": [
       {
@@ -682,7 +727,7 @@
       "was": null
     },
     "weight": 4,
-    "gap": "Unit 1g (D162, in production) built and tested most of it: a personal-data register whose test fails for an unclassified new table (src/lib/personal-data.ts, src/db/privacy.test.ts), one JSON export for staff and for the shopper after a fresh sign-in, erasure that restricts orders under the bookkeeping duty and anonymises them when the seller country's period ends, a one-month request clock, and a daily retention run with seeded, sourced periods. Why it is not Full: (1) the staff paths are held only at function level: staffExport()/eraseSubject() have integration tests, but no route test holds the staff download's headers, the customers:write refusal or the same-site check (spec G3 names one; only the shopper route has one), and no e2e opens the customer page, the erase preview or the privacy requests and retention pages (e2e/privacy.spec.ts is the shopper's four tests); the guards are held only by the permissions scan. (2) The retention periods (NO 5, SE 7, DK 5, DE 8, other 10 years from the end of the calendar year of the sale) are seeded with source and date but unverified by an accountant (DK snippet, DE secondary, default and DAC7 host period unread) and every consumer text in src/lib/privacy-text.ts (shopper card and delete page, erasure email, Art. 15(1) block, Art. 12 notices) is hand-written nb/sv/da/en and needs legal review; the nb texts name the Norwegian bokføringsloven even for a Danish or Swedish store viewed in nb. (3) Known edges: a payment that arrives after erasure closed the Stripe session completes an anonymised order, so an invoice for it would show '[removed]' as buyer; the shopper's export holds emails only for the proven account address (staff exports are wider); refund reasons written by code are replaced by '[removed]' on anonymisation, which analytics grouping refund reasons will show for old orders; there is no reviews table until wave 5, so reviews are not in the file. Verified on 2026-10-04 in a fresh database and a production build: privacy*, retention*, analytics-erased, owner-insights-erased and checkout-kinds integration tests, the unit and PGlite tests, pnpm build, and e2e/privacy.spec.ts (4 pass after correcting two stale Norwegian expectations that still named regnskapsloven).",
+    "gap": "Unit 1g (D162, in production) built and tested most of it: a personal-data register whose test fails for an unclassified new table (src/lib/personal-data.ts, src/db/privacy.test.ts), one JSON export for staff and for the shopper after a fresh sign-in, erasure that restricts orders under the bookkeeping duty and anonymises them when the seller country's period ends, a one-month request clock, and a daily retention run with seeded, sourced periods. Later units joined the register and the export: saved addresses (D304), reviews (D301), support conversations (D216), the subscriber list and its consent history (D295), customer tags (D296), broadcast recipients (D297). Why it is not Full: (1) the staff paths are held only at function level: no route test holds the staff download's headers, the customers:write refusal or the same-site check (only the shopper route has one), and no e2e opens the customer page, the erase preview or the privacy requests and retention pages (e2e/privacy.spec.ts is the shopper's); the guards are held by the permissions scan. (2) The retention periods (NO 5, SE 7, DK 5, DE 8, other 10 years) are unverified by an accountant and every consumer text in src/lib/privacy-text.ts is hand-written nb/sv/da/en and needs legal review; the nb texts name bokføringsloven even for a Danish or Swedish store viewed in nb. (3) Known edges: a payment that arrives after erasure completes an anonymised order, so its invoice would show '[removed]'; the shopper's export holds emails only for the proven account address; refund reasons written by code read '[removed]' after anonymisation.",
     "bucket": "A",
     "wave": 1,
     "criteria": [
@@ -739,7 +784,11 @@
     },
     "decisions": [
       "D28",
-      "D162"
+      "D162",
+      "D216",
+      "D295",
+      "D301",
+      "D304"
     ],
     "history": []
   },
@@ -880,7 +929,7 @@
       "was": null
     },
     "weight": 4,
-    "gap": "Criteria 1 to 3 are built and tested; criterion 4 is outside code, so this row stays Partial. e2e/a11y.spec.ts runs axe (WCAG 2.0 A to 2.2 AA) in light and dark over the storefront and the admin's sign-in, forgot-password and sign-up pages and fails on serious or critical findings, with a known-bad fixture proving it can fail; the statement generator (src/lib/a11y-statement.ts, /admin/{store}/settings/accessibility) makes a draft page in nb, sv, da and en that says \"not assessed\" until the owner records an audit; theme colour pairs are flagged below 4.5:1. Missing: (1) the independent audit, which is bucket D and never counted by code; (2) the Stripe payment form and the signed-in admin screens are not scanned in CI (no Stripe or Supabase session there), and the manual axe run on a test-mode checkout recorded in docs/pci.md has not been done; (3) an automated scan finds only part of the problems; (4) ENFORCEMENT_BODIES are all verified:false, the Annex V content was not read in full, and the statement text needs legal review (docs/wave-1-trust.md section 8). The e2e specs were run in this wave on a port other than 3100. Skeptic check (2026-10-03): no e2e renders the checkout page itself. a11y.spec.ts's checkout test only follows the demo store's redirect to the cart (the demo takes no payments) and scans the cart, and csp.spec.ts reads the checkout's headers only, so the checkout's own markup (address, delivery choice, terms sentence and tick box, pay button) is not scanned by axe at all, in addition to Stripe's form; the manual run recorded nowhere is therefore the only check of it.",
+    "gap": "Criteria 1 to 3 are built and tested; criterion 4 is outside code (bucket D). e2e/a11y.spec.ts runs axe (WCAG 2.0 A to 2.2 AA) in light and dark over the storefront and the admin's signed-out pages and fails on serious or critical findings, with a known-bad fixture proving it can fail; since PSI ACC-01 (2026-10-24) e2e/signed-in/a11y.spec.ts scans ten owner pages and four platform pages signed in and checks the admin's skip link; the statement generator (src/lib/a11y-statement.ts, /admin/{store}/settings/accessibility) makes a draft page in nb, sv, da and en that says \"not assessed\" until the owner records an audit; theme colour pairs below 4.5:1 are flagged and pageIssues() checks a draft before publishing. Missing: (1) the independent audit; (2) the checkout's own markup (address, delivery choice, terms sentence and tick box, pay button) is not scanned: the demo store takes no payments, so the checkout test scans the cart it redirects to; Stripe's form is checked by hand and the manual run in docs/pci.md is still unrecorded; (3) an automated scan finds only part of the problems; (4) ENFORCEMENT_BODIES are all verified:false, Annex V was not read in full, and the statement text needs legal review (docs/wave-1-trust.md section 8).",
     "bucket": "D",
     "wave": null,
     "criteria": [
@@ -905,7 +954,8 @@
         "src/lib/a11y-statement.test.ts",
         "src/server/accessibility.int.test.ts",
         "src/components/admin/theme-editor-warnings.test.ts",
-        "e2e/a11y.spec.ts"
+        "e2e/a11y.spec.ts",
+        "e2e/signed-in/a11y.spec.ts"
       ],
       "untested": false
     },
@@ -978,7 +1028,7 @@
       "was": null
     },
     "weight": 3,
-    "gap": "Schemes are tracked per product and registrations per market (product_schemes, producer_registrations) and the SQL view commerce.missing_registrations lists what is unregistered, but there is no admin screen to enter schemes or registrations, nothing reads the view in the app, and nothing blocks selling a product whose scheme has no registration.",
+    "gap": "Products are tagged with producer-responsibility schemes in the product editor (PRODUCER_SCHEMES, product_schemes written by saveProduct()), and the SQL view commerce.missing_registrations lists what is unregistered, but there is no admin screen to enter registrations (producer_registrations), nothing in the app reads the view, nothing blocks selling a product whose scheme has no valid registration in a market, and no registration number is shown on the product page or documents.",
     "bucket": "A",
     "wave": 7,
     "criteria": [
@@ -991,10 +1041,14 @@
       "files": [
         "src/db/schema.ts",
         "supabase/migrations/20260923235847_platform_rules.sql",
-        "src/lib/store-copy-rules.ts"
+        "src/lib/store-copy-rules.ts",
+        "src/lib/product-input.ts",
+        "src/server/products.ts",
+        "src/components/admin/product-editor.tsx"
       ],
       "tests": [
-        "src/db/commerce.test.ts"
+        "src/db/commerce.test.ts",
+        "src/lib/product-input.test.ts"
       ],
       "untested": false
     },
@@ -1020,7 +1074,7 @@
       "was": "missing"
     },
     "weight": 4,
-    "gap": "Built and held by tests (D160, in production). A goods variant carries a measure, a unit and a base (`product_variants.measure_*`, database checks), `unitPrice()` (BigInt, half up, `src/lib/unit-price.ts`) is the only place a price is divided, and the figure follows the price as shown: the product page and its variant and plan choice, cards (the variant the card's price is of), cart and slide-out cart, checkout, order page, emails, chat cards and the subscription and weekly-delivery lists, with the business buyer's net price and the euro view's own figure (435 cents shown is 1740 per kg; converting the krone figure would say 1739), frozen on the order line (`order_lines.measure_*`, copied by `placeOrder()`, the renewal and `copy_orders()`), `priceSpecification` in the JSON-LD, and a deferred constraint trigger that refuses an active product without a measure under `sold_by_measure` or a marked category or ancestor. I ran these in my own database on 2026-10-04 after a fresh build: 20 unit files (355 tests), `unit-price.int.test.ts`, `checkout-kinds.int.test.ts` (every scenario runs `expectUnitPrices()`, euro included), `standing-orders.int.test.ts` (146 integration tests in all) and `e2e/unit-price.spec.ts` (8 of 8) passed. Still short of Full, by WAVES.md step 4: (1) the rules and words are unreviewed. The country table has no country that allows 100 g or 100 ml (Germany read in a PAngV mirror, Sweden's KOVFS 2012:1 6 § read on lagen.nu, Norway's FOR-2012-11-14-1066 read on lovdata.no on 2026-10-04, Denmark's BEK 1696/2017 never read and closed, flagged `verified: false`), so the criterion's \"100 g and 100 ml where allowed\" is a mechanism an owner cannot reach today and a test opens by a test helper; the rule that discounts, codes, campaigns, credits and reverse-charge relief leave a line's unit price alone, whether Directive Art. 6a wants a prior unit price (not read), the business buyer's net unit price, a multi-pack's total as the measure, the nb/sv/da/en words (Enhetspris, Jämförpris, Enhedspris) and the JSON-LD unit codes (from memory) all need a lawyer or a native speaker (spec section 8). (2) The owner's side (the editor's measure fields and the category and product flags) is held by server integration tests and render tests; nothing drives it in a browser because the e2e suite has no admin sign-in. (3) Checkout is held by `checkout-section.test.ts` and the integration scenarios, not by e2e (the page cannot be driven there). (4) The email line is held by one integration test (`unit-price.int.test.ts`), not a render test (the spec named `shopper-emails.test.ts`, which does not exist). (5) Orders placed before this unit carry no snapshot and show no unit price, and Merchant Center's `unit_pricing_measure` feed attributes wait for the feed row (wave 5). (6) The migrations (`unit_price`, `unit_price_rules` and the `clone_store`, `duplicate_store` and `copy_orders` patches) are applied in production (checked 2026-10-14), but nothing about it was seen working there beyond that.",
+    "gap": "Built and held by tests (D160, in production). A goods variant carries a measure, a unit and a base (`product_variants.measure_*`, database checks), `unitPrice()` (BigInt, half up, `src/lib/unit-price.ts`) is the only place a price is divided, and the figure follows the price as shown: the product page and its variant and plan choice, cards (the variant the card's price is of), cart and slide-out cart, checkout, order page, emails, chat cards and the subscription and weekly-delivery lists, with the business buyer's net price and the euro view's own figure (435 cents shown is 1740 per kg; converting the krone figure would say 1739), frozen on the order line (`order_lines.measure_*`, copied by `placeOrder()`, the renewal and `copy_orders()`), `priceSpecification` in the JSON-LD, and a deferred constraint trigger that refuses an active product without a measure under `sold_by_measure` or a marked category or ancestor. I ran these in my own database on 2026-10-04 after a fresh build: 20 unit files (355 tests), `unit-price.int.test.ts`, `checkout-kinds.int.test.ts` (every scenario runs `expectUnitPrices()`, euro included), `standing-orders.int.test.ts` (146 integration tests in all) and `e2e/unit-price.spec.ts` (8 of 8) passed. Still short of Full, by WAVES.md step 4: (1) the rules and words are unreviewed. The country table has no country that allows 100 g or 100 ml (Germany read in a PAngV mirror, Sweden's KOVFS 2012:1 6 § read on lagen.nu, Norway's FOR-2012-11-14-1066 read on lovdata.no on 2026-10-04, Denmark's BEK 1696/2017 never read and closed, flagged `verified: false`), so the criterion's \"100 g and 100 ml where allowed\" is a mechanism an owner cannot reach today and a test opens by a test helper; the rule that discounts, codes, campaigns, credits and reverse-charge relief leave a line's unit price alone, whether Directive Art. 6a wants a prior unit price (not read), the business buyer's net unit price, a multi-pack's total as the measure, the nb/sv/da/en words (Enhetspris, Jämförpris, Enhedspris) and the JSON-LD unit codes (from memory) all need a lawyer or a native speaker (spec section 8). (2) The owner's side (the editor's measure fields and the category and product flags) is held by server integration tests and render tests; nothing drives it in a browser because the e2e suite has no admin sign-in. (3) Checkout is held by `checkout-section.test.ts` and the integration scenarios, not by e2e (the page cannot be driven there). (4) The email line is held by one integration test (`unit-price.int.test.ts`), not a render test (the spec named `shopper-emails.test.ts`, which does not exist). (5) Orders placed before this unit carry no snapshot and show no unit price; the invoice document does not show the per-measure price. Merchant Center's `unit_pricing_measure` and `unit_pricing_base_measure` are now written by the product feed (D302, `src/lib/feeds.ts`, `feeds.test.ts`). (6) The migrations (`unit_price`, `unit_price_rules` and the `clone_store`, `duplicate_store` and `copy_orders` patches) are applied in production (checked 2026-10-14), but nothing about it was seen working there beyond that.",
     "bucket": "D",
     "wave": 1,
     "criteria": [
@@ -1058,7 +1112,8 @@
         "src/app/s/[store]/[market]/checkout/checkout-section.tsx",
         "src/app/s/[store]/[market]/order/[orderId]/order-section.tsx",
         "supabase/migrations/20261004171452_unit_price.sql",
-        "supabase/migrations/20261004171501_unit_price_rules.sql"
+        "supabase/migrations/20261004171501_unit_price_rules.sql",
+        "src/lib/feeds.ts"
       ],
       "tests": [
         "src/lib/unit-price.test.ts",
@@ -1084,12 +1139,14 @@
         "src/server/unit-price-tools.int.test.ts",
         "src/server/checkout-kinds.int.test.ts",
         "src/server/standing-orders.int.test.ts",
-        "e2e/unit-price.spec.ts"
+        "e2e/unit-price.spec.ts",
+        "src/lib/feeds.test.ts"
       ],
       "untested": false
     },
     "decisions": [
-      "D160"
+      "D160",
+      "D302"
     ],
     "history": [
       {
@@ -1099,52 +1156,6 @@
         "why": "Wave 1 unit 1d (D160 proposed, tree not yet committed). Read docs/wave-1d-unit-price.md, the code of unit-price.ts, catalog.ts, cart.ts, checkout.ts, the surfaces and migrations, and ran in a fresh database: 20 unit files (355 tests), unit-price.int.test.ts, checkout-kinds.int.test.ts, standing-orders.int.test.ts, unit-price-tools.int.test.ts (146 integration tests) and e2e/unit-price.spec.ts (8 of 8) after a new build: all passed. Held at Partial, not Full, because the country table, the discount rule and the nb/sv/da/en words are unreviewed legal rules (Denmark unread, Norway not re-read), no country allows the 100 g base so that branch is reachable only by test, the owner's editor has no browser test, and nothing is in production."
       }
     ]
-  },
-  {
-    "id": "international.vipps-and-mobilepay",
-    "domain": "international",
-    "feature": "Vipps and MobilePay",
-    "shopify": {
-      "tier": "app",
-      "text": "App.",
-      "url": "https://developer.vippsmobilepay.com/docs/plugins-ext/shopify",
-      "fetched": true,
-      "checkedOn": "2026-10-02"
-    },
-    "kaizen": {
-      "rating": "partial",
-      "rechecked": true,
-      "was": null
-    },
-    "weight": 3,
-    "gap": "MobilePay is requested on every store's Stripe account, its state is shown and it can be switched off per country (D291). Vipps is offered through Mollie (D292) to a store whose Mollie account has it (the store's own Vipps agreement); tested against a fake of Mollie's API, live access waits for Kaizena Flow's Mollie app.",
-    "bucket": "B",
-    "wave": 4,
-    "criteria": [
-      "Every store account requests MobilePay and the admin shows per method whether it is on and why not (requirements), already true for MobilePay.",
-      "When Stripe opens Vipps to Kaizen's platform account, the capability is requested and the method is offered to Norwegian shoppers without code outside the payment list.",
-      "A payment-method switch per market is shown in the admin and never uses payment_method_types.",
-      "Live only after Stripe grants access (bucket B); alternatively through a second payment provider if the strategy decision allows it."
-    ],
-    "evidence": {
-      "files": [
-        "src/lib/mollie.ts",
-        "src/lib/stripe-account.ts",
-        "src/server/connect.ts",
-        "src/server/payment-providers/mollie.ts"
-      ],
-      "tests": [
-        "src/lib/stripe-account.test.ts",
-        "src/server/checkout-stripe.int.test.ts",
-        "src/server/mollie.int.test.ts"
-      ],
-      "untested": false
-    },
-    "decisions": [
-      "D23",
-      "D292"
-    ],
-    "history": []
   },
   {
     "id": "international.br-nn-ysund-lookup-and-angrerett",
@@ -1206,7 +1217,7 @@
       "was": null
     },
     "weight": 3,
-    "gap": "Database and functions are pinned to Ireland and Dublin (D10, vercel.json) and every vendor is listed in docs/residency-register.md, but the register shows DPAs for Supabase, Vercel, Resend, OpenAI and the gateway as still to accept in the vendors' dashboards, and OpenAI (api.openai.com, US) and Resend's account data and logs are outside the EU.",
+    "gap": "Database and functions are pinned to Ireland and Dublin (D10, vercel.json); docs/residency-register.md lists Supabase, Vercel, Resend, the AI gateway, OpenAI and Mistral, and an EU-residency OpenAI provider exists (openai_eu in src/lib/ai-provider.ts). Kaizena Flow's own data processing agreement and privacy notice name its sub-processors in English and Norwegian (D312 P5, src/lib/platform-legal/{en,nb}.ts). Missing: (1) the register still shows the DPAs of Supabase, Vercel, Resend, OpenAI and the gateway as to accept, OpenAI (api.openai.com) runs in the US, and Resend's account data and logs are in the US; (2) the register does not yet list vendors added since that touch personal data: Mollie, the carriers (Bring, PostNord, Porterbuddy, Helthjem), Slack, VIES and the ad platforms' server-side conversions (D303); (3) the AI settings page does not state each provider's region; (4) accepting each DPA is outside code (bucket D).",
     "bucket": "D",
     "wave": null,
     "criteria": [
@@ -1219,16 +1230,20 @@
         "docs/residency-register.md",
         "src/server/ai.ts",
         "src/lib/ai-provider.ts",
-        "vercel.json"
+        "vercel.json",
+        "src/lib/platform-legal.ts",
+        "src/lib/platform-legal/en.ts"
       ],
       "tests": [
         "src/server/ai.int.test.ts",
-        "src/lib/ai-provider.test.ts"
+        "src/lib/ai-provider.test.ts",
+        "src/lib/platform-legal.test.ts"
       ],
       "untested": false
     },
     "decisions": [
-      "D10"
+      "D10",
+      "D312"
     ],
     "history": []
   },
@@ -1249,7 +1264,7 @@
       "was": "full"
     },
     "weight": 5,
-    "gap": "Criteria 1 to 4 are built and held by tests at the level of the header, the import graph and the components; Partial because the attestation is the company's and the policy was never run against a live Stripe payment. src/lib/csp.ts sends an enforced Content-Security-Policy on cart, checkout and order of every store (both address shapes; no unsafe-eval; Stripe's origins as its guide lists them), OffPayRoutes draws no consent manager, owner code, chat widget or affiliate capture there, the pages are entered by full page loads (PayRouteGuard), the checkout page may not hold an HTML or embedded-video block, and no-card-fields.test.ts scans for card inputs. Missing: (1) the SAQ A attestation, and the question whether Kaizen as platform has PCI duties of its own (docs/pci.md; the company's, bucket D); (2) the manual test-mode payment on a preview through to the order page, with the console open and an axe run, is not done (the table in docs/pci.md is empty), so it is not known that Stripe's form, redirect methods and address autocomplete (https://maps.googleapis.com was added from Stripe's guide, never seen working) work under the enforced policy; CSP_ENFORCE = false is the one-line fallback; (3) script-src keeps 'unsafe-inline' because the prerendered shell cannot carry a nonce, so the policy stops other origins' scripts but not an injected inline one (the SRI form was not tried); (4) e2e/csp.spec.ts \"the cart loads under the policy with no violation\" FAILS on the current tree (re-run 2026-10-03): the review fix made PayRouteGuard import @/lib/affiliates, which imports zod, whose JIT probe calls Function(\"\") and the browser reports it as a securitypolicyviolation (script-src blocked eval); harmless at runtime (zod falls back) but it puts the violation back on cart, checkout and order until withAffiliate() is moved out of the zod module or zod is set to jitless; (5) the migrations are not applied and nothing is deployed.",
+    "gap": "Criteria 1 to 4 are built and held by tests at the level of the header, the import graph and the components; Partial because the attestation is the company's (bucket D) and the policy was never run against a live payment. src/lib/csp.ts sends an enforced Content-Security-Policy on cart, checkout and order of every address shape (no unsafe-eval; Stripe's origins as its guide lists them), OffPayRoutes draws no consent manager, owner code, chat widget or affiliate capture there, the pages are entered by full page loads (PayRouteGuard), the checkout page may not hold an HTML or embedded-video block, and no-card-fields.test.ts scans for card inputs. The earlier zod violation on the pay routes is fixed: PayRouteGuard imports the import-free src/lib/affiliate-address.ts and pay-routes.test.ts and storefront-bundle.scan.test.ts keep zod out. Mollie (D292) adds no origin: its page is hosted and nothing of Mollie's is framed on a pay route (docs/pci.md). The migrations are applied in production. Missing: (1) the SAQ A attestation and whether Kaizena Flow as platform has PCI duties of its own (docs/pci.md; the company's); (2) the manual test-mode payment through to the order page with the console open and an axe run is not recorded (the table in docs/pci.md is empty), so Stripe's form, redirect methods and address autocomplete are not seen working under the enforced policy (CSP_ENFORCE = false is the fallback); (3) script-src keeps 'unsafe-inline' because the prerendered shell cannot carry a nonce.",
     "bucket": "D",
     "wave": null,
     "criteria": [
@@ -1270,7 +1285,8 @@
         "src/components/off-pay-routes.tsx",
         "src/components/pay-route-guard.tsx",
         "src/app/s/[store]/[market]/extras.tsx",
-        "docs/pci.md"
+        "docs/pci.md",
+        "src/lib/affiliate-address.ts"
       ],
       "tests": [
         "src/server/checkout-stripe.int.test.ts",
@@ -1282,7 +1298,8 @@
         "src/components/off-pay-routes.test.ts",
         "src/components/pay-route-guard.test.ts",
         "src/server/page-checks.int.test.ts",
-        "e2e/csp.spec.ts"
+        "e2e/csp.spec.ts",
+        "src/lib/storefront-bundle.scan.test.ts"
       ],
       "untested": false
     },
@@ -1290,7 +1307,8 @@
       "D158",
       "D16",
       "D17",
-      "D22"
+      "D22",
+      "D292"
     ],
     "history": [
       {
@@ -1318,7 +1336,7 @@
       "was": "missing"
     },
     "weight": 4,
-    "gap": "All four criteria are built (TOTP enrolment with ten single-use recovery codes from Your account, a challenge after the password or magic link, the owner's store requirement stores.require_two_step, platform admins always, audit entries, an atomic five-tries-in-15-minutes limit) and held by unit tests and integration tests with an injected Supabase client; getAccount() fails closed and reads enrolment from the signed aal claim or a server-side getUser(), never the cookie. Partial because no test talks to a real Supabase Auth (CI has none): enrolment, the challenge, the aal2 claim and the admin delete-factor call used by a recovery code have not been seen working, and e2e/admin-two-step.spec.ts reaches only the signed-out redirects. Full after one manual check recorded: TOTP enabled in the project's Auth settings, SUPABASE_SECRET_KEY set to the secret key in Vercel, the platform admin enrols in production and saves the recovery codes (docs/wave-1-trust.md section 9.3); until then a platform admin without a factor is held at enrolment, and ADMIN_TWO_STEP=off is the break-glass. Not done by design: passkeys, Supabase's experimental native recovery codes, SMS. The migrations staff_security and staff_security_rules are applied to production (checked 2026-10-14).",
+    "gap": "All four criteria are built (TOTP enrolment with ten single-use recovery codes from Your account, a challenge after the password or magic link, the owner's store requirement stores.require_two_step, platform admins always, audit entries, an atomic five-tries-in-15-minutes limit) and held by unit and integration tests with an injected Supabase client; getAccount() fails closed and reads enrolment from the signed aal claim or a server-side getUser(), never the cookie. Since D254 the signed-in e2e suite signs a platform admin in through the real two-step page against the Auth stand-in (e2e/fixtures/auth-stub.mjs, a TOTP code from e2e/fixtures/totp.mjs, an aal2 session), and password sign-in has its own per-email limit (PSI SEC-02, src/server/sign-in-limit.ts). Partial because no test talks to a real Supabase Auth: enrolment, the real aal2 claim and the admin delete-factor call a recovery code makes are not seen working, and the one manual check that would make it Full is not recorded: TOTP enabled in the project's Auth settings, SUPABASE_SECRET_KEY set in Vercel, the platform admin enrolled in production with saved recovery codes (docs/wave-1-trust.md section 9.3). ADMIN_TWO_STEP=off is the break-glass. Not done by design: passkeys, Supabase's native recovery codes, SMS. Migrations applied in production (checked 2026-10-14).",
     "bucket": "A",
     "wave": 1,
     "criteria": [
@@ -1339,7 +1357,10 @@
         "src/app/admin/sign-in/two-step/page.tsx",
         "src/app/admin/sign-in/two-step/set-up/page.tsx",
         "supabase/migrations/20261003195103_staff_security.sql",
-        "supabase/migrations/20261003195109_staff_security_rules.sql"
+        "supabase/migrations/20261003195109_staff_security_rules.sql",
+        "src/server/sign-in-limit.ts",
+        "e2e/fixtures/auth-stub.mjs",
+        "e2e/fixtures/totp.mjs"
       ],
       "tests": [
         "src/lib/two-step.test.ts",
@@ -1350,12 +1371,14 @@
         "src/server/store-mcp.int.test.ts",
         "src/components/admin/two-step-panel.test.ts",
         "src/db/trust.test.ts",
-        "e2e/admin-two-step.spec.ts"
+        "e2e/admin-two-step.spec.ts",
+        "e2e/signed-in/auth.setup.ts"
       ],
       "untested": false
     },
     "decisions": [
-      "D158"
+      "D158",
+      "D254"
     ],
     "history": [
       {
@@ -1463,7 +1486,7 @@
       "was": null
     },
     "weight": 4,
-    "gap": "Built and held by tests (unit 1b, D159, in production): the invoice and credit-note machinery of the two rows above, in the store's own gap-free series, with seller and buyer, VAT per rate, VAT number, payment and dates, the VAT in the seller's currency (`vatHome`) for an order in another currency (Art. 230), reverse charge with both numbers and the IOSS number, a PDF and a link in the emails, on the order page and on the hosted page, and the rules that copied and host orders get none and that numbers cannot be re-prefixed, lowered, skipped or removed (`invoices.test.ts`, `document_audit()` finds a hand-made gap). Euro views of every product kind, with a code, a group discount, a campaign, a gift and a delivery quote, are held in `checkout-kinds.int.test.ts` (invoice total and VAT per rate equal the order's, credit notes sum to the refunds and bring the VAT per rate to zero), and the reverse-charge and IOSS orders in `vat-engine.int.test.ts`. I ran these in my own database on 2026-10-04: all passed. Still short of Full: (1) the legal wording is unreviewed (spec section 8, ten items) and the content list is checked for NO, SE, DK, DE and the Directive only, from sources that were partly secondary or unreadable (EUR-Lex, gesetze-im-internet.de); nothing is claimed for any other member state; so by WAVES.md step 4 the row is not Full until an accountant or lawyer per country has read the real PDFs (spec 9.7); (2) a bonus-credit order, the criterion's own example, is held only by the fixture-based `invoice-parity.test.ts` (the SQL snapshot equals the pure oracle, with a bonus line and a welcome discount) and not by a checkout scenario: the D130 scenarios in `checkout-kinds.int.test.ts` do not call the document check; (3) the criterion's totals are the order's less free-trial subscription lines billed at the first renewal, and the notes sum to the refunds up to what the invoice left uncredited; a refund of a payment not on the invoice (a no-show fee) gets none; (4) the e2e is a fixture order, no Storage, no Chromium on Vercel, no real Stripe; the migrations are applied in production (checked 2026-10-14) but no document has been seen issued there; invoicing off for stores with history (see the invoice row); (5) not built: simplified invoices, exemption references, structured e-invoices (Germany's issuing mandate starts 2027 and 2028), and the per-measure unit price (D160) on the document itself. Since unit 1b, the VAT, OSS and IOSS reports (1c, D161) read these documents, and erasure (1g, D162) anonymises them when the seller country's period ends (`runRetention()` calls `anonymiseDocuments()`).",
+    "gap": "Built and held by tests (unit 1b, D159, in production): the invoice and credit-note machinery of the two rows above, in the store's own gap-free series, with seller and buyer, VAT per rate, VAT number, payment and dates, the VAT in the seller's currency (`vatHome`) for an order in another currency (Art. 230), reverse charge with both numbers and the IOSS number, a PDF and a link in the emails, on the order page and on the hosted page, and the rules that copied and host orders get none and that numbers cannot be re-prefixed, lowered, skipped or removed (`invoices.test.ts`, `document_audit()` finds a hand-made gap). Euro views of every product kind, with a code, a group discount, a campaign, a gift and a delivery quote, are held in `checkout-kinds.int.test.ts` (invoice total and VAT per rate equal the order's, credit notes sum to the refunds and bring the VAT per rate to zero), and the reverse-charge and IOSS orders in `vat-engine.int.test.ts`. I ran these in my own database on 2026-10-04: all passed. Still short of Full: (1) the legal wording is unreviewed (spec section 8, ten items) and the content list is checked for NO, SE, DK, DE and the Directive only, from sources that were partly secondary or unreadable (EUR-Lex, gesetze-im-internet.de); nothing is claimed for any other member state; so by WAVES.md step 4 the row is not Full until an accountant or lawyer per country has read the real PDFs (spec 9.7); (2) a bonus-credit order, the criterion's own example, is held only by the fixture-based `invoice-parity.test.ts` (the SQL snapshot equals the pure oracle, with a bonus line and a welcome discount) and not by a checkout scenario: the D130 scenarios in `checkout-kinds.int.test.ts` do not call the document check; (3) the criterion's totals are the order's less free-trial subscription lines billed at the first renewal, and the notes sum to the refunds up to what the invoice left uncredited; a refund of a payment not on the invoice (a no-show fee) gets none; (4) the e2e is a fixture order, no Storage, no Chromium on Vercel, no real Stripe; the migrations are applied in production (checked 2026-10-14) but no document has been seen issued there; invoicing off for stores with history (see the invoice row); (5) not built: simplified invoices, exemption references, structured e-invoices (Germany's issuing mandate starts 2027 and 2028), and the per-measure unit price (D160) on the document itself. Since unit 1b, the VAT, OSS and IOSS reports (1c, D161) read these documents, erasure (1g, D162) anonymises them when the seller country's period ends, an order change issues its own invoice and edit credit note (D174, `commerce.issue_edit_documents()`), an exchange one `return_exchange` credit note (D239), an order on payment terms carries its due date (D293), and a gift card line is marked `voucher` (D300).",
     "bucket": "A",
     "wave": 1,
     "criteria": [
@@ -1535,7 +1558,11 @@
     "decisions": [
       "D141",
       "D27",
-      "D159"
+      "D159",
+      "D174",
+      "D239",
+      "D293",
+      "D300"
     ],
     "history": []
   },
