@@ -452,32 +452,158 @@ level, budget and `NEVER_AUTOMATIC`, every gated tool in one area. Integration: 
 with a fake model (a tool step, a task step, a question answered, a step whose check fails three times and becomes a question), a kept call
 settling its step, a removed member pausing the plan, another store's plan never touched.
 
-## 8. Unit L (D311): legal pages by AI (outline)
+## 8. Unit L (D311): legal pages by AI
 
 This changes D158's rule that a legal page's words are hand-written starters and never a model's. The owner's decision (2026-10-22): a strong
 agent can research and compile legal texts better than most store owners, so a store's legal pages are written and kept current by the AI,
-with no person reviewing each text. What keeps them right is how they are made:
+with no person reviewing each text. What keeps them right is how they are made, and that is what this section specifies: the model writes
+sentences from official text fetched by code; everything a sentence states about the store, and every quote from the law, is put there or
+checked by code.
 
-- **Sources, not memory.** A register of the official sources per country and topic (EUR-Lex for the directives and regulations, Lovdata,
-  Riksdagen, Retsinformation, the consumer and data protection authorities' own pages), fetched by code through `safeFetch()`, kept with
-  the day read and a hash. The model writes from the fetched text given as data, never from what it remembers (a model's memory still
-  links the EU's ODR platform, repealed in 2025).
-- **Citations checked word for word.** Each section names the source it rests on and quotes it; the code refuses a section whose quote is
-  not in the fetched text.
-- **The store's facts, checked against the store.** Every fact comes from `legalFacts()` and the store's settings, and the code checks the
-  page against them: the return window and who pays return shipping as `return_settings` say, the withdrawal period never under 14 days,
-  the seller's name, number and address as the store's details, the carriers and tracking tools the store uses, no `[[placeholder]]` left.
-- **Every topic, every language.** `REQUIRED_TOPICS` and `CONDITIONAL_TOPICS` are checked as they are for the starters, in each of the
-  store's languages; words pass the claims filter (no promise the store has not made).
-- **Kept current.** Sources are fetched again on a schedule; a changed source or a changed store fact (a new country, a new carrier, a new
-  tracking tool, another return window) writes the affected pages again, published at the owner's level for legal pages, with the reason
-  in the report. Every version is kept (`page_versions`, and `legal_snapshots` for what a buyer accepted), with its sources and the model.
-- **The owner's part** is one choice when they turn it on, said plainly once: the AI writes and keeps the store's legal pages, and as the
-  seller the store stays responsible for them. The hand-written starters stay as the fallback when there is no model or a source cannot be
-  read. Kaizena Flow may have a lawyer read the generator's rules and the source register once per country (recommended, not a gate).
+The consumer texts that are part of the product itself (the withdrawal function, emails, the checkout's words, `HAND_WRITTEN_ONLY`), the
+accessibility statement (`a11y-statement.ts`, which never says "conforms" without an audit) and Kaizena Flow's own terms (P5) are not in this
+unit and stay as they are. The hand-written starters stay, unchanged, as the fallback.
 
-The consumer texts that are part of the product itself (the withdrawal function, emails, the checkout's words, `HAND_WRITTEN_ONLY`) are not
-in this unit and stay as they are until a later decision.
+### 8.1 What is written
+
+- **The six starter kinds** (`STARTER_ROLES`): terms of sale, privacy statement, returns policy, shipping policy, withdrawal information
+  (with the model form) and imprint, each with the topics `REQUIRED_TOPICS` and `CONDITIONAL_TOPICS` already name. The topic list is code's;
+  the model never adds, drops or merges a section.
+- **Where the seller is established in a country the source register covers**: Norway, Sweden and Denmark first (the countries the starters
+  were written for), with EU law for every EU market the store sells to. A store established elsewhere is told the AI cannot write its pages
+  yet and keeps the starters.
+- **In the store's languages among nb, sv, da and en**, as the starters are: the main language is the page, the others its D55 texts on the
+  same blocks. Each language is written from the sources in that language where they exist (the directive in Swedish, Danish and English
+  from the EU's own text; Norwegian law in Norwegian), never translated from another language's page. A store whose main language is none of
+  the four gets the English page, saying so, as the starters do.
+
+### 8.2 The source register
+
+- **The register is code** (`src/lib/legal-sources.ts`, pure), as `LAUNCH_THEMES` is: each source has a key, its jurisdiction (`EU`, `NO`,
+  `SE`, `DK`), the act's name and official id (CELEX, ELI, SFS number, Lovdata id), the route it is fetched by, the languages it exists in,
+  and the topics each of its articles or sections may support (`TOPIC_SOURCES`: `withdrawal` → CRD Art. 9 to 16 and the national acts'
+  sections on withdrawal, `complaint_authority` → the data protection authority's own page, and so on). Which sources a page uses is decided
+  by code from the store's facts (its country, its markets, whether it sells to businesses, bookings), never by the model. The bodies a
+  consumer may complain to (`DISPUTE_BODIES`: Forbrukerrådet and Forbrukerklageutvalget, Allmänna reklamationsnämnden, Nævnenes Hus and
+  Forbrugerklagenævnet) and the data protection authorities are data in the register with the address of their own page, so the page names
+  them from data and the starters' `[[Check: complaintBody]]` is answered. The EU's ODR platform is in no source and the checker refuses it.
+- **Fetched by code, only from the register's hosts** (`LEGAL_SOURCE_HOSTS`), through `safeFetch()` with a size limit and an injectable fetch.
+  The routes, as tried from a sandbox on 2026-10-25 (production's network to be tried in step L1 before any route is relied on):
+  - EU law through the Publications Office's Cellar (`publications.europa.eu/resource/celex/{CELEX}`, XHTML in the language asked for):
+    answers with the whole text. EUR-Lex's own pages answer an empty bot check and are not used.
+  - Swedish law through Riksdagen's open data (`data.riksdagen.se/dokument/sfs-….text`): answers with plain text.
+  - Danish law through Retsinformation's XML by ELI (`www.retsinformation.dk/eli/…/xml`): answers with the act as XML.
+  - Norwegian law through Lovdata: both its pages and its open-data API (`api.lovdata.no`, NLOD licence) refused the request (405). Until a
+    route works from production, Norwegian law is the passages already read on Lovdata by a person (`LEGAL_WORDING_NB`, each with its address
+    and the day read) and the page's sources say so ("read on Lovdata on …"); they are read again yearly (`staleWording()`). This is a
+    weaker footing than a fetch and is named in the report.
+- **Each read is kept**: `commerce.legal_source_reads` (Kaizena Flow's, no store: the source's key, the language, when, the text's hash,
+  the passages cut by code from the text by article or section, `ok` or `failed` with its problem), append-only, written only by
+  `src/server/legal-sources.ts`. The text is cut into passages by code per route (`passagesOf()`, tested on a stored copy of each route's
+  answer); a read whose passages a page needs cannot be found in is `failed`, never guessed at. Sources are read again weekly by the job
+  (8.5); reads no live page cites are pruned after 90 days, and the newest `ok` read of each source is always kept.
+
+### 8.3 How a page is written
+
+1. **Facts.** `legalFacts(store)`, as the starters read them, become a fact sheet of named facts (`fact:returns.windowDays`,
+   `fact:seller.legalName`, `fact:markets`, …) with the store's values, and links (`link:withdraw`, `link:cookies`, `link:privacy`) and
+   bodies (`body:disputes`, `body:privacy_authority`) from the register.
+2. **Plan.** Code lists the page's sections (the topics), and for each the passages it may rest on (from `TOPIC_SOURCES`, in the page's
+   language where the source has it) and the facts it may use.
+3. **The model writes** one page in one language per call, through `aiFor(store, { feature: "legal_pages" })`'s text model, with
+   `UNTRUSTED_TEXT` (the passages are data), the passages between `<source-data>` markers and the fact sheet by name only. It answers JSON
+   only: for each topic, a heading and paragraphs or lists; each paragraph is `statement` (says what the law gives or requires, and cites at
+   least one passage with a quote from it of 20 to 300 characters) or `practical` (says how this store does something, and uses at least one
+   fact). Every fact, link and body is written as its token (`{fact:returns.windowDays}`), never as a value: code fills it in.
+4. **Code puts in what the model must not write**: the model withdrawal form (in sv, da and en the directive's Annex I(B) as the fetched text
+   has it, in nb the form the starter holds, from the state form Q-0319B), the seller's details in the imprint (a table of facts), and a
+   final **Sources** section listing every passage cited, with the act, the article and the official address, and the day each was read.
+5. **Checked by code** (`checkLegalDraft()` in `src/lib/legal-writer.ts`, pure), every rule a refusal with its reason:
+   - the topics are exactly the plan's, once each, in order;
+   - every quote is in its passage word for word (spaces and quotation marks normalised), and every cited passage is one the plan offered;
+   - every token is a known fact, link or body of the sheet, and every value is filled in from it (no `[[` left);
+   - no figure, amount, date, web address, email address or organisation number appears outside a token or a quote (the model cannot state a
+     number of its own), and the withdrawal period, wherever the page states one, is the `fact:withdrawal.days` token (never under 14);
+   - topic rules: the withdrawal section uses the withdrawal days and, with `link:withdraw` present, the link; the returns window and who pays
+     return shipping are the `return_settings` facts; the disputes section names a `body:disputes`; nothing names the ODR platform;
+   - the words pass the claims filter (`findClaims()`: no promise the store has not made) and the page passes `pageIssues()` without a
+     blocking issue;
+   - each block is plain text (no HTML, no markup) within a length limit.
+   A draft that fails is written again once with its reasons; a second failure keeps the page as it is (or makes the starter where the store
+   has no page of that kind) and the write is `failed` with the reasons.
+
+### 8.4 Pages, publishing and versions
+
+- **Written into the role's page.** The kind's page (its `page_roles` row) is written again as a new version through `savePage()`, so its
+  address stays and `keepVersion()` keeps every version; a store with no page of that kind gets one, placed in the role. **A page a person
+  wrote is never written over**: a page the AI did not write, or an AI page edited since its last write (its draft differs from what the
+  write saved), is left alone, and the AI makes a new page beside it as a draft and says so; the owner can hand a page back.
+- **No review notice.** An AI page has no `legal-review-notice` row (no person reviews each text, D311). Its Sources section says it was
+  prepared with AI from the sources listed, on the date written.
+- **Published** when the checks pass, at the owner's choice made when turning it on (`publish`: `auto`, the default, or `ask`: the write is
+  a draft and the owner publishes it from the Legal page). Publishing goes through `savePage()` with `publish: true`, so the checker runs
+  again; a page in a running A/B test is never written (legal pages are never tested, D158). What a buyer accepted stays as it was
+  (`legal_snapshots`, D158).
+- **Every write is a row**, `commerce.legal_ai_writes` (store, kind, page, languages, why (`first`, `source_changed`, `facts_changed`,
+  `asked`), status `queued`, `running`, `written`, `published`, `kept` (a person's page left alone) or `failed`, the sources as read ids and
+  passage keys, the facts' hash, the model, tries, problems, timestamps), written only by `src/server/legal-writer.ts`; `never` in
+  `COPY_RULES` (a copy of a store agrees for itself).
+
+### 8.5 Kept current
+
+The five-minute dispatcher's `runLegalUpkeep()`, for stores with it on that are open (`store_is_active()`):
+
+- reads again weekly every source a live AI page cites; a cited passage whose text changed queues those pages (`source_changed`);
+- compares, daily, the hash of the facts each page used with the store's facts now: a new country, carrier, tracking tool, return window,
+  delivery method or seller detail queues the pages that use it (`facts_changed`);
+- writes one page per store per run, at most `LEGAL_WRITES_PER_DAY` a store (a burst of changes waits), under the store's AI limits
+  (`aiFor()` gives no AI past them, and the write waits).
+
+With no model, a source that cannot be read or a failed write, the page stays as it is and the owner sees why on the Legal page and in the
+autopilot's digest where it runs (B3b).
+
+### 8.6 The owner's part
+
+- **One choice, said once**, on Settings → Legal (owner only, `requireOwnerRole`): "Let AI write and keep your legal pages. It writes your
+  terms, privacy, returns, shipping, withdrawal and imprint pages from the official sources and your store's settings, and writes them again
+  when either changes. As the seller, your store is responsible for them." Turning it on records who, when and the version of that sentence
+  (`commerce.legal_ai_settings`: store, on, `publish`, the sentence's version, by, at), audit `store.legal_ai_on`/`store.legal_ai_off`, and
+  queues the first writes. Turning it off writes nothing more and leaves every page as it is.
+- **Homer** sees each kind's page with one line: "Written by AI on 25 October from 7 sources" or why not. **Lisa**, one step away: the
+  sources and passages, the versions, why each write happened, *Write again now*, *Stop writing this page* and *Hand back to AI*, and the
+  publish choice.
+- **The AI manager** gets `legal_pages_status` (read-only: what is written, when, from what, what waits). Turning it on, the publish choice
+  and stopping a page are the owner's on the page, never a tool's.
+- Kaizena Flow may have a lawyer read the register and the checker's rules once per country (recommended, not a gate); the words of each
+  page are not reviewed by a person.
+
+### 8.7 Tests
+
+`src/lib/legal-sources.test.ts`: the register (hosts, ids, every required topic of every covered country has a source in each language,
+no ODR), `passagesOf()` on a stored answer of each route. `src/lib/legal-writer.test.ts`: `checkLegalDraft()` refuses a quote not in its
+passage, an unoffered passage, a figure or address outside a token, a missing or extra topic, a withdrawal period that is not the token, the
+ODR platform, a claim; fills tokens; the form and Sources section are code's. `src/server/legal-writer.int.test.ts` with a stand-in fetch
+and model: turning on writes and publishes the six pages into their roles; a changed return window writes the returns policy and terms
+again; a changed passage writes the pages citing it; a page edited by a person is kept and a draft made beside it; a draft that fails twice
+keeps the page and records why; another store's pages are never touched. `agent-eval.ts`: a case where a source passage hides an
+instruction (the canary must not appear in the page).
+
+### 8.8 Steps
+
+- **L1, the sources**: the register, the fetch routes tried from production first (a route that does not answer there is marked and not
+  used), `passagesOf()`, `legal_source_reads` and the weekly read. No model, nothing on pages.
+- **L2, the writer**: plan, prompt, `checkLegalDraft()`, the form and Sources section; *Write with AI* on the Legal page makes a draft of one
+  kind (never published), so the result can be read before anything is automatic.
+- **L3, kept current**: turning it on, publishing, `runLegalUpkeep()`, the Legal page's lines, `legal_pages_status`, the report.
+
+### 8.9 For the owner to decide before L1
+
+1. **Publishing at once by default** (`auto`), as D311 reads; the alternative is drafts the owner publishes (`ask`) by default.
+2. **The page says it was prepared with AI** from the sources listed (proposed: yes; it costs nothing and is true).
+3. **Norway on recorded passages** while Lovdata refuses fetches: Norwegian stores' pages would rest on passages a person read on
+   Lovdata (2026-10-22, not yet proofread letter by letter), not on a fetch. The alternative is to leave Norwegian stores on the starters until
+   a route to Lovdata works.
+4. **Scope**: sellers in Norway, Sweden and Denmark and the four languages first; others keep the starters.
 
 ## 9. Unit C (D310): eyes
 
