@@ -28,6 +28,7 @@ const READERS: Record<string, "real" | "template" | "both"> = {
   // Broadcasts (D297): a template or demo store sends no marketing email.
   "src/server/broadcasts.ts": "real",
   "src/server/automations.ts": "real",
+  "src/server/autopilot-goals.ts": "real",
   "src/server/stock-requests.ts": "real",
   "src/server/review-import.ts": "real",
   "src/server/review-requests.ts": "real",

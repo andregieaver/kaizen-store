@@ -60,7 +60,7 @@ import {
  * notes inside the admin, runs freely.
  */
 
-export type GateCategory = "send" | "public" | "spend" | "domain" | "access";
+export type GateCategory = "send" | "public" | "spend" | "domain" | "access" | "plan";
 
 export type OwnerTool<I extends z.ZodType = z.ZodType, N extends string = string> = {
   name: N;
@@ -1380,6 +1380,7 @@ export const GATE_WORDS: Record<GateCategory, string> = {
   spend: "Costs money",
   domain: "Changes your domain: where it points, its email or its renewal",
   access: "Changes who works in the store and what they may do",
+  plan: "Starts work in your name",
 };
 
 /**
@@ -1397,6 +1398,10 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
       return `Change order ${text("order")} as previewed.`;
     case "propose_exchange":
       return `Email the customer of return ${text("return")} an exchange.`;
+    case "start_autopilot_plan":
+      return "Start the plan as you saw it.";
+    case "resume_autopilot_plan":
+      return "Resume the plan.";
     case "process_exchange":
       return `Process the confirmed exchange for return ${text("return")}: make the new order and move the money.`;
     case "invite_staff":

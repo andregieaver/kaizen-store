@@ -19,6 +19,7 @@ import { lastPartOf, recordablePath, suggestTargets, wordsOf, type Candidate, ty
 import { normalisePath } from "@/lib/redirect-path";
 
 import { type Membership } from "./auth";
+import { currentActor } from "./actor";
 import { NO_ACCESS, memberCan } from "./permissions";
 import { pgTextArray } from "./pg-arrays";
 import { lockRedirects, createRedirect, type RedirectFailure, type SavedRedirect } from "./redirects";
@@ -210,8 +211,8 @@ const refuse = (problem: string): ReportFailure => ({ ok: false, problems: [prob
 
 async function auditIn(tx: Tx, member: Pick<Membership, "account" | "store">, action: string, details: Record<string, unknown>): Promise<void> {
   await tx.execute(sql`
-    insert into commerce.audit_log (account_id, store_id, action, details, area, target_type, target_id)
-    values (${member.account.id}::uuid, ${member.store.id}::uuid, ${action}, ${JSON.stringify(details)}::jsonb, ${areaOfAction(action)}, 'not_found', ${String(details.path ?? "")})
+    insert into commerce.audit_log (account_id, store_id, action, details, area, target_type, target_id, acted_by)
+    values (${member.account.id}::uuid, ${member.store.id}::uuid, ${action}, ${JSON.stringify(details)}::jsonb, ${areaOfAction(action)}, 'not_found', ${String(details.path ?? "")}, ${currentActor()})
   `);
 }
 

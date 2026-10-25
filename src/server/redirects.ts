@@ -12,6 +12,7 @@ import { planRedirectLines, writesOf, type LinePlan, type RedirectImportOptions 
 import { redirectStatus, validateRedirect, type RedirectKind, type RedirectOrigin, type RedirectStatus } from "@/lib/redirects";
 
 import { type Membership } from "./auth";
+import { currentActor } from "./actor";
 import { NO_ACCESS, memberCan } from "./permissions";
 import { pgUuidArray } from "./pg-arrays";
 import { addressContextOf, indexFor, liveOf, manualCountOf, pathsOfIndex, refreshRedirects, type Executor } from "./redirect-live";
@@ -74,8 +75,8 @@ export type RedirectDeps = { limit?: number };
 /** Writes an entry of the activity log in the transaction of the change it describes (an entry that fails undoes the change). */
 async function auditIn(tx: Tx, member: Pick<Membership, "account" | "store">, action: string, details: Record<string, unknown>, target: { type: string; id: string }): Promise<void> {
   await tx.execute(sql`
-    insert into commerce.audit_log (account_id, store_id, action, details, area, target_type, target_id)
-    values (${member.account.id}::uuid, ${member.store.id}::uuid, ${action}, ${JSON.stringify(details)}::jsonb, ${areaOfAction(action)}, ${target.type}, ${target.id})
+    insert into commerce.audit_log (account_id, store_id, action, details, area, target_type, target_id, acted_by)
+    values (${member.account.id}::uuid, ${member.store.id}::uuid, ${action}, ${JSON.stringify(details)}::jsonb, ${areaOfAction(action)}, ${target.type}, ${target.id}, ${currentActor()})
   `);
 }
 

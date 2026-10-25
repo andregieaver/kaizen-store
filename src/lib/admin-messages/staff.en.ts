@@ -159,6 +159,7 @@ export const staffEn = {
     details: "Details",
     changed: "changed",
     older: "Older entries",
+    actedBy: { ai_manager: "through the AI manager", autopilot: "through the autopilot" },
     none: "(none)",
     yes: "yes",
     no: "no",

@@ -3,6 +3,8 @@ import { z } from "zod";
 import { SITE_TOOLS, tool, type OwnerTool } from "./owner-tools";
 import { savePlatformMenuInput, setPlatformPlaceInput } from "./site-tools";
 import { FOLLOW_UP_REPEATS, TASK_MAX } from "./follow-ups";
+import { goalTargetInput, TARGETS_MAX } from "./autopilot-goals";
+import { planInput } from "./autopilot-plans";
 import { REFERRAL_COMMISSION_BPS_MAX, REFERRAL_COOKIE_DAYS_MAX, REFERRAL_MONTHS_MAX, REFERRAL_PENDING_DAYS_MAX } from "./referrals";
 
 /**
@@ -85,6 +87,51 @@ export const MANAGER_TOOLS = [
     "cancel_follow_up",
     "Cancels a waiting follow-up, by its id from list_follow_ups. Use it when they no longer want it.",
     z.object({ follow_up: z.uuid() }),
+  ),
+  // The autopilot (D309, `docs/ai-autopilot.md` 7): goals, and plans whose steps run in the background in the person's name.
+  tool(
+    "set_goal",
+    "Keeps one of the owner's goals for the business: their vision in their words and up to five targets measured from the store's own figures (net sales or orders in 30 days, conversion, open by a date, active products, published pages; on Kaizena Flow's own site published pages and open stores). Give goal to change an existing one. Use it when they say what they want to achieve; then offer a plan for it.",
+    z.object({
+      goal: z.uuid().optional().describe("To change an existing goal: its id from list_goals."),
+      title: z.string().trim().min(1).max(120).describe("A short name, such as 'First 100 orders'."),
+      vision: z.string().trim().max(2000).optional().describe("What they want, in their own words."),
+      targets: z.array(goalTargetInput).max(TARGETS_MAX).default([]),
+      due_on: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe("By when, YYYY-MM-DD."),
+    }),
+  ),
+  tool("list_goals", "The goals here, each with its progress worked out from the store's own figures.", z.object({ all: z.boolean().default(false).describe("Also met and dropped ones.") })),
+  tool("drop_goal", "Drops a goal they no longer want, by its id from list_goals.", z.object({ goal: z.uuid() })),
+  tool(
+    "make_autopilot_plan",
+    "Makes a plan the autopilot carries out in the background, step by step, in the person's name: each step is one tool call with its arguments (kind tool), a task done with a few named tools from a brief (task), a question for the owner (question) or a wait (wait), with the steps it waits for and a check that says it worked. It is only a draft: show it in a few lines and ask whether to start it (start_autopilot_plan). Prefer tool steps where the arguments are known; use tasks for work that needs judgement; ask the owner only what only they can decide.",
+    planInput,
+  ),
+  tool(
+    "revise_autopilot_plan",
+    "Replaces the steps of a plan that have not run yet (done steps stay, and new steps may wait for them). A running or paused plan becomes a draft again and must be started again.",
+    z.object({ plan: z.uuid(), title: z.string().trim().min(1).max(120).optional(), summary: z.string().trim().max(2000).optional(), steps: planInput.shape.steps }),
+  ),
+  tool(
+    "start_autopilot_plan",
+    "Starts a draft plan, once the person has seen it: their yes starts exactly the version they saw. Needs their approval.",
+    z.object({ plan: z.uuid() }),
+    "plan",
+  ),
+  tool(
+    "resume_autopilot_plan",
+    "Resumes a paused plan, on the person's yes. Needs their approval.",
+    z.object({ plan: z.uuid() }),
+    "plan",
+  ),
+  tool("pause_autopilot_plan", "Pauses a running plan: no further step runs until it is resumed.", z.object({ plan: z.uuid() })),
+  tool("stop_autopilot_plan", "Stops a plan for good: what it did stays, nothing more runs. Always allowed.", z.object({ plan: z.uuid() })),
+  tool("get_autopilot_plan", "One plan with every step: what it does, its status, its result or problem, and what it asks.", z.object({ plan: z.uuid() })),
+  tool("list_autopilot_plans", "The autopilot's plans here, running and recent, with their status and what waits.", z.object({ finished: z.boolean().default(false).describe("Also plans finished more than 30 days ago.") })),
+  tool(
+    "answer_autopilot_question",
+    "Gives the owner's answer to a plan's question (a step that asks), when they answer it in this message: one of its options, in their words. Never answer for them.",
+    z.object({ plan: z.uuid(), step: z.string().trim().min(1).max(40).describe("The step's key, such as s3."), answer: z.string().trim().min(1).max(500) }),
   ),
 ] as const satisfies readonly OwnerTool[];
 
@@ -371,6 +418,18 @@ export const TOOL_WORDS: Record<string, string> = {
   follow_up: "Keeping the follow-up",
   list_follow_ups: "Looking at your follow-ups",
   cancel_follow_up: "Cancelling the follow-up",
+  set_goal: "Keeping the goal",
+  list_goals: "Looking at your goals",
+  drop_goal: "Dropping the goal",
+  make_autopilot_plan: "Making the plan",
+  revise_autopilot_plan: "Changing the plan",
+  start_autopilot_plan: "Preparing to start the plan",
+  resume_autopilot_plan: "Preparing to resume the plan",
+  pause_autopilot_plan: "Pausing the plan",
+  stop_autopilot_plan: "Stopping the plan",
+  get_autopilot_plan: "Reading the plan",
+  list_autopilot_plans: "Looking at the plans",
+  answer_autopilot_question: "Passing on your answer",
   contact_kaizen_support: "Writing to Kaizena Flow support",
   add_order_note: "Adding a note",
   mark_order_sent: "Preparing the shipment",

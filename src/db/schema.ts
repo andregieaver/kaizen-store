@@ -1484,8 +1484,11 @@ export const auditLog = commerce.table(
     targetId: text("target_id"),
     /** The changed fields as `{ field: { from, to } }`, only fields on the allowlist of the kind, never a secret (`diffOf()`). */
     changes: jsonb("changes"),
+    /** Who acted (D309): the person, the AI manager in their name, or the autopilot; written by `audit()` from `actingAs()`. */
+    actedBy: text("acted_by").notNull().default("person"),
   },
   (t) => [
+    check("audit_log_acted_by", sql`${t.actedBy} in ('person', 'ai_manager', 'autopilot')`),
     index("audit_log_store_idx").on(t.storeId, t.createdAt),
     index("audit_log_account_idx").on(t.accountId),
     index("audit_log_store_area_idx").on(t.storeId, t.area, sql`${t.id} desc`),
@@ -8313,13 +8316,17 @@ export const assistantApprovals = commerce.table(
     result: jsonb("result"),
     createdAt: createdAt(),
     decidedAt: timestamp("decided_at", { withTimezone: true }),
+    /** The autopilot's step that kept this call (D309): its decision settles the step (`settleStepApproval()`). */
+    planStepId: uuid("plan_step_id"),
   },
   (t) => [
     foreignKey({ name: "assistant_approvals_conversation_fk", columns: [t.conversationId], foreignColumns: [assistantConversations.id] }).onDelete("cascade"),
+    foreignKey({ name: "assistant_approvals_plan_step_fk", columns: [t.planStepId], foreignColumns: [assistantPlanSteps.id] }).onDelete("set null"),
+    index("assistant_approvals_plan_step_idx").on(t.planStepId),
     index("assistant_approvals_conversation_idx").on(t.conversationId, t.createdAt),
     index("assistant_approvals_store_idx").on(t.storeId, t.status),
     index("assistant_approvals_account_idx").on(t.accountId),
-    check("assistant_approvals_category", sql`${t.category} in ('send', 'public', 'spend', 'domain', 'access')`),
+    check("assistant_approvals_category", sql`${t.category} in ('send', 'public', 'spend', 'domain', 'access', 'plan')`),
     check("assistant_approvals_status", sql`${t.status} in ('pending', 'done', 'declined', 'failed')`),
   ],
 );
@@ -12906,5 +12913,122 @@ export const assistantFollowUps = commerce.table(
     check("assistant_follow_ups_task", sql`length(${t.task}) between 1 and 500`),
     check("assistant_follow_ups_counts", sql`${t.tries} >= 0 and ${t.runs} >= 0`),
     check("assistant_follow_ups_problem", sql`${t.lastProblem} is null or length(${t.lastProblem}) <= 500`),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// The autopilot's goals and plans (D309, `docs/ai-autopilot.md` 7)
+// ---------------------------------------------------------------------------
+
+/** A store's (or, with no store, Kaizena Flow's) goals: the owner's vision and targets the code measures (`goalProgress()`). */
+export const assistantGoals = commerce.table(
+  "assistant_goals",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** Null for Kaizena Flow's own site. */
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    vision: text("vision").notNull().default(""),
+    /** `GoalTarget[]`, read only through `goalTargetsSchema` (`src/lib/autopilot-goals.ts`). */
+    targets: jsonb("targets").notNull().default([]),
+    dueOn: date("due_on"),
+    status: text("status").notNull().default("active"),
+    createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("assistant_goals_store_idx").on(t.storeId, t.status),
+    index("assistant_goals_created_by_idx").on(t.createdBy),
+    check("assistant_goals_status", sql`${t.status} in ('active', 'met', 'dropped')`),
+    check("assistant_goals_title", sql`length(${t.title}) between 1 and 120`),
+    check("assistant_goals_vision", sql`length(${t.vision}) <= 2000`),
+    check("assistant_goals_targets", sql`jsonb_typeof(${t.targets}) = 'array' and jsonb_array_length(${t.targets}) <= 5`),
+  ],
+);
+
+/** A plan the AI manager made: steps run by the loop in the name of the account that made it, within the owner's levels (D309). */
+export const assistantPlans = commerce.table(
+  "assistant_plans",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    goalId: uuid("goal_id").references(() => assistantGoals.id, { onDelete: "set null" }),
+    /** Whose name its steps run in, with their role read again before every step. */
+    accountId: uuid("account_id")
+      .notNull()
+      .references(() => accounts.id, { onDelete: "cascade" }),
+    /** The plan's own conversation, where its task turns and its kept calls live. */
+    conversationId: uuid("conversation_id").notNull(),
+    title: text("title").notNull(),
+    summary: text("summary").notNull().default(""),
+    /** Raised on every change of its steps; a start is for the version the owner was shown. */
+    version: integer("version").notNull().default(1),
+    status: text("status").notNull().default("draft"),
+    pauseReason: text("pause_reason"),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    foreignKey({ name: "assistant_plans_conversation_fk", columns: [t.conversationId], foreignColumns: [assistantConversations.id] }).onDelete("cascade"),
+    index("assistant_plans_store_idx").on(t.storeId, t.status),
+    index("assistant_plans_account_idx").on(t.accountId),
+    index("assistant_plans_goal_idx").on(t.goalId),
+    index("assistant_plans_conversation_idx").on(t.conversationId),
+    check("assistant_plans_status", sql`${t.status} in ('draft', 'running', 'paused', 'done', 'stopped')`),
+    check("assistant_plans_title", sql`length(${t.title}) between 1 and 120`),
+    check("assistant_plans_summary", sql`length(${t.summary}) <= 2000`),
+    check("assistant_plans_version", sql`${t.version} >= 1`),
+    check("assistant_plans_pause_reason", sql`${t.pauseReason} is null or length(${t.pauseReason}) <= 500`),
+  ],
+);
+
+/** A plan's step: a kind from `STEP_KINDS` with its spec, the keys it waits for, the check that says it worked (D309). */
+export const assistantPlanSteps = commerce.table(
+  "assistant_plan_steps",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    planId: uuid("plan_id")
+      .notNull()
+      .references(() => assistantPlans.id, { onDelete: "cascade" }),
+    /** The plan's store, kept on the step so the loop takes one step per store without a join. */
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    position: integer("position").notNull(),
+    key: text("key").notNull(),
+    title: text("title").notNull(),
+    kind: text("kind").notNull(),
+    /** The kind's own fields, read only through `stepSchema` (`src/lib/autopilot-plans.ts`). */
+    spec: jsonb("spec").notNull(),
+    afterKeys: text("after_keys").array().notNull().default(sql`'{}'::text[]`),
+    /** `StepCheck`, read only through `stepCheckSchema`. */
+    doneCheck: jsonb("done_check").notNull().default({ kind: "none" }),
+    status: text("status").notNull().default("pending"),
+    tries: integer("tries").notNull().default(0),
+    /** What happened, in words made by code (`{ done }` or `{ problem }`, the tools a turn used, what it was told to tell). */
+    result: jsonb("result"),
+    /** `{ text, options, retry? }` while it asks the owner. */
+    question: jsonb("question"),
+    answer: text("answer"),
+    answeredBy: uuid("answered_by").references(() => accounts.id, { onDelete: "set null" }),
+    answeredAt: timestamp("answered_at", { withTimezone: true }),
+    notBefore: timestamp("not_before", { withTimezone: true }),
+    claimedUntil: timestamp("claimed_until", { withTimezone: true }),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("assistant_plan_steps_key_idx").on(t.planId, t.key),
+    index("assistant_plan_steps_store_idx").on(t.storeId, t.status),
+    index("assistant_plan_steps_answered_by_idx").on(t.answeredBy),
+    check("assistant_plan_steps_kind", sql`${t.kind} in ('tool', 'task', 'question', 'wait')`),
+    check("assistant_plan_steps_status", sql`${t.status} in ('pending', 'running', 'waiting', 'asking', 'done', 'skipped', 'cancelled')`),
+    check("assistant_plan_steps_key", sql`${t.key} ~ '^[a-z0-9_]{1,20}$'`),
+    check("assistant_plan_steps_title", sql`length(${t.title}) between 1 and 120`),
+    check("assistant_plan_steps_tries", sql`${t.tries} >= 0`),
+    check("assistant_plan_steps_position", sql`${t.position} between 0 and 29`),
+    check("assistant_plan_steps_answer", sql`${t.answer} is null or length(${t.answer}) <= 500`),
   ],
 );

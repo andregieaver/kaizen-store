@@ -16,6 +16,7 @@ import { createClient } from "@/lib/supabase/server";
 import { assuranceOf, heldPath, KILL_SWITCH_ACTION, mayUseAdmin, twoStepKillSwitch, TWO_STEP_PATHS, type Assurance } from "@/lib/two-step";
 
 import { getStore, type Store } from "./stores";
+import { currentActor } from "./actor";
 
 export type Role = "owner" | "admin";
 
@@ -477,9 +478,9 @@ export async function audit(
 ): Promise<void> {
   const area = extra.area ?? areaOfAction(action);
   await db().execute(sql`
-    insert into commerce.audit_log (account_id, store_id, action, details, area, target_type, target_id, changes)
+    insert into commerce.audit_log (account_id, store_id, action, details, area, target_type, target_id, changes, acted_by)
     values (${accountId}::uuid, ${storeId}::uuid, ${action}, ${JSON.stringify(details)}::jsonb, ${area},
       ${extra.target?.type ?? null}, ${extra.target?.id ?? null},
-      ${extra.changes ? JSON.stringify(extra.changes) : null}::jsonb)
+      ${extra.changes ? JSON.stringify(extra.changes) : null}::jsonb, ${currentActor()})
   `);
 }

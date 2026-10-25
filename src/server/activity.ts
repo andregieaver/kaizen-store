@@ -8,6 +8,7 @@ import { toCsv } from "@/lib/dac7";
 import { AREAS, can, type Area } from "@/lib/permissions";
 
 import { audit, holderOf, type Membership } from "./auth";
+import { ACTORS, type Actor } from "./actor";
 
 type Row = Record<string, unknown>;
 
@@ -47,6 +48,8 @@ export type ActivityEntry = {
   /** The sentence, made by code from the action and its target. */
   summary: string;
   changes: AuditChanges | null;
+  /** Who acted (D309): the person, the AI manager in their name, or the autopilot. */
+  actedBy: Actor;
 };
 
 export type ActivityPage = { entries: ActivityEntry[]; /** Pass as `before` for the next page; null on the last. */ next: number | null };
@@ -100,11 +103,12 @@ function entryOf(row: Row): ActivityEntry {
     target,
     summary: summaryOf(action, target ? { type: target.type, id: target.id, label: target.label ?? undefined } : null, changes),
     changes,
+    actedBy: (ACTORS as readonly unknown[]).includes(row.acted_by) ? (row.acted_by as Actor) : "person",
   };
 }
 
 const SELECT = sql`
-  a.id, a.account_id, a.action, a.details, a.created_at, a.target_type, a.target_id, a.changes,
+  a.id, a.account_id, a.action, a.details, a.created_at, a.target_type, a.target_id, a.changes, a.acted_by,
   ${areaOf} as area, acc.email, acc.name, acc.avatar_path
 `;
 

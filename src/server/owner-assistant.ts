@@ -8,12 +8,13 @@ import { assistantLanguageLines } from "@/lib/assistant-lang";
 import { db } from "@/db/client";
 import { adminMapText, matchPath, pageParams, type SiteFlags } from "@/lib/admin-map";
 import { skillsText } from "@/lib/assistant-skills";
-import { MANAGER_TOOLS, MANAGER_TOOLS_BY_NAME, PLATFORM_TOOLS, PLATFORM_TOOLS_BY_NAME } from "@/lib/manager-tools";
-import { approvalSummary, OWNER_TOOLS, OWNER_TOOLS_BY_NAME, readToolInput, toolDefinition, type GateCategory } from "@/lib/owner-tools";
+import { MANAGER_TOOLS, MANAGER_TOOLS_BY_NAME, PLATFORM_TOOLS_BY_NAME } from "@/lib/manager-tools";
+import { approvalSummary, OWNER_TOOLS_BY_NAME, readToolInput, toolDefinition, type GateCategory } from "@/lib/owner-tools";
 
 import { AiError, aiFor, canSpeak, streamWithTools, type AiConnection, type ToolChatMessage, type ToolDefinition } from "./ai";
 import { learnFromTurn, memoriesFor, type Memory } from "./assistant-memory";
 import type { Account, Membership, Role } from "./auth";
+import { actingAs, currentActor } from "./actor";
 import { askLife, lifeLink, lifeLinkOn, LifeLinkError } from "./kaizen-life-link";
 import { platformGateNeeded, preflightPlatformTool, runManagerTool, runPlatformTool, type ManagerContext } from "./manager-tools";
 import { experimentApprovalSummary } from "./experiment-tools";
@@ -27,6 +28,9 @@ import { draftApprovalDetails } from "./order-ops-tools";
 import { featureApprovalDetails } from "./feature-tools";
 import { setFeatureInput } from "@/lib/feature-tools";
 import { gateNeeded, OwnerToolError, preflightOwnerTool, runOwnerTool } from "./owner-tools";
+import { offeredTools } from "./offered-tools";
+import { planApprovalDetails, startPlanNow } from "./autopilot-plans";
+import { preflightAutopilotTool } from "./autopilot-tools";
 import { DNS_RECORD_TOOLS } from "@/lib/domain-tools";
 import type { OwnerToolInput } from "@/lib/owner-tools";
 
@@ -36,13 +40,14 @@ import { headerFooterApprovalWords, menuApprovalWords, placeApprovalWords, publi
 import { setupApprovalWords } from "./setup-tools";
 import { SETUP_TOOLS } from "@/lib/setup-tools";
 import type { Store } from "./stores";
-import { mayUseTool } from "@/lib/owner-tool-permissions";
 import { effectiveFeatures } from "@/lib/store-features";
-import { toolOffered } from "@/lib/owner-tool-features";
 import { can, canOpenPath, type PermissionHolder } from "@/lib/permissions";
 import { UNTRUSTED_TEXT } from "@/lib/prompt-safety";
 
 type Row = Record<string, unknown>;
+
+/** Who a change the AI manager makes is audited as: the AI manager, or the autopilot inside its turns (D309). */
+const aiActor = () => (currentActor() === "autopilot" ? "autopilot" : "ai_manager");
 
 /**
  * The AI manager (D94, D103): the admin's own assistant, modelled on Kaizen
@@ -469,8 +474,7 @@ export async function runTurn(input: TurnInput): Promise<void> {
   // The tools a role may use are the ones offered: the model never sees a tool its person's role could not run.
   const holder = holderOfPrincipal(p);
   // And only the tools of the store's features that are on (D178): a feature switched off takes its tools with it.
-  const storeTools = OWNER_TOOLS.filter((t) => (!holder || mayUseTool(holder, t.name)) && (!store || toolOffered(store, t.name)));
-  const tools = [...(store ? storeTools : PLATFORM_TOOLS).map(toolDefinition), ...MANAGER_TOOLS.map(toolDefinition), ...(withLife ? [ASK_KAIZEN_LIFE] : [])];
+  const tools = [...offeredTools({ store, holder }).map(toolDefinition), ...MANAGER_TOOLS.map(toolDefinition), ...(withLife ? [ASK_KAIZEN_LIFE] : [])];
   const messages: ToolChatMessage[] = [
     {
       role: "system",
@@ -573,7 +577,14 @@ async function callTool(
     const input = readToolInput(tool, args);
     if (!input.ok) return { error: `The arguments could not be read: ${input.problem}` };
     // What could not be done, or must be reworded (claims), is refused now, never kept for a yes.
-    if (!manager) {
+    if (manager) {
+      try {
+        await preflightAutopilotTool(ctx, name, args);
+      } catch (error) {
+        if (error instanceof OwnerToolError) return { error: error.message };
+        throw error;
+      }
+    } else {
       try {
         if (ctx.store) await preflightOwnerTool({ account: ctx.account, store: ctx.store, invalidate: ctx.invalidate, holder: ctx.holder }, name, args);
         else await preflightPlatformTool(ctx, name, args);
@@ -592,9 +603,12 @@ async function callTool(
     };
   }
   try {
-    if (manager) return { result: await runManagerTool(ctx, name, args) };
-    if (ctx.store) return { result: await runOwnerTool({ account: ctx.account, store: ctx.store, invalidate: ctx.invalidate, holder: ctx.holder }, name, args) };
-    return { result: await runPlatformTool(ctx, name, args) };
+    // The AI made the change, in the person's name: the audit log says so (D309); inside the autopilot's turns it already says autopilot.
+    return await actingAs(aiActor(), async () => {
+      if (manager) return { result: await runManagerTool(ctx, name, args) };
+      if (ctx.store) return { result: await runOwnerTool({ account: ctx.account, store: ctx.store, invalidate: ctx.invalidate, holder: ctx.holder }, name, args) };
+      return { result: await runPlatformTool(ctx, name, args) };
+    });
   } catch (error) {
     if (error instanceof OwnerToolError) return { error: error.message };
     console.error(`[ai-manager] ${name}`, error);
@@ -665,6 +679,14 @@ export async function keepForApproval(
   if (store && tool === "propose_exchange") {
     const parsed = OWNER_TOOLS_BY_NAME.propose_exchange.input.safeParse(args);
     summary = (parsed.success ? await proposeApprovalSummary({ account: ctx.account, store }, parsed.data as ProposeInput) : null) ?? summary;
+  }
+  // A plan's start or resume is described from the plan, and the version it describes is kept with the call (a value the model passed is
+  // replaced): the yes starts that version or none (D309).
+  if (tool === "start_autopilot_plan" || tool === "resume_autopilot_plan") {
+    const details = await planApprovalDetails({ account: ctx.account, store }, tool, String(args.plan ?? ""));
+    const { approved_version: _ignored, ...rest } = args;
+    summary = details?.summary ?? summary;
+    args = details ? { ...rest, approved_version: details.version } : rest;
   }
   // A Work invoice's issue is described from the draft: its client, assignment and total (PSI AGT-01).
   if (store && tool === "issue_work_invoice") {
@@ -754,13 +776,16 @@ export async function decideApproval(
   let result: { done?: string; error?: string };
   try {
     const tool = String(claimed.tool);
-    const answer = (
+    // The person said yes; the AI manager makes the change, so the audit log says it did (D309).
+    const answer = await actingAs(aiActor(), async () => (
       tool === "contact_kaizen_support"
         ? await contactKaizen(p, claimed.args as Record<string, unknown>)
+        : tool === "start_autopilot_plan" || tool === "resume_autopilot_plan"
+        ? await startPlanNow({ account: p.account, store: p.store, holder: holderOfPrincipal(p) }, tool, claimed.args as Record<string, unknown>)
         : p.store
         ? await runOwnerTool({ account: p.account, store: p.store, invalidate, holder: holderOfPrincipal(p) }, tool, claimed.args)
         : await runPlatformTool({ account: p.account, store: null, flags: {}, connection: null, navigate: () => {}, invalidate }, tool, claimed.args)
-    ) as { done?: string };
+    ) as { done?: string });
     result = { done: answer?.done ?? "Done." };
   } catch (error) {
     result = { error: error instanceof OwnerToolError ? error.message : "It could not be done." };

@@ -177,7 +177,8 @@ export function ActivityList({
               <div className="min-w-0 flex-1">
                 <p className="font-medium break-words">{entrySentence(entry, words)}</p>
                 <p className="text-muted">
-                  {entry.name ?? entry.email ?? w.platform} · {areaName(entry.area, words)} · <time dateTime={entry.at}>{when(entry.at, zone, locale)}</time>
+                  {entry.name ?? entry.email ?? w.platform}
+                  {entry.actedBy !== "person" && ` ${w.actedBy[entry.actedBy]}`} · {areaName(entry.area, words)} · <time dateTime={entry.at}>{when(entry.at, zone, locale)}</time>
                 </p>
                 {lines.length > 0 && (
                   <details className="mt-2">

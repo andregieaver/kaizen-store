@@ -33,6 +33,18 @@ import { audit, type Account } from "./auth";
 import { getStoreBilling, listPlans, listStoreBilling } from "./billing";
 import { listEmails } from "./email";
 import { cancelFollowUpTool, followUpTool, listFollowUpsTool } from "./follow-ups";
+import {
+  answerQuestionTool,
+  dropGoalTool,
+  getPlanTool,
+  listGoalsTool,
+  listPlansTool as listAutopilotPlansTool,
+  makePlanTool,
+  pausePlanTool,
+  revisePlanTool,
+  setGoalTool,
+  stopPlanTool,
+} from "./autopilot-tools";
 import { OwnerToolError } from "./owner-tools";
 import { planReminderStats } from "./plan-reminders";
 import { ensureBillingEvents } from "./referral-billing";
@@ -233,6 +245,19 @@ const MANAGER_HANDLERS: Record<ManagerToolName, Handler> = {
   cancel_follow_up: cancelFollowUpTool,
   // Gated (`send`): never run from the model; the approval runs it (`decideApproval()` in owner-assistant.ts).
   contact_kaizen_support: async () => fail("This needs the person's approval first."),
+  set_goal: setGoalTool,
+  list_goals: listGoalsTool,
+  drop_goal: dropGoalTool,
+  make_autopilot_plan: makePlanTool,
+  revise_autopilot_plan: revisePlanTool,
+  // Gated (`plan`): the person's yes starts the version they were shown (`decideApproval()` through `startPlanNow()`).
+  start_autopilot_plan: async () => fail("This needs the person's approval first."),
+  resume_autopilot_plan: async () => fail("This needs the person's approval first."),
+  pause_autopilot_plan: pausePlanTool,
+  stop_autopilot_plan: stopPlanTool,
+  get_autopilot_plan: getPlanTool,
+  list_autopilot_plans: listAutopilotPlansTool,
+  answer_autopilot_question: answerQuestionTool,
 };
 
 export async function runManagerTool(ctx: ManagerContext, name: string, raw: unknown): Promise<unknown> {

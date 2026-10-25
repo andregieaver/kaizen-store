@@ -151,6 +151,7 @@ export const staffNb: StaffMessages = {
     details: "Detaljer",
     changed: "endret",
     older: "Eldre oppføringer",
+    actedBy: { ai_manager: "gjennom KI-assistenten", autopilot: "gjennom autopiloten" },
     none: "(ingen)",
     yes: "ja",
     no: "nei",

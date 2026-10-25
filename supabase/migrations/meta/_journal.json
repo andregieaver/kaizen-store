@@ -3137,6 +3137,20 @@
       "when": 1792919555117,
       "tag": "20261025091235_approvals_access",
       "breakpoints": true
+    },
+    {
+      "idx": 448,
+      "version": "7",
+      "when": 1792929606747,
+      "tag": "20261025120006_autopilot_plans",
+      "breakpoints": true
+    },
+    {
+      "idx": 449,
+      "version": "7",
+      "when": 1792929633714,
+      "tag": "20261025120033_autopilot_plans_rules",
+      "breakpoints": true
     }
   ]
 }

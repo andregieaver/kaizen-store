@@ -283,11 +283,12 @@ the platform principal (`store_id` null), with the targets and checks that make 
 - Steps' statuses: `pending` (not yet run, or waiting for the steps it follows), `running` (claimed), `waiting` (on the owner's yes for
   calls it kept), `asking` (a question for the owner), `done`, `skipped`, `cancelled` (its plan stopped). A step that follows a skipped
   step is skipped too, with the reason; the plan is `done` when no step is left to run.
-- Tools (manager tools): `make_plan` (a draft from title, summary, goal and steps; every step checked, the whole plan refused with the
-  first problem in words), `revise_plan` (replaces the steps not yet done or running), `start_plan` (gated `plan`: the owner's yes starts
-  exactly the version they were shown, `approved_version` kept with the call as the draft orders' version is), `pause_plan`,
-  `resume_plan` (gated `plan` as starting), `stop_plan` (ungated: stopping is always safe), `plan_status` and `list_plans` (read),
-  `answer_question` (refused in a turn nobody is in: its words are not the person's choice).
+- Tools (manager tools, named `*_autopilot_plan` beside the billing plan's `change_plan` and the platform's `list_plans`):
+  `make_autopilot_plan` (a draft from title, summary, goal and steps; every step checked, the whole plan refused with the first problem in
+  words), `revise_autopilot_plan` (replaces the steps not yet done or running), `start_autopilot_plan` (gated `plan`: the owner's yes starts
+  exactly the version they were shown, `approved_version` kept with the call as the draft orders' version is), `pause_autopilot_plan`,
+  `resume_autopilot_plan` (gated `plan` as starting), `stop_autopilot_plan` (ungated: stopping is always safe), `get_autopilot_plan` and
+  `list_autopilot_plans` (read), `answer_autopilot_question` (refused in a turn nobody is in: its words are not the person's choice).
 - Gate category `plan` ("starts work in your name"): the `assistant_approvals_category` check widened, `GATE_WORDS.plan`, words in the
   `assistant` catalogues. A yes to it is run by `decideApproval()` through the plans module, as `contact_kaizen_support` is.
 
@@ -307,7 +308,7 @@ the platform principal (`store_id` null), with the targets and checks that make 
     step `waiting`. An ungated call runs.
   - `task`: `runTurn({ scheduled: true, autopilot })` in the plan's conversation, with `AbortSignal.timeout(120 s)`, the connection made
     for the feature `autopilot` (so its cost is its own), the tools limited to the step's (plus `use_skill` and `recall`; never
-    `decide_approval`, `answer_question`, `follow_up` or the plan tools), the brief, the plan's title, the earlier steps' results and the
+    `decide_approval`, `answer_autopilot_question`, `follow_up` or the plan tools), the brief, the plan's title, the earlier steps' results and the
     owner's answers given as data. Gated calls in the turn meet the same autonomy decision, and those kept are tied to the step.
   - `question`: the step becomes `asking`.
   - `wait`: done when its time has come, else `not_before` is set to it.
@@ -315,7 +316,7 @@ the platform principal (`store_id` null), with the targets and checks that make 
   words and the options *Try again*, *Skip this step* and *Stop the plan*.
 - A kept call decided by the owner settles its step (`settleStepApproval()`, called by `decideApproval()`): once every call the step kept
   is decided, done or failed calls run the check, and declined ones alone skip the step.
-- Never `decide_approval` or `answer_question` in a turn the loop runs, and a scheduled turn sets no follow-up (D318's rule).
+- Never `decide_approval` or `answer_autopilot_question` in a turn the loop runs, and a scheduled turn sets no follow-up (D318's rule).
 - Every change made inside the loop is audited with `by = 'autopilot'` (7.6).
 
 ### 7.4 Autonomy levels and budgets (B2)
@@ -359,7 +360,21 @@ only (the platform's by platform admins):
 tools as `ai_manager` (a call approved by the person included: the AI made the change on their yes), the loop as `autopilot`. Activity
 shows it beside the person's name.
 
-### 7.7 Tests
+### 7.7 As built: B1 (2026-10-25)
+
+- Migrations `20261025120006_autopilot_plans` (the three tables, `assistant_approvals.plan_step_id`, the `plan` category,
+  `audit_log.acted_by`) and `20261025120033_autopilot_plans_rules` (RLS, the plans' and steps' life cycles).
+- Pure: `src/lib/autopilot-goals.ts` (`GOAL_TARGETS`, `targetFromInput()`, `targetProgress()`, `goalMet()`) and
+  `src/lib/autopilot-plans.ts` (`STEP_KINDS`, `CHECK_KINDS`, `checkPlan()`, `findLoop()`, `skippedBehind()`, `planFinished()`).
+- Server: `src/server/autopilot-goals.ts` (`setGoal()`, `goalFigures()`, `goalsWithProgress()`), `src/server/autopilot-plans.ts`
+  (`makePlan()`, `revisePlan()`, `startPlanNow()`, `pausePlan()`, `stopPlan()`, `answerQuestion()`, `planWords()`),
+  `src/server/autopilot-tools.ts` (the handlers), `src/server/offered-tools.ts` (the tools a person may use, shared by the turn and the
+  plans), `src/server/actor.ts` (`actingAs()`, read by `audit()` and the transactional audit writers of redirects and the 404 report).
+- Goal and plan audit entries are `ai.goal_*` and `ai.plan_*` (area Settings, or the platform's). Entries the database writes itself say
+  `person`. Activity shows "through the AI manager" or "through the autopilot" after the person's name.
+- Not yet: the loop, autonomy and budgets (B2), the page, digest and report (B3). Until B2, a started plan runs nothing.
+
+### 7.8 Tests
 
 PGlite: the plan and step life cycles the database holds, the audit `by` check. Unit: `checkPlan()` (unknown tool, bad arguments, a loop,
 a missing key, too many steps, a tool the role may not use), `goalProgress()`'s arithmetic on fixed figures, `autonomyDecision()` for every

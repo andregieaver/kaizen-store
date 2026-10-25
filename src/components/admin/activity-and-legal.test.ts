@@ -38,7 +38,14 @@ describe("the activity log", () => {
     target: { type: "product", id: "p1", label: "Demo: Lampe" },
     summary: "Changed the price of Demo: Lampe",
     changes: { price: { from: 1000, to: 1200 }, note: { changed: true } },
+    actedBy: "person",
     ...over,
+  });
+
+  it("says when the AI manager or the autopilot made the change in the person's name (D309)", () => {
+    expect(html(createElement(ActivityList, { entries: [entry({ actedBy: "autopilot" })], zone: "Europe/Oslo" }))).toContain("Anna through the autopilot");
+    expect(html(createElement(ActivityList, { entries: [entry({ actedBy: "ai_manager" })], zone: "Europe/Oslo" }))).toContain("Anna through the AI manager");
+    expect(html(createElement(ActivityList, { entries: [entry()], zone: "Europe/Oslo" }))).not.toContain("through the");
   });
 
   it("says what happened, who did it, where it belongs and when, with the changes as from and to", () => {
