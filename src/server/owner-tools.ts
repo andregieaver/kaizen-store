@@ -59,6 +59,8 @@ import { activeFieldGroups, fieldsTag, getFieldData, listFieldGroups, pageFacts,
 import { listIntegrations, postToSlack } from "./integrations";
 import { ownedStores, usageRows } from "./ai-usage";
 import { analyticsAlertsTool, analyticsOverviewTool, explainChangeTool } from "./analytics-tools";
+import { changeOrderTool, preflightChangeOrder, previewOrderChangeTool } from "./order-change-tools";
+import { preflightProcessExchange, preflightProposeExchange, previewExchangeTool, processExchangeTool, proposeExchangeTool } from "./exchange-tools";
 import { billingOverviewTool, changePlanTool, endPlanTool, preflightChangePlan, preflightEndPlan } from "./billing-tools";
 import { changeStaffRoleTool, inviteStaffTool, listStaffTool, preflightChangeStaffRole, preflightInviteStaff, preflightRemoveStaff, removeStaffTool } from "./staff-tools";
 import {
@@ -2029,6 +2031,10 @@ export async function preflightOwnerTool(ctx: OwnerToolContext, name: string, ra
     remove_staff: preflightRemoveStaff,
     change_plan: preflightChangePlan,
     end_plan: preflightEndPlan,
+    // Order changes and exchanges the editor or the builder would refuse (PSI AGT-01).
+    change_order: preflightChangeOrder,
+    propose_exchange: preflightProposeExchange,
+    process_exchange: preflightProcessExchange,
   };
   if (name in TEAM_AND_PLAN) {
     const input = readToolInput(OWNER_TOOLS_BY_NAME[name], raw);
@@ -2199,6 +2205,11 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   analytics_alerts: analyticsAlertsTool,
   support_overview: supportOverviewTool,
   list_support_conversations: listSupportConversationsTool,
+  preview_order_change: previewOrderChangeTool,
+  change_order: changeOrderTool,
+  preview_exchange: previewExchangeTool,
+  propose_exchange: proposeExchangeTool,
+  process_exchange: processExchangeTool,
   list_staff: listStaffTool,
   invite_staff: inviteStaffTool,
   change_staff_role: changeStaffRoleTool,

@@ -10,6 +10,9 @@ import { GIFT_CARD_NOTE_MAX } from "./gift-card-admin";
 import { SIMPLE_FIELD_TYPES, TOOL_FIELD_ENTITIES } from "./field-tools";
 import { MAX_INSTRUCTIONS } from "./withdrawal";
 import { MESSAGE_MAX } from "./support-rules";
+import { EDIT_ADDED_LINES_MAX, EDIT_NOTE_MAX, EDIT_QUANTITY_MAX } from "./fulfilment-limits";
+import { ORDER_EDIT_REASONS } from "./order-edit-status";
+import { EXCHANGE_LINES_MAX, EXCHANGE_QUANTITY_MAX } from "./exchange-limits";
 import { approveSummary, declineSummary } from "./return-tools";
 import { FROM_MAX, OVERVIEW_ROWS_DEFAULT, OVERVIEW_ROWS_MAX, TO_MAX, redirectSummary } from "./redirect-tools";
 import { ADJUST_REASONS, BACKORDER_DAYS_MAX, BACKORDER_DAYS_MIN, MOVEMENT_REASONS, NOTE_MAX, STOCK_MAX } from "./inventory";
@@ -84,6 +87,33 @@ const returnRef = z.string().trim().min(1).max(64).describe("The return's number
 /** A privacy request by its id, as the log and `list_privacy_requests` give it. */
 const privacyRequestRef = z.string().trim().min(8).max(64).describe("The privacy request's id, as list_privacy_requests gives it.");
 const productRef = z.string().trim().min(1).max(200).describe("The product's id, its handle, or its title as listed.");
+/** An order change as the owner says it (PSI AGT-01): lines by SKU or title, goods added by SKU, the shipping price as written. */
+const orderChangeInput = z.object({
+  order: orderRef,
+  change: z
+    .array(z.object({ item: z.string().trim().min(1).max(200).describe("A line of the order by its SKU or title."), quantity: z.number().int().min(0).max(EDIT_QUANTITY_MAX).describe("Its new quantity: lower than now, 0 to take it off.") }))
+    .max(EDIT_ADDED_LINES_MAX)
+    .default([]),
+  add: z
+    .array(z.object({ sku: z.string().trim().min(1).max(100).describe("The SKU of goods to add, at their list price."), quantity: z.number().int().min(1).max(EDIT_QUANTITY_MAX) }))
+    .max(EDIT_ADDED_LINES_MAX)
+    .default([]),
+  shipping: z.string().trim().min(1).max(30).optional().describe("A new shipping price, VAT included, in the order's currency; leave out to keep it."),
+  reason: z.enum(ORDER_EDIT_REASONS).describe("Why: the customer asked, out of stock, the store's error, or other."),
+  note: z.string().trim().max(EDIT_NOTE_MAX).optional().describe("A note for the order's history; the customer never sees it."),
+  notify: z.boolean().default(true).describe("Email the customer about the change (always, when it asks for money or takes units off)."),
+  restock: z.boolean().default(true).describe("Put units taken off back in stock."),
+  approved_base: z.unknown().optional().describe("Never set this: the store writes it when the owner is asked, so the change is made to the order as the owner was shown it."),
+});
+/** An exchange as the owner says it: the return, the replacements by SKU, who pays for shipping. */
+const exchangeInput = z.object({
+  return: returnRef,
+  replacements: z
+    .array(z.object({ sku: z.string().trim().min(1).max(100).describe("The SKU of a replacement."), quantity: z.number().int().min(1).max(EXCHANGE_QUANTITY_MAX) }))
+    .min(1)
+    .max(EXCHANGE_LINES_MAX),
+  shipping: z.enum(["free", "standard"]).default("free").describe("Free shipping of the replacements, or the market's standard rate."),
+});
 /** A support conversation by its id, as `list_support_conversations` gives it. */
 const supportRef = z.string().trim().min(8).max(64).describe("The conversation's id, as list_support_conversations gives it.");
 
@@ -1167,6 +1197,35 @@ export const OWNER_TOOLS = [
     z.object({ when: z.enum(["period_end", "undo"]).describe("period_end to end it at the end of the period, undo to keep it.") }),
     "spend",
   ),
+  // Order changes and exchanges (PSI AGT-01): the order editor's and the exchange builder's own functions.
+  tool(
+    "preview_order_change",
+    "Shows what a change to a paid order would do, without making it: lines lowered or taken off, goods added at their list price, a new shipping price; the money that would move (a refund, or a payment the customer is asked for), the documents, stock, and anything that stops it. Read-only.",
+    orderChangeInput,
+  ),
+  tool(
+    "change_order",
+    "Changes a paid order as the order editor does: a lower or equal total is made at once and the difference refunded; a higher total is emailed to the customer as a link to pay, and the order changes when they pay. Sold units keep their price. Needs the owner's approval of the change as previewed; refused if the order moved since.",
+    orderChangeInput,
+    "spend",
+  ),
+  tool(
+    "preview_exchange",
+    "Shows an exchange for a return without sending it: the return's credit, the replacements at their list price, the total, and whether the customer gets money back or pays more. Read-only.",
+    exchangeInput,
+  ),
+  tool(
+    "propose_exchange",
+    "Emails the customer of a return an exchange for its credit: replacements at their list price, sent to the order's delivery address. The customer confirms it on their own page; nothing is made until process_exchange. Needs the owner's approval.",
+    exchangeInput,
+    "send",
+  ),
+  tool(
+    "process_exchange",
+    "Processes an exchange the customer confirmed: makes the new order and moves the money (the credit pays, any rest is refunded, or the customer is emailed a link to pay the difference). Needs the owner's approval.",
+    z.object({ return: returnRef }),
+    "spend",
+  ),
   // Answering support (PSI AGT-01): through the inbox's own actions, in the person's name.
   tool(
     "get_support_conversation",
@@ -1295,6 +1354,12 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
   switch (name) {
     case "send_broadcast":
       return input.at ? `Send the broadcast "${text("broadcast")}" at ${text("at")} (the store's time) to the people on the list who asked for your emails.` : `Send the broadcast "${text("broadcast")}" now to the people on the list who asked for your emails.`;
+    case "change_order":
+      return `Change order ${text("order")} as previewed.`;
+    case "propose_exchange":
+      return `Email the customer of return ${text("return")} an exchange.`;
+    case "process_exchange":
+      return `Process the confirmed exchange for return ${text("return")}: make the new order and move the money.`;
     case "invite_staff":
       return input.collaborator_days ? `Give ${text("email")} access as a collaborator (${text("role")}) for ${text("collaborator_days")} days.` : `Give ${text("email")} access to the store as ${text("role")}.`;
     case "change_staff_role":

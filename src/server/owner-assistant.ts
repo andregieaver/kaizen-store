@@ -20,6 +20,8 @@ import { experimentApprovalSummary } from "./experiment-tools";
 import { broadcastApprovalSummary } from "./marketing-tools";
 import { replyApprovalSummary } from "./support-manager-tools";
 import { changePlanSummary } from "./billing-tools";
+import { orderChangeApprovalDetails, type OrderChangeInput } from "./order-change-tools";
+import { proposeApprovalSummary, type ProposeInput } from "./exchange-tools";
 import { draftApprovalDetails } from "./order-ops-tools";
 import { featureApprovalDetails } from "./feature-tools";
 import { setFeatureInput } from "@/lib/feature-tools";
@@ -650,6 +652,19 @@ export async function keepForApproval(
   }
   // A broadcast's send is described from the broadcast itself: its name, subject, audience and how many it reaches now (PSI AGT-01).
   if (store && tool === "send_broadcast") summary = (await broadcastApprovalSummary(store, args)) ?? summary;
+  // An order change is described from the editor's own preview, and the order's state it was previewed on is kept with the call (a value the
+  // model passed is replaced): the change is made to that order or refused as changed (PSI AGT-01).
+  if (store && tool === "change_order") {
+    const parsed = OWNER_TOOLS_BY_NAME.change_order.input.safeParse(args);
+    const details = parsed.success ? await orderChangeApprovalDetails({ account: ctx.account, store }, parsed.data as OrderChangeInput) : null;
+    const { approved_base: _ignored, ...rest } = args;
+    summary = details?.summary ?? summary;
+    args = details ? { ...rest, approved_base: details.base } : rest;
+  }
+  if (store && tool === "propose_exchange") {
+    const parsed = OWNER_TOOLS_BY_NAME.propose_exchange.input.safeParse(args);
+    summary = (parsed.success ? await proposeApprovalSummary({ account: ctx.account, store }, parsed.data as ProposeInput) : null) ?? summary;
+  }
   // A plan change is described with the plans' own names and prices (PSI AGT-01).
   if (store && tool === "change_plan") {
     summary = (await changePlanSummary({ account: ctx.account, store }, { plan: String(args.plan ?? ""), interval: args.interval === "year" ? "year" : "month" })) ?? summary;

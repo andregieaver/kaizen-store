@@ -16,6 +16,12 @@ import { AREA_LABELS, can, type Area, type PermissionHolder, type PermissionKey 
 export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   support_overview: "support:read",
   list_support_conversations: "support:read",
+  // Order changes and exchanges (PSI AGT-01): the order editor and the return's page are the Orders section's.
+  preview_order_change: "orders:read",
+  change_order: "orders:write",
+  preview_exchange: "orders:read",
+  propose_exchange: "orders:write",
+  process_exchange: "orders:write",
   // The team and the plan (PSI AGT-01): the Staff and Billing pages are the owner's (`requireOwnerRole`), so are their tools.
   list_staff: "owner",
   invite_staff: "owner",
