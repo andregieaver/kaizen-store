@@ -46,7 +46,7 @@ proportion (autonomy levels and budgets the owner sets), a voice (a decisions pa
 | C | D310 | Eyes: the agent photographs its drafts and judges them with the model that sees pictures | `ai.ai-page-and-theme-generation` |
 
 Each unit is its own commit (or a few), with its own tests, decision row and parity moves, shipped before the next starts. Each unit's
-section below is written in full before it is built; B2 onwards are outlined and get their detail when their turn comes.
+section below is written in full before it is built; L and C are outlined and get their detail when their turn comes.
 
 ## 2. Rules for every unit
 
@@ -223,27 +223,149 @@ not live, ungated), `try_theme` (the install's preview address for the person) a
 `spend` when the theme costs money and the store does not own it, with the charge the owner was shown). Tests: adding never changes the
 live look; going live through the tool equals going live from Design settings; a premium theme is never made live without its charge.
 
-## 7. Unit B (D309): goals, plans and the work loop (outline)
+## 7. Unit B (D309): goals, plans and the work loop
 
-- **Goals** (`assistant_goals`, per store or the platform): the owner's vision in their words, and typed targets the code can measure
-  (revenue a month in the main currency, orders, conversion, a launch date, a number of products or pages), each read by an existing
-  analytics function. Made in conversation (`set_goal`) and shown on a Goals page.
-- **Plans** (`assistant_plans`, `assistant_plan_steps`): a plan is the model's, its steps are not free text: each is a kind from a fixed
-  catalogue (`STEP_KINDS`: a tool call or a playbook with its arguments, a question for the owner, a wait for a date or a figure), with the
-  steps it depends on, a check in code that says it worked (a product exists and is active, a page is published and has no blocking
-  issue, a figure moved), a status, tries and its result. The model proposes and revises plans; the code validates every step.
-- **The loop**: `/api/cron/autopilot` every minute, one step per store at a time, claimed with an expiry; a step runs as a headless turn
-  limited to the step's tools, with a time limit and the store's budget; its check decides done, try again or ask; three failures make it a
-  question for the owner. Never `decide_approval` in a turn the autopilot runs (its words are not a person's yes).
-- **Autonomy levels** per area (catalogue, website, design, setup, marketing, messages to customers, money): *Ask me first*, *Do it and tell
-  me*, *Just do it*; default *Ask me first* for everything public and for money. Budgets: AI spend a month, the deepest discount, the
-  largest price change, theme purchases. Never automatic whatever the level: refunds over the budget, payment and payout settings,
-  staff and permissions, closing the store, deleting anything.
-- **Decisions and reports**: one Decisions page (approvals, questions with options to pick, things only the owner can do), an email digest,
-  and a weekly report (figures from the analytics functions, progress against the goals, concerns and what it will do next, written by the
-  model over the figures and checked by the claims filter).
-- **The audit log says when the AI acted**: `audit()` gains `by: "person" | "ai_manager" | "autopilot"`, kept with the entry and shown on
-  Activity.
+Written in full on 2026-10-25, before B1 is built, from a read of `runTurn()`, `callTool()`, `keepForApproval()`, `decideApproval()`,
+the follow-up runner (D318) and the setup and analytics readers. A plan is the model's idea of what to do; whether a step may run, what it
+may touch, whether it worked and whether it needs the owner are the code's. Kaizena Flow's own site has the same goals, plans and loop with
+the platform principal (`store_id` null), with the targets and checks that make sense there.
+
+### 7.1 Goals (B1)
+
+`commerce.assistant_goals`: a store's (or the platform's) goals, written only by `src/server/autopilot-goals.ts`.
+
+- `title` (a short name), `vision` (the owner's words, up to 2,000 characters, never sent anywhere but the store's own model as data),
+  `targets` (a list, at most five, read only through `goalTargetsSchema` in `src/lib/autopilot-goals.ts`), `due_on` (optional), `status`
+  (`active`, `met`, `dropped`), who made it and when.
+- A target is a kind from `GOAL_TARGETS` with a number, and is read by code from the store's own figures (`goalProgress()`), never by the
+  model:
+
+  | Kind | Read from | Store | Platform |
+  |---|---|---|---|
+  | `revenue_30d` | net sales of the last 30 store days, without VAT, in the main currency (`periodTotals()`: revenue less refunds) | yes | no |
+  | `orders_30d` | paid orders of the last 30 store days (`periodTotals()`) | yes | no |
+  | `conversion_30d` | checkout orders ÷ counted visits, last 30 days; *not measured* while visit counting is off, never zero | yes | no |
+  | `open_by` | the store is open (`setup_completed_at`) on or before the date | yes | no |
+  | `products` | active products, demo products left out (`isDemoProduct()`) | yes | no |
+  | `pages` | published pages (type `page`) | yes | yes |
+  | `stores` | open stores that are real businesses (`not (is_template or starter)`) | no | yes |
+
+  A figure that cannot be known (no rate for a currency, no visits counted) is *not measured* with the reason, never 0 and never met.
+  A goal is `met` when every target is met; the code marks it, the model never does.
+- Tools (manager tools, so the platform has them too; ungated: goals are staff-only data): `set_goal` (make or change one, by id),
+  `list_goals` (each with its progress written by code), `drop_goal`. At most five active goals per store.
+
+### 7.2 Plans and steps (B1)
+
+`commerce.assistant_plans` and `commerce.assistant_plan_steps`, written only by `src/server/autopilot-plans.ts` (and the loop's
+`src/server/autopilot-runner.ts` for a step's run); the database holds the life cycle (`autopilot_plans_rules()`,
+`autopilot_steps_rules()`).
+
+- A plan: `title`, `summary`, the goal it serves (optional), the account it runs in (whoever made it: its steps run in their name and with
+  their role, read again before every step), its own conversation (`Autopilot: {title}`, where its task turns and answers are kept, so the
+  person's chats stay theirs), `version` (raised on every change of its steps), `status` (`draft`, `running`, `paused`, `done`,
+  `stopped`) and `pause_reason`. Statuses move `draft → running ↔ paused`, `running → done`, and anything not finished `→ stopped`;
+  a change of steps puts a running or paused plan back to `draft` (it must be started again).
+- A step: `key` (`s1`…, unique in its plan), `title`, `kind`, its spec, `after` (the keys it waits for), `check`, `status`, `tries`,
+  `result`, `question`, `answer`, `not_before`, a claim (`claimed_until`) and the approvals it waits on (`assistant_approvals.plan_step_id`).
+  At most 30 steps; the steps after one another must form no loop (checked by `checkPlan()`, pure, before anything is written).
+- `STEP_KINDS` (`src/lib/autopilot-plans.ts`):
+  - `tool`: one call of an owner tool (a platform tool on the platform) with its arguments, checked by the tool's own schema
+    (`readToolInput()`) when the plan is made and again when it runs. Run by code, not by the model.
+  - `task`: a brief (up to 1,000 characters) and the tools it may use (1 to 12 names, each one the person's role may use and the store's
+    features offer). Run as a headless turn (7.3).
+  - `question`: a question for the owner with up to five options; the plan waits for the answer, which later steps' turns are given.
+  - `wait`: until a date and time (at most 90 days ahead).
+- `CHECK_KINDS`, each read by code after a `tool` or `task` step: `none` (the step's own success), `product` (a product with that title
+  exists, and is active when asked), `page` (a page with that title or address exists, and is published when asked, with no blocking
+  accessibility issue), `setup_step` (a step of `getSetupProgress()` is done), `store_open`, `count` (at least N active products or
+  published pages). The platform has `none`, `page` and `count` of pages.
+- Steps' statuses: `pending` (not yet run, or waiting for the steps it follows), `running` (claimed), `waiting` (on the owner's yes for
+  calls it kept), `asking` (a question for the owner), `done`, `skipped`, `cancelled` (its plan stopped). A step that follows a skipped
+  step is skipped too, with the reason; the plan is `done` when no step is left to run.
+- Tools (manager tools): `make_plan` (a draft from title, summary, goal and steps; every step checked, the whole plan refused with the
+  first problem in words), `revise_plan` (replaces the steps not yet done or running), `start_plan` (gated `plan`: the owner's yes starts
+  exactly the version they were shown, `approved_version` kept with the call as the draft orders' version is), `pause_plan`,
+  `resume_plan` (gated `plan` as starting), `stop_plan` (ungated: stopping is always safe), `plan_status` and `list_plans` (read),
+  `answer_question` (refused in a turn nobody is in: its words are not the person's choice).
+- Gate category `plan` ("starts work in your name"): the `assistant_approvals_category` check widened, `GATE_WORDS.plan`, words in the
+  `assistant` catalogues. A yes to it is run by `decideApproval()` through the plans module, as `contact_kaizen_support` is.
+
+### 7.3 The loop (B2)
+
+`/api/cron/autopilot`, every minute (`pg_cron` as the broadcasts' route, `maxDuration` 300, inside `trackedRoute()`), runs
+`runAutopilot()`:
+
+- Takes up to three runnable steps, at most one per store (and one for the platform), none where a step is already running: the plan is
+  `running`, the store's autopilot is not paused (7.4), the store is active (`store_is_active()`, which a store being set up is), the steps it
+  follows are `done` or `skipped`, `not_before` has passed. Each is claimed (`claimed_until`, ten minutes, `for update skip locked`).
+- Reads the plan's person again (`principalFor()`, the follow-up runner's: an account disabled, a member removed or a platform admin no
+  longer one pauses the plan with the reason; a closed store stops it).
+- Runs the step:
+  - `tool`: `readToolInput()`, then the autonomy decision (7.4) for a gated call: run now through `runOwnerTool()` (or the platform's),
+    or keep it for the owner (`preflightOwnerTool()` first, then `keepForApproval()` in the plan's conversation with `plan_step_id`), the
+    step `waiting`. An ungated call runs.
+  - `task`: `runTurn({ scheduled: true, autopilot })` in the plan's conversation, with `AbortSignal.timeout(120 s)`, the connection made
+    for the feature `autopilot` (so its cost is its own), the tools limited to the step's (plus `use_skill` and `recall`; never
+    `decide_approval`, `answer_question`, `follow_up` or the plan tools), the brief, the plan's title, the earlier steps' results and the
+    owner's answers given as data. Gated calls in the turn meet the same autonomy decision, and those kept are tied to the step.
+  - `question`: the step becomes `asking`.
+  - `wait`: done when its time has come, else `not_before` is set to it.
+- Then the check: passed is `done`; failed is another try in ten minutes; the third failure becomes a question with the last problem in
+  words and the options *Try again*, *Skip this step* and *Stop the plan*.
+- A kept call decided by the owner settles its step (`settleStepApproval()`, called by `decideApproval()`): once every call the step kept
+  is decided, done or failed calls run the check, and declined ones alone skip the step.
+- Never `decide_approval` or `answer_question` in a turn the loop runs, and a scheduled turn sets no follow-up (D318's rule).
+- Every change made inside the loop is audited with `by = 'autopilot'` (7.6).
+
+### 7.4 Autonomy levels and budgets (B2)
+
+`commerce.autopilot_settings`, one row per store (and one for the platform), written only by `src/server/autopilot-settings.ts`, owners
+only (the platform's by platform admins):
+
+- `paused`: the owner's switch to pause the autopilot of the whole store (plans keep their places).
+- `levels`: per area, `ask` (*Ask me first*, the default for every area), `tell` (*Do it and tell me*) or `auto` (*Just do it*).
+  Areas (`AUTONOMY_AREAS` in `src/lib/autopilot-autonomy.ts`): `catalogue`, `website`, `design`, `setup`, `marketing`, `messages` (to
+  customers and staff), `money`. Every gated tool is in one area (`TOOL_AREAS`) or in `NEVER_AUTOMATIC`; a test fails for one in neither.
+- `NEVER_AUTOMATIC` (always kept for a yes, whatever the level): the `access` and `domain` gates; refunds, order changes, exchanges'
+  processing, credits and gift cards (`refund_order`, `change_order`, `process_exchange`, `adjust_customer_credits`, `issue_gift_card`);
+  the plan with Kaizena Flow (`change_plan`, `end_plan`), domains bought or renewed, features switched (`set_feature`), opening the store
+  (`open_store`), and the platform's access requests and referral program. The outline's "refunds over a budget" is stricter here: refunds
+  are never automatic until a budget is asked for.
+- `budgets`: the AI cost of the autopilot a month (US dollars, priced as D145 prices every call; reached, the plans pause with the reason),
+  the deepest discount (percent; a discount or campaign deeper than it is kept for a yes), the largest price change (percent of a variant's
+  current price; a larger one is kept for a yes). Theme purchases wait for A4.
+- `autonomyDecision(settings, tool, args, facts)` (pure, with the facts read first: current prices, a discount's depth) is the one rule,
+  used by the tool steps and inside the task turns: `run` (with `tell` true when the owner is to hear of it) or `ask` with the reason.
+
+### 7.5 Decisions and reports (B3)
+
+- The Autopilot page (`/admin/{store}/autopilot`, `/admin/platform/autopilot`): **Decisions** first (Homer's view: what waits on the
+  owner, each with its buttons: the kept calls with Approve and Decline, the questions with their options, and what only the owner can do,
+  from `getSetupProgress()`), then **Plans** (each plan with its steps, statuses and results; Start, Pause, Resume, Stop), **Goals** (each
+  with its progress from `goalProgress()`) and **Settings** (the switch, levels per area and budgets; owners only).
+- A digest email (`autopilot.digest`, `src/lib/autopilot-email.ts`, staff email words in the `staffEmails` catalogue) at most once a day to
+  the person a plan runs for, when there is something to tell (steps done with `tell`, decisions waiting): what was done and what waits,
+  with the link; never the content of a customer's message.
+- A weekly report (`commerce.autopilot_reports`, one per store and week): figures from `periodTotals()` (this week and the one before) and
+  `goalProgress()`, the steps done and what waits, drawn by code; a few sentences of concerns and next steps written by the model over those
+  facts (feature `autopilot`, `UNTRUSTED_TEXT`, no figures of its own) and passed through `findClaims()` (dropped, not shown, when it
+  fails). Kept on the page and emailed with the digest.
+
+### 7.6 The audit log says who acted (B1)
+
+`commerce.audit_log.by` (`person`, `ai_manager`, `autopilot`; `person` by default) is written by `audit()` from the actor of the moment
+(`actingAs(by, fn)` in `src/server/actor.ts`, an `AsyncLocalStorage`), so no tool needs a new argument: the AI manager's turns run their
+tools as `ai_manager` (a call approved by the person included: the AI made the change on their yes), the loop as `autopilot`. Activity
+shows it beside the person's name.
+
+### 7.7 Tests
+
+PGlite: the plan and step life cycles the database holds, the audit `by` check. Unit: `checkPlan()` (unknown tool, bad arguments, a loop,
+a missing key, too many steps, a tool the role may not use), `goalProgress()`'s arithmetic on fixed figures, `autonomyDecision()` for every
+level, budget and `NEVER_AUTOMATIC`, every gated tool in one area. Integration: a plan made, started on a yes and run to the end by the loop
+with a fake model (a tool step, a task step, a question answered, a step whose check fails three times and becomes a question), a kept call
+settling its step, a removed member pausing the plan, another store's plan never touched.
 
 ## 8. Unit L (D311): legal pages by AI (outline)
 
