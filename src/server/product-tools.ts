@@ -4,7 +4,8 @@ import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import { findClaims } from "@/lib/claims";
-import { productProblems, type ProductInput } from "@/lib/product-input";
+import { parsePrice, productProblems, type ProductInput } from "@/lib/product-input";
+import { largestPriceChange } from "@/lib/autopilot-autonomy";
 import {
   MADE_PICTURES_MAX,
   factsOf,
@@ -415,6 +416,27 @@ export async function preflightProductTool(ctx: Ctx, name: string, input: Record
       const problems = await problemsOf(stored, editor, "active");
       if (problems.length > 0) return fail(`"${found.title}" cannot be published yet: ${problems.join(" ")}`);
     }
+  }
+}
+
+/**
+ * How far a `set_prices` call moves any price, in percent of the price now (D309: the autopilot's price budget), read from the editor's own
+ * product and the store's currencies; null when it cannot be measured (an unknown product, SKU or price).
+ */
+export async function priceChangePercent(store: Store, account: Account, input: SetPricesInput): Promise<number | null> {
+  try {
+    const { stored, editor } = await dryChange({ account, store, invalidate: () => {} }, { product: input.product });
+    const change = pricesAsChange(input.product, input, stored);
+    if (!change.ok) return null;
+    const currency = new Map(editor.markets.map((m) => [m.code, m.currency]));
+    return largestPriceChange(
+      stored.variants.map((v) => ({ sku: v.sku, prices: v.prices })),
+      (change.change.variants ?? []).map((v) => ({ sku: v.sku ?? "", prices: v.prices ?? {} })),
+      (market) => currency.get(market) ?? null,
+      parsePrice,
+    );
+  } catch {
+    return null;
   }
 }
 

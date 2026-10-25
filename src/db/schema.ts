@@ -13032,3 +13032,25 @@ export const assistantPlanSteps = commerce.table(
     check("assistant_plan_steps_answer", sql`${t.answer} is null or length(${t.answer}) <= 500`),
   ],
 );
+
+/** The owner's autonomy levels and budgets for the autopilot (D309, `docs/ai-autopilot.md` 7.4): one row per store, one for the platform. */
+export const autopilotSettings = commerce.table(
+  "autopilot_settings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** Null for Kaizena Flow's own site. */
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    paused: boolean("paused").notNull().default(false),
+    /** `{ area: level }`, read only through `readAutonomy()` (`src/lib/autopilot-autonomy.ts`). */
+    levels: jsonb("levels").notNull().default({}),
+    budgets: jsonb("budgets").notNull().default({}),
+    updatedBy: uuid("updated_by").references(() => accounts.id, { onDelete: "set null" }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique("autopilot_settings_store_key").on(t.storeId).nullsNotDistinct(),
+    index("autopilot_settings_updated_by_idx").on(t.updatedBy),
+    check("autopilot_settings_levels", sql`jsonb_typeof(${t.levels}) = 'object'`),
+    check("autopilot_settings_budgets", sql`jsonb_typeof(${t.budgets}) = 'object'`),
+  ],
+);

@@ -29,7 +29,10 @@ import { featureApprovalDetails } from "./feature-tools";
 import { setFeatureInput } from "@/lib/feature-tools";
 import { gateNeeded, OwnerToolError, preflightOwnerTool, runOwnerTool } from "./owner-tools";
 import { offeredTools } from "./offered-tools";
-import { planApprovalDetails, startPlanNow } from "./autopilot-plans";
+import { planApprovalDetails, settleStepApproval, startPlanNow } from "./autopilot-plans";
+import { autopilotDecision } from "./autopilot-gate";
+import { TASK_EXTRA_TOOLS } from "@/lib/autopilot-plans";
+import type { AutonomySettings } from "@/lib/autopilot-autonomy";
 import { preflightAutopilotTool } from "./autopilot-tools";
 import { DNS_RECORD_TOOLS } from "@/lib/domain-tools";
 import type { OwnerToolInput } from "@/lib/owner-tools";
@@ -45,6 +48,15 @@ import { can, canOpenPath, type PermissionHolder } from "@/lib/permissions";
 import { UNTRUSTED_TEXT } from "@/lib/prompt-safety";
 
 type Row = Record<string, unknown>;
+
+/** What the model is told in a turn the autopilot runs for a plan's step (D309): nobody is there, and the step's brief is its whole job. */
+const AUTOPILOT_LINES = [
+  "You are working on your own now, as the store's autopilot, on one step of a plan the person started. Nobody is reading along.",
+  "- Do the step's brief with the tools you have, and nothing beyond it. Facts only from your tools, as always.",
+  "- Changes that need the owner's yes are kept for them as usual; say which are waiting. Never pretend something was done.",
+  "- If the step cannot be done, say exactly what is missing or what refused it, in one or two sentences.",
+  "- End with one or two plain sentences on what you did: the owner reads them in the plan.",
+].join("\n");
 
 /** Who a change the AI manager makes is audited as: the AI manager, or the autopilot inside its turns (D309). */
 const aiActor = () => (currentActor() === "autopilot" ? "autopilot" : "ai_manager");
@@ -381,7 +393,15 @@ export type TurnInput = {
   scheduled?: boolean;
   /** The connection to use; the site's own (D73) unless given (tests). */
   connection?: AiConnection | null;
+  /**
+   * A step of a plan the autopilot runs (D309, `src/server/autopilot-runner.ts`): only the step's tools are offered (and `use_skill`,
+   * `recall`), gated calls meet the owner's autonomy levels and budgets (`autopilotDecision()`), those kept wait under the step, and what ran
+   * at a *Do it and tell me* level is written to `told`. Always with `scheduled`.
+   */
+  autopilot?: AutopilotTurn;
 };
+
+export type AutopilotTurn = { stepId: string; tools: readonly string[]; settings: AutonomySettings; told: string[] };
 
 /** Whether today's turns have reached the limit: per store, or per platform admin. */
 async function overLimit(p: Principal): Promise<boolean> {
@@ -459,7 +479,8 @@ export async function runTurn(input: TurnInput): Promise<void> {
     connection,
     navigate: (href, label) => emit({ type: "navigate", href, label }),
     invalidate: input.invalidate,
-    scheduled: input.scheduled,
+    scheduled: input.scheduled || Boolean(input.autopilot),
+    autopilot: input.autopilot,
     turn: {
       conversationId,
       said: text,
@@ -474,7 +495,11 @@ export async function runTurn(input: TurnInput): Promise<void> {
   // The tools a role may use are the ones offered: the model never sees a tool its person's role could not run.
   const holder = holderOfPrincipal(p);
   // And only the tools of the store's features that are on (D178): a feature switched off takes its tools with it.
-  const tools = [...offeredTools({ store, holder }).map(toolDefinition), ...MANAGER_TOOLS.map(toolDefinition), ...(withLife ? [ASK_KAIZEN_LIFE] : [])];
+  const autopilot = input.autopilot;
+  const allowed = autopilot ? new Set<string>([...autopilot.tools, ...TASK_EXTRA_TOOLS]) : null;
+  const tools = allowed
+    ? [...offeredTools({ store, holder }), ...MANAGER_TOOLS].filter((t) => allowed.has(t.name)).map(toolDefinition)
+    : [...offeredTools({ store, holder }).map(toolDefinition), ...MANAGER_TOOLS.map(toolDefinition), ...(withLife ? [ASK_KAIZEN_LIFE] : [])];
   const messages: ToolChatMessage[] = [
     {
       role: "system",
@@ -484,7 +509,7 @@ export async function runTurn(input: TurnInput): Promise<void> {
         memories,
         voice: input.voice,
         waiting: waiting.map((row) => ({ id: String(row.id), summary: String(row.summary) })),
-      }),
+      }) + (autopilot ? `\n\n${AUTOPILOT_LINES}` : ""),
     },
     ...history.map((row) => ({ role: row.role === "user" ? ("user" as const) : ("assistant" as const), content: String(row.content) })),
     { role: "user", content: text },
@@ -572,6 +597,10 @@ async function callTool(
   const manager = MANAGER_TOOLS_BY_NAME[name];
   const tool = (ctx.store ? OWNER_TOOLS_BY_NAME[name] : PLATFORM_TOOLS_BY_NAME[name]) ?? manager;
   if (!tool) return { error: `There is no tool called ${name}.` };
+  // An autopilot step uses its own tools only, whatever the model asks for (D309).
+  if (ctx.autopilot && !ctx.autopilot.tools.includes(name) && !(TASK_EXTRA_TOOLS as readonly string[]).includes(name)) {
+    return { error: `This step may not use ${name}.` };
+  }
   // A catalogue tool changes a draft at once and waits for a yes only while its product is on the site, a menu only while it is shown (D308, `gateNeeded()`).
   if (tool.gate && (manager || (ctx.store ? await gateNeeded(ctx.store, name, args) : await platformGateNeeded(name, args)))) {
     const input = readToolInput(tool, args);
@@ -594,7 +623,26 @@ async function callTool(
         return { error: "The tool failed." };
       }
     }
-    const approval = await keepForApproval(ctx, conversationId, name, tool.gate, input.input as Record<string, unknown>);
+    // In an autopilot step, the owner's level and budgets decide whether it runs now or waits for their yes (D309).
+    if (ctx.autopilot && !manager) {
+      const decision = await autopilotDecision(ctx, ctx.autopilot.settings, name, tool.gate, input.input as Record<string, unknown>);
+      if (decision.run) {
+        try {
+          const result = await actingAs("autopilot", async () =>
+            ctx.store
+              ? runOwnerTool({ account: ctx.account, store: ctx.store, invalidate: ctx.invalidate, holder: ctx.holder }, name, args)
+              : runPlatformTool(ctx, name, args),
+          );
+          if (decision.tell) ctx.autopilot.told.push(approvalSummary(name, input.input as Record<string, unknown>));
+          return { result };
+        } catch (error) {
+          if (error instanceof OwnerToolError) return { error: error.message };
+          console.error(`[ai-manager] ${name}`, error);
+          return { error: "The tool failed." };
+        }
+      }
+    }
+    const approval = await keepForApproval(ctx, conversationId, name, tool.gate, input.input as Record<string, unknown>, ctx.autopilot?.stepId);
     emit({ type: "approval", approval });
     return {
       queued_for_approval: true,
@@ -625,6 +673,8 @@ export async function keepForApproval(
   tool: string,
   category: GateCategory,
   args: Record<string, unknown>,
+  /** The autopilot's step that keeps it (D309): its decision settles the step. */
+  planStepId?: string,
 ): Promise<Approval> {
   let summary = approvalSummary(tool, args);
   const store = ctx.store;
@@ -741,8 +791,9 @@ export async function keepForApproval(
     }
   }
   const [row] = await db().execute<Row>(sql`
-    insert into commerce.assistant_approvals (store_id, conversation_id, account_id, tool, args, summary, category)
-    values (${store ? sql`${store.id}::uuid` : sql`null`}, ${conversationId}::uuid, ${ctx.account.id}::uuid, ${tool}, ${JSON.stringify(args)}::jsonb, ${summary}, ${category})
+    insert into commerce.assistant_approvals (store_id, conversation_id, account_id, tool, args, summary, category, plan_step_id)
+    values (${store ? sql`${store.id}::uuid` : sql`null`}, ${conversationId}::uuid, ${ctx.account.id}::uuid, ${tool}, ${JSON.stringify(args)}::jsonb, ${summary}, ${category},
+      ${planStepId ?? null}::uuid)
     returning *
   `);
   return toApproval(row);
@@ -771,6 +822,7 @@ export async function decideApproval(
   const conversationId = String(claimed.conversation_id);
   if (!approve) {
     if (note) await addMessage(p, conversationId, "assistant", `Declined: ${claimed.summary}`);
+    if (claimed.plan_step_id) await settleStepAfterApproval(String(claimed.plan_step_id));
     return toApproval(claimed);
   }
   let result: { done?: string; error?: string };
@@ -796,7 +848,17 @@ export async function decideApproval(
     where id = ${approvalId}::uuid returning *
   `);
   if (note) await addMessage(p, conversationId, "assistant", result.done ?? `Could not: ${result.error}`, [{ name: String(claimed.tool), ok: !result.error }]);
+  if (claimed.plan_step_id) await settleStepAfterApproval(String(claimed.plan_step_id));
   return toApproval(row);
+}
+
+/** A kept call of an autopilot step was answered: the step goes on (D309). Never throws: the person's answer stands whatever happens to it. */
+async function settleStepAfterApproval(stepId: string): Promise<void> {
+  try {
+    await settleStepApproval(stepId);
+  } catch (error) {
+    console.error("[ai-manager] settling an autopilot step", error);
+  }
 }
 
 /**

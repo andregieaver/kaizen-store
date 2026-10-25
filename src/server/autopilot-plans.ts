@@ -8,6 +8,7 @@ import {
   checkPlan,
   PLAN_STATUSES,
   RETRY_OPTIONS,
+  STEP_TRIES,
   skippedBehind,
   STEP_STATUSES,
   stepCheckSchema,
@@ -23,10 +24,11 @@ import {
 import { can, type PermissionHolder } from "@/lib/permissions";
 
 import { audit, type Account } from "./auth";
+import { checkStep } from "./autopilot-checks";
 import { auditArea, getGoal } from "./autopilot-goals";
 import { offeredToolsByName } from "./offered-tools";
 import { OwnerToolError } from "./owner-tool-error";
-import type { Store } from "./stores";
+import { currentStore, type Store } from "./stores";
 import { col, typedRow, typedRows, type Executor } from "./typed-rows";
 
 /**
@@ -435,4 +437,88 @@ export function planWords(plan: Plan, steps: readonly PlanStep[]) {
       ...(s.answer && { answer: s.answer }),
     })),
   };
+}
+
+// Settling a step (the loop's runs and the owner's answers to calls a step kept) -----------------------------------------------------------
+
+/** How long a failed try waits before the next. */
+export const RETRY_MINUTES = 10;
+
+/** A step that worked: done with its result, the steps behind skipped steps skipped, the plan finished when nothing is left. */
+export async function completeStep(stepId: string, planId: string, result: StepResult): Promise<void> {
+  await db().transaction(async (tx) => {
+    await tx.execute(sql`
+      update commerce.assistant_plan_steps set status = 'done', result = ${JSON.stringify(result)}::jsonb, claimed_until = null
+      where id = ${stepId}::uuid and status in ('running', 'waiting', 'pending')
+    `);
+    await finishIfDone(tx, planId);
+  });
+}
+
+/** A step that did not work: another try in a while, or, after `STEP_TRIES`, a question for the owner with the problem in words. */
+export async function failStep(stepId: string, problem: string): Promise<"retry" | "asking"> {
+  const row = await typedRow(z.object({ tries: col.int, title: col.text }), sql`select tries, title from commerce.assistant_plan_steps where id = ${stepId}::uuid`);
+  const tries = (row?.tries ?? 0) + 1;
+  const words = problem.slice(0, 450);
+  if (tries >= STEP_TRIES) {
+    const question: StepQuestion = { text: `"${row?.title ?? "A step"}" did not work after ${tries} tries: ${words} What should I do?`, options: [...RETRY_OPTIONS], retry: true };
+    await db().execute(sql`
+      update commerce.assistant_plan_steps set status = 'asking', tries = ${tries}, question = ${JSON.stringify(question)}::jsonb,
+        result = ${JSON.stringify({ problem: words })}::jsonb, claimed_until = null
+      where id = ${stepId}::uuid and status in ('running', 'waiting', 'pending')
+    `);
+    return "asking";
+  }
+  await db().execute(sql`
+    update commerce.assistant_plan_steps set status = 'pending', tries = ${tries}, result = ${JSON.stringify({ problem: words })}::jsonb,
+      not_before = now() + make_interval(mins => ${RETRY_MINUTES}), claimed_until = null
+    where id = ${stepId}::uuid and status in ('running', 'waiting', 'pending')
+  `);
+  return "retry";
+}
+
+/** A step whose calls the owner declined: skipped, with the steps waiting for it. */
+export async function skipStep(stepId: string, planId: string, problem: string): Promise<void> {
+  await db().transaction(async (tx) => {
+    await tx.execute(sql`
+      update commerce.assistant_plan_steps set status = 'skipped', result = ${JSON.stringify({ problem })}::jsonb, claimed_until = null
+      where id = ${stepId}::uuid and status in ('running', 'waiting', 'pending')
+    `);
+    await skipBehind(tx, planId);
+    await finishIfDone(tx, planId);
+  });
+}
+
+const WAITING_STEP = z.object({ id: col.uuid, plan_id: col.uuid, store_slug: col.textOrNull, status: z.enum(STEP_STATUSES), done_check: z.unknown(), result: z.unknown() });
+const DECIDED = z.object({ status: col.text, summary: col.text, result: z.unknown() });
+
+/**
+ * The owner answered a call a step kept (`decideApproval()`): once every call the step kept is answered, the step goes on. Calls done are
+ * checked as the step's check says, a failed call is a failed try, and a step whose every call was declined is skipped.
+ */
+export async function settleStepApproval(stepId: string): Promise<void> {
+  const step = await typedRow(
+    WAITING_STEP,
+    sql`select s.id, s.plan_id, st.slug as store_slug, s.status, s.done_check, s.result
+      from commerce.assistant_plan_steps s left join commerce.stores st on st.id = s.store_id where s.id = ${stepId}::uuid`,
+  );
+  if (!step || step.status !== "waiting") return;
+  const calls = await typedRows(DECIDED, sql`select status, summary, result from commerce.assistant_approvals where plan_step_id = ${stepId}::uuid`);
+  if (calls.length === 0 || calls.some((c) => c.status === "pending")) return;
+  const failed = calls.find((c) => c.status === "failed");
+  if (failed) {
+    const why = (failed.result as { error?: string } | null)?.error ?? "it could not be done";
+    await failStep(stepId, `${failed.summary} ${why}`);
+    return;
+  }
+  if (calls.every((c) => c.status === "declined")) {
+    await skipStep(stepId, step.plan_id, `You declined: ${calls.map((c) => c.summary).join(" ")}`.slice(0, 450));
+    return;
+  }
+  const store = step.store_slug ? await currentStore(step.store_slug) : null;
+  const check = stepCheckSchema.safeParse(step.done_check);
+  const outcome = await checkStep(store, check.success ? check.data : { kind: "none" });
+  const before = resultSchema.safeParse(step.result);
+  if (outcome.ok) await completeStep(stepId, step.plan_id, { ...(before.success ? before.data : {}), done: `Done on your yes: ${calls.filter((c) => c.status === "done").map((c) => c.summary).join(" ")}`.slice(0, 1000) });
+  else await failStep(stepId, outcome.problem);
 }

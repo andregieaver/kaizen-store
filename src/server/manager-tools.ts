@@ -99,6 +99,8 @@ export type ManagerContext = {
   };
   /** A follow-up's turn (`src/server/follow-up-runner.ts`): nobody is there, so it sets no further follow-up. */
   scheduled?: boolean;
+  /** A step of a plan the autopilot runs (D309): its tools, the owner's levels, and what it was told to tell. */
+  autopilot?: import("./owner-assistant").AutopilotTurn;
 };
 
 const fail = (message: string): never => {

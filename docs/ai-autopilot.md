@@ -374,7 +374,26 @@ shows it beside the person's name.
   `person`. Activity shows "through the AI manager" or "through the autopilot" after the person's name.
 - Not yet: the loop, autonomy and budgets (B2), the page, digest and report (B3). Until B2, a started plan runs nothing.
 
-### 7.8 Tests
+### 7.8 As built: B2 (2026-10-25)
+
+- Migrations `20261025123210_autopilot_settings` (`commerce.autopilot_settings`, one row per store and one for the platform, unique with
+  nulls not distinct) and `20261025123242_autopilot_loop` (RLS, the every-minute `kaizen-autopilot` job calling `/api/cron/autopilot`).
+- Pure: `src/lib/autopilot-autonomy.ts` (`AUTONOMY_AREAS`, `TOOL_AREAS`, `NEVER_AUTOMATIC`, `autonomyDecision()`, `discountDepth()`,
+  `largestPriceChange()`; default budgets: 5 USD of AI a month, 20 % deepest offer, 10 % largest price change). A free product over an
+  amount always asks: its depth against the basket is not known.
+- Server: `src/server/autopilot-settings.ts` (`autonomyFor()`, `saveAutonomy()`, owners and platform admins only, `aiBudgetSpent()` from the
+  month's `ai_usage` of the feature `autopilot` at D145's prices), `src/server/autopilot-gate.ts` (`autopilotDecision()`, facts read first:
+  `priceChangePercent()` from the editor's own product), `src/server/autopilot-checks.ts` (`checkStep()`), `src/server/autopilot-runner.ts`
+  (`runAutopilot()`: a store's advisory lock and a claim per step, a step died in hand goes back with a try counted), and in
+  `src/server/autopilot-plans.ts` `completeStep()`, `failStep()`, `skipStep()` and `settleStepApproval()`, which `decideApproval()` calls
+  for a call kept with `plan_step_id`.
+- A task's turn is `runTurn({ scheduled: true, autopilot })` inside `actingAs("autopilot")`: the step's tools and `use_skill`, `recall`
+  only (a call of another tool is refused in `callTool()` too), the autopilot's lines added to the system prompt, gated calls through
+  `autopilotDecision()` and run at once or kept with the step's id.
+- The page check is "published", which carries the builder's accessibility check (`publish_page` refuses a blocking issue).
+- Settings have no AI manager tool: they are the owner's, on the page (B3).
+
+### 7.9 Tests
 
 PGlite: the plan and step life cycles the database holds, the audit `by` check. Unit: `checkPlan()` (unknown tool, bad arguments, a loop,
 a missing key, too many steps, a tool the role may not use), `goalProgress()`'s arithmetic on fixed figures, `autonomyDecision()` for every
