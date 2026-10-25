@@ -51,11 +51,12 @@ import {
  * A tool with a `gate` never runs from the model alone: the call is kept as
  * a pending approval and runs when the owner says yes (the approval gate,
  * as Kaizen Life's): anything sent in the store's name (`send`), made
- * public (`public`), costing money (`spend`) or changing a domain's DNS or renewal (`domain`, D315). Everything else, reading and
+ * public (`public`), costing money (`spend`), changing a domain's DNS or renewal (`domain`, D315) or who works in the store and what
+ * they may do (`access`, PSI AGT-01). Everything else, reading and
  * notes inside the admin, runs freely.
  */
 
-export type GateCategory = "send" | "public" | "spend" | "domain";
+export type GateCategory = "send" | "public" | "spend" | "domain" | "access";
 
 export type OwnerTool<I extends z.ZodType = z.ZodType, N extends string = string> = {
   name: N;
@@ -1118,6 +1119,54 @@ export const OWNER_TOOLS = [
     "The store's support conversations, most recent first: each one's id, title and summary (written by AI for staff), whether it is waiting, with the AI, with a person or ended, its outcome, topics, tone alert, rating and the link that opens it in the inbox. Read one's words with get_support_conversation. Read-only.",
     z.object({ status: z.enum(["open", "ended", "all"]).default("all").describe("Open ones only, ended ones only, or all."), limit: limit(20, 10) }),
   ),
+  // The team and the plan (PSI AGT-01): the Staff and Billing pages' own functions, the owner's alone, every change on their yes.
+  tool(
+    "list_staff",
+    "Who works in the store: each person's email, name, role, whether they have signed in yet, whether two-step sign-in is seen, and a collaborator's end date; and the store's roles with what each holds. Read-only; the owner's.",
+    z.object({}),
+  ),
+  tool(
+    "invite_staff",
+    "Gives someone access to the store's admin: as owner, admin (everything but the team and the plan) or one of the store's roles by name; with collaborator_days, as a collaborator (an agency) whose access ends after that many days, never as owner. They sign in with their email. Needs the owner's approval.",
+    z.object({
+      email: z.email().max(254).describe("Their email address, as the owner gave it."),
+      role: z.string().trim().min(1).max(60).describe("owner, admin, or one of the store's roles by name (list_staff lists them)."),
+      collaborator_days: z.number().int().min(1).max(365).optional().describe("For a collaborator: how many days their access lasts."),
+    }),
+    "access",
+  ),
+  tool(
+    "change_staff_role",
+    "Gives someone who works in the store another role: owner, admin or one of the store's roles by name. The store always keeps one active owner; a collaborator is never an owner. Needs the owner's approval.",
+    z.object({ person: z.email().max(254).describe("Their email address, as list_staff gives it."), role: z.string().trim().min(1).max(60).describe("owner, admin, or one of the store's roles by name.") }),
+    "access",
+  ),
+  tool(
+    "remove_staff",
+    "Ends someone's access to the store at once; their account and what they did stay in the activity log. Not the owner's own access, and never the last owner. Needs the owner's approval.",
+    z.object({ person: z.email().max(254).describe("Their email address, as list_staff gives it.") }),
+    "access",
+  ),
+  tool(
+    "billing_overview",
+    "The store's plan with Kaizena Flow: its name, price, state and period, whether it ends at the period's end, the fee on sales, and the plans offered with their prices. Read-only; the owner's.",
+    z.object({}),
+  ),
+  tool(
+    "change_plan",
+    "Moves the store's running plan to another plan or interval at once, with a prorated charge or credit on Kaizena Flow's next invoice. The first plan is never chosen here: the owner pays for it by card on the Billing page. Needs the owner's approval.",
+    z.object({
+      plan: z.string().trim().min(1).max(80).describe("The plan's name, as billing_overview lists it."),
+      interval: z.enum(["month", "year"]).default("month").describe("Paid monthly or yearly."),
+    }),
+    "spend",
+  ),
+  tool(
+    "end_plan",
+    "Ends the store's plan when the period paid for runs out (period_end), or keeps a plan that was set to end (undo). Needs the owner's approval.",
+    z.object({ when: z.enum(["period_end", "undo"]).describe("period_end to end it at the end of the period, undo to keep it.") }),
+    "spend",
+  ),
   // Answering support (PSI AGT-01): through the inbox's own actions, in the person's name.
   tool(
     "get_support_conversation",
@@ -1234,6 +1283,7 @@ export const GATE_WORDS: Record<GateCategory, string> = {
   public: "Changes what the site shows",
   spend: "Costs money",
   domain: "Changes your domain: where it points, its email or its renewal",
+  access: "Changes who works in the store and what they may do",
 };
 
 /**
@@ -1245,6 +1295,16 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
   switch (name) {
     case "send_broadcast":
       return input.at ? `Send the broadcast "${text("broadcast")}" at ${text("at")} (the store's time) to the people on the list who asked for your emails.` : `Send the broadcast "${text("broadcast")}" now to the people on the list who asked for your emails.`;
+    case "invite_staff":
+      return input.collaborator_days ? `Give ${text("email")} access as a collaborator (${text("role")}) for ${text("collaborator_days")} days.` : `Give ${text("email")} access to the store as ${text("role")}.`;
+    case "change_staff_role":
+      return `Make ${text("person")} ${text("role")} in the store.`;
+    case "remove_staff":
+      return `End ${text("person")}'s access to the store.`;
+    case "change_plan":
+      return `Move the store to the ${text("plan")} plan, paid ${input.interval === "year" ? "yearly" : "monthly"}, at once.`;
+    case "end_plan":
+      return input.when === "undo" ? "Keep the store's plan, which was set to end." : "End the store's plan at the end of the period it has paid for.";
     case "reply_to_support":
       return `Reply to the customer in the support conversation in your name: "${text("message")}"`;
     case "issue_gift_card":

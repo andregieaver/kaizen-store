@@ -19,6 +19,7 @@ import { platformGateNeeded, preflightPlatformTool, runManagerTool, runPlatformT
 import { experimentApprovalSummary } from "./experiment-tools";
 import { broadcastApprovalSummary } from "./marketing-tools";
 import { replyApprovalSummary } from "./support-manager-tools";
+import { changePlanSummary } from "./billing-tools";
 import { draftApprovalDetails } from "./order-ops-tools";
 import { featureApprovalDetails } from "./feature-tools";
 import { setFeatureInput } from "@/lib/feature-tools";
@@ -649,6 +650,10 @@ export async function keepForApproval(
   }
   // A broadcast's send is described from the broadcast itself: its name, subject, audience and how many it reaches now (PSI AGT-01).
   if (store && tool === "send_broadcast") summary = (await broadcastApprovalSummary(store, args)) ?? summary;
+  // A plan change is described with the plans' own names and prices (PSI AGT-01).
+  if (store && tool === "change_plan") {
+    summary = (await changePlanSummary({ account: ctx.account, store }, { plan: String(args.plan ?? ""), interval: args.interval === "year" ? "year" : "month" })) ?? summary;
+  }
   // A support reply is described with the conversation's title and the words in full (PSI AGT-01).
   if (store && tool === "reply_to_support") {
     summary = await replyApprovalSummary({ account: ctx.account, store }, { conversation: String(args.conversation ?? ""), message: String(args.message ?? "") }).catch(() => summary);

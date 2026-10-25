@@ -3130,6 +3130,13 @@
       "when": 1792878144618,
       "tag": "20261024214224_follow_ups_from_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 447,
+      "version": "7",
+      "when": 1792919555117,
+      "tag": "20261025091235_approvals_access",
+      "breakpoints": true
     }
   ]
 }

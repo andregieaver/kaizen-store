@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."assistant_approvals" DROP CONSTRAINT "assistant_approvals_category";--> statement-breakpoint
+ALTER TABLE "commerce"."assistant_approvals" ADD CONSTRAINT "assistant_approvals_category" CHECK ("commerce"."assistant_approvals"."category" in ('send', 'public', 'spend', 'domain', 'access'));

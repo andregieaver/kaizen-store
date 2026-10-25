@@ -81,7 +81,7 @@ export const assistantNb: AssistantMessages = {
   },
   approval: {
     region: "Venter på godkjenningen din",
-    gates: { send: "Sender noe i butikkens navn", public: "Endrer det nettstedet viser", spend: "Koster penger", domain: "Endrer domenet ditt: hvor det peker, e-posten eller fornyelsen" },
+    gates: { send: "Sender noe i butikkens navn", public: "Endrer det nettstedet viser", spend: "Koster penger", domain: "Endrer domenet ditt: hvor det peker, e-posten eller fornyelsen", access: "Endrer hvem som jobber i butikken og hva de kan gjøre" },
     approve: "Godkjenn",
     decline: "Avslå",
     declined: "Avslått.",
@@ -120,6 +120,13 @@ export const assistantNb: AssistantMessages = {
   tools: {
     support_overview: "Ser på kundestøtte",
     list_support_conversations: "Ser på kundestøttesamtaler",
+    list_staff: "Ser på teamet",
+    invite_staff: "Forbereder invitasjonen",
+    change_staff_role: "Forbereder rolleendringen",
+    remove_staff: "Forbereder fjerningen",
+    billing_overview: "Ser på abonnementet",
+    change_plan: "Forbereder abonnementsbyttet",
+    end_plan: "Forbereder avslutningen av abonnementet",
     get_support_conversation: "Leser samtalen",
     add_support_note: "Skriver et notat til teamet",
     reply_to_support: "Forbereder svaret",

@@ -59,6 +59,8 @@ import { activeFieldGroups, fieldsTag, getFieldData, listFieldGroups, pageFacts,
 import { listIntegrations, postToSlack } from "./integrations";
 import { ownedStores, usageRows } from "./ai-usage";
 import { analyticsAlertsTool, analyticsOverviewTool, explainChangeTool } from "./analytics-tools";
+import { billingOverviewTool, changePlanTool, endPlanTool, preflightChangePlan, preflightEndPlan } from "./billing-tools";
+import { changeStaffRoleTool, inviteStaffTool, listStaffTool, preflightChangeStaffRole, preflightInviteStaff, preflightRemoveStaff, removeStaffTool } from "./staff-tools";
 import {
   addSupportNoteTool,
   endSupportConversationTool,
@@ -2020,6 +2022,19 @@ export async function preflightOwnerTool(ctx: OwnerToolContext, name: string, ra
     if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
     return preflightIssueGiftCard(ctx, input.input as OwnerToolInput<"issue_gift_card">);
   }
+  // A change to the team or the plan the Staff or Billing page would refuse is refused now, never kept for a yes (PSI AGT-01).
+  const TEAM_AND_PLAN: Record<string, (ctx: OwnerToolContext, input: never) => Promise<void>> = {
+    invite_staff: preflightInviteStaff,
+    change_staff_role: preflightChangeStaffRole,
+    remove_staff: preflightRemoveStaff,
+    change_plan: preflightChangePlan,
+    end_plan: preflightEndPlan,
+  };
+  if (name in TEAM_AND_PLAN) {
+    const input = readToolInput(OWNER_TOOLS_BY_NAME[name], raw);
+    if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
+    return TEAM_AND_PLAN[name](ctx, input.input as never);
+  }
   // A support reply that could not go out (another person's conversation, an ended one, a claim) is refused now (PSI AGT-01).
   if (name === "reply_to_support") {
     const input = readToolInput(OWNER_TOOLS_BY_NAME[name], raw);
@@ -2184,6 +2199,13 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   analytics_alerts: analyticsAlertsTool,
   support_overview: supportOverviewTool,
   list_support_conversations: listSupportConversationsTool,
+  list_staff: listStaffTool,
+  invite_staff: inviteStaffTool,
+  change_staff_role: changeStaffRoleTool,
+  remove_staff: removeStaffTool,
+  billing_overview: billingOverviewTool,
+  change_plan: changePlanTool,
+  end_plan: endPlanTool,
   get_support_conversation: getSupportConversationTool,
   add_support_note: addSupportNoteTool,
   reply_to_support: replyToSupportTool,

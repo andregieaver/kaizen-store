@@ -84,7 +84,7 @@ export const assistantEn = {
   },
   approval: {
     region: "Waiting for your approval",
-    gates: { send: "Sends something in the store's name", public: "Changes what the site shows", spend: "Costs money", domain: "Changes your domain: where it points, its email or its renewal" },
+    gates: { send: "Sends something in the store's name", public: "Changes what the site shows", spend: "Costs money", domain: "Changes your domain: where it points, its email or its renewal", access: "Changes who works in the store and what they may do" },
     approve: "Approve",
     decline: "Decline",
     declined: "Declined.",

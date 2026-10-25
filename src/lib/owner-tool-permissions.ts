@@ -16,6 +16,14 @@ import { AREA_LABELS, can, type Area, type PermissionHolder, type PermissionKey 
 export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   support_overview: "support:read",
   list_support_conversations: "support:read",
+  // The team and the plan (PSI AGT-01): the Staff and Billing pages are the owner's (`requireOwnerRole`), so are their tools.
+  list_staff: "owner",
+  invite_staff: "owner",
+  change_staff_role: "owner",
+  remove_staff: "owner",
+  billing_overview: "owner",
+  change_plan: "owner",
+  end_plan: "owner",
   // Answering (PSI AGT-01): reading a conversation is the inbox's read, a note, a reply and ending it its write.
   get_support_conversation: "support:read",
   add_support_note: "support:write",

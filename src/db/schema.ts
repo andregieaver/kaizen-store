@@ -8319,7 +8319,7 @@ export const assistantApprovals = commerce.table(
     index("assistant_approvals_conversation_idx").on(t.conversationId, t.createdAt),
     index("assistant_approvals_store_idx").on(t.storeId, t.status),
     index("assistant_approvals_account_idx").on(t.accountId),
-    check("assistant_approvals_category", sql`${t.category} in ('send', 'public', 'spend', 'domain')`),
+    check("assistant_approvals_category", sql`${t.category} in ('send', 'public', 'spend', 'domain', 'access')`),
     check("assistant_approvals_status", sql`${t.status} in ('pending', 'done', 'declined', 'failed')`),
   ],
 );
