@@ -14,6 +14,7 @@ import { canSignIn, signInAccount } from "@/server/auth";
 import { KAIZEN_LIFE_PROVIDER, kaizenLifeSignInOn } from "@/server/kaizen-life";
 import { requestAdminLang } from "@/server/admin-request-lang";
 import { admit } from "@/server/sign-in";
+import { clearSignIns, countFailedSignIn, signInLocked } from "@/server/sign-in-limit";
 
 /** The forms' answers in the request's language (D312 A1), never the typed email's account's: the same words whatever the email. */
 async function answers() {
@@ -58,20 +59,22 @@ async function signInWithPassword(formData: FormData): Promise<FormState> {
   const password = String(formData.get("password") ?? "");
   if (!email.success) return fail(w.invalidEmail);
   if (!password) return fail(w.noPassword);
-  if (!(await canSignIn(email.data))) return fail(w.wrong);
+  // The admin's own limit per email (PSI SEC-02): every address is counted alike, so the answer never says which have access.
+  if (await signInLocked(email.data)) return fail(w.tooManyAttempts);
+  if (!(await canSignIn(email.data))) {
+    await countFailedSignIn(email.data);
+    return fail(w.wrong);
+  }
 
   const supabase = await supabaseOrNull();
   if (!supabase) return fail(w.notConfigured);
   const { data, error } = await supabase.auth.signInWithPassword({ email: email.data, password });
   if (error || !data.user) {
-    return fail(
-      error?.status === 429
-        ? w.tooManyAttempts
-        : error?.code === "invalid_credentials" || error?.status === 400
-          ? w.wrong
-          : w.couldNotSignIn,
-    );
+    const wrong = error?.code === "invalid_credentials" || error?.status === 400;
+    if (wrong) await countFailedSignIn(email.data);
+    return fail(error?.status === 429 ? w.tooManyAttempts : wrong ? w.wrong : w.couldNotSignIn);
   }
+  await clearSignIns(email.data);
   if ((await admit(supabase, data.user)) !== "admitted") {
     return fail(adminText(await requestAdminLang(), "signIn").signIn.noAccess);
   }
