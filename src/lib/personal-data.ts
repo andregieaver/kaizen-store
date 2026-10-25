@@ -248,6 +248,8 @@ export const PERSONAL_DATA: PersonalEntry[] = [
 
 /** Tables the detectors matched (by a column name such as `name`, `note` or `content`, or a foreign key) that hold no person's data, and why. */
 export const NOT_PERSONAL: Record<string, string> = {
+  legal_source_reads: "Each read of an official legal text (D311): which act, language and version, when, and whether it worked; no person.",
+  legal_source_texts: "Official legal texts cut into passages (D311), as the EU, Riksdagen, Retsinformation and Lovdata publish them; no person.",
   ai_eval_runs: "Runs of the AI evals per model (PSI 2026-10-24): counts, failed cases' ids, problems and the model's answers to scripted cases, and the platform admin account that ran it; no shopper.",
   cron_jobs: "The last run of each scheduled job (PSI 2026-10-24): its name, times, run counts and the last error's message; no person.",
   ad_connections: "A store's connection to an ad platform (D303 I2): the platform's id and the owner's encrypted token; no shopper.",

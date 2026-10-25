@@ -3193,6 +3193,20 @@
       "when": 1792939387572,
       "tag": "20261025144307_page_looks_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 456,
+      "version": "7",
+      "when": 1792945913937,
+      "tag": "20261025163153_legal_sources",
+      "breakpoints": true
+    },
+    {
+      "idx": 457,
+      "version": "7",
+      "when": 1792945932524,
+      "tag": "20261025163212_legal_sources_rules",
+      "breakpoints": true
     }
   ]
 }

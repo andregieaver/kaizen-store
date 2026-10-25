@@ -22,6 +22,7 @@ import { runExperimentJobs } from "@/server/experiment-jobs";
 import { runFollowUps } from "@/server/follow-up-runner";
 import { sendAutopilotReports } from "@/server/autopilot-reports";
 import { invoiceJobs } from "@/server/invoice-issue";
+import { readDueLegalSources } from "@/server/legal-sources";
 import { runPaymentJobs } from "@/server/payment-disputes";
 import { pruneReplications } from "@/server/replicate-store";
 import { runReturnJobs } from "@/server/return-jobs";
@@ -131,6 +132,8 @@ async function dispatch() {
     followUps: () => runFollowUps(),
     // The autopilot's daily digests and weekly reports (D309), to the people whose plans ran lately.
     autopilotReports: () => sendAutopilotReports(),
+    // The official legal texts the AI's legal pages rest on (D311): a few due reads, each source a week after its last good read.
+    legalSources: () => readDueLegalSources(),
   });
   // Installed themes that follow updates and are behind their theme's latest version (D245); the stores' pages then show it.
   const themeUpdates = (await tracked("dispatcher.theme-updates", EVERY, () => runThemeUpdates())) ?? { updated: 0, refused: 0, stores: [] };

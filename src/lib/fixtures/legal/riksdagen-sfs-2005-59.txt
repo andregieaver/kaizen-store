@@ -1,0 +1,295 @@
+Lag (2005:59) om distansavtal och avtal utanför affärslokaler
+
+SFS nr:     2005:59
+Departement/myndighet:   Justitiedepartementet L2 
+Utfärdad:   2005-02-24
+Omtryck:     
+Ändrad:     t.o.m. SFS 2026:1018
+Övrig text:  
+Källa: Regeringskansliet / Lagrummet
+
+
+1 kap. Inledande bestämmelser
+
+Lagens innehåll
+
+1 § Denna lag innehåller bestämmelser om konsumentskydd vid
+distansavtal och avtal utanför affärslokaler. Lag (2014:14).
+
+Definitioner
+
+2 § I lagen avses med
+
+affärslokal: fast eller rörligt affärsställe där 
+näringsidkaren varaktigt eller vanligen driver verksamhet,
+
+avtal utanför affärslokaler: avtal som ingås
+
+- då näringsidkaren och konsumenten samtidigt är närvarande på 
+någon annan plats än i näringsidkarens affärslokal eller efter 
+det att konsumenten lämnat ett anbud på en sådan plats,
+
+- i näringsidkarens affärslokal eller med hjälp av ett medel 
+för distanskommunikation i omedelbar anslutning till att 
+konsumenten kontaktats av näringsidkaren på någon annan plats 
+där de samtidigt varit närvarande, eller
+
+- under en utflykt som har organiserats av näringsidkaren i 
+marknadsförings- eller försäljningssyfte,
+
+digitalt innehåll: data som framställs och tillhandahålls i 
+digital form,
+
+digital tjänst: en tjänst som gör det möjligt för konsumenten 
+att skapa, bearbeta, lagra eller få tillgång till uppgifter i 
+digital form, eller att utbyta uppgifter eller interagera på 
+annat sätt med uppgifter i digital form som laddas upp eller 
+skapas av konsumenten eller av andra användare av tjänsten,
+
+distansavtal: avtal som ingås inom ramen för ett av 
+näringsidkaren organiserat system för att träffa avtal på 
+distans, om kommunikationen uteslutande sker på distans,
+
+driftskompatibilitet: förmåga att fungera med annan hårdvara 
+eller programvara än sådan som normalt används med samma typ 
+av varor med digitala delar, digitalt innehåll eller digitala 
+tjänster,
+
+kompatibilitet: förmåga att utan konvertering fungera med 
+sådan hårdvara eller programvara som normalt används med samma 
+typ av varor med digitala delar, digitalt innehåll eller 
+digitala tjänster,
+
+konsument: en fysisk person som handlar huvudsakligen för 
+ändamål som faller utanför näringsverksamhet,
+
+marknadsplats online: en tjänst som använder programvara, 
+inbegripet en webbplats, en del av en webbplats eller en 
+applikation, som administreras av en näringsidkare eller för 
+dennes räkning och som gör det möjligt för konsumenten att 
+ingå distansavtal med andra näringsidkare eller konsumenter,
+
+näringsidkare: en fysisk eller juridisk person som handlar för 
+ändamål som har samband med den egna näringsverksamheten,
+
+personuppgifter: sådan information som avses i artikel 4.1 i 
+Europaparlamentets och rådets förordning (EU) 2016/679 av den 
+27 april 2016 om skydd för fysiska personer med avseende på 
+behandling av personuppgifter och om det fria flödet av sådana 
+uppgifter och om upphävande av direktiv 95/46/EG (allmän 
+dataskyddsförordning),
+
+vara: lös sak, med eller utan digitala delar,
+
+vara med digitala delar: lös sak som är integrerad eller 
+sammankopplad med ett digitalt innehåll eller en digital 
+tjänst på ett sådant sätt att avsaknaden av det digitala 
+innehållet eller den digitala tjänsten gör att varan inte kan 
+användas på det sätt som är avsett. Lag (2022:655).
+
+Behörighet för näringsidkarens ombud
+
+3 § Om näringsidkaren anlitar ett ombud, ska denne alltid
+anses behörig att handla på näringsidkarens vägnar när det
+gäller att
+
+- ingå distansavtal eller avtal utanför affärslokaler,
+
+- utfästa förmåner som är avsedda att ingå i ett sådant
+avtal, och
+
+- ta emot betalning för näringsidkarens räkning.
+
+Näringsidkaren får inte till nackdel för konsumenten
+inskränka denna behörighet. Lag (2014:14).
+
+Avtalsvillkor som avviker från lagen
+
+4 § Ett avtalsvillkor som i jämförelse med bestämmelserna i
+denna lag är till nackdel för konsumenten är utan verkan mot
+denne, om inte annat anges i lagen. Lag (2014:14).
+
+Behandling av personuppgifter
+
+
+2 kap. Avtal om varor och icke finansiella tjänster
+
+
+Konsumentens ångerrätt
+
+10 § Konsumenten har rätt att frånträda avtalet (ångerrätt) 
+genom att till näringsidkaren lämna eller sända ett tydligt 
+meddelande om detta inom 14 dagar från den dag som anges i 
+12 § (ångerfrist). Konsumenten kan för detta ändamål använda 
+det standardformulär för utövande av ångerrätten som avses i 
+2 a § eller den funktion som avses i 10 a §. Om konsumenten 
+lämnar meddelandet på näringsidkarens webbplats, ska 
+näringsidkaren utan dröjsmål bekräfta mottagandet av 
+meddelandet i en läsbar och varaktig form som är tillgänglig 
+för konsumenten. Om ångerrätten utövas genom den funktion som 
+avses i 10 a § ska bekräftelsen lämnas på det sätt som anges 
+där. 
+
+Om konsumenten i rätt tid och på ett ändamålsenligt sätt har 
+lämnat eller sänt ett meddelande enligt första stycket, får 
+meddelandet åberopas även om det försenas, förvanskas eller 
+inte kommer fram. Lag (2026:246).
+
+10 a § När ett avtal ingås genom ett onlinegränssnitt ska 
+näringsidkaren tillhandahålla en funktion för utövande av 
+ångerrätten. Funktionen ska finnas lättillgänglig i 
+onlinegränssnittet under hela ångerfristen och vara märkt på 
+ett tydligt och lättläst sätt. 
+
+I funktionen ska det vara möjligt för konsumenten att 
+
+- i ett meddelande ange eller bekräfta sitt namn, uppgifter om 
+det avtal som konsumenten vill frånträda samt i vilken 
+elektronisk läsbar och varaktig form näringsidkaren ska 
+bekräfta meddelandet (mottagningsbevis), och 
+
+- sända meddelandet genom att uttryckligen bekräfta 
+frånträdet. 
+
+Näringsidkaren ska utan dröjsmål och på det sätt som 
+konsumenten har angett eller bekräftat enligt andra stycket 
+sända ett mottagningsbevis till konsumenten med bekräftelse av 
+tidpunkten för mottagandet. Lag (2026:246).
+
+10 b § Om näringsidkaren handlar i strid med 10 a § ska 
+marknadsföringslagen (2008:486) tillämpas. Vid tillämpningen 
+av 5, 23 och 26 §§ marknadsföringslagen ska handlandet anses 
+vara otillbörligt. Lag (2026:246).
+
+Undantag från ångerrätten
+
+11 § Ångerrätten gäller inte för avtal som
+
+1. avser en tjänst som har fullgjorts 
+
+- mot betalning om konsumenten uttryckligen har samtyckt till 
+att tjänsten börjar utföras och gått med på att det inte finns 
+någon ångerrätt när tjänsten har fullgjorts, eller 
+
+- i utbyte mot endast konsumentens personuppgifter, 
+
+2. avser en vara eller tjänst vars pris beror på sådana 
+svängningar på marknaden som näringsidkaren inte kan påverka 
+och som kan inträffa under ångerfristen,
+
+3. avser en vara som har tillverkats enligt konsumentens 
+anvisningar eller som annars har fått en tydlig personlig 
+prägel,
+
+4. avser en vara som snabbt kan försämras eller bli för 
+gammal,
+
+5. avser en vara som med bruten försegling inte lämpligen kan 
+återlämnas på grund av hälso- eller hygienskäl och 
+förseglingen har brutits av konsumenten,
+
+6. avser en vara som till sin natur är sådan att den efter 
+leverans sammanblandas med en annan vara på så sätt att 
+varorna inte kan skiljas från varandra,
+
+7. avser alkoholhaltig dryck till ett bestämt pris, när 
+leverans inte kan ske inom 30 dagar och värdet på drycken vid 
+leveransen beror på sådana svängningar på marknaden som 
+näringsidkaren inte kan påverka,
+
+8. avser en förseglad ljud- eller bildupptagning eller ett 
+förseglat datorprogram och förseglingen har brutits av 
+konsumenten,
+
+9. avser lösnummer av en tidning eller en tidskrift,
+
+10. ingås vid en auktion, om det är möjligt att delta i 
+auktionen även på ett annat sätt än genom att använda ett 
+medel för distanskommunikation,
+
+11. avser tillhandahållande av digitalt innehåll på något 
+annat sätt än på ett fysiskt medium om tillhandahållandet har 
+påbörjats och, ifall avtalet innebär en betalningsförpliktelse 
+för konsumenten, 
+
+- konsumenten uttryckligen har samtyckt till att 
+tillhandahållandet påbörjas och gått med på att det därigenom 
+inte finns någon ångerrätt, och
+
+- näringsidkaren antingen gett en bekräftelse på avtalet 
+enligt 4 § eller gett en kopia av eller en bekräftelse på 
+avtalet enligt 5 § andra stycket,
+
+12. avser kulturevenemang, idrottsevenemang eller någon annan 
+liknande fritidsaktivitet, servering, catering eller någon 
+annan liknande tjänst, inkvartering, varutransport eller 
+biluthyrning, om näringsidkaren ska tillhandahålla tjänsten på 
+en bestämd dag eller under en bestämd tidsperiod,
+
+13. avser en brådskande reparations- eller underhållsåtgärd 
+vid ett besök i konsumentens bostad, om besöket äger rum på 
+konsumentens initiativ och uttryckliga begäran och 
+reparations- eller underhållsåtgärden omfattas av konsumentens 
+begäran eller har ett direkt samband med denna, eller
+
+14. avser en tjänst som har fullgjorts, om konsumenten 
+uttryckligen har begärt ett besök från näringsidkaren i syfte 
+att denne ska utföra reparationsåtgärder och konsumenten 
+uttryckligen har samtyckt till att tjänsten börjar utföras.
+Lag (2022:655).
+
+Ångerfristen
+
+12 § Vid avtal om överlåtelse eller upplåtelse av en vara 
+börjar ångerfristen löpa den dag då konsumenten får varan i 
+sin besittning. Vid avtal om en tjänst börjar ångerfristen 
+löpa den dag då avtalet ingås.
+
+Om avtalet avser flera varor eller en vara som består av flera 
+delar, börjar ångerfristen löpa den dag då konsumenten får den 
+sista varan respektive den sista delen av varan i sin 
+besittning. I fråga om regelbunden leverans av varor under en 
+viss tid börjar ångerfristen dock löpa när konsumenten får 
+varorna från den första leveransen i sin besittning.
+
+I fråga om avtal om leverans av vatten, gas eller el, när 
+försäljningen inte sker i en begränsad volym eller en 
+fastställd kvantitet, och i fråga om avtal om leverans av 
+fjärrvärme, börjar ångerfristen löpa den dag då avtalet ingås. 
+Detsamma gäller i fråga om avtal om digitalt innehåll som 
+levereras på något annat sätt än på ett fysiskt medium.
+
+Ångerfristen enligt första-tredje styckena börjar aldrig löpa 
+förrän konsumenten har fått information om ångerrätten enligt 
+2 § första stycket 10 på det sätt som anges i 3 § eller 5 § 
+första stycket. Rätten att ångra sig upphör dock senast ett år 
+efter det att ångerfristen skulle ha löpt ut om information 
+hade getts på föreskrivet sätt. Lag (2022:655).
+
+Verkan av att konsumenten utövar sin ångerrätt
+
+
+Anknytande avtal
+
+16 § /Upphör att gälla U:2026-11-20/
+Om konsumenten utövar sin ångerrätt och med anledning av
+avtalet har ingått ett anknytande avtal med näringsidkaren
+eller med någon annan på grund av en överenskommelse mellan
+denne och näringsidkaren, ska det anknytande avtalet upphöra
+att gälla utan att konsumenten får åläggas någon påföljd för
+detta. Detsamma ska gälla om konsumenten utövar ångerrätten
+och det är fråga om ett sådant kreditköp som avses i
+konsumentkreditlagen (2010:1846). Lag (2014:14).
+
+16 § /Träder i kraft I:2026-11-20/
+Om konsumenten utövar sin ångerrätt och med anledning av 
+avtalet har ingått ett anknytande avtal med näringsidkaren 
+eller med någon annan på grund av en överenskommelse mellan 
+denne och näringsidkaren, ska det anknytande avtalet upphöra 
+att gälla utan att konsumenten får åläggas någon påföljd för 
+detta. Detsamma ska gälla om konsumenten utövar ångerrätten 
+och det är fråga om ett sådant kreditköp som avses i 
+konsumentkreditlagen (2026:1011). Lag (2026:1018).
+
+3 kap. Avtal om finansiella tjänster och finansiella 
+instrument

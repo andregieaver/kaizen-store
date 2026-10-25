@@ -46,6 +46,8 @@ export type FetchOptions = {
   timeoutMs?: number;
   /** The `Accept` header. */
   accept?: string;
+  /** The `Accept-Language` header (English unless said); the legal sources ask Cellar for a language this way (D311). */
+  acceptLanguage?: string;
   /** The page it is found on, sent as the referrer as a browser would. */
   referer?: string;
   maxRedirects?: number;
@@ -65,7 +67,7 @@ function once(url: URL, address: string, family: number, options: FetchOptions):
           "User-Agent": USER_AGENT,
           Accept: options.accept ?? "*/*",
           "Accept-Encoding": "identity",
-          "Accept-Language": "en;q=0.9",
+          "Accept-Language": options.acceptLanguage ?? "en;q=0.9",
           ...(options.referer ? { Referer: options.referer } : {}),
         },
         // The connection goes to the address that was checked, whatever the name would answer now.

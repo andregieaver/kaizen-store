@@ -13118,3 +13118,46 @@ export const pageLooks = commerce.table(
     check("page_looks_problem", sql`${t.problem} is null or length(${t.problem}) <= 500`),
   ],
 );
+
+/**
+ * The official legal texts the AI's legal pages rest on (D311, unit L, `docs/ai-autopilot.md` 8.2), cut into passages by code
+ * (`src/lib/legal-passages.ts`): one row per distinct text, by the hash of its passages, so an act read again unchanged is stored once.
+ * Kaizena Flow's, no store. Written only by `src/server/legal-sources.ts`; never changed (a trigger), deleted only when no read names it.
+ */
+export const legalSourceTexts = commerce.table("legal_source_texts", {
+  /** sha256 of the passages as stored, hex. */
+  hash: text("hash").primaryKey(),
+  /** `Passage[]`: key, title, text. */
+  passages: jsonb("passages").notNull(),
+  createdAt: createdAt(),
+});
+
+/**
+ * Each read of a source in a language (D311, unit L, 8.2): when, which version, whether it worked and the text it gave. Append-only (a
+ * trigger refuses changes), written only by `src/server/legal-sources.ts`; the newest `ok` read of a source and language is what pages
+ * rest on, and reads are pruned after 90 days except that newest one.
+ */
+export const legalSourceReads = commerce.table(
+  "legal_source_reads",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** A key of `LEGAL_SOURCES`. */
+    sourceKey: text("source_key").notNull(),
+    language: text("language").notNull(),
+    /** What was read: the consolidated CELEX number, the SFS document, the ELI path, or `recorded`. */
+    version: text("version"),
+    status: text("status").notNull(),
+    textHash: text("text_hash").references(() => legalSourceTexts.hash, { onDelete: "restrict" }),
+    passageCount: integer("passage_count"),
+    problem: text("problem"),
+    readAt: timestamp("read_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("legal_source_reads_source_idx").on(t.sourceKey, t.language, t.readAt),
+    index("legal_source_reads_text_idx").on(t.textHash),
+    check("legal_source_reads_status", sql`${t.status} in ('ok', 'failed')`),
+    check("legal_source_reads_text", sql`(${t.status} = 'ok') = (${t.textHash} is not null)`),
+    check("legal_source_reads_language", sql`${t.language} in ('nb', 'sv', 'da', 'en')`),
+    check("legal_source_reads_problem", sql`${t.problem} is null or length(${t.problem}) <= 500`),
+  ],
+);

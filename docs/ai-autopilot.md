@@ -488,20 +488,23 @@ unit and stay as they are. The hand-written starters stay, unchanged, as the fal
   Forbrugerklagenævnet) and the data protection authorities are data in the register with the address of their own page, so the page names
   them from data and the starters' `[[Check: complaintBody]]` is answered. The EU's ODR platform is in no source and the checker refuses it.
 - **Fetched by code, only from the register's hosts** (`LEGAL_SOURCE_HOSTS`), through `safeFetch()` with a size limit and an injectable fetch.
-  The routes, as tried from a sandbox on 2026-10-25 (production's network to be tried in step L1 before any route is relied on):
-  - EU law through the Publications Office's Cellar (`publications.europa.eu/resource/celex/{CELEX}`, XHTML in the language asked for):
-    answers with the whole text. EUR-Lex's own pages answer an empty bot check and are not used.
-  - Swedish law through Riksdagen's open data (`data.riksdagen.se/dokument/sfs-….text`): answers with plain text.
-  - Danish law through Retsinformation's XML by ELI (`www.retsinformation.dk/eli/…/xml`): answers with the act as XML.
-  - Norwegian law through Lovdata: both its pages and its open-data API (`api.lovdata.no`, NLOD licence) refused the request (405). Until a
-    route works from production, Norwegian law is the passages already read on Lovdata by a person (`LEGAL_WORDING_NB`, each with its address
-    and the day read) and the page's sources say so ("read on Lovdata on …"); they are read again yearly (`staleWording()`). This is a
-    weaker footing than a fetch and is named in the report.
-- **Each read is kept**: `commerce.legal_source_reads` (Kaizena Flow's, no store: the source's key, the language, when, the text's hash,
-  the passages cut by code from the text by article or section, `ok` or `failed` with its problem), append-only, written only by
-  `src/server/legal-sources.ts`. The text is cut into passages by code per route (`passagesOf()`, tested on a stored copy of each route's
-  answer); a read whose passages a page needs cannot be found in is `failed`, never guessed at. Sources are read again weekly by the job
-  (8.5); reads no live page cites are pruned after 90 days, and the newest `ok` read of each source is always kept.
+  The routes, each read in full from the sandbox on 2026-10-25 through the same code (production confirms them at its first reads, 8.10):
+  - EU law through the Publications Office's Cellar: its SPARQL endpoint lists an act's consolidated versions and the newest is fetched
+    (`publications.europa.eu/resource/celex/{CELEX}`, XHTML in the language asked for), so an amended directive is read as amended without a
+    change here. EUR-Lex's own pages answer automated requests with an empty bot check and are not used.
+  - Swedish law through Riksdagen's open data (`data.riksdagen.se/dokument/sfs-….text`): the act as in force with its amendments.
+  - Danish law through Retsinformation's XML by ELI (`www.retsinformation.dk/eli/…/xml`). The consolidated act is named in the register; its
+    `Status` is read each time and an act no longer in force fails the read, so the register is brought up to date.
+  - Norwegian law through Lovdata's open data (`api.lovdata.no`, NLOD 2.0): one archive of every act in force, updated with its amendments
+    (`gjeldende-lover.tar.bz2`, about 6 MB), downloaded once a run and unpacked; personopplysningsloven carries the GDPR's articles in
+    Norwegian. (An earlier test with curl was refused, 405; through `safeFetch()` the archive answers. Lovdata's web pages are for reading,
+    not for automated use, so only the open data is read.) The passages a person recorded (`LEGAL_WORDING_NB`) stay with the starters.
+- **Each read is kept**: `commerce.legal_source_reads` (Kaizena Flow's, no store: the source's key, the language, the version read, when,
+  `ok` with the text's hash or `failed` with its problem) and the text itself once per distinct content in `commerce.legal_source_texts`
+  (the passages, by hash), both append-only and written only by `src/server/legal-sources.ts`. The text is cut into passages by code per route
+  (`src/lib/legal-passages.ts`, tested on a stored copy of each route's answer); a read in which a passage the register names cannot be found
+  is `failed`, never guessed at. Sources are read again weekly (8.5); reads older than 90 days are pruned except the newest `ok` read of each
+  source and language (L3 keeps every read a live page cites), and texts no read names go with them.
 
 ### 8.3 How a page is written
 
@@ -580,7 +583,7 @@ autopilot's digest where it runs (B3b).
 ### 8.7 Tests
 
 `src/lib/legal-sources.test.ts`: the register (hosts, ids, every required topic of every covered country has a source in each language,
-no ODR), `passagesOf()` on a stored answer of each route. `src/lib/legal-writer.test.ts`: `checkLegalDraft()` refuses a quote not in its
+no ODR), the cutters (`src/lib/legal-passages.test.ts`) on a stored answer of each route. `src/lib/legal-writer.test.ts`: `checkLegalDraft()` refuses a quote not in its
 passage, an unoffered passage, a figure or address outside a token, a missing or extra topic, a withdrawal period that is not the token, the
 ODR platform, a claim; fills tokens; the form and Sources section are code's. `src/server/legal-writer.int.test.ts` with a stand-in fetch
 and model: turning on writes and publishes the six pages into their roles; a changed return window writes the returns policy and terms
@@ -590,20 +593,41 @@ instruction (the canary must not appear in the page).
 
 ### 8.8 Steps
 
-- **L1, the sources**: the register, the fetch routes tried from production first (a route that does not answer there is marked and not
-  used), `passagesOf()`, `legal_source_reads` and the weekly read. No model, nothing on pages.
+- **L1, the sources** (built, 8.10): the register, the fetch routes, the cutters, `legal_source_reads` and the weekly read. No model,
+  nothing on pages.
 - **L2, the writer**: plan, prompt, `checkLegalDraft()`, the form and Sources section; *Write with AI* on the Legal page makes a draft of one
   kind (never published), so the result can be read before anything is automatic.
 - **L3, kept current**: turning it on, publishing, `runLegalUpkeep()`, the Legal page's lines, `legal_pages_status`, the report.
 
-### 8.9 For the owner to decide before L1
+### 8.9 Decided by the owner (2026-10-25)
 
-1. **Publishing at once by default** (`auto`), as D311 reads; the alternative is drafts the owner publishes (`ask`) by default.
-2. **The page says it was prepared with AI** from the sources listed (proposed: yes; it costs nothing and is true).
-3. **Norway on recorded passages** while Lovdata refuses fetches: Norwegian stores' pages would rest on passages a person read on
-   Lovdata (2026-10-22, not yet proofread letter by letter), not on a fetch. The alternative is to leave Norwegian stores on the starters until
-   a route to Lovdata works.
-4. **Scope**: sellers in Norway, Sweden and Denmark and the four languages first; others keep the starters.
+1. **Pages are published as soon as they pass the checks** (`auto` is the default; `ask` stays a choice).
+2. **Each page says it was prepared with AI** from the sources it lists.
+3. **Norway**: on the recorded passages while Lovdata refused fetches. Building L1 found Lovdata's open data answers (8.2), so Norwegian
+   pages rest on the fetched law like the others; the recorded passages were not needed.
+4. **Scope**: sellers in Norway, Sweden and Denmark, in nb, sv, da and en, first; others keep the starters.
+
+### 8.10 As built: L1 (2026-10-25)
+
+- `src/lib/legal-sources.ts`: the register. 13 sources: four EU acts (consumer rights, sale of goods, e-commerce, GDPR) in sv, da and en;
+  three Swedish acts (distansavtalslagen, konsumentköplagen, e-handelslagen); two Danish (forbrugeraftaleloven LBK 1184/2025, købeloven
+  LBK 1853/2021; e-handelsloven has no text in Retsinformation's XML, so Danish pages take those rules from the EU directive in Danish);
+  four Norwegian (angrerettloven, forbrukerkjøpsloven, ehandelsloven, personopplysningsloven with the GDPR). `TOPIC_REFS` maps the
+  topics of the six kinds of page to articles and sections, checked against the texts as read; `DISPUTE_BODIES`, `PRIVACY_AUTHORITIES` and
+  `CONSUMER_AUTHORITIES` per covered country; `jurisdictionsFor()` and `refsFor()` decide what a store's pages rest on.
+- `src/lib/legal-passages.ts`: the cutters (`cellarPassages()`, `riksdagenPassages()` with the version in force on the day,
+  `retsinformationPassages()` up to the first `<Ikraft>`, `lovdataPassages()` without the amendment notes, `tarFile()`), the consolidation
+  query, `cellarLanguage()` (Cellar answers in another language without saying so) and `normalisedLegalText()`, which quotes will be
+  compared after. Tested on answers stored from each route (`src/lib/fixtures/legal/`).
+- `src/server/legal-sources.ts`: the only writer of `commerce.legal_source_reads` (append-only) and `commerce.legal_source_texts` (one row per
+  distinct text, by hash). `readDueLegalSources()` in the five-minute dispatcher (`legalSources`) reads three due pairs a run: a source a week
+  after its last good read, a day after a failed one; a failed read never replaces a good one. A read fails when a passage the register names is
+  missing, the answer is in another language, or a Danish act is no longer in force. `currentLegalTexts()` (L2) and `legalSourceStates()`
+  read them. `seek-bzip` (MIT, pure JavaScript) unpacks Lovdata's archive.
+- Found while building: angrerettloven § 20 a (the withdrawal function) is added by a law of 19 June 2026 not yet in force, so Lovdata
+  gives it no text and no Norwegian page may cite it; the read refused it until the register stopped naming it.
+- All 21 source and language pairs read in full from the sandbox. Migrations `20261025163153_legal_sources` and
+  `20261025163212_legal_sources_rules`.
 
 ## 9. Unit C (D310): eyes
 

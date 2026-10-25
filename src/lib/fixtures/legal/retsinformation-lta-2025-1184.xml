@@ -1,0 +1,450 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Dokument id="id598985b2-fce6-4eb0-ac07-1ec3583c862e" SchemaLocation="http://www.retsinformation.dk/offentlig/xml/schemas/2025/08/19/LBKH.Retsinfo.LexDania_2.1.xsd">
+  <Meta id="id7cfaf82e-b2b5-4adb-a2c0-22bd0fed527f">
+    <DocumentType>LBK H#LOKDOK03</DocumentType>
+    <Rank>A</Rank>
+    <AccessionNumber>A20250118429</AccessionNumber>
+    <DocumentId>AA013250</DocumentId>
+    <UniqueDocumentId>232299</UniqueDocumentId>
+    <DocumentTitle>Bekendtgørelse af lov om forbrugeraftaler</DocumentTitle>
+    <Year>2025</Year>
+    <DiesSigni>2025-09-28</DiesSigni>
+    <DateOfSubmit id="submit_1" />
+    <StartDate REFid="submit_1">2025-10-06</StartDate>
+    <EndDate REFid="submit_1">2025-10-07</EndDate>
+    <Status>Valid</Status>
+    <Number>1184</Number>
+    <PopularTitle>Forbrugeraftaleloven</PopularTitle>
+    <AnnouncedIn>Lovtidende A</AnnouncedIn>
+    <DiesEdicti>2025-10-06</DiesEdicti>
+    <EuReferences>32011L0083</EuReferences>
+    <EuReferences>32002L0065</EuReferences>
+    <Change id="change_1" />
+    <Ref_Accn REFid="change_1">A20250055830</Ref_Accn>
+    <Ref_Af REFid="change_1">2025-05-27</Ref_Af>
+    <Ref_Text REFid="change_1">Lov om ændring af lov om markedsføring, lov om forbrugeraftaler og forbrugerklageloven (Gennemførelse af direktiv om styrkelse af forbrugernes rolle i den grønne omstilling og effektivisering af det offentlige forbrugerklagesystem)</Ref_Text>
+    <Change id="change_2" />
+    <Ref_Accn REFid="change_2">A20250072330</Ref_Accn>
+    <Ref_Af REFid="change_2">2025-06-20</Ref_Af>
+    <Ref_Text REFid="change_2">Lov om ændring af lov om forbrugeraftaler og lov om forsikringsaftaler (Øget forbrugerbeskyttelse ved fjernsalg af finansielle tjenesteydelser)</Ref_Text>
+    <Republished>Nej</Republished>
+    <Sign id="sign" />
+    <Signature REFid="sign">Peter Hummelgaard</Signature>
+    <Sub-Sign id="subsign" />
+    <Signature REFid="subsign">Morten Schaumburg-Müller</Signature>
+    <PlaceOfSignature>Justitsministeriet</PlaceOfSignature>
+    <JournalNumber>Justitsmin., j.nr. 2022-00702</JournalNumber>
+    <Ministry>Justitsministeriet</Ministry>
+  </Meta>
+<DokumentIndhold><!-- Cut from Retsinformation's XML for eli/lta/2025/1184, 2026-10-25: §§ 17-19, and an amending act's section after the first Ikraft. -->
+<Paragraf id="id99331b25-101c-46e6-8c88-5b72d3b5730d" localId="17">
+              <Explicatus>§ 17.</Explicatus>
+              <Stk id="idfeb218af-27ac-4e84-8f67-8635af104578">
+                <Exitus>
+                  <Linea>
+                    <Char>Inden der indgås en anden aftale end en aftale indgået uden for den erhvervsdrivendes forretningssted eller en aftale om fjernsalg, skal den erhvervsdrivende, medmindre oplysningerne allerede fremgår tydeligt af sammenhængen, på en klar og forståelig måde give forbrugeren oplysning om</Char>
+                  </Linea>
+                </Exitus>
+                <Exitus id="id45c55bf3-a21c-4fe1-8bdd-25a75ef1a4f2">
+                  <Index>
+                    <Indentatio id="ide91bddb7-a175-4a7d-a35e-d11e8620c1b2" formaInd="Nummer">
+                      <Explicatus>1)</Explicatus>
+                      <Exitus>
+                        <Linea>
+                          <Char>varens eller tjenesteydelsens vigtigste egenskaber i et omfang, der svarer til kommunikationsteknikken og til varen eller tjenesteydelsen,</Char>
+                        </Linea>
+                      </Exitus>
+                    </Indentatio>
+                    <Indentatio id="ida2a3ada4-8974-4646-9748-7db52c19934a" formaInd="Nummer">
+                      <Explicatus>2)</Explicatus>
+                      <Exitus>
+                        <Linea>
+                          <Char>den erhvervsdrivendes identitet og den fysiske adresse, hvor den erhvervsdrivende er etableret, og den erhvervsdrivendes telefonnummer og e-mailadresse,</Char>
+                        </Linea>
+                      </Exitus>
+                    </Indentatio>
+                    <Indentatio id="id225a6605-d7a6-4756-8fff-919a848333b2" formaInd="Nummer">
+                      <Explicatus>3)</Explicatus>
+                      <Exitus>
+                        <Linea>
+                          <Char>den samlede pris for varen eller tjenesteydelsen inklusive afgifter eller, hvis varens eller tjenesteydelsens art gør, at prisen ikke med rimelighed kan udregnes på forhånd, den måde, hvorpå prisen skal udregnes, samt, hvor det er relevant, alle yderligere omkostninger vedrørende fragt, levering eller porto og enhver anden omkostning eller, hvor disse omkostninger ikke med rimelighed kan udregnes på forhånd, oplysning om, at der kan forekomme sådanne yderligere omkostninger,</Char>
+                        </Linea>
+                      </Exitus>
+                    </Indentatio>
+                    <Indentatio id="idafc40787-4474-44b9-947b-750e132594a1" formaInd="Nummer">
+                      <Explicatus>4)</Explicatus>
+                      <Exitus>
+                        <Linea>
+                          <Char>vilkår om betaling, levering, opfyldelse, det tidspunkt, hvor den erhvervsdrivende forpligter sig til at levere varen eller yde tjenesteydelsen, og, hvor det er relevant, den erhvervsdrivendes praksis for klagebehandling,</Char>
+                        </Linea>
+                      </Exitus>
+                    </Indentatio>
+                    <Indentatio id="id8ff3c89c-de09-4610-ad81-de0649da9f8a" formaInd="Nummer">
+                      <Explicatus>5)</Explicatus>
+                      <Exitus>
+                        <Linea>
+                          <Char>at købelovens mangelsregler finder anvendelse,</Char>
+                        </Linea>
+                      </Exitus>
+                    </Indentatio>
+                    <Indentatio id="idd0d39557-c3e4-4838-8eec-da0d811f44b0" formaInd="Nummer">
+                      <Explicatus>6)</Explicatus>
+                      <Exitus>
+                        <Linea>
+                          <Char>hvor det er relevant, eftersalgskundebistand og betingelserne herfor, eftersalgsservice og handelsmæssige garantier,</Char>
+                        </Linea>
+                      </Exitus>
+                    </Indentatio>
+                    <Indentatio id="id26f844c4-942a-4b19-85f2-522cfe884db0" formaInd="Nummer">
+                      <Explicatus>7)</Explicatus>
+                      <Exitus>
+                        <Linea>
+                          <Char>hvor det er relevant, aftalens varighed eller for tidsubestemte aftaler eller for aftaler, der forlænges automatisk, betingelserne for at opsige aftalen,</Char>
+                        </Linea>
+                      </Exitus>
+                    </Indentatio>
+                    <Indentatio id="id23cb17d5-e864-420d-99e2-b2a7e56af0c2" formaInd="Nummer">
+                      <Explicatus>8)</Explicatus>
+                      <Exitus>
+                        <Linea>
+                          <Char>hvor det er relevant, funktionaliteten, herunder gældende tekniske beskyttelsesforanstaltninger, for digitalt indhold, digitale tjenester og varer med digitale elementer, og</Char>
+                        </Linea>
+                      </Exitus>
+                    </Indentatio>
+                    <Indentatio id="id75630bdb-1c5a-4252-b384-a69fdf18ff3c" formaInd="Nummer">
+                      <Explicatus>9)</Explicatus>
+                      <Exitus>
+                        <Linea>
+                          <Char>hvor det er relevant, kompatibiliteten og interoperabiliteten af digitalt indhold, digitale tjenester og varer med digitale elementer, i henhold til hvad den erhvervsdrivende ved eller med rimelighed burde have vidst.</Char>
+                        </Linea>
+                      </Exitus>
+                    </Indentatio>
+                  </Index>
+                </Exitus>
+              </Stk>
+              <Stk id="id65c494e2-bdb9-4a3d-afb9-7024e6409741">
+                <Explicatus>Stk. 2.</Explicatus>
+                <Exitus>
+                  <Linea>
+                    <Char>Stk. 1 gælder ikke for aftaler, der omfatter dagligdags transaktioner, som opfyldes umiddelbart på tidspunktet for deres indgåelse.</Char>
+                  </Linea>
+                </Exitus>
+              </Stk>
+            </Paragraf>
+<Paragraf id="idea327d9a-8dc8-45a0-be2b-100e7211050f" localId="18">
+              <Explicatus>§ 18.</Explicatus>
+              <Stk id="id7f9c8838-d9ce-48ad-bc79-ceafd1e35106">
+                <Exitus>
+                  <Linea>
+                    <Char>Forbrugeren kan træde tilbage fra aftalen (fortrydelsesret) i overensstemmelse med reglerne i dette kapitel ved aftaler om fjernsalg og ved aftaler indgået uden for den erhvervsdrivendes forretningssted.</Char>
+                  </Linea>
+                </Exitus>
+              </Stk>
+              <Stk id="id47bd199d-e279-48e0-aea0-cddf0e06305c">
+                <Explicatus>Stk. 2.</Explicatus>
+                <Exitus>
+                  <Linea>
+                    <Char>Reglerne i dette kapitel gælder ikke for</Char>
+                  </Linea>
+                </Exitus>
+                <Exitus id="id7d27294e-26d0-48a9-872a-56e1e10652e4">
+                  <Index>
+                    <Indentatio id="id865f7245-dfef-4482-bc3f-d693b0ba78bb" formaInd="Nummer">
+                      <Explicatus>1)</Explicatus>
+                      <Exitus>
+                        <Linea>
+                          <Char>aftaler omfattet af § 7, stk. 2,</Char>
+                        </Linea>
+                      </Exitus>
+                    </Indentatio>
+                    <Indentatio id="id7852f532-6e91-4c89-8006-f7adf274fc0e" formaInd="Nummer">
+                      <Explicatus>2)</Explicatus>
+                      <Exitus>
+                        <Linea>
+                          <Char>udførte ikkefinansielle tjenesteydelser, hvis leveringen af tjenesteydelsen ikke sker mod betaling eller er påbegyndt med forbrugerens forudgående udtrykkelige samtykke og anerkendelse af, at fortrydelsesretten ophører, når tjenesteydelsen er fuldt udført,</Char>
+                        </Linea>
+                      </Exitus>
+                    </Indentatio>
+                    <Indentatio id="idb0f02e60-25af-4e94-a312-088255fc6466" formaInd="Nummer">
+                      <Explicatus>3)</Explicatus>
+                      <Exitus>
+                        <Linea>
+                          <Char>levering af varer, som er fremstillet efter forbrugerens specifikationer eller har fået et tydeligt personligt præg,</Char>
+                        </Linea>
+                      </Exitus>
+                    </Indentatio>
+                    <Indentatio id="id5dec2421-ef38-4262-addb-4f1ae1115ebc" formaInd="Nummer">
+                      <Explicatus>4)</Explicatus>
+                      <Exitus>
+                        <Linea>
+                          <Char>levering af varer, som må antages at blive forringet eller forældet hurtigt,</Char>
+                        </Linea>
+                      </Exitus>
+                    </Indentatio>
+                    <Indentatio id="id7a470f37-b895-4ca5-aa37-b2274ed831f3" formaInd="Nummer">
+                      <Explicatus>5)</Explicatus>
+                      <Exitus>
+                        <Linea>
+                          <Char>levering af forseglede varer, som af sundhedsbeskyttelses- eller hygiejnemæssige årsager ikke er egnet til at blive returneret, og hvor forseglingen er blevet brudt efter leveringen,</Char>
+                        </Linea>
+                      </Exitus>
+                    </Indentatio>
+                    <Indentatio id="id91c6e680-a603-4b1e-a29e-ee791127a50f" formaInd="Nummer">
+                      <Explicatus>6)</Explicatus>
+                      <Exitus>
+                        <Linea>
+                          <Char>levering af varer, som på grund af deres art bliver uløseligt blandet sammen med andre varer ved leveringen,</Char>
+                        </Linea>
+                      </Exitus>
+                    </Indentatio>
+                    <Indentatio id="iddd054f3e-f442-4eac-9b0f-9d90b81a67e8" formaInd="Nummer">
+                      <Explicatus>7)</Explicatus>
+                      <Exitus>
+                        <Linea>
+                          <Char>levering af alkoholholdige drikkevarer, hvor prisen blev fastsat ved købsaftalens indgåelse og levering først kan finde sted efter 30 dage, og hvor den faktiske værdi afhænger af markedskonjunkturer, som den erhvervsdrivende ikke har indflydelse på,</Char>
+                        </Linea>
+                      </Exitus>
+                    </Indentatio>
+                    <Indentatio id="idb20d61bc-2e19-42cc-a783-ecff79e80bdf" formaInd="Nummer">
+                      <Explicatus>8)</Explicatus>
+                      <Exitus>
+                        <Linea>
+                          <Char>aftaler om specifikke hastende reparations- eller vedligeholdelsesarbejder hos forbrugeren, som denne på forhånd udtrykkeligt har anmodet om,</Char>
+                        </Linea>
+                      </Exitus>
+                    </Indentatio>
+                    <Indentatio id="id891ece2b-b9be-41a8-b146-2b877edede37" formaInd="Nummer">
+                      <Explicatus>9)</Explicatus>
+                      <Exitus>
+                        <Linea>
+                          <Char>levering af plomberede lyd- eller billedoptagelser eller computersoftware, som forbrugeren har brudt plomberingen på,</Char>
+                        </Linea>
+                      </Exitus>
+                    </Indentatio>
+                    <Indentatio id="id573590bd-c49d-4661-9269-3578c898a447" formaInd="Nummer">
+                      <Explicatus>10)</Explicatus>
+                      <Exitus>
+                        <Linea>
+                          <Char>levering af aviser, tidsskrifter eller magasiner med undtagelse af abonnementsaftaler for levering af sådanne publikationer,</Char>
+                        </Linea>
+                      </Exitus>
+                    </Indentatio>
+                    <Indentatio id="ida09ac45f-c414-410b-8304-8b6543628282" formaInd="Nummer">
+                      <Explicatus>11)</Explicatus>
+                      <Exitus>
+                        <Linea>
+                          <Char>aftaler, der indgås på en offentlig auktion,</Char>
+                        </Linea>
+                      </Exitus>
+                    </Indentatio>
+                    <Indentatio id="idac18e8de-2f61-4312-a3f7-bba87ba04b1d" formaInd="Nummer">
+                      <Explicatus>12)</Explicatus>
+                      <Exitus>
+                        <Linea>
+                          <Char>levering af tjenesteydelser i form af logi undtagen til beboelsesformål, transport af varer, biludlejningsvirksomhed, forplejning eller tjenesteydelser i forbindelse med fritidstilbud, når det følger af aftalen, på hvilken dato eller inden for hvilken bestemt periode den pågældende tjenesteydelse skal udføres,</Char>
+                        </Linea>
+                      </Exitus>
+                    </Indentatio>
+                    <Indentatio id="id28a2491d-bcbb-4615-bc1a-63f5d729ade9" formaInd="Nummer">
+                      <Explicatus>13)</Explicatus>
+                      <Exitus>
+                        <Linea>
+                          <Char>levering af digitalt indhold, som ikke leveres på et fysisk medium, hvis</Char>
+                        </Linea>
+                      </Exitus>
+                      <Exitus id="id100ec7bc-62ed-4102-8b54-7ee895d9c838">
+                        <Index>
+                          <Indentatio id="ida8b2767c-8f45-4f85-b672-0544ed6cef98" formaInd="Litra">
+                            <Explicatus>a)</Explicatus>
+                            <Exitus>
+                              <Linea>
+                                <Char>leveringen af det digitale indhold ikke sker mod betaling eller</Char>
+                              </Linea>
+                            </Exitus>
+                          </Indentatio>
+                          <Indentatio id="idc79dc1f2-ee65-4310-b7c8-a7a6e30f2c6b" formaInd="Litra">
+                            <Explicatus>b)</Explicatus>
+                            <Exitus>
+                              <Linea>
+                                <Char>udførelsen er påbegyndt med forbrugerens forudgående udtrykkelige samtykke og anerkendelse af, at vedkommende dermed mister sin fortrydelsesret, og den erhvervsdrivende har givet en bekræftelse i overensstemmelse med § 10, stk. 2, 2. pkt., eller § 13, stk. 2, 2. pkt.,</Char>
+                              </Linea>
+                            </Exitus>
+                          </Indentatio>
+                        </Index>
+                      </Exitus>
+                    </Indentatio>
+                    <Indentatio id="id9c2c3d9b-8ab3-40ef-ac22-0e591b93ae53" formaInd="Nummer">
+                      <Explicatus>14)</Explicatus>
+                      <Exitus>
+                        <Linea>
+                          <Char>finansielle tjenesteydelser omfattet af lov om realkreditlån og realkreditobligationer m.v. og</Char>
+                        </Linea>
+                      </Exitus>
+                    </Indentatio>
+                    <Indentatio id="id07b0969d-cc9d-4df5-bb5b-c3dbcf5397d9" formaInd="Nummer">
+                      <Explicatus>15)</Explicatus>
+                      <Exitus>
+                        <Linea>
+                          <Char>aftaler om varer, værdipapirer eller tjenesteydelser, hvis prisen afhænger af udsving på kapitalmarkedet, som den erhvervsdrivende ikke har nogen indflydelse på, og som kan forekomme i fortrydelsesperioden.</Char>
+                        </Linea>
+                      </Exitus>
+                    </Indentatio>
+                  </Index>
+                </Exitus>
+              </Stk>
+              <Stk id="id30f18039-c7e8-4662-91b6-629b9ecac670">
+                <Explicatus>Stk. 3.</Explicatus>
+                <Exitus>
+                  <Linea>
+                    <Char>Kapitlet gælder dog for varer og ikkefinansielle tjenesteydelser, der leveres i forbindelse med en aftale efter stk. 2, nr. 8, og som ligger ud over, hvad forbrugeren specifikt har anmodet om, eller hvad der er nødvendigt for at udføre vedligeholdelsen eller reparationen.</Char>
+                  </Linea>
+                </Exitus>
+              </Stk>
+              <Stk id="idf25ae907-976f-405d-a269-cbcef6e6e8a5">
+                <Explicatus>Stk. 4.</Explicatus>
+                <Exitus>
+                  <Linea>
+                    <Char>Kapitlet gælder dog for de i stk. 2, nr. 15, nævnte aftaler, hvis aftalen vedrører finansielle tjenesteydelser og er indgået uden for den erhvervsdrivendes forretningssted.</Char>
+                  </Linea>
+                </Exitus>
+              </Stk>
+            </Paragraf>
+<Paragraf id="idd4b08556-234e-46fe-9e76-fc9abf6d58c6" localId="19">
+              <Explicatus>§ 19.</Explicatus>
+              <Stk id="id250efd4a-e1e5-4331-bae6-0066be768d66">
+                <Exitus>
+                  <Linea>
+                    <Char>Vil forbrugeren udøve sin fortrydelsesret, skal forbrugeren inden 14 dage benytte den i § 20 angivne fremgangsmåde, ved aftaler om individuel pensionsordning dog inden for en frist på 30 dage.</Char>
+                  </Linea>
+                  <Linea>
+                    <Char>Der kan ikke stilles krav om, at årsagen til fortrydelsen angives.</Char>
+                  </Linea>
+                  <Linea>
+                    <Char>For så vidt angår aftaler om varer eller ikkefinansielle tjenesteydelser, kan forbrugeren ikke pådrage sig andre omkostninger end dem, der er nævnt i § 22, stk. 3, § 24 og § 25.</Char>
+                  </Linea>
+                </Exitus>
+              </Stk>
+              <Stk id="id6bd88bb9-117b-45b6-a008-986df3cba916">
+                <Explicatus>Stk. 2.</Explicatus>
+                <Exitus>
+                  <Linea>
+                    <Char>Den periode, hvori fortrydelsesretten efter stk. 1 kan udøves, løber fra</Char>
+                  </Linea>
+                </Exitus>
+                <Exitus id="idd8feee38-d34b-417e-9e90-fa0c6fb805e3">
+                  <Index>
+                    <Indentatio id="id456e75d9-0793-4440-a908-6d4a660ccac5" formaInd="Nummer">
+                      <Explicatus>1)</Explicatus>
+                      <Exitus>
+                        <Linea>
+                          <Char>den dag, hvor aftalen indgås, hvis den vedrører en tjenesteydelse,</Char>
+                        </Linea>
+                      </Exitus>
+                    </Indentatio>
+                    <Indentatio id="id256edec5-1375-4840-b0ae-03fed75f02d5" formaInd="Nummer">
+                      <Explicatus>2)</Explicatus>
+                      <Exitus>
+                        <Linea>
+                          <Char>hvis aftalen vedrører en vare, den dag, hvor forbrugeren eller den af forbrugeren angivne tredjemand, dog ikke transportøren, får varen i fysisk besiddelse,</Char>
+                        </Linea>
+                      </Exitus>
+                      <Exitus id="id7bdae2fe-7d37-4aa5-9352-bc7119294093">
+                        <Index>
+                          <Indentatio id="id20535d7e-ac54-4793-ae31-9654952d1922" formaInd="Litra">
+                            <Explicatus>a)</Explicatus>
+                            <Exitus>
+                              <Linea>
+                                <Char>i tilfælde af flere forskellige varer, som er bestilt i én ordre, men leveres enkeltvis, når den sidste vare er i forbrugerens eller den af forbrugeren angivne tredjemands, dog ikke transportørens, fysiske besiddelse,</Char>
+                              </Linea>
+                            </Exitus>
+                          </Indentatio>
+                          <Indentatio id="idd81495d2-c34c-47ee-89c4-51527caed421" formaInd="Litra">
+                            <Explicatus>b)</Explicatus>
+                            <Exitus>
+                              <Linea>
+                                <Char>i tilfælde af en vare, der består af flere partier eller dele, når det sidste parti eller den sidste del er i forbrugerens eller den af forbrugeren angivne tredjemands, dog ikke transportørens, fysiske besiddelse, og</Char>
+                              </Linea>
+                            </Exitus>
+                          </Indentatio>
+                          <Indentatio id="idb903fded-d95e-495b-a58f-e8a9a2e63c37" formaInd="Litra">
+                            <Explicatus>c)</Explicatus>
+                            <Exitus>
+                              <Linea>
+                                <Char>i tilfælde af aftaler om regelmæssig levering af varer over en bestemt periode, når den første vare er i forbrugerens eller den af forbrugeren angivne tredjemands, dog ikke transportørens, fysiske besiddelse, eller</Char>
+                              </Linea>
+                            </Exitus>
+                          </Indentatio>
+                        </Index>
+                      </Exitus>
+                    </Indentatio>
+                    <Indentatio id="iddb8975d9-0b5c-4ec3-820d-be8a53bbc2ed" formaInd="Nummer">
+                      <Explicatus>3)</Explicatus>
+                      <Exitus>
+                        <Linea>
+                          <Char>den dag, hvor aftalen indgås, hvis det drejer sig om aftaler om forsyning af vand, gas eller elektricitet, når disse varer ikke sælges i et afgrænset volumen eller i en bestemt mængde, eller levering af fjernvarme eller digitalt indhold, der ikke leveres på et fysisk medium.</Char>
+                        </Linea>
+                      </Exitus>
+                    </Indentatio>
+                  </Index>
+                </Exitus>
+              </Stk>
+              <Stk id="id4e025a05-1f7a-41a3-87a3-3eb7129b7c9e">
+                <Explicatus>Stk. 3.</Explicatus>
+                <Exitus>
+                  <Linea>
+                    <Char>Uanset stk. 2 løber den periode, hvori fortrydelsesretten efter stk. 1 kan udøves, for så vidt angår aftaler om en vare eller en ikkefinansiel tjenesteydelse, først fra den dag, hvor forbrugeren har modtaget de i § 8, stk. 1, nr. 11, nævnte oplysninger på et varigt medium, jf. dog stk. 4.</Char>
+                  </Linea>
+                  <Linea>
+                    <Char>Er der tale om en fjernsalgsaftale vedrørende en finansiel tjenesteydelse, løber fortrydelsesperioden først fra den dag, hvor forbrugeren har modtaget oplysninger i henhold til § 15, jf. dog stk. 5.</Char>
+                  </Linea>
+                </Exitus>
+              </Stk>
+              <Stk id="id4d72bb49-5fbe-4230-9f2a-53b55bd70e40">
+                <Explicatus>Stk. 4.</Explicatus>
+                <Exitus>
+                  <Linea>
+                    <Char>Er de i § 8, stk. 1, nr. 11, nævnte oplysninger ikke givet til forbrugeren på et varigt medium, udløber den periode, hvori fortrydelsesretten efter stk. 1 kan udøves, for så vidt angår aftaler om en vare eller en ikkefinansiel tjenesteydelse, senest 12 måneder efter den i stk. 2 nævnte 14-dag‍es­periode, dog senest 14 dage efter den dag, hvor oplysningerne er kommet frem til forbrugeren.</Char>
+                  </Linea>
+                </Exitus>
+              </Stk>
+              <Stk id="id2f004f20-c778-4384-9d12-facd862d9f90">
+                <Explicatus>Stk. 5.</Explicatus>
+                <Exitus>
+                  <Linea>
+                    <Char>Såfremt aftalen vedrører fjernsalg af en finansiel tjenesteydelse, gælder fortrydelsesretten kun, indtil aftalen efter forbrugerens udtrykkelige samtykke er blevet helt opfyldt af begge parter.</Char>
+                  </Linea>
+                </Exitus>
+              </Stk>
+              <Stk id="ide38256b2-5096-4fcd-a09b-88c0209dd57e">
+                <Explicatus>Stk. 6.</Explicatus>
+                <Exitus>
+                  <Linea>
+                    <Char>Falder den sidste dag for udøvelse af fortrydelsesretten på en helligdag, en lørdag, grundlovsdag, den 24. december eller den 31. december, udløber fristen den følgende hverdag.</Char>
+                  </Linea>
+                  <Linea>
+                    <Char>1. pkt. finder tilsvarende anvendelse for fristerne nævnt i § 22, stk. 1, § 23, § 24, stk. 1 og 4, § 25, stk. 4, og § 28, stk. 1 og 4.</Char>
+                  </Linea>
+                </Exitus>
+              </Stk>
+            </Paragraf>
+<Ikraft>
+<Paragraf id="idb51c81fb-d12a-4a12-a760-324143503a2f" localId="154">
+        <Explicatus>§ 154.</Explicatus>
+        <Stk id="id5e00f491-e45d-4476-995a-7e1129ff3bd3">
+          <Exitus>
+            <Linea>
+              <Char>Loven træder i kraft den 1. januar 2018, jf. dog stk. 2.</Char>
+            </Linea>
+          </Exitus>
+        </Stk>
+        <Stk id="idaa8bc5ea-5422-46ac-85f1-2c34bcb09eb3">
+          <Explicatus>Stk. 2-12.</Explicatus>
+          <Exitus>
+            <Linea>
+              <Char>(Udelades)</Char>
+            </Linea>
+          </Exitus>
+        </Stk>
+      </Paragraf>
+</Ikraft>
+</DokumentIndhold></Dokument>
