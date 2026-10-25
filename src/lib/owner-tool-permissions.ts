@@ -16,6 +16,12 @@ import { AREA_LABELS, can, type Area, type PermissionHolder, type PermissionKey 
 export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   support_overview: "support:read",
   list_support_conversations: "support:read",
+  // Work (PSI AGT-01): Work's screens ask the Settings area's keys (D122).
+  work_overview: "settings:read",
+  list_work_clients: "settings:read",
+  list_work_assignments: "settings:read",
+  log_time: "settings:write",
+  issue_work_invoice: "settings:write",
   // Order changes and exchanges (PSI AGT-01): the order editor and the return's page are the Orders section's.
   preview_order_change: "orders:read",
   change_order: "orders:write",

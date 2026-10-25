@@ -56,9 +56,9 @@ maturity for the run-up to launch. Point IDs are the audit's.
       `change_plan`, `end_plan` (gate `spend`), the owner's; D318.
 - [x] **AGT-01 (orders)** `preview_order_change`, `change_order` (gate `spend`), `preview_exchange`, `propose_exchange` (gate `send`),
       `process_exchange` (gate `spend`); D318.
-- [ ] **AGT-01 (the rest)** Work, gated like
-      the others. Review moderation stays on the Reviews page: a review's words are never sent to a model (D301), so the agent could
-      not judge one.
+- [x] **AGT-01 (Work)** `work_overview`, `list_work_clients`, `list_work_assignments`, `log_time`, `issue_work_invoice` (gate `send`); D318.
+- [x] **AGT-01 (reviews)** No tool, on purpose: review moderation stays on the Reviews page, since a review's words are never sent to a
+      model (D301), so the agent could not judge one.
 - [x] **ACC-01** Axe on the `signed-in` Playwright project: `e2e/signed-in/a11y.spec.ts`, ten owner pages and four platform pages, no
       serious or critical finding at the start.
 - [x] **ACC-02, UX-11** Focus stays on the button that sent a buy form (`useKeepFocus()`, `src/components/keep-focus.ts`: add to cart,

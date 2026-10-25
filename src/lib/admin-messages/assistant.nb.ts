@@ -120,6 +120,11 @@ export const assistantNb: AssistantMessages = {
   tools: {
     support_overview: "Ser på kundestøtte",
     list_support_conversations: "Ser på kundestøttesamtaler",
+    work_overview: "Ser på Arbeid",
+    list_work_clients: "Ser på kundene i Arbeid",
+    list_work_assignments: "Ser på oppdragene i Arbeid",
+    log_time: "Fører timene",
+    issue_work_invoice: "Forbereder fakturaen",
     preview_order_change: "Regner ut ordreendringen",
     change_order: "Forbereder ordreendringen",
     preview_exchange: "Regner ut byttet",

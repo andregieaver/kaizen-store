@@ -13,6 +13,7 @@ import { MESSAGE_MAX } from "./support-rules";
 import { EDIT_ADDED_LINES_MAX, EDIT_NOTE_MAX, EDIT_QUANTITY_MAX } from "./fulfilment-limits";
 import { ORDER_EDIT_REASONS } from "./order-edit-status";
 import { EXCHANGE_LINES_MAX, EXCHANGE_QUANTITY_MAX } from "./exchange-limits";
+import { MAX_ENTRY_MINUTES, TIME_NOTE_MAX } from "./work-time";
 import { approveSummary, declineSummary } from "./return-tools";
 import { FROM_MAX, OVERVIEW_ROWS_DEFAULT, OVERVIEW_ROWS_MAX, TO_MAX, redirectSummary } from "./redirect-tools";
 import { ADJUST_REASONS, BACKORDER_DAYS_MAX, BACKORDER_DAYS_MIN, MOVEMENT_REASONS, NOTE_MAX, STOCK_MAX } from "./inventory";
@@ -1197,6 +1198,42 @@ export const OWNER_TOOLS = [
     z.object({ when: z.enum(["period_end", "undo"]).describe("period_end to end it at the end of the period, undo to keep it.") }),
     "spend",
   ),
+  // Work (PSI AGT-01; D122): clients, assignments, time and invoices, while the store has Work on, through Work's own functions.
+  tool(
+    "work_overview",
+    "The store's Work (clients, time and invoices): unbilled time by client with its amount, overdue invoices, drafts, recurring invoices ready, and running timers; amounts in each client's currency. Read-only; refused when Work is not on.",
+    z.object({}),
+  ),
+  tool(
+    "list_work_clients",
+    "Work's clients: each one's name, currency, active assignments and unbilled time. Read-only.",
+    z.object({}),
+  ),
+  tool(
+    "list_work_assignments",
+    "Work's open assignments (id, client, name, how it is billed, its draft invoice) and the draft invoices with their totals. Read-only.",
+    z.object({}),
+  ),
+  tool(
+    "log_time",
+    "Logs time on a Work assignment in the person's name, on today's date in the store's time zone unless given.",
+    z.object({
+      assignment: z.string().trim().min(1).max(200).describe("The assignment's id, or its name (with the client's name before it when two share a name)."),
+      minutes: z.number().int().min(1).max(MAX_ENTRY_MINUTES).describe("How long, in minutes (90 for an hour and a half)."),
+      date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe("The day the work was done, YYYY-MM-DD; leave out for today."),
+      billable: z.boolean().default(true),
+      note: z.string().trim().max(TIME_NOTE_MAX).optional().describe("What was done."),
+    }),
+  ),
+  tool(
+    "issue_work_invoice",
+    "Issues a Work draft invoice today, with the next number of the store's series, and emails it to the client unless said. An issued invoice is a legal document: it cannot be changed, only credited. Needs the owner's approval.",
+    z.object({
+      invoice: z.string().trim().min(1).max(200).describe("The draft's id, or the client's name when it has one draft."),
+      email: z.boolean().default(true).describe("Email it to the client's billing address."),
+    }),
+    "send",
+  ),
   // Order changes and exchanges (PSI AGT-01): the order editor's and the exchange builder's own functions.
   tool(
     "preview_order_change",
@@ -1354,6 +1391,8 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
   switch (name) {
     case "send_broadcast":
       return input.at ? `Send the broadcast "${text("broadcast")}" at ${text("at")} (the store's time) to the people on the list who asked for your emails.` : `Send the broadcast "${text("broadcast")}" now to the people on the list who asked for your emails.`;
+    case "issue_work_invoice":
+      return `Issue the Work draft invoice ${text("invoice")} today${input.email === false ? "" : " and email it to the client"}.`;
     case "change_order":
       return `Change order ${text("order")} as previewed.`;
     case "propose_exchange":

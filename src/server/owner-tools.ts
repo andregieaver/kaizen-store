@@ -59,6 +59,7 @@ import { activeFieldGroups, fieldsTag, getFieldData, listFieldGroups, pageFacts,
 import { listIntegrations, postToSlack } from "./integrations";
 import { ownedStores, usageRows } from "./ai-usage";
 import { analyticsAlertsTool, analyticsOverviewTool, explainChangeTool } from "./analytics-tools";
+import { issueWorkInvoiceTool, listWorkAssignmentsTool, listWorkClientsTool, logTimeTool, preflightIssueWorkInvoice, workOverviewTool } from "./work-tools";
 import { changeOrderTool, preflightChangeOrder, previewOrderChangeTool } from "./order-change-tools";
 import { preflightProcessExchange, preflightProposeExchange, previewExchangeTool, processExchangeTool, proposeExchangeTool } from "./exchange-tools";
 import { billingOverviewTool, changePlanTool, endPlanTool, preflightChangePlan, preflightEndPlan } from "./billing-tools";
@@ -2035,6 +2036,8 @@ export async function preflightOwnerTool(ctx: OwnerToolContext, name: string, ra
     change_order: preflightChangeOrder,
     propose_exchange: preflightProposeExchange,
     process_exchange: preflightProcessExchange,
+    // A Work draft that is not ready to issue (PSI AGT-01).
+    issue_work_invoice: preflightIssueWorkInvoice,
   };
   if (name in TEAM_AND_PLAN) {
     const input = readToolInput(OWNER_TOOLS_BY_NAME[name], raw);
@@ -2205,6 +2208,11 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   analytics_alerts: analyticsAlertsTool,
   support_overview: supportOverviewTool,
   list_support_conversations: listSupportConversationsTool,
+  work_overview: workOverviewTool,
+  list_work_clients: listWorkClientsTool,
+  list_work_assignments: listWorkAssignmentsTool,
+  log_time: logTimeTool,
+  issue_work_invoice: issueWorkInvoiceTool,
   preview_order_change: previewOrderChangeTool,
   change_order: changeOrderTool,
   preview_exchange: previewExchangeTool,
@@ -2299,7 +2307,7 @@ export async function runOwnerTool(ctx: OwnerToolContext, name: string, raw: unk
 }
 
 /** Tools that change the store without a gate, written down all the same: a note on an order, products made or written for, pages built or changed (D308). */
-const AUDITED_UNGATED = new Set(["add_order_note", "create_product", "write_product_texts", "build_page", "edit_page", "add_support_note", "end_support_conversation"]);
+const AUDITED_UNGATED = new Set(["add_order_note", "create_product", "write_product_texts", "build_page", "edit_page", "add_support_note", "end_support_conversation", "log_time"]);
 const PRODUCT_TOOLS = new Set(["create_product", "update_product", "set_prices", "set_product_status", "write_product_texts"]);
 const PAGE_TOOLS = new Set(["build_page", "edit_page", "publish_page", "set_page_place", "save_menu", "set_header_footer"]);
 

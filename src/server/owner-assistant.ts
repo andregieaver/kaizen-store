@@ -22,6 +22,7 @@ import { replyApprovalSummary } from "./support-manager-tools";
 import { changePlanSummary } from "./billing-tools";
 import { orderChangeApprovalDetails, type OrderChangeInput } from "./order-change-tools";
 import { proposeApprovalSummary, type ProposeInput } from "./exchange-tools";
+import { issueWorkInvoiceSummary } from "./work-tools";
 import { draftApprovalDetails } from "./order-ops-tools";
 import { featureApprovalDetails } from "./feature-tools";
 import { setFeatureInput } from "@/lib/feature-tools";
@@ -664,6 +665,10 @@ export async function keepForApproval(
   if (store && tool === "propose_exchange") {
     const parsed = OWNER_TOOLS_BY_NAME.propose_exchange.input.safeParse(args);
     summary = (parsed.success ? await proposeApprovalSummary({ account: ctx.account, store }, parsed.data as ProposeInput) : null) ?? summary;
+  }
+  // A Work invoice's issue is described from the draft: its client, assignment and total (PSI AGT-01).
+  if (store && tool === "issue_work_invoice") {
+    summary = (await issueWorkInvoiceSummary({ account: ctx.account, store }, { invoice: String(args.invoice ?? ""), email: args.email !== false })) ?? summary;
   }
   // A plan change is described with the plans' own names and prices (PSI AGT-01).
   if (store && tool === "change_plan") {
