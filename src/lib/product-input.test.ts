@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   isPictureAddress,
   combineOptions,
+  MAX_VARIANTS,
   formatPriceInput,
   parsePrice,
   productInput,
@@ -83,6 +84,31 @@ describe("productInput", () => {
       responsiblePerson: null,
     });
     expect(parsed.success).toBe(true);
+  });
+
+  it("takes up to 2,048 variants over 3 options and refuses the 2,049th in plain words (wave 6 unit B, D320)", () => {
+    const variant = (i: number) => ({ id: null, options: {}, sku: `V-${i}`, gtin: null, prices: {}, stock: 0, active: true, weightGrams: null, hsCode: null, originCountry: null });
+    const product = (count: number) => ({
+      handle: "genser",
+      status: "draft",
+      translations: [{ locale: "nb-NO", title: "Genser", description: "", safetyInformation: "" }],
+      media: [],
+      options: [],
+      variants: Array.from({ length: count }, (_, i) => variant(i)),
+      taxCode: "txcd_99999999",
+      withdrawalExclusion: "none",
+      schemes: [],
+      manufacturer: null,
+      responsiblePerson: null,
+    });
+    expect(MAX_VARIANTS).toBe(2048);
+    expect(productInput.safeParse(product(MAX_VARIANTS)).success).toBe(true);
+    const refused = productInput.safeParse(product(MAX_VARIANTS + 1));
+    expect(refused.success).toBe(false);
+    expect(refused.error?.issues.map((issue) => issue.message)).toContain("Use at most 2048 variants.");
+    const options = (n: number) => Array.from({ length: n }, (_, i) => ({ name: `O${i}`, values: ["a"] }));
+    expect(productInput.safeParse({ ...product(1), options: options(3) }).success).toBe(true);
+    expect(productInput.safeParse({ ...product(1), options: options(4) }).error?.issues[0].message).toBe("Use at most 3 options.");
   });
 });
 

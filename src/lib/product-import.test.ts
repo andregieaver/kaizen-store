@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { FINDING_CODES } from "./data-job";
 import { IMPORT_MAX_PRODUCTS, IMPORT_MAX_ROWS } from "./data-limits";
+import { MAX_VARIANTS } from "./product-input";
 import { readNeutral, groupProducts } from "./product-csv";
 import {
   DEFAULT_IMPORT_OPTIONS,
@@ -327,7 +328,7 @@ describe("the variant's columns", () => {
   });
 
   it("refuses more than the editor's limits", () => {
-    const many = [["handle", "sku", "option1_name", "option1_value"], ...Array.from({ length: 101 }, (_, i) => ["big", `S${i}`, i === 0 ? "N" : "", `V${i}`])];
+    const many = [["handle", "sku", "option1_name", "option1_value"], ...Array.from({ length: MAX_VARIANTS + 1 }, (_, i) => ["big", `S${i}`, i === 0 ? "N" : "", `V${i}`])];
     expect(codes(plan(many).products[0])).toContain("options.too_many");
     const pics = [["handle", "title", "sku", "image_url"], ...Array.from({ length: 13 }, (_, i) => ["pics", i === 0 ? "T" : "", i === 0 ? "S1" : "", `/demo/${i}.svg`])];
     expect(codes(plan(pics).products[0])).toEqual(["media.too_many"]);

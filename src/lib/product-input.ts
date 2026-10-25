@@ -92,7 +92,8 @@ export const parseDelivery = (value: unknown): Delivery =>
 export const MAX_FILES = 20;
 
 export const MAX_OPTIONS = 3;
-export const MAX_VARIANTS = 100;
+/** Shopify's limit (wave 6 unit B, D320): 2,048 variants over 3 options, held by the database too (`commerce.product_variants_limit()`). */
+export const MAX_VARIANTS = 2048;
 export const MAX_MEDIA = 12;
 
 const text = (max: number) => z.string().trim().max(max);
@@ -259,7 +260,10 @@ export const productInput = z.object({
     .array(
       z.object({
         name: text(40).min(1, "Give each option a name, such as Colour."),
-        values: z.array(text(60).min(1)).min(1, "Give each option at least one value."),
+        values: z
+          .array(text(60).min(1))
+          .min(1, "Give each option at least one value.")
+          .max(MAX_VARIANTS, `Use at most ${MAX_VARIANTS} values in an option.`),
       }),
     )
     .max(MAX_OPTIONS, `Use at most ${MAX_OPTIONS} options.`),

@@ -18,6 +18,7 @@ import {
   isBooked,
   parseDelivery,
   parsePrice,
+  MAX_VARIANTS,
   PRODUCT_KINDS,
   productProblems,
   variantLabel,
@@ -1015,50 +1016,103 @@ async function writeStock(tx: Tx, storeId: string, writes: readonly StockWrite[]
   const source = mode?.source ?? "editor";
   const context = { source, accountId: mode?.accountId ?? actorId, jobId: mode?.jobId ?? null } as const;
   const ordered = [...writes].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
-  for (const w of ordered) {
-    if (w.isNew) {
-      await withStockContext(tx, { reason: "opening", ...context }, () =>
-        tx.execute(sql`
-          insert into commerce.inventory_levels (store_id, variant_id, location_id, on_hand)
-          values (${storeId}::uuid, ${w.id}::uuid, ${locationId}::uuid, ${w.typed})
-          on conflict (variant_id, location_id) do nothing
-        `),
-      );
-      continue;
+  // A few statements whatever the number of variants (wave 6 unit B, D320): each kind of write is one statement over a list.
+  const opening = ordered.filter((w) => w.isNew).map((w) => ({ id: w.id, on_hand: w.typed }));
+  const existing = ordered.filter((w) => !w.isNew);
+  const made = new Set<string>();
+  await withStockContext(tx, { reason: "opening", ...context }, async () => {
+    if (opening.length > 0) {
+      await tx.execute(sql`
+        insert into commerce.inventory_levels (store_id, variant_id, location_id, on_hand)
+        select ${storeId}::uuid, r.id, ${locationId}::uuid, r.on_hand
+        from jsonb_to_recordset(${JSON.stringify(opening)}::jsonb) as r(id uuid, on_hand integer)
+        order by r.id
+        on conflict (variant_id, location_id) do nothing
+      `);
     }
     // A variant that has no level anywhere gets one at the default location (as it always did); nothing else is made or overwritten for it.
-    const made = await withStockContext(tx, { reason: "opening", ...context }, () =>
-      tx.execute<Row>(sql`
+    if (existing.length > 0) {
+      const rows = await tx.execute<Row>(sql`
         insert into commerce.inventory_levels (store_id, variant_id, location_id, on_hand)
-        select ${storeId}::uuid, ${w.id}::uuid, ${locationId}::uuid, ${w.typed}
-        where not exists (select 1 from commerce.inventory_levels l where l.store_id = ${storeId}::uuid and l.variant_id = ${w.id}::uuid)
+        select ${storeId}::uuid, r.id, ${locationId}::uuid, r.on_hand
+        from jsonb_to_recordset(${JSON.stringify(existing.map((w) => ({ id: w.id, on_hand: w.typed })))}::jsonb) as r(id uuid, on_hand integer)
+        where not exists (select 1 from commerce.inventory_levels l where l.store_id = ${storeId}::uuid and l.variant_id = r.id)
+        order by r.id
         on conflict (variant_id, location_id) do nothing
-        returning 1 as made
-      `),
-    );
-    if (made.length > 0 || !single) continue;
-    // One active location: the number is that location's.
-    const [current] = await tx.execute<Row>(sql`
-      select on_hand from commerce.inventory_levels
-      where store_id = ${storeId}::uuid and variant_id = ${w.id}::uuid and location_id = ${locationId}::uuid
-      for update
-    `);
-    const now = current ? Number(current.on_hand) : null;
+        returning variant_id
+      `);
+      for (const row of rows) made.add(String(row.variant_id));
+    }
+  });
+  if (!single) return;
+  // One active location: the number is that location's. The levels are read and locked in variant order, as every writer locks them.
+  const rest = existing.filter((w) => !made.has(w.id));
+  if (rest.length === 0) return;
+  const levels = await tx.execute<Row>(sql`
+    select variant_id, on_hand from commerce.inventory_levels
+    where store_id = ${storeId}::uuid and location_id = ${locationId}::uuid and variant_id = any(${`{${rest.map((w) => w.id).join(",")}}`}::uuid[])
+    order by variant_id
+    for update
+  `);
+  const onHand = new Map(levels.map((row) => [String(row.variant_id), Number(row.on_hand)]));
+  const corrections: { id: string; on_hand: number }[] = [];
+  for (const w of rest) {
+    const now = onHand.has(w.id) ? (onHand.get(w.id) as number) : null;
     // What a save does with the figure typed: nothing when it is the one shown (a negative level is shown as 0), the relative change for an
     // adjustment (bulk), else the figure as given.
     if (w.base !== undefined && w.base === w.typed) continue;
     if (w.base === undefined && now !== null && w.typed === Math.max(now, 0)) continue;
-    const next = w.base !== undefined && mode?.relative ? Math.max(0, (now ?? 0) + (w.typed - w.base)) : w.typed;
-    await withStockContext(tx, { reason: "correction", ...context }, () =>
-      tx.execute(sql`
-        insert into commerce.inventory_levels (store_id, variant_id, location_id, on_hand)
-        values (${storeId}::uuid, ${w.id}::uuid, ${locationId}::uuid, ${next})
-        on conflict (variant_id, location_id) do update set on_hand = excluded.on_hand, updated_at = now()
-      `),
-    );
+    corrections.push({ id: w.id, on_hand: w.base !== undefined && mode?.relative ? Math.max(0, (now ?? 0) + (w.typed - w.base)) : w.typed });
   }
+  if (corrections.length === 0) return;
+  await withStockContext(tx, { reason: "correction", ...context }, () =>
+    tx.execute(sql`
+      insert into commerce.inventory_levels (store_id, variant_id, location_id, on_hand)
+      select ${storeId}::uuid, r.id, ${locationId}::uuid, r.on_hand
+      from jsonb_to_recordset(${JSON.stringify(corrections)}::jsonb) as r(id uuid, on_hand integer)
+      order by r.id
+      on conflict (variant_id, location_id) do update set on_hand = excluded.on_hand, updated_at = now()
+    `),
+  );
 }
 
+/** A variant's columns as the save writes them, worked out from what the editor sent. */
+type VariantColumns = {
+  /** Its place in what the editor sent, the order new variants are made in. */
+  n: number;
+  id: string | null;
+  sku: string;
+  gtin: string | null;
+  options: Record<string, string>;
+  active: boolean;
+  delivery: string;
+  rental_period: string;
+  weight_grams: number | null;
+  hs_code: string | null;
+  origin_country: string | null;
+  image_url: string | null;
+  image_thumbnail_url: string | null;
+  cost_minor: number | null;
+  measure_amount: string | null;
+  measure_unit: string | null;
+  measure_base: string | null;
+  stock_policy: string;
+  backorder_days: number | null;
+  low_stock_threshold: number | null;
+};
+
+/** The record type `jsonb_to_recordset()` reads a variant's columns with. */
+const VARIANT_RECORD = sql.raw(`r(
+  n integer, id uuid, sku text, gtin text, options jsonb, active boolean, delivery commerce.delivery, rental_period text, weight_grams integer,
+  hs_code text, origin_country text, image_url text, image_thumbnail_url text, cost_minor bigint, measure_amount numeric,
+  measure_unit text, measure_base text, stock_policy text, backorder_days integer, low_stock_threshold integer
+)`);
+
+/**
+ * Saves the variants, their prices and their stock (wave 6 unit B, D320, `docs/wave-6-catalogue.md` B.2): a few statements whatever the number of
+ * variants, so a product of 2,048 saves in one transaction within its time budget. The rules are those of the one-by-one save it replaced:
+ * variants taken out are switched off, prices change only through `commerce.set_price` (keeping the history), stock through `writeStock()`.
+ */
 async function saveVariants(
   tx: Tx,
   storeId: string,
@@ -1071,95 +1125,127 @@ async function saveVariants(
   actorId: string | null = null,
 ) {
   const existing = await tx.execute<Row>(sql`
-    select id from commerce.product_variants
-    where store_id = ${storeId}::uuid and product_id = ${productId}::uuid
+    select v.id,
+           coalesce(jsonb_object_agg(p.market_code, p.amount_minor) filter (where p.market_code is not null), '{}'::jsonb) as prices
+    from commerce.product_variants v
+    left join commerce.prices p on p.variant_id = v.id and p.valid_to is null
+    where v.store_id = ${storeId}::uuid and v.product_id = ${productId}::uuid
+    group by v.id
   `);
-  const existingIds = new Set(existing.map((row) => String(row.id)));
-  const kept = new Set<string>();
-  const stockWrites: StockWrite[] = [];
+  const current = new Map(existing.map((row) => [String(row.id), (row.prices ?? {}) as Record<string, number | string>]));
 
-  for (const variant of input.variants) {
+  const columns = input.variants.map((variant, n): VariantColumns => {
     // Digital variants are not shipped: no weight or customs details.
     const physical = variant.delivery === "physical";
-    // The cost per unit (D152), in the main currency; unknown when empty, and sold lines keep what it was then.
-    const cost = parsePrice(variant.cost, context.mainCurrency);
     // The content for the unit price (D160): physical goods only (`productProblems()` refused it elsewhere), as typed text
     // parsed by `normaliseMeasureAmount()`, never a float. No content clears all three columns.
     const content = physical && input.kind === "goods" && variant.measure ? { ...variant.measure, amount: normaliseMeasureAmount(variant.measure.amount) } : null;
     if (content && content.amount === null) throw new Error("unit_price.invalid_amount");
-    const measureAmount = content?.amount ?? null;
-    const measureUnit = content?.unit ?? null;
-    const measureBase = content?.base ?? null;
     // Backorder and the low-stock level (wave 3, D172): goods that are shipped only; `productProblems()` refused the rest, the database checks it again.
     const keeps = physical && variant.stockPolicy === "continue";
-    const fields = sql`
-      sku = ${variant.sku}, gtin = ${variant.gtin}, options = ${JSON.stringify(variant.options)}::jsonb,
-      active = ${variant.active}, delivery = ${variant.delivery},
-      rental_period = ${input.kind === "rental" ? variant.rentalPeriod : "day"},
-      weight_grams = ${physical ? variant.weightGrams : null},
-      hs_code = ${physical ? variant.hsCode : null}, origin_country = ${physical ? variant.originCountry : null},
-      image_url = ${variant.image?.url ?? null}, image_thumbnail_url = ${variant.image?.thumbnailUrl ?? null},
-      cost_minor = ${cost},
-      measure_amount = ${measureAmount}::numeric, measure_unit = ${measureUnit}, measure_base = ${measureBase},
-      stock_policy = ${keeps ? "continue" : "deny"}, backorder_days = ${keeps ? variant.backorderDays : null},
-      low_stock_threshold = ${physical ? variant.lowStockThreshold : null}
-    `;
-    let id: string;
-    if (variant.id && existingIds.has(variant.id)) {
-      await tx.execute(sql`update commerce.product_variants set ${fields} where id = ${variant.id}::uuid`);
-      id = variant.id;
-    } else {
-      const [row] = await tx.execute<Row>(sql`
-        insert into commerce.product_variants (
-          store_id, product_id, sku, gtin, options, active, delivery, rental_period, weight_grams, hs_code, origin_country,
-          image_url, image_thumbnail_url, cost_minor, measure_amount, measure_unit, measure_base,
-          stock_policy, backorder_days, low_stock_threshold
-        ) values (
-          ${storeId}::uuid, ${productId}::uuid, ${variant.sku}, ${variant.gtin},
-          ${JSON.stringify(variant.options)}::jsonb, ${variant.active}, ${variant.delivery},
-          ${input.kind === "rental" ? variant.rentalPeriod : "day"},
-          ${physical ? variant.weightGrams : null}, ${physical ? variant.hsCode : null},
-          ${physical ? variant.originCountry : null}, ${variant.image?.url ?? null}, ${variant.image?.thumbnailUrl ?? null},
-          ${cost}, ${measureAmount}::numeric, ${measureUnit}, ${measureBase},
-          ${keeps ? "continue" : "deny"}, ${keeps ? variant.backorderDays : null}, ${physical ? variant.lowStockThreshold : null}
-        )
-        returning id
-      `);
-      id = String(row.id);
-    }
-    kept.add(id);
+    return {
+      n,
+      id: variant.id && current.has(variant.id) ? variant.id : null,
+      sku: variant.sku,
+      gtin: variant.gtin,
+      options: variant.options,
+      active: variant.active,
+      delivery: variant.delivery,
+      rental_period: input.kind === "rental" ? variant.rentalPeriod : "day",
+      weight_grams: physical ? variant.weightGrams : null,
+      hs_code: physical ? variant.hsCode : null,
+      origin_country: physical ? variant.originCountry : null,
+      image_url: variant.image?.url ?? null,
+      image_thumbnail_url: variant.image?.thumbnailUrl ?? null,
+      // The cost per unit (D152), in the main currency; unknown when empty, and sold lines keep what it was then.
+      cost_minor: parsePrice(variant.cost, context.mainCurrency),
+      measure_amount: content?.amount ?? null,
+      measure_unit: content?.unit ?? null,
+      measure_base: content?.base ?? null,
+      stock_policy: keeps ? "continue" : "deny",
+      backorder_days: keeps ? variant.backorderDays : null,
+      low_stock_threshold: physical ? variant.lowStockThreshold : null,
+    };
+  });
 
+  // The variants kept first, then the new ones, so a new variant may take a SKU a kept one let go of in the same save.
+  const kept = columns.filter((c) => c.id !== null);
+  if (kept.length > 0) {
+    await tx.execute(sql`
+      update commerce.product_variants v set
+        sku = r.sku, gtin = r.gtin, options = r.options, active = r.active, delivery = r.delivery, rental_period = r.rental_period,
+        weight_grams = r.weight_grams, hs_code = r.hs_code, origin_country = r.origin_country,
+        image_url = r.image_url, image_thumbnail_url = r.image_thumbnail_url, cost_minor = r.cost_minor,
+        measure_amount = r.measure_amount, measure_unit = r.measure_unit, measure_base = r.measure_base,
+        stock_policy = r.stock_policy, backorder_days = r.backorder_days, low_stock_threshold = r.low_stock_threshold
+      from jsonb_to_recordset(${JSON.stringify(kept)}::jsonb) as ${VARIANT_RECORD}
+      where v.id = r.id and v.store_id = ${storeId}::uuid and v.product_id = ${productId}::uuid
+    `);
+  }
+  const fresh = columns.filter((c) => c.id === null);
+  const newIds = new Map<string, string>();
+  if (fresh.length > 0) {
+    const rows = await tx.execute<Row>(sql`
+      insert into commerce.product_variants (
+        store_id, product_id, sku, gtin, options, active, delivery, rental_period, weight_grams, hs_code, origin_country,
+        image_url, image_thumbnail_url, cost_minor, measure_amount, measure_unit, measure_base,
+        stock_policy, backorder_days, low_stock_threshold
+      )
+      select ${storeId}::uuid, ${productId}::uuid, r.sku, r.gtin, r.options, r.active, r.delivery, r.rental_period, r.weight_grams, r.hs_code,
+             r.origin_country, r.image_url, r.image_thumbnail_url, r.cost_minor, r.measure_amount, r.measure_unit, r.measure_base,
+             r.stock_policy, r.backorder_days, r.low_stock_threshold
+      from jsonb_to_recordset(${JSON.stringify(fresh)}::jsonb) as ${VARIANT_RECORD}
+      order by r.n
+      returning id, sku
+    `);
+    // SKUs are the store's own once (`product_variants_store_sku_key`), so a new variant is found by its SKU.
+    for (const row of rows) newIds.set(String(row.sku), String(row.id));
+  }
+  const idOf = (c: VariantColumns) => c.id ?? (newIds.get(c.sku) as string);
+
+  // Prices: only those that changed go through `commerce.set_price`, in one statement; a price taken away is ended (its history is kept).
+  const changed: { n: number; variant_id: string; market_code: string; amount_minor: number }[] = [];
+  const ended: { variant_id: string; market_code: string }[] = [];
+  input.variants.forEach((variant, index) => {
+    const id = idOf(columns[index]);
+    const before = current.get(id) ?? {};
     for (const market of context.markets) {
       const amount = keptAmount(context, market, parsePrice(variant.prices[market.code] ?? "", market.currency), input.vatCategory);
-      const [current] = await tx.execute<Row>(sql`
-        select amount_minor from commerce.prices
-        where variant_id = ${id}::uuid and market_code = ${market.code} and valid_to is null
-      `);
-      if (amount !== null && Number(current?.amount_minor) !== amount) {
-        await tx.execute(sql`select commerce.set_price(${id}::uuid, ${market.code}, ${amount})`);
-      } else if (amount === null && current) {
-        // No price any more: end the current one (history is kept).
-        await tx.execute(sql`
-          update commerce.prices set valid_to = now()
-          where variant_id = ${id}::uuid and market_code = ${market.code} and valid_to is null
-        `);
-      }
+      const was = before[market.code];
+      if (amount !== null && (was === undefined || Number(was) !== amount)) changed.push({ n: changed.length, variant_id: id, market_code: market.code, amount_minor: amount });
+      else if (amount === null && was !== undefined) ended.push({ variant_id: id, market_code: market.code });
     }
-
-    // Downloads never run out: digital variants keep no stock. The writes are collected and made after the loop, in variant order,
-    // so the level rows are locked in the order every writer uses and a checkout in the middle cannot deadlock with this save.
-    if (physical) stockWrites.push({ id, isNew: !(variant.id && existingIds.has(variant.id)), typed: variant.stock, base: variant.id && existingIds.has(variant.id) ? stockMode?.loaded.get(variant.id) : undefined });
+  });
+  if (changed.length > 0) {
+    await tx.execute(sql`
+      select commerce.set_price(r.variant_id, r.market_code, r.amount_minor)
+      from jsonb_to_recordset(${JSON.stringify(changed)}::jsonb) as r(n integer, variant_id uuid, market_code text, amount_minor bigint)
+      order by r.n
+    `);
+  }
+  if (ended.length > 0) {
+    await tx.execute(sql`
+      update commerce.prices p set valid_to = now()
+      from jsonb_to_recordset(${JSON.stringify(ended)}::jsonb) as r(variant_id uuid, market_code text)
+      where p.variant_id = r.variant_id and p.market_code = r.market_code and p.valid_to is null
+    `);
   }
 
+  // Downloads never run out: digital variants keep no stock. The writes are made in variant order, so the level rows are locked in the order
+  // every writer uses and a checkout in the middle cannot deadlock with this save.
+  const stockWrites: StockWrite[] = input.variants.flatMap((variant, index) => {
+    if (variant.delivery !== "physical") return [];
+    const c = columns[index];
+    return [{ id: idOf(c), isNew: c.id === null, typed: variant.stock, base: c.id !== null ? stockMode?.loaded.get(c.id) : undefined }];
+  });
   await writeStock(tx, storeId, stockWrites, locationId, stockMode, actorId);
 
-  // Variants taken out of the editor are switched off, not deleted: orders
-  // and price history may refer to them.
-  for (const id of existingIds) {
-    if (!kept.has(id)) {
-      await tx.execute(sql`update commerce.product_variants set active = false where id = ${id}::uuid`);
-    }
-  }
+  // Variants taken out of the editor are switched off, not deleted: orders and price history may refer to them.
+  const keep = `{${columns.map(idOf).join(",")}}`;
+  await tx.execute(sql`
+    update commerce.product_variants set active = false
+    where store_id = ${storeId}::uuid and product_id = ${productId}::uuid and active and not (id = any(${keep}::uuid[]))
+  `);
 }
 
 /**
@@ -1270,6 +1356,7 @@ function saveProblem(error: unknown, input: ProductInput): string {
     return `Remove the content of ${detail ? `the variants with SKU ${detail}` : "the variants"}: content can only be given for physical goods. Nothing was changed.`;
   }
   if (text.includes("unit_price.invalid_amount")) return "The content of a variant is not a valid amount.";
+  if (text.includes("variants.too_many")) return `A product can have at most ${MAX_VARIANTS} variants for sale. Use fewer option values, or switch some off. Nothing was changed.`;
   if (text.includes("products_store_handle_key")) {
     return `Another product already uses the web address "${input.handle}". Choose another.`;
   }

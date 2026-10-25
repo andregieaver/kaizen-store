@@ -3263,6 +3263,13 @@
       "when": 1792961649426,
       "tag": "20261025205409_collection_rules_sql",
       "breakpoints": true
+    },
+    {
+      "idx": 466,
+      "version": "7",
+      "when": 1792969616364,
+      "tag": "20261025230656_variants_limit",
+      "breakpoints": true
     }
   ]
 }

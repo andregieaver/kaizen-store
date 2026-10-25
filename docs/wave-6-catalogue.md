@@ -229,12 +229,102 @@ term page's header and order, the panel's drag and live count (signed-in project
 
 ### Unit B (D320): variants at scale
 
-`MAX_VARIANTS` becomes 2,048 (three options kept), checked by `productInput`, the import and the tools, and by a database trigger
-(`product_variants_limit()`). The editor's variant table becomes a virtualised grid (only the rows on screen are drawn) with a filter per
-option value and *Set for all shown* (price per market, stock, SKU pattern, weight, active); one save stays one transaction, with a time
-budget held by an integration test at 2,048 variants. The reads that build a product page, a card, the cart, search, JSON-LD and the feeds
-are checked for a query per variant (an integration test counts statements). The storefront picker shows each option as a dropdown above
-a size the store can set and marks a value that makes no buyable combination with the others chosen (`buyableValues()`, pure).
+Detailed on 2026-10-25 from a read of the code, when its turn came. Shopify allows 3 options and 2,048 variants a product; Kaizena Flow
+allowed 3 and 100. Built in three steps, each its own commit: B1 the limit, the save and the reads; B2 the editor's grid; B3 the shop's
+picker.
+
+**What the code does today.** The editor makes one variant per combination of option values (`variantsFor()` over `combineOptions()`)
+and draws one table row each, every row with its own fields. `saveVariants()` writes each variant with its own statement, reads and sets
+each price per market with two more, and writes each variant's stock with up to three, so a save of 2,048 variants in three markets is
+some 15,000 statements in one transaction. The shop's buy part (`ProductBuy` in `product-parts.tsx`) offers every variant in one
+`Dropdown`, each with a price drawn by the server (`<Price>` inside `PlanPrice`), so the part's payload grows with every variant. The
+reads that build a product page, a card, the cart, search, JSON-LD and the feeds read variants in one query each already (no loop over
+variants found); nothing holds them to that.
+
+#### B.1 The limit (B1)
+
+- `MAX_VARIANTS` is 2,048 (`MAX_OPTIONS` stays 3), read by `productInput`, the CSV import (`options.too_many`) and the AI manager's
+  catalogue tools from the same constant. An option has at most `MAX_VARIANTS` values, so the editor never builds a combination list it
+  must then refuse.
+- The database holds it too: `commerce.product_variants_limit()`, a deferred constraint trigger on `product_variants`, refuses at commit a
+  product with more than 2,048 **active** variants (switched-off variants are history, D-rule "never deleted", and do not count). It is
+  deferred because a save inserts new combinations before it switches off the ones taken out. Its error (`variants.too_many`) becomes the
+  owner's sentence in `saveProblem()`.
+- The editor's request stays under the server actions' 4 MB limit at 2,048 variants in three markets (a unit test measures the JSON of
+  such a product).
+
+#### B.2 One save, set-based (B1)
+
+`saveVariants()` keeps its rules (variants taken out are switched off, prices only through `commerce.set_price`, stock through
+`writeStock()`'s rules and `withStockContext()`, levels locked in variant order) and writes them a few statements at a time, whatever the
+number of variants:
+
+- one read of the product's variants with their current prices;
+- one `update … from jsonb_to_recordset()` for the variants kept, one `insert … select … returning` for the new ones;
+- one `select commerce.set_price(…) from jsonb_to_recordset()` for the prices that changed, one `update` ending the prices taken away;
+- stock: one insert for new variants' opening levels, one read of the existing levels `for update` in variant order, and one write per
+  reason (`opening`, `correction`) with the figures worked out in code from what was read, as `writeStock()` decides them today;
+- one `update` switching off the variants taken out.
+
+An integration test (`variants-scale.int.test.ts`) saves a product of 2,048 variants (16 × 16 × 8) in three markets, then saves it again
+with every price and stock changed, and holds each save under a time budget (`SAVE_BUDGET_MS`, 20 s on CI: a few times what it takes,
+so only a save that has gone back to a statement per variant breaks it); it checks the prices' history and the stock movements are those
+of the old one-by-one save.
+
+#### B.3 Reads that do not grow per variant (B1)
+
+The same test counts the statements (`pg`'s `Client.prototype.query`) of the reads a shopper's page and the store's jobs make for one
+product, at 2 variants and at 2,048: the product page (`getProductDetail()` and the buy part's stock, `getVariantStock()`), a product card
+(`listGridProducts()`), the listing (`listingProducts()`), search (`searchProducts()`), the cart (adding a variant and `cartSummary()`),
+JSON-LD (`productJsonLd()`, pure, from the page's own read) and the feed (`storeFeed()`). Each count must be the same at both sizes.
+
+#### B.4 The editor's grid (B2)
+
+- The variant table draws only the rows on screen (`useVirtualRows()`, a small hook in `src/components/admin/virtual-rows.ts`: rows of one
+  height, a spacer above and below, no new dependency), so a product of 2,048 variants opens and types without freezing. With 50 variants or
+  fewer every row is drawn, as before (Homer's product has a few).
+- Above it, once the product has options: a filter per option (*All* or one value) with *Showing 64 of 2,048*, and **Set for all shown**,
+  one step away (a button that opens the fields): a price per market, stock, a SKU pattern (`{sku}` words from the product's address and the
+  option values, `skuFromPattern()`), weight, and for sale on or off. Only the fields filled in are set, only on the variants the filter
+  shows, as one change the owner then saves with the rest.
+- The pure parts are `src/lib/variant-grid.ts` (`filterVariants()`, `setForShown()`, `skuFromPattern()`), unit-tested; the words are the
+  `product` catalogue's (en, nb).
+
+#### B.5 The shop's picker (B3)
+
+- A product of a few variants keeps today's one dropdown with each variant's picture, stock and price. From a number of variants the store
+  sets on the buy part of its product layout (`optionsFrom`, default 12, in the builder's product part fields), each option is a dropdown
+  of its own (Colour, then Size, …), and the chosen variant's picture, stock, price and Add to cart follow the values chosen.
+- A value that makes no buyable variant with the other values chosen is marked (*Not available*, still listed, disabled), worked out only by
+  `buyableValues()` (`src/lib/variant-options.ts`, pure: per option, the values with at least one variant that is for sale and in stock or on
+  backorder matching the other chosen values). Choosing a value whose combination with the rest cannot be bought moves to the nearest buyable
+  variant with that value (`nearestVariant()`: the most other values kept, then the variants' order).
+- The part's payload stops growing with each variant's price: the server draws one price per distinct price (amount, reference, unit
+  price) and each variant names its price by index. Variant data the browser needs is ids, values, stock note and availability.
+- Words: `m.variantUnavailable` in nb, sv, da and en by hand (`{lang}.ts`, server-drawn labels passed to the picker).
+
+#### B.7 As built: B1 (2026-10-25)
+
+- `MAX_VARIANTS` is 2,048 and an option holds at most that many values; `productInput` refuses the 2,049th variant in plain words
+  (`product-input.test.ts`), the import's limit follows the constant (`product-import.test.ts`).
+- `commerce.product_variants_limit()` (migration `variants_limit`): a deferred constraint trigger on `product_variants` that counts the variants
+  for sale once per product and transaction (a local setting remembers the product), tested in `commerce.test.ts` (2,048 allowed with switched-off
+  ones beside them, the 2,049th refused at commit, a save that adds before it switches off allowed). `saveProblem()` words `variants.too_many`.
+- `saveVariants()` and `writeStock()` are set-based: one read of the variants with their current prices, one update and one insert over
+  `jsonb_to_recordset()`, one `commerce.set_price` statement over the changed prices, one update ending the prices taken away, stock in one
+  statement per reason with the levels locked in variant order, one update switching off what was taken out. A new product's save is 50 statements
+  at 2 variants and at 2,048; the one-by-one save sent 22,556 at 2,048 (and passed the time budget here, which is why the count is held too).
+- `variants-scale.int.test.ts`: a product of 16 × 16 × 8 saved new and again with every price and stock changed (history and movements checked,
+  under `SAVE_BUDGET_MS`), half its variants switched off by an option value, the editor's request under 4 MB, and the reads of B.3 counted at 2,048
+  and 2 variants in two stores copied from the same template: the same at both sizes. JSON-LD is pure over the page's own read, so it adds none.
+
+#### B.6 Elsewhere
+
+- The products grid (D165) and the order, draft and exchange editors list a product's variants as they did; a product of thousands of
+  variants is searched by SKU there, as it is today.
+- The feed is one item per variant (D302), so a 2,048-variant product is 2,048 items; JSON-LD's `ProductGroup` lists every variant, as
+  Google's guidance for variant groups asks.
+- Parity: `catalogue.products-with-variants-and-options-limits` closes with B3, its evidence the tests above.
 
 ### Unit C (D321): B2B in depth
 

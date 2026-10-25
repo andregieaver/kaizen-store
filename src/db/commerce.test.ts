@@ -6467,3 +6467,35 @@ describe("saved addresses (D304)", () => {
     expect(n).toBe(0);
   });
 });
+
+describe("variants at scale (wave 6 unit B, D320)", () => {
+  it("refuses at commit a product with more than 2,048 variants for sale, counting switched-off ones as history", async () => {
+    const storeId = await createStore("variants-store", ["NO"]);
+    const { productId } = await createProduct({ storeId });
+    const add = (from: number, to: number, active: boolean) =>
+      db.query(
+        `insert into commerce.product_variants (store_id, product_id, sku, active)
+         select $1, $2, 'V-' || n, $5 from generate_series($3::int, $4::int) n`,
+        [storeId, productId, from, to, active],
+      );
+    // 2,047 more beside the first is 2,048: allowed, and so are switched-off ones past it.
+    await db.transaction(async (tx) => {
+      await tx.query(
+        `insert into commerce.product_variants (store_id, product_id, sku) select $1, $2, 'V-' || n from generate_series(2, 2048) n`,
+        [storeId, productId],
+      );
+    });
+    await add(3000, 3010, false);
+    const count = async () => (await one<{ n: number }>("select count(*)::int as n from commerce.product_variants where product_id = $1 and active", [productId])).n;
+    expect(await count()).toBe(2048);
+    // One more for sale is refused, at commit.
+    await expect(add(2049, 2049, true)).rejects.toThrow(/variants\.too_many/);
+    await expect(db.query("update commerce.product_variants set active = true where product_id = $1 and sku = 'V-3000'", [productId])).rejects.toThrow(/variants\.too_many/);
+    // Inside one transaction the count may pass the limit for a moment: a save adds new combinations before it switches off old ones.
+    await db.transaction(async (tx) => {
+      await tx.query("insert into commerce.product_variants (store_id, product_id, sku) values ($1, $2, 'V-NEW')", [storeId, productId]);
+      await tx.query("update commerce.product_variants set active = false where product_id = $1 and sku = 'V-2'", [productId]);
+    });
+    expect(await count()).toBe(2048);
+  });
+});
