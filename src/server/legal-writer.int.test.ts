@@ -174,3 +174,155 @@ describe("who may ask", () => {
     await db().execute(sql`update commerce.ai_providers set text_model = 'text-a' where store_id = ${store.storeId}::uuid`);
   });
 });
+
+describe("keeping the legal pages (L3)", () => {
+  let shop: Awaited<ReturnType<typeof newStore>>;
+  const owner = async () => {
+    const m = await passMembership(shop.slug, shop.accountId);
+    if (!m) throw new Error("no membership");
+    return m;
+  };
+  const roleOf = async (role: string) => {
+    const [row] = await db().execute<Row>(sql`select page_id from commerce.page_roles where store_id = ${shop.storeId}::uuid and role = ${role}`);
+    return row ? String(row.page_id) : null;
+  };
+  const run = (texts: SourceText[] = TEXTS) => writer.runLegalWrites({ complete: standIn(), texts, now: () => READ }, 600_000);
+  /** The upkeep as the next day's run: the store due, and earlier writes outside the day's cap (the cap has its own test). */
+  const upkeep = async (texts: SourceText[] = TEXTS, options: { sameDay?: boolean } = {}) => {
+    await db().execute(sql`update commerce.legal_ai_settings set checked_at = null where store_id = ${shop.storeId}::uuid`);
+    if (!options.sameDay) await db().execute(sql`update commerce.legal_ai_writes set created_at = created_at - interval '25 hours' where store_id = ${shop.storeId}::uuid and status not in ('queued', 'running')`);
+    return writer.runLegalUpkeep({ texts });
+  };
+
+  beforeAll(async () => {
+    shop = await newStore("legalkeep");
+    await db().execute(sql`
+      update commerce.stores set country = 'NO', legal_name = 'Holdt AS', organisation_number = '999 777 555',
+        contact_email = 'post@holdt.example', postal_address = 'Kirkegata 2, 0153 Oslo'
+      where id = ${shop.storeId}::uuid`);
+    const key = parseKey(process.env.SETTINGS_ENCRYPTION_KEY)!;
+    await db().execute(sql`
+      insert into commerce.ai_providers (store_id, provider, api_key_encrypted, api_key_hint, enabled, text_model)
+      values (${shop.storeId}::uuid, 'openai', ${encryptSecret("sk-test", key)}, 'test', true, 'text-a')`);
+  }, 120_000);
+
+  it("is turned on by an owner, who agrees to the sentence; each page it can write is published and put in its place", async () => {
+    expect(await writer.turnOnLegalAi({ ...(await owner()), role: "admin" }, "auto", READ_KEYS)).toMatchObject({ ok: false });
+    const on = await writer.turnOnLegalAi(await owner(), "auto", READ_KEYS);
+    expect(on).toMatchObject({ ok: true, queued: 6 });
+    const [settings] = await db().execute<Row>(sql`select enabled, publish, agreed from commerce.legal_ai_settings where store_id = ${shop.storeId}::uuid`);
+    expect(settings).toMatchObject({ enabled: true, publish: "auto", agreed: writer.LEGAL_AI_TERMS_VERSION });
+    await run();
+    const writes = await writer.legalWrites(shop.storeId);
+    expect(writes.returns_policy).toMatchObject({ status: "published", why: "first" });
+    expect(writes.withdrawal_info).toMatchObject({ status: "published", why: "first" });
+    // A kind with no source read yet is not written, and says why.
+    expect(writes.imprint).toMatchObject({ status: "failed", problems: ["No official source could be read for this page yet."] });
+    const returnsPage = await roleOf("returns_policy");
+    expect(returnsPage).toBe(writes.returns_policy.page!.id);
+    const [page] = await db().execute<Row>(sql`select published_at from commerce.pages where id = ${returnsPage}::uuid`);
+    expect(page.published_at).not.toBeNull();
+    // Nothing changed: the upkeep queues nothing for the pages written.
+    await upkeep();
+    expect((await writer.legalWrites(shop.storeId)).returns_policy.status).toBe("published");
+  });
+
+  it("writes a page again, as a new version at its own address, when the store's facts change", async () => {
+    const before = await roleOf("returns_policy");
+    await db().execute(sql`update commerce.stores set postal_address = 'Kirkegata 9, 0153 Oslo' where id = ${shop.storeId}::uuid`);
+    await upkeep();
+    expect((await writer.legalWrites(shop.storeId)).returns_policy).toMatchObject({ status: "queued", why: "facts_changed" });
+    await run();
+    const write = (await writer.legalWrites(shop.storeId)).returns_policy;
+    expect(write).toMatchObject({ status: "published", why: "facts_changed", page: { id: before } });
+    const [page] = await db().execute<Row>(sql`select published from commerce.pages where id = ${before}::uuid`);
+    expect(JSON.stringify(page.published)).toContain("Kirkegata 9, 0153 Oslo");
+  });
+
+  it("writes a page again when a passage of the law it cites changes, and not when another does", async () => {
+    const changed = TEXTS.map((t) => (t.sourceKey === "no-arl" ? { ...t, passages: t.passages.map((p) => (p.key === "21" ? { ...p, text: `${p.text} Endret ved lov.` } : p)) } : t));
+    await upkeep(changed);
+    const writes = await writer.legalWrites(shop.storeId);
+    expect(writes.returns_policy).toMatchObject({ status: "queued", why: "source_changed" });
+    await run(changed);
+    expect((await writer.legalWrites(shop.storeId)).returns_policy).toMatchObject({ status: "published", why: "source_changed" });
+    // Read again with the same texts, nothing has changed.
+    await upkeep(changed);
+    expect((await writer.legalWrites(shop.storeId)).returns_policy.status).toBe("published");
+  });
+
+  it("leaves a page a person changed alone and drafts beside it, until the owner hands it back", async () => {
+    const chosen = (await roleOf("returns_policy"))!;
+    await db().execute(sql`update commerce.pages set draft = jsonb_set(draft, '{title}', '"Våre returregler"') where id = ${chosen}::uuid`);
+    await db().execute(sql`update commerce.stores set postal_address = 'Kirkegata 11, 0153 Oslo' where id = ${shop.storeId}::uuid`);
+    await upkeep();
+    await run();
+    const kept = (await writer.legalWrites(shop.storeId)).returns_policy;
+    expect(kept).toMatchObject({ status: "kept", problems: expect.arrayContaining([expect.stringContaining("changed by a person")]) });
+    expect(kept.page!.id).not.toBe(chosen);
+    const [mine] = await db().execute<Row>(sql`select draft ->> 'title' as title from commerce.pages where id = ${chosen}::uuid`);
+    expect(mine.title).toBe("Våre returregler");
+    expect(await roleOf("returns_policy")).toBe(chosen);
+    // Another change writes the same draft again, not a second one beside the person's page.
+    await db().execute(sql`update commerce.stores set postal_address = 'Kirkegata 12, 0153 Oslo' where id = ${shop.storeId}::uuid`);
+    await upkeep();
+    await run();
+    const again = (await writer.legalWrites(shop.storeId)).returns_policy;
+    expect(again).toMatchObject({ status: "kept", page: { id: kept.page!.id } });
+    const [draft] = await db().execute<Row>(sql`select draft from commerce.pages where id = ${kept.page!.id}::uuid`);
+    expect(JSON.stringify(draft.draft)).toContain("Kirkegata 12");
+    // Handed back, it writes over the chosen page.
+    expect(await writer.handBackLegalPage(await owner(), "returns_policy", READ_KEYS)).toMatchObject({ ok: true });
+    await run();
+    expect((await writer.legalWrites(shop.storeId)).returns_policy).toMatchObject({ status: "published", page: { id: chosen } });
+  });
+
+  it("keeps pages as drafts when the owner chooses so", async () => {
+    await writer.setLegalAiPublish(await owner(), "ask");
+    await db().execute(sql`update commerce.stores set postal_address = 'Kirkegata 13, 0153 Oslo' where id = ${shop.storeId}::uuid`);
+    await upkeep();
+    await run();
+    const write = (await writer.legalWrites(shop.storeId)).returns_policy;
+    expect(write.status).toBe("written");
+    const [page] = await db().execute<Row>(sql`select published, draft from commerce.pages where id = ${write.page!.id}::uuid`);
+    expect(JSON.stringify(page.draft)).toContain("Kirkegata 13");
+    expect(JSON.stringify(page.published)).not.toContain("Kirkegata 13");
+    await writer.setLegalAiPublish(await owner(), "auto");
+  });
+
+  it("writes no page the owner stopped, and nothing once turned off", async () => {
+    await writer.stopLegalPage(await owner(), "withdrawal_info");
+    await db().execute(sql`update commerce.stores set postal_address = 'Kirkegata 15, 0153 Oslo' where id = ${shop.storeId}::uuid`);
+    await upkeep();
+    const writes = await writer.legalWrites(shop.storeId);
+    expect(writes.returns_policy).toMatchObject({ status: "queued" });
+    expect(writes.withdrawal_info.status).not.toBe("queued");
+    // Turned off before the queued write runs: it is not written.
+    await writer.turnOffLegalAi(await owner());
+    expect((await writer.legalWrites(shop.storeId)).returns_policy).toMatchObject({ status: "failed", problems: ["Turned off before it was written."] });
+    expect(await upkeep()).toMatchObject({ stores: 0, queued: 0 });
+  });
+
+  it("queues at most a day's writes", async () => {
+    await writer.turnOnLegalAi(await owner(), "auto", READ_KEYS);
+    await run();
+    // Each change of facts within the same day queues the needed pages again, until the cap.
+    let queued = 0;
+    for (let n = 0; n < 6; n++) {
+      await db().execute(sql`update commerce.stores set postal_address = ${`Kirkegata ${20 + n}, 0153 Oslo`} where id = ${shop.storeId}::uuid`);
+      queued += (await upkeep(TEXTS, { sameDay: true })).queued;
+      await run();
+    }
+    const [{ n: today }] = await db().execute<{ n: string }>(sql`
+      select count(*)::text as n from commerce.legal_ai_writes where store_id = ${shop.storeId}::uuid and why <> 'asked' and created_at > now() - interval '24 hours'`);
+    expect(Number(today)).toBe(writer.LEGAL_WRITES_PER_DAY);
+    expect(queued).toBeLessThan(6 * 5);
+    await writer.turnOffLegalAi(await owner());
+  });
+
+  it("is told to the AI manager, read only", async () => {
+    const status = await writer.legalStatusTool({ store: (await owner()).store });
+    expect(status).toMatchObject({ on: false, pages: expect.arrayContaining([expect.objectContaining({ kind: "withdrawal_info", stopped: true })]) });
+    expect(status.note).toContain("no tool changes it");
+  });
+});

@@ -97,7 +97,7 @@ async function recipientOf(r: z.output<typeof RECIPIENT>): Promise<Recipient | n
 const scopeOf = (store: Store | null, column = sql`store_id`) => (store ? sql`${column} = ${store.id}::uuid` : sql`${column} is null`);
 
 /** What the person's plans did and what waits for them, over the last days. */
-async function workFacts(who: Recipient, days: number): Promise<Pick<ReportFacts, "stepsDone" | "stepsDoneCount" | "waiting">> {
+async function workFacts(who: Recipient, days: number): Promise<Pick<ReportFacts, "stepsDone" | "stepsDoneCount" | "waiting" | "legal">> {
   const done = await typedRows(
     z.object({ title: col.text }),
     sql`
@@ -117,7 +117,24 @@ async function workFacts(who: Recipient, days: number): Promise<Pick<ReportFacts
       )::int as n
     `,
   );
-  return { stepsDone: done.slice(0, STEPS_LISTED).map((d) => d.title), stepsDoneCount: done.length, waiting: waiting?.n ?? 0 };
+  // The legal pages the AI wrote for the store in the period (D311): counts only; the Legal page says what each was.
+  const legal = who.store
+    ? await typedRow(
+        z.object({ published: col.int, drafted: col.int, failed: col.int }),
+        sql`
+          select count(*) filter (where status = 'published')::int as published,
+            count(*) filter (where status in ('written', 'kept'))::int as drafted,
+            count(*) filter (where status = 'failed')::int as failed
+          from commerce.legal_ai_writes where store_id = ${who.store.id}::uuid and finished_at > now() - make_interval(days => ${days})
+        `,
+      )
+    : null;
+  return {
+    stepsDone: done.slice(0, STEPS_LISTED).map((d) => d.title),
+    stepsDoneCount: done.length,
+    waiting: waiting?.n ?? 0,
+    ...(legal && legal.published + legal.drafted + legal.failed > 0 ? { legal } : {}),
+  };
 }
 
 /** The store's net sales and orders of the last 7 store days and the 7 before, written by code; not measured when a currency has no rate. */

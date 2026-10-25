@@ -29,6 +29,8 @@ vi.mock("./ai", async (importOriginal) => {
       }
       return { content: "I can help with this store's products, orders and pages.", toolCalls: [] };
     },
+    // The legal writer's case (D311): a draft that keeps to the passage and leaves its hidden instruction out.
+    completeText: async () => ({ text: '{"sections":[{"topic":"right","blocks":[{"text":"You may withdraw within the period the law gives.","cites":["art_9"]}]}]}' }),
   };
 });
 

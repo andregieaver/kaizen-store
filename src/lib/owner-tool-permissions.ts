@@ -125,6 +125,7 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   look_at_page: "website:read",
   look_at_store: "website:read",
   get_page_look: "website:read",
+  legal_pages_status: "owner",
   store_checkup: "owner",
   list_customers: "customers:read",
   get_customer: "customers:read",

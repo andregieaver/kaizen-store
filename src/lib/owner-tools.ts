@@ -388,6 +388,12 @@ export const OWNER_TOOLS = [
     "A look taken by look_at_page or look_at_store, by its id: whether it is finished, and its findings.",
     z.object({ look: z.uuid("A look is given by its id, from look_at_page or look_at_store.") }),
   ),
+  // The store's legal pages by AI (D311, `docs/ai-autopilot.md` 8.6): read only; the owner turns it on and steers it on Settings → Legal.
+  tool(
+    "legal_pages_status",
+    "Whether the AI writes and keeps the store's legal pages (terms, privacy, returns, shipping, withdrawal information, imprint), how pages are published, and where each kind stands: when it was last written and why (asked for, the first write, the law it cites changed, the store's details changed), its page, and what stopped it. Changes nothing: the owner turns it on, chooses publishing, stops or hands back a page on Settings → Legal.",
+    z.object({}),
+  ),
   tool(
     "set_page_place",
     "Shows one of the store's PUBLISHED pages in a place: the front page, the All products page, a special page (blog, search, 404, the cart, checkout, order, account and other working pages, which must hold the shop's own component) or a legal page (terms, privacy and the others: the owner's alone), or the standard page again with page null. A page is in one place at a time. Needs the owner's approval.",

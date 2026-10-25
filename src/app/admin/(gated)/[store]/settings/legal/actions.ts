@@ -7,13 +7,14 @@ import { z } from "zod";
 import type { FormState } from "@/components/admin/action-form";
 import { adminLangOf } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
+import type { LegalMessages } from "@/lib/admin-messages/legal.en";
 import { adminText } from "@/lib/admin-text";
 import { isLegalRole } from "@/lib/legal-roles";
 import { languageNames } from "@/lib/legal-admin-words";
 import { isStarterRole } from "@/lib/legal-starters";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { createLegalStarter, setLegalRole, setTermsMode } from "@/server/legal-starters";
-import { askForLegalPage, runLegalWrites } from "@/server/legal-writer";
+import { askForLegalPage, handBackLegalPage, runLegalWrites, setLegalAiPublish, stopLegalPage, turnOffLegalAi, turnOnLegalAi } from "@/server/legal-writer";
 import { checkOwnerRole } from "@/server/permissions";
 
 /**
@@ -52,13 +53,66 @@ export async function writeWithAiAction(storeSlug: string, kind: string): Promis
   if (!member) return denied();
   const w = adminText(adminLangOf(member.account.adminLocale), "legal").ai;
   const asked = await askForLegalPage(member, kind);
-  if (!asked.ok) {
-    const reason = asked.problems[0];
-    return refused([reason === "country" || reason === "ai" || reason === "sources" ? w.unavailable[reason] : reason]);
-  }
+  if (!asked.ok) return aiRefused(asked.problems, w);
   if (!asked.already) after(() => runLegalWrites({}, 240_000));
   refresh();
   return { status: "ok", messages: [asked.already ? w.already : w.asked] };
+}
+
+/** A refusal of the writer's in the account's words: the three reasons it cannot write have words of their own. */
+const aiRefused = (problems: readonly string[], w: LegalMessages["ai"]) =>
+  refused(problems.map((p) => (p === "country" || p === "ai" || p === "sources" ? w.unavailable[p] : p)));
+
+/** Turns on the AI's legal pages (D311, unit L3), with the owner's choice of publishing; the first writes start after the answer. */
+export async function turnOnLegalAiAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const member = await checkOwnerRole(storeSlug);
+  if (!member) return denied();
+  const w = adminText(adminLangOf(member.account.adminLocale), "legal").ai;
+  const result = await turnOnLegalAi(member, String(formData.get("publish") ?? ""));
+  if (!result.ok) return aiRefused(result.problems, w);
+  if (result.queued > 0) after(() => runLegalWrites({}, 240_000));
+  refresh();
+  return { status: "ok", messages: [w.on.turnedOn] };
+}
+
+export async function turnOffLegalAiAction(storeSlug: string): Promise<FormState> {
+  const member = await checkOwnerRole(storeSlug);
+  if (!member) return denied();
+  const result = await turnOffLegalAi(member);
+  if (!result.ok) return refused(result.problems);
+  refresh();
+  return { status: "ok", messages: [adminText(adminLangOf(member.account.adminLocale), "legal").ai.on.turnedOff] };
+}
+
+export async function setLegalAiPublishAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const member = await checkOwnerRole(storeSlug);
+  if (!member) return denied();
+  const result = await setLegalAiPublish(member, String(formData.get("publish") ?? ""));
+  if (!result.ok) return refused(result.problems);
+  refresh();
+  return { status: "ok", messages: [adminText(adminLangOf(member.account.adminLocale), "legal").ai.on.saved] };
+}
+
+/** Stops the AI writing one kind of page until it is handed back. */
+export async function stopLegalPageAction(storeSlug: string, kind: string): Promise<FormState> {
+  const member = await checkOwnerRole(storeSlug);
+  if (!member) return denied();
+  const result = await stopLegalPage(member, kind);
+  if (!result.ok) return refused(result.problems);
+  refresh();
+  return { status: "ok", messages: [adminText(adminLangOf(member.account.adminLocale), "legal").ai.stoppedDone] };
+}
+
+/** Hands a kind of page back to the AI: written again, over the page chosen for it. */
+export async function handBackLegalPageAction(storeSlug: string, kind: string): Promise<FormState> {
+  const member = await checkOwnerRole(storeSlug);
+  if (!member) return denied();
+  const w = adminText(adminLangOf(member.account.adminLocale), "legal").ai;
+  const result = await handBackLegalPage(member, kind);
+  if (!result.ok) return aiRefused(result.problems, w);
+  after(() => runLegalWrites({}, 240_000));
+  refresh();
+  return { status: "ok", messages: [w.handedBack] };
 }
 
 /** Chooses one of the store's published pages for a legal role, or none. */

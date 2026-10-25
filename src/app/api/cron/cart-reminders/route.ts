@@ -23,7 +23,7 @@ import { runFollowUps } from "@/server/follow-up-runner";
 import { sendAutopilotReports } from "@/server/autopilot-reports";
 import { invoiceJobs } from "@/server/invoice-issue";
 import { readDueLegalSources } from "@/server/legal-sources";
-import { runLegalWrites } from "@/server/legal-writer";
+import { runLegalUpkeep, runLegalWrites } from "@/server/legal-writer";
 import { runPaymentJobs } from "@/server/payment-disputes";
 import { pruneReplications } from "@/server/replicate-store";
 import { runReturnJobs } from "@/server/return-jobs";
@@ -135,7 +135,9 @@ async function dispatch() {
     autopilotReports: () => sendAutopilotReports(),
     // The official legal texts the AI's legal pages rest on (D311): a few due reads, each source a week after its last good read.
     legalSources: () => readDueLegalSources(),
-    // Legal pages the AI is writing (D311): what the press's own run did not finish, a language at a time.
+    // Legal pages the AI keeps (D311): stores with it on compared with their facts and the law daily, a write queued for each page that needs one.
+    legalUpkeep: () => runLegalUpkeep(),
+    // Legal pages the AI is writing (D311): what a press's own run did not finish and the upkeep's writes, a language at a time.
     legalWrites: () => runLegalWrites({}, 120_000),
   });
   // Installed themes that follow updates and are behind their theme's latest version (D245); the stores' pages then show it.

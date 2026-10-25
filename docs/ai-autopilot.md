@@ -597,7 +597,7 @@ instruction (the canary must not appear in the page).
   nothing on pages.
 - **L2, the writer** (built, 8.11): plan, prompt, `checkLegalDraft()`, the form and Sources section; *Write with AI* on the Legal page makes a
   draft of one kind (never published), so the result can be read before anything is automatic.
-- **L3, kept current**: turning it on, publishing, `runLegalUpkeep()`, the Legal page's lines, `legal_pages_status`, the report.
+- **L3, kept current** (built, 8.12): turning it on, publishing, `runLegalUpkeep()`, the Legal page's lines, `legal_pages_status`, the report.
 
 ### 8.9 Decided by the owner (2026-10-25)
 
@@ -657,6 +657,41 @@ instruction (the canary must not appear in the page).
   (`legal-source-text`).
 - Tested with a stand-in model (`legal-writer.test.ts`, `legal-writer.int.test.ts`, `legal-pages-panel.test.ts`); no real model has written a
   page here, as this sandbox has no AI key. Migrations `20261025171423_legal_ai_writes` and `20261025171450_legal_ai_writes_rules`.
+
+### 8.12 As built: L3 (2026-10-25)
+
+- **Turning it on** (`turnOnLegalAi()`, owners only): the sentence of 8.6 and the publish choice (*Publish each page once it passes the
+  checks*, the default, or *Keep each page as a draft for me to publish*) on the Legal page; `commerce.legal_ai_settings` (one row a store:
+  on, `publish`, `agreed` = `LEGAL_AI_TERMS_VERSION`, who and when, the stopped kinds, when the upkeep last compared) is written only by
+  `src/server/legal-writer.ts`, audit `store.legal_ai_on`, `_off`, `_publish`, `_stopped`, `_handed_back`. Turning on queues the first writes
+  at once; turning off fails the queued writes that were not asked for (*Turned off before it was written.*) and leaves every page as it is.
+  A store copy does not carry it (`never`); it is staff data in the register (`turned_on_by`).
+- **Where a write goes** (`savePageOf()`): into the kind's page as a new version at its address when the page is the AI's and nobody changed
+  it since (a write of the store saved exactly the draft it holds, `saved_hash`), or when the owner handed it back (`overwrite`); otherwise a
+  draft beside it (`kept`, the person's page untouched and still chosen), and a later write of that kind writes the same draft again while
+  it stays as the AI left it (`draftBeside()`), so a person's page never collects drafts. A kind with no page gets the new page in its place
+  once it is published (`setLegalRole()`). Published when the store has it on with `auto`, no fact is missing (`[[Add: …]]`) and the page is in
+  no running A/B test; a publish `savePage()` refuses leaves the draft and says why. Statuses `written`, `published`, `kept`; each finished
+  write keeps the passages it cited with their hashes (`sources`) and the facts' hash (`facts_hash`).
+- **Kept current** (`runLegalUpkeep()`, the five-minute dispatcher's `legalUpkeep`): a few open, real stores with it on whose last comparison
+  is older than `UPKEEP_EVERY_HOURS` (24), claimed with `for update skip locked`, each in the name of the owner who turned it on, read again
+  (`passMembership()`; no longer an owner: skipped and logged). For each kind the store needs (`legalRoleNeeded()`) and the owner did not stop:
+  `first` (never written, or the last write failed), `facts_changed` (`factsHash()` of the facts and languages differs) or `source_changed`
+  (a cited passage reads differently in `currentLegalTexts()`, `passageHash()` after `normalisedLegalText()`; a source not read is no evidence
+  of a change). At most `LEGAL_WRITES_PER_DAY` (12) a store in 24 hours besides the owner's own presses. The weekly reads of 8.10 keep the
+  texts fresh; writes run in `runLegalWrites()` as in L2, and a write for a store that turned it off or stopped the kind since is not run.
+- **The Legal page**: *Written by AI* shows since when and how pages are published, the choice to change and *Turn off*; each kind has *Write
+  with AI* / *Write again*, *Stop writing this page*, and *Hand back to AI* where it is stopped or a draft was kept beside a person's page; the
+  line says published, a draft, a draft beside the person's page, or why not, and why it was written (asked, first, a source changed, the
+  store's details changed). While it is on, the starters' review notice is not shown. Words in the `legal` catalogue (en, nb).
+- **The AI manager**: `legal_pages_status` (owner, read-only, ungated): on or off, the publish choice, the stopped kinds and each kind's
+  newest write. Turning it on, the publish choice, stopping and handing back stay the owner's on the page.
+- **The report**: the autopilot's digest and weekly report carry *Legal pages by the AI: n published, n drafts, n not written* for the
+  period (`ReportFacts.legal`, counted by `workFacts()` from `legal_ai_writes` by `finished_at`); a period with legal writes is worth a digest.
+- Tested with the stand-in model (`legal-writer.int.test.ts`: turning on publishes into the roles; facts and a cited passage changing write
+  again at the same address, another passage does not; a person's page kept with one draft beside it until handed back; `ask` keeps drafts;
+  a stopped kind and a store turned off are not written; the day's cap), `legal-pages-panel.test.ts` and `autopilot-report.test.ts`.
+  Migrations `20261025175423_legal_ai_settings` and `20261025175447_legal_ai_settings_rules`.
 
 ## 9. Unit C (D310): eyes
 

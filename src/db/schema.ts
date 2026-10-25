@@ -13144,6 +13144,14 @@ export const legalAiWrites = commerce.table(
     model: text("model"),
     /** Why the write failed, or what a language could not do (`string[]`). */
     problems: jsonb("problems"),
+    /** The passages the page cites, each with the hash of its text as written from (`{ source, passage, language, hash }[]`), for the upkeep. */
+    sources: jsonb("sources"),
+    /** The hash of the store's facts the page was written from. */
+    factsHash: text("facts_hash"),
+    /** md5 of the page's draft as this write saved it: a page whose draft still has it was not changed by a person since. */
+    savedHash: text("saved_hash"),
+    /** The owner handed the page back: this write may write over the role's page even if a person changed it. */
+    overwrite: boolean("overwrite").notNull().default(false),
     claimedUntil: timestamp("claimed_until", { withTimezone: true }),
     createdAt: createdAt(),
     finishedAt: timestamp("finished_at", { withTimezone: true }),
@@ -13156,7 +13164,35 @@ export const legalAiWrites = commerce.table(
     uniqueIndex("legal_ai_writes_active_idx").on(t.storeId, t.role).where(sql`${t.status} in ('queued', 'running')`),
     check("legal_ai_writes_role", sql`${t.role} in ('terms', 'privacy', 'returns_policy', 'shipping_policy', 'withdrawal_info', 'imprint')`),
     check("legal_ai_writes_why", sql`${t.why} in ('asked', 'first', 'source_changed', 'facts_changed')`),
-    check("legal_ai_writes_status", sql`${t.status} in ('queued', 'running', 'written', 'failed')`),
+    check("legal_ai_writes_status", sql`${t.status} in ('queued', 'running', 'written', 'published', 'kept', 'failed')`),
+  ],
+);
+
+/**
+ * A store's choice to have the AI write and keep its legal pages (D311, unit L3, `docs/ai-autopilot.md` 8.6): on or off, whether a page that
+ * passes the checks is published at once (`auto`) or left a draft (`ask`), the version of the sentence the owner agreed to, and the kinds the
+ * owner stopped. Written only by `src/server/legal-writer.ts`; `never` copied (a copy agrees for itself).
+ */
+export const legalAiSettings = commerce.table(
+  "legal_ai_settings",
+  {
+    storeId: uuid("store_id")
+      .primaryKey()
+      .references(() => stores.id, { onDelete: "cascade" }),
+    enabled: boolean("enabled").notNull().default(false),
+    publish: text("publish").notNull().default("auto"),
+    /** The version of the sentence the owner agreed to when turning it on (`LEGAL_AI_TERMS_VERSION`). */
+    agreed: text("agreed"),
+    turnedOnBy: uuid("turned_on_by").references(() => accounts.id, { onDelete: "set null" }),
+    turnedOnAt: timestamp("turned_on_at", { withTimezone: true }),
+    stoppedRoles: text("stopped_roles").array().notNull().default(sql`'{}'::text[]`),
+    /** When the upkeep last compared the store's facts and sources with its pages. */
+    checkedAt: timestamp("checked_at", { withTimezone: true }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("legal_ai_settings_account_idx").on(t.turnedOnBy),
+    check("legal_ai_settings_publish", sql`${t.publish} in ('auto', 'ask')`),
   ],
 );
 

@@ -267,6 +267,7 @@ export const assistantNb: AssistantMessages = {
     look_at_page: "Ser på siden",
     look_at_store: "Ser på butikken",
     get_page_look: "Leser hva gjennomgangen fant",
+    legal_pages_status: "Ser på de juridiske sidene",
     store_checkup: "Sjekker butikken",
     get_tax_profile: "Leser avgiftsinnstillingene",
     tax_readiness: "Sjekker hva mva.-funksjonene trenger",

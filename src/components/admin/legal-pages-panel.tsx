@@ -18,7 +18,13 @@ type Action = (state: FormState, formData: FormData) => Promise<FormState>;
 type KindAction = (kind: string, ...rest: Parameters<Action>) => ReturnType<Action>;
 
 /** Whether the AI can write the store's legal pages (D311, unit L2), why not, and its newest write of each kind. */
-export type LegalAiState = { available: boolean; reason: "country" | "ai" | "sources" | null; writes: Record<string, LegalWriteState> };
+export type LegalAiState = {
+  available: boolean;
+  reason: "country" | "ai" | "sources" | null;
+  writes: Record<string, LegalWriteState>;
+  /** The owner's choice (D311, unit L3); off unless turned on. */
+  settings: { enabled: boolean; publish: "auto" | "ask"; turnedOnAt: string | null; stoppedRoles: string[] };
+};
 
 const field = "min-h-10 rounded-md border border-line bg-card px-3 text-sm font-normal";
 
@@ -60,6 +66,11 @@ export function LegalPagesPanel({
     setRole: KindAction;
     setTerms: Action;
     writeWithAi?: KindAction;
+    turnOn?: Action;
+    turnOff?: Action;
+    setPublish?: Action;
+    stop?: KindAction;
+    handBack?: KindAction;
   };
   /** The words, in the account's language (D312 A8); English unless given. */
   words?: LegalMessages;
@@ -68,6 +79,7 @@ export function LegalPagesPanel({
   const w = words.pages;
   const a = words.ai;
   const writing = ai ? Object.values(ai.writes).some((write) => write.status === "queued" || write.status === "running") : false;
+  const on = Boolean(ai?.settings.enabled);
   const t = words.terms;
   const roleName = (role: string, fallback: string) => (isLegalRole(role) ? w.roles[role].name : fallback);
   const base = `/admin/${storeSlug}`;
@@ -80,20 +92,55 @@ export function LegalPagesPanel({
 
   return (
     <div className="flex flex-col gap-8">
-      <p role="note" className="rounded-panel border border-line bg-card p-4 text-sm">
-        <strong className="font-medium">{w.reviewLead}</strong> {w.notice}
-      </p>
+      {!on && (
+        <p role="note" className="rounded-panel border border-line bg-card p-4 text-sm">
+          <strong className="font-medium">{w.reviewLead}</strong> {w.notice}
+        </p>
+      )}
 
       {ai && (
-        <section aria-labelledby="ai-heading" className={`p-4 text-sm ${CARD_CLASS}`}>
-          <h2 id="ai-heading" className="mb-1 text-title text-ink">
+        <section aria-labelledby="ai-heading" className={`flex flex-col gap-3 p-4 text-sm ${CARD_CLASS}`}>
+          <h2 id="ai-heading" className="text-title text-ink">
             {a.title}
           </h2>
-          <p className="text-muted">{a.intro}</p>
-          {!ai.available && ai.reason && (
-            <p role="note" className="mt-2">
-              {a.unavailable[ai.reason]}
+          {on ? (
+            <p>
+              {ai.settings.turnedOnAt && fillWords(a.on.since, { date: new Intl.DateTimeFormat(lang === "nb" ? "nb-NO" : "en-GB", { dateStyle: "long" }).format(new Date(ai.settings.turnedOnAt)) })}{" "}
+              {ai.settings.publish === "auto" ? a.on.autoLine : a.on.askLine}
             </p>
+          ) : (
+            <>
+              <p>
+                <strong className="font-medium">{a.on.lead}</strong> {a.on.sentence}
+              </p>
+              <p className="text-muted">{a.intro}</p>
+            </>
+          )}
+          {!ai.available && ai.reason && <p role="note">{a.unavailable[ai.reason]}</p>}
+          {ai.available && !on && actions.turnOn && (
+            <ActionForm action={actions.turnOn} className="flex flex-col gap-3">
+              <PublishChoice words={words} chosen={ai.settings.publish} />
+              <div>
+                <SubmitButton>{a.on.turnOn}</SubmitButton>
+              </div>
+            </ActionForm>
+          )}
+          {on && (
+            <div className="flex flex-wrap items-end gap-6">
+              {actions.setPublish && (
+                <ActionForm action={actions.setPublish} className="flex flex-col gap-3">
+                  <PublishChoice words={words} chosen={ai.settings.publish} />
+                  <div>
+                    <SubmitButton variant="secondary">{a.on.save}</SubmitButton>
+                  </div>
+                </ActionForm>
+              )}
+              {actions.turnOff && (
+                <ActionForm action={actions.turnOff}>
+                  <SubmitButton variant="secondary">{a.on.turnOff}</SubmitButton>
+                </ActionForm>
+              )}
+            </div>
           )}
           {writing && <RefreshWhile seconds={10} />}
         </section>
@@ -163,15 +210,14 @@ export function LegalPagesPanel({
                   </div>
                 </ActionForm>
               ) : null}
-              {entry.starter && ai?.available && actions.writeWithAi && !isActive(ai.writes[entry.role]) && (
-                <ActionForm action={actions.writeWithAi.bind(null, entry.role)} className="flex flex-col gap-1">
-                  <div>
-                    <SubmitButton variant="secondary">
-                      {ai.writes[entry.role] ? a.writeAgain : a.write}
-                      <span className="sr-only">{fillWords(a.writeOf, { name: roleName(entry.role, entry.name) })}</span>
-                    </SubmitButton>
-                  </div>
-                </ActionForm>
+              {entry.starter && ai?.available && !isActive(ai.writes[entry.role]) && (
+                <AiButtons
+                  role={entry.role}
+                  name={roleName(entry.role, entry.name)}
+                  ai={ai}
+                  words={words}
+                  actions={{ write: actions.writeWithAi, stop: actions.stop, handBack: actions.handBack }}
+                />
               )}
               {!entry.starter && (
                 <p className="text-sm">
@@ -181,6 +227,11 @@ export function LegalPagesPanel({
                 </p>
               )}
             </div>
+            {ai?.settings.stoppedRoles.includes(entry.role) && (
+              <p role="note" className="mt-3 text-sm">
+                {a.stoppedLine}
+              </p>
+            )}
             {ai?.writes[entry.role] && <WriteLine write={ai.writes[entry.role]} words={words} lang={lang} base={base} />}
             {entry.draft && (
               <p className="mt-3 text-sm text-muted">
@@ -242,6 +293,7 @@ function WriteLine({ write, words, lang, base }: { write: LegalWriteState; words
       </p>
     );
   }
+  const because = write.status === "written" || write.status === "published" || write.status === "kept" ? ` ${a.because[write.why]}` : "";
   if (write.status === "failed") {
     return (
       <p role="status" className="mt-3 text-sm">
@@ -252,13 +304,14 @@ function WriteLine({ write, words, lang, base }: { write: LegalWriteState; words
   }
   return (
     <p role="status" className="mt-3 text-sm">
-      {a.ready}
+      {write.status === "published" ? a.published : write.status === "kept" ? a.kept : a.ready}
       {write.page ? (
         <Link href={`${base}/pages/${write.page.id}`} className="underline">
           {write.page.title}
         </Link>
       ) : null}
       . {write.languages.length > 0 && fillWords(a.readyIn, { languages: languageNames(write.languages, lang) })}
+      {because}
       {write.problems.length > 0 && (
         <>
           {" "}
@@ -267,5 +320,69 @@ function WriteLine({ write, words, lang, base }: { write: LegalWriteState; words
         </>
       )}
     </p>
+  );
+}
+
+/** The two ways a page may be published, the store's choice checked. */
+function PublishChoice({ words, chosen }: { words: LegalMessages; chosen: "auto" | "ask" }) {
+  const o = words.ai.on;
+  return (
+    <fieldset className="flex flex-col gap-2">
+      <legend className="mb-1 text-sm font-medium">{o.legend}</legend>
+      {(["auto", "ask"] as const).map((mode) => (
+        <label key={mode} className="flex items-center gap-2 text-sm">
+          <input type="radio" name="publish" value={mode} defaultChecked={chosen === mode} className="size-4" />
+          {mode === "auto" ? o.publishAuto : o.publishAsk}
+        </label>
+      ))}
+    </fieldset>
+  );
+}
+
+/** Write (again), stop or hand back one kind of page, as its state allows. */
+function AiButtons({
+  role,
+  name,
+  ai,
+  words,
+  actions,
+}: {
+  role: string;
+  name: string;
+  ai: LegalAiState;
+  words: LegalMessages;
+  actions: { write?: KindAction; stop?: KindAction; handBack?: KindAction };
+}) {
+  const a = words.ai;
+  const stopped = ai.settings.stoppedRoles.includes(role);
+  const kept = ai.writes[role]?.status === "kept";
+  const label = <span className="sr-only">{fillWords(a.writeOf, { name })}</span>;
+  return (
+    <div className="flex flex-wrap gap-2">
+      {!stopped && actions.write && (
+        <ActionForm action={actions.write.bind(null, role)}>
+          <SubmitButton variant="secondary">
+            {ai.writes[role] ? a.writeAgain : a.write}
+            {label}
+          </SubmitButton>
+        </ActionForm>
+      )}
+      {(stopped || kept) && actions.handBack && (
+        <ActionForm action={actions.handBack.bind(null, role)}>
+          <SubmitButton variant="secondary">
+            {a.handBack}
+            {label}
+          </SubmitButton>
+        </ActionForm>
+      )}
+      {ai.settings.enabled && !stopped && actions.stop && (
+        <ActionForm action={actions.stop.bind(null, role)}>
+          <SubmitButton variant="secondary">
+            {a.stop}
+            {label}
+          </SubmitButton>
+        </ActionForm>
+      )}
+    </div>
   );
 }

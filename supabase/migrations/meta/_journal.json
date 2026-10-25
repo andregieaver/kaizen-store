@@ -3221,6 +3221,20 @@
       "when": 1792948490791,
       "tag": "20261025171450_legal_ai_writes_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 460,
+      "version": "7",
+      "when": 1792950863398,
+      "tag": "20261025175423_legal_ai_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 461,
+      "version": "7",
+      "when": 1792950887273,
+      "tag": "20261025175447_legal_ai_settings_rules",
+      "breakpoints": true
     }
   ]
 }

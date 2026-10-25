@@ -4,11 +4,21 @@ import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { LegalPagesPanel } from "@/components/admin/legal-pages-panel";
 import { legalOverview } from "@/server/legal-starters";
-import { legalWriterAvailability, legalWrites } from "@/server/legal-writer";
+import { legalAiSettings, legalWriterAvailability, legalWrites } from "@/server/legal-writer";
 import { requireOwnerRole } from "@/server/permissions";
 import { PageHeader } from "@/components/admin/ui";
 
-import { createStarterAction, setLegalRoleAction, setTermsModeAction, writeWithAiAction } from "./actions";
+import {
+  createStarterAction,
+  handBackLegalPageAction,
+  setLegalAiPublishAction,
+  setLegalRoleAction,
+  setTermsModeAction,
+  stopLegalPageAction,
+  turnOffLegalAiAction,
+  turnOnLegalAiAction,
+  writeWithAiAction,
+} from "./actions";
 
 export const metadata: Metadata = { title: "Legal pages" };
 
@@ -21,7 +31,12 @@ export const maxDuration = 300;
  */
 export default async function LegalPagesPage({ params }: PageProps<"/admin/[store]/settings/legal">) {
   const member = await requireOwnerRole((await params).store);
-  const [overview, available, writes] = await Promise.all([legalOverview(member), legalWriterAvailability(member.store), legalWrites(member.store.id)]);
+  const [overview, available, writes, settings] = await Promise.all([
+    legalOverview(member),
+    legalWriterAvailability(member.store),
+    legalWrites(member.store.id),
+    legalAiSettings(member.store.id),
+  ]);
   const lang = adminLangOf(member.account.adminLocale);
   const words = adminText(lang, "legal");
   const slug = member.store.slug;
@@ -33,7 +48,12 @@ export default async function LegalPagesPage({ params }: PageProps<"/admin/[stor
       />
       <LegalPagesPanel
         overview={overview}
-        ai={{ available: available.ok, reason: available.ok ? null : available.reason, writes }}
+        ai={{
+          available: available.ok,
+          reason: available.ok ? null : available.reason,
+          writes,
+          settings: { ...settings, turnedOnAt: settings.turnedOnAt ? settings.turnedOnAt.toISOString() : null },
+        }}
         storeSlug={slug}
         words={words}
         lang={lang}
@@ -42,6 +62,11 @@ export default async function LegalPagesPage({ params }: PageProps<"/admin/[stor
           setRole: setLegalRoleAction.bind(null, slug),
           setTerms: setTermsModeAction.bind(null, slug),
           writeWithAi: writeWithAiAction.bind(null, slug),
+          turnOn: turnOnLegalAiAction.bind(null, slug),
+          turnOff: turnOffLegalAiAction.bind(null, slug),
+          setPublish: setLegalAiPublishAction.bind(null, slug),
+          stop: stopLegalPageAction.bind(null, slug),
+          handBack: handBackLegalPageAction.bind(null, slug),
         }}
       />
     </div>

@@ -51,7 +51,30 @@ export type DraftBuilder = (language: StarterLanguage, id: () => string, transla
  */
 export async function makeDraftPage(member: Membership, build: DraftBuilder): Promise<StarterOutcome & { title?: string }> {
   const { store, account } = member;
-  const languages = await ownerLanguages(store.id);
+  const built = await draftContent(store.id, build);
+  if (!built.ok) return built;
+  const { content, starter } = built;
+  let made: Awaited<ReturnType<typeof savePage>> | null = null;
+  let slug = starter.slug;
+  for (let n = 1; n <= 8; n++) {
+    slug = n === 1 ? starter.slug : `${starter.slug}-${n}`;
+    made = await savePage(account, store.id, null, { ...content, slug }, { publish: false, type: "page" });
+    if (made.ok || !made.problems.some((p) => /address|slug/i.test(p))) break;
+  }
+  if (!made || !made.ok) return { ok: false, problems: made ? made.problems : ["The page could not be made."] };
+  refreshTag(pagesTag(store.id));
+  return { ok: true, id: made.id, slug, language: built.language, translations: built.translations, translatedNotice: built.translatedNotice, title: starter.title };
+}
+
+/**
+ * The content of a page built in the store's main language (one of the four, else English) with its other languages among the four as texts
+ * of the same blocks (D55): what `makeDraftPage()` saves, and what the AI's legal pages (D311, unit L3) write into an existing page.
+ */
+export async function draftContent(
+  storeId: string,
+  build: DraftBuilder,
+): Promise<{ ok: true; content: PageContent; starter: StarterPage; language: StarterLanguage; translations: string[]; translatedNotice: boolean } | { ok: false; problems: string[] }> {
+  const languages = await ownerLanguages(storeId);
   const main = languages[0];
   if (!main) return { ok: false, problems: ["The store has no language yet."] };
   const mainLanguage = starterLanguageOf(main.locale);
@@ -83,17 +106,7 @@ export async function makeDraftPage(member: Membership, build: DraftBuilder): Pr
       written.push(other.locale);
     }
   }
-
-  let made: Awaited<ReturnType<typeof savePage>> | null = null;
-  let slug = starter.page.slug;
-  for (let n = 1; n <= 8; n++) {
-    slug = n === 1 ? starter.page.slug : `${starter.page.slug}-${n}`;
-    made = await savePage(account, store.id, null, { ...content, slug }, { publish: false, type: "page" });
-    if (made.ok || !made.problems.some((p) => /address|slug/i.test(p))) break;
-  }
-  if (!made || !made.ok) return { ok: false, problems: made ? made.problems : ["The page could not be made."] };
-  refreshTag(pagesTag(store.id));
-  return { ok: true, id: made.id, slug, language, translations: written, translatedNotice: mainLanguage === null, title: starter.page.title };
+  return { ok: true, content, starter: starter.page, language, translations: written, translatedNotice: mainLanguage === null };
 }
 
 /** Makes a draft starter page of one kind from the store's own facts. Audit-logged as `store.legal_starter_made`. */

@@ -381,6 +381,7 @@ export const TOOL_WORDS: Record<string, string> = {
   look_at_page: "Looking at the page",
   look_at_store: "Looking at the store",
   get_page_look: "Reading what the look found",
+  legal_pages_status: "Looking at the legal pages",
   store_checkup: "Checking the store",
   get_tax_profile: "Reading the tax settings",
   tax_readiness: "Checking what the VAT features need",

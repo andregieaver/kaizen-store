@@ -215,6 +215,7 @@ export const staffEmailsNb: StaffEmailsMessages = {
     goals: "Mål",
     goalLine: "{met} av {all} delmål nådd",
     stepsWeek: "Steg gjort denne uken",
+    legal: "Juridiske sider fra KI: {published} publisert, {drafted} utkast, {failed} ikke skrevet.",
     note: "Det den ser",
   },
   followUp: {

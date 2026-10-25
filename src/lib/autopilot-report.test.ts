@@ -34,6 +34,15 @@ describe("the digest", () => {
     expect(en).toContain("https://kaizenaflow.com/admin/demo/assistant/autopilot");
     expect(text(daily, null, true)).toContain("Det autopiloten gjorde i Demo");
   });
+
+  it("says what the AI did with the legal pages (D311, L3), which is reason enough to send", () => {
+    const legal = { published: 1, drafted: 2, failed: 0 };
+    expect(digestWorthSending({ stepsDoneCount: 0, waiting: 0, legal })).toBe(true);
+    expect(digestWorthSending({ stepsDoneCount: 0, waiting: 0, legal: { published: 0, drafted: 0, failed: 0 } })).toBe(false);
+    expect(text({ ...daily, legal })).toContain("Legal pages by the AI: 1 published, 2 drafts, 0 not written.");
+    expect(text({ ...daily, legal }, null, true)).toContain("Juridiske sider fra KI: 1 publisert, 2 utkast, 0 ikke skrevet.");
+    expect(text(daily)).not.toContain("Legal pages by the AI");
+  });
 });
 
 describe("the weekly report", () => {

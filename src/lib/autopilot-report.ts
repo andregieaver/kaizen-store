@@ -25,11 +25,14 @@ export const reportFactsSchema = z.object({
   sales: z.object({ now: z.string().nullable(), before: z.string().nullable() }).optional(),
   orders: z.object({ now: z.number().int().nullable(), before: z.number().int().nullable() }).optional(),
   goals: z.array(z.object({ title: z.string(), met: z.number().int(), all: z.number().int() })).optional(),
+  /** The store's legal pages the AI wrote in the period (D311, unit L3), by outcome; left out when it wrote none. */
+  legal: z.object({ published: z.number().int().min(0), drafted: z.number().int().min(0), failed: z.number().int().min(0) }).optional(),
 });
 export type ReportFacts = z.infer<typeof reportFactsSchema>;
 
-/** Whether a digest has anything to say: a step finished or something waiting. */
-export const digestWorthSending = (facts: Pick<ReportFacts, "stepsDoneCount" | "waiting">) => facts.stepsDoneCount > 0 || facts.waiting > 0;
+/** Whether a digest has anything to say: a step finished, something waiting, or a legal page the AI wrote. */
+export const digestWorthSending = (facts: Pick<ReportFacts, "stepsDoneCount" | "waiting" | "legal">) =>
+  facts.stepsDoneCount > 0 || facts.waiting > 0 || (facts.legal ? facts.legal.published + facts.legal.drafted + facts.legal.failed > 0 : false);
 
 /**
  * A model's few sentences for the weekly report, kept only when they say no figure of their own (no digit), make no claim the filter finds and
@@ -61,13 +64,14 @@ export function autopilotEmail(
         ]
       : [{ type: "paragraph", text: w.noneDone }];
   const waiting: EmailBlock[] = facts.waiting > 0 ? [{ type: "paragraph", text: countWords(facts.waiting, w.waiting, { n: facts.waiting }) }] : [];
+  const legal: EmailBlock[] = facts.legal ? [{ type: "paragraph", text: fillWords(w.legal, facts.legal) }] : [];
   const button: EmailBlock = { type: "button", text: w.button, url };
   if (facts.kind === "daily") {
     return {
       ...base,
       subject: fillWords(w.digestSubject, { where }),
       preview: fillWords(w.digestPreview, { done: facts.stepsDoneCount, waiting: facts.waiting }),
-      blocks: [{ type: "heading", text: w.digestHeading }, ...steps, ...waiting, button],
+      blocks: [{ type: "heading", text: w.digestHeading }, ...steps, ...waiting, ...legal, button],
     };
   }
   const figure = (now: string | number | null, before: string | number | null) =>
@@ -91,6 +95,7 @@ export function autopilotEmail(
           ]
         : []),
       ...waiting,
+      ...legal,
       ...(note ? [{ type: "paragraph" as const, text: `${w.note}: ${note}` }] : []),
       button,
     ],

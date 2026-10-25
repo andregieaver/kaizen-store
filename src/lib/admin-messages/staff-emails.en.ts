@@ -218,6 +218,7 @@ export const staffEmailsEn = {
     goals: "Goals",
     goalLine: "{met} of {all} targets met",
     stepsWeek: "Steps done this week",
+    legal: "Legal pages by the AI: {published} published, {drafted} drafts, {failed} not written.",
     note: "What it sees",
   },
   /** A follow-up the AI manager was asked for has run (PSI AGT-04): never the answer's words, only where to read it. */
