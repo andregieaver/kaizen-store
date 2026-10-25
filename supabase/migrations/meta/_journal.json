@@ -3179,6 +3179,20 @@
       "when": 1792935196105,
       "tag": "20261025133316_autopilot_reports_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 454,
+      "version": "7",
+      "when": 1792939360896,
+      "tag": "20261025144240_page_looks",
+      "breakpoints": true
+    },
+    {
+      "idx": 455,
+      "version": "7",
+      "when": 1792939387572,
+      "tag": "20261025144307_page_looks_rules",
+      "breakpoints": true
     }
   ]
 }

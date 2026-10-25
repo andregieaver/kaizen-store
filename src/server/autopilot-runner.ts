@@ -242,7 +242,7 @@ async function runToolStep(plan: PlanFacts, p: Principal, step: PlanStep, settin
       if (decision.tell) told.push(tool.name);
     }
     const answer = (await actingAs("autopilot", async () => (ownerCtx ? runOwnerTool(ownerCtx, name, args) : runPlatformTool(managerCtx, name, args)))) as { done?: string } | null;
-    const outcome = await checkStep(p.store, step.check);
+    const outcome = await checkStep(p.store, step.check, { account: p.account });
     if (!outcome.ok) return (await failStep(step.id, outcome.problem)) === "asking" ? "asking" : "retried";
     const done = typeof answer?.done === "string" ? answer.done : `Ran ${name}.`;
     await completeStep(step.id, plan.id, { done: done.slice(0, 1000), tools: [name], ...(told.length && { told: [done.slice(0, 300)] }) });
@@ -263,6 +263,8 @@ export function taskMessage(planTitle: string, step: PlanStep, steps: readonly P
   return [
     `Autopilot: plan "${planTitle}", step ${step.key} "${step.title}".`,
     `Brief: ${step.spec.brief}`,
+    // A try that failed its check (a look's findings, D310) tells the next try what to fix.
+    ...(step.tries > 0 && step.result?.problem ? ["", `Your last try did not pass its check: ${step.result.problem}`] : []),
     ...(earlier.length ? ["", "Earlier steps:", ...earlier] : []),
     "",
     "Do the brief now with your tools, then say in one or two sentences what you did.",
@@ -311,7 +313,7 @@ async function runTaskStep(
     `);
     return "waiting";
   }
-  const outcome = await checkStep(p.store, step.check);
+  const outcome = await checkStep(p.store, step.check, { account: p.account });
   if (!outcome.ok) return (await failStep(step.id, outcome.problem)) === "asking" ? "asking" : "retried";
   await completeStep(step.id, plan.id, result);
   return "done";

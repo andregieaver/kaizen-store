@@ -195,6 +195,7 @@ export async function makeThemeLiveTool(ctx: DesignToolContext, args: MakeThemeL
   return {
     done: `"${title}" is live.${plan.current ? ` "${plan.current}" is kept in the theme library and can be put back from Design settings.` : ""}`,
     page: designPage(ctx.store),
+    next: "Look at the store with look_at_store to see that the home page, a product page and the cart look right.",
     ...(notes.length > 0 && { notes }),
   };
 }

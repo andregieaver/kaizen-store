@@ -42,3 +42,12 @@ export async function cronAuthorised(request: Request): Promise<boolean> {
   if (!given.startsWith("Bearer ")) return false;
   return same(given, process.env.CRON_SECRET) || same(given, await scheduledSecret());
 }
+
+/**
+ * The header a request to one of Kaizena Flow's own scheduled routes carries when the server itself asks it to run at once (a look at a page,
+ * D310): the same token the scheduler sends. Null where there is none (local databases without Vault and no `CRON_SECRET`).
+ */
+export async function cronBearer(): Promise<string | null> {
+  const secret = process.env.CRON_SECRET || (await scheduledSecret());
+  return secret ? `Bearer ${secret}` : null;
+}

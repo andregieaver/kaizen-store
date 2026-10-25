@@ -136,12 +136,12 @@ export const SITE_TOOLS = [
   ),
   tool(
     "build_page",
-    "Builds a new page as a DRAFT with the page studio, from a brief: it plans the sections from the builder's designs, writes each in the site's language, checks every word with the claims filter and saves the draft; pictures are made one at a time after, by the site's picture model. It runs after your answer and takes a minute or two: say so, and use list_page_builds to see when it is done. Give only facts the owner gave you (what they offer, how they work, opening hours, a video's address): the page states nothing else but the site's own, never a price. Publish it with publish_page once the owner has seen it.",
+    "Builds a new page as a DRAFT with the page studio, from a brief: it plans the sections from the builder's designs, writes each in the site's language, checks every word with the claims filter and saves the draft; pictures are made one at a time after, by the site's picture model. It runs after your answer and takes a minute or two: say so, and use list_page_builds to see when it is done. Give only facts the owner gave you (what they offer, how they work, opening hours, a video's address): the page states nothing else but the site's own, never a price. When list_page_builds says it is done, look at it with look_at_page and fix what it finds with edit_page; publish it with publish_page once the owner has seen it.",
     buildPageInput,
   ),
   tool(
     "edit_page",
-    "Changes a page's DRAFT, saved as the builder saves it with a version kept: set a text by its key from get_page, replace words everywhere on the page, add a section in one of the page studio's designs (its words written from your brief and the owner's facts, its picture made after), remove a row or move one. Several changes are made in order and saved together; one that cannot be made refuses them all, with why. Words in parts shared with other pages are changed in the builder. A page on the site stays as it is there until publish_page.",
+    "Changes a page's DRAFT, saved as the builder saves it with a version kept: set a text by its key from get_page, replace words everywhere on the page, add a section in one of the page studio's designs (its words written from your brief and the owner's facts, its picture made after), remove a row or move one. Several changes are made in order and saved together; one that cannot be made refuses them all, with why. Words in parts shared with other pages are changed in the builder. A page on the site stays as it is there until publish_page. After a change that moves things about, look at it again with look_at_page.",
     editPageInput,
   ),
   tool(
@@ -372,6 +372,22 @@ export const OWNER_TOOLS = [
     z.object({ type: z.enum(["page", "article"]).default("page") }),
   ),
   ...SITE_TOOLS,
+  // Eyes (D310, `docs/ai-autopilot.md` 9): photographed at a phone's and a computer's width and judged by the model that sees pictures.
+  tool(
+    "look_at_page",
+    "Looks at a page's or article's DRAFT as visitors would see it: photographed on a phone and a computer, measured by code (sideways scrolling, pictures that did not load) and judged by the store's model that sees pictures (things cut off or on top of each other, words hard to read, a missing picture, no clear next step), with the accessibility checker's blocking issues and claims in its words. Answers with the findings, or that the look is still being taken (read it with get_page_look). Changes nothing. Use it after building or changing a page and before asking to publish it; fix what blocks with edit_page and look again, at most twice: a page is looked at at most three times an hour.",
+    z.object({ page: z.string().trim().min(1).max(200).describe("The page's id or address, from list_pages."), type: z.enum(["page", "article"]).default("page") }),
+  ),
+  tool(
+    "look_at_store",
+    "Looks at the store as shoppers see it now: its home page, a product page and the cart, on a phone and a computer, measured by code and judged by the store's model that sees pictures, with the header, footer and theme in the pictures. Changes nothing. Use it after a design change (make_theme_live) to see that nothing broke.",
+    z.object({}),
+  ),
+  tool(
+    "get_page_look",
+    "A look taken by look_at_page or look_at_store, by its id: whether it is finished, and its findings.",
+    z.object({ look: z.uuid("A look is given by its id, from look_at_page or look_at_store.") }),
+  ),
   tool(
     "set_page_place",
     "Shows one of the store's PUBLISHED pages in a place: the front page, the All products page, a special page (blog, search, 404, the cart, checkout, order, account and other working pages, which must hold the shop's own component) or a legal page (terms, privacy and the others: the owner's alone), or the standard page again with page null. A page is in one place at a time. Needs the owner's approval.",

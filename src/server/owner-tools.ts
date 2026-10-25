@@ -118,6 +118,7 @@ import {
   setupProgressTool,
 } from "./setup-tools";
 import { addThemeTool, listThemesTool, makeThemeLiveTool, preflightDesignTool, tryThemeTool } from "./design-tools";
+import { getPageLookTool, lookAtPageTool, lookAtStoreTool } from "./page-looks";
 import { deliveryRounds } from "./standing-orders";
 import { listSubscriptions } from "./subscriptions";
 import { mostWishedProducts, wishlistFigures } from "./wishlist-admin";
@@ -2180,6 +2181,9 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   add_theme: (ctx: OwnerToolContext, input: OwnerToolInput<"add_theme">) => addThemeTool(ctx, input),
   try_theme: (ctx: OwnerToolContext, input: OwnerToolInput<"try_theme">) => tryThemeTool(ctx, input),
   make_theme_live: (ctx: OwnerToolContext, input: OwnerToolInput<"make_theme_live">) => makeThemeLiveTool(ctx, input),
+  look_at_page: (ctx: OwnerToolContext, input: OwnerToolInput<"look_at_page">) => lookAtPageTool(ctx, input),
+  look_at_store: (ctx: OwnerToolContext) => lookAtStoreTool(ctx),
+  get_page_look: (ctx: OwnerToolContext, input: OwnerToolInput<"get_page_look">) => getPageLookTool(ctx, input),
   store_checkup: storeCheckup,
   get_tax_profile: getTaxProfileTool,
   tax_readiness: taxReadinessTool,

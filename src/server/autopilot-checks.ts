@@ -5,7 +5,9 @@ import { z } from "zod";
 
 import type { StepCheck } from "@/lib/autopilot-plans";
 
+import type { Account } from "./auth";
 import { isDemoProduct } from "./demo-content";
+import { lookOutcome, type LookDeps } from "./page-looks";
 import { getSetupProgress } from "./setup";
 import { currentStore, type Store } from "./stores";
 import { col, typedRow } from "./typed-rows";
@@ -21,7 +23,13 @@ export type CheckOutcome = { ok: true } | { ok: false; problem: string };
 const COUNT = z.object({ n: col.int });
 const scoped = (store: Store | null, column = sql`store_id`) => (store ? sql`${column} = ${store.id}::uuid` : sql`${column} is null`);
 
-export async function checkStep(store: Store | null, check: StepCheck): Promise<CheckOutcome> {
+export type CheckOptions = {
+  /** Who the step runs for: a page check that looks (D310) asks for the look in their name. */
+  account?: Account;
+  look?: LookDeps;
+};
+
+export async function checkStep(store: Store | null, check: StepCheck, options: CheckOptions = {}): Promise<CheckOutcome> {
   switch (check.kind) {
     case "none":
       return { ok: true };
@@ -40,11 +48,14 @@ export async function checkStep(store: Store | null, check: StepCheck): Promise<
         ? sql`slug = ${check.slug.replace(/^\//, "")}`
         : sql`(lower(coalesce(published ->> 'title', '')) = lower(${check.title ?? ""}) or lower(coalesce(draft ->> 'title', '')) = lower(${check.title ?? ""}))`;
       const row = await typedRow(
-        COUNT,
-        sql`select count(*)::int as n from commerce.pages where ${scoped(store)} and type in ('page', 'article') and ${named}
-          ${check.published ? sql`and published is not null` : sql``}`,
+        z.object({ id: col.uuid }),
+        sql`select id from commerce.pages where ${scoped(store)} and type in ('page', 'article') and ${named}
+          ${check.published ? sql`and published is not null` : sql``} order by updated_at desc limit 1`,
       );
-      return (row?.n ?? 0) > 0 ? { ok: true } : { ok: false, problem: `No ${check.published ? "published " : ""}page "${check.slug ?? check.title}" was found.` };
+      if (!row) return { ok: false, problem: `No ${check.published ? "published " : ""}page "${check.slug ?? check.title}" was found.` };
+      // A look at the page's draft (D310, `docs/ai-autopilot.md` 9.5): a store's pages only.
+      if (check.looks && store && options.account) return lookOutcome((await currentStore(store.slug)) ?? store, options.account, row.id, options.look);
+      return { ok: true };
     }
     case "setup_step": {
       if (!store) return { ok: false, problem: "Kaizena Flow's own site has no setup." };

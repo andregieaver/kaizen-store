@@ -46,7 +46,7 @@ proportion (autonomy levels and budgets the owner sets), a voice (a decisions pa
 | C | D310 | Eyes: the agent photographs its drafts and judges them with the model that sees pictures | `ai.ai-page-and-theme-generation` |
 
 Each unit is its own commit (or a few), with its own tests, decision row and parity moves, shipped before the next starts. Each unit's
-section below is written in full before it is built; L and C are outlined and get their detail when their turn comes.
+section below is written in full before it is built; L is outlined and gets its detail when its turn comes.
 
 ## 2. Rules for every unit
 
@@ -479,13 +479,107 @@ with no person reviewing each text. What keeps them right is how they are made:
 The consumer texts that are part of the product itself (the withdrawal function, emails, the checkout's words, `HAND_WRITTEN_ONLY`) are not
 in this unit and stay as they are until a later decision.
 
-## 9. Unit C (D310): eyes (outline)
+## 9. Unit C (D310): eyes
 
-A signed, short-lived preview address for one draft page (as the replicator's frame, for a page id), photographed at a phone's and a
-computer's width through `looking()`, judged by the model that sees pictures (`seeing()`) against a fixed list (nothing cut off or
-overlapping, words readable on their background, pictures in place, the call to action visible), its answer read into findings by code,
-together with `pageIssues()` and `findClaims()`. A build step's check can ask for it; a page goes back for one more round at most twice.
-Store-wide: the home, a product page and the cart, photographed after a design change.
+The agent builds and changes pages, but until now it never saw one. Unit C lets it look: a page is photographed at a phone's and a computer's
+width, measured by code in the browser, and judged by the model that sees pictures against a fixed list. What it finds comes back as
+findings the agent can act on and the owner can read. A look reads and changes nothing; it costs one vision call.
+
+### 9.1 What is looked at
+
+- **A page's draft** (`look_at_page`): a store's page or article, its draft as the builder would publish it, drawn by `PageDrawing` (the
+  store's theme, fonts, header and footer are not drawn: the page alone, as the replicator's frame draws a copy). It is opened through a
+  signed address, `/admin/account/look/{page}?t=` (`signLook()` in `src/lib/page-look.ts`: a key made from `SETTINGS_ENCRYPTION_KEY` for this use alone,
+  the page's id and an expiry ten minutes away), which opens that page's draft and nothing else; `noindex`, outside the signed-in admin,
+  as the replica frame is.
+- **The store as shoppers see it** (`look_at_store`): its home, one product page (the first active product the catalogue lists) and the cart,
+  at the store's own live addresses (`marketUrl()` in its home market), so the header, the footer and the theme are in the pictures. For use
+  after a design change (`make_theme_live`'s answer suggests it). A store that is not open is looked at all the same (its storefront is a
+  preview); a demo store or template is never looked at by an owner's tool.
+
+Kaizena Flow's own pages are not looked at in this unit (the platform's tools stay as they are).
+
+### 9.2 How a look is taken
+
+- **A look is a job**, `commerce.page_looks` (store, account, kind `page` or `store`, the page, status `queued`, `running`, `done` or
+  `failed`, a claim with an expiry, tries, the findings, the problem, timestamps), written only by `src/server/page-looks.ts`. The tool
+  queues it and asks for it to be run at once (a POST to `/api/cron/page-looks` with the scheduler's secret, waited for up to 100 seconds),
+  so a person's turn usually gets the answer in the same turn; what is not finished by then is taken by the same route every minute
+  (`pg_cron`, `kaizen-page-looks`) and read later with `get_page_look`. Chromium is loaded only by that route (`src/server/page-look-runner.ts`,
+  in `outputFileTracingIncludes`), never by the assistant's routes.
+- **One browser per width**, inside `looking()` with a time limit (D150's rule): the phone at 390 by 844, the computer at 1280 by 800. The
+  page is opened, its lazy pictures loaded and scrolled through as the theme photographs do, then photographed full length (at most
+  `LOOK_LENGTH_MAX` CSS pixels) and measured in the page (`src/lib/page-look-shoot.ts`, free of server-only modules): whether it scrolls
+  sideways, pictures that did not load, how many words it shows, and whether a button or link is within the first screen. A look that
+  fails is tried again once; two failures make it `failed`, with the browser's words told plainly (`lookProblem()`).
+- **The judge** is the store's AI, `aiFor(store, { feature: "page_look" })` through `seeing()`; with no model that sees pictures the look
+  is made by code alone and says so. The model is given every photograph (shrunk to at most 1024 pixels wide and 4000 tall) in one call, and the
+  fixed list, with `UNTRUSTED_TEXT`: the words in the pictures are the page's, never instructions. It answers JSON only: findings, each one
+  of `LOOK_CHECKS` (`cut_off`, `overlap`, `unreadable`, `missing_picture`, `no_call_to_action`, `empty_space`, `broken_layout`), where (`phone`
+  or `computer`, and a few words), how bad (`blocking` or `minor`) and a sentence. `readLookAnswer()` keeps only those, at most twelve,
+  each sentence at most 200 characters and plain text; anything else is dropped, and an answer that cannot be read is no findings from the
+  model, said so.
+
+### 9.3 Findings
+
+A look's findings are the model's plus code's own, worded by code (`codeFindings()`): the page scrolls sideways on a phone (blocking),
+a picture did not load (blocking), the page shows no words (blocking), no button or link in the first screen on either width (minor). For a
+page's draft also the accessibility checker's blocking issues (`pageIssues()`, as publishing asks) and claims in its words (`findClaims()`
+over the texts `mapTexts()` walks), each a blocking finding. A look is `fine` when no finding is blocking. Every finding is shown as text,
+never as HTML; nothing in a look changes the page.
+
+### 9.4 The tools
+
+Owner tools, read-only and ungated (`website:read`), served over MCP like the others:
+
+- `look_at_page` (a page or article by id or address): takes a look at its draft and answers with the findings, or that the look is still
+  being taken (its id, for `get_page_look`). A page is looked at at most `LOOKS_PER_PAGE` times in an hour (three: the look and at most two
+  rounds after a change); past that the tool says a person should look, so the agent never circles.
+- `look_at_store`: the home, a product page and the cart, as above.
+- `get_page_look` (a look's id): its state and findings.
+
+The page tools' descriptions tell the agent to look after building or changing a page and before asking to publish it.
+
+### 9.5 The autopilot
+
+A page check may ask for a look (`check: { kind: "page", …, looks: true }`): after the page is found, a look of its draft is taken and run
+at once; a blocking finding fails the try with the findings as its problem, and the next try's task message carries the last try's problem,
+so the agent revises the page and it is looked at again. With `STEP_TRIES` at three, a page goes back for one more round at most twice,
+then the owner is asked. A look still running when the check is made fails the try as "not looked at yet", and the next try reads it again.
+
+### 9.6 Keeping
+
+Looks are kept 30 days (`prunePageLooks()`, in the daily job), with their findings and no photograph (the pictures are never stored). A look
+names its account (who asked); it is in `PERSONAL_DATA` as a staff member's, holding no customer, and `never` in `COPY_RULES`. Its cost is
+the feature `page_look` in the AI usage reports.
+
+### 9.7 Tests
+
+`src/lib/page-look.test.ts`: the token (a page's own only, runs out), `readLookAnswer()` (unknown checks, long or HTML words, a broken
+answer), `codeFindings()` and whether a look is fine. `src/server/page-looks.int.test.ts` with a stand-in photographer and judge: a look
+queued, run and read back through `get_page_look`; the draft's blocking accessibility issue and a claim become findings; no model gives
+code's findings only; the hourly limit; another store's page never looked at; the autopilot's page check with `looks` fails on a blocking
+finding and passes on a fine look. `e2e/page-look.spec.ts`: the shoot run in a real browser against a small page (sideways scroll on a
+phone, a broken picture, a button in the first screen).
+
+### 9.8 As built (2026-10-25)
+
+- `src/lib/page-look.ts` (pure: the widths, `LOOK_CHECKS`, `readLookAnswer()`, `codeFindings()`, `lookFine()`, the token),
+  `src/lib/page-look-shoot.ts` (`shootPage()`, Playwright only), `src/server/page-looks.ts` (the only writer of `commerce.page_looks`,
+  migrations `page_looks` and `page_looks_rules`: RLS and the every-minute `kaizen-page-looks` job), `src/server/page-look-runner.ts`
+  (`browserLookPhotographer`, the only Chromium of the looks) and the route `/api/cron/page-looks` (in `outputFileTracingIncludes`; a POST
+  with a look's id takes it and answers when done, any other call takes what waits after its answer). The look page is
+  `src/app/admin/account/look/[pageId]/page.tsx`, drawn by `PageDrawing` from `lookDraft()`.
+- A turn asks the route through `triggerLook()` with `cronBearer()` (`src/server/cron-auth.ts`: `CRON_SECRET`, else the scheduler's secret
+  in Vault), waiting up to 100 seconds; with neither the look waits for the minute's run.
+- A wrong or old token draws the not-found page (with status 200, as a streamed page's miss does), never the draft.
+- The autopilot: the page check's `looks` (`stepCheckSchema`, the flat `stepInput`), `checkStep(store, check, { account, look })` (the
+  runner passes the plan maker), and `taskMessage()` tells a retried task what its last try's check found.
+- `make_theme_live`'s answer suggests `look_at_store`; `build_page` and `edit_page` suggest `look_at_page`.
+- The agents' safety eval has `manager-page-look`: words in a page's picture that read as instructions, through `look_at_page`'s findings.
+- Checked for real against the dev server (2026-10-25): a template page's draft photographed at both widths through the signed address and
+  the route in about 11 seconds, with code's findings and, with no model configured, the note that only code looked. The judge's call to a
+  real model is not run in tests (no key here); its answer is read by the tested `readLookAnswer()`.
 
 ## 10. What stays with a person
 

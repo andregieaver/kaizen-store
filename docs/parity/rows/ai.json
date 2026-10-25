@@ -608,7 +608,7 @@
       "was": null
     },
     "weight": 2,
-    "gap": "Kaizen's AI page studio interviews, plans sections from PATTERNS, writes the words, builds rows and makes the pictures as a draft (D92), plus Make my page cool (D128), AI page translation and copying another site's page (D150). Missing: conversational edits of an existing page or of the theme (\"make the hero shorter\", \"use warmer colours\"), and a whole-store redesign. Since D283 the builder's picture fields make and remake a picture from a description in the site's look; that is pictures, not edits of the page or the theme. Since A4 (D308) the AI manager lists the themes and presets with their prices, adds one to the store's library, opens its preview and makes it live on the owner's yes (a premium theme only at the charge they were shown): choosing among made themes, not changing a theme's settings.",
+    "gap": "Kaizen's AI page studio interviews, plans sections from PATTERNS, writes the words, builds rows and makes the pictures as a draft (D92), plus Make my page cool (D128), AI page translation and copying another site's page (D150). Missing: conversational edits of an existing page or of the theme (\"make the hero shorter\", \"use warmer colours\"), and a whole-store redesign. Since D283 the builder's picture fields make and remake a picture from a description in the site's look; that is pictures, not edits of the page or the theme. Since A4 (D308) the AI manager lists the themes and presets with their prices, adds one to the store's library, opens its preview and makes it live on the owner's yes (a premium theme only at the charge they were shown): choosing among made themes, not changing a theme's settings. Since D310 the AI manager looks at what it builds: a page's draft (or the live store) photographed on a phone and a computer, judged by the model that sees pictures against a fixed list, with code's measurements, the accessibility checker and the claims filter, so it can fix a page before asking to publish; the autopilot sends a page back for at most two more rounds. That checks pages; it does not yet edit a page or the theme from a person's description in the builder.",
     "bucket": "A",
     "wave": 8,
     "criteria": [
@@ -628,7 +628,10 @@
         "src/lib/page-translate-ai.ts",
         "src/server/page-translate.ts",
         "src/lib/design-tools.ts",
-        "src/server/design-tools.ts"
+        "src/server/design-tools.ts",
+        "src/lib/page-look.ts",
+        "src/lib/page-look-shoot.ts",
+        "src/server/page-looks.ts"
       ],
       "tests": [
         "src/lib/page-ai.test.ts",
@@ -637,7 +640,10 @@
         "src/lib/page-translate-ai.test.ts",
         "src/server/page-translate.test.ts",
         "src/server/design-tools.int.test.ts",
-        "src/lib/design-tools.test.ts"
+        "src/lib/design-tools.test.ts",
+        "src/lib/page-look.test.ts",
+        "src/server/page-looks.int.test.ts",
+        "e2e/page-look.spec.ts"
       ],
       "untested": false
     },
@@ -646,7 +652,8 @@
       "D128",
       "D150",
       "D283",
-      "D308"
+      "D308",
+      "D310"
     ],
     "history": []
   },

@@ -35,6 +35,8 @@ const nextConfig: NextConfig = {
     "/api/cron/cookie-scan": CHROMIUM_FILES,
     // The photographs of published themes' looks (`docs/theme-showcase-phase-2.md` step 1, `src/server/theme-shot-runner.ts`).
     "/api/cron/theme-shots": CHROMIUM_FILES,
+    // Looks at pages by the AI manager and the autopilot (D310, `src/server/page-look-runner.ts`).
+    "/api/cron/page-looks": CHROMIUM_FILES,
     // A glob, not the route's name: `[store]` would be read as a set of characters, and the route group
     // `(gated)` is part of the path Turbopack matches. Checked in the build's `.nft.json` for this route.
     "/admin/**/replicate/**/tick": CHROMIUM_FILES,

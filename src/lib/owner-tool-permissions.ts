@@ -121,6 +121,10 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   try_theme: "website:read",
   add_theme: "website:write",
   make_theme_live: "website:write",
+  // Looks at pages (D310): they read the site and change nothing.
+  look_at_page: "website:read",
+  look_at_store: "website:read",
+  get_page_look: "website:read",
   store_checkup: "owner",
   list_customers: "customers:read",
   get_customer: "customers:read",

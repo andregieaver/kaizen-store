@@ -42,6 +42,8 @@ export const stepCheckSchema = z.discriminatedUnion("kind", [
     title: z.string().trim().min(1).max(200).optional(),
     slug: z.string().trim().min(1).max(100).optional(),
     published: z.boolean().default(false),
+    /** A look at the page's draft (D310): a blocking finding fails the try, so the page goes back for another round. */
+    looks: z.boolean().default(false),
   }),
   z.object({ kind: z.literal("setup_step"), step: z.enum(SETUP_CHECKS) }),
   z.object({ kind: z.literal("store_open") }),
@@ -80,12 +82,15 @@ export const stepInput = z.object({
       slug: z.string().trim().max(100).optional(),
       active: z.boolean().optional(),
       published: z.boolean().optional(),
+      looks: z.boolean().optional(),
       step: z.enum(SETUP_CHECKS).optional(),
       what: z.enum(["products", "pages"]).optional(),
       at_least: z.number().int().positive().max(100_000).optional(),
     })
     .optional()
-    .describe("How to tell it worked: none (the step's own success), product, page, setup_step, store_open or count."),
+    .describe(
+      "How to tell it worked: none (the step's own success), product, page, setup_step, store_open or count. A page check with looks: true also looks at the page's draft on a phone and a computer, and a blocking finding sends the step back for another try with the findings (a store's pages only).",
+    ),
 });
 export type StepInput = z.infer<typeof stepInput>;
 

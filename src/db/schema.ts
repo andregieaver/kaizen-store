@@ -13081,3 +13081,40 @@ export const autopilotReports = commerce.table(
     check("autopilot_reports_note", sql`${t.note} is null or length(${t.note}) <= 1500`),
   ],
 );
+
+/**
+ * A look at a page's draft or at the store as shoppers see it (D310, `docs/ai-autopilot.md` 9): photographed at a phone's and a computer's
+ * width and judged by the model that sees pictures. Written only by `src/server/page-looks.ts`; the photographs are never kept, only the
+ * findings, for 30 days.
+ */
+export const pageLooks = commerce.table(
+  "page_looks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id, { onDelete: "cascade" }),
+    accountId: uuid("account_id").references(() => accounts.id, { onDelete: "set null" }),
+    /** `page`: a page's draft; `store`: the home, a product page and the cart, live. */
+    kind: text("kind").notNull(),
+    pageId: uuid("page_id").references(() => pages.id, { onDelete: "cascade" }),
+    status: text("status").notNull().default("queued"),
+    claimedUntil: timestamp("claimed_until", { withTimezone: true }),
+    tries: integer("tries").notNull().default(0),
+    /** What was found, written by code (`LookFindings`). */
+    findings: jsonb("findings"),
+    problem: text("problem"),
+    createdAt: createdAt(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("page_looks_queue_idx").on(t.status, t.createdAt),
+    index("page_looks_page_idx").on(t.pageId, t.createdAt),
+    index("page_looks_store_idx").on(t.storeId, t.createdAt),
+    index("page_looks_account_idx").on(t.accountId),
+    check("page_looks_kind", sql`${t.kind} in ('page', 'store')`),
+    check("page_looks_status", sql`${t.status} in ('queued', 'running', 'done', 'failed')`),
+    check("page_looks_page", sql`(${t.kind} = 'page') = (${t.pageId} is not null)`),
+    check("page_looks_problem", sql`${t.problem} is null or length(${t.problem}) <= 500`),
+  ],
+);
