@@ -44,6 +44,7 @@ proportion (autonomy levels and budgets the owner sets), a voice (a decisions pa
 | B3 | D309 | Decisions and reports: one page of what waits on the owner, a digest by email, a weekly report | `ai.proactive-insights` |
 | L | D311 | Legal pages by AI: researched from fetched sources, checked in code, kept current | `international.legal-page-templates-and-policy-generator` |
 | C | D310 | Eyes: the agent photographs its drafts and judges them with the model that sees pictures | `ai.ai-page-and-theme-generation` |
+| D | D328 | The autopilot keeps going: it looks at each active goal again when a plan for it ends and on a schedule, makes the next plan, and starts it itself where the owner allows | `ai.workflow-builder-with-ai-generation`, `ai.proactive-insights` |
 
 Each unit is its own commit (or a few), with its own tests, decision row and parity moves, shipped before the next starts. Each unit's
 section below is written in full before it is built; L is outlined and gets its detail when its turn comes.
@@ -807,3 +808,71 @@ Each tool: an integration test through the tool and a read back through the scre
 store's things never reached; gated tools only kept until the yes. B: PGlite tests of the plan and step rules; an integration test of a plan
 run to the end by the loop with a fake model; the autonomy levels and budgets. L: the citation check refuses an invented quote; the fact
 checks refuse a page that disagrees with the store; a changed source writes the page again. C: the findings reader on fixed answers.
+
+## 12. Unit D (D328): the autopilot keeps going
+
+Written on 2026-10-25 from the owner's goal ("manage and grow the business over time") and a read of unit B as built. Until now a plan
+ended and the autopilot stopped: the next plan waited for a person to ask for it and say yes. Unit D gives each active goal a **review**: the
+autopilot looks at the goal again, makes the next plan that moves it forward, and starts it itself where the owner allows. The plan is
+still the model's idea; whether a review is due, what it may read, whether its plan starts and how many start are the code's.
+
+### 12.1 Settings (`planning`)
+
+`commerce.autopilot_settings.planning` (jsonb, read only through `autonomySettingsSchema`'s `planning`, written by `saveAutonomy()`):
+
+- `continues` (off by default): *Keep working toward my goals*. Off, nothing in this unit runs, and stores behave as before.
+- `starts`: `ask` (default: a plan a review makes waits on the Decisions page as a start for the owner's yes, the same kept call as
+  `start_autopilot_plan`) or `auto` (it starts at once, as the autopilot, `startPlanByAutopilot()`).
+- `reviewDays` (1 to 30, default 7): how long after its last review a goal is looked at again when nothing else brought it up.
+- `plansPerWeek` (1 to 20, default 3): plans a review may start itself in seven days; past it a plan waits for a yes as under `ask`.
+
+Starting a plan by itself gives the autopilot no power it did not have: each step still meets the levels per area and the budgets, and
+`NEVER_AUTOMATIC` calls still wait. `start_autopilot_plan` and `resume_autopilot_plan` stay never automatic as tools the model calls: a
+review's plan is started by code from the owner's setting, never by the model.
+
+### 12.2 When a goal is reviewed
+
+`dueReviews()` reads, per store with `continues` on and the autopilot not paused, each `active` goal with a person to run it for
+(`created_by`), where no plan for the goal is a draft, running or paused, and either:
+
+- the goal was never reviewed;
+- a plan for the goal finished (done or stopped) after the last review, and the last review is at least `REVIEW_GAP_HOURS` (1) old;
+- the last review is older than `reviewDays`;
+- the last review failed and is older than `FAILED_REVIEW_HOURS` (6).
+
+The store must be active (`store_is_active()`), the autopilot's AI budget not spent, and the store under `REVIEWS_PER_DAY` (6) reviews in
+24 hours. A plan a review made that waits for the owner's yes therefore holds its goal's reviews until it is started, revised or stopped.
+
+### 12.3 A review
+
+`runGoalReviews()`, from `/api/cron/autopilot` after the steps, takes up to `REVIEWS_PER_RUN` (2) due goals, at most one per store, each
+claimed as a row of `commerce.autopilot_reviews` (one `running` per goal by a unique index; a run that died leaves it `failed` once its
+claim passes):
+
+- The person is read again as the loop reads a plan's (`principalFor()`): gone or not an owner any more, the review is `skipped` with the
+  reason; a closed store is never taken.
+- The turn is a headless `runTurn({ scheduled: true, autopilot: { review: true } })` in the goal's own conversation (`Autopilot: {goal}`,
+  kept on its first review and reused), for the feature `autopilot`, limited to `make_autopilot_plan`, `list_goals`,
+  `list_autopilot_plans`, `get_autopilot_plan` and the read-only tools of `REVIEW_READ_TOOLS` the person's role and the store's features
+  offer. No tool that changes the store is offered, gated or not.
+- Its message (`reviewMessage()`) carries the goal, its progress from `goalProgress()` (written by code), the last plans for the goal with
+  their steps' results, and the last review's outcome, as data; the system lines (`REVIEW_LINES`) say nobody is there, to make at most one
+  plan for this goal or say in one sentence why nothing should be done now.
+- After the turn, code finds the plans made in that conversation during it: none is an outcome of *nothing to do* with the model's
+  sentence; more than one keeps the last and stops the others; the plan is tied to the goal if the model left it out. Then
+  `startDecision()` (pure): `starts = auto` and under `plansPerWeek` starts it, otherwise the start is kept for the owner's yes.
+- The review row keeps the plan, whether it started, the outcome in words (500 characters) and is `done`; an AI error or a time-out is
+  `failed` with the reason.
+
+### 12.4 What the owner sees
+
+Settings: *Keep working toward my goals* (one switch, Homer's), and under it the start choice, the days between reviews and the plans a
+week (Lisa's). Goals: each goal's last review (when, and what came of it). Decisions: a review's plan waiting to start, as any kept call.
+The activity log says the autopilot made and started the plan (`acted_by = 'autopilot'`).
+
+### 12.5 Tests
+
+Unit: `startDecision()` for each setting and the weekly limit; the planning settings read with defaults; `reviewMessage()` carries the
+progress and plans. Integration (a stand-in turn that makes a plan through `makePlan()`): nothing with `continues` off; a review makes a
+plan that starts at `auto` and waits as a kept start at `ask`; no review while the goal's plan runs; another once it is done; the weekly
+limit turns a start into a kept call; a turn that makes no plan is *nothing to do*; another store's goals never touched.

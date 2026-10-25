@@ -69,7 +69,7 @@ export function AutopilotPage({
       {tab === "decisions" && <Decisions overview={overview} words={a} actions={actions} links={links} />}
       {tab === "decisions" && overview.report && <Report report={overview.report} words={a} />}
       {tab === "plans" && <Plans plans={overview.plans} words={a} action={actions.plan} assistantHref={assistantHref} />}
-      {tab === "goals" && <Goals goals={overview.goals} words={a} action={actions.dropGoal} />}
+      {tab === "goals" && <Goals goals={overview.goals} reviews={overview.reviews} words={a} action={actions.dropGoal} />}
       {tab === "settings" && <Settings overview={overview} words={a} action={actions.settings} />}
     </div>
   );
@@ -227,7 +227,7 @@ function PlanCard({ plan, steps, words: a, action }: { plan: Plan; steps: PlanSt
   );
 }
 
-function Goals({ goals, words: a, action }: { goals: AutopilotOverview["goals"]; words: Words; action: Action }) {
+function Goals({ goals, reviews, words: a, action }: { goals: AutopilotOverview["goals"]; reviews: AutopilotOverview["reviews"]; words: Words; action: Action }) {
   const g = a.goals;
   if (goals.length === 0) return <Card><p className="text-body text-muted">{g.empty}</p></Card>;
   return (
@@ -240,6 +240,10 @@ function Goals({ goals, words: a, action }: { goals: AutopilotOverview["goals"];
           description={goal.dueOn ? fillWords(g.due, { date: goal.dueOn }) : undefined}
         >
           {goal.vision && <p className="mb-3 text-body text-ink-2">{goal.vision}</p>}
+          {(() => {
+            const review = reviews.find((r) => r.goalId === goal.id);
+            return review?.outcome ? <p className="mb-3 text-caption text-muted">{fillWords(g.lastReview, { date: review.at.slice(0, 10), outcome: review.outcome })}</p> : null;
+          })()}
           <ul className="flex flex-col divide-y divide-line">
             {goal.progress.map((t, i) => (
               <li key={i} className="flex flex-wrap items-center justify-between gap-2 py-2">
@@ -279,6 +283,33 @@ function Settings({ overview, words: a, action }: { overview: AutopilotOverview;
             <span className="text-caption text-muted">{s.runningHelp}</span>
           </span>
         </label>
+        <fieldset className="flex flex-col gap-3">
+          <legend className="mb-2 text-title text-ink">{s.planning}</legend>
+          <label className="flex items-start gap-3">
+            <input type="checkbox" name="keep_going" defaultChecked={settings.planning.continues} className="mt-1" />
+            <span className="flex flex-col">
+              <span className="text-body-strong text-ink">{s.keepGoing}</span>
+              <span className="text-caption text-muted">{s.keepGoingHelp}</span>
+            </span>
+          </label>
+          <label className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-body text-ink">{s.starts}</span>
+            <select name="plan_starts" defaultValue={settings.planning.starts} className="min-h-10 min-w-56 rounded-lg border border-edge bg-card px-3 text-sm">
+              <option value="ask">{s.startsAsk}</option>
+              <option value="auto">{s.startsAuto}</option>
+            </select>
+          </label>
+          <p className="text-caption text-muted">{s.startsHelp}</p>
+          <label className="flex flex-col gap-1 text-sm">
+            {s.reviewDays}
+            <input name="review_days" type="number" min={1} max={30} defaultValue={settings.planning.reviewDays} className="min-h-10 max-w-40 rounded-lg border border-edge bg-card px-3 text-sm" />
+          </label>
+          <label className="flex flex-col gap-1 text-sm">
+            {s.plansPerWeek}
+            <input name="plans_per_week" type="number" min={1} max={20} defaultValue={settings.planning.plansPerWeek} className="min-h-10 max-w-40 rounded-lg border border-edge bg-card px-3 text-sm" />
+            <span className="text-caption text-muted">{s.plansPerWeekHelp}</span>
+          </label>
+        </fieldset>
         <fieldset className="flex flex-col gap-3">
           <legend className="mb-2 text-title text-ink">{s.levels}</legend>
           {AUTONOMY_AREAS.map((area) => (

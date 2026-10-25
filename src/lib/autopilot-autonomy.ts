@@ -111,6 +111,10 @@ export const NEVER_AUTOMATIC: ReadonlySet<string> = new Set([
 /** Gate categories that are never automatic, for a tool added later without an area. */
 const NEVER_CATEGORIES: ReadonlySet<GateCategory> = new Set(["access", "domain", "plan"]);
 
+/** Whether a plan a review made waits for the owner's yes or starts at once (D328). */
+export const PLAN_STARTS = ["ask", "auto"] as const;
+export type PlanStarts = (typeof PLAN_STARTS)[number];
+
 export const autonomySettingsSchema = z.object({
   paused: z.boolean().default(false),
   levels: z.partialRecord(z.enum(AUTONOMY_AREAS), z.enum(AUTONOMY_LEVELS)).default({}),
@@ -124,6 +128,19 @@ export const autonomySettingsSchema = z.object({
       priceChangePercent: z.number().int().min(0).max(1000).default(10),
     })
     .default({ aiMonthlyUsd: 5, discountPercent: 20, priceChangePercent: 10 }),
+  /** Whether and how it keeps working toward the goals once a plan ends (D328, `docs/ai-autopilot.md` 12.1). */
+  planning: z
+    .object({
+      /** *Keep working toward my goals*: off, no goal is reviewed and stores behave as before. */
+      continues: z.boolean().default(false),
+      /** A review's plan waits for the owner's yes (`ask`) or starts at once (`auto`). */
+      starts: z.enum(PLAN_STARTS).default("ask"),
+      /** Days after its last review a goal is looked at again when nothing else brought it up. */
+      reviewDays: z.number().int().min(1).max(30).default(7),
+      /** Plans a review may start itself in seven days; past it a plan waits for a yes. */
+      plansPerWeek: z.number().int().min(1).max(20).default(3),
+    })
+    .default({ continues: false, starts: "ask", reviewDays: 7, plansPerWeek: 3 }),
 });
 export type AutonomySettings = z.output<typeof autonomySettingsSchema>;
 

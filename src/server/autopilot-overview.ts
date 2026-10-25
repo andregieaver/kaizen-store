@@ -10,6 +10,7 @@ import type { Account } from "./auth";
 import { goalsWithProgress, type GoalWithProgress } from "./autopilot-goals";
 import { listPlans, loadSteps, type Plan, type PlanStep, type StepQuestion } from "./autopilot-plans";
 import { latestReport } from "./autopilot-reports";
+import { latestReviews, type GoalReview } from "./autopilot-reviews";
 import { autonomyFor, autopilotCostThisMonth } from "./autopilot-settings";
 import { getSetupProgress } from "./setup";
 import type { Store } from "./stores";
@@ -34,6 +35,8 @@ export type AutopilotOverview = {
   ownerOnly: OwnerOnly[];
   plans: { plan: Plan; steps: PlanStep[] }[];
   goals: GoalWithProgress[];
+  /** Each goal's latest review (D328). */
+  reviews: GoalReview[];
   settings: AutonomySettings;
   /** The autopilot's AI cost this month in millionths of a dollar. */
   costMicros: number;
@@ -52,7 +55,7 @@ const CALL = z.object({
 
 export async function autopilotOverview(a: OverviewActor): Promise<AutopilotOverview> {
   const scope = a.store ? sql`ap.store_id = ${a.store.id}::uuid` : sql`ap.store_id is null`;
-  const [callRows, plansAll, goals, settings, costMicros, progress, report] = await Promise.all([
+  const [callRows, plansAll, goals, settings, costMicros, progress, report, reviews] = await Promise.all([
     typedRows(
       CALL,
       sql`
@@ -71,6 +74,7 @@ export async function autopilotOverview(a: OverviewActor): Promise<AutopilotOver
     autopilotCostThisMonth(a.store?.id ?? null),
     a.store ? getSetupProgress(a.store) : Promise.resolve(null),
     latestReport(a),
+    latestReviews(a.store?.id ?? null),
   ]);
   const owner = !a.store || !a.holder || can(a.holder, "owner");
   const mine = plansAll.filter((p) => owner || p.accountId === a.account.id);
@@ -95,6 +99,7 @@ export async function autopilotOverview(a: OverviewActor): Promise<AutopilotOver
     ownerOnly,
     plans,
     goals,
+    reviews,
     settings,
     costMicros,
     report,

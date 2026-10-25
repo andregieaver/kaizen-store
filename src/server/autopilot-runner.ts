@@ -133,12 +133,15 @@ const PLAN = z.object({
 });
 
 /** Who a plan runs for today, or why it no longer runs. */
-async function principalFor(plan: z.output<typeof PLAN>): Promise<Principal | "gone" | "closed"> {
-  const account = await activeAccount(plan.account_id);
+const principalFor = (plan: z.output<typeof PLAN>) => principalOf({ accountId: plan.account_id, storeId: plan.store_id, storeSlug: plan.store_slug, storeActive: plan.store_active });
+
+/** The person work runs for today, read again (a plan's maker, or a goal's for its reviews, D328), or why it no longer runs. */
+export async function principalOf(who: { accountId: string; storeId: string | null; storeSlug: string | null; storeActive: boolean | null }): Promise<Principal | "gone" | "closed"> {
+  const account = await activeAccount(who.accountId);
   if (!account) return "gone";
-  if (!plan.store_id) return account.platformAdmin ? { account, store: null } : "gone";
-  if (!plan.store_slug || !plan.store_active) return "closed";
-  const member = await passMembership(plan.store_slug, account.id);
+  if (!who.storeId) return account.platformAdmin ? { account, store: null } : "gone";
+  if (!who.storeSlug || !who.storeActive) return "closed";
+  const member = await passMembership(who.storeSlug, account.id);
   if (!member) return "gone";
   return { account: member.account, store: member.store, role: member.role, kind: member.kind, permissions: member.permissions };
 }

@@ -236,7 +236,7 @@
       "was": null
     },
     "weight": 2,
-    "gap": "The store's Home shows the top three alerts (eleven kinds: conversion drop, weekday revenue, refund rate, CAC, stock-outs, checkout abandonment, discount creep, targets, cost coverage, good news) with figures and a page to open (D152), the full list is on the Analytics overview and the assistant has analytics_alerts. All of it is worked out on read, in code, from analytics: nothing is pushed (no morning or weekly briefing by email or in the admin), and nothing outside analytics (catalogue, SEO, marketing) is suggested. Since D309 the autopilot emails a weekly report (sales and orders counted in code, goals, an optional checked note) and a daily digest, but only to people whose plans run, not built from the alerts and with no switch of its own.",
+    "gap": "The store's Home shows the top three alerts (eleven kinds: conversion drop, weekday revenue, refund rate, CAC, stock-outs, checkout abandonment, discount creep, targets, cost coverage, good news) with figures and a page to open (D152), the full list is on the Analytics overview and the assistant has analytics_alerts. All of it is worked out on read, in code, from analytics: nothing is pushed (no morning or weekly briefing by email or in the admin), and nothing outside analytics (catalogue, SEO, marketing) is suggested. Since D309 the autopilot emails a weekly report (sales and orders counted in code, goals, an optional checked note) and a daily digest, but only to people whose plans run, not built from the alerts and with no switch of its own. Since D328 the autopilot also looks at each goal again on its own and proposes (or starts) the next plan, from the goal's figures rather than the alerts.",
     "bucket": "A",
     "wave": 8,
     "criteria": [
@@ -253,20 +253,23 @@
         "src/components/admin/analytics/home-alerts.tsx",
         "src/components/admin/analytics/alerts.tsx",
         "src/server/control-center.ts",
-        "src/server/autopilot-reports.ts"
+        "src/server/autopilot-reports.ts",
+        "src/server/autopilot-reviews.ts"
       ],
       "tests": [
         "src/lib/analytics-alerts.test.ts",
         "src/server/analytics-insights.int.test.ts",
         "src/server/analytics-tools.int.test.ts",
         "src/server/control-center.int.test.ts",
-        "src/server/autopilot-reports.int.test.ts"
+        "src/server/autopilot-reports.int.test.ts",
+        "src/server/autopilot-reviews.int.test.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D152",
-      "D309"
+      "D309",
+      "D328"
     ],
     "history": []
   },
@@ -888,7 +891,7 @@
       "was": "missing"
     },
     "weight": 3,
-    "gap": "D238's order rules (Settings -> Automation, src/lib/order-rules.ts, src/server/order-rules.ts, src/components/admin/automation/) are an owner-made workflow for one trigger: when an order is paid (RULE_EVENTS), up to ten conditions from a closed list (total, country, buyer, first order, product, delivery, backorder, gift, source, tag, seller, Stripe risk) and actions tag, notify staff, hold fulfilment and ask the AI manager (D318); saved, switched on and off and ordered, at most 50 a store and 20 AI asks a day, each run logged with what each condition and action came to. Still missing: other triggers (customer, stock, return events), actions that email a customer, call a webhook, post to Slack or create a task, a test run before switching a rule on, and the assistant drafting a rule from a description (order_rules is a read-only tool; rules are made only on the Automation page). Outbound webhooks (D41) and Slack (D101) are credited in platform.outgoing-webhooks; the autopilot's plans (D309) are one-off steps toward goals, not event workflows.",
+    "gap": "D238's order rules (Settings -> Automation, src/lib/order-rules.ts, src/server/order-rules.ts, src/components/admin/automation/) are an owner-made workflow for one trigger: when an order is paid (RULE_EVENTS), up to ten conditions from a closed list (total, country, buyer, first order, product, delivery, backorder, gift, source, tag, seller, Stripe risk) and actions tag, notify staff, hold fulfilment and ask the AI manager (D318); saved, switched on and off and ordered, at most 50 a store and 20 AI asks a day, each run logged with what each condition and action came to. Still missing: other triggers (customer, stock, return events), actions that email a customer, call a webhook, post to Slack or create a task, a test run before switching a rule on, and the assistant drafting a rule from a description (order_rules is a read-only tool; rules are made only on the Automation page). Outbound webhooks (D41) and Slack (D101) are credited in platform.outgoing-webhooks; the autopilot's plans (D309) are steps toward goals, not event workflows; since D328 it looks at each goal again when a plan for it ends and on a schedule and makes the next plan, started by itself where the owner allows, which is still no trigger an owner chooses.",
     "bucket": "A",
     "wave": 9,
     "criteria": [
@@ -906,7 +909,8 @@
         "src/lib/order-rules.ts",
         "src/server/order-rules.ts",
         "src/components/admin/automation/rule-editor.tsx",
-        "src/app/admin/(gated)/[store]/settings/automation/page.tsx"
+        "src/app/admin/(gated)/[store]/settings/automation/page.tsx",
+        "src/server/autopilot-reviews.ts"
       ],
       "tests": [
         "src/server/integrations.int.test.ts",
@@ -914,7 +918,8 @@
         "src/lib/slack.test.ts",
         "src/lib/order-rules.test.ts",
         "src/server/order-rules.int.test.ts",
-        "e2e/signed-in/automation.spec.ts"
+        "e2e/signed-in/automation.spec.ts",
+        "src/server/autopilot-reviews.int.test.ts"
       ],
       "untested": false
     },
@@ -922,7 +927,8 @@
       "D41",
       "D101",
       "D238",
-      "D318"
+      "D318",
+      "D328"
     ],
     "history": [
       {

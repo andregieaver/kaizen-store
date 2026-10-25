@@ -24,10 +24,10 @@ const inScope = (storeId: string | null) => (storeId ? sql`store_id = ${storeId}
 
 export async function autonomyFor(storeId: string | null): Promise<AutonomySettings> {
   const row = await typedRow(
-    z.object({ paused: col.bool, levels: z.unknown(), budgets: z.unknown() }),
-    sql`select paused, levels, budgets from commerce.autopilot_settings where ${inScope(storeId)}`,
+    z.object({ paused: col.bool, levels: z.unknown(), budgets: z.unknown(), planning: z.unknown() }),
+    sql`select paused, levels, budgets, planning from commerce.autopilot_settings where ${inScope(storeId)}`,
   );
-  return row ? readAutonomy({ paused: row.paused, levels: row.levels, budgets: row.budgets }) : readAutonomy({});
+  return row ? readAutonomy({ paused: row.paused, levels: row.levels, budgets: row.budgets, planning: row.planning }) : readAutonomy({});
 }
 
 export type SettingsActor = { account: Account; store: Store | null; holder?: PermissionHolder };
@@ -41,12 +41,12 @@ export async function saveAutonomy(a: SettingsActor, input: unknown): Promise<Au
   const s = parsed.data;
   const storeId = a.store ? sql`${a.store.id}::uuid` : sql`null`;
   await db().execute(sql`
-    insert into commerce.autopilot_settings (store_id, paused, levels, budgets, updated_by, updated_at)
-    values (${storeId}, ${s.paused}, ${JSON.stringify(s.levels)}::jsonb, ${JSON.stringify(s.budgets)}::jsonb, ${a.account.id}::uuid, now())
+    insert into commerce.autopilot_settings (store_id, paused, levels, budgets, planning, updated_by, updated_at)
+    values (${storeId}, ${s.paused}, ${JSON.stringify(s.levels)}::jsonb, ${JSON.stringify(s.budgets)}::jsonb, ${JSON.stringify(s.planning)}::jsonb, ${a.account.id}::uuid, now())
     on conflict (store_id) do update set paused = excluded.paused, levels = excluded.levels, budgets = excluded.budgets,
-      updated_by = excluded.updated_by, updated_at = now()
+      planning = excluded.planning, updated_by = excluded.updated_by, updated_at = now()
   `);
-  await audit(a.account.id, a.store?.id ?? null, "ai.autopilot_settings", { paused: s.paused, levels: s.levels, budgets: s.budgets }, auditArea(a));
+  await audit(a.account.id, a.store?.id ?? null, "ai.autopilot_settings", { paused: s.paused, levels: s.levels, budgets: s.budgets, planning: s.planning }, auditArea(a));
   return s;
 }
 

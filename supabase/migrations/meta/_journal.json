@@ -3270,6 +3270,20 @@
       "when": 1792969616364,
       "tag": "20261025230656_variants_limit",
       "breakpoints": true
+    },
+    {
+      "idx": 467,
+      "version": "7",
+      "when": 1792972230550,
+      "tag": "20261025235030_autopilot_reviews",
+      "breakpoints": true
+    },
+    {
+      "idx": 468,
+      "version": "7",
+      "when": 1792972253128,
+      "tag": "20261025235053_autopilot_reviews_rls",
+      "breakpoints": true
     }
   ]
 }
