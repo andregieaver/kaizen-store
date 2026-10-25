@@ -626,8 +626,9 @@ instruction (the canary must not appear in the page).
   read them. `seek-bzip` (MIT, pure JavaScript) unpacks Lovdata's archive.
 - Found while building: angrerettloven § 20 a (the withdrawal function) is added by a law of 19 June 2026 not yet in force, so Lovdata
   gives it no text and no Norwegian page may cite it; the read refused it until the register stopped naming it.
-- All 21 source and language pairs read in full from the sandbox. Migrations `20261025163153_legal_sources` and
-  `20261025163212_legal_sources_rules`.
+- All 21 source and language pairs read in full from the sandbox, and again from production by the dispatcher's first runs (17:15 to
+  17:45 UTC on 25 October 2026, no failure; Lovdata's archive and Cellar answer from Vercel too). Migrations
+  `20261025163153_legal_sources` and `20261025163212_legal_sources_rules`, applied by CI in run 628.
 
 ### 8.11 As built: L2 (2026-10-25)
 
