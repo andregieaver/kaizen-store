@@ -59,7 +59,15 @@ import { activeFieldGroups, fieldsTag, getFieldData, listFieldGroups, pageFacts,
 import { listIntegrations, postToSlack } from "./integrations";
 import { ownedStores, usageRows } from "./ai-usage";
 import { analyticsAlertsTool, analyticsOverviewTool, explainChangeTool } from "./analytics-tools";
-import { listSupportConversationsTool, supportOverviewTool } from "./support-manager-tools";
+import {
+  addSupportNoteTool,
+  endSupportConversationTool,
+  getSupportConversationTool,
+  listSupportConversationsTool,
+  preflightReplyToSupport,
+  replyToSupportTool,
+  supportOverviewTool,
+} from "./support-manager-tools";
 import { giftCardOverview } from "./gift-cards-admin";
 import { reviewsOverview } from "./review-import";
 import { NOT_EDIT_REFUND } from "./analytics-sql";
@@ -2012,6 +2020,12 @@ export async function preflightOwnerTool(ctx: OwnerToolContext, name: string, ra
     if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
     return preflightIssueGiftCard(ctx, input.input as OwnerToolInput<"issue_gift_card">);
   }
+  // A support reply that could not go out (another person's conversation, an ended one, a claim) is refused now (PSI AGT-01).
+  if (name === "reply_to_support") {
+    const input = readToolInput(OWNER_TOOLS_BY_NAME[name], raw);
+    if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
+    return preflightReplyToSupport(ctx, input.input as OwnerToolInput<"reply_to_support">);
+  }
   // A broadcast that could not be sent (gone, sent already, nobody to reach) is refused now, never kept for a yes (PSI AGT-01).
   if (name === "send_broadcast") {
     const input = readToolInput(OWNER_TOOLS_BY_NAME[name], raw);
@@ -2170,6 +2184,10 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   analytics_alerts: analyticsAlertsTool,
   support_overview: supportOverviewTool,
   list_support_conversations: listSupportConversationsTool,
+  get_support_conversation: getSupportConversationTool,
+  add_support_note: addSupportNoteTool,
+  reply_to_support: replyToSupportTool,
+  end_support_conversation: endSupportConversationTool,
   gift_card_overview: giftCardOverviewTool,
   reviews_overview: reviewsOverviewTool,
   issue_gift_card: issueGiftCardTool,
@@ -2248,7 +2266,7 @@ export async function runOwnerTool(ctx: OwnerToolContext, name: string, raw: unk
 }
 
 /** Tools that change the store without a gate, written down all the same: a note on an order, products made or written for, pages built or changed (D308). */
-const AUDITED_UNGATED = new Set(["add_order_note", "create_product", "write_product_texts", "build_page", "edit_page"]);
+const AUDITED_UNGATED = new Set(["add_order_note", "create_product", "write_product_texts", "build_page", "edit_page", "add_support_note", "end_support_conversation"]);
 const PRODUCT_TOOLS = new Set(["create_product", "update_product", "set_prices", "set_product_status", "write_product_texts"]);
 const PAGE_TOOLS = new Set(["build_page", "edit_page", "publish_page", "set_page_place", "save_menu", "set_header_footer"]);
 

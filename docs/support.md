@@ -943,7 +943,12 @@ fails for `as Desk` outside that module.
 Section 5.2 names the jobs and emails. AI manager (step 14): owner tools `support_overview` (`support:read`: waiting, open by
 handler, today's conversations, tone alerts, counts only) and `list_support_conversations` (`support:read`: titles, summaries,
 status and links, never transcripts); the manager tool `contact_kaizen_support` (step 11); the platform tool `support_overview`
-(Kaizen's desk and the totals only). Figures (step 14) are defined in `docs/analytics.md` first.
+(Kaizen's desk and the totals only). Figures (step 14) are defined in `docs/analytics.md` first. Answering (PSI AGT-01, D318):
+`get_support_conversation` (`support:read`) reads one conversation as the inbox does, through `transcriptOf()` (notes marked, the
+partner's help never, no email address or phone); `add_support_note` and `end_support_conversation` (`support:write`) and
+`reply_to_support` (`support:write`, gate `send`: the person approves the exact words, the claims filter first, refused for another
+person's or an ended conversation; it takes the conversation over first, as the inbox would) go through `agentAct()` in the person's name
+(`managerStaffDesk()`), so the database's rules decide as they do for a person.
 
 ---
 

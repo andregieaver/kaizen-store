@@ -324,7 +324,7 @@ stand-in is the only fake, and only it is told it is one.
   `deskReport()` reads (`src/server/support-reports.ts`: times, `desk_mode` (the desk's mode at the start, kept by a trigger),
   outcome and topics, never words or a customer); a rate or median needs `MIN_SUPPORT_SAMPLE` and otherwise says what is missing;
   per desk, never per agent. The platform's per-store totals are `src/server/support-platform.ts` only (counted columns, a scan
-  test); the AI manager's `support_overview`/`list_support_conversations` (owner, `support:read`) and the platform's
+  test); the AI manager's `support_overview`/`list_support_conversations` (owner, `support:read`; answering, D318: `get_support_conversation`, `add_support_note`, `end_support_conversation` and the `send`-gated `reply_to_support`, only through `agentAct()` with `managerStaffDesk()`) and the platform's
   `support_overview` repeat them; the control center says how many wait (`supportWaiting`); the integrations' `support.waiting`
   carries the count and the inbox, never who.
 - Prices are shown with `<Price>`, which adds the VAT label and shows the

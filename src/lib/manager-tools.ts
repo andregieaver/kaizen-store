@@ -237,6 +237,10 @@ export const PLATFORM_TOOLS_BY_NAME: Record<string, OwnerTool> = Object.fromEntr
 export const TOOL_WORDS: Record<string, string> = {
   support_overview: "Looking at support",
   list_support_conversations: "Looking at support conversations",
+  get_support_conversation: "Reading the conversation",
+  add_support_note: "Writing a note for the team",
+  reply_to_support: "Preparing the reply",
+  end_support_conversation: "Ending the conversation",
   gift_card_overview: "Looking at gift cards",
   issue_gift_card: "Preparing the gift card",
   reviews_overview: "Looking at reviews",

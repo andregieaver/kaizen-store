@@ -16,6 +16,11 @@ import { AREA_LABELS, can, type Area, type PermissionHolder, type PermissionKey 
 export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   support_overview: "support:read",
   list_support_conversations: "support:read",
+  // Answering (PSI AGT-01): reading a conversation is the inbox's read, a note, a reply and ending it its write.
+  get_support_conversation: "support:read",
+  add_support_note: "support:write",
+  reply_to_support: "support:write",
+  end_support_conversation: "support:write",
   // Gift cards (D300 F4): the Gift cards page is the Products section's.
   gift_card_overview: "products:read",
   // Issuing one is the Gift cards page's, with the right to change products (D300 F4).

@@ -47,6 +47,20 @@ export function managerDesk(storeId: string | null): Desk {
   return make(storeId);
 }
 
+/**
+ * A store's desk the AI manager answers at (PSI AGT-01, `src/server/support-manager-tools.ts`), in the person's name, after
+ * `runOwnerTool()` checked their `support:write` (or `support:read` for reading) by `TOOL_PERMISSIONS`; a reply waits for their yes.
+ */
+export function managerStaffDesk(account: Account, store: { id: string; slug: string; name: string; status: string }, who: PermissionHolder): StaffDesk {
+  return {
+    desk: make(store.id),
+    store: { id: store.id, slug: store.slug, name: store.name },
+    account,
+    canWrite: can(who, "support:write") && (store.status === "active" || allowedWhenNotOpen("support:write")),
+    holder: who,
+  };
+}
+
 /** A desk for the platform's own jobs (ending idle conversations, retention, erasure), which act on every store's data by design. */
 export function systemDesk(storeId: string | null): Desk {
   return make(storeId);

@@ -120,6 +120,10 @@ export const assistantNb: AssistantMessages = {
   tools: {
     support_overview: "Ser på kundestøtte",
     list_support_conversations: "Ser på kundestøttesamtaler",
+    get_support_conversation: "Leser samtalen",
+    add_support_note: "Skriver et notat til teamet",
+    reply_to_support: "Forbereder svaret",
+    end_support_conversation: "Avslutter samtalen",
     gift_card_overview: "Ser på gavekort",
     reviews_overview: "Ser på omtaler",
     store_overview: "Ser på butikken",

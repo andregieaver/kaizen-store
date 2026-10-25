@@ -18,6 +18,7 @@ import { askLife, lifeLink, lifeLinkOn, LifeLinkError } from "./kaizen-life-link
 import { platformGateNeeded, preflightPlatformTool, runManagerTool, runPlatformTool, type ManagerContext } from "./manager-tools";
 import { experimentApprovalSummary } from "./experiment-tools";
 import { broadcastApprovalSummary } from "./marketing-tools";
+import { replyApprovalSummary } from "./support-manager-tools";
 import { draftApprovalDetails } from "./order-ops-tools";
 import { featureApprovalDetails } from "./feature-tools";
 import { setFeatureInput } from "@/lib/feature-tools";
@@ -648,6 +649,10 @@ export async function keepForApproval(
   }
   // A broadcast's send is described from the broadcast itself: its name, subject, audience and how many it reaches now (PSI AGT-01).
   if (store && tool === "send_broadcast") summary = (await broadcastApprovalSummary(store, args)) ?? summary;
+  // A support reply is described with the conversation's title and the words in full (PSI AGT-01).
+  if (store && tool === "reply_to_support") {
+    summary = await replyApprovalSummary({ account: ctx.account, store }, { conversation: String(args.conversation ?? ""), message: String(args.message ?? "") }).catch(() => summary);
+  }
   // A draft order's send is described from the draft itself: its customer, goods and total as the store prices it now (D173).
   // The draft's version is kept with the call, always the one the summary describes (a value the model passed is replaced): the send is of that version or none.
   if (store && tool === "send_draft_order") {
