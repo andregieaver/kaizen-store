@@ -190,6 +190,7 @@ export const assistantEn = {
       save: "Save",
       saved: "Saved.",
     },
+    report: { title: "Your latest weekly report", week: "Week of {date}", sales: "Net sales, 7 days", orders: "Orders, 7 days", steps: "Steps done", goals: "Goals", goalLine: "{met} of {all} targets met", notMeasured: "Not measured", note: "What it sees" },
     areas: { catalogue: "Products", website: "Website", design: "Design", setup: "Store setup", marketing: "Marketing", messages: "Messages to customers", money: "Money" },
     levelNames: { ask: "Ask me first", tell: "Do it and tell me", auto: "Just do it" },
   },

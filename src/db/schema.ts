@@ -13054,3 +13054,30 @@ export const autopilotSettings = commerce.table(
     check("autopilot_settings_budgets", sql`jsonb_typeof(${t.budgets}) = 'object'`),
   ],
 );
+
+/** What the autopilot told a person (D309, `docs/ai-autopilot.md` 7.5): a daily digest and a weekly report, one each per period, kept for the page. */
+export const autopilotReports = commerce.table(
+  "autopilot_reports",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    accountId: uuid("account_id")
+      .notNull()
+      .references(() => accounts.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    /** The store's day of a digest, the Monday of a weekly report's week. */
+    periodStart: date("period_start").notNull(),
+    /** The figures and lists, written by code (`ReportFacts`). */
+    facts: jsonb("facts").notNull(),
+    /** A weekly report's few sentences by the model, kept only when they passed the checks; null otherwise. */
+    note: text("note"),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("autopilot_reports_period_key").on(t.storeId, t.accountId, t.kind, t.periodStart).nullsNotDistinct(),
+    index("autopilot_reports_account_idx").on(t.accountId, t.createdAt),
+    check("autopilot_reports_kind", sql`${t.kind} in ('daily', 'weekly')`),
+    check("autopilot_reports_note", sql`${t.note} is null or length(${t.note}) <= 1500`),
+  ],
+);

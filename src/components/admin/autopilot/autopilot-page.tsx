@@ -67,6 +67,7 @@ export function AutopilotPage({
         </p>
       )}
       {tab === "decisions" && <Decisions overview={overview} words={a} actions={actions} links={links} />}
+      {tab === "decisions" && overview.report && <Report report={overview.report} words={a} />}
       {tab === "plans" && <Plans plans={overview.plans} words={a} action={actions.plan} assistantHref={assistantHref} />}
       {tab === "goals" && <Goals goals={overview.goals} words={a} action={actions.dropGoal} />}
       {tab === "settings" && <Settings overview={overview} words={a} action={actions.settings} />}
@@ -325,6 +326,35 @@ function Settings({ overview, words: a, action }: { overview: AutopilotOverview;
           </Button>
         </div>
       </ActionForm>
+    </Card>
+  );
+}
+
+function Report({ report, words: a }: { report: NonNullable<AutopilotOverview["report"]>; words: Words }) {
+  const r = a.report;
+  const f = report.facts;
+  const figure = (value: string | number | null | undefined) => (value === null || value === undefined ? r.notMeasured : String(value));
+  const rows = [
+    ...(f.sales ? [{ label: r.sales, value: figure(f.sales.now) }] : []),
+    ...(f.orders ? [{ label: r.orders, value: figure(f.orders.now) }] : []),
+    { label: r.steps, value: String(f.stepsDoneCount) },
+    ...(f.goals ?? []).map((g) => ({ label: g.title, value: fillWords(r.goalLine, { met: g.met, all: g.all }) })),
+  ];
+  return (
+    <Card title={r.title} description={fillWords(r.week, { date: report.periodStart })}>
+      <dl className="grid gap-x-6 gap-y-2 sm:grid-cols-[max-content_1fr]">
+        {rows.map((row) => (
+          <div key={row.label} className="contents">
+            <dt className="text-body text-ink-2">{row.label}</dt>
+            <dd className="text-body text-ink">{row.value}</dd>
+          </div>
+        ))}
+      </dl>
+      {report.note && (
+        <p className="mt-4 text-body text-ink-2">
+          {r.note}: {report.note}
+        </p>
+      )}
     </Card>
   );
 }

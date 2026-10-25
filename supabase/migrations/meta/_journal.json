@@ -3165,6 +3165,20 @@
       "when": 1792931562381,
       "tag": "20261025123242_autopilot_loop",
       "breakpoints": true
+    },
+    {
+      "idx": 452,
+      "version": "7",
+      "when": 1792935177899,
+      "tag": "20261025133257_autopilot_reports",
+      "breakpoints": true
+    },
+    {
+      "idx": 453,
+      "version": "7",
+      "when": 1792935196105,
+      "tag": "20261025133316_autopilot_reports_rls",
+      "breakpoints": true
     }
   ]
 }

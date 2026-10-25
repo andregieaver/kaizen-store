@@ -225,6 +225,7 @@ export const PERSONAL_DATA: PersonalEntry[] = [
   entry("assistant_follow_ups", "staff", via("none"), ["task"], null, "none", "Follow-ups a staff member asked the AI manager for, in their own words; they go with the account or its conversation."),
   entry("assistant_goals", "staff", via("none"), ["vision"], null, "none", "The owner's goals for the business in their own words (D309); the store's, not a shopper's."),
   entry("assistant_plans", "staff", via("none"), ["summary"], null, "none", "The autopilot's plans (D309), run in a staff member's name; they go with the account or its conversation."),
+  entry("autopilot_reports", "staff", via("none"), ["facts", "note"], null, "none", "What the autopilot told a staff member: counts, the plans' step titles and figures, never a customer (D309)."),
   entry("assistant_plan_steps", "staff", via("none"), ["result", "question", "answer"], null, "none", "A plan's steps: what the autopilot did and asked, and the owner's answers (D309); they go with their plan."),
   entry("audit_log", "none", none, [], null, "keep", "The activity log holds ids, counts and kinds, never an email or a name (a test scans it); kept 24 months as the record of who did what.", { until: "audit_log" }),
   entry("booking_resources", "staff", via("none"), ["name", "email", "property_address"], null, "none", "A member of staff, a room or a host's property. " + OWN),
@@ -433,6 +434,9 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   "experiment.guardrail": "staff",
   /** A follow-up the AI manager was asked for ran (PSI AGT-04): the person's own task and a link, never the answer. */
   "assistant.follow_up": "staff",
+  /** The autopilot's daily digest and weekly report (D309): counts, the plans' step titles and the store's figures, never a customer. */
+  "autopilot.digest": "staff",
+  "autopilot.weekly": "staff",
   "store.status": "staff",
   // Usage and limits (D314): to a store's owners when it nears or reaches a limit; to platform admins before a very busy time.
   "usage.near": "staff",

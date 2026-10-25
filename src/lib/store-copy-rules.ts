@@ -193,6 +193,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   assistant_goals: never("The owner's goals are the store's own business, not a setting to copy (D309)."),
   assistant_plans: never("The autopilot's plans run in an account's name in the store they were made for (D309)."),
   assistant_plan_steps: never("A plan's steps go with their plan (D309)."),
+  autopilot_reports: never("What the autopilot told a person goes with that person and store (D309)."),
   autopilot_settings: never("How far the autopilot may go is the new store's owner's own choice (D309): a copy starts by asking first."),
   assistant_memories: never("The AI manager's memories are personal to the account."),
   assistant_messages: never("The AI manager's conversations belong to the account and the store they happened in."),

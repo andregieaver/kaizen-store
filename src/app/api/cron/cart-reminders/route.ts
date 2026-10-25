@@ -20,6 +20,7 @@ import { runDataJobs } from "@/server/data-jobs";
 import { refreshEmbeddings } from "@/server/embeddings";
 import { runExperimentJobs } from "@/server/experiment-jobs";
 import { runFollowUps } from "@/server/follow-up-runner";
+import { sendAutopilotReports } from "@/server/autopilot-reports";
 import { invoiceJobs } from "@/server/invoice-issue";
 import { runPaymentJobs } from "@/server/payment-disputes";
 import { pruneReplications } from "@/server/replicate-store";
@@ -128,6 +129,8 @@ async function dispatch() {
     payments: () => runPaymentJobs(),
     // The AI manager's follow-ups (PSI AGT-04): a few due ones given back to it, in the asker's name, and the asker emailed.
     followUps: () => runFollowUps(),
+    // The autopilot's daily digests and weekly reports (D309), to the people whose plans ran lately.
+    autopilotReports: () => sendAutopilotReports(),
   });
   // Installed themes that follow updates and are behind their theme's latest version (D245); the stores' pages then show it.
   const themeUpdates = (await tracked("dispatcher.theme-updates", EVERY, () => runThemeUpdates())) ?? { updated: 0, refused: 0, stores: [] };

@@ -187,6 +187,7 @@ export const assistantNb: AssistantMessages = {
       save: "Lagre",
       saved: "Lagret.",
     },
+    report: { title: "Den siste ukerapporten din", week: "Uken fra {date}", sales: "Netto salg, 7 dager", orders: "Bestillinger, 7 dager", steps: "Steg gjort", goals: "Mål", goalLine: "{met} av {all} delmål nådd", notMeasured: "Ikke målt", note: "Det den ser" },
     areas: { catalogue: "Produkter", website: "Nettsted", design: "Design", setup: "Oppsett av butikken", marketing: "Markedsføring", messages: "Meldinger til kunder", money: "Penger" },
     levelNames: { ask: "Spør meg først", tell: "Gjør det og si fra", auto: "Bare gjør det" },
   },

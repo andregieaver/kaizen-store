@@ -195,6 +195,28 @@ export const staffEmailsNb: StaffEmailsMessages = {
     reopenedText:
       "{name} ble åpnet igjen{by}. Butikken tar imot bestillinger igjen. Hvis du hadde stengt den, legger du til butikkens egne domener igjen under Innstillinger, Domener, og sjekker at Kaizena Flow-abonnementet fortsatt er aktivt.",
   },
+  /** The autopilot's daily digest and weekly report (D309): counts, the plans' step titles and the store's figures; never a customer. */
+  autopilot: {
+    where: " i {store}",
+    digestSubject: "Det autopiloten gjorde{where}",
+    digestPreview: "{done} steg ferdige, {waiting} venter på deg.",
+    digestHeading: "Dagens arbeid",
+    done: { one: "{n} steg ble gjort:", many: "{n} steg ble gjort:" },
+    noneDone: "Ingen steg ble ferdige i dag.",
+    waiting: { one: "Én ting venter på ditt ja eller et svar.", many: "{n} ting venter på ditt ja eller et svar." },
+    button: "Åpne autopiloten",
+    weeklySubject: "Uken din med autopiloten{where}",
+    weeklyPreview: "Tallene, målene dine og det som kommer.",
+    weeklyHeading: "Uken din",
+    sales: "Netto salg, siste 7 dager",
+    salesBefore: "{now} (uken før: {before})",
+    orders: "Bestillinger, siste 7 dager",
+    notMeasured: "Ikke målt",
+    goals: "Mål",
+    goalLine: "{met} av {all} delmål nådd",
+    stepsWeek: "Steg gjort denne uken",
+    note: "Det den ser",
+  },
   followUp: {
     subject: "KI-assistenten fulgte opp: «{task}»",
     preview: "Svaret venter i samtalen din.",

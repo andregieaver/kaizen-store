@@ -17,7 +17,7 @@ const html = (element: Parameters<typeof renderToString>[0]) =>
 const action = async () => ({ status: "ok" as const, messages: [] });
 const actions = { decide: action, answer: action, plan: action, dropGoal: action, settings: action };
 
-const empty: AutopilotOverview = { calls: [], questions: [], ownerOnly: [], plans: [], goals: [], settings: DEFAULT_AUTONOMY, costMicros: 1_250_000 };
+const empty: AutopilotOverview = { calls: [], questions: [], ownerOnly: [], plans: [], goals: [], settings: DEFAULT_AUTONOMY, costMicros: 1_250_000, report: null };
 
 const page = (overview: AutopilotOverview, tab: AutopilotTab = "decisions", lang: "en" | "nb" = "en") =>
   html(createElement(AutopilotPage, { overview, base: "/admin/demo/assistant/autopilot", assistantHref: "/admin/demo/assistant", siteName: "Demo", tab, lang, actions, links: { payments: "/admin/demo/settings/payments" } }));

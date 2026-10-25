@@ -198,6 +198,28 @@ export const staffEmailsEn = {
     reopenedText:
       "{name} was reopened{by}. The shop takes orders again. If you had closed it, add its own domains again under Settings, Domains, and check that its Kaizena Flow plan is still on.",
   },
+  /** The autopilot's daily digest and weekly report (D309): counts, the plans' step titles and the store's figures; never a customer. */
+  autopilot: {
+    where: " in {store}",
+    digestSubject: "What the autopilot did{where}",
+    digestPreview: "{done} steps done, {waiting} waiting for you.",
+    digestHeading: "Today's work",
+    done: { one: "{n} step was done:", many: "{n} steps were done:" },
+    noneDone: "No step was finished today.",
+    waiting: { one: "One thing waits for your yes or an answer.", many: "{n} things wait for your yes or an answer." },
+    button: "Open the Autopilot",
+    weeklySubject: "Your week with the autopilot{where}",
+    weeklyPreview: "The figures, your goals and what comes next.",
+    weeklyHeading: "Your week",
+    sales: "Net sales, last 7 days",
+    salesBefore: "{now} (the week before: {before})",
+    orders: "Orders, last 7 days",
+    notMeasured: "Not measured",
+    goals: "Goals",
+    goalLine: "{met} of {all} targets met",
+    stepsWeek: "Steps done this week",
+    note: "What it sees",
+  },
   /** A follow-up the AI manager was asked for has run (PSI AGT-04): never the answer's words, only where to read it. */
   followUp: {
     subject: 'The AI manager followed up: "{task}"',

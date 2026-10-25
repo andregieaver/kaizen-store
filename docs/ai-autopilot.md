@@ -345,13 +345,14 @@ only (the platform's by platform admins):
   owner, each with its buttons: the kept calls with Approve and Decline, the questions with their options, and what only the owner can do,
   from `getSetupProgress()`), then **Plans** (each plan with its steps, statuses and results; Start, Pause, Resume, Stop), **Goals** (each
   with its progress from `goalProgress()`) and **Settings** (the switch, levels per area and budgets; owners only).
-- A digest email (`autopilot.digest`, `src/lib/autopilot-email.ts`, staff email words in the `staffEmails` catalogue) at most once a day to
-  the person a plan runs for, when there is something to tell (steps done with `tell`, decisions waiting): what was done and what waits,
-  with the link; never the content of a customer's message.
-- A weekly report (`commerce.autopilot_reports`, one per store and week): figures from `periodTotals()` (this week and the one before) and
-  `goalProgress()`, the steps done and what waits, drawn by code; a few sentences of concerns and next steps written by the model over those
-  facts (feature `autopilot`, `UNTRUSTED_TEXT`, no figures of its own) and passed through `findClaims()` (dropped, not shown, when it
-  fails). Kept on the page and emailed with the digest.
+- A digest email (`autopilot.digest`, `src/lib/autopilot-report.ts`, staff email words in the `staffEmails` catalogue) at most once a day,
+  after 18:00 in the store's time, to the person a plan runs for, when there is something to tell (a step finished, a decision or question
+  waiting): what was done and what waits, with the link; never the content of a customer's message or a step's result.
+- A weekly report (`commerce.autopilot_reports`, one per person, scope and week), from Monday 08:00 in the store's time: net sales and orders
+  of the last seven store days and the seven before from `periodTotals()` (not measured when a currency has no rate), the goals' targets met,
+  the steps done and what waits, drawn by code; a few sentences of concerns and next steps written by the model over those facts (feature
+  `autopilot`, `UNTRUSTED_TEXT`, within the AI budget) kept only through `checkedNote()` (no digit, no claim `findClaims()` finds, at most
+  600 characters; dropped, not shown, when it fails). Emailed (`autopilot.weekly`) and shown on the page's Decisions tab.
 
 ### 7.6 The audit log says who acted (B1)
 
@@ -406,7 +407,22 @@ shows it beside the person's name.
   Start or Resume is the person's yes for the version the page showed, `dropGoalFrom()`, `saveSettings()`), bound by each route's
   `actions.ts`, refreshing the page after a change.
 
-### 7.10 Tests
+### 7.10 As built: B3b, the digest and the weekly report (2026-10-25)
+
+- `sendAutopilotReports()` (`src/server/autopilot-reports.ts`, the dispatcher's job `autopilotReports` in `/api/cron/cart-reminders`, 20
+  emails a run) is the only writer of `commerce.autopilot_reports` (migrations `autopilot_reports` and `autopilot_reports_rls`; unique per
+  store, account, kind and period, nulls not distinct, so Kaizena Flow's own site has one too). It looks at the people whose plans run,
+  are paused or finished in the last eight days in an open store (or on the platform), reads each again (`activeAccount()`, then
+  `passMembership()` for a store, a platform admin for the platform: someone who left gets nothing), and claims a period's row before its
+  email goes (`on conflict do nothing`), so each is sent once; the email's idempotency key names the period too.
+- The facts are `ReportFacts` (`src/lib/autopilot-report.ts`, kept as JSON with the row): the person's own steps done in the last day or
+  week (at most eight titles listed, the count beside them), what waits for them (kept calls and questions), and for the weekly report the
+  figures and the goals. The email is `autopilotEmail()` in the person's admin language; money is written by `formatMoney()`.
+- The page reads the person's latest weekly report with `latestReport()` and shows it on Decisions.
+- Personal data: `autopilot_reports` is in `PERSONAL_DATA` as a staff member's (counts, step titles and figures, never a customer); the email kinds `autopilot.digest` and
+  `autopilot.weekly` are in `EMAIL_KINDS`; `never` in `COPY_RULES`.
+
+### 7.11 Tests
 
 PGlite: the plan and step life cycles the database holds, the audit `by` check. Unit: `checkPlan()` (unknown tool, bad arguments, a loop,
 a missing key, too many steps, a tool the role may not use), `goalProgress()`'s arithmetic on fixed figures, `autonomyDecision()` for every
