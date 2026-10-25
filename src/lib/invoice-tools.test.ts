@@ -25,7 +25,8 @@ describe("the invoice tools of the owner assistant (D159)", () => {
   });
 
   it("has no tool that makes, changes, numbers or sends an invoice or a credit note", () => {
-    const documents = OWNER_TOOLS.filter((t) => /invoice|credit_note/i.test(t.name)).map((t) => t.name);
+    // Work's invoices (D122) are another system: `issue_work_invoice` issues one through `commerce.issue_work_invoice()`, gated `send` (D318).
+    const documents = OWNER_TOOLS.filter((t) => /invoice|credit_note/i.test(t.name) && !/work/.test(t.name)).map((t) => t.name);
     expect(documents.sort()).toEqual([...NAMES].sort());
     for (const name of NAMES) expect(OWNER_TOOLS_BY_NAME[name].description).toMatch(/read only|Read only|never given/);
   });

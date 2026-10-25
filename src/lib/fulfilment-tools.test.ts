@@ -8,8 +8,9 @@ import { OWNER_TOOLS, OWNER_TOOLS_BY_NAME, readToolInput, toolDefinition } from 
 
 /**
  * The AI manager and wave 3, run 3 (D174, `docs/wave-3-fulfilment.md` 2.5 and 5.5), the parts that need no database: `pick_list` is in the catalogue, ungated
- * and read-only with `orders:read`, its arguments are bounded by the pick list's own limit, `get_order` says it is read-only for changes, and no tool edits an
- * order, sends part of one or records a change's payment (section 7). The answers themselves are held by `analytics-edits.int.test.ts`.
+ * and read-only with `orders:read`, its arguments are bounded by the pick list's own limit, `get_order` says it is read-only for changes, and no tool sends part
+ * of an order or records a change's payment (section 7). Since D318 (PSI AGT-01) an order is changed only by `change_order`, gated `spend` and through the
+ * editor's own functions, beside the read-only `preview_order_change`. The answers themselves are held by `analytics-edits.int.test.ts`.
  */
 
 const read = (name: string, raw: unknown) => readToolInput(OWNER_TOOLS_BY_NAME[name], raw);
@@ -41,9 +42,12 @@ describe("pick_list in the owner assistant's catalogue", () => {
 });
 
 describe("what the AI manager may not do with orders (D174, section 7)", () => {
-  it("has no tool that changes an order's lines, sends part of one or records a change's payment", () => {
+  it("has no tool that sends part of an order or records a change's payment, and changes an order only on the owner's yes", () => {
     const names = [...OWNER_TOOLS.map((t) => t.name), ...MANAGER_TOOLS.map((t) => t.name)];
-    expect(names.filter((n) => /edit_order|order_edit|change_order|order_change|send_part|partial|record.*paid|paid_outside|mark_paid/.test(n))).toEqual([]);
+    expect(names.filter((n) => /send_part|partial|record.*paid|paid_outside|mark_paid/.test(n))).toEqual([]);
+    expect(names.filter((n) => /edit_order|order_edit|change_order|order_change/.test(n)).sort()).toEqual(["change_order", "preview_order_change"]);
+    expect(OWNER_TOOLS_BY_NAME.change_order.gate).toBe("spend");
+    expect(OWNER_TOOLS_BY_NAME.preview_order_change.gate).toBeUndefined();
   });
 
   it("says in get_order and mark_order_sent where those things are done", () => {

@@ -1031,7 +1031,9 @@ Expected rating after the run: **full**.
 - **Changing an order's market, currency or delivery service (D135 carrier quotes, pickup points, windows)**: shipping is kept or set by hand.
 - **Custom items on an edit** (D173's custom service lines): their withdrawal handling is an open legal question (`docs/wave-3-orders.md` section 8 item 9).
 - **Charging a saved card for an edit** (CRD Art. 22) and **several partial payments of a difference**.
-- **The AI manager editing, sending or recording**: money, stock and the customer's consent; it reads only.
+- **The AI manager sending part of an order or recording a payment**: money, stock and the customer's consent; it reads only. Since D318 (PSI AGT-01) it
+  may change an order with `change_order`, only on the owner's yes (`spend`) and only through `applyOrderEdit()`/`sendOrderEdit()`, so a higher total still
+  waits for the customer's own payment.
 - **Cancelling or deleting a shipment** (Shopify cancels a fulfilment): shipments and their lines are records; a parcel recorded by mistake is noted on the order. A later run may add a
   *void* that keeps the row.
 - **Carrier labels for several parcels in one booking, return labels, local delivery and pickup at a location**: wave 3's shipping run.
