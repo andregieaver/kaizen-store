@@ -199,7 +199,8 @@ describe("Ready for pickup", () => {
     // The instructions as the order kept them when it was bought, in its language (the market's view was Norwegian: the snapshot is the Norwegian text).
     expect(text).toContain("Ring på bakdøren.");
     expect(text).toContain("2 × ");
-    expect(text).not.toMatch(/kr|NOK/);
+    // No price: an amount in kroner, written either way (the store's random address may hold the letters "kr", as `pick-…7kr` did).
+    expect(text).not.toMatch(/(?<![\w.-])\d[\d .,]*\s?kr\b|\bkr\s?\d|\bNOK\b/);
     // A second press is refused and sends nothing.
     expect(await markReadyForPickup(store.storeId, { orderId: order.orderId }, store.accountId)).toMatchObject({ ok: false, reason: "already_ready" });
     // *Send the email again* sends only when the first did not go.
