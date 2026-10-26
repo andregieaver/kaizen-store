@@ -6832,3 +6832,96 @@ describe("quantity rules (wave 6 unit E1, D323)", () => {
     });
   });
 });
+
+describe("price breaks (wave 6 unit E2, D323)", () => {
+  const one = async <T>(text: string, params: unknown[]) => (await db.query<T>(text, params)).rows[0];
+
+  it("price a line by the lowest of the market price, the breaks its quantity reaches and the buyer's lists", async () => {
+    const storeId = await createStore(`breaks-store-${(counter += 1)}`, ["NO", "SE"]);
+    await db.query("update commerce.stores set features = array['shop', 'business'] where id = $1", [storeId]);
+    const { productId, variantId } = await createProduct({ storeId });
+    const other = await createProduct({ storeId });
+    const line = async (quantity: number, customer: string | null = null, market = "NO", base = 10000) =>
+      (
+        await db.query<{ amount_minor: string; list_id: string | null; break_from: number | null }>(
+          "select amount_minor::text, list_id, break_from from commerce.line_price($1, $2, $3, $4, $5, $6)",
+          [storeId, customer, variantId, market, base, quantity],
+        )
+      ).rows.map((r) => ({ amount: Number(r.amount_minor), list: r.list_id, from: r.break_from }))[0] ?? null;
+
+    // Nothing below 10 units; 10 % off from 10 (half up), a fixed 80.00 in Norway from 50, which Sweden does not name.
+    await db.query(
+      "insert into commerce.price_breaks (store_id, product_id, from_quantity, percent) values ($1, $2, 10, 10)",
+      [storeId, productId],
+    );
+    await db.query(
+      "insert into commerce.price_breaks (store_id, product_id, variant_id, from_quantity, amounts) values ($1, $2, $3, 50, '{\"NO\": 8000}')",
+      [storeId, productId, variantId],
+    );
+    expect(await line(1)).toBeNull();
+    expect(await line(9)).toBeNull();
+    expect(await line(10)).toEqual({ amount: 9000, list: null, from: 10 });
+    expect(await line(10, null, "NO", 333)).toEqual({ amount: 300, list: null, from: 10 });
+    expect(await line(50)).toEqual({ amount: 8000, list: null, from: 50 });
+    expect(await line(50, null, "SE")).toEqual({ amount: 9000, list: null, from: 10 });
+    // A fixed break above the market price gives nothing.
+    expect(await line(50, null, "NO", 7000)).toEqual({ amount: 6300, list: null, from: 10 });
+
+    // A buyer's list wins only where it is lower than the shop's price at that quantity.
+    const tier = await one<{ id: string }>("insert into commerce.customer_tiers (store_id, name, percent) values ($1, 'Grossist', 5) returning id", [storeId]);
+    const buyer = await one<{ id: string }>("insert into commerce.customers (store_id, email, tier_id) values ($1, $2, $3) returning id", [storeId, `breaks-${counter}@example.com`, tier.id]);
+    const list = await one<{ id: string }>("insert into commerce.price_lists (store_id, name, percent) values ($1, 'Femten', 15) returning id", [storeId]);
+    await db.query("insert into commerce.price_list_assignments (store_id, list_id, tier_id) values ($1, $2, $3)", [storeId, list.id, tier.id]);
+    expect(await line(1, buyer.id)).toEqual({ amount: 8500, list: list.id, from: null });
+    expect(await line(10, buyer.id)).toEqual({ amount: 8500, list: list.id, from: null });
+    expect(await line(50, buyer.id)).toEqual({ amount: 8000, list: null, from: 50 });
+
+    // At one unit it is buyer_price(): a break starts at two.
+    const atOne = await one<{ amount_minor: string }>("select amount_minor::text from commerce.buyer_price($1, $2, $3, 'NO', 10000)", [storeId, buyer.id, variantId]);
+    expect(Number(atOne.amount_minor)).toBe(8500);
+
+    // The rules: a variant of the product, prices keyed by market code in whole minor units, one per quantity, at most 10.
+    await expect(
+      db.query("insert into commerce.price_breaks (store_id, product_id, variant_id, from_quantity, percent) values ($1, $2, $3, 20, 5)", [storeId, productId, other.variantId]),
+    ).rejects.toThrow(/price_breaks.variant/);
+    await expect(
+      db.query("insert into commerce.price_breaks (store_id, product_id, from_quantity, amounts) values ($1, $2, 20, '{\"NOK\": 100}')", [storeId, productId]),
+    ).rejects.toThrow(/price_breaks_amounts/);
+    await expect(
+      db.query("insert into commerce.price_breaks (store_id, product_id, from_quantity, amounts) values ($1, $2, 20, '{\"NO\": 10.5}')", [storeId, productId]),
+    ).rejects.toThrow(/price_breaks_amounts/);
+    await expect(
+      db.query("insert into commerce.price_breaks (store_id, product_id, from_quantity, percent, amounts) values ($1, $2, 20, 5, '{\"NO\": 100}')", [storeId, productId]),
+    ).rejects.toThrow(/price_breaks_one/);
+    await expect(db.query("insert into commerce.price_breaks (store_id, product_id, from_quantity, percent) values ($1, $2, 10, 5)", [storeId, productId])).rejects.toThrow(
+      /price_breaks_step_key/,
+    );
+    for (let from = 11; from <= 18; from += 1) {
+      await db.query("insert into commerce.price_breaks (store_id, product_id, from_quantity, percent) values ($1, $2, $3, 5)", [storeId, productId, from]);
+    }
+    await expect(db.query("insert into commerce.price_breaks (store_id, product_id, from_quantity, percent) values ($1, $2, 19, 5)", [storeId, productId])).rejects.toThrow(
+      /price_breaks.max/,
+    );
+  });
+
+  it("are copied with the product into a new store", async () => {
+    const template = await createStore(`breaks-template-${(counter += 1)}`, ["NO"]);
+    const { productId, variantId } = await createProduct({ storeId: template });
+    await db.query("insert into commerce.price_breaks (store_id, product_id, from_quantity, percent) values ($1, $2, 10, 10)", [template, productId]);
+    await db.query(
+      "insert into commerce.price_breaks (store_id, product_id, variant_id, from_quantity, amounts) values ($1, $2, $3, 50, '{\"NO\": 8000}')",
+      [template, productId, variantId],
+    );
+    const owner = await createAccount(`breaks-owner-${counter}@example.com`);
+    const { id: copy } = await one<{ id: string }>("select commerce.clone_store($1, $2, 'Copy', $3) as id", [template, `breaks-copy-${counter}`, owner]);
+    const { rows } = await db.query<{ from_quantity: number; percent: number | null; amounts: unknown; own_variant: boolean | null }>(
+      `select b.from_quantity, b.percent, b.amounts, (select v.store_id = b.store_id from commerce.product_variants v where v.id = b.variant_id) as own_variant
+       from commerce.price_breaks b where b.store_id = $1 order by b.from_quantity`,
+      [copy],
+    );
+    expect(rows).toEqual([
+      { from_quantity: 10, percent: 10, amounts: null, own_variant: null },
+      { from_quantity: 50, percent: null, amounts: { NO: 8000 }, own_variant: true },
+    ]);
+  });
+});

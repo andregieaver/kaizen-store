@@ -79,6 +79,8 @@ export type OfferedVariant = {
   capped?: string;
   /** Its price, as a place in the part's `prices`: one drawn per distinct price, so the page does not grow with each variant (D320). */
   priceIndex: number;
+  /** Its price breaks (D323), as a place in the part's `breakTables`; none for a variant whose breaks lower nothing. */
+  breakIndex?: number;
 };
 
 /** A price as the server drew it, once for every variant that has it. */
@@ -100,6 +102,7 @@ export type OfferedPrice = {
 export function VariantPurchase({
   variants,
   prices,
+  breakTables = [],
   optionsFrom = OPTIONS_FROM,
   store,
   market,
@@ -111,6 +114,8 @@ export function VariantPurchase({
 }: {
   variants: OfferedVariant[];
   prices: OfferedPrice[];
+  /** The price-break tables the server drew (D323), one per distinct table. */
+  breakTables?: ReactNode[];
   /** From this many variants, a list per option (the buy part's setting). */
   optionsFrom?: number;
   store: string;
@@ -180,6 +185,7 @@ export function VariantPurchase({
           )}
         </div>
       </div>
+      {variant.breakIndex !== undefined && breakTables[variant.breakIndex]}
       {!variant.available && notify?.variants.includes(variant.id) && (
         <BackInStock key={`notify-${variant.id}`} store={store} market={market} variantId={variant.id} email={notify.email} labels={notify.labels} />
       )}

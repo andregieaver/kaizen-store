@@ -1222,13 +1222,13 @@
       "checkedOn": "2026-10-02"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": "missing"
+      "was": "partial"
     },
-    "gap": "Quantity rules are built (D323 E1): a variant of goods or a bundle has a minimum, a maximum and a step (`product_variants.min_quantity`, `max_quantity`, `quantity_step`), and the cart's add and change, the cart page, `placeOrder()` and the WordPress cart keep to them (`src/lib/quantity-rules.ts`, `src/server/quantity-rules.int.test.ts`). Quantity breaks exist only as campaigns (D299 E3): a `tiered` campaign with `tier_basis = 'quantity'` gives two to five percentage steps on chosen products, categories or tags, shown on the product page and agreed by `cartSummary()` and `placeOrder()`. Missing: a break as a unit price or percentage per product, variant or price list, shown as a table (D323 E2, E3).",
-    "bucket": "A",
-    "wave": 6,
+    "gap": "None for the criteria: a product's price breaks (D323 E2, `commerce.price_breaks`: from N units in one line, a percentage off or a unit price per market, for one variant or every variant) price a line only through `commerce.line_price()`, read by the cart, checkout, the product page's table (`priceBreaksFor()`, `PriceBreakTable`) and the WordPress quote; a variant's minimum, maximum and step (E1) are kept by the cart's add and change, `placeOrder()` and the WordPress cart. Tiered campaigns (D299 E3) remain for percentage steps by basket. Not built yet: a price list's own breaks and quantity rules (E3).",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "A variant (or price list) has quantity breaks (from N units, price or percentage) and the product page shows them.",
       "A variant can have a minimum, maximum and increment per order; the cart refuses and explains a quantity that breaks them (integration test).",
@@ -1236,20 +1236,28 @@
     ],
     "evidence": {
       "files": [
+        "src/components/admin/price-breaks-section.tsx",
+        "src/components/price-breaks.tsx",
         "src/lib/campaign-notices.ts",
         "src/lib/campaigns.ts",
         "src/lib/cart.ts",
+        "src/lib/price-breaks.ts",
         "src/lib/quantity-rules.ts",
         "src/server/campaigns.ts",
-        "src/server/cart.ts"
+        "src/server/cart.ts",
+        "src/server/price-breaks.ts",
+        "supabase/migrations/20261026152908_price_breaks_sql.sql"
       ],
       "tests": [
         "e2e/campaigns.spec.ts",
+        "src/db/commerce.test.ts",
         "src/lib/campaign-notices.test.ts",
         "src/lib/campaigns.test.ts",
+        "src/lib/price-breaks.test.ts",
         "src/lib/quantity-rules.test.ts",
         "src/server/campaigns.int.test.ts",
         "src/server/checkout-kinds.int.test.ts",
+        "src/server/price-breaks.int.test.ts",
         "src/server/quantity-rules.int.test.ts"
       ],
       "untested": false
@@ -1265,6 +1273,12 @@
         "from": "missing",
         "to": "partial",
         "why": "Quantity breaks are built as tiered campaigns (D299 E3): tier_basis 'quantity', two to five percentage steps (tierPercent() in src/lib/campaigns.ts) on chosen products, categories or tags, optionally per customer group; the product page shows the ladder (e2e/campaigns.spec.ts), and cartSummary()/placeOrder() agree in checkout-kinds.int.test.ts (by items, by spend, in euro; the three tiered scenarios run and pass). No minimum, maximum or increment per variant, so Partial."
+      },
+      {
+        "on": "2026-10-26",
+        "from": "partial",
+        "to": "full",
+        "why": "Wave 6 unit E (D323, docs/wave-6-catalogue.md E.4 and E.5): a variant's minimum, maximum and step are kept by the cart, checkout and the WordPress cart, which refuse and explain a quantity that breaks them (quantity-rules.int.test.ts); a product's breaks (a percentage or a unit price from N units, per variant or every variant) are shown on the product page as a table and priced by commerce.line_price() alike in the cart and the order, in euro too (checkout-kinds.int.test.ts)."
       }
     ]
   },

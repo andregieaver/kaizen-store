@@ -55,6 +55,8 @@ export type CartLine = {
   unitPriceMinor: number | null;
   /** The price list that prices the line for this buyer (D321), null for the market price: such a line takes no group percentage on top. */
   priceListId: string | null;
+  /** The quantity of the product's price break that prices the line (D323), null for none: the price at that quantity, never a reduction. */
+  breakFrom: number | null;
   /**
    * What is in one unit and what it is compared per in this market (D160), read live from the variant: the unit price is
    * `unitPrice(line.unitPriceMinor, ...)` (one unit's price as the cart shows it, whatever the quantity). Null for no
@@ -197,8 +199,9 @@ export async function getCart(
       (case when cl.selling_plan_id is null then not p.subscription_only else coalesce(sp.active, false) and ${plansOffered(sql`cl.store_id`)} end) as plan_ok,
       coalesce(tl.title, tf.title) as title,
       coalesce(m.thumbnail_url, m.url) as image_url, coalesce(nullif(m.alt ->> ${market.locale}, ''), commerce.media_alt(m.url, ${market.locale}), '') as image_alt,
-      -- The buyer's price list price where one is lower (D321), else the market's: worked out only by commerce.buyer_price().
-      coalesce(bp.amount_minor, cp.amount_minor) as amount_minor, bp.list_id as price_list_id,
+      -- The line's price at its quantity (D323): a price break or the buyer's price list price where one is lower (D321), else the market's:
+      -- worked out only by commerce.line_price().
+      coalesce(bp.amount_minor, cp.amount_minor) as amount_minor, bp.list_id as price_list_id, bp.break_from,
       -- Only in a country and currency the store offers now (D178: Several countries and currencies).
       (p.status = 'active' and v.active and ${bookable} and ${offeredTo(customerId)} and commerce.market_offered(c.store_id, c.market_code, ${market.currency})) as sellable,
       va.in_stock, va.raw_available, va.stock_policy, va.backorder_days, v.min_quantity, v.max_quantity, v.quantity_step
@@ -224,7 +227,7 @@ export async function getCart(
     ) m on true
     left join commerce.current_prices cp
       on cp.variant_id = v.id and cp.market_code = c.market_code
-    left join lateral commerce.buyer_price(cl.store_id, ${customerId}::uuid, v.id, c.market_code, cp.amount_minor) bp
+    left join lateral commerce.line_price(cl.store_id, ${customerId}::uuid, v.id, c.market_code, cp.amount_minor, cl.quantity) bp
       on ${LIST_PRICED}
     left join commerce.variant_availability va on va.store_id = v.store_id and va.variant_id = v.id
     where cl.store_id = ${storeId}::uuid
@@ -323,6 +326,7 @@ export async function getCart(
         quantity,
         unitPriceMinor,
         priceListId: row.price_list_id ? String(row.price_list_id) : null,
+        breakFrom: row.break_from === null || row.break_from === undefined ? null : Number(row.break_from),
         // Goods only: a booking's price is for its nights, days or hours, and the database refuses a measure on one.
         measure: range || row.starts_at || status === "unavailable" ? null : shownMeasureFromColumns(row.measure_amount, row.measure_unit, row.measure_base, market.code),
         available,

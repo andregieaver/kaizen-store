@@ -183,6 +183,23 @@ export const productNb: ProductMessages = {
     warnHint: "Eierne får én e-post når lageret går ned til dette nivået, ikke én for hvert salg.",
   },
   /** How many at a time (D323): a variant's minimum, maximum and step. */
+  /** Price breaks (D323): the product's prices by quantity. */
+  priceBreaks: {
+    title: "Pris etter antall",
+    intro: "En lavere stykkpris fra et antall enheter på én ordrelinje. Produktsiden viser prisene i en tabell, og handlekurven tar dem. De er prisen ved det antallet og vises aldri som en rabatt.",
+    notSubscriptions: "Pris etter antall gjelder enkeltkjøp, ikke abonnement.",
+    variant: "Variant",
+    everyVariant: "Alle varianter",
+    from: "Fra antall",
+    kind: "Lavere pris som",
+    percent: "Prosent avslag",
+    price: "Stykkpris med mva.",
+    priceWithoutVat: "Stykkpris uten mva.",
+    percentOff: "Prosent avslag",
+    priceIn: "{market} ({currency})",
+    remove: "Fjern",
+    add: "Legg til pris etter antall",
+  },
   quantityRules: {
     summary: "Hvor mange om gangen for {name}",
     title: "Hvor mange om gangen for {name}",

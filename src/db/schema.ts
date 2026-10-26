@@ -2617,6 +2617,36 @@ export const bundleComponents = commerce.table(
 );
 
 /**
+ * A product's price breaks (wave 6 unit E2, D323, `docs/wave-6-catalogue.md` E.2): from `fromQuantity` units in one line, a whole `percent` off the
+ * market price or `amounts`, a unit price per market code with VAT in the country's own currency (as `prices` keeps them), for one variant or every
+ * variant (`variantId` null). A line's price is only `commerce.line_price()`. At most 10 a product (`price_breaks_rules()`).
+ */
+export const priceBreaks = commerce.table(
+  "price_breaks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId(),
+    productId: uuid("product_id").notNull(),
+    variantId: uuid("variant_id"),
+    fromQuantity: integer("from_quantity").notNull(),
+    percent: integer("percent"),
+    amounts: jsonb("amounts").$type<Record<string, number>>(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("price_breaks_store_id_key").on(t.storeId, t.id),
+    unique("price_breaks_step_key").on(t.productId, t.variantId, t.fromQuantity).nullsNotDistinct(),
+    productRef("price_breaks_product_fk", t),
+    variantRef("price_breaks_variant_fk", { storeId: t.storeId, variantId: t.variantId }).onDelete("cascade"),
+    index("price_breaks_product_idx").on(t.storeId, t.productId),
+    index("price_breaks_variant_idx").on(t.storeId, t.variantId),
+    check("price_breaks_from", sql`${t.fromQuantity} between 2 and 9999`),
+    check("price_breaks_percent", sql`${t.percent} between 1 and 99`),
+    check("price_breaks_one", sql`(${t.percent} is null) <> (${t.amounts} is null)`),
+  ],
+);
+
+/**
  * A purchase option for subscribing to a product (D25), as Shopify's selling
  * plans and WooCommerce's subscription options: how often it renews and the
  * subscriber's discount. Options in use are switched off, never deleted.

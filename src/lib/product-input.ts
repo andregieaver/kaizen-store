@@ -4,6 +4,7 @@ import { DEFAULT_CANCEL_HOURS, DEFAULT_DEPOSIT_PERCENT, PAYMENT_MODES } from "./
 import { PRODUCT_AUDIENCES } from "./b2b";
 import { RENTAL_PERIODS } from "./booking-ranges";
 import { policyProblem, stockPolicyFields } from "./inventory";
+import { PRICE_BREAKS_MAX, priceBreakProblems } from "./price-breaks";
 import { MAX_ORDER_QUANTITY, ruleProblem } from "./quantity-rules";
 import { minorUnitDigits } from "./money";
 import { isPictureAddress } from "./picture-address";
@@ -404,6 +405,21 @@ export const productInput = z.object({
   appointment: appointmentInput.nullable().default(null),
   /** A bundle's components and pricing (D322); null for every other kind. */
   bundle: bundleInput.nullable().default(null),
+  /**
+   * Price breaks (wave 6 unit E2, D323): from how many units in one line, a percentage off or a price per market as typed, for a variant by SKU or
+   * every variant (null); goods and bundles only, `priceBreakProblems()`'s rules.
+   */
+  priceBreaks: z
+    .array(
+      z.object({
+        variantSku: z.string().max(64).nullable(),
+        from: z.number().int().min(2).max(9999),
+        percent: z.number().int().min(1).max(99).nullable(),
+        prices: z.record(z.string(), z.string().trim().max(20)),
+      }),
+    )
+    .max(PRICE_BREAKS_MAX, `A product has at most ${PRICE_BREAKS_MAX} price breaks.`)
+    .default([]),
   taxCode: z.string().trim().regex(/^txcd_[0-9]{8}$/, "A Stripe tax code looks like txcd_99999999."),
   withdrawalExclusion: z.enum(WITHDRAWAL_EXCLUSIONS.map((w) => w.id) as [string, ...string[]]),
   schemes: z.array(z.enum(PRODUCER_SCHEMES.map((s) => s.id) as [string, ...string[]])),
@@ -527,6 +543,17 @@ export function productProblems(input: ProductInput, context: PublishContext): s
       const problem = ruleProblem({ min: variant.minQuantity, max: variant.maxQuantity, step: variant.quantityStep });
       if (problem) problems.push(`${variantLabel(variant.options)}: ${problem}`);
     }
+  }
+
+  // Price breaks (D323): goods and bundles only (any other kind's are dropped on save), each a percentage or prices in the store's own markets.
+  if (input.priceBreaks.length > 0 && (input.kind === "goods" || input.kind === "bundle")) {
+    const currencies = new Map(context.markets.map((m) => [m.code, m.currency]));
+    problems.push(
+      ...priceBreakProblems(input.priceBreaks, input.variants.map((v) => v.sku), (market, typed) => {
+        const currency = currencies.get(market);
+        return currency ? parsePrice(typed, currency) : null;
+      }),
+    );
   }
 
   // A stay's or rental's fee per booking (D70), typed like a price.

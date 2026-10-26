@@ -184,6 +184,23 @@ export const productEn = {
     warnHint: "The owners get one email when the stock goes down to this level, not one for every sale.",
   },
   /** How many at a time (D323): a variant's minimum, maximum and step. */
+  /** Price breaks (D323): the product's prices by quantity. */
+  priceBreaks: {
+    title: "Price by quantity",
+    intro: "A lower price each from a number of units in one order line. The product page shows the prices as a table and the cart charges them. They are the price at that quantity, never shown as a reduction.",
+    notSubscriptions: "Prices by quantity are for buying once, not for subscriptions.",
+    variant: "Variant",
+    everyVariant: "Every variant",
+    from: "From units",
+    kind: "Lower price as",
+    percent: "Percentage off",
+    price: "Price each, with VAT",
+    priceWithoutVat: "Price each, without VAT",
+    percentOff: "Percent off",
+    priceIn: "{market} ({currency})",
+    remove: "Remove",
+    add: "Add a price by quantity",
+  },
   quantityRules: {
     summary: "How many at a time for {name}",
     title: "How many at a time for {name}",

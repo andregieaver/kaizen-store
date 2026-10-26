@@ -244,6 +244,7 @@ export function emptyProduct(context: EditorContext): ProductInput {
     layoutId: null,
     appointment: null,
     bundle: null,
+    priceBreaks: [],
     taxCode: GENERAL_TAX_CODE,
     withdrawalExclusion: "none",
     schemes: ["packaging"],
@@ -369,7 +370,7 @@ export async function getProductForEdit(
   const category = parseVatCategory(product.vat_category);
   const kind = PRODUCT_KINDS.find((k) => k === product.kind) ?? "goods";
 
-  const [translations, media, schemes, variants, prices, files, plans, termRows, [appointment], resources, seasons, bundle] = await Promise.all([
+  const [translations, media, schemes, variants, prices, files, plans, termRows, [appointment], resources, seasons, bundle, breaks] = await Promise.all([
     db().execute<Row>(sql`
       select locale, title, description, safety_information, seo_title, seo_description, excerpt
       from commerce.product_translations where product_id = ${productId}::uuid
@@ -433,6 +434,14 @@ export async function getProductForEdit(
       where store_id = ${store.id}::uuid and product_id = ${productId}::uuid order by position, created_at
     `),
     bundleForEdit(db(), store.id, productId),
+    // Price breaks (D323), a variant's by its SKU.
+    db().execute<Row>(sql`
+      select v.sku as variant_sku, b.from_quantity, b.percent, b.amounts
+      from commerce.price_breaks b
+      left join commerce.product_variants v on v.store_id = b.store_id and v.id = b.variant_id
+      where b.store_id = ${store.id}::uuid and b.product_id = ${productId}::uuid
+      order by v.sku nulls first, b.from_quantity
+    `),
   ]);
 
   const byLocale = new Map(translations.map((t) => [String(t.locale), t]));
@@ -576,6 +585,19 @@ export async function getProductForEdit(
           }
         : null,
     bundle,
+    priceBreaks: breaks.map((b) => {
+      const amounts = (b.amounts ?? {}) as Record<string, number>;
+      return {
+        variantSku: b.variant_sku === null || b.variant_sku === undefined ? null : String(b.variant_sku),
+        from: Number(b.from_quantity),
+        percent: b.percent === null || b.percent === undefined ? null : Number(b.percent),
+        prices: Object.fromEntries(
+          context.markets
+            .filter((m) => typeof amounts[m.code] === "number")
+            .map((m) => [m.code, formatPriceInput(typedAmount(context, m.code, amounts[m.code], category), m.currency)]),
+        ),
+      };
+    }),
     taxCode: String(product.tax_code),
     withdrawalExclusion: String(product.withdrawal_exclusion),
     schemes: schemes.map((s) => String(s.scheme)),
@@ -603,6 +625,40 @@ function keptAmount(
   category: VatCategory,
 ): number | null {
   return typedMinor !== null && context.audience === "businesses" ? withVat(typedMinor, market.vatRates[category]) : typedMinor;
+}
+
+/**
+ * A product's price breaks (D323) as given: the ones there are replaced, a variant found by its SKU among the product's, prices kept with VAT as
+ * market prices are. Goods and bundles only; `productProblems()` checked them and the database checks them again.
+ */
+async function savePriceBreaks(tx: Tx, storeId: string, productId: string, input: ProductInput, context: EditorContext) {
+  await tx.execute(sql`delete from commerce.price_breaks where store_id = ${storeId}::uuid and product_id = ${productId}::uuid`);
+  if ((input.kind !== "goods" && input.kind !== "bundle") || input.priceBreaks.length === 0) return;
+  const variants = await tx.execute<Row>(sql`
+    select id, sku from commerce.product_variants where store_id = ${storeId}::uuid and product_id = ${productId}::uuid
+  `);
+  const idOf = new Map(variants.map((v) => [String(v.sku), String(v.id)]));
+  const rows = input.priceBreaks.map((step) => {
+    const amounts: Record<string, number> = {};
+    if (step.percent === null) {
+      for (const market of context.markets) {
+        const amount = keptAmount(context, market, parsePrice(step.prices[market.code] ?? "", market.currency), input.vatCategory);
+        if (amount !== null) amounts[market.code] = amount;
+      }
+    }
+    return {
+      variant_id: step.variantSku === null ? null : (idOf.get(step.variantSku) ?? null),
+      from_quantity: step.from,
+      percent: step.percent,
+      amounts: step.percent === null ? amounts : null,
+    };
+  });
+  if (rows.some((r, i) => input.priceBreaks[i].variantSku !== null && r.variant_id === null)) throw new Error("price_breaks.variant");
+  await tx.execute(sql`
+    insert into commerce.price_breaks (store_id, product_id, variant_id, from_quantity, percent, amounts)
+    select ${storeId}::uuid, ${productId}::uuid, r.variant_id, r.from_quantity, r.percent, r.amounts
+    from jsonb_to_recordset(${JSON.stringify(rows)}::jsonb) as r(variant_id uuid, from_quantity integer, percent integer, amounts jsonb)
+  `);
 }
 
 /**
@@ -797,6 +853,7 @@ export async function saveProduct(
       await saveVariants(tx, store.id, saved, context, input, locationId, stockMode, actor?.id ?? null);
       await saveAppointment(tx, store.id, saved, input, context);
       if (input.kind === "bundle") await saveBundleComponents(tx, store.id, saved, input);
+      await savePriceBreaks(tx, store.id, saved, input, context);
       await saveFiles(tx, store.id, saved, input);
       // Kept as they are while Subscriptions is off (D178); a product that becomes a booking still loses them (it cannot be subscribed to).
       if (subscriptionsOn || isBooked(input.kind)) await savePlans(tx, store.id, saved, input, context.markets, context.audience);

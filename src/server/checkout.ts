@@ -197,7 +197,7 @@ function orderLineRows(
   market: Market,
   source: SQL,
   where: SQL,
-  /** The buyer whose price lists price the lines (D321, `commerce.buyer_price()`, as the cart reads it); null for the market price. */
+  /** The buyer whose price lists price the lines (D321, `commerce.line_price()` with the line's price breaks, D323, as the cart reads it); null for the market price. */
   customerId: string | null,
 ) {
   return tx.execute<Row>(sql`
@@ -210,7 +210,7 @@ function orderLineRows(
         coalesce(v.tax_code, p.tax_code) as tax_code, p.withdrawal_exclusion,
         commerce.vat_rate(${market.code}, p.vat_category) as vat_rate,
         coalesce(tl.title, tf.title, p.handle) as title,
-        coalesce(bp.amount_minor, cp.amount_minor) as amount_minor, bp.list_id as price_list_id, cl.starts_at, cl.resource_id, aps.payment, aps.deposit_percent,
+        coalesce(bp.amount_minor, cp.amount_minor) as amount_minor, bp.list_id as price_list_id, bp.break_from, cl.starts_at, cl.resource_id, aps.payment, aps.deposit_percent,
         p.kind, aps.check_in_time, aps.check_out_time, v.rental_period, p.host_id, v.cost_minor,
         v.measure_amount, v.measure_unit, v.measure_base, v.stock_policy, v.backorder_days,
         v.min_quantity, v.max_quantity, v.quantity_step,
@@ -237,7 +237,7 @@ function orderLineRows(
         select title from commerce.product_translations where product_id = p.id order by locale limit 1
       ) tf on true
       left join commerce.current_prices cp on cp.variant_id = v.id and cp.market_code = ${market.code}
-      left join lateral commerce.buyer_price(cl.store_id, ${customerId}::uuid, v.id, ${market.code}, cp.amount_minor) bp on ${LIST_PRICED}
+      left join lateral commerce.line_price(cl.store_id, ${customerId}::uuid, v.id, ${market.code}, cp.amount_minor, cl.quantity) bp on ${LIST_PRICED}
       left join commerce.selling_plans sp
         on sp.store_id = cl.store_id and sp.id = cl.selling_plan_id and sp.product_id = p.id
       left join commerce.appointment_settings aps on aps.store_id = p.store_id and aps.product_id = p.id

@@ -87,6 +87,7 @@ export function blank(ctx: ProductCsvContext): ProductInput {
     layoutId: null,
     appointment: null,
     bundle: null,
+    priceBreaks: [],
     taxCode: "txcd_99999999",
     withdrawalExclusion: "none",
     schemes: ["packaging"],

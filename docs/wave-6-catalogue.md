@@ -673,6 +673,29 @@ product. The WordPress cart (D170) quotes a line at the market price, at most 20
   plugin 1.2.0. Held by `src/lib/quantity-rules.test.ts`, `src/db/commerce.test.ts` (the checks and the copy) and
   `src/server/quantity-rules.int.test.ts` (add, refuse, block, checkout, stock below the minimum, hand-over and quote).
 
+#### E.5 As built: E2 (2026-10-26)
+
+- Migrations `20261026152834_price_breaks` (`commerce.price_breaks`: product, variant or every variant, `from_quantity`, `percent` or
+  `amounts`; one per variant and quantity, `NULLS NOT DISTINCT`) and `20261026152908_price_breaks_sql` (row security,
+  `commerce.break_amounts_ok()` and the `price_breaks_amounts` check, `price_breaks_rules()` (a variant of the product, at most 10),
+  `commerce.line_price()`, and `clone_store()`/`duplicate_store()` copying them). `line_price()` takes a list's offer only where it is lower than
+  the shop's own price at that quantity, and is `buyer_price()` at one unit (a break starts at two).
+- `getCart()` and `orderLineRows()` read `line_price()` under `LIST_PRICED` with the line's quantity (so a break never reaches a purchase option,
+  a stay or a gift card); cart lines carry `breakFrom` and the cart says *Price for 10 or more* (`m.priceBreaks.applied`). A line priced by a
+  break has no `priceListId`, so the group's percentage, campaigns, codes and credits work on it as on any line.
+- The product page's buy part reads `priceBreaksFor()` (`src/server/price-breaks.ts`: `line_price()` at the variant's minimum and at each break,
+  `breakSteps()` keeping only the falls) for products without purchase options and draws `PriceBreakTable` under the chosen variant's price,
+  one table per distinct table (`OfferedVariant.breakIndex`, `breakTables`). Cards, listings, feeds and structured data keep the price of one unit.
+- The editor's *Price by quantity* card (`price-breaks-section.tsx`, goods and bundles): every variant or one, from how many, a percentage or a
+  price per market typed as market prices are (`keptAmount()`), checked by `priceBreakProblems()` and saved by `savePriceBreaks()` in
+  `saveProduct()`'s transaction (a product of another kind keeps none). Imports and bulk edits keep them, as they save through the editor's
+  own read. Words in the `product` catalogue (en, nb) and `m.priceBreaks` (nb, sv, da, en).
+- The WordPress quote prices each line with `line_price()` at its fitted quantity (`quantityPrices()`, no buyer; no 30-day reference beside a
+  break). The AI manager's `get_product` names the breaks; changing them is the editor's.
+- Held by `src/lib/price-breaks.test.ts`, `src/db/commerce.test.ts` (`line_price()`, the rules, the copy), `src/server/price-breaks.int.test.ts`
+  (the editor's save, the WordPress quote) and the euro scenario in `checkout-kinds.int.test.ts` (the cart, the summary and the order agree at
+  each quantity, the table's prices are the cart's, the group's percentage comes off a break).
+
 ### Unit F (D324): search merchandising
 
 Synonym groups per language (`search_synonyms`: two-way groups and one-way "this means that"), expanded in `rankedSearch()`'s keyword part

@@ -141,6 +141,6 @@ export function convertedSql(amount: SQL, market: { conversion: { factor: number
 /**
  * Which lines a price list may price (wave 6 unit C1, D321, `docs/wave-6-catalogue.md` C.1), for a cart line `cl` of a product `p`: goods and
  * appointments bought once (and bundles, D322), never a purchase option, a stay's or rental's season pricing or a gift card. The join condition of
- * `commerce.buyer_price()` in the cart and checkout alike.
+ * `commerce.line_price()` (a price list's price and a product's price breaks, D323) in the cart and checkout alike.
  */
 export const LIST_PRICED = sql`(cl.selling_plan_id is null and p.kind in ('goods', 'appointment', 'bundle'))`;

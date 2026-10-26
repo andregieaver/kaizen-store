@@ -77,6 +77,7 @@ function base(): ProductInput {
     layoutId: null,
     appointment: null,
     bundle: null,
+    priceBreaks: [],
     taxCode: GENERAL_TAX_CODE,
     withdrawalExclusion: "none",
     schemes: ["packaging"],

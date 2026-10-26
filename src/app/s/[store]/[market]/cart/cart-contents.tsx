@@ -353,6 +353,8 @@ function linesList({ store, market, m, view }: Draw, drawer: boolean) {
                     )}
                   </p>
                 )}
+                {/* A price break prices the line (D323): the price at this quantity, said as such and never as a reduction. */}
+                {line.breakFrom !== null && line.status !== "unavailable" && <p className="text-sm text-muted">{m.priceBreaks.applied(line.breakFrom)}</p>}
                 {line.plan && (
                   <p className="text-sm text-muted">
                     {m.subscription}: {m.planEvery(line.plan.interval, line.plan.intervalCount).toLowerCase()}

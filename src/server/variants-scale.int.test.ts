@@ -128,7 +128,8 @@ describe("a product of 2,048 variants", () => {
     const options = [{ name: "Farge", values: COLOURS }, { name: "Størrelse", values: SIZES }, { name: "Passform", values: FITS }];
     const { store, editor, input } = await product("stor", options, (i) => 400 + (i % 7), (i) => i % 5);
     expect(input.variants).toHaveLength(MAX_VARIANTS);
-    // The editor's request is under the server actions' limit (4 MB, next.config.ts).
+    // The editor's request is under the server actions' limit (4 MB, next.config.ts). Its JSON can pass a million characters, which React refuses
+    // for a string that is itself an action's argument, so the editor sends it inside an object (`saveProductAction(…, { json })`).
     expect(new TextEncoder().encode(JSON.stringify(input)).length).toBeLessThan(4 * 1024 * 1024);
     const [[saved, count], ms] = await timed(() => counted(() => saveProduct(store, editor, null, input)));
     if (!saved.ok) throw new Error(saved.problems.join(" "));

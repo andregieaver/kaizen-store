@@ -638,6 +638,15 @@ async function getProductTool({ store }: OwnerToolContext, { product }: OwnerToo
         })()
       : null;
   const words = t("en");
+  // Price breaks (D323): from how many, a percentage off or a price each per country, for a variant by SKU or every variant.
+  const breaks = await db().execute<Row>(sql`
+    select v.sku, b.from_quantity, b.percent, b.amounts
+    from commerce.price_breaks b
+    left join commerce.product_variants v on v.store_id = b.store_id and v.id = b.variant_id
+    where b.store_id = ${store.id}::uuid and b.product_id = ${id}::uuid
+    order by v.sku nulls first, b.from_quantity
+  `);
+  const currencyOf = new Map(store.allMarkets.map((m) => [m.code, m.nativeCurrency]));
   return {
     id,
     title: String(head.title),
@@ -659,6 +668,20 @@ async function getProductTool({ store }: OwnerToolContext, { product }: OwnerToo
     tags: extra?.tags ?? [],
     pictures: extra?.pictures ?? [],
     ...(bundle && { bundle }),
+    ...(breaks.length > 0 && {
+      price_breaks: breaks.map((b) => ({
+        variant: b.sku ? String(b.sku) : "every variant",
+        from_units: Number(b.from_quantity),
+        ...(b.percent !== null
+          ? { percent_off: Number(b.percent) }
+          : {
+              price_each: Object.entries((b.amounts ?? {}) as Record<string, number>).flatMap(([country, amount]) => {
+                const currency = currencyOf.get(country);
+                return currency ? [{ country, price: money(store, Number(amount), currency) }] : [];
+              }),
+            }),
+      })),
+    }),
     variants: variants.map((v) => {
       const own = unitPrices.filter((u) => u.sku === String(v.sku));
       const measure = own.find((u) => u.measure)?.measure ?? null;

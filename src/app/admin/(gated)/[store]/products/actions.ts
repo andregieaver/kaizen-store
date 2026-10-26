@@ -77,7 +77,11 @@ function refreshCatalogue(member: Membership) {
 export async function saveProductAction(
   storeSlug: string,
   productId: string | null,
-  payload: string,
+  /**
+   * The product as JSON, inside an object: React counts a string that is itself an argument against its one-million limit for arrays in an
+   * action's arguments, which a product of 2,048 variants passes; a string inside an object is not counted (the body's 4 MB limit holds it).
+   */
+  payload: { json: string },
 ): Promise<SaveState> {
   const member = await checkPermission(storeSlug, "products:write");
   if (!member) return { status: "error", problems: [await noAccess()] };
@@ -87,7 +91,7 @@ export async function saveProductAction(
   }
   let json: unknown;
   try {
-    json = JSON.parse(payload);
+    json = JSON.parse(typeof payload?.json === "string" ? payload.json : "");
   } catch {
     return { status: "error", problems: [w.unreadable] };
   }

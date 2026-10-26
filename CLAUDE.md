@@ -1037,6 +1037,12 @@ stand-in is the only fake, and only it is told it is one.
   `quantityProblem()` refuses is refused (`changeLine()`'s `quantity`), a line the rule no longer allows has status `quantity` and blocks checkout,
   and `placeOrder()` refuses it (`quantity`); the WordPress quote and hand-over fit lines with `fitQuantity()`. A new way to put goods in a cart
   asks the rule the same way; drafts, order changes, exchanges and a subscription's later changes are staff's or the subscriber's and are not held to it.
+  Price breaks (E2, `src/lib/price-breaks.ts`, `src/server/price-breaks.ts`): a product's `price_breaks` (from N units in one line, a percentage off or
+  a unit price per market, one variant or every variant, at most 10) price a line only through `commerce.line_price()` (the lowest of the market
+  price, the breaks the quantity reaches and the buyer's list offers; `buyer_price()` at one unit), read by `getCart()`, `orderLineRows()`, the
+  product page's table (`priceBreaksFor()`) and the WordPress quote, so they agree; a break is the price at that quantity, never a reduction
+  (no reference, no "save"), and a line it prices takes the group's percentage as any line does. A new place that prices a cart line by its
+  quantity asks `line_price()`; a new money read here needs a euro scenario.
 - Selling to businesses (D63, `src/lib/b2b.ts`, `src/server/b2b.ts`): stores
   sell to `consumers`, `businesses` or `both` (`stores.audience`). Prices are
   always kept and charged with VAT; businesses see them without it. Draw

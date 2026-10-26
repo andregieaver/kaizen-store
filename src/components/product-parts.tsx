@@ -10,6 +10,7 @@ import { GiftCardBuy } from "@/components/gift-card-buy";
 import { JsonLdScript } from "@/components/json-ld";
 import { PageArticle } from "@/components/page-article";
 import { Price, VatAmount } from "@/components/price";
+import { PriceBreakTable } from "@/components/price-breaks";
 import { ProductBar } from "@/components/product-bar";
 import { ProductGallery } from "@/components/product-gallery";
 import { ProductGrid } from "@/components/product-listing";
@@ -34,6 +35,7 @@ import { FieldLoopView } from "@/components/field-loop-view";
 import { loopHeading, loopOf, loopShows, productLoopConfig } from "@/lib/field-loop";
 import { fieldHeading, fieldToShow, groupHeading, groupsToShow } from "@/lib/field-parts";
 import { optionLabel, t, type Messages } from "@/lib/i18n";
+import type { BreakStep } from "@/lib/price-breaks";
 import { lineMax, ruleWords } from "@/lib/quantity-rules";
 import { inView, shown, type Market } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
@@ -53,6 +55,7 @@ import { getCustomer } from "@/server/customers";
 import { appointmentSlots, getAppointmentOffer } from "@/server/appointments";
 import { getVariantStock, type EconomicOperator, type ProductDetail } from "@/server/catalog";
 import { relatedProducts } from "@/server/listing";
+import { priceBreaksFor } from "@/server/price-breaks";
 import { listPricesFor } from "@/server/price-lists";
 import { getRangeOffer, getRangePricing, rangeDates } from "@/server/ranges";
 import { getShippingFacts, storeFacts } from "@/server/seo";
@@ -811,16 +814,15 @@ async function VariantsWithStock({
     );
   }
   // Stock, policy and the days a backorder states are read for this request, never cached (D172).
-  const [availability, notifyOn, listed] = await Promise.all([
-    getVariantStock(
-      store.id,
-      product.variants.map((v) => v.id),
-    ),
+  // A signed-in buyer's price lists (D321) and the product's price breaks (D323): goods bought once only, never with purchase options, as the
+  // cart prices them (`LIST_PRICED`).
+  const buyer = product.plans.length === 0 ? getCustomer(store.id).then((customer) => customer?.id ?? null) : null;
+  const ids = product.variants.map((v) => v.id);
+  const [availability, notifyOn, listed, breaks] = await Promise.all([
+    getVariantStock(store.id, ids),
     backInStockOn(store.id),
-    // A signed-in buyer's price lists (D321): goods bought once only, never with purchase options, as the cart prices them (`LIST_PRICED`).
-    product.plans.length === 0
-      ? getCustomer(store.id).then((customer) => listPricesFor(store.id, customer?.id ?? null, product.variants.map((v) => v.id), market.code))
-      : new Map<string, { amountMinor: number; listId: string }>(),
+    buyer ? buyer.then((id) => listPricesFor(store.id, id, ids, market.code)) : new Map<string, { amountMinor: number; listId: string }>(),
+    buyer ? buyer.then((id) => priceBreaksFor(store.id, id, ids, market.code)) : new Map<string, BreakStep[]>(),
   ]);
   // The price a variant is offered at: the buyer's list price where a list gives one (in the market's view, never a reduction), else the shop's.
   const offered = (variant: ProductDetail["variants"][number]) => {
@@ -885,6 +887,24 @@ async function VariantsWithStock({
     return { index, prices };
   })();
 
+  // One table of price breaks drawn per distinct table (D323), each variant naming its own by place, as its price.
+  const breakTables = (() => {
+    const places = new Map<string, number>();
+    const tables: ReactNode[] = [];
+    const index = (variant: ProductDetail["variants"][number]): number | undefined => {
+      const steps = breaks.get(variant.id);
+      if (!steps) return undefined;
+      const shownSteps = steps.map((step) => ({ from: step.from, amountMinor: shown(market, step.amountMinor) }));
+      const key = JSON.stringify([shownSteps, variant.price.vat]);
+      const known = places.get(key);
+      if (known !== undefined) return known;
+      places.set(key, tables.length);
+      tables.push(<PriceBreakTable steps={shownSteps} price={variant.price} locale={market.locale} m={m} />);
+      return tables.length - 1;
+    };
+    return { index, tables };
+  })();
+
   return (
     <PurchaseOptions
       plans={plans}
@@ -916,9 +936,11 @@ async function VariantsWithStock({
               available: available(variant),
               capped: cappedNote(variant),
               priceIndex: priced.index(offered(variant)),
+              breakIndex: breakTables.index(variant),
             };
           })}
           prices={priced.prices}
+          breakTables={breakTables.tables}
           labels={{
             addToCart: m.addToCart,
             adding: m.adding,

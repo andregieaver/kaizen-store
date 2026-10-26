@@ -618,6 +618,14 @@ export const sv: Messages = {
   bundleIncludes: (items: string): string => `Innehåller ${items}`,
   bundleInside: "Det här ingår",
   /** A variant's quantity rules (D323): "At least 12", "At most 48", "In multiples of 6", joined by `ruleWords()`. */
+  /** A product's price breaks (D323): the product page's table and the cart line's note; a price at a quantity, never a reduction. */
+  priceBreaks: {
+    title: "Pris efter antal",
+    quantity: "Antal",
+    each: "Pris per st.",
+    from: (n: number): string => `${n} eller fler`,
+    applied: (n: number): string => `Pris vid ${n} eller fler`,
+  },
   quantityRule: {
     min: (n: number): string => `Minst ${n}`,
     max: (n: number): string => `Högst ${n}`,

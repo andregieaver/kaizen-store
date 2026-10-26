@@ -635,6 +635,14 @@ export const en = {
   /** The heading of a bundle's components on its product page (D322). */
   bundleInside: "What's inside",
   /** A variant's quantity rules (D323): "At least 12", "At most 48", "In multiples of 6", joined by `ruleWords()`. */
+  /** A product's price breaks (D323): the product page's table and the cart line's note; a price at a quantity, never a reduction. */
+  priceBreaks: {
+    title: "Price by quantity",
+    quantity: "Quantity",
+    each: "Price each",
+    from: (n: number): string => `${n} or more`,
+    applied: (n: number): string => `Price for ${n} or more`,
+  },
   quantityRule: {
     min: (n: number): string => `At least ${n}`,
     max: (n: number): string => `At most ${n}`,

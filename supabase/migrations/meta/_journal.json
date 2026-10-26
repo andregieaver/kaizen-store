@@ -3438,6 +3438,20 @@
       "when": 1793026526071,
       "tag": "20261026145526_review_pictures_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 491,
+      "version": "7",
+      "when": 1793028514054,
+      "tag": "20261026152834_price_breaks",
+      "breakpoints": true
+    },
+    {
+      "idx": 492,
+      "version": "7",
+      "when": 1793028548481,
+      "tag": "20261026152908_price_breaks_sql",
+      "breakpoints": true
     }
   ]
 }

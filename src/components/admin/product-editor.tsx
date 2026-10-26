@@ -71,6 +71,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { EditorContext, Operator } from "@/server/products";
 import { SoldByMeasureField, ContentFields, type ContentContext } from "@/components/admin/unit-price-fields";
 import { BundleSection, NEW_BUNDLE } from "@/components/admin/bundle-section";
+import { PriceBreaksSection } from "@/components/admin/price-breaks-section";
 import { VatCategoryField } from "@/components/admin/vat-category-field";
 import { useAdminLang, useAdminText } from "@/components/admin/admin-text";
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
@@ -214,7 +215,7 @@ export function ProductEditor(props: Props) {
           : undefined,
     };
     startSaving(async () => {
-      const outcome = await saveProductAction(storeSlug, productId, JSON.stringify(payload));
+      const outcome = await saveProductAction(storeSlug, productId, { json: JSON.stringify(payload) });
       setResult(outcome);
       if (outcome.status === "saved") {
         setProduct(outcome.product);
@@ -467,6 +468,7 @@ export function ProductEditor(props: Props) {
           upload={uploads ? (file) => uploadPicture(storeSlug, file, w.media.unreadable) : null}
         />
       )}
+      {(product.kind === "goods" || product.kind === "bundle") && <PriceBreaksSection product={product} update={update} context={context} />}
       {product.kind !== "bundle" && product.variants.some((v) => v.delivery === "digital") && (
         <DigitalSection storeSlug={storeSlug} product={product} update={update} uploads={uploads} />
       )}

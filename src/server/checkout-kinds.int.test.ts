@@ -3952,3 +3952,77 @@ describe("a bundle in euro (D322)", () => {
     }
   });
 });
+
+/**
+ * Price breaks (D323), shown in euro: the mug is 10 % off from 5 units and a fixed price in Norway from 10. The cart, the summary and the order agree
+ * on the price at each quantity, the product page's table gives the prices the cart charges, a break is never a price list's (the group's
+ * percentage still comes off it), and a line under the first break pays the market price.
+ */
+describe("price breaks in euro (D323)", () => {
+  it("prices a line by the break its quantity reaches, with the group's percentage on top, as the page's table says", async () => {
+    const { priceBreaksFor } = await import("./price-breaks");
+    const [{ id: mug, product_id: productId }] = await db().execute<Row>(sql`select id, product_id from commerce.product_variants where store_id = ${storeId}::uuid and sku = 'DEMO-MUG-WHITE'`);
+    const [{ amount_minor: market }] = await db().execute<Row>(sql`select amount_minor from commerce.current_prices where variant_id = ${String(mug)}::uuid and market_code = 'NO'`);
+    await db().execute(sql`update commerce.inventory_levels set on_hand = greatest(on_hand, 60) where variant_id = ${String(mug)}::uuid`);
+    const tenth = Math.floor((Number(market) * 90 + 50) / 100);
+    const fixed = Math.round(Number(market) * 0.7);
+    await db().execute(sql`
+      insert into commerce.price_breaks (store_id, product_id, from_quantity, percent) values (${storeId}::uuid, ${String(productId)}::uuid, 5, 10)
+    `);
+    await db().execute(sql`
+      insert into commerce.price_breaks (store_id, product_id, variant_id, from_quantity, amounts)
+      values (${storeId}::uuid, ${String(productId)}::uuid, ${String(mug)}::uuid, 10, ${JSON.stringify({ NO: fixed })}::jsonb)
+    `);
+    view = noInEuro;
+    try {
+      // The page's table, for a guest: the market price, then each break's price.
+      const table = (await priceBreaksFor(storeId, null, [String(mug)], "NO")).get(String(mug))!;
+      expect(table).toEqual([
+        { from: 1, amountMinor: Number(market) },
+        { from: 5, amountMinor: tenth },
+        { from: 10, amountMinor: fixed },
+      ]);
+
+      jar.clear();
+      await add("DEMO-MUG-WHITE", 4);
+      let cart = await getCart(shop());
+      expect(cart.lines[0]).toMatchObject({ unitPriceMinor: shown(noInEuro, Number(market)), breakFrom: null });
+      await changeLine(shop(), variant["DEMO-MUG-WHITE"], 5, "set");
+      cart = await getCart(shop());
+      expect(cart.lines[0]).toMatchObject({ unitPriceMinor: shown(noInEuro, tenth), breakFrom: 5, priceListId: null });
+      await changeLine(shop(), variant["DEMO-MUG-WHITE"], 12, "set");
+      cart = await getCart(shop());
+      expect(cart.lines[0]).toMatchObject({ unitPriceMinor: shown(noInEuro, fixed), breakFrom: 10, priceListId: null });
+      // The table's price at 10 is the cart's.
+      expect(shown(noInEuro, table[2].amountMinor)).toBe(cart.lines[0].unitPriceMinor);
+      const guest = await cartSummary(shop(), cart);
+      await startCheckout({ ...shop(), storeSlug: slug }, cartId(), origin, "Frakt", {}, {});
+      const open = await getOpenCheckout(storeId, cartId());
+      const order = (await getOrder(storeId, open!.orderId))!;
+      expect(order.currency).toBe("EUR");
+      expect({ total: order.totalMinor, vat: order.taxMinor }).toEqual({ total: guest.total, vat: guest.vat });
+      expect(order.lines.find((l) => l.sku === "DEMO-MUG-WHITE")).toMatchObject({ unitPriceMinor: shown(noInEuro, fixed), quantity: 12 });
+
+      // A group member at 5 units: the break's price, and the group's percentage comes off it (a break is not a price list).
+      jar.clear();
+      const buyer = await signInBuyer("group");
+      await add("DEMO-MUG-WHITE", 5);
+      const theirs = await getCart(shop());
+      const line = theirs.lines[0];
+      expect(line.priceListId).toBeNull();
+      expect(line).toMatchObject({ unitPriceMinor: shown(noInEuro, tenth), breakFrom: 5 });
+      const summary = await cartSummary(shop(), theirs);
+      expect(summary.memberDiscountMinor).toBeGreaterThan(0);
+      await startCheckout({ ...shop(), storeSlug: slug }, cartId(), origin, "Frakt", {}, { customerId: buyer });
+      const placed = (await getOrder(storeId, (await getOpenCheckout(storeId, cartId()))!.orderId))!;
+      expect({ total: placed.totalMinor, vat: placed.taxMinor, member: placed.memberDiscountMinor }).toEqual({
+        total: summary.total,
+        vat: summary.vat,
+        member: summary.memberDiscountMinor,
+      });
+    } finally {
+      view = no;
+      await db().execute(sql`delete from commerce.price_breaks where store_id = ${storeId}::uuid and product_id = ${String(productId)}::uuid`);
+    }
+  });
+});

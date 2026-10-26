@@ -101,6 +101,18 @@ const VIEW_IN_STORE: Record<string, string> = { nb: "Se i nettbutikken", nn: "Sj
 const viewInStore = (lang: string) => VIEW_IN_STORE[lang.slice(0, 2).toLowerCase()] ?? "View in the store";
 
 
+/** The price each of lines priced by a product's break at their quantity (D323), by variant; a line at the market price is not in it. */
+async function quantityPrices(storeId: string, marketCode: string, lines: { variantId: string; quantity: number }[]): Promise<Map<string, number>> {
+  if (lines.length === 0) return new Map();
+  const rows = await db().execute<Row>(sql`
+    select x.variant_id, lp.amount_minor
+    from jsonb_to_recordset(${JSON.stringify(lines.map((l) => ({ variant_id: l.variantId, quantity: l.quantity })))}::jsonb) as x(variant_id uuid, quantity integer)
+    join commerce.current_prices cp on cp.variant_id = x.variant_id and cp.market_code = ${marketCode}
+    cross join lateral commerce.line_price(${storeId}::uuid, null, x.variant_id, ${marketCode}, cp.amount_minor, x.quantity) lp
+  `);
+  return new Map(rows.map((row) => [String(row.variant_id), Number(row.amount_minor)]));
+}
+
 /** What a line of a shipped variant may hold (D172, D323): the stock, or the line's most under its rule for one that keeps selling at zero. */
 function stockRoom(held: VariantStock | undefined, rule: QuantityRule): number {
   if (!held) return 0;
@@ -216,6 +228,18 @@ export async function quoteCart(store: Store, marketRef: string | null, lines: C
   const stock = await getVariantStock(store.id, [...found.keys()]);
   const words = t(market.lang);
   const vat = priceVat(store.audience, rows[0]?.vat_rate);
+  // Each line's quantity as the hand-over will put it in the cart (D323: the rule, then the stock), and its price at that quantity: the price
+  // break it reaches, if any, as the store's cart prices it (`commerce.line_price()`, no buyer: the site's shopper is not signed in here).
+  const fittedOf = new Map<string, number>();
+  for (const line of lines) {
+    const row = found.get(line.variantId);
+    if (!row) continue;
+    const rule = ruleForKind(row.kind, row);
+    const held = String(row.delivery) === "physical" ? stock.get(line.variantId) : undefined;
+    const available = String(row.delivery) !== "physical" ? lineMax(rule) : held ? stockRoom(held, rule) : 0;
+    fittedOf.set(line.variantId, fitQuantity(nextQuantity(0, line.quantity, rule), available, rule));
+  }
+  const atQuantity = await quantityPrices(store.id, market.code, [...fittedOf].filter(([, n]) => n > 0).map(([variantId, quantity]) => ({ variantId, quantity })));
   let subtotal = 0;
   let count = 0;
   const out: WpQuoteLine[] = lines.map((line): WpQuoteLine => {
@@ -238,9 +262,13 @@ export async function quoteCart(store: Store, marketRef: string | null, lines: C
       quantity_rule: wpRule(rule, ruleWords(rule, words.quantityRule)),
     };
     // The quantity asked, put right by the rule (the minimum, whole steps) and cut to the stock, as the hand-over puts it in the cart.
-    const fitted = fitQuantity(nextQuantity(0, line.quantity, rule), available, rule);
+    const fitted = fittedOf.get(line.variantId) ?? 0;
     if (reason !== null || fitted <= 0) return { ...base, available: Math.max(0, available) };
-    const price: PriceView = priceView(shown(market, Number(row.amount_minor)), market.currency, row.prior_30d_minor === null ? null : shown(market, Number(row.prior_30d_minor)), priceVat(store.audience, row.vat_rate));
+    // A break's price is the price at that quantity, never a reduction (D323, decision 3): no 30-day reference beside it.
+    const broken = atQuantity.get(line.variantId);
+    const price: PriceView = broken
+      ? priceView(shown(market, broken), market.currency, null, priceVat(store.audience, row.vat_rate))
+      : priceView(shown(market, Number(row.amount_minor)), market.currency, row.prior_30d_minor === null ? null : shown(market, Number(row.prior_30d_minor)), priceVat(store.audience, row.vat_rate));
     const unit = wordpressPrice(price, false, market.locale, words);
     subtotal += unit.amount_minor * fitted;
     count += fitted;
