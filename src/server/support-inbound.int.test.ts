@@ -25,7 +25,7 @@ vi.mock("./ai", async (importOriginal) => {
 const { closeDb, db } = await import("@/db/client");
 const { makeStore } = await import("./trust-fixtures");
 const inbound = await import("./support-inbound");
-const { REPLY_RETRY_MINUTES, REPLY_TRIES, sendReplyEmails } = await import("./support-email");
+const { EMAIL_RETRY_MINUTES, EMAIL_TRIES, sendReplyEmails } = await import("./support-email");
 const support = await import("./support");
 const { systemDesk } = await import("./support-desk");
 type InboundDeps = import("./support-inbound").InboundDeps;
@@ -191,11 +191,11 @@ describe("email into the desk", () => {
       const at = (minutes: number) => new Date(Date.now() + minutes * 60_000);
       await sendReplyEmails(at(1));
       await sendReplyEmails(at(2));
-      // Refused once; not again until REPLY_RETRY_MINUTES have passed, and never counted as told.
+      // Refused once; not again until EMAIL_RETRY_MINUTES have passed, and never counted as told.
       expect(sends).toHaveLength(1);
       expect(await conversation(row.conversation_id)).toMatchObject({ email_count: 0 });
       refuse = false;
-      await sendReplyEmails(at(1 + REPLY_RETRY_MINUTES));
+      await sendReplyEmails(at(1 + EMAIL_RETRY_MINUTES));
       expect(sends).toHaveLength(2);
       const kept = await db().execute<Row>(sql`
         select idempotency_key, status from commerce.email_messages where idempotency_key like ${`support.reply:${String(row.conversation_id)}:%`} order by created_at
@@ -203,15 +203,15 @@ describe("email into the desk", () => {
       expect(kept.map((r) => r.status)).toEqual(["failed", "sent"]);
       expect(String(kept[1].idempotency_key)).toMatch(/:retry1$/);
       expect(await conversation(row.conversation_id)).toMatchObject({ email_count: 1 });
-      await sendReplyEmails(at(2 + 2 * REPLY_RETRY_MINUTES));
+      await sendReplyEmails(at(2 + 2 * EMAIL_RETRY_MINUTES));
       expect(sends).toHaveLength(2);
 
-      // An answer refused every time stops after REPLY_TRIES.
+      // An answer refused every time stops after EMAIL_TRIES.
       refuse = true;
       const other = { row: await answered("siri@example.com") };
-      for (let i = 1; i <= REPLY_TRIES + 2; i++) await sendReplyEmails(at(i * (REPLY_RETRY_MINUTES + 1)));
+      for (let i = 1; i <= EMAIL_TRIES + 2; i++) await sendReplyEmails(at(i * (EMAIL_RETRY_MINUTES + 1)));
       const tries = await db().execute<Row>(sql`select 1 from commerce.email_messages where idempotency_key like ${`support.reply:${String(other.row.conversation_id)}:%`}`);
-      expect(tries).toHaveLength(REPLY_TRIES);
+      expect(tries).toHaveLength(EMAIL_TRIES);
     } finally {
       vi.unstubAllGlobals();
       vi.unstubAllEnvs();
