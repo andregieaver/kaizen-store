@@ -262,6 +262,11 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     keywords: ["kundegrupper", "grossist", "b2b", "prisliste", "forhandlerrabatt", "fast rabatt"],
   },
   "store:customer-group": { title: "Kundegruppe", keywords: ["kundegruppe", "rabattgruppe", "prosent", "kunder"] },
+  "store:price-lists": {
+    title: "Prislister",
+    keywords: ["prisliste", "b2b-priser", "grossistpriser", "forhandlerpriser", "kundepriser", "avtalepriser", "nettopriser"],
+  },
+  "store:price-list": { title: "Prisliste", keywords: ["prisliste", "faste priser", "prosent", "kundegrupper", "bedrifter"] },
   "store:b2b-companies": {
     title: "Bedrifter",
     keywords: ["bedrifter", "bedriftskunder", "b2b", "ansatte", "bedriftskonto", "inviter", "grossist"],

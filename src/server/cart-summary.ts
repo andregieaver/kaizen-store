@@ -102,7 +102,7 @@ export async function cartSummary(
   const campaignShippingMinor = freeShipping ? (shipping ?? 0) : 0;
   const campaignDiscountMinor = campaignOff.reduce((sum, off) => sum + off, 0) + campaignShippingMinor;
   const memberOff = payable.map((line, i) =>
-    member && !line.plan && !voucher(line) && line.unitPriceMinor > 0 ? memberOffAfterCampaign(line.unitPriceMinor, line.quantity, campaignOff[i], member.percent) : 0,
+    member && !line.plan && !line.priceListId && !voucher(line) && line.unitPriceMinor > 0 ? memberOffAfterCampaign(line.unitPriceMinor, line.quantity, campaignOff[i], member.percent) : 0,
   );
   const memberDiscountMinor = memberOff.reduce((sum, off) => sum + off, 0);
   // The friend's welcome discount (D131) comes next, off goods bought once after campaigns and the group's discount and
@@ -132,7 +132,7 @@ export async function cartSummary(
                 key: String(i),
                 productId: line.productId,
                 // What the code is taken off: the price after the group's discount for what is bought once.
-                unitMinor: member && !line.plan ? planPrice(line.unitPriceMinor, member.percent) : line.unitPriceMinor,
+                unitMinor: member && !line.plan && !line.priceListId ? planPrice(line.unitPriceMinor, member.percent) : line.unitPriceMinor,
                 quantity: line.quantity,
                 todayMinor: today(line) - campaignOff[i] - memberOff[i] - referralOff[i],
                 recurring: line.plan !== null,

@@ -581,6 +581,8 @@ export const en = {
   },
   priorPrice: "Lowest price in the last 30 days",
   fromPrice: "From",
+  /** A buyer's own price from their price list (D321): never a reduction, so no prior price beside it. */
+  yourPrice: "Your price",
   inStock: "In stock",
   lowStock: (n: number) => `Only ${n} left`,
   outOfStock: "Sold out",

@@ -174,6 +174,8 @@ export type OrderLineInsert = {
   bonusDiscountMinor?: number;
   referralDiscountMinor?: number;
   unitCostMinor?: number | null;
+  /** The price list that priced the line (D321), kept for the record. */
+  priceListId?: string | null;
   vatReliefMinor?: number;
   measure?: { amount: number | string; unit: string; base: string } | null;
   backorderQuantity?: number;
@@ -198,7 +200,7 @@ export async function insertOrderLine(tx: Db, storeId: string, orderId: string, 
       campaign_discount_minor, campaign_id, campaign_parts, gift, bonus_discount_minor, referral_discount_minor,
       unit_cost_minor, vat_relief_minor, measure_amount, measure_unit, measure_base, backorder_quantity, backorder_days,
       list_price_minor, custom, staff_discount_minor, order_edit_id,
-      gift_card_to, gift_card_to_name, gift_card_from, gift_card_message, gift_card_send_on
+      gift_card_to, gift_card_to_name, gift_card_from, gift_card_message, gift_card_send_on, price_list_id
     ) values (
       ${storeId}::uuid, ${orderId}::uuid, ${line.variantId}::uuid, ${line.sku},
       ${line.title}, ${line.quantity}, ${line.unitPriceMinor}, ${line.discountMinor}, ${line.memberDiscountMinor ?? 0},
@@ -215,7 +217,7 @@ export async function insertOrderLine(tx: Db, storeId: string, orderId: string, 
       ${line.backorderQuantity ?? 0}, ${line.backorderDays ?? null},
       ${line.listPriceMinor ?? null}, ${line.custom ?? false}, ${line.staffDiscountMinor ?? 0}, ${line.orderEditId ?? null}::uuid,
       ${line.giftCard?.to ?? null}, ${line.giftCard?.toName ?? null}, ${line.giftCard?.from ?? null}, ${line.giftCard?.message ?? null},
-      ${line.giftCard?.sendOn ?? null}::date
+      ${line.giftCard?.sendOn ?? null}::date, ${line.priceListId ?? null}::uuid
     )
     returning id
   `);

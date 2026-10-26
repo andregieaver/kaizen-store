@@ -3884,6 +3884,8 @@ export const orderLines = commerce.table(
      * known (it can be filled in later by `backfillCosts()`). Never read for a price.
      */
     unitCostMinor: bigint("unit_cost_minor", { mode: "number" }),
+    /** The price list that priced the line (wave 6 unit C, D321), kept for the record; null for the market price. Lists may go, so no key. */
+    priceListId: uuid("price_list_id"),
     discountMinor: money("discount_minor").default(0),
     /** The part of the discount that is the buyer's group or company discount (D108). */
     memberDiscountMinor: money("member_discount_minor").default(0),
@@ -13310,5 +13312,97 @@ export const legalSourceReads = commerce.table(
     check("legal_source_reads_text", sql`(${t.status} = 'ok') = (${t.textHash} is not null)`),
     check("legal_source_reads_language", sql`${t.language} in ('nb', 'sv', 'da', 'en')`),
     check("legal_source_reads_problem", sql`${t.problem} is null or length(${t.problem}) <= 500`),
+  ],
+);
+
+/**
+ * A price list (wave 6 unit C, D321, `docs/wave-6-catalogue.md` C.1): fixed prices per variant and currency (`price_list_prices`) and an
+ * optional percentage off the market price for the products in its scope (`price_list_products`, every product while empty), for the
+ * customer groups and companies it is assigned to (`price_list_assignments`). A buyer's price is only `commerce.buyer_price()`. Written only by
+ * `src/server/price-lists.ts`; catalogue in `COPY_RULES`.
+ */
+export const priceLists = commerce.table(
+  "price_lists",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    name: text("name").notNull(),
+    /** Whole percent off the market price of the products in scope; null: only its fixed prices. */
+    percent: integer("percent"),
+    active: boolean("active").notNull().default(true),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("price_lists_store_id_key").on(t.storeId, t.id),
+    uniqueIndex("price_lists_name_idx").on(t.storeId, sql`lower(${t.name})`),
+    check("price_lists_name", sql`char_length(${t.name}) between 1 and 80 and ${t.name} = btrim(${t.name})`),
+    check("price_lists_percent", sql`${t.percent} is null or ${t.percent} between 1 and 99`),
+  ],
+);
+
+/** Who a price list is for: one customer group or one company per row (D321). */
+export const priceListAssignments = commerce.table(
+  "price_list_assignments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId(),
+    listId: uuid("list_id").notNull(),
+    tierId: uuid("tier_id"),
+    companyId: uuid("company_id"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    foreignKey({ name: "price_list_assignments_list_fk", columns: [t.storeId, t.listId], foreignColumns: [priceLists.storeId, priceLists.id] }).onDelete("cascade"),
+    foreignKey({ name: "price_list_assignments_tier_fk", columns: [t.storeId, t.tierId], foreignColumns: [customerTiers.storeId, customerTiers.id] }).onDelete("cascade"),
+    foreignKey({ name: "price_list_assignments_company_fk", columns: [t.storeId, t.companyId], foreignColumns: [customerCompanies.storeId, customerCompanies.id] }).onDelete("cascade"),
+    check("price_list_assignments_one", sql`(${t.tierId} is null) <> (${t.companyId} is null)`),
+    uniqueIndex("price_list_assignments_tier_idx").on(t.listId, t.tierId).where(sql`${t.tierId} is not null`),
+    uniqueIndex("price_list_assignments_company_idx").on(t.listId, t.companyId).where(sql`${t.companyId} is not null`),
+    index("price_list_assignments_store_tier_idx").on(t.storeId, t.tierId),
+    index("price_list_assignments_store_company_idx").on(t.storeId, t.companyId),
+  ],
+);
+
+/** A price list's fixed price for one variant in one currency (D321): VAT included, as market prices are, in minor units. */
+export const priceListPrices = commerce.table(
+  "price_list_prices",
+  {
+    storeId: storeId(),
+    listId: uuid("list_id").notNull(),
+    variantId: uuid("variant_id").notNull(),
+    currency: char("currency", { length: 3 }).notNull(),
+    amountMinor: bigint("amount_minor", { mode: "number" }).notNull(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    primaryKey({ name: "price_list_prices_pkey", columns: [t.listId, t.variantId, t.currency] }),
+    foreignKey({ name: "price_list_prices_list_fk", columns: [t.storeId, t.listId], foreignColumns: [priceLists.storeId, priceLists.id] }).onDelete("cascade"),
+    foreignKey({ name: "price_list_prices_variant_fk", columns: [t.storeId, t.variantId], foreignColumns: [productVariants.storeId, productVariants.id] }).onDelete("cascade"),
+    index("price_list_prices_variant_idx").on(t.storeId, t.variantId),
+    check("price_list_prices_amount", sql`${t.amountMinor} >= 0`),
+    check("price_list_prices_currency", sql`${t.currency} ~ '^[A-Z]{3}$'`),
+  ],
+);
+
+/** A price list's scope (D321): a product or a product category (with its subcategories) per row; none is every product. */
+export const priceListProducts = commerce.table(
+  "price_list_products",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId(),
+    listId: uuid("list_id").notNull(),
+    productId: uuid("product_id"),
+    termId: uuid("term_id").references(() => terms.id, { onDelete: "cascade" }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    foreignKey({ name: "price_list_products_list_fk", columns: [t.storeId, t.listId], foreignColumns: [priceLists.storeId, priceLists.id] }).onDelete("cascade"),
+    productRef("price_list_products_product_fk", t),
+    check("price_list_products_one", sql`(${t.productId} is null) <> (${t.termId} is null)`),
+    uniqueIndex("price_list_products_product_idx").on(t.listId, t.productId).where(sql`${t.productId} is not null`),
+    uniqueIndex("price_list_products_term_idx").on(t.listId, t.termId).where(sql`${t.termId} is not null`),
+    index("price_list_products_store_product_idx").on(t.storeId, t.productId),
+    index("price_list_products_term_fk_idx").on(t.termId),
   ],
 );

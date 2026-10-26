@@ -1373,6 +1373,11 @@ export const OWNER_TOOLS = [
     "send",
   ),
   tool(
+    "list_price_lists",
+    "The store's price lists (Customers, Price lists; D321): each one's name, whether it is on, its percentage off the market price, how many fixed prices it holds, and the customer groups and companies it is for, by name. A buyer pays the lowest price their lists give, never above the shop's price, worked out by the store; never quote a buyer's price from this. Read-only.",
+    z.object({}),
+  ),
+  tool(
     "list_segments",
     "The store's saved customer segments: each one's name, its rules in words and how many people match now, counted in code. Never who they are. Read-only.",
     z.object({}),

@@ -27,6 +27,7 @@ export const TOOL_FEATURES: Partial<Record<OwnerToolName, FeatureRequirement>> =
   // The online shop's own (D178 step 5): orders, products, stock, customers, discounts, campaigns, recommendations, sales analytics and the
   // VAT reports. A website (the shop off) has none of them; orders and returns still open after the sale are handled on their admin pages.
   sales_summary: "shop",
+  list_price_lists: "shop",
   list_orders: "shop",
   get_order: "shop",
   pick_list: "shop",

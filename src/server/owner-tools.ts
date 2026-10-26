@@ -21,6 +21,7 @@ import { parsePrice } from "@/lib/product-input";
 
 import { storeUsageLines } from "./usage";
 import { audit, type Account } from "./auth";
+import { listPriceListsTool } from "./price-lists";
 import { draftBroadcastTool, issueGiftCardTool, preflightIssueGiftCard, listAutomationsTool, listBroadcastsTool, listSegmentsTool, preflightSendBroadcast, sendBroadcastTool, switchAutomationTool, tagCustomerTool } from "./marketing-tools";
 import { OwnerToolError } from "./owner-tool-error";
 import {
@@ -2262,6 +2263,7 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   draft_broadcast: draftBroadcastTool,
   send_broadcast: sendBroadcastTool,
   list_segments: listSegmentsTool,
+  list_price_lists: listPriceListsTool,
   tag_customer: tagCustomerTool,
   list_email_automations: listAutomationsTool,
   switch_email_automation: switchAutomationTool,

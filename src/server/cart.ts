@@ -20,7 +20,8 @@ import { shownMeasureFromColumns } from "@/lib/unit-price-rules";
 import { freeResourcesAt } from "./appointments";
 import { attachVisitToCart } from "./analytics-visits";
 import { audit, type Membership } from "./auth";
-import { OFFERED, STORE_AUDIENCE, plansOffered } from "./product-conditions";
+import { getCustomer } from "./customers";
+import { LIST_PRICED, OFFERED, STORE_AUDIENCE, plansOffered } from "./product-conditions";
 import { checkRange, linePrice, rangePricing } from "./ranges";
 import { checkCartVatNumber, type CartVatDeps, type CartVatOutcome } from "./vat-checks";
 
@@ -50,6 +51,8 @@ export type CartLine = {
   image: { url: string; alt: string } | null;
   quantity: number;
   unitPriceMinor: number | null;
+  /** The price list that prices the line for this buyer (D321), null for the market price: such a line takes no group percentage on top. */
+  priceListId: string | null;
   /**
    * What is in one unit and what it is compared per in this market (D160), read live from the variant: the unit price is
    * `unitPrice(line.unitPriceMinor, ...)` (one unit's price as the cart shows it, whatever the quantity). Null for no
@@ -156,10 +159,15 @@ export const bookable = sql`
 `;
 
 /** The cart for this store and market, read fresh on every request. */
-export async function getCart(shop: Shop): Promise<Cart> {
+export async function getCart(
+  shop: Shop,
+  /** The buyer whose price lists price the lines (D321), when the caller knows them; else the signed-in customer. As `cartSummary()`'s `who`. */
+  who: { customerId?: string | null } = {},
+): Promise<Cart> {
   const { storeId, market } = shop;
   const cartId = await readCartId(shop);
   if (!cartId) return { lines: [], currency: market.currency, company: null, gift: NO_GIFT };
+  const customerId = who.customerId !== undefined ? who.customerId : ((await getCustomer(storeId))?.id ?? null);
 
   const rows = await db().execute<Row>(sql`
     select
@@ -178,7 +186,8 @@ export async function getCart(shop: Shop): Promise<Cart> {
       (case when cl.selling_plan_id is null then not p.subscription_only else coalesce(sp.active, false) and ${plansOffered(sql`cl.store_id`)} end) as plan_ok,
       coalesce(tl.title, tf.title) as title,
       coalesce(m.thumbnail_url, m.url) as image_url, coalesce(nullif(m.alt ->> ${market.locale}, ''), commerce.media_alt(m.url, ${market.locale}), '') as image_alt,
-      cp.amount_minor,
+      -- The buyer's price list price where one is lower (D321), else the market's: worked out only by commerce.buyer_price().
+      coalesce(bp.amount_minor, cp.amount_minor) as amount_minor, bp.list_id as price_list_id,
       -- Only in a country and currency the store offers now (D178: Several countries and currencies).
       (p.status = 'active' and v.active and ${bookable} and ${OFFERED} and commerce.market_offered(c.store_id, c.market_code, ${market.currency})) as sellable,
       va.in_stock, va.raw_available, va.stock_policy, va.backorder_days
@@ -204,6 +213,8 @@ export async function getCart(shop: Shop): Promise<Cart> {
     ) m on true
     left join commerce.current_prices cp
       on cp.variant_id = v.id and cp.market_code = c.market_code
+    left join lateral commerce.buyer_price(cl.store_id, ${customerId}::uuid, v.id, c.market_code, cp.amount_minor) bp
+      on ${LIST_PRICED}
     left join commerce.variant_availability va on va.store_id = v.store_id and va.variant_id = v.id
     where cl.store_id = ${storeId}::uuid
       and cl.cart_id = ${cartId}::uuid
@@ -292,6 +303,7 @@ export async function getCart(shop: Shop): Promise<Cart> {
           : null,
         quantity,
         unitPriceMinor,
+        priceListId: row.price_list_id ? String(row.price_list_id) : null,
         // Goods only: a booking's price is for its nights, days or hours, and the database refuses a measure on one.
         measure: range || row.starts_at || status === "unavailable" ? null : shownMeasureFromColumns(row.measure_amount, row.measure_unit, row.measure_base, market.code),
         available,

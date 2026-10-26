@@ -6499,3 +6499,65 @@ describe("variants at scale (wave 6 unit B, D320)", () => {
     expect(await count()).toBe(2048);
   });
 });
+
+describe("price lists (wave 6 unit C1, D321)", () => {
+  it("give a buyer the lowest price their lists offer below the market price, and nothing to anyone else", async () => {
+    const storeId = await createStore("lists-store", ["NO", "SE"]);
+    await db.query("update commerce.stores set features = array['shop', 'business'] where id = $1", [storeId]);
+    const { productId, variantId } = await createProduct({ storeId });
+    const other = await createProduct({ storeId });
+    await db.query("select commerce.set_price($1, 'NO', 50000)", [variantId]);
+    const one = async <T>(text: string, params: unknown[]) => (await db.query<T>(text, params)).rows[0];
+    const tier = await one<{ id: string }>("insert into commerce.customer_tiers (store_id, name, percent) values ($1, 'Grossist', 5) returning id", [storeId]);
+    const company = await one<{ id: string }>("insert into commerce.customer_companies (store_id, name) values ($1, 'Acme AS') returning id", [storeId]);
+    const inTier = await one<{ id: string }>("insert into commerce.customers (store_id, email, tier_id) values ($1, 'grossist@example.com', $2) returning id", [storeId, tier.id]);
+    const employee = await one<{ id: string }>(
+      "insert into commerce.customers (store_id, email, company_id, company_role) values ($1, 'ansatt@example.com', $2, 'employee') returning id",
+      [storeId, company.id],
+    );
+    const stranger = await one<{ id: string }>("insert into commerce.customers (store_id, email) values ($1, 'noen@example.com') returning id", [storeId]);
+    const price = async (customer: string | null, variant = variantId, market = "NO", base = 50000) =>
+      (await db.query<{ amount_minor: string | number; list_id: string }>("select * from commerce.buyer_price($1, $2, $3, $4, $5)", [storeId, customer, variant, market, base])).rows.map((r) => ({ amount_minor: Number(r.amount_minor), list_id: r.list_id }))[0] ?? null;
+
+    // A list of 10 % for the group: the group's member pays 450, a stranger and a guest the market price (no row).
+    const tenOff = await one<{ id: string }>("insert into commerce.price_lists (store_id, name, percent) values ($1, 'Ti prosent', 10) returning id", [storeId]);
+    await db.query("insert into commerce.price_list_assignments (store_id, list_id, tier_id) values ($1, $2, $3)", [storeId, tenOff.id, tier.id]);
+    expect(await price(inTier.id)).toMatchObject({ amount_minor: 45000, list_id: tenOff.id });
+    expect(await price(stranger.id)).toBeNull();
+    expect(await price(null)).toBeNull();
+    // Half up to the minor unit: 10 % off 333 is 299.7, so 300.
+    expect(await price(inTier.id, variantId, "NO", 333)).toMatchObject({ amount_minor: 300 });
+
+    // A fixed price, in the market's own currency only, wins where it is lower; never one above the market price.
+    const fixed = await one<{ id: string }>("insert into commerce.price_lists (store_id, name) values ($1, 'Avtalepris') returning id", [storeId]);
+    await db.query("insert into commerce.price_list_assignments (store_id, list_id, tier_id) values ($1, $2, $3)", [storeId, fixed.id, tier.id]);
+    await db.query("insert into commerce.price_list_prices (store_id, list_id, variant_id, currency, amount_minor) values ($1, $2, $3, 'NOK', 40000), ($1, $2, $3, 'SEK', 1)", [storeId, fixed.id, variantId]);
+    expect(await price(inTier.id)).toMatchObject({ amount_minor: 40000, list_id: fixed.id });
+    expect(await price(inTier.id, variantId, "NO", 39000)).toMatchObject({ amount_minor: 35100, list_id: tenOff.id });
+    expect(await price(inTier.id, variantId, "SE", 50000)).toMatchObject({ amount_minor: 1, list_id: fixed.id });
+
+    // A scope: the percentage reaches only the products it names (the fixed price stays the variant's own).
+    await db.query("insert into commerce.price_list_products (store_id, list_id, product_id) values ($1, $2, $3)", [storeId, tenOff.id, other.productId]);
+    expect(await price(inTier.id, variantId, "NO", 39000)).toBeNull();
+    expect(await price(inTier.id, other.variantId)).toMatchObject({ amount_minor: 45000 });
+    await db.query("delete from commerce.price_list_products where list_id = $1", [tenOff.id]);
+    expect(productId).toBeTruthy();
+
+    // A company's list reaches its members only while Sell to businesses is on and the company is; a switched-off list reaches no one.
+    const companyList = await one<{ id: string }>("insert into commerce.price_lists (store_id, name, percent) values ($1, 'Acme', 20) returning id", [storeId]);
+    await db.query("insert into commerce.price_list_assignments (store_id, list_id, company_id) values ($1, $2, $3)", [storeId, companyList.id, company.id]);
+    expect(await price(employee.id)).toMatchObject({ amount_minor: 40000, list_id: companyList.id });
+    await db.query("update commerce.stores set features = array['shop'] where id = $1", [storeId]);
+    expect(await price(employee.id)).toBeNull();
+    await db.query("update commerce.stores set features = array['shop', 'business'] where id = $1", [storeId]);
+    await db.query("update commerce.customer_companies set active = false where id = $1", [company.id]);
+    expect(await price(employee.id)).toBeNull();
+    await db.query("update commerce.price_lists set active = false where id = $1", [tenOff.id]);
+    expect(await price(inTier.id, variantId, "NO", 39000)).toBeNull();
+
+    // An assignment names one group or one company, and only the store's own.
+    await expect(db.query("insert into commerce.price_list_assignments (store_id, list_id) values ($1, $2)", [storeId, fixed.id])).rejects.toThrow();
+    const foreignTier = await one<{ id: string }>("insert into commerce.customer_tiers (store_id, name, percent) values ($1, 'Andre', 5) returning id", [store]);
+    await expect(db.query("insert into commerce.price_list_assignments (store_id, list_id, tier_id) values ($1, $2, $3)", [storeId, fixed.id, foreignTier.id])).rejects.toThrow();
+  });
+});

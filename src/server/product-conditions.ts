@@ -124,3 +124,10 @@ export function convertedSql(amount: SQL, market: { conversion: { factor: number
   if (factor === 1 && step === 1) return amount;
   return sql`(round((${amount})::numeric * ${factor}::numeric / ${step}::numeric) * ${step})::bigint`;
 }
+
+/**
+ * Which lines a price list may price (wave 6 unit C1, D321, `docs/wave-6-catalogue.md` C.1), for a cart line `cl` of a product `p`: goods and
+ * appointments bought once, never a purchase option, a stay's or rental's season pricing or a gift card. The join condition of
+ * `commerce.buyer_price()` in the cart and checkout alike.
+ */
+export const LIST_PRICED = sql`(cl.selling_plan_id is null and p.kind in ('goods', 'appointment'))`;

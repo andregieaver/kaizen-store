@@ -54,6 +54,7 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   list_email_automations: "marketing:read",
   switch_email_automation: "marketing:write",
   list_segments: "customers:read",
+  list_price_lists: "customers:read",
   tag_customer: "customers:write",
   usage_and_limits: "billing:read",
   // Domains (D315) are a Settings page: read with `settings:read`; buying, renewing, DNS changes and moves are the owner's.

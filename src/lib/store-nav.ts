@@ -96,6 +96,7 @@ export const STORE_SECTIONS: StoreSection[] = [
         items: [
           item("/customers", "Customers", "Everyone with an account, their orders and details.", { feature: "shop" }),
           item("/customer-groups", "Customer groups", "Groups with a fixed discount, such as members or resellers.", { feature: "shop" }),
+          item("/price-lists", "Price lists", "Prices of their own for customer groups and companies: a percentage off or fixed prices.", { feature: "shop" }),
           item("/companies", "Companies", "Company accounts with their employees and a group's discount.", { feature: "business" }),
           item("/wishlists", "Wishlists", "What customers have saved, and what they added to the cart from it.", { feature: "shop" }),
           item("/privacy", "Privacy requests", "People's requests for a copy of their data or for it to be erased, with the one-month clock."),

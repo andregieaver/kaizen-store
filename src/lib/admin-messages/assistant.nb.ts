@@ -389,6 +389,7 @@ export const assistantNb: AssistantMessages = {
     draft_broadcast: "Skriver utkastet til nyhetsbrevet",
     send_broadcast: "Forbereder utsendelsen",
     list_segments: "Teller segmentene",
+    list_price_lists: "Ser på prislistene",
     tag_customer: "Merker kunden",
     list_email_automations: "Ser på de automatiske e-postene",
     switch_email_automation: "Forbereder bryteren",

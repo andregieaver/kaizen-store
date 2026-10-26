@@ -467,6 +467,12 @@ const PAGES: readonly AdminPage[] = [
     feature: "shop",
   }),
   store("customer-group", "/customer-groups/[groupId]", "Customer group", "Sales", "One discount group: its percentage, its customers and the companies using it.", { feature: "shop" }),
+  store("price-lists", "/price-lists", "Price lists", "Sales", "Price lists for customer groups and companies: a percentage off the market price, fixed prices per variant and currency, or both; a buyer pays the lowest their lists give.", {
+    keywords: ["price list", "b2b prices", "wholesale prices", "trade prices", "customer prices", "contract prices", "net prices"],
+    tasks: ["Make a price list for a customer group", "Give a company its own prices"],
+    feature: "shop",
+  }),
+  store("price-list", "/price-lists/[listId]", "Price list", "Sales", "One price list: its percentage, who it is for, what the percentage reaches and its fixed prices.", { feature: "shop" }),
   store("b2b-companies", "/companies", "Companies", "Sales", "Companies that buy from the store: a discount group, a main account that invites employees, and the share of the discount employees get.", {
     keywords: ["b2b", "business customers", "employees", "company account", "invite", "wholesale"],
     tasks: ["Make a company with a main account", "Invite or remove a company's employees"], feature: "business" }),

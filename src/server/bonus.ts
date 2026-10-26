@@ -419,7 +419,7 @@ export function cartBonusOf(
 export async function cartBonus(shop: Shop, cartId: string | null, customerId: string | null): Promise<CartBonus> {
   const { getCart } = await import("./cart");
   const { cartSummary } = await import("./cart-summary");
-  const summary = await cartSummary(shop, await getCart(shop), { customerId, cartId });
+  const summary = await cartSummary(shop, await getCart(shop, { customerId }), { customerId, cartId });
   return summary.bonus;
 }
 

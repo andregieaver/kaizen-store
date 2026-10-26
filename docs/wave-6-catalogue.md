@@ -333,17 +333,94 @@ JSON-LD (`productJsonLd()`, pure, from the page's own read) and the feed (`store
 
 ### Unit C (D321): B2B in depth
 
-- **Price lists** (`price_lists`, `price_list_prices`): a list is assigned to customer groups and companies; each holds, per currency, a
-  fixed price per variant or a percentage off the market price. `listPriceFor()` decides a signed-in buyer's price and is what the
-  catalogue (per request, inside `<Suspense>`, never in a cached read), `cartSummary()` and `placeOrder()` use; a list price is never shown
-  as a reduction (no struck-through price, no 30-day reference; decision 3).
-- **Catalogues**: a list may also limit what its buyers see (products or categories); a product hidden from a buyer is out of listings,
-  search, recommendations, the sitemap and feeds for everyone not in a list that includes it, and its address answers not found. Products
-  stay public unless a list is set to "only these" (decision 4).
-- **Companies**: locations (`company_locations`: billing and shipping addresses), buyers assigned to locations with a role (`buyer`,
-  `orderer`, `approver`), an approval limit per company in its credit currency, and a PO number asked at checkout, kept on the order,
-  invoice and credit notes, and in the order list's search. An order over the limit waits as `awaiting_approval` before payment
-  (decision 7).
+Detailed on 2026-10-26 from a read of the code, when its turn came. Built in three steps, each its own commit: C1 price lists, C2 company
+locations, roles, approvals and PO numbers, C3 catalogues that hide products.
+
+**What the code does today.** A customer's group (`customer_tiers`) and company (`customer_companies`, roles `owner` and `employee`) give
+one whole percentage off what is bought once (`memberDiscountFor()`, `memberLineOff()`), the same in `cartSummary()` and `placeOrder()`.
+The cart and checkout read a line's price from `commerce.current_prices` in SQL (`getCart()`, `orderLineRows()`), in the country's own
+currency, shown converted by `shown()`. The buy part of a product page is drawn per request inside `<Suspense>` (stock, `MemberNotice`);
+listings, cards and the rest of the product page are cached for everyone. A product is offered to shoppers through `OFFERED`
+(`src/server/product-conditions.ts`).
+
+#### C.1 Price lists (C1)
+
+- A **price list** (`commerce.price_lists`: name, an optional percentage off, active) is assigned to customer groups and companies
+  (`price_list_assignments`, one target each: `tier_id` or `company_id`). It holds **fixed prices** per variant and currency
+  (`price_list_prices`: VAT included, as market prices are, in minor units) and, with a percentage, takes that off the market price of the
+  products in its scope. Its scope (`price_list_products`: products or product categories) is every product while empty.
+- A buyer's lists are those of their own active group, their company (active, *Sell to businesses* on, the buyer its owner or employee) and
+  their company's active group. For each variant the **lowest** price any of them gives wins, never above the market price: a fixed price
+  in the market's own currency, else the percentage on the market price for a product in scope (half up to the minor unit). Worked out
+  only by `commerce.buyer_price(store, customer, variant, market, market_amount)` (SQL, returning the price and the list), used by the cart
+  (`getCart()`), checkout (`orderLineRows()`) and the product page's buy part (`listPricesFor()`), so the three agree.
+- A list price applies to goods and appointments **bought once**: never to a purchase option (subscriptions keep their own discount), a
+  stay's or rental's season pricing, or a gift card. A line priced by a list takes **no group or company percentage** on top (the list is
+  the agreed price, D108's percentage is for lines without one); campaigns, codes, credits and the VAT rules apply as to any line.
+- A list price is the buyer's own price, **never shown as a reduction** (decision 3): no struck-through price, no 30-day reference, no
+  "save" words. The buy part draws it with `<Price>` given no reference, and says *Your price* (`m.yourPrice`, four languages).
+  Cards and listings stay cached with the market price.
+- The order keeps which list priced a line (`order_lines.price_list_id`), for the record and the analytics; the line's price is its own
+  as ever. `cartSummary()` and `placeOrder()` agree on list prices with VAT in a euro scenario (`checkout-kinds.int.test.ts`).
+- Admin: Customers → *Price lists* (`/admin/{store}/price-lists`, `customers:read`/`customers:write`): a list's name, percentage, scope,
+  who it is for (groups and companies), and fixed prices per variant and currency through a product search (a CSV import is wave 7). Words in
+  the `customers` catalogue (en, nb). The AI manager reads lists (`list_price_lists`, ungated); changing one is a person's.
+- Copies: price lists are `never` in `COPY_RULES` (they name the store's own groups, companies and variants; decided when built, see
+  C.4); not personal data (`NOT_PERSONAL`).
+
+#### C.2 Company accounts in depth (C2)
+
+- **Locations** (`company_locations`: a name, a billing address and a shipping address, at most 50 a company), edited by staff on the
+  company's page and by the company's main account under *Your company*. A company member buys **for a location** they are assigned to
+  (`company_location_buyers`: customer, location, role); checkout asks which (a member of one location is not asked) and fills its
+  shipping address, the order keeping the location (`orders.company_location_id`) beside its own address snapshot.
+- **Roles** at a location: `orderer` (places orders; over the limit they wait for approval) and `approver` (places orders and approves
+  others' at that location). The company's main account is an approver at every location. A member with no location buys as today.
+- **Approval**: a company's `approval_limit_minor` (in its credit currency, null for none). An orderer's order whose total (converted at the
+  store's rates) is over it is placed and **waits for approval** before payment (decision 7): `orders.approval` (`waiting`, `approved`,
+  `declined`), stock held for the approval window (`APPROVAL_DAYS`, 7) as a draft's is, the approvers emailed (`company.approval_waiting`,
+  a staff-free email to the company's approvers at that location). An approver approves or declines from *Your company → Orders to
+  approve*; an approved order is paid by the buyer through the order's pay link (Stripe's hosted page, as a draft's, D173) or on terms
+  (D293) when the company has them; a declined or expired one is cancelled through `cancel_unpaid_order()`, releasing its stock. Never for a
+  consumer, never for an approver's own order.
+- **PO number**: asked at checkout for a company member (`orders.po_number`, at most 40 characters, required when the company says so,
+  `customer_companies.po_required`), kept on the order, its invoice and credit notes (the snapshot's `poNumber`, SQL and
+  `buildInvoiceSnapshot()` alike), shown on the order page, and matched by the order list's search. A euro scenario holds it.
+- Shopper words (`m.companyAccount.*`) in nb, sv, da and en by hand; the approval email in `email-text.ts`. Locations and assignments are
+  personal data (`PERSONAL_DATA`: erasure removes the buyer's assignments; the company's locations are the company's, `NOT_PERSONAL`);
+  `COPY_RULES` `never`.
+
+#### C.3 Catalogues (C3)
+
+- A price list may be **exclusive** (*Only these products for these buyers*, decision 4; needs a scope): its scope's products are offered
+  only to its buyers. For everyone else they are out of listings, search, recommendations, the sitemap, feeds and the chat agent, and their
+  address answers not found: `OFFERED` (the shopper-facing condition, used by the cached reads) leaves out a product any exclusive list
+  covers (`commerce.product_exclusive()`), and the reads made per request for a known buyer (the cart, checkout, the buyer's catalogue) ask
+  `offeredTo(customer)` (`commerce.buyer_sees()`).
+- A buyer reaches their exclusive products on **Your catalogue** (`/s/{store}/{market}/account/catalogue`, per request, signed in): the
+  products their lists make theirs, each with its variants, their price and Add to cart. Product pages stay cached for everyone, so an
+  exclusive product has no public page (the shared page cannot know the buyer).
+- `catalogue.b2b-catalogs-and-price-lists` closes with C3, `catalogue.b2b-company-accounts` with C2.
+
+#### C.4 As built: C1 (2026-10-26)
+
+- Migrations `20261026005221_price_lists` (the four tables and `order_lines.price_list_id`) and `20261026005315_price_lists_sql` (row
+  security, `commerce.buyer_lists()`, `commerce.price_list_covers()` and `commerce.buyer_price()`). A category in a list's scope reaches its
+  subcategories, and a category filled by rules (D319) reaches what its rules match.
+- `getCart()` and `orderLineRows()` take the price as `coalesce(buyer_price, market price)` under `LIST_PRICED`
+  (`src/server/product-conditions.ts`: no purchase option, kind `goods` or `appointment`), so a line's `unitPriceMinor` is the list price
+  and `cartSummary()`'s and `placeOrder()`'s group percentage and a code's per-unit figure skip a line with a `priceListId`. A campaign's
+  free product is never list-priced. `getCart()` reads the signed-in customer itself unless told who (`bonus.ts` passes it).
+- The buy part reads `listPricesFor()` only for a product with no purchase options, and the appointment picker for an appointment, each
+  with `shown()` and *Your price*; the phone's bar carries the same amount. `MemberNotice` still names the group's percentage, which the
+  cart gives to lines no list prices.
+- Drafts (D173), order changes (D174) and exchanges (D239) are priced by their own builders at the market price: staff choose those prices.
+- `COPY_RULES` `never` for the four tables (a copy starts with no lists rather than half-assigned ones; the spec's `catalogue` would have
+  needed `duplicate_store()` rewritten for little gain). The admin is `/admin/{store}/price-lists` and `[listId]` (settings, who, the
+  percentage's scope, fixed prices through a product search by title, handle or SKU), the AI manager's `list_price_lists`
+  (`customers:read`, feature `shop`, read-only). Held by `src/db/commerce.test.ts` (the SQL), `price-lists.int.test.ts` (the writers and
+  the reader) and the euro scenario in `checkout-kinds.int.test.ts` (cart, summary and order agree; the lowest list wins; no group
+  percentage on top; the order line keeps its list).
 
 ### Unit D (D322): bundles
 

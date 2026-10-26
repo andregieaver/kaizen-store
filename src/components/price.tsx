@@ -149,6 +149,7 @@ export function Price({
   m,
   from = false,
   large = false,
+  yours = false,
   textRole,
 }: {
   price: PriceView;
@@ -156,6 +157,8 @@ export function Price({
   m: Messages;
   from?: boolean;
   large?: boolean;
+  /** The buyer's own price from their price list (D321): named so, never drawn as a reduction (its reference is null). */
+  yours?: boolean;
   /** The kind of text the figure is in a component's typography (D179: `data-kz-text`, a content grid's `price`). */
   textRole?: string;
 }) {
@@ -163,6 +166,7 @@ export function Price({
     <div>
       <p className={large ? "text-2xl font-semibold" : "font-semibold"} data-kz-text={textRole}>
         {from && <span className="font-normal">{m.fromPrice} </span>}
+        {yours && <span className="font-normal">{m.yourPrice}: </span>}
         <VatAmount amountMinor={price.amountMinor} currency={price.currency} locale={locale} vat={price.vat} labels={m} />
       </p>
       {price.referenceMinor !== null && (

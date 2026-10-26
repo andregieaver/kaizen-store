@@ -76,6 +76,7 @@ const PREFIXES: Record<string, AuditArea> = {
   // Privacy requests, exports and erasures (D162); the retention schedule belongs to the platform.
   "privacy.": "customers",
   "tier.": "customers",
+  "price_list.": "customers",
   "company.": "customers",
   "company.place_": "settings",
   // Marketing

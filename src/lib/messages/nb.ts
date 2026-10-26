@@ -572,6 +572,7 @@ export const nb: Messages = {
   },
   priorPrice: "Laveste pris siste 30 dager",
   fromPrice: "Fra",
+  yourPrice: "Din pris",
   inStock: "På lager",
   lowStock: (n: number) => `Kun ${n} igjen`,
   outOfStock: "Utsolgt",

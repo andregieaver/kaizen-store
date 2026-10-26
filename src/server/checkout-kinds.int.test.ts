@@ -7,7 +7,7 @@ import { closeDb, db } from "@/db/client";
 import { addDays, zonedDate, zonedTime } from "@/lib/booking-slots";
 import { convertCredits, earnAmount, restoreShare } from "@/lib/bonus";
 import { localizationOf, conversionFor } from "@/lib/localization";
-import { showMarket, toMarket } from "@/lib/markets";
+import { showMarket, shown, toMarket } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import { unitPrice, unitPriceShown } from "@/lib/unit-price";
 import { lineUnitPriceText } from "@/lib/unit-price-text";
@@ -1265,6 +1265,76 @@ describe("the unit price in euro (D160)", () => {
     expect(ol.unitPriceMinor).toBe(0);
     expect(lineUnitPriceText(ol, order.currency, order.locale, t("nb"))).toBeNull();
     await db().execute(sql`update commerce.selling_plans set active = false where id = ${String(plan.id)}::uuid`);
+  });
+});
+
+/**
+ * Price lists (D321): a group's 20 % list and a company's fixed price. The cart, the summary and the order agree on the buyer's price in euro,
+ * the lowest list wins, a list-priced line takes no group percentage on top, and the order line keeps the list that priced it.
+ */
+describe("price lists in euro (D321)", () => {
+  it("prices the cart and the order at the buyer's lowest list price, shown in euro, with no group discount on top", async () => {
+    // The group and the company the other scenarios made, when this describe runs alone.
+    let [tier] = await db().execute<Row>(sql`select id from commerce.customer_tiers where store_id = ${storeId}::uuid limit 1`);
+    tier ??= (await db().execute<Row>(sql`insert into commerce.customer_tiers (store_id, name, percent) values (${storeId}::uuid, 'Wholesale', 10) returning id`))[0];
+    tierId = String(tier.id);
+    let [company] = await db().execute<Row>(sql`select id from commerce.customer_companies where store_id = ${storeId}::uuid limit 1`);
+    company ??= (
+      await db().execute<Row>(sql`
+        insert into commerce.customer_companies (store_id, name, tier_id, employee_share_percent) values (${storeId}::uuid, 'Acme AS', ${tierId}::uuid, 50) returning id
+      `)
+    )[0];
+    companyId = String(company.id);
+    const [{ id: mug }] = await db().execute<Row>(sql`select id from commerce.product_variants where store_id = ${storeId}::uuid and sku = 'DEMO-MUG-WHITE'`);
+    const [{ amount_minor: market }] = await db().execute<Row>(sql`select amount_minor from commerce.current_prices where variant_id = ${String(mug)}::uuid and market_code = 'NO'`);
+    const [retail] = await db().execute<Row>(sql`insert into commerce.price_lists (store_id, name, percent) values (${storeId}::uuid, ${`Retail ${run}`}, 20) returning id`);
+    const [contract] = await db().execute<Row>(sql`insert into commerce.price_lists (store_id, name) values (${storeId}::uuid, ${`Contract ${run}`}) returning id`);
+    const fixed = Math.round(Number(market) * 0.7);
+    try {
+      await db().execute(sql`insert into commerce.price_list_assignments (store_id, list_id, tier_id) values (${storeId}::uuid, ${String(retail.id)}::uuid, ${tierId}::uuid)`);
+      await db().execute(sql`insert into commerce.price_list_assignments (store_id, list_id, company_id) values (${storeId}::uuid, ${String(contract.id)}::uuid, ${companyId}::uuid)`);
+      await db().execute(sql`
+        insert into commerce.price_list_prices (store_id, list_id, variant_id, currency, amount_minor) values (${storeId}::uuid, ${String(contract.id)}::uuid, ${String(mug)}::uuid, 'NOK', ${fixed})
+      `);
+      const listed = Math.floor((Number(market) * 80 + 50) / 100);
+      view = noInEuro;
+
+      // A guest pays the market price.
+      jar.clear();
+      await add("DEMO-MUG-WHITE", 2);
+      expect((await getCart(shop())).lines[0].unitPriceMinor).toBe(shown(noInEuro, Number(market)));
+
+      // A group member pays the group's list, 20 % off, and gets no 10 % group discount on top.
+      jar.clear();
+      const buyer = await signInBuyer("group");
+      await add("DEMO-MUG-WHITE", 2);
+      const cart = await getCart(shop());
+      expect(cart.currency).toBe("EUR");
+      expect(cart.lines[0].priceListId).toBe(String(retail.id));
+      expect(cart.lines[0].unitPriceMinor).toBe(shown(noInEuro, listed));
+      const summary = await cartSummary(shop(), cart);
+      expect(summary.memberDiscountMinor).toBe(0);
+      await startCheckout({ ...shop(), storeSlug: slug }, cartId(), origin, "Frakt", {}, { customerId: buyer });
+      const open = await getOpenCheckout(storeId, cartId());
+      const order = (await getOrder(storeId, open!.orderId))!;
+      expect(order.currency).toBe("EUR");
+      expect({ total: order.totalMinor, vat: order.taxMinor, member: order.memberDiscountMinor }).toEqual({ total: summary.total, vat: summary.vat, member: 0 });
+      expect(order.lines.find((l) => l.sku === "DEMO-MUG-WHITE")!.unitPriceMinor).toBe(shown(noInEuro, listed));
+      const [kept] = await db().execute<Row>(sql`select price_list_id from commerce.order_lines where order_id = ${open!.orderId}::uuid and price_list_id is not null`);
+      expect(String(kept.price_list_id)).toBe(String(retail.id));
+
+      // An employee of the company (whose group is the same) gets the lower of the two: the company's fixed price.
+      jar.clear();
+      await signInBuyer("company");
+      await add("DEMO-MUG-WHITE", 1);
+      const theirs = await getCart(shop());
+      expect(theirs.lines[0].priceListId).toBe(String(contract.id));
+      expect(theirs.lines[0].unitPriceMinor).toBe(shown(noInEuro, fixed));
+      expect((await cartSummary(shop(), theirs)).memberDiscountMinor).toBe(0);
+    } finally {
+      view = no;
+      await db().execute(sql`delete from commerce.price_lists where id in (${String(retail.id)}::uuid, ${String(contract.id)}::uuid)`);
+    }
   });
 });
 

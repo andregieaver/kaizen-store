@@ -35,7 +35,7 @@ import { loopHeading, loopOf, loopShows, productLoopConfig } from "@/lib/field-l
 import { fieldHeading, fieldToShow, groupHeading, groupsToShow } from "@/lib/field-parts";
 import { optionLabel, t, type Messages } from "@/lib/i18n";
 import { MAX_LINE_QUANTITY } from "@/lib/cart";
-import { inView, type Market } from "@/lib/markets";
+import { inView, shown, type Market } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import { todayIn } from "@/lib/analytics-period";
 import { browserText } from "@/lib/browser-text";
@@ -53,6 +53,7 @@ import { getCustomer } from "@/server/customers";
 import { appointmentSlots, getAppointmentOffer } from "@/server/appointments";
 import { getVariantStock, type EconomicOperator, type ProductDetail } from "@/server/catalog";
 import { relatedProducts } from "@/server/listing";
+import { listPricesFor } from "@/server/price-lists";
 import { getRangeOffer, getRangePricing, rangeDates } from "@/server/ranges";
 import { getShippingFacts, storeFacts } from "@/server/seo";
 import type { ReviewFacts } from "@/server/review-facts";
@@ -536,9 +537,11 @@ async function AppointmentBooking({
   m: Messages;
 }) {
   await connection();
-  const [offer, week] = await Promise.all([
+  const [offer, week, listed] = await Promise.all([
     getAppointmentOffer(store.id, product.id),
     appointmentSlots(store.id, product.id),
+    // A signed-in buyer's price lists (D321), as the cart prices an appointment.
+    getCustomer(store.id).then((customer) => listPricesFor(store.id, customer?.id ?? null, product.variants.map((v) => v.id), market.code)),
   ]);
   if (!featureOn(store, "appointments") || !offer || !week) return <p>{m.booking.notBookable}</p>;
   const facts = [
@@ -579,7 +582,14 @@ async function AppointmentBooking({
         variants={product.variants.map((variant) => ({
           id: variant.id,
           label: optionLabel(m, variant.options) || product.title,
-          price: <Price price={variant.price} locale={market.locale} m={m} />,
+          price: (() => {
+            const own = listed.get(variant.id);
+            return own ? (
+              <Price price={{ ...variant.price, amountMinor: shown(market, own.amountMinor), referenceMinor: null }} locale={market.locale} m={m} yours />
+            ) : (
+              <Price price={variant.price} locale={market.locale} m={m} />
+            );
+          })(),
           image: variant.image,
         }))}
         staff={offer.staff}
@@ -782,13 +792,22 @@ async function VariantsWithStock({
     );
   }
   // Stock, policy and the days a backorder states are read for this request, never cached (D172).
-  const [availability, notifyOn] = await Promise.all([
+  const [availability, notifyOn, listed] = await Promise.all([
     getVariantStock(
       store.id,
       product.variants.map((v) => v.id),
     ),
     backInStockOn(store.id),
+    // A signed-in buyer's price lists (D321): goods bought once only, never with purchase options, as the cart prices them (`LIST_PRICED`).
+    product.plans.length === 0
+      ? getCustomer(store.id).then((customer) => listPricesFor(store.id, customer?.id ?? null, product.variants.map((v) => v.id), market.code))
+      : new Map<string, { amountMinor: number; listId: string }>(),
   ]);
+  // The price a variant is offered at: the buyer's list price where a list gives one (in the market's view, never a reduction), else the shop's.
+  const offered = (variant: ProductDetail["variants"][number]) => {
+    const own = listed.get(variant.id);
+    return own ? { price: { ...variant.price, amountMinor: shown(market, own.amountMinor), referenceMinor: null }, yours: true } : { price: variant.price, yours: false };
+  };
   // Units in stock, or a variant that keeps selling at zero with its days stated (a backorder is bought, never "sold out").
   const available = (variant: ProductDetail["variants"][number]) => variant.delivery === "digital" || canOffer(availability.get(variant.id));
   // A variant that keeps selling is capped by the line maximum, not by what is in stock, so the message must not say it is.
@@ -813,8 +832,8 @@ async function VariantsWithStock({
   const priced = (() => {
     const places = new Map<string, number>();
     const prices: { price: ReactNode; amount: ReactNode }[] = [];
-    const index = (price: ProductDetail["variants"][number]["price"]) => {
-      const key = JSON.stringify(price);
+    const index = ({ price, yours }: ReturnType<typeof offered>) => {
+      const key = JSON.stringify([price, yours]);
       const known = places.get(key);
       if (known !== undefined) return known;
       places.set(key, prices.length);
@@ -829,7 +848,7 @@ async function VariantsWithStock({
             measure={price.measure}
             unitLabels={unitLabelsOf(m)}
           >
-            <Price price={price} locale={market.locale} m={m} />
+            <Price price={price} locale={market.locale} m={m} yours={yours} />
           </PlanPrice>
         ),
         amount: (
@@ -876,7 +895,7 @@ async function VariantsWithStock({
               note: digital ? m.instantDownload : stockNote(availability.get(variant.id), m),
               available: available(variant),
               capped: cappedNote(variant),
-              priceIndex: priced.index(variant.price),
+              priceIndex: priced.index(offered(variant)),
             };
           })}
           prices={priced.prices}
@@ -928,7 +947,7 @@ async function VariantsWithStock({
         variants={product.variants.map((variant) => ({
           id: variant.id,
           label: optionLabel(m, variant.options) || product.title,
-          amountMinor: variant.price.amountMinor,
+          amountMinor: offered(variant).price.amountMinor,
           available: available(variant),
           capped: cappedNote(variant),
           image: variant.image ? { url: variant.image.thumbnailUrl, alt: "" } : null,

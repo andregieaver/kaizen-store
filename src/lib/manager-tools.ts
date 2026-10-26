@@ -312,6 +312,7 @@ export const TOOL_WORDS: Record<string, string> = {
   draft_broadcast: "Writing the draft broadcast",
   send_broadcast: "Preparing the send",
   list_segments: "Counting segments",
+  list_price_lists: "Looking at price lists",
   tag_customer: "Tagging the customer",
   list_email_automations: "Looking at email automations",
   switch_email_automation: "Preparing the switch",

@@ -569,6 +569,7 @@ export const sv: Messages = {
   },
   priorPrice: "Lägsta pris senaste 30 dagarna",
   fromPrice: "Från",
+  yourPrice: "Ditt pris",
   inStock: "I lager",
   lowStock: (n: number) => `Endast ${n} kvar`,
   outOfStock: "Slutsåld",

@@ -569,6 +569,7 @@ export const da: Messages = {
   },
   priorPrice: "Laveste pris de seneste 30 dage",
   fromPrice: "Fra",
+  yourPrice: "Din pris",
   inStock: "På lager",
   lowStock: (n: number) => `Kun ${n} tilbage`,
   outOfStock: "Udsolgt",

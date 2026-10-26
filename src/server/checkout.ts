@@ -39,7 +39,7 @@ import { sendBookingStaffNotices, sendOrderConfirmation } from "./shopper-emails
 import { decideTax, loadTaxFacts } from "./tax-treatment";
 import { refreshStaleCartCheck } from "./vat-checks";
 import { bookable } from "./cart";
-import { OFFERED, STORE_AUDIENCE, plansOffered } from "./product-conditions";
+import { OFFERED, STORE_AUDIENCE, plansOffered, LIST_PRICED } from "./product-conditions";
 import { ensureStorePaymentMethods, getCheckoutUi } from "./connect";
 import { evaluateCampaigns } from "./campaigns";
 import { memberDiscountFor } from "./customer-tiers";
@@ -162,7 +162,14 @@ export type CheckoutConsent = { digital?: boolean; subscription?: boolean };
  * `variant_id`, `quantity`, `selling_plan_id`, `starts_at`, `resource_id`, and a gift card's `gift_card_*`): the shopper's cart lines, or
  * the free products a campaign gives (D114), which are sold like any other line.
  */
-function orderLineRows(tx: Tx, market: Market, source: SQL, where: SQL) {
+function orderLineRows(
+  tx: Tx,
+  market: Market,
+  source: SQL,
+  where: SQL,
+  /** The buyer whose price lists price the lines (D321, `commerce.buyer_price()`, as the cart reads it); null for the market price. */
+  customerId: string | null,
+) {
   return tx.execute<Row>(sql`
       select
         cl.variant_id, cl.quantity, v.sku, v.options, v.delivery, p.id as product_id, p.audience,
@@ -173,7 +180,7 @@ function orderLineRows(tx: Tx, market: Market, source: SQL, where: SQL) {
         coalesce(v.tax_code, p.tax_code) as tax_code, p.withdrawal_exclusion,
         commerce.vat_rate(${market.code}, p.vat_category) as vat_rate,
         coalesce(tl.title, tf.title, p.handle) as title,
-        cp.amount_minor, cl.starts_at, cl.resource_id, aps.payment, aps.deposit_percent,
+        coalesce(bp.amount_minor, cp.amount_minor) as amount_minor, bp.list_id as price_list_id, cl.starts_at, cl.resource_id, aps.payment, aps.deposit_percent,
         p.kind, aps.check_in_time, aps.check_out_time, v.rental_period, p.host_id, v.cost_minor,
         v.measure_amount, v.measure_unit, v.measure_base, v.stock_policy, v.backorder_days,
         cl.gift_card_to, cl.gift_card_to_name, cl.gift_card_from, cl.gift_card_message, cl.gift_card_send_on,
@@ -186,6 +193,7 @@ function orderLineRows(tx: Tx, market: Market, source: SQL, where: SQL) {
         select title from commerce.product_translations where product_id = p.id order by locale limit 1
       ) tf on true
       left join commerce.current_prices cp on cp.variant_id = v.id and cp.market_code = ${market.code}
+      left join lateral commerce.buyer_price(cl.store_id, ${customerId}::uuid, v.id, ${market.code}, cp.amount_minor) bp on ${LIST_PRICED}
       left join commerce.selling_plans sp
         on sp.store_id = cl.store_id and sp.id = cl.selling_plan_id and sp.product_id = p.id
       left join commerce.appointment_settings aps on aps.store_id = p.store_id and aps.product_id = p.id
@@ -250,6 +258,7 @@ export async function placeOrder(
       market,
       sql`commerce.cart_lines cl`,
       sql`cl.store_id = ${storeId}::uuid and cl.cart_id = ${cartId}::uuid`,
+      customerId,
     );
     const lines: Row[] = [...cartLines];
     if (lines.length === 0) return { ok: false, problem: "empty" };
@@ -376,6 +385,8 @@ export async function placeOrder(
          * or credit) and it counts towards no threshold (free shipping, a campaign's or a code's minimum), as the cart page reads it.
          */
         voucher: line.kind === "gift_card",
+        /** The price list that priced the line for this buyer (D321): no group percentage on top of it. */
+        priceListId: line.price_list_id ? String(line.price_list_id) : null,
         total: unit * quantity,
         title,
         recurring,
@@ -424,6 +435,8 @@ export async function placeOrder(
               as cl (store_id, variant_id, quantity, selling_plan_id, starts_at, resource_id,
                      gift_card_to, gift_card_to_name, gift_card_from, gift_card_message, gift_card_send_on)`,
         sql`true`,
+        // A free product is at its market price, all of it taken off.
+        null,
       );
       if (!row || !row.sellable || !row.plan_ok || row.amount_minor === null) continue;
       lines.push(row);
@@ -514,7 +527,7 @@ export async function placeOrder(
     const member = await memberDiscountFor(tx, storeId, customerId);
     if (member) {
       for (const p of priced) {
-        if (p.gift || p.voucher || p.recurring || p.unit <= 0) continue;
+        if (p.gift || p.voucher || p.recurring || p.priceListId || p.unit <= 0) continue;
         p.member = memberOffAfterCampaign(p.unit, p.quantity, p.campaign, member.percent);
         p.discount = p.campaign + p.member;
         p.total = p.unit * p.quantity - p.discount;
@@ -564,7 +577,7 @@ export async function placeOrder(
                     key: String(i),
                     productId: String(p.line.product_id),
                     // What the code is taken off: the price after the group's discount for what is bought once.
-                    unitMinor: member && !p.recurring ? planPrice(p.unit, member.percent) : p.renewUnit,
+                    unitMinor: member && !p.recurring && !p.priceListId ? planPrice(p.unit, member.percent) : p.renewUnit,
                     quantity: p.quantity,
                     todayMinor: p.total,
                     recurring: p.recurring,
@@ -774,6 +787,7 @@ export async function placeOrder(
         bonusDiscountMinor: p.bonus,
         referralDiscountMinor: p.referral,
         unitCostMinor: p.line.cost_minor === null || p.line.cost_minor === undefined ? null : Number(p.line.cost_minor),
+        priceListId: p.priceListId,
         vatReliefMinor: p.relief,
         measure: snapshot ? { amount: snapshot.amount, unit: snapshot.unit, base: snapshot.base } : null,
         backorderQuantity: backorderOfLine.get(i) ?? 0,
