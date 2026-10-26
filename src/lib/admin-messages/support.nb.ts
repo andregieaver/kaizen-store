@@ -9,6 +9,10 @@ export const supportNb: SupportMessages = {
     address: "Videresend til",
     off: "Kundeservice er av: e-post til denne adressen tas ikke imot før dere velger hvem som svarer.",
     notSetUp: "Mottak av e-post er ikke satt opp på plattformen ennå.",
+    keyRefused: {
+      one: "1 e-post til denne adressen kunne ikke leses ennå: Resend avviste nøkkelen Kaizena Flow leser mottatt e-post med (RESEND_RECEIVING_KEY trenger full tilgang). Den prøves igjen hvert 30. minutt.",
+      many: "{n} e-poster til denne adressen kunne ikke leses ennå: Resend avviste nøkkelen Kaizena Flow leser mottatt e-post med (RESEND_RECEIVING_KEY trenger full tilgang). De prøves igjen hvert 30. minutt.",
+    },
   },
   inbox: {
     title: "Innboks",

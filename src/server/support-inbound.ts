@@ -14,6 +14,7 @@ import {
   INBOUND_PER_DESK_DAY,
   INBOUND_PER_SENDER_HOUR,
   INBOUND_TRIES,
+  KEY_RETRY_MINUTES,
   automated,
   bareAddress,
   cleanSubject,
@@ -147,7 +148,9 @@ export async function processInboundEmails(deps: InboundDeps & { only?: string; 
         claimed_until = now() + make_interval(mins => ${INBOUND_CLAIM_MINUTES})
       where e.id in (
         select id from commerce.support_inbound_emails
-        where (status = 'pending' or (status = 'running' and claimed_until < now())) and tries < ${INBOUND_TRIES}
+        where ((status = 'pending' or (status = 'running' and claimed_until < now())) and tries < ${INBOUND_TRIES}
+            -- Emails Resend would not give us with our key are read again now and then, so a fixed key reads them (D332).
+            or (status = 'failed' and reason = 'key_refused' and finished_at < now() - make_interval(mins => ${KEY_RETRY_MINUTES})))
           ${deps.only ? sql`and id = ${deps.only}::uuid` : sql``}
         order by created_at limit ${deps.limit ?? 20}
         for update skip locked
@@ -171,11 +174,16 @@ export async function processInboundEmails(deps: InboundDeps & { only?: string; 
       const result = await processOne(row, deps);
       await db().execute(sql`
         update commerce.support_inbound_emails set status = ${result.status}, reason = ${result.reason ?? null},
-          conversation_id = coalesce(${result.conversationId ?? null}::uuid, conversation_id), claimed_until = null, finished_at = now()
+          conversation_id = coalesce(${result.conversationId ?? null}::uuid, conversation_id), claimed_until = null, finished_at = now(),
+          -- A refused key is no fault of the email: it keeps its tries for when the key works.
+          tries = case when ${result.reason === "key_refused"} then 0 else tries end
         where id = ${id}::uuid
       `);
       if (result.status === "done") out.done += 1;
-      else out.refused += 1;
+      else if (result.status === "failed") {
+        out.failed += 1;
+        log("warn", "support.inbound_key_refused", { id });
+      } else out.refused += 1;
     } catch (error) {
       out.failed += 1;
       log("warn", "support.inbound_failed", { id, tries: Number(row.tries) }, error);
@@ -193,11 +201,14 @@ export async function processInboundEmails(deps: InboundDeps & { only?: string; 
   return out;
 }
 
-type Outcome = { status: "done" | "refused"; reason?: string; conversationId?: string };
+type Outcome = { status: "done" | "refused" | "failed"; reason?: string; conversationId?: string };
 const refused = (reason: string): Outcome => ({ status: "refused", reason });
 
-/** Fetches the email's words from Resend, or throws (tried again). */
-async function fetchEmail(providerId: string, deps: InboundDeps): Promise<ReceivedEmail | null> {
+/**
+ * Fetches the email's words from Resend: the email, null without a key, `key_refused` when Resend will not give it with our key (a
+ * sending-only key: `RESEND_RECEIVING_KEY` needs full access), or throws (tried again).
+ */
+async function fetchEmail(providerId: string, deps: InboundDeps): Promise<ReceivedEmail | null | "key_refused"> {
   const env = deps.env ?? process.env;
   const key = (env.RESEND_RECEIVING_KEY ?? env.RESEND_API_KEY)?.trim();
   if (!key?.startsWith("re_")) return null;
@@ -205,6 +216,7 @@ async function fetchEmail(providerId: string, deps: InboundDeps): Promise<Receiv
     headers: { Authorization: `Bearer ${key}` },
     signal: AbortSignal.timeout(10_000),
   });
+  if (response.status === 401 || response.status === 403) return "key_refused";
   if (response.status === 404) throw new Error("Resend does not have the email yet");
   if (!response.ok) throw new Error(`Resend answered ${response.status}`);
   return (await response.json()) as ReceivedEmail;
@@ -224,6 +236,7 @@ async function processOne(row: Row, deps: InboundDeps): Promise<Outcome> {
   if (!site) return refused("store_closed");
 
   const email = await fetchEmail(String(row.provider_id), deps);
+  if (email === "key_refused") return { status: "failed", reason: "key_refused" };
   if (!email) return refused("not_set_up");
   const headers = email.headers ?? {};
   const machine = automated(email.from ?? from, headers, emailSettings(env)?.from ?? null);
@@ -353,6 +366,18 @@ export async function deskEmailAddress(desk: Desk, env: Record<string, string | 
   `);
   const key = row?.email_key ? String(row.email_key) : null;
   return key && ADDRESS_KEY.test(key) ? deskAddress(key, domain) : null;
+}
+
+/**
+ * How many emails to the desk wait because Resend refused the key that reads them (`RESEND_RECEIVING_KEY`, D332), for the settings
+ * card; 0 when none do.
+ */
+export async function deskEmailsKeyRefused(desk: Desk): Promise<number> {
+  const [row] = await db().execute<Row>(sql`
+    select count(*)::int as n from commerce.support_inbound_emails
+    where store_id is not distinct from ${desk.storeId}::uuid and routed and status = 'failed' and reason = 'key_refused'
+  `);
+  return Number(row?.n ?? 0);
 }
 
 /** Received emails' rows (sender and subject) older than `INBOUND_KEEP_DAYS` go; their messages stay with the conversation's own period. */

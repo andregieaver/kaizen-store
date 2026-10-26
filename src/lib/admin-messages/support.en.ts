@@ -12,6 +12,10 @@ export const supportEn = {
     address: "Forward to",
     off: "Support is off: emails to this address are not taken until you choose who answers.",
     notSetUp: "Receiving email is not set up on this platform yet.",
+    keyRefused: {
+      one: "1 email to this address could not be read yet: Resend refused the key Kaizena Flow reads received email with (RESEND_RECEIVING_KEY needs full access). It is tried again every 30 minutes.",
+      many: "{n} emails to this address could not be read yet: Resend refused the key Kaizena Flow reads received email with (RESEND_RECEIVING_KEY needs full access). They are tried again every 30 minutes.",
+    },
   },
   inbox: {
     title: "Inbox",

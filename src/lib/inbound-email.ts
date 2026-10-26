@@ -13,6 +13,8 @@ export const INBOUND_PER_SENDER_HOUR = 10;
 export const INBOUND_PER_DESK_DAY = 500;
 /** Tries of one email before it is `failed`. */
 export const INBOUND_TRIES = 3;
+/** An email Resend refused to give us with our key (401, 403) is tried again this often, so it is read once the key is fixed. */
+export const KEY_RETRY_MINUTES = 30;
 /** How long a run holds an email before another may take it. */
 export const INBOUND_CLAIM_MINUTES = 5;
 /** Received emails' rows (the sender and the subject) are kept this long. */

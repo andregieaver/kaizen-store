@@ -7,7 +7,7 @@ import { SupportEmailCard } from "@/components/admin/support/email-card";
 import { SupportSettingsForm } from "@/components/admin/support/settings-form";
 import { openConversationCount } from "@/server/support";
 import { kaizenDesk } from "@/server/support-desk";
-import { deskEmailAddress } from "@/server/support-inbound";
+import { deskEmailAddress, deskEmailsKeyRefused } from "@/server/support-inbound";
 import { settingsForEdit } from "@/server/support-settings";
 import { PageHeader } from "@/components/admin/ui";
 
@@ -25,7 +25,7 @@ export default async function KaizenSupportSettingsPage() {
     openConversationCount(staff.desk),
   ]);
   // Made after the desk's row (settingsForEdit() makes it on a desk's first look).
-  const emailAddress = await deskEmailAddress(staff.desk);
+  const [emailAddress, keyRefused] = await Promise.all([deskEmailAddress(staff.desk), deskEmailsKeyRefused(staff.desk)]);
   return (
     <AdminTextScope texts={adminTexts(lang, ["support"])}>
       <div className="flex flex-col gap-6">
@@ -43,7 +43,7 @@ export default async function KaizenSupportSettingsPage() {
           chatHref="/admin/platform/chat"
           openCount={open}
         />
-        <SupportEmailCard address={emailAddress} mode={settings.mode} words={t.email} />
+        <SupportEmailCard address={emailAddress} mode={settings.mode} keyRefused={keyRefused} words={t.email} />
       </div>
     </AdminTextScope>
   );

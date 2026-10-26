@@ -48,7 +48,10 @@ let deskAddress: string;
 const emails = new Map<string, ReceivedEmail>();
 const turns: { email?: boolean; customer: unknown }[] = [];
 
+/** Resend refusing our key (a sending-only key) while true. */
+let keyRefused = false;
 const fakeFetch = (async (url: string) => {
+  if (keyRefused) return new Response('{"name":"restricted_api_key"}', { status: 401 });
   const id = decodeURIComponent(String(url).split("/").pop() ?? "");
   const email = emails.get(id);
   return email ? Response.json(email) : new Response("{}", { status: 404 });
@@ -182,6 +185,26 @@ describe("email into the desk", () => {
     await setMode("off");
     expect((await receive(deskAddress, "kari@example.com")).row).toMatchObject({ status: "refused", reason: "desk_off" });
     await setMode("people");
+  });
+
+  it("keeps an email Resend refuses to give with our key, says so on the desk, and reads it once the key works", async () => {
+    keyRefused = true;
+    const { row } = await receive(deskAddress, "keyless@example.com");
+    expect(row).toMatchObject({ status: "failed", reason: "key_refused", tries: 0 });
+    expect(await inbound.deskEmailsKeyRefused(systemDesk(store.id))).toBe(1);
+
+    // Not again at once: the next run leaves it alone.
+    await inbound.processInboundEmails(deps);
+    expect((await db().execute<Row>(sql`select status from commerce.support_inbound_emails where id = ${String(row.id)}::uuid`))[0].status).toBe("failed");
+
+    // The key is fixed; half an hour on, it is read.
+    keyRefused = false;
+    await db().execute(sql`update commerce.support_inbound_emails set finished_at = now() - interval '31 minutes' where id = ${String(row.id)}::uuid`);
+    await inbound.processInboundEmails(deps);
+    const [after] = await db().execute<Row>(sql`select status, conversation_id from commerce.support_inbound_emails where id = ${String(row.id)}::uuid`);
+    expect(after.status).toBe("done");
+    expect(after.conversation_id).toBeTruthy();
+    expect(await inbound.deskEmailsKeyRefused(systemDesk(store.id))).toBe(0);
   });
 
   it("clears a conversation's email fields when it is anonymised", async () => {

@@ -1810,3 +1810,8 @@ and once only, and anonymising clears the email fields.
 - **The assistant's mock and the import cycle.** A test that mocks `./chat-agent` with `importOriginal` does not reach
   `chat-route.ts` (the cycle hands it the original), so the test saves a real `chat_agents` row.
 - **The webhook route has room to answer.** `/api/resend/webhook` runs the AI's turn in `after()`, so it has a `maxDuration` of 60.
+- **A sending-only key cannot read received email.** The first real email failed three times with Resend's 401: `RESEND_API_KEY` was
+  a *Sending access* key. Reading needs a full-access key in `RESEND_RECEIVING_KEY`. Now a 401 or 403 keeps the email as `failed` with
+  `key_refused` (its tries kept), tries it again every `KEY_RETRY_MINUTES` (30), and the desk's settings card says how many wait
+  (`deskEmailsKeyRefused()`), so a wrong key shows without the logs. And `SUPPORT_INBOUND_DOMAIN` is the bare domain
+  (`support.kaizenaflow.com`): a value with `https://` reads as not set up.
