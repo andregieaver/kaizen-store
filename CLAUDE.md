@@ -626,7 +626,9 @@ stand-in is the only fake, and only it is told it is one.
   `OWNER_TOOLS` (`src/lib/owner-tools.ts`, `HANDLERS` in
   `src/server/owner-tools.ts`) or `PLATFORM_TOOLS`, plus `MANAGER_TOOLS`
   (`src/lib/manager-tools.ts`, `src/server/manager-tools.ts`: find and open
-  admin pages, skills, memory). A new tool has zod arguments and a
+  admin pages, skills, memory). A round sends at most `TOOLS_PER_TURN` tools (D333, `chooseTools()`
+  in `src/lib/tool-budget.ts`; providers refuse more than 128): the rest are one `load_tools` call away by area, so a new
+  store tool needs a permission key (its area) and nothing else; a new tool that most questions need goes in `CORE_TOOLS`. A new tool has zod arguments and a
   description, answers from the site's own data with amounts written by
   `formatMoney` and sums done in code, a line in `TOOL_WORDS`, and a `gate`
   (`send`, `public`, `spend`) if it emails, changes a site or costs money:

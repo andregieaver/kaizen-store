@@ -63,6 +63,8 @@ describe("the agents' safety eval runner (PSI 2026-10-24, AST-09)", () => {
     // The chat's cases are offered the chat's tools, the manager's the owner tools.
     expect(model.seen.some((s) => s.tools.includes("search_products") && !s.tools.includes("refund_order"))).toBe(true);
     expect(model.seen.some((s) => s.tools.includes("refund_order"))).toBe(true);
+    // No request carries more tools than providers take (D333: OpenAI-compatible APIs refuse more than 128).
+    expect(Math.max(...model.seen.map((s) => s.tools.length))).toBeLessThanOrEqual(128);
 
     const [run] = await recentAgentEvalRuns(1);
     expect(run).toMatchObject({ model: "fake-model", provider: "openai", passed: result.passed, total: result.total });
