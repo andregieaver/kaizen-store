@@ -19,20 +19,23 @@ const labels = {
   tryAgain: "Try again",
   goToCart: "Go to cart",
   chooseVariant: "Choose a variant",
+  variantUnavailable: "Not available",
 };
 
-const variant = (id: string, label: string): OfferedVariant => ({
+const variant = (id: string, label: string, options: Record<string, string> = {}, available = true): OfferedVariant => ({
   id,
   label,
+  options,
   image: null,
   note: "In stock",
-  available: true,
-  price: createElement("span", null, "199 kr"),
-  amount: "199 kr",
+  available,
+  priceIndex: 0,
 });
 
-const draw = (variants: OfferedVariant[]) =>
-  renderToString(createElement(VariantPurchase, { variants, store: "s", market: "no", cartHref: "/cart", openCart: false, labels }));
+const prices = [{ price: createElement("span", null, "199 kr"), amount: "199 kr" }];
+
+const draw = (variants: OfferedVariant[], optionsFrom?: number) =>
+  renderToString(createElement(VariantPurchase, { variants, prices, optionsFrom, store: "s", market: "no", cartHref: "/cart", openCart: false, labels }));
 
 /** A product's buy box: a choice in a box for several variants, and for one only its stock, price and Add to cart. */
 describe("VariantPurchase", () => {
@@ -53,5 +56,20 @@ describe("VariantPurchase", () => {
     const html = draw([variant("a", "Size: S"), variant("b", "Size: M")]);
     expect(html).toContain("rounded-lg border border-border p-3");
     expect(html).toContain("Choose a variant");
+  });
+
+  it("draws a list per option from the buy part's number of variants, the price once (D320)", () => {
+    const grid = ["Red", "Blue", "Green"].flatMap((colour) =>
+      ["S", "M", "L", "XL"].map((size) => variant(`${colour}-${size}`, `${colour} / ${size}`, { Colour: colour, Size: size }, colour !== "Green")),
+    );
+    const lists = draw(grid);
+    expect(grid).toHaveLength(12);
+    expect(lists).not.toContain("Choose a variant");
+    expect(lists).toContain(">Colour<");
+    expect(lists).toContain(">Size<");
+    // The same 12 below the store's own number: one list of every variant.
+    expect(draw(grid, 13)).toContain("Choose a variant");
+    // One price for every variant that has it.
+    expect(lists.match(/199 kr/g)).toHaveLength(1);
   });
 });

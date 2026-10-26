@@ -12,13 +12,13 @@
       "checkedOn": "2026-10-02"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "partial"
     },
-    "gap": "Still at most 3 options and 100 variants a product: `MAX_OPTIONS = 3` and `MAX_VARIANTS = 100` in `src/lib/product-input.ts`, enforced by `productInput` (zod: 'Use at most 100 variants.'), by the CSV import (`src/lib/product-import.ts`, `options.too_many`) and by the AI manager's catalogue tools (`src/lib/product-tools.ts`, D308); no database check and no limit on option values beyond the variant count. The editor turns every combination of option values into variants (`combineOptions()`) and lists them one row each, not a paged or virtualised matrix with bulk fill per option value; the products grid (D165, `src/components/admin/products-grid.tsx`) edits price, SKU, stock and cost across variants but is not built for thousands of rows of one product. Nothing tests cart, listing, search, JSON-LD or stock reads at 2,048 variants. The storefront chooses with one `Dropdown` per option (D82) and the variant's own picture (D84); unavailable combinations are not marked as such in the picker.",
-    "bucket": "A",
-    "wave": 6,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "A product saves with up to 2,048 variants over at most 3 options; the 2,049th is refused with a plain message (unit test on `productInput`).",
       "The product editor edits a 2,048-variant matrix without freezing (paged or virtualised grid, bulk fill of price, stock and SKU per option value) and saves it in one transaction within a stated time budget (integration test).",
@@ -28,24 +28,40 @@
     "evidence": {
       "files": [
         "src/lib/product-input.ts",
-        "src/components/admin/product-editor.tsx",
         "src/server/products.ts",
-        "src/lib/product-import.ts",
-        "src/lib/product-tools.ts"
+        "supabase/migrations/20261025230656_variants_limit.sql",
+        "src/lib/variant-grid.ts",
+        "src/components/admin/virtual-rows.ts",
+        "src/components/admin/product-editor.tsx",
+        "src/lib/variant-options.ts",
+        "src/components/variant-choice.tsx"
       ],
       "tests": [
         "src/lib/product-input.test.ts",
-        "src/server/products.int.test.ts"
+        "src/db/commerce.test.ts",
+        "src/server/variants-scale.int.test.ts",
+        "src/lib/variant-grid.test.ts",
+        "src/lib/variant-options.test.ts",
+        "src/components/variant-choice.test.ts",
+        "e2e/signed-in/variants-scale.spec.ts"
       ],
       "untested": false
     },
     "decisions": [
-      "D82",
-      "D84",
       "D165",
-      "D308"
+      "D308",
+      "D320",
+      "D82",
+      "D84"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-25",
+        "from": "partial",
+        "to": "full",
+        "why": "Wave 6 unit B (D320, docs/wave-6-catalogue.md Unit B): 2,048 variants over 3 options, refused past that by productInput, the import, the tools and the database at commit (commerce.product_variants_limit()); the save writes variants, prices and stock in a fixed number of statements (50 at 2 and at 2,048; 22,556 before) within a time budget, and the product page, stock, card, listing, search, cart and feed take the same statements at 2 and 2,048 variants (variants-scale.int.test.ts); the editor draws only the rows on screen, filters by option value and sets price, stock, SKU pattern, weight and for sale for all shown; the shop offers a list per option from a size the store sets and marks values that make no buyable variant (buyableValues(); variant-grid.test.ts, variant-options.test.ts, variant-choice.test.ts, e2e/signed-in/variants-scale.spec.ts)."
+      }
+    ]
   },
   {
     "id": "catalogue.product-data-fields-sku-barcode-weight-cost-hs-code-origin",

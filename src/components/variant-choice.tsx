@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 
 import { trackShop } from "@/lib/shop-events";
+import { OPTIONS_FROM, buyableValues, nearestVariant, optionsOf } from "@/lib/variant-options";
 
 import { TrackContext, trackedItem, type ShopTrack } from "./shop-track";
 
@@ -68,12 +69,20 @@ export function useVariantChoice(fallback: string): Choice {
 export type OfferedVariant = {
   id: string;
   label: string;
+  /** Its option values (`{ Colour: "Red", Size: "M" }`), for a list per option (D320). */
+  options: Record<string, string>;
   image: { url: string; alt: string } | null;
   /** In stock, low stock, sold out or instant download. */
   note: string;
   available: boolean;
   /** Said when the cart holds as many as one line may (set for a variant on backorder: its stock is no limit, D172). */
   capped?: string;
+  /** Its price, as a place in the part's `prices`: one drawn per distinct price, so the page does not grow with each variant (D320). */
+  priceIndex: number;
+};
+
+/** A price as the server drew it, once for every variant that has it. */
+export type OfferedPrice = {
   /** The full price, with its VAT label and 30-day reference. */
   price: ReactNode;
   /** The amount alone, for the dropdown. */
@@ -84,9 +93,14 @@ export type OfferedVariant = {
  * A product's variants to buy: one dropdown with each variant's picture,
  * stock and price, then the chosen one's price and Add to cart, in a box.
  * A single variant is shown as it is, with no box: there is nothing to choose.
+ * From `optionsFrom` variants (D320) each option is a dropdown of its own, a
+ * value that makes no buyable variant with the others chosen marked
+ * (`buyableValues()`), and choosing one moves to the nearest buyable variant.
  */
 export function VariantPurchase({
   variants,
+  prices,
+  optionsFrom = OPTIONS_FROM,
   store,
   market,
   cartHref,
@@ -96,11 +110,14 @@ export function VariantPurchase({
   notify,
 }: {
   variants: OfferedVariant[];
+  prices: OfferedPrice[];
+  /** From this many variants, a list per option (the buy part's setting). */
+  optionsFrom?: number;
   store: string;
   market: string;
   cartHref: string;
   openCart: boolean;
-  labels: AddToCartLabels & { chooseVariant: string };
+  labels: AddToCartLabels & { chooseVariant: string; variantUnavailable?: string };
   /** Weekly deliveries (D102): the variants that can go on the list, and where the list is. */
   delivery?: { variants: string[]; listHref: string; labels: AddToDeliveryLabels };
   /** Back in stock (D298): the sold-out variants a shopper may ask to hear about, the signed-in customer's address, and the words. */
@@ -110,22 +127,28 @@ export function VariantPurchase({
   const variant = variants.find((v) => v.id === chosen) ?? variants[0];
   if (!variant) return null;
   const several = variants.length > 1;
+  const price = prices[variant.priceIndex];
+  const options = several && variants.length >= optionsFrom ? optionsOf(variants.map(pickOf)) : [];
   return (
     <div className={several ? "flex flex-col gap-3 rounded-lg border border-border p-3" : "flex flex-col gap-3"}>
-      {several && (
-        <Dropdown
-          label={labels.chooseVariant}
-          value={variant.id}
-          onChange={setChosen}
-          options={variants.map((v) => ({
-            value: v.id,
-            label: v.label,
-            note: v.note,
-            image: v.image,
-            detail: v.amount,
-            disabled: !v.available,
-          }))}
-        />
+      {options.length > 0 ? (
+        <OptionLists variants={variants} variant={variant} options={options} onChoose={setChosen} unavailable={labels.variantUnavailable ?? labels.unavailable} />
+      ) : (
+        several && (
+          <Dropdown
+            label={labels.chooseVariant}
+            value={variant.id}
+            onChange={setChosen}
+            options={variants.map((v) => ({
+              value: v.id,
+              label: v.label,
+              note: v.note,
+              image: v.image,
+              detail: prices[v.priceIndex]?.amount,
+              disabled: !v.available,
+            }))}
+          />
+        )
       )}
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -139,7 +162,7 @@ export function VariantPurchase({
           </div>
         </div>
         <div className="flex flex-col items-end gap-2">
-          {variant.price}
+          {price?.price}
           {/* A new variant starts without the last one's outcome. */}
           <AddToCart
             key={variant.id}
@@ -160,6 +183,49 @@ export function VariantPurchase({
       {!variant.available && notify?.variants.includes(variant.id) && (
         <BackInStock key={`notify-${variant.id}`} store={store} market={market} variantId={variant.id} email={notify.email} labels={notify.labels} />
       )}
+    </div>
+  );
+}
+
+const pickOf = (v: OfferedVariant) => ({ id: v.id, options: v.options, buyable: v.available });
+
+/**
+ * A list per option (D320): the chosen variant's values, every value of each option listed, the ones that make no buyable variant with the
+ * other values chosen marked and skipped (the chosen variant's own value stays choosable, so the list shows it). The gallery shows the variant's
+ * picture, as with one list (`VariantChoice`).
+ */
+function OptionLists({
+  variants,
+  variant,
+  options,
+  onChoose,
+  unavailable,
+}: {
+  variants: OfferedVariant[];
+  variant: OfferedVariant;
+  options: { name: string; values: string[] }[];
+  onChoose: (id: string) => void;
+  unavailable: string;
+}) {
+  const picks = variants.map(pickOf);
+  const buyable = buyableValues(picks, variant.options);
+  return (
+    <div className="flex flex-col gap-3">
+      {options.map((option) => (
+        <Dropdown
+          key={option.name}
+          label={option.name}
+          value={variant.options[option.name] ?? ""}
+          onChange={(value) => {
+            const next = nearestVariant(picks, { ...variant.options, [option.name]: value }, option.name);
+            if (next) onChoose(next.id);
+          }}
+          options={option.values.map((value) => {
+            const can = buyable[option.name]?.has(value) ?? false;
+            return { value, label: value, note: can ? undefined : unavailable, disabled: !can && value !== variant.options[option.name] };
+          })}
+        />
+      ))}
     </div>
   );
 }

@@ -790,6 +790,8 @@ export const builderEn = {
     largeHint: "The price at the size of a heading.",
     thumbnails: "Small pictures below",
     thumbnailsHint: "With two or more pictures, to choose one.",
+    optionsFrom: "Each option its own list from",
+    optionsFromHint: "From this many variants, shoppers choose each option (such as colour, then size) in a list of its own, and values that cannot be bought with the others chosen are marked. Fewer variants are one list. 12 unless you change it.",
     headingText: "Heading text",
     headings: { description: "Description", safety: "Safety and manufacturer", related: "You may also like", reviews: "Reviews" },
     headingPlaceholder: "{heading} (in the shopper's language)",

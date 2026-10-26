@@ -1,6 +1,7 @@
 "use client";
 
 import { ButtonHoverField, HoverTimingFields } from "./hover-fields";
+import { OPTIONS_FROM } from "@/lib/variant-options";
 import { HOVER_DURATION_DEFAULT } from "@/lib/hover-timing";
 import { DEFAULT_BREAKPOINTS, PAGE_CONTAINER, type Breakpoints, type Size } from "@/lib/breakpoints";
 import { breakpointClassCss, canvasHiddenCss, partCss } from "@/lib/part-css";
@@ -7540,6 +7541,16 @@ function ProductFields({ block, onChange }: { block: ProductBlock; onChange: (pa
       )}
       {block.part === "gallery" && (
         <Check label={pw.thumbnails} hint={pw.thumbnailsHint} checked={block.thumbnails !== false} onChange={(on) => onChange({ thumbnails: on ? undefined : false })} />
+      )}
+      {block.part === "buy" && (
+        <NumberField
+          label={pw.optionsFrom}
+          hint={pw.optionsFromHint}
+          value={block.optionsFrom ?? OPTIONS_FROM}
+          min={2}
+          max={2048}
+          onChange={(n) => onChange({ optionsFrom: n === OPTIONS_FROM ? undefined : Math.min(2048, Math.max(2, n)) })}
+        />
       )}
       {headed && (
         <>

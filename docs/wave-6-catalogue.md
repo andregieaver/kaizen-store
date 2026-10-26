@@ -280,43 +280,48 @@ JSON-LD (`productJsonLd()`, pure, from the page's own read) and the feed (`store
 
 #### B.4 The editor's grid (B2)
 
-- The variant table draws only the rows on screen (`useVirtualRows()`, a small hook in `src/components/admin/virtual-rows.ts`: rows of one
-  height, a spacer above and below, no new dependency), so a product of 2,048 variants opens and types without freezing. With 50 variants or
-  fewer every row is drawn, as before (Homer's product has a few).
-- Above it, once the product has options: a filter per option (*All* or one value) with *Showing 64 of 2,048*, and **Set for all shown**,
-  one step away (a button that opens the fields): a price per market, stock, a SKU pattern (`{sku}` words from the product's address and the
-  option values, `skuFromPattern()`), weight, and for sale on or off. Only the fields filled in are set, only on the variants the filter
-  shows, as one change the owner then saves with the rest.
-- The pure parts are `src/lib/variant-grid.ts` (`filterVariants()`, `setForShown()`, `skuFromPattern()`), unit-tested; the words are the
-  `product` catalogue's (en, nb).
+- From 13 variants (`GRID_FROM`) the variant table draws only the rows on screen (`useVirtualRows()` in `src/components/admin/virtual-rows.ts`:
+  each variant's rows are a `<tbody>` of their own, measured while drawn and again when a section opens inside it, the rest counted at an
+  estimate, a spacer above and below; `aria-rowcount` and `aria-rowindex` keep the table's size for screen readers; no new dependency), so a
+  product of 2,048 variants opens and types without freezing. With fewer, every row is drawn, as before (Homer's product has a few). A variant's
+  custom fields (D119) are drawn only while its section is open.
+- From the same size, a filter per option (*All* or one value) with *Showing 64 of 2,048 variants*; for any product of several variants
+  **Set for all shown**, one step away (a button that opens the fields): a price per market, stock, a SKU pattern (`{handle}`, `{n}` and an
+  option's name, `skuFromPattern()`, refused while it names no option or would give two variants one SKU, `skuPatternProblem()`), weight, and
+  for sale or not. Only the fields filled in are set, only on the variants the filter shows (stock and weight only on those shipped), as one
+  change the owner then saves with the rest.
+- The pure parts are `src/lib/variant-grid.ts` (`filterVariants()`, `setForShown()`, `skuFromPattern()`, `skuPatternProblem()`,
+  `visibleRange()`), unit-tested; the words are the `product` catalogue's `grid` (en, nb).
 
 #### B.5 The shop's picker (B3)
 
 - A product of a few variants keeps today's one dropdown with each variant's picture, stock and price. From a number of variants the store
-  sets on the buy part of its product layout (`optionsFrom`, default 12, in the builder's product part fields), each option is a dropdown
-  of its own (Colour, then Size, …), and the chosen variant's picture, stock, price and Add to cart follow the values chosen.
-- A value that makes no buyable variant with the other values chosen is marked (*Not available*, still listed, disabled), worked out only by
-  `buyableValues()` (`src/lib/variant-options.ts`, pure: per option, the values with at least one variant that is for sale and in stock or on
-  backorder matching the other chosen values). Choosing a value whose combination with the rest cannot be bought moves to the nearest buyable
-  variant with that value (`nearestVariant()`: the most other values kept, then the variants' order).
-- The part's payload stops growing with each variant's price: the server draws one price per distinct price (amount, reference, unit
-  price) and each variant names its price by index. Variant data the browser needs is ids, values, stock note and availability.
-- Words: `m.variantUnavailable` in nb, sv, da and en by hand (`{lang}.ts`, server-drawn labels passed to the picker).
+  sets on the buy part of its product layout (`optionsFrom`, default `OPTIONS_FROM` = 12, *Each option its own list from* in the builder's
+  product part fields), each option is a dropdown of its own (Colour, then Size, …), and the chosen variant's picture (the gallery, D84), stock,
+  price and Add to cart follow the values chosen. The phone's bar then names the variant chosen and adds it, with no list of every variant
+  (`ProductBar`'s `choosesOnPage`).
+- A value that makes no buyable variant with the other values chosen is marked (*Not available*, still listed, skipped by the keyboard), worked
+  out only by `buyableValues()` (`src/lib/variant-options.ts`, pure: per option, the values with at least one variant that is for sale and in
+  stock, on backorder or a download, matching the other chosen values). The chosen variant's own value stays choosable. Choosing a value moves to
+  the variant with every value chosen when it can be bought, else the buyable one with that value keeping the most of the others
+  (`nearestVariant()`), else the exact one, shown sold out.
+- The part's payload stops growing with each variant's price: the server draws one price per distinct price (`OfferedPrice`) and each variant
+  names its own by place (`priceIndex`).
+- Words: `m.variantUnavailable` in nb, sv, da and en by hand.
 
-#### B.7 As built: B1 (2026-10-25)
+#### B.8 As built: B2 and B3 (2026-10-25)
 
-- `MAX_VARIANTS` is 2,048 and an option holds at most that many values; `productInput` refuses the 2,049th variant in plain words
-  (`product-input.test.ts`), the import's limit follows the constant (`product-import.test.ts`).
-- `commerce.product_variants_limit()` (migration `variants_limit`): a deferred constraint trigger on `product_variants` that counts the variants
-  for sale once per product and transaction (a local setting remembers the product), tested in `commerce.test.ts` (2,048 allowed with switched-off
-  ones beside them, the 2,049th refused at commit, a save that adds before it switches off allowed). `saveProblem()` words `variants.too_many`.
-- `saveVariants()` and `writeStock()` are set-based: one read of the variants with their current prices, one update and one insert over
-  `jsonb_to_recordset()`, one `commerce.set_price` statement over the changed prices, one update ending the prices taken away, stock in one
-  statement per reason with the levels locked in variant order, one update switching off what was taken out. A new product's save is 50 statements
-  at 2 variants and at 2,048; the one-by-one save sent 22,556 at 2,048 (and passed the time budget here, which is why the count is held too).
-- `variants-scale.int.test.ts`: a product of 16 × 16 × 8 saved new and again with every price and stock changed (history and movements checked,
-  under `SAVE_BUDGET_MS`), half its variants switched off by an option value, the editor's request under 4 MB, and the reads of B.3 counted at 2,048
-  and 2 variants in two stores copied from the same template: the same at both sizes. JSON-LD is pure over the page's own read, so it adds none.
+- The editor (`product-editor.tsx`): `VariantGridTools` above the table (the filter from `GRID_FROM` variants, *Set for all shown* for any product
+  of several), the table's rows drawn through `useVirtualRows()` from the same size, each variant's rows a `<tbody>` measured by one
+  `ResizeObserver`, counts written in the admin's language. A variant's custom fields are drawn only while its section is open.
+- The shop (`variant-choice.tsx`, `product-parts.tsx`, `product-bar.tsx`): `OptionLists` from the buy part's `optionsFrom` (`ProductBlock`,
+  checked 2 to 2,048 by the page schema, the builder's *Each option its own list from*), values marked by `buyableValues()` and moved to by
+  `nearestVariant()`; one price drawn per distinct price (`OfferedPrice`, `priceIndex`); the phone's bar names the chosen variant
+  (`choosesOnPage`). `m.variantUnavailable` in four languages.
+- Tests: `variant-grid.test.ts`, `variant-options.test.ts`, `variant-choice.test.ts` (a list per option from 12, one list below the store's
+  number, the price drawn once), and `e2e/signed-in/variants-scale.spec.ts`: the editor of a product of 2,048 variants draws fewer than 100 rows,
+  reaches the last one by scrolling, filters to 128 by a colour and sets their price, saved and read back from the database; a shop's product of
+  12 variants offers a list per option, marks green (no size to buy) and blue M (sold out), and adds blue L.
 
 #### B.6 Elsewhere
 

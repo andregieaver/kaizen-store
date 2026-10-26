@@ -48,6 +48,7 @@ export function ProductBar({
   variants,
   labels,
   openCart = false,
+  choosesOnPage = false,
 }: {
   store: string;
   market: string;
@@ -61,6 +62,8 @@ export function ProductBar({
   /** Open the slide-out cart once added (D64). */
   openCart?: boolean;
   labels: AddToCartLabels & { chooseVariant: string; soldOut: string; goCart: string };
+  /** Each option is chosen in a list of its own on the page (D320): the bar names the variant chosen there and adds it, with no list of every variant. */
+  choosesOnPage?: boolean;
 }) {
   const [state, action, pending] = useActionState(addToCart, initial);
   const keepFocus = useKeepFocus(pending);
@@ -117,6 +120,11 @@ export function ProductBar({
                   {labels.goCart}
                 </Link>
               )}
+            </p>
+          ) : variants.length > 1 && choosesOnPage ? (
+            <p className="flex min-w-0 items-baseline gap-2 text-sm">
+              <span className="truncate">{variant.label}</span>
+              <span className="shrink-0 font-semibold">{variant.available ? money(variant) : labels.soldOut}</span>
             </p>
           ) : variants.length > 1 ? (
             <Dropdown

@@ -743,6 +743,8 @@ export const builderNb: BuilderMessages = {
     largeHint: "Prisen i en overskrifts størrelse.",
     thumbnails: "Små bilder under",
     thumbnailsHint: "Med to eller flere bilder, for å velge ett.",
+    optionsFrom: "Hvert alternativ i egen liste fra",
+    optionsFromHint: "Fra så mange varianter velger kunden hvert alternativ (som farge, så størrelse) i en egen liste, og verdier som ikke kan kjøpes med de andre valgene, merkes. Færre varianter er én liste. 12 hvis du ikke endrer det.",
     headingText: "Overskriftstekst",
     headings: { description: "Beskrivelse", safety: "Sikkerhet og produsent", related: "Du vil kanskje også like", reviews: "Anmeldelser" },
     headingPlaceholder: "{heading} (på kundens språk)",

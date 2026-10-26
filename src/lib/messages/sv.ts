@@ -520,6 +520,8 @@ export const sv: Messages = {
   opensInNewTab: "(öppnas i en ny flik)",
   shortcuts: "Genvägar",
   chooseVariantLabel: "Välj variant",
+  /** A value of an option that makes no variant that can be bought with the others chosen (D320). */
+  variantUnavailable: "Inte tillgänglig",
   soldOut: "Slutsåld",
   goCart: "Till varukorgen",
   notFound: "Sidan finns inte.",

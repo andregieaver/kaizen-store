@@ -523,6 +523,8 @@ export const nb: Messages = {
   opensInNewTab: "(åpnes i ny fane)",
   shortcuts: "Snarveier",
   chooseVariantLabel: "Velg variant",
+  /** A value of an option that makes no variant that can be bought with the others chosen (D320). */
+  variantUnavailable: "Ikke tilgjengelig",
   soldOut: "Utsolgt",
   goCart: "Til handlekurven",
   notFound: "Siden finnes ikke.",

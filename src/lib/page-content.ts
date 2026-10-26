@@ -958,6 +958,8 @@ export type ProductBlock = PartBase & {
   source?: FieldSource;
   /** The field loop part (D120): a repeater's rows (`fieldId`, `groupId`, `heading` as above) as cards, a list or columns. */
   loop?: Pick<LoopConfig, "layout" | "columns" | "slots" | "linkWholeCard">;
+  /** Buy: from this many variants each option is a list of its own (D320); 12 unless set (`OPTIONS_FROM`). */
+  optionsFrom?: number;
 };
 
 /**
@@ -2900,6 +2902,7 @@ const productBlock = z.object({
   showLabel: z.boolean().optional(),
   source: z.literal("store").optional(),
   loop: loopSettings.optional(),
+  optionsFrom: z.number().int().min(2, "Lists per option start at 2 variants or more.").max(2048, "Lists per option start at 2,048 variants at most.").optional(),
   ...partBase,
 });
 

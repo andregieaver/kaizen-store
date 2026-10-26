@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   useEffect,
+  useMemo,
   useId,
   useRef,
   useState,
@@ -72,6 +73,8 @@ import { useAdminLang, useAdminText } from "@/components/admin/admin-text";
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { contentState, withoutContentWhereNotGoods } from "@/lib/unit-price-editor";
+import { GRID_FROM, filterVariants, setForShown, skuPatternProblem, type GridChange, type VariantFilter } from "@/lib/variant-grid";
+import { useVirtualRows } from "@/components/admin/virtual-rows";
 
 const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm";
 const label = "flex flex-col gap-1 text-sm font-medium";
@@ -137,6 +140,8 @@ export function ProductEditor(props: Props) {
   const [dirty, setDirty] = useState(false);
   const [fieldData, setFieldData] = useState(props.fields.data);
   const [variantData, setVariantData] = useState(props.fields.variants?.data ?? {});
+  // A variant's fields are drawn only while its section is open: a product of thousands of variants keeps thousands of closed sections (D320).
+  const [openFields, setOpenFields] = useState<ReadonlySet<string>>(() => new Set());
   const [result, setResult] = useState<SaveState>({ status: "idle" });
   const [saving, startSaving] = useTransition();
   const [handleTouched, setHandleTouched] = useState(props.productId !== null);
@@ -373,12 +378,26 @@ export function ProductEditor(props: Props) {
           {product.variants.map((variant) => {
             const key = variantKey(variant);
             return (
-              <details key={key} className="rounded-panel border border-line bg-card" open={product.variants.length === 1}>
+              <details
+                key={key}
+                className="rounded-panel border border-line bg-card"
+                open={product.variants.length === 1}
+                onToggle={(e) => {
+                  const isOpen = e.currentTarget.open;
+                  setOpenFields((was) => {
+                    const next = new Set(was);
+                    if (isOpen) next.add(key);
+                    else next.delete(key);
+                    return next;
+                  });
+                }}
+              >
                 <summary className="cursor-pointer px-5 py-3 text-sm font-medium">
                   {variant.sku} <span className="font-normal text-muted">
                     {Object.keys(variant.options).length > 0 ? variantLabel(variant.options) : w.variants.defaultName}
                   </span>
                 </summary>
+                {(product.variants.length === 1 || openFields.has(key)) && (
                 <div className="px-3 pb-3">
                   <EntityFields
                     groups={variantGroups.map((group) => ({ ...group, position: "main" as const }))}
@@ -400,6 +419,7 @@ export function ProductEditor(props: Props) {
                     idPrefix={`variant-fields-${key}`}
                   />
                 </div>
+                )}
               </details>
             );
           })}
@@ -905,6 +925,12 @@ function VariantsSection({
   const [optionsOn, setOptionsOn] = useState(product.options.length > 0);
   const [drafts, setDrafts] = useState(() => product.options.map((o) => o.values.join(", ")));
   const [mixed, setMixed] = useState(() => new Set(product.variants.map((v) => v.delivery)).size > 1);
+  // At scale (wave 6 unit B, D320): a filter per option, and only the rows on screen drawn. A product of a few variants is drawn whole, as before.
+  const [filter, setFilter] = useState<VariantFilter>({});
+  const large = product.variants.length >= GRID_FROM;
+  const shown = useMemo(() => (large ? filterVariants(product.variants, filter) : product.variants.map((_, i) => i)), [large, product.variants, filter]);
+  const rowKeys = useMemo(() => shown.map((i) => rowKeyOf(product.variants[i])), [shown, product.variants]);
+  const { container: listRef, measure: measureRow, start, end, before, after } = useVirtualRows({ keys: rowKeys, estimate: 96, enabled: large });
   // Downloads and appointments (D65) have no stock.
   const allDigital = product.variants.every((v) => v.delivery !== "physical");
   const service = isBooked(product.kind);
@@ -1083,8 +1109,25 @@ function VariantsSection({
         </fieldset>
       )}
 
+      {product.variants.length > 1 && (
+        <VariantGridTools
+          product={product}
+          filter={filter}
+          onFilter={setFilter}
+          shown={shown}
+          large={large}
+          markets={context.markets}
+          showStock={!allDigital}
+          onSet={(change) => update((p) => ({ ...p, variants: setForShown(p.variants, shown, change, p.handle) }))}
+        />
+      )}
+
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[40rem] text-left text-sm">
+        <table
+          ref={listRef}
+          aria-rowcount={large ? shown.length + 1 : undefined}
+          className="w-full min-w-[40rem] text-left text-sm"
+        >
           <caption className="sr-only">
             {allDigital ? w.variants.captionDigital : w.variants.caption}
           </caption>
@@ -1127,13 +1170,23 @@ function VariantsSection({
               </th>
             </tr>
           </thead>
-          <tbody>
-            {product.variants.map((variant, index) => {
+          {before > 0 && (
+            <tbody aria-hidden="true">
+              <tr style={{ height: before }}>
+                <td colSpan={99} />
+              </tr>
+            </tbody>
+          )}
+          {shown.slice(start, end).map((index, at) => {
+              const variant = product.variants[index];
               const name = Object.keys(variant.options).length > 0 ? variantLabel(variant.options) : w.variants.defaultName;
+              const key = rowKeys[start + at];
+              // Each variant's rows are a body of their own, measured as one while drawn (`useVirtualRows()`).
               return (
+                <tbody key={key} ref={large ? measureRow(key) : undefined}>
                 <VariantRow
-                  key={variant.id ?? `new-${JSON.stringify(variant.options)}`}
                   variant={variant}
+                  rowIndex={large ? start + at + 2 : undefined}
                   name={name}
                   markets={context.markets}
                   mainCurrency={context.mainCurrency}
@@ -1147,9 +1200,16 @@ function VariantsSection({
                   upload={upload}
                   onChange={(change) => setVariant(index, change)}
                 />
+                </tbody>
               );
             })}
-          </tbody>
+          {after > 0 && (
+            <tbody aria-hidden="true">
+              <tr style={{ height: after }}>
+                <td colSpan={99} />
+              </tr>
+            </tbody>
+          )}
         </table>
       </div>
       {!allDigital && <BackorderAll product={product} update={update} />}
@@ -1182,8 +1242,193 @@ function VariantsSection({
   );
 }
 
+/** A variant's key in the grid: its id once saved, its option values before. */
+const rowKeyOf = (variant: VariantInput) => variant.id ?? `new-${JSON.stringify(variant.options)}`;
+
+/**
+ * Above the variant table (wave 6 unit B, D320, `docs/wave-6-catalogue.md` B.4): from `GRID_FROM` variants a filter per option, and for any product
+ * of several variants *Set for all shown*, one step away, which lays only the fields filled in over the variants shown (`setForShown()`).
+ */
+function VariantGridTools({
+  product,
+  filter,
+  onFilter,
+  shown,
+  large,
+  markets,
+  showStock,
+  onSet,
+}: {
+  product: ProductInput;
+  filter: VariantFilter;
+  onFilter: (filter: VariantFilter) => void;
+  shown: number[];
+  large: boolean;
+  markets: EditorContext["markets"];
+  showStock: boolean;
+  onSet: (change: GridChange) => void;
+}) {
+  const w = useAdminText("product");
+  const g = w.grid;
+  // Counts as the admin's language writes them ("2,048", "2 048").
+  const count = new Intl.NumberFormat(ADMIN_LANG_FACTS[useAdminLang()].locale).format;
+  const [open, setOpen] = useState(false);
+  const [prices, setPrices] = useState<Record<string, string>>({});
+  const [stock, setStock] = useState("");
+  const [weight, setWeight] = useState("");
+  const [pattern, setPattern] = useState("");
+  const [active, setActive] = useState<"" | "yes" | "no">("");
+  const [said, setSaid] = useState<string | null>(null);
+  const problem = pattern.trim() ? skuPatternProblem(pattern, product.handle, product.variants, shown) : null;
+  const reset = () => {
+    setPrices({});
+    setStock("");
+    setWeight("");
+    setPattern("");
+    setActive("");
+  };
+  const apply = () => {
+    const change: GridChange = {
+      prices: Object.fromEntries(Object.entries(prices).filter(([, value]) => value.trim() !== "")),
+      ...(stock.trim() !== "" ? { stock: Math.max(0, Math.floor(Number(stock) || 0)) } : {}),
+      ...(weight.trim() !== "" && Number(weight) > 0 ? { weightGrams: Math.floor(Number(weight)) } : {}),
+      ...(pattern.trim() ? { skuPattern: pattern } : {}),
+      ...(active ? { active: active === "yes" } : {}),
+    };
+    if (Object.keys(change.prices ?? {}).length === 0 && Object.keys(change).length === 1) return setSaid(g.nothing);
+    onSet(change);
+    reset();
+    setOpen(false);
+    setSaid(countWords(shown.length, g.done, { n: count(shown.length) }));
+  };
+  const field = "min-h-9 w-full rounded-md border border-line bg-card px-2 text-sm";
+  return (
+    <div className="mb-3 flex flex-col gap-3">
+      {large && product.options.length > 0 && (
+        <fieldset className="flex flex-wrap items-end gap-3 text-sm">
+          <legend className="mb-1 font-medium">{g.filterLegend}</legend>
+          {product.options.map((option) => (
+            <label key={option.name} className="flex flex-col gap-1 text-xs font-medium">
+              {option.name}
+              <select
+                value={filter[option.name] ?? ""}
+                onChange={(e) => onFilter({ ...filter, [option.name]: e.target.value })}
+                className={`${field} w-44`}
+              >
+                <option value="">{g.all}</option>
+                {option.values.map((value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ))}
+          <p role="status" className="min-h-9 self-end py-2 text-xs text-muted">
+            {shown.length === 0 ? g.noneShown : fillWords(g.showing, { shown: count(shown.length), total: count(product.variants.length) })}
+          </p>
+        </fieldset>
+      )}
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          aria-expanded={open}
+          disabled={shown.length === 0}
+          onClick={() => {
+            setOpen(!open);
+            setSaid(null);
+          }}
+          className="min-h-9 rounded-pill border border-line px-4 text-sm"
+        >
+          {fillWords(g.setFor, { n: count(shown.length) })}
+        </button>
+        {said && !open && (
+          <p role="status" className="text-sm">
+            {said}
+          </p>
+        )}
+      </div>
+      {open && (
+        <fieldset className="flex flex-col gap-3 rounded-panel border border-line p-4 text-sm">
+          <legend className="px-1 font-medium">{fillWords(g.setTitle, { n: count(shown.length) })}</legend>
+          <p className="text-xs text-muted">{g.setHint}</p>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {markets.map((market) => (
+              <label key={market.code} className="flex flex-col gap-1 text-xs font-medium">
+                {fillWords(g.priceIn, { market: market.name, currency: market.currency })}
+                <input
+                  inputMode="decimal"
+                  value={prices[market.code] ?? ""}
+                  onChange={(e) => setPrices({ ...prices, [market.code]: e.target.value })}
+                  placeholder="0,00"
+                  className={field}
+                />
+              </label>
+            ))}
+            {showStock && (
+              <label className="flex flex-col gap-1 text-xs font-medium">
+                {g.stock}
+                <input type="number" min={0} inputMode="numeric" value={stock} onChange={(e) => setStock(e.target.value)} className={field} />
+              </label>
+            )}
+            {showStock && (
+              <label className="flex flex-col gap-1 text-xs font-medium">
+                {g.weight}
+                <input type="number" min={1} inputMode="numeric" value={weight} onChange={(e) => setWeight(e.target.value)} className={field} />
+              </label>
+            )}
+            <label className="flex flex-col gap-1 text-xs font-medium">
+              {g.forSale}
+              <select value={active} onChange={(e) => setActive(e.target.value as "" | "yes" | "no")} className={field}>
+                <option value="">{g.unchanged}</option>
+                <option value="yes">{g.yes}</option>
+                <option value="no">{g.no}</option>
+              </select>
+            </label>
+          </div>
+          <label className="flex flex-col gap-1 text-xs font-medium">
+            {g.skuPattern}
+            <input
+              value={pattern}
+              onChange={(e) => setPattern(e.target.value)}
+              placeholder={g.skuExample}
+              aria-describedby="sku-pattern-hint"
+              className={`${field} font-mono`}
+            />
+            <span id="sku-pattern-hint" className="font-normal text-muted">
+              {g.skuHint}
+            </span>
+          </label>
+          {(problem || said) && (
+            <p role="alert" className="text-sm text-danger-text">
+              {problem ? (problem.kind === "unknown" ? fillWords(g.unknownToken, { token: problem.token }) : fillWords(g.repeats, { sku: problem.sku })) : said}
+            </p>
+          )}
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={apply} disabled={problem !== null} className="min-h-9 rounded-pill bg-brand px-4 text-sm text-brand-ink">
+              {g.apply}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                reset();
+                setOpen(false);
+                setSaid(null);
+              }}
+              className="min-h-9 rounded-pill border border-line px-4 text-sm"
+            >
+              {g.cancel}
+            </button>
+          </div>
+        </fieldset>
+      )}
+    </div>
+  );
+}
+
 function VariantRow({
   variant,
+  rowIndex,
   name,
   markets,
   mainCurrency,
@@ -1198,6 +1443,8 @@ function VariantRow({
   onChange,
 }: {
   variant: VariantInput;
+  /** Its row's place in the whole table while only the rows on screen are drawn (`aria-rowindex`, the header being 1). */
+  rowIndex?: number;
   name: string;
   /** What the content's preview needs (unit price, D160); null where a variant cannot have a content (not goods). */
   content: ContentContext | null;
@@ -1224,7 +1471,7 @@ function VariantRow({
   const columns = 3 + Number(showDelivery) + Number(showPeriod) + Number(showStock) + markets.length;
   return (
     <>
-      <tr className="border-b border-line align-top">
+      <tr className="border-b border-line align-top" aria-rowindex={rowIndex}>
         <th scope="row" className="py-2 pr-3 font-normal">
           <span className="flex items-center gap-2">
             <VariantPicture

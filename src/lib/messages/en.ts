@@ -532,6 +532,8 @@ export const en = {
   opensInNewTab: "(opens in a new tab)",
   shortcuts: "Shortcuts",
   chooseVariantLabel: "Choose a variant",
+  /** A value of an option that makes no variant that can be bought with the others chosen (D320). */
+  variantUnavailable: "Not available",
   soldOut: "Sold out",
   goCart: "Go to cart",
   notFound: "This page does not exist.",

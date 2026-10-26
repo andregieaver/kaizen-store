@@ -520,6 +520,8 @@ export const da: Messages = {
   opensInNewTab: "(åbner i en ny fane)",
   shortcuts: "Genveje",
   chooseVariantLabel: "Vælg variant",
+  /** A value of an option that makes no variant that can be bought with the others chosen (D320). */
+  variantUnavailable: "Ikke tilgængelig",
   soldOut: "Udsolgt",
   goCart: "Til kurven",
   notFound: "Siden findes ikke.",

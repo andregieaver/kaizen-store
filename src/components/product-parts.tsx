@@ -16,6 +16,7 @@ import { ProductGrid } from "@/components/product-listing";
 import { PlanAmount, PlanPrice, PurchaseOptions } from "@/components/purchase-options";
 import { RangePicker } from "@/components/range-picker";
 import { VariantChoice, VariantPurchase } from "@/components/variant-choice";
+import { OPTIONS_FROM } from "@/lib/variant-options";
 import type { ShopTrack } from "@/components/shop-track";
 import { toolCategories } from "@/lib/cookie-consent";
 import { majorAmount } from "@/lib/shop-events";
@@ -219,7 +220,7 @@ export function ProductPartView({ block, ctx }: { block: ProductBlock; ctx: Prod
           <section aria-label={product.title} className={forBusiness}>
             <Suspense fallback={<p className="text-sm text-muted">{m.checkingStock}</p>}>
               <MemberNotice store={store} m={m} />
-              <VariantsWithStock store={store} product={product} market={market} m={m} />
+              <VariantsWithStock store={store} product={product} market={market} m={m} optionsFrom={block.optionsFrom} />
             </Suspense>
           </section>
         );
@@ -231,7 +232,7 @@ export function ProductPartView({ block, ctx }: { block: ProductBlock; ctx: Prod
           </h2>
           <Suspense fallback={<p className="text-sm text-muted">{m.checkingStock}</p>}>
             <MemberNotice store={store} m={m} />
-            <VariantsWithStock store={store} product={product} market={market} m={m} />
+            <VariantsWithStock store={store} product={product} market={market} m={m} optionsFrom={block.optionsFrom} />
           </Suspense>
         </section>
       );
@@ -759,11 +760,14 @@ async function VariantsWithStock({
   product,
   market,
   m,
+  optionsFrom,
 }: {
   store: Store;
   product: ProductDetail;
   market: Market;
   m: Messages;
+  /** From this many variants each option is a list of its own (D320, the buy part's `optionsFrom`). */
+  optionsFrom?: number;
 }) {
   // Only sold as a subscription, and subscriptions are in the country's own currency (D109).
   if (product.needsNativeCurrency) {
@@ -805,6 +809,44 @@ async function VariantsWithStock({
       .join(" · "),
   }));
 
+  // One price drawn per distinct price (D320): a product of 2,048 variants in a few prices sends a few, each variant naming its own by place.
+  const priced = (() => {
+    const places = new Map<string, number>();
+    const prices: { price: ReactNode; amount: ReactNode }[] = [];
+    const index = (price: ProductDetail["variants"][number]["price"]) => {
+      const key = JSON.stringify(price);
+      const known = places.get(key);
+      if (known !== undefined) return known;
+      places.set(key, prices.length);
+      prices.push({
+        price: (
+          <PlanPrice
+            amountMinor={price.amountMinor}
+            currency={price.currency}
+            locale={market.locale}
+            vat={price.vat}
+            labels={{ vatIncluded: m.vatIncluded, vatExcluded: m.vatExcluded }}
+            measure={price.measure}
+            unitLabels={unitLabelsOf(m)}
+          >
+            <Price price={price} locale={market.locale} m={m} />
+          </PlanPrice>
+        ),
+        amount: (
+          <PlanAmount
+            amountMinor={price.amountMinor}
+            currency={price.currency}
+            locale={market.locale}
+            vat={price.vat}
+            labels={{ vatIncluded: m.vatIncluded, vatExcluded: m.vatExcluded }}
+          />
+        ),
+      });
+      return prices.length - 1;
+    };
+    return { index, prices };
+  })();
+
   return (
     <PurchaseOptions
       plans={plans}
@@ -822,40 +864,22 @@ async function VariantsWithStock({
           market={market.slug}
           cartHref={marketPath(store.slug, market.slug, "/cart")}
           openCart={store.openCartOnAdd}
+          optionsFrom={optionsFrom}
           variants={product.variants.map((variant) => {
             const digital = variant.delivery === "digital";
             return {
               id: variant.id,
               // A product's only variant is named by its options alone: without any, it is the product, whose title the page shows.
               label: optionLabel(m, variant.options) || (product.variants.length > 1 ? product.title : ""),
+              options: variant.options,
               image: variant.image ? { url: variant.image.thumbnailUrl, alt: "" } : null,
               note: digital ? m.instantDownload : stockNote(availability.get(variant.id), m),
               available: available(variant),
               capped: cappedNote(variant),
-              price: (
-                <PlanPrice
-                  amountMinor={variant.price.amountMinor}
-                  currency={variant.price.currency}
-                  locale={market.locale}
-                  vat={variant.price.vat}
-                  labels={{ vatIncluded: m.vatIncluded, vatExcluded: m.vatExcluded }}
-                  measure={variant.price.measure}
-                  unitLabels={unitLabelsOf(m)}
-                >
-                  <Price price={variant.price} locale={market.locale} m={m} />
-                </PlanPrice>
-              ),
-              amount: (
-                <PlanAmount
-                  amountMinor={variant.price.amountMinor}
-                  currency={variant.price.currency}
-                  locale={market.locale}
-                  vat={variant.price.vat}
-                  labels={{ vatIncluded: m.vatIncluded, vatExcluded: m.vatExcluded }}
-                />
-              ),
+              priceIndex: priced.index(variant.price),
             };
           })}
+          prices={priced.prices}
           labels={{
             addToCart: m.addToCart,
             adding: m.adding,
@@ -866,6 +890,7 @@ async function VariantsWithStock({
             tryAgain: m.tryAgain,
             goToCart: m.goToCart,
             chooseVariant: m.chooseVariantLabel,
+            variantUnavailable: m.variantUnavailable,
           }}
           // Back in stock (D298, 6.4): a sold-out physical variant that does not keep selling, while the store has it on.
           notify={notifyOn ? await notifyOffer(store, product, availability, m) : undefined}
@@ -899,6 +924,7 @@ async function VariantsWithStock({
         vat={product.variants[0].price.vat}
         storeAudience={store.audience}
         openCart={store.openCartOnAdd}
+        choosesOnPage={product.variants.length >= (optionsFrom ?? OPTIONS_FROM) && Object.keys(product.variants[0].options).length > 0}
         variants={product.variants.map((variant) => ({
           id: variant.id,
           label: optionLabel(m, variant.options) || product.title,
