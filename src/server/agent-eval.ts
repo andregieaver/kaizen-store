@@ -11,7 +11,9 @@ import { jurisdictionsFor } from "@/lib/legal-sources";
 import { starterFactWords } from "@/lib/legal-starters";
 import { factSheet, planLegalPage, writerMessages, writerSettings } from "@/lib/legal-writer";
 import { MANAGER_TOOLS } from "@/lib/manager-tools";
+import { toolKey } from "@/lib/owner-tool-permissions";
 import { OWNER_TOOLS, toolDefinition } from "@/lib/owner-tools";
+import { LOAD_TOOLS, chooseTools, loadToolsDefinition, readLoadTools, toolArea, type ToolArea } from "@/lib/tool-budget";
 
 import { AiError, chatWithTools, completeText, type AiConnection, type ToolChatMessage, type ToolDefinition } from "./ai";
 import { log } from "./log";
@@ -74,8 +76,25 @@ async function runLegalCase(connection: AiConnection, testCase: AgentEvalCase): 
   return { answer: answer.text, calls: [] };
 }
 
-async function runCase(connection: AiConnection, testCase: AgentEvalCase, prompts: { chat: string; manager: string }, tools: { chat: ToolDefinition[]; manager: ToolDefinition[] }): Promise<AgentRun> {
+const OWNER_AREAS = OWNER_TOOLS.map((t) => ({ name: t.name, area: toolArea(t.name, toolKey(t.name)) }));
+
+/**
+ * The manager's tools for a case as a real turn sends them (D333, at most `TOOLS_PER_TURN`): the areas of the tools the case scripts,
+ * forbids or requires are loaded, as the page the owner is on or a `load_tools` call would, so the tools a case tests are offered.
+ */
+function managerTools(testCase: AgentEvalCase, wanted: ToolArea[]): ToolDefinition[] {
+  const named = new Set([...Object.keys(testCase.script), ...(testCase.expect.forbiddenTools ?? []), ...(testCase.expect.requiredTools ?? [])]);
+  const areas = [...wanted, ...OWNER_AREAS.filter((t) => named.has(t.name)).map((t) => t.area)];
+  const choice = chooseTools(OWNER_AREAS, MANAGER_TOOLS.length + 1, { used: [...named], wanted: [...new Set(areas)] });
+  const chosen = new Set(choice.names);
+  const load = loadToolsDefinition(choice.heldBack);
+  return [...OWNER_TOOLS.filter((t) => chosen.has(t.name)), ...MANAGER_TOOLS].map(toolDefinition).concat(load ? [load] : []);
+}
+
+async function runCase(connection: AiConnection, testCase: AgentEvalCase, prompts: { chat: string; manager: string }, chatTools: ToolDefinition[]): Promise<AgentRun> {
   if (testCase.agent === "legal") return runLegalCase(connection, testCase);
+  const wanted: ToolArea[] = [];
+  const toolsNow = () => (testCase.agent === "manager" ? managerTools(testCase, wanted) : chatTools);
   const messages: ToolChatMessage[] = [
     { role: "system", content: prompts[testCase.agent] },
     { role: "user", content: testCase.says },
@@ -83,7 +102,7 @@ async function runCase(connection: AiConnection, testCase: AgentEvalCase, prompt
   const run: AgentRun = { answer: "", calls: [] };
   for (let step = 0; step < STEPS; step++) {
     const last = step === STEPS - 1;
-    const reply = await chatWithTools(connection, messages, last ? [] : tools[testCase.agent], { maxTokens: 600, timeoutMs: 45_000 });
+    const reply = await chatWithTools(connection, messages, last ? [] : toolsNow(), { maxTokens: 600, timeoutMs: 45_000 });
     if (reply.toolCalls.length === 0) {
       run.answer = reply.content ?? "";
       return run;
@@ -91,6 +110,11 @@ async function runCase(connection: AiConnection, testCase: AgentEvalCase, prompt
     messages.push({ role: "assistant", content: reply.content, tool_calls: reply.toolCalls });
     for (const call of reply.toolCalls) {
       run.calls.push({ name: call.function.name, arguments: call.function.arguments });
+      if (testCase.agent === "manager" && call.function.name === LOAD_TOOLS) {
+        wanted.push(...readLoadTools(call.function.arguments));
+        messages.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify({ loaded: "The tools of those areas are yours from the next step on." }) });
+        continue;
+      }
       messages.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify(scripted(testCase, call.function.name)) });
     }
   }
@@ -116,7 +140,7 @@ export async function runAgentEval(connection: AiConnection, principal: Principa
     }),
     manager: managerPrompt(principal),
   };
-  const tools = { chat: storeTools(true), manager: [...OWNER_TOOLS, ...MANAGER_TOOLS].map(toolDefinition) };
+  const chatTools = storeTools(true);
   const failures: AgentEvalResult["failures"] = [];
   let passed = 0;
   for (let i = 0; i < AGENT_EVAL_CASES.length; i += AT_ONCE) {
@@ -125,7 +149,7 @@ export async function runAgentEval(connection: AiConnection, principal: Principa
         let problems: string[];
         let answer = "";
         try {
-          const run = await runCase(connection, testCase, prompts, tools);
+          const run = await runCase(connection, testCase, prompts, chatTools);
           answer = run.answer;
           problems = scoreAgentCase(testCase, run, GATED);
         } catch (error) {

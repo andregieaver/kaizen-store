@@ -8,6 +8,9 @@ import { assistantLanguageLines } from "@/lib/assistant-lang";
 import { db } from "@/db/client";
 import { adminMapText, matchPath, pageParams, type SiteFlags } from "@/lib/admin-map";
 import { skillsText } from "@/lib/assistant-skills";
+import { toolKey } from "@/lib/owner-tool-permissions";
+import { areaOfPath } from "@/lib/permissions";
+import { LOAD_TOOLS, chooseTools, loadToolsDefinition, readLoadTools, toolArea, type ToolArea } from "@/lib/tool-budget";
 import { MANAGER_TOOLS, MANAGER_TOOLS_BY_NAME, PLATFORM_TOOLS_BY_NAME } from "@/lib/manager-tools";
 import { approvalSummary, OWNER_TOOLS_BY_NAME, readToolInput, toolDefinition, type GateCategory } from "@/lib/owner-tools";
 
@@ -477,8 +480,8 @@ export async function runTurn(input: TurnInput): Promise<void> {
   const startedAt = new Date();
   const [history, memories, withLife, waiting] = await Promise.all([
     db().execute<Row>(sql`
-      select role, content from (
-        select role, content, created_at, id from commerce.assistant_messages
+      select role, content, tools from (
+        select role, content, tools, created_at, id from commerce.assistant_messages
         where conversation_id = ${conversationId}::uuid order by created_at desc, id desc limit ${HISTORY}
       ) recent order by created_at, id
     `),
@@ -521,9 +524,32 @@ export async function runTurn(input: TurnInput): Promise<void> {
   // And only the tools of the store's features that are on (D178): a feature switched off takes its tools with it.
   const autopilot = input.autopilot;
   const allowed = autopilot ? new Set<string>([...autopilot.tools, ...TASK_EXTRA_TOOLS]) : null;
-  const tools = allowed
-    ? [...offeredTools({ store, holder }), ...MANAGER_TOOLS].filter((t) => allowed.has(t.name)).map(toolDefinition)
-    : [...offeredTools({ store, holder }).map(toolDefinition), ...MANAGER_TOOLS.map(toolDefinition), ...(withLife ? [ASK_KAIZEN_LIFE] : [])];
+  // At most `TOOLS_PER_TURN` a round (D333): the providers refuse more; what is held back is one `load_tools` call away.
+  const offered = offeredTools({ store, holder });
+  const wanted: ToolArea[] = [];
+  const used = [...new Set(history.flatMap((row) => ((row.tools as ToolTrail[] | null) ?? []).map((t) => t.name)))];
+  const pageArea = store && input.path?.startsWith(`/admin/${store.slug}`) ? (areaOfPath(input.path.slice(`/admin/${store.slug}`.length)) as ToolArea | null) : null;
+  const managerTools = [...MANAGER_TOOLS.map(toolDefinition), ...(withLife ? [ASK_KAIZEN_LIFE] : [])];
+  const toolsNow = (): ToolDefinition[] => {
+    if (allowed) return [...offered, ...MANAGER_TOOLS].filter((t) => allowed.has(t.name)).map(toolDefinition);
+    const choice = chooseTools(
+      offered.map((t) => ({ name: t.name, area: toolArea(t.name, toolKey(t.name)) })),
+      managerTools.length + 1,
+      { used, wanted, pageArea },
+    );
+    const chosen = new Set(choice.names);
+    const load = loadToolsDefinition(choice.heldBack);
+    return [...offered.filter((t) => chosen.has(t.name)).map(toolDefinition), ...managerTools, ...(load ? [load] : [])];
+  };
+  let tools = toolsNow();
+  const loadTools = (raw: string): Record<string, unknown> => {
+    const areas = readLoadTools(raw);
+    if (areas.length === 0) return { error: "Name one or more of the areas the tool's description lists." };
+    wanted.unshift(...areas.filter((area) => !wanted.includes(area)));
+    const before = new Set(tools.map((t) => t.name));
+    tools = toolsNow();
+    return { loaded: tools.map((t) => t.name).filter((name) => !before.has(name)) };
+  };
   const messages: ToolChatMessage[] = [
     {
       role: "system",
@@ -555,8 +581,10 @@ export async function runTurn(input: TurnInput): Promise<void> {
       messages.push({ role: "assistant", content: answer.content, tool_calls: answer.toolCalls });
       for (const call of answer.toolCalls) {
         if (input.signal?.aborted) throw new AiError("Stopped.");
-        const result =
-          withLife && call.function.name === ASK_KAIZEN_LIFE.name
+        const loading = call.function.name === LOAD_TOOLS && tools.some((t) => t.name === LOAD_TOOLS);
+        const result = loading
+          ? loadTools(call.function.arguments)
+          : withLife && call.function.name === ASK_KAIZEN_LIFE.name
             ? await askKaizenLife(p, call.function.arguments)
             : await callTool(ctx, conversationId, call.function.name, call.function.arguments, emit);
         trail.push({ name: call.function.name, ok: !("error" in result) });

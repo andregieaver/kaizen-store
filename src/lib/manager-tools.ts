@@ -516,4 +516,5 @@ export const TOOL_WORDS: Record<string, string> = {
   get_my_referrals: "Looking at your referrals",
   ai_usage: "Looking at AI usage",
   ask_kaizen_life: "Asking Kaizen Life",
+  load_tools: "Getting more tools",
 };

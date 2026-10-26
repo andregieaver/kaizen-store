@@ -418,5 +418,6 @@ export const assistantNb: AssistantMessages = {
     answer_autopilot_question: "Gir videre svaret ditt",
     ai_usage: "Ser på KI-bruk",
     ask_kaizen_life: "Spør Kaizen Life",
+    load_tools: "Henter flere verktøy",
   },
 };
