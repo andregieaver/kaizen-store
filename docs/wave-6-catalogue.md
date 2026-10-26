@@ -713,6 +713,8 @@ product. The WordPress cart (D170) quotes a line at the market price, at most 20
 
 ### Unit F (D324): search merchandising
 
+Built on 2026-10-26 in three steps (F1, F2, F3), each as specified below; D324 in `docs/decisions.md` records what was built and the migrations.
+
 Detailed on 2026-10-26 from a read of the code, when its turn came. Built in three steps, each its own commit: F1 synonyms, F2 pins, boosts,
 buries and search redirects, F3 the AI manager's tools and the tracker.
 

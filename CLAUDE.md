@@ -177,6 +177,15 @@ stand-in is the only fake, and only it is told it is one.
   passes no `vectorFor` or `understand`, and result links go through
   `search/go`, which records the opened result (`search_clicks`). Set no
   cookie or storage for it: the unit is the search.
+- Search merchandising (wave 6 unit F, D324, `docs/wave-6-catalogue.md` Unit F): a store's synonyms are `commerce.search_synonyms`
+  (per language, `both` or `one_way`), written only by `src/server/search-synonyms.ts` and read per search by `synonymsFor()`; a search's
+  alternatives are only `expandQuery()`, OR'd into keyword search and passed to query understanding as `aliases` (in its cache key). Pins,
+  boosts, buries and search redirects are `commerce.search_rules`, written only by `src/server/search-rules.ts`; the order is only
+  `merchandise()` in `searchProducts()` (the search's own order only; a pinned product the search missed only without filters, through
+  `listGridProducts()`), a category's or tag's products through `termFacts()` (`inTerms()`), and a redirect only `searchRedirect()` in the
+  search section, logged by `logRedirectedSearch()`: a reader that counts searches that found nothing leaves `redirected` out. The AI
+  manager's `search_merchandising` reads them and `save_search_synonym`, `save_search_rule`, `delete_search_merchandising` (gate `public`,
+  `preflightSearchTool()`) go through the same writers. Both tables are copied with a store (products and terms mapped).
 - Sorting and filtering listings (D78, `src/lib/listing-filters.ts`,
   `src/server/listing.ts`, `FilterDialog`, `ProductListing`): the products
   page, category and tag pages and search results take their filters from

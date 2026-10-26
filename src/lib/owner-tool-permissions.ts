@@ -104,6 +104,11 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   get_fields: "products:read",
   list_pages: "website:read",
   search_insights: "settings:read",
+  // Search merchandising (D324): the Search page's own keys.
+  search_merchandising: "settings:read",
+  save_search_synonym: "settings:write",
+  save_search_rule: "settings:write",
+  delete_search_merchandising: "settings:write",
   setup_progress: "owner",
   // Setting the store up (D308): what the setup wizard and the Company, Languages and Currencies pages leave to the owner is the owner's; the
   // Countries and Shipping pages ask `settings:write`; opening the store is the wizard's, the owner's.

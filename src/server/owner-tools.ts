@@ -103,6 +103,7 @@ import {
 } from "./domain-tools";
 import { DNS_RECORD_TOOLS } from "@/lib/domain-tools";
 import { addRedirectTool, preflightRedirectTool, redirectOverviewTool } from "./redirect-tools";
+import { deleteSearchMerchandisingTool, preflightSearchTool, saveSearchRuleTool, saveSearchSynonymTool, searchMerchandisingTool } from "./search-tools";
 import { ossReturnDataTool, vatReportTool } from "./tax-report-tools";
 import { customerInsights, productPerformance, restockSuggestions, salesFunnel, salesTrend } from "./owner-insights";
 import { getSetupProgress } from "./setup";
@@ -2039,6 +2040,13 @@ export async function preflightOwnerTool(ctx: OwnerToolContext, name: string, ra
     if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
     return preflightRedirectTool(ctx, name, input.input as Record<string, unknown>);
   }
+  // A synonym or rule the Search page would refuse is refused now, never kept for a yes (D324).
+  if (name === "save_search_synonym" || name === "save_search_rule" || name === "delete_search_merchandising") {
+    const tool = OWNER_TOOLS_BY_NAME[name];
+    const input = readToolInput(tool, raw);
+    if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
+    return preflightSearchTool(ctx, name, input.input as Record<string, unknown>);
+  }
   // A figure or a backorder setting that could not be changed, or would change nothing, is refused now, never kept for a yes (D172).
   if (name === "set_stock" || name === "set_backorder") {
     const tool = OWNER_TOOLS_BY_NAME[name];
@@ -2354,6 +2362,10 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   explain_import_problems: explainImportProblemsTool,
   redirect_overview: redirectOverviewTool,
   add_redirect: addRedirectTool,
+  search_merchandising: searchMerchandisingTool,
+  save_search_synonym: saveSearchSynonymTool,
+  save_search_rule: saveSearchRuleTool,
+  delete_search_merchandising: deleteSearchMerchandisingTool,
   restock_suggestions: restockSuggestions,
   list_integrations: listIntegrationsTool,
   email_customer: emailCustomerTool,

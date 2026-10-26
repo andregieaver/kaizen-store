@@ -16,6 +16,7 @@ import { EXCHANGE_LINES_MAX, EXCHANGE_QUANTITY_MAX } from "./exchange-limits";
 import { MAX_ENTRY_MINUTES, TIME_NOTE_MAX } from "./work-time";
 import { approveSummary, declineSummary } from "./return-tools";
 import { FROM_MAX, OVERVIEW_ROWS_DEFAULT, OVERVIEW_ROWS_MAX, TO_MAX, redirectSummary } from "./redirect-tools";
+import { searchApprovalSummary } from "./search-tools";
 import { ADJUST_REASONS, BACKORDER_DAYS_MAX, BACKORDER_DAYS_MIN, MOVEMENT_REASONS, NOTE_MAX, STOCK_MAX } from "./inventory";
 import { backorderSummary, setStockSummary } from "./stock-tools";
 import { featureSwitchSummaryOf, listFeaturesInput, setFeatureInput } from "./feature-tools";
@@ -478,6 +479,47 @@ export const OWNER_TOOLS = [
     "search_insights",
     "What shoppers searched for in the store's search, most often first, and the searches that found nothing.",
     z.object({ days: z.number().int().min(1).max(90).default(30), limit: limit(30, 10) }),
+  ),
+  tool(
+    "search_merchandising",
+    "The store's search as it has been tuned on the Search page (D324): its synonyms per language (each with its id and a line: \"sofa = couch\" finds both ways, \"jumper → sweater\" one way), its search rules (each with its id and a sentence: a product put first for some searches, a product or a category or tag moved up or down, searches sent to a page), the store's languages, and the searches of the last 30 days that found nothing, most often first. Read-only. Change it with save_search_synonym, save_search_rule or delete_search_merchandising (the owner's yes first).",
+    z.object({}),
+  ),
+  tool(
+    "save_search_synonym",
+    "Adds a group of search synonyms, or changes one by its id from search_merchandising: words shoppers use for the same thing, in one of the store's languages. `both`: every word finds the others (2 to 20 words). `one_way`: each of `words` also finds each of `means` (1 to 20 each), never the other way. A word is a word or a short phrase of letters, digits, spaces, hyphens and apostrophes. A search that found nothing is often a word the products do not use: a synonym to the word they do use fixes it. Needs the owner's approval.",
+    z.object({
+      id: z.uuid().optional().describe("A group's id from search_merchandising, to change it; leave it out for a new group."),
+      language: z.string().trim().min(2).max(20).describe("One of the store's languages from search_merchandising, such as nb-NO or en."),
+      kind: z.enum(["both", "one_way"]),
+      words: z.array(z.string().trim().min(1).max(60)).min(1).max(20),
+      means: z.array(z.string().trim().min(1).max(60)).max(20).optional().describe("For one_way: what the words also find."),
+    }),
+    "public",
+  ),
+  tool(
+    "save_search_rule",
+    "Adds a search rule, or changes one by its id from search_merchandising. `pin` puts a product (its handle) first for the searches named, pins in `position` order; `boost` or `bury` moves a product, or a category or tag (its slug), up or down in the searches named, or in every search when none are named; `redirect` sends the searches named to a page of the store (`page`, a path on the store such as /category/sofas, never another website). `match` `contains`: searches holding a phrase's words in order; `exact`: only searches that are the phrase. A search that asked for an order (price, newest) keeps it. Use handles and slugs from list_products and list_categories: never invent one. Needs the owner's approval.",
+    z.object({
+      id: z.uuid().optional().describe("A rule's id from search_merchandising, to change it; leave it out for a new rule."),
+      action: z.enum(["pin", "boost", "bury", "redirect"]),
+      product: z.string().trim().min(1).max(200).optional().describe("The product's handle: for pin, boost or bury."),
+      category: z.string().trim().min(1).max(200).optional().describe("A category's slug: for boost or bury, instead of a product."),
+      tag: z.string().trim().min(1).max(200).optional().describe("A tag's slug: for boost or bury, instead of a product."),
+      page: z.string().trim().min(1).max(2000).optional().describe("For redirect: the page, as a path on the store."),
+      searches: z.array(z.string().trim().min(1).max(100)).max(20).default([]).describe("The searches the rule is for; pin and redirect need at least one."),
+      match: z.enum(["contains", "exact"]).default("contains"),
+      position: z.number().int().min(0).max(1000).default(0).describe("For pin: lower comes first."),
+    }),
+    "public",
+  ),
+  tool(
+    "delete_search_merchandising",
+    "Removes a group of search synonyms or a search rule, by its id from search_merchandising (give one of the two). Needs the owner's approval.",
+    z
+      .object({ synonym: z.uuid().optional().describe("A synonym group's id."), rule: z.uuid().optional().describe("A search rule's id.") })
+      .refine((v) => (v.synonym === undefined) !== (v.rule === undefined), { message: "Give either a synonym's id or a rule's id." }),
+    "public",
   ),
   tool(
     "list_features",
@@ -1555,6 +1597,10 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
       return input.archived === false ? `Put the product "${text("product")}" back as a draft.` : `Take the product "${text("product")}" off the site.`;
     case "add_redirect":
       return redirectSummary(text("from"), text("to"));
+    case "save_search_synonym":
+    case "save_search_rule":
+    case "delete_search_merchandising":
+      return searchApprovalSummary(name, input);
     case "set_domain_renewal":
       return input.renew === false ? `Stop renewing ${text("domain")}: it stops working on its expiry date.` : `Renew ${text("domain")} by itself each year, invoiced 30 days ahead.`;
     case "buy_domain":

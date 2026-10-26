@@ -1397,13 +1397,13 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "missing"
     },
-    "gap": "`/admin/{store}/search` shows counts, zero-result queries and meaning help only (`src/app/admin/(gated)/[store]/search/page.tsx`); no synonym, boost, bury or pin anywhere (verified 2026-10-25: no such table or code in `src/server/search.ts`). Manual redirects exist (D168) but the zero-result report does not offer one. Listing filters and sorting (D78) are other rows. One row for the one Shopify feature (it replaces ai.search-merchandising, which was rated partial for filters only).",
-    "bucket": "A",
-    "wave": 6,
+    "gap": "Built (D324, docs/wave-6-catalogue.md Unit F): synonym groups per language, two-way or one-way (`search_synonyms`, `expandQuery()`), OR'd into keyword search and counted as typed words by query understanding (its cache key holds them); pins, boosts and buries of products or categories and tags, for every search or for searches holding or being a phrase, up to 20 phrases a rule (`search_rules`, `merchandise()`), applied to the search's own order in `searchProducts()` (the chat agent follows it); search redirects to a page of the store; the zero-result report offers a synonym or a page; the AI manager reads and, with the owner's yes, changes them. Filters, result types and out-of-stock visibility are other rows.",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "An owner defines synonym groups per language (one-way and two-way) and keyword search uses them (integration test).",
       "An owner boosts, buries or pins products or categories, for all searches or for a query, and the result order follows it (integration test).",
@@ -1412,21 +1412,39 @@
     ],
     "evidence": {
       "files": [
+        "src/lib/search-synonyms.ts",
+        "src/server/search-synonyms.ts",
+        "src/lib/search-rules.ts",
+        "src/server/search-rules.ts",
         "src/server/search.ts",
-        "src/lib/search.ts",
-        "src/server/search-cache.ts"
+        "src/server/query-understanding.ts",
+        "src/components/search-section.tsx",
+        "src/app/admin/(gated)/[store]/search/page.tsx",
+        "src/server/search-tools.ts"
       ],
       "tests": [
-        "src/server/search.int.test.ts",
-        "src/server/search-cache.int.test.ts"
+        "src/server/search-synonyms.int.test.ts",
+        "src/server/search-rules.int.test.ts",
+        "src/server/search-tools.int.test.ts",
+        "src/lib/search-synonyms.test.ts",
+        "src/lib/search-rules.test.ts",
+        "src/db/search-merchandising.test.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D72",
-      "D168"
+      "D168",
+      "D324"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-26",
+        "from": "missing",
+        "to": "full",
+        "why": "Wave 6 unit F (D324, docs/wave-6-catalogue.md Unit F): synonym groups per language, one-way and two-way, used by keyword search and query understanding (search-synonyms.int.test.ts); pins, boosts and buries of products or categories and tags, for every search or for a phrase, followed by the result order (search-rules.int.test.ts, search-rules.test.ts); a search redirect to a page of the store, logged as sent on and left out of every zero-result count; the zero-result report offers Add a synonym and Send to a page; the understanding's cache key holds the synonyms and nothing else caches what rules change; every query takes the store id and both tables are copied with the store, products and terms mapped (COPY_RULES catalogue; the copies are tested). The AI manager reads and, with the owner's yes, changes them (search-tools.int.test.ts)."
+      }
+    ]
   },
   {
     "id": "catalogue.search-analytics",

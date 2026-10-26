@@ -284,7 +284,8 @@ export const ASSISTANT_SKILLS: readonly AssistantSkill[] = [
     when: "Searches find nothing, shoppers cannot find products, or the owner asks about search or filters.",
     steps: [
       "Call search_insights: the searches with no results are what to fix.",
-      "For each: if the store sells it under another name, add that word to the product's title, description or tags; if it does not, it may be something to stock.",
+      "For each: if the store sells it under another name, propose a synonym with save_search_synonym (the shoppers' word and the products' word), or add the word to the product's title, description or tags; if it does not, it may be something to stock.",
+      "Call search_merchandising for the synonyms and rules already there. A search that should open a category or page can be sent there (save_search_rule, redirect); a product to show first for a search is a pin. Each change waits for the owner's yes.",
       "Categories and tags feed the filters (product.categories).",
       "The chat agent (chat) answers shoppers from the store's pages and knowledge; add facts it lacks there.",
     ],
