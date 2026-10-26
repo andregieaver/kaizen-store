@@ -40,14 +40,14 @@ proportion (autonomy levels and budgets the owner sets), a voice (a decisions pa
 | A4 | D308 | Design tools: list themes and presets, add one to the store's library, try it, make it live (a premium theme is a `spend`) | `ai.ai-page-and-theme-generation` |
 | H | D302 | Product feeds (wave 5 unit H, outlined in `docs/wave-5-marketing.md` 10), woven in here: the agent uses them too | wave 5's rows |
 | B1 | D309 | Goals and plans as data; the audit log says when the AI acted | `ai.assistant-memory-and-saved-skills` |
-| B2 | D309 | The work loop: steps run in the background, checked in code, within the owner's autonomy levels and budgets | `ai.workflow-builder-with-ai-generation`, `ai.admin-ai-assistant-that-performs-tasks` |
+| B2 | D309 | The work loop: steps run in the background, checked in code, within the owner's autonomy levels and budgets | `platform.workflow-automation-flow`, `ai.admin-ai-assistant-that-performs-tasks` |
 | B3 | D309 | Decisions and reports: one page of what waits on the owner, a digest by email, a weekly report | `ai.proactive-insights` |
 | L | D311 | Legal pages by AI: researched from fetched sources, checked in code, kept current | `international.legal-page-templates-and-policy-generator` |
 | C | D310 | Eyes: the agent photographs its drafts and judges them with the model that sees pictures | `ai.ai-page-and-theme-generation` |
-| D | D328 | The autopilot keeps going: it looks at each active goal again when a plan for it ends and on a schedule, makes the next plan, and starts it itself where the owner allows | `ai.workflow-builder-with-ai-generation`, `ai.proactive-insights` |
+| D | D328 | The autopilot keeps going: it looks at each active goal again when a plan for it ends and on a schedule, makes the next plan, and starts it itself where the owner allows | `platform.workflow-automation-flow`, `ai.proactive-insights` |
 | E | D329 | Web research: search the web through a pluggable search service (Brave first) on Kaizena Flow's key, metered; read a public page; keep findings with their sources; compare options with scores worked out in code | `ai.admin-ai-assistant-that-performs-tasks` |
 | F | D330 | Brand and look: a brand profile (tagline, voice, audience, values, words to avoid), a look of the store's own designed from a few brand colours and fonts (palette and contrast worked out in code, added to the theme library to try and make live), a logo and icon drawn by code from the brand's name in its font, and the brand given to the writers as guidance with its words to avoid found by code | `ai.ai-page-and-theme-generation` |
-| G | D331 | Reacting to events: a customer waiting for a person, an A/B test that ended by itself and an urgent analytics alert each bring a turn of the autopilot at once, within the owner's levels and budgets | `ai.proactive-insights`, `ai.workflow-builder-with-ai-generation` |
+| G | D331 | Reacting to events: a customer waiting for a person, an A/B test that ended by itself and an urgent analytics alert each bring a turn of the autopilot at once, within the owner's levels and budgets | `ai.proactive-insights`, `platform.workflow-automation-flow` |
 
 Each unit is its own commit (or a few), with its own tests, decision row and parity moves, shipped before the next starts. Each unit's
 section below is written in full before it is built; L is outlined and gets its detail when its turn comes.
