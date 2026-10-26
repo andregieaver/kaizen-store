@@ -42,13 +42,15 @@ export function cleanFilters(answer: unknown, query: string, context: Understand
   const typed = normalizeQuery(query);
   const typedList = typed.split(" ").filter(Boolean);
   const typedWords = new Set(typed.match(/[\p{L}\p{N}]+/gu) ?? []);
+  // The store's synonyms (D324): an alternative's words name a category or tag as well as the typed words do.
+  const aliasLists = (context.aliases ?? []).map((alias) => normalizeQuery(alias).split(" ").filter(Boolean));
   const typedOnly = (words: string | undefined) =>
     normalizeQuery(words ?? "")
       .split(" ")
       .filter((word) => word && [...(word.match(/[\p{L}\p{N}]+/gu) ?? [])].every((part) => typedWords.has(part)));
   // A category or tag only when the shopper named it: never one guessed from a thing that belongs in it.
   const pick = (wanted: string[] | undefined, terms: Term[]) => {
-    const named = new Map(terms.filter((term) => namesTerm(typedList, term)).map((term) => [term.slug, term]));
+    const named = new Map(terms.filter((term) => namesTerm(typedList, term) || aliasLists.some((words) => namesTerm(words, term))).map((term) => [term.slug, term]));
     return [...new Set((wanted ?? []).map((slug) => slug.trim().toLowerCase()))].filter((slug) => named.has(slug));
   };
   const categories = pick(raw.categories, context.categories);

@@ -4,9 +4,11 @@ import { minorUnitDigits } from "@/lib/money";
 import { EVAL_CASES, PASS_RATE, scoreCase } from "@/lib/query-eval";
 import { parseModelJson, understandingMessages, type SearchFilters, type UnderstandingContext } from "@/lib/query-understanding";
 import { cleanFilters } from "@/lib/query-understanding-schema";
+import { expandQuery } from "@/lib/search-synonyms";
 
 import { AiError, aiFor, completeText, type AiConnection } from "./ai";
 import { cached, cacheKey } from "./search-cache";
+import { synonymsFor } from "./search-synonyms";
 import { siteTerms } from "./taxonomy";
 
 /** How long a search waits for its filters before running as typed. */
@@ -61,17 +63,21 @@ export async function understandQuery(
   market: { locale: string; currency: string },
   query: string,
 ): Promise<SearchFilters> {
-  const terms = await siteTerms(storeId, "product");
+  const [terms, groups] = await Promise.all([siteTerms(storeId, "product"), synonymsFor(storeId, market.locale)]);
+  const aliases = expandQuery(query, groups);
   const context: UnderstandingContext = {
     locale: market.locale,
     currency: market.currency,
     currencyDigits: minorUnitDigits(market.currency),
     categories: terms.filter((term) => term.kind === "category").map(({ slug, name }) => ({ slug, name })),
     tags: terms.filter((term) => term.kind === "tag").map(({ slug, name }) => ({ slug, name })),
+    aliases,
   };
-  // The instructions hold the market, the store's terms and the prompt itself, so a change to any asks again.
+  // The instructions hold the market, the store's terms and the prompt itself, and the synonyms' alternatives decide which terms are kept
+  // (D324), so a change to any asks again.
   const [instructions] = understandingMessages("", context);
-  const key = cacheKey(textModel, instructions.content, query);
+  // Only a search with alternatives has them in its key, so searches no synonym touches keep the answers already kept.
+  const key = cacheKey(textModel, instructions.content, query, ...(aliases.length > 0 ? [aliases.join("\u001e")] : []));
   return cached(storeId, "filters", key, async () => {
     const ai = await aiFor(storeId, { feature: "search" });
     if (!ai?.textModel || ai.textModel !== textModel) throw new AiError("The store's text model changed.");

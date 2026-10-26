@@ -281,7 +281,7 @@ export async function salesFunnel({ store }: Ctx, { days }: OwnerToolInput<"sale
       (select count(*)::int from commerce.orders o where o.store_id = ${store.id}::uuid and o.created_at >= ${from} and ${paid}) as paid,
       (select count(*)::int from commerce.search_queries q where q.store_id = ${store.id}::uuid and q.created_at >= ${from}) as searches,
       (select count(*)::int from commerce.search_queries q where q.store_id = ${store.id}::uuid and q.created_at >= ${from}
-        and q.results = 0 and coalesce(q.meaning_results, 0) = 0) as found_nothing,
+        and q.results = 0 and coalesce(q.meaning_results, 0) = 0 and not q.redirected) as found_nothing,
       (select count(*)::int from commerce.search_queries q where q.store_id = ${store.id}::uuid and q.created_at >= ${from}
         and exists (select 1 from commerce.search_clicks k where k.search_id = q.id)) as searches_opened
   `);

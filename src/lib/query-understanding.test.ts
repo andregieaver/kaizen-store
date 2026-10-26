@@ -109,6 +109,13 @@ describe("query understanding (D75)", () => {
     expect(cleanFilters({ text: "kopp 200" }, "kopp 200", context)?.text).toBe("kopp 200");
   });
 
+  it("keeps a category a synonym of the search names (D324)", () => {
+    expect(cleanFilters({ text: "", categories: ["belysning"] }, "lys", context)?.categories).toEqual([]);
+    expect(cleanFilters({ text: "", categories: ["belysning"] }, "lys", { ...context, aliases: ["belysning"] })?.categories).toEqual(["belysning"]);
+    // An alias names only what it names: a category it does not name stays out.
+    expect(cleanFilters({ categories: ["papir"] }, "lys", { ...context, aliases: ["belysning"] })?.categories).toEqual([]);
+  });
+
   it("says whether filters change the search", () => {
     expect(hasFilters(plainFilters("Kopp"))).toBe(false);
     expect(plainFilters(" Kopp ").text).toBe("kopp");

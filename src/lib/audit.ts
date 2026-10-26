@@ -112,6 +112,7 @@ const PREFIXES: Record<string, AuditArea> = {
   "redirect.": "website",
   "redirects.": "website",
   "not_found.": "website",
+  "search.": "settings",
   "store.page_": "website",
   "store.article_": "website",
   "store.header_": "website",

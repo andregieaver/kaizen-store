@@ -2356,6 +2356,8 @@ export const searchQueries = commerce.table(
     /** The search test it was part of (D77), and the search it was given: `hybrid` or `keyword`. */
     experimentId: uuid("experiment_id").references(() => searchExperiments.id),
     arm: text("arm"),
+    /** Sent on to a page by a search redirect (D324), so nothing was searched and none found. */
+    redirected: boolean("redirected").notNull().default(false),
     createdAt: createdAt(),
   },
   (t) => [
@@ -2391,6 +2393,36 @@ export const searchCache = commerce.table(
     primaryKey({ columns: [t.storeId, t.kind, t.key] }),
     index("search_cache_created_idx").on(t.createdAt),
     check("search_cache_kind", sql`${t.kind} in ('vector', 'filters', 'rerank')`),
+  ],
+);
+
+/**
+ * A store's search synonyms per language (wave 6 unit F1, D324, `docs/wave-6-catalogue.md` F.1): `both` (every word in `words` means the
+ * others) or `one_way` (each of `words` also finds `means`). Words are kept as `normalizeQuery()` leaves them, checked by `synonymInput`.
+ * Written only by `src/server/search-synonyms.ts`; read per search by `synonymsFor()`. Copied with the store.
+ */
+export const searchSynonyms = commerce.table(
+  "search_synonyms",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+    /** One of the store's languages, as a market's `locale` (`nb-NO`, `en`). */
+    locale: text("locale").notNull(),
+    kind: text("kind").notNull(),
+    words: text("words").array().notNull(),
+    means: text("means").array().notNull().default(sql`'{}'::text[]`),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index("search_synonyms_store_idx").on(t.storeId, t.locale),
+    check("search_synonyms_kind", sql`${t.kind} in ('both', 'one_way')`),
+    check("search_synonyms_locale", sql`length(${t.locale}) between 2 and 20`),
+    check(
+      "search_synonyms_words",
+      sql`case when ${t.kind} = 'both' then cardinality(${t.words}) between 2 and 20 and cardinality(${t.means}) = 0
+        else cardinality(${t.words}) between 1 and 20 and cardinality(${t.means}) between 1 and 20 end`,
+    ),
   ],
 );
 
@@ -6982,6 +7014,54 @@ export const productTerms = commerce.table(
       columns: [t.storeId, t.contentType, t.termId],
       foreignColumns: [terms.storeId, terms.contentType, terms.id],
     }).onDelete("cascade"),
+  ],
+);
+
+/**
+ * A store's search merchandising (wave 6 unit F2, D324, `docs/wave-6-catalogue.md` F.2): a product put first (`pin`, in `position` order), a
+ * product or a category or tag moved up (`boost`) or down (`bury`), or a search sent to a page of the store (`redirect`, `target` in
+ * `normaliseTarget()`'s normal form). For searches holding one of `queries` (`contains`) or being one (`exact`); boosts and buries with none
+ * are for every search. Written only by `src/server/search-rules.ts`, at most 200 a store (`search_rules_rules()`).
+ */
+export const searchRules = commerce.table(
+  "search_rules",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId(),
+    action: text("action").notNull(),
+    productId: uuid("product_id"),
+    termId: uuid("term_id"),
+    /** Always `product`: a term of the catalogue, for the composite key to `terms`. */
+    contentType: text("content_type").notNull().default("product"),
+    target: text("target"),
+    queries: text("queries").array().notNull().default(sql`'{}'::text[]`),
+    match: text("match").notNull().default("contains"),
+    position: integer("position").notNull().default(0),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index("search_rules_store_idx").on(t.storeId, t.position),
+    index("search_rules_product_idx").on(t.storeId, t.productId),
+    index("search_rules_term_idx").on(t.storeId, t.contentType, t.termId),
+    productRef("search_rules_product_fk", t),
+    foreignKey({
+      name: "search_rules_term_fk",
+      columns: [t.storeId, t.contentType, t.termId],
+      foreignColumns: [terms.storeId, terms.contentType, terms.id],
+    }).onDelete("cascade"),
+    check("search_rules_action", sql`${t.action} in ('pin', 'boost', 'bury', 'redirect')`),
+    check("search_rules_match", sql`${t.match} in ('contains', 'exact')`),
+    check("search_rules_content_type", sql`${t.contentType} = 'product'`),
+    check("search_rules_position", sql`${t.position} between 0 and 1000`),
+    check("search_rules_queries", sql`cardinality(${t.queries}) <= 20`),
+    check(
+      "search_rules_shape",
+      sql`case ${t.action}
+        when 'pin' then ${t.productId} is not null and ${t.termId} is null and ${t.target} is null and cardinality(${t.queries}) >= 1
+        when 'redirect' then ${t.target} is not null and ${t.productId} is null and ${t.termId} is null and cardinality(${t.queries}) >= 1
+        else ${t.target} is null and ((${t.productId} is null) <> (${t.termId} is null)) end`,
+    ),
   ],
 );
 

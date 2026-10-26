@@ -3473,6 +3473,34 @@
       "when": 1793042981776,
       "tag": "20261026192941_autopilot_metering",
       "breakpoints": true
+    },
+    {
+      "idx": 496,
+      "version": "7",
+      "when": 1793045644188,
+      "tag": "20261026201404_search_synonyms",
+      "breakpoints": true
+    },
+    {
+      "idx": 497,
+      "version": "7",
+      "when": 1793045672214,
+      "tag": "20261026201432_search_synonyms_sql",
+      "breakpoints": true
+    },
+    {
+      "idx": 498,
+      "version": "7",
+      "when": 1793046738565,
+      "tag": "20261026203218_search_rules",
+      "breakpoints": true
+    },
+    {
+      "idx": 499,
+      "version": "7",
+      "when": 1793046775633,
+      "tag": "20261026203255_search_rules_sql",
+      "breakpoints": true
     }
   ]
 }

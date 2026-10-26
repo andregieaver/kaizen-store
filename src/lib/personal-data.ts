@@ -310,6 +310,8 @@ export const NOT_PERSONAL: Record<string, string> = {
   price_list_breaks: "A price list's price breaks for a variant (D323): quantities and prices.",
   price_list_quantity_rules: "A price list's quantity rule for a variant (D323): numbers of units.",
   bundle_components: "What a bundle is made of (D322): variants and quantities of the store's catalogue.",
+  search_synonyms: "The store's search synonyms (D324): words the owner says mean the same, no person in them.",
+  search_rules: "The store's search merchandising (D324): searches the owner names, products, categories and pages, no person in them.",
   price_breaks: "A product's price breaks (D323): quantities and prices of the store's catalogue.",
   order_line_components: "A bundle's components as sold (D322): variants, SKUs, product titles and quantities, nothing of the buyer.",
   price_list_products: "Which products and categories a price list's percentage reaches (D321).",

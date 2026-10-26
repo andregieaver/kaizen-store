@@ -86,7 +86,7 @@ describe("keyword search (Phase 2, S1)", () => {
     const stats = await search.searchStats(storeId);
     expect(stats).toMatchObject({ searches: 3, zero: [{ query: "xyzzyqwv", count: 1 }] });
     expect(stats.zeroRate).toBeCloseTo(1 / 3);
-    expect(stats.top[0]).toEqual({ query: "keramikkopp", count: 2, results: 1 });
+    expect(stats.top[0]).toEqual({ query: "keramikkopp", count: 2, results: 1, redirected: false });
 
     await db().execute(sql`
       update commerce.search_queries set created_at = now() - interval '91 days'

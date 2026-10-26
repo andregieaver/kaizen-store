@@ -23,7 +23,7 @@ import type { Store } from "./stores";
  *   older rows are tidied the same way here). Terms are shown as they are, so they may hold what a shopper typed: nothing is
  *   tied to a person (a search has no visitor or account).
  * - Zero results are searches with `results = 0` and `meaning_results = 0` (a search by meaning that found something is not a
- *   miss). The same term may be a miss one day and found another, once the catalogue changed, so each is counted by its misses.
+ *   miss), and not `redirected` (one a search redirect sent to a page, D324, searched nothing). The same term may be a miss one day and found another, once the catalogue changed, so each is counted by its misses.
  * - Click-through is searches with at least one `search_clicks` row (a result opened through the search page's `search/go`) over
  *   all searches. The search test's arms (D77) are ignored: every search counts, whatever arm it was given.
  * - Revenue after a search is NOT tracked: a search is not tied to a visit or an order. The report says so (`revenueTracked`).
@@ -93,7 +93,8 @@ export const SEARCH_REVENUE_NOTE = "Revenue after a search is not tracked: a sea
 /** The search text tidied: lower case, trimmed, single spaces. */
 const TERM = sql`lower(btrim(regexp_replace(q.query, '[[:space:]]+', ' ', 'g')))`;
 const CLICKED = sql`exists (select 1 from commerce.search_clicks sc where sc.store_id = q.store_id and sc.search_id = q.id)`;
-const MISS = sql`(q.results = 0 and q.meaning_results = 0)`;
+// A search sent to a page by a search redirect (D324) found nothing because nothing was searched: not a miss.
+const MISS = sql`(q.results = 0 and q.meaning_results = 0 and not q.redirected)`;
 
 /** Pass `now` in tests; it decides which days are still kept. */
 export async function searchReport(store: Store, period: Pick<AnalyticsPeriod, "from" | "to" | "days">, now: Date = new Date()): Promise<SearchReport> {

@@ -895,7 +895,7 @@ async function searchInsights({ store }: OwnerToolContext, input: OwnerToolInput
     `),
     db().execute<Row>(sql`
       select lower(query) as query, count(*)::int as times from commerce.search_queries
-      where store_id = ${store.id}::uuid and created_at >= ${since} and results = 0
+      where store_id = ${store.id}::uuid and created_at >= ${since} and results = 0 and not redirected
       group by lower(query) order by times desc, query limit ${input.limit}
     `),
   ]);
@@ -967,7 +967,7 @@ async function storeCheckup(ctx: OwnerToolContext) {
         (select count(*)::int from commerce.orders o where o.store_id = ${store.id}::uuid and o.copied_from is null and o.archived_at is null
            and o.delivery_method = 'local' and o.status in ('paid', 'fulfilled') and o.delivered_at is null) as local_waiting,
         (select count(distinct lower(q.query))::int from commerce.search_queries q
-           where q.store_id = ${store.id}::uuid and q.results = 0 and q.created_at > now() - interval '7 days') as searches_missed,
+           where q.store_id = ${store.id}::uuid and q.results = 0 and not q.redirected and q.created_at > now() - interval '7 days') as searches_missed,
         (select count(*)::int from commerce.assistant_approvals a
            where a.store_id = ${store.id}::uuid and a.account_id = ${ctx.account.id}::uuid and a.status = 'pending') as approvals,
         (select count(*)::int from commerce.products p where p.store_id = ${store.id}::uuid and p.status = 'draft') as drafts

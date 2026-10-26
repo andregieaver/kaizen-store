@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { Suspense } from "react";
 
@@ -9,8 +10,10 @@ import { t, type Messages } from "@/lib/i18n";
 import { parseListingParams } from "@/lib/listing-filters";
 import { formatMoney } from "@/lib/money";
 import { marketPath } from "@/lib/paths";
+import { encodeAddress } from "@/lib/redirect-path";
 import type { SearchFilters } from "@/lib/query-understanding";
 import { normalizeQuery } from "@/lib/search";
+import { searchRedirect } from "@/lib/search-rules";
 import { featureOn } from "@/lib/store-features";
 import { byName, type Term } from "@/lib/taxonomy";
 import { storeAndMarket, type GridPlace } from "@/server/content-grid";
@@ -18,7 +21,8 @@ import { understandQuery } from "@/server/query-understanding";
 import { queryVector } from "@/server/query-vector";
 import { getRecommendSettings } from "@/server/recommend-settings";
 import { drawArm, runningExperiment } from "@/server/search-experiment";
-import { logSearch, searchProducts } from "@/server/search";
+import { logRedirectedSearch, logSearch, searchProducts } from "@/server/search";
+import { rulesOf } from "@/server/search-rules";
 import { siteTerms } from "@/server/taxonomy";
 import { TrackOnView } from "@/components/track-on-view";
 import { toolCategories } from "@/lib/cookie-consent";
@@ -67,6 +71,12 @@ async function Search({ place, results }: { place: GridPlace; results: boolean }
   // `exact`: the shopper asked for the words as typed, not as understood.
   const exact = asked.exact === "1";
   const where = { storeId: store.id, market };
+  // A search the store sends to a page of its own (D324) goes there, before anything is searched or drawn for a test.
+  const sentTo = query ? searchRedirect(await rulesOf(store.id), query) : null;
+  if (sentTo) {
+    await logRedirectedSearch(where, query);
+    redirect(encodeAddress(marketPath(store.slug, market.slug, sentTo)));
+  }
   // A search test (D77): this search gets hybrid or keyword search alone, drawn now.
   const experiment = query ? await runningExperiment() : null;
   const arm = experiment ? drawArm(experiment) : null;

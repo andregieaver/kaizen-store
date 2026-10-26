@@ -43,6 +43,11 @@ export type UnderstandingContext = {
   currencyDigits: number;
   categories: Term[];
   tags: Term[];
+  /**
+   * The search's alternatives from the store's synonyms (D324, `expandQuery()`): their words count as typed when a category or tag is kept,
+   * so "couch" keeps Sofas where the store says they are the same. Never sent to the model.
+   */
+  aliases?: string[];
 };
 
 /** Filters that change nothing: search for the words as typed. */

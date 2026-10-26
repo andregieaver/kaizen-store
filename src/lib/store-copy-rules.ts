@@ -121,6 +121,8 @@ export const COPY_RULES: Record<string, CopyRule> = {
   product_schemes: catalogue("Producer schemes a product falls under."),
   product_terms: catalogue("A product's categories and tags."),
   bundle_components: catalogue("What a bundle is made of (D322): copied where the bundle and the component are both copied."),
+  search_synonyms: catalogue("The store's search synonyms per language (D324): copied with the store."),
+  search_rules: catalogue("The store's pins, boosts, buries and search redirects (D324): copied with the store, products and terms mapped to the copy's."),
   price_breaks: catalogue("A product's price breaks (D323): copied with the product, a variant's where the variant is copied."),
   product_translations: catalogue("Product titles and texts in every language."),
   product_variants: catalogue("Variants, with their pictures and options."),
