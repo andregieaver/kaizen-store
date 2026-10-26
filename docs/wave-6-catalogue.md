@@ -784,11 +784,73 @@ send an address to a page; nothing sends a search there.
 
 ### Unit G (D325): videos and 3D in the gallery
 
-`product_media` gains a `kind` (`image`, `video`, `model`): a video is uploaded (D86's `VideoUploadButton`, compressed by D213) with a
-poster, or a YouTube or Vimeo address (`EmbeddedVideo`, nothing loaded before its play press); a model is a GLB or glTF file shown with
-`<model-viewer>` loaded only on the pages that have one, with the poster as the fallback (decision 5). Alt text per language for every
-item, the library's `mediaUses()` covers them, and the limits (items, sizes, durations) are stated in the editor and enforced on the
-server. The order is the owner's, the first item the card's picture (a picture, or a video's poster).
+Detailed on 2026-10-26 from a read of the code, when its turn came. Built in three steps, each its own commit: G1 the model and the server,
+G2 the editor and the product page, G3 the languages, the AI manager, copies and the tracker.
+
+**What the code does today.** A product's gallery is `commerce.product_media` (a picture's `url`, its `thumbnail_url`, a `position`, `alt`
+keyed by language), at most 12 (`MAX_MEDIA`), written only by `saveProduct()` (it deletes and rewrites the rows in the editor's order) from
+`productInput.media` (`{ url, thumbnailUrl, alt }`, the alt in the main language only: every other language is stored as the product's
+title, so the media library's translated alt texts, D89, never reach it). The product page draws them with `ProductGallery` (pictures that
+swipe, thumbnails beneath, a variant's picture taking the first place, D84). Every other reader takes the first row's `url` or
+`thumbnail_url` as the product's picture: cards and listings (`catalog.ts`), the cart, orders, the admin's list, the feeds, structured
+data, WordPress, wishlists, campaigns, cart reminders, standing orders, exports. Uploaded videos already exist for page rows (D86:
+`VideoUploadButton`, `startVideoUploadAction`, the public `page-videos` bucket, 50 MB, MP4 or WebM, compressed in the browser by D213,
+`registerVideo()` keeping them in the media library) and YouTube and Vimeo play only on a press (`embedUrl()`, `EmbeddedVideo`, D91, D209).
+There is no 3D anywhere.
+
+#### G.1 The model (G1)
+
+- **One picture per item, always.** `product_media` gains `kind` (`image`, `video`, `model`; default `image`), `source` (for a video:
+  `upload`, `youtube`, `vimeo`; else null) and `media_url` (the video file, the YouTube or Vimeo address, or the model file; null for a
+  picture). `url` and `thumbnail_url` stay the item's **picture**: a picture's own, a video's or a model's poster. So every reader of the
+  product's picture is right unchanged (a video first in the gallery gives the card its poster), and only the gallery and the editor read
+  `kind`. Checks: an `image` has no `source` or `media_url`; a `video` has both, `source` one of the three; a `model` has a `media_url` and
+  no `source`.
+- **Limits** (`src/lib/product-media.ts`, shared with the browser, stated in the editor): at most `MAX_MEDIA` 20 items (was 12), of which at
+  most 5 videos and 3 models; a video file MP4 or WebM up to 50 MB (D86's bucket), a model a GLB file up to 20 MB in a new public bucket
+  `product-models` (`model/gltf-binary` only; a glTF is a set of files and is refused: the editor says to export a GLB). `productInput`
+  checks the counts and the shapes (`mediaProblems()`, unit-tested); `saveProduct()` checks that an uploaded video's or model's address is a
+  file in the store's own folder of its bucket (`ownMediaFile()`), so a product never plays another store's or another site's file, and a
+  YouTube or Vimeo address through `embedUrl()`. The buckets refuse other types and larger files themselves.
+- **Uploads.** A model is started by `startModelUploadAction()` (`products:write`, `storageRefusal()` first, a signed upload for one new path
+  in `{store}/`) and kept in the media library as kind `model` (`registerModel()`, the `media_kind` check widened), drawn there as a tile
+  saying *3D model*; videos keep D86's path. `mediaUses()` and `rewriteAddresses()` read `media_url` too, so the library says where a video
+  or model is used and Compress moves it.
+- **Alt text per language** (decision 5's words, G3): `productInput.media[].alt` stays the main language's, and `alts` (by language) holds
+  the others the owner typed. `saveProduct()` stores what was typed and no longer writes the title into the other languages, so a picture
+  without words in a language reads the library's translated alt text (`commerce.media_alt()`), then the product's title, as the readers
+  already do. A video's alt is its title for screen readers; a model's describes what it shows.
+- **Copies.** `clone_store()` and `duplicate_store()` copy the new columns (and `clone_store()` the thumbnail it left out); the store-copy
+  job copies files in `product-models` as it does `page-videos` (`COPYABLE_BUCKETS`).
+
+#### G.2 The editor and the product page (G2)
+
+- **Editor (Homer).** The *Pictures* card becomes *Pictures and videos*: *Add pictures* as today, and beside it *Add a video* (upload, or
+  paste a YouTube or Vimeo address) and *Add a 3D model* (Lisa's step, under *More*). An uploaded video's poster is the still D86 takes; a
+  YouTube or Vimeo video needs a picture chosen or uploaded (the editor asks for it, and nothing is fetched from YouTube or Vimeo); a model
+  needs one too. Each item shows its kind, its picture, its words (with *In other languages* one step away) and Earlier, Later, Remove; the
+  limits are said under the buttons.
+- **Product page.** `ProductGallery` draws each item in the owner's order: a picture as today; an uploaded video as a `<video controls
+  preload="none" playsinline>` with its poster (no autoplay, sound only when the shopper plays it); a YouTube or Vimeo video as
+  `EmbeddedVideo` (nothing loaded before the press); a model as its poster with *View in 3D*, which loads `<model-viewer>`
+  (`@google/model-viewer` 4.3.1 with its `three` peer, imported only on that press, never in a page's first scripts, D211) and shows the model with camera controls;
+  a browser that cannot run it keeps the poster. Thumbnails mark videos and models with an icon and their words. Swiping away from a
+  playing video pauses it. A variant's picture still takes the first place (D84).
+- **Words.** Shopper words (`m.gallery.*`: play, *View in 3D*, *3D model*, *Video*) in nb, sv, da and en by hand; owner words in the
+  `product` catalogues (en, nb).
+
+#### G.3 Languages, the AI manager, copies and the tracker (G3)
+
+- The items' words in the store's other languages are in the store translation worklist (scope `products`, one item per gallery item), as
+  every translatable text is (rule 5).
+- The AI manager's product tools read and keep the gallery as it is: `get_product` lists each item's kind and words; a tool that sets the
+  pictures replaces the pictures only and keeps the videos and models in their places (`product-tools.ts`). Feeds and structured data keep
+  the pictures (a video's or model's poster is a picture); no feed attribute for video is sent.
+- The row `catalogue.product-media-video-and-3d` is rated on the criteria above with: `product-media.test.ts` (limits, shapes, own files),
+  `product-media.int.test.ts` (save, order, a foreign file refused, the card's picture, copies, `mediaUses()`), and an e2e that adds a video
+  and a model in the editor and sees them, in order, on the product page.
+- Not in this unit: AR (Apple's Quick Look needs a USDZ file), video in feeds, video structured data (`VideoObject` needs an upload date
+  and a description the item does not keep).
 
 ### Unit H (D326): content types
 
