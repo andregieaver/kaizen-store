@@ -347,8 +347,9 @@ export async function writeProductTextsTool(ctx: Ctx, args: WriteProductTextsInp
   for (const job of planned.jobs) {
     const facts = factsOf({ ...stored, translations }, store.primaryLocale, termNames);
     let answer: WrittenText;
+    let avoid: string[] = [];
     try {
-      ({ written: answer } = await (deps.write ?? suggestProductText)(
+      ({ written: answer, avoid = [] } = await (deps.write ?? suggestProductText)(
         connection,
         { accountId: ctx.account.id, storeId: ctx.store.id, productId: found.id },
         { kind: job.kind, language: languageWord(job.locale), fromLanguage: languageWord(store.primaryLocale), facts },
@@ -357,7 +358,7 @@ export async function writeProductTextsTool(ctx: Ctx, args: WriteProductTextsInp
       if (error instanceof AiError) return fail(`The AI could not write the texts: ${error.message}`);
       throw error;
     }
-    const findings = writtenFindings(answer);
+    const findings = writtenFindings(answer, avoid);
     const kept: WrittenText = Object.fromEntries(Object.entries(answer).filter(([field]) => !findings[field as keyof WrittenText]));
     for (const [field, claims] of Object.entries(findings)) left.push(`${job.locale} ${field}: ${claims!.map((c) => c.phrase).join(", ")}`);
     if (Object.keys(kept).length === 0) continue;
@@ -367,7 +368,7 @@ export async function writeProductTextsTool(ctx: Ctx, args: WriteProductTextsInp
     const next = { ...current, ...kept };
     translations = translations.some((t) => t.locale === job.locale) ? translations.map((t) => (t.locale === job.locale ? next : t)) : [...translations, next];
   }
-  const leftOut = left.length > 0 ? { left_out: left, why: "The claims filter found these; they were not used." } : {};
+  const leftOut = left.length > 0 ? { left_out: left, why: "The claims filter, or the brand's words to avoid, found these; they were not used." } : {};
   if (written.length === 0) return fail(`Nothing could be used: ${left.join("; ")}.`);
   if (stored.status === "active") {
     return {

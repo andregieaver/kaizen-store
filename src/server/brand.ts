@@ -19,15 +19,19 @@ import { col, typedRow } from "./typed-rows";
 
 export type BrandScope = { account: { id: string }; store: Store | null };
 
-const inScope = (scope: BrandScope) => (scope.store ? sql`store_id = ${scope.store.id}::uuid` : sql`store_id is null`);
-
 /** A Postgres array literal: an array given to sql`` would be spread into separate parameters. */
 const textArray = (words: readonly string[]) => `{${words.map((w) => `"${w.replace(/["\\]/g, (c) => `\\${c}`)}"`).join(",")}}`;
 
 const ROW = z.object({ tagline: col.text, voice: col.text, audience: col.text, values: z.array(z.string()), avoid: z.array(z.string()), updated_at: col.timestamp });
 
 export async function getBrand(scope: BrandScope): Promise<Brand> {
-  const row = await typedRow(ROW, sql`select tagline, voice, audience, values, avoid, updated_at from commerce.brand_profiles where ${inScope(scope)}`);
+  return brandOf(scope.store?.id ?? null);
+}
+
+/** The brand of a store, or Kaizena Flow's own with no store, for the writers (D330 F2b); the empty brand when none is set down. */
+export async function brandOf(storeId: string | null): Promise<Brand> {
+  const where = storeId ? sql`store_id = ${storeId}::uuid` : sql`store_id is null`;
+  const row = await typedRow(ROW, sql`select tagline, voice, audience, values, avoid, updated_at from commerce.brand_profiles where ${where}`);
   return row ? { tagline: row.tagline, voice: row.voice, audience: row.audience, values: row.values, avoid: row.avoid, updatedAt: row.updated_at } : EMPTY_BRAND;
 }
 

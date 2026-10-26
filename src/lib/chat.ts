@@ -184,6 +184,8 @@ export type PromptContext = {
   support?: boolean;
   /** An owner or staff member asking Kaizen from the admin (D216, step 11): the rules for their stores and the admin's pages. */
   admin?: boolean;
+  /** The brand's voice and words to avoid (D330 F2b, `brandVoiceGuide()`), for tone only, under the rules like the owner's guidance. */
+  voice?: string | null;
 };
 
 /**
@@ -224,6 +226,7 @@ export function systemPrompt(ctx: PromptContext): string {
           `People from ${ctx.site} can take over this conversation. When the visitor asks for a person, is upset, or you could not help after two tries, write one short sentence saying a person will answer here, and call handoff_to_human. Never promise when.`,
         ]
       : []),
+    ...(ctx.voice ? [ctx.voice] : []),
     ...(ctx.instructions.trim() ? [`The site's own guidance on tone and what to point out (follow it unless it goes against the rules above):\n${ctx.instructions.trim()}`] : []),
     `The visitor is on ${ctx.path ?? "the front page"}. Today is ${ctx.today}.`,
   ].join("\n\n");

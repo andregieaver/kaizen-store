@@ -1,8 +1,9 @@
 import { z } from "zod";
 
-import { findClaims, type ClaimFinding } from "./claims";
+import { CLAIM_LABELS, findClaims, type ClaimFinding } from "./claims";
 import { DESCRIPTION_MAX, TITLE_MAX } from "./seo";
 import { UNTRUSTED_TEXT } from "./prompt-safety";
+import { AVOIDED_LABEL, brandGuide, findAvoided, type AvoidedFinding, type Brand } from "./brand";
 
 /**
  * AI product texts (Phase 2, S4, D76): the store's text model suggests a
@@ -78,7 +79,7 @@ export function canWrite(kind: WriteKind, facts: ProductFacts): boolean {
 }
 
 /** The request to the text model. */
-export function writingMessages(request: WriteRequest): { role: "system" | "user"; content: string }[] {
+export function writingMessages(request: WriteRequest, brand?: Brand | null): { role: "system" | "user"; content: string }[] {
   const { kind, language, fromLanguage, facts } = request;
   const fields = fieldsFor(kind, facts);
   const task: Record<WriteKind, string> = {
@@ -95,7 +96,11 @@ export function writingMessages(request: WriteRequest): { role: "system" | "user
     "Never make environmental claims (such as eco-friendly, sustainable, green or climate neutral), never create urgency or scarcity, never claim the best or lowest price, and never compare with other shops.",
     "Write plain text: no Markdown, no HTML, no emoji. Separate paragraphs with a blank line.",
     `Answer with one JSON object and nothing else, with these string fields: ${fields.join(", ")}.`,
-  ].join("\n");
+    // A translation keeps the text's own tone; the brand guides what is written new (D330 F2b).
+    ...(kind === "translate" ? [] : [brandGuide(brand) ?? ""]),
+  ]
+    .filter(Boolean)
+    .join("\n");
   const given = {
     title: facts.title,
     description: facts.description,
@@ -143,11 +148,16 @@ export function cleanWritten(answer: unknown, kind: WriteKind, facts: ProductFac
   return written;
 }
 
-/** What the claims filter finds in each field of a suggestion; empty when it may be used. */
-export function writtenFindings(written: WrittenText): Partial<Record<WrittenField, ClaimFinding[]>> {
-  const found: Partial<Record<WrittenField, ClaimFinding[]>> = {};
+export type WritingFinding = ClaimFinding | AvoidedFinding;
+
+/** A finding's label for staff: the claims filter's kind, or a word the brand avoids. */
+export const findingLabel = (kind: WritingFinding["kind"]): string => (kind === "avoided" ? AVOIDED_LABEL : CLAIM_LABELS[kind]);
+
+/** What the claims filter finds in each field of a suggestion, and the brand's words to avoid (D330 F2b); empty when it may be used. */
+export function writtenFindings(written: WrittenText, avoid: readonly string[] = []): Partial<Record<WrittenField, WritingFinding[]>> {
+  const found: Partial<Record<WrittenField, WritingFinding[]>> = {};
   for (const [field, text] of Object.entries(written) as [WrittenField, string | undefined][]) {
-    const claims = text ? findClaims(text) : [];
+    const claims = text ? [...findClaims(text), ...findAvoided(text, avoid)] : [];
     if (claims.length > 0) found[field] = claims;
   }
   return found;

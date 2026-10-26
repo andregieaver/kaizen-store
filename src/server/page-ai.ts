@@ -43,6 +43,7 @@ import { marketPath } from "@/lib/paths";
 import { AiError, aiFor, completeText, seeing, speakText, transcribeAudio, type AiConnection, type ChatMessage } from "./ai";
 import { makePicture } from "./ai-pictures";
 import { audit, type Account } from "./auth";
+import { brandOf } from "./brand";
 import { getGoogleSettings } from "./google-reviews";
 import { listPublishedPages, ownerLanguages, savePage } from "./pages";
 import { getStore } from "./stores";
@@ -116,6 +117,7 @@ export async function siteFacts(owner: StudioOwner, connection: AiConnection | n
       productCategories: [],
       tint: null,
       can: { pictures, productGrid: false, articleGrid: articles.length > 0, googleReviews: Boolean((await getGoogleSettings(null))?.place) },
+      brand: await brandOf(null),
     };
   }
 
@@ -158,6 +160,7 @@ export async function siteFacts(owner: StudioOwner, connection: AiConnection | n
     productCategories: categories.map((category) => ({ id: category.id, name: category.name, slug: category.slug })),
     tint,
     can: { pictures, productGrid: true, articleGrid: articles.length > 0, googleReviews: Boolean((await getGoogleSettings(store.id))?.place) },
+    brand: await brandOf(store.id),
   };
 }
 
@@ -241,7 +244,7 @@ export async function planPage(
       const read = readPlan(text);
       if (read.ok) {
         const checked = checkPlan(read.plan, facts, words);
-        return { ok: true, plan: { ...checked.plan, title: withoutClaims(checked.plan.title) || checked.plan.title }, notes: checked.notes };
+        return { ok: true, plan: { ...checked.plan, title: withoutClaims(checked.plan.title, facts.brand?.avoid) || checked.plan.title }, notes: checked.notes };
       }
       messages.push({ role: "assistant", content: text.slice(0, 8000) }, { role: "user", content: `That could not be read (${read.problem}). Answer again with the JSON only.` });
     }
@@ -280,16 +283,16 @@ async function writeSection(
       const read = readCopy(text);
       if (!read) continue;
       copy = read;
-      const found = copyClaims(read);
+      const found = copyClaims(read, facts.brand?.avoid);
       if (found.length === 0) return { copy: read, note: null };
       claims = found.map((claim) => `"${claim.phrase}" (${claim.where})`);
     } catch (error) {
       if (!(error instanceof AiError)) throw error;
-      if (attempt === 1) return { copy: copy ? copyWithoutClaims(copy) : EMPTY_COPY, note: `"${name}" could not be written (${error.message}); write it in the builder.` };
+      if (attempt === 1) return { copy: copy ? copyWithoutClaims(copy, facts.brand?.avoid) : EMPTY_COPY, note: `"${name}" could not be written (${error.message}); write it in the builder.` };
     }
   }
   if (!copy) return { copy: EMPTY_COPY, note: `"${name}" could not be written; write it in the builder.` };
-  return { copy: copyWithoutClaims(copy), note: `"${name}": sentences with claims the site may not make were left out (${claims.join(", ")}).` };
+  return { copy: copyWithoutClaims(copy, facts.brand?.avoid), note: `"${name}": sentences with claims the site may not make, or words the brand avoids, were left out (${claims.join(", ")}).` };
 }
 
 async function inTurns<T, R>(items: T[], size: number, work: (item: T, index: number) => Promise<R>): Promise<R[]> {

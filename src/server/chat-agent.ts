@@ -7,6 +7,7 @@ import { cacheLife, cacheTag } from "next/cache";
 
 import { db, readDb } from "@/db/client";
 import { cleanReply, kaizenTools, returnFacts, SHOP_DESTINATIONS, SHOP_TOOLS, storeTools, systemPrompt, type ChatAction, type ChatProduct, type ChatReply } from "@/lib/chat";
+import { brandVoiceGuide } from "@/lib/brand";
 import { chatAgentInput, navigateArgs, type ChatRequest } from "@/lib/chat-schema";
 import { cleanAvatarStyle, type AvatarStyle } from "@/lib/chat-avatar";
 import { chatDetails } from "@/lib/custom-fields";
@@ -25,6 +26,7 @@ import { z } from "zod";
 
 import { AI_TAG, AiError, aiFor, canSpeak, chatWithTools, type AiConnection, type ToolChatMessage, type ToolDefinition } from "./ai";
 import { audit, type Account } from "./auth";
+import { brandOf } from "./brand";
 import { campaignNotices } from "./campaign-notices";
 import { getProduct, getVariantStock, type GridProduct } from "./catalog";
 import { UNLIMITED, availabilityOf, type VariantStock } from "@/lib/stock-availability";
@@ -511,6 +513,8 @@ export async function runChat(
         handoff: options.handoff,
         support: Boolean(options.support?.definitions.length) && !options.admin,
         admin: options.admin,
+        // A brand that cannot be read leaves the tone to the agent's own guidance; the chat never fails for it.
+        voice: brandVoiceGuide(await brandOf(site.kind === "store" ? site.store.id : null).catch(() => null)),
       }),
     },
     ...request.messages.map((message) => ({ role: message.role, content: message.content }) as ToolChatMessage),

@@ -14,6 +14,7 @@ process.env.SETTINGS_ENCRYPTION_KEY ??= randomBytes(32).toString("base64");
 
 const ai = await import("./ai");
 const writer = await import("./product-writer");
+const { setBrand } = await import("./brand");
 
 const run = Date.now().toString(36);
 let storeId: string;
@@ -58,6 +59,19 @@ beforeAll(async () => {
 });
 
 afterEach(() => vi.unstubAllGlobals());
+
+/** A text model answering each reply in turn, keeping what it was sent. */
+function fakeModelSaying(...replies: string[]) {
+  const sent: { messages: { role: string; content: string }[] }[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (_url: string, init: RequestInit) => {
+      sent.push(JSON.parse(String(init.body)));
+      return Response.json({ choices: [{ message: { content: replies[Math.min(sent.length - 1, replies.length - 1)] } }] });
+    }),
+  );
+  return sent;
+}
 afterAll(async () => closeDb());
 
 describe("AI product texts (S4, D76)", () => {
@@ -66,7 +80,7 @@ describe("AI product texts (S4, D76)", () => {
     const sent = fakeModel('```json\n{"description": "<p>En **solid** kopp i steingods.</p>\\n\\nTåler oppvaskmaskin."}\n```');
     const request = writeRequest.parse({ kind: "write", language: "Norwegian Bokmål", facts });
     const result = await writer.suggestProductText(connection, { accountId, storeId, productId: null }, request);
-    expect(result).toEqual({ written: { description: "En solid kopp i steingods.\n\nTåler oppvaskmaskin." }, model: "mistral-small-latest" });
+    expect(result).toEqual({ written: { description: "En solid kopp i steingods.\n\nTåler oppvaskmaskin." }, model: "mistral-small-latest", avoid: [] });
     // The model got the facts, not a price or a stock level.
     expect(sent[0].messages[1].content).toContain("Keramikkopp");
     expect(sent[0].messages[1].content).not.toMatch(/\d+ ?kr|stock|lager/i);
@@ -96,5 +110,27 @@ describe("AI product texts (S4, D76)", () => {
     await expect(writer.suggestProductText(connection, { accountId, storeId, productId: null }, request)).rejects.toThrow(
       /did not answer with the texts asked for/,
     );
+  });
+
+  it("writes in the brand's voice, asks once more without a word it avoids, and leaves a translation's tone alone (D330 F2b)", async () => {
+    await setBrand({ account: { id: accountId }, store: { id: storeId } as never }, { voice: "Rolig og kort.", avoid: ["håndlaget"] });
+    const connection = (await ai.aiFor(storeId))!;
+    const sent = fakeModelSaying('{"description": "En håndlaget kopp i steingods."}', '{"description": "En kopp i steingods."}');
+    const request = writeRequest.parse({ kind: "write", language: "Norwegian Bokmål", facts });
+    const result = await writer.suggestProductText(connection, { accountId, storeId, productId: null }, request);
+    expect(result).toEqual({ written: { description: "En kopp i steingods." }, model: "mistral-small-latest", avoid: ["håndlaget"] });
+    expect(sent).toHaveLength(2);
+    expect(sent[0].messages[0].content).toContain('Voice: "Rolig og kort."');
+    expect(sent[1].messages.at(-1)?.content).toContain('"håndlaget"');
+
+    const kept = fakeModelSaying('{"description": "En håndlaget kopp."}');
+    const again = await writer.suggestProductText(connection, { accountId, storeId, productId: null }, request);
+    expect(writtenFindings(again.written, again.avoid).description?.map((f) => f.kind)).toEqual(["avoided"]);
+    expect(kept).toHaveLength(2);
+
+    const translated = fakeModelSaying('{"title": "Keramikmugg", "description": "En handgjord mugg."}');
+    const translation = await writer.suggestProductText(connection, { accountId, storeId, productId: null }, writeRequest.parse({ kind: "translate", language: "Swedish", fromLanguage: "Norwegian Bokmål", facts }));
+    expect(translation.avoid).toEqual([]);
+    expect(translated[0].messages[0].content).not.toContain("Rolig og kort");
   });
 });

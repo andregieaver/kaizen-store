@@ -46,7 +46,7 @@ proportion (autonomy levels and budgets the owner sets), a voice (a decisions pa
 | C | D310 | Eyes: the agent photographs its drafts and judges them with the model that sees pictures | `ai.ai-page-and-theme-generation` |
 | D | D328 | The autopilot keeps going: it looks at each active goal again when a plan for it ends and on a schedule, makes the next plan, and starts it itself where the owner allows | `ai.workflow-builder-with-ai-generation`, `ai.proactive-insights` |
 | E | D329 | Web research: search the web through a pluggable search service (Brave first) on Kaizena Flow's key, metered; read a public page; keep findings with their sources; compare options with scores worked out in code | `ai.admin-ai-assistant-that-performs-tasks` |
-| F | D330 | Brand and look: a brand profile (tagline, voice, audience, values, words to avoid), a look of the store's own designed from a few brand colours and fonts (palette and contrast worked out in code, added to the theme library to try and make live), and a logo and icon drawn by code from the brand's name in its font | `ai.ai-page-and-theme-generation` |
+| F | D330 | Brand and look: a brand profile (tagline, voice, audience, values, words to avoid), a look of the store's own designed from a few brand colours and fonts (palette and contrast worked out in code, added to the theme library to try and make live), a logo and icon drawn by code from the brand's name in its font, and the brand given to the writers as guidance with its words to avoid found by code | `ai.ai-page-and-theme-generation` |
 
 Each unit is its own commit (or a few), with its own tests, decision row and parity moves, shipped before the next starts. Each unit's
 section below is written in full before it is built; L is outlined and gets its detail when its turn comes.
@@ -1007,8 +1007,23 @@ Built in two steps.
   by Header and footer's own save, gated as the logos are.
 - A failure says what failed (the font could not be fetched, the name has no letters the font draws) and nothing is kept.
 
-**F2b, the brand in the writers.** The brand profile is given to the page studio, the product writer, broadcasts' suggestions and the chat
-agent's tone, always as guidance under the claims filter. Detailed when its turn comes.
+**F2b, the brand in the writers.** The brand reaches every writer as guidance, never as facts, and its words to avoid are found by code.
+
+- `brandGuide()` (`src/lib/brand.ts`, pure) writes the brand for a prompt: the voice, who it is written for, the values, the tagline and the
+  words to avoid, each quoted as the owner's words, under a line saying it is how to write and not what is true (a value or the tagline is
+  never a fact about a product). It goes below the prompt's own rules, which still stand; an empty brand adds nothing.
+- `findAvoided()` finds a word or phrase to avoid as a whole word, in any case, never inside another word ("artisan" is not in
+  "artisanal"). It is a finding beside the claims filter's (`kind: "avoided"`, *A word the brand avoids*).
+- The page studio (`siteFacts()` reads `brandOf()`, the store's or Kaizena Flow's own): the guide follows the site's facts in the interview,
+  the plan and each section's words; a section with a word to avoid is asked again with the claims, and a sentence still holding one is
+  left out (`copyClaims()`, `withoutClaims()`, `copyWithoutClaims()` take the words to avoid). The AI manager's `build_page` uses the same
+  facts.
+- The product writer (`suggestProductText()`): the guide for new words (write, improve, search texts), never for a translation, which keeps
+  the text's own tone. A suggestion holding a word to avoid is asked again once; the answer carries the words (`avoid`), so the editor's
+  *Write with AI* and `write_product_texts` treat one still there as a finding (`writtenFindings(written, avoid)`): not used until it is gone.
+- Broadcasts' suggestions (`suggestBroadcast()`): the guide in the instructions, a word to avoid refused as a claim is.
+- The chat agent: only the voice and the words to avoid (`brandVoiceGuide()`), for tone, placed after the rules and before the owner's own
+  guidance; a brand that cannot be read leaves the chat as it was. Its answers are not filtered for the words: it is tone, not copy.
 
 ### 14.4 Tests
 
@@ -1017,4 +1032,6 @@ and named choices kept; brand input limits; the monogram's letters, the marks' S
 refused; `design_look` adds an install that is not live and changes nothing visitors see; switching to it makes the designed theme the
 store's; a font not in the catalogue is refused. F2a, with a stand-in font made by `opentype.js` and a stand-in for Google and Storage:
 the three marks kept in the library at their sizes, a name with no letters the font draws refused, `set_header_footer`'s `icon` refusing a
-picture that is not square.
+picture that is not square. F2b: `findAvoided()` (whole words, any case, letters beyond ASCII), the guide (empty brand nothing, no tagline
+in the chat's), each writer's instructions carrying it (not a translation's), the page studio leaving out sentences with a word to avoid,
+broadcasts counting one as a claim; the product writer asking again once and returning the words that stay.

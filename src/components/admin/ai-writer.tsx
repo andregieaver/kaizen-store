@@ -3,9 +3,9 @@
 import { useState, useTransition } from "react";
 
 import type { SuggestResult } from "@/app/admin/(gated)/[store]/products/actions";
-import { CLAIM_LABELS } from "@/lib/claims";
 import {
   canWrite,
+  findingLabel,
   writtenFindings,
   type ProductFacts,
   type WriteKind,
@@ -51,7 +51,7 @@ export function AiWriter({
   onUse: (written: WrittenText) => void;
 }) {
   const [pending, start] = useTransition();
-  const [draft, setDraft] = useState<{ written: WrittenText; model: string } | null>(null);
+  const [draft, setDraft] = useState<{ written: WrittenText; model: string; avoid: string[] } | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
 
   const actions: { kind: WriteKind; label: string; facts: ProductFacts }[] = isPrimary
@@ -69,11 +69,11 @@ export function AiWriter({
     start(async () => {
       setProblem(null);
       const result = await suggest({ kind, language, fromLanguage: kind === "translate" ? fromLanguage : "", facts: given });
-      if (result.ok) setDraft({ written: result.written, model: result.model });
+      if (result.ok) setDraft({ written: result.written, model: result.model, avoid: result.avoid });
       else setProblem(result.problem);
     });
 
-  const findings = draft ? writtenFindings(draft.written) : {};
+  const findings = draft ? writtenFindings(draft.written, draft.avoid) : {};
   const blocked = Object.keys(findings).length > 0;
   const empty = draft ? Object.values(draft.written).some((text) => !text?.trim()) : true;
 
@@ -123,7 +123,7 @@ export function AiWriter({
                 <ul className="flex flex-col gap-0.5 font-normal text-danger-text">
                   {findings[field].map((finding) => (
                     <li key={`${finding.index}-${finding.phrase}`}>
-                      {CLAIM_LABELS[finding.kind]}: &ldquo;{finding.phrase}&rdquo;
+                      {findingLabel(finding.kind)}: &ldquo;{finding.phrase}&rdquo;
                     </li>
                   ))}
                 </ul>

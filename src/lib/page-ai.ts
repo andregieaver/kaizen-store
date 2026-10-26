@@ -34,6 +34,7 @@ import { DESCRIPTION_MAX } from "./seo";
 import { textToRichText } from "./simple-rich-text";
 import { embedUrl } from "./video-embed";
 import { RULES_STAND } from "./prompt-safety";
+import { brandGuide, findAvoided, type AvoidedFinding, type Brand } from "./brand";
 
 /**
  * Pages built by the site's AI (D92). The owner talks (or types) to it; it
@@ -85,6 +86,8 @@ export type SiteFacts = {
   /** A background for tinted sections where the theme has one colour scheme; null when it follows the visitor's device. */
   tint: string | null;
   can: { pictures: boolean; productGrid: boolean; articleGrid: boolean; googleReviews: boolean };
+  /** The brand set down in words (D330 F2b): how the page is written, never a fact; its words to avoid are left out as claims are. */
+  brand?: Brand | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -467,10 +470,13 @@ export function readCopy(reply: string): SectionCopy | null {
   return json ? sectionCopy.parse(json) : null;
 }
 
-/** Every claim the claims filter finds in a section's words, with where. */
-export function copyClaims(copy: SectionCopy): (ClaimFinding & { where: string })[] {
-  const found: (ClaimFinding & { where: string })[] = [];
-  const check = (text: string, where: string) => found.push(...findClaims(text).map((claim) => ({ ...claim, where })));
+/** What a text may not say: the claims filter's findings and the brand's words to avoid (D330 F2b). */
+const findingsIn = (text: string, avoid: readonly string[]): (ClaimFinding | AvoidedFinding)[] => [...findClaims(text), ...findAvoided(text, avoid)];
+
+/** Every claim the claims filter finds in a section's words, and every word the brand avoids, with where. */
+export function copyClaims(copy: SectionCopy, avoid: readonly string[] = []): ((ClaimFinding | AvoidedFinding) & { where: string })[] {
+  const found: ((ClaimFinding | AvoidedFinding) & { where: string })[] = [];
+  const check = (text: string, where: string) => found.push(...findingsIn(text, avoid).map((claim) => ({ ...claim, where })));
   check(copy.heading, "heading");
   check(copy.text, "text");
   copy.items.forEach((item, index) => {
@@ -483,13 +489,13 @@ export function copyClaims(copy: SectionCopy): (ClaimFinding & { where: string }
 }
 
 /** A text without the sentences that carry a claim, for words still carrying one after the model was asked again. */
-export function withoutClaims(text: string): string {
-  if (findClaims(text).length === 0) return text;
+export function withoutClaims(text: string, avoid: readonly string[] = []): string {
+  if (findingsIn(text, avoid).length === 0) return text;
   return text
     .split(/\n/)
     .map((paragraph) =>
       (paragraph.match(/[^.!?]+[.!?]*\s*/g) ?? [paragraph])
-        .filter((sentence) => findClaims(sentence).length === 0)
+        .filter((sentence) => findingsIn(sentence, avoid).length === 0)
         .join("")
         .trim(),
     )
@@ -498,13 +504,14 @@ export function withoutClaims(text: string): string {
 }
 
 /** The section's words with every claim taken out. */
-export function copyWithoutClaims(copy: SectionCopy): SectionCopy {
+export function copyWithoutClaims(copy: SectionCopy, avoid: readonly string[] = []): SectionCopy {
+  const out = (text: string) => withoutClaims(text, avoid);
   return {
-    heading: withoutClaims(copy.heading),
-    text: withoutClaims(copy.text),
-    items: copy.items.map((item) => ({ ...item, title: withoutClaims(item.title), text: withoutClaims(item.text) })),
-    buttons: copy.buttons.map((button) => ({ ...button, label: withoutClaims(button.label) })),
-    captions: copy.captions.map(withoutClaims),
+    heading: out(copy.heading),
+    text: out(copy.text),
+    items: copy.items.map((item) => ({ ...item, title: out(item.title), text: out(item.text) })),
+    buttons: copy.buttons.map((button) => ({ ...button, label: out(button.label) })),
+    captions: copy.captions.map(out),
   };
 }
 
@@ -534,7 +541,8 @@ function factsText(facts: SiteFacts): string {
     products: facts.products.length > 0 ? facts.products.map((product) => `${product.title}: ${product.summary}`) : undefined,
     productCategories: facts.productCategories.length > 0 ? facts.productCategories.map((category) => category.name) : undefined,
   };
-  return JSON.stringify(site, null, 1);
+  const brand = brandGuide(facts.brand);
+  return brand ? `${JSON.stringify(site, null, 1)}\n\n${brand}` : JSON.stringify(site, null, 1);
 }
 
 /** The interview's instructions, then the conversation so far. */
@@ -1007,7 +1015,7 @@ export function buildPage(
     ...newPageContent(),
     title,
     slug: uniqueSlug(plan.slug || title, options.takenSlugs, options.reservedSlugs),
-    seo: { title: "", description: withoutClaims(plan.description).slice(0, DESCRIPTION_MAX) },
+    seo: { title: "", description: withoutClaims(plan.description, facts.brand?.avoid).slice(0, DESCRIPTION_MAX) },
     rows,
   };
   // The first picture is the page's own, for lists and sharing, unless the opening has one.

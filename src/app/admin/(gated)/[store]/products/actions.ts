@@ -247,7 +247,7 @@ export async function deleteProductTermAction(storeSlug: string, id: string): Pr
   return termsChanged(member, await deleteTerm(member.account, productTerms(member), id));
 }
 
-export type SuggestResult = { ok: true; written: WrittenText; model: string } | { ok: false; problem: string };
+export type SuggestResult = { ok: true; written: WrittenText; model: string; avoid: string[] } | { ok: false; problem: string };
 
 /**
  * An AI suggestion for the product's texts (D76), from the facts in the
@@ -266,12 +266,12 @@ export async function suggestTextAction(storeSlug: string, productId: string | n
   const connection = await aiFor(member.store.id, { feature: "product_writer", accountId: member.account.id });
   if (!connection?.textModel) return { ok: false, problem: w.noModel };
   try {
-    const { written, model } = await suggestProductText(
+    const { written, model, avoid } = await suggestProductText(
       connection,
       { accountId: member.account.id, storeId: member.store.id, productId },
       parsed.data,
     );
-    return { ok: true, written, model };
+    return { ok: true, written, model, avoid };
   } catch (error) {
     return {
       ok: false,

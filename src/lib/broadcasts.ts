@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { findAvoided, type AvoidedFinding } from "./brand";
 import { findClaims, type ClaimFinding } from "./claims";
 import { BROADCAST_AUDIENCES, type BroadcastStatus } from "./broadcast-status";
 import type { EmailBlock, EmailContent } from "./email-layout";
@@ -197,8 +198,8 @@ export function parseSuggestion(text: string): BroadcastSuggestion | null {
 }
 
 /** The claims a suggestion makes (D76's filter), each with the text it was found in. */
-export function suggestionClaims(s: BroadcastSuggestion): ClaimFinding[] {
-  return [s.subject, s.preview, s.heading, ...s.paragraphs, s.button].flatMap((text) => findClaims(text));
+export function suggestionClaims(s: BroadcastSuggestion, avoid: readonly string[] = []): (ClaimFinding | AvoidedFinding)[] {
+  return [s.subject, s.preview, s.heading, ...s.paragraphs, s.button].flatMap((text) => [...findClaims(text), ...findAvoided(text, avoid)]);
 }
 
 /** A suggestion as the blocks it fills: the heading, the paragraphs and, when it has words, a button whose address the person adds. */

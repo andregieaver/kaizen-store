@@ -238,9 +238,9 @@ describe("write_product_texts", () => {
     const asked: { kind: string; language: string; facts: unknown }[] = [];
     const write: NonNullable<Parameters<typeof productTools.writeProductTextsTool>[2]>["write"] = async (_c, _who, request) => {
       asked.push({ kind: request.kind, language: request.language, facts: request.facts });
-      if (request.kind === "write") return { written: { description: "A board of oak for the kitchen." }, model: "m" };
-      if (request.kind === "seo") return { written: { seoTitle: "Oak board", seoDescription: "The best price on oak boards." }, model: "m" };
-      return { written: { title: `Oak board (${request.language})`, description: `In ${request.language}.` }, model: "m" };
+      if (request.kind === "write") return { written: { description: "A board of oak for the kitchen." }, model: "m", avoid: [] };
+      if (request.kind === "seo") return { written: { seoTitle: "Oak board", seoDescription: "The best price on oak boards." }, model: "m", avoid: [] };
+      return { written: { title: `Oak board (${request.language})`, description: `In ${request.language}.` }, model: "m", avoid: [] };
     };
     const answer = (await productTools.writeProductTextsTool(ctxOf(store), writeProductTextsInput.parse({ product: created.id, languages: ["sv"] }), { connection, write })) as Answer;
     expect(asked.map((a) => [a.kind, a.language])).toEqual([
@@ -263,7 +263,7 @@ describe("write_product_texts", () => {
     const picture = await libraryPicture(store, "oak-spoon");
     const created = await run("create_product", { title: "Oak spoon", prices: { NO: "99" }, pictures: [{ url: picture }], responsible_person: "Kaizena Flow Demo AB" });
     await run("set_product_status", { product: created.id, status: "active" });
-    const write: NonNullable<Parameters<typeof productTools.writeProductTextsTool>[2]>["write"] = async () => ({ written: { description: "A spoon carved from oak." }, model: "m" });
+    const write: NonNullable<Parameters<typeof productTools.writeProductTextsTool>[2]>["write"] = async () => ({ written: { description: "A spoon carved from oak." }, model: "m", avoid: [] });
     const answer = (await productTools.writeProductTextsTool(ctxOf(store), writeProductTextsInput.parse({ product: created.id, texts: ["description"] }), { connection, write })) as Answer;
     expect(answer.done).toContain("Written, not saved");
     expect(answer.written).toEqual([{ language: "nb-NO", texts: { description: "A spoon carved from oak." } }]);

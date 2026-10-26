@@ -22,6 +22,7 @@ import {
 } from "@/lib/broadcasts";
 import { roomLeft } from "@/lib/limits";
 import { limitRefusal } from "@/lib/usage-format";
+import { AVOIDED_LABEL, brandGuide } from "@/lib/brand";
 import { CLAIM_LABELS } from "@/lib/claims";
 import { mainCurrency } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
@@ -31,6 +32,7 @@ import { siteUrl } from "@/lib/site";
 import { limitFor, usageNow } from "./limits";
 import { AiError, aiFor, completeText } from "./ai";
 import { audit } from "./auth";
+import { brandOf } from "./brand";
 import { listTiers } from "./customer-tiers";
 import { BATCH_MAX, deliverBatch, emailSettings, sendEmail, type Delivery, type SendOutcome } from "./email";
 import { emailPictureProblem, marketingEmail, marketSlugFor, resolverFor, type MarketingEmail } from "./marketing-email";
@@ -699,6 +701,9 @@ export async function suggestBroadcast(store: Pick<EmailStore, "id" | "name">, a
   const connection = await aiFor(store.id, { feature: "marketing_email", accountId });
   if (!connection?.textModel) return { ok: false, problem: "No AI with a text model is set up for this store." };
   const language = LANGUAGE_NAMES[locale.slice(0, 2)] ?? locale;
+  // The brand guides the words (D330 F2b); its words to avoid are refused as claims are.
+  const brand = await brandOf(store.id);
+  const guide = brandGuide(brand);
   try {
     const reply = await completeText(
       connection,
@@ -711,6 +716,7 @@ export async function suggestBroadcast(store: Pick<EmailStore, "id" | "name">, a
             "No urgency or scarcity (no 'only today', 'last chance', 'few left'), no best or lowest price claims, no environmental claims such as sustainable or eco-friendly.",
             RULES_STAND,
             "Plain, warm and short. Answer only with JSON: {\"subject\": string, \"preview\": string, \"heading\": string, \"paragraphs\": string[] (1 to 3), \"button\": string (a few words, or empty)}.",
+            ...(guide ? [`\n\n${guide}`] : []),
           ].join(" "),
         },
         { role: "user", content: `<staff-words>${words.replace(/</g, "‹")}</staff-words>` },
@@ -719,9 +725,9 @@ export async function suggestBroadcast(store: Pick<EmailStore, "id" | "name">, a
     );
     const suggestion = parseSuggestion(reply.text);
     if (!suggestion) return { ok: false, problem: "The AI did not answer with an email. Try again or write it yourself." };
-    const claims = suggestionClaims(suggestion);
+    const claims = suggestionClaims(suggestion, brand.avoid);
     if (claims.length > 0) {
-      const found = [...new Set(claims.map((c) => `${CLAIM_LABELS[c.kind].toLowerCase()} ("${c.phrase}")`))].join(", ");
+      const found = [...new Set(claims.map((c) => `${(c.kind === "avoided" ? AVOIDED_LABEL : CLAIM_LABELS[c.kind]).toLowerCase()} ("${c.phrase}")`))].join(", ");
       return { ok: false, problem: `The suggestion made claims we do not let AI make: ${found}. Try again, or write it yourself.` };
     }
     return { ok: true, suggestion };
