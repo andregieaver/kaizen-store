@@ -301,6 +301,8 @@ export const productEn = {
     moveDown: "Move {name} down",
     empty: "Nothing in the bundle yet.",
     inStock: "{count} in stock",
+    otherVat: "Takes another VAT category than the bundle, so the bundle cannot be sold. Give them one, or take it out.",
+    unusable: "Archived or switched off, so the bundle cannot be sold. Bring it back, or take it out.",
     stockTitle: "Bundles you can sell",
     stock: { one: "{count} bundle in stock", many: "{count} bundles in stock" },
     unitsNeeded: "Put at least two units in the bundle: two products, or two of one.",

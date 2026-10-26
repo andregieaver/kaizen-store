@@ -1020,6 +1020,16 @@ stand-in is the only fake, and only it is told it is one.
   an approval only by `needsApproval()`; a waiting order starts no payment and is decided only by `decideOrder()`, paid by
   `startApprovedPayment()` and cancelled by `expireApprovals()`; an order keeps its location, PO number and approval as placed (the database),
   and the PO number reaches the invoice only through `documents_po_number()` and `buildInvoiceSnapshot()` alike.
+- **Bundles (wave 6 unit D, D322, `docs/wave-6-catalogue.md` D.1 to D.6)**: a product of kind `bundle` has one variant made of goods variants
+  (`bundle_components`: a quantity each, the bundle's VAT category, at most 20; rules at commit by `commerce.bundle_problem()` when components or the
+  bundle's own VAT category change; a change to a component is never refused, it makes the bundle unbuyable until put right), priced as its own or
+  as its components' prices less a percentage, written only by the database through `set_price()` (`refresh_bundle_prices()`, at commit), and in
+  stock only as far as its components allow, inside `variant_availability` (never on backorder; a level of a bundle's own is refused). A product
+  never becomes or stops being a bundle. `placeOrder()` holds a bundle line's components (`bundleComponentsOf()`), `insertOrderLine()` writes
+  them frozen (`order_line_components`), `draw_order_stock()` draws them and `planRestock()` puts them back (`expandBundleItems()`, the event's
+  `restockedBundles` for the line's count); an order with a bundle is not changed (`editBlock()`'s `bundle`). A bundle is goods everywhere a shopper
+  buys (cart, campaigns, codes, price lists, wishlists, WordPress) but never a free gift, a weekly box, a draft's or an exchange's line. A new place
+  that reads a line's stock asks the components; a new place that shows an order line shows `components` (`componentsText()`).
 - Selling to businesses (D63, `src/lib/b2b.ts`, `src/server/b2b.ts`): stores
   sell to `consumers`, `businesses` or `both` (`stores.audience`). Prices are
   always kept and charged with VAT; businesses see them without it. Draw

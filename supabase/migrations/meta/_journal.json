@@ -3396,6 +3396,20 @@
       "when": 1793011942956,
       "tag": "20261026105222_support_inbound_email_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 485,
+      "version": "7",
+      "when": 1793019589889,
+      "tag": "20261026125949_bundles_demo",
+      "breakpoints": true
+    },
+    {
+      "idx": 486,
+      "version": "7",
+      "when": 1793019620465,
+      "tag": "20261026130020_bundles_relax",
+      "breakpoints": true
     }
   ]
 }

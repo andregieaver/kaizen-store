@@ -6709,7 +6709,12 @@ describe("bundles (wave 6 unit D, D322)", () => {
       bundle.variantId,
       a.variantId,
     ]);
-    await expect(db.query("update commerce.products set vat_category = 'food' where id = $1", [a.productId])).rejects.toThrow(/bundle_components.vat_category/);
+    // A component may move to another VAT category; its bundle then cannot be bought until it is put right. The bundle's own is checked.
+    expect((await db.query<{ can_buy: boolean }>("select can_buy from commerce.variant_availability where variant_id = $1", [bundle.variantId])).rows[0].can_buy).toBe(true);
+    await db.query("update commerce.products set vat_category = 'food' where id = $1", [a.productId]);
+    expect((await db.query<{ can_buy: boolean }>("select can_buy from commerce.variant_availability where variant_id = $1", [bundle.variantId])).rows[0].can_buy).toBe(false);
+    await db.query("update commerce.products set vat_category = 'standard' where id = $1", [a.productId]);
+    await expect(db.query("update commerce.products set vat_category = 'food' where id = $1", [bundle.productId])).rejects.toThrow(/bundle_components.vat_category/);
     await expect(
       db.query("insert into commerce.inventory_levels (store_id, variant_id, location_id, on_hand) values ($1, $2, $3, 5)", [storeId, bundle.variantId, location]),
     ).rejects.toThrow(/inventory_levels.bundle/);

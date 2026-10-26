@@ -137,6 +137,11 @@ export function BundleSection({
                         {fact.sku} · {fillWords(w.inStock, { count: String(fact.inStock) })}
                       </span>
                     )}
+                    {/* Why the bundle cannot be sold (D322): a component of another VAT category, archived or switched off. */}
+                    {fact && (fact.status === "archived" || !fact.active) && <span className="block text-danger-text">{w.unusable}</span>}
+                    {fact && fact.status !== "archived" && fact.active && fact.vatCategory !== product.vatCategory && (
+                      <span className="block text-danger-text">{w.otherVat}</span>
+                    )}
                   </span>
                   <label className="flex items-center gap-2">
                     <span className="text-muted">{w.quantity}</span>

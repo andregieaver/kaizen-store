@@ -618,6 +618,8 @@ export const nb: Messages = {
   noWithdrawal: "Denne varen er unntatt fra angreretten.",
   backToProducts: "Tilbake til produkter",
   backTo: (name: string): string => `Tilbake til ${name}`,
+  bundleIncludes: (items: string): string => `Inneholder ${items}`,
+  bundleInside: "Dette er i pakken",
   galleryPrevious: "Forrige bilde",
   galleryNext: "Neste bilde",
   galleryShow: (n: number) => `Vis bilde ${n}`,

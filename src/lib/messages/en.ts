@@ -630,6 +630,10 @@ export const en = {
   noWithdrawal: "This item is excluded from the right of withdrawal.",
   backToProducts: "Back to products",
   backTo: (name: string): string => `Back to ${name}`,
+  /** A bundle's components on an order or its page (D322): "Includes 2 × Mug, 1 × Tote". */
+  bundleIncludes: (items: string): string => `Includes ${items}`,
+  /** The heading of a bundle's components on its product page (D322). */
+  bundleInside: "What's inside",
   galleryPrevious: "Previous picture",
   galleryNext: "Next picture",
   galleryShow: (n: number) => `Show picture ${n}`,

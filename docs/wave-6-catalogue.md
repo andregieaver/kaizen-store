@@ -487,9 +487,11 @@ details are cached, the buy part streams in.
 - Its components are `commerce.bundle_components` (store, the bundle's variant, a component variant, a quantity 1 to 99, a position): at
   most 20 components, and at least two units in all (one variant twice is a multipack), so "2 to 20 components" of the outline counts units at
   the low end. A component is an active-or-draft **goods** variant delivered physically, of the same store, not itself a bundle's, and of the
-  bundle's VAT category (decision 2). The database holds the per-component rules (a deferred constraint trigger, and a VAT category change of
-  a component or a bundle that would break one is refused); the count rules are the editor's (`productProblems()`), so a store copy of part of
-  a catalogue never fails on a bundle whose components were left behind (that bundle simply cannot be bought).
+  bundle's VAT category (decision 2). The database holds the per-component rules when components are written and when the bundle's own VAT
+  category or kind changes (a deferred constraint trigger); a change to a component is never refused for its bundle's sake: a component that
+  moves to another VAT category, stops being physical goods or is archived makes the bundle one that cannot be bought until the owner puts it
+  right. The count rules are the editor's (`productProblems()`), so a store copy of part of a catalogue never fails on a bundle whose
+  components were left behind (that bundle simply cannot be bought).
 - **Price**, `products.bundle_pricing`: `fixed` (the variant's own prices, as any product's) or `computed` (the sum of the components' current
   prices times their quantities, less `bundle_percent_off`, 0 to 90, half up to the minor unit, per market). A computed price is written by
   the database through `set_price()` (`commerce.refresh_bundle_prices()`) when the bundle's components or pricing change and when a
@@ -553,6 +555,25 @@ details are cached, the buy part streams in.
   parts marked with their bundle and the bundles in `restockedBundles`, which the bundle's line counts. `editBlock()`'s `bundle`.
 - Held by `src/db/commerce.test.ts` (rules, stock, computed price, draw, frozen components) and the euro scenario in
   `checkout-kinds.int.test.ts` (price, stock, holds, draw, a refund putting the components back, the edit refused, a sold-out component).
+
+#### D.6 As built: D2 (2026-10-26)
+
+- Migration `20261026130020_bundles_relax`: a component's own change is no longer refused (D1 refused a component's VAT category or delivery
+  that broke its bundle, which kept owners from changing a product because a bundle held it); `variant_availability` gives such a bundle no
+  stock and checkout's rows ask its `can_buy`, so it cannot be bought until put right. `planRestock()` refuses a bundle line whose components
+  were not kept rather than ever stocking the bundle's own variant; the AI manager's `set_stock` refuses a bundle's SKU in words; the control
+  center's stock counts and the reorder suggestions leave bundles out, and reorder counts the units bundles took of each component.
+- Migration `20261026125949_bundles_demo`: `commerce.add_demo_bundle()` (*Demo: Kaffepakke*, SKU `DEMO-VERDIPAKKE`, two white mugs and a tote at 10 % off them,
+  `public/demo/bundle.svg`), called for production's template and by `supabase/seed.sql`; `clone_store()` copies it with its components.
+- `OrderView` lines carry `components`; the admin order page and the shopper's order page say "Includes 2 × …" (`componentsText()`,
+  `m.bundleIncludes`, nb, sv, da and en), the packing and parcel slips print it under the line (`includes`), and the pick list counts a
+  bundle's components on the shelf and never the bundle (`PickInputLine.components`, by product and by order).
+- The product page's description part draws *What's inside* (`m.bundleInside`) from `bundleItemsOf()`, read inside the catalogue's cached
+  `getProduct()` (each component linked to its own page while that is offered). The admin's product list shows a bundle's derived stock.
+- The AI manager's `get_product` names a bundle's components, pricing and the stock they allow; `create_product` and `update_product` take
+  `bundle` (components by SKU, `componentsBySku()`, pricing and percentage) and save through `saveProduct()`, gated as products are.
+- Bought bundles count as bought for recommendations (`purchasedProductIds()`). Held by `pick-list.test.ts` and the euro scenario
+  (order view, slip, pick list, the page's items).
 
 ### Unit E (D323): quantity rules and price breaks
 

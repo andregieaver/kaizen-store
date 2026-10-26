@@ -247,6 +247,8 @@ BEGIN
   PERFORM commerce.add_demo_rental(v_store);
   -- 7. A gift card (D300), two amounts, hidden until the owner switches gift cards on.
   PERFORM commerce.add_demo_gift_card(v_store);
+  -- 8. A bundle (D322): two mugs and a tote sold together, priced from them.
+  PERFORM commerce.add_demo_bundle(v_store);
 
   -- Categories and tags (D50), with the demo's products in them; a lamp is
   -- in Belysning, inside Hjem, so it shows under Hjem too.

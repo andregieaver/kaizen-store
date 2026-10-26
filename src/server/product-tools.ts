@@ -242,19 +242,35 @@ async function answerFor(ctx: Ctx, productId: string, done: string, extra: Recor
   };
 }
 
-/** `create_product`: a new draft of physical goods, made as the editor makes one. */
+/** A bundle's component SKUs as the store's goods variants (D322), in the order given; a SKU the store does not have refuses the call. */
+async function componentsBySku(ctx: Ctx, bundle: { components: { sku: string; quantity: number }[] } | undefined): Promise<Resolved["components"]> {
+  if (!bundle) return undefined;
+  const skus = bundle.components.map((c) => c.sku);
+  const rows = await db().execute<Row>(sql`
+    select v.id, v.sku from commerce.product_variants v
+    where v.store_id = ${ctx.store.id}::uuid and lower(v.sku) in (${sql.join(skus.map((sku) => sql`${sku.toLowerCase()}`), sql`, `)})
+  `);
+  const bySku = new Map(rows.map((r) => [String(r.sku).toLowerCase(), String(r.id)]));
+  const missing = skus.filter((sku) => !bySku.has(sku.toLowerCase()));
+  if (missing.length > 0) return fail(`No variant with the SKU ${missing.join(", ")} in this store: use get_product or list_products to find them.`);
+  return bundle.components.map((c) => ({ variantId: bySku.get(c.sku.toLowerCase())!, quantity: c.quantity }));
+}
+
+/** `create_product`: a new draft of physical goods (or a bundle of them, D322), made as the editor makes one. */
 export async function createProductTool(ctx: Ctx, args: CreateProductInput, deps: ProductToolDeps = {}) {
   claimsFail(shopperTexts(args));
   const editor = await getEditorContext(ctx.store);
   const store = toolStoreOf(editor);
   const handle = await freeHandle(ctx.store, args.handle ?? args.title, null);
   // Checked with what is known first, so nothing is made (a category, a picture) for a product that would be refused.
-  const dry = toProductInput(args, emptyProduct(editor), store, { handle, media: await pictures(ctx, args.pictures, args.title, false, deps) });
+  const components = await componentsBySku(ctx, args.bundle);
+  const dry = toProductInput(args, emptyProduct(editor), store, { handle, components, media: await pictures(ctx, args.pictures, args.title, false, deps) });
   if (!dry.ok) return fail(dry.problems.join(" "));
   const problems = await problemsOf(dry.input, editor, "draft");
   if (problems.length > 0) return fail(problems.join(" "));
   const resolved: Resolved = {
     handle,
+    components,
     categories: await termIds(ctx, editor.terms, "category", args.categories, true),
     tags: await termIds(ctx, editor.terms, "tag", args.tags, true),
     media: await pictures(ctx, args.pictures, args.title, true, deps),
@@ -285,6 +301,7 @@ async function applyChange(ctx: Ctx, change: UpdateProductInput, { make, deps }:
   const title = change.title ?? found.title;
   const resolved: Resolved = {
     ...(change.handle !== undefined && { handle: await freeHandle(ctx.store, change.handle, found.id) }),
+    ...(change.bundle && { components: await componentsBySku(ctx, change.bundle) }),
     ...(change.categories && { categories: await termIds(ctx, editor.terms, "category", change.categories, make) }),
     ...(change.tags && { tags: await termIds(ctx, editor.terms, "tag", change.tags, make) }),
     ...(change.pictures && { media: await pictures(ctx, change.pictures, title, make, deps) }),

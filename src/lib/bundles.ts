@@ -25,3 +25,8 @@ export function bundleStock(parts: readonly BundlePart[]): number {
   if (parts.some((p) => !p.usable)) return 0;
   return Math.max(0, Math.min(...parts.map((p) => Math.floor(Math.max(p.inStock, 0) / p.quantity))));
 }
+
+/** A bundle's components in one line of words, as an order and a slip show them (D322): "2 × Mug, 1 × Tote", per bundle. */
+export function componentsText(components: readonly { title: string; quantity: number }[]): string {
+  return components.map((c) => `${c.quantity} × ${c.title}`).join(", ");
+}

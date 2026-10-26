@@ -238,12 +238,31 @@ export function ProductPartView({ block, ctx }: { block: ProductBlock; ctx: Prod
         </section>
       );
     case "description":
-      if (!product.description) return null;
+      if (!product.description && product.bundleItems.length === 0) return null;
       return (
-        <section aria-labelledby={labelledBy}>
-          {heading(m.description)}
-          <p>{product.description}</p>
-        </section>
+        <>
+          {/* What a bundle holds (D322), from the catalogue's cached read: above the description, in every layout that has one. */}
+          {product.bundleItems.length > 0 && (
+            <section aria-labelledby={`${block.id}-inside`} className="mb-4">
+              <h2 id={`${block.id}-inside`} className="mb-2 font-medium">
+                {m.bundleInside}
+              </h2>
+              <ul className="list-disc pl-5">
+                {product.bundleItems.map((item, i) => (
+                  <li key={`${i}-${item.title}`}>
+                    {item.quantity} × {item.handle ? <Link href={`${base}/p/${item.handle}`} className="underline">{item.title}</Link> : item.title}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+          {product.description && (
+            <section aria-labelledby={labelledBy}>
+              {heading(m.description)}
+              <p>{product.description}</p>
+            </section>
+          )}
+        </>
       );
     case "withdrawal": {
       const text = withdrawalText(product, m);
@@ -404,7 +423,7 @@ export function productPartShows(
     case "host":
       return Boolean(product.hostName);
     case "description":
-      return Boolean(product.description);
+      return Boolean(product.description) || product.bundleItems.length > 0;
     case "withdrawal":
       return withdrawalText(product, t("en")) !== null;
     case "safety":

@@ -322,9 +322,16 @@ export async function restockSuggestions({ store }: Ctx, { days, cover_days, lea
         select sum(l.quantity) from commerce.order_lines l
         join commerce.orders o on o.store_id = l.store_id and o.id = l.order_id
         where l.variant_id = v.id and o.placed_at >= ${from} and o.status <> 'cancelled' and ${paid}
+      ), 0)::int
+      -- And what bundles took of it (D322): each bundle sold takes its components.
+      + coalesce((
+        select sum(c.quantity * l.quantity) from commerce.order_line_components c
+        join commerce.order_lines l on l.store_id = c.store_id and l.id = c.order_line_id
+        join commerce.orders o on o.store_id = l.store_id and o.id = l.order_id
+        where c.variant_id = v.id and o.placed_at >= ${from} and o.status <> 'cancelled' and ${paid}
       ), 0)::int as sold
     from commerce.product_variants v
-    join commerce.products p on p.store_id = v.store_id and p.id = v.product_id and p.status = 'active'
+    join commerce.products p on p.store_id = v.store_id and p.id = v.product_id and p.status = 'active' and p.kind <> 'bundle'
     left join commerce.product_translations tl on tl.product_id = p.id and tl.locale = ${locale}
     where v.store_id = ${store.id}::uuid and v.active and v.delivery = 'physical'
   `);

@@ -222,7 +222,9 @@ function orderLineRows(
           join commerce.products cp2 on cp2.store_id = cv.store_id and cp2.id = cv.product_id
           where bc.store_id = v.store_id and bc.bundle_variant_id = v.id
         ) end as bundle_components,
-        (p.status = 'active' and v.active and ${bookable} and ${offeredTo(customerId)}) as sellable
+        (p.status = 'active' and v.active and ${bookable} and ${offeredTo(customerId)}
+          -- A bundle whose component changed since it was added (archived, another VAT category, D322) cannot be bought.
+          and (p.kind <> 'bundle' or coalesce((select va.can_buy from commerce.variant_availability va where va.store_id = v.store_id and va.variant_id = v.id), false))) as sellable
       from ${source}
       join commerce.product_variants v on v.store_id = cl.store_id and v.id = cl.variant_id
       join commerce.products p on p.store_id = v.store_id and p.id = v.product_id

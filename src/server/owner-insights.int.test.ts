@@ -44,7 +44,7 @@ beforeAll(async () => {
   member = { account: { id: String(account.id), email: String(account.email), name: "Kari", platformAdmin: false }, store: (await stores.getStore(`insights-${run}`))!, role: "owner" };
   const [row] = await db().execute<Row>(sql`
     select v.id, v.sku, v.product_id from commerce.product_variants v join commerce.products p on p.id = v.product_id
-    where v.store_id = ${storeId}::uuid and v.active and v.delivery = 'physical' and p.status = 'active' order by v.sku limit 1
+    where v.store_id = ${storeId}::uuid and v.active and v.delivery = 'physical' and p.status = 'active' and p.kind = 'goods' order by v.sku limit 1
   `);
   variant = { id: String(row.id), sku: String(row.sku), productId: String(row.product_id) };
   await db().execute(sql`update commerce.inventory_levels set on_hand = 0 where variant_id = ${variant.id}::uuid`);

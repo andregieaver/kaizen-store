@@ -16,6 +16,7 @@ import type { ShownMeasure } from "@/lib/unit-price";
 import { shownMeasureFromColumns } from "@/lib/unit-price-rules";
 import { stockOf, UNLIMITED, type VariantStock } from "@/lib/stock-availability";
 
+import { bundleItemsOf } from "./bundles";
 import { fieldsTag, shownFieldsFor, shownFieldsForVariants } from "./custom-fields";
 import { OFFERED, STORE_AUDIENCE, inTerms, manualPlace, plansOffered } from "./product-conditions";
 
@@ -110,6 +111,8 @@ export type ProductDetail = {
   variantFields: Record<string, ShownGroup[]>;
   /** The store's own public fields (D120), for the components set to show them; read with the product so its page stays prerendered. */
   storeFields: ShownGroup[];
+  /** What a bundle holds (D322): each component's title, how many, and its own product's address when that is offered; empty for any other product. */
+  bundleItems: { title: string; quantity: number; handle: string | null }[];
 };
 
 type Row = Record<string, unknown>;
@@ -247,6 +250,8 @@ export async function getProduct(storeId: string, market: Market, handle: string
     where p.store_id = ${storeId}::uuid and p.handle = ${handle} and p.status = 'active' and ${OFFERED}
   `);
   if (!product) return null;
+  // A bundle's components (D322), in the page's language, each linked where its own product is offered to shoppers.
+  const bundleItems = product.kind === "bundle" ? await bundleItemsOf(readDb(), storeId, String(product.id), locale) : [];
 
   const [media, variants, plans, fields, variantFields, storeFields] = await Promise.all([
     readDb().execute<Row>(sql`
@@ -333,6 +338,7 @@ export async function getProduct(storeId: string, market: Market, handle: string
     audience: productAudience(product),
     kind:
       product.kind === "appointment" || product.kind === "stay" || product.kind === "rental" || product.kind === "gift_card" ? product.kind : "goods",
+    bundleItems,
   };
 }
 

@@ -610,6 +610,32 @@ async function getProductTool({ store }: OwnerToolContext, { product }: OwnerToo
   ]);
   // The price per kg, litre or metre (D160), worked out by the store's own `unitPriceShown()`: the model repeats it.
   const unitPrices = await variantUnitPrices(store.id, id);
+  // A bundle (D322): its components and pricing, and the stock its components allow (it keeps none of its own).
+  const bundle =
+    head.kind === "bundle"
+      ? await (async () => {
+          const [pricing] = await db().execute<Row>(sql`select bundle_pricing, bundle_percent_off from commerce.products where store_id = ${store.id}::uuid and id = ${id}::uuid`);
+          const parts = await db().execute<Row>(sql`
+            select cv.sku, bc.quantity, coalesce(tl.title, p.handle) as title
+            from commerce.bundle_components bc
+            join commerce.product_variants bv on bv.store_id = bc.store_id and bv.id = bc.bundle_variant_id and bv.product_id = ${id}::uuid
+            join commerce.product_variants cv on cv.store_id = bc.store_id and cv.id = bc.component_variant_id
+            join commerce.products p on p.store_id = cv.store_id and p.id = cv.product_id
+            left join commerce.product_translations tl on tl.product_id = p.id and tl.locale = ${locale}
+            where bc.store_id = ${store.id}::uuid order by bc.position, cv.sku
+          `);
+          const [stock] = await db().execute<Row>(sql`
+            select coalesce(sum(va.in_stock), 0)::int as n from commerce.variant_availability va
+            join commerce.product_variants v on v.store_id = va.store_id and v.id = va.variant_id
+            where v.store_id = ${store.id}::uuid and v.product_id = ${id}::uuid and v.active
+          `);
+          return {
+            pricing: pricing?.bundle_pricing === "computed" ? `its components' prices less ${Number(pricing.bundle_percent_off ?? 0)}%` : "a price of its own",
+            components: parts.map((c) => ({ sku: String(c.sku), title: String(c.title), quantity: Number(c.quantity) })),
+            in_stock: Number(stock?.n ?? 0),
+          };
+        })()
+      : null;
   const words = t("en");
   return {
     id,
@@ -631,6 +657,7 @@ async function getProductTool({ store }: OwnerToolContext, { product }: OwnerToo
     categories: extra?.categories ?? [],
     tags: extra?.tags ?? [],
     pictures: extra?.pictures ?? [],
+    ...(bundle && { bundle }),
     variants: variants.map((v) => {
       const own = unitPrices.filter((u) => u.sku === String(v.sku));
       const measure = own.find((u) => u.measure)?.measure ?? null;
@@ -638,7 +665,7 @@ async function getProductTool({ store }: OwnerToolContext, { product }: OwnerToo
         sku: String(v.sku),
         options: v.options,
         delivery: String(v.delivery),
-        stock: v.delivery === "physical" ? Number(v.stock) : null,
+        stock: bundle ? bundle.in_stock : v.delivery === "physical" ? Number(v.stock) : null,
         ...(v.delivery === "physical"
           ? {
               when_sold_out: v.stock_policy === "continue" ? "keeps selling on backorder" : "stops selling",

@@ -3,6 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
+import { componentsText } from "@/lib/bundles";
 import { pickupPlaceLine, readDelivery } from "@/lib/delivery-options";
 import { giftOfRow, NO_GIFT, type GiftFields } from "@/lib/gift";
 import { BULK_PRINT_MAX, slipSkip, type BulkRefusal, type BulkRequestProblem } from "@/lib/order-bulk";
@@ -27,7 +28,8 @@ export type PackingSlip = {
   locale: string;
   lang: string;
   shipTo: { name: string | null; line1: string | null; line2: string | null; postalCode: string | null; city: string | null; country: string | null };
-  lines: { quantity: number; title: string; sku: string }[];
+  /** `includes`: a bundle's components as sold (D322), "2 × Mug, 1 × Tote" per bundle; absent for any other line. */
+  lines: { quantity: number; title: string; sku: string; includes?: string }[];
   /** The buyer's gift (D173), null when the order is not one. */
   gift: GiftFields | null;
   /**
@@ -70,6 +72,7 @@ export async function packingSlipData(storeId: string, ids: readonly string[], o
       `)
     : [];
   const fulfilment = await fulfilmentOf(db(), storeId, orders.map((o) => String(o.id)));
+  const includes = await includesOf(orders.map((o) => String(o.id)), storeId);
   const byId = new Map(orders.map((o) => [String(o.id), o]));
   const slips: PackingSlip[] = [];
   const skipped: BulkRefusal[] = [];
@@ -87,12 +90,35 @@ export async function packingSlipData(storeId: string, ids: readonly string[], o
       continue;
     }
     const lines = reprint
-      ? state.lines.filter((l) => l.physical).map((l) => ({ quantity: l.quantity, title: l.title, sku: l.sku }))
-      : state.lines.filter((l) => l.toSend > 0).map((l) => ({ quantity: l.toSend, title: l.title, sku: l.sku }));
+      ? state.lines.filter((l) => l.physical).map((l) => ({ quantity: l.quantity, title: l.title, sku: l.sku, ...includedIn(includes, l.lineId) }))
+      : state.lines.filter((l) => l.toSend > 0).map((l) => ({ quantity: l.toSend, title: l.title, sku: l.sku, ...includedIn(includes, l.lineId) }));
     slips.push({ ...slipHead(order), lines, scope: reprint ? "reprint" : "to_send", shipmentId: null, moreFollows: false });
   }
   return { ok: true, slips, skipped };
 }
+
+/** The components of the bundle lines of the given orders (D322), as words per line id. */
+async function includesOf(orderIds: readonly string[], storeId: string): Promise<Map<string, string>> {
+  if (orderIds.length === 0) return new Map();
+  const rows = await db().execute<Row>(sql`
+    select c.order_line_id, c.title, c.quantity from commerce.order_line_components c
+    join commerce.order_lines ol on ol.store_id = c.store_id and ol.id = c.order_line_id
+    where c.store_id = ${storeId}::uuid and ol.order_id = any(${uuidList([...orderIds])})
+    order by c.position, c.sku
+  `);
+  const parts = new Map<string, { title: string; quantity: number }[]>();
+  for (const row of rows) {
+    const list = parts.get(String(row.order_line_id)) ?? [];
+    list.push({ title: String(row.title), quantity: Number(row.quantity) });
+    parts.set(String(row.order_line_id), list);
+  }
+  return new Map([...parts].map(([id, list]) => [id, componentsText(list)]));
+}
+
+const includedIn = (includes: ReadonlyMap<string, string>, lineId: string): { includes?: string } => {
+  const words = includes.get(lineId);
+  return words ? { includes: words } : {};
+};
 
 /** The parts of a slip that are the order's (number, date, language, address, gift). */
 function slipHead(order: Row): Omit<PackingSlip, "lines"> {
@@ -136,16 +162,17 @@ export async function parcelSlipData(storeId: string, orderId: string, shipmentI
   `);
   if (!order || order.copied) return null;
   const rows = await db().execute<Row>(sql`
-    select sl.quantity, ol.title, ol.sku from commerce.shipment_lines sl
+    select sl.quantity, ol.title, ol.sku, ol.id as line_id from commerce.shipment_lines sl
     join commerce.order_lines ol on ol.store_id = sl.store_id and ol.id = sl.order_line_id
     where sl.store_id = ${storeId}::uuid and sl.shipment_id = ${shipmentId}::uuid and ol.order_id = ${orderId}::uuid
     order by ol.title, ol.sku, ol.id
   `);
   if (rows.length === 0) return null;
   const state: OrderFulfilment | undefined = (await fulfilmentOf(db(), storeId, [orderId])).get(orderId);
+  const includes = await includesOf([orderId], storeId);
   return {
     ...slipHead(order),
-    lines: rows.map((r) => ({ quantity: Number(r.quantity), title: String(r.title), sku: String(r.sku) })),
+    lines: rows.map((r) => ({ quantity: Number(r.quantity), title: String(r.title), sku: String(r.sku), ...includedIn(includes, String(r.line_id)) })),
     scope: "parcel",
     shipmentId,
     moreFollows: (state?.unitsToSend ?? 0) > 0,

@@ -46,6 +46,7 @@ export const orderEn = {
     notBooked: "not booked",
     backordered: { one: "Backordered: {units} of {qty}, to ship within {n} day", many: "Backordered: {units} of {qty}, to ship within {n} days" },
     takenFrom: "Taken from {places}",
+    includes: "Includes {items}",
     restocked: "{n} put back in stock",
     fromWishlist: "From the wishlist",
     freeGift: "Free gift",

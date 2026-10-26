@@ -5,6 +5,8 @@ import { sql } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import { variantLabel, type BundleInput, type ProductInput } from "@/lib/product-input";
 
+import { OFFERED } from "./product-conditions";
+
 type Row = Record<string, unknown>;
 type Runner = Pick<Db, "execute">;
 
@@ -193,5 +195,28 @@ export async function expandBundleItems<T extends { variantId: string; sku: stri
     if (!components) return [item];
     // Each component remembers the bundle it went back for, so the bundle's line counts the units and the components' own lines do not.
     return components.map((c) => ({ ...item, variantId: c.variantId, sku: c.sku, quantity: c.quantity * item.quantity, bundleSku: item.sku }));
+  });
+}
+
+/**
+ * What a bundle holds as its page shows it (D322): each component's title in the page's language (with its options), how many, and its own
+ * product's address where that is offered to shoppers. Read inside the catalogue's cached `getProduct()`, so nothing here is per visitor.
+ */
+export async function bundleItemsOf(reader: Runner, storeId: string, productId: string, locale: string): Promise<{ title: string; quantity: number; handle: string | null }[]> {
+  const rows = await reader.execute<Row>(sql`
+    select bc.quantity, cv.options, p.handle, (p.status = 'active' and ${OFFERED}) as linked,
+      coalesce((select t.title from commerce.product_translations t where t.product_id = p.id and t.locale = ${locale}),
+               (select t.title from commerce.product_translations t where t.product_id = p.id order by t.locale limit 1), p.handle) as title
+    from commerce.bundle_components bc
+    join commerce.product_variants bv on bv.store_id = bc.store_id and bv.id = bc.bundle_variant_id and bv.product_id = ${productId}::uuid
+    join commerce.product_variants cv on cv.store_id = bc.store_id and cv.id = bc.component_variant_id
+    join commerce.products p on p.store_id = cv.store_id and p.id = cv.product_id
+    where bc.store_id = ${storeId}::uuid
+    order by bc.position, cv.sku
+  `);
+  return rows.map((row) => {
+    const options = Object.values((row.options ?? {}) as Record<string, string>);
+    const title = String(row.title);
+    return { title: options.length > 0 ? `${title} (${options.join(" / ")})` : title, quantity: Number(row.quantity), handle: row.linked ? String(row.handle) : null };
   });
 }

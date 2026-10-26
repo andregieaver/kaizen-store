@@ -42,6 +42,7 @@ export const orderNb: OrderMessages = {
     notBooked: "ikke booket",
     backordered: { one: "På restordre: {units} av {qty}, sendes innen {n} dag", many: "På restordre: {units} av {qty}, sendes innen {n} dager" },
     takenFrom: "Tatt fra {places}",
+    includes: "Inneholder {items}",
     restocked: "{n} lagt tilbake på lager",
     fromWishlist: "Fra ønskelisten",
     freeGift: "Gratis gave",

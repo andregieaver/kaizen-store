@@ -42,7 +42,7 @@ function namesOf(terms: readonly Term[], choices: RuleChoices): RuleNames {
     manufacturers: new Map(choices.manufacturers.map((m) => [m.id, m.name])),
     fields: new Map(choices.fields.map((f) => [f.id, f.label])),
     money: (minor) => formatMoney(minor, choices.currency, choices.locale),
-    kinds: { goods: "goods", appointment: "appointment", stay: "stay", rental: "rental", gift_card: "gift card" },
+    kinds: { goods: "goods", appointment: "appointment", stay: "stay", rental: "rental", gift_card: "gift card", bundle: "bundle" },
   };
 }
 

@@ -2,7 +2,21 @@ import { z } from "zod";
 
 import { formatMoney } from "./money";
 import { BRIEF_MAX, BRIEF_MIN, PICTURE_SHAPES } from "./picture-direction";
-import { MAX_MEDIA, MAX_OPTIONS, MAX_VARIANTS, combineOptions, parsePrice, variantLabel, type ProductInput, type VariantInput } from "./product-input";
+import {
+  BUNDLE_COMPONENTS_MAX,
+  BUNDLE_PERCENT_MAX,
+  BUNDLE_PRICINGS,
+  BUNDLE_QUANTITY_MAX,
+  MAX_MEDIA,
+  MAX_OPTIONS,
+  MAX_VARIANTS,
+  combineOptions,
+  parsePrice,
+  variantLabel,
+  type BundleInput,
+  type ProductInput,
+  type VariantInput,
+} from "./product-input";
 import type { ProductFacts, WriteKind } from "./product-writing";
 import { DESCRIPTION_MAX, EXCERPT_FIELD_MAX, TITLE_MAX } from "./seo";
 import { slugify } from "./slug";
@@ -108,6 +122,19 @@ const variantArgs = z.object({
   content: measureArgs.optional(),
 });
 
+/** A bundle's components by SKU and its pricing (D322): the AI manager makes or changes one as the editor does. */
+const bundleArgs = z
+  .object({
+    components: z
+      .array(z.object({ sku: z.string().trim().min(1).max(64), quantity: z.number().int().min(1).max(BUNDLE_QUANTITY_MAX).default(1) }))
+      .min(1)
+      .max(BUNDLE_COMPONENTS_MAX)
+      .describe("The goods in it, by SKU (from get_product or list_products), with how many of each go in one bundle; at least two units in all."),
+    pricing: z.enum(BUNDLE_PRICINGS).default("computed").describe("computed: its components' prices less percent_off, kept up to date; fixed: its own prices."),
+    percent_off: z.number().int().min(0).max(BUNDLE_PERCENT_MAX).default(0).describe("For a computed price: whole percent off the components' sum."),
+  })
+  .describe("Makes it a bundle of other goods of the store, sold together as one product: its stock is what its components allow, so it has no stock of its own.");
+
 export const createProductInput = z.object({
   title: z.string().trim().min(1).max(200).describe("The product's name in the store's main language."),
   description: mainTexts.description.default(""),
@@ -132,6 +159,7 @@ export const createProductInput = z.object({
   vat_category: z.string().trim().regex(VAT_CATEGORY_CODE).optional().describe("Its VAT category, such as standard or food; standard when left out."),
   manufacturer: operatorArgs.optional().describe("Who makes it, required on goods for sale in the EU; the store's first company when left out."),
   responsible_person: operatorArgs.optional().describe("A person or company in the EU responsible for its safety, required when the manufacturer is outside the EU."),
+  bundle: bundleArgs.optional(),
 });
 export type CreateProductInput = z.output<typeof createProductInput>;
 
@@ -165,6 +193,7 @@ export const updateProductInput = z.object({
   vat_category: z.string().trim().regex(VAT_CATEGORY_CODE).optional(),
   manufacturer: operatorArgs.optional(),
   responsible_person: operatorArgs.optional(),
+  bundle: bundleArgs.optional().describe("A bundle's components and pricing as they should be (they replace the ones there); only for a bundle."),
 });
 export type UpdateProductInput = z.output<typeof updateProductInput>;
 
@@ -216,6 +245,8 @@ export type ToolStore = {
 /** What the server resolved from the arguments: the free address, terms by id, pictures as the editor keeps them. */
 export type Resolved = {
   handle?: string;
+  /** A bundle's components (D322), its SKUs found among the store's variants by the server. */
+  components?: { variantId: string; quantity: number }[];
   categories?: string[];
   tags?: string[];
   media?: ProductInput["media"];
@@ -390,6 +421,9 @@ export function toProductInput(args: CreateProductInput, base: ProductInput, sto
   const manufacturer = args.manufacturer === undefined ? base.manufacturer : operatorChoice(args.manufacturer, store.operators, problems, "manufacturer");
   const responsiblePerson =
     args.responsible_person === undefined ? base.responsiblePerson : operatorChoice(args.responsible_person, store.operators, problems, "responsible person");
+  // A bundle (D322): one variant without options or stock, its components found by the server.
+  const bundle = args.bundle ? bundleOf(args.bundle, resolved) : null;
+  if (bundle && (options.length > 0 || variants.length > 1)) problems.push("A bundle has one variant: leave out the options and variants.");
   if (problems.length > 0) return { ok: false, problems };
   return {
     ok: true,
@@ -398,12 +432,13 @@ export function toProductInput(args: CreateProductInput, base: ProductInput, sto
       ...base,
       handle,
       status: "draft",
-      kind: "goods",
+      kind: bundle ? "bundle" : "goods",
       delivery: "physical",
       translations,
       media: resolved.media ?? [],
       options,
-      variants,
+      variants: bundle ? variants.slice(0, 1).map((v) => ({ ...v, stock: 0, stockPolicy: "deny" as const, backorderDays: null, measure: null })) : variants,
+      bundle,
       categories: resolved.categories ?? [],
       tags: resolved.tags ?? [],
       vatCategory: args.vat_category ?? base.vatCategory,
@@ -411,6 +446,11 @@ export function toProductInput(args: CreateProductInput, base: ProductInput, sto
       responsiblePerson,
     },
   };
+}
+
+/** A bundle's components and pricing from the tool's arguments (D322), with the variant ids the server found for its SKUs. */
+function bundleOf(args: z.output<typeof bundleArgs>, resolved: Resolved): BundleInput {
+  return { pricing: args.pricing, percentOff: args.pricing === "computed" ? args.percent_off : 0, components: resolved.components ?? [] };
 }
 
 /** The change's fields, in words for the answer and the approval ("the title", "the prices of LINEN-M"). */
@@ -430,6 +470,7 @@ const FIELD_WORDS: Record<string, string> = {
   vat_category: "the VAT category",
   manufacturer: "the manufacturer",
   responsible_person: "the responsible person",
+  bundle: "what is in the bundle and its pricing",
 };
 
 /**
@@ -525,6 +566,15 @@ export function mergeProduct(stored: ProductInput, change: UpdateProductInput, s
   const responsiblePerson =
     change.responsible_person === undefined ? stored.responsiblePerson : operatorChoice(change.responsible_person, store.operators, problems, "responsible person");
   if (change.responsible_person !== undefined) mark("responsible_person");
+  // A bundle's components and pricing (D322): only a bundle has them, and a product never becomes one.
+  let bundle = stored.bundle;
+  if (change.bundle) {
+    if (stored.kind !== "bundle") problems.push("Only a bundle has components: make a new product with `bundle` instead.");
+    else {
+      bundle = bundleOf(change.bundle, resolved);
+      mark("bundle");
+    }
+  }
 
   if (problems.length > 0) return { ok: false, problems };
   if (changed.length === 0) return { ok: false, problems: ["Nothing to change: give the fields that should change."] };
@@ -543,6 +593,7 @@ export function mergeProduct(stored: ProductInput, change: UpdateProductInput, s
       vatCategory: change.vat_category ?? stored.vatCategory,
       manufacturer,
       responsiblePerson,
+      bundle,
     },
   };
 }

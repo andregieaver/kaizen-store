@@ -615,6 +615,8 @@ export const sv: Messages = {
   noWithdrawal: "Den här varan är undantagen från ångerrätten.",
   backToProducts: "Tillbaka till produkter",
   backTo: (name: string): string => `Tillbaka till ${name}`,
+  bundleIncludes: (items: string): string => `Innehåller ${items}`,
+  bundleInside: "Det här ingår",
   galleryPrevious: "Föregående bild",
   galleryNext: "Nästa bild",
   galleryShow: (n: number) => `Visa bild ${n}`,

@@ -73,7 +73,7 @@ export function PickListView({ list, words: w = ordersEn.pick }: { list: PickLis
               <table className="w-full text-left text-sm">
                 <tbody>
                   {order.lines.map((line) => (
-                    <tr key={line.lineId} className="border-b border-neutral-line">
+                    <tr key={`${line.lineId}:${line.sku}`} className="border-b border-neutral-line">
                       <td className="w-8 py-1.5 pr-2">
                         <span aria-hidden="true" className="inline-block size-4 border border-black" />
                       </td>

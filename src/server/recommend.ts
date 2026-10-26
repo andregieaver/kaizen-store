@@ -294,7 +294,7 @@ export async function purchasedProductIds(
     from commerce.orders o
     join commerce.order_lines l on l.store_id = o.store_id and l.order_id = o.id
     join commerce.product_variants v on v.id = l.variant_id
-    join commerce.products p on p.id = v.product_id and p.kind = 'goods'
+    join commerce.products p on p.id = v.product_id and p.kind in ('goods', 'bundle')
     where o.store_id = ${storeId}::uuid and o.status in ${PAID} and o.copied_from is null
       and o.restricted_at is null and o.anonymised_at is null and (${sql.join(matches, sql` or `)})
   `);

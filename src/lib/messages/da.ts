@@ -615,6 +615,8 @@ export const da: Messages = {
   noWithdrawal: "Denne vare er undtaget fra fortrydelsesretten.",
   backToProducts: "Tilbage til produkter",
   backTo: (name: string): string => `Tilbage til ${name}`,
+  bundleIncludes: (items: string): string => `Indeholder ${items}`,
+  bundleInside: "Det er i pakken",
   galleryPrevious: "Forrige billede",
   galleryNext: "Næste billede",
   galleryShow: (n: number) => `Vis billede ${n}`,

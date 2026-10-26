@@ -44,10 +44,13 @@ type Variant = { id: string; productId: string; sku: string };
 /** The one shipped variant with this SKU: what the old `set_stock` asked for, and the words it refused with. */
 async function variantBySku(store: Store, sku: string): Promise<Variant> {
   const rows = await db().execute<Row>(sql`
-    select v.id, v.product_id, v.sku from commerce.product_variants v
+    select v.id, v.product_id, v.sku, p.kind from commerce.product_variants v
+    join commerce.products p on p.store_id = v.store_id and p.id = v.product_id
     where v.store_id = ${store.id}::uuid and v.active and v.delivery = 'physical' and lower(v.sku) = lower(${sku})
   `);
   if (rows.length === 0) return fail(`No shipped variant with the SKU ${sku}. Use stock_levels or get_product for SKUs.`);
+  // A bundle keeps no stock of its own (D322): its components' stock is set instead.
+  if (rows[0].kind === "bundle") return fail(`${sku} is a bundle: it keeps no stock of its own. Set the stock of the products in it (get_product lists them).`);
   if (rows.length > 1) return fail(`More than one variant has the SKU ${sku}: set it on the product page.`);
   return { id: String(rows[0].id), productId: String(rows[0].product_id), sku: String(rows[0].sku) };
 }

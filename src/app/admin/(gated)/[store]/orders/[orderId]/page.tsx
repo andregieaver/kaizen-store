@@ -59,6 +59,7 @@ import { db } from "@/db/client";
 import { listLocations } from "@/server/inventory-locations";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { orderStockHistory } from "@/server/stock-restock";
+import { componentsText } from "@/lib/bundles";
 import { estimateWeightGrams } from "@/server/bring-shipping";
 import { notificationPath } from "@/lib/notifications";
 import { trackedCarrier } from "@/server/carrier-tracking";
@@ -342,6 +343,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                             {countWords(line.backorder.days, w.backordered, { units: line.backorder.units, qty: line.quantity })}
                           </span>
                         )}
+                        {line.components.length > 0 && <span className="block text-xs text-muted">{fillWords(w.includes, { items: componentsText(line.components) })}</span>}
                         {takenFrom(line.variantId, stockByVariant, stockLocations) && <span className="block text-xs text-muted">{fillWords(w.takenFrom, { places: takenFrom(line.variantId, stockByVariant, stockLocations) })}</span>}
                         {line.restocked > 0 && <span className="block text-xs text-muted">{fillWords(w.restocked, { n: line.restocked })}</span>}
                         {fromWishlists

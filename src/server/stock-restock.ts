@@ -79,6 +79,13 @@ const WORDS = {
 export async function planRestock(reader: Pick<Db, "execute">, storeId: string, orderId: string, given: readonly RestockItem[]): Promise<RestockPlanResult> {
   // A bundle goes back as its components (D322): its own variant held and drew nothing.
   const items = await expandBundleItems(reader, storeId, orderId, given);
+  if (items.length > 0) {
+    const bundles = await reader.execute<Row>(sql`
+      select v.sku from commerce.product_variants v join commerce.products p on p.store_id = v.store_id and p.id = v.product_id
+      where v.store_id = ${storeId}::uuid and p.kind = 'bundle' and v.id in (${sql.join([...new Set(items.map((i) => i.variantId))].map((id) => sql`${id}::uuid`), sql`, `)})
+    `);
+    if (bundles.length > 0) return { ok: false, problem: `${String(bundles[0].sku)} is a bundle whose products this order did not keep: put them back in stock one by one on the Inventory page.` };
+  }
   const rank = await activeRank(reader, storeId);
   const history = await orderStockHistory(reader, storeId, orderId, [...new Set(items.map((i) => i.variantId))]);
   const planned: PlannedItem[] = [];

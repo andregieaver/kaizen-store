@@ -10,11 +10,11 @@ D152 (the store analytics cockpit) and D153 (the EU withdrawal function and the 
 
 <!-- parity:generated:start since -->
 
-- **Headline now 75.1%** (first report 59.5%), **must-have 83.9%** (first report 69.1%), over 215 core rows (first report 232).
-- Where the change comes from: +13.7 points from the 93 rating moves on core rows recorded below, and +1.9 points because the re-read changed which rows count as core (the tracker has 245 rows, the first report 232 core ones).
+- **Headline now 75.3%** (first report 59.5%), **must-have 83.9%** (first report 69.1%), over 215 core rows (first report 232).
+- Where the change comes from: +13.9 points from the 94 rating moves on core rows recorded below, and +1.9 points because the re-read changed which rows count as core (the tracker has 245 rows, the first report 232 core ones).
 - 244 of 245 rows have their Shopify side read from a page; the others are listed under evidence debt.
 
-Rated higher (76):
+Rated higher (77):
 
 - AI or rule-based customer segmentation (AI): missing to partial. D296 (wave 5 unit B): saved rule-based segments over customers and subscribers, counted live with a member list, and customer tags; read segments.ts and ran segments.test.ts, segments.int.test.ts (PGlite and integration, passed).
 - Workflow builder with AI generation (AI): missing to partial. Read src/lib/order-rules.ts, src/server/order-rules.ts and Settings -> Automation (D238): an owner-made trigger-condition-action rule for one trigger (order paid), a closed list of conditions, actions tag, notify staff, hold and ask the AI…
@@ -29,6 +29,7 @@ Rated higher (76):
 - Products with variants and options (limits) (Catalogue): partial to full. Wave 6 unit B (D320, docs/wave-6-catalogue.md Unit B): 2,048 variants over 3 options, refused past that by productInput, the import, the tools and the database at commit (commerce.product_variants_limit()); the save writes variants, prices…
 - Collections, manual (Catalogue): partial to full. Wave 6 unit A (D319, docs/wave-6-catalogue.md 3.7, 3.8): a category or tag has a description, a picture and its name and description per language, shown above its products on its page and in its metadata and share picture (e2e/signed-in/co…
 - Smart (rule-based) collections (Catalogue): missing to full. Wave 6 unit A2 (D319, docs/wave-6-catalogue.md 3.8): a category or tag can be filled by rules (in a category or tag, price, in stock, manufacturer, variant option, a public filter field, kind, new arrivals; all or any) with a live count pe…
+- Bundles (Catalogue): partial to full. Wave 6 unit D (D322, docs/wave-6-catalogue.md D.1 to D.6): bundles of goods components with a fixed or computed price and stock from their parts (commerce.test.ts); placing an order holds the components, payment draws them, the order line…
 - Sell when out of stock (Catalogue): missing to partial. Wave 3 run 1 (docs/wave-3-inventory.md, D172 proposed, tree not committed).
 - Pre-orders (Catalogue, not core): missing to partial. Back in stock, the row's third criterion, is built (D298): src/server/stock-requests.ts (only writer of stock_requests), /api/stock-requests, src/components/back-in-stock.tsx and /account/stock/{token}, a typed address confirmed by its lin…
 - SEO fields: title, description, handle, sitemap, hreflang (Catalogue): partial to full. D168 (wave 2, second run, docs/wave-2-redirects.md).
@@ -128,7 +129,7 @@ Rated lower (26):
 
 <!-- parity:generated:start summary -->
 
-Kaizena Flow has **75.1%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 215 core features weighted by importance to an EU small or mid-size merchant, and **83.9%** on the must-haves (the 89 features with weight 4 or 5). The unweighted figures are 71.6% overall and 83.7% for must-haves. Counting app-only features gives 74.7%; counting Plus-only as well gives 74.2%. Kaizena Flow is strongest on storefront, themes and content (86.6%) and weakest on platform, extensibility and operations (54.7%), ai and automation (66.9%), checkout and payments (68.2%). Of the 215 core features, 109 are full, 90 partial and 16 missing, so half-built features, not absent ones, are the main shape of the gap.
+Kaizena Flow has **75.3%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 215 core features weighted by importance to an EU small or mid-size merchant, and **83.9%** on the must-haves (the 89 features with weight 4 or 5). The unweighted figures are 71.9% overall and 83.7% for must-haves. Counting app-only features gives 74.9%; counting Plus-only as well gives 74.4%. Kaizena Flow is strongest on storefront, themes and content (86.6%) and weakest on platform, extensibility and operations (54.7%), ai and automation (66.9%), checkout and payments (68.2%). Of the 215 core features, 110 are full, 89 partial and 16 missing, so half-built features, not absent ones, are the main shape of the gap.
 
 <!-- parity:generated:end summary -->
 
@@ -138,10 +139,10 @@ The method is simple: a full match scores 1, a partial match 0.5, a missing feat
 
 | Measure | Features | Weighted parity | Unweighted parity | Full / partial / missing |
 | --- | --- | --- | --- | --- |
-| Headline: core (Shopify native, Basic to Advanced) | 215 | **75.1%** | 71.6% | 109 / 90 / 16 |
+| Headline: core (Shopify native, Basic to Advanced) | 215 | **75.3%** | 71.9% | 110 / 89 / 16 |
 | Must-have (core, weight 4 or 5) | 89 | **83.9%** | 83.7% | 60 / 29 / 0 |
-| Core plus app-only features | 239 | 74.7% | 71.5% | 120 / 102 / 17 |
-| Everything, including Plus-only | 245 | 74.2% | 70.6% | 121 / 104 / 20 |
+| Core plus app-only features | 239 | 74.9% | 71.8% | 121 / 101 / 17 |
+| Everything, including Plus-only | 245 | 74.4% | 70.8% | 122 / 103 / 20 |
 
 <!-- parity:generated:end headline -->
 
@@ -153,7 +154,7 @@ Counts are core features only. Weighted parity uses weights 1 to 5; must-have is
 
 | Domain | Core features | Full | Partial | Missing | Weighted parity | Must-have features | Must-have parity |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Catalogue and products | 28 | 18 | 7 | 3 | 81.4% | 8 | 92.6% |
+| Catalogue and products | 28 | 19 | 6 | 3 | 83.1% | 8 | 92.6% |
 | Storefront, themes and content | 32 | 22 | 9 | 1 | 86.6% | 15 | 97.0% |
 | Checkout and payments | 21 | 8 | 13 | 0 | 68.2% | 12 | 66.3% |
 | Orders, shipping, fulfilment and returns | 28 | 17 | 10 | 1 | 81.5% | 14 | 90.2% |
@@ -162,7 +163,7 @@ Counts are core features only. Weighted parity uses weights 1 to 5; must-have is
 | International, compliance and trust | 20 | 7 | 13 | 0 | 68.8% | 12 | 72.1% |
 | Platform, extensibility and operations | 20 | 4 | 12 | 4 | 54.7% | 7 | 72.4% |
 | AI and automation | 23 | 9 | 11 | 3 | 66.9% | 2 | 100.0% |
-| **Total** | **215** | **109** | **90** | **16** | **75.1%** | **89** | **83.9%** |
+| **Total** | **215** | **110** | **89** | **16** | **75.3%** | **89** | **83.9%** |
 
 <!-- parity:generated:end domains -->
 
@@ -174,7 +175,7 @@ A row is Full only when it lists code and tests that exist (or says it is untest
 
 | Evidence | Rows |
 | --- | ---: |
-| Full, with tests | 115 |
+| Full, with tests | 116 |
 | Full, untested (debt, not hidden) | 6 |
 | Shopify side not read from a page | 1 |
 | Rows in the tracker | 245 |
@@ -183,7 +184,7 @@ Untested Full rows: `ai.assistant-voice-mode`, `checkout.abandoned-checkout-reco
 
 | Bucket | What it means | Rows not Full | Core rows | Core headline points lacking |
 | --- | --- | ---: | ---: | ---: |
-| A | Build in-house | 82 | 71 | 16.3 |
+| A | Build in-house | 81 | 70 | 16.1 |
 | B | Build, live only with a third party | 17 | 15 | 3.7 |
 | C | Strategy decision first | 11 | 8 | 1.8 |
 | D | Not reachable by code | 14 | 12 | 3.2 |
@@ -196,16 +197,16 @@ The waves are those of `docs/parity-plan.md` section 3. This table is produced f
 
 <!-- parity:generated:start projection -->
 
-Now: **75.1%** core, 83.9% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 15 rows (12 core) have no wave yet and are not in them.
+Now: **75.3%** core, 83.9% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 15 rows (12 core) have no wave yet and are not in them.
 
 | Wave | Scope | Rows (core) | Core if every row of waves 1 to N is Full | Must-have | Adds (points) | Core if only bucket A rows are | Must-have |
 | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | Compliance and money | 11 (8) | 77.3% | 87.2% | +2.2 | 76.5% | 86.1% |
-| 2 | Data in and out | 3 (1) | 77.5% | 87.2% | +0.2 | 76.7% | 86.1% |
-| 3 | Inventory and orders | 14 (13) | 80.6% | 89.4% | +3.0 | 78.1% | 87.3% |
-| 4 | Payments | 7 (6) | 82.0% | 91.0% | +1.4 | 78.5% | 87.3% |
-| 5 | Customers and marketing | 19 (16) | 85.9% | 94.4% | +3.9 | 81.6% | 90.2% |
-| 6 | Catalogue | 7 (6) | 87.1% | 94.4% | +1.2 | 82.8% | 90.2% |
+| 1 | Compliance and money | 11 (8) | 77.5% | 87.2% | +2.2 | 76.7% | 86.1% |
+| 2 | Data in and out | 3 (1) | 77.7% | 87.2% | +0.2 | 76.9% | 86.1% |
+| 3 | Inventory and orders | 14 (13) | 80.8% | 89.4% | +3.0 | 78.4% | 87.3% |
+| 4 | Payments | 7 (6) | 82.2% | 91.0% | +1.4 | 78.7% | 87.3% |
+| 5 | Customers and marketing | 19 (16) | 86.1% | 94.4% | +3.9 | 81.8% | 90.2% |
+| 6 | Catalogue | 6 (5) | 87.1% | 94.4% | +1.0 | 82.8% | 90.2% |
 | 7 | Storefront and international | 17 (16) | 90.7% | 95.4% | +3.6 | 86.2% | 91.2% |
 | 8 | Analytics and AI | 18 (18) | 94.5% | 96.1% | +3.8 | 89.8% | 91.9% |
 | 9 | Platform and extensibility | 13 (10) | 96.8% | 97.1% | +2.3 | 91.4% | 92.4% |
@@ -297,7 +298,7 @@ Legend. **Shopify**: Native = included on Basic to Advanced and scored in the he
 | Product data fields (SKU, barcode, weight, cost, HS code, origin) | Native. [page](https://help.shopify.com/en/manual/products/details/product-details-page) | Full | 3 |  | Evidence: `src/lib/product-input.ts`, `src/server/products.ts`, `src/components/admin/product-editor.tsx` and 1 more; 3 test files; D24, D152. |
 | Collections, manual | Native. [page](https://help.shopify.com/en/manual/products/collections) | Full (was partial) | 5 |  | Evidence: `src/lib/taxonomy.ts`, `src/server/taxonomy.ts`, `src/components/admin/terms.tsx` and 9 more; 7 test files; D50, D52, D119, D140, D168, D79, D160, D319. |
 | Smart (rule-based) collections | Native. [page](https://help.shopify.com/en/manual/products/collections) | Full (was missing) | 3 |  | Evidence: `src/lib/term-rules.ts`, `src/server/term-rules.ts`, `src/server/product-conditions.ts` and 4 more; 4 test files; D78, D51, D296, D319. |
-| Bundles | Native. [page](https://help.shopify.com/en/manual/products/bundles/shopify-bundles) | Partial | 3 | A, wave 6 | No bundle product: `PRODUCT_KINDS` are goods, appointment, stay, rental and gift_card (`src/lib/product-input.ts`); no component table, no fixed bundle price, no stock derived from its parts and no components on an order line (verified in `src/db/schema.ts`). What exists is pricing over ordinary products, agreed by `cartSummary()` and `placeOrder()`: campaigns (D114, D299 E3 and E4: percentage, buy N pay for M, amount off, free shipping, tiered steps, a free product over an amount, and buy X get Y through `bxgyOff()`) and discount codes reaching products, categories and tags (D299). They discount a mix the shopper puts together; they do not sell a bundle as one product. Code: `src/lib/campaigns.ts`, `src/server/campaigns.ts`. |
+| Bundles | Native. [page](https://help.shopify.com/en/manual/products/bundles/shopify-bundles) | Full (was partial) | 3 |  | None for the criteria: a product of kind bundle with goods components (a quantity each, one VAT category), priced as its own or as the components' prices less a percentage (kept by the database), its stock the lowest whole number of bundles its components allow (inside variant_availability), held and drawn as its components, kept on the order line and put back as its components on a refund or return (D322). Not built: a bundle with options of its own, mixed VAT categories (refused until an accountant settles the split) and changing an order that holds a bundle. Evidence: `src/lib/bundles.ts`, `src/server/bundles.ts`, `src/lib/product-input.ts` and 6 more; 4 test files; D114, D115, D116, D299, D322. |
 | Digital products and downloads | Native. [page](https://help.shopify.com/en/manual/products/digital-service-product/selling-services-or-digital-products) | Full | 3 |  | Evidence: `src/lib/product-input.ts`, `src/server/products.ts`, `src/server/orders.ts` and 2 more; 4 test files; D24. |
 | Sell when out of stock | Native. [page](https://help.shopify.com/en/manual/products/inventory/setup/continue-selling) | Partial (was missing) | 3 | D, wave 3 | Built and held by tests (wave 3, D172, in production since 6 October 2026): a variant keeps selling at zero (`product_variants.stock_policy = 'continue'`, physical goods only, `backorder_days` 1 to 90 required, database checks); only such a variant's level may go below zero (trigger `inventory_levels_rules`); the product page and the phone's bar say 'On backorder' with the days and keep the button, the cart accepts up to 20 a line, the cart, slide-out cart, checkout, order page, My account and the confirmation email say how many units are on backorder and within how many days, `order_lines.backorder_quantity`/`backorder_days` are kept, structured data says `BackOrder`, a gift or weekly box is never backordered, and `commerce.draw_order_stock()` keeps each live checkout's physical claim whatever the order of payment, so what a shopper read before paying is what the order says. Held by `e2e/backorder.spec.ts` (5 tests: Norwegian, Swedish and Danish page, cart, phone drawer, JSON-LD, a normal variant still sold out), run by me on a production build of the final tree and all passed, PGlite rules, `backorder.int.test.ts`, a krone and a euro scenario in `checkout-kinds.int.test.ts`, and the unchanged test `refuses more than is in stock`. Stays Partial, bucket D, for what no test can settle: the delivery-time sentences ('expected to ship within N days', hand-written in nb, sv, da and en, never machine-translated: `HAND_WRITTEN_ONLY`) are consumer legal text nobody has read, and a reviewer found they may not state what Directive 2011/83/EU Art. 6(1)(g) and Art. 18 ask (the time by which the trader undertakes to deliver; the 30 days run to delivery, not dispatch); the wording was left as written for a lawyer (docs/wave-3-inventory.md section 8, item 6), as was the 7 days of transport the editor's reminder assumes. A person must read them before this row is Full. Also not done: the WordPress plugin was not updated, so a site on it shows a backorder variant as sold out (the API serves it as `out` with `backorder_days`); product cards in listings state no backorder; the setting is per variant (the editor has one switch that sets all of a product's variants). Code: `src/server/cart.ts`, `src/server/checkout.ts`. |
 | Pre-orders | App. [page](https://shopify.dev/docs/storefronts/themes/pricing-payments/preorder-tbyb) | Partial (was missing) | 2 | A, wave 3 | Back in stock is built (D298, `src/server/stock-requests.ts`, `/api/stock-requests`, `src/components/back-in-stock.tsx`, `/account/stock/{token}`): a shopper asks on a sold-out variant, a typed address confirms by its link first and a verified customer waits at once, the answer never says whether an address was known, one email goes when `variant_availability` says it is back and the product is offered, and a request never subscribes anyone (held by `automations.int.test.ts` and `e2e/back-in-stock.spec.ts`). Selling at zero with stated days is row catalogue.sell-when-out-of-stock (D172). Missing: a pre-order mode (no release date, deposit or pay-later rule per variant; nothing says pre-order on cards, the product page, the cart or the order), no flag that keeps pre-order orders apart from shippable stock or lists them by expected date, and no `checkout-kinds.int.test.ts` scenario for one (verified: no such column, kind or route). Shopify itself offers pre-orders only through apps. Code: `src/server/stock-requests.ts`, `src/server/automations.ts`. |

@@ -284,10 +284,17 @@ export async function listAdminProducts(
         where v.product_id = p.id and v.active) as variants,
       (select count(*)::int from commerce.product_variants v
         where v.product_id = p.id and v.active and v.delivery = 'digital') as digital_variants,
-      (select coalesce(sum(greatest(l.on_hand, 0)), 0)::int
+      -- A bundle's stock (D322) is what its components allow, worked out by the one reader of stock.
+      case when p.kind = 'bundle' then (
+        select coalesce(sum(va.in_stock), 0)::int from commerce.variant_availability va
+        join commerce.product_variants v on v.store_id = va.store_id and v.id = va.variant_id
+        where v.product_id = p.id and v.active
+      ) else (
+        select coalesce(sum(greatest(l.on_hand, 0)), 0)::int
          from commerce.inventory_levels l
          join commerce.product_variants v on v.id = l.variant_id
-        where v.product_id = p.id and v.active) as stock,
+        where v.product_id = p.id and v.active
+      ) end as stock,
       pr.min_amount, pr.max_amount, pr.currency,
       commerce.vat_rate(${market?.code ?? ""}, p.vat_category) as vat_rate
     from commerce.products p

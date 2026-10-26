@@ -3867,6 +3867,12 @@ describe("a bundle in euro (D322)", () => {
       Number((await db().execute<Row>(sql`select amount_minor from commerce.prices where variant_id = ${variantId}::uuid and market_code = 'NO' and valid_to is null`))[0].amount_minor);
     const sum = 2 * (await priceOf(variant["DEMO-MUG-WHITE"])) + (await priceOf(variant["DEMO-TOTE"]));
     expect(await priceOf(bundleVariant)).toBe(Math.floor((sum * 90 + 50) / 100));
+    // The product page says what is inside, each component linked to its own page while that is offered.
+    const items = await (await import("./bundles")).bundleItemsOf(db(), storeId, bundleProduct, "nb-NO");
+    expect(items.map((i) => [i.quantity, i.handle])).toEqual([
+      [2, "demo-keramikkopp"],
+      [1, "demo-handlenett"],
+    ]);
     // Its stock is the lowest whole number of bundles its components allow.
     const [stock] = await db().execute<Row>(sql`select in_stock, can_buy from commerce.variant_availability where variant_id = ${bundleVariant}::uuid`);
     const mugFree = Number((await db().execute<Row>(sql`select in_stock from commerce.variant_availability where variant_id = ${variant["DEMO-MUG-WHITE"]}::uuid`))[0].in_stock);
@@ -3899,6 +3905,16 @@ describe("a bundle in euro (D322)", () => {
       await getShopperOrder(storeId, open.orderId, open.sessionId);
       expect(await onHand("DEMO-MUG-WHITE")).toBe(mug - 4);
       expect(await onHand("DEMO-TOTE")).toBe(tote - 2);
+      // The order, its slip and the pick list say what is in it (D2): the components per bundle, picked as components.
+      const paidOrder = (await getOrder(storeId, open.orderId))!;
+      expect(paidOrder.lines.find((l) => l.id === line.id)!.components.map((c) => [c.sku, c.quantity])).toEqual([["DEMO-MUG-WHITE", 2], ["DEMO-TOTE", 1]]);
+      const slips = await (await import("./packing-slips")).packingSlipData(storeId, [open.orderId]);
+      expect(slips.ok && slips.slips[0].lines.find((l) => l.sku === `BUNDLE-${run}`)?.includes).toMatch(/^2 × .+, 1 × .+$/);
+      const picked = await (await import("./pick-list")).pickListData(storeId, [open.orderId]);
+      expect(picked.ok && picked.list.products.map((p) => [p.sku, p.units]).filter(([sku]) => sku !== "")).toEqual(
+        expect.arrayContaining([["DEMO-MUG-WHITE", 4], ["DEMO-TOTE", 2]]),
+      );
+      expect(picked.ok && picked.list.products.some((p) => p.sku === `BUNDLE-${run}`)).toBe(false);
 
       // One bundle refunded and put back: its components go back, and its line counts it.
       const admin = (await (await import("./order-admin")).getOrderAdmin(storeId, open.orderId))!;

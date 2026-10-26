@@ -34,6 +34,21 @@ export async function pickListData(storeId: string, ids: readonly string[], opti
       `)
     : [];
   const lines = await toSend(db(), storeId, heads.map((h) => String(h.id)));
+  // A bundle's components as sold (D322): picked in its place.
+  const componentRows = heads.length
+    ? await db().execute<Row>(sql`
+        select c.order_line_id, c.variant_id, c.sku, c.title, c.quantity from commerce.order_line_components c
+        join commerce.order_lines ol on ol.store_id = c.store_id and ol.id = c.order_line_id
+        where c.store_id = ${storeId}::uuid and ol.order_id = any(${uuidList(heads.map((h) => String(h.id)))})
+        order by c.position, c.sku
+      `)
+    : [];
+  const componentsOf = new Map<string, { variantId: string; sku: string; title: string; quantity: number }[]>();
+  for (const row of componentRows) {
+    const list = componentsOf.get(String(row.order_line_id)) ?? [];
+    list.push({ variantId: String(row.variant_id), sku: String(row.sku), title: String(row.title), quantity: Number(row.quantity) });
+    componentsOf.set(String(row.order_line_id), list);
+  }
   const byId = new Map(heads.map((h) => [String(h.id), h]));
   const input: PickInputOrder[] = unique.map((id) => {
     const head = byId.get(id.toLowerCase());
@@ -57,6 +72,7 @@ export async function pickListData(storeId: string, ids: readonly string[], opti
         variantId: l.variantId,
         sku: l.sku,
         title: l.title,
+        components: componentsOf.get(l.lineId),
       })),
     };
   });

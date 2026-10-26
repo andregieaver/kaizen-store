@@ -161,6 +161,8 @@ export type OrderView = {
     venueMinor: number;
     /** An appointment's time (D65), who with, and where it stands, shown in the store's time zone. */
     booking: OrderBooking | null;
+    /** A bundle's components as sold (D322), each with how many go in ONE bundle; empty for any other line. */
+    components: { sku: string; title: string; quantity: number }[];
   }[];
   /** Something to ship (false when the order is downloads only). */
   ships: boolean;
@@ -339,6 +341,9 @@ const toOrder = (row: Row, lines: Row[]): OrderView => ({
           sequence: Number(line.sequence ?? 0),
         }
       : null,
+    components: Array.isArray(line.components)
+      ? (line.components as Record<string, unknown>[]).map((c) => ({ sku: String(c.sku), title: String(c.title), quantity: Number(c.quantity) }))
+      : [],
   })),
   ships: lines.some((line) => line.delivery === "physical"),
   digitalConsentAt: row.digital_consent_at ? new Date(String(row.digital_consent_at)).toISOString() : null,
@@ -378,7 +383,9 @@ export async function getOrder(storeId: string, orderId: string): Promise<OrderV
         b.resource_kind, ol.venue_minor,
         ol.gift_card_to, ol.gift_card_to_name, ol.gift_card_from, ol.gift_card_message, ol.gift_card_send_on,
         exists (select 1 from commerce.product_variants v join commerce.products p on p.store_id = v.store_id and p.id = v.product_id
-                where v.store_id = ol.store_id and v.id = ol.variant_id and p.kind = 'gift_card') as gift_card
+                where v.store_id = ol.store_id and v.id = ol.variant_id and p.kind = 'gift_card') as gift_card,
+        (select coalesce(jsonb_agg(jsonb_build_object('sku', c.sku, 'title', c.title, 'quantity', c.quantity) order by c.position, c.sku), '[]'::jsonb)
+           from commerce.order_line_components c where c.store_id = ol.store_id and c.order_line_id = ol.id) as components
       from commerce.order_lines ol
       join commerce.stores s on s.id = ol.store_id
       left join lateral (

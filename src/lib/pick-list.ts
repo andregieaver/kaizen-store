@@ -18,6 +18,8 @@ export type PickInputLine = FulfilmentLine & {
   sku: string;
   /** The line's title as sold (the product and its options). */
   title: string;
+  /** A bundle's components as sold (D322), per bundle: what is taken off the shelves in its place. */
+  components?: readonly { variantId: string; sku: string; title: string; quantity: number }[];
 };
 
 /** An order asked for: found in the store (with its lines), or not (another store's, or no such order). */
@@ -88,7 +90,14 @@ export function pickList(orders: readonly PickInputOrder[], options: { by?: Pick
       skipped.push({ orderId: order.id, number: order.number, reason: "unpaid" });
       continue;
     }
-    const lines = order.lines.map((l) => ({ line: l, units: unitsToSend(l) })).filter((x) => x.units > 0);
+    // A bundle is picked as its components (D322): each one's units per bundle times the bundles still to send.
+    const lines = order.lines
+      .flatMap((l) => {
+        const units = unitsToSend(l);
+        if (!l.components || l.components.length === 0) return [{ line: l, units }];
+        return l.components.map((c) => ({ line: { ...l, variantId: c.variantId, sku: c.sku, title: c.title }, units: units * c.quantity }));
+      })
+      .filter((x) => x.units > 0);
     if (lines.length === 0) {
       skipped.push({ orderId: order.id, number: order.number, reason: "nothing_to_send" });
       continue;

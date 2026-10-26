@@ -415,6 +415,7 @@ describe("the order's lines with a unit price (D160)", () => {
     image: null,
     booking: null,
     measure: { amount: "250", unit: "g", base: "kg" },
+    components: [],
     ...over,
   });
   const lines = async (shopFor = shop) =>
@@ -471,6 +472,7 @@ describe("the order's lines on backorder (wave 3, D172)", () => {
     booking: null,
     measure: null,
     backorder: null,
+    components: [],
     ...over,
   });
   const lines = async (shopFor = shop) =>

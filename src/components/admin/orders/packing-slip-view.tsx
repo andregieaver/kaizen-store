@@ -77,7 +77,10 @@ export function PackingSlipView({ slip, storeName, seller, breakAfter = false }:
           {slip.lines.map((line, i) => (
             <tr key={`${i}-${line.sku}`} className="border-b border-neutral-300">
               <td className="py-2 pr-4 text-lg font-semibold">{line.quantity}</td>
-              <td className="py-2">{line.title}</td>
+              <td className="py-2">
+                {line.title}
+                {line.includes && <span className="block text-sm">{m.bundleIncludes(line.includes)}</span>}
+              </td>
               <td className="py-2 text-right font-mono text-sm">{line.sku}</td>
             </tr>
           ))}

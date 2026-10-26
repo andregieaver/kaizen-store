@@ -301,6 +301,8 @@ export const productNb: ProductMessages = {
     moveDown: "Flytt {name} ned",
     empty: "Ingenting i pakken ennå.",
     inStock: "{count} på lager",
+    otherVat: "Har en annen mva-kategori enn pakken, så pakken kan ikke selges. Gi dem samme, eller ta den ut.",
+    unusable: "Arkivert eller slått av, så pakken kan ikke selges. Hent den tilbake, eller ta den ut.",
     stockTitle: "Pakker du kan selge",
     stock: { one: "{count} pakke på lager", many: "{count} pakker på lager" },
     unitsNeeded: "Legg minst to enheter i pakken: to produkter, eller to av ett.",

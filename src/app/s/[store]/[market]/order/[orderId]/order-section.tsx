@@ -16,6 +16,7 @@ import { OrderShipments } from "@/components/order-shipments";
 import { LineUnitPrice } from "@/components/price";
 import { RefreshOnce, RefreshWhile } from "@/components/refresh-while";
 import { StaffDiscountRow } from "@/components/staff-discount-row";
+import { componentsText } from "@/lib/bundles";
 import { earnedText } from "@/lib/bonus-shopper";
 import { discountNote } from "@/lib/customer-tiers";
 import { pickupPointLine } from "@/lib/delivery-options";
@@ -315,6 +316,8 @@ function linesList({ market, order, m, money }: OrderView) {
           <span className="min-w-0 flex-1">
             {isRange(line.booking) ? line.title : `${line.quantity} × ${line.title}`}
             {line.booking && <span className="block text-sm">{bookingWhen(line.booking, market.locale, m)}</span>}
+            {/* A bundle's components as sold (D322), per bundle. */}
+            {line.components.length > 0 && <span className="block text-sm text-muted">{m.bundleIncludes(componentsText(line.components))}</span>}
             {/* What it was sold with (D160): the line's price as charged, over the content kept on the line, so a later change to the product never rewrites it. */}
             <LineUnitPrice
               shownMinor={line.unitPriceMinor}

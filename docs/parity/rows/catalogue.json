@@ -258,13 +258,13 @@
       "checkedOn": "2026-10-02"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "partial"
     },
-    "gap": "No bundle product: `PRODUCT_KINDS` are goods, appointment, stay, rental and gift_card (`src/lib/product-input.ts`); no component table, no fixed bundle price, no stock derived from its parts and no components on an order line (verified in `src/db/schema.ts`). What exists is pricing over ordinary products, agreed by `cartSummary()` and `placeOrder()`: campaigns (D114, D299 E3 and E4: percentage, buy N pay for M, amount off, free shipping, tiered steps, a free product over an amount, and buy X get Y through `bxgyOff()`) and discount codes reaching products, categories and tags (D299). They discount a mix the shopper puts together; they do not sell a bundle as one product.",
-    "bucket": "A",
-    "wave": 6,
+    "gap": "None for the criteria: a product of kind bundle with goods components (a quantity each, one VAT category), priced as its own or as the components' prices less a percentage (kept by the database), its stock the lowest whole number of bundles its components allow (inside variant_availability), held and drawn as its components, kept on the order line and put back as its components on a refund or return (D322). Not built: a bundle with options of its own, mixed VAT categories (refused until an accountant settles the split) and changing an order that holds a bundle.",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "A bundle is a product made of components (variants with quantities) with a fixed or computed price; its stock is the lowest sellable amount of its components.",
       "Placing an order reserves each component's stock and records the components on the order line; a return or refund puts the right components back (integration test).",
@@ -273,13 +273,21 @@
     ],
     "evidence": {
       "files": [
-        "src/lib/campaigns.ts",
-        "src/server/campaigns.ts"
+        "src/lib/bundles.ts",
+        "src/server/bundles.ts",
+        "src/lib/product-input.ts",
+        "src/server/products.ts",
+        "src/server/checkout.ts",
+        "src/server/order-insert.ts",
+        "src/server/stock-restock.ts",
+        "src/components/admin/bundle-section.tsx",
+        "supabase/migrations/20261026102754_bundles_sql.sql"
       ],
       "tests": [
-        "src/lib/campaigns.test.ts",
-        "src/server/campaigns.int.test.ts",
-        "e2e/campaigns.spec.ts"
+        "src/db/commerce.test.ts",
+        "src/server/checkout-kinds.int.test.ts",
+        "src/lib/bundles.test.ts",
+        "src/lib/pick-list.test.ts"
       ],
       "untested": false
     },
@@ -287,9 +295,17 @@
       "D114",
       "D115",
       "D116",
-      "D299"
+      "D299",
+      "D322"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-26",
+        "from": "partial",
+        "to": "full",
+        "why": "Wave 6 unit D (D322, docs/wave-6-catalogue.md D.1 to D.6): bundles of goods components with a fixed or computed price and stock from their parts (commerce.test.ts); placing an order holds the components, payment draws them, the order line keeps them and a refund puts them back; the cart and the order agree in a euro scenario and a sold-out component makes the bundle unbuyable (checkout-kinds.int.test.ts)."
+      }
+    ]
   },
   {
     "id": "catalogue.digital-products-and-downloads",

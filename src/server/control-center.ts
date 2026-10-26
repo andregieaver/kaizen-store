@@ -122,7 +122,8 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
         select v.store_id, v.id, v.stock_policy as policy, v.low_stock_threshold as threshold, p.status as product_status, a.state as alert,
                coalesce(sum(l.on_hand) filter (where loc.active), 0) as stock
         from commerce.product_variants v
-        join commerce.products p on p.store_id = v.store_id and p.id = v.product_id and p.status in ('active', 'draft')
+        -- A bundle keeps no stock of its own (D322): its components are counted.
+        join commerce.products p on p.store_id = v.store_id and p.id = v.product_id and p.status in ('active', 'draft') and p.kind <> 'bundle'
         left join commerce.inventory_levels l on l.store_id = v.store_id and l.variant_id = v.id
         left join commerce.inventory_locations loc on loc.store_id = l.store_id and loc.id = l.location_id
         left join commerce.stock_alerts a on a.store_id = v.store_id and a.variant_id = v.id

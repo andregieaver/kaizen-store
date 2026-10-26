@@ -97,3 +97,27 @@ describe("the address of a pick list", () => {
     expect(parsePickParams({ ids: Array.from({ length: 100 }, (_, i) => id(i)).join(",") })).toMatchObject({ ok: true });
   });
 });
+
+describe("a bundle on the pick list (D322)", () => {
+  it("is picked as its components, each its units per bundle times the bundles still to send", () => {
+    const bundle = line("BUNDLE", 3, {
+      shipped: 1,
+      components: [
+        { variantId: "v-A-1", sku: "A-1", title: "Item A-1", quantity: 2 },
+        { variantId: "v-B-2", sku: "B-2", title: "Item B-2", quantity: 1 },
+      ],
+    });
+    const list = pickList([order("o1", "1001", [bundle, line("A-1", 1)])]);
+    expect(list.products.map((p) => [p.sku, p.units])).toEqual([
+      ["A-1", 5],
+      ["B-2", 2],
+    ]);
+    expect(list.products.some((p) => p.sku === "BUNDLE")).toBe(false);
+    expect(list.totalUnits).toBe(7);
+    const byOrder = pickList([order("o1", "1001", [bundle])], { by: "order" });
+    expect(byOrder.orders[0].lines.map((l) => [l.sku, l.units])).toEqual([
+      ["A-1", 4],
+      ["B-2", 2],
+    ]);
+  });
+});
