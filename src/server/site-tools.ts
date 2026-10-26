@@ -740,6 +740,18 @@ async function libraryLogo(ctx: SiteToolContext, url: string) {
   return { url: file.url, width: file.width, height: file.height };
 }
 
+/** The smallest square picture taken as the site's icon (D330 F2a); its library thumbnail is the small icon (D62). */
+const ICON_MIN = 256;
+
+/** An icon from the site's own media library: square, large enough, with its small copy. */
+async function libraryIcon(ctx: SiteToolContext, url: string) {
+  const file = (await libraryFilesByUrl(ownerOf(ctx), [url])).get(url);
+  if (!file || file.kind !== "image") return fail(`${url} is not a picture in the site's media library.`);
+  if (!file.width || !file.height || file.width !== file.height || file.width < ICON_MIN) return fail(`The icon must be a square picture of at least ${ICON_MIN} pixels: make one with make_brand_marks.`);
+  if (!file.thumbnailUrl) return fail(`${url} has no small copy: choose the icon under Header and footer.`);
+  return { url: file.url, smallUrl: file.thumbnailUrl };
+}
+
 /** The header and footer as they are, with the changes asked laid over them; nothing given is kept. */
 async function headerFooterChange(ctx: SiteToolContext, args: SetHeaderFooterArgs): Promise<HeaderFooterChange> {
   const [row] = ctx.store
@@ -773,6 +785,10 @@ async function headerFooterChange(ctx: SiteToolContext, args: SetHeaderFooterArg
   if (args.logo_dark !== undefined) {
     next.logoDark = args.logo_dark === null ? null : await libraryLogo(ctx, args.logo_dark);
     words.logoDark = args.logo_dark !== null;
+  }
+  if (args.icon !== undefined) {
+    next.favicon = args.icon === null ? null : await libraryIcon(ctx, args.icon);
+    words.icon = args.icon !== null;
   }
   return { navigation: next, headerMenuId, footerMenuId, words, custom: Boolean(row?.custom), business: parseBusinessDetails(row?.business) };
 }

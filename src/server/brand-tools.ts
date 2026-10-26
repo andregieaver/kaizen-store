@@ -1,10 +1,12 @@
 import "server-only";
 
 import type { BrandInput } from "@/lib/brand";
+import type { BrandMarksInput } from "@/lib/brand-marks";
 import { designedStoreTheme, designedTheme, type DesignLookInput } from "@/lib/brand-design";
 import { parseStoreTheme, templateSettings, themeWarnings, type StoreTheme } from "@/lib/theme";
 
 import { getBrand, setBrand, type BrandScope } from "./brand";
+import { makeBrandMarks, type MarksScope } from "./brand-marks";
 import { designTags } from "./design-presets";
 import { findFont, installFonts } from "./fonts";
 import { OwnerToolError } from "./owner-tool-error";
@@ -63,5 +65,17 @@ export async function designLookTool(ctx: DesignContext, input: DesignLookInput)
     fonts: settings.fonts,
     note: "The colours are worked out from the ones you gave so every text reads; repeat them as they are.",
     next: "Show it with try_theme, make it live with make_theme_live (install), then look at the store with look_at_store.",
+  };
+}
+
+/** `make_brand_marks`: the logo for light and dark backgrounds and the icon, drawn from the brand's name and kept in the media library. */
+export async function makeBrandMarksTool(scope: MarksScope, input: BrandMarksInput) {
+  const marks = await makeBrandMarks(scope, input);
+  return {
+    done: `The logo, the logo for dark backgrounds and the icon ("${marks.letters}") are drawn in ${marks.font} ${marks.weight} and kept in the media library. Visitors see nothing of them yet.`,
+    logo: marks.logo,
+    logo_dark: marks.logoDark,
+    icon: marks.icon,
+    next: "Put them in place with set_header_footer (logo, logo_dark, icon); the owner approves it. Then look at the store with look_at_store.",
   };
 }

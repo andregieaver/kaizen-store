@@ -126,6 +126,7 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   design_look: "website:write",
   get_brand: "website:read",
   set_brand: "website:write",
+  make_brand_marks: "website:write",
   // Looks at pages (D310): they read the site and change nothing.
   look_at_page: "website:read",
   look_at_store: "website:read",

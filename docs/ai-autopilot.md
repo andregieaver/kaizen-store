@@ -46,7 +46,7 @@ proportion (autonomy levels and budgets the owner sets), a voice (a decisions pa
 | C | D310 | Eyes: the agent photographs its drafts and judges them with the model that sees pictures | `ai.ai-page-and-theme-generation` |
 | D | D328 | The autopilot keeps going: it looks at each active goal again when a plan for it ends and on a schedule, makes the next plan, and starts it itself where the owner allows | `ai.workflow-builder-with-ai-generation`, `ai.proactive-insights` |
 | E | D329 | Web research: search the web through a pluggable search service (Brave first) on Kaizena Flow's key, metered; read a public page; keep findings with their sources; compare options with scores worked out in code | `ai.admin-ai-assistant-that-performs-tasks` |
-| F | D330 | Brand and look: a brand profile (tagline, voice, audience, values, words to avoid) and a look of the store's own designed from a few brand colours and fonts, palette and contrast worked out in code, added to the theme library to try and make live; logo and favicon in a second step | `ai.ai-page-and-theme-generation` |
+| F | D330 | Brand and look: a brand profile (tagline, voice, audience, values, words to avoid), a look of the store's own designed from a few brand colours and fonts (palette and contrast worked out in code, added to the theme library to try and make live), and a logo and icon drawn by code from the brand's name in its font | `ai.ai-page-and-theme-generation` |
 
 Each unit is its own commit (or a few), with its own tests, decision row and parity moves, shipped before the next starts. Each unit's
 section below is written in full before it is built; L is outlined and gets its detail when its turn comes.
@@ -985,15 +985,36 @@ Built in two steps.
 - It is then tried with `try_theme`, made live with `make_theme_live` (A4: always the owner's yes, or the autopilot at the owner's
   Design level, free since it is the store's own) and checked with `look_at_store` (D310).
 
-### 14.3 Step F2 (next): logo, icon and the brand in the writers
+### 14.3 Step F2: logo and icon (F2a), the brand in the writers (F2b)
 
-A logo drawn by code from the brand's name in its heading font and colours (the picture model writes no words reliably), a favicon from
-it, both through the media library. The brand profile is given to the page studio, the product writer, broadcasts' suggestions and the chat
+**F2a, logo and icon.** The picture model writes no words reliably, so the marks are drawn by code from the brand's name in its own font.
+
+- `make_brand_marks` (store and Kaizena Flow's own site, `website:write`, ungated: it only adds files to the media library) makes three:
+  - a wordmark logo for light backgrounds;
+  - a wordmark logo for dark backgrounds;
+  - a square icon (512 px, with its 64 px copy as the library thumbnail) holding the monogram: one or two initials on the accent.
+- Inputs, all optional: the text (the store's name unless given, up to 40 characters), the font (the live theme's heading font unless
+  given, from the catalogue; a theme on system fonts uses a default family), the weight, the logo's colour (`text` or `accent`), the icon's
+  shape (circle, rounded, square) and its letters (up to two).
+- The font's outlines come from Google Fonts' TrueType file (`src/server/font-outlines.ts`: the CSS asked of `fonts.googleapis.com`, the
+  file fetched only from `fonts.gstatic.com`, kept in memory, the nearest weight the family has), read by `opentype.js`.
+- `brand-marks.ts` (pure) writes the shapes as an SVG of paths (no text, no font, nothing but paths and a fill).
+- Colours come from the live theme's palettes (D330 F1 makes them readable). The logo's colour against its background, and the
+  letters against the accent, are held to 3:1, WCAG's line for graphics; where the accent does not reach it, the text colour is used.
+- `sharp` renders each to PNG: the logo 192 px high (with a 96 px copy) and the icon 512 and 64 px. They are kept in the media library by
+  `storePicture()` with alt texts, under the owner's storage.
+- `set_header_footer` gains `icon`: a square picture of at least 256 px from the library, with its thumbnail as the small icon, put in place
+  by Header and footer's own save, gated as the logos are.
+- A failure says what failed (the font could not be fetched, the name has no letters the font draws) and nothing is kept.
+
+**F2b, the brand in the writers.** The brand profile is given to the page studio, the product writer, broadcasts' suggestions and the chat
 agent's tone, always as guidance under the claims filter. Detailed when its turn comes.
 
 ### 14.4 Tests
 
 Unit: `designedTheme()` for each template and the live look; no `themeWarnings()` for a few hundred accent and background colours; fonts
-and named choices kept; brand input limits. Integration: `set_brand` and `get_brand` per store and for the platform, a claim in the tagline
+and named choices kept; brand input limits; the monogram's letters, the marks' SVG (paths only, viewBox fitted) and their colours at 3:1. Integration: `set_brand` and `get_brand` per store and for the platform, a claim in the tagline
 refused; `design_look` adds an install that is not live and changes nothing visitors see; switching to it makes the designed theme the
-store's; a font not in the catalogue is refused.
+store's; a font not in the catalogue is refused. F2a, with a stand-in font made by `opentype.js` and a stand-in for Google and Storage:
+the three marks kept in the library at their sizes, a name with no letters the font draws refused, `set_header_footer`'s `icon` refusing a
+picture that is not square.

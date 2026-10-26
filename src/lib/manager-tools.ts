@@ -384,6 +384,7 @@ export const TOOL_WORDS: Record<string, string> = {
   design_look: "Designing the look",
   get_brand: "Reading the brand",
   set_brand: "Keeping the brand",
+  make_brand_marks: "Drawing the logo and icon",
   look_at_page: "Looking at the page",
   look_at_store: "Looking at the store",
   get_page_look: "Reading what the look found",

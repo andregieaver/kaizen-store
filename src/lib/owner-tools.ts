@@ -21,6 +21,7 @@ import { backorderSummary, setStockSummary } from "./stock-tools";
 import { featureSwitchSummaryOf, listFeaturesInput, setFeatureInput } from "./feature-tools";
 import { addThemeInput, listThemesInput, makeThemeLiveInput, tryThemeInput } from "./design-tools";
 import { brandInput } from "./brand";
+import { brandMarksInput } from "./brand-marks";
 import { designLookInput } from "./brand-design";
 import { compareOptionsInput, listResearchNotesInput, readWebPageInput, saveResearchNoteInput, searchWebInput } from "./research";
 import { archiveOrdersInput, createDraftOrderInput, listDraftOrdersInput, listOrdersInput, sendDraftOrderInput, sendDraftSummary, tagOrdersInput } from "./order-ops-tools";
@@ -165,6 +166,11 @@ export const BRAND_TOOLS = [
     "set_brand",
     "Keeps the brand in words: a tagline customers may see (no claims the business cannot show), its voice, its audience, up to five values and up to ten words to avoid. Only the fields given change. Only staff see it, except the tagline where the store shows it.",
     brandInput,
+  ),
+  tool(
+    "make_brand_marks",
+    "Draws the brand's logo (for light and for dark backgrounds) and its icon (one or two initials on the accent) from the brand's name in its own font and the live theme's colours, and keeps them in the media library: visitors see nothing until set_header_footer puts them in place. Make it after the look is live, so the colours and font are the brand's.",
+    brandMarksInput,
   ),
 ] as const satisfies readonly OwnerTool[];
 

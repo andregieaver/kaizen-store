@@ -405,6 +405,14 @@ export const setHeaderFooterInput = z.object({
   footer_menu: z.string().trim().min(1).max(MENU_NAME_MAX).nullable().optional().describe("The menu the standard footer shows, as header_menu."),
   logo: z.string().trim().min(1).max(1000).nullable().optional().describe("The logo's address in the media library; null for none (the site's name shows); left out to keep it."),
   logo_dark: z.string().trim().min(1).max(1000).nullable().optional().describe("The logo for dark backgrounds, as logo."),
+  icon: z
+    .string()
+    .trim()
+    .min(1)
+    .max(1000)
+    .nullable()
+    .optional()
+    .describe("The site's icon in browser tabs: a square picture of at least 256 pixels from the media library (make_brand_marks makes one); null for the standard icon; left out to keep it."),
 });
 export type SetHeaderFooterArgs = z.output<typeof setHeaderFooterInput>;
 
@@ -514,12 +522,13 @@ export function placeSummary(place: StorePlace, title: string | null, name: stri
 }
 
 /** A header and footer change in words, for the owner's approval, from the names the server found. */
-export function headerFooterSummary(change: { header?: string | null; footer?: string | null; logo?: boolean | null; logoDark?: boolean | null }): string {
+export function headerFooterSummary(change: { header?: string | null; footer?: string | null; logo?: boolean | null; logoDark?: boolean | null; icon?: boolean | null }): string {
   const parts = [
     change.header !== undefined && (change.header === null ? "the header shows no menu" : `the header shows the menu "${change.header}"`),
     change.footer !== undefined && (change.footer === null ? "the footer shows no menu" : `the footer shows the menu "${change.footer}"`),
     change.logo !== undefined && (change.logo ? "a new logo" : "no logo (the site's name shows)"),
     change.logoDark !== undefined && (change.logoDark ? "a new logo for dark backgrounds" : "no logo for dark backgrounds"),
+    change.icon !== undefined && (change.icon ? "a new icon in browser tabs" : "the standard icon in browser tabs"),
   ].filter((part): part is string => typeof part === "string");
   return parts.length > 0 ? `Change the standard header and footer: ${parts.join("; ")}.` : "Change nothing in the header and footer.";
 }
