@@ -241,7 +241,7 @@
       "was": null
     },
     "weight": 2,
-    "gap": "The store's Home shows the top three alerts (eleven kinds: conversion drop, weekday revenue, refund rate, CAC, stock-outs, checkout abandonment, discount creep, targets, cost coverage, good news) with figures and a page to open (D152), the full list is on the Analytics overview and the assistant has analytics_alerts. All of it is worked out on read, in code, from analytics: nothing is pushed (no morning or weekly briefing by email or in the admin), and nothing outside analytics (catalogue, SEO, marketing) is suggested. Since D309 the autopilot emails a weekly report (sales and orders counted in code, goals, an optional checked note) and a daily digest, but only to people whose plans run, not built from the alerts and with no switch of its own. Since D328 the autopilot also looks at each goal again on its own and proposes (or starts) the next plan, from the goal's figures rather than the alerts.",
+    "gap": "The store's Home shows the top three alerts (eleven kinds: conversion drop, weekday revenue, refund rate, CAC, stock-outs, checkout abandonment, discount creep, targets, cost coverage, good news) with figures and a page to open (D152), the full list is on the Analytics overview and the assistant has analytics_alerts. All of it is worked out on read, in code, from analytics: nothing is pushed (no morning or weekly briefing by email or in the admin), and nothing outside analytics (catalogue, SEO, marketing) is suggested. Since D309 the autopilot emails a weekly report (sales and orders counted in code, goals, an optional checked note) and a daily digest, but only to people whose plans run, not built from the alerts and with no switch of its own. Since D328 the autopilot also looks at each goal again on its own and proposes (or starts) the next plan, from the goal's figures rather than the alerts. Since D331, with *React to what happens* on, an urgent or warning alert (checked once a day) brings a turn of the autopilot at once that may plan what to do about it (started as a review's plan, by the owner's setting), as does a customer waiting for a person (a staff note) and an A/B test that ended by itself (choosing the winner within the owner's levels).",
     "bucket": "A",
     "wave": 8,
     "criteria": [
@@ -259,7 +259,8 @@
         "src/components/admin/analytics/alerts.tsx",
         "src/server/control-center.ts",
         "src/server/autopilot-reports.ts",
-        "src/server/autopilot-reviews.ts"
+        "src/server/autopilot-reviews.ts",
+        "src/server/autopilot-events.ts"
       ],
       "tests": [
         "src/lib/analytics-alerts.test.ts",

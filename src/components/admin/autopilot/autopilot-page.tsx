@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { ActionForm, type FormState } from "@/components/admin/action-form";
-import { Button, ButtonLink, Card, Chip, List, ListRow, PageHeader, RowActions, RowLead } from "@/components/admin/ui";
+import { Button, ButtonLink, Card, Chip, List, ListRow, PageHeader, RowActions, RowFact, RowLead } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import type { AdminLang } from "@/lib/admin-lang";
 import type { AssistantMessages } from "@/lib/admin-messages/assistant.en";
@@ -68,6 +68,7 @@ export function AutopilotPage({
       )}
       {tab === "decisions" && <Decisions overview={overview} words={a} actions={actions} links={links} />}
       {tab === "decisions" && overview.report && <Report report={overview.report} words={a} />}
+      {tab === "decisions" && overview.events && overview.events.length > 0 && <Events events={overview.events} words={a} />}
       {tab === "plans" && <Plans plans={overview.plans} words={a} action={actions.plan} assistantHref={assistantHref} />}
       {tab === "goals" && <Goals goals={overview.goals} reviews={overview.reviews} words={a} action={actions.dropGoal} />}
       {tab === "settings" && <Settings overview={overview} words={a} action={actions.settings} />}
@@ -227,6 +228,23 @@ function PlanCard({ plan, steps, words: a, action }: { plan: Plan; steps: PlanSt
   );
 }
 
+function Events({ events, words: a }: { events: NonNullable<AutopilotOverview["events"]>; words: Words }) {
+  const e = a.events;
+  return (
+    <Card title={e.title}>
+      <List label={e.title}>
+        {events.map((event) => (
+          <ListRow key={event.id}>
+            <RowLead title={e.kinds[event.kind]} sub={event.outcome ?? undefined} />
+            <RowFact>{event.at.slice(0, 10)}</RowFact>
+            <Chip signal={event.status === "done" ? "positive" : event.status === "failed" ? "danger" : "neutral"}>{e.statuses[event.status as keyof typeof e.statuses] ?? event.status}</Chip>
+          </ListRow>
+        ))}
+      </List>
+    </Card>
+  );
+}
+
 function Goals({ goals, reviews, words: a, action }: { goals: AutopilotOverview["goals"]; reviews: AutopilotOverview["reviews"]; words: Words; action: Action }) {
   const g = a.goals;
   if (goals.length === 0) return <Card><p className="text-body text-muted">{g.empty}</p></Card>;
@@ -310,6 +328,22 @@ function Settings({ overview, words: a, action }: { overview: AutopilotOverview;
             <span className="text-caption text-muted">{s.plansPerWeekHelp}</span>
           </label>
         </fieldset>
+        {overview.events && (
+          <fieldset className="flex flex-col gap-3">
+            <legend className="mb-2 text-title text-ink">{s.reacting}</legend>
+            <label className="flex items-start gap-3">
+              <input type="checkbox" name="reacts" defaultChecked={settings.planning.reacts} className="mt-1" />
+              <span className="flex flex-col">
+                <span className="text-body-strong text-ink">{s.reacts}</span>
+                <span className="text-caption text-muted">{s.reactsHelp}</span>
+              </span>
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              {s.waitMinutes}
+              <input name="wait_minutes" type="number" min={5} max={240} defaultValue={settings.planning.waitMinutes} className="min-h-10 max-w-40 rounded-lg border border-edge bg-card px-3 text-sm" />
+            </label>
+          </fieldset>
+        )}
         <fieldset className="flex flex-col gap-3">
           <legend className="mb-2 text-title text-ink">{s.levels}</legend>
           {AUTONOMY_AREAS.map((area) => (

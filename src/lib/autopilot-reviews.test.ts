@@ -7,8 +7,8 @@ import { REVIEW_PLAN_TOOLS, reviewMessage, startDecision } from "./autopilot-rev
 
 describe("planning settings", () => {
   it("are off and ask first unless set, and an unreadable value falls back to that", () => {
-    expect(readAutonomy({}).planning).toEqual({ continues: false, starts: "ask", reviewDays: 7, plansPerWeek: 3 });
-    expect(readAutonomy({ planning: { continues: true, starts: "auto" } }).planning).toEqual({ continues: true, starts: "auto", reviewDays: 7, plansPerWeek: 3 });
+    expect(readAutonomy({}).planning).toEqual({ continues: false, starts: "ask", reviewDays: 7, plansPerWeek: 3, reacts: false, waitMinutes: 15 });
+    expect(readAutonomy({ planning: { continues: true, starts: "auto" } }).planning).toEqual({ continues: true, starts: "auto", reviewDays: 7, plansPerWeek: 3, reacts: false, waitMinutes: 15 });
     expect(readAutonomy({ planning: { reviewDays: 0 } }).planning.continues).toBe(false);
   });
 });

@@ -47,6 +47,7 @@ proportion (autonomy levels and budgets the owner sets), a voice (a decisions pa
 | D | D328 | The autopilot keeps going: it looks at each active goal again when a plan for it ends and on a schedule, makes the next plan, and starts it itself where the owner allows | `ai.workflow-builder-with-ai-generation`, `ai.proactive-insights` |
 | E | D329 | Web research: search the web through a pluggable search service (Brave first) on Kaizena Flow's key, metered; read a public page; keep findings with their sources; compare options with scores worked out in code | `ai.admin-ai-assistant-that-performs-tasks` |
 | F | D330 | Brand and look: a brand profile (tagline, voice, audience, values, words to avoid), a look of the store's own designed from a few brand colours and fonts (palette and contrast worked out in code, added to the theme library to try and make live), a logo and icon drawn by code from the brand's name in its font, and the brand given to the writers as guidance with its words to avoid found by code | `ai.ai-page-and-theme-generation` |
+| G | D331 | Reacting to events: a customer waiting for a person, an A/B test that ended by itself and an urgent analytics alert each bring a turn of the autopilot at once, within the owner's levels and budgets | `ai.proactive-insights`, `ai.workflow-builder-with-ai-generation` |
 
 Each unit is its own commit (or a few), with its own tests, decision row and parity moves, shipped before the next starts. Each unit's
 section below is written in full before it is built; L is outlined and gets its detail when its turn comes.
@@ -1035,3 +1036,66 @@ the three marks kept in the library at their sizes, a name with no letters the f
 picture that is not square. F2b: `findAvoided()` (whole words, any case, letters beyond ASCII), the guide (empty brand nothing, no tagline
 in the chat's), each writer's instructions carrying it (not a translation's), the page studio leaving out sentences with a word to avoid,
 broadcasts counting one as a claim; the product writer asking again once and returning the words that stay.
+
+## 15. Unit G (D331): reacting to events
+
+Written on 2026-10-26 from the rating after unit F: the autopilot works on a schedule (plans, reviews), and nothing it does is set off by
+what happens in the store. Unit G adds **events**: three things that happen, each found by code, each answered by one headless turn of the
+autopilot with only the tools that thing needs, within the owner's levels and budgets as every autopilot turn is. What counts as an event,
+when it is answered and what the turn may touch are the code's; what to say or do inside those limits is the model's.
+
+### 15.1 The events
+
+| Kind | Found when | The turn may | Never |
+|---|---|---|---|
+| `support_waiting` | A store's conversation has waited for a person (`handler = 'queue'`, open) longer than the owner's minutes (`waitMinutes`, 5 to 240, default 15) | Read the conversation, the customer's orders and the store's facts with read-only tools; write one staff note (`add_support_note`): what it checked and a reply a person could send | Write to the customer (`reply_to_support` is not offered: an answer in a person's name must come from the person), end or take over the conversation |
+| `test_ended` | An A/B test stopped by itself (`stop_reason` `guardrail` or `planned_end`) in the last 7 days and is still `stopped` | Read its results (`explain_results`) and choose with `apply_winner`, gated as ever: it runs only where the owner's level for the website allows, else it waits for their yes | Choose a version the verdict does not support; touch another test |
+| `alert` | An urgent or warning alert of `alertsFor()` (the Analytics alerts), checked once a day per store; one event per alert and ISO week | Look with a goal review's read tools and make at most one plan, which starts as a review's plan does (`startDecision()`, the plans a week) | Change anything itself in the turn |
+
+Each event is a row of `commerce.autopilot_events` (store, kind, a reference: the conversation, the test, or the alert and its week;
+unique per store, kind and reference, so an event is answered once), written only by `src/server/autopilot-events.ts`. Its facts (the
+conversation's id and how long it waited, the test's id, name and why it stopped, the alert's words, severity and evidence) are written
+by code and given to the model as data.
+
+### 15.2 Settings (`planning.reacts`)
+
+`autopilot_settings.planning` gains, read only through `autonomySettingsSchema`:
+
+- `reacts` (off by default): *React to what happens*. Off, nothing in this unit runs.
+- `waitMinutes` (5 to 240, default 15): how long a customer waits for a person before the autopilot looks.
+
+The person the turns run for is the one who last saved the settings (`autopilot_settings.updated_by`), read again before each event as a
+review's person is (`principalOf()`): gone, not an owner any more, or the store not open, the event is `skipped` with the reason. The
+autopilot paused, the AI budget spent or `reacts` off, nothing is claimed.
+
+### 15.3 Finding and answering
+
+From `/api/cron/autopilot` (every minute), after the reviews:
+
+- `detectEvents()`: per store with `reacts` on and the autopilot not paused, inserts the waiting conversations and the tests that ended
+  (one query each), and once a day (`ALERT_CHECK_HOURS`, kept in `commerce.autopilot_event_checks`) the store's alerts through
+  `alertsForStore()`. Conflicts on the reference do nothing.
+- `runEvents()`: takes up to `EVENTS_PER_RUN` (2) pending events, at most one per store, under `EVENTS_PER_DAY` (12) per store in 24
+  hours, each claimed (`running`, `claimed_until`); a run that died leaves it `failed` once its claim passes. A pending event older than
+  `EVENT_STALE_HOURS` (24) is `skipped` as stale; a support event whose conversation has been answered, taken or ended since is `skipped`
+  (*a person answered*); a test event whose test was applied or discarded since is `skipped`.
+- The turn is `runTurn({ scheduled: true, autopilot: { event: kind } })` in one conversation per store for events (`Autopilot: what
+  happened`), for the feature `autopilot`, with the kind's tools only (`EVENT_TOOLS`), the kind's own lines (`EVENT_LINES`) and the event's
+  message (`eventMessage()`). Gated calls meet `autopilotDecision()` as in a step; kept ones wait on the Decisions page.
+- After the turn: an `alert` event's plan is handled as a review's (the last one kept, `startDecision()`); the event is `done` with the
+  turn's last sentences as its outcome (500 characters), `failed` on an AI error or a time-out.
+
+### 15.4 What the owner sees
+
+Settings: *React to what happens* (one switch) and, under it, the minutes a customer waits (Lisa's). The Autopilot page: *What the
+autopilot reacted to*, the last events with what came of each. The activity log says the autopilot wrote the note or applied the winner
+(`acted_by = 'autopilot'`).
+
+### 15.5 Tests
+
+Unit: the settings read with defaults; `eventMessage()` for each kind carries its facts; `EVENT_TOOLS` holds no tool that writes to a
+customer and every name is a tool. Integration (a stand-in turn): nothing with `reacts` off; a conversation waiting longer than the
+minutes becomes one event, answered once with a note, and a conversation answered before its turn is skipped; a test stopped by the
+guardrail becomes an event whose `apply_winner` is kept for a yes at *Ask me first* and runs at *Just do it*; an alert becomes an event
+whose plan waits as a review's does; another store's events are never touched; the daily limit holds.
+

@@ -17,7 +17,7 @@ const html = (element: Parameters<typeof renderToString>[0]) =>
 const action = async () => ({ status: "ok" as const, messages: [] });
 const actions = { decide: action, answer: action, plan: action, dropGoal: action, settings: action };
 
-const empty: AutopilotOverview = { calls: [], questions: [], ownerOnly: [], plans: [], goals: [], reviews: [], settings: DEFAULT_AUTONOMY, costMicros: 1_250_000, report: null };
+const empty: AutopilotOverview = { calls: [], questions: [], ownerOnly: [], plans: [], goals: [], reviews: [], events: [], settings: DEFAULT_AUTONOMY, costMicros: 1_250_000, report: null };
 
 const page = (overview: AutopilotOverview, tab: AutopilotTab = "decisions", lang: "en" | "nb" = "en") =>
   html(createElement(AutopilotPage, { overview, base: "/admin/demo/assistant/autopilot", assistantHref: "/admin/demo/assistant", siteName: "Demo", tab, lang, actions, links: { payments: "/admin/demo/settings/payments" } }));
@@ -131,3 +131,22 @@ describe("Goals and settings", () => {
     expect(out).toContain("Always asks, whatever you choose");
   });
 });
+
+describe("What the autopilot reacted to (D331)", () => {
+  const event = { id: "e1", kind: "support_waiting" as const, status: "done", outcome: "Left a note about a late parcel.", at: "2026-10-26T08:00:00Z" };
+
+  it("lists the store's events under the decisions, and says nothing when there are none", () => {
+    expect(page({ ...empty, events: [event] })).toContain("What the autopilot reacted to");
+    expect(page({ ...empty, events: [event] })).toContain("A customer waited for a person");
+    expect(page({ ...empty, events: [event] })).toContain("Left a note about a late parcel.");
+    expect(page(empty)).not.toContain("What the autopilot reacted to");
+    expect(page({ ...empty, events: [event] }, "decisions", "nb")).toContain("En kunde ventet på et menneske");
+  });
+
+  it("offers the switch on a store's settings, never on the platform's", () => {
+    expect(page(empty, "settings")).toContain("React to what happens");
+    expect(page(empty, "settings")).toContain('name="wait_minutes"');
+    expect(page({ ...empty, events: null }, "settings")).not.toContain("React to what happens");
+  });
+});
+

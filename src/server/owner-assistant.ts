@@ -49,6 +49,7 @@ import type { Store } from "./stores";
 import { effectiveFeatures } from "@/lib/store-features";
 import { can, canOpenPath, type PermissionHolder } from "@/lib/permissions";
 import { UNTRUSTED_TEXT } from "@/lib/prompt-safety";
+import { EVENT_LINES, type EventKind } from "@/lib/autopilot-events";
 
 type Row = Record<string, unknown>;
 
@@ -419,6 +420,8 @@ export type AutopilotTurn = {
   stepId?: string;
   /** A review of a goal (D328): only looking and planning, with the review's own lines. */
   review?: boolean;
+  /** An event the autopilot reacts to (D331): the kind's own lines; its tools are the kind's (`EVENT_TOOLS`). */
+  event?: EventKind;
   tools: readonly string[];
   settings: AutonomySettings;
   told: string[];
@@ -530,7 +533,7 @@ export async function runTurn(input: TurnInput): Promise<void> {
         memories,
         voice: input.voice,
         waiting: waiting.map((row) => ({ id: String(row.id), summary: String(row.summary) })),
-      }) + (autopilot ? `\n\n${autopilot.review ? REVIEW_LINES : AUTOPILOT_LINES}` : ""),
+      }) + (autopilot ? `\n\n${autopilot.review ? REVIEW_LINES : autopilot.event ? EVENT_LINES[autopilot.event] : AUTOPILOT_LINES}` : ""),
     },
     ...history.map((row) => ({ role: row.role === "user" ? ("user" as const) : ("assistant" as const), content: String(row.content) })),
     { role: "user", content: text },

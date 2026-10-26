@@ -10,6 +10,7 @@ import type { Account } from "./auth";
 import { goalsWithProgress, type GoalWithProgress } from "./autopilot-goals";
 import { listPlans, loadSteps, type Plan, type PlanStep, type StepQuestion } from "./autopilot-plans";
 import { latestReport } from "./autopilot-reports";
+import { latestEvents, type ReactedEvent } from "./autopilot-events";
 import { latestReviews, type GoalReview } from "./autopilot-reviews";
 import { autonomyFor, autopilotCostThisMonth } from "./autopilot-settings";
 import { getSetupProgress } from "./setup";
@@ -37,6 +38,8 @@ export type AutopilotOverview = {
   goals: GoalWithProgress[];
   /** Each goal's latest review (D328). */
   reviews: GoalReview[];
+  /** What the autopilot reacted to lately (D331); a store's only, so the platform has none and no setting for it. */
+  events: ReactedEvent[] | null;
   settings: AutonomySettings;
   /** The autopilot's AI cost this month in millionths of a dollar. */
   costMicros: number;
@@ -55,7 +58,7 @@ const CALL = z.object({
 
 export async function autopilotOverview(a: OverviewActor): Promise<AutopilotOverview> {
   const scope = a.store ? sql`ap.store_id = ${a.store.id}::uuid` : sql`ap.store_id is null`;
-  const [callRows, plansAll, goals, settings, costMicros, progress, report, reviews] = await Promise.all([
+  const [callRows, plansAll, goals, settings, costMicros, progress, report, reviews, events] = await Promise.all([
     typedRows(
       CALL,
       sql`
@@ -75,6 +78,7 @@ export async function autopilotOverview(a: OverviewActor): Promise<AutopilotOver
     a.store ? getSetupProgress(a.store) : Promise.resolve(null),
     latestReport(a),
     latestReviews(a.store?.id ?? null),
+    a.store ? latestEvents(a.store.id) : Promise.resolve(null),
   ]);
   const owner = !a.store || !a.holder || can(a.holder, "owner");
   const mine = plansAll.filter((p) => owner || p.accountId === a.account.id);
@@ -100,6 +104,7 @@ export async function autopilotOverview(a: OverviewActor): Promise<AutopilotOver
     plans,
     goals,
     reviews,
+    events,
     settings,
     costMicros,
     report,

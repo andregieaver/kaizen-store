@@ -3354,6 +3354,20 @@
       "when": 1793003266826,
       "tag": "20261026082746_exclusive_catalogues_sql",
       "breakpoints": true
+    },
+    {
+      "idx": 479,
+      "version": "7",
+      "when": 1793005690009,
+      "tag": "20261026090809_autopilot_events",
+      "breakpoints": true
+    },
+    {
+      "idx": 480,
+      "version": "7",
+      "when": 1793005719107,
+      "tag": "20261026090839_autopilot_events_rls",
+      "breakpoints": true
     }
   ]
 }

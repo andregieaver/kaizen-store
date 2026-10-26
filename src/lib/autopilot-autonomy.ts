@@ -139,8 +139,12 @@ export const autonomySettingsSchema = z.object({
       reviewDays: z.number().int().min(1).max(30).default(7),
       /** Plans a review may start itself in seven days; past it a plan waits for a yes. */
       plansPerWeek: z.number().int().min(1).max(20).default(3),
+      /** *React to what happens* (D331, `docs/ai-autopilot.md` 15.2): off, no event is found or answered. */
+      reacts: z.boolean().default(false),
+      /** Minutes a customer waits for a person before the autopilot looks (D331). */
+      waitMinutes: z.number().int().min(5).max(240).default(15),
     })
-    .default({ continues: false, starts: "ask", reviewDays: 7, plansPerWeek: 3 }),
+    .default({ continues: false, starts: "ask", reviewDays: 7, plansPerWeek: 3, reacts: false, waitMinutes: 15 }),
 });
 export type AutonomySettings = z.output<typeof autonomySettingsSchema>;
 

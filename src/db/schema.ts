@@ -13160,6 +13160,58 @@ export const autopilotReviews = commerce.table(
   ],
 );
 
+/**
+ * What the autopilot reacted to (D331, `docs/ai-autopilot.md` 15): a customer waiting for a person, an A/B test that ended by itself or an
+ * urgent analytics alert, found by code and answered once by a headless turn; written only by `src/server/autopilot-events.ts`.
+ */
+export const autopilotEvents = commerce.table(
+  "autopilot_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id, { onDelete: "cascade" }),
+    /** `support_waiting`, `test_ended` or `alert` (`EVENT_KINDS`). */
+    kind: text("kind").notNull(),
+    /** What makes it once: the conversation, the test, or the alert and its ISO week. */
+    ref: text("ref").notNull(),
+    /** What happened, written by code (`EventFacts`). */
+    facts: jsonb("facts").notNull().default({}),
+    status: text("status").notNull().default("pending"),
+    claimedUntil: timestamp("claimed_until", { withTimezone: true }),
+    /** Whose name the turn ran in: the one who last saved the autopilot's settings, read again. */
+    accountId: uuid("account_id").references(() => accounts.id, { onDelete: "set null" }),
+    conversationId: uuid("conversation_id"),
+    planId: uuid("plan_id").references(() => assistantPlans.id, { onDelete: "set null" }),
+    started: boolean("started").notNull().default(false),
+    outcome: text("outcome"),
+    createdAt: createdAt(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (t) => [
+    foreignKey({ name: "autopilot_events_conversation_fk", columns: [t.conversationId], foreignColumns: [assistantConversations.id] }).onDelete("set null"),
+    unique("autopilot_events_ref_key").on(t.storeId, t.kind, t.ref),
+    index("autopilot_events_pending_idx").on(t.createdAt).where(sql`status = 'pending'`),
+    index("autopilot_events_store_idx").on(t.storeId, t.createdAt),
+    index("autopilot_events_account_idx").on(t.accountId),
+    index("autopilot_events_conversation_idx").on(t.conversationId),
+    index("autopilot_events_plan_idx").on(t.planId),
+    check("autopilot_events_kind", sql`${t.kind} in ('support_waiting', 'test_ended', 'alert')`),
+    check("autopilot_events_status", sql`${t.status} in ('pending', 'running', 'done', 'skipped', 'failed')`),
+    check("autopilot_events_ref", sql`length(${t.ref}) between 1 and 200`),
+    check("autopilot_events_facts", sql`jsonb_typeof(${t.facts}) = 'object'`),
+    check("autopilot_events_outcome", sql`${t.outcome} is null or length(${t.outcome}) <= 500`),
+  ],
+);
+
+/** When a store's analytics alerts were last looked at for events (D331), so the costly read runs once a day. */
+export const autopilotEventChecks = commerce.table("autopilot_event_checks", {
+  storeId: uuid("store_id")
+    .primaryKey()
+    .references(() => stores.id, { onDelete: "cascade" }),
+  alertsAt: timestamp("alerts_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // ---------------------------------------------------------------------------
 // Web research (D329, `docs/ai-autopilot.md` 13)
 // ---------------------------------------------------------------------------

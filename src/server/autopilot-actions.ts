@@ -96,6 +96,8 @@ export function saveSettings(p: Principal, form: FormData): Promise<FormState> {
         starts: (PLAN_STARTS as readonly string[]).includes(text(form, "plan_starts")) ? (text(form, "plan_starts") as PlanStarts) : "ask",
         reviewDays: Number(text(form, "review_days") || 7),
         plansPerWeek: Number(text(form, "plans_per_week") || 3),
+        reacts: text(form, "reacts") === "on",
+        waitMinutes: Number(text(form, "wait_minutes") || 15),
       },
     });
     return ok;
