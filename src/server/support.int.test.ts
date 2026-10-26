@@ -695,6 +695,38 @@ describe("asking for a person, and the two modes (step 5: C7, C8, C20)", () => {
     expect(await alerts()).toHaveLength(1);
   });
 
+  it("tries a refused waiting alert again and marks the conversation only once the person was told", async () => {
+    const { EMAIL_RETRY_MINUTES, sendWaitingAlerts } = await import("./support-email");
+    const d = await desk("waiting-retry", "people");
+    const asked = await say(d.ctx, "Hello?");
+    const id = asked.conversation!.id;
+    await db().execute(sql`update commerce.support_conversations set queued_at = now() - interval '10 minutes' where id = ${id}::uuid`);
+    let refuse = true;
+    vi.stubGlobal("fetch", async () => {
+      return refuse ? Response.json({ name: "validation_error", message: "domain not verified" }, { status: 403 }) : Response.json({ id: "re_sent" });
+    });
+    vi.stubEnv("RESEND_API_KEY", "re_test");
+    vi.stubEnv("EMAIL_FROM", "support@example.com");
+    try {
+      const alerts = async () =>
+        db().execute<Row>(sql`select status from commerce.email_messages where kind = 'support.waiting' and store_id = ${d.id}::uuid order by created_at`);
+      await sendWaitingAlerts();
+      await sendWaitingAlerts();
+      // The database is shared with other tests: this store's alerts only.
+      expect(await alerts()).toHaveLength(1);
+      expect(await conversationRow(id)).toMatchObject({ waiting_alert_at: null });
+      refuse = false;
+      await sendWaitingAlerts(new Date(Date.now() + (EMAIL_RETRY_MINUTES + 1) * 60_000));
+      expect((await alerts()).map((r) => r.status)).toEqual(["failed", "sent"]);
+      expect((await conversationRow(id)).waiting_alert_at).not.toBeNull();
+      await sendWaitingAlerts(new Date(Date.now() + 2 * (EMAIL_RETRY_MINUTES + 1) * 60_000));
+      expect(await alerts()).toHaveLength(2);
+    } finally {
+      vi.unstubAllGlobals();
+      vi.unstubAllEnvs();
+    }
+  });
+
   it("ends a conversation with a person after a quiet day, and one nobody took from the queue after 14 days", async () => {
     const { agentAct } = await import("./support-agent");
     const d = await desk("idle-ends", "people");

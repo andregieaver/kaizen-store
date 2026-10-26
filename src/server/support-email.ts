@@ -47,25 +47,28 @@ export const REPLY_AFTER_SECONDS = 60;
 
 const TOLD: readonly SendOutcome[] = ["sent", "logged", "duplicate"];
 
-/** An answer email Resend refused is tried again this many times in all, `REPLY_RETRY_MINUTES` apart, each try a kept email of its own. */
-export const REPLY_TRIES = 4;
-export const REPLY_RETRY_MINUTES = 10;
+/** A support email Resend refused is tried again this many times in all, `EMAIL_RETRY_MINUTES` apart, each try a kept email of its own. */
+export const EMAIL_TRIES = 4;
+export const EMAIL_RETRY_MINUTES = 10;
+
+type EmailTry = { key: string } | { skip: "told" | "later" | "gave_up" };
 
 /**
- * The key of this try at an answer email, or null when none is due: the first try is `base`; after a failure (a `failed` row and no other),
- * the next is `base:retry{n}` once the last is `REPLY_RETRY_MINUTES` old, until `REPLY_TRIES`. A key reused would come back `duplicate`, which
- * counts as told, so a failed answer was otherwise never sent.
+ * The key of this try at a support email (`base` first, then `base:retry{n}` once the last failure is `EMAIL_RETRY_MINUTES` old, until
+ * `EMAIL_TRIES`), or why none is due. A key reused would come back `duplicate`, which counts as told, so a failed email was otherwise never
+ * sent again.
  */
-async function replyTry(base: string, now: Date): Promise<string | null> {
+async function emailTry(base: string, now: Date): Promise<EmailTry> {
   const [row] = await db().execute<Row>(sql`
     select count(*)::int as tries, coalesce(bool_or(status <> 'failed'), false) as told, max(created_at) as last
     from commerce.email_messages where idempotency_key = ${base} or idempotency_key like ${`${base}:retry%`}
   `);
   const tries = Number(row?.tries ?? 0);
-  if (tries === 0 || row?.told) return base;
-  if (tries >= REPLY_TRIES) return null;
-  if (new Date(String(row?.last)).getTime() > now.getTime() - REPLY_RETRY_MINUTES * 60_000) return null;
-  return `${base}:retry${tries}`;
+  if (tries === 0) return { key: base };
+  if (row?.told) return { skip: "told" };
+  if (tries >= EMAIL_TRIES) return { skip: "gave_up" };
+  if (new Date(String(row?.last)).getTime() > now.getTime() - EMAIL_RETRY_MINUTES * 60_000) return { skip: "later" };
+  return { key: `${base}:retry${tries}` };
 }
 
 export type SupportEmailRun = { replies: number; waiting: number; failed: number };
@@ -146,8 +149,14 @@ async function sendReply(row: Row, now: Date): Promise<SendOutcome | null> {
   `);
   if (messages.length === 0) return null;
   const lastSeq = Math.max(...messages.map((m) => Number(m.seq)));
-  const key = await replyTry(`support.reply:${id}:${lastSeq}`, now);
-  if (key === null) return null;
+  const due = await emailTry(`support.reply:${id}:${lastSeq}`, now);
+  if ("skip" in due && due.skip === "later") return null;
+  if ("skip" in due) {
+    // Told already (a run that stopped before marking it), or given up after the last try: marked so the job stops picking it.
+    await db().execute(sql`update commerce.support_conversations set email_sent_seq = greatest(email_sent_seq, ${lastSeq}) where id = ${id}::uuid`);
+    return due.skip === "told" ? "duplicate" : "failed";
+  }
+  const key = due.key;
   const locale = String(row.locale);
   const words = supportEmailText(locale);
 
@@ -284,13 +293,24 @@ export async function sendWaitingAlerts(now: Date = new Date(), limit = 100): Pr
         return email;
       };
       const queuedAt = new Date(String(row.queued_at)).toISOString();
+      // A person whose alert failed is tried again later (`emailTry()`); the conversation waits unmarked until each was told or given up.
+      let pending = false;
       for (const person of people) {
-        const outcome = await sendEmail({ storeId, kind: "support.waiting", to: person.email, email: emailIn(person.lang), fromName: "Kaizena Flow", idempotencyKey: `support.waiting:${id}:${queuedAt}:${person.id}` });
+        const due = await emailTry(`support.waiting:${id}:${queuedAt}:${person.id}`, now);
+        if ("skip" in due) {
+          if (due.skip === "later") pending = true;
+          continue;
+        }
+        const outcome = await sendEmail({ storeId, kind: "support.waiting", to: person.email, email: emailIn(person.lang), fromName: "Kaizena Flow", idempotencyKey: due.key });
         if (TOLD.includes(outcome)) out.waiting += 1;
-        else out.failed += 1;
+        else {
+          out.failed += 1;
+          pending = true;
+        }
       }
-      // Marked whatever was sent: one alert for each time it entered the queue (a new time in the queue clears the mark). A store's
-      // integrations hear of it once too, in the same statement (event `support.waiting`, step 14: the count and the inbox, never who).
+      if (pending) continue;
+      // Marked once everyone was told or given up: one alert for each time it entered the queue (a new time in the queue clears the mark).
+      // A store's integrations hear of it once too, in the same statement (event `support.waiting`, step 14: the count and the inbox, never who).
       await db().execute(sql`
         with marked as (
           update commerce.support_conversations set waiting_alert_at = now() where id = ${id}::uuid and waiting_alert_at is null returning id, store_id
