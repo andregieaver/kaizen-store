@@ -9,9 +9,11 @@ import { marketPath } from "@/lib/paths";
 import { defaultReviewName } from "@/lib/reviews";
 import { getCustomer } from "@/server/customers";
 import { reviewableLines } from "@/server/reviews";
+import { reviewPictureStorage } from "@/server/review-picture-store";
 import { resolveFeatureShop } from "@/server/shop";
 
 import { deleteReviewAction, saveReviewAction } from "../actions";
+import { reviewFormPictures, reviewFormWords } from "../form-words";
 import { ReviewForm } from "../review-form";
 
 type Props = PageProps<"/s/[store]/[market]/account/reviews/[lineId]">;
@@ -54,16 +56,8 @@ async function ReviewLine({ params }: { params: Props["params"] }) {
       </div>
       <ReviewForm
         action={saveReviewAction.bind(null, store.slug, market.slug, line.lineId)}
-        words={{
-          rating: r.rating,
-          stars: [1, 2, 3, 4, 5].map((n) => r.starsOf(n)),
-          titleLabel: r.titleLabel,
-          bodyLabel: r.bodyLabel,
-          nameLabel: r.nameLabel,
-          nameHint: r.nameHint,
-          submit: review ? r.save : r.send,
-          problems: r.problem,
-        }}
+        words={reviewFormWords(r, review)}
+        pictures={reviewFormPictures(review, reviewPictureStorage() !== null, true)}
         initial={{
           rating: review?.rating ?? null,
           title: review?.title ?? "",

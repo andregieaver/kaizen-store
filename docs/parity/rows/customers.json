@@ -1156,7 +1156,7 @@
       "rechecked": true,
       "was": "partial"
     },
-    "gap": "Buyers review what they bought and received from My account or the link of the request email the store sends once per order some days after receipt (only to subscribed buyers, with the unsubscribe link), so every written review is a verified purchase; reviews wait in Products → Reviews unless the owner publishes at once, are published, hidden with a reason or answered by staff, who can never change a word or a star, and the product page shows the stars, the average, the newest reviews and how reviews are checked, with aggregateRating in the JSON-LD from published reviews only. Reviews written elsewhere are imported from CSV (marked imported, never verified, a file imported twice adds nothing) and all are exported as CSV. Not yet: pictures in reviews (G4) and stars on product cards.",
+    "gap": "Buyers review what they bought and received from My account or the link of the request email the store sends once per order some days after receipt (only to subscribed buyers, with the unsubscribe link), so every written review is a verified purchase; reviews wait in Products → Reviews unless the owner publishes at once, are published, hidden with a reason or answered by staff, who can never change a word or a star, and the product page shows the stars, the average, the newest reviews and how reviews are checked, with aggregateRating in the JSON-LD from published reviews only. Reviews written elsewhere are imported from CSV (marked imported, never verified, a file imported twice adds nothing) and all are exported as CSV. Buyers add up to three pictures to a review (G4), made smaller in the browser, checked by their bytes on the server, kept in a private bucket and shown only while the review is published; staff hide one picture alone. Not yet: stars on product cards.",
     "bucket": null,
     "wave": null,
     "criteria": [
@@ -1177,7 +1177,10 @@
         "supabase/migrations/20261021220512_product_reviews_rules.sql",
         "src/server/review-requests.ts",
         "src/server/review-import.ts",
-        "src/lib/review-import.ts"
+        "src/lib/review-import.ts",
+        "src/lib/review-pictures.ts",
+        "src/server/review-picture-store.ts",
+        "src/app/api/reviews/picture/[id]/route.ts"
       ],
       "tests": [
         "src/server/reviews.int.test.ts",
@@ -1186,7 +1189,9 @@
         "src/lib/structured-data.test.ts",
         "src/server/review-requests.int.test.ts",
         "src/server/review-import.int.test.ts",
-        "src/lib/review-import.test.ts"
+        "src/lib/review-import.test.ts",
+        "src/lib/review-pictures.test.ts",
+        "src/server/review-pictures.int.test.ts"
       ],
       "untested": false
     },

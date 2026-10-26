@@ -32,6 +32,7 @@ const READERS: Record<string, "real" | "template" | "both"> = {
   "src/server/stock-requests.ts": "real",
   "src/server/review-import.ts": "real",
   "src/server/review-requests.ts": "real",
+  "src/server/review-picture-store.ts": "real",
   "src/server/reviews.ts": "real",
   "src/server/content-grid.ts": "real",
   // Domains (D315): a template or a store template never buys one, and is never opened for buying.

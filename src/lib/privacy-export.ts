@@ -303,6 +303,8 @@ export type ReviewExportRow = {
   writtenAt: Ts;
   editedAt: Ts;
   answer: string | null;
+  /** The review's pictures (G4): each by the address that shows it to its signed-in author, and whether the store hides it. */
+  pictures: { address: string; hidden: boolean }[];
 };
 export type CustomFieldRow = { entity: "customer" | "order"; reference: string | null; group: string; label: string; value: string | null; locale: string | null };
 
@@ -792,6 +794,7 @@ export function shapeExport(input: ExportInput): ExportFile {
       writtenAt: iso(r.writtenAt),
       editedAt: iso(r.editedAt),
       answer: text(r.answer),
+      pictures: (r.pictures ?? []).map((p) => ({ address: p.address, hidden: p.hidden })),
     })),
     support: (input.support ?? []).map((c) => ({
       startedAt: iso(c.startedAt),

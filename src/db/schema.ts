@@ -88,7 +88,20 @@ import { CONSENT_EVENT_KINDS, SUBSCRIBE_SOURCES, SUBSCRIBER_STATUSES, UNSUBSCRIB
 import { PAYMENT_TERMS } from "../lib/payment-terms";
 import { BROADCAST_AUDIENCES, BROADCAST_STATUSES, RECIPIENT_STATUSES } from "../lib/broadcast-status";
 import { AUTOMATION_KINDS, SEND_OUTCOMES, STOCK_REQUEST_STATUSES } from "../lib/automation-kinds";
-import { HIDE_REASONS, PUBLISH_MODES, REQUEST_DAYS_DEFAULT, REQUEST_DAYS_MAX, REQUEST_DAYS_MIN, REVIEW_SOURCES, REVIEW_STATUSES } from "../lib/review-status";
+import {
+  HIDE_REASONS,
+  PUBLISH_MODES,
+  REQUEST_DAYS_DEFAULT,
+  REQUEST_DAYS_MAX,
+  REQUEST_DAYS_MIN,
+  REVIEW_PICTURE_BYTES,
+  REVIEW_PICTURE_SIZE,
+  REVIEW_PICTURE_TYPES,
+  REVIEW_PICTURES_MAX,
+  REVIEW_SOURCES,
+  REVIEW_STATUSES,
+  REVIEW_THUMB_BYTES,
+} from "../lib/review-status";
 import { TRACKING_PHASES, TRACKING_STOPS } from "../lib/tracking-phases";
 import { PAGE_JOB_KINDS, PAGE_JOB_STATUSES, PAGE_JOB_TRIES } from "../lib/page-jobs";
 import {
@@ -12758,6 +12771,41 @@ export const productReviews = commerce.table(
     check("product_reviews_status", sql`${t.status} in (${sqlList(REVIEW_STATUSES)})`),
     check("product_reviews_hidden", sql`(${t.status} = 'hidden') = (${t.hiddenReason} is not null) and (${t.hiddenReason} is null or ${t.hiddenReason} in (${sqlList(HIDE_REASONS)}))`),
     check("product_reviews_answer", sql`(${t.answer} is null) = (${t.answeredAt} is null) and (${t.answer} is null or length(trim(${t.answer})) between 1 and 2000)`),
+  ],
+);
+
+/**
+ * A review's pictures (D301 G4, `docs/wave-5-marketing.md` 9.7): up to three, in its author's order, each a file in the private bucket
+ * `review-pictures` at `{store}/{id}.{ext}` with its small copy at `{store}/{id}-480.{ext}` (the paths follow from the row, so none is kept).
+ * Written only with their review by its author (`kaizen.review_writer`/`kaizen.review_author`), deleted with it; staff hide one alone.
+ */
+export const reviewPictures = commerce.table(
+  "review_pictures",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    reviewId: uuid("review_id").notNull(),
+    position: smallint("position").notNull(),
+    type: text("type").notNull(),
+    width: integer("width").notNull(),
+    height: integer("height").notNull(),
+    bytes: integer("bytes").notNull(),
+    thumbBytes: integer("thumb_bytes").notNull(),
+    /** Staff do not show this picture (the review may still be shown). */
+    hiddenAt: timestamp("hidden_at", { withTimezone: true }),
+    hiddenBy: uuid("hidden_by").references(() => accounts.id),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("review_pictures_store_id_key").on(t.storeId, t.id),
+    unique("review_pictures_position_key").on(t.storeId, t.reviewId, t.position),
+    foreignKey({ name: "review_pictures_review_fk", columns: [t.storeId, t.reviewId], foreignColumns: [productReviews.storeId, productReviews.id] }).onDelete("cascade"),
+    index("review_pictures_hidden_by_idx").on(t.hiddenBy),
+    check("review_pictures_position", sql.raw(`position between 0 and ${REVIEW_PICTURES_MAX - 1}`)),
+    check("review_pictures_type", sql`${t.type} in (${sqlList(REVIEW_PICTURE_TYPES)})`),
+    check("review_pictures_size", sql.raw(`width between 1 and ${REVIEW_PICTURE_SIZE} and height between 1 and ${REVIEW_PICTURE_SIZE}`)),
+    check("review_pictures_bytes", sql.raw(`bytes between 1 and ${REVIEW_PICTURE_BYTES} and thumb_bytes between 1 and ${REVIEW_THUMB_BYTES}`)),
+    check("review_pictures_hidden", sql`(${t.hiddenAt} is null) = (${t.hiddenBy} is null)`),
   ],
 );
 

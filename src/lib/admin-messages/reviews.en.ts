@@ -29,6 +29,10 @@ export const reviewsEn = {
     search: "Search",
     filterLabel: "Filter reviews",
     allCount: "All {count}",
+    pictureAlt: "Picture {n} of the review",
+    pictureHide: "Hide picture",
+    pictureShow: "Show picture",
+    pictureHidden: "Not shown",
     starsLabel: "{n} of 5 stars",
     noMatch: "No review matches.",
     verified: "Verified purchase",
@@ -127,6 +131,8 @@ export const reviewsEn = {
     saved: "Saved. Reviews already written keep their state.",
     days: "Choose a number of days within the range.",
     requestsSaved: "Saved.",
+    pictureHidden: "The picture is hidden. The review stays as it is.",
+    pictureShown: "The picture is shown again.",
   },
 };
 

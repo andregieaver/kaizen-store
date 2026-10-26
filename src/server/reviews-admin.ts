@@ -36,6 +36,8 @@ export type AdminReview = {
   orderNumber: string | null;
   writtenAt: string;
   editedAt: string | null;
+  /** Its pictures in the author's order (G4), each shown to staff through the admin whatever its state. */
+  pictures: { id: string; hidden: boolean }[];
 };
 
 export type ReviewCounts = Record<ReviewStatus, number>;
@@ -64,6 +66,8 @@ export async function listReviews(storeId: string, options: ReviewListOptions): 
   const rows = await db().execute<Row>(sql`
     select r.id, r.product_id, r.source, r.imported_from, r.status, r.hidden_reason, r.rating, r.title, r.body, r.author_name, r.locale, r.answer,
       r.order_id, r.created_at, r.edited_at, o.number as order_number, l.title as bought,
+      (select json_agg(json_build_object('id', x.id, 'hidden', x.hidden_at is not null) order by x.position)
+       from commerce.review_pictures x where x.store_id = r.store_id and x.review_id = r.id) as pictures,
       coalesce((select t.title from commerce.product_translations t where t.store_id = r.store_id and t.product_id = r.product_id
         order by t.locale = s.locales[1] desc, t.locale limit 1), p.handle) as product
     from commerce.product_reviews r
@@ -104,6 +108,7 @@ export async function listReviews(storeId: string, options: ReviewListOptions): 
       orderNumber: (r.order_number as string | null) ?? null,
       writtenAt: iso(r.created_at) ?? "",
       editedAt: iso(r.edited_at),
+      pictures: (r.pictures as { id: string; hidden: boolean }[] | null) ?? [],
     })),
   };
 }
@@ -148,6 +153,26 @@ export async function answerReview(storeId: string, accountId: string, reviewId:
   `);
   if (!row) return { ok: false, problem: "unknown" };
   await audit(accountId, storeId, "review.answered", { review: reviewId, answered: text !== null }, { target: { type: "review", id: reviewId } });
+  return { ok: true };
+}
+
+/**
+ * Hides one picture of a review, or shows it again (G4, 9.7): the review stays as it is. A picture of a person, an address or anything else a
+ * review may be hidden for goes alone.
+ */
+export async function setPictureHidden(storeId: string, accountId: string, pictureId: string, hidden: boolean): Promise<Decided> {
+  const [row] = await db().execute<Row>(sql`
+    update commerce.review_pictures set hidden_at = case when ${hidden} then now() end, hidden_by = case when ${hidden} then ${accountId}::uuid end
+    where store_id = ${storeId}::uuid and id = ${pictureId}::uuid and (hidden_at is null) = ${hidden}
+    returning review_id
+  `);
+  if (!row) {
+    const [any] = await db().execute<Row>(sql`select 1 from commerce.review_pictures where store_id = ${storeId}::uuid and id = ${pictureId}::uuid`);
+    return { ok: false, problem: any ? "state" : "unknown" };
+  }
+  await audit(accountId, storeId, hidden ? "review.picture_hidden" : "review.picture_shown", { review: String(row.review_id), picture: pictureId }, {
+    target: { type: "review", id: String(row.review_id) },
+  });
   return { ok: true };
 }
 

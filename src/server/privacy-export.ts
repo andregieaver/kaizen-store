@@ -41,6 +41,7 @@ import {
   type WithdrawalRow,
 } from "@/lib/privacy-export";
 import { privacyLanguage } from "@/lib/privacy-text";
+import { reviewPictureUrl } from "@/lib/review-view";
 
 import { audit } from "./auth";
 import { getFieldData, listFieldGroups } from "./custom-fields";
@@ -903,6 +904,8 @@ async function loadStockRequests(s: PrivacySubject): Promise<{ product: string; 
 async function loadReviews(s: PrivacySubject): Promise<ReviewExportRow[]> {
   const rows = await db().execute<Row>(sql`
     select r.rating, r.title, r.body, r.author_name, r.status, r.created_at, r.edited_at, r.answer,
+      (select json_agg(json_build_object('id', p.id, 'hidden', p.hidden_at is not null) order by p.position)
+       from commerce.review_pictures p where p.store_id = r.store_id and p.review_id = r.id) as pictures,
       coalesce((select t.title from commerce.product_translations t where t.store_id = r.store_id and t.product_id = r.product_id order by t.locale = r.locale desc, t.locale limit 1), '') as product
     from commerce.product_reviews r
     where r.store_id = ${s.storeId}::uuid and r.source = 'buyer' and r.buyer_key = any(${textList(buyerKeysOf(s.customerId, s.addresses))})
@@ -918,6 +921,7 @@ async function loadReviews(s: PrivacySubject): Promise<ReviewExportRow[]> {
     writtenAt: r.created_at as string,
     editedAt: (r.edited_at as string | null) ?? null,
     answer: (r.answer as string | null) ?? null,
+    pictures: ((r.pictures as { id: string; hidden: boolean }[] | null) ?? []).map((p) => ({ address: reviewPictureUrl(p.id), hidden: p.hidden })),
   }));
 }
 

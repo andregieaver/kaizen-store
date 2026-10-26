@@ -8,7 +8,7 @@ import { adminLangOf } from "@/lib/admin-lang";
 import type { ReviewsMessages } from "@/lib/admin-messages/reviews.en";
 import { adminText } from "@/lib/admin-text";
 import { reviewsTag } from "@/lib/reviews";
-import { answerReview, hideReview, publishReview, savePublishMode, saveRequestSettings, type Decided } from "@/server/reviews-admin";
+import { answerReview, hideReview, publishReview, savePublishMode, saveRequestSettings, setPictureHidden, type Decided } from "@/server/reviews-admin";
 import { requirePermission } from "@/server/permissions";
 
 type Words = ReviewsMessages["actions"];
@@ -44,6 +44,14 @@ export async function hideReviewAction(storeSlug: string, reviewId: string, _sta
   const w = wordsOf(member);
   if (!z.uuid().safeParse(reviewId).success) return { status: "error", messages: [w.unknown] };
   return done(member.store.id, w, await hideReview(member.store.id, member.account.id, reviewId, String(form.get("reason") ?? "")), w.hidden);
+}
+
+/** Hides one picture of a review, or shows it again (G4); the review stays as it is. */
+export async function pictureHiddenAction(storeSlug: string, pictureId: string, hidden: boolean, _state: FormState): Promise<FormState> {
+  const member = await requirePermission(storeSlug, "products:write");
+  const w = wordsOf(member);
+  if (!z.uuid().safeParse(pictureId).success) return { status: "error", messages: [w.unknown] };
+  return done(member.store.id, w, await setPictureHidden(member.store.id, member.account.id, pictureId, hidden), hidden ? w.pictureHidden : w.pictureShown);
 }
 
 /** Saves the store's answer under a review, or takes it away when empty. */

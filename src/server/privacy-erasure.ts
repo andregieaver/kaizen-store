@@ -26,6 +26,7 @@ import { platformStripe } from "./stripe";
 import { closeSession, completeOrderPayment } from "./checkout";
 import { getCheckoutAccount } from "./settings";
 import { refreshTag } from "./refresh";
+import { removePictureFiles, reviewPictureStorage, type ReviewPictureStorage, type StoredPicture } from "./review-picture-store";
 import { buyerKeysOf } from "./reviews";
 import { anonymiseConversations } from "./support";
 import { changeSubscription } from "./subscriptions";
@@ -138,6 +139,8 @@ export async function planErasure(subject: PrivacySubject, now: Date = new Date(
         (select count(*) from commerce.stock_requests where store_id = ${sid}::uuid and (email = any(${addresses}) or customer_id = ${cid}::uuid))::int as stock_requests,
         (select count(*) from commerce.review_requests where store_id = ${sid}::uuid and order_id = any(${orderIds}))::int as review_requests,
         (select count(*) from commerce.product_reviews where store_id = ${sid}::uuid and source = 'buyer' and buyer_key = any(${textList(buyerKeysOf(cid, subject.addresses))}))::int as product_reviews,
+        (select count(*) from commerce.review_pictures p join commerce.product_reviews r on r.store_id = p.store_id and r.id = p.review_id
+           where p.store_id = ${sid}::uuid and r.source = 'buyer' and r.buyer_key = any(${textList(buyerKeysOf(cid, subject.addresses))}))::int as review_pictures,
         (select count(*) from commerce.support_conversations where store_id = ${sid}::uuid and customer_id = ${cid}::uuid and anonymised_at is null)::int as support_conversations,
         (select count(*) from commerce.support_messages m join commerce.support_conversations c on c.id = m.conversation_id
            where c.store_id = ${sid}::uuid and c.customer_id = ${cid}::uuid and c.anonymised_at is null)::int as support_messages,
@@ -208,6 +211,8 @@ export async function planErasure(subject: PrivacySubject, now: Date = new Date(
       stock_requests: n(c.stock_requests),
       review_requests: n(c.review_requests),
       product_reviews: n(c.product_reviews),
+      review_pictures: n(c.review_pictures),
+      "storage:review-pictures": n(c.review_pictures),
       support_conversations: n(c.support_conversations),
       support_messages: n(c.support_messages),
       field_values: n(c.field_values),
@@ -463,7 +468,12 @@ export type EraseResult =
  * counts, never an email or a name), tells the owners when staff did it, and sends the one email that survives. A run that fails after the
  * outside world was reached leaves the request open (`steps` says where) and `resumeErasures()` finishes it.
  */
-export async function eraseSubject(storeId: string, ref: SubjectRef, by: EraseBy, deps: { avatarRemover?: (paths: string[]) => Promise<void>; dataStorage?: DataDeps["storage"] } = {}): Promise<EraseResult> {
+export async function eraseSubject(
+  storeId: string,
+  ref: SubjectRef,
+  by: EraseBy,
+  deps: { avatarRemover?: (paths: string[]) => Promise<void>; dataStorage?: DataDeps["storage"]; reviewPictures?: ReviewPictureStorage | null } = {},
+): Promise<EraseResult> {
   const now = by.now ?? new Date();
   const store = await privacyStore(storeId);
   const subject = store ? await resolveSubject(storeId, ref, { channel: by.channel }) : null;
@@ -518,6 +528,7 @@ export async function eraseSubject(storeId: string, ref: SubjectRef, by: EraseBy
   // 2. One transaction for the subject's rows.
   let counts: EraseCounts;
   let avatar: string | null = null;
+  let pictures: StoredPicture[] = [];
   try {
     const done = await db().transaction(async (tx) => {
       await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`privacy_erase:${storeId}:${subject.customerId ?? subject.email}`}, 0))`);
@@ -527,6 +538,7 @@ export async function eraseSubject(storeId: string, ref: SubjectRef, by: EraseBy
     });
     counts = done.counts;
     avatar = done.avatar;
+    pictures = done.pictures;
   } catch (error) {
     console.error("[privacy] the erasure failed in the database; the request stays open", request.id, error);
     await markStep(request.id, { database: "failed" });
@@ -553,6 +565,9 @@ export async function eraseSubject(storeId: string, ref: SubjectRef, by: EraseBy
       await markStep(request.id, { files: "left" });
     }
   } else await markStep(request.id, { files: "done" });
+
+  // 3a. The files of the person's reviews' pictures (D301 G4); whatever is left is swept daily.
+  await removePictureFiles(storeId, pictures, deps.reviewPictures === undefined ? reviewPictureStorage() : deps.reviewPictures);
 
   // 3b. The store's customer and order files that can hold this person (D165, `storage:exports`): they hold their data among others', so they are
   // deleted and the owner exports again; files that cannot (made before the person was in the store, or an order file for someone with no order) are
@@ -611,7 +626,7 @@ export async function eraseSubject(storeId: string, ref: SubjectRef, by: EraseBy
 type Tx = Parameters<Parameters<ReturnType<typeof db>["transaction"]>[0]>[0];
 
 /** The subject's rows, all of it or none: the bodies of 2.4 step 3. */
-async function eraseRows(tx: Tx, s: PrivacySubject, store: PrivacyStore): Promise<{ counts: EraseCounts; avatar: string | null }> {
+async function eraseRows(tx: Tx, s: PrivacySubject, store: PrivacyStore): Promise<{ counts: EraseCounts; avatar: string | null; pictures: StoredPicture[] }> {
   const sid = s.storeId;
   const cid = s.customerId;
   const addresses = textList(s.addresses);
@@ -711,6 +726,13 @@ async function eraseRows(tx: Tx, s: PrivacySubject, store: PrivacyStore): Promis
   // The review request emails for the person's orders (D301 G3), and with them their links.
   await tx.execute(sql`delete from commerce.review_requests where store_id = ${sid}::uuid and order_id = any(${orderIds})`);
   // The person's product reviews (D301): their words go; the products' averages follow. The database deletes a review only where this is marked.
+  // Their pictures' rows go with them (G4); the files are removed after the commit.
+  const pictureRows = await tx.execute<Row>(sql`
+    select p.id, p.type from commerce.review_pictures p
+    join commerce.product_reviews r on r.store_id = p.store_id and r.id = p.review_id
+    where p.store_id = ${sid}::uuid and r.source = 'buyer' and r.buyer_key = any(${textList(buyerKeysOf(cid, s.addresses))})
+  `);
+  const pictures: StoredPicture[] = pictureRows.map((p) => ({ id: String(p.id), type: p.type as StoredPicture["type"] }));
   await tx.execute(sql`select set_config('kaizen.review_delete', 'on', true)`);
   await tx.execute(sql`
     delete from commerce.product_reviews where store_id = ${sid}::uuid and source = 'buyer' and buyer_key = any(${textList(buyerKeysOf(cid, s.addresses))})
@@ -770,7 +792,7 @@ async function eraseRows(tx: Tx, s: PrivacySubject, store: PrivacyStore): Promis
     }
   }
   void store;
-  return { counts, avatar };
+  return { counts, avatar, pictures };
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------

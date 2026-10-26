@@ -5,13 +5,14 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { marketPath } from "@/lib/paths";
+import { picturesOfForm } from "@/lib/review-pictures";
 import { cleanReview, reviewsTag, type ReviewProblem } from "@/lib/reviews";
 import { getCustomer } from "@/server/customers";
 import { deleteOwnReview, writeReview } from "@/server/reviews";
 import { resolveFeatureShop } from "@/server/shop";
 
 /** What the review form shows after a press that did not go through: which problem, and the words typed (kept by the form). */
-export type ReviewFormState = { problem: ReviewProblem | "not_reviewable" | "limit" | "closed" | null };
+export type ReviewFormState = { problem: ReviewProblem | "not_reviewable" | "limit" | "closed" | "pictures" | "pictures_off" | "picture_store" | null };
 
 /**
  * Writes the signed-in customer's review of one of their received lines (D301 9.3), in the market's language; on success back to Reviews with what
@@ -24,7 +25,9 @@ export async function saveReviewAction(storeSlug: string, marketSlug: string, li
   if (!customer || !z.uuid().safeParse(lineId).success) return { problem: "not_reviewable" };
   const cleaned = cleanReview({ rating: form.get("rating"), title: form.get("title"), body: form.get("body"), name: form.get("name") });
   if (!cleaned.ok) return { problem: cleaned.problem };
-  const outcome = await writeReview(shop.store.id, customer.id, lineId, cleaned.review, shop.market.locale);
+  const pictures = await picturesOfForm(form);
+  if (!pictures) return { problem: "pictures" };
+  const outcome = await writeReview(shop.store.id, customer.id, lineId, cleaned.review, shop.market.locale, pictures);
   if (!outcome.ok) return { problem: outcome.problem };
   if (outcome.shownChanged) updateTag(reviewsTag(shop.store.id));
   redirect(marketPath(storeSlug, marketSlug, `/account/reviews?done=${outcome.status === "published" ? "shown" : "waiting"}`));

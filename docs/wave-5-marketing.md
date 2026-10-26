@@ -856,6 +856,13 @@ product page shows it.
 - **G3b** (D301, 24 October): as 9.6 but the import is not a D165 job: a review file is small, has no pictures to fetch and is read and imported
   in one request (`importReviews()`, a check first when *Only check the file* is ticked), and the export is a direct CSV download from the Reviews
   page, as the 404 report's and analytics' files are. The AI manager's `reviews_overview` and the control center's *Reviews waiting* as written.
+- **G4** (D301, 26 October): as 9.7, with two departures. A browser that cannot write WebP from a canvas (the compressor's own fallback) sends
+  JPEG, which the server reads by its bytes as it reads WebP, rather than refusing the buyer; and a picture that stays over 600 KB at 1600 px is
+  tried again at 1280 and 1024 px in the browser. The files are named by the picture's id (`{store}/{id}.webp` and `{store}/{id}-480.webp`), so the
+  rows say which there are and no path is kept; files a row no longer names (a write that failed after its upload, a review gone with its product)
+  are swept daily. A published picture is cached for five minutes, so one hidden goes from the page at once and from caches within minutes. Its
+  author sees their own pictures on their account's form; from a request email's link they are named, not shown. The export lists each picture by
+  the address that shows it to its author.
 
 ## 10. Units H to J, outlined (J is detailed in section 11, I in section 12)
 

@@ -1,15 +1,16 @@
-import type { ShownReview } from "@/lib/review-view";
+import { reviewPictureUrl, type ShownReview } from "@/lib/review-view";
 
 import { StarRating } from "./star-rating";
 
 /** The words a review is drawn with, in the page's language; `{0}` is filled with the source, what was bought or the store. */
-export type ReviewWords = { verified: string; imported: string; bought: string; answerFrom: string };
+export type ReviewWords = { verified: string; imported: string; bought: string; answerFrom: string; /** A picture's text for those who cannot see it; `{0}` its number. */ picture: string };
 
 const fill = (template: string, value: string) => template.replace("{0}", value);
 
 /**
  * One published review (D301 9.5): stars, title, text, name, day, what was bought, *Verified purchase* or *Imported from …*, and the store's
- * answer. Its words are text in their own language (`lang`), never HTML and never translated. Drawn the same on the server and by *Show more*.
+ * answer, with the buyer's pictures (G4) as small copies that open the picture itself. Its words are text in their own language (`lang`), never
+ * HTML and never translated. Drawn the same on the server and by *Show more*.
  */
 export function ReviewItem({ review, words, locale, store }: { review: ShownReview; words: ReviewWords; locale: string; store: string }) {
   const day = new Date(`${review.writtenOn}T12:00:00Z`).toLocaleDateString(locale, { dateStyle: "medium", timeZone: "UTC" });
@@ -25,6 +26,29 @@ export function ReviewItem({ review, words, locale, store }: { review: ShownRevi
         <p className="whitespace-pre-line" lang={review.locale}>
           {review.body}
         </p>
+      )}
+      {review.pictures.length > 0 && (
+        <ul className="mt-1 flex flex-wrap gap-2" data-review-pictures>
+          {review.pictures.map((p, i) => {
+            const scale = Math.min(1, 96 / Math.max(p.width, p.height));
+            return (
+              <li key={p.id}>
+                <a href={reviewPictureUrl(p.id)} target="_blank" rel="noopener" className="block overflow-hidden rounded-lg border border-border">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- a private file served by its own route, at a fixed small size */}
+                  <img
+                    src={reviewPictureUrl(p.id, true)}
+                    alt={fill(words.picture, String(i + 1))}
+                    width={Math.round(p.width * scale)}
+                    height={Math.round(p.height * scale)}
+                    loading="lazy"
+                    decoding="async"
+                    className="block h-24 w-auto object-cover"
+                  />
+                </a>
+              </li>
+            );
+          })}
+        </ul>
       )}
       <p className="text-sm text-muted">
         {[review.authorName, day, review.verified ? words.verified : review.importedFrom ? fill(words.imported, review.importedFrom) : null, review.bought ? fill(words.bought, review.bought) : null]

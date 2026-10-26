@@ -13,7 +13,7 @@ import { requestsSent } from "@/server/review-requests";
 import { reviewSettings } from "@/server/reviews";
 import { memberCan, requirePermission } from "@/server/permissions";
 
-import { answerReviewAction, hideReviewAction, publishReviewAction, savePublishModeAction, saveRequestSettingsAction } from "./actions";
+import { answerReviewAction, hideReviewAction, pictureHiddenAction, publishReviewAction, savePublishModeAction, saveRequestSettingsAction } from "./actions";
 
 export const metadata: Metadata = { title: "Reviews" };
 
@@ -175,6 +175,29 @@ export default async function ReviewsPage({ params, searchParams }: PageProps<"/
                     {r.title && <p className="text-body-strong text-ink" lang={r.locale}>{r.title}</p>}
                     {r.body && <p className="whitespace-pre-line text-body text-ink-2" lang={r.locale}>{r.body}</p>}
                   </div>
+                  {r.pictures.length > 0 && (
+                    <ul className="flex flex-wrap gap-3">
+                      {r.pictures.map((p, i) => (
+                        <li key={p.id} className="flex flex-col items-start gap-1">
+                          <a href={`/admin/${store.slug}/reviews/picture/${p.id}`} target="_blank" rel="noopener" className="block rounded-panel border border-line">
+                            {/* eslint-disable-next-line @next/next/no-img-element -- a private file served to staff by its own route */}
+                            <img
+                              src={`/admin/${store.slug}/reviews/picture/${p.id}?size=480`}
+                              alt={fillWords(w.pictureAlt, { n: i + 1 })}
+                              loading="lazy"
+                              className={`block h-24 w-auto rounded-panel object-cover${p.hidden ? " opacity-40" : ""}`}
+                            />
+                          </a>
+                          {p.hidden && <Chip signal="neutral">{w.pictureHidden}</Chip>}
+                          {canChange && (
+                            <ActionForm action={pictureHiddenAction.bind(null, store.slug, p.id, !p.hidden)}>
+                              <SubmitButton variant="secondary">{p.hidden ? w.pictureShow : w.pictureHide}</SubmitButton>
+                            </ActionForm>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                   {canChange && (
                     <div className="flex flex-wrap items-start gap-3">
                       {r.status !== "published" && (

@@ -33,10 +33,13 @@ const shownReview = (r: Row): ShownReview => ({
   verified: r.source === "buyer",
   importedFrom: (r.imported_from as string | null) ?? null,
   answer: (r.answer as string | null) ?? null,
+  pictures: ((r.pictures as { id: string; width: number; height: number }[] | null) ?? []).map((p) => ({ id: p.id, width: Number(p.width), height: Number(p.height) })),
 });
 
 const SHOWN_COLUMNS = sql`r.id, r.rating, r.title, r.body, r.author_name, r.locale, r.source, r.imported_from, r.answer, r.created_at,
-  coalesce(r.written_on, r.created_at::date)::text as written_on, l.title as bought`;
+  coalesce(r.written_on, r.created_at::date)::text as written_on, l.title as bought,
+  (select json_agg(json_build_object('id', p.id, 'width', p.width, 'height', p.height) order by p.position)
+   from commerce.review_pictures p where p.store_id = r.store_id and p.review_id = r.id and p.hidden_at is null) as pictures`;
 
 /**
  * A product's published reviews as its page draws them (D301 9.5): how many gave each number of stars (counted in SQL, only published reviews of

@@ -94,7 +94,7 @@ describe("productJsonLd", () => {
       average: 4.5,
       count: 12,
       latest: [
-        { id: "r1", rating: 5, title: "Fin", body: "God kopp.", authorName: "Kari N.", locale: "nb-NO", writtenOn: "2026-10-01", bought: null, verified: true, importedFrom: null, answer: null },
+        { id: "r1", rating: 5, title: "Fin", body: "God kopp.", authorName: "Kari N.", locale: "nb-NO", writtenOn: "2026-10-01", bought: null, verified: true, importedFrom: null, answer: null, pictures: [] },
       ],
     });
     expect(rated).toMatchObject({

@@ -168,3 +168,68 @@ describe("product reviews", () => {
     await db.query("insert into commerce.review_settings (store_id, publish) values ($1, 'at_once')", [store]);
   });
 });
+
+describe("a review's pictures (G4)", () => {
+  const PICTURE = "insert into commerce.review_pictures (store_id, review_id, position, type, width, height, bytes, thumb_bytes) values ($1, $2, $3, 'image/webp', 1600, 1200, 300000, 30000) returning id";
+
+  it("are added only by the review's author, on a buyer's review, never hidden, three at most", async () => {
+    const l = await boughtLine("RV-P1");
+    const id = await review(l);
+    await rejects(PICTURE, [store, id, 0], /review_pictures.writer/);
+    await inside({ "kaizen.review_author": id }, [
+      [PICTURE, [store, id, 0]],
+      [PICTURE, [store, id, 1]],
+      [PICTURE, [store, id, 2]],
+    ]);
+    await expect(inside({ "kaizen.review_author": id }, [[PICTURE, [store, id, 3]]])).rejects.toThrow(/review_pictures_position/);
+    await expect(inside({ "kaizen.review_author": id }, [[PICTURE, [store, id, 1]]])).rejects.toThrow(/review_pictures_position_key/);
+    await expect(
+      inside({ "kaizen.review_author": id }, [
+        [
+          "insert into commerce.review_pictures (store_id, review_id, position, type, width, height, bytes, thumb_bytes, hidden_at, hidden_by) values ($1, $2, 0, 'image/webp', 10, 10, 10, 10, now(), $3)",
+          [store, id, staff],
+        ],
+      ]),
+    ).rejects.toThrow(/review_pictures.fresh/);
+    // Too big, too many pixels or another kind of file is refused by the checks.
+    for (const [sql, pattern] of [
+      ["insert into commerce.review_pictures (store_id, review_id, position, type, width, height, bytes, thumb_bytes) values ($1, $2, 0, 'image/png', 10, 10, 10, 10)", /review_pictures_type/],
+      ["insert into commerce.review_pictures (store_id, review_id, position, type, width, height, bytes, thumb_bytes) values ($1, $2, 0, 'image/webp', 1601, 10, 10, 10)", /review_pictures_size/],
+      ["insert into commerce.review_pictures (store_id, review_id, position, type, width, height, bytes, thumb_bytes) values ($1, $2, 0, 'image/webp', 10, 10, 614401, 10)", /review_pictures_bytes/],
+    ] as const) {
+      const other = await review(await boughtLine(`RV-P1-${String(pattern).length}`));
+      await expect(inside({ "kaizen.review_author": other }, [[sql, [store, other]]])).rejects.toThrow(pattern);
+    }
+    // An import has none.
+    const imported = await db.transaction(async (tx) => {
+      await tx.query("select set_config('kaizen.review_writer', 'import', true)");
+      return (
+        await tx.query<{ id: string }>(
+          "insert into commerce.product_reviews (store_id, product_id, source, imported_from, written_on, author_name, rating, locale) values ($1, $2, 'import', 'Old', '2026-01-01', 'Ola', 5, 'nb-NO') returning id",
+          [store, l.product],
+        )
+      ).rows[0].id;
+    });
+    await expect(inside({ "kaizen.review_author": imported }, [[PICTURE, [store, imported, 0]]])).rejects.toThrow(/review_pictures.review/);
+  });
+
+  it("are hidden or shown by staff, never changed, and go with their review", async () => {
+    const l = await boughtLine("RV-P2");
+    const id = await review(l);
+    let picture = "";
+    await db.transaction(async (tx) => {
+      await tx.query("select set_config('kaizen.review_author', $1, true)", [id]);
+      picture = (await tx.query<{ id: string }>(PICTURE, [store, id, 0])).rows[0].id;
+    });
+    await rejects("update commerce.review_pictures set hidden_at = now() where id = $1", [picture], /review_pictures_hidden/);
+    await db.query("update commerce.review_pictures set hidden_at = now(), hidden_by = $2 where id = $1", [picture, staff]);
+    await db.query("update commerce.review_pictures set hidden_at = null, hidden_by = null where id = $1", [picture]);
+    await rejects("update commerce.review_pictures set width = 10 where id = $1", [picture], /review_pictures.fixed/);
+    await rejects("delete from commerce.review_pictures where id = $1", [picture], /review_pictures.delete/);
+    // The author takes one out in their edit; the rest go with the review.
+    await inside({ "kaizen.review_author": id }, [["delete from commerce.review_pictures where id = $1", [picture]]]);
+    await inside({ "kaizen.review_author": id }, [[PICTURE, [store, id, 1]]]);
+    await inside({ "kaizen.review_delete": "on" }, [["delete from commerce.product_reviews where id = $1", [id]]]);
+    expect(await scalar("select count(*)::int from commerce.review_pictures where review_id = $1", [id])).toBe(0);
+  });
+});

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { marketPath } from "@/lib/paths";
+import { picturesOfForm } from "@/lib/review-pictures";
 import { cleanReview, reviewsTag } from "@/lib/reviews";
 import { invitationOf } from "@/server/review-requests";
 import { writeReviewAs } from "@/server/reviews";
@@ -30,7 +31,9 @@ export async function saveInvitedReviewAction(
   if (!invitation || !z.uuid().safeParse(lineId).success) return { problem: "not_reviewable" };
   const cleaned = cleanReview({ rating: form.get("rating"), title: form.get("title"), body: form.get("body"), name: form.get("name") });
   if (!cleaned.ok) return { problem: cleaned.problem };
-  const outcome = await writeReviewAs(shop.store.id, invitation, lineId, cleaned.review, shop.market.locale);
+  const pictures = await picturesOfForm(form);
+  if (!pictures) return { problem: "pictures" };
+  const outcome = await writeReviewAs(shop.store.id, invitation, lineId, cleaned.review, shop.market.locale, pictures);
   if (!outcome.ok) return { problem: outcome.problem };
   if (outcome.shownChanged) updateTag(reviewsTag(shop.store.id));
   redirect(marketPath(storeSlug, marketSlug, `/account/review/${token}?done=${outcome.status === "published" ? "shown" : "waiting"}`));

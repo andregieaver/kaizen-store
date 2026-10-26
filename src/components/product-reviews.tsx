@@ -15,6 +15,7 @@ const reviewWords = (m: Messages): ReviewWords => ({
   imported: m.reviews.imported("{0}"),
   bought: m.reviews.bought("{0}"),
   answerFrom: m.reviews.answerFrom("{0}"),
+  picture: m.reviews.pictureAlt("{0}"),
 });
 
 /** The product part `rating` (D301 9.5): the stars, the average and how many reviews, linking to the reviews below. */

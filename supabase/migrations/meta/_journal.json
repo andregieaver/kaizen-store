@@ -3424,6 +3424,20 @@
       "when": 1793021772386,
       "tag": "20261026133612_quantity_rules_copy",
       "breakpoints": true
+    },
+    {
+      "idx": 489,
+      "version": "7",
+      "when": 1793026501648,
+      "tag": "20261026145501_review_pictures",
+      "breakpoints": true
+    },
+    {
+      "idx": 490,
+      "version": "7",
+      "when": 1793026526071,
+      "tag": "20261026145526_review_pictures_rules",
+      "breakpoints": true
     }
   ]
 }

@@ -26,6 +26,10 @@ export const reviewsNb: ReviewsMessages = {
     search: "Søk",
     filterLabel: "Filtrer omtaler",
     allCount: "Alle {count}",
+    pictureAlt: "Bilde {n} i omtalen",
+    pictureHide: "Skjul bildet",
+    pictureShow: "Vis bildet",
+    pictureHidden: "Vises ikke",
     starsLabel: "{n} av 5 stjerner",
     noMatch: "Ingen omtaler passer.",
     verified: "Bekreftet kjøp",
@@ -124,5 +128,7 @@ export const reviewsNb: ReviewsMessages = {
     saved: "Lagret. Omtaler som allerede er skrevet, beholder tilstanden sin.",
     days: "Velg et antall dager innenfor rammen.",
     requestsSaved: "Lagret.",
+    pictureHidden: "Bildet er skjult. Omtalen er som før.",
+    pictureShown: "Bildet vises igjen.",
   },
 };

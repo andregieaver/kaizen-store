@@ -9,8 +9,10 @@ import { marketPath } from "@/lib/paths";
 import { defaultReviewName } from "@/lib/reviews";
 import { invitationOf } from "@/server/review-requests";
 import { reviewableLinesFor } from "@/server/reviews";
+import { reviewPictureStorage } from "@/server/review-picture-store";
 import { resolveFeatureShop } from "@/server/shop";
 
+import { reviewFormPictures, reviewFormWords } from "../../../reviews/form-words";
 import { ReviewForm } from "../../../reviews/review-form";
 import { saveInvitedReviewAction } from "../actions";
 
@@ -52,16 +54,8 @@ async function InvitedReviewLine({ params }: { params: Props["params"] }) {
       </div>
       <ReviewForm
         action={saveInvitedReviewAction.bind(null, store.slug, market.slug, token, line.lineId)}
-        words={{
-          rating: r.rating,
-          stars: [1, 2, 3, 4, 5].map((n) => r.starsOf(n)),
-          titleLabel: r.titleLabel,
-          bodyLabel: r.bodyLabel,
-          nameLabel: r.nameLabel,
-          nameHint: r.nameHint,
-          submit: review ? r.save : r.send,
-          problems: r.problem,
-        }}
+        words={reviewFormWords(r, review)}
+        pictures={reviewFormPictures(review, reviewPictureStorage() !== null, false)}
         initial={{
           rating: review?.rating ?? null,
           title: review?.title ?? "",

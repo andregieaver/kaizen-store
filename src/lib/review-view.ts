@@ -17,4 +17,12 @@ export type ShownReview = {
   verified: boolean;
   importedFrom: string | null;
   answer: string | null;
+  /** Its pictures staff did not hide, in the author's order (G4), served by `/api/reviews/picture/{id}` while the review is published. */
+  pictures: ShownPicture[];
 };
+
+/** A review's picture: its id and its size in pixels, so its small copy takes its room before it loads. */
+export type ShownPicture = { id: string; width: number; height: number };
+
+/** The address of a review's picture, or of its small copy (480 px). */
+export const reviewPictureUrl = (id: string, small = false) => `/api/reviews/picture/${id}${small ? "?size=480" : ""}`;

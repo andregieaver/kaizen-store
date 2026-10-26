@@ -50,3 +50,17 @@ export const REQUEST_PRODUCTS_SHOWN = 5;
 export const REQUEST_BATCH = 50;
 /** Request rows are kept this long (a link's life is long past), then deleted daily. */
 export const REQUESTS_KEEP_DAYS = 400;
+
+/** Pictures a review may carry (G4, 9.7), each shrunk in the browser to at most this many pixels on its long side, plus a small copy. */
+export const REVIEW_PICTURES_MAX = 3;
+export const REVIEW_PICTURE_SIZE = 1600;
+export const REVIEW_THUMB_SIZE = 480;
+/** At most this many bytes a picture (600 KB) and its small copy. */
+export const REVIEW_PICTURE_BYTES = 600 * 1024;
+export const REVIEW_THUMB_BYTES = 150 * 1024;
+/**
+ * The kinds of file a review's picture may be, read from its bytes: WebP, or JPEG from a browser that cannot write WebP from a canvas (the
+ * compressor's own fallback), never anything else.
+ */
+export const REVIEW_PICTURE_TYPES = ["image/webp", "image/jpeg"] as const;
+export type ReviewPictureType = (typeof REVIEW_PICTURE_TYPES)[number];
