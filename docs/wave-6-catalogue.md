@@ -468,12 +468,70 @@ listings, cards and the rest of the product page are cached for everyone. A prod
 
 ### Unit D (D322): bundles
 
-A product of kind `bundle` with components (`bundle_components`: variant and quantity, 2 to 20 components, goods only, all of one VAT
-category; decision 2), priced fixed or as the sum of its components less a percentage. Its stock is the lowest whole number of bundles the
-components' sellable stock allows (`bundleStock()`, read through `variant_availability`); a bundle with a sold-out component cannot be
-bought. `placeOrder()` reserves each component's stock (D172's `allocate()` on the components) and writes the components on the order line
-(`order_line_components`, frozen); a refund or return restocks the components in proportion (`restockPlan()`). It is a product of its
-own for search, listings, feeds and reviews; a demo bundle is added to the template (CLAUDE.md "Demo products").
+Detailed on 2026-10-26 from a read of the code, when its turn came. Built in two steps, each its own commit: D1 the bundle and its sale, D2
+bundles after the sale and around the store.
+
+**What the code does today.** A product is one of `PRODUCT_KINDS` with variants; a goods variant's stock is `inventory_levels` per location,
+read only through `commerce.variant_availability` (`in_stock`, `can_buy`), which every reader asks (the product page, listings, the cart's
+`sellableQuantity()`, feeds, the chat, WordPress, back-in-stock). `placeOrder()` asks `allocateStock()` for the physical lines' variants
+(`allocate()`: summed per variant, `deny` wins) and holds the units as `inventory_reservations` per variant and location; payment's
+`commerce.draw_order_stock()` draws them from `order_lines` (physical, grouped by variant). Every restock (a refund, a cancellation, a return,
+an order change) goes through `planRestock()`, limited by the order's own `sale` movements per variant. Prices are `commerce.prices` per
+variant and market, only through `commerce.set_price()`; `current_prices` adds the 30-day reference. A product page is a layout of parts; its
+details are cached, the buy part streams in.
+
+#### D.1 The bundle
+
+- A new kind `bundle` (`PRODUCT_KINDS`, the `products_kind` check). A bundle has **one variant** (no options, no purchase options, no
+  files), delivered as physical goods; it holds no stock of its own (a level for a bundle's variant is refused by the database).
+- Its components are `commerce.bundle_components` (store, the bundle's variant, a component variant, a quantity 1 to 99, a position): at
+  most 20 components, and at least two units in all (one variant twice is a multipack), so "2 to 20 components" of the outline counts units at
+  the low end. A component is an active-or-draft **goods** variant delivered physically, of the same store, not itself a bundle's, and of the
+  bundle's VAT category (decision 2). The database holds the per-component rules (a deferred constraint trigger, and a VAT category change of
+  a component or a bundle that would break one is refused); the count rules are the editor's (`productProblems()`), so a store copy of part of
+  a catalogue never fails on a bundle whose components were left behind (that bundle simply cannot be bought).
+- **Price**, `products.bundle_pricing`: `fixed` (the variant's own prices, as any product's) or `computed` (the sum of the components' current
+  prices times their quantities, less `bundle_percent_off`, 0 to 90, half up to the minor unit, per market). A computed price is written by
+  the database through `set_price()` (`commerce.refresh_bundle_prices()`) when the bundle's components or pricing change and when a
+  component's price changes, so every path (the editor, imports, the AI manager, a price list's base) sees it as a plain price with its 30-day
+  history. A market where a component has no price keeps the bundle's last price there; the editor says so.
+- **Stock** is the lowest whole number of bundles the components' free stock allows (`floor(in_stock / quantity)`, components at their
+  physical stock only: a bundle is never sold on backorder), worked out inside `variant_availability` so every reader gets it without a change;
+  a bundle with an inactive, archived or sold-out component, or with fewer than two units, has none and cannot be bought.
+- A bundle is a product of its own for search, listings, filters, feeds, the sitemap, reviews, recommendations, price lists, campaigns and
+  codes (its line is an ordinary line, discountable like goods). It is not offered where only plain goods are: free gifts of campaigns, weekly
+  boxes, draft orders, exchanges' replacements and order changes.
+
+#### D.2 Selling it
+
+- The cart treats a bundle as goods (`sellableQuantity()` caps at its derived stock). `placeOrder()` replaces a bundle line's want with its
+  components' wants (quantity times the line's, policy `deny`), so `allocate()` holds component units as ordinary reservations, and writes the
+  components on the order line (`commerce.order_line_components`: variant, SKU, title, quantity per bundle, position; frozen, never changed or
+  deleted). `cartSummary()` and `placeOrder()` price the line as any goods line, so they agree with nothing new (a euro scenario holds it).
+- `draw_order_stock()` draws a bundle line's components (its own variant is never drawn); a component bought on its own in the same order is
+  one draw with it.
+- `planRestock()` puts a bundle back as its components (the line's frozen components times the units going back), at the locations they
+  were taken from, so a refund, a cancellation and a return need no change; the order page's restock maximum for a bundle line is what its
+  components allow.
+- An order holding a bundle line cannot be changed (`editBlock()`'s `bundle`): it is refunded or cancelled instead, in this wave.
+
+#### D.3 Around the store (D2)
+
+- The order page (staff and shopper), the packing slip and the pick list show a bundle's components under its line ("Includes 2 × …"); the
+  pick list counts components, not bundles.
+- The editor: the kind *Bundle*; a Components card (find a variant by title or SKU, quantity, order, remove), Price (*A price of its own* or
+  *The components' prices less a percentage*, with the price it comes to per country) and the stock it comes to. The product page draws *What's
+  inside* above the description, from the catalogue's cached read (components' titles, quantities and links to those offered).
+- The AI manager reads a bundle's components through `get_product` and makes or changes one through its catalogue tools (`create_product`,
+  `update_product` with `bundle`), gated as products are. A demo bundle is added to the template store (CLAUDE.md "Demo products").
+- `bundle_components` are catalogue in `COPY_RULES` (copied by `clone_store()` and `duplicate_store()` where both variants are copied);
+  `order_line_components` follow their order (`never` copied, as copied orders carry no stock); both `NOT_PERSONAL`.
+
+#### D.4 Tests
+
+- `src/db/commerce.test.ts`: the component rules, the computed price and its refresh, the derived stock, the draw and the frozen components.
+- `checkout-kinds.int.test.ts`: a bundle from the cart to a paid order in euro (price, VAT, a campaign on it), its components held and drawn,
+  a sold-out component refusing it, and a refund putting the components back.
 
 ### Unit E (D323): quantity rules and price breaks
 
