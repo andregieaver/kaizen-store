@@ -1519,3 +1519,89 @@ export async function sendDeliveryCard(storeId: string, orderId: string): Promis
     orderId,
   });
 }
+
+/** What the approval emails say of an order (D321 C.2): its number, total, location, PO number and buyer, in its own market and language. */
+async function approvalOrder(storeId: string, orderId: string) {
+  const [row] = await db().execute<Row>(sql`
+    select o.number, o.market_code, o.locale, o.currency, o.total_minor, o.po_number, o.email, l.name as location,
+           coalesce(nullif(c.name, ''), c.email, o.email) as buyer, c.email as buyer_email
+    from commerce.orders o
+    left join commerce.company_locations l on l.store_id = o.store_id and l.id = o.company_location_id
+    left join commerce.customers c on c.store_id = o.store_id and c.id = o.customer_id
+    where o.store_id = ${storeId}::uuid and o.id = ${orderId}::uuid and o.copied_from is null and o.approval is not null
+  `);
+  if (!row) return null;
+  const ctx = await context(storeId, String(row.market_code).trim(), String(row.locale), String(row.currency).trim());
+  return ctx ? { row, ctx } : null;
+}
+
+/** Tells one approver that an order at their company waits for them (`company.approval_waiting`), once per order and address. */
+export async function sendApprovalWaiting(storeId: string, orderId: string, to: string): Promise<SendOutcome | null> {
+  const found = await approvalOrder(storeId, orderId);
+  if (!found) return null;
+  const { row, ctx } = found;
+  const { store, market, text } = ctx;
+  const a = text.approval;
+  const amount = formatMoney(Number(row.total_minor), String(row.currency).trim(), market.locale);
+  const email = renderEmail({
+    subject: a.waitingSubject(store.name, String(row.number)),
+    preview: a.waitingHeading,
+    lang: ctx.lang,
+    footer: footer(store, text),
+    blocks: [
+      { type: "heading", text: a.waitingHeading },
+      { type: "paragraph", text: a.waitingIntro(String(row.buyer ?? ""), String(row.number), amount, String(row.location ?? "")) },
+      ...(row.po_number ? [{ type: "paragraph" as const, text: a.poLine(String(row.po_number)) }] : []),
+      { type: "button", text: a.waitingButton, url: marketUrl(store.slug, market.slug, "/account/company") },
+      { type: "paragraph", text: a.waitingDays(7) },
+    ],
+  });
+  return sendEmail({
+    storeId,
+    kind: "company.approval_waiting",
+    to,
+    email,
+    fromName: store.name,
+    replyTo: store.details.contactEmail,
+    idempotencyKey: `approval-waiting:${orderId}:${to.toLowerCase()}`,
+  });
+}
+
+/** Tells the buyer what their company decided (`company.approval_decided`), once per order: pay for it, confirmed on terms, or declined. */
+export async function sendApprovalDecided(storeId: string, orderId: string, outcome: "pay" | "terms" | "declined"): Promise<SendOutcome | null> {
+  const found = await approvalOrder(storeId, orderId);
+  if (!found) return null;
+  const { row, ctx } = found;
+  const to = row.buyer_email ? String(row.buyer_email) : row.email ? String(row.email) : null;
+  if (!to) return null;
+  const { store, market, text } = ctx;
+  const a = text.approval;
+  const number = String(row.number);
+  const declined = outcome === "declined";
+  const email = renderEmail({
+    subject: declined ? a.declinedSubject(store.name, number) : a.approvedSubject(store.name, number),
+    preview: declined ? a.declinedHeading : a.approvedHeading,
+    lang: ctx.lang,
+    footer: footer(store, text),
+    blocks: declined
+      ? [
+          { type: "heading", text: a.declinedHeading },
+          { type: "paragraph", text: a.declinedIntro(number) },
+        ]
+      : [
+          { type: "heading", text: a.approvedHeading },
+          { type: "paragraph", text: a.approvedIntro(number) },
+          { type: "paragraph", text: outcome === "terms" ? a.approvedTerms : a.approvedPay },
+          { type: "button", text: a.approvedButton, url: marketUrl(store.slug, market.slug, "/account/company") },
+        ],
+  });
+  return sendEmail({
+    storeId,
+    kind: "company.approval_decided",
+    to,
+    email,
+    fromName: store.name,
+    replyTo: store.details.contactEmail,
+    idempotencyKey: `approval-decided:${orderId}`,
+  });
+}

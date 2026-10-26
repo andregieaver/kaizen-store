@@ -111,6 +111,7 @@ function Head({ doc, t, e, locale }: { doc: Doc; t: DocumentText; e: EditDocumen
         ] as [string, string][])
       : []),
     [t.orderNumber, doc.order.number],
+    ...(doc.poNumber ? ([[t.poNumber, doc.poNumber]] as [string, string][]) : []),
     // "Paid online" only when Stripe took the money; a payment the seller recorded outside Kaizen is dated in its own words (D173).
     ...(paid
       ? ([[!credit && doc.payments.some((p) => p.kind === "paid_online") ? t.paidOn : t.paidOutside, dayText(paidDay, locale)]] as [string, string][])

@@ -80,7 +80,7 @@ async function factsOf(orderId: string): Promise<InvoiceFacts> {
       memberDiscountMinor: num(o.member_discount_minor)!, memberLabel: o.member_label, campaignDiscountMinor: num(o.campaign_discount_minor)!, campaignLabel: o.campaign_label,
       creditMinor: num(o.credit_minor)!, referralDiscountMinor: num(o.referral_discount_minor)!, staffDiscountMinor: num(o.staff_discount_minor)!, staffLabel: o.staff_discount_label, discountCode: o.discount_code, vatKind: o.vat_kind,
       vatReliefMinor: num(o.vat_relief_minor)!, shippingTaxRate: num(o.shipping_tax_rate), marketStandardRate: num(o.market_rate), companyName: o.company_name,
-      organisationNumber: o.organisation_number, balanceMinor: num(o.balance_minor)!, billingAddress: o.billing_address, shippingAddress: o.shipping_address,
+      organisationNumber: o.organisation_number, poNumber: o.po_number, balanceMinor: num(o.balance_minor)!, billingAddress: o.billing_address, shippingAddress: o.shipping_address,
       deliveryLabel: (o.delivery as { label?: string } | null)?.label ?? null, onlineProvider: o.online_provider ?? "stripe", onlineMethod: o.online_method ?? null,
       settledByReturn: o.settled_minor ? { amountMinor: Number(o.settled_minor), returnNumber: o.settled_from?.returnNumber ?? null, orderNumber: o.settled_from?.orderNumber ?? null } : null,
       terms: o.payment_terms ?? null,

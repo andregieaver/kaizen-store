@@ -250,6 +250,8 @@ export type CreditNoteSnapshot = {
   treatment: SnapshotTreatment;
   position: { invoiceTotalMinor: number; creditedBeforeMinor: number; creditedNowMinor: number; leftOnInvoiceMinor: number };
   notes: CreditNoteNote[];
+  /** The buyer's PO number (D321 C.2), copied from the invoice it refers to. */
+  poNumber?: string;
 };
 
 /**
@@ -319,6 +321,7 @@ export function creditNoteSnapshot(input: CreditNoteInput): CreditNoteResult {
     seller: inv.seller,
     buyer: inv.buyer,
     order: inv.order,
+    ...(inv.poNumber ? { poNumber: inv.poNumber } : {}),
     refersTo: { invoiceId: input.invoice.id, invoiceNumber: inv.number, invoiceIssuedOn: inv.issuedOn },
     reason: { kind: isReturn ? "return" : "refund", returnNumber: input.returnNumber },
     source: input.source,
@@ -429,6 +432,7 @@ export function editCreditNote(input: EditCreditInput): CreditNoteResult {
     seller: inv.seller,
     buyer: inv.buyer,
     order: inv.order,
+    ...(inv.poNumber ? { poNumber: inv.poNumber } : {}),
     refersTo: { invoiceId: input.invoice.id, invoiceNumber: inv.number, invoiceIssuedOn: inv.issuedOn },
     reason: { kind: "order_edit", returnNumber: null, editSeq: input.seq },
     source: "order_edit",

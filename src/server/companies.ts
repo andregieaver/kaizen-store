@@ -60,6 +60,10 @@ export type Company = {
   paymentTerms: PaymentTerms | null;
   creditLimitMinor: number | null;
   creditCurrency: string | null;
+  /** Buying rules (D321 C.2): a PO number on every order, and the approval limit in its currency (null: none). */
+  poRequired: boolean;
+  approvalLimitMinor: number | null;
+  approvalCurrency: string | null;
 };
 
 const toCompany = (row: Row): Company => ({
@@ -78,6 +82,9 @@ const toCompany = (row: Row): Company => ({
   paymentTerms: isPaymentTerms(row.payment_terms) ? row.payment_terms : null,
   creditLimitMinor: row.credit_limit_minor === null || row.credit_limit_minor === undefined ? null : Number(row.credit_limit_minor),
   creditCurrency: row.credit_currency ? String(row.credit_currency).trim() : null,
+  poRequired: Boolean(row.po_required),
+  approvalLimitMinor: row.approval_limit_minor === null || row.approval_limit_minor === undefined ? null : Number(row.approval_limit_minor),
+  approvalCurrency: row.approval_currency ? String(row.approval_currency).trim() : null,
 });
 
 const companyQuery = (where: ReturnType<typeof sql>) => sql`

@@ -1,6 +1,8 @@
 "use server";
 
 import { refresh } from "next/cache";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { INVITES_PER_BATCH, parseInviteEmails } from "@/lib/customer-tiers";
@@ -8,6 +10,8 @@ import { t } from "@/lib/i18n";
 import { companyOf, createInvites, removeMember, revokeInvite } from "@/server/companies";
 import { getCustomer } from "@/server/customers";
 import { resolveFeatureShop } from "@/server/shop";
+import { decideOrder, startApprovedPayment } from "@/server/company-approvals";
+import { siteUrl } from "@/lib/site";
 
 export type InviteState = { ok: boolean; message: string | null };
 
@@ -72,5 +76,25 @@ export async function leaveCompanyAction(storeSlug: string, marketSlug: string):
   const mine = shop && customer ? await companyOf(shop.store.id, customer.id) : null;
   if (!shop || !customer || !mine || mine.role !== "employee") return;
   await removeMember(shop.store.id, mine.company.id, customer.id, { quiet: true, market: null });
+  refresh();
+}
+
+/** An approver's yes or no to an order waiting at their company (D321 C.2): the right is read again by `decideOrder()`. */
+export async function decideApprovalAction(storeSlug: string, marketSlug: string, orderId: string, approve: boolean): Promise<void> {
+  const shop = await resolveFeatureShop(storeSlug, marketSlug, "business");
+  const customer = shop ? await getCustomer(shop.store.id) : null;
+  if (!shop || !customer || !z.uuid().safeParse(orderId).success) return;
+  await decideOrder(shop, customer.id, orderId, approve);
+  refresh();
+}
+
+/** The buyer pays their approved order (D321 C.2): to Stripe's hosted page, the store's terms recorded first. */
+export async function payApprovedAction(storeSlug: string, marketSlug: string, orderId: string, form: FormData): Promise<void> {
+  const shop = await resolveFeatureShop(storeSlug, marketSlug, "business");
+  const customer = shop ? await getCustomer(shop.store.id) : null;
+  if (!shop || !customer || !z.uuid().safeParse(orderId).success) return;
+  const header = (await headers()).get("origin");
+  const result = await startApprovedPayment(shop, customer.id, orderId, header ? new URL(header).origin : siteUrl(), form.get("terms") === "1");
+  if (result.ok) redirect(result.url);
   refresh();
 }

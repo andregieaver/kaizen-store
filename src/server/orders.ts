@@ -170,6 +170,8 @@ export type OrderView = {
   subscriptionId: string | null;
   /** The company it was bought for (B2B), shown with the order and on its invoice. */
   company: { name: string; number: string } | null;
+  /** A company's purchase (D321 C.2): the location it was for (its name now, null once deleted), the buyer's PO number and its approval. */
+  companyPurchase: { location: string | null; poNumber: string | null; approval: "waiting" | "approved" | "declined" | null };
   /** The VAT rate the shipping was charged at, as it was then (`orders.shipping_tax_rate`; the country's rate for an order that has none), for showing businesses amounts without VAT. */
   shippingVatRate: number;
   /**
@@ -344,6 +346,11 @@ const toOrder = (row: Row, lines: Row[]): OrderView => ({
   company: row.company_name
     ? { name: String(row.company_name), number: String(row.organisation_number ?? "") }
     : null,
+  companyPurchase: {
+    location: row.company_location ? String(row.company_location) : null,
+    poNumber: row.po_number ? String(row.po_number) : null,
+    approval: row.approval === "waiting" || row.approval === "approved" || row.approval === "declined" ? row.approval : null,
+  },
   shippingVatRate: Number(row.shipping_vat_rate ?? 0),
   copied: row.copied_from !== null && row.copied_from !== undefined,
 });
@@ -354,7 +361,8 @@ export async function getOrder(storeId: string, orderId: string): Promise<OrderV
       select o.*, coalesce(o.shipping_tax_rate, commerce.vat_rate(o.market_code, 'standard', o.placed_at)) as shipping_vat_rate,
         exists (select 1 from commerce.order_events e where e.store_id = o.store_id and e.order_id = o.id and e.type = 'order.paid') as was_paid,
         (select jsonb_build_object('terms', t.terms, 'dueOn', t.due_on::text, 'paidAt', t.paid_at, 'today', commerce.store_day(o.store_id, now())::text)
-           from commerce.order_payment_terms t where t.store_id = o.store_id and t.order_id = o.id) as payment_terms
+           from commerce.order_payment_terms t where t.store_id = o.store_id and t.order_id = o.id) as payment_terms,
+        (select l.name from commerce.company_locations l where l.store_id = o.store_id and l.id = o.company_location_id) as company_location
       from commerce.orders o where o.store_id = ${storeId}::uuid and o.id = ${orderId}::uuid
     `),
     db().execute<Row>(sql`

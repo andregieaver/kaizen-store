@@ -693,6 +693,8 @@ async function eraseRows(tx: Tx, s: PrivacySubject, store: PrivacyStore): Promis
   await tx.execute(sql`
     delete from commerce.company_invites where store_id = ${sid}::uuid and (lower(email) = any(${addresses}) or customer_id = ${cid}::uuid)
   `);
+  // Where the person bought for their company (D321 C.2).
+  await tx.execute(sql`delete from commerce.company_location_buyers where store_id = ${sid}::uuid and customer_id = ${cid}::uuid`);
   await tx.execute(sql`delete from commerce.form_submissions where store_id = ${sid}::uuid and lower(email) = any(${addresses})`);
   // Staff's tags on the person (D296).
   await tx.execute(sql`delete from commerce.customer_tags where store_id = ${sid}::uuid and email = any(${addresses})`);

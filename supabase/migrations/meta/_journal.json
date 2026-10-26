@@ -3312,6 +3312,20 @@
       "when": 1792979420884,
       "tag": "20261026015020_price_lists_sql",
       "breakpoints": true
+    },
+    {
+      "idx": 473,
+      "version": "7",
+      "when": 1792980260871,
+      "tag": "20261026020420_company_buying",
+      "breakpoints": true
+    },
+    {
+      "idx": 474,
+      "version": "7",
+      "when": 1792980281248,
+      "tag": "20261026020441_company_buying_sql",
+      "breakpoints": true
     }
   ]
 }

@@ -59,7 +59,7 @@ const BACKORDERED = sql`exists (select 1 from commerce.order_lines l where l.sto
 /** An unfinished checkout: waiting for payment, or cancelled and never paid. Never copied history. */
 const UNFINISHED = sql`(o.copied_from is null and (o.status = 'pending_payment' or (o.status = 'cancelled' and not ${WAS_PAID})))`;
 
-/** One word of the search: it matches an order when any of the six holds; the person's own data (email, name) only on an order whose person was not erased (D162). */
+/** One word of the search: it matches an order when any of the seven holds; the person's own data (email, name) only on an order whose person was not erased (D162). */
 function wordMatches(word: SearchWord): SQL {
   const contains = `%${word.like}%`;
   const arms: SQL[] = [];
@@ -75,6 +75,8 @@ function wordMatches(word: SearchWord): SQL {
   arms.push(sql`exists (select 1 from commerce.order_tags t where t.store_id = o.store_id and t.order_id = o.id
       and (t.key = ${word.key} or t.key like ${`${escapeLike(word.key)}%`}))`);
   arms.push(sql`exists (select 1 from commerce.shipments sh where sh.store_id = o.store_id and sh.order_id = o.id and sh.undone_at is null and lower(sh.tracking_number) = ${word.key})`);
+  // A company's PO number (D321 C.2).
+  arms.push(sql`lower(o.po_number) like lower(${contains})`);
   return sql`(${sql.join(arms, sql` or `)})`;
 }
 

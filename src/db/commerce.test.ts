@@ -6561,3 +6561,53 @@ describe("price lists (wave 6 unit C1, D321)", () => {
     await expect(db.query("insert into commerce.price_list_assignments (store_id, list_id, tier_id) values ($1, $2, $3)", [storeId, fixed.id, foreignTier.id])).rejects.toThrow();
   });
 });
+
+describe("company locations, buyers and approvals (wave 6 unit C2, D321)", () => {
+  it("keep buyers to the company's employees, a company to 50 locations, and an order's location, PO number and approval as placed", async () => {
+    const storeId = await createStore("locations-store", ["NO"]);
+    const one = async <T>(text: string, params: unknown[]) => (await db.query<T>(text, params)).rows[0];
+    const company = await one<{ id: string }>("insert into commerce.customer_companies (store_id, name) values ($1, 'Acme AS') returning id", [storeId]);
+    const other = await one<{ id: string }>("insert into commerce.customer_companies (store_id, name) values ($1, 'Beta AS') returning id", [storeId]);
+    const owner = await one<{ id: string }>("insert into commerce.customers (store_id, email, company_id, company_role) values ($1, 'eier@example.com', $2, 'owner') returning id", [storeId, company.id]);
+    const employee = await one<{ id: string }>("insert into commerce.customers (store_id, email, company_id, company_role) values ($1, 'ansatt@example.com', $2, 'employee') returning id", [storeId, company.id]);
+    const outsider = await one<{ id: string }>("insert into commerce.customers (store_id, email, company_id, company_role) values ($1, 'annen@example.com', $2, 'employee') returning id", [storeId, other.id]);
+    const office = await one<{ id: string }>("insert into commerce.company_locations (store_id, company_id, name) values ($1, $2, 'Oslo') returning id", [storeId, company.id]);
+
+    // An employee of the company buys there; the main account and another company's employee never get a row.
+    await db.query("insert into commerce.company_location_buyers (store_id, location_id, customer_id, role) values ($1, $2, $3, 'orderer')", [storeId, office.id, employee.id]);
+    await expect(db.query("insert into commerce.company_location_buyers (store_id, location_id, customer_id, role) values ($1, $2, $3, 'approver')", [storeId, office.id, owner.id])).rejects.toThrow(/company_location_buyers.member/);
+    await expect(db.query("insert into commerce.company_location_buyers (store_id, location_id, customer_id, role) values ($1, $2, $3, 'orderer')", [storeId, office.id, outsider.id])).rejects.toThrow(/company_location_buyers.member/);
+    await expect(db.query("insert into commerce.company_location_buyers (store_id, location_id, customer_id, role) values ($1, $2, $3, 'boss')", [storeId, office.id, employee.id])).rejects.toThrow();
+    // Leaving the company takes the rows away.
+    await db.query("update commerce.customers set company_id = null, company_role = null where id = $1", [employee.id]);
+    expect((await db.query("select 1 from commerce.company_location_buyers where customer_id = $1", [employee.id])).rows).toHaveLength(0);
+
+    // At most 50 locations.
+    await db.query("insert into commerce.company_locations (store_id, company_id, name) select $1, $2, 'Sted ' || n from generate_series(1, 49) n", [storeId, company.id]);
+    await expect(db.query("insert into commerce.company_locations (store_id, company_id, name) values ($1, $2, 'For mange')", [storeId, company.id])).rejects.toThrow(/company_locations.max/);
+
+    // The approval limit comes with its currency.
+    await expect(db.query("update commerce.customer_companies set approval_limit_minor = 100000 where id = $1", [company.id])).rejects.toThrow();
+    await db.query("update commerce.customer_companies set approval_limit_minor = 100000, approval_currency = 'NOK' where id = $1", [company.id]);
+
+    // An order keeps its location and PO number; its approval moves only from waiting to approved or declined.
+    const order = await one<{ id: string }>(
+      `insert into commerce.orders (store_id, number, market_code, currency, locale, email, status, subtotal_minor, shipping_minor, discount_minor, tax_minor, total_minor,
+         billing_address, shipping_address, company_location_id, po_number, approval)
+       values ($1, 'L-1', 'NO', 'NOK', 'nb-NO', 'ansatt@example.com', 'pending_payment', 1000, 0, 0, 200, 1000, '{}', '{}', $2, 'PO-77', 'waiting') returning id`,
+      [storeId, office.id],
+    );
+    await expect(db.query("update commerce.orders set po_number = 'PO-78' where id = $1", [order.id])).rejects.toThrow(/orders.company_purchase/);
+    await expect(db.query("update commerce.orders set approval = null where id = $1", [order.id])).rejects.toThrow(/orders.approval/);
+    await db.query("update commerce.orders set approval = 'approved' where id = $1", [order.id]);
+    await expect(db.query("update commerce.orders set approval = 'declined' where id = $1", [order.id])).rejects.toThrow(/orders.approval/);
+    await expect(
+      db.query(
+        `insert into commerce.orders (store_id, number, market_code, currency, locale, email, status, subtotal_minor, shipping_minor, discount_minor, tax_minor, total_minor,
+           billing_address, shipping_address, po_number)
+         values ($1, 'L-2', 'NO', 'NOK', 'nb-NO', 'x@example.com', 'pending_payment', 1000, 0, 0, 200, 1000, '{}', '{}', $2)`,
+        [storeId, "x".repeat(41)],
+      ),
+    ).rejects.toThrow();
+  });
+});

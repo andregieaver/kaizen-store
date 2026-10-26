@@ -71,7 +71,7 @@ export async function payPageFor(shop: PayShop, token: string): Promise<PayPage>
 }
 
 /** What the order's own amounts are to Stripe: each line at what is due, quantity 1 (`exactAmounts`), the shipping as its own option. */
-function placedOrderOf(order: OrderView): PlacedOrder {
+export function placedOrderOf(order: OrderView): PlacedOrder {
   return {
     orderId: order.id,
     number: order.number,

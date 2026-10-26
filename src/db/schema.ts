@@ -3106,6 +3106,10 @@ export const customerCompanies = commerce.table(
     /** The most it may owe on terms at once (D293), in `credit_currency` (the store's main currency when it was set); null is no limit. */
     creditLimitMinor: bigint("credit_limit_minor", { mode: "number" }),
     creditCurrency: char("credit_currency", { length: 3 }),
+    /** Buying rules (D321 C.2): a PO number on every order, and the most an orderer's order may come to before it waits for an approver (null: no limit). */
+    poRequired: boolean("po_required").notNull().default(false),
+    approvalLimitMinor: bigint("approval_limit_minor", { mode: "number" }),
+    approvalCurrency: char("approval_currency", { length: 3 }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -3115,6 +3119,10 @@ export const customerCompanies = commerce.table(
     check(
       "customer_companies_credit",
       sql`(${t.creditLimitMinor} is null) = (${t.creditCurrency} is null) and (${t.creditLimitMinor} is null or ${t.creditLimitMinor} >= 0)`,
+    ),
+    check(
+      "customer_companies_approval",
+      sql`(${t.approvalLimitMinor} is null) = (${t.approvalCurrency} is null) and (${t.approvalLimitMinor} is null or ${t.approvalLimitMinor} > 0)`,
     ),
     uniqueIndex("customer_companies_store_name_idx").on(t.storeId, sql`lower(${t.name})`),
     foreignKey({
@@ -3393,6 +3401,9 @@ export const carts = commerce.table(
     giftTo: text("gift_to"),
     giftFrom: text("gift_from"),
     giftMessage: text("gift_message"),
+    /** A company member's purchase (D321 C.2): the location the order is for and the PO number, checked again by `placeOrder()`. */
+    companyLocationId: uuid("company_location_id"),
+    poNumber: text("po_number"),
     status: cartStatus("status").notNull().default("open"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
@@ -3404,6 +3415,7 @@ export const carts = commerce.table(
     check("carts_handoff_to", sql`${t.handoffTo} is null or ${t.handoffTo} in ('cart', 'checkout')`),
     check("carts_gift_fields", giftFieldsCheck(t)),
     check("carts_bonus_request", sql`${t.bonusRequestMinor} >= 0`),
+    check("carts_po_number", sql`${t.poNumber} is null or char_length(${t.poNumber}) between 1 and 40`),
     check(
       "carts_one_delivery",
       sql`num_nonnulls(${t.deliveryQuoteId}, ${t.shippingMethodId}, ${t.pickupOptionId}, ${t.localAreaId}) <= 1`,
@@ -3645,6 +3657,16 @@ export const orders = commerce.table(
     giftFrom: text("gift_from"),
     giftMessage: text("gift_message"),
     /**
+     * A company's purchase (D321 C.2): the location it is for (no foreign key: a location may go once no order waits at it), the buyer's PO number
+     * (at most 40 characters, on its invoice and credit notes) and its approval (`waiting`, `approved`, `declined`; null for an order that needed
+     * none), all kept as placed (`orders_company_purchase()`), the approval moving only from waiting.
+     */
+    companyLocationId: uuid("company_location_id"),
+    poNumber: text("po_number"),
+    approval: text("approval"),
+    approvalDecidedBy: uuid("approval_decided_by"),
+    approvalDecidedAt: timestamp("approval_decided_at", { withTimezone: true }),
+    /**
      * When staff last applied a change to the order's goods (wave 3 run 3, D174, `order_edits`): the list's *Edited* badge. Written only under the edit context
      * (`kaizen.order_edit`, `applyOrderEdit()`); the money columns above change after `pending_payment` only there too (`orders_settled_guard()`).
      */
@@ -3725,6 +3747,9 @@ export const orders = commerce.table(
     index("orders_held_by_idx").on(t.heldBy),
     index("orders_held_idx").on(t.storeId, t.heldAt).where(sql`${t.heldAt} is not null`),
     check("orders_delivery_method", sql`${t.deliveryMethod} in ('ship', 'pickup', 'local')`),
+    check("orders_po_number", sql`${t.poNumber} is null or char_length(${t.poNumber}) between 1 and 40`),
+    check("orders_approval", sql`${t.approval} is null or ${t.approval} in ('waiting', 'approved', 'declined')`),
+    index("orders_approval_idx").on(t.storeId, t.approval).where(sql`${t.approval} is not null`),
     check("orders_pickup_location", sql`(${t.deliveryMethod} = 'pickup') = (${t.pickupLocationId} is not null)`),
     check("orders_ready_for_pickup", sql`${t.readyForPickupAt} is null or ${t.deliveryMethod} = 'pickup'`),
     check(
@@ -13483,5 +13508,45 @@ export const priceListProducts = commerce.table(
     uniqueIndex("price_list_products_term_idx").on(t.listId, t.termId).where(sql`${t.termId} is not null`),
     index("price_list_products_store_product_idx").on(t.storeId, t.productId),
     index("price_list_products_term_fk_idx").on(t.termId),
+  ],
+);
+
+/** A company's location (D321 C.2): a place it buys for, with a billing and a shipping address (each the shape orders keep, or null). At most 50 a company. */
+export const companyLocations = commerce.table(
+  "company_locations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId(),
+    companyId: uuid("company_id").notNull(),
+    name: text("name").notNull(),
+    billingAddress: jsonb("billing_address"),
+    shippingAddress: jsonb("shipping_address"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("company_locations_store_id_key").on(t.storeId, t.id),
+    foreignKey({ name: "company_locations_company_fk", columns: [t.storeId, t.companyId], foreignColumns: [customerCompanies.storeId, customerCompanies.id] }).onDelete("cascade"),
+    check("company_locations_name", sql`char_length(${t.name}) between 1 and 80`),
+    uniqueIndex("company_locations_name_idx").on(t.companyId, sql`lower(${t.name})`),
+  ],
+);
+
+/** Who buys at a location and in what role (D321 C.2): `orderer` (over the limit an order waits) or `approver`. Only the company's employees; the main account approves everywhere without a row. */
+export const companyLocationBuyers = commerce.table(
+  "company_location_buyers",
+  {
+    storeId: storeId(),
+    locationId: uuid("location_id").notNull(),
+    customerId: uuid("customer_id").notNull(),
+    role: text("role").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    primaryKey({ name: "company_location_buyers_pk", columns: [t.locationId, t.customerId] }),
+    foreignKey({ name: "company_location_buyers_location_fk", columns: [t.storeId, t.locationId], foreignColumns: [companyLocations.storeId, companyLocations.id] }).onDelete("cascade"),
+    foreignKey({ name: "company_location_buyers_customer_fk", columns: [t.storeId, t.customerId], foreignColumns: [customers.storeId, customers.id] }).onDelete("cascade"),
+    check("company_location_buyers_role", sql`${t.role} in ('orderer', 'approver')`),
+    index("company_location_buyers_customer_idx").on(t.storeId, t.customerId),
   ],
 );

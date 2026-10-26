@@ -164,6 +164,8 @@ export const COPY_RULES: Record<string, CopyRule> = {
   automation_sends: never("Which automation emails went to whom (D298): people's data."),
   stock_requests: never("Shoppers' back-in-stock requests (D298): people's data."),
   segments: never("Segments name the store's own customer groups and tags (D296); a copy starts without them."),
+  company_locations: never("A company's locations (D321 C.2): the business's addresses; companies' members are people, so a copy starts without them."),
+  company_location_buyers: never("Who buys at a company's location (D321 C.2): people's data."),
   price_lists: never("Price lists name the store's own customer groups, companies and variants (D321); a copy starts without them."),
   price_list_assignments: never("Who a price list is for: the store's own customer groups and companies (D321)."),
   price_list_prices: never("A price list's fixed prices for the store's own variants (D321)."),

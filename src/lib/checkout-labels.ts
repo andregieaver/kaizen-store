@@ -29,6 +29,9 @@ export function checkoutLabels(m: Messages, action: string = m.checkout): Checko
       host_payments_off: m.stay.problemHostPayments,
       payer: m.payer.problem,
       terms: m.paymentTerms.problem,
+      location: m.companyAccount.problemLocation,
+      po_number: m.companyAccount.problemPoNumber,
+      approval: m.companyAccount.problemApproval,
     },
   };
 }

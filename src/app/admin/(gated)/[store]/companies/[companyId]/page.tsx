@@ -18,6 +18,9 @@ import { adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { formatPriceInput } from "@/lib/product-input";
 import { listTiers } from "@/server/customer-tiers";
+import { listLocations } from "@/server/company-locations";
+
+import { LocationsCard } from "./locations-card";
 import { PageHeader } from "@/components/admin/ui";
 
 import {
@@ -48,7 +51,13 @@ export default async function CompanyPage({ params }: PageProps<"/admin/[store]/
   if (!z.uuid().safeParse(companyId).success) notFound();
   const company = await getCompany(store.id, companyId);
   if (!company) notFound();
-  const [groups, members, invites, owes] = await Promise.all([listTiers(store.id), listMembers(store.id, company.id), listInvites(store.id, company.id), companyOwes(store.id, company.id)]);
+  const [groups, members, invites, owes, locations] = await Promise.all([
+    listTiers(store.id),
+    listMembers(store.id, company.id),
+    listInvites(store.id, company.id),
+    companyOwes(store.id, company.id),
+    listLocations(store.id, company.id),
+  ]);
   const currency = mainCurrency(store);
   const base = `/admin/${store.slug}`;
   const locale = store.markets[0]?.locale ?? "nb-NO";
@@ -225,6 +234,19 @@ export default async function CompanyPage({ params }: PageProps<"/admin/[store]/
           </div>
         </ActionForm>
       </section>
+
+      <LocationsCard
+        lang={adminLangOf(current.account.adminLocale)}
+        storeSlug={store.slug}
+        companyId={company.id}
+        locations={locations}
+        members={members}
+        rules={{
+          poRequired: company.poRequired,
+          limit: company.approvalLimitMinor !== null && company.approvalCurrency ? formatPriceInput(company.approvalLimitMinor, company.approvalCurrency) : "",
+          currency: company.approvalCurrency ?? currency,
+        }}
+      />
 
       <section aria-labelledby="delete" className={card}>
         <h2 id="delete" className="text-title text-ink">

@@ -161,6 +161,7 @@ export const PERSONAL_DATA: PersonalEntry[] = [
 
   // Company -------------------------------------------------------------------------------------------------------------------------
   entry("customer_companies", "business", via("customer", "id"), ["name"], "company", "keep", "The company is the business's data and stays with its other members; the preview warns when the person is its main account."),
+  entry("company_location_buyers", "shopper", via("customer", "customer_id"), ["customer_id"], "company", "delete", "Where the person buys for their company and in what role (D321 C.2): deleted with their membership."),
   entry("company_invites", "shopper", via("email", "email", "customer_id"), ["email", "customer_id", "token_hash"], "company", "delete", "Invitations to the address or account are deleted."),
 
   // Email and consent -----------------------------------------------------------------------------------------------------------------
@@ -297,6 +298,7 @@ export const NOT_PERSONAL: Record<string, string> = {
   cookie_notes: "A cookie's description.",
   countries: "Reference data.",
   customer_tiers: "A customer group's name and percentage, and the owner's note about the group.",
+  company_locations: "A company's location (D321 C.2): its name and the business's billing and shipping addresses; the company's data, kept with it.",
   price_lists: "A store's price list (D321): its name, a percentage and whether it is on.",
   price_list_assignments: "Which customer groups and companies a price list is for (D321): the business's own groups and company accounts, never a person.",
   price_list_prices: "A price list's fixed price for a variant in a currency (D321).",
@@ -417,6 +419,9 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   // Payment terms (D293): the reminder before the due day and the notice after it, to the order's own address.
   "order.payment_due": "shopper",
   "order.payment_overdue": "shopper",
+  // Company approvals (D321 C.2): to the company's approvers and to the buyer, at their own accounts' addresses.
+  "company.approval_waiting": "shopper",
+  "company.approval_decided": "shopper",
   "order.parcel_out_for_delivery": "shopper",
   "order.parcel_delivered": "shopper",
   "return.approved": "shopper",

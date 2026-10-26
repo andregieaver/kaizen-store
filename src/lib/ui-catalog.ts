@@ -149,6 +149,8 @@ export const HAND_WRITTEN_ONLY: readonly string[] = [
   // Wave 5 unit G (D301): what the store says about how reviews are written and checked (Directive 2005/29/EC Art. 7(6)), until the legal review clears it.
   "ui:reviews.intro",
   "ui:reviews.checked.",
+  // Wave 6 unit C2 (D321): the company approval emails, written by hand in the four languages.
+  "email:approval.",
 ];
 
 export const isHandWrittenOnly = (key: string): boolean => HAND_WRITTEN_ONLY.some((prefix) => key.startsWith(prefix));

@@ -267,7 +267,7 @@ export type DraftExportRow = {
 export type AbandonedRow = { capturedAt: Ts; remindersSent: number; clickedAt: Ts; recoveredAt: Ts; optedOutAt: Ts };
 export type FormRow = { kind: string; createdAt: Ts; status: string };
 export type CompanySource = {
-  company: { name: string; role: string | null } | null;
+  company: { name: string; role: string | null; locations?: { name: string; role: string }[] } | null;
   invites: { status: string; createdAt: Ts; expiresAt: Ts; acceptedAt: Ts }[];
 };
 /** The person's place on the store's subscriber list (D295), with its consent history. */
@@ -771,7 +771,14 @@ export function shapeExport(input: ExportInput): ExportFile {
     },
     forms: input.forms.map((f) => ({ kind: f.kind, createdAt: iso(f.createdAt), status: f.status })),
     company: {
-      company: input.company.company ? { name: input.company.company.name, role: text(input.company.company.role) } : null,
+      company: input.company.company
+        ? {
+            name: input.company.company.name,
+            role: text(input.company.company.role),
+            // Where the person buys for the company and in what role (D321 C.2).
+            ...(input.company.company.locations?.length ? { locations: input.company.company.locations.map((l) => ({ name: l.name, role: l.role })) } : {}),
+          }
+        : null,
       invites: input.company.invites.map((i) => ({ status: i.status, createdAt: iso(i.createdAt), expiresAt: iso(i.expiresAt), acceptedAt: iso(i.acceptedAt) })),
     },
     customFields: input.customFields.map((f) => ({ entity: f.entity, reference: text(f.reference), group: f.group, label: f.label, value: text(f.value), locale: text(f.locale) })),

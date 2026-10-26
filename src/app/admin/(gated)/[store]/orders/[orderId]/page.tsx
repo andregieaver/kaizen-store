@@ -805,6 +805,11 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                 <span className="block text-muted">{fillWords(w.organisationNumber, { number: order.company.number })}</span>
               </p>
             )}
+            {order.companyPurchase.location && <p className="mt-1">{fillWords(w.forLocation, { location: order.companyPurchase.location })}</p>}
+            {order.companyPurchase.poNumber && <p className="mt-1">{fillWords(w.poNumber, { po: order.companyPurchase.poNumber })}</p>}
+            {order.companyPurchase.approval && order.status === "pending_payment" && (
+              <p className="mt-1 text-warning-text">{w.approval[order.companyPurchase.approval]}</p>
+            )}
             {order.ships && order.deliveryMethod === "pickup" && (
               <>
                 <h3 className="mt-3 mb-1 text-body-strong text-ink">{w.collectsAt}</h3>

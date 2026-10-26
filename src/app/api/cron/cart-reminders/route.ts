@@ -14,6 +14,7 @@ import { summarisePending } from "@/server/support-summary";
 import { cronAuthorised } from "@/server/cron-auth";
 import { runJobs, tracked } from "@/server/cron-runs";
 import { expireDrafts } from "@/server/draft-orders";
+import { expireApprovals } from "@/server/company-approvals";
 import { archiveFinishedOrders } from "@/server/order-archive";
 import { expireOrderEdits } from "@/server/order-edits";
 import { runDataJobs } from "@/server/data-jobs";
@@ -115,6 +116,8 @@ async function dispatch() {
     dataJobs: () => runDataJobs(),
     lowStock: () => sendLowStockNotices(),
     draftExpiry: () => expireDrafts(),
+    // Company orders (D321 C.2) that waited for approval, or for payment after it, longer than the window: cancelled, their stock let go.
+    approvalExpiry: () => expireApprovals(),
     autoArchive: () => archiveFinishedOrders(),
     // Order changes whose pay link ran out (D174): sessions closed first, a change paid in the last minute applied, the held units released.
     editExpiry: () => expireOrderEdits(),

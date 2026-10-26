@@ -105,6 +105,10 @@ export const orderEn = {
     customer: "Customer",
     notKnownYet: "Not known until payment.",
     organisationNumber: "Organisation number {number}",
+    /** A company's purchase (D321 C.2). */
+    poNumber: "PO number {po}",
+    forLocation: "For {location}",
+    approval: { waiting: "Waiting for the company's approval", approved: "Approved by the company; waiting for the buyer to pay", declined: "Declined by the company" },
     collectsAt: "Collects at",
     oneOfYourPlaces: "One of your places",
     deliverTo: "Deliver to",

@@ -125,10 +125,13 @@ export async function applyPaymentAnswer(storeId: string, answer: PaymentAnswer,
   }
 }
 
-/** An order made from a draft order (D173): its `draft_id` is set. */
+/**
+ * An order that lives until an expiry of its own: one made from a draft order (D173, `draft_id` set, `expireDrafts()`) or a company's order approved and
+ * waiting for its buyer to pay (D321 C.2, `expireApprovals()`). A lapsed payment leaves it as it is.
+ */
 async function isDraftOrder(storeId: string, orderId: string): Promise<boolean> {
   const [row] = await db().execute<Row>(sql`
-    select 1 from commerce.orders where store_id = ${storeId}::uuid and id = ${orderId}::uuid and draft_id is not null
+    select 1 from commerce.orders where store_id = ${storeId}::uuid and id = ${orderId}::uuid and (draft_id is not null or approval = 'approved')
   `);
   return Boolean(row);
 }

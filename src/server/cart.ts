@@ -130,7 +130,14 @@ export type CartCompanyView = CartCompany & {
  * The cart's lines, currency and company, and the buyer's gift (wave 3, D173): `gift` is what the cart holds when the store has gift messages on, and `NO_GIFT` when the switch is
  * off (the store ignores whatever a cart may hold then), so a page draws the box only for a cart that can have one (`getCartGift()` says whether the store offers it).
  */
-export type Cart = { lines: CartLine[]; currency: string; company: CartCompanyView | null; gift: GiftFields };
+export type Cart = {
+  lines: CartLine[];
+  currency: string;
+  company: CartCompanyView | null;
+  gift: GiftFields;
+  /** A company member's purchase as kept on the cart (D321 C.2): the location chosen and the PO number; `placeOrder()` checks both again. */
+  companyPurchase: { locationId: string | null; poNumber: string | null };
+};
 
 /** The ids of this browser's carts in a store, in every market: what orders placed from this device are found by (D139). */
 export async function deviceCartIds(storeId: string): Promise<string[]> {
@@ -166,7 +173,7 @@ export async function getCart(
 ): Promise<Cart> {
   const { storeId, market } = shop;
   const cartId = await readCartId(shop);
-  if (!cartId) return { lines: [], currency: market.currency, company: null, gift: NO_GIFT };
+  if (!cartId) return { lines: [], currency: market.currency, company: null, gift: NO_GIFT, companyPurchase: { locationId: null, poNumber: null } };
   const customerId = who.customerId !== undefined ? who.customerId : ((await getCustomer(storeId))?.id ?? null);
 
   const rows = await db().execute<Row>(sql`
@@ -177,7 +184,7 @@ export async function getCart(
       cl.starts_at, cl.resource_id, br.name as staff, st.time_zone, aps.payment, aps.deposit_percent,
       p.kind, aps.check_in_time, aps.check_out_time, v.rental_period, p.host_id,
       c.company_name, c.organisation_number, c.vat_number, vk.status as vat_status, vk.requested_at as vat_checked_at,
-      c.is_gift, c.gift_to, c.gift_from, c.gift_message,
+      c.is_gift, c.gift_to, c.gift_from, c.gift_message, c.company_location_id, c.po_number,
       coalesce((select os.gift_messages from commerce.order_settings os where os.store_id = c.store_id), false) as gift_on,
       cl.gift_card_key, cl.gift_card_to, cl.gift_card_to_name, cl.gift_card_from, cl.gift_card_message, cl.gift_card_send_on,
       cl.selling_plan_id, sp.interval, sp.interval_count, sp.discount_percent, sp.trial_days, sp.min_cycles,
@@ -232,6 +239,10 @@ export async function getCart(
   return {
     currency: market.currency,
     gift: first?.gift_on ? giftOfRow(first) : NO_GIFT,
+    companyPurchase: {
+      locationId: first?.company_location_id ? String(first.company_location_id) : null,
+      poNumber: first?.po_number ? String(first.po_number) : null,
+    },
     company:
       first?.company_name && first.organisation_number
         ? {

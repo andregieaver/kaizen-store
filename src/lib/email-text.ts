@@ -5,6 +5,7 @@
 import { earnedText, type OrderBonus } from "./bonus-shopper";
 import { registeredEmail } from "./ui-registry";
 import { EXCHANGE_EMAIL_TEXT } from "./exchange-email-text";
+import { APPROVAL_EMAIL_TEXT } from "./approval-email-text";
 import { TERMS_EMAIL_TEXT } from "./terms-email-text";
 
 const text = {
@@ -13,6 +14,7 @@ const text = {
     ...EXCHANGE_EMAIL_TEXT.nb,
     // Payment terms (D293): `terms`; hand-written, needs legal review.
     ...TERMS_EMAIL_TEXT.nb,
+    ...APPROVAL_EMAIL_TEXT.nb,
     deliveries: {
       startedSubject: (store: string) => `Abonnementsboksen din fra ${store} er klar`,
       startedHeading: "Abonnementsboksen din er klar",
@@ -311,6 +313,7 @@ const text = {
     ...EXCHANGE_EMAIL_TEXT.sv,
     // Payment terms (D293): `terms`; hand-written, needs legal review.
     ...TERMS_EMAIL_TEXT.sv,
+    ...APPROVAL_EMAIL_TEXT.sv,
     deliveries: {
       startedSubject: (store: string) => `Din prenumerationsbox från ${store} är klar`,
       startedHeading: "Din prenumerationsbox är klar",
@@ -609,6 +612,7 @@ const text = {
     ...EXCHANGE_EMAIL_TEXT.da,
     // Payment terms (D293): `terms`; hand-written, needs legal review.
     ...TERMS_EMAIL_TEXT.da,
+    ...APPROVAL_EMAIL_TEXT.da,
     deliveries: {
       startedSubject: (store: string) => `Din abonnementsboks fra ${store} er klar`,
       startedHeading: "Din abonnementsboks er klar",
@@ -907,6 +911,7 @@ const text = {
     ...EXCHANGE_EMAIL_TEXT.en,
     // Payment terms (D293): `terms`; hand-written, needs legal review.
     ...TERMS_EMAIL_TEXT.en,
+    ...APPROVAL_EMAIL_TEXT.en,
     deliveries: {
       startedSubject: (store: string) => `Your subscription box from ${store} is set up`,
       startedHeading: "Your subscription box is set up",

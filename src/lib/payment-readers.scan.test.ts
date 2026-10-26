@@ -27,6 +27,7 @@ const READERS: Record<string, { count: number; reason: string }> = {
   "src/server/store-closure.ts": { count: 1, reason: "counts pending Stripe sessions that closing a store must wait for" },
   "src/server/privacy-erasure.ts": { count: 1, reason: "closes pending Stripe sessions before an unpaid order is cancelled" },
   "src/server/draft-pay.ts": { count: 3, reason: "the draft's pay link opens, counts and closes Stripe sessions" },
+  "src/server/company-approvals.ts": { count: 1, reason: "an approved company order's pay press counts its earlier Stripe sessions for the idempotency key (D321 C.2)" },
   "src/server/draft-sessions.ts": { count: 1, reason: "closes the pending Stripe sessions of a draft's order" },
   "src/server/draft-orders.ts": { count: 2, reason: "counts a draft order's pending Stripe sessions in the transaction that records money paid outside (and a comment naming the manual provider)" },
   "src/server/order-admin.ts": {

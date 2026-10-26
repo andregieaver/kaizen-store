@@ -1339,6 +1339,126 @@ describe("price lists in euro (D321)", () => {
 });
 
 /**
+ * Company locations, approvals and PO numbers (D321 C.2), shown in euro: an employee buying for two locations must choose one; a required PO number
+ * is asked for and kept on the order and its invoice; an orderer's order over the company's limit (in kroner, the euro total converted) waits for the
+ * main account's approval with no payment started and its stock held, is paid on Stripe's hosted page once approved, and is cancelled when declined
+ * or left too long.
+ */
+describe("company locations, approvals and PO numbers in euro (D321 C.2)", () => {
+  it("asks for a location and a PO number, waits for approval over the limit, and is paid or cancelled as the approver decides", async () => {
+    const { setCartCompanyPurchase } = await import("./company-locations");
+    const { decideOrder, expireApprovals, myApprovalOrders, ordersToApprove, startApprovedPayment } = await import("./company-approvals");
+    const [company] = await db().execute<Row>(sql`
+      insert into commerce.customer_companies (store_id, name, po_required, approval_limit_minor, approval_currency)
+      values (${storeId}::uuid, ${`Fjord ${run}`}, true, 100000, 'NOK') returning id
+    `);
+    const companyId2 = String(company.id);
+    const owner = await preRegisterCustomer(storeId, `owner-${run}@example.com`);
+    await db().execute(sql`update commerce.customers set company_id = ${companyId2}::uuid, company_role = 'owner' where id = ${owner}::uuid`);
+    const employee = await preRegisterCustomer(storeId, `orderer-${run}@example.com`);
+    await db().execute(sql`update commerce.customers set company_id = ${companyId2}::uuid, company_role = 'employee' where id = ${employee}::uuid`);
+    const locations: string[] = [];
+    for (const name of ["Oslo", "Bergen"]) {
+      const [l] = await db().execute<Row>(sql`insert into commerce.company_locations (store_id, company_id, name) values (${storeId}::uuid, ${companyId2}::uuid, ${name}) returning id`);
+      locations.push(String(l.id));
+      await db().execute(sql`insert into commerce.company_location_buyers (store_id, location_id, customer_id, role) values (${storeId}::uuid, ${String(l.id)}::uuid, ${employee}::uuid, 'orderer')`);
+    }
+    const checkout = (customerId: string) => startCheckout({ ...shop(), storeSlug: slug }, cartId(), origin, "Frakt", {}, { customerId });
+    view = noInEuro;
+    try {
+      // Two locations: one must be chosen; then the required PO number.
+      jar.clear();
+      await startSession(storeId, employee);
+      await add("DEMO-MUG-WHITE", 1);
+      expect(await checkout(employee)).toMatchObject({ ok: false, problem: "location" });
+      expect(await setCartCompanyPurchase({ storeId }, cartId(), employee, { locationId: locations[0], poNumber: "" })).toBe("ok");
+      expect(await checkout(employee)).toMatchObject({ ok: false, problem: "po_number" });
+      expect(await setCartCompanyPurchase({ storeId }, cartId(), employee, { locationId: locations[0], poNumber: "x".repeat(41) })).toBe("po_number");
+      // Another company's location is never taken.
+      expect(await setCartCompanyPurchase({ storeId }, cartId(), employee, { locationId: companyId2, poNumber: "PO-1" })).toBe("location");
+      expect(await setCartCompanyPurchase({ storeId }, cartId(), employee, { locationId: locations[0], poNumber: "PO-1" })).toBe("ok");
+
+      // Under the limit: an ordinary checkout, paid, the PO number on the order and its invoice.
+      const summary = await cartSummary(shop(), await getCart(shop()));
+      expect(summary.total * 11.5).toBeLessThan(100000);
+      expect(await checkout(employee)).toMatchObject({ ok: true });
+      const open = (await getOpenCheckout(storeId, cartId()))!;
+      const placed = (await getOrder(storeId, open.orderId))!;
+      expect(placed.companyPurchase).toEqual({ location: "Oslo", poNumber: "PO-1", approval: null });
+      fake.sessions.set(open.sessionId, { status: "complete", payment_status: "paid", mode: "payment", payment_intent: `pi_${open.sessionId}` });
+      expect((await getShopperOrder(storeId, open.orderId, open.sessionId))?.status).toBe("paid");
+      await expectDocuments(open.orderId, { euro: true });
+      const [invoice] = await db().execute<Row>(sql`select snapshot ->> 'poNumber' as po from commerce.invoices where order_id = ${open.orderId}::uuid and kind = 'order'`);
+      expect(invoice.po).toBe("PO-1");
+
+      // Over the limit (in kroner, the euro total converted): it waits, nothing is sent to Stripe, its stock is held for the window, the cart is done.
+      jar.clear();
+      await startSession(storeId, employee);
+      await add("DEMO-MUG-WHITE", 6);
+      await setCartCompanyPurchase({ storeId }, cartId(), employee, { locationId: locations[1], poNumber: "PO-2" });
+      const waitingCart = cartId();
+      const stripeCalls = fake.created.length;
+      const waits = await checkout(employee);
+      expect(waits).toMatchObject({ ok: true });
+      expect(waits.ok && waits.url).toContain("/account/company?placed=");
+      expect(fake.created.length).toBe(stripeCalls);
+      const [w] = await db().execute<Row>(sql`
+        select o.id, o.approval, o.po_number, (select min(r.expires_at) > now() + interval '6 days' from commerce.inventory_reservations r where r.order_id = o.id) as held,
+               (select status from commerce.carts c where c.id = o.cart_id) as cart_status
+        from commerce.orders o where o.cart_id = ${waitingCart}::uuid and o.approval is not null order by o.placed_at desc limit 1
+      `);
+      expect({ approval: w.approval, po: w.po_number, held: w.held, cart: w.cart_status }).toEqual({ approval: "waiting", po: "PO-2", held: true, cart: "converted" });
+      const waitingId = String(w.id);
+      expect((await ordersToApprove(storeId, owner)).map((o) => o.id)).toContain(waitingId);
+      expect(await ordersToApprove(storeId, employee)).toEqual([]);
+      expect((await myApprovalOrders(storeId, employee)).map((o) => o.approval)).toEqual(["waiting"]);
+      // The buyer cannot approve their own, nor pay it before it is approved.
+      expect(await decideOrder({ store: { id: storeId }, market: view }, employee, waitingId, true)).toMatchObject({ ok: false });
+      const store = { id: storeId, slug, termsAtCheckout: "off", timeZone: tz, markets: [no], localization: localizationOf([], [{ currency: "NOK", rate: 11.5, roundTo: 1 }, { currency: "EUR", rate: 1, roundTo: 1 }], [no]) } as unknown as Store;
+      expect(await startApprovedPayment({ store, market: view }, employee, waitingId, origin, true)).toMatchObject({ ok: false, problem: "not_found" });
+      // The main account approves; the buyer pays it on Stripe's hosted page, for the order's own total.
+      expect(await decideOrder({ store: { id: storeId }, market: view }, owner, waitingId, true)).toEqual({ ok: true });
+      expect(await decideOrder({ store: { id: storeId }, market: view }, owner, waitingId, true)).toEqual({ ok: false, problem: "decided" });
+      expect(await startApprovedPayment({ store, market: view }, employee, waitingId, origin, true)).toMatchObject({ ok: true });
+      const waitingOrder = (await getOrder(storeId, waitingId))!;
+      expect(chargedNow(fake.created.at(-1)!.params)).toBe(waitingOrder.totalMinor);
+      const [pending] = await db().execute<Row>(sql`select provider_reference from commerce.payments where order_id = ${waitingId}::uuid and provider = 'stripe' and status = 'pending'`);
+      fake.sessions.set(String(pending.provider_reference), { status: "complete", payment_status: "paid", mode: "payment", payment_intent: `pi_${String(pending.provider_reference)}` });
+      expect((await getShopperOrder(storeId, waitingId, String(pending.provider_reference)))?.status).toBe("paid");
+
+      // Declined: cancelled, its stock let go.
+      jar.clear();
+      await startSession(storeId, employee);
+      await add("DEMO-MUG-WHITE", 6);
+      await setCartCompanyPurchase({ storeId }, cartId(), employee, { locationId: locations[0], poNumber: "PO-3" });
+      const declinedCart = cartId();
+      await checkout(employee);
+      const [d] = await db().execute<Row>(sql`select id from commerce.orders where cart_id = ${declinedCart}::uuid and approval = 'waiting'`);
+      expect(await decideOrder({ store: { id: storeId }, market: view }, owner, String(d.id), false)).toEqual({ ok: true });
+      const [declined] = await db().execute<Row>(sql`
+        select o.status, o.approval, (select count(*)::int from commerce.inventory_reservations r where r.order_id = o.id and r.released_at is null) as held
+        from commerce.orders o where o.id = ${String(d.id)}::uuid
+      `);
+      expect({ status: declined.status, approval: declined.approval, held: declined.held }).toEqual({ status: "cancelled", approval: "declined", held: 0 });
+
+      // Left too long: cancelled by the job.
+      jar.clear();
+      await startSession(storeId, employee);
+      await add("DEMO-MUG-WHITE", 6);
+      await setCartCompanyPurchase({ storeId }, cartId(), employee, { locationId: locations[0], poNumber: "PO-4" });
+      const lateCart = cartId();
+      await checkout(employee);
+      const [late] = await db().execute<Row>(sql`select id from commerce.orders where cart_id = ${lateCart}::uuid and approval = 'waiting'`);
+      await db().execute(sql`update commerce.orders set placed_at = now() - interval '8 days' where id = ${String(late.id)}::uuid`);
+      expect(await expireApprovals()).toBeGreaterThanOrEqual(1);
+      expect((await getOrder(storeId, String(late.id)))?.status).toBe("cancelled");
+    } finally {
+      view = no;
+    }
+  });
+});
+
+/**
  * The rules as read (D160): no market compares per 100 g, so the notebook, whose owner chose 100 g, is compared per kg in Norway
  * with the table as it is. The cart's unit price, the order line's and an independent reader's agree, and the totals are the
  * same as with the small base.

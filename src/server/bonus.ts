@@ -537,6 +537,8 @@ async function releaseHeldCredits(): Promise<number> {
   const rows = await db().execute<Row>(sql`
     select id from commerce.orders
     where status = 'pending_payment' and credit_minor > 0 and copied_from is null
+      -- An order waiting for its company's approval, or for payment after it, keeps them until expireApprovals() (D321 C.2).
+      and approval is null
       and placed_at < now() - make_interval(hours => ${HELD_HOURS})
     order by placed_at
     limit ${BATCH}

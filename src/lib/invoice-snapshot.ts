@@ -228,6 +228,8 @@ export type OrderInvoiceSnapshot = {
   /** Free-trial lines of a subscription, billed at the first renewal (their own order and invoice): left out of the totals. */
   deferred: { lineId: string; title: string; grossMinor: number | null }[];
   notes: SnapshotNote[];
+  /** The buyer's PO number (D321 C.2): only on an order that has one, written into the order's own invoice by the database as here. */
+  poNumber?: string;
 };
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -274,6 +276,8 @@ export type InvoiceOrderFacts = {
   marketStandardRate: number | null;
   companyName: string | null;
   organisationNumber: string | null;
+  /** The buyer's PO number (D321 C.2), or none. */
+  poNumber?: string | null;
   balanceMinor: number;
   billingAddress: AddressJson;
   shippingAddress: AddressJson;
@@ -691,6 +695,7 @@ export function buildInvoiceSnapshot(facts: InvoiceFacts, ctx: InvoiceContext): 
     payments,
     deferred,
     notes,
+    ...(order.poNumber ? { poNumber: order.poNumber } : {}),
   };
 }
 

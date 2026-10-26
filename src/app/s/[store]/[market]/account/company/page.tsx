@@ -14,7 +14,12 @@ import { db } from "@/db/client";
 import { resolveFeatureShop } from "@/server/shop";
 import { pageShopOrMoved } from "@/server/shop-page";
 
-import { leaveCompanyAction, removeEmployeeAction, revokeInviteAction } from "./actions";
+import { CompanyApprovals } from "@/components/company-buying";
+import { termsTemplate } from "@/lib/checkout-terms";
+import { termsDisplayFor } from "@/server/checkout-terms";
+import { myApprovalOrders, ordersToApprove } from "@/server/company-approvals";
+
+import { decideApprovalAction, leaveCompanyAction, payApprovedAction, removeEmployeeAction, revokeInviteAction } from "./actions";
 
 type Props = PageProps<"/s/[store]/[market]/account/company">;
 
@@ -26,19 +31,19 @@ export const metadata: Metadata = { robots: { index: false, follow: false } };
  * removes an employee at any time. An employee sees their company and can
  * leave it.
  */
-export default async function CompanyPage({ params }: Props) {
+export default async function CompanyPage({ params, searchParams }: Props) {
   // A country, language or currency the store no longer offers moves to one it does before the boundary, as a 308 (D178).
   await pageShopOrMoved("/account/company");
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-8">
       <Suspense fallback={<div className="h-64 animate-pulse rounded-lg bg-surface" />}>
-        <Company params={params} />
+        <Company params={params} searchParams={searchParams} />
       </Suspense>
     </div>
   );
 }
 
-async function Company({ params }: { params: Props["params"] }) {
+async function Company({ params, searchParams }: { params: Props["params"]; searchParams: Props["searchParams"] }) {
   const { store: storeSlug, market: marketSlug } = await params;
   // Company accounts are part of selling to businesses (D178): not there while it is switched off.
   const shop = await resolveFeatureShop(storeSlug, marketSlug, "business");
@@ -54,6 +59,11 @@ async function Company({ params }: { params: Props["params"] }) {
     ? await Promise.all([listMembers(store.id, mine.company.id), listInvites(store.id, mine.company.id), memberDiscountFor(db(), store.id, customer.id)])
     : [[], [], await memberDiscountFor(db(), store.id, customer.id)];
   const date = (iso: string) => new Date(iso).toLocaleDateString(market.locale, { dateStyle: "medium" });
+  // Orders that wait (D321 C.2): those this member approves, and their own waiting for approval or for payment after it.
+  const [toApprove, waiting] = await Promise.all([ordersToApprove(store.id, customer.id), myApprovalOrders(store.id, customer.id)]);
+  const placed = String((await searchParams).placed ?? "").slice(0, 40);
+  const termsDisplay = waiting.some((order) => order.approval === "approved") ? await termsDisplayFor(store, market) : null;
+  const terms = termsDisplay ? { display: termsDisplay, template: termsTemplate(t(market.lang).terms, termsDisplay), newTab: t(market.lang).terms.newTab } : null;
   const status = { pending: m.waiting, accepted: m.accepted, revoked: m.revoked, ended: m.ended };
   const box = "divide-y divide-border rounded-lg border border-border";
 
@@ -66,7 +76,24 @@ async function Company({ params }: { params: Props["params"] }) {
         <h1 className="mt-2 text-3xl font-heading tracking-tight">{mine.company.name}</h1>
         <p className="text-sm text-muted">{m.yourRole(owner ? m.roleOwner : m.roleEmployee)}</p>
         <p className="mt-2">{discount ? m.discountYou(percentText(discount.percent)) : m.noDiscount}</p>
+        {placed && waiting.some((order) => order.number === placed) && (
+          <p role="status" className="mt-3 rounded-lg border border-border p-3">
+            {m.placedWaiting(placed)}
+          </p>
+        )}
       </div>
+
+      <CompanyApprovals
+        toApprove={toApprove}
+        mine={waiting}
+        locale={market.locale}
+        m={m}
+        decide={(orderId, approve) => decideApprovalAction.bind(null, store.slug, market.slug, orderId, approve)}
+        pay={(orderId) => payApprovedAction.bind(null, store.slug, market.slug, orderId)}
+        store={store.slug}
+        market={market.slug}
+        terms={terms}
+      />
 
       {owner ? (
         <>

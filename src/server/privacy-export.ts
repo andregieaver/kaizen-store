@@ -798,8 +798,15 @@ async function loadCompany(s: PrivacySubject): Promise<CompanySource> {
     `),
   ]);
   const c = company[0];
+  const locations = c && s.customerId
+    ? await db().execute<Row>(sql`
+        select l.name, b.role from commerce.company_location_buyers b
+        join commerce.company_locations l on l.store_id = b.store_id and l.id = b.location_id
+        where b.store_id = ${s.storeId}::uuid and b.customer_id = ${s.customerId}::uuid order by lower(l.name)
+      `)
+    : [];
   return {
-    company: c ? { name: strs(c.name), role: str(c.company_role) } : null,
+    company: c ? { name: strs(c.name), role: str(c.company_role), locations: locations.map((l) => ({ name: strs(l.name), role: strs(l.role) })) } : null,
     invites: invites.map((i) => ({ status: strs(i.status), createdAt: iso(i.created_at), expiresAt: iso(i.expires_at), acceptedAt: iso(i.accepted_at) })),
   };
 }

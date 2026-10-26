@@ -35,6 +35,8 @@ export type DocumentText = {
   termsDays: (days: number) => string;
   toPayBy: (day: string) => string;
   orderNumber: string;
+  /** The buyer's PO number (D321 C.2). */
+  poNumber: string;
   orderedOn: string;
   paidOn: string;
   seller: string;
@@ -145,6 +147,7 @@ const TEXT: Record<DocumentLanguage, Omit<DocumentText, "reverseCharge" | "ioss"
     termsDays: (days) => `${days} dager netto`,
     toPayBy: (day) => `Å betale innen ${day}`,
     orderNumber: "Ordrenummer",
+    poNumber: "Innkjøpsordrenummer",
     orderedOn: "Bestilt",
     paidOn: "Betalt på nett",
     seller: "Selger",
@@ -225,6 +228,7 @@ const TEXT: Record<DocumentLanguage, Omit<DocumentText, "reverseCharge" | "ioss"
     termsDays: (days) => `${days} dagar netto`,
     toPayBy: (day) => `Att betala senast ${day}`,
     orderNumber: "Ordernummer",
+    poNumber: "Inköpsordernummer",
     orderedOn: "Beställd",
     paidOn: "Betalt online",
     seller: "Säljare",
@@ -305,6 +309,7 @@ const TEXT: Record<DocumentLanguage, Omit<DocumentText, "reverseCharge" | "ioss"
     termsDays: (days) => `${days} dage netto`,
     toPayBy: (day) => `Betales senest ${day}`,
     orderNumber: "Ordrenummer",
+    poNumber: "Indkøbsordrenummer",
     orderedOn: "Bestilt",
     paidOn: "Betalt online",
     seller: "Sælger",
@@ -385,6 +390,7 @@ const TEXT: Record<DocumentLanguage, Omit<DocumentText, "reverseCharge" | "ioss"
     termsDays: (days) => `${days} days net`,
     toPayBy: (day) => `To pay by ${day}`,
     orderNumber: "Order number",
+    poNumber: "PO number",
     orderedOn: "Ordered",
     paidOn: "Paid online",
     seller: "Seller",

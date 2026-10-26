@@ -422,6 +422,34 @@ listings, cards and the rest of the product page are cached for everyone. A prod
   the reader) and the euro scenario in `checkout-kinds.int.test.ts` (cart, summary and order agree; the lowest list wins; no group
   percentage on top; the order line keeps its list).
 
+#### C.5 As built: C2 (2026-10-26)
+
+- Migrations `20261026020420_company_buying` (`company_locations`, `company_location_buyers`, the company's `po_required`,
+  `approval_limit_minor` and `approval_currency`, the cart's and order's `company_location_id` and `po_number`, the order's `approval`,
+  `approval_decided_by`, `approval_decided_at`) and `20261026020441_company_buying_sql` (row security; at most 50 locations a company,
+  `company_locations_max()`; only an employee of the location's company has a row, `company_location_buyers_member()`, and leaving the company
+  takes the rows away, `customers_leave_locations()`; an order keeps its location and PO number and its approval only moves from waiting,
+  `orders_company_purchase()`; the PO number goes into the order's own invoice and from it into its credit notes, `documents_po_number()`).
+- Staff edit locations, who buys at each and the buying rules on the company's page (`LocationsCard`, `src/server/company-locations.ts`). The
+  main account is not given a row: it approves at every location. Members do not edit locations (as Shopify's B2B, where the merchant keeps
+  them); the spec's *Your company* editing is not built.
+- The cart asks a company member for the location (when they buy for more than one) and the PO number (`CompanyPurchase`, a plain form,
+  `setCartCompanyPurchase()`), and says when an order over the limit will wait. `placeOrder()` checks both again inside its transaction
+  (`buyerFacts()`; refusals `location`, `po_number`) and decides the approval by `needsApproval()`: only an orderer's order, the total converted
+  into the limit's currency at the store's rates, one that cannot be converted waiting. Only goods bought once can wait, never with gift cards
+  (refused as `approval`). A waiting order holds its stock until `APPROVAL_DAYS` after it was placed, starts no payment and converts its cart;
+  on terms, who pays and the store's terms are recorded at once and the approval confirms it (`confirmOnTerms()`).
+- The location's shipping address is not filled into the order: the payment page asks for the address as before. The order shows the location.
+- *Your company* (`/account/company`) lists the orders to approve and the member's own waiting orders (`CompanyApprovals`); an approver
+  approves or declines (`decideOrder()`, under the order's lock, the right read again), and the buyer pays an approved order on Stripe's
+  hosted page with the store's terms recorded first (`startApprovedPayment()`, `ApprovedPayForm`). A lapsed session leaves an approved order
+  as it is (`payment-outcome.ts` treats it as a draft's), held credits are not let go by the bonus sweep, and `expireApprovals()` in the
+  five-minute job cancels any that waited, or waited for payment, longer than the window. Emails: `company.approval_waiting` to each approver
+  and `company.approval_decided` to the buyer (`src/lib/approval-email-text.ts`, by hand in four languages, `HAND_WRITTEN_ONLY`).
+- The PO number is on the admin order page, the order list's search and the invoice and credit note (`snapshot.poNumber`, the parity test's
+  facts carry it). Location roles are personal data (export section `company`, erased with the person); locations are the company's
+  (`NOT_PERSONAL`); both `never` in `COPY_RULES`. Held by `src/db/commerce.test.ts` and the euro scenario in `checkout-kinds.int.test.ts`.
+
 ### Unit D (D322): bundles
 
 A product of kind `bundle` with components (`bundle_components`: variant and quantity, 2 to 20 components, goods only, all of one VAT

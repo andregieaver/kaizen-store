@@ -32,6 +32,7 @@ import { getCart, getCartGift } from "@/server/cart";
 import { perRequest } from "@/server/request-memo";
 import { cartSummary } from "@/server/cart-summary";
 import { getCustomer } from "@/server/customers";
+import { buyerFacts } from "@/server/company-locations";
 import { termsForBasket } from "@/server/payment-terms";
 import { termsDisplayFor } from "@/server/checkout-terms";
 import { termsTemplate } from "@/lib/checkout-terms";
@@ -39,7 +40,8 @@ import { dayWords, TERMS_DAYS } from "@/lib/payment-terms";
 import { featureOn } from "@/lib/store-features";
 import type { Store } from "@/server/stores";
 
-import { applyGiftCardAction, removeGiftCardAction, setCartCreditsAction, updateCartLine } from "./actions";
+import { applyGiftCardAction, companyPurchaseAction, removeGiftCardAction, setCartCreditsAction, updateCartLine } from "./actions";
+import { CompanyPurchase } from "./company-purchase";
 import { readCartBonus } from "./bonus";
 import { GiftBox } from "./cart-gift";
 
@@ -100,6 +102,21 @@ async function loadCartView(store: Store, market: Market, m: Messages) {
           template: termsDisplay ? termsTemplate(m.terms, termsDisplay) : "",
         }
       : null;
+  // A company member's purchase (D321 C.2): the location and PO number, and whether an order over the company's limit will wait for an approver.
+  const companyFacts = businessOn && customer ? await buyerFacts(store.id, customer.id) : null;
+  const chosenPlace = companyFacts
+    ? companyFacts.places.length === 1
+      ? companyFacts.places[0]
+      : (companyFacts.places.find((p) => p.id === cart.companyPurchase.locationId) ?? null)
+    : null;
+  const companyBuy = companyFacts
+    ? {
+        facts: companyFacts,
+        chosen: chosenPlace?.id ?? null,
+        poNumber: cart.companyPurchase.poNumber,
+        limitText: companyFacts.limit && chosenPlace?.role === "orderer" ? formatMoney(companyFacts.limit.minor, companyFacts.limit.currency, market.locale) : null,
+      }
+    : null;
   // A signed-in customer's saved addresses in the market's country (D304), offered where this page asks the address itself.
   const addressChoices = customer && (asksPayer || onTerms) ? choicesFor(await listAddresses(store.id, customer.id), market.code) : [];
   const companyNeeded = companyRequired(
@@ -140,6 +157,7 @@ async function loadCartView(store: Store, market: Market, m: Messages) {
     vatWords,
     onTerms,
     cardsPayAll,
+    companyBuy,
   };
 }
 
@@ -732,6 +750,9 @@ function checkoutAction({ store, market, m, view }: Draw) {
         : undefined;
   return (
     <>
+      {view.companyBuy && (
+        <CompanyPurchase {...view.companyBuy} action={companyPurchaseAction.bind(null, store.slug, market.slug)} m={m.companyAccount} />
+      )}
       {checkout.paymentsOn || onTerms ? (
         <CheckoutButton
           store={store.slug}

@@ -26,6 +26,8 @@ import { basketShipping, planPrice, sameRhythm, type PlanInterval } from "@/lib/
 
 import { cleanPayer, type PayerDetails } from "@/lib/mollie";
 import type { PaymentTerms } from "@/lib/payment-terms";
+import { APPROVAL_DAYS, cleanPoNumber, needsApproval, type ApprovalState } from "@/lib/company-locations";
+import { convertMinor } from "@/lib/currency";
 import type { PaymentModeName } from "@/lib/stripe-account";
 import { shownMeasureFromColumns } from "@/lib/unit-price-rules";
 import { giftOfRow, NO_GIFT, type GiftFields } from "@/lib/gift";
@@ -52,6 +54,7 @@ import { cartCodesOf, stackForBasket } from "./discounts";
 import { openPaymentSession, paymentConnection } from "./payment-session";
 import { prepareCapture } from "./payment-capture";
 import { decideTerms, recordOrderTerms, termsFacts } from "./payment-terms";
+import { buyerFacts } from "./company-locations";
 
 type Row = Record<string, unknown>;
 type Tx = Parameters<Parameters<ReturnType<typeof db>["transaction"]>[0]>[0];
@@ -121,6 +124,8 @@ export type PlacedOrder = {
   hostId: string | null;
   /** Bought on the buyer's company's payment terms (D293): nothing is paid now, the whole total is the balance, due on `dueOn`. */
   terms?: { terms: PaymentTerms; dueOn: string } | null;
+  /** A company's purchase that waits for an approver (D321 C.2): no payment is started; `src/server/company-approvals.ts` decides it. */
+  approval?: ApprovalState | null;
 };
 
 export type CheckoutProblem =
@@ -146,7 +151,13 @@ export type CheckoutProblem =
   /** On Mollie (D292): who pays, or where the goods go, is missing or not right. */
   | "payer"
   /** Payment terms (D293) were asked for an order they are not offered for: the buyer's company, the basket or the credit limit. */
-  | "terms";
+  | "terms"
+  /** A company member buying for several locations chose none (D321 C.2). */
+  | "location"
+  /** The company's PO number is missing, too long or not one line (D321 C.2). */
+  | "po_number"
+  /** An order over the company's approval limit holds more than goods bought once, or gift cards: only those can wait (D321 C.2). */
+  | "approval";
 
 export type PlaceResult = { ok: true; order: PlacedOrder } | { ok: false; problem: CheckoutProblem };
 
@@ -235,7 +246,7 @@ export async function placeOrder(
       select c.id, c.discount_code, c.more_codes, ${STORE_AUDIENCE} as store_audience, s.time_zone,
         case when ${STORE_AUDIENCE} <> 'consumers' then c.company_name end as company_name,
         case when ${STORE_AUDIENCE} <> 'consumers' then c.organisation_number end as organisation_number,
-        c.bonus_request_minor, c.affiliate_code, c.is_gift, c.gift_to, c.gift_from, c.gift_message,
+        c.bonus_request_minor, c.affiliate_code, c.is_gift, c.gift_to, c.gift_from, c.gift_message, c.company_location_id, c.po_number,
         coalesce((select os.gift_messages from commerce.order_settings os where os.store_id = c.store_id), false) as gift_on,
         commerce.market_offered(c.store_id, c.market_code, ${market.currency}) as offered
       from commerce.carts c
@@ -705,6 +716,26 @@ export async function placeOrder(
         company: { name: facts.company.name, number: facts.company.organisationNumber || company?.number || "" },
       };
     }
+    // A company member's purchase (D321 C.2): the location they buy for (theirs only; asked when they buy for more than one), the PO number (required
+    // when the company says so), and whether an orderer's order over the company's limit waits for an approver. Only goods bought once can wait, never
+    // with gift cards, which would be held for the week; such a basket is refused. Read in this transaction, so a member removed meanwhile is not let through.
+    const buyer = await buyerFacts(storeId, customerId, tx);
+    let purchase: { locationId: string | null; poNumber: string | null; approval: "waiting" | null } = { locationId: null, poNumber: null, approval: null };
+    if (buyer) {
+      const wanted = cart.company_location_id ? String(cart.company_location_id) : null;
+      const place = buyer.places.length === 1 ? buyer.places[0] : (buyer.places.find((p) => p.id === wanted) ?? null);
+      if (buyer.places.length > 1 && !place) return { ok: false, problem: "location" };
+      const po = cleanPoNumber(cart.po_number);
+      if (!po.ok || (buyer.poRequired && !po.po)) return { ok: false, problem: "po_number" };
+      const limitTotal = buyer.limit ? convertMinor(total, market.currency, buyer.limit.currency, buyer.rates) : null;
+      const waits = place ? needsApproval(place.role, buyer.limit, { minor: limitTotal, currency: buyer.limit?.currency ?? market.currency }) : false;
+      if (waits) {
+        const goodsOnly = !rhythm && !hostId && balance === 0 && fees.length === 0 && priced.every((p) => p.line.kind === "goods" && !p.startsAt);
+        const [cards] = await tx.execute<Row>(sql`select count(*)::int as n from commerce.cart_gift_cards where store_id = ${storeId}::uuid and cart_id = ${cartId}::uuid`);
+        if (!goodsOnly || Number(cards?.n ?? 0) > 0) return { ok: false, problem: "approval" };
+      }
+      purchase = { locationId: place?.id ?? null, poNumber: po.po, approval: waits ? "waiting" : null };
+    }
     const orderCompany = onTerms ? onTerms.company : company;
     const orderBalance = onTerms ? total : balance;
 
@@ -753,6 +784,9 @@ export async function placeOrder(
       vatTreatment: taxOutcome.treatment,
       vatCheckId: taxFacts.buyerCheck?.id ?? null,
       gift,
+      companyLocationId: purchase.locationId,
+      poNumber: purchase.poNumber,
+      approval: purchase.approval,
     });
 
     if (onTerms) await recordOrderTerms(tx, storeId, orderId, onTerms.companyId, onTerms);
@@ -890,7 +924,18 @@ export async function placeOrder(
         giftCardsMinor = paying.paidMinor;
       }
     }
-    await reserveStock(tx, storeId, orderId, allocations, { minutes: CHECKOUT_MINUTES + 5 });
+    // An order waiting for its company's approval holds its stock for the approval window (D321 C.2), as a draft's does; any other for the checkout's session.
+    await reserveStock(
+      tx,
+      storeId,
+      orderId,
+      allocations,
+      purchase.approval === "waiting" ? { at: new Date(Date.now() + APPROVAL_DAYS * 24 * 60 * 60 * 1000) } : { minutes: CHECKOUT_MINUTES + 5 },
+    );
+    // The cart is done with once its order waits for approval: the buyer starts a new one (the order is paid, if approved, from Your company).
+    if (purchase.approval === "waiting") {
+      await tx.execute(sql`update commerce.carts set status = 'converted', updated_at = now() where store_id = ${storeId}::uuid and id = ${cartId}::uuid`);
+    }
     // The credits are held against the order while it waits for payment: paying keeps them used, cancelling gives them back.
     if (creditTotal > 0) {
       await tx.execute(sql`
@@ -984,6 +1029,7 @@ export async function placeOrder(
             : null,
         hostId,
         terms: onTerms ? { terms: onTerms.terms, dueOn: onTerms.dueOn } : null,
+        approval: purchase.approval,
       },
     };
   });
@@ -1064,7 +1110,7 @@ async function confirmPaidByGiftCards(storeId: string, order: PlacedOrder): Prom
  * to its order page, and what a cancellation before payment voids), then `complete_order_payment()`, so the order is paid as a shop status (stock drawn,
  * the goods may be sent) and its invoice is issued with the payment line `due`. It is a sale only when its balance arrives. Returns the order page's key.
  */
-async function confirmOnTerms(storeId: string, order: PlacedOrder): Promise<string> {
+export async function confirmOnTerms(storeId: string, order: Pick<PlacedOrder, "orderId" | "balanceMinor" | "currency">): Promise<string> {
   const token = `terms_${randomBytes(18).toString("base64url")}`;
   await db().execute(sql`
     insert into commerce.payments (store_id, order_id, provider, provider_reference, amount_minor, currency, status)
@@ -1243,6 +1289,29 @@ export async function startCheckout(
   const { order } = placed;
   // A checkout of an enrolled visitor (D148): counted in the tests they were shown; never fails the checkout.
   await recordExperimentCart(shop.storeId, cartId, "checkout");
+  // Waiting for the company's approval (D321 C.2): nothing is paid now. On terms, who pays and the store's terms are kept now, and the approval confirms it;
+  // otherwise the buyer pays from Your company once it is approved. The approvers are told.
+  if (order.approval === "waiting") {
+    if (order.terms) {
+      if (recordTerms && !(await recordTerms(order.orderId)).ok) {
+        await cancelUnpaidOrder(order.orderId, "the terms could not be recorded");
+        return { ok: false, problem: "consent" };
+      }
+      await writePayer(shop.storeId, order.orderId, cleanedPayer!, shop.market.code);
+    }
+    const notify = async () => {
+      const { notifyApprovers } = await import("./company-approvals");
+      await notifyApprovers(shop.storeId, order.orderId);
+    };
+    try {
+      after(notify);
+    } catch {
+      // Not in a request (scripts, tests).
+      await notify();
+    }
+    const base = `${storeOrigin(shop.storeSlug) ?? origin}${marketPath(shop.storeSlug, shop.market.slug)}`;
+    return { ok: true, url: `${base}/account/company?placed=${encodeURIComponent(order.number)}` };
+  }
   // On the company's payment terms (D293): who pays is kept on the order, and it is confirmed at once with nothing paid.
   if (order.terms) {
     if (recordTerms && !(await recordTerms(order.orderId)).ok) {

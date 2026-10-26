@@ -10,11 +10,11 @@ D152 (the store analytics cockpit) and D153 (the EU withdrawal function and the 
 
 <!-- parity:generated:start since -->
 
-- **Headline now 74.7%** (first report 59.5%), **must-have 83.9%** (first report 69.1%), over 215 core rows (first report 232).
-- Where the change comes from: +13.3 points from the 91 rating moves on core rows recorded below, and +1.9 points because the re-read changed which rows count as core (the tracker has 245 rows, the first report 232 core ones).
+- **Headline now 74.9%** (first report 59.5%), **must-have 83.9%** (first report 69.1%), over 215 core rows (first report 232).
+- Where the change comes from: +13.5 points from the 92 rating moves on core rows recorded below, and +1.9 points because the re-read changed which rows count as core (the tracker has 245 rows, the first report 232 core ones).
 - 244 of 245 rows have their Shopify side read from a page; the others are listed under evidence debt.
 
-Rated higher (74):
+Rated higher (75):
 
 - AI or rule-based customer segmentation (AI): missing to partial. D296 (wave 5 unit B): saved rule-based segments over customers and subscribers, counted live with a member list, and customer tags; read segments.ts and ran segments.test.ts, segments.int.test.ts (PGlite and integration, passed).
 - Workflow builder with AI generation (AI): missing to partial. Read src/lib/order-rules.ts, src/server/order-rules.ts and Settings -> Automation (D238): an owner-made trigger-condition-action rule for one trigger (order paid), a closed list of conditions, actions tag, notify staff, hold and ask the AI…
@@ -35,6 +35,7 @@ Rated higher (74):
 - Bulk product import and export (CSV) (Catalogue): missing to full. Wave 2, first run (D165 proposed, docs/wave-2-data.md; working tree not yet committed, migrations not yet applied).
 - Bulk editing (Catalogue): missing to partial. Wave 2, first run (docs/wave-2-data.md; working tree not yet committed).
 - Bulk editing (Catalogue): partial to full. Criterion 2 is now driven in a browser: e2e/signed-in/products-grid.spec.ts opens two products in the grid, changes a SKU, a price and a cost, reviews the three changed cells before and after (nothing written until Apply), applies them (th…
+- B2B company accounts (Catalogue): partial to full. Wave 6 unit C2 (D321, docs/wave-6-catalogue.md C.5): company locations with billing and shipping addresses and buyers assigned as orderers or approvers (the main account approving everywhere), held by the database (commerce.test.ts); an or…
 - Volume pricing and quantity rules (Catalogue): missing to partial. Quantity breaks are built as tiered campaigns (D299 E3): tier_basis 'quantity', two to five percentage steps (tierPercent() in src/lib/campaigns.ts) on chosen products, categories or tags, optionally per customer group; the product page sh…
 - Product feeds to Google and other channels (Catalogue): missing to partial. Wave 5 unit H (D302): the Google feed, the admin's left-out list and the euro scenario are built; custom labels and the API sync are not, so partial.
 - Third-party and multiple payment gateways (Checkout): missing to full. The payment-provider adapter (E1) and Mollie behind it (E2, D292): a store chooses its checkout provider per mode, and a Mollie order is paid, refunded and charged back through the same order code as Stripe's, in tests.
@@ -126,7 +127,7 @@ Rated lower (26):
 
 <!-- parity:generated:start summary -->
 
-Kaizena Flow has **74.7%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 215 core features weighted by importance to an EU small or mid-size merchant, and **83.9%** on the must-haves (the 89 features with weight 4 or 5). The unweighted figures are 71.2% overall and 83.7% for must-haves. Counting app-only features gives 74.3%; counting Plus-only as well gives 73.8%. Kaizena Flow is strongest on storefront, themes and content (86.6%) and weakest on platform, extensibility and operations (54.7%), ai and automation (66.9%), checkout and payments (68.2%). Of the 215 core features, 107 are full, 92 partial and 16 missing, so half-built features, not absent ones, are the main shape of the gap.
+Kaizena Flow has **74.9%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 215 core features weighted by importance to an EU small or mid-size merchant, and **83.9%** on the must-haves (the 89 features with weight 4 or 5). The unweighted figures are 71.4% overall and 83.7% for must-haves. Counting app-only features gives 74.5%; counting Plus-only as well gives 74.0%. Kaizena Flow is strongest on storefront, themes and content (86.6%) and weakest on platform, extensibility and operations (54.7%), ai and automation (66.9%), checkout and payments (68.2%). Of the 215 core features, 108 are full, 91 partial and 16 missing, so half-built features, not absent ones, are the main shape of the gap.
 
 <!-- parity:generated:end summary -->
 
@@ -136,10 +137,10 @@ The method is simple: a full match scores 1, a partial match 0.5, a missing feat
 
 | Measure | Features | Weighted parity | Unweighted parity | Full / partial / missing |
 | --- | --- | --- | --- | --- |
-| Headline: core (Shopify native, Basic to Advanced) | 215 | **74.7%** | 71.2% | 107 / 92 / 16 |
+| Headline: core (Shopify native, Basic to Advanced) | 215 | **74.9%** | 71.4% | 108 / 91 / 16 |
 | Must-have (core, weight 4 or 5) | 89 | **83.9%** | 83.7% | 60 / 29 / 0 |
-| Core plus app-only features | 239 | 74.3% | 71.1% | 118 / 104 / 17 |
-| Everything, including Plus-only | 245 | 73.8% | 70.2% | 119 / 106 / 20 |
+| Core plus app-only features | 239 | 74.5% | 71.3% | 119 / 103 / 17 |
+| Everything, including Plus-only | 245 | 74.0% | 70.4% | 120 / 105 / 20 |
 
 <!-- parity:generated:end headline -->
 
@@ -151,7 +152,7 @@ Counts are core features only. Weighted parity uses weights 1 to 5; must-have is
 
 | Domain | Core features | Full | Partial | Missing | Weighted parity | Must-have features | Must-have parity |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Catalogue and products | 28 | 16 | 9 | 3 | 77.9% | 8 | 92.6% |
+| Catalogue and products | 28 | 17 | 8 | 3 | 79.7% | 8 | 92.6% |
 | Storefront, themes and content | 32 | 22 | 9 | 1 | 86.6% | 15 | 97.0% |
 | Checkout and payments | 21 | 8 | 13 | 0 | 68.2% | 12 | 66.3% |
 | Orders, shipping, fulfilment and returns | 28 | 17 | 10 | 1 | 81.5% | 14 | 90.2% |
@@ -160,7 +161,7 @@ Counts are core features only. Weighted parity uses weights 1 to 5; must-have is
 | International, compliance and trust | 20 | 7 | 13 | 0 | 68.8% | 12 | 72.1% |
 | Platform, extensibility and operations | 20 | 4 | 12 | 4 | 54.7% | 7 | 72.4% |
 | AI and automation | 23 | 9 | 11 | 3 | 66.9% | 2 | 100.0% |
-| **Total** | **215** | **107** | **92** | **16** | **74.7%** | **89** | **83.9%** |
+| **Total** | **215** | **108** | **91** | **16** | **74.9%** | **89** | **83.9%** |
 
 <!-- parity:generated:end domains -->
 
@@ -172,7 +173,7 @@ A row is Full only when it lists code and tests that exist (or says it is untest
 
 | Evidence | Rows |
 | --- | ---: |
-| Full, with tests | 113 |
+| Full, with tests | 114 |
 | Full, untested (debt, not hidden) | 6 |
 | Shopify side not read from a page | 1 |
 | Rows in the tracker | 245 |
@@ -181,7 +182,7 @@ Untested Full rows: `ai.assistant-voice-mode`, `checkout.abandoned-checkout-reco
 
 | Bucket | What it means | Rows not Full | Core rows | Core headline points lacking |
 | --- | --- | ---: | ---: | ---: |
-| A | Build in-house | 84 | 73 | 16.7 |
+| A | Build in-house | 83 | 72 | 16.5 |
 | B | Build, live only with a third party | 17 | 15 | 3.7 |
 | C | Strategy decision first | 11 | 8 | 1.8 |
 | D | Not reachable by code | 14 | 12 | 3.2 |
@@ -194,16 +195,16 @@ The waves are those of `docs/parity-plan.md` section 3. This table is produced f
 
 <!-- parity:generated:start projection -->
 
-Now: **74.7%** core, 83.9% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 15 rows (12 core) have no wave yet and are not in them.
+Now: **74.9%** core, 83.9% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 15 rows (12 core) have no wave yet and are not in them.
 
 | Wave | Scope | Rows (core) | Core if every row of waves 1 to N is Full | Must-have | Adds (points) | Core if only bucket A rows are | Must-have |
 | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | Compliance and money | 11 (8) | 76.9% | 87.2% | +2.2 | 76.1% | 86.1% |
-| 2 | Data in and out | 3 (1) | 77.1% | 87.2% | +0.2 | 76.3% | 86.1% |
-| 3 | Inventory and orders | 14 (13) | 80.1% | 89.4% | +3.0 | 77.7% | 87.3% |
-| 4 | Payments | 7 (6) | 81.5% | 91.0% | +1.4 | 78.1% | 87.3% |
-| 5 | Customers and marketing | 19 (16) | 85.4% | 94.4% | +3.9 | 81.2% | 90.2% |
-| 6 | Catalogue | 9 (8) | 87.1% | 94.4% | +1.6 | 82.8% | 90.2% |
+| 1 | Compliance and money | 11 (8) | 77.1% | 87.2% | +2.2 | 76.3% | 86.1% |
+| 2 | Data in and out | 3 (1) | 77.3% | 87.2% | +0.2 | 76.5% | 86.1% |
+| 3 | Inventory and orders | 14 (13) | 80.3% | 89.4% | +3.0 | 77.9% | 87.3% |
+| 4 | Payments | 7 (6) | 81.8% | 91.0% | +1.4 | 78.3% | 87.3% |
+| 5 | Customers and marketing | 19 (16) | 85.6% | 94.4% | +3.9 | 81.4% | 90.2% |
+| 6 | Catalogue | 8 (7) | 87.1% | 94.4% | +1.4 | 82.8% | 90.2% |
 | 7 | Storefront and international | 17 (16) | 90.7% | 95.4% | +3.6 | 86.2% | 91.2% |
 | 8 | Analytics and AI | 18 (18) | 94.5% | 96.1% | +3.8 | 89.8% | 91.9% |
 | 9 | Platform and extensibility | 13 (10) | 96.8% | 97.1% | +2.3 | 91.4% | 92.4% |
@@ -309,7 +310,7 @@ Legend. **Shopify**: Native = included on Basic to Advanced and scored in the he
 | Inventory transfers and purchase orders | Native. [page](https://help.shopify.com/en/manual/products/inventory/inventory-transfers/creating-and-managing-transfers) | Missing | 2 | A, wave 3 | No transfers and no purchase orders: no transfer or purchase-order table, screen or tool (verified 2026-10-25). Kaizen has ranked stock locations and an append-only history of every stock change with a reason (wave 3, D172, `inventory_movements`), so a build has the ledger to write to, but nothing moves stock between locations or receives it from a supplier, and variant cost (`product_variants.cost_minor`, D152) has no history of its own beyond what order lines froze. One row for the one Shopify feature (it replaces orders.inventory-transfers). |
 | Selling plans and subscriptions | Native. [page](https://shopify.dev/docs/apps/build/purchase-options/subscriptions/selling-plans) | Full | 3 |  | Evidence: `src/lib/subscriptions.ts`, `src/server/subscriptions.ts`, `src/lib/standing-orders.ts` and 2 more; 5 test files; D25, D29, D102. |
 | Per-market pricing and currencies | Native. [page](https://help.shopify.com/en/manual/markets/pricing) | Full | 4 |  | Evidence: `src/lib/money.ts`, `src/lib/currency.ts`, `src/lib/market-slug.ts` and 3 more; 6 test files; D109. |
-| B2B company accounts | Native. [page](https://changelog.shopify.com/posts/key-b2b-features-now-available-on-non-plus-plans) | Partial | 3 | A, wave 6 | Companies (D108) with a customer group, an employee share of its discount, a member cap, an owner and invited employees (`company_role`), a company number at checkout (D63, `companyRequired()`), the Brønnøysund lookup on company fields (D124) and payment terms with a credit limit (D293, counted in checkout.b2b-payment-terms, not here). Missing (verified in `customer_companies` and `orders` in `src/db/schema.ts`): company locations with their own billing and shipping addresses, buyer roles beyond owner and employee and assignment to locations, order approval over a company-set limit, and a PO number asked at checkout and kept on the order and its documents. Code: `src/lib/customer-tiers.ts`, `src/server/customer-tiers.ts`. |
+| B2B company accounts | Native. [page](https://changelog.shopify.com/posts/key-b2b-features-now-available-on-non-plus-plans) | Full (was partial) | 3 |  | Companies (D108) with a customer group, an employee share, a member cap, an owner and invited employees, a company number at checkout (D63), the Brønnøysund lookup (D124) and payment terms (D293, counted in checkout.b2b-payment-terms). Wave 6 unit C2 (D321) added locations with billing and shipping addresses, buyers assigned to locations as orderers or approvers, approval of an orderer's order over a company limit before payment, and a PO number kept on the order and its invoice and credit notes. Left: a location's shipping address is not filled into checkout (the payment page asks for it), and members do not edit locations (staff do, as in Shopify). Evidence: `src/lib/customer-tiers.ts`, `src/server/customer-tiers.ts`, `src/server/companies.ts` and 9 more; 8 test files; D63, D108, D124, D293, D321. |
 | B2B catalogs and price lists | Native. [page](https://help.shopify.com/en/manual/b2b/getting-started/plan-features) | Partial | 3 | A, wave 6 | A group's or company's discount is one whole percentage off what is bought once (`customer_tiers.percent`, `memberLineOff()`, D108); campaigns can be limited to customer groups (`campaigns.tier_ids`, D115), including tiered steps by quantity or spend (D299 E3), and discount codes to groups and named customers (D299). No price list with its own prices per variant and currency (fixed, or a percentage over the market price), and no catalogue limiting which products or categories a group sees: a product can only be for consumers, businesses or both (D63, `OFFERED`), verified in `src/db/schema.ts`. The umbrella row platform.b2b-companies-catalogs-terms was removed: its four parts are this row (price lists), catalogue.b2b-company-accounts (companies, locations, PO number), checkout.b2b-payment-terms (net terms) and catalogue.volume-pricing-and-quantity-rules (quantity rules and breaks). Code: `src/lib/customer-tiers.ts`, `src/server/customer-tiers.ts`. |
 | Volume pricing and quantity rules | Native. [page](https://changelog.shopify.com/posts/key-b2b-features-now-available-on-non-plus-plans) | Partial (was missing) | 2 | A, wave 6 | Quantity breaks exist as campaigns (D299 E3): a `tiered` campaign with `tier_basis = 'quantity'` gives two to five percentage steps (`tierPercent()` in `src/lib/campaigns.ts`) on chosen products, categories or tags, optionally only for customer groups (`tier_ids`) and with no end date; the product page shows its ladder (`describeCampaign()`, `noticeText()` in `src/lib/campaign-notices.ts`, `e2e/campaigns.spec.ts`), the cart says how far the next step is (`nextSteps()`), and `cartSummary()` and `placeOrder()` agree in `checkout-kinds.int.test.ts` (by items, by spend, in euro). Missing: a break as a unit price per variant or price list (a tier is only a percentage off, set on a campaign rather than the variant), and any minimum, maximum or increment per variant: the cart caps a line only at `MAX_LINE_QUANTITY` (20, `src/lib/cart.ts`) and at stock, and a discount code's `minQuantity` (D299) is a condition for the code, not a quantity rule. Code: `src/lib/campaigns.ts`, `src/lib/campaign-notices.ts`. |
 | Product recommendations | Native. [page](https://apps.shopify.com/search-and-discovery) | Full | 3 |  | Evidence: `src/server/recommend.ts`, `src/lib/recommendations.ts`, `src/server/recommend-settings.ts` and 4 more; 5 test files; D139, D140. |

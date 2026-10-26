@@ -1077,13 +1077,13 @@
       "checkedOn": "2026-10-02"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "partial"
     },
-    "gap": "Companies (D108) with a customer group, an employee share of its discount, a member cap, an owner and invited employees (`company_role`), a company number at checkout (D63, `companyRequired()`), the Brønnøysund lookup on company fields (D124) and payment terms with a credit limit (D293, counted in checkout.b2b-payment-terms, not here). Missing (verified in `customer_companies` and `orders` in `src/db/schema.ts`): company locations with their own billing and shipping addresses, buyer roles beyond owner and employee and assignment to locations, order approval over a company-set limit, and a PO number asked at checkout and kept on the order and its documents.",
-    "bucket": "A",
-    "wave": 6,
+    "gap": "Companies (D108) with a customer group, an employee share, a member cap, an owner and invited employees, a company number at checkout (D63), the Brønnøysund lookup (D124) and payment terms (D293, counted in checkout.b2b-payment-terms). Wave 6 unit C2 (D321) added locations with billing and shipping addresses, buyers assigned to locations as orderers or approvers, approval of an orderer's order over a company limit before payment, and a PO number kept on the order and its invoice and credit notes. Left: a location's shipping address is not filled into checkout (the payment page asks for it), and members do not edit locations (staff do, as in Shopify).",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "A company has several locations (billing and shipping addresses), and a buyer is assigned to locations and a role.",
       "An order over a company-set limit waits for an approver before payment (integration test).",
@@ -1096,7 +1096,13 @@
         "src/server/companies.ts",
         "src/server/company.ts",
         "src/lib/b2b.ts",
-        "src/server/b2b.ts"
+        "src/server/b2b.ts",
+        "src/lib/company-locations.ts",
+        "src/server/company-locations.ts",
+        "src/server/company-approvals.ts",
+        "src/app/admin/(gated)/[store]/companies/[companyId]/locations-card.tsx",
+        "src/app/s/[store]/[market]/cart/company-purchase.tsx",
+        "src/components/company-buying.tsx"
       ],
       "tests": [
         "src/server/companies.int.test.ts",
@@ -1104,7 +1110,9 @@
         "src/lib/b2b.test.ts",
         "src/lib/customer-tiers.test.ts",
         "e2e/company.spec.ts",
-        "e2e/b2b.spec.ts"
+        "e2e/b2b.spec.ts",
+        "src/server/checkout-kinds.int.test.ts",
+        "src/db/commerce.test.ts"
       ],
       "untested": false
     },
@@ -1112,9 +1120,17 @@
       "D63",
       "D108",
       "D124",
-      "D293"
+      "D293",
+      "D321"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-26",
+        "from": "partial",
+        "to": "full",
+        "why": "Wave 6 unit C2 (D321, docs/wave-6-catalogue.md C.5): company locations with billing and shipping addresses and buyers assigned as orderers or approvers (the main account approving everywhere), held by the database (commerce.test.ts); an orderer's order over the company's limit waits for an approver with no payment started and its stock held, is paid on Stripe's hosted page once approved and cancelled when declined or left; the PO number is asked at the cart, kept on the order and on its invoice (checkout-kinds.int.test.ts, a euro scenario)."
+      }
+    ]
   },
   {
     "id": "catalogue.b2b-catalogs-and-price-lists",

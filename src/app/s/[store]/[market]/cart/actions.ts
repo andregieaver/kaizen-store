@@ -26,6 +26,7 @@ import { parseAttribution } from "@/lib/recommendations-schema";
 import { recordTermsForOrder } from "@/server/checkout-terms";
 import { startCheckout, type CheckoutConsent, type CheckoutProblem } from "@/server/checkout";
 import { resolveSellingShop } from "@/server/shop";
+import { setCartCompanyPurchase } from "@/server/company-locations";
 
 import { applyCreditsForm } from "./bonus";
 
@@ -311,6 +312,24 @@ export async function removeGiftCardAction(storeSlug: string, marketSlug: string
   const shop = await resolveSellingShop(storeSlug, marketSlug);
   if (!shop) return;
   await removeCartGiftCard({ storeId: shop.store.id, market: shop.market }, String(form.get("remove") ?? ""));
+  refresh();
+}
+
+/**
+ * Keeps a company member's location and PO number on the cart (D321 C.2). `placeOrder()` checks both again, so a refusal here (a location not theirs, a PO
+ * number too long) only leaves the cart as it was; the checkout then says what is missing.
+ */
+export async function companyPurchaseAction(storeSlug: string, marketSlug: string, form: FormData): Promise<void> {
+  const shop = await resolveSellingShop(storeSlug, marketSlug);
+  if (!shop) return;
+  const cartShop = { storeId: shop.store.id, market: shop.market };
+  const cartId = await readCartId(cartShop);
+  if (!cartId) return;
+  const location = String(form.get("location") ?? "");
+  await setCartCompanyPurchase(cartShop, cartId, (await getCustomer(shop.store.id))?.id ?? null, {
+    locationId: z.uuid().safeParse(location).success ? location : null,
+    poNumber: String(form.get("po") ?? "").slice(0, 200),
+  });
   refresh();
 }
 
