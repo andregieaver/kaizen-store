@@ -6647,3 +6647,149 @@ describe("exclusive catalogues (wave 6 unit C3, D321)", () => {
     expect(await exclusive(productId)).toBe(false);
   });
 });
+
+describe("bundles (wave 6 unit D, D322)", () => {
+  /** A store selling to Norway with one stock location, a bundle product and two goods components with stock and prices. */
+  async function bundleSetup(pricing: "fixed" | "computed" = "computed", percent: number | null = 10) {
+    const storeId = await createStore(`bundle-store-${(counter += 1)}`, ["NO"]);
+    const one = async <T>(text: string, params: unknown[]) => (await db.query<T>(text, params)).rows[0];
+    const location = await one<{ id: string }>("insert into commerce.inventory_locations (store_id, name, country) values ($1, 'Lager', 'NO') returning id", [storeId]);
+    const a = await createProduct({ storeId });
+    const b = await createProduct({ storeId });
+    await db.query("insert into commerce.inventory_levels (store_id, variant_id, location_id, on_hand) values ($1, $2, $3, 7), ($1, $4, $3, 3)", [
+      storeId,
+      a.variantId,
+      location.id,
+      b.variantId,
+    ]);
+    await db.query("select commerce.set_price($1, 'NO', 10000)", [a.variantId]);
+    await db.query("select commerce.set_price($1, 'NO', 5000)", [b.variantId]);
+    const bundle = await createProduct({ storeId });
+    await db.query("update commerce.products set kind = 'bundle', bundle_pricing = $2, bundle_percent_off = $3 where id = $1", [bundle.productId, pricing, percent]);
+    return { storeId, location: location.id, a, b, bundle, one };
+  }
+
+  const stockOf = async (variantId: string) =>
+    (await db.query<{ in_stock: number; can_buy: boolean }>("select in_stock, can_buy from commerce.variant_availability where variant_id = $1", [variantId])).rows[0];
+  const priceOf = async (variantId: string) =>
+    (await db.query<{ amount_minor: string }>("select amount_minor::text from commerce.prices where variant_id = $1 and market_code = 'NO' and valid_to is null", [variantId])).rows[0]
+      ?.amount_minor;
+
+  it("takes goods components of its own VAT category only, at most 20, and refuses stock of its own", async () => {
+    const { storeId, location, a, bundle } = await bundleSetup();
+    const appointment = await createProduct({ storeId });
+    await db.query("update commerce.products set kind = 'appointment' where id = $1", [appointment.productId]);
+    await expect(
+      db.query("insert into commerce.bundle_components (store_id, bundle_variant_id, component_variant_id, quantity) values ($1, $2, $3, 1)", [
+        storeId,
+        bundle.variantId,
+        appointment.variantId,
+      ]),
+    ).rejects.toThrow(/bundle_components.goods/);
+    const food = await createProduct({ storeId });
+    await db.query("update commerce.products set vat_category = 'food' where id = $1", [food.productId]);
+    await expect(
+      db.query("insert into commerce.bundle_components (store_id, bundle_variant_id, component_variant_id, quantity) values ($1, $2, $3, 1)", [
+        storeId,
+        bundle.variantId,
+        food.variantId,
+      ]),
+    ).rejects.toThrow(/bundle_components.vat_category/);
+    // A plain product has no components; a component's VAT category may not move away from its bundle's.
+    const plain = await createProduct({ storeId });
+    await expect(
+      db.query("insert into commerce.bundle_components (store_id, bundle_variant_id, component_variant_id, quantity) values ($1, $2, $3, 1)", [
+        storeId,
+        plain.variantId,
+        a.variantId,
+      ]),
+    ).rejects.toThrow(/bundle_components.bundle/);
+    await db.query("insert into commerce.bundle_components (store_id, bundle_variant_id, component_variant_id, quantity) values ($1, $2, $3, 2)", [
+      storeId,
+      bundle.variantId,
+      a.variantId,
+    ]);
+    await expect(db.query("update commerce.products set vat_category = 'food' where id = $1", [a.productId])).rejects.toThrow(/bundle_components.vat_category/);
+    await expect(
+      db.query("insert into commerce.inventory_levels (store_id, variant_id, location_id, on_hand) values ($1, $2, $3, 5)", [storeId, bundle.variantId, location]),
+    ).rejects.toThrow(/inventory_levels.bundle/);
+  });
+
+  it("is in stock as far as its components allow, never on backorder, and not at all with an archived component", async () => {
+    const { storeId, a, b, bundle } = await bundleSetup();
+    expect(await stockOf(bundle.variantId)).toEqual({ in_stock: 0, can_buy: false });
+    await db.query(
+      "insert into commerce.bundle_components (store_id, bundle_variant_id, component_variant_id, quantity, position) values ($1, $2, $3, 2, 0), ($1, $2, $4, 1, 1)",
+      [storeId, bundle.variantId, a.variantId, b.variantId],
+    );
+    // 7 of A at 2 a bundle allow 3; 3 of B at 1 allow 3.
+    expect(await stockOf(bundle.variantId)).toEqual({ in_stock: 3, can_buy: true });
+    await db.query("update commerce.product_variants set stock_policy = 'continue', backorder_days = 10 where id = $1", [b.variantId]);
+    await db.query("update commerce.inventory_levels set on_hand = 0 where variant_id = $1", [b.variantId]);
+    expect(await stockOf(bundle.variantId)).toEqual({ in_stock: 0, can_buy: false });
+    await db.query("update commerce.inventory_levels set on_hand = 3 where variant_id = $1", [b.variantId]);
+    await db.query("update commerce.products set status = 'archived' where id = $1", [a.productId]);
+    expect(await stockOf(bundle.variantId)).toEqual({ in_stock: 0, can_buy: false });
+  });
+
+  it("works out a computed price from its components, half up, and follows a component's new price", async () => {
+    const { storeId, a, b, bundle } = await bundleSetup("computed", 15);
+    await db.query(
+      "insert into commerce.bundle_components (store_id, bundle_variant_id, component_variant_id, quantity) values ($1, $2, $3, 2), ($1, $2, $4, 1)",
+      [storeId, bundle.variantId, a.variantId, b.variantId],
+    );
+    // (2 × 10000 + 5000) × 0.85 = 21250.
+    expect(await priceOf(bundle.variantId)).toBe("21250");
+    await db.query("select commerce.set_price($1, 'NO', 5001, now() + interval '1 second')", [b.variantId]);
+    // 25001 × 0.85 = 21250.85, half up.
+    expect(await priceOf(bundle.variantId)).toBe("21251");
+    // A fixed bundle keeps its own price.
+    await db.query("update commerce.products set bundle_pricing = 'fixed', bundle_percent_off = null where id = $1", [bundle.productId]);
+    await db.query("select commerce.set_price($1, 'NO', 7000, now() + interval '2 seconds')", [b.variantId]);
+    expect(await priceOf(bundle.variantId)).toBe("21251");
+  });
+
+  it("is drawn as its components when paid, and keeps them on the line as sold", async () => {
+    const { storeId, location, a, b, bundle, one } = await bundleSetup("fixed", null);
+    await db.query(
+      "insert into commerce.bundle_components (store_id, bundle_variant_id, component_variant_id, quantity) values ($1, $2, $3, 2), ($1, $2, $4, 1)",
+      [storeId, bundle.variantId, a.variantId, b.variantId],
+    );
+    const cart = await one<{ id: string }>(
+      "insert into commerce.carts (store_id, market_code, currency, locale, expires_at) values ($1, 'NO', 'NOK', 'nb-NO', now() + interval '1 day') returning id",
+      [storeId],
+    );
+    const order = await one<{ id: string }>(
+      `insert into commerce.orders (store_id, number, market_code, currency, locale, cart_id, email,
+         subtotal_minor, shipping_minor, discount_minor, tax_minor, total_minor, billing_address, shipping_address)
+       values ($1, 'B-1', 'NO', 'NOK', 'nb-NO', $2, '', 40000, 0, 0, 8000, 40000, '{}', '{}') returning id`,
+      [storeId, cart.id],
+    );
+    // Two bundles and one A on its own: A is drawn 2 × 2 + 1 = 5, B 2.
+    const bundleLine = await one<{ id: string }>(
+      `insert into commerce.order_lines (store_id, order_id, variant_id, sku, title, quantity, unit_price_minor, total_minor, tax_minor, tax_rate, tax_code)
+       values ($1, $2, $3, 'BUNDLE', 'Bundle', 2, 15000, 30000, 6000, 0.25, 'txcd_99999999') returning id`,
+      [storeId, order.id, bundle.variantId],
+    );
+    await db.query(
+      `insert into commerce.order_lines (store_id, order_id, variant_id, sku, title, quantity, unit_price_minor, total_minor, tax_minor, tax_rate, tax_code)
+       values ($1, $2, $3, 'A', 'A', 1, 10000, 10000, 2000, 0.25, 'txcd_99999999')`,
+      [storeId, order.id, a.variantId],
+    );
+    await db.query(
+      "insert into commerce.order_line_components (store_id, order_line_id, variant_id, sku, title, quantity, position) values ($1, $2, $3, 'A', 'A', 2, 0), ($1, $2, $4, 'B', 'B', 1, 1)",
+      [storeId, bundleLine.id, a.variantId, b.variantId],
+    );
+    await db.query(
+      `insert into commerce.inventory_reservations (store_id, variant_id, location_id, quantity, order_id, expires_at)
+       values ($1, $2, $4, 5, $5, now() + interval '30 minutes'), ($1, $3, $4, 2, $5, now() + interval '30 minutes')`,
+      [storeId, a.variantId, b.variantId, location, order.id],
+    );
+    expect((await one<{ done: boolean }>("select commerce.complete_order_payment($1, 'cs_bundle') as done", [order.id])).done).toBe(true);
+    const onHand = async (variantId: string) => (await one<{ on_hand: number }>("select on_hand from commerce.inventory_levels where variant_id = $1", [variantId])).on_hand;
+    expect(await onHand(a.variantId)).toBe(2);
+    expect(await onHand(b.variantId)).toBe(1);
+    await expect(db.query("update commerce.order_line_components set quantity = 3 where order_line_id = $1", [bundleLine.id])).rejects.toThrow(/order_line_components.frozen/);
+    await expect(db.query("delete from commerce.order_line_components where order_line_id = $1", [bundleLine.id])).rejects.toThrow(/order_line_components.frozen/);
+  });
+});

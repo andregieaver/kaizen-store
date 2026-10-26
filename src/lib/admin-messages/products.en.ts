@@ -453,7 +453,7 @@ export const productsEn = {
     value: "Value",
     yes: "Yes",
     no: "No",
-    productKinds: { goods: "Goods", appointment: "Appointments", stay: "Stays", rental: "Rentals", gift_card: "Gift cards" },
+    productKinds: { goods: "Goods", appointment: "Appointments", stay: "Stays", rental: "Rentals", gift_card: "Gift cards", bundle: "Bundles" },
     days: "Added in the last (days)",
     noneHere: "None in this store yet.",
     summary: { one: "Filled by rules: {n} condition", many: "Filled by rules: {n} conditions" },

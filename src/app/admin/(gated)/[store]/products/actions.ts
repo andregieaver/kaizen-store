@@ -9,7 +9,9 @@ import { adminLangOf } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
 import { adminText } from "@/lib/admin-text";
 import type { FieldData } from "@/lib/custom-fields";
-import { productInput, type ProductInput } from "@/lib/product-input";
+import { BUNDLE_COMPONENTS_MAX, productInput, type ProductInput } from "@/lib/product-input";
+import { db } from "@/db/client";
+import { componentFacts, searchComponents, type ComponentFacts } from "@/server/bundles";
 import { addressChangeWords, type AddressChange } from "@/lib/redirect-admin";
 import { canWrite, writeRequest, type WrittenText } from "@/lib/product-writing";
 import { AiError, aiFor } from "@/server/ai";
@@ -278,4 +280,19 @@ export async function suggestTextAction(storeSlug: string, productId: string | n
       problem: error instanceof AiError ? fillWords(w.aiFailedBecause, { reason: error.message }) : w.aiFailed,
     };
   }
+}
+
+/** Goods variants of the store a bundle can take (D322), found by title or SKU, for the editor's Components card. */
+export async function searchBundleComponentsAction(storeSlug: string, query: unknown): Promise<ComponentFacts[]> {
+  const member = await checkPermission(storeSlug, "products:write");
+  if (!member || typeof query !== "string") return [];
+  return searchComponents(db(), member.store.id, query, member.store.localization.locales[0] ?? "en");
+}
+
+/** The facts of a bundle's components as the editor shows them (D322): stock and prices per country, by variant id. */
+export async function bundleComponentFactsAction(storeSlug: string, variantIds: unknown): Promise<ComponentFacts[]> {
+  const member = await checkPermission(storeSlug, "products:write");
+  const ids = z.array(z.uuid()).max(BUNDLE_COMPONENTS_MAX).safeParse(variantIds);
+  if (!member || !ids.success) return [];
+  return [...(await componentFacts(db(), member.store.id, ids.data, member.store.localization.locales[0] ?? "en")).values()];
 }

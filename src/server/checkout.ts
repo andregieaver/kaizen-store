@@ -168,6 +168,22 @@ export type PlaceResult = { ok: true; order: PlacedOrder } | { ok: false; proble
  */
 export type CheckoutConsent = { digital?: boolean; subscription?: boolean };
 
+/** A bundle line's components as its row carries them (D322), each with its title as shoppers read it; null for any other line. */
+function bundleComponentsOf(line: Row): { variantId: string; sku: string; title: string; quantity: number }[] | null {
+  const raw = line.bundle_components;
+  if (!Array.isArray(raw) || raw.length === 0) return null;
+  return raw.map((c: Record<string, unknown>) => {
+    const options = (c.options ?? {}) as Record<string, string>;
+    const title = String(c.title ?? c.sku);
+    return {
+      variantId: String(c.variant_id),
+      sku: String(c.sku),
+      title: Object.keys(options).length > 0 ? `${title} (${variantLabel(options)})` : title,
+      quantity: Number(c.quantity),
+    };
+  });
+}
+
 /**
  * The rows `placeOrder()` prices, from a source that has the columns of a cart line (`store_id`,
  * `variant_id`, `quantity`, `selling_plan_id`, `starts_at`, `resource_id`, and a gift card's `gift_card_*`): the shopper's cart lines, or
@@ -195,6 +211,17 @@ function orderLineRows(
         p.kind, aps.check_in_time, aps.check_out_time, v.rental_period, p.host_id, v.cost_minor,
         v.measure_amount, v.measure_unit, v.measure_base, v.stock_policy, v.backorder_days,
         cl.gift_card_to, cl.gift_card_to_name, cl.gift_card_from, cl.gift_card_message, cl.gift_card_send_on,
+        -- A bundle's components (D322): what its line holds and draws instead of its own variant.
+        case when p.kind = 'bundle' then (
+          select coalesce(jsonb_agg(jsonb_build_object('variant_id', bc.component_variant_id, 'quantity', bc.quantity, 'sku', cv.sku, 'options', cv.options,
+                   'title', coalesce((select t.title from commerce.product_translations t where t.product_id = cv.product_id and t.locale = ${market.locale}),
+                                     (select t.title from commerce.product_translations t where t.product_id = cv.product_id order by t.locale limit 1), cp2.handle))
+                   order by bc.position, cv.sku), '[]'::jsonb)
+          from commerce.bundle_components bc
+          join commerce.product_variants cv on cv.store_id = bc.store_id and cv.id = bc.component_variant_id
+          join commerce.products cp2 on cp2.store_id = cv.store_id and cp2.id = cv.product_id
+          where bc.store_id = v.store_id and bc.bundle_variant_id = v.id
+        ) end as bundle_components,
         (p.status = 'active' and v.active and ${bookable} and ${offeredTo(customerId)}) as sellable
       from ${source}
       join commerce.product_variants v on v.store_id = cl.store_id and v.id = cl.variant_id
@@ -421,7 +448,7 @@ export async function placeOrder(
         productId: String(p.line.product_id),
         unitMinor: p.unit,
         quantity: p.quantity,
-        discountable: !p.recurring && !p.range && p.line.kind === "goods" && p.unit > 0,
+        discountable: !p.recurring && !p.range && (p.line.kind === "goods" || p.line.kind === "bundle") && p.unit > 0,
         valueMinor: p.voucher ? 0 : p.unit * p.quantity,
       })),
       { ships: physical.length > 0, customerId, lock: true },
@@ -473,11 +500,18 @@ export async function placeOrder(
         tx,
         storeId,
         // The same variant can be bought once and subscribed to: it is one want. A free gift is never backordered: it makes its variant's want a `deny` one.
-        toShip.map((l) => ({
-          variantId: String(l.variant_id),
-          quantity: Number(l.quantity),
-          policy: l.stock_policy === "continue" && !gifted.has(l) && !noBackorder ? ("continue" as const) : ("deny" as const),
-        })),
+        // A bundle (D322) is held as its components, never on backorder: its own variant holds no stock.
+        toShip.flatMap((l) => {
+          const components = bundleComponentsOf(l);
+          if (components) return components.map((c) => ({ variantId: c.variantId, quantity: c.quantity * Number(l.quantity), policy: "deny" as const }));
+          return [
+            {
+              variantId: String(l.variant_id),
+              quantity: Number(l.quantity),
+              policy: l.stock_policy === "continue" && !gifted.has(l) && !noBackorder ? ("continue" as const) : ("deny" as const),
+            },
+          ];
+        }),
         keeps,
       );
       if (!plan.ok) return { ok: false, problem: "stock" };
@@ -706,7 +740,7 @@ export async function placeOrder(
     let onTerms: { companyId: string; terms: PaymentTerms; dueOn: string; company: { name: string; number: string } } | null = null;
     if (terms) {
       const facts = await termsFacts(tx, storeId, customerId, { lock: true });
-      const goodsOnly = !rhythm && !hostId && balance === 0 && fees.length === 0 && priced.every((p) => p.line.kind === "goods" && !p.startsAt);
+      const goodsOnly = !rhythm && !hostId && balance === 0 && fees.length === 0 && priced.every((p) => (p.line.kind === "goods" || p.line.kind === "bundle") && !p.startsAt);
       const offer = decideTerms(facts, { goodsOnly, totalMinor: total, currency: market.currency });
       if (!offer.ok || !facts.company) return { ok: false, problem: "terms" };
       onTerms = {
@@ -730,7 +764,7 @@ export async function placeOrder(
       const limitTotal = buyer.limit ? convertMinor(total, market.currency, buyer.limit.currency, buyer.rates) : null;
       const waits = place ? needsApproval(place.role, buyer.limit, { minor: limitTotal, currency: buyer.limit?.currency ?? market.currency }) : false;
       if (waits) {
-        const goodsOnly = !rhythm && !hostId && balance === 0 && fees.length === 0 && priced.every((p) => p.line.kind === "goods" && !p.startsAt);
+        const goodsOnly = !rhythm && !hostId && balance === 0 && fees.length === 0 && priced.every((p) => (p.line.kind === "goods" || p.line.kind === "bundle") && !p.startsAt);
         const [cards] = await tx.execute<Row>(sql`select count(*)::int as n from commerce.cart_gift_cards where store_id = ${storeId}::uuid and cart_id = ${cartId}::uuid`);
         if (!goodsOnly || Number(cards?.n ?? 0) > 0) return { ok: false, problem: "approval" };
       }
@@ -828,6 +862,8 @@ export async function placeOrder(
         backorderDays: backorderOfLine.has(i) && p.line.backorder_days !== null && p.line.backorder_days !== undefined ? Number(p.line.backorder_days) : null,
         // Who a gift card's cards go to (D300), frozen with the order.
         giftCard: p.voucher ? giftCardRecipientOfRow(p.line) : null,
+        // A bundle's components as sold (D322), frozen with the line.
+        components: bundleComponentsOf(p.line) ?? undefined,
       });
       // The appointment's time (or the stay's or rental's nights or days, D67) is held as long as
       // its stock would be; taken meanwhile, nothing is placed.

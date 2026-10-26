@@ -533,6 +533,27 @@ details are cached, the buy part streams in.
 - `checkout-kinds.int.test.ts`: a bundle from the cart to a paid order in euro (price, VAT, a campaign on it), its components held and drawn,
   a sold-out component refusing it, and a refund putting the components back.
 
+#### D.5 As built: D1 (2026-10-26)
+
+- Migrations `20261026102721_bundles` (`products.bundle_pricing`, `bundle_percent_off`, `bundle_components`, `order_line_components`) and
+  `20261026102754_bundles_sql` (the rules, the derived stock in `variant_availability`, `refresh_bundle_prices()` and its triggers, the draw,
+  and the patches of `clone_store()` and `duplicate_store()`).
+- The rules are `commerce.bundle_problem()`, read at commit by `bundle_components_rules`, `products_bundle_rules` (a VAT category or kind
+  that changes) and `variants_bundle_rules` (a component that stops being physical); `inventory_levels_not_bundle` refuses stock of a bundle's
+  own and `order_line_components_frozen` any change of a sold bundle's components. A computed price is written at commit
+  (`bundle_components_refresh`, `products_bundle_refresh`, `prices_bundle_refresh`), so a save that writes several components sets one price.
+- `productInput.bundle` (`bundleInput`: pricing, percentage, components) and `bundleProblems()`; `saveProduct()` refuses a product that would
+  become a bundle or stop being one, checks the components in words first (`componentProblems()`), writes them with
+  `saveBundleComponents()`, writes no stock for a bundle and no typed price for a computed one. The editor offers the kind *A bundle* on a new
+  product only and draws `BundleSection` in place of the variants (find by name or SKU, quantity, order, the stock and the price it comes to,
+  `src/lib/bundles.ts` for the preview, held to the SQL by `bundles.test.ts`).
+- The cart, `placeOrder()` and the order line: `bundle_components` rides on the checkout's rows (`bundleComponentsOf()`), its wants replace
+  the bundle's, and `insertOrderLine()` writes them. Campaigns, codes, price lists (`LIST_PRICED`), the in-stock filter, wishlists'
+  add-all and WordPress treat a bundle as goods. `planRestock()` expands a bundle (`expandBundleItems()`); the event keeps the components'
+  parts marked with their bundle and the bundles in `restockedBundles`, which the bundle's line counts. `editBlock()`'s `bundle`.
+- Held by `src/db/commerce.test.ts` (rules, stock, computed price, draw, frozen components) and the euro scenario in
+  `checkout-kinds.int.test.ts` (price, stock, holds, draw, a refund putting the components back, the edit refused, a sold-out component).
+
 ### Unit E (D323): quantity rules and price breaks
 
 Per variant (and per price-list price): `min_quantity`, `max_quantity`, `quantity_step`, checked by `quantityProblem()` in the cart's add

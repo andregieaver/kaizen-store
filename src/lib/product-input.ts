@@ -121,14 +121,47 @@ const operatorSchema = z.union([
 
 export type OperatorChoice = z.infer<typeof operatorSchema>;
 
-/** What a product is (D65): goods (shipped or downloaded), an appointment, a stay, a rental, or a gift card (D300, its variants its amounts). */
-export const PRODUCT_KINDS = ["goods", "appointment", "stay", "rental", "gift_card"] as const;
+/**
+ * What a product is (D65): goods (shipped or downloaded), an appointment, a stay, a rental, a gift card (D300, its variants its amounts), or a
+ * bundle (D322: one variant made of other goods, its stock and, when computed, its price coming from them).
+ */
+export const PRODUCT_KINDS = ["goods", "appointment", "stay", "rental", "gift_card", "bundle"] as const;
 export type ProductKind = (typeof PRODUCT_KINDS)[number];
 /** Kinds booked for a time (D65, D67): sold as services, with the settings below. */
 export const BOOKED_KINDS = ["appointment", "stay", "rental"] as const;
 export const isBooked = (kind: ProductKind): kind is (typeof BOOKED_KINDS)[number] => (BOOKED_KINDS as readonly string[]).includes(kind);
 /** The VAT category of a gift card (D300): a multi-purpose voucher carries no VAT when sold; it is for gift cards only. */
 export const VOUCHER_CATEGORY = "voucher";
+
+/** A bundle's limits (D322): components (`bundle_components_rules()` holds the 20), each one's quantity, and a computed price's percentage off. */
+export const BUNDLE_COMPONENTS_MAX = 20;
+export const BUNDLE_QUANTITY_MAX = 99;
+export const BUNDLE_PERCENT_MAX = 90;
+export const BUNDLE_PRICINGS = ["fixed", "computed"] as const;
+
+/**
+ * What a bundle is made of and how it is priced (D322): its components (goods variants of the store, each with how many go in one bundle) and
+ * `fixed` (its own prices, typed as any product's) or `computed` (the components' prices less `percentOff`, worked out by the database).
+ */
+export const bundleInput = z.object({
+  pricing: z.enum(BUNDLE_PRICINGS).default("fixed"),
+  percentOff: z
+    .number()
+    .int()
+    .min(0, "A percentage off cannot be negative.")
+    .max(BUNDLE_PERCENT_MAX, `A bundle can be at most ${BUNDLE_PERCENT_MAX}% off its components.`)
+    .default(0),
+  components: z
+    .array(
+      z.object({
+        variantId: z.uuid(),
+        quantity: z.number().int().min(1, "Put at least one of each component in the bundle.").max(BUNDLE_QUANTITY_MAX, `Put at most ${BUNDLE_QUANTITY_MAX} of a component in the bundle.`),
+      }),
+    )
+    .max(BUNDLE_COMPONENTS_MAX, `A bundle has at most ${BUNDLE_COMPONENTS_MAX} components.`)
+    .default([]),
+});
+export type BundleInput = z.infer<typeof bundleInput>;
 
 /** How an appointment is booked (D65); kept in `appointment_settings` and `product_resources`. */
 const dayOfYear = z
@@ -364,6 +397,8 @@ export const productInput = z.object({
   /** Goods, or an appointment booked for a time (D65), with how it is booked. */
   kind: z.enum(PRODUCT_KINDS).default("goods"),
   appointment: appointmentInput.nullable().default(null),
+  /** A bundle's components and pricing (D322); null for every other kind. */
+  bundle: bundleInput.nullable().default(null),
   taxCode: z.string().trim().regex(/^txcd_[0-9]{8}$/, "A Stripe tax code looks like txcd_99999999."),
   withdrawalExclusion: z.enum(WITHDRAWAL_EXCLUSIONS.map((w) => w.id) as [string, ...string[]]),
   schemes: z.array(z.enum(PRODUCER_SCHEMES.map((s) => s.id) as [string, ...string[]])),
@@ -544,6 +579,9 @@ export function productProblems(input: ProductInput, context: PublishContext): s
     problems.push("The VAT category Gift card is for gift cards only.");
   }
 
+  // A bundle (D322): one physical variant made of other goods, never subscribed to, with no files or content of its own.
+  if (input.kind === "bundle") problems.push(...bundleProblems(input));
+
   if (input.status !== "active") return problems;
 
   if (input.media.length === 0) problems.push("Add at least one picture before publishing the product.");
@@ -554,9 +592,9 @@ export function productProblems(input: ProductInput, context: PublishContext): s
     }
   }
   if (active.length === 0) problems.push("Switch on at least one variant before publishing the product.");
-  const priced = active.some((v) =>
-    context.markets.some((m) => parsePrice(v.prices[m.code] ?? "", m.currency) !== null),
-  );
+  const priced =
+    (input.kind === "bundle" && input.bundle?.pricing === "computed") ||
+    active.some((v) => context.markets.some((m) => parsePrice(v.prices[m.code] ?? "", m.currency) !== null));
   if (active.length > 0 && !priced) problems.push("Give the product a price in at least one country.");
 
   const country = (choice: OperatorChoice): string | null =>
@@ -573,6 +611,27 @@ export function productProblems(input: ProductInput, context: PublishContext): s
         "The manufacturer is outside the EU, so add a responsible person established in the EU.",
       );
     }
+  }
+  return problems;
+}
+
+/** The units in one bundle, all components together (D322): a bundle sells at least two. */
+export const bundleUnits = (bundle: Pick<BundleInput, "components"> | null): number => (bundle?.components ?? []).reduce((sum, c) => sum + c.quantity, 0);
+
+/** What is wrong with a bundle as the owner made it (D322), in words they can act on; the database holds the per-component rules again. */
+export function bundleProblems(input: ProductInput): string[] {
+  const problems: string[] = [];
+  if (!input.bundle) return ["Choose what goes in the bundle."];
+  if (input.options.length > 0 || input.variants.length !== 1) problems.push("A bundle has one variant: take the options away.");
+  if (input.variants.some((v) => v.delivery !== "physical")) problems.push("A bundle is sent by post: make its variant physical.");
+  if (input.plans.length > 0 || input.subscriptionOnly) problems.push("Bundles cannot be subscribed to: take the purchase options away.");
+  if (input.files.length > 0) problems.push("A bundle sends its components, not a file: take the files away.");
+  if (input.soldByMeasure || input.variants.some((v) => v.measure !== null)) problems.push("A bundle has no content of its own for a price per kg or litre.");
+  if (input.variants.some((v) => v.stockPolicy === "continue")) problems.push("A bundle is never sold on backorder: its stock comes from its components.");
+  const ids = input.bundle.components.map((c) => c.variantId);
+  if (new Set(ids).size !== ids.length) problems.push("A component is in the bundle twice: give it one line with its quantity.");
+  if (input.status === "active" && bundleUnits(input.bundle) < 2) {
+    problems.push("Put at least two units in the bundle before publishing it: two products, or two of one.");
   }
   return problems;
 }

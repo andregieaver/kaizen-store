@@ -150,10 +150,18 @@ export async function getOrderAdmin(storeId: string, orderId: string): Promise<O
   if (!order) return null;
   const [restocks, shipments, refunds, [paid], tags, [origin], listPrices, fulfilment, shipmentLines, edits] = await Promise.all([
     db().execute<Row>(sql`
-      select item ->> 'sku' as sku, sum((item ->> 'quantity')::int)::int as quantity
-      from commerce.order_events e, jsonb_array_elements(e.data -> 'restocked') item
-      where e.store_id = ${storeId}::uuid and e.order_id = ${orderId}::uuid
-        and e.type in ('order.refunded', 'order.restocked')
+      -- A bundle's components put back (D322) count for the bundle's line (restockedBundles), never for the components' own lines.
+      select sku, sum(quantity)::int as quantity from (
+        select item ->> 'sku' as sku, (item ->> 'quantity')::int as quantity
+        from commerce.order_events e, jsonb_array_elements(e.data -> 'restocked') item
+        where e.store_id = ${storeId}::uuid and e.order_id = ${orderId}::uuid
+          and e.type in ('order.refunded', 'order.restocked') and not (item ? 'bundle')
+        union all
+        select item ->> 'sku', (item ->> 'quantity')::int
+        from commerce.order_events e, jsonb_array_elements(coalesce(e.data -> 'restockedBundles', '[]'::jsonb)) item
+        where e.store_id = ${storeId}::uuid and e.order_id = ${orderId}::uuid
+          and e.type in ('order.refunded', 'order.restocked')
+      ) r
       group by 1
     `),
     db().execute<Row>(sql`
@@ -949,7 +957,8 @@ async function writeRefunds(
     const amount = made.reduce((sum, m) => sum + m.part.amountMinor, 0);
     const adopted = made.length > 0 && fresh === 0;
     // The units go back inside this transaction, each change a movement that says why (D172); planned again here, under the locks, from what the order took.
-    let restockedParts: { sku: string; quantity: number; locationId: string }[] = [];
+    let restockedParts: { sku: string; quantity: number; locationId: string; bundle?: string }[] = [];
+    let restockedBundles: { sku: string; quantity: number }[] = [];
     if (restock.length > 0) {
       const planned = await planRestock(tx, storeId, orderId, [...restock]);
       if (!planned.ok) throw new Error(planned.problem);
@@ -960,7 +969,12 @@ async function writeRefunds(
         orderId,
         returnId: returnId ?? null,
       });
-      restockedParts = planned.items.flatMap((item) => item.parts.map((part) => ({ sku: item.sku, quantity: part.quantity, locationId: part.locationId })));
+      restockedParts = planned.items.flatMap((item) =>
+        item.parts.map((part) => ({ sku: item.sku, quantity: part.quantity, locationId: part.locationId, ...(item.bundleSku ? { bundle: item.bundleSku } : {}) })),
+      );
+      // The bundles that went back as their components (D322), in bundles: what their lines count.
+      const bundleSkus = new Set(planned.items.flatMap((item) => (item.bundleSku ? [item.bundleSku] : [])));
+      restockedBundles = restock.filter((item) => bundleSkus.has(item.sku)).map((item) => ({ sku: item.sku, quantity: item.quantity }));
     }
     const failed = made.some((m) => m.status === "failed");
     // Units never sent that are put back (D174): taken off what is still to send, as the stock went back. The refund is named when money went back with them (a refund
@@ -975,6 +989,7 @@ async function writeRefunds(
                   amount: adopted ? 0 : fresh,
                   reason,
                   restocked: restockedParts,
+                  ...(restockedBundles.length > 0 ? { restockedBundles } : {}),
                   // A refund Stripe reported as failed is kept as a row too; a caller that retries (a return) counts these.
                   ...(amount > 0 && failed ? { status: "failed" } : {}),
                   // Split over more than one payment (D174): how many refunds it took.

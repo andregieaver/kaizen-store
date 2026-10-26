@@ -472,7 +472,7 @@ export const productsNb: ProductsMessages = {
     value: "Verdi",
     yes: "Ja",
     no: "Nei",
-    productKinds: { goods: "Varer", appointment: "Timer", stay: "Opphold", rental: "Utleie", gift_card: "Gavekort" },
+    productKinds: { goods: "Varer", appointment: "Timer", stay: "Opphold", rental: "Utleie", gift_card: "Gavekort", bundle: "Pakker" },
     days: "Lagt til de siste (dager)",
     noneHere: "Ingen i denne butikken ennå.",
     summary: { one: "Fylles etter regler: {n} vilkår", many: "Fylles etter regler: {n} vilkår" },

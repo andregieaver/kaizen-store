@@ -378,6 +378,7 @@ export const draftsEn = {
       vat_kind: "This order carries reverse charge or IOSS, which a change could alter, so it cannot be changed.",
       return: "This order has a withdrawal or a return, so its items cannot be changed.",
       unsent_closed: "Units of this order were taken off what is still to send (refunded or put back as not sent), so its items cannot be changed.",
+      bundle: "This order holds a bundle, and an order with a bundle cannot be changed yet. Refund or cancel it instead.",
       restricted: "The customer's data was erased, so there is nobody to ask or tell: this order cannot be changed.",
       edit_pending: "A change to this order is waiting for the customer's payment. Cancel it or wait for it to be paid or expire.",
       edit_limit: "This order has been changed 20 times, the most an order can be.",

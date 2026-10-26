@@ -25,7 +25,7 @@ export type WrittenField = keyof WrittenText;
 
 /** What the model is told about the product: its words, as staff have them in the editor. */
 export const productFacts = z.object({
-  kind: z.enum(["goods", "appointment", "stay", "rental", "gift_card"]),
+  kind: z.enum(["goods", "appointment", "stay", "rental", "gift_card", "bundle"]),
   title: z.string().trim().max(200),
   description: z.string().trim().max(10_000),
   seoTitle: z.string().trim().max(TITLE_MAX).default(""),
@@ -60,6 +60,7 @@ const KIND_NAMES: Record<ProductFacts["kind"], string> = {
   stay: "a place to stay, booked by the night",
   rental: "an item for rent",
   gift_card: "a gift card, spent on anything in the store",
+  bundle: "a bundle of several products sold together",
 };
 
 /** Which fields a kind of suggestion fills. */

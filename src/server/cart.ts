@@ -155,13 +155,13 @@ export async function readCartId(shop: Shop): Promise<string | null> {
 }
 
 /**
- * An appointment, a stay or a rental is in the cart with its time, and goods
- * and gift cards without one (D65, D67, D300); a time is kept while it is at least the notice
+ * An appointment, a stay or a rental is in the cart with its time, and goods,
+ * gift cards and bundles without one (D65, D67, D300, D322); a time is kept while it is at least the notice
  * away. Whether it is still free is checked when adding and again at
  * checkout.
  */
 export const bookable = sql`
-  ((p.kind in ('goods', 'gift_card')) = (cl.starts_at is null))
+  ((p.kind in ('goods', 'gift_card', 'bundle')) = (cl.starts_at is null))
   and (cl.starts_at is null or cl.starts_at > now() + make_interval(mins => coalesce(aps.min_notice_minutes, 0)))
 `;
 
@@ -508,7 +508,7 @@ export async function sellableQuantity(
       -- Sold only in a country and currency the store offers now (D178: Several countries and currencies).
       and commerce.market_offered(v.store_id, ${market.code}, ${market.currency})
       -- Appointments, stays and rentals are booked for a time (D65, D67), and goods and gift cards have none.
-      and (p.kind in ('goods', 'gift_card')) = ${booking === null}
+      and (p.kind in ('goods', 'gift_card', 'bundle')) = ${booking === null}
       -- A product is offered only where the store sells to its kind (D178: never a business-only one where it sells to consumers, Sell to
       -- businesses switched off included), and business-only products are sold to businesses where the store sells to both (B2B).
       -- A product an exclusive price list reaches is sold to that list's buyers only (D321 C.3).

@@ -41,6 +41,7 @@ export const EDIT_BLOCKS = {
   vat_kind: "This order carries reverse charge or IOSS, which a change could alter, so it cannot be changed.",
   return: "This order has a withdrawal or a return, so its items cannot be changed.",
   unsent_closed: "Units of this order were taken off what is still to send (refunded or put back as not sent), so its items cannot be changed.",
+  bundle: "This order holds a bundle, and an order with a bundle cannot be changed yet. Refund or cancel it instead.",
   restricted: "The customer's data was erased, so there is nobody to ask or tell: this order cannot be changed.",
   edit_pending: "A change to this order is waiting for the customer's payment. Cancel it or wait for it to be paid or expire.",
   edit_limit: "This order has been changed 20 times, the most an order can be.",
@@ -68,6 +69,8 @@ export type EditFacts = {
   returnOrWithdrawal: boolean;
   /** Units were taken off what is still to send (`commerce.unsent_closures`, D174); absent is false. The database refuses a change then too. */
   unsentClosed?: boolean;
+  /** The order holds a bundle (D322): its line's components cannot be split by a change in this wave; absent is false. */
+  bundle?: boolean;
   restricted: boolean;
   editPending: boolean;
   /** The order's changes so far, whatever became of them. */
@@ -89,6 +92,7 @@ export function editBlock(f: EditFacts): EditBlockReason | null {
   if (f.vatKind !== "standard") return "vat_kind";
   if (f.returnOrWithdrawal) return "return";
   if (f.unsentClosed) return "unsent_closed";
+  if (f.bundle) return "bundle";
   if (f.restricted) return "restricted";
   if (f.editPending) return "edit_pending";
   if (f.editCount >= EDITS_PER_ORDER_MAX) return "edit_limit";

@@ -3835,3 +3835,104 @@ describe("an order on the company's payment terms (D293)", () => {
     expect({ amount: Number(payment.amount_minor), currency: String(payment.currency).trim() }).toEqual({ amount: summary.total, currency: euro ? "EUR" : "NOK" });
   });
 });
+
+describe("a bundle in euro (D322)", () => {
+  it("is priced from its components, holds and draws them, refuses a sold-out one and puts them back on a refund", async () => {
+    const onHand = async (sku: string) =>
+      Number((await db().execute<Row>(sql`select coalesce(sum(on_hand), 0)::int as n from commerce.inventory_levels where variant_id = ${variant[sku]}::uuid`))[0].n);
+    const mug = await onHand("DEMO-MUG-WHITE");
+    const tote = await onHand("DEMO-TOTE");
+    // The bundle: two white mugs and a tote, at 10 % off their prices, made as the editor would leave it.
+    const [maker] = await db().execute<Row>(sql`select manufacturer_id, responsible_person_id from commerce.products where id = ${product["demo-keramikkopp"]}::uuid`);
+    const [made] = await db().execute<Row>(sql`
+      insert into commerce.products (store_id, handle, manufacturer_id, responsible_person_id, tax_code, kind, vat_category, bundle_pricing, bundle_percent_off)
+      values (${storeId}::uuid, ${`bundle-${run}`}, ${maker.manufacturer_id}::uuid, ${maker.responsible_person_id}::uuid, 'txcd_99999999', 'bundle', 'standard', 'computed', 10) returning id
+    `);
+    const bundleProduct = String(made.id);
+    await db().execute(sql`insert into commerce.product_translations (store_id, product_id, locale, title) values (${storeId}::uuid, ${bundleProduct}::uuid, 'nb-NO', 'Kaffepakke')`);
+    await db().execute(sql`insert into commerce.product_media (store_id, product_id, url) values (${storeId}::uuid, ${bundleProduct}::uuid, 'https://example.com/pakke.jpg')`);
+    const [bv] = await db().execute<Row>(sql`
+      insert into commerce.product_variants (store_id, product_id, sku, weight_grams) values (${storeId}::uuid, ${bundleProduct}::uuid, ${`BUNDLE-${run}`}, 900) returning id
+    `);
+    const bundleVariant = String(bv.id);
+    await db().execute(sql`
+      insert into commerce.bundle_components (store_id, bundle_variant_id, component_variant_id, quantity, position)
+      values (${storeId}::uuid, ${bundleVariant}::uuid, ${variant["DEMO-MUG-WHITE"]}::uuid, 2, 0), (${storeId}::uuid, ${bundleVariant}::uuid, ${variant["DEMO-TOTE"]}::uuid, 1, 1)
+    `);
+    await db().execute(sql`update commerce.products set status = 'active' where id = ${bundleProduct}::uuid`);
+    variant[`BUNDLE-${run}`] = bundleVariant;
+
+    // Its price is the database's: (2 × mug + tote) × 0.9, half up, in the country's own currency.
+    const priceOf = async (variantId: string) =>
+      Number((await db().execute<Row>(sql`select amount_minor from commerce.prices where variant_id = ${variantId}::uuid and market_code = 'NO' and valid_to is null`))[0].amount_minor);
+    const sum = 2 * (await priceOf(variant["DEMO-MUG-WHITE"])) + (await priceOf(variant["DEMO-TOTE"]));
+    expect(await priceOf(bundleVariant)).toBe(Math.floor((sum * 90 + 50) / 100));
+    // Its stock is the lowest whole number of bundles its components allow.
+    const [stock] = await db().execute<Row>(sql`select in_stock, can_buy from commerce.variant_availability where variant_id = ${bundleVariant}::uuid`);
+    const mugFree = Number((await db().execute<Row>(sql`select in_stock from commerce.variant_availability where variant_id = ${variant["DEMO-MUG-WHITE"]}::uuid`))[0].in_stock);
+    const toteFree = Number((await db().execute<Row>(sql`select in_stock from commerce.variant_availability where variant_id = ${variant["DEMO-TOTE"]}::uuid`))[0].in_stock);
+    expect(Number(stock.in_stock)).toBe(Math.min(Math.floor(mugFree / 2), toteFree));
+
+    // Shown in euro, two bundles to a paid order: the cart and the order agree, the line keeps its components, the hold is the components'.
+    jar.clear();
+    view = noInEuro;
+    try {
+      await add(`BUNDLE-${run}`, 2);
+      const cart = await getCart(shop());
+      expect(cart.lines[0].unitPriceMinor).toBe(shown(noInEuro, await priceOf(bundleVariant)));
+      const summary = await cartSummary(shop(), cart);
+      expect(summary.blocked).toBe(false);
+      expect(await startCheckout({ ...shop(), storeSlug: slug }, cartId(), origin, "Frakt", {})).toMatchObject({ ok: true });
+      const open = (await getOpenCheckout(storeId, cartId()))!;
+      const order = (await getOrder(storeId, open.orderId))!;
+      expect({ total: order.totalMinor, vat: order.taxMinor }).toEqual({ total: summary.total, vat: summary.vat });
+      const line = order.lines.find((l) => l.variantId === bundleVariant)!;
+      const parts = await db().execute<Row>(sql`select sku, quantity from commerce.order_line_components where order_line_id = ${line.id}::uuid order by position`);
+      expect(parts.map((p) => [String(p.sku), Number(p.quantity)])).toEqual([["DEMO-MUG-WHITE", 2], ["DEMO-TOTE", 1]]);
+      const holds = await db().execute<Row>(sql`
+        select v.sku, sum(r.quantity)::int as n from commerce.inventory_reservations r join commerce.product_variants v on v.id = r.variant_id
+        where r.order_id = ${open.orderId}::uuid and r.released_at is null group by v.sku order by v.sku
+      `);
+      expect(holds.map((h) => [String(h.sku), Number(h.n)])).toEqual([["DEMO-MUG-WHITE", 4], ["DEMO-TOTE", 2]]);
+
+      fake.sessions.set(open.sessionId, { status: "complete", payment_status: "paid", mode: "payment", payment_intent: `pi_${open.sessionId}` });
+      await getShopperOrder(storeId, open.orderId, open.sessionId);
+      expect(await onHand("DEMO-MUG-WHITE")).toBe(mug - 4);
+      expect(await onHand("DEMO-TOTE")).toBe(tote - 2);
+
+      // One bundle refunded and put back: its components go back, and its line counts it.
+      const admin = (await (await import("./order-admin")).getOrderAdmin(storeId, open.orderId))!;
+      const adminLine = admin.lines.find((l) => l.id === line.id)!;
+      expect(adminLine.restockable).toBe(2);
+      expect(await refundOrder(storeId, open.orderId, { amountMinor: line.totalMinor / 2, reason: "Test", restock: [{ lineId: line.id, quantity: 1 }] }, member.account.id)).toMatchObject({
+        ok: true,
+      });
+      expect(await onHand("DEMO-MUG-WHITE")).toBe(mug - 2);
+      expect(await onHand("DEMO-TOTE")).toBe(tote - 1);
+      const after = (await (await import("./order-admin")).getOrderAdmin(storeId, open.orderId))!;
+      expect(after.lines.find((l) => l.id === line.id)!.restockable).toBe(1);
+      // An order with a bundle cannot be changed in this wave.
+      expect((await (await import("./order-edits")).orderEditability(storeId, open.orderId))?.block).toBe("bundle");
+    } finally {
+      view = no;
+    }
+
+    // A sold-out component makes the bundle unbuyable (the thermos is emptied here: other scenarios add stock to every level).
+    const kept = await db().execute<Row>(sql`select location_id, on_hand from commerce.inventory_levels where variant_id = ${variant["DEMO-THERMOS"]}::uuid`);
+    await db().execute(sql`update commerce.inventory_levels set on_hand = 0 where variant_id = ${variant["DEMO-THERMOS"]}::uuid`);
+    try {
+      await db().execute(sql`
+        insert into commerce.bundle_components (store_id, bundle_variant_id, component_variant_id, quantity, position)
+        values (${storeId}::uuid, ${bundleVariant}::uuid, ${variant["DEMO-THERMOS"]}::uuid, 1, 2)
+      `);
+      const [none] = await db().execute<Row>(sql`select in_stock, can_buy from commerce.variant_availability where variant_id = ${bundleVariant}::uuid`);
+      expect({ in_stock: Number(none.in_stock), can_buy: none.can_buy }).toEqual({ in_stock: 0, can_buy: false });
+      jar.clear();
+      expect((await changeLine(shop(), bundleVariant, 1, "add", null)).outcome).not.toBe("added");
+    } finally {
+      for (const level of kept) {
+        await db().execute(sql`update commerce.inventory_levels set on_hand = ${Number(level.on_hand)} where variant_id = ${variant["DEMO-THERMOS"]}::uuid and location_id = ${String(level.location_id)}::uuid`);
+      }
+    }
+  });
+});

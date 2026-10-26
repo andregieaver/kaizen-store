@@ -68,6 +68,7 @@ import { slugify } from "@/lib/slug";
 import { createClient } from "@/lib/supabase/client";
 import type { EditorContext, Operator } from "@/server/products";
 import { SoldByMeasureField, ContentFields, type ContentContext } from "@/components/admin/unit-price-fields";
+import { BundleSection, NEW_BUNDLE } from "@/components/admin/bundle-section";
 import { VatCategoryField } from "@/components/admin/vat-category-field";
 import { useAdminLang, useAdminText } from "@/components/admin/admin-text";
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
@@ -427,17 +428,23 @@ export function ProductEditor(props: Props) {
       )}
       {context.audience === "both" && <AudienceSection product={product} update={update} />}
       {/* The kinds a store's features offer (D178), and the product's own kind as it was loaded, which it keeps while its feature is off. */}
-      {(context.appointmentsOn || context.staysOn || context.giftCardsOn || product.kind !== "goods" || props.initial.kind !== "goods") && (
+      {/* A bundle (D322) is chosen when a product is made and stays one: a saved product is offered no move into or out of it. */}
+      {(productId === null || context.appointmentsOn || context.staysOn || context.giftCardsOn || product.kind !== "goods" || props.initial.kind !== "goods") && (
         <KindSection
           product={product}
           update={update}
-          offered={{
-            goods: true,
-            appointment: context.appointmentsOn || props.initial.kind === "appointment",
-            stay: context.staysOn || props.initial.kind === "stay",
-            rental: context.staysOn || props.initial.kind === "rental",
-            gift_card: context.giftCardsOn || props.initial.kind === "gift_card",
-          }}
+          offered={
+            productId !== null && props.initial.kind === "bundle"
+              ? { goods: false, appointment: false, stay: false, rental: false, gift_card: false, bundle: true }
+              : {
+                  goods: true,
+                  appointment: context.appointmentsOn || props.initial.kind === "appointment",
+                  stay: context.staysOn || props.initial.kind === "stay",
+                  rental: context.staysOn || props.initial.kind === "rental",
+                  gift_card: context.giftCardsOn || props.initial.kind === "gift_card",
+                  bundle: productId === null,
+                }
+          }
         />
       )}
       {product.kind === "appointment" && product.appointment && (
@@ -446,21 +453,25 @@ export function ProductEditor(props: Props) {
       {(product.kind === "stay" || product.kind === "rental") && product.appointment && (
         <RangeSection storeSlug={storeSlug} product={product} update={update} context={context} />
       )}
-      <VariantsSection
-        storeSlug={storeSlug}
-        product={product}
-        update={update}
-        context={context}
-        countries={props.countries}
-        upload={uploads ? (file) => uploadPicture(storeSlug, file, w.media.unreadable) : null}
-      />
-      {product.variants.some((v) => v.delivery === "digital") && (
+      {product.kind === "bundle" ? (
+        <BundleSection storeSlug={storeSlug} product={product} update={update} context={context} />
+      ) : (
+        <VariantsSection
+          storeSlug={storeSlug}
+          product={product}
+          update={update}
+          context={context}
+          countries={props.countries}
+          upload={uploads ? (file) => uploadPicture(storeSlug, file, w.media.unreadable) : null}
+        />
+      )}
+      {product.kind !== "bundle" && product.variants.some((v) => v.delivery === "digital") && (
         <DigitalSection storeSlug={storeSlug} product={product} update={update} uploads={uploads} />
       )}
       {!isBooked(product.kind) && (
         <>
           {/* Purchase options while Subscriptions is on (D178); off, they are kept as they are and not offered to shoppers. */}
-          {context.subscriptionsOn ? (
+          {product.kind === "bundle" ? null : context.subscriptionsOn ? (
             <SubscriptionSection product={product} update={update} markets={context.markets} netPrices={context.audience === "businesses"} />
           ) : (
             product.plans.length > 0 && (
@@ -2329,6 +2340,8 @@ function KindSection({ product, update, offered }: SectionProps & { offered: Rec
       const booked = isBooked(kind);
       // A gift card's amounts are emailed as a code (D300); leaving the kind, they are shipped until said otherwise.
       const giftCard = kind === "gift_card";
+      // A bundle (D322) is one physical variant with no options, stock or content of its own, never subscribed to.
+      const bundle = kind === "bundle";
       const delivery = (d: Delivery): Delivery =>
         booked ? "service" : giftCard ? "digital" : d === "service" || p.kind === "gift_card" ? "physical" : d;
       // Rooms and homes take the reduced rate for accommodation where there is one (D65); a gift card no VAT when sold, and only it (D300).
@@ -2337,16 +2350,22 @@ function KindSection({ product, update, offered }: SectionProps & { offered: Rec
         : p.vatCategory === VOUCHER_CATEGORY
           ? kind === "stay" ? "accommodation" : "standard"
           : kind === "stay" && p.vatCategory === "standard" ? "accommodation" : p.vatCategory;
+      const variants = withoutContentWhereNotGoods(kind, p.variants.map((v) => ({ ...v, delivery: delivery(v.delivery) })));
       return {
         ...p,
         kind,
         appointment: isBooked(kind) ? (p.kind === kind && p.appointment ? p.appointment : defaultBooking(kind)) : null,
         vatCategory,
-        delivery: delivery(p.delivery),
-        variants: withoutContentWhereNotGoods(kind, p.variants.map((v) => ({ ...v, delivery: delivery(v.delivery) }))),
-        plans: booked || giftCard ? [] : p.plans,
-        subscriptionOnly: booked || giftCard ? false : p.subscriptionOnly,
+        delivery: bundle ? "physical" : delivery(p.delivery),
+        options: bundle ? [] : p.options,
+        variants: bundle
+          ? variants.slice(0, 1).map((v) => ({ ...v, options: {}, delivery: "physical" as const, stockPolicy: "deny" as const, backorderDays: null }))
+          : variants,
+        files: bundle ? [] : p.files,
+        plans: booked || giftCard || bundle ? [] : p.plans,
+        subscriptionOnly: booked || giftCard || bundle ? false : p.subscriptionOnly,
         soldByMeasure: kind === "goods" ? p.soldByMeasure : false,
+        bundle: bundle ? (p.bundle ?? NEW_BUNDLE) : null,
       };
     });
   };
@@ -2364,6 +2383,7 @@ function KindSection({ product, update, offered }: SectionProps & { offered: Rec
               ["stay", w.stay, w.stayNote],
               ["rental", w.rental, w.rentalNote],
               ["gift_card", w.giftCard, w.giftCardNote],
+              ["bundle", w.bundle, w.bundleNote],
             ] as const
           ).filter(([value]) => offered[value]).map(([value, name, note]) => (
             <label

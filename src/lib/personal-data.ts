@@ -304,6 +304,8 @@ export const NOT_PERSONAL: Record<string, string> = {
   price_lists: "A store's price list (D321): its name, a percentage and whether it is on.",
   price_list_assignments: "Which customer groups and companies a price list is for (D321): the business's own groups and company accounts, never a person.",
   price_list_prices: "A price list's fixed price for a variant in a currency (D321).",
+  bundle_components: "What a bundle is made of (D322): variants and quantities of the store's catalogue.",
+  order_line_components: "A bundle's components as sold (D322): variants, SKUs, product titles and quantities, nothing of the buyer.",
   price_list_products: "Which products and categories a price list's percentage reaches (D321).",
   redirects: "The store's own addresses (D168): a path on the store that sends to another, and the staff account that made it. A path is the store's page, never a person's; no visitor, IP address or query string is kept.",
   not_found_hits: "Counts of requests for addresses the store did not have (D168), by day; no IP address, user agent, cookie, referrer or query string is kept, and addresses that could hold a person's data (a token, an email, an id) are never recorded.",

@@ -194,6 +194,8 @@ export type OrderLineInsert = {
   orderEditId?: string | null;
   /** Who a gift card line's cards are emailed to (D300), from its cart line; null for the buyer, and for anything that is not a gift card. */
   giftCard?: GiftCardRecipient | null;
+  /** A bundle's components as sold (D322): written with the line and frozen; payment draws them, a restock puts them back. */
+  components?: readonly { variantId: string; sku: string; title: string; quantity: number }[];
 };
 
 /** Writes one order line and returns its id. */
@@ -227,7 +229,16 @@ export async function insertOrderLine(tx: Db, storeId: string, orderId: string, 
     )
     returning id
   `);
-  return String(row.id);
+  const lineId = String(row.id);
+  if (line.components && line.components.length > 0) {
+    const rows = line.components.map((c, position) => ({ variant_id: c.variantId, sku: c.sku, title: c.title, quantity: c.quantity, position }));
+    await tx.execute(sql`
+      insert into commerce.order_line_components (store_id, order_line_id, variant_id, sku, title, quantity, position)
+      select ${storeId}::uuid, ${lineId}::uuid, r.variant_id, r.sku, r.title, r.quantity, r.position
+      from jsonb_to_recordset(${JSON.stringify(rows)}::jsonb) as r(variant_id uuid, sku text, title text, quantity integer, position integer)
+    `);
+  }
+  return lineId;
 }
 
 /** Units held against an order by `allocate()` (D172): where from, how many, and how many of them are beyond stock. */

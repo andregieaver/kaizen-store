@@ -34,6 +34,7 @@ import { unitPriceProblems } from "@/lib/unit-price-rules";
 import { limitRefusal } from "@/lib/usage-format";
 import { FEATURES_BY_ID, featureOffText, featureOn, kindFeature } from "@/lib/store-features";
 
+import { bundleForEdit, componentProblems, saveBundleComponents } from "./bundles";
 import { profileChoices } from "./shipping-admin";
 import { aiFor } from "./ai";
 import { productFacts, saveFieldData, variantFacts } from "./custom-fields";
@@ -239,6 +240,7 @@ export function emptyProduct(context: EditorContext): ProductInput {
     hostId: null,
     layoutId: null,
     appointment: null,
+    bundle: null,
     taxCode: GENERAL_TAX_CODE,
     withdrawalExclusion: "none",
     schemes: ["packaging"],
@@ -357,7 +359,7 @@ export async function getProductForEdit(
   const category = parseVatCategory(product.vat_category);
   const kind = PRODUCT_KINDS.find((k) => k === product.kind) ?? "goods";
 
-  const [translations, media, schemes, variants, prices, files, plans, termRows, [appointment], resources, seasons] = await Promise.all([
+  const [translations, media, schemes, variants, prices, files, plans, termRows, [appointment], resources, seasons, bundle] = await Promise.all([
     db().execute<Row>(sql`
       select locale, title, description, safety_information, seo_title, seo_description, excerpt
       from commerce.product_translations where product_id = ${productId}::uuid
@@ -420,6 +422,7 @@ export async function getProductForEdit(
       select name, names, from_day, to_day, weekdays, percent from commerce.booking_seasons
       where store_id = ${store.id}::uuid and product_id = ${productId}::uuid order by position, created_at
     `),
+    bundleForEdit(db(), store.id, productId),
   ]);
 
   const byLocale = new Map(translations.map((t) => [String(t.locale), t]));
@@ -559,6 +562,7 @@ export async function getProductForEdit(
             seasons: seasons.map(parseSeason),
           }
         : null,
+    bundle,
     taxCode: String(product.tax_code),
     withdrawalExclusion: String(product.withdrawal_exclusion),
     schemes: schemes.map((s) => String(s.scheme)),
@@ -692,6 +696,10 @@ export async function saveProduct(
   if (neededFeature && !featureOn(store, neededFeature) && stored?.kind !== given.kind) {
     return { ok: false, problems: [`${featureOffText(neededFeature)} Products of that kind can't be added until it is switched on.`] };
   }
+  // A bundle (D322) is made as one and stays one: its variant holds no stock, a goods variant's stock has nowhere to go in a bundle.
+  if (stored && (stored.kind === "bundle") !== (given.kind === "bundle")) {
+    return { ok: false, problems: [given.kind === "bundle" ? "A product cannot become a bundle: make a new product of the kind Bundle." : "A bundle cannot become another kind of product: make a new product."] };
+  }
   const subscriptionsOn = featureOn(store, "subscriptions");
   const input = asKind(subscriptionsOn ? given : { ...given, subscriptionOnly: Boolean(stored?.subscription_only) });
   const euRows = await db().execute<Row>(sql`select code from commerce.countries where in_eu`);
@@ -731,6 +739,7 @@ export async function saveProduct(
     const room = await checkLimit(store.id, "products");
     if (!room.ok) problems.push(limitRefusal("products", room.limit));
   }
+  problems.push(...(await componentProblems(db(), store.id, input, context.primaryLocale)));
   if (problems.length > 0) return { ok: false, problems };
   // Only the store's own product categories and tags; one deleted meanwhile is left out.
   const termScope = { storeId: store.id, contentType: "product" } as const;
@@ -774,6 +783,7 @@ export async function saveProduct(
       const locationId = await stockLocation(tx, store);
       await saveVariants(tx, store.id, saved, context, input, locationId, stockMode, actor?.id ?? null);
       await saveAppointment(tx, store.id, saved, input, context);
+      if (input.kind === "bundle") await saveBundleComponents(tx, store.id, saved, input);
       await saveFiles(tx, store.id, saved, input);
       // Kept as they are while Subscriptions is off (D178); a product that becomes a booking still loses them (it cannot be subscribed to).
       if (subscriptionsOn || isBooked(input.kind)) await savePlans(tx, store.id, saved, input, context.markets, context.audience);
@@ -859,6 +869,10 @@ async function resolveOperator(tx: Tx, storeId: string, choice: OperatorChoice):
   return String(row.id);
 }
 
+/** A bundle's pricing columns (D322): null for every other kind; a percentage only for a computed price. */
+const bundlePricing = (input: ProductInput): string | null => (input.kind === "bundle" ? (input.bundle?.pricing ?? "fixed") : null);
+const bundlePercent = (input: ProductInput): number | null => (input.kind === "bundle" && input.bundle?.pricing === "computed" ? input.bundle.percentOff : null);
+
 async function upsertProduct(
   tx: Tx,
   storeId: string,
@@ -885,6 +899,7 @@ async function upsertProduct(
         subscription_only = ${input.subscriptionOnly}, audience = ${input.audience},
         vat_category = ${input.vatCategory}, kind = ${input.kind}, host_id = ${hostOf(storeId, input)},
         product_layout_id = ${input.layoutId}::uuid, sold_by_measure = ${input.soldByMeasure && input.kind === "goods"}, updated_at = now(),
+        bundle_pricing = ${bundlePricing(input)}, bundle_percent_off = ${bundlePercent(input)},
         shipping_profile_id = ${input.shippingProfileId === undefined ? sql`shipping_profile_id` : sql`(select sp.id from commerce.shipping_profiles sp where sp.store_id = ${storeId}::uuid and sp.id = ${input.shippingProfileId ?? null}::uuid)`}
       where store_id = ${storeId}::uuid and id = ${productId}::uuid
       returning id
@@ -896,12 +911,13 @@ async function upsertProduct(
     insert into commerce.products (
       store_id, handle, status, manufacturer_id, responsible_person_id, tax_code, withdrawal_exclusion,
       delivery, download_limit, download_days, subscription_only, audience, vat_category, kind, host_id, product_layout_id,
-      sold_by_measure, shipping_profile_id
+      sold_by_measure, shipping_profile_id, bundle_pricing, bundle_percent_off
     ) values (
       ${storeId}::uuid, ${input.handle}, 'draft', ${manufacturerId}::uuid, ${responsibleId}::uuid,
       ${input.taxCode}, ${input.withdrawalExclusion}, ${input.delivery}, ${input.downloadLimit}, ${input.downloadDays},
       ${input.subscriptionOnly}, ${input.audience}, ${input.vatCategory}, ${input.kind}, ${hostOf(storeId, input)},
-      ${input.layoutId}::uuid, ${input.soldByMeasure && input.kind === "goods"}, (select sp.id from commerce.shipping_profiles sp where sp.store_id = ${storeId}::uuid and sp.id = ${input.shippingProfileId ?? null}::uuid)
+      ${input.layoutId}::uuid, ${input.soldByMeasure && input.kind === "goods"}, (select sp.id from commerce.shipping_profiles sp where sp.store_id = ${storeId}::uuid and sp.id = ${input.shippingProfileId ?? null}::uuid),
+      ${bundlePricing(input)}, ${bundlePercent(input)}
     )
     returning id
   `);
@@ -1206,7 +1222,10 @@ async function saveVariants(
   // Prices: only those that changed go through `commerce.set_price`, in one statement; a price taken away is ended (its history is kept).
   const changed: { n: number; variant_id: string; market_code: string; amount_minor: number }[] = [];
   const ended: { variant_id: string; market_code: string }[] = [];
+  // A computed bundle's prices are the database's (`refresh_bundle_prices()`, D322): none is typed or ended here.
+  const computed = input.kind === "bundle" && input.bundle?.pricing === "computed";
   input.variants.forEach((variant, index) => {
+    if (computed) return;
     const id = idOf(columns[index]);
     const before = current.get(id) ?? {};
     for (const market of context.markets) {
@@ -1234,7 +1253,8 @@ async function saveVariants(
   // Downloads never run out: digital variants keep no stock. The writes are made in variant order, so the level rows are locked in the order
   // every writer uses and a checkout in the middle cannot deadlock with this save.
   const stockWrites: StockWrite[] = input.variants.flatMap((variant, index) => {
-    if (variant.delivery !== "physical") return [];
+    // A bundle holds no stock of its own (D322): its components do.
+    if (variant.delivery !== "physical" || input.kind === "bundle") return [];
     const c = columns[index];
     return [{ id: idOf(c), isNew: c.id === null, typed: variant.stock, base: c.id !== null ? stockMode?.loaded.get(c.id) : undefined }];
   });
@@ -1356,6 +1376,11 @@ function saveProblem(error: unknown, input: ProductInput): string {
     return `Remove the content of ${detail ? `the variants with SKU ${detail}` : "the variants"}: content can only be given for physical goods. Nothing was changed.`;
   }
   if (text.includes("unit_price.invalid_amount")) return "The content of a variant is not a valid amount.";
+  // The bundle rules of the database (D322), if something changed between the check above and the save.
+  if (text.includes("bundle_components.vat_category")) return "A bundle and its components take one VAT category: change the bundle's, or take that component out. Nothing was changed.";
+  if (text.includes("bundle_components.goods")) return "Only goods sent by post can go in a bundle. Nothing was changed.";
+  if (text.includes("bundle_components.max")) return "A bundle has at most 20 components. Nothing was changed.";
+  if (text.includes("bundle_components.bundle")) return "Only a bundle has components. Nothing was changed.";
   if (text.includes("variants.too_many")) return `A product can have at most ${MAX_VARIANTS} variants for sale. Use fewer option values, or switch some off. Nothing was changed.`;
   if (text.includes("products_store_handle_key")) {
     return `Another product already uses the web address "${input.handle}". Choose another.`;

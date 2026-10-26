@@ -375,6 +375,7 @@ export const draftsNb: DraftsMessages = {
       vat_kind: "Denne bestillingen har omvendt avgiftsplikt eller EUs IOSS-ordning, som en endring kan påvirke, så den kan ikke endres.",
       return: "Denne bestillingen har en angring eller en retur, så varene kan ikke endres.",
       unsent_closed: "Enheter av denne bestillingen er tatt ut av det som skal sendes (tilbakebetalt eller lagt tilbake som ikke sendt), så varene kan ikke endres.",
+      bundle: "Denne bestillingen har en pakke, og en bestilling med en pakke kan ikke endres ennå. Tilbakebetal eller kanseller den i stedet.",
       restricted: "Kundens opplysninger er slettet, så det er ingen å spørre eller gi beskjed til: denne bestillingen kan ikke endres.",
       edit_pending: "En endring av denne bestillingen venter på kundens betaling. Kanseller den, eller vent til den er betalt eller utløper.",
       edit_limit: "Denne bestillingen er endret 20 ganger, det meste en bestilling kan.",

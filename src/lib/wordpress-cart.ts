@@ -43,7 +43,8 @@ export const toLines = (lines: z.output<typeof cartLines>): CartLineInput[] => l
 export type NotCartable = "booking" | "subscription" | "business_only" | "service";
 
 export function cartableReason(product: { kind: string; subscriptionOnly: boolean; audience: string }, storeAudience: string, deliveries: readonly string[]): NotCartable | null {
-  if (product.kind !== "goods") return "booking";
+  // A bundle (D322) is one variant, cartable as goods are.
+  if (product.kind !== "goods" && product.kind !== "bundle") return "booking";
   if (product.subscriptionOnly) return "subscription";
   // A product for one kind of buyer where the store sells to both, or one the store does not offer at all (D178: a business-only product
   // with Sell to businesses off), is never put in a cart from another site.

@@ -107,7 +107,8 @@ export function withTags(slugs: string[]): SQL {
  * filter promises. Read through `commerce.variant_availability`, the one reader of stock.
  */
 export function inStockNow(): SQL {
-  return sql`(p.kind <> 'goods' or exists (
+  // A bundle (D322) is in stock as its components allow, worked out inside `variant_availability`.
+  return sql`(p.kind not in ('goods', 'bundle') or exists (
     select 1 from commerce.product_variants v
     where v.product_id = p.id and v.active and (v.delivery = 'digital' or exists (
       select 1 from commerce.variant_availability va
@@ -139,7 +140,7 @@ export function convertedSql(amount: SQL, market: { conversion: { factor: number
 
 /**
  * Which lines a price list may price (wave 6 unit C1, D321, `docs/wave-6-catalogue.md` C.1), for a cart line `cl` of a product `p`: goods and
- * appointments bought once, never a purchase option, a stay's or rental's season pricing or a gift card. The join condition of
+ * appointments bought once (and bundles, D322), never a purchase option, a stay's or rental's season pricing or a gift card. The join condition of
  * `commerce.buyer_price()` in the cart and checkout alike.
  */
-export const LIST_PRICED = sql`(cl.selling_plan_id is null and p.kind in ('goods', 'appointment'))`;
+export const LIST_PRICED = sql`(cl.selling_plan_id is null and p.kind in ('goods', 'appointment', 'bundle'))`;

@@ -359,7 +359,8 @@ export async function addWishlistToCart(
       outcomes[id] = "subscription";
       continue;
     }
-    if (row.kind !== "goods") {
+    // A bundle (D322) is bought as goods are.
+    if (row.kind !== "goods" && row.kind !== "bundle") {
       outcomes[id] = "booking";
       continue;
     }

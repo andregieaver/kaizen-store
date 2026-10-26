@@ -6,6 +6,7 @@ import type { Db } from "@/db/client";
 import { inRankOrder, type StockContext } from "@/lib/inventory";
 import { restockPlan, type Part, type RestockPart } from "@/lib/stock-restock";
 
+import { expandBundleItems } from "./bundles";
 import { withStockContext } from "./stock-context";
 
 type Row = Record<string, unknown>;
@@ -54,7 +55,14 @@ export async function orderStockHistory(
   return history;
 }
 
-export type RestockItem = { variantId: string; sku: string; quantity: number; chosen?: string | null };
+export type RestockItem = {
+  variantId: string;
+  sku: string;
+  quantity: number;
+  chosen?: string | null;
+  /** A component going back for a bundle (D322): the bundle line's SKU, set by `planRestock()`'s expansion. */
+  bundleSku?: string;
+};
 export type PlannedItem = RestockItem & { parts: RestockPart[] };
 
 export type RestockPlanResult = { ok: true; items: PlannedItem[] } | { ok: false; problem: string };
@@ -68,7 +76,9 @@ const WORDS = {
  * The plan for every item of a restock, worked out from what the order took and what already went back (items of one variant count
  * what the earlier ones in the same call put back). A chosen location must be an active location of THIS store. Never writes.
  */
-export async function planRestock(reader: Pick<Db, "execute">, storeId: string, orderId: string, items: readonly RestockItem[]): Promise<RestockPlanResult> {
+export async function planRestock(reader: Pick<Db, "execute">, storeId: string, orderId: string, given: readonly RestockItem[]): Promise<RestockPlanResult> {
+  // A bundle goes back as its components (D322): its own variant held and drew nothing.
+  const items = await expandBundleItems(reader, storeId, orderId, given);
   const rank = await activeRank(reader, storeId);
   const history = await orderStockHistory(reader, storeId, orderId, [...new Set(items.map((i) => i.variantId))]);
   const planned: PlannedItem[] = [];

@@ -284,7 +284,7 @@ export async function listPricesFor(storeId: string, customerId: string | null, 
   const rows = await typedRows(BUYER_PRICE_ROW, sql`
     select v.id as variant_id, bp.amount_minor, bp.list_id
     from commerce.product_variants v
-    join commerce.products p on p.store_id = v.store_id and p.id = v.product_id and p.kind in ('goods', 'appointment')
+    join commerce.products p on p.store_id = v.store_id and p.id = v.product_id and p.kind in ('goods', 'appointment', 'bundle')
     join commerce.current_prices cp on cp.variant_id = v.id and cp.market_code = ${marketCode}
     cross join lateral commerce.buyer_price(v.store_id, ${customerId}::uuid, v.id, ${marketCode}, cp.amount_minor) bp
     where v.store_id = ${storeId}::uuid and v.id = any(${`{${variantIds.join(",")}}`}::uuid[])
@@ -304,7 +304,7 @@ export async function findVariants(storeId: string, locale: string, query: strin
     from commerce.products p
     join commerce.product_variants v on v.store_id = p.store_id and v.product_id = p.id and v.active
     left join commerce.product_translations tl on tl.product_id = p.id and tl.locale = ${locale}
-    where p.store_id = ${storeId}::uuid and p.status <> 'archived' and p.kind in ('goods', 'appointment')
+    where p.store_id = ${storeId}::uuid and p.status <> 'archived' and p.kind in ('goods', 'appointment', 'bundle')
       and (coalesce(tl.title, '') ilike ${like} or p.handle ilike ${like} or v.sku ilike ${like})
     order by lower(coalesce(tl.title, p.handle)), v.sku
     limit 100
@@ -383,7 +383,7 @@ export async function buyerCatalogue(storeId: string, customerId: string, market
     left join commerce.product_translations tl on tl.product_id = p.id and tl.locale = ${locale}
     left join lateral (select url, thumbnail_url from commerce.product_media where product_id = p.id order by position limit 1) m on true
     left join lateral commerce.buyer_price(p.store_id, ${customerId}::uuid, v.id, ${marketCode}, cp.amount_minor) bp on true
-    where p.store_id = ${storeId}::uuid and p.status = 'active' and p.kind = 'goods' and not p.subscription_only
+    where p.store_id = ${storeId}::uuid and p.status = 'active' and p.kind in ('goods', 'bundle') and not p.subscription_only
       and ${offeredTo(customerId)}
       and exists (select 1 from mine where commerce.price_list_covers(${storeId}::uuid, mine.id, p.id))
     order by lower(coalesce(tl.title, p.handle)), v.sku

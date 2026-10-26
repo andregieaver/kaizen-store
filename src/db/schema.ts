@@ -2197,6 +2197,13 @@ export const products = commerce.table(
     /** The product's shipping profile (D237): the rates its part of a basket takes; null is General. Moved to General before a profile is deleted. */
     shippingProfileId: uuid("shipping_profile_id"),
     /**
+     * A bundle's price (wave 6 unit D, D322): `fixed` (its variant's own prices) or `computed` (its components' prices less
+     * `bundle_percent_off`, written by `commerce.refresh_bundle_prices()`); null for every other kind.
+     */
+    bundlePricing: text("bundle_pricing"),
+    /** A computed bundle's whole percent off its components' sum, 0 to 90; null otherwise. */
+    bundlePercentOff: integer("bundle_percent_off"),
+    /**
      * When the product first became active (wave 2, D168): set by a trigger and never cleared. A handle that changes leaves a redirect only for a
      * product that was ever live (`OLD.status <> 'draft'` or this set). No backfill: a product active or archived today counts as ever live.
      */
@@ -2229,7 +2236,12 @@ export const products = commerce.table(
     check("products_audience", sql`${t.audience} in ('all', 'consumers', 'businesses')`),
     foreignKey({ name: "products_vat_category_fk", columns: [t.vatCategory], foreignColumns: [vatCategories.code] }),
     index("products_vat_category_idx").on(t.vatCategory),
-    check("products_kind", sql`${t.kind} in ('goods', 'appointment', 'stay', 'rental', 'gift_card')`),
+    check("products_kind", sql`${t.kind} in ('goods', 'appointment', 'stay', 'rental', 'gift_card', 'bundle')`),
+    check(
+      "products_bundle_pricing",
+      sql`(${t.kind} = 'bundle') = (${t.bundlePricing} is not null) and (${t.bundlePricing} is null or ${t.bundlePricing} in ('fixed', 'computed'))
+        and (${t.bundlePercentOff} is null) = (${t.bundlePricing} is distinct from 'computed') and (${t.bundlePercentOff} is null or ${t.bundlePercentOff} between 0 and 90)`,
+    ),
     check("products_handle_format", sql`${t.handle} ~ '^[a-z0-9]+(-[a-z0-9]+)*$'`),
     check("products_download_limit_positive", sql`${t.downloadLimit} > 0`),
     check("products_download_days_positive", sql`${t.downloadDays} > 0`),
@@ -2552,6 +2564,32 @@ const variantRef = (
     columns: [cols.storeId, cols.variantId],
     foreignColumns: [productVariants.storeId, productVariants.id],
   });
+
+/**
+ * What a bundle is made of (wave 6 unit D, D322): a component variant and how many of it go in one bundle. Keyed by the bundle's variant (a
+ * bundle has one). A component is a goods variant delivered physically, of the bundle's store and VAT category, never a bundle's own; at most
+ * 20 a bundle (the database's `bundle_components_rules()`); the count of units is the editor's rule.
+ */
+export const bundleComponents = commerce.table(
+  "bundle_components",
+  {
+    storeId: storeId(),
+    bundleVariantId: uuid("bundle_variant_id").notNull(),
+    componentVariantId: uuid("component_variant_id").notNull(),
+    quantity: integer("quantity").notNull(),
+    position: integer("position").notNull().default(0),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    primaryKey({ name: "bundle_components_pkey", columns: [t.bundleVariantId, t.componentVariantId] }),
+    foreignKey({ name: "bundle_components_bundle_fk", columns: [t.storeId, t.bundleVariantId], foreignColumns: [productVariants.storeId, productVariants.id] }).onDelete("cascade"),
+    variantRef("bundle_components_component_fk", { storeId: t.storeId, variantId: t.componentVariantId }),
+    index("bundle_components_bundle_idx").on(t.storeId, t.bundleVariantId),
+    index("bundle_components_component_idx").on(t.storeId, t.componentVariantId),
+    check("bundle_components_quantity", sql`${t.quantity} between 1 and 99`),
+    check("bundle_components_not_itself", sql`${t.bundleVariantId} <> ${t.componentVariantId}`),
+  ],
+);
 
 /**
  * A purchase option for subscribing to a product (D25), as Shopify's selling
@@ -4230,6 +4268,32 @@ const orderLineRef = (
     columns: [cols.storeId, cols.orderLineId],
     foreignColumns: [orderLines.storeId, orderLines.id],
   });
+
+/**
+ * A bundle's components as sold (wave 6 unit D, D322): written by `placeOrder()` with the order line, frozen (the database refuses a change or
+ * a deletion). What payment draws (`commerce.draw_order_stock()`), what a restock puts back (`planRestock()`) and what the slips list.
+ */
+export const orderLineComponents = commerce.table(
+  "order_line_components",
+  {
+    storeId: storeId(),
+    orderLineId: uuid("order_line_id").notNull(),
+    variantId: uuid("variant_id").notNull(),
+    sku: text("sku").notNull(),
+    title: text("title").notNull(),
+    /** Units of it in ONE bundle; the line's quantity times this is what the line takes. */
+    quantity: integer("quantity").notNull(),
+    position: integer("position").notNull().default(0),
+  },
+  (t) => [
+    primaryKey({ name: "order_line_components_pkey", columns: [t.orderLineId, t.variantId] }),
+    orderLineRef("order_line_components_line_fk", t),
+    variantRef("order_line_components_variant_fk", t),
+    index("order_line_components_line_idx").on(t.storeId, t.orderLineId),
+    index("order_line_components_variant_idx").on(t.storeId, t.variantId),
+    check("order_line_components_quantity", sql`${t.quantity} between 1 and 99`),
+  ],
+);
 
 /**
  * Stock held for a cart or an unpaid order. Available stock is on-hand minus

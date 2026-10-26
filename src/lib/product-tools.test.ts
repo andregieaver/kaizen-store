@@ -73,6 +73,7 @@ function base(): ProductInput {
     hostId: null,
     layoutId: null,
     appointment: null,
+    bundle: null,
     taxCode: GENERAL_TAX_CODE,
     withdrawalExclusion: "none",
     schemes: ["packaging"],
