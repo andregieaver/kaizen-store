@@ -1,3 +1,4 @@
+import { pictureItem } from "./product-media";
 import { describe, expect, it } from "vitest";
 
 import { GENERAL_TAX_CODE, productInput, type ProductInput } from "./product-input";
@@ -250,13 +251,21 @@ describe("mergeProduct", () => {
   });
 
   it("replaces or adds pictures, without the same picture twice", () => {
-    const one = { url: "https://x.example/a.webp", thumbnailUrl: null, alt: "A" };
-    const two = { url: "https://x.example/b.webp", thumbnailUrl: null, alt: "B" };
+    const one = pictureItem("https://x.example/a.webp", null, "A");
+    const two = pictureItem("https://x.example/b.webp", null, "B");
     const replaced = mergeProduct(stored(), updateProductInput.parse({ product: "shirt", pictures: [{ url: one.url }] }), STORE, { media: [one] });
     expect(replaced.ok && replaced.input.media).toEqual([one]);
     if (!replaced.ok) return;
     const added = mergeProduct(replaced.input, updateProductInput.parse({ product: "shirt", add_pictures: [{ url: one.url }, { url: two.url }] }), STORE, { addMedia: [one, two] });
     expect(added.ok && added.input.media).toEqual([one, two]);
+  });
+
+  it("replaces the pictures only: a product's videos and 3D models stay (D325)", () => {
+    const one = pictureItem("https://x.example/a.webp", null, "A");
+    const clip = { ...pictureItem("https://x.example/poster.webp", null, "Clip"), kind: "video" as const, source: "youtube" as const, mediaUrl: "https://youtu.be/dQw4w9WgXcQ" };
+    const before = { ...stored(), media: [pictureItem("https://x.example/old.webp", null, "Old"), clip] };
+    const replaced = mergeProduct(before, updateProductInput.parse({ product: "shirt", pictures: [{ url: one.url }] }), STORE, { media: [one] });
+    expect(replaced.ok && replaced.input.media).toEqual([one, clip]);
   });
 });
 

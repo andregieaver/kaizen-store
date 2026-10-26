@@ -98,8 +98,8 @@ const like = (storeId: string) => `%${storeId.toLowerCase()}%`;
 async function pictureRows(newId: string, sourceId: string) {
   const [media, variants, terms] = await Promise.all([
     db().execute<Row>(sql`
-      select id, url, thumbnail_url from commerce.product_media
-      where store_id = ${newId}::uuid and (url like ${like(sourceId)} or thumbnail_url like ${like(sourceId)})
+      select id, url, thumbnail_url, media_url from commerce.product_media
+      where store_id = ${newId}::uuid and (url like ${like(sourceId)} or thumbnail_url like ${like(sourceId)} or media_url like ${like(sourceId)})
     `),
     db().execute<Row>(sql`
       select id, image_url, image_thumbnail_url from commerce.product_variants
@@ -131,6 +131,8 @@ async function discover(ctx: MediaCopyContext): Promise<string[]> {
   for (const row of media) {
     add(row.url);
     add(row.thumbnail_url);
+    // A video's or 3D model's own file (D325).
+    add(row.media_url);
   }
   for (const row of [...variants, ...terms]) {
     add(row.image_url);
@@ -313,8 +315,16 @@ async function rewriteAll(ctx: MediaCopyContext, mapped: Map<string, string | nu
       continue;
     }
     const thumb = own(row.thumbnail_url);
+    // A video's or model's file that could not be copied takes its item with it, as a picture does (D325).
+    const file = own(row.media_url);
+    const nextFile = file ? (mapped.get(file) ?? null) : other(row.media_url);
+    if (row.media_url && nextFile === null) {
+      await db().execute(sql`delete from commerce.product_media where id = ${String(row.id)}::uuid`);
+      continue;
+    }
     await db().execute(sql`
-      update commerce.product_media set url = ${next}, thumbnail_url = ${thumb ? (mapped.get(thumb) ?? null) : other(row.thumbnail_url)}
+      update commerce.product_media set url = ${next}, thumbnail_url = ${thumb ? (mapped.get(thumb) ?? null) : other(row.thumbnail_url)},
+        media_url = ${nextFile}
       where id = ${String(row.id)}::uuid
     `);
   }

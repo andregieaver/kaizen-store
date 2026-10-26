@@ -8,6 +8,7 @@ import { PRICE_BREAKS_MAX, priceBreakProblems } from "./price-breaks";
 import { MAX_ORDER_QUANTITY, ruleProblem } from "./quantity-rules";
 import { minorUnitDigits } from "./money";
 import { isPictureAddress } from "./picture-address";
+import { MAX_MEDIA, MEDIA_KINDS, VIDEO_SOURCES, mediaProblems } from "./product-media";
 import { BASES, UNITS, baseFits, measureProblem, parseMeasureAmount, type Base, type Unit } from "./unit-price";
 import { DESCRIPTION_MAX, EXCERPT_FIELD_MAX, TITLE_MAX } from "./seo";
 import { termIdsSchema } from "./taxonomy";
@@ -96,7 +97,8 @@ export const MAX_FILES = 20;
 export const MAX_OPTIONS = 3;
 /** Shopify's limit (wave 6 unit B, D320): 2,048 variants over 3 options, held by the database too (`commerce.product_variants_limit()`). */
 export const MAX_VARIANTS = 2048;
-export const MAX_MEDIA = 12;
+/** A gallery's items (D325): pictures, videos and 3D models, the limits in `src/lib/product-media.ts`. */
+export { MAX_MEDIA };
 
 const text = (max: number) => z.string().trim().max(max);
 /** Text that may be left empty: "" and null both become null. */
@@ -285,12 +287,21 @@ export const productInput = z.object({
   media: z
     .array(
       z.object({
+        /** A picture, a video or a 3D model (D325); every item has a picture: its own, or a video's or model's poster. */
+        kind: z.enum(MEDIA_KINDS).default("image"),
+        /** A video's: uploaded, or on YouTube or Vimeo. */
+        source: z.enum(VIDEO_SOURCES).nullable().default(null),
+        /** A video's file or address, or a model's file. */
+        mediaUrl: z.string().trim().max(1000).nullable().default(null),
         url: pictureAddress,
         thumbnailUrl: pictureAddress.nullable(),
+        /** The words in the main language. */
         alt: text(300),
+        /** The words in the store's other languages, as typed (D325); a language left out reads the library's, then the title. */
+        alts: z.record(z.string().min(2).max(20), text(300)).default({}),
       }),
     )
-    .max(MAX_MEDIA, `Use at most ${MAX_MEDIA} pictures.`),
+    .max(MAX_MEDIA, `Use at most ${MAX_MEDIA} pictures, videos and 3D models.`),
   options: z
     .array(
       z.object({
@@ -618,6 +629,9 @@ export function productProblems(input: ProductInput, context: PublishContext): s
   } else if (input.vatCategory === VOUCHER_CATEGORY) {
     problems.push("The VAT category Gift card is for gift cards only.");
   }
+
+  // The gallery's kinds and counts (D325); whether its files are the store's own is the server's check.
+  problems.push(...mediaProblems(input.media));
 
   // A bundle (D322): one physical variant made of other goods, never subscribed to, with no files or content of its own.
   if (input.kind === "bundle") problems.push(...bundleProblems(input));

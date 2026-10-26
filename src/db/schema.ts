@@ -2464,10 +2464,27 @@ export const productMedia = commerce.table(
     position: integer("position").notNull().default(0),
     /** Alt text keyed by locale. */
     alt: jsonb("alt").notNull().default({}),
+    /**
+     * A picture, a video or a 3D model (D325). `url` and `thumbnail_url` are always the item's picture (a video's or model's poster), so
+     * every reader of a product's picture reads the first row's and needs no kind; only the gallery and the editor read these.
+     */
+    kind: text("kind").notNull().default("image"),
+    /** A video's: `upload`, `youtube` or `vimeo`. */
+    source: text("source"),
+    /** A video's file or YouTube or Vimeo address, or a model's GLB file. */
+    mediaUrl: text("media_url"),
   },
   (t) => [
     productRef("product_media_product_fk", t),
     index("product_media_product_idx").on(t.storeId, t.productId, t.position),
+    check(
+      "product_media_kind",
+      sql`case ${t.kind}
+        when 'image' then ${t.source} is null and ${t.mediaUrl} is null
+        when 'video' then ${t.source} in ('upload', 'youtube', 'vimeo') and ${t.mediaUrl} is not null
+        when 'model' then ${t.source} is null and ${t.mediaUrl} is not null
+        else false end`,
+    ),
   ],
 );
 
@@ -6859,7 +6876,7 @@ export const media = commerce.table(
     index("media_thumbnail_url_idx").on(t.thumbnailUrl),
     index("media_store_created_idx").on(t.storeId, t.createdAt),
     index("media_created_by_idx").on(t.createdBy),
-    check("media_kind", sql`${t.kind} in ('image', 'video')`),
+    check("media_kind", sql`${t.kind} in ('image', 'video', 'model')`),
     check("media_file_name", sql`length(trim(${t.fileName})) between 1 and 255`),
     check("media_alt", sql`length(${t.alt}) <= 500`),
     check("media_alt_translations", sql`jsonb_typeof(${t.altTranslations}) = 'object'`),

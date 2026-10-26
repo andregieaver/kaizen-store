@@ -25,6 +25,7 @@ import type { ProductInput, PublishContext, VariantInput } from "./product-input
 import { ITEM_TERMS_MAX } from "./taxonomy";
 import { BASES, baseFits, isBase, isUnit, normaliseMeasureAmount } from "./unit-price";
 import { isPictureAddress } from "./picture-address";
+import { pictureItem } from "./product-media";
 
 // ---------------------------------------------------------------------------
 // Options
@@ -322,7 +323,7 @@ function resolveTerms(c: Ctx, cell: string, kind: "category" | "tag"): string[] 
   return ids;
 }
 
-function pictureFor(c: Ctx, url: string, alt: string, from: StoredProduct | null): { url: string; thumbnailUrl: string | null; alt: string } | null {
+function pictureFor(c: Ctx, url: string, alt: string, from: StoredProduct | null): ProductInput["media"][number] | null {
   const { env } = c;
   if (!isPictureAddress(url)) {
     err(c, "media.address_invalid");
@@ -332,7 +333,7 @@ function pictureFor(c: Ctx, url: string, alt: string, from: StoredProduct | null
   if (own) {
     const known = from?.media.find((m) => m.url === url);
     const variantKnown = from?.variants.find((v) => v.image?.url === url)?.image;
-    return { url, thumbnailUrl: known?.thumbnailUrl ?? variantKnown?.thumbnailUrl ?? null, alt };
+    return pictureItem(url, known?.thumbnailUrl ?? variantKnown?.thumbnailUrl ?? null, alt);
   }
   if (env.fetched?.has(url)) {
     const got = env.fetched.get(url);
@@ -340,10 +341,10 @@ function pictureFor(c: Ctx, url: string, alt: string, from: StoredProduct | null
       c.findings.push(finding("media.fetch_failed", { handle: c.draft.handle }));
       return null;
     }
-    return { url: got.url, thumbnailUrl: got.thumbnailUrl, alt };
+    return pictureItem(got.url, got.thumbnailUrl, alt);
   }
   if (!c.pictures.includes(url)) c.pictures.push(url);
-  return { url, thumbnailUrl: null, alt };
+  return pictureItem(url, null, alt);
 }
 
 type VariantResult = { variant: VariantInput; fieldChanges?: FieldChanges };
@@ -666,8 +667,9 @@ export function planProduct(draft: ProductDraft, file: NeutralFile, env: PlanEnv
         const made = pictureFor(c, pic.url, pic.alt.trim(), stored);
         if (made) media.push(made);
       }
-      if (ordered.length === 0 && input.media.length > 0) err(c, "value.cleared", { column: "image_url" }, "warning");
-      input.media = media;
+      if (ordered.length === 0 && input.media.some((m) => m.kind === "image")) err(c, "value.cleared", { column: "image_url" }, "warning");
+      // The file names pictures only: a product's videos and 3D models (D325) stay, after them.
+      input.media = [...media, ...input.media.filter((m) => m.kind !== "image")];
     }
   }
 

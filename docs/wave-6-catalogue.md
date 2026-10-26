@@ -817,9 +817,9 @@ There is no 3D anywhere.
   saying *3D model*; videos keep D86's path. `mediaUses()` and `rewriteAddresses()` read `media_url` too, so the library says where a video
   or model is used and Compress moves it.
 - **Alt text per language** (decision 5's words, G3): `productInput.media[].alt` stays the main language's, and `alts` (by language) holds
-  the others the owner typed. `saveProduct()` stores what was typed and no longer writes the title into the other languages, so a picture
-  without words in a language reads the library's translated alt text (`commerce.media_alt()`), then the product's title, as the readers
-  already do. A video's alt is its title for screen readers; a model's describes what it shows.
+  the others the owner typed. `saveProduct()` stores what was typed in each language and, where nothing was, the product's title in that
+  language, as it did for pictures (so every reader keeps its words; `getProductForEdit()` shows a stored title as empty). A video's alt is
+  its title for screen readers; a model's describes what it shows.
 - **Copies.** `clone_store()` and `duplicate_store()` copy the new columns (and `clone_store()` the thumbnail it left out); the store-copy
   job copies files in `product-models` as it does `page-videos` (`COPYABLE_BUCKETS`).
 

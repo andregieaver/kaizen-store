@@ -3501,6 +3501,20 @@
       "when": 1793046775633,
       "tag": "20261026203255_search_rules_sql",
       "breakpoints": true
+    },
+    {
+      "idx": 500,
+      "version": "7",
+      "when": 1793050680530,
+      "tag": "20261026213800_product_media_kinds",
+      "breakpoints": true
+    },
+    {
+      "idx": 501,
+      "version": "7",
+      "when": 1793050709991,
+      "tag": "20261026213829_product_media_kinds_sql",
+      "breakpoints": true
     }
   ]
 }

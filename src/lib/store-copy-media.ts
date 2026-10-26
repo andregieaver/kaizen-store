@@ -9,7 +9,7 @@
  */
 
 /** The public buckets whose files are copied. Downloads (private) and profile pictures stay with the original. */
-export const COPYABLE_BUCKETS = ["product-media", "page-videos", "field-files"] as const;
+export const COPYABLE_BUCKETS = ["product-media", "page-videos", "field-files", "product-models"] as const;
 export type CopyableBucket = (typeof COPYABLE_BUCKETS)[number];
 
 const STORAGE_PATH = "/storage/v1/object/public/";

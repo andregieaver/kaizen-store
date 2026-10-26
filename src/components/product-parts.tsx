@@ -398,7 +398,9 @@ function VariantFieldsPart({
 /** The product's pictures, or its variants' own (D82) when it has none. */
 function galleryImages(product: ProductDetail): ProductDetail["images"] {
   if (product.images.length > 0) return product.images;
-  const pictures = product.variants.flatMap((variant) => (variant.image ? [{ ...variant.image, alt: "" }] : []));
+  const pictures = product.variants.flatMap((variant) =>
+    variant.image ? [{ ...variant.image, alt: "", kind: "image" as const, source: null, mediaUrl: null }] : [],
+  );
   return pictures.filter((picture, i) => pictures.findIndex((p) => p.url === picture.url) === i);
 }
 

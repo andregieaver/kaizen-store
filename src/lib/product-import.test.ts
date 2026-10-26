@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import { FINDING_CODES } from "./data-job";
 import { IMPORT_MAX_PRODUCTS, IMPORT_MAX_ROWS } from "./data-limits";
-import { MAX_VARIANTS } from "./product-input";
+import { MAX_MEDIA, MAX_VARIANTS } from "./product-input";
+import { pictureItem } from "./product-media";
 import { readNeutral, groupProducts } from "./product-csv";
 import {
   DEFAULT_IMPORT_OPTIONS,
@@ -330,7 +331,7 @@ describe("the variant's columns", () => {
   it("refuses more than the editor's limits", () => {
     const many = [["handle", "sku", "option1_name", "option1_value"], ...Array.from({ length: MAX_VARIANTS + 1 }, (_, i) => ["big", `S${i}`, i === 0 ? "N" : "", `V${i}`])];
     expect(codes(plan(many).products[0])).toContain("options.too_many");
-    const pics = [["handle", "title", "sku", "image_url"], ...Array.from({ length: 13 }, (_, i) => ["pics", i === 0 ? "T" : "", i === 0 ? "S1" : "", `/demo/${i}.svg`])];
+    const pics = [["handle", "title", "sku", "image_url"], ...Array.from({ length: MAX_MEDIA + 1 }, (_, i) => ["pics", i === 0 ? "T" : "", i === 0 ? "S1" : "", `/demo/${i}.svg`])];
     expect(codes(plan(pics).products[0])).toEqual(["media.too_many"]);
   });
 
@@ -401,7 +402,7 @@ describe("pictures", () => {
     const fetched = new Map([["https://elsewhere.example/a.jpg", { url: "https://store.example/p/new.webp", thumbnailUrl: "https://store.example/p/newt.webp" }]]);
     const ok = plan(rows, { stored: [stored], env: { fetched } }).products[0];
     expect(ok.pictures).toEqual([]);
-    expect(ok.input?.media[0]).toEqual({ url: "https://store.example/p/new.webp", thumbnailUrl: "https://store.example/p/newt.webp", alt: "From elsewhere" });
+    expect(ok.input?.media[0]).toEqual(pictureItem("https://store.example/p/new.webp", "https://store.example/p/newt.webp", "From elsewhere"));
     const failed = plan(rows, { stored: [stored], env: { fetched: new Map([["https://elsewhere.example/a.jpg", null]]) } }).products[0];
     expect(codes(failed)).toEqual(["media.fetch_failed"]);
     expect(failed.input?.media.map((m) => m.url)).toEqual(["https://store.example/p/2.webp"]);

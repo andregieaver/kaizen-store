@@ -79,6 +79,7 @@ import { countWords, fillWords } from "@/lib/admin-fill";
 import { contentState, withoutContentWhereNotGoods } from "@/lib/unit-price-editor";
 import { GRID_FROM, filterVariants, setForShown, skuPatternProblem, type GridChange, type VariantFilter } from "@/lib/variant-grid";
 import { useVirtualRows } from "@/components/admin/virtual-rows";
+import { pictureItem } from "@/lib/product-media";
 
 const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm";
 const label = "flex flex-col gap-1 text-sm font-medium";
@@ -751,7 +752,7 @@ function MediaSection({ storeSlug, product, update, uploads }: SectionProps & { 
       setBusy((n) => n + 1);
       const outcome = await uploadPicture(storeSlug, file, w.media.unreadable);
       if ("url" in outcome) {
-        update((p) => ({ ...p, media: [...p.media, { url: outcome.url, thumbnailUrl: outcome.thumbnailUrl, alt: "" }] }));
+        update((p) => ({ ...p, media: [...p.media, pictureItem(outcome.url, outcome.thumbnailUrl)] }));
       } else {
         setProblem(outcome.problem);
       }
@@ -864,7 +865,7 @@ function MediaSection({ storeSlug, product, update, uploads }: SectionProps & { 
               onClick={() => {
                 if (!/^https?:\/\/\S+$/.test(link)) return setProblem(w.media.fullAddress);
                 setProblem(null);
-                update((p) => ({ ...p, media: [...p.media, { url: link, thumbnailUrl: null, alt: "" }] }));
+                update((p) => ({ ...p, media: [...p.media, pictureItem(link, null)] }));
                 setLink("");
               }}
               className="min-h-10 rounded-md border border-line px-4 text-sm"

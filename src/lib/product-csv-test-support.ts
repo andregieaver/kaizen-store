@@ -8,6 +8,7 @@ import type { Term } from "./taxonomy";
 import type { ProductCsvContext, StoredProduct } from "./product-csv";
 import type { PlanEnv, StoreSnapshot } from "./product-import";
 import { DEFAULT_IMPORT_OPTIONS } from "./product-import";
+import { pictureItem } from "./product-media";
 
 export const OPERATOR = "11111111-1111-4111-8111-111111111111";
 export const VARIANT_IDS = ["aaaaaaaa-0000-4000-8000-000000000001", "aaaaaaaa-0000-4000-8000-000000000002", "aaaaaaaa-0000-4000-8000-000000000003"];
@@ -121,10 +122,10 @@ export function boot(ctx: ProductCsvContext, over: Partial<StoredProduct> = {}):
       { locale: "en-GB", title: "Winter boot", description: "Warm, with a \"lining\", and commas.", safetyInformation: "", seoTitle: "", seoDescription: "", excerpt: "" },
     ],
     media: [
-      { url: "https://store.example/p/1.webp", thumbnailUrl: "https://store.example/p/1t.webp", alt: "Side view" },
-      { url: "https://store.example/p/2.webp", thumbnailUrl: "https://store.example/p/2t.webp", alt: "" },
-      { url: "https://store.example/p/3.webp", thumbnailUrl: null, alt: "From above" },
-      { url: "/demo/boot.svg", thumbnailUrl: null, alt: "" },
+      pictureItem("https://store.example/p/1.webp", "https://store.example/p/1t.webp", "Side view"),
+      pictureItem("https://store.example/p/2.webp", "https://store.example/p/2t.webp"),
+      pictureItem("https://store.example/p/3.webp", null, "From above"),
+      pictureItem("/demo/boot.svg", null),
     ],
     options: [
       { name: "Colour", values: ["Black", "Brown"] },

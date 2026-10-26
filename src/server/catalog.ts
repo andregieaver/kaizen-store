@@ -16,6 +16,7 @@ import { ruleForKind, type QuantityRule } from "@/lib/quantity-rules";
 import type { ShownMeasure } from "@/lib/unit-price";
 import { shownMeasureFromColumns } from "@/lib/unit-price-rules";
 import { stockOf, UNLIMITED, type VariantStock } from "@/lib/stock-availability";
+import type { MediaItemKind, VideoSource } from "@/lib/product-media";
 
 import { bundleItemsOf } from "./bundles";
 import { fieldsTag, shownFieldsFor, shownFieldsForVariants } from "./custom-fields";
@@ -92,7 +93,8 @@ export type ProductDetail = {
   safetyInformation: string;
   withdrawalExclusion: string;
   /** In the owner's order; `thumbnailUrl` is the 480 px copy, or the picture itself. */
-  images: { url: string; thumbnailUrl: string; alt: string }[];
+  /** The gallery in the owner's order (D325): every item's picture, and a video's or 3D model's own file or address. */
+  images: { url: string; thumbnailUrl: string; alt: string; kind: MediaItemKind; source: VideoSource | null; mediaUrl: string | null }[];
   manufacturer: EconomicOperator | null;
   responsiblePerson: EconomicOperator | null;
   variants: ProductVariant[];
@@ -258,7 +260,8 @@ export async function getProduct(storeId: string, market: Market, handle: string
 
   const [media, variants, plans, fields, variantFields, storeFields] = await Promise.all([
     readDb().execute<Row>(sql`
-      select url, thumbnail_url, coalesce(nullif(alt ->> ${locale}, ''), commerce.media_alt(url, ${locale}), '') as alt
+      select url, thumbnail_url, kind, source, media_url,
+        coalesce(nullif(alt ->> ${locale}, ''), commerce.media_alt(url, ${locale}), '') as alt
       from commerce.product_media
       where product_id = ${product.id}
       order by position
@@ -307,7 +310,14 @@ export async function getProduct(storeId: string, market: Market, handle: string
     seoDescription: str(product.seo_description),
     safetyInformation: str(product.safety_information),
     withdrawalExclusion: str(product.withdrawal_exclusion),
-    images: media.map((m) => ({ url: str(m.url), thumbnailUrl: str(m.thumbnail_url ?? m.url), alt: str(m.alt) })),
+    images: media.map((m) => ({
+      url: str(m.url),
+      thumbnailUrl: str(m.thumbnail_url ?? m.url),
+      alt: str(m.alt),
+      kind: m.kind === "video" || m.kind === "model" ? m.kind : "image",
+      source: m.source === "upload" || m.source === "youtube" || m.source === "vimeo" ? m.source : null,
+      mediaUrl: m.media_url ? str(m.media_url) : null,
+    })),
     manufacturer: operator("mf"),
     responsiblePerson: operator("rp"),
     variants: variants.map((v) => ({

@@ -40,6 +40,7 @@ import { suggestProductText } from "./product-writer";
 import { emptyProduct, getEditorContext, getProductForEdit, saveProduct, type EditorContext, type StockMode } from "./products";
 import type { Store } from "./stores";
 import { createTerm, termsTag } from "./taxonomy";
+import { pictureItem } from "@/lib/product-media";
 
 type Row = Record<string, unknown>;
 
@@ -149,13 +150,13 @@ async function pictures(ctx: Ctx, given: readonly PictureArgs[], title: string, 
   for (const picture of given) {
     if ("url" in picture) {
       const file = library.get(picture.url)!;
-      media.push({ url: file.url, thumbnailUrl: file.thumbnailUrl, alt: picture.alt || title });
+      media.push(pictureItem(file.url, file.thumbnailUrl, picture.alt || title));
       continue;
     }
     if (!make) continue;
     const made = await (deps.makePicture ?? makeSitePicture)({ store: ctx.store, accountId: ctx.account.id }, { brief: picture.make, shape: picture.shape, follow: true });
     if (!made.ok) return fail(made.problem);
-    media.push({ url: made.picture.url, thumbnailUrl: made.picture.thumbnailUrl, alt: made.picture.alt });
+    media.push(pictureItem(made.picture.url, made.picture.thumbnailUrl, made.picture.alt));
   }
   return media;
 }

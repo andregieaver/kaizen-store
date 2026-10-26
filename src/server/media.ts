@@ -6,6 +6,7 @@ import { createClient } from "@supabase/supabase-js";
 
 import { publicEnv } from "@/lib/env";
 import { supabaseKeyKind } from "@/lib/supabase-key";
+import { MEDIA_BUCKETS, MODEL_MAX_BYTES, MODEL_MAX_MB, MODEL_TYPE } from "@/lib/product-media";
 
 const BUCKET = "product-media";
 const MAX_BYTES = 4 * 1024 * 1024;
@@ -163,6 +164,31 @@ export async function startVideoUpload(folder: string, file: { type: string; siz
     return { ok: false, problem: "The upload could not be started. Try again." };
   }
   return { ok: true, path, token: data.token, bucket: VIDEOS_BUCKET, url: storage.getPublicUrl(path).data.publicUrl };
+}
+
+// ---------------------------------------------------------------------------
+// 3D models in a product's gallery (D325)
+// ---------------------------------------------------------------------------
+
+/**
+ * Lets the owner's browser upload a product's 3D model (one GLB file) straight to the public `product-models` bucket: a signed upload for
+ * one new path in the store's folder, and the address it will have. The bucket itself refuses other types and files over 20 MB.
+ */
+export async function startModelUpload(folder: string, file: { type: string; size: number }): Promise<VideoUpload> {
+  if (file.type !== MODEL_TYPE) return { ok: false, problem: "Use a GLB file: export the model from your 3D program as GLB." };
+  if (!(file.size > 0) || file.size > MODEL_MAX_BYTES) return { ok: false, problem: `That model is too large. Use one under ${MODEL_MAX_MB} MB.` };
+  const secret = secretKey();
+  if ("problem" in secret) return { ok: false, problem: secret.problem };
+  const storage = createClient(publicEnv().NEXT_PUBLIC_SUPABASE_URL, secret.key, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  }).storage.from(MEDIA_BUCKETS.model);
+  const path = `${folder}/${randomUUID()}.glb`;
+  const { data, error } = await storage.createSignedUploadUrl(path);
+  if (error || !data) {
+    console.error("[media] model upload could not start:", error?.message);
+    return { ok: false, problem: "The upload could not be started. Try again." };
+  }
+  return { ok: true, path, token: data.token, bucket: MEDIA_BUCKETS.model, url: storage.getPublicUrl(path).data.publicUrl };
 }
 
 /**

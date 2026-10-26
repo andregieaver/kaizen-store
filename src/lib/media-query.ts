@@ -4,7 +4,7 @@
  * words, `n` how many are shown ("Show more" adds a page), `view` a grid
  * of pictures or a list with the details.
  */
-export type MediaKind = "image" | "video";
+export type MediaKind = "image" | "video" | "model";
 
 export const MEDIA_SORTS = { newest: "Newest first", oldest: "Oldest first", largest: "Largest first", name: "Name" } as const;
 export type MediaSort = keyof typeof MEDIA_SORTS;
@@ -26,7 +26,7 @@ export function mediaQuery(params: Record<string, string | string[] | undefined>
   const pages = Math.ceil(Number.parseInt(one(params.n), 10) / MEDIA_PAGE) || 1;
   return {
     q: one(params.q).trim().slice(0, 200),
-    kind: kind === "image" || kind === "video" ? kind : "all",
+    kind: kind === "image" || kind === "video" || kind === "model" ? kind : "all",
     sort: Object.hasOwn(MEDIA_SORTS, sort) ? (sort as MediaSort) : "newest",
     limit: Math.min(Math.max(pages, 1) * MEDIA_PAGE, MEDIA_MOST),
     view: one(params.view) === "list" ? "list" : "grid",

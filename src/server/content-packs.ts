@@ -28,6 +28,7 @@ import { SLOT_BRIEF_MAX } from "@/lib/picture-direction";
 import type { MenuEntry } from "@/lib/navigation";
 import { DEFAULT_APPOINTMENT, GENERAL_TAX_CODE, formatPriceInput, type ProductInput } from "@/lib/product-input";
 import { siteUrl } from "@/lib/site";
+import { pictureItem } from "@/lib/product-media";
 
 import { AiError, aiFor, type ImageShape } from "./ai";
 import { makePicture } from "./ai-pictures";
@@ -349,7 +350,7 @@ async function writePack(admin: Account, row: PackRow, pack: ContentPack, deps: 
 
 /** A pack product's picture as the editor keeps it, or the placeholder until it is made. */
 const mediaOf = (product: PackProduct, picture: StoredPicture | null) => [
-  { url: picture?.url ?? PACK_PLACEHOLDER, thumbnailUrl: picture?.thumbnailUrl ?? null, alt: product.title },
+  pictureItem(picture?.url ?? PACK_PLACEHOLDER, picture?.thumbnailUrl ?? null, product.title),
 ];
 
 /**

@@ -33,6 +33,7 @@ import { baseFits, isBase, measureFromColumns, normaliseMeasureAmount } from "@/
 import { unitPriceProblems } from "@/lib/unit-price-rules";
 import { limitRefusal } from "@/lib/usage-format";
 import { FEATURES_BY_ID, featureOffText, featureOn, kindFeature } from "@/lib/store-features";
+import { MEDIA_KINDS, mediaFileOk, type MediaItemKind, type VideoSource } from "@/lib/product-media";
 
 import { bundleForEdit, componentProblems, saveBundleComponents } from "./bundles";
 import { profileChoices } from "./shipping-admin";
@@ -376,7 +377,7 @@ export async function getProductForEdit(
       from commerce.product_translations where product_id = ${productId}::uuid
     `),
     db().execute<Row>(sql`
-      select url, thumbnail_url, alt from commerce.product_media
+      select kind, source, media_url, url, thumbnail_url, alt from commerce.product_media
       where product_id = ${productId}::uuid order by position
     `),
     db().execute<Row>(sql`
@@ -483,11 +484,19 @@ export async function getProductForEdit(
     media: media.map((m) => {
       const alt = (m.alt ?? {}) as Record<string, string>;
       const text = alt[context.primaryLocale] ?? "";
+      // An alt text equal to the title was filled in for the owner; show it empty, in every language.
+      const titleIn = (locale: string) => String(byLocale.get(locale)?.title ?? "");
+      const alts = Object.fromEntries(
+        context.locales.filter((l) => l !== context.primaryLocale && alt[l] && alt[l] !== titleIn(l) && alt[l] !== primaryTitle).map((l) => [l, alt[l]]),
+      );
       return {
+        kind: (MEDIA_KINDS as readonly string[]).includes(String(m.kind)) ? (String(m.kind) as MediaItemKind) : "image",
+        source: m.source ? (String(m.source) as VideoSource) : null,
+        mediaUrl: m.media_url ? String(m.media_url) : null,
         url: String(m.url),
         thumbnailUrl: m.thumbnail_url ? String(m.thumbnail_url) : null,
-        // An alt text equal to the title was filled in for the owner; show it empty.
         alt: text === primaryTitle ? "" : text,
+        alts,
       };
     }),
     options,
@@ -779,6 +788,16 @@ export async function saveProduct(
     operatorCountries: Object.fromEntries(context.operators.map((o) => [o.id, o.country])),
     euCountries: new Set(euRows.map((r) => String(r.code))),
   });
+  // A gallery's videos and 3D models play only the store's own files, or a YouTube or Vimeo address (D325); one the product already had
+  // stays (a store made from a template keeps the template's files until its copy job moves them).
+  if (input.media.some((m) => m.kind !== "image")) {
+    const had = productId
+      ? new Set((await db().execute<Row>(sql`select media_url from commerce.product_media where store_id = ${store.id}::uuid and product_id = ${productId}::uuid and media_url is not null`)).map((r) => String(r.media_url)))
+      : new Set<string>();
+    if (input.media.some((m) => !mediaFileOk(m, store.id) && !(m.mediaUrl && had.has(m.mediaUrl)))) {
+      problems.push("A video or 3D model in the gallery is not one of the store's own uploads: upload it again.");
+    }
+  }
   const optionNames = input.options.map((o) => o.name);
   const allowed = new Set(combineOptions(input.options).map((combo) => JSON.stringify(combo)));
   for (const variant of input.variants) {
@@ -1036,16 +1055,13 @@ async function saveMedia(
   const titles = new Map(input.translations.map((t) => [t.locale, t.title]));
   const primaryTitle = titles.get(context.primaryLocale) ?? "";
   for (const [position, media] of input.media.entries()) {
-    // Without a description, a picture is described by the product title.
-    const alt = Object.fromEntries(
-      context.locales.map((locale) => [
-        locale,
-        locale === context.primaryLocale && media.alt ? media.alt : titles.get(locale) || primaryTitle,
-      ]),
-    );
+    // Without words of its own in a language, an item is described by the product title there (D325: each language as typed).
+    const typed = (locale: string) => (locale === context.primaryLocale ? media.alt : (media.alts[locale] ?? "")).trim();
+    const alt = Object.fromEntries(context.locales.map((locale) => [locale, typed(locale) || titles.get(locale) || primaryTitle]));
     await tx.execute(sql`
-      insert into commerce.product_media (store_id, product_id, url, thumbnail_url, position, alt)
-      values (${storeId}::uuid, ${productId}::uuid, ${media.url}, ${media.thumbnailUrl},
+      insert into commerce.product_media (store_id, product_id, kind, source, media_url, url, thumbnail_url, position, alt)
+      values (${storeId}::uuid, ${productId}::uuid, ${media.kind}, ${media.kind === "video" ? media.source : null},
+              ${media.kind === "image" ? null : media.mediaUrl}, ${media.url}, ${media.thumbnailUrl},
               ${position}, ${JSON.stringify(alt)}::jsonb)
     `);
   }

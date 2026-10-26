@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
+import { pictureItem } from "@/lib/product-media";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {}, refresh: () => {} }));
@@ -104,7 +105,7 @@ describe("create_product", () => {
       ["LINEN-SHIRT-M", { Size: "M" }, { NO: "499,00", SE: "549,00" }, 4, 300],
       ["LINEN-SHIRT-S", { Size: "S" }, { NO: "499,00", SE: "549,00" }, 4, 300],
     ]);
-    expect(product.media).toEqual([{ url: picture, thumbnailUrl: picture.replace(".webp", "-480.webp"), alt: "A linen shirt on a hanger" }]);
+    expect(product.media).toEqual([pictureItem(picture, picture.replace(".webp", "-480.webp"), "A linen shirt on a hanger")]);
     const editor = await getEditorContext(store.member.store);
     expect(product.categories.map((id) => editor.terms.find((t) => t.id === id)?.name)).toEqual(["Shirts"]);
     expect(product.tags.map((id) => editor.terms.find((t) => t.id === id)?.name)).toEqual(["linen"]);
@@ -157,7 +158,7 @@ describe("create_product", () => {
       makePicture,
     })) as Answer;
     expect(made).toEqual(["A clay bowl on a linen cloth"]);
-    expect((await editorView(answer.id)).media).toEqual([{ url: "https://media.example/made/1.webp", thumbnailUrl: null, alt: "A clay bowl on a linen cloth" }]);
+    expect((await editorView(answer.id)).media).toEqual([pictureItem("https://media.example/made/1.webp", null, "A clay bowl on a linen cloth")]);
     const four = Array.from({ length: 4 }, (_, i) => ({ make: `Bowl number ${i + 1}` }));
     expect(await refusal(productTools.createProductTool(ctxOf(store), createProductInput.parse({ title: "Bowls", pictures: four }), { makePicture }))).toContain("at most 3 pictures");
     expect(made).toHaveLength(1);

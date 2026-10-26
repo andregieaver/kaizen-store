@@ -15,7 +15,7 @@ export const PAGE_SOURCES = ["page", "menu", "saved", "theme"] as const;
 export const SENT_SOURCES = ["product", "seo", "chat", "navigation", "theme_listing"] as const;
 
 export type CompressCandidate = {
-  kind: "image" | "video";
+  kind: "image" | "video" | "model";
   contentType: string;
   compressedAt: string | null;
   uses: { source?: string }[];
@@ -25,6 +25,7 @@ export type CompressPlan = { offered: true; avif: boolean } | { offered: false; 
 
 export function compressPlan(item: CompressCandidate): CompressPlan {
   if (item.compressedAt) return { offered: false, why: "Already as small as it can be while it looks the same." };
+  if (item.kind === "model") return { offered: false, why: "A 3D model is kept as it was exported." };
   if (item.contentType === "image/gif") return { offered: false, why: "A GIF may move, so it is kept as it is." };
   if (item.contentType === "image/svg+xml") return { offered: false, why: "A drawing (SVG) is already as small as it gets." };
   if (item.uses.some((use) => use.source === "navigation")) {

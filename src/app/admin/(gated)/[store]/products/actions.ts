@@ -25,12 +25,13 @@ import { suggestProductText } from "@/server/product-writer";
 import { addressBefore, addressChangedAfter } from "@/server/redirect-notes";
 import {
   startFileUpload,
+  startModelUpload,
   startVideoUpload,
   type FileUpload,
   type UploadResult,
   type VideoUpload,
 } from "@/server/media";
-import { registerVideo, uploadToLibrary } from "@/server/media-library";
+import { registerModel, registerVideo, uploadToLibrary } from "@/server/media-library";
 import { TERM_ORDER_MAX, createTerm, deleteTerm, setTermOrder, termProducts, termsTag, updateTerm, type TermProduct, type TermsResult } from "@/server/taxonomy";
 import { storageRefusal } from "@/server/limits";
 import { checkedRules, countRuleMembers, ruleChoices, type RuleChoices, type RuleCount } from "@/server/term-rules";
@@ -159,6 +160,21 @@ export async function startVideoUploadAction(storeSlug: string, file: unknown): 
   const started = await startVideoUpload(store.id, parsed.data);
   // Kept in the store's media library as its upload starts (D88).
   if (started.ok) await registerVideo({ storeId: store.id, accountId: account.id }, started, parsed.data);
+  return started;
+}
+
+/** Starts an upload of a product's 3D model (one GLB file, D325) straight from the browser to the public `product-models` bucket. */
+export async function startModelUploadAction(storeSlug: string, file: unknown): Promise<VideoUpload> {
+  const member = await checkPermission(storeSlug, "products:write");
+  if (!member) return { ok: false, problem: NO_ACCESS };
+  const { account, store } = member;
+  const parsed = videoFile.safeParse(file);
+  if (!parsed.success) return { ok: false, problem: "Choose a 3D model to upload." };
+  const full = await storageRefusal(store.id, parsed.data.size);
+  if (full) return { ok: false, problem: full };
+  const started = await startModelUpload(store.id, parsed.data);
+  // Kept in the store's media library as its upload starts (D88).
+  if (started.ok) await registerModel({ storeId: store.id, accountId: account.id }, started, parsed.data);
   return started;
 }
 

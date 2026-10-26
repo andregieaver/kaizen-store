@@ -57,6 +57,7 @@ function describeType(contentType: string, w: Words): string {
   const name = { jpeg: "JPEG", png: "PNG", webp: "WebP", avif: "AVIF", gif: "GIF", "svg+xml": "SVG", mp4: "MP4", webm: "WebM" }[sub] ?? sub.toUpperCase();
   if (kind === "image") return fillWords(w.picture, { type: name });
   if (kind === "video") return fillWords(w.video, { type: name });
+  if (contentType === "model/gltf-binary") return w.model;
   return contentType;
 }
 
@@ -212,6 +213,7 @@ export function MediaLibrary({
             <option value="all">{w.kinds.all}</option>
             <option value="image">{w.kinds.image}</option>
             <option value="video">{w.kinds.video}</option>
+            <option value="model">{w.kinds.model}</option>
           </select>
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium">
@@ -452,6 +454,17 @@ function FileList({ items, onOpen, chosen, onPick }: { items: MediaItem[]; onOpe
 
 /** A file as a picture: its small copy in the grid, the file itself when opened; a video as a video. */
 function Preview({ item, small = false }: { item: MediaItem; small?: boolean }) {
+  // A 3D model (D325) is a file, not a picture: a tile that says so, with its name.
+  if (item.kind === "model") {
+    return (
+      <div className={`flex aspect-square w-full flex-col items-center justify-center gap-2 bg-sunken p-3 text-center text-ink-2 ${small ? "" : "rounded-md"}`}>
+        <svg viewBox="0 0 24 24" aria-hidden="true" className="size-10" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <path d="M12 2.5 3.5 7v10L12 21.5 20.5 17V7z M3.5 7 12 11.5 20.5 7 M12 11.5V21.5" strokeLinejoin="round" />
+        </svg>
+        <span className="text-caption break-all">{item.fileName}</span>
+      </div>
+    );
+  }
   if (item.kind === "video") {
     return (
       // A video's first frame; opened, with its controls.

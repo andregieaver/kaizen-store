@@ -574,7 +574,8 @@ export function mergeProduct(stored: ProductInput, change: UpdateProductInput, s
 
   let media = stored.media;
   if (resolved.media) {
-    media = resolved.media;
+    // The pictures are replaced; the product's videos and 3D models (D325) stay, after them, as the owner placed them.
+    media = [...resolved.media, ...stored.media.filter((m) => m.kind !== "image")];
     mark("pictures");
   }
   if (resolved.addMedia && resolved.addMedia.length > 0) {

@@ -153,6 +153,22 @@ export async function registerVideo(
   `);
 }
 
+/** Keeps a product's 3D model (D325) in the owner's media library as its upload starts, as `registerVideo()` does a video. */
+export async function registerModel(
+  owner: { storeId: string | null; accountId: string },
+  model: { url: string; bucket: string; path: string },
+  file: { name?: string; type: string; size: number },
+): Promise<void> {
+  await db().execute(sql`
+    insert into commerce.media (store_id, kind, url, bucket, path, file_name, content_type, size_bytes, created_by)
+    values (
+      ${owner.storeId}::uuid, 'model', ${model.url}, ${model.bucket}, ${model.path},
+      ${cleanName(file.name ?? "", model.path.split("/").pop() ?? "model.glb")}, ${file.type}, ${file.size}, ${owner.accountId}::uuid
+    )
+    on conflict (url) do nothing
+  `);
+}
+
 /** A library item as Storage keeps it, for copying it to another owner's library (D125). */
 export type LibraryFile = {
   id: string;
@@ -287,7 +303,7 @@ export async function mediaUses(owner: MediaOwner, ids: string[]): Promise<Map<s
       p.handle as slug, p.status = 'active' as live
     from m join commerce.products p on ${owned(storeId, sql`p.store_id`)} and p.status <> 'archived'
     where exists (
-      select 1 from commerce.product_media pm where pm.product_id = p.id and (pm.url in (m.url, m.thumbnail_url) or pm.thumbnail_url in (m.url, m.thumbnail_url))
+      select 1 from commerce.product_media pm where pm.product_id = p.id and (pm.url in (m.url, m.thumbnail_url) or pm.thumbnail_url in (m.url, m.thumbnail_url) or pm.media_url = m.url)
     ) or exists (
       select 1 from commerce.product_variants v where v.product_id = p.id and (v.image_url in (m.url, m.thumbnail_url) or v.image_thumbnail_url in (m.url, m.thumbnail_url))
     )

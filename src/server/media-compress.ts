@@ -214,6 +214,7 @@ export function rewriteAddresses(storeId: string | null, pairs: [string, string]
   const statements: SQL[] = [
     ...exact(sql`commerce.product_media`, sql`url`),
     ...exact(sql`commerce.product_media`, sql`thumbnail_url`),
+    ...exact(sql`commerce.product_media`, sql`media_url`),
     ...exact(sql`commerce.product_variants`, sql`image_url`),
     ...exact(sql`commerce.product_variants`, sql`image_thumbnail_url`),
     json(sql`commerce.pages`, sql`draft`),
