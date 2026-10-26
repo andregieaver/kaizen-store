@@ -1020,7 +1020,7 @@ The admin cannot be signed in by e2e (only signed-out admin pages are tested), s
 
 | Not done | Why | Taken by |
 |---|---|---|
-| Inbound email into the inbox | Needs an inbound mail service in the EU and threading by token; the reply email says answers go through its link | a later wave |
+| Inbound email into the inbox | Built in step 16 (D332): Resend inbound, threaded by a reply address per conversation | step 16 |
 | WhatsApp, Messenger, SMS, phone | Separate providers and consents; the data model has `source` for them | later |
 | Push notifications to phones | Needs a service worker and push consent; v1 notifies in the open inbox and by email | later |
 | Per-agent performance reports | Monitoring of employees: in Norway such control measures must be discussed with staff and announced first (Working Environment Act chapter 9) | a decision of the owner |
@@ -1280,6 +1280,68 @@ and push to `main`; watch CI; for a migration, record its version and check the 
   address), calling the existing staff functions with the deciding agent's account and their `orders:write`.
 - Attachments: private storage, images only, compressed in the browser (`compressPicture()`, no AVIF), seen by the AI only
   through `seeing()`.
+
+### Step 16 — Email into the desk (D332, built 26 October 2026)
+
+Written from the owner's choices of 26 October 2026: incoming email through **Resend** (the service that already sends every email),
+and **the AI follows the desk's mode** by email as in the chat. A customer's email lands in the same inbox as the chat, as a
+conversation of source `email`; the answers go back by email and the customer's reply to an answer threads into the same conversation.
+
+**Addresses.** Kaizena Flow receives at one domain set up for receiving in Resend (`SUPPORT_INBOUND_DOMAIN`, e.g. `in.kaizenaflow.com`;
+without it nothing in this step is offered). Each desk has an address `desk-{key}@{domain}` (`support_settings.email_key`, random, made
+when the settings page first shows it), which the owner forwards their own support mailbox to; each conversation has a reply address
+`reply-{key}@{domain}` (`support_conversations.reply_key`, random), set as the Reply-To of every answer email, so a reply comes back
+to its conversation. A key opens nothing: it only routes mail, as any support address does.
+
+**Receiving.** Resend's `email.received` event reaches the signed webhook that already takes delivery events
+(`/api/resend/webhook`, `RESEND_WEBHOOK_SECRET`). The event is kept at once as a row of `commerce.support_inbound_emails` (Resend's id
+unique, so a repeated event does nothing; from, subject, Message-ID, when) and the work runs after the answer (`after()`) and every
+minute in `/api/cron/integrations` (`processInboundEmails()`: claimed, three tries, then `failed`). Processing
+(`src/server/support-inbound.ts`, pure parts in `src/lib/inbound-email.ts`):
+
+1. **Where to.** The first address at the domain among To, Cc and *received for*: `reply-…` is its conversation, `desk-…` its desk;
+   none, or an unknown key, is refused (`unknown_address`; `not_set_up` without the domain) without fetching anything.
+2. **What it is.** The email is fetched from Resend (`GET /emails/receiving/{id}`, `RESEND_RECEIVING_KEY`, else `RESEND_API_KEY`;
+   an injectable fetch). Refused, and kept as refused with the reason: an automatic email (`Auto-Submitted` other than `no`,
+   `Precedence` bulk, junk or list, a `List-Id`, a sender like `mailer-daemon` or `noreply`, or Kaizena Flow's own sending address),
+   a DMARC result of `fail`, a desk in mode `off` (`desk_off`), a store that is not open, more than `INBOUND_PER_SENDER_HOUR` (10) from
+   one address to a desk in an hour, more than `INBOUND_PER_DESK_DAY` (500) to a desk in a day, and a body empty after cleaning.
+3. **The words.** The text part, else the HTML as text; the quoted history and signature are cut (`replyOnly()`: lines quoted with
+   `>`, the "On … wrote:" line in the four hand-written languages and German and French, `-----Original Message-----`, a forwarded
+   header block, `-- `), held to the customer's message limit. A new conversation's first message starts with the subject.
+   Attachments are not kept (support keeps none, section 7); the message says how many there were.
+4. **The conversation.** A reply from the conversation's own address (the address its answers went to) to an open conversation is added to it; to one ended within `REOPEN_HOURS` reopens it; else, and for
+   the desk address, a full conversation or another sender, a new conversation of source `email` starts as the desk's mode says (the AI with the AI first, else the queue), in
+   the store's main language, with the sender's address and name as its contact (typed, never proof: *Email not verified*; it is never
+   tied to a customer by the address). Its subject and the last Message-ID are kept for threading. Tone is scored as for a chat message.
+5. **The AI.** With the AI first and the AI holding the conversation, it answers as in the chat (`runSupportTurn()` with `email`), with
+   two differences: it is told the conversation is by email and the sender cannot sign in there, so anything about an order goes to a
+   person (`handoff_to_human`); and it has no `ask_to_sign_in` or `propose_action` (an email has no sign-in card or Confirm button). The
+   desk's daily turns count it under the sender (`takeChatTurn()`); past the limit, or with no AI, it goes to the queue, as in the chat.
+   In mode `people` the AI never writes.
+
+**Answering by email.** `sendReplyEmails()` also sends a conversation of source `email` the AI's and people's messages since its last
+email: without waiting for the customer to look, once the newest is `EMAIL_SETTLE_SECONDS` (30) old (so a person's quick messages go
+together), at most `EMAIL_CHANNEL_MAX` (60) a conversation. The email's subject is `Re: {subject}`, it carries `In-Reply-To` and
+`References` of the customer's last email, and its Reply-To is the conversation's reply address; the chat's answer emails get the reply
+address too while receiving is set up, and say a reply comes back to the conversation. Product cards the AI showed are listed by name
+and link, never with a price. A person answers in the inbox as ever.
+
+**What staff see.** The desk's settings say where to forward the support mailbox (the desk address, to copy) while receiving is set up,
+and that nothing is taken while the desk is off; the inbox marks a conversation *By email* and names the sender's address with *Email not verified*.
+
+**Data and rules.** `support_conversations.source` takes `email`; new columns `reply_key` (unique), `email_subject` (200),
+`email_message_id` (998); `support_settings.email_key` (unique); `commerce.support_inbound_emails` (personal: the sender's address and
+the subject; pruned after 30 days by `pruneInboundEmails()`; erasure deletes the sender's rows; `never` copied). Anonymising a
+conversation clears its subject, Message-ID and reply key. Not in this step: attachments, an email that is not a reply to an answer
+joining an open conversation of the same sender, and email for Kaizena Flow's own desk beyond what the desk already does.
+
+**Tests.** Unit: the routing of addresses, `replyOnly()` on real-shaped replies in each language, the automation and DMARC checks.
+Integration (`src/server/support-inbound.int.test.ts`, a stand-in for Resend's API and for the AI's turn): a desk address makes a
+conversation in the queue (people) and an AI answer by email with no customer (AI first), the AI first without an assistant hands over,
+a reply address threads from its own sender and not from another, an automatic email, failing DMARC and an unknown address are refused,
+the sender's hourly limit holds, the event once only, support off takes nothing, the answer goes back as `Re: {subject}` once settled
+and once only, and anonymising clears the email fields.
 
 ---
 
@@ -1739,3 +1801,12 @@ and push to `main`; watch CI; for a migration, record its version and check the 
 - **Tests**: U `support-reports.test.ts`, `control-center.test.ts`, `slack.test.ts`; V `reports-view.test.ts`; P the mode kept at
   the start (`src/db/support.test.ts`); I `support-reports.int.test.ts` (seeded conversations, the tools, the queued event and its
   payload); S `support-platform.scan.test.ts`.
+
+**Step 16 (26 October 2026).**
+
+- **A reply address continues a conversation only from its own address.** The step said a reply is added to its conversation; a
+  reply address is in every answer email's headers, so anyone it was forwarded to could write into the conversation. An email to it
+  from another address starts a new conversation on the desk instead (`existingThread()`).
+- **The assistant's mock and the import cycle.** A test that mocks `./chat-agent` with `importOriginal` does not reach
+  `chat-route.ts` (the cycle hands it the original), so the test saves a real `chat_agents` row.
+- **The webhook route has room to answer.** `/api/resend/webhook` runs the AI's turn in `after()`, so it has a `maxDuration` of 60.

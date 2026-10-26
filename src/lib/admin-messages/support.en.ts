@@ -5,6 +5,14 @@ import type { Widen } from "./common.en";
  * `countWords()`, with `{n}` the number.
  */
 export const supportEn = {
+  email: {
+    title: "Support by email",
+    description:
+      "Forward your support address to this address, and every email becomes a conversation in the inbox. With the AI first, it answers general questions by email; anything about an order goes to a person, because an email address proves no one.",
+    address: "Forward to",
+    off: "Support is off: emails to this address are not taken until you choose who answers.",
+    notSetUp: "Receiving email is not set up on this platform yet.",
+  },
   inbox: {
     title: "Inbox",
     tabTitle: "Support",
@@ -129,6 +137,7 @@ export const supportEn = {
     noMessages: "No messages yet",
     signedIn: "Signed in",
     fromAdmin: "From the admin",
+    fromEmail: "By email",
     toneAlert: "Tone alert",
   },
   tone: {
@@ -181,6 +190,7 @@ export const supportEn = {
     from: "From",
     fromAdmin: "The admin",
     fromChat: "The site's chat",
+    fromEmail: "Email",
   },
   actions: {
     why: {

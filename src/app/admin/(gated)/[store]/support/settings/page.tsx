@@ -3,12 +3,14 @@ import { AdminTextScope } from "@/components/admin/admin-text";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 
+import { SupportEmailCard } from "@/components/admin/support/email-card";
 import { SupportSettingsForm } from "@/components/admin/support/settings-form";
 import { can } from "@/lib/permissions";
 import { holderOf } from "@/server/auth";
 import { requirePermission } from "@/server/permissions";
 import { openConversationCount } from "@/server/support";
 import { memberDesk } from "@/server/support-desk";
+import { deskEmailAddress } from "@/server/support-inbound";
 import { settingsForEdit } from "@/server/support-settings";
 import { PageHeader } from "@/components/admin/ui";
 
@@ -29,6 +31,8 @@ export default async function SupportSettingsPage({
     settingsForEdit(staff),
     openConversationCount(staff.desk),
   ]);
+  // Made after the desk's row (settingsForEdit() makes it on a desk's first look).
+  const emailAddress = await deskEmailAddress(staff.desk);
   return (
     <AdminTextScope texts={adminTexts(lang, ["support"])}>
       <div className="flex flex-col gap-6">
@@ -48,6 +52,7 @@ export default async function SupportSettingsPage({
           chatHref={`/admin/${slug}/chat`}
           openCount={open}
         />
+        <SupportEmailCard address={emailAddress} mode={settings.mode} words={t.email} />
       </div>
     </AdminTextScope>
   );

@@ -76,6 +76,9 @@ export function ConversationList({
                 {row.source === "admin" && (
                   <span className="text-muted">{w.fromAdmin}</span>
                 )}
+                {row.source === "email" && (
+                  <span className="text-muted">{w.fromEmail}</span>
+                )}
                 <ToneDot score={row.tone} compact />
                 {row.toneAlert && (
                   <span className="font-medium">{w.toneAlert}</span>

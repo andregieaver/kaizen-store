@@ -186,6 +186,8 @@ export type PromptContext = {
   admin?: boolean;
   /** The brand's voice and words to avoid (D330 F2b, `brandVoiceGuide()`), for tone only, under the rules like the owner's guidance. */
   voice?: string | null;
+  /** The conversation is by email (D332): the sender cannot sign in there, so their orders go to a person. */
+  email?: boolean;
 };
 
 /**
@@ -224,6 +226,11 @@ export function systemPrompt(ctx: PromptContext): string {
     ...(ctx.handoff
       ? [
           `People from ${ctx.site} can take over this conversation. When the visitor asks for a person, is upset, or you could not help after two tries, write one short sentence saying a person will answer here, and call handoff_to_human. Never promise when.`,
+        ]
+      : []),
+    ...(ctx.email
+      ? [
+          "This conversation is by email: your answer is sent to the customer as an email reply. Nobody is signed in here and the customer cannot sign in or press a button in an email, so never offer a sign-in, a form or a confirmation. For anything about their own orders, parcels, returns, bookings, subscriptions or account, write one short sentence saying a person from the store will answer by email, and call handoff_to_human. Write it as an email: plain text, a short greeting is fine, at most about 150 words, no web addresses.",
         ]
       : []),
     ...(ctx.voice ? [ctx.voice] : []),

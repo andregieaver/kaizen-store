@@ -39,6 +39,8 @@ export async function runSupportTurn(
   customer: SupportCustomer = null,
   /** An account asking Kaizen from the admin (step 11): Kaizen's tools for their stores and the admin's pages. */
   admin: { requester: Account } | null = null,
+  /** A conversation by email (D332): the AI is told so and has no tools that need a signed-in customer or a button. */
+  channel: { email?: boolean } = {},
 ): Promise<SupportTurn> {
   const m = t(context.lang);
   if (!context.agent || !context.connection) return { reply: null, error: m.chat.sorry };
@@ -58,11 +60,11 @@ export async function runSupportTurn(
   try {
     const support =
       context.site.kind === "store"
-        ? await supportToolsFor({ site: context.site, settings: context.settings, customer, desk, conversationId })
+        ? await supportToolsFor({ site: context.site, settings: context.settings, customer: channel.email ? null : customer, desk, conversationId, email: channel.email })
         : admin
           ? kaizenToolsFor(admin.requester, await aboutStoreOf(conversationId))
           : null;
-    reply = await runChat(context.site, context.agent, request, context.connection, { handoff: context.settings.mode === "ai_first", ...(support ? { support } : {}), admin: admin !== null });
+    reply = await runChat(context.site, context.agent, request, context.connection, { handoff: context.settings.mode === "ai_first", ...(support ? { support } : {}), admin: admin !== null, email: channel.email });
   } catch (error) {
     console.warn(`[support] ${context.storeId ?? "Kaizena Flow"}: ${error instanceof Error ? error.message : String(error)}`);
     if (error instanceof AiError) return { reply: null, error: m.chat.sorry };

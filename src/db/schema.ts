@@ -11717,11 +11717,15 @@ export const supportSettings = commerce.table(
     agentNaming: text("agent_naming").notNull().default("first_name"),
     /** The desk's realtime topic (`sd:{key}`): random, handed out only after the inbox's own check. */
     channelKey: text("channel_key").notNull().default(sql`replace(gen_random_uuid()::text, '-', '')`),
+    /** The desk's email address `desk-{key}@{SUPPORT_INBOUND_DOMAIN}` (D332): random, made when the settings first show it; it only routes mail. */
+    emailKey: text("email_key"),
     updatedAt: updatedAt(),
     updatedBy: uuid("updated_by").references(() => accounts.id, { onDelete: "set null" }),
   },
   (t) => [
     unique("support_settings_store_key").on(t.storeId).nullsNotDistinct(),
+    unique("support_settings_email_key").on(t.emailKey),
+    check("support_settings_email_key_shape", sql`${t.emailKey} is null or ${t.emailKey} ~ '^[a-z0-9]{12,32}$'`),
     index("support_settings_updated_by_idx").on(t.updatedBy),
     check("support_settings_mode", sql`${t.mode} in ('off', 'ai_first', 'people')`),
     check("support_settings_end_after", sql`${t.endAfterMinutes} between 10 and 240`),
@@ -11803,9 +11807,17 @@ export const supportConversations = commerce.table(
     channelKey: text("channel_key").notNull().default(sql`replace(gen_random_uuid()::text, '-', '')`),
     /** The transcript was deleted and the personal fields cleared; only counts stay. */
     anonymisedAt: timestamp("anonymised_at", { withTimezone: true }),
+    /** The conversation's reply address `reply-{key}@{SUPPORT_INBOUND_DOMAIN}` (D332), the Reply-To of its answer emails. */
+    replyKey: text("reply_key"),
+    /** A conversation by email (D332): its subject, and the Message-ID of the customer's last email, for threading the answers. */
+    emailSubject: text("email_subject"),
+    emailMessageId: text("email_message_id"),
   },
   (t) => [
     unique("support_conversations_token_key").on(t.tokenHash),
+    unique("support_conversations_reply_key").on(t.replyKey),
+    check("support_conversations_reply_key_shape", sql`${t.replyKey} is null or ${t.replyKey} ~ '^[a-z0-9]{12,32}$'`),
+    check("support_conversations_email_fields", sql`coalesce(length(${t.emailSubject}) <= 200, true) and coalesce(length(${t.emailMessageId}) <= 998, true)`),
     unique("support_conversations_email_token_key").on(t.emailTokenHash),
     foreignKey({ name: "support_conversations_customer_fk", columns: [t.storeId, t.customerId], foreignColumns: [customers.storeId, customers.id] }).onDelete("set null"),
     index("support_conversations_list_idx").on(t.storeId, t.status, t.lastMessageAt),
@@ -11821,7 +11833,7 @@ export const supportConversations = commerce.table(
     index("support_conversations_ended_idx")
       .on(t.endedAt)
       .where(sql`${t.anonymisedAt} is null`),
-    check("support_conversations_source", sql`${t.source} in ('site', 'admin')`),
+    check("support_conversations_source", sql`${t.source} in ('site', 'admin', 'email')`),
     check("support_conversations_status", sql`${t.status} in ('open', 'ended')`),
     check("support_conversations_desk_mode", sql`${t.deskMode} is null or ${t.deskMode} in ('off', 'ai_first', 'people')`),
     check("support_conversations_handler", sql`${t.handler} in ('ai', 'queue', 'human')`),
@@ -11876,6 +11888,46 @@ export const supportActions = commerce.table(
     check("support_actions_status", sql`${t.status} in ('proposed', 'done', 'declined', 'failed', 'expired')`),
     check("support_actions_lengths", sql`length(${t.summary}) between 1 and 500 and coalesce(length(${t.details}) <= 500, true) and length(${t.kind}) between 1 and 60`),
     check("support_actions_expiry", sql`(${t.confirmer} = 'customer') = (${t.expiresAt} is not null)`),
+  ],
+);
+
+/**
+ * An email that came in for a support desk (D332, `docs/support.md` step 16): kept when Resend's `email.received` event arrives (its id
+ * once), then routed, fetched, checked and added to a conversation by `src/server/support-inbound.ts`, its only writer. The sender's
+ * address and the subject are personal data; rows go after `INBOUND_KEEP_DAYS`.
+ */
+export const supportInboundEmails = commerce.table(
+  "support_inbound_emails",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** Resend's id of the received email. */
+    providerId: text("provider_id").notNull(),
+    /** The desk it was for, once routed (null for Kaizena Flow's own desk or before routing; `routed` says which). */
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    routed: boolean("routed").notNull().default(false),
+    conversationId: uuid("conversation_id").references(() => supportConversations.id, { onDelete: "set null" }),
+    fromAddress: text("from_address").notNull(),
+    subject: text("subject"),
+    messageId: text("message_id"),
+    status: text("status").notNull().default("pending"),
+    reason: text("reason"),
+    tries: smallint("tries").notNull().default(0),
+    claimedUntil: timestamp("claimed_until", { withTimezone: true }),
+    receivedAt: timestamp("received_at", { withTimezone: true }).notNull(),
+    createdAt: createdAt(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (t) => [
+    unique("support_inbound_emails_provider_key").on(t.providerId),
+    index("support_inbound_emails_pending_idx").on(t.createdAt).where(sql`status in ('pending', 'running')`),
+    index("support_inbound_emails_store_idx").on(t.storeId, t.createdAt),
+    index("support_inbound_emails_conversation_idx").on(t.conversationId),
+    index("support_inbound_emails_from_idx").on(t.fromAddress, t.createdAt),
+    check("support_inbound_emails_status", sql`${t.status} in ('pending', 'running', 'done', 'refused', 'failed')`),
+    check(
+      "support_inbound_emails_lengths",
+      sql`length(${t.providerId}) between 1 and 200 and length(${t.fromAddress}) <= 320 and coalesce(length(${t.subject}) <= 200, true) and coalesce(length(${t.messageId}) <= 998, true) and coalesce(length(${t.reason}) <= 200, true)`,
+    ),
   ],
 );
 

@@ -46,7 +46,18 @@ type StoreSite = Extract<ChatSite, { kind: "store" }>;
 /** The customer the conversation is for: signed in on this browser and the conversation's own (a different signed-in customer is none). */
 export type SupportCustomer = { id: string; email: string } | null;
 
-export type SupportToolContext = { site: StoreSite; settings: DeskSettings; customer: SupportCustomer; desk: Desk; conversationId: string };
+export type SupportToolContext = {
+  site: StoreSite;
+  settings: DeskSettings;
+  customer: SupportCustomer;
+  desk: Desk;
+  conversationId: string;
+  /** A conversation by email (D332): no sign-in card, email form or Confirm button there, and nobody signed in. */
+  email?: boolean;
+};
+
+/** What an email has no place for (D332): the sign-in card, the email form and the Confirm button. */
+const NOT_BY_EMAIL = new Set(["ask_to_sign_in", "ask_for_email", "propose_action"]);
 
 /** The first line's tools (`handoff_to_human` is the chat's own): the read-only ones (step 9), proposals and staff requests (step 10). */
 const FIRST_LINE_TOOLS = new Set([
@@ -109,6 +120,8 @@ export async function supportToolsFor(ctx: SupportToolContext): Promise<SupportT
   const offered: SupportTool[] = [];
   for (const tool of SUPPORT_TOOLS) {
     if (!FIRST_LINE_TOOLS.has(tool.name) || !(await needsMet(tool.needs, facts, false))) continue;
+    // By email nobody is signed in and nothing can be pressed: those tools are left out, and orders go to a person.
+    if (ctx.email && (NOT_BY_EMAIL.has(tool.name) || tool.needs.signedIn)) continue;
     // Proposals only of the kinds the desk allows (none: not offered).
     if (tool.name === "propose_action" && allowedKinds(ctx.settings).length === 0) continue;
     offered.push(tool);
