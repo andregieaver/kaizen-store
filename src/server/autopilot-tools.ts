@@ -28,7 +28,14 @@ import type { Store } from "./stores";
  * nobody is in.
  */
 
-type Ctx = { account: Account; store: Store | null; holder?: PermissionHolder; scheduled?: boolean; turn?: unknown };
+type Ctx = {
+  account: Account;
+  store: Store | null;
+  holder?: PermissionHolder;
+  scheduled?: boolean;
+  turn?: { conversationId: string };
+  autopilot?: { review?: boolean };
+};
 
 const fail = (message: string): never => {
   throw new OwnerToolError(message);
@@ -74,7 +81,8 @@ export async function dropGoalTool(ctx: Ctx, { goal }: { goal: string }) {
 }
 
 export async function makePlanTool(ctx: Ctx, input: { title: string; summary: string; goal?: string; steps: StepInput[] }) {
-  const { plan, steps } = await makePlan(ctx, input);
+  // In a goal's review the plan lives in the goal's conversation, where the review finds it (D328).
+  const { plan, steps } = await makePlan(ctx, { ...input, conversationId: ctx.autopilot?.review ? ctx.turn?.conversationId : undefined });
   return {
     plan: planWords(plan, steps),
     note: "It is a draft: tell them its steps in a few lines and ask whether to start it; on their go, call start_autopilot_plan.",

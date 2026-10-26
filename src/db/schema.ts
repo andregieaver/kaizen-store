@@ -13078,6 +13078,8 @@ export const autopilotSettings = commerce.table(
     /** `{ area: level }`, read only through `readAutonomy()` (`src/lib/autopilot-autonomy.ts`). */
     levels: jsonb("levels").notNull().default({}),
     budgets: jsonb("budgets").notNull().default({}),
+    /** Whether and how the autopilot keeps working toward the goals (D328), read only through `readAutonomy()`. */
+    planning: jsonb("planning").notNull().default({}),
     updatedBy: uuid("updated_by").references(() => accounts.id, { onDelete: "set null" }),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -13086,6 +13088,44 @@ export const autopilotSettings = commerce.table(
     index("autopilot_settings_updated_by_idx").on(t.updatedBy),
     check("autopilot_settings_levels", sql`jsonb_typeof(${t.levels}) = 'object'`),
     check("autopilot_settings_budgets", sql`jsonb_typeof(${t.budgets}) = 'object'`),
+    check("autopilot_settings_planning", sql`jsonb_typeof(${t.planning}) = 'object'`),
+  ],
+);
+
+/**
+ * The autopilot looking at a goal again (D328, `docs/ai-autopilot.md` 12): one row per review, written only by
+ * `src/server/autopilot-reviews.ts`; the plan it made, whether it started it, and what came of it in words.
+ */
+export const autopilotReviews = commerce.table(
+  "autopilot_reviews",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    goalId: uuid("goal_id")
+      .notNull()
+      .references(() => assistantGoals.id, { onDelete: "cascade" }),
+    /** Whose name the review ran in: the goal's maker, read again. */
+    accountId: uuid("account_id").references(() => accounts.id, { onDelete: "set null" }),
+    /** The goal's own conversation, kept from its first review on. */
+    conversationId: uuid("conversation_id"),
+    status: text("status").notNull().default("running"),
+    claimedUntil: timestamp("claimed_until", { withTimezone: true }),
+    planId: uuid("plan_id").references(() => assistantPlans.id, { onDelete: "set null" }),
+    started: boolean("started").notNull().default(false),
+    outcome: text("outcome"),
+    createdAt: createdAt(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (t) => [
+    foreignKey({ name: "autopilot_reviews_conversation_fk", columns: [t.conversationId], foreignColumns: [assistantConversations.id] }).onDelete("set null"),
+    uniqueIndex("autopilot_reviews_running_idx").on(t.goalId).where(sql`status = 'running'`),
+    index("autopilot_reviews_goal_idx").on(t.goalId, t.createdAt),
+    index("autopilot_reviews_store_idx").on(t.storeId, t.createdAt),
+    index("autopilot_reviews_account_idx").on(t.accountId),
+    index("autopilot_reviews_conversation_idx").on(t.conversationId),
+    index("autopilot_reviews_plan_idx").on(t.planId),
+    check("autopilot_reviews_status", sql`${t.status} in ('running', 'done', 'skipped', 'failed')`),
+    check("autopilot_reviews_outcome", sql`${t.outcome} is null or length(${t.outcome}) <= 500`),
   ],
 );
 

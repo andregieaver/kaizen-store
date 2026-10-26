@@ -1,7 +1,7 @@
 import "server-only";
 
 import type { FormState } from "@/components/admin/action-form";
-import { AUTONOMY_AREAS, AUTONOMY_LEVELS, type AutonomyLevel } from "@/lib/autopilot-autonomy";
+import { AUTONOMY_AREAS, AUTONOMY_LEVELS, PLAN_STARTS, type AutonomyLevel, type PlanStarts } from "@/lib/autopilot-autonomy";
 
 import { dropGoal } from "./autopilot-goals";
 import { answerQuestion, pausePlan, startPlanNow, stopPlan, type PlanActor } from "./autopilot-plans";
@@ -74,7 +74,7 @@ export function dropGoalFrom(p: Principal, form: FormData): Promise<FormState> {
 
 const number = (value: string): number | null => (value === "" ? null : Number(value.replace(",", ".")));
 
-/** The settings form read into `saveAutonomy()`'s input: the switch, a level per area and the limits. */
+/** The settings form read into `saveAutonomy()`'s input: the switch, a level per area, the limits and keeping going (D328). */
 export function saveSettings(p: Principal, form: FormData): Promise<FormState> {
   return guarded("settings", async () => {
     const levels: Record<string, AutonomyLevel> = {};
@@ -90,6 +90,12 @@ export function saveSettings(p: Principal, form: FormData): Promise<FormState> {
         aiMonthlyUsd: ai === null || Number.isNaN(ai) ? null : ai,
         discountPercent: Number(text(form, "discount_percent") || 0),
         priceChangePercent: Number(text(form, "price_change_percent") || 0),
+      },
+      planning: {
+        continues: text(form, "keep_going") === "on",
+        starts: (PLAN_STARTS as readonly string[]).includes(text(form, "plan_starts")) ? (text(form, "plan_starts") as PlanStarts) : "ask",
+        reviewDays: Number(text(form, "review_days") || 7),
+        plansPerWeek: Number(text(form, "plans_per_week") || 3),
       },
     });
     return ok;

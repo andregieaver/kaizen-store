@@ -61,6 +61,16 @@ const AUTOPILOT_LINES = [
   "- End with one or two plain sentences on what you did: the owner reads them in the plan.",
 ].join("\n");
 
+/** What the model is told in a review of a goal (D328): nobody is there, it may only look and plan, and one plan at most. */
+const REVIEW_LINES = [
+  "You are working on your own now, as the store's autopilot, reviewing one of the owner's goals. Nobody is reading along.",
+  "- You can look with read-only tools and make a plan; you cannot change anything yourself in this turn. Facts only from your tools, as always.",
+  "- Make at most one plan, for this goal, with the steps that move it forward most from where the figures say it stands. Prefer small plans that finish within days.",
+  "- Do not repeat a plan that just failed the same way; do something different or ask the owner a question step.",
+  "- If nothing useful can be done now, make no plan and say why in one sentence.",
+  "- End with one or two plain sentences on what you planned and why: the owner reads them.",
+].join("\n");
+
 /** Who a change the AI manager makes is audited as: the AI manager, or the autopilot inside its turns (D309). */
 const aiActor = () => (currentActor() === "autopilot" ? "autopilot" : "ai_manager");
 
@@ -404,7 +414,15 @@ export type TurnInput = {
   autopilot?: AutopilotTurn;
 };
 
-export type AutopilotTurn = { stepId: string; tools: readonly string[]; settings: AutonomySettings; told: string[] };
+export type AutopilotTurn = {
+  /** The plan's step the turn works on; none in a goal's review (D328). */
+  stepId?: string;
+  /** A review of a goal (D328): only looking and planning, with the review's own lines. */
+  review?: boolean;
+  tools: readonly string[];
+  settings: AutonomySettings;
+  told: string[];
+};
 
 /** Whether today's turns have reached the limit: per store, or per platform admin. */
 async function overLimit(p: Principal): Promise<boolean> {
@@ -512,7 +530,7 @@ export async function runTurn(input: TurnInput): Promise<void> {
         memories,
         voice: input.voice,
         waiting: waiting.map((row) => ({ id: String(row.id), summary: String(row.summary) })),
-      }) + (autopilot ? `\n\n${AUTOPILOT_LINES}` : ""),
+      }) + (autopilot ? `\n\n${autopilot.review ? REVIEW_LINES : AUTOPILOT_LINES}` : ""),
     },
     ...history.map((row) => ({ role: row.role === "user" ? ("user" as const) : ("assistant" as const), content: String(row.content) })),
     { role: "user", content: text },

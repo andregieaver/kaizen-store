@@ -194,6 +194,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   assistant_plans: never("The autopilot's plans run in an account's name in the store they were made for (D309)."),
   assistant_plan_steps: never("A plan's steps go with their plan (D309)."),
   autopilot_reports: never("What the autopilot told a person goes with that person and store (D309)."),
+  autopilot_reviews: never("The autopilot's reviews of a goal are that store's history (D328): a copy's goals start unreviewed."),
   legal_ai_settings: never("Having the AI write a store's legal pages is the owner's choice, agreed to in words (D311): a copy chooses for itself."),
   legal_ai_writes: never("The AI's writes of a store's legal pages (D311) are that store's history: a copy asks for its own."),
   page_looks: never("A look at a page found what it found in that store (D310): a copy looks again."),

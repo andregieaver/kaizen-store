@@ -226,6 +226,7 @@ export const PERSONAL_DATA: PersonalEntry[] = [
   entry("assistant_goals", "staff", via("none"), ["vision"], null, "none", "The owner's goals for the business in their own words (D309); the store's, not a shopper's."),
   entry("assistant_plans", "staff", via("none"), ["summary"], null, "none", "The autopilot's plans (D309), run in a staff member's name; they go with the account or its conversation."),
   entry("autopilot_reports", "staff", via("none"), ["facts", "note"], null, "none", "What the autopilot told a staff member: counts, the plans' step titles and figures, never a customer (D309)."),
+  entry("autopilot_reviews", "staff", via("none"), ["outcome"], null, "none", "The autopilot's reviews of the owner's goals: the plan it made and a sentence on what came of it, never a customer (D328)."),
   entry("legal_ai_settings", "staff", via("none"), ["turned_on_by"], null, "none", "Who turned on the AI's legal pages for a store and when, never a customer (D311)."),
   entry("legal_ai_writes", "staff", via("none"), ["results", "problems"], null, "none", "Who asked the AI to write a legal page and the page it made, built from the store's business details, never a customer (D311)."),
   entry("page_looks", "staff", via("none"), ["findings", "problem"], null, "none", "Who asked for a look at a page and what it found on the page, never a customer; kept 30 days (D310)."),

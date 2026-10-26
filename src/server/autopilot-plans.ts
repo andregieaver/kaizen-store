@@ -23,6 +23,7 @@ import {
 } from "@/lib/autopilot-plans";
 import { can, type PermissionHolder } from "@/lib/permissions";
 
+import { actingAs } from "./actor";
 import { audit, type Account } from "./auth";
 import { checkStep } from "./autopilot-checks";
 import { auditArea, getGoal } from "./autopilot-goals";
@@ -207,7 +208,14 @@ function specFields(spec: StepSpec): Record<string, unknown> {
 
 const pgArray = (values: readonly string[]) => `{${values.map((v) => `"${v.replace(/["\\]/g, "")}"`).join(",")}}`;
 
-export type MakePlanInput = { title: string; summary: string; goal?: string; steps: StepInput[] };
+export type MakePlanInput = {
+  title: string;
+  summary: string;
+  goal?: string;
+  steps: StepInput[];
+  /** A goal's review makes its plan in the goal's own conversation (D328), the person's and the scope's; otherwise the plan gets its own. */
+  conversationId?: string;
+};
 
 /** A draft plan with its own conversation; every step checked first, the whole plan refused with the first problem. */
 export async function makePlan(a: PlanActor, input: MakePlanInput, now = new Date()): Promise<{ plan: Plan; steps: PlanStep[] }> {
@@ -215,12 +223,21 @@ export async function makePlan(a: PlanActor, input: MakePlanInput, now = new Dat
   if (!checked.ok) return fail(checked.problem);
   if (input.goal && !(await getGoal(a, input.goal))) return fail("There is no such goal here. Look with list_goals.");
   const planId = await db().transaction(async (tx) => {
-    const conversation = await typedRow(
-      z.object({ id: col.uuid }),
-      sql`insert into commerce.assistant_conversations (store_id, account_id, title)
-        values (${storeIdOf(a.store)}, ${a.account.id}::uuid, ${`Autopilot: ${input.title}`.slice(0, 80)}) returning id`,
-      tx,
-    );
+    const given = input.conversationId
+      ? await typedRow(
+          z.object({ id: col.uuid }),
+          sql`select id from commerce.assistant_conversations where id = ${input.conversationId}::uuid and account_id = ${a.account.id}::uuid and ${inScope(a.store)}`,
+          tx,
+        )
+      : null;
+    const conversation =
+      given ??
+      (await typedRow(
+        z.object({ id: col.uuid }),
+        sql`insert into commerce.assistant_conversations (store_id, account_id, title)
+          values (${storeIdOf(a.store)}, ${a.account.id}::uuid, ${`Autopilot: ${input.title}`.slice(0, 80)}) returning id`,
+        tx,
+      ));
     const plan = await typedRow(
       z.object({ id: col.uuid }),
       sql`insert into commerce.assistant_plans (store_id, goal_id, account_id, conversation_id, title, summary)
@@ -311,6 +328,19 @@ export async function startPlanNow(a: PlanActor, tool: "start_autopilot_plan" | 
   if (rows.length === 0) return fail(`The plan is no longer ${from === "draft" ? "a draft" : "paused"}.`);
   await audit(a.account.id, a.store?.id ?? null, tool === "start_autopilot_plan" ? "ai.plan_started" : "ai.plan_resumed", { planId: plan.id, version }, auditArea(a));
   return { done: `The plan "${plan.title}" is running. Its steps run one at a time; what needs you comes to your Decisions.` };
+}
+
+/**
+ * A plan a goal's review made, started by the autopilot itself because the owner chose *Starts at once* (D328, `docs/ai-autopilot.md`
+ * 12.3): only a draft, only the version the review made, audited as the autopilot. Its steps still meet the levels and budgets.
+ */
+export async function startPlanByAutopilot(a: PlanActor, planId: string, version: number): Promise<boolean> {
+  const rows = await db().execute(sql`
+    update commerce.assistant_plans set status = 'running' where id = ${planId}::uuid and ${inScope(a.store)} and status = 'draft' and version = ${version} returning id
+  `);
+  if (rows.length === 0) return false;
+  await actingAs("autopilot", () => audit(a.account.id, a.store?.id ?? null, "ai.plan_started", { planId, version, review: true }, auditArea(a)));
+  return true;
 }
 
 export async function pausePlan(a: PlanActor, planId: string, reason?: string): Promise<{ done: string }> {

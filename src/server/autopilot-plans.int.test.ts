@@ -190,7 +190,17 @@ describe("the Autopilot page's buttons", () => {
 
     const saved = await pageActions.saveSettings(owner, form({ running: "on", level_website: "tell", level_money: "fly", ai_monthly: "", discount_percent: "15", price_change_percent: "5" }));
     expect(saved).toEqual({ status: "ok", messages: [] });
-    expect(await autonomyFor(store.id)).toEqual({ paused: false, levels: { website: "tell" }, budgets: { aiMonthlyUsd: null, discountPercent: 15, priceChangePercent: 5 } });
+    expect(await autonomyFor(store.id)).toEqual({
+      paused: false,
+      levels: { website: "tell" },
+      budgets: { aiMonthlyUsd: null, discountPercent: 15, priceChangePercent: 5 },
+      planning: { continues: false, starts: "ask", reviewDays: 7, plansPerWeek: 3 },
+    });
+    // Keeping going (D328): the switch and its choices; an unknown start choice is read as asking first.
+    await pageActions.saveSettings(owner, form({ running: "on", keep_going: "on", plan_starts: "auto", review_days: "3", plans_per_week: "2", discount_percent: "15", price_change_percent: "5" }));
+    expect((await autonomyFor(store.id)).planning).toEqual({ continues: true, starts: "auto", reviewDays: 3, plansPerWeek: 2 });
+    await pageActions.saveSettings(owner, form({ running: "on", keep_going: "on", plan_starts: "always", discount_percent: "15", price_change_percent: "5" }));
+    expect((await autonomyFor(store.id)).planning).toEqual({ continues: true, starts: "ask", reviewDays: 7, plansPerWeek: 3 });
     expect(await pageActions.saveSettings(staff, form({ running: "on" }))).toMatchObject({ status: "error", messages: ["Only an owner sets how far the autopilot may go."] });
   });
 });
