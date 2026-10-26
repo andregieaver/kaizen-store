@@ -577,10 +577,82 @@ details are cached, the buy part streams in.
 
 ### Unit E (D323): quantity rules and price breaks
 
-Per variant (and per price-list price): `min_quantity`, `max_quantity`, `quantity_step`, checked by `quantityProblem()` in the cart's add
-and change, in `placeOrder()` and in the WordPress cart (D170); and breaks (`from` units: a unit price or a percentage), applied by
-`breakPrice()` in `cartSummary()` and `placeOrder()` and shown on the product page as a table. `MAX_LINE_QUANTITY` rises to the variant's
-maximum (at most 9,999) where one is set. Breaks are not reductions under the 30-day rule (decision 3).
+Detailed on 2026-10-26 from a read of the code, when its turn came. Built in three steps, each its own commit: E1 a variant's quantity
+rules, E2 a product's price breaks, E3 a price list's rules and breaks.
+
+**What the code does today.** A cart line holds 1 to `MAX_LINE_QUANTITY` (20) units, capped at the stock (`settleQuantity()` in
+`src/lib/cart.ts`, `sellableQuantity()` and `changeLine()` in `src/server/cart.ts`); the product page and the phone's bar add one unit at a
+time, and the cart's quantity field sets the line. A line's price is the market's, or the buyer's list price (`commerce.buyer_price()`, D321)
+for goods, bundles and appointments bought once (`LIST_PRICED`), read in SQL by `getCart()` and `orderLineRows()`; the product page's buy
+part reads `listPricesFor()`. A *tiered* campaign (D299 E3) gives a percentage by the basket's items, set on a campaign rather than a
+product. The WordPress cart (D170) quotes a line at the market price, at most 20 units.
+
+#### E.1 A variant's quantity rules (E1)
+
+- A variant has `min_quantity` (default 1), `max_quantity` (none by default) and `quantity_step` (default 1), each 1 to 9,999
+  (`MAX_ORDER_QUANTITY`); the minimum and the maximum are whole steps and the maximum is at least the minimum (checks on
+  `product_variants`). They apply to goods and bundles; a variant of another kind keeps the plain rule (the editor shows no fields, the
+  reader gives `PLAIN_RULE`).
+- The rules are pure in `src/lib/quantity-rules.ts`: `quantityProblem(quantity, rule)` (`min`, `max`, `step`, or null), `lineMax(rule)`
+  (the maximum, else twenty steps from the minimum: `min + 19 × step`, so the plain rule keeps 20, at most 9,999), `nextQuantity(current,
+  asked, rule)` (adding to an empty line gives at least the minimum, rounded up to a step; adding to a line adds whole steps) and
+  `fitQuantity(wanted, available, rule)` (the largest quantity the rule allows that the stock allows, none below the minimum). The shopper's
+  words are `ruleWords()` from `m.quantityRule` (nb, sv, da and en by hand).
+- The cart: Add (the product page, the phone's bar, *Your catalogue*) keeps sending what it sends; `changeLine()` makes it
+  `nextQuantity()` and fits it to the stock, so *Add to cart* on a variant sold in sixes puts six in, then twelve. Setting a line's quantity
+  to one the rule refuses is refused (`outcome: "quantity"`, the line unchanged); the quantity field carries `min`, `max` and `step`, so the
+  browser says why before it is sent. A line whose rule changed after it was added shows status `quantity` with the rule's words and blocks
+  checkout as an unavailable line does (`summary.blocked`). `available` and the field's maximum are `lineMax()` (or the stock, as before).
+- Checkout: `placeOrder()` refuses a cart line whose quantity breaks its rule (`problem: "quantity"`, `m.problemQuantity`); a campaign's free
+  product is not held to it. A line with a purchase option is held to the rule when bought; later changes to the subscription are not
+  (they keep `MAX_LINE_QUANTITY`). Drafts (D173), order changes (D174) and exchanges (D239) are staff's and are not held to it.
+- The product page says the rule under the variant's stock note (*Sold in sixes*, *At least 12*, *At most 48*), from the buy part read per
+  request; a variant on backorder is capped at `lineMax()`.
+- WordPress (D170): the quote gives each line its rule (`quantity_rule`) and counts the quantity fitted to it, with status `quantity` and
+  the words when the asked quantity does not fit; the hand-over fits each line the same way (`fitQuantity(nextQuantity(0, asked))`); the
+  plugin's stepper and quantity field follow `min`, `step` and `max`, and lines may hold up to 9,999 units. The zip is rebuilt.
+- The editor: each shipped or downloaded variant of goods or a bundle has *How many at a time* (minimum, maximum, in steps of) beside its
+  stock rules, with *Use for every variant*; `productInput` refuses what the database would (`quantityRuleProblems()`). The AI manager's
+  `get_product` names a variant's rule and `create_product`/`update_product` take `min_quantity`, `max_quantity` and `quantity_step` per
+  variant. `clone_store()` and `duplicate_store()` copy the columns. No new table.
+
+#### E.2 A product's price breaks (E2)
+
+- A **price break** (`commerce.price_breaks`: the product, a variant or every variant (`variant_id` null), `from_quantity` 2 to 9,999 and
+  either a whole `percent` 1 to 99 off the market price or `amounts`, a unit price per market with VAT in the country's own currency, as
+  `prices` keeps them) gives a lower unit price from that many units in one line. At most 10 per product (`price_breaks_max()`), one per
+  variant (or every variant) and quantity.
+- A line's price is worked out only by `commerce.line_price(store, customer, variant, market, market_amount, quantity)` (SQL, returning the
+  price, the list that gives it and the break's quantity): the lowest of the market price, the product's breaks the quantity reaches (a
+  fixed one only in a market it names) and the buyer's list offers (`buyer_price()`'s), so it is `buyer_price()` at one unit. `getCart()`
+  and `orderLineRows()` read it under `LIST_PRICED` with the line's quantity instead of `buyer_price()`, so the cart and the order agree; the
+  cart line carries `breakFrom` and says *Price for 10 or more* (`m.priceBreaks`).
+- A break is the price at that quantity, **never shown as a reduction** (decision 3): no struck-through price, no 30-day reference, no
+  "save" words. A line priced by a product's break is still the shop's price for everyone, so the group's percentage (D108), campaigns,
+  codes and credits apply to it as to any line; a line a list prices takes none of the group's percentage, as in C1.
+- The product page's buy part shows the chosen variant's breaks as a table (*Price by quantity*: *1 or more*, *10 or more*, … and the
+  price each, drawn with `<Price>` and the store's VAT display) from `priceBreaksFor()`, which asks `line_price()` at each step for this
+  buyer, so the table is what the cart charges; a step that is not lower than the one before is left out. Products with purchase options
+  show none (breaks are for goods bought once). Cards, listings, feeds and structured data keep the price of one unit.
+- The WordPress quote prices each line with `line_price()` (no buyer) at its fitted quantity, so its subtotal is the store's cart.
+- The editor's *Price by quantity* card (goods and bundles): rows of a variant or every variant, from how many, and a percentage or a price
+  per market, checked by `productInput` (`priceBreakProblems()`) and written in `saveProduct()`'s transaction. The AI manager's
+  `get_product` names them. `COPY_RULES` `catalogue`: `clone_store()` and `duplicate_store()` copy them; not personal data.
+- `checkout-kinds.int.test.ts` holds a euro scenario: a break by percentage and a fixed break, the cart, the summary and the order agree,
+  the group's percentage on top of a break, and the table's prices are the cart's.
+
+#### E.3 A price list's rules and breaks (E3)
+
+- A price list may give its buyers breaks of their own (`price_list_breaks`: a product, a variant or every variant, from how many, a
+  percentage off the market price or a unit price per currency, as `price_list_prices`) and quantity rules of their own
+  (`price_list_quantity_rules`: per variant, minimum, maximum and step, as E1's).
+- `line_price()` also takes the buyer's lists' breaks the quantity reaches; a buyer's rule for a variant is only
+  `commerce.quantity_rule(store, customer, variant)`: a rule one of their lists gives (the one with the lowest minimum, then the highest
+  maximum, then the smallest step), else the variant's. The cart, checkout and the product page read the rule there.
+- Admin: the list's page has *Price by quantity* and *How many at a time* for products found by the same search as fixed prices; words in the
+  `customers` catalogue. Both tables are `never` in `COPY_RULES`, as the lists are.
+- The parity row `catalogue.volume-pricing-and-quantity-rules` closes with E2 (a variant's breaks and rules, the cart and the order
+  agreeing); E3 gives price lists theirs.
 
 ### Unit F (D324): search merchandising
 
