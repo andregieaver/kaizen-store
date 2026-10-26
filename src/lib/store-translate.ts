@@ -72,16 +72,33 @@ export type ProductField = (typeof PRODUCT_FIELDS)[number]["key"];
 export type ProductTexts = Record<ProductField, string>;
 
 /**
+ * A gallery item's words to translate (D325): the main language's the owner wrote (not the title filled in for them), and the target
+ * language's as they stand (empty where it has only the title). Keyed `media.{position}`.
+ */
+export type MediaTexts = { position: number; kind: "image" | "video" | "model"; source: string; target: string };
+
+const MEDIA_LABELS = { image: "Picture", video: "Video", model: "3D model" } as const;
+
+/** Whether an item key is a gallery item's words, and its position. */
+export const mediaKeyPosition = (key: string): number | null => (/^media\.\d{1,2}$/.test(key) ? Number(key.slice(6)) : null);
+
+/**
  * A product's texts to translate: the main language's that have words, and
  * with `missing` only where the language has none. Safety information is a
- * unit of its own, so it can be left off.
+ * unit of its own, so it can be left off. Its gallery items' words (D325) are in the product's unit.
  */
-export function productUnits(id: string, source: ProductTexts, target: ProductTexts | null, mode: "missing" | "all"): Unit[] {
+export function productUnits(id: string, source: ProductTexts, target: ProductTexts | null, mode: "missing" | "all", media: readonly MediaTexts[] = []): Unit[] {
   const units: Unit[] = [];
   for (const legal of [false, true]) {
-    const items = PRODUCT_FIELDS.filter((f) => f.legal === legal)
+    const items: Unit["items"] = PRODUCT_FIELDS.filter((f) => f.legal === legal)
       .filter((f) => source[f.key].trim() !== "" && (mode === "all" || !target || target[f.key].trim() === ""))
       .map((f) => ({ key: f.key, label: f.label, max: f.max, rich: false, runs: [source[f.key]] }));
+    if (!legal) {
+      for (const item of media) {
+        if (item.source.trim() === "" || (mode === "missing" && item.target.trim() !== "")) continue;
+        items.push({ key: `media.${item.position}`, label: `${MEDIA_LABELS[item.kind]} ${item.position + 1}: words`, max: 300, rich: false, runs: [item.source] });
+      }
+    }
     // A translation needs a title: without one the rest cannot be kept.
     if (items.length > 0) units.push({ id: `product:${id}${legal ? ":legal" : ""}`, scope: "products", title: source.title, kind: legal ? "Product safety information" : "Product", legal, items });
   }

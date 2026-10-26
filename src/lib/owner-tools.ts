@@ -330,7 +330,7 @@ export const OWNER_TOOLS = [
   ),
   tool(
     "get_product",
-    "One product: its texts in the main language and which other languages have words, status, options, categories, tags, pictures, and each variant's SKU, price per country and stock. A variant with its content set (a pack's weight, volume or length) also gives that content and the price per kg, litre or metre in each country, as the store shows it.",
+    "One product: its texts in the main language and which other languages have words, status, options, categories, tags, its gallery in order (pictures, and videos and 3D models with their kind; a video's or model's url is its picture), and each variant's SKU, price per country and stock. A variant with its content set (a pack's weight, volume or length) also gives that content and the price per kg, litre or metre in each country, as the store shows it.",
     z.object({ product: productRef }),
   ),
   tool(

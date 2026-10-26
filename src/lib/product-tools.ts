@@ -198,7 +198,7 @@ export const updateProductInput = z.object({
   variants: z.array(variantChangeArgs).max(MAX_VARIANTS).optional(),
   categories: z.array(termName).max(20).optional().describe("The product's categories as they should be (they replace the ones there); new ones are made."),
   tags: z.array(termName).max(20).optional().describe("The product's tags as they should be (they replace the ones there); new ones are made."),
-  pictures: z.array(pictureArgs).max(MAX_MEDIA).optional().describe("The pictures as they should be, in order (they replace the ones there)."),
+  pictures: z.array(pictureArgs).max(MAX_MEDIA).optional().describe("The pictures as they should be, in order (they replace the pictures there; the product's videos and 3D models stay, after them)."),
   add_pictures: z.array(pictureArgs).max(MAX_MEDIA).optional().describe("Pictures added after the ones there."),
   vat_category: z.string().trim().regex(VAT_CATEGORY_CODE).optional(),
   manufacturer: operatorArgs.optional(),

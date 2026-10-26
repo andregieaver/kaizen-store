@@ -784,6 +784,8 @@ send an address to a page; nothing sends a search there.
 
 ### Unit G (D325): videos and 3D in the gallery
 
+Built on 2026-10-26 in three steps (G1, G2, G3), each as specified below; D325 in `docs/decisions.md` records what was built and the migrations.
+
 Detailed on 2026-10-26 from a read of the code, when its turn came. Built in three steps, each its own commit: G1 the model and the server,
 G2 the editor and the product page, G3 the languages, the AI manager, copies and the tracker.
 

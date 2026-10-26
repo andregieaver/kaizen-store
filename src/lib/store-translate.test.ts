@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { fitsItem, globalKey, isLegalPage, menuUnit, productUnits, returnInstructionsUnit, RETURN_INSTRUCTIONS_UNIT, SCOPE_WORDS, TERM_FIELDS, TRANSLATE_SCOPES, termUnit, unitItems, type ProductTexts } from "./store-translate";
+import { fitsItem, globalKey, isLegalPage, mediaKeyPosition, menuUnit, productUnits, returnInstructionsUnit, RETURN_INSTRUCTIONS_UNIT, SCOPE_WORDS, TERM_FIELDS, TRANSLATE_SCOPES, termUnit, unitItems, type ProductTexts } from "./store-translate";
 import { MAX_INSTRUCTIONS } from "./withdrawal";
 
 const source: ProductTexts = { title: "Keramikkopp", description: "En kopp.", safetyInformation: "Ikke for barn.", seoTitle: "", seoDescription: "", excerpt: "" };
@@ -63,6 +63,20 @@ describe("what comes back", () => {
     expect(fitsItem(rich, ["x", "y"])).toBe(true);
     expect(fitsItem(rich, ["x"])).toBe(false);
     expect(fitsItem(rich, "xy")).toBe(false);
+  });
+
+  it("lists a gallery item's words the owner wrote, in the product's unit (D325)", () => {
+    const media = [
+      { position: 0, kind: "video" as const, source: "Slik brukes koppen", target: "" },
+      { position: 1, kind: "image" as const, source: "", target: "" },
+      { position: 2, kind: "model" as const, source: "Koppen i 3D", target: "The cup in 3D" },
+    ];
+    const [unit] = productUnits("p1", source, null, "missing", media);
+    expect(unit.items.filter((i) => i.key.startsWith("media.")).map((i) => [i.key, i.label, i.runs])).toEqual([
+      ["media.0", "Video 1: words", ["Slik brukes koppen"]],
+    ]);
+    expect(productUnits("p1", source, null, "all", media)[0].items.filter((i) => i.key.startsWith("media.")).map((i) => i.key)).toEqual(["media.0", "media.2"]);
+    expect([mediaKeyPosition("media.2"), mediaKeyPosition("media.x"), mediaKeyPosition("title")]).toEqual([2, null, null]);
   });
 
   it("keeps each text's unit in its key", () => {

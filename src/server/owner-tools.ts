@@ -606,7 +606,9 @@ async function getProductTool({ store }: OwnerToolContext, { product }: OwnerToo
         coalesce((select jsonb_agg(t.locale order by t.locale) from commerce.product_translations t where t.product_id = p.id and t.title <> ''), '[]') as languages,
         coalesce((select jsonb_agg(te.name order by te.name) from commerce.product_terms pt join commerce.terms te on te.id = pt.term_id where pt.product_id = p.id and te.kind = 'category'), '[]') as categories,
         coalesce((select jsonb_agg(te.name order by te.name) from commerce.product_terms pt join commerce.terms te on te.id = pt.term_id where pt.product_id = p.id and te.kind = 'tag'), '[]') as tags,
-        coalesce((select jsonb_agg(jsonb_build_object('url', m.url, 'alt', coalesce(m.alt ->> ${locale}, '')) order by m.position) from commerce.product_media m where m.product_id = p.id), '[]') as pictures
+        coalesce((select jsonb_agg(jsonb_strip_nulls(jsonb_build_object('url', m.url, 'alt', coalesce(m.alt ->> ${locale}, ''),
+          -- A video or a 3D model (D325): its kind and where it plays from; its url is its picture. The pictures tools replace pictures only.
+          'kind', nullif(m.kind, 'image'), 'source', m.source)) order by m.position) from commerce.product_media m where m.product_id = p.id), '[]') as pictures
       from commerce.products p where p.store_id = ${store.id}::uuid and p.id = ${id}::uuid
     `),
   ]);

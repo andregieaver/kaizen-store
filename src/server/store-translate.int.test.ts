@@ -91,6 +91,23 @@ describe("saving what staff accepted", () => {
     expect(again.units.some((u) => u.id === unit.id)).toBe(true);
   });
 
+  it("translates a gallery item's words the owner wrote, onto that item (D325)", async () => {
+    const m = await asMember();
+    const [product] = await db().execute<Row>(sql`select id from commerce.products where store_id = ${storeId}::uuid and handle = 'demo-keramikkopp'`);
+    const id = String(product.id);
+    await db().execute(sql`
+      update commerce.product_media set alt = jsonb_build_object('nb-NO', 'Koppen fra siden') where product_id = ${id}::uuid and position = 0
+    `);
+    const { units } = await translate.translationWorklist(m, "en-GB", ["products"], "missing", null);
+    const unit = units.find((u) => u.id === `product:${id}`)!;
+    expect(unit.items.find((i) => i.key === "media.0")?.runs).toEqual(["Koppen fra siden"]);
+    expect(await translate.applyTranslations(m, "en-GB", [{ unitId: unit.id, values: { "media.0": "The cup from the side" } }])).toMatchObject({ ok: true });
+    const [row] = await db().execute<Row>(sql`select alt from commerce.product_media where product_id = ${id}::uuid and position = 0`);
+    expect(row.alt).toEqual({ "nb-NO": "Koppen fra siden", "en-GB": "The cup from the side" });
+    const again = await translate.translationWorklist(m, "en-GB", ["products"], "missing", null);
+    expect(again.units.find((u) => u.id === unit.id)?.items.map((i) => i.key) ?? []).not.toContain("media.0");
+  });
+
   it("refuses a language the store does not have, and units it did not ask for", async () => {
     const m = await asMember();
     expect(await translate.applyTranslations(m, "fr-FR", [{ unitId: "menu:x:0", values: { label: "Bonjour" } }])).toMatchObject({ ok: false });

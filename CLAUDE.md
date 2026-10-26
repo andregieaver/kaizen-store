@@ -186,6 +186,14 @@ stand-in is the only fake, and only it is told it is one.
   search section, logged by `logRedirectedSearch()`: a reader that counts searches that found nothing leaves `redirected` out. The AI
   manager's `search_merchandising` reads them and `save_search_synonym`, `save_search_rule`, `delete_search_merchandising` (gate `public`,
   `preflightSearchTool()`) go through the same writers. Both tables are copied with a store (products and terms mapped).
+- **Videos and 3D in the product gallery (wave 6 unit G, D325, `docs/wave-6-catalogue.md` Unit G, `src/lib/product-media.ts`)**: a
+  `product_media` item is a `kind` (`image`, `video`, `model`) with a video's `source` (`upload`, `youtube`, `vimeo`) and `media_url`, while
+  `url`/`thumbnail_url` stay every item's picture (a video's or model's poster), so a reader of a product's picture never asks the kind; a writer
+  of a plain picture uses `pictureItem()`. Limits are `mediaProblems()` (20 items, 5 videos, 3 models) and a file is the store's own only by
+  `ownMediaFile()` (videos in `page-videos`, GLB models in `product-models`, `startModelUpload()`/`registerModel()`), both enforced by
+  `saveProduct()`; a new place that keeps an item's file goes in `mediaUses()`, `rewriteAddresses()` and the store copy's files. The product
+  page never plays a video by itself, loads YouTube or Vimeo only on a press and `<model-viewer>` only on *View in 3D* (a dynamic import,
+  never in the first scripts). An item's words in other languages are `alts`, in the translation worklist as `media.{n}`.
 - Sorting and filtering listings (D78, `src/lib/listing-filters.ts`,
   `src/server/listing.ts`, `FilterDialog`, `ProductListing`): the products
   page, category and tag pages and search results take their filters from

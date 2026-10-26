@@ -493,13 +493,13 @@
       "checkedOn": "2026-10-02"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "partial"
     },
-    "gap": "The product gallery takes pictures only, at most 12 (`MAX_MEDIA` in `src/lib/product-input.ts`; `product_media` holds a url, a thumbnail, a position and alt text per language), compressed in the browser at upload (D213); the editor hides its add button at 12. Video reaches a product page only through a 'Video' custom field (YouTube or Vimeo, D119) or a video or gallery block placed in a product layout (D209's gallery takes uploaded videos and YouTube or Vimeo, but a layout's block is the same for every product that uses it). No uploaded or embedded video in the product's own gallery and no 3D model (glTF or GLB) anywhere (verified).",
-    "bucket": "A",
-    "wave": 6,
+    "gap": "Built (D325, docs/wave-6-catalogue.md Unit G): a product gallery holds up to 20 items in the owner's order, of which at most 5 videos (uploaded MP4 or WebM to 50 MB, compressed in the browser (D213) with a still as its picture, or a YouTube or Vimeo address with a picture the owner chooses) and 3 3D models (one GLB to 20 MB, with a picture); `mediaProblems()` and the own-file check (`ownMediaFile()`) are the editor's limits enforced by `saveProduct()`. The product page shows each in order: an uploaded video in the browser's own player that never plays by itself, YouTube or Vimeo only once pressed, a model as its picture until *View in 3D* loads `<model-viewer>` then. Every item keeps its picture, so cards, the cart and feeds show the first item's; words per language (the translation worklist lists them), the media library says where a video or model is used, and store copies carry them.",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "The gallery takes pictures and videos (uploaded, with a poster, or YouTube and Vimeo) in an order the owner sets, and shows them in that order on the product page (e2e).",
       "A 3D model (glTF or GLB) can be added to a product and is viewable in the gallery with a picture fallback for browsers without support.",
@@ -508,15 +508,22 @@
     ],
     "evidence": {
       "files": [
+        "src/lib/product-media.ts",
         "src/lib/product-input.ts",
+        "src/server/products.ts",
+        "src/server/media.ts",
+        "src/server/media-library.ts",
+        "src/components/admin/product-media-tools.tsx",
         "src/components/admin/product-editor.tsx",
-        "src/lib/custom-fields.ts",
-        "src/lib/video-embed.ts",
-        "src/components/video-view.tsx"
+        "src/components/product-gallery.tsx",
+        "src/lib/store-translate.ts"
       ],
       "tests": [
-        "src/lib/product-input.test.ts",
-        "e2e/custom-fields.spec.ts"
+        "src/lib/product-media.test.ts",
+        "src/server/product-media.int.test.ts",
+        "src/lib/store-translate.test.ts",
+        "src/server/store-translate.int.test.ts",
+        "e2e/product-media.spec.ts"
       ],
       "untested": false
     },
@@ -525,9 +532,17 @@
       "D91",
       "D119",
       "D209",
-      "D213"
+      "D213",
+      "D325"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-26",
+        "from": "partial",
+        "to": "full",
+        "why": "Wave 6 unit G (D325, docs/wave-6-catalogue.md Unit G): the gallery takes pictures, videos (uploaded with a still, or YouTube and Vimeo with a chosen picture) and GLB 3D models in the owner's order and the product page shows them in that order, a video never playing by itself, YouTube only once pressed and the 3D viewer loaded only on View in 3D with the picture until then (e2e/product-media.spec.ts); each item has words per language, in the translation worklist (store-translate tests), and the media library lists where a video or model is used (product-media.int.test.ts); limits (20 items, 5 videos, 3 models, 50 MB and 20 MB) are stated in the editor and enforced by saveProduct(), another store's or site's file refused (product-media.test.ts, product-media.int.test.ts)."
+      }
+    ]
   },
   {
     "id": "catalogue.metafields",

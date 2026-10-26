@@ -12,6 +12,7 @@ import {
   EMAIL_SLOTS,
   fitsItem,
   isLegalPage,
+  mediaKeyPosition,
   menuUnit,
   PRODUCT_FIELDS,
   productUnits,
@@ -20,6 +21,7 @@ import {
   shippingUnit,
   termUnit,
   type Accepted,
+  type MediaTexts,
   type ProductField,
   type ProductTexts,
   type TranslateScope,
@@ -78,9 +80,32 @@ async function productWork(storeId: string, from: string, to: string, mode: Tran
     where p.store_id = ${storeId}::uuid and p.status <> 'archived'
     order by p.created_at, p.id
   `);
+  // The gallery items' words (D325): what the owner wrote in the main language, and the target language's unless it is the title filled in.
+  const media = await db().execute<Row>(sql`
+    select pm.product_id, pm.position, pm.kind, pm.alt ->> ${from} as source, pm.alt ->> ${to} as target
+    from commerce.product_media pm join commerce.products p on p.id = pm.product_id
+    where pm.store_id = ${storeId}::uuid and p.status <> 'archived'
+    order by pm.product_id, pm.position
+  `);
+  const byProduct = new Map<string, MediaTexts[]>();
+  for (const row of rows) byProduct.set(String(row.id), []);
+  const titles = new Map(rows.map((row) => [String(row.id), { from: String(row.title ?? ""), to: String(row.t_title ?? "") }]));
+  for (const m of media) {
+    const list = byProduct.get(String(m.product_id));
+    const title = titles.get(String(m.product_id));
+    if (!list || !title) continue;
+    const source = String(m.source ?? "");
+    const target = String(m.target ?? "");
+    list.push({
+      position: Number(m.position),
+      kind: m.kind === "video" || m.kind === "model" ? m.kind : "image",
+      source: source === title.from ? "" : source,
+      target: target === title.to || target === title.from ? "" : target,
+    });
+  }
   return rows.flatMap((row) => {
     const target = row.has_target ? mainText(row, "t_") : null;
-    return productUnits(String(row.id), mainText(row), target, mode);
+    return productUnits(String(row.id), mainText(row), target, mode, byProduct.get(String(row.id)) ?? []);
   });
 }
 
@@ -392,8 +417,19 @@ async function writeProduct(storeId: string, productId: string, from: string, to
   if (!source) return false;
   const current = existing ? mainText(existing) : null;
   const next = Object.fromEntries(PRODUCT_FIELDS.map((f) => [f.key, texts[f.key as ProductField] ?? current?.[f.key as ProductField] ?? ""])) as ProductTexts;
+  // A gallery item's words in the language (D325), on the item at that position: they need no translated title.
+  let wroteMedia = false;
+  for (const [key, text] of Object.entries(texts)) {
+    const position = mediaKeyPosition(key);
+    if (position === null || typeof text !== "string" || text.trim() === "") continue;
+    await db().execute(sql`
+      update commerce.product_media set alt = alt || jsonb_build_object(${to}::text, ${text.trim()}::text)
+      where store_id = ${storeId}::uuid and product_id = ${productId}::uuid and position = ${position}
+    `);
+    wroteMedia = true;
+  }
   // A translation needs a title, so the rest of it cannot be kept without one.
-  if (next.title.trim() === "") return false;
+  if (next.title.trim() === "") return wroteMedia;
   await db().execute(sql`
     insert into commerce.product_translations (store_id, product_id, locale, title, description, safety_information, seo_title, seo_description, excerpt)
     values (${storeId}::uuid, ${productId}::uuid, ${to}, ${next.title}, ${next.description}, ${next.safetyInformation}, ${next.seoTitle}, ${next.seoDescription}, ${next.excerpt})
