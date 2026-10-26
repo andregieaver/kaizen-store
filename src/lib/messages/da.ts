@@ -636,6 +636,18 @@ export const da: Messages = {
   galleryNext: "Næste billede",
   galleryShow: (n: number) => `Vis billede ${n}`,
   gallerySlide: (n: number, total: number) => `${n} af ${total}`,
+  /** Videos and 3D models in a product's gallery (D325). */
+  productMedia: {
+    video: "Video",
+    model: "3D-model",
+    view3d: "Vis i 3D",
+    loading3d: "Indlæser 3D-modellen …",
+    controls3d: "Træk for at dreje den, knib eller rul for at zoome.",
+    play: "Afspil video",
+    playsFrom: (source: string) => `Afspilles fra ${source}`,
+    showVideo: (n: number) => `Vis video ${n}`,
+    showModel: (n: number) => `Vis 3D-model ${n}`,
+  },
   chooseMarket: "Vælg land",
   chooseLanguage: "Vælg sprog",
   chooseCurrency: "Vælg valuta",

@@ -653,6 +653,18 @@ export const en = {
   galleryNext: "Next picture",
   galleryShow: (n: number) => `Show picture ${n}`,
   gallerySlide: (n: number, total: number) => `${n} of ${total}`,
+  /** Videos and 3D models in a product's gallery (D325). */
+  productMedia: {
+    video: "Video",
+    model: "3D model",
+    view3d: "View in 3D",
+    loading3d: "Loading the 3D model …",
+    controls3d: "Drag to turn it, pinch or scroll to zoom.",
+    play: "Play video",
+    playsFrom: (source: string) => `Plays from ${source}`,
+    showVideo: (n: number) => `Show video ${n}`,
+    showModel: (n: number) => `Show 3D model ${n}`,
+  },
   chooseMarket: "Choose country",
   chooseLanguage: "Choose language",
   chooseCurrency: "Choose currency",

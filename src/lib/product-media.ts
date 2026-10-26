@@ -85,3 +85,6 @@ export function mediaFileOk(item: MediaItemShape, storeId: string): boolean {
 export function pictureItem(url: string, thumbnailUrl: string | null, alt = "") {
   return { kind: "image" as const, source: null, mediaUrl: null, url, thumbnailUrl, alt, alts: {} as Record<string, string> };
 }
+
+/** The editor's upload of a picture to show first (a video's or model's poster): shrunk, with its small copy, or why it failed. */
+export type UploadPoster = (file: File) => Promise<{ url: string; thumbnailUrl: string } | { problem: string }>;

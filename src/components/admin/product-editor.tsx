@@ -79,7 +79,8 @@ import { countWords, fillWords } from "@/lib/admin-fill";
 import { contentState, withoutContentWhereNotGoods } from "@/lib/unit-price-editor";
 import { GRID_FROM, filterVariants, setForShown, skuPatternProblem, type GridChange, type VariantFilter } from "@/lib/variant-grid";
 import { useVirtualRows } from "@/components/admin/virtual-rows";
-import { pictureItem } from "@/lib/product-media";
+import { MAX_MODELS, MAX_VIDEOS, MODEL_MAX_MB, PRODUCT_VIDEO_MAX_MB, pictureItem } from "@/lib/product-media";
+import { AddMedia, OtherLanguageWords, kindWords } from "@/components/admin/product-media-tools";
 
 const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm";
 const label = "flex flex-col gap-1 text-sm font-medium";
@@ -325,7 +326,14 @@ export function ProductEditor(props: Props) {
         productUrl={`${props.siteOrigin}${props.storefrontPath ?? ""}/p/${product.handle || slugify(title) || "product"}`}
         suggest={(request) => suggestTextAction(storeSlug, productId, request)}
       />
-      <MediaSection storeSlug={storeSlug} product={product} update={update} uploads={uploads} />
+      <MediaSection
+        storeSlug={storeSlug}
+        product={product}
+        update={update}
+        uploads={uploads}
+        otherLocales={context.locales.filter((l) => l !== context.primaryLocale)}
+        languageNames={languageNames}
+      />
       <section aria-labelledby="terms-heading" className={card}>
         <h2 id="terms-heading" className="mb-1 text-title text-ink">
           {w.terms.title}
@@ -738,7 +746,14 @@ async function uploadPicture(
   }
 }
 
-function MediaSection({ storeSlug, product, update, uploads }: SectionProps & { storeSlug: string; uploads: boolean }) {
+function MediaSection({
+  storeSlug,
+  product,
+  update,
+  uploads,
+  otherLocales,
+  languageNames,
+}: SectionProps & { storeSlug: string; uploads: boolean; otherLocales: string[]; languageNames: Record<string, string> }) {
   const w = useAdminText("product");
   const [busy, setBusy] = useState(0);
   const [problem, setProblem] = useState<string | null>(null);
@@ -760,6 +775,9 @@ function MediaSection({ storeSlug, product, update, uploads }: SectionProps & { 
     }
   };
 
+  const patch = (index: number, change: Partial<ProductInput["media"][number]>) =>
+    update((p) => ({ ...p, media: p.media.map((m, i) => (i === index ? { ...m, ...change } : m)) }));
+
   const move = (from: number, to: number) =>
     update((p) => {
       const media = [...p.media];
@@ -773,31 +791,37 @@ function MediaSection({ storeSlug, product, update, uploads }: SectionProps & { 
       <h2 id="media-heading" className="mb-1 text-title text-ink">
         {w.media.title}
       </h2>
-      <p className="mb-4 text-sm text-muted">{w.media.intro}</p>
+      <p className="mb-1 text-sm text-muted">{w.media.intro}</p>
+      <p className="mb-4 text-xs text-muted">
+        {fillWords(w.media.limits, { max: MAX_MEDIA, videos: MAX_VIDEOS, videoMb: PRODUCT_VIDEO_MAX_MB, models: MAX_MODELS, modelMb: MODEL_MAX_MB })}
+      </p>
       {product.media.length > 0 && (
         <ol className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
           {product.media.map((media, index) => (
-            <li key={media.url} className="flex flex-col gap-2">
-              {/* eslint-disable-next-line @next/next/no-img-element -- admin preview of an uploaded file */}
-              <img
-                src={media.thumbnailUrl ?? media.url}
-                alt=""
-                className="aspect-square w-full rounded-md border border-line bg-sunken object-cover"
-              />
+            <li key={`${media.url}:${media.mediaUrl ?? ""}`} className="flex flex-col gap-2">
+              <div className="relative">
+                {/* eslint-disable-next-line @next/next/no-img-element -- admin preview of an uploaded file */}
+                <img
+                  src={media.thumbnailUrl ?? media.url}
+                  alt=""
+                  className="aspect-square w-full rounded-md border border-line bg-sunken object-cover"
+                />
+                {kindWords(media, w.media) && (
+                  <span className="absolute bottom-2 left-2 rounded-pill bg-inverse px-2 py-0.5 text-caption text-inverse-ink">
+                    {kindWords(media, w.media)}
+                  </span>
+                )}
+              </div>
               <label className="flex flex-col gap-1 text-xs font-medium">
-                {w.media.describe}
+                {media.kind === "video" ? w.media.describeVideo : media.kind === "model" ? w.media.describeModel : w.media.describe}
                 <input
                   value={media.alt}
-                  onChange={(e) =>
-                    update((p) => ({
-                      ...p,
-                      media: p.media.map((m, i) => (i === index ? { ...m, alt: e.target.value } : m)),
-                    }))
-                  }
+                  onChange={(e) => patch(index, { alt: e.target.value })}
                   placeholder={w.media.altPlaceholder}
                   className={`${input} min-h-9 text-xs`}
                 />
               </label>
+              <OtherLanguageWords item={media} locales={otherLocales} names={languageNames} onChange={(alts) => patch(index, { alts })} w={w.media} />
               <div className="flex gap-2 text-xs">
                 <button
                   type="button"
@@ -874,6 +898,20 @@ function MediaSection({ storeSlug, product, update, uploads }: SectionProps & { 
             </button>
           </div>
         ))}
+      {uploads && product.media.length < MAX_MEDIA && (
+        <div className="mt-3">
+          <AddMedia
+            storeSlug={storeSlug}
+            media={product.media}
+            onAdd={(item) => update((p) => ({ ...p, media: [...p.media, item] }))}
+            uploadPoster={async (file) => {
+              const outcome = await uploadPicture(storeSlug, file, w.media.unreadable);
+              return "url" in outcome ? outcome : { problem: outcome.problem };
+            }}
+            words={w.media}
+          />
+        </div>
+      )}
       {problem && (
         <p role="alert" className="mt-2 text-sm text-danger-text">
           {problem}

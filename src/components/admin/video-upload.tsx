@@ -22,7 +22,7 @@ const VIDEO_TYPES = ["video/mp4", "video/webm"];
  * plays, and instead of it for people who prefer less motion. Null when
  * this browser cannot play the video to take one.
  */
-function takeStill(file: File): Promise<File | null> {
+export function takeStill(file: File): Promise<File | null> {
   return new Promise((resolve) => {
     const url = URL.createObjectURL(file);
     const video = document.createElement("video");

@@ -125,8 +125,19 @@ export function ProductPartView({ block, ctx }: { block: ProductBlock; ctx: Prod
             label: m.galleryLabel,
             previous: m.galleryPrevious,
             next: m.galleryNext,
-            show: images.map((_, i) => m.galleryShow(i + 1)),
+            show: images.map((image, i) =>
+              image.kind === "video" ? m.productMedia.showVideo(i + 1) : image.kind === "model" ? m.productMedia.showModel(i + 1) : m.galleryShow(i + 1),
+            ),
             slide: images.map((_, i) => m.gallerySlide(i + 1, images.length)),
+            media: {
+              video: m.productMedia.video,
+              model: m.productMedia.model,
+              view3d: m.productMedia.view3d,
+              loading3d: m.productMedia.loading3d,
+              controls3d: m.productMedia.controls3d,
+              play: m.productMedia.play,
+              playsFrom: { youtube: m.productMedia.playsFrom("YouTube"), vimeo: m.productMedia.playsFrom("Vimeo") },
+            },
           }}
         />
       );

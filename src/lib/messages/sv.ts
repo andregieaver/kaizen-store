@@ -636,6 +636,18 @@ export const sv: Messages = {
   galleryNext: "Nästa bild",
   galleryShow: (n: number) => `Visa bild ${n}`,
   gallerySlide: (n: number, total: number) => `${n} av ${total}`,
+  /** Videos and 3D models in a product's gallery (D325). */
+  productMedia: {
+    video: "Video",
+    model: "3D-modell",
+    view3d: "Visa i 3D",
+    loading3d: "Laddar 3D-modellen …",
+    controls3d: "Dra för att vrida den, nyp eller scrolla för att zooma.",
+    play: "Spela upp video",
+    playsFrom: (source: string) => `Spelas upp från ${source}`,
+    showVideo: (n: number) => `Visa video ${n}`,
+    showModel: (n: number) => `Visa 3D-modell ${n}`,
+  },
   chooseMarket: "Välj land",
   chooseLanguage: "Välj språk",
   chooseCurrency: "Välj valuta",
