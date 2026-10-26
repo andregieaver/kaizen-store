@@ -3326,6 +3326,20 @@
       "when": 1792980281248,
       "tag": "20261026020441_company_buying_sql",
       "breakpoints": true
+    },
+    {
+      "idx": 475,
+      "version": "7",
+      "when": 1792998976060,
+      "tag": "20261026071615_brand_profiles",
+      "breakpoints": true
+    },
+    {
+      "idx": 476,
+      "version": "7",
+      "when": 1792999003299,
+      "tag": "20261026071643_brand_profiles_rls",
+      "breakpoints": true
     }
   ]
 }

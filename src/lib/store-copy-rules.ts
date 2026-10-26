@@ -204,6 +204,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   search_settings: never("A web search key is a secret (D329)."),
   research_sources: never("What a store's AI read on the web is that store's research (D329)."),
   research_notes: never("A store's research notes are its own (D329): a copy researches for itself."),
+  brand_profiles: never("A brand set down in words (D330) is its own store's: a copy sets its own."),
   legal_ai_settings: never("Having the AI write a store's legal pages is the owner's choice, agreed to in words (D311): a copy chooses for itself."),
   legal_ai_writes: never("The AI's writes of a store's legal pages (D311) are that store's history: a copy asks for its own."),
   page_looks: never("A look at a page found what it found in that store (D310): a copy looks again."),

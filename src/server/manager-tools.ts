@@ -67,6 +67,7 @@ import {
   setPagePlaceTool,
 } from "./site-tools";
 import { compareOptionsTool, listResearchNotesTool, readWebPageTool, saveResearchNoteTool, searchWebTool } from "./research-tools";
+import { getBrandTool, setBrandTool } from "./brand-tools";
 import { getStore, type Store } from "./stores";
 import { platformModes } from "./stripe";
 
@@ -546,6 +547,8 @@ const PLATFORM_HANDLERS: Record<PlatformToolName, Handler> = {
   save_research_note: (ctx: ManagerContext, input: PlatformToolInput<"save_research_note">) => saveResearchNoteTool(ownSite(ctx), input),
   list_research_notes: (ctx: ManagerContext, input: PlatformToolInput<"list_research_notes">) => listResearchNotesTool(ownSite(ctx), input),
   compare_options: (ctx: ManagerContext, input: PlatformToolInput<"compare_options">) => compareOptionsTool(ownSite(ctx), input),
+  get_brand: (ctx: ManagerContext) => getBrandTool(ownSite(ctx)),
+  set_brand: (ctx: ManagerContext, input: PlatformToolInput<"set_brand">) => setBrandTool(ownSite(ctx), input),
   list_ab_tests: (_ctx: ManagerContext, input: PlatformToolInput<"list_ab_tests">) => listAbTests(input),
   explain_ab_test: (ctx: ManagerContext, input: PlatformToolInput<"explain_ab_test">) => explainAbTest(ctx.account, input),
   get_referral_program: getReferralProgram,

@@ -58,6 +58,8 @@ export const REVIEW_READ_TOOLS = [
   "search_web",
   "read_web_page",
   "list_research_notes",
+  // The brand (D330): a review may read it.
+  "get_brand",
 ] as const;
 
 export type StartDecision = { start: true } | { start: false; why: string };

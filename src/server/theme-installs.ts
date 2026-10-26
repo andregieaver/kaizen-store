@@ -334,6 +334,33 @@ export async function saveInstallLook(
   return { ok: true, ...patch };
 }
 
+/**
+ * Adds a look of the store's own to its theme library, not live (D330, `docs/ai-autopilot.md` 14.2): the designed theme settings (checked as
+ * the live theme's are) with the live look's header, footer, product page and CSS, so only colours, fonts and styles differ. Visitors see
+ * nothing until the owner switches to it. Audited `store.theme_designed`.
+ */
+export async function addOwnLook(storeId: string, accountId: string, title: string, theme: unknown): Promise<InstallResult<{ id: string; title: string }>> {
+  if (!isUuid(storeId) || !isUuid(accountId)) return refuse(UNKNOWN);
+  const refusal = await lookChangeRefusal(storeId, accountId);
+  if (refusal) return refuse(refusal);
+  const name = title.trim().slice(0, 80);
+  if (!name) return refuse("Give the look a name.");
+  if ((await installCount(storeId)) >= INSTALLS_MAX) return refuse(INSTALLS_FULL);
+  const checked = await checkStoreTheme(storeId, theme);
+  if (!checked.ok) return checked;
+  const live = await liveLook(storeId);
+  if (!live) return refuse(UNKNOWN);
+  const look = { theme: checked.theme, css: live.css, headerId: live.headerId, footerId: live.footerId, productLayoutId: live.productLayoutId };
+  const [row] = await db().execute<Row>(sql`
+    insert into commerce.store_theme_installs (store_id, preset_id, version_id, title, look, live, installed_by)
+    values (${storeId}::uuid, null, null, ${name}, ${JSON.stringify(look)}::jsonb, false, ${accountId}::uuid)
+    returning id
+  `);
+  const id = String(row.id);
+  await audit(accountId, storeId, "store.theme_designed", { install: id, title: name }, { area: "website", target: { type: "theme_install", id } });
+  return { ok: true, id, title: name };
+}
+
 /** Whether an installed theme takes new versions of its theme by itself (D245); on until the owner switches it off. */
 export async function setFollowsUpdates(storeId: string, installId: string, accountId: string, follows: boolean): Promise<InstallResult<{ title: string }>> {
   if (!isUuid(storeId) || !isUuid(installId) || !isUuid(accountId)) return refuse(UNKNOWN);

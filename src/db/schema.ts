@@ -13209,6 +13209,32 @@ export const researchSources = commerce.table(
   ],
 );
 
+/** A store's brand set down in words (D330, `docs/ai-autopilot.md` 14.1): one row per store and one for Kaizena Flow's own site; written only by `src/server/brand.ts`. */
+export const brandProfiles = commerce.table(
+  "brand_profiles",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** Null for Kaizena Flow's own site. */
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    tagline: text("tagline").notNull().default(""),
+    voice: text("voice").notNull().default(""),
+    audience: text("audience").notNull().default(""),
+    values: text("values").array().notNull().default(sql`'{}'::text[]`),
+    avoid: text("avoid").array().notNull().default(sql`'{}'::text[]`),
+    updatedBy: uuid("updated_by").references(() => accounts.id, { onDelete: "set null" }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique("brand_profiles_store_key").on(t.storeId).nullsNotDistinct(),
+    index("brand_profiles_updated_by_idx").on(t.updatedBy),
+    check("brand_profiles_tagline", sql`length(${t.tagline}) <= 120`),
+    check("brand_profiles_voice", sql`length(${t.voice}) <= 600`),
+    check("brand_profiles_audience", sql`length(${t.audience}) <= 400`),
+    check("brand_profiles_values", sql`cardinality(${t.values}) <= 5`),
+    check("brand_profiles_avoid", sql`cardinality(${t.avoid}) <= 10`),
+  ],
+);
+
 /** A store's research notes and comparisons (D329), written only by `src/server/research.ts`, each citing sources the store opened. */
 export const researchNotes = commerce.table(
   "research_notes",

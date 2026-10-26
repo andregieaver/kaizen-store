@@ -20,6 +20,8 @@ import { ADJUST_REASONS, BACKORDER_DAYS_MAX, BACKORDER_DAYS_MIN, MOVEMENT_REASON
 import { backorderSummary, setStockSummary } from "./stock-tools";
 import { featureSwitchSummaryOf, listFeaturesInput, setFeatureInput } from "./feature-tools";
 import { addThemeInput, listThemesInput, makeThemeLiveInput, tryThemeInput } from "./design-tools";
+import { brandInput } from "./brand";
+import { designLookInput } from "./brand-design";
 import { compareOptionsInput, listResearchNotesInput, readWebPageInput, saveResearchNoteInput, searchWebInput } from "./research";
 import { archiveOrdersInput, createDraftOrderInput, listDraftOrdersInput, listOrdersInput, sendDraftOrderInput, sendDraftSummary, tagOrdersInput } from "./order-ops-tools";
 import { categoryApprovalSummary, listCategoriesInput, updateCategoryInput } from "./category-tools";
@@ -147,6 +149,22 @@ export const RESEARCH_TOOLS = [
     "compare_options",
     "Compares options (such as business ideas, services or suppliers) on weighted criteria: you give each option a score of 1 to 5 per criterion with a reason, and the totals, percentages and ranking are worked out for you and kept as a note. Never add up scores yourself; repeat the ranking as it comes back. Sources must be addresses searched or read in the last 30 days.",
     compareOptionsInput,
+  ),
+] as const satisfies readonly OwnerTool[];
+
+/**
+ * The brand set down in words (D330, `docs/ai-autopilot.md` 14.1), the same for a store and Kaizena Flow's own site (`PLATFORM_TOOLS`).
+ */
+export const BRAND_TOOLS = [
+  tool(
+    "get_brand",
+    "The brand set down in words: its tagline, how it speaks, who it is for, what it stands for and the words it never uses. Read it before writing pages, products, emails or answers to customers, and write in that voice.",
+    z.object({}),
+  ),
+  tool(
+    "set_brand",
+    "Keeps the brand in words: a tagline customers may see (no claims the business cannot show), its voice, its audience, up to five values and up to ten words to avoid. Only the fields given change. Only staff see it, except the tagline where the store shows it.",
+    brandInput,
   ),
 ] as const satisfies readonly OwnerTool[];
 
@@ -415,6 +433,7 @@ export const OWNER_TOOLS = [
   ),
   ...SITE_TOOLS,
   ...RESEARCH_TOOLS,
+  ...BRAND_TOOLS,
   // Eyes (D310, `docs/ai-autopilot.md` 9): photographed at a phone's and a computer's width and judged by the model that sees pictures.
   tool(
     "look_at_page",
@@ -523,6 +542,11 @@ export const OWNER_TOOLS = [
     "add_theme",
     "Adds a theme, or one of its presets, to the store's theme library without making it live, as Add to my themes does: visitors see nothing of it. Answers with its install id and the address where the person can see the store's own pages in it (try_theme). Use a theme's id and a preset's key from list_themes.",
     addThemeInput,
+  ),
+  tool(
+    "design_look",
+    "Designs a look of the store's own from the brand: its main colour (and, if you like, its background and text colours and the colour mode), heading and body fonts from Google Fonts' catalogue, and the named choices of Design settings (heading weight and case, button style and corners, card and field corners, width, header, product cards). Every other colour is worked out so all text reads in light and dark. It is added to the theme library, not live, with the live look's header, footer and product page; visitors see nothing until make_theme_live. Answers with the install id and the colours worked out.",
+    designLookInput,
   ),
   tool(
     "try_theme",

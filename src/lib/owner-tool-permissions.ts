@@ -122,6 +122,10 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   try_theme: "website:read",
   add_theme: "website:write",
   make_theme_live: "website:write",
+  // The brand and a look of the store's own (D330): reading the brand, keeping it and designing a look only staff see until made live.
+  design_look: "website:write",
+  get_brand: "website:read",
+  set_brand: "website:write",
   // Looks at pages (D310): they read the site and change nothing.
   look_at_page: "website:read",
   look_at_store: "website:read",

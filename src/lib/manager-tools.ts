@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { RESEARCH_TOOLS, SITE_TOOLS, tool, type OwnerTool } from "./owner-tools";
+import { BRAND_TOOLS, RESEARCH_TOOLS, SITE_TOOLS, tool, type OwnerTool } from "./owner-tools";
 import { savePlatformMenuInput, setPlatformPlaceInput } from "./site-tools";
 import { FOLLOW_UP_REPEATS, TASK_MAX } from "./follow-ups";
 import { goalTargetInput, TARGETS_MAX } from "./autopilot-goals";
@@ -151,6 +151,7 @@ export const PLATFORM_TOOLS = [
   ),
   ...SITE_TOOLS,
   ...RESEARCH_TOOLS,
+  ...BRAND_TOOLS,
   tool(
     "set_page_place",
     "Shows one of Kaizena Flow's own PUBLISHED pages as its front page, its blog or its 404 page, or the standard one again with page null (the theme store's pages are chosen from Themes). A page is in one place at a time. Needs the admin's approval.",
@@ -380,6 +381,9 @@ export const TOOL_WORDS: Record<string, string> = {
   add_theme: "Adding the theme",
   try_theme: "Finding the theme's preview",
   make_theme_live: "Preparing the theme",
+  design_look: "Designing the look",
+  get_brand: "Reading the brand",
+  set_brand: "Keeping the brand",
   look_at_page: "Looking at the page",
   look_at_store: "Looking at the store",
   get_page_look: "Reading what the look found",

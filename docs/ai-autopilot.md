@@ -46,6 +46,7 @@ proportion (autonomy levels and budgets the owner sets), a voice (a decisions pa
 | C | D310 | Eyes: the agent photographs its drafts and judges them with the model that sees pictures | `ai.ai-page-and-theme-generation` |
 | D | D328 | The autopilot keeps going: it looks at each active goal again when a plan for it ends and on a schedule, makes the next plan, and starts it itself where the owner allows | `ai.workflow-builder-with-ai-generation`, `ai.proactive-insights` |
 | E | D329 | Web research: search the web through a pluggable search service (Brave first) on Kaizena Flow's key, metered; read a public page; keep findings with their sources; compare options with scores worked out in code | `ai.admin-ai-assistant-that-performs-tasks` |
+| F | D330 | Brand and look: a brand profile (tagline, voice, audience, values, words to avoid) and a look of the store's own designed from a few brand colours and fonts, palette and contrast worked out in code, added to the theme library to try and make live; logo and favicon in a second step | `ai.ai-page-and-theme-generation` |
 
 Each unit is its own commit (or a few), with its own tests, decision row and parity moves, shipped before the next starts. Each unit's
 section below is written in full before it is built; L is outlined and gets its detail when its turn comes.
@@ -941,3 +942,58 @@ Unit: `parseBraveResults()` on a recorded answer and on a broken one; `pageText(
 `compareOptions()` (weights, ties, a missing score refused); the search price in `callCost()` and its SQL twin. Integration (a stand-in
 for the search API and a local page with `REPLICATE_ALLOW_PRIVATE`): a search recorded as usage and a source; no search without settings
 or past the day's limit; a page read and kept as a source; a note refused for a source never opened; a comparison kept with its totals.
+
+## 14. Unit F (D330): brand and look
+
+Written on 2026-10-26 from the owner's goal ("create a branding and design profile") and a read of themes as built (D60, D241, D244, A4).
+Until now the agent could only choose one of Kaizena Flow's themes. Unit F lets it set the brand down in words and give the store a look of
+its own. The model chooses colours, fonts and a few named styles, and writes the brand's words. Code works out every colour the theme
+needs, holds each pair to the readability the theme checker asks for, and places the look as a theme the owner tries before it goes live.
+Built in two steps.
+
+### 14.1 Step F1: the brand profile
+
+- `commerce.brand_profiles` (one row per store, and one for Kaizena Flow's own site with no store), written only by `src/server/brand.ts`:
+  `tagline` (up to 120 characters), `voice` (how the brand speaks, up to 600), `audience` (who it is for, up to 400), `values` (up to five
+  short words) and `avoid` (up to ten words or phrases it never uses).
+- The tagline passes `findClaims()` because it may be shown to customers. The rest is guidance for the AI's own writing and is never
+  shown to customers.
+- Tools: `get_brand` (`website:read`) and `set_brand` (`website:write`, ungated: only staff see it), for a store and for Kaizena Flow's
+  own site.
+- A goal's review (D328) may read the brand.
+
+### 14.2 Step F1: a look of the store's own
+
+- `design_look` (store only, `website:write`, ungated: it only adds a theme to the store's library, and visitors see nothing). It takes:
+  - a title, and what to start from: the live look, or one of the built-in templates (`THEME_TEMPLATES`: minimal, warm, bold);
+  - the brand's accent colour, and optionally its background and text colours and the colour mode;
+  - heading and body fonts from the font catalogue (`findFont()`);
+  - the named choices the Design page offers: heading weight and case, button style and corners, card and field corners, content width,
+    header alignment and background, product card picture and style.
+- `designedTheme()` (`src/lib/brand-design.ts`, pure) lays these over the base. It works out every colour of both palettes from the few
+  given:
+  - surface, secondary text and lines are mixed from the background and text;
+  - text on the accent is white or near black, whichever reads better;
+  - the dark set is tinted with the accent;
+  - each pair `themeWarnings()` checks (text, secondary text and text on the surface against their backgrounds, and text on the accent) is
+    moved until it reaches 4.5:1. The main text aims for 7:1, and an accent on the dark background for 3:1.
+  - So a designed look never carries a readability warning (tested over many colours).
+- `addOwnLook()` (`src/server/theme-installs.ts`, the installs' one module) adds it as an install that is not live (`preset_id` null, like
+  *Custom*). It keeps the live look's header, footer, product page and CSS, so only colours, fonts and styles differ. It applies the same
+  checks as editing an install (`lookChangeRefusal()`, `checkStoreTheme()`, `INSTALLS_MAX`), installs the fonts first (`installFonts()`)
+  and is audited as `store.theme_designed`.
+- It is then tried with `try_theme`, made live with `make_theme_live` (A4: always the owner's yes, or the autopilot at the owner's
+  Design level, free since it is the store's own) and checked with `look_at_store` (D310).
+
+### 14.3 Step F2 (next): logo, icon and the brand in the writers
+
+A logo drawn by code from the brand's name in its heading font and colours (the picture model writes no words reliably), a favicon from
+it, both through the media library. The brand profile is given to the page studio, the product writer, broadcasts' suggestions and the chat
+agent's tone, always as guidance under the claims filter. Detailed when its turn comes.
+
+### 14.4 Tests
+
+Unit: `designedTheme()` for each template and the live look; no `themeWarnings()` for a few hundred accent and background colours; fonts
+and named choices kept; brand input limits. Integration: `set_brand` and `get_brand` per store and for the platform, a claim in the tagline
+refused; `design_look` adds an install that is not live and changes nothing visitors see; switching to it makes the designed theme the
+store's; a font not in the catalogue is refused.
