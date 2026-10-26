@@ -6485,6 +6485,8 @@ export const aiModelPrices = commerce.table(
     perAudioMinute: numeric("per_audio_minute", { precision: 14, scale: 6 }),
     /** US dollars per million characters spoken (text to speech); null: none. */
     perMillionCharacters: numeric("per_million_characters", { precision: 14, scale: 6 }),
+    /** US dollars per thousand web searches (D329); null: none. */
+    perThousandSearches: numeric("per_thousand_searches", { precision: 14, scale: 6 }),
     effectiveFrom: timestamp("effective_from", { withTimezone: true }).notNull().defaultNow(),
     note: text("note").notNull().default(""),
     createdAt: createdAt(),
@@ -6495,7 +6497,7 @@ export const aiModelPrices = commerce.table(
     index("ai_model_prices_created_by_idx").on(t.createdBy),
     check(
       "ai_model_prices_amounts",
-      sql`${t.inputPerMillion} >= 0 and ${t.outputPerMillion} >= 0 and ${t.perImage} >= 0 and ${t.perAudioMinute} >= 0 and ${t.perMillionCharacters} >= 0`,
+      sql`${t.inputPerMillion} >= 0 and ${t.outputPerMillion} >= 0 and ${t.perImage} >= 0 and ${t.perAudioMinute} >= 0 and ${t.perMillionCharacters} >= 0 and ${t.perThousandSearches} >= 0`,
     ),
     check("ai_model_prices_names", sql`length(${t.provider}) between 1 and 60 and length(${t.model}) between 1 and 200`),
   ],
@@ -8548,6 +8550,8 @@ export const aiUsage = commerce.table(
     audioBytes: integer("audio_bytes").notNull().default(0),
     audioSeconds: integer("audio_seconds").notNull().default(0),
     images: integer("images").notNull().default(0),
+    /** Web searches made (D329). */
+    searches: integer("searches").notNull().default(0),
     /** The tokens are counted here (about four characters each) because the provider did not say. */
     estimated: boolean("estimated").notNull().default(false),
     /** A live voice call's session at its provider, to add its length when it ends. */
@@ -8559,10 +8563,10 @@ export const aiUsage = commerce.table(
     index("ai_usage_owner_idx").on(t.ownerAccountId, t.createdAt),
     index("ai_usage_actor_idx").on(t.actorAccountId),
     check("ai_usage_source", sql`${t.source} in ('platform', 'store')`),
-    check("ai_usage_kind", sql`${t.kind} in ('text', 'embedding', 'transcription', 'speech', 'image', 'live')`),
+    check("ai_usage_kind", sql`${t.kind} in ('text', 'embedding', 'transcription', 'speech', 'image', 'live', 'search')`),
     check(
       "ai_usage_amounts",
-      sql`${t.requests} >= 0 and ${t.failed} >= 0 and ${t.inputTokens} >= 0 and ${t.outputTokens} >= 0 and ${t.characters} >= 0 and ${t.audioBytes} >= 0 and ${t.audioSeconds} >= 0 and ${t.images} >= 0`,
+      sql`${t.requests} >= 0 and ${t.failed} >= 0 and ${t.inputTokens} >= 0 and ${t.outputTokens} >= 0 and ${t.characters} >= 0 and ${t.audioBytes} >= 0 and ${t.audioSeconds} >= 0 and ${t.images} >= 0 and ${t.searches} >= 0`,
     ),
   ],
 );
@@ -13126,6 +13130,81 @@ export const autopilotReviews = commerce.table(
     index("autopilot_reviews_plan_idx").on(t.planId),
     check("autopilot_reviews_status", sql`${t.status} in ('running', 'done', 'skipped', 'failed')`),
     check("autopilot_reviews_outcome", sql`${t.outcome} is null or length(${t.outcome}) <= 500`),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// Web research (D329, `docs/ai-autopilot.md` 13)
+// ---------------------------------------------------------------------------
+
+/** The web search service and its key: Kaizena Flow's (`store_id` null); written only by `src/server/web-search-settings.ts`. */
+export const searchSettings = commerce.table(
+  "search_settings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    /** An id of `SEARCH_APIS` (`src/lib/web-search.ts`). */
+    provider: text("provider").notNull(),
+    apiKeyEncrypted: text("api_key_encrypted").notNull(),
+    apiKeyHint: text("api_key_hint").notNull(),
+    enabled: boolean("enabled").notNull().default(true),
+    updatedBy: uuid("updated_by").references(() => accounts.id, { onDelete: "set null" }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique("search_settings_store_key").on(t.storeId).nullsNotDistinct(),
+    index("search_settings_updated_by_idx").on(t.updatedBy),
+    check("search_settings_provider", sql`${t.provider} in ('brave')`),
+  ],
+);
+
+/** What a store's AI searched for or read on the web (D329): the sources a research note may cite; kept 90 days. */
+export const researchSources = commerce.table(
+  "research_sources",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    url: text("url").notNull(),
+    title: text("title").notNull().default(""),
+    /** A page's readable text's SHA-256, to tell when it changed. */
+    textHash: text("text_hash"),
+    accountId: uuid("account_id").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("research_sources_store_idx").on(t.storeId, t.createdAt),
+    index("research_sources_url_idx").on(t.storeId, t.url),
+    index("research_sources_account_idx").on(t.accountId),
+    check("research_sources_kind", sql`${t.kind} in ('search', 'page')`),
+    check("research_sources_url", sql`length(${t.url}) between 1 and 2000`),
+    check("research_sources_title", sql`length(${t.title}) <= 300`),
+  ],
+);
+
+/** A store's research notes and comparisons (D329), written only by `src/server/research.ts`, each citing sources the store opened. */
+export const researchNotes = commerce.table(
+  "research_notes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull().default("note"),
+    topic: text("topic").notNull(),
+    finding: text("finding").notNull(),
+    /** The addresses it rests on, each searched or read by the store within 30 days when the note was kept. */
+    sources: text("sources").array().notNull().default(sql`'{}'::text[]`),
+    /** A comparison's criteria, options and totals worked out in code (`compareOptions()`). */
+    data: jsonb("data"),
+    accountId: uuid("account_id").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("research_notes_store_idx").on(t.storeId, t.createdAt),
+    index("research_notes_account_idx").on(t.accountId),
+    check("research_notes_kind", sql`${t.kind} in ('note', 'comparison')`),
+    check("research_notes_topic", sql`length(${t.topic}) between 1 and 200`),
+    check("research_notes_finding", sql`length(${t.finding}) between 1 and 2000`),
+    check("research_notes_sources", sql`cardinality(${t.sources}) <= 20`),
   ],
 );
 

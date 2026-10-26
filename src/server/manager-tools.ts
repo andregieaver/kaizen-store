@@ -66,6 +66,7 @@ import {
   setHeaderFooterTool,
   setPagePlaceTool,
 } from "./site-tools";
+import { compareOptionsTool, listResearchNotesTool, readWebPageTool, saveResearchNoteTool, searchWebTool } from "./research-tools";
 import { getStore, type Store } from "./stores";
 import { platformModes } from "./stripe";
 
@@ -540,6 +541,11 @@ const PLATFORM_HANDLERS: Record<PlatformToolName, Handler> = {
   set_header_footer: (ctx: ManagerContext, input: PlatformToolInput<"set_header_footer">) => setHeaderFooterTool(ownSite(ctx), input),
   set_page_place: (ctx: ManagerContext, input: PlatformToolInput<"set_page_place">) => setPagePlaceTool(ownSite(ctx), input),
   save_menu: (ctx: ManagerContext, input: PlatformToolInput<"save_menu">) => saveMenuTool(ownSite(ctx), input),
+  search_web: (ctx: ManagerContext, input: PlatformToolInput<"search_web">) => searchWebTool(ownSite(ctx), input),
+  read_web_page: (ctx: ManagerContext, input: PlatformToolInput<"read_web_page">) => readWebPageTool(ownSite(ctx), input),
+  save_research_note: (ctx: ManagerContext, input: PlatformToolInput<"save_research_note">) => saveResearchNoteTool(ownSite(ctx), input),
+  list_research_notes: (ctx: ManagerContext, input: PlatformToolInput<"list_research_notes">) => listResearchNotesTool(ownSite(ctx), input),
+  compare_options: (ctx: ManagerContext, input: PlatformToolInput<"compare_options">) => compareOptionsTool(ownSite(ctx), input),
   list_ab_tests: (_ctx: ManagerContext, input: PlatformToolInput<"list_ab_tests">) => listAbTests(input),
   explain_ab_test: (ctx: ManagerContext, input: PlatformToolInput<"explain_ab_test">) => explainAbTest(ctx.account, input),
   get_referral_program: getReferralProgram,

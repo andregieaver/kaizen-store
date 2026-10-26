@@ -154,6 +154,30 @@ describe("what pictures, speech and live voice calls cost (D146)", () => {
     expect(days.reduce((sum, d) => sum + d.costMicros, 0)).toBeGreaterThanOrEqual(270_000);
   });
 
+  it("prices web searches by their price per thousand, as the code does, and lists them unpriced without one (D329)", async () => {
+    await db().execute(sql`
+      insert into commerce.ai_model_prices (provider, model, input_per_million, output_per_million, per_thousand_searches, effective_from)
+      values (${provider}, 'web-search-priced', 0, 0, 5, '2000-01-01')
+    `);
+    for (const model of ["web-search-priced", "web-search-unpriced"]) {
+      await db().execute(sql`
+        insert into commerce.ai_usage (created_at, store_id, source, provider, model, kind, feature, searches)
+        values (now() - interval '1 day', null, 'platform', ${provider}, ${model}, 'search', 'web_research', 7)
+      `);
+    }
+    const rows = await mine();
+    const of = (model: string) => totalOf(rows.filter((r) => r.model === model));
+    expect(of("web-search-priced")).toMatchObject({ costMicros: 35_000, unpricedRequests: 0 });
+    expect(of("web-search-priced").costMicros).toBe(
+      callCost({ searches: 7 }, { provider, model: "m", inputPerMillion: 0, outputPerMillion: 0, perThousandSearches: 5, effectiveFrom: new Date(0) }).micros,
+    );
+    expect(of("web-search-unpriced")).toMatchObject({ costMicros: 0, unpricedRequests: 1 });
+    const listed = (await prices.unpricedModels()).filter((m) => m.provider === provider && m.model === "web-search-unpriced");
+    expect(listed).toEqual([expect.objectContaining({ searches: 7 })]);
+    // The next test counts this provider's unpriced models: these go.
+    await db().execute(sql`delete from commerce.ai_usage where provider = ${provider} and kind = 'search'`);
+  });
+
   it("leaves what has no price for its unit unpriced, lists the model, and prices it from the beginning once set", async () => {
     // A model priced for pictures only, used for audio; a live call with no price at all.
     await unitPrice("picture-only", { image: 0.01 });

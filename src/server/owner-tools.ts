@@ -118,6 +118,7 @@ import {
   setupProgressTool,
 } from "./setup-tools";
 import { addThemeTool, listThemesTool, makeThemeLiveTool, preflightDesignTool, tryThemeTool } from "./design-tools";
+import { compareOptionsTool, listResearchNotesTool, readWebPageTool, saveResearchNoteTool, searchWebTool } from "./research-tools";
 import { getPageLookTool, lookAtPageTool, lookAtStoreTool } from "./page-looks";
 import { legalStatusTool } from "./legal-writer";
 import { deliveryRounds } from "./standing-orders";
@@ -2195,6 +2196,11 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   look_at_store: (ctx: OwnerToolContext) => lookAtStoreTool(ctx),
   get_page_look: (ctx: OwnerToolContext, input: OwnerToolInput<"get_page_look">) => getPageLookTool(ctx, input),
   legal_pages_status: (ctx: OwnerToolContext) => legalStatusTool(ctx),
+  search_web: (ctx: OwnerToolContext, input: OwnerToolInput<"search_web">) => searchWebTool(ctx, input),
+  read_web_page: (ctx: OwnerToolContext, input: OwnerToolInput<"read_web_page">) => readWebPageTool(ctx, input),
+  save_research_note: (ctx: OwnerToolContext, input: OwnerToolInput<"save_research_note">) => saveResearchNoteTool(ctx, input),
+  list_research_notes: (ctx: OwnerToolContext, input: OwnerToolInput<"list_research_notes">) => listResearchNotesTool(ctx, input),
+  compare_options: (ctx: OwnerToolContext, input: OwnerToolInput<"compare_options">) => compareOptionsTool(ctx, input),
   store_checkup: storeCheckup,
   get_tax_profile: getTaxProfileTool,
   tax_readiness: taxReadinessTool,

@@ -54,6 +54,10 @@ export const REVIEW_READ_TOOLS = [
   "legal_pages_status",
   "list_features",
   "platform_overview",
+  // Web research (D329): a review may look things up on the web and read its notes, never keep new ones.
+  "search_web",
+  "read_web_page",
+  "list_research_notes",
 ] as const;
 
 export type StartDecision = { start: true } | { start: false; why: string };

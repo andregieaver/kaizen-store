@@ -20,6 +20,16 @@ describe("what a call costs", () => {
   });
 });
 
+describe("what web searches cost (D329)", () => {
+  it("is the price per thousand searches, in millionths of a dollar, and unpriced without one", () => {
+    // 7 searches at $5 per thousand is three and a half cents.
+    expect(callCost({ searches: 7 }, { ...price("web-search", 0, 0), perThousandSearches: 5 })).toEqual({ micros: 35_000, priced: true });
+    expect(callCost({ searches: 1 }, price("web-search", 0, 0))).toEqual({ micros: 0, priced: false });
+    expect(callCost({ searches: 1 }, null)).toEqual({ micros: 0, priced: false });
+    expect(callCost({ searches: 3 }, { ...price("web-search", 0, 0), perThousandSearches: 0 })).toEqual({ micros: 0, priced: true });
+  });
+});
+
 describe("what pictures, speech and audio cost (D146)", () => {
   const unit = { ...price("m", 0, 0), perImage: 0.04, perAudioMinute: 0.06, perMillionCharacters: 15 };
 
@@ -82,13 +92,14 @@ describe("the price form", () => {
   it("reads a price, accepting a comma for the point", () => {
     expect(parsePriceForm(form({ provider: " openai ", model: "gpt-5-mini", input: "0,25", output: "2", note: "list" }))).toEqual({
       ok: true,
-      price: { provider: "openai", model: "gpt-5-mini", inputPerMillion: 0.25, outputPerMillion: 2, perImage: null, perAudioMinute: null, perMillionCharacters: null, note: "list" },
+      price: { provider: "openai", model: "gpt-5-mini", inputPerMillion: 0.25, outputPerMillion: 2, perImage: null, perAudioMinute: null, perMillionCharacters: null, perThousandSearches: null, note: "list" },
     });
   });
 
   it("reads the prices per picture, audio minute and million characters, empty meaning none and 0 meaning free (D146)", () => {
     const read = parsePriceForm(form({ provider: "a", model: "b", input: "0", output: "0", per_image: "0,04", per_audio_minute: "0", per_million_characters: " 15 " }));
-    expect(read).toMatchObject({ ok: true, price: { perImage: 0.04, perAudioMinute: 0, perMillionCharacters: 15 } });
+    expect(read).toMatchObject({ ok: true, price: { perImage: 0.04, perAudioMinute: 0, perMillionCharacters: 15, perThousandSearches: null } });
+    expect(parsePriceForm(form({ provider: "brave", model: "web-search", input: "0", output: "0", per_thousand_searches: "5" }))).toMatchObject({ ok: true, price: { perThousandSearches: 5 } });
     expect(parsePriceForm(form({ provider: "a", model: "b", input: "0", output: "0", per_image: "cheap" })).ok).toBe(false);
     expect(parsePriceForm(form({ provider: "a", model: "b", input: "0", output: "0", per_audio_minute: "99999" })).ok).toBe(false);
     expect(formatUnitPrice(null)).toBe("–");

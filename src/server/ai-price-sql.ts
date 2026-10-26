@@ -15,7 +15,7 @@ import { sql } from "drizzle-orm";
  */
 export const priceFor = sql`
   left join lateral (
-    select pr.id, pr.input_per_million, pr.output_per_million, pr.per_image, pr.per_audio_minute, pr.per_million_characters
+    select pr.id, pr.input_per_million, pr.output_per_million, pr.per_image, pr.per_audio_minute, pr.per_million_characters, pr.per_thousand_searches
     from commerce.ai_model_prices pr
     where pr.provider = u.provider and (pr.model = u.model or left(u.model, length(pr.model) + 1) = pr.model || '-') and pr.effective_from <= u.created_at
     order by length(pr.model) desc, pr.effective_from desc
@@ -25,13 +25,14 @@ export const priceFor = sql`
 
 /**
  * A call's cost in millionths of a dollar. Dollars per million tokens (or characters) is the same number as millionths per
- * token (or character); a picture's and a minute's prices are in dollars. Null without a price.
+ * token (or character); a picture's and a minute's prices are in dollars, a search's per thousand. Null without a price.
  */
 export const costMicrosSql = sql`round(
   u.input_tokens * p.input_per_million + u.output_tokens * p.output_per_million
   + u.images * coalesce(p.per_image, 0) * 1000000
   + u.audio_seconds * coalesce(p.per_audio_minute, 0) * 1000000 / 60
   + u.characters * coalesce(p.per_million_characters, 0)
+  + u.searches * coalesce(p.per_thousand_searches, 0) * 1000
 )`;
 
 /**
@@ -40,13 +41,14 @@ export const costMicrosSql = sql`round(
  * priced by them), so the cost is not left short by what the call has no other way to measure.
  */
 export const unpricedSql = sql`(
-  u.input_tokens + u.output_tokens + u.images + u.audio_seconds + u.characters > 0
+  u.input_tokens + u.output_tokens + u.images + u.audio_seconds + u.characters + u.searches > 0
   and (
     p.id is null
     or (u.input_tokens + u.output_tokens = 0 and (
       (u.images > 0 and p.per_image is null)
       or (u.audio_seconds > 0 and p.per_audio_minute is null)
       or (u.characters > 0 and p.per_million_characters is null)
+      or (u.searches > 0 and p.per_thousand_searches is null)
     ))
   )
 )`;

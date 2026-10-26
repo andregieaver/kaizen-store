@@ -3284,6 +3284,20 @@
       "when": 1792972253128,
       "tag": "20261025235053_autopilot_reviews_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 469,
+      "version": "7",
+      "when": 1792973289231,
+      "tag": "20261026000809_web_research",
+      "breakpoints": true
+    },
+    {
+      "idx": 470,
+      "version": "7",
+      "when": 1792973312303,
+      "tag": "20261026000832_web_research_rls",
+      "breakpoints": true
     }
   ]
 }

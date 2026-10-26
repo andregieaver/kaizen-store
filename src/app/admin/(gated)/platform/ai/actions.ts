@@ -15,6 +15,21 @@ import { runUnderstandingEval } from "@/server/query-understanding";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import type { Account } from "@/server/auth";
+import { OwnerToolError } from "@/server/owner-tool-error";
+import { saveSearchSettings } from "@/server/web-search-settings";
+
+/** Kaizena Flow's web search service for the AI's research (D329). */
+export async function saveWebSearchAction(_state: FormState, formData: FormData): Promise<FormState> {
+  const account = await requirePlatformAdmin();
+  try {
+    await saveSearchSettings(account, { provider: String(formData.get("provider") ?? ""), apiKey: String(formData.get("api_key") ?? ""), enabled: formData.get("enabled") === "on" });
+  } catch (error) {
+    if (error instanceof OwnerToolError) return { status: "error", messages: [error.message] };
+    throw error;
+  }
+  refresh();
+  return { status: "ok", messages: [adminText(adminLangOf(account.adminLocale), "platformTools").ai.webSearchSaved] };
+}
 
 const wordsOf = (account: Account) => adminText(adminLangOf(account.adminLocale), "platformTools").aiActions;
 

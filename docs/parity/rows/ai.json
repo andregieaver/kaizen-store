@@ -16,7 +16,7 @@
       "was": null
     },
     "weight": 3,
-    "gap": "Owner tools plus manager tools (D94, D103 to D105, D153); calls that send, publish, spend or change access are only kept for the owner's yes. D308: it makes and changes products (A1: create_product, update_product, set_prices, set_product_status, write_product_texts, set_stock, through saveProduct()), the website (A2: build_page by the page studio after the answer with its pictures one by one, list_page_builds, edit_page, publish_page, unpublish_page, set_page_place, save_menu, set_header_footer, for a store and for Kaizena Flow's own site, through the builder's and the menu editor's own saves), the setup (A3: set_store_details, set_countries, set_languages, set_currencies, set_flat_shipping, save_shipping_method, open_store, with setup_progress saying what only the owner can do) and themes (A4: list_themes, add_theme, try_theme, make_theme_live, a premium theme only at the charge the owner was shown). D318 (PSI AGT-01, AGT-04): marketing (broadcasts, segments, customer tags, automations, gift cards), support (read, note, reply, end), the team and the plan (owner only, gate `access`), order changes and exchanges, Work, and follow-ups that come back as background turns at their time and email the person where the answer is; an order rule can ask it to look at a paid order. D309: goals with targets measured by code, plans checked against the tools it offers, the autopilot working through them every minute on the maker's yes by the owner's autonomy level and budgets, the Autopilot page and a daily digest and weekly report by email. D310: it photographs a page's draft or the live store and judges it before asking to publish (look_at_page, look_at_store). D311: legal pages written and kept current by the AI (legal_pages_status). D315: domains (search, buy, renew, DNS changes, moves) through domain-tools.ts, buying and DNS behind their gates. Still missing (criterion 3): the owner is told about finished background work only on the Autopilot page, in the conversation or by email; nothing in the admin's header or the assistant's launcher says that a build, follow-up or plan step is ready for review. Merged on 2026-10-25 (README rule 8): `platform.admin-ai-assistant` was the same Shopify feature (rated partial); its criteria and evidence are here.",
+    "gap": "Owner tools plus manager tools (D94, D103 to D105, D153); calls that send, publish, spend or change access are only kept for the owner's yes. D308: it makes and changes products (A1: create_product, update_product, set_prices, set_product_status, write_product_texts, set_stock, through saveProduct()), the website (A2: build_page by the page studio after the answer with its pictures one by one, list_page_builds, edit_page, publish_page, unpublish_page, set_page_place, save_menu, set_header_footer, for a store and for Kaizena Flow's own site, through the builder's and the menu editor's own saves), the setup (A3: set_store_details, set_countries, set_languages, set_currencies, set_flat_shipping, save_shipping_method, open_store, with setup_progress saying what only the owner can do) and themes (A4: list_themes, add_theme, try_theme, make_theme_live, a premium theme only at the charge the owner was shown). D318 (PSI AGT-01, AGT-04): marketing (broadcasts, segments, customer tags, automations, gift cards), support (read, note, reply, end), the team and the plan (owner only, gate `access`), order changes and exchanges, Work, and follow-ups that come back as background turns at their time and email the person where the answer is; an order rule can ask it to look at a paid order. D309: goals with targets measured by code, plans checked against the tools it offers, the autopilot working through them every minute on the maker's yes by the owner's autonomy level and budgets, the Autopilot page and a daily digest and weekly report by email. D310: it photographs a page's draft or the live store and judges it before asking to publish (look_at_page, look_at_store). D311: legal pages written and kept current by the AI (legal_pages_status). D315: domains (search, buy, renew, DNS changes, moves) through domain-tools.ts, buying and DNS behind their gates. Still missing (criterion 3): the owner is told about finished background work only on the Autopilot page, in the conversation or by email; nothing in the admin's header or the assistant's launcher says that a build, follow-up or plan step is ready for review. Merged on 2026-10-25 (README rule 8): `platform.admin-ai-assistant` was the same Shopify feature (rated partial); its criteria and evidence are here. D329: it researches on the web (search_web through the platform's search service, metered as AI usage; read_web_page through safeFetch()), keeps findings with the addresses they rest on (save_research_note, list_research_notes) and compares options with totals worked out in code (compare_options); a store's own search key is not offered yet.",
     "bucket": "A",
     "wave": 8,
     "criteria": [
@@ -71,7 +71,9 @@
         "src/server/live-voice.ts",
         "src/server/ai-usage.ts",
         "src/lib/assistant-skills.ts",
-        "src/lib/page-jobs.ts"
+        "src/lib/page-jobs.ts",
+        "src/server/research.ts",
+        "src/server/web-search-settings.ts"
       ],
       "tests": [
         "src/server/owner-assistant.int.test.ts",
@@ -104,7 +106,9 @@
         "src/server/live-voice.int.test.ts",
         "src/server/ai-usage.int.test.ts",
         "src/lib/speech-text.test.ts",
-        "src/lib/admin-map.test.ts"
+        "src/lib/admin-map.test.ts",
+        "src/server/research.int.test.ts",
+        "src/lib/research.test.ts"
       ],
       "untested": false
     },
@@ -122,7 +126,8 @@
       "D315",
       "D105",
       "D106",
-      "D145"
+      "D145",
+      "D329"
     ],
     "history": []
   },

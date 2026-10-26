@@ -126,6 +126,12 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   look_at_store: "website:read",
   get_page_look: "website:read",
   legal_pages_status: "owner",
+  // Web research (D329): reading the web is like reading the marketing figures; keeping notes writes the store's research.
+  search_web: "marketing:read",
+  read_web_page: "marketing:read",
+  list_research_notes: "marketing:read",
+  save_research_note: "marketing:write",
+  compare_options: "marketing:write",
   store_checkup: "owner",
   list_customers: "customers:read",
   get_customer: "customers:read",
