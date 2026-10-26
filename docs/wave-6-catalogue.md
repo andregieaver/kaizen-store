@@ -713,11 +713,72 @@ product. The WordPress cart (D170) quotes a line at the market price, at most 20
 
 ### Unit F (D324): search merchandising
 
-Synonym groups per language (`search_synonyms`: two-way groups and one-way "this means that"), expanded in `rankedSearch()`'s keyword part
-(`websearch_to_tsquery` with the group's words OR'd) and in query understanding; boosts, buries and pins (`search_rules`: a product or a
-category, for every search or for queries matching words, pins first in their order) applied after the fusion and before paging. The
-zero-result report offers *Add a synonym* and *Send this search to a page* (a search redirect). Every change is part of the search cache's
-key (`cached()`, a merchandising version per store) so no stale result is served. Copied with the store.
+Detailed on 2026-10-26 from a read of the code, when its turn came. Built in three steps, each its own commit: F1 synonyms, F2 pins, boosts,
+buries and search redirects, F3 the AI manager's tools and the tracker.
+
+**What the code does today.** The store's search (D72 to D75) is `searchProducts()` in `src/server/search.ts`: keyword matches
+(`matchingIds()`: a `websearch_to_tsquery` over `product_translations.search` in the market's language, trigram closeness to titles, SKUs,
+category and tag names, public custom fields) and, with the store's AI, matches by meaning (`meaningMatches()`), merged by reciprocal rank
+fusion in `rankedSearch()`, then drawn by `listGridProducts()` in that order (`sort: "given"`) unless the search asked for a price or newest
+order. Query understanding (`understandQuery()`) turns a search into filters, kept only through `cleanFilters()`: a category or tag only when
+the typed words name it (`namesTerm()`). Its answer and the query's vector are kept in `commerce.search_cache` under a key of everything they
+depend on; the results themselves are worked out per search and never cached. The type-ahead is `suggestProducts()` (prefix keyword search
+only). The chat agent searches through `searchProducts()`; recommendations through `rankedSearch()`. `/admin/{store}/search` (Settings,
+Tools; `settings:read`) shows the last 30 days' searches, the share that found nothing and the zero-result searches. Manual redirects (D168)
+send an address to a page; nothing sends a search there.
+
+#### F.1 Synonyms (F1)
+
+- `commerce.search_synonyms`: a store's groups per language (`locale`, one of the store's kept languages): `kind` `both` (every word in
+  `words` means the others, 2 to 20) or `one_way` (each of `words`, 1 to 20, also finds `means`, 1 to 20; a search for a word of `means` does
+  not find `words`). A word is a word or a short phrase, kept as `normalizeQuery()` leaves it (lower case, single spaces), 1 to 60
+  characters, letters, digits, spaces, hyphens and apostrophes only; a group repeats no word; at most 500 groups a store. Written only by
+  `src/server/search-synonyms.ts` (`saveSynonym()`, `deleteSynonym()`), checked by `synonymInput` (`src/lib/search-synonyms.ts`, shared
+  with the browser), audited `search.synonym_saved`/`search.synonym_deleted` (area `settings`).
+- The expansion is pure: `expandQuery(text, groups)` (`src/lib/search-synonyms.ts`) gives the query's alternatives: for each group with a
+  word the query holds as whole words, the query with that word put in place of each word it means (both ways for `both`, from `words` to
+  `means` for `one_way`), longest word first, at most `MAX_ALTERNATIVES` (8), never the query itself. A unit test holds it (phrases, word
+  boundaries, one way only, the cap, accents).
+- Keyword search uses them: `matchingIds()` reads the market language's groups (`synonymsFor()`, one small read per search, store-scoped)
+  and ORs each alternative's `websearch_to_tsquery` (or, while typing, its prefix query) into the query's; title closeness and SKUs stay on
+  what was typed. Search by meaning is unchanged (the vector is the query's).
+- Query understanding uses them: `cleanFilters()` counts the alternatives' words as typed when it asks whether a search names a category or
+  tag (`UnderstandingContext.aliases`), so "couch" can keep the category Sofas when the store says they are the same; the aliases are part of
+  the understanding's cache key, so a changed group asks again and no stale answer is served. The prompt itself is unchanged.
+- The admin: a *Synonyms* card on `/admin/{store}/search` (writes need `settings:write`): the groups of the chosen language as lines
+  ("sofa = couch = settee", "jumper → sweater"), *Add a synonym* with two fields (the words, and for one way what they mean), delete.
+- Copied with the store (`COPY_RULES` `catalogue`; `clone_store()` and `duplicate_store()` copy the groups), not personal data.
+
+#### F.2 Pins, boosts, buries and search redirects (F2)
+
+- `commerce.search_rules`: a store's rules, each an `action`: `pin` (a product put first, in the rules' `position` order), `boost` (a product
+  or a category or tag moved up), `bury` (moved down) or `redirect` (the search goes to a page of the store, `target`, a path in
+  `normaliseTarget()`'s normal form, D168). A rule is for every search (`queries` empty; boosts and buries only) or for searches that hold
+  one of its `queries` (`match` `contains`: the phrase's words in order, whole words) or are one of them (`exact`). A pin and a redirect name
+  at least one query. At most 200 rules a store. Written only by `src/server/search-rules.ts` (`saveRule()`, `deleteRule()`), checked by
+  `searchRuleInput`; the product and the term must be the store's own (a term of kind `product`); audited `search.rule_saved`/`deleted`.
+- The order is pure: `merchandise(ids, rules, facts)` (`src/lib/search-rules.ts`): the rules that apply to the query (`rulesFor()`), then the
+  pinned products first in their order (a pinned product the search did not find is added only when the search has no filters, and only if
+  it is offered in the market: read through `listGridProducts()`, which leaves out what is not), then the boosted, then the rest, then the
+  buried, each group keeping the search's own order; a product both boosted and buried stays where it was. Applied in `searchProducts()`
+  after the fusion and before paging, only to the search's own order (a search asking for a price or newest order keeps that order); the
+  chat agent's search follows it. Type-ahead and recommendations do not (keyword only, and candidates).
+- A search redirect: the search section asks `searchRedirect()` before searching, and a query that a `redirect` rule matches goes to
+  `marketPath()` + its target (308-free: a `redirect()` from the streamed section), logged as a search with no results counted
+  (`redirected` true on `search_queries`), so the report says it was sent on.
+- The zero-result report offers, per search, *Add a synonym* (the search's words, prefilled) and *Send to a page* (a redirect rule for the
+  search, the target chosen from the store's published pages, categories and tags, or typed). A *Rules* card lists pins, boosts, buries and
+  redirects by the search they are for, with delete.
+- No cache serves a stale merchandised result: the results are worked out per search, and the one cached answer that depends on
+  merchandising, query understanding, has the synonyms in its key (F.1).
+- Copied with the store (`catalogue`; products and terms mapped to the copy's), not personal data.
+
+#### F.3 The AI manager and the tracker (F3)
+
+- Owner tools (`settings` area): `search_merchandising` (read: the groups and rules, the zero-result searches of 30 days),
+  `save_search_synonym`, `save_search_rule` and `delete_search_merchandising` (gate `public`: they change what shoppers find), through the
+  same writers; in `TOOL_AREAS` as `website`.
+- The row `catalogue.search-merchandising-synonyms-boosts-pins` is rated on the criteria above with the integration tests named there.
 
 ### Unit G (D325): videos and 3D in the gallery
 
