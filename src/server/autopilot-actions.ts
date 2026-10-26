@@ -90,6 +90,7 @@ export function saveSettings(p: Principal, form: FormData): Promise<FormState> {
         aiMonthlyUsd: ai === null || Number.isNaN(ai) ? null : ai,
         discountPercent: Number(text(form, "discount_percent") || 0),
         priceChangePercent: Number(text(form, "price_change_percent") || 0),
+        customerEmailsPerWeek: Number(text(form, "customer_emails") || 0),
       },
       planning: {
         continues: text(form, "keep_going") === "on",

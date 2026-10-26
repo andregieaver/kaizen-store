@@ -21,6 +21,10 @@ export type SupportEmailText = {
   emailWhy: (desk: string) => string;
   /** A chat's answer email that can be answered by replying (D332). */
   orReply: string;
+  /** Before each answer the AI wrote in a conversation by email (AI Act Art. 50: a person must be told they deal with AI). */
+  aiLabel: string;
+  /** Under an email that holds an answer by AI. */
+  aiNote: string;
 };
 
 const TEXT: Record<"nb" | "sv" | "da" | "en", SupportEmailText> = {
@@ -38,6 +42,8 @@ const TEXT: Record<"nb" | "sv" | "da" | "en", SupportEmailText> = {
     replyNote: "Svar på denne e-posten for å fortsette samtalen.",
     emailWhy: (desk) => `Du får denne e-posten fordi du skrev til ${desk}.`,
     orReply: "Du kan også svare på denne e-posten.",
+    aiLabel: "Svar fra KI:",
+    aiNote: "Svar merket «Svar fra KI» er skrevet av kunstig intelligens og kan inneholde feil. Skriv i svaret ditt hvis du vil snakke med et menneske.",
   },
   sv: {
     subject: (desk) => `Svar från ${desk}`,
@@ -53,6 +59,8 @@ const TEXT: Record<"nb" | "sv" | "da" | "en", SupportEmailText> = {
     replyNote: "Svara på det här mejlet för att fortsätta samtalet.",
     emailWhy: (desk) => `Du får det här mejlet eftersom du skrev till ${desk}.`,
     orReply: "Du kan också svara på det här mejlet.",
+    aiLabel: "Svar från AI:",
+    aiNote: "Svar märkta ”Svar från AI” är skrivna av artificiell intelligens och kan innehålla fel. Skriv i ditt svar om du vill prata med en människa.",
   },
   da: {
     subject: (desk) => `Svar fra ${desk}`,
@@ -68,6 +76,8 @@ const TEXT: Record<"nb" | "sv" | "da" | "en", SupportEmailText> = {
     replyNote: "Svar på denne e-mail for at fortsætte samtalen.",
     emailWhy: (desk) => `Du får denne e-mail, fordi du skrev til ${desk}.`,
     orReply: "Du kan også svare på denne e-mail.",
+    aiLabel: "Svar fra AI:",
+    aiNote: "Svar markeret ”Svar fra AI” er skrevet af kunstig intelligens og kan indeholde fejl. Skriv i dit svar, hvis du vil tale med et menneske.",
   },
   en: {
     subject: (desk) => `An answer from ${desk}`,
@@ -83,6 +93,8 @@ const TEXT: Record<"nb" | "sv" | "da" | "en", SupportEmailText> = {
     replyNote: "Reply to this email to continue the conversation.",
     emailWhy: (desk) => `You get this email because you wrote to ${desk}.`,
     orReply: "You can also answer by replying to this email.",
+    aiLabel: "Answer by AI:",
+    aiNote: "Answers marked \"Answer by AI\" are written by artificial intelligence and may contain mistakes. Say so in your reply if you want to talk to a person.",
   },
 };
 

@@ -4,10 +4,10 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/client";
-import { autonomySettingsSchema, readAutonomy, type AutonomySettings } from "@/lib/autopilot-autonomy";
+import { autonomySettingsSchema, CUSTOMER_EMAIL_TOOLS, readAutonomy, type AutonomySettings } from "@/lib/autopilot-autonomy";
 import { can, type PermissionHolder } from "@/lib/permissions";
 
-import { costMicrosSql, priceFor } from "./ai-price-sql";
+import { costMicrosSql, priceFor, unpricedSql } from "./ai-price-sql";
 import { audit, type Account } from "./auth";
 import { auditArea } from "./autopilot-goals";
 import { OwnerToolError } from "./owner-tool-error";
@@ -50,22 +50,58 @@ export async function saveAutonomy(a: SettingsActor, input: unknown): Promise<Au
   return s;
 }
 
-/** The autopilot's AI cost this calendar month (UTC), in millionths of a dollar, at the prices in force for each call (D145). */
-export async function autopilotCostThisMonth(storeId: string | null): Promise<number> {
+/**
+ * The autopilot's AI cost this calendar month (UTC), in millionths of a dollar, at the prices in force for each call (D145): every call it made,
+ * whatever the feature (`acted_by`, written from `currentActor()`; pictures, page looks and builds its steps asked for run as it too), and the
+ * calls no price covers, which the sum cannot hold.
+ */
+export async function autopilotCostThisMonth(storeId: string | null): Promise<{ micros: number; unpriced: number }> {
   const row = await typedRow(
-    z.object({ cost: col.minor }),
+    z.object({ cost: col.minor, unpriced: col.int }),
     sql`
-      select coalesce(sum(${costMicrosSql}), 0)::bigint as cost
+      select coalesce(sum(${costMicrosSql}), 0)::bigint as cost, count(*) filter (where ${unpricedSql})::int as unpriced
       from commerce.ai_usage u
       ${priceFor}
-      where ${storeId ? sql`u.store_id = ${storeId}::uuid` : sql`u.store_id is null`} and u.feature = 'autopilot' and u.created_at >= date_trunc('month', now())
+      where ${storeId ? sql`u.store_id = ${storeId}::uuid` : sql`u.store_id is null`} and (u.feature = 'autopilot' or u.acted_by = 'autopilot')
+        and u.created_at >= date_trunc('month', now())
     `,
   );
-  return row?.cost ?? 0;
+  return { micros: row?.cost ?? 0, unpriced: row?.unpriced ?? 0 };
 }
 
-/** Whether the month's budget is spent: a budget of null has no limit of its own. */
+/**
+ * Why the month's budget stops the autopilot, or null: spent, or a call no price covers (its cost cannot be added, so the budget cannot be
+ * kept). A budget of null has no limit of its own.
+ */
+export async function aiBudgetProblem(storeId: string | null, settings: AutonomySettings): Promise<string | null> {
+  if (settings.budgets.aiMonthlyUsd === null) return null;
+  const { micros, unpriced } = await autopilotCostThisMonth(storeId);
+  if (unpriced > 0) {
+    return `The autopilot made ${unpriced === 1 ? "an AI call" : `${unpriced} AI calls`} this month that no price covers, so its budget cannot be kept: a platform admin adds the model's price under Platform, AI, Prices, or you set no AI budget under Autopilot, Settings.`;
+  }
+  if (micros >= settings.budgets.aiMonthlyUsd * 1_000_000) {
+    return "The autopilot's AI budget for this month is spent: raise it under Autopilot, Settings, or wait for next month.";
+  }
+  return null;
+}
+
+/** Whether the month's budget stops the autopilot (`aiBudgetProblem()`). */
 export async function aiBudgetSpent(storeId: string | null, settings: AutonomySettings): Promise<boolean> {
-  if (settings.budgets.aiMonthlyUsd === null) return false;
-  return (await autopilotCostThisMonth(storeId)) >= settings.budgets.aiMonthlyUsd * 1_000_000;
+  return (await aiBudgetProblem(storeId, settings)) !== null;
+}
+
+/** Emails to customers the autopilot sent itself in the last seven days (`CUSTOMER_EMAIL_TOOLS`, counted from the audit log). */
+export async function autopilotCustomerEmailsThisWeek(storeId: string): Promise<number> {
+  const row = await typedRow(
+    z.object({ n: col.int }),
+    sql`
+      select count(*)::int as n from commerce.audit_log
+      where store_id = ${storeId}::uuid and acted_by = 'autopilot' and created_at > now() - interval '7 days'
+        and action in (${sql.join(
+          CUSTOMER_EMAIL_TOOLS.map((tool) => sql`${`store.assistant.${tool}`}`),
+          sql`, `,
+        )})
+    `,
+  );
+  return row?.n ?? 0;
 }

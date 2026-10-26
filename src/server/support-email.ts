@@ -194,13 +194,19 @@ async function sendReply(row: Row, now: Date): Promise<SendOutcome | null> {
 
   const lines: EmailBlock[] = messages.flatMap((m) => {
     const data = (m.data ?? {}) as { name?: unknown; products?: ChatProduct[] };
-    const name = m.author === "agent" && typeof data.name === "string" ? `${data.name}:\n` : "";
+    // A person's answer carries their name; the AI's is marked as the AI's, as the chat's notice says (AI Act Art. 50).
+    const name = m.author === "agent" && typeof data.name === "string" ? `${data.name}:\n` : m.author === "ai" ? `${words.aiLabel}\n` : "";
     // The AI's product cards, as their names and links: an email carries no cards.
     const products = Array.isArray(data.products) && origin ? data.products.slice(0, 6).map((p) => `${p.title}: ${p.href.startsWith("http") ? p.href : `${origin}${p.href}`}`) : [];
     return [{ type: "paragraph" as const, text: `${name}${String(m.body)}` }, ...(products.length ? [{ type: "paragraph" as const, text: products.join("\n") }] : [])];
   });
   const blocks: EmailBlock[] = byEmail
-    ? [...lines, { type: "paragraph", text: words.replyNote }, { type: "paragraph", text: words.emailWhy(deskName) }]
+    ? [
+        ...lines,
+        ...(messages.some((m) => m.author === "ai") ? [{ type: "paragraph" as const, text: words.aiNote }] : []),
+        { type: "paragraph", text: words.replyNote },
+        { type: "paragraph", text: words.emailWhy(deskName) },
+      ]
     : [
         { type: "heading", text: words.heading },
         { type: "paragraph", text: words.intro(deskName) },

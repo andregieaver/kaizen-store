@@ -14,7 +14,7 @@ import { activeAccount, passMembership } from "./auth";
 import { checkStep } from "./autopilot-checks";
 import { autopilotDecision } from "./autopilot-gate";
 import { completeStep, failStep, loadSteps, stopPlanIn, type PlanStep, type StepResult } from "./autopilot-plans";
-import { aiBudgetSpent, autonomyFor } from "./autopilot-settings";
+import { aiBudgetProblem, autonomyFor } from "./autopilot-settings";
 import { log } from "./log";
 import { platformGateNeeded, preflightPlatformTool, runPlatformTool } from "./manager-tools";
 import { holderOfPrincipal, keepForApproval, runTurn, type Principal, type TurnInput } from "./owner-assistant";
@@ -206,8 +206,9 @@ async function runStep(stepId: string, deps: AutopilotDeps): Promise<keyof Autop
     case "tool":
       return runToolStep(plan, principal, step, settings);
     case "task": {
-      if (await aiBudgetSpent(plan.store_id, settings)) {
-        await pausePlanFor(plan.id, stepId, "The autopilot's AI budget for this month is spent: raise it under Autopilot, Settings, or wait for next month.");
+      const budget = await aiBudgetProblem(plan.store_id, settings);
+      if (budget) {
+        await pausePlanFor(plan.id, stepId, budget);
         return "paused";
       }
       return runTaskStep(plan, principal, step, steps, settings, deps);

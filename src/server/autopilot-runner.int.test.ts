@@ -9,7 +9,9 @@ const { closeDb, db } = await import("@/db/client");
 const { addMember, makeAccount, makeStore, membershipOf } = await import("./trust-fixtures");
 const { makePlan, answerQuestion } = await import("./autopilot-plans");
 const { runAutopilot } = await import("./autopilot-runner");
-const { saveAutonomy } = await import("./autopilot-settings");
+const { aiBudgetProblem, autonomyFor, autopilotCostThisMonth, saveAutonomy } = await import("./autopilot-settings");
+const { recordUsage } = await import("./ai-usage");
+const { actingAs } = await import("./actor");
 const assistant = await import("./owner-assistant");
 type Membership = import("./auth").Membership;
 type TurnInput = import("./owner-assistant").TurnInput;
@@ -59,6 +61,8 @@ beforeAll(async () => {
 afterAll(async () => {
   await db().execute(sql`delete from commerce.assistant_plans where store_id = ${store.id}::uuid`);
   await db().execute(sql`delete from commerce.autopilot_settings where store_id = ${store.id}::uuid`);
+  await db().execute(sql`delete from commerce.ai_usage where store_id = ${store.id}::uuid`);
+  await db().execute(sql`delete from commerce.ai_model_prices where provider = 'autopilot-test'`);
   await closeDb();
 });
 
@@ -154,6 +158,37 @@ describe("the loop", () => {
     await runUntilStill(plan.id, 3);
     expect(await planOf(plan.id)).toMatchObject({ status: "paused", pause_reason: expect.stringContaining("can no longer use") });
     expect(await stepOf(plan.id, "s1")).toMatchObject({ status: "pending" });
+  });
+
+  it("counts every model call the autopilot made against its budget, whatever the feature, and stops on a call no price covers", async () => {
+    await db().execute(sql`
+      insert into commerce.ai_model_prices (provider, model, input_per_million, output_per_million, per_image, effective_from)
+      values ('autopilot-test', 'priced', 1000, 1000, 0.5, now() - interval '1 day')
+    `);
+    const call = (model: string, amounts: Record<string, number>) =>
+      recordUsage({ storeId: store.id, feature: "page_pictures", accountId: owner.account.id }, { source: "platform", provider: "autopilot-test", model, kind: "image", amounts });
+    // A person's picture is not the autopilot's; a picture an autopilot step asked for is, under its own feature.
+    await call("priced", { images: 4 });
+    await actingAs("autopilot", () => call("priced", { images: 1 }));
+    expect(await autopilotCostThisMonth(store.id)).toEqual({ micros: 500_000, unpriced: 0 });
+    await saveAutonomy(actor(owner), { budgets: { aiMonthlyUsd: 1 } });
+    expect(await aiBudgetProblem(store.id, await autonomyFor(store.id))).toBeNull();
+    await actingAs("autopilot", () => call("priced", { images: 1 }));
+    expect(await aiBudgetProblem(store.id, await autonomyFor(store.id))).toContain("spent");
+
+    // A call no price covers cannot be added up, so the budget cannot be kept: a task step pauses its plan and says why.
+    await saveAutonomy(actor(owner), { budgets: { aiMonthlyUsd: 100 } });
+    await actingAs("autopilot", () => call("unpriced-model", { inputTokens: 10 }));
+    expect((await autopilotCostThisMonth(store.id)).unpriced).toBe(1);
+    const { plan } = await makePlan(actor(owner), { title: "Costly", summary: "", steps: [{ key: "s1", title: "Look", kind: "task", brief: "Look.", tools: ["list_products"], after: [] }] });
+    await start(plan.id);
+    await runUntilStill(plan.id, 3);
+    expect(await planOf(plan.id)).toMatchObject({ status: "paused", pause_reason: expect.stringContaining("no price covers") });
+    // With no AI budget of its own, nothing stops it.
+    await saveAutonomy(actor(owner), { budgets: { aiMonthlyUsd: null } });
+    expect(await aiBudgetProblem(store.id, await autonomyFor(store.id))).toBeNull();
+    await db().execute(sql`update commerce.assistant_plans set status = 'stopped' where id = ${plan.id}::uuid`);
+    await db().execute(sql`delete from commerce.ai_usage where store_id = ${store.id}::uuid`);
   });
 
   it("runs nothing while the owner has paused the autopilot", async () => {

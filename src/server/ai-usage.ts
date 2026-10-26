@@ -5,6 +5,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { AI_FEATURES, NO_USAGE, type AiFeature, type AiKind, type AiSource, type UsageAmounts, type UsageRow } from "@/lib/ai-usage";
 
+import { currentActor } from "./actor";
 import { costMicrosSql, priceFor, unpricedSql } from "./ai-price-sql";
 
 type Row = Record<string, unknown>;
@@ -47,7 +48,7 @@ export async function recordUsage(context: UsageContext, event: UsageEvent): Pro
     await db().execute(sql`
       insert into commerce.ai_usage (
         store_id, owner_account_id, actor_account_id, source, provider, model, kind, feature,
-        requests, failed, input_tokens, output_tokens, characters, audio_bytes, audio_seconds, images, searches, estimated, session_ref
+        requests, failed, input_tokens, output_tokens, characters, audio_bytes, audio_seconds, images, searches, estimated, session_ref, acted_by
       ) values (
         ${context.storeId}::uuid,
         ${
@@ -57,7 +58,7 @@ export async function recordUsage(context: UsageContext, event: UsageEvent): Pro
         },
         ${context.accountId}::uuid, ${event.source}, ${event.provider.slice(0, 60)}, ${event.model.slice(0, 200)}, ${event.kind}, ${feature},
         ${event.requests ?? 1}, ${event.failed ? 1 : 0}, ${Math.round(a.inputTokens)}, ${Math.round(a.outputTokens)}, ${Math.round(a.characters)},
-        ${Math.round(a.audioBytes)}, ${Math.round(a.audioSeconds)}, ${Math.round(a.images)}, ${Math.round(a.searches)}, ${event.estimated === true}, ${event.sessionRef ?? null}
+        ${Math.round(a.audioBytes)}, ${Math.round(a.audioSeconds)}, ${Math.round(a.images)}, ${Math.round(a.searches)}, ${event.estimated === true}, ${event.sessionRef ?? null}, ${currentActor()}
       )
     `);
   } catch (error) {

@@ -43,6 +43,8 @@ export type AutopilotOverview = {
   settings: AutonomySettings;
   /** The autopilot's AI cost this month in millionths of a dollar. */
   costMicros: number;
+  /** The autopilot's calls this month no price covers: its budget cannot be kept while there are any (`aiBudgetProblem()`). */
+  unpricedCalls: number;
   /** The person's latest weekly report here. */
   report: Awaited<ReturnType<typeof latestReport>>;
 };
@@ -58,7 +60,7 @@ const CALL = z.object({
 
 export async function autopilotOverview(a: OverviewActor): Promise<AutopilotOverview> {
   const scope = a.store ? sql`ap.store_id = ${a.store.id}::uuid` : sql`ap.store_id is null`;
-  const [callRows, plansAll, goals, settings, costMicros, progress, report, reviews, events] = await Promise.all([
+  const [callRows, plansAll, goals, settings, cost, progress, report, reviews, events] = await Promise.all([
     typedRows(
       CALL,
       sql`
@@ -106,7 +108,8 @@ export async function autopilotOverview(a: OverviewActor): Promise<AutopilotOver
     reviews,
     events,
     settings,
-    costMicros,
+    costMicros: cost.micros,
+    unpricedCalls: cost.unpriced,
     report,
   };
 }

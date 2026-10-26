@@ -358,10 +358,15 @@ only (the platform's by platform admins):
   processing, credits and gift cards (`refund_order`, `change_order`, `process_exchange`, `adjust_customer_credits`, `issue_gift_card`);
   the plan with Kaizena Flow (`change_plan`, `end_plan`), domains bought or renewed, features switched (`set_feature`), opening the store
   (`open_store`), and the platform's access requests and referral program. The outline's "refunds over a budget" is stricter here: refunds
-  are never automatic until a budget is asked for.
+  are never automatic until a budget is asked for. A broadcast (`send_broadcast`) is never automatic either (D334): it reaches the whole
+  list at once and cannot be called back.
 - `budgets`: the AI cost of the autopilot a month (US dollars, priced as D145 prices every call; reached, the plans pause with the reason),
   the deepest discount (percent; a discount or campaign deeper than it is kept for a yes), the largest price change (percent of a variant's
-  current price; a larger one is kept for a yes). Theme purchases wait for A4.
+  current price; a larger one is kept for a yes), and the emails to customers it may send itself in seven days (`customerEmailsPerWeek`,
+  default 5, 0 asks every time: `email_customer` and `reply_to_support`, counted from the audit log; D334). Theme purchases wait for A4.
+  The AI cost counts every call the autopilot made (`ai_usage.acted_by`, D334), whatever its feature: page builds, pictures and page
+  looks keep who asked for them and run as them. A call no price covers makes the month's cost unknown, so the autopilot stops with that
+  reason (`aiBudgetProblem()`) while it has a limit of its own.
 - `autonomyDecision(settings, tool, args, facts)` (pure, with the facts read first: current prices, a discount's depth) is the one rule,
   used by the tool steps and inside the task turns: `run` (with `tell` true when the owner is to hear of it) or `ask` with the reason.
 

@@ -373,6 +373,9 @@ function Settings({ overview, words: a, action }: { overview: AutopilotOverview;
               className="min-h-10 max-w-40 rounded-lg border border-edge bg-card px-3 text-sm"
             />
             <span className="text-caption text-muted">{fillWords(s.aiMonthlyHelp, { spent: formatUsd(overview.costMicros) })}</span>
+            {overview.unpricedCalls > 0 && settings.budgets.aiMonthlyUsd !== null && (
+              <span className="text-caption text-warning-text">{fillWords(s.aiUnpriced, { count: String(overview.unpricedCalls) })}</span>
+            )}
           </label>
           <label className="flex flex-col gap-1 text-sm">
             {s.discount}
@@ -383,6 +386,11 @@ function Settings({ overview, words: a, action }: { overview: AutopilotOverview;
             {s.priceChange}
             <input name="price_change_percent" type="number" min={0} max={1000} defaultValue={settings.budgets.priceChangePercent} className="min-h-10 max-w-40 rounded-lg border border-edge bg-card px-3 text-sm" />
             <span className="text-caption text-muted">{s.priceChangeHelp}</span>
+          </label>
+          <label className="flex flex-col gap-1 text-sm">
+            {s.customerEmails}
+            <input name="customer_emails" type="number" min={0} max={100} defaultValue={settings.budgets.customerEmailsPerWeek} className="min-h-10 max-w-40 rounded-lg border border-edge bg-card px-3 text-sm" />
+            <span className="text-caption text-muted">{s.customerEmailsHelp}</span>
           </label>
         </fieldset>
         <div>

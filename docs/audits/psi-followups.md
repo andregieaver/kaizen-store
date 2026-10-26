@@ -42,6 +42,10 @@ maturity for the run-up to launch. Point IDs are the audit's.
       their real prompts and tools on scripted tool answers that hide instructions (product text, knowledge, a customer's note, a
       support message, a page), plus off-topic, invented prices, prompt extraction and an asked-for refund; run from Platform → AI,
       each run kept per model (`commerce.ai_eval_runs`).
+- [x] **AGT-05, AST-07, AST-01, AST-05** (re-score 2026-10-26) Every model call is recorded with who made it (`ai_usage.acted_by`), and page
+      builds, pictures and page looks run as whoever asked, so the autopilot's monthly budget counts everything it causes; a call no price
+      covers stops it while it has a limit; broadcasts are never automatic and emails to customers at most `customerEmailsPerWeek`
+      (default 5) a week; AI answers by email are marked as the AI's; D334.
 - [ ] **AGT-14** Replay stored manager turns with thumbs as labels; run the evals in CI against a recorded model; version the prompts.
 - [x] **AGT-04, AGT-11** The AI manager can start an A/B test at a time (`start_experiment` with `at`) and keep follow-ups
       (`follow_up`, daily or weekly too, which also covers a weekly "what needs a look"); D318.

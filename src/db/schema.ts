@@ -8702,12 +8702,16 @@ export const aiUsage = commerce.table(
     estimated: boolean("estimated").notNull().default(false),
     /** A live voice call's session at its provider, to add its length when it ends. */
     sessionRef: text("session_ref"),
+    /** Who made the call (`currentActor()`): the autopilot's budget counts every call it made, whatever the feature. */
+    actedBy: text("acted_by").notNull().default("person"),
   },
   (t) => [
     index("ai_usage_created_idx").on(t.createdAt),
     index("ai_usage_store_idx").on(t.storeId, t.createdAt),
     index("ai_usage_owner_idx").on(t.ownerAccountId, t.createdAt),
     index("ai_usage_actor_idx").on(t.actorAccountId),
+    index("ai_usage_autopilot_idx").on(t.storeId, t.createdAt).where(sql`${t.actedBy} = 'autopilot'`),
+    check("ai_usage_acted_by", sql`${t.actedBy} in ('person', 'ai_manager', 'autopilot')`),
     check("ai_usage_source", sql`${t.source} in ('platform', 'store')`),
     check("ai_usage_kind", sql`${t.kind} in ('text', 'embedding', 'transcription', 'speech', 'image', 'live', 'search')`),
     check(
@@ -12905,6 +12909,8 @@ export const pageAiJobs = commerce.table(
       .notNull()
       .references(() => accounts.id),
     input: jsonb("input").notNull(),
+    /** Who asked in the person's name (`currentActor()`): the job runs as them, so its audit entries and AI usage say so. */
+    actedBy: text("acted_by").notNull().default("person"),
     status: text("status").notNull().default("waiting"),
     tries: integer("tries").notNull().default(0),
     problem: text("problem"),
@@ -12919,6 +12925,7 @@ export const pageAiJobs = commerce.table(
     check("page_ai_jobs_status", sql`${t.status} in (${sqlList(PAGE_JOB_STATUSES)})`),
     check("page_ai_jobs_tries", sql.raw(`tries between 0 and ${PAGE_JOB_TRIES}`)),
     check("page_ai_jobs_picture_page", sql`${t.kind} <> 'picture' or ${t.pageId} is not null`),
+    check("page_ai_jobs_acted_by", sql`${t.actedBy} in ('person', 'ai_manager', 'autopilot')`),
     index("page_ai_jobs_waiting_idx").on(t.createdAt).where(sql`${t.status} = 'waiting'`),
     index("page_ai_jobs_page_idx").on(t.pageId),
     index("page_ai_jobs_store_idx").on(t.storeId, t.createdAt),
@@ -13562,6 +13569,8 @@ export const pageLooks = commerce.table(
     /** `page`: a page's draft; `store`: the home, a product page and the cart, live. */
     kind: text("kind").notNull(),
     pageId: uuid("page_id").references(() => pages.id, { onDelete: "cascade" }),
+    /** Who asked for it (`currentActor()`): the look is taken as them, so the judge's AI usage counts where it should. */
+    actedBy: text("acted_by").notNull().default("person"),
     status: text("status").notNull().default("queued"),
     claimedUntil: timestamp("claimed_until", { withTimezone: true }),
     tries: integer("tries").notNull().default(0),
@@ -13577,6 +13586,7 @@ export const pageLooks = commerce.table(
     index("page_looks_store_idx").on(t.storeId, t.createdAt),
     index("page_looks_account_idx").on(t.accountId),
     check("page_looks_kind", sql`${t.kind} in ('page', 'store')`),
+    check("page_looks_acted_by", sql`${t.actedBy} in ('person', 'ai_manager', 'autopilot')`),
     check("page_looks_status", sql`${t.status} in ('queued', 'running', 'done', 'failed')`),
     check("page_looks_page", sql`(${t.kind} = 'page') = (${t.pageId} is not null)`),
     check("page_looks_problem", sql`${t.problem} is null or length(${t.problem}) <= 500`),

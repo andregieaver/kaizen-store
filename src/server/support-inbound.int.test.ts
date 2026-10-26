@@ -38,7 +38,7 @@ type Row = Record<string, unknown>;
  * address starts a conversation by email (people only: it waits in the queue; the AI first: the AI answers with the email channel),
  * a reply from the same address continues it and one from another address does not, machines and failing DMARC are refused, an email
  * Resend sends twice is taken once, the sender's limit holds, nothing is taken while support is off, and the answers go back as a
- * reply in the customer's thread.
+ * reply in the customer's thread, the AI's marked as the AI's.
  */
 
 const DOMAIN = "in.example.com";
@@ -169,6 +169,9 @@ describe("email into the desk", () => {
     expect(sent).toHaveLength(1);
     expect(sent[0]).toMatchObject({ to_address: "lise@example.com", subject: "Re: Parcel" });
     expect(String(sent[0].text)).toContain("Your parcel is on its way.");
+    // The AI's answer is marked as the AI's (AI Act Art. 50), as the chat's notice says.
+    expect(String(sent[0].text)).toContain("Svar fra KI:");
+    expect(String(sent[0].text)).toContain("skrevet av kunstig intelligens");
     await sendReplyEmails(new Date(Date.now() + 120_000));
     expect(await answerEmails(c.id)).toHaveLength(1);
   });

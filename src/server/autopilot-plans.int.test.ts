@@ -188,12 +188,12 @@ describe("the Autopilot page's buttons", () => {
     expect((await planRow(made.plan.id)).status).toBe("running");
     expect(await pageActions.changePlan(owner, form({ plan: made.plan.id, do: "stop" }))).toEqual({ status: "ok", messages: [] });
 
-    const saved = await pageActions.saveSettings(owner, form({ running: "on", level_website: "tell", level_money: "fly", ai_monthly: "", discount_percent: "15", price_change_percent: "5" }));
+    const saved = await pageActions.saveSettings(owner, form({ running: "on", level_website: "tell", level_money: "fly", ai_monthly: "", discount_percent: "15", price_change_percent: "5", customer_emails: "3" }));
     expect(saved).toEqual({ status: "ok", messages: [] });
     expect(await autonomyFor(store.id)).toEqual({
       paused: false,
       levels: { website: "tell" },
-      budgets: { aiMonthlyUsd: null, discountPercent: 15, priceChangePercent: 5 },
+      budgets: { aiMonthlyUsd: null, discountPercent: 15, priceChangePercent: 5, customerEmailsPerWeek: 3 },
       planning: { continues: false, starts: "ask", reviewDays: 7, plansPerWeek: 3, reacts: false, waitMinutes: 15 },
     });
     // Keeping going (D328): the switch and its choices; an unknown start choice is read as asking first.

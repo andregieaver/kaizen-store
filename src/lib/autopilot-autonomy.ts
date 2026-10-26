@@ -56,7 +56,6 @@ export const TOOL_AREAS: Readonly<Record<string, AutonomyArea>> = {
   set_campaign_active: "marketing",
   set_bonus_program: "marketing",
   set_affiliate_program: "marketing",
-  send_broadcast: "marketing",
   switch_email_automation: "marketing",
   // Messages to customers and staff
   mark_order_sent: "messages",
@@ -91,6 +90,8 @@ export const NEVER_AUTOMATIC: ReadonlySet<string> = new Set([
   "set_domain_renewal",
   "buy_domain",
   "renew_domain",
+  // A broadcast reaches the whole list at once and cannot be called back: a person always reads it first.
+  "send_broadcast",
   "refund_order",
   "change_order",
   "process_exchange",
@@ -107,6 +108,9 @@ export const NEVER_AUTOMATIC: ReadonlySet<string> = new Set([
   "start_autopilot_plan",
   "resume_autopilot_plan",
 ]);
+
+/** Emails to one customer the autopilot may send itself, at most `customerEmailsPerWeek` in seven days (counted from the audit log). */
+export const CUSTOMER_EMAIL_TOOLS = ["email_customer", "reply_to_support"] as const;
 
 /** Gate categories that are never automatic, for a tool added later without an area. */
 const NEVER_CATEGORIES: ReadonlySet<GateCategory> = new Set(["access", "domain", "plan"]);
@@ -126,8 +130,10 @@ export const autonomySettingsSchema = z.object({
       discountPercent: z.number().int().min(0).max(100).default(20),
       /** The largest change of a variant's price it may make without a yes, in percent of the price now. */
       priceChangePercent: z.number().int().min(0).max(1000).default(10),
+      /** Emails to customers (`CUSTOMER_EMAIL_TOOLS`) it may send without a yes in seven days; 0: every one asks. */
+      customerEmailsPerWeek: z.number().int().min(0).max(100).default(5),
     })
-    .default({ aiMonthlyUsd: 5, discountPercent: 20, priceChangePercent: 10 }),
+    .default({ aiMonthlyUsd: 5, discountPercent: 20, priceChangePercent: 10, customerEmailsPerWeek: 5 }),
   /** Whether and how it keeps working toward the goals once a plan ends (D328, `docs/ai-autopilot.md` 12.1). */
   planning: z
     .object({
@@ -158,8 +164,16 @@ export function readAutonomy(raw: unknown): AutonomySettings {
 
 export const levelOf = (settings: AutonomySettings, area: AutonomyArea): AutonomyLevel => settings.levels[area] ?? "ask";
 
-/** What the code read for a call before deciding: a price change's size, a discount's depth (percent), whether a theme costs money. */
-export type AutonomyFacts = { priceChangePercent?: number | null; discountPercent?: number | null; costsMoney?: boolean | null };
+/**
+ * What the code read for a call before deciding: a price change's size, a discount's depth (percent), whether a theme costs money, and the
+ * emails to customers it sent itself in the last seven days.
+ */
+export type AutonomyFacts = {
+  priceChangePercent?: number | null;
+  discountPercent?: number | null;
+  costsMoney?: boolean | null;
+  customerEmailsThisWeek?: number | null;
+};
 
 export type AutonomyDecision = { run: true; tell: boolean; area: AutonomyArea } | { run: false; why: string };
 
@@ -183,6 +197,12 @@ export function autonomyDecision(settings: AutonomySettings, tool: string, gate:
   if (tool === "make_theme_live") {
     if (facts.costsMoney === undefined || facts.costsMoney === null) return { run: false, why: "What the theme costs could not be read." };
     if (facts.costsMoney) return { run: false, why: "This theme costs money, which always waits for your yes." };
+  }
+  if ((CUSTOMER_EMAIL_TOOLS as readonly string[]).includes(tool)) {
+    if (facts.customerEmailsThisWeek === undefined || facts.customerEmailsThisWeek === null) return { run: false, why: "The emails it sent this week could not be counted." };
+    if (facts.customerEmailsThisWeek >= settings.budgets.customerEmailsPerWeek) {
+      return { run: false, why: `It has sent ${facts.customerEmailsThisWeek} emails to customers itself in seven days, your limit is ${settings.budgets.customerEmailsPerWeek}.` };
+    }
   }
   if (tool === "create_discount" || tool === "create_campaign") {
     if (facts.discountPercent === undefined || facts.discountPercent === null) return { run: false, why: "How deep the offer goes could not be measured." };

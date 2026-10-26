@@ -42,6 +42,7 @@ import {
   type StorePlace,
 } from "@/lib/site-tools";
 
+import { ACTORS, actingAs, currentActor, type Actor } from "./actor";
 import { activeAccount, passMembership, type Account, type Membership } from "./auth";
 import { runningTestOf } from "./experiment-admin";
 import { OwnerToolError } from "./owner-tool-error";
@@ -219,8 +220,8 @@ export async function buildPageTool(ctx: SiteToolContext, args: BuildPageArgs, d
     return fail(`${BUILDS_WAITING_MAX} pages are being built already. Ask again when one is done: list_page_builds says how far they are.`);
   }
   const [job] = await db().execute<Row>(sql`
-    insert into commerce.page_ai_jobs (store_id, kind, asked_by, input)
-    values (${ownerOf(ctx)}::uuid, 'build', ${ctx.account.id}::uuid, ${JSON.stringify(args)}::jsonb)
+    insert into commerce.page_ai_jobs (store_id, kind, asked_by, input, acted_by)
+    values (${ownerOf(ctx)}::uuid, 'build', ${ctx.account.id}::uuid, ${JSON.stringify(args)}::jsonb, ${currentActor()})
     returning id
   `);
   schedule(deps, () => runPageJobs(Date.now() + 60_000, deps));
@@ -297,8 +298,8 @@ export async function editPageTool(ctx: SiteToolContext, { page: ref, type, chan
 async function queuePictures(ctx: SiteToolContext, pageId: string, jobs: readonly PictureJob[]): Promise<number> {
   for (const job of jobs) {
     await db().execute(sql`
-      insert into commerce.page_ai_jobs (store_id, kind, page_id, asked_by, input)
-      values (${ownerOf(ctx)}::uuid, 'picture', ${pageId}::uuid, ${ctx.account.id}::uuid, ${JSON.stringify(job)}::jsonb)
+      insert into commerce.page_ai_jobs (store_id, kind, page_id, asked_by, input, acted_by)
+      values (${ownerOf(ctx)}::uuid, 'picture', ${pageId}::uuid, ${ctx.account.id}::uuid, ${JSON.stringify(job)}::jsonb, ${currentActor()})
     `);
   }
   return jobs.length;
@@ -362,7 +363,7 @@ export async function publishApprovalWords(ctx: SiteToolContext, args: Record<st
 
 // The job ---------------------------------------------------------------------------------
 
-type ClaimedJob = { id: string; storeId: string | null; kind: PageJobKind; pageId: string | null; askedBy: string; input: unknown; tries: number };
+type ClaimedJob = { id: string; storeId: string | null; kind: PageJobKind; pageId: string | null; askedBy: string; actedBy: Actor; input: unknown; tries: number };
 
 /**
  * Takes the oldest waiting job no run holds and holds it while it is done. A job that stopped before it was done `PAGE_JOB_TRIES` times
@@ -384,7 +385,7 @@ async function claimJob(): Promise<ClaimedJob | null> {
       limit 1
       for update skip locked
     )
-    returning j.id, j.store_id, j.kind, j.page_id, j.asked_by, j.input, j.tries
+    returning j.id, j.store_id, j.kind, j.page_id, j.asked_by, j.acted_by, j.input, j.tries
   `);
   if (!row) return null;
   return {
@@ -393,6 +394,7 @@ async function claimJob(): Promise<ClaimedJob | null> {
     kind: row.kind as PageJobKind,
     pageId: row.page_id ? String(row.page_id) : null,
     askedBy: String(row.asked_by),
+    actedBy: (ACTORS as readonly string[]).includes(String(row.acted_by)) ? (row.acted_by as Actor) : "person",
     input: row.input,
     tries: Number(row.tries),
   };
@@ -450,8 +452,8 @@ async function keep(job: ClaimedJob, outcome: Outcome): Promise<void> {
       `);
       for (const picture of outcome.pictures ?? []) {
         await tx.execute(sql`
-          insert into commerce.page_ai_jobs (store_id, kind, page_id, asked_by, input)
-          values (${job.storeId}::uuid, 'picture', ${outcome.pageId}::uuid, ${job.askedBy}::uuid, ${JSON.stringify(picture)}::jsonb)
+          insert into commerce.page_ai_jobs (store_id, kind, page_id, asked_by, input, acted_by)
+          values (${job.storeId}::uuid, 'picture', ${outcome.pageId}::uuid, ${job.askedBy}::uuid, ${JSON.stringify(picture)}::jsonb, ${job.actedBy})
         `);
       }
     });
@@ -484,16 +486,19 @@ export async function runPageJobs(until: number, deps: SiteToolDeps = {}): Promi
     }
     if (!job) break;
     let outcome: Outcome;
+    const claimed = job;
     try {
-      const owner = await jobOwner(job);
-      outcome =
-        typeof owner === "string"
+      // As whoever asked (the autopilot, the AI manager or a person), so the page's audit entries and the model's usage say so.
+      outcome = await actingAs(claimed.actedBy, async (): Promise<Outcome> => {
+        const owner = await jobOwner(claimed);
+        return typeof owner === "string"
           ? { status: "failed", problem: owner }
-          : job.kind === "build"
-            ? await doBuild(owner, job.input, deps)
-            : job.pageId
-              ? await doPicture(owner, job.pageId, job.input, deps)
+          : claimed.kind === "build"
+            ? await doBuild(owner, claimed.input, deps)
+            : claimed.pageId
+              ? await doPicture(owner, claimed.pageId, claimed.input, deps)
               : { status: "failed", problem: "The picture has no page." };
+      });
     } catch (error) {
       console.error("[page-jobs] a job failed:", error);
       outcome = { status: "retry", problem: "Something went wrong. It is tried again." };

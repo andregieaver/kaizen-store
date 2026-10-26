@@ -31,6 +31,7 @@ import { lookProblem } from "@/lib/replicate-look";
 import { claimsIn } from "@/lib/site-tools";
 import { siteUrl } from "@/lib/site";
 
+import { ACTORS, actingAs, currentActor } from "./actor";
 import { AiError, aiFor, completeText, imagePart, seeing } from "./ai";
 import type { Account } from "./auth";
 import { cronBearer } from "./cron-auth";
@@ -108,8 +109,8 @@ export async function requestLook(ctx: LookContext, kind: LookKind, pageId: stri
   }
   const row = await typedRow(
     ID,
-    sql`insert into commerce.page_looks (store_id, account_id, kind, page_id)
-      values (${ctx.store.id}::uuid, ${ctx.account.id}::uuid, ${kind}, ${pageId}::uuid) returning id`,
+    sql`insert into commerce.page_looks (store_id, account_id, kind, page_id, acted_by)
+      values (${ctx.store.id}::uuid, ${ctx.account.id}::uuid, ${kind}, ${pageId}::uuid, ${currentActor()}) returning id`,
   );
   return row?.id ?? fail("The look could not be asked for.");
 }
@@ -212,7 +213,15 @@ export async function lookDraft(pageId: string, token: string | undefined): Prom
 
 // Running a look ------------------------------------------------------------------------------------------------------------------------
 
-const CLAIMED = z.object({ id: col.uuid, store_id: col.uuid, account_id: col.uuid.nullable(), kind: col.text, page_id: col.uuid.nullable(), tries: col.int });
+const CLAIMED = z.object({
+  id: col.uuid,
+  store_id: col.uuid,
+  account_id: col.uuid.nullable(),
+  kind: col.text,
+  page_id: col.uuid.nullable(),
+  acted_by: z.enum(ACTORS),
+  tries: col.int,
+});
 type Claimed = z.output<typeof CLAIMED>;
 
 async function claim(id: string | null): Promise<Claimed | null> {
@@ -224,7 +233,7 @@ async function claim(id: string | null): Promise<Claimed | null> {
         where ${id ? sql`id = ${id}::uuid and` : sql``} (status = 'queued' or (status = 'running' and claimed_until < now()))
         order by created_at limit 1 for update skip locked
       )
-      returning id, store_id, account_id, kind, page_id, tries`,
+      returning id, store_id, account_id, kind, page_id, acted_by, tries`,
   );
 }
 
@@ -308,6 +317,11 @@ async function draftFindings(store: Store, pageId: string): Promise<Finding[]> {
 export async function runLook(id: string | null, deps: LookDeps): Promise<boolean> {
   const look = await claim(id);
   if (!look) return false;
+  // As whoever asked for it, so the judge's AI usage counts where it should (an autopilot step's in the autopilot's budget).
+  return actingAs(look.acted_by, () => takeLook(look, deps));
+}
+
+async function takeLook(look: Claimed, deps: LookDeps): Promise<boolean> {
   try {
     if (!deps.photograph) throw new Error("No browser is available to look with.");
     const slug = (await typedRow(z.object({ slug: col.text }), sql`select slug from commerce.stores where id = ${look.store_id}::uuid`))?.slug;

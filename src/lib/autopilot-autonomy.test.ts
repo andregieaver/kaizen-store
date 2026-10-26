@@ -42,11 +42,11 @@ describe("autonomyDecision", () => {
 
   it("runs at Just do it, and runs and tells at Do it and tell me", () => {
     expect(autonomyDecision(all("auto"), "publish_page", "public")).toEqual({ run: true, tell: false, area: "website" });
-    expect(autonomyDecision(all("tell"), "email_customer", "send")).toEqual({ run: true, tell: true, area: "messages" });
+    expect(autonomyDecision(all("tell"), "email_customer", "send", { customerEmailsThisWeek: 0 })).toEqual({ run: true, tell: true, area: "messages" });
   });
 
   it("never runs what is never automatic, whatever the level", () => {
-    for (const tool of ["refund_order", "invite_staff", "change_dns", "open_store", "change_plan", "set_feature"]) {
+    for (const tool of ["refund_order", "invite_staff", "change_dns", "open_store", "change_plan", "set_feature", "send_broadcast"]) {
       expect(autonomyDecision(all("auto"), tool, "spend").run, tool).toBe(false);
     }
     expect(autonomyDecision(all("auto"), "some_new_tool", "access").run).toBe(false);
@@ -61,6 +61,21 @@ describe("autonomyDecision", () => {
     expect(autonomyDecision(settings, "create_discount", "public", { discountPercent: 15 }).run).toBe(true);
     expect(autonomyDecision(settings, "create_campaign", "public", { discountPercent: 50 }).run).toBe(false);
     expect(autonomyDecision(settings, "create_campaign", "public", { discountPercent: null }).run).toBe(false);
+  });
+
+  it("sends customers only so many emails itself in seven days, and asks when it cannot count them", () => {
+    const settings = all("auto");
+    expect(settings.budgets.customerEmailsPerWeek).toBe(5);
+    for (const tool of ["email_customer", "reply_to_support"]) {
+      expect(autonomyDecision(settings, tool, "send", { customerEmailsThisWeek: 4 }).run, tool).toBe(true);
+      expect(autonomyDecision(settings, tool, "send", { customerEmailsThisWeek: 5 }), tool).toEqual({ run: false, why: expect.stringContaining("limit is 5") });
+      expect(autonomyDecision(settings, tool, "send", { customerEmailsThisWeek: null }).run, tool).toBe(false);
+      expect(autonomyDecision(settings, tool, "send").run, tool).toBe(false);
+    }
+    const none = readAutonomy({ levels: { messages: "auto" }, budgets: { customerEmailsPerWeek: 0 } });
+    expect(autonomyDecision(none, "email_customer", "send", { customerEmailsThisWeek: 0 }).run).toBe(false);
+    // Other messages are not counted against it.
+    expect(autonomyDecision(settings, "mark_order_sent", "send").run).toBe(true);
   });
 
   it("reads stored settings safely, falling back to asking", () => {
