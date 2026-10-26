@@ -494,7 +494,7 @@ export async function runChat(
   agent: ChatAgent,
   request: ChatRequest,
   connection: AiConnection,
-  options: { handoff?: boolean; support?: SupportToolSet; admin?: boolean } = {},
+  options: { handoff?: boolean; support?: SupportToolSet; admin?: boolean; email?: boolean } = {},
 ): Promise<ChatReply> {
   const lang = site.kind === "store" ? site.market.lang : "en";
   const m = t(lang);
@@ -514,6 +514,7 @@ export async function runChat(
         support: Boolean(options.support?.definitions.length) && !options.admin,
         admin: options.admin,
         // A brand that cannot be read leaves the tone to the agent's own guidance; the chat never fails for it.
+        email: options.email,
         voice: brandVoiceGuide(await brandOf(site.kind === "store" ? site.store.id : null).catch(() => null)),
       }),
     },

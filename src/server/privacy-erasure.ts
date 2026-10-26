@@ -727,6 +727,12 @@ async function eraseRows(tx: Tx, s: PrivacySubject, store: PrivacyStore): Promis
     `);
     await anonymiseConversations(tx, conversations.map((row) => String(row.id)));
   }
+  // Conversations by email from the person's own addresses (D332), and the emails received from them.
+  const byEmail = await tx.execute<Row>(sql`
+    select id from commerce.support_conversations where store_id = ${sid}::uuid and source = 'email' and lower(contact_email) = any(${addresses}) and anonymised_at is null
+  `);
+  await anonymiseConversations(tx, byEmail.map((row) => String(row.id)));
+  await tx.execute(sql`delete from commerce.support_inbound_emails where store_id = ${sid}::uuid and from_address = any(${addresses})`);
 
   // Carts: the person and the company details; their delivery quotes lose the postal code; reminders lose the address and the lines (the opt-out stays).
   const cartIds = uuidList(s.cartIds);

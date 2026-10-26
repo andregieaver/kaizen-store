@@ -1,13 +1,17 @@
 import "server-only";
 
+import { randomBytes } from "node:crypto";
+
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf, type AdminLang } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
+import type { ChatProduct } from "@/lib/chat";
 import { renderEmail, type EmailBlock, type RenderedEmail } from "@/lib/email-layout";
-import { marketUrl } from "@/lib/paths";
+import { EMAIL_CHANNEL_MAX, EMAIL_SETTLE_SECONDS, answerSubject, inboundDomain, replyAddress } from "@/lib/inbound-email";
+import { marketOrigin, marketUrl } from "@/lib/paths";
 import { can } from "@/lib/permissions";
 import { siteUrl } from "@/lib/site";
 import { t } from "@/lib/i18n";
@@ -28,7 +32,9 @@ type Row = Record<string, unknown>;
  * - `support.reply` to a customer: when a person answered while the customer had not looked for `REPLY_AFTER_SECONDS`, one email
  *   carries the people's messages since the last email (at most one every `EMAIL_EVERY_MINUTES`, `EMAILS_MAX` a conversation) and a
  *   new link back to the conversation (the newest email's link alone opens it). It goes to a signed-in customer's own address, else
- *   to the email they left; only on a desk with support on and email follow-up.
+ *   to the email they left; only on a desk with support on and email follow-up. A conversation by email (D332) gets the AI's and
+ *   people's answers as a reply in the customer's own thread, once the newest is `EMAIL_SETTLE_SECONDS` old, `EMAIL_CHANNEL_MAX` in
+ *   all; while receiving is set up, every answer email's Reply-To is the conversation's reply address, so replying continues it.
  * - `support.waiting` to the desk's people: a conversation has waited the desk's `notify_after_minutes` for a person; every person
  *   who may answer there and is not online gets one email, once for each time it entered the queue. It names no customer and holds
  *   none of their words.
@@ -63,13 +69,13 @@ export async function sendReplyEmails(now: Date = new Date(), limit = 100): Prom
   const out: SupportEmailRun = { replies: 0, waiting: 0, failed: 0 };
   const at = sql`${now.toISOString()}::timestamptz`;
   const rows = await db().execute<Row>(sql`
-    select c.id, c.store_id, c.locale, c.market, c.email_sent_seq, c.source, coalesce(cu.email, ra.email, c.contact_email) as address
+    select c.id, c.store_id, c.locale, c.market, c.email_sent_seq, c.source, c.reply_key, coalesce(cu.email, ra.email, c.contact_email) as address
     from commerce.support_conversations c
     join commerce.support_settings s on s.store_id is not distinct from c.store_id
     left join commerce.customers cu on cu.store_id = c.store_id and cu.id = c.customer_id
     -- An account asking Kaizena Flow from the admin (step 11) is answered at its own address.
     left join commerce.accounts ra on c.source = 'admin' and ra.id = c.requester_id
-    where c.anonymised_at is null and s.mode <> 'off' and (s.email_followup or c.source = 'admin')
+    where c.anonymised_at is null and c.source <> 'email' and s.mode <> 'off' and (s.email_followup or c.source = 'admin')
       and coalesce(cu.email, ra.email, c.contact_email) is not null and c.email_count < ${EMAILS_MAX}
       and (c.email_sent_at is null or c.email_sent_at <= ${at} - make_interval(mins => ${EMAIL_EVERY_MINUTES}))
       and (c.visitor_seen_at is null or c.visitor_seen_at <= ${at} - make_interval(secs => ${REPLY_AFTER_SECONDS}))
@@ -81,7 +87,19 @@ export async function sendReplyEmails(now: Date = new Date(), limit = 100): Prom
           and m.created_at <= ${at} - make_interval(secs => ${REPLY_AFTER_SECONDS}))
     order by c.last_message_at limit ${limit}
   `);
-  for (const row of rows) {
+  // Conversations by email (D332): the AI's and people's answers, once the newest has settled.
+  const byEmail = await db().execute<Row>(sql`
+    select c.id, c.store_id, c.locale, c.market, c.email_sent_seq, c.source, c.contact_email as address, c.reply_key, c.email_subject, c.email_message_id
+    from commerce.support_conversations c
+    join commerce.support_settings s on s.store_id is not distinct from c.store_id
+    where c.source = 'email' and c.anonymised_at is null and s.mode <> 'off' and c.contact_email is not null and c.email_count < ${EMAIL_CHANNEL_MAX}
+      and (c.store_id is null or commerce.store_is_active(c.store_id))
+      and exists (select 1 from commerce.support_messages m where m.conversation_id = c.id and m.author in ('ai', 'agent') and m.seq > c.email_sent_seq)
+      and not exists (select 1 from commerce.support_messages m where m.conversation_id = c.id and m.author in ('ai', 'agent') and m.seq > c.email_sent_seq
+        and m.created_at > ${at} - make_interval(secs => ${EMAIL_SETTLE_SECONDS}))
+    order by c.last_message_at limit ${limit}
+  `);
+  for (const row of [...rows, ...byEmail]) {
     try {
       const outcome = await sendReply(row);
       if (outcome === null) continue;
@@ -99,27 +117,25 @@ async function sendReply(row: Row): Promise<SendOutcome | null> {
   const id = String(row.id);
   const storeId = row.store_id ? String(row.store_id) : null;
   const desk = systemDesk(storeId);
+  const byEmail = row.source === "email";
   const messages = await db().execute<Row>(sql`
-    select seq, body, data from commerce.support_messages
-    where conversation_id = ${id}::uuid and author = 'agent' and seq > ${Number(row.email_sent_seq)}
+    select seq, author, body, data from commerce.support_messages
+    where conversation_id = ${id}::uuid and author in ${byEmail ? sql`('ai', 'agent')` : sql`('agent')`} and seq > ${Number(row.email_sent_seq)}
     order by seq limit 20
   `);
   if (messages.length === 0) return null;
   const lastSeq = Math.max(...messages.map((m) => Number(m.seq)));
   const locale = String(row.locale);
   const words = supportEmailText(locale);
-  const lines = messages.map((m) => {
-    const name = (m.data as { name?: unknown } | null)?.name;
-    return { type: "paragraph" as const, text: `${typeof name === "string" ? `${name}:\n` : ""}${String(m.body)}` };
-  });
 
   let deskName: string;
   let url: string;
   let footer: string[];
   let replyTo: string | null = null;
-  // An account's request from the admin is opened in the admin, by its session; no token is made.
+  let origin: string | null = null;
+  // An account's request from the admin is opened in the admin, by its session; no token is made. A conversation by email has no link.
   const admin = row.source === "admin";
-  const token = admin ? "" : await newEmailToken(desk, id);
+  const token = admin || byEmail ? "" : await newEmailToken(desk, id);
   if (admin) {
     deskName = "Kaizena Flow";
     url = `${siteUrl()}/admin/account/kaizen-support?c=${id}`;
@@ -130,27 +146,46 @@ async function sendReply(row: Row): Promise<SendOutcome | null> {
     if (!ctx) return null;
     deskName = ctx.store.name;
     url = `${marketUrl(ctx.store.slug, ctx.market.slug, `/account/support/${token}`)}`;
+    origin = marketOrigin(ctx.store.slug, ctx.market.slug);
     footer = emailFooter(ctx.store, ctx.text);
     replyTo = ctx.store.details.contactEmail;
   } else {
     deskName = "Kaizena Flow";
     url = `${siteUrl()}/support/c/${token}`;
+    origin = siteUrl();
     footer = ["Kaizena Flow"];
   }
-  const blocks: EmailBlock[] = [
-    { type: "heading", text: words.heading },
-    { type: "paragraph", text: words.intro(deskName) },
-    // The people's own words, as text.
-    ...lines,
-    { type: "button", text: words.button, url },
-    ...(admin
-      ? [{ type: "paragraph" as const, text: "You get this email because you asked Kaizena Flow for help in the admin. The link opens the conversation after you sign in." }]
-      : [
-          { type: "paragraph" as const, text: words.linkNote },
-          { type: "paragraph" as const, text: words.why },
-        ]),
-  ];
-  const email = renderEmail({ subject: words.subject(deskName), preview: words.preview(deskName), blocks, footer, lang: locale.split("-")[0] || "en" });
+  // While receiving is set up (D332), replying to the email continues the conversation.
+  const domain = admin ? null : inboundDomain(process.env.SUPPORT_INBOUND_DOMAIN);
+  const replyKey = domain ? await ensureReplyKey(id, row.reply_key ? String(row.reply_key) : null) : null;
+  if (domain && replyKey) replyTo = replyAddress(replyKey, domain);
+
+  const lines: EmailBlock[] = messages.flatMap((m) => {
+    const data = (m.data ?? {}) as { name?: unknown; products?: ChatProduct[] };
+    const name = m.author === "agent" && typeof data.name === "string" ? `${data.name}:\n` : "";
+    // The AI's product cards, as their names and links: an email carries no cards.
+    const products = Array.isArray(data.products) && origin ? data.products.slice(0, 6).map((p) => `${p.title}: ${p.href.startsWith("http") ? p.href : `${origin}${p.href}`}`) : [];
+    return [{ type: "paragraph" as const, text: `${name}${String(m.body)}` }, ...(products.length ? [{ type: "paragraph" as const, text: products.join("\n") }] : [])];
+  });
+  const blocks: EmailBlock[] = byEmail
+    ? [...lines, { type: "paragraph", text: words.replyNote }, { type: "paragraph", text: words.emailWhy(deskName) }]
+    : [
+        { type: "heading", text: words.heading },
+        { type: "paragraph", text: words.intro(deskName) },
+        // The people's own words, as text.
+        ...lines,
+        { type: "button", text: words.button, url },
+        ...(admin
+          ? [{ type: "paragraph" as const, text: "You get this email because you asked Kaizena Flow for help in the admin. The link opens the conversation after you sign in." }]
+          : [
+              ...(replyKey ? [{ type: "paragraph" as const, text: words.orReply }] : []),
+              { type: "paragraph" as const, text: words.linkNote },
+              { type: "paragraph" as const, text: words.why },
+            ]),
+      ];
+  const subject = byEmail ? answerSubject(row.email_subject ? String(row.email_subject) : null, words.subject(deskName)) : words.subject(deskName);
+  const thread = byEmail && row.email_message_id ? String(row.email_message_id) : null;
+  const email = renderEmail({ subject, preview: words.preview(deskName), blocks, footer, lang: locale.split("-")[0] || "en" });
   const outcome = await sendEmail({
     storeId,
     kind: "support.reply",
@@ -158,15 +193,27 @@ async function sendReply(row: Row): Promise<SendOutcome | null> {
     email,
     fromName: deskName,
     replyTo,
+    ...(thread ? { headers: { "In-Reply-To": thread, References: thread } } : {}),
     idempotencyKey: `support.reply:${id}:${lastSeq}`,
   });
   if (TOLD.includes(outcome)) {
     await db().execute(sql`
-      update commerce.support_conversations set email_sent_seq = greatest(email_sent_seq, ${lastSeq}), email_count = least(email_count + 1, ${EMAILS_MAX}), email_sent_at = now()
+      update commerce.support_conversations set email_sent_seq = greatest(email_sent_seq, ${lastSeq}),
+        email_count = least(email_count + 1, ${byEmail ? EMAIL_CHANNEL_MAX : EMAILS_MAX}), email_sent_at = now()
       where id = ${id}::uuid
     `);
   }
   return outcome;
+}
+
+/** The conversation's reply address key, made the first time an answer email needs it. */
+async function ensureReplyKey(conversationId: string, known: string | null): Promise<string | null> {
+  if (known) return known;
+  const key = Array.from(randomBytes(20), (b) => "abcdefghijklmnopqrstuvwxyz0123456789"[b % 36]).join("");
+  const [row] = await db().execute<Row>(sql`
+    update commerce.support_conversations set reply_key = coalesce(reply_key, ${key}) where id = ${conversationId}::uuid returning reply_key
+  `);
+  return row?.reply_key ? String(row.reply_key) : null;
 }
 
 /** The waiting alerts due now (see the module's note). */

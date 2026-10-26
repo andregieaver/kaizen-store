@@ -2,6 +2,14 @@ import type { SupportMessages } from "./support.en";
 
 /** Norwegian (bokmål), written by hand (D312 A10). */
 export const supportNb: SupportMessages = {
+  email: {
+    title: "Kundeservice på e-post",
+    description:
+      "Videresend kundeserviceadressen deres til denne adressen, så blir hver e-post en samtale i innboksen. Med AI først svarer den på generelle spørsmål på e-post; alt om en bestilling går til en person, fordi en e-postadresse ikke beviser hvem noen er.",
+    address: "Videresend til",
+    off: "Kundeservice er av: e-post til denne adressen tas ikke imot før dere velger hvem som svarer.",
+    notSetUp: "Mottak av e-post er ikke satt opp på plattformen ennå.",
+  },
   inbox: {
     title: "Innboks",
     tabTitle: "Kundeservice",
@@ -149,6 +157,7 @@ export const supportNb: SupportMessages = {
     noMessages: "Ingen meldinger ennå",
     signedIn: "Logget inn",
     fromAdmin: "Fra administrasjonen",
+    fromEmail: "På e-post",
     toneAlert: "Varsel om tone",
   },
   tone: {
@@ -201,6 +210,7 @@ export const supportNb: SupportMessages = {
     from: "Fra",
     fromAdmin: "Administrasjonen",
     fromChat: "Chatten på nettstedet",
+    fromEmail: "E-post",
   },
   actions: {
     why: {

@@ -499,7 +499,7 @@ export async function anonymiseConversations(executor: Executor, ids: string[]):
       contact_name = null, contact_email = null, page_path = null, ai_reason = null, rating_comment = null, brief = null,
       summary = case when summary is null then null else summary - 'text' - 'followUp' end,
       customer_id = null, requester_id = null, about_store_id = null, token_hash = null, email_token_hash = null,
-      anonymised_at = now()
+      reply_key = null, email_subject = null, email_message_id = null, anonymised_at = now()
     where id = any(${list}) and anonymised_at is null
     returning id
   `);
@@ -565,7 +565,7 @@ export type InboxRow = {
   store: { slug: string; name: string } | null;
   status: ConversationStatus;
   handler: Handler;
-  source: "site" | "admin";
+  source: "site" | "admin" | "email";
   /** Who wrote: the customer's or the account's name, else their email, else "Visitor" and four letters of the id. */
   who: string;
   email: string | null;
@@ -736,7 +736,7 @@ export type StaffConversation = {
   store: { slug: string; name: string } | null;
   status: ConversationStatus;
   handler: Handler;
-  source: "site" | "admin";
+  source: "site" | "admin" | "email";
   who: string;
   email: string | null;
   signedIn: boolean;

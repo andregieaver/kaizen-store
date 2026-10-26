@@ -3368,6 +3368,20 @@
       "when": 1793005719107,
       "tag": "20261026090839_autopilot_events_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 481,
+      "version": "7",
+      "when": 1793007562478,
+      "tag": "20261026093922_support_inbound_email",
+      "breakpoints": true
+    },
+    {
+      "idx": 482,
+      "version": "7",
+      "when": 1793007590817,
+      "tag": "20261026093950_support_inbound_email_rls",
+      "breakpoints": true
     }
   ]
 }

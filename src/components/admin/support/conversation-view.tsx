@@ -259,7 +259,7 @@ export function ConversationContext({
           string,
         ][])
       : []),
-    [w.from, conversation.source === "admin" ? w.fromAdmin : w.fromChat],
+    [w.from, conversation.source === "admin" ? w.fromAdmin : conversation.source === "email" ? w.fromEmail : w.fromChat],
   ];
   return (
     <div className="flex flex-col gap-4 p-4">

@@ -327,6 +327,12 @@ stand-in is the only fake, and only it is told it is one.
   test); the AI manager's `support_overview`/`list_support_conversations` (owner, `support:read`; answering, D318: `get_support_conversation`, `add_support_note`, `end_support_conversation` and the `send`-gated `reply_to_support`, only through `agentAct()` with `managerStaffDesk()`) and the platform's
   `support_overview` repeat them; the control center says how many wait (`supportWaiting`); the integrations' `support.waiting`
   carries the count and the inbox, never who.
+  Email (step 16, D332, `src/server/support-inbound.ts`, pure parts `src/lib/inbound-email.ts`): Resend's `email.received` reaches
+  `/api/resend/webhook`, kept as `support_inbound_emails` and processed by `processInboundEmails()` (after the answer and every minute);
+  a desk's address is `deskEmailAddress()`, a conversation's reply address its `reply_key`, and a reply continues a conversation only
+  from that conversation's own address. A conversation by email (source `email`) is never tied to a customer by the address; the AI
+  answers it only with the AI first, through `runSupportTurn(..., { email: true })` (no tool that needs a signed-in customer or a
+  button, `NOT_BY_EMAIL`), and its answers go back by `sendReplyEmails()` as a reply in the thread.
 - Prices are shown with `<Price>`, which adds the VAT label and shows the
   30-day reference only for a genuine reduction.
 - Choosing in the storefront (D82) uses `Dropdown` (`src/components/dropdown.tsx`,

@@ -225,6 +225,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   support_messages: never("Support messages (D216) belong to the original store's conversations."),
   support_actions: never("Support actions (D216) belong to the original store's conversations."),
   support_agents: never("Who answers support (D216) is the original store's staff."),
+  support_inbound_emails: never("Emails received for support (D332) are the original store's customers'."),
   chat_usage: never("Rate-limit counters."),
   store_usage_daily: derived("Measured again by the new store's own jobs (D314)."),
   limit_overrides: never("A platform admin's decision for this store only (D314)."),

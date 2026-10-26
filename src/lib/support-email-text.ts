@@ -16,6 +16,11 @@ export type SupportEmailText = {
   decisionSubject: (desk: string) => string;
   decisionHeading: string;
   decisionWhy: string;
+  /** A conversation by email (D332): the answer is a reply in the customer's own thread. */
+  replyNote: string;
+  emailWhy: (desk: string) => string;
+  /** A chat's answer email that can be answered by replying (D332). */
+  orReply: string;
 };
 
 const TEXT: Record<"nb" | "sv" | "da" | "en", SupportEmailText> = {
@@ -30,6 +35,9 @@ const TEXT: Record<"nb" | "sv" | "da" | "en", SupportEmailText> = {
     decisionSubject: (desk) => `${desk} har svart på forespørselen din`,
     decisionHeading: "Svar på forespørselen din",
     decisionWhy: "Du får denne e-posten fordi du ba om dette i chatten.",
+    replyNote: "Svar på denne e-posten for å fortsette samtalen.",
+    emailWhy: (desk) => `Du får denne e-posten fordi du skrev til ${desk}.`,
+    orReply: "Du kan også svare på denne e-posten.",
   },
   sv: {
     subject: (desk) => `Svar från ${desk}`,
@@ -42,6 +50,9 @@ const TEXT: Record<"nb" | "sv" | "da" | "en", SupportEmailText> = {
     decisionSubject: (desk) => `${desk} har svarat på din begäran`,
     decisionHeading: "Svar på din begäran",
     decisionWhy: "Du får det här mejlet eftersom du bad om det här i chatten.",
+    replyNote: "Svara på det här mejlet för att fortsätta samtalet.",
+    emailWhy: (desk) => `Du får det här mejlet eftersom du skrev till ${desk}.`,
+    orReply: "Du kan också svara på det här mejlet.",
   },
   da: {
     subject: (desk) => `Svar fra ${desk}`,
@@ -54,6 +65,9 @@ const TEXT: Record<"nb" | "sv" | "da" | "en", SupportEmailText> = {
     decisionSubject: (desk) => `${desk} har svaret på din forespørgsel`,
     decisionHeading: "Svar på din forespørgsel",
     decisionWhy: "Du får denne e-mail, fordi du bad om dette i chatten.",
+    replyNote: "Svar på denne e-mail for at fortsætte samtalen.",
+    emailWhy: (desk) => `Du får denne e-mail, fordi du skrev til ${desk}.`,
+    orReply: "Du kan også svare på denne e-mail.",
   },
   en: {
     subject: (desk) => `An answer from ${desk}`,
@@ -66,6 +80,9 @@ const TEXT: Record<"nb" | "sv" | "da" | "en", SupportEmailText> = {
     decisionSubject: (desk) => `${desk} answered your request`,
     decisionHeading: "An answer to your request",
     decisionWhy: "You get this email because you asked for this in the chat.",
+    replyNote: "Reply to this email to continue the conversation.",
+    emailWhy: (desk) => `You get this email because you wrote to ${desk}.`,
+    orReply: "You can also answer by replying to this email.",
   },
 };
 
