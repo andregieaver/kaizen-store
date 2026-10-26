@@ -36,6 +36,7 @@ async function storeWithGallery(): Promise<string> {
 }
 
 test("a product's gallery shows its videos and 3D model in order, each loaded only when the shopper asks", async ({ page }) => {
+  test.setTimeout(90_000);
   const slug = await storeWithGallery();
   const asked: string[] = [];
   await page.route("https://media.example/**", (route) => {
@@ -77,10 +78,11 @@ test("a product's gallery shows its videos and 3D model in order, each loaded on
   // Swiping on takes the YouTube player away.
   await expect(gallery.locator("iframe")).toHaveCount(0);
   await page.getByRole("button", { name: "Vis i 3D" }).click();
-  // React gives a custom element its values as properties.
-  const viewer = gallery.locator("model-viewer");
-  await expect.poll(() => viewer.evaluate((el) => (el as HTMLElement & { src: string }).src)).toBe(MODEL);
-  expect(await page.evaluate(() => Boolean(customElements.get("model-viewer")))).toBe(true);
   // The model is fetched now that the shopper asked for it.
-  await expect.poll(() => asked.filter((url) => url.endsWith(".glb")).length).toBeGreaterThan(0);
+  await expect.poll(() => asked.filter((url) => url.endsWith(".glb")).length, { timeout: 30_000 }).toBeGreaterThan(0);
+  // React gives a custom element its values as properties. Without a graphics card the browser draws the model in software, which can
+  // hold the page for seconds on a busy machine, so these reads are given time.
+  const viewer = gallery.locator("model-viewer");
+  await expect.poll(() => viewer.evaluate((el) => (el as HTMLElement & { src: string }).src), { timeout: 30_000 }).toBe(MODEL);
+  expect(await page.evaluate(() => Boolean(customElements.get("model-viewer")))).toBe(true);
 });

@@ -148,7 +148,7 @@ export function ProductGallery({
         >
           {images.map((image, i) => (
             <div
-              key={image.url}
+              key={`${i}:${image.mediaUrl ?? image.url}`}
               role="group"
               aria-roledescription="slide"
               aria-label={labels.slide[i]}
@@ -194,7 +194,7 @@ export function ProductGallery({
         >
           {images.map((image, i) => (
             <button
-              key={image.url}
+              key={`${i}:${image.mediaUrl ?? image.url}`}
               type="button"
               onClick={() => show(i)}
               aria-label={labels.show[i]}
