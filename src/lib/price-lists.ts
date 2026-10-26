@@ -65,3 +65,34 @@ export function pricingLine(list: { percent: number | null; prices: number }, wo
 export function forWhomLine(list: { groups: number; companies: number }, words: LineWords): string {
   return list.groups + list.companies === 0 ? words.nobody : fillWords(words.groupsAndCompanies, { groups: list.groups, companies: list.companies });
 }
+
+/** A list's prices by quantity as typed (D323 E3): a variant, from how many, and a percentage off or an amount per currency ("249,00"). */
+export const listBreaksInput = z
+  .array(
+    z.object({
+      variantId: z.uuid(),
+      from: z.number().int().min(2).max(9999),
+      percent: z.number().int().min(1).max(99).nullable(),
+      prices: z.record(z.string().regex(/^[A-Z]{3}$/), z.string().trim().max(20)),
+    }),
+  )
+  .max(PRICE_ROWS_MAX);
+
+/** A list's quantity rules as typed (D323 E3): per variant, a minimum, a maximum and a step; all three empty takes the list's rule away. */
+export const listRulesInput = z
+  .array(
+    z.object({
+      variantId: z.uuid(),
+      min: z.number().int().min(1).max(9999).nullable(),
+      max: z.number().int().min(1).max(9999).nullable(),
+      step: z.number().int().min(1).max(9999).nullable(),
+    }),
+  )
+  .max(PRICE_ROWS_MAX);
+
+/** A whole number as typed in a form: empty is none (null), anything not a whole number from 1 is `invalid`. */
+export function countFromForm(value: FormDataEntryValue | null): number | null | "invalid" {
+  const text = String(value ?? "").trim();
+  if (text === "") return null;
+  return /^[0-9]{1,4}$/.test(text) && Number(text) >= 1 ? Number(text) : "invalid";
+}

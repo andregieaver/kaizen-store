@@ -13780,6 +13780,64 @@ export const priceListPrices = commerce.table(
   ],
 );
 
+/**
+ * A price list's own price breaks for a variant (wave 6 unit E3, D323, `docs/wave-6-catalogue.md` E.3): from `fromQuantity` units in one line, a
+ * whole `percent` off the market price or `amounts`, a unit price per currency with VAT (as `price_list_prices`), for the list's buyers only. Read
+ * only by `commerce.line_price()`; at most 10 a variant in a list.
+ */
+export const priceListBreaks = commerce.table(
+  "price_list_breaks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId(),
+    listId: uuid("list_id").notNull(),
+    variantId: uuid("variant_id").notNull(),
+    fromQuantity: integer("from_quantity").notNull(),
+    percent: integer("percent"),
+    amounts: jsonb("amounts").$type<Record<string, number>>(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("price_list_breaks_step_key").on(t.listId, t.variantId, t.fromQuantity),
+    foreignKey({ name: "price_list_breaks_list_fk", columns: [t.storeId, t.listId], foreignColumns: [priceLists.storeId, priceLists.id] }).onDelete("cascade"),
+    foreignKey({ name: "price_list_breaks_variant_fk", columns: [t.storeId, t.variantId], foreignColumns: [productVariants.storeId, productVariants.id] }).onDelete("cascade"),
+    index("price_list_breaks_variant_idx").on(t.storeId, t.variantId),
+    index("price_list_breaks_list_fk_idx").on(t.storeId, t.listId),
+    check("price_list_breaks_from", sql`${t.fromQuantity} between 2 and 9999`),
+    check("price_list_breaks_percent", sql`${t.percent} between 1 and 99`),
+    check("price_list_breaks_one", sql`(${t.percent} is null) <> (${t.amounts} is null)`),
+  ],
+);
+
+/**
+ * A price list's own quantity rule for a variant (D323 E3): its buyers buy it at least `minQuantity`, at most `maxQuantity` and in whole
+ * `quantityStep`s, in place of the variant's own rule. Read only through `commerce.quantity_rule()`.
+ */
+export const priceListQuantityRules = commerce.table(
+  "price_list_quantity_rules",
+  {
+    storeId: storeId(),
+    listId: uuid("list_id").notNull(),
+    variantId: uuid("variant_id").notNull(),
+    minQuantity: integer("min_quantity").notNull().default(1),
+    maxQuantity: integer("max_quantity"),
+    quantityStep: integer("quantity_step").notNull().default(1),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    primaryKey({ name: "price_list_quantity_rules_pkey", columns: [t.listId, t.variantId] }),
+    foreignKey({ name: "price_list_quantity_rules_list_fk", columns: [t.storeId, t.listId], foreignColumns: [priceLists.storeId, priceLists.id] }).onDelete("cascade"),
+    foreignKey({ name: "price_list_quantity_rules_variant_fk", columns: [t.storeId, t.variantId], foreignColumns: [productVariants.storeId, productVariants.id] }).onDelete("cascade"),
+    index("price_list_quantity_rules_variant_idx").on(t.storeId, t.variantId),
+    index("price_list_quantity_rules_list_fk_idx").on(t.storeId, t.listId),
+    check("price_list_quantity_rules_rule", sql`${t.minQuantity} between 1 and 9999 and ${t.quantityStep} between 1 and 9999 and ${t.minQuantity} % ${t.quantityStep} = 0`),
+    check(
+      "price_list_quantity_rules_max",
+      sql`${t.maxQuantity} is null or (${t.maxQuantity} between ${t.minQuantity} and 9999 and ${t.maxQuantity} % ${t.quantityStep} = 0)`,
+    ),
+  ],
+);
+
 /** A price list's scope (D321): a product or a product category (with its subcategories) per row; none is every product. */
 export const priceListProducts = commerce.table(
   "price_list_products",

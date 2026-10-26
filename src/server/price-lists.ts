@@ -7,9 +7,9 @@ import { db } from "@/db/client";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
-import { assignmentsInput, priceListInput, pricesInput, scopeInput, type PriceListInput } from "@/lib/price-lists";
+import { assignmentsInput, listBreaksInput, listRulesInput, priceListInput, pricesInput, scopeInput, type PriceListInput } from "@/lib/price-lists";
 import { formatPriceInput, parsePrice } from "@/lib/product-input";
-import { ruleOf, type QuantityRule } from "@/lib/quantity-rules";
+import { ruleOf, ruleProblem, type QuantityRule } from "@/lib/quantity-rules";
 
 import { audit, type Membership } from "./auth";
 import { offeredTo } from "./product-conditions";
@@ -273,6 +273,181 @@ export async function setPrices({ account, store }: Membership, listId: string, 
   return { ok: true };
 }
 
+const LIST_BREAK_ROW = z.object({
+  variant_id: col.uuid,
+  title: col.text,
+  options: z.record(z.string(), z.string()).nullable(),
+  sku: col.text,
+  from_quantity: col.int,
+  percent: col.int.nullable(),
+  amounts: z.record(z.string(), z.number()).nullable(),
+});
+
+export type ListBreak = { variantId: string; title: string; options: Record<string, string>; sku: string; from: number; percent: number | null; prices: Record<string, string> };
+
+/** A list's own prices by quantity (D323 E3), as the editor shows them: per variant, from how many, a percentage or an amount per currency ("249,00"). */
+export async function listBreaks(storeId: string, listId: string, locale: string): Promise<ListBreak[]> {
+  const rows = await typedRows(LIST_BREAK_ROW, sql`
+    select lb.variant_id, coalesce(tl.title, p.handle) as title, v.options, v.sku, lb.from_quantity, lb.percent, lb.amounts
+    from commerce.price_list_breaks lb
+    join commerce.product_variants v on v.store_id = lb.store_id and v.id = lb.variant_id
+    join commerce.products p on p.store_id = v.store_id and p.id = v.product_id
+    left join commerce.product_translations tl on tl.product_id = p.id and tl.locale = ${locale}
+    where lb.store_id = ${storeId}::uuid and lb.list_id = ${listId}::uuid
+    order by lower(coalesce(tl.title, p.handle)), v.sku, lb.from_quantity
+  `);
+  return rows.map((r) => ({
+    variantId: r.variant_id,
+    title: r.title,
+    options: r.options ?? {},
+    sku: r.sku,
+    from: r.from_quantity,
+    percent: r.percent,
+    prices: Object.fromEntries(Object.entries(r.amounts ?? {}).map(([currency, amount]) => [currency, formatPriceInput(amount, currency)])),
+  }));
+}
+
+const LIST_RULE_ROW = z.object({
+  variant_id: col.uuid,
+  title: col.text,
+  options: z.record(z.string(), z.string()).nullable(),
+  sku: col.text,
+  min_quantity: col.int,
+  max_quantity: col.int.nullable(),
+  quantity_step: col.int,
+});
+
+export type ListRule = { variantId: string; title: string; options: Record<string, string>; sku: string; rule: QuantityRule };
+
+/** A list's own quantity rules (D323 E3), per variant. */
+export async function listRules(storeId: string, listId: string, locale: string): Promise<ListRule[]> {
+  const rows = await typedRows(LIST_RULE_ROW, sql`
+    select q.variant_id, coalesce(tl.title, p.handle) as title, v.options, v.sku, q.min_quantity, q.max_quantity, q.quantity_step
+    from commerce.price_list_quantity_rules q
+    join commerce.product_variants v on v.store_id = q.store_id and v.id = q.variant_id
+    join commerce.products p on p.store_id = v.store_id and p.id = v.product_id
+    left join commerce.product_translations tl on tl.product_id = p.id and tl.locale = ${locale}
+    where q.store_id = ${storeId}::uuid and q.list_id = ${listId}::uuid
+    order by lower(coalesce(tl.title, p.handle)), v.sku
+  `);
+  return rows.map((r) => ({ variantId: r.variant_id, title: r.title, options: r.options ?? {}, sku: r.sku, rule: ruleOf(r) }));
+}
+
+/** Whether every variant named is the store's own. */
+async function ownVariants(storeId: string, variantIds: string[]): Promise<Map<string, string>> {
+  if (variantIds.length === 0) return new Map();
+  const rows = await typedRows(z.object({ id: col.uuid, sku: col.text }), sql`
+    select id, sku from commerce.product_variants where store_id = ${storeId}::uuid and id = any(${`{${[...new Set(variantIds)].join(",")}}`}::uuid[])
+  `);
+  return new Map(rows.map((r) => [r.id, r.sku]));
+}
+
+/**
+ * Sets a list's prices by quantity as typed (D323 E3), replacing the ones there: each a variant of the store's, from how many, a percentage or an
+ * amount per currency of the store's countries; at most 10 a variant, one per quantity. Every row is checked before anything is written.
+ */
+export async function setListBreaks({ account, store }: Membership, listId: string, input: unknown): Promise<SaveResult> {
+  const w = wordsOf(account);
+  const parsed = listBreaksInput.safeParse(input);
+  if (!parsed.success || !(await getPriceList(store.id, listId))) return { ok: false, problems: [w.problems.gone] };
+  const currencies = new Set(await listCurrencies(store.id));
+  const skus = await ownVariants(store.id, parsed.data.map((r) => r.variantId));
+  const problems: string[] = [];
+  const rows: { variant_id: string; from_quantity: number; percent: number | null; amounts: Record<string, number> | null }[] = [];
+  const seen = new Set<string>();
+  const perVariant = new Map<string, number>();
+  for (const row of parsed.data) {
+    const variant = skus.get(row.variantId);
+    if (!variant) {
+      problems.push(w.problems.unknownVariant);
+      continue;
+    }
+    const words = { variant, from: row.from };
+    const key = `${row.variantId}:${row.from}`;
+    if (seen.has(key)) problems.push(fillWords(w.problems.breakTwice, words));
+    seen.add(key);
+    perVariant.set(row.variantId, (perVariant.get(row.variantId) ?? 0) + 1);
+    const typed = Object.entries(row.prices).filter(([, text]) => text !== "");
+    if (row.percent !== null && typed.length > 0) problems.push(fillWords(w.problems.breakBoth, words));
+    else if (row.percent !== null) rows.push({ variant_id: row.variantId, from_quantity: row.from, percent: row.percent, amounts: null });
+    else if (typed.length === 0) problems.push(fillWords(w.problems.breakNoPrice, words));
+    else {
+      const amounts: Record<string, number> = {};
+      for (const [currency, text] of typed) {
+        const amount = currencies.has(currency) ? parsePrice(text, currency) : null;
+        if (!currencies.has(currency)) problems.push(fillWords(w.problems.currency, { currency }));
+        else if (amount === null) problems.push(fillWords(w.problems.amount, { typed: text, currency }));
+        else amounts[currency] = amount;
+      }
+      rows.push({ variant_id: row.variantId, from_quantity: row.from, percent: null, amounts });
+    }
+  }
+  for (const [variantId, count] of perVariant) if (count > 10) problems.push(fillWords(w.problems.breakMany, { variant: skus.get(variantId) ?? "" }));
+  if (problems.length > 0) return { ok: false, problems: [...new Set(problems)] };
+  await db().transaction(async (tx) => {
+    await tx.execute(sql`delete from commerce.price_list_breaks where store_id = ${store.id}::uuid and list_id = ${listId}::uuid`);
+    if (rows.length > 0) {
+      await tx.execute(sql`
+        insert into commerce.price_list_breaks (store_id, list_id, variant_id, from_quantity, percent, amounts)
+        select ${store.id}::uuid, ${listId}::uuid, r.variant_id, r.from_quantity, r.percent, r.amounts
+        from jsonb_to_recordset(${JSON.stringify(rows)}::jsonb) as r(variant_id uuid, from_quantity integer, percent integer, amounts jsonb)
+      `);
+    }
+  });
+  await audit(account.id, store.id, "price_list.breaks_saved", { list: listId, breaks: rows.length });
+  return { ok: true };
+}
+
+/**
+ * Sets a list's quantity rules as typed (D323 E3): per variant, a minimum (at least the step), a maximum and a step, as the variant's own rules
+ * are kept (`ruleProblem()`); all three empty takes the list's rule away, so its buyers buy by the variant's own.
+ */
+export async function setListRules({ account, store }: Membership, listId: string, input: unknown): Promise<SaveResult> {
+  const w = wordsOf(account);
+  const parsed = listRulesInput.safeParse(input);
+  if (!parsed.success || !(await getPriceList(store.id, listId))) return { ok: false, problems: [w.problems.gone] };
+  const skus = await ownVariants(store.id, parsed.data.map((r) => r.variantId));
+  const problems: string[] = [];
+  const set: { variant_id: string; min_quantity: number; max_quantity: number | null; quantity_step: number }[] = [];
+  const cleared: string[] = [];
+  for (const row of parsed.data) {
+    const variant = skus.get(row.variantId);
+    if (!variant) {
+      problems.push(w.problems.unknownVariant);
+      continue;
+    }
+    if (row.min === null && row.max === null && row.step === null) {
+      cleared.push(row.variantId);
+      continue;
+    }
+    const step = row.step ?? 1;
+    const rule: QuantityRule = { min: row.min ?? step, max: row.max, step };
+    const problem = ruleProblem(rule);
+    if (problem) problems.push(fillWords(w.problems.ruleBad, { variant, problem }));
+    else set.push({ variant_id: row.variantId, min_quantity: rule.min, max_quantity: rule.max, quantity_step: rule.step });
+  }
+  if (problems.length > 0) return { ok: false, problems: [...new Set(problems)] };
+  await db().transaction(async (tx) => {
+    if (cleared.length > 0) {
+      await tx.execute(sql`
+        delete from commerce.price_list_quantity_rules
+        where store_id = ${store.id}::uuid and list_id = ${listId}::uuid and variant_id = any(${`{${cleared.join(",")}}`}::uuid[])
+      `);
+    }
+    if (set.length > 0) {
+      await tx.execute(sql`
+        insert into commerce.price_list_quantity_rules (store_id, list_id, variant_id, min_quantity, max_quantity, quantity_step)
+        select ${store.id}::uuid, ${listId}::uuid, r.variant_id, r.min_quantity, r.max_quantity, r.quantity_step
+        from jsonb_to_recordset(${JSON.stringify(set)}::jsonb) as r(variant_id uuid, min_quantity integer, max_quantity integer, quantity_step integer)
+        on conflict (list_id, variant_id) do update
+          set min_quantity = excluded.min_quantity, max_quantity = excluded.max_quantity, quantity_step = excluded.quantity_step
+      `);
+    }
+  });
+  await audit(account.id, store.id, "price_list.rules_saved", { list: listId, set: set.length, removed: cleared.length });
+  return { ok: true };
+}
+
 const BUYER_PRICE_ROW = z.object({ variant_id: col.uuid, amount_minor: col.minor, list_id: col.uuid });
 
 /**
@@ -291,6 +466,23 @@ export async function listPricesFor(storeId: string, customerId: string | null, 
     where v.store_id = ${storeId}::uuid and v.id = any(${`{${variantIds.join(",")}}`}::uuid[])
   `);
   return new Map(rows.map((r) => [r.variant_id, { amountMinor: r.amount_minor, listId: r.list_id }]));
+}
+
+const RULE_ROW = z.object({ variant_id: col.uuid, min_quantity: col.int, max_quantity: col.int.nullable(), quantity_step: col.int });
+
+/**
+ * The quantity rules a signed-in buyer's price lists give a product's variants (D323 E3), in place of the variants' own, for the product page's
+ * buy part (read per request): only variants a list gives a rule; a guest has none. Worked out only by `commerce.quantity_rule()`.
+ */
+export async function buyerRulesFor(storeId: string, customerId: string | null, variantIds: string[]): Promise<Map<string, QuantityRule>> {
+  if (!customerId || variantIds.length === 0) return new Map();
+  const rows = await typedRows(RULE_ROW, sql`
+    select v.id as variant_id, qr.min_quantity, qr.max_quantity, qr.quantity_step
+    from commerce.product_variants v
+    cross join lateral commerce.quantity_rule(v.store_id, ${customerId}::uuid, v.id) qr
+    where v.store_id = ${storeId}::uuid and v.id = any(${`{${variantIds.join(",")}}`}::uuid[]) and qr.list_id is not null
+  `);
+  return new Map(rows.map((r) => [r.variant_id, ruleOf(r)]));
 }
 
 const FOUND_ROW = z.object({ variant_id: col.uuid, product_id: col.uuid, title: col.text, options: z.record(z.string(), z.string()).nullable(), sku: col.text });
@@ -380,7 +572,7 @@ export async function buyerCatalogue(storeId: string, customerId: string, market
     )
     select p.id as product_id, coalesce(tl.title, p.handle) as title, coalesce(m.thumbnail_url, m.url) as image,
            v.id as variant_id, v.options, v.sku, cp.amount_minor as market_minor, bp.amount_minor as list_minor, va.in_stock, va.stock_policy,
-           v.min_quantity, v.max_quantity, v.quantity_step
+           qr.min_quantity, qr.max_quantity, qr.quantity_step
     from commerce.products p
     join commerce.product_variants v on v.store_id = p.store_id and v.product_id = p.id and v.active
     join commerce.current_prices cp on cp.variant_id = v.id and cp.market_code = ${marketCode}
@@ -388,6 +580,7 @@ export async function buyerCatalogue(storeId: string, customerId: string, market
     left join commerce.product_translations tl on tl.product_id = p.id and tl.locale = ${locale}
     left join lateral (select url, thumbnail_url from commerce.product_media where product_id = p.id order by position limit 1) m on true
     left join lateral commerce.buyer_price(p.store_id, ${customerId}::uuid, v.id, ${marketCode}, cp.amount_minor) bp on true
+    left join lateral commerce.quantity_rule(p.store_id, ${customerId}::uuid, v.id) qr on true
     where p.store_id = ${storeId}::uuid and p.status = 'active' and p.kind in ('goods', 'bundle') and not p.subscription_only
       and ${offeredTo(customerId)}
       and exists (select 1 from mine where commerce.price_list_covers(${storeId}::uuid, mine.id, p.id))

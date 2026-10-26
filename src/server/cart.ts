@@ -204,7 +204,7 @@ export async function getCart(
       coalesce(bp.amount_minor, cp.amount_minor) as amount_minor, bp.list_id as price_list_id, bp.break_from,
       -- Only in a country and currency the store offers now (D178: Several countries and currencies).
       (p.status = 'active' and v.active and ${bookable} and ${offeredTo(customerId)} and commerce.market_offered(c.store_id, c.market_code, ${market.currency})) as sellable,
-      va.in_stock, va.raw_available, va.stock_policy, va.backorder_days, v.min_quantity, v.max_quantity, v.quantity_step
+      va.in_stock, va.raw_available, va.stock_policy, va.backorder_days, qr.min_quantity, qr.max_quantity, qr.quantity_step
     from commerce.cart_lines cl
     join commerce.carts c on c.store_id = cl.store_id and c.id = cl.cart_id
     join commerce.stores st on st.id = cl.store_id
@@ -230,6 +230,8 @@ export async function getCart(
     left join lateral commerce.line_price(cl.store_id, ${customerId}::uuid, v.id, c.market_code, cp.amount_minor, cl.quantity) bp
       on ${LIST_PRICED}
     left join commerce.variant_availability va on va.store_id = v.store_id and va.variant_id = v.id
+    -- How many at a time for this buyer (D323): a price list's rule, else the variant's.
+    left join lateral commerce.quantity_rule(cl.store_id, ${customerId}::uuid, v.id) qr on true
     where cl.store_id = ${storeId}::uuid
       and cl.cart_id = ${cartId}::uuid
       and c.market_code = ${market.code}
@@ -511,10 +513,12 @@ export async function sellableQuantity(
 ): Promise<SellableQuantity | null> {
   // A subscription renews at a price kept in the country's own currency, so it is bought in it only (D109).
   if (sellingPlanId && !isNative(market)) return null;
+  const customerId = (await getCustomer(storeId))?.id ?? null;
   const [row] = await tx.execute<Row>(sql`
     select v.product_id, p.kind, v.rental_period, v.delivery, va.in_stock, va.stock_policy, va.backorder_days,
-      v.min_quantity, v.max_quantity, v.quantity_step
+      qr.min_quantity, qr.max_quantity, qr.quantity_step
     from commerce.product_variants v
+    left join lateral commerce.quantity_rule(v.store_id, ${customerId}::uuid, v.id) qr on true
     join commerce.variant_availability va on va.store_id = v.store_id and va.variant_id = v.id
     join commerce.products p
       on p.store_id = v.store_id and p.id = v.product_id and p.status = 'active'
@@ -528,7 +532,7 @@ export async function sellableQuantity(
       -- A product is offered only where the store sells to its kind (D178: never a business-only one where it sells to consumers, Sell to
       -- businesses switched off included), and business-only products are sold to businesses where the store sells to both (B2B).
       -- A product an exclusive price list reaches is sold to that list's buyers only (D321 C.3).
-      and ${offeredTo((await getCustomer(storeId))?.id ?? null)}
+      and ${offeredTo(customerId)}
       and (p.audience <> 'businesses' or ${await buysForBusiness(storeId)}
         or (select ${STORE_AUDIENCE} from commerce.stores s where s.id = v.store_id) <> 'both')
       and ${

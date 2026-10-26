@@ -121,3 +121,40 @@ describe("price lists (D321)", () => {
     expect(n).toBe(0);
   });
 });
+
+describe("a price list's prices by quantity and rules (D323 E3)", () => {
+  it("writes breaks and rules as typed, refuses what does not fit, and reads them back", async () => {
+    const made = await lists.savePriceList(member(storeId), null, { name: `Volume ${run}`, percent: null, active: true });
+    const listId = made.ok ? made.id! : "";
+    const mug = await variantOf(storeId, "DEMO-MUG-WHITE");
+    const foreign = await variantOf(otherId, "DEMO-MUG-WHITE");
+    expect(
+      await lists.setListBreaks(member(storeId), listId, [
+        { variantId: mug, from: 10, percent: 20, prices: {} },
+        { variantId: mug, from: 50, percent: null, prices: { NOK: "70,00" } },
+      ]),
+    ).toEqual({ ok: true });
+    expect((await lists.listBreaks(storeId, listId, "nb-NO")).map((b) => ({ from: b.from, percent: b.percent, prices: b.prices }))).toEqual([
+      { from: 10, percent: 20, prices: {} },
+      { from: 50, percent: null, prices: { NOK: "70,00" } },
+    ]);
+    // Refused whole: no price, both kinds, twice at one quantity, another store's variant, a currency the store has not.
+    for (const rows of [
+      [{ variantId: mug, from: 10, percent: null, prices: {} }],
+      [{ variantId: mug, from: 10, percent: 10, prices: { NOK: "1,00" } }],
+      [{ variantId: mug, from: 10, percent: 10, prices: {} }, { variantId: mug, from: 10, percent: 5, prices: {} }],
+      [{ variantId: foreign, from: 10, percent: 10, prices: {} }],
+      [{ variantId: mug, from: 10, percent: null, prices: { JPY: "100" } }],
+    ]) {
+      expect((await lists.setListBreaks(member(storeId), listId, rows)).ok).toBe(false);
+    }
+    expect(await lists.listBreaks(storeId, listId, "nb-NO")).toHaveLength(2);
+
+    expect(await lists.setListRules(member(storeId), listId, [{ variantId: mug, min: null, max: 120, step: 12 }])).toEqual({ ok: true });
+    expect((await lists.listRules(storeId, listId, "nb-NO"))[0].rule).toEqual({ min: 12, max: 120, step: 12 });
+    expect((await lists.setListRules(member(storeId), listId, [{ variantId: mug, min: 10, max: null, step: 12 }])).ok).toBe(false);
+    expect(await lists.setListRules(member(storeId), listId, [{ variantId: mug, min: null, max: null, step: null }])).toEqual({ ok: true });
+    expect(await lists.listRules(storeId, listId, "nb-NO")).toEqual([]);
+    expect((await lists.deletePriceList(member(storeId), listId)).ok).toBe(true);
+  });
+});

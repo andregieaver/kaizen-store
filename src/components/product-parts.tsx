@@ -36,7 +36,7 @@ import { loopHeading, loopOf, loopShows, productLoopConfig } from "@/lib/field-l
 import { fieldHeading, fieldToShow, groupHeading, groupsToShow } from "@/lib/field-parts";
 import { optionLabel, t, type Messages } from "@/lib/i18n";
 import type { BreakStep } from "@/lib/price-breaks";
-import { lineMax, ruleWords } from "@/lib/quantity-rules";
+import { lineMax, ruleWords, type QuantityRule } from "@/lib/quantity-rules";
 import { inView, shown, type Market } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import { todayIn } from "@/lib/analytics-period";
@@ -56,7 +56,7 @@ import { appointmentSlots, getAppointmentOffer } from "@/server/appointments";
 import { getVariantStock, type EconomicOperator, type ProductDetail } from "@/server/catalog";
 import { relatedProducts } from "@/server/listing";
 import { priceBreaksFor } from "@/server/price-breaks";
-import { listPricesFor } from "@/server/price-lists";
+import { buyerRulesFor, listPricesFor } from "@/server/price-lists";
 import { getRangeOffer, getRangePricing, rangeDates } from "@/server/ranges";
 import { getShippingFacts, storeFacts } from "@/server/seo";
 import type { ReviewFacts } from "@/server/review-facts";
@@ -818,12 +818,15 @@ async function VariantsWithStock({
   // cart prices them (`LIST_PRICED`).
   const buyer = product.plans.length === 0 ? getCustomer(store.id).then((customer) => customer?.id ?? null) : null;
   const ids = product.variants.map((v) => v.id);
-  const [availability, notifyOn, listed, breaks] = await Promise.all([
+  const [availability, notifyOn, listed, breaks, listRules] = await Promise.all([
     getVariantStock(store.id, ids),
     backInStockOn(store.id),
     buyer ? buyer.then((id) => listPricesFor(store.id, id, ids, market.code)) : new Map<string, { amountMinor: number; listId: string }>(),
     buyer ? buyer.then((id) => priceBreaksFor(store.id, id, ids, market.code)) : new Map<string, BreakStep[]>(),
+    // A buyer's price lists may give a variant a rule of their own (D323 E3); the page's cached rule is the variant's.
+    buyer ? buyer.then((id) => buyerRulesFor(store.id, id, ids)) : new Map<string, QuantityRule>(),
   ]);
+  const ruleOfVariant = (variant: ProductDetail["variants"][number]) => listRules.get(variant.id) ?? variant.rule;
   // The price a variant is offered at: the buyer's list price where a list gives one (in the market's view, never a reduction), else the shop's.
   const offered = (variant: ProductDetail["variants"][number]) => {
     const own = listed.get(variant.id);
@@ -833,7 +836,7 @@ async function VariantsWithStock({
   const available = (variant: ProductDetail["variants"][number]) => variant.delivery === "digital" || canOffer(availability.get(variant.id));
   // A variant that keeps selling is capped by the line maximum, not by what is in stock, so the message must not say it is.
   const cappedNote = (variant: ProductDetail["variants"][number]) =>
-    availability.get(variant.id)?.stockPolicy === "continue" ? m.backorder.capped(lineMax(variant.rule)) : undefined;
+    availability.get(variant.id)?.stockPolicy === "continue" ? m.backorder.capped(lineMax(ruleOfVariant(variant))) : undefined;
 
   const plans = product.plans.map((plan) => ({
     id: plan.id,
@@ -932,7 +935,7 @@ async function VariantsWithStock({
               options: variant.options,
               image: variant.image ? { url: variant.image.thumbnailUrl, alt: "" } : null,
               // How many at a time (D323): said after the stock, as Add to cart puts in the minimum and then whole steps.
-              note: [digital ? m.instantDownload : stockNote(availability.get(variant.id), m), ruleWords(variant.rule, m.quantityRule)].filter(Boolean).join(" · "),
+              note: [digital ? m.instantDownload : stockNote(availability.get(variant.id), m), ruleWords(ruleOfVariant(variant), m.quantityRule)].filter(Boolean).join(" · "),
               available: available(variant),
               capped: cappedNote(variant),
               priceIndex: priced.index(offered(variant)),

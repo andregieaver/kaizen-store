@@ -213,7 +213,7 @@ function orderLineRows(
         coalesce(bp.amount_minor, cp.amount_minor) as amount_minor, bp.list_id as price_list_id, bp.break_from, cl.starts_at, cl.resource_id, aps.payment, aps.deposit_percent,
         p.kind, aps.check_in_time, aps.check_out_time, v.rental_period, p.host_id, v.cost_minor,
         v.measure_amount, v.measure_unit, v.measure_base, v.stock_policy, v.backorder_days,
-        v.min_quantity, v.max_quantity, v.quantity_step,
+        qr.min_quantity, qr.max_quantity, qr.quantity_step,
         cl.gift_card_to, cl.gift_card_to_name, cl.gift_card_from, cl.gift_card_message, cl.gift_card_send_on,
         -- A bundle's components (D322): what its line holds and draws instead of its own variant.
         case when p.kind = 'bundle' then (
@@ -238,6 +238,8 @@ function orderLineRows(
       ) tf on true
       left join commerce.current_prices cp on cp.variant_id = v.id and cp.market_code = ${market.code}
       left join lateral commerce.line_price(cl.store_id, ${customerId}::uuid, v.id, ${market.code}, cp.amount_minor, cl.quantity) bp on ${LIST_PRICED}
+      -- How many at a time for this buyer (D323): a price list's rule, else the variant's.
+      left join lateral commerce.quantity_rule(cl.store_id, ${customerId}::uuid, v.id) qr on true
       left join commerce.selling_plans sp
         on sp.store_id = cl.store_id and sp.id = cl.selling_plan_id and sp.product_id = p.id
       left join commerce.appointment_settings aps on aps.store_id = p.store_id and aps.product_id = p.id

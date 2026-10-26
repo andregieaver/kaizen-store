@@ -643,14 +643,14 @@ product. The WordPress cart (D170) quotes a line at the market price, at most 20
 
 #### E.3 A price list's rules and breaks (E3)
 
-- A price list may give its buyers breaks of their own (`price_list_breaks`: a product, a variant or every variant, from how many, a
-  percentage off the market price or a unit price per currency, as `price_list_prices`) and quantity rules of their own
-  (`price_list_quantity_rules`: per variant, minimum, maximum and step, as E1's).
+- A price list may give its buyers breaks of their own for a variant (`price_list_breaks`: from how many, a percentage off the market price or a
+  unit price per currency, as `price_list_prices`; at most 10 a variant in a list) and quantity rules of their own (`price_list_quantity_rules`:
+  per variant, minimum, maximum and step, as E1's). By variant, as the list's fixed prices are, so the list's page keeps one shape.
 - `line_price()` also takes the buyer's lists' breaks the quantity reaches; a buyer's rule for a variant is only
   `commerce.quantity_rule(store, customer, variant)`: a rule one of their lists gives (the one with the lowest minimum, then the highest
-  maximum, then the smallest step), else the variant's. The cart, checkout and the product page read the rule there.
-- Admin: the list's page has *Price by quantity* and *How many at a time* for products found by the same search as fixed prices; words in the
-  `customers` catalogue. Both tables are `never` in `COPY_RULES`, as the lists are.
+  maximum, then the smallest step), else the variant's. The cart, checkout, *Your catalogue* and the product page read the rule there.
+- Admin: the list's page has *Price by quantity for these buyers* and *How many at a time for these buyers* for the variants found by the same
+  search as fixed prices; words in the `customers` catalogue. Both tables are `never` in `COPY_RULES`, as the lists are.
 - The parity row `catalogue.volume-pricing-and-quantity-rules` closes with E2 (a variant's breaks and rules, the cart and the order
   agreeing); E3 gives price lists theirs.
 
@@ -695,6 +695,21 @@ product. The WordPress cart (D170) quotes a line at the market price, at most 20
 - Held by `src/lib/price-breaks.test.ts`, `src/db/commerce.test.ts` (`line_price()`, the rules, the copy), `src/server/price-breaks.int.test.ts`
   (the editor's save, the WordPress quote) and the euro scenario in `checkout-kinds.int.test.ts` (the cart, the summary and the order agree at
   each quantity, the table's prices are the cart's, the group's percentage comes off a break).
+
+#### E.6 As built: E3 (2026-10-26)
+
+- Migrations `20261026154238_price_list_quantities` (`price_list_breaks`, `price_list_quantity_rules`) and
+  `20261026154336_price_list_quantities_sql` (row security, the amounts check keyed by currency, at most 10 breaks a variant in a list,
+  `line_price()` with the buyer's lists' breaks, `commerce.quantity_rule()`). A list's break is a list offer: the lowest list offer wins where it is
+  lower than the shop's own price at that quantity, so a line it prices takes no group percentage, and the cart says *Price for 10 or more*.
+- `getCart()`, `sellableQuantity()`, `orderLineRows()` and `buyerCatalogue()` read the rule through `quantity_rule()` for the signed-in buyer
+  (a guest and the WordPress cart get the variant's own); the product page's buy part reads `buyerRulesFor()` for the rule's words and
+  `priceBreaksFor()` starts the table at the buyer's minimum and adds the buyer's lists' breaks.
+- The list's page (`[listId]/page.tsx`) has the two cards, saved by `saveBreaksAction()`/`setListBreaks()` (the rows replace the list's breaks,
+  every row checked first) and `saveRulesAction()`/`setListRules()` (three empty fields take the list's rule away); audited as
+  `price_list.breaks_saved` and `price_list.rules_saved`. Both tables are `never` in `COPY_RULES` and not personal data.
+- Held by `src/db/commerce.test.ts` (the SQL), `price-lists.int.test.ts` (the writers) and the euro scenario in `checkout-kinds.int.test.ts` (a
+  group member's Add to cart puts in the list's minimum at the list's break price; the cart, the summary and the order agree).
 
 ### Unit F (D324): search merchandising
 

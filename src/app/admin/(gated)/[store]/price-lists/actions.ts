@@ -7,11 +7,11 @@ import { z } from "zod";
 import type { FormState } from "@/components/admin/action-form";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
-import { percentFromForm } from "@/lib/price-lists";
+import { countFromForm, percentFromForm } from "@/lib/price-lists";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { catalogTag } from "@/server/catalog";
 import { checkPermission } from "@/server/permissions";
-import { deletePriceList, savePriceList, setAssignments, setPrices, setScope, type SaveResult } from "@/server/price-lists";
+import { deletePriceList, savePriceList, setAssignments, setListBreaks, setListRules, setPrices, setScope, type SaveResult } from "@/server/price-lists";
 
 /**
  * Price lists (D321): the forms of `/admin/{store}/price-lists`. Every action asks `customers:write` and hands the form to
@@ -92,4 +92,56 @@ export async function savePricesAction(storeSlug: string, listId: string, _state
     return match ? [{ variantId: match[1], currency: match[2], amount: String(value) }] : [];
   });
   return toState(await setPrices(member, listId, rows), words.saved);
+}
+
+/**
+ * A list's prices by quantity (D323 E3): rows `break:{n}:variant`, `:from`, `:percent` and `:price:{currency}`; a row without a variant or a quantity
+ * is an empty row and left out, so the form's blank rows add nothing. The rows replace the list's breaks.
+ */
+export async function saveBreaksAction(storeSlug: string, listId: string, _state: FormState, form: FormData): Promise<FormState> {
+  const member = await checkPermission(storeSlug, "customers:write");
+  if (!member) return noAccess();
+  const words = wordsOf(member);
+  if (!id.safeParse(listId).success) return { status: "error", messages: [words.problems.gone] };
+  const rows = new Map<string, { variantId: string; from: string; percent: string; prices: Record<string, string> }>();
+  for (const [name, value] of form.entries()) {
+    const match = /^break:([0-9]{1,4}):(variant|from|percent|price:[A-Z]{3})$/.exec(name);
+    if (!match) continue;
+    const row = rows.get(match[1]) ?? { variantId: "", from: "", percent: "", prices: {} };
+    const text = String(value).trim();
+    if (match[2] === "variant") row.variantId = text;
+    else if (match[2] === "from") row.from = text;
+    else if (match[2] === "percent") row.percent = text;
+    else row.prices[match[2].slice("price:".length)] = text;
+    rows.set(match[1], row);
+  }
+  const given = [...rows.values()].filter((row) => row.variantId !== "" && row.from !== "");
+  const breaks = [];
+  for (const row of given) {
+    const from = countFromForm(row.from);
+    const percent = percentFromForm(row.percent);
+    if (from === "invalid" || from === null || from < 2) return { status: "error", messages: [words.problems.count] };
+    if (percent === "invalid" || (percent !== null && (percent < 1 || percent > 99))) return { status: "error", messages: [words.problems.percent] };
+    breaks.push({ variantId: row.variantId, from, percent, prices: row.prices });
+  }
+  return toState(await setListBreaks(member, listId, breaks), words.saved);
+}
+
+/** A list's quantity rules (D323 E3): `rule:{variant}:min`, `:max` and `:step`; a variant's three left empty takes the list's rule away. */
+export async function saveRulesAction(storeSlug: string, listId: string, _state: FormState, form: FormData): Promise<FormState> {
+  const member = await checkPermission(storeSlug, "customers:write");
+  if (!member) return noAccess();
+  const words = wordsOf(member);
+  if (!id.safeParse(listId).success) return { status: "error", messages: [words.problems.gone] };
+  const rows = new Map<string, { variantId: string; min: number | null; max: number | null; step: number | null }>();
+  for (const [name, value] of form.entries()) {
+    const match = /^rule:([0-9a-f-]{36}):(min|max|step)$/.exec(name);
+    if (!match) continue;
+    const count = countFromForm(value);
+    if (count === "invalid") return { status: "error", messages: [words.problems.count] };
+    const row = rows.get(match[1]) ?? { variantId: match[1], min: null, max: null, step: null };
+    row[match[2] as "min" | "max" | "step"] = count;
+    rows.set(match[1], row);
+  }
+  return toState(await setListRules(member, listId, [...rows.values()]), words.saved);
 }

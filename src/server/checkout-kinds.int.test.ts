@@ -4026,3 +4026,61 @@ describe("price breaks in euro (D323)", () => {
     }
   });
 });
+
+/**
+ * A price list's breaks and rule (D323 E3), shown in euro: the group's list sells the mug 20 % off from 10 units, in tens. A group member's Add to
+ * cart puts in ten at the list's price; the cart, the summary and the order agree, no group percentage comes on top, and a guest buys one at the
+ * market price.
+ */
+describe("a price list's breaks and rule in euro (D323 E3)", () => {
+  it("prices and counts a buyer's line by their list's break and rule", async () => {
+    let [tier] = await db().execute<Row>(sql`select id from commerce.customer_tiers where store_id = ${storeId}::uuid limit 1`);
+    tier ??= (await db().execute<Row>(sql`insert into commerce.customer_tiers (store_id, name, percent) values (${storeId}::uuid, 'Wholesale', 10) returning id`))[0];
+    tierId = String(tier.id);
+    const [{ id: mug }] = await db().execute<Row>(sql`select id from commerce.product_variants where store_id = ${storeId}::uuid and sku = 'DEMO-MUG-WHITE'`);
+    const [{ amount_minor: market }] = await db().execute<Row>(sql`select amount_minor from commerce.current_prices where variant_id = ${String(mug)}::uuid and market_code = 'NO'`);
+    await db().execute(sql`update commerce.inventory_levels set on_hand = greatest(on_hand, 60) where variant_id = ${String(mug)}::uuid`);
+    const [list] = await db().execute<Row>(sql`insert into commerce.price_lists (store_id, name) values (${storeId}::uuid, ${`Volume ${run}`}) returning id`);
+    const listed = Math.floor((Number(market) * 80 + 50) / 100);
+    view = noInEuro;
+    try {
+      await db().execute(sql`insert into commerce.price_list_assignments (store_id, list_id, tier_id) values (${storeId}::uuid, ${String(list.id)}::uuid, ${tierId}::uuid)`);
+      await db().execute(sql`
+        insert into commerce.price_list_breaks (store_id, list_id, variant_id, from_quantity, percent) values (${storeId}::uuid, ${String(list.id)}::uuid, ${String(mug)}::uuid, 10, 20)
+      `);
+      await db().execute(sql`
+        insert into commerce.price_list_quantity_rules (store_id, list_id, variant_id, min_quantity, quantity_step)
+        values (${storeId}::uuid, ${String(list.id)}::uuid, ${String(mug)}::uuid, 10, 10)
+      `);
+
+      // A guest: one at a time, at the market price.
+      jar.clear();
+      await add("DEMO-MUG-WHITE", 1);
+      expect((await getCart(shop())).lines[0]).toMatchObject({ quantity: 1, unitPriceMinor: shown(noInEuro, Number(market)), rule: { min: 1, step: 1 } });
+
+      // A group member: Add to cart puts in ten, at the list's price from ten, with no group percentage on top.
+      jar.clear();
+      const buyer = await signInBuyer("group");
+      await add("DEMO-MUG-WHITE", 1);
+      const cart = await getCart(shop());
+      expect(cart.lines[0]).toMatchObject({
+        quantity: 10,
+        unitPriceMinor: shown(noInEuro, listed),
+        priceListId: String(list.id),
+        breakFrom: 10,
+        rule: { min: 10, max: null, step: 10 },
+        status: "ok",
+      });
+      const summary = await cartSummary(shop(), cart);
+      expect(summary.memberDiscountMinor).toBe(0);
+      await startCheckout({ ...shop(), storeSlug: slug }, cartId(), origin, "Frakt", {}, { customerId: buyer });
+      const order = (await getOrder(storeId, (await getOpenCheckout(storeId, cartId()))!.orderId))!;
+      expect(order.currency).toBe("EUR");
+      expect({ total: order.totalMinor, vat: order.taxMinor, member: order.memberDiscountMinor }).toEqual({ total: summary.total, vat: summary.vat, member: 0 });
+      expect(order.lines.find((l) => l.sku === "DEMO-MUG-WHITE")).toMatchObject({ unitPriceMinor: shown(noInEuro, listed), quantity: 10 });
+    } finally {
+      view = no;
+      await db().execute(sql`delete from commerce.price_lists where id = ${String(list.id)}::uuid`);
+    }
+  });
+});

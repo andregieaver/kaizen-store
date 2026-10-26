@@ -6925,3 +6925,74 @@ describe("price breaks (wave 6 unit E2, D323)", () => {
     ]);
   });
 });
+
+describe("a price list's breaks and quantity rules (wave 6 unit E3, D323)", () => {
+  const one = async <T>(text: string, params: unknown[]) => (await db.query<T>(text, params)).rows[0];
+
+  it("give the list's buyers lower prices from a quantity and a rule of their own, and nobody else", async () => {
+    const storeId = await createStore(`list-breaks-${(counter += 1)}`, ["NO", "SE"]);
+    await db.query("update commerce.stores set features = array['shop', 'business'] where id = $1", [storeId]);
+    const { productId, variantId } = await createProduct({ storeId });
+    const tier = await one<{ id: string }>("insert into commerce.customer_tiers (store_id, name, percent) values ($1, 'Grossist', 5) returning id", [storeId]);
+    const buyer = await one<{ id: string }>("insert into commerce.customers (store_id, email, tier_id) values ($1, $2, $3) returning id", [storeId, `lb-${counter}@example.com`, tier.id]);
+    const stranger = await one<{ id: string }>("insert into commerce.customers (store_id, email) values ($1, $2) returning id", [storeId, `lb-s-${counter}@example.com`]);
+    const list = await one<{ id: string }>("insert into commerce.price_lists (store_id, name) values ($1, 'Volum') returning id", [storeId]);
+    await db.query("insert into commerce.price_list_assignments (store_id, list_id, tier_id) values ($1, $2, $3)", [storeId, list.id, tier.id]);
+    // 20 % off from 10, a fixed 70.00 NOK from 50 (Sweden's currency not named), and the product's own 10 % from 10 for everyone.
+    await db.query("insert into commerce.price_list_breaks (store_id, list_id, variant_id, from_quantity, percent) values ($1, $2, $3, 10, 20)", [storeId, list.id, variantId]);
+    await db.query(
+      "insert into commerce.price_list_breaks (store_id, list_id, variant_id, from_quantity, amounts) values ($1, $2, $3, 50, '{\"NOK\": 7000}')",
+      [storeId, list.id, variantId],
+    );
+    await db.query("insert into commerce.price_breaks (store_id, product_id, from_quantity, percent) values ($1, $2, 10, 10)", [storeId, productId]);
+    const line = async (quantity: number, customer: string | null, market = "NO") =>
+      (
+        await db.query<{ amount_minor: string; list_id: string | null; break_from: number | null }>(
+          "select amount_minor::text, list_id, break_from from commerce.line_price($1, $2, $3, $4, 10000, $5)",
+          [storeId, customer, variantId, market, quantity],
+        )
+      ).rows.map((r) => ({ amount: Number(r.amount_minor), list: r.list_id, from: r.break_from }))[0] ?? null;
+    expect(await line(9, buyer.id)).toBeNull();
+    expect(await line(10, buyer.id)).toEqual({ amount: 8000, list: list.id, from: 10 });
+    expect(await line(50, buyer.id)).toEqual({ amount: 7000, list: list.id, from: 50 });
+    expect(await line(50, buyer.id, "SE")).toEqual({ amount: 8000, list: list.id, from: 10 });
+    expect(await line(10, stranger.id)).toEqual({ amount: 9000, list: null, from: 10 });
+    expect(await line(10, null)).toEqual({ amount: 9000, list: null, from: 10 });
+
+    // Rules: the variant's own for everyone, the list's for its buyers (the most open of several lists).
+    await db.query("update commerce.product_variants set min_quantity = 12, quantity_step = 6 where id = $1", [variantId]);
+    const rule = async (customer: string | null) =>
+      one<{ min_quantity: number; max_quantity: number | null; quantity_step: number; list_id: string | null }>(
+        "select min_quantity, max_quantity, quantity_step, list_id from commerce.quantity_rule($1, $2, $3)",
+        [storeId, customer, variantId],
+      );
+    expect(await rule(buyer.id)).toEqual({ min_quantity: 12, max_quantity: null, quantity_step: 6, list_id: null });
+    await db.query("insert into commerce.price_list_quantity_rules (store_id, list_id, variant_id, min_quantity, max_quantity, quantity_step) values ($1, $2, $3, 50, 500, 50)", [
+      storeId,
+      list.id,
+      variantId,
+    ]);
+    expect(await rule(buyer.id)).toEqual({ min_quantity: 50, max_quantity: 500, quantity_step: 50, list_id: list.id });
+    expect(await rule(stranger.id)).toMatchObject({ min_quantity: 12, list_id: null });
+    const other = await one<{ id: string }>("insert into commerce.price_lists (store_id, name) values ($1, 'Annen') returning id", [storeId]);
+    await db.query("insert into commerce.price_list_assignments (store_id, list_id, tier_id) values ($1, $2, $3)", [storeId, other.id, tier.id]);
+    await db.query("insert into commerce.price_list_quantity_rules (store_id, list_id, variant_id, min_quantity, quantity_step) values ($1, $2, $3, 10, 10)", [storeId, other.id, variantId]);
+    expect(await rule(buyer.id)).toEqual({ min_quantity: 10, max_quantity: null, quantity_step: 10, list_id: other.id });
+    await db.query("update commerce.price_lists set active = false where id = $1", [other.id]);
+    expect(await rule(buyer.id)).toMatchObject({ min_quantity: 50, list_id: list.id });
+
+    // The checks: prices keyed by currency, rules in whole steps, at most 10 breaks a variant in a list.
+    await expect(
+      db.query("insert into commerce.price_list_breaks (store_id, list_id, variant_id, from_quantity, amounts) values ($1, $2, $3, 20, '{\"NO\": 100}')", [storeId, list.id, variantId]),
+    ).rejects.toThrow(/price_list_breaks_amounts/);
+    await expect(
+      db.query("insert into commerce.price_list_quantity_rules (store_id, list_id, variant_id, min_quantity, quantity_step) values ($1, $2, $3, 5, 6)", [storeId, other.id, productId]),
+    ).rejects.toThrow();
+    for (let from = 11; from <= 18; from += 1) {
+      await db.query("insert into commerce.price_list_breaks (store_id, list_id, variant_id, from_quantity, percent) values ($1, $2, $3, $4, 5)", [storeId, list.id, variantId, from]);
+    }
+    await expect(
+      db.query("insert into commerce.price_list_breaks (store_id, list_id, variant_id, from_quantity, percent) values ($1, $2, $3, 19, 5)", [storeId, list.id, variantId]),
+    ).rejects.toThrow(/price_list_breaks.max/);
+  });
+});

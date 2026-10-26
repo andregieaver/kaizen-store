@@ -12,11 +12,11 @@ import { listCompanies } from "@/server/companies";
 import { listTiers } from "@/server/customer-tiers";
 import { listProductChoices } from "@/server/discounts";
 import { requirePermission } from "@/server/permissions";
-import { findVariants, getPriceList, listCurrencies, listPrices, listTargets } from "@/server/price-lists";
+import { findVariants, getPriceList, listBreaks, listCurrencies, listPrices, listRules, listTargets } from "@/server/price-lists";
 import { listTerms } from "@/server/taxonomy";
 import { Card, PageHeader } from "@/components/admin/ui";
 
-import { deletePriceListAction, saveAssignmentsAction, savePriceListAction, savePricesAction, saveScopeAction } from "../actions";
+import { deletePriceListAction, saveAssignmentsAction, saveBreaksAction, savePriceListAction, savePricesAction, saveRulesAction, saveScopeAction } from "../actions";
 
 export const metadata: Metadata = { title: "Price list" };
 
@@ -39,7 +39,7 @@ export default async function PriceListPage({ params, searchParams }: PageProps<
   if (!list) notFound();
   const find = String((await searchParams).find ?? "").slice(0, 80);
   const locale = store.markets[0]?.locale ?? "nb-NO";
-  const [targets, tiers, companies, products, terms, currencies, prices, found] = await Promise.all([
+  const [targets, tiers, companies, products, terms, currencies, prices, found, breaks, rules] = await Promise.all([
     listTargets(store.id, list.id),
     listTiers(store.id),
     listCompanies(store.id),
@@ -48,6 +48,8 @@ export default async function PriceListPage({ params, searchParams }: PageProps<
     listCurrencies(store.id),
     listPrices(store.id, list.id, locale),
     findVariants(store.id, locale, find),
+    listBreaks(store.id, list.id, locale),
+    listRules(store.id, list.id, locale),
   ]);
   const categories = terms.filter((term) => term.kind === "category");
   const base = `/admin/${store.slug}`;
@@ -62,6 +64,14 @@ export default async function PriceListPage({ params, searchParams }: PageProps<
   const fresh = found.filter((variant) => !rows.has(variant.variantId));
   const priced = [...rows.values()];
   const shown = [...priced, ...fresh.map((variant) => ({ ...variant, amounts: new Map<string, string>() }))];
+  const labelOf = (row: { title: string; options: Record<string, string> }) => [row.title, ...Object.values(row.options)].join(" · ");
+  // Prices by quantity (D323 E3): the variants a row may name are those on this page (priced, found or with a break), and three empty rows add more.
+  const choices = new Map<string, string>();
+  for (const row of [...shown, ...breaks]) choices.set(row.variantId, `${labelOf(row)} (${row.sku})`);
+  const breakRows = [...breaks, ...Array.from({ length: 3 }, () => null)];
+  // How many at a time (D323 E3): the variants with a rule of the list's, then those found without one.
+  const ruled = new Set(rules.map((rule) => rule.variantId));
+  const ruleRows = [...rules, ...found.filter((variant) => !ruled.has(variant.variantId)).map((variant) => ({ ...variant, rule: null }))];
 
   return (
     <div className="flex flex-col gap-6">
@@ -232,6 +242,110 @@ export default async function PriceListPage({ params, searchParams }: PageProps<
           </ActionForm>
         )}
         <p className="text-sm text-muted">{words.alsoGoods}</p>
+      </Card>
+
+      <Card title={words.breaks} description={words.breaksHint} className="flex flex-col gap-3">
+        {breaks.length === 0 && <p className="text-sm text-muted">{words.noBreaks}</p>}
+        <ActionForm action={saveBreaksAction.bind(null, store.slug, list.id)} className="flex flex-col gap-3">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-line">
+                  <th scope="col" className="py-2 pr-4 font-medium">{words.variant}</th>
+                  <th scope="col" className="py-2 pr-4 font-medium">{words.fromUnits}</th>
+                  <th scope="col" className="py-2 pr-4 font-medium">{words.breakPercent}</th>
+                  {currencies.map((currency) => (
+                    <th key={currency} scope="col" className="py-2 pr-4 font-medium">{currency}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {breakRows.map((step, index) => (
+                  <tr key={index} className="border-b border-line last:border-0">
+                    <td className="py-2 pr-4">
+                      <select name={`break:${index}:variant`} defaultValue={step?.variantId ?? ""} aria-label={words.variant} className={`${control} max-w-72`}>
+                        <option value="">{words.chooseVariant}</option>
+                        {[...choices].map(([variantId, label]) => (
+                          <option key={variantId} value={variantId}>{label}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="py-2 pr-4">
+                      <input name={`break:${index}:from`} defaultValue={step?.from ?? ""} inputMode="numeric" maxLength={4} aria-label={words.fromUnits} className={`${control} w-24 tabular-nums`} />
+                    </td>
+                    <td className="py-2 pr-4">
+                      <input name={`break:${index}:percent`} defaultValue={step?.percent ?? ""} inputMode="numeric" maxLength={2} aria-label={words.breakPercent} className={`${control} w-20 tabular-nums`} />
+                    </td>
+                    {currencies.map((currency) => (
+                      <td key={currency} className="py-2 pr-4">
+                        <input
+                          name={`break:${index}:price:${currency}`}
+                          defaultValue={step?.prices[currency] ?? ""}
+                          inputMode="decimal"
+                          maxLength={20}
+                          aria-label={currency}
+                          className={`${control} w-28 tabular-nums`}
+                        />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div>
+            <SubmitButton>{words.saveBreaks}</SubmitButton>
+          </div>
+        </ActionForm>
+      </Card>
+
+      <Card title={words.rules} description={words.rulesHint} className="flex flex-col gap-3">
+        {ruleRows.length === 0 ? (
+          <p className="text-sm text-muted">{words.noRules}</p>
+        ) : (
+          <ActionForm action={saveRulesAction.bind(null, store.slug, list.id)} className="flex flex-col gap-3">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-line">
+                    <th scope="col" className="py-2 pr-4 font-medium">{words.variant}</th>
+                    <th scope="col" className="py-2 pr-4 font-medium">{words.atLeast}</th>
+                    <th scope="col" className="py-2 pr-4 font-medium">{words.atMost}</th>
+                    <th scope="col" className="py-2 pr-4 font-medium">{words.step}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ruleRows.map((row) => {
+                    const label = labelOf(row);
+                    return (
+                      <tr key={row.variantId} className="border-b border-line last:border-0">
+                        <th scope="row" className="py-2 pr-4 font-normal">
+                          {label}
+                          <span className="block text-xs text-muted">{row.sku}</span>
+                        </th>
+                        {(["min", "max", "step"] as const).map((field) => (
+                          <td key={field} className="py-2 pr-4">
+                            <input
+                              name={`rule:${row.variantId}:${field}`}
+                              defaultValue={row.rule ? (field === "min" ? row.rule.min : field === "max" ? (row.rule.max ?? "") : row.rule.step) : ""}
+                              inputMode="numeric"
+                              maxLength={4}
+                              aria-label={`${label}, ${field === "min" ? words.atLeast : field === "max" ? words.atMost : words.step}`}
+                              className={`${control} w-24 tabular-nums`}
+                            />
+                          </td>
+                        ))}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <div>
+              <SubmitButton>{words.saveRules}</SubmitButton>
+            </div>
+          </ActionForm>
+        )}
       </Card>
 
       <Card title={words.delete} description={words.deleteHint} className="flex flex-col gap-3">

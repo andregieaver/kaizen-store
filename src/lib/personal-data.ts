@@ -307,6 +307,8 @@ export const NOT_PERSONAL: Record<string, string> = {
   price_lists: "A store's price list (D321): its name, a percentage and whether it is on.",
   price_list_assignments: "Which customer groups and companies a price list is for (D321): the business's own groups and company accounts, never a person.",
   price_list_prices: "A price list's fixed price for a variant in a currency (D321).",
+  price_list_breaks: "A price list's price breaks for a variant (D323): quantities and prices.",
+  price_list_quantity_rules: "A price list's quantity rule for a variant (D323): numbers of units.",
   bundle_components: "What a bundle is made of (D322): variants and quantities of the store's catalogue.",
   price_breaks: "A product's price breaks (D323): quantities and prices of the store's catalogue.",
   order_line_components: "A bundle's components as sold (D322): variants, SKUs, product titles and quantities, nothing of the buyer.",

@@ -1226,7 +1226,7 @@
       "rechecked": true,
       "was": "partial"
     },
-    "gap": "None for the criteria: a product's price breaks (D323 E2, `commerce.price_breaks`: from N units in one line, a percentage off or a unit price per market, for one variant or every variant) price a line only through `commerce.line_price()`, read by the cart, checkout, the product page's table (`priceBreaksFor()`, `PriceBreakTable`) and the WordPress quote; a variant's minimum, maximum and step (E1) are kept by the cart's add and change, `placeOrder()` and the WordPress cart. Tiered campaigns (D299 E3) remain for percentage steps by basket. Not built yet: a price list's own breaks and quantity rules (E3).",
+    "gap": "None for the criteria: a product's price breaks (D323 E2, `commerce.price_breaks`: from N units in one line, a percentage off or a unit price per market, for one variant or every variant) price a line only through `commerce.line_price()`, read by the cart, checkout, the product page's table (`priceBreaksFor()`, `PriceBreakTable`) and the WordPress quote; a variant's minimum, maximum and step (E1) are kept by the cart's add and change, `placeOrder()` and the WordPress cart. Tiered campaigns (D299 E3) remain for percentage steps by basket. A price list's own breaks and quantity rules per variant (E3) reach its buyers through the same `line_price()` and `commerce.quantity_rule()`.",
     "bucket": null,
     "wave": null,
     "criteria": [
@@ -1246,6 +1246,7 @@
         "src/server/campaigns.ts",
         "src/server/cart.ts",
         "src/server/price-breaks.ts",
+        "src/server/price-lists.ts",
         "supabase/migrations/20261026152908_price_breaks_sql.sql"
       ],
       "tests": [
@@ -1258,6 +1259,7 @@
         "src/server/campaigns.int.test.ts",
         "src/server/checkout-kinds.int.test.ts",
         "src/server/price-breaks.int.test.ts",
+        "src/server/price-lists.int.test.ts",
         "src/server/quantity-rules.int.test.ts"
       ],
       "untested": false

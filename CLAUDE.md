@@ -1043,6 +1043,10 @@ stand-in is the only fake, and only it is told it is one.
   product page's table (`priceBreaksFor()`) and the WordPress quote, so they agree; a break is the price at that quantity, never a reduction
   (no reference, no "save"), and a line it prices takes the group's percentage as any line does. A new place that prices a cart line by its
   quantity asks `line_price()`; a new money read here needs a euro scenario.
+  A price list's own breaks and rules (E3, per variant: `price_list_breaks`, `price_list_quantity_rules`, written only by `setListBreaks()`/
+  `setListRules()` in `src/server/price-lists.ts`) reach its buyers through `line_price()` and `commerce.quantity_rule()` (the buyer's lists'
+  rule, the most open, else the variant's); every reader of a buyer's rule (the cart, the add, checkout, *Your catalogue*, the product page's
+  `buyerRulesFor()`) asks it, and a reader with no buyer (the WordPress cart) takes the variant's own.
 - Selling to businesses (D63, `src/lib/b2b.ts`, `src/server/b2b.ts`): stores
   sell to `consumers`, `businesses` or `both` (`stores.audience`). Prices are
   always kept and charged with VAT; businesses see them without it. Draw

@@ -171,6 +171,8 @@ export const COPY_RULES: Record<string, CopyRule> = {
   price_lists: never("Price lists name the store's own customer groups, companies and variants (D321); a copy starts without them."),
   price_list_assignments: never("Who a price list is for: the store's own customer groups and companies (D321)."),
   price_list_prices: never("A price list's fixed prices for the store's own variants (D321)."),
+  price_list_breaks: never("A price list's own price breaks for the store's variants (D323), with the lists."),
+  price_list_quantity_rules: never("A price list's own quantity rules for the store's variants (D323), with the lists."),
   price_list_products: never("What a price list's percentage reaches: the store's own products and categories (D321)."),
   order_line_components: never("A bundle's components as sold (D322): a copied order is history and carries no stock, so they stay with the original."),
   customer_addresses: never("Shoppers' saved addresses (D304); a copied customer keeps `customers.address`."),

@@ -21,17 +21,30 @@ export async function priceBreaksFor(storeId: string, customerId: string | null,
     from commerce.product_variants v
     join commerce.products p on p.store_id = v.store_id and p.id = v.product_id and p.kind in ('goods', 'bundle')
     join commerce.current_prices cp on cp.variant_id = v.id and cp.market_code = ${marketCode}
+    -- From the buyer's minimum (a price list's rule, else the variant's, E3), then each break the product or the buyer's lists give.
+    cross join lateral commerce.quantity_rule(v.store_id, ${customerId}::uuid, v.id) qr
     cross join lateral (
-      select v.min_quantity as quantity
+      select qr.min_quantity as quantity
       union
       select b.from_quantity from commerce.price_breaks b
-      where b.store_id = v.store_id and b.product_id = v.product_id and (b.variant_id is null or b.variant_id = v.id) and b.from_quantity > v.min_quantity
+      where b.store_id = v.store_id and b.product_id = v.product_id and (b.variant_id is null or b.variant_id = v.id) and b.from_quantity > qr.min_quantity
+      union
+      select lb.from_quantity from commerce.buyer_lists(v.store_id, ${customerId}::uuid) as mine(id)
+      join commerce.price_list_breaks lb on lb.store_id = v.store_id and lb.list_id = mine.id and lb.variant_id = v.id
+      where ${customerId}::uuid is not null and lb.from_quantity > qr.min_quantity
     ) q
     left join lateral commerce.line_price(v.store_id, ${customerId}::uuid, v.id, ${marketCode}, cp.amount_minor, q.quantity) lp on true
     where v.store_id = ${storeId}::uuid and v.id = any(${`{${variantIds.join(",")}}`}::uuid[])
-      and exists (
-        select 1 from commerce.price_breaks b
-        where b.store_id = v.store_id and b.product_id = v.product_id and (b.variant_id is null or b.variant_id = v.id)
+      -- Only variants with a break to show: nothing is priced for a product without any.
+      and (
+        exists (
+          select 1 from commerce.price_breaks b
+          where b.store_id = v.store_id and b.product_id = v.product_id and (b.variant_id is null or b.variant_id = v.id)
+        )
+        or (${customerId}::uuid is not null and exists (
+          select 1 from commerce.price_list_breaks lb
+          where lb.store_id = v.store_id and lb.variant_id = v.id and lb.list_id in (select id from commerce.buyer_lists(v.store_id, ${customerId}::uuid) as mine(id))
+        ))
       )
   `);
   const byVariant = new Map<string, BreakStep[]>();

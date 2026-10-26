@@ -3452,6 +3452,20 @@
       "when": 1793028548481,
       "tag": "20261026152908_price_breaks_sql",
       "breakpoints": true
+    },
+    {
+      "idx": 493,
+      "version": "7",
+      "when": 1793029358187,
+      "tag": "20261026154238_price_list_quantities",
+      "breakpoints": true
+    },
+    {
+      "idx": 494,
+      "version": "7",
+      "when": 1793029416970,
+      "tag": "20261026154336_price_list_quantities_sql",
+      "breakpoints": true
     }
   ]
 }
