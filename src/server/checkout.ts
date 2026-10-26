@@ -12,6 +12,7 @@ import { formatBookingTime } from "@/lib/booking-slots";
 import { companyRequired, parseProductAudience, parseStoreAudience } from "@/lib/b2b";
 import { CHECKOUT_MINUTES, lineWithdrawal, vatIncluded } from "@/lib/checkout";
 import { isNative, shown, type Market } from "@/lib/markets";
+import { quantityProblem, ruleForKind } from "@/lib/quantity-rules";
 import { marketPath, storeOrigin } from "@/lib/paths";
 import { shownOptions, t } from "@/lib/i18n";
 import { parsePaymentMode, venuePart } from "@/lib/pay-later";
@@ -157,7 +158,9 @@ export type CheckoutProblem =
   /** The company's PO number is missing, too long or not one line (D321 C.2). */
   | "po_number"
   /** An order over the company's approval limit holds more than goods bought once, or gift cards: only those can wait (D321 C.2). */
-  | "approval";
+  | "approval"
+  /** A line's quantity breaks its variant's rule (D323): below the minimum, between steps or above the maximum. */
+  | "quantity";
 
 export type PlaceResult = { ok: true; order: PlacedOrder } | { ok: false; problem: CheckoutProblem };
 
@@ -210,6 +213,7 @@ function orderLineRows(
         coalesce(bp.amount_minor, cp.amount_minor) as amount_minor, bp.list_id as price_list_id, cl.starts_at, cl.resource_id, aps.payment, aps.deposit_percent,
         p.kind, aps.check_in_time, aps.check_out_time, v.rental_period, p.host_id, v.cost_minor,
         v.measure_amount, v.measure_unit, v.measure_base, v.stock_policy, v.backorder_days,
+        v.min_quantity, v.max_quantity, v.quantity_step,
         cl.gift_card_to, cl.gift_card_to_name, cl.gift_card_from, cl.gift_card_message, cl.gift_card_send_on,
         -- A bundle's components (D322): what its line holds and draws instead of its own variant.
         case when p.kind = 'bundle' then (
@@ -306,6 +310,10 @@ export async function placeOrder(
     if (!isNative(market) && lines.some((l) => l.selling_plan_id !== null)) return { ok: false, problem: "unavailable" };
     if (lines.some((l) => !l.sellable || !l.plan_ok || l.amount_minor === null)) {
       return { ok: false, problem: "unavailable" };
+    }
+    // How many at a time (D323): a cart line of goods or a bundle keeps to its variant's rule, as the cart showed it (`quantityProblem()`).
+    if (lines.some((l) => l.starts_at === null && quantityProblem(Number(l.quantity), ruleForKind(l.kind, l)) !== null)) {
+      return { ok: false, problem: "quantity" };
     }
     // One checkout pays one seller (D71): a host's listings on their own, and never a subscription.
     const sellers = new Set(lines.map((l) => (l.host_id ? String(l.host_id) : null)));

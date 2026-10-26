@@ -26,7 +26,9 @@ export async function GET(request: Request, { params }: RouteContext<"/s/[store]
   const found = token.length <= 64 ? await openReminderLink(shop.store.id, token) : null;
   if (found) {
     for (const line of found.lines) {
-      await changeLine(cart, line.variantId, line.quantity, "set", line.sellingPlanId);
+      const set = await changeLine(cart, line.variantId, line.quantity, "set", line.sellingPlanId);
+      // A rule the variant has taken since (D323): the line comes back at the nearest quantity it allows.
+      if (set.outcome === "quantity" && set.quantity === 0) await changeLine(cart, line.variantId, line.quantity, "add", line.sellingPlanId);
     }
     const code = new URL(request.url).searchParams.get("code");
     if (code) await addCartCode(cart, code.slice(0, 40));

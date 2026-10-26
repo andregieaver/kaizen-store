@@ -3,7 +3,7 @@
 import { refresh } from "next/cache";
 import { z } from "zod";
 
-import { MAX_LINE_QUANTITY } from "@/lib/cart";
+import { MAX_ORDER_QUANTITY } from "@/lib/cart";
 import { changeLine } from "@/server/cart";
 import { resolveSellingShop } from "@/server/shop";
 
@@ -13,7 +13,7 @@ import { resolveSellingShop } from "@/server/shop";
  */
 export async function addFromCatalogueAction(storeSlug: string, marketSlug: string, variantId: string, form: FormData): Promise<void> {
   const shop = await resolveSellingShop(storeSlug, marketSlug);
-  const quantity = z.coerce.number().int().min(1).max(MAX_LINE_QUANTITY).safeParse(form.get("quantity") ?? 1);
+  const quantity = z.coerce.number().int().min(1).max(MAX_ORDER_QUANTITY).safeParse(form.get("quantity") ?? 1);
   if (!shop || !z.uuid().safeParse(variantId).success || !quantity.success) return;
   await changeLine({ storeId: shop.store.id, market: shop.market }, variantId, quantity.data, "add", null);
   refresh();

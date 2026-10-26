@@ -634,6 +634,13 @@ export const en = {
   bundleIncludes: (items: string): string => `Includes ${items}`,
   /** The heading of a bundle's components on its product page (D322). */
   bundleInside: "What's inside",
+  /** A variant's quantity rules (D323): "At least 12", "At most 48", "In multiples of 6", joined by `ruleWords()`. */
+  quantityRule: {
+    min: (n: number): string => `At least ${n}`,
+    max: (n: number): string => `At most ${n}`,
+    step: (n: number): string => `In multiples of ${n}`,
+    fix: (rule: string): string => `Change the quantity: ${rule}.`,
+  },
   galleryPrevious: "Previous picture",
   galleryNext: "Next picture",
   galleryShow: (n: number) => `Show picture ${n}`,
@@ -707,6 +714,8 @@ export const en = {
   problemConsent: "Tick the box to agree to the download before you continue.",
   problemCompany: "Fill in the company name and organisation number to continue.",
   problemCompanyNumber: "The organisation number does not look right. Check it and try again.",
+  /** A cart line whose quantity breaks its variant's rule (D323). */
+  problemQuantity: "The quantity of something in your cart can't be bought as it is. Change it in the cart and try again.",
   /** Who pays and where the goods go, asked before Mollie's page, which asks for neither (D292). */
   payer: {
     legend: "Your details",

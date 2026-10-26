@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { formatMoney } from "./money";
+import { MAX_ORDER_QUANTITY } from "./quantity-rules";
 import { BRIEF_MAX, BRIEF_MIN, PICTURE_SHAPES } from "./picture-direction";
 import {
   BUNDLE_COMPONENTS_MAX,
@@ -111,6 +112,13 @@ const mainTexts = {
   excerpt: z.string().trim().max(EXCERPT_FIELD_MAX).describe("A short text for lists and product grids; the start of the description when empty."),
 };
 
+/** How many at a time (D323): a line's minimum, maximum and step for goods and bundles; the database refuses a minimum or maximum that is not whole steps. */
+const ruleArgs = {
+  min_quantity: z.number().int().min(1).max(MAX_ORDER_QUANTITY).optional().describe("The fewest one order line may hold; a whole number of quantity_step."),
+  max_quantity: z.number().int().min(1).max(MAX_ORDER_QUANTITY).nullable().optional().describe("The most one order line may hold (null: no limit of its own); a whole number of quantity_step."),
+  quantity_step: z.number().int().min(1).max(MAX_ORDER_QUANTITY).optional().describe("Sold in multiples of this, such as 6 for a box of six; 1 sells any number."),
+};
+
 const variantArgs = z.object({
   options: z.record(z.string(), z.string()).default({}).describe("The variant's value for each option, such as {\"Size\": \"M\"}; leave out for a product without options."),
   sku: z.string().trim().min(1).max(64).optional().describe("Its stock-keeping code, unique in the store; made from the address and the options when left out."),
@@ -120,6 +128,7 @@ const variantArgs = z.object({
   cost: z.string().trim().max(20).optional().describe("What one costs the store, without VAT, in its main currency, such as \"120\"; for profit figures."),
   gtin: z.string().trim().regex(/^[0-9]{8,14}$/, "A barcode (GTIN/EAN) is 8 to 14 digits.").optional(),
   content: measureArgs.optional(),
+  ...ruleArgs,
 });
 
 /** A bundle's components by SKU and its pricing (D322): the AI manager makes or changes one as the editor does. */
@@ -173,6 +182,7 @@ const variantChangeArgs = z.object({
   gtin: z.string().trim().regex(/^[0-9]{8,14}$/, "A barcode (GTIN/EAN) is 8 to 14 digits.").nullable().optional(),
   content: measureArgs.nullable().optional(),
   active: z.boolean().optional().describe("False switches the variant off (it is never deleted)."),
+  ...ruleArgs,
 });
 
 export const updateProductInput = z.object({
@@ -342,6 +352,9 @@ function newVariant(template: VariantInput, fields: Partial<VariantInput>): Vari
     stockPolicy: "deny",
     backorderDays: null,
     lowStockThreshold: null,
+    minQuantity: 1,
+    maxQuantity: null,
+    quantityStep: 1,
     active: true,
     weightGrams: null,
     hsCode: null,
@@ -410,6 +423,9 @@ export function toProductInput(args: CreateProductInput, base: ProductInput, sto
       cost: fields.cost ?? "",
       gtin: fields.gtin ?? null,
       measure: measureOf(fields.content),
+      minQuantity: fields.min_quantity ?? 1,
+      maxQuantity: fields.max_quantity ?? null,
+      quantityStep: fields.quantity_step ?? 1,
     });
   });
   let translations = withTexts(
@@ -512,6 +528,9 @@ export function mergeProduct(stored: ProductInput, change: UpdateProductInput, s
           gtin: given.gtin ?? null,
           measure: measureOf(given.content),
           active: given.active ?? true,
+          minQuantity: given.min_quantity ?? 1,
+          maxQuantity: given.max_quantity ?? null,
+          quantityStep: given.quantity_step ?? 1,
         }),
       );
       changed.push(`a new variant ${given.sku}`);
@@ -535,6 +554,9 @@ export function mergeProduct(stored: ProductInput, change: UpdateProductInput, s
       ...(given.gtin !== undefined && { gtin: given.gtin }),
       ...(given.content !== undefined && { measure: measureOf(given.content) }),
       ...(given.active !== undefined && { active: given.active }),
+      ...(given.min_quantity !== undefined && { minQuantity: given.min_quantity }),
+      ...(given.max_quantity !== undefined && { maxQuantity: given.max_quantity }),
+      ...(given.quantity_step !== undefined && { quantityStep: given.quantity_step }),
     };
     const what = [
       given.options && "options",
@@ -545,6 +567,7 @@ export function mergeProduct(stored: ProductInput, change: UpdateProductInput, s
       given.content !== undefined && "content",
       given.active === false && "switched off",
       given.active === true && "switched on",
+      (given.min_quantity !== undefined || given.max_quantity !== undefined || given.quantity_step !== undefined) && "how many at a time",
     ].filter(Boolean);
     if (what.length > 0) changed.push(`${current.sku}: ${what.join(", ")}`);
   }

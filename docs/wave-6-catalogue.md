@@ -654,6 +654,25 @@ product. The WordPress cart (D170) quotes a line at the market price, at most 20
 - The parity row `catalogue.volume-pricing-and-quantity-rules` closes with E2 (a variant's breaks and rules, the cart and the order
   agreeing); E3 gives price lists theirs.
 
+#### E.4 As built: E1 (2026-10-26)
+
+- Migrations `20261026133526_quantity_rules` (`product_variants.min_quantity`, `max_quantity`, `quantity_step` with their checks) and
+  `20261026133612_quantity_rules_copy` (`clone_store()` and `duplicate_store()` carry them). The rules are `src/lib/quantity-rules.ts`
+  (`ruleOf()`, `ruleForKind()`, `lineMax()`, `quantityProblem()`, `nextQuantity()`, `fitQuantity()`, `ruleWords()`, `ruleProblem()`);
+  `MAX_LINE_QUANTITY` lives there (re-exported by `src/lib/cart.ts`) beside `MAX_ORDER_QUANTITY`, and `settleQuantity()` takes the rule.
+- `sellableQuantity()` returns the rule and caps `available` at `lineMax()`; `changeLine()` adds by `nextQuantity()`, refuses a set below the
+  minimum or between steps (`outcome: "quantity"`, the line kept) and puts nothing in when the stock does not reach the minimum. `getCart()`'s
+  lines carry `rule` and the status `quantity`, which blocks checkout; the cart page says the rule under the line (or *Change the quantity: …*)
+  and the quantity field has the rule's `min`, `max` and `step`. A restored cart (the reminder's link) puts a line the rule no longer allows back
+  at the nearest quantity it does. `placeOrder()` refuses with `quantity` (`m.problemQuantity`).
+- The product page reads the rule from the cached `getProduct()` (`ProductVariant.rule`) and says it after the stock note; *Your catalogue*
+  gives its quantity field the rule. The editor's *How many at a time* sits under each variant of goods or a bundle (the step moves the minimum
+  and maximum to whole steps; *Use for every variant*), words in the `product` catalogue (en, nb). The AI manager's `get_product` names a rule
+  that is not one at a time; `create_product` and `update_product` take `min_quantity`, `max_quantity` and `quantity_step` per variant.
+- WordPress: the quote's `quantity_rule` and `fitted` (see `docs/wordpress-plugin.md`), the hand-over fitted the same way, lines up to 9,999;
+  plugin 1.2.0. Held by `src/lib/quantity-rules.test.ts`, `src/db/commerce.test.ts` (the checks and the copy) and
+  `src/server/quantity-rules.int.test.ts` (add, refuse, block, checkout, stock below the minimum, hand-over and quote).
+
 ### Unit F (D324): search merchandising
 
 Synonym groups per language (`search_synonyms`: two-way groups and one-way "this means that"), expanded in `rankedSearch()`'s keyword part

@@ -4,6 +4,7 @@ import { DEFAULT_CANCEL_HOURS, DEFAULT_DEPOSIT_PERCENT, PAYMENT_MODES } from "./
 import { PRODUCT_AUDIENCES } from "./b2b";
 import { RENTAL_PERIODS } from "./booking-ranges";
 import { policyProblem, stockPolicyFields } from "./inventory";
+import { MAX_ORDER_QUANTITY, ruleProblem } from "./quantity-rules";
 import { minorUnitDigits } from "./money";
 import { isPictureAddress } from "./picture-address";
 import { BASES, UNITS, baseFits, measureProblem, parseMeasureAmount, type Base, type Unit } from "./unit-price";
@@ -318,6 +319,10 @@ export const productInput = z.object({
          * (`backorderDays`, 1 to 90, required with it). `lowStockThreshold` is the owner's warning level (goods only). `policyProblem()` holds the rules.
          */
         ...stockPolicyFields,
+        /** How many at a time (wave 6 unit E, D323): a line's minimum, maximum (null: none) and step; goods and bundles only, `ruleProblem()`'s rules. */
+        minQuantity: z.number().int().min(1).max(MAX_ORDER_QUANTITY).default(1),
+        maxQuantity: z.number().int().min(1).max(MAX_ORDER_QUANTITY).nullable().default(null),
+        quantityStep: z.number().int().min(1).max(MAX_ORDER_QUANTITY).default(1),
         active: z.boolean(),
         weightGrams: z.number().int().positive("Weight must be more than 0 g.").max(1_000_000).nullable(),
         hsCode: optionalText(10).refine((v) => v === null || /^[0-9]{6,10}$/.test(v), {
@@ -514,6 +519,14 @@ export function productProblems(input: ProductInput, context: PublishContext): s
       variant.delivery,
     );
     if (problem) problems.push(`${variantLabel(variant.options)}: ${problem}`);
+  }
+
+  // How many at a time (D323): goods and bundles keep the rule the database would take; any other kind is bought one at a time.
+  if (input.kind === "goods" || input.kind === "bundle") {
+    for (const variant of input.variants) {
+      const problem = ruleProblem({ min: variant.minQuantity, max: variant.maxQuantity, step: variant.quantityStep });
+      if (problem) problems.push(`${variantLabel(variant.options)}: ${problem}`);
+    }
   }
 
   // A stay's or rental's fee per booking (D70), typed like a price.

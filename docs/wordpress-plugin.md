@@ -83,7 +83,9 @@ dependencies), its installable zip in `public/downloads/kaizen-store-wordpress.z
   (`getAvailability()`; downloads never run out), the picture and address. A line that cannot be bought (gone, not goods, no stock, not this store's) is
   `unavailable` and left out of the subtotal; a quantity above the stock is counted at the stock (`insufficient`). It is a **subtotal**: no shipping,
   discount or campaign, which the store works out at checkout with the address. `wordpress.int.test.ts` holds it to the store: the cart a shopper lands on has
-  the same lines and `Σ unit price × quantity` equals the quote's subtotal.
+  the same lines and `Σ unit price × quantity` equals the quote's subtotal. A variant sold so many at a time (D323) gives each line its `quantity_rule`
+  (`min`, `max`, `step`, `text`) and the quote counts `fitted`, the quantity asked put right by the rule (`fitQuantity(nextQuantity(0, asked))`), with
+  status `quantity` when that differs; the hand-over puts the same quantity in the cart, and plugin 1.2.0's stepper and quantity field follow the rule.
 - **Hand-over** (`createHandoffCart()`): makes a real cart (`commerce.carts`, `cart_lines`) checked line by line as if the shopper had added it in the store
   (`sellableQuantity()`: an active variant with a price in the market, goods only, never subscription-only or business-only, stock for the quantity; a quantity above
   the stock is cut to it). **No cart is made when nothing can be bought** (422, the transaction is undone). The cart is no one's and holds no stock until its

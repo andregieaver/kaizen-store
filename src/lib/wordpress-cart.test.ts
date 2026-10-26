@@ -24,9 +24,9 @@ describe("which products go in a cart held on another site", () => {
 });
 
 describe("the lines of a cart", () => {
-  it("are variants and quantities of 1 to 20, each variant once, at most thirty", () => {
+  it("are variants and quantities of 1 to 9,999, each variant once, at most thirty", () => {
     expect(cartLines.safeParse([{ variant_id: A, quantity: 2 }]).success).toBe(true);
-    for (const bad of [[], [{ variant_id: "x", quantity: 1 }], [{ variant_id: A, quantity: 0 }], [{ variant_id: A, quantity: 21 }], [{ variant_id: A, quantity: 1 }, { variant_id: A.toUpperCase(), quantity: 1 }], Array.from({ length: 31 }, (_, i) => ({ variant_id: `${i.toString(16).padStart(8, "0")}-e89b-12d3-a456-426614174000`, quantity: 1 }))]) {
+    for (const bad of [[], [{ variant_id: "x", quantity: 1 }], [{ variant_id: A, quantity: 0 }], [{ variant_id: A, quantity: 10000 }], [{ variant_id: A, quantity: 1 }, { variant_id: A.toUpperCase(), quantity: 1 }], Array.from({ length: 31 }, (_, i) => ({ variant_id: `${i.toString(16).padStart(8, "0")}-e89b-12d3-a456-426614174000`, quantity: 1 }))]) {
       expect(cartLines.safeParse(bad).success, JSON.stringify(bad).slice(0, 60)).toBe(false);
     }
   });

@@ -617,6 +617,13 @@ export const sv: Messages = {
   backTo: (name: string): string => `Tillbaka till ${name}`,
   bundleIncludes: (items: string): string => `Innehåller ${items}`,
   bundleInside: "Det här ingår",
+  /** A variant's quantity rules (D323): "At least 12", "At most 48", "In multiples of 6", joined by `ruleWords()`. */
+  quantityRule: {
+    min: (n: number): string => `Minst ${n}`,
+    max: (n: number): string => `Högst ${n}`,
+    step: (n: number): string => `Säljs i multiplar om ${n}`,
+    fix: (rule: string): string => `Ändra antalet: ${rule}.`,
+  },
   galleryPrevious: "Föregående bild",
   galleryNext: "Nästa bild",
   galleryShow: (n: number) => `Visa bild ${n}`,
@@ -690,6 +697,8 @@ export const sv: Messages = {
   problemConsent: "Kryssa i samtycket till nedladdningen för att gå vidare.",
   problemCompany: "Fyll i företagsnamn och organisationsnummer för att gå vidare.",
   problemCompanyNumber: "Organisationsnumret ser inte rätt ut. Kontrollera det och försök igen.",
+  /** A cart line whose quantity breaks its variant's rule (D323). */
+  problemQuantity: "Antalet av en vara i varukorgen kan inte köpas så. Ändra det i varukorgen och försök igen.",
   /** Who pays and where the goods go, asked before Mollie's page, which asks for neither (D292). */
   payer: {
     legend: "Dina uppgifter",

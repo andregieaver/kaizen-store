@@ -13,7 +13,9 @@
 		return;
 	}
 	var KEY = 'kaizen_cart_v1';
-	var MAX_QTY = 20;
+	// The store fits each line to its variant's rule (how many at a time) and its stock; without a rule a line holds up to 20.
+	var MAX_QTY = 9999;
+	var PLAIN_MAX = 20;
 	var text = cfg.text || {};
 	var DEFAULT_LABELS = {
 		cart: text.cart || 'Cart',
@@ -228,8 +230,13 @@
 					return;
 				}
 				if ( line.status === 'insufficient' ) {
-					mine.q = Math.max( 1, line.available );
+					mine.q = Math.max( 1, line.fitted || line.available );
 					notes.push( labels().onlyAvailable.replace( '{n}', String( line.available ) ) + ' ' + line.title );
+				}
+				// The variant is sold so many at a time: the quantity becomes the nearest one it allows, and the rule is said.
+				if ( line.status === 'quantity' && line.fitted ) {
+					mine.q = line.fitted;
+					notes.push( ( line.quantity_rule && line.quantity_rule.text ? line.quantity_rule.text + ': ' : '' ) + line.title );
 				}
 			} );
 			save();
@@ -311,13 +318,16 @@
 		}
 		if ( info && info.status === 'unavailable' ) {
 			main.appendChild( el( 'span', { 'class': 'kaizen-cart-problem', text: lang.noLongerAvailable } ) );
+		} else if ( info && info.quantity_rule && info.quantity_rule.text ) {
+			main.appendChild( el( 'span', { 'class': 'kaizen-cart-options', text: info.quantity_rule.text } ) );
 		}
 		var minus = el( 'button', { type: 'button', 'class': 'kaizen-step', 'aria-label': lang.quantity + ' − ' + title, text: '−' } );
 		var plus = el( 'button', { type: 'button', 'class': 'kaizen-step', 'aria-label': lang.quantity + ' + ' + title, text: '+' } );
-		var max = info && info.status !== 'unavailable' && info.available ? Math.min( MAX_QTY, info.available ) : MAX_QTY;
-		plus.disabled = line.q >= max;
-		minus.addEventListener( 'click', function () { setQty( line.v, line.q - 1 ); } );
-		plus.addEventListener( 'click', function () { setQty( line.v, line.q + 1 ); } );
+		var rule = ( info && info.quantity_rule ) || { min: 1, max: PLAIN_MAX, step: 1 };
+		var max = info && info.status !== 'unavailable' && info.available ? Math.min( rule.max, info.available ) : rule.max;
+		plus.disabled = line.q + rule.step > max;
+		minus.addEventListener( 'click', function () { setQty( line.v, line.q - rule.step < rule.min ? 0 : line.q - rule.step ); } );
+		plus.addEventListener( 'click', function () { setQty( line.v, line.q + rule.step ); } );
 		var stepper = el( 'div', { 'class': 'kaizen-stepper', role: 'group', 'aria-label': lang.quantity + ': ' + title }, [ minus, el( 'output', { text: String( line.q ) } ), plus ] );
 		var removeButton = el( 'button', { type: 'button', 'class': 'kaizen-cart-remove', 'data-focus': 'remove:' + line.v, 'aria-label': lang.remove + ': ' + title, text: lang.remove } );
 		removeButton.addEventListener( 'click', function () { remove( line.v ); } );
@@ -535,9 +545,18 @@
 				buy.disabled = stock.level === 'out';
 				buy.textContent = stock.level === 'out' ? lang.soldOut || lang.outOfStock : lang.addToCart;
 			}
+			if ( stockBox && variant.quantity_rule && variant.quantity_rule.text && stock.level !== 'out' ) {
+				stockBox.textContent += ' · ' + variant.quantity_rule.text;
+			}
 			if ( qty ) {
-				qty.max = String( Math.max( 1, stock.max ) );
-				if ( Number( qty.value ) > stock.max && stock.max > 0 ) {
+				var rule = variant.quantity_rule || { min: 1, max: PLAIN_MAX, step: 1 };
+				qty.min = String( rule.min );
+				qty.step = String( rule.step );
+				qty.max = String( Math.max( rule.min, stock.max ) );
+				if ( Number( qty.value ) < rule.min || Number( qty.value ) % rule.step !== 0 ) {
+					qty.value = String( rule.min );
+				}
+				if ( Number( qty.value ) > stock.max && stock.max >= rule.min ) {
 					qty.value = String( stock.max );
 				}
 			}

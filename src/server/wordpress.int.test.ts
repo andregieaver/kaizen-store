@@ -443,7 +443,7 @@ describe("a cart held on the site", () => {
 
   it("refuses a cart it cannot read", async () => {
     const { token } = await tokenFor();
-    for (const body of [{}, { lines: [] }, { lines: [{ variant_id: "x", quantity: 1 }] }, { lines: [{ variant_id: "123e4567-e89b-12d3-a456-426614174000", quantity: 0 }] }, { lines: [{ variant_id: "123e4567-e89b-12d3-a456-426614174000", quantity: 21 }] }]) {
+    for (const body of [{}, { lines: [] }, { lines: [{ variant_id: "x", quantity: 1 }] }, { lines: [{ variant_id: "123e4567-e89b-12d3-a456-426614174000", quantity: 0 }] }, { lines: [{ variant_id: "123e4567-e89b-12d3-a456-426614174000", quantity: 10000 }] }]) {
       expect((await quoteRoute(post(`/api/wordpress/v1/stores/${slug}/cart/quote`, token, body), forStore(slug))).status, JSON.stringify(body)).toBe(400);
     }
   });

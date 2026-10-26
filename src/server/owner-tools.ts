@@ -199,6 +199,7 @@ import {
   writeProductTextsTool,
 } from "./product-tools";
 import { GATED_WHEN_LIVE } from "@/lib/product-tools";
+import { isPlain, ruleOf } from "@/lib/quantity-rules";
 import { listCategoriesTool, preflightUpdateCategory, updateCategoryTool } from "./category-tools";
 import { SETUP_TOOLS } from "@/lib/setup-tools";
 import {
@@ -591,7 +592,7 @@ async function getProductTool({ store }: OwnerToolContext, { product }: OwnerToo
     `),
     db().execute<Row>(sql`
       select v.id, v.sku, v.options, v.delivery,
-        ${onHandActive(sql`v.id`)} as stock, v.stock_policy, v.backorder_days, v.low_stock_threshold,
+        ${onHandActive(sql`v.id`)} as stock, v.stock_policy, v.backorder_days, v.low_stock_threshold, v.min_quantity, v.max_quantity, v.quantity_step,
         coalesce((select jsonb_agg(jsonb_build_object('market', c.market_code, 'amount', c.amount_minor, 'currency', c.currency) order by c.market_code)
           from commerce.current_prices c where c.variant_id = v.id), '[]') as prices
       from commerce.product_variants v
@@ -666,6 +667,11 @@ async function getProductTool({ store }: OwnerToolContext, { product }: OwnerToo
         options: v.options,
         delivery: String(v.delivery),
         stock: bundle ? bundle.in_stock : v.delivery === "physical" ? Number(v.stock) : null,
+        // How many at a time (D323), only where it is more than one at a time.
+        ...(() => {
+          const rule = ruleOf(v);
+          return isPlain(rule) ? {} : { min_quantity: rule.min, max_quantity: rule.max, quantity_step: rule.step };
+        })(),
         ...(v.delivery === "physical"
           ? {
               when_sold_out: v.stock_policy === "continue" ? "keeps selling on backorder" : "stops selling",

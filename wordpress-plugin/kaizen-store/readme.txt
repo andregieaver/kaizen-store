@@ -4,7 +4,7 @@ Tags: ecommerce, products, shortcode, carousel, grid
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.1.0
+Stable tag: 1.2.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -55,6 +55,9 @@ A cart, yes: a slide-out cart on your site. Not a checkout: pressing Checkout ma
 The connection and saved lists are removed. The views themselves are your content and stay in the database.
 
 == Changelog ==
+
+= 1.2.0 =
+* Products sold so many at a time (a minimum, a maximum or in multiples): the quantity field and the cart's steps follow the store's rule, and the cart says it.
 
 = 1.1.0 =
 * A product page on your site (a page holding [kaizen_product]) with the product's pictures, options, price and stock, made on the server so search engines can read it, with structured data.

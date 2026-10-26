@@ -6798,3 +6798,37 @@ describe("bundles (wave 6 unit D, D322)", () => {
     await expect(db.query("delete from commerce.order_line_components where order_line_id = $1", [bundleLine.id])).rejects.toThrow(/order_line_components.frozen/);
   });
 });
+
+describe("quantity rules (wave 6 unit E1, D323)", () => {
+  const one = async <T>(text: string, params: unknown[]) => (await db.query<T>(text, params)).rows[0];
+
+  it("keeps a variant's minimum and maximum whole steps, the maximum at least the minimum, all at most 9,999", async () => {
+    const storeId = await createStore(`rules-store-${(counter += 1)}`, ["NO"]);
+    const { variantId } = await createProduct({ storeId });
+    const set = (min: number, max: number | null, step: number) =>
+      db.query("update commerce.product_variants set min_quantity = $2, max_quantity = $3, quantity_step = $4 where id = $1", [variantId, min, max, step]);
+    expect(await one<{ min_quantity: number; max_quantity: number | null; quantity_step: number }>(
+      "select min_quantity, max_quantity, quantity_step from commerce.product_variants where id = $1",
+      [variantId],
+    )).toEqual({ min_quantity: 1, max_quantity: null, quantity_step: 1 });
+    await set(12, 48, 6);
+    await expect(set(5, null, 6)).rejects.toThrow(/product_variants_quantity_rule/);
+    await expect(set(12, 50, 6)).rejects.toThrow(/product_variants_quantity_max/);
+    await expect(set(12, 6, 6)).rejects.toThrow(/product_variants_quantity_max/);
+    await expect(set(1, 10000, 1)).rejects.toThrow(/product_variants_quantity_max/);
+    await expect(set(0, null, 1)).rejects.toThrow(/product_variants_quantity_rule/);
+  });
+
+  it("is copied with the variant into a new store", async () => {
+    const template = await createStore(`rules-template-${(counter += 1)}`, ["NO"]);
+    const { variantId } = await createProduct({ storeId: template });
+    await db.query("update commerce.product_variants set min_quantity = 12, max_quantity = 48, quantity_step = 6 where id = $1", [variantId]);
+    const owner = await createAccount(`rules-owner-${counter}@example.com`);
+    const { id: copy } = await one<{ id: string }>("select commerce.clone_store($1, $2, 'Copy', $3) as id", [template, `rules-copy-${counter}`, owner]);
+    expect(await one("select min_quantity, max_quantity, quantity_step from commerce.product_variants where store_id = $1", [copy])).toEqual({
+      min_quantity: 12,
+      max_quantity: 48,
+      quantity_step: 6,
+    });
+  });
+});

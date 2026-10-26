@@ -19,7 +19,7 @@ import { bookingWhen, isRange, rangeLength } from "@/lib/booking-text";
 import { creditsNet } from "@/lib/bonus-shopper";
 import { nextStepText } from "@/lib/campaign-notices";
 import { campaignLabel } from "@/lib/campaigns";
-import { MAX_LINE_QUANTITY } from "@/lib/cart";
+import { lineMax, ruleWords } from "@/lib/quantity-rules";
 import { checkoutLabels } from "@/lib/checkout-labels";
 import { optionLabel, type Messages } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
@@ -386,6 +386,15 @@ function linesList({ store, market, m, view }: Draw, drawer: boolean) {
                 {m.noLongerAvailable}
               </p>
             )}
+            {/* How many at a time (D323): the rule's words, as a problem when the line breaks it (the rule changed after it was added). */}
+            {line.status === "quantity" ? (
+              <p role="alert" className="text-sm">
+                {m.quantityRule.fix(ruleWords(line.rule, m.quantityRule) ?? "")}
+              </p>
+            ) : (
+              line.status !== "unavailable" &&
+              ruleWords(line.rule, m.quantityRule) && <p className="text-sm text-muted">{ruleWords(line.rule, m.quantityRule)}</p>
+            )}
             {/* Units beyond the stock of a variant that keeps selling (D172): how many, and the days the store states. Not a problem, so not an alert. */}
             <BackorderLine backorder={line.backorder} m={m} />
 
@@ -403,8 +412,9 @@ function linesList({ store, market, m, view }: Draw, drawer: boolean) {
                     <input
                       type="number"
                       name="quantity"
-                      min={0}
-                      max={MAX_LINE_QUANTITY}
+                      min={line.rule.min}
+                      max={lineMax(line.rule)}
+                      step={line.rule.step}
                       defaultValue={line.quantity}
                       className={`min-h-11 ${drawer ? "w-16" : "w-20"} rounded-md border border-border bg-background px-2`}
                     />

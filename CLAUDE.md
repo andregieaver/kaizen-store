@@ -1030,6 +1030,13 @@ stand-in is the only fake, and only it is told it is one.
   `restockedBundles` for the line's count); an order with a bundle is not changed (`editBlock()`'s `bundle`). A bundle is goods everywhere a shopper
   buys (cart, campaigns, codes, price lists, wishlists, WordPress) but never a free gift, a weekly box, a draft's or an exchange's line. A new place
   that reads a line's stock asks the components; a new place that shows an order line shows `components` (`componentsText()`).
+- **Quantity rules (wave 6 unit E1, D323, `docs/wave-6-catalogue.md` E.1, `src/lib/quantity-rules.ts`)**: a variant of goods or a bundle has a
+  minimum, an optional maximum and a step (`product_variants.min_quantity`, `max_quantity`, `quantity_step`, whole steps by check), read only through
+  `ruleOf()`/`ruleForKind()` (any other kind is `PLAIN_RULE`); a line holds at most `lineMax()` (its maximum, else twenty steps from the minimum,
+  20 for the plain rule, never above `MAX_ORDER_QUANTITY`). Adding is `nextQuantity()` (the minimum, then whole steps), setting a quantity
+  `quantityProblem()` refuses is refused (`changeLine()`'s `quantity`), a line the rule no longer allows has status `quantity` and blocks checkout,
+  and `placeOrder()` refuses it (`quantity`); the WordPress quote and hand-over fit lines with `fitQuantity()`. A new way to put goods in a cart
+  asks the rule the same way; drafts, order changes, exchanges and a subscription's later changes are staff's or the subscriber's and are not held to it.
 - Selling to businesses (D63, `src/lib/b2b.ts`, `src/server/b2b.ts`): stores
   sell to `consumers`, `businesses` or `both` (`stores.audience`). Prices are
   always kept and charged with VAT; businesses see them without it. Draw

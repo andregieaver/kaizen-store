@@ -12,6 +12,7 @@ import { priceVat, priceView, type PriceView } from "@/lib/pricing";
 import { parseDelivery, type Delivery } from "@/lib/product-input";
 import type { ShownGroup } from "@/lib/custom-fields";
 import { planPrice, type PlanInterval } from "@/lib/subscriptions";
+import { ruleForKind, type QuantityRule } from "@/lib/quantity-rules";
 import type { ShownMeasure } from "@/lib/unit-price";
 import { shownMeasureFromColumns } from "@/lib/unit-price-rules";
 import { stockOf, UNLIMITED, type VariantStock } from "@/lib/stock-availability";
@@ -62,6 +63,8 @@ export type ProductVariant = {
    * picture itself; `alt` the media library's alt text for it (D89).
    */
   image: { url: string; thumbnailUrl: string; alt: string } | null;
+  /** How many at a time (D323): its own minimum, maximum and step for goods and bundles, else the plain rule. */
+  rule: QuantityRule;
 };
 
 /** A purchase option for subscribing (D25). */
@@ -262,7 +265,7 @@ export async function getProduct(storeId: string, market: Market, handle: string
     `),
     readDb().execute<Row>(sql`
       select v.id, v.sku, v.gtin, v.options, v.delivery, v.rental_period, v.image_url, v.image_thumbnail_url,
-        v.measure_amount, v.measure_unit, v.measure_base,
+        v.measure_amount, v.measure_unit, v.measure_base, v.min_quantity, v.max_quantity, v.quantity_step,
         coalesce(commerce.media_alt(v.image_url, ${locale}), '') as image_alt,
         cp.amount_minor, cp.currency, cp.prior_30d_minor
       from commerce.product_variants v
@@ -317,6 +320,7 @@ export async function getProduct(storeId: string, market: Market, handle: string
       delivery: parseDelivery(v.delivery),
       rentalPeriod: parseRentalPeriod(v.rental_period),
       image: v.image_url ? { url: str(v.image_url), thumbnailUrl: str(v.image_thumbnail_url ?? v.image_url), alt: str(v.image_alt) } : null,
+      rule: ruleForKind(product.kind, v),
     })),
     // Subscriptions are in the country's own currency only (D109): they renew at a price kept in it.
     plans: (isNative(market) ? plans : []).map((plan) => ({

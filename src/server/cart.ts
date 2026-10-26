@@ -5,7 +5,8 @@ import { cookies } from "next/headers";
 
 import { db } from "@/db/client";
 import { buyerCookie, parseBuyer, parseProductAudience, type ProductAudience } from "@/lib/b2b";
-import { CART_TTL_DAYS, MAX_LINE_QUANTITY, settleQuantity, type LineOutcome } from "@/lib/cart";
+import { CART_TTL_DAYS, settleQuantity, type LineOutcome } from "@/lib/cart";
+import { lineMax, nextQuantity, quantityProblem, ruleForKind, type QuantityRule } from "@/lib/quantity-rules";
 import { isNative, shown, type Market } from "@/lib/markets";
 import { parsePaymentMode, type AppointmentPayment } from "@/lib/pay-later";
 import { parseRentalPeriod, rangeEndsAt, type RentalPeriod } from "@/lib/booking-ranges";
@@ -40,7 +41,8 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 type Row = Record<string, unknown>;
 export type Tx = Parameters<Parameters<ReturnType<typeof db>["transaction"]>[0]>[0];
 
-export type CartLineStatus = "ok" | "insufficient" | "unavailable";
+/** `quantity`: the line's quantity breaks its variant's rule (D323), which changed after it was added; it blocks checkout until changed. */
+export type CartLineStatus = "ok" | "insufficient" | "unavailable" | "quantity";
 
 export type CartLine = {
   variantId: string;
@@ -66,6 +68,8 @@ export type CartLine = {
   available: number;
   /** Units in stock now (net of live checkout holds, never below zero); a download or a booking has no stock and reads as `available`. */
   inStock: number;
+  /** How many at a time (D323): the variant's minimum, maximum and step for goods and bundles, the plain rule for anything else. */
+  rule: QuantityRule;
   /**
    * The units of this line beyond what is in stock and the days stated for them, for a variant that keeps selling on backorder (D172);
    * null for a line that is wholly in stock or whose variant stops selling at zero. The words are `m.backorder.line()`.
@@ -197,7 +201,7 @@ export async function getCart(
       coalesce(bp.amount_minor, cp.amount_minor) as amount_minor, bp.list_id as price_list_id,
       -- Only in a country and currency the store offers now (D178: Several countries and currencies).
       (p.status = 'active' and v.active and ${bookable} and ${offeredTo(customerId)} and commerce.market_offered(c.store_id, c.market_code, ${market.currency})) as sellable,
-      va.in_stock, va.raw_available, va.stock_policy, va.backorder_days
+      va.in_stock, va.raw_available, va.stock_policy, va.backorder_days, v.min_quantity, v.max_quantity, v.quantity_step
     from commerce.cart_lines cl
     join commerce.carts c on c.store_id = cl.store_id and c.id = cl.cart_id
     join commerce.stores st on st.id = cl.store_id
@@ -267,7 +271,9 @@ export async function getCart(
       const stock: VariantStock | null = goods
         ? stockOf({ in_stock: Number(row.in_stock ?? 0), raw_available: Number(row.raw_available ?? 0), stock_policy: String(row.stock_policy ?? "deny"), backorder_days: row.backorder_days === null || row.backorder_days === undefined ? null : Number(row.backorder_days) })
         : null;
-      const available = range ? 1 : stock ? (stock.stockPolicy === "continue" ? MAX_LINE_QUANTITY : stock.inStock) : MAX_LINE_QUANTITY;
+      const rule = ruleForKind(row.kind, row);
+      const most = lineMax(rule);
+      const available = range ? 1 : stock ? (stock.stockPolicy === "continue" ? most : Math.min(stock.inStock, most)) : most;
       const plan = row.selling_plan_id
         ? {
             id: String(row.selling_plan_id),
@@ -300,9 +306,11 @@ export async function getCart(
       const status: CartLineStatus =
         !row.sellable || !row.plan_ok || (plan !== null && !isNative(market)) || unitPriceMinor === null || available <= 0
           ? "unavailable"
-          : !(stock ? lineIsOk(quantity, stock) : available >= quantity)
-            ? "insufficient"
-            : "ok";
+          : quantityProblem(quantity, rule)
+            ? "quantity"
+            : !(stock ? lineIsOk(quantity, stock) : available >= quantity)
+              ? "insufficient"
+              : "ok";
       return {
         variantId: String(row.variant_id),
         productId: String(row.product_id),
@@ -319,6 +327,7 @@ export async function getCart(
         measure: range || row.starts_at || status === "unavailable" ? null : shownMeasureFromColumns(row.measure_amount, row.measure_unit, row.measure_base, market.code),
         available,
         inStock: stock ? stock.inStock : available,
+        rule,
         backorder: stock && status === "ok" ? backorderNote(quantity, stock) : null,
         status,
         delivery: parseDelivery(row.delivery),
@@ -475,6 +484,8 @@ export type SellableQuantity = {
   inStock: number;
   stockPolicy: "deny" | "continue";
   backorderDays: number | null;
+  /** How many at a time (D323): the variant's own for goods and bundles, else the plain rule. `available` is never above its `lineMax()`. */
+  rule: QuantityRule;
 };
 
 /**
@@ -497,7 +508,8 @@ export async function sellableQuantity(
   // A subscription renews at a price kept in the country's own currency, so it is bought in it only (D109).
   if (sellingPlanId && !isNative(market)) return null;
   const [row] = await tx.execute<Row>(sql`
-    select v.product_id, p.kind, v.rental_period, v.delivery, va.in_stock, va.stock_policy, va.backorder_days
+    select v.product_id, p.kind, v.rental_period, v.delivery, va.in_stock, va.stock_policy, va.backorder_days,
+      v.min_quantity, v.max_quantity, v.quantity_step
     from commerce.product_variants v
     join commerce.variant_availability va on va.store_id = v.store_id and va.variant_id = v.id
     join commerce.products p
@@ -530,13 +542,16 @@ export async function sellableQuantity(
   const stock = physical
     ? stockOf({ in_stock: Number(row.in_stock ?? 0), raw_available: Number(row.in_stock ?? 0), stock_policy: String(row.stock_policy ?? "deny"), backorder_days: row.backorder_days === null || row.backorder_days === undefined ? null : Number(row.backorder_days) })
     : null;
+  const rule = ruleForKind(row.kind, row);
+  const most = lineMax(rule);
   const room = {
-    inStock: stock ? stock.inStock : MAX_LINE_QUANTITY,
+    inStock: stock ? stock.inStock : most,
     stockPolicy: stock ? stock.stockPolicy : ("deny" as const),
     backorderDays: stock ? stock.backorderDays : null,
+    rule,
   };
   if (!booking) {
-    return { available: stock ? (stock.stockPolicy === "continue" ? MAX_LINE_QUANTITY : stock.inStock) : MAX_LINE_QUANTITY, kind: "goods", giftCard: row.kind === "gift_card", ...room };
+    return { available: stock ? (stock.stockPolicy === "continue" ? most : Math.min(stock.inStock, most)) : most, kind: "goods", giftCard: row.kind === "gift_card", ...room };
   }
   const kind = bookedKind(row.kind);
   // A stay or a rental must be free for all its nights or days, and keep to the product's rules.
@@ -618,7 +633,7 @@ export async function changeLine(
    * it back, when changing one. Ignored for anything but a gift card.
    */
   giftCard: { recipient: GiftCardRecipient | null } | { key: string | null } | null = null,
-): Promise<{ outcome: LineOutcome | "removed" | "plan_conflict" | "slot_taken"; quantity: number }> {
+): Promise<{ outcome: LineOutcome | "removed" | "plan_conflict" | "slot_taken" | "quantity"; quantity: number }> {
   let recipient = giftCard && "recipient" in giftCard ? giftCard.recipient : null;
   const key = giftCard ? ("recipient" in giftCard ? giftCardKey(giftCard.recipient) : giftCard.key) : null;
   return db().transaction(async (tx) => {
@@ -661,9 +676,17 @@ export async function changeLine(
       if (!current) return { outcome: "unavailable" as const, quantity: 0 };
       recipient = giftCardRecipientOfRow(current);
     }
-    // A time already in the cart is simply there: choosing it again is not asking for more.
-    const wanted = booking ? 1 : mode === "add" ? Number(current?.quantity ?? 0) + quantity : quantity;
-    const settled = range ? { outcome: "added" as const, quantity } : settleQuantity(wanted, sellable.available);
+    // A time already in the cart is simply there: choosing it again is not asking for more. Adding to a line of goods follows its rule
+    // (D323): the minimum first, then whole steps; a quantity set below the minimum or between steps is refused, the line kept as it is.
+    const had = Number(current?.quantity ?? 0);
+    if (!booking && mode === "set") {
+      const problem = quantityProblem(quantity, sellable.rule);
+      if (problem && problem.kind !== "max") return { outcome: "quantity" as const, quantity: had };
+    }
+    const wanted = booking ? 1 : mode === "add" ? nextQuantity(had, quantity, sellable.rule) : quantity;
+    const settled = range ? { outcome: "added" as const, quantity } : settleQuantity(wanted, sellable.available, booking ? undefined : sellable.rule);
+    // Fewer in stock than the rule's minimum: nothing can be put in (the line, if any, stays as it is).
+    if (settled.quantity === 0) return { outcome: "unavailable" as const, quantity: had };
 
     await tx.execute(sql`
       insert into commerce.cart_lines (store_id, cart_id, variant_id, quantity, selling_plan_id, starts_at, resource_id,
@@ -675,7 +698,7 @@ export async function changeLine(
       on conflict on constraint cart_lines_cart_variant_plan_key
         do update set quantity = excluded.quantity, resource_id = excluded.resource_id
     `);
-    const added = settled.quantity - Number(current?.quantity ?? 0);
+    const added = settled.quantity - had;
     if (afterAdd && added > 0) await afterAdd(tx, cartId, added);
     return settled;
   });

@@ -183,6 +183,20 @@ export const productEn = {
     noWarning: "No warning",
     warnHint: "The owners get one email when the stock goes down to this level, not one for every sale.",
   },
+  /** How many at a time (D323): a variant's minimum, maximum and step. */
+  quantityRules: {
+    summary: "How many at a time for {name}",
+    title: "How many at a time for {name}",
+    step: "Sold in multiples of",
+    stepHint: "1 sells any number. Add to cart puts in the minimum, then this many more.",
+    min: "At least",
+    max: "At most",
+    noMax: "No limit ({n} a line)",
+    useForAll: "Use for every variant",
+    atLeast: "at least {n}",
+    inSteps: "in multiples of {n}",
+    atMost: "at most {n}",
+  },
   backorderAll: {
     keepSelling: "Keep selling every variant when sold out",
     shipWithin: "Expected to ship within",

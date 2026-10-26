@@ -9,6 +9,7 @@ import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { assignmentsInput, priceListInput, pricesInput, scopeInput, type PriceListInput } from "@/lib/price-lists";
 import { formatPriceInput, parsePrice } from "@/lib/product-input";
+import { ruleOf, type QuantityRule } from "@/lib/quantity-rules";
 
 import { audit, type Membership } from "./auth";
 import { offeredTo } from "./product-conditions";
@@ -353,13 +354,16 @@ const CATALOGUE_ROW = z.object({
   list_minor: col.minor.nullable(),
   in_stock: col.int.nullable(),
   stock_policy: col.text.nullable(),
+  min_quantity: col.int,
+  max_quantity: col.int.nullable(),
+  quantity_step: col.int,
 });
 
 export type CatalogueItem = {
   productId: string;
   title: string;
   image: string | null;
-  variants: { id: string; options: Record<string, string>; sku: string; marketMinor: number; listMinor: number | null; available: boolean }[];
+  variants: { id: string; options: Record<string, string>; sku: string; marketMinor: number; listMinor: number | null; available: boolean; rule: QuantityRule }[];
 };
 
 /**
@@ -375,7 +379,8 @@ export async function buyerCatalogue(storeId: string, customerId: string, market
       where exists (select 1 from commerce.price_list_products s where s.store_id = l.store_id and s.list_id = l.id)
     )
     select p.id as product_id, coalesce(tl.title, p.handle) as title, coalesce(m.thumbnail_url, m.url) as image,
-           v.id as variant_id, v.options, v.sku, cp.amount_minor as market_minor, bp.amount_minor as list_minor, va.in_stock, va.stock_policy
+           v.id as variant_id, v.options, v.sku, cp.amount_minor as market_minor, bp.amount_minor as list_minor, va.in_stock, va.stock_policy,
+           v.min_quantity, v.max_quantity, v.quantity_step
     from commerce.products p
     join commerce.product_variants v on v.store_id = p.store_id and v.product_id = p.id and v.active
     join commerce.current_prices cp on cp.variant_id = v.id and cp.market_code = ${marketCode}
@@ -399,6 +404,7 @@ export async function buyerCatalogue(storeId: string, customerId: string, market
       marketMinor: r.market_minor,
       listMinor: r.list_minor,
       available: r.stock_policy === "continue" || (r.in_stock ?? 0) > 0,
+      rule: ruleOf(r),
     });
     items.set(r.product_id, item);
   }

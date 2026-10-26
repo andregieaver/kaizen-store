@@ -3,14 +3,14 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
-import { MAX_LINE_QUANTITY } from "@/lib/cart";
 import { t } from "@/lib/i18n";
 import { formatMoney } from "@/lib/money";
 import { marketPath, marketUrl, storeSiteUrl } from "@/lib/paths";
 import { priceView, type PriceView } from "@/lib/pricing";
+import { fitQuantity, lineMax, nextQuantity, PLAIN_RULE, ruleForKind, ruleWords, type QuantityRule } from "@/lib/quantity-rules";
 import { shown, type Market } from "@/lib/markets";
 import { backorderNote, type VariantStock } from "@/lib/stock-availability";
-import { cartableReason, cartLabels, stockOf, type CartLabels, type CartLineInput, type NotCartable } from "@/lib/wordpress-cart";
+import { cartableReason, cartLabels, stockOf, wpRule, type CartLabels, type CartLineInput, type NotCartable, type WpQuantityRule } from "@/lib/wordpress-cart";
 import { wordpressPrice, type WordpressPrice } from "@/lib/wordpress-view";
 import { priceVat } from "@/lib/pricing";
 
@@ -68,6 +68,8 @@ export type WpVariant = {
    * `out`, so a plugin that does not know backorders (before 1.2) shows it sold out, which is safe; one that does shows the days.
    */
   backorder_days: number | null;
+  /** How many at a time (D323): the plugin's quantity field starts at `min`, moves by `step` and stops at `max`; `text` says so. */
+  quantity_rule: WpQuantityRule;
 };
 
 export type WpProductPage = {
@@ -98,6 +100,12 @@ const marketOut = (market: Market) => ({ slug: market.slug, country: market.code
 const VIEW_IN_STORE: Record<string, string> = { nb: "Se i nettbutikken", nn: "Sjå i nettbutikken", no: "Se i nettbutikken", da: "Se i webshoppen", sv: "Se i webbutiken" };
 const viewInStore = (lang: string) => VIEW_IN_STORE[lang.slice(0, 2).toLowerCase()] ?? "View in the store";
 
+
+/** What a line of a shipped variant may hold (D172, D323): the stock, or the line's most under its rule for one that keeps selling at zero. */
+function stockRoom(held: VariantStock | undefined, rule: QuantityRule): number {
+  if (!held) return 0;
+  return held.stockPolicy === "continue" ? lineMax(rule) : Math.min(held.inStock, lineMax(rule));
+}
 /**
  * A product with everything its page needs: pictures, options, each variant's price written out and its stock, and the words, in the market
  * (null when the store is not open or the product is not there). Read as the storefront's own product page reads it (`getProduct()`).
@@ -133,7 +141,8 @@ export async function productPageOf(store: Store, marketRef: string | null, hand
         options: variant.options,
         price: wordpressPrice(variant.price, false, market.locale, words),
         image: variant.image ? { url: absolute(variant.image.url, origin), thumbnail: absolute(variant.image.thumbnailUrl, origin), alt: variant.image.alt } : null,
-        stock: stockOf(variant.delivery === "physical" ? (stock.get(variant.id)?.inStock ?? 0) : MAX_LINE_QUANTITY),
+        stock: stockOf(variant.delivery === "physical" ? (stock.get(variant.id)?.inStock ?? 0) : lineMax(variant.rule), variant.rule),
+        quantity_rule: wpRule(variant.rule, ruleWords(variant.rule, words.quantityRule)),
         backorder_days: variant.delivery === "physical" ? backorderDaysOf(stock.get(variant.id)) : null,
       })),
       cartable: reason === null,
@@ -152,9 +161,15 @@ export type WpQuoteLine = {
   image: { url: string; alt: string } | null;
   url: string;
   quantity: number;
-  /** `ok`; `insufficient` (more asked than there is: `available` says how many); `unavailable` (cannot be bought, so it is left out of the total). */
-  status: "ok" | "insufficient" | "unavailable";
+  /**
+   * `ok`; `insufficient` (more asked than there is: `available` says how many); `quantity` (the variant's rule does not allow the quantity asked,
+   * D323: `fitted` is what it allows, `quantity_rule.text` says why); `unavailable` (cannot be bought, so it is left out of the total).
+   */
+  status: "ok" | "insufficient" | "quantity" | "unavailable";
   available: number;
+  /** The quantity counted in the subtotal and put in the cart on hand-over: the one asked, fitted to the rule and the stock. */
+  fitted: number;
+  quantity_rule: WpQuantityRule;
   /** The units beyond what is in stock and the days stated for them (D172), for a variant that keeps selling at zero; null otherwise. */
   backorder: { units: number; days: number } | null;
   unit: WordpressPrice | null;
@@ -188,7 +203,7 @@ export async function quoteCart(store: Store, marketRef: string | null, lines: C
       coalesce(tl.title, tf.title) as title,
       coalesce(m.thumbnail_url, m.url) as image_url,
       coalesce(nullif(m.alt ->> ${market.locale}, ''), commerce.media_alt(m.url, ${market.locale}), '') as image_alt,
-      cp.amount_minor, cp.prior_30d_minor
+      cp.amount_minor, cp.prior_30d_minor, v.min_quantity, v.max_quantity, v.quantity_step
     from commerce.product_variants v
     join commerce.products p on p.store_id = v.store_id and p.id = v.product_id and p.status = 'active' and ${OFFERED}
     join commerce.current_prices cp on cp.variant_id = v.id and cp.market_code = ${market.code}
@@ -205,12 +220,13 @@ export async function quoteCart(store: Store, marketRef: string | null, lines: C
   let count = 0;
   const out: WpQuoteLine[] = lines.map((line): WpQuoteLine => {
     const row = found.get(line.variantId);
-    const gone: WpQuoteLine = { variant_id: line.variantId, product_id: "", handle: "", title: "", options: {}, image: null, url: "", quantity: line.quantity, status: "unavailable", available: 0, backorder: null, unit: null, line_text: null };
+    const gone: WpQuoteLine = { variant_id: line.variantId, product_id: "", handle: "", title: "", options: {}, image: null, url: "", quantity: line.quantity, status: "unavailable", available: 0, fitted: 0, quantity_rule: wpRule(PLAIN_RULE, null), backorder: null, unit: null, line_text: null };
     if (!row) return gone;
     const reason = cartableReason({ kind: String(row.kind), subscriptionOnly: Boolean(row.subscription_only), audience: String(row.audience) }, store.audience, [String(row.delivery)]);
     const held = String(row.delivery) === "physical" ? stock.get(line.variantId) : undefined;
-    // What a line may hold: the stock, or the line maximum for a variant that keeps selling at zero (D172).
-    const available = String(row.delivery) !== "physical" ? MAX_LINE_QUANTITY : held ? (held.stockPolicy === "continue" ? MAX_LINE_QUANTITY : held.inStock) : 0;
+    const rule = ruleForKind(row.kind, row);
+    // What a line may hold: the stock, or the line's most under its rule for a variant that keeps selling at zero (D172, D323).
+    const available = String(row.delivery) !== "physical" ? lineMax(rule) : held ? stockRoom(held, rule) : 0;
     const base = {
       ...gone,
       product_id: String(row.product_id),
@@ -219,21 +235,24 @@ export async function quoteCart(store: Store, marketRef: string | null, lines: C
       options: (row.options ?? {}) as Record<string, string>,
       image: row.variant_image || row.image_url ? { url: absolute(String(row.variant_image ?? row.image_url), origin), alt: String(row.image_alt) } : null,
       url: origin + marketPath(store.slug, market.slug, `/p/${row.handle}`),
+      quantity_rule: wpRule(rule, ruleWords(rule, words.quantityRule)),
     };
-    if (reason !== null || available <= 0) return base;
+    // The quantity asked, put right by the rule (the minimum, whole steps) and cut to the stock, as the hand-over puts it in the cart.
+    const fitted = fitQuantity(nextQuantity(0, line.quantity, rule), available, rule);
+    if (reason !== null || fitted <= 0) return { ...base, available: Math.max(0, available) };
     const price: PriceView = priceView(shown(market, Number(row.amount_minor)), market.currency, row.prior_30d_minor === null ? null : shown(market, Number(row.prior_30d_minor)), priceVat(store.audience, row.vat_rate));
     const unit = wordpressPrice(price, false, market.locale, words);
-    const quantity = Math.min(line.quantity, available, MAX_LINE_QUANTITY);
-    subtotal += unit.amount_minor * quantity;
-    count += quantity;
+    subtotal += unit.amount_minor * fitted;
+    count += fitted;
     return {
       ...base,
       quantity: line.quantity,
-      status: line.quantity > available ? "insufficient" : "ok",
-      available: Math.min(available, MAX_LINE_QUANTITY),
-      backorder: held ? backorderNote(quantity, held) : null,
+      status: fitted === line.quantity ? "ok" : line.quantity > available ? "insufficient" : "quantity",
+      available,
+      fitted,
+      backorder: held ? backorderNote(fitted, held) : null,
       unit,
-      line_text: formatMoney(unit.amount_minor * quantity, market.currency, market.locale),
+      line_text: formatMoney(unit.amount_minor * fitted, market.currency, market.locale),
     };
   });
   return {

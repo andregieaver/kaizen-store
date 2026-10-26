@@ -218,6 +218,9 @@ export function emptyProduct(context: EditorContext): ProductInput {
         stockPolicy: "deny",
         backorderDays: null,
         lowStockThreshold: null,
+        minQuantity: 1,
+        maxQuantity: null,
+        quantityStep: 1,
         active: true,
         weightGrams: null,
         hsCode: null,
@@ -381,7 +384,7 @@ export async function getProductForEdit(
     db().execute<Row>(sql`
       select v.id, v.sku, v.gtin, v.options, v.active, v.weight_grams, v.hs_code, v.origin_country, v.delivery, v.rental_period,
              v.image_url, v.image_thumbnail_url, v.cost_minor, v.measure_amount, v.measure_unit, v.measure_base,
-             v.stock_policy, v.backorder_days, v.low_stock_threshold,
+             v.stock_policy, v.backorder_days, v.low_stock_threshold, v.min_quantity, v.max_quantity, v.quantity_step,
              -- The stock the editor shows: the total over the active locations (with one, that location), never below zero.
              -- What is owed on a backorder belongs to the Inventory page; the editor leaves a negative level as it is.
              greatest(coalesce((
@@ -498,6 +501,9 @@ export async function getProductForEdit(
       stockPolicy: v.stock_policy === "continue" ? ("continue" as const) : ("deny" as const),
       backorderDays: v.backorder_days === null ? null : Number(v.backorder_days),
       lowStockThreshold: v.low_stock_threshold === null ? null : Number(v.low_stock_threshold),
+      minQuantity: Number(v.min_quantity ?? 1),
+      maxQuantity: v.max_quantity === null || v.max_quantity === undefined ? null : Number(v.max_quantity),
+      quantityStep: Number(v.quantity_step ?? 1),
       active: Boolean(v.active),
       weightGrams: v.weight_grams === null ? null : Number(v.weight_grams),
       hsCode: v.hs_code ? String(v.hs_code) : null,
@@ -1122,13 +1128,17 @@ type VariantColumns = {
   stock_policy: string;
   backorder_days: number | null;
   low_stock_threshold: number | null;
+  min_quantity: number;
+  max_quantity: number | null;
+  quantity_step: number;
 };
 
 /** The record type `jsonb_to_recordset()` reads a variant's columns with. */
 const VARIANT_RECORD = sql.raw(`r(
   n integer, id uuid, sku text, gtin text, options jsonb, active boolean, delivery commerce.delivery, rental_period text, weight_grams integer,
   hs_code text, origin_country text, image_url text, image_thumbnail_url text, cost_minor bigint, measure_amount numeric,
-  measure_unit text, measure_base text, stock_policy text, backorder_days integer, low_stock_threshold integer
+  measure_unit text, measure_base text, stock_policy text, backorder_days integer, low_stock_threshold integer,
+  min_quantity integer, max_quantity integer, quantity_step integer
 )`);
 
 /**
@@ -1157,6 +1167,7 @@ async function saveVariants(
   `);
   const current = new Map(existing.map((row) => [String(row.id), (row.prices ?? {}) as Record<string, number | string>]));
 
+  const ruled = input.kind === "goods" || input.kind === "bundle";
   const columns = input.variants.map((variant, n): VariantColumns => {
     // Digital variants are not shipped: no weight or customs details.
     const physical = variant.delivery === "physical";
@@ -1188,6 +1199,10 @@ async function saveVariants(
       stock_policy: keeps ? "continue" : "deny",
       backorder_days: keeps ? variant.backorderDays : null,
       low_stock_threshold: physical ? variant.lowStockThreshold : null,
+      // How many at a time (D323): goods and bundles keep theirs (`productProblems()` checked it), any other kind one at a time.
+      ...(ruled
+        ? { min_quantity: variant.minQuantity, max_quantity: variant.maxQuantity, quantity_step: variant.quantityStep }
+        : { min_quantity: 1, max_quantity: null, quantity_step: 1 }),
     };
   });
 
@@ -1200,7 +1215,8 @@ async function saveVariants(
         weight_grams = r.weight_grams, hs_code = r.hs_code, origin_country = r.origin_country,
         image_url = r.image_url, image_thumbnail_url = r.image_thumbnail_url, cost_minor = r.cost_minor,
         measure_amount = r.measure_amount, measure_unit = r.measure_unit, measure_base = r.measure_base,
-        stock_policy = r.stock_policy, backorder_days = r.backorder_days, low_stock_threshold = r.low_stock_threshold
+        stock_policy = r.stock_policy, backorder_days = r.backorder_days, low_stock_threshold = r.low_stock_threshold,
+        min_quantity = r.min_quantity, max_quantity = r.max_quantity, quantity_step = r.quantity_step
       from jsonb_to_recordset(${JSON.stringify(kept)}::jsonb) as ${VARIANT_RECORD}
       where v.id = r.id and v.store_id = ${storeId}::uuid and v.product_id = ${productId}::uuid
     `);
@@ -1212,11 +1228,11 @@ async function saveVariants(
       insert into commerce.product_variants (
         store_id, product_id, sku, gtin, options, active, delivery, rental_period, weight_grams, hs_code, origin_country,
         image_url, image_thumbnail_url, cost_minor, measure_amount, measure_unit, measure_base,
-        stock_policy, backorder_days, low_stock_threshold
+        stock_policy, backorder_days, low_stock_threshold, min_quantity, max_quantity, quantity_step
       )
       select ${storeId}::uuid, ${productId}::uuid, r.sku, r.gtin, r.options, r.active, r.delivery, r.rental_period, r.weight_grams, r.hs_code,
              r.origin_country, r.image_url, r.image_thumbnail_url, r.cost_minor, r.measure_amount, r.measure_unit, r.measure_base,
-             r.stock_policy, r.backorder_days, r.low_stock_threshold
+             r.stock_policy, r.backorder_days, r.low_stock_threshold, r.min_quantity, r.max_quantity, r.quantity_step
       from jsonb_to_recordset(${JSON.stringify(fresh)}::jsonb) as ${VARIANT_RECORD}
       order by r.n
       returning id, sku

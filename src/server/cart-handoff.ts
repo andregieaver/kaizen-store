@@ -6,6 +6,7 @@ import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import { CART_TTL_DAYS, settleQuantity, type LineOutcome } from "@/lib/cart";
+import { nextQuantity } from "@/lib/quantity-rules";
 import { HANDOFF_MINUTES, HANDOFF_PREFIX, type CartLineInput } from "@/lib/wordpress-cart";
 import { hashSecret } from "@/lib/wordpress";
 
@@ -45,7 +46,12 @@ export async function createHandoffCart(shop: Shop, lines: CartLineInput[], to: 
           kept.push({ variantId: line.variantId, quantity: 0, outcome: "unavailable" });
           continue;
         }
-        const settled = settleQuantity(line.quantity, sellable.available);
+        // The quantity put right by the variant's rule (D323: the minimum, whole steps) and cut to the stock, as the quote counted it.
+        const settled = settleQuantity(nextQuantity(0, line.quantity, sellable.rule), sellable.available, sellable.rule);
+        if (settled.quantity === 0) {
+          kept.push({ variantId: line.variantId, quantity: 0, outcome: "unavailable" });
+          continue;
+        }
         await tx.execute(sql`
           insert into commerce.cart_lines (store_id, cart_id, variant_id, quantity)
           values (${shop.storeId}::uuid, ${cartId}::uuid, ${line.variantId}::uuid, ${settled.quantity})

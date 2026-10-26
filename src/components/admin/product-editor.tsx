@@ -54,6 +54,8 @@ import {
   type VariantInput,
 } from "@/lib/product-input";
 import { backorderMayPassAgreed, BACKORDER_DAYS_MAX, BACKORDER_DAYS_MIN, THRESHOLD_MAX } from "@/lib/inventory";
+import { lineMax, MAX_ORDER_QUANTITY, ruleProblem } from "@/lib/quantity-rules";
+import type { ProductMessages } from "@/lib/admin-messages/product.en";
 import type { ProductFacts, WriteRequest, WrittenText } from "@/lib/product-writing";
 import { EXCERPT_FIELD_MAX, summarize } from "@/lib/seo";
 import {
@@ -890,6 +892,9 @@ const emptyVariant = (options: Record<string, string>, delivery: Delivery): Vari
   stockPolicy: "deny",
   backorderDays: null,
   lowStockThreshold: null,
+  minQuantity: 1,
+  maxQuantity: null,
+  quantityStep: 1,
   active: true,
   weightGrams: null,
   hsCode: null,
@@ -1210,6 +1215,11 @@ function VariantsSection({
                   pictures={product.media}
                   upload={upload}
                   onChange={(change) => setVariant(index, change)}
+                  ruleAll={
+                    product.kind === "goods" || product.kind === "bundle"
+                      ? (rule) => update((p) => ({ ...p, variants: p.variants.map((v) => ({ ...v, ...rule })) }))
+                      : null
+                  }
                 />
                 </tbody>
               );
@@ -1452,8 +1462,11 @@ function VariantRow({
   pictures,
   upload,
   onChange,
+  ruleAll = null,
 }: {
   variant: VariantInput;
+  /** How many at a time for every variant (D323): set for goods and bundles, whose variants have a rule; null for any other kind. */
+  ruleAll?: ((rule: Pick<VariantInput, "minQuantity" | "maxQuantity" | "quantityStep">) => void) | null;
   /** Its row's place in the whole table while only the rows on screen are drawn (`aria-rowindex`, the header being 1). */
   rowIndex?: number;
   name: string;
@@ -1595,6 +1608,17 @@ function VariantRow({
               </div>
             </details>
           )}
+          {ruleAll && (
+            <details className="mb-2">
+              <summary className="cursor-pointer text-xs text-muted">
+                {fillWords(w.quantityRules.summary, { name })}
+                {quantityRuleLine(variant, w.quantityRules)}
+              </summary>
+              <div className="mt-2">
+                <QuantityRules name={name} variant={variant} cell={cell} onChange={onChange} onAll={ruleAll} />
+              </div>
+            </details>
+          )}
           <details>
             <summary className="cursor-pointer text-xs text-muted">
               {fillWords(digital ? r.detailsDigital : r.details, { name })}
@@ -1670,6 +1694,96 @@ function VariantRow({
         </td>
       </tr>
     </>
+  );
+}
+
+/** The rule in a few words after its summary (D323): ": at least 12, in sixes, at most 48", or nothing for one at a time. */
+function quantityRuleLine(variant: VariantInput, w: ProductMessages["quantityRules"]): string {
+  const parts = [
+    variant.minQuantity > variant.quantityStep && fillWords(w.atLeast, { n: variant.minQuantity }),
+    variant.quantityStep > 1 && fillWords(w.inSteps, { n: variant.quantityStep }),
+    variant.maxQuantity !== null && fillWords(w.atMost, { n: variant.maxQuantity }),
+  ].filter((part): part is string => typeof part === "string");
+  return parts.length > 0 ? `: ${parts.join(", ")}` : "";
+}
+
+/**
+ * How many at a time (wave 6 unit E, D323, `docs/wave-6-catalogue.md` E.1): a line's minimum, maximum and step. *Add to cart* puts in the minimum and
+ * then whole steps; the cart refuses a quantity between them. Changing the step moves the minimum and maximum to whole steps, so what is typed is
+ * always a rule the database takes (`ruleProblem()` checks it again on save).
+ */
+function QuantityRules({
+  name,
+  variant,
+  cell,
+  onChange,
+  onAll,
+}: {
+  name: string;
+  variant: VariantInput;
+  cell: string;
+  onChange: (change: Partial<VariantInput>) => void;
+  onAll: (rule: Pick<VariantInput, "minQuantity" | "maxQuantity" | "quantityStep">) => void;
+}) {
+  const w = useAdminText("product").quantityRules;
+  const whole = (value: string, fallback: number) => {
+    const n = Math.floor(Number(value));
+    return Number.isFinite(n) && n >= 1 ? Math.min(n, MAX_ORDER_QUANTITY) : fallback;
+  };
+  const up = (n: number, step: number) => Math.ceil(n / step) * step;
+  const setStep = (step: number) =>
+    onChange({
+      quantityStep: step,
+      minQuantity: up(variant.minQuantity, step),
+      maxQuantity: variant.maxQuantity === null ? null : Math.max(up(variant.minQuantity, step), up(variant.maxQuantity, step)),
+    });
+  const problem = ruleProblem({ min: variant.minQuantity, max: variant.maxQuantity, step: variant.quantityStep });
+  return (
+    <fieldset className="flex flex-col gap-2 text-xs">
+      <legend className="font-medium">{fillWords(w.title, { name })}</legend>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <label className="flex flex-col gap-1 font-medium">
+          {w.step}
+          <input type="number" min={1} max={MAX_ORDER_QUANTITY} inputMode="numeric" value={variant.quantityStep} onChange={(e) => setStep(whole(e.target.value, 1))} className={cell} />
+          <span className="font-normal text-muted">{w.stepHint}</span>
+        </label>
+        <label className="flex flex-col gap-1 font-medium">
+          {w.min}
+          <input
+            type="number"
+            min={variant.quantityStep}
+            max={MAX_ORDER_QUANTITY}
+            step={variant.quantityStep}
+            inputMode="numeric"
+            value={variant.minQuantity}
+            onChange={(e) => onChange({ minQuantity: whole(e.target.value, variant.quantityStep) })}
+            className={cell}
+          />
+        </label>
+        <label className="flex flex-col gap-1 font-medium">
+          {w.max}
+          <input
+            type="number"
+            min={variant.minQuantity}
+            max={MAX_ORDER_QUANTITY}
+            step={variant.quantityStep}
+            inputMode="numeric"
+            value={variant.maxQuantity ?? ""}
+            placeholder={fillWords(w.noMax, { n: lineMax({ min: variant.minQuantity, max: null, step: variant.quantityStep }) })}
+            onChange={(e) => onChange({ maxQuantity: e.target.value === "" ? null : whole(e.target.value, variant.minQuantity) })}
+            className={cell}
+          />
+        </label>
+      </div>
+      {problem && <p className="text-danger-text">{problem}</p>}
+      <button
+        type="button"
+        onClick={() => onAll({ minQuantity: variant.minQuantity, maxQuantity: variant.maxQuantity, quantityStep: variant.quantityStep })}
+        className="self-start rounded-pill border border-line px-3 py-1"
+      >
+        {w.useForAll}
+      </button>
+    </fieldset>
   );
 }
 

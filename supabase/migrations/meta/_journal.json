@@ -3410,6 +3410,20 @@
       "when": 1793019620465,
       "tag": "20261026130020_bundles_relax",
       "breakpoints": true
+    },
+    {
+      "idx": 487,
+      "version": "7",
+      "when": 1793021726433,
+      "tag": "20261026133526_quantity_rules",
+      "breakpoints": true
+    },
+    {
+      "idx": 488,
+      "version": "7",
+      "when": 1793021772386,
+      "tag": "20261026133612_quantity_rules_copy",
+      "breakpoints": true
     }
   ]
 }

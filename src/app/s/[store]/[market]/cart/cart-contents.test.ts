@@ -35,6 +35,7 @@ vi.mock("@/server/cart", () => ({
         status: cartState.status,
         available: 9,
         inStock: 9,
+        rule: { min: 1, max: null, step: 1 },
         backorder: cartState.backorder,
         unitPriceMinor: 10000,
         vatRate: 0.25,

@@ -6,6 +6,7 @@ import { Suspense } from "react";
 import { optionLabel, t } from "@/lib/i18n";
 import { shown } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
+import { lineMax, ruleWords } from "@/lib/quantity-rules";
 import { marketPath } from "@/lib/paths";
 import { getCustomer } from "@/server/customers";
 import { buyerCatalogue } from "@/server/price-lists";
@@ -81,13 +82,14 @@ async function Catalogue({ params }: { params: Props["params"] }) {
                           {variant.listMinor !== null ? `${messages.yourPrice}: ` : ""}
                           {money(price)} · {variant.sku}
                         </span>
+                        {ruleWords(variant.rule, messages.quantityRule) && <span className="block text-sm text-muted">{ruleWords(variant.rule, messages.quantityRule)}</span>}
                       </span>
                       {variant.available ? (
                         <form action={addFromCatalogueAction.bind(null, store.slug, market.slug, variant.id)} className="flex items-center gap-2">
                           <label className="sr-only" htmlFor={`q-${variant.id}`}>
                             {m.quantity}, {label}
                           </label>
-                          <input id={`q-${variant.id}`} name="quantity" type="number" min={1} max={99} defaultValue={1} className="min-h-11 w-20 rounded-button border border-border px-2" />
+                          <input id={`q-${variant.id}`} name="quantity" type="number" min={variant.rule.min} max={lineMax(variant.rule)} step={variant.rule.step} defaultValue={variant.rule.min} className="min-h-11 w-20 rounded-button border border-border px-2" />
                           <button type="submit" className="button-primary min-h-11 rounded-button px-4">
                             {m.add}
                           </button>

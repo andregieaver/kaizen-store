@@ -3,7 +3,7 @@
  * Plugin Name:       Kaizena Flow
  * Plugin URI:        https://kaizenaflow.com
  * Description:       Show products from your Kaizena Flow stores on your WordPress site, as a grid or a carousel, with shortcodes you generate once and reuse anywhere.
- * Version:           1.1.0
+ * Version:           1.2.0
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            Kaizena Flow
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'KAIZEN_STORE_VERSION', '1.1.0' );
+define( 'KAIZEN_STORE_VERSION', '1.2.0' );
 define( 'KAIZEN_STORE_FILE', __FILE__ );
 define( 'KAIZEN_STORE_DIR', plugin_dir_path( __FILE__ ) );
 define( 'KAIZEN_STORE_URL', plugin_dir_url( __FILE__ ) );

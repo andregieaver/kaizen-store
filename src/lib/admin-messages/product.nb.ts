@@ -182,6 +182,20 @@ export const productNb: ProductMessages = {
     noWarning: "Ingen varsling",
     warnHint: "Eierne får én e-post når lageret går ned til dette nivået, ikke én for hvert salg.",
   },
+  /** How many at a time (D323): a variant's minimum, maximum and step. */
+  quantityRules: {
+    summary: "Hvor mange om gangen for {name}",
+    title: "Hvor mange om gangen for {name}",
+    step: "Selges i multipler av",
+    stepHint: "1 selger et hvilket som helst antall. Legg i handlekurv legger inn minstekravet, så så mange til.",
+    min: "Minst",
+    max: "Høyst",
+    noMax: "Ingen grense ({n} per linje)",
+    useForAll: "Bruk for alle varianter",
+    atLeast: "minst {n}",
+    inSteps: "i multipler av {n}",
+    atMost: "høyst {n}",
+  },
   backorderAll: {
     keepSelling: "Fortsett å selge alle varianter når de er utsolgt",
     shipWithin: "Ventes sendt innen",

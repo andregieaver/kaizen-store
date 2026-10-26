@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import { COMPANY_NAME_MAX, organisationNumber } from "@/lib/b2b";
 import { MAX_RANGE_LENGTH } from "@/lib/booking-ranges";
-import { MAX_LINE_QUANTITY } from "@/lib/cart";
+import { MAX_ORDER_QUANTITY } from "@/lib/cart";
 import type { CreditsState } from "@/lib/bonus-shopper";
 import type { GiftFields, GiftProblem } from "@/lib/gift";
 import { cleanGiftCardRecipient, type GiftCardProblem } from "@/lib/gift-card-line";
@@ -36,7 +36,7 @@ const lineInput = z
     market: z.string(),
     variantId: z.uuid(),
     /** Units; a stay's nights or a rental's days (D67), which may be more. */
-    quantity: z.coerce.number().int().min(0).max(MAX_RANGE_LENGTH),
+    quantity: z.coerce.number().int().min(0).max(Math.max(MAX_RANGE_LENGTH, MAX_ORDER_QUANTITY)),
     sellingPlanId: z.uuid().nullable(),
     /** An appointment's time and who with (D65), or a stay's or rental's check-in and room or item (D67). */
     startsAt: z.iso.datetime({ offset: true }).nullable(),
@@ -44,7 +44,7 @@ const lineInput = z
     /** A gift card's line as the cart's forms name it (D300): the key of who its cards are for; null for the buyer's own. */
     giftCardKey: z.string().max(2000).nullable(),
   })
-  .refine((line) => line.startsAt !== null || line.quantity <= MAX_LINE_QUANTITY);
+  .refine((line) => line.startsAt !== null || line.quantity <= MAX_ORDER_QUANTITY);
 
 export type AddToCartState = {
   outcome: "idle" | "added" | "capped" | "unavailable" | "plan_conflict" | "slot_taken" | "error" | "gift_card";
@@ -127,7 +127,8 @@ export async function addToCart(
     }
   }
   refresh();
-  return result.outcome === "removed"
+  // Adding follows the variant's rule (D323) and is never refused by it; only setting a line can be.
+  return result.outcome === "removed" || result.outcome === "quantity"
     ? { outcome: "error", quantity: 0 }
     : { outcome: result.outcome, quantity: result.quantity };
 }

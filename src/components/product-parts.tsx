@@ -34,7 +34,7 @@ import { FieldLoopView } from "@/components/field-loop-view";
 import { loopHeading, loopOf, loopShows, productLoopConfig } from "@/lib/field-loop";
 import { fieldHeading, fieldToShow, groupHeading, groupsToShow } from "@/lib/field-parts";
 import { optionLabel, t, type Messages } from "@/lib/i18n";
-import { MAX_LINE_QUANTITY } from "@/lib/cart";
+import { lineMax, ruleWords } from "@/lib/quantity-rules";
 import { inView, shown, type Market } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import { todayIn } from "@/lib/analytics-period";
@@ -831,7 +831,7 @@ async function VariantsWithStock({
   const available = (variant: ProductDetail["variants"][number]) => variant.delivery === "digital" || canOffer(availability.get(variant.id));
   // A variant that keeps selling is capped by the line maximum, not by what is in stock, so the message must not say it is.
   const cappedNote = (variant: ProductDetail["variants"][number]) =>
-    availability.get(variant.id)?.stockPolicy === "continue" ? m.backorder.capped(MAX_LINE_QUANTITY) : undefined;
+    availability.get(variant.id)?.stockPolicy === "continue" ? m.backorder.capped(lineMax(variant.rule)) : undefined;
 
   const plans = product.plans.map((plan) => ({
     id: plan.id,
@@ -911,7 +911,8 @@ async function VariantsWithStock({
               label: optionLabel(m, variant.options) || (product.variants.length > 1 ? product.title : ""),
               options: variant.options,
               image: variant.image ? { url: variant.image.thumbnailUrl, alt: "" } : null,
-              note: digital ? m.instantDownload : stockNote(availability.get(variant.id), m),
+              // How many at a time (D323): said after the stock, as Add to cart puts in the minimum and then whole steps.
+              note: [digital ? m.instantDownload : stockNote(availability.get(variant.id), m), ruleWords(variant.rule, m.quantityRule)].filter(Boolean).join(" · "),
               available: available(variant),
               capped: cappedNote(variant),
               priceIndex: priced.index(offered(variant)),

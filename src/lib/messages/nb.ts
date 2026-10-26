@@ -620,6 +620,13 @@ export const nb: Messages = {
   backTo: (name: string): string => `Tilbake til ${name}`,
   bundleIncludes: (items: string): string => `Inneholder ${items}`,
   bundleInside: "Dette er i pakken",
+  /** A variant's quantity rules (D323): "At least 12", "At most 48", "In multiples of 6", joined by `ruleWords()`. */
+  quantityRule: {
+    min: (n: number): string => `Minst ${n}`,
+    max: (n: number): string => `Høyst ${n}`,
+    step: (n: number): string => `Selges i multipler av ${n}`,
+    fix: (rule: string): string => `Endre antallet: ${rule}.`,
+  },
   galleryPrevious: "Forrige bilde",
   galleryNext: "Neste bilde",
   galleryShow: (n: number) => `Vis bilde ${n}`,
@@ -696,6 +703,8 @@ export const nb: Messages = {
   problemConsent: "Kryss av for samtykket til nedlastingen for å gå videre.",
   problemCompany: "Fyll inn firmanavn og organisasjonsnummer for å gå videre.",
   problemCompanyNumber: "Organisasjonsnummeret ser ikke riktig ut. Sjekk det og prøv igjen.",
+  /** A cart line whose quantity breaks its variant's rule (D323). */
+  problemQuantity: "Antallet av en vare i handlekurven kan ikke kjøpes slik. Endre det i handlekurven og prøv igjen.",
   /** Who pays and where the goods go, asked before Mollie's page, which asks for neither (D292). */
   payer: {
     legend: "Dine opplysninger",

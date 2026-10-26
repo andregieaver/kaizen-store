@@ -1,0 +1,5 @@
+ALTER TABLE "commerce"."product_variants" ADD COLUMN "min_quantity" integer DEFAULT 1 NOT NULL;--> statement-breakpoint
+ALTER TABLE "commerce"."product_variants" ADD COLUMN "max_quantity" integer;--> statement-breakpoint
+ALTER TABLE "commerce"."product_variants" ADD COLUMN "quantity_step" integer DEFAULT 1 NOT NULL;--> statement-breakpoint
+ALTER TABLE "commerce"."product_variants" ADD CONSTRAINT "product_variants_quantity_rule" CHECK ("commerce"."product_variants"."min_quantity" between 1 and 9999 and "commerce"."product_variants"."quantity_step" between 1 and 9999 and "commerce"."product_variants"."min_quantity" % "commerce"."product_variants"."quantity_step" = 0);--> statement-breakpoint
+ALTER TABLE "commerce"."product_variants" ADD CONSTRAINT "product_variants_quantity_max" CHECK ("commerce"."product_variants"."max_quantity" is null or ("commerce"."product_variants"."max_quantity" between "commerce"."product_variants"."min_quantity" and 9999 and "commerce"."product_variants"."max_quantity" % "commerce"."product_variants"."quantity_step" = 0));

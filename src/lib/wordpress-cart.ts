@@ -6,7 +6,8 @@
 import { z } from "zod";
 
 import type { Messages } from "./i18n";
-import { MAX_LINE_QUANTITY } from "./cart";
+import { MAX_ORDER_QUANTITY } from "./cart";
+import { fitQuantity, lineMax, PLAIN_RULE, type QuantityRule } from "./quantity-rules";
 import { LOW_STOCK_THRESHOLD, stockLevel, type StockLevel } from "./pricing";
 import { audienceOffered, parseProductAudience, parseStoreAudience } from "./b2b";
 
@@ -20,9 +21,9 @@ export const HANDOFF_PREFIX = "kzwh_";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** A cart's lines as the plugin sends them: variants and quantities, each variant once. */
+/** A cart's lines as the plugin sends them: variants and quantities, each variant once (up to 9,999: a variant's rule may allow that many, D323). */
 export const cartLines = z
-  .array(z.object({ variant_id: z.string().regex(UUID), quantity: z.coerce.number().int().min(1).max(MAX_LINE_QUANTITY) }))
+  .array(z.object({ variant_id: z.string().regex(UUID), quantity: z.coerce.number().int().min(1).max(MAX_ORDER_QUANTITY) }))
   .min(1)
   .max(CART_LINES_MAX)
   .refine((lines) => new Set(lines.map((l) => l.variant_id.toLowerCase())).size === lines.length, "A variant is in the cart once.");
@@ -53,10 +54,17 @@ export function cartableReason(product: { kind: string; subscriptionOnly: boolea
   return null;
 }
 
-/** How much of a variant can be bought at once: the stock, or the line's most; and its level for the words. */
-export function stockOf(available: number): { level: StockLevel; max: number; low: number | null } {
+/** How much of a variant can be bought at once: the stock, or the line's most under its rule (D323), in whole steps; and its level for the words. */
+export function stockOf(available: number, rule: QuantityRule = PLAIN_RULE): { level: StockLevel; max: number; low: number | null } {
   const level = stockLevel(available);
-  return { level, max: Math.min(MAX_LINE_QUANTITY, Math.max(0, available)), low: level === "low" ? available : null };
+  return { level, max: fitQuantity(lineMax(rule), available, rule), low: level === "low" ? available : null };
+}
+
+/** A variant's rule as the plugin reads it (D323): the minimum, the line's most and the step, and the shopper's words for it (null for none). */
+export type WpQuantityRule = { min: number; max: number; step: number; text: string | null };
+
+export function wpRule(rule: QuantityRule, text: string | null): WpQuantityRule {
+  return { min: rule.min, max: lineMax(rule), step: rule.step, text };
 }
 
 export { LOW_STOCK_THRESHOLD };

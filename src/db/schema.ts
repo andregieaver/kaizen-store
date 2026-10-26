@@ -2511,11 +2511,23 @@ export const productVariants = commerce.table(
     backorderDays: integer("backorder_days"),
     /** The owner's warning level (0 to 1,000,000): on hand over the active locations at or below it is one email per crossing. Null: no warning. */
     lowStockThreshold: integer("low_stock_threshold"),
+    /**
+     * How many at a time (wave 6 unit E, D323, `docs/wave-6-catalogue.md` E.1): a line holds at least `minQuantity`, at most `maxQuantity` (null: twenty
+     * steps from the minimum, `lineMax()`) and whole `quantityStep`s, read only through `src/lib/quantity-rules.ts`. Goods and bundles only.
+     */
+    minQuantity: integer("min_quantity").notNull().default(1),
+    maxQuantity: integer("max_quantity"),
+    quantityStep: integer("quantity_step").notNull().default(1),
     active: boolean("active").notNull().default(true),
     createdAt: createdAt(),
   },
   (t) => [
     unique("product_variants_store_id_key").on(t.storeId, t.id),
+    check("product_variants_quantity_rule", sql`${t.minQuantity} between 1 and 9999 and ${t.quantityStep} between 1 and 9999 and ${t.minQuantity} % ${t.quantityStep} = 0`),
+    check(
+      "product_variants_quantity_max",
+      sql`${t.maxQuantity} is null or (${t.maxQuantity} between ${t.minQuantity} and 9999 and ${t.maxQuantity} % ${t.quantityStep} = 0)`,
+    ),
     check("product_variants_stock_policy", sql`${t.stockPolicy} in ('deny', 'continue')`),
     check("product_variants_stock_policy_goods", sql`${t.stockPolicy} = 'deny' or ${t.delivery} = 'physical'`),
     check("product_variants_backorder_days", sql`${t.backorderDays} between 1 and 90`),

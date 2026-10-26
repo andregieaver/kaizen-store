@@ -32,6 +32,7 @@ export function checkoutLabels(m: Messages, action: string = m.checkout): Checko
       location: m.companyAccount.problemLocation,
       po_number: m.companyAccount.problemPoNumber,
       approval: m.companyAccount.problemApproval,
+      quantity: m.problemQuantity,
     },
   };
 }
