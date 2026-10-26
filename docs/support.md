@@ -1815,3 +1815,8 @@ and once only, and anonymising clears the email fields.
   `key_refused` (its tries kept), tries it again every `KEY_RETRY_MINUTES` (30), and the desk's settings card says how many wait
   (`deskEmailsKeyRefused()`), so a wrong key shows without the logs. And `SUPPORT_INBOUND_DOMAIN` is the bare domain
   (`support.kaizenaflow.com`): a value with `https://` reads as not set up.
+- **A refused answer email was never sent again.** The first answer went out from `EMAIL_FROM` on a domain Resend had not verified
+  (403). The next run sent it with the same idempotency key, which `sendEmail()` answers `duplicate`, and `duplicate` counts as told,
+  so the conversation took it as sent. Now each try at an answer email is a kept email of its own (`replyTry()`: the first key, then
+  `…:retry{n}` once the last failure is `REPLY_RETRY_MINUTES` (10) old, `REPLY_TRIES` (4) in all), and the answer is told only when one
+  was sent or logged. The other emails that reuse a key on failure (`support.waiting`) still try once.

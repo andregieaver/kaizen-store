@@ -25,7 +25,7 @@ vi.mock("./ai", async (importOriginal) => {
 const { closeDb, db } = await import("@/db/client");
 const { makeStore } = await import("./trust-fixtures");
 const inbound = await import("./support-inbound");
-const { sendReplyEmails } = await import("./support-email");
+const { REPLY_RETRY_MINUTES, REPLY_TRIES, sendReplyEmails } = await import("./support-email");
 const support = await import("./support");
 const { systemDesk } = await import("./support-desk");
 type InboundDeps = import("./support-inbound").InboundDeps;
@@ -171,6 +171,51 @@ describe("email into the desk", () => {
     expect(String(sent[0].text)).toContain("Your parcel is on its way.");
     await sendReplyEmails(new Date(Date.now() + 120_000));
     expect(await answerEmails(c.id)).toHaveLength(1);
+  });
+
+  it("tries a refused answer email again, with a key of its own, and stops after the last try", async () => {
+    await setMode("ai_first");
+    background.aiStores.add(store.id);
+    await db().execute(sql`insert into commerce.chat_agents (store_id, enabled, name) values (${store.id}::uuid, true, 'Ingrid') on conflict do nothing`);
+    const answered = async (to: string, subject?: string) => (await receive(deskAddress, to, subject ? { subject } : {})).row;
+    const row = await answered("olav@example.com", "Again");
+    let refuse = true;
+    const sends: string[] = [];
+    vi.stubGlobal("fetch", async (_url: string, init: RequestInit) => {
+      sends.push(String((init.headers as Record<string, string>)["Idempotency-Key"]));
+      return refuse ? Response.json({ name: "validation_error", message: "domain not verified" }, { status: 403 }) : Response.json({ id: "re_sent" });
+    });
+    vi.stubEnv("RESEND_API_KEY", "re_test");
+    vi.stubEnv("EMAIL_FROM", "support@example.com");
+    try {
+      const at = (minutes: number) => new Date(Date.now() + minutes * 60_000);
+      await sendReplyEmails(at(1));
+      await sendReplyEmails(at(2));
+      // Refused once; not again until REPLY_RETRY_MINUTES have passed, and never counted as told.
+      expect(sends).toHaveLength(1);
+      expect(await conversation(row.conversation_id)).toMatchObject({ email_count: 0 });
+      refuse = false;
+      await sendReplyEmails(at(1 + REPLY_RETRY_MINUTES));
+      expect(sends).toHaveLength(2);
+      const kept = await db().execute<Row>(sql`
+        select idempotency_key, status from commerce.email_messages where idempotency_key like ${`support.reply:${String(row.conversation_id)}:%`} order by created_at
+      `);
+      expect(kept.map((r) => r.status)).toEqual(["failed", "sent"]);
+      expect(String(kept[1].idempotency_key)).toMatch(/:retry1$/);
+      expect(await conversation(row.conversation_id)).toMatchObject({ email_count: 1 });
+      await sendReplyEmails(at(2 + 2 * REPLY_RETRY_MINUTES));
+      expect(sends).toHaveLength(2);
+
+      // An answer refused every time stops after REPLY_TRIES.
+      refuse = true;
+      const other = { row: await answered("siri@example.com") };
+      for (let i = 1; i <= REPLY_TRIES + 2; i++) await sendReplyEmails(at(i * (REPLY_RETRY_MINUTES + 1)));
+      const tries = await db().execute<Row>(sql`select 1 from commerce.email_messages where idempotency_key like ${`support.reply:${String(other.row.conversation_id)}:%`}`);
+      expect(tries).toHaveLength(REPLY_TRIES);
+    } finally {
+      vi.unstubAllGlobals();
+      vi.unstubAllEnvs();
+    }
   });
 
   it("hands the conversation to a person when the AI first has no assistant", async () => {

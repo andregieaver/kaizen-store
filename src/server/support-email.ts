@@ -47,6 +47,27 @@ export const REPLY_AFTER_SECONDS = 60;
 
 const TOLD: readonly SendOutcome[] = ["sent", "logged", "duplicate"];
 
+/** An answer email Resend refused is tried again this many times in all, `REPLY_RETRY_MINUTES` apart, each try a kept email of its own. */
+export const REPLY_TRIES = 4;
+export const REPLY_RETRY_MINUTES = 10;
+
+/**
+ * The key of this try at an answer email, or null when none is due: the first try is `base`; after a failure (a `failed` row and no other),
+ * the next is `base:retry{n}` once the last is `REPLY_RETRY_MINUTES` old, until `REPLY_TRIES`. A key reused would come back `duplicate`, which
+ * counts as told, so a failed answer was otherwise never sent.
+ */
+async function replyTry(base: string, now: Date): Promise<string | null> {
+  const [row] = await db().execute<Row>(sql`
+    select count(*)::int as tries, coalesce(bool_or(status <> 'failed'), false) as told, max(created_at) as last
+    from commerce.email_messages where idempotency_key = ${base} or idempotency_key like ${`${base}:retry%`}
+  `);
+  const tries = Number(row?.tries ?? 0);
+  if (tries === 0 || row?.told) return base;
+  if (tries >= REPLY_TRIES) return null;
+  if (new Date(String(row?.last)).getTime() > now.getTime() - REPLY_RETRY_MINUTES * 60_000) return null;
+  return `${base}:retry${tries}`;
+}
+
 export type SupportEmailRun = { replies: number; waiting: number; failed: number };
 
 export async function sendSupportEmails(now: Date = new Date()): Promise<SupportEmailRun> {
@@ -101,7 +122,7 @@ export async function sendReplyEmails(now: Date = new Date(), limit = 100): Prom
   `);
   for (const row of [...rows, ...byEmail]) {
     try {
-      const outcome = await sendReply(row);
+      const outcome = await sendReply(row, now);
       if (outcome === null) continue;
       if (TOLD.includes(outcome)) out.replies += 1;
       else out.failed += 1;
@@ -113,7 +134,7 @@ export async function sendReplyEmails(now: Date = new Date(), limit = 100): Prom
   return out;
 }
 
-async function sendReply(row: Row): Promise<SendOutcome | null> {
+async function sendReply(row: Row, now: Date): Promise<SendOutcome | null> {
   const id = String(row.id);
   const storeId = row.store_id ? String(row.store_id) : null;
   const desk = systemDesk(storeId);
@@ -125,6 +146,8 @@ async function sendReply(row: Row): Promise<SendOutcome | null> {
   `);
   if (messages.length === 0) return null;
   const lastSeq = Math.max(...messages.map((m) => Number(m.seq)));
+  const key = await replyTry(`support.reply:${id}:${lastSeq}`, now);
+  if (key === null) return null;
   const locale = String(row.locale);
   const words = supportEmailText(locale);
 
@@ -194,7 +217,7 @@ async function sendReply(row: Row): Promise<SendOutcome | null> {
     fromName: deskName,
     replyTo,
     ...(thread ? { headers: { "In-Reply-To": thread, References: thread } } : {}),
-    idempotencyKey: `support.reply:${id}:${lastSeq}`,
+    idempotencyKey: key,
   });
   if (TOLD.includes(outcome)) {
     await db().execute(sql`
