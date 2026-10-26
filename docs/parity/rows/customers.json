@@ -257,14 +257,16 @@
       "rechecked": true,
       "was": null
     },
-    "gap": "Caveat, not a gap: email only, like the article. Whether a reminder is marketing needs each store's own consent decision (D33 gives the notice and the opt-out).",
+    "gap": "Caveat, not a gap: email only, like the article. Whether a reminder is marketing needs each store's own consent decision (D33 gives the notice and the opt-out). Evidence debt: the erasure after 60 days (`KEEP_DAYS` in `sendDueCartReminders()`) and the admin figures from `cartReminderStats()` are in the code but no listed test asserts them. Merged on 2026-10-26 (README rule 8): `checkout.abandoned-checkout-recovery` was the same Shopify feature (rated full); its criteria and evidence are here.",
     "bucket": null,
     "wave": null,
     "criteria": [
       "A store starts with three reminders (after an hour, a day and three days), each editable in timing, text per language and an optional discount code, and can switch them on or off.",
       "A shopper's email is kept at checkout only after a valid address is typed, with a notice and a way to say no; signed-in customers are not captured.",
       "At most one reminder per cart per run, claimed before it is sent, so none goes twice; reminders stop when the cart is paid, when the same email buys, on opt-out and after 30 days.",
-      "The reminder's button puts the same cart back in the shopper's browser; the email and cart are erased on opt-out and 60 days after capture."
+      "The reminder's button puts the same cart back in the shopper's browser; the email and cart are erased on opt-out and 60 days after capture.",
+      "Every email has a one-click unsubscribe (List-Unsubscribe headers).",
+      "The admin shows carts captured, reminded and recovered, with the sales."
     ],
     "evidence": {
       "files": [
@@ -273,14 +275,16 @@
         "src/app/admin/(gated)/[store]/cart-reminders/page.tsx",
         "src/app/admin/(gated)/[store]/cart-reminders/reminder-form.tsx",
         "src/app/api/cron/cart-reminders/route.ts",
-        "src/app/s/[store]/[market]/unsubscribe/[token]/page.tsx"
+        "src/app/s/[store]/[market]/unsubscribe/[token]/page.tsx",
+        "src/server/checkout.ts",
+        "src/server/stripe-webhooks.ts"
       ],
       "tests": [
         "src/server/cart-reminders.int.test.ts",
         "src/lib/cart-reminders.test.ts",
         "e2e/cart-reminders.spec.ts"
       ],
-      "untested": false
+      "untested": true
     },
     "decisions": [
       "D33"
@@ -411,7 +415,7 @@
       "rechecked": true,
       "was": "partial"
     },
-    "gap": "Caveat: Buy X get Y is a campaign kind (D299 E4), not a code; a code cannot be limited to a segment (groups and named customers only).",
+    "gap": "Caveat: Buy X get Y is a campaign kind (D299 E4), not a code; a code cannot be limited to a segment (groups and named customers only). Whether a code combines with automatic campaigns is counted in `customers.automatic-discounts` (merged 2026-10-26).",
     "bucket": null,
     "wave": null,
     "criteria": [
@@ -470,18 +474,19 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "full",
+      "rating": "partial",
       "rechecked": true,
-      "was": "partial"
+      "was": "full"
     },
-    "gap": "",
-    "bucket": null,
-    "wave": null,
+    "gap": "Automatic campaigns (D114 to D116, D299 E3 and E4): percentage, buy N pay M, free product, an amount off per market, free shipping, tiers by items or spend and buy X get Y, for categories, tags and customer groups, each optionally stacking with other campaigns, announced from the cached `campaignNotices()`; all with scenarios in `checkout-kinds.int.test.ts`, euro included. Left (criterion 5): a campaign and a code always combine (campaigns come first, codes count what is left), so an owner cannot say a code is not to be used with a campaign, or a campaign with codes. Merged on 2026-10-26 (README rule 8): `checkout.discount-codes-and-automatic-discounts` covered codes and automatic discounts together (rated partial for this); its code criteria are held by `customers.discount-codes`, its evidence is here.",
+    "bucket": "A",
+    "wave": 5,
     "criteria": [
       "An owner makes an automatic discount of a fixed amount per market off chosen products or the order, and an automatic free-shipping discount above a basket value per market.",
       "An automatic discount can be tiered by spend (spend X get a % off), applied without a code.",
       "`cartSummary()` and `placeOrder()` agree to the minor unit for each new kind, in a NOK and a euro scenario (`checkout-kinds.int.test.ts`).",
-      "A product page and card announce the offer from the cached `campaignNotices()` read without a per-request query."
+      "A product page and card announce the offer from the cached `campaignNotices()` read without a per-request query.",
+      "An owner chooses whether an automatic discount combines with codes (and a code with automatic discounts), as Shopify's combinations allow; the cart and `placeOrder()` agree on the result."
     ],
     "evidence": {
       "files": [
@@ -495,7 +500,14 @@
         "src/server/checkout.ts",
         "src/server/campaign-notices.ts",
         "src/app/s/[store]/[market]/cart/cart-contents.tsx",
-        "supabase/migrations/20261021090105_campaigns_depth.sql"
+        "supabase/migrations/20261021090105_campaigns_depth.sql",
+        "src/lib/discounts.ts",
+        "src/server/discounts.ts",
+        "src/components/admin/generated-codes.tsx",
+        "src/app/admin/(gated)/[store]/discounts/[discountId]/codes/route.ts",
+        "src/lib/code-words.ts",
+        "src/components/checkout-code-form.tsx",
+        "src/components/discount-code-form.tsx"
       ],
       "tests": [
         "src/lib/campaigns.test.ts",
@@ -503,11 +515,17 @@
         "src/server/checkout-kinds.int.test.ts",
         "src/lib/campaign-notices.test.ts",
         "e2e/campaigns.spec.ts",
-        "src/db/campaigns-depth.test.ts"
+        "src/db/campaigns-depth.test.ts",
+        "src/lib/discounts.test.ts",
+        "src/server/discounts.int.test.ts",
+        "e2e/discounts.spec.ts"
       ],
       "untested": false
     },
     "decisions": [
+      "D31",
+      "D38",
+      "D108",
       "D114",
       "D115",
       "D116",
@@ -519,6 +537,12 @@
         "from": "partial",
         "to": "full",
         "why": "D299 E3: campaigns of an amount off per market (with an optional threshold), free shipping (with an optional threshold) and tiers by items or spend, held together by `cartSummary()` and `placeOrder()` in NOK and euro scenarios, announced from the cached notices."
+      },
+      {
+        "on": "2026-10-26",
+        "from": "full",
+        "to": "partial",
+        "why": "Merged with checkout.discount-codes-and-automatic-discounts (rule 8): its open criterion, an owner's choice of whether a campaign and a code combine, is this row's now and is not met."
       }
     ]
   },

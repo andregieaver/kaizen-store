@@ -73,7 +73,18 @@ rules below disagree.
    into `platform.workflow-automation-flow`; `customers.ai-assistant-discoverability-and-agentic-commerce` into
    `ai.agentic-storefronts-chatgpt-gemini-copilot`; `analytics.dynamic-segments-for-marketing` into
    `customers.customer-segments-and-tags`; `international.vipps-and-mobilepay` into `checkout.vipps`; `platform.metaobjects` into
-   `catalogue.metaobjects`. A survivor keeps its own
+   `catalogue.metaobjects`. Merged on 2026-10-26 (the parity evaluation): `checkout.abandoned-checkout-recovery` into
+   `customers.abandoned-checkout-recovery-emails`; `checkout.discount-codes-and-automatic-discounts` into
+   `customers.automatic-discounts` (its open criterion, whether a campaign and a code combine, made that row partial);
+   `international.ioss` into `checkout.oss-and-ioss-support`; `international.cookie-consent-banner-and-api` into
+   `storefront.cookie-consent-banner-and-log`; `international.multi-language-storefront-and-ai-translation` into
+   `storefront.multilingual-storefront-content`; `catalogue.ai-product-descriptions` into `ai.ai-product-descriptions-and-seo-text`;
+   `catalogue.product-recommendations` into `ai.product-recommendations`; `analytics.natural-language-analytics` into
+   `ai.natural-language-analytics-and-custom-reports`; `checkout.refunds-and-cancellation` into
+   `orders.partial-and-full-refunds-with-restocking` (its open criterion, a refund as store credit, made that row partial);
+   `ai.workflow-builder-with-ai-generation` into `platform.workflow-automation-flow`; `checkout.multi-currency-pricing-and-checkout`
+   into `international.multi-currency-display-and-checkout`; `international.customs-duties-hs-codes-landed-cost` into
+   `orders.customs-and-duties` (still missing: nothing prices or declares duties). A survivor keeps its own
    weight (rule 6), so a pair that disagreed on weight is for the next weight review.
 
 ## Waves

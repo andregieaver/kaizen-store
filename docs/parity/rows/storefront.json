@@ -833,10 +833,10 @@
     "feature": "Store-level A/B testing",
     "shopify": {
       "tier": "native",
-      "text": "Native (Grow and above, theme-wide).",
+      "text": "Native (Rollouts, Basic and above): schedule theme changes and A/B test them against the current theme on real traffic, judged by conversions only; market-specific targeting on Advanced and Plus.",
       "url": "https://changelog.shopify.com/posts/schedule-and-test-storefront-changes-with-rollouts",
       "fetched": true,
-      "checkedOn": "2026-10-02"
+      "checkedOn": "2026-10-26"
     },
     "kaizen": {
       "rating": "full",
@@ -1364,7 +1364,7 @@
       "was": null
     },
     "weight": 3,
-    "gap": "D295: a confirmed newsletter sign-up feeds the store's subscriber list with consent (words, time, source, language, confirmation time), unsubscribes by the subscriber's own link or one-click, and is in the person's export and erasure. D304 J3: a form's tags are put on the confirmed address as customer tags (`tagFromForm()`), which segments select (`kind: 'tag'`, D296), held by `signup-codes.int.test.ts` and `segments.int.test.ts`. Still missing: contact messages in an admin inbox: the email form only emails its recipients and counts a row in `form_submissions` (`src/server/forms.ts`), with no status and no link to the customer with that address (the support inbox, D216, takes chat conversations, not form messages).",
+    "gap": "D295: a confirmed newsletter sign-up feeds the store's subscriber list with consent (words, time, source, language, confirmation time), unsubscribes by the subscriber's own link or one-click, and is in the person's export and erasure. D304 J3: a form's tags are put on the confirmed address as customer tags (`tagFromForm()`), which segments select (`kind: 'tag'`, D296), held by `signup-codes.int.test.ts` and `segments.int.test.ts`. Still missing: contact messages in an admin inbox: the email form only emails its recipients and counts a row in `form_submissions` (`src/server/forms.ts`), with no status and no link to the customer with that address (the support inbox, D216, takes chat conversations and, since D332, emails to the desk's address, but not form messages, and on purpose never ties an email to a customer by its address, so criterion 3 is still unmet).",
     "bucket": "A",
     "wave": 5,
     "criteria": [
@@ -1426,14 +1426,15 @@
       "was": null
     },
     "weight": 5,
-    "gap": "Caveat: category and tag names are not translatable (`commerce.terms.name`; the worklist's `terms` scope translates only their SEO title and description, D168), so a category's heading, breadcrumb or filter facet stays in the main language (see catalogue.collections-manual). A language may also have a domain of its own (D313).",
+    "gap": "Caveat: a language may also have a domain of its own (D313). Category and tag names and descriptions are translatable since D319 (`terms.texts`, read through `termTextFor()`, in the translation worklist). Merged on 2026-10-26 (README rule 8): `international.multi-language-storefront-and-ai-translation` was the same Shopify feature (rated full); its criteria and evidence are here.",
     "bucket": null,
     "wave": null,
     "criteria": [
       "A page is built once in the store's main language with texts in other languages over it; the site shows the shopper's language with hreflang alternates.",
       "A language and a currency are chosen apart from the country, and the store's languages come from `store.localization`.",
       "A whole store is translated with AI from one worklist, a person reads every text before it is saved, and legal pages start unticked.",
-      "Interface text of added languages is translated into data and read key by key, with English as the fallback."
+      "Interface text of added languages is translated into data and read key by key, with English as the fallback.",
+      "Every AI translation passes validation (shape, length, claims filter), and product, page and store texts fall back to the main language when no translation exists."
     ],
     "evidence": {
       "files": [
@@ -1446,7 +1447,9 @@
         "src/lib/ui-catalog.ts",
         "src/server/ui-text.ts",
         "src/server/languages.ts",
-        "src/lib/page-translate-ai.ts"
+        "src/lib/page-translate-ai.ts",
+        "src/lib/i18n.ts",
+        "src/lib/icu-lite.ts"
       ],
       "tests": [
         "src/lib/localization.test.ts",
@@ -1456,7 +1459,10 @@
         "src/server/store-translate.int.test.ts",
         "src/lib/ui-catalog.test.ts",
         "src/lib/page-translate-ai.test.ts",
-        "e2e/localization.spec.ts"
+        "e2e/localization.spec.ts",
+        "src/lib/ui-translate.test.ts",
+        "src/lib/languages.test.ts",
+        "src/server/languages.int.test.ts"
       ],
       "untested": false
     },
@@ -1541,13 +1547,14 @@
       "was": null
     },
     "weight": 5,
-    "gap": "Caveat: the Consent Mode v2 signals sent by `consent-manager.tsx` are read from the code and held by no test.",
+    "gap": "Caveat: the Consent Mode v2 signals sent by `consent-manager.tsx` are read from the code and held by no test. Merged on 2026-10-26 (README rule 8): `international.cookie-consent-banner-and-api` was the same Shopify feature (rated full); its criteria and evidence are here.",
     "bucket": null,
     "wave": null,
     "criteria": [
       "A store with only necessary cookies shows no banner; one with a tracking tool asks first, loads the tool only after consent and logs each choice for 12 months.",
       "Every cookie or storage item is declared with category and purpose, and the cookies page lists what the latest scan found.",
-      "A store's own code runs only after consent unless it is necessary."
+      "A store's own code runs only after consent unless it is necessary.",
+      "A site re-asks when the categories it uses change; each choice is logged through `/api/consent` (`commerce.consents`)."
     ],
     "evidence": {
       "files": [
@@ -1558,7 +1565,8 @@
         "src/server/site-cookies.ts",
         "src/components/consent/consent-manager.tsx",
         "src/app/api/consent/route.ts",
-        "src/lib/custom-code.ts"
+        "src/lib/custom-code.ts",
+        "src/components/consent/site-consent.tsx"
       ],
       "tests": [
         "src/lib/cookie-consent.test.ts",
@@ -1593,7 +1601,7 @@
       "was": "full"
     },
     "weight": 2,
-    "gap": "Built since the last read (D308 to D310): the AI manager builds and edits page drafts (`build_page`, `edit_page`; built after the answer by `runPageJobs()`, `publish_page` gated), makes menus of the store's own links only (`save_menu`, gated while a menu is shown), chooses the standard header's and footer's menus and logo (`set_header_footer`, gated), adds, previews and makes a theme or preset live (`add_theme`, `try_theme`, `make_theme_live`, gated, the charge kept with the approval), sets the store's details, countries, languages, currencies and shipping (setup tools, at once while the store is being set up), and looks at what it built (`look_at_page`, `look_at_store`); the page studio (D92), the replicator (D150) and a theme's starting content (D275) remain. Still short: (1) no theme change from a description: the tools choose among published themes and presets and never set the Theme tab's colours, fonts or buttons or warn on contrast; (2) no custom header or footer layout from AI, only the standard one's menus and logo; (3) no single flow from one description to theme, front page, pages and menus as drafts: the owner, or a plan the owner approves (D309), drives it tool by tool.",
+    "gap": "Built since the last read (D308 to D310): the AI manager builds and edits page drafts (`build_page`, `edit_page`; built after the answer by `runPageJobs()`, `publish_page` gated), makes menus of the store's own links only (`save_menu`, gated while a menu is shown), chooses the standard header's and footer's menus and logo (`set_header_footer`, gated), adds, previews and makes a theme or preset live (`add_theme`, `try_theme`, `make_theme_live`, gated, the charge kept with the approval), sets the store's details, countries, languages, currencies and shipping (setup tools, at once while the store is being set up), and looks at what it built (`look_at_page`, `look_at_store`); the page studio (D92), the replicator (D150) and a theme's starting content (D275) remain. Since D330 criterion 1 holds: `design_look` designs a look of the store's own from a description (a few brand colours, fonts and Design settings' named choices, both palettes worked out by `designedTheme()` and refused under 4.5:1 by `themeWarnings()`), adds it to the theme library not live, and it reaches visitors only through the gated `make_theme_live`. Still short: (1) no custom header or footer layout from AI, only the standard one's menus and logo (criterion 2); (2) no single flow from one description to theme, front page, pages and menus as drafts: the owner, or a plan the owner approves (D309), drives it tool by tool.",
     "bucket": "A",
     "wave": 8,
     "criteria": [
@@ -1614,7 +1622,9 @@
         "src/server/site-tools.ts",
         "src/server/design-tools.ts",
         "src/server/setup-tools.ts",
-        "src/server/page-looks.ts"
+        "src/server/page-looks.ts",
+        "src/lib/brand-design.ts",
+        "src/server/brand-tools.ts"
       ],
       "tests": [
         "src/lib/page-ai.test.ts",
@@ -1625,7 +1635,9 @@
         "src/server/site-tools.int.test.ts",
         "src/server/design-tools.int.test.ts",
         "src/server/setup-tools.int.test.ts",
-        "src/server/page-looks.int.test.ts"
+        "src/server/page-looks.int.test.ts",
+        "src/lib/brand-design.test.ts",
+        "src/server/brand.int.test.ts"
       ],
       "untested": false
     },
@@ -1638,7 +1650,8 @@
       "D275",
       "D308",
       "D309",
-      "D310"
+      "D310",
+      "D330"
     ],
     "history": [
       {

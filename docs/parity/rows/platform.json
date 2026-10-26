@@ -259,7 +259,7 @@
       "was": null
     },
     "weight": 3,
-    "gap": "Order rules (D238, Settings -> Automation, src/lib/order-rules.ts, src/server/order-rules.ts) are an owner-made trigger-condition-action builder for one trigger, an order paid: a closed list of conditions, actions tag, notify staff, hold fulfilment and ask the AI manager (D318), switched on or off, at most 50 a store and 20 AI asks a day, each run logged with what each condition and action came to. Fixed automations besides: cart and plan reminders (D33), email automations (D298), events to Zapier, Make and Slack (D41, D101), the AI manager's follow-ups (D318) and the autopilot's plans (D309). Still missing: triggers other than an order paid (return, customer, stock, schedule), actions that email, post to Slack or send an HTTP request through the address guard (criterion 1), and the AI manager drafting a workflow from a sentence (order_rules is a read-only tool, criterion 4). Merged on 2026-10-25 (README rule 8): `customers.workflow-automation-flow` was the same Shopify feature (rated partial); its criteria and evidence are here.",
+    "gap": "Order rules (D238, Settings -> Automation, src/lib/order-rules.ts, src/server/order-rules.ts) are an owner-made trigger-condition-action builder for one trigger, an order paid: a closed list of conditions, actions tag, notify staff, hold fulfilment and ask the AI manager (D318), switched on or off, at most 50 a store and 20 AI asks a day, each run logged with what each condition and action came to. Fixed automations besides: cart and plan reminders (D33), email automations (D298), events to Zapier, Make and Slack (D41, D101), the AI manager's follow-ups (D318) and the autopilot's plans (D309). Still missing: triggers other than an order paid (return, customer, stock, schedule), actions that email, post to Slack or send an HTTP request through the address guard (criterion 1), and the AI manager drafting a workflow from a sentence (order_rules is a read-only tool, criterion 4). Merged on 2026-10-25 (README rule 8): `customers.workflow-automation-flow` was the same Shopify feature (rated partial); its criteria and evidence are here. No test run before a rule is switched on. Merged on 2026-10-26 (README rule 8): `ai.workflow-builder-with-ai-generation` was the same Shopify feature, Flow with Sidekick's drafting (rated partial); its criteria and evidence are here. The autopilot's plans (D309, D328) are steps toward goals, not event workflows an owner chooses.",
     "bucket": "A",
     "wave": 9,
     "criteria": [
@@ -270,7 +270,8 @@
       "An owner builds a workflow in the admin from one trigger (order paid, customer created, low stock, return requested), conditions on the event's fields and one or more actions (tag a customer, email staff, post to Slack, send a webhook).",
       "A workflow runs once per event (idempotency key), its runs and outcomes are logged with retries, and a loop or runaway is stopped by a depth and rate cap (test).",
       "An action that emails a customer or moves money is gated and waits for a person's yes, like the AI manager's gated tools.",
-      "A workflow never sees another store's events, and is not copied with a store (`never` in `COPY_RULES`)."
+      "A workflow never sees another store's events, and is not copied with a store (`never` in `COPY_RULES`).",
+      "A workflow is saved inactive, can be tested before it is switched on, and one the assistant drafts is validated like a hand-made one."
     ],
     "evidence": {
       "files": [
@@ -286,7 +287,9 @@
         "src/lib/slack.ts",
         "src/app/admin/(gated)/[store]/integrations/page.tsx",
         "src/app/admin/(gated)/[store]/settings/automation/page.tsx",
-        "src/app/admin/(gated)/[store]/settings/automation/log/page.tsx"
+        "src/app/admin/(gated)/[store]/settings/automation/log/page.tsx",
+        "src/app/api/cron/integrations/route.ts",
+        "src/server/autopilot-reviews.ts"
       ],
       "tests": [
         "src/server/cart-reminders.int.test.ts",
@@ -296,7 +299,8 @@
         "src/server/order-rules.int.test.ts",
         "e2e/signed-in/automation.spec.ts",
         "src/lib/integrations.test.ts",
-        "src/lib/slack.test.ts"
+        "src/lib/slack.test.ts",
+        "src/server/autopilot-reviews.int.test.ts"
       ],
       "untested": false
     },
@@ -304,12 +308,13 @@
       "D33",
       "D41",
       "D94",
+      "D101",
       "D103",
       "D238",
       "D298",
       "D309",
       "D318",
-      "D101"
+      "D328"
     ],
     "history": []
   },
@@ -1168,7 +1173,7 @@
       "was": null
     },
     "weight": 4,
-    "gap": "D216 (docs/support.md, steps 3-14) meets the criteria in code: owners and staff write to Kaizen from the admin (Contact Kaizen support, the AI manager's contact_kaizen_support) and see their requests' status, answered first by Kaizen's AI with read-only tools on their own stores and then by platform admins in Kaizen's inbox (assignee, replies by email, every message kept); the chat hands a conversation to the inbox when the visitor asks; the time to a person's first answer is measured from the inbox (queued_at to first_agent_at, the support report, step 14), never typed. The row stays partial by rule: people answering and a promised response time are not software (bucket D).",
+    "gap": "D216 (docs/support.md, steps 3-14) meets the criteria in code: owners and staff write to Kaizen from the admin (Contact Kaizen support, the AI manager's contact_kaizen_support) and see their requests' status, answered first by Kaizen's AI with read-only tools on their own stores and then by platform admins in Kaizen's inbox (assignee, replies by email, every message kept); the chat hands a conversation to the inbox when the visitor asks; the time to a person's first answer is measured from the inbox (queued_at to first_agent_at, the support report, step 14), never typed. The row stays partial by rule: people answering and a promised response time are not software (bucket D). Since D332 Kaizena Flow's own desk also takes email at its address, answered by the AI first where the desk is set so.",
     "bucket": "D",
     "wave": null,
     "criteria": [
@@ -1204,7 +1209,8 @@
     "decisions": [
       "D81",
       "D103",
-      "D216"
+      "D216",
+      "D332"
     ],
     "history": []
   },

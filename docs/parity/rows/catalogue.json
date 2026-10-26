@@ -1285,57 +1285,6 @@
     ]
   },
   {
-    "id": "catalogue.product-recommendations",
-    "domain": "catalogue",
-    "feature": "Product recommendations",
-    "weight": 3,
-    "shopify": {
-      "tier": "native",
-      "text": "Native in the sense of Shopify's own free Search & Discovery app: related and complementary product recommendations on product pages. (The app is installed from the App Store.)",
-      "url": "https://apps.shopify.com/search-and-discovery",
-      "fetched": true,
-      "checkedOn": "2026-10-03"
-    },
-    "kaizen": {
-      "rating": "full",
-      "rechecked": true,
-      "was": null
-    },
-    "gap": "",
-    "bucket": null,
-    "wave": null,
-    "criteria": [
-      "A product grid with a recommend source shows a cached stand-in for everyone and the browser swaps in the shopper's own, without cookies or AI needed.",
-      "Candidates come only from the store's data and pass `recommendable()`; anchors, the cart, purchased products and never-with rules are excluded (unit and integration tests).",
-      "AI only re-orders ids from that list, kept in the search cache, under the owner's cap, never for the held-out arm; its result is judged on tabs, not impressions.",
-      "Category and tag pages are page roles so recommendations work around them (D140)."
-    ],
-    "evidence": {
-      "files": [
-        "src/server/recommend.ts",
-        "src/lib/recommendations.ts",
-        "src/server/recommend-settings.ts",
-        "src/server/recommend-events.ts",
-        "src/server/recommend-grid.ts",
-        "src/components/recommended-grid.tsx",
-        "docs/recommendations.md"
-      ],
-      "tests": [
-        "src/lib/recommendations.test.ts",
-        "src/server/recommend.int.test.ts",
-        "src/lib/recommend-eval.test.ts",
-        "src/lib/recommend-session.test.ts",
-        "e2e/recommendations.spec.ts"
-      ],
-      "untested": false
-    },
-    "decisions": [
-      "D139",
-      "D140"
-    ],
-    "history": []
-  },
-  {
     "id": "catalogue.storefront-filtering-and-sorting",
     "domain": "catalogue",
     "feature": "Storefront filtering and sorting",
@@ -1642,57 +1591,6 @@
     ]
   },
   {
-    "id": "catalogue.ai-product-descriptions",
-    "domain": "catalogue",
-    "feature": "AI product descriptions",
-    "weight": 2,
-    "shopify": {
-      "tier": "native",
-      "text": "Native.",
-      "url": "https://help.shopify.com/en/manual/products/details/product-descriptions/shopify-magic",
-      "fetched": true,
-      "checkedOn": "2026-10-02"
-    },
-    "kaizen": {
-      "rating": "full",
-      "rechecked": true,
-      "was": null
-    },
-    "gap": "",
-    "bucket": null,
-    "wave": null,
-    "criteria": [
-      "In the product editor staff ask the store's text model to write or improve a description, write search texts, or translate from the main language; the suggestion is shown for staff to edit and copy in and is never written to the product directly.",
-      "The model gets the product's own words and never prices or stock; its copy passes `findClaims()` (generic green claims, urgency, best price, money, stock) before it can be used.",
-      "Without an AI connection the editor works and the feature says so; usage is metered for the store."
-    ],
-    "evidence": {
-      "files": [
-        "src/server/product-writer.ts",
-        "src/lib/product-writing.ts",
-        "src/components/admin/ai-writer.tsx",
-        "src/lib/claims.ts",
-        "src/server/product-tools.ts",
-        "src/lib/product-tools.ts"
-      ],
-      "tests": [
-        "src/lib/product-writing.test.ts",
-        "src/server/product-writer.int.test.ts",
-        "src/lib/claims.test.ts",
-        "src/server/product-tools.int.test.ts",
-        "src/lib/product-tools.test.ts"
-      ],
-      "untested": false
-    },
-    "decisions": [
-      "D73",
-      "D76",
-      "D106",
-      "D308"
-    ],
-    "history": []
-  },
-  {
     "id": "catalogue.combined-listings",
     "domain": "catalogue",
     "feature": "Combined listings",
@@ -1709,9 +1607,9 @@
       "rechecked": true,
       "was": null
     },
-    "gap": "None: no way to show separate products as one listing with a shared option (verified 2026-10-25: variants live inside one product only, no product group or sibling table).",
+    "gap": "No way to show separate products as one listing with a shared option (verified 2026-10-25: variants live inside one product only, no product group or sibling table). Not planned: decision 6 of `docs/wave-6-catalogue.md` leaves it (Plus only on Shopify, weight 1; unit B's 2,048 variants cover most of the need).",
     "bucket": "A",
-    "wave": 6,
+    "wave": null,
     "criteria": [
       "Separate products can be grouped into one listing with a shared option (for example colour); the listing card and page link to each product.",
       "Each product keeps its own stock, price, SEO address and reviews; the cart holds the chosen product.",

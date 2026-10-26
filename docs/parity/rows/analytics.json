@@ -199,55 +199,6 @@
     ]
   },
   {
-    "id": "analytics.natural-language-analytics",
-    "domain": "analytics",
-    "feature": "Natural-language analytics",
-    "shopify": {
-      "tier": "native",
-      "text": "Native (Sidekick in Analytics). Questions in plain language become ShopifyQL queries and reports with a business-friendly explanation, from a new exploration or any saved report; the post states no plan or region limit.",
-      "url": "https://changelog.shopify.com/posts/turn-business-questions-into-analytics-reports-with-natural-language-queries",
-      "fetched": true,
-      "checkedOn": "2026-10-03"
-    },
-    "kaizen": {
-      "rating": "partial",
-      "rechecked": true,
-      "was": null
-    },
-    "weight": 2,
-    "gap": "The AI manager answers from fixed read-only tools (`analytics_overview`, `explain_change`, `analytics_alerts`, D104's insights, D161's `vat_report`/`oss_return_data`, D216's `support_overview`); every figure is the code's, but it cannot cut the data in a new way, as there is no report builder's safe query layer to turn a question into.",
-    "history": [],
-    "bucket": "A",
-    "wave": 8,
-    "criteria": [
-      "A question is turned into a validated query spec over the report builder's safe layer; the model never writes SQL and never states a number.",
-      "Every figure in the answer is computed in code and carries its definition, period and what is missing.",
-      "A question the layer cannot answer is declined in words that say what can be asked.",
-      "Without a text model the manager still answers from the fixed tools, and the call is metered under its own AI feature."
-    ],
-    "evidence": {
-      "files": [
-        "src/server/analytics-tools.ts",
-        "src/server/analytics-insights.ts",
-        "src/server/owner-insights.ts",
-        "src/lib/manager-tools.ts",
-        "src/lib/assistant-skills.ts"
-      ],
-      "tests": [
-        "src/server/analytics-tools.int.test.ts",
-        "src/lib/analytics-tools.test.ts"
-      ],
-      "untested": false
-    },
-    "decisions": [
-      "D152",
-      "D104",
-      "D103",
-      "D161",
-      "D216"
-    ]
-  },
-  {
     "id": "analytics.conversion-funnel-and-rate",
     "domain": "analytics",
     "feature": "Conversion funnel and rate",
@@ -1128,7 +1079,7 @@
       "was": null
     },
     "weight": 2,
-    "gap": "One monthly net-revenue target; alerts and the forecast exist (`alertsFor()`, `forecastMonth()`) and the AI manager repeats them, but alerts are shown only in the admin, never emailed or pushed (the autopilot's weekly report, D309, carries figures and goals, not alerts), and the forecast covers month revenue only.",
+    "gap": "One monthly net-revenue target; alerts and the forecast exist (`alertsFor()`, `forecastMonth()`) and the AI manager repeats them, but alerts are shown only in the admin, never emailed or pushed (the autopilot's weekly report, D309, carries figures and goals, not alerts; since D331 an urgent alert can start an autopilot turn when the owner turns on *React to what happens*, which still sends no alert to staff), and the forecast covers month revenue only.",
     "history": [],
     "bucket": "A",
     "wave": 8,
@@ -1158,7 +1109,8 @@
     },
     "decisions": [
       "D152",
-      "D309"
+      "D309",
+      "D331"
     ]
   },
   {

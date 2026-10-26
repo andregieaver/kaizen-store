@@ -91,7 +91,7 @@
       "was": null
     },
     "weight": 4,
-    "gap": "",
+    "gap": "Evidence debt: no listed test asserts the order history's events and staff notes as the order page shows them.",
     "bucket": null,
     "wave": null,
     "criteria": [
@@ -202,7 +202,7 @@
       "was": null
     },
     "weight": 3,
-    "gap": "Built and held by tests (D174, `docs/wave-3-fulfilment.md`): staff add, remove and lower lines of a paid, unsent order at `/admin/{store}/orders/{orderId}/edit` (`previewOrderEdit()`/`applyOrderEdit()`/`sendOrderEdit()` in `src/server/order-edits.ts`, priced by `priceOrderEdit()`, equal to `cartSummary()` in kroner and a euro view); kept units keep their price and discounts; a lower total is refunded through `refundOrder()` under the order lock, a higher one applies only when the customer pays the link (`/account/change/{token}`) or staff record it paid outside under the cash ceiling; one `order.edit_applied` event, the number unchanged; an edit credit note and an additional invoice; the revised confirmation emailed. The AI manager previews and makes the same changes through the editor's own functions, gated as `spend` and refused when the order moved since the owner saw it (D318, `src/server/order-change-tools.ts`, `order-change-tools.int.test.ts`). Still short of Full: (1) the consumer texts (change emails, pay page, edit invoice and credit-note words, the cash-ceiling question) are hand-written and not yet read by a person (spec section 8); (2) no change has been paid in Stripe test mode on a real store, only against the repo's fake Stripe; (3) a refund owed after a change's pending refund fails shows on the order page and store checkup, not in the control center, and no test covers a D153 return refund after a paid change. Merged here on 2026-10-07: `checkout.order-editing-after-purchase` (README rule 8); its criteria are criteria 3 to 5.",
+    "gap": "Built and held by tests (D174, `docs/wave-3-fulfilment.md`): staff add, remove and lower lines of a paid, unsent order at `/admin/{store}/orders/{orderId}/edit` (`previewOrderEdit()`/`applyOrderEdit()`/`sendOrderEdit()` in `src/server/order-edits.ts`, priced by `priceOrderEdit()`, equal to `cartSummary()` in kroner and a euro view); kept units keep their price and discounts; a lower total is refunded through `refundOrder()` under the order lock, a higher one applies only when the customer pays the link (`/account/change/{token}`) or staff record it paid outside under the cash ceiling; one `order.edit_applied` event, the number unchanged; an edit credit note and an additional invoice; the revised confirmation emailed. The AI manager previews and makes the same changes through the editor's own functions, gated as `spend` and refused when the order moved since the owner saw it (D318, `src/server/order-change-tools.ts`, `order-change-tools.int.test.ts`). Still short of Full: (1) the consumer texts (change emails, pay page, edit invoice and credit-note words, the cash-ceiling question) are hand-written and not yet read by a person (spec section 8); (2) no change has been paid in Stripe test mode on a real store, only against the repo's fake Stripe; (3) a refund owed after a change's pending refund fails shows on the order page and store checkup, not in the control center, and no test covers a D153 return refund after a paid change. Merged here on 2026-10-07: `checkout.order-editing-after-purchase` (README rule 8); its criteria are criteria 3 to 5. Since D322 an order holding a bundle cannot be edited (`editBlock()`'s `bundle`).",
     "bucket": "A",
     "wave": 3,
     "criteria": [
@@ -257,7 +257,8 @@
       "D27",
       "D141",
       "D174",
-      "D318"
+      "D318",
+      "D322"
     ],
     "history": []
   },
@@ -278,7 +279,7 @@
       "was": null
     },
     "weight": 5,
-    "gap": "Evidence debt: no test covers cancelling an unpaid weekly delivery without a refund (`cancelOrder()`, `src/server/order-admin.ts`) or the download links ending; the core path (refund, restock, close, refuse after sent) is tested in `order-admin.int.test.ts`. The cancel event stores the reason, not the account. Shopify also cancels with a refund as store credit; Kaizen has none, counted once in checkout.refunds-and-cancellation.",
+    "gap": "Evidence debt: no test covers cancelling an unpaid weekly delivery without a refund (`cancelOrder()`, `src/server/order-admin.ts`) or the download links ending; the core path (refund, restock, close, refuse after sent) is tested in `order-admin.int.test.ts`. The cancel event stores the reason, not the account. Shopify also cancels with a refund as store credit; Kaizen has none, counted once in orders.partial-and-full-refunds-with-restocking.",
     "bucket": null,
     "wave": null,
     "criteria": [
@@ -318,19 +319,21 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "full",
+      "rating": "partial",
       "rechecked": true,
-      "was": null
+      "was": "full"
     },
     "weight": 5,
-    "gap": "",
-    "bucket": null,
-    "wave": null,
+    "gap": "Refunds, partial refunds, restock and the customer's email work (`order-admin.int.test.ts`); returns and withdrawals refund through the same path (D153), a refund is split over the order's captured payments and sent to each payment's provider (D174 `splitRefund()`, D292), and an uncaptured card is released rather than refunded (D289). Missing (criterion 6): a refund as store credit. Gift cards exist and staff can issue one by hand (D300 F4), but a refund cannot be paid to one, and bonus credits (D130) are earned, not refunded to. Merged on 2026-10-26 (README rule 8): `checkout.refunds-and-cancellation` covered refunds and cancelling together (rated partial for this); its cancel criteria are held by `orders.cancel-order-with-refund-and-restock`, its evidence is here.",
+    "bucket": "A",
+    "wave": 5,
     "criteria": [
       "A refund of any amount up to what is left goes through Stripe on the store's account with Kaizen's fee on the refunded part returned, and more than is left is refused (integration test).",
       "Staff choose which units go back in stock, with or without money back, never more than were bought or already restocked (integration test).",
       "A return's refund is worked out once by `refundFor()` from what was paid after every discount, the delivery only for a whole-order withdrawal and minus return shipping the shopper pays, and is claimed before Stripe is called so two staff cannot pay it twice (unit and integration tests).",
-      "An order paid outside Kaizen's Stripe records the refund as made outside and still restocks (integration test)."
+      "An order paid outside Kaizen's Stripe records the refund as made outside and still restocks (integration test).",
+      "The customer is emailed once per refund; returns and withdrawals refund through the same path (D153).",
+      "Staff can refund to a store credit balance the shopper can use at checkout, recorded in an append-only ledger (integration test, euro scenario)."
     ],
     "evidence": {
       "files": [
@@ -338,7 +341,9 @@
         "src/lib/return-refund.ts",
         "src/server/returns.ts",
         "src/components/admin/order-actions.tsx",
-        "src/app/admin/(gated)/[store]/orders/actions.ts"
+        "src/app/admin/(gated)/[store]/orders/actions.ts",
+        "src/server/shopper-emails.ts",
+        "src/server/order-returns.ts"
       ],
       "tests": [
         "src/server/order-admin.int.test.ts",
@@ -350,9 +355,19 @@
     },
     "decisions": [
       "D27",
-      "D153"
+      "D153",
+      "D289",
+      "D292",
+      "D300"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-26",
+        "from": "full",
+        "to": "partial",
+        "why": "Merged with checkout.refunds-and-cancellation (rule 8): its open criterion, a refund as store credit, is this row's now and is not met."
+      }
+    ]
   },
   {
     "id": "orders.draft-and-manual-orders",
@@ -371,7 +386,7 @@
       "was": "missing"
     },
     "weight": 3,
-    "gap": "Built and held by tests (D173): staff make a draft (`D-n`) with goods, custom service items, a custom price, a staff discount, shipping and a market, priced only by `priceDraft()` (equal to `cartSummary()` in kroner and a euro view); Send makes the order through `order-insert.ts` (next D141 number, stock held to the draft's expiry) and emails a pay link to Stripe's hosted page, completed by `applySession()`; money taken outside Kaizena Flow is a `manual` payment (owner-only unless allowed, cash ceilings as data), stated on the invoice, its refund recorded with no Stripe call, capped, with a credit note; an expired draft cancels its order and releases the stock with the sequence whole; staff-made orders count in sales, VAT and customers, not in conversion or channels (`draft-orders.int.test.ts`, `draft-security.review.int.test.ts`, `e2e/draft-pay.spec.ts`). Held at Partial: (1) consumer legal text nobody has read (the pay page and its withdrawal sentence, the pay-link email, invoice and credit-note wording for money taken outside, cash warnings, staff-discount line, the received-day rule for VAT periods), and the cash ceilings in `cash-limits.ts` are `verified: false` (bucket D: a person must read them); (2) the Stripe link flow has run only against the repo's fake Stripe; (3) no signed-in browser test drives the draft editor, send or paid-outside dialogs, and the draft actions are not exercised directly; (4) no test asserts that a paid draft order appears in the customer's order history (criterion 5); (5) decided limits: custom service items for businesses only, the delivery address in the market's country, and a late-recorded payment dated by its received day on the invoice but by the recording day in analytics. Not built by the spec: subscriptions, bookings, downloads, hosts' listings, codes, campaigns, credits, VAT-number checks, carrier quotes, deposits, payment terms and card details by phone on a draft.",
+    "gap": "Built and held by tests (D173): staff make a draft (`D-n`) with goods, custom service items, a custom price, a staff discount, shipping and a market, priced only by `priceDraft()` (equal to `cartSummary()` in kroner and a euro view); Send makes the order through `order-insert.ts` (next D141 number, stock held to the draft's expiry) and emails a pay link to Stripe's hosted page, completed by `applySession()`; money taken outside Kaizena Flow is a `manual` payment (owner-only unless allowed, cash ceilings as data), stated on the invoice, its refund recorded with no Stripe call, capped, with a credit note; an expired draft cancels its order and releases the stock with the sequence whole; staff-made orders count in sales, VAT and customers, not in conversion or channels (`draft-orders.int.test.ts`, `draft-security.review.int.test.ts`, `e2e/draft-pay.spec.ts`). Held at Partial: (1) consumer legal text nobody has read (the pay page and its withdrawal sentence, the pay-link email, invoice and credit-note wording for money taken outside, cash warnings, staff-discount line, the received-day rule for VAT periods), and the cash ceilings in `cash-limits.ts` are `verified: false` (bucket D: a person must read them); (2) the Stripe link flow has run only against the repo's fake Stripe; (3) no signed-in browser test drives the draft editor, send or paid-outside dialogs, and the draft actions are not exercised directly; (4) no test asserts that a paid draft order appears in the customer's order history (criterion 5); (5) decided limits: custom service items for businesses only, the delivery address in the market's country, and a late-recorded payment dated by its received day on the invoice but by the recording day in analytics. Not built by the spec: subscriptions, bookings, downloads, hosts' listings, codes, campaigns, credits, VAT-number checks, carrier quotes, deposits, payment terms and card details by phone on a draft. A draft takes goods only, so no bundle line either (D322).",
     "bucket": "D",
     "wave": 3,
     "criteria": [
@@ -424,7 +439,8 @@
       "untested": false
     },
     "decisions": [
-      "D173"
+      "D173",
+      "D322"
     ],
     "history": [
       {
@@ -1579,7 +1595,7 @@
       "was": "missing"
     },
     "weight": 2,
-    "gap": "Built and held by tests (D239, `docs/wave-3-exchanges.md`): staff add catalogue replacements to a return (`ExchangeBuilder`), priced by `priceExchange()` over `priceDraft()` and equal to `cartSummary()` in kroner and a euro view, netted against `refundFor()`'s credit; processing makes an order with `source = 'exchange'` through `insertOrder()` (next D141 number, stock held only then); a difference owed goes out as a pay link to Stripe's hosted page or is recorded paid outside, one due is refunded through `refundOrder()`; a withdrawal's exchange needs the customer's own press on `/account/exchange/{token}` (`exchanges.int.test.ts`, `exchange-admin.int.test.ts`, `src/db/exchanges.test.ts`, `e2e/signed-in/admin-exchange.spec.ts`). The AI manager previews, proposes (emailed only) and processes exchanges through the same functions, gated (D318, `src/server/exchange-tools.ts`, `order-change-tools.int.test.ts`). Partial because: (1) the consumer texts (exchange page, proposal and pay emails, agreement and withdrawal-right sentences, `settled_by_return` invoice wording, the `return_exchange` credit note) are hand-written and not yet read by a person; (2) no pay link has been paid in Stripe test mode on a real store; (3) the euro scenario is in `exchanges.int.test.ts`, not in `checkout-kinds.int.test.ts` as the spec says.",
+    "gap": "Built and held by tests (D239, `docs/wave-3-exchanges.md`): staff add catalogue replacements to a return (`ExchangeBuilder`), priced by `priceExchange()` over `priceDraft()` and equal to `cartSummary()` in kroner and a euro view, netted against `refundFor()`'s credit; processing makes an order with `source = 'exchange'` through `insertOrder()` (next D141 number, stock held only then); a difference owed goes out as a pay link to Stripe's hosted page or is recorded paid outside, one due is refunded through `refundOrder()`; a withdrawal's exchange needs the customer's own press on `/account/exchange/{token}` (`exchanges.int.test.ts`, `exchange-admin.int.test.ts`, `src/db/exchanges.test.ts`, `e2e/signed-in/admin-exchange.spec.ts`). The AI manager previews, proposes (emailed only) and processes exchanges through the same functions, gated (D318, `src/server/exchange-tools.ts`, `order-change-tools.int.test.ts`). Partial because: (1) the consumer texts (exchange page, proposal and pay emails, agreement and withdrawal-right sentences, `settled_by_return` invoice wording, the `return_exchange` credit note) are hand-written and not yet read by a person; (2) no pay link has been paid in Stripe test mode on a real store; (3) the euro scenario is in `exchanges.int.test.ts`, not in `checkout-kinds.int.test.ts` as the spec says. A replacement is goods only, so a bundle cannot be one (D322).",
     "bucket": "A",
     "wave": 3,
     "criteria": [
@@ -1632,7 +1648,8 @@
     "decisions": [
       "D153",
       "D239",
-      "D318"
+      "D318",
+      "D322"
     ],
     "history": [
       {
@@ -1710,28 +1727,34 @@
       "was": "partial"
     },
     "weight": 3,
-    "gap": "No duty collection. HS code and country of origin are stored per variant (`product_variants.hs_code`, `origin_country`), edited in the product editor and carried by the product CSV (D165) and the AI manager's product tools (D308), but nothing prices or declares with them: no duty or import-VAT estimate for a non-EU destination at checkout, no customs lines in any carrier booking, no DDP or DAP choice. The IOSS registration and intermediary are recorded per store and low-value consignments into the EU are charged destination VAT and marked IOSS (D157, counted in `checkout.oss-and-ioss-support`), which covers criterion 4 only; the fields are the prerequisite, not partial credit.",
+    "gap": "No duty collection. HS code and country of origin are stored per variant (`product_variants.hs_code`, `origin_country`), edited in the product editor and carried by the product CSV (D165) and the AI manager's product tools (D308), but nothing prices or declares with them: no duty or import-VAT estimate for a non-EU destination at checkout, no customs lines in any carrier booking, no DDP or DAP choice. The IOSS registration and intermediary are recorded per store and low-value consignments into the EU are charged destination VAT and marked IOSS (D157, counted in `checkout.oss-and-ioss-support`), which covers criterion 4 only; the fields are the prerequisite, not partial credit. The EU's removal of the 150 EUR customs-duty exemption from 1 July 2026 is not handled. A duty-rate source may be a third party (then bucket B). Merged on 2026-10-26 (README rule 8): `international.customs-duties-hs-codes-landed-cost` was the same Shopify feature (Markets Pro's landed cost), rated partial for the stored fields alone; its criteria and evidence are here, and the feature stays missing as nothing prices or declares duties.",
     "bucket": "A",
     "wave": 7,
     "criteria": [
       "For a non-EU destination the checkout shows an estimated duty and import VAT from HS code, origin and value, worked out in code from a rates table the platform keeps, labelled as an estimate (unit and integration tests, euro scenario).",
       "A booking to a non-EU country carries the customs lines (HS code, origin, value, description) and refuses to book without them (adapter test).",
       "Whether duties are collected at checkout (DDP) or by the carrier (DAP) is the store's choice per market and is stated on the order and the emails.",
-      "IOSS registration is recorded per store and used only through an intermediary (bucket B part)."
+      "IOSS registration is recorded per store and used only through an intermediary (bucket B part).",
+      "The order keeps the duties and import VAT collected and who pays (DDP or DAP), and the estimate is the same in the cart and the placed order (euro scenario in checkout-kinds).",
+      "A missing HS code blocks a DDP quote with a plain message, never a zero duty."
     ],
     "evidence": {
       "files": [
         "src/db/schema.ts",
         "src/components/admin/product-editor.tsx",
         "src/lib/product-input.ts",
-        "src/server/products.ts"
+        "src/server/products.ts",
+        "src/lib/product-csv.ts",
+        "src/lib/product-import.ts"
       ],
       "tests": [
-        "src/lib/product-input.test.ts"
+        "src/lib/product-input.test.ts",
+        "src/db/commerce.test.ts"
       ],
       "untested": false
     },
     "decisions": [
+      "D12",
       "D157",
       "D165"
     ],

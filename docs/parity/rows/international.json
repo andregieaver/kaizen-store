@@ -60,7 +60,7 @@
       "was": null
     },
     "weight": 3,
-    "gap": "Availability is still implied by a price row: the product editor says to leave a country empty to not sell there, and the AI manager's set_prices reports the unpriced countries as not_sold_in (src/server/product-tools.ts). D178's Countries switch hides whole countries while keeping their prices (offeredMarkets(), commerce.market_offered()), but nothing switches one product or variant off in one market while keeping its price: no catalog object, no per-market product set shared across countries, so none of the four criteria is met beyond what deleting a price does.",
+    "gap": "Availability is still implied by a price row: the product editor says to leave a country empty to not sell there, and the AI manager's set_prices reports the unpriced countries as not_sold_in (src/server/product-tools.ts). D178's Countries switch hides whole countries while keeping their prices (offeredMarkets(), commerce.market_offered()), but nothing switches one product or variant off in one market while keeping its price: no catalog object, no per-market product set shared across countries, so none of the four criteria is met beyond what deleting a price does. Since D321 a price list can be exclusive, hiding its products from everyone else (`OFFERED`'s `product_exclusive`), but it belongs to a customer group or company, not to a market, so it does not meet the criteria either.",
     "bucket": "A",
     "wave": 7,
     "criteria": [
@@ -85,7 +85,8 @@
       "untested": false
     },
     "decisions": [
-      "D178"
+      "D178",
+      "D321"
     ],
     "history": []
   },
@@ -106,7 +107,7 @@
       "was": null
     },
     "weight": 4,
-    "gap": "Prices are entered by hand per country and converted when shown in another currency (D109, rounded to the store's step). Criteria 2 and 3 are now met for one-off changes by D165's bulk editor (src/lib/bulk-edit.ts, src/server/bulk-edit.ts, the Products list's bulk bar): a percentage (basis points, half up in BigInt) or an amount per market over the chosen products, previewed with old and new prices (previewBulk()) before it runs, saved through getProductForEdit()/saveProduct() so prices change only through commerce.set_price and the 30-day reference stays genuine, one audit entry per batch and an undo (bulk-edit.test.ts, bulk-edit.int.test.ts, e2e/signed-in/products-bulk.spec.ts). Missing: criterion 1, a standing market rule (percentage and rounding step) that derives a market's prices from a base price with a fixed price overriding it, and so criterion 4's scenario for derived prices.",
+    "gap": "Prices are entered by hand per country and converted when shown in another currency (D109, rounded to the store's step). Criteria 2 and 3 are now met for one-off changes by D165's bulk editor (src/lib/bulk-edit.ts, src/server/bulk-edit.ts, the Products list's bulk bar): a percentage (basis points, half up in BigInt) or an amount per market over the chosen products, previewed with old and new prices (previewBulk()) before it runs, saved through getProductForEdit()/saveProduct() so prices change only through commerce.set_price and the 30-day reference stays genuine, one audit entry per batch and an undo (bulk-edit.test.ts, bulk-edit.int.test.ts, e2e/signed-in/products-bulk.spec.ts). Missing: criterion 1, a standing market rule (percentage and rounding step) that derives a market's prices from a base price with a fixed price overriding it, and so criterion 4's scenario for derived prices. D321's price lists set a percentage off or fixed prices per variant, but for a customer group or company, not a market: no market's prices are derived from them.",
     "bucket": "A",
     "wave": 7,
     "criteria": [
@@ -137,7 +138,8 @@
     },
     "decisions": [
       "D109",
-      "D165"
+      "D165",
+      "D321"
     ],
     "history": []
   },
@@ -190,65 +192,6 @@
     "decisions": [
       "D181",
       "D313"
-    ],
-    "history": []
-  },
-  {
-    "id": "international.multi-language-storefront-and-ai-translation",
-    "domain": "international",
-    "feature": "Multi-language storefront and AI translation",
-    "shopify": {
-      "tier": "native",
-      "text": "Native.",
-      "url": "https://help.shopify.com/manual/markets/languages/translate-adapt-app",
-      "fetched": true,
-      "checkedOn": "2026-10-02"
-    },
-    "kaizen": {
-      "rating": "full",
-      "rechecked": true,
-      "was": null
-    },
-    "weight": 5,
-    "gap": "",
-    "bucket": null,
-    "wave": null,
-    "criteria": [
-      "A store offers any language from the platform's registry, independent of its countries, and a shopper chooses language and currency apart.",
-      "Interface text falls back to English key by key; Norwegian, Swedish, Danish and English are hand-written, other languages are AI-translated into data and read by key.",
-      "Products, menus and pages are translated in one run, a person ticks each suggestion before it is saved, legal texts start unticked and pages are saved as drafts.",
-      "Every AI translation passes validation (shape, length, claims filter) and the product, page and store texts fall back to the main language when no translation exists."
-    ],
-    "evidence": {
-      "files": [
-        "src/lib/i18n.ts",
-        "src/lib/ui-catalog.ts",
-        "src/lib/icu-lite.ts",
-        "src/lib/ui-translate.ts",
-        "src/server/ui-text.ts",
-        "src/server/languages.ts",
-        "src/lib/store-translate.ts",
-        "src/server/store-translate.ts",
-        "src/lib/page-translation.ts",
-        "src/lib/page-translate-ai.ts"
-      ],
-      "tests": [
-        "src/lib/ui-catalog.test.ts",
-        "src/lib/ui-translate.test.ts",
-        "src/lib/store-translate.test.ts",
-        "src/lib/page-translation.test.ts",
-        "src/lib/languages.test.ts",
-        "src/server/store-translate.int.test.ts",
-        "src/server/languages.int.test.ts",
-        "e2e/localization.spec.ts"
-      ],
-      "untested": false
-    },
-    "decisions": [
-      "D55",
-      "D109",
-      "D110",
-      "D111"
     ],
     "history": []
   },
@@ -317,14 +260,16 @@
       "was": null
     },
     "weight": 4,
-    "gap": "",
+    "gap": "Merged on 2026-10-26 (README rule 8): `checkout.multi-currency-pricing-and-checkout` was the same Shopify feature (rated full); its criteria and evidence are here.",
     "bucket": null,
     "wave": null,
     "criteria": [
       "A shopper sees prices in a currency the store offers at the store's rate (ECB rates refreshed daily when automatic), rounded to the store's step.",
       "Amounts are stored in the country's own currency; what is shown is converted when read and what is written (order, subscription, delivery) is in nativeCurrency.",
       "cartSummary() and placeOrder() agree in the euro view (checkout-kinds scenario).",
-      "A currency with no rate is not offered."
+      "A currency with no rate is not offered.",
+      "A shopper pays in the currency shown: the order is placed and charged in it (`\"currency\":\"eur\"` in the Stripe session).",
+      "Every money read has a euro scenario: cart, discounts, shipping, deposits and refunds agree with what is charged; rates come from the ECB and can be edited per store."
     ],
     "evidence": {
       "files": [
@@ -332,7 +277,10 @@
         "src/lib/ecb.ts",
         "src/lib/localization.ts",
         "src/lib/money.ts",
-        "src/server/localization.ts"
+        "src/server/localization.ts",
+        "src/lib/market-slug.ts",
+        "src/server/cart-summary.ts",
+        "src/server/checkout.ts"
       ],
       "tests": [
         "src/lib/currency.test.ts",
@@ -429,156 +377,6 @@
     "history": []
   },
   {
-    "id": "international.ioss",
-    "domain": "international",
-    "feature": "IOSS",
-    "shopify": {
-      "tier": "native",
-      "text": "Native.",
-      "url": "https://help.shopify.com/en/manual/taxes/eu/eu-tax-reference",
-      "fetched": true,
-      "checkedOn": "2026-10-02"
-    },
-    "kaizen": {
-      "rating": "partial",
-      "rechecked": true,
-      "was": "missing"
-    },
-    "weight": 3,
-    "gap": "Unit 1a (D157 proposed) built criteria 1, 2 and the 'off and says why' half of 4: a store records its IOSS number (`IM` plus ten digits), the intermediary's name, the markets it applies to and the registration date (`commerce.store_tax_profile`, `/admin/{store}/settings/tax`); a consignment of at most 150.00 EUR sent from outside the EU to a private buyer in a listed EU market is charged destination VAT and the order records `vat_kind = 'ioss'` and the number; above 150 EUR (`ioss_over_limit`), for a business buyer, outside the listed markets, from an EU dispatch country, for downloads, or where the currency has no euro rate it is not an IOSS sale; without a number or markets the screen says IOSS is off and what it needs. Unit 1b's invoice carries the IOSS statement and the number (D159). Unit 1c (D161 proposed) built criterion 3: `/admin/{store}/analytics/tax?view=ioss` gives the monthly IOSS data per Member State of consumption and rate in euro at the ECB's reference rate of the month's last day (or the owner's audited override), as a formula-safe CSV, refused while a rate is missing, with the above-150 EUR and other unmarked orders listed with their reason and a next-month credit note as a Part 3 correction (`tax-reports.int.test.ts` IOSS scenario, `oss-return.test.ts`, `tax-csv.test.ts`, `tax-report-admin.int.test.ts`, `oss-view.test.ts`), and the off-and-says-why state is rendered. Still short of Full: (1) bucket B: live only with a registered IOSS number or intermediary agreement the owner holds, which nothing here checks, and Kaizen submits no IOSS return; (2) the 150 EUR test uses the basket's shipped lines, not a proper intrinsic-value definition (not read), and the EU's removal of the customs-duty exemption from 1 July 2026 (Shopify's page, read 2026-10-03) is not handled; (3) the IOSS statement, the import notice, the admin help text and the report's part-of-return rules are hand-written, unreviewed and need a tax accountant (including whether a Norwegian store may register directly, marked verify); (4) neither the tax screen nor the IOSS view was opened in a browser with data (render and action tests only).",
-    "bucket": "B",
-    "wave": 1,
-    "criteria": [
-      "A store can record an IOSS identification number (and its intermediary) and the markets it applies to.",
-      "A consignment of at most 150 EUR sent from outside the EU into an EU market is charged destination VAT at checkout and the order records the IOSS number; above 150 EUR it is not an IOSS sale.",
-      "A monthly IOSS report per member state and rate can be exported.",
-      "Live only with a registered IOSS number or intermediary agreement (bucket B); until then the feature is off and says why."
-    ],
-    "evidence": {
-      "files": [
-        "src/lib/ioss.ts",
-        "src/lib/tax-profile.ts",
-        "src/lib/vat-treatment.ts",
-        "src/lib/vat-text.ts",
-        "src/server/tax-profile.ts",
-        "src/server/tax-treatment.ts",
-        "src/components/admin/tax-profile-form.tsx",
-        "src/components/order-vat.tsx",
-        "src/db/schema.ts",
-        "supabase/migrations/20261003193641_tax_engine.sql",
-        "supabase/migrations/20261003193902_tax_engine_rules.sql",
-        "docs/wave-1a-tax.md",
-        "src/lib/tax-periods.ts",
-        "src/lib/ecb-history.ts",
-        "src/lib/tax-classes.ts",
-        "src/lib/tax-report.ts",
-        "src/lib/oss-return.ts",
-        "src/lib/tax-reconciliation.ts",
-        "src/lib/tax-csv.ts",
-        "src/lib/tax-returns-due.ts",
-        "src/server/tax-reports.ts",
-        "src/server/tax-reconciliation.ts",
-        "src/server/tax-report-exports.ts",
-        "src/server/ecb-rates.ts",
-        "src/server/ecb-fetch.ts",
-        "src/server/tax-rate-overrides.ts",
-        "src/components/admin/analytics/tax-view.tsx",
-        "src/components/admin/analytics/oss-view.tsx",
-        "src/app/admin/(gated)/[store]/analytics/tax/page.tsx",
-        "src/app/admin/(gated)/[store]/analytics/tax/actions.ts",
-        "src/app/admin/(gated)/[store]/analytics/tax/export/route.ts",
-        "supabase/migrations/20261004164607_tax_reports.sql",
-        "supabase/migrations/20261004164617_tax_reports_rules.sql",
-        "docs/wave-1c-reports.md"
-      ],
-      "tests": [
-        "src/lib/ioss.test.ts",
-        "src/lib/tax-profile.test.ts",
-        "src/lib/vat-treatment.test.ts",
-        "src/server/tax-profile.int.test.ts",
-        "src/server/vat-engine.int.test.ts",
-        "src/server/vat-money-review.int.test.ts",
-        "src/components/admin/tax-profile-form.test.ts",
-        "src/lib/tax-periods.test.ts",
-        "src/lib/ecb-history.test.ts",
-        "src/lib/tax-classes.test.ts",
-        "src/lib/tax-report.test.ts",
-        "src/lib/oss-return.test.ts",
-        "src/lib/tax-reconciliation.test.ts",
-        "src/lib/tax-csv.test.ts",
-        "src/db/tax-reports.test.ts",
-        "src/server/tax-reports.int.test.ts",
-        "src/server/tax-reports-money-review.int.test.ts",
-        "src/server/tax-report-admin.int.test.ts",
-        "src/server/tax-report-exports.int.test.ts",
-        "src/server/ecb-rates.int.test.ts",
-        "src/server/checkout-kinds.int.test.ts",
-        "src/components/admin/analytics/tax-view.test.ts",
-        "src/components/admin/analytics/oss-view.test.ts",
-        "src/components/documents/order-document-view.test.ts"
-      ],
-      "untested": false
-    },
-    "decisions": [
-      "D157",
-      "D161"
-    ],
-    "history": [
-      {
-        "on": "2026-10-03",
-        "from": "missing",
-        "to": "partial",
-        "why": "Unit 1a (docs/wave-1a-tax.md): read the code and ran ioss, tax-profile and vat-engine tests: the IOSS number, intermediary and markets are recorded, an order of at most 150 EUR from outside the EU is marked IOSS in the cart and order, above 150 EUR and every other case is not, the screen says what is missing. Kept partial and not Full: the monthly IOSS report (1c) and the invoice marking (1b) do not exist, and bucket B needs a registration the owner holds."
-      }
-    ]
-  },
-  {
-    "id": "international.customs-duties-hs-codes-landed-cost",
-    "domain": "international",
-    "feature": "Customs duties, HS codes, landed cost",
-    "shopify": {
-      "tier": "native",
-      "text": "Native.",
-      "url": "https://help.shopify.com/manual/markets/markets-pro/overview",
-      "fetched": true,
-      "checkedOn": "2026-10-02"
-    },
-    "kaizen": {
-      "rating": "partial",
-      "rechecked": true,
-      "was": null
-    },
-    "weight": 3,
-    "gap": "Variants store an HS code and country of origin (validated digits), edited in the product editor, carried in the product CSV import and export (D165) and the AI manager's catalogue tools. Nothing is calculated: no duty or import VAT estimate, no DDP quote at checkout, no duties on the order, no customs data on carrier bookings or documents, and the EU's removal of the 150 EUR customs-duty exemption from 1 July 2026 is not handled. A duty-rate source would be a third party (bucket B).",
-    "bucket": "B",
-    "wave": 7,
-    "criteria": [
-      "For a shipment from the store's origin to a destination outside its customs area, checkout shows an estimated duty and import VAT (landed cost) from a duty-rate source, or says it cannot.",
-      "The estimate comes from the variant's HS code and origin and is the same in the cart and the placed order (euro scenario in checkout-kinds).",
-      "The order keeps the duties and VAT collected and who pays (DDP or DAP) and customs data reaches the carrier booking where the carrier takes it.",
-      "A missing HS code blocks a DDP quote with a plain message, never a zero duty."
-    ],
-    "evidence": {
-      "files": [
-        "src/db/schema.ts",
-        "src/lib/product-input.ts",
-        "src/components/admin/product-editor.tsx",
-        "src/lib/product-csv.ts",
-        "src/lib/product-import.ts"
-      ],
-      "tests": [
-        "src/lib/product-input.test.ts",
-        "src/db/commerce.test.ts"
-      ],
-      "untested": false
-    },
-    "decisions": [
-      "D12",
-      "D165"
-    ],
-    "history": []
-  },
-  {
     "id": "international.legal-page-templates-and-policy-generator",
     "domain": "international",
     "feature": "Legal page templates and policy generator",
@@ -661,54 +459,6 @@
         "why": "Read src/lib/legal-starters/{nb,sv,da,en}.ts, src/lib/checkout-terms.ts, src/server/checkout-terms.ts and the order page; ran legal-starters.test.ts, checkout-terms.test.ts, legal-roles.test.ts, src/db/trust.test.ts, legal-starters.int.test.ts, checkout-terms.int.test.ts (all pass). All four criteria are built and held by tests; kept Partial because every text is hand-written and unreviewed (docs/wave-1-trust.md section 8) and the checkout sentence was never run against a live Stripe checkout"
       }
     ]
-  },
-  {
-    "id": "international.cookie-consent-banner-and-api",
-    "domain": "international",
-    "feature": "Cookie consent banner and API",
-    "shopify": {
-      "tier": "native",
-      "text": "Native.",
-      "url": "https://help.shopify.com/en/manual/privacy-and-security/privacy/customer-privacy-settings",
-      "fetched": true,
-      "checkedOn": "2026-10-02"
-    },
-    "kaizen": {
-      "rating": "full",
-      "rechecked": true,
-      "was": null
-    },
-    "weight": 5,
-    "gap": "",
-    "bucket": null,
-    "wave": null,
-    "criteria": [
-      "Every cookie or storage item a site sets is listed in KNOWN_COOKIES with category and purpose; a site that sets only necessary ones shows no banner, only a Cookies page.",
-      "A site using an optional category (a tracking tool) asks first, loads third-party scripts only after consent, and re-asks when the categories change.",
-      "Each choice is logged (commerce.consents, 12 months) through /api/consent; the Cookies page lists what the latest scan found."
-    ],
-    "evidence": {
-      "files": [
-        "src/lib/cookie-consent.ts",
-        "src/server/consents.ts",
-        "src/app/api/consent/route.ts",
-        "src/components/consent/site-consent.tsx",
-        "src/components/consent/consent-manager.tsx",
-        "src/lib/cookie-scan.ts"
-      ],
-      "tests": [
-        "src/lib/cookie-consent.test.ts",
-        "src/server/consents.int.test.ts",
-        "e2e/cookies.spec.ts",
-        "src/lib/cookie-scan.test.ts",
-        "e2e/cookie-scan.spec.ts"
-      ],
-      "untested": false
-    },
-    "decisions": [
-      "D58"
-    ],
-    "history": []
   },
   {
     "id": "international.gdpr-data-export-and-erasure",

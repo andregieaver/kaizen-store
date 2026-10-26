@@ -16,7 +16,7 @@
       "was": null
     },
     "weight": 3,
-    "gap": "Owner tools plus manager tools (D94, D103 to D105, D153); calls that send, publish, spend or change access are only kept for the owner's yes. D308: it makes and changes products (A1: create_product, update_product, set_prices, set_product_status, write_product_texts, set_stock, through saveProduct()), the website (A2: build_page by the page studio after the answer with its pictures one by one, list_page_builds, edit_page, publish_page, unpublish_page, set_page_place, save_menu, set_header_footer, for a store and for Kaizena Flow's own site, through the builder's and the menu editor's own saves), the setup (A3: set_store_details, set_countries, set_languages, set_currencies, set_flat_shipping, save_shipping_method, open_store, with setup_progress saying what only the owner can do) and themes (A4: list_themes, add_theme, try_theme, make_theme_live, a premium theme only at the charge the owner was shown). D318 (PSI AGT-01, AGT-04): marketing (broadcasts, segments, customer tags, automations, gift cards), support (read, note, reply, end), the team and the plan (owner only, gate `access`), order changes and exchanges, Work, and follow-ups that come back as background turns at their time and email the person where the answer is; an order rule can ask it to look at a paid order. D309: goals with targets measured by code, plans checked against the tools it offers, the autopilot working through them every minute on the maker's yes by the owner's autonomy level and budgets, the Autopilot page and a daily digest and weekly report by email. D310: it photographs a page's draft or the live store and judges it before asking to publish (look_at_page, look_at_store). D311: legal pages written and kept current by the AI (legal_pages_status). D315: domains (search, buy, renew, DNS changes, moves) through domain-tools.ts, buying and DNS behind their gates. Still missing (criterion 3): the owner is told about finished background work only on the Autopilot page, in the conversation or by email; nothing in the admin's header or the assistant's launcher says that a build, follow-up or plan step is ready for review. Merged on 2026-10-25 (README rule 8): `platform.admin-ai-assistant` was the same Shopify feature (rated partial); its criteria and evidence are here. D329: it researches on the web (search_web through the platform's search service, metered as AI usage; read_web_page through safeFetch()), keeps findings with the addresses they rest on (save_research_note, list_research_notes) and compares options with totals worked out in code (compare_options); a store's own search key is not offered yet.",
+    "gap": "Owner tools plus manager tools (D94, D103 to D105, D153); calls that send, publish, spend or change access are only kept for the owner's yes. D308: it makes and changes products (A1: create_product, update_product, set_prices, set_product_status, write_product_texts, set_stock, through saveProduct()), the website (A2: build_page by the page studio after the answer with its pictures one by one, list_page_builds, edit_page, publish_page, unpublish_page, set_page_place, save_menu, set_header_footer, for a store and for Kaizena Flow's own site, through the builder's and the menu editor's own saves), the setup (A3: set_store_details, set_countries, set_languages, set_currencies, set_flat_shipping, save_shipping_method, open_store, with setup_progress saying what only the owner can do) and themes (A4: list_themes, add_theme, try_theme, make_theme_live, a premium theme only at the charge the owner was shown). D318 (PSI AGT-01, AGT-04): marketing (broadcasts, segments, customer tags, automations, gift cards), support (read, note, reply, end), the team and the plan (owner only, gate `access`), order changes and exchanges, Work, and follow-ups that come back as background turns at their time and email the person where the answer is; an order rule can ask it to look at a paid order. D309: goals with targets measured by code, plans checked against the tools it offers, the autopilot working through them every minute on the maker's yes by the owner's autonomy level and budgets, the Autopilot page and a daily digest and weekly report by email. D310: it photographs a page's draft or the live store and judges it before asking to publish (look_at_page, look_at_store). D311: legal pages written and kept current by the AI (legal_pages_status). D315: domains (search, buy, renew, DNS changes, moves) through domain-tools.ts, buying and DNS behind their gates. Still missing (criterion 3): the owner is told about finished background work only on the Autopilot page, in the conversation or by email; nothing in the admin's header or the assistant's launcher says that a build, follow-up or plan step is ready for review. Merged on 2026-10-25 (README rule 8): `platform.admin-ai-assistant` was the same Shopify feature (rated partial); its criteria and evidence are here. D329: it researches on the web (search_web through the platform's search service, metered as AI usage; read_web_page through safeFetch()), keeps findings with the addresses they rest on (save_research_note, list_research_notes) and compares options with totals worked out in code (compare_options); a store's own search key is not offered yet. D330: it keeps the brand in words (set_brand, get_brand), designs a look of the store's own with contrast worked out in code (design_look) and draws the logo and icon from the brand's font (make_brand_marks). D331: with *React to what happens* on, a customer waiting for a person, an A/B test that ended and an urgent alert each start an autopilot turn with only the tools that event needs. D333: with about 190 store tools and 24 of its own, a round sends at most 120 (`chooseTools()`), the rest one `load_tools` call away. D334: everything the autopilot causes counts in its AI budget, broadcasts are never automatic and emails to customers are capped a week.",
     "bucket": "A",
     "wave": 8,
     "criteria": [
@@ -73,7 +73,10 @@
         "src/lib/assistant-skills.ts",
         "src/lib/page-jobs.ts",
         "src/server/research.ts",
-        "src/server/web-search-settings.ts"
+        "src/server/web-search-settings.ts",
+        "src/server/brand-tools.ts",
+        "src/server/autopilot-events.ts",
+        "src/lib/tool-budget.ts"
       ],
       "tests": [
         "src/server/owner-assistant.int.test.ts",
@@ -108,7 +111,10 @@
         "src/lib/speech-text.test.ts",
         "src/lib/admin-map.test.ts",
         "src/server/research.int.test.ts",
-        "src/lib/research.test.ts"
+        "src/lib/research.test.ts",
+        "src/server/brand.int.test.ts",
+        "src/server/autopilot-events.int.test.ts",
+        "src/lib/tool-budget.test.ts"
       ],
       "untested": false
     },
@@ -117,17 +123,21 @@
       "D96",
       "D103",
       "D104",
+      "D105",
+      "D106",
+      "D145",
       "D153",
       "D308",
-      "D318",
       "D309",
       "D310",
       "D311",
       "D315",
-      "D105",
-      "D106",
-      "D145",
-      "D329"
+      "D318",
+      "D329",
+      "D330",
+      "D331",
+      "D333",
+      "D334"
     ],
     "history": []
   },
@@ -296,30 +306,38 @@
       "was": null
     },
     "weight": 4,
-    "gap": "",
+    "gap": "Merged on 2026-10-26 (README rule 8): `catalogue.ai-product-descriptions` was the same Shopify feature (rated full); its criteria and evidence are here.",
     "bucket": null,
     "wave": null,
     "criteria": [
       "In the product editor staff can ask for a write, improve, SEO or translate suggestion; the suggestion fills only the fields of that kind (title, description, SEO title, SEO description) within their limits.",
       "The model is given the product's own words and never prices or stock, and every suggestion passes the claims filter before it can be used.",
-      "A suggestion is only shown in the editor for staff to edit and copy in; nothing is written to the product directly, and the log records who asked, never the text."
+      "A suggestion is only shown in the editor for staff to edit and copy in; nothing is written to the product directly, and the log records who asked, never the text.",
+      "Without an AI connection the editor works and the feature says so; usage is metered for the store."
     ],
     "evidence": {
       "files": [
         "src/lib/product-writing.ts",
         "src/server/product-writer.ts",
         "src/components/admin/ai-writer.tsx",
-        "src/lib/claims.ts"
+        "src/lib/claims.ts",
+        "src/server/product-tools.ts",
+        "src/lib/product-tools.ts"
       ],
       "tests": [
         "src/lib/product-writing.test.ts",
         "src/server/product-writer.int.test.ts",
-        "src/lib/claims.test.ts"
+        "src/lib/claims.test.ts",
+        "src/server/product-tools.int.test.ts",
+        "src/lib/product-tools.test.ts"
       ],
       "untested": false
     },
     "decisions": [
-      "D76"
+      "D73",
+      "D76",
+      "D106",
+      "D308"
     ],
     "history": []
   },
@@ -530,14 +548,15 @@
       "was": null
     },
     "weight": 3,
-    "gap": "",
+    "gap": "Merged on 2026-10-26 (README rule 8): `catalogue.product-recommendations` was the same Shopify feature (rated full); its criteria and evidence are here.",
     "bucket": null,
     "wave": null,
     "criteria": [
       "A product grid with a recommendation source shows a cached stand-in for everyone and swaps in the shopper's own, using no cookie and no AI for the stand-in.",
       "Candidates come only from the store's data and every product passes recommendable() and the exclusions (anchors, cart, already bought, never-with).",
       "The model only reorders ids it was given (parseRerank), through the metered connection, under the owner's token cap, and never for the held-out arm.",
-      "The effect is measured on tabs with a minimum sample, and past orders can be replayed without learning from the order being checked."
+      "The effect is measured on tabs with a minimum sample, and past orders can be replayed without learning from the order being checked.",
+      "Category and tag pages are page roles so recommendations work around them (D140)."
     ],
     "evidence": {
       "files": [
@@ -549,13 +568,16 @@
         "src/server/recommend-eval.ts",
         "src/lib/recommend-eval.ts",
         "src/lib/recommend-session.ts",
-        "src/app/api/recommendations/route.ts"
+        "src/app/api/recommendations/route.ts",
+        "src/components/recommended-grid.tsx",
+        "docs/recommendations.md"
       ],
       "tests": [
         "src/server/recommend.int.test.ts",
         "src/lib/recommendations.test.ts",
         "src/lib/recommend-eval.test.ts",
-        "src/lib/recommend-session.test.ts"
+        "src/lib/recommend-session.test.ts",
+        "e2e/recommendations.spec.ts"
       ],
       "untested": false
     },
@@ -582,7 +604,7 @@
       "was": null
     },
     "weight": 3,
-    "gap": "D81 and D216 (docs/support.md, steps 1-14): the chat keeps its conversations on the site; a visitor asks for a person and a store's people answer in a shared inbox (or the AI hands over when it cannot help, the tone falls, or it reaches its limit), with email follow-up when nobody is online; a signed-in customer's orders, returns, bookings, subscriptions and bonus are answered from read-only tools (support-tools.ts) through cleanReply(), with link chips made by code; the AI proposes self-service actions the customer confirms and passes other requests to staff. What keeps it partial: the consumer texts of docs/support.md section 8 need human legal review before the row is rated full. Proposed criteria change (docs/support.md 1.5; the criteria themselves are not edited here): order status only to a customer proven by an emailed code or a signed-in session, since an order number with an email proves nothing.",
+    "gap": "D81 and D216 (docs/support.md, steps 1-16): the chat keeps its conversations on the site; a visitor asks for a person and a store's people answer in a shared inbox (or the AI hands over when it cannot help, the tone falls, or it reaches its limit), with email follow-up when nobody is online; a signed-in customer's orders, returns, bookings, subscriptions and bonus are answered from read-only tools (support-tools.ts) through cleanReply(), with link chips made by code; the AI proposes self-service actions the customer confirms and passes other requests to staff. What keeps it partial: the consumer texts of docs/support.md section 8 need human legal review before the row is rated full. Proposed criteria change (docs/support.md 1.5; the criteria themselves are not edited here): order status only to a customer proven by an emailed code or a signed-in session, since an order number with an email proves nothing. Since D332 (step 16) a desk also takes email: a message to the desk's address becomes a conversation, which the AI answers first by email where the desk puts the AI first (no tool that needs a signed-in customer), each AI answer marked as the AI's (D334); a sender is never tied to a customer by the address.",
     "bucket": "A",
     "wave": 8,
     "criteria": [
@@ -609,7 +631,9 @@
         "src/server/support-reports.ts",
         "src/server/support-route.ts",
         "src/server/support-tools.ts",
-        "src/server/support.ts"
+        "src/server/support.ts",
+        "src/server/support-inbound.ts",
+        "src/lib/inbound-email.ts"
       ],
       "tests": [
         "e2e/support.spec.ts",
@@ -620,14 +644,17 @@
         "src/server/support-actions.int.test.ts",
         "src/server/support-reports.int.test.ts",
         "src/server/support-tools.int.test.ts",
-        "src/server/support.int.test.ts"
+        "src/server/support.int.test.ts",
+        "src/server/support-inbound.int.test.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D81",
       "D153",
-      "D216"
+      "D216",
+      "D332",
+      "D334"
     ],
     "history": []
   },
@@ -648,7 +675,7 @@
       "was": null
     },
     "weight": 2,
-    "gap": "The AI page studio (D92) interviews, plans sections from PATTERNS, writes the words, builds rows and makes the pictures as a draft, plus Make my page cool (D128), AI page translation and copying another site's page (D150); the builder's picture fields make and remake a picture from a description in the site's look (D283). Since D308 (A2) the AI manager builds a page from a brief and changes an existing page from a person's words (edit_page: texts through mapTexts() and replaceInPage() and the row edits, tried first by dryRunEdits(), saved as a draft by savePage(); publishing gated; src/server/site-tools.ts), and since D310 it photographs the draft on a phone and a computer and fixes what the checks find before asking to publish; since A4 it chooses among made themes and presets (list_themes, add_theme, try_theme, make_theme_live). Still short: (1) a described change is saved as a draft from the assistant's panel, not applied unsaved in the open builder (criterion 1); (2) nothing changes a theme's settings from a description ('use warmer colours'): the AI can only pick an existing theme or preset (criterion 2); (3) no whole-store redesign. D330: the AI manager designs a look of the store's own (design_look: a few brand colours, fonts and Design settings' named choices, both palettes worked out in code to 4.5:1, added to the theme library to try and make live) and keeps the brand in words (set_brand, get_brand); since F2a it draws the logo for light and dark and the site's icon from the brand's name in its own font (make_brand_marks, by code from the font's outlines, never a picture model) and puts them in place on the owner's yes (set_header_footer); since F2b the brand guides the page studio, the product writer, broadcasts' suggestions and the chat's tone, its words to avoid found by code beside the claims filter.",
+    "gap": "The AI page studio (D92) interviews, plans sections from PATTERNS, writes the words, builds rows and makes the pictures as a draft, plus Make my page cool (D128), AI page translation and copying another site's page (D150); the builder's picture fields make and remake a picture from a description in the site's look (D283). Since D308 (A2) the AI manager builds a page from a brief and changes an existing page from a person's words (edit_page: texts through mapTexts() and replaceInPage() and the row edits, tried first by dryRunEdits(), saved as a draft by savePage(); publishing gated; src/server/site-tools.ts), and since D310 it photographs the draft on a phone and a computer and fixes what the checks find before asking to publish; since A4 it chooses among made themes and presets (list_themes, add_theme, try_theme, make_theme_live). Still short: (1) a described change is saved as a draft from the assistant's panel, not applied unsaved in the open builder (criterion 1); (2) no whole-store redesign in one step. Criterion 2 holds since D330: the AI manager designs a look of the store's own (design_look: a few brand colours, fonts and Design settings' named choices, both palettes worked out in code to 4.5:1, added to the theme library to try and make live) and keeps the brand in words (set_brand, get_brand); since F2a it draws the logo for light and dark and the site's icon from the brand's name in its own font (make_brand_marks, by code from the font's outlines, never a picture model) and puts them in place on the owner's yes (set_header_footer); since F2b the brand guides the page studio, the product writer, broadcasts' suggestions and the chat's tone, its words to avoid found by code beside the claims filter.",
     "bucket": "A",
     "wave": 8,
     "criteria": [
@@ -778,14 +805,16 @@
       "was": null
     },
     "weight": 3,
-    "gap": "The assistant answers only from fixed, code-counted tools: analytics_overview, explain_change, analytics_alerts, sales_summary, sales_trend, sales_funnel, product_performance, customer_insights, restock_suggestions, search_insights, cart_reminder_stats, vat_report and oss_return_data among them (D104, D152, D161). No arbitrary cut (by variant, category, channel, country, payment method), no saved or custom report and no query layer for the model to use; the analytics pages are fixed views, and the report builder this would rest on is missing.",
+    "gap": "The assistant answers only from fixed, code-counted tools: analytics_overview, explain_change, analytics_alerts, sales_summary, sales_trend, sales_funnel, product_performance, customer_insights, restock_suggestions, search_insights, cart_reminder_stats, vat_report and oss_return_data among them (D104, D152, D161). No arbitrary cut (by variant, category, channel, country, payment method), no saved or custom report and no query layer for the model to use; the analytics pages are fixed views, and the report builder this would rest on is missing. Merged on 2026-10-26 (README rule 8): `analytics.natural-language-analytics` was the same Shopify feature (rated partial); its criteria and evidence are here.",
     "bucket": "A",
     "wave": 8,
     "criteria": [
       "Over a safe query layer (a typed spec, never free SQL) the assistant can answer a question that cuts a figure by dimension and period; amounts are per currency with a counted note for currencies without a rate.",
       "A figure that cannot be known is returned as what is missing and how to add it, never as zero, and every number is counted in code.",
       "The owner can save an answer as a report that reruns on fresh data, and it shows its definition.",
-      "Every report query takes the store id and runs through setBased()."
+      "Every report query takes the store id and runs through setBased().",
+      "A question the layer cannot answer is declined in words that say what can be asked.",
+      "Without a text model the manager still answers from the fixed tools, and the call is metered under its own AI feature."
     ],
     "evidence": {
       "files": [
@@ -793,7 +822,9 @@
         "src/server/owner-tools.ts",
         "src/server/owner-insights.ts",
         "src/server/analytics-insights.ts",
-        "src/lib/owner-tools.ts"
+        "src/lib/owner-tools.ts",
+        "src/lib/manager-tools.ts",
+        "src/lib/assistant-skills.ts"
       ],
       "tests": [
         "src/server/analytics-tools.int.test.ts",
@@ -804,9 +835,11 @@
       "untested": false
     },
     "decisions": [
+      "D103",
       "D104",
       "D152",
-      "D161"
+      "D161",
+      "D216"
     ],
     "history": []
   },
@@ -886,77 +919,6 @@
     ]
   },
   {
-    "id": "ai.workflow-builder-with-ai-generation",
-    "domain": "ai",
-    "feature": "Workflow builder with AI generation",
-    "shopify": {
-      "tier": "native",
-      "text": "Native (Shopify Flow). Workflows are made manually in a drag-and-drop editor with triggers, conditions and actions, from templates, or by describing them to Sidekick (desktop only); a generated workflow starts inactive and tagged sidekick. The page does not state plan availability.",
-      "url": "https://help.shopify.com/en/manual/shopify-flow/create/create-workflow",
-      "fetched": true,
-      "checkedOn": "2026-10-03"
-    },
-    "kaizen": {
-      "rating": "partial",
-      "rechecked": true,
-      "was": "missing"
-    },
-    "weight": 3,
-    "gap": "D238's order rules (Settings -> Automation, src/lib/order-rules.ts, src/server/order-rules.ts, src/components/admin/automation/) are an owner-made workflow for one trigger: when an order is paid (RULE_EVENTS), up to ten conditions from a closed list (total, country, buyer, first order, product, delivery, backorder, gift, source, tag, seller, Stripe risk) and actions tag, notify staff, hold fulfilment and ask the AI manager (D318); saved, switched on and off and ordered, at most 50 a store and 20 AI asks a day, each run logged with what each condition and action came to. Still missing: other triggers (customer, stock, return events), actions that email a customer, call a webhook, post to Slack or create a task, a test run before switching a rule on, and the assistant drafting a rule from a description (order_rules is a read-only tool; rules are made only on the Automation page). Outbound webhooks (D41) and Slack (D101) are credited in platform.outgoing-webhooks; the autopilot's plans (D309) are steps toward goals, not event workflows; since D328 it looks at each goal again when a plan for it ends and on a schedule and makes the next plan, started by itself where the owner allows, which is still no trigger an owner chooses.",
-    "bucket": "A",
-    "wave": 9,
-    "criteria": [
-      "An owner can create a workflow of one trigger (an order, customer, stock or return event), conditions on its data and actions (email, tag, webhook, Slack, create a task), save it inactive, test it and activate it.",
-      "Runs are logged with their result, retried, bounded per store, and can be switched off; an action that sends or spends follows the same gates as the assistant.",
-      "The assistant turns a description into a draft workflow that is validated like a hand-made one and always starts inactive."
-    ],
-    "evidence": {
-      "files": [
-        "src/server/integrations.ts",
-        "src/lib/integrations.ts",
-        "src/lib/slack.ts",
-        "src/server/slack.ts",
-        "src/app/api/cron/integrations/route.ts",
-        "src/lib/order-rules.ts",
-        "src/server/order-rules.ts",
-        "src/components/admin/automation/rule-editor.tsx",
-        "src/app/admin/(gated)/[store]/settings/automation/page.tsx",
-        "src/server/autopilot-reviews.ts"
-      ],
-      "tests": [
-        "src/server/integrations.int.test.ts",
-        "src/lib/integrations.test.ts",
-        "src/lib/slack.test.ts",
-        "src/lib/order-rules.test.ts",
-        "src/server/order-rules.int.test.ts",
-        "e2e/signed-in/automation.spec.ts",
-        "src/server/autopilot-reviews.int.test.ts"
-      ],
-      "untested": false
-    },
-    "decisions": [
-      "D41",
-      "D101",
-      "D238",
-      "D318",
-      "D328"
-    ],
-    "history": [
-      {
-        "on": "2026-10-03",
-        "from": "partial",
-        "to": "missing",
-        "why": "No builder exists; the webhook queue is credited in platform.outgoing-webhooks"
-      },
-      {
-        "on": "2026-10-25",
-        "from": "missing",
-        "to": "partial",
-        "why": "Read src/lib/order-rules.ts, src/server/order-rules.ts and Settings -> Automation (D238): an owner-made trigger-condition-action rule for one trigger (order paid), a closed list of conditions, actions tag, notify staff, hold and ask the AI manager (D318), saved on or off, at most 50 a store, every run logged in order_rule_runs; held by src/lib/order-rules.test.ts, src/server/order-rules.int.test.ts (run, passing) and e2e/signed-in/automation.spec.ts. Criteria 1 and 2 hold in part; criterion 3 (AI drafts a workflow) is not built: order_rules is a read-only tool."
-      }
-    ]
-  },
-  {
     "id": "ai.create-discounts-and-campaigns-from-a-prompt",
     "domain": "ai",
     "feature": "Create discounts and campaigns from a prompt",
@@ -1021,7 +983,7 @@
       "was": "missing"
     },
     "weight": 3,
-    "gap": "D297: the broadcast editor's Write with AI (suggestBroadcast()) suggests a subject, preview, heading, paragraphs and a button's words in the chosen language from the staff's own words, every text through findClaims() (a claim refuses the suggestion), never saved or sent; the person sends with their own press, only to subscribed addresses with an unsubscribe link. Since D318 the AI manager drafts one too (draft_broadcast, for everyone or one segment, saved as a draft) and sends only behind the send gate (send_broadcast). Still missing (criterion 1): writing from the store's own facts through tools (products, campaigns); the writer is given only the staff's words and told never to name a product or price it was not told.",
+    "gap": "D297: the broadcast editor's Write with AI (suggestBroadcast()) suggests a subject, preview, heading, paragraphs and a button's words in the chosen language from the staff's own words, every text through findClaims() (a claim refuses the suggestion), never saved or sent; the person sends with their own press, only to subscribed addresses with an unsubscribe link. Since D318 the AI manager drafts one too (draft_broadcast, for everyone or one segment, saved as a draft) and sends only behind the send gate (send_broadcast). Still missing (criterion 1): writing from the store's own facts through tools (products, campaigns); the writer is given only the staff's words and told never to name a product or price it was not told. Since D330 F2b the store's brand guide (`brandGuide()`, its words to avoid found by `findAvoided()`) reaches the broadcast suggestions below the prompt's rules.",
     "bucket": "A",
     "wave": 8,
     "criteria": [
@@ -1051,7 +1013,8 @@
     "decisions": [
       "D104",
       "D297",
-      "D318"
+      "D318",
+      "D330"
     ],
     "history": [
       {

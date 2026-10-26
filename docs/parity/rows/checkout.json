@@ -852,54 +852,6 @@
     ]
   },
   {
-    "id": "checkout.multi-currency-pricing-and-checkout",
-    "domain": "checkout",
-    "feature": "Multi-currency pricing and checkout",
-    "shopify": {
-      "tier": "native",
-      "text": "Native. Presentment currencies per market with exchange-rate settings and rounding.",
-      "url": "https://help.shopify.com/en/manual/markets/pricing/exchange-rates",
-      "fetched": true,
-      "checkedOn": "2026-10-02"
-    },
-    "kaizen": {
-      "rating": "full",
-      "rechecked": true,
-      "was": null
-    },
-    "weight": 4,
-    "gap": "",
-    "bucket": null,
-    "wave": null,
-    "criteria": [
-      "A store offers any currencies it sets a rate for; a shopper views and pays in the one shown, and the order is placed and charged in that currency (`\"currency\":\"eur\"` in the Stripe session).",
-      "Amounts convert through the euro at the store's rates and round to the currency's step; a currency without a rate is not converted.",
-      "Every money read has a euro scenario: cart, discounts, shipping, deposits and refunds agree with what is charged.",
-      "Rates come from the ECB and can be edited per store."
-    ],
-    "evidence": {
-      "files": [
-        "src/lib/currency.ts",
-        "src/lib/ecb.ts",
-        "src/lib/market-slug.ts",
-        "src/server/localization.ts",
-        "src/server/cart-summary.ts",
-        "src/server/checkout.ts"
-      ],
-      "tests": [
-        "src/lib/currency.test.ts",
-        "src/lib/ecb.test.ts",
-        "src/server/localization.int.test.ts",
-        "src/server/checkout-kinds.int.test.ts"
-      ],
-      "untested": false
-    },
-    "decisions": [
-      "D109"
-    ],
-    "history": []
-  },
-  {
     "id": "checkout.eu-vat-by-destination-vat-inclusive-prices-reduced-rates",
     "domain": "checkout",
     "feature": "EU VAT by destination, VAT-inclusive prices, reduced rates",
@@ -991,14 +943,16 @@
       "was": "missing"
     },
     "weight": 4,
-    "gap": "Built (D157, D159, D161): the store's registration (`commerce.store_tax_profile`: VAT number, Union or non-Union OSS, IOSS number and intermediary) edited by owners at `/admin/{store}/settings/tax` (driven in `e2e/signed-in/vat-screens.spec.ts`); destination VAT on every consumer sale; a consignment of at most 150 EUR sent from outside the EU to a private buyer in a listed market marked `vat_kind = 'ioss'` with the number on the order, email, invoice and credit note; `/admin/{store}/analytics/tax?view=oss|ioss` gives the quarterly and monthly return data per Member State and rate (Parts 2 to 5) in euro at the ECB reference rate, from documents only, with a CSV refused while a rate is missing and refunds reducing the period through credit notes (`tax-reports.int.test.ts`, `oss-return.test.ts`, `tax-report-admin.int.test.ts`). Still short of Full: (1) bucket B: live only with a registration the owner holds, and no number is checked against a register; (2) Kaizena Flow files nothing, and `classify()` (which part of a return a sale belongs in) and the 150 EUR intrinsic-value test have not been read by an accountant; (3) a refund of an order with no invoice is in no return, only the refunds line; (4) the 10,000 EUR threshold and origin-country rule are not applied (said on the screen); (5) the report page has not been opened in a browser with data; (6) the IOSS statement and import notice are hand-written and unreviewed; (7) the EC Sales List and national return mappings are not built.",
+    "gap": "Built (D157, D159, D161): the store's registration (`commerce.store_tax_profile`: VAT number, Union or non-Union OSS, IOSS number and intermediary) edited by owners at `/admin/{store}/settings/tax` (driven in `e2e/signed-in/vat-screens.spec.ts`); destination VAT on every consumer sale; a consignment of at most 150 EUR sent from outside the EU to a private buyer in a listed market marked `vat_kind = 'ioss'` with the number on the order, email, invoice and credit note; `/admin/{store}/analytics/tax?view=oss|ioss` gives the quarterly and monthly return data per Member State and rate (Parts 2 to 5) in euro at the ECB reference rate, from documents only, with a CSV refused while a rate is missing and refunds reducing the period through credit notes (`tax-reports.int.test.ts`, `oss-return.test.ts`, `tax-report-admin.int.test.ts`). Still short of Full: (1) bucket B: live only with a registration the owner holds, and no number is checked against a register; (2) Kaizena Flow files nothing, and `classify()` (which part of a return a sale belongs in) and the 150 EUR intrinsic-value test have not been read by an accountant; (3) a refund of an order with no invoice is in no return, only the refunds line; (4) the 10,000 EUR threshold and origin-country rule are not applied (said on the screen); (5) the report page has not been opened in a browser with data; (6) the IOSS statement and import notice are hand-written and unreviewed; (7) the EC Sales List and national return mappings are not built. Merged on 2026-10-26 (README rule 8): `international.ioss` was the IOSS half of this feature (rated partial); its criteria and evidence are here, among them that the 150 EUR test uses the basket's shipped lines rather than a reviewed intrinsic-value definition and that the EU's removal of the customs-duty exemption from 1 July 2026 is not handled.",
     "bucket": "B",
     "wave": 1,
     "criteria": [
       "An owner enters an OSS or IOSS registration; checkout uses destination VAT as the registration requires.",
       "A quarterly (OSS) and monthly (IOSS) report gives sales, VAT base and VAT by country and rate as a CSV export holding the data a return asks for in its boxes (Kaizen files nothing).",
       "A consignment of 150 euro or less from outside the EU is charged destination VAT at checkout and marked IOSS on the order and invoice.",
-      "A refund reduces the period's VAT in the report through its credit note (a refund of an order with no invoice appears only in the refunds line)."
+      "A refund reduces the period's VAT in the report through its credit note (a refund of an order with no invoice appears only in the refunds line).",
+      "An IOSS number is recorded with its intermediary and the markets it applies to; above 150 EUR, to a business, outside the listed markets or from an EU dispatch country a sale is not an IOSS sale.",
+      "Live only with a registration the owner holds (bucket B); until then the screen says IOSS is off and what it needs."
     ],
     "evidence": {
       "files": [
@@ -1229,176 +1183,6 @@
         "from": "missing",
         "to": "partial",
         "why": "Payment terms for company accounts (D293): placed unpaid with a due date and its invoice, reminded, overdue in the control center and Finance, paid by a link or recorded, in tests. Sales are dated by the order day, not the payment day."
-      }
-    ]
-  },
-  {
-    "id": "checkout.abandoned-checkout-recovery",
-    "domain": "checkout",
-    "feature": "Abandoned checkout recovery",
-    "shopify": {
-      "tier": "native",
-      "text": "Native. Abandoned checkout emails with a recovery link and optional discount.",
-      "url": "https://help.shopify.com/en/manual/orders/abandoned-checkouts",
-      "fetched": true,
-      "checkedOn": "2026-10-02"
-    },
-    "kaizen": {
-      "rating": "full",
-      "rechecked": true,
-      "was": null
-    },
-    "weight": 4,
-    "gap": "Evidence debt: the erasure after 60 days (`KEEP_DAYS` in `sendDueCartReminders()`) and the admin figures from `cartReminderStats()` are in the code but no listed test asserts them.",
-    "bucket": null,
-    "wave": null,
-    "criteria": [
-      "With reminders on, a typed email captures the cart, and up to three reminders go at the owner's delays, each with its own optional code, words per language and a button that restores the cart.",
-      "At most one reminder per cart per run, none after the cart is paid, the same email buys, or the shopper opts out; each is claimed before it is sent.",
-      "Every email has a one-click unsubscribe (List-Unsubscribe headers) and the data is erased on opt-out and after 60 days.",
-      "The admin shows carts captured, reminded and recovered, with the sales."
-    ],
-    "evidence": {
-      "files": [
-        "src/server/cart-reminders.ts",
-        "src/lib/cart-reminders.ts",
-        "src/server/checkout.ts",
-        "src/server/stripe-webhooks.ts"
-      ],
-      "tests": [
-        "src/lib/cart-reminders.test.ts",
-        "src/server/cart-reminders.int.test.ts",
-        "e2e/cart-reminders.spec.ts"
-      ],
-      "untested": true
-    },
-    "decisions": [
-      "D33"
-    ],
-    "history": []
-  },
-  {
-    "id": "checkout.discount-codes-and-automatic-discounts",
-    "domain": "checkout",
-    "feature": "Discount codes and automatic discounts",
-    "shopify": {
-      "tier": "native",
-      "text": "Native. Monetary, percentage, buy X get Y and free-shipping discounts, as codes or automatic; combinations and eligibility are set per discount.",
-      "url": "https://help.shopify.com/en/manual/discounts",
-      "fetched": true,
-      "checkedOn": "2026-10-03"
-    },
-    "kaizen": {
-      "rating": "partial",
-      "rechecked": true,
-      "was": "full"
-    },
-    "weight": 4,
-    "gap": "Codes (D31, D299): percent, fixed amount per market, free shipping, minimum amount and number of items, dates, total and per-customer limits; products, categories and tags; customer groups or named customers (E1); generated single-use codes with a CSV (E1); up to five on one order under each code's combination choice (`combines_with`, `stackCodes()`), the best for the shopper where two cannot combine (E2). Automatic campaigns (D114 to D116, D299 E3 and E4): percentage, buy N pay M, free product, an amount off, free shipping, tiers by items or spend and buy X get Y, for categories, tags and customer groups, each optionally stacking with other campaigns. All with scenarios in `checkout-kinds.int.test.ts`, euro included. Left (criterion 3): a campaign and a code always combine (campaigns come first, codes count what is left), so an owner cannot say a code is not to be used with a campaign, or a campaign with codes, as Shopify's combinations allow.",
-    "bucket": "A",
-    "wave": 5,
-    "criteria": [
-      "A code can be limited to categories and tags, to a customer group or named customers, and to a minimum quantity.",
-      "A store generates a batch of unique codes and exports them.",
-      "An owner chooses which discounts combine; the cart and `placeOrder()` agree on the result.",
-      "Every new kind has scenarios in checkout-kinds.int.test.ts, one of them in euro."
-    ],
-    "evidence": {
-      "files": [
-        "src/lib/discounts.ts",
-        "src/server/discounts.ts",
-        "src/lib/campaigns.ts",
-        "src/server/campaigns.ts",
-        "src/server/cart-summary.ts",
-        "src/server/checkout.ts",
-        "src/components/admin/generated-codes.tsx",
-        "src/app/admin/(gated)/[store]/discounts/[discountId]/codes/route.ts",
-        "src/lib/code-words.ts",
-        "src/components/checkout-code-form.tsx",
-        "src/components/discount-code-form.tsx"
-      ],
-      "tests": [
-        "src/lib/discounts.test.ts",
-        "src/server/discounts.int.test.ts",
-        "src/server/checkout-kinds.int.test.ts",
-        "e2e/discounts.spec.ts",
-        "e2e/campaigns.spec.ts",
-        "src/server/campaigns.int.test.ts"
-      ],
-      "untested": false
-    },
-    "decisions": [
-      "D31",
-      "D38",
-      "D108",
-      "D114",
-      "D115",
-      "D116",
-      "D299"
-    ],
-    "history": [
-      {
-        "on": "2026-10-03",
-        "from": "full",
-        "to": "partial",
-        "why": "Re-read at HEAD: codes reach products only (`discount_codes.product_ids`), one code per order, no customer eligibility or bulk generation; the Customers domain rates the same two features partial."
-      }
-    ]
-  },
-  {
-    "id": "checkout.refunds-and-cancellation",
-    "domain": "checkout",
-    "feature": "Refunds and cancellation",
-    "shopify": {
-      "tier": "native",
-      "text": "Native. Cancel an order, refund in full or in part to the original method or store credit, restock items, notify the customer.",
-      "url": "https://help.shopify.com/en/manual/orders/refund-cancel-order",
-      "fetched": true,
-      "checkedOn": "2026-10-03"
-    },
-    "kaizen": {
-      "rating": "partial",
-      "rechecked": true,
-      "was": "full"
-    },
-    "weight": 5,
-    "gap": "Refunds, partial refunds, restock, cancel and the customer's email work (`order-admin.int.test.ts`); returns and withdrawals refund through the same path (D153), a refund is split over the order's captured payments and sent to each payment's provider (D174 `splitRefund()`, D292), and an uncaptured card is released rather than refunded (D289). Missing (criterion 5): a refund as store credit. Gift cards exist and staff can issue one by hand (D300 F4), but a refund cannot be paid to one, and bonus credits (D130) are earned, not refunded to.",
-    "bucket": "A",
-    "wave": 5,
-    "criteria": [
-      "Staff refund any amount up to what is left through Stripe on the store's account, with Kaizen's fee on that part returned (`refund_application_fee`); more than is left is refused.",
-      "Chosen items go back in stock, with or without money back; only physical lines, and never more than were bought.",
-      "Cancelling a paid, unsent order refunds everything left, restocks and closes it; a sent order cannot be cancelled.",
-      "The customer is emailed once per refund; returns and withdrawals refund through the same path (D153).",
-      "Staff can refund to a store credit balance the shopper can use at checkout, recorded in an append-only ledger (integration test, euro scenario)."
-    ],
-    "evidence": {
-      "files": [
-        "src/server/order-admin.ts",
-        "src/server/shopper-emails.ts",
-        "src/lib/return-refund.ts",
-        "src/server/order-returns.ts"
-      ],
-      "tests": [
-        "src/server/order-admin.int.test.ts",
-        "src/lib/return-refund.test.ts",
-        "src/server/returns-money-review.int.test.ts"
-      ],
-      "untested": false
-    },
-    "decisions": [
-      "D27",
-      "D153",
-      "D289",
-      "D292",
-      "D300"
-    ],
-    "history": [
-      {
-        "on": "2026-10-03",
-        "from": "full",
-        "to": "partial",
-        "why": "Shopify refunds to store credit; Kaizen refunds to the original method only"
       }
     ]
   }
