@@ -23,6 +23,7 @@ export type PriceLine = {
   perImage: number | null;
   perAudioMinute: number | null;
   perMillionCharacters: number | null;
+  perThousandSearches: number | null;
   effectiveFrom: string;
   note: string;
   /** In force today; the others are history. */
@@ -34,7 +35,7 @@ export async function listPrices(): Promise<PriceLine[]> {
   const rows = await db().execute<Row>(sql`
     select p.id, p.provider, p.model, p.input_per_million::float8 as input_per_million, p.output_per_million::float8 as output_per_million,
       p.per_image::float8 as per_image, p.per_audio_minute::float8 as per_audio_minute, p.per_million_characters::float8 as per_million_characters,
-      p.effective_from, p.note,
+      p.per_thousand_searches::float8 as per_thousand_searches, p.effective_from, p.note,
       p.effective_from = (
         select max(q.effective_from) from commerce.ai_model_prices q
         where q.provider = p.provider and q.model = p.model and q.effective_from <= now()
@@ -51,13 +52,14 @@ export async function listPrices(): Promise<PriceLine[]> {
     perImage: r.per_image === null ? null : Number(r.per_image),
     perAudioMinute: r.per_audio_minute === null ? null : Number(r.per_audio_minute),
     perMillionCharacters: r.per_million_characters === null ? null : Number(r.per_million_characters),
+    perThousandSearches: r.per_thousand_searches === null ? null : Number(r.per_thousand_searches),
     effectiveFrom: new Date(String(r.effective_from)).toISOString(),
     note: String(r.note ?? ""),
     current: Boolean(r.current),
   }));
 }
 
-export type UnpricedModel = { provider: string; model: string; requests: number; tokens: number; images: number; audioSeconds: number; characters: number };
+export type UnpricedModel = { provider: string; model: string; requests: number; tokens: number; images: number; audioSeconds: number; characters: number; searches: number };
 
 /**
  * Models used in the last 90 days that the usage pages cannot price, most used first: no price in force for the calls, or a
@@ -66,7 +68,8 @@ export type UnpricedModel = { provider: string; model: string; requests: number;
 export async function unpricedModels(): Promise<UnpricedModel[]> {
   const rows = await db().execute<Row>(sql`
     select u.provider, u.model, sum(u.requests)::bigint as requests, sum(u.input_tokens + u.output_tokens)::bigint as tokens,
-      sum(u.images)::bigint as images, sum(u.audio_seconds)::bigint as audio_seconds, sum(u.characters)::bigint as characters
+      sum(u.images)::bigint as images, sum(u.audio_seconds)::bigint as audio_seconds, sum(u.characters)::bigint as characters,
+      sum(u.searches)::bigint as searches
     from commerce.ai_usage u
     ${priceFor}
     where u.created_at > now() - interval '90 days' and ${unpricedSql}
@@ -81,6 +84,7 @@ export async function unpricedModels(): Promise<UnpricedModel[]> {
     images: Number(r.images),
     audioSeconds: Number(r.audio_seconds),
     characters: Number(r.characters),
+    searches: Number(r.searches),
   }));
 }
 
@@ -95,9 +99,9 @@ export async function setPrice(account: Account, form: { get(name: string): Form
   const [known] = await db().execute<Row>(sql`select 1 as one from commerce.ai_model_prices where provider = ${p.provider} and model = ${p.model} limit 1`);
   const first = !known;
   await db().execute(sql`
-    insert into commerce.ai_model_prices (provider, model, input_per_million, output_per_million, per_image, per_audio_minute, per_million_characters, effective_from, note, created_by)
-    values (${p.provider}, ${p.model}, ${p.inputPerMillion}, ${p.outputPerMillion}, ${p.perImage}, ${p.perAudioMinute}, ${p.perMillionCharacters}, ${first ? sql`${BEGINNING}::timestamptz` : sql`now()`}, ${p.note}, ${account.id}::uuid)
+    insert into commerce.ai_model_prices (provider, model, input_per_million, output_per_million, per_image, per_audio_minute, per_million_characters, per_thousand_searches, effective_from, note, created_by)
+    values (${p.provider}, ${p.model}, ${p.inputPerMillion}, ${p.outputPerMillion}, ${p.perImage}, ${p.perAudioMinute}, ${p.perMillionCharacters}, ${p.perThousandSearches}, ${first ? sql`${BEGINNING}::timestamptz` : sql`now()`}, ${p.note}, ${account.id}::uuid)
   `);
-  await audit(account.id, null, "platform.ai_price_set", { provider: p.provider, model: p.model, input: p.inputPerMillion, output: p.outputPerMillion, image: p.perImage, audio_minute: p.perAudioMinute, million_characters: p.perMillionCharacters, first });
+  await audit(account.id, null, "platform.ai_price_set", { provider: p.provider, model: p.model, input: p.inputPerMillion, output: p.outputPerMillion, image: p.perImage, audio_minute: p.perAudioMinute, million_characters: p.perMillionCharacters, thousand_searches: p.perThousandSearches, first });
   return { ok: true, first };
 }

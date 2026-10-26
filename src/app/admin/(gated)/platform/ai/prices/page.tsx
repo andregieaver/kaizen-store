@@ -19,12 +19,13 @@ export const metadata: Metadata = { title: "AI prices" };
 const input = "min-h-10 rounded-md border border-line bg-card px-3 text-sm font-normal";
 type Words = PlatformToolsMessages["prices"];
 const used = (n: number, words: { one: string; many: string }, locale: string) => countWords(n, words, { n: n.toLocaleString(locale) });
-const usedWords = (m: { tokens: number; images: number; audioSeconds: number; characters: number }, w: Words, locale: string) =>
+const usedWords = (m: { tokens: number; images: number; audioSeconds: number; characters: number; searches: number }, w: Words, locale: string) =>
   [
     m.tokens > 0 && used(m.tokens, w.token, locale),
     m.images > 0 && used(m.images, w.picture, locale),
     m.audioSeconds > 0 && used(Math.max(1, Math.round(m.audioSeconds / 60)), w.minute, locale),
     m.characters > 0 && used(m.characters, w.character, locale),
+    m.searches > 0 && used(m.searches, w.search, locale),
   ]
     .filter(Boolean)
     .join(", ");
@@ -102,6 +103,10 @@ export default async function PlatformAiPricesPage({ searchParams }: PageProps<"
             {w.perCharacters}
             <input name="per_million_characters" inputMode="decimal" placeholder={w.none} className={`${input} w-48`} />
           </label>
+          <label className="flex flex-col gap-1 text-sm font-medium">
+            {w.perSearches}
+            <input name="per_thousand_searches" inputMode="decimal" placeholder={w.none} className={`${input} w-48`} />
+          </label>
           <label className="flex min-w-56 flex-1 flex-col gap-1 text-sm font-medium">
             {w.note}
             <input name="note" maxLength={300} placeholder={w.noteHint} className={input} />
@@ -125,6 +130,7 @@ export default async function PlatformAiPricesPage({ searchParams }: PageProps<"
                   <th scope="col" className="px-2 py-2 text-right font-normal">{w.perPicture}</th>
                   <th scope="col" className="px-2 py-2 text-right font-normal">{w.perAudioMinute}</th>
                   <th scope="col" className="px-2 py-2 text-right font-normal">{w.perMillionCharacters}</th>
+                  <th scope="col" className="px-2 py-2 text-right font-normal">{w.perThousandSearches}</th>
                   <th scope="col" className="px-2 py-2 font-normal">{w.since}</th>
                   <th scope="col" className="px-2 py-2 font-normal">{w.note}</th>
                 </tr>
@@ -142,6 +148,7 @@ export default async function PlatformAiPricesPage({ searchParams }: PageProps<"
                       <td className="px-2 py-2 text-right tabular-nums">{formatUnitPrice(line.perImage)}</td>
                       <td className="px-2 py-2 text-right tabular-nums">{formatUnitPrice(line.perAudioMinute)}</td>
                       <td className="px-2 py-2 text-right tabular-nums">{formatUnitPrice(line.perMillionCharacters)}</td>
+                      <td className="px-2 py-2 text-right tabular-nums">{formatUnitPrice(line.perThousandSearches)}</td>
                       <td className="px-2 py-2">{line.effectiveFrom.startsWith("2000-01-01") ? w.beginning : date.format(new Date(line.effectiveFrom))}</td>
                       <td className="px-2 py-2">{line.note || "–"}</td>
                     </tr>

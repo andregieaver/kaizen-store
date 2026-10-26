@@ -7,7 +7,7 @@
 
 import { formatUsd } from "./ai-cost";
 
-export const AI_KINDS = ["text", "embedding", "transcription", "speech", "image", "live"] as const;
+export const AI_KINDS = ["text", "embedding", "transcription", "speech", "image", "live", "search"] as const;
 export type AiKind = (typeof AI_KINDS)[number];
 
 export const KIND_WORDS: Record<AiKind, string> = {
@@ -17,11 +17,13 @@ export const KIND_WORDS: Record<AiKind, string> = {
   speech: "Text to speech",
   image: "Pictures",
   live: "Live voice calls",
+  search: "Web search",
 };
 
 /** What in Kaizen asked for the call, in words people read. */
 export const AI_FEATURES = {
   ai_manager: "AI manager",
+  web_research: "Web research",
   autopilot: "Autopilot",
   chat_agent: "Chat agent",
   search: "Search",
@@ -65,9 +67,11 @@ export type UsageAmounts = {
   audioBytes: number;
   audioSeconds: number;
   images: number;
+  /** Web searches (D329). */
+  searches: number;
 };
 
-export const NO_USAGE: UsageAmounts = { inputTokens: 0, outputTokens: 0, characters: 0, audioBytes: 0, audioSeconds: 0, images: 0 };
+export const NO_USAGE: UsageAmounts = { inputTokens: 0, outputTokens: 0, characters: 0, audioBytes: 0, audioSeconds: 0, images: 0, searches: 0 };
 
 /** Tokens for text a provider did not count: about four characters each. */
 export const estimateTokens = (characters: number) => Math.ceil(Math.max(0, characters) / 4);

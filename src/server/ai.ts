@@ -216,7 +216,7 @@ export function seeing(connection: AiConnection | null): AiConnection | null {
 }
 
 /** Whether a store has AI left this month on Kaizena Flow's key; only read when its plan sets a limit. */
-async function aiRoomLeft(storeId: string): Promise<boolean> {
+export async function aiRoomLeft(storeId: string): Promise<boolean> {
   const limit = await limitFor(storeId, "ai_cost_month_micros");
   if (limit === null) return true;
   return (await usageNow(storeId, "ai_cost_month_micros")) < limit;

@@ -1,6 +1,6 @@
 /**
- * What the AI costs (D145, D146): a model's price per million tokens, and per picture, per minute of audio and per million
- * characters spoken, in US dollars, and what a call comes to. Amounts
+ * What the AI costs (D145, D146, D329): a model's price per million tokens, and per picture, per minute of audio, per million
+ * characters spoken and per thousand web searches, in US dollars, and what a call comes to. Amounts
  * are kept in millionths of a dollar, so a call costing a hundredth of a cent is not lost; prices are data the platform's
  * admin keeps (never a model in code), each counting from the day it was set. No secrets, no server code: the pages draw
  * from these too.
@@ -22,11 +22,13 @@ export type ModelPrice = {
   perAudioMinute?: number | null;
   /** US dollars per million characters spoken (text to speech). */
   perMillionCharacters?: number | null;
+  /** US dollars per thousand web searches (D329). */
+  perThousandSearches?: number | null;
   effectiveFrom: Date;
 };
 
 /** What one call (or a sum of them) used. */
-export type CallAmounts = { inputTokens?: number; outputTokens?: number; images?: number; audioSeconds?: number; characters?: number };
+export type CallAmounts = { inputTokens?: number; outputTokens?: number; images?: number; audioSeconds?: number; characters?: number; searches?: number };
 
 /**
  * What a call comes to at a price, and whether it could be priced: `micros` is what the price covers, `priced` is false
@@ -39,16 +41,18 @@ export function callCost(a: CallAmounts, price: ModelPrice | null): { micros: Mi
   const images = Math.max(0, a.images ?? 0);
   const seconds = Math.max(0, a.audioSeconds ?? 0);
   const characters = Math.max(0, a.characters ?? 0);
-  const did = tokens + images + seconds + characters > 0;
+  const searches = Math.max(0, a.searches ?? 0);
+  const did = tokens + images + seconds + characters + searches > 0;
   if (!price) return { micros: 0, priced: !did };
   const micros = Math.round(
     Math.max(0, a.inputTokens ?? 0) * price.inputPerMillion +
       Math.max(0, a.outputTokens ?? 0) * price.outputPerMillion +
       images * (price.perImage ?? 0) * 1_000_000 +
       (seconds * (price.perAudioMinute ?? 0) * 1_000_000) / 60 +
-      characters * (price.perMillionCharacters ?? 0),
+      characters * (price.perMillionCharacters ?? 0) +
+      searches * (price.perThousandSearches ?? 0) * 1_000,
   );
-  const short = tokens === 0 && ((images > 0 && price.perImage == null) || (seconds > 0 && price.perAudioMinute == null) || (characters > 0 && price.perMillionCharacters == null));
+  const short = tokens === 0 && ((images > 0 && price.perImage == null) || (seconds > 0 && price.perAudioMinute == null) || (characters > 0 && price.perMillionCharacters == null) || (searches > 0 && price.perThousandSearches == null));
   return { micros, priced: !short };
 }
 
@@ -99,6 +103,7 @@ export type PriceInput = {
   perImage: number | null;
   perAudioMinute: number | null;
   perMillionCharacters: number | null;
+  perThousandSearches: number | null;
   note: string;
 };
 
@@ -131,7 +136,8 @@ export function parsePriceForm(form: { get(name: string): FormDataEntryValue | n
   const perImage = unit("per_image", "per picture");
   const perAudioMinute = unit("per_audio_minute", "per minute of audio");
   const perMillionCharacters = unit("per_million_characters", "per million characters spoken");
+  const perThousandSearches = unit("per_thousand_searches", "per thousand web searches");
   const note = text("note").slice(0, 300);
   if (problems.length > 0 || input === null || output === null) return { ok: false, problems };
-  return { ok: true, price: { provider, model, inputPerMillion: input, outputPerMillion: output, perImage, perAudioMinute, perMillionCharacters, note } };
+  return { ok: true, price: { provider, model, inputPerMillion: input, outputPerMillion: output, perImage, perAudioMinute, perMillionCharacters, perThousandSearches, note } };
 }

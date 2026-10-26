@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { SITE_TOOLS, tool, type OwnerTool } from "./owner-tools";
+import { RESEARCH_TOOLS, SITE_TOOLS, tool, type OwnerTool } from "./owner-tools";
 import { savePlatformMenuInput, setPlatformPlaceInput } from "./site-tools";
 import { FOLLOW_UP_REPEATS, TASK_MAX } from "./follow-ups";
 import { goalTargetInput, TARGETS_MAX } from "./autopilot-goals";
@@ -150,6 +150,7 @@ export const PLATFORM_TOOLS = [
     z.object({ type: z.enum(["page", "article"]).default("page") }),
   ),
   ...SITE_TOOLS,
+  ...RESEARCH_TOOLS,
   tool(
     "set_page_place",
     "Shows one of Kaizena Flow's own PUBLISHED pages as its front page, its blog or its 404 page, or the standard one again with page null (the theme store's pages are chosen from Themes). A page is in one place at a time. Needs the admin's approval.",
@@ -383,6 +384,11 @@ export const TOOL_WORDS: Record<string, string> = {
   look_at_store: "Looking at the store",
   get_page_look: "Reading what the look found",
   legal_pages_status: "Looking at the legal pages",
+  search_web: "Searching the web",
+  read_web_page: "Reading the page",
+  save_research_note: "Keeping the finding",
+  list_research_notes: "Reading the research notes",
+  compare_options: "Comparing the options",
   store_checkup: "Checking the store",
   get_tax_profile: "Reading the tax settings",
   tax_readiness: "Checking what the VAT features need",

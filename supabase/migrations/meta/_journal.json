@@ -3288,15 +3288,29 @@
     {
       "idx": 469,
       "version": "7",
-      "when": 1792975941786,
-      "tag": "20261026005221_price_lists",
+      "when": 1792973289231,
+      "tag": "20261026000809_web_research",
       "breakpoints": true
     },
     {
       "idx": 470,
       "version": "7",
-      "when": 1792975995729,
-      "tag": "20261026005315_price_lists_sql",
+      "when": 1792973312303,
+      "tag": "20261026000832_web_research_rls",
+      "breakpoints": true
+    },
+    {
+      "idx": 471,
+      "version": "7",
+      "when": 1792979394828,
+      "tag": "20261026014954_price_lists",
+      "breakpoints": true
+    },
+    {
+      "idx": 472,
+      "version": "7",
+      "when": 1792979420884,
+      "tag": "20261026015020_price_lists_sql",
       "breakpoints": true
     }
   ]

@@ -404,7 +404,7 @@ listings, cards and the rest of the product page are cached for everyone. A prod
 
 #### C.4 As built: C1 (2026-10-26)
 
-- Migrations `20261026005221_price_lists` (the four tables and `order_lines.price_list_id`) and `20261026005315_price_lists_sql` (row
+- Migrations `20261026014954_price_lists` (the four tables and `order_lines.price_list_id`) and `20261026015020_price_lists_sql` (row
   security, `commerce.buyer_lists()`, `commerce.price_list_covers()` and `commerce.buyer_price()`). A category in a list's scope reaches its
   subcategories, and a category filled by rules (D319) reaches what its rules match.
 - `getCart()` and `orderLineRows()` take the price as `coalesce(buyer_price, market price)` under `LIST_PRICED`

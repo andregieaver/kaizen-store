@@ -47,7 +47,7 @@ export async function recordUsage(context: UsageContext, event: UsageEvent): Pro
     await db().execute(sql`
       insert into commerce.ai_usage (
         store_id, owner_account_id, actor_account_id, source, provider, model, kind, feature,
-        requests, failed, input_tokens, output_tokens, characters, audio_bytes, audio_seconds, images, estimated, session_ref
+        requests, failed, input_tokens, output_tokens, characters, audio_bytes, audio_seconds, images, searches, estimated, session_ref
       ) values (
         ${context.storeId}::uuid,
         ${
@@ -57,7 +57,7 @@ export async function recordUsage(context: UsageContext, event: UsageEvent): Pro
         },
         ${context.accountId}::uuid, ${event.source}, ${event.provider.slice(0, 60)}, ${event.model.slice(0, 200)}, ${event.kind}, ${feature},
         ${event.requests ?? 1}, ${event.failed ? 1 : 0}, ${Math.round(a.inputTokens)}, ${Math.round(a.outputTokens)}, ${Math.round(a.characters)},
-        ${Math.round(a.audioBytes)}, ${Math.round(a.audioSeconds)}, ${Math.round(a.images)}, ${event.estimated === true}, ${event.sessionRef ?? null}
+        ${Math.round(a.audioBytes)}, ${Math.round(a.audioSeconds)}, ${Math.round(a.images)}, ${Math.round(a.searches)}, ${event.estimated === true}, ${event.sessionRef ?? null}
       )
     `);
   } catch (error) {

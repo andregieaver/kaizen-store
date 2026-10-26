@@ -45,6 +45,7 @@ proportion (autonomy levels and budgets the owner sets), a voice (a decisions pa
 | L | D311 | Legal pages by AI: researched from fetched sources, checked in code, kept current | `international.legal-page-templates-and-policy-generator` |
 | C | D310 | Eyes: the agent photographs its drafts and judges them with the model that sees pictures | `ai.ai-page-and-theme-generation` |
 | D | D328 | The autopilot keeps going: it looks at each active goal again when a plan for it ends and on a schedule, makes the next plan, and starts it itself where the owner allows | `ai.workflow-builder-with-ai-generation`, `ai.proactive-insights` |
+| E | D329 | Web research: search the web through a pluggable search service (Brave first) on Kaizena Flow's key, metered; read a public page; keep findings with their sources; compare options with scores worked out in code | `ai.admin-ai-assistant-that-performs-tasks` |
 
 Each unit is its own commit (or a few), with its own tests, decision row and parity moves, shipped before the next starts. Each unit's
 section below is written in full before it is built; L is outlined and gets its detail when its turn comes.
@@ -876,3 +877,67 @@ Unit: `startDecision()` for each setting and the weekly limit; the planning sett
 progress and plans. Integration (a stand-in turn that makes a plan through `makePlan()`): nothing with `continues` off; a review makes a
 plan that starts at `auto` and waits as a kept start at `ask`; no review while the goal's plan runs; another once it is done; the weekly
 limit turns a start into a kept call; a turn that makes no plan is *nothing to do*; another store's goals never touched.
+
+## 13. Unit E (D329): web research
+
+Written on 2026-10-26 from the owner's goal ("research online business opportunities … evaluate them against each other") and their
+answers: a pluggable search setting with Brave first, on Kaizena Flow's key, metered. Until now the AI manager knew only the store's own
+data and what its model remembered. Unit E gives it eyes on the web that are read as data, never as instructions, and a place to keep
+what it found with where it found it. What a page says, what a search returns and how options compare are the code's to fetch, keep and
+add up; the model only chooses what to look for and writes the words of a note.
+
+### 13.1 The search service
+
+- `SEARCH_APIS` (`src/lib/web-search.ts`) is the registry of search APIs by shape: `brave` (Brave Search's web search: one constant host,
+  `X-Subscription-Token`, results' title, address, description and age). A new service is an entry there with its request and its
+  reader of answers (`parse…Results()`, pure, tested on a recorded answer), never a call written elsewhere.
+- `commerce.search_settings` (one row for Kaizena Flow, `store_id` null; a store's own later), written only by
+  `src/server/web-search-settings.ts` (platform admins, the *Web search* card on Platform → AI): the service and its key, encrypted with
+  `SETTINGS_ENCRYPTION_KEY` (`secret-box.ts`), shown only by its hint. No row or switched off: no search, and the tool says so.
+- Brave is a US company: a search sends only the words the agent chose (never a customer's data, never a store's figures), and the card
+  says so. A service in the EU is a later entry of the registry.
+
+### 13.2 Metering, limits and cost
+
+- A search is a row of `commerce.ai_usage` of kind `search` (`searches` = 1, provider the service's id, model `web-search`), recorded by
+  `recordUsage()` for the store it was for, with the feature `autopilot` inside the autopilot's turns (so it counts in its budget) and
+  `web_research` otherwise. Its price is `ai_model_prices.per_thousand_searches` (US dollars per thousand searches; null: unpriced, shown as
+  such), kept by the platform's admin on the prices page like any other price, read only through `costMicrosSql`/`callCost()`.
+- Searches on Kaizena Flow's key count in the plan's `ai_cost_month_micros` (D314) like any AI on its key: a store past its limit has no
+  search, and a store with no AI on its plan has none. At most `SEARCHES_PER_DAY` (100) a store in 24 hours, and `SEARCH_RESULTS_MAX` (10)
+  results a search.
+
+### 13.3 Reading a page
+
+`read_web_page` fetches one public address through `safeFetch()` (never a plain `fetch`: private networks refused, redirects checked,
+`PAGE_MAX_BYTES` 2 MB, 15 s), HTML or plain text only, and turns it into its title and readable text (`pageText()` in
+`src/lib/web-page-text.ts`, pure: scripts, styles, navigation, headers, footers and forms left out, entities decoded, at most
+`PAGE_TEXT_MAX` 12,000 characters, with whether it was cut). At most `PAGES_PER_DAY` (200) a store in 24 hours. It costs no AI and is not
+metered as such.
+
+### 13.4 Sources and notes
+
+- Every search answered and every page read is a row of `commerce.research_sources` (the store, the address, its title, `search` or
+  `page`, when, and for a page a hash of its text), written only by `src/server/research.ts`; kept 90 days (`pruneResearch()`, daily).
+- A note (`commerce.research_notes`, the store's, written only by `src/server/research.ts`) is a topic, a finding (up to 2,000
+  characters; staff-only, never shown to customers) and its sources: each source must be an address the store
+  searched or read within 30 days (`research_sources`), checked by code, so a note never cites a page nobody opened. At most 500 notes a
+  store; the oldest are not removed by themselves.
+- A comparison (`compare_options`) is criteria with weights (1 to 5) and options scored 1 to 5 on each, with a reason; the totals,
+  percentages and ranking are worked out in code (`compareOptions()` in `src/lib/research.ts`, integer arithmetic), never by the model,
+  and the comparison is kept as a note of kind `comparison` with its table.
+
+### 13.5 Tools
+
+`search_web`, `read_web_page`, `save_research_note`, `list_research_notes` and `compare_options`, in the store's `OWNER_TOOLS` and Kaizena
+Flow's `PLATFORM_TOOLS` with the same handlers (`RESEARCH_TOOLS`), none gated (they change nothing customers see and cost the store nothing
+of its own), `marketing:read` for reading and `marketing:write` for keeping notes and comparisons. A search's results and a page's text are
+other people's words: the manager's prompt already says so (`UNTRUSTED_TEXT`), and the agents' eval gets a case of a page that hides an
+instruction. A goal's review (D328) may search, read and list notes.
+
+### 13.6 Tests
+
+Unit: `parseBraveResults()` on a recorded answer and on a broken one; `pageText()` (scripts and navigation left out, entities, the cut);
+`compareOptions()` (weights, ties, a missing score refused); the search price in `callCost()` and its SQL twin. Integration (a stand-in
+for the search API and a local page with `REPLICATE_ALLOW_PRIVATE`): a search recorded as usage and a source; no search without settings
+or past the day's limit; a page read and kept as a source; a note refused for a source never opened; a comparison kept with its totals.
