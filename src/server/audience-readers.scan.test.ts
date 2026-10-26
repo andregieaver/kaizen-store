@@ -74,7 +74,8 @@ describe("readers of a store's audience (D178)", () => {
       "src/server/standing-orders.ts",
     ];
     for (const file of offered) {
-      expect(files.find((f) => f.file === file)?.text, file).toMatch(/\$\{OFFERED\}/);
+      // A read for a known buyer asks `offeredTo()`, the same conditions with that buyer's exclusive catalogue (D321 C.3).
+      expect(files.find((f) => f.file === file)?.text, file).toMatch(/\$\{(OFFERED\}|offeredTo\()/);
     }
   });
 });

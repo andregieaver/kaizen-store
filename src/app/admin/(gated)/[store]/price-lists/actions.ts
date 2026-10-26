@@ -1,6 +1,6 @@
 "use server";
 
-import { refresh } from "next/cache";
+import { refresh, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
@@ -9,6 +9,7 @@ import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { percentFromForm } from "@/lib/price-lists";
 import { actionAdminLang } from "@/server/admin-request-lang";
+import { catalogTag } from "@/server/catalog";
 import { checkPermission } from "@/server/permissions";
 import { deletePriceList, savePriceList, setAssignments, setPrices, setScope, type SaveResult } from "@/server/price-lists";
 
@@ -22,8 +23,10 @@ const id = z.uuid();
 const wordsOf = (member: { account: { adminLocale?: string | null } }) => adminText(adminLangOf(member.account.adminLocale), "customers").priceLists;
 const noAccess = async (): Promise<FormState> => ({ status: "error", messages: [adminText(await actionAdminLang(), "customers").saved.noAccess] });
 
-function toState(result: SaveResult, success: string): FormState {
+/** What a list offers to whom can hide products from everyone else (D321 C.3): the store's cached catalogue reads are refreshed after any change. */
+function toState(result: SaveResult, success: string, storeId?: string): FormState {
   if (!result.ok) return { status: "error", messages: result.problems };
+  if (storeId) updateTag(catalogTag(storeId));
   refresh();
   return { status: "ok", messages: [success] };
 }
@@ -42,7 +45,9 @@ export async function savePriceListAction(storeSlug: string, listId: string | nu
     name: String(form.get("name") ?? ""),
     percent,
     active: listId === null ? true : form.get("active") === "on",
+    exclusive: form.get("exclusive") === "on",
   });
+  if (result.ok) updateTag(catalogTag(member.store.id));
   if (result.ok && listId === null && result.id) redirect(`/admin/${member.store.slug}/price-lists/${result.id}`);
   return toState(result, words.saved);
 }
@@ -53,6 +58,7 @@ export async function deletePriceListAction(storeSlug: string, listId: string): 
   const words = wordsOf(member);
   if (!id.safeParse(listId).success) return { status: "error", messages: [words.problems.gone] };
   const result = await deletePriceList(member, listId);
+  if (result.ok) updateTag(catalogTag(member.store.id));
   if (result.ok) redirect(`/admin/${member.store.slug}/price-lists`);
   return toState(result, words.deleted);
 }
@@ -72,7 +78,7 @@ export async function saveScopeAction(storeSlug: string, listId: string, _state:
   if (!member) return noAccess();
   const words = wordsOf(member);
   if (!id.safeParse(listId).success) return { status: "error", messages: [words.problems.gone] };
-  return toState(await setScope(member, listId, { productIds: ids(form, "product"), termIds: ids(form, "term") }), words.saved);
+  return toState(await setScope(member, listId, { productIds: ids(form, "product"), termIds: ids(form, "term") }), words.saved, member.store.id);
 }
 
 /** Fixed prices as typed, one field per variant and currency (`price:{variant}:{currency}`); an empty field takes the price away. */

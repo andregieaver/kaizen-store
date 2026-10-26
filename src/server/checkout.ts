@@ -41,7 +41,7 @@ import { sendBookingStaffNotices, sendOrderConfirmation } from "./shopper-emails
 import { decideTax, loadTaxFacts } from "./tax-treatment";
 import { refreshStaleCartCheck } from "./vat-checks";
 import { bookable } from "./cart";
-import { OFFERED, STORE_AUDIENCE, plansOffered, LIST_PRICED } from "./product-conditions";
+import { STORE_AUDIENCE, offeredTo, plansOffered, LIST_PRICED } from "./product-conditions";
 import { ensureStorePaymentMethods, getCheckoutUi } from "./connect";
 import { evaluateCampaigns } from "./campaigns";
 import { memberDiscountFor } from "./customer-tiers";
@@ -195,7 +195,7 @@ function orderLineRows(
         p.kind, aps.check_in_time, aps.check_out_time, v.rental_period, p.host_id, v.cost_minor,
         v.measure_amount, v.measure_unit, v.measure_base, v.stock_policy, v.backorder_days,
         cl.gift_card_to, cl.gift_card_to_name, cl.gift_card_from, cl.gift_card_message, cl.gift_card_send_on,
-        (p.status = 'active' and v.active and ${bookable} and ${OFFERED}) as sellable
+        (p.status = 'active' and v.active and ${bookable} and ${offeredTo(customerId)}) as sellable
       from ${source}
       join commerce.product_variants v on v.store_id = cl.store_id and v.id = cl.variant_id
       join commerce.products p on p.store_id = v.store_id and p.id = v.product_id

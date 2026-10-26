@@ -280,6 +280,15 @@ export const sv: Messages = {
     notAvailable: "Butiken har inget tipsprogram just nu.",
     signInToRefer: "Logga in för att få din egen länk att dela.",
   },
+  buyerCatalogue: {
+    title: "Din katalog",
+    intro: "Produkter som ditt avtal med butiken gör till dina, till dina priser.",
+    empty: "Ingenting här för tillfället.",
+    quantity: "Antal",
+    add: "Lägg i varukorgen",
+    soldOut: "Slutsåld",
+    card: "Produkter bara för dig, till dina priser.",
+  },
   companyAccount: {
     purchaseTitle: (company: string) => `Köper för ${company}`,
     location: "Plats",

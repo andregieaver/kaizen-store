@@ -286,6 +286,16 @@ export const en = {
     notAvailable: "The store does not have a referral program right now.",
     signInToRefer: "Sign in to get your own link to share.",
   },
+  /** Your catalogue (D321 C.3): the products a company's agreement makes the buyer's alone, at their prices. */
+  buyerCatalogue: {
+    title: "Your catalogue",
+    intro: "Products your agreement with the store makes yours, at your prices.",
+    empty: "Nothing here at the moment.",
+    quantity: "Quantity",
+    add: "Add to cart",
+    soldOut: "Sold out",
+    card: "Products only for you, at your prices.",
+  },
   companyAccount: {
     /** Company locations, approvals and PO numbers (D321 C.2). */
     purchaseTitle: (company: string) => `Buying for ${company}`,

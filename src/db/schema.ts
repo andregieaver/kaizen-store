@@ -13460,6 +13460,11 @@ export const priceLists = commerce.table(
     /** Whole percent off the market price of the products in scope; null: only its fixed prices. */
     percent: integer("percent"),
     active: boolean("active").notNull().default(true),
+    /**
+     * Only these products for these buyers (D321 C.3): while on, the products in the list's scope are offered only to its buyers
+     * (`commerce.product_exclusive()`, `commerce.buyer_sees()`); a list with no scope hides nothing.
+     */
+    exclusive: boolean("exclusive").notNull().default(false),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -13491,6 +13496,7 @@ export const priceListAssignments = commerce.table(
     uniqueIndex("price_list_assignments_company_idx").on(t.listId, t.companyId).where(sql`${t.companyId} is not null`),
     index("price_list_assignments_store_tier_idx").on(t.storeId, t.tierId),
     index("price_list_assignments_store_company_idx").on(t.storeId, t.companyId),
+    index("price_list_assignments_list_fk_idx").on(t.storeId, t.listId),
   ],
 );
 
@@ -13510,6 +13516,7 @@ export const priceListPrices = commerce.table(
     foreignKey({ name: "price_list_prices_list_fk", columns: [t.storeId, t.listId], foreignColumns: [priceLists.storeId, priceLists.id] }).onDelete("cascade"),
     foreignKey({ name: "price_list_prices_variant_fk", columns: [t.storeId, t.variantId], foreignColumns: [productVariants.storeId, productVariants.id] }).onDelete("cascade"),
     index("price_list_prices_variant_idx").on(t.storeId, t.variantId),
+    index("price_list_prices_list_fk_idx").on(t.storeId, t.listId),
     check("price_list_prices_amount", sql`${t.amountMinor} >= 0`),
     check("price_list_prices_currency", sql`${t.currency} ~ '^[A-Z]{3}$'`),
   ],
@@ -13534,6 +13541,7 @@ export const priceListProducts = commerce.table(
     uniqueIndex("price_list_products_term_idx").on(t.listId, t.termId).where(sql`${t.termId} is not null`),
     index("price_list_products_store_product_idx").on(t.storeId, t.productId),
     index("price_list_products_term_fk_idx").on(t.termId),
+    index("price_list_products_list_fk_idx").on(t.storeId, t.listId),
   ],
 );
 
@@ -13555,6 +13563,7 @@ export const companyLocations = commerce.table(
     foreignKey({ name: "company_locations_company_fk", columns: [t.storeId, t.companyId], foreignColumns: [customerCompanies.storeId, customerCompanies.id] }).onDelete("cascade"),
     check("company_locations_name", sql`char_length(${t.name}) between 1 and 80`),
     uniqueIndex("company_locations_name_idx").on(t.companyId, sql`lower(${t.name})`),
+    index("company_locations_company_fk_idx").on(t.storeId, t.companyId),
   ],
 );
 
@@ -13574,5 +13583,6 @@ export const companyLocationBuyers = commerce.table(
     foreignKey({ name: "company_location_buyers_customer_fk", columns: [t.storeId, t.customerId], foreignColumns: [customers.storeId, customers.id] }).onDelete("cascade"),
     check("company_location_buyers_role", sql`${t.role} in ('orderer', 'approver')`),
     index("company_location_buyers_customer_idx").on(t.storeId, t.customerId),
+    index("company_location_buyers_location_fk_idx").on(t.storeId, t.locationId),
   ],
 );

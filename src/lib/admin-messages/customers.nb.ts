@@ -289,6 +289,10 @@ export const customersNb: CustomersMessages = {
     summaryOff: "Slått av: den priser ingenting nå.",
     settings: "Innstillinger",
     switchedOn: "Slått på",
+    exclusive: "Bare disse produktene for disse kjøperne",
+    exclusiveHint:
+      "Produktene og kategoriene som er valgt nedenfor, tilbys bare listens kjøpere, under Din katalog på kontoen deres; alle andre ser dem ingen steder i butikken. Med ingenting valgt skjules ingenting.",
+    exclusiveShort: "Eksklusiv",
     save: "Lagre",
     kept: "Bestillinger som alt er lagt inn, beholder prisene de ble belastet.",
     who: "Hvem den gjelder for",

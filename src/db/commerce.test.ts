@@ -6611,3 +6611,39 @@ describe("company locations, buyers and approvals (wave 6 unit C2, D321)", () =>
     ).rejects.toThrow();
   });
 });
+
+describe("exclusive catalogues (wave 6 unit C3, D321)", () => {
+  it("offer a product an exclusive list reaches to that list's buyers only, and a list with no scope hides nothing", async () => {
+    const storeId = await createStore("exclusive-store", ["NO"]);
+    await db.query("update commerce.stores set features = array['shop', 'business'] where id = $1", [storeId]);
+    const { productId } = await createProduct({ storeId });
+    const other = await createProduct({ storeId });
+    const one = async <T>(text: string, params: unknown[]) => (await db.query<T>(text, params)).rows[0];
+    const tier = await one<{ id: string }>("insert into commerce.customer_tiers (store_id, name, percent) values ($1, 'Avtale', 5) returning id", [storeId]);
+    const buyer = await one<{ id: string }>("insert into commerce.customers (store_id, email, tier_id) values ($1, 'kjoper@example.com', $2) returning id", [storeId, tier.id]);
+    const stranger = await one<{ id: string }>("insert into commerce.customers (store_id, email) values ($1, 'annen@example.com') returning id", [storeId]);
+    const exclusive = async (product: string) => (await one<{ e: boolean }>("select commerce.product_exclusive($1, $2) as e", [storeId, product])).e;
+    const sees = async (customer: string | null, product: string) => (await one<{ s: boolean }>("select commerce.buyer_sees($1, $2, $3) as s", [storeId, customer, product])).s;
+
+    const list = await one<{ id: string }>("insert into commerce.price_lists (store_id, name, exclusive) values ($1, 'Eksklusiv', true) returning id", [storeId]);
+    await db.query("insert into commerce.price_list_assignments (store_id, list_id, tier_id) values ($1, $2, $3)", [storeId, list.id, tier.id]);
+    // No scope: nothing hidden.
+    expect(await exclusive(productId)).toBe(false);
+    expect(await sees(stranger.id, productId)).toBe(true);
+
+    // Scoped to one product: hidden from everyone but the list's buyers; the other product stays for all.
+    await db.query("insert into commerce.price_list_products (store_id, list_id, product_id) values ($1, $2, $3)", [storeId, list.id, productId]);
+    expect(await exclusive(productId)).toBe(true);
+    expect(await exclusive(other.productId)).toBe(false);
+    expect(await sees(buyer.id, productId)).toBe(true);
+    expect(await sees(stranger.id, productId)).toBe(false);
+    expect(await sees(null, productId)).toBe(false);
+    expect(await sees(stranger.id, other.productId)).toBe(true);
+
+    // Switched off, or no longer exclusive: offered to all again.
+    await db.query("update commerce.price_lists set active = false where id = $1", [list.id]);
+    expect(await sees(stranger.id, productId)).toBe(true);
+    await db.query("update commerce.price_lists set active = true, exclusive = false where id = $1", [list.id]);
+    expect(await exclusive(productId)).toBe(false);
+  });
+});

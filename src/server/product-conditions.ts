@@ -20,11 +20,23 @@ export const STORE_AUDIENCE = sql`commerce.store_audience(s.audience, s.features
  * to consumers, Sell to businesses switched off included. And it is offered only while what its kind needs is on (D178 step 3,
  * `commerce.kind_offered()`): an appointment needs Appointments, a stay or a rental Stays and rentals, a product sold only as a subscription
  * Subscriptions. And nothing is offered while the online shop is off (D178 step 5: the store is a website). Every shopper-facing read of
- * products asks it.
+ * products asks it. A product an exclusive price list reaches (D321 C.3, `commerce.product_exclusive()`) is offered to no one here: the reads
+ * made per request for a known buyer ask `offeredTo()` instead, which offers it to that list's buyers.
  */
 export const OFFERED = sql`(commerce.feature_on(p.store_id, 'shop')
   and (p.audience = 'all' or commerce.product_offered(p.store_id, p.audience))
-  and ((p.kind = 'goods' and not p.subscription_only) or commerce.kind_offered(p.store_id, p.kind, p.subscription_only)))`;
+  and ((p.kind = 'goods' and not p.subscription_only) or commerce.kind_offered(p.store_id, p.kind, p.subscription_only))
+  and not commerce.product_exclusive(p.store_id, p.id))`;
+
+/**
+ * `OFFERED` for a known buyer (D321 C.3): the same conditions, with a product an exclusive list reaches offered when one of the buyer's own lists
+ * is that list (`commerce.buyer_sees()`); a guest (null) sees what `OFFERED` offers. Only for reads made per request (the cart, checkout, the
+ * buyer's catalogue), never in a cached one.
+ */
+export const offeredTo = (customerId: string | null): SQL => sql`(commerce.feature_on(p.store_id, 'shop')
+  and (p.audience = 'all' or commerce.product_offered(p.store_id, p.audience))
+  and ((p.kind = 'goods' and not p.subscription_only) or commerce.kind_offered(p.store_id, p.kind, p.subscription_only))
+  and commerce.buyer_sees(p.store_id, ${customerId}::uuid, p.id))`;
 
 /**
  * The product `p`'s place in the owner's order of the category or tag `termId` (wave 6 unit A, D319), as an ORDER BY term: placed products by

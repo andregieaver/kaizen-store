@@ -1145,13 +1145,13 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "partial"
     },
-    "gap": "A group's or company's discount is one whole percentage off what is bought once (`customer_tiers.percent`, `memberLineOff()`, D108); campaigns can be limited to customer groups (`campaigns.tier_ids`, D115), including tiered steps by quantity or spend (D299 E3), and discount codes to groups and named customers (D299). No price list with its own prices per variant and currency (fixed, or a percentage over the market price), and no catalogue limiting which products or categories a group sees: a product can only be for consumers, businesses or both (D63, `OFFERED`), verified in `src/db/schema.ts`. The umbrella row platform.b2b-companies-catalogs-terms was removed: its four parts are this row (price lists), catalogue.b2b-company-accounts (companies, locations, PO number), checkout.b2b-payment-terms (net terms) and catalogue.volume-pricing-and-quantity-rules (quantity rules and breaks).",
-    "bucket": "A",
-    "wave": 6,
+    "gap": "Wave 6 unit C (D321): price lists for customer groups and companies with a percentage off the market price and fixed prices per variant and currency, the lowest winning below the market price (commerce.buyer_price(), read alike by the cart, checkout and the product page, shown as Your price); a list marked exclusive offers its scope's products only to its buyers (OFFERED, offeredTo()), who find them on Your catalogue. Left: no CSV import of list prices (wave 7), and an exclusive product has no product page of its own (the shared page is cached for everyone).",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "A price list holds its own prices (fixed or a percentage on the market price) per currency and is assigned to a customer group or company; the shopper sees and pays it when signed in (integration test).",
       "A catalogue limits which products or categories a group sees; a hidden product is not in listings, search, sitemap or recommendations for others, and a direct link answers not found.",
@@ -1161,12 +1161,19 @@
       "files": [
         "src/lib/customer-tiers.ts",
         "src/server/customer-tiers.ts",
-        "src/server/cart-summary.ts"
+        "src/server/cart-summary.ts",
+        "src/lib/price-lists.ts",
+        "src/server/price-lists.ts",
+        "src/server/product-conditions.ts",
+        "src/app/admin/(gated)/[store]/price-lists/[listId]/page.tsx",
+        "src/app/s/[store]/[market]/account/catalogue/page.tsx"
       ],
       "tests": [
         "src/lib/customer-tiers.test.ts",
         "src/server/companies.int.test.ts",
-        "src/server/checkout-kinds.int.test.ts"
+        "src/server/checkout-kinds.int.test.ts",
+        "src/server/price-lists.int.test.ts",
+        "src/db/commerce.test.ts"
       ],
       "untested": false
     },
@@ -1174,9 +1181,17 @@
       "D108",
       "D63",
       "D115",
-      "D299"
+      "D299",
+      "D321"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-26",
+        "from": "partial",
+        "to": "full",
+        "why": "Wave 6 unit C1 and C3 (D321, docs/wave-6-catalogue.md C.4 and C.6): price lists with a percentage and fixed prices per variant and currency, assigned to groups and companies, the buyer paying the lowest below the market price and seeing it as their own price (price-lists.int.test.ts; checkout-kinds.int.test.ts holds the cart, summary and order together in euro); exclusive lists hide their products from every shopper-facing read for everyone else, the cart and checkout selling them only to the list's buyers, from Your catalogue (commerce.test.ts, checkout-kinds.int.test.ts)."
+      }
+    ]
   },
   {
     "id": "catalogue.volume-pricing-and-quantity-rules",

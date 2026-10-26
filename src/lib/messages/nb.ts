@@ -280,6 +280,15 @@ export const nb: Messages = {
     notAvailable: "Butikken har ikke et vennetips-program akkurat nå.",
     signInToRefer: "Logg inn for å få din egen lenke å dele.",
   },
+  buyerCatalogue: {
+    title: "Din katalog",
+    intro: "Produkter avtalen din med butikken gjør til dine, til dine priser.",
+    empty: "Ingenting her for øyeblikket.",
+    quantity: "Antall",
+    add: "Legg i handlekurven",
+    soldOut: "Utsolgt",
+    card: "Produkter bare for deg, til dine priser.",
+  },
   companyAccount: {
     purchaseTitle: (company: string) => `Kjøper for ${company}`,
     location: "Lokasjon",

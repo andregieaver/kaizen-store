@@ -450,6 +450,22 @@ listings, cards and the rest of the product page are cached for everyone. A prod
   facts carry it). Location roles are personal data (export section `company`, erased with the person); locations are the company's
   (`NOT_PERSONAL`); both `never` in `COPY_RULES`. Held by `src/db/commerce.test.ts` and the euro scenario in `checkout-kinds.int.test.ts`.
 
+#### C.6 As built: C3 (2026-10-26)
+
+- Migrations `20261026082711_exclusive_catalogues` (`price_lists.exclusive`, and covering indexes for five foreign keys of C1 and C2) and `20261026082746_exclusive_catalogues_sql`
+  (`commerce.product_exclusive()`, `commerce.buyer_sees()`, a partial index). A list marked exclusive hides only while it is on and has a scope:
+  with nothing chosen it hides nothing, so a slip never empties the shop.
+- `OFFERED` leaves out a product an exclusive list reaches, so every read made for everyone (listings, search, the product page, the
+  sitemap, recommendations, feeds, the chat's reads, WordPress) leaves it out and its address answers not found. `offeredTo(customer)` is the
+  same conditions with `buyer_sees()` and is asked by the cart (its lines and the add, `sellableQuantity()` reading the signed-in customer) and
+  checkout (`orderLineRows()`), so a list's buyer can buy what the list makes theirs and nobody else can. The audience scan accepts either.
+- *Your catalogue* (`/account/catalogue`, signed in, per request; `buyerCatalogue()`, linked from My account by `hasBuyerCatalogue()`) lists
+  the goods bought once that the buyer's exclusive lists reach, each variant with *Your price* where a list prices it and a plain Add to cart
+  (`addFromCatalogueAction()`, the cart's own add). Appointments, stays, rentals and products sold by subscription are not offered there.
+- A change to a list refreshes the store's cached catalogue reads (`catalogTag`). The admin's list page has the switch (*Only these products
+  for these buyers*) and shows the scope card for an exclusive list without a percentage; the AI manager's `list_price_lists` says
+  `only_for_its_buyers`. Held by `src/db/commerce.test.ts` and the euro scenario in `checkout-kinds.int.test.ts`.
+
 ### Unit D (D322): bundles
 
 A product of kind `bundle` with components (`bundle_components`: variant and quantity, 2 to 20 components, goods only, all of one VAT

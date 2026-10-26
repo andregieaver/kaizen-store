@@ -280,6 +280,15 @@ export const da: Messages = {
     notAvailable: "Butikken har ikke et anbefalingsprogram lige nu.",
     signInToRefer: "Log ind for at få dit eget link at dele.",
   },
+  buyerCatalogue: {
+    title: "Dit katalog",
+    intro: "Produkter, som din aftale med butikken gør til dine, til dine priser.",
+    empty: "Intet her i øjeblikket.",
+    quantity: "Antal",
+    add: "Læg i kurven",
+    soldOut: "Udsolgt",
+    card: "Produkter kun til dig, til dine priser.",
+  },
   companyAccount: {
     purchaseTitle: (company: string) => `Køber for ${company}`,
     location: "Lokation",

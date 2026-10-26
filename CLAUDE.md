@@ -1002,6 +1002,16 @@ stand-in is the only fake, and only it is told it is one.
   accepting goes through `acceptInvite()` only. Customer routes for these live
   under `/account/…`, as a new top-level `/s/{store}/{market}/{word}` would
   reserve a page address.
+- **B2B in depth (wave 6 unit C, D321, `docs/wave-6-catalogue.md` C.4 to C.6)**: what a buyer pays is only `commerce.buyer_price()` (their
+  lists: their group's, their company's and its group's; the lowest below the market price), joined into the cart's and checkout's own price
+  reads under `LIST_PRICED` (goods and appointments bought once) and read by the buy part through `listPricesFor()`; a list-priced line takes no
+  group percentage on top and is shown as *Your price*, never a reduction; lists are written only by `src/server/price-lists.ts`. A list marked
+  exclusive hides its scope's products: `OFFERED` leaves them out of every read made for everyone, and a read made per request for a known buyer
+  (the cart, checkout, *Your catalogue*) asks `offeredTo(customer)`; a change to a list refreshes `catalogTag`. Company locations and who buys
+  at them are written only by `src/server/company-locations.ts`; `placeOrder()` checks the location and PO number (`buyerFacts()`) and decides
+  an approval only by `needsApproval()`; a waiting order starts no payment and is decided only by `decideOrder()`, paid by
+  `startApprovedPayment()` and cancelled by `expireApprovals()`; an order keeps its location, PO number and approval as placed (the database),
+  and the PO number reaches the invoice only through `documents_po_number()` and `buildInvoiceSnapshot()` alike.
 - Selling to businesses (D63, `src/lib/b2b.ts`, `src/server/b2b.ts`): stores
   sell to `consumers`, `businesses` or `both` (`stores.audience`). Prices are
   always kept and charged with VAT; businesses see them without it. Draw

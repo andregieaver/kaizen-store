@@ -1459,6 +1459,58 @@ describe("company locations, approvals and PO numbers in euro (D321 C.2)", () =>
 });
 
 /**
+ * Exclusive catalogues (D321 C.3), shown in euro: a notebook an exclusive list reaches is sold to that list's group only. A guest and a stranger
+ * cannot add it; the group's member finds it on Your catalogue at their list price and checks it out, the cart, summary and order agreeing.
+ */
+describe("exclusive catalogues in euro (D321 C.3)", () => {
+  it("sells a product an exclusive list reaches only to its buyers, from their catalogue at their price", async () => {
+    const { buyerCatalogue, hasBuyerCatalogue } = await import("./price-lists");
+    let [tier] = await db().execute<Row>(sql`select id from commerce.customer_tiers where store_id = ${storeId}::uuid limit 1`);
+    tier ??= (await db().execute<Row>(sql`insert into commerce.customer_tiers (store_id, name, percent) values (${storeId}::uuid, 'Wholesale', 10) returning id`))[0];
+    tierId = String(tier.id);
+    const [list] = await db().execute<Row>(sql`insert into commerce.price_lists (store_id, name, percent, exclusive) values (${storeId}::uuid, ${`Exclusive ${run}`}, 25, true) returning id`);
+    try {
+      await db().execute(sql`insert into commerce.price_list_assignments (store_id, list_id, tier_id) values (${storeId}::uuid, ${String(list.id)}::uuid, ${tierId}::uuid)`);
+      await db().execute(sql`insert into commerce.price_list_products (store_id, list_id, product_id) values (${storeId}::uuid, ${String(list.id)}::uuid, ${product["demo-notatbok"]}::uuid)`);
+      view = noInEuro;
+      const notebook = variant["DEMO-NOTEBOOK-LINED"];
+      // A guest and a customer in no group cannot add it, and the mug, which no exclusive list reaches, is sold to all.
+      jar.clear();
+      expect((await changeLine(shop(), notebook, 1, "add", null)).outcome).toBe("unavailable");
+      await add("DEMO-MUG-WHITE", 1);
+      jar.clear();
+      const stranger = await preRegisterCustomer(storeId, `stranger-${Date.now()}-${run}@example.com`);
+      await startSession(storeId, stranger);
+      expect((await changeLine(shop(), notebook, 1, "add", null)).outcome).toBe("unavailable");
+      expect(await hasBuyerCatalogue(storeId, stranger)).toBe(false);
+      expect(await buyerCatalogue(storeId, stranger, "NO", "nb-NO")).toEqual([]);
+
+      // The group's member: on Your catalogue at 25 % off, added, checked out.
+      jar.clear();
+      const buyer = await signInBuyer("group");
+      expect(await hasBuyerCatalogue(storeId, buyer)).toBe(true);
+      const catalogue = await buyerCatalogue(storeId, buyer, "NO", "nb-NO");
+      expect(catalogue.map((c) => c.productId)).toEqual([product["demo-notatbok"]]);
+      const entry = catalogue[0].variants.find((v) => v.id === notebook)!;
+      expect(entry.listMinor).toBe(Math.floor((entry.marketMinor * 75 + 50) / 100));
+      await add("DEMO-NOTEBOOK-LINED", 2);
+      const cart = await getCart(shop());
+      expect(cart.lines[0].priceListId).toBe(String(list.id));
+      expect(cart.lines[0].unitPriceMinor).toBe(shown(noInEuro, entry.listMinor!));
+      const summary = await cartSummary(shop(), cart);
+      expect(summary.blocked).toBe(false);
+      expect(await startCheckout({ ...shop(), storeSlug: slug }, cartId(), origin, "Frakt", {}, { customerId: buyer })).toMatchObject({ ok: true });
+      const open = (await getOpenCheckout(storeId, cartId()))!;
+      const order = (await getOrder(storeId, open.orderId))!;
+      expect({ total: order.totalMinor, vat: order.taxMinor }).toEqual({ total: summary.total, vat: summary.vat });
+    } finally {
+      view = no;
+      await db().execute(sql`delete from commerce.price_lists where id = ${String(list.id)}::uuid`);
+    }
+  });
+});
+
+/**
  * The rules as read (D160): no market compares per 100 g, so the notebook, whose owner chose 100 g, is compared per kg in Norway
  * with the table as it is. The cart's unit price, the order line's and an independent reader's agree, and the totals are the
  * same as with the small base.

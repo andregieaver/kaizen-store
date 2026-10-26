@@ -21,7 +21,7 @@ import { freeResourcesAt } from "./appointments";
 import { attachVisitToCart } from "./analytics-visits";
 import { audit, type Membership } from "./auth";
 import { getCustomer } from "./customers";
-import { LIST_PRICED, OFFERED, STORE_AUDIENCE, plansOffered } from "./product-conditions";
+import { LIST_PRICED, STORE_AUDIENCE, offeredTo, plansOffered } from "./product-conditions";
 import { checkRange, linePrice, rangePricing } from "./ranges";
 import { checkCartVatNumber, type CartVatDeps, type CartVatOutcome } from "./vat-checks";
 
@@ -196,7 +196,7 @@ export async function getCart(
       -- The buyer's price list price where one is lower (D321), else the market's: worked out only by commerce.buyer_price().
       coalesce(bp.amount_minor, cp.amount_minor) as amount_minor, bp.list_id as price_list_id,
       -- Only in a country and currency the store offers now (D178: Several countries and currencies).
-      (p.status = 'active' and v.active and ${bookable} and ${OFFERED} and commerce.market_offered(c.store_id, c.market_code, ${market.currency})) as sellable,
+      (p.status = 'active' and v.active and ${bookable} and ${offeredTo(customerId)} and commerce.market_offered(c.store_id, c.market_code, ${market.currency})) as sellable,
       va.in_stock, va.raw_available, va.stock_policy, va.backorder_days
     from commerce.cart_lines cl
     join commerce.carts c on c.store_id = cl.store_id and c.id = cl.cart_id
@@ -511,7 +511,8 @@ export async function sellableQuantity(
       and (p.kind in ('goods', 'gift_card')) = ${booking === null}
       -- A product is offered only where the store sells to its kind (D178: never a business-only one where it sells to consumers, Sell to
       -- businesses switched off included), and business-only products are sold to businesses where the store sells to both (B2B).
-      and ${OFFERED}
+      -- A product an exclusive price list reaches is sold to that list's buyers only (D321 C.3).
+      and ${offeredTo((await getCustomer(storeId))?.id ?? null)}
       and (p.audience <> 'businesses' or ${await buysForBusiness(storeId)}
         or (select ${STORE_AUDIENCE} from commerce.stores s where s.id = v.store_id) <> 'both')
       and ${

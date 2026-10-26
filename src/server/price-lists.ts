@@ -11,6 +11,7 @@ import { assignmentsInput, priceListInput, pricesInput, scopeInput, type PriceLi
 import { formatPriceInput, parsePrice } from "@/lib/product-input";
 
 import { audit, type Membership } from "./auth";
+import { offeredTo } from "./product-conditions";
 import { col, typedRow, typedRows, type Executor } from "./typed-rows";
 
 /**
@@ -29,6 +30,7 @@ const LIST_ROW = z.object({
   name: col.text,
   percent: col.int.nullable(),
   active: col.bool,
+  exclusive: col.bool,
   prices: col.int,
   groups: col.int,
   companies: col.int,
@@ -38,7 +40,7 @@ const LIST_ROW = z.object({
 export type PriceList = z.output<typeof LIST_ROW>;
 
 const listQuery = (storeId: string, id: string | null) => sql`
-  select l.id, l.name, l.percent, l.active,
+  select l.id, l.name, l.percent, l.active, l.exclusive,
          (select count(*)::int from commerce.price_list_prices pp where pp.store_id = l.store_id and pp.list_id = l.id) as prices,
          (select count(*)::int from commerce.price_list_assignments a where a.store_id = l.store_id and a.list_id = l.id and a.tier_id is not null) as groups,
          (select count(*)::int from commerce.price_list_assignments a where a.store_id = l.store_id and a.list_id = l.id and a.company_id is not null) as companies,
@@ -131,13 +133,13 @@ export async function savePriceList({ account, store }: Membership, id: string |
   try {
     const [row] = id
       ? await db().execute<{ id: string }>(sql`
-          update commerce.price_lists set name = ${d.name}, percent = ${d.percent}, active = ${d.active}, updated_at = now()
+          update commerce.price_lists set name = ${d.name}, percent = ${d.percent}, active = ${d.active}, exclusive = ${d.exclusive}, updated_at = now()
           where store_id = ${store.id}::uuid and id = ${id}::uuid returning id
         `)
       : await db().execute<{ id: string }>(sql`
-          insert into commerce.price_lists (store_id, name, percent, active) values (${store.id}::uuid, ${d.name}, ${d.percent}, ${d.active}) returning id
+          insert into commerce.price_lists (store_id, name, percent, active, exclusive) values (${store.id}::uuid, ${d.name}, ${d.percent}, ${d.active}, ${d.exclusive}) returning id
         `);
-    await audit(account.id, store.id, id ? "price_list.updated" : "price_list.created", { name: d.name, percent: d.percent, active: d.active });
+    await audit(account.id, store.id, id ? "price_list.updated" : "price_list.created", { name: d.name, percent: d.percent, active: d.active, exclusive: d.exclusive });
     return { ok: true, id: String(row.id) };
   } catch (error) {
     if (problemOf(error) === "23505") return { ok: false, problems: [fillWords(w.problems.taken, { name: d.name })] };
@@ -328,6 +330,7 @@ export async function listPriceListsTool({ store }: { store: { id: string; slug:
       id: list.id,
       name: list.name,
       on: list.active,
+      only_for_its_buyers: list.exclusive,
       percent_off: list.percent,
       fixed_prices: list.prices,
       percent_reaches: list.percent === null ? null : list.scope === 0 ? "every product" : `${list.scope} chosen products and categories`,
@@ -337,4 +340,80 @@ export async function listPriceListsTool({ store }: { store: { id: string; slug:
     total: lists.length,
     link: `/admin/${store.slug}/price-lists`,
   };
+}
+
+const CATALOGUE_ROW = z.object({
+  product_id: col.uuid,
+  title: col.text,
+  image: col.text.nullable(),
+  variant_id: col.uuid,
+  options: z.record(z.string(), z.string()).nullable(),
+  sku: col.text,
+  market_minor: col.minor,
+  list_minor: col.minor.nullable(),
+  in_stock: col.int.nullable(),
+  stock_policy: col.text.nullable(),
+});
+
+export type CatalogueItem = {
+  productId: string;
+  title: string;
+  image: string | null;
+  variants: { id: string; options: Record<string, string>; sku: string; marketMinor: number; listMinor: number | null; available: boolean }[];
+};
+
+/**
+ * Your catalogue (D321 C.3): the goods a signed-in buyer's own exclusive lists make theirs, each active variant with the market price and the
+ * buyer's list price (both in the country's own currency, shown with `shown()`), and whether it can be bought now. Read per request, never cached.
+ * Only goods bought once: anything that needs a time or a plan is bought from its own page, which an exclusive product does not have.
+ */
+export async function buyerCatalogue(storeId: string, customerId: string, marketCode: string, locale: string): Promise<CatalogueItem[]> {
+  const rows = await typedRows(CATALOGUE_ROW, sql`
+    with mine as (
+      select l.id from commerce.buyer_lists(${storeId}::uuid, ${customerId}::uuid) as b(id)
+      join commerce.price_lists l on l.store_id = ${storeId}::uuid and l.id = b.id and l.exclusive
+      where exists (select 1 from commerce.price_list_products s where s.store_id = l.store_id and s.list_id = l.id)
+    )
+    select p.id as product_id, coalesce(tl.title, p.handle) as title, coalesce(m.thumbnail_url, m.url) as image,
+           v.id as variant_id, v.options, v.sku, cp.amount_minor as market_minor, bp.amount_minor as list_minor, va.in_stock, va.stock_policy
+    from commerce.products p
+    join commerce.product_variants v on v.store_id = p.store_id and v.product_id = p.id and v.active
+    join commerce.current_prices cp on cp.variant_id = v.id and cp.market_code = ${marketCode}
+    left join commerce.variant_availability va on va.store_id = v.store_id and va.variant_id = v.id
+    left join commerce.product_translations tl on tl.product_id = p.id and tl.locale = ${locale}
+    left join lateral (select url, thumbnail_url from commerce.product_media where product_id = p.id order by position limit 1) m on true
+    left join lateral commerce.buyer_price(p.store_id, ${customerId}::uuid, v.id, ${marketCode}, cp.amount_minor) bp on true
+    where p.store_id = ${storeId}::uuid and p.status = 'active' and p.kind = 'goods' and not p.subscription_only
+      and ${offeredTo(customerId)}
+      and exists (select 1 from mine where commerce.price_list_covers(${storeId}::uuid, mine.id, p.id))
+    order by lower(coalesce(tl.title, p.handle)), v.sku
+    limit 500
+  `);
+  const items = new Map<string, CatalogueItem>();
+  for (const r of rows) {
+    const item = items.get(r.product_id) ?? { productId: r.product_id, title: r.title, image: r.image, variants: [] };
+    item.variants.push({
+      id: r.variant_id,
+      options: r.options ?? {},
+      sku: r.sku,
+      marketMinor: r.market_minor,
+      listMinor: r.list_minor,
+      available: r.stock_policy === "continue" || (r.in_stock ?? 0) > 0,
+    });
+    items.set(r.product_id, item);
+  }
+  return [...items.values()];
+}
+
+/** Whether a signed-in buyer has an exclusive catalogue at all (the account's link to it). */
+export async function hasBuyerCatalogue(storeId: string, customerId: string | null): Promise<boolean> {
+  if (!customerId) return false;
+  const row = await typedRow(z.object({ yes: col.bool }), sql`
+    select exists (
+      select 1 from commerce.buyer_lists(${storeId}::uuid, ${customerId}::uuid) as b(id)
+      join commerce.price_lists l on l.store_id = ${storeId}::uuid and l.id = b.id and l.exclusive
+      where exists (select 1 from commerce.price_list_products s where s.store_id = l.store_id and s.list_id = l.id)
+    ) as yes
+  `);
+  return row?.yes ?? false;
 }

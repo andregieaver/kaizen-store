@@ -296,6 +296,10 @@ export const customersEn = {
     summaryOff: "Switched off: it prices nothing now.",
     settings: "Settings",
     switchedOn: "Switched on",
+    exclusive: "Only these products for these buyers",
+    exclusiveHint:
+      "The products and categories chosen below are offered only to this list's buyers, on Your catalogue in their account; everyone else does not see them anywhere in the shop. With nothing chosen, nothing is hidden.",
+    exclusiveShort: "Exclusive",
     save: "Save",
     kept: "Orders already placed keep the prices they were charged.",
     who: "Who it is for",

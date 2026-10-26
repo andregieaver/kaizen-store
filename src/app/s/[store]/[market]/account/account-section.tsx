@@ -24,6 +24,7 @@ import {
 import { affiliateSite } from "@/server/affiliates";
 import { shopperBonus } from "@/server/bonus";
 import { companyOf } from "@/server/companies";
+import { hasBuyerCatalogue } from "@/server/price-lists";
 import type { Store } from "@/server/stores";
 
 import { accountSubscription } from "@/server/marketing-subscribers";
@@ -58,7 +59,7 @@ async function Account({ store, market, query }: { store: Store; market: Market;
     );
   }
 
-  const [orders, subscriptions, lastAddress, mine, bonus, referrals, news] = await Promise.all([
+  const [orders, subscriptions, lastAddress, mine, bonus, referrals, news, catalogue] = await Promise.all([
     listCustomerOrders(store.id, customer.id),
     // Subscriptions (D178): the list is there while the feature is on; switching it off waits until none runs, and each one's own link
     // from its emails keeps working.
@@ -68,6 +69,8 @@ async function Account({ store, market, query }: { store: Store; market: Market;
     shopperBonus({ storeId: store.id, market }, customer.id),
     affiliateSite(store.id),
     accountSubscription(store.id, customer.id),
+    // Products an exclusive price list makes the customer's (D321 C.3).
+    hasBuyerCatalogue(store.id, customer.id),
   ]);
   const date = (iso: string) => new Date(iso).toLocaleDateString(market.locale, { dateStyle: "medium" });
   const base = marketPath(store.slug, market.slug);
@@ -102,6 +105,19 @@ async function Account({ store, market, query }: { store: Store; market: Market;
             <span className="block text-sm text-muted">
               {mine.role === "owner" ? m.companyAccount.cardIntroOwner : m.companyAccount.cardIntroEmployee}
             </span>
+          </span>
+          <span aria-hidden="true">→</span>
+        </Link>
+      )}
+
+      {catalogue && featureOn(store, "shop") && (
+        <Link
+          href={`${base}/account/catalogue`}
+          className="flex items-center justify-between gap-4 rounded-lg border border-border p-4 hover:bg-surface"
+        >
+          <span>
+            <span className="font-medium">{m.buyerCatalogue.title}</span>
+            <span className="block text-sm text-muted">{m.buyerCatalogue.card}</span>
           </span>
           <span aria-hidden="true">→</span>
         </Link>

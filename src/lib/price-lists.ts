@@ -16,9 +16,11 @@ export const priceListInput = z.object({
   /** Whole percent off the market price of the products in scope; null for none (only its fixed prices). */
   percent: z.number().int().min(1, "A percentage is at least 1.").max(99, "A percentage is at most 99.").nullable(),
   active: z.boolean(),
+  /** Only these products for these buyers (D321 C.3): the scope's products are offered to the list's buyers only. */
+  exclusive: z.boolean().default(false),
 });
 
-export type PriceListInput = z.infer<typeof priceListInput>;
+export type PriceListInput = z.input<typeof priceListInput>;
 
 /** Who the list is for: the store's own customer groups and companies, by id. */
 export const assignmentsInput = z.object({

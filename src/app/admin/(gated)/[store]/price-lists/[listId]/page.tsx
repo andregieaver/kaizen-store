@@ -86,6 +86,13 @@ export default async function PriceListPage({ params, searchParams }: PageProps<
             <input type="checkbox" name="active" defaultChecked={list.active} className="size-4" />
             {words.switchedOn}
           </label>
+          <label className="flex items-start gap-2 text-sm">
+            <input type="checkbox" name="exclusive" defaultChecked={list.exclusive} className="mt-0.5 size-4" />
+            <span>
+              {words.exclusive}
+              <span className="block text-muted">{words.exclusiveHint}</span>
+            </span>
+          </label>
           <p className="text-sm text-muted">{words.kept}</p>
           <div>
             <SubmitButton>{words.save}</SubmitButton>
@@ -131,7 +138,7 @@ export default async function PriceListPage({ params, searchParams }: PageProps<
         </ActionForm>
       </Card>
 
-      {list.percent !== null && (
+      {(list.percent !== null || list.exclusive) && (
         <Card title={words.scope} description={words.scopeHint} className="flex flex-col gap-3">
           <ActionForm action={saveScopeAction.bind(null, store.slug, list.id)} className="flex flex-col gap-4">
             <fieldset className="flex flex-col gap-2">

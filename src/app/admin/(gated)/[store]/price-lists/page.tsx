@@ -57,7 +57,10 @@ export default async function PriceListsPage({ params }: PageProps<"/admin/[stor
                   </td>
                   <td className="px-4 py-2">{pricingLine(list, words)}</td>
                   <td className="px-4 py-2">{forWhomLine(list, words)}</td>
-                  <td className="px-4 py-2">{list.active ? words.active : words.switchedOff}</td>
+                  <td className="px-4 py-2">
+                    {list.active ? words.active : words.switchedOff}
+                    {list.exclusive && <span className="block text-xs text-muted">{words.exclusiveShort}</span>}
+                  </td>
                 </tr>
               ))}
             </tbody>
