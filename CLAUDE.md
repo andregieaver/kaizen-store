@@ -207,6 +207,16 @@ stand-in is the only fake, and only it is told it is one.
   kind `entry` when a published entry's address changes (stores only). Entries are in `mediaUses()`/`rewriteAddresses()`, the store copy,
   the translation worklist (scope `content`) and the AI manager's tools (`src/server/content-tools.ts`: publishing and type changes gated
   `public`). A new reader of a type's entries reads `published` only.
+- **A standard product taxonomy (wave 6 unit I, D327, `docs/wave-6-catalogue.md` Unit I)**: Shopify's open Standard Product Taxonomy
+  (release `v2026-10`, MIT, its notice kept) is files in `src/data/product-taxonomy/` (made by `scripts/product-taxonomy.mjs`), read on the
+  server only by `src/server/product-taxonomy.ts` (`taxonomy()`, `taxonomyWords()`, never an import: traced into every route by
+  `outputFileTracingIncludes`), the rules pure in `src/lib/product-taxonomy.ts`. A product's `standard_category` (an id) and
+  `standard_attributes` (`{attributeId: [valueIds]}`) are apart from its own categories and the tax code, checked by `standardProblems()` in
+  `saveProduct()` and kept by a save that leaves them out; copies carry them. Listings filter by `t.<attribute>=<value>` (handles,
+  `attributeFilters()`), feeds take Google's category and colour, material and pattern from them, the structured data its path, the CSV
+  Shopify's `Product Category`. A model only suggests (`categoryCandidates()` by code, `readCategoryChoice()` keeps a listed id, feature
+  `product_taxonomy`), staff accept; the AI manager names a category by id or English path and attributes by name, resolved by code. A new
+  release that moves or retires an id comes with a migration mapping products' ids.
 - Sorting and filtering listings (D78, `src/lib/listing-filters.ts`,
   `src/server/listing.ts`, `FilterDialog`, `ProductListing`): the products
   page, category and tag pages and search results take their filters from

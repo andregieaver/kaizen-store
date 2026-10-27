@@ -269,3 +269,51 @@ export function valueName(t: TaxonomyStructure, words: TaxonomyWords, valueId: n
   const handle = t.values[String(valueId)];
   return handle === undefined ? null : { handle, name: nameIn(words, "v", valueId) };
 }
+
+/** A product's attribute values by the names the words give them (`{"Color": ["Black"]}`), for the AI manager to read. */
+export function namedAttributes(t: TaxonomyStructure, words: TaxonomyWords, category: string, attributes: StandardAttributes): Record<string, string[]> {
+  const out: Record<string, string[]> = {};
+  for (const attribute of categoryAttributes(t, words, category)) {
+    const chosen = new Set(attributes[String(attribute.id)] ?? []);
+    const values = attribute.values.filter((v) => chosen.has(v.id)).map((v) => v.name);
+    if (values.length > 0) out[attribute.name] = values;
+  }
+  return out;
+}
+
+/**
+ * Attribute values given by name (the AI manager's `standard_attributes`) as ids of a category's attributes: an attribute by its name in
+ * the words' language, its base name or its handle, a value by its name or handle, ignoring case and accents. An empty list leaves the
+ * attribute out; a name the category does not have is a problem that lists what it has.
+ */
+export function attributesFromNames(
+  t: TaxonomyStructure,
+  words: TaxonomyWords,
+  category: string,
+  named: Readonly<Record<string, readonly string[]>>,
+): { ok: true; attributes: StandardAttributes } | { ok: false; problems: string[] } {
+  const own = categoryAttributes(t, words, category);
+  const problems: string[] = [];
+  const attributes: StandardAttributes = {};
+  for (const [name, values] of Object.entries(named)) {
+    const wanted = fold(name);
+    const attribute = own.find((a) => fold(a.name) === wanted || fold(nameIn(words, "a", a.id)) === wanted || a.handle === wanted.replace(/ /g, "-"));
+    if (!attribute) {
+      problems.push(`The category has no attribute "${name}". Its attributes: ${own.map((a) => a.name).join(", ") || "none"}.`);
+      continue;
+    }
+    const ids: number[] = [];
+    for (const value of values) {
+      const want = fold(value);
+      const found = attribute.values.find((v) => fold(v.name) === want || v.handle === want.replace(/ /g, "-"));
+      if (found) ids.push(found.id);
+      else {
+        const some = attribute.values.slice(0, 30).map((v) => v.name);
+        problems.push(`"${value}" is not a value of ${attribute.name}. Its values include: ${some.join(", ")}${attribute.values.length > some.length ? ", …" : ""}.`);
+      }
+    }
+    if (ids.length > MAX_ATTRIBUTE_VALUES) problems.push(`${attribute.name} takes at most ${MAX_ATTRIBUTE_VALUES} values.`);
+    if (ids.length > 0) attributes[String(attribute.id)] = [...(attributes[String(attribute.id)] ?? []), ...ids];
+  }
+  return problems.length > 0 ? { ok: false, problems } : { ok: true, attributes: sortedAttributes(attributes) };
+}

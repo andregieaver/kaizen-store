@@ -20,6 +20,7 @@ import {
   startFileUploadAction,
   uploadImageAction,
   type SaveState,
+  suggestCategoryAction,
   suggestTextAction,
 } from "@/app/admin/(gated)/[store]/products/actions";
 import { startFieldFileUploadAction } from "@/app/admin/(gated)/[store]/fields/actions";
@@ -381,6 +382,10 @@ export function ProductEditor(props: Props) {
         onChange={(standardCategory, standardAttributes) => update((p) => ({ ...p, standardCategory, standardAttributes }))}
         search={taxonomyActions.search}
         details={taxonomyActions.details}
+        suggest={() => {
+          const own = product.translations.find((t) => t.locale === context.primaryLocale) ?? product.translations[0];
+          return suggestCategoryAction(storeSlug, productId, { title: own?.title ?? "", description: own?.description ?? "" });
+        }}
       />
       <EntityFields
         groups={fieldGroups}

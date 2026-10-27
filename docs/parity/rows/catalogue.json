@@ -1541,7 +1541,7 @@
       "rechecked": true,
       "was": "missing"
     },
-    "gap": "Built (D302): a secret feed address per store (`feed_settings`) serves each offered market view (country, language, currency) as a Google Merchant Center RSS file and as Meta, TikTok and Pinterest CSVs (`FEED_CHANNELS`, `feedFile()` in `src/lib/feeds.ts`), from the storefront's own cached reads (`storeFeed()`), cached 15 minutes under the `feed` budget: availability from stock, price with VAT in the market's currency (the 30-day reference as `price` and the current as `sale_price` for a genuine reduction), brand, GTIN or `identifier_exists`, unit pricing and shipping by country; a euro view is held to `shown()` (`feeds.int.test.ts`) and Google's required attributes by `feeds.test.ts`; products left out are listed on the Product feeds page with a `FEED_PROBLEMS` reason. Missing: custom label mapping, a Google product category (row catalogue.standard-product-taxonomy), and any API sync: the owner adds the address in Merchant Center or Meta's Commerce Manager as a scheduled fetch (a Content API connection needs Google's credentials, bucket B).",
+    "gap": "Built (D302): a secret feed address per store (`feed_settings`) serves each offered market view (country, language, currency) as a Google Merchant Center RSS file and as Meta, TikTok and Pinterest CSVs (`FEED_CHANNELS`, `feedFile()` in `src/lib/feeds.ts`), from the storefront's own cached reads (`storeFeed()`), cached 15 minutes under the `feed` budget: availability from stock, price with VAT in the market's currency (the 30-day reference as `price` and the current as `sale_price` for a genuine reduction), brand, GTIN or `identifier_exists`, unit pricing and shipping by country; a euro view is held to `shown()` (`feeds.int.test.ts`) and Google's required attributes by `feeds.test.ts`; products left out are listed on the Product feeds page with a `FEED_PROBLEMS` reason. Google's product category, colour, material and pattern come from the standard taxonomy (D327). Missing: custom label mapping and any API sync: the owner adds the address in Merchant Center or Meta's Commerce Manager as a scheduled fetch (a Content API connection needs Google's credentials, bucket B).",
     "bucket": "B",
     "wave": 5,
     "criteria": [
@@ -1603,13 +1603,13 @@
       "checkedOn": "2026-10-02"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "full",
       "rechecked": true,
-      "was": "partial"
+      "was": "missing"
     },
-    "gap": "No standard product category or attributes (verified 2026-10-25): Kaizen has its own categories and tags (D50) and a Stripe product tax code per product (`txcd_…`), which classifies for tax and is not a browse taxonomy. No standard category list with stable ids and attributes, so feeds (D302) carry no `google_product_category` and there is nothing to map to channels.",
-    "bucket": "A",
-    "wave": 6,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "A product can be given a category from a standard taxonomy (searchable picker, stable ids) kept apart from the store's own categories and from the tax code.",
       "The category's attributes are offered as fields and as filters; values are checked against the category.",
@@ -1617,19 +1617,33 @@
     ],
     "evidence": {
       "files": [
-        "src/lib/product-input.ts",
-        "src/components/admin/product-editor.tsx",
-        "src/lib/taxonomy.ts"
+        "src/data/product-taxonomy/structure.json",
+        "src/data/product-taxonomy/LICENSE",
+        "scripts/product-taxonomy.mjs",
+        "src/lib/product-taxonomy.ts",
+        "src/server/product-taxonomy.ts",
+        "src/components/admin/product-category-card.tsx",
+        "src/server/products.ts",
+        "src/server/listing.ts",
+        "src/lib/feeds.ts",
+        "src/lib/category-suggest.ts",
+        "src/server/category-suggest.ts",
+        "src/server/product-tools.ts"
       ],
       "tests": [
-        "src/lib/product-input.test.ts",
-        "src/lib/taxonomy.test.ts"
+        "src/lib/product-taxonomy.test.ts",
+        "src/server/product-taxonomy.int.test.ts",
+        "src/lib/category-suggest.test.ts",
+        "src/server/product-tools.int.test.ts",
+        "src/lib/feeds.test.ts",
+        "e2e/signed-in/standard-taxonomy.spec.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D50",
-      "D302"
+      "D302",
+      "D327"
     ],
     "history": [
       {
@@ -1637,6 +1651,12 @@
         "from": "partial",
         "to": "missing",
         "why": "Tax code is a tax classification, not a product taxonomy; no criterion met"
+      },
+      {
+        "on": "2026-10-27",
+        "from": "missing",
+        "to": "full",
+        "why": "Wave 6 unit I (D327, docs/wave-6-catalogue.md Unit I): Shopify's open Standard Product Taxonomy v2026-10 (MIT, 14,606 categories with attributes and values, names in en, nb, sv, da, Google's ids) kept in the repository; a product gets a category found by typing what it is in the editor's Category card and its attributes' values, checked against the release on save and kept apart from the store's own categories and the tax code; listings filter by attribute (t.<attribute>=<value>, facets in the shopper's language); feeds carry google_product_category, colour, material and pattern; the structured data names the category; Shopify's CSV Product Category is read and written; the AI suggests one of the candidates code finds, which a person accepts, and the AI manager sets it by id or path and attributes by name. e2e/signed-in/standard-taxonomy.spec.ts sets a category and a colour in the editor, filters a listing by it and reads the Google feed."
       }
     ]
   },

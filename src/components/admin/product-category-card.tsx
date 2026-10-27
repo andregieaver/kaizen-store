@@ -5,6 +5,7 @@ import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { useAdminText } from "@/components/admin/admin-text";
 import { Button, Card } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
+import type { SuggestCategory } from "@/lib/category-suggest";
 import {
   keepForCategory,
   MAX_ATTRIBUTE_VALUES,
@@ -27,9 +28,14 @@ type Props = {
   onChange: (category: string | null, attributes: StandardAttributes) => void;
   search: SearchCategories;
   details: LoadCategory;
+  /** The AI's suggestion from the product's words (I.5): shown with a button to use it, never chosen by itself. */
+  suggest?: SuggestCategory;
 };
 
-export function ProductCategoryCard({ category, attributes, onChange, search, details }: Props) {
+/** What the last suggestion said: a category to use, none, or why it failed. */
+type Suggested = { kind: "hit"; hit: CategoryHit } | { kind: "none" } | { kind: "problem"; problem: string };
+
+export function ProductCategoryCard({ category, attributes, onChange, search, details, suggest }: Props) {
   const w = useAdminText("product").standard;
   const [shown, setShown] = useState<CategoryDetails | null>(null);
   const [missing, setMissing] = useState(false);
@@ -37,6 +43,8 @@ export function ProductCategoryCard({ category, attributes, onChange, search, de
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<CategoryHit[] | null>(null);
   const [pending, start] = useTransition();
+  const [suggested, setSuggested] = useState<Suggested | null>(null);
+  const [suggesting, startSuggesting] = useTransition();
   const asked = useRef(0);
   const searchId = useId();
 
@@ -77,6 +85,7 @@ export function ProductCategoryCard({ category, attributes, onChange, search, de
       setChoosing(false);
       setQuery("");
       setHits(null);
+      setSuggested(null);
       onChange(found.id, keepForCategory(found.attributes.map((a) => a.id), attributes));
     });
   };
@@ -140,6 +149,35 @@ export function ProductCategoryCard({ category, attributes, onChange, search, de
             <div role="status" aria-live="polite" className="text-sm text-muted">
               {pending && query.trim().length >= 2 ? w.searching : hits && hits.length === 0 ? w.noMatch : ""}
             </div>
+            {suggest && (
+              <div className="flex flex-col items-start gap-2" data-testid="category-suggestion">
+                <Button
+                  size="dense"
+                  disabled={suggesting}
+                  onClick={() =>
+                    startSuggesting(async () => {
+                      const answer = await suggest();
+                      setSuggested(!answer.ok ? { kind: "problem", problem: answer.problem } : answer.suggestion ? { kind: "hit", hit: answer.suggestion } : { kind: "none" });
+                    })
+                  }
+                >
+                  {suggesting ? w.suggesting : w.suggest}
+                </Button>
+                <div role="status" aria-live="polite" className="text-sm">
+                  {suggested?.kind === "hit" && (
+                    <div className="flex flex-wrap items-center gap-3 rounded-panel bg-sunken px-3 py-2">
+                      <span className="text-muted">{w.suggested}</span>
+                      <span className="text-body-strong text-ink">{suggested.hit.path}</span>
+                      <Button size="dense" onClick={() => choose(suggested.hit)}>
+                        {w.useSuggestion}
+                      </Button>
+                    </div>
+                  )}
+                  {suggested?.kind === "none" && <span className="text-muted">{w.noSuggestion}</span>}
+                  {suggested?.kind === "problem" && <span className="text-danger-text">{suggested.problem}</span>}
+                </div>
+              </div>
+            )}
             {hits && hits.length > 0 && (
               <ul className="flex flex-col divide-y divide-line rounded-panel border border-line">
                 {hits.map((hit) => (

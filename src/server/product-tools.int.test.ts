@@ -271,4 +271,29 @@ describe("write_product_texts", () => {
     expect((await editorView(created.id)).translations.find((t) => t.locale === "nb-NO")?.description).toBe("");
     expect(await refusal(productTools.writeProductTextsTool(ctxOf(store), writeProductTextsInput.parse({ product: created.id }), { connection: null }))).toContain("no AI text model");
   });
+  it("sets the standard category by path or id and its attributes by name, refuses what the release lacks, and reads them back (D327)", async () => {
+    const made = await run("create_product", {
+      title: "Running tights",
+      prices: { NO: "399" },
+      standard_category: "Apparel & Accessories > Clothing > Activewear",
+      standard_attributes: { color: ["Black", "Blue"] },
+    });
+    expect(await editorView(made.id)).toMatchObject({ standardCategory: "aa-1-1", standardAttributes: { "1": [1, 2] } });
+    const read = await run("get_product", { product: made.id });
+    expect(read.standard_category).toEqual({ id: "aa-1-1", path: "Apparel & Accessories > Clothing > Activewear", attributes: { Color: ["Black", "Blue"] } });
+    // A change of attributes only keeps the category; an empty list takes an attribute away.
+    const changed = await run("update_product", { product: made.id, standard_attributes: { Color: [], Pattern: ["Animal"] } });
+    expect(changed.done).toContain("the standard category and its attributes");
+    expect(await editorView(made.id)).toMatchObject({ standardCategory: "aa-1-1", standardAttributes: { "3": [24478] } });
+    // A path the release does not have is answered with the closest ones; an attribute or a value the category lacks says what there is.
+    expect(await refusal(run("update_product", { product: made.id, standard_category: "Coffee grinder" }))).toMatch(/not a category of the standard taxonomy\. The closest: .*hg-11-6-2-6 \(Home & Garden/);
+    expect(await refusal(run("update_product", { product: made.id, standard_attributes: { Wattage: ["5 W"] } }))).toMatch(/no attribute "Wattage"/);
+    expect(await refusal(run("create_product", { title: "Loose", standard_attributes: { Color: ["Black"] } }))).toContain("standard_category before its attributes");
+    // A new category keeps the attributes it also has; null takes it away with them.
+    await run("update_product", { product: made.id, standard_category: "hg-11-6-2-6" });
+    expect(await editorView(made.id)).toMatchObject({ standardCategory: "hg-11-6-2-6" });
+    await run("update_product", { product: made.id, standard_category: null });
+    expect(await editorView(made.id)).toMatchObject({ standardCategory: null, standardAttributes: {} });
+    expect((await run("get_product", { product: made.id })).standard_category).toBeNull();
+  });
 });

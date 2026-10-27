@@ -23,6 +23,8 @@ import { NO_ACCESS, checkAnyPermission, checkPermission, requirePermission } fro
 import { catalogTag } from "@/server/catalog";
 import { fieldsTag, getFieldData, getVariantFieldData } from "@/server/custom-fields";
 import { refreshStoreEmbeddings } from "@/server/embeddings";
+import { suggestCategory } from "@/server/category-suggest";
+import type { CategorySuggestResult } from "@/lib/category-suggest";
 import { suggestProductText } from "@/server/product-writer";
 import { addressBefore, addressChangedAfter } from "@/server/redirect-notes";
 import {
@@ -340,4 +342,34 @@ export async function categoryDetailsAction(storeSlug: string, categoryId: strin
   if (!isCategory(t, categoryId)) return null;
   const words = await taxonomyWords(member.account.adminLocale ?? "en");
   return { id: categoryId, name: categoryName(words, categoryId), path: categoryPath(words, categoryId), attributes: categoryAttributes(t, words, categoryId), release: t.release };
+}
+
+const categoryAsk = z.object({ title: z.string().trim().max(200), description: z.string().max(10_000) });
+
+/**
+ * The AI's suggestion of the product's standard category (D327 I.5), from the title and description in the editor: one of the candidates
+ * code found, named in the admin's language. Only shown: the person accepts it in the card, and it is saved only with the product.
+ */
+export async function suggestCategoryAction(storeSlug: string, productId: string | null, product: unknown): Promise<CategorySuggestResult> {
+  const member = await checkPermission(storeSlug, "products:write");
+  if (!member) return { ok: false, problem: await noAccess() };
+  const w = wordsOf(member);
+  if (productId !== null && !z.uuid().safeParse(productId).success) return { ok: false, problem: w.unknownProduct };
+  const parsed = categoryAsk.safeParse(product);
+  if (!parsed.success) return { ok: false, problem: w.textsUnreadable };
+  if (!parsed.data.title) return { ok: false, problem: w.titleFirst };
+  const connection = await aiFor(member.store.id, { feature: "product_taxonomy", accountId: member.account.id });
+  if (!connection?.textModel) return { ok: false, problem: w.noModel };
+  try {
+    const { suggestion } = await suggestCategory(
+      connection,
+      { accountId: member.account.id, storeId: member.store.id, productId, locale: member.store.localization.locales[0] ?? "en" },
+      parsed.data,
+    );
+    if (!suggestion) return { ok: true, suggestion: null };
+    const words = await taxonomyWords(member.account.adminLocale ?? "en");
+    return { ok: true, suggestion: { id: suggestion.id, name: categoryName(words, suggestion.id), path: categoryPath(words, suggestion.id) } };
+  } catch (error) {
+    return { ok: false, problem: error instanceof AiError ? fillWords(w.aiFailedBecause, { reason: error.message }) : w.aiFailed };
+  }
 }

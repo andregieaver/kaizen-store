@@ -20,6 +20,7 @@ import {
 } from "./product-input";
 import type { ProductFacts, WriteKind } from "./product-writing";
 import { DESCRIPTION_MAX, EXCERPT_FIELD_MAX, TITLE_MAX } from "./seo";
+import type { StandardAttributes } from "./product-taxonomy";
 import { slugify } from "./slug";
 import { TERM_NAME_MAX } from "./taxonomy";
 import { UNITS } from "./unit-price";
@@ -131,6 +132,26 @@ const variantArgs = z.object({
   ...ruleArgs,
 });
 
+/** The product's category in the standard taxonomy (D327) and its attributes' values, by name: the server resolves them against the release. */
+const standardArgs = {
+  standard_category: z
+    .string()
+    .trim()
+    .min(1)
+    .max(400)
+    .nullable()
+    .optional()
+    .describe(
+      "What the product is in the standard product taxonomy that Google and marketplaces read (apart from the store's own categories): a category's id (such as aa-1-1) or its full English path (such as Apparel & Accessories > Clothing > Activewear). Anything else is answered with the closest categories to choose from. null takes it away.",
+    ),
+  standard_attributes: z
+    .record(z.string().trim().min(1).max(100), z.array(z.string().trim().min(1).max(100)).max(25))
+    .optional()
+    .describe(
+      "Values of the category's attributes by name in English, such as {\"Color\": [\"Black\"], \"Pattern\": [\"Striped\"]} (they replace the ones there; an empty list takes an attribute away). Only the category's own attributes and their values; get_product names them.",
+    ),
+};
+
 /** A bundle's components by SKU and its pricing (D322): the AI manager makes or changes one as the editor does. */
 const bundleArgs = z
   .object({
@@ -169,6 +190,7 @@ export const createProductInput = z.object({
   manufacturer: operatorArgs.optional().describe("Who makes it, required on goods for sale in the EU; the store's first company when left out."),
   responsible_person: operatorArgs.optional().describe("A person or company in the EU responsible for its safety, required when the manufacturer is outside the EU."),
   bundle: bundleArgs.optional(),
+  ...standardArgs,
 });
 export type CreateProductInput = z.output<typeof createProductInput>;
 
@@ -204,6 +226,7 @@ export const updateProductInput = z.object({
   manufacturer: operatorArgs.optional(),
   responsible_person: operatorArgs.optional(),
   bundle: bundleArgs.optional().describe("A bundle's components and pricing as they should be (they replace the ones there); only for a bundle."),
+  ...standardArgs,
 });
 export type UpdateProductInput = z.output<typeof updateProductInput>;
 
@@ -261,6 +284,8 @@ export type Resolved = {
   tags?: string[];
   media?: ProductInput["media"];
   addMedia?: ProductInput["media"];
+  /** The standard category and attributes (D327) as ids, resolved by the server from `standard_category` and `standard_attributes`. */
+  standard?: { category: string | null; attributes: StandardAttributes };
 };
 
 export type Converted = { ok: true; input: ProductInput; changed: string[] } | { ok: false; problems: string[] };
@@ -460,6 +485,7 @@ export function toProductInput(args: CreateProductInput, base: ProductInput, sto
       vatCategory: args.vat_category ?? base.vatCategory,
       manufacturer,
       responsiblePerson,
+      ...(resolved.standard && { standardCategory: resolved.standard.category, standardAttributes: resolved.standard.attributes }),
     },
   };
 }
@@ -487,6 +513,7 @@ const FIELD_WORDS: Record<string, string> = {
   manufacturer: "the manufacturer",
   responsible_person: "the responsible person",
   bundle: "what is in the bundle and its pricing",
+  standard: "the standard category and its attributes",
 };
 
 /**
@@ -599,6 +626,7 @@ export function mergeProduct(stored: ProductInput, change: UpdateProductInput, s
       mark("bundle");
     }
   }
+  if (resolved.standard) mark("standard");
 
   if (problems.length > 0) return { ok: false, problems };
   if (changed.length === 0) return { ok: false, problems: ["Nothing to change: give the fields that should change."] };
@@ -618,6 +646,7 @@ export function mergeProduct(stored: ProductInput, change: UpdateProductInput, s
       manufacturer,
       responsiblePerson,
       bundle,
+      ...(resolved.standard && { standardCategory: resolved.standard.category, standardAttributes: resolved.standard.attributes }),
     },
   };
 }
@@ -738,6 +767,12 @@ export function productApprovalSummary(name: string, input: Record<string, unkno
       if (input[key] !== undefined) parts.push(FIELD_WORDS[key]);
     }
     if (typeof input.handle === "string") parts.push(`the web address to /p/${input.handle} (the old one is redirected)`);
+    if (input.standard_category === null) parts.push("no standard category");
+    else if (typeof input.standard_category === "string") parts.push(`the standard category to ${cut(input.standard_category)}`);
+    if (input.standard_attributes !== undefined) {
+      const values = Object.entries(input.standard_attributes as Record<string, string[]>).map(([name, given]) => `${name}: ${given.join(", ") || "none"}`);
+      parts.push(`the standard attributes to ${cut(values.join("; ")) || "none"}`);
+    }
     for (const key of ["categories", "tags"] as const) {
       if (Array.isArray(input[key])) parts.push(`${FIELD_WORDS[key]} to ${(input[key] as string[]).join(", ") || "none"}`);
     }

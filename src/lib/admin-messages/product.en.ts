@@ -44,6 +44,11 @@ export const productEn = {
     chosen: "{n} chosen",
     release: "Shopify's Standard Product Taxonomy, release {release}.",
     unknown: "The category {id} is not in the list any more. Choose another.",
+    suggest: "Suggest with AI",
+    suggesting: "Finding a category…",
+    suggested: "Suggested from the product's title and description:",
+    useSuggestion: "Use it",
+    noSuggestion: "The AI found no category that fits. Search for one instead.",
   },
   variantFields: {
     title: "Custom fields for each variant",

@@ -18,10 +18,12 @@ import type { PermissionHolder } from "@/lib/permissions";
 import { auditProblems } from "@/lib/order-numbers";
 import { marketPath, storeHref } from "@/lib/paths";
 import { parsePrice } from "@/lib/product-input";
+import { categoryPath, isCategory, namedAttributes, type StandardAttributes } from "@/lib/product-taxonomy";
 
 import { storeUsageLines } from "./usage";
 import { audit, type Account } from "./auth";
 import { listPriceListsTool } from "./price-lists";
+import { taxonomy, taxonomyWords } from "./product-taxonomy";
 import { draftBroadcastTool, issueGiftCardTool, preflightIssueGiftCard, listAutomationsTool, listBroadcastsTool, listSegmentsTool, preflightSendBroadcast, sendBroadcastTool, switchAutomationTool, tagCustomerTool } from "./marketing-tools";
 import { OwnerToolError } from "./owner-tool-error";
 import {
@@ -590,12 +592,21 @@ async function listProductsTool({ store }: OwnerToolContext, input: OwnerToolInp
   };
 }
 
+/** A product's standard category (D327) for the model: its id, English path and attribute values by name, or null. */
+async function standardForTool(category: unknown, attributes: unknown) {
+  if (typeof category !== "string") return null;
+  const tx = await taxonomy();
+  if (!isCategory(tx, category)) return { id: category, note: "No longer in the taxonomy's release: choose another." };
+  const english = await taxonomyWords("en");
+  return { id: category, path: categoryPath(english, category), attributes: namedAttributes(tx, english, category, (attributes ?? {}) as StandardAttributes) };
+}
+
 async function getProductTool({ store }: OwnerToolContext, { product }: OwnerToolInput<"get_product">) {
   const id = await findProductId(store, product);
   const locale = mainLocale(store);
   const [[head], variants, [extra]] = await Promise.all([
     db().execute<Row>(sql`
-      select p.handle, p.status, p.kind, p.vat_category, coalesce(tl.title, tf.title, p.handle) as title, coalesce(tl.description, tf.description, '') as description
+      select p.handle, p.status, p.kind, p.vat_category, p.standard_category, p.standard_attributes, coalesce(tl.title, tf.title, p.handle) as title, coalesce(tl.description, tf.description, '') as description
       from commerce.products p
       left join commerce.product_translations tl on tl.product_id = p.id and tl.locale = ${locale}
       left join lateral (select title, description from commerce.product_translations where product_id = p.id order by locale limit 1) tf on true
@@ -679,6 +690,8 @@ async function getProductTool({ store }: OwnerToolContext, { product }: OwnerToo
     }, []),
     categories: extra?.categories ?? [],
     tags: extra?.tags ?? [],
+    // The standard taxonomy's category and attribute values (D327), in English as update_product takes them.
+    standard_category: await standardForTool(head.standard_category, head.standard_attributes),
     pictures: extra?.pictures ?? [],
     ...(bundle && { bundle }),
     ...(breaks.length > 0 && {

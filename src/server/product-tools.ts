@@ -26,6 +26,16 @@ import {
   type UpdateProductInput,
   type WriteProductTextsInput,
 } from "@/lib/product-tools";
+import { categoryCandidates } from "@/lib/category-suggest";
+import {
+  attributesFromNames,
+  categoryAttributes,
+  categoryFromCell,
+  categoryPath,
+  keepForCategory,
+  sortedAttributes,
+  type StandardAttributes,
+} from "@/lib/product-taxonomy";
 import { writtenFindings, type WrittenText } from "@/lib/product-writing";
 import { slugify } from "@/lib/slug";
 import type { Term } from "@/lib/taxonomy";
@@ -36,6 +46,7 @@ import { catalogTag } from "./catalog";
 import { libraryFilesByUrl } from "./media-library";
 import { OwnerToolError } from "./owner-tool-error";
 import { makeSitePicture } from "./picture-maker";
+import { taxonomy, taxonomyPaths, taxonomySearch, taxonomyWords } from "./product-taxonomy";
 import { suggestProductText } from "./product-writer";
 import { emptyProduct, getEditorContext, getProductForEdit, saveProduct, type EditorContext, type StockMode } from "./products";
 import type { Store } from "./stores";
@@ -257,6 +268,44 @@ async function componentsBySku(ctx: Ctx, bundle: { components: { sku: string; qu
   return bundle.components.map((c) => ({ variantId: bySku.get(c.sku.toLowerCase())!, quantity: c.quantity }));
 }
 
+/**
+ * The standard category and attributes a call asks for (D327), as ids: the category by its id or full English path (anything else is refused
+ * with the closest categories, found by code), the attributes by name against that category, the ones there kept as far as a new category has
+ * them when none are given. Undefined when the call names neither.
+ */
+async function standardOf(
+  args: { standard_category?: string | null; standard_attributes?: Record<string, string[]> },
+  stored: { category: string | null; attributes: StandardAttributes },
+): Promise<Resolved["standard"]> {
+  if (args.standard_category === undefined && args.standard_attributes === undefined) return undefined;
+  const t = await taxonomy();
+  const english = await taxonomyWords("en");
+  let category = stored.category;
+  if (args.standard_category === null) category = null;
+  else if (args.standard_category !== undefined) {
+    category = categoryFromCell(t, await taxonomyPaths(), args.standard_category);
+    if (!category) {
+      const closest = categoryCandidates(await taxonomySearch("en"), { title: args.standard_category, description: "" }, 5);
+      return fail(
+        `"${args.standard_category}" is not a category of the standard taxonomy. ${
+          closest.length > 0 ? `The closest: ${closest.map((c) => `${c.id} (${c.path})`).join("; ")}.` : "Give a category's id or its full English path."
+        }`,
+      );
+    }
+  }
+  if (category === null) {
+    if (Object.values(args.standard_attributes ?? {}).some((values) => values.length > 0)) return fail("Give the product a standard_category before its attributes.");
+    return { category: null, attributes: {} };
+  }
+  if (args.standard_attributes === undefined) {
+    const kept = keepForCategory(categoryAttributes(t, english, category).map((a) => a.id), stored.attributes);
+    return { category, attributes: sortedAttributes(kept) };
+  }
+  const named = attributesFromNames(t, english, category, args.standard_attributes);
+  if (!named.ok) return fail(`${categoryPath(english, category)}: ${named.problems.join(" ")}`);
+  return { category, attributes: named.attributes };
+}
+
 /** `create_product`: a new draft of physical goods (or a bundle of them, D322), made as the editor makes one. */
 export async function createProductTool(ctx: Ctx, args: CreateProductInput, deps: ProductToolDeps = {}) {
   claimsFail(shopperTexts(args));
@@ -265,13 +314,15 @@ export async function createProductTool(ctx: Ctx, args: CreateProductInput, deps
   const handle = await freeHandle(ctx.store, args.handle ?? args.title, null);
   // Checked with what is known first, so nothing is made (a category, a picture) for a product that would be refused.
   const components = await componentsBySku(ctx, args.bundle);
-  const dry = toProductInput(args, emptyProduct(editor), store, { handle, components, media: await pictures(ctx, args.pictures, args.title, false, deps) });
+  const standard = await standardOf(args, { category: null, attributes: {} });
+  const dry = toProductInput(args, emptyProduct(editor), store, { handle, components, standard, media: await pictures(ctx, args.pictures, args.title, false, deps) });
   if (!dry.ok) return fail(dry.problems.join(" "));
   const problems = await problemsOf(dry.input, editor, "draft");
   if (problems.length > 0) return fail(problems.join(" "));
   const resolved: Resolved = {
     handle,
     components,
+    standard,
     categories: await termIds(ctx, editor.terms, "category", args.categories, true),
     tags: await termIds(ctx, editor.terms, "tag", args.tags, true),
     media: await pictures(ctx, args.pictures, args.title, true, deps),
@@ -303,6 +354,7 @@ async function applyChange(ctx: Ctx, change: UpdateProductInput, { make, deps }:
   const resolved: Resolved = {
     ...(change.handle !== undefined && { handle: await freeHandle(ctx.store, change.handle, found.id) }),
     ...(change.bundle && { components: await componentsBySku(ctx, change.bundle) }),
+    standard: await standardOf(change, { category: stored.standardCategory ?? null, attributes: stored.standardAttributes ?? {} }),
     ...(change.categories && { categories: await termIds(ctx, editor.terms, "category", change.categories, make) }),
     ...(change.tags && { tags: await termIds(ctx, editor.terms, "tag", change.tags, make) }),
     ...(change.pictures && { media: await pictures(ctx, change.pictures, title, make, deps) }),

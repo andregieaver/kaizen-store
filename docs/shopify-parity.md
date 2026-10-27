@@ -10,11 +10,11 @@ D152 (the store analytics cockpit) and D153 (the EU withdrawal function and the 
 
 <!-- parity:generated:start since -->
 
-- **Headline now 75.3%** (first report 59.5%), **must-have 82.7%** (first report 69.1%), over 203 core rows (first report 232).
-- Where the change comes from: +15.4 points from the 95 rating moves on core rows recorded below, and +0.4 points because the re-read changed which rows count as core (the tracker has 233 rows, the first report 232 core ones).
+- **Headline now 75.6%** (first report 59.5%), **must-have 82.7%** (first report 69.1%), over 203 core rows (first report 232).
+- Where the change comes from: +15.7 points from the 96 rating moves on core rows recorded below, and +0.4 points because the re-read changed which rows count as core (the tracker has 233 rows, the first report 232 core ones).
 - 232 of 233 rows have their Shopify side read from a page; the others are listed under evidence debt.
 
-Rated higher (79):
+Rated higher (80):
 
 - AI or rule-based customer segmentation (AI): missing to partial. D296 (wave 5 unit B): saved rule-based segments over customers and subscribers, counted live with a member list, and customer tags; read segments.ts and ran segments.test.ts, segments.int.test.ts (PGlite and integration, passed).
 - AI-written marketing email (AI): missing to partial. D297: Write with AI in the broadcast editor suggests the email's words through the claims filter, as a suggestion only; it does not yet read the store's products or campaigns.
@@ -43,6 +43,7 @@ Rated higher (79):
 - Volume pricing and quantity rules (Catalogue): partial to full. Wave 6 unit E (D323, docs/wave-6-catalogue.md E.4 and E.5): a variant's minimum, maximum and step are kept by the cart, checkout and the WordPress cart, which refuse and explain a quantity that breaks them (quantity-rules.int.test.ts); a p…
 - Search merchandising: synonyms, boosts, pins (Catalogue): missing to full. Wave 6 unit F (D324, docs/wave-6-catalogue.md Unit F): synonym groups per language, one-way and two-way, used by keyword search and query understanding (search-synonyms.int.test.ts); pins, boosts and buries of products or categories and ta…
 - Product feeds to Google and other channels (Catalogue): missing to partial. Wave 5 unit H (D302): the Google feed, the admin's left-out list and the euro scenario are built; custom labels and the API sync are not, so partial.
+- Standard product taxonomy (Catalogue): missing to full. Wave 6 unit I (D327, docs/wave-6-catalogue.md Unit I): Shopify's open Standard Product Taxonomy v2026-10 (MIT, 14,606 categories with attributes and values, names in en, nb, sv, da, Google's ids) kept in the repository; a product gets a ca…
 - Third-party and multiple payment gateways (Checkout): missing to full. The payment-provider adapter (E1) and Mollie behind it (E2, D292): a store chooses its checkout provider per mode, and a Mollie order is paid, refunded and charged back through the same order code as Stripe's, in tests.
 - Vipps (Checkout, not core): missing to partial. Mollie behind the payment-provider adapter (D292) offers Vipps where the store's Mollie account has it; a Mollie order's payment and refund are tested against a fake of Mollie's API, live access waits for Kaizena Flow's Mollie app.
 - Swish (Checkout): missing to partial. Mollie behind the payment-provider adapter (D292) offers Swish where the store's Mollie account has it; a Mollie order's payment and refund are tested against a fake of Mollie's API, live access waits for Kaizena Flow's Mollie app.
@@ -130,7 +131,7 @@ Rated lower (25):
 
 <!-- parity:generated:start summary -->
 
-Kaizena Flow has **75.3%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 203 core features weighted by importance to an EU small or mid-size merchant, and **82.7%** on the must-haves (the 83 features with weight 4 or 5). The unweighted figures are 72.4% overall and 82.5% for must-haves. Counting app-only features gives 74.8%; counting Plus-only as well gives 74.3%. Kaizena Flow is strongest on catalogue and products (88.3%) and weakest on platform, extensibility and operations (54.7%), international, compliance and trust (65.2%), checkout and payments (66.7%). Of the 203 core features, 106 are full, 82 partial and 15 missing, so half-built features, not absent ones, are the main shape of the gap.
+Kaizena Flow has **75.6%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 203 core features weighted by importance to an EU small or mid-size merchant, and **82.7%** on the must-haves (the 83 features with weight 4 or 5). The unweighted figures are 72.9% overall and 82.5% for must-haves. Counting app-only features gives 75.1%; counting Plus-only as well gives 74.6%. Kaizena Flow is strongest on catalogue and products (90.7%) and weakest on platform, extensibility and operations (54.7%), international, compliance and trust (65.2%), checkout and payments (66.7%). Of the 203 core features, 107 are full, 82 partial and 14 missing, so half-built features, not absent ones, are the main shape of the gap.
 
 <!-- parity:generated:end summary -->
 
@@ -140,10 +141,10 @@ The method is simple: a full match scores 1, a partial match 0.5, a missing feat
 
 | Measure | Features | Weighted parity | Unweighted parity | Full / partial / missing |
 | --- | --- | --- | --- | --- |
-| Headline: core (Shopify native, Basic to Advanced) | 203 | **75.3%** | 72.4% | 106 / 82 / 15 |
+| Headline: core (Shopify native, Basic to Advanced) | 203 | **75.6%** | 72.9% | 107 / 82 / 14 |
 | Must-have (core, weight 4 or 5) | 83 | **82.7%** | 82.5% | 54 / 29 / 0 |
-| Core plus app-only features | 227 | 74.8% | 72.2% | 117 / 94 / 16 |
-| Everything, including Plus-only | 233 | 74.3% | 71.2% | 118 / 96 / 19 |
+| Core plus app-only features | 227 | 75.1% | 72.7% | 118 / 94 / 15 |
+| Everything, including Plus-only | 233 | 74.6% | 71.7% | 119 / 96 / 18 |
 
 <!-- parity:generated:end headline -->
 
@@ -155,7 +156,7 @@ Counts are core features only. Weighted parity uses weights 1 to 5; must-have is
 
 | Domain | Core features | Full | Partial | Missing | Weighted parity | Must-have features | Must-have parity |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Catalogue and products | 26 | 21 | 3 | 2 | 88.3% | 8 | 92.6% |
+| Catalogue and products | 26 | 22 | 3 | 1 | 90.7% | 8 | 92.6% |
 | Storefront, themes and content | 32 | 22 | 9 | 1 | 86.6% | 15 | 97.0% |
 | Checkout and payments | 17 | 6 | 11 | 0 | 66.7% | 8 | 62.9% |
 | Orders, shipping, fulfilment and returns | 28 | 16 | 11 | 1 | 79.0% | 14 | 86.1% |
@@ -164,7 +165,7 @@ Counts are core features only. Weighted parity uses weights 1 to 5; must-have is
 | International, compliance and trust | 16 | 5 | 11 | 0 | 65.2% | 10 | 65.5% |
 | Platform, extensibility and operations | 20 | 4 | 12 | 4 | 54.7% | 7 | 72.4% |
 | AI and automation | 22 | 9 | 10 | 3 | 67.9% | 2 | 100.0% |
-| **Total** | **203** | **106** | **82** | **15** | **75.3%** | **83** | **82.7%** |
+| **Total** | **203** | **107** | **82** | **14** | **75.6%** | **83** | **82.7%** |
 
 <!-- parity:generated:end domains -->
 
@@ -176,7 +177,7 @@ A row is Full only when it lists code and tests that exist (or says it is untest
 
 | Evidence | Rows |
 | --- | ---: |
-| Full, with tests | 112 |
+| Full, with tests | 113 |
 | Full, untested (debt, not hidden) | 6 |
 | Shopify side not read from a page | 1 |
 | Rows in the tracker | 233 |
@@ -185,7 +186,7 @@ Untested Full rows: `ai.assistant-voice-mode`, `customers.abandoned-checkout-rec
 
 | Bucket | What it means | Rows not Full | Core rows | Core headline points lacking |
 | --- | --- | ---: | ---: | ---: |
-| A | Build in-house | 75 | 64 | 16.0 |
+| A | Build in-house | 74 | 63 | 15.7 |
 | B | Build, live only with a third party | 15 | 13 | 3.5 |
 | C | Strategy decision first | 11 | 8 | 1.9 |
 | D | Not reachable by code | 14 | 12 | 3.4 |
@@ -198,16 +199,16 @@ The waves are those of `docs/parity-plan.md` section 3. This table is produced f
 
 <!-- parity:generated:start projection -->
 
-Now: **75.3%** core, 82.7% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 16 rows (12 core) have no wave yet and are not in them.
+Now: **75.6%** core, 82.7% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 16 rows (12 core) have no wave yet and are not in them.
 
 | Wave | Scope | Rows (core) | Core if every row of waves 1 to N is Full | Must-have | Adds (points) | Core if only bucket A rows are | Must-have |
 | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | Compliance and money | 10 (7) | 77.4% | 86.2% | +2.1 | 76.8% | 85.1% |
-| 2 | Data in and out | 3 (1) | 77.6% | 86.2% | +0.2 | 77.0% | 85.1% |
-| 3 | Inventory and orders | 14 (13) | 80.9% | 88.6% | +3.2 | 78.5% | 86.3% |
-| 4 | Payments | 7 (6) | 82.4% | 90.3% | +1.5 | 78.9% | 86.3% |
-| 5 | Customers and marketing | 19 (16) | 86.5% | 93.9% | +4.1 | 82.2% | 89.4% |
-| 6 | Catalogue | 1 (1) | 86.8% | 93.9% | +0.3 | 82.5% | 89.4% |
+| 1 | Compliance and money | 10 (7) | 77.7% | 86.2% | +2.1 | 77.1% | 85.1% |
+| 2 | Data in and out | 3 (1) | 77.9% | 86.2% | +0.2 | 77.3% | 85.1% |
+| 3 | Inventory and orders | 14 (13) | 81.2% | 88.6% | +3.2 | 78.8% | 86.3% |
+| 4 | Payments | 7 (6) | 82.7% | 90.3% | +1.5 | 79.2% | 86.3% |
+| 5 | Customers and marketing | 19 (16) | 86.8% | 93.9% | +4.1 | 82.5% | 89.4% |
+| 6 | Catalogue | 0 (0) | 86.8% | 93.9% | +0.0 | 82.5% | 89.4% |
 | 7 | Storefront and international | 16 (15) | 90.4% | 95.1% | +3.6 | 86.1% | 90.6% |
 | 8 | Analytics and AI | 17 (17) | 94.4% | 95.8% | +3.9 | 89.8% | 91.3% |
 | 9 | Platform and extensibility | 12 (9) | 96.6% | 96.9% | +2.3 | 91.3% | 91.8% |
@@ -330,8 +331,8 @@ Legend. **Shopify**: Native = included on Basic to Advanced and scored in the he
 | Search quality: type-ahead, typos, stemming | Native. [page](https://apps.shopify.com/search-and-discovery) | Full | 4 |  | Evidence: `src/server/search.ts`, `src/lib/search.ts`, `src/server/embeddings.ts` and 3 more; 6 test files; D72, D74, D75. |
 | Search merchandising: synonyms, boosts, pins | Native. [page](https://help.shopify.com/manual/online-store/search-and-discovery/search) | Full (was missing) | 2 |  | Built (D324, docs/wave-6-catalogue.md Unit F): synonym groups per language, two-way or one-way (`search_synonyms`, `expandQuery()`), OR'd into keyword search and counted as typed words by query understanding (its cache key holds them); pins, boosts and buries of products or categories and tags, for every search or for searches holding or being a phrase, up to 20 phrases a rule (`search_rules`, `merchandise()`), applied to the search's own order in `searchProducts()` (the chat agent follows it); search redirects to a page of the store; the zero-result report offers a synonym or a page; the AI manager reads and, with the owner's yes, changes them. Filters, result types and out-of-stock visibility are other rows. Evidence: `src/lib/search-synonyms.ts`, `src/server/search-synonyms.ts`, `src/lib/search-rules.ts` and 6 more; 6 test files; D72, D168, D324. |
 | Search analytics | Native. [page](https://apps.shopify.com/search-and-discovery) | Full | 2 |  | Evidence: `src/server/search.ts`, `src/server/analytics-search-data.ts`, `src/app/admin/(gated)/[store]/search/page.tsx` and 1 more; 3 test files; D72, D77, D152. |
-| Product feeds to Google and other channels | Native. [page](https://help.shopify.com/en/manual/online-sales-channels/google) | Partial (was missing) | 3 | B, wave 5 | Built (D302): a secret feed address per store (`feed_settings`) serves each offered market view (country, language, currency) as a Google Merchant Center RSS file and as Meta, TikTok and Pinterest CSVs (`FEED_CHANNELS`, `feedFile()` in `src/lib/feeds.ts`), from the storefront's own cached reads (`storeFeed()`), cached 15 minutes under the `feed` budget: availability from stock, price with VAT in the market's currency (the 30-day reference as `price` and the current as `sale_price` for a genuine reduction), brand, GTIN or `identifier_exists`, unit pricing and shipping by country; a euro view is held to `shown()` (`feeds.int.test.ts`) and Google's required attributes by `feeds.test.ts`; products left out are listed on the Product feeds page with a `FEED_PROBLEMS` reason. Missing: custom label mapping, a Google product category (row catalogue.standard-product-taxonomy), and any API sync: the owner adds the address in Merchant Center or Meta's Commerce Manager as a scheduled fetch (a Content API connection needs Google's credentials, bucket B). Code: `src/lib/feeds.ts`, `src/server/feeds.ts`. |
-| Standard product taxonomy | Native. [page](https://help.shopify.com/en/manual/products/details/product-category) | Missing (was partial) | 2 | A, wave 6 | No standard product category or attributes (verified 2026-10-25): Kaizen has its own categories and tags (D50) and a Stripe product tax code per product (`txcd_…`), which classifies for tax and is not a browse taxonomy. No standard category list with stable ids and attributes, so feeds (D302) carry no `google_product_category` and there is nothing to map to channels. Code: `src/lib/product-input.ts`, `src/components/admin/product-editor.tsx`. |
+| Product feeds to Google and other channels | Native. [page](https://help.shopify.com/en/manual/online-sales-channels/google) | Partial (was missing) | 3 | B, wave 5 | Built (D302): a secret feed address per store (`feed_settings`) serves each offered market view (country, language, currency) as a Google Merchant Center RSS file and as Meta, TikTok and Pinterest CSVs (`FEED_CHANNELS`, `feedFile()` in `src/lib/feeds.ts`), from the storefront's own cached reads (`storeFeed()`), cached 15 minutes under the `feed` budget: availability from stock, price with VAT in the market's currency (the 30-day reference as `price` and the current as `sale_price` for a genuine reduction), brand, GTIN or `identifier_exists`, unit pricing and shipping by country; a euro view is held to `shown()` (`feeds.int.test.ts`) and Google's required attributes by `feeds.test.ts`; products left out are listed on the Product feeds page with a `FEED_PROBLEMS` reason. Google's product category, colour, material and pattern come from the standard taxonomy (D327). Missing: custom label mapping and any API sync: the owner adds the address in Merchant Center or Meta's Commerce Manager as a scheduled fetch (a Content API connection needs Google's credentials, bucket B). Code: `src/lib/feeds.ts`, `src/server/feeds.ts`. |
+| Standard product taxonomy | Native. [page](https://help.shopify.com/en/manual/products/details/product-category) | Full (was missing) | 2 |  | Evidence: `src/data/product-taxonomy/structure.json`, `src/data/product-taxonomy/LICENSE`, `scripts/product-taxonomy.mjs` and 9 more; 6 test files; D50, D302, D327. |
 | Combined listings | Plus. [page](https://help.shopify.com/en/manual/products/combined-listings-app) | Missing | 1 | A, no wave yet | No way to show separate products as one listing with a shared option (verified 2026-10-25: variants live inside one product only, no product group or sibling table). Not planned: decision 6 of `docs/wave-6-catalogue.md` leaves it (Plus only on Shopify, weight 1; unit B's 2,048 variants cover most of the need). |
 
 <!-- parity:generated:end detail-catalogue -->

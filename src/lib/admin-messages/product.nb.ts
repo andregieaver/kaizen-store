@@ -43,6 +43,11 @@ export const productNb: ProductMessages = {
     chosen: "{n} valgt",
     release: "Shopifys standard produkttaksonomi, utgave {release}.",
     unknown: "Kategorien {id} er ikke lenger i listen. Velg en annen.",
+    suggest: "Foreslå med KI",
+    suggesting: "Finner en kategori …",
+    suggested: "Foreslått ut fra produktets tittel og beskrivelse:",
+    useSuggestion: "Bruk den",
+    noSuggestion: "KI-en fant ingen kategori som passer. Søk etter en i stedet.",
   },
   variantFields: {
     title: "Egendefinerte felt for hver variant",

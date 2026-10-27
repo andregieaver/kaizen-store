@@ -1030,6 +1030,8 @@ modules are named `product-taxonomy`.
 
 #### I.5 The AI's suggestion, the AI manager and the tracker (I3)
 
+Built on 2026-10-27 (all of unit I): `src/lib/category-suggest.ts`, `src/server/category-suggest.ts`, the Category card's *Suggest with AI*; the AI manager's `standard_category`/`standard_attributes` in `src/lib/product-tools.ts` and `src/server/product-tools.ts`; `e2e/signed-in/standard-taxonomy.spec.ts`.
+
 - **Suggest a category** (feature `product_taxonomy`, while the store's AI has a text model): code picks at most 25 candidate categories
   from the product's own title and description (`categoryCandidates()`); the model is given those words (never a price or stock,
   `UNTRUSTED_TEXT`) and the candidates' ids and paths, and answers one id from the list or none (`readCategoryChoice()`); the editor shows
