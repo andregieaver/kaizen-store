@@ -137,6 +137,8 @@ describe("the owner assistant (D94)", () => {
       // A content type's entries (D326) are listed by its name, and an entry read by its id; ones the store doesn't have are said so.
       list_entries: { type: "nothing" },
       get_entry: { entry: "00000000-0000-4000-8000-000000000000" },
+      // Customs and duties (D343) are read for one of the store's countries.
+      customs_duties: { country: "NO" },
     };
     // A draft A/B test (D148) is a write that needs no yes: its own test makes one. So are tagging and archiving orders and writing a draft order (D173): they need arguments, and
     // `order-ops-tools.int.test.ts` runs each of them. Making a draft product and writing a draft's texts (D308) are too: `product-tools.int.test.ts` runs them. Building and changing a page's draft (D308) as well: `site-tools.int.test.ts` runs them.

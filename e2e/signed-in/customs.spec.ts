@@ -1,26 +1,41 @@
 import { expect, test } from "@playwright/test";
 
-import { testDb } from "../db";
-import { ADMIN, E2E_STORE, OWNER } from "./accounts";
+import { testDb, testStore } from "../db";
+import { ADMIN, OWNER } from "./accounts";
 
 /**
- * Customs and duties as the owner and the platform's admin meet them (wave 7 unit I, D343; row orders.customs-and-duties). The owner of the shared
- * store sees the countries its goods cross a customs border into (sent from Norway: Sweden and Denmark, not Norway) and switches Denmark to
- * duties collected at checkout and back; the platform's admin adds a duty rate of a destination no real row uses, marks it verified and removes
+ * Customs and duties as the owner and the platform's admin meet them (wave 7 unit I, D343; row orders.customs-and-duties). The owner, in a store
+ * of their own based in Norway and selling in several countries (the shared store has no country, so it is told to say where its goods are
+ * sent from), sees the countries its goods cross a customs border into (Sweden and Denmark, not Norway) and switches Denmark to duties
+ * collected at checkout and back; the platform's admin adds a duty rate of a destination no real row uses, marks it verified and removes
  * it. The money is held by duties.test.ts, customs.int.test.ts and the euro scenario in checkout-kinds.int.test.ts; this holds the screens.
  *
- * Shared data: only Denmark's customs choice of the shared store is changed, for the seconds of the test, and put back (no other signed-in spec
- * checks out in Denmark); the rate row is this spec's own destination (XQ), removed after.
+ * Shared data: none; the rate row is this spec's own destination (XQ), removed after.
  */
 
 test.describe.configure({ mode: "serial" });
 
 const DEST = "XQ";
 
+let store = { slug: "", id: "" };
+
+test.beforeAll(async () => {
+  store = await testStore("toll-eier", ["countries"]);
+  const sql = testDb();
+  try {
+    await sql`update commerce.stores set setup_completed_at = now(), country = 'NO' where id = ${store.id}`;
+    await sql`
+      insert into commerce.store_members (store_id, account_id, role, kind)
+      select ${store.id}, a.id, 'owner', 'staff' from commerce.accounts a where lower(a.email) = ${OWNER.email}
+      on conflict (store_id, account_id) do update set role = 'owner'`;
+  } finally {
+    await sql.end();
+  }
+});
+
 test.afterAll(async () => {
   const sql = testDb();
   try {
-    await sql`delete from commerce.customs_settings where store_id = (select id from commerce.stores where slug = ${E2E_STORE}) and market_code = 'DK'`;
     await sql`delete from commerce.duty_rates where destination = ${DEST}`;
   } finally {
     await sql.end();
@@ -31,12 +46,13 @@ test.describe("the owner", () => {
   test.use({ storageState: OWNER.state });
 
   test("chooses who pays duties in a country the goods cross a border into, and puts it back", async ({ page }) => {
-    await page.goto(`/admin/${E2E_STORE}/settings/customs`);
+    await page.goto(`/admin/${store.slug}/settings/customs`);
     await expect(page.getByRole("heading", { name: "Duties and import VAT", level: 1 })).toBeVisible();
     await expect(page.getByText("Your goods are sent from Norway.")).toBeVisible();
     const countries = page.getByRole("list", { name: "Who pays duties and import VAT" });
     // Norway is the store's own country: nothing to choose there.
-    await expect(countries.getByRole("listitem").filter({ hasText: "Norway" })).toHaveCount(0);
+    // (by the row's title: every row's VAT scheme tick names VOEC in Norway)
+    await expect(countries.getByRole("listitem").filter({ has: page.getByText("Norway", { exact: true }) })).toHaveCount(0);
     const denmark = countries.getByRole("listitem").filter({ hasText: "Denmark" });
     const mode = denmark.getByTestId("customs-mode-DK");
     await expect(mode).toHaveValue("dap");

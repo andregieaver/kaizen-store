@@ -63,7 +63,8 @@ test("makes a blog that shows comments at once, and an author", async ({ page })
   // The first blog is there already, at /blog.
   await expect(page.getByRole("listitem").filter({ hasText: "/blog" }).first()).toBeVisible();
   await page.getByRole("textbox", { name: /^Name/ }).first().fill(blogName);
-  await page.getByRole("textbox", { name: "Address", exact: true }).fill(handle);
+  // The label holds its hint too, so its name starts with the word.
+  await page.getByRole("textbox", { name: /^Address/ }).fill(handle);
   await page.getByRole("radio", { name: /Shown at once/ }).check();
   await page.getByRole("button", { name: "Save the blog" }).click();
   await expect(page.getByText("The blog is saved.")).toBeVisible();
@@ -73,7 +74,7 @@ test("makes a blog that shows comments at once, and an author", async ({ page })
   await expect(page.getByRole("heading", { level: 1, name: "Authors" })).toBeVisible();
   await page.getByRole("textbox", { name: "Name", exact: true }).fill(authorName);
   await page.getByRole("textbox", { name: "A few words about them" }).fill("Writes about the shop's news.");
-  await page.getByRole("textbox", { name: "Link", exact: true }).fill("https://ada.example");
+  await page.getByRole("textbox", { name: /^Link/ }).fill("https://ada.example");
   await page.getByRole("button", { name: "Save the author" }).click();
   await expect(page.getByText("The author is saved.")).toBeVisible();
   await expect(page.getByRole("listitem").filter({ hasText: authorName })).toBeVisible();
@@ -98,7 +99,8 @@ test("puts an article in the blog with its author, at the blog's address with it
   await expect(author.getByText("Writes about the shop's news.")).toBeVisible();
   const data = (await page.locator('script[type="application/ld+json"]').allTextContents()).map((text) => JSON.parse(text));
   expect(data.find((d) => d["@type"] === "Article")).toMatchObject({ author: { "@type": "Person", name: authorName, url: "https://ada.example" } });
-  const feedHref = await page.locator('head link[rel="alternate"][type="application/atom+xml"]').getAttribute("href");
+  // Linked in the page's metadata, which a page drawn per request streams after its head to a browser (search engines get it in the head).
+  const feedHref = await page.locator('link[rel="alternate"][type="application/atom+xml"]').first().getAttribute("href");
   expect(feedHref).toMatch(new RegExp(`/blogs/${handle}/feed\\.atom$`));
   const feed = await request.get(feedHref!);
   expect(feed.headers()["content-type"]).toContain("application/atom+xml");

@@ -40,6 +40,8 @@ test.beforeAll(async () => {
 
 test("a description written for Sweden in the editor shows on the Swedish page only", async ({ page }) => {
   await page.goto(`/admin/${store.slug}/products/${product.id}`);
+  // Sweden reads the product in Swedish (the template's products are written in it), so its own text is written in that language's tab.
+  await page.getByRole("tab", { name: /Svenska|Swedish/ }).click();
   const countryTexts = page.locator("[data-country-texts]");
   await countryTexts.locator("summary").click();
   await countryTexts.getByRole("textbox", { name: /Sverige|Sweden/ }).fill("Skrevet for Sverige i redigeringen.");
@@ -60,7 +62,10 @@ test("the builder names the view it draws, and a page limited to Sweden says so"
   await expect(note).toBeVisible({ timeout: 30_000 });
   await expect(note).toContainText(/Norge|Norway/);
   const countries = page.getByRole("group", { name: "Countries" });
-  await countries.getByRole("radio", { name: "Only some countries" }).check();
+  // The settings are drawn before the builder's scripts take them over: a press before that is undone, so press until it holds.
+  await expect(async () => {
+    await countries.getByRole("radio", { name: "Only some countries" }).check({ timeout: 2_000 });
+  }).toPass({ timeout: 20_000 });
   // The store's own country is ticked first; Sweden ticked, Norway taken off.
   await countries.getByRole("checkbox", { name: /Sverige|Sweden/ }).check();
   await countries.getByRole("checkbox", { name: /Norge|Norway/ }).uncheck();
