@@ -92,6 +92,11 @@ describe("a product's description for one country", () => {
     const inNorway = await getProduct(fx.storeId, { ...no, locale }, product.handle);
     expect(inSweden?.description).toBe("Bare for Sverige.");
     expect(inNorway?.description).not.toBe("Bare for Sverige.");
+    // Sweden in its own language, which the product is not written in: the description falls back to the main language, and so does
+    // the country's own (the text the editor wrote).
+    const swedish = se.ownLocale;
+    expect(swedish).not.toBe(locale);
+    expect((await getProduct(fx.storeId, { ...se, locale: swedish }, product.handle))?.description).toBe("Bare for Sverige.");
   });
 
   it("is kept by a save that leaves it out, and taken away by an empty text", async () => {

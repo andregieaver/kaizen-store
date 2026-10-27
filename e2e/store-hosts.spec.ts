@@ -33,7 +33,11 @@ test("a store is served on its own host, and its old address moves there", async
   // Actions post to the store's host.
   await page.getByRole("button", { name: "Legg i handlekurven" }).first().click();
   await expect(page.getByRole("status").filter({ hasText: "Lagt i handlekurven." })).toBeVisible();
-  await page.getByRole("link", { name: "Gå til handlekurven" }).click();
+  // The cart is a pay route, entered by a full page load (`PayRouteGuard` reloads one reached by a client navigation): the link is
+  // followed as a load of its own, so no reload is still on its way when the next page is asked for.
+  const toCart = page.getByRole("link", { name: "Gå til handlekurven" });
+  await expect(toCart).toHaveAttribute("href", "/no/cart");
+  await page.goto(storeUrl("demo", "/no/cart"));
   await expect(page).toHaveURL(storeUrl("demo", "/no/cart"));
 
   // Kaizen's address for the store moves to the store's own.

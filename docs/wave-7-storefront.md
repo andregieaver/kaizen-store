@@ -245,6 +245,41 @@ A1 availability (model, view, editor, CSV, cart, copies, tools); A2 rules (model
   to anyone without the unlock cookie (`kaizen_unlock_{store}`, necessary, HttpOnly) or a staff session; noindex, robots disallow, no
   sitemap, llms.txt or feed; the pay routes of orders already placed, webhooks and after-sale links keep working; turning it on and off is
   audited; a new store is private until it opens (decision 5).
+  **E in detail (2026-10-27).**
+  - **Model.** `stores.private_mode` (boolean, default on: decision 5) and `stores.private_password` (a scrypt hash, `scrypt$…`; none: no
+    visitor gets in, staff still do), and `stores.private_version` (raised whenever the password changes or the owner signs everyone out,
+    so an unlock made before stops working). Written only by `src/server/private-mode.ts` (`setPrivateMode()`, `setPrivatePassword()`,
+    `signEveryoneOut()`), each audited (`store.private_mode`, `store.private_password`, area `settings`, never the password). The migration
+    turns it off for every store that has opened (`setup_completed_at`) and for store templates and demo stores, so only stores still in setup
+    become private (decision 5: an open store is never made private by the change). Opening a store (`completeSetup()`) turns it off through
+    the same writer; a store copy starts private, its password not copied. A store template or demo store is never private (its pages are the
+    theme store's previews), whatever the column says.
+  - **Who gets in.** The proxy (`src/proxy.ts`), which already reads a store's facts every few seconds (`storeFactsOf()`), learns whether it
+    is private and its version, and serves every page request of a private store to a visitor without a good unlock cookie from the landing
+    page instead (a rewrite, `noindex`, `no-store`). The unlock cookie is `kaizen_unlock_{storeId}` (necessary, HttpOnly, `SameSite=Lax`,
+    path `/`): a signed token (`src/lib/unlock-pass.ts`, a key made from `SETTINGS_ENCRYPTION_KEY` for this use alone) of the store, its kind
+    (`password`, 30 days, tied to `private_version`; `staff`, 12 hours) and its end, checked without the database. Paths of what was already
+    sold stay open (`privateOpenPath()`: the order page, My account and its token pages, downloads, the withdrawal function, returns,
+    unsubscribing, a subscription's and a box list's links), as do the API routes (webhooks), which the proxy never sees.
+  - **The landing page.** A page role `private` (`PAGE_ROLES`, D112/D113), built in the builder like the other working pages, holding the
+    shop component *Password* (`STORE_PARTS.private`: the store's name, a line and the password form), the standard page until one is chosen.
+    It is drawn at `/s/{store}/private/{market}` under a root layout of its own (`src/app/s/[store]/private/[market]/layout.tsx`): the store's
+    theme, fonts and CSS, but no header, footer, search, cart, chat, consent extras or visit counting, so nothing on it reaches the catalogue.
+    Not private: it moves to the store's home.
+  - **Unlocking.** The form posts to `/api/private/unlock` (same site; the password checked against the hash in constant time; tries counted
+    per store by `takeBudget()`), which sets the cookie and sends the visitor back where they asked (`safeBack()`: a path of the store, never
+    another site); a wrong password goes back to the landing page saying so, the same answer for every wrong word.
+  - **Staff preview.** *Preview the store* on the Private mode page goes to `/api/private/preview` on the admin's host (a member who may read
+    the website, `website:read`), which sets a `staff` cookie at once where the store's pages are on the admin's host, and otherwise hands a
+    90-second signed `enter` token to `/api/private/enter` on the store's own host (the D193 pattern), which sets it there.
+  - **Crawlers and lists.** A private store is not `indexable` (sitemaps, llms.txt, the platform's lists), its robots.txt disallows all, its
+    product feeds (`/api/feeds/…`) and blog feeds answer not found, and its chat, recommendations and blog comment routes refuse a visitor
+    without the cookie (`unlockedFor()`).
+  - **Admin.** Settings → *Private mode* (`/settings/private`, `settings:read` to see, `settings:write` to change): the state in one line, one
+    switch, the password (set, change, remove; shown once as typed, never again), *Sign everyone out*, the landing page (choose or make it on
+    Pages → special pages), and *Preview the store*. Owner and staff words in the `settings` catalogue (en, nb); shopper words in
+    `m.privateStore` (nb, sv, da, en by hand). The AI manager reads the state in `store_checkup`; no tool changes it (a password never passes
+    through a model).
 - **F (D340) By the clock, and links to share.** `commerce.page_schedules` (publish a page's draft at a time, and optionally put the
   version before back at another), the same for a header, a footer and a theme install going live (`theme_schedules`), run by
   `runSchedules()` in the five-minute dispatcher in the name of who scheduled, refused for a page in a running A/B test, with failures in

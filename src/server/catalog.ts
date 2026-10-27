@@ -248,11 +248,15 @@ export async function getProduct(storeId: string, market: Market, handle: string
       p.id, p.handle, p.withdrawal_exclusion, p.subscription_only, p.kind, p.standard_category, p.standard_attributes,
       p.audience, ${STORE_AUDIENCE} as store_audience, commerce.vat_rate(${marketCode}, p.vat_category) as vat_rate,
       coalesce(tl.title, tf.title) as title,
-      -- The country's own description over its language's (D338), else the language's.
+      -- The country's own description over its language's (D338), else the language's. A country whose language the product is not
+      -- written in reads the description in the language it falls back to, so the country's own is the one written in that language.
       coalesce(
         (select mt.description from commerce.product_market_texts mt
           where mt.product_id = p.id and mt.market_code = ${marketCode} and mt.locale = ${locale}),
-        tl.description, tf.description, '') as description,
+        tl.description,
+        (select mt.description from commerce.product_market_texts mt
+          where mt.product_id = p.id and mt.market_code = ${marketCode} and mt.locale = tf.locale),
+        tf.description, '') as description,
       coalesce(tl.safety_information, tf.safety_information, '') as safety_information,
       -- Search text in the page's own language, or with the fallback text.
       coalesce(case when tl.product_id is null then tf.seo_title else tl.seo_title end, '') as seo_title,
@@ -265,7 +269,7 @@ export async function getProduct(storeId: string, market: Market, handle: string
     left join commerce.product_translations tl
       on tl.product_id = p.id and tl.locale = ${locale}
     left join lateral (
-      select title, description, safety_information, seo_title, seo_description
+      select locale, title, description, safety_information, seo_title, seo_description
       from commerce.product_translations
       where product_id = p.id order by locale limit 1
     ) tf on true
