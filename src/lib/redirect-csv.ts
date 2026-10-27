@@ -105,7 +105,7 @@ export function linesOfRecords(rows: readonly (readonly string[])[]): RedirectLi
 
 /** A redirect as the export reads it: the target of an automatic redirect is the thing's address now (the server fills it). */
 export type ExportRedirect = {
-  kind: "manual" | "product" | "category" | "tag";
+  kind: "manual" | "product" | "category" | "tag" | "entry";
   source: string;
   target: string | null;
   createdAt: Date;

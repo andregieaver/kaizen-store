@@ -21,6 +21,7 @@ import { knownIds, withDescendants } from "@/lib/taxonomy";
 import type { ThemeStorePart } from "@/lib/theme-store-parts";
 
 import { catalogTag, listGridProducts, type GridProduct } from "./catalog";
+import { gridEntries } from "./content-site";
 import { fieldsTag } from "./custom-fields";
 import { shownFieldsForItems } from "./field-tiles";
 import { pagesTag } from "./pages";
@@ -105,6 +106,9 @@ export async function gridData(block: ContentGridBlock, place: GridPlace): Promi
     }
     case "custom":
       return gridCustom(block, place);
+    case "entries":
+      // The published entries of one of the owner's content types (D326).
+      return gridEntries(place.owner, place.market ?? null, source.contentType, filter, place.owner ? "en" : (place.lang ?? "en"));
     default:
       return assertNever(source);
   }

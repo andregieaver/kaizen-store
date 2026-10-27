@@ -18,6 +18,7 @@ import {
 import { applyChanges, holdsMoney, moneyProblems, parseFieldChanges, requiredProblems, tidyFlexible } from "@/lib/custom-fields";
 
 import { audit } from "./auth";
+import { clearEntryRefs } from "./content-refs";
 import { getContentType, refusal, type ContentActor } from "./content-types";
 import { keepOwnRelations } from "./custom-fields";
 import type { SaveResult } from "./settings";
@@ -210,6 +211,7 @@ export async function deleteEntry(ctx: ContentActor, id: string): Promise<SaveRe
   if (!entry) return { ok: false, problems: ["That entry no longer exists."] };
   await db().transaction(async (tx) => {
     await tx.execute(sql`delete from commerce.content_entries where store_id is not distinct from ${ctx.owner}::uuid and id = ${entry.id}::uuid`);
+    await clearEntryRefs(tx, ctx.owner, [entry.id]);
   });
   await audit(ctx.accountId, ctx.owner, "content.entry_deleted", { entry: id, type: entry.typeId });
   return { ok: true };

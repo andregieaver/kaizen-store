@@ -342,7 +342,7 @@ export const websiteNb: WebsiteMessages = {
     },
     header: "Standardtoppteksten og telefonens meny",
     footer: "Standardbunnteksten",
-    pageTypes: { page: "Side", article: "Artikkel", product_layout: "Oppsett", header: "Topptekst", footer: "Bunntekst", variant: "Versjon" },
+    pageTypes: { page: "Side", article: "Artikkel", product_layout: "Oppsett", header: "Topptekst", footer: "Bunntekst", variant: "Versjon", entry_layout: "Oppføringsside" },
     untitled: "Uten tittel",
     mainMenu: "Hovedmeny",
     notPublished: "ikke publisert",

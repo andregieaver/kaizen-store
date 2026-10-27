@@ -19,6 +19,7 @@ export function pageRulesProblem(owner: PageOwner, kind: PageType, content: Page
   return (
     ownerGridProblem(owner, content.rows) ??
     productLayoutProblem(owner, type, content) ??
+    entryLayoutProblem(type, content) ??
     siteLayoutProblem(owner, type, content) ??
     searchProblem(owner, type, content) ??
     plansProblem(owner, content) ??
@@ -87,6 +88,12 @@ function productLayoutProblem(owner: PageOwner, type: PageType, content: PageCon
   if (type !== "product_layout") return parts ? "Product components belong in product layouts, which show a product." : null;
   if (owner === null) return "Product layouts are a store's.";
   if (content.categories.length > 0 || content.tags.length > 0) return "A product layout has no categories or tags.";
+  return null;
+}
+
+/** A content type's entry page (D326) shows an entry: it has no categories or tags of its own. */
+function entryLayoutProblem(type: PageType, content: PageContent): string | null {
+  if (type === "entry_layout" && (content.categories.length > 0 || content.tags.length > 0)) return "An entry page has no categories or tags.";
   return null;
 }
 

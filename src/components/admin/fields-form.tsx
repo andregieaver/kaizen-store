@@ -561,6 +561,7 @@ function FieldInput({
     case "product":
     case "page":
     case "term":
+    case "entry":
       return groupOf(<RelationField def={def} value={value} lookups={lookups} onChange={onChange} />);
     case "file":
       return groupOf(<FileField def={def} value={asFile(value)} upload={fileUpload} onChange={onChange} />);

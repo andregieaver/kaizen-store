@@ -59,7 +59,7 @@ export const redirectsEn = {
       kind: "No redirects of this kind yet.",
     },
   },
-  kinds: { manual: "Manual", product: "Product", category: "Category", tag: "Tag", page: "Page", article: "Article" },
+  kinds: { manual: "Manual", product: "Product", category: "Category", tag: "Tag", entry: "Content entry", page: "Page", article: "Article" },
   made: {
     automatic: "Automatic",
     imported: "Imported",

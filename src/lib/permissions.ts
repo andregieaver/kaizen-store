@@ -136,6 +136,8 @@ export const PAGE_TYPE_AREA: Record<PageType, Area> = {
   footer: "website",
   product_layout: "products",
   variant: "marketing",
+  // A content type's entry page (D326) is part of the website, as its type and entries are.
+  entry_layout: "website",
 };
 
 /** The key for working on a kind of page (`read`: see it, `write`: change it), or null when the kind is not one. */

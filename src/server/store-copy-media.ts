@@ -81,6 +81,9 @@ const CARRIERS: Carrier[] = [
   { table: "chat_agents", scope: "store_id", keys: ["id"], column: "avatar", nullable: true },
   { table: "store_themes", scope: "store_id", keys: ["id"], column: "settings" },
   { table: "cart_reminder_steps", scope: "store_id", keys: ["id"], column: "content" },
+  // A content entry's values (D326): its pictures and files, in its draft and what is published.
+  { table: "content_entries", scope: "store_id", keys: ["id"], column: "draft" },
+  { table: "content_entries", scope: "store_id", keys: ["id"], column: "published" },
   {
     table: "field_values",
     scope: "store_id",

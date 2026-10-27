@@ -315,6 +315,8 @@ const PAGES: readonly AdminPage[] = [
   store("content.type.settings", "/content/[typeId]/settings", "Content type settings", "Main", "A content type's name, web name, fields and whether entries have pages."),
   store("content.entry.new", "/content/[typeId]/new", "New entry", "Main", "Writes a new entry of a content type."),
   store("content.entry", "/content/[typeId]/[entryId]", "Entry", "Main", "Writes, publishes or deletes an entry of a content type."),
+  store("content.layout", "/content/layouts/[pageId]", "Entry page", "Main", "Designs how a content type's entries look on their own pages, in the page builder."),
+  store("content.layout.preview", "/content/layouts/[pageId]/preview", "Entry page preview", "Main", "Previews a content type's entry page with one of its entries."),
   store("media", "/media", "Media", "Main", "The media library: every picture and video uploaded, where each is used, and alt texts in every language.", {
     tasks: ["Upload pictures", "Write or generate alt texts", "See where a picture is used", "Delete unused files"],
     keywords: ["images", "pictures", "photos", "videos", "alt text"],

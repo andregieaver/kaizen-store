@@ -1,11 +1,14 @@
 import "server-only";
 
+import { randomUUID } from "node:crypto";
+
 import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/client";
 import {
   contentTypeInput,
+  entryLayoutStarter,
   newTypeKey,
   readEntryContent,
   removedFieldIds,
@@ -15,8 +18,10 @@ import {
 } from "@/lib/content-types";
 import { subFieldsOf, type FieldDef } from "@/lib/custom-fields";
 
-import { audit } from "./auth";
+import { audit, type Account } from "./auth";
 import type { SaveResult } from "./settings";
+import { clearEntryRefs } from "./content-refs";
+import { savePage } from "./pages";
 import { col, typedRow, typedRows, type Executor } from "./typed-rows";
 
 /**
@@ -25,8 +30,7 @@ import { col, typedRow, typedRows, type Executor } from "./typed-rows";
  * schema a group of fields passes); a field taken away takes its values out of every entry, draft and published, in the same transaction.
  */
 
-/** The cache tag of an owner's types and entries: every writer's caller refreshes it. */
-export const contentTag = (owner: string | null) => `content:${owner ?? "kaizena"}`;
+export { contentTag } from "@/lib/content-types";
 
 /** Who is changing content, for whose site: an account, and a store or Kaizena Flow's own (null). */
 export type ContentActor = { accountId: string; owner: string | null };
@@ -200,10 +204,57 @@ export async function deleteContentType(actor: ContentActor, id: string): Promis
   const type = await getContentType(actor.owner, id);
   if (!type) return { ok: false, problems: ["That content type no longer exists."] };
   await db().transaction(async (tx) => {
+    // Its entries go with it (the foreign key cascades), and every reference to them, as deleting each would.
+    const gone = await typedRows(
+      z.object({ id: col.uuid }),
+      sql`select id from commerce.content_entries where store_id is not distinct from ${actor.owner}::uuid and type_id = ${id}::uuid`,
+      tx,
+    );
     await tx.execute(sql`delete from commerce.content_types where store_id is not distinct from ${actor.owner}::uuid and id = ${id}::uuid`);
+    await clearEntryRefs(
+      tx,
+      actor.owner,
+      gone.map((row) => row.id),
+    );
   });
   await audit(actor.accountId, actor.owner, "content.type_deleted", { type: id, name: type.name, entries: type.entries });
   return { ok: true };
+}
+
+/**
+ * The page a type's entries are drawn with (D326): the type's layout when it has one, else a new draft entry layout made from
+ * `entryLayoutStarter()` through `savePage()` and chosen for the type, in one go. Returns the layout page's id.
+ */
+export async function designEntryLayout(account: Account, owner: string | null, typeId: string): Promise<SaveResult & { id?: string }> {
+  const type = await getContentType(owner, typeId);
+  if (!type) return { ok: false, problems: ["That content type no longer exists."] };
+  if (type.layoutId) return { ok: true, id: type.layoutId };
+  const saved = await savePage(account, owner, null, entryLayoutStarter(type, () => randomUUID().replaceAll("-", "").slice(0, 16)), {
+    publish: false,
+    type: "entry_layout",
+  });
+  if (!saved.ok) return { ok: false, problems: "problems" in saved ? saved.problems : ["The entry page could not be made."] };
+  await db().execute(sql`
+    update commerce.content_types set layout_id = ${saved.id}::uuid, updated_by = ${account.id}::uuid
+    where store_id is not distinct from ${owner}::uuid and id = ${type.id}::uuid and layout_id is null
+  `);
+  await audit(account.id, owner, "content.layout_made", { type: type.id, page: saved.id });
+  return { ok: true, id: saved.id };
+}
+
+/** The type an entry layout belongs to (D326), or null when no type of the owner draws its entries with it. */
+export async function typeOfLayout(owner: string | null, pageId: string): Promise<ContentType | null> {
+  if (!z.uuid().safeParse(pageId).success) return null;
+  const row = await typedRow(
+    TYPE_ROW,
+    sql`select ${typeColumns} from commerce.content_types t where t.store_id is not distinct from ${owner}::uuid and t.layout_id = ${pageId}::uuid`,
+  );
+  return row ? toType(row) : null;
+}
+
+/** The owner's types as an entry field chooses among them (D326): key and name, in the owner's order. */
+export async function contentTypeChoices(owner: string | null): Promise<{ key: string; name: string }[]> {
+  return (await listContentTypes(owner)).map((type) => ({ key: type.key, name: type.name }));
 }
 
 /** Puts an owner's types in the order given (ids of other owners' types are ignored). */

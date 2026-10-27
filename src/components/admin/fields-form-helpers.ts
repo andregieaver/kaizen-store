@@ -45,8 +45,10 @@ export function linkOptions(kind: "page" | "product" | "category" | "tag", looku
 }
 
 /** What a product, page or category-or-tag field offers to choose from (a category or tag field, only the kinds it allows). */
-export function relationOptions(def: Pick<FieldDef, "type" | "termKinds">, lookups: FieldLookups): PickOption[] {
+export function relationOptions(def: Pick<FieldDef, "type" | "termKinds" | "contentType">, lookups: FieldLookups): PickOption[] {
   if (def.type === "product") return linkOptions("product", lookups);
+  // An entry field lists the entries of its own content type only (D326).
+  if (def.type === "entry") return (lookups.entries ?? []).filter((entry) => entry.type === def.contentType).map((entry) => ({ id: entry.id, label: entry.title }));
   if (def.type === "page") return linkOptions("page", lookups);
   const kinds = def.termKinds && def.termKinds.length > 0 ? def.termKinds : (["category", "tag"] as const);
   const many = kinds.length > 1;

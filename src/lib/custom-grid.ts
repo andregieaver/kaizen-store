@@ -96,7 +96,13 @@ export function sourceChoice(
   block: Pick<ContentGridBlock, "source" | "items" | "limit" | "sort">,
   type: GridSource["type"],
   products: GridSource,
+  /** The content type a grid of entries starts with (D326): the owner's first. */
+  contentType?: string,
 ): Partial<ContentGridBlock> {
+  if (type === "entries") {
+    const leaving = block.source.type === "custom" ? { limit: Math.min(block.limit, GRID_LIMIT_MAX) } : {};
+    return { source: { type: "entries", contentType: contentType ?? "" }, categories: [], tags: [], filters: undefined, tileFields: undefined, sort: "manual", ...leaving };
+  }
   if (type === "custom") {
     return { source: { type: "custom" }, categories: [], tags: [], filters: undefined, tileFields: undefined, sort: "newest", limit: CUSTOM_ITEMS_MAX, items: block.items ?? [] };
   }

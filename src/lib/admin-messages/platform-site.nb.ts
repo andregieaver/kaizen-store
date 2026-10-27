@@ -641,6 +641,7 @@ export const platformSiteNb: PlatformSiteMessages = {
       header: { one: "topp", One: "Topp" },
       footer: { one: "bunn", One: "Bunn" },
       variant: { one: "versjon", One: "Versjon" },
+      entry_layout: { one: "oppføringsside", One: "Oppføringsside" },
     },
     untitled: "Uten tittel",
     editTitle: "Rediger {title}",

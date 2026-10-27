@@ -16,9 +16,9 @@ import { finding, type Finding } from "./data-job";
 import { REDIRECTS_MAX, REDIRECT_HOPS_MAX } from "./data-limits";
 import { isWorkingPath, normaliseSource, normaliseTarget, pathOfTarget, type AddressContext, type SourceReading, type TargetReading } from "./redirect-path";
 
-export const REDIRECT_KINDS = ["manual", "product", "category", "tag"] as const;
+export const REDIRECT_KINDS = ["manual", "product", "category", "tag", "entry"] as const;
 export type RedirectKind = (typeof REDIRECT_KINDS)[number];
-export const AUTOMATIC_KINDS: readonly RedirectKind[] = ["product", "category", "tag"];
+export const AUTOMATIC_KINDS: readonly RedirectKind[] = ["product", "category", "tag", "entry"];
 export const REDIRECT_ORIGINS = ["editor", "import", "report", "assistant", "system"] as const;
 export type RedirectOrigin = (typeof REDIRECT_ORIGINS)[number];
 
@@ -33,6 +33,7 @@ export const KIND_WORDS: Record<RedirectKind | "page" | "article", string> = {
   product: "Product",
   category: "Category",
   tag: "Tag",
+  entry: "Content entry",
   page: "Page",
   article: "Article",
 };

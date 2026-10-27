@@ -9,6 +9,7 @@ import type { PageIssue, ThemeSet } from "@/lib/page-a11y";
 import type { FieldGroup, FieldLookups } from "@/lib/custom-fields";
 import type { SiteFonts } from "@/lib/fonts-schema";
 import type { PageType } from "@/lib/page-content";
+import type { GridContentType } from "@/lib/content-types";
 import type { MotionPlanResult } from "@/lib/motion-plan";
 import type { TranslateResult } from "@/lib/page-translate-ai";
 import type { DuplicateResult } from "@/lib/page-duplicate";
@@ -66,6 +67,8 @@ export type PageOwnerContext = {
   reserved: readonly string[];
   /** The owner's pages, for choosing a parent to nest a page under (`/projects/project-a`); only pages nest. */
   parents?: readonly { slug: string; title: string }[];
+  /** The owner's content types (D326), for a grid of their entries. */
+  contentTypes?: readonly GridContentType[];
   /** The owner's own description: the last fallback for a page without text. */
   defaultDescription: string;
   /** Lists the owner's media library for choosing a picture there instead of uploading one (D88); absent where an editor has none. */

@@ -227,6 +227,9 @@ export function rewriteAddresses(storeId: string | null, pairs: [string, string]
     ...exact(sql`commerce.terms`, sql`image_url`),
     ...exact(sql`commerce.terms`, sql`image_thumbnail_url`),
     json(sql`commerce.field_values`, sql`values`),
+    // A content entry's values (D326), its draft and what is published.
+    json(sql`commerce.content_entries`, sql`draft`),
+    json(sql`commerce.content_entries`, sql`published`, sql`published is not null`),
     json(sql`commerce.cart_reminder_steps`, sql`content`),
     // The look a store's installed theme keeps while it is not live (D241): its theme and CSS name the same files.
     ...(storeId ? [json(sql`commerce.store_theme_installs`, sql`look`, sql`look is not null`)] : []),

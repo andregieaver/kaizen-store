@@ -4,6 +4,8 @@ import { notFound, permanentRedirect } from "next/navigation";
 import { AbMarker } from "@/components/ab/ab-marker";
 import { JsonLdScript } from "@/components/json-ld";
 import { PageEditLink } from "@/components/page-edit-link";
+
+import { EntryPageView, entryPageMetadata } from "./entry-page-view";
 import { StorePageArticle } from "@/components/store-page-article";
 import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
@@ -14,6 +16,7 @@ import { localizePage } from "@/lib/page-translation";
 import { adminOrigin, marketHome, marketMetaPath, marketPath, storeSiteUrl } from "@/lib/paths";
 import { pageJsonLd } from "@/lib/structured-data";
 import { experimentOfPage } from "@/server/experiments";
+import { findEntryPage } from "@/server/content-site";
 import { findPublishedPage, type PublishedPage } from "@/server/pages";
 import { missOrRedirect } from "@/server/redirect-resolve";
 import { storeFacts, storeShareImage, storeShareTags } from "@/server/seo";
@@ -28,6 +31,16 @@ export async function loadStorePage(params: StorePageParams) {
   if (!shop || pageSlugProblem(slug, RESERVED_STORE_PAGE_SLUGS) !== null) return null;
   const found = await findPublishedPage(shop.store.id, slug);
   return found ? { ...shop, found } : null;
+}
+
+/** The published entry a two-part address names (`{type}/{entry}`, D326), with the store and market it is shown in; null when there is none. */
+async function loadEntryPage(params: StorePageParams) {
+  const { store: storeSlug, market: marketSlug, slug } = await params;
+  const parts = slug.split("/");
+  if (parts.length !== 2) return null;
+  const shop = await resolveShop(storeSlug, marketSlug);
+  const found = shop ? await findEntryPage(shop.store.id, parts[0], parts[1]) : null;
+  return shop && found ? { ...shop, found } : null;
 }
 
 export type Marker = { experiment: string; variant: string; goalBlock: string | null };
@@ -55,7 +68,12 @@ async function versionOf(storeId: string, page: PublishedPage, variant: string |
  */
 export async function storePageMetadata(params: StorePageParams, variant: string | null): Promise<Metadata> {
   const loaded = await loadStorePage(params);
-  if (!loaded || "redirect" in loaded.found) return {};
+  if (!loaded) {
+    // No page at the address: a content entry's own page (D326), when one is there.
+    const entry = await loadEntryPage(params);
+    return entry ? entryPageMetadata(entry.store, entry.market, entry.found) : {};
+  }
+  if ("redirect" in loaded.found) return {};
   const { store, market } = loaded;
   const { page } = loaded.found;
   // In the market's language where the page is translated (D55), as the version shows it (D148).
@@ -97,6 +115,9 @@ export async function StorePageView({ params, searchParams, variant }: { params:
     const shop = await resolveShop(storeSlug, marketSlug);
     // A country, language or currency the store no longer offers moves to one it does (D178).
     if (!shop) return marketMoved(storeSlug, marketSlug, `/${slug}`);
+    // A content entry's own page (D326): `/{type}/{entry}`, where no page has the address.
+    const entry = await loadEntryPage(params);
+    if (entry) return <EntryPageView store={entry.store} market={entry.market} found={entry.found} />;
     return missOrRedirect(shop, `/${slug}`);
   }
   const { store, market, found } = loaded;

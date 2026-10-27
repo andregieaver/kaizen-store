@@ -41,6 +41,8 @@ const LINK = "underline underline-offset-2 hover:no-underline";
 function Anchor({ link, className = LINK, children }: { link: ShownLink; className?: string; children?: ReactNode }) {
   const content = children ?? link.label;
   const target = link.newTab ? ({ target: "_blank" } as const) : {};
+  // An entry whose type has no pages (D326) is named, not linked.
+  if (link.href === "") return <span className={className === LINK ? undefined : className}>{content}</span>;
   return isInternalAddress(link.href) ? (
     <Link href={link.href} className={className} {...target} rel={link.newTab ? "noopener noreferrer" : undefined}>
       {content}
@@ -213,6 +215,7 @@ export function fieldValue(field: ShownField, display: FieldDisplay = "table"): 
     }
     case "product":
     case "page":
+    case "entry":
       return <RelatedLinks links={linksOf(field)} />;
     case "term":
       return (

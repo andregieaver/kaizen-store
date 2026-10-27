@@ -2971,6 +2971,8 @@ export const contentTypes = commerce.table(
   (t) => [
     unique("content_types_store_key_key").on(t.storeId, t.key).nullsNotDistinct(),
     unique("content_types_store_slug_key").on(t.storeId, t.slug).nullsNotDistinct(),
+    index("content_types_layout_idx").on(t.layoutId),
+    index("content_types_updated_by_idx").on(t.updatedBy),
     check("content_types_key", sql`${t.key} ~ '^t_[0-9a-f]{12}$'`),
     check("content_types_name", sql`length(trim(${t.name})) between 1 and 80`),
     check("content_types_slug", sql`${t.slug} ~ '^[a-z0-9]+(-[a-z0-9]+)*$' and length(${t.slug}) <= 60`),
@@ -3006,6 +3008,8 @@ export const contentEntries = commerce.table(
   (t) => [
     unique("content_entries_type_slug_key").on(t.typeId, t.slug),
     index("content_entries_store_type_idx").on(t.storeId, t.typeId, t.position),
+    index("content_entries_created_by_idx").on(t.createdBy),
+    index("content_entries_updated_by_idx").on(t.updatedBy),
     check("content_entries_slug", sql`${t.slug} ~ '^[a-z0-9]+(-[a-z0-9]+)*$' and length(${t.slug}) <= 120 and ${t.slug} <> 'ab'`),
     check("content_entries_draft", sql`jsonb_typeof(${t.draft}) = 'object'`),
     check("content_entries_published", sql`(${t.published} is null) = (${t.publishedAt} is null)`),
@@ -6648,7 +6652,7 @@ export const pages = commerce.table(
   },
   (t) => [
     unique("pages_store_slug_key").on(t.storeId, t.type, t.slug).nullsNotDistinct(),
-    check("pages_type", sql`${t.type} in ('page', 'article', 'product_layout', 'header', 'footer', 'variant')`),
+    check("pages_type", sql`${t.type} in ('page', 'article', 'product_layout', 'header', 'footer', 'variant', 'entry_layout')`),
     // A test's variant of a page (D148) is a store's: it has no address of its own on the site.
     check("pages_variant_store", sql`${t.type} <> 'variant' or ${t.storeId} is not null`),
     // Product layouts (D79) are a store's: Kaizen has no products of its own.
@@ -11259,7 +11263,7 @@ export const redirects = commerce.table(
     storeId: uuid("store_id")
       .notNull()
       .references(() => stores.id, { onDelete: "cascade" }),
-    /** `manual`, `product`, `category` or `tag`. */
+    /** `manual`, `product`, `category`, `tag` or `entry` (D326). */
     kind: text("kind").notNull(),
     /** The address that redirects: market-relative, lower case, a leading `/`, no trailing `/`, no query or fragment, at most 500 characters. */
     source: text("source").notNull(),
@@ -11269,6 +11273,8 @@ export const redirects = commerce.table(
     productId: uuid("product_id"),
     /** Category and tag only: the term whose address it was. */
     termId: uuid("term_id").references(() => terms.id, { onDelete: "cascade" }),
+    /** Entry only (D326): the content entry whose page address it was. */
+    entryId: uuid("entry_id").references(() => contentEntries.id, { onDelete: "cascade" }),
     /** `editor`, `import`, `report` (made from the 404 report), `assistant`, or `system` (made by a database trigger). */
     origin: text("origin").notNull(),
     /** Requests that were redirected, a lower bound. */
@@ -11291,14 +11297,16 @@ export const redirects = commerce.table(
     // The composite foreign key (store, product) is indexed by its own columns, as the neighbours' are.
     index("redirects_product_idx").on(t.storeId, t.productId),
     index("redirects_term_idx").on(t.termId),
+    index("redirects_entry_idx").on(t.entryId),
     index("redirects_created_by_idx").on(t.createdBy),
-    check("redirects_kind", sql`${t.kind} in ('manual', 'product', 'category', 'tag')`),
+    check("redirects_kind", sql`${t.kind} in ('manual', 'product', 'category', 'tag', 'entry')`),
     check("redirects_origin", sql`${t.origin} in ('editor', 'import', 'report', 'assistant', 'system')`),
     check(
       "redirects_kind_columns",
-      sql`(${t.kind} = 'manual' and ${t.target} is not null and ${t.productId} is null and ${t.termId} is null)
-        or (${t.kind} = 'product' and ${t.target} is null and ${t.productId} is not null and ${t.termId} is null)
-        or (${t.kind} in ('category', 'tag') and ${t.target} is null and ${t.productId} is null and ${t.termId} is not null)`,
+      sql`(${t.kind} = 'manual' and ${t.target} is not null and ${t.productId} is null and ${t.termId} is null and ${t.entryId} is null)
+        or (${t.kind} = 'product' and ${t.target} is null and ${t.productId} is not null and ${t.termId} is null and ${t.entryId} is null)
+        or (${t.kind} in ('category', 'tag') and ${t.target} is null and ${t.productId} is null and ${t.termId} is not null and ${t.entryId} is null)
+        or (${t.kind} = 'entry' and ${t.target} is null and ${t.productId} is null and ${t.termId} is null and ${t.entryId} is not null)`,
     ),
     // An automatic redirect is the triggers' (`system`); a manual one is a person's or an import's.
     check("redirects_origin_kind", sql`(${t.kind} = 'manual') = (${t.origin} <> 'system')`),

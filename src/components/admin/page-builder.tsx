@@ -125,6 +125,7 @@ import {
   GRID_GAP_MAX,
   GRID_LIMIT_MAX,
   GRID_SORTS,
+  PRICE_SORTS,
   PRODUCT_SORTS,
   HEADING_DEFAULT_SIZE,
   HEADING_MAX,
@@ -262,6 +263,7 @@ import { type SiteFonts } from "@/lib/fonts-schema";
 import { SAVED_NAME_MAX, globalOf, type SavedPart, type SavedPartKind } from "@/lib/saved-parts";
 import { productLoopConfig, productLoopPatch } from "@/lib/field-loop";
 import { tileEntity } from "@/lib/tile-fields";
+import { typeAsGroup, type GridContentType } from "@/lib/content-types";
 import { copiedItems, customGridData, sourceChoice } from "@/lib/custom-grid";
 import { sourceTraits } from "@/lib/grid-source";
 import { CopyCurrentItems, CustomItemsEditor } from "./custom-items-editor";
@@ -522,6 +524,8 @@ export type GridContext = {
   features?: readonly string[] | null;
   /** The kind of page the builder edits as (a version of a page is a page, D148): what a part's display may ask about (D179 phase 4). */
   shape?: PageType;
+  /** The owner's content types (D326), for a grid of entries: none offers no such grid. */
+  contentTypes?: readonly GridContentType[];
   actions: PageOwnerContext["actions"];
 };
 
@@ -6119,7 +6123,13 @@ function ContentGridFields({
   const store = source.type === "products" ? grid.stores.find((s) => s.id === source.storeId) : undefined;
   const products = traits.products;
   const recommend = source.type === "products" ? source.recommend : undefined;
-  const sorts = (Object.keys(GRID_SORTS) as GridSort[]).filter((sort) => products || !PRODUCT_SORTS.includes(sort));
+  const entries = source.type === "entries";
+  const contentTypes = grid.contentTypes ?? [];
+  const entryType = source.type === "entries" ? contentTypes.find((type) => type.key === source.contentType) : undefined;
+  // Entries sort by date, title or the owner's own order of the type (D326); prices are products' alone.
+  const sorts = (Object.keys(GRID_SORTS) as GridSort[]).filter((sort) =>
+    products ? true : entries ? !PRICE_SORTS.includes(sort) : !PRODUCT_SORTS.includes(sort),
+  );
   const productsOf = (s: GridStore | undefined): GridSource => ({
     type: "products",
     storeId: s?.id ?? "",
@@ -6133,11 +6143,36 @@ function ContentGridFields({
         legend={gw.show}
         // A website's grids (D178 step 5: the online shop off) show pages, articles or the owner's own items; one of products keeps its choice.
         options={(Object.keys(GRID_CONTENT) as GridContent[])
-          .filter((type) => type !== "products" || source.type === "products" || partFeatureOn({ type: "contentGrid", source: { type } }, grid.features))
+          .filter((type) => type !== "products" || source.type === "products" || partFeatureOn({ type: "contentGrid", source: { type: "products" } }, grid.features))
+          .filter((type) => type !== "entries" || entries || contentTypes.length > 0)
           .map((type) => ({ value: type, label: gw.content[type] }))}
         value={source.type}
-        onChange={(type) => onChange(sourceChoice(block, type, own ? { type: "products" } : productsOf(grid.stores[0])))}
+        onChange={(type) => onChange(sourceChoice(block, type, own ? { type: "products" } : productsOf(grid.stores[0]), contentTypes[0]?.key))}
       />
+      {source.type === "entries" && (
+        <div className="flex flex-col gap-1">
+          <label htmlFor={`${id}-type`} className="text-sm font-medium">
+            {gw.contentType}
+          </label>
+          <select
+            id={`${id}-type`}
+            aria-describedby={`${id}-type-hint`}
+            value={entryType?.key ?? ""}
+            onChange={(event) => onChange({ source: { type: "entries", contentType: event.target.value }, tileFields: undefined })}
+            className={gridField}
+          >
+            {!entryType && <option value="">{gw.chooseContentType}</option>}
+            {contentTypes.map((type) => (
+              <option key={type.key} value={type.key}>
+                {type.name}
+              </option>
+            ))}
+          </select>
+          <p id={`${id}-type-hint`} className="text-xs text-muted">
+            {gw.contentTypeHint}
+          </p>
+        </div>
+      )}
       {custom && (
         <CustomItemsEditor
           items={block.items ?? []}
@@ -6249,7 +6284,7 @@ function ContentGridFields({
           >
             {sorts.map((sort) => (
               <option key={sort} value={sort}>
-                {gw.sorts[sort]}
+                {entries && sort === "manual" ? gw.typeOrder : gw.sorts[sort]}
               </option>
             ))}
           </select>
@@ -6333,6 +6368,14 @@ function ContentGridFields({
       {tileEntity(block.source) && (
         <TileFieldsPicker
           entity={tileEntity(block.source)!}
+          value={block.tileFields ?? []}
+          onChange={(tileFields) => onChange({ tileFields })}
+        />
+      )}
+      {entryType && (
+        <TileFieldsPicker
+          entity={null}
+          groups={[typeAsGroup({ id: entryType.key, name: entryType.name, slug: entryType.key, fields: entryType.fields })]}
           value={block.tileFields ?? []}
           onChange={(tileFields) => onChange({ tileFields })}
         />

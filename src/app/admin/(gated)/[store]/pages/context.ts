@@ -1,4 +1,6 @@
 import { pickMediaAction } from "../media/actions";
+import { typeAsGroup, type ContentType } from "@/lib/content-types";
+import { listContentTypes } from "@/server/content-types";
 import { listMenuPages } from "@/server/pages";
 import "server-only";
 
@@ -61,10 +63,25 @@ export const storePagesBase = (store: Pick<Store, "slug">, type: PageType = "pag
  * Kaizen's, with the store's actions (bound to it), its first market for
  * addresses and previews, and its own reserved addresses.
  */
-export async function storePageContext(store: Store, type: PageType = "page", author = "", variantOf: PageType | null = null): Promise<PageOwnerContext> {
+export async function storePageContext(
+  store: Store,
+  type: PageType = "page",
+  author = "",
+  variantOf: PageType | null = null,
+  /** For an entry layout (D326): the type it draws, whose public fields its blocks can take. */
+  entryType: ContentType | null = null,
+): Promise<PageOwnerContext> {
   const market = store.markets[0];
   const menus = await storeMenuPreviews(store, market?.locale ?? "nb-NO", market?.lang ?? "nb");
-  const fieldGroups = await allActiveFieldGroups(store.id);
+  const allGroups = await allActiveFieldGroups(store.id);
+  // An entry layout's blocks take the entry's public fields (the type as one group, offered where a page's would be) or the store's own.
+  const fieldGroups =
+    type === "entry_layout"
+      ? [
+          ...(entryType ? [{ ...typeAsGroup({ ...entryType, fields: entryType.fields.filter((f) => f.access === "public") }), entities: ["page" as const] }] : []),
+          ...allGroups.filter((g) => g.entities.includes("store")).map((g) => ({ ...g, entities: ["store" as const] })),
+        ]
+      : allGroups;
   // What the store has to choose from, listed only when some field points at it.
   const lookups = needsLookups(fieldGroups) ? await fieldLookups(store.id) : EMPTY_LOOKUPS;
   const bind = <A extends unknown[], R>(action: (slug: string, ...args: A) => R) => action.bind(null, store.slug);
@@ -87,6 +104,8 @@ export async function storePageContext(store: Store, type: PageType = "page", au
     reserved: [...reservedPageSlugs(store.id, type), ...(type === "page" ? reservedChoiceSlugs(store.address) : [])],
     // The pages a new or edited page can be nested under (`/projects/project-a`).
     parents: (await listMenuPages(store.id, "page")).map(({ slug, title }) => ({ slug, title })),
+    // The store's content types (D326), for a grid of their entries.
+    contentTypes: (await listContentTypes(store.id)).map(({ key, name, fields }) => ({ key, name, fields })),
     defaultDescription:
       (market && store.seo.description[market.locale]) || (market ? t(market.lang).storeSummary(store.name, market.name) : store.name),
     upload: uploadsEnabled() ? uploadImageAction.bind(null, store.slug) : null,

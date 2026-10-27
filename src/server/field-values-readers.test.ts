@@ -27,6 +27,8 @@ const READERS = [
   "src/server/field-tiles.ts",
   // Duplicating a page: copies a page's or article's values to the copy, staff only.
   "src/server/page-duplicate.ts",
+  // Deleting a content entry (D326): takes its id out of every entry field's value, any kind of thing, staff only; returns nothing.
+  "src/server/content-refs.ts",
   // The media library's Compress (D213): moves a library file's address inside the values that hold it, staff only; reads none.
   "src/server/media-compress.ts",
   // A new store's demo content (`docs/theme-showcase-phase-1.md` step 4b): only whether a value was written after the mark, never a value.

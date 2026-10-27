@@ -3087,14 +3087,19 @@ function SlotPicker({
  */
 export function TileFieldsPicker({
   entity,
+  groups,
   value,
   onChange,
 }: {
-  entity: "product" | "page" | "article";
+  entity: "product" | "page" | "article" | null;
+  /** The groups to choose from instead of the entity's (a content type's own fields, D326). */
+  groups?: readonly FieldGroup[];
   value: readonly string[];
   onChange: (ids: string[] | undefined) => void;
 }) {
-  const options = tileFieldOptions(useFieldGroups([entity]));
+  const fromEntity = useFieldGroups(entity ? [entity] : []);
+  // A type's own fields show on a tile only when public, as a group's do on the site.
+  const options = tileFieldOptions(groups ? groups.map((group) => ({ ...group, fields: group.fields.filter((def) => def.access === "public") })) : fromEntity);
   const offered = new Set(options.flatMap((option) => option.fields.map((def) => def.id)));
   const w = useAdminText("blocks").fields;
   // What was chosen for another kind of thing is not on these tiles: it goes at the next change.

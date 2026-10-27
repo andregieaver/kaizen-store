@@ -107,6 +107,17 @@ export const contentEn = {
     confirmRemove: "Remove {label}? What was entered in it in every entry is taken away when you save.",
     untitled: "Untitled type",
   },
+  layout: {
+    title: "Entry page",
+    description: "How each entry looks on its own page at /{slug}/…: designed in the page builder, with headings, texts, pictures and buttons that take their words from the entry's fields.",
+    standard: "Entries use the standard page: their title, picture and every public field.",
+    design: "Design the entry page",
+    edit: "Edit the entry page",
+    draft: "Not published yet: entries use the standard page until you publish it.",
+    published: "Published: every entry's page uses it.",
+    noPages: "Turn on A page for each entry, and save, to give entries pages of their own.",
+    previewNoEntry: "Publish an entry of the type to see the page with its words.",
+  },
   problems: {
     noType: "That content type no longer exists.",
     noEntry: "That entry no longer exists.",

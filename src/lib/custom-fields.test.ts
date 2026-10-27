@@ -491,9 +491,18 @@ describe("a group definition", () => {
 
   it("makes every type with valid defaults", () => {
     for (const type of Object.keys(FIELD_TYPES) as (keyof typeof FIELD_TYPES)[]) {
-      const field = newField(type);
+      // An entry field names the content type it takes (D326), which no default can know.
+      const field = type === "entry" ? { ...newField(type), contentType: "t_0123456789ab" } : newField(type);
       expect(fieldGroupInput.safeParse({ ...ok(), fields: [field] }).success, type).toBe(true);
     }
+  });
+
+  it("refuses an entry field that names no content type (D326)", () => {
+    const field = newField("entry");
+    const parsed = fieldGroupInput.safeParse({ ...ok(), fields: [field] });
+    expect(parsed.success).toBe(false);
+    expect(parsed.error?.issues.map((issue) => issue.message)).toContain(`Choose the content type whose entries ${field.label} takes.`);
+    expect(fieldGroupInput.safeParse({ ...ok(), fields: [{ ...field, contentType: "not-a-key" }] }).success).toBe(false);
   });
 });
 

@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
 
 import { AdminTextScope } from "@/components/admin/admin-text";
+import { ContentTypeChoices } from "@/components/admin/content-type-choices";
 import { ContentTypeEditor } from "@/components/admin/content-type-editor";
 import { PageHeader } from "@/components/admin/ui";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { emptyType, typeFromPreset } from "@/lib/content-types";
 import { moneyCurrencies } from "@/lib/field-money";
-import { listContentTypes } from "@/server/content-types";
+import { contentTypeChoices, listContentTypes } from "@/server/content-types";
 import { requirePermission } from "@/server/permissions";
 
 import { storeLanguages } from "../../fields/data";
@@ -28,14 +29,16 @@ export default async function NewContentTypePage({ params, searchParams }: PageP
     <AdminTextScope texts={adminTexts(lang, ["content", "fields"])}>
       <div className="flex flex-col gap-6">
         <PageHeader back={{ href: base, label: w.type.backToList }} title={w.type.newTitle} />
-        <ContentTypeEditor
-          initial={initial}
-          languages={storeLanguages(store, lang === "nb" ? "nb" : "en")}
-          currencies={moneyCurrencies(store)}
-          fixedSlug={false}
-          save={saveContentTypeAction.bind(null, store.slug)}
-          base={base}
-        />
+        <ContentTypeChoices types={await contentTypeChoices(store.id)}>
+          <ContentTypeEditor
+            initial={initial}
+            languages={storeLanguages(store, lang === "nb" ? "nb" : "en")}
+            currencies={moneyCurrencies(store)}
+            fixedSlug={false}
+            save={saveContentTypeAction.bind(null, store.slug)}
+            base={base}
+          />
+        </ContentTypeChoices>
       </div>
     </AdminTextScope>
   );

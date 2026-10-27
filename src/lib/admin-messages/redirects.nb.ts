@@ -55,7 +55,7 @@ export const redirectsNb: RedirectsMessages = {
       kind: "Ingen omdirigeringer av denne typen ennå.",
     },
   },
-  kinds: { manual: "Manuell", product: "Produkt", category: "Kategori", tag: "Stikkord", page: "Side", article: "Artikkel" },
+  kinds: { manual: "Manuell", product: "Produkt", category: "Kategori", tag: "Stikkord", entry: "Innholdsoppføring", page: "Side", article: "Artikkel" },
   made: {
     automatic: "Automatisk",
     imported: "Importert",

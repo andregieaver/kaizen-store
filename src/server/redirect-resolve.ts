@@ -40,21 +40,21 @@ export const LOOKUP_LIFE = { stale: 300, revalidate: 1, expire: 3600 } as const;
 export type Resolution = { to: string; redirectId: string };
 
 /** The rows of the walk from an address: manual hops, ending at an automatic redirect or a manual one whose target is not another redirect's source. */
-type Hop = { id: string; source: string; kind: "manual" | "product" | "category" | "tag"; target: string | null; productId: string | null; termId: string | null };
+type Hop = { id: string; source: string; kind: "manual" | "product" | "category" | "tag" | "entry"; target: string | null; productId: string | null; termId: string | null; entryId: string | null };
 
 async function walkFrom(storeId: string, path: string, manualOnly: boolean): Promise<Hop[]> {
   const rows = await readDb().execute<Row>(sql`
-    with recursive walk (depth, id, source, kind, target, product_id, term_id, seen) as (
-      select 1, r.id, r.source, r.kind, r.target, r.product_id, r.term_id, array[r.source]
+    with recursive walk (depth, id, source, kind, target, product_id, term_id, entry_id, seen) as (
+      select 1, r.id, r.source, r.kind, r.target, r.product_id, r.term_id, r.entry_id, array[r.source]
         from commerce.redirects r
        where r.store_id = ${storeId}::uuid and r.source = ${path} ${manualOnly ? sql`and r.kind = 'manual'` : sql``}
       union all
-      select w.depth + 1, r.id, r.source, r.kind, r.target, r.product_id, r.term_id, w.seen || r.source
+      select w.depth + 1, r.id, r.source, r.kind, r.target, r.product_id, r.term_id, r.entry_id, w.seen || r.source
         from walk w
         join commerce.redirects r on r.store_id = ${storeId}::uuid and r.source = commerce.redirect_path_of(w.target)
        where w.kind = 'manual' and w.depth <= ${REDIRECT_HOPS_MAX} and not (r.source = any(w.seen))
     )
-    select depth, id, source, kind, target, product_id, term_id from walk order by depth
+    select depth, id, source, kind, target, product_id, term_id, entry_id from walk order by depth
   `);
   return rows.map((r) => ({
     id: String(r.id),
@@ -63,6 +63,7 @@ async function walkFrom(storeId: string, path: string, manualOnly: boolean): Pro
     target: r.target === null ? null : String(r.target),
     productId: r.product_id === null ? null : String(r.product_id),
     termId: r.term_id === null ? null : String(r.term_id),
+    entryId: r.entry_id === null || r.entry_id === undefined ? null : String(r.entry_id),
   }));
 }
 
@@ -83,6 +84,13 @@ async function entityAddress(storeId: string, hop: Hop, marketCode: string | nul
       select t.kind, t.slug from commerce.terms t where t.store_id = ${storeId}::uuid and t.id = ${hop.termId}::uuid and t.content_type = 'product'
     `);
     return row ? `/${String(row.kind)}/${String(row.slug)}` : null;
+  }
+  // A content entry's page (D326) while it is published and its type has pages.
+  if (hop.kind === "entry" && hop.entryId) {
+    const [row] = await readDb().execute<Row>(sql`
+      select commerce.entry_address(e.id) as address from commerce.content_entries e where e.store_id = ${storeId}::uuid and e.id = ${hop.entryId}::uuid
+    `);
+    return row?.address ? String(row.address) : null;
   }
   return null;
 }

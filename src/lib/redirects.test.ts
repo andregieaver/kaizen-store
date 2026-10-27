@@ -56,9 +56,9 @@ describe("the live addresses", () => {
 });
 
 describe("the kinds", () => {
-  it("are manual and the three automatic ones", () => {
-    expect(REDIRECT_KINDS).toEqual(["manual", "product", "category", "tag"]);
-    expect(AUTOMATIC_KINDS).toEqual(["product", "category", "tag"]);
+  it("are manual and the four automatic ones (a content entry's, D326)", () => {
+    expect(REDIRECT_KINDS).toEqual(["manual", "product", "category", "tag", "entry"]);
+    expect(AUTOMATIC_KINDS).toEqual(["product", "category", "tag", "entry"]);
     expect(isAutomatic("manual")).toBe(false);
     expect(isAutomatic("tag")).toBe(true);
   });

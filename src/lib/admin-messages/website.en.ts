@@ -345,7 +345,7 @@ export const websiteEn = {
     },
     header: "The standard header and the phone's menu",
     footer: "The standard footer",
-    pageTypes: { page: "Page", article: "Article", product_layout: "Layout", header: "Header", footer: "Footer", variant: "Variant" },
+    pageTypes: { page: "Page", article: "Article", product_layout: "Layout", header: "Header", footer: "Footer", variant: "Variant", entry_layout: "Entry page" },
     untitled: "Untitled",
     mainMenu: "Main menu",
     notPublished: "not published",

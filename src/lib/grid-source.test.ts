@@ -23,6 +23,7 @@ describe("an exhaustive switch over GridSource", () => {
       case "articles":
       case "products":
       case "custom":
+      case "entries":
         return source.type;
       default: {
         // @ts-expect-error a source nobody handles is not `never`
@@ -37,11 +38,11 @@ describe("an exhaustive switch over GridSource", () => {
 
   it("names every source and answers for each in the traits table", () => {
     expect(incomplete).toBe(SOURCE_TRAITS);
-    for (const type of ["pages", "articles", "products", "custom"] as const) {
-      expect(name({ type })).toBe(type);
+    for (const type of ["pages", "articles", "products", "custom", "entries"] as const) {
+      expect(name({ type } as WithNewSource)).toBe(type);
       expect(Object.keys(SOURCE_TRAITS)).toContain(type);
     }
-    expect(Object.keys(SOURCE_TRAITS).sort()).toEqual(["articles", "custom", "pages", "products"]);
+    expect(Object.keys(SOURCE_TRAITS).sort()).toEqual(["articles", "custom", "entries", "pages", "products"]);
   });
 
   it("throws for a source it does not know, rather than treating it as another", () => {
@@ -50,7 +51,11 @@ describe("an exhaustive switch over GridSource", () => {
 
   it("is the same list the page's schema accepts, and no other", () => {
     const parse = (type: string) => {
-      const block = { ...(newBlock("contentGrid", () => "g1") as ContentGridBlock), source: { type } as unknown as GridSource, limit: 6 };
+      const block = {
+        ...(newBlock("contentGrid", () => "g1") as ContentGridBlock),
+        source: (type === "entries" ? { type, contentType: "t_0123456789ab" } : { type }) as unknown as GridSource,
+        limit: 6,
+      };
       const page = { ...newPageContent(), title: "T", slug: "t", rows: [{ id: "r1", type: "row" as const, layout: "1" as const, columns: [{ id: "c1", blocks: [block] }] }] };
       return pageInput.safeParse(page).success;
     };
@@ -77,6 +82,11 @@ describe("what each source means", () => {
     expect(sourceTraits({ type: "products" }).fieldEntity).toBe("product");
     expect(sourceTraits({ type: "articles" }).fieldEntity).toBe("article");
     expect(sourceTraits({ type: "pages" }).fieldEntity).toBe("page");
+  });
+
+  it("looks a content type's entries up (D326), with no categories, tags or field group of their own", () => {
+    const traits = sourceTraits({ type: "entries", contentType: "t_0123456789ab" });
+    expect(traits).toMatchObject({ lookedUp: true, products: false, terms: false, fieldEntity: null, button: "readMore" });
   });
 
   it("says “View product” only for products, “Read more” for everything else", () => {

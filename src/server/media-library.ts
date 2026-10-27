@@ -275,10 +275,11 @@ const PAGE_SEGMENTS: Record<string, string> = {
   page: "pages",
   article: "articles",
   product_layout: "product-layouts",
+  entry_layout: "content/layouts",
   header: "headers",
   footer: "footers",
 };
-const PAGE_NOUNS: Record<string, string> = { page: "Page", article: "Article", product_layout: "Product layout", header: "Header", footer: "Footer" };
+const PAGE_NOUNS: Record<string, string> = { page: "Page", article: "Article", product_layout: "Product layout", header: "Header", footer: "Footer", entry_layout: "Entry page" };
 
 /**
  * Everywhere the owner's items appear or are linked, by item id: products'
@@ -318,6 +319,12 @@ export async function mediaUses(owner: MediaOwner, ids: string[]): Promise<Map<s
     -- A store's product category's or tag's own picture (wave 6 unit A, D319): live on its page.
     select m.id, 'term', t.id::text, t.name, t.kind, t.slug, true from m join commerce.terms t on ${owned(storeId, sql`t.store_id`)}
     where t.image_url in (m.url, m.thumbnail_url) or t.image_thumbnail_url in (m.url, m.thumbnail_url)
+    union all
+    -- A content entry's pictures and files (D326), in its draft or published values: live on its page while published and its type has pages.
+    select m.id, 'entry', e.id::text, t.name || ': ' || e.slug, t.id::text, t.slug || '/' || e.slug,
+      e.published is not null and t.has_pages and ${found(sql`coalesce(e.published::text, '')`)}
+    from m join commerce.content_entries e on ${owned(storeId, sql`e.store_id`)} join commerce.content_types t on t.id = e.type_id
+    where ${found(sql`e.draft::text`)} or ${found(sql`coalesce(e.published::text, '')`)}
     union all
     select m.id, 'menu', mn.id::text, mn.name, null, null, null from m join commerce.menus mn on ${owned(storeId, sql`mn.store_id`)} where ${found(sql`mn.items::text`)}
     union all
@@ -408,6 +415,9 @@ function siteUrlOf(row: UseRow, site: SiteAddresses | null, store: boolean): str
       return home;
     case "term":
       return store && row.slug && (row.type === "category" || row.type === "tag") ? at(`/${row.type}/${row.slug}`) : null;
+    case "entry":
+      // An entry's page (D326): `/{type}/{entry}`.
+      return row.slug ? at(`/${row.slug}`) : null;
     default:
       return null;
   }
@@ -429,6 +439,8 @@ function describePlace(row: UseRow, base: string, store: boolean): MediaUse {
     }
     case "menu":
       return { label: `Menu: ${label}`, href: `${base}/menus?menu=${row.ref_id}` };
+    case "entry":
+      return { label: `Entry: ${label}`, href: row.type ? `${base}/content/${row.type}/${row.ref_id}` : null };
     case "term":
       return { label: `${row.type === "tag" ? "Tag" : "Category"}: ${label}`, href: `${base}/products/categories` };
     case "saved":

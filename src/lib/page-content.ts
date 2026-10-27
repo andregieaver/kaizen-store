@@ -666,7 +666,7 @@ export type ButtonBlock = PartBase & Bindable & {
 };
 
 /** What a content grid shows (D51): its kinds of content; articles come with the articles themselves. */
-export const GRID_CONTENT = { pages: "Pages", articles: "Articles", products: "Products", custom: "Custom items" } as const;
+export const GRID_CONTENT = { pages: "Pages", articles: "Articles", products: "Products", custom: "Custom items", entries: "Content entries" } as const;
 export type GridContent = keyof typeof GRID_CONTENT;
 /**
  * Where a grid's items come from: the pages of the page's owner, or
@@ -679,6 +679,8 @@ export type GridSource =
   | { type: "articles" }
   /** Items the owner writes by hand (D155): they live in the block (`ContentGridBlock.items`), as testimonials' do. */
   | { type: "custom" }
+  /** The published entries of one of the owner's content types (D326), named by the type's fixed key, so a copied page needs no remapping. */
+  | { type: "entries"; contentType: string }
   | { type: "products"; storeId?: string; market?: string; /** Products picked for each shopper by the store's recommendations (D139), on a store's own pages. */ recommend?: GridRecommend };
 
 /**
@@ -2306,10 +2308,13 @@ export const RESERVED_STORE_PAGE_SLUGS: readonly string[] = [
  */
 export const RESERVED_ARTICLE_SLUGS: readonly string[] = ["category", "page", "tag"];
 
-/** What is built in the page builder: pages, articles in the blog (D57), product layouts (D79), the site's headers and footers (D80), and A/B test variants of pages (D148). */
-export const PAGE_TYPES = ["page", "article", "product_layout", "header", "footer", "variant"] as const;
+/**
+ * What is built in the page builder: pages, articles in the blog (D57), product layouts (D79), the site's headers and footers (D80), A/B test
+ * variants of pages (D148) and content types' entry layouts (D326).
+ */
+export const PAGE_TYPES = ["page", "article", "product_layout", "header", "footer", "variant", "entry_layout"] as const;
 /** The types that are parts of the site rather than pages at addresses of their own; a `variant` (D148) is a copy of a page made for an A/B test. */
-export const LAYOUT_TYPES: readonly PageType[] = ["product_layout", "header", "footer", "variant"];
+export const LAYOUT_TYPES: readonly PageType[] = ["product_layout", "header", "footer", "variant", "entry_layout"];
 export type PageType = (typeof PAGE_TYPES)[number];
 
 /**
@@ -2787,6 +2792,7 @@ const contentGridBlock = z
       }),
       z.object({ type: z.literal("articles") }),
       z.object({ type: z.literal("custom") }),
+      z.object({ type: z.literal("entries"), contentType: z.string().regex(/^t_[0-9a-f]{12}$/, "Choose the content type whose entries the grid shows.") }),
       z.object({
         type: z.literal("products"),
         storeId: z.uuid("Choose the store whose products the grid shows.").optional(),
@@ -2862,6 +2868,12 @@ const contentGridBlock = z
       if (block.filters) issue("Filters are for grids of products.", ["filters"]);
       if (block.tileFields && block.tileFields.length > 0) issue("A grid of custom items has no custom fields on its tiles.", ["tileFields"]);
     } else {
+      if (block.source.type === "entries") {
+        // A type's entries have no categories, tags or filters of their own (D326); the owner's order is the type's.
+        if (block.categories.length > 0 || block.tags.length > 0) issue("A grid of content entries has no categories or tags.", ["categories"]);
+        if (block.filters) issue("Filters are for grids of products.", ["filters"]);
+        if (PRICE_SORTS.includes(block.sort)) issue("Entries have no price to sort by.", ["sort"]);
+      }
       if (block.items && block.items.length > 0) issue("Custom items belong to a grid of custom items.", ["items"]);
       if (block.limit > GRID_LIMIT_MAX) issue(`A grid shows at most ${GRID_LIMIT_MAX} items.`, ["limit"]);
     }

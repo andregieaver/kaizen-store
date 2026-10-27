@@ -349,6 +349,7 @@ export async function listRedirects(member: Membership, query: { q?: string; fil
           when 'product' then (select '/p/' || p.handle from commerce.products p where p.store_id = r.store_id and p.id = r.product_id and p.status = 'active')
           when 'category' then (select '/category/' || t.slug from commerce.terms t where t.store_id = r.store_id and t.id = r.term_id)
           when 'tag' then (select '/tag/' || t.slug from commerce.terms t where t.store_id = r.store_id and t.id = r.term_id)
+          when 'entry' then commerce.entry_address(r.entry_id)
           else r.target
         end as shown_target,
         false as read_only
@@ -446,6 +447,7 @@ export async function redirectsForExport(storeId: string, o: { automatic: boolea
         when 'manual' then r.target
         when 'product' then (select '/p/' || p.handle from commerce.products p where p.store_id = r.store_id and p.id = r.product_id and p.status = 'active')
         when 'category' then (select '/category/' || t.slug from commerce.terms t where t.store_id = r.store_id and t.id = r.term_id)
+        when 'entry' then commerce.entry_address(r.entry_id)
         else (select '/tag/' || t.slug from commerce.terms t where t.store_id = r.store_id and t.id = r.term_id)
       end as target,
       r.created_at, r.hits, r.last_hit_at

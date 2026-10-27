@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import {
+  CONTENT_TYPE_KEY,
   EMPTY_DATA,
   fieldDefsSchema,
   isEmptyValue,
@@ -8,15 +9,27 @@ import {
   nameOf,
   readField,
   slugOf,
+  subFieldsOf,
   uniqueName,
   type FieldAccess,
   type FieldData,
   type FieldDef,
   type FieldEntity,
   type FieldGroup,
+  type FieldImage,
   type FieldType,
+  type FieldValue,
+  type Values,
 } from "./custom-fields";
-import { RESERVED_STORE_PAGE_SLUGS } from "./page-content";
+import {
+  EMPTY_DOC,
+  newPageContent,
+  RESERVED_STORE_PAGE_SLUGS,
+  richTextPlain,
+  type PageBlock,
+  type PageContent,
+  type RichTextDoc,
+} from "./page-content";
 import { DESCRIPTION_MAX, TITLE_MAX } from "./seo";
 
 /**
@@ -27,6 +40,9 @@ import { DESCRIPTION_MAX, TITLE_MAX } from "./seo";
  * over what is kept, asking for required fields, drawing it for a shopper) works on it unchanged.
  */
 
+/** The cache tag of an owner's types and entries: every writer's caller refreshes it, and every reader on the site tags itself with it. */
+export const contentTag = (owner: string | null) => `content:${owner ?? "kaizena"}`;
+
 /** The most types an owner (a store, or Kaizena Flow's own site) keeps, and entries of all its types together. */
 export const MAX_CONTENT_TYPES = 50;
 export const MAX_ENTRIES = 10_000;
@@ -35,7 +51,7 @@ export const TYPE_SLUG_MAX = 60;
 export const ENTRY_SLUG_MAX = 120;
 
 /** A type's key: made once and never changed, what fields and grids name a type by, so a copied store needs no remapping. */
-export const TYPE_KEY = /^t_[0-9a-f]{12}$/;
+export const TYPE_KEY = CONTENT_TYPE_KEY;
 const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 
 /** The field types a type's title, summary and picture may be. */
@@ -123,12 +139,32 @@ export function typeAsGroup(type: Pick<ContentType, "id" | "name" | "slug" | "fi
   };
 }
 
+/** A content type as the page builder offers it for a grid of entries (D326): its key, name and fields (for the tiles' lines). */
+export type GridContentType = { key: string; name: string; fields: FieldDef[] };
+
 /** An entry's title in a language: its title field's words there, else the main language's; empty when it has none. */
 export function entryTitle(type: Pick<ContentType, "fields" | "titleField">, data: FieldData, locale: string, main: string): string {
   const def = type.fields.find((field) => field.id === type.titleField);
   if (!def) return "";
   const value = readField(def, data, locale, main);
   return typeof value === "string" && !isEmptyValue(value) ? value.trim() : "";
+}
+
+/** An entry's summary in a language as plain words (D326): its summary field's, rich text made plain; empty when it has none. */
+export function entrySummary(type: Pick<ContentType, "fields" | "summaryField">, data: FieldData, locale: string, main: string): string {
+  const def = type.fields.find((field) => field.id === type.summaryField);
+  if (!def) return "";
+  const value = readField(def, data, locale, main);
+  if (value === undefined || value === null) return "";
+  if (def.type === "richText") return richTextPlain(value as RichTextDoc).trim();
+  return typeof value === "string" ? value.trim() : "";
+}
+
+/** An entry's picture (D326): its picture field's, the same in every language; null when it has none. */
+export function entryPicture(type: Pick<ContentType, "fields" | "pictureField">, data: FieldData): FieldImage | null {
+  const def = type.fields.find((field) => field.id === type.pictureField);
+  const value = def ? data.values[def.id] : undefined;
+  return value && typeof value === "object" && !Array.isArray(value) && typeof (value as FieldImage).url === "string" ? (value as FieldImage) : null;
 }
 
 /** An entry's search texts in a language: its own there, else the main language's. */
@@ -416,3 +452,71 @@ export type ContentResult = { ok: true; id?: string } | { ok: false; problems: s
 export type ContentAction<A> = (input: A) => Promise<ContentResult>;
 /** A bound server action that takes nothing more (deleting what the page is about). */
 export type ContentCall = () => Promise<ContentResult>;
+
+/**
+ * Values without an entry that was deleted (D326): every entry field that names it loses it (a field left naming nothing is taken
+ * out), inside groups, repeaters and flexible content too, in the shared values and every language's. Null when nothing named it, so a
+ * caller writes only what changed. Pure over the definitions, so a value of another kind that happens to hold the same text is never
+ * touched.
+ */
+export function withoutEntry(defs: readonly FieldDef[], data: FieldData, id: string): FieldData | null {
+  let changed = false;
+  const clean = (def: FieldDef, value: FieldValue | null | undefined): FieldValue | null | undefined => {
+    if (value === null || value === undefined) return value;
+    if (def.type === "entry") {
+      if (Array.isArray(value)) {
+        const kept = (value as string[]).filter((item) => item !== id);
+        if (kept.length === value.length) return value;
+        changed = true;
+        return kept.length > 0 ? kept : null;
+      }
+      if (value !== id) return value;
+      changed = true;
+      return null;
+    }
+    if (def.type === "group") return cleanValues(subFieldsOf(def), value as Values);
+    if (def.type === "repeater" || def.type === "flexible") {
+      // Rows as kept shared (a list) or a language's words by row id (an object); a row keeps its place, id and layout.
+      if (Array.isArray(value)) return (value as Values[]).map((row) => ({ ...row, ...cleanValues(subFieldsOf(def), row) }));
+      return Object.fromEntries(
+        Object.entries(value as unknown as Record<string, Values>).map(([row, cells]) => [row, cleanValues(subFieldsOf(def), cells) ?? {}]),
+      ) as unknown as FieldValue;
+    }
+    return value;
+  };
+  const cleanValues = (fields: readonly FieldDef[], values: Values | undefined): Values => {
+    const next: Values = { ...(values ?? {}) };
+    for (const def of fields) {
+      const kept = clean(def, next[def.id]);
+      if (kept === null) delete next[def.id];
+      else if (kept !== undefined) next[def.id] = kept;
+    }
+    return next;
+  };
+  const values = cleanValues(defs, data.values);
+  const translations = Object.fromEntries(Object.entries(data.translations).map(([locale, own]) => [locale, cleanValues(defs, own)]));
+  return changed ? { values, translations } : null;
+}
+
+/**
+ * The page a type's entries start being drawn with when the owner designs it (D326): its title as a heading, its picture and its
+ * summary, each a block bound to the type's field (`bind`), which the owner then changes in the page builder. A block for a field the type
+ * does not name is left out. `id` makes the parts' ids.
+ */
+export function entryLayoutStarter(
+  type: Pick<ContentType, "key" | "name" | "titleField" | "summaryField" | "pictureField">,
+  id: () => string,
+): PageContent {
+  const blocks: PageBlock[] = [
+    { id: id(), type: "heading", text: type.name, level: 1, bind: { fieldId: type.titleField } },
+    ...(type.pictureField ? [{ id: id(), type: "image" as const, image: null, caption: "", bind: { fieldId: type.pictureField } }] : []),
+    ...(type.summaryField ? [{ id: id(), type: "richText" as const, doc: EMPTY_DOC, bind: { fieldId: type.summaryField } }] : []),
+  ];
+  return {
+    ...newPageContent(),
+    title: `${type.name}: entry page`,
+    // The type's key makes the layout's own (unseen) address unique, whatever the type is called now or was before.
+    slug: `entry-${type.key.slice(2)}`,
+    rows: [{ id: id(), type: "row", layout: "1", columns: [{ id: id(), blocks }] }],
+  };
+}

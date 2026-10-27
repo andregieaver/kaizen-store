@@ -132,6 +132,7 @@ export function drawable(field: ShownField): boolean {
     case "product":
     case "page":
     case "term":
+    case "entry":
       return linksOf(field).length > 0;
     case "group":
       return drawableChildren(field).length > 0;

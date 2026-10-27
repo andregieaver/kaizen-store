@@ -41,6 +41,7 @@ import {
   type ShownGroup,
   type FieldWords,
 } from "@/lib/custom-fields";
+import { contentTag, readEntryContent, typeAsGroup } from "@/lib/content-types";
 import { moneyCurrencies, shownMoney } from "@/lib/field-money";
 import { usesSearch } from "@/lib/field-search";
 import { t } from "@/lib/i18n";
@@ -49,6 +50,7 @@ import { marketPath } from "@/lib/paths";
 
 import { audit, type Membership } from "./auth";
 import { isOwnFieldFile } from "./media";
+import { entryLookups, entryTargets } from "./entry-targets";
 import { pgUuidArray } from "./pg-arrays";
 import type { SaveResult } from "./settings";
 import { refreshFieldSearch, refreshStoreFieldSearch } from "./field-search";
@@ -542,7 +544,11 @@ async function offeredCurrencies(storeId: string, run: Runner = db()): Promise<s
 }
 
 /** Ids of the store's own things that a value points at, by kind of field, for the field types that point at some. */
-function pointsAt(def: FieldDef, value: FieldValue | null | undefined, into: { product: Set<string>; page: Set<string>; term: Set<string> }): void {
+function pointsAt(
+  def: FieldDef,
+  value: FieldValue | null | undefined,
+  into: { product: Set<string>; page: Set<string>; term: Set<string>; entry: Set<string> },
+): void {
   if (value === null || value === undefined) return;
   const add = (set: Set<string>, v: unknown) => {
     if (typeof v === "string") set.add(v);
@@ -551,6 +557,7 @@ function pointsAt(def: FieldDef, value: FieldValue | null | undefined, into: { p
   if (def.type === "product") add(into.product, value);
   else if (def.type === "page") add(into.page, value);
   else if (def.type === "term") add(into.term, value);
+  else if (def.type === "entry") add(into.entry, value);
   else if (def.type === "link") {
     const link = value as FieldLink;
     if (link.kind === "product") into.product.add(link.ref);
@@ -571,7 +578,7 @@ function pointsAt(def: FieldDef, value: FieldValue | null | undefined, into: { p
  * nothing, and must not leak a name. The owner is a store, or Kaizena Flow's own site (null: its pages, D326), which keeps no files.
  */
 export async function keepOwnRelations(run: Runner, storeId: string | null, defs: FieldDef[], changes: FieldChanges): Promise<void> {
-  const wanted = { product: new Set<string>(), page: new Set<string>(), term: new Set<string>() };
+  const wanted = { product: new Set<string>(), page: new Set<string>(), term: new Set<string>(), entry: new Set<string>() };
   const slots: [FieldDef, Record<string, FieldValue | null>][] = [];
   for (const def of defs) {
     slots.push([def, changes.values]);
@@ -579,7 +586,7 @@ export async function keepOwnRelations(run: Runner, storeId: string | null, defs
   }
   for (const [def, values] of slots) pointsAt(def, values[def.id], wanted);
   const holdsFile = (def: FieldDef): boolean => def.type === "file" || subFieldsOf(def).some(holdsFile);
-  if (wanted.product.size + wanted.page.size + wanted.term.size === 0 && !defs.some(holdsFile)) return;
+  if (wanted.product.size + wanted.page.size + wanted.term.size + wanted.entry.size === 0 && !defs.some(holdsFile)) return;
   const known = async (table: "products" | "pages" | "terms", ids: Set<string>) => {
     if (ids.size === 0) return new Set<string>();
     const list = sql.join([...ids].map((id) => sql`${id}::uuid`), sql`, `);
@@ -588,9 +595,27 @@ export async function keepOwnRelations(run: Runner, storeId: string | null, defs
   };
   const own = { product: await known("products", wanted.product), page: await known("pages", wanted.page), term: await known("terms", wanted.term) };
   const ok = (kind: "product" | "page" | "term", id: unknown) => typeof id === "string" && own[kind].has(id);
+  // An entry field takes only the owner's own entries of its own content type (D326).
+  const entryTypes = new Map<string, string>();
+  if (wanted.entry.size > 0) {
+    const list = sql.join([...wanted.entry].map((id) => sql`${id}::uuid`), sql`, `);
+    const rows = await run.execute<Row>(sql`
+      select e.id, t.key from commerce.content_entries e join commerce.content_types t on t.id = e.type_id
+      where e.store_id is not distinct from ${storeId}::uuid and e.id in (${list})
+    `);
+    for (const r of rows) entryTypes.set(String(r.id), String(r.key));
+  }
+  const entryOk = (def: FieldDef, id: unknown) => typeof id === "string" && def.contentType !== undefined && entryTypes.get(id) === def.contentType;
 
   const clean = (def: FieldDef, value: FieldValue | null | undefined): FieldValue | null | undefined => {
     if (value === null || value === undefined) return value;
+    if (def.type === "entry") {
+      if (Array.isArray(value)) {
+        const kept = (value as string[]).filter((id) => entryOk(def, id));
+        return kept.length > 0 ? kept : null;
+      }
+      return entryOk(def, value) ? value : null;
+    }
     if (def.type === "product" || def.type === "page" || def.type === "term") {
       const kind = def.type;
       if (Array.isArray(value)) {
@@ -709,7 +734,7 @@ export async function termFieldsForEditor(storeId: string, termId: string): Prom
 /** The store's products, published pages and articles, and categories and tags an editor can choose from (the first of each, by name). */
 export async function fieldLookups(storeId: string): Promise<FieldLookups> {
   const run = db();
-  const [currencies, products, pages, terms] = await Promise.all([
+  const [currencies, products, pages, terms, entries] = await Promise.all([
     offeredCurrencies(storeId, run),
     run.execute<Row>(sql`
       select p.id, coalesce((select title from commerce.product_translations where product_id = p.id order by locale limit 1), p.handle) as title
@@ -724,13 +749,22 @@ export async function fieldLookups(storeId: string): Promise<FieldLookups> {
     run.execute<Row>(sql`
       select id, kind, name from commerce.terms where store_id = ${storeId}::uuid order by kind, name limit ${MAX_LOOKUPS}
     `),
+    mainLocale(storeId, run).then((main) => entryLookups(run, storeId, main, MAX_LOOKUPS)),
   ]);
   return {
     products: products.map((r) => ({ id: String(r.id), title: String(r.title) })),
     pages: pages.map((r) => ({ id: String(r.id), title: String(r.title), type: r.type === "article" ? "article" : "page" })),
     terms: terms.map((r) => ({ id: String(r.id), name: String(r.name), kind: r.kind === "tag" ? "tag" : "category" })),
+    entries,
     currencies,
   };
+}
+
+/** A store's main language, as its texts are written (the first of `store.localization.locales`). */
+async function mainLocale(storeId: string, run: Runner): Promise<string> {
+  const [row] = await run.execute<Row>(sql`select slug from commerce.stores where id = ${storeId}::uuid`);
+  const store = row ? await getStore(String(row.slug)) : null;
+  return store?.localization.locales[0] ?? "en";
 }
 
 // ---------------------------------------------------------------------------
@@ -767,7 +801,8 @@ export async function shownFieldsFor(
 ): Promise<ShownGroup[]> {
   "use cache";
   cacheLife("hours");
-  cacheTag(fieldsTag(storeId));
+  // A reference to an entry draws its title and page: a change to entries refreshes it (D326).
+  cacheTag(fieldsTag(storeId), contentTag(storeId));
   // A customer's or an order's fields (D120) are for staff alone, whatever the data says.
   if (isStaffEntity(entity)) return [];
   // The store's own fields are the store's, under its own id.
@@ -787,7 +822,7 @@ export async function shownFieldsFor(
   const data = await getFieldData(storeId, entity, entityId, run);
   const words = fieldWords(store, marketSlug, locale, lang);
   const shown = applying.map((g) => shownGroup(g, data, locale, main, words, { publicOnly: true }));
-  if (store) await resolveRelations(run, storeId, store.slug, marketSlug, locale, shown);
+  if (store) await resolveRelations(run, storeId, store.slug, marketSlug, locale, shown, main);
   return shown.filter((g) => g.fields.length > 0);
 }
 
@@ -806,7 +841,8 @@ export async function shownFieldsForVariants(
 ): Promise<Record<string, ShownGroup[]>> {
   "use cache";
   cacheLife("hours");
-  cacheTag(fieldsTag(storeId));
+  // A reference to an entry draws its title and page: a change to entries refreshes it (D326).
+  cacheTag(fieldsTag(storeId), contentTag(storeId));
   const groups = await activeFieldGroups(storeId, "variant");
   if (groups.length === 0) return {};
   const run = readDb();
@@ -835,12 +871,43 @@ export async function shownFieldsForVariants(
   const words = fieldWords(store, marketSlug, locale, lang);
   const out: Record<string, ShownGroup[]> = {};
   for (const [id, own] of data) out[id] = applying.map((g) => shownGroup(g, own, locale, main, words, { publicOnly: true }));
-  if (store) await resolveRelations(run, storeId, store.slug, marketSlug, locale, Object.values(out).flat());
+  if (store) await resolveRelations(run, storeId, store.slug, marketSlug, locale, Object.values(out).flat(), main);
   for (const id of Object.keys(out)) {
     out[id] = out[id].filter((g) => g.fields.length > 0);
     if (out[id].length === 0) delete out[id];
   }
   return out;
+}
+
+/**
+ * The public fields of a published content entry (D326), in the shopper's language, as its page shows them and its layout's bound blocks
+ * take them: its type's fields as one group, references drawn as links in the market. Cached under the store's fields and content tags.
+ */
+export async function shownEntryFields(
+  storeId: string,
+  entryId: string,
+  locale: string,
+  lang: string,
+  marketSlug: string,
+): Promise<ShownGroup[]> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(fieldsTag(storeId), contentTag(storeId));
+  const run = readDb();
+  const [row] = await run.execute<Row>(sql`
+    select e.published, t.id, t.name, t.slug, t.fields
+    from commerce.content_entries e join commerce.content_types t on t.id = e.type_id
+    where e.store_id = ${storeId}::uuid and e.id = ${entryId}::uuid and e.published is not null
+  `);
+  if (!row) return [];
+  const [slug] = await run.execute<Row>(sql`select slug from commerce.stores where id = ${storeId}::uuid`);
+  const store = slug ? await getStore(String(slug.slug)) : null;
+  if (store) cacheTag(storeTag(store.slug));
+  const main = store?.localization.locales[0] ?? locale;
+  const type = { id: String(row.id), name: String(row.name), slug: String(row.slug), fields: (row.fields ?? []) as FieldDef[] };
+  const shown = [shownGroup(typeAsGroup(type), readEntryContent(row.published).data, locale, main, fieldWords(store, marketSlug, locale, lang), { publicOnly: true })];
+  if (store) await resolveRelations(run, storeId, store.slug, marketSlug, locale, shown, main);
+  return shown.filter((g) => g.fields.length > 0);
 }
 
 type Target = { label: string; href: string; image?: string | null };
@@ -858,8 +925,9 @@ async function resolveRelations(
   marketSlug: string,
   locale: string,
   groups: ShownGroup[],
+  main: string = locale,
 ): Promise<void> {
-  const wanted = { product: new Set<string>(), page: new Set<string>(), term: new Set<string>() };
+  const wanted = { product: new Set<string>(), page: new Set<string>(), term: new Set<string>(), entry: new Set<string>() };
   const each = (fields: ShownField[], visit: (field: ShownField) => void) => {
     for (const field of fields) {
       visit(field);
@@ -868,24 +936,28 @@ async function resolveRelations(
       for (const block of field.blocks ?? []) each(block.fields, visit);
     }
   };
-  const idsOf = (field: ShownField): { kind: "product" | "page" | "term"; id: string }[] => {
+  const idsOf = (field: ShownField): { kind: "product" | "page" | "term" | "entry"; id: string }[] => {
     if (field.type === "link") {
       const link = field.value as FieldLink;
       if (link.kind === "url") return [];
       return [{ kind: link.kind === "product" ? "product" : link.kind === "page" ? "page" : "term", id: link.ref }];
     }
-    if (field.type === "product" || field.type === "page" || field.type === "term") {
+    if (field.type === "product" || field.type === "page" || field.type === "term" || field.type === "entry") {
       const ids = Array.isArray(field.value) ? (field.value as string[]) : [String(field.value)];
-      return ids.map((id) => ({ kind: field.type as "product" | "page" | "term", id }));
+      return ids.map((id) => ({ kind: field.type as "product" | "page" | "term" | "entry", id }));
     }
     return [];
   };
   for (const group of groups) each(group.fields, (field) => idsOf(field).forEach(({ kind, id }) => wanted[kind].add(id)));
-  if (wanted.product.size + wanted.page.size + wanted.term.size === 0) return;
+  if (wanted.product.size + wanted.page.size + wanted.term.size + wanted.entry.size === 0) return;
 
   const base = (path: string) => marketPath(storeSlug, marketSlug, path);
   const list = (ids: Set<string>) => sql.join([...ids].map((id) => sql`${id}::uuid`), sql`, `);
-  const found = { product: new Map<string, Target>(), page: new Map<string, Target>(), term: new Map<string, Target>() };
+  const found = { product: new Map<string, Target>(), page: new Map<string, Target>(), term: new Map<string, Target>(), entry: new Map<string, Target>() };
+  if (wanted.entry.size > 0) {
+    // Published entries only, named by their title in the shopper's language, linked to their page when their type has pages (D326).
+    for (const [id, target] of await entryTargets(run, storeId, [...wanted.entry], locale, main, base)) found.entry.set(id, target);
+  }
   if (wanted.product.size > 0) {
     const rows = await run.execute<Row>(sql`
       select p.id, p.handle, coalesce(tl.title, tf.title) as title,

@@ -103,6 +103,17 @@ export const contentNb: ContentMessages = {
     confirmRemove: "Fjerne {label}? Det som er fylt inn i feltet i hver oppføring, tas bort når du lagrer.",
     untitled: "Type uten navn",
   },
+  layout: {
+    title: "Oppføringsside",
+    description: "Hvordan hver oppføring ser ut på sin egen side på /{slug}/…: utformet i sidebyggeren, med overskrifter, tekster, bilder og knapper som henter ordene fra oppføringens felter.",
+    standard: "Oppføringene bruker standardsiden: tittel, bilde og hvert offentlige felt.",
+    design: "Utform oppføringssiden",
+    edit: "Rediger oppføringssiden",
+    draft: "Ikke publisert ennå: oppføringene bruker standardsiden til du publiserer den.",
+    published: "Publisert: hver oppførings side bruker den.",
+    noPages: "Slå på En side for hver oppføring, og lagre, for å gi oppføringene egne sider.",
+    previewNoEntry: "Publiser en oppføring av typen for å se siden med ordene dens.",
+  },
   problems: {
     noType: "Den innholdstypen finnes ikke lenger.",
     noEntry: "Den oppføringen finnes ikke lenger.",

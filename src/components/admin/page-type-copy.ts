@@ -17,4 +17,6 @@ export const PAGE_TYPE_COPY: Record<
   footer: { list: "Footers", one: "footer", One: "Footer", many: "footers", segment: "footers", sitePrefix: "" },
   // A copy of a page made for an A/B test (D148): at no address of its own, edited from its test.
   variant: { list: "A/B tests", one: "variant", One: "Variant", many: "variants", segment: "experiments/variants", sitePrefix: "" },
+  // A content type's entry page (D326): designed from its type under Content, drawn at each entry's own address.
+  entry_layout: { list: "Content", one: "entry page", One: "Entry page", many: "entry pages", segment: "content/layouts", sitePrefix: "" },
 };

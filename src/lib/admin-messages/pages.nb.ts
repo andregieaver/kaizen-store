@@ -136,6 +136,8 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
   "store:content.type.settings": { title: "Innstillinger for innholdstype", keywords: ["innholdstype", "felter", "navn på nett"] },
   "store:content.entry.new": { title: "Ny oppføring", keywords: ["ny oppføring", "oppføring"] },
   "store:content.entry": { title: "Oppføring", keywords: ["oppføring", "publiser", "rediger"] },
+  "store:content.layout": { title: "Oppføringsside", keywords: ["oppføringsside", "oppsett", "sidebygger", "innholdstype"] },
+  "store:content.layout.preview": { title: "Forhåndsvisning av oppføringsside", keywords: ["forhåndsvisning", "oppføringsside"] },
   "store:media": {
     title: "Medier",
     keywords: ["medier", "mediebibliotek", "bilder", "foto", "videoer", "alternativ tekst", "alt-tekst"],

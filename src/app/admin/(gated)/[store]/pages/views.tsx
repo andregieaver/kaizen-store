@@ -19,6 +19,7 @@ import { ROLE_COPY, ROLE_GROUPS, partOfRole, type PageRole } from "@/lib/page-ro
 import { featureOn, requirementMet } from "@/lib/store-features";
 import { shopPartFeature } from "@/lib/store-parts";
 import type { Term } from "@/lib/taxonomy";
+import { typeOfLayout } from "@/server/content-types";
 import { latestHomeTake, homePageOffers } from "@/server/home-takes";
 import { memberCan, requirePageTypeAccess } from "@/server/permissions";
 import { testOfVersionPage } from "@/server/experiment-admin";
@@ -68,6 +69,8 @@ const INTRO: Record<PageType, string> = {
   footer:
     "The bottom of every page in your store, built from components: your logo, menus, business details, countries, the cookies link and anything else. Publish a footer, then choose it as the store's footer; until you do, the standard one is shown. A footer shows your business details and the cookies link, as the law asks.",
   variant: "A version of a page made for an A/B test: edited here like the page, shown only to the visitors the test gives it to, never at an address of its own.",
+  entry_layout:
+    "How each entry of a content type is shown on its own page: rows and columns whose headings, texts, pictures and buttons take their words from the entry's fields. Entries without a published layout use the standard entry page.",
 };
 
 export async function StorePagesListView({ type, params, searchParams }: { type: PageType; params: StoreParams; searchParams: Query }) {
@@ -282,7 +285,9 @@ export async function StoreEditPageView({ type, params, searchParams }: { type: 
   if (!page) notFound();
   // A version made for an A/B test (D148) says which test it is in, what it is a version of, and what may be changed in it.
   const test = type === "variant" ? await testOfVersionPage(store.id, page.id) : null;
-  const context = await storePageContext(store, type, account.name ?? "", test?.targetType ?? null);
+  // An entry layout (D326) offers its type's fields to its blocks.
+  const entryType = type === "entry_layout" ? await typeOfLayout(store.id, page.id) : null;
+  const context = await storePageContext(store, type, account.name ?? "", test?.targetType ?? null, entryType);
   // What is entered in the page's or article's custom fields (D118).
   const fieldData = type === "page" || type === "article" ? await getFieldData(store.id, type, page.id) : undefined;
   const lang = adminLangOf(account.adminLocale);

@@ -138,6 +138,7 @@ export const FIELD_TYPES = {
   product: { label: "Product", category: "Relational", translatable: false, hint: "One or more of the store's products." },
   page: { label: "Page or article", category: "Relational", translatable: false, hint: "One or more of the store's published pages or articles." },
   term: { label: "Category or tag", category: "Relational", translatable: false, hint: "One or more of the store's categories or tags." },
+  entry: { label: "Content entries", category: "Relational", translatable: false, hint: "One or more entries of one of your content types, such as team members." },
   group: { label: "Group", category: "Layout", translatable: false, hint: "Several fields that belong together, shown as one." },
   repeater: {
     label: "Repeater",
@@ -207,6 +208,13 @@ export const MAX_SUB_FIELDS = 30;
 export const MAX_LAYOUTS = 12;
 /** How many things a relational field may point at. */
 export const MAX_RELATED = 50;
+
+/** The field types whose value is the id, or ids, of things the owner has: products, pages, categories and tags, content entries (D326). */
+export const RELATION_TYPES: readonly FieldType[] = ["product", "page", "term", "entry"];
+export const isRelation = (type: FieldType): boolean => RELATION_TYPES.includes(type);
+
+/** A content type's key (D326), as an entry field names its type. */
+export const CONTENT_TYPE_KEY = /^t_[0-9a-f]{12}$/;
 
 const CHOICE_TYPES: readonly FieldType[] = ["select", "radio", "buttons", "checkbox"];
 /** The types a listing can be filtered by (D78): a choice from a list, a yes or no, or a number as a range (D120). */
@@ -354,8 +362,10 @@ export type FieldDef = {
   filter?: boolean;
   search?: boolean;
   chat?: boolean;
-  /** Product, page and category or tag fields: whether one thing or several may be chosen. */
+  /** Product, page, category or tag and entry fields: whether one thing or several may be chosen. */
   multiple?: boolean;
+  /** Entry fields (D326): the key of the content type whose entries it takes. */
+  contentType?: string;
   /** Category or tag fields: which of them to choose from. */
   termKinds?: ("category" | "tag")[];
 };
@@ -635,6 +645,7 @@ export function operatorsFor(type: FieldType): ConditionOperator[] {
     case "product":
     case "page":
     case "term":
+    case "entry":
     case "group":
     case "repeater":
     case "flexible":
@@ -844,7 +855,8 @@ export function parseValue(def: FieldDef, raw: unknown): Parsed {
     }
     case "product":
     case "page":
-    case "term": {
+    case "term":
+    case "entry": {
       const one = !def.multiple;
       const list = Array.isArray(raw) ? raw : raw === "" ? [] : [raw];
       const ids = [...new Set(list)];
@@ -1299,6 +1311,7 @@ export type FieldWords = { yes: string; no: string; money?: (value: FieldMoney) 
 /** Something a field points at: a file, a page, a product, a category or a web address. */
 export type ShownLink = {
   label: string;
+  /** Empty for something with no page of its own (an entry of a type without pages, D326): drawn as its words alone. */
   href: string;
   /** Opens in a new tab: an address outside the site, or a file. */
   newTab?: boolean;
@@ -1361,6 +1374,7 @@ export function displayText(
     case "product":
     case "page":
     case "term":
+    case "entry":
     case "group":
     case "repeater":
     case "flexible":
@@ -1462,6 +1476,8 @@ export type FieldLookups = {
   products: { id: string; title: string }[];
   pages: { id: string; title: string; type: "page" | "article" }[];
   terms: { id: string; name: string; kind: "category" | "tag" }[];
+  /** The owner's content entries by their type's key (D326), each by its title in the main language; left out where no field takes entries. */
+  entries?: { id: string; title: string; type: string }[];
   /** The currencies the store offers, its main one first, for money fields (D120); left out where nothing needs them. */
   currencies?: string[];
 };
@@ -1473,7 +1489,7 @@ export const MAX_LOOKUPS = 500;
 /** Whether some field in these groups points at the store's products, pages or categories, or holds money (so an editor must list them, and the store's currencies). */
 export function needsLookups(groups: readonly FieldGroup[]): boolean {
   const points = (def: FieldDef): boolean =>
-    def.type === "product" || def.type === "page" || def.type === "term" || def.type === "link" || def.type === "money" || subFieldsOf(def).some(points);
+    isRelation(def.type) || def.type === "link" || def.type === "money" || subFieldsOf(def).some(points);
   return groups.some((group) => group.fields.some(points));
 }
 
@@ -1561,6 +1577,7 @@ const leafField = z.object({
   search: z.boolean().optional(),
   chat: z.boolean().optional(),
   multiple: z.boolean().optional(),
+  contentType: z.string().regex(CONTENT_TYPE_KEY).optional(),
   termKinds: z.array(z.enum(["category", "tag"])).min(1).max(2).optional(),
   minRows: z.number().int().min(0).max(MAX_REPEATER_ROWS).optional(),
   maxRows: z.number().int().min(1).max(MAX_REPEATER_ROWS).optional(),
@@ -1634,6 +1651,10 @@ export const fieldDefsSchema = z
       }
       if (field.search && !SEARCH_TYPES.includes(field.type)) {
         ctx.addIssue({ code: "custom", path: [...at, "search"], message: `${field.label} cannot be searched: only texts and choices can.` });
+      }
+      const entryWithout = (def: { type: FieldType; contentType?: string }) => def.type === "entry" && !def.contentType;
+      if (entryWithout(field) || subFieldsOf(field).some(entryWithout)) {
+        ctx.addIssue({ code: "custom", path: [...at, "contentType"], message: `Choose the content type whose entries ${field.label} takes.` });
       }
       if (field.type === "money" && field.chat) {
         ctx.addIssue({ code: "custom", path: [...at, "chat"], message: `${field.label} cannot be told by the chat: the assistant states no amount from a field.` });
@@ -1835,7 +1856,7 @@ export function newField(type: FieldType, taken: readonly string[] = []): FieldD
       base.rowLayout = "block";
     }
   }
-  if (type === "product" || type === "page" || type === "term") base.multiple = false;
+  if (isRelation(type)) base.multiple = false;
   if (type === "term") base.termKinds = ["category", "tag"];
   return base;
 }

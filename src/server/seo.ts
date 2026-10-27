@@ -1,6 +1,7 @@
 import "server-only";
 
 import { languageAlternates, platformPath, type PlatformLang } from "@/lib/platform-lang";
+import { listIndexedEntries } from "./content-site";
 import { getPlatformLangs } from "./platform-navigation";
 import { sql } from "drizzle-orm";
 import type { Metadata } from "next";
@@ -547,11 +548,12 @@ export async function storeSitemap(slug: string): Promise<string | null> {
   // Addresses without the country while the store sells in one (D181), as its pages' own links are.
   const address = (await getOpenStore(slug))?.address ?? null;
   // A website (D178 step 5: the online shop off) lists no products, categories or tags.
-  const [products, terms, pages, articles] = await Promise.all([
+  const [products, terms, pages, articles, entries] = await Promise.all([
     store.selling ? listIndexedProducts(store.id) : Promise.resolve([]),
     store.selling ? listIndexedTerms(store.id) : Promise.resolve([]),
     listPublishedPages(store.id),
     listPublishedPages(store.id, "article"),
+    listIndexedEntries(store.id),
   ]);
   const base = `${origin}${storeBase(store.slug)}`;
 
@@ -627,6 +629,11 @@ export async function storeSitemap(slug: string): Promise<string | null> {
         const image = pageImageUrls(article.content).slice(0, 10);
         return versions.map((version) => entry(version.href, versions, { lastmod: article.publishedAt, images: image }));
       }),
+    // Its content entries' own pages (D326), published and of a type with pages, in every market.
+    ...entries.flatMap((item) => {
+      const versions = versionsOf(store.markets, `/${item.path}`);
+      return versions.map((version) => entry(version.href, versions, { lastmod: item.updatedAt }));
+    }),
   ];
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n${urls.join("\n")}\n</urlset>\n`;
 }

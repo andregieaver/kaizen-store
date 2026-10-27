@@ -532,6 +532,7 @@ export function fieldProblems(
     if (new Set(choices.map((c) => c.key)).size !== choices.length) problems.push(p.choiceTwice);
   }
   if (field.type === "measurement" && (field.units ?? []).length === 0) problems.push(p.oneUnit);
+  if (field.type === "entry" && !field.contentType) problems.push(p.contentType);
   if (field.min !== undefined && field.max !== undefined && field.min > field.max) problems.push(p.leastMost);
   if (field.type === "flexible") {
     const layouts = field.layouts ?? [];
@@ -590,6 +591,7 @@ export function hasTypeSettings(type: FieldType): boolean {
       "product",
       "page",
       "term",
+      "entry",
       "repeater",
       "flexible",
       "money",

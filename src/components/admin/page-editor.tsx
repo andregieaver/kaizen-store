@@ -548,6 +548,7 @@ export function PageEditor({
           themeStore: context.themeStore ?? null,
           features: context.features ?? null,
           shape,
+          contentTypes: context.contentTypes ?? [],
           actions,
         }}
         aside={

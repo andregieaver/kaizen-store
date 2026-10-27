@@ -23,6 +23,8 @@ export const SOURCE_TRAITS: Record<GridSource["type"], SourceTraits> = {
   articles: { lookedUp: true, products: false, terms: true, fieldEntity: "article", button: "readMore" },
   products: { lookedUp: true, products: true, terms: true, fieldEntity: "product", button: "viewProduct" },
   custom: { lookedUp: false, products: false, terms: false, fieldEntity: null, button: "readMore" },
+  // A content type's entries (D326): looked up, in the type's or a chosen order; their tile fields are the type's own, not a field group's.
+  entries: { lookedUp: true, products: false, terms: false, fieldEntity: null, button: "readMore" },
 };
 
 /** The traits of a grid's source; the exhaustive switch makes a new source a compile error here too. */
@@ -32,6 +34,7 @@ export function sourceTraits(source: GridSource): SourceTraits {
     case "articles":
     case "products":
     case "custom":
+    case "entries":
       return SOURCE_TRAITS[source.type];
     default:
       return assertNever(source);

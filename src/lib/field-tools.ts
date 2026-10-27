@@ -119,7 +119,7 @@ export function fieldValueText(
     const rows = Array.isArray(value) ? value.length : 0;
     return `${rows} ${rows === 1 ? "row" : "rows"} (change them in the admin)`;
   }
-  if (def.type === "product" || def.type === "page" || def.type === "term") {
+  if (def.type === "product" || def.type === "page" || def.type === "term" || def.type === "entry") {
     const n = Array.isArray(value) ? value.length : 1;
     return `${n} ${n === 1 ? "item" : "items"} chosen (change them in the admin)`;
   }

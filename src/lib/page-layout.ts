@@ -31,6 +31,7 @@ export const LAYOUT_TYPE_LABELS: Record<PageType, { one: string; many: string }>
   header: { one: "header", many: "headers" },
   footer: { one: "footer", many: "footers" },
   variant: { one: "variant", many: "variants" },
+  entry_layout: { one: "entry page", many: "entry pages" },
 };
 
 export const pageLayoutSchema = z

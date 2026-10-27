@@ -40,7 +40,7 @@ export function addressContextOf(store: Pick<Store, "slug" | "markets">): Addres
 /**
  * The addresses among `paths` that are live on the store now (rule 7): an ACTIVE product's `/p/{handle}`, a category's or tag's `/category|tag/{slug}`, a
  * published page's `/{slug}` (the front page's and the role pages' own included), a published article's `/blog/{slug}`, `/blog` when there are articles, and
- * `/products`. A draft or archived product's address is not live. A path that is none of these shapes is not live.
+ * `/products`, and a published content entry's `/{type}/{entry}` (D326). A draft or archived product's address is not live. A path that is none of these shapes is not live.
  */
 export async function liveOf(storeId: string, paths: readonly string[], run: Executor = db()): Promise<Set<string>> {
   const live = new Set<string>();
@@ -49,6 +49,7 @@ export async function liveOf(storeId: string, paths: readonly string[], run: Exe
   const tags: string[] = [];
   const pages: string[] = [];
   const articles: string[] = [];
+  const entries: string[] = [];
   let wantsBlog = false;
   for (const path of new Set(paths)) {
     const parts = path.split("/").filter(Boolean);
@@ -59,6 +60,8 @@ export async function liveOf(storeId: string, paths: readonly string[], run: Exe
     else if (parts.length === 2 && parts[0] === "category") categories.push(parts[1]);
     else if (parts.length === 2 && parts[0] === "tag") tags.push(parts[1]);
     else if (parts.length === 2 && parts[0] === "blog") articles.push(parts[1]);
+    // A content entry's page (D326): `/{type}/{entry}`.
+    else if (parts.length === 2) entries.push(path);
     else if (parts.length === 1) pages.push(parts[0]);
   }
   // `slug` of a page or an article may hold capitals in the database; the normal form is lower case, so the comparison is too.
@@ -74,6 +77,11 @@ export async function liveOf(storeId: string, paths: readonly string[], run: Exe
      where pg.store_id = ${storeId}::uuid and pg.published_at is not null
        and ((pg.type = 'page' and lower(pg.slug) = any(${pgTextArray(pages)}::text[])) or (pg.type = 'article' and lower(pg.slug) = any(${pgTextArray(articles)}::text[])))
     union all
+    select 'entry', a.address from (
+      select '/' || t.slug || '/' || e.slug as address from commerce.content_entries e join commerce.content_types t on t.id = e.type_id
+       where e.store_id = ${storeId}::uuid and e.published is not null and t.has_pages
+    ) a where a.address = any(${pgTextArray(entries)}::text[])
+    union all
     select 'blog', '' where ${wantsBlog} and exists (select 1 from commerce.pages pg where pg.store_id = ${storeId}::uuid and pg.type = 'article' and pg.published_at is not null)
   `);
   for (const row of rows) {
@@ -84,6 +92,7 @@ export async function liveOf(storeId: string, paths: readonly string[], run: Exe
     else if (kind === "page") live.add(`/${value}`);
     else if (kind === "article") live.add(`/blog/${value}`);
     else if (kind === "blog") live.add("/blog");
+    else if (kind === "entry") live.add(value);
   }
   return live;
 }
@@ -98,12 +107,12 @@ export async function indexFor(storeId: string, seeds: readonly string[], run: E
   const wanted = [...new Set(seeds)].filter((s) => s !== "");
   if (wanted.length === 0) return index;
   const rows = await run.execute<Row>(sql`
-    with recursive walk (source, kind, target, product_id, term_id, depth) as (
-      select r.source, r.kind, r.target, r.product_id, r.term_id, 1
+    with recursive walk (source, kind, target, product_id, term_id, entry_id, depth) as (
+      select r.source, r.kind, r.target, r.product_id, r.term_id, r.entry_id, 1
         from commerce.redirects r
        where r.store_id = ${storeId}::uuid and r.source = any(${pgTextArray(wanted)}::text[])
       union
-      select r.source, r.kind, r.target, r.product_id, r.term_id, w.depth + 1
+      select r.source, r.kind, r.target, r.product_id, r.term_id, r.entry_id, w.depth + 1
         from walk w
         join commerce.redirects r on r.store_id = ${storeId}::uuid and r.source = commerce.redirect_path_of(w.target)
        where w.kind = 'manual' and w.depth < 12
@@ -113,6 +122,7 @@ export async function indexFor(storeId: string, seeds: readonly string[], run: E
         when 'product' then (select '/p/' || p.handle from commerce.products p where p.store_id = ${storeId}::uuid and p.id = w.product_id and p.status = 'active')
         when 'category' then (select '/category/' || t.slug from commerce.terms t where t.store_id = ${storeId}::uuid and t.id = w.term_id)
         when 'tag' then (select '/tag/' || t.slug from commerce.terms t where t.store_id = ${storeId}::uuid and t.id = w.term_id)
+        when 'entry' then commerce.entry_address(w.entry_id)
       end as current
     from walk w
   `);

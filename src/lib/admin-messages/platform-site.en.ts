@@ -643,6 +643,7 @@ export const platformSiteEn = {
       header: { one: "header", One: "Header" },
       footer: { one: "footer", One: "Footer" },
       variant: { one: "variant", One: "Variant" },
+      entry_layout: { one: "entry page", One: "Entry page" },
     },
     untitled: "Untitled",
     editTitle: "Edit {title}",

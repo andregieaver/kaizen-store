@@ -8,7 +8,13 @@ import { siteFontFamilies } from "@/lib/fonts";
 import { t } from "@/lib/i18n";
 import type { PageContent, PageType } from "@/lib/page-content";
 import { themeAttributes, themeCss } from "@/lib/theme";
+import { adminText } from "@/lib/admin-text";
+import { bindPage } from "@/lib/field-binding";
 import { getProduct, listProducts } from "@/server/catalog";
+import { requestAdminLang } from "@/server/admin-request-lang";
+import { listEntries } from "@/server/content-entries";
+import { typeOfLayout } from "@/server/content-types";
+import { shownEntryFields } from "@/server/custom-fields";
 import { siteFontStyle } from "@/server/fonts";
 import type { Store } from "@/server/stores";
 
@@ -47,6 +53,8 @@ export function PageDrawing({
       <ScopedCss css={[store.customCss, content.css]} root="[data-site-css]" />
       {type === "product_layout" ? (
         <LayoutPreview store={store} layout={content} asked={asked} />
+      ) : type === "entry_layout" ? (
+        <EntryLayoutPreview store={store} id={id} layout={content} />
       ) : (type === "header" || type === "footer") && market ? (
         // As the store draws it (D80), in its first country, with its own logo, menus and details.
         <div className="overflow-hidden rounded-lg border border-border">
@@ -131,6 +139,24 @@ async function LayoutPreview({
       <div className="rounded-lg border border-border py-8">
         <ProductLayoutView layout={layout} ctx={{ store, market, product, m: t(market.lang) }} inAdmin />
       </div>
+    </>
+  );
+}
+
+/**
+ * A type's entry layout (D326) drawn with its first published entry: its bound blocks showing that entry's fields, as an entry's page
+ * draws it. With no published entry, the blocks follow their fallback rule.
+ */
+async function EntryLayoutPreview({ store, id, layout }: { store: Store; id: string; layout: PageContent }) {
+  const market = store.markets[0];
+  const type = await typeOfLayout(store.id, id);
+  const [first] = type ? await listEntries(store.id, type.id) : [];
+  const fields = market && first?.published ? await shownEntryFields(store.id, first.id, market.locale, market.lang, market.slug) : [];
+  const w = adminText(await requestAdminLang(), "content").layout;
+  return (
+    <>
+      {!first?.published && <p className="text-sm text-muted">{w.previewNoEntry}</p>}
+      <PageArticle content={bindPage(layout, fields)} place={{ pageId: null, owner: store.id, market: market?.code }} inAdmin />
     </>
   );
 }

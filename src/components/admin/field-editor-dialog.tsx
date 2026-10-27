@@ -57,6 +57,7 @@ import {
   withLabel,
 } from "@/lib/field-group-editor";
 
+import { useContentTypeChoices } from "./content-type-choices";
 import { FieldTypePicker } from "./field-type-picker";
 import { Modal } from "./modal";
 
@@ -494,7 +495,8 @@ function Presentation({
           hintText={fillWords(w.atMost, { n: MAX_GALLERY })}
         />
       )}
-      {(type === "product" || type === "page" || type === "term") && (
+      {type === "entry" && <EntryTypeChoice draft={draft} update={update} />}
+      {(type === "product" || type === "page" || type === "term" || type === "entry") && (
         <label className="flex items-start gap-3 text-sm">
           <input
             type="checkbox"
@@ -531,6 +533,38 @@ function Presentation({
         </p>
       )}
     </>
+  );
+}
+
+/** The content type whose entries an entry field takes (D326): one of the owner's, required. */
+function EntryTypeChoice({ draft, update }: PanelProps) {
+  const w = useAdminText("fields").dialog;
+  const types = useContentTypeChoices();
+  const id = useId();
+  if (types.length === 0) return <p className={hint}>{w.noContentTypes}</p>;
+  return (
+    <div className="flex flex-col gap-1 text-sm">
+      <label htmlFor={id} className="font-medium">
+        {w.contentType}
+      </label>
+      <select
+        id={id}
+        aria-describedby={`${id}-hint`}
+        value={draft.contentType ?? ""}
+        onChange={(event) => update({ contentType: event.target.value || undefined })}
+        className="min-h-10 rounded-md border border-line bg-card px-3"
+      >
+        <option value="">{w.chooseContentType}</option>
+        {types.map((type) => (
+          <option key={type.key} value={type.key}>
+            {type.name}
+          </option>
+        ))}
+      </select>
+      <span id={`${id}-hint`} className={hint}>
+        {w.contentTypeHint}
+      </span>
+    </div>
   );
 }
 
