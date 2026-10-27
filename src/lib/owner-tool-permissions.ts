@@ -109,6 +109,14 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   save_search_synonym: "settings:write",
   save_search_rule: "settings:write",
   delete_search_merchandising: "settings:write",
+  // Content types and entries (D326) are the website's, as their pages under Website, Content are.
+  list_content_types: "website:read",
+  list_entries: "website:read",
+  get_entry: "website:read",
+  save_entry: "website:write",
+  publish_entry: "website:write",
+  unpublish_entry: "website:write",
+  save_content_type: "website:write",
   setup_progress: "owner",
   // Setting the store up (D308): what the setup wizard and the Company, Languages and Currencies pages leave to the owner is the owner's; the
   // Countries and Shipping pages ask `settings:write`; opening the store is the wizard's, the owner's.

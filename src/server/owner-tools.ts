@@ -104,6 +104,16 @@ import {
 import { DNS_RECORD_TOOLS } from "@/lib/domain-tools";
 import { addRedirectTool, preflightRedirectTool, redirectOverviewTool } from "./redirect-tools";
 import { deleteSearchMerchandisingTool, preflightSearchTool, saveSearchRuleTool, saveSearchSynonymTool, searchMerchandisingTool } from "./search-tools";
+import {
+  getEntryTool,
+  listContentTypesTool,
+  listEntriesTool,
+  preflightContentTool,
+  publishEntryTool,
+  saveContentTypeTool,
+  saveEntryTool,
+  unpublishEntryTool,
+} from "./content-tools";
 import { ossReturnDataTool, vatReportTool } from "./tax-report-tools";
 import { customerInsights, productPerformance, restockSuggestions, salesFunnel, salesTrend } from "./owner-insights";
 import { getSetupProgress } from "./setup";
@@ -2049,6 +2059,13 @@ export async function preflightOwnerTool(ctx: OwnerToolContext, name: string, ra
     if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
     return preflightSearchTool(ctx, name, input.input as Record<string, unknown>);
   }
+  // An entry that could not be published or taken off, or a content type that could not be saved, is refused now, never kept for a yes (D326).
+  if (name === "publish_entry" || name === "unpublish_entry" || name === "save_content_type") {
+    const tool = OWNER_TOOLS_BY_NAME[name];
+    const input = readToolInput(tool, raw);
+    if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
+    return preflightContentTool(ctx, name, input.input as Record<string, unknown>);
+  }
   // A figure or a backorder setting that could not be changed, or would change nothing, is refused now, never kept for a yes (D172).
   if (name === "set_stock" || name === "set_backorder") {
     const tool = OWNER_TOOLS_BY_NAME[name];
@@ -2368,6 +2385,13 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   save_search_synonym: saveSearchSynonymTool,
   save_search_rule: saveSearchRuleTool,
   delete_search_merchandising: deleteSearchMerchandisingTool,
+  list_content_types: listContentTypesTool,
+  list_entries: listEntriesTool,
+  get_entry: getEntryTool,
+  save_entry: saveEntryTool,
+  publish_entry: publishEntryTool,
+  unpublish_entry: unpublishEntryTool,
+  save_content_type: saveContentTypeTool,
   restock_suggestions: restockSuggestions,
   list_integrations: listIntegrationsTool,
   email_customer: emailCustomerTool,

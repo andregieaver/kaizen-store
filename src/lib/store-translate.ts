@@ -17,7 +17,7 @@ import { MAX_INSTRUCTIONS } from "./withdrawal";
  * needs human review. Pure and shared with the browser.
  */
 
-export const TRANSLATE_SCOPES = ["products", "menus", "pages", "fields", "returns", "terms", "shipping", "emails"] as const;
+export const TRANSLATE_SCOPES = ["products", "menus", "pages", "fields", "returns", "terms", "shipping", "emails", "content"] as const;
 export type TranslateScope = (typeof TRANSLATE_SCOPES)[number];
 
 export const SCOPE_WORDS: Record<TranslateScope, { name: string; one: string }> = {
@@ -29,11 +29,12 @@ export const SCOPE_WORDS: Record<TranslateScope, { name: string; one: string }> 
   terms: { name: "Categories and tags", one: "Category or tag" },
   shipping: { name: "Shipping, pickup and local delivery", one: "Shipping text" },
   emails: { name: "Customer emails", one: "Customer email" },
+  content: { name: "Content entries", one: "Entry" },
 };
 
 /** One thing to translate: a product, a menu link, a page or custom fields' words, with its texts. */
 export type Unit = {
-  /** `product:{id}`, `menu:{id}:{index}`, `page:{id}`, `fielddef:{groupId}`, `fieldval:{entity}:{id}` (D118), `returns:instructions` (D153), `term:{id}` (D168), the shipping units (D237) or `email:{notification}` (D238). */
+  /** `product:{id}`, `menu:{id}:{index}`, `page:{id}`, `fielddef:{groupId}`, `fieldval:{entity}:{id}` (D118), `returns:instructions` (D153), `term:{id}` (D168), the shipping units (D237) or `email:{notification}` (D238) or `entry:{id}` (D326). */
   id: string;
   scope: TranslateScope;
   /** What it is called in the main language, and what kind of page it is. */

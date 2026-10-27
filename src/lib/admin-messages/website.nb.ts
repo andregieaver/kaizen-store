@@ -642,6 +642,7 @@ export const websiteNb: WebsiteMessages = {
       terms: "Kategorier og stikkord",
       shipping: "Frakt, henting og lokal levering",
       emails: "E-poster til kunder",
+      content: "Innholdsoppføringer",
     },
     translating: "Oversetter {n} av {of} …",
     savingOf: "Lagrer {n} av {of} …",

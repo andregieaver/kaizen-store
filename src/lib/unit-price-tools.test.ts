@@ -24,7 +24,8 @@ describe("the AI manager's unit price tool (D160)", () => {
     expect(MANAGER_TOOLS.some((x) => (x.name as string) === "unit_price_gaps")).toBe(false);
     expect(PLATFORM_TOOLS.some((x) => (x.name as string) === "unit_price_gaps")).toBe(false);
     // A measure changes what the law says a page must show: no tool of the manager sets one.
-    const writers = OWNER_TOOLS.filter((x) => /measure|content|unit_price/i.test(x.name)).map((x) => x.name);
+    // (A content type's tools, D326, are the store's own kinds of content, not a product's net content.)
+    const writers = OWNER_TOOLS.filter((x) => /measure|content|unit_price/i.test(x.name) && !/content_type|entr(y|ies)/.test(x.name)).map((x) => x.name);
     expect(writers).toEqual(["unit_price_gaps"]);
   });
 

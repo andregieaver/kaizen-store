@@ -43,7 +43,7 @@ export const contentEn = {
     back: "Back to {type}",
     fields: "Fields",
     fieldsIntro: "What this entry holds, in the fields its type has. Texts are written per language.",
-    address: "Address",
+    address: "Page address",
     addressHint: "The end of the entry's page address. It follows the title until you change it.",
     seo: "Search engines",
     seoHint: "How the entry's page shows in search results and when shared. Left empty, its title and summary are used.",

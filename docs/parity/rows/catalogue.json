@@ -606,13 +606,13 @@
       "checkedOn": "2026-10-02"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "partial"
     },
-    "gap": "Repeaters, groups, flexible content and relation fields (D119, D120) and the store's own field groups (entity `store`) let structured data sit inside a product, page, term or the store, and pages nested under a parent can be listed by a content grid (`GridSource` `pages` with `parent`, D51). There are no standalone entries of an owner-defined type: `FIELD_ENTITIES` are product, variant, page, article, term, store, customer and order (`src/lib/custom-fields.ts`) and `PAGE_TYPES` has no type of the owner's (verified), so no list of entries of their own, no draft and published state per entry, no entry page template and no sitemap entry. Merged on 2026-10-25 (README rule 8): `platform.metaobjects` was the same Shopify feature (rated partial); its criteria and evidence are here.",
-    "bucket": "A",
-    "wave": 6,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "An owner defines a content type (fields) and creates entries of it in a list of their own, with draft and published states and per-language texts.",
       "An entry can be referenced from fields and builder blocks and drawn by a content grid or its own page template.",
@@ -625,26 +625,43 @@
     ],
     "evidence": {
       "files": [
-        "src/lib/custom-fields.ts",
-        "src/server/custom-fields.ts",
-        "src/lib/field-loop.ts",
-        "src/lib/field-group-editor.ts"
+        "src/lib/content-types.ts",
+        "src/server/content-types.ts",
+        "src/server/content-entries.ts",
+        "src/server/content-refs.ts",
+        "src/server/content-site.ts",
+        "src/server/content-translate.ts",
+        "src/server/content-tools.ts",
+        "src/components/admin/content-type-editor.tsx",
+        "src/components/admin/entry-editor.tsx",
+        "src/app/s/[store]/[market]/[slug]/entry-page-view.tsx",
+        "src/server/entry-targets.ts",
+        "supabase/migrations/20261027001040_content_types_sql.sql",
+        "supabase/migrations/20261027024913_entry_pages_sql.sql"
       ],
       "tests": [
-        "src/server/custom-fields-flexible.int.test.ts",
-        "src/lib/custom-fields-flexible.test.ts",
-        "e2e/custom-fields-flexible.spec.ts",
-        "src/lib/field-loop.test.ts",
-        "e2e/custom-fields-loop.spec.ts"
+        "src/lib/content-types.test.ts",
+        "src/server/content-types.int.test.ts",
+        "src/server/content-entries.int.test.ts",
+        "src/server/content-tools.int.test.ts",
+        "e2e/signed-in/content-types.spec.ts"
       ],
       "untested": false
     },
     "decisions": [
+      "D326",
       "D119",
       "D120",
       "D51"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-27",
+        "from": "partial",
+        "to": "full",
+        "why": "Wave 6 unit H (D326, docs/wave-6-catalogue.md Unit H): an owner defines content types under Website, Content (fields from the custom fields' own types, a fixed key, a web name) and writes entries with a draft and a published copy and texts per language; an entry field on any thing with fields, or another entry, holds the owner's own entries of its type and deleting an entry clears every reference (content-refs.ts); a content grid lists a type's published entries, and a type with pages serves /{type}/{entry} with its search texts, its entry layout (page type entry_layout, blocks bound to the entry's fields) and a sitemap entry only while published, a changed address leaving a redirect; types and entries are copied with the store (settings in COPY_RULES, references remapped, content-types.int.test.ts), in the translation worklist (scope content) and the AI manager's tools (content-entries.int.test.ts, content-tools.int.test.ts, e2e/signed-in/content-types.spec.ts)."
+      }
+    ]
   },
   {
     "id": "catalogue.seo-fields-title-description-handle-sitemap-hreflang",

@@ -39,7 +39,7 @@ export const contentNb: ContentMessages = {
     back: "Tilbake til {type}",
     fields: "Felter",
     fieldsIntro: "Det denne oppføringen inneholder, i feltene typen har. Tekster skrives per språk.",
-    address: "Adresse",
+    address: "Sideadresse",
     addressHint: "Slutten av adressen til oppføringens side. Den følger tittelen til du endrer den.",
     seo: "Søkemotorer",
     seoHint: "Hvordan oppføringens side vises i søkeresultater og når den deles. Står det tomt, brukes tittelen og sammendraget.",

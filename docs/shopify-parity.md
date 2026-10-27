@@ -10,11 +10,11 @@ D152 (the store analytics cockpit) and D153 (the EU withdrawal function and the 
 
 <!-- parity:generated:start since -->
 
-- **Headline now 75.2%** (first report 59.5%), **must-have 82.7%** (first report 69.1%), over 203 core rows (first report 232).
-- Where the change comes from: +15.2 points from the 94 rating moves on core rows recorded below, and +0.4 points because the re-read changed which rows count as core (the tracker has 233 rows, the first report 232 core ones).
+- **Headline now 75.3%** (first report 59.5%), **must-have 82.7%** (first report 69.1%), over 203 core rows (first report 232).
+- Where the change comes from: +15.4 points from the 95 rating moves on core rows recorded below, and +0.4 points because the re-read changed which rows count as core (the tracker has 233 rows, the first report 232 core ones).
 - 232 of 233 rows have their Shopify side read from a page; the others are listed under evidence debt.
 
-Rated higher (78):
+Rated higher (79):
 
 - AI or rule-based customer segmentation (AI): missing to partial. D296 (wave 5 unit B): saved rule-based segments over customers and subscribers, counted live with a member list, and customer tags; read segments.ts and ran segments.test.ts, segments.int.test.ts (PGlite and integration, passed).
 - AI-written marketing email (AI): missing to partial. D297: Write with AI in the broadcast editor suggests the email's words through the claims filter, as a suggestion only; it does not yet read the store's products or campaigns.
@@ -32,6 +32,7 @@ Rated higher (78):
 - Sell when out of stock (Catalogue): missing to partial. Wave 3 run 1 (docs/wave-3-inventory.md, D172 proposed, tree not committed).
 - Pre-orders (Catalogue, not core): missing to partial. Back in stock, the row's third criterion, is built (D298): src/server/stock-requests.ts (only writer of stock_requests), /api/stock-requests, src/components/back-in-stock.tsx and /account/stock/{token}, a typed address confirmed by its lin…
 - Product media: video and 3D (Catalogue): partial to full. Wave 6 unit G (D325, docs/wave-6-catalogue.md Unit G): the gallery takes pictures, videos (uploaded with a still, or YouTube and Vimeo with a chosen picture) and GLB 3D models in the owner's order and the product page shows them in that or…
+- Metaobjects (Catalogue): partial to full. Wave 6 unit H (D326, docs/wave-6-catalogue.md Unit H): an owner defines content types under Website, Content (fields from the custom fields' own types, a fixed key, a web name) and writes entries with a draft and a published copy and texts…
 - SEO fields: title, description, handle, sitemap, hreflang (Catalogue): partial to full. D168 (wave 2, second run, docs/wave-2-redirects.md).
 - Bulk product import and export (CSV) (Catalogue): missing to full. Wave 2, first run (D165 proposed, docs/wave-2-data.md; working tree not yet committed, migrations not yet applied).
 - Bulk editing (Catalogue): missing to partial. Wave 2, first run (docs/wave-2-data.md; working tree not yet committed).
@@ -129,7 +130,7 @@ Rated lower (25):
 
 <!-- parity:generated:start summary -->
 
-Kaizena Flow has **75.2%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 203 core features weighted by importance to an EU small or mid-size merchant, and **82.7%** on the must-haves (the 83 features with weight 4 or 5). The unweighted figures are 72.2% overall and 82.5% for must-haves. Counting app-only features gives 74.7%; counting Plus-only as well gives 74.2%. Kaizena Flow is strongest on catalogue and products (87.0%) and weakest on platform, extensibility and operations (54.7%), international, compliance and trust (65.2%), checkout and payments (66.7%). Of the 203 core features, 105 are full, 83 partial and 15 missing, so half-built features, not absent ones, are the main shape of the gap.
+Kaizena Flow has **75.3%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 203 core features weighted by importance to an EU small or mid-size merchant, and **82.7%** on the must-haves (the 83 features with weight 4 or 5). The unweighted figures are 72.4% overall and 82.5% for must-haves. Counting app-only features gives 74.8%; counting Plus-only as well gives 74.3%. Kaizena Flow is strongest on catalogue and products (88.3%) and weakest on platform, extensibility and operations (54.7%), international, compliance and trust (65.2%), checkout and payments (66.7%). Of the 203 core features, 106 are full, 82 partial and 15 missing, so half-built features, not absent ones, are the main shape of the gap.
 
 <!-- parity:generated:end summary -->
 
@@ -139,10 +140,10 @@ The method is simple: a full match scores 1, a partial match 0.5, a missing feat
 
 | Measure | Features | Weighted parity | Unweighted parity | Full / partial / missing |
 | --- | --- | --- | --- | --- |
-| Headline: core (Shopify native, Basic to Advanced) | 203 | **75.2%** | 72.2% | 105 / 83 / 15 |
+| Headline: core (Shopify native, Basic to Advanced) | 203 | **75.3%** | 72.4% | 106 / 82 / 15 |
 | Must-have (core, weight 4 or 5) | 83 | **82.7%** | 82.5% | 54 / 29 / 0 |
-| Core plus app-only features | 227 | 74.7% | 72.0% | 116 / 95 / 16 |
-| Everything, including Plus-only | 233 | 74.2% | 71.0% | 117 / 97 / 19 |
+| Core plus app-only features | 227 | 74.8% | 72.2% | 117 / 94 / 16 |
+| Everything, including Plus-only | 233 | 74.3% | 71.2% | 118 / 96 / 19 |
 
 <!-- parity:generated:end headline -->
 
@@ -154,7 +155,7 @@ Counts are core features only. Weighted parity uses weights 1 to 5; must-have is
 
 | Domain | Core features | Full | Partial | Missing | Weighted parity | Must-have features | Must-have parity |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Catalogue and products | 26 | 20 | 4 | 2 | 87.0% | 8 | 92.6% |
+| Catalogue and products | 26 | 21 | 3 | 2 | 88.3% | 8 | 92.6% |
 | Storefront, themes and content | 32 | 22 | 9 | 1 | 86.6% | 15 | 97.0% |
 | Checkout and payments | 17 | 6 | 11 | 0 | 66.7% | 8 | 62.9% |
 | Orders, shipping, fulfilment and returns | 28 | 16 | 11 | 1 | 79.0% | 14 | 86.1% |
@@ -163,7 +164,7 @@ Counts are core features only. Weighted parity uses weights 1 to 5; must-have is
 | International, compliance and trust | 16 | 5 | 11 | 0 | 65.2% | 10 | 65.5% |
 | Platform, extensibility and operations | 20 | 4 | 12 | 4 | 54.7% | 7 | 72.4% |
 | AI and automation | 22 | 9 | 10 | 3 | 67.9% | 2 | 100.0% |
-| **Total** | **203** | **105** | **83** | **15** | **75.2%** | **83** | **82.7%** |
+| **Total** | **203** | **106** | **82** | **15** | **75.3%** | **83** | **82.7%** |
 
 <!-- parity:generated:end domains -->
 
@@ -175,7 +176,7 @@ A row is Full only when it lists code and tests that exist (or says it is untest
 
 | Evidence | Rows |
 | --- | ---: |
-| Full, with tests | 111 |
+| Full, with tests | 112 |
 | Full, untested (debt, not hidden) | 6 |
 | Shopify side not read from a page | 1 |
 | Rows in the tracker | 233 |
@@ -184,7 +185,7 @@ Untested Full rows: `ai.assistant-voice-mode`, `customers.abandoned-checkout-rec
 
 | Bucket | What it means | Rows not Full | Core rows | Core headline points lacking |
 | --- | --- | ---: | ---: | ---: |
-| A | Build in-house | 76 | 65 | 16.1 |
+| A | Build in-house | 75 | 64 | 16.0 |
 | B | Build, live only with a third party | 15 | 13 | 3.5 |
 | C | Strategy decision first | 11 | 8 | 1.9 |
 | D | Not reachable by code | 14 | 12 | 3.4 |
@@ -197,16 +198,16 @@ The waves are those of `docs/parity-plan.md` section 3. This table is produced f
 
 <!-- parity:generated:start projection -->
 
-Now: **75.2%** core, 82.7% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 16 rows (12 core) have no wave yet and are not in them.
+Now: **75.3%** core, 82.7% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 16 rows (12 core) have no wave yet and are not in them.
 
 | Wave | Scope | Rows (core) | Core if every row of waves 1 to N is Full | Must-have | Adds (points) | Core if only bucket A rows are | Must-have |
 | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | Compliance and money | 10 (7) | 77.3% | 86.2% | +2.1 | 76.7% | 85.1% |
-| 2 | Data in and out | 3 (1) | 77.5% | 86.2% | +0.2 | 76.9% | 85.1% |
-| 3 | Inventory and orders | 14 (13) | 80.7% | 88.6% | +3.2 | 78.4% | 86.3% |
-| 4 | Payments | 7 (6) | 82.2% | 90.3% | +1.5 | 78.8% | 86.3% |
-| 5 | Customers and marketing | 19 (16) | 86.4% | 93.9% | +4.1 | 82.1% | 89.4% |
-| 6 | Catalogue | 2 (2) | 86.8% | 93.9% | +0.5 | 82.5% | 89.4% |
+| 1 | Compliance and money | 10 (7) | 77.4% | 86.2% | +2.1 | 76.8% | 85.1% |
+| 2 | Data in and out | 3 (1) | 77.6% | 86.2% | +0.2 | 77.0% | 85.1% |
+| 3 | Inventory and orders | 14 (13) | 80.9% | 88.6% | +3.2 | 78.5% | 86.3% |
+| 4 | Payments | 7 (6) | 82.4% | 90.3% | +1.5 | 78.9% | 86.3% |
+| 5 | Customers and marketing | 19 (16) | 86.5% | 93.9% | +4.1 | 82.2% | 89.4% |
+| 6 | Catalogue | 1 (1) | 86.8% | 93.9% | +0.3 | 82.5% | 89.4% |
 | 7 | Storefront and international | 16 (15) | 90.4% | 95.1% | +3.6 | 86.1% | 90.6% |
 | 8 | Analytics and AI | 17 (17) | 94.4% | 95.8% | +3.9 | 89.8% | 91.3% |
 | 9 | Platform and extensibility | 12 (9) | 96.6% | 96.9% | +2.3 | 91.3% | 91.8% |
@@ -314,7 +315,7 @@ Legend. **Shopify**: Native = included on Basic to Advanced and scored in the he
 | Pre-orders | App. [page](https://shopify.dev/docs/storefronts/themes/pricing-payments/preorder-tbyb) | Partial (was missing) | 2 | A, wave 3 | Back in stock is built (D298, `src/server/stock-requests.ts`, `/api/stock-requests`, `src/components/back-in-stock.tsx`, `/account/stock/{token}`): a shopper asks on a sold-out variant, a typed address confirms by its link first and a verified customer waits at once, the answer never says whether an address was known, one email goes when `variant_availability` says it is back and the product is offered, and a request never subscribes anyone (held by `automations.int.test.ts` and `e2e/back-in-stock.spec.ts`). Selling at zero with stated days is row catalogue.sell-when-out-of-stock (D172). Missing: a pre-order mode (no release date, deposit or pay-later rule per variant; nothing says pre-order on cards, the product page, the cart or the order), no flag that keeps pre-order orders apart from shippable stock or lists them by expected date, and no `checkout-kinds.int.test.ts` scenario for one (verified: no such column, kind or route). Shopify itself offers pre-orders only through apps. Code: `src/server/stock-requests.ts`, `src/server/automations.ts`. |
 | Product media: video and 3D | Native. [page](https://help.shopify.com/en/manual/products/product-media) | Full (was partial) | 2 |  | Built (D325, docs/wave-6-catalogue.md Unit G): a product gallery holds up to 20 items in the owner's order, of which at most 5 videos (uploaded MP4 or WebM to 50 MB, compressed in the browser (D213) with a still as its picture, or a YouTube or Vimeo address with a picture the owner chooses) and 3 3D models (one GLB to 20 MB, with a picture); `mediaProblems()` and the own-file check (`ownMediaFile()`) are the editor's limits enforced by `saveProduct()`. The product page shows each in order: an uploaded video in the browser's own player that never plays by itself, YouTube or Vimeo only once pressed, a model as its picture until *View in 3D* loads `<model-viewer>` then. Every item keeps its picture, so cards, the cart and feeds show the first item's; words per language (the translation worklist lists them), the media library says where a video or model is used, and store copies carry them. Evidence: `src/lib/product-media.ts`, `src/lib/product-input.ts`, `src/server/products.ts` and 6 more; 5 test files; D88, D91, D119, D209, D213, D325. |
 | Metafields | Native. [page](https://help.shopify.com/en/manual/custom-data/metafields) | Full | 3 |  | Evidence: `src/lib/custom-fields.ts`, `src/server/custom-fields.ts`, `src/components/admin/fields-form.tsx` and 1 more; 5 test files; D118, D119, D120. |
-| Metaobjects | Native. [page](https://help.shopify.com/en/manual/custom-data/metaobjects) | Partial | 2 | A, wave 6 | Repeaters, groups, flexible content and relation fields (D119, D120) and the store's own field groups (entity `store`) let structured data sit inside a product, page, term or the store, and pages nested under a parent can be listed by a content grid (`GridSource` `pages` with `parent`, D51). There are no standalone entries of an owner-defined type: `FIELD_ENTITIES` are product, variant, page, article, term, store, customer and order (`src/lib/custom-fields.ts`) and `PAGE_TYPES` has no type of the owner's (verified), so no list of entries of their own, no draft and published state per entry, no entry page template and no sitemap entry. Merged on 2026-10-25 (README rule 8): `platform.metaobjects` was the same Shopify feature (rated partial); its criteria and evidence are here. Code: `src/lib/custom-fields.ts`, `src/server/custom-fields.ts`. |
+| Metaobjects | Native. [page](https://help.shopify.com/en/manual/custom-data/metaobjects) | Full (was partial) | 2 |  | Evidence: `src/lib/content-types.ts`, `src/server/content-types.ts`, `src/server/content-entries.ts` and 10 more; 5 test files; D326, D119, D120, D51. |
 | SEO fields: title, description, handle, sitemap, hreflang | Native. [page](https://help.shopify.com/en/manual/promoting-marketing/seo/url-redirect) | Full (was partial) | 4 |  | Evidence: `src/server/seo.ts`, `src/lib/seo.ts`, `src/lib/structured-data.ts` and 9 more; 14 test files; D21, D54, D109, D168. |
 | Bulk product import and export (CSV) | Native. [page](https://help.shopify.com/en/manual/products/import-export/using-csv) | Full (was missing) | 4 |  | Evidence: `src/lib/csv.ts`, `src/lib/data-job.ts`, `src/lib/data-limits.ts` and 20 more; 16 test files. |
 | Bulk editing | Native. [page](https://help.shopify.com/en/manual/shopify-admin/productivity-tools/bulk-editing) | Full (was partial) | 3 |  | Evidence: `src/lib/bulk-edit.ts`, `src/lib/bulk-admin.ts`, `src/server/bulk-edit.ts` and 8 more; 9 test files. |

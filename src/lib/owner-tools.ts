@@ -7,6 +7,7 @@ import { adjustmentPhrase } from "./bonus-admin";
 import { AUTOMATION_KINDS } from "./automation-kinds";
 import { GOALS } from "./experiments";
 import { GIFT_CARD_NOTE_MAX } from "./gift-card-admin";
+import { contentApprovalSummary } from "./content-tools";
 import { SIMPLE_FIELD_TYPES, TOOL_FIELD_ENTITIES } from "./field-tools";
 import { MAX_INSTRUCTIONS } from "./withdrawal";
 import { MESSAGE_MAX } from "./support-rules";
@@ -519,6 +520,78 @@ export const OWNER_TOOLS = [
     z
       .object({ synonym: z.uuid().optional().describe("A synonym group's id."), rule: z.uuid().optional().describe("A search rule's id.") })
       .refine((v) => (v.synonym === undefined) !== (v.rule === undefined), { message: "Give either a synonym's id or a rule's id." }),
+    "public",
+  ),
+  tool(
+    "list_content_types",
+    "The store's own kinds of content (Website, Content, D326), such as team members, questions and answers or locations: each type's key, name and web name (its entries' pages are at /{web name}/{entry} when it has pages), its fields (name, label, type, whether required, public or for staff only) with the one that is its title, and how many entries it has. Read-only.",
+    z.object({}),
+  ),
+  tool(
+    "list_entries",
+    "The entries of one content type, in the owner's order: each entry's id, its title in the main language, its address and whether it is a draft, published, or published with changes not yet published. Read-only.",
+    z.object({
+      type: z.string().trim().min(1).max(60).describe("The type's web name or key from list_content_types."),
+      search: z.string().trim().max(100).optional().describe("Only entries whose title holds these words."),
+      limit: limit(100, 50),
+    }),
+  ),
+  tool(
+    "get_entry",
+    "One entry by its id from list_entries: its fields as words in the main language, its search texts and its state. Read-only.",
+    z.object({ entry: z.uuid() }),
+  ),
+  tool(
+    "save_entry",
+    "Writes an entry's draft, which no shopper sees until publish_entry: a new entry of a type, or changes to one by its id. Fields by their names from list_content_types; plain types only (text, numbers, yes or no, choices by their label, dates and the like): pictures, files, links and entries it points at are chosen in the admin editor. Text is written in the store's main language, without claims the store cannot back; null empties a field.",
+    z.object({
+      type: z.string().trim().min(1).max(60).describe("The type's web name or key from list_content_types."),
+      entry: z.uuid().optional().describe("The entry's id from list_entries, to change it; leave it out for a new entry."),
+      address: z.string().trim().max(120).optional().describe("The end of a new entry's page address (lowercase letters, digits, hyphens); left out, it follows the title."),
+      values: z
+        .record(
+          z.string().trim().min(1).max(80),
+          z.union([z.string().max(8000), z.number(), z.boolean(), z.array(z.string().max(200)).max(100), z.null()]),
+        )
+        .describe("The field's name (or label) to its value; a checkbox field takes a list of choices, a yes-or-no field true or false, null empties it."),
+      seo_title: z.string().trim().max(70).optional().describe("The title search engines show, when it should differ from the entry's title."),
+      seo_description: z.string().trim().max(160).optional().describe("The description search engines show."),
+    }),
+  ),
+  tool(
+    "publish_entry",
+    "Publishes an entry by its id from list_entries: its draft goes on the site as it is (in grids and on its page when its type has pages). Refused while its title or a required field is empty. Needs the owner's approval.",
+    z.object({ entry: z.uuid() }),
+    "public",
+  ),
+  tool(
+    "unpublish_entry",
+    "Takes an entry off the site by its id from list_entries, keeping its draft. Needs the owner's approval.",
+    z.object({ entry: z.uuid() }),
+    "public",
+  ),
+  tool(
+    "save_content_type",
+    "Makes a content type, or adds fields to one by its key from list_content_types: its name, its web name (fixed once an entry has been published), whether each entry gets a page of its own, and its fields, each with a label, a type, and choices for select, radio, button group and checkbox types. Fields are shown on the site unless you set access private. A field the type has already (by its label) is kept as it is; fields are never removed here. A new type's first text field is its title. Pictures, files, links and fields that point at entries are added in the admin editor. Needs the owner's approval.",
+    z.object({
+      type: z.string().trim().min(1).max(60).optional().describe("The type's key or web name, to change it; leave it out for a new type."),
+      name: z.string().trim().min(1).max(80).describe("What its entries are called together, such as Team members."),
+      web_name: z.string().trim().max(60).optional().describe("Lowercase letters, digits and hyphens; left out, it follows the name."),
+      has_pages: z.boolean().optional().describe("Each published entry gets a page of its own at /{web name}/{entry}."),
+      fields: z
+        .array(
+          z.object({
+            label: z.string().trim().min(1).max(80).describe("What the field is called, such as Role."),
+            type: z.enum(SIMPLE_FIELD_TYPES).default("text").describe("text, textarea (several lines), richText, number, measurement, email, url, phone, select, radio, buttons, checkbox, boolean, date, datetime, time or color."),
+            required: z.boolean().default(false).describe("An entry is published only with it filled in."),
+            options: z.array(z.string().trim().min(1).max(80)).max(100).optional().describe("The choices, for select, radio, buttons and checkbox."),
+            units: z.array(z.string().trim().min(1).max(12)).max(20).optional().describe("The units to choose from, for a measurement."),
+            access: z.enum(["private", "public"]).default("public").describe("public: shown on the site; private: only staff."),
+          }),
+        )
+        .max(30)
+        .default([]),
+    }),
     "public",
   ),
   tool(
@@ -1601,6 +1674,11 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
     case "save_search_rule":
     case "delete_search_merchandising":
       return searchApprovalSummary(name, input);
+    // An entry's and a type's own names are put in by the server (`contentApprovalWords()`); these words name them as given.
+    case "publish_entry":
+    case "unpublish_entry":
+    case "save_content_type":
+      return contentApprovalSummary(name, input);
     case "set_domain_renewal":
       return input.renew === false ? `Stop renewing ${text("domain")}: it stops working on its expiry date.` : `Renew ${text("domain")} by itself each year, invoiced 30 days ahead.`;
     case "buy_domain":

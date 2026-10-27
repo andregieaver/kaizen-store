@@ -44,6 +44,7 @@ import { dnsApprovalDetails, domainApprovalDetails, moveApprovalDetails } from "
 import { productApprovalWords } from "./product-tools";
 import { headerFooterApprovalWords, menuApprovalWords, placeApprovalWords, publishApprovalWords } from "./site-tools";
 import { categoryApprovalWords } from "./category-tools";
+import { contentApprovalWords } from "./content-tools";
 import { setupApprovalWords } from "./setup-tools";
 import { liveApprovalDetails } from "./design-tools";
 import type { MakeThemeLiveInput } from "@/lib/design-tools";
@@ -755,6 +756,10 @@ export async function keepForApproval(
   if (tool === "set_page_place") summary = (await placeApprovalWords(site, args)) ?? summary;
   if (tool === "save_menu") summary = (await menuApprovalWords(site, args)) ?? summary;
   if (tool === "set_header_footer") summary = (await headerFooterApprovalWords(site, args)) ?? summary;
+  // An entry's or content type's change is described with its own name (D326).
+  if (store && (tool === "publish_entry" || tool === "unpublish_entry" || tool === "save_content_type")) {
+    summary = await contentApprovalWords({ account: ctx.account, store, invalidate: ctx.invalidate }, tool, args);
+  }
   // A category's change is described with its own name and its rules in words (D319).
   if (store && tool === "update_category") summary = await categoryApprovalWords({ account: ctx.account, store, invalidate: ctx.invalidate }, args);
   // A setup change is described from the store as it is: its details, countries, languages, currencies and shipping (D308).

@@ -20,6 +20,7 @@ import {
   samePlaceholders,
   shippingUnit,
   termUnit,
+  TRANSLATE_SCOPES,
   type Accepted,
   type MediaTexts,
   type ProductField,
@@ -33,6 +34,7 @@ import { parseTermSeo, termSeoFor, termSeoInput, type TermSeo } from "@/lib/term
 import { parseTermDescription, parseTermTexts, termTextsInput, type TermTexts } from "@/lib/term-texts";
 
 import { audit, type Membership } from "./auth";
+import { contentWork, writeEntryUnit } from "./content-translate";
 import { fieldWork, writeFieldUnit } from "./field-translate";
 import { getTemplate, listNotifications, saveTemplate, templateLocale } from "./notifications";
 import { savePage } from "./pages";
@@ -294,6 +296,7 @@ export async function translationWorklist(
     scopes.includes("terms") ? termWork(store.id, from, to, mode) : [],
     scopes.includes("shipping") ? shippingWork(store.id, to, mode) : [],
     scopes.includes("emails") ? emailWork(store.id, from, to, mode) : [],
+    scopes.includes("content") ? contentWork(store.id, from, to, mode) : [],
   ]);
   const units = parts.flat();
   return { units: limit === null ? units : units.slice(0, limit), total: units.length };
@@ -304,8 +307,8 @@ export async function translationCoverage({ store }: Pick<Membership, "store">):
   const others = store.localization.locales.slice(1);
   const rows = await Promise.all(
     others.map(async (locale) => {
-      const { units } = await translationWorklist({ store }, locale, ["products", "menus", "pages", "fields", "returns", "terms", "shipping", "emails"], "missing", null);
-      const count: Record<TranslateScope, number> = { products: 0, menus: 0, pages: 0, fields: 0, returns: 0, terms: 0, shipping: 0, emails: 0 };
+      const { units } = await translationWorklist({ store }, locale, [...TRANSLATE_SCOPES], "missing", null);
+      const count = Object.fromEntries(TRANSLATE_SCOPES.map((scope) => [scope, 0])) as Record<TranslateScope, number>;
       for (const unit of units) count[unit.scope] += 1;
       return [locale, count] as const;
     }),
@@ -316,7 +319,7 @@ export async function translationCoverage({ store }: Pick<Membership, "store">):
 export type ApplyResult = { ok: true; saved: number; skipped: string[] } | { ok: false; problem: string };
 
 const APPLY_LIMIT = 300;
-const SCOPE_OF: Record<string, TranslateScope> = { product: "products", menu: "menus", page: "pages", fielddef: "fields", fieldval: "fields", returns: "returns", term: "terms", shipmethod: "shipping", pickupopt: "shipping", localarea: "shipping", email: "emails" };
+const SCOPE_OF: Record<string, TranslateScope> = { product: "products", menu: "menus", page: "pages", fielddef: "fields", fieldval: "fields", returns: "returns", term: "terms", shipmethod: "shipping", pickupopt: "shipping", localarea: "shipping", email: "emails", entry: "content" };
 
 /**
  * Writes what staff accepted, in the language `to`. Each accepted text is
@@ -382,6 +385,10 @@ export async function applyTranslations(member: Membership, to: string, accepted
       else skipped.push(`${unit.title}: nothing usable to save.`);
     } else if (unit.scope === "emails") {
       const result = await writeEmailUnit(member, unitId, from, to, ok);
+      if (result === true) saved += 1;
+      else skipped.push(`${unit.title}: ${result}`);
+    } else if (unit.scope === "content") {
+      const result = await writeEntryUnit(member, unitId, to, ok);
       if (result === true) saved += 1;
       else skipped.push(`${unit.title}: ${result}`);
     } else if (unit.scope === "fields") {

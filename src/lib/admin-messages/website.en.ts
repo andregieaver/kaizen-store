@@ -652,6 +652,7 @@ export const websiteEn = {
       terms: "Categories and tags",
       shipping: "Shipping, pickup and local delivery",
       emails: "Customer emails",
+      content: "Content entries",
     },
     translating: "Translating {n} of {of} …",
     savingOf: "Saving {n} of {of} …",

@@ -148,6 +148,8 @@ describe("an entry's own page", () => {
     expect(found?.layout).toBeNull();
     expect(await findEntryPage(a.storeId, "team", "nobody")).toBeNull();
     expect(await findEntryPage(b.storeId, "team", "ola")).toBeNull();
+    // A draft is in no sitemap.
+    await entryOf(a.storeId, teamId, "draft-two", { [title.id]: "Draft" }, false);
     expect((await listIndexedEntries(a.storeId)).map((e) => e.path).sort()).toEqual(["team/kari", "team/ola"]);
     expect([...(await liveOf(a.storeId, ["/team/ola", "/team/nobody"]))]).toEqual(["/team/ola"]);
   });

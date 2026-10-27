@@ -21,6 +21,7 @@ import {
 } from "./custom-fields";
 import type { RichTextDoc } from "./page-content";
 import { richRuns, withRichRuns, type TranslateItem, type TranslateMode } from "./page-translate-ai";
+import { DESCRIPTION_MAX, TITLE_MAX } from "./seo";
 import { isLegalPage, type Unit } from "./store-translate";
 
 /**
@@ -391,4 +392,28 @@ export function valueUnit(
     legal: (entity === "page" || entity === "article") && isLegalPage(slug, title),
     items,
   };
+}
+
+/** An entry's search texts in the main language and the language asked for (D326). */
+export type EntrySeoTexts = { source: { title: string; description: string }; target: { title: string; description: string } | null };
+
+/**
+ * A content entry's texts to translate (D326): its type's public fields' words (`valueSlots()` over the type's fields, keyed as a thing's
+ * field values are) and its search title and description (`seo.title`, `seo.description`), the main language's that have words and, with
+ * `missing`, only where the language has none. Its unit is `entry:{id}`, named after its title, its kind the type's name. An entry is
+ * published by a person, so what is accepted is written into its draft.
+ */
+export function entryUnit(id: string, typeName: string, title: string, slots: readonly ValueSlot[], seo: EntrySeoTexts, mode: TranslateMode): Unit | null {
+  const items = valueItems(slots, mode);
+  for (const [key, label, max] of [
+    ["title", "Search title", TITLE_MAX],
+    ["description", "Search description", DESCRIPTION_MAX],
+  ] as const) {
+    const source = seo.source[key].trim();
+    if (source !== "" && (mode === "all" || !seo.target || seo.target[key].trim() === "")) {
+      items.push({ key: `seo.${key}`, label, max, rich: false, runs: [source] });
+    }
+  }
+  if (items.length === 0) return null;
+  return { id: `entry:${id}`, scope: "content", title: cut(title), kind: cut(typeName), legal: false, items };
 }
