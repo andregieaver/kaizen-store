@@ -118,6 +118,10 @@ export type ThemeStorePage = ThemeStoreCard & {
   /** The latest version's number and date, for the page and the sitemap. */
   version: number | null;
   updatedAt: string | null;
+  /** Who made it (D344): an outside author's name as shown, or null for Kaizena Flow's own. */
+  author: string | null;
+  /** How many real stores have it installed, live or not (D344), as of the page's last refresh. */
+  stores: number;
 };
 
 /** One theme's page, by its address; null when it is not in the store. */
@@ -126,8 +130,11 @@ export async function themeStorePage(slug: string): Promise<ThemeStorePage | nul
   cacheLife("hours");
   cacheTag(DESIGNS_TAG, STARTERS_TAG);
   const [row] = await readDb().execute<Row>(sql`
-    select id, slug, title, summary, description, picture_url, listing, snapshot, published_at from commerce.design_presets
-    where slug = ${slug} and published and archived_at is null
+    select p.id, p.slug, p.title, p.summary, p.description, p.picture_url, p.listing, p.snapshot, p.published_at, p.author_name,
+           (select count(distinct i.store_id)::int from commerce.store_theme_installs i join commerce.stores s on s.id = i.store_id
+             where i.preset_id = p.id and s.status = 'active' and not (s.is_template or s.starter)) as stores
+      from commerce.design_presets p
+    where p.slug = ${slug} and p.published and p.archived_at is null
   `);
   const snapshot = row ? parseDesignSnapshot(row.snapshot) : null;
   if (!row || !snapshot) return null;
@@ -147,5 +154,7 @@ export async function themeStorePage(slug: string): Promise<ThemeStorePage | nul
     changelog: themeChangelog(versions),
     version: latest?.number ?? null,
     updatedAt: latest?.publishedAt ?? (row.published_at ? new Date(String(row.published_at)).toISOString() : null),
+    author: row.author_name ? String(row.author_name) : null,
+    stores: Number(row.stores ?? 0),
   };
 }

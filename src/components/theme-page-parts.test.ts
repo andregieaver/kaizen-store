@@ -31,6 +31,8 @@ const theme = (extra: Partial<ThemeStorePage> = {}): ThemeStorePage => ({
   changelog: [],
   version: 1,
   updatedAt: "2026-10-19T08:00:00Z",
+  author: null,
+  stores: 0,
   ...extra,
 });
 const draw = <P extends object>(type: (props: P) => ReactElement | null, props: P) => renderToStaticMarkup(createElement(type, props)).replaceAll("<!-- -->", "");
@@ -58,6 +60,15 @@ describe("a theme's page's parts", () => {
     expect(html).toContain(">Inside</h2>");
     expect(html).toContain("Everything Harbour includes.");
     expect(draw(ThemeFeaturesPart, { theme: theme() })).toContain("Your words, pictures and products stay as they are when you switch.");
+  });
+
+  it("name who made a theme and how many stores use it (D344)", () => {
+    expect(draw(ThemeDetailsPart, { theme: theme() })).toContain('<dd data-theme-author="">Kaizena Flow&#x27;s own</dd>');
+    expect(draw(ThemeDetailsPart, { theme: theme() })).toContain("<dd>No stores yet</dd>");
+    const outside = draw(ThemeDetailsPart, { theme: theme({ author: "Ada Lovelace", stores: 3 }) });
+    expect(outside).toContain('<dd data-theme-author="">Ada Lovelace</dd>');
+    expect(outside).toContain("<dd>3 stores</dd>");
+    expect(draw(ThemeDetailsPart, { theme: theme({ author: "Ada", stores: 1 }), lang: "nb" })).toContain("<dd>1 butikk</dd>");
   });
 
   it("fold the details under the page's own word for them", () => {

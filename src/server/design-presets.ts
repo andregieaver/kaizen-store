@@ -599,9 +599,11 @@ export async function createDesign(
     if (!taken.ok) return taken;
     source = taken.snapshot;
     notes.push(...taken.notes);
+  } else if (origin.kind === "look") {
+    source = origin.snapshot;
   }
   const workspace = await makeWorkspace(admin);
-  if (source && origin.kind === "store") {
+  if (source && origin.kind !== "scratch") {
     const written = await writeWorkspaceLook(workspace.id, source, { sourceId: origin.storeId, accountId: admin.id, title: input.details.title, deps });
     if (!written.ok) {
       await closeWorkspace(workspace.id, admin.id, "Its theme could not be made.");
@@ -619,9 +621,10 @@ export async function createDesign(
   try {
     const [row] = await db().execute<Row>(sql`
       insert into commerce.design_presets (title, summary, description, picture_url, snapshot, source_store_id, workspace_store_id, workspace_key,
-        position, published, created_by, updated_by)
+        position, published, author_id, author_name, created_by, updated_by)
       values (${title}, ${summary}, ${description}, ${pictureUrl}, ${JSON.stringify(fresh.snapshot)}::jsonb, ${workspace.id}::uuid, ${workspace.id}::uuid,
-        ${snapshotKey(fresh.snapshot)}, (select coalesce(max(position), 0) + 1 from commerce.design_presets), false, ${admin.id}::uuid, ${admin.id}::uuid)
+        ${snapshotKey(fresh.snapshot)}, (select coalesce(max(position), 0) + 1 from commerce.design_presets), false,
+        ${origin.kind === "look" ? origin.author.id : null}::uuid, ${origin.kind === "look" ? origin.author.name : null}, ${admin.id}::uuid, ${admin.id}::uuid)
       returning id
     `);
     id = String(row.id);
@@ -629,7 +632,7 @@ export async function createDesign(
     await closeWorkspace(workspace.id, admin.id, "Its theme could not be made.");
     return refuse(designProblem(error));
   }
-  await audit(admin.id, origin.kind === "store" ? origin.storeId : workspace.id, "platform.design_preset_created", {
+  await audit(admin.id, origin.kind === "scratch" ? workspace.id : origin.storeId, "platform.design_preset_created", {
     preset: id,
     title,
     origin: origin.kind,
@@ -2354,4 +2357,20 @@ export async function saveThemeListing(admin: Account, id: string, slug: string,
   // A theme newly given an address is photographed if it was not yet (`queueThemeShots()` asks for what is missing).
   await askForThemeShots();
   return { ok: true };
+}
+
+/**
+ * Themes from outside (D344, `src/server/theme-submissions.ts`): a new theme's address in the theme store, given when its submission is
+ * approved and only while it has none.
+ */
+export async function giveThemeAddress(presetId: string, slug: string): Promise<void> {
+  await db().execute(sql`update commerce.design_presets set slug = ${slug} where id = ${presetId}::uuid and slug is null`);
+}
+
+/** A theme drafted for a submission its author withdrew (D344): archived by them, as an admin's Archive would, while never published. */
+export async function archiveWithdrawnDraft(presetId: string, accountId: string): Promise<void> {
+  await db().execute(sql`
+    update commerce.design_presets set archived_at = now(), archived_by = ${accountId}::uuid
+     where id = ${presetId}::uuid and not published and archived_at is null
+  `);
 }

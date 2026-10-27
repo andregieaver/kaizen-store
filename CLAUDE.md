@@ -302,6 +302,14 @@ stand-in is the only fake, and only it is told it is one.
   written only by `src/server/page-schedules.ts` and run only by `runSchedules()` in the five-minute dispatcher through `savePage()`, in the
   maker's name read again, never for a store that is not open or a page in a running A/B test; times are the store's clock
   (`scheduleInstant()`). F adds a way back and the other kinds to this table and module, never a second scheduler.
+- **Themes from outside (wave 7 unit J, D344, `docs/wave-7-storefront.md` J)**: a store's live look is sent as a theme (or as the next version of
+  a theme the sender is the author of) only through `src/server/theme-submissions.ts` (`submitTheme()`, `submitThemeUpdate()`; `website:write`, a real
+  open store, the look by `takeSnapshot()` kept with the row, never its words or products), the only writer of `commerce.theme_submissions` and of a
+  theme's `author_id`/`author_name`; the database moves a submission only forward. Kaizena Flow's admins review it at Themes → Submissions:
+  `reviewSubmission()` makes a draft theme (`createDesign()`'s `look` origin, or `writeDesignLook()` for an update), `approveSubmission()` publishes
+  only through `publishDesign()`, `rejectSubmission()` needs a reason the author reads. A theme from outside is free (`theme_prices_author_free()`),
+  names its author on its page with the stores using it (`themeStorePage()`), and a new install waits for the owner's Update (`follows_updates`
+  off by default, decision 4); a new way to bring a theme in goes through the same module.
 - **By the clock, and links to share (wave 7 unit F, D340, `docs/wave-7-storefront.md` F as built)**: a page's, article's, header's or
   footer's draft is published at a time and, with `revert_at`, the published content from before (`before_content`, none: taken off the
   site) put back at another, both legs of `commerce.page_schedules` (written only by `src/server/page-schedules.ts`); an installed theme

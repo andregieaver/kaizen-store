@@ -16,7 +16,7 @@
       "was": null
     },
     "weight": 3,
-    "gap": "Built since the last read (D241 to D287, docs/theme-store.md, docs/theme-prices.md): the theme store at /themes with a page per theme, a full-screen preview on the theme's own demo content (D275, D276) and the inert, noindex public preview; presets (D256); Add to my themes and Try it in your store install a theme without going live (D248); applying copies pictures into the store's library, keeps its own pages and products and puts the look before away in the theme library (D241, D244); switching keeps every install (theme-installs.int.test.ts, signed-in theme-switch.spec.ts through every launch theme and back with no content changed); unpublish and archive take a theme out of every list (design-presets.int.test.ts); updates reach installs that follow them (on by default, the owner can switch it off), with What's new and undo (D245). Paid themes (D286): a price per currency, shown on the cards, the theme page and before the button that pays; nothing is charged before the store goes live with it; invoiced through Kaizena Flow's Stripe billing and settled by the billing webhook. Still short: (1) the collection of a premium theme's invoice is held only against the repository's stand-in for Stripe (theme-prices.int.test.ts); no premium theme has been invoiced and paid in Stripe's test mode on a real store, the precedent D173, D174 and D239 hold rows to. Criteria restated on 2026-10-19: the first criterion asked that a store owner publish a whole theme to a marketplace, which is not part of Shopify's theme store (themes there come from Shopify and from designers it admits); themes from outside designers are scored in platform.themes-and-templates-marketplace.",
+    "gap": "Built since the last read (D241 to D287, docs/theme-store.md, docs/theme-prices.md): the theme store at /themes with a page per theme, a full-screen preview on the theme's own demo content (D275, D276) and the inert, noindex public preview; presets (D256); Add to my themes and Try it in your store install a theme without going live (D248); applying copies pictures into the store's library, keeps its own pages and products and puts the look before away in the theme library (D241, D244); switching keeps every install (theme-installs.int.test.ts, signed-in theme-switch.spec.ts through every launch theme and back with no content changed); unpublish and archive take a theme out of every list (design-presets.int.test.ts); updates are offered to installs with What's new and undo (D245), and since D344 a new install waits for the owner's Update rather than following by itself; a theme's page names its author (Kaizena Flow's own, or an outside author's, D344) and how many stores use it. Paid themes (D286): a price per currency, shown on the cards, the theme page and before the button that pays; nothing is charged before the store goes live with it; invoiced through Kaizena Flow's Stripe billing and settled by the billing webhook. Still short: (1) the collection of a premium theme's invoice is held only against the repository's stand-in for Stripe (theme-prices.int.test.ts); no premium theme has been invoiced and paid in Stripe's test mode on a real store, the precedent D173, D174 and D239 hold rows to. Criteria restated on 2026-10-19: the first criterion asked that a store owner publish a whole theme to a marketplace, which is not part of Shopify's theme store (themes there come from Shopify and from designers it admits); themes from outside designers are scored in platform.themes-and-templates-marketplace.",
     "bucket": "A",
     "wave": 7,
     "criteria": [
@@ -64,7 +64,8 @@
       "D273",
       "D275",
       "D276",
-      "D286"
+      "D286",
+      "D344"
     ],
     "history": []
   },

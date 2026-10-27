@@ -104,10 +104,12 @@ export async function setThemePrices(admin: Account, presetId: string, prices: r
   }
   const done = await db().transaction(async (tx) => {
     const [theme] = await tx.execute<Row>(sql`
-      select title, (select count(*)::int from commerce.theme_prices p where p.preset_id = d.id) as priced
+      select title, author_id, (select count(*)::int from commerce.theme_prices p where p.preset_id = d.id) as priced
         from commerce.design_presets d where d.id = ${presetId}::uuid for update
     `);
     if (!theme) return null;
+    // A theme from outside is free until a revenue share is decided (D344); the database refuses its price too.
+    if (theme.author_id && prices.length > 0) return "author" as const;
     const wasPremium = Number(theme.priced) > 0;
     await tx.execute(sql`delete from commerce.theme_prices where preset_id = ${presetId}::uuid`);
     for (const price of prices) {
@@ -142,6 +144,7 @@ export async function setThemePrices(admin: Account, presetId: string, prices: r
     return { title: String(theme.title), granted, cancelled, wasPremium };
   });
   if (!done) return { ok: false, problems: ["That theme no longer exists."] };
+  if (done === "author") return { ok: false, problems: ["A theme from outside is free until a revenue share is decided."] };
   await audit(admin.id, null, "platform.theme_prices_set", {
     preset: presetId,
     title: done.title,

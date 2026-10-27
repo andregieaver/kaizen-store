@@ -152,6 +152,10 @@ export const platformEn = {
       version: "Version",
       changelog: "Changelog",
       versionN: (n: number) => `Version ${n}`,
+      madeBy: "Made by",
+      kaizena: "Kaizena Flow's own",
+      usedBy: "Used by",
+      storesN: (n: number) => (n === 0 ? "No stores yet" : n === 1 ? "1 store" : `${n} stores`),
     },
     meta: {
       themeTitle: (title: string) => `${title} theme`,

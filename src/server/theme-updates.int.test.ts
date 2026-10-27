@@ -89,7 +89,8 @@ describe("updating an installed theme (D245)", () => {
   it("keeps what applying placed, so the owner's changes can be told apart", async () => {
     const row = await one(sql`select placed, follows_updates from commerce.store_theme_installs where id = ${install}::uuid`);
     const placed = row.placed as { css: string; layouts: Record<string, { id: string; hash: string } | null> };
-    expect(row.follows_updates).toBe(true);
+    // A new install waits for the owner to update it (D344, decision 4).
+    expect(row.follows_updates).toBe(false);
     expect(placed.css).toBe(".v1 { color: #111111; }");
     expect(placed.layouts.header?.hash).toMatch(/^[0-9a-f]{64}$/);
     expect(placed.layouts.productLayout).toBeNull();
@@ -114,7 +115,7 @@ describe("updating an installed theme (D245)", () => {
 
     const waiting = await designs.themeUpdates(store);
     const item = waiting.available.find((a) => a.installId === install);
-    expect(item).toMatchObject({ from: 1, to: 2, live: true, followsUpdates: true });
+    expect(item).toMatchObject({ from: 1, to: 2, live: true, followsUpdates: false });
     expect(item?.whatsNew[0]).toBe("Calmer colours.");
     expect(item?.whatsNew).toContain("A new header.");
 

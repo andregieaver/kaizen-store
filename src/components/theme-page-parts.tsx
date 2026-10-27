@@ -215,6 +215,11 @@ export function ThemeDetailsPart({ theme, lang = "en", heading }: { theme: Theme
             )}
             <dt className="font-medium">{d.sectionStyles}</dt>
             <dd>{theme.sectionStyleNames.map(styleName).join(", ")}</dd>
+            {/* Who made it and how many stores use it (D344). */}
+            <dt className="font-medium">{d.madeBy}</dt>
+            <dd data-theme-author="">{theme.author ?? d.kaizena}</dd>
+            <dt className="font-medium">{d.usedBy}</dt>
+            <dd>{d.storesN(theme.stores)}</dd>
             {theme.version !== null && (
               <>
                 <dt className="font-medium">{d.version}</dt>

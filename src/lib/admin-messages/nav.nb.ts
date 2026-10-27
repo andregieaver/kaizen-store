@@ -385,6 +385,8 @@ export const NAV_NB: Record<string, string> = {
   "The plan of each store you own, what it costs and when it renews.": "Abonnementet til hver butikk du eier, hva det koster og når det fornyes.",
   "What the AI used for the stores you own, with what it cost.": "Hva KI-en har brukt for butikkene du eier, med hva det kostet.",
   "Your referral link, the stores that opened through it and your credit.": "Vervelenken din, butikkene som åpnet gjennom den og kreditten din.",
+  "Your themes": "Dine temaer",
+  "The looks you shared as themes, their review, and how many stores use your themes.": "Utseendene du har delt som temaer, gjennomgangen av dem, og hvor mange butikker som bruker temaene dine.",
   WordPress: "WordPress",
   "The WordPress plugin, and the sites connected to show your products.": "WordPress-utvidelsen, og nettstedene som er koblet til for å vise produktene dine.",
   Work: "Arbeid",

@@ -451,7 +451,11 @@ export const sameDesignDetails = (a: DesignDetails, b: DesignDetails): boolean =
   a.title === b.title && a.summary === b.summary && a.description === b.description && (a.pictureUrl ?? null) === (b.pictureUrl ?? null);
 
 /** Where a new design profile starts (D177): a store's look, or Kaizen's standard one. */
-export type DesignOrigin = { kind: "store"; storeId: string } | { kind: "scratch" };
+export type DesignOrigin =
+  | { kind: "store"; storeId: string }
+  | { kind: "scratch" }
+  /** A look submitted from outside (D344): as the submission kept it, its pictures from that store's library, and its author. */
+  | { kind: "look"; snapshot: DesignSnapshot; storeId: string; author: { id: string; name: string } };
 
 /** The parts of a profile edited on its own pages (D177), in the order of its tabs, with their addresses under the profile's. */
 export const DESIGN_TABS = [

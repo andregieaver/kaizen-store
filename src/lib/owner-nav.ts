@@ -23,11 +23,12 @@ export const ACCOUNT_ITEMS: OwnerItem[] = [
   { path: "/account/usage", label: "AI usage", description: "What the AI used for the stores you own, with what it cost.", owner: true },
   { path: "/account/limits", label: "Usage and limits", description: "What each store you own has used this month, against what its plan includes.", owner: true },
   { path: "/account/referrals", label: "Referrals", description: "Your referral link, the stores that opened through it and your credit.", owner: true },
+  { path: "/account/themes", label: "Your themes", description: "The looks you shared as themes, their review, and how many stores use your themes." },
   { path: "/account/wordpress", label: "WordPress", description: "The WordPress plugin, and the sites connected to show your products.", owner: true },
 ];
 
 /** Addresses inside the Account section besides its pages: Kaizen Life's sign-in return, and where the theme store's *Try it in your store* lands. */
-export const ACCOUNT_EXTRA = ["/account/kaizen-life", "/account/themes"];
+export const ACCOUNT_EXTRA = ["/account/kaizen-life"];
 
 type Link = { href: string; label: string; exact?: boolean };
 /** Who the person is at this level: an owner of a store, someone with Work in a store, someone who may read a store's support inbox (D216). */

@@ -68,6 +68,11 @@ const READERS: Record<string, "real" | "template" | "both"> = {
   "src/server/support-platform.ts": "real",
   // Premium themes (D286): only a real store keeps a theme it had as given when the theme gets its first price.
   "src/server/theme-prices.ts": "real",
+  // Themes from outside (D344): only a real store's look is shared, and only real stores count as using a theme.
+  "src/server/theme-submissions.ts": "real",
+  "src/server/theme-store.ts": "real",
+  "src/app/admin/(gated)/[store]/settings/design/page.tsx": "real",
+  "src/app/admin/(gated)/[store]/settings/design/share/page.tsx": "real",
   "src/server/vat-admin.ts": "real",
   "src/server/wordpress.ts": "real",
 };

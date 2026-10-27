@@ -519,6 +519,10 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     title: "Tilpass tema",
     keywords: ["tilpass tema", "forhåndsvis tema", "prøv et tema", "hva endres", "installert tema"],
   },
+  "store:design.share": {
+    title: "Del dette utseendet som et tema",
+    keywords: ["del tema", "send inn tema", "selg tema", "temadesigner", "publiser utseendet mitt", "temaoppdatering"],
+  },
   "store:close": {
     title: "Steng butikken",
     keywords: ["steng butikken", "slett butikken", "arkiver butikken", "legg ned", "slutte å selge", "åpne igjen"],
@@ -609,6 +613,10 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     title: "Koble til et WordPress-nettsted",
     keywords: ["koble til wordpress", "godkjenn", "autoriser", "wordpress"],
   },
+  "account:account.themes": {
+    title: "Dine temaer",
+    keywords: ["mine temaer", "innsendte temaer", "delte temaer", "temaskaper", "temadesigner", "innsending"],
+  },
   "account:account.themes.try": {
     title: "Prøv et tema i butikken din",
     keywords: ["prøv tema", "temabutikk", "installer tema", "legg til tema"],
@@ -661,6 +669,8 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     keywords: ["forhåndsvisning", "temabutikk", "temaside"],
   },
   "platform:theme": { title: "Tema", keywords: ["tema", "utstilling", "oppføring", "publiser tema"] },
+  "platform:theme.submissions": { title: "Innsendte temaer", keywords: ["innsendinger", "gjennomgang", "temagjennomgang", "temaer utenfra", "designere"] },
+  "platform:theme.submission": { title: "Innsendt tema", keywords: ["innsending", "gjennomgå tema", "godkjenn tema"] },
   "platform:theme.content": {
     title: "Temaets innhold",
     keywords: ["innhold", "demobutikk", "demoinnhold", "eksempelinnhold", "innholdspakke"],

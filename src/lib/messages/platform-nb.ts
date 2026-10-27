@@ -152,6 +152,10 @@ export const platformNb: PlatformMessages = {
       version: "Versjon",
       changelog: "Endringslogg",
       versionN: (n) => `Versjon ${n}`,
+      madeBy: "Laget av",
+      kaizena: "Kaizena Flows eget",
+      usedBy: "Brukes av",
+      storesN: (n) => (n === 0 ? "Ingen butikker ennå" : n === 1 ? "1 butikk" : `${n} butikker`),
     },
     meta: {
       themeTitle: (title) => `Temaet ${title}`,

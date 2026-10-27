@@ -947,6 +947,12 @@ export const designPresets = commerce.table(
      */
     slug: text("slug"),
     listing: jsonb("listing").notNull().default({}),
+    /**
+     * Who made it, when it came from outside (D344, `src/server/theme-submissions.ts`): the account that submitted it and the name shown as
+     * its author (*By …*). Both null for Kaizena Flow's own. Such a theme is free (no price, `theme_prices_author_free()`).
+     */
+    authorId: uuid("author_id").references(() => accounts.id),
+    authorName: text("author_name"),
     createdBy: uuid("created_by").references(() => accounts.id),
     updatedBy: uuid("updated_by").references(() => accounts.id),
     createdAt: createdAt(),
@@ -954,6 +960,11 @@ export const designPresets = commerce.table(
   },
   (t) => [
     index("design_presets_offered_idx").on(t.published, t.position),
+    index("design_presets_author_idx").on(t.authorId),
+    check(
+      "design_presets_author",
+      sql`(${t.authorId} is null and ${t.authorName} is null) or (${t.authorId} is not null and ${t.authorName} is not null and length(btrim(${t.authorName})) between 1 and 80)`,
+    ),
     uniqueIndex("design_presets_launch_key_idx").on(t.launchKey),
     uniqueIndex("design_presets_slug_idx").on(t.slug),
     check("design_presets_slug", sql`${t.slug} is null or ${t.slug} ~ '^[a-z0-9](?:[a-z0-9-]{0,58}[a-z0-9])?$'`),
@@ -975,6 +986,63 @@ export const designPresets = commerce.table(
     ),
     check(
       "design_presets_snapshot",
+      sql`jsonb_typeof(${t.snapshot}) = 'object' and ${t.snapshot} ->> 'v' in ('1', '2') and octet_length(${t.snapshot}::text) <= 2000000`,
+    ),
+  ],
+);
+
+/**
+ * A look submitted as a theme from outside (D344, `docs/wave-7-storefront.md` J): a store's live look as `takeSnapshot()` took it when it was
+ * submitted, by an account that may change that store's website, as a new theme (`kind` `theme`) or an update of the author's own (`update`,
+ * `preset_id` the theme). Written only by `src/server/theme-submissions.ts`; the database moves `status` only forward (`waiting` →
+ * `reviewing` → `approved`, or `rejected`/`withdrawn` while open) and keeps who, what and the snapshot as submitted.
+ */
+export const themeSubmissions = commerce.table(
+  "theme_submissions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    accountId: uuid("account_id")
+      .notNull()
+      .references(() => accounts.id),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id),
+    kind: text("kind").notNull(),
+    /** The theme: an update's from the start, a new theme's once it is reviewed. */
+    presetId: uuid("preset_id").references(() => designPresets.id),
+    title: text("title").notNull(),
+    summary: text("summary").notNull().default(""),
+    description: text("description").notNull().default(""),
+    /** An update's *What's new*, in the author's words. */
+    notes: text("notes"),
+    authorName: text("author_name").notNull(),
+    snapshot: jsonb("snapshot").notNull(),
+    status: text("status").notNull().default("waiting"),
+    /** Why it was rejected, for the author. */
+    reason: text("reason"),
+    decidedBy: uuid("decided_by").references(() => accounts.id),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index("theme_submissions_account_idx").on(t.accountId, t.createdAt),
+    index("theme_submissions_status_idx").on(t.status, t.createdAt),
+    index("theme_submissions_store_idx").on(t.storeId),
+    index("theme_submissions_preset_idx").on(t.presetId),
+    index("theme_submissions_decided_by_idx").on(t.decidedBy),
+    check("theme_submissions_kind", sql`${t.kind} in ('theme', 'update')`),
+    check("theme_submissions_status", sql`${t.status} in ('waiting', 'reviewing', 'approved', 'rejected', 'withdrawn')`),
+    check("theme_submissions_update_preset", sql`${t.kind} = 'theme' or ${t.presetId} is not null`),
+    check("theme_submissions_title", sql`length(btrim(${t.title})) between 1 and 80`),
+    check("theme_submissions_summary", sql`length(${t.summary}) <= 200`),
+    check("theme_submissions_description", sql`length(${t.description}) <= 2000`),
+    check("theme_submissions_notes", sql`${t.notes} is null or length(${t.notes}) <= 2000`),
+    check("theme_submissions_author_name", sql`length(btrim(${t.authorName})) between 1 and 80`),
+    check("theme_submissions_reason", sql`${t.reason} is null or length(btrim(${t.reason})) between 1 and 1000`),
+    check("theme_submissions_rejected_reason", sql`${t.status} <> 'rejected' or ${t.reason} is not null`),
+    check(
+      "theme_submissions_snapshot",
       sql`jsonb_typeof(${t.snapshot}) = 'object' and ${t.snapshot} ->> 'v' in ('1', '2') and octet_length(${t.snapshot}::text) <= 2000000`,
     ),
   ],
@@ -1232,8 +1300,11 @@ export const storeThemeInstalls = commerce.table(
     installedAt: timestamp("installed_at", { withTimezone: true }).notNull().defaultNow(),
     /** When it was last made live or put away. */
     switchedAt: timestamp("switched_at", { withTimezone: true }),
-    /** Whether a new version of its theme is applied by itself (D245); the owner switches it off per install. */
-    followsUpdates: boolean("follows_updates").notNull().default(true),
+    /**
+     * Whether a new version of its theme is applied by itself (D245); the owner switches it per install. Off for a new install (D344,
+     * decision 4: an update is offered, with *What's new*, and made by the owner's press); installs that followed before keep following.
+     */
+    followsUpdates: boolean("follows_updates").notNull().default(false),
     /**
      * What was placed when it was applied or last updated (D245, `Placed` in `src/lib/theme-update.ts`): the settings and CSS written and each
      * layout page with its fingerprint, so an update can tell the owner's changes from the theme's. Null for installs from before.
@@ -2782,6 +2853,8 @@ export const productMarketTexts = commerce.table(
       foreignColumns: [markets.storeId, markets.code],
     }).onDelete("cascade"),
     index("product_market_texts_market_idx").on(t.storeId, t.marketCode),
+    // The product foreign key (store, product) has a covering index of its own (the advisors, 2026-10-27).
+    index("product_market_texts_product_idx").on(t.storeId, t.productId),
     check("product_market_texts_description", sql`length(${t.description}) between 1 and 20000`),
   ],
 );

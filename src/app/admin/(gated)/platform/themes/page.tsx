@@ -15,7 +15,8 @@ import { contentOwners, contentSources, listStarters } from "@/server/store-star
 import { listDemoStores } from "@/server/demo-stores";
 import { themeStorePageStates } from "@/server/platform-roles";
 import { lookOf, themeShotsFor } from "@/server/theme-shots";
-import { Card, PageHeader } from "@/components/admin/ui";
+import { ButtonLink, Card, PageHeader } from "@/components/admin/ui";
+import { waitingSubmissions } from "@/server/theme-submissions";
 import { THEMES_ADMIN } from "@/lib/theme-admin-paths";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { countWords, fillWords } from "@/lib/admin-fill";
@@ -57,7 +58,7 @@ export default async function ThemesPage({ searchParams }: PageProps<"/admin/pla
   const query = await searchParams;
   const filter = listFilterOf(query.show);
   const current = filter === "current";
-  const [designs, sources, launch, packs, starters, owners, contents, demos, storePages] = await Promise.all([
+  const [designs, sources, launch, packs, starters, owners, contents, demos, storePages, waiting] = await Promise.all([
     listDesigns(filter),
     snapshotSources(admin),
     launchThemeStates(),
@@ -67,6 +68,8 @@ export default async function ThemesPage({ searchParams }: PageProps<"/admin/pla
     current ? contentSources() : Promise.resolve([]),
     current ? listDemoStores() : Promise.resolve([]),
     current ? themeStorePageStates() : Promise.resolve([]),
+    // Themes from outside (D344): looks stores shared, waiting for a review.
+    current ? waitingSubmissions(admin) : Promise.resolve(0),
   ]);
   const [facts, shots] = await Promise.all([
     Promise.all(designs.map((design) => designLifecycle(design))),
@@ -104,6 +107,15 @@ export default async function ThemesPage({ searchParams }: PageProps<"/admin/pla
                 ? t.deletedContent
                 : t.deletedTheme}
         </p>
+      )}
+
+      {current && (
+        <Card title={w.submissions.card} description={w.submissions.cardHint} compact>
+          <div className="flex flex-wrap items-center gap-3">
+            <ButtonLink href={`${THEMES_ADMIN}/submissions`}>{w.submissions.title}</ButtonLink>
+            {waiting > 0 && <span className="text-sm text-ink-2">{countWords(waiting, w.submissions.waiting, { n: waiting })}</span>}
+          </div>
+        </Card>
       )}
 
       <p className="text-sm text-muted">

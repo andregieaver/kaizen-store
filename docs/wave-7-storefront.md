@@ -554,6 +554,39 @@ A1 availability (model, view, editor, CSV, cart, copies, tools); A2 rules (model
   the owner makes per install, off by default for new installs (decision 4). A premium theme is invoiced and paid in Stripe's test mode on
   a real test store, recorded as the row's evidence.
 
+  **J in detail.**
+  - **Who submits.** Anyone who may change a store's website (`website:write`: its owner, staff given it, or a designer invited as a
+    collaborator, D158) submits the store's live look as a theme, from Design settings' *Share this look as a theme* (one page: a name, a
+    line, a description and the author's name as shown). The look is taken at once by `takeSnapshot()` (the look only, never the store's
+    words, products or menus' links) and kept with the submission, so the store can change after. A real, open store only (never a store
+    template, a demo store or a theme's workspace); at most three open submissions an account.
+  - **The queue.** `commerce.theme_submissions` (written only by `src/server/theme-submissions.ts`; status `waiting`, `reviewing`,
+    `approved`, `rejected`, `withdrawn`, moved only forward by the database, the snapshot and who fixed) at Themes → Submissions. *Review*
+    makes the theme as a draft (a new theme from the snapshot, unpublished, with its author; an update written into the theme's draft), so
+    the reviewer previews it and its checks on the theme's own pages; *Approve* publishes it through `publishDesign()` (the theme checks
+    refuse a blocking finding, and the submission waits in review), giving a new theme its address from its name; *Reject* needs a reason,
+    which the author reads. *Hide* is the theme's own Archive.
+  - **Authors.** `design_presets.author_id` and `author_name` (none: Kaizena Flow's own). The author's page, Account → *Your themes*, lists
+    their submissions with their state and reason, and their themes with the version and the number of stores using each, with *Submit an
+    update* (from a store they may change, with what's new). Only the author submits an update of their theme.
+  - **The theme store** names the author (*By …*, or Kaizena Flow) and how many stores use the theme on its page.
+  - **Updates offered (decision 4).** A new install no longer follows its theme's updates (`store_theme_installs.follows_updates` defaults
+    to off); Design settings offers each new version with *What's new* and *Update* (and *Undo*, D245); installs that followed keep following.
+  - **Free.** An outside author's theme has no price (the database refuses one) until a revenue share is decided.
+  - **Not here:** the premium theme paid in Stripe's test mode on a real test store needs the platform's Stripe test keys, which this
+    environment does not have; the row keeps it as its gap.
+
+  **J as built (2026-10-27).** As above, with these choices.
+  - **Review makes the theme.** Nothing is made when a look is sent; *Review* makes it a draft theme (a new theme through `createDesign()` with
+    the submission's look, its author set and its pictures copied from the sending store's library), so the reviewer uses the theme's own
+    pages, previews and checks before *Approve and publish*. A rejected or withdrawn submission's draft theme is archived, never published.
+  - **An update with the same look** makes no new version (D241's rule), so its what's new shows only with a changed look.
+  - **Content.** A submission carries the look only. An outside theme has no demo content until Kaizena Flow gives it some on its Content tab
+    (D275); until then the theme store shows its colours and no preview, as for any theme without content.
+  - **Who sees the queue.** The author follows their own submissions on Account → *Your themes*; there is no email on a decision yet.
+  - **Tests.** `src/db/theme-submissions.test.ts` (the database's rules), `src/server/theme-submissions.int.test.ts` (the flow),
+    `src/lib/theme-submissions.test.ts`, the theme page's part (`theme-page-parts.test.ts`) and `e2e/signed-in/theme-submissions.spec.ts`.
+
 ## 5. Decisions (to be taken by the owner)
 
 | # | Decision | Options | Recommendation |

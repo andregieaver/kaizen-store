@@ -18,7 +18,7 @@ import { THEME_DETACH_KEEP_DAYS, listDetachRuns } from "@/server/theme-detach";
 import { listInstalls } from "@/server/theme-installs";
 import { listSavedThemes } from "@/server/themes";
 import { themeCharges } from "@/server/theme-prices";
-import { Card, PageHeader } from "@/components/admin/ui";
+import { ButtonLink, Card, PageHeader } from "@/components/admin/ui";
 
 import {
   applyDesignAction,
@@ -131,6 +131,13 @@ export default async function StoreDesignPage({ params, searchParams }: PageProp
           ...(canChange && { versions: { list: lookVersionsAction.bind(null, store.slug), read: lookVersionAction.bind(null, store.slug) } }),
         }}
       />
+      {/* Themes from outside (D344): the live look sent to Kaizena Flow to review, by those who may change it, from a real store. */}
+      {canChange && !store.isTemplate && !store.starter && (
+        <Card title={all.share.card} className="max-w-3xl" compact>
+          <p className="mb-4 text-sm text-muted">{all.share.cardHint}</p>
+          <ButtonLink href={`/admin/${store.slug}/settings/design/share`}>{all.share.open}</ButtonLink>
+        </Card>
+      )}
       <Card title={w.cart} className="max-w-3xl" compact>
         <p className="mb-4 text-sm text-muted">{w.cartHint}</p>
         <ActionForm action={saveCartBehaviourAction.bind(null, store.slug)} className="flex flex-col gap-4">

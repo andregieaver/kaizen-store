@@ -342,6 +342,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   page_schedules: never("A schedule publishes the original's page in the name of who set it: a copy's pages are not scheduled."),
   // Changes by the clock and links to share (wave 7 unit F, D340).
   theme_schedules: never("A plan switches the original's theme in the name of who set it: a copy's look is not scheduled."),
+  theme_submissions: never("A look shared as a theme (D344) is its author's, sent from the original: a copy shares nothing until someone sends its look."),
   preview_links: never("A link opens the original's draft or theme to whoever it was given: a copy shares nothing until its owner makes links."),
   look_versions: never("The original's earlier looks are its own history: a copy starts with its look as it is now."),
   page_ai_jobs: never("The AI manager's page work (D308) was asked by a person in the store it was asked in: a copy starts with its pages as they are."),

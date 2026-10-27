@@ -792,6 +792,10 @@ const PAGES: readonly AdminPage[] = [
   store("design.theme", "/settings/design/themes/[install]", "Customise theme", "Store", "One installed theme that is not live: its preview on the store's own pages, what switching to it changes (layouts, section styles, settings that stay the owner's own, fonts, CSS), its settings and its own CSS. Visitors see nothing of it until the store switches.", {
     keywords: ["preview theme", "try a theme", "what changes", "customise theme", "installed theme"],
   }),
+  store("design.share", "/settings/design/share", "Share this look as a theme", "Store", "Sends the store's live look (theme settings, header, footer, product page and CSS, never its words, products or pages) to Kaizena Flow to review as a theme for other stores, free in the theme store once approved; or, for a theme you made, as its next version with what's new. Followed under Your themes.", {
+    keywords: ["share theme", "submit theme", "sell theme", "theme designer", "publish my look", "theme update"],
+    tasks: ["Share my store's look as a theme", "Send an update of my theme"],
+  }),
   store("close", "/settings/close", "Close store", "Store", "Closes the store: stops sales, ends the Kaizena Flow plan at the end of its period, releases its domains and cancels orders waiting for payment, after a fresh sign-in and the store's address typed in. Blocked while paid goods are unsent or subscriptions and subscription boxes run. Nothing is deleted; the owner can reopen for thirty days. For a closed or suspended store the page shows its status and the reopen button.", {
     needs: "owner",
     keywords: ["close store", "delete store", "archive store", "shut down", "stop selling", "reopen store", "suspend"],
@@ -914,6 +918,10 @@ const PAGES: readonly AdminPage[] = [
   account("account.themes.try", "/account/themes/try/[theme]", "Try a theme in your store", "Where *Try it in your store* on a theme's page in the theme store lands: each store where you may change the website, with a button that adds the theme to its theme library without making it live, then opens it there to preview and customise.", {
     keywords: ["theme store", "try theme", "install theme", "add theme"],
   }),
+  account("account.themes", "/account/themes", "Your themes", "The looks you shared as themes (D344): each one waiting, in review, approved or not accepted (with why), with a way to withdraw one still open; and your themes in the theme store, each with its version and how many stores use it.", {
+    keywords: ["my themes", "theme submissions", "shared themes", "theme author", "theme designer", "submission"],
+    tasks: ["See if my theme was approved", "Withdraw a theme I shared"],
+  }),
   account("account.support", "/account/support", "Support", "The support inboxes of every store where you may read them, in one list: who is waiting and what was said, filterable by store.", {
     keywords: ["inbox", "live chat", "customer service", "conversations"],
   }),
@@ -965,6 +973,11 @@ const PAGES: readonly AdminPage[] = [
     tasks: ["Preview a theme", "List a theme in the theme store"],
     keywords: ["showcase", "listing"],
   }),
+  platform("theme.submissions", "/themes/submissions", "Theme submissions", "Platform", "The review queue of themes from outside (D344): looks stores shared as new themes or as updates of their own, open ones oldest first, decided ones under Decided.", {
+    tasks: ["Review a shared theme", "See the themes stores shared"],
+    keywords: ["submissions", "review queue", "theme review", "outside themes", "designers", "marketplace"],
+  }),
+  platform("theme.submission", "/themes/submissions/[submissionId]", "Theme submission", "Platform", "One look shared as a theme (D344): what was sent and by whom; Review makes it a draft theme to preview and check on its own pages (an update: its theme's draft), Approve and publish puts it in the theme store (an update: its next version, offered to the stores that use it), Not accepted tells its author why."),
   platform("theme.content", "/themes/[presetId]/content", "Theme content", "Platform", "A theme's own content (D275): the pages, products and pictures its preview and photographs show and new stores started from it begin with; edited in its store admin, its pictures made, published with the theme, or replaced with a copy of other content.", {
     tasks: ["Edit a theme's content", "Make a theme's pictures", "Give a theme content"],
     keywords: ["demo store", "demo content", "sample content", "content pack", "starter"],
