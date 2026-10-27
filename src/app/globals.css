@@ -219,6 +219,16 @@ body {
   }
 }
 
+/*
+ * The checkout's payment form (D337): its pay button in the checkout's own colour and corners, which `themeCss()` writes as
+ * `--checkout-*` beside the theme's (the accent and the button corners unless the owner set them in *Checkout look*).
+ */
+.checkout-look {
+  --accent: var(--checkout-accent);
+  --accent-foreground: var(--checkout-accent-foreground);
+  --button-radius: var(--checkout-button-radius);
+}
+
 /* Product cards (D60): the picture's shape, and plain, bordered or raised, left or centred. */
 .product-card-image {
   aspect-ratio: var(--card-aspect);

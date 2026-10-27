@@ -299,3 +299,34 @@ describe("the change pay link and the order's parcels", () => {
     expect(readFileSync(join(SRC, "components/order-shipments.tsx"), "utf8")).toMatch(/<ParcelTracking /);
   });
 });
+
+/**
+ * The checkout's payment form in the store's look (D337, `docs/wave-7-storefront.md` C): Stripe's Appearance is worked out by the pure
+ * `checkout-appearance.ts` from plain data the server hands over, so the form's client bundle reaches no zod (its JIT probe is a CSP
+ * violation on the pay routes, D158), no server module and no forbidden extra. A "use server" file is the boundary: the browser gets a
+ * reference to its action, not its imports.
+ */
+describe("the checkout form in the store's look", () => {
+  const atServerActions = (file: string) => /^\s*["']use server["']/.test(readFileSync(file, "utf8"));
+  const entry = join(SRC, "components/checkout-form.tsx");
+
+  it("reaches no zod, no server-only module and no server code", () => {
+    const imports = [...reach(entry, atServerActions).keys()].flatMap((file) =>
+      atServerActions(file) ? [] : importsOf(readFileSync(file, "utf8")).map((specifier) => ({ file: rel(file), specifier })),
+    );
+    const offenders = imports.filter(({ specifier }) => specifier === "zod" || specifier === "server-only" || specifier.startsWith("@/server/") || specifier.startsWith("@/db/"));
+    expect(offenders).toEqual([]);
+    expect(imports.map((i) => i.specifier)).toContain("@/lib/checkout-appearance");
+  });
+
+  it("draws Stripe's form from the store's look, not from fixed colours", () => {
+    const source = readFileSync(entry, "utf8");
+    expect(source).toMatch(/stripeAppearance\(look, dark\)/);
+    expect(source).not.toMatch(/colorPrimary: dark \?/);
+    expect(readFileSync(join(SRC, "lib/checkout-appearance.ts"), "utf8")).not.toMatch(/from\s+["'](zod|server-only)["']/);
+  });
+
+  it("reaches none of the forbidden extras", () => {
+    expect(forbiddenFrom(entry, stop)).toEqual([]);
+  });
+});

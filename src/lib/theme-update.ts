@@ -102,6 +102,7 @@ export const WHATS_NEW_WORDS = {
     hover: "hover effects",
     mode: "light and dark",
     visitorSwitch: "the light and dark switch",
+    checkout: "checkout look",
   } as Record<string, string>,
   layouts: { header: "header", footer: "footer", productLayout: "product page" } as Record<DesignLayoutKind, string>,
   newAreas: "New {areas}.",

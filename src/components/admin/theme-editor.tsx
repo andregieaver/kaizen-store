@@ -16,10 +16,15 @@ import {
   themeAttributes,
   themeCss,
   themeWarnings,
+  type ButtonCorners,
+  type CheckoutBackground,
+  type CheckoutFields,
+  type CheckoutLook,
   type Palette,
   type StoreTheme,
   type ThemeSettings,
 } from "@/lib/theme";
+import { checkoutLookOf, checkoutLookOwn, followTheme, patchCheckoutLook } from "@/lib/checkout-look";
 import type { SavedTheme } from "@/server/themes";
 
 import { useAdminText } from "./admin-text";
@@ -142,7 +147,7 @@ function PaletteFields({ title, value, onChange }: { title: string; value: Palet
  * What the theme looks like, drawn with the same classes and variables
  * as the storefront, in light or dark.
  */
-function Preview({ settings, storeName, mode }: { settings: ThemeSettings; storeName: string; mode: "light" | "dark" }) {
+function Preview({ settings, storeName, mode, checkout = true }: { settings: ThemeSettings; storeName: string; mode: "light" | "dark"; checkout?: boolean }) {
   const w = useAdminText("design").editor;
   const sample = w.sample;
   const { fonts } = settings;
@@ -194,9 +199,130 @@ function Preview({ settings, storeName, mode }: { settings: ThemeSettings; store
           ))}
         </ul>
         <input readOnly tabIndex={-1} aria-hidden value={sample.email} className="min-h-9 rounded-md border border-border bg-background px-3 text-xs" />
+        {checkout && <CheckoutSample settings={settings} />}
       </div>
       <div className="border-t border-border bg-surface px-4 py-3 text-xs text-muted">© {storeName}</div>
     </div>
+  );
+}
+
+/** How a payment field is drawn in the sample, as Stripe draws it from `stripeAppearance()` (D337). */
+const SAMPLE_FIELDS: Record<CheckoutFields, string> = {
+  outlined: "rounded-md border border-border bg-background",
+  filled: "rounded-md border border-transparent bg-surface",
+  underlined: "rounded-none border-0 border-b border-border bg-transparent",
+};
+
+/** The checkout in the preview (D337): what it sits on, a payment field and the pay button, in the checkout's own colour and corners. */
+function CheckoutSample({ settings }: { settings: ThemeSettings }) {
+  const w = useAdminText("design").editor.checkout.sample;
+  const look = checkoutLookOf(settings);
+  const panel = look.background === "surface";
+  // A filled field on the surface's panel is filled with the page's background, as the checkout draws it.
+  const field = look.fields === "filled" && panel ? "rounded-md border border-transparent bg-background" : SAMPLE_FIELDS[look.fields];
+  return (
+    <div data-checkout-sample="" className={`checkout-look flex flex-col gap-2 border-t border-border pt-3 ${panel ? "rounded-lg bg-surface px-3 pb-3" : ""}`}>
+      <span className="text-xs font-medium">{w.heading}</span>
+      <span className={`flex min-h-9 items-center px-3 text-xs text-muted ${field}`}>{w.field}</span>
+      <span className="button-primary inline-flex min-h-10 items-center justify-center px-4 text-sm font-medium">{w.pay}</span>
+    </div>
+  );
+}
+
+/**
+ * The *Checkout look* card (D337): for Homer, a sentence saying the checkout follows the theme and one switch for the logo; for Lisa,
+ * behind *Customise the checkout*, what the form sits on, the pay button's colour and corners and the payment fields' style, and a way back
+ * to following the theme. Saved with the theme, as every other card here.
+ */
+function CheckoutLookFields({
+  settings,
+  hasLogo,
+  onChange,
+}: {
+  settings: ThemeSettings;
+  hasLogo: boolean;
+  onChange: (checkout: CheckoutLook) => void;
+}) {
+  const all = useAdminText("design");
+  const w = all.editor.checkout;
+  const o = all.editor.options;
+  const look = checkoutLookOf(settings);
+  const own = checkoutLookOwn(settings);
+  const patch = (change: Partial<CheckoutLook>) => onChange(patchCheckoutLook(settings.checkout, change));
+  const [open, setOpen] = useState(own);
+  return (
+    <>
+      <p className="text-sm text-muted">{w.intro}</p>
+      <label className="flex items-start gap-2 text-sm">
+        <input
+          type="checkbox"
+          name="checkoutLogo"
+          checked={look.mark}
+          disabled={!hasLogo && !look.mark}
+          onChange={(event) => patch({ mark: event.target.checked })}
+          className="mt-1"
+        />
+        <span>
+          <span className="font-medium">{w.logo}</span>
+          <span className="block text-xs text-muted">{hasLogo ? w.logoHint : w.noLogo}</span>
+        </span>
+      </label>
+      <details open={open} onToggle={(event) => setOpen(event.currentTarget.open)}>
+        <summary className="cursor-pointer text-sm font-medium">{w.customise}</summary>
+        <div className="mt-4 flex flex-col gap-4">
+          <Choice
+            legend={w.background}
+            options={o.checkoutBackgrounds as Record<CheckoutBackground, string>}
+            value={look.background}
+            onChange={(background) => patch({ background })}
+          />
+          <Choice
+            legend={w.button}
+            options={w.buttonColours as Record<"theme" | "own", string>}
+            value={look.button ? "own" : "theme"}
+            onChange={(choice) =>
+              patch({ button: choice === "own" ? (look.button ?? { light: settings.light.accent, dark: settings.dark.accent }) : undefined })
+            }
+          />
+          {look.button && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {(["light", "dark"] as const).map((scheme) => (
+                <label key={scheme} className="flex items-center gap-3 text-sm font-medium">
+                  <input
+                    type="color"
+                    name={`checkoutButton-${scheme}`}
+                    value={look.button![scheme]}
+                    onChange={(event) => patch({ button: { ...look.button!, [scheme]: event.target.value.toLowerCase() } })}
+                    className="size-10 shrink-0 cursor-pointer rounded-md border border-border bg-background p-0.5"
+                  />
+                  {scheme === "light" ? w.buttonLight : w.buttonDark}
+                </label>
+              ))}
+            </div>
+          )}
+          <Choice
+            legend={w.corners}
+            options={{ theme: w.cornersTheme, ...(o.buttonCorners as Record<ButtonCorners, string>) } as Record<"theme" | ButtonCorners, string>}
+            value={look.corners ?? "theme"}
+            onChange={(corners) => patch({ corners: corners === "theme" ? undefined : corners })}
+          />
+          <Choice
+            legend={w.fields}
+            options={o.checkoutFields as Record<CheckoutFields, string>}
+            value={look.fields}
+            onChange={(fields) => patch({ fields })}
+          />
+          <p className="flex flex-wrap items-center gap-2 text-sm text-muted">
+            {own ? null : w.following}
+            {own && (
+              <button type="button" onClick={() => onChange(followTheme(settings.checkout))} className={`${button} border border-border text-foreground`}>
+                {w.followTheme}
+              </button>
+            )}
+          </p>
+        </div>
+      </details>
+    </>
   );
 }
 
@@ -273,6 +399,7 @@ export function ThemeEditor({
   actions,
   logos,
   installed,
+  checkout = true,
 }: {
   storeName: string;
   current: StoreTheme;
@@ -282,6 +409,8 @@ export function ThemeEditor({
   logos: { logo: boolean; dark: boolean };
   /** The name of an installed theme that is not live (D244): Save keeps the settings in it, and visitors see them only once it is switched to. */
   installed?: string;
+  /** The *Checkout look* card and sample (D337); false for Kaizena Flow's own site, which has no checkout. */
+  checkout?: boolean;
 }) {
   const all = useAdminText("design");
   const { common: c, editor: w } = all;
@@ -621,6 +750,12 @@ export function ThemeEditor({
             <Choice legend={w.card} options={o.cardStyles as Record<ThemeSettings["productCards"]["style"], string>} value={settings.productCards.style} onChange={(style) => set({ productCards: { ...settings.productCards, style } })} />
             <Choice legend={w.text} options={o.cardAligns as Record<ThemeSettings["productCards"]["align"], string>} value={settings.productCards.align} onChange={(align) => set({ productCards: { ...settings.productCards, align } })} />
           </Section>
+
+          {checkout && (
+            <Section title={w.checkout.title}>
+              <CheckoutLookFields settings={settings} hasLogo={logos.logo} onChange={(look) => set({ checkout: look })} />
+            </Section>
+          )}
         </div>
 
         <aside className="flex flex-col gap-3 lg:sticky lg:top-4" aria-label={w.previewHeading}>
@@ -642,7 +777,7 @@ export function ThemeEditor({
               </div>
             )}
           </div>
-          <Preview settings={settings} storeName={storeName} mode={settings.mode === "auto" || settings.visitorSwitch ? previewMode : settings.mode} />
+          <Preview settings={settings} storeName={storeName} checkout={checkout} mode={settings.mode === "auto" || settings.visitorSwitch ? previewMode : settings.mode} />
         </aside>
       </div>
     </div>

@@ -6,8 +6,14 @@ import { fontCss } from "@/server/fonts";
 /** What a family Kaizen has no stylesheet for is answered with. */
 const NONE = "/* Not installed: the fallback font shows. */\n";
 
+/**
+ * Readable from another origin, as the font files are: Stripe's payment form loads the store's body font from here (D337,
+ * `stripeFonts()`), and a stylesheet of public `@font-face` rules holds nothing private.
+ */
 const stylesheet = (css: string, cacheControl: string) =>
-  new Response(css, { headers: { "Content-Type": "text/css; charset=utf-8", "Cache-Control": cacheControl } });
+  new Response(css, {
+    headers: { "Content-Type": "text/css; charset=utf-8", "Cache-Control": cacheControl, "Access-Control-Allow-Origin": "*" },
+  });
 
 /**
  * An installed family's stylesheet (D59): `@font-face` rules pointing at

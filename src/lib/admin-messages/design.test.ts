@@ -10,6 +10,8 @@ import {
   CARD_CORNERS,
   CARD_IMAGES,
   CARD_STYLES,
+  CHECKOUT_BACKGROUNDS,
+  CHECKOUT_FIELDS,
   COLOR_MODES,
   CONTENT_WIDTHS,
   FIELD_CORNERS,
@@ -58,6 +60,8 @@ describe("the design catalogue's English is the libraries'", () => {
     expect(o.cardImages).toEqual(CARD_IMAGES);
     expect(o.cardStyles).toEqual(CARD_STYLES);
     expect(o.cardAligns).toEqual(CARD_ALIGNS);
+    expect(o.checkoutBackgrounds).toEqual(CHECKOUT_BACKGROUNDS);
+    expect(o.checkoutFields).toEqual(CHECKOUT_FIELDS);
     expect(designEn.editor.palette).toEqual(PALETTE_LABELS);
     for (const key of THEME_TEMPLATE_KEYS) expect(designEn.editor.templates[key]).toBe(THEME_TEMPLATES[key].description);
   });
