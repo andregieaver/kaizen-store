@@ -541,6 +541,28 @@ export const OWNER_TOOLS = [
     "public",
   ),
   tool(
+    "producer_registrations",
+    "The store's producer responsibility (D342), as on Settings, Producer responsibility: its registrations per scheme (packaging, electrical_equipment, batteries, textiles, furniture, tyres) and country, with number, authority, valid from and to, state today and whether the number shows on product pages, or why none is needed there; what is not sold today (a registration recorded for a scheme and country ended or has not begun: its products cannot be bought there, the cart and checkout refuse them, from the day after the last one ends) and what has no registration recorded (still sold; the owner may need to register). Read-only. Add or change one with save_producer_registration (the owner's yes first).",
+    z.object({}),
+  ),
+  tool(
+    "save_producer_registration",
+    "Records a producer responsibility registration the owner gave you, or that none is needed in a country (`kind` exempt, with the owner's reason), or changes one by `id`. Never make up a number, an authority or a reason: ask the owner. Days are YYYY-MM-DD; valid_to is the last day it is valid (sales stop the day after unless another follows), null for open-ended. Countries by code from producer_registrations. Needs the owner's approval: it decides what shoppers in that country can buy.",
+    z.object({
+      id: z.uuid().optional().describe("The registration to change, from producer_registrations; left out to add one."),
+      scheme: z.enum(["packaging", "electrical_equipment", "batteries", "textiles", "furniture", "tyres"]),
+      country: z.string().trim().length(2).describe("The country, by code (NO)."),
+      kind: z.enum(["registered", "exempt"]).default("registered"),
+      number: z.string().trim().max(100).optional().describe("The registration number, as the authority gave it."),
+      authority: z.string().trim().max(200).optional().describe("Who gave it: the authority or producer responsibility organisation."),
+      reason: z.string().trim().max(300).optional().describe("With kind exempt: why no registration is needed there, in the owner's words."),
+      show_number: z.boolean().optional().describe("Show the number on the country's product pages; left out, as the page would start it."),
+      valid_from: z.string().trim().optional().describe("The first day it is valid (YYYY-MM-DD); left out, today."),
+      valid_to: z.string().trim().nullable().optional().describe("The last day it is valid (YYYY-MM-DD), null for open-ended."),
+    }),
+    "public",
+  ),
+  tool(
     "list_content_types",
     "The store's own kinds of content (Website, Content, D326), such as team members, questions and answers or locations: each type's key, name and web name (its entries' pages are at /{web name}/{entry} when it has pages), its fields (name, label, type, whether required, public or for staff only) with the one that is its title, and how many entries it has. Read-only.",
     z.object({}),
@@ -1701,6 +1723,10 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
       return input.from === null || input.from === undefined
         ? `Set the prices in ${text("country").toUpperCase()} by hand again (they stay as they are).`
         : `Work out every price in ${text("country").toUpperCase()} from ${text("from").toUpperCase()}: ${Number(input.percent ?? 0) >= 0 ? "+" : ""}${Number(input.percent ?? 0)} % on the price ${input.vat === "gross" ? "with" : "before"} VAT${input.round_to === undefined ? "" : `, rounded to ${Number(input.round_to)}${input.ending === undefined ? "" : ` ending in ${Number(input.ending)}`}`}. Prices typed by hand there stay.`;
+    case "save_producer_registration":
+      return input.kind === "exempt"
+        ? `${input.id ? "Change the record" : "Record"} that no ${text("scheme").replace("_", " ")} registration is needed in ${text("country").toUpperCase()}: "${text("reason")}". Products under it are then sold there.`
+        : `${input.id ? "Change" : "Add"} the ${text("scheme").replace("_", " ")} registration in ${text("country").toUpperCase()}: no. ${text("number")}, registered with ${text("authority")}, valid from ${input.valid_from ? text("valid_from") : "today"}${input.valid_to ? ` to ${text("valid_to")}` : ""}. Products under it are sold there while it is valid.`;
     // An entry's and a type's own names are put in by the server (`contentApprovalWords()`); these words name them as given.
     case "publish_entry":
     case "unpublish_entry":

@@ -1,0 +1,6 @@
+ALTER TABLE "commerce"."producer_registrations" ALTER COLUMN "registration_number" DROP NOT NULL;--> statement-breakpoint
+ALTER TABLE "commerce"."producer_registrations" ALTER COLUMN "authority" DROP NOT NULL;--> statement-breakpoint
+ALTER TABLE "commerce"."producer_registrations" ADD COLUMN "exemption" text;--> statement-breakpoint
+ALTER TABLE "commerce"."producer_registrations" ADD COLUMN "show_number" boolean DEFAULT false NOT NULL;--> statement-breakpoint
+ALTER TABLE "commerce"."producer_registrations" ADD COLUMN "updated_at" timestamp with time zone DEFAULT now() NOT NULL;--> statement-breakpoint
+ALTER TABLE "commerce"."producer_registrations" ADD CONSTRAINT "producer_registrations_number_or_exemption" CHECK (("commerce"."producer_registrations"."exemption" is null and "commerce"."producer_registrations"."registration_number" is not null and "commerce"."producer_registrations"."authority" is not null) or ("commerce"."producer_registrations"."exemption" is not null and "commerce"."producer_registrations"."registration_number" is null));

@@ -3606,6 +3606,20 @@
       "when": 1793104486294,
       "tag": "20261027123446_speed_samples_sql",
       "breakpoints": true
+    },
+    {
+      "idx": 515,
+      "version": "7",
+      "when": 1793109324357,
+      "tag": "20261027135524_producer_registrations",
+      "breakpoints": true
+    },
+    {
+      "idx": 516,
+      "version": "7",
+      "when": 1793109354845,
+      "tag": "20261027135554_producer_registrations_sql",
+      "breakpoints": true
     }
   ]
 }

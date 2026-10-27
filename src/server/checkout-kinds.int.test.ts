@@ -1596,6 +1596,58 @@ describe("a price worked out from another country's, in euro (D335 A.2)", () => 
 });
 
 /**
+ * Producer responsibility (wave 7 unit H, D342), shown in euro: the notebook is ticked as packaging (as every new product is by default). With no
+ * registration on record in Norway it is still sold (the owner is warned); once one is recorded and has ended (yesterday), the cart shows the line
+ * as `unregistered` and blocks, adding is refused and checkout refuses it; a registration valid through today sells it at the same euro price, and
+ * the cart, summary and order agree.
+ */
+describe("a product under a producer responsibility scheme, in euro (D342)", () => {
+  it("is refused by the cart and checkout alike once the country's registration has lapsed, and sold at its price while one is valid", async () => {
+    const { saveRegistration, storeToday } = await import("./producer-registrations");
+    const notebook = product["demo-notatbok"];
+    const store = { id: storeId, keptMarkets: [{ code: "NO" }, { code: "SE" }, { code: "DK" }] };
+    view = noInEuro;
+    try {
+      await db().execute(sql`
+        insert into commerce.product_schemes (store_id, product_id, scheme) values (${storeId}::uuid, ${notebook}::uuid, 'packaging') on conflict do nothing
+      `);
+      jar.clear();
+      await add("DEMO-NOTEBOOK-LINED", 2);
+      const before = await getCart(shop());
+      expect(before.currency).toBe("EUR");
+      expect(before.lines.map((l) => l.status)).toEqual(["ok"]);
+      const price = before.lines[0].unitPriceMinor;
+
+      // A registration recorded that ended yesterday: not sold today.
+      const today = await storeToday(storeId);
+      const yesterday = new Date(`${today}T00:00:00Z`);
+      yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+      const typed = { scheme: "packaging", market: "NO", kind: "registered", number: "NO-EMB-1", authority: "Miljødirektoratet", validFrom: "2020-01-01" };
+      const ended = await saveRegistration(store, member.account.id, { ...typed, validTo: yesterday.toISOString().slice(0, 10) });
+      expect(ended).toMatchObject({ ok: true });
+      const blocked = await getCart(shop());
+      expect(blocked.lines.map((l) => l.status)).toEqual(["unregistered"]);
+      expect((await cartSummary(shop(), blocked)).blocked).toBe(true);
+      expect(await startCheckout({ ...shop(), storeSlug: slug }, cartId(), origin, "Frakt", {})).toMatchObject({ ok: false, problem: "unregistered" });
+      expect((await changeLine(shop(), variant["DEMO-NOTEBOOK-LINED"], 1, "add", null)).outcome).toBe("unavailable");
+
+      // Valid through today: sold at the same price shown in euro, and the order is what the summary said.
+      expect(await saveRegistration(store, member.account.id, { ...typed, validTo: today }, (ended as { id: string }).id)).toMatchObject({ ok: true });
+      const back = await getCart(shop());
+      expect(back.lines.map((l) => [l.status, l.unitPriceMinor])).toEqual([["ok", price]]);
+      const summary = await cartSummary(shop(), back);
+      expect(summary.blocked).toBe(false);
+      expect(await startCheckout({ ...shop(), storeSlug: slug }, cartId(), origin, "Frakt", {})).toMatchObject({ ok: true });
+      const order = (await getOrder(storeId, (await getOpenCheckout(storeId, cartId()))!.orderId))!;
+      expect({ currency: order.currency, total: order.totalMinor, vat: order.taxMinor }).toEqual({ currency: "EUR", total: summary.total, vat: summary.vat });
+    } finally {
+      view = no;
+      await db().execute(sql`delete from commerce.producer_registrations where store_id = ${storeId}::uuid`);
+    }
+  });
+});
+
+/**
  * The rules as read (D160): no market compares per 100 g, so the notebook, whose owner chose 100 g, is compared per kg in Norway
  * with the table as it is. The cart's unit price, the order line's and an independent reader's agree, and the totals are the
  * same as with the small base.

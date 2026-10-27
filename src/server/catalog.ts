@@ -20,6 +20,7 @@ import { stockOf, UNLIMITED, type VariantStock } from "@/lib/stock-availability"
 import type { MediaItemKind, VideoSource } from "@/lib/product-media";
 
 import { taxonomy, taxonomyWords } from "./product-taxonomy";
+import { shownRegistrationNumbers, type ShownRegistration } from "./producer-registrations";
 import { bundleItemsOf } from "./bundles";
 import { fieldsTag, shownFieldsFor, shownFieldsForVariants } from "./custom-fields";
 import { OFFERED, STORE_AUDIENCE, inTerms, manualPlace, plansOffered } from "./product-conditions";
@@ -129,6 +130,8 @@ export type ProductDetail = {
    * and the chosen values' English names by attribute handle (the feeds' colour, material and pattern); null for none.
    */
   standard: { id: string; path: string; google: number | null; english: Record<string, string[]> } | null;
+  /** Producer responsibility (D342): the registration numbers the owner chose to show in this market for the product's schemes, valid today. */
+  producerNumbers: ShownRegistration[];
 };
 
 type Row = Record<string, unknown>;
@@ -272,7 +275,7 @@ export async function getProduct(storeId: string, market: Market, handle: string
   // A bundle's components (D322), in the page's language, each linked where its own product is offered to shoppers.
   const bundleItems = product.kind === "bundle" ? await bundleItemsOf(readDb(), storeId, String(product.id), locale) : [];
 
-  const [media, variants, plans, fields, variantFields, storeFields] = await Promise.all([
+  const [media, variants, plans, fields, variantFields, storeFields, producerNumbers] = await Promise.all([
     readDb().execute<Row>(sql`
       select url, thumbnail_url, kind, source, media_url,
         coalesce(nullif(alt ->> ${locale}, ''), commerce.media_alt(url, ${locale}), '') as alt
@@ -302,6 +305,7 @@ export async function getProduct(storeId: string, market: Market, handle: string
     shownFieldsFor(storeId, "product", str(product.id), locale, market.lang, market.slug),
     shownFieldsForVariants(storeId, str(product.id), locale, market.lang, market.slug),
     shownFieldsFor(storeId, "store", storeId, locale, market.lang, market.slug),
+    shownRegistrationNumbers(readDb(), storeId, String(product.id), marketCode),
   ]);
   if (variants.length === 0) return null;
   const vat = priceVat(product.store_audience, product.vat_rate);
@@ -368,6 +372,7 @@ export async function getProduct(storeId: string, market: Market, handle: string
       product.kind === "appointment" || product.kind === "stay" || product.kind === "rental" || product.kind === "gift_card" ? product.kind : "goods",
     bundleItems,
     standard: await standardOf(product.standard_category, product.standard_attributes, locale),
+    producerNumbers,
   };
 }
 

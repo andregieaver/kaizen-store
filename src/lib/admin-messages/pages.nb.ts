@@ -381,6 +381,10 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     title: "Innstillinger for fakturering",
     keywords: ["fakturering", "faktura", "fakturanummer", "nummerering", "serie", "prefiks", "kreditnota", "bankopplysninger"],
   },
+  "store:producer-responsibility": {
+    title: "Produsentansvar",
+    keywords: ["produsentansvar", "emballasje", "ee-avfall", "batterier", "returordning", "returselskap", "registreringsnummer", "gjenvinning", "selges ikke"],
+  },
   "store:payments": {
     title: "Betalinger",
     keywords: ["betalinger", "betaling", "stripe", "kort", "gå live", "utbetalinger", "betalingsleverandør", "betalingsmetoder"],

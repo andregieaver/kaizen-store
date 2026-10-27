@@ -107,6 +107,9 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   // Search merchandising (D324): the Search page's own keys.
   market_price_rules: "settings:read",
   set_market_price_rule: "settings:write",
+  // Producer responsibility (D342): the Producer responsibility page's own keys.
+  producer_registrations: "settings:read",
+  save_producer_registration: "settings:write",
   search_merchandising: "settings:read",
   save_search_synonym: "settings:write",
   save_search_rule: "settings:write",

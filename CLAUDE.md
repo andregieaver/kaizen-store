@@ -232,6 +232,17 @@ stand-in is the only fake, and only it is told it is one.
   there; the admin's own price reads use `commerce.kept_prices` (every current price). Who may read `commerce.prices` or `kept_prices` is
   `price-readers.scan.test.ts`: a new reader that decides what a shopper is sold reads `current_prices`. The CSV's `not_sold_in` and the AI
   manager's `not_sold_in` go through the same save.
+- **Producer responsibility (wave 7 unit H, D342, `docs/wave-7-storefront.md` H as built)**: a store's registrations per scheme
+  (`PRODUCER_SCHEMES`, a product's `product_schemes`) and country, or an exemption in the owner's words, are `commerce.producer_registrations`,
+  written only by `src/server/producer-registrations.ts` (Settings → Producer responsibility, `settings:*`; the AI manager's
+  `save_producer_registration`, gate `public`, never automatic) after `checkRegistration()`, never copied. Whether a product is sold in a country
+  for want of one is only the database's `commerce.registration_blocks()` (the gaps of `registration_gaps()` the store is on record for: a
+  registration covers its last day on the store's own day, so sales stop the next; a scheme and country with nothing ever recorded is only
+  warned of, since new products are ticked as packaging by default), read for a line by `commerce.line_unregistered()` in `getCart()` (status
+  `unregistered`), `sellableQuantity()` and `placeOrder()` (problem `unregistered`), and by `blockedSchemes()` on the product page; never decide it
+  again elsewhere, and a new way to put goods in a cart or an order asks it too (with a euro scenario). The numbers shown on product pages are
+  the registrations with `show_number` valid today (`shownRegistrationNumbers()`, the safety part); shopper words are `m.producer`
+  (`HAND_WRITTEN_ONLY`, for legal review). The invoice does not carry the number yet.
 - **Prices worked out per country (wave 7 unit A2, D335, `docs/wave-7-storefront.md` A.2)**: a market may take its prices from another of the
   store's by a rule (`commerce.market_price_rules`: base, percentage, `net` or `gross`, rounding step, ending; never chained, by trigger and
   `ruleProblem()`), worked out only by `derivedPrice()` (`src/lib/market-prices.ts`, BigInt) and written only by `src/server/market-prices.ts`

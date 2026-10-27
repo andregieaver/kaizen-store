@@ -719,6 +719,21 @@ export const sv: Messages = {
   problemCompanyNumber: "Organisationsnumret ser inte rätt ut. Kontrollera det och försök igen.",
   /** A cart line whose quantity breaks its variant's rule (D323). */
   problemQuantity: "Antalet av en vara i varukorgen kan inte köpas så. Ändra det i varukorgen och försök igen.",
+  producer: {
+    notSoldHere: "Säljs inte i det här landet just nu: säljarens registrering för producentansvar saknas här.",
+    lineProblem: "Säljs inte i det här landet just nu: säljarens registrering för producentansvar saknas här. Ta bort varan för att fortsätta.",
+    problem: "En vara i varukorgen säljs inte i det här landet just nu: säljarens registrering för producentansvar saknas här. Ta bort den i varukorgen och försök igen.",
+    registrations: "Producentansvar",
+    registeredWith: "registrerad hos",
+    schemes: {
+      packaging: "Förpackningar",
+      electrical_equipment: "Elektrisk och elektronisk utrustning",
+      batteries: "Batterier",
+      textiles: "Textilier",
+      furniture: "Möbler",
+      tyres: "Däck",
+    },
+  },
   /** Who pays and where the goods go, asked before Mollie's page, which asks for neither (D292). */
   payer: {
     legend: "Dina uppgifter",

@@ -719,6 +719,21 @@ export const da: Messages = {
   problemCompanyNumber: "CVR-nummeret ser ikke rigtigt ud. Tjek det, og prøv igen.",
   /** A cart line whose quantity breaks its variant's rule (D323). */
   problemQuantity: "Antallet af en vare i kurven kan ikke købes sådan. Ret det i kurven og prøv igen.",
+  producer: {
+    notSoldHere: "Sælges ikke i dette land lige nu: sælgerens registrering under producentansvaret mangler her.",
+    lineProblem: "Sælges ikke i dette land lige nu: sælgerens registrering under producentansvaret mangler her. Fjern varen for at fortsætte.",
+    problem: "En vare i kurven sælges ikke i dette land lige nu: sælgerens registrering under producentansvaret mangler her. Fjern den i kurven og prøv igen.",
+    registrations: "Producentansvar",
+    registeredWith: "registreret hos",
+    schemes: {
+      packaging: "Emballage",
+      electrical_equipment: "Elektrisk og elektronisk udstyr",
+      batteries: "Batterier",
+      textiles: "Tekstiler",
+      furniture: "Møbler",
+      tyres: "Dæk",
+    },
+  },
   /** Who pays and where the goods go, asked before Mollie's page, which asks for neither (D292). */
   payer: {
     legend: "Dine oplysninger",

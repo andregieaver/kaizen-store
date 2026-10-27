@@ -3287,7 +3287,11 @@ export const productSchemes = commerce.table(
 
 /**
  * The store's registration under a producer responsibility scheme in a
- * market, e.g. a packaging or electrical-equipment registration number.
+ * market, e.g. a packaging or electrical-equipment registration number
+ * (D342): written only by `src/server/producer-registrations.ts`. A row with
+ * an `exemption` says, in the owner's words, why no registration is needed
+ * there (no scheme in that country, below its threshold) and has no number.
+ * `show_number` puts the number on the market's product pages.
  */
 export const producerRegistrations = commerce.table(
   "producer_registrations",
@@ -3296,11 +3300,14 @@ export const producerRegistrations = commerce.table(
     storeId: storeId(),
     marketCode: char("market_code", { length: 2 }).notNull(),
     scheme: producerScheme("scheme").notNull(),
-    registrationNumber: text("registration_number").notNull(),
-    authority: text("authority").notNull(),
+    registrationNumber: text("registration_number"),
+    authority: text("authority"),
+    exemption: text("exemption"),
+    showNumber: boolean("show_number").notNull().default(false),
     validFrom: date("valid_from").notNull(),
     validTo: date("valid_to"),
     createdAt: createdAt(),
+    updatedAt: updatedAt(),
   },
   (t) => [
     foreignKey({
@@ -3312,6 +3319,11 @@ export const producerRegistrations = commerce.table(
     check(
       "producer_registrations_valid_range",
       sql`${t.validTo} is null or ${t.validTo} >= ${t.validFrom}`,
+    ),
+    // A registration has its number and authority; an exemption has its reason and no number.
+    check(
+      "producer_registrations_number_or_exemption",
+      sql`(${t.exemption} is null and ${t.registrationNumber} is not null and ${t.authority} is not null) or (${t.exemption} is not null and ${t.registrationNumber} is null)`,
     ),
   ],
 );
