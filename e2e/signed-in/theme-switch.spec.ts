@@ -65,7 +65,9 @@ async function seen(page: Page, path: string, ready?: (page: Page) => Locator) {
       copy?.querySelectorAll("script, style, template, [data-staff-tools]").forEach((node) => node.remove());
       return {
         words: (copy?.textContent ?? "").replace(/\s+/g, " ").trim(),
-        pictures: [...(main?.querySelectorAll("img") ?? [])].map((img) => img.getAttribute("src")).sort(),
+        // Which pictures the page shows, not how many copies: the gallery swaps the chosen variant's picture in whenever its script runs
+        // (D84), so a copy of one picture can stand where another was, with the same pictures on the page.
+        pictures: [...new Set([...(main?.querySelectorAll("img") ?? [])].map((img) => img.getAttribute("src")))].sort(),
         // The signed-in staff's way back to the admin follows the admin page last seen: it is not the store's content.
         links: [...new Set([...document.querySelectorAll("a[href]")].map((a) => a.getAttribute("href") ?? ""))].filter((href) => !href.startsWith("/admin")).sort(),
       };
