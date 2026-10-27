@@ -33,6 +33,7 @@ export function checkoutLabels(m: Messages, action: string = m.checkout): Checko
       po_number: m.companyAccount.problemPoNumber,
       approval: m.companyAccount.problemApproval,
       quantity: m.problemQuantity,
+      unregistered: m.producer.problem,
     },
   };
 }

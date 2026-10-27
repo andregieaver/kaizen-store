@@ -160,7 +160,9 @@ export type CheckoutProblem =
   /** An order over the company's approval limit holds more than goods bought once, or gift cards: only those can wait (D321 C.2). */
   | "approval"
   /** A line's quantity breaks its variant's rule (D323): below the minimum, between steps or above the maximum. */
-  | "quantity";
+  | "quantity"
+  /** A product under a producer responsibility scheme with no valid registration in the country today (D342). */
+  | "unregistered";
 
 export type PlaceResult = { ok: true; order: PlacedOrder } | { ok: false; problem: CheckoutProblem };
 
@@ -228,7 +230,9 @@ function orderLineRows(
         ) end as bundle_components,
         (p.status = 'active' and v.active and ${bookable} and ${offeredTo(customerId)}
           -- A bundle whose component changed since it was added (archived, another VAT category, D322) cannot be bought.
-          and (p.kind <> 'bundle' or coalesce((select va.can_buy from commerce.variant_availability va where va.store_id = v.store_id and va.variant_id = v.id), false))) as sellable
+          and (p.kind <> 'bundle' or coalesce((select va.can_buy from commerce.variant_availability va where va.store_id = v.store_id and va.variant_id = v.id), false))) as sellable,
+        -- Under a producer responsibility scheme with no valid registration in this country today (D342), as the cart reads it.
+        commerce.line_unregistered(v.store_id, ${market.code}, v.id) as unregistered
       from ${source}
       join commerce.product_variants v on v.store_id = cl.store_id and v.id = cl.variant_id
       join commerce.products p on p.store_id = v.store_id and p.id = v.product_id
@@ -313,6 +317,9 @@ export async function placeOrder(
     if (lines.some((l) => !l.sellable || !l.plan_ok || l.amount_minor === null)) {
       return { ok: false, problem: "unavailable" };
     }
+    // Producer responsibility (D342): a product under a scheme with no valid registration in this country today is not sold here,
+    // as the cart showed it (`unregistered`).
+    if (lines.some((l) => l.unregistered)) return { ok: false, problem: "unregistered" };
     // How many at a time (D323): a cart line of goods or a bundle keeps to its variant's rule, as the cart showed it (`quantityProblem()`).
     if (lines.some((l) => l.starts_at === null && quantityProblem(Number(l.quantity), ruleForKind(l.kind, l)) !== null)) {
       return { ok: false, problem: "quantity" };

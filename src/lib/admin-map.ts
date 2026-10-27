@@ -619,6 +619,11 @@ const PAGES: readonly AdminPage[] = [
     tasks: ["Switch invoicing on or off", "See what is missing for invoices", "Set the invoice number prefix and first number", "Write the note printed on every invoice"],
     feature: "shop",
   }),
+  store("producer-responsibility", "/settings/producer-responsibility", "Producer responsibility", "Settings", "Producer responsibility (D342): the store's registrations per scheme (packaging, electrical and electronic equipment, batteries, textiles, furniture, tyres) and country, with number, authority, valid from and to and whether the number shows on product pages, or why none is needed there; and the products not sold in a country because a scheme they are under has no valid registration there, from the day after the last one ends.", {
+    keywords: ["producer responsibility", "epr", "extended producer responsibility", "packaging", "weee", "batteries", "recycling", "registration number", "lucid", "produsentansvar", "emballasje", "returordning", "not sold"],
+    tasks: ["Add a producer registration", "See what is not sold for want of a registration", "Record that no registration is needed in a country", "Show a registration number on product pages"],
+    feature: "shop",
+  }),
   store("payments", "/settings/payments", "Payments", "Sales", "Stripe: the store's accounts in test and live, going live, and invoices for orders.", {
     needs: "owner",
     keywords: ["stripe", "card", "go live", "payouts"],

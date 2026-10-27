@@ -736,6 +736,25 @@ export const en = {
   problemCompanyNumber: "The organisation number does not look right. Check it and try again.",
   /** A cart line whose quantity breaks its variant's rule (D323). */
   problemQuantity: "The quantity of something in your cart can't be bought as it is. Change it in the cart and try again.",
+  /**
+   * Producer responsibility (D342): a product under a scheme the seller has no valid registration for in the shopper's country is not sold
+   * there; the product page shows the numbers the seller chose to show. Hand-written in nb, sv, da and en, for legal review (`HAND_WRITTEN_ONLY`).
+   */
+  producer: {
+    notSoldHere: "Not sold in this country at the moment: the seller's producer responsibility registration is missing here.",
+    lineProblem: "Not sold in this country at the moment: the seller's producer responsibility registration is missing here. Remove it to continue.",
+    problem: "Something in your cart is not sold in this country at the moment: the seller's producer responsibility registration is missing here. Remove it in the cart and try again.",
+    registrations: "Producer responsibility",
+    registeredWith: "registered with",
+    schemes: {
+      packaging: "Packaging",
+      electrical_equipment: "Electrical and electronic equipment",
+      batteries: "Batteries",
+      textiles: "Textiles",
+      furniture: "Furniture",
+      tyres: "Tyres",
+    },
+  },
   /** Who pays and where the goods go, asked before Mollie's page, which asks for neither (D292). */
   payer: {
     legend: "Your details",

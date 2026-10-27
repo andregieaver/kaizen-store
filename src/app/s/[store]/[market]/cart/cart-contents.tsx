@@ -388,6 +388,12 @@ function linesList({ store, market, m, view }: Draw, drawer: boolean) {
                 {m.noLongerAvailable}
               </p>
             )}
+            {/* Producer responsibility (D342): not sold in this country for want of the seller's registration, as checkout refuses it. */}
+            {line.status === "unregistered" && (
+              <p role="alert" className="text-sm">
+                {m.producer.lineProblem}
+              </p>
+            )}
             {/* How many at a time (D323): the rule's words, as a problem when the line breaks it (the rule changed after it was added). */}
             {line.status === "quantity" ? (
               <p role="alert" className="text-sm">

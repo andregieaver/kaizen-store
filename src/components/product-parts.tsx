@@ -56,6 +56,7 @@ import { appointmentSlots, getAppointmentOffer } from "@/server/appointments";
 import { getVariantStock, type EconomicOperator, type ProductDetail } from "@/server/catalog";
 import { relatedProducts } from "@/server/listing";
 import { priceBreaksFor } from "@/server/price-breaks";
+import { blockedSchemes } from "@/server/producer-registrations";
 import { buyerRulesFor, listPricesFor } from "@/server/price-lists";
 import { getRangeOffer, getRangePricing, rangeDates } from "@/server/ranges";
 import { getShippingFacts, storeFacts } from "@/server/seo";
@@ -283,7 +284,7 @@ export function ProductPartView({ block, ctx }: { block: ProductBlock; ctx: Prod
       return text ? <p className="text-sm">{text}</p> : null;
     }
     case "safety":
-      if (!product.safetyInformation && !product.manufacturer && !product.responsiblePerson) return null;
+      if (!safetyShows(product)) return null;
       return (
         <section aria-labelledby={labelledBy} className="text-sm">
           {heading(m.safety)}
@@ -291,6 +292,17 @@ export function ProductPartView({ block, ctx }: { block: ProductBlock; ctx: Prod
           <dl className="grid gap-3">
             {product.manufacturer && <Operator label={m.manufacturer} operator={product.manufacturer} />}
             {product.responsiblePerson && <Operator label={m.euResponsiblePerson} operator={product.responsiblePerson} />}
+            {/* Producer responsibility (D342): the numbers the owner chose to show in this country, where the scheme asks for them. */}
+            {product.producerNumbers.map((r) => (
+              <div key={r.scheme}>
+                <dt className="font-medium">
+                  {m.producer.registrations}: {m.producer.schemes[r.scheme]}
+                </dt>
+                <dd>
+                  {r.number} ({m.producer.registeredWith} {r.authority})
+                </dd>
+              </div>
+            ))}
           </dl>
         </section>
       );
@@ -443,7 +455,7 @@ export function productPartShows(
     case "withdrawal":
       return withdrawalText(product, t("en")) !== null;
     case "safety":
-      return Boolean(product.safetyInformation || product.manufacturer || product.responsiblePerson);
+      return safetyShows(product);
     case "fields":
       if (block.source === "store") return groupsToShow(product.storeFields, block.groupId).length > 0;
       return (
@@ -488,6 +500,10 @@ async function GiftCardPurchase({ store, product, market, m }: { store: Store; p
     />
   );
 }
+
+/** Whether the product safety part has anything to say: safety words, an operator, or a producer registration number to show (D342). */
+const safetyShows = (product: ProductDetail): boolean =>
+  Boolean(product.safetyInformation || product.manufacturer || product.responsiblePerson) || product.producerNumbers.length > 0;
 
 /** The line on the right of withdrawal: none for ordinary goods, which can be sent back. */
 function withdrawalText(product: ProductDetail, m: Messages): string | null {
@@ -825,6 +841,12 @@ async function VariantsWithStock({
         </Link>
       </p>
     );
+  }
+  // Producer responsibility (D342): not sold in this country while a scheme it is under has no valid registration here, read for this
+  // request (a registration lapses at the store's midnight), as the cart and checkout refuse it.
+  await connection();
+  if ((await blockedSchemes(store.id, product.id, market.code)).length > 0) {
+    return <p className="text-sm">{m.producer.notSoldHere}</p>;
   }
   // Stock, policy and the days a backorder states are read for this request, never cached (D172).
   // A signed-in buyer's price lists (D321) and the product's price breaks (D323): goods bought once only, never with purchase options, as the

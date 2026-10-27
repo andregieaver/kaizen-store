@@ -725,6 +725,21 @@ export const nb: Messages = {
   problemCompanyNumber: "Organisasjonsnummeret ser ikke riktig ut. Sjekk det og prøv igjen.",
   /** A cart line whose quantity breaks its variant's rule (D323). */
   problemQuantity: "Antallet av en vare i handlekurven kan ikke kjøpes slik. Endre det i handlekurven og prøv igjen.",
+  producer: {
+    notSoldHere: "Selges ikke i dette landet nå: selgerens registrering for produsentansvar mangler her.",
+    lineProblem: "Selges ikke i dette landet nå: selgerens registrering for produsentansvar mangler her. Fjern varen for å fortsette.",
+    problem: "En vare i handlekurven selges ikke i dette landet nå: selgerens registrering for produsentansvar mangler her. Fjern den i handlekurven og prøv igjen.",
+    registrations: "Produsentansvar",
+    registeredWith: "registrert hos",
+    schemes: {
+      packaging: "Emballasje",
+      electrical_equipment: "Elektriske og elektroniske produkter",
+      batteries: "Batterier",
+      textiles: "Tekstiler",
+      furniture: "Møbler",
+      tyres: "Dekk",
+    },
+  },
   /** Who pays and where the goods go, asked before Mollie's page, which asks for neither (D292). */
   payer: {
     legend: "Dine opplysninger",

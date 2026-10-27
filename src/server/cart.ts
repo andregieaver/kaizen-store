@@ -41,8 +41,12 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 type Row = Record<string, unknown>;
 export type Tx = Parameters<Parameters<ReturnType<typeof db>["transaction"]>[0]>[0];
 
-/** `quantity`: the line's quantity breaks its variant's rule (D323), which changed after it was added; it blocks checkout until changed. */
-export type CartLineStatus = "ok" | "insufficient" | "unavailable" | "quantity";
+/**
+ * `quantity`: the line's quantity breaks its variant's rule (D323), which changed after it was added; it blocks checkout until changed.
+ * `unregistered`: the product is under a producer responsibility scheme with no valid registration in the cart's country today (D342,
+ * `commerce.line_unregistered()`); it blocks checkout, as `placeOrder()` refuses it.
+ */
+export type CartLineStatus = "ok" | "insufficient" | "unavailable" | "quantity" | "unregistered";
 
 export type CartLine = {
   variantId: string;
@@ -204,6 +208,8 @@ export async function getCart(
       coalesce(bp.amount_minor, cp.amount_minor) as amount_minor, bp.list_id as price_list_id, bp.break_from,
       -- Only in a country and currency the store offers now (D178: Several countries and currencies).
       (p.status = 'active' and v.active and ${bookable} and ${offeredTo(customerId)} and commerce.market_offered(c.store_id, c.market_code, ${market.currency})) as sellable,
+      -- Under a producer responsibility scheme with no valid registration in this country today (D342), as placeOrder() reads it.
+      commerce.line_unregistered(cl.store_id, c.market_code, v.id) as unregistered,
       va.in_stock, va.raw_available, va.stock_policy, va.backorder_days, qr.min_quantity, qr.max_quantity, qr.quantity_step
     from commerce.cart_lines cl
     join commerce.carts c on c.store_id = cl.store_id and c.id = cl.cart_id
@@ -311,11 +317,13 @@ export async function getCart(
       const status: CartLineStatus =
         !row.sellable || !row.plan_ok || (plan !== null && !isNative(market)) || unitPriceMinor === null || available <= 0
           ? "unavailable"
-          : quantityProblem(quantity, rule)
-            ? "quantity"
-            : !(stock ? lineIsOk(quantity, stock) : available >= quantity)
-              ? "insufficient"
-              : "ok";
+          : row.unregistered
+            ? "unregistered"
+            : quantityProblem(quantity, rule)
+              ? "quantity"
+              : !(stock ? lineIsOk(quantity, stock) : available >= quantity)
+                ? "insufficient"
+                : "ok";
       return {
         variantId: String(row.variant_id),
         productId: String(row.product_id),
@@ -528,6 +536,8 @@ export async function sellableQuantity(
     where v.store_id = ${storeId}::uuid and v.id = ${variantId}::uuid and v.active
       -- Sold only in a country and currency the store offers now (D178: Several countries and currencies).
       and commerce.market_offered(v.store_id, ${market.code}, ${market.currency})
+      -- Not under a producer responsibility scheme with no valid registration in this country today (D342): nothing is put in the cart.
+      and not commerce.line_unregistered(v.store_id, ${market.code}, v.id)
       -- Appointments, stays and rentals are booked for a time (D65, D67), and goods and gift cards have none.
       and (p.kind in ('goods', 'gift_card', 'bundle')) = ${booking === null}
       -- A product is offered only where the store sells to its kind (D178: never a business-only one where it sells to consumers, Sell to

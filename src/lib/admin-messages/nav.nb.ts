@@ -235,6 +235,9 @@ export const NAV_NB: Record<string, string> = {
   Tax: "Avgift",
   "VAT registration and number, OSS and IOSS, and how the store charges VAT.":
     "Registrering i Merverdiavgiftsregisteret og organisasjonsnummer, EUs OSS- og IOSS-ordning, og hvordan butikken beregner merverdiavgift.",
+  "Producer responsibility": "Produsentansvar",
+  "Registrations for packaging, electrical equipment, batteries and other schemes in each country, and what is not sold without one.":
+    "Registreringer for emballasje, elektriske og elektroniske produkter, batterier og andre ordninger i hvert land, og hva som ikke selges uten.",
   Invoicing: "Fakturering",
   "Switch on invoices, the numbering, the note printed on every invoice and credit note.":
     "Slå på fakturaer, nummereringen og merknaden som skrives på hver faktura og kreditnota.",

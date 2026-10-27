@@ -106,6 +106,7 @@ import {
 import { DNS_RECORD_TOOLS } from "@/lib/domain-tools";
 import { addRedirectTool, preflightRedirectTool, redirectOverviewTool } from "./redirect-tools";
 import { marketPriceRulesTool, preflightPriceRuleTool, setMarketPriceRuleTool } from "./market-price-tools";
+import { preflightProducerTool, producerRegistrationsTool, saveProducerRegistrationTool } from "./producer-tools";
 import { deleteSearchMerchandisingTool, preflightSearchTool, saveSearchRuleTool, saveSearchSynonymTool, searchMerchandisingTool } from "./search-tools";
 import {
   getEntryTool,
@@ -2091,6 +2092,13 @@ export async function preflightOwnerTool(ctx: OwnerToolContext, name: string, ra
     if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
     return preflightPriceRuleTool(ctx, input.input as Record<string, unknown>);
   }
+  // A producer registration the page would refuse is refused now, never kept for a yes (D342).
+  if (name === "save_producer_registration") {
+    const tool = OWNER_TOOLS_BY_NAME[name];
+    const input = readToolInput(tool, raw);
+    if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
+    return preflightProducerTool(ctx, input.input as Record<string, unknown>);
+  }
   // An entry that could not be published or taken off, or a content type that could not be saved, is refused now, never kept for a yes (D326).
   if (name === "publish_entry" || name === "unpublish_entry" || name === "save_content_type") {
     const tool = OWNER_TOOLS_BY_NAME[name];
@@ -2416,6 +2424,8 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   search_merchandising: searchMerchandisingTool,
   market_price_rules: marketPriceRulesTool,
   set_market_price_rule: setMarketPriceRuleTool,
+  producer_registrations: producerRegistrationsTool,
+  save_producer_registration: saveProducerRegistrationTool,
   save_search_synonym: saveSearchSynonymTool,
   save_search_rule: saveSearchRuleTool,
   delete_search_merchandising: deleteSearchMerchandisingTool,

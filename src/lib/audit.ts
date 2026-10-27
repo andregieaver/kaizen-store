@@ -30,6 +30,9 @@ const EXACT: Record<string, AuditArea> = {
   "settings.market_price_rule": "settings",
   "settings.market_price_rule_removed": "settings",
   "settings.market_prices_derived": "settings",
+  // Producer responsibility (D342): a registration or exemption saved or taken away, with its scheme and country, never its number.
+  "settings.producer_registration_saved": "settings",
+  "settings.producer_registration_removed": "settings",
   // Marketing.
   "store.bonus_settings": "marketing",
   "store.affiliate_settings": "marketing",

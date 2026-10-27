@@ -151,6 +151,9 @@ export const HAND_WRITTEN_ONLY: readonly string[] = [
   "ui:reviews.checked.",
   // Wave 6 unit C2 (D321): the company approval emails, written by hand in the four languages.
   "email:approval.",
+  // Wave 7 unit H (D342): why a product is not sold in a country for want of a producer registration, and the schemes' names beside the
+  // numbers on the product page, until the legal review clears them.
+  "ui:producer.",
 ];
 
 export const isHandWrittenOnly = (key: string): boolean => HAND_WRITTEN_ONLY.some((prefix) => key.startsWith(prefix));

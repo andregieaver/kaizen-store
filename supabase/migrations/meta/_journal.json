@@ -3592,6 +3592,20 @@
       "when": 1793098896107,
       "tag": "20261027110136_bulk_market_availability",
       "breakpoints": true
+    },
+    {
+      "idx": 513,
+      "version": "7",
+      "when": 1793103115611,
+      "tag": "20261027121155_producer_registrations",
+      "breakpoints": true
+    },
+    {
+      "idx": 514,
+      "version": "7",
+      "when": 1793103149664,
+      "tag": "20261027121229_producer_registrations_sql",
+      "breakpoints": true
     }
   ]
 }
