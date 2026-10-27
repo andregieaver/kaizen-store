@@ -466,11 +466,13 @@ A1 availability (model, view, editor, CSV, cart, copies, tools); A2 rules (model
   - **What blocks.** `commerce.registration_gaps()` lists every product under a scheme with nothing valid in an active market on the store's own
     day (its time zone), each marked `recorded` when the store has any registration or exemption for that scheme and market;
     `commerce.registration_blocks()` is the recorded gaps. A registration covers its last day, so a lapsed one stops sales from the next day,
-    and one not begun stops them until its first. A scheme and country the store **never recorded anything for** is listed as a warning
-    (*No registration recorded*) and **still sold**: every new product is ticked as packaging by default (`emptyProduct()`), so blocking it
-    would have taken almost every store's goods off sale at deploy. Making the rule strict is one line (`registration_blocks()` without
-    `WHERE g.recorded`) once the default tick is settled (an owner's decision; the row stays partial until then). Taking a registration away
-    (for one entered by mistake) leaves nothing on record, so the country is warned of again.
+    and one not begun stops them until its first. *As first built*, a scheme and country the store never recorded anything for was only
+    warned of, because every new product was ticked as packaging by default. **The owner decided on 27 October 2026 to untick by default and
+    make the rule strict** (migration `producer_strict`): `emptyProduct()` and the content packs tick nothing, the seed's demo products carry
+    no scheme, and `registration_blocks()` is every gap, recorded or not, except in a store template or demo store (`is_template or starter`),
+    which is never held back and whose gaps the page lists under *No registration recorded*. The migration first unticked the schemes a
+    deploy would have stopped (templates' and demo stores', packaging everywhere and the `demo-` products of stores with nothing on record), so
+    nothing went off sale at deploy. Taking a registration away leaves nothing on record, so the country is held back again.
   - **Exemptions.** A row may say why no registration is needed in a country (`producer_registrations.exemption`, in the owner's words; no
     number or authority, never shown). It covers as a registration does: a furniture product sold in a country with no furniture scheme
     would otherwise have no way to be sold once anything is on record.

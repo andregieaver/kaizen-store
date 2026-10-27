@@ -55,10 +55,10 @@ export async function producerRegistrationsTool({ store }: Ctx) {
       products: g.products.length,
       named: g.products.slice(0, NAMED).map((p) => p.title),
     })),
-    no_registration_recorded: missing.filter((g) => !g.blocked).map((g) => ({ scheme: g.scheme, country: g.market, products: g.products.length })),
+    demo_only: missing.filter((g) => !g.blocked).map((g) => ({ scheme: g.scheme, country: g.market, products: g.products.length })),
     note:
-      "not_sold: a registration recorded for that scheme and country has ended or not begun, so the cart and checkout refuse its products there until a new one is valid. " +
-      "no_registration_recorded: nothing is recorded for that scheme and country; its products are still sold, and the owner may need to register (or record why none is needed).",
+      "not_sold: no registration or exemption covers that scheme and country today (none recorded, or the one recorded ended or has not begun), so the cart and checkout refuse its products there until one is valid; the owner registers, records why none is needed, or unticks the scheme in the product's editor. " +
+      "demo_only: a demo store or starting content, which is never held back.",
     admin: adminLink(store),
   };
 }

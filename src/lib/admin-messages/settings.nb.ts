@@ -360,14 +360,14 @@ export const settingsNb: SettingsMessages = {
   producer: {
     title: "Produsentansvar",
     description:
-      "Registreringene dine for emballasje, elektriske og elektroniske produkter, batterier og de andre ordningene, land for land. Når en registrering for en ordning er lagt inn i et land, selges produkter under den ordningen der bare mens en registrering gjelder: fra første til siste dag.",
+      "Registreringene dine for emballasje, elektriske og elektroniske produkter, batterier og de andre ordningene, land for land. Et produkt du krysser av for en ordning i produktredigeringen, selges i et land bare mens en registrering for ordningen der gjelder, fra første til siste dag, eller når du har skrevet hvorfor ingen trengs.",
     missingTitle: "Selges ikke nå",
     missingIntro:
-      "Registreringen som er lagt inn for disse landene, er utløpt eller har ikke begynt ennå, så kunder der kan ikke kjøpe disse produktene. Legg til den nye registreringen nedenfor; salget starter igjen på dens første dag.",
-    noneMissing: "Ingenting holdes tilbake: alle ordninger med en registrering lagt inn, er dekket i dag.",
+      "Ingen gyldig registrering dekker disse ordningene i disse landene i dag, så kunder der kan ikke kjøpe disse produktene. Legg inn registreringen nedenfor (salget starter på dens første dag), skriv hvorfor ingen trengs, eller fjern avkrysningen for ordningen i produktredigeringen, under Avgift, retur og gjenvinning.",
+    noneMissing: "Ingenting holdes tilbake: alle ordninger produktene dine er krysset av for, er dekket i dag.",
     unrecordedTitle: "Ingen registrering lagt inn",
     unrecordedIntro:
-      "Disse produktene hører under en ordning uten registrering lagt inn for landet. De selges fortsatt der. Er du registrert, legger du inn nummeret nedenfor; trengs det ingen registrering der, skriver du hvorfor. Et produkts ordninger velges i produktredigeringen, under Avgift, retur og gjenvinning.",
+      "Disse produktene hører under en ordning uten gyldig registrering for landet. En demobutikk holdes aldri tilbake, så de vises fortsatt der; en butikk laget fra den holdes tilbake til den legger inn sine egne.",
     unrecordedProducts: { one: "{n} produkt", many: "{n} produkter" },
     groupTitle: "{scheme} i {country}",
     products: { one: "{n} produkt selges ikke der", many: "{n} produkter selges ikke der" },

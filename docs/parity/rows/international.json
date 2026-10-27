@@ -858,14 +858,14 @@
       "checkedOn": "2026-10-02"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "partial"
     },
     "weight": 3,
-    "gap": "Built in wave 7 unit H (D342, docs/wave-7-storefront.md H as built): owners record registrations (scheme, country, number, authority, valid from and to) or an exemption on Settings, Producer responsibility, and tag products with schemes in the editor; commerce.registration_blocks() stops a sale in the cart (line status unregistered), when adding and in placeOrder() (problem unregistered) alike, from the day after a recorded registration ends or before one begins; staff see what is not sold and what has no registration recorded; numbers marked to show appear on the product page. What is left: a scheme and country with no registration ever recorded is only warned of and still sold (every new product is ticked as packaging by default, so blocking it would stop almost every store's sales; making the rule strict is one line once that default is decided), and the number is not on invoices (the invoice snapshot and its SQL twin are held equal by invoice-parity.test.ts and were left alone).",
-    "bucket": "A",
-    "wave": 7,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "An owner records producer-responsibility registrations (scheme, market, number, valid from and to) in the admin and tags products with schemes.",
       "A product under a scheme with no valid registration in a market cannot be bought there: it is refused in the cart and in placeOrder() with a plain reason, and staff see a list of what is blocked.",
@@ -889,7 +889,9 @@
         "src/components/admin/producer-registration-form.tsx",
         "src/server/cart.ts",
         "src/server/checkout.ts",
-        "src/components/product-parts.tsx"
+        "src/components/product-parts.tsx",
+        "supabase/migrations/20261027200756_producer_strict.sql",
+        "src/server/content-packs.ts"
       ],
       "tests": [
         "src/db/commerce.test.ts",
@@ -904,7 +906,14 @@
       "D12",
       "D342"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-27",
+        "from": "partial",
+        "to": "full",
+        "why": "D342, the owner's decision of 27 October 2026: products tick no scheme by default and every ticked scheme with no valid registration in a country stops the sale there (registration_blocks() without the recorded filter; templates and demo stores never block); the number shows on the product page. Read producer-registrations.ts and the migration, ran producer-registrations.int.test.ts, commerce.test.ts and checkout-kinds.int.test.ts (passed). The number on invoices is not done; the criteria ask for the product page or documents."
+      }
+    ]
   },
   {
     "id": "international.unit-price-indication",

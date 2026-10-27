@@ -253,8 +253,8 @@ stand-in is the only fake, and only it is told it is one.
   written only by `src/server/producer-registrations.ts` (Settings → Producer responsibility, `settings:*`; the AI manager's
   `save_producer_registration`, gate `public`, never automatic) after `checkRegistration()`, never copied. Whether a product is sold in a country
   for want of one is only the database's `commerce.registration_blocks()` (the gaps of `registration_gaps()` the store is on record for: a
-  registration covers its last day on the store's own day, so sales stop the next; a scheme and country with nothing ever recorded is only
-  warned of, since new products are ticked as packaging by default), read for a line by `commerce.line_unregistered()` in `getCart()` (status
+  registration covers its last day on the store's own day, so sales stop the next; nothing recorded blocks too, the owner's decision of
+  27 October 2026, so new products tick no scheme by default; a store template or demo store never blocks), read for a line by `commerce.line_unregistered()` in `getCart()` (status
   `unregistered`), `sellableQuantity()` and `placeOrder()` (problem `unregistered`), and by `blockedSchemes()` on the product page; never decide it
   again elsewhere, and a new way to put goods in a cart or an order asks it too (with a euro scenario). The numbers shown on product pages are
   the registrations with `show_number` valid today (`shownRegistrationNumbers()`, the safety part); shopper words are `m.producer`

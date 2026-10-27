@@ -538,7 +538,7 @@ export const productEn = {
     withdrawalHint: "Most products have no exclusion. Only choose one that clearly applies.",
     withdrawalDownloads: " Downloads are handled for you: shoppers agree at checkout that the right ends once the download is available.",
     schemes: "Recycling schemes this product falls under",
-    schemesHint: "Producer responsibility: you may need to register and pay a recycling fee in each country. Once a registration for a scheme is recorded under Settings, Producer responsibility, the product is sold in that country only while one is valid.",
+    schemesHint: "Producer responsibility: you may need to register and pay a recycling fee in each country. A ticked product is sold in a country only while a registration for the scheme there is valid, or you have recorded why none is needed, under Settings, Producer responsibility.",
     schemeNames: {
       packaging: "Packaging",
       electrical_equipment: "Electrical and electronic equipment",

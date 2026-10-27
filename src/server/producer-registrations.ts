@@ -83,7 +83,7 @@ export async function listRegistrations(storeId: string, runner: Executor = db()
 /**
  * What has no valid registration today, by scheme and country, with the products' titles in `locale` (else any): the store's active products
  * under a scheme with nothing valid in an active market, as `commerce.missing_registrations` lists them; a group is `blocked` (not sold there)
- * when the store has a registration on record for that scheme and country, else it is a registration never recorded (a warning).
+ * in every real store, and only listed in a store template or demo store.
  */
 export async function missingRegistrations(storeId: string, locale: string, runner: Executor = db()): Promise<MissingGroup[]> {
   const rows = await typedRows(

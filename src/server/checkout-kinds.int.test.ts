@@ -1596,13 +1596,13 @@ describe("a price worked out from another country's, in euro (D335 A.2)", () => 
 });
 
 /**
- * Producer responsibility (wave 7 unit H, D342), shown in euro: the notebook is ticked as packaging (as every new product is by default). With no
- * registration on record in Norway it is still sold (the owner is warned); once one is recorded and has ended (yesterday), the cart shows the line
- * as `unregistered` and blocks, adding is refused and checkout refuses it; a registration valid through today sells it at the same euro price, and
- * the cart, summary and order agree.
+ * Producer responsibility (wave 7 unit H, D342), shown in euro: the notebook is ticked as packaging. With no registration for Norway it is not
+ * sold there (adding is refused); a registration valid through today sells it; one that ended yesterday makes the cart show the line as
+ * `unregistered` and block, adding is refused and checkout refuses it; valid again, it is sold at the same euro price, and the cart, summary and
+ * order agree.
  */
 describe("a product under a producer responsibility scheme, in euro (D342)", () => {
-  it("is refused by the cart and checkout alike once the country's registration has lapsed, and sold at its price while one is valid", async () => {
+  it("is refused by the cart and checkout alike without a registration or once it has lapsed, and sold at its price while one is valid", async () => {
     const { saveRegistration, storeToday } = await import("./producer-registrations");
     const notebook = product["demo-notatbok"];
     const store = { id: storeId, keptMarkets: [{ code: "NO" }, { code: "SE" }, { code: "DK" }] };
@@ -1612,27 +1612,33 @@ describe("a product under a producer responsibility scheme, in euro (D342)", () 
         insert into commerce.product_schemes (store_id, product_id, scheme) values (${storeId}::uuid, ${notebook}::uuid, 'packaging') on conflict do nothing
       `);
       jar.clear();
+      // Nothing recorded for Norway: not sold there.
+      expect((await changeLine(shop(), variant["DEMO-NOTEBOOK-LINED"], 2, "add", null)).outcome).toBe("unavailable");
+
+      const today = await storeToday(storeId);
+      const yesterday = new Date(`${today}T00:00:00Z`);
+      yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+      const typed = { scheme: "packaging", market: "NO", kind: "registered", number: "NO-EMB-1", authority: "Miljødirektoratet", validFrom: "2020-01-01" };
+      // Valid through today: sold.
+      const valid = await saveRegistration(store, member.account.id, { ...typed, validTo: today });
+      expect(valid).toMatchObject({ ok: true });
+      const id = (valid as { id: string }).id;
       await add("DEMO-NOTEBOOK-LINED", 2);
       const before = await getCart(shop());
       expect(before.currency).toBe("EUR");
       expect(before.lines.map((l) => l.status)).toEqual(["ok"]);
       const price = before.lines[0].unitPriceMinor;
 
-      // A registration recorded that ended yesterday: not sold today.
-      const today = await storeToday(storeId);
-      const yesterday = new Date(`${today}T00:00:00Z`);
-      yesterday.setUTCDate(yesterday.getUTCDate() - 1);
-      const typed = { scheme: "packaging", market: "NO", kind: "registered", number: "NO-EMB-1", authority: "Miljødirektoratet", validFrom: "2020-01-01" };
-      const ended = await saveRegistration(store, member.account.id, { ...typed, validTo: yesterday.toISOString().slice(0, 10) });
-      expect(ended).toMatchObject({ ok: true });
+      // Ended yesterday: not sold today.
+      expect(await saveRegistration(store, member.account.id, { ...typed, validTo: yesterday.toISOString().slice(0, 10) }, id)).toMatchObject({ ok: true });
       const blocked = await getCart(shop());
       expect(blocked.lines.map((l) => l.status)).toEqual(["unregistered"]);
       expect((await cartSummary(shop(), blocked)).blocked).toBe(true);
       expect(await startCheckout({ ...shop(), storeSlug: slug }, cartId(), origin, "Frakt", {})).toMatchObject({ ok: false, problem: "unregistered" });
       expect((await changeLine(shop(), variant["DEMO-NOTEBOOK-LINED"], 1, "add", null)).outcome).toBe("unavailable");
 
-      // Valid through today: sold at the same price shown in euro, and the order is what the summary said.
-      expect(await saveRegistration(store, member.account.id, { ...typed, validTo: today }, (ended as { id: string }).id)).toMatchObject({ ok: true });
+      // Valid through today again: sold at the same price shown in euro, and the order is what the summary said.
+      expect(await saveRegistration(store, member.account.id, { ...typed, validTo: today }, id)).toMatchObject({ ok: true });
       const back = await getCart(shop());
       expect(back.lines.map((l) => [l.status, l.unitPriceMinor])).toEqual([["ok", price]]);
       const summary = await cartSummary(shop(), back);
@@ -1643,6 +1649,7 @@ describe("a product under a producer responsibility scheme, in euro (D342)", () 
     } finally {
       view = no;
       await db().execute(sql`delete from commerce.producer_registrations where store_id = ${storeId}::uuid`);
+      await db().execute(sql`delete from commerce.product_schemes where store_id = ${storeId}::uuid and product_id = ${notebook}::uuid`);
     }
   });
 });

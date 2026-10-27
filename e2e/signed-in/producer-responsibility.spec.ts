@@ -4,10 +4,10 @@ import { testDb } from "../db";
 import { E2E_STORE, OWNER } from "./accounts";
 
 /**
- * Producer responsibility as the owner meets it (wave 7 unit H, D342; row international.packaging-and-epr-registers): a product under a
- * scheme (tyres) with no registration recorded in Norway is warned of and still sold; the owner adds the Norwegian registration from that warning,
- * with a last day in the past, and the page then says the product is not sold there now; changed to open-ended, it is valid and nothing is held
- * back. The rules are held by producer-registrations.test.ts, producer-registrations.int.test.ts and the euro scenario in
+ * Producer responsibility as the owner meets it (wave 7 unit H, D342; row international.packaging-and-epr-registers): a product ticked for
+ * a scheme (tyres) with no registration in Norway is not sold there (the owner's decision of 27 October 2026); the owner adds the Norwegian
+ * registration from that list, with a last day in the past, and the product is still not sold there; changed to open-ended, it is valid and
+ * nothing is held back. The rules are held by producer-registrations.test.ts, producer-registrations.int.test.ts and the euro scenario in
  * checkout-kinds.int.test.ts; this holds the screen.
  */
 
@@ -57,16 +57,16 @@ test.afterAll(async () => {
   }
 });
 
-test("warns of a scheme with no registration recorded, and stops sales once a recorded registration has ended", async ({ page }) => {
+test("holds back a ticked scheme with no valid registration, recorded or not, until one is valid", async ({ page }) => {
   await page.goto(address());
   await expect(page.getByRole("heading", { name: "Producer responsibility", level: 1 })).toBeVisible();
-  // Nothing on record: warned of, still sold.
-  await expect(page.getByTestId("producer-nothing-blocked")).toBeVisible();
-  const warnings = page.getByRole("list", { name: "No registration recorded" });
-  const norway = warnings.getByRole("listitem").filter({ hasText: "Tyres in Norway" });
+  // Nothing on record: not sold in Norway.
+  const held = page.getByRole("list", { name: "Not sold now" });
+  const norway = held.getByRole("listitem").filter({ hasText: "Tyres in Norway" });
   await expect(norway).toContainText(product.title);
+  await expect(page.getByRole("list", { name: "No registration recorded" })).toHaveCount(0);
 
-  // The owner adds Norway's registration from the warning, with a last day in the past.
+  // The owner adds Norway's registration from the list, with a last day in the past.
   // The link names the scheme and the country; the form is drawn anew for them (its key), so the test opens the address and fills
   // the form it lands on rather than one a client navigation is about to replace.
   const add = norway.getByRole("link", { name: "Add the registration" });
@@ -81,7 +81,7 @@ test("warns of a scheme with no registration recorded, and stops sales once a re
   await page.getByRole("button", { name: "Save registration" }).click();
   await expect(page.getByText("Saved.")).toBeVisible();
 
-  // Now on record and ended: not sold in Norway now.
+  // On record but ended: still not sold in Norway now.
   await page.goto(address());
   const blocked = page.getByRole("list", { name: "Not sold now" });
   await expect(blocked.getByRole("listitem").filter({ hasText: "Tyres in Norway" })).toContainText(product.title);
@@ -89,13 +89,13 @@ test("warns of a scheme with no registration recorded, and stops sales once a re
   const row = registrations.getByRole("listitem").filter({ hasText: "NO-EMB-E2E-1" });
   await expect(row).toContainText("Ended");
 
-  // Changed to open-ended: valid, and nothing is held back.
+  // Changed to open-ended: valid, and the product is sold in Norway again (the store's other countries have none, so they still hold it back).
   await row.getByRole("link", { name: "Change" }).click();
   await expect(page.getByRole("heading", { name: "Change a registration" })).toBeVisible();
   await page.getByLabel("Valid to (optional)").fill("");
   await page.getByRole("button", { name: "Save registration" }).click();
   await expect(page.getByText("Saved.")).toBeVisible();
   await page.goto(address());
-  await expect(page.getByTestId("producer-nothing-blocked")).toBeVisible();
+  await expect(page.getByRole("list", { name: "Not sold now" }).getByRole("listitem").filter({ hasText: "Tyres in Norway" })).toHaveCount(0);
   await expect(page.getByRole("list", { name: "Registrations" }).getByRole("listitem").filter({ hasText: "NO-EMB-E2E-1" })).toContainText("Valid");
 });

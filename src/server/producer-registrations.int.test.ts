@@ -33,9 +33,10 @@ type Row = Record<string, unknown>;
 /**
  * Producer responsibility (wave 7 unit H, D342, `docs/wave-7-storefront.md` section 4, H): registrations written only through the page's writer,
  * one store never reaching another's; what has no valid registration listed through the app's reader of `commerce.missing_registrations`; a
- * scheme and country the store never recorded anything for warned of and still sold; one with a registration on record sold only while one
- * covers the store's day (its last day included, blocked from the next, and before its first), refused alike by the cart and `placeOrder()`;
- * an exemption covering as a registration does; the numbers shown on the product page; and the AI manager going through the same writer.
+ * ticked scheme sold in a country only while a registration covers the store's day (none recorded included, the owner's decision of
+ * 27 October 2026; its last day included, blocked from the next, and before its first), refused alike by the cart and `placeOrder()`; an
+ * exemption covering as a registration does; the numbers shown on the product page; the AI manager going through the same writer; and a
+ * demo store never held back.
  */
 
 let fx: Fixture;
@@ -49,7 +50,7 @@ beforeAll(async () => {
   other = await makeStore("producer-other");
   const [row] = await db().execute<Row>(sql`select product_id, id from commerce.product_variants where store_id = ${fx.storeId}::uuid and sku = ${MUG}`);
   mug = { productId: String(row.product_id), variantId: String(row.id) };
-  // The mug is packaging, as the owner ticks it in the product editor (the demo store's mug already is).
+  // The mug is packaging, as the owner ticks it in the product editor (nothing is ticked by default).
   await db().execute(sql`
     insert into commerce.product_schemes (store_id, product_id, scheme) values (${fx.storeId}::uuid, ${mug.productId}::uuid, 'packaging') on conflict do nothing
   `);
@@ -83,13 +84,14 @@ const gapsOf = async (f: Fixture) =>
   (await missingRegistrations(f.storeId, "nb-NO")).filter((g) => g.products.some((p) => p.id === mug.productId)).map((g) => `${g.scheme}:${g.market}:${g.blocked ? "blocked" : "warned"}`);
 
 describe("a scheme the store never recorded a registration for", () => {
-  it("is listed as a warning in each of the store's countries, through the app's reader, only for its own store, and still sold", async () => {
-    expect(await gapsOf(fx)).toEqual(expect.arrayContaining(["packaging:NO:warned", "packaging:SE:warned", "packaging:DK:warned"]));
+  it("is not sold in any of the store's countries, listed through the app's reader, only for its own store", async () => {
+    expect(await gapsOf(fx)).toEqual(expect.arrayContaining(["packaging:NO:blocked", "packaging:SE:blocked", "packaging:DK:blocked"]));
+    expect(await gapsOf(fx)).not.toContain("packaging:NO:warned");
     expect(await gapsOf(other)).toEqual([]);
-    expect(await blockedSchemes(fx.storeId, mug.productId, "NO")).toEqual([]);
+    expect(await blockedSchemes(fx.storeId, mug.productId, "NO")).toEqual(["packaging"]);
     jar.clear();
-    expect(await changeLine(await shop(), mug.variantId, 1, "add")).toMatchObject({ outcome: "added" });
-    expect((await getCart(await shop())).lines.map((l) => l.status)).toEqual(["ok"]);
+    expect(await changeLine(await shop(), mug.variantId, 1, "add")).toMatchObject({ outcome: "unavailable" });
+    await expect(paidOrder(fx, [[MUG, 1]])).rejects.toThrow(/placeOrder: unregistered/);
   });
 });
 
@@ -106,10 +108,15 @@ describe("the writer", () => {
   it("stops sales the day after a recorded registration ends, in the cart and placeOrder() alike, and before one begins", async () => {
     const store = await storeOf(fx);
     const { today, yesterday, tomorrow } = await days(fx);
-    // Ended yesterday: not sold today. The line in the cart says why and blocks, adding is refused, and placeOrder() refuses it.
-    const saved = await saveRegistration(store, fx.ownerId, registration({ validTo: yesterday }));
+    // Valid: sold, and the mug goes in the cart.
+    const saved = await saveRegistration(store, fx.ownerId, registration());
     expect(saved).toMatchObject({ ok: true });
     const id = (saved as { id: string }).id;
+    expect(await changeLine(await shop(), mug.variantId, 1, "add")).toMatchObject({ outcome: "added" });
+    expect((await getCart(await shop())).lines.map((l) => l.status)).toEqual(["ok"]);
+
+    // Ended yesterday: not sold today. The line in the cart says why and blocks, adding is refused, and placeOrder() refuses it.
+    expect(await saveRegistration(store, fx.ownerId, registration({ validTo: yesterday }), id)).toMatchObject({ ok: true, id });
     expect(await blockedSchemes(fx.storeId, mug.productId, "NO")).toEqual(["packaging"]);
     expect(await gapsOf(fx)).toContain("packaging:NO:blocked");
     const cart = await getCart(await shop());
@@ -117,8 +124,8 @@ describe("the writer", () => {
     expect((await cartSummary(await shop(), cart)).blocked).toBe(true);
     expect(await changeLine(await shop(), mug.variantId, 1, "add")).toMatchObject({ outcome: "unavailable" });
     await expect(paidOrder(fx, [[MUG, 1]])).rejects.toThrow(/placeOrder: unregistered/);
-    // Sweden has nothing on record: still sold there.
-    expect(await blockedSchemes(fx.storeId, mug.productId, "SE")).toEqual([]);
+    // Sweden has nothing on record: not sold there either.
+    expect(await blockedSchemes(fx.storeId, mug.productId, "SE")).toEqual(["packaging"]);
 
     // Begins tomorrow: not sold before its first day.
     expect(await saveRegistration(store, fx.ownerId, registration({ validFrom: tomorrow }), id)).toMatchObject({ ok: true, id });
@@ -144,10 +151,10 @@ describe("the writer", () => {
     const store = await storeOf(fx);
     expect(await shownRegistrationNumbers(db(), fx.storeId, mug.productId, "NO")).toEqual([{ scheme: "packaging", number: "NO-EMB-123", authority: "Miljødirektoratet" }]);
     expect(await shownRegistrationNumbers(db(), fx.storeId, mug.productId, "SE")).toEqual([]);
-    // Sweden: no registration needed, in the owner's words; the warning goes, and nothing is shown.
+    // Sweden: no registration needed, in the owner's words; the mug is sold there again, and nothing is shown.
     const exempt = await saveRegistration(store, fx.ownerId, { scheme: "packaging", market: "SE", kind: "exempt", exemption: "Below the threshold.", number: "ignored", validFrom: "2020-01-01" });
     expect(exempt).toMatchObject({ ok: true });
-    expect(await gapsOf(fx)).not.toContain("packaging:SE:warned");
+    expect(await gapsOf(fx)).not.toContain("packaging:SE:blocked");
     expect(await blockedSchemes(fx.storeId, mug.productId, "SE")).toEqual([]);
     const kept = (await listRegistrations(fx.storeId)).find((r) => r.market === "SE")!;
     expect(kept).toMatchObject({ kind: "exempt", number: null, authority: null, exemption: "Below the threshold.", showNumber: false });
@@ -168,10 +175,11 @@ describe("the writer", () => {
     expect(logged.every((l) => l.area === "settings" && !String(l.details).includes("NO-EMB-123"))).toBe(true);
   });
 
-  it("takes a registration away: nothing is on record for that country again, so it is warned of", async () => {
+  it("takes a registration away: nothing covers that country again, so it is not sold there", async () => {
     const inNorway = (await listRegistrations(fx.storeId)).find((r) => r.market === "NO")!;
     expect(await removeRegistration(fx.storeId, fx.ownerId, inNorway.id)).toBe(true);
-    expect(await gapsOf(fx)).toContain("packaging:NO:warned");
+    expect(await gapsOf(fx)).toContain("packaging:NO:blocked");
+    expect(await blockedSchemes(fx.storeId, mug.productId, "NO")).toEqual(["packaging"]);
   });
 });
 
@@ -179,21 +187,35 @@ describe("the AI manager's producer registrations", () => {
   it("reads what is registered and missing, refuses before a yes what the page refuses, and saves through the page's writer", async () => {
     const c = { ...(await ownerOf(fx)), invalidate: () => {} };
     const read = (await runOwnerTool(c, "producer_registrations", {})) as {
-      not_sold: unknown[];
-      no_registration_recorded: { scheme: string; country: string }[];
+      not_sold: { scheme: string; country: string }[];
+      demo_only: unknown[];
       registrations: { country: string; kind: string }[];
     };
-    expect(read.not_sold).toEqual([]);
-    expect(read.no_registration_recorded).toContainEqual(expect.objectContaining({ scheme: "packaging", country: "NO" }));
+    expect(read.not_sold).toContainEqual(expect.objectContaining({ scheme: "packaging", country: "NO" }));
+    expect(read.not_sold.some((g) => g.country === "SE")).toBe(false);
+    expect(read.demo_only).toEqual([]);
     expect(read.registrations.map((r) => [r.country, r.kind])).toEqual([["SE", "exempt"]]);
     await expect(preflightOwnerTool(c, "save_producer_registration", { scheme: "packaging", country: "NO" })).rejects.toThrow(/registration number/);
     await expect(preflightOwnerTool(c, "save_producer_registration", { scheme: "packaging", country: "FR", number: "1", authority: "A" })).rejects.toThrow(/store's countries/);
     const ok = { scheme: "packaging", country: "no", number: "NO-EMB-999", authority: "Miljødirektoratet", valid_from: "2020-01-01", valid_to: "2020-12-31" };
     await expect(preflightOwnerTool(c, "save_producer_registration", ok)).resolves.toBeUndefined();
-    // A registration that ended long ago: once on record, Norway's packaging is not sold until a new one is valid.
+    // A registration that ended long ago: Norway's packaging is still not sold until a valid one is recorded.
     const done = (await runOwnerTool(c, "save_producer_registration", ok)) as { done: string; still_not_sold: { country: string }[] };
     expect(done.done).toMatch(/recorded/);
     expect(done.still_not_sold.some((g) => g.country === "NO")).toBe(true);
     expect(await blockedSchemes(fx.storeId, mug.productId, "NO")).toEqual(["packaging"]);
+  });
+});
+
+describe("a demo store", () => {
+  it("is never held back: its ticked products are listed, not blocked", async () => {
+    const demo = await makeStore("producer-demo");
+    const [row] = await db().execute<Row>(sql`select product_id from commerce.product_variants where store_id = ${demo.storeId}::uuid and sku = ${MUG}`);
+    await db().execute(sql`insert into commerce.product_schemes (store_id, product_id, scheme) values (${demo.storeId}::uuid, ${String(row.product_id)}::uuid, 'packaging')`);
+    expect(await blockedSchemes(demo.storeId, String(row.product_id), "NO")).toEqual(["packaging"]);
+    await db().execute(sql`update commerce.stores set starter = true where id = ${demo.storeId}::uuid`);
+    expect(await blockedSchemes(demo.storeId, String(row.product_id), "NO")).toEqual([]);
+    const listed = (await missingRegistrations(demo.storeId, "nb-NO")).find((g) => g.scheme === "packaging" && g.market === "NO");
+    expect(listed).toMatchObject({ blocked: false });
   });
 });

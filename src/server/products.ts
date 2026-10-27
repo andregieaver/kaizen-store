@@ -258,7 +258,8 @@ export function emptyProduct(context: EditorContext): ProductInput {
     priceBreaks: [],
     taxCode: GENERAL_TAX_CODE,
     withdrawalExclusion: "none",
-    schemes: ["packaging"],
+    // No scheme until the owner ticks one (D342, the owner's decision of 27 October 2026): a tick with no registration stops the sale.
+    schemes: [],
     manufacturer: context.operators[0] ? { id: context.operators[0].id } : null,
     responsiblePerson: null,
     categories: [],

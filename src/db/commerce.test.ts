@@ -981,17 +981,18 @@ describe("template compliance data", () => {
     // Norway is now covered; Sweden's registration has expired; another
     // store's German registration does not count for this one.
     expect(await missing()).toEqual(["DE", "DK", "SE"]);
-    // Only Sweden stops sales (D342): a registration is on record there and none is valid; Germany and Denmark have none on record.
+    // Every gap stops sales (D342, the owner's decision of 27 October 2026): a ticked scheme with no valid registration, whether one was
+    // ever recorded or not.
     const blocks = await db.query<{ market_code: string }>(
       "select market_code from commerce.registration_blocks($1, null, $2) order by market_code",
       [store, productId],
     );
-    expect(blocks.rows.map((r) => r.market_code)).toEqual(["SE"]);
+    expect(blocks.rows.map((r) => r.market_code)).toEqual(["DE", "DK", "SE"]);
     const flagged = await db.query<{ market_code: string; blocked: boolean }>(
       "select market_code, blocked from commerce.missing_registrations where store_id = $1 and handle = $2 order by market_code",
       [store, handle],
     );
-    expect(flagged.rows.map((r) => [r.market_code.trim(), r.blocked])).toEqual([["DE", false], ["DK", false], ["SE", true]]);
+    expect(flagged.rows.map((r) => [r.market_code.trim(), r.blocked])).toEqual([["DE", true], ["DK", true], ["SE", true]]);
   });
 });
 

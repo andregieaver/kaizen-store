@@ -364,14 +364,14 @@ export const settingsEn = {
   producer: {
     title: "Producer responsibility",
     description:
-      "Your registrations for packaging, electrical equipment, batteries and the other schemes, country by country. Once a registration for a scheme is recorded in a country, products under that scheme are sold there only while one is valid: from its first day through its last.",
+      "Your registrations for packaging, electrical equipment, batteries and the other schemes, country by country. A product you tick for a scheme in its editor is sold in a country only while a registration for that scheme there is valid, from its first day through its last, or you have recorded why none is needed.",
     missingTitle: "Not sold now",
     missingIntro:
-      "The registration recorded for these countries has ended or not begun yet, so shoppers there cannot buy these products. Add the new registration below; sales start again on its first day.",
-    noneMissing: "Nothing is held back: every scheme with a registration recorded is covered today.",
+      "No valid registration covers these schemes in these countries today, so shoppers there cannot buy these products. Add the registration below (sales start on its first day), record why none is needed, or untick the scheme in the product's editor, under Tax, returns and recycling.",
+    noneMissing: "Nothing is held back: every scheme your products are ticked for is covered today.",
     unrecordedTitle: "No registration recorded",
     unrecordedIntro:
-      "These products are under a scheme with no registration recorded for the country. They are still sold there. If you are registered, add the number below; if none is needed there, record why. A product's schemes are chosen in its editor, under Tax, returns and recycling.",
+      "These products are under a scheme with no valid registration for the country. A demo store is never held back, so they are still shown there; a store made from it is, until it records its own.",
     unrecordedProducts: { one: "{n} product", many: "{n} products" },
     groupTitle: "{scheme} in {country}",
     products: { one: "{n} product not sold there", many: "{n} products not sold there" },
