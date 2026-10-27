@@ -728,4 +728,29 @@ export const settingsNb: SettingsMessages = {
       testAlt: "Et testbilde: en kaffekopp på et bord",
     },
   },
+  customs: {
+    title: "Toll og importmva.",
+    description:
+      "Varer du sender til et land utenfor ditt tollområde, kan bli ilagt toll og importmva. der. For hvert slikt land velger du hvem som betaler: kunden til transportøren ved levering, eller sammen med bestillingen i kassen.",
+    dispatchFrom: "Varene dine sendes fra {country}.",
+    dispatchMissing: "Oppgi på siden Avgift hvor varene sendes fra, så vi vet hvilke land som er utenfor tollområdet ditt.",
+    none: "Ingen av landene dine er utenfor tollområdet varene sendes fra, så det er ikke noe å velge.",
+    choice: "Hvem betaler toll og importmva.",
+    dap: "Kunden betaler transportøren ved levering (DAP)",
+    dapHelp: "Handlekurven og bestillingen viser et anslag over hva transportøren kan kreve inn.",
+    ddp: "Innkreves i kassen sammen med bestillingen (DDP)",
+    ddpHelp: "Kunden betaler et anslag sammen med bestillingen, og du gjør opp med tollmyndighetene. Alle varer som sendes dit, må ha HS-kode.",
+    vatScheme: "Jeg er registrert for å kreve inn landets mva. i kassen (som VOEC i Norge)",
+    notInTable: "Satstabellen vår dekker ikke dette landet ennå: kundene får vite at det kan komme toll ved levering, og en bestilling med toll innkrevd i kassen kan ikke betales.",
+    missingHs: {
+      one: "{n} vare mangler HS-kode. Den kan ikke kjøpes med toll innkrevd i kassen før den har en.",
+      many: "{n} varer mangler HS-kode. De kan ikke kjøpes med toll innkrevd i kassen før de har en.",
+    },
+    estimateNote: "Alle beløp er anslag ut fra plattformens satstabell, med kilde for hver sats. Det er tollmyndighetene som avgjør hva som skal betales. Dette er ikke tollrådgivning.",
+    problems: {
+      not_found: "Dette landet er ikke lenger ett av butikkens land.",
+      invalid: "Velg hvem som betaler.",
+      no_border: "Varer som sendes til dette landet, krysser ingen tollgrense, så det er ikke noe å kreve inn.",
+    },
+  },
 };

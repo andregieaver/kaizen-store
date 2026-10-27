@@ -7,6 +7,7 @@ import { db } from "@/db/client";
 import { CHECKOUT_MINUTES, stripeLocale } from "@/lib/checkout";
 import { formatMoney } from "@/lib/money";
 import { marketPath, storeOrigin } from "@/lib/paths";
+import { customsText } from "@/lib/customs-text";
 import { t } from "@/lib/i18n";
 import { saleFee, type PaymentModeName } from "@/lib/stripe-account";
 import type { PlanInterval } from "@/lib/subscriptions";
@@ -191,8 +192,12 @@ export async function openPaymentSession(
     select legal_name, organisation_number from commerce.stores where id = ${shop.storeId}::uuid
   `);
   const feeBps = await storeFeeBps(shop.storeId);
+  // Duties and import VAT collected at checkout (DDP, D343) are passed on to customs, not sold: a line of their own, and no fee is taken on them.
+  const duties = order.dutiesMinor ?? 0;
+  const dutiesLine =
+    duties > 0 ? [{ quantity: 1, price_data: { currency: order.currency.toLowerCase(), unit_amount: duties, product_data: { name: customsText(shop.market.lang).dutiesLine } } }] : [];
   // Kaizen's fee is on what is paid through Stripe; the rest is paid at the venue (D66).
-  const kaizenFee = saleFee(order.dueNowMinor, feeBps);
+  const kaizenFee = saleFee(order.dueNowMinor - duties, feeBps);
   // On a host's charge, the store's commission rides in the application fee, to be sent on to the store (D71).
   const commission = commissionOf(order.dueNowMinor, commissionBps);
   const fee = commission > 0 ? Math.min(order.dueNowMinor, (kaizenFee ?? 0) + commission) : kaizenFee;
@@ -276,6 +281,7 @@ export async function openPaymentSession(
                   },
                 },
               }))
+              .concat(dutiesLine)
           : [
               ...order.lines.map((line) => ({
                 quantity: line.quantity,
@@ -287,6 +293,7 @@ export async function openPaymentSession(
                 },
               })),
               ...subscriptionShipping(order, currency, shippingLabel),
+              ...dutiesLine,
             ],
         ...(order.subscription
           ? // A subscription (D25): Stripe Billing on the store's account charges

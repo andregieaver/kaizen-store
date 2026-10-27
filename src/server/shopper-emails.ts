@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import { formatBookingTime } from "@/lib/booking-slots";
+import { customsText, orderCustomsSentence } from "@/lib/customs-text";
 import { bookingWhen, isRange } from "@/lib/booking-text";
 import { discountNote } from "@/lib/customer-tiers";
 import { hasGiftText } from "@/lib/gift";
@@ -316,6 +317,8 @@ export async function sendOrderConfirmation(
     ...(order.lines.some((line) => line.backorder) ? [{ type: "paragraph" as const, text: backorderText(order, m) }] : []),
     // Reverse charge or IOSS (D157): the statement, with both VAT numbers or the IOSS number. The shopper's own email.
     ...[orderVatParagraph(order.locale.split("-")[0], order)].flatMap((vat) => (vat ? [{ type: "paragraph" as const, text: vat }] : [])),
+    // Customs and duties (D343): what was paid at checkout (DDP), or that the recipient pays the carrier (DAP) with the estimate. Hand-written words.
+    ...[orderCustomsSentence(order.customs, customsText(order.locale), money)].flatMap((customs) => (customs ? [{ type: "paragraph" as const, text: customs }] : [])),
     // The credits this order earned (D130), once it is paid: when they can be used.
     ...[orderBonusEarned(text, order.bonus, money, (iso) => new Date(iso).toLocaleDateString(market.locale, { dateStyle: "long" }))].flatMap((earned) =>
       earned ? [{ type: "paragraph" as const, text: earned }] : [],

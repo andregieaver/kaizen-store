@@ -243,6 +243,23 @@ stand-in is the only fake, and only it is told it is one.
   again elsewhere, and a new way to put goods in a cart or an order asks it too (with a euro scenario). The numbers shown on product pages are
   the registrations with `show_number` valid today (`shownRegistrationNumbers()`, the safety part); shopper words are `m.producer`
   (`HAND_WRITTEN_ONLY`, for legal review). The invoice does not carry the number yet.
+- **Customs and duties (wave 7 unit I, D343, `docs/wave-7-storefront.md` I as built)**: duty rates are the platform's own table
+  (`commerce.duty_rates`: per destination country or `EU` and HS heading prefix, a rate in basis points, an origin's preference, a base row's
+  duty and VAT-at-sale thresholds per consignment or item, a fixed amount per sub-heading, the import VAT rate where it differs, dates, `applies_to`
+  a VAT scheme (IOSS, VOEC) or not, the source address, `verified`), written only by `src/server/duty-rates.ts` (platform admins, audited,
+  `/admin/platform/duty-rates`); never add a rate without the address it was read from. The estimate is only `dutyEstimate()` (`src/lib/duties.ts`,
+  BigInt, half up per line; a line without an HS code, a heading with no rate or an amount with no rate gives no estimate and its reason, never
+  zero; no estimate where nothing crosses a customs border) through `loadCustomsFacts()`/`decideCustoms()` (`src/server/customs.ts`), which
+  `cartSummary()` and `placeOrder()` both call on the tax decision's lines and shipping. A store's choice per country is `commerce.customs_settings`
+  (DAP, no row, by default; DDP collects at checkout), written only by `saveCustomsSetting()` (Settings → Duties and import VAT, `settings:*`),
+  never copied. What DDP collects is `orders.duties_minor`, OUTSIDE `total_minor` (so the invoice, VAT reports and every sales figure are
+  untouched): the payment is the total plus it (`PlacedOrder.dutiesMinor` in `dueNowMinor`, a Stripe line of its own, no sale fee on it, never paid
+  by a gift card); a subscription, a host's listing, a venue part or payment terms fall back to DAP; DDP with no estimate is refused (`customs`).
+  The order keeps `orders.customs` (`OrderCustoms`: who pays, the estimate, its sources), shown on the order page and the confirmation by
+  `orderCustomsSentence()`. Shopper words are `src/lib/customs-text.ts` (hand-written nb, sv, da, en, for legal review, never in the AI catalogue).
+  A carrier's `book()` asks `bookingCustomsProblem()` first and refuses a parcel across a customs border without its lines (`BookingRequest.customs`,
+  `bookingCustomsFor()`); Bring then declares them to its Customs API (`customsDeclarationBody()`), a refusal said and the booking kept. A new money
+  read here needs a euro case in `checkout-kinds.int.test.ts`.
 - **Prices worked out per country (wave 7 unit A2, D335, `docs/wave-7-storefront.md` A.2)**: a market may take its prices from another of the
   store's by a rule (`commerce.market_price_rules`: base, percentage, `net` or `gross`, rounding step, ending; never chained, by trigger and
   `ruleProblem()`), worked out only by `derivedPrice()` (`src/lib/market-prices.ts`, BigInt) and written only by `src/server/market-prices.ts`

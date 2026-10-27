@@ -90,6 +90,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
     "Invoicing switch and footer note (D159); a copy starts enabled with no start date, and the invoice and credit note series are never copied.",
   ),
   payment_providers: settings("The provider's switches (on, invoices for orders); the new store starts in test mode."),
+  customs_settings: never("A store's customs choices per country (D343): whether it collects duties at checkout and its registration to collect a country's VAT (VOEC) are the company's: a copy starts with DAP everywhere."),
   producer_registrations: never("Producer responsibility registrations (D342) are the company's, registered with an authority for it: a copy starts with none, and its products under a scheme wait for its own."),
   saved_parts: settings(
     "The store's saved rows, columns and components, as private ones (what was shared stays the original's to share).",

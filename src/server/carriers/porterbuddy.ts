@@ -13,7 +13,7 @@ import {
   porterbuddyHost,
   porterbuddyProblem,
 } from "@/lib/porterbuddy";
-import type { CarrierContext, ShippingAddress, ShippingCarrierAdapter } from "@/lib/shipping-carriers";
+import { bookingCustomsProblem, type CarrierContext, type ShippingAddress, type ShippingCarrierAdapter } from "@/lib/shipping-carriers";
 
 /**
  * Porterbuddy's connection (D137), on the store's own API key: availability gives the delivery windows with their prices
@@ -99,6 +99,9 @@ export function createPorterbuddyAdapter(fetcher: Fetch = fetch): ShippingCarrie
     },
 
     async book(context, request) {
+      // These services stay inside Norway; a consignment that crosses a customs border is never booked without its customs lines (D343).
+      const missingCustoms = bookingCustomsProblem(request);
+      if (missingCustoms) throw new Error(missingCustoms);
       const problems = orderProblems(request);
       if (problems.length > 0) throw new Error(problems[0]);
       const answer = await call(fetcher, `${host(context)}/order`, {

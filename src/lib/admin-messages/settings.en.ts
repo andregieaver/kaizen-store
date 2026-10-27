@@ -734,6 +734,32 @@ export const settingsEn = {
       testAlt: "A test picture: a coffee cup on a table",
     },
   },
+  /** Customs and duties (wave 7 unit I, D343): who pays duties and import VAT in each country the goods cross a customs border into. */
+  customs: {
+    title: "Duties and import VAT",
+    description:
+      "Goods you send to a country outside your customs area may owe duties and import VAT there. For each such country, choose who pays them: your customer to the carrier on delivery, or with the order at checkout.",
+    dispatchFrom: "Your goods are sent from {country}.",
+    dispatchMissing: "Say where your goods are sent from on the Tax page, so we know which countries are outside your customs area.",
+    none: "None of your countries is outside the customs area your goods are sent from, so there is nothing to choose.",
+    choice: "Who pays duties and import VAT",
+    dap: "Your customer pays the carrier on delivery (DAP)",
+    dapHelp: "The cart and the order show an estimate of what the carrier may collect.",
+    ddp: "Collected at checkout with the order (DDP)",
+    ddpHelp: "Your customer pays an estimate with the order and you settle with customs. Every product sent there needs its HS code.",
+    vatScheme: "I am registered to collect this country's VAT at checkout (such as VOEC in Norway)",
+    notInTable: "Our rates table does not cover this country yet: customers are told duties may be charged on delivery, and a checkout with duties collected can't be paid.",
+    missingHs: {
+      one: "{n} product has no HS code. It can't be bought with duties collected at checkout until it has one.",
+      many: "{n} products have no HS code. They can't be bought with duties collected at checkout until they have one.",
+    },
+    estimateNote: "Every amount is an estimate from the platform's rates table, each rate with its source. Customs decides what is due. This is not customs advice.",
+    problems: {
+      not_found: "This country is no longer one of the store's.",
+      invalid: "Choose who pays.",
+      no_border: "Goods sent to this country cross no customs border, so there is nothing to collect.",
+    },
+  },
 };
 
 export type SettingsMessages = Widen<typeof settingsEn>;

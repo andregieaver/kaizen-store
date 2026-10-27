@@ -541,6 +541,14 @@ export const OWNER_TOOLS = [
     "public",
   ),
   tool(
+    "customs_duties",
+    "Customs and duties (D343) for one of the store's countries, as on Settings, Customs and duties: where the goods are sent from, whether they cross a customs border into it, who pays duties and import VAT there (DDP: collected at checkout with the order; DAP: the recipient pays the carrier on delivery, the default), and for its products (all active ones, or those named by handle, at most 30) each one's HS code and origin and an estimate of what one of it at its current price there pays in duty and import VAT, or why there is none (missing_hs: no HS code). Read-only. Every amount is an estimate from the platform's rates table: say so, and never give a rate or an amount the tool did not.",
+    z.object({
+      country: z.string().trim().length(2).describe("The country, by code (GB, NO, US)."),
+      products: z.array(z.string().trim().min(1).max(200)).max(30).optional().describe("Product handles; left out, the store's active products."),
+    }),
+  ),
+  tool(
     "producer_registrations",
     "The store's producer responsibility (D342), as on Settings, Producer responsibility: its registrations per scheme (packaging, electrical_equipment, batteries, textiles, furniture, tyres) and country, with number, authority, valid from and to, state today and whether the number shows on product pages, or why none is needed there; what is not sold today (a registration recorded for a scheme and country ended or has not begun: its products cannot be bought there, the cart and checkout refuse them, from the day after the last one ends) and what has no registration recorded (still sold; the owner may need to register). Read-only. Add or change one with save_producer_registration (the owner's yes first).",
     z.object({}),

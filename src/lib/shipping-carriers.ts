@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { crossesBorder, HS_CODE } from "./duties";
+
 /**
  * Shipping carriers (D133): the carriers a store will be able to connect from Integrations, prepared before their
  * connections exist. A store saves its own agreement with a carrier here (customer number, API access; secrets are
@@ -291,7 +293,58 @@ export type BookingRequest = {
   /** The window the shopper chose, with the token the carrier gave for it (D137). */
   window?: DeliveryWindow;
   courierInstructions?: string;
+  /** The customs declaration of a consignment that crosses a customs border (D343): required then, and a carrier refuses to book without it. */
+  customs?: BookingCustoms;
 };
+
+/** One line of a customs declaration (D343): what the goods are, where they come from, what they are worth and weigh. */
+export type CustomsLine = {
+  /** The HS code, 6 to 10 digits. */
+  hsCode: string;
+  /** The country of origin (ISO). */
+  origin: string;
+  /** The line's value, without VAT, in minor units of the declaration's currency. */
+  valueMinor: number;
+  description: string;
+  quantity: number;
+  /** The line's total weight. */
+  weightGrams: number;
+};
+
+/** A consignment's customs declaration (D343): who pays duties (DDP: the sender; DAP: the recipient), the invoice it rests on, and its lines. */
+export type BookingCustoms = {
+  incoterm: "DAP" | "DDP";
+  currency: string;
+  invoiceNumber: string;
+  /** YYYY-MM-DD. */
+  invoiceDate: string;
+  lines: CustomsLine[];
+};
+
+/**
+ * Why a booking cannot be made for want of its customs lines (D343), or null: a consignment that crosses a customs border (another country outside
+ * the EU's customs union, `crossesBorder()`) needs a declaration with at least one line, each with its HS code, origin, value, description, quantity
+ * and weight. Every carrier's `book()` asks this before it calls the carrier. Plain English for staff.
+ */
+export function bookingCustomsProblem(request: Pick<BookingRequest, "from" | "to" | "customs">): string | null {
+  if (!crossesBorder(request.from.country.toUpperCase(), request.to.country.toUpperCase())) return null;
+  const customs = request.customs;
+  if (!customs || customs.lines.length === 0) return "This parcel crosses a customs border: it needs its customs lines (HS code, origin, value, description, quantity and weight) before it can be booked.";
+  if (!/^[A-Z]{3}$/.test(customs.currency) || !/^\d{4}-\d{2}-\d{2}$/.test(customs.invoiceDate) || customs.invoiceNumber.trim() === "") {
+    return "The customs declaration needs its currency, invoice number and date.";
+  }
+  for (const line of customs.lines) {
+    const name = line.description.trim() || "A line";
+    if (!HS_CODE.test(line.hsCode)) return `${name} has no HS code: add it to the product before booking.`;
+    if (!/^[A-Z]{2}$/.test(line.origin)) return `${name} has no country of origin: add it to the product before booking.`;
+    if (!Number.isSafeInteger(line.valueMinor) || line.valueMinor < 0) return `${name} has no value to declare.`;
+    if (!Number.isInteger(line.quantity) || line.quantity < 1) return `${name} has no quantity to declare.`;
+    if (!Number.isFinite(line.weightGrams) || line.weightGrams < 1) return `${name} has no weight: add it to the product before booking.`;
+    if (line.description.trim() === "") return "Every customs line needs a description of the goods.";
+  }
+  return null;
+}
+
 export type BookingResult = {
   trackingNumber: string;
   trackingUrl: string | null;
@@ -301,6 +354,11 @@ export type BookingResult = {
   labelUrl: string | null;
   /** Made in the carrier's test mode: nothing was shipped. */
   test: boolean;
+  /**
+   * The customs declaration sent with a consignment that crosses a border (D343): `declared` when the carrier accepted it, else its reason (the
+   * shipment is booked either way, and staff are told to declare it in the carrier's own tools). Absent where nothing was declared.
+   */
+  customs?: { declared: boolean; reference: string | null; problem: string | null };
 };
 
 /**

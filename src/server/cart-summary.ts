@@ -20,6 +20,7 @@ import { getCustomer } from "./customers";
 import { previewCartCodes } from "./discounts";
 import { cartGiftCards } from "./gift-card-cart";
 import { getCheckoutInfo } from "./orders";
+import { decideCustoms, loadCustomsFacts } from "./customs";
 import { cartTaxOf, decideTax, loadTaxFacts } from "./tax-treatment";
 
 /**
@@ -39,7 +40,7 @@ export async function cartSummary(
     (line): line is CartLine & { unitPriceMinor: number } =>
       line.status !== "unavailable" && line.unitPriceMinor !== null,
   );
-  const blocked = cart.lines.some((line) => line.status !== "ok");
+  const linesBlocked = cart.lines.some((line) => line.status !== "ok");
   const checkout = await getCheckoutInfo(storeId, market.code, market);
   const plan = payable.find((line) => line.plan)?.plan ?? null;
   // In a free trial, what renews costs nothing today (D29).
@@ -211,6 +212,26 @@ export async function cartSummary(
   const reliefLine = (i: number) => taxOutcome.result.lines[i]?.reliefMinor ?? 0;
   const total = subtotal + feeMinor + (shipping ?? 0) - discountMinor - referralMinor - bonusMinor - reliefMinor;
   const vat = taxOutcome.taxMinor;
+  // Customs and duties (D343): the estimate for a destination the goods cross a customs border into, and what DDP collects beside the total,
+  // decided as `placeOrder()` decides it, on the tax decision's lines (after every discount) and shipping.
+  const customsFacts = await loadCustomsFacts(db(), { storeId, market, variantIds: payable.map((line) => line.variantId), tax: taxFacts });
+  const customs = decideCustoms(customsFacts, {
+    lines: payable.map((line, i) => ({
+      key: String(i),
+      variantId: line.variantId,
+      title: line.title,
+      quantity: line.quantity,
+      shipped: line.delivery === "physical" && line.booking === null,
+      totalMinor: taxOutcome.result.lines[i]?.totalMinor ?? 0,
+      taxMinor: taxOutcome.result.lines[i]?.taxMinor ?? 0,
+      rate: line.vatRate,
+    })),
+    shippingMinor: taxOutcome.result.shipping.totalMinor,
+    shippingTaxMinor: taxOutcome.result.shipping.taxMinor,
+    currency: market.currency,
+    ioss: taxOutcome.ioss === "applies",
+    fallback: plan ? "subscription" : sellerIsHost ? "host" : balance > 0 ? "venue" : null,
+  });
   // What this order will earn: what is paid online for goods and fees once credits are off, as the database counts it
   // (the lines' totals, which are net of the VAT not charged).
   const paidOnlineGoods =
@@ -240,11 +261,13 @@ export async function cartSummary(
     })),
     paidMinor: cardsPaid.paidMinor,
     /** Nothing is left to pay online: no payment page follows, so who pays is asked on the cart (as for Mollie). */
-    coverAll: cardsPaid.paidMinor > 0 && total - balance - cardsPaid.paidMinor === 0,
+    // Duties collected at checkout (DDP, D343) are never paid by a card: they need the payment page.
+    coverAll: cardsPaid.paidMinor > 0 && total - balance - cardsPaid.paidMinor === 0 && customs.collectMinor === 0,
   };
   return {
     payable,
-    blocked,
+    /** Something stops the checkout: a line's own problem, or DDP chosen for a basket with no duty estimate (D343). */
+    blocked: linesBlocked || customs.blocked,
     checkout,
     plan,
     trial,
@@ -304,7 +327,12 @@ export async function cartSummary(
     atVenueOnly,
     /** What gift cards pay (D300 F3), card by card. */
     giftCards,
-    /** What Stripe is asked for: all but the part left for the venue and what gift cards pay. */
-    dueNowMinor: total - balance - cardsPaid.paidMinor,
+    /**
+     * Customs and duties (D343): who pays them for this country (DDP or DAP), the estimate or why there is none, and what checkout collects
+     * (`collectMinor`, beside the total); `blocked` when DDP has no estimate.
+     */
+    customs,
+    /** What Stripe is asked for: all but the part left for the venue and what gift cards pay, and the duties DDP collects. */
+    dueNowMinor: total - balance - cardsPaid.paidMinor + customs.collectMinor,
   };
 }

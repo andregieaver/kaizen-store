@@ -7,6 +7,7 @@ import { BackorderOrderLine } from "@/components/backorder-note";
 import { DeliveryBlock } from "@/components/delivery-block";
 import { GiftNote } from "@/components/gift-note";
 import { OrderDocuments as DocumentLinks } from "@/components/documents/order-documents";
+import { OrderCustomsNote, OrderCustomsRows } from "@/components/order-customs";
 import { OrderVatNotes, OrderVatRelief, OrderVatRows } from "@/components/order-vat";
 import { OwnBookings } from "@/components/own-bookings";
 import { OrderReturns } from "@/components/withdraw/order-returns";
@@ -399,6 +400,7 @@ function totalsList({ order, m, money, store, market }: OrderView) {
         <dd>{money(order.totalMinor)}</dd>
       </div>
       <OrderVatRows order={order} text={vatWords} money={money} label={m.vatAmount} />
+      <OrderCustomsRows order={order} lang={market.lang} money={money} paidLabel={m.toPay} />
       {order.balanceMinor > 0 && !order.paymentTerms && (
         // Paid at the appointment (D66): what is still to pay there.
         <div className="flex justify-between">
@@ -423,6 +425,7 @@ function totalsList({ order, m, money, store, market }: OrderView) {
       )}
       </dl>
       <OrderVatNotes order={order} text={vatWords} />
+      <OrderCustomsNote order={order} lang={market.lang} money={money} />
     </>
   );
 }

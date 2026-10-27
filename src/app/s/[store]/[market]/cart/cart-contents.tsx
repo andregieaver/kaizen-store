@@ -21,6 +21,7 @@ import { nextStepText } from "@/lib/campaign-notices";
 import { campaignLabel } from "@/lib/campaigns";
 import { lineMax, ruleWords } from "@/lib/quantity-rules";
 import { checkoutLabels } from "@/lib/checkout-labels";
+import { cartCustomsSentences, customsText } from "@/lib/customs-text";
 import { optionLabel, type Messages } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import { marketPath, marketHome } from "@/lib/paths";
@@ -509,6 +510,7 @@ function summaryList({ store, market, m, view }: Draw) {
     referral,
   } = summary;
   const { terms } = view;
+  const customsWords = customsText(market.lang);
   // The delivery price is chosen at checkout while it depends on a postal code or a pickup place (D237 2.4): *From {price}*, and a sentence saying so.
   const from = ships && shipping !== null ? priceLaterFrom(summary.deliveryState, shipping) : null;
   return (
@@ -618,9 +620,18 @@ function summaryList({ store, market, m, view }: Draw) {
             </div>
           </>
         )}
+        {summary.customs.collectMinor > 0 && (
+          // Duties and import VAT collected at checkout (DDP, D343): an estimate, beside the order's total and paid with it.
+          <div className="flex justify-between gap-4" data-customs-row>
+            <dt>
+              {customsWords.dutiesLine} <span className="text-sm text-muted">({customsWords.estimate})</span>
+            </dt>
+            <dd>{money(summary.customs.collectMinor)}</dd>
+          </div>
+        )}
         <div className="flex justify-between gap-4 border-t border-border pt-2 font-semibold">
           <dt>{business ? m.toPay : m.total}</dt>
-          <dd>{money(total)}</dd>
+          <dd>{money(total + summary.customs.collectMinor)}</dd>
         </div>
         {summary.giftCards.paidMinor > 0 && (
           // Gift cards (D300 F3) pay part of the total: a payment, after the total, never a discount before it.
@@ -667,8 +678,14 @@ function summaryList({ store, market, m, view }: Draw) {
         sellerNumber={tax.sellerVatNumber}
         buyerNumber={tax.buyerVatNumber}
         iossNumber={null}
-        importNotice={tax.importNotice}
+        importNotice={tax.importNotice && summary.customs.estimate.kind === "none"}
       />
+      {/* Customs and duties (D343): who pays them for this country and the estimate, or what stops a DDP checkout. */}
+      {cartCustomsSentences(summary.customs, customsWords, money).map((s) => (
+        <p key={s.text} className={s.problem ? "text-sm" : "text-sm text-muted"} role={s.problem ? "alert" : undefined} data-customs-note>
+          {s.text}
+        </p>
+      ))}
       {terms && <p className="text-sm">{terms}</p>}
       {applied && Object.keys(applied.renewalUnits).length > 0 && <p className="text-sm">{m.discountRenews}</p>}
       {referral.state === "guest" && (
@@ -776,7 +793,7 @@ function checkoutAction({ store, market, m, view }: Draw) {
           store={store.slug}
           market={market.slug}
           disabled={blocked}
-          labels={checkoutLabels(m, atVenueOnly ? m.booking.confirmBooking : undefined)}
+          labels={checkoutLabels(m, atVenueOnly ? m.booking.confirmBooking : undefined, market.lang)}
           contact={
             atVenueOnly
               ? {

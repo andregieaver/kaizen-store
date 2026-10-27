@@ -23,6 +23,7 @@ import { bookingWhen, isRange } from "@/lib/booking-text";
 import { withoutVat } from "@/lib/b2b";
 import { CHECKOUT_MINUTES, stripeLocale } from "@/lib/checkout";
 import { checkoutLabels } from "@/lib/checkout-labels";
+import { customsText, orderCustomsSentence } from "@/lib/customs-text";
 import { checkoutAppearanceFor, checkoutLookOf } from "@/lib/checkout-look";
 import { fontStack } from "@/lib/fonts";
 import { darkBehindLogo, isDarkColor } from "@/lib/theme";
@@ -390,6 +391,21 @@ function totalsList(view: CheckoutView, market: Market) {
             )}
           </>
         )}
+        {(order.dutiesMinor ?? 0) > 0 && (
+          // Duties and import VAT collected at checkout (DDP, D343): an estimate, beside the total and paid with it.
+          <>
+            <div className="flex justify-between" data-customs-row>
+              <dt>
+                {customsText(market.lang).dutiesLine} <span className="text-sm text-muted">({customsText(market.lang).estimate})</span>
+              </dt>
+              <dd>{money(order.dutiesMinor)}</dd>
+            </div>
+            <div className="flex justify-between text-base font-semibold">
+              <dt>{m.toPay}</dt>
+              <dd>{money(order.totalMinor + order.dutiesMinor)}</dd>
+            </div>
+          </>
+        )}
         {cardsPaid > 0 && (
           // Gift cards (D300 F3): a payment after the total, never a discount before it.
           <div className="flex justify-between">
@@ -400,7 +416,7 @@ function totalsList(view: CheckoutView, market: Market) {
         {(order.balanceMinor > 0 || cardsPaid > 0) && (
           <div className="flex justify-between">
             <dt>{m.booking.dueNow}</dt>
-            <dd>{money(order.totalMinor - order.balanceMinor - cardsPaid)}</dd>
+            <dd>{money(order.totalMinor - order.balanceMinor - cardsPaid + (order.dutiesMinor ?? 0))}</dd>
           </div>
         )}
         {order.balanceMinor > 0 && (
@@ -416,8 +432,14 @@ function totalsList(view: CheckoutView, market: Market) {
         sellerNumber={order.vat?.sellerVatNumber ?? null}
         buyerNumber={order.vat?.buyerVatNumber ?? null}
         iossNumber={null}
-        importNotice={order.vat !== null && IMPORT_NOTICE_REASONS.includes(order.vat.reason)}
+        importNotice={order.vat !== null && IMPORT_NOTICE_REASONS.includes(order.vat.reason) && !order.customs}
       />
+      {/* Customs and duties (D343): who pays them, and the estimate. */}
+      {orderCustomsSentence(order.customs ?? null, customsText(market.lang), money) && (
+        <p className="mt-2 text-sm text-muted" data-customs-note>
+          {orderCustomsSentence(order.customs ?? null, customsText(market.lang), money)}
+        </p>
+      )}
       {order.company && (
         <p className="mt-3 border-t border-border pt-3 text-sm">
           {order.company.name}
@@ -514,7 +536,7 @@ async function paymentForm(store: Store, market: Market, view: CheckoutView, dra
               store={store.slug}
               market={market.slug}
               disabled={false}
-              labels={checkoutLabels(m, m.restartCheckout)}
+              labels={checkoutLabels(m, m.restartCheckout, market.lang)}
               consents={{
                 digital: open.digital ? m.digitalConsent : undefined,
                 subscription: open.subscription

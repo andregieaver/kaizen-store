@@ -1,3 +1,4 @@
+import { minorUnitDigits } from "./money";
 import type { BookingRequest, PickupPoint, ReturnBookingRequest, ShippingAddress, ShippingOption, TrackingEvent } from "./shipping-carriers";
 
 /**
@@ -235,6 +236,70 @@ export function parseBooking(json: unknown): ParsedBooking {
     trackingUrl: https(links.tracking),
     labelUrl: https(links.labels),
   };
+}
+
+// ---------------------------------------------------------------------------
+// Customs (D343)
+// ---------------------------------------------------------------------------
+
+/**
+ * Bring's Customs API (`POST https://api.bring.com/customs/v1/declarations`, its OpenAPI document read at https://api.bring.com/customs/v1/openapi on
+ * 2026-10-27): a declaration per consignment, sent after the booking with the booking's consignment number. Its `service` enum names only these
+ * services (0300 routing label, 0336 Business Pallet, 0342 Pickup Parcel Bulk, 0344): any other service's customs are declared in Mybring.
+ * Submitting needs the API user to hold the booking right for the customer number (Bring's own words), which is the owner's agreement.
+ */
+export const BRING_CUSTOMS_SERVICES = ["0300", "0336", "0342", "0344"] as const;
+export const BRING_CUSTOMS_URL = `${BRING_API}/customs/v1/declarations`;
+
+const partyDto = (address: ShippingAddress) => ({
+  name: address.name,
+  addressLine1: address.street,
+  postalCode: address.postalCode,
+  city: address.city,
+  countryCode: address.country.toUpperCase(),
+});
+
+/** An amount in minor units as the Customs API's base units (a decimal number of the currency). */
+const baseUnits = (minor: number, currency: string) => {
+  const digits = minorUnitDigits(currency);
+  return Number((minor / 10 ** digits).toFixed(digits));
+};
+
+/** The Customs API's request for one booked consignment (the request's `customs` must be set; `bookingCustomsProblem()` checked it). */
+export function customsDeclarationBody(request: BookingRequest, consignmentNumber: string, customerNumber: string) {
+  const customs = request.customs!;
+  const total = customs.lines.reduce((sum, line) => sum + line.valueMinor, 0);
+  return {
+    customerNumber,
+    currencyCode: customs.currency,
+    declarationType: "EXPORT_IMPORT",
+    shipment: {
+      consignmentId: consignmentNumber,
+      service: request.serviceId,
+      termsOfDelivery: { incotermsCode: customs.incoterm, location: request.to.city },
+    },
+    exporter: partyDto(request.from),
+    importer: partyDto(request.to),
+    recipient: partyDto(request.to),
+    invoices: [{ invoiceNumber: customs.invoiceNumber, invoiceDate: customs.invoiceDate, amount: baseUnits(total, customs.currency) }],
+    customsDeclarations: customs.lines.map((line) => ({
+      numberOfPieces: line.quantity,
+      goodsDescription: line.description.slice(0, 200),
+      customsArticleNumber: line.hsCode,
+      grossWeight: Math.max(0.001, Math.round(line.weightGrams) / 1000),
+      netWeight: Math.max(0.001, Math.round(line.weightGrams) / 1000),
+      amount: baseUnits(line.valueMinor, customs.currency),
+      countryCodeOrigin: line.origin,
+      salesOrder: { orderNumber: request.orderReference, articleNumber: line.hsCode },
+    })),
+  };
+}
+
+/** What the Customs API answered: accepted with its processing id, or its error in words. */
+export function parseCustomsAnswer(json: unknown): { ok: true; reference: string | null } | { ok: false; problem: string } {
+  const answer = obj(json);
+  if (text(answer.status) === "ACCEPTED") return { ok: true, reference: text(answer.processingId) || null };
+  return { ok: false, problem: text(answer.error) || "Bring did not accept the customs declaration." };
 }
 
 // ---------------------------------------------------------------------------
