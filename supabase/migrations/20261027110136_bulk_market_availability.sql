@@ -1,0 +1,4 @@
+ALTER TABLE "commerce"."bulk_edit_batches" DROP CONSTRAINT "bulk_edit_batches_action";--> statement-breakpoint
+ALTER TABLE "commerce"."bulk_edit_items" DROP CONSTRAINT "bulk_edit_items_field";--> statement-breakpoint
+ALTER TABLE "commerce"."bulk_edit_batches" ADD CONSTRAINT "bulk_edit_batches_action" CHECK ("commerce"."bulk_edit_batches"."action" in ('status', 'archive', 'unarchive', 'terms_add', 'terms_remove', 'price', 'stock', 'grid', 'undo', 'sell_in', 'stop_selling_in'));--> statement-breakpoint
+ALTER TABLE "commerce"."bulk_edit_items" ADD CONSTRAINT "bulk_edit_items_field" CHECK ("commerce"."bulk_edit_items"."field" in ('status', 'archived', 'terms', 'stock', 'cost', 'sku', 'availability') or "commerce"."bulk_edit_items"."field" ~ '^price:[A-Z]{2}$');

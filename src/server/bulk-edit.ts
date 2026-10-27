@@ -14,7 +14,9 @@ import {
   parsePercentBp,
   parseStockChange,
   percentProblem,
+  normalAvailability,
   planArchive,
+  planAvailability,
   planGrid,
   planPriceChanges,
   planStatus,
@@ -23,6 +25,7 @@ import {
   pricePreview,
   selectionProblem,
   undoPlan,
+  type Availability,
   type BatchCounts,
   type BulkAction,
   type BulkField,
@@ -70,7 +73,8 @@ export type BulkRequest =
   | { action: "archive" | "unarchive"; productIds: string[] }
   | { action: "terms_add" | "terms_remove"; productIds: string[]; categoryIds: string[]; tagIds: string[] }
   | { action: "price"; productIds: string[]; markets?: string[]; percent?: string; amounts?: Record<string, string> }
-  | { action: "stock"; productIds: string[]; change: string };
+  | { action: "stock"; productIds: string[]; change: string }
+  | { action: "sell_in" | "stop_selling_in"; productIds: string[]; markets: string[] };
 
 type Params = Record<string, unknown> & { productIds: string[] };
 
@@ -175,6 +179,13 @@ function parseRequest(store: Store, editor: EditorContext, request: BulkRequest)
       }
       return { ok: true, priceChange: { kind: "amount", deltaByMarket }, markets: picked, params: { ...base, markets: picked.map((m) => m.code), amounts: request.amounts } };
     }
+    case "sell_in":
+    case "stop_selling_in": {
+      const wanted = dedupe((request.markets ?? []).map((m) => m.toUpperCase()));
+      if (wanted.length === 0) return { ok: false, problem: "Choose at least one country." };
+      if (wanted.some((code) => !editor.markets.some((m) => m.code === code))) return { ok: false, problem: "Choose countries of this store." };
+      return { ok: true, params: { ...base, markets: wanted } };
+    }
     default:
       return { ok: false, problem: "Choose an action." };
   }
@@ -214,6 +225,15 @@ function planAction(action: BulkAction, products: readonly LoadedProduct[], pars
       );
       return { plan: planPriceChanges(variants, parsed.priceChange as PriceChange, markets.map((m) => m.code)), priceChange: parsed.priceChange, markets };
     }
+    case "sell_in":
+    case "stop_selling_in":
+      return {
+        plan: planAvailability(
+          products.map((p) => ({ productId: p.id, availability: p.input.availability ?? { off: [], variants: {} } })),
+          action === "sell_in" ? "sell" : "stop",
+          parsed.params.markets as string[],
+        ),
+      };
     default:
       return { plan: { changes: [], unchanged: 0, failures: [] } };
   }
@@ -260,7 +280,8 @@ export async function previewBulk(member: Membership, request: BulkRequest): Pro
 // Writing a product's changes
 // ---------------------------------------------------------------------------
 
-const fieldOfStatus = (a: BulkAction): BulkField => (a === "archive" || a === "unarchive" ? "archived" : a === "terms_add" || a === "terms_remove" ? "terms" : a === "price" ? "status" : "status");
+const fieldOfStatus = (a: BulkAction): BulkField =>
+  a === "archive" || a === "unarchive" ? "archived" : a === "terms_add" || a === "terms_remove" ? "terms" : a === "sell_in" || a === "stop_selling_in" ? "availability" : "status";
 
 /** Lays a product's changes over the editor's product. Null when all could be laid; else the reason one could not. */
 function layOver(input: ProductInput, changes: readonly Change[], editor: EditorContext, adjust = false): string | null {
@@ -273,6 +294,13 @@ function layOver(input: ProductInput, changes: readonly Change[], editor: Editor
       const after = c.after as { categories: string[]; tags: string[] };
       input.categories = [...after.categories];
       input.tags = [...after.tags];
+      continue;
+    }
+    if (c.field === "availability") {
+      // Every country the product is in, as recorded: a SKU no longer there is left out (the save refuses an unknown one).
+      const after = normalAvailability(c.after as Availability);
+      const skus = new Set(input.variants.map((v) => v.sku));
+      input.availability = { off: after.off, variants: Object.fromEntries(Object.entries(after.variants).filter(([sku]) => skus.has(sku))) };
       continue;
     }
     const variant = input.variants.find((v) => v.id === c.variantId);
@@ -503,6 +531,9 @@ function requestOf(batch: BatchRow): BulkRequest {
       return { action: "price", productIds, markets: (p.markets ?? []) as string[], percent: p.percent as string | undefined, amounts: p.amounts as Record<string, string> | undefined };
     case "stock":
       return { action: "stock", productIds, change: String(p.change) };
+    case "sell_in":
+    case "stop_selling_in":
+      return { action: batch.action, productIds, markets: (p.markets ?? []) as string[] };
     default:
       throw new Error("not a list action");
   }
@@ -775,6 +806,7 @@ export async function undoBatch(member: Membership, batchId: string): Promise<Un
     if (field === "status") return p.archived ? "archived" : p.input.status;
     if (field === "archived") return p.archived;
     if (field === "terms") return { categories: [...p.input.categories].sort(), tags: [...p.input.tags].sort() };
+    if (field === "availability") return normalAvailability(p.input.availability);
     const index = p.input.variants.findIndex((v) => v.id === variantId);
     if (index === -1) return undefined;
     const v = p.input.variants[index];

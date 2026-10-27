@@ -13,11 +13,11 @@
 import { BULK_GRID_MAX_PRODUCTS, BULK_MAX_PRODUCTS, BULK_PERCENT_MAX, BULK_PERCENT_MIN, BULK_STOCK_MAX, BULK_UNDO_DAYS } from "./data-limits";
 import { parsePrice } from "./product-input";
 
-export const BULK_ACTIONS = ["status", "archive", "unarchive", "terms_add", "terms_remove", "price", "stock", "grid", "undo"] as const;
+export const BULK_ACTIONS = ["status", "archive", "unarchive", "terms_add", "terms_remove", "price", "stock", "grid", "undo", "sell_in", "stop_selling_in"] as const;
 export type BulkAction = (typeof BULK_ACTIONS)[number];
 
 /** The fields an item records: `price:{COUNTRY}` too. */
-export type BulkField = "status" | "archived" | "terms" | "stock" | "cost" | "sku" | `price:${string}`;
+export type BulkField = "status" | "archived" | "terms" | "stock" | "cost" | "sku" | "availability" | `price:${string}`;
 
 /** One cell that changes: the value it has and the value it gets (figures and codes: minor units, a word, a list of ids). */
 export type Change = { productId: string; variantId: string | null; field: BulkField; before: unknown; after: unknown };
@@ -210,6 +210,38 @@ export function planTerms(products: readonly ProductTerms[], op: "add" | "remove
     const after = { categories: apply(p.categories, choice.categories), tags: apply(p.tags, choice.tags) };
     if (same(before, after)) out.unchanged += 1;
     else out.changes.push({ productId: p.productId, variantId: null, field: "terms", before, after });
+  }
+  return out;
+}
+
+/** Where a product and its variants are not sold (D335 A.1): countries off for the whole product, and per SKU. */
+export type Availability = { off: string[]; variants: Record<string, string[]> };
+export type ProductAvailability = { productId: string; availability: Availability };
+
+/** An availability with its lists sorted and its empty SKUs left out, so two that mean the same compare equal. */
+export function normalAvailability(a: Availability | undefined): Availability {
+  const variants: Record<string, string[]> = {};
+  for (const [sku, codes] of Object.entries(a?.variants ?? {}).sort(([x], [y]) => (x < y ? -1 : x > y ? 1 : 0))) {
+    if (codes.length > 0) variants[sku] = sorted(codes);
+  }
+  return { off: sorted(a?.off ?? []), variants };
+}
+
+/**
+ * Sell products in some countries, or stop selling them there (D335 A.3). Stopping switches the whole product off in each country; selling
+ * switches it back on, and its variants too. Either way a variant's own switch in a chosen country goes, as the product's now says it all.
+ * The change records the whole availability before and after, so the undo puts it back as it was. Prices are never touched.
+ */
+export function planAvailability(products: readonly ProductAvailability[], op: "sell" | "stop", markets: readonly string[]): PlanResult {
+  const out: PlanResult = { changes: [], unchanged: 0, failures: [] };
+  const chosen = new Set(markets);
+  for (const p of products) {
+    const before = normalAvailability(p.availability);
+    const off = op === "stop" ? [...before.off, ...markets] : before.off.filter((code) => !chosen.has(code));
+    const variants = Object.fromEntries(Object.entries(before.variants).map(([sku, codes]) => [sku, codes.filter((code) => !chosen.has(code))]));
+    const after = normalAvailability({ off, variants });
+    if (same(before, after)) out.unchanged += 1;
+    else out.changes.push({ productId: p.productId, variantId: null, field: "availability", before, after });
   }
   return out;
 }

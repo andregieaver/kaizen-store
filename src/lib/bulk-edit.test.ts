@@ -22,11 +22,13 @@ import {
   planPriceChanges,
   planStatus,
   planStockChanges,
+  planAvailability,
   planTerms,
   pricePreview,
   selectionProblem,
   undoPlan,
   type GridRow,
+  type ProductAvailability,
   type RecordedItem,
 } from "./bulk-edit";
 
@@ -330,5 +332,27 @@ describe("a value read back from the record", () => {
     const plan = undoPlan(items, () => ({ categories: ["c1"], tags: [] }));
     expect(plan.restores).toHaveLength(1);
     expect(plan.conflicts).toEqual([]);
+  });
+});
+
+describe("where products are sold (D335 A.3)", () => {
+  const products: ProductAvailability[] = [
+    { productId: "p1", availability: { off: [], variants: { "A-1": ["SE", "DK"] } } },
+    { productId: "p2", availability: { off: ["SE"], variants: {} } },
+  ];
+
+  it("stops selling in a country for the whole product, and takes a variant's own switch there with it", () => {
+    const stop = planAvailability(products, "stop", ["SE"]);
+    expect(stop.changes).toEqual([{ productId: "p1", variantId: null, field: "availability", before: { off: [], variants: { "A-1": ["DK", "SE"] } }, after: { off: ["SE"], variants: { "A-1": ["DK"] } } }]);
+    expect(stop.unchanged).toBe(1);
+  });
+
+  it("sells there again, the product and its variants, and leaves other countries as they were", () => {
+    const sell = planAvailability(products, "sell", ["SE"]);
+    expect(sell.changes.map((c) => [c.productId, c.after])).toEqual([
+      ["p1", { off: [], variants: { "A-1": ["DK"] } }],
+      ["p2", { off: [], variants: {} }],
+    ]);
+    expect(planAvailability(products, "sell", ["FI"]).unchanged).toBe(2);
   });
 });

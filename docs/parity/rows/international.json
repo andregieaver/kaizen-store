@@ -55,14 +55,14 @@
       "checkedOn": "2026-10-02"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "partial"
     },
     "weight": 3,
-    "gap": "Availability is still implied by a price row: the product editor says to leave a country empty to not sell there, and the AI manager's set_prices reports the unpriced countries as not_sold_in (src/server/product-tools.ts). D178's Countries switch hides whole countries while keeping their prices (offeredMarkets(), commerce.market_offered()), but nothing switches one product or variant off in one market while keeping its price: no catalog object, no per-market product set shared across countries, so none of the four criteria is met beyond what deleting a price does. Since D321 a price list can be exclusive, hiding its products from everyone else (`OFFERED`'s `product_exclusive`), but it belongs to a customer group or company, not to a market, so it does not meet the criteria either.",
-    "bucket": "A",
-    "wave": 7,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "An owner can switch a product (or a variant) off in one market without deleting its price, and back on.",
       "A product switched off in a market is absent from that market's listings, search, product page, chat, sitemap and structured data, and a cart line for it is refused.",
@@ -71,24 +71,45 @@
     ],
     "evidence": {
       "files": [
+        "src/db/schema.ts",
+        "supabase/migrations/20261027095217_market_availability_sql.sql",
+        "src/server/products.ts",
+        "src/components/admin/product-editor.tsx",
         "src/server/catalog.ts",
         "src/server/listing.ts",
-        "src/components/admin/product-editor.tsx",
-        "src/db/schema.ts",
-        "src/server/product-tools.ts",
-        "src/lib/store-features.ts"
+        "src/server/search.ts",
+        "src/server/seo.ts",
+        "src/server/cart.ts",
+        "src/lib/product-csv.ts",
+        "src/lib/product-tools.ts",
+        "src/lib/bulk-edit.ts",
+        "src/server/bulk-edit.ts",
+        "src/components/admin/products-bulk.tsx"
       ],
       "tests": [
-        "src/server/listing.int.test.ts",
-        "src/server/products.int.test.ts"
+        "src/server/market-availability.int.test.ts",
+        "src/server/checkout-kinds.int.test.ts",
+        "src/db/commerce.test.ts",
+        "src/server/price-readers.scan.test.ts",
+        "src/lib/bulk-edit.test.ts",
+        "src/server/bulk-edit.int.test.ts",
+        "e2e/signed-in/markets-in-depth.spec.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D178",
-      "D321"
+      "D321",
+      "D335"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-27",
+        "from": "partial",
+        "to": "full",
+        "why": "Wave 7 unit A (D335, docs/wave-7-storefront.md A.1, A.3): commerce.market_availability switches a product or a variant off in one market and back on, its price kept; commerce.current_prices leaves such a variant out, so listings, search, the product page (a 404 with no variant priced there), the sitemap, structured data and the chat's catalogue reads leave it out and the cart and placeOrder() refuse it, while the admin reads commerce.kept_prices. Set in the editor's Sold in box, the CSV's not_sold_in, the AI manager's not_sold_in and the bulk bar's Sell in / Stop selling in (with undo); copies carry it. market-availability.int.test.ts, a euro scenario in checkout-kinds.int.test.ts and e2e/signed-in/markets-in-depth.spec.ts hold it."
+      }
+    ]
   },
   {
     "id": "international.fixed-per-market-prices-and-adjustment-rules",
@@ -102,14 +123,14 @@
       "checkedOn": "2026-10-02"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "partial"
     },
     "weight": 4,
-    "gap": "Prices are entered by hand per country and converted when shown in another currency (D109, rounded to the store's step). Criteria 2 and 3 are now met for one-off changes by D165's bulk editor (src/lib/bulk-edit.ts, src/server/bulk-edit.ts, the Products list's bulk bar): a percentage (basis points, half up in BigInt) or an amount per market over the chosen products, previewed with old and new prices (previewBulk()) before it runs, saved through getProductForEdit()/saveProduct() so prices change only through commerce.set_price and the 30-day reference stays genuine, one audit entry per batch and an undo (bulk-edit.test.ts, bulk-edit.int.test.ts, e2e/signed-in/products-bulk.spec.ts). Missing: criterion 1, a standing market rule (percentage and rounding step) that derives a market's prices from a base price with a fixed price overriding it, and so criterion 4's scenario for derived prices. D321's price lists set a percentage off or fixed prices per variant, but for a customer group or company, not a market: no market's prices are derived from them.",
-    "bucket": "A",
-    "wave": 7,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "An owner sets a market rule (percentage up or down, rounding step) that derives that market's prices from a base price; a fixed price on a product overrides the rule.",
       "Derived prices are written through commerce.set_price, so prior_30d_minor and the 30-day reference stay genuine.",
@@ -124,7 +145,12 @@
         "src/lib/markets.ts",
         "src/lib/bulk-edit.ts",
         "src/server/bulk-edit.ts",
-        "src/app/admin/(gated)/[store]/products/bulk/actions.ts"
+        "src/app/admin/(gated)/[store]/products/bulk/actions.ts",
+        "src/lib/market-prices.ts",
+        "src/server/market-prices.ts",
+        "src/components/admin/market-price-rules.tsx",
+        "src/server/market-price-tools.ts",
+        "supabase/migrations/20261027101945_market_price_rules_sql.sql"
       ],
       "tests": [
         "src/db/commerce.test.ts",
@@ -132,16 +158,28 @@
         "src/server/checkout-kinds.int.test.ts",
         "src/lib/bulk-edit.test.ts",
         "src/server/bulk-edit.int.test.ts",
-        "e2e/signed-in/products-bulk.spec.ts"
+        "e2e/signed-in/products-bulk.spec.ts",
+        "src/lib/market-prices.test.ts",
+        "src/server/market-prices.int.test.ts",
+        "src/server/price-audit-scan.test.ts",
+        "e2e/signed-in/markets-in-depth.spec.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D109",
       "D165",
-      "D321"
+      "D321",
+      "D335"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-27",
+        "from": "partial",
+        "to": "full",
+        "why": "Wave 7 unit A2 (D335, docs/wave-7-storefront.md A.2): a market's prices can be worked out from another's by a standing rule (commerce.market_price_rules: percentage, before or with VAT, rounding step, ending), by the one BigInt sum derivedPrice() and written only through commerce.set_price with prices.derived, so the 30-day reference stays genuine; a price typed by hand is fixed and overrides the rule; prices follow a base price's save, a rule's save and the rates. Set on the Countries page with a five-product preview, or by the AI manager behind the owner's yes. market-prices.int.test.ts holds re-derivation, fixed prices, the reference and the store boundary; a checkout-kinds scenario holds a derived price shown in euro equal to the charge; e2e/signed-in/markets-in-depth.spec.ts sets a rule on the screen."
+      }
+    ]
   },
   {
     "id": "international.domains-and-subfolders-per-market",

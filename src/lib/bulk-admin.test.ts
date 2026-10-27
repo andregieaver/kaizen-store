@@ -92,3 +92,15 @@ describe("figures", () => {
     expect(fieldWords("sku")).toBe("SKU");
   });
 });
+
+describe("Sell in and Stop selling in (D335 A.3)", () => {
+  it("asks for at least one country, none chosen by default, and names where a product is not sold", () => {
+    const form = emptyPanel("NO");
+    expect(form.countries).toEqual([]);
+    expect(buildBulkRequest("stop_selling_in", form, ["p1"], [])).toEqual({ ok: false, problem: "Choose at least one country." });
+    expect(buildBulkRequest("sell_in", { ...form, countries: ["SE"] }, ["p1"], [])).toEqual({ ok: true, request: { action: "sell_in", productIds: ["p1"], markets: ["SE"] } });
+    expect(fieldWords("availability")).toBe("Where it is sold");
+    expect(figureText("availability", { off: ["SE"], variants: { "A-1": ["DK"] } }, () => null, "en")).toBe("not sold in SE; A-1: DK");
+    expect(figureText("availability", { off: [], variants: {} }, () => null, "en")).toBe("sold in every country");
+  });
+});

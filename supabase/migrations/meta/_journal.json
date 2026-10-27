@@ -3585,6 +3585,13 @@
       "when": 1793096385228,
       "tag": "20261027101945_market_price_rules_sql",
       "breakpoints": true
+    },
+    {
+      "idx": 512,
+      "version": "7",
+      "when": 1793098896107,
+      "tag": "20261027110136_bulk_market_availability",
+      "breakpoints": true
     }
   ]
 }

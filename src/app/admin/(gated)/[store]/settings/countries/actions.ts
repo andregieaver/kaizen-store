@@ -8,7 +8,7 @@ import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { fillWords } from "@/lib/admin-fill";
 import { PRICE_BASES, ruleProblem } from "@/lib/market-prices";
-import { marketPriceRules, previewRule, removeMarketPriceRule, saveMarketPriceRule, type RulePreview } from "@/server/market-prices";
+import { marketPriceRules, previewRule, rateProblem, removeMarketPriceRule, saveMarketPriceRule, type RulePreview } from "@/server/market-prices";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { checkPermission } from "@/server/permissions";
 import { catalogTag } from "@/server/catalog";
@@ -68,7 +68,7 @@ export async function previewPriceRuleAction(storeSlug: string, given: unknown):
   if (!member) return { problem: adminText(await actionAdminLang(), "settings").common.noChange };
   const parsed = ruleInput.safeParse(given);
   if (!parsed.success) return { problem: adminText(adminLangOf(member.account.adminLocale), "settings").priceRules.unreadable };
-  const problem = ruleProblem(parsed.data, member.store.keptMarkets.map((m) => m.code), await marketPriceRules(member.store.id));
+  const problem = ruleProblem(parsed.data, member.store.keptMarkets.map((m) => m.code), await marketPriceRules(member.store.id)) ?? (await rateProblem(member.store.id, parsed.data));
   if (problem) return { problem: priceRuleProblem(member, problem) };
   return previewRule(member.store.id, parsed.data, member.store.localization.locales[0] ?? "en");
 }
@@ -97,5 +97,8 @@ export async function removePriceRuleAction(storeSlug: string, market: string): 
 
 /** A rule's problem in the account's language (the catalogue's words for the sentences `ruleProblem()` writes). */
 function priceRuleProblem(member: { account: { adminLocale?: string | null } }, problem: string): string {
-  return adminText(adminLangOf(member.account.adminLocale), "settings").priceRules.problems[problem] ?? problem;
+  const w = adminText(adminLangOf(member.account.adminLocale), "settings").priceRules;
+  const noRate = /^([A-Z]{3}) has no rate /.exec(problem);
+  if (noRate) return fillWords(w.noRate, { currency: noRate[1] });
+  return w.problems[problem] ?? problem;
 }

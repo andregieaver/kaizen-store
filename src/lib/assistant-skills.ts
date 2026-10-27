@@ -291,6 +291,19 @@ export const ASSISTANT_SKILLS: readonly AssistantSkill[] = [
     ],
   },
   {
+    id: "sell-in-countries",
+    area: "store",
+    title: "Sell in other countries",
+    when: "The owner asks about selling abroad, a country's prices, or not selling some products in a country.",
+    steps: [
+      "Several countries must be on (features); the store's countries are on the Countries page (countries).",
+      "Call market_price_rules: each country's prices are typed by hand or worked out from another's. To work a country's prices out, propose set_market_price_rule with the base country, a percentage, before or with VAT, and rounding; it waits for the owner's yes and changes every price there that was not typed by hand. A price typed on a product stays as typed.",
+      "Without a rate for both currencies (Languages and currencies) no price can be worked out: say so rather than guess.",
+      "To stop selling a product in a country, update_product with not_sold_in (the product, or a variant's); its price there is kept. Many products at once: the Products list's bulk bar, Stop selling in or Sell in (products).",
+      "Shipping, VAT and the legal pages are per country too: check the Shipping page and the VAT settings before saying the store is ready there.",
+    ],
+  },
+  {
     id: "seo-checkup",
     area: "store",
     title: "Be found on Google and in AI answers",

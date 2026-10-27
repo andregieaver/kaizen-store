@@ -6,7 +6,7 @@ import type { OwnerToolInput } from "@/lib/owner-tools";
 
 import type { Account } from "./auth";
 import { catalogTag } from "./catalog";
-import { derivedCounts, marketPriceRules, previewRule, removeMarketPriceRule, saveMarketPriceRule } from "./market-prices";
+import { derivedCounts, marketPriceRules, previewRule, rateProblem, removeMarketPriceRule, saveMarketPriceRule } from "./market-prices";
 import { OwnerToolError } from "./owner-tool-error";
 import { storeTag, type Store } from "./stores";
 
@@ -65,7 +65,8 @@ export async function preflightPriceRuleTool({ store }: Ctx, raw: Record<string,
     if (!rules.some((r) => r.market === input.country.toUpperCase())) fail(`The prices in ${input.country.toUpperCase()} are already set by hand.`);
     return;
   }
-  const problem = ruleProblem(asRule(store, input), store.keptMarkets.map((m) => m.code), rules);
+  const rule = asRule(store, input);
+  const problem = ruleProblem(rule, store.keptMarkets.map((m) => m.code), rules) ?? (await rateProblem(store.id, rule));
   if (problem) fail(problem);
 }
 

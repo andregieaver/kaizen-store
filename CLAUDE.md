@@ -228,7 +228,8 @@ stand-in is the only fake, and only it is told it is one.
   store's by a rule (`commerce.market_price_rules`: base, percentage, `net` or `gross`, rounding step, ending; never chained, by trigger and
   `ruleProblem()`), worked out only by `derivedPrice()` (`src/lib/market-prices.ts`, BigInt) and written only by `src/server/market-prices.ts`
   through `commerce.set_price` with `prices.derived` (the only change the price history guard allows on an open row); a price typed by hand is
-  fixed and never touched, an empty one follows the rule, gift cards and computed bundles are left alone. Prices derive again in
+  fixed and never touched, an empty one follows the rule, gift cards and computed bundles are left alone; a rule between currencies needs
+  both rates (`rateProblem()`), and a missing rate never ends its prices. Prices derive again in
   `saveProduct()`'s transaction (`deriveForProducts()`), on a rule's save, on a currency save and after the ECB's rates, each change logged
   (a product's in its save's entries, a batch as one entry); taking a rule away keeps its prices, fixed. A new writer of base prices or rates
   calls `deriveForProducts()`; a new caller of `set_price` is in `price-audit-scan.test.ts`. The AI manager's `market_price_rules` and the

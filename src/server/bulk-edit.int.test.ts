@@ -374,6 +374,28 @@ describe("undo", () => {
     expect(undoTerms).toMatchObject({ ok: true, restored: 2 });
     expect(await count(sql`select count(*)::int as n from commerce.product_terms where store_id = ${fx.storeId}::uuid and term_id = ${String(category.id)}::uuid`)).toBe(0);
   });
+
+  it("stops selling products in a country and sells them there again, prices kept, and the undo puts where they are sold back (D335 A.3)", async () => {
+    const group = multi.slice(0, 2);
+    const offIn = (market: string) =>
+      count(sql`select count(*)::int as n from commerce.market_availability where store_id = ${fx.storeId}::uuid and market_code = ${market} and product_id = any(${`{${ids(group).join(",")}}`}::uuid[])`);
+    const pricedRows = () => count(sql`select count(*)::int as n from commerce.prices p join commerce.product_variants v on v.id = p.variant_id where v.store_id = ${fx.storeId}::uuid and v.product_id = any(${`{${ids(group).join(",")}}`}::uuid[])`);
+    const pricesBefore = await pricedRows();
+    expect(await bulk.previewBulk(owner, { action: "stop_selling_in", productIds: ids(group), markets: ["XX"] })).toMatchObject({ ok: false });
+    const stopped = await bulk.startBulk(owner, { action: "stop_selling_in", productIds: ids(group), markets: ["SE"] });
+    if (!stopped.ok) throw new Error(stopped.problem);
+    expect(await offIn("SE")).toBe(2);
+    expect(await offIn("NO")).toBe(0);
+    expect(await pricedRows()).toBe(pricesBefore);
+    // Selling there again is a batch of its own; the stop's undo then finds the value changed and leaves it.
+    const again = await bulk.startBulk(owner, { action: "sell_in", productIds: [group[0].id], markets: ["SE"] });
+    if (!again.ok) throw new Error(again.problem);
+    expect(await offIn("SE")).toBe(1);
+    const undo = await bulk.undoBatch(owner, stopped.batchId);
+    expect(undo).toMatchObject({ ok: true, restored: 1, conflicts: 1 });
+    expect(await offIn("SE")).toBe(0);
+    expect(await pricedRows()).toBe(pricesBefore);
+  });
 });
 
 describe("stock while a product is saved (review: a sale paid after the read must not be put back on the shelf)", () => {

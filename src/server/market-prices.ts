@@ -3,7 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
-import { toRates, type StoreCurrency } from "@/lib/currency";
+import { canConvert, toRates, type StoreCurrency } from "@/lib/currency";
 import { derivedPrice, ruleProblem, type MarketPriceRule, type PriceBasis, type RulePreview } from "@/lib/market-prices";
 
 import { audit } from "./auth";
@@ -49,6 +49,25 @@ export async function derivedCounts(storeId: string): Promise<Map<string, number
 async function ratesOf(storeId: string, runner: Runner) {
   const rows = await runner.execute<Row>(sql`select currency, rate, round_to from commerce.store_currencies where store_id = ${storeId}::uuid`);
   return toRates(rows.map((r): StoreCurrency => ({ currency: String(r.currency).trim(), rate: r.rate === null ? null : Number(r.rate), roundTo: Number(r.round_to) })));
+}
+
+/** Whether a rule can convert between its two countries' currencies: the same currency, or both with a rate. */
+function convertible(base: string, market: string, rates: Awaited<ReturnType<typeof ratesOf>>): boolean {
+  return base === market || canConvert(base, market, rates);
+}
+
+/**
+ * Why a rule cannot work out any price, in the owner's words, or null: a currency of the two countries with no rate (the sentence names it, and the
+ * Countries page shows it in the account's language).
+ */
+export async function rateProblem(storeId: string, rule: Pick<MarketPriceRule, "market" | "base">, runner: Runner = db()): Promise<string | null> {
+  const rates = await ratesOf(storeId, runner);
+  const currencies = await currenciesOf(runner, storeId);
+  const base = currencies.get(rule.base);
+  const market = currencies.get(rule.market);
+  if (!base || !market || convertible(base, market, rates)) return null;
+  const missing = [base, market].find((c) => !canConvert(c, "EUR", rates)) ?? market;
+  return `${missing} has no rate under Languages and currencies, so no prices can be worked out into or from it.`;
 }
 
 /** One variant's facts for a rule, as the database has them now. */
@@ -139,7 +158,8 @@ export async function deriveForProducts(runner: Runner, storeId: string, scope: 
   for (const rule of rules) {
     const base = currencies.get(rule.base);
     const market = currencies.get(rule.market);
-    if (!base || !market) continue;
+    // A rate taken away leaves the rule's prices as they were (never ended for want of a rate): the next rate works them out again.
+    if (!base || !market || !convertible(base, market, rates)) continue;
     const work = planDerivations(rule, await factsFor(runner, storeId, rule, scope.productIds ?? null), { base, market }, rates);
     await write(runner, rule.market, work);
     written += work.filter((w) => w.amountMinor !== null).length;
@@ -192,7 +212,7 @@ export type RuleResult = { ok: true; written: number; ended: number } | { ok: fa
  */
 export async function saveMarketPriceRule(store: { id: string; keptMarkets: readonly { code: string }[] }, accountId: string, rule: MarketPriceRule): Promise<RuleResult> {
   const existing = await marketPriceRules(store.id);
-  const problem = ruleProblem(rule, store.keptMarkets.map((m) => m.code), existing);
+  const problem = ruleProblem(rule, store.keptMarkets.map((m) => m.code), existing) ?? (await rateProblem(store.id, rule));
   if (problem) return { ok: false, problem };
   const counts = await db().transaction(async (tx) => {
     await tx.execute(sql`

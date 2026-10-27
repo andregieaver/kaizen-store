@@ -45,6 +45,8 @@ type Phase =
   | { kind: "done"; summary: BatchSummary };
 
 const ACTIONS_CURRENT: ListAction[] = ["status", "archive", "terms_add", "terms_remove", "price", "stock"];
+/** Where a product is sold (D335): only for a store that sells in more than one country. */
+const ACTIONS_COUNTRIES: ListAction[] = ["sell_in", "stop_selling_in"];
 const ACTIONS_ARCHIVED: ListAction[] = ["unarchive"];
 
 /**
@@ -67,7 +69,7 @@ export function ProductsTable({ slug, rows, archived, priceHeader, locale, bulk 
 
   const ids = useMemo(() => [...selected], [selected]);
   const allShown = rows.length > 0 && rows.every((r) => selected.has(r.id));
-  const actions = archived ? ACTIONS_ARCHIVED : ACTIONS_CURRENT;
+  const actions = archived ? ACTIONS_ARCHIVED : (bulk?.markets.length ?? 0) > 1 ? [...ACTIONS_CURRENT, ...ACTIONS_COUNTRIES] : ACTIONS_CURRENT;
 
   const toggle = (id: string) => {
     setNote(null);
@@ -380,6 +382,18 @@ function ActionPanel({
           <input id="bulk-stock" value={form.stock} onChange={(e) => set({ stock: e.target.value })} inputMode="text" placeholder={w.stockPlaceholder} className={field} />
           <p className={hint}>{w.stockHint}</p>
         </div>
+      )}
+      {(action === "sell_in" || action === "stop_selling_in") && (
+        <fieldset className="flex flex-col gap-1">
+          <legend className={label}>{w.countries}</legend>
+          {markets.map((m) => (
+            <label key={m.code} className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={form.countries.includes(m.code)} onChange={() => set({ countries: toggleIn(form.countries, m.code) })} />
+              {m.name}
+            </label>
+          ))}
+          <p className={hint}>{action === "sell_in" ? w.sellInHint : w.stopSellingHint}</p>
+        </fieldset>
       )}
       {action === "price" && (
         <div className="flex flex-col gap-3">

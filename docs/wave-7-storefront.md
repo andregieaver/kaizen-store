@@ -149,7 +149,9 @@ scheduled articles use).
 for the batch (`settings.market_prices_derived`, by no person for the ECB's). The screen offers a rule for every country but the store's own
 (the first), which is the natural base; the database and `ruleProblem()` allow any pair that does not chain. A rule written by the AI manager
 never runs by itself under the autopilot (`NEVER_AUTOMATIC`: it rewrites a whole country's prices). Store copies keep every price as it was,
-fixed, and no rule (`COPY_RULES` `never`). The bulk editor's preview saying that it fixes a derived price is left to A3.
+fixed, and no rule (`COPY_RULES` `never`). A new store has no rates of its own, so a rule between two currencies is refused until both
+have one (`rateProblem()`, on the screen, the preview and the AI manager's preflight, naming the currency), and a rate taken away later leaves
+the rule's prices as they were rather than ending them. The bulk editor's preview saying that it fixes a derived price is left to A3.
 
 ### A.3 Steps
 

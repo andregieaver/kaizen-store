@@ -13,7 +13,7 @@ vi.mock("next/headers", () => ({ cookies: async () => ({ get: () => undefined, s
 
 const { getEditorContext, getProductForEdit, saveProduct } = await import("./products");
 const { getStore } = await import("./stores");
-const { marketPriceRules, removeMarketPriceRule, saveMarketPriceRule } = await import("./market-prices");
+const { deriveForProducts, marketPriceRules, removeMarketPriceRule, saveMarketPriceRule } = await import("./market-prices");
 const { preflightOwnerTool, runOwnerTool } = await import("./owner-tools");
 
 type Row = Record<string, unknown>;
@@ -119,6 +119,20 @@ describe("a country's prices worked out from another's", () => {
         values (${fx.storeId}::uuid, 'DK', 'SE', 0, 'net', 1)
       `),
     ).rejects.toThrow();
+  });
+
+  it("is refused for a currency with no rate, and keeps its prices when a rate is taken away", async () => {
+    const store = await storeOf(fx);
+    // Danish kroner have no rate in this store: no price could be worked out, so the rule is not kept.
+    expect(await saveMarketPriceRule(store, fx.ownerId, { ...rule, market: "DK" })).toEqual({ ok: false, problem: expect.stringMatching(/^DKK has no rate /) });
+    const before = await pricesIn("SE", products[0].id);
+    await db().execute(sql`update commerce.store_currencies set rate = null where store_id = ${fx.storeId}::uuid and currency = 'SEK'`);
+    try {
+      expect(await deriveForProducts(db(), fx.storeId)).toEqual({ written: 0, ended: 0 });
+      expect(await pricesIn("SE", products[0].id)).toEqual(before);
+    } finally {
+      await db().execute(sql`update commerce.store_currencies set rate = 11.5 where store_id = ${fx.storeId}::uuid and currency = 'SEK'`);
+    }
   });
 
   it("never reaches another store's prices", async () => {

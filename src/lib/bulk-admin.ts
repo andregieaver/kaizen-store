@@ -8,7 +8,7 @@ import { countWords, fillWords } from "./admin-fill";
 import { BULK_GRID_MAX_PRODUCTS, BULK_MAX_PRODUCTS } from "./data-limits";
 import { formatMoney } from "./money";
 
-export const LIST_ACTIONS = ["status", "archive", "unarchive", "terms_add", "terms_remove", "price", "stock"] as const;
+export const LIST_ACTIONS = ["status", "archive", "unarchive", "terms_add", "terms_remove", "price", "stock", "sell_in", "stop_selling_in"] as const;
 export type ListAction = (typeof LIST_ACTIONS)[number];
 
 /** The request of a list action, as the server's `BulkRequest` takes it (structurally the same). */
@@ -17,7 +17,8 @@ export type BulkRequestInput =
   | { action: "archive" | "unarchive"; productIds: string[] }
   | { action: "terms_add" | "terms_remove"; productIds: string[]; categoryIds: string[]; tagIds: string[] }
   | { action: "price"; productIds: string[]; markets?: string[]; percent?: string; amounts?: Record<string, string> }
-  | { action: "stock"; productIds: string[]; change: string };
+  | { action: "stock"; productIds: string[]; change: string }
+  | { action: "sell_in" | "stop_selling_in"; productIds: string[]; markets: string[] };
 
 const ACTIONS = {
   status: "Set status",
@@ -29,6 +30,8 @@ const ACTIONS = {
   stock: "Set stock",
   grid: "Edit in a grid",
   undo: "Undo",
+  sell_in: "Sell in",
+  stop_selling_in: "Stop selling in",
 };
 
 export const ACTION_WORDS: Record<string, string> = ACTIONS;
@@ -42,6 +45,7 @@ export const BULK_WORDS = {
   chooseTerm: "Choose at least one category or tag.",
   writeStock: "Write a stock figure such as 12, or a change such as +5 or -3.",
   chooseMarket: "Choose at least one market.",
+  chooseCountry: "Choose at least one country.",
   writePercent: "Write a percentage, such as -10 or 5.5.",
   writeAmounts: "Write an amount for {markets}: an amount is never applied across currencies.",
   chooseProduct: "Choose at least one product.",
@@ -53,8 +57,10 @@ export const BULK_WORDS = {
   terms: "{categories}, {tags}",
   archived: "archived",
   notArchived: "not archived",
+  soldEverywhere: "sold in every country",
+  notSoldIn: "not sold in {list}",
   price: "Price ({market})",
-  fields: { status: "Status", archived: "Archived", terms: "Categories and tags", stock: "Stock", cost: "Cost", sku: "SKU" },
+  fields: { status: "Status", archived: "Archived", terms: "Categories and tags", stock: "Stock", cost: "Cost", sku: "SKU", availability: "Where it is sold" },
 };
 
 export type BulkWords = Widen<typeof BULK_WORDS>;
@@ -71,9 +77,11 @@ export type PanelForm = {
   percent: string;
   amounts: Record<string, string>;
   stock: string;
+  /** The countries a product is sold in again, or no longer (D335): none chosen until a person chooses. */
+  countries: string[];
 };
 
-export const emptyPanel = (mainMarket: string): PanelForm => ({ to: "active", termIds: [], markets: [mainMarket], mode: "percent", percent: "", amounts: {}, stock: "" });
+export const emptyPanel = (mainMarket: string): PanelForm => ({ to: "active", termIds: [], markets: [mainMarket], mode: "percent", percent: "", amounts: {}, stock: "", countries: [] });
 
 /** The request a panel makes for the selected products, or the sentence saying what is missing. */
 export function buildBulkRequest(
@@ -101,6 +109,9 @@ export function buildBulkRequest(
     }
     case "stock":
       return form.stock.trim() === "" ? { ok: false, problem: words.writeStock } : { ok: true, request: { action, productIds: ids, change: form.stock.trim() } };
+    case "sell_in":
+    case "stop_selling_in":
+      return form.countries.length === 0 ? { ok: false, problem: words.chooseCountry } : { ok: true, request: { action, productIds: ids, markets: [...form.countries] } };
     case "price": {
       if (form.markets.length === 0) return { ok: false, problem: words.chooseMarket };
       if (form.mode === "percent") {
@@ -164,6 +175,12 @@ export function figureText(field: string, value: unknown, currencyOf: (field: st
     return fillWords(words.terms, { categories: countWords(c, words.categories), tags: countWords(t, words.tags) });
   }
   if (field === "archived") return value === true ? words.archived : words.notArchived;
+  // Where a product is not sold (D335): the countries off for the whole product, then a variant's own.
+  if (field === "availability" && typeof value === "object") {
+    const v = value as { off?: string[]; variants?: Record<string, string[]> };
+    const parts = [...(v.off ?? []), ...Object.entries(v.variants ?? {}).filter(([, codes]) => codes.length > 0).map(([sku, codes]) => `${sku}: ${codes.join(", ")}`)];
+    return parts.length === 0 ? fillWords(words.soldEverywhere, {}) : fillWords(words.notSoldIn, { list: parts.join("; ") });
+  }
   const currency = currencyOf(field);
   if (currency && typeof value === "number" && Number.isSafeInteger(value)) return formatMoney(value, currency, locale);
   return String(value);
