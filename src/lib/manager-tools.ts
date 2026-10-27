@@ -369,6 +369,7 @@ export const TOOL_WORDS: Record<string, string> = {
   search_insights: "Looking at searches",
   market_price_rules: "Looking at how each country gets its prices",
   set_market_price_rule: "Preparing the price rule",
+  customs_duties: "Looking at customs and duties",
   producer_registrations: "Looking at the producer registrations",
   save_producer_registration: "Preparing the registration",
   list_blogs: "Looking at the blogs",

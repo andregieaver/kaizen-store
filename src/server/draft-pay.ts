@@ -90,7 +90,9 @@ export function placedOrderOf(order: OrderView): PlacedOrder {
     shippingReliefMinor: order.shippingReliefMinor,
     treatment: null,
     totalMinor: order.totalMinor,
-    dueNowMinor: order.totalMinor,
+    // A company's order that waited for its approval may carry duties collected at checkout (DDP, D343); a draft never does.
+    dueNowMinor: order.totalMinor + order.dutiesMinor,
+    dutiesMinor: order.dutiesMinor,
     balanceMinor: 0,
     company: order.company,
     discount: null,

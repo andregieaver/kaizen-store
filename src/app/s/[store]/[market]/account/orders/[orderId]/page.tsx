@@ -9,6 +9,7 @@ import { DeliveryBlock } from "@/components/delivery-block";
 import { GiftNote } from "@/components/gift-note";
 import { OrderDocuments } from "@/components/documents/order-documents";
 import { OrderShipments } from "@/components/order-shipments";
+import { OrderCustomsNote, OrderCustomsRows } from "@/components/order-customs";
 import { OrderVatNotes, OrderVatRelief, OrderVatRows } from "@/components/order-vat";
 import { LineUnitPrice } from "@/components/price";
 import { OwnBookings } from "@/components/own-bookings";
@@ -216,6 +217,7 @@ async function AccountOrder({ params }: { params: Props["params"] }) {
             <dd>{money(order.totalMinor)}</dd>
           </div>
           <OrderVatRows order={order} text={vatWords} money={money} label={m.vatAmount} />
+          <OrderCustomsRows order={order} lang={market.lang} money={money} paidLabel={m.toPay} />
           {order.balanceMinor > 0 && (
             // Paid at the appointment (D66): what is still to pay there.
             <div className="flex justify-between">
@@ -246,6 +248,7 @@ async function AccountOrder({ params }: { params: Props["params"] }) {
           )}
         </dl>
         <OrderVatNotes order={order} text={vatWords} />
+        <OrderCustomsNote order={order} lang={market.lang} money={money} />
         {earned && <p className="mt-3 text-sm">{earned}</p>}
       </section>
 

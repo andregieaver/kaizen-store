@@ -1648,6 +1648,105 @@ describe("a product under a producer responsibility scheme, in euro (D342)", () 
 });
 
 /**
+ * Customs and duties (wave 7 unit I, D343), shown in euro: the Norwegian store sends the notebook to Sweden, across the EU's customs border. A rate
+ * of this test's own for the notebook's heading in Sweden (8 %, on goods and shipping without VAT, with no threshold), the store's choice DDP: the
+ * cart and the order hold the same duty and import VAT beyond the price, collected beside the total, sent to Stripe as a line of its own and kept on
+ * the order; without an HS code the cart blocks and checkout refuses (`customs`), never a zero duty; with DAP nothing is collected and the
+ * estimate of what the carrier may collect is kept.
+ */
+describe("customs and duties collected at checkout, in euro (D343)", () => {
+  it("collects the same estimate in the cart and the order with DDP, blocks without an HS code, and collects nothing with DAP", async () => {
+    const { saveCustomsSetting } = await import("./customs");
+    const { placeOrder, cancelUnpaidOrder } = await import("./checkout");
+    const { vatIncluded } = await import("@/lib/checkout");
+    const se = toMarket({ code: "SE", currency: "SEK", defaultLocale: "sv-SE" });
+    const seInEuro = showMarket(
+      { code: "SE", currency: "SEK", defaultLocale: "sv-SE" },
+      { currency: "EUR", conversion: conversionFor(localizationOf([], [{ currency: "SEK", rate: 11.5, roundTo: 1 }, { currency: "EUR", rate: 1, roundTo: 1 }], [se]), "SEK", "EUR")! },
+    );
+    const notebook = variant["DEMO-NOTEBOOK-LINED"];
+    // A heading no other test uses, so the rows of this test reach only this notebook.
+    const hs = `48201${run.replace(/\D/g, "").padEnd(5, "7").slice(0, 5)}`;
+    await db().execute(sql`insert into commerce.store_currencies (store_id, currency, rate, round_to, position) values (${storeId}::uuid, 'SEK', 11.5, 1, 2) on conflict do nothing`);
+    await db().execute(sql`update commerce.product_variants set hs_code = ${hs}, origin_country = 'CN' where store_id = ${storeId}::uuid and id = ${notebook}::uuid`);
+    const rows = await db().execute<Row>(sql`
+      insert into commerce.duty_rates (destination, hs_prefix, applies_to, duty_rate_bps, threshold_minor, shipping_in_value, source, checked_on)
+      values ('SE', ${hs}, 'any', 800, null, true, 'https://example.test/kinds-duty', current_date),
+             ('SE', '', 'any', null, null, true, 'https://example.test/kinds-duty', current_date)
+      returning id
+    `);
+    const cartOf = () => jar.get(`cart_${storeId}_${se.slug}`)!;
+    try {
+      expect(await saveCustomsSetting(member.account.id, storeId, { market: "SE", mode: "ddp" }, "NO")).toEqual({ ok: true });
+      view = seInEuro;
+      jar.clear();
+      await add("DEMO-NOTEBOOK-LINED", 2);
+      const cart = await getCart(shop());
+      expect(cart.currency).toBe("EUR");
+      const summary = await cartSummary(shop(), cart);
+      expect(summary.blocked).toBe(false);
+      expect(summary.customs).toMatchObject({ chosen: "ddp", mode: "ddp", blocked: false, estimate: { kind: "estimate", currency: "EUR" } });
+      // Worked out again here: 8 % of the goods and shipping without VAT, and the 25 % import VAT on that and the duty less the VAT in the price.
+      const goods = summary.payable[0].unitPriceMinor * 2;
+      const goodsVat = vatIncluded(goods, summary.payable[0].vatRate);
+      const shipping = summary.shipping ?? 0;
+      const shippingVat = vatIncluded(shipping, summary.tax.shippingRate);
+      const value = goods - goodsVat + shipping - shippingVat;
+      const duty = Math.floor((value * 800 * 2 + 10_000) / 20_000);
+      const importVat = Math.floor(((value + duty) * Math.round(summary.payable[0].vatRate * 10_000) * 2 + 10_000) / 20_000);
+      const collect = duty + Math.max(0, importVat - goodsVat - shippingVat);
+      expect(duty).toBeGreaterThan(0);
+      expect(summary.customs.collectMinor).toBe(collect);
+      expect(summary.dueNowMinor).toBe(summary.total + collect);
+
+      expect(await startCheckout({ ...shop(), storeSlug: slug }, cartOf(), origin, "Frakt", {})).toMatchObject({ ok: true });
+      const order = (await getOrder(storeId, (await getOpenCheckout(storeId, cartOf()))!.orderId))!;
+      expect({ currency: order.currency, total: order.totalMinor, vat: order.taxMinor, duties: order.dutiesMinor }).toEqual({
+        currency: "EUR",
+        total: summary.total,
+        vat: summary.vat,
+        duties: collect,
+      });
+      expect(order.customs).toMatchObject({ mode: "ddp", destination: "SE", currency: "EUR", collectedMinor: collect, estimate: { dutyMinor: duty, verified: false } });
+      // Stripe is sent the duties as a line of their own, beside the goods and shipping: what it charges is the total and the duties.
+      const { params } = fake.created.at(-1)!;
+      expect(chargedNow(params)).toBe(order.totalMinor + collect);
+      const items = params.line_items as { price_data: { unit_amount: number; product_data: { name: string } } }[];
+      expect(items.find((i) => i.price_data.product_data.name === "Tull och importskatter")?.price_data.unit_amount).toBe(collect);
+
+      // No HS code: no estimate, so the cart blocks and checkout refuses; never a zero duty.
+      await db().execute(sql`update commerce.product_variants set hs_code = null where store_id = ${storeId}::uuid and id = ${notebook}::uuid`);
+      jar.clear();
+      await add("DEMO-NOTEBOOK-LINED", 2);
+      const missing = await cartSummary(shop(), await getCart(shop()));
+      expect(missing.blocked).toBe(true);
+      expect(missing.customs).toMatchObject({ blocked: true, collectMinor: 0, estimate: { kind: "unknown", reason: "missing_hs" } });
+      expect(await placeOrder({ storeId, market: seInEuro }, cartOf())).toEqual({ ok: false, problem: "customs" });
+
+      // DAP: nothing collected; the estimate of what the carrier may collect is kept, and the order is what the summary said.
+      await db().execute(sql`update commerce.product_variants set hs_code = ${hs} where store_id = ${storeId}::uuid and id = ${notebook}::uuid`);
+      expect(await saveCustomsSetting(member.account.id, storeId, { market: "SE", mode: "dap" }, "NO")).toEqual({ ok: true });
+      const dap = await cartSummary(shop(), await getCart(shop()));
+      expect(dap.customs).toMatchObject({ mode: "dap", collectMinor: 0, blocked: false, estimate: { kind: "estimate", dutyMinor: duty } });
+      expect(dap.dueNowMinor).toBe(dap.total);
+      const placed = await placeOrder({ storeId, market: seInEuro }, cartOf());
+      if (!placed.ok) throw new Error(placed.problem);
+      const dapOrder = (await getOrder(storeId, placed.order.orderId))!;
+      expect({ total: dapOrder.totalMinor, duties: dapOrder.dutiesMinor, due: placed.order.dueNowMinor }).toEqual({ total: dap.total, duties: 0, due: dap.total });
+      expect(dapOrder.customs).toMatchObject({ mode: "dap", collectedMinor: 0, estimate: { dapMinor: dap.customs.estimate.kind === "estimate" ? dap.customs.estimate.dapMinor : -1 } });
+      await cancelUnpaidOrder(placed.order.orderId, "test");
+    } finally {
+      view = no;
+      await db().execute(sql`delete from commerce.duty_rates where id in (${String(rows[0].id)}::uuid, ${String(rows[1].id)}::uuid)`);
+      await db().execute(sql`delete from commerce.customs_settings where store_id = ${storeId}::uuid`);
+      // The demo notebook's own code and origin, as the template has them.
+      await db().execute(sql`update commerce.product_variants set hs_code = '482010', origin_country = 'NO' where store_id = ${storeId}::uuid and id = ${notebook}::uuid`);
+      await db().execute(sql`delete from commerce.store_currencies where store_id = ${storeId}::uuid and currency = 'SEK'`);
+    }
+  });
+});
+
+/**
  * The rules as read (D160): no market compares per 100 g, so the notebook, whose owner chose 100 g, is compared per kg in Norway
  * with the table as it is. The cart's unit price, the order line's and an independent reader's agree, and the totals are the
  * same as with the small base.

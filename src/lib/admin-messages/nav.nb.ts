@@ -244,6 +244,12 @@ export const NAV_NB: Record<string, string> = {
   "VAT registration and number, OSS and IOSS, and how the store charges VAT.":
     "Registrering i Merverdiavgiftsregisteret og organisasjonsnummer, EUs OSS- og IOSS-ordning, og hvordan butikken beregner merverdiavgift.",
   "Producer responsibility": "Produsentansvar",
+  "Duties and import VAT": "Toll og importmva.",
+  "Who pays duties and import VAT in each country outside your customs area: your customer to the carrier on delivery, or with the order at checkout.":
+    "Hvem som betaler toll og importmva. i hvert land utenfor tollområdet ditt: kunden til transportøren ved levering, eller sammen med bestillingen i kassen.",
+  "Duty rates": "Tollsatser",
+  "The duty rates and thresholds per country that stores' customs estimates are worked out from, each with its source and whether a person verified it.":
+    "Tollsatsene og grensene per land som butikkenes anslag for toll regnes ut fra, hver med kilde og om en person har bekreftet den.",
   "Registrations for packaging, electrical equipment, batteries and other schemes in each country, and what is not sold without one.":
     "Registreringer for emballasje, elektriske og elektroniske produkter, batterier og andre ordninger i hvert land, og hva som ikke selges uten.",
   Invoicing: "Fakturering",

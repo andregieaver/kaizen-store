@@ -275,6 +275,7 @@ export const assistantNb: AssistantMessages = {
     search_insights: "Ser på søk",
     market_price_rules: "Ser på hvordan hvert land får prisene sine",
     set_market_price_rule: "Forbereder prisregelen",
+    customs_duties: "Ser på toll og avgifter",
     producer_registrations: "Ser på registreringene for produsentansvar",
     save_producer_registration: "Forbereder registreringen",
     list_blogs: "Ser på bloggene",

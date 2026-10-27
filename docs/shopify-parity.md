@@ -10,11 +10,11 @@ D152 (the store analytics cockpit) and D153 (the EU withdrawal function and the 
 
 <!-- parity:generated:start since -->
 
-- **Headline now 77.5%** (first report 59.5%), **must-have 83.8%** (first report 69.1%), over 202 core rows (first report 232).
-- Where the change comes from: +17.8 points from the 103 rating moves on core rows recorded below, and +0.3 points because the re-read changed which rows count as core (the tracker has 232 rows, the first report 232 core ones).
+- **Headline now 77.8%** (first report 59.5%), **must-have 83.8%** (first report 69.1%), over 202 core rows (first report 232).
+- Where the change comes from: +18.0 points from the 104 rating moves on core rows recorded below, and +0.3 points because the re-read changed which rows count as core (the tracker has 232 rows, the first report 232 core ones).
 - 231 of 232 rows have their Shopify side read from a page; the others are listed under evidence debt.
 
-Rated higher (88):
+Rated higher (89):
 
 - AI or rule-based customer segmentation (AI): missing to partial. D296 (wave 5 unit B): saved rule-based segments over customers and subscribers, counted live with a member list, and customer tags; read segments.ts and ran segments.test.ts, segments.int.test.ts (PGlite and integration, passed).
 - AI-written marketing email (AI): missing to partial. D297: Write with AI in the broadcast editor suggests the email's words through the claims filter, as a suggestion only; it does not yet read the store's products or campaigns.
@@ -94,6 +94,7 @@ Rated higher (88):
 - Returns management (RMA, inspect, restock, fees) (Orders): partial to full. D153 shipped the return object: `returns`/`return_lines`, numbers `{order}-R{n}`, lifecycle requested to closed enforced in SQL, reasons, inspection per line (condition, restock, deduction with note), return shipping, a refund worked out o…
 - Return labels (Orders): missing to partial. D153 lets staff attach a return label address (https only, pasted) when approving or later; it is shown on the shopper's status page and emailed as a button, and tests hold it (returns.int.test.ts, returns-actions.int.test.ts, return-input…
 - Exchanges (Orders): missing to partial. Wave 3 exchanges (docs/wave-3-exchanges.md).
+- Customs and duties (Orders): missing to partial. D343 (wave 7 unit I): duty and import VAT estimated from the platform's rates table in the cart and the order alike (euro scenario), DDP or DAP per country kept on the order and shown on its page and confirmation, DDP refused without an HS…
 - Order export to CSV (Orders): missing to full. Wave 2, first run (docs/wave-2-data.md; working tree not yet committed).
 - Credit notes for refunds (Orders, not core): missing to partial. Unit 1b (D159 proposed) read in the working tree and run in a fresh database on 2026-10-04: invoices.test.ts and invoices-money-review.test.ts (every refund path P1 to P10, one note per refund, own series, over-invoice refused, no credit f…
 - Gift receipts and messages (Orders, not core): missing to full. Wave 3 run 2 (docs/wave-3-orders.md, D173 proposed; working tree not committed, migration not applied to production).
@@ -138,7 +139,7 @@ Rated lower (24):
 
 <!-- parity:generated:start summary -->
 
-Kaizena Flow has **77.5%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 202 core features weighted by importance to an EU small or mid-size merchant, and **83.8%** on the must-haves (the 83 features with weight 4 or 5). The unweighted figures are 75.0% overall and 83.7% for must-haves. Counting app-only features gives 76.9%; counting Plus-only as well gives 76.3%. Kaizena Flow is strongest on catalogue and products (90.7%) and weakest on platform, extensibility and operations (54.7%), ai and automation (67.9%), checkout and payments (69.2%). Of the 202 core features, 115 are full, 73 partial and 14 missing, so half-built features, not absent ones, are the main shape of the gap.
+Kaizena Flow has **77.8%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 202 core features weighted by importance to an EU small or mid-size merchant, and **83.8%** on the must-haves (the 83 features with weight 4 or 5). The unweighted figures are 75.2% overall and 83.7% for must-haves. Counting app-only features gives 77.1%; counting Plus-only as well gives 76.5%. Kaizena Flow is strongest on catalogue and products (90.7%) and weakest on platform, extensibility and operations (54.7%), ai and automation (67.9%), checkout and payments (69.2%). Of the 202 core features, 115 are full, 74 partial and 13 missing, so half-built features, not absent ones, are the main shape of the gap.
 
 <!-- parity:generated:end summary -->
 
@@ -148,10 +149,10 @@ The method is simple: a full match scores 1, a partial match 0.5, a missing feat
 
 | Measure | Features | Weighted parity | Unweighted parity | Full / partial / missing |
 | --- | --- | --- | --- | --- |
-| Headline: core (Shopify native, Basic to Advanced) | 202 | **77.5%** | 75.0% | 115 / 73 / 14 |
+| Headline: core (Shopify native, Basic to Advanced) | 202 | **77.8%** | 75.2% | 115 / 74 / 13 |
 | Must-have (core, weight 4 or 5) | 83 | **83.8%** | 83.7% | 56 / 27 / 0 |
-| Core plus app-only features | 226 | 76.9% | 74.6% | 126 / 85 / 15 |
-| Everything, including Plus-only | 232 | 76.3% | 73.5% | 127 / 87 / 18 |
+| Core plus app-only features | 226 | 77.1% | 74.8% | 126 / 86 / 14 |
+| Everything, including Plus-only | 232 | 76.5% | 73.7% | 127 / 88 / 17 |
 
 <!-- parity:generated:end headline -->
 
@@ -166,13 +167,13 @@ Counts are core features only. Weighted parity uses weights 1 to 5; must-have is
 | Catalogue and products | 26 | 22 | 3 | 1 | 90.7% | 8 | 92.6% |
 | Storefront, themes and content | 32 | 24 | 7 | 1 | 89.8% | 15 | 100.0% |
 | Checkout and payments | 17 | 7 | 10 | 0 | 69.2% | 8 | 62.9% |
-| Orders, shipping, fulfilment and returns | 28 | 16 | 11 | 1 | 79.0% | 14 | 86.1% |
+| Orders, shipping, fulfilment and returns | 28 | 16 | 12 | 0 | 80.5% | 14 | 86.1% |
 | Customers, marketing and loyalty | 17 | 8 | 8 | 1 | 73.7% | 8 | 76.5% |
 | Analytics, reporting and finance | 24 | 15 | 6 | 3 | 79.9% | 11 | 89.1% |
 | International, compliance and trust | 16 | 10 | 6 | 0 | 77.7% | 10 | 70.2% |
 | Platform, extensibility and operations | 20 | 4 | 12 | 4 | 54.7% | 7 | 72.4% |
 | AI and automation | 22 | 9 | 10 | 3 | 67.9% | 2 | 100.0% |
-| **Total** | **202** | **115** | **73** | **14** | **77.5%** | **83** | **83.8%** |
+| **Total** | **202** | **115** | **74** | **13** | **77.8%** | **83** | **83.8%** |
 
 <!-- parity:generated:end domains -->
 
@@ -193,8 +194,8 @@ Untested Full rows: `ai.assistant-voice-mode`, `customers.abandoned-checkout-rec
 
 | Bucket | What it means | Rows not Full | Core rows | Core headline points lacking |
 | --- | --- | ---: | ---: | ---: |
-| A | Build in-house | 65 | 54 | 13.7 |
-| B | Build, live only with a third party | 15 | 13 | 3.5 |
+| A | Build in-house | 64 | 53 | 13.2 |
+| B | Build, live only with a third party | 16 | 14 | 3.7 |
 | C | Strategy decision first | 11 | 8 | 1.9 |
 | D | Not reachable by code | 14 | 12 | 3.4 |
 
@@ -206,21 +207,21 @@ The waves are those of `docs/parity-plan.md` section 3. This table is produced f
 
 <!-- parity:generated:start projection -->
 
-Now: **77.5%** core, 83.8% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 16 rows (12 core) have no wave yet and are not in them.
+Now: **77.8%** core, 83.8% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 16 rows (12 core) have no wave yet and are not in them.
 
 | Wave | Scope | Rows (core) | Core if every row of waves 1 to N is Full | Must-have | Adds (points) | Core if only bucket A rows are | Must-have |
 | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | Compliance and money | 10 (7) | 79.7% | 87.3% | +2.1 | 79.0% | 86.2% |
-| 2 | Data in and out | 3 (1) | 79.9% | 87.3% | +0.2 | 79.3% | 86.2% |
-| 3 | Inventory and orders | 14 (13) | 83.1% | 89.7% | +3.3 | 80.8% | 87.5% |
-| 4 | Payments | 7 (6) | 84.6% | 91.4% | +1.5 | 81.2% | 87.5% |
-| 5 | Customers and marketing | 19 (16) | 88.8% | 95.1% | +4.2 | 84.5% | 90.6% |
-| 6 | Catalogue | 0 (0) | 88.8% | 95.1% | +0.0 | 84.5% | 90.6% |
-| 7 | Storefront and international | 7 (6) | 90.4% | 95.1% | +1.6 | 86.1% | 90.6% |
-| 8 | Analytics and AI | 17 (17) | 94.3% | 95.8% | +3.9 | 89.8% | 91.3% |
-| 9 | Platform and extensibility | 12 (9) | 96.6% | 96.9% | +2.3 | 91.2% | 91.8% |
+| 1 | Compliance and money | 10 (7) | 79.9% | 87.3% | +2.1 | 79.3% | 86.2% |
+| 2 | Data in and out | 3 (1) | 80.1% | 87.3% | +0.2 | 79.5% | 86.2% |
+| 3 | Inventory and orders | 14 (13) | 83.4% | 89.7% | +3.3 | 81.0% | 87.5% |
+| 4 | Payments | 7 (6) | 84.9% | 91.4% | +1.5 | 81.4% | 87.5% |
+| 5 | Customers and marketing | 19 (16) | 89.0% | 95.1% | +4.2 | 84.7% | 90.6% |
+| 6 | Catalogue | 0 (0) | 89.0% | 95.1% | +0.0 | 84.7% | 90.6% |
+| 7 | Storefront and international | 7 (6) | 90.4% | 95.1% | +1.4 | 85.9% | 90.6% |
+| 8 | Analytics and AI | 17 (17) | 94.3% | 95.8% | +3.9 | 89.6% | 91.3% |
+| 9 | Platform and extensibility | 12 (9) | 96.6% | 96.9% | +2.3 | 91.0% | 91.8% |
 
-Ceiling with every bucket A row Full and buckets B, C and D as they are: **91.2%** core, 91.8% must-have. With bucket B built and approved as well: 94.7% core, 95.8% must-have.
+Ceiling with every bucket A row Full and buckets B, C and D as they are: **91.0%** core, 91.8% must-have. With bucket B built and approved as well: 94.7% core, 95.8% must-have.
 
 <!-- parity:generated:end projection -->
 
@@ -442,7 +443,7 @@ Legend. **Shopify**: Native = included on Basic to Advanced and scored in the he
 | Return labels | Native. [page](https://help.shopify.com/en/manual/fulfillment/fulfilling-orders/shipping-labels/buying-labels/return-labels) | Partial (was missing) | 3 | B, wave 3 | Built against a faked carrier (D239, `docs/wave-3-exchanges.md`): Bring's `bookReturn()` (service 9300) is booked from an approved return's page (`LabelCard`, `label-actions.ts`) or, for a withdrawal return with `return_settings.label_auto`, by `bookPendingLabels()` in the five-minute job, one at a time under a lock; kept in `returns.label_*`; the shopper's email button and status-page link open `/returns/{token}/label`, which fetches from Bring's own host with the store's keys and keeps nothing; the label's cost is taken off the refund only through `labelDeduction()` when staff confirm the parcel came with it, never above the cost or for a test label; a failed booking leaves the pasted-address path working (`return-labels.int.test.ts`, `return-label.test.ts`, `bring-returns.test.ts`, the label route's test). Short of Full (bucket B): no label has been booked with a real Mybring user and return agreement; only Bring books returns; booking is a separate press after approval (spec 2.3's preselection on approval is not built) and no signed-in browser test drives it; whether a label was used is staff's word; the label texts need legal review. Code: `src/lib/return-label.ts`, `src/server/return-labels.ts`. |
 | Exchanges | Native. [page](https://help.shopify.com/en/manual/fulfillment/managing-orders/returns/creating-returns) | Partial (was missing) | 2 | A, wave 3 | Built and held by tests (D239, `docs/wave-3-exchanges.md`): staff add catalogue replacements to a return (`ExchangeBuilder`), priced by `priceExchange()` over `priceDraft()` and equal to `cartSummary()` in kroner and a euro view, netted against `refundFor()`'s credit; processing makes an order with `source = 'exchange'` through `insertOrder()` (next D141 number, stock held only then); a difference owed goes out as a pay link to Stripe's hosted page or is recorded paid outside, one due is refunded through `refundOrder()`; a withdrawal's exchange needs the customer's own press on `/account/exchange/{token}` (`exchanges.int.test.ts`, `exchange-admin.int.test.ts`, `src/db/exchanges.test.ts`, `e2e/signed-in/admin-exchange.spec.ts`). The AI manager previews, proposes (emailed only) and processes exchanges through the same functions, gated (D318, `src/server/exchange-tools.ts`, `order-change-tools.int.test.ts`). Partial because: (1) the consumer texts (exchange page, proposal and pay emails, agreement and withdrawal-right sentences, `settled_by_return` invoice wording, the `return_exchange` credit note) are hand-written and not yet read by a person; (2) no pay link has been paid in Stripe test mode on a real store; (3) the euro scenario is in `exchanges.int.test.ts`, not in `checkout-kinds.int.test.ts` as the spec says. A replacement is goods only, so a bundle cannot be one (D322). Code: `src/lib/exchange.ts`, `src/lib/exchange-limits.ts`. |
 | 3PL and fulfilment network | App. [page](https://help.shopify.com/en/manual/fulfillment/setting-up-fulfillment/fulfillment-network) | Partial (was missing) | 2 | C, wave 9 | Only outbound order events through Zapier, Make and Slack (D41, D101), and stock files a person imports (D172 `inventory_import` jobs). A warehouse cannot read orders, post shipments with tracking or post stock levels: there is no public Admin API with scoped tokens (wave 9; the MCP server of D96 serves only Kaizen Life). Weak partial. Code: `src/server/integrations.ts`, `src/lib/integrations.ts`. |
-| Customs and duties | Native. [page](https://help.shopify.com/en/manual/international/duties-and-import-taxes/charging-duties) | Missing (was partial) | 3 | A, wave 7 | No duty collection. HS code and country of origin are stored per variant (`product_variants.hs_code`, `origin_country`), edited in the product editor and carried by the product CSV (D165) and the AI manager's product tools (D308), but nothing prices or declares with them: no duty or import-VAT estimate for a non-EU destination at checkout, no customs lines in any carrier booking, no DDP or DAP choice. The IOSS registration and intermediary are recorded per store and low-value consignments into the EU are charged destination VAT and marked IOSS (D157, counted in `checkout.oss-and-ioss-support`), which covers criterion 4 only; the fields are the prerequisite, not partial credit. The EU's removal of the 150 EUR customs-duty exemption from 1 July 2026 is not handled. A duty-rate source may be a third party (then bucket B). Merged on 2026-10-26 (README rule 8): `international.customs-duties-hs-codes-landed-cost` was the same Shopify feature (Markets Pro's landed cost), rated partial for the stored fields alone; its criteria and evidence are here, and the feature stays missing as nothing prices or declares duties. Code: `src/db/schema.ts`, `src/components/admin/product-editor.tsx`. |
+| Customs and duties | Native. [page](https://help.shopify.com/en/manual/international/duties-and-import-taxes/charging-duties) | Partial (was missing) | 3 | B, wave 7 | Built (D343, wave 7 unit I): an estimate of duty and import VAT for a destination the goods cross a customs border into, worked out in code (`dutyEstimate()`, BigInt) from the platform's own rates table (`commerce.duty_rates`, kept at Platform, Duty rates; every row with its source and a verified flag) and labelled an estimate; DDP or DAP per country by the store's choice (DAP the default), the same decision in the cart and `placeOrder()`, DDP's duties collected beside the total (`orders.duties_minor`, a Stripe line of its own, outside the invoice) and refused with a plain message for a product without an HS code; the order keeps who pays and the estimate (`orders.customs`), shown on the order page and in the confirmation email; a carrier booking across a customs border refuses to book without its customs lines and Bring declares them to its Customs API; the EU's end of the 150 EUR relief (3 EUR per item in IOSS parcels from 1 July 2026) is a dated rule in the table. Open: criterion 4, IOSS used through an intermediary (an intermediary's details are not recorded; the store's IOSS number and markets are, D157), is the bucket B part. The table's starter rows are few and all unverified (the UK's threshold and cotton T-shirts, the US's suspended de minimis, Norway's VOEC, the EU's dated rule); Switzerland's weight-based duties cannot be expressed; most headings have no rate yet, so most estimates say so. A paid landed-cost service (decision 2) is not used. Only the confirmation email states who pays, among the emails. Code: `src/db/schema.ts`, `src/lib/duties.ts`. |
 | Multi-location inventory and routing | Native. [page](https://help.shopify.com/en/manual/locations/enabling-locations) | Partial | 2 | A, wave 3 | Built and tested (D172): stock locations (add, rename, change country, rank, owner-only deactivate and reactivate, never deleted, at least one active, at most 20); `allocate()` (`src/lib/stock-routing.ts`: keep an order together, else by rank, the backordered remainder at the first location that stocks the variant) applied by `placeOrder()` with level rows locked in (variant, location) order; the storefront sells the sum of active locations, each floored at zero; refunds, cancels and returns restock to the original location or one staff choose; `locationImpact()` reports what is held before a deactivation, refused while checkouts hold stock there (`stock-routing.int.test.ts`, `inventory-locations.int.test.ts`, `returns.int.test.ts`). Why it stays Partial: (1) criterion 4's guard is not reliable: `inventory-perf.int.test.ts`'s 20-line order failed again on 2026-10-25 on a fresh copy of the seeded database (29.5 s against its 3 s bound, while other test runs shared the server) and is noted as flaky in CLAUDE.md; (2) no signed-in browser test drives the locations page, the deactivate dialog or the refund dialog's 'Put back at' select (render and server tests only); (3) a hold's physical part is not re-checked against the shelf at payment, so a level lowered below live holds makes those orders go negative with no backorder note; (4) with several locations, stock per location is edited only on the Inventory page or by file; (5) one routing rule only: no closest-location or custom rules, no locations that do not fulfil online orders, no transfers. Code: `src/db/schema.ts`, `src/server/order-admin.ts`. |
 | Order export to CSV | Native. [page](https://help.shopify.com/en/manual/orders/export-orders) | Full (was missing) | 4 |  | Evidence: `src/lib/order-csv.ts`, `src/lib/csv.ts`, `src/lib/data-admin.ts` and 9 more; 9 test files. |
 | Customer order status page and order history | Native. [page](https://help.shopify.com/en/manual/fulfillment/setup/order-status-page/understanding-order-status-pages) | Full | 4 |  | Evidence: `src/app/s/[store]/[market]/order/[orderId]/page.tsx`, `src/app/s/[store]/[market]/order/[orderId]/order-section.tsx`, `src/app/s/[store]/[market]/account/orders/[orderId]/page.tsx` and 3 more; 4 test files; D113, D117, D153. |

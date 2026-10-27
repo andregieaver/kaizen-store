@@ -6,6 +6,7 @@ import { db } from "@/db/client";
 
 import type { OrderBonus } from "@/lib/bonus-shopper";
 import { giftOfRow, type GiftFields } from "@/lib/gift";
+import { parseOrderCustoms, type OrderCustoms } from "@/lib/duties";
 import { giftCardRecipientOfRow, type GiftCardRecipient } from "@/lib/gift-card-line";
 import { readDelivery, readOrderDelivery, type AnyOrderDelivery, type OrderDelivery } from "@/lib/delivery-options";
 import { shown, type Market } from "@/lib/markets";
@@ -110,6 +111,12 @@ export type OrderView = {
     viesCheckedAt: string | null;
   } | null;
   totalMinor: number;
+  /**
+   * Customs and duties (D343): what was collected at checkout for duties and import VAT (DDP), beside the total (the payment is the total plus
+   * this), and what the order says about who pays them; null when the goods crossed no customs border.
+   */
+  dutiesMinor: number;
+  customs: OrderCustoms | null;
   /** Still to be paid at the venue (D66); 0 once staff mark it paid. */
   balanceMinor: number;
   /** It was paid (or confirmed to be paid at the venue) at some point, even if cancelled since. */
@@ -298,6 +305,8 @@ const toOrder = (row: Row, lines: Row[]): OrderView => ({
   vat: shopperVat(row.vat_treatment),
   totalMinor: Number(row.total_minor),
   balanceMinor: Number(row.balance_minor ?? 0),
+  dutiesMinor: Number(row.duties_minor ?? 0),
+  customs: parseOrderCustoms(row.customs),
   wasPaid: Boolean(row.was_paid),
   awaitingBank: row.status === "pending_payment" && row.awaiting_bank_since != null,
   paymentTerms: paymentTermsOf(row),

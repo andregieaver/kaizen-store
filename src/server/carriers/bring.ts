@@ -2,7 +2,11 @@ import "server-only";
 
 import {
   BRING_API,
+  BRING_CUSTOMS_SERVICES,
+  BRING_CUSTOMS_URL,
   bookingBody,
+  customsDeclarationBody,
+  parseCustomsAnswer,
   bringHeaders,
   bringProblem,
   parseBooking,
@@ -18,7 +22,8 @@ import {
   type BringCredentials,
 } from "@/lib/bring";
 import { siteUrl } from "@/lib/site";
-import type { CarrierContext, ShippingCarrierAdapter } from "@/lib/shipping-carriers";
+import { crossesBorder } from "@/lib/duties";
+import { bookingCustomsProblem, type CarrierContext, type ShippingCarrierAdapter } from "@/lib/shipping-carriers";
 
 /**
  * Posten / Bring's connection (D134), on the store's own agreement: its Mybring user and key and its customer number.
@@ -114,6 +119,9 @@ export function createBringAdapter(fetcher: Fetch = fetch): ShippingCarrierAdapt
     },
 
     async book(context, request) {
+      // A consignment that crosses a customs border is never booked without its customs lines (D343): refused before Bring is called or paid.
+      const missingCustoms = bookingCustomsProblem(request);
+      if (missingCustoms) throw new Error(missingCustoms);
       const creds = credentials(context);
       const test = context.environment === "test";
       const answer = await call(fetcher, `${BRING_API}/booking/api/create`, {
@@ -124,12 +132,27 @@ export function createBringAdapter(fetcher: Fetch = fetch): ShippingCarrierAdapt
       if (!answer.ok) throw new Error(answer.problem);
       const parsed = parseBooking(answer.json);
       if (!parsed.ok) throw new Error(parsed.problem);
-      return {
+      const booked = {
         trackingNumber: parsed.trackingNumber,
         trackingUrl: parsed.trackingUrl,
         consignmentNumber: parsed.consignmentNumber || null,
         labelUrl: parsed.labelUrl,
         test,
+      };
+      if (!request.customs || !crossesBorder(request.from.country.toUpperCase(), request.to.country.toUpperCase())) return booked;
+      // The declaration follows the booking (it names the consignment). The shipment exists either way: a refusal is said, never thrown.
+      if (!(BRING_CUSTOMS_SERVICES as readonly string[]).includes(request.serviceId)) {
+        return { ...booked, customs: { declared: false, reference: null, problem: "Bring takes customs declarations through its Customs API only for services 0300, 0336, 0342 and 0344: declare this shipment in Mybring." } };
+      }
+      const declared = await call(fetcher, BRING_CUSTOMS_URL, {
+        method: "POST",
+        headers: bringHeaders(creds, { "Content-Type": "application/json", "X-Bring-Test-Indicator": test ? "true" : "false" }),
+        body: JSON.stringify(customsDeclarationBody(request, booked.consignmentNumber ?? booked.trackingNumber, context.details.customerNumber ?? "")),
+      });
+      const outcome = declared.ok ? parseCustomsAnswer(declared.json) : { ok: false as const, problem: declared.problem };
+      return {
+        ...booked,
+        customs: outcome.ok ? { declared: true, reference: outcome.reference, problem: null } : { declared: false, reference: null, problem: outcome.problem },
       };
     },
 

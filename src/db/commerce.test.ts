@@ -7038,3 +7038,46 @@ describe("a price list's breaks and quantity rules (wave 6 unit E3, D323)", () =
     ).rejects.toThrow(/price_list_breaks.max/);
   });
 });
+
+describe("customs and duties (wave 7 unit I, D343)", () => {
+  const rate = (values: string) =>
+    db.query(`insert into commerce.duty_rates (destination, hs_prefix, origin, duty_rate_bps, threshold_minor, threshold_currency, per_item_minor, source, checked_on) values ${values}`);
+
+  it("keeps a rate's row to its shape: a heading with its rate and nothing of the consignment's, a source address, a known destination code", async () => {
+    await rate("('XQ', '610910', null, 1200, null, null, null, 'https://example.test/a', '2026-10-27')");
+    await expect(rate("('XQ', '6109', null, null, null, null, null, 'https://example.test/a', '2026-10-27')")).rejects.toThrow(/duty_rates_heading_row/);
+    await expect(rate("('XQ', '6109', null, 1200, 13500, 'GBP', null, 'https://example.test/a', '2026-10-27')")).rejects.toThrow(/duty_rates_heading_row/);
+    await expect(rate("('XQ', '', 'CN', null, 13500, 'GBP', null, 'https://example.test/a', '2026-10-27')")).rejects.toThrow(/duty_rates_base_origin/);
+    await expect(rate("('XQ', '', null, null, 13500, null, null, 'https://example.test/a', '2026-10-27')")).rejects.toThrow(/duty_rates_currency/);
+    await expect(rate("('XQ', '61.09', null, 1200, null, null, null, 'https://example.test/a', '2026-10-27')")).rejects.toThrow(/duty_rates_prefix/);
+    await expect(rate("('xq', '', null, null, null, null, null, 'https://example.test/a', '2026-10-27')")).rejects.toThrow(/duty_rates_destination/);
+    await expect(rate("('XQ', '', null, null, null, null, null, 'from memory', '2026-10-27')")).rejects.toThrow(/duty_rates_source/);
+    await db.query("delete from commerce.duty_rates where destination = 'XQ'");
+  });
+
+  it("holds the EU's end of the 150 EUR relief as a dated rule, every starter row unverified with its source", async () => {
+    const eu = await db.query<{ valid_from: string | null; valid_to: string | null; per_item_minor: string | null }>(
+      "select valid_from::text, valid_to::text, per_item_minor::text from commerce.duty_rates where destination = 'EU' and applies_to = 'scheme' order by valid_from nulls first",
+    );
+    expect(eu.rows).toEqual([
+      { valid_from: null, valid_to: "2026-06-30", per_item_minor: null },
+      { valid_from: "2026-07-01", valid_to: null, per_item_minor: "300" },
+    ]);
+    const unverified = await one<{ n: number; sourced: number }>(
+      "select count(*)::int as n, count(*) filter (where source like 'https://%' and not verified)::int as sourced from commerce.duty_rates",
+    );
+    expect(unverified.n).toBeGreaterThan(0);
+    expect(unverified.sourced).toBe(unverified.n);
+  });
+
+  it("keeps a store's choice to DAP or DDP for one of its own countries, and an order's duties never negative", async () => {
+    const shop = await createStore(`customs-${Date.now()}`, ["NO", "SE"]);
+    await db.query("insert into commerce.customs_settings (store_id, market_code, mode) values ($1, 'SE', 'ddp')", [shop]);
+    await expect(db.query("insert into commerce.customs_settings (store_id, market_code, mode) values ($1, 'NO', 'sometimes')", [shop])).rejects.toThrow(/customs_settings_mode/);
+    await expect(db.query("insert into commerce.customs_settings (store_id, market_code, mode) values ($1, 'US', 'ddp')", [shop])).rejects.toThrow(/customs_settings_market_fk/);
+    const check = await one<{ def: string }>(
+      "select pg_get_constraintdef(c.oid) as def from pg_constraint c join pg_class t on t.oid = c.conrelid where t.relname = 'orders' and c.conname = 'orders_duties_non_negative'",
+    );
+    expect(check.def).toMatch(/duties_minor >= 0/);
+  });
+});

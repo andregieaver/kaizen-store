@@ -108,6 +108,7 @@ import { addRedirectTool, preflightRedirectTool, redirectOverviewTool } from "./
 import { marketPriceRulesTool, preflightPriceRuleTool, setMarketPriceRuleTool } from "./market-price-tools";
 import { preflightProducerTool, producerRegistrationsTool, saveProducerRegistrationTool } from "./producer-tools";
 import { blogCommentsTool, listBlogsTool, moderateBlogCommentTool, preflightModerateTool, preflightScheduleTool, scheduleArticleTool } from "./blog-tools";
+import { customsDutiesTool } from "./customs-tools";
 import { deleteSearchMerchandisingTool, preflightSearchTool, saveSearchRuleTool, saveSearchSynonymTool, searchMerchandisingTool } from "./search-tools";
 import {
   getEntryTool,
@@ -2433,6 +2434,7 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   search_merchandising: searchMerchandisingTool,
   market_price_rules: marketPriceRulesTool,
   set_market_price_rule: setMarketPriceRuleTool,
+  customs_duties: customsDutiesTool,
   producer_registrations: producerRegistrationsTool,
   save_producer_registration: saveProducerRegistrationTool,
   list_blogs: listBlogsTool,

@@ -3356,6 +3356,103 @@ export const producerRegistrations = commerce.table(
   ],
 );
 
+/**
+ * The platform's duty rates (wave 7 unit I, D343, decision 2 of `docs/wave-7-storefront.md`): kept by hand by platform admins at
+ * `/admin/platform/duty-rates`, written only by `src/server/duty-rates.ts` (audited), read only by `src/server/customs.ts`. Reference data, no store.
+ *
+ * A row is for a destination (an ISO country, or `EU` for every member state) and an HS heading prefix (digits; `''` is the destination's base row):
+ * - the base row holds what applies to a whole consignment: the duty threshold (`threshold_minor` in `threshold_currency`, at or below which no
+ *   duty is due, per consignment or per item), the import VAT threshold (`vat_threshold_minor`: at or below it VAT is collected at the sale, not at
+ *   the border), a fixed duty per distinct tariff sub-heading under the threshold (`per_item_minor`, the EU's 3 EUR from 1 July 2026), whether the
+ *   shipping is part of the customs value, the import VAT rate where it differs from the goods' own (`import_vat_bps`), and optionally a default
+ *   rate for headings not listed;
+ * - a heading row holds the duty rate for goods whose HS code starts with its prefix, optionally only for an origin (a country or `EU`).
+ * `applies_to` limits a row to consignments whose VAT is collected at the sale under the destination's scheme (`scheme`: IOSS into the EU, VOEC
+ * into Norway) or not (`no_scheme`). Every row cites its source; `verified` is set only by a person who checked it. Rates are estimates.
+ */
+export const dutyRates = commerce.table(
+  "duty_rates",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    destination: text("destination").notNull(),
+    hsPrefix: text("hs_prefix").notNull().default(""),
+    origin: text("origin"),
+    appliesTo: text("applies_to").notNull().default("any"),
+    /** Basis points of the customs value (1250 = 12.5 %); null on a base row that states no default rate. */
+    dutyRateBps: integer("duty_rate_bps"),
+    perItemMinor: bigint("per_item_minor", { mode: "number" }),
+    thresholdMinor: bigint("threshold_minor", { mode: "number" }),
+    vatThresholdMinor: bigint("vat_threshold_minor", { mode: "number" }),
+    thresholdCurrency: char("threshold_currency", { length: 3 }),
+    thresholdPer: text("threshold_per").notNull().default("consignment"),
+    importVatBps: integer("import_vat_bps"),
+    shippingInValue: boolean("shipping_in_value").notNull().default(true),
+    source: text("source").notNull(),
+    note: text("note").notNull().default(""),
+    checkedOn: date("checked_on").notNull(),
+    verified: boolean("verified").notNull().default(false),
+    validFrom: date("valid_from"),
+    /** The last day the row applies (inclusive); null while it has no end. */
+    validTo: date("valid_to"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+    updatedBy: uuid("updated_by").references(() => accounts.id),
+  },
+  (t) => [
+    index("duty_rates_destination_idx").on(t.destination, t.hsPrefix),
+    index("duty_rates_updated_by_idx").on(t.updatedBy),
+    check("duty_rates_destination", sql`${t.destination} ~ '^[A-Z]{2}$'`),
+    check("duty_rates_prefix", sql`${t.hsPrefix} ~ '^[0-9]{0,10}$'`),
+    check("duty_rates_origin", sql`${t.origin} is null or ${t.origin} ~ '^[A-Z]{2}$'`),
+    check("duty_rates_applies_to", sql`${t.appliesTo} in ('any', 'scheme', 'no_scheme')`),
+    check("duty_rates_rate", sql`${t.dutyRateBps} is null or ${t.dutyRateBps} between 0 and 100000`),
+    check("duty_rates_import_vat", sql`${t.importVatBps} is null or ${t.importVatBps} between 0 and 10000`),
+    check("duty_rates_threshold_per", sql`${t.thresholdPer} in ('consignment', 'item')`),
+    check(
+      "duty_rates_amounts",
+      sql`(${t.thresholdMinor} is null or ${t.thresholdMinor} >= 0) and (${t.vatThresholdMinor} is null or ${t.vatThresholdMinor} >= 0) and (${t.perItemMinor} is null or ${t.perItemMinor} >= 0)`,
+    ),
+    // An amount needs its currency; a heading row carries a rate and nothing of the consignment's.
+    check(
+      "duty_rates_currency",
+      sql`(${t.thresholdMinor} is null and ${t.vatThresholdMinor} is null and ${t.perItemMinor} is null) or (${t.thresholdCurrency} is not null and ${t.thresholdCurrency} ~ '^[A-Z]{3}$')`,
+    ),
+    check(
+      "duty_rates_heading_row",
+      sql`${t.hsPrefix} = '' or (${t.dutyRateBps} is not null and ${t.thresholdMinor} is null and ${t.vatThresholdMinor} is null and ${t.perItemMinor} is null)`,
+    ),
+    check("duty_rates_base_origin", sql`${t.hsPrefix} <> '' or ${t.origin} is null`),
+    check("duty_rates_source", sql`${t.source} ~ '^https://' and length(${t.source}) <= 400`),
+    check("duty_rates_period", sql`${t.validFrom} is null or ${t.validTo} is null or ${t.validTo} >= ${t.validFrom}`),
+  ],
+);
+
+/**
+ * A store's customs choice per country (wave 7 unit I, D343): `dap` (the default: the carrier collects duties and import VAT from the recipient)
+ * or `ddp` (collected at checkout, a payment beside the order's total), and whether the store is registered to collect that country's VAT at the
+ * sale under its scheme (`vat_scheme`: VOEC in Norway; into the EU, IOSS is read from the tax profile). Written only by `src/server/customs.ts`
+ * (`settings:write`); no row is DAP. Never copied (`COPY_RULES` `never`): a registration is the company's.
+ */
+export const customsSettings = commerce.table(
+  "customs_settings",
+  {
+    storeId: storeId(),
+    marketCode: char("market_code", { length: 2 }).notNull(),
+    mode: text("mode").notNull().default("dap"),
+    vatScheme: boolean("vat_scheme").notNull().default(false),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.marketCode] }),
+    foreignKey({
+      name: "customs_settings_market_fk",
+      columns: [t.storeId, t.marketCode],
+      foreignColumns: [markets.storeId, markets.code],
+    }),
+    check("customs_settings_mode", sql`${t.mode} in ('dap', 'ddp')`),
+  ],
+);
+
 // ---------------------------------------------------------------------------
 // Inventory
 // ---------------------------------------------------------------------------
@@ -4075,6 +4172,18 @@ export const orders = commerce.table(
      * `pending_payment` with its stock held (`commerce.await_bank_payment()`), until Stripe says the payment succeeded or failed.
      */
     awaitingBankSince: timestamp("awaiting_bank_since", { withTimezone: true }),
+    /**
+     * Customs and duties (wave 7 unit I, D343, `src/lib/duties.ts`, `src/server/customs.ts`): what the shopper paid at checkout for duties and import VAT
+     * (DDP, the store's choice for the market), in the order's currency. Outside `total_minor` (the goods, shipping and their VAT, which the invoice
+     * and every sales figure read): the payment taken is the total plus this. 0 when nothing was collected (DAP, or no border crossed).
+     */
+    dutiesMinor: money("duties_minor").default(0),
+    /**
+     * What the order says about customs as it was placed (`OrderCustoms`, `src/lib/duties.ts`): who pays duties and import VAT (`ddp`: paid at
+     * checkout; `dap`: the recipient pays the carrier on delivery), the estimate with its sources and whether every rate was verified, or why there
+     * is none. Null when the goods cross no customs border. Kept as placed; never copied.
+     */
+    customs: jsonb("customs"),
         heldAt: timestamp("held_at", { withTimezone: true }),
     heldReason: text("held_reason"),
     heldByRule: uuid("held_by_rule"),
@@ -4201,6 +4310,7 @@ export const orders = commerce.table(
       "orders_amounts_non_negative",
       sql`${t.subtotalMinor} >= 0 and ${t.shippingMinor} >= 0 and ${t.discountMinor} >= 0 and ${t.taxMinor} >= 0`,
     ),
+    check("orders_duties_non_negative", sql`${t.dutiesMinor} >= 0`),
     check(
       "orders_total_adds_up",
       sql`${t.totalMinor} = ${t.subtotalMinor} + ${t.shippingMinor} - ${t.discountMinor}`,

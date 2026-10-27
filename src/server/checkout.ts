@@ -39,6 +39,7 @@ import { allocateStock, insertOrder, insertOrderLine, reserveStock, type StockHo
 import { holdRange, linePrice, rangePricing } from "./ranges";
 import { recordExperimentCart } from "./experiments";
 import { sendBookingStaffNotices, sendOrderConfirmation } from "./shopper-emails";
+import { decideCustoms, loadCustomsFacts } from "./customs";
 import { decideTax, loadTaxFacts } from "./tax-treatment";
 import { refreshStaleCartCheck } from "./vat-checks";
 import { bookable } from "./cart";
@@ -127,6 +128,8 @@ export type PlacedOrder = {
   terms?: { terms: PaymentTerms; dueOn: string } | null;
   /** A company's purchase that waits for an approver (D321 C.2): no payment is started; `src/server/company-approvals.ts` decides it. */
   approval?: ApprovalState | null;
+  /** Duties and import VAT collected at checkout (DDP, D343): part of `dueNowMinor`, never of `totalMinor`; a line of its own at Stripe. */
+  dutiesMinor?: number;
 };
 
 export type CheckoutProblem =
@@ -162,7 +165,9 @@ export type CheckoutProblem =
   /** A line's quantity breaks its variant's rule (D323): below the minimum, between steps or above the maximum. */
   | "quantity"
   /** A product under a producer responsibility scheme with no valid registration in the country today (D342). */
-  | "unregistered";
+  | "unregistered"
+  /** Duties are collected at checkout (DDP) for this country, but no estimate can be made: a product has no HS code, or the rates do not cover it (D343). */
+  | "customs";
 
 export type PlaceResult = { ok: true; order: PlacedOrder } | { ok: false; problem: CheckoutProblem };
 
@@ -769,6 +774,30 @@ export async function placeOrder(
         company: { name: facts.company.name, number: facts.company.organisationNumber || company?.number || "" },
       };
     }
+    // Customs and duties (D343): the same decision the cart page made (`cartSummary()`), on the tax decision's lines and shipping. DDP collects the
+    // duties beside the total (`orders.duties_minor`, a payment the order's total leaves out); DDP with no estimate is refused, never a zero duty.
+    // A purchase whose payment is not the checkout's alone (a subscription, a host's listing, a venue part, payment terms) is DAP.
+    const customsFacts = await loadCustomsFacts(tx, { storeId, market, variantIds: taxed.map(({ p }) => String(p.line.variant_id)), tax: taxFacts });
+    const customs = decideCustoms(customsFacts, {
+      lines: taxed.map(({ p, i }) => ({
+        key: String(i),
+        variantId: String(p.line.variant_id),
+        title: p.title,
+        quantity: p.quantity,
+        shipped: p.delivery === "physical" && !p.startsAt,
+        totalMinor: taxOfLine.get(String(i))?.totalMinor ?? 0,
+        taxMinor: taxOfLine.get(String(i))?.taxMinor ?? 0,
+        rate: p.rate,
+      })),
+      shippingMinor: taxOutcome.result.shipping.totalMinor,
+      shippingTaxMinor: taxOutcome.result.shipping.taxMinor,
+      currency: market.currency,
+      ioss: taxOutcome.ioss === "applies",
+      fallback: rhythm ? "subscription" : hostId ? "host" : balance > 0 ? "venue" : onTerms ? "terms" : null,
+    });
+    if (customs.blocked) return { ok: false, problem: "customs" };
+    const dutiesMinor = customs.collectMinor;
+
     // A company member's purchase (D321 C.2): the location they buy for (theirs only; asked when they buy for more than one), the PO number (required
     // when the company says so), and whether an orderer's order over the company's limit waits for an approver. Only goods bought once can wait, never
     // with gift cards, which would be held for the week; such a basket is refused. Read in this transaction, so a member removed meanwhile is not let through.
@@ -840,6 +869,8 @@ export async function placeOrder(
       companyLocationId: purchase.locationId,
       poNumber: purchase.poNumber,
       approval: purchase.approval,
+      dutiesMinor,
+      customs: customs.record,
     });
 
     if (onTerms) await recordOrderTerms(tx, storeId, orderId, onTerms.companyId, onTerms);
@@ -1058,7 +1089,8 @@ export async function placeOrder(
         shippingReliefMinor: shippingRelief,
         treatment: taxOutcome.treatment,
         totalMinor: total,
-        dueNowMinor: total - orderBalance - giftCardsMinor,
+        dueNowMinor: total - orderBalance - giftCardsMinor + dutiesMinor,
+        dutiesMinor,
         balanceMinor: orderBalance,
         giftCardsMinor,
         company: orderCompany,

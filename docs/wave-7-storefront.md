@@ -356,6 +356,60 @@ A1 availability (model, view, editor, CSV, cart, copies, tools); A2 rules (model
   plain message, never zero), shown at checkout for a destination outside the EU as an estimate, collected (DDP) or left to the carrier
   (DAP) per country by the store's choice, kept on the order; `ShippingCarrierAdapter.book()` carries customs lines for such a destination
   and refuses without them (Bring first); the EU's end of the 150 EUR duty exemption (1 July 2026) is a dated rule in the table.
+
+  **I as built (2026-10-27).** As above (decision 2: the platform's own table, every figure labelled an estimate, DAP the default), with these
+  details and differences.
+  - **The table.** `commerce.duty_rates`, kept at Platform → Settings → *Duty rates* (`/admin/platform/duty-rates`), written only by
+    `src/server/duty-rates.ts` (platform admins; `platform.duty_rate_saved`, `_verified`, `_removed`). A row is for a destination (a country, or
+    `EU` for every member state) and an HS heading prefix: the base row (`''`) holds what a consignment's value decides (the duty threshold and
+    the VAT-at-sale threshold, per consignment or per item, in their currency; a fixed duty per distinct six-digit sub-heading under the threshold;
+    the import VAT rate where it differs from the goods' own; whether shipping is part of the customs value), a heading row its rate, maybe only for
+    an origin (a country or `EU`). `applies_to` picks rows for consignments whose VAT is collected at the sale under the destination's scheme
+    (IOSS into the EU, decided by the tax decision; VOEC into Norway, the store's tick per country) or not. Every row has its source address,
+    the day it was read and `verified`, false until a person checks it.
+  - **The starter rows** (all unverified, read on 2026-10-27 at the addresses they cite): the UK's 135 GBP threshold for duty and for VAT at the
+    sale (gov.uk), cotton T-shirts (6109.10) at 12 % and 0 % for EU, Norwegian and Swiss origin (the UK Trade Tariff's API); the US with no de
+    minimis (the Federal Register's indefinite suspension, 2026-12670) and no VAT; Norway's VOEC (under 3000 NOK per item, no duty, VAT in the shop;
+    toll.no); and the EU's dated rule: relief for consignments not exceeding 150 EUR (Regulation 1186/2009 Art. 23, read on legislation.gov.uk's
+    copy) until 30 June 2026, then 3 EUR per different item in IOSS parcels under 150 EUR from 1 July 2026 (read in a report of the Council's
+    agreement of 12 December 2025; the Council's own page refused the request), the relief staying for consignments outside IOSS. **Not added**:
+    Switzerland (duties by gross weight, which the table cannot express), US heading rates (the 2025–2026 additional duties are not settled enough
+    to state), Norway's heading rates and its rules outside VOEC (tolltariffen.toll.no could not be read), the EU's heading rates. So most
+    estimates today say *no rate* for the heading: the table needs rows before DDP is useful anywhere but the UK's T-shirts.
+  - **The estimate.** `dutyEstimate()` (`src/lib/duties.ts`): the customs value of each shipped line is its price after every discount less its
+    VAT, with its share of the shipping without VAT where the destination counts it; thresholds compare the goods, rounded up in the threshold's
+    currency (the store's rates, else the ECB's latest); duty per line half up; import VAT at the border on value and duty, none at or below the
+    VAT-at-sale threshold. What DDP collects is the duty and the import VAT the price does not already carry (every market's prices include its
+    VAT: the line's VAT and its shipping share come off its import VAT, never below zero); what DAP's carrier may collect is the duty and the whole
+    import VAT, before its own fees. Goods sent inside one customs territory (one country, or both in the EU) get no estimate; a destination in the
+    EU from Norway is a border, and the EU's rows apply.
+  - **One decision.** `loadCustomsFacts()` and `decideCustoms()` (`src/server/customs.ts`), called by `cartSummary()` and `placeOrder()` with the
+    tax decision's lines and shipping; a euro scenario in `checkout-kinds.int.test.ts` holds cart, order, Stripe and the DDP block together.
+  - **Money: outside the total.** What DDP collects is `orders.duties_minor`, kept OUT of `total_minor`: the order's total stays goods and
+    shipping with their VAT, so the invoice (D159) and its SQL twin, the VAT and OSS reports and every sales figure are unchanged and need no
+    change on both sides. **The duties are not on the invoice**; they are recorded on the order (`orders.customs`), shown on the order page,
+    in the confirmation email and at Stripe as a line of their own. The payment is the total plus the duties (`dueNowMinor`, also Mollie's
+    amount); no sale fee is taken on them; gift cards never pay them (a basket with duties always has a payment page); a refund can return
+    them (a credit note covers only the invoice, `creditAllocation()`'s short part). A subscription, a host's listing, a venue part and an order
+    on payment terms are DAP whatever the choice (`fallback`, said on the order); a company order waiting for approval keeps its duties for the
+    payment that follows (`placedOrderOf()`). Drafts and exchanges never collect duties.
+  - **The store's choice.** Settings → Selling → *Duties and import VAT* (`/admin/{store}/settings/customs`, `settings:read`/`settings:write`,
+    feature `shop`): the countries the goods cross a border into (from the tax profile's dispatch country), DAP or DDP for each, the VAT scheme
+    tick, whether the table covers the country, and how many products have no HS code. `commerce.customs_settings`, never copied.
+  - **Shopper words.** `src/lib/customs-text.ts`, hand-written nb, sv, da and en, kept out of the AI catalogue, for legal review: the cart's DDP row
+    (*estimate*) and sentence, DAP's estimate of what the carrier may collect, what blocks a DDP checkout (the products without a customs code
+    named), the order's and the email's sentence. The generic import notice is not shown where a customs sentence is.
+  - **Bookings.** `BookingRequest.customs` (`BookingCustoms`: incoterm, currency, invoice number and date, lines with HS code, origin, value,
+    description, quantity and weight); every carrier's `book()` asks `bookingCustomsProblem()` first and refuses a parcel across a customs border
+    without complete lines, before the carrier is called. Bring then sends the lines to its Customs API (`POST /customs/v1/declarations`, read from
+    its OpenAPI document), which takes only services 0300, 0336, 0342 and 0344: for others, and when Bring refuses, the booking stands and the
+    result says why (`BookingResult.customs`). `bringBook()` builds the lines from the order (`bookingCustomsFor()`), though its own screen still
+    books only Norwegian parcels from a Norwegian sender.
+  - **AI manager.** `customs_duties` (read-only, `settings:read`, feature `shop`): who pays in a country, each product's HS code and origin, and
+    one item's estimate there or why there is none. No tool changes the choice.
+  - **Not built.** IOSS through an intermediary (criterion 4's bucket B part: the IOSS number and markets are recorded per store, D157, and the
+    estimate reads them; an intermediary's own details are not recorded), a paid landed-cost service (decision 2), carriers' handling fees, the
+    duties on the invoice, and DDP for subscriptions and drafts.
 - **J (D344) Themes from outside.** An owner's live look (or a demo store's) is submitted as a theme by its author (owner or invited
   designer account), waits in a review queue at Themes → Submissions (approve, reject with a reason, hide), shows its author, version and
   the number of stores using it; an author's update is offered to installs (*What's new*, Update), and following updates becomes a choice

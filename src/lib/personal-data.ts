@@ -378,6 +378,7 @@ export const NOT_PERSONAL: Record<string, string> = {
   terms: "A category or tag's name.",
   ui_translations: "Interface text in a language.",
   vat_rates: "A country's VAT rate and a note about its source.",
+  duty_rates: "The platform's duty rates per country and HS heading (D343), each with its source address and a note about it: reference data, no person.",
 };
 
 export type EmailClass = "shopper" | "staff" | "security" | "evidence";

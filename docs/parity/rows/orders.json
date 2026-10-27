@@ -1722,13 +1722,13 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "partial",
       "rechecked": true,
-      "was": "partial"
+      "was": "missing"
     },
     "weight": 3,
-    "gap": "No duty collection. HS code and country of origin are stored per variant (`product_variants.hs_code`, `origin_country`), edited in the product editor and carried by the product CSV (D165) and the AI manager's product tools (D308), but nothing prices or declares with them: no duty or import-VAT estimate for a non-EU destination at checkout, no customs lines in any carrier booking, no DDP or DAP choice. The IOSS registration and intermediary are recorded per store and low-value consignments into the EU are charged destination VAT and marked IOSS (D157, counted in `checkout.oss-and-ioss-support`), which covers criterion 4 only; the fields are the prerequisite, not partial credit. The EU's removal of the 150 EUR customs-duty exemption from 1 July 2026 is not handled. A duty-rate source may be a third party (then bucket B). Merged on 2026-10-26 (README rule 8): `international.customs-duties-hs-codes-landed-cost` was the same Shopify feature (Markets Pro's landed cost), rated partial for the stored fields alone; its criteria and evidence are here, and the feature stays missing as nothing prices or declares duties.",
-    "bucket": "A",
+    "gap": "Built (D343, wave 7 unit I): an estimate of duty and import VAT for a destination the goods cross a customs border into, worked out in code (`dutyEstimate()`, BigInt) from the platform's own rates table (`commerce.duty_rates`, kept at Platform, Duty rates; every row with its source and a verified flag) and labelled an estimate; DDP or DAP per country by the store's choice (DAP the default), the same decision in the cart and `placeOrder()`, DDP's duties collected beside the total (`orders.duties_minor`, a Stripe line of its own, outside the invoice) and refused with a plain message for a product without an HS code; the order keeps who pays and the estimate (`orders.customs`), shown on the order page and in the confirmation email; a carrier booking across a customs border refuses to book without its customs lines and Bring declares them to its Customs API; the EU's end of the 150 EUR relief (3 EUR per item in IOSS parcels from 1 July 2026) is a dated rule in the table. Open: criterion 4, IOSS used through an intermediary (an intermediary's details are not recorded; the store's IOSS number and markets are, D157), is the bucket B part. The table's starter rows are few and all unverified (the UK's threshold and cotton T-shirts, the US's suspended de minimis, Norway's VOEC, the EU's dated rule); Switzerland's weight-based duties cannot be expressed; most headings have no rate yet, so most estimates say so. A paid landed-cost service (decision 2) is not used. Only the confirmation email states who pays, among the emails.",
+    "bucket": "B",
     "wave": 7,
     "criteria": [
       "For a non-EU destination the checkout shows an estimated duty and import VAT from HS code, origin and value, worked out in code from a rates table the platform keeps, labelled as an estimate (unit and integration tests, euro scenario).",
@@ -1741,6 +1741,19 @@
     "evidence": {
       "files": [
         "src/db/schema.ts",
+        "src/lib/duties.ts",
+        "src/server/customs.ts",
+        "src/server/duty-rates.ts",
+        "src/lib/customs-text.ts",
+        "src/server/cart-summary.ts",
+        "src/server/checkout.ts",
+        "src/server/payment-session.ts",
+        "src/components/order-customs.tsx",
+        "src/server/shopper-emails.ts",
+        "src/lib/shipping-carriers.ts",
+        "src/lib/bring.ts",
+        "src/server/carriers/bring.ts",
+        "src/server/customs-tools.ts",
         "src/components/admin/product-editor.tsx",
         "src/lib/product-input.ts",
         "src/server/products.ts",
@@ -1748,6 +1761,12 @@
         "src/lib/product-import.ts"
       ],
       "tests": [
+        "src/lib/duties.test.ts",
+        "src/lib/customs-text.test.ts",
+        "src/server/customs.int.test.ts",
+        "src/server/checkout-kinds.int.test.ts",
+        "src/server/carriers/bring.test.ts",
+        "e2e/signed-in/customs.spec.ts",
         "src/lib/product-input.test.ts",
         "src/db/commerce.test.ts"
       ],
@@ -1756,7 +1775,8 @@
     "decisions": [
       "D12",
       "D157",
-      "D165"
+      "D165",
+      "D343"
     ],
     "history": [
       {
@@ -1764,6 +1784,12 @@
         "from": "partial",
         "to": "missing",
         "why": "Skeptic recheck: HS code and origin are captured fields only; nothing computes, collects or transmits duties."
+      },
+      {
+        "on": "2026-10-27",
+        "from": "missing",
+        "to": "partial",
+        "why": "D343 (wave 7 unit I): duty and import VAT estimated from the platform's rates table in the cart and the order alike (euro scenario), DDP or DAP per country kept on the order and shown on its page and confirmation, DDP refused without an HS code, carrier bookings across a border refuse without customs lines (Bring's adapter test). Criterion 4, IOSS through an intermediary, is the bucket B part still open."
       }
     ]
   },

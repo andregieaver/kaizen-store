@@ -55,7 +55,8 @@ export async function openMolliePayment(shop: CheckoutShop, order: PlacedOrder, 
   const amount = mollieAmount(order.dueNowMinor, order.currency);
   const locale = mollieLocale(shop.market.locale);
   // Kaizena Flow's fee, within what a Mollie payment can carry; its cap is said on the order.
-  const fee = mollieFee(order.dueNowMinor, saleFee(order.dueNowMinor, await storeFeeBps(shop.storeId)));
+  // Duties collected at checkout (DDP, D343) are part of the amount but carry no fee: they are passed on to customs.
+  const fee = mollieFee(order.dueNowMinor, saleFee(order.dueNowMinor - (order.dutiesMinor ?? 0), await storeFeeBps(shop.storeId)));
   // What Mollie has on for this amount, less what this unit leaves out and what the owner switched off for the order's own country (D291).
   const active = await activeMollieMethods(shop.storeId, mode, amount, locale);
   const methods = checkoutMethods(active?.map((m) => m.id) ?? null, await excludedPaymentMethods(shop.storeId, shop.market.code));

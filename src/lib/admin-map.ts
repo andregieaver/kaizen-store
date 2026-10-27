@@ -636,6 +636,11 @@ const PAGES: readonly AdminPage[] = [
     tasks: ["Add a producer registration", "See what is not sold for want of a registration", "Record that no registration is needed in a country", "Show a registration number on product pages"],
     feature: "shop",
   }),
+  store("customs", "/settings/customs", "Duties and import VAT", "Settings", "Duties and import VAT (D343): for each country the store's goods cross a customs border into, who pays duties and import VAT (DAP: the recipient pays the carrier on delivery, the default; DDP: collected at checkout), whether the store collects that country's VAT at checkout under its scheme (VOEC), how many products lack an HS code, and whether the platform's rates table covers the country.", {
+    keywords: ["duties", "duty", "import vat", "ddp", "dap", "delivered duty paid", "landed cost", "hs code", "tariff", "toll", "tollavgift", "voec", "export", "border"],
+    tasks: ["Collect duties at checkout for a country", "Let the carrier collect duties on delivery", "See which products have no HS code"],
+    feature: "shop",
+  }),
   store("payments", "/settings/payments", "Payments", "Sales", "Stripe: the store's accounts in test and live, going live, and invoices for orders.", {
     needs: "owner",
     keywords: ["stripe", "card", "go live", "payouts"],
@@ -1076,6 +1081,10 @@ const PAGES: readonly AdminPage[] = [
   platform("vat", "/vat", "VAT", "Platform", "VAT for every store: the categories owners choose from, each country's rate per category with its history, source and verification, the rates nobody has verified yet, the coverage by country and how shipping is taxed.", {
     keywords: ["tax", "rates", "reduced rate", "mva", "moms", "category", "shipping vat", "verify", "oss", "ioss"],
     tasks: ["Set a country's rate for a category", "Mark a rate verified", "Add a VAT category", "Set how shipping is taxed in a country"],
+  }),
+  platform("duty-rates", "/duty-rates", "Duty rates", "Platform", "The platform's duty rates (D343): per destination country (or the EU) and HS heading, the duty rate, an origin's preference, the duty and VAT-at-sale thresholds per consignment or item, a fixed duty per sub-heading, the import VAT rate where it differs, whether shipping counts, the dates a row applies, its source and whether a person verified it.", {
+    keywords: ["customs", "duties", "duty rates", "tariff", "hs code", "de minimis", "threshold", "import vat", "toll", "tollsatser", "verify"],
+    tasks: ["Add a duty rate", "Mark a duty rate verified", "Change a country's threshold"],
   }),
   platform("vat.country", "/vat/[country]", "VAT by country", "Platform", "One country's VAT: the rate of every category with its full history, the way shipping is taxed there and a form to set a rate."),
   platform("search-test", "/search-test", "Search test", "Platform", "The search experiment: keyword against hybrid search.", { keywords: ["experiment", "a/b"] }),

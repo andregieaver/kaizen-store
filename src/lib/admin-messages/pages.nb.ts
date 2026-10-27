@@ -388,6 +388,10 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     title: "Produsentansvar",
     keywords: ["produsentansvar", "emballasje", "ee-avfall", "batterier", "returordning", "returselskap", "registreringsnummer", "gjenvinning", "selges ikke"],
   },
+  "store:customs": {
+    title: "Toll og importmva.",
+    keywords: ["toll", "tollavgift", "importmva", "ddp", "dap", "hs-kode", "tolltariff", "voec", "eksport"],
+  },
   "store:payments": {
     title: "Betalinger",
     keywords: ["betalinger", "betaling", "stripe", "kort", "gå live", "utbetalinger", "betalingsleverandør", "betalingsmetoder"],
@@ -756,6 +760,7 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     title: "Merverdiavgift",
     keywords: ["merverdiavgift", "mva", "satser", "redusert sats", "kategori", "mva på frakt", "oss", "ioss"],
   },
+  "platform:duty-rates": { title: "Tollsatser", keywords: ["tollsatser", "toll", "tolltariff", "hs-kode", "grense", "importmva", "bekreft"] },
   "platform:vat.country": { title: "Merverdiavgift per land", keywords: ["merverdiavgift per land", "mva", "satser", "land", "historikk"] },
   "platform:search-test": { title: "Søketest", keywords: ["søketest", "eksperiment", "a/b-test", "søk"] },
   "platform:activity": {

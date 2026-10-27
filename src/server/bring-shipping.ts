@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/client";
+import { crossesBorder } from "@/lib/duties";
 import type { CarrierId, PickupPoint, ShippingAddress, ShippingOption } from "@/lib/shipping-carriers";
 
 import { audit } from "./auth";
@@ -14,6 +15,7 @@ import type { ParcelLine } from "@/lib/fulfilment";
 import { parcelPrecheck } from "./fulfilment";
 import { markSent, sendRefusalText, type Shipment } from "./order-admin";
 import { getOrder, type Address, type OrderView } from "./orders";
+import { bookingCustomsFor } from "./customs";
 import { carrierContext } from "./shipping-carriers";
 
 type Row = Record<string, unknown>;
@@ -132,16 +134,20 @@ export async function bringBook(
   const adapter = adapterFor("bring");
   if (!adapter?.book) return { ok: false, problem: "Bring is not available." };
   const pickupPointId = input.pickupPointId?.trim() || undefined;
+  const from = sender(found.context);
+  // A parcel that crosses a customs border carries its customs lines (D343); the adapter refuses to book one without them.
+  const customs = crossesBorder(from.country, found.to.country) ? await bookingCustomsFor(storeId, found.order) : undefined;
   try {
     const booked = await adapter.book(found.context, {
       orderReference: found.order.number,
       serviceId: input.serviceId,
-      from: sender(found.context),
+      from,
       to: found.to,
       parcels: [parcel.data],
       pickupPointId,
+      ...(customs ? { customs } : {}),
     });
-    await audit(accountId, storeId, "shipping.bring_booked", { orderId, serviceId: input.serviceId, test: booked.test });
+    await audit(accountId, storeId, "shipping.bring_booked", { orderId, serviceId: input.serviceId, test: booked.test, ...(booked.customs ? { customsDeclared: booked.customs.declared } : {}) });
     if (booked.test) return { ok: true, test: true, trackingNumber: booked.trackingNumber };
     const sent = await markSent(
       storeId,

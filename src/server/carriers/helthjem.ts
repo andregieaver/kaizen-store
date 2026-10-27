@@ -21,7 +21,7 @@ import {
   tokenUrl,
   trackingUrl,
 } from "@/lib/helthjem";
-import type { CarrierContext, ShippingCarrierAdapter } from "@/lib/shipping-carriers";
+import { bookingCustomsProblem, type CarrierContext, type ShippingCarrierAdapter } from "@/lib/shipping-carriers";
 
 /**
  * Helthjem's connection (D138), on the store's own client id and secret: a bearer token (kept until it runs out), coverage
@@ -124,6 +124,9 @@ export function createHelthjemAdapter(fetcher: Fetch = fetch): ShippingCarrierAd
     },
 
     async book(context, request) {
+      // These services stay inside Norway; a consignment that crosses a customs border is never booked without its customs lines (D343).
+      const missingCustoms = bookingCustomsProblem(request);
+      if (missingCustoms) throw new Error(missingCustoms);
       const shopId = shopOf(context);
       const solution = solutionFor(request.serviceId, context.details);
       const problems = bookingProblems(request, solution, shopId);

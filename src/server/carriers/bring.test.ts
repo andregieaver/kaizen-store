@@ -112,3 +112,77 @@ describe("the label", () => {
     expect(await fetchBringLabel(context, "https://api.bring.com/labels/2", fake([{ status: 404 }]).fetcher)).toBeNull();
   });
 });
+
+describe("customs lines on a booking (D343)", () => {
+  const abroad = {
+    orderReference: "K-9",
+    serviceId: "0342",
+    from: { name: "Shop AS", street: "Lagerveien 2", postalCode: "0150", city: "Oslo", country: "NO" },
+    to: { name: "K", street: "Storgatan 1", postalCode: "11122", city: "Stockholm", country: "SE" },
+    parcels: [{ weightGrams: 900 }],
+  };
+  const customs = {
+    incoterm: "DAP" as const,
+    currency: "SEK",
+    invoiceNumber: "K-9",
+    invoiceDate: "2026-10-27",
+    lines: [{ hsCode: "6109100010", origin: "PT", valueMinor: 39_920, description: "T-skjorte", quantity: 2, weightGrams: 400 }],
+  };
+  const booked = { consignments: [{ confirmation: { consignmentNumber: "C9" }, packages: [{ packageNumber: "P9" }], links: {}, errors: [] }] };
+
+  it("refuses a parcel across a customs border without its lines, before Bring is called", async () => {
+    const { fetcher, calls } = fake([{ body: booked }]);
+    await expect(createBringAdapter(fetcher).book!(context, abroad)).rejects.toThrow(/customs border/);
+    const noCode = { ...customs, lines: [{ ...customs.lines[0], hsCode: "" }] };
+    await expect(createBringAdapter(fetcher).book!(context, { ...abroad, customs: noCode })).rejects.toThrow(/T-skjorte has no HS code/);
+    const noWeight = { ...customs, lines: [{ ...customs.lines[0], weightGrams: 0 }] };
+    await expect(createBringAdapter(fetcher).book!(context, { ...abroad, customs: noWeight })).rejects.toThrow(/no weight/);
+    expect(calls).toHaveLength(0);
+  });
+
+  it("declares the lines to Bring's Customs API after the booking, with the consignment it made", async () => {
+    const { fetcher, calls } = fake([{ body: booked }, { body: { status: "ACCEPTED", processingId: "proc-1", error: null } }]);
+    const result = await createBringAdapter(fetcher).book!(context, { ...abroad, customs });
+    expect(result.customs).toEqual({ declared: true, reference: "proc-1", problem: null });
+    expect(calls.map((c) => c.url)).toEqual(["https://api.bring.com/booking/api/create", "https://api.bring.com/customs/v1/declarations"]);
+    expect(calls[1].init.headers).toMatchObject({ "X-Mybring-API-Key": "the-key", "X-Bring-Test-Indicator": "true" });
+    const body = JSON.parse(String(calls[1].init.body));
+    expect(body).toMatchObject({
+      customerNumber: "12345",
+      currencyCode: "SEK",
+      shipment: { consignmentId: "C9", service: "0342", termsOfDelivery: { incotermsCode: "DAP", location: "Stockholm" } },
+      exporter: { name: "Shop AS", countryCode: "NO" },
+      importer: { name: "K", countryCode: "SE" },
+      invoices: [{ invoiceNumber: "K-9", invoiceDate: "2026-10-27", amount: 399.2 }],
+    });
+    expect(body.customsDeclarations).toEqual([
+      {
+        numberOfPieces: 2,
+        goodsDescription: "T-skjorte",
+        customsArticleNumber: "6109100010",
+        grossWeight: 0.4,
+        netWeight: 0.4,
+        amount: 399.2,
+        countryCodeOrigin: "PT",
+        salesOrder: { orderNumber: "K-9", articleNumber: "6109100010" },
+      },
+    ]);
+  });
+
+  it("keeps the booking and says why when the declaration is refused, or the service is not one the Customs API takes", async () => {
+    const refused = fake([{ body: booked }, { body: { status: "FAILED", error: "Unknown customer" } }]);
+    const r1 = await createBringAdapter(refused.fetcher).book!(context, { ...abroad, customs });
+    expect(r1).toMatchObject({ trackingNumber: "P9", customs: { declared: false, problem: "Unknown customer" } });
+    const other = fake([{ body: booked }]);
+    const r2 = await createBringAdapter(other.fetcher).book!(context, { ...abroad, serviceId: "5600", customs });
+    expect(r2.customs).toMatchObject({ declared: false, problem: expect.stringMatching(/Mybring/) });
+    expect(other.calls).toHaveLength(1);
+  });
+
+  it("asks nothing of a parcel that stays inside one customs territory", async () => {
+    const { fetcher, calls } = fake([{ body: booked }]);
+    const result = await createBringAdapter(fetcher).book!(context, { ...abroad, to: { ...abroad.to, country: "NO", postalCode: "1337", city: "Sandvika" } });
+    expect(result.customs).toBeUndefined();
+    expect(calls).toHaveLength(1);
+  });
+});

@@ -1,9 +1,10 @@
 import type { CheckoutLabels } from "@/components/checkout-button";
 
+import { customsText } from "./customs-text";
 import type { Messages } from "./i18n";
 
 /** The checkout button's texts, shared by the cart and the checkout page. */
-export function checkoutLabels(m: Messages, action: string = m.checkout): CheckoutLabels {
+export function checkoutLabels(m: Messages, action: string = m.checkout, lang: string = "en"): CheckoutLabels {
   return {
     checkout: action,
     startingPayment: m.startingPayment,
@@ -34,6 +35,8 @@ export function checkoutLabels(m: Messages, action: string = m.checkout): Checko
       approval: m.companyAccount.problemApproval,
       quantity: m.problemQuantity,
       unregistered: m.producer.problem,
+      // Customs and duties (D343): hand-written in the four languages (`customs-text.ts`), for legal review.
+      customs: customsText(lang).problem,
     },
   };
 }
