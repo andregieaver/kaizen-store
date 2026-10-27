@@ -127,6 +127,7 @@ const PREFIXES: Record<string, AuditArea> = {
   "store.header_": "website",
   "store.footer_": "website",
   "store.theme_": "website",
+  "store.preview_link_": "website",
   "store.saved_theme_": "website",
   "store.menu_": "website",
   "store.media_": "website",

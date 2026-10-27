@@ -7,7 +7,9 @@ import { ThemeFollow } from "@/components/admin/theme-follow";
 import { ThemeUpdates } from "@/components/admin/theme-updates";
 import { ThemeLibrary } from "@/components/admin/theme-library";
 import { ThemeEditor } from "@/components/admin/theme-editor";
-import { adminLangOf } from "@/lib/admin-lang";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { scheduleChip } from "@/lib/page-schedules";
+import { themeFactsFor, themeScheduleOf } from "@/server/theme-schedules";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { designPreviewPath } from "@/lib/design-presets";
 import { THEME_UPDATE_KEEP_DAYS, latestDesignUse, listOfferedDesigns, themeUpdates } from "@/server/design-presets";
@@ -35,6 +37,8 @@ import {
   undoThemeFollowAction,
   undoThemeUpdateAction,
   updateThemeAction,
+  lookVersionAction,
+  lookVersionsAction,
 } from "./actions";
 
 export const metadata: Metadata = { title: "Design" };
@@ -48,6 +52,17 @@ export default async function StoreDesignPage({ params, searchParams }: PageProp
   const w = all.page;
   const [saved, designs, latest, installs, runs] = await Promise.all([listSavedThemes(store.id), listOfferedDesigns(), latestDesignUse(store.id), listInstalls(store.id), listDetachRuns(store.id)]);
   // What making each theme live costs this store (D286): free, already the store's, or its price, now or when the store opens.
+  // What is planned for the store's themes and what did not happen (D340), on the store's clock.
+  const clock = new Intl.DateTimeFormat(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeStyle: "short", timeZone: store.timeZone });
+  const chips = adminText(lang, "schedules").chips;
+  const planned = await themeScheduleOf(store.id);
+  const schedules = Object.fromEntries(
+    installs.flatMap((install) => {
+      const facts = themeFactsFor(planned, install.id);
+      const chip = facts && scheduleChip(facts, { ...chips, publishes: chips.themeLive }, (iso) => clock.format(new Date(iso)));
+      return chip ? [[install.id, chip] as const] : [];
+    }),
+  );
   const [updates, charges] = await Promise.all([
     themeUpdates(store.id, { whatsNew: { ...all.whatsNew }, preset: all.presetLine }),
     themeCharges(store.id, [...designs.map((d) => d.id), ...installs.flatMap((i) => (i.presetId ? [i.presetId] : []))]),
@@ -57,7 +72,7 @@ export default async function StoreDesignPage({ params, searchParams }: PageProp
   // A new store whose chosen design profile could not be applied lands here (`createStoreAction`).
   const designFailed = (await searchParams).design === "failed";
   return (
-    <AdminTextScope texts={adminTexts(lang, ["design"])}>
+    <AdminTextScope texts={adminTexts(lang, ["design", "schedules"])}>
     <div className="flex flex-col gap-6">
       <PageHeader title={w.title} description={w.description} />
       {designFailed && (
@@ -70,6 +85,7 @@ export default async function StoreDesignPage({ params, searchParams }: PageProp
         base={`/admin/${store.slug}/settings/design`}
         switchTo={canChange ? switchThemeAction.bind(null, store.slug) : null}
         remove={canChange ? removeThemeAction.bind(null, store.slug) : null}
+        schedules={schedules}
         lang={lang}
       />
       <ThemeUpdates
@@ -111,6 +127,8 @@ export default async function StoreDesignPage({ params, searchParams }: PageProp
           saveSaved: saveSavedThemeAction.bind(null, store.slug),
           removeSaved: deleteSavedThemeAction.bind(null, store.slug),
           installFont: installStoreFontAction.bind(null, store.slug),
+          // The live look's earlier versions (D340), for those who may change it.
+          ...(canChange && { versions: { list: lookVersionsAction.bind(null, store.slug), read: lookVersionAction.bind(null, store.slug) } }),
         }}
       />
       <Card title={w.cart} className="max-w-3xl" compact>

@@ -599,6 +599,23 @@ export const OWNER_TOOLS = [
     }),
     "public",
   ),
+  // Changes by the clock (wave 7 unit F, D340).
+  tool(
+    "list_scheduled_changes",
+    "What is scheduled to change on the store's site, and what did not happen (D340): each page, article, header or footer whose draft is published at a set time or whose version before is put back at a set time, and an installed theme planned to go live (and the theme before to come back), with the times on the store's clock and, for one that failed, the reason. Read-only.",
+    z.object({}),
+  ),
+  tool(
+    "schedule_site_change",
+    "Schedules a change of the store's site for a set time on the store's clock, as the editor's Schedule and a theme's Make it live later do (D340): `kind` page, article, header or footer publishes that draft at `at` (the draft as it is then); `kind` theme makes an installed theme live at `at`. With `back_at`, the version before (the page as it was published before, or the theme live before) is put back then, unless someone changed it in between. `at` null cancels what is scheduled for it. Refused while the draft has problems the accessibility checker blocks on, while it is in a running A/B test, and for a theme that costs money the store has not agreed to pay. Needs the owner's approval.",
+    z.object({
+      kind: z.enum(["page", "article", "header", "footer", "theme"]).describe("What changes: a page, an article, a header, a footer, or an installed theme."),
+      target: z.string().trim().min(1).max(200).describe("The page's id or address (from list_pages), or the installed theme's id or name (from list_themes)."),
+      at: z.string().trim().max(20).nullable().describe("When it goes live, YYYY-MM-DD HH:MM on the store's clock; null to cancel what is scheduled."),
+      back_at: z.string().trim().max(20).nullable().optional().describe("When to put the version before back, YYYY-MM-DD HH:MM, at least 10 minutes after `at`; left out or null: it stays."),
+    }),
+    "public",
+  ),
   tool(
     "list_content_types",
     "The store's own kinds of content (Website, Content, D326), such as team members, questions and answers or locations: each type's key, name and web name (its entries' pages are at /{web name}/{entry} when it has pages), its fields (name, label, type, whether required, public or for staff only) with the one that is its title, and how many entries it has. Read-only.",
@@ -1770,6 +1787,10 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
       return input.at === null || input.at === undefined
         ? `Cancel the schedule of the article ${text("article")}; it stays a draft.`
         : `Publish the article ${text("article")} at ${text("at")} on the store's clock (its draft as it is then).`;
+    case "schedule_site_change":
+      return input.at === null || input.at === undefined
+        ? `Cancel what is scheduled for the ${text("kind")} ${text("target")}; what is live stays live.`
+        : `${input.kind === "theme" ? `Make the theme ${text("target")} live` : `Publish the ${text("kind")} ${text("target")}'s draft`} at ${text("at")} on the store's clock${input.back_at ? `, and put the ${input.kind === "theme" ? "theme" : "version"} before back at ${text("back_at")}` : ""}.`;
     case "save_producer_registration":
       return input.kind === "exempt"
         ? `${input.id ? "Change the record" : "Record"} that no ${text("scheme").replace("_", " ")} registration is needed in ${text("country").toUpperCase()}: "${text("reason")}". Products under it are then sold there.`

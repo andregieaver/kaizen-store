@@ -8,7 +8,10 @@ import { Card, CARD_CLASS, Chip, List, ListRow, RowLead } from "@/components/adm
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
 
+import type { ScheduleChip } from "@/lib/page-schedules";
+
 import { useAdminLang, useAdminText } from "./admin-text";
+import { ScheduleChipView } from "./pages-table";
 
 /**
  * A site's headers or footers (D80), Kaizen's or a store's: which one it
@@ -59,7 +62,18 @@ export function SiteLayoutChoice({
 }
 
 /** The site's headers or footers: name, state, and which is in use. */
-export function SiteLayoutsTable({ layouts, adminBase, current }: { layouts: PageSummary[]; adminBase: string; current: string | null }) {
+export function SiteLayoutsTable({
+  layouts,
+  adminBase,
+  current,
+  schedules = {},
+}: {
+  layouts: PageSummary[];
+  adminBase: string;
+  current: string | null;
+  /** What is scheduled for each header or footer or did not happen (D340), by page id. */
+  schedules?: Record<string, ScheduleChip>;
+}) {
   const w = useAdminText("website").list;
   const date = new Intl.DateTimeFormat(ADMIN_LANG_FACTS[useAdminLang()].locale, { dateStyle: "medium" });
   return (
@@ -77,6 +91,7 @@ export function SiteLayoutsTable({ layouts, adminBase, current }: { layouts: Pag
               </Chip>
             )}
             <Chip signal={layout.state === "draft" ? "neutral" : layout.state === "changed" ? "warning" : "positive"}>{w.layoutStates[layout.state]}</Chip>
+            {schedules[layout.id] && <ScheduleChipView chip={schedules[layout.id]} />}
           </ListRow>
         ))}
       </List>

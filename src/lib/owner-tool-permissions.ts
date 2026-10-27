@@ -117,6 +117,9 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   blog_comments: "website:read",
   moderate_blog_comment: "website:write",
   schedule_article: "website:write",
+  // Changes by the clock (D340): the editor's Schedule and the theme's page ask the Website area's keys.
+  list_scheduled_changes: "website:read",
+  schedule_site_change: "website:write",
   search_merchandising: "settings:read",
   save_search_synonym: "settings:write",
   save_search_rule: "settings:write",

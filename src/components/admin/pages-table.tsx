@@ -5,6 +5,7 @@ import type { DuplicateResult } from "@/lib/page-duplicate";
 import { ROLE_COPY, type PageRole } from "@/lib/page-roles";
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
+import type { ScheduleChip } from "@/lib/page-schedules";
 
 import { useAdminLang, useAdminText } from "./admin-text";
 
@@ -27,6 +28,7 @@ export function PagesTable({
   productsPageId = null,
   roles = {},
   placed = {},
+  schedules = {},
   duplicate,
 }: {
   pages: PageSummary[];
@@ -40,6 +42,8 @@ export function PagesTable({
   roles?: Record<string, PageRole>;
   /** Kaizen's pages with a place of their own (D143), by page id: the place's name and address, which the page is at instead of its own. */
   placed?: Record<string, { name: string; address: string }>;
+  /** What is scheduled for each page or did not happen (D340), by page id. */
+  schedules?: Record<string, ScheduleChip>;
   /** Makes a copy as a draft (D126), bound to the owner and kind of page; without it the list offers no Duplicate. */
   duplicate?: (id: string) => Promise<DuplicateResult>;
 }) {
@@ -81,6 +85,7 @@ export function PagesTable({
                 <Chip signal={page.state === "draft" ? "neutral" : page.state === "changed" ? "warning" : "positive"} dot>
                   {w.states[page.state]}
                 </Chip>
+                {schedules[page.id] && <ScheduleChipView chip={schedules[page.id]} />}
                 <RowActions>
                   <ButtonLink href={`${adminBase}/${page.id}`} kind="quiet" size="dense">
                     {w.edit}<span className="sr-only"> {page.title}</span>
@@ -96,5 +101,15 @@ export function PagesTable({
             ))}
           </List>
         </Card>
+  );
+}
+
+/** A page's or theme's schedule in a list (D340): what happens next, or what did not happen with why. */
+export function ScheduleChipView({ chip }: { chip: ScheduleChip }) {
+  return (
+    <span className="flex flex-col items-start gap-0.5" data-schedule-chip={chip.signal}>
+      <Chip signal={chip.signal}>{chip.text}</Chip>
+      {chip.detail && <span className="max-w-64 text-caption text-muted">{chip.detail}</span>}
+    </span>
   );
 }

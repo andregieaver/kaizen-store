@@ -3676,6 +3676,20 @@
       "when": 1793118036667,
       "tag": "20261027162036_customs_and_duties_sql",
       "breakpoints": true
+    },
+    {
+      "idx": 525,
+      "version": "7",
+      "when": 1793119015454,
+      "tag": "20261027163655_schedules_and_sharing",
+      "breakpoints": true
+    },
+    {
+      "idx": 526,
+      "version": "7",
+      "when": 1793119043012,
+      "tag": "20261027163722_schedules_and_sharing_sql",
+      "breakpoints": true
     }
   ]
 }

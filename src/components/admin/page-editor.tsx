@@ -80,6 +80,7 @@ import { FindReplaceDialog } from "./find-replace-dialog";
 import { PageVersionsDialog } from "./page-versions-dialog";
 import { SaveTemplateDialog, defaultTemplateName } from "./save-template-dialog";
 import { ScheduleButton } from "./schedule-dialog";
+import { ShareButton } from "./share-links";
 
 const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm font-normal";
 const label = "flex flex-col gap-1 text-sm font-medium";
@@ -913,10 +914,12 @@ export function PageEditor({
               >
                 {busy ? w.savedPart.saving : saved?.published ? ew.publishChanges : ew.publish}
               </button>
-              {/* Publishing the draft at a set time (D341): once the page has been saved. */}
-              {context.schedule && saved && (context.type === "page" || context.type === "article") && (
+              {/* Publishing the draft at a set time and putting it back at another (D341, D340): once the page has been saved. */}
+              {context.schedule && saved && (context.type === "page" || context.type === "article" || context.type === "header" || context.type === "footer") && (
                 <ScheduleButton pageId={saved.id} noun={context.type} schedule={context.schedule} dirty={dirty} saveDraft={() => save(false)} />
               )}
+              {/* Links that open the draft without signing in (D340). */}
+              {context.share && saved && (context.type === "page" || context.type === "article") && <ShareButton id={saved.id} noun={context.type} actions={context.share} />}
             </>
           )}
           <div className="flex items-center" role="group" aria-label={ew.undoRedo}>

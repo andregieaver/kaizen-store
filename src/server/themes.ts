@@ -12,7 +12,10 @@ import { themeHoverSchema } from "@/lib/hover-timing";
 
 import { parseSiteFonts } from "@/lib/fonts-schema";
 
+import type { LookVersionKind } from "@/lib/look-versions";
+
 import { audit, type Account } from "./auth";
+import { keepLookVersion } from "./look-versions";
 import { platformTheme } from "./platform-navigation";
 import { findFont, installFonts } from "./fonts";
 
@@ -78,11 +81,17 @@ export async function saveStoreTheme(
   account: Account,
   storeId: string,
   input: unknown,
+  /** What saved it, for its version (D340): Design settings unless said. */
+  kind: LookVersionKind = "design",
 ): Promise<{ ok: true; theme: StoreTheme } | { ok: false; problems: string[] }> {
   const checked = await checkStoreTheme(storeId, input);
   if (!checked.ok) return checked;
   const { theme } = checked;
-  await db().execute(sql`update commerce.stores set theme = ${JSON.stringify(theme)}::jsonb where id = ${storeId}::uuid`);
+  // The look as this save leaves it is kept as a version in the same transaction (D340), so a version is never missing or extra.
+  await db().transaction(async (tx) => {
+    await tx.execute(sql`update commerce.stores set theme = ${JSON.stringify(theme)}::jsonb where id = ${storeId}::uuid`);
+    await keepLookVersion(tx, { store: storeId, kind, theme, account: account.id });
+  });
   await audit(account.id, storeId, "store.theme_updated", { base: theme.base, savedId: theme.savedId });
   return { ok: true, theme };
 }
@@ -109,7 +118,7 @@ export async function saveThemeTab(
 ): Promise<{ ok: true; theme: StoreTheme } | { ok: false; problems: string[] }> {
   const settings = themeTabSettings(store.theme.settings, input);
   if (!settings.ok) return settings;
-  return saveStoreTheme(account, store.id, { base: store.theme.base, savedId: store.theme.savedId, settings: settings.settings });
+  return saveStoreTheme(account, store.id, { base: store.theme.base, savedId: store.theme.savedId, settings: settings.settings }, "theme_tab");
 }
 
 /** A theme's settings with what the page builder's Theme tab sent laid in (D182): the same for a store and for Kaizen (D235). */
@@ -138,7 +147,7 @@ export async function saveThemeLibrary(
 ): Promise<{ ok: true; theme: StoreTheme } | { ok: false; problems: string[] }> {
   const settings = librarySettings(store.theme.settings, input);
   if (!settings.ok) return settings;
-  return saveStoreTheme(account, store.id, { base: store.theme.base, savedId: store.theme.savedId, settings: settings.settings });
+  return saveStoreTheme(account, store.id, { base: store.theme.base, savedId: store.theme.savedId, settings: settings.settings }, "colours");
 }
 
 /**

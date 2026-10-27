@@ -2,8 +2,8 @@ import type { Widen } from "./common.en";
 
 /**
  * The words of a store's blogs in the admin (wave 7 unit G, D341): the Blogs page, authors, comments waiting to be read, and the article
- * editor's blog, author and schedule. `{name}`-style placeholders are filled by `fillWords()`. Visitors' comments are their own words, in
- * their own language, and are never translated.
+ * editor's blog and author (its Schedule dialog's words are `schedules`, D340). `{name}`-style placeholders are filled by `fillWords()`.
+ * Visitors' comments are their own words, in their own language, and are never translated.
  */
 export const blogEn = {
   noChange: "You cannot change the blog.",
@@ -123,29 +123,6 @@ export const blogEn = {
     authorNone: "No author record: the name below",
     manageAuthors: "Authors",
     manageBlogs: "Blogs",
-    schedule: "Schedule",
-    scheduleTitle: "Publish it later",
-    scheduleIntro: "Choose when this {noun} is published, on your store's clock ({zone}). Until then nobody sees it, and it is in no list, sitemap or feed.",
-    day: "Day",
-    time: "Time",
-    scheduleSave: "Schedule",
-    scheduleSaveDraftFirst: "Save the draft and schedule",
-    scheduled: "Scheduled for {when}. The draft as it is then is published.",
-    scheduledShort: "Scheduled for {when}",
-    cancelSchedule: "Cancel the schedule",
-    cancelled: "The schedule is cancelled. The draft stays a draft.",
-    close: "Close",
-    failed: "The schedule for {when} did not publish: {problem}",
-    unsaved: "Save the {noun} first.",
-    problems: {
-      not_a_time: "Choose a day and a time.",
-      too_soon: "Choose a time a few minutes from now or later.",
-      too_late: "Choose a time within a year.",
-      missing: "Save the {noun} first.",
-      ab_test: "This page is in a running A/B test. Stop the test before you schedule it.",
-      type: "Only pages and articles can be scheduled.",
-      blocking: "The page has problems to fix before it is published: publish it from the editor, or fix them first.",
-    },
   },
 };
 
