@@ -296,4 +296,21 @@ describe("write_product_texts", () => {
     expect(await editorView(made.id)).toMatchObject({ standardCategory: null, standardAttributes: {} });
     expect((await run("get_product", { product: made.id })).standard_category).toBeNull();
   });
+  it("switches a product and a variant off in a country by its code, keeps the prices there, and reads it back (D335)", async () => {
+    const made = await run("create_product", {
+      title: "Wool socks",
+      options: [{ name: "Size", values: ["S", "M"] }],
+      prices: { NO: "199", SE: "229" },
+      not_sold_in: ["se"],
+    });
+    const skus = (await editorView(made.id)).variants.map((v) => v.sku);
+    expect((await editorView(made.id)).availability).toEqual({ off: ["SE"], variants: {} });
+    const read = await run("get_product", { product: made.id });
+    expect(read.not_sold_in).toEqual(["SE"]);
+    expect(read.variants[0].prices.map((p: Answer) => p.country)).toEqual(["NO", "SE"]);
+    const changed = await run("update_product", { product: made.id, not_sold_in: [], variants: [{ sku: skus[1], not_sold_in: ["no"] }] });
+    expect(changed.done).toContain("the countries it is not sold in");
+    expect((await editorView(made.id)).availability).toEqual({ off: [], variants: { [skus[1]]: ["NO"] } });
+    expect(await refusal(run("update_product", { product: made.id, not_sold_in: ["Atlantis"] }))).toContain('does not sell to "Atlantis"');
+  });
 });

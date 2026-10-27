@@ -101,7 +101,7 @@ scheduled articles use).
 - **The price is kept.** Switching off never touches `commerce.prices`; switching back on shows the same price with its history.
 - **Writers.** The product editor's Prices card gets a switch per country beside each price (and per variant in the variant grid's
   country columns), saved by `saveProduct()` through `ProductInput.availability` (`{ off: [{ market, sku? }] }`, left out = kept as
-  stored, like `standardCategory`). The CSV gains a `Not sold in` column (country codes), the bulk bar *Sell in* / *Stop selling in*, and
+  stored, like `standardCategory`). The CSV gains a `not_sold_in` column (country codes per variant row; the countries every variant shares are the product's own), the bulk bar *Sell in* / *Stop selling in* (step A3), and
   the AI manager's `create_product`/`update_product` take `not_sold_in` (a live product's change waits for a yes, as any change does).
 - **The cart and the order.** A cart line for a variant off in the cart's market is unavailable (`status: 'not_sold_here'`, the cart's
   existing unavailable path) and `placeOrder()` refuses it, both because the line has no current price in that market.
@@ -145,8 +145,8 @@ scheduled articles use).
 
 ### A.3 Steps
 
-A1 availability (model, view, editor, CSV, bulk, cart, copies, tools); A2 rules (model, sum, writer, screen, tools); A3 the tracker rows,
-docs and the AI manager's skill.
+A1 availability (model, view, editor, CSV, cart, copies, tools); A2 rules (model, sum, writer, screen, tools); A3 the bulk bar's *Sell in* /
+*Stop selling in*, an e2e, the tracker rows, docs and the AI manager's skill.
 
 ## 4. The other units, outlined
 

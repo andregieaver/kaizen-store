@@ -236,6 +236,10 @@ export const FINDINGS = {
     sentence: () =>
       "Continue selling when out of stock is not imported: a backorder needs a stated delivery time, so it is set per variant in the product editor or on the Inventory page. Until then a product at 0 stops selling.",
   },
+  "not_sold_in.unknown": {
+    severity: "error",
+    sentence: (p) => `${col(p)} of ${prod(p)} names a country the store does not sell to.`,
+  },
   "standard_category.unknown": {
     severity: "warning",
     sentence: (p) => `The product category of ${prod(p)} is not in the standard taxonomy, so it was left as it was.`,

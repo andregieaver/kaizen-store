@@ -217,6 +217,13 @@ stand-in is the only fake, and only it is told it is one.
   Shopify's `Product Category`. A model only suggests (`categoryCandidates()` by code, `readCategoryChoice()` keeps a listed id, feature
   `product_taxonomy`), staff accept; the AI manager names a category by id or English path and attributes by name, resolved by code. A new
   release that moves or retires an id comes with a migration mapping products' ids.
+- **What is sold where (wave 7 unit A1, D335, `docs/wave-7-storefront.md` A.1)**: a product or a variant is switched off in one market by a row
+  of `commerce.market_availability` (no variant: the whole product), its price kept; written only by `saveProduct()` (`writeAvailability()`,
+  `ProductInput.availability`, left out = kept, only the countries the editor shows replaced). `commerce.current_prices` leaves out a variant
+  that is off in its market (and a bundle with such a component), so every shopper-facing read, the cart and `placeOrder()` treat it as not sold
+  there; the admin's own price reads use `commerce.kept_prices` (every current price). Who may read `commerce.prices` or `kept_prices` is
+  `price-readers.scan.test.ts`: a new reader that decides what a shopper is sold reads `current_prices`. The CSV's `not_sold_in` and the AI
+  manager's `not_sold_in` go through the same save.
 - Sorting and filtering listings (D78, `src/lib/listing-filters.ts`,
   `src/server/listing.ts`, `FilterDialog`, `ProductListing`): the products
   page, category and tag pages and search results take their filters from

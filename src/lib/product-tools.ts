@@ -49,6 +49,11 @@ const priceText = z.string().trim().max(20);
 const pricesDescription =
   "Price per country, keyed by the country's code from store_overview (such as NO or SE), as text in that country's own currency: \"249\" or \"249,50\". With VAT, as shoppers pay; a store that sells only to businesses gives prices without VAT, as its product editor does. A country left out is not priced, and the product is not sold there until it is.";
 const prices = z.record(country, priceText.min(1)).describe(pricesDescription);
+/** Countries a product or variant is switched off in (D335 A.1), by code or name; its prices there are kept. */
+const notSoldIn = z
+  .array(country)
+  .max(60)
+  .describe("Countries (codes from store_overview, such as SE, or names) where it is not sold, though it keeps its price there; [] sells it everywhere it has a price.");
 const language = z.string().trim().min(2).max(10).describe("A language of the store, by its code from store_overview (such as nb-NO or sv), as its main language unless given.");
 const termName = z.string().trim().min(1).max(TERM_NAME_MAX);
 
@@ -76,6 +81,17 @@ const pictureArgs = z.union([
   }),
 ]);
 export type PictureArgs = z.output<typeof pictureArgs>;
+
+/** Countries named by a tool as the store's market codes; one the store does not sell to is a problem. */
+function marketCodes(given: readonly string[], markets: ToolStore["markets"], problems: string[]): string[] {
+  const codes: string[] = [];
+  for (const name of given) {
+    const market = findMarket(name, markets);
+    if (market) codes.push(market.code);
+    else problems.push(`The store does not sell to "${name}".`);
+  }
+  return [...new Set(codes)];
+}
 
 /** A company named on a product: one of the store's (by name) or a new one with its details (EU product-safety rules). */
 const operatorArgs = z.union([
@@ -129,6 +145,7 @@ const variantArgs = z.object({
   cost: z.string().trim().max(20).optional().describe("What one costs the store, without VAT, in its main currency, such as \"120\"; for profit figures."),
   gtin: z.string().trim().regex(/^[0-9]{8,14}$/, "A barcode (GTIN/EAN) is 8 to 14 digits.").optional(),
   content: measureArgs.optional(),
+  not_sold_in: notSoldIn.optional(),
   ...ruleArgs,
 });
 
@@ -190,6 +207,7 @@ export const createProductInput = z.object({
   manufacturer: operatorArgs.optional().describe("Who makes it, required on goods for sale in the EU; the store's first company when left out."),
   responsible_person: operatorArgs.optional().describe("A person or company in the EU responsible for its safety, required when the manufacturer is outside the EU."),
   bundle: bundleArgs.optional(),
+  not_sold_in: notSoldIn.optional(),
   ...standardArgs,
 });
 export type CreateProductInput = z.output<typeof createProductInput>;
@@ -204,6 +222,7 @@ const variantChangeArgs = z.object({
   gtin: z.string().trim().regex(/^[0-9]{8,14}$/, "A barcode (GTIN/EAN) is 8 to 14 digits.").nullable().optional(),
   content: measureArgs.nullable().optional(),
   active: z.boolean().optional().describe("False switches the variant off (it is never deleted)."),
+  not_sold_in: notSoldIn.optional().describe("Countries this variant is not sold in, as they should be (they replace its own list)."),
   ...ruleArgs,
 });
 
@@ -226,6 +245,7 @@ export const updateProductInput = z.object({
   manufacturer: operatorArgs.optional(),
   responsible_person: operatorArgs.optional(),
   bundle: bundleArgs.optional().describe("A bundle's components and pricing as they should be (they replace the ones there); only for a bundle."),
+  not_sold_in: notSoldIn.optional().describe("Countries the whole product is not sold in, as they should be (they replace the list there); its prices there are kept."),
   ...standardArgs,
 });
 export type UpdateProductInput = z.output<typeof updateProductInput>;
@@ -465,6 +485,13 @@ export function toProductInput(args: CreateProductInput, base: ProductInput, sto
   // A bundle (D322): one variant without options or stock, its components found by the server.
   const bundle = args.bundle ? bundleOf(args.bundle, resolved) : null;
   if (bundle && (options.length > 0 || variants.length > 1)) problems.push("A bundle has one variant: leave out the options and variants.");
+  // Where it is not sold (D335): the whole product, and per variant by the SKU it is made with.
+  const availability = {
+    off: marketCodes(args.not_sold_in ?? [], store.markets, problems),
+    variants: Object.fromEntries(
+      given.flatMap((fields, n) => (fields.not_sold_in?.length ? [[variants[n].sku, marketCodes(fields.not_sold_in, store.markets, problems)]] : [])),
+    ),
+  };
   if (problems.length > 0) return { ok: false, problems };
   return {
     ok: true,
@@ -486,6 +513,7 @@ export function toProductInput(args: CreateProductInput, base: ProductInput, sto
       manufacturer,
       responsiblePerson,
       ...(resolved.standard && { standardCategory: resolved.standard.category, standardAttributes: resolved.standard.attributes }),
+      availability,
     },
   };
 }
@@ -514,6 +542,7 @@ const FIELD_WORDS: Record<string, string> = {
   responsible_person: "the responsible person",
   bundle: "what is in the bundle and its pricing",
   standard: "the standard category and its attributes",
+  not_sold_in: "the countries it is not sold in",
 };
 
 /**
@@ -627,6 +656,21 @@ export function mergeProduct(stored: ProductInput, change: UpdateProductInput, s
     }
   }
   if (resolved.standard) mark("standard");
+  // Where it is not sold (D335): the product's list replaced when given, a variant's when its change gives one.
+  const had = stored.availability ?? { off: [], variants: {} };
+  let availability = had;
+  if (change.not_sold_in !== undefined) {
+    availability = { ...availability, off: marketCodes(change.not_sold_in, store.markets, problems) };
+    mark("not_sold_in");
+  }
+  for (const given of change.variants ?? []) {
+    if (given.not_sold_in === undefined) continue;
+    const sku = variants.find((v) => v.sku.toLowerCase() === given.sku.toLowerCase())?.sku ?? given.sku;
+    const codes = marketCodes(given.not_sold_in, store.markets, problems);
+    const rest = Object.fromEntries(Object.entries(availability.variants).filter(([key]) => key !== sku));
+    availability = { ...availability, variants: codes.length > 0 ? { ...rest, [sku]: codes } : rest };
+    changed.push(`${sku}: where it is sold`);
+  }
 
   if (problems.length > 0) return { ok: false, problems };
   if (changed.length === 0) return { ok: false, problems: ["Nothing to change: give the fields that should change."] };
@@ -647,6 +691,7 @@ export function mergeProduct(stored: ProductInput, change: UpdateProductInput, s
       responsiblePerson,
       bundle,
       ...(resolved.standard && { standardCategory: resolved.standard.category, standardAttributes: resolved.standard.attributes }),
+      availability,
     },
   };
 }
@@ -763,7 +808,7 @@ export function productApprovalSummary(name: string, input: Record<string, unkno
   if (name === "update_product") {
     const parts: string[] = [];
     if (typeof input.title === "string") parts.push(`the title to "${cut(input.title)}"`);
-    for (const key of ["description", "seo_title", "seo_description", "excerpt", "translations", "options", "pictures", "add_pictures", "vat_category", "manufacturer", "responsible_person"]) {
+    for (const key of ["description", "seo_title", "seo_description", "excerpt", "translations", "options", "pictures", "add_pictures", "vat_category", "manufacturer", "responsible_person", "not_sold_in"]) {
       if (input[key] !== undefined) parts.push(FIELD_WORDS[key]);
     }
     if (typeof input.handle === "string") parts.push(`the web address to /p/${input.handle} (the old one is redirected)`);

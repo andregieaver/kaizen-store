@@ -522,8 +522,9 @@ export async function sellableQuantity(
     join commerce.variant_availability va on va.store_id = v.store_id and va.variant_id = v.id
     join commerce.products p
       on p.store_id = v.store_id and p.id = v.product_id and p.status = 'active'
-    join commerce.prices pr
-      on pr.variant_id = v.id and pr.market_code = ${market.code} and pr.valid_to is null
+    -- Sold in this market (a price there, the product and variant not switched off in it, D335).
+    join commerce.current_prices pr
+      on pr.variant_id = v.id and pr.market_code = ${market.code}
     where v.store_id = ${storeId}::uuid and v.id = ${variantId}::uuid and v.active
       -- Sold only in a country and currency the store offers now (D178: Several countries and currencies).
       and commerce.market_offered(v.store_id, ${market.code}, ${market.currency})

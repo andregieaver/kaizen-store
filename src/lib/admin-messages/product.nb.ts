@@ -162,7 +162,7 @@ export const productNb: ProductMessages = {
     digitalNoStock: "Digitale produkter har ikke lager: de blir aldri utsolgt. ",
     someDigitalNoStock: "Digitale varianter har ikke lager. ",
     pricesNote:
-      "Prisene er inkl. mva. La et land stå tomt for ikke å selge produktet der. Når en pris endres, beholdes historikken, så rabatter vises alltid mot den laveste prisen de siste 30 dagene.",
+      "Prisene er inkl. mva. Fjern haken for et land under Selges i for å slutte å selge produktet der og beholde prisen; et land uten pris selges heller ikke. Når en pris endres, beholdes historikken, så rabatter vises alltid mot den laveste prisen de siste 30 dagene.",
   },
   grid: {
     filterLegend: "Vis variantene med",
@@ -543,6 +543,11 @@ export const productNb: ProductMessages = {
       furniture: "Møbler",
       tyres: "Dekk",
     },
+  },
+  soldIn: {
+    title: "Selges i",
+    hint: "Fjern haken for et land for å slutte å selge det der. Prisen der beholdes til du krysser av igjen.",
+    variantsOff: "{n} varianter selges ikke i alle land",
   },
   shipping: {
     profile: "Fraktprofil",

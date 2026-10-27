@@ -6797,6 +6797,36 @@ describe("bundles (wave 6 unit D, D322)", () => {
     await expect(db.query("update commerce.order_line_components set quantity = 3 where order_line_id = $1", [bundleLine.id])).rejects.toThrow(/order_line_components.frozen/);
     await expect(db.query("delete from commerce.order_line_components where order_line_id = $1", [bundleLine.id])).rejects.toThrow(/order_line_components.frozen/);
   });
+
+  // What is not sold in a market (wave 7 unit A1, D335): the price is kept, the shopper's view leaves the variant out, and a bundle with it.
+  it("leaves a variant switched off in a market, and a bundle holding it, out of the shopper's prices while keeping them", async () => {
+    const { storeId, a, b, bundle } = await bundleSetup();
+    await db.query(
+      "insert into commerce.bundle_components (store_id, bundle_variant_id, component_variant_id, quantity, position) values ($1, $2, $3, 1, 0), ($1, $2, $4, 1, 1)",
+      [storeId, bundle.variantId, a.variantId, b.variantId],
+    );
+    const shown = async (view: string) =>
+      (await db.query<{ variant_id: string }>(`select variant_id from commerce.${view} where store_id = $1 and market_code = 'NO' order by variant_id`, [storeId])).rows.map(
+        (r) => r.variant_id,
+      );
+    const all = [a.variantId, b.variantId, bundle.variantId].sort();
+    expect(await shown("current_prices")).toEqual(all);
+    // B's variant off: B and the bundle are not sold in Norway; their prices stay.
+    await db.query("insert into commerce.market_availability (store_id, product_id, variant_id, market_code) values ($1, $2, $3, 'NO')", [storeId, b.productId, b.variantId]);
+    expect(await shown("current_prices")).toEqual([a.variantId]);
+    expect(await shown("kept_prices")).toEqual(all);
+    // The whole of A off too, then back on: A returns with its price.
+    await db.query("insert into commerce.market_availability (store_id, product_id, market_code) values ($1, $2, 'NO')", [storeId, a.productId]);
+    expect(await shown("current_prices")).toEqual([]);
+    await db.query("delete from commerce.market_availability where store_id = $1", [storeId]);
+    expect(await shown("current_prices")).toEqual(all);
+    // A product's row once a market, a variant's row only for its own product.
+    await db.query("insert into commerce.market_availability (store_id, product_id, market_code) values ($1, $2, 'NO')", [storeId, a.productId]);
+    await expect(db.query("insert into commerce.market_availability (store_id, product_id, market_code) values ($1, $2, 'NO')", [storeId, a.productId])).rejects.toThrow();
+    await expect(
+      db.query("insert into commerce.market_availability (store_id, product_id, variant_id, market_code) values ($1, $2, $3, 'NO')", [storeId, a.productId, b.variantId]),
+    ).rejects.toThrow(/market_availability.variant/);
+  });
 });
 
 describe("quantity rules (wave 6 unit E1, D323)", () => {

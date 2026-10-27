@@ -39,7 +39,7 @@ describe("the columns", () => {
       "variant_id", "sku", "gtin", "active", "delivery", "weight_grams", "hs_code", "origin_country", "cost", "stock",
       "stock_policy", "backorder_days", "low_stock_threshold",
       "measure_amount", "measure_unit", "measure_base", "price_basis",
-      "price:NO", "price:SE",
+      "price:NO", "price:SE", "not_sold_in",
       "image_url", "image_position", "image_alt", "variant_image_url",
       "field:material", "field:material:sv-SE", "field:material:en-GB", "field:weight_kg", "field:organic", "field:season",
       "variant_field:shade", "variant_field:shade:sv-SE", "variant_field:shade:en-GB",

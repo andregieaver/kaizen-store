@@ -163,7 +163,7 @@ export const productEn = {
     digitalNoStock: "Digital products have no stock: they never sell out. ",
     someDigitalNoStock: "Digital variants have no stock. ",
     pricesNote:
-      "Prices include VAT. Leave a country empty to not sell the product there. Changing a price keeps its history, so reductions are always shown against the lowest price of the last 30 days.",
+      "Prices include VAT. Untick a country under Sold in to stop selling the product there and keep its price; an empty price is not sold either. Changing a price keeps its history, so reductions are always shown against the lowest price of the last 30 days.",
   },
   grid: {
     filterLegend: "Show the variants with",
@@ -541,6 +541,11 @@ export const productEn = {
       furniture: "Furniture",
       tyres: "Tyres",
     },
+  },
+  soldIn: {
+    title: "Sold in",
+    hint: "Untick a country to stop selling it there. Its price there is kept for when you tick it again.",
+    variantsOff: "{n} variants are not sold in some countries",
   },
   shipping: {
     profile: "Shipping profile",

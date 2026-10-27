@@ -371,6 +371,17 @@ export const productInput = z.object({
   standardAttributes: z
     .record(z.string().regex(/^\d{1,9}$/), z.array(z.number().int().positive()).max(MAX_ATTRIBUTE_VALUES, `Choose at most ${MAX_ATTRIBUTE_VALUES} values of one attribute.`))
     .optional(),
+  /**
+   * Where it is not sold (D335 A.1): countries (market codes) the whole product is switched off in, and per variant (by SKU) the countries
+   * that variant is off in; its prices there are kept. Left out, the product keeps what it has (an import without the column, an older
+   * editor); given, it replaces what is stored for the countries the editor shows (`saveProduct()` keeps the rest, D178).
+   */
+  availability: z
+    .object({
+      off: z.array(z.string().regex(/^[A-Z]{2}$/)).max(60).default([]),
+      variants: z.record(z.string().max(64), z.array(z.string().regex(/^[A-Z]{2}$/)).max(60)).default({}),
+    })
+    .optional(),
   /** How new variants are delivered; each variant can differ. */
   delivery: z.enum(DELIVERIES).default("physical"),
   /** Files for digital variants: already uploaded to the store's folder. */

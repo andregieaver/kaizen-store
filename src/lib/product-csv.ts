@@ -122,6 +122,7 @@ export function productColumns(ctx: ProductCsvContext): string[] {
     "stock_policy", "backorder_days", "low_stock_threshold",
     "measure_amount", "measure_unit", "measure_base", "price_basis",
     ...ctx.markets.map((m) => `price:${m.code}`),
+    "not_sold_in",
     "image_url", "image_position", "image_alt", "variant_image_url",
     ...fieldHeaders(addressableFields(ctx, "product"), "field", others),
     ...fieldHeaders(addressableFields(ctx, "variant"), "variant_field", others),
@@ -178,6 +179,11 @@ function priceCell(typed: string | undefined, market: CsvMarket): Cell {
   return minor === null ? null : amountCell(minor, market.currency);
 }
 
+
+/** Where a variant is not sold (D335 A.1): the whole product's countries and its own, once each, in order. */
+export function notSoldIn(availability: StoredProduct["availability"], sku: string): string[] {
+  return [...new Set([...(availability?.off ?? []), ...(availability?.variants[sku] ?? [])])].sort();
+}
 
 /** The rows of one product: a row per variant, then a row per picture the variants' rows did not carry. */
 export function productRowsOf(record: StoredProduct, ctx: ProductCsvContext): Cell[][] {
@@ -250,6 +256,8 @@ export function productRowsOf(record: StoredProduct, ctx: ProductCsvContext): Ce
       cells.measure_base = variant.measure?.base ?? null;
       cells.price_basis = basis;
       for (const m of ctx.markets) cells[`price:${m.code}`] = priceCell(variant.prices[m.code], m);
+      // The countries this variant is not sold in (D335): the product's own and the variant's, as one list.
+      cells.not_sold_in = text(notSoldIn(record.availability, variant.sku).join("|"));
       cells.variant_image_url = text(variant.image?.url);
       const data = variant.id ? record.fieldData?.variants[variant.id] : undefined;
       for (const def of variantFields) {

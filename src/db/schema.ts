@@ -2707,6 +2707,36 @@ export const priceBreaks = commerce.table(
 );
 
 /**
+ * What a store does not sell in one of its countries (wave 7 unit A1, D335, `docs/wave-7-storefront.md` A.1): a row with no variant switches the
+ * whole product off in that market, a row with one switches that variant off; no row means sold, while it has a price there. The price is kept
+ * (`commerce.prices` is never touched): `commerce.current_prices` leaves out a variant that is off in a market, so every shopper-facing read
+ * treats it as not sold there, and the admin's own price reads use `commerce.kept_prices`. Written only by `saveProduct()`
+ * (`writeAvailability()` in `src/server/products.ts`).
+ */
+export const marketAvailability = commerce.table(
+  "market_availability",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId(),
+    productId: uuid("product_id").notNull(),
+    variantId: uuid("variant_id"),
+    marketCode: char("market_code", { length: 2 }).notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("market_availability_key").on(t.productId, t.variantId, t.marketCode).nullsNotDistinct(),
+    productRef("market_availability_product_fk", t),
+    variantRef("market_availability_variant_fk", { storeId: t.storeId, variantId: t.variantId }).onDelete("cascade"),
+    foreignKey({
+      name: "market_availability_market_fk",
+      columns: [t.storeId, t.marketCode],
+      foreignColumns: [markets.storeId, markets.code],
+    }).onDelete("cascade"),
+    index("market_availability_product_idx").on(t.storeId, t.productId, t.marketCode),
+  ],
+);
+
+/**
  * A purchase option for subscribing to a product (D25), as Shopify's selling
  * plans and WooCommerce's subscription options: how often it renews and the
  * subscriber's discount. Options in use are switched off, never deleted.

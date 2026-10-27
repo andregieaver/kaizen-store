@@ -1294,6 +1294,14 @@ function VariantsSection({
           )}
         </table>
       </div>
+      {context.markets.length > 1 && (
+        <SoldInField
+          markets={context.markets}
+          off={product.availability?.off ?? []}
+          variantsOff={product.availability?.variants ?? {}}
+          onChange={(off) => update((p) => ({ ...p, availability: { off, variants: p.availability?.variants ?? {} } }))}
+        />
+      )}
       {!allDigital && <BackorderAll product={product} update={update} />}
       {!allDigital && context.shippingProfiles && (
         <ShippingProfileField
@@ -3421,6 +3429,55 @@ function LegalSection({
  * The product's shipping profile (D237, `docs/wave-3-shipping-methods.md` 2.1): which rates of the store's shipping methods price it. General (no
  * profile) is the default; the profiles themselves are made under Settings, Shipping, Profiles.
  */
+/**
+ * Where the product is sold (D335 A.1): a box per country, ticked where it is sold; unticked, it is not sold there and keeps its price there.
+ * Variants switched off on their own (from a file or the AI manager) are named, one step away from Homer's view.
+ */
+function SoldInField({
+  markets,
+  off,
+  variantsOff,
+  onChange,
+}: {
+  markets: { code: string; name: string }[];
+  off: string[];
+  variantsOff: Record<string, string[]>;
+  onChange: (off: string[]) => void;
+}) {
+  const w = useAdminText("product").soldIn;
+  const own = Object.entries(variantsOff).filter(([, codes]) => codes.length > 0);
+  return (
+    <fieldset className="mt-4 flex flex-col gap-2 text-sm" data-testid="sold-in">
+      <legend className="font-medium">{w.title}</legend>
+      <div className="flex flex-wrap gap-x-5 gap-y-2">
+        {markets.map((market) => (
+          <label key={market.code} className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={!off.includes(market.code)}
+              onChange={(e) => onChange(e.target.checked ? off.filter((code) => code !== market.code) : [...off, market.code])}
+            />
+            {market.name}
+          </label>
+        ))}
+      </div>
+      <span className="text-muted">{w.hint}</span>
+      {own.length > 0 && (
+        <details>
+          <summary className="cursor-pointer text-muted">{fillWords(w.variantsOff, { n: own.length })}</summary>
+          <ul className="mt-1 list-disc pl-5 text-muted">
+            {own.map(([sku, codes]) => (
+              <li key={sku}>
+                {sku}: {codes.map((code) => markets.find((m) => m.code === code)?.name ?? code).join(", ")}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </fieldset>
+  );
+}
+
 function ShippingProfileField({
   storeSlug,
   value,

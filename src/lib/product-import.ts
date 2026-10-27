@@ -774,6 +774,36 @@ export function planProduct(draft: ProductDraft, file: NeutralFile, env: PlanEnv
     }
   }
 
+  // Where it is not sold (D335 A.1) -----------------------------------------------------------------------------------------
+  // Each variant's countries in the file, else as stored; the countries every variant shares are the product's own, the rest each variant's.
+  if (has(c, "not_sold_in") && draft.variants.length > 0) {
+    const known = new Set(ctx.markets.map((m) => m.code));
+    const fromFile = new Map<string, string[]>();
+    for (const dv of draft.variants) {
+      const sku = t(dv.v.sku) || input.variants.find((v) => v.id === t(dv.v.variant_id))?.sku || "";
+      const codes = t(dv.v.not_sold_in).split(/[|,;\s]+/).map((code) => code.trim().toUpperCase()).filter((code) => code !== "");
+      if (codes.some((code) => !known.has(code))) {
+        err(c, "not_sold_in.unknown", { column: "not_sold_in" });
+        continue;
+      }
+      if (sku !== "") fromFile.set(sku, [...new Set(codes)]);
+    }
+    const had = input.availability ?? { off: [], variants: {} };
+    const effective = input.variants.map((v) => fromFile.get(v.sku) ?? [...new Set([...had.off, ...(had.variants[v.sku] ?? [])])]);
+    const off = effective.length > 0 ? effective[0].filter((code) => effective.every((codes) => codes.includes(code))) : [];
+    const next = {
+      off: [...off].sort(),
+      variants: Object.fromEntries(
+        input.variants.flatMap((v, i) => {
+          const own = effective[i].filter((code) => !off.includes(code)).sort();
+          return own.length > 0 ? [[v.sku, own]] : [];
+        }),
+      ),
+    };
+    if (JSON.stringify(next) !== JSON.stringify({ off: [...had.off].sort(), variants: had.variants })) c.changedFields.add("not_sold_in");
+    input.availability = next;
+  }
+
   // Custom fields of the product ------------------------------------------------------------------------------------------
   const pc = fieldChangesFor(c, pdefs, "field", p, c.stored?.fieldData?.product);
   if (pc) fieldChanges.product = pc;

@@ -247,6 +247,7 @@ export function emptyProduct(context: EditorContext): ProductInput {
     layoutId: null,
     standardCategory: null,
     standardAttributes: {},
+    availability: { off: [], variants: {} },
     appointment: null,
     bundle: null,
     priceBreaks: [],
@@ -313,7 +314,7 @@ export async function listAdminProducts(
     ) tf on true
     left join lateral (
       select min(c.amount_minor) as min_amount, max(c.amount_minor) as max_amount, min(c.currency) as currency
-      from commerce.current_prices c
+      from commerce.kept_prices c
       join commerce.product_variants v on v.id = c.variant_id and v.active
       where v.product_id = p.id and c.market_code = ${market?.code ?? ""}
     ) pr on true
@@ -405,7 +406,8 @@ export async function getProductForEdit(
     `),
     db().execute<Row>(sql`
       select c.variant_id, c.market_code, c.currency, c.amount_minor
-      from commerce.current_prices c
+      -- Every current price, also in a country the product is switched off in (D335): the editor keeps it.
+      from commerce.kept_prices c
       join commerce.product_variants v on v.id = c.variant_id
       where v.product_id = ${productId}::uuid
     `),
@@ -574,6 +576,7 @@ export async function getProductForEdit(
     shippingProfileId: product.shipping_profile_id ? String(product.shipping_profile_id) : null,
     standardCategory: product.standard_category ? String(product.standard_category) : null,
     standardAttributes: (product.standard_attributes ?? {}) as StandardAttributes,
+    availability: await availabilityOf(store.id, productId),
     appointment: isBooked(kind)
         ? {
             durationMinutes: Number(appointment?.duration_minutes ?? DEFAULT_APPOINTMENT.durationMinutes),
@@ -866,6 +869,15 @@ export async function saveProduct(
     if (standard.length > 0) return { ok: false, problems: standard };
     input.standardAttributes = attributes;
   }
+  // Where it is not sold (D335 A.1): only the countries the editor shows, only its own variants.
+  if (input.availability) {
+    const shown = new Set(context.markets.map((m) => m.code));
+    const skus = new Set(input.variants.map((v) => v.sku));
+    const codes = [...input.availability.off, ...Object.values(input.availability.variants).flat()];
+    if (codes.some((code) => !shown.has(code))) return { ok: false, problems: ["A country it is switched off in is not one the store sells to."] };
+    const unknown = Object.keys(input.availability.variants).filter((sku) => !skus.has(sku));
+    if (unknown.length > 0) return { ok: false, problems: [`No variant with the SKU ${unknown.join(", ")} to switch off.`] };
+  }
 
   const before = actor && productId ? await productSnapshot(store.id, productId, context.primaryLocale) : null;
   try {
@@ -887,6 +899,7 @@ export async function saveProduct(
       await saveAppointment(tx, store.id, saved, input, context);
       if (input.kind === "bundle") await saveBundleComponents(tx, store.id, saved, input);
       await savePriceBreaks(tx, store.id, saved, input, context);
+      await writeAvailability(tx, store.id, saved, input, context);
       await saveFiles(tx, store.id, saved, input);
       // Kept as they are while Subscriptions is off (D178); a product that becomes a booking still loses them (it cannot be subscribed to).
       if (subscriptionsOn || isBooked(input.kind)) await savePlans(tx, store.id, saved, input, context.markets, context.audience);
@@ -945,6 +958,50 @@ export async function saveProduct(
     if (error instanceof FieldProblems) return { ok: false, problems: error.problems };
     return { ok: false, problems: [saveProblem(error, input)] };
   }
+}
+
+/** Where the product is not sold (D335 A.1), as the editor holds it: whole countries, and per variant by SKU. */
+export async function availabilityOf(storeId: string, productId: string): Promise<NonNullable<ProductInput["availability"]>> {
+  const rows = await db().execute<Row>(sql`
+    select a.market_code, v.sku from commerce.market_availability a
+    left join commerce.product_variants v on v.store_id = a.store_id and v.id = a.variant_id
+    where a.store_id = ${storeId}::uuid and a.product_id = ${productId}::uuid
+    order by a.market_code
+  `);
+  const off: string[] = [];
+  const variants: Record<string, string[]> = {};
+  for (const row of rows) {
+    const code = String(row.market_code);
+    if (row.sku === null || row.sku === undefined) off.push(code);
+    else (variants[String(row.sku)] ??= []).push(code);
+  }
+  return { off, variants };
+}
+
+/**
+ * Where the product is not sold (D335 A.1), written only here: the rows of the countries the editor shows are replaced by what was given,
+ * those of countries it does not show (switched off with Countries, D178) are kept. A variant is named by its SKU, found after the variants
+ * are written. Left out (`availability` undefined), nothing changes. The prices there are never touched.
+ */
+async function writeAvailability(tx: Tx, storeId: string, productId: string, input: ProductInput, context: EditorContext) {
+  if (!input.availability) return;
+  const shown = `{${context.markets.map((m) => m.code).join(",")}}`;
+  await tx.execute(sql`
+    delete from commerce.market_availability
+    where store_id = ${storeId}::uuid and product_id = ${productId}::uuid and market_code = any(${shown}::text[])
+  `);
+  const off = [...new Set(input.availability.off)];
+  const variantRows = Object.entries(input.availability.variants)
+    .flatMap(([sku, codes]) => [...new Set(codes)].filter((code) => !off.includes(code)).map((code) => ({ sku, code })));
+  if (off.length + variantRows.length === 0) return;
+  await tx.execute(sql`
+    insert into commerce.market_availability (store_id, product_id, variant_id, market_code)
+    select ${storeId}::uuid, ${productId}::uuid, null, code from unnest(${`{${off.join(",")}}`}::text[]) as code
+    union all
+    select ${storeId}::uuid, ${productId}::uuid, v.id, r.code
+      from jsonb_to_recordset(${JSON.stringify(variantRows)}::jsonb) as r(sku text, code text)
+      join commerce.product_variants v on v.store_id = ${storeId}::uuid and v.product_id = ${productId}::uuid and v.sku = r.sku
+  `);
 }
 
 /** What is wrong with the custom fields entered: ends the transaction, so nothing is saved. */

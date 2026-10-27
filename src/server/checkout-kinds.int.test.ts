@@ -1511,6 +1511,42 @@ describe("exclusive catalogues in euro (D321 C.3)", () => {
 });
 
 /**
+ * What is not sold in a market (D335 A.1), shown in euro: a notebook switched off in Norway while it sits in a cart is unavailable there, the summary
+ * is blocked and checkout refuses it; switched back on, it has its price again and the cart, summary and order agree.
+ */
+describe("a product switched off in a market, in euro (D335 A.1)", () => {
+  it("is refused by the cart and checkout alike while off, and sold at its kept price once back on", async () => {
+    view = noInEuro;
+    try {
+      jar.clear();
+      await add("DEMO-NOTEBOOK-LINED", 2);
+      const before = await getCart(shop());
+      const price = before.lines[0].unitPriceMinor;
+      await db().execute(sql`
+        insert into commerce.market_availability (store_id, product_id, market_code) values (${storeId}::uuid, ${product["demo-notatbok"]}::uuid, 'NO')
+      `);
+      const off = await getCart(shop());
+      expect(off.lines.map((l) => l.status)).toEqual(["unavailable"]);
+      expect((await cartSummary(shop(), off)).blocked).toBe(true);
+      expect(await startCheckout({ ...shop(), storeSlug: slug }, cartId(), origin, "Frakt", {})).toMatchObject({ ok: false });
+      expect((await changeLine(shop(), variant["DEMO-NOTEBOOK-LINED"], 1, "add", null)).outcome).toBe("unavailable");
+
+      await db().execute(sql`delete from commerce.market_availability where store_id = ${storeId}::uuid and product_id = ${product["demo-notatbok"]}::uuid`);
+      const back = await getCart(shop());
+      expect(back.lines.map((l) => [l.status, l.unitPriceMinor])).toEqual([["ok", price]]);
+      const summary = await cartSummary(shop(), back);
+      expect(summary.blocked).toBe(false);
+      expect(await startCheckout({ ...shop(), storeSlug: slug }, cartId(), origin, "Frakt", {})).toMatchObject({ ok: true });
+      const order = (await getOrder(storeId, (await getOpenCheckout(storeId, cartId()))!.orderId))!;
+      expect({ total: order.totalMinor, vat: order.taxMinor }).toEqual({ total: summary.total, vat: summary.vat });
+    } finally {
+      view = no;
+      await db().execute(sql`delete from commerce.market_availability where store_id = ${storeId}::uuid`);
+    }
+  });
+});
+
+/**
  * The rules as read (D160): no market compares per 100 g, so the notebook, whose owner chose 100 g, is compared per kg in Norway
  * with the table as it is. The cart's unit price, the order line's and an independent reader's agree, and the totals are the
  * same as with the small base.

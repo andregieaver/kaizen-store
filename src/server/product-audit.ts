@@ -31,6 +31,8 @@ export type ProductFacts = {
   measures: string[];
   /** The standard taxonomy's category (D327), Shopify's id; null for none. */
   standardCategory: string | null;
+  /** Where it is not sold (D335): "SE" for the whole product, "SKU: SE" for one variant. */
+  notSoldIn: string[];
 };
 
 /** One current price: a variant's in a market, in minor units of that market's own currency. */
@@ -65,6 +67,12 @@ export async function productSnapshot(storeId: string, productId: string, primar
     where v.product_id = ${productId}::uuid and pr.valid_to is null
     order by v.sku, pr.market_code
   `);
+  const off = await db().execute<Row>(sql`
+    select a.market_code, v.sku from commerce.market_availability a
+    left join commerce.product_variants v on v.store_id = a.store_id and v.id = a.variant_id
+    where a.store_id = ${storeId}::uuid and a.product_id = ${productId}::uuid
+    order by v.sku nulls first, a.market_code
+  `);
   return {
     facts: {
       title: String(product.title),
@@ -81,6 +89,7 @@ export async function productSnapshot(storeId: string, productId: string, primar
         return `${String(c.sku)}: ${measure ? `${measure.amount} ${measure.unit}` : "?"}${c.measure_base ? ` per ${String(c.measure_base)}` : ""}`;
       }),
       standardCategory: product.standard_category ? String(product.standard_category) : null,
+      notSoldIn: off.map((o) => (o.sku ? `${String(o.sku)}: ${String(o.market_code)}` : String(o.market_code))),
     },
     prices: prices.map((p) => ({ sku: String(p.sku), market: String(p.market_code), currency: String(p.currency).trim(), amountMinor: Number(p.amount_minor) })),
   };

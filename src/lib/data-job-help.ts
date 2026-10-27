@@ -62,6 +62,7 @@ export const FIX_FOR: Record<FindingCode, string> = {
   "column.ignored": "Nothing to do: that column is not imported, and the sentence says why.",
   "giftcard.not_supported": "Remove gift cards from the file. Kaizena Flow does not import them.",
   "inventory.continue_selling_ignored": "Set it per variant in the product editor or on the Inventory page, with the days a backordered item is expected to ship. Until then a product at 0 stops selling.",
+  "not_sold_in.unknown": "Write the countries' two-letter codes, separated by |, as the store's price columns name them (SE|DK); leave it empty to sell everywhere it has a price.",
   "standard_category.unknown": "Write the category's full path as Shopify does (Apparel & Accessories > Clothing), or choose it in the product editor.",
   "tax.ignored": "Nothing to do unless the product's VAT category is wrong, which is set in the editor.",
   "compare_at.ignored": "Nothing to do. A price reduction is shown from the product's own price history.",

@@ -197,7 +197,7 @@ import { addOrderNote, CARRIERS, getOrderAdmin, liveShipments, markSent, refundO
 import { archiveOrdersTool, createDraftOrderTool, listDraftOrdersTool, listOrdersTool, preflightSendDraft, sendDraftOrderTool, tagOrdersTool } from "./order-ops-tools";
 import { listPages, pagesTag, unpublishPage } from "./pages";
 import { runningTestOf } from "./experiment-admin";
-import { listAdminProducts, setArchived } from "./products";
+import { availabilityOf, listAdminProducts, setArchived } from "./products";
 import { sendBookingCancelled, sendOrderConfirmation, sendRefunded, sendShipped, sendStoreMessage } from "./shopper-emails";
 import { storeTag, type Store } from "./stores";
 import { effectiveFeatures, featureOn } from "@/lib/store-features";
@@ -592,6 +592,15 @@ async function listProductsTool({ store }: OwnerToolContext, input: OwnerToolInp
   };
 }
 
+/** Where a product is not sold (D335 A.1), only when it is switched off somewhere. */
+async function notSoldIn(storeId: string, productId: string) {
+  const { off, variants } = await availabilityOf(storeId, productId);
+  return {
+    ...(off.length > 0 && { not_sold_in: off }),
+    ...(Object.keys(variants).length > 0 && { variants_not_sold_in: variants }),
+  };
+}
+
 /** A product's standard category (D327) for the model: its id, English path and attribute values by name, or null. */
 async function standardForTool(category: unknown, attributes: unknown) {
   if (typeof category !== "string") return null;
@@ -616,7 +625,7 @@ async function getProductTool({ store }: OwnerToolContext, { product }: OwnerToo
       select v.id, v.sku, v.options, v.delivery,
         ${onHandActive(sql`v.id`)} as stock, v.stock_policy, v.backorder_days, v.low_stock_threshold, v.min_quantity, v.max_quantity, v.quantity_step,
         coalesce((select jsonb_agg(jsonb_build_object('market', c.market_code, 'amount', c.amount_minor, 'currency', c.currency) order by c.market_code)
-          from commerce.current_prices c where c.variant_id = v.id), '[]') as prices
+          from commerce.kept_prices c where c.variant_id = v.id), '[]') as prices
       from commerce.product_variants v
       where v.store_id = ${store.id}::uuid and v.product_id = ${id}::uuid and v.active
       order by v.sku
@@ -692,6 +701,8 @@ async function getProductTool({ store }: OwnerToolContext, { product }: OwnerToo
     tags: extra?.tags ?? [],
     // The standard taxonomy's category and attribute values (D327), in English as update_product takes them.
     standard_category: await standardForTool(head.standard_category, head.standard_attributes),
+    // Where it is switched off (D335): whole countries, and per variant by SKU; its prices there are kept.
+    ...(await notSoldIn(store.id, id)),
     pictures: extra?.pictures ?? [],
     ...(bundle && { bundle }),
     ...(breaks.length > 0 && {

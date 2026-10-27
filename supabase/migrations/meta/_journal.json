@@ -3557,6 +3557,20 @@
       "when": 1793088364027,
       "tag": "20261027080603_standard_taxonomy_sql",
       "breakpoints": true
+    },
+    {
+      "idx": 508,
+      "version": "7",
+      "when": 1793094717388,
+      "tag": "20261027095157_market_availability",
+      "breakpoints": true
+    },
+    {
+      "idx": 509,
+      "version": "7",
+      "when": 1793094737564,
+      "tag": "20261027095217_market_availability_sql",
+      "breakpoints": true
     }
   ]
 }
