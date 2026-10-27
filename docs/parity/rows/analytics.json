@@ -104,22 +104,28 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": "full"
+      "was": "partial"
     },
     "weight": 5,
-    "gap": "Covered: time, product, channel, discount, country, customer, market and device, and payment method (D288's *Payments by method* on Finance, `paymentsByMethod()`). Still missing: sales cut by variant or SKU, by product category (term), type or vendor, and by the currency the shopper saw (`analytics-products-data.ts` groups by product only); no saved or custom cuts (see the report builder row).",
+    "gap": "Residual: no cut by vendor, referrer, bundle or subscription status, and no cut by customer group or company yet; time, product, variant, SKU, category, tag, kind of product, country, currency, channel, device, discount code, payment method and new or returning customers are ready reports or builder cuts (D345).",
     "history": [
       {
         "on": "2026-10-03",
         "from": "full",
         "to": "partial",
         "why": "Re-read against Shopify's sales report page: Shopify cuts sales by time, product, variant SKU, product type, vendor, channel, discount, referrer, billing country, customer, currency, bundle and subscription status. Kaizen has time, product, channel, discount code, country and city, market, device, customer (top customers) and subscriptions, but no cut by variant or SKU, product category or type, vendor, shopper currency or payment method: `productsReport()` groups by product only and no analytics query groups by variant, term or currency."
+      },
+      {
+        "on": "2026-10-27",
+        "from": "partial",
+        "to": "full",
+        "why": "Analytics → Reports (D345) cuts sales by variant, SKU, category, tag, kind of product, the currency the shopper paid in and payment method beside product, time, country, channel, device and discount code; a line cut carries a rest row so the column adds up to the period's net sales (held to `periodTotals()` and `productsReport()` in `report-query.int.test.ts`), and a currency with no rate is left out and counted."
       }
     ],
-    "bucket": "A",
-    "wave": 8,
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "Sales can be cut by variant or SKU and by product category (term) as well as by product, each table reconciling to the period's revenue within rounding.",
       "Sales can be cut by the currency the shopper saw, in the main currency without VAT, with unconverted currencies counted.",
@@ -138,7 +144,11 @@
         "src/app/admin/(gated)/[store]/analytics/products/page.tsx",
         "docs/analytics.md",
         "src/server/analytics-payments-data.ts",
-        "src/lib/analytics-payments.ts"
+        "src/lib/analytics-payments.ts",
+        "src/lib/report-catalogue.ts",
+        "src/server/report-query.ts",
+        "src/app/admin/(gated)/[store]/analytics/reports/page.tsx",
+        "src/app/admin/(gated)/[store]/analytics/reports/view/page.tsx"
       ],
       "tests": [
         "src/server/analytics-products-data.int.test.ts",
@@ -147,13 +157,17 @@
         "src/server/analytics-time-data.int.test.ts",
         "src/server/analytics-discounts-data.int.test.ts",
         "src/components/admin/analytics/products-view.test.ts",
-        "src/lib/analytics-payments.test.ts"
+        "src/lib/analytics-payments.test.ts",
+        "src/lib/report-catalogue.test.ts",
+        "src/server/report-query.int.test.ts",
+        "e2e/signed-in/reports.spec.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D152",
-      "D288"
+      "D288",
+      "D345"
     ]
   },
   {
@@ -168,15 +182,22 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "missing"
     },
     "weight": 3,
-    "gap": "Reports are fixed pages (`src/app/admin/(gated)/[store]/analytics/` lists only fixed pages); no saved reports, no report builder and no analytics API.",
-    "history": [],
-    "bucket": "A",
-    "wave": 8,
+    "gap": "Residual: no annotations, no sharing or scheduling, and no query language (the catalogue is closed on purpose); asking for a report in words is wave 8 unit B (D346).",
+    "history": [
+      {
+        "on": "2026-10-27",
+        "from": "missing",
+        "to": "full",
+        "why": "Analytics → Reports (D345): ten ready reports and a builder over a closed catalogue of figures and cuts, filters, the period and comparison, sort, rows and a table, bar or line chart; saved under a name for the store (`commerce.saved_reports`), reopened, exported to CSV; one compiler (`runReport()`) takes the store id, the paid-order definition and the period; an unknown key is refused in words and a euro scenario is held in `report-query.int.test.ts`."
+      }
+    ],
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "An owner builds a report from a closed catalogue of metrics and dimensions (never free SQL), saves it under a name for the store, and reopens it.",
       "Every report runs through one safe query layer that takes the store id, the paid-order definition and the period/compare model.",
@@ -185,17 +206,29 @@
     ],
     "evidence": {
       "files": [
-        "src/server/analytics-totals.ts",
-        "src/server/analytics-sql.ts",
-        "src/lib/analytics-period.ts"
+        "src/lib/report-catalogue.ts",
+        "src/lib/report-catalogue-schema.ts",
+        "src/server/report-query.ts",
+        "src/server/saved-reports.ts",
+        "src/server/report-export.ts",
+        "src/components/admin/reports/report-builder.tsx",
+        "src/components/admin/reports/report-view.tsx",
+        "src/app/admin/(gated)/[store]/analytics/reports/view/page.tsx",
+        "src/app/admin/(gated)/[store]/analytics/reports/csv/route.ts",
+        "docs/analytics.md"
       ],
       "tests": [
-        "src/server/analytics-perf.int.test.ts"
+        "src/lib/report-catalogue.test.ts",
+        "src/server/report-query.int.test.ts",
+        "src/components/admin/reports/report-view.test.ts",
+        "src/server/analytics-perf.int.test.ts",
+        "e2e/signed-in/reports.spec.ts"
       ],
       "untested": false
     },
     "decisions": [
-      "D152"
+      "D152",
+      "D345"
     ]
   },
   {

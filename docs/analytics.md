@@ -223,6 +223,33 @@ current bucket (cut to the period at its edges) is held against the comparison's
 start (`alignedSpans()`), so a 5-day first bucket meets 5 days, not a whole week that starts on another weekday. A bucket
 the comparison has too few days for has no point (null), not a shorter one.
 
+## Reports (D345, wave 8 unit A, `docs/wave-8-analytics-ai.md` section 3)
+
+Analytics → Reports builds a table from a closed catalogue (`src/lib/report-catalogue.ts`), never from SQL an owner or a model writes:
+`src/server/report-query.ts` is the one module that turns a report into a query. Every metric is one of the definitions above, read the
+same way as the page it comes from, so a report's total equals that page's figure (`report-query.int.test.ts` holds it):
+
+| Key | Metric | Grain | Definition |
+|---|---|---|---|
+| `net_sales` | Revenue | order | As **Revenue** above. Cut by a line dimension: each line's `total − tax`, with a row of its own, *Shipping and other order amounts*, for the rest of each order, so the column adds up to the period. |
+| `gross_sales` | Gross sales | line | As **Gross sales** above. |
+| `discounts` | Discounts | line | What came off the goods lines, without VAT (a free-shipping code's part is in Revenue's shipping, as on Finance). |
+| `refunds` | Refunds | refund | Succeeded refunds dated by their own day, without VAT by their order's share, as on Finance; cut only by time, country, currency, payment method and new or returning. |
+| `orders` | Orders | order | Paid orders; cut by a line dimension, the orders that bought it (rows do not add up). |
+| `units` | Units sold | line | Goods only, as the Overview's units. |
+| `aov` | Average order value | order | Revenue / orders, per row; never cut by a line dimension. |
+| `customers` | Customers | order | Distinct customer keys (the document's key), once across currencies; never adds up across rows. |
+| `gross_profit` | Gross profit | line | Line revenue less the cost of goods, before refunds; the cost scaled up from the covered sales from 30 % coverage (`estimatedCogs()`), none below, with the row's coverage beside it. |
+| `vat` | VAT | order | `tax_minor` of paid orders; cut by a line dimension, each line's VAT with the rest (shipping's) in the rest row. |
+
+Dimensions are time (day, week from Monday, month, quarter, in the store's days), the line's product, variant, category, tag and kind of
+product (a category or tag filled by rules counts by its rules), and the order's country, currency (the one the shopper paid in), channel and
+device (from the order's counted visit, else *Unknown*), discount code (each code of an order a row of its own), payment method (the
+largest captured payment, by `methodGroup()`'s groups) and new or returning (the customer's first paid order). A product in two categories,
+or an order with two codes, is in both rows, so such a column does not add up and the page says so. Money is summed per currency in SQL and
+converted in code at today's rates; a currency with no rate is left out and counted. Visits, sessions and conversion are not in the
+catalogue yet (unit C).
+
 ## Staff-made orders and the AI manager's order tools (D173, wave 3)
 
 The definitions of **Staff-made order**, **Custom item**, **Custom price** and **Drafts waiting for payment** are in the table above. Where they are implemented, once each:

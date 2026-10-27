@@ -28,6 +28,7 @@ const REPLICA_READS = new Set([
   "src/server/analytics-time-data.ts",
   "src/server/analytics-traffic-data.ts",
   "src/server/analytics-totals.ts",
+  "src/server/report-query.ts",
 ]);
 
 function files(dir: string): string[] {

@@ -211,6 +211,17 @@ with wave 9's Flow, as the plan says.
 2. Saved reports, the screen and the CSV.
 3. The ready reports, the parity rows, `docs/analytics.md`, CLAUDE.md and D345.
 
+### A.6 As built (27 October 2026)
+
+Built as above, with these differences:
+
+- **Figures.** Net sales, gross sales, discounts, refunds, orders, units sold, average order value, customers, gross profit and VAT. Not yet: sessions and conversion (visit grain), new and returning customers as figures (they are a cut, `customer_type`), and shipping.
+- **Cuts.** Day, week, month, quarter, product, variant, SKU, category, tag, kind of product, country, currency, channel, device, discount code, payment method and new or returning customer. Not yet: vendor, customer group, company, and subscription or bought once.
+- **Adding up.** A line cut carries a rest row (the orders' totals less their lines' sum: shipping and order amounts no line carries), so the column adds up to the period's figure; held to `periodTotals()` and `productsReport()` in `report-query.int.test.ts`, not by a `reportTotals()` of its own. A category or tag cut says its column does not add up and has no rest row.
+- **CSV.** A POST to `reports/csv` (`analytics:write`, same site, audited `analytics.report_exported`), not an `ANALYTICS_TABLES` entry: a report's columns are its own.
+- **Not built.** The scan test that no other module builds a report query, `pinned`, and filters on `exclude_staff_made`.
+- **Tests.** `report-catalogue.test.ts`, `report-query.int.test.ts` (13 cases, a euro case among them), `report-view.test.ts`, the two widest cuts in `analytics-perf.int.test.ts`, and `e2e/signed-in/reports.spec.ts`.
+
 ## 4. The other units, outlined
 
 - **B (D346) Asking in words.** The AI manager gets three tools:
@@ -362,6 +373,15 @@ with wave 9's Flow, as the plan says.
 | 7 | **The two AI building rows** (unit G) | Keep `ai.ai-page-and-theme-generation` and `storefront.ai-store-and-page-building`; merge them (README rule 8: one Shopify feature, Sidekick in the theme editor) | Merge into `storefront.ai-store-and-page-building`, keeping the stricter criteria of each. |
 
 Unit A needs none of decisions 2 to 7. It is built first as decision 1 recommends, and the recommendation can be changed before unit B.
+
+**Taken (2026-10-27).** The owner accepted every recommendation:
+- reports over a closed catalogue compiled by one module (A, B);
+- the live view polls every 10 seconds (C);
+- pictures are edited through the provider's edit endpoint named in the AI settings (E);
+- shopping agents get our own endpoint and ChatGPT's feed first, every channel off by default, others as their specs are read (I);
+- the briefing and alert emails are off until the owner turns them on (D);
+- saved skills are a person's own, shareable with the store by owners (F);
+- the two AI building rows are merged into `storefront.ai-store-and-page-building` (G).
 
 ## 6. Company work, not software
 

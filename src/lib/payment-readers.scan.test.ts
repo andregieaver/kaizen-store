@@ -71,6 +71,7 @@ const READERS: Record<string, { count: number; reason: string }> = {
   "src/server/payment-disputes.ts": { count: 1, reason: "a Stripe dispute names a Stripe charge (D288); a payment taken outside Kaizena Flow is never disputed through Stripe" },
   "src/server/order-rules.ts": { count: 1, reason: "the rule condition `risk` reads Stripe's risk outcome (D288); other payments have none and the condition says so" },
   "src/server/analytics-payments-data.ts": { count: 4, reason: "Stripe's fee, real where read (D290) and otherwise estimated, is for Stripe payments only (D288); every captured payment, of any provider, is a row of the report" },
+  "src/server/report-query.ts": { count: 2, reason: "a report cut by payment method groups an order's largest captured payment, and a refund's own payment, into methodGroup()'s groups (D345)" },
 };
 
 /** A condition on a payment's provider that names one of the three providers a payment can have. */

@@ -267,6 +267,7 @@ export const NOT_PERSONAL: Record<string, string> = {
   legal_source_texts: "Official legal texts cut into passages (D311), as the EU, Riksdagen, Retsinformation and Lovdata publish them; no person.",
   theme_submissions:
     "Looks shared as themes by people who work on a store (D344): the look, its name and words, and the name its author chose to be shown by (author_name, a staff account's own choice, shown publicly once approved); never a shopper.",
+  saved_reports: "A store's saved report definitions (D345): a name, the catalogue's keys and the staff account that saved it; never figures or a shopper.",
   ai_eval_runs: "Runs of the AI evals per model (PSI 2026-10-24): counts, failed cases' ids, problems and the model's answers to scripted cases, and the platform admin account that ran it; no shopper.",
   cron_jobs: "The last run of each scheduled job (PSI 2026-10-24): its name, times, run counts and the last error's message; no person.",
   ad_connections: "A store's connection to an ad platform (D303 I2): the platform's id and the owner's encrypted token; no shopper.",

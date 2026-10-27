@@ -145,6 +145,7 @@ export const STORE_SECTIONS: StoreSection[] = [
         items: [
           item("/analytics", "Overview", "The store's main figures against the last period and last year, its funnel, best sellers, channels and what needs you today.", { exact: true, feature: "shop" }),
           item("/analytics/finance", "Finance", "From gross sales to profit: discounts, refunds, costs, fees, marketing and what is left.", { feature: "shop" }),
+          item("/analytics/reports", "Reports", "Your sales cut the way you need them: ready reports and your own, saved and downloaded.", { feature: "shop" }),
           item("/analytics/payouts", "Payouts", "What Stripe paid to your bank, what each payout settles and whether it adds up.", { feature: "shop" }),
           item("/analytics/tax", "VAT", "VAT by country and rate, the quarterly OSS and monthly IOSS return data, and how they agree with your invoices and Finance.", { feature: "shop" }),
           item("/analytics/customers", "Customers", "New and returning customers, repeat purchases, lifetime value, segments and cohorts.", { feature: "shop" }),

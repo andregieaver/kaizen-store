@@ -692,6 +692,12 @@ const PAGES: readonly AdminPage[] = [
   store("analytics.traffic", "/analytics/traffic", "Traffic analytics", "Analytics", "Visits, the funnel from visit to purchase, devices, countries and cities, searches that found nothing, sales by weekday and hour, and at the bottom refunds and returns (return rate, reasons, most returned products, how fast refunds are made).", {
     keywords: ["visitors", "sessions", "funnel", "device", "mobile", "geography", "search", "heatmap", "refunds", "return rate", "returns analytics", "return reasons"],
   }),
+  store("analytics.reports", "/analytics/reports", "Reports", "Analytics", "Reports an owner builds and saves from a fixed list of figures (revenue, gross sales, discounts, refunds, orders, units sold, average order value, customers, gross profit, VAT) cut by day, week, month or quarter, product, variant and SKU, category, tag, kind of product, country, currency, channel, device, discount code, payment method or new and returning customers, with filters, a comparison, a chart and a CSV; ten ready reports to start from.", {
+    keywords: ["report", "custom report", "report builder", "saved report", "sales by product", "sales by variant", "sku", "sales by category", "sales by country", "sales by currency", "payment method", "shopifyql", "export"],
+    tasks: ["See sales by variant or SKU", "See sales by category", "Build and save a report", "Download a report as CSV"],
+    feature: "shop",
+  }),
+  store("analytics.report", "/analytics/reports/view", "A report", "Analytics", "One report: a ready one, a saved one or a new one, with its builder, its table, the totals and a CSV.", { feature: "shop" }),
   store("analytics.speed", "/analytics/speed", "Speed", "Analytics", "How fast the store's pages load for its visitors, measured in their browsers while visits are counted: Largest Contentful Paint, Interaction to Next Paint, Cumulative Layout Shift and Time to First Byte at the 75th percentile over 28 days, for the front page, product, category, list and other pages on phones and computers, rated as Google does, with what to fix and what cannot be measured.", {
     keywords: ["speed", "performance", "page speed", "core web vitals", "lcp", "inp", "cls", "ttfb", "slow", "lighthouse", "pagespeed"],
     tasks: ["See how fast the store's pages load", "Find out why a page is slow"],

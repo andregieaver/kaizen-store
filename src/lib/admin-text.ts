@@ -71,6 +71,8 @@ import { taxReportsEn, type TaxReportsMessages } from "./admin-messages/tax-repo
 import { taxReportsNb } from "./admin-messages/tax-reports.nb";
 import { reportsEn, type ReportsMessages } from "./admin-messages/reports.en";
 import { reportsNb } from "./admin-messages/reports.nb";
+import { customReportsEn, type CustomReportsMessages } from "./admin-messages/custom-reports.en";
+import { customReportsNb } from "./admin-messages/custom-reports.nb";
 import { supportEn, type SupportMessages } from "./admin-messages/support.en";
 import { supportNb } from "./admin-messages/support.nb";
 import { workEn, type WorkMessages } from "./admin-messages/work.en";
@@ -132,6 +134,7 @@ export type AdminAreaMessages = {
   finance: FinanceMessages;
   taxReports: TaxReportsMessages;
   reports: ReportsMessages;
+  customReports: CustomReportsMessages;
   settings: SettingsMessages;
   tax: TaxMessages;
   payments: PaymentsMessages;
@@ -190,6 +193,7 @@ const CATALOGUES: { [A in AdminArea]: Record<AdminLang, AdminAreaMessages[A]> } 
   finance: { en: financeEn, nb: financeNb },
   taxReports: { en: taxReportsEn, nb: taxReportsNb },
   reports: { en: reportsEn, nb: reportsNb },
+  customReports: { en: customReportsEn, nb: customReportsNb },
   settings: { en: settingsEn, nb: settingsNb },
   tax: { en: taxEn, nb: taxNb },
   payments: { en: paymentsEn, nb: paymentsNb },

@@ -440,6 +440,11 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     title: "Trafikkanalyse",
     keywords: ["trafikk", "trafikkanalyse", "besøkende", "økter", "trakt", "enhet", "mobil", "returrate"],
   },
+  "store:analytics.reports": {
+    title: "Rapporter",
+    keywords: ["rapport", "egendefinert rapport", "lagret rapport", "salg per produkt", "salg per variant", "varenummer", "salg per kategori", "salg per land", "salg per valuta", "betalingsmåte", "eksport"],
+  },
+  "store:analytics.report": { title: "En rapport", keywords: ["rapport", "rapportbygger", "tabell", "csv"] },
   "store:analytics.speed": {
     title: "Hastighet",
     keywords: ["hastighet", "fart", "ytelse", "sidehastighet", "core web vitals", "treg", "lastetid"],

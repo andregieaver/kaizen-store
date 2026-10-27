@@ -125,6 +125,8 @@ export const NAV_NB: Record<string, string> = {
   Traffic: "Trafikk",
   "Visits, the way from visit to purchase, devices, countries, searches and the busiest hours.":
     "Besøk, veien fra besøk til kjøp, enheter, land, søk og de travleste timene.",
+  "Your sales cut the way you need them: ready reports and your own, saved and downloaded.":
+    "Salget ditt fordelt slik du trenger det: ferdige rapporter og dine egne, lagret og lastet ned.",
   Speed: "Hastighet",
   "How fast your pages load for your visitors, measured in their browsers, and what to fix.":
     "Hvor raskt sidene lastes for de besøkende, målt i nettleserne deres, og hva du kan rette.",

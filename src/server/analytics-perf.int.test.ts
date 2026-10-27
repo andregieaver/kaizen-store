@@ -28,6 +28,7 @@ const subscriptions = await import("./analytics-subscriptions-data");
 const geo = await import("./analytics-geo-data");
 const time = await import("./analytics-time-data");
 const traffic = await import("./analytics-traffic-data");
+const reports = await import("./report-query");
 const { getAnalyticsSettings } = await import("./analytics-settings");
 
 /**
@@ -272,6 +273,18 @@ describe("analytics reads on a busy store, with no statistics", () => {
     expect(countries.totals.orders).toBeGreaterThan(0);
     const when = await within("timeReport", () => time.timeReport(store, YEAR));
     expect(when.totals.orders).toBeGreaterThan(0);
+  });
+
+  it("reports: the widest cuts, a year against the year before", async () => {
+    const period = { preset: "custom" as const, from: "2025-10-03", to: "2026-10-02", compare: "previous" as const };
+    const byVariant = await within("runReport (variant by month)", () =>
+      reports.runReport(store, { metrics: ["net_sales", "gross_sales", "discounts", "units", "orders", "gross_profit"], dimensions: ["variant", "month"], filters: [], period, limit: 500, chart: "table" }, NOW),
+    );
+    expect(byVariant.ok && byVariant.report.rows.length).toBeGreaterThan(5);
+    const byCategory = await within("runReport (category by payment method)", () =>
+      reports.runReport(store, { metrics: ["net_sales", "units", "customers"], dimensions: ["category", "payment_method"], filters: [], period, limit: 500, chart: "table" }, NOW),
+    );
+    expect(byCategory.ok).toBe(true);
   });
 
   it("traffic and marketing", async () => {

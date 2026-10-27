@@ -11176,6 +11176,31 @@ export const analyticsTargets = commerce.table(
 );
 
 /**
+ * A report an owner saved (wave 8 unit A, D345, `docs/wave-8-analytics-ai.md` A.3): its name and its spec (`ReportSpec`, the catalogue's keys
+ * only, checked again whenever it is read), never its figures: a saved report reruns on fresh data. Written only by `src/server/saved-reports.ts`.
+ */
+export const savedReports = commerce.table(
+  "saved_reports",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    spec: jsonb("spec").notNull(),
+    createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+    updatedBy: uuid("updated_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index("saved_reports_store_idx").on(t.storeId, t.title),
+    index("saved_reports_created_by_idx").on(t.createdBy),
+    index("saved_reports_updated_by_idx").on(t.updatedBy),
+    check("saved_reports_title", sql`length(btrim(${t.title})) between 1 and 80`),
+    check("saved_reports_spec", sql`jsonb_typeof(${t.spec}) = 'object' and length(${t.spec}::text) <= 20000`),
+  ],
+);
+
+/**
  * Marketing spend the owner entered (D152): what was paid for a channel (and a campaign within it) on a day, in the
  * store's main currency. Entered by hand, so the pages say when none has been.
  */
