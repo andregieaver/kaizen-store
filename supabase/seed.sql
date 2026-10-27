@@ -74,6 +74,8 @@ BEGIN
     (v_store, v_product, '/demo/mug.svg', 0,
      '{"nb-NO": "Hvit keramikkopp", "sv-SE": "Vit keramikmugg", "da-DK": "Hvidt keramikkrus"}');
 
+  INSERT INTO commerce.product_schemes (store_id, product_id, scheme) VALUES (v_store, v_product, 'packaging');
+
   INSERT INTO commerce.product_variants (store_id, product_id, sku, gtin, options, weight_grams, hs_code, origin_country, image_url)
   VALUES (v_store, v_product, 'DEMO-MUG-WHITE', '7090000000011', '{"colour": "white"}', 380, '691200', 'PT', '/demo/mug.svg')
   RETURNING id INTO v_variant;
@@ -114,6 +116,9 @@ BEGIN
     (v_store, v_product, '/demo/tote.svg', 0,
      '{"nb-NO": "Naturfarget handlenett", "sv-SE": "Naturfärgad tygkasse", "da-DK": "Naturfarvet mulepose"}');
 
+  INSERT INTO commerce.product_schemes (store_id, product_id, scheme) VALUES
+    (v_store, v_product, 'packaging'), (v_store, v_product, 'textiles');
+
   INSERT INTO commerce.product_variants (store_id, product_id, sku, gtin, options, weight_grams, hs_code, origin_country)
   VALUES (v_store, v_product, 'DEMO-TOTE', '7090000000035', '{}', 180, '420222', 'IN')
   RETURNING id INTO v_variant;
@@ -147,6 +152,8 @@ BEGIN
      '{"nb-NO": "Notatboken slått opp, med linjerte sider", "sv-SE": "Anteckningsboken uppslagen, med linjerade sidor", "da-DK": "Notesbogen slået op, med linjerede sider"}'),
     (v_store, v_product, '/demo/notebook-back.svg', 2,
      '{"nb-NO": "Baksiden av notatboken", "sv-SE": "Baksidan av anteckningsboken", "da-DK": "Bagsiden af notesbogen"}');
+
+  INSERT INTO commerce.product_schemes (store_id, product_id, scheme) VALUES (v_store, v_product, 'packaging');
 
   INSERT INTO commerce.product_variants (store_id, product_id, sku, gtin, options, weight_grams, hs_code, origin_country, image_url)
   VALUES (v_store, v_product, 'DEMO-NOTEBOOK-LINED', '7090000000042', '{"ruling": "lined"}', 300, '482010', 'NO', '/demo/notebook-open.svg')
@@ -186,6 +193,9 @@ BEGIN
     (v_store, v_product, '/demo/lamp.svg', 0,
      '{"nb-NO": "Grønn bordlampe", "sv-SE": "Grön bordslampa", "da-DK": "Grøn bordlampe"}');
 
+  INSERT INTO commerce.product_schemes (store_id, product_id, scheme) VALUES
+    (v_store, v_product, 'packaging'), (v_store, v_product, 'electrical_equipment');
+
   INSERT INTO commerce.product_variants (store_id, product_id, sku, gtin, options, weight_grams, hs_code, origin_country)
   VALUES (v_store, v_product, 'DEMO-LAMP', '7090000000066', '{}', 1400, '940520', 'DK')
   RETURNING id INTO v_variant;
@@ -216,6 +226,8 @@ BEGIN
   INSERT INTO commerce.product_media (store_id, product_id, url, position, alt) VALUES
     (v_store, v_product, '/demo/mug-black.svg', 0,
      '{"nb-NO": "Svart termokopp", "sv-SE": "Svart termosmugg", "da-DK": "Sort termokrus"}');
+
+  INSERT INTO commerce.product_schemes (store_id, product_id, scheme) VALUES (v_store, v_product, 'packaging');
 
   INSERT INTO commerce.product_variants (store_id, product_id, sku, gtin, options, weight_grams, hs_code, origin_country, image_url, stock_policy, backorder_days)
   VALUES (v_store, v_product, 'DEMO-THERMOS', '7090000000073', '{}', 420, '961700', 'CN', '/demo/mug-black.svg', 'continue', 7)

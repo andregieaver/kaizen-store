@@ -1,8 +1,10 @@
 /**
  * Producer responsibility (wave 7 unit H, D342, `docs/wave-7-storefront.md` section 4, H), pure: what a registration is, how one typed on
  * the page or given to the AI manager is checked, whether it covers a day, and when a lapsed one starts blocking sales. The rule that
- * blocks a sale is the database's (`commerce.registration_blocks()`): a product under a scheme is not sold in a market where nothing valid
- * covers that scheme on the store's own day. A registration that ends on a day still covers it, so sales stop from the next day.
+ * blocks a sale is the database's (`commerce.registration_blocks()`): a product under a scheme is not sold in a market where the store has
+ * a registration (or exemption) on record for that scheme and none covers the store's own day. A registration that ends on a day still
+ * covers it, so sales stop from the next day. Where the store never recorded anything for a scheme and market, the page warns and sales go
+ * on: every new product is ticked as packaging by default, so blocking those would take every store's goods off sale at once.
  *
  * A registration has its number and the authority (or producer responsibility organisation) that gave it; an exemption has, in the owner's
  * words, why none is needed there (no scheme in that country, below its threshold) and no number. Both are the company's, never copied.
@@ -147,17 +149,20 @@ export function numberShownByDefault(scheme: SchemeId, market: string): boolean 
   return SHOW_NUMBER_RULES.some((rule) => rule.market === market.toUpperCase() && (rule.schemes === "all" || rule.schemes.includes(scheme)));
 }
 
-/** A product not sold in a market for want of a registration, as the view lists it. */
-export type MissingRow = { productId: string; handle: string; title: string; market: string; scheme: SchemeId };
+/**
+ * A product under a scheme with nothing valid in a market today, as the view lists it: `blocked` when the store is on record for that scheme
+ * and market (a registration that ended or has not begun, so the product is not sold there), else a registration never recorded (a warning).
+ */
+export type MissingRow = { productId: string; handle: string; title: string; market: string; scheme: SchemeId; blocked: boolean };
 
-/** What is missing, by scheme and market: the products each blocks, by title. The page's and the AI manager's list. */
-export type MissingGroup = { scheme: SchemeId; market: string; products: { id: string; handle: string; title: string }[] };
+/** What is missing, by scheme and market: the products each concerns, by title, and whether they are not sold there. The page's and the AI manager's list. */
+export type MissingGroup = { scheme: SchemeId; market: string; blocked: boolean; products: { id: string; handle: string; title: string }[] };
 
 export function groupMissing(rows: readonly MissingRow[]): MissingGroup[] {
   const groups = new Map<string, MissingGroup>();
   for (const row of rows) {
     const key = `${row.scheme}:${row.market}`;
-    const group = groups.get(key) ?? { scheme: row.scheme, market: row.market, products: [] };
+    const group = groups.get(key) ?? { scheme: row.scheme, market: row.market, blocked: row.blocked, products: [] };
     if (!group.products.some((p) => p.id === row.productId)) group.products.push({ id: row.productId, handle: row.handle, title: row.title });
     groups.set(key, group);
   }

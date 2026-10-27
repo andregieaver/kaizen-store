@@ -49,16 +49,16 @@ export async function producerRegistrationsTool({ store }: Ctx) {
       sales_stop_from: firstBlockedDay(r),
       shown_on_product_pages: r.showNumber,
     })),
-    not_sold: missing.map((g) => ({
+    not_sold: missing.filter((g) => g.blocked).map((g) => ({
       scheme: g.scheme,
       country: g.market,
       products: g.products.length,
       named: g.products.slice(0, NAMED).map((p) => p.title),
     })),
+    no_registration_recorded: missing.filter((g) => !g.blocked).map((g) => ({ scheme: g.scheme, country: g.market, products: g.products.length })),
     note:
-      missing.length === 0
-        ? "Every active product under a scheme can be sold in every country the store sells to."
-        : "Products under a scheme with no valid registration in a country are not sold there: the cart and checkout refuse them. The owner adds the registration, or records why none is needed there.",
+      "not_sold: a registration recorded for that scheme and country has ended or not begun, so the cart and checkout refuse its products there until a new one is valid. " +
+      "no_registration_recorded: nothing is recorded for that scheme and country; its products are still sold, and the owner may need to register (or record why none is needed).",
     admin: adminLink(store),
   };
 }
@@ -96,7 +96,7 @@ export async function saveProducerRegistrationTool(ctx: Ctx, input: OwnerToolInp
   return {
     done: input.id ? "The registration is changed." : "The registration is recorded.",
     id: saved.id,
-    still_not_sold: missing.map((g) => ({ scheme: g.scheme, country: g.market, products: g.products.length })),
+    still_not_sold: missing.filter((g) => g.blocked).map((g) => ({ scheme: g.scheme, country: g.market, products: g.products.length })),
     admin: adminLink(store),
   };
 }

@@ -360,11 +360,15 @@ export const settingsNb: SettingsMessages = {
   producer: {
     title: "Produsentansvar",
     description:
-      "Registreringene dine for emballasje, elektriske og elektroniske produkter, batterier og de andre ordningene, land for land. Et produkt som hører under en ordning, selges ikke i et land der du ikke har en gyldig registrering for den, fra dagen etter at den siste utløper.",
-    missingTitle: "Selges ikke før det er registrert",
+      "Registreringene dine for emballasje, elektriske og elektroniske produkter, batterier og de andre ordningene, land for land. Når en registrering for en ordning er lagt inn i et land, selges produkter under den ordningen der bare mens en registrering gjelder: fra første til siste dag.",
+    missingTitle: "Selges ikke nå",
     missingIntro:
-      "Kunder i disse landene kan ikke kjøpe disse produktene: de hører under en ordning du ikke har en gyldig registrering for der. Legg til registreringen nedenfor, eller skriv hvorfor det ikke trengs der. Et produkts ordninger velges i produktredigeringen, under Avgift, retur og gjenvinning.",
-    noneMissing: "Alle produkter som hører under en ordning, kan selges i alle landene du selger til.",
+      "Registreringen som er lagt inn for disse landene, er utløpt eller har ikke begynt ennå, så kunder der kan ikke kjøpe disse produktene. Legg til den nye registreringen nedenfor; salget starter igjen på dens første dag.",
+    noneMissing: "Ingenting holdes tilbake: alle ordninger med en registrering lagt inn, er dekket i dag.",
+    unrecordedTitle: "Ingen registrering lagt inn",
+    unrecordedIntro:
+      "Disse produktene hører under en ordning uten registrering lagt inn for landet. De selges fortsatt der. Er du registrert, legger du inn nummeret nedenfor; trengs det ingen registrering der, skriver du hvorfor. Et produkts ordninger velges i produktredigeringen, under Avgift, retur og gjenvinning.",
+    unrecordedProducts: { one: "{n} produkt", many: "{n} produkter" },
     groupTitle: "{scheme} i {country}",
     products: { one: "{n} produkt selges ikke der", many: "{n} produkter selges ikke der" },
     more: { one: "og {n} til", many: "og {n} til" },

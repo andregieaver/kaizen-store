@@ -97,14 +97,14 @@ describe("the days a registration covers", () => {
 describe("what is missing", () => {
   it("is grouped by scheme in the registry's order and by country, each product once, by title", () => {
     const groups = groupMissing([
-      { productId: "2", handle: "b", title: "Lamp", market: "SE", scheme: "electrical_equipment" },
-      { productId: "1", handle: "a", title: "Mug", market: "NO", scheme: "packaging" },
-      { productId: "2", handle: "b", title: "Lamp", market: "NO", scheme: "packaging" },
-      { productId: "2", handle: "b", title: "Lamp", market: "NO", scheme: "packaging" },
+      { productId: "2", handle: "b", title: "Lamp", market: "SE", scheme: "electrical_equipment", blocked: false },
+      { productId: "1", handle: "a", title: "Mug", market: "NO", scheme: "packaging", blocked: true },
+      { productId: "2", handle: "b", title: "Lamp", market: "NO", scheme: "packaging", blocked: true },
+      { productId: "2", handle: "b", title: "Lamp", market: "NO", scheme: "packaging", blocked: true },
     ]);
-    expect(groups.map((g) => [g.scheme, g.market, g.products.map((p) => p.title)])).toEqual([
-      ["packaging", "NO", ["Lamp", "Mug"]],
-      ["electrical_equipment", "SE", ["Lamp"]],
+    expect(groups.map((g) => [g.scheme, g.market, g.blocked, g.products.map((p) => p.title)])).toEqual([
+      ["packaging", "NO", true, ["Lamp", "Mug"]],
+      ["electrical_equipment", "SE", false, ["Lamp"]],
     ]);
   });
 });

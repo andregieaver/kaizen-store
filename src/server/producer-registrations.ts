@@ -81,14 +81,15 @@ export async function listRegistrations(storeId: string, runner: Executor = db()
 }
 
 /**
- * What is not sold for want of a registration today, by scheme and country, with the products' titles in `locale` (else any): the store's
- * active products under a scheme with nothing valid in an active market, as `commerce.missing_registrations` lists them.
+ * What has no valid registration today, by scheme and country, with the products' titles in `locale` (else any): the store's active products
+ * under a scheme with nothing valid in an active market, as `commerce.missing_registrations` lists them; a group is `blocked` (not sold there)
+ * when the store has a registration on record for that scheme and country, else it is a registration never recorded (a warning).
  */
 export async function missingRegistrations(storeId: string, locale: string, runner: Executor = db()): Promise<MissingGroup[]> {
   const rows = await typedRows(
-    z.object({ product_id: col.uuid, handle: col.text, market_code: market, scheme, title: col.text }),
+    z.object({ product_id: col.uuid, handle: col.text, market_code: market, scheme, blocked: col.bool, title: col.text }),
     sql`
-      select mr.product_id, mr.handle, mr.market_code, mr.scheme,
+      select mr.product_id, mr.handle, mr.market_code, mr.scheme, mr.blocked,
         coalesce(
           (select t.title from commerce.product_translations t where t.product_id = mr.product_id and t.locale = ${locale}),
           (select t.title from commerce.product_translations t where t.product_id = mr.product_id order by t.locale limit 1),
@@ -99,7 +100,7 @@ export async function missingRegistrations(storeId: string, locale: string, runn
     `,
     runner,
   );
-  return groupMissing(rows.map((r) => ({ productId: r.product_id, handle: r.handle, title: r.title, market: r.market_code, scheme: r.scheme })));
+  return groupMissing(rows.map((r) => ({ productId: r.product_id, handle: r.handle, title: r.title, market: r.market_code, scheme: r.scheme, blocked: r.blocked })));
 }
 
 /** The schemes that stop this product being sold in the market today (none: registrations do not stop it). Read per request. */

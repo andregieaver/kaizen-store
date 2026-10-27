@@ -364,11 +364,15 @@ export const settingsEn = {
   producer: {
     title: "Producer responsibility",
     description:
-      "Your registrations for packaging, electrical equipment, batteries and the other schemes, country by country. A product under a scheme is not sold in a country where you have no valid registration for it, from the day after the last one ends.",
-    missingTitle: "Not sold until registered",
+      "Your registrations for packaging, electrical equipment, batteries and the other schemes, country by country. Once a registration for a scheme is recorded in a country, products under that scheme are sold there only while one is valid: from its first day through its last.",
+    missingTitle: "Not sold now",
     missingIntro:
-      "Shoppers in these countries cannot buy these products: they are under a scheme you have no valid registration for there. Add the registration below, or record why none is needed there. A product's schemes are chosen in its editor, under Tax, returns and recycling.",
-    noneMissing: "Every product under a scheme can be sold in every country you sell to.",
+      "The registration recorded for these countries has ended or not begun yet, so shoppers there cannot buy these products. Add the new registration below; sales start again on its first day.",
+    noneMissing: "Nothing is held back: every scheme with a registration recorded is covered today.",
+    unrecordedTitle: "No registration recorded",
+    unrecordedIntro:
+      "These products are under a scheme with no registration recorded for the country. They are still sold there. If you are registered, add the number below; if none is needed there, record why. A product's schemes are chosen in its editor, under Tax, returns and recycling.",
+    unrecordedProducts: { one: "{n} product", many: "{n} products" },
     groupTitle: "{scheme} in {country}",
     products: { one: "{n} product not sold there", many: "{n} products not sold there" },
     more: { one: "and {n} more", many: "and {n} more" },

@@ -542,7 +542,7 @@ export const OWNER_TOOLS = [
   ),
   tool(
     "producer_registrations",
-    "The store's producer responsibility (D342), as on Settings, Producer responsibility: its registrations per scheme (packaging, electrical_equipment, batteries, textiles, furniture, tyres) and country, with number, authority, valid from and to, state today and whether the number shows on product pages, or why none is needed there; and what is not sold today: products under a scheme with no valid registration in a country cannot be bought there (the cart and checkout refuse them), from the day after the last registration ends. Read-only. Add or change one with save_producer_registration (the owner's yes first).",
+    "The store's producer responsibility (D342), as on Settings, Producer responsibility: its registrations per scheme (packaging, electrical_equipment, batteries, textiles, furniture, tyres) and country, with number, authority, valid from and to, state today and whether the number shows on product pages, or why none is needed there; what is not sold today (a registration recorded for a scheme and country ended or has not begun: its products cannot be bought there, the cart and checkout refuse them, from the day after the last one ends) and what has no registration recorded (still sold; the owner may need to register). Read-only. Add or change one with save_producer_registration (the owner's yes first).",
     z.object({}),
   ),
   tool(

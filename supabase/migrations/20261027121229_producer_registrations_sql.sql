@@ -1,24 +1,30 @@
 -- Producer responsibility (wave 7 unit H, D342, docs/wave-7-storefront.md section 4, H):
--- * `commerce.registration_blocks()` is the one rule: a product under a scheme is not sold in a market where the store has no
---   registration (or recorded exemption) valid on the store's own day. A registration that ends on a day still covers that day, so a
---   lapsed one blocks from the next. `commerce.missing_registrations` reads it, and `commerce.line_unregistered()` answers for a cart
---   or order line (the variant's product, and a bundle's components' products), read by the cart and `placeOrder()` alike.
+-- * `commerce.registration_gaps()`: the products under a scheme in a market where nothing valid covers that scheme on the store's own day,
+--   each marked `recorded` when the store has any registration or exemption for that scheme and market (one that ended, or not begun).
+-- * `commerce.registration_blocks()` is the rule that stops a sale: the gaps the store is on record for. A registration that ends on a day
+--   still covers that day, so a lapsed one blocks from the next, and one not begun blocks until its first day. A scheme and market the
+--   store never recorded anything for is a gap the Producer responsibility page warns of, but it does not stop sales: every new product is
+--   ticked as packaging by default (`emptyProduct()`), so blocking those would take every store's goods off sale at once.
+-- * `commerce.missing_registrations` lists every gap, with `blocked` added; `commerce.line_unregistered()` answers for a cart or order line
+--   (the variant's product, and a bundle's components' products), read by the cart and `placeOrder()` alike.
 -- * A registration is the company's: `duplicate_store()` no longer copies them (COPY_RULES `never`); `clone_store()` never did.
--- * The template's demo products no longer carry schemes: a demo store has no registrations, and its demo goods would not be sold.
 
--- The products under a scheme in a market where nothing valid covers it on `p_on` (the store's today when null). Active markets only.
-CREATE FUNCTION commerce.registration_blocks(
+CREATE FUNCTION commerce.registration_gaps(
   p_store uuid,
   p_market text DEFAULT NULL,
   p_product uuid DEFAULT NULL,
   p_on date DEFAULT NULL
 )
-RETURNS TABLE (product_id uuid, market_code text, scheme commerce.producer_scheme)
+RETURNS TABLE (product_id uuid, market_code text, scheme commerce.producer_scheme, recorded boolean)
 LANGUAGE sql
 STABLE
 SET search_path = ''
 AS $$
-  SELECT ps.product_id, m.code::text, ps.scheme
+  SELECT ps.product_id, m.code::text, ps.scheme,
+         EXISTS (
+           SELECT 1 FROM commerce.producer_registrations a
+            WHERE a.store_id = ps.store_id AND a.market_code = m.code AND a.scheme = ps.scheme
+         )
     FROM commerce.product_schemes ps
     JOIN commerce.stores s ON s.id = ps.store_id
     JOIN commerce.markets m ON m.store_id = ps.store_id AND m.active
@@ -36,8 +42,26 @@ AS $$
 $$;
 --> statement-breakpoint
 
--- Whether a line of this variant cannot be sold in the market for a missing registration: its own product's schemes, or a bundle's
--- components' products' (D322).
+-- What stops a sale: a gap the store is on record for.
+CREATE FUNCTION commerce.registration_blocks(
+  p_store uuid,
+  p_market text DEFAULT NULL,
+  p_product uuid DEFAULT NULL,
+  p_on date DEFAULT NULL
+)
+RETURNS TABLE (product_id uuid, market_code text, scheme commerce.producer_scheme)
+LANGUAGE sql
+STABLE
+SET search_path = ''
+AS $$
+  SELECT g.product_id, g.market_code, g.scheme
+    FROM commerce.registration_gaps(p_store, p_market, p_product, p_on) g
+   WHERE g.recorded
+$$;
+--> statement-breakpoint
+
+-- Whether a line of this variant cannot be sold in the market for a registration that lapsed or has not begun: its own product's schemes, or a
+-- bundle's components' products' (D322).
 CREATE FUNCTION commerce.line_unregistered(p_store uuid, p_market text, p_variant uuid)
 RETURNS boolean
 LANGUAGE sql
@@ -59,13 +83,13 @@ AS $$
 $$;
 --> statement-breakpoint
 
--- The view keeps its columns, read through the rule.
+-- The view keeps its columns, read through the rule, with whether each gap stops sales.
 CREATE OR REPLACE VIEW commerce.missing_registrations
 WITH (security_invoker = true)
 AS
-SELECT p.store_id, p.id AS product_id, p.handle, b.market_code::character(2) AS market_code, b.scheme
+SELECT p.store_id, p.id AS product_id, p.handle, g.market_code::character(2) AS market_code, g.scheme, g.recorded AS blocked
   FROM commerce.products p
-  CROSS JOIN LATERAL commerce.registration_blocks(p.store_id, NULL, p.id) b
+  CROSS JOIN LATERAL commerce.registration_gaps(p.store_id, NULL, p.id) g
  WHERE p.status = 'active';
 --> statement-breakpoint
 
@@ -84,9 +108,3 @@ BEGIN
   EXECUTE v_new;
 END
 $patch$;
---> statement-breakpoint
-
--- The template's demo products (docs/platform.md, P4): no schemes, so a new store's demo goods sell until its owner tags its own.
-DELETE FROM commerce.product_schemes ps
- USING commerce.stores s
- WHERE s.id = ps.store_id AND s.is_template;

@@ -7,8 +7,9 @@ import { ProducerRegistrationForm, RemoveRegistration } from "@/components/admin
 import { ButtonLink, Card, Chip, List, ListRow, PageHeader, RowActions, RowFact, RowLead } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import type { SettingsMessages } from "@/lib/admin-messages/settings.en";
 import { adminText, adminTexts } from "@/lib/admin-text";
-import { endingSoon, firstBlockedDay, isSchemeId, registrationState, SCHEME_IDS, type SchemeId } from "@/lib/producer-registrations";
+import { endingSoon, firstBlockedDay, isSchemeId, registrationState, SCHEME_IDS, type MissingGroup, type SchemeId } from "@/lib/producer-registrations";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { listRegistrations, missingRegistrations, storeToday } from "@/server/producer-registrations";
 import { listCountries } from "@/server/stores";
@@ -53,6 +54,11 @@ export default async function ProducerResponsibilityPage({ params, searchParams 
   const base = `/admin/${store.slug}`;
   const here = `${base}/settings/producer-responsibility`;
 
+  const blocked = missing.filter((g) => g.blocked);
+  const unrecorded = missing.filter((g) => !g.blocked);
+
+  const gaps = { w, schemeNames, countryName, base, here, editor };
+
   const editing = registrations.find((r) => r.id === one(query.edit)) ?? null;
   const startScheme = one(query.scheme);
   const start = !editing && isSchemeId(startScheme) && store.keptMarkets.some((m) => m.code === one(query.market)) ? { scheme: startScheme, market: one(query.market)! } : null;
@@ -62,44 +68,21 @@ export default async function ProducerResponsibilityPage({ params, searchParams 
       <PageHeader title={w.title} description={w.description} />
       {!editor && <p className="text-sm">{all.common.readOnly}</p>}
 
-      <Card title={w.missingTitle} description={missing.length > 0 ? w.missingIntro : undefined}>
-        {missing.length === 0 ? (
-          <p className="text-sm text-muted" data-testid="producer-nothing-missing">
+      <Card title={w.missingTitle} description={blocked.length > 0 ? w.missingIntro : undefined}>
+        {blocked.length === 0 ? (
+          <p className="text-sm text-muted" data-testid="producer-nothing-blocked">
             {w.noneMissing}
           </p>
         ) : (
-          <List label={w.missingTitle}>
-            {missing.map((group) => (
-              <ListRow key={`${group.scheme}:${group.market}`}>
-                <RowLead
-                  title={fillWords(w.groupTitle, { scheme: schemeNames[group.scheme], country: countryName(group.market) })}
-                  sub={
-                    <>
-                      {countWords(group.products.length, w.products)}:{" "}
-                      {group.products.slice(0, NAMED).map((p, i) => (
-                        <span key={p.id}>
-                          {i > 0 && ", "}
-                          <Link href={`${base}/products/${p.id}`} className="underline">
-                            {p.title}
-                          </Link>
-                        </span>
-                      ))}
-                      {group.products.length > NAMED && ` ${countWords(group.products.length - NAMED, w.more)}`}
-                    </>
-                  }
-                />
-                {editor && (
-                  <RowActions>
-                    <ButtonLink size="dense" href={`${here}?scheme=${group.scheme}&market=${group.market}#registration-form`}>
-                      {w.addFor}
-                    </ButtonLink>
-                  </RowActions>
-                )}
-              </ListRow>
-            ))}
-          </List>
+          <GapList groups={blocked} label={w.missingTitle} count={w.products} {...gaps} />
         )}
       </Card>
+
+      {unrecorded.length > 0 && (
+        <Card title={w.unrecordedTitle} description={w.unrecordedIntro}>
+          <GapList groups={unrecorded} label={w.unrecordedTitle} count={w.unrecordedProducts} {...gaps} />
+        </Card>
+      )}
 
       <AdminTextScope texts={adminTexts(lang, ["settings"])}>
         <Card title={w.listTitle}>
@@ -163,5 +146,63 @@ export default async function ProducerResponsibilityPage({ params, searchParams 
 
       <p className="text-sm text-muted">{w.review}</p>
     </div>
+  );
+}
+
+type SettingsWords = SettingsMessages["producer"];
+
+/** Products grouped by scheme and country, each group's products named and, for editors, a way to add the registration it lacks. */
+function GapList({
+  groups,
+  label,
+  count,
+  w,
+  schemeNames,
+  countryName,
+  base,
+  here,
+  editor,
+}: {
+  groups: MissingGroup[];
+  label: string;
+  count: { one: string; many: string };
+  w: SettingsWords;
+  schemeNames: Record<SchemeId, string>;
+  countryName: (code: string) => string;
+  base: string;
+  here: string;
+  editor: boolean;
+}) {
+  return (
+    <List label={label}>
+      {groups.map((group) => (
+        <ListRow key={`${group.scheme}:${group.market}`}>
+          <RowLead
+            title={fillWords(w.groupTitle, { scheme: schemeNames[group.scheme], country: countryName(group.market) })}
+            sub={
+              <>
+                {countWords(group.products.length, count)}:{" "}
+                {group.products.slice(0, NAMED).map((p, i) => (
+                  <span key={p.id}>
+                    {i > 0 && ", "}
+                    <Link href={`${base}/products/${p.id}`} className="underline">
+                      {p.title}
+                    </Link>
+                  </span>
+                ))}
+                {group.products.length > NAMED && ` ${countWords(group.products.length - NAMED, w.more)}`}
+              </>
+            }
+          />
+          {editor && (
+            <RowActions>
+              <ButtonLink size="dense" href={`${here}?scheme=${group.scheme}&market=${group.market}#registration-form`}>
+                {w.addFor}
+              </ButtonLink>
+            </RowActions>
+          )}
+        </ListRow>
+      ))}
+    </List>
   );
 }

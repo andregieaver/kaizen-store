@@ -536,7 +536,7 @@ export const productNb: ProductMessages = {
     withdrawalDownloads:
       " Nedlastinger håndteres for deg: kundene godtar i kassen at angreretten opphører når nedlastingen er tilgjengelig.",
     schemes: "Returordninger produktet hører under",
-    schemesHint: "Produsentansvar: du kan måtte registrere deg og betale et vederlag for gjenvinning i hvert land. Et produkt som hører under en ordning, selges ikke i et land før registreringen er lagt inn under Innstillinger, Produsentansvar.",
+    schemesHint: "Produsentansvar: du kan måtte registrere deg og betale et vederlag for gjenvinning i hvert land. Når en registrering for en ordning er lagt inn under Innstillinger, Produsentansvar, selges produktet i det landet bare mens en registrering gjelder.",
     schemeNames: {
       packaging: "Emballasje",
       electrical_equipment: "Elektriske og elektroniske produkter",
