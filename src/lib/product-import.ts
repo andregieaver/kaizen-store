@@ -26,6 +26,7 @@ import { ITEM_TERMS_MAX } from "./taxonomy";
 import { BASES, baseFits, isBase, isUnit, normaliseMeasureAmount } from "./unit-price";
 import { isPictureAddress } from "./picture-address";
 import { pictureItem } from "./product-media";
+import { keepForCategory } from "./product-taxonomy";
 
 // ---------------------------------------------------------------------------
 // Options
@@ -616,6 +617,16 @@ export function planProduct(draft: ProductDraft, file: NeutralFile, env: PlanEnv
   if (has(c, "vat_category") && file.format === "kaizen" && t(p.vat_category) !== "") {
     if (!ctx.vatCategories.includes(t(p.vat_category))) err(c, "vat_category.unknown");
     else input.vatCategory = t(p.vat_category);
+  }
+  // The standard taxonomy's category (D327): one the release does not know is reported, never guessed; a new category keeps the
+  // attributes it also has.
+  if (has(c, "standard_category") && t(p.standard_category) !== "" && ctx.standard) {
+    const found = ctx.standard.resolve(t(p.standard_category));
+    if (!found) err(c, "standard_category.unknown", {}, "warning");
+    else if (found.id !== input.standardCategory) {
+      input.standardCategory = found.id;
+      input.standardAttributes = keepForCategory(found.attributeIds, input.standardAttributes ?? {});
+    }
   }
 
   // Status ----------------------------------------------------------------------------------------------------------------

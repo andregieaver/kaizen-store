@@ -26,6 +26,8 @@ export type FilterFacets = {
   options: { name: string; label: string; values: Choice[] }[];
   /** The store's custom fields offered as filters (D118), titled in the shopper's language. */
   fields: { name: string; label: string; values: Choice[] }[];
+  /** The standard taxonomy's attributes (D327), titled in the shopper's language; left out by a page that offers none. */
+  attributes?: { name: string; label: string; values: Choice[] }[];
   /** Number and measurement fields offered as ranges (D120): the unit they compare in, the least and most, and how that reads. */
   ranges: { name: string; label: string; unit: string; min: number; max: number; hint: string }[];
   price: { min: number; max: number } | null;
@@ -129,6 +131,14 @@ export function FilterDialog({
       const others = current.fields.filter((field) => field.name !== name);
       const fields: OptionFilter[] = values.length > 0 ? [...others, { name, values }] : others;
       return { ...current, fields };
+    });
+  const toggleAttribute = (name: string, value: string) =>
+    setDraft((current) => {
+      const existing = (current.attributes ?? []).find((attribute) => attribute.name === name);
+      const values = toggle(existing?.values ?? [], value);
+      const others = (current.attributes ?? []).filter((attribute) => attribute.name !== name);
+      const attributes: OptionFilter[] = values.length > 0 ? [...others, { name, values }] : others;
+      return { ...current, attributes };
     });
   const amount = (text: string): number | null => {
     const number = Number(text.replace(",", ".").trim());
@@ -349,6 +359,27 @@ export function FilterDialog({
                         type="button"
                         aria-pressed={picked.includes(value.value)}
                         onClick={() => toggleField(field.name, value.value)}
+                        className={chip(picked.includes(value.value))}
+                      >
+                        {value.label} {count(value.count)}
+                      </button>
+                    ))}
+                  </div>
+                </Section>
+              );
+            })}
+
+            {(facets.attributes ?? []).map((attribute) => {
+              const picked = (draft.attributes ?? []).find((a) => a.name === attribute.name)?.values ?? [];
+              return (
+                <Section key={`attribute-${attribute.name}`} legend={attribute.label}>
+                  <div className="flex flex-wrap gap-2">
+                    {attribute.values.map((value) => (
+                      <button
+                        key={value.value}
+                        type="button"
+                        aria-pressed={picked.includes(value.value)}
+                        onClick={() => toggleAttribute(attribute.name, value.value)}
                         className={chip(picked.includes(value.value))}
                       >
                         {value.label} {count(value.count)}

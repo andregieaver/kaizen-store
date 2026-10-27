@@ -48,6 +48,15 @@ export type ProductCsvContext = {
   fields: CsvField[];
   /** The codes of the VAT categories the store may use. */
   vatCategories: string[];
+  /**
+   * The standard product taxonomy (D327), given by the server: a cell (Shopify's `Product Category`, a full English path, a gid or an id)
+   * to its category and that category's attribute ids, and a category's full English path for the export. Without it the column is
+   * neither read nor written.
+   */
+  standard?: {
+    resolve: (cell: string) => { id: string; attributeIds: number[] } | null;
+    path: (id: string) => string | null;
+  };
 };
 
 /** A stored product as the editor holds it, with what the file also carries. */
@@ -107,7 +116,7 @@ export function productColumns(ctx: ProductCsvContext): string[] {
     "handle", "status", "kind", "vat_category",
     ...TEXT_COLUMNS,
     ...others.flatMap((l) => TEXT_COLUMNS.map((c) => `${c}:${l}`)),
-    "categories", "tags",
+    "categories", "tags", "standard_category",
     "option1_name", "option1_value", "option2_name", "option2_value", "option3_name", "option3_value",
     "variant_id", "sku", "gtin", "active", "delivery", "weight_grams", "hs_code", "origin_country", "cost", "stock",
     "stock_policy", "backorder_days", "low_stock_threshold",
@@ -189,6 +198,7 @@ export function productRowsOf(record: StoredProduct, ctx: ProductCsvContext): Ce
     vat_category: record.vatCategory,
     categories: text(termNames(ctx.terms, record.categories, "category")),
     tags: text(termNames(ctx.terms, record.tags, "tag")),
+    standard_category: record.standardCategory ? (ctx.standard?.path(record.standardCategory) ?? record.standardCategory) : "",
   };
   const primary = translation(ctx.primaryLocale);
   productCells.title = text(primary?.title);

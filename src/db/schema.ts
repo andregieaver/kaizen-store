@@ -2217,6 +2217,13 @@ export const products = commerce.table(
     /** A computed bundle's whole percent off its components' sum, 0 to 90; null otherwise. */
     bundlePercentOff: integer("bundle_percent_off"),
     /**
+     * The standard product taxonomy's category (wave 6 unit I, D327): Shopify's stable id (`aa-1-1`), apart from the store's own
+     * categories and the tax code; null for none. Checked against the release by `standardProblems()` in `saveProduct()`.
+     */
+    standardCategory: text("standard_category"),
+    /** The category's attributes' chosen values: an attribute id to its value ids (`{"1": [2503]}`); `{}` for none. */
+    standardAttributes: jsonb("standard_attributes").notNull().default({}),
+    /**
      * When the product first became active (wave 2, D168): set by a trigger and never cleared. A handle that changes leaves a redirect only for a
      * product that was ever live (`OLD.status <> 'draft'` or this set). No backfill: a product active or archived today counts as ever live.
      */
@@ -2265,6 +2272,10 @@ export const products = commerce.table(
       foreignColumns: [shippingProfiles.storeId, shippingProfiles.id],
     }),
     index("products_shipping_profile_idx").on(t.storeId, t.shippingProfileId),
+    check("products_standard_category", sql`${t.standardCategory} ~ '^[a-z]{2}(-[0-9]+)*$'`),
+    check("products_standard_attributes", sql`jsonb_typeof(${t.standardAttributes}) = 'object' and (${t.standardCategory} is not null or ${t.standardAttributes} = '{}'::jsonb)`),
+    index("products_standard_category_idx").on(t.storeId, t.standardCategory),
+    index("products_standard_attributes_idx").using("gin", t.standardAttributes.op("jsonb_path_ops")),
   ],
 );
 

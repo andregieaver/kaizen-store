@@ -10,6 +10,8 @@ vi.mock("@/app/admin/(gated)/[store]/products/actions", () => ({
   startFileUploadAction: async () => ({ ok: false }),
   uploadImageAction: async () => ({ ok: false }),
   suggestTextAction: async () => ({ ok: false }),
+  searchCategoriesAction: async () => [],
+  categoryDetailsAction: async () => null,
 }));
 vi.mock("@/app/admin/(gated)/[store]/fields/actions", () => ({ startFieldFileUploadAction: async () => ({ ok: false }) }));
 

@@ -236,6 +236,10 @@ export const FINDINGS = {
     sentence: () =>
       "Continue selling when out of stock is not imported: a backorder needs a stated delivery time, so it is set per variant in the product editor or on the Inventory page. Until then a product at 0 stops selling.",
   },
+  "standard_category.unknown": {
+    severity: "warning",
+    sentence: (p) => `The product category of ${prod(p)} is not in the standard taxonomy, so it was left as it was.`,
+  },
   "tax.ignored": {
     severity: "warning",
     sentence: (p) => `Charge tax or a tax code was in the file for ${prod(p)}. It keeps its VAT category, and an import never sets the exempt category.`,

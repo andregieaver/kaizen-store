@@ -88,6 +88,7 @@ const MAP: Record<string, string> = {
   description: "description",
   "body (html)": "description",
   tags: "tags",
+  "product category": "standard_category",
   "published on online store": "_published",
   published: "_published",
   status: "status",
@@ -137,7 +138,6 @@ const MAP: Record<string, string> = {
 /** Columns that are known and deliberately not read, with the reason the member is told. */
 const IGNORED: Record<string, string> = {
   vendor: "Vendor is never turned into the product's manufacturer: that is a legal designation you make yourself in the editor",
-  "product category": "Shopify's own product taxonomy; Kaizena Flow has its own categories",
   type: "Shopify's product type; Kaizena Flow has its own categories and tags",
   "option1 linked to": "Shopify's linked options are not used",
   "option2 linked to": "Shopify's linked options are not used",

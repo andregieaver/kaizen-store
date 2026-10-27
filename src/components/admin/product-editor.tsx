@@ -13,8 +13,10 @@ import {
 } from "react";
 
 import {
+  categoryDetailsAction,
   createProductTermAction,
   saveProductAction,
+  searchCategoriesAction,
   startFileUploadAction,
   uploadImageAction,
   type SaveState,
@@ -27,6 +29,7 @@ import { fieldFileUploader } from "@/components/admin/field-file-upload";
 import { uploadFieldPicture } from "@/components/admin/field-picture-upload";
 import { SearchSnippetFields } from "@/components/admin/seo-fields";
 import { TermPicker } from "@/components/admin/terms";
+import { ProductCategoryCard } from "@/components/admin/product-category-card";
 import { PRODUCT_AUDIENCES, type ProductAudience } from "@/lib/b2b";
 import { EMPTY_DATA, changesFrom, withParents, type FieldData, type FieldGroup, type FieldLookups } from "@/lib/custom-fields";
 import { fileSize } from "@/lib/file-size";
@@ -194,6 +197,11 @@ export function ProductEditor(props: Props) {
     tags: product.tags,
     roles: [],
   });
+  // The standard taxonomy's actions (D327), bound once: the Category card reads them in its effects.
+  const taxonomyActions = useMemo(
+    () => ({ search: searchCategoriesAction.bind(null, storeSlug), details: categoryDetailsAction.bind(null, storeSlug) }),
+    [storeSlug],
+  );
   const pictureUpload = uploads ? (file: File) => uploadFieldPicture(storeSlug, file) : null;
   // Files for file fields go from the browser to the store's folder in storage (a server action only starts the upload).
   const fileUpload = uploads ? fieldFileUploader((file) => startFieldFileUploadAction(storeSlug, file)) : null;
@@ -367,6 +375,13 @@ export function ProductEditor(props: Props) {
           </label>
         )}
       </section>
+      <ProductCategoryCard
+        category={product.standardCategory ?? null}
+        attributes={product.standardAttributes ?? {}}
+        onChange={(standardCategory, standardAttributes) => update((p) => ({ ...p, standardCategory, standardAttributes }))}
+        search={taxonomyActions.search}
+        details={taxonomyActions.details}
+      />
       <EntityFields
         groups={fieldGroups}
         data={fieldData}

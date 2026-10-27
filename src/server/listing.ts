@@ -13,11 +13,13 @@ import { shown, type Market } from "@/lib/markets";
 import { minorUnitDigits } from "@/lib/money";
 import { PRODUCT_KINDS, type ProductKind } from "@/lib/query-understanding";
 import { categoryTree, withDescendants, type Term } from "@/lib/taxonomy";
+import { attributeFilters, attributeName, valueName, type AttributeFilter } from "@/lib/product-taxonomy";
 
 import { CATALOG_TAG, catalogTag, listGridProducts, type GridProduct } from "./catalog";
 import { activeFieldGroups, fieldsTag } from "./custom-fields";
 import { convertedSql, inCategories, inStockNow, inTerms, manualPlace, OFFERED, shownPrice, textList, withTags } from "./product-conditions";
 import { siteTerms, termsTag } from "./taxonomy";
+import { taxonomy, taxonomyWords } from "./product-taxonomy";
 
 /**
  * Sorting and filtering product listings (D78): which of a page's products
@@ -123,8 +125,21 @@ function rangeAmount(range: RangeField, held: SQL): SQL {
         and coalesce(${held} ->> 'unit', '') = ${range.unit} then (${held} -> 'value')::numeric end)`;
 }
 
+/**
+ * The standard taxonomy's attributes (D327) an address asked for, resolved to ids: each attribute named holds any of its values asked.
+ * Every test is a containment on the product's own attributes (the GIN index answers it), the ids parameters.
+ */
+function attributesClause(asked: readonly AttributeFilter[]): SQL[] {
+  return asked.map(({ attributeId, valueIds }) =>
+    sql`(${sql.join(
+      valueIds.map((valueId) => sql`p.standard_attributes @> ${JSON.stringify({ [String(attributeId)]: [valueId] })}::jsonb`),
+      sql` or `,
+    )})`,
+  );
+}
+
 /** What the shopper's filters ask of a product `p`, as SQL; every value a parameter. */
-function filtersClause(filters: ListingFilters, market: Market, viewer: Viewer, fieldDefs: FieldDef[] = []): SQL {
+function filtersClause(filters: ListingFilters, market: Market, viewer: Viewer, fieldDefs: FieldDef[] = [], attributes: readonly AttributeFilter[] = []): SQL {
   const parts: SQL[] = [];
   if (filters.kinds.length > 0) parts.push(sql`p.kind = any(${textList(filters.kinds)})`);
   if (filters.categories.length > 0) parts.push(inCategories(filters.categories));
@@ -139,6 +154,7 @@ function filtersClause(filters: ListingFilters, market: Market, viewer: Viewer, 
   }
   parts.push(...fieldsClause(filters, fieldDefs));
   parts.push(...rangesClause(filters, fieldDefs));
+  parts.push(...attributesClause(attributes));
   if (filters.minPrice !== null || filters.maxPrice !== null) {
     const digits = minorUnitDigits(market.currency);
     parts.push(sql`exists (
@@ -185,9 +201,10 @@ export async function listingProducts(
                 ? sql`${manualPlace(scope.orderTerm)}, p.created_at, p.handle`
                 : sql`p.created_at, p.handle`;
   const fieldDefs = filters.fields.length > 0 || filters.ranges.length > 0 ? filterableFields(await activeFieldGroups(storeId, "product")) : [];
+  const attributes = (filters.attributes ?? []).length > 0 ? attributeFilters(await taxonomy(), filters.attributes) : [];
   const rows = await readDb().execute<Row>(sql`
     select p.id from commerce.products p
-    where ${scopeClause(storeId, market.code, scope, viewer)} and ${filtersClause(filters, market, viewer, fieldDefs)}
+    where ${scopeClause(storeId, market.code, scope, viewer)} and ${filtersClause(filters, market, viewer, fieldDefs, attributes)}
     order by ${order}
     limit ${LISTING_LIMIT}
   `);
@@ -216,9 +233,16 @@ export type ListingFacets = {
   ranges: { name: string; label: string; unit: string; min: number; max: number }[];
   /** Every range field with its label and unit, narrowing or not, to word a chosen filter. */
   rangeLabels: { name: string; label: string; unit: string }[];
+  /** The standard taxonomy's attributes (D327) the page's products carry, by handle, named in the shopper's language; the most carried first. */
+  attributes: { name: string; label: string; values: FacetValue[] }[];
+  /** Every such attribute with its values' names, narrowing or not, to word a chosen filter. */
+  attributeLabels: { name: string; label: string; values: Record<string, string> }[];
   /** Whole units of the currency, as prices are shown to the viewer; null without prices. */
   price: { min: number; max: number } | null;
 };
+
+/** How many of the standard taxonomy's attributes a listing offers, at most. */
+const ATTRIBUTE_FACETS = 8;
 
 /** Sizes in the order people expect, before other values. */
 const SIZES = ["xxs", "xs", "s", "m", "l", "xl", "xxl", "xxxl"];
@@ -260,14 +284,14 @@ export async function listingFacets(
     limit ${FACET_LIMIT}
   `);
   const total = products.length;
-  const empty: ListingFacets = { total, kinds: [], categories: [], tags: [], options: [], fields: [], fieldLabels: [], ranges: [], rangeLabels: [], price: null };
+  const empty: ListingFacets = { total, kinds: [], categories: [], tags: [], options: [], fields: [], fieldLabels: [], ranges: [], rangeLabels: [], attributes: [], attributeLabels: [], price: null };
   if (total === 0) return empty;
   const ids = uuids(products.map((row) => String(row.id)));
 
   const allDefs = filterableFields(await activeFieldGroups(storeId, "product"));
   const fieldDefs = choiceFields(allDefs);
   const rangeDefs = rangeFields(allDefs);
-  const [links, optionRows, terms, fieldRows, rangeRows] = await Promise.all([
+  const [links, optionRows, terms, fieldRows, rangeRows, attributeRows] = await Promise.all([
     readDb().execute<Row>(sql`
       select pt.product_id, pt.term_id from commerce.product_terms pt
       where pt.store_id = ${storeId}::uuid and pt.product_id = any(${ids}::uuid[])
@@ -310,6 +334,15 @@ export async function listingFacets(
             and fv.entity_id = any(${ids}::uuid[]) and x.n between -1000000000000 and 1000000000000
           group by f.id
         `),
+    // The standard taxonomy's attributes (D327): each value with how many of the page's products carry it.
+    readDb().execute<Row>(sql`
+      select a.key as attribute, v.value as value, count(distinct p.id)::int as count
+      from commerce.products p
+      cross join lateral jsonb_each(p.standard_attributes) a
+      cross join lateral jsonb_array_elements_text(case when jsonb_typeof(a.value) = 'array' then a.value else '[]'::jsonb end) v
+      where p.store_id = ${storeId}::uuid and p.id = any(${ids}::uuid[]) and p.standard_attributes <> '{}'::jsonb
+      group by a.key, v.value
+    `),
   ]);
 
   const narrows = (count: number) => count > 0 && count < total;
@@ -380,6 +413,9 @@ export async function listingFacets(
     span: spans.get(r.def.id),
   }));
 
+  // The standard taxonomy's attributes, named from the release in the shopper's language; the ones the most products carry first.
+  const attributeFacets = attributeRows.length === 0 ? [] : await attributeFacetsOf(attributeRows, market.locale);
+
   // Prices are kept in the country's own currency and shown in the one chosen (D109).
   const lows = products.map((row) => shown(market, Number(row.low))).filter(Number.isFinite);
   const highs = products.map((row) => shown(market, Number(row.high))).filter(Number.isFinite);
@@ -409,6 +445,15 @@ export async function listingFacets(
       span && Number.isFinite(span.min) && Number.isFinite(span.max) && span.max > span.min ? [{ ...facet, min: span.min, max: span.max }] : [],
     ),
     rangeLabels: rangeFacets.map(({ name, label, unit }) => ({ name, label, unit })),
+    attributes: attributeFacets
+      .map((attribute) => ({ name: attribute.name, label: attribute.label, values: attribute.all.filter((value) => narrows(value.count)) }))
+      .filter((attribute) => attribute.values.length > 0)
+      .slice(0, ATTRIBUTE_FACETS),
+    attributeLabels: attributeFacets.map((attribute) => ({
+      name: attribute.name,
+      label: attribute.label,
+      values: Object.fromEntries(attribute.all.map((value) => [value.value, value.label])),
+    })),
     price: price && price.max > price.min ? price : null,
   };
 }
@@ -439,4 +484,28 @@ export async function relatedProducts(storeId: string, market: Market, productId
   const ids = rows.map((row) => String(row.id));
   if (ids.length === 0) return [];
   return listGridProducts(storeId, market, { categoryIds: [], tagIds: [], ids, sort: "given", limit: LISTING_LIMIT });
+}
+
+/** The attributes' counts as facets: handles and names from the release, values by name, attributes by how many products carry one. */
+async function attributeFacetsOf(rows: Row[], locale: string): Promise<{ name: string; label: string; carried: number; all: FacetValue[] }[]> {
+  const [t, words] = await Promise.all([taxonomy(), taxonomyWords(locale)]);
+  const byAttribute = new Map<number, FacetValue[]>();
+  for (const row of rows) {
+    const attributeId = Number(row.attribute);
+    const valueId = Number(row.value);
+    if (!Number.isInteger(attributeId) || !Number.isInteger(valueId)) continue;
+    const value = valueName(t, words, valueId);
+    if (!value) continue;
+    const list = byAttribute.get(attributeId) ?? [];
+    list.push({ value: value.handle, label: value.name, count: Number(row.count) });
+    byAttribute.set(attributeId, list);
+  }
+  return [...byAttribute.entries()]
+    .flatMap(([attributeId, values]) => {
+      const attribute = attributeName(t, words, attributeId);
+      return attribute
+        ? [{ name: attribute.handle, label: attribute.name, carried: Math.max(...values.map((v) => v.count)), all: values.sort((a, b) => a.label.localeCompare(b.label, locale)) }]
+        : [];
+    })
+    .sort((a, b) => b.carried - a.carried || a.label.localeCompare(b.label, locale));
 }

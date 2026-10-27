@@ -30,6 +30,21 @@ export const productEn = {
     layoutHint:
       "How its page is laid out (Product layouts). Its own layout goes before its categories', tags' and the store's; one not yet published is not used.",
   },
+  standard: {
+    title: "Product category",
+    intro: "What the product is, from a shared list of categories that marketplaces and Google read. It is apart from your own categories.",
+    search: "What is it?",
+    searchHint: "Type a word or two, such as t-shirt or coffee grinder.",
+    searching: "Searching…",
+    noMatch: "Nothing in the list matches. Try another word.",
+    change: "Change",
+    remove: "Remove",
+    attributes: "Attributes",
+    attributesHint: "Tick what fits. Shoppers can filter by these, and they go into your product feeds.",
+    chosen: "{n} chosen",
+    release: "Shopify's Standard Product Taxonomy, release {release}.",
+    unknown: "The category {id} is not in the list any more. Choose another.",
+  },
   variantFields: {
     title: "Custom fields for each variant",
     fieldsOf: "Fields of {sku}",

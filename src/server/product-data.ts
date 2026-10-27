@@ -6,11 +6,13 @@ import { db } from "@/db/client";
 import type { FieldData } from "@/lib/custom-fields";
 import type { ProductCsvContext, StoredProduct } from "@/lib/product-csv";
 import type { PublishContext } from "@/lib/product-input";
+import { categoryFromCell, categoryPath, isCategory } from "@/lib/product-taxonomy";
 
 import { getFieldData, getVariantFieldData, listFieldGroups } from "./custom-fields";
 import { pgTextArray } from "./pg-arrays";
 import { getEditorContext, getProductForEdit, type EditorContext } from "./products";
 import { getStore, type Store } from "./stores";
+import { taxonomy, taxonomyPaths, taxonomyWords } from "./product-taxonomy";
 
 type Row = Record<string, unknown>;
 
@@ -42,6 +44,19 @@ export async function csvContextFor(store: Store, editor: EditorContext): Promis
     terms: editor.terms,
     fields,
     vatCategories: editor.vatCategories.filter((c) => c.active).map((c) => c.code),
+    standard: await standardCsv(),
+  };
+}
+
+/** The standard taxonomy's column (D327): Shopify's `Product Category` cell read to a category, a category written as its English path. */
+async function standardCsv(): Promise<NonNullable<ProductCsvContext["standard"]>> {
+  const [t, paths, english] = await Promise.all([taxonomy(), taxonomyPaths(), taxonomyWords("en")]);
+  return {
+    resolve: (cell) => {
+      const id = categoryFromCell(t, paths, cell);
+      return id ? { id, attributeIds: t.categories[id][1] } : null;
+    },
+    path: (id) => (isCategory(t, id) ? categoryPath(english, id) : null),
   };
 }
 

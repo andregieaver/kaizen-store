@@ -190,6 +190,8 @@ export type ProductFacts = {
   manufacturer: { name: string } | null;
   /** The owner\'s custom fields the page says in plain words (D118), as properties of the product. */
   properties?: { name: string; value: string }[];
+  /** The standard taxonomy's category (D327), its full path in the page's language: the product's `category`. */
+  standard?: { path: string } | null;
   variants: {
     id: string;
     sku: string;
@@ -286,6 +288,7 @@ export function productJsonLd({
     image: product.images.map((image) => absoluteUrl(image.url, origin)),
     brand: { "@type": "Brand", name: product.manufacturer?.name ?? store.name },
     ...(product.manufacturer && { manufacturer: { "@type": "Organization", name: product.manufacturer.name } }),
+    ...(product.standard && { category: product.standard.path }),
     ...(product.properties &&
       product.properties.length > 0 && {
         additionalProperty: product.properties.map((property) => ({ "@type": "PropertyValue", name: property.name, value: property.value })),

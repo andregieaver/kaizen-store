@@ -40,6 +40,12 @@ export type FeedItem = {
   shippingMinor: number | null;
   /** The market's country, ISO 3166-1 alpha-2. */
   country: string;
+  /** Google's product taxonomy id of the product's standard category (D327), from the release's mapping; none without one. */
+  googleCategory?: number | null;
+  /** The standard category's colour, material and pattern values (D327) in English, several joined by `/` as Google asks; none when unset. */
+  color?: string | null;
+  material?: string | null;
+  pattern?: string | null;
 };
 
 /** Why a product is not in a feed: each is named on the admin's page. */
@@ -136,6 +142,10 @@ export function googleFeed(items: readonly FeedItem[], channel: { title: string;
       tag("brand", item.brand),
       item.gtin ? tag("gtin", item.gtin) : tag("identifier_exists", "no"),
       tag("condition", "new"),
+      item.googleCategory ? tag("google_product_category", String(item.googleCategory)) : "",
+      tag("color", item.color),
+      tag("material", item.material),
+      tag("pattern", item.pattern),
       unit ? tag("unit_pricing_measure", unit.measure) + tag("unit_pricing_base_measure", unit.base) : "",
       item.shippingMinor === null
         ? ""
@@ -161,9 +171,9 @@ const CSV_AVAILABILITY: Record<Exclude<FeedChannel, "google">, Record<FeedAvaila
 
 /** The CSV columns of each catalogue, in its own names. */
 export const CSV_COLUMNS: Record<Exclude<FeedChannel, "google">, readonly string[]> = {
-  meta: ["id", "title", "description", "availability", "condition", "price", "sale_price", "link", "image_link", "additional_image_link", "brand", "gtin", "item_group_id", "shipping"],
+  meta: ["id", "title", "description", "availability", "condition", "price", "sale_price", "link", "image_link", "additional_image_link", "brand", "gtin", "item_group_id", "shipping", "google_product_category", "color", "material", "pattern"],
   tiktok: ["sku_id", "title", "description", "availability", "condition", "price", "sale_price", "link", "image_link", "additional_image_link", "brand", "gtin", "item_group_id"],
-  pinterest: ["id", "title", "description", "link", "image_link", "additional_image_link", "price", "sale_price", "availability", "condition", "brand", "gtin", "item_group_id"],
+  pinterest: ["id", "title", "description", "link", "image_link", "additional_image_link", "price", "sale_price", "availability", "condition", "brand", "gtin", "item_group_id", "google_product_category"],
 };
 
 function csvFeed(channel: Exclude<FeedChannel, "google">, items: readonly FeedItem[]): string {
@@ -187,6 +197,10 @@ function csvFeed(channel: Exclude<FeedChannel, "google">, items: readonly FeedIt
       item_group_id: item.groupId,
       // Meta's shipping column: country::service:price.
       shipping: item.shippingMinor === null ? "" : `${item.country}::Standard:${feedAmount(item.shippingMinor, item.currency)}`,
+      google_product_category: item.googleCategory ? String(item.googleCategory) : "",
+      color: item.color ?? "",
+      material: item.material ?? "",
+      pattern: item.pattern ?? "",
     };
     return CSV_COLUMNS[channel].map((column) => cells[column] ?? "");
   });

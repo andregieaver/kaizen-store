@@ -29,6 +29,21 @@ export const productNb: ProductMessages = {
     layoutHint:
       "Hvordan siden er satt opp (Produktoppsett). Produktets eget oppsett går foran kategorienes, stikkordenes og butikkens; et oppsett som ikke er publisert ennå, brukes ikke.",
   },
+  standard: {
+    title: "Produktkategori",
+    intro: "Hva produktet er, fra en felles liste over kategorier som markedsplasser og Google leser. Den er atskilt fra dine egne kategorier.",
+    search: "Hva er det?",
+    searchHint: "Skriv et ord eller to, for eksempel t-skjorte eller kaffekvern.",
+    searching: "Søker …",
+    noMatch: "Ingenting i listen passer. Prøv et annet ord.",
+    change: "Endre",
+    remove: "Fjern",
+    attributes: "Egenskaper",
+    attributesHint: "Kryss av for det som passer. Kundene kan filtrere på disse, og de sendes med i produktfeedene dine.",
+    chosen: "{n} valgt",
+    release: "Shopifys standard produkttaksonomi, utgave {release}.",
+    unknown: "Kategorien {id} er ikke lenger i listen. Velg en annen.",
+  },
   variantFields: {
     title: "Egendefinerte felt for hver variant",
     fieldsOf: "Felt for {sku}",

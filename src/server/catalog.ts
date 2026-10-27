@@ -5,6 +5,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import { connection } from "next/server";
 
 import { db, readDb } from "@/db/client";
+import { attributeName, categoryPath, googleCategory, isCategory, valueName } from "@/lib/product-taxonomy";
 import { parseProductAudience, type ProductAudience } from "@/lib/b2b";
 import { parseRentalPeriod, type RentalPeriod } from "@/lib/booking-ranges";
 import { isNative, shown, type Market } from "@/lib/markets";
@@ -18,6 +19,7 @@ import { shownMeasureFromColumns } from "@/lib/unit-price-rules";
 import { stockOf, UNLIMITED, type VariantStock } from "@/lib/stock-availability";
 import type { MediaItemKind, VideoSource } from "@/lib/product-media";
 
+import { taxonomy, taxonomyWords } from "./product-taxonomy";
 import { bundleItemsOf } from "./bundles";
 import { fieldsTag, shownFieldsFor, shownFieldsForVariants } from "./custom-fields";
 import { OFFERED, STORE_AUDIENCE, inTerms, manualPlace, plansOffered } from "./product-conditions";
@@ -118,6 +120,11 @@ export type ProductDetail = {
   storeFields: ShownGroup[];
   /** What a bundle holds (D322): each component's title, how many, and its own product's address when that is offered; empty for any other product. */
   bundleItems: { title: string; quantity: number; handle: string | null }[];
+  /**
+   * The standard taxonomy's category (D327): its path in the page's language (the structured data's `category`), Google's id (the feeds'),
+   * and the chosen values' English names by attribute handle (the feeds' colour, material and pattern); null for none.
+   */
+  standard: { id: string; path: string; google: number | null; english: Record<string, string[]> } | null;
 };
 
 type Row = Record<string, unknown>;
@@ -228,7 +235,7 @@ export async function getProduct(storeId: string, market: Market, handle: string
 
   const [product] = await readDb().execute<Row>(sql`
     select
-      p.id, p.handle, p.withdrawal_exclusion, p.subscription_only, p.kind,
+      p.id, p.handle, p.withdrawal_exclusion, p.subscription_only, p.kind, p.standard_category, p.standard_attributes,
       p.audience, ${STORE_AUDIENCE} as store_audience, commerce.vat_rate(${marketCode}, p.vat_category) as vat_rate,
       coalesce(tl.title, tf.title) as title,
       coalesce(tl.description, tf.description, '') as description,
@@ -353,7 +360,23 @@ export async function getProduct(storeId: string, market: Market, handle: string
     kind:
       product.kind === "appointment" || product.kind === "stay" || product.kind === "rental" || product.kind === "gift_card" ? product.kind : "goods",
     bundleItems,
+    standard: await standardOf(product.standard_category, product.standard_attributes, locale),
   };
+}
+
+/** A product's standard category as its page and the feeds read it (D327); null for none or one the release no longer knows. */
+async function standardOf(category: unknown, attributes: unknown, locale: string): Promise<ProductDetail["standard"]> {
+  if (typeof category !== "string") return null;
+  const [t, words, english] = await Promise.all([taxonomy(), taxonomyWords(locale), taxonomyWords("en")]);
+  if (!isCategory(t, category)) return null;
+  const chosen: Record<string, string[]> = {};
+  for (const [attributeId, valueIds] of Object.entries((attributes ?? {}) as Record<string, unknown>)) {
+    const attribute = attributeName(t, english, Number(attributeId));
+    if (!attribute || !Array.isArray(valueIds)) continue;
+    const names = valueIds.flatMap((v) => (typeof v === "number" ? [valueName(t, english, v)?.name ?? ""] : [])).filter(Boolean);
+    if (names.length > 0) chosen[attribute.handle] = names;
+  }
+  return { id: category, path: categoryPath(words, category), google: googleCategory(t, category), english: chosen };
 }
 
 /**

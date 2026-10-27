@@ -963,11 +963,82 @@ the readers then leave out). There are no standalone entries of an owner's own t
 
 ### Unit I (D327): a standard product taxonomy
 
-A product may be given a category from a standard taxonomy (decision 1) kept apart from the store's own categories and the tax code
-(`products.standard_category`, a stable id). A searchable picker in the product editor; the category's attributes (colour, size, material,
-…) are offered as a field group and as listing filters, values checked against the category; the feeds (D302) send the category (and
-Google's id where the taxonomy maps to it). A model may suggest a category from the product's own words, which staff accept (feature
-`product_taxonomy`, through the D76 writer's rules).
+Detailed on 2026-10-27 from a read of the code and of the taxonomy, when its turn came. Built in three steps, each its own commit: I1 the
+data, the model and the admin, I2 the storefront's filters, the feeds and the structured data, I3 the AI's suggestion, the AI manager and
+the tracker.
+
+**What the code does today.** A product has the store's own categories and tags (D50, `product_terms`) and a Stripe tax code
+(`products.tax_code`), which classifies for tax and is no browse taxonomy. Listings filter by kind, category, tag, variant option, custom
+field and price (D78, `listing-filters.ts`, `listingFacets()`); the feeds (D302) send no category; the Shopify product CSV's `Product
+Category` column is reported as not imported (`product-csv-shopify.ts`). `src/lib/taxonomy.ts` is the store's own categories, so this unit's
+modules are named `product-taxonomy`.
+
+#### I.1 The taxonomy (decision 1)
+
+- **Source.** Shopify's open Standard Product Taxonomy, release `v2026-10` (commit `2ea72664`, its files labelled `2026-11-unstable`),
+  under the MIT licence (read on 2026-10-27; the notice is kept beside the data, `src/data/product-taxonomy/LICENSE`): 14,606 categories in
+  26 verticals, 8,240 attributes, 74,820 values, and Shopify's mapping to Google's product taxonomy (`2021-09-21`) for 14,528 of the
+  categories. Its names are Shopify's own translations: English, Norwegian, Swedish and Danish are kept (the languages Kaizena Flow writes by
+  hand); a page in another language shows the English names.
+- **Kept as files, not rows.** `scripts/product-taxonomy.mjs` (a developer tool, never imported by the app) writes
+  `src/data/product-taxonomy/structure.json` (each category's Google id and attribute ids, each attribute's handle and value ids, each
+  value's handle) and `names-{lang}.json`, sorted so a release gives the same bytes. As SQL they would be some 10 MB of migration a language;
+  the app reads them through `src/server/product-taxonomy.ts` only (`server-only`, a lazy import parsed once per instance), and every rule
+  over them is pure in `src/lib/product-taxonomy.ts`.
+- **Ids.** Shopify's own and stable across releases: a category's `aa-1-1` (its parent is the id without its last part), an attribute's and a
+  value's number. An *extended* attribute (a category's own name for a shared attribute, *Diaper features* for *Absorbent hygiene product
+  features*) is the base attribute's id under the category's name. A later release that retires or moves an id is a migration that maps the
+  ids products keep, with the release's own mapping (`integrations/shopify`), beside the new files: decision 1's "a taxonomy update is a
+  migration" holds for everything the database keeps.
+
+#### I.2 The model (I1)
+
+- `products.standard_category` (text, null; a category id by its shape, `^[a-z]{2}(-[0-9]+)*$`) and `products.standard_attributes` (jsonb
+  object, `{}` by default: an attribute id to the ids of its chosen values), apart from the store's categories, tags and tax code. Written
+  only by `saveProduct()`; `productInput` takes both as optional (left out, the stored ones stay, as the shipping profile does).
+- **Checked against the category** by `standardProblems()` (pure): the category exists in the release; every attribute is one of the
+  category's; every value is one of that attribute's; at most 25 values an attribute. A product whose category is cleared keeps no
+  attributes. The editor drops a changed category's attributes it no longer has before saving; the server refuses rather than drops.
+- **Copies.** `clone_store()` and `duplicate_store()` carry both (catalogue); the product CSV import and export, the store copy and the AI
+  manager's tools go through `saveProduct()`.
+- Indexes: `(store_id, standard_category)`, and a GIN index on `standard_attributes` for the filters.
+
+#### I.3 The admin (I1)
+
+- **Category card** in the product editor, after the store's categories and tags (Homer): *What is it?* searches the taxonomy in the
+  admin's language (`searchCategoriesAction()`, `searchCategories()`: every word found in the category's name or path, a leaf's own name
+  first, at most 20), a choice shows its path with *Change* and *Remove*. The category's attributes (Lisa) are one step away under
+  *Attributes*, each a set of its values to tick, named in the admin's language (`categoryAttributesAction()`). The release is named in
+  the card's note.
+- **Import and export.** Shopify's CSV column `Product Category` (a full English path, or a `gid://shopify/TaxonomyCategory/…`) sets the
+  standard category; one the release does not know is reported on its row, never guessed. The export writes `Product Category` as Shopify
+  does (the full English path). Shopify's category metafield columns (`… (product.metafields.shopify.…)`, values as metaobject
+  references) stay reported as not imported.
+
+#### I.4 The storefront, feeds and structured data (I2)
+
+- **Filters.** A listing's facets gain the attributes of the products it shows (`listingFacets()`, at most eight attributes, the ones most
+  products carry, each value with its count), named in the shopper's language. In the address `t.<attribute handle>=<value handle>` (values
+  of one attribute OR'd, attributes AND'd, D78), read by `parseListingParams()`, applied by `filterClause()` as
+  `standard_attributes -> '<id>' @> '[<value id>]'`; an unknown handle is dropped. The filter dialog shows them under their own heading.
+- **Feeds** (D302): Google's RSS and the CSV channels that take it send `google_product_category` (Google's id from the release's mapping,
+  none where it has none); `color`, `material` and `pattern` are sent from the attributes of those handles (the values' English names,
+  joined by `/` as Google asks). A feed's other columns are unchanged.
+- **Structured data.** The product's JSON-LD gains `category`, the standard category's full path in the page's language.
+- Not in this unit: showing the attributes on the product page (the store's own custom fields do that), and category pages for the
+  standard taxonomy (the store's own categories are its pages).
+
+#### I.5 The AI's suggestion, the AI manager and the tracker (I3)
+
+- **Suggest a category** (feature `product_taxonomy`, while the store's AI has a text model): code picks at most 25 candidate categories
+  from the product's own title and description (`categoryCandidates()`); the model is given those words (never a price or stock,
+  `UNTRUSTED_TEXT`) and the candidates' ids and paths, and answers one id from the list or none (`readCategoryChoice()`); the editor shows
+  the suggestion for a person to accept, and nothing is saved by itself (D76's rule).
+- **AI manager:** `get_product` names the standard category (id and path) and attributes in words; `create_product` and `update_product`
+  take `standard_category` (an id or a full path) and `standard_attributes` (attribute and value names, resolved by code against the
+  category, refused when one is not the category's). A live product's change waits for a yes, as any change to it does.
+- The row `catalogue.standard-product-taxonomy` is rated on its criteria with `product-taxonomy.test.ts`, `product-taxonomy.int.test.ts`
+  and an e2e that sets a category and an attribute in the editor, filters a listing by it and reads the feed.
 
 ## 5. Decisions (taken by the owner on 2026-10-25: all as recommended)
 

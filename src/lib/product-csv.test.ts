@@ -34,7 +34,7 @@ describe("the columns", () => {
       "title", "description", "safety_information", "seo_title", "seo_description",
       "title:sv-SE", "description:sv-SE", "safety_information:sv-SE", "seo_title:sv-SE", "seo_description:sv-SE",
       "title:en-GB", "description:en-GB", "safety_information:en-GB", "seo_title:en-GB", "seo_description:en-GB",
-      "categories", "tags",
+      "categories", "tags", "standard_category",
       "option1_name", "option1_value", "option2_name", "option2_value", "option3_name", "option3_value",
       "variant_id", "sku", "gtin", "active", "delivery", "weight_grams", "hs_code", "origin_country", "cost", "stock",
       "stock_policy", "backorder_days", "low_stock_threshold",

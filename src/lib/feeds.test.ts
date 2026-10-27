@@ -102,6 +102,24 @@ describe("Google Merchant Center", () => {
   });
 });
 
+describe("the standard taxonomy in the feeds (D327)", () => {
+  const item = { ...ITEM, googleCategory: 5322, color: "Black/Blue", material: "Cotton", pattern: null };
+
+  it("sends Google's category and the colour and material, and nothing for an item without them", () => {
+    const [withCategory, without] = googleFeed([item, ITEM], { title: "Shop", link: "https://shop.example" }).split("<item>").slice(1);
+    expect(withCategory).toContain("<g:google_product_category>5322</g:google_product_category>");
+    expect(withCategory).toContain("<g:color>Black/Blue</g:color><g:material>Cotton</g:material>");
+    expect(withCategory).not.toContain("<g:pattern>");
+    expect(without).not.toContain("google_product_category");
+  });
+
+  it("fills the CSV channels' columns that take them", () => {
+    const meta = recordsOf(parseCsv(metaFeed([item])).rows).records[0];
+    expect([meta.google_product_category, meta.color, meta.material, meta.pattern]).toEqual(["5322", "Black/Blue", "Cotton", ""]);
+    expect(recordsOf(parseCsv(pinterestFeed([item])).rows).records[0].google_product_category).toBe("5322");
+  });
+});
+
 describe("catalogue CSVs", () => {
   const read = (text: string) => recordsOf(parseCsv(text).rows);
 

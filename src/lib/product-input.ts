@@ -9,6 +9,7 @@ import { MAX_ORDER_QUANTITY, ruleProblem } from "./quantity-rules";
 import { minorUnitDigits } from "./money";
 import { isPictureAddress } from "./picture-address";
 import { MAX_MEDIA, MEDIA_KINDS, VIDEO_SOURCES, mediaProblems } from "./product-media";
+import { CATEGORY_ID, MAX_ATTRIBUTE_VALUES } from "./product-taxonomy";
 import { BASES, UNITS, baseFits, measureProblem, parseMeasureAmount, type Base, type Unit } from "./unit-price";
 import { DESCRIPTION_MAX, EXCERPT_FIELD_MAX, TITLE_MAX } from "./seo";
 import { termIdsSchema } from "./taxonomy";
@@ -360,6 +361,16 @@ export const productInput = z.object({
   layoutId: z.uuid().nullable().default(null),
   /** The shipping profile (D237): null is General. Left out, the product keeps the one it has (an import, a bulk edit, an older editor). */
   shippingProfileId: z.uuid().nullable().optional(),
+  /**
+   * The standard taxonomy's category (D327, Shopify's id), null for none. Left out, the product keeps its category and attributes (an
+   * import without the column, an older editor); given, it is written with `standardAttributes` (none when left out), checked against
+   * the release by `standardProblems()` on the server.
+   */
+  standardCategory: z.string().regex(CATEGORY_ID, "Choose a category from the standard taxonomy.").nullable().optional(),
+  /** The category's attributes' chosen values: an attribute id to value ids. */
+  standardAttributes: z
+    .record(z.string().regex(/^\d{1,9}$/), z.array(z.number().int().positive()).max(MAX_ATTRIBUTE_VALUES, `Choose at most ${MAX_ATTRIBUTE_VALUES} values of one attribute.`))
+    .optional(),
   /** How new variants are delivered; each variant can differ. */
   delivery: z.enum(DELIVERIES).default("physical"),
   /** Files for digital variants: already uploaded to the store's folder. */

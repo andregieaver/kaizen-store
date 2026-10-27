@@ -6,6 +6,8 @@ import { after } from "next/server";
 import { z } from "zod";
 
 import { adminLangOf } from "@/lib/admin-lang";
+import { categoryAttributes, categoryName, categoryPath, isCategory, searchCategories, type CategoryDetails, type CategoryHit } from "@/lib/product-taxonomy";
+import { taxonomy, taxonomySearch, taxonomyWords } from "@/server/product-taxonomy";
 import { fillWords } from "@/lib/admin-fill";
 import { adminText } from "@/lib/admin-text";
 import type { FieldData } from "@/lib/custom-fields";
@@ -62,7 +64,7 @@ export type SaveState =
   | { status: "error"; problems: string[] };
 
 /** The editor's answers in the account's language (D312 A5); a refusal before a member is known in the request's. */
-const wordsOf = (member: Membership) => adminText(adminLangOf(member.account.adminLocale), "product").actions;
+const wordsOf = (member: Membership) => adminText(adminLangOf(member.account.adminLocale ?? "en"), "product").actions;
 const noAccess = async () => adminText(await actionAdminLang(), "product").actions.noAccess;
 
 function refreshCatalogue(member: Membership) {
@@ -315,4 +317,27 @@ export async function bundleComponentFactsAction(storeSlug: string, variantIds: 
   const ids = z.array(z.uuid()).max(BUNDLE_COMPONENTS_MAX).safeParse(variantIds);
   if (!member || !ids.success) return [];
   return [...(await componentFacts(db(), member.store.id, ids.data, member.store.localization.locales[0] ?? "en")).values()];
+}
+
+// ---------------------------------------------------------------------------
+// The standard product taxonomy (wave 6 unit I, D327): the editor's Category card searches it and reads a category's attributes, in the
+// admin's language. Read-only, but asked by the editor that saves the product, so the editor's key (`products:write`).
+// ---------------------------------------------------------------------------
+
+
+/** Categories whose path holds every word typed, at most twenty. */
+export async function searchCategoriesAction(storeSlug: string, query: string): Promise<CategoryHit[]> {
+  const member = await checkPermission(storeSlug, "products:write");
+  if (!member || typeof query !== "string" || query.length > 120) return [];
+  return searchCategories(await taxonomySearch(member.account.adminLocale ?? "en"), query, 20);
+}
+
+/** One category's path and attributes with their values, or null for an id the release does not know. */
+export async function categoryDetailsAction(storeSlug: string, categoryId: string): Promise<CategoryDetails | null> {
+  const member = await checkPermission(storeSlug, "products:write");
+  if (!member) return null;
+  const t = await taxonomy();
+  if (!isCategory(t, categoryId)) return null;
+  const words = await taxonomyWords(member.account.adminLocale ?? "en");
+  return { id: categoryId, name: categoryName(words, categoryId), path: categoryPath(words, categoryId), attributes: categoryAttributes(t, words, categoryId), release: t.release };
 }

@@ -3,6 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
+import { sortedAttributes, standardProblems, type StandardAttributes } from "@/lib/product-taxonomy";
 import { parsePaymentMode } from "@/lib/pay-later";
 import { parseProductAudience, withVat, withoutVat, type StoreAudience } from "@/lib/b2b";
 import { feeFor, parseSeason } from "@/lib/booking-prices";
@@ -48,6 +49,7 @@ import type { Store } from "./stores";
 import { withStockContext } from "./stock-context";
 import { listTerms, scopedTermIds } from "./taxonomy";
 import { categoryMarks } from "./unit-price-gaps";
+import { taxonomy } from "./product-taxonomy";
 
 type Row = Record<string, unknown>;
 type Tx = Parameters<Parameters<ReturnType<typeof db>["transaction"]>[0]>[0];
@@ -243,6 +245,8 @@ export function emptyProduct(context: EditorContext): ProductInput {
     kind: "goods",
     hostId: null,
     layoutId: null,
+    standardCategory: null,
+    standardAttributes: {},
     appointment: null,
     bundle: null,
     priceBreaks: [],
@@ -363,7 +367,8 @@ export async function getProductForEdit(
 ): Promise<(ProductInput & { archived: boolean }) | null> {
   const [product] = await db().execute<Row>(sql`
     select id, handle, status, tax_code, withdrawal_exclusion, manufacturer_id, responsible_person_id,
-           delivery, download_limit, download_days, subscription_only, audience, vat_category, kind, host_id, product_layout_id, sold_by_measure, shipping_profile_id
+           delivery, download_limit, download_days, subscription_only, audience, vat_category, kind, host_id, product_layout_id, sold_by_measure, shipping_profile_id,
+           standard_category, standard_attributes
     from commerce.products where store_id = ${store.id}::uuid and id = ${productId}::uuid
   `);
   if (!product) return null;
@@ -567,6 +572,8 @@ export async function getProductForEdit(
     hostId: product.host_id ? String(product.host_id) : null,
     layoutId: product.product_layout_id ? String(product.product_layout_id) : null,
     shippingProfileId: product.shipping_profile_id ? String(product.shipping_profile_id) : null,
+    standardCategory: product.standard_category ? String(product.standard_category) : null,
+    standardAttributes: (product.standard_attributes ?? {}) as StandardAttributes,
     appointment: isBooked(kind)
         ? {
             durationMinutes: Number(appointment?.duration_minutes ?? DEFAULT_APPOINTMENT.durationMinutes),
@@ -852,6 +859,13 @@ export async function saveProduct(
     })),
   });
   if (unitProblems.length > 0) return { ok: false, problems: unitProblems.map((problem) => problem.message) };
+  // The standard taxonomy's category and attributes (D327): checked against the release, kept in a stable order.
+  if (input.standardCategory !== undefined) {
+    const attributes = sortedAttributes(input.standardCategory === null ? {} : (input.standardAttributes ?? {}));
+    const standard = standardProblems(await taxonomy(), input.standardCategory, attributes);
+    if (standard.length > 0) return { ok: false, problems: standard };
+    input.standardAttributes = attributes;
+  }
 
   const before = actor && productId ? await productSnapshot(store.id, productId, context.primaryLocale) : null;
   try {
@@ -989,7 +1003,9 @@ async function upsertProduct(
         vat_category = ${input.vatCategory}, kind = ${input.kind}, host_id = ${hostOf(storeId, input)},
         product_layout_id = ${input.layoutId}::uuid, sold_by_measure = ${input.soldByMeasure && input.kind === "goods"}, updated_at = now(),
         bundle_pricing = ${bundlePricing(input)}, bundle_percent_off = ${bundlePercent(input)},
-        shipping_profile_id = ${input.shippingProfileId === undefined ? sql`shipping_profile_id` : sql`(select sp.id from commerce.shipping_profiles sp where sp.store_id = ${storeId}::uuid and sp.id = ${input.shippingProfileId ?? null}::uuid)`}
+        shipping_profile_id = ${input.shippingProfileId === undefined ? sql`shipping_profile_id` : sql`(select sp.id from commerce.shipping_profiles sp where sp.store_id = ${storeId}::uuid and sp.id = ${input.shippingProfileId ?? null}::uuid)`},
+        standard_category = ${input.standardCategory === undefined ? sql`standard_category` : sql`${input.standardCategory}`},
+        standard_attributes = ${input.standardCategory === undefined ? sql`standard_attributes` : sql`${JSON.stringify(input.standardAttributes ?? {})}::jsonb`}
       where store_id = ${storeId}::uuid and id = ${productId}::uuid
       returning id
     `);
@@ -1000,13 +1016,14 @@ async function upsertProduct(
     insert into commerce.products (
       store_id, handle, status, manufacturer_id, responsible_person_id, tax_code, withdrawal_exclusion,
       delivery, download_limit, download_days, subscription_only, audience, vat_category, kind, host_id, product_layout_id,
-      sold_by_measure, shipping_profile_id, bundle_pricing, bundle_percent_off
+      sold_by_measure, shipping_profile_id, bundle_pricing, bundle_percent_off, standard_category, standard_attributes
     ) values (
       ${storeId}::uuid, ${input.handle}, 'draft', ${manufacturerId}::uuid, ${responsibleId}::uuid,
       ${input.taxCode}, ${input.withdrawalExclusion}, ${input.delivery}, ${input.downloadLimit}, ${input.downloadDays},
       ${input.subscriptionOnly}, ${input.audience}, ${input.vatCategory}, ${input.kind}, ${hostOf(storeId, input)},
       ${input.layoutId}::uuid, ${input.soldByMeasure && input.kind === "goods"}, (select sp.id from commerce.shipping_profiles sp where sp.store_id = ${storeId}::uuid and sp.id = ${input.shippingProfileId ?? null}::uuid),
-      ${bundlePricing(input)}, ${bundlePercent(input)}
+      ${bundlePricing(input)}, ${bundlePercent(input)}, ${input.standardCategory ?? null},
+      ${JSON.stringify(input.standardCategory ? (input.standardAttributes ?? {}) : {})}::jsonb
     )
     returning id
   `);

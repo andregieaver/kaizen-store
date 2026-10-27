@@ -89,10 +89,10 @@ describe("reading Shopify's file", () => {
     expect(file.format).toBe("shopify");
     expect([...file.columns].sort()).toEqual(
       ["cost", "description", "gtin", "handle", "image_alt", "image_position", "image_url", "option1_name", "option1_value", "option2_name", "option2_value", "option3_name", "option3_value",
-        "price:NO", "seo_description", "seo_title", "sku", "status", "stock", "tags", "title", "variant_image_url", "weight_grams", "measure_amount", "measure_unit", "measure_base"].sort(),
+        "price:NO", "seo_description", "seo_title", "sku", "standard_category", "status", "stock", "tags", "title", "variant_image_url", "weight_grams", "measure_amount", "measure_unit", "measure_base"].sort(),
     );
     const ignored = Object.fromEntries(file.ignored.map((i) => [i.column, i.reason]));
-    expect(Object.keys(ignored)).toEqual(expect.arrayContaining(["Vendor", "Product category", "Type", "Option1 Linked To", "Inventory tracker", "Fulfillment service", "Weight unit for display", "Color (product.metafields.shopify.color-pattern)", "Google Shopping / Google product category", "Compare-at price", "Compare-at price / International", "Price / International"]));
+    expect(Object.keys(ignored)).toEqual(expect.arrayContaining(["Vendor", "Type", "Option1 Linked To", "Inventory tracker", "Fulfillment service", "Weight unit for display", "Color (product.metafields.shopify.color-pattern)", "Google Shopping / Google product category", "Compare-at price", "Compare-at price / International", "Price / International"]));
     expect(ignored.Vendor).toMatch(/never turned into the product's manufacturer/);
     expect(file.findings.map((f) => f.code)).toContain("compare_at.ignored");
     expect(file.findings.map((f) => f.code)).toContain("price.market_unknown");

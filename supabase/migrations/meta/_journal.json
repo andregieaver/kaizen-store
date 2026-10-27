@@ -3543,6 +3543,20 @@
       "when": 1793069353462,
       "tag": "20261027024913_entry_pages_sql",
       "breakpoints": true
+    },
+    {
+      "idx": 506,
+      "version": "7",
+      "when": 1793088338409,
+      "tag": "20261027080538_standard_taxonomy",
+      "breakpoints": true
+    },
+    {
+      "idx": 507,
+      "version": "7",
+      "when": 1793088364027,
+      "tag": "20261027080603_standard_taxonomy_sql",
+      "breakpoints": true
     }
   ]
 }

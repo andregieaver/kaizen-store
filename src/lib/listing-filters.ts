@@ -20,6 +20,10 @@ import { PRODUCT_KINDS, type ProductKind } from "./query-understanding";
  * - `f.weight.min=100&f.weight.max=500`: a number or measurement field as a
  *   range (D120), in the field's own numbers (a measurement's first unit);
  *   either end may be left out.
+ * - `t.color=blue&t.color=black&t.material=wool`: the standard taxonomy's
+ *   attributes (D327), by the attribute's handle and the value's (any value
+ *   of an attribute; every attribute named). Handles the release does not
+ *   know are dropped by the server.
  * - `min=100&max=500`: the price range in whole units of the currency, as
  *   the shopper sees prices (without VAT for businesses).
  * - `stock=1`: only what can be bought now.
@@ -43,6 +47,8 @@ export type ListingFilters = {
   fields: OptionFilter[];
   /** Number and measurement custom fields (D120) by name, every field named. */
   ranges: RangeFilter[];
+  /** The standard taxonomy's attributes (D327) by handle: any of the values of each, every attribute named. */
+  attributes: OptionFilter[];
   /** Whole units of the currency, as shown to the shopper. */
   minPrice: number | null;
   maxPrice: number | null;
@@ -57,6 +63,7 @@ export const NO_FILTERS: ListingFilters = {
   options: [],
   fields: [],
   ranges: [],
+  attributes: [],
   minPrice: null,
   maxPrice: null,
   inStock: false,
@@ -69,6 +76,7 @@ const MAX_OPTIONS = 6;
 const MAX_TEXT = 80;
 const OPTION_PREFIX = "o.";
 const FIELD_PREFIX = "f.";
+const ATTRIBUTE_PREFIX = "t.";
 /** A custom field's name (`src/lib/custom-fields.ts`): lowercase letters, digits and underscores. */
 const FIELD_NAME = /^[a-z][a-z0-9_]{0,39}$/;
 const MAX_PRICE = 10_000_000;
@@ -143,6 +151,11 @@ export function parseListingParams(params: Params): ListingFilters {
     .slice(0, MAX_OPTIONS)
     .map((key) => ({ name: key.slice(FIELD_PREFIX.length), values: all(params, key) }))
     .filter((field) => field.values.length > 0);
+  const attributes = keys(params)
+    .filter((key) => key.startsWith(ATTRIBUTE_PREFIX) && slug(key.slice(ATTRIBUTE_PREFIX.length)) && key.length <= MAX_TEXT)
+    .slice(0, MAX_OPTIONS)
+    .map((key) => ({ name: key.slice(ATTRIBUTE_PREFIX.length), values: all(params, key).filter(slug) }))
+    .filter((attribute) => attribute.values.length > 0);
   let minPrice = price(params, "min");
   let maxPrice = price(params, "max");
   if (minPrice !== null && maxPrice !== null && minPrice > maxPrice) [minPrice, maxPrice] = [maxPrice, minPrice];
@@ -154,6 +167,7 @@ export function parseListingParams(params: Params): ListingFilters {
     options,
     fields,
     ranges: ranges(params),
+    attributes,
     minPrice: minPrice === 0 ? null : minPrice,
     maxPrice,
     inStock: all(params, "stock").includes("1"),
@@ -173,6 +187,7 @@ export function listingQuery(filters: ListingFilters, keep: Record<string, strin
   for (const tag of filters.tags) params.append("tag", tag);
   for (const option of filters.options) for (const value of option.values) params.append(`${OPTION_PREFIX}${option.name}`, value);
   for (const field of filters.fields) for (const value of field.values) params.append(`${FIELD_PREFIX}${field.name}`, value);
+  for (const attribute of filters.attributes ?? []) for (const value of attribute.values) params.append(`${ATTRIBUTE_PREFIX}${attribute.name}`, value);
   for (const range of filters.ranges) {
     if (range.min !== null) params.set(`${FIELD_PREFIX}${range.name}.min`, String(range.min));
     if (range.max !== null) params.set(`${FIELD_PREFIX}${range.name}.max`, String(range.max));
@@ -194,6 +209,7 @@ export function filterCount(filters: ListingFilters): number {
     filters.options.reduce((sum, option) => sum + option.values.length, 0) +
     filters.fields.reduce((sum, field) => sum + field.values.length, 0) +
     filters.ranges.length +
+    (filters.attributes ?? []).reduce((sum, attribute) => sum + attribute.values.length, 0) +
     (filters.minPrice !== null || filters.maxPrice !== null ? 1 : 0) +
     (filters.inStock ? 1 : 0)
   );
@@ -209,6 +225,7 @@ export type ChosenFilter =
   | { type: "option"; name: string; value: string }
   | { type: "field"; name: string; value: string }
   | { type: "range"; name: string }
+  | { type: "attribute"; name: string; value: string }
   | { type: "price" }
   | { type: "stock" };
 
@@ -220,6 +237,7 @@ export function chosenFilters(filters: ListingFilters): ChosenFilter[] {
     ...filters.options.flatMap((option) => option.values.map((value) => ({ type: "option" as const, name: option.name, value }))),
     ...filters.fields.flatMap((field) => field.values.map((value) => ({ type: "field" as const, name: field.name, value }))),
     ...filters.ranges.map((range) => ({ type: "range" as const, name: range.name })),
+    ...(filters.attributes ?? []).flatMap((attribute) => attribute.values.map((value) => ({ type: "attribute" as const, name: attribute.name, value }))),
     ...(filters.minPrice !== null || filters.maxPrice !== null ? [{ type: "price" as const }] : []),
     ...(filters.inStock ? [{ type: "stock" as const }] : []),
   ];
@@ -250,6 +268,13 @@ export function withoutFilter(filters: ListingFilters, chosen: ChosenFilter): Li
       };
     case "range":
       return { ...filters, ranges: filters.ranges.filter((range) => range.name !== chosen.name) };
+    case "attribute":
+      return {
+        ...filters,
+        attributes: (filters.attributes ?? [])
+          .map((attribute) => (attribute.name === chosen.name ? { ...attribute, values: attribute.values.filter((value) => value !== chosen.value) } : attribute))
+          .filter((attribute) => attribute.values.length > 0),
+      };
     case "price":
       return { ...filters, minPrice: null, maxPrice: null };
     case "stock":

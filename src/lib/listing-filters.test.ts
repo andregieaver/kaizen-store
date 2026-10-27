@@ -15,7 +15,7 @@ import {
 describe("listing filters (D78)", () => {
   it("reads the filters in an address, leaving out anything unknown or malformed", () => {
     const params = new URLSearchParams(
-      "kind=stay&kind=rental&kind=spaceship&category=lamper&category=Not%20a%20slug&tag=nyhet&o.Farge=Bl%C3%A5&o.Farge=Hvit&o.St%C3%B8rrelse=M&o.=x&min=500&max=100&stock=1&sort=priceLow",
+      "kind=stay&kind=rental&kind=spaceship&category=lamper&category=Not%20a%20slug&tag=nyhet&o.Farge=Bl%C3%A5&o.Farge=Hvit&o.St%C3%B8rrelse=M&o.=x&t.color=blue&t.color=Not%20a%20handle&t.=x&min=500&max=100&stock=1&sort=priceLow",
     );
     expect(parseListingParams(params)).toEqual({
       kinds: ["stay", "rental"],
@@ -27,6 +27,8 @@ describe("listing filters (D78)", () => {
       ],
       fields: [],
       ranges: [],
+      // The standard taxonomy's attributes (D327), by handle; one that is no handle is left out.
+      attributes: [{ name: "color", values: ["blue"] }],
       // A reversed range is put right.
       minPrice: 100,
       maxPrice: 500,
@@ -81,6 +83,18 @@ describe("listing filters (D78)", () => {
     // Another order still changes the page.
     expect(isFiltered(none)).toBe(true);
     expect(isFiltered(NO_FILTERS)).toBe(false);
+  });
+
+  it("reads the standard taxonomy's attributes by handle, writes them back, and takes one away (D327)", () => {
+    const filters = parseListingParams(new URLSearchParams("t.color=blue&t.color=black&t.material=wool&t.Bad=x"));
+    expect(filters.attributes).toEqual([
+      { name: "color", values: ["blue", "black"] },
+      { name: "material", values: ["wool"] },
+    ]);
+    expect(parseListingParams(new URLSearchParams(listingQuery(filters)))).toEqual(filters);
+    expect(filterCount(filters)).toBe(3);
+    expect(chosenFilters(filters)[0]).toEqual({ type: "attribute", name: "color", value: "blue" });
+    expect(withoutFilter(filters, { type: "attribute", name: "material", value: "wool" }).attributes).toEqual([{ name: "color", values: ["blue", "black"] }]);
   });
 
   it("turns whole units into minor units of the currency", () => {

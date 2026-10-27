@@ -78,6 +78,11 @@ export async function storeFeed(store: Store, market: Market): Promise<StoreFeed
               ? 0
               : shipping.amountMinor,
         country: market.code,
+        // The standard taxonomy (D327): Google's category and the values Google, Meta and Pinterest read, in English.
+        googleCategory: product.standard?.google ?? null,
+        color: product.standard?.english.color?.join("/") ?? null,
+        material: product.standard?.english.material?.join("/") ?? null,
+        pattern: product.standard?.english.pattern?.join("/") ?? null,
       });
     }
   }

@@ -252,6 +252,7 @@ function dialogFacets(facets: ListingFacets, m: Messages, market: Market): Filte
     tags: facets.tags,
     options: facets.options,
     fields: facets.fields,
+    attributes: facets.attributes,
     ranges: facets.ranges.map((range) => ({ ...range, hint: rangeText(range.min, range.max, range.unit, market.locale) })),
     price: facets.price,
   };
@@ -304,6 +305,11 @@ function chosenText(item: ChosenFilter, filters: ListingFilters, facets: Listing
       const field = facets.rangeLabels.find((f) => f.name === item.name);
       const range = filters.ranges.find((r) => r.name === item.name);
       return `${field?.label ?? item.name}: ${rangeText(range?.min ?? null, range?.max ?? null, field?.unit ?? "", market.locale)}`;
+    }
+    case "attribute": {
+      // The standard taxonomy's attribute (D327), named from the release in the shopper's language.
+      const attribute = facets.attributeLabels.find((a) => a.name === item.name);
+      return `${attribute?.label ?? item.name}: ${attribute?.values[item.value] ?? item.value}`;
     }
     case "price":
       return filters.minPrice !== null && filters.maxPrice !== null
