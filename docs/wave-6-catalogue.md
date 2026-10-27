@@ -856,12 +856,108 @@ There is no 3D anywhere.
 
 ### Unit H (D326): content types
 
-An owner defines a type (`content_types`: name, slug, fields from `FIELD_TYPES`, which field is the title, whether entries have pages) and
-creates entries (`content_entries`: draft and published, texts per language, D55's model), on a page of their own under Website. A
-relation field (D119) may point at a type's entries; deleting an entry clears the references. A content grid and a field loop (D120) list a
-type's entries; a type with pages serves `/{type-slug}/{entry-slug}` through a page role drawing the entry (`entry` blocks bound to its
-fields, D119), with title, search texts and a sitemap entry only when published. Entries are in the translation worklist and copied with
-the store. Platform and stores alike (Kaizena Flow's own site can have types too).
+Detailed on 2026-10-27 from a read of the code, when its turn came. Built in four steps, each its own commit: H1 the model and the admin,
+H2 entries on the site (references, grids, pages), H3 languages, the AI manager and the tracker, H4 Kaizena Flow's own site.
+
+**What the code does today.** Custom fields (D118 to D120) are groups of field definitions (`commerce.field_groups.fields`, `FieldDef[]`
+from `FIELD_TYPES`) on things the store already has (`FIELD_ENTITIES`: products, variants, pages, articles, terms, the store, customers,
+orders), with what was entered kept in `commerce.field_values` (a row per thing and language) and handled in memory as `FieldData` (the
+values the same in every language, and each language's own words). Everything around a value works on that shape and the definitions:
+`parseFieldChanges()` checks an editor's change, `applyChanges()` lays it over what is kept, `requiredProblems()` asks for required fields,
+`shownGroup()` turns it into what a shopper sees, `keepOwnRelations()` drops what points outside the store and `resolveRelations()` draws a
+relation as a link, leaving out what is gone. The admin edits a group in `FieldGroupEditor` (fields card, `FieldTypePicker`,
+`FieldEditorDialog`, a live `FieldsForm` preview) and values in `FieldsForm`. A content grid lists pages, articles, products or its own
+items (`GridSource`, every reader through `sourceTraits()`); the field loop draws a repeater's rows. Blocks bind to a thing's public fields
+(`bindPage()`). Pages nested under a parent are served by `[slug]/[...sub]`. Field groups are store-only (`store_id` not null), and
+`clone_store()` copies field values as they are, ids inside them included (so a copy's relations still name the template's things, which
+the readers then leave out). There are no standalone entries of an owner's own type.
+
+#### H.1 The model (H1)
+
+- **A type** is `commerce.content_types`: `store_id` (null for Kaizena Flow's own site, H4), `key` (`t_` and 12 hex, made once and never
+  changed: what fields and grids name a type by, so a copy needs no remapping), `name` (1 to 80), `slug` (its web name, the address part of
+  its pages, `^[a-z0-9]+(-[a-z0-9]+)*$`, 1 to 60, unique per owner, never one of `RESERVED_STORE_PAGE_SLUGS`, and fixed once an entry of it
+  has been published), `fields` (`FieldDef[]`, checked by the same definition schema and limits as a group's, `MAX_GROUP_FIELDS`), which
+  field is its `title_field` (a text field; required), its `summary_field` (text, text area or rich text) and `picture_field` (a picture),
+  `has_pages` and `layout_id` (H2), `position`. At most 50 types an owner. A type's field may be of any type a product's may (D118 to
+  D120) and the new `entry` type (H2); `staffGroupProblem()`'s rules do not apply (entries are never a person's).
+- **An entry** is `commerce.content_entries`: `store_id`, `type_id`, `slug` (1 to 120, the slug shape, unique in its type, never `ab`),
+  `draft` and `published` (`EntryContent`: the `FieldData` of its values and its search texts, `seo: { title, description }` per language
+  as page texts are, D55), `published_at`, `first_published_at`, `position` (the owner's order), and who and when. At most 10,000 entries
+  an owner. The site reads `published` only; *Publish* copies the draft over it, *Unpublish* clears it, and an entry whose draft differs
+  says *Changes not published*.
+- **One way to write** (rule 1): types only through `src/server/content-types.ts` (`saveContentType()`, `deleteContentType()`,
+  `orderContentTypes()`), entries only through `src/server/content-entries.ts` (`saveEntry()` for the draft, `publishEntry()`,
+  `unpublishEntry()`, `deleteEntry()`, `moveEntry()`), checked by `contentTypeInput` and `entryInput` (`src/lib/content-types.ts`, shared
+  with the browser). An entry's values go through `parseFieldChanges()` against its type's fields, money through `moneyProblems()`, files
+  through `isOwnFieldFile()` and relations through `keepOwnRelations()`; publishing asks `requiredProblems()` and a title. A type that
+  loses a field loses that field's values in every entry, draft and published, in the same transaction; a field's type never changes once
+  saved (as a group's). Deleting a type deletes its entries (asked once, with their number), each as `deleteEntry()` does.
+- **Deleting an entry clears the references** (the row's criterion): in the delete's transaction every `entry` value that names it, in
+  field values and in other entries' drafts and published content, loses it (`withoutEntry()`, pure over the definitions and the data;
+  the rows are found by the id in their text), so no stored value points at an entry that is gone.
+- **Store-scoped** (rule 3): every query takes the owner (`store_id is not distinct from`); `content-types.int.test.ts` shows one store
+  cannot read, write, reference, list or show another's types or entries. Audited `content.type_saved`, `content.type_deleted`,
+  `content.entry_saved`, `content.entry_published`, `content.entry_unpublished`, `content.entry_deleted` (area `website`); the screens and
+  actions ask `website:read`/`website:write`.
+- **Copies and personal data** (rule 4): both tables are `pages` in `COPY_RULES` (site content); `clone_store()` and `duplicate_store()`
+  copy them with `clone_id()` ids, and `commerce.clone_entry_refs()` makes every copied entry id inside the copy's entries and field values
+  the copy's (a uuid is unique, so replacing its text cannot touch anything else). In `NOT_PERSONAL`: the owner's own content; a type is
+  never on customers or orders.
+
+#### H.2 The admin (H1)
+
+- **Website → Content** (`/admin/{store}/content`, a new item in the Website section and `ADMIN_PAGES`). Homer: the store's types as
+  cards (name, how many entries, *Add an entry*); with none, *Create a content type* and four starting points to begin from
+  (`CONTENT_TYPE_PRESETS`: *Team members*, *Questions and answers*, *Locations*, *Events*), each a type with its fields made, which the
+  owner can change before saving.
+- **A type's entries** (`/admin/{store}/content/{type}`): a `List` of its entries (title, *Draft*, *Published* or *Changes not published*,
+  last changed), a search by title, *New entry*, and Earlier and Later for the owner's order. *Edit the type* is one step away.
+- **An entry** (`/admin/{store}/content/{type}/{entry}`): the type's fields as one `FieldsForm`, the language being written chosen as in
+  the product editor (only where the store has more than one), its address (following the title until changed) and search texts when the
+  type has pages, and *Save draft*, *Publish*, *Unpublish*, *Delete*. Leaving with unsaved changes asks.
+- **A type** (`…/{type}/settings`, Lisa's step): its name, web name, fields (the field group editor's fields card, picker, field dialog and
+  preview, shared as `FieldsSection`), which fields are its title, summary and picture, and (H2) whether entries have pages and their
+  layout.
+- Owner words in a new `content` admin catalogue (en and nb, D312); `CONTENT_TYPE_PRESETS`' names and fields in both.
+
+#### H.3 Entries on the site (H2)
+
+- **References.** A new field type `entry` (Relational: *Entries of a content type*), with `contentType` (the type's key) and `multiple`,
+  on any thing that has fields and in any type: `parseValue()` keeps entry ids, `keepOwnRelations()` keeps only the owner's own entries of
+  that type, the editor's lookups list the type's entries by title, and `resolveRelations()` draws one as its title, linked to its page
+  when its type has pages, and only while it is published.
+- **Grids.** A content grid's source `{ type: "entries", contentType }` (a type's key): its published entries, sorted newest, oldest, by
+  title or in the owner's order (`manual`), at most the grid's limit; a tile's heading is the title field, its excerpt the summary field,
+  its picture the picture field, its link the entry's page when its type has pages, and up to three of the type's plain fields as tile
+  lines (`tileFields`). `SOURCE_TRAITS` gains `entries` (looked up; no products, terms or field entity), cached under `contentTag(owner)`,
+  which every writer refreshes. The field loop stays a repeater's: a type's entries are listed by the grid, which draws the same slots.
+- **Pages.** A type with `has_pages` serves `/{type}/{entry}` through the nested-page route (`[slug]/[...sub]`): a page at that address
+  wins; else a published entry of a type with pages is drawn by its type's layout, else the standard entry view (its picture, title and
+  every public field through `CustomFieldsView`). A layout is a page of the new type `entry_layout` (the `pages_type` check widened),
+  designed in the page builder from *Design the entry page* on the type, its heading, rich text, image and button blocks bound to the
+  type's public fields (`bindPage()` with the entry's fields as one group, D119), made from a starting layout. The page's title is its
+  search title, else its title field's; its description the search description, else the summary; `hreflang` per language as a page's; it
+  is in the store's sitemap while published (`listIndexedEntries()`), and an unpublished or deleted one answers through
+  `missOrRedirect()`. A published entry whose address changes leaves a permanent redirect (`commerce.redirects` kind `entry`, written by a
+  trigger as a product's, resolved to its current address).
+
+#### H.4 Languages, the AI manager and the tracker (H3)
+
+- **Translation worklist** (rule 5): a scope `content`, one unit per entry, its translatable fields' words and its search texts, written
+  into the entry's draft (an entry, like a page, is published by a person).
+- **AI manager** (rule 7, area `website`): `list_content_types`, `list_entries` and `get_entry` read; `save_entry` writes a draft (seen by
+  no shopper, so ungated) through `saveEntry()`; `publish_entry`, `unpublish_entry` and `save_content_type` are gated `public`, checked
+  first (`preflightContentTool()`), described in words made from the entry or type.
+- The row `catalogue.metaobjects` is rated on its criteria with `content-types.test.ts`, `content-types.int.test.ts`,
+  `content-entries.int.test.ts` and an e2e that defines a type, publishes an entry, lists it in a grid and opens its page.
+
+#### H.5 Kaizena Flow's own site (H4)
+
+- Platform admins have the same screens at `/admin/platform/content`; Kaizena Flow's entries are served at `/{type}/{entry}` (and
+  `/no/{type}/{entry}` with the Norwegian texts, D312) and listed by grids on its own pages, and are in its sitemap. A type of Kaizena
+  Flow's holds no money or file field (it has no currencies and no field files' folder).
+- Not in this unit: entries in site search and the chat agent's knowledge, entry versions (D305), and entries as an A/B test's target.
 
 ### Unit I (D327): a standard product taxonomy
 
