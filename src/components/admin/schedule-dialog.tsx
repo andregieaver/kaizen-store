@@ -4,6 +4,7 @@ import { CalendarClock } from "lucide-react";
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 
 import { useAdminText } from "./admin-text";
+import { CARD_CLASS } from "./ui";
 import { fillWords } from "@/lib/admin-fill";
 import type { PageOwnerContext, SaveDraft, ScheduleView } from "./page-context";
 
@@ -94,7 +95,7 @@ export function ScheduleButton({
         <CalendarClock aria-hidden className="size-4" />
         {view?.waiting ? view.waiting.label : w.schedule}
       </button>
-      <dialog ref={dialog} aria-labelledby={`${id}-title`} className="m-auto w-full max-w-md rounded-card border border-line bg-card p-6 text-ink backdrop:bg-black/40">
+      <dialog ref={dialog} aria-labelledby={`${id}-title`} className={`m-auto w-[min(28rem,calc(100vw-2rem))] p-6 text-ink backdrop:bg-black/40 ${CARD_CLASS}`}>
         <div className="flex flex-col gap-4">
           <h2 id={`${id}-title`} className="text-title text-ink">
             {w.scheduleTitle}

@@ -379,7 +379,10 @@ export function PageEditor({
       if (latest.current === sent && !sameJson(outcome.page.draft, sent)) setContent(outcome.page.draft);
       setDirty(false);
       setSaved(outcome.page);
-      setMessage(publish ? fillWords(ew.publishedAt, { address: context.place ? context.place.address : `${siteBase}/${outcome.page.slug}` }) : ew.draftSaved);
+      // An article in another of the store's blogs (D341) is at that blog's address, not under /blog.
+      const blogAddress = context.blog?.blogs.find((b) => b.id === sent.blogId && !b.main)?.address;
+      const base = blogAddress ? siteBase.replace(/\/blog$/, blogAddress) : siteBase;
+      setMessage(publish ? fillWords(ew.publishedAt, { address: context.place ? context.place.address : `${base}/${outcome.page.slug}` }) : ew.draftSaved);
       // A new page moves to its own address; the editor there says what happened.
       if (!saved) router.replace(`${adminBase}/${outcome.page.id}?saved=${publish ? "published" : "draft"}`);
       return true;

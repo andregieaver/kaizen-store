@@ -286,6 +286,7 @@ export function languageHostDecision(request: StorePathRequest, address: StoreAd
 export const MARKET_ROUTES: readonly string[] = [
   "account",
   "blog",
+  "blogs",
   "cart",
   "category",
   "checkout",
