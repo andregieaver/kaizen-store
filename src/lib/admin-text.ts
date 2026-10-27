@@ -23,6 +23,8 @@ import { giftCardsEn, type GiftCardsMessages } from "./admin-messages/gift-cards
 import { giftCardsNb } from "./admin-messages/gift-cards.nb";
 import { reviewsEn, type ReviewsMessages } from "./admin-messages/reviews.en";
 import { reviewsNb } from "./admin-messages/reviews.nb";
+import { contentEn, type ContentMessages } from "./admin-messages/content.en";
+import { contentNb } from "./admin-messages/content.nb";
 import { fieldsEn, type FieldsMessages } from "./admin-messages/fields.en";
 import { fieldsNb } from "./admin-messages/fields.nb";
 import { customersEn, type CustomersMessages } from "./admin-messages/customers.en";
@@ -147,6 +149,7 @@ export type AdminAreaMessages = {
   giftCards: GiftCardsMessages;
   reviews: ReviewsMessages;
   fields: FieldsMessages;
+  content: ContentMessages;
   orders: OrdersMessages;
   order: OrderMessages;
   drafts: DraftsMessages;
@@ -202,6 +205,7 @@ const CATALOGUES: { [A in AdminArea]: Record<AdminLang, AdminAreaMessages[A]> } 
   giftCards: { en: giftCardsEn, nb: giftCardsNb },
   reviews: { en: reviewsEn, nb: reviewsNb },
   fields: { en: fieldsEn, nb: fieldsNb },
+  content: { en: contentEn, nb: contentNb },
   orders: { en: ordersEn, nb: ordersNb },
   order: { en: orderEn, nb: orderNb },
   drafts: { en: draftsEn, nb: draftsNb },

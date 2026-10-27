@@ -474,7 +474,7 @@ function withoutPublic(fields: FieldDef[]): FieldDef[] {
   });
 }
 
-function FieldList({
+export function FieldList({
   fields,
   broken,
   onReorder,

@@ -78,6 +78,8 @@ export const COPY_RULES: Record<string, CopyRule> = {
   discount_code_items: never("Generated single-use codes (D299): handed out by the original store; a copy makes its own."),
   economic_operators: settings("Manufacturers and responsible persons (product safety)."),
   field_groups: settings("Custom field groups (D118); category and tag ids in their rules are the copies'."),
+  content_types: settings("Content types (D326): always copied with the store, keys kept so fields and grids naming them still do."),
+  content_entries: settings("Entries of content types (D326), draft and published: always copied, every reference to an entry made the copy's and a reference to a page or product left behind left out."),
   inventory_locations: settings("Stock locations."),
   knowledge_documents: settings("Documents the owner gave the chat agent (they are cut into chunks again)."),
   markets: settings("The countries the store sells to, and their currencies and languages."),

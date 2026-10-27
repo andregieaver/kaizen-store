@@ -102,6 +102,8 @@ const PREFIXES: Record<string, AuditArea> = {
   "analytics.": "analytics",
   // Website
   "page.": "website",
+  // Content types and their entries (D326).
+  "content.": "website",
   "article.": "website",
   "header.": "website",
   "footer.": "website",

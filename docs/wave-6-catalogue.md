@@ -900,7 +900,7 @@ the readers then leave out). There are no standalone entries of an owner's own t
   cannot read, write, reference, list or show another's types or entries. Audited `content.type_saved`, `content.type_deleted`,
   `content.entry_saved`, `content.entry_published`, `content.entry_unpublished`, `content.entry_deleted` (area `website`); the screens and
   actions ask `website:read`/`website:write`.
-- **Copies and personal data** (rule 4): both tables are `pages` in `COPY_RULES` (site content); `clone_store()` and `duplicate_store()`
+- **Copies and personal data** (rule 4): both tables are `settings` in `COPY_RULES` (always copied with the store, as headers and footers are); `clone_store()` and `duplicate_store()`
   copy them with `clone_id()` ids, and `commerce.clone_entry_refs()` makes every copied entry id inside the copy's entries and field values
   the copy's (a uuid is unique, so replacing its text cannot touch anything else). In `NOT_PERSONAL`: the owner's own content; a type is
   never on customers or orders.

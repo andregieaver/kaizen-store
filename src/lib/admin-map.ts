@@ -306,6 +306,15 @@ const PAGES: readonly AdminPage[] = [
   store("article", "/articles/[pageId]", "Article", "Main", "Writes a blog article in the page builder."),
   store("article.preview", "/articles/[pageId]/preview", "Article preview", "Main", "Previews an article's draft."),
   store("article.categories", "/articles/categories", "Blog categories and tags", "Main", "Categories and tags for articles."),
+  store("content", "/content", "Content", "Main", "Content types of the store's own, such as team members, questions and answers or locations, and their entries.", {
+    tasks: ["Create a content type", "Add an entry", "Publish an entry"],
+    keywords: ["content types", "entries", "metaobjects", "custom content", "team", "faq", "locations"],
+  }),
+  store("content.new", "/content/new", "New content type", "Main", "Defines a new content type and its fields."),
+  store("content.type", "/content/[typeId]", "Content type entries", "Main", "The entries of one content type, in the store's order."),
+  store("content.type.settings", "/content/[typeId]/settings", "Content type settings", "Main", "A content type's name, web name, fields and whether entries have pages."),
+  store("content.entry.new", "/content/[typeId]/new", "New entry", "Main", "Writes a new entry of a content type."),
+  store("content.entry", "/content/[typeId]/[entryId]", "Entry", "Main", "Writes, publishes or deletes an entry of a content type."),
   store("media", "/media", "Media", "Main", "The media library: every picture and video uploaded, where each is used, and alt texts in every language.", {
     tasks: ["Upload pictures", "Write or generate alt texts", "See where a picture is used", "Delete unused files"],
     keywords: ["images", "pictures", "photos", "videos", "alt text"],

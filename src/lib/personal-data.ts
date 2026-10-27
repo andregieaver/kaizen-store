@@ -325,6 +325,8 @@ export const NOT_PERSONAL: Record<string, string> = {
   experiment_variants: "The name of a version in an A/B test.",
   experiments: "The name of an A/B test.",
   field_groups: "The name of a group of custom fields.",
+  content_types: "An owner's own kinds of entries (D326): names and field definitions, never on customers or orders.",
+  content_entries: "The owner's own content (D326): entries of their types for their site, no shopper's data (a type is never on customers or orders).",
   field_search: "A search index over public fields the store wrote itself.",
   font_files: "A font's files.",
   google_places: "A business place's address, the store's own.",

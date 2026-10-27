@@ -138,6 +138,8 @@ export const NAV_NB: Record<string, string> = {
     "Butikkens egne sider, laget i sidebyggeren: utkast, publisering, og valg av forside og spesialsider.",
   Blog: "Blogg",
   "The store's blog: articles, their categories and tags.": "Butikkens blogg: artikler, kategoriene og stikkordene deres.",
+  Content: "Innhold",
+  "Your own kinds of content, such as team members or locations: entries listed on pages, each with a page if you like.": "Dine egne typer innhold, som ansatte eller steder: oppføringer som vises på sider, og en egen side for hver om du vil.",
   Media: "Medier",
   "Pictures and videos for the store, searchable, with alt texts.": "Bilder og videoer for butikken, søkbare, med alternative tekster.",
   Menus: "Menyer",

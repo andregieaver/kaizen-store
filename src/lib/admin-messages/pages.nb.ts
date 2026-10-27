@@ -130,6 +130,12 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
   "store:article": { title: "Artikkel", keywords: ["artikkel", "innlegg", "blogg", "skriv"] },
   "store:article.preview": { title: "Forhåndsvisning av artikkel", keywords: ["forhåndsvisning", "artikkel", "innlegg", "utkast"] },
   "store:article.categories": { title: "Bloggkategorier og stikkord", keywords: ["bloggkategorier", "kategorier", "stikkord", "blogg"] },
+  "store:content": { title: "Innhold", keywords: ["innholdstyper", "oppføringer", "eget innhold", "ansatte", "spørsmål og svar", "steder"] },
+  "store:content.new": { title: "Ny innholdstype", keywords: ["ny innholdstype", "innholdstype", "felter"] },
+  "store:content.type": { title: "Oppføringer av en innholdstype", keywords: ["oppføringer", "innholdstype"] },
+  "store:content.type.settings": { title: "Innstillinger for innholdstype", keywords: ["innholdstype", "felter", "navn på nett"] },
+  "store:content.entry.new": { title: "Ny oppføring", keywords: ["ny oppføring", "oppføring"] },
+  "store:content.entry": { title: "Oppføring", keywords: ["oppføring", "publiser", "rediger"] },
   "store:media": {
     title: "Medier",
     keywords: ["medier", "mediebibliotek", "bilder", "foto", "videoer", "alternativ tekst", "alt-tekst"],

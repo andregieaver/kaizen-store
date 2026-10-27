@@ -1595,22 +1595,19 @@ const slug = z
   .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, "The web name may use lowercase letters, digits and single hyphens.")
   .max(60);
 
-export const fieldGroupInput = z
-  .object({
-    id: z.uuid().nullable().default(null),
-    name: text(LABEL_MAX).min(1, "Give the group a name."),
-    slug,
-    entities: z.array(z.enum(FIELD_ENTITY_KEYS)).min(1, "Choose where the group can be used."),
-    location: z.array(z.array(locationRule).min(1).max(MAX_RULES)).max(MAX_RULES).default([]),
-    fields: z.array(fieldDef).max(MAX_GROUP_FIELDS, `Use at most ${MAX_GROUP_FIELDS} fields in a group.`),
-    position: z.enum(["main", "side"]).default("main"),
-    active: z.boolean().default(true),
-  })
-  .superRefine((group, ctx) => {
+/**
+ * A list of field definitions as every holder of fields checks it: a group's (D118) and a content type's (D326). Ids and names unique,
+ * choices and units where a type needs them, filters, search and the chat only where they can work, a group, repeater or flexible
+ * content holding what it may, and a field shown only by fields above it.
+ */
+export const fieldDefsSchema = z
+  .array(fieldDef)
+  .max(MAX_GROUP_FIELDS, `Use at most ${MAX_GROUP_FIELDS} fields in a group.`)
+  .superRefine((fields, ctx) => {
     const ids = new Set<string>();
     const names = new Set<string>();
-    group.fields.forEach((field, index) => {
-      const at = ["fields", index];
+    fields.forEach((field, index) => {
+      const at = [index];
       if (ids.has(field.id)) ctx.addIssue({ code: "custom", path: at, message: "Two fields share an id." });
       ids.add(field.id);
       if (names.has(field.name))
@@ -1653,8 +1650,8 @@ export const fieldGroupInput = z
       }
     });
     // Groups and repeaters: what they hold is checked as a group's own fields are.
-    group.fields.forEach((field, index) => {
-      const at = ["fields", index];
+    fields.forEach((field, index) => {
+      const at = [index];
       if (!isStructural(field.type as FieldType)) {
         if (field.subFields && field.subFields.length > 0) {
           ctx.addIssue({ code: "custom", path: [...at, "subFields"], message: `${field.label} holds no fields of its own.` });
@@ -1711,25 +1708,39 @@ export const fieldGroupInput = z
       if (subs.length === 0) ctx.addIssue({ code: "custom", path: [...at, "subFields"], message: `Add fields to ${field.label}.` });
       checkSubs(subs, [...at, "subFields"], field.label);
     });
+    // A field is shown by fields before it in the group, never by itself or one after it.
+    fields.forEach((field, index) => {
+      for (const condition of (field.when ?? []).flat()) {
+        const trigger = fields.findIndex((f) => f.id === condition.field);
+        if (trigger === -1 || trigger >= index) {
+          ctx.addIssue({
+            code: "custom",
+            path: [index, "when"],
+            message: `${field.label} can only depend on fields above it.`,
+          });
+        }
+      }
+    });
+  });
+
+export const fieldGroupInput = z
+  .object({
+    id: z.uuid().nullable().default(null),
+    name: text(LABEL_MAX).min(1, "Give the group a name."),
+    slug,
+    entities: z.array(z.enum(FIELD_ENTITY_KEYS)).min(1, "Choose where the group can be used."),
+    location: z.array(z.array(locationRule).min(1).max(MAX_RULES)).max(MAX_RULES).default([]),
+    fields: fieldDefsSchema,
+    position: z.enum(["main", "side"]).default("main"),
+    active: z.boolean().default(true),
+  })
+  .superRefine((group, ctx) => {
     // Customers' and orders' fields are for staff alone (D120).
     const staffProblem = staffGroupProblem(group as { entities: FieldEntity[]; fields: FieldDef[] });
     if (staffProblem) ctx.addIssue({ code: "custom", path: ["entities"], message: staffProblem });
     if (group.entities.some(isStaffEntity) && group.location.length > 0) {
       ctx.addIssue({ code: "custom", path: ["location"], message: "A group for customers or orders is on all of them: it takes no rules." });
     }
-    // A field is shown by fields before it in the group, never by itself or one after it.
-    group.fields.forEach((field, index) => {
-      for (const condition of (field.when ?? []).flat()) {
-        const trigger = group.fields.findIndex((f) => f.id === condition.field);
-        if (trigger === -1 || trigger >= index) {
-          ctx.addIssue({
-            code: "custom",
-            path: ["fields", index, "when"],
-            message: `${field.label} can only depend on fields above it.`,
-          });
-        }
-      }
-    });
   });
 
 export type FieldGroupInput = z.infer<typeof fieldGroupInput>;

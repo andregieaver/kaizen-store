@@ -171,6 +171,7 @@ export const STORE_SECTIONS: StoreSection[] = [
         items: [
           item("/pages", "Pages", "The store's own pages, built in the page builder: draft, publish, and choose the front page and special pages."),
           item("/articles", "Blog", "The store's blog: articles, their categories and tags."),
+          item("/content", "Content", "Your own kinds of content, such as team members or locations: entries listed on pages, each with a page if you like."),
           item("/media", "Media", "Pictures and videos for the store, searchable, with alt texts."),
           item("/menus", "Menus", "Lists of links for the header, footer and pages."),
           item("/redirects", "Redirects", "Redirects for addresses that changed and a report of the addresses shoppers could not find."),

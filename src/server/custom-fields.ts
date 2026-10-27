@@ -566,8 +566,11 @@ function pointsAt(def: FieldDef, value: FieldValue | null | undefined, into: { p
   }
 }
 
-/** Takes out of a change what points at something that is not the store's (a product of another store, a deleted page): it would show nothing, and must not leak a name. */
-async function keepOwnRelations(run: Runner, storeId: string, defs: FieldDef[], changes: FieldChanges): Promise<void> {
+/**
+ * Takes out of a change what points at something that is not the owner's (a product of another store, a deleted page): it would show
+ * nothing, and must not leak a name. The owner is a store, or Kaizena Flow's own site (null: its pages, D326), which keeps no files.
+ */
+export async function keepOwnRelations(run: Runner, storeId: string | null, defs: FieldDef[], changes: FieldChanges): Promise<void> {
   const wanted = { product: new Set<string>(), page: new Set<string>(), term: new Set<string>() };
   const slots: [FieldDef, Record<string, FieldValue | null>][] = [];
   for (const def of defs) {
@@ -580,7 +583,7 @@ async function keepOwnRelations(run: Runner, storeId: string, defs: FieldDef[], 
   const known = async (table: "products" | "pages" | "terms", ids: Set<string>) => {
     if (ids.size === 0) return new Set<string>();
     const list = sql.join([...ids].map((id) => sql`${id}::uuid`), sql`, `);
-    const rows = await run.execute<Row>(sql`select id from ${sql.raw(`commerce.${table}`)} where store_id = ${storeId}::uuid and id in (${list})`);
+    const rows = await run.execute<Row>(sql`select id from ${sql.raw(`commerce.${table}`)} where store_id is not distinct from ${storeId}::uuid and id in (${list})`);
     return new Set(rows.map((r) => String(r.id)));
   };
   const own = { product: await known("products", wanted.product), page: await known("pages", wanted.page), term: await known("terms", wanted.term) };
@@ -597,7 +600,7 @@ async function keepOwnRelations(run: Runner, storeId: string, defs: FieldDef[], 
       return ok(kind, value) ? value : null;
     }
     // A file must be one kept for this store: an address into another store's folder, or anywhere else, is not.
-    if (def.type === "file") return isOwnFieldFile(storeId, (value as FieldFile).url) ? value : null;
+    if (def.type === "file") return storeId !== null && isOwnFieldFile(storeId, (value as FieldFile).url) ? value : null;
     if (def.type === "link") {
       const link = value as FieldLink;
       const kind = link.kind === "product" ? "product" : link.kind === "page" ? "page" : link.kind === "url" ? null : "term";

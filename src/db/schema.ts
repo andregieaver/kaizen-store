@@ -2941,6 +2941,78 @@ export const fieldSearch = commerce.table(
   ],
 );
 
+/**
+ * An owner's own kinds of entries (wave 6 unit H, D326): a store's, or Kaizena Flow's own site's (`store_id` null). `fields` are custom
+ * field definitions (`FieldDef[]`, checked by `contentTypeInput`); `key` is made once and never changes, so fields and grids naming a
+ * type survive a store's copy. Written only by `src/server/content-types.ts`.
+ */
+export const contentTypes = commerce.table(
+  "content_types",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** Null for Kaizena Flow's own site. */
+    storeId: uuid("store_id").references(() => stores.id),
+    key: text("key").notNull(),
+    name: text("name").notNull(),
+    /** The address part of its entries' pages; fixed once an entry of it has been published. */
+    slug: text("slug").notNull(),
+    fields: jsonb("fields").notNull().default([]),
+    titleField: text("title_field").notNull(),
+    summaryField: text("summary_field"),
+    pictureField: text("picture_field"),
+    hasPages: boolean("has_pages").notNull().default(false),
+    /** The page its entries are drawn with (an `entry_layout`, H2); null: the standard view. */
+    layoutId: uuid("layout_id").references(() => pages.id, { onDelete: "set null" }),
+    position: integer("position").notNull().default(0),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+    updatedBy: uuid("updated_by").references(() => accounts.id),
+  },
+  (t) => [
+    unique("content_types_store_key_key").on(t.storeId, t.key).nullsNotDistinct(),
+    unique("content_types_store_slug_key").on(t.storeId, t.slug).nullsNotDistinct(),
+    check("content_types_key", sql`${t.key} ~ '^t_[0-9a-f]{12}$'`),
+    check("content_types_name", sql`length(trim(${t.name})) between 1 and 80`),
+    check("content_types_slug", sql`${t.slug} ~ '^[a-z0-9]+(-[a-z0-9]+)*$' and length(${t.slug}) <= 60`),
+    check("content_types_fields", sql`jsonb_typeof(${t.fields}) = 'array'`),
+    check("content_types_title_field", sql`${t.titleField} ~ '^f_[a-z0-9]{6,24}$'`),
+    check("content_types_position", sql`${t.position} between 0 and 1000`),
+  ],
+);
+
+/**
+ * The entries of a content type (D326): a draft and, once published, what the site shows (`EntryContent`: the values as custom fields
+ * keep them, and the search texts per language). Written only by `src/server/content-entries.ts`; its owner is its type's.
+ */
+export const contentEntries = commerce.table(
+  "content_entries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id").references(() => stores.id),
+    typeId: uuid("type_id")
+      .notNull()
+      .references(() => contentTypes.id, { onDelete: "cascade" }),
+    slug: text("slug").notNull(),
+    draft: jsonb("draft").notNull(),
+    published: jsonb("published"),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    firstPublishedAt: timestamp("first_published_at", { withTimezone: true }),
+    position: integer("position").notNull().default(0),
+    createdAt: createdAt(),
+    createdBy: uuid("created_by").references(() => accounts.id),
+    updatedAt: updatedAt(),
+    updatedBy: uuid("updated_by").references(() => accounts.id),
+  },
+  (t) => [
+    unique("content_entries_type_slug_key").on(t.typeId, t.slug),
+    index("content_entries_store_type_idx").on(t.storeId, t.typeId, t.position),
+    check("content_entries_slug", sql`${t.slug} ~ '^[a-z0-9]+(-[a-z0-9]+)*$' and length(${t.slug}) <= 120 and ${t.slug} <> 'ab'`),
+    check("content_entries_draft", sql`jsonb_typeof(${t.draft}) = 'object'`),
+    check("content_entries_published", sql`(${t.published} is null) = (${t.publishedAt} is null)`),
+    check("content_entries_position", sql`${t.position} >= 0`),
+  ],
+);
+
 export const campaigns = commerce.table(
   "campaigns",
   {
