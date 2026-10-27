@@ -286,3 +286,10 @@ A1 availability (model, view, editor, CSV, cart, copies, tools); A2 rules (model
 | 7 | **Prices before or with VAT across countries** (unit A) | One fixed basis; a choice per rule | A choice per rule, "Keep the price before VAT the same" by default (what an EU merchant selling into countries with other VAT rates expects); built that way in unit A. |
 
 Unit A needs none of decisions 1 to 6 and is built first; decision 7 is built as recommended (a choice per rule) and can be changed.
+
+**Taken (2026-10-27).** The owner accepted the recommendations of decisions 2 to 6: duty rates from the platform's own table, labelled
+as an estimate, DAP by default (I); blog comments built without a spam service, held for moderation by default, automatic or off per blog
+(G); theme updates offered for new installs, installs that follow today keep following, outside designers' themes free (J); new stores
+and stores still in setup private by default, an open store never made private by the change (E); the two blog rows merged with the
+stricter criteria of each (G). Decision 1 stays open: the speed report rests on visitors' measured figures and says lab runs are not
+run (B, D336).
