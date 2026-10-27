@@ -251,6 +251,100 @@ A1 availability (model, view, editor, CSV, cart, copies, tools); A2 rules (model
   the page list and the audit log. Preview links: a token per page or theme install (`preview_links`, hashed, an expiry the owner picks up
   to 30 days, revocable, noindex, the draft only), from the builder's Share button. The live look's saves (Design settings and the Theme
   tab) keep versions (`look_versions`, the newest 50) taken back as unsaved changes.
+
+  **F in detail (2026-10-27).** Built on G's schedules (D341: `page_schedules`, `src/server/page-schedules.ts`, the editor's Schedule
+  dialog, `runSchedules()` in the five-minute dispatcher, the AI manager's `schedule_article`); no second scheduler.
+  - **A way back for pages.** `page_schedules` gains `revert_at` (optional, after `publish_at`, at most a year after it) and a second leg of
+    its own: `revert_status` (`waiting`, `done`, `failed`, `cancelled`; null when there is no way back, `(revert_at is null) = (revert_status
+    is null)` by check), `revert_problem`, `reverted_at`, and what the job needs to go back: `before_content` (the published content the
+    publish replaced; null when the page was not published, so going back takes it off the site) and `published_hash` (md5 of what the
+    publish put live). `page_schedules_rules()` grows: the way back is settled once, only after the publish was `done`, and a publish that
+    failed or was cancelled settles it as cancelled in the same update; `revert_at` is fixed once the publish ran. When the time comes, the
+    job puts the version before back **only while the page is still live as the schedule left it** (`published_hash` against the published
+    content): a page someone published again since, or took off the site, is left as it is and the way back fails with that reason (never a
+    silent overwrite of a person's later publish). Going back goes through `savePage()` (a publish of the content before, so addresses and
+    their redirects follow the database's rules and a version is kept), and the draft the person had is saved back as the draft afterwards
+    when it differs, so their work is never lost; with nothing before it is `unpublishPage()`. A publish whose way-back time passed before it
+    could run (a store that was not open) fails (`expired`), never published for a moment. Scheduling a page again cancels the way back of
+    its earlier schedule (one plan per page at a time; `page_schedules_one_revert_idx`).
+  - **Headers and footers.** `SCHEDULED_TYPES` grows to `header` and `footer`: their drafts are published at a time and put back the same
+    way, from the same dialog in their editor. A header or footer the store has chosen shows the new version at once; one not chosen is only
+    published (choosing one stays the Header and footer page's, as it changes what every page shows). Product layouts, test versions and
+    Kaizena Flow's own pages are still not scheduled.
+  - **Theme installs going live.** `commerce.theme_schedules` (a table of its own: an install is not a page) holds a store's plan to make an
+    installed theme live at a time and, optionally, to put the theme that was live back at another: `install_id` (on delete set null, so a
+    removed theme fails its plan rather than losing its record), `live_at`, `revert_at`, `scheduled_by`, `status`/`problem`/`done_at`,
+    `revert_status`/`revert_problem`/`reverted_at`, `before_install_id` (the live install when it ran). One waiting plan per store
+    (`theme_schedules_one_waiting_idx`) and one waiting way back. Written only by `src/server/theme-schedules.ts` (`scheduleTheme()`,
+    `cancelThemeSchedule()`, `runThemeSchedules()`, called by `runSchedules()`), with the same rules trigger as pages'. It goes live through
+    `switchToInstall()`, the Design page's own switch, in the maker's name read again; the way back only while the scheduled install is still
+    the live one, and only to an install that still exists. **A schedule never spends money:** a premium theme the store does not own is
+    refused at scheduling (`themeCharge()` `now` or `at_opening`), and a charge refused when it runs fails the plan. A theme is refused
+    while a running A/B test holds the store's header or footer (as switching is, `stores_experiment_guard`).
+  - **Running.** `runSchedules()` takes four kinds of due work, each claimed `for update skip locked` and settled in its own transaction, at
+    most `SCHEDULES_PER_RUN` of each: page publishes, page ways back, theme switches, theme ways back. Every one reads its maker again
+    (`passMembership()`, the kind of page's write key or `website:write`), skips a store that is not open (it waits), refuses a page in a
+    running A/B test (the publish and the way back), and fails with a reason written on the row, audited (`store.{type}_schedule_failed`,
+    `store.{type}_revert_failed`, `store.theme_schedule_failed`, `store.theme_revert_failed`; done: `store.{type}_reverted`, and
+    `store.theme_switched` by `switchToInstall()`) and logged. A failed start leaves everything as it was. The dispatcher refreshes the
+    pages tag of each store whose pages changed and `designTags()` of each whose theme changed.
+  - **Where it shows.** The pages, articles, headers and footers lists show a chip per page (`scheduleChips()`): *Publishes …*, *Goes back
+    …*, or *Did not publish* / *Did not go back* with the reason for the latest failure since. The Design page's theme library shows the
+    same for each install, and the theme's own page has *Make it live later* (day and time, and *Put the theme before back* behind a
+    disclosure) with *Cancel*. The editor's Schedule dialog gets the way back the same way: Homer picks a day and a time; *Put the version
+    before back later* opens two more fields for Lisa. All of it is also in the activity log.
+  - **Preview links.** `commerce.preview_links`: a store's link to one page's or article's draft (`page_id`) or one installed theme
+    (`install_id`), the token kept only as its SHA-256 (`token_hash`, unique), an expiry the person picks (`PREVIEW_DAY_CHOICES` 1, 7 or 30
+    days, 7 to start with; a check holds it to 30), `created_by`, and `revoked_at`/`revoked_by` (set once). Written only by
+    `src/server/preview-links.ts` (`makePreviewLink()`, `revokePreviewLink()`), at most `PREVIEW_LINKS_PER_TARGET` live links per page or
+    theme; a token is read only by `previewLinkOf()`, which answers a live token of an open store. The token (`pv_` and 32 random bytes in
+    base64url) is shown once, when made, and never again; the list shows when each was made, by whom, until when, and *Revoke*. Made and
+    revoked by those who may change that kind of page (`website:write` for a theme), audited `store.preview_link_made`/`_revoked` (never
+    the token). The link is `/admin/account/share/{token}` (Kaizena Flow's admin host, beside D310's look frame, outside the signed-in
+    layout): a page's **draft**, read per request with `getPageForEdit()` and drawn by `PageDrawing` (never `findPublishedPage()` or any
+    cached read of the published page), or a theme on the store's own pages (the signed-in preview's view, `InstallPreviewView`, shared by
+    both, its page links keeping the token). `noindex, nofollow`, `Referrer-Policy: no-referrer` (the token never leaves in a Referer), no
+    cookie, no tracking, no chat; an expired, revoked or unknown token, or a store that is not open, is a plain 404 (never saying which). The
+    builder's *Share* button (pages and articles once saved) and the theme's page open the same panel (`ShareLinks`).
+  - **Versions of the live look.** `commerce.look_versions` (store, `kind` `design` | `theme_tab` | `colours`, the whole `stores.theme`
+    value after the save, `created_by`, `created_at`), written only by `keepLookVersion()` (`src/server/look-versions.ts`) inside
+    `saveStoreTheme()`'s transaction (Design settings, the builder's Theme tab and saved colours all save through it), never changed (trigger),
+    the newest `LOOK_VERSIONS_KEPT` (50) per store, the same theme twice in a row kept once. Design settings has *Versions*: the list with
+    what made each, who and when, and *Use this version*, which loads it into the theme editor as unsaved changes through the editor's own
+    `load()` (fonts made ready first); nothing is live until Save. The site's own CSS and an install that is not live are not part of it
+    (the CSS has the builder's panel; a theme not live keeps its look in its install).
+  - **AI manager.** `list_scheduled_changes` (read-only, `website:read`: what is scheduled and what failed, per page, header, footer and
+    theme) and `schedule_site_change` (gate `public`, `website:write`, `TOOL_AREAS` website, refused before a yes by what the dialog would
+    refuse: `kind` page, article, header, footer or theme, `at`, optional `back_at`, `at` null cancels). `schedule_article` stays as it is.
+    Preview links have no tool: a token is a key to unpublished work, made by a person's press and shown to them once, never put in a
+    model's answer. Taking a look version back has none either (it only loads an editor).
+  - **Copies and personal data.** `theme_schedules`, `preview_links` and `look_versions` are `never` in `COPY_RULES` (a copy starts with
+    nothing scheduled, shared or remembered). None holds a shopper's data: `NOT_PERSONAL` entries (staff accounts only; a look version is the
+    theme's settings).
+  - **Words.** The admin's words are a new catalogue area, `schedules` (en, nb); the Schedule dialog moves its words there from `blog`.
+  - **Tests.** `commerce.test.ts` (the rules of the three tables and the grown `page_schedules`), unit tests for the pure parts
+    (`page-schedules.test.ts`: the way back's time; `preview-links.test.ts`: tokens and expiries), integration tests
+    (`schedules.int.test.ts`: a page and a header published and put back by the job, a person's later publish left alone, a theme switched
+    and switched back, a premium theme refused, a removed maker failed, one store never reaching another's; `preview-links.int.test.ts`;
+    `look-versions.int.test.ts`), and e2e (`e2e/signed-in/schedules-and-sharing.spec.ts`: a page shared and opened signed out, then revoked;
+    a look version taken back).
+
+  **F as built (2026-10-27).** As above, with these differences and choices.
+  - **The database's rules are tested in `src/db/schedules.test.ts`**, beside G's `src/db/blogs.test.ts` (the same PGlite database every
+    migration is applied to, `createTestDatabase()`), not in `commerce.test.ts` itself.
+  - **A way back keeps the person's draft.** Going back publishes the content from before through `savePage()` and then saves the draft the
+    page had back as its draft when it differs, so after a sale page goes back the live page is the old one and the editor still holds the
+    sale's words (the page reads *changed*). Every step keeps a page version (D305), so nothing is lost either way.
+  - **A plan for a theme shows on both installs.** `themeFactsFor()` gives the planned install its *Goes live* chip and, once it ran, the
+    install that comes back its *Goes back* chip, so the theme before's page (which is not live, so it can be opened) carries *Cancel the
+    schedule*; the live theme's own page still redirects to Design settings.
+  - **The way back of a theme needs no money check of its own**: the theme before was live on the store, so it is free or the store's.
+  - **A preview link that finds nothing** draws the admin's not-found page. The page is read inside a `<Suspense>` (it reads the address
+    and the database, as D310's look frame does), so the answer is streamed and its status may be 200, as D168 notes for any dynamic miss;
+    nothing in it says whether the token was wrong, expired, revoked or its store closed.
+  - **The banner of a shared page** is in the store's main language where the admin has it (nb), else English (`schedules.preview`).
+  - **Not run here:** the e2e spec was written but not run (it needs a build of the app, which this machine's disk could not hold beside the
+    other work); `blogs.spec.ts` was adjusted (the dialog now has a second *Time* field, so its *Time* is found exactly).
 - **G (D341) Blogs in depth.** A blog is a record (`commerce.blogs`: title, address, its listing page, comments setting), the first one
   being today's `/blog`; articles belong to one blog; authors are records (`commerce.blog_authors`: name, picture, short text, link) chosen
   on an article, shown on it and in its JSON-LD; an Atom feed per blog (`/blog/{blog}.atom`, published articles only, a test parses it);

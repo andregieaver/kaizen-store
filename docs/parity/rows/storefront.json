@@ -963,14 +963,14 @@
       "checkedOn": "2026-10-02"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "missing"
     },
     "weight": 2,
-    "gap": "Pages, headers, footers and themes have draft and published only: no publish or unpublish time on `commerce.pages` and no job that publishes content or switches a look by itself (verified 2026-10-25). Scheduling exists elsewhere: A/B tests start by themselves (`experiments.scheduled_start`, `runExperimentJobs()`), campaigns and discount codes have start and end times, broadcasts can be scheduled (D297), and a theme install that follows updates is updated by the five-minute job (D245); none of these is a scheduled page, header, footer or theme change with an automatic revert.",
-    "bucket": "A",
-    "wave": 7,
+    "gap": "Caveats, not gaps: a scheduled change goes live, and a way back runs, within five minutes after its time (the five-minute dispatcher); a theme that costs money the store has not agreed to pay is never scheduled (a person makes it live once, agreeing to its price); a way back leaves a page or theme someone changed in between as it is and says so. Product layouts, A/B test versions and Kaizena Flow's own pages are not scheduled. Shopify's rollouts also run a theme change as an A/B test; Kaizena Flow tests pages, headers and footers with its own A/B tests (D148).",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "A page, header, footer or theme change can be scheduled for a date and time in the store's time zone and goes live by itself from a job, with nobody signed in.",
       "An optional end time puts the previous published version back by itself.",
@@ -979,13 +979,27 @@
     ],
     "evidence": {
       "files": [
-        "src/server/pages.ts",
-        "src/server/experiment-jobs.ts",
-        "src/db/schema.ts"
+        "src/server/page-schedules.ts",
+        "src/server/theme-schedules.ts",
+        "src/lib/page-schedules.ts",
+        "src/components/admin/schedule-dialog.tsx",
+        "src/components/admin/theme-schedule-card.tsx",
+        "src/components/admin/pages-table.tsx",
+        "src/components/admin/site-layouts.tsx",
+        "src/components/admin/theme-library.tsx",
+        "src/app/admin/(gated)/[store]/pages/schedule-actions.ts",
+        "src/app/admin/(gated)/[store]/settings/design/themes/[install]/actions.ts",
+        "src/app/api/cron/cart-reminders/route.ts",
+        "src/server/schedule-tools.ts",
+        "src/db/schema.ts",
+        "supabase/migrations/20261027163722_schedules_and_sharing_sql.sql"
       ],
       "tests": [
-        "src/server/pages.int.test.ts",
-        "src/server/experiments.int.test.ts"
+        "src/server/schedules.int.test.ts",
+        "src/db/schedules.test.ts",
+        "src/lib/page-schedules.test.ts",
+        "src/server/blogs.int.test.ts",
+        "e2e/signed-in/schedules-and-sharing.spec.ts"
       ],
       "untested": false
     },
@@ -993,9 +1007,18 @@
       "D53",
       "D148",
       "D245",
-      "D297"
+      "D297",
+      "D341",
+      "D340"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-27",
+        "from": "missing",
+        "to": "full",
+        "why": "Wave 7 unit F (D340) built it, read in the code and held by tests: a page's, article's, header's or footer's draft is published at a day and time on the store's clock by the five-minute job in the name of who scheduled it (read again then), and with a way back the version before is put back at another (only while the page is still as the schedule left it); an installed theme is made live and the theme before put back the same way (theme_schedules, through switchToInstall()); what waits and what failed is a chip in the pages, articles, headers and footers lists and the theme library, and every leg is in the activity log; a page in a running A/B test is refused at scheduling and when it runs (schedules.int.test.ts, src/db/schedules.test.ts)."
+      }
+    ]
   },
   {
     "id": "storefront.version-history-restore-shareable-preview",
@@ -1009,14 +1032,14 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "partial"
     },
     "weight": 3,
-    "gap": "Built (D305): every save, publish, text edit and CSS edit on the live site keeps a version (`keepVersion()` in `src/server/page-versions.ts`, the newest 50 per page, `VERSIONS_KEPT`, with who and when), listed in the builder's Versions and taken back as unsaved changes, never over the published page; the builder has undo and redo (buttons and keys). Missing: (1) a preview link an outsider opens without signing in (expiring, revocable, noindex): the signed tokens that exist open one replicator job's draft (`replicate-token.ts`, D150) or one page's draft for the AI manager's look for ten minutes (`/admin/account/look/{page}`, D310), and neither is offered to owners to share; (2) versions of the store's own theme settings: a theme's published versions (D241) and the look before an update (`theme_install_updates`, D245) are kept, but each save of the live look in Design settings or the builder's Theme tab is not.",
-    "bucket": "A",
-    "wave": 7,
+    "gap": "Caveats, not gaps: a preview link opens one page's or article's draft, or a store's pages in one installed theme, for at most 30 days (1, 7 or 30, chosen per link; Shopify: 2 days for visitors, 30 for merchants), on Kaizena Flow's admin host at /admin/account/share/{token}; headers, footers and product layouts are shared through a theme rather than on their own. A wrong, expired or revoked token draws the not-found page (streamed, so its status may be 200). The look's versions are the theme's settings; the site's own CSS keeps no versions of its own.",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "Each publish (and each theme save) keeps a revision with author and time, and the last N are listed.",
       "An owner restores a revision as the new draft, never silently over the published page.",
@@ -1031,7 +1054,17 @@
         "src/lib/replicate-token.ts",
         "src/server/page-versions.ts",
         "src/server/pages.ts",
-        "src/server/themes.ts"
+        "src/server/themes.ts",
+        "src/server/preview-links.ts",
+        "src/lib/preview-links.ts",
+        "src/lib/preview-token.ts",
+        "src/components/admin/share-links.tsx",
+        "src/app/admin/account/share/[token]/page.tsx",
+        "src/components/admin/install-preview-view.tsx",
+        "src/server/look-versions.ts",
+        "src/lib/look-versions.ts",
+        "src/components/admin/look-versions-dialog.tsx",
+        "src/components/admin/theme-editor.tsx"
       ],
       "tests": [
         "e2e/signed-in/page-history.spec.ts",
@@ -1039,7 +1072,12 @@
         "src/lib/replicate-token.test.ts",
         "src/server/page-versions.int.test.ts",
         "src/server/pages.int.test.ts",
-        "src/server/themes.int.test.ts"
+        "src/server/themes.int.test.ts",
+        "src/server/preview-links.int.test.ts",
+        "src/lib/preview-links.test.ts",
+        "src/server/look-versions.int.test.ts",
+        "src/db/schedules.test.ts",
+        "e2e/signed-in/schedules-and-sharing.spec.ts"
       ],
       "untested": false
     },
@@ -1050,9 +1088,17 @@
       "D60",
       "D241",
       "D245",
-      "D310"
+      "D310",
+      "D340"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-27",
+        "from": "partial",
+        "to": "full",
+        "why": "Wave 7 unit F (D340) built what was missing, read in the code and held by tests: preview links (preview_links: the token shown once and kept only as its SHA-256, an expiry of 1, 7 or 30 days, revocable, made from the builder's Share and an installed theme's page) open a page's draft or a theme on the store's pages without signing in, noindex and without a Referer, reading the draft per request and never the published page; and each save of the live look in Design settings, the builder's Theme tab and its saved colours keeps a version (look_versions, the newest 50, with who and when), taken back into the theme editor as unsaved changes (preview-links.int.test.ts, look-versions.int.test.ts)."
+      }
+    ]
   },
   {
     "id": "storefront.per-page-seo-fields",
