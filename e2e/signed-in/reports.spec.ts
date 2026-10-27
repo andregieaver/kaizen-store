@@ -36,9 +36,9 @@ test("opens a ready report, saves a changed one, downloads it and deletes it", a
 
   // Refunds cannot be cut by a product: choosing them takes the cut away rather than offering a report that cannot run.
   const builder = page.locator("[data-report-builder]");
-  await builder.getByLabel("Refunds").check();
+  await builder.getByRole("checkbox", { name: "Refunds" }).check();
   await expect(builder.getByRole("combobox", { name: "Cut by", exact: true })).toHaveValue("");
-  await builder.getByLabel("Refunds").uncheck();
+  await builder.getByRole("checkbox", { name: "Refunds" }).uncheck();
 
   // By variant instead, and shown.
   await builder.getByRole("combobox", { name: "Cut by", exact: true }).selectOption("variant");
