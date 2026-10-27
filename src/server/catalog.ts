@@ -35,7 +35,11 @@ export type ProductSummary = {
   id: string;
   handle: string;
   title: string;
-  image: { url: string; alt: string } | null;
+  /**
+   * `url` is the picture a card draws (the library's small copy when there is one); `large` the picture itself beside it and `width`
+   * its own width where the library knows it, so a card offers both by width (D336).
+   */
+  image: { url: string; alt: string; large?: string; width?: number } | null;
   price: PriceView;
   /** True when variants differ in price, so the price shown is a minimum. */
   priceVaries: boolean;
@@ -168,6 +172,9 @@ export async function listProducts(storeId: string, market: Market): Promise<Pro
       coalesce(tl.title, tf.title) as title,
       coalesce(m.thumbnail_url, m.url) as image_url,
       coalesce(nullif(m.alt ->> ${locale}, ''), commerce.media_alt(m.url, ${locale}), '') as image_alt,
+      -- The picture beside its small copy (D336), with its own width where the library knows it, for a card's srcset.
+      case when m.thumbnail_url is not null and m.thumbnail_url <> m.url then m.url end as image_large,
+      (select md.width from commerce.media md where md.url = m.url) as image_width,
       pr.min_amount,
       pr.max_amount,
       pr.currency,
@@ -213,7 +220,7 @@ export async function listProducts(storeId: string, market: Market): Promise<Pro
       id: str(row.id),
       handle: str(row.handle),
       title: str(row.title),
-      image: row.image_url ? { url: str(row.image_url), alt: str(row.image_alt) } : null,
+      image: summaryImage(row),
       // Kept in the country's own currency; shown in the one chosen (D109).
       price:
         discount === null
@@ -421,6 +428,17 @@ export async function variantStockOf(
   );
 }
 
+/** A summary's picture as a row has it (D336): the small copy as `url`, the large beside it when the two differ. */
+function summaryImage(row: Row): ProductSummary["image"] {
+  if (!row.image_url) return null;
+  const image: NonNullable<ProductSummary["image"]> = { url: str(row.image_url), alt: str(row.image_alt) };
+  if (row.image_large) {
+    image.large = str(row.image_large);
+    if (row.image_width !== null && row.image_width !== undefined) image.width = Number(row.image_width);
+  }
+  return image;
+}
+
 export type GridProduct = ProductSummary & { description: string; /** Its own short text, when it has one (else a tile summarises the description). */ excerpt?: string };
 
 /**
@@ -467,6 +485,9 @@ export async function listGridProducts(
       coalesce(nullif(tl.excerpt, ''), tf.excerpt, '') as excerpt,
       coalesce(m.thumbnail_url, m.url) as image_url,
       coalesce(nullif(m.alt ->> ${locale}, ''), commerce.media_alt(m.url, ${locale}), '') as image_alt,
+      -- The picture beside its small copy (D336), with its own width where the library knows it, for a card's srcset.
+      case when m.thumbnail_url is not null and m.thumbnail_url <> m.url then m.url end as image_large,
+      (select md.width from commerce.media md where md.url = m.url) as image_width,
       pr.min_amount,
       pr.max_amount,
       pr.currency,
@@ -517,7 +538,7 @@ export async function listGridProducts(
       title: str(row.title),
       description: str(row.description),
       excerpt: str(row.excerpt),
-      image: row.image_url ? { url: str(row.image_url), alt: str(row.image_alt) } : null,
+      image: summaryImage(row),
       // Kept in the country's own currency; shown in the one chosen (D109).
       price:
         discount === null

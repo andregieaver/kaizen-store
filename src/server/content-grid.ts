@@ -320,7 +320,8 @@ export function productItem(storeSlug: string, marketSlug: string, product: Grid
     href: marketPath(storeSlug, marketSlug, `/p/${product.handle}`),
     title: product.title,
     excerpt: product.excerpt || summarize(product.description, EXCERPT_MAX),
-    image: product.image,
+    // The card's picture and, beside it, the large one by its own width (D336); the tile's own size stays the grid's.
+    image: product.image ? { url: product.image.url, alt: product.image.alt, ...(product.image.large ? { large: product.image.large, largeWidth: product.image.width } : {}) } : null,
     price: { view: product.price, from: product.priceVaries },
     audience: product.audience,
   };

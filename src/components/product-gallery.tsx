@@ -5,7 +5,11 @@ import { createElement, useCallback, useEffect, useRef, useState } from "react";
 
 import { embedUrl } from "@/lib/video-embed";
 
+import { SizedPicture } from "./sized-picture";
 import { onVariantPicture } from "./variant-picture";
+
+/** The main picture's width: the page's whole width on a phone, about half beside the details from Medium. */
+const GALLERY_SIZES = "(min-width: 768px) 50vw, 100vw";
 
 /**
  * A gallery item (D325): its picture (`url`, a video's or model's poster), and for a video or a 3D model its file or YouTube or Vimeo
@@ -159,14 +163,16 @@ export function ProductGallery({
               ) : image.kind === "model" && image.mediaUrl ? (
                 <GalleryModel item={image} title={title} labels={labels.media} />
               ) : (
-                <Image
-                  src={image.url}
+                // The library's small copy beside it by width (D336): a phone fetches the small one.
+                <SizedPicture
+                  url={image.url}
+                  small={image.thumbnailUrl}
+                  sizes={GALLERY_SIZES}
                   alt={image.alt || (i === 0 ? title : "")}
                   width={600}
                   height={600}
                   priority={i === 0}
-                  loading={i === 0 ? undefined : "lazy"}
-                  unoptimized
+                  loading="lazy"
                   draggable={false}
                   className="aspect-square w-full object-cover"
                 />

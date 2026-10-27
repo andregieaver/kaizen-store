@@ -1,4 +1,3 @@
-import Image from "next/image";
 import type { ReactNode } from "react";
 
 import { Inline } from "@/components/inline-text";
@@ -28,6 +27,7 @@ import {
 } from "@/lib/page-content";
 
 import { faqJsonLd } from "@/lib/seo";
+import { fixedSizes } from "@/lib/picture-sizes";
 import { embedUrl } from "@/lib/video-embed";
 
 import { SHAPES, buttonLook } from "./button-look";
@@ -39,6 +39,7 @@ import { BrandsView } from "./brands-view";
 import { GalleryView } from "./gallery-view";
 import { JsonLdScript } from "./json-ld";
 import { RichText } from "./rich-text";
+import { SizedPicture } from "./sized-picture";
 import { SocialLinksView } from "./social-links-view";
 import { TestimonialCards } from "./testimonials-view";
 
@@ -138,13 +139,16 @@ export function PageBlockView({
       // the column, so the picture shrinks to a narrower column or a phone, keeping its shape, and the caption stays under it.
       const size = imageDisplaySize(block);
       if (!block.image || !size) return null;
+      // The library's small copy beside it by width (D336), for a phone or a narrow column.
       const picture = (
-        <Image
-          src={block.image.url}
+        <SizedPicture
+          url={block.image.url}
+          small={block.image.small}
+          sourceWidth={block.image.width}
+          sizes={fixedSizes(size.width)}
           alt={block.image.alt}
           width={size.width}
           height={size.height}
-          unoptimized
           {...(eager ? { loading: "eager" as const, fetchPriority: "high" as const } : {})}
           className={`h-auto max-w-full ${block.shape ? SHAPES[block.shape] : "rounded-lg"}`}
         />

@@ -590,7 +590,8 @@ export type RichTextBlock = PartBase & Bindable & { id: string; type: "richText"
 export type ImageBlock = PartBase & Bindable & {
   id: string;
   type: "image";
-  image: { url: string; width: number; height: number; alt: string } | null;
+  /** `small`: the library's 480 px copy, set when the page is read for the site (`withSmallCopies()`, D336), never saved. */
+  image: { url: string; width: number; height: number; alt: string; small?: string } | null;
   caption: string;
   /** Where the picture leads when pressed (a web address, a page like /about, #anchor, mailto: or tel:); none for a plain picture. */
   href?: string;

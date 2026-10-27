@@ -1,5 +1,6 @@
-import { innerColumns, mapInnerColumns, withChildren, type Background, type PageContent, type RowBackground } from "./page-content";
+import { innerColumns, mapChildBlocks, mapInnerColumns, withChildren, type Background, type PageBlock, type PageContent, type RowBackground } from "./page-content";
 import { mapTexts } from "./page-translation";
+import { SMALL_COPY_WIDTH } from "./picture-sizes";
 
 /**
  * A page's pictures and their alt texts (D89). The site shows a picture in
@@ -69,9 +70,9 @@ export function backgroundImageUrls(content: PageContent): string[] {
 }
 
 /**
- * The page with each background picture's small copy (`image.small`, the library's 480 px one) where the library has one, so a phone
- * is not sent the large file and a blurred picture loads the small one only. Set when the page is read, never saved (the page's
- * schema drops it).
+ * The page with each background picture's and picture component's small copy (`image.small`, the library's 480 px one) where the
+ * library has one, so a phone is not sent the large file (D211, D336) and a blurred picture loads the small one only. Set when the page
+ * is read, never saved (the page's schema drops it).
  */
 export function withSmallCopies(content: PageContent, lookup: (url: string) => string | undefined): PageContent {
   let changed = false;
@@ -82,17 +83,23 @@ export function withSmallCopies(content: PageContent, lookup: (url: string) => s
     changed = true;
     return { ...background, image: { ...background.image, small } };
   };
+  // A picture component's (D336), and a Columns component's columns' backgrounds (D294), at every depth.
+  const fillBlock = (block: PageBlock): PageBlock => {
+    let out = block;
+    if (out.type === "image" && out.image) {
+      const small = lookup(out.image.url);
+      if (small && small !== out.image.url && out.image.small !== small) {
+        changed = true;
+        out = { ...out, image: { ...out.image, small } };
+      }
+    }
+    if (out.type === "columns") out = mapInnerColumns(out, (inner) => ({ ...inner, background: fill(inner.background) }));
+    return out.type === "columns" || out.type === "faq" ? mapChildBlocks(out, fillBlock) : out;
+  };
   const rows = content.rows.map((row) => ({
     ...row,
     background: fill(row.background),
-    columns: row.columns.map((column) => ({
-      ...column,
-      background: fill(column.background),
-      // A Columns component's columns (D294) are given theirs too.
-      blocks: column.blocks.some((b) => b.type === "columns")
-        ? column.blocks.map((b) => mapInnerColumns(b, (inner) => ({ ...inner, background: fill(inner.background) })))
-        : column.blocks,
-    })),
+    columns: row.columns.map((column) => ({ ...column, background: fill(column.background), blocks: column.blocks.map(fillBlock) })),
   }));
   return changed ? { ...content, rows } : content;
 }
@@ -110,5 +117,4 @@ export function backgroundSources(image: { url: string; width: number; small?: s
   if (blur >= SMALL_ENOUGH_BLUR) return { src: small };
   return { src: image.url, srcSet: `${small} ${SMALL_COPY_WIDTH}w, ${image.url} ${image.width}w` };
 }
-/** The width of the library's small copy of a picture, made in the browser when it is uploaded. */
-export const SMALL_COPY_WIDTH = 480;
+export { SMALL_COPY_WIDTH };

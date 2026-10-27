@@ -160,6 +160,35 @@ cannot be followed from one day to the next, and that adding to the cart lets th
   trusted. The check and the count are two statements, so a burst can overshoot a limit slightly.
 - Rows older than 25 months are deleted by the daily job.
 
+## Speed (D336, wave 7 unit B, `docs/wave-7-storefront.md` B)
+
+How fast a store's pages are for the people who open them, measured in their browsers (field data), never a score from nothing.
+
+- **What is measured.** The four Core Web Vitals as Google defines them, by the `web-vitals` library: Largest Contentful Paint
+  (LCP, milliseconds), Interaction to Next Paint (INP, milliseconds; only for a page load where the visitor pressed or typed),
+  Cumulative Layout Shift (CLS, unitless, kept as thousandths) and Time to First Byte (TTFB, milliseconds). One sample per page
+  load, sent once when the page is hidden (`SpeedBeacon`, `src/lib/speed.ts`), with the page's **kind** only (`speedPlace()`:
+  front page, product, category or tag, list (products, search, blog), other page) and the **screen** (phone below 768 CSS
+  pixels, else computer). Never the path, a handle, a query, an id or a token.
+- **When.** Only while the store counts visits (the same switch, the same promises: no cookie, no storage, nothing sent with
+  Global Privacy Control or Do Not Track), never on the pay routes (cart, checkout, order: the beacon is not on those pages,
+  `OffPayRoutes`), never from a robot (`isBot()`), only from the store's own pages (`fromStoresOwnPage()`). No IP address, user
+  agent or visitor id is kept: a sample is a row of `commerce.speed_samples` (store, store day, kind, screen, the four
+  figures).
+- **Limits.** `SPEED_SAMPLES_PER_STORE_DAY` (10,000) samples a store day, counted before the row is written (`chat_usage`
+  bucket `speed`); values outside what a browser can report (`speedProblem()`) are dropped. The count bounds a script; it does
+  not prevent one. Samples older than 90 days are deleted by the daily job.
+- **The figure.** For each kind and screen, the **75th percentile** of each metric over the last 28 store days (Google's choice:
+  three in four page loads were as fast or faster), worked out in code from the samples (`percentile75()`, nearest rank). With
+  fewer than `MIN_SPEED_SAMPLES` (20) samples of a metric the report says how many there are and that it needs 20, never a
+  figure. A metric's rating is Google's: good, needs improvement or poor (`rateMetric()`: LCP 2.5 s and 4 s, INP 200 ms and
+  500 ms, CLS 0.1 and 0.25, TTFB 0.8 s and 1.8 s).
+- **What to fix.** Each metric rated other than good comes with what usually causes it in a Kaizena Flow store and where to
+  change it (`speedAdvice()`, written in code, never a model's): a heavy first picture, fonts, own code, a slow first answer.
+- **What it cannot measure, said on the page.** Pages nobody opened (or fewer than 20), the pay routes, visitors who ask not to
+  be counted, stores with visit counting off (the report says to switch it on and that nothing is collected before), and lab
+  scores (a test run of a page by a robot), which are not run (wave 7 decision 1).
+
 ## Pages
 
 `/admin/{store}/analytics` and below, one new store section **Analytics** (`src/lib/store-nav.ts`), pages in `ADMIN_PAGES`:

@@ -1,10 +1,9 @@
-import Image from "next/image";
 import type { CSSProperties, ReactNode } from "react";
 
 import { audienceClass } from "@/lib/b2b";
 import { snapAttribute } from "@/lib/carousel-settings";
 import { noticesFor, type CampaignNotices } from "@/lib/campaign-notices";
-import type { GridData } from "@/lib/content-grid";
+import type { GridData, GridItem } from "@/lib/content-grid";
 import { fontClass } from "@/lib/fonts";
 import { familyClassOf, textRoles } from "@/lib/typography";
 import { t } from "@/lib/i18n";
@@ -12,13 +11,15 @@ import { inlinePlain } from "@/lib/inline-text";
 import { sourceTraits } from "@/lib/grid-source";
 import { contentSides, frameStyle, gridImageShape, type ContentGridBlock, type Sides } from "@/lib/page-content";
 import { gridListStyle } from "@/lib/part-css";
-import { carouselAnywhere } from "@/lib/responsive";
+import { gridSizes } from "@/lib/picture-sizes";
+import { carouselAnywhere, valueAt } from "@/lib/responsive";
 
 import { Carousel } from "./carousel";
 import { Inline } from "./inline-text";
 import { SHAPES, buttonLook } from "./button-look";
 import { CampaignBadge } from "./campaign-notice";
 import { Price } from "./price";
+import { SizedPicture } from "./sized-picture";
 
 /**
  * A content grid's tiles (D51), from items looked up on the server: on the
@@ -78,6 +79,8 @@ export function ContentGridView({
   const carousel = carouselAnywhere(block);
   // Its columns and gap by screen size are custom properties its rules set (`gridListStyle()`, drawn with the row's or the listing's).
   const listStyle = gridListStyle(block);
+  // How wide a tile is at each screen size, so its picture is fetched at that size (D336).
+  const sizes = gridSizes({ xl: valueAt(block, "columns", "xl") ?? block.columns, lg: valueAt(block, "columns", "lg"), md: valueAt(block, "columns", "md"), sm: valueAt(block, "columns", "sm") });
   const list = (
     <ul
       data-carousel-track={carousel ? "" : undefined}
@@ -112,6 +115,7 @@ export function ContentGridView({
               only={item.href !== "" && !(block.show.heading && item.title) && !block.show.button}
               fallbackName={plain(item.title || item.buttonLabel || label)}
               load={eager && index < EAGER_TILES ? (index === 0 ? "first" : "eager") : "lazy"}
+              sizes={sizes}
             />
           )}
           <TileBody padding={tile?.contentPadding}>
@@ -233,10 +237,12 @@ function TileImage({
   only,
   fallbackName,
   load,
+  sizes,
 }: {
   load: TileLoad;
+  sizes: string;
   item: GridData["items"][number];
-  image: { url: string; alt: string; width?: number; height?: number };
+  image: NonNullable<GridItem["image"]>;
   shape: ReturnType<typeof gridImageShape>;
   isProduct: boolean;
   notices?: CampaignNotices;
@@ -246,7 +252,7 @@ function TileImage({
 }) {
   const picture =
     item.href === "" ? (
-      <TilePicture image={image} alt={image.alt} shape={shape} load={load} />
+      <TilePicture image={image} alt={image.alt} shape={shape} load={load} sizes={sizes} />
     ) : only ? (
       <a
         href={item.href}
@@ -255,12 +261,12 @@ function TileImage({
         className="relative z-[2] block focus-visible:outline-2"
         {...externalAttributes(item)}
       >
-        <TilePicture image={image} alt={image.alt} shape={shape} load={load} />
+        <TilePicture image={image} alt={image.alt} shape={shape} load={load} sizes={sizes} />
       </a>
     ) : (
       <a href={item.href} tabIndex={-1} aria-hidden className="relative z-[2] block" {...externalAttributes(item)}>
         {isProduct && <CampaignBadge notices={noticesFor(notices, item.id)} m={m} />}
-        <TilePicture image={image} alt="" shape={shape} load={load} />
+        <TilePicture image={image} alt="" shape={shape} load={load} sizes={sizes} />
       </a>
     );
   return item.badge ? (
@@ -282,19 +288,23 @@ function TilePicture({
   alt,
   shape,
   load,
+  sizes,
 }: {
-  image: { url: string; width?: number; height?: number };
+  image: NonNullable<GridItem["image"]>;
   alt: string;
   shape: ReturnType<typeof gridImageShape>;
   load: TileLoad;
+  sizes: string;
 }) {
   return (
-    <Image
-      src={image.url}
+    <SizedPicture
+      url={image.large ?? image.url}
+      small={image.large ? image.url : null}
+      sourceWidth={image.largeWidth}
+      sizes={sizes}
       alt={alt}
       width={image.width ?? 800}
       height={image.height ?? 600}
-      unoptimized
       loading={load === "lazy" ? "lazy" : "eager"}
       fetchPriority={load === "first" ? "high" : undefined}
       className={`h-auto w-full bg-surface ${

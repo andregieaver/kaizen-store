@@ -46,3 +46,6 @@ next-env.d.ts
 /playwright-report/
 /e2e/.auth/
 /blob-report/
+
+# Agents' worktrees (each a git checkout of its own)
+/.claude/worktrees/

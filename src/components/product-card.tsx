@@ -1,14 +1,18 @@
-import Image from "next/image";
 import Link from "next/link";
 
 import { CampaignBadge } from "@/components/campaign-notice";
 import { Price } from "@/components/price";
+import { SizedPicture } from "@/components/sized-picture";
 import { WishlistHeart } from "@/components/wishlist-heart";
 import { audienceClass } from "@/lib/b2b";
 import { noticesFor, type CampaignNotices } from "@/lib/campaign-notices";
 import type { Messages } from "@/lib/i18n";
+import { gridSizes } from "@/lib/picture-sizes";
 import type { Market } from "@/lib/markets";
 import type { ProductSummary } from "@/server/catalog";
+
+/** A card's width in the listing (`ProductListing`: two columns, four from Medium). */
+const CARD_SIZES = gridSizes({ xl: 4, md: 4, sm: 2 });
 
 export function ProductCard({
   product,
@@ -48,12 +52,15 @@ export function ProductCard({
       />
       <CampaignBadge notices={noticesFor(notices, product.id)} m={m} />
       {product.image && (
-        <Image
-          src={product.image.url}
+        // The small copy and the picture by width (D336), at the listing's two columns on a phone and four from Medium.
+        <SizedPicture
+          url={product.image.large ?? product.image.url}
+          small={product.image.large ? product.image.url : null}
+          sourceWidth={product.image.width}
+          sizes={CARD_SIZES}
           alt={product.image.alt}
           width={400}
           height={400}
-          unoptimized
           className="product-card-image w-full rounded-lg bg-surface object-cover"
         />
       )}
