@@ -28,6 +28,7 @@ export const ROLE_GROUPS: readonly { name: string; roles: readonly PageRole[] }[
   { name: "Customer account", roles: ["account", "sign_in", "wishlist", "subscription", "deliveries"] },
   { name: "Catalogue", roles: ["category", "tag"] },
   { name: "Information", roles: ["cookies"] },
+  { name: "Private mode", roles: ["private"] },
 ];
 
 export const ROLE_COPY: Record<
@@ -135,6 +136,13 @@ export const ROLE_COPY: Record<
     hint: "What shoppers see on every tag page (/tag/…): the standard page, or one of your published pages with the Tag products component, which draws the tag the shopper is in. A content grid that recommends products on this page recommends around the tag.",
     slug: "tag-page",
   },
+  private: {
+    name: "Private mode page",
+    address: "",
+    standard: "The standard password page",
+    hint: "What visitors see while your store is private (Settings, Private mode): the standard page with your store's name and the password field, or one of your published pages with the Password component. Keep the component: it is how visitors with the password get in.",
+    slug: "private-page",
+  },
   cookies: {
     name: "Cookies page",
     address: "/cookies",
@@ -225,6 +233,9 @@ export function starterPage(role: PageRole, m: Messages, id: NewId, home: string
       return page(m.deliveries.title, [row(part("deliveries"))]);
     case "cookies":
       return page(m.cookies, [row(part("cookies"))]);
+    // The part draws the store's name, a line and the password field (D339).
+    case "private":
+      return page(m.privateStore.title, [row(part("private"))]);
     // The part draws the category's or tag's own name as the page's heading, as the standard page does.
     case "category":
       return page(m.catalogue.category, [row(part("category"))]);

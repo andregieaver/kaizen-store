@@ -42,6 +42,7 @@ import {
 import { SubscriptionSection } from "@/app/s/[store]/[market]/subscription/[token]/subscription-section";
 import { TermListing } from "@/app/s/[store]/[market]/term-listing";
 import { WishlistSection } from "@/app/s/[store]/[market]/wishlist/wishlist-section";
+import { PrivateSection } from "@/app/s/[store]/private/[market]/private-section";
 import { t } from "@/lib/i18n";
 import type { StorePartBlock } from "@/lib/page-content";
 import { requirementMet } from "@/lib/store-features";
@@ -164,6 +165,9 @@ async function Part({
       return <DeliveriesSection store={store} market={market} query={query} />;
     case "cookies":
       return <CookiesSection store={store} market={market} />;
+    // A private store's password (D339): only on its landing page.
+    case "private":
+      return <PrivateSection store={store} market={market} query={query} />;
     // A category's or tag's own listing (D140); the address carries the term's slug.
     case "category":
     case "tag":

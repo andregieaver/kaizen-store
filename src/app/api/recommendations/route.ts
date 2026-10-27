@@ -3,6 +3,7 @@ import { connection } from "next/server";
 import { recommendRequest } from "@/lib/recommendations-schema";
 import { visitorKey } from "@/server/chat-agent";
 import { fail, sameSite } from "@/server/chat-route";
+import { lockedOut } from "@/server/private-mode";
 import { recommendFor } from "@/server/recommend";
 import { takeRecommendRequest } from "@/server/recommend-events";
 import { resolveSellingShop } from "@/server/shop";
@@ -28,7 +29,8 @@ export async function POST(request: Request) {
   if (!parsed.success) return fail(400, "That request could not be read.");
   // A website (D178 step 5: the online shop off) recommends nothing: the store is not there for this.
   const shop = await resolveSellingShop(parsed.data.store, parsed.data.market);
-  if (!shop) return fail(404, "No such store.");
+  // A private store (D339) recommends only to a visitor let in.
+  if (!shop || (await lockedOut(shop.store))) return fail(404, "No such store.");
   const address = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || request.headers.get("x-real-ip") || "unknown";
   if (!(await takeRecommendRequest(shop.store.id, visitorKey(address), "ask"))) return fail(429, "Too many requests. Try again in a moment.");
   try {

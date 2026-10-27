@@ -8,6 +8,7 @@ import { featureOn } from "@/lib/store-features";
 
 import { audit, type Membership } from "./auth";
 import { isDemoProduct } from "./demo-content";
+import { openToEveryone } from "./private-mode";
 import { setFeatures, type SetFeaturesResult } from "./store-features";
 import { getPaymentSettings, type SaveResult } from "./settings";
 import type { Store, StoreDetails } from "./stores";
@@ -183,6 +184,8 @@ export async function completeSetup({ account, store }: Membership): Promise<Sav
     where id = ${store.id}::uuid
   `);
   await audit(account.id, store.id, "store.setup_completed");
+  // Opening makes the store public (D339, decision 5): it was private while it was being set up.
+  await openToEveryone(account.id, store);
   return { ok: true };
 }
 

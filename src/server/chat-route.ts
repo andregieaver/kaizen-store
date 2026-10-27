@@ -6,6 +6,7 @@ import { t } from "@/lib/i18n";
 
 import { aiFor, type AiConnection } from "./ai";
 import { getChatAgent, takeChatTurn, visitorKey, type ChatAgent, type ChatSite } from "./chat-agent";
+import { lockedOut } from "./private-mode";
 import { resolveShop } from "./shop";
 import { ensureDesk, type DeskSettings } from "./support";
 import { visitorDesk } from "./support-desk";
@@ -43,6 +44,8 @@ export async function chatPlace(raw: unknown): Promise<ChatPlace | Response> {
   if (!where.data.store) return { site: { kind: "kaizen" }, storeId: null, lang: "en", locale: "en-GB", market: null };
   const shop = await resolveShop(where.data.store, where.data.market ?? "");
   if (!shop) return fail(404, "No such store.");
+  // A private store's chat (D339) answers only a visitor let in, as its pages do.
+  if (await lockedOut(shop.store)) return fail(404, "No such store.");
   return { site: { kind: "store", store: shop.store, market: shop.market }, storeId: shop.store.id, lang: shop.market.lang, locale: shop.market.locale, market: shop.market.slug };
 }
 

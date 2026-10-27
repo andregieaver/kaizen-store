@@ -9,6 +9,7 @@ export async function CookiesSection({ store, market }: { store: Store; market: 
   const { cookies, categories } = await siteCookies(store.id, store.tracking, liveCustomCode(store.customCode), {
     buyers: store.audience === "both",
     colorMode: store.theme.settings.visitorSwitch,
+    privateStore: store.privateMode,
   });
   return <CookiePolicy lang={market.lang} cookies={cookies} categories={categories} visitCounting={store.visitCounting} />;
 }

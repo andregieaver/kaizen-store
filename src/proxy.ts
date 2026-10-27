@@ -8,7 +8,9 @@ import { storeDomain, storeHosts } from "@/lib/paths";
 import { siteUrl } from "@/lib/site";
 import { holdingFor } from "@/server/holding";
 import { recordNotFound } from "@/server/not-found";
-import { storeRequestAnswer } from "@/server/redirect-resolve";
+import { unlockCookieName, unlocks } from "@/lib/unlock-pass";
+import { unlockSecret } from "@/server/private-secret";
+import { privateGate, storeRequestAnswer } from "@/server/redirect-resolve";
 import { runningExperiments, storeIdOfSlug } from "@/server/experiments";
 
 /**
@@ -26,6 +28,10 @@ import { runningExperiments, storeIdOfSlug } from "@/server/experiments";
  * 3. A/B tests (D148, docs/ab-testing.md): sends a visitor who was given another version of a tested page to that version's page. It runs only for
  *    requests that carry the `kaizen_ab` cookie, which only a browser that accepted statistics cookies has; the tests are read only then. What it does
  *    is the pure decision in `variantPath()`, on the address as served (after job 1's rewrite).
+ *
+ * 5. Private stores (D339, `docs/wave-7-storefront.md` E): a page request of a private store from a visitor without the unlock pass (the cookie
+ *    `kaizen_unlock_{storeId}`, checked by its signature, `unlocks()`) is served the store's landing page instead (`privateGate()`, read from the
+ *    same few-second facts), marked `noindex` and never cached; the landing page itself and the pages of what was already sold stay open.
  *
  * 4. Held domains (D317 8): a host that is no store's and not Kaizena Flow's own may be a domain someone holds here with no store using it; it
  *    answers with its holding page or the holder's redirect (`holdingFor()`, read at most every 30 seconds a host), never a deployment.
@@ -83,6 +89,22 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
     return NextResponse.rewrite(url);
   };
   const plain = () => (served === request.nextUrl.pathname ? NextResponse.next() : rewrite(served));
+  // A private store (D339): a request without a good pass is shown the landing page, never the page asked (job 5).
+  try {
+    const gate = await privateGate(served, hostStore);
+    if (gate && !unlocks(unlockSecret(), request.cookies.get(unlockCookieName(gate.storeId))?.value, { id: gate.storeId, version: gate.version })) {
+      const url = request.nextUrl.clone();
+      url.pathname = gate.landing;
+      url.search = `?to=${encodeURIComponent(`${request.nextUrl.pathname}${request.nextUrl.search}`)}`;
+      const response = NextResponse.rewrite(url);
+      response.headers.set("X-Robots-Tag", "noindex, nofollow");
+      response.headers.set("Cache-Control", "private, no-store");
+      return response;
+    }
+  } catch (error) {
+    // As the address's decisions do, a store's facts that cannot be read leave the request alone: every store's pages stay up.
+    console.error("[private] proxy", error);
+  }
   if (!request.cookies.has("kaizen_ab")) return plain();
   try {
     const request_ = parseStoreRequest(served, hostStore);

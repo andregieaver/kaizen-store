@@ -10,11 +10,11 @@ D152 (the store analytics cockpit) and D153 (the EU withdrawal function and the 
 
 <!-- parity:generated:start since -->
 
-- **Headline now 77.8%** (first report 59.5%), **must-have 83.8%** (first report 69.1%), over 202 core rows (first report 232).
-- Where the change comes from: +18.0 points from the 104 rating moves on core rows recorded below, and +0.3 points because the re-read changed which rows count as core (the tracker has 232 rows, the first report 232 core ones).
+- **Headline now 77.9%** (first report 59.5%), **must-have 83.8%** (first report 69.1%), over 202 core rows (first report 232).
+- Where the change comes from: +18.2 points from the 105 rating moves on core rows recorded below, and +0.3 points because the re-read changed which rows count as core (the tracker has 232 rows, the first report 232 core ones).
 - 231 of 232 rows have their Shopify side read from a page; the others are listed under evidence debt.
 
-Rated higher (89):
+Rated higher (90):
 
 - AI or rule-based customer segmentation (AI): missing to partial. D296 (wave 5 unit B): saved rule-based segments over customers and subscribers, counted live with a member list, and customer tags; read segments.ts and ran segments.test.ts, segments.int.test.ts (PGlite and integration, passed).
 - AI-written marketing email (AI): missing to partial. D297: Write with AI in the broadcast editor suggests the email's words through the claims filter, as a suggestion only; it does not yet read the store's products or campaigns.
@@ -105,6 +105,7 @@ Rated higher (89):
 - Mobile-responsive storefront, per-device editing (Storefront): partial to full. D179 (docs/responsive-editing.md, phases 1 to 4) shipped after the last re-read.
 - Page speed: CDN, image optimisation, report (Storefront): partial to full. Wave 7 unit B (D336): product cards, content grid tiles, picture components and the product gallery offer the library's two files (WebP or AVIF from upload, 480 and up to 1600 px) by width with sizes from the columns (SizedPicture, picture…
 - URL redirect manager (Storefront): partial to full. D168 (wave 2, second run, docs/wave-2-redirects.md).
+- Storefront password or pre-launch page (Storefront): partial to full. Wave 7 unit E (D339): an owner makes the store private at Settings, Private mode (audited as store.private_mode), with a password kept as a scrypt hash (store.private_password); every page request of a private store from a visitor without…
 
 Rated lower (24):
 
@@ -139,7 +140,7 @@ Rated lower (24):
 
 <!-- parity:generated:start summary -->
 
-Kaizena Flow has **77.8%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 202 core features weighted by importance to an EU small or mid-size merchant, and **83.8%** on the must-haves (the 83 features with weight 4 or 5). The unweighted figures are 75.2% overall and 83.7% for must-haves. Counting app-only features gives 77.1%; counting Plus-only as well gives 76.5%. Kaizena Flow is strongest on catalogue and products (90.7%) and weakest on platform, extensibility and operations (54.7%), ai and automation (67.9%), checkout and payments (69.2%). Of the 202 core features, 115 are full, 74 partial and 13 missing, so half-built features, not absent ones, are the main shape of the gap.
+Kaizena Flow has **77.9%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 202 core features weighted by importance to an EU small or mid-size merchant, and **83.8%** on the must-haves (the 83 features with weight 4 or 5). The unweighted figures are 75.5% overall and 83.7% for must-haves. Counting app-only features gives 77.2%; counting Plus-only as well gives 76.7%. Kaizena Flow is strongest on catalogue and products (90.7%) and weakest on platform, extensibility and operations (54.7%), ai and automation (67.9%), checkout and payments (69.2%). Of the 202 core features, 116 are full, 73 partial and 13 missing, so half-built features, not absent ones, are the main shape of the gap.
 
 <!-- parity:generated:end summary -->
 
@@ -149,10 +150,10 @@ The method is simple: a full match scores 1, a partial match 0.5, a missing feat
 
 | Measure | Features | Weighted parity | Unweighted parity | Full / partial / missing |
 | --- | --- | --- | --- | --- |
-| Headline: core (Shopify native, Basic to Advanced) | 202 | **77.8%** | 75.2% | 115 / 74 / 13 |
+| Headline: core (Shopify native, Basic to Advanced) | 202 | **77.9%** | 75.5% | 116 / 73 / 13 |
 | Must-have (core, weight 4 or 5) | 83 | **83.8%** | 83.7% | 56 / 27 / 0 |
-| Core plus app-only features | 226 | 77.1% | 74.8% | 126 / 86 / 14 |
-| Everything, including Plus-only | 232 | 76.5% | 73.7% | 127 / 88 / 17 |
+| Core plus app-only features | 226 | 77.2% | 75.0% | 127 / 85 / 14 |
+| Everything, including Plus-only | 232 | 76.7% | 73.9% | 128 / 87 / 17 |
 
 <!-- parity:generated:end headline -->
 
@@ -165,7 +166,7 @@ Counts are core features only. Weighted parity uses weights 1 to 5; must-have is
 | Domain | Core features | Full | Partial | Missing | Weighted parity | Must-have features | Must-have parity |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | Catalogue and products | 26 | 22 | 3 | 1 | 90.7% | 8 | 92.6% |
-| Storefront, themes and content | 32 | 24 | 7 | 1 | 89.8% | 15 | 100.0% |
+| Storefront, themes and content | 32 | 25 | 6 | 1 | 90.7% | 15 | 100.0% |
 | Checkout and payments | 17 | 7 | 10 | 0 | 69.2% | 8 | 62.9% |
 | Orders, shipping, fulfilment and returns | 28 | 16 | 12 | 0 | 80.5% | 14 | 86.1% |
 | Customers, marketing and loyalty | 17 | 8 | 8 | 1 | 73.7% | 8 | 76.5% |
@@ -173,7 +174,7 @@ Counts are core features only. Weighted parity uses weights 1 to 5; must-have is
 | International, compliance and trust | 16 | 10 | 6 | 0 | 77.7% | 10 | 70.2% |
 | Platform, extensibility and operations | 20 | 4 | 12 | 4 | 54.7% | 7 | 72.4% |
 | AI and automation | 22 | 9 | 10 | 3 | 67.9% | 2 | 100.0% |
-| **Total** | **202** | **115** | **74** | **13** | **77.8%** | **83** | **83.8%** |
+| **Total** | **202** | **116** | **73** | **13** | **77.9%** | **83** | **83.8%** |
 
 <!-- parity:generated:end domains -->
 
@@ -185,7 +186,7 @@ A row is Full only when it lists code and tests that exist (or says it is untest
 
 | Evidence | Rows |
 | --- | ---: |
-| Full, with tests | 121 |
+| Full, with tests | 122 |
 | Full, untested (debt, not hidden) | 6 |
 | Shopify side not read from a page | 1 |
 | Rows in the tracker | 232 |
@@ -194,7 +195,7 @@ Untested Full rows: `ai.assistant-voice-mode`, `customers.abandoned-checkout-rec
 
 | Bucket | What it means | Rows not Full | Core rows | Core headline points lacking |
 | --- | --- | ---: | ---: | ---: |
-| A | Build in-house | 64 | 53 | 13.2 |
+| A | Build in-house | 63 | 52 | 13.1 |
 | B | Build, live only with a third party | 16 | 14 | 3.7 |
 | C | Strategy decision first | 11 | 8 | 1.9 |
 | D | Not reachable by code | 14 | 12 | 3.4 |
@@ -207,17 +208,17 @@ The waves are those of `docs/parity-plan.md` section 3. This table is produced f
 
 <!-- parity:generated:start projection -->
 
-Now: **77.8%** core, 83.8% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 16 rows (12 core) have no wave yet and are not in them.
+Now: **77.9%** core, 83.8% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 16 rows (12 core) have no wave yet and are not in them.
 
 | Wave | Scope | Rows (core) | Core if every row of waves 1 to N is Full | Must-have | Adds (points) | Core if only bucket A rows are | Must-have |
 | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | Compliance and money | 10 (7) | 79.9% | 87.3% | +2.1 | 79.3% | 86.2% |
-| 2 | Data in and out | 3 (1) | 80.1% | 87.3% | +0.2 | 79.5% | 86.2% |
-| 3 | Inventory and orders | 14 (13) | 83.4% | 89.7% | +3.3 | 81.0% | 87.5% |
-| 4 | Payments | 7 (6) | 84.9% | 91.4% | +1.5 | 81.4% | 87.5% |
-| 5 | Customers and marketing | 19 (16) | 89.0% | 95.1% | +4.2 | 84.7% | 90.6% |
-| 6 | Catalogue | 0 (0) | 89.0% | 95.1% | +0.0 | 84.7% | 90.6% |
-| 7 | Storefront and international | 7 (6) | 90.4% | 95.1% | +1.4 | 85.9% | 90.6% |
+| 1 | Compliance and money | 10 (7) | 80.0% | 87.3% | +2.1 | 79.4% | 86.2% |
+| 2 | Data in and out | 3 (1) | 80.3% | 87.3% | +0.2 | 79.7% | 86.2% |
+| 3 | Inventory and orders | 14 (13) | 83.5% | 89.7% | +3.3 | 81.2% | 87.5% |
+| 4 | Payments | 7 (6) | 85.0% | 91.4% | +1.5 | 81.5% | 87.5% |
+| 5 | Customers and marketing | 19 (16) | 89.2% | 95.1% | +4.2 | 84.9% | 90.6% |
+| 6 | Catalogue | 0 (0) | 89.2% | 95.1% | +0.0 | 84.9% | 90.6% |
+| 7 | Storefront and international | 6 (5) | 90.4% | 95.1% | +1.2 | 85.9% | 90.6% |
 | 8 | Analytics and AI | 17 (17) | 94.3% | 95.8% | +3.9 | 89.6% | 91.3% |
 | 9 | Platform and extensibility | 12 (9) | 96.6% | 96.9% | +2.3 | 91.0% | 91.8% |
 
@@ -379,7 +380,7 @@ Legend. **Shopify**: Native = included on Basic to Advanced and scored in the he
 | Custom data rendered in the theme | Native. [page](https://help.shopify.com/en/manual/custom-data/metafields/displaying-metafields-on-your-online-store) | Full | 3 |  | Evidence: `src/lib/custom-fields.ts`, `src/server/custom-fields.ts`, `src/lib/field-binding.ts` and 5 more; 7 test files; D118, D119, D120. |
 | Cookie consent banner and log | Native. [page](https://help.shopify.com/en/manual/privacy-and-security/privacy/customer-privacy-settings/privacy-settings) | Full | 5 |  | Caveat: the Consent Mode v2 signals sent by `consent-manager.tsx` are read from the code and held by no test. Merged on 2026-10-26 (README rule 8): `international.cookie-consent-banner-and-api` was the same Shopify feature (rated full); its criteria and evidence are here. Evidence: `src/lib/cookie-consent.ts`, `src/server/consents.ts`, `src/lib/cookie-scan.ts` and 6 more; 6 test files; D58, D61. |
 | AI store and page building | Native. [page](https://www.shopify.com/editions/winter2026) | Partial (was full) | 2 | A, wave 8 | Built since the last read (D308 to D310): the AI manager builds and edits page drafts (`build_page`, `edit_page`; built after the answer by `runPageJobs()`, `publish_page` gated), makes menus of the store's own links only (`save_menu`, gated while a menu is shown), chooses the standard header's and footer's menus and logo (`set_header_footer`, gated), adds, previews and makes a theme or preset live (`add_theme`, `try_theme`, `make_theme_live`, gated, the charge kept with the approval), sets the store's details, countries, languages, currencies and shipping (setup tools, at once while the store is being set up), and looks at what it built (`look_at_page`, `look_at_store`); the page studio (D92), the replicator (D150) and a theme's starting content (D275) remain. Since D330 criterion 1 holds: `design_look` designs a look of the store's own from a description (a few brand colours, fonts and Design settings' named choices, both palettes worked out by `designedTheme()` and refused under 4.5:1 by `themeWarnings()`), adds it to the theme library not live, and it reaches visitors only through the gated `make_theme_live`. Still short: (1) no custom header or footer layout from AI, only the standard one's menus and logo (criterion 2); (2) no single flow from one description to theme, front page, pages and menus as drafts: the owner, or a plan the owner approves (D309), drives it tool by tool. Code: `src/server/page-ai.ts`, `src/lib/page-ai.ts`. |
-| Storefront password or pre-launch page | Native. [page](https://help.shopify.com/en/manual/online-store/themes/password-page) | Partial (was missing) | 2 | A, wave 7 | A store whose setup is not finished (or with `seo.hidden`) is noindexed and left out of sitemaps, llms.txt and feeds, but anyone with the address can view it; a suspended or closed store is a 404 (D171) and a store with its shop off is a website (D178), neither a private mode. No password, no coming-soon page built in the builder, no unlock cookie, and no way to put an open store back in private mode (verified 2026-10-25: no such column, setting or route). Code: `src/server/stores.ts`, `src/server/seo.ts`. |
+| Storefront password or pre-launch page | Native. [page](https://help.shopify.com/en/manual/online-store/themes/password-page) | Full (was partial) | 2 |  | Evidence: `src/app/admin/(gated)/[store]/settings/private/page.tsx`, `src/app/api/private/enter/route.ts`, `src/app/api/private/preview/route.ts` and 16 more; 7 test files; D21, D171, D178, D339. |
 | Accessibility and theme quality guarantees | Native. [page](https://www.shopify.com/partners/blog/theme-store-accessibility-requirements) | Partial | 3 | D, no wave yet | All four criteria are built and tested; Partial because the independent audit is bucket D and the checkout's own markup and Stripe's form are not scanned. `e2e/a11y.spec.ts` (axe up to `wcag22aa`, light and dark, serious and critical fail) covers the signed-out pages CI reaches, and since PSI ACC-01 `e2e/signed-in/a11y.spec.ts` scans the owner's and platform admin's most-used pages and the skip link; the builder's Checks tab (`src/lib/page-a11y.ts`: alt text, empty links and buttons, heading order, contrast with opacity, placeholders, translations) links each issue to its block; `savePage()` asks before publishing with a blocking issue and records the choice (`page.published_with_issues`); the statement is generated from facts the site holds and flagged for review. Missing: (1) the independent audit (bucket D); (2) the checkout page itself: the demo store takes no payments, so `a11y.spec.ts`'s checkout test follows the redirect to the cart and scans that, and `csp.spec.ts` reads headers only, so the address, delivery choice, terms tick box and pay button are scanned by nobody, nor is Stripe's form, and the manual run is recorded nowhere (docs/pci.md); (3) the checker reads a page's own content only (owner CSS and a picture behind text are not read) and does not notice a translation made stale by a later edit. Code: `src/lib/theme.ts`, `src/lib/alt-text.ts`. |
 
 <!-- parity:generated:end detail-storefront -->

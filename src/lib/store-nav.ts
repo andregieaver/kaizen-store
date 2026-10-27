@@ -271,6 +271,7 @@ export const STORE_SECTIONS: StoreSection[] = [
         items: [
           item("/settings/navigation", "Header and footer", "The store's logos, icon, business details and which menus its standard header and footer show."),
           item("/settings/seo", "SEO & Reach", "How search engines and AI crawlers see the store."),
+          item("/settings/private", "Private mode", "Keep the store behind a landing page and a password while it is not ready, and preview it as staff."),
           item("/settings/cookies", "Cookies and tracking", "The cookies the store sets, its tracking tools and consents."),
           item("/settings/accessibility", "Accessibility", "What has been checked against the accessibility requirements, and a draft accessibility statement for the site."),
         ],

@@ -388,6 +388,10 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     title: "Produsentansvar",
     keywords: ["produsentansvar", "emballasje", "ee-avfall", "batterier", "returordning", "returselskap", "registreringsnummer", "gjenvinning", "selges ikke"],
   },
+  "store:private-mode": {
+    title: "Privat modus",
+    keywords: ["privat modus", "passord", "passordside", "åpner snart", "før lansering", "skjul butikken", "landingsside"],
+  },
   "store:customs": {
     title: "Toll og importmva.",
     keywords: ["toll", "tollavgift", "importmva", "ddp", "dap", "hs-kode", "tolltariff", "voec", "eksport"],

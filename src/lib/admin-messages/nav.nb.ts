@@ -262,6 +262,8 @@ export const NAV_NB: Record<string, string> = {
   "The store's logos, icon, business details and which menus its standard header and footer show.":
     "Butikkens logoer, ikon, opplysninger om virksomheten og hvilke menyer standard topptekst og bunntekst viser.",
   "SEO & Reach": "SEO og synlighet",
+  "Private mode": "Privat modus",
+  "Keep the store behind a landing page and a password while it is not ready, and preview it as staff.": "Hold butikken bak en landingsside og et passord mens den ikke er klar, og forhåndsvis den som ansatt.",
   "How search engines and AI crawlers see the store.": "Hvordan søkemotorer og KI-roboter ser butikken.",
   "Cookies and tracking": "Informasjonskapsler og sporing",
   "The cookies the store sets, its tracking tools and consents.": "Informasjonskapslene butikken setter, sporingsverktøyene og samtykkene.",

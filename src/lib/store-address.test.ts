@@ -139,6 +139,10 @@ describe("where a request for a store's page goes (addressDecision)", () => {
     expect(addressDecision(at("/s/kaiza/home"), single)).toEqual({ rewrite: "/s/kaiza/no/home" });
     expect(addressDecision(at("/s/kaiza/p/kopp"), single)).toEqual({ rewrite: "/s/kaiza/no/p/kopp" });
     expect(addressDecision(at("/s/kaiza/cart"), single)).toEqual({ rewrite: "/s/kaiza/no/cart" });
+    // A private store's landing page names its market itself (D339): served as written, in a store of one country or several.
+    expect(addressDecision(at("/s/kaiza/private/no"), single)).toBeNull();
+    expect(addressDecision(at("/private/no", "kaiza"), single)).toBeNull();
+    expect(addressDecision(at("/s/kaiza/private/se"), multi)).toBeNull();
     expect(addressDecision(at("/s/kaiza/en/home"), single)).toEqual({ rewrite: "/s/kaiza/no-en/home" });
     expect(addressDecision(at("/s/kaiza/en-eur"), single)).toEqual({ rewrite: "/s/kaiza/no-en-eur" });
     expect(addressDecision(at("/s/kaiza/eur/checkout"), single)).toEqual({ rewrite: "/s/kaiza/no-eur/checkout" });

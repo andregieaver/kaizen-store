@@ -702,6 +702,15 @@ export const nb: Messages = {
   starterNotice: "Forhåndsvisning av demobutikk: denne butikken tar ikke imot bestillinger.",
   starterCheckout: "Dette er en demobutikk som vises for gjennomgang. Den tar ikke imot bestillinger.",
   // A cart in a country the store no longer sells to (D178): it explains, and leads to the store's own country.
+  privateStore: {
+    title: "Åpner snart",
+    closed: "Denne butikken er ikke åpen for besøkende ennå.",
+    askPassword: "Har du passordet? Skriv det inn for å komme inn.",
+    password: "Passord",
+    enter: "Gå inn",
+    wrong: "Passordet stemmer ikke. Prøv igjen.",
+    tooMany: "For mange forsøk. Vent et minutt og prøv igjen.",
+  },
   countryHint: {
     offer: (country: string) => `Handler du fra ${country}? Denne siden finnes også i butikken for ${country}, med priser og levering der.`,
     go: (country: string) => `Vis den for ${country}`,

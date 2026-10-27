@@ -234,6 +234,13 @@ stand-in is the only fake, and only it is told it is one.
   `countryHostDecision()` routes it before `languageHostDecision()`, and `marketHost()`/`marketPath()` write a market on it without its country,
   so full addresses still come only from `marketUrl()` and `marketMetaPath()`. The country suggestion is `CountryHintSection` (per request in its
   `<Suspense>`, off the pay routes, never a crawler, never a redirect, dismissal in memory only).
+- **Private mode (wave 7 unit E, D339, `docs/wave-7-storefront.md` E)**: whether a store is private is `stores.private_mode` (its password a scrypt hash
+  in `private_password`, its `private_version`), written only by `src/server/private-mode.ts` (audited); a store template or demo store never is.
+  The proxy serves a private store's pages to a visitor without the unlock pass (`kaizen_unlock_{storeId}`, `src/lib/unlock-pass.ts`, checked by
+  `unlocks()`) from its landing page (`privateGate()` over `privateDecision()`, the page role `private` at `/s/{store}/private/{market}` under a
+  layout of its own): a new path a buyer reaches after the sale goes in `PRIVATE_OPEN_SEGMENTS`, and a new route a visitor reaches outside the
+  pages (the proxy never sees `/api`) asks `lockedOut()`. A private store is never `indexable` and its robots.txt shuts everything. A new store
+  is private until `completeSetup()` opens it; the test databases start stores public, so a test of it switches it on.
 - **What is sold where (wave 7 unit A1, D335, `docs/wave-7-storefront.md` A.1)**: a product or a variant is switched off in one market by a row
   of `commerce.market_availability` (no variant: the whole product), its price kept; written only by `saveProduct()` (`writeAvailability()`,
   `ProductInput.availability`, left out = kept, only the countries the editor shows replaced). `commerce.current_prices` leaves out a variant

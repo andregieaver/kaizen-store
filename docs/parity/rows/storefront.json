@@ -1742,14 +1742,14 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": "missing"
+      "was": "partial"
     },
     "weight": 2,
-    "gap": "A store whose setup is not finished (or with `seo.hidden`) is noindexed and left out of sitemaps, llms.txt and feeds, but anyone with the address can view it; a suspended or closed store is a 404 (D171) and a store with its shop off is a website (D178), neither a private mode. No password, no coming-soon page built in the builder, no unlock cookie, and no way to put an open store back in private mode (verified 2026-10-25: no such column, setting or route).",
-    "bucket": "A",
-    "wave": 7,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "An owner switches a store to private mode with a password; visitors see a landing page built in the page builder until they enter it, and the unlock cookie is declared necessary in `KNOWN_COOKIES`.",
       "In private mode no page, sitemap, llms.txt or feed lists the store, crawlers get noindex and disallow, and signed-in staff preview without the password.",
@@ -1758,11 +1758,33 @@
     ],
     "evidence": {
       "files": [
-        "src/server/stores.ts",
+        "src/app/admin/(gated)/[store]/settings/private/page.tsx",
+        "src/app/api/private/enter/route.ts",
+        "src/app/api/private/preview/route.ts",
+        "src/app/api/private/unlock/route.ts",
+        "src/app/s/[store]/[market]/layout.tsx",
+        "src/app/s/[store]/private/[market]/layout.tsx",
+        "src/app/s/[store]/private/[market]/page.tsx",
+        "src/app/s/[store]/private/[market]/private-section.tsx",
+        "src/lib/cookie-consent.ts",
+        "src/lib/private-mode.ts",
+        "src/lib/unlock-pass.ts",
+        "src/proxy.ts",
+        "src/server/private-mode.ts",
+        "src/server/private-secret.ts",
+        "src/server/redirect-resolve.ts",
         "src/server/seo.ts",
-        "src/app/s/[store]/[market]/layout.tsx"
+        "src/server/stores.ts",
+        "supabase/migrations/20261027165126_private_mode.sql",
+        "supabase/migrations/20261027165146_private_mode_sql.sql"
       ],
       "tests": [
+        "e2e/private-mode.spec.ts",
+        "e2e/signed-in/private-mode.spec.ts",
+        "src/db/commerce.test.ts",
+        "src/lib/private-mode.test.ts",
+        "src/lib/unlock-pass.test.ts",
+        "src/server/private-mode.int.test.ts",
         "src/server/seo.int.test.ts"
       ],
       "untested": false
@@ -1770,7 +1792,8 @@
     "decisions": [
       "D21",
       "D171",
-      "D178"
+      "D178",
+      "D339"
     ],
     "history": [
       {
@@ -1778,6 +1801,12 @@
         "from": "missing",
         "to": "partial",
         "why": "The first report's recheck: unopened stores are viewable by address, noindexed and left out of sitemaps; there is still no password or landing page."
+      },
+      {
+        "on": "2026-10-27",
+        "from": "partial",
+        "to": "full",
+        "why": "Wave 7 unit E (D339): an owner makes the store private at Settings, Private mode (audited as store.private_mode), with a password kept as a scrypt hash (store.private_password); every page request of a private store from a visitor without the unlock pass (kaizen_unlock_{storeId}, HttpOnly, necessary, declared in KNOWN_COOKIES while the store is private) is served its landing page by the proxy, marked noindex and never cached: the page role private, built in the page builder with the Password component, under a root layout of its own with nothing of the catalogue. The password lets a visitor in and back to the page asked; signed-in staff preview through Preview the store (a 12-hour staff pass, handed to the store's own host like D193's edit pass). A private store is not indexable (sitemaps, llms.txt), its robots.txt disallows all, its product feeds, chat and recommendations answer no locked visitor; the order page, My account, downloads, withdrawals, returns and unsubscribe links stay open, and webhooks never pass the proxy. A new store is private until it opens (decision 5; the migration left every opened store, template and demo store public). private-mode.test.ts, unlock-pass.test.ts, private-mode.int.test.ts, commerce.test.ts and both private-mode e2e specs hold it."
       }
     ]
   },

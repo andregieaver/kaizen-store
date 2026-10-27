@@ -7081,3 +7081,33 @@ describe("customs and duties (wave 7 unit I, D343)", () => {
     expect(check.def).toMatch(/duties_minor >= 0/);
   });
 });
+
+describe("private mode (wave 7 unit E, D339)", () => {
+  it("starts a new store private, with no password and its first version, and takes a landing page as a page role", async () => {
+    const shop = await createStore(`private-${Date.now()}`, ["NO"]);
+    expect(await one<{ private_mode: boolean; private_password: string | null; private_version: number }>(
+      "select private_mode, private_password, private_version from commerce.stores where id = $1",
+      [shop],
+    )).toEqual({ private_mode: true, private_password: null, private_version: 1 });
+    const { id: page } = await one<{ id: string }>("insert into commerce.pages (store_id, slug, draft, published, published_at) values ($1, 'apner-snart', '{}', '{}', now()) returning id", [shop]);
+    await db.query("insert into commerce.page_roles (store_id, role, page_id) values ($1, 'private', $2)", [shop, page]);
+    await expect(db.query("insert into commerce.page_roles (store_id, role, page_id) values ($1, 'locked', $2)", [shop, page])).rejects.toThrow(/page_roles_role/);
+  });
+
+  it("left every store that had opened, and every store template and demo store, public when it came", async () => {
+    // The migration's own rule, run again on stores as they were: an open store, a demo store and a store in setup.
+    const open = await createStore(`private-open-${Date.now()}`, ["NO"]);
+    const demo = await createStore(`private-demo-${Date.now()}`, ["NO"]);
+    const setup = await createStore(`private-setup-${Date.now()}`, ["NO"]);
+    await db.query("update commerce.stores set setup_completed_at = now() where id = $1", [open]);
+    await db.query("update commerce.stores set starter = true where id = $1", [demo]);
+    const rule = readFileSync(path.join(process.cwd(), "supabase/migrations/20261027165146_private_mode_sql.sql"), "utf8").replace(
+      "where ",
+      "where id = any($1::uuid[]) and (",
+    );
+    await db.query(`${rule.trim().replace(/;$/, "")})`, [[open, demo, setup]]);
+    const rows = await db.query<{ id: string; private_mode: boolean }>("select id, private_mode from commerce.stores where id = any($1::uuid[])", [[open, demo, setup]]);
+    const kept = Object.fromEntries(rows.rows.map((r) => [r.id, r.private_mode]));
+    expect(kept).toEqual({ [open]: false, [demo]: false, [setup]: true });
+  });
+});

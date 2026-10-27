@@ -280,6 +280,15 @@ A1 availability (model, view, editor, CSV, cart, copies, tools); A2 rules (model
     Pages → special pages), and *Preview the store*. Owner and staff words in the `settings` catalogue (en, nb); shopper words in
     `m.privateStore` (nb, sv, da, en by hand). The AI manager reads the state in `store_checkup`; no tool changes it (a password never passes
     through a model).
+  **E as built (2026-10-27).** As above, with these choices. The landing page is drawn under a root layout of its own at
+  `/s/{store}/private/{market}` rather than in the market layout, whose header search, chat and extras would reach the catalogue; the proxy
+  rewrites to it with the address asked as `to`. Its path names its market itself, so the address rules (D181's `addressDecision()`) leave
+  `/private/{market}` as written, also in a store that sells in one country. A store's facts that cannot be read leave a request alone (as the address's decisions do),
+  so a database hiccup never takes every store down. The unlock cookie is declared on the Cookies page only while the store is private. The
+  test databases start stores public (`e2e/global-setup.ts`, `test/integration-setup.ts`): their stores stand for open ones, and the private
+  mode tests switch it on themselves; `src/db/commerce.test.ts` holds the real default. No AI manager tool, as a password never passes through
+  a model; the owner switches it from Settings, *Private mode* (Settings, Site), where *Preview the store* hands a staff pass to the store's
+  own host as D193's edit pass does.
 - **F (D340) By the clock, and links to share.** `commerce.page_schedules` (publish a page's draft at a time, and optionally put the
   version before back at another), the same for a header, a footer and a theme install going live (`theme_schedules`), run by
   `runSchedules()` in the five-minute dispatcher in the name of who scheduled, refused for a page in a running A/B test, with failures in

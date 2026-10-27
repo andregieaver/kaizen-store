@@ -78,9 +78,10 @@ export async function siteCookies(
   code: CustomCode = {},
   /**
    * The store sells to both private shoppers and businesses, so keeps their
-   * choice (D63); it lets visitors choose light or dark (D99).
+   * choice (D63); it lets visitors choose light or dark (D99); it is private (D339), so a visitor who enters its password is given a pass,
+   * a necessary cookie (the store as read says so: `store.privateMode`).
    */
-  options: { buyers?: boolean; colorMode?: boolean } = {},
+  options: { buyers?: boolean; colorMode?: boolean; privateStore?: boolean } = {},
 ): Promise<{ cookies: ListedCookie[]; categories: OptionalCategory[] }> {
   const listed = new Map<string, ListedCookie>();
   // A cookie of a store feature that is off (D178) is not the site's while it is: left out, even when an earlier scan found it.

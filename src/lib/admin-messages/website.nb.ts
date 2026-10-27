@@ -45,6 +45,7 @@ export const websiteNb: WebsiteMessages = {
       category: "Kategorisider",
       tag: "Stikkordsider",
       cookies: "Informasjonskapselside",
+      private: "Side for privat modus",
     },
     searchListed: "Med i søk",
     searchNotListed: "Ikke med i søk",

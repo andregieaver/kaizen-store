@@ -140,6 +140,8 @@ export type PublicStore = {
   languageChoice: boolean;
   /** Open, set up and not hidden: listed in sitemaps and llms.txt. */
   indexable: boolean;
+  /** Private mode is on (D339): listed nowhere a crawler reads, and its robots.txt shuts everything. */
+  private: boolean;
   /** It sells online (D178 step 5: the online shop on); a website has no products, categories, tags or prices to list. */
   selling: boolean;
   updatedAt: string;
@@ -161,6 +163,7 @@ export async function listPublicStores(): Promise<PublicStore[]> {
   cacheTag(STORES_TAG);
   const rows = await readDb().execute<Row>(sql`
     select s.id, s.slug, s.name, s.seo, s.locales, s.features, s.is_template, s.starter, s.setup_completed_at, s.front_page_id, s.products_page_id,
+      (s.private_mode and not (s.is_template or s.starter)) as private,
       -- The legal pages (wave 1, 1e) keep their own address and stay in the sitemap once published: only D112's roles are left out.
       (select coalesce(array_agg(r.page_id), '{}') from commerce.page_roles r where r.store_id = s.id and r.role <> all(${LEGAL_ROLE_LIST}::text[])) as role_pages,
       greatest(s.created_at, s.setup_completed_at,
@@ -190,7 +193,9 @@ export async function listPublicStores(): Promise<PublicStore[]> {
       locales,
       languageChoice,
       // A store template (D175) is a preview, never for search engines: out of every sitemap and llms.txt.
-      indexable: !row.starter && Boolean(row.is_template || row.setup_completed_at) && !seo.hidden && markets.length > 0,
+      // A private store (D339) is listed nowhere a crawler reads.
+      indexable: !row.starter && Boolean(row.is_template || row.setup_completed_at) && !seo.hidden && !row.private && markets.length > 0,
+      private: Boolean(row.private),
       selling: featureOn(features, "shop"),
       updatedAt: new Date(String(row.updated_at)).toISOString(),
       frontPageId: row.front_page_id ? String(row.front_page_id) : null,
@@ -463,9 +468,14 @@ export async function siteRobots(): Promise<string> {
 }
 
 /** A store's rules: its own, and its pages closed to AI crawlers (D54) in every market. */
-async function storeGroups(store: Pick<Store, "id" | "slug" | "seo">) {
+async function storeGroups(store: Pick<Store, "id" | "slug" | "seo"> & { private?: boolean; privateMode?: boolean }) {
   const base = storeBase(store.slug);
   const groups = storeRobotsGroups(store.seo, base);
+  // A private store (D339): nothing of it for any crawler.
+  if (store.private || store.privateMode) {
+    addRules(groups, ["*"], [{ allow: false, path: `${base}/` }]);
+    return groups;
+  }
   const [pages, articles, blogs] = await Promise.all([listPublishedPages(store.id), listPublishedPages(store.id, "article"), storeBlogs(store.id)]);
   // An article is at its own blog's address (D341): `/blog/{slug}` or `/blogs/{handle}/{slug}`.
   const at = (a: (typeof articles)[number]) => {
@@ -482,7 +492,7 @@ async function storeGroups(store: Pick<Store, "id" | "slug" | "seo">) {
 }
 
 /** A store's robots.txt: its own on its host (P7); until then a preview of its part of the site's. */
-export async function storeRobots(store: Pick<Store, "id" | "slug" | "seo">): Promise<string> {
+export async function storeRobots(store: Pick<Store, "id" | "slug" | "seo" | "privateMode">): Promise<string> {
   return renderRobots(await storeGroups(store), [`${storeSiteUrl(store.slug)}${storeSitemapPath(store.slug)}`]);
 }
 

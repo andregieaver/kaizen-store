@@ -124,8 +124,9 @@ describe("the proxy", () => {
   it("imports only what it is allowed to", () => {
     const imports = [...source.matchAll(/from\s+"([^"]+)"/g)].map((m) => m[1]).sort();
     expect(imports).toEqual(
-      // Held domains (D317 8) answer from the proxy too: `holdingFor()`, read for a host that is no one else's.
-      ["@/lib/ab-routing", "@/lib/ab-site", "@/lib/experiments", "@/lib/holding", "@/lib/paths", "@/lib/site", "@/server/experiments", "@/server/holding", "@/server/not-found", "@/server/redirect-resolve", "next/server"].sort(),
+      // Held domains (D317 8) answer from the proxy too: `holdingFor()`, read for a host that is no one else's. Private mode (D339) reads
+      // the visitor's pass with the key it was signed with.
+      ["@/lib/ab-routing", "@/lib/ab-site", "@/lib/experiments", "@/lib/holding", "@/lib/paths", "@/lib/site", "@/lib/unlock-pass", "@/server/experiments", "@/server/holding", "@/server/not-found", "@/server/private-secret", "@/server/redirect-resolve", "next/server"].sort(),
     );
   });
 

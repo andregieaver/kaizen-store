@@ -19,6 +19,8 @@ export const BUDGETS = {
   suggest: { window: "minute", visitor: 120, store: 6000 },
   // A product feed (D302): channels fetch a few times a day; the visitor is the feed's address.
   feed: { window: "hour", visitor: 60, store: 600 },
+  // A private store's password (D339): a few tries a minute for one visitor, the store's own ceiling against guessing from many.
+  unlock: { window: "minute", visitor: 10, store: 120 },
 } as const satisfies Record<string, { window: BudgetWindow; visitor: number; store: number }>;
 
 export type BudgetEndpoint = keyof typeof BUDGETS;

@@ -53,6 +53,10 @@ const READERS: Record<string, "real" | "template" | "both"> = {
   "src/server/platform-overview.ts": "real",
   "src/server/platform-unit-tests.ts": "real",
   "src/server/platform.ts": "real",
+  // Private mode (D339): a template or demo store is never private.
+  "src/server/private-mode.ts": "real",
+  "src/server/redirect-resolve.ts": "real",
+  "src/app/admin/(gated)/[store]/settings/private/page.tsx": "real",
   "src/server/referrals.ts": "real",
   "src/server/seo.ts": "real",
   "src/server/setup-tools.ts": "real",

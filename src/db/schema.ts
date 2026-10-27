@@ -628,6 +628,15 @@ export const stores = commerce.table(
      * store, so a copy counts nothing until its own owner chooses.
      */
     visitCounting: boolean("visit_counting").notNull().default(false),
+    /**
+     * Private mode (D339, `src/server/private-mode.ts`, its only writer): visitors without the unlock pass see the landing page (the page
+     * role `private`). On for a new store until it opens (decision 5); a store template or demo store is never private, whatever this says.
+     */
+    privateMode: boolean("private_mode").notNull().default(true),
+    /** The password that lets visitors in, as a scrypt hash (`scrypt$…`); none: only staff get in. Never copied with a store. */
+    privatePassword: text("private_password"),
+    /** Raised when the password changes or the owner signs everyone out: a password pass given under another version no longer opens. */
+    privateVersion: integer("private_version").notNull().default(1),
     /** Modules the store has switched on (D65): `bookings` for appointments, `deliveries` (D102), `work` (D122). */
     modules: text("modules").array().notNull().default(sql`'{}'::text[]`),
     /**
@@ -6990,7 +6999,7 @@ export const pageRoles = commerce.table(
     unique("page_roles_store_page_key").on(t.storeId, t.pageId),
     // A store can only choose a page of its own.
     foreignKey({ name: "page_roles_page_fk", columns: [t.storeId, t.pageId], foreignColumns: [pages.storeId, pages.id] }).onDelete("cascade"),
-    check("page_roles_role", sql`${t.role} in ('blog', 'search', 'not_found', 'cart', 'checkout', 'order', 'account', 'sign_in', 'wishlist', 'subscription', 'deliveries', 'cookies', 'category', 'tag', ${legalRoleList})`),
+    check("page_roles_role", sql`${t.role} in ('blog', 'search', 'not_found', 'cart', 'checkout', 'order', 'account', 'sign_in', 'wishlist', 'subscription', 'deliveries', 'cookies', 'category', 'tag', 'private', ${legalRoleList})`),
   ],
 );
 

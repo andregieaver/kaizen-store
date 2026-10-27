@@ -11,6 +11,7 @@
  */
 import { conversionFor, type Localization } from "./localization";
 import { parseMarketSlug } from "./market-slug";
+import { PRIVATE_SEGMENT } from "./private-mode";
 import type { Market } from "./markets";
 
 export type StoreAddress = {
@@ -199,6 +200,8 @@ export function addressDecision(request: StorePathRequest, address: StoreAddress
   if (!address) return null;
   const [first = "", ...rest] = request.parts;
   const lower = first.toLowerCase();
+  // A private store's landing page (D339, `/private/{market}`) has its own root and names its market itself: served as written.
+  if (lower === PRIVATE_SEGMENT && rest.length === 1) return null;
   const market = parseMarketSlug(lower);
   if (address.marketless) {
     if (request.parts.length === 0) return { rewrite: joinStorePath(request, address.home, []) };

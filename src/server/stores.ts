@@ -60,6 +60,12 @@ export type Store = {
   /** Cookieless visit counting for the analytics is on (D152); off until the owner switches it on. */
   visitCounting: boolean;
   /**
+   * Private mode is on (D339, `src/server/private-mode.ts`): visitors without the unlock pass see the landing page. Never for a store template
+   * or demo store, whatever its column says. `privatePassword`: a password lets visitors in (the hash itself never leaves the server module).
+   */
+  privateMode: boolean;
+  privatePassword: boolean;
+  /**
    * The features the owner keeps switched on (D178, `src/lib/store-features.ts`): read what is *on* with `featureOn(store, id)`, which also asks
    * for what the feature needs (the shop above all).
    */
@@ -187,7 +193,7 @@ async function readStore(slug: string): Promise<Store | null> {
     select
       s.id, s.slug, s.name, s.status, s.closed_at, s.is_template, s.starter, s.setup_completed_at,
       s.legal_name, s.organisation_number, s.contact_email, s.postal_address, s.country, s.seo, s.navigation, s.header_menu_id, s.footer_menu_id, s.front_page_id, s.products_page_id, s.tracking, s.custom_code, s.custom_css, s.theme,
-      s.terms_at_checkout, s.audience, s.business_popup, s.open_cart_on_add, s.visit_counting, s.modules, s.features, s.time_zone, s.booking_reminder_hours,
+      s.terms_at_checkout, s.audience, s.business_popup, s.open_cart_on_add, s.visit_counting, s.private_mode, s.private_password is not null as private_password, s.modules, s.features, s.time_zone, s.booking_reminder_hours,
       s.locales, s.rates_auto, s.rates_updated_at,
       (
         select coalesce(json_agg(json_build_object('currency', c.currency, 'rate', c.rate, 'roundTo', c.round_to) order by c.position, c.currency), '[]')
@@ -261,6 +267,8 @@ async function readStore(slug: string): Promise<Store | null> {
     openCartOnAdd: Boolean(row.open_cart_on_add),
     returnPolicy: returnPolicyOf(row.return_policy),
     visitCounting: Boolean(row.visit_counting),
+    privateMode: Boolean(row.private_mode) && !row.is_template && !row.starter,
+    privatePassword: Boolean(row.private_password),
     ...featured(row.features),
     workOn: ((row.modules ?? []) as string[]).includes("work"),
     timeZone: String(row.time_zone ?? "Europe/Oslo"),

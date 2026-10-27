@@ -18,6 +18,8 @@ process.env.SETTINGS_ENCRYPTION_KEY ??= Buffer.alloc(32, 7).toString("base64");
 
 export default defineConfig({
   testDir: "./e2e",
+  // The test database's stores start public (D339): the specs model open stores (e2e/global-setup.ts).
+  globalSetup: "./e2e/global-setup.ts",
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? "github" : "list",

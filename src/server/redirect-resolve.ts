@@ -9,6 +9,7 @@ import { REDIRECT_HOPS_MAX } from "@/lib/data-limits";
 import { legacyPathOf, parseLegacyRequest } from "@/lib/legacy-path";
 import type { Market } from "@/lib/markets";
 import { countryHosts, hasMarketHosts, hostOrigin, languageHosts, marketPath, marketUrl, storeSiteUrl } from "@/lib/paths";
+import { privateDecision } from "@/lib/private-mode";
 import { encodeAddress, firstSegment, mergeQuery, normalisePath, pathOfTarget } from "@/lib/redirect-path";
 import { MARKET_ROUTES, addressDecision, countryHostDecision, languageHostDecision, storePathOf, type StoreAddress } from "@/lib/store-address";
 import { localized } from "@/lib/store-localized";
@@ -187,7 +188,14 @@ export async function missOrRedirect(shop: { store: Pick<Store, "id" | "slug">; 
 // An address with no country, and the shape of a store's addresses (D181)
 // ---------------------------------------------------------------------------
 
-type StoreFacts = { id: string; slug: string; mainMarket: string; address: StoreAddress | null } | null;
+type StoreFacts = {
+  id: string;
+  slug: string;
+  mainMarket: string;
+  address: StoreAddress | null;
+  /** The store's `private_version` while it is private (D339), else null: a store template or demo store never is. */
+  privateVersion: number | null;
+} | null;
 
 /** How long an instance keeps a store's facts: a switch of Several countries, languages or currencies reaches other instances within it (`forgetStoreFacts()` for this one). */
 export const FACTS_MS = 10_000;
@@ -201,6 +209,7 @@ async function storeFactsOf(slug: string): Promise<StoreFacts> {
   return remembered(factsKey(slug), async () => {
     const [row] = await db().execute<Row>(sql`
       select s.id, s.slug, s.features, s.locales,
+        case when s.private_mode and not (s.is_template or s.starter) then s.private_version end as private_version,
         (select coalesce(json_agg(json_build_object('currency', c.currency, 'rate', c.rate, 'roundTo', c.round_to) order by c.position, c.currency), '[]')
            from commerce.store_currencies c where c.store_id = s.id) as currencies,
         (select coalesce(json_agg(json_build_object('code', m.code, 'currency', m.currency, 'defaultLocale', m.default_locale)
@@ -214,7 +223,8 @@ async function storeFactsOf(slug: string): Promise<StoreFacts> {
     if (!row) return null;
     const { markets, address } = localized(row);
     const main = markets[0];
-    return main ? { id: String(row.id), slug: String(row.slug), mainMarket: main.slug, address } : null;
+    const privateVersion = row.private_version === null || row.private_version === undefined ? null : Number(row.private_version);
+    return main ? { id: String(row.id), slug: String(row.slug), mainMarket: main.slug, address, privateVersion } : null;
   }, FACTS_MS);
 }
 
@@ -223,6 +233,20 @@ const factsKey = (slug: string) => `${slug}|facts`;
 /** Forgets this instance's facts of a store, after a change to its countries, languages or currencies (other instances within `FACTS_MS`). */
 export function forgetStoreFacts(slug: string): void {
   forgetRemembered(factsKey(slug));
+}
+
+/**
+ * What the proxy needs to keep a private store's pages from a visitor without a pass (D339): the store's id and version and where its landing
+ * page is for this request, on the path as served; null for a store that is not private, and for the landing page itself and the pages of
+ * what was already sold (`privateDecision()`). Read from the same few-second facts as the address's decisions, never per request.
+ */
+export async function privateGate(served: string, hostStore: string | null): Promise<{ storeId: string; version: number; landing: string } | null> {
+  const request = storePathOf(served, hostStore);
+  if (!request) return null;
+  const facts = await storeFactsOf(request.store);
+  if (!facts || facts.privateVersion === null) return null;
+  const decision = privateDecision({ store: request.store, hostBased: request.hostBased, parts: request.parts, mainMarket: facts.mainMarket });
+  return "open" in decision ? null : { storeId: facts.id, version: facts.privateVersion, landing: decision.landing };
 }
 
 /** The first market of a store as an address (the country's own view), for the redirect of an address with no country. */

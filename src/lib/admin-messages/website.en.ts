@@ -50,6 +50,7 @@ export const websiteEn = {
       category: "Category pages",
       tag: "Tag pages",
       cookies: "Cookies page",
+      private: "Private mode page",
     },
     searchListed: "Search listed",
     searchNotListed: "Search not listed",

@@ -139,6 +139,8 @@ export type KnownCookie = {
   experiments?: boolean;
   /** Only in a store that counts visits and asks about statistics (D303 I3). */
   touch?: boolean;
+  /** Only while the store is private (D339): its unlock pass. */
+  private?: boolean;
   /**
    * Set only for signed-in staff, by something they press (D193): known, so a scan that meets it calls it necessary, but never part
    * of what a visitor's cookie page declares, as no visitor is given it.
@@ -533,6 +535,22 @@ export const KNOWN_COOKIES: KnownCookie[] = [
     },
   },
   {
+    // A private store's pass (D339): set only when a visitor enters the store's password, or staff press Preview the store; closed to scripts.
+    name: "kaizen_unlock_…",
+    pattern: /^kaizen_unlock_[0-9a-f-]{36}$/,
+    provider: "Kaizena Flow",
+    category: "necessary",
+    days: 30,
+    on: "store",
+    private: true,
+    purpose: {
+      en: "Lets a visitor who entered the password of a store that is not open yet see its pages, without asking again on every page.",
+      nb: "Lar en besøkende som har skrevet inn passordet til en butikk som ikke er åpnet ennå, se sidene uten å bli spurt på nytt for hver side.",
+      sv: "Låter en besökare som har skrivit lösenordet till en butik som inte har öppnat ännu se sidorna, utan att bli tillfrågad igen på varje sida.",
+      da: "Lader en besøgende, der har skrevet adgangskoden til en butik, som ikke er åbnet endnu, se siderne uden at blive spurgt igen på hver side.",
+    },
+  },
+  {
     name: "__stripe_mid, __stripe_sid",
     pattern: /^__stripe_(mid|sid)$/,
     provider: "Stripe",
@@ -678,7 +696,8 @@ export function declaredCookies(
     experiments = false,
     languages = false,
     touch = false,
-  }: { buyers?: boolean; chat?: boolean; colorMode?: boolean; modals?: boolean; referrals?: boolean; affiliate?: boolean; recommendations?: boolean; experiments?: boolean; languages?: boolean; touch?: boolean } = {},
+    privateStore = false,
+  }: { buyers?: boolean; chat?: boolean; colorMode?: boolean; modals?: boolean; referrals?: boolean; affiliate?: boolean; recommendations?: boolean; experiments?: boolean; languages?: boolean; touch?: boolean; privateStore?: boolean } = {},
 ): KnownCookie[] {
   return KNOWN_COOKIES.filter(
     (cookie) =>
@@ -694,6 +713,7 @@ export function declaredCookies(
       (!cookie.referrals || referrals) &&
       (!cookie.languages || languages) &&
       (!cookie.touch || touch) &&
+      (!cookie.private || privateStore) &&
       (cookie.tool ? [cookie.tool].flat().some((tool) => Boolean(tracking[tool])) : cookie.provider !== "Stripe"),
   );
 }

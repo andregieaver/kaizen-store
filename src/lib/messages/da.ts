@@ -696,6 +696,15 @@ export const da: Messages = {
   demoNotice: "Dette er en demobutik. Intet kan købes endnu.",
   starterNotice: "Forhåndsvisning af demobutik: denne butik tager ikke imod ordrer.",
   starterCheckout: "Dette er en demobutik, der vises til gennemsyn. Den tager ikke imod ordrer.",
+  privateStore: {
+    title: "Åbner snart",
+    closed: "Denne butik er ikke åben for besøgende endnu.",
+    askPassword: "Har du adgangskoden? Skriv den for at komme ind.",
+    password: "Adgangskode",
+    enter: "Gå ind",
+    wrong: "Adgangskoden er forkert. Prøv igen.",
+    tooMany: "For mange forsøg. Vent et minut, og prøv igen.",
+  },
   countryHint: {
     offer: (country: string) => `Handler du fra ${country}? Denne side findes også i butikken for ${country}, med priser og levering der.`,
     go: (country: string) => `Vis den for ${country}`,

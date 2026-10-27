@@ -696,6 +696,15 @@ export const sv: Messages = {
   demoNotice: "Det här är en demobutik. Inget kan köpas ännu.",
   starterNotice: "Förhandsvisning av demobutik: den här butiken tar inte emot beställningar.",
   starterCheckout: "Det här är en demobutik som visas för granskning. Den tar inte emot beställningar.",
+  privateStore: {
+    title: "Öppnar snart",
+    closed: "Den här butiken är inte öppen för besökare ännu.",
+    askPassword: "Har du lösenordet? Skriv det för att komma in.",
+    password: "Lösenord",
+    enter: "Gå in",
+    wrong: "Lösenordet stämmer inte. Försök igen.",
+    tooMany: "För många försök. Vänta en minut och försök igen.",
+  },
   countryHint: {
     offer: (country: string) => `Handlar du från ${country}? Den här sidan finns också i butiken för ${country}, med priser och leverans där.`,
     go: (country: string) => `Visa den för ${country}`,

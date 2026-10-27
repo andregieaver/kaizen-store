@@ -636,6 +636,10 @@ const PAGES: readonly AdminPage[] = [
     tasks: ["Add a producer registration", "See what is not sold for want of a registration", "Record that no registration is needed in a country", "Show a registration number on product pages"],
     feature: "shop",
   }),
+  store("private-mode", "/settings/private", "Private mode", "Settings", "Private mode (D339): whether the store is private (visitors see only its landing page, built in the page builder, until they enter the password), the password, signing every visitor out, the landing page, and Preview the store for staff. A new store is private until it opens; orders already placed keep their pages.", {
+    keywords: ["private mode", "password", "password page", "coming soon", "pre-launch", "hide store", "landing page", "privat modus", "passord", "åpner snart", "skjul butikken"],
+    tasks: ["Make the store private", "Set a password for visitors", "Open the store to everyone", "Preview the store as staff"],
+  }),
   store("customs", "/settings/customs", "Duties and import VAT", "Settings", "Duties and import VAT (D343): for each country the store's goods cross a customs border into, who pays duties and import VAT (DAP: the recipient pays the carrier on delivery, the default; DDP: collected at checkout), whether the store collects that country's VAT at checkout under its scheme (VOEC), how many products lack an HS code, and whether the platform's rates table covers the country.", {
     keywords: ["duties", "duty", "import vat", "ddp", "dap", "delivered duty paid", "landed cost", "hs code", "tariff", "toll", "tollavgift", "voec", "export", "border"],
     tasks: ["Collect duties at checkout for a country", "Let the carrier collect duties on delivery", "See which products have no HS code"],

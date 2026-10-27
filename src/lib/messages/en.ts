@@ -713,6 +713,15 @@ export const en = {
   demoNotice: "This is a demo store. Nothing can be bought yet.",
   starterNotice: "Demo store preview: this store does not take orders.",
   starterCheckout: "This is a demo store, shown for review. It does not take orders.",
+  privateStore: {
+    title: "Opening soon",
+    closed: "This store is not open to visitors yet.",
+    askPassword: "Have the password? Enter it to come in.",
+    password: "Password",
+    enter: "Enter",
+    wrong: "That password is not right. Try again.",
+    tooMany: "Too many tries. Wait a minute and try again.",
+  },
   countryHint: {
     offer: (country: string) => `Shopping from ${country}? This page is also in the store for ${country}, with its prices and delivery.`,
     go: (country: string) => `Show it for ${country}`,

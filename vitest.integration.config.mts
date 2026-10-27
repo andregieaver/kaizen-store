@@ -14,5 +14,7 @@ export default defineConfig({
     include: ["src/**/*.int.test.ts"],
     testTimeout: 20_000,
     fileParallelism: false,
+    // The test database's stores start public (D339): the tests model open stores.
+    globalSetup: ["./test/integration-setup.ts"],
   },
 });

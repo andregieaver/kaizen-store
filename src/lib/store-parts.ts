@@ -72,6 +72,11 @@ export const STORE_PARTS = {
     name: "Category products",
     hint: "A category's name, its own custom fields, its subcategories and its products with Filter and sort. It draws on category pages (/category/…), whichever category the shopper is in.",
   },
+  private: {
+    // A private store's landing page (D339): it draws with the shop off too, as a website can be private.
+    name: "Password",
+    hint: "The store's name and the password field that lets visitors in while the store is private. It draws only on the landing page (Settings, Private mode).",
+  },
   tag: {
     feature: "shop",
     name: "Tag products",

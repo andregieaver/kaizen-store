@@ -67,7 +67,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     description,
     // A store is not for search engines until its owner opens it, or while they hide it; a store template (D175) never is.
     // A version of the header, footer or product layout under an A/B test (D148) is never a page of its own for search engines.
-    ...(!(store.setupCompletedAt || store.isTemplate) || store.starter || store.seo.hidden || Object.keys(ab).length > 0 ? { robots: { index: false } } : {}),
+    // A private store (D339) is never for search engines, also as staff preview it or a visitor let in sees it.
+    ...(!(store.setupCompletedAt || store.isTemplate) || store.starter || store.seo.hidden || store.privateMode || Object.keys(ab).length > 0 ? { robots: { index: false } } : {}),
     alternates: {
       canonical,
       languages: {

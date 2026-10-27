@@ -116,6 +116,13 @@ const pin = (
   </>
 );
 
+const padlock = (
+  <>
+    <rect x="5" y="11" width="14" height="10" rx="2" />
+    {line("M8 11V7a4 4 0 0 1 8 0v4")}
+  </>
+);
+
 export const SHOP_PART_ICONS: Record<ShopPart, ReactNode> = {
   cart,
   checkout: card,
@@ -126,6 +133,7 @@ export const SHOP_PART_ICONS: Record<ShopPart, ReactNode> = {
   subscription: repeat,
   deliveries: truck,
   cookies: cookie,
+  private: padlock,
   category: folder,
   tag,
   cart_lines: list,
