@@ -120,6 +120,7 @@ waves 1 to N becoming Full, and the same with only the bucket A rows), computed 
   (EPR) registers that can block selling.
 
 ### Wave 8: Analytics and AI (5 to 6 runs)
+- The contract is `docs/wave-8-analytics-ai.md` (units A to I, D345 to D353, written 2026-10-27).
 - Live view, a **report builder** over a safe query layer (never free SQL), natural-language analytics on top of it,
   payments and attribution reports, targets and forecast completion, on-site search analytics depth.
 - AI: image editing, the chat agent with **order and return lookup and human handoff**, the manager gaining product, page
