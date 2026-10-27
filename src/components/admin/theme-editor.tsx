@@ -28,6 +28,9 @@ import { checkoutLookOf, checkoutLookOwn, followTheme, patchCheckoutLook } from 
 import type { SavedTheme } from "@/server/themes";
 
 import { useAdminText } from "./admin-text";
+import type { LookVersionActions } from "@/lib/look-versions";
+
+import { LookVersionsDialog } from "./look-versions-dialog";
 import { FontPicker, type InstallFont } from "./font-picker";
 
 type Result<T> = { ok: true } & T;
@@ -39,6 +42,8 @@ export type ThemeActions = {
   saveSaved?: (payload: string) => Promise<Result<{ theme: SavedTheme }> | Failure>;
   removeSaved?: (id: string) => Promise<{ ok: boolean }>;
   installFont: InstallFont;
+  /** The live look's earlier versions (D340), taken back as unsaved changes; absent where the look is not the store's live one. */
+  versions?: LookVersionActions;
 };
 
 const card = "flex flex-col gap-4 rounded-lg border border-border bg-background p-5";
@@ -432,6 +437,8 @@ export function ThemeEditor({
   const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string[] } | null>(null);
   const [previewMode, setPreviewMode] = useState<"light" | "dark">(current.settings.mode === "dark" ? "dark" : "light");
   const [naming, setNaming] = useState<string | null>(null);
+  const [versionsOpen, setVersionsOpen] = useState(false);
+  const versionWords = useAdminText("schedules").versions;
   const [pending, startTransition] = useTransition();
 
   const { settings } = theme;
@@ -589,6 +596,13 @@ export function ThemeEditor({
                 {w.saveAsNew}
               </button>
             )}
+            {/* The live look's earlier versions (D340): one taken back is held here as unsaved changes. */}
+            {actions.versions && (
+              <button type="button" disabled={pending} onClick={() => setVersionsOpen(true)} aria-haspopup="dialog" data-look-versions-button="" className={`${button} border border-border`}>
+                {versionWords.button}
+              </button>
+            )}
+            {actions.versions && <LookVersionsDialog open={versionsOpen} onClose={() => setVersionsOpen(false)} actions={actions.versions} onUse={load} />}
             {loaded && changedFromSource && (
               <button type="button" disabled={pending} onClick={() => set(structuredClone(loaded.settings))} className={`${button} border border-border`}>
                 {w.undoChanges}

@@ -44,6 +44,8 @@ export const TOOL_AREAS: Readonly<Record<string, AutonomyArea>> = {
   apply_winner: "website",
   // An article published at a set time (D341), as publish_page.
   schedule_article: "website",
+  // A page, header, footer or theme changed at a set time (D340), as publish_page; a theme that costs money is refused before it is kept.
+  schedule_site_change: "website",
   set_recommendations: "website",
   add_recommendation_rule: "website",
   remove_recommendation_rule: "website",

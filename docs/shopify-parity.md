@@ -10,11 +10,11 @@ D152 (the store analytics cockpit) and D153 (the EU withdrawal function and the 
 
 <!-- parity:generated:start since -->
 
-- **Headline now 77.9%** (first report 59.5%), **must-have 83.8%** (first report 69.1%), over 202 core rows (first report 232).
-- Where the change comes from: +18.2 points from the 105 rating moves on core rows recorded below, and +0.3 points because the re-read changed which rows count as core (the tracker has 232 rows, the first report 232 core ones).
+- **Headline now 78.4%** (first report 59.5%), **must-have 83.8%** (first report 69.1%), over 202 core rows (first report 232).
+- Where the change comes from: +18.7 points from the 107 rating moves on core rows recorded below, and +0.3 points because the re-read changed which rows count as core (the tracker has 232 rows, the first report 232 core ones).
 - 231 of 232 rows have their Shopify side read from a page; the others are listed under evidence debt.
 
-Rated higher (90):
+Rated higher (92):
 
 - AI or rule-based customer segmentation (AI): missing to partial. D296 (wave 5 unit B): saved rule-based segments over customers and subscribers, counted live with a member list, and customer tags; read segments.ts and ran segments.test.ts, segments.int.test.ts (PGlite and integration, passed).
 - AI-written marketing email (AI): missing to partial. D297: Write with AI in the broadcast editor suggests the email's words through the claims filter, as a suggestion only; it does not yet read the store's products or campaigns.
@@ -104,6 +104,8 @@ Rated higher (90):
 - Blog (multiple blogs, authors, comments, RSS) (Storefront): partial to full. Wave 7 unit G (D341) built it, read in the code and held by tests: several blogs (commerce.blogs: the first at /blog, others at /blogs/{handle}, each with its title per language, its list or chosen page, its categories and tags pages and s…
 - Mobile-responsive storefront, per-device editing (Storefront): partial to full. D179 (docs/responsive-editing.md, phases 1 to 4) shipped after the last re-read.
 - Page speed: CDN, image optimisation, report (Storefront): partial to full. Wave 7 unit B (D336): product cards, content grid tiles, picture components and the product gallery offer the library's two files (WebP or AVIF from upload, 480 and up to 1600 px) by width with sizes from the columns (SizedPicture, picture…
+- Scheduled storefront changes with auto-revert (Storefront): missing to full. Wave 7 unit F (D340) built it, read in the code and held by tests: a page's, article's, header's or footer's draft is published at a day and time on the store's clock by the five-minute job in the name of who scheduled it (read again then)…
+- Version history, restore, shareable preview (Storefront): partial to full. Wave 7 unit F (D340) built what was missing, read in the code and held by tests: preview links (preview_links: the token shown once and kept only as its SHA-256, an expiry of 1, 7 or 30 days, revocable, made from the builder's Share and an…
 - URL redirect manager (Storefront): partial to full. D168 (wave 2, second run, docs/wave-2-redirects.md).
 - Storefront password or pre-launch page (Storefront): partial to full. Wave 7 unit E (D339): an owner makes the store private at Settings, Private mode (audited as store.private_mode), with a password kept as a scrypt hash (store.private_password); every page request of a private store from a visitor without…
 
@@ -140,7 +142,7 @@ Rated lower (24):
 
 <!-- parity:generated:start summary -->
 
-Kaizena Flow has **77.9%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 202 core features weighted by importance to an EU small or mid-size merchant, and **83.8%** on the must-haves (the 83 features with weight 4 or 5). The unweighted figures are 75.5% overall and 83.7% for must-haves. Counting app-only features gives 77.2%; counting Plus-only as well gives 76.7%. Kaizena Flow is strongest on catalogue and products (90.7%) and weakest on platform, extensibility and operations (54.7%), ai and automation (67.9%), checkout and payments (69.2%). Of the 202 core features, 116 are full, 73 partial and 13 missing, so half-built features, not absent ones, are the main shape of the gap.
+Kaizena Flow has **78.4%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 202 core features weighted by importance to an EU small or mid-size merchant, and **83.8%** on the must-haves (the 83 features with weight 4 or 5). The unweighted figures are 76.2% overall and 83.7% for must-haves. Counting app-only features gives 77.7%; counting Plus-only as well gives 77.1%. Kaizena Flow is strongest on storefront, themes and content (94.0%) and weakest on platform, extensibility and operations (54.7%), ai and automation (67.9%), checkout and payments (69.2%). Of the 202 core features, 118 are full, 72 partial and 12 missing, so half-built features, not absent ones, are the main shape of the gap.
 
 <!-- parity:generated:end summary -->
 
@@ -150,10 +152,10 @@ The method is simple: a full match scores 1, a partial match 0.5, a missing feat
 
 | Measure | Features | Weighted parity | Unweighted parity | Full / partial / missing |
 | --- | --- | --- | --- | --- |
-| Headline: core (Shopify native, Basic to Advanced) | 202 | **77.9%** | 75.5% | 116 / 73 / 13 |
+| Headline: core (Shopify native, Basic to Advanced) | 202 | **78.4%** | 76.2% | 118 / 72 / 12 |
 | Must-have (core, weight 4 or 5) | 83 | **83.8%** | 83.7% | 56 / 27 / 0 |
-| Core plus app-only features | 226 | 77.2% | 75.0% | 127 / 85 / 14 |
-| Everything, including Plus-only | 232 | 76.7% | 73.9% | 128 / 87 / 17 |
+| Core plus app-only features | 226 | 77.7% | 75.7% | 129 / 84 / 13 |
+| Everything, including Plus-only | 232 | 77.1% | 74.6% | 130 / 86 / 16 |
 
 <!-- parity:generated:end headline -->
 
@@ -166,7 +168,7 @@ Counts are core features only. Weighted parity uses weights 1 to 5; must-have is
 | Domain | Core features | Full | Partial | Missing | Weighted parity | Must-have features | Must-have parity |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | Catalogue and products | 26 | 22 | 3 | 1 | 90.7% | 8 | 92.6% |
-| Storefront, themes and content | 32 | 25 | 6 | 1 | 90.7% | 15 | 100.0% |
+| Storefront, themes and content | 32 | 27 | 5 | 0 | 94.0% | 15 | 100.0% |
 | Checkout and payments | 17 | 7 | 10 | 0 | 69.2% | 8 | 62.9% |
 | Orders, shipping, fulfilment and returns | 28 | 16 | 12 | 0 | 80.5% | 14 | 86.1% |
 | Customers, marketing and loyalty | 17 | 8 | 8 | 1 | 73.7% | 8 | 76.5% |
@@ -174,7 +176,7 @@ Counts are core features only. Weighted parity uses weights 1 to 5; must-have is
 | International, compliance and trust | 16 | 10 | 6 | 0 | 77.7% | 10 | 70.2% |
 | Platform, extensibility and operations | 20 | 4 | 12 | 4 | 54.7% | 7 | 72.4% |
 | AI and automation | 22 | 9 | 10 | 3 | 67.9% | 2 | 100.0% |
-| **Total** | **202** | **116** | **73** | **13** | **77.9%** | **83** | **83.8%** |
+| **Total** | **202** | **118** | **72** | **12** | **78.4%** | **83** | **83.8%** |
 
 <!-- parity:generated:end domains -->
 
@@ -186,7 +188,7 @@ A row is Full only when it lists code and tests that exist (or says it is untest
 
 | Evidence | Rows |
 | --- | ---: |
-| Full, with tests | 122 |
+| Full, with tests | 124 |
 | Full, untested (debt, not hidden) | 6 |
 | Shopify side not read from a page | 1 |
 | Rows in the tracker | 232 |
@@ -195,7 +197,7 @@ Untested Full rows: `ai.assistant-voice-mode`, `customers.abandoned-checkout-rec
 
 | Bucket | What it means | Rows not Full | Core rows | Core headline points lacking |
 | --- | --- | ---: | ---: | ---: |
-| A | Build in-house | 63 | 52 | 13.1 |
+| A | Build in-house | 61 | 50 | 12.6 |
 | B | Build, live only with a third party | 16 | 14 | 3.7 |
 | C | Strategy decision first | 11 | 8 | 1.9 |
 | D | Not reachable by code | 14 | 12 | 3.4 |
@@ -208,17 +210,17 @@ The waves are those of `docs/parity-plan.md` section 3. This table is produced f
 
 <!-- parity:generated:start projection -->
 
-Now: **77.9%** core, 83.8% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 16 rows (12 core) have no wave yet and are not in them.
+Now: **78.4%** core, 83.8% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 16 rows (12 core) have no wave yet and are not in them.
 
 | Wave | Scope | Rows (core) | Core if every row of waves 1 to N is Full | Must-have | Adds (points) | Core if only bucket A rows are | Must-have |
 | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | Compliance and money | 10 (7) | 80.0% | 87.3% | +2.1 | 79.4% | 86.2% |
-| 2 | Data in and out | 3 (1) | 80.3% | 87.3% | +0.2 | 79.7% | 86.2% |
-| 3 | Inventory and orders | 14 (13) | 83.5% | 89.7% | +3.3 | 81.2% | 87.5% |
-| 4 | Payments | 7 (6) | 85.0% | 91.4% | +1.5 | 81.5% | 87.5% |
-| 5 | Customers and marketing | 19 (16) | 89.2% | 95.1% | +4.2 | 84.9% | 90.6% |
-| 6 | Catalogue | 0 (0) | 89.2% | 95.1% | +0.0 | 84.9% | 90.6% |
-| 7 | Storefront and international | 6 (5) | 90.4% | 95.1% | +1.2 | 85.9% | 90.6% |
+| 1 | Compliance and money | 10 (7) | 80.6% | 87.3% | +2.1 | 80.0% | 86.2% |
+| 2 | Data in and out | 3 (1) | 80.8% | 87.3% | +0.2 | 80.2% | 86.2% |
+| 3 | Inventory and orders | 14 (13) | 84.0% | 89.7% | +3.3 | 81.7% | 87.5% |
+| 4 | Payments | 7 (6) | 85.6% | 91.4% | +1.5 | 82.1% | 87.5% |
+| 5 | Customers and marketing | 19 (16) | 89.7% | 95.1% | +4.2 | 85.4% | 90.6% |
+| 6 | Catalogue | 0 (0) | 89.7% | 95.1% | +0.0 | 85.4% | 90.6% |
+| 7 | Storefront and international | 4 (3) | 90.4% | 95.1% | +0.7 | 85.9% | 90.6% |
 | 8 | Analytics and AI | 17 (17) | 94.3% | 95.8% | +3.9 | 89.6% | 91.3% |
 | 9 | Platform and extensibility | 12 (9) | 96.6% | 96.9% | +2.3 | 91.0% | 91.8% |
 
@@ -366,8 +368,8 @@ Legend. **Shopify**: Native = included on Basic to Advanced and scored in the he
 | Page speed: CDN, image optimisation, report | Native. [page](https://changelog.shopify.com/posts/find-out-how-fast-your-store-is-with-a-new-online-store-speed-report) | Full (was partial) | 4 |  | Evidence: `vercel.json`, `next.config.ts`, `src/components/product-card.tsx` and 19 more; 7 test files; D115, D211, D213, D336. |
 | Customer account pages | Native. [page](https://changelog.shopify.com/posts/draft-unified-branding-customization-across-checkout-and-customer-accounts) | Full | 4 |  | Caveat: no list of returns in My account (a withdrawal or return is reached from the order page and its email, D153). Built since the first read: saved addresses, up to 20 with a default for shipping and one for billing (D304, `src/server/customer-addresses.ts`), *Your orders* with search and paging (D304 J2, `account/orders`), reviews to write (D301), the data export (D162) and support conversations (D216). Account depth is its own row in the customers domain. Evidence: `src/app/s/[store]/[market]/account/account-section.tsx`, `src/app/s/[store]/[market]/account/page.tsx`, `src/components/account-forms.tsx` and 3 more; 7 test files; D28, D66, D102, D108, D113, D130, D131, D162, D301, D304. |
 | Store-level A/B testing | Native. [page](https://changelog.shopify.com/posts/schedule-and-test-storefront-changes-with-rollouts) | Full | 2 |  | Evidence: `src/lib/experiments.ts`, `src/server/experiments.ts`, `src/server/experiment-admin.ts` and 5 more; 11 test files; D148. |
-| Scheduled storefront changes with auto-revert | Native. [page](https://changelog.shopify.com/posts/schedule-and-test-storefront-changes-with-rollouts) | Missing | 2 | A, wave 7 | Pages, headers, footers and themes have draft and published only: no publish or unpublish time on `commerce.pages` and no job that publishes content or switches a look by itself (verified 2026-10-25). Scheduling exists elsewhere: A/B tests start by themselves (`experiments.scheduled_start`, `runExperimentJobs()`), campaigns and discount codes have start and end times, broadcasts can be scheduled (D297), and a theme install that follows updates is updated by the five-minute job (D245); none of these is a scheduled page, header, footer or theme change with an automatic revert. Code: `src/server/pages.ts`, `src/server/experiment-jobs.ts`. |
-| Version history, restore, shareable preview | Native. [page](https://help.shopify.com/en/manual/online-store/themes/adding-themes) | Partial | 3 | A, wave 7 | Built (D305): every save, publish, text edit and CSS edit on the live site keeps a version (`keepVersion()` in `src/server/page-versions.ts`, the newest 50 per page, `VERSIONS_KEPT`, with who and when), listed in the builder's Versions and taken back as unsaved changes, never over the published page; the builder has undo and redo (buttons and keys). Missing: (1) a preview link an outsider opens without signing in (expiring, revocable, noindex): the signed tokens that exist open one replicator job's draft (`replicate-token.ts`, D150) or one page's draft for the AI manager's look for ten minutes (`/admin/account/look/{page}`, D310), and neither is offered to owners to share; (2) versions of the store's own theme settings: a theme's published versions (D241) and the look before an update (`theme_install_updates`, D245) are kept, but each save of the live look in Design settings or the builder's Theme tab is not. Code: `src/components/admin/page-editor.tsx`, `src/components/admin/page-versions-dialog.tsx`. |
+| Scheduled storefront changes with auto-revert | Native. [page](https://changelog.shopify.com/posts/schedule-and-test-storefront-changes-with-rollouts) | Full (was missing) | 2 |  | Caveats, not gaps: a scheduled change goes live, and a way back runs, within five minutes after its time (the five-minute dispatcher); a theme that costs money the store has not agreed to pay is never scheduled (a person makes it live once, agreeing to its price); a way back leaves a page or theme someone changed in between as it is and says so. Product layouts, A/B test versions and Kaizena Flow's own pages are not scheduled. Shopify's rollouts also run a theme change as an A/B test; Kaizena Flow tests pages, headers and footers with its own A/B tests (D148). Evidence: `src/server/page-schedules.ts`, `src/server/theme-schedules.ts`, `src/lib/page-schedules.ts` and 11 more; 5 test files; D53, D148, D245, D297, D341, D340. |
+| Version history, restore, shareable preview | Native. [page](https://help.shopify.com/en/manual/online-store/themes/adding-themes) | Full (was partial) | 3 |  | Caveats, not gaps: a preview link opens one page's or article's draft, or a store's pages in one installed theme, for at most 30 days (1, 7 or 30, chosen per link; Shopify: 2 days for visitors, 30 for merchants), on Kaizena Flow's admin host at /admin/account/share/{token}; headers, footers and product layouts are shared through a theme rather than on their own. A wrong, expired or revoked token draws the not-found page (streamed, so its status may be 200). The look's versions are the theme's settings; the site's own CSS keeps no versions of its own. Evidence: `src/components/admin/page-editor.tsx`, `src/components/admin/page-versions-dialog.tsx`, `src/lib/edit-history.ts` and 14 more; 11 test files; D150, D305, D53, D60, D241, D245, D310, D340. |
 | Per-page SEO fields | Native. [page](https://help.shopify.com/en/manual/promoting-marketing/seo/adding-keywords) | Full | 5 |  | Evidence: `src/lib/seo.ts`, `src/server/seo.ts`, `src/components/admin/seo-fields.tsx` and 3 more; 4 test files; D21, D53. |
 | Automatic sitemap.xml | Native. [page](https://help.shopify.com/manual/using-themes/find-site-map) | Full | 5 |  | Evidence debt, narrower now: hreflang alternates and x-default are asserted (`src/server/seo.int.test.ts` for categories and tags, `e2e/smoke.spec.ts` for the store sitemap), but no test asserts the `image:image` picture entries `storeSitemap()` writes (`src/server/seo.ts`). Evidence: `src/server/seo.ts`, `src/app/sitemap.xml/route.ts`, `src/app/s/[store]/store-sitemap.xml/route.ts` and 1 more; **untested**; D21, D56, D168. |
 | Structured data (JSON-LD) | Native. [page](https://shopify.dev/docs/api/liquid/filters/structured_data) | Full | 4 |  | Evidence: `src/lib/structured-data.ts`, `src/server/seo.ts`, `src/lib/custom-fields.ts`; 3 test files; D21, D118, D153. |

@@ -51,6 +51,7 @@ import {
 } from "./actions";
 import { duplicateStorePageAction } from "./duplicate-action";
 import { cancelScheduleAction, readScheduleAction, scheduleAction } from "./schedule-actions";
+import { listPageLinksAction, makePageLinkAction, revokePageLinkAction } from "./share-actions";
 import { authorsNow, blogsNow } from "@/server/blogs";
 import { blogPath, blogTitle } from "@/lib/blogs";
 import { storePageVersionAction, storePageVersionsAction } from "./version-actions";
@@ -110,10 +111,16 @@ export async function storePageContext(
             };
           })()
         : null,
-    // Publishing a page's or an article's draft at a set time (D341), on the store's clock.
+    // Publishing a page's, article's, header's or footer's draft at a set time, and putting it back at another (D341, D340), on the store's
+    // clock.
     schedule:
-      (type === "page" || type === "article") && !variantOf
+      (type === "page" || type === "article" || type === "header" || type === "footer") && !variantOf
         ? { zone: store.timeZone, read: typed(readScheduleAction), set: typed(scheduleAction), cancel: typed(cancelScheduleAction) }
+        : null,
+    // Links that open a page's or article's draft without signing in (D340).
+    share:
+      (type === "page" || type === "article") && !variantOf
+        ? { list: typed(listPageLinksAction), make: typed(makePageLinkAction), revoke: typed(revokePageLinkAction) }
         : null,
     adminBase: storePagesBase(store, type),
     // A full address once the store has its own host (P7), and origin then empty.

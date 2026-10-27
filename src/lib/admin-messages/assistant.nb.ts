@@ -282,6 +282,8 @@ export const assistantNb: AssistantMessages = {
     blog_comments: "Ser på bloggkommentarene",
     moderate_blog_comment: "Forbereder avgjørelsen om kommentaren",
     schedule_article: "Forbereder planen",
+    list_scheduled_changes: "Ser på hva som er planlagt",
+    schedule_site_change: "Forbereder planen",
     search_merchandising: "Ser på søkets synonymer og regler",
     save_search_synonym: "Forbereder synonymene",
     save_search_rule: "Forbereder søkeregelen",

@@ -5,6 +5,9 @@ import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, type AdminLang } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { chargeButton, chargeLine, chargeToken, type ThemeCharge } from "@/lib/theme-prices";
+import type { ScheduleChip } from "@/lib/page-schedules";
+
+import { ScheduleChipView } from "./pages-table";
 
 /**
  * An installed theme as the library shows it (`ThemeInstall` in `src/server/theme-installs.ts`), with what making it live costs the store
@@ -22,9 +25,12 @@ export function ThemeLibrary({
   switchTo,
   remove,
   base,
+  schedules = {},
   lang = "en",
 }: {
   installs: LibraryInstall[];
+  /** What is planned for each install or did not happen (D340), by install id. */
+  schedules?: Record<string, ScheduleChip>;
   /** The admin's language (D312 A7); English unless given. */
   lang?: AdminLang;
   /** The Design settings page's address, under which each theme's page and preview are (D244); none: no links. */
@@ -51,6 +57,7 @@ export function ThemeLibrary({
                 </>
               }
             />
+            {schedules[install.id] && <ScheduleChipView chip={schedules[install.id]} />}
             {install.live ? (
               <RowActions>
                 <Chip signal="positive" dot>

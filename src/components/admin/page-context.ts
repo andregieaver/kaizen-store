@@ -1,4 +1,5 @@
 import type { PageVersionItem } from "@/lib/page-versions";
+import type { PreviewLinkAnswer, PreviewLinkItem } from "@/lib/preview-links";
 import type { PickerList } from "@/lib/media-picker";
 import type { Breakpoints } from "@/lib/breakpoints";
 import type { ColourSwatch } from "@/lib/colour";
@@ -39,10 +40,19 @@ export type PageSaveState =
   /** `code: "needs_confirmation"` (wave 1, 1e): publishing was held for blocking problems the owner has not acknowledged; `issues` lists them. */
   | { status: "error"; problems: string[]; code?: "needs_confirmation" | "pay_page_block"; issues?: PageIssue[] };
 
-/** A page's schedule as the editor shows it (D341): the waiting one with its time in words, and the last one that did not publish. */
-export type ScheduleView = { waiting: { at: string; label: string } | null; failure: string | null };
+/**
+ * A page's schedule as the editor shows it (D341, D340): the waiting one with its time in words and its way back, a way back that waits
+ * after its publish ran, and the last leg that did not happen.
+ */
+export type ScheduleView = { waiting: { at: string; label: string; back: string | null } | null; going: string | null; failure: string | null };
 /** Saves the editor's draft as Save draft does: true when it could (*Schedule* saves a changed draft first, D341). */
 export type SaveDraft = () => Promise<boolean>;
+/** A page's or theme's preview links (D340): the list, a new link good for some days, and revoking one. */
+export type PreviewLinkActions = {
+  list: (id: string) => Promise<PreviewLinkItem[]>;
+  make: (id: string, days: number) => Promise<PreviewLinkAnswer>;
+  revoke: (id: string, link: string) => Promise<PreviewLinkAnswer>;
+};
 export type ScheduleAnswer = { ok: true; view: ScheduleView; message: string } | { ok: false; problem: string };
 
 /**
@@ -64,15 +74,21 @@ export type PageOwnerContext = {
    */
   blog?: { blogs: { id: string; title: string; address: string; main: boolean }[]; authors: { id: string; name: string }[]; manageHref: string } | null;
   /**
-   * Publishing the draft at a set time (D341; the start of D340's model): the store's time zone, and the actions bound to the store and
-   * the kind of page. Absent where pages are not scheduled (layouts, test versions, Kaizena Flow's own pages).
+   * Publishing the draft at a set time, and putting the version before back at another (D341, D340): the store's time zone, and the
+   * actions bound to the store and the kind of page. Absent where pages are not scheduled (product layouts, test versions, Kaizena Flow's
+   * own pages).
    */
   schedule?: {
     zone: string;
     read: (id: string) => Promise<ScheduleView | null>;
-    set: (id: string, day: string, time: string) => Promise<ScheduleAnswer>;
+    set: (id: string, day: string, time: string, back?: { day: string; time: string } | null) => Promise<ScheduleAnswer>;
     cancel: (id: string) => Promise<ScheduleAnswer>;
   } | null;
+  /**
+   * Links that open the draft without signing in (D340), for a store's pages and articles: listed, made and revoked through the actions
+   * bound to the store and the kind of page. Absent elsewhere.
+   */
+  share?: PreviewLinkActions | null;
   /** Where the owner's pages are edited: `/admin/platform/pages` or `/admin/{store}/pages`. */
   adminBase: string;
   /**

@@ -143,10 +143,12 @@ async function dispatch() {
     legalUpkeep: () => runLegalUpkeep(),
     // Legal pages the AI is writing (D311): what a press's own run did not finish and the upkeep's writes, a language at a time.
     legalWrites: () => runLegalWrites({}, 120_000),
-    // Pages and articles scheduled to be published (D341): the drafts whose time has come, in the name of who scheduled them.
+    // Pages, articles, headers and footers to be published or put back, and themes to go live or back (D341, D340): what is due, in
+    // the name of who scheduled it.
     schedules: () => runSchedules(),
   });
   for (const storeId of r.schedules?.stores ?? []) revalidateTag(pagesTag(storeId), "max");
+  for (const store of r.schedules?.themeStores ?? []) for (const tag of designTags(store)) revalidateTag(tag, "max");
   // Installed themes that follow updates and are behind their theme's latest version (D245); the stores' pages then show it.
   const themeUpdates = (await tracked("dispatcher.theme-updates", EVERY, () => runThemeUpdates())) ?? { updated: 0, refused: 0, stores: [] };
   for (const store of themeUpdates.stores) for (const tag of designTags(store)) revalidateTag(tag, "max");

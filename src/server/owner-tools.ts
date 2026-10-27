@@ -108,6 +108,7 @@ import { addRedirectTool, preflightRedirectTool, redirectOverviewTool } from "./
 import { marketPriceRulesTool, preflightPriceRuleTool, setMarketPriceRuleTool } from "./market-price-tools";
 import { preflightProducerTool, producerRegistrationsTool, saveProducerRegistrationTool } from "./producer-tools";
 import { blogCommentsTool, listBlogsTool, moderateBlogCommentTool, preflightModerateTool, preflightScheduleTool, scheduleArticleTool } from "./blog-tools";
+import { listScheduledChangesTool, preflightSiteScheduleTool, scheduleSiteChangeTool } from "./schedule-tools";
 import { customsDutiesTool } from "./customs-tools";
 import { deleteSearchMerchandisingTool, preflightSearchTool, saveSearchRuleTool, saveSearchSynonymTool, searchMerchandisingTool } from "./search-tools";
 import {
@@ -2101,6 +2102,13 @@ export async function preflightOwnerTool(ctx: OwnerToolContext, name: string, ra
     if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
     return name === "moderate_blog_comment" ? preflightModerateTool(ctx, input.input as Record<string, unknown>) : preflightScheduleTool(ctx, input.input as Record<string, unknown>);
   }
+  // A schedule the editor or the theme's page would refuse is refused now, never kept for a yes (D340).
+  if (name === "schedule_site_change") {
+    const tool = OWNER_TOOLS_BY_NAME[name];
+    const input = readToolInput(tool, raw);
+    if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
+    return preflightSiteScheduleTool(ctx, input.input as Record<string, unknown>);
+  }
   // A producer registration the page would refuse is refused now, never kept for a yes (D342).
   if (name === "save_producer_registration") {
     const tool = OWNER_TOOLS_BY_NAME[name];
@@ -2441,6 +2449,8 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   blog_comments: blogCommentsTool,
   moderate_blog_comment: moderateBlogCommentTool,
   schedule_article: scheduleArticleTool,
+  list_scheduled_changes: listScheduledChangesTool,
+  schedule_site_change: scheduleSiteChangeTool,
   save_search_synonym: saveSearchSynonymTool,
   save_search_rule: saveSearchRuleTool,
   delete_search_merchandising: deleteSearchMerchandisingTool,

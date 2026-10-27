@@ -302,6 +302,25 @@ stand-in is the only fake, and only it is told it is one.
   written only by `src/server/page-schedules.ts` and run only by `runSchedules()` in the five-minute dispatcher through `savePage()`, in the
   maker's name read again, never for a store that is not open or a page in a running A/B test; times are the store's clock
   (`scheduleInstant()`). F adds a way back and the other kinds to this table and module, never a second scheduler.
+- **By the clock, and links to share (wave 7 unit F, D340, `docs/wave-7-storefront.md` F as built)**: a page's, article's, header's or
+  footer's draft is published at a time and, with `revert_at`, the published content from before (`before_content`, none: taken off the
+  site) put back at another, both legs of `commerce.page_schedules` (written only by `src/server/page-schedules.ts`); an installed theme
+  made live at a time and the theme before put back is `commerce.theme_schedules` (written only by `src/server/theme-schedules.ts`, through
+  `switchToInstall()`). Both run only in `runSchedules()` (the five-minute dispatcher), in the maker's name read again, never for a store
+  that is not open or a page in a running A/B test; each leg is settled once by its rules trigger, a way back touches only a page or look
+  still as the schedule left it (`published_hash`, the live install) and fails with the reason otherwise, a publish whose way-back time
+  passed first fails (`expired`), and a schedule never spends money (a premium theme not owned is refused, `themeScheduleProblem()`).
+  Times are `scheduleInstant()`/`revertInstant()` on the store's clock; what waits or failed is drawn only by `scheduleChip()` in the lists
+  and the theme library; a new kind of thing scheduled joins these modules and `runSchedules()`. A preview link is `commerce.preview_links`
+  (written only by `src/server/preview-links.ts`, a token read only by `previewLinkOf()`): the token (`newPreviewToken()`, server only in
+  `src/lib/preview-token.ts`) is shown once and kept as its SHA-256, 1 to 30 days, revoked once, for a page's or article's draft or an
+  installed theme of the same store; `/admin/account/share/{token}` draws the draft per request (`getPageForEdit()`, `PageDrawing`) or the
+  theme on the store's pages (`InstallPreviewView`, shared with the signed-in preview), `noindex`, `referrer: no-referrer`, no cookie,
+  never the published page or a cache of it; it is made from the builder's *Share* and a theme's page (`ShareLinks`), never by a model
+  (no tool: a token is a key). The live look's saves (`saveStoreTheme()`: Design settings, the Theme tab, saved colours) each keep the
+  theme in `commerce.look_versions` in the same transaction, only through `keepLookVersion()` (never changed, the newest 50), taken back
+  only into the theme editor as unsaved changes (`LookVersionsDialog`, the editor's `load()`). The words are the `schedules` catalogue; the
+  AI manager has `list_scheduled_changes` and the gated `schedule_site_change`. All three tables are `never` in `COPY_RULES`.
 - Sorting and filtering listings (D78, `src/lib/listing-filters.ts`,
   `src/server/listing.ts`, `FilterDialog`, `ProductListing`): the products
   page, category and tag pages and search results take their filters from

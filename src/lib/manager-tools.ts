@@ -376,6 +376,8 @@ export const TOOL_WORDS: Record<string, string> = {
   blog_comments: "Looking at the blog's comments",
   moderate_blog_comment: "Preparing the comment's decision",
   schedule_article: "Preparing the schedule",
+  list_scheduled_changes: "Looking at what is scheduled",
+  schedule_site_change: "Preparing the schedule",
   search_merchandising: "Looking at the search's synonyms and rules",
   save_search_synonym: "Preparing the synonyms",
   save_search_rule: "Preparing the search rule",

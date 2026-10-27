@@ -7186,10 +7186,12 @@ export const blogComments = commerce.table(
 );
 
 /**
- * A page's draft published at a set time (D341 for articles and pages; the start of D340's model, `docs/wave-7-storefront.md` F, which
- * adds a way back, headers, footers and themes): written only by `src/server/page-schedules.ts`, run by `runSchedules()` in the
- * five-minute dispatcher in the name of `scheduled_by`, read again then (`passMembership()`). One waiting schedule per page;
- * `acknowledged` holds the checker's blocking issues the person chose to publish with (as the builder's Publish anyway).
+ * A page's draft published at a set time (D341 for articles and pages; D340, `docs/wave-7-storefront.md` F, adds headers, footers and a
+ * way back): written only by `src/server/page-schedules.ts`, run by `runSchedules()` in the five-minute dispatcher in the name of
+ * `scheduled_by`, read again then (`passMembership()`). One waiting schedule per page; `acknowledged` holds the checker's blocking issues
+ * the person chose to publish with (as the builder's Publish anyway). The way back (D340) is a second leg: at `revert_at` the published
+ * content from before (`before_content`; null: the page was not published, so it is taken off the site) is put back, only while the page is
+ * still live as the publish left it (`published_hash`); `page_schedules_rules()` settles each leg once.
  */
 export const pageSchedules = commerce.table(
   "page_schedules",
@@ -7204,14 +7206,123 @@ export const pageSchedules = commerce.table(
     problem: text("problem"),
     doneAt: timestamp("done_at", { withTimezone: true }),
     createdAt: createdAt(),
+    /** When the version before is put back (D340); null: no way back. */
+    revertAt: timestamp("revert_at", { withTimezone: true }),
+    /** The way back's own leg: `waiting`, `done`, `failed` or `cancelled`; null exactly when `revert_at` is. */
+    revertStatus: text("revert_status"),
+    revertProblem: text("revert_problem"),
+    revertedAt: timestamp("reverted_at", { withTimezone: true }),
+    /** The published content the publish replaced (null: none, so going back takes the page off the site). */
+    beforeContent: jsonb("before_content"),
+    /** md5 of the content the publish put live, so the way back touches only a page still as it left it. */
+    publishedHash: text("published_hash"),
   },
   (t) => [
     foreignKey({ name: "page_schedules_page_fk", columns: [t.storeId, t.pageId], foreignColumns: [pages.storeId, pages.id] }).onDelete("cascade"),
     uniqueIndex("page_schedules_one_waiting_idx").on(t.pageId).where(sql`${t.status} = 'waiting'`),
+    uniqueIndex("page_schedules_one_revert_idx").on(t.pageId).where(sql`${t.revertStatus} = 'waiting'`),
     index("page_schedules_due_idx").on(t.publishAt).where(sql`${t.status} = 'waiting'`),
+    index("page_schedules_revert_due_idx").on(t.revertAt).where(sql`${t.revertStatus} = 'waiting'`),
     index("page_schedules_store_idx").on(t.storeId, t.pageId),
     index("page_schedules_scheduled_by_idx").on(t.scheduledBy),
     check("page_schedules_status", sql`${t.status} in ('waiting', 'done', 'failed', 'cancelled')`),
+    check("page_schedules_revert_status", sql`${t.revertStatus} is null or ${t.revertStatus} in ('waiting', 'done', 'failed', 'cancelled')`),
+    check("page_schedules_revert", sql`(${t.revertAt} is null) = (${t.revertStatus} is null) and (${t.revertAt} is null or ${t.revertAt} > ${t.publishAt})`),
+  ],
+);
+
+/**
+ * A store's plan to make one of its installed themes live at a set time, and optionally to put the theme that was live back at another
+ * (D340, `docs/wave-7-storefront.md` F): written only by `src/server/theme-schedules.ts`, run by `runSchedules()` in the name of
+ * `scheduled_by` (read again then), through `switchToInstall()`. One waiting plan and one waiting way back per store; each leg settled once
+ * (`theme_schedules_rules()`). A removed install leaves its plan with no install (it fails, its record kept).
+ */
+export const themeSchedules = commerce.table(
+  "theme_schedules",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    installId: uuid("install_id").references(() => storeThemeInstalls.id, { onDelete: "set null" }),
+    liveAt: timestamp("live_at", { withTimezone: true }).notNull(),
+    revertAt: timestamp("revert_at", { withTimezone: true }),
+    scheduledBy: uuid("scheduled_by").references(() => accounts.id, { onDelete: "set null" }),
+    status: text("status").notNull().default("waiting"),
+    problem: text("problem"),
+    doneAt: timestamp("done_at", { withTimezone: true }),
+    revertStatus: text("revert_status"),
+    revertProblem: text("revert_problem"),
+    revertedAt: timestamp("reverted_at", { withTimezone: true }),
+    /** The install that was live when the plan ran: the one the way back makes live again. */
+    beforeInstallId: uuid("before_install_id").references(() => storeThemeInstalls.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("theme_schedules_one_waiting_idx").on(t.storeId).where(sql`${t.status} = 'waiting'`),
+    uniqueIndex("theme_schedules_one_revert_idx").on(t.storeId).where(sql`${t.revertStatus} = 'waiting'`),
+    index("theme_schedules_due_idx").on(t.liveAt).where(sql`${t.status} = 'waiting'`),
+    index("theme_schedules_revert_due_idx").on(t.revertAt).where(sql`${t.revertStatus} = 'waiting'`),
+    index("theme_schedules_store_idx").on(t.storeId, t.createdAt),
+    index("theme_schedules_install_idx").on(t.installId),
+    index("theme_schedules_before_install_idx").on(t.beforeInstallId),
+    index("theme_schedules_scheduled_by_idx").on(t.scheduledBy),
+    check("theme_schedules_status", sql`${t.status} in ('waiting', 'done', 'failed', 'cancelled')`),
+    check("theme_schedules_revert_status", sql`${t.revertStatus} is null or ${t.revertStatus} in ('waiting', 'done', 'failed', 'cancelled')`),
+    check("theme_schedules_revert", sql`(${t.revertAt} is null) = (${t.revertStatus} is null) and (${t.revertAt} is null or ${t.revertAt} > ${t.liveAt})`),
+  ],
+);
+
+/**
+ * A link that opens one unpublished page's draft or one installed theme without signing in (D340, `docs/wave-7-storefront.md` F): the
+ * token kept only as its SHA-256, an expiry of at most 30 days, revoked once. Written only by `src/server/preview-links.ts`; a token is read
+ * only by `previewLinkOf()`. Never copied with a store.
+ */
+export const previewLinks = commerce.table(
+  "preview_links",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    pageId: uuid("page_id"),
+    installId: uuid("install_id").references(() => storeThemeInstalls.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    revokedBy: uuid("revoked_by").references(() => accounts.id, { onDelete: "set null" }),
+  },
+  (t) => [
+    foreignKey({ name: "preview_links_page_fk", columns: [t.storeId, t.pageId], foreignColumns: [pages.storeId, pages.id] }).onDelete("cascade"),
+    uniqueIndex("preview_links_token_idx").on(t.tokenHash),
+    index("preview_links_page_idx").on(t.storeId, t.pageId),
+    index("preview_links_install_idx").on(t.installId),
+    index("preview_links_created_by_idx").on(t.createdBy),
+    index("preview_links_revoked_by_idx").on(t.revokedBy),
+    check("preview_links_target", sql`num_nonnulls(${t.pageId}, ${t.installId}) = 1`),
+    check("preview_links_token", sql`${t.tokenHash} ~ '^[0-9a-f]{64}$'`),
+    check("preview_links_expiry", sql`${t.expiresAt} > ${t.createdAt} and ${t.expiresAt} <= ${t.createdAt} + interval '30 days'`),
+  ],
+);
+
+/**
+ * The live look as each save left it (D340, `docs/wave-7-storefront.md` F): the whole `stores.theme` after a save in Design settings
+ * (`design`), the page builder's Theme tab (`theme_tab`) or its saved colours (`colours`). Written only by `keepLookVersion()` in the save's
+ * own transaction, never changed, the newest 50 per store; taken back into the theme editor as unsaved changes.
+ */
+export const lookVersions = commerce.table(
+  "look_versions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    kind: text("kind").notNull(),
+    theme: jsonb("theme").notNull(),
+    createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("look_versions_store_idx").on(t.storeId, t.createdAt),
+    index("look_versions_created_by_idx").on(t.createdBy),
+    check("look_versions_kind", sql`${t.kind} in ('design', 'theme_tab', 'colours')`),
+    check("look_versions_theme", sql`jsonb_typeof(${t.theme}) = 'object'`),
   ],
 );
 

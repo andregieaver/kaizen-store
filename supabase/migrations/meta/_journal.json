@@ -3690,6 +3690,20 @@
       "when": 1793119906483,
       "tag": "20261027165146_private_mode_sql",
       "breakpoints": true
+    },
+    {
+      "idx": 527,
+      "version": "7",
+      "when": 1793124891074,
+      "tag": "20261027181451_schedules_and_sharing",
+      "breakpoints": true
+    },
+    {
+      "idx": 528,
+      "version": "7",
+      "when": 1793124910217,
+      "tag": "20261027181510_schedules_and_sharing_sql",
+      "breakpoints": true
     }
   ]
 }

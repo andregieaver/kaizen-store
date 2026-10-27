@@ -144,7 +144,7 @@ test("schedules an article's draft on the store's clock and cancels the schedule
   const dialog = page.getByRole("dialog", { name: "Publish it later" });
   await expect(dialog).toBeVisible();
   // Tomorrow at nine is filled in.
-  await expect(dialog.getByLabel("Time")).toHaveValue("09:00");
+  await expect(dialog.getByLabel("Time", { exact: true })).toHaveValue("09:00");
   await dialog.getByRole("button", { name: "Schedule", exact: true }).click();
   await expect(dialog.getByRole("status")).toContainText("Scheduled for");
   await expect(opener).toContainText("Scheduled for");

@@ -11,7 +11,7 @@ import { PAGE_TYPE_COPY } from "@/components/admin/page-type-copy";
 import { PagesTable } from "@/components/admin/pages-table";
 import { TermsManager } from "@/components/admin/terms";
 import { SiteLayoutChoice, SiteLayoutsTable } from "@/components/admin/site-layouts";
-import { adminLangOf } from "@/lib/admin-lang";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { LAYOUT_TYPES, termContentOf, type PageType } from "@/lib/page-content";
@@ -24,6 +24,8 @@ import { latestHomeTake, homePageOffers } from "@/server/home-takes";
 import { memberCan, requirePageTypeAccess } from "@/server/permissions";
 import { testOfVersionPage } from "@/server/experiment-admin";
 import { getPageForEdit, listPages, type PageSummary } from "@/server/pages";
+import { scheduleChips } from "@/server/page-schedules";
+import { isScheduledType } from "@/lib/page-schedules";
 import { layoutUses, type LayoutUse } from "@/server/product-layouts";
 import { listSavedParts } from "@/server/saved-parts";
 import { siteLayoutChoice } from "@/server/site-layouts";
@@ -48,7 +50,7 @@ import { undoDemoHomeAction, useDemoHomeAction } from "./home-actions";
 import { PageDrawing } from "./drawing";
 
 /** The catalogue areas the page editor's parts read (D312 A7): the builder, its components' fields, the font and picture pickers. */
-const EDITOR_AREAS = ["builder", "blocks", "fields", "products", "design", "website", "blog"] as const;
+const EDITOR_AREAS = ["builder", "blocks", "fields", "products", "design", "website", "blog", "schedules"] as const;
 
 /**
  * A store's pages (D53) and blog articles (D57): the same list, editor,
@@ -88,8 +90,12 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
   const roleIds = new Set(Object.values(store.pageRoles));
   const blogWords = adminText(adminLangOf(gated.account.adminLocale), "blog");
   const waitingComments = type === "article" ? (await commentCounts(store.id)).pending : 0;
+  // What is scheduled for each page, article, header or footer, and what did not happen (D340), on the store's clock.
+  const lang = adminLangOf(gated.account.adminLocale);
+  const clock = new Intl.DateTimeFormat(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeStyle: "short", timeZone: store.timeZone });
+  const schedules = isScheduledType(type) ? await scheduleChips(store.id, type, adminText(lang, "schedules").chips, (iso) => clock.format(new Date(iso))) : {};
   return (
-    <AdminTextScope texts={adminTexts(adminLangOf(gated.account.adminLocale), ["website"])}>
+    <AdminTextScope texts={adminTexts(adminLangOf(gated.account.adminLocale), ["website", "schedules"])}>
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <PageHeader title={<>{copy.list}</>} description={<>{INTRO[type]}</>} />
@@ -141,7 +147,7 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
           terms={await listTerms({ storeId: store.id, contentType: "product" })}
         />
       ) : type === "header" || type === "footer" ? (
-        <SiteLayoutsTable layouts={pages} adminBase={base} current={(await siteLayoutChoice(store.id))[type]} />
+        <SiteLayoutsTable layouts={pages} adminBase={base} current={(await siteLayoutChoice(store.id))[type]} schedules={schedules} />
       ) : (
         <PagesTable
           pages={pages}
@@ -150,6 +156,7 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
           frontPageId={type === "page" ? store.frontPageId : null}
           productsPageId={type === "page" ? store.productsPageId : null}
           roles={type === "page" ? Object.fromEntries(Object.entries(store.pageRoles).map(([role, id]) => [id, role as PageRole])) : {}}
+          schedules={schedules}
           duplicate={context.actions.duplicate}
         />
       )}

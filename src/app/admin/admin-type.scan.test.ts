@@ -14,7 +14,7 @@ import { describe, expect, it } from "vitest";
 
 const ROOT = join(__dirname, "../../..");
 const DIRS = ["src/app/admin", "src/components/admin"];
-const THEIRS = ["(print)", "packing-slip", "document-page", "pages/drawing.tsx", "account/themes/[presetId]/preview", "replica/", "account/look/", "page-builder.tsx", "theme-editor.tsx"];
+const THEIRS = ["(print)", "packing-slip", "document-page", "pages/drawing.tsx", "account/themes/[presetId]/preview", "replica/", "account/look/", "account/share/", "install-preview-view.tsx", "page-builder.tsx", "theme-editor.tsx"];
 
 function files(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {

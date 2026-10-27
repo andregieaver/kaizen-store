@@ -23,6 +23,23 @@ import { installFont } from "@/server/fonts";
 import { storeTag } from "@/server/stores";
 import { chargeDueThemePurchases } from "@/server/theme-prices";
 import { deleteSavedTheme, saveSavedTheme, saveStoreTheme, saveThemeLibrary, saveThemeTab } from "@/server/themes";
+import { listLookVersions, readLookVersion } from "@/server/look-versions";
+import type { LookVersionItem } from "@/lib/look-versions";
+import type { StoreTheme } from "@/lib/theme";
+
+/** The live look's earlier versions (D340), newest first, for the theme editor's *Versions*. */
+export async function lookVersionsAction(storeSlug: string): Promise<LookVersionItem[]> {
+  const member = await checkPermission(storeSlug, "website:write");
+  return member ? listLookVersions(member.store.id) : [];
+}
+
+/** One earlier version of the live look (D340), for the editor to hold as unsaved changes; nothing is saved here. */
+export async function lookVersionAction(storeSlug: string, versionId: string): Promise<{ ok: true; theme: StoreTheme } | { ok: false; problem: string }> {
+  const member = await checkPermission(storeSlug, "website:write");
+  if (!member) return { ok: false, problem: await noAccess() };
+  const theme = await readLookVersion(member.store.id, String(versionId));
+  return theme ? { ok: true, theme } : { ok: false, problem: adminText(adminLangOf(member.account.adminLocale), "schedules").versions.readFailed };
+}
 
 /** The refusal for a person without access, in their language (D312 A7). */
 const noAccess = async () => adminText(await actionAdminLang(), "design").actions.noAccess;
