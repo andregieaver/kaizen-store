@@ -499,7 +499,13 @@ export async function sitemapIndex(): Promise<string> {
 /** Kaizen's own pages: the front page, sign-up and every published page and article open to search engines (D42, D57). */
 export async function platformSitemap(): Promise<string> {
   const origin = siteUrl();
-  const [all, articles, roles, themes] = await Promise.all([listPublishedPages(), listPublishedPages(null, "article"), getPlatformPageRoles(), themeStoreCards()]);
+  const [all, articles, roles, themes, entries] = await Promise.all([
+    listPublishedPages(),
+    listPublishedPages(null, "article"),
+    getPlatformPageRoles(),
+    themeStoreCards(),
+    listIndexedEntries(null),
+  ]);
   // A page chosen for a place of its own (D143) is at the place's address, which the list below has already.
   const placed = new Set(roles.map(([, id]) => id));
   const pages = all.filter((page) => !placed.has(page.id));
@@ -532,6 +538,8 @@ export async function platformSitemap(): Promise<string> {
           .join("")}`,
       ),
     ),
+    // Its own content entries' pages (D326), in every language; a page at the same address is what is there.
+    ...entries.filter((item) => !all.some((page) => page.slug === item.path)).flatMap((item) => inEvery(`/${item.path}`, `<lastmod>${item.updatedAt}</lastmod>`)),
   ];
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${urls.join("\n")}\n</urlset>\n`;
 }
@@ -630,7 +638,7 @@ export async function storeSitemap(slug: string): Promise<string | null> {
         return versions.map((version) => entry(version.href, versions, { lastmod: article.publishedAt, images: image }));
       }),
     // Its content entries' own pages (D326), published and of a type with pages, in every market.
-    ...entries.flatMap((item) => {
+    ...entries.filter((item) => !pages.some((page) => page.slug === item.path)).flatMap((item) => {
       const versions = versionsOf(store.markets, `/${item.path}`);
       return versions.map((version) => entry(version.href, versions, { lastmod: item.updatedAt }));
     }),

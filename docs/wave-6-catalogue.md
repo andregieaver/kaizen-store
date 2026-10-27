@@ -856,6 +856,8 @@ There is no 3D anywhere.
 
 ### Unit H (D326): content types
 
+Built on 2026-10-27 in four steps (H1, H2, H3, H4), each as specified below; D326 in `docs/decisions.md` records what was built and the migrations.
+
 Detailed on 2026-10-27 from a read of the code, when its turn came. Built in four steps, each its own commit: H1 the model and the admin,
 H2 entries on the site (references, grids, pages), H3 languages, the AI manager and the tracker, H4 Kaizena Flow's own site.
 

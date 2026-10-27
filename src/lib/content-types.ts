@@ -24,6 +24,7 @@ import {
 import {
   EMPTY_DOC,
   newPageContent,
+  RESERVED_PAGE_SLUGS,
   RESERVED_STORE_PAGE_SLUGS,
   richTextPlain,
   type PageBlock,
@@ -197,7 +198,8 @@ const fieldIdSchema = z.string().regex(/^f_[a-z0-9]{6,24}$/, "Choose a field.");
 export function typeSlugProblem(slug: string): string | null {
   if (!SLUG.test(slug)) return "The web name may use lowercase letters, digits and single hyphens.";
   if (slug.length > TYPE_SLUG_MAX) return `Keep the web name under ${TYPE_SLUG_MAX} characters.`;
-  if ((RESERVED_STORE_PAGE_SLUGS as readonly string[]).includes(slug)) return `The web name ${slug} is taken by the site itself: choose another.`;
+  // A store's own routes, and Kaizena Flow's (H4): an entry's page at /{type}/{entry} never stands in for one of them.
+  if (RESERVED_STORE_PAGE_SLUGS.includes(slug) || RESERVED_PAGE_SLUGS.includes(slug)) return `The web name ${slug} is taken by the site itself: choose another.`;
   return null;
 }
 

@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 import { newPageContent, type ContentGridBlock } from "../../src/lib/page-content";
 import { newBlock } from "../../src/lib/page-rows";
 import { testDb } from "../db";
-import { E2E_STORE, OWNER } from "./accounts";
+import { ADMIN, E2E_STORE, OWNER } from "./accounts";
 
 /**
  * Content types as the owner works them (wave 6 unit H1, D326; row catalogue.metaobjects): a type made from a starting point on Website →
@@ -88,4 +88,32 @@ test("lists a type's published entries in a content grid, each opening its own p
   // The standard entry page: its title and its public fields.
   await expect(page.getByRole("heading", { level: 1, name: "Oslo shop" })).toBeVisible();
   await expect(page.getByText("Storgata 1")).toBeVisible();
+});
+
+test("gives Kaizena Flow's own site the same screens, its entries on its own addresses (H4)", async ({ browser }) => {
+  const sql = testDb();
+  try {
+    await sql`delete from commerce.content_types where store_id is null and slug = 'locations'`;
+  } finally {
+    await sql.end();
+  }
+  const admin = await browser.newContext({ storageState: ADMIN.state });
+  const page = await admin.newPage();
+  try {
+    await page.goto("/admin/platform/content/new?preset=locations");
+    await page.getByRole("button", { name: "Save the type" }).click();
+    await expect(page.getByRole("heading", { level: 1, name: "Locations" })).toBeVisible();
+    await page.getByRole("link", { name: "New entry" }).click();
+    await page.getByRole("textbox", { name: "Name", exact: true }).fill("Kaizena Flow office");
+    await page.getByRole("textbox", { name: "Address", exact: true }).fill("Kongens gate 2");
+    await page.getByRole("button", { name: "Publish", exact: true }).click();
+    await expect(page.getByRole("heading", { level: 1, name: "Kaizena Flow office" })).toBeVisible();
+
+    // The entry's own page on Kaizena Flow's site, where no page has its address.
+    await page.goto("/locations/kaizena-flow-office");
+    await expect(page.getByRole("heading", { level: 1, name: "Kaizena Flow office" })).toBeVisible();
+    await expect(page.getByText("Kongens gate 2")).toBeVisible();
+  } finally {
+    await admin.close();
+  }
 });

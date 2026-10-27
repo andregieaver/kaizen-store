@@ -5,9 +5,12 @@ import { PlatformPageView, platformPageMetadata } from "@/components/platform-pa
 import { pageSlugProblem } from "@/lib/page-content";
 import { platformPath, type PlatformLang } from "@/lib/platform-lang";
 import { PLATFORM_ROLE_COPY } from "@/lib/platform-roles";
+import { findEntryPage } from "@/server/content-site";
 import { findPublishedPage, listPublishedPages } from "@/server/pages";
 import { languageMeta } from "@/server/platform-lang-meta";
 import { platformRoleOf } from "@/server/platform-roles";
+
+import { PlatformEntryView, platformEntryMetadata } from "./entry";
 
 type Query = Promise<Record<string, string | string[] | undefined>>;
 
@@ -41,16 +44,30 @@ async function load(slug: string) {
   return pageSlugProblem(slug) === null ? findPublishedPage(null, slug) : null;
 }
 
+/** With no page at a two-part address, one of Kaizena Flow's own entries (D326) may be there: `/{type}/{entry}`. */
+async function loadEntry(slug: string) {
+  const parts = slug.split("/");
+  return parts.length === 2 && parts.every((part) => part !== "") ? findEntryPage(null, parts[0], parts[1]) : null;
+}
+
 export async function pageMetadata(lang: PlatformLang, slug: string): Promise<Metadata> {
   const found = await load(slug);
-  if (!found || "redirect" in found) return {};
+  if (!found) {
+    const entry = await loadEntry(slug);
+    return entry ? platformEntryMetadata(lang, entry) : {};
+  }
+  if ("redirect" in found) return {};
   const path = `/${found.page.slug}`;
   return platformPageMetadata(found.page, path, { lang, languages: (await languageMeta(lang, path)).languages });
 }
 
 export async function PageRoute({ lang, slug, searchParams }: { lang: PlatformLang; slug: string; searchParams: Query }) {
   const found = await load(slug);
-  if (!found) notFound();
+  if (!found) {
+    const entry = await loadEntry(slug);
+    if (!entry) notFound();
+    return <PlatformEntryView lang={lang} found={entry} />;
+  }
   // A page that moved: its old address leads to the new one for good.
   if ("redirect" in found) permanentRedirect(platformPath(lang, `/${found.redirect}`));
   const { page } = found;

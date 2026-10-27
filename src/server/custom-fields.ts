@@ -47,6 +47,7 @@ import { usesSearch } from "@/lib/field-search";
 import { t } from "@/lib/i18n";
 import type { PageContent } from "@/lib/page-content";
 import { marketPath } from "@/lib/paths";
+import { PLATFORM_LANG_FACTS, pageLocaleOf, platformPath, type PlatformLang } from "@/lib/platform-lang";
 
 import { audit, type Membership } from "./auth";
 import { isOwnFieldFile } from "./media";
@@ -57,6 +58,7 @@ import { refreshFieldSearch, refreshStoreFieldSearch } from "./field-search";
 import { marketIn } from "./shop";
 import { getStore, storeTag } from "./stores";
 import { OFFERED } from "./product-conditions";
+import { pagesTag } from "./pages";
 
 type Row = Record<string, unknown>;
 type Runner = Pick<ReturnType<typeof db>, "execute">;
@@ -822,7 +824,7 @@ export async function shownFieldsFor(
   const data = await getFieldData(storeId, entity, entityId, run);
   const words = fieldWords(store, marketSlug, locale, lang);
   const shown = applying.map((g) => shownGroup(g, data, locale, main, words, { publicOnly: true }));
-  if (store) await resolveRelations(run, storeId, store.slug, marketSlug, locale, shown, main);
+  if (store) await resolveRelations(run, storeId, (path) => marketPath(store.slug, marketSlug, path), locale, shown, main);
   return shown.filter((g) => g.fields.length > 0);
 }
 
@@ -871,7 +873,7 @@ export async function shownFieldsForVariants(
   const words = fieldWords(store, marketSlug, locale, lang);
   const out: Record<string, ShownGroup[]> = {};
   for (const [id, own] of data) out[id] = applying.map((g) => shownGroup(g, own, locale, main, words, { publicOnly: true }));
-  if (store) await resolveRelations(run, storeId, store.slug, marketSlug, locale, Object.values(out).flat(), main);
+  if (store) await resolveRelations(run, storeId, (path) => marketPath(store.slug, marketSlug, path), locale, Object.values(out).flat(), main);
   for (const id of Object.keys(out)) {
     out[id] = out[id].filter((g) => g.fields.length > 0);
     if (out[id].length === 0) delete out[id];
@@ -906,7 +908,30 @@ export async function shownEntryFields(
   const main = store?.localization.locales[0] ?? locale;
   const type = { id: String(row.id), name: String(row.name), slug: String(row.slug), fields: (row.fields ?? []) as FieldDef[] };
   const shown = [shownGroup(typeAsGroup(type), readEntryContent(row.published).data, locale, main, fieldWords(store, marketSlug, locale, lang), { publicOnly: true })];
-  if (store) await resolveRelations(run, storeId, store.slug, marketSlug, locale, shown, main);
+  if (store) await resolveRelations(run, storeId, (path) => marketPath(store.slug, marketSlug, path), locale, shown, main);
+  return shown.filter((g) => g.fields.length > 0);
+}
+
+/**
+ * The public fields of one of Kaizena Flow's own published entries (wave 6 unit H4, D326) in the site's language `lang` (English the main
+ * one), what they point at linked on Kaizena Flow's own site. Its types hold no money or files.
+ */
+export async function shownPlatformEntryFields(entryId: string, lang: PlatformLang): Promise<ShownGroup[]> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(contentTag(null), pagesTag(null));
+  const run = readDb();
+  const [row] = await run.execute<Row>(sql`
+    select e.published, t.id, t.name, t.slug, t.fields
+    from commerce.content_entries e join commerce.content_types t on t.id = e.type_id
+    where e.store_id is null and e.id = ${entryId}::uuid and e.published is not null
+  `);
+  if (!row) return [];
+  const locale = pageLocaleOf(lang) ?? "en";
+  const type = { id: String(row.id), name: String(row.name), slug: String(row.slug), fields: (row.fields ?? []) as FieldDef[] };
+  const words = fieldWords(null, "", locale, PLATFORM_LANG_FACTS[lang].messages);
+  const shown = [shownGroup(typeAsGroup(type), readEntryContent(row.published).data, locale, "en", words, { publicOnly: true })];
+  await resolveRelations(run, null, (path) => platformPath(lang, path), locale, shown, "en");
   return shown.filter((g) => g.fields.length > 0);
 }
 
@@ -920,9 +945,8 @@ type Target = { label: string; href: string; image?: string | null };
  */
 async function resolveRelations(
   run: Runner,
-  storeId: string,
-  storeSlug: string,
-  marketSlug: string,
+  storeId: string | null,
+  base: (path: string) => string,
   locale: string,
   groups: ShownGroup[],
   main: string = locale,
@@ -951,7 +975,6 @@ async function resolveRelations(
   for (const group of groups) each(group.fields, (field) => idsOf(field).forEach(({ kind, id }) => wanted[kind].add(id)));
   if (wanted.product.size + wanted.page.size + wanted.term.size + wanted.entry.size === 0) return;
 
-  const base = (path: string) => marketPath(storeSlug, marketSlug, path);
   const list = (ids: Set<string>) => sql.join([...ids].map((id) => sql`${id}::uuid`), sql`, `);
   const found = { product: new Map<string, Target>(), page: new Map<string, Target>(), term: new Map<string, Target>(), entry: new Map<string, Target>() };
   if (wanted.entry.size > 0) {
@@ -965,7 +988,7 @@ async function resolveRelations(
       from commerce.products p
       left join commerce.product_translations tl on tl.product_id = p.id and tl.locale = ${locale}
       left join lateral (select title from commerce.product_translations where product_id = p.id order by locale limit 1) tf on true
-      where p.store_id = ${storeId}::uuid and p.status = 'active' and ${OFFERED} and p.id in (${list(wanted.product)})
+      where p.store_id is not distinct from ${storeId}::uuid and p.status = 'active' and ${OFFERED} and p.id in (${list(wanted.product)})
     `);
     for (const r of rows) found.product.set(String(r.id), { label: String(r.title), href: base(`/p/${String(r.handle)}`), image: r.image ? String(r.image) : null });
   }
@@ -973,7 +996,7 @@ async function resolveRelations(
     const rows = await run.execute<Row>(sql`
       select id, type, slug, coalesce(nullif(published ->> 'title', ''), slug) as title, published -> 'thumbnail' ->> 'url' as image
       from commerce.pages
-      where store_id = ${storeId}::uuid and published_at is not null and type in ('page', 'article') and id in (${list(wanted.page)})
+      where store_id is not distinct from ${storeId}::uuid and published_at is not null and type in ('page', 'article') and id in (${list(wanted.page)})
     `);
     for (const r of rows) {
       const path = r.type === "article" ? `/blog/${String(r.slug)}` : `/${String(r.slug)}`;
@@ -982,7 +1005,7 @@ async function resolveRelations(
   }
   if (wanted.term.size > 0) {
     const rows = await run.execute<Row>(sql`
-      select id, kind, name, slug from commerce.terms where store_id = ${storeId}::uuid and id in (${list(wanted.term)})
+      select id, kind, name, slug from commerce.terms where store_id is not distinct from ${storeId}::uuid and id in (${list(wanted.term)})
     `);
     for (const r of rows) found.term.set(String(r.id), { label: String(r.name), href: base(`/${r.kind === "tag" ? "tag" : "category"}/${String(r.slug)}`) });
   }

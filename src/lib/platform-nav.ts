@@ -16,6 +16,7 @@ const item = (path: string, label: string, description: string, exact = false): 
 export const WEBSITE_ITEMS: SectionItem[] = [
   item("/pages", "Pages", "Kaizena Flow's own pages, built in the page builder: draft, publish, and choose the front page, blog page and 404 page."),
   item("/articles", "Blog", "Kaizena Flow's blog: articles, their categories and tags."),
+  item("/content", "Content", "Kaizena Flow's own kinds of content: entries listed on its pages, each with a page if you like."),
   item("/media", "Media", "Pictures and videos for Kaizena Flow's pages, searchable, with alt texts."),
   item("/templates", "Templates", "The marketplace's templates, store owners' and Kaizena Flow's own: hide one from every store's list, or show it again."),
   item("/menus", "Menus", "Lists of links for Kaizena Flow's header, footer and pages."),

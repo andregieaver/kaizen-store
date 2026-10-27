@@ -270,6 +270,7 @@ export const NAV_NB: Record<string, string> = {
   "Kaizena Flow's own pages, built in the page builder: draft, publish, and choose the front page, blog page and 404 page.":
     "Kaizena Flows egne sider, laget i sidebyggeren: utkast, publisering, og valg av forside, bloggside og 404-side.",
   "Kaizena Flow's blog: articles, their categories and tags.": "Kaizena Flows blogg: artikler, kategoriene og stikkordene deres.",
+  "Kaizena Flow's own kinds of content: entries listed on its pages, each with a page if you like.": "Kaizena Flows egne innholdstyper: oppføringer som vises på sidene, hver med en egen side om du vil.",
   "Pictures and videos for Kaizena Flow's pages, searchable, with alt texts.": "Bilder og videoer til Kaizena Flows sider, søkbare, med alternative tekster.",
   Templates: "Maler",
   "The marketplace's templates, store owners' and Kaizena Flow's own: hide one from every store's list, or show it again.":

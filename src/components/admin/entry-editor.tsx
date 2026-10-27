@@ -10,7 +10,7 @@ import {
   fieldFileUploader,
   type StartFieldFile,
 } from "@/components/admin/field-file-upload";
-import { uploadFieldPicture } from "@/components/admin/field-picture-upload";
+import { uploadPictureWith, type UploadPictureAction } from "@/components/admin/field-picture-upload";
 import { fillWords } from "@/lib/admin-fill";
 import {
   entrySlugOf,
@@ -56,8 +56,7 @@ export function EntryEditor({
   locales,
   languageNames,
   lookups,
-  storeSlug,
-  uploads,
+  uploadImage,
   startFile,
   save,
   publish,
@@ -77,9 +76,10 @@ export function EntryEditor({
   locales: string[];
   languageNames: Record<string, string>;
   lookups: FieldLookups;
-  storeSlug: string;
-  uploads: boolean;
-  startFile: StartFieldFile;
+  /** The owner's picture upload action (bound to a store, or Kaizena Flow's own); null where uploads are not set up. */
+  uploadImage: UploadPictureAction | null;
+  /** Starts a field file's upload (a store's only: Kaizena Flow's own site keeps no field files); null where there is none. */
+  startFile: StartFieldFile | null;
   save: ContentAction<unknown>;
   publish: ContentAction<string>;
   unpublish: ContentAction<string>;
@@ -211,10 +211,8 @@ export function EntryEditor({
         main={main}
         locale={locale}
         languageNames={languageNames}
-        upload={
-          uploads ? (file: File) => uploadFieldPicture(storeSlug, file) : null
-        }
-        fileUpload={uploads ? fieldFileUploader(startFile) : null}
+        upload={uploadImage ? (file: File) => uploadPictureWith(uploadImage, file) : null}
+        fileUpload={startFile ? fieldFileUploader(startFile) : null}
         lookups={lookups}
         title={w.fields}
         intro={w.fieldsIntro}

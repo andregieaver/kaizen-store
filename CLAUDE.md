@@ -194,6 +194,19 @@ stand-in is the only fake, and only it is told it is one.
   `saveProduct()`; a new place that keeps an item's file goes in `mediaUses()`, `rewriteAddresses()` and the store copy's files. The product
   page never plays a video by itself, loads YouTube or Vimeo only on a press and `<model-viewer>` only on *View in 3D* (a dynamic import,
   never in the first scripts). An item's words in other languages are `alts`, in the translation worklist as `media.{n}`.
+- **Content types (wave 6 unit H, D326, `docs/wave-6-catalogue.md` Unit H)**: an owner's own kinds of content (`commerce.content_types`, a
+  fixed `key`, a web name, fields from `FIELD_TYPES`, title, summary and picture fields, `has_pages`, an `entry_layout` page) and their
+  entries (`commerce.content_entries`, a draft and a published `EntryContent`), a store's (Website → Content) or Kaizena Flow's own (`store_id`
+  null, `/admin/platform/content`, no money or file field); every query asks `store_id is not distinct from`. Types are written only by
+  `src/server/content-types.ts` and entries only by `src/server/content-entries.ts`, values checked and drawn by the custom fields' own
+  functions (`typeAsGroup()`); the screens are the shared views of `components/admin/content-views.tsx` given a `ContentSite`. The field type
+  `entry` holds the owner's own entries of one type (`keepOwnRelations()`), drawn as a link while published (`entryTargets()`), and deleting
+  an entry clears every reference in its transaction (`clearEntryRefs()`, `withoutEntry()`). A grid's `entries` source is `gridEntries()`; a
+  type with pages serves `/{type}/{entry}` where no page has the address (`findEntryPage()`: a store's `EntryPageView` with its layout bound by
+  `shownEntryFields()`, Kaizena Flow's `PlatformEntryView` in `/` and `/no/`), in the sitemap (`listIndexedEntries()`), leaving a redirect of
+  kind `entry` when a published entry's address changes (stores only). Entries are in `mediaUses()`/`rewriteAddresses()`, the store copy,
+  the translation worklist (scope `content`) and the AI manager's tools (`src/server/content-tools.ts`: publishing and type changes gated
+  `public`). A new reader of a type's entries reads `published` only.
 - Sorting and filtering listings (D78, `src/lib/listing-filters.ts`,
   `src/server/listing.ts`, `FilterDialog`, `ProductListing`): the products
   page, category and tag pages and search results take their filters from

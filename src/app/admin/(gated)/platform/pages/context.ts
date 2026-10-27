@@ -13,6 +13,7 @@ import { pageLanguages } from "@/lib/page-translation";
 import { PLATFORM_PAGE_LOCALES } from "@/lib/platform-lang";
 import { siteUrl } from "@/lib/site";
 import { listGridStores } from "@/server/content-grid";
+import { listContentTypes } from "@/server/content-types";
 import { siteFontStyle } from "@/server/fonts";
 import { uploadsEnabled } from "@/server/media";
 import { canMakePictures } from "@/server/picture-maker";
@@ -78,6 +79,8 @@ export async function platformPageContext(type: PageType = "page", author = ""):
     standardMenus: { header: chrome.headerMenuId, footer: chrome.footerMenuId },
     menusHref: "/admin/platform/menus",
     plans: planChoices(plans),
+    // Kaizena Flow's own content types (D326 H4), whose published entries a grid can list.
+    contentTypes: (await listContentTypes(null)).map(({ key, name, fields }) => ({ key, name, fields })),
     // The list of themes on any of Kaizena Flow's pages (D285); a theme's parts only on the page edited as a theme's page (from Themes).
     themeStore: type === "page" ? { parts: ["list"] } : null,
     // Kaizen's own theme (D235), as a store's is given: its Theme tab, its saved colours, and the theme under every part.
