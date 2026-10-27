@@ -49,13 +49,19 @@ test("the owner sets the checkout's look in Design settings, and the theme keeps
   const card = page.getByRole("region", { name: "Checkout look", exact: true });
   await expect(card.getByText("The checkout follows this theme", { exact: false })).toBeVisible();
   // Homer's view: one sentence and the logo; the rest one step away.
-  await card.getByText("Customise the checkout", { exact: true }).click();
-  await card.getByText("A panel in the surface colour", { exact: true }).click();
+  // The card is drawn before the editor's scripts take it over, which closes a section opened before then: press until it stays open.
+  const panel = card.getByText("A panel in the surface colour", { exact: true });
+  await expect(async () => {
+    if (!(await panel.isVisible())) await card.getByText("Customise the checkout", { exact: true }).click();
+    await expect(panel).toBeVisible({ timeout: 1_000 });
+  }).toPass({ timeout: 20_000 });
+  await panel.click();
   await card.getByText("A colour of its own", { exact: true }).click();
   await card.getByLabel("Pay button in light colours").fill(LIGHT);
   await card.getByLabel("Pay button in dark colours").fill(DARK);
   await card.getByRole("group", { name: "Pay button corners" }).getByText("Square", { exact: true }).click();
   await card.getByText("A line under", { exact: true }).click();
+  await expect(card.getByLabel("Pay button in light colours")).toHaveValue(LIGHT);
   // The preview's checkout shows the new pay button colour at once.
   await expect(page.locator("[data-checkout-sample]").first()).toBeVisible();
   await page.getByRole("button", { name: "Save", exact: true }).first().click();
