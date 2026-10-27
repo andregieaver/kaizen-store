@@ -273,6 +273,8 @@ export const assistantNb: AssistantMessages = {
     create_field_group: "Forbereder de egne feltene",
     set_fields: "Forbereder endringen",
     search_insights: "Ser på søk",
+    market_price_rules: "Ser på hvordan hvert land får prisene sine",
+    set_market_price_rule: "Forbereder prisregelen",
     search_merchandising: "Ser på søkets synonymer og regler",
     save_search_synonym: "Forbereder synonymene",
     save_search_rule: "Forbereder søkeregelen",

@@ -367,6 +367,8 @@ export const TOOL_WORDS: Record<string, string> = {
   create_field_group: "Preparing the custom fields",
   set_fields: "Preparing the change",
   search_insights: "Looking at searches",
+  market_price_rules: "Looking at how each country gets its prices",
+  set_market_price_rule: "Preparing the price rule",
   search_merchandising: "Looking at the search's synonyms and rules",
   save_search_synonym: "Preparing the synonyms",
   save_search_rule: "Preparing the search rule",

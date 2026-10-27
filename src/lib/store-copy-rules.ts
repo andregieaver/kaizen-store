@@ -40,6 +40,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   notification_settings: settings("Which customer emails are switched on (D238); the required ones are always on."),
   email_templates: { group: "emails", note: "The owner's own wording of the customer emails (D238), copied only when Email texts is ticked in the copy wizard (commerce.copy_email_templates()); clone_store() copies none." },
   staff_alert_settings: settings("The staff summary's choice and the contact address's alerts (D238); copied without its recipients, so the copy's own owners get the default alerts."),
+  market_price_rules: never("Prices worked out from another country (D335): a copy keeps every price as it was, set by hand, and its owner sets rules again."),
   staff_alert_recipients: never("The staff chosen for alerts are the original's people (D238): a copy starts with the defaults, its own owners."),
   store_events: never("The original's queue of order and return events for staff alerts and rules (D238)."),
   order_rules: settings("Automation rules (D238), with new ids; a rule naming a product that was not copied loses it and is switched off."),

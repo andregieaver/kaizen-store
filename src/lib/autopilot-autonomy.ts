@@ -85,6 +85,8 @@ export const TOOL_AREAS: Readonly<Record<string, AutonomyArea>> = {
  * `TOOL_AREAS` (`autopilot-autonomy.test.ts`).
  */
 export const NEVER_AUTOMATIC: ReadonlySet<string> = new Set([
+  // A price rule rewrites every price of a country at once (D335): a person always says yes to it.
+  "set_market_price_rule",
   "invite_staff",
   "change_staff_role",
   "remove_staff",

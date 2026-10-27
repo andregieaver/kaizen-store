@@ -50,6 +50,8 @@ export const TOOL_FEATURES: Partial<Record<OwnerToolName, FeatureRequirement>> =
   list_discounts: "shop",
   list_campaigns: "shop",
   search_insights: "shop",
+  market_price_rules: "countries",
+  set_market_price_rule: "countries",
   search_merchandising: "shop",
   save_search_synonym: "shop",
   save_search_rule: "shop",

@@ -143,6 +143,14 @@ scheduled articles use).
   a scenario in `checkout-kinds.int.test.ts` (a derived euro price shown equals charged), availability's reads and the cart's refusal, and
   an e2e that switches a product off in one country and sets a rule.
 
+**A2 as built (2026-10-27).** As above, with these differences. The editor shows a derived price in its field with *By rule* beside it
+(not as a placeholder): typing another price fixes it, and emptying the field puts it back under the rule. Rates do change by themselves
+(*Follow the ECB*, `applyEcbRates()`, daily), so derived prices follow them there as well as on a currency save, each time as one audit entry
+for the batch (`settings.market_prices_derived`, by no person for the ECB's). The screen offers a rule for every country but the store's own
+(the first), which is the natural base; the database and `ruleProblem()` allow any pair that does not chain. A rule written by the AI manager
+never runs by itself under the autopilot (`NEVER_AUTOMATIC`: it rewrites a whole country's prices). Store copies keep every price as it was,
+fixed, and no rule (`COPY_RULES` `never`). The bulk editor's preview saying that it fixes a derived price is left to A3.
+
 ### A.3 Steps
 
 A1 availability (model, view, editor, CSV, cart, copies, tools); A2 rules (model, sum, writer, screen, tools); A3 the bulk bar's *Sell in* /

@@ -12,6 +12,7 @@ import { audit, type Membership } from "./auth";
 import { listLanguages } from "./languages";
 import type { SaveResult } from "./settings";
 import type { Store } from "./stores";
+import { deriveForProducts } from "./market-prices";
 
 /**
  * A store's languages and currencies (D109), chosen independently of each
@@ -133,7 +134,7 @@ export async function saveCurrencies(
   }
   if (problems.length > 0) return { ok: false, problems };
 
-  await db().transaction(async (tx) => {
+  const derived = await db().transaction(async (tx) => {
     await tx.execute(sql`delete from commerce.store_currencies where store_id = ${store.id}::uuid`);
     let position = 0;
     for (const c of list) {
@@ -147,8 +148,11 @@ export async function saveCurrencies(
       set rates_auto = ${ratesAuto}, rates_updated_at = ${ecb ? sql`now()` : sql`rates_updated_at`}
       where id = ${store.id}::uuid
     `);
+    // Prices a market works out from another's at these rates (D335 A.2) follow them.
+    return deriveForProducts(tx, store.id);
   });
   await audit(account.id, store.id, "localization.currencies", { currencies: list.map((c) => c.currency), ratesAuto });
+  if (derived.written + derived.ended > 0) await audit(account.id, store.id, "settings.market_prices_derived", { cause: "rates", ...derived }, { area: "settings" });
   return { ok: true };
 }
 
@@ -172,6 +176,10 @@ async function applyEcbRates(storeId: string, ecb: EcbRates): Promise<number> {
     updated += rows.length;
   }
   await db().execute(sql`update commerce.stores set rates_updated_at = now() where id = ${storeId}::uuid`);
+  // Prices a market works out from another's (D335 A.2) follow the new rates; the ECB's change at most once a day, so the 30-day reference keeps
+  // its meaning. One entry for the batch, by no person.
+  const derived = await deriveForProducts(db(), storeId);
+  if (derived.written + derived.ended > 0) await audit(null, storeId, "settings.market_prices_derived", { cause: "ecb", ...derived }, { area: "settings" });
   return updated;
 }
 

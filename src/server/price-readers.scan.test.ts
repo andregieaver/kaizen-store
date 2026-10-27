@@ -15,6 +15,7 @@ const PRICES_TABLE: Record<string, string> = {
   "src/server/analytics-inventory-data.ts": "the stock value report, priced at the shelf price whatever is sold where",
   "src/server/bundles.ts": "the bundle editor's facts about the components an owner may choose",
   "src/server/cart-reminders.ts": "the sample products in the admin's preview of a reminder email",
+  "src/server/market-prices.ts": "market price rules (D335 A.2): a base price and whether a market's price is the rule's, to write derived prices through `commerce.set_price`",
 };
 
 const KEPT_PRICES: Record<string, string> = {

@@ -202,6 +202,8 @@ export const productEn = {
     byLocation: "By location",
     stockFor: "Stock for {name}",
     priceFor: "Price in {market} for {name}, {currency}",
+    byRule: "By the country's price rule",
+    byRulePlaceholder: "By rule",
     forSale: "{name} is for sale",
     stockRulesFor: "Stock rules for {name}",
     keepsSelling: { one: ": keeps selling, ships within {n} day", many: ": keeps selling, ships within {n} days" },

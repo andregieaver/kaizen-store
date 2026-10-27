@@ -523,6 +523,24 @@ export const OWNER_TOOLS = [
     "public",
   ),
   tool(
+    "market_price_rules",
+    "How each of the store's countries gets its prices, as on the Countries page (D335): set by hand, or worked out from another country's prices by a rule (a percentage up or down, on the price before or with VAT, rounded and with an ending), and how many prices are the rule's now. A price typed by hand in a ruled country stays as typed. Read-only. Change it with set_market_price_rule (the owner's yes first).",
+    z.object({}),
+  ),
+  tool(
+    "set_market_price_rule",
+    "Works out every price in a country from another country's prices, or sets them by hand again (`from` null: the prices stay as they are). The base country's prices are converted at the store's rates, changed by `percent`, and rounded; `vat` `net` takes the base country's VAT off and puts this country's back on, `gross` keeps the price with VAT as it is. Prices typed by hand in the country stay as typed. A country whose prices are worked out is never another rule's base, and the base country's prices are its own. Countries by code from market_price_rules. Needs the owner's approval: it changes many prices at once.",
+    z.object({
+      country: z.string().trim().length(2).describe("The country whose prices are worked out, by code (SE)."),
+      from: z.string().trim().length(2).nullable().describe("The country they are worked out from (NO); null to set them by hand again."),
+      percent: z.number().min(-90).max(1000).default(0).describe("Up (+) or down (-), in percent: 10 is 10 % more."),
+      vat: z.enum(["net", "gross"]).default("net"),
+      round_to: z.number().positive().max(1000).optional().describe("Round to steps of this amount in the country's currency (1 = whole units, 10 = tens); left out, not rounded."),
+      ending: z.number().min(0).optional().describe("With round_to: the price ends with this amount below the step (round_to 10, ending 9 makes 149, 159)."),
+    }),
+    "public",
+  ),
+  tool(
     "list_content_types",
     "The store's own kinds of content (Website, Content, D326), such as team members, questions and answers or locations: each type's key, name and web name (its entries' pages are at /{web name}/{entry} when it has pages), its fields (name, label, type, whether required, public or for staff only) with the one that is its title, and how many entries it has. Read-only.",
     z.object({}),
@@ -1674,6 +1692,10 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
     case "save_search_rule":
     case "delete_search_merchandising":
       return searchApprovalSummary(name, input);
+    case "set_market_price_rule":
+      return input.from === null || input.from === undefined
+        ? `Set the prices in ${text("country").toUpperCase()} by hand again (they stay as they are).`
+        : `Work out every price in ${text("country").toUpperCase()} from ${text("from").toUpperCase()}: ${Number(input.percent ?? 0) >= 0 ? "+" : ""}${Number(input.percent ?? 0)} % on the price ${input.vat === "gross" ? "with" : "before"} VAT${input.round_to === undefined ? "" : `, rounded to ${Number(input.round_to)}${input.ending === undefined ? "" : ` ending in ${Number(input.ending)}`}`}. Prices typed by hand there stay.`;
     // An entry's and a type's own names are put in by the server (`contentApprovalWords()`); these words name them as given.
     case "publish_entry":
     case "unpublish_entry":

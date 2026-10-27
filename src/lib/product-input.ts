@@ -351,6 +351,8 @@ export const productInput = z.object({
         rentalPeriod: z.enum(RENTAL_PERIODS).default("day"),
         /** Its own picture, shown where shoppers choose a variant: one of the product's, or uploaded for it. */
         image: z.object({ url: pictureAddress, thumbnailUrl: pictureAddress.nullable() }).nullable().default(null),
+        /** Read only (D335 A.2): the countries whose price a market price rule wrote. Never saved: a price typed there is the owner's own. */
+        derivedIn: z.array(z.string().regex(/^[A-Z]{2}$/)).max(60).optional(),
       }),
     )
     .min(1, "A product needs at least one variant.")

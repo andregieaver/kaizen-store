@@ -105,6 +105,7 @@ import {
 } from "./domain-tools";
 import { DNS_RECORD_TOOLS } from "@/lib/domain-tools";
 import { addRedirectTool, preflightRedirectTool, redirectOverviewTool } from "./redirect-tools";
+import { marketPriceRulesTool, preflightPriceRuleTool, setMarketPriceRuleTool } from "./market-price-tools";
 import { deleteSearchMerchandisingTool, preflightSearchTool, saveSearchRuleTool, saveSearchSynonymTool, searchMerchandisingTool } from "./search-tools";
 import {
   getEntryTool,
@@ -2083,6 +2084,13 @@ export async function preflightOwnerTool(ctx: OwnerToolContext, name: string, ra
     if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
     return preflightSearchTool(ctx, name, input.input as Record<string, unknown>);
   }
+  // A price rule the Countries page would refuse is refused now, never kept for a yes (D335).
+  if (name === "set_market_price_rule") {
+    const tool = OWNER_TOOLS_BY_NAME[name];
+    const input = readToolInput(tool, raw);
+    if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
+    return preflightPriceRuleTool(ctx, input.input as Record<string, unknown>);
+  }
   // An entry that could not be published or taken off, or a content type that could not be saved, is refused now, never kept for a yes (D326).
   if (name === "publish_entry" || name === "unpublish_entry" || name === "save_content_type") {
     const tool = OWNER_TOOLS_BY_NAME[name];
@@ -2406,6 +2414,8 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   redirect_overview: redirectOverviewTool,
   add_redirect: addRedirectTool,
   search_merchandising: searchMerchandisingTool,
+  market_price_rules: marketPriceRulesTool,
+  set_market_price_rule: setMarketPriceRuleTool,
   save_search_synonym: saveSearchSynonymTool,
   save_search_rule: saveSearchRuleTool,
   delete_search_merchandising: deleteSearchMerchandisingTool,

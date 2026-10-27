@@ -1547,6 +1547,55 @@ describe("a product switched off in a market, in euro (D335 A.1)", () => {
 });
 
 /**
+ * A price worked out by a market price rule (D335 A.2), shown in euro: the notebook's Swedish price, emptied by the owner, is worked out from the
+ * Norwegian one (+20 % with VAT, rounded to whole kronor); a Swede who sees euro gets that price converted, and the cart, summary and order agree.
+ */
+describe("a price worked out from another country's, in euro (D335 A.2)", () => {
+  it("is the rule's price, converted for the view, in the cart, the summary and the order alike", async () => {
+    const { saveMarketPriceRule, removeMarketPriceRule } = await import("./market-prices");
+    const { placeOrder, cancelUnpaidOrder } = await import("./checkout");
+    const se = toMarket({ code: "SE", currency: "SEK", defaultLocale: "sv-SE" });
+    const seInEuro = showMarket(
+      { code: "SE", currency: "SEK", defaultLocale: "sv-SE" },
+      { currency: "EUR", conversion: conversionFor(localizationOf([], [{ currency: "SEK", rate: 11.5, roundTo: 1 }, { currency: "EUR", rate: 1, roundTo: 1 }], [se]), "SEK", "EUR")! },
+    );
+    const notebook = variant["DEMO-NOTEBOOK-LINED"];
+    await db().execute(sql`insert into commerce.store_currencies (store_id, currency, rate, round_to, position) values (${storeId}::uuid, 'SEK', 11.5, 1, 2)`);
+    await db().execute(sql`update commerce.prices set valid_to = now() where variant_id = ${notebook}::uuid and market_code = 'SE' and valid_to is null`);
+    const store = { id: storeId, keptMarkets: [{ code: "NO" }, { code: "SE" }, { code: "DK" }] };
+    try {
+      expect(await saveMarketPriceRule(store, member.account.id, { market: "SE", base: "NO", percentBps: 2_000, basis: "gross", roundToMinor: 100, endingMinor: null })).toMatchObject({ ok: true });
+      const [base] = await db().execute<Row>(sql`select amount_minor::int as a from commerce.current_prices where variant_id = ${notebook}::uuid and market_code = 'NO'`);
+      const [derived] = await db().execute<Row>(sql`select amount_minor::int as a, derived from commerce.kept_prices where variant_id = ${notebook}::uuid and market_code = 'SE'`);
+      // The same rate for both crowns: the Norwegian price +20 %, half up to whole kronor.
+      const want = Math.floor((Number(base.a) * 12 + 500) / 1000) * 100;
+      expect({ amount: Number(derived.a), derived: derived.derived }).toEqual({ amount: want, derived: true });
+
+      view = seInEuro;
+      jar.clear();
+      await add("DEMO-NOTEBOOK-LINED", 2);
+      const cart = await getCart(shop());
+      expect(cart.lines.map((l) => [l.status, l.unitPriceMinor])).toEqual([["ok", shown(seInEuro, want)]]);
+      const summary = await cartSummary(shop(), cart);
+      const placed = await placeOrder({ storeId, market: seInEuro }, jar.get(`cart_${storeId}_${se.slug}`)!);
+      if (!placed.ok) throw new Error(placed.problem);
+      const order = (await getOrder(storeId, placed.order.orderId))!;
+      expect({ currency: order.currency, total: order.totalMinor, vat: order.taxMinor, unit: order.lines[0].unitPriceMinor }).toEqual({
+        currency: "EUR",
+        total: summary.total,
+        vat: summary.vat,
+        unit: shown(seInEuro, want),
+      });
+      await cancelUnpaidOrder(placed.order.orderId, "test");
+    } finally {
+      view = no;
+      await removeMarketPriceRule({ id: storeId }, member.account.id, "SE");
+      await db().execute(sql`delete from commerce.store_currencies where store_id = ${storeId}::uuid and currency = 'SEK'`);
+    }
+  });
+});
+
+/**
  * The rules as read (D160): no market compares per 100 g, so the notebook, whose owner chose 100 g, is compared per kg in Norway
  * with the table as it is. The cart's unit price, the order line's and an independent reader's agree, and the totals are the
  * same as with the small base.

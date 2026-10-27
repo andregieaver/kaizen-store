@@ -224,6 +224,15 @@ stand-in is the only fake, and only it is told it is one.
   there; the admin's own price reads use `commerce.kept_prices` (every current price). Who may read `commerce.prices` or `kept_prices` is
   `price-readers.scan.test.ts`: a new reader that decides what a shopper is sold reads `current_prices`. The CSV's `not_sold_in` and the AI
   manager's `not_sold_in` go through the same save.
+- **Prices worked out per country (wave 7 unit A2, D335, `docs/wave-7-storefront.md` A.2)**: a market may take its prices from another of the
+  store's by a rule (`commerce.market_price_rules`: base, percentage, `net` or `gross`, rounding step, ending; never chained, by trigger and
+  `ruleProblem()`), worked out only by `derivedPrice()` (`src/lib/market-prices.ts`, BigInt) and written only by `src/server/market-prices.ts`
+  through `commerce.set_price` with `prices.derived` (the only change the price history guard allows on an open row); a price typed by hand is
+  fixed and never touched, an empty one follows the rule, gift cards and computed bundles are left alone. Prices derive again in
+  `saveProduct()`'s transaction (`deriveForProducts()`), on a rule's save, on a currency save and after the ECB's rates, each change logged
+  (a product's in its save's entries, a batch as one entry); taking a rule away keeps its prices, fixed. A new writer of base prices or rates
+  calls `deriveForProducts()`; a new caller of `set_price` is in `price-audit-scan.test.ts`. The AI manager's `market_price_rules` and the
+  gated `set_market_price_rule` (never automatic) go through the same saver.
 - Sorting and filtering listings (D78, `src/lib/listing-filters.ts`,
   `src/server/listing.ts`, `FilterDialog`, `ProductListing`): the products
   page, category and tag pages and search results take their filters from

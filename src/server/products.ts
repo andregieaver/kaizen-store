@@ -50,6 +50,7 @@ import { withStockContext } from "./stock-context";
 import { listTerms, scopedTermIds } from "./taxonomy";
 import { categoryMarks } from "./unit-price-gaps";
 import { taxonomy } from "./product-taxonomy";
+import { deriveForProducts, marketPriceRules } from "./market-prices";
 
 type Row = Record<string, unknown>;
 type Tx = Parameters<Parameters<ReturnType<typeof db>["transaction"]>[0]>[0];
@@ -110,6 +111,8 @@ export type EditorContext = {
   aiWriting: boolean;
   /** The store's shipping profiles (D237), for the *Shipping profile* field; General is the empty choice. Absent: the field is not shown. */
   shippingProfiles?: { id: string; name: string }[];
+  /** Markets whose prices a rule works out from another's (D335 A.2): an empty price there is the rule's, not "not sold". */
+  ruledMarkets?: string[];
 };
 
 export async function getEditorContext(store: Store): Promise<EditorContext> {
@@ -183,6 +186,7 @@ export async function getEditorContext(store: Store): Promise<EditorContext> {
     layouts,
     aiWriting: Boolean((await aiFor(store.id))?.textModel),
     shippingProfiles: await profileChoices(store.id),
+    ruledMarkets: (await marketPriceRules(store.id)).map((r) => r.market),
   };
 }
 
@@ -405,7 +409,7 @@ export async function getProductForEdit(
       order by v.active desc, v.created_at, v.sku
     `),
     db().execute<Row>(sql`
-      select c.variant_id, c.market_code, c.currency, c.amount_minor
+      select c.variant_id, c.market_code, c.currency, c.amount_minor, c.derived
       -- Every current price, also in a country the product is switched off in (D335): the editor keeps it.
       from commerce.kept_prices c
       join commerce.product_variants v on v.id = c.variant_id
@@ -521,6 +525,8 @@ export async function getProductForEdit(
             formatPriceInput(typedAmount(context, String(p.market_code), Number(p.amount_minor), category), String(p.currency)),
           ]),
       ),
+      // The countries whose price here a market price rule wrote (D335 A.2): the editor says so; typing another price fixes it.
+      derivedIn: prices.filter((p) => String(p.variant_id) === String(v.id) && p.derived === true).map((p) => String(p.market_code)),
       cost: v.cost_minor === null ? "" : formatPriceInput(Number(v.cost_minor), context.mainCurrency),
       stock: Number(v.stock),
       stockPolicy: v.stock_policy === "continue" ? ("continue" as const) : ("deny" as const),
@@ -900,6 +906,8 @@ export async function saveProduct(
       if (input.kind === "bundle") await saveBundleComponents(tx, store.id, saved, input);
       await savePriceBreaks(tx, store.id, saved, input, context);
       await writeAvailability(tx, store.id, saved, input, context);
+      // Markets that work their prices out from another's (D335 A.2) follow this product's prices.
+      await deriveForProducts(tx, store.id, { productIds: [saved] });
       await saveFiles(tx, store.id, saved, input);
       // Kept as they are while Subscriptions is off (D178); a product that becomes a booking still loses them (it cannot be subscribed to).
       if (subscriptionsOn || isBooked(input.kind)) await savePlans(tx, store.id, saved, input, context.markets, context.audience);

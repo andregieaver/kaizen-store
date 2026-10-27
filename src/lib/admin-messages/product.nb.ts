@@ -201,6 +201,8 @@ export const productNb: ProductMessages = {
     byLocation: "Per sted",
     stockFor: "Lager for {name}",
     priceFor: "Pris i {market} for {name}, {currency}",
+    byRule: "Etter landets prisregel",
+    byRulePlaceholder: "Etter regel",
     forSale: "{name} er til salgs",
     stockRulesFor: "Lagerregler for {name}",
     keepsSelling: { one: ": selges videre, sendes innen {n} dag", many: ": selges videre, sendes innen {n} dager" },

@@ -105,6 +105,8 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   list_pages: "website:read",
   search_insights: "settings:read",
   // Search merchandising (D324): the Search page's own keys.
+  market_price_rules: "settings:read",
+  set_market_price_rule: "settings:write",
   search_merchandising: "settings:read",
   save_search_synonym: "settings:write",
   save_search_rule: "settings:write",

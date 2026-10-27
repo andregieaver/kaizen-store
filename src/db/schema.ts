@@ -3170,6 +3170,37 @@ const marketCountryRef = (name: string, cols: { storeId: AnyPgColumn; marketCode
   });
 
 /**
+ * A market whose prices are worked out from another's (wave 7 unit A2, D335, `docs/wave-7-storefront.md` A.2): each variant's price in the base
+ * market, its VAT taken off and the market's put back (`basis` `net`) or kept as it is (`gross`), converted at the store's rates, changed by
+ * `percentBps` and rounded to `roundToMinor` (and, with `endingMinor`, up to the next price with that ending). Worked out only by `derivedPrice()`
+ * and written only by `src/server/market-prices.ts` through `commerce.set_price`, as `prices.derived`; a price typed by hand is fixed and kept.
+ * A base market has no rule of its own (`market_price_rules_rules()`), so rules never chain.
+ */
+export const marketPriceRules = commerce.table(
+  "market_price_rules",
+  {
+    storeId: storeId(),
+    marketCode: char("market_code", { length: 2 }).notNull(),
+    baseMarket: char("base_market", { length: 2 }).notNull(),
+    percentBps: integer("percent_bps").notNull().default(0),
+    basis: text("basis").notNull().default("net"),
+    roundToMinor: integer("round_to_minor").notNull().default(1),
+    endingMinor: integer("ending_minor"),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    primaryKey({ name: "market_price_rules_pkey", columns: [t.storeId, t.marketCode] }),
+    foreignKey({ name: "market_price_rules_market_fk", columns: [t.storeId, t.marketCode], foreignColumns: [markets.storeId, markets.code] }).onDelete("cascade"),
+    foreignKey({ name: "market_price_rules_base_fk", columns: [t.storeId, t.baseMarket], foreignColumns: [markets.storeId, markets.code] }).onDelete("cascade"),
+    check("market_price_rules_not_itself", sql`${t.marketCode} <> ${t.baseMarket}`),
+    check("market_price_rules_percent", sql`${t.percentBps} between -9000 and 100000`),
+    check("market_price_rules_basis", sql`${t.basis} in ('net', 'gross')`),
+    check("market_price_rules_round", sql`${t.roundToMinor} between 1 and 100000`),
+    check("market_price_rules_ending", sql`${t.endingMinor} is null or (${t.endingMinor} >= 0 and ${t.endingMinor} < ${t.roundToMinor})`),
+  ],
+);
+
+/**
  * Price history per variant and market. Append-only: a price change closes the
  * current row and opens a new one (see `commerce.set_price`), so the lowest
  * price of the previous 30 days can always be computed, as the Omnibus rule
@@ -3186,6 +3217,8 @@ export const prices = commerce.table(
     amountMinor: money("amount_minor"),
     validFrom: timestamp("valid_from", { withTimezone: true }).notNull().defaultNow(),
     validTo: timestamp("valid_to", { withTimezone: true }),
+    /** Written by a market price rule (D335 A.2, `src/server/market-prices.ts`); false for a price an owner typed, which the rule never overrides. */
+    derived: boolean("derived").notNull().default(false),
   },
   (t) => [
     variantRef("prices_variant_fk", t),

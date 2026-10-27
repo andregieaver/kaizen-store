@@ -1,24 +1,28 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { AdminTextScope } from "@/components/admin/admin-text";
 import { CountriesForm } from "@/components/admin/countries-form";
+import { MarketPriceRules } from "@/components/admin/market-price-rules";
 import { FeatureOffNote } from "@/components/admin/feature-off";
 import { fillWords } from "@/lib/admin-fill";
-import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import { featureOn } from "@/lib/store-features";
+import { marketPriceRules } from "@/server/market-prices";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { listCountries } from "@/server/stores";
 import { PageHeader } from "@/components/admin/ui";
 
-import { saveCountriesSettingsAction } from "./actions";
+import { previewPriceRuleAction, removePriceRuleAction, saveCountriesSettingsAction, savePriceRuleAction } from "./actions";
 
 export const metadata: Metadata = { title: "Countries" };
 
 /**
  * The countries the store sells to (D178, `docs/store-features.md` 4d): its own country and, while Several countries is on, the others, each
  * with its own prices, shipping, language and currency. With the feature off the store sells in its own country alone; the others it keeps
- * stay on its list, with their prices and settings, for when the feature is on again.
+ * stay on its list, with their prices and settings, for when the feature is on again. With several countries, each one's prices can be worked out
+ * from another's (D335 A.2, `MarketPriceRules`).
  */
 export default async function CountriesPage({ params }: PageProps<"/admin/[store]/settings/countries">) {
   const current = await requirePermission((await params).store, "settings:read");
@@ -35,6 +39,7 @@ export default async function CountriesPage({ params }: PageProps<"/admin/[store
   // "{country}, in {currency}. … under {company} …": the parts around the two filled in by elements.
   const [beforeCompany, afterCompany = ""] = w.ownText.split("{company}");
   const [beforeCountry, afterCountry = ""] = beforeCompany.split("{country}");
+  const ruled = several && store.keptMarkets.length > 1 ? await marketPriceRules(store.id) : null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -69,6 +74,20 @@ export default async function CountriesPage({ params }: PageProps<"/admin/[store
         note={<p className="text-sm text-muted">{several ? w.noteSeveral : w.noteOne}</p>}
       />
       {!editor && <p className="text-sm">{all.common.readOnly}</p>}
+
+      {ruled && (
+        <AdminTextScope texts={adminTexts(lang, ["settings"])}>
+          <MarketPriceRules
+            markets={store.keptMarkets.map((m) => ({ code: m.code, name: nameOf(m.code), currency: m.nativeCurrency }))}
+            rules={ruled}
+            locale={ADMIN_LANG_FACTS[lang].locale}
+            editable={editor}
+            preview={previewPriceRuleAction.bind(null, store.slug)}
+            save={savePriceRuleAction.bind(null, store.slug)}
+            remove={removePriceRuleAction.bind(null, store.slug)}
+          />
+        </AdminTextScope>
+      )}
     </div>
   );
 }

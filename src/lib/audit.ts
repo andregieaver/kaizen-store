@@ -26,6 +26,10 @@ const EXACT: Record<string, AuditArea> = {
   "shipping.porterbuddy_booked": "orders",
   // The store's own company details (its office and places) are settings; `company.` otherwise is a company account.
   "company.office_saved": "settings",
+  // Market price rules (D335 A.2): a rule saved or taken away, and a store's derived prices worked out again when its rates change.
+  "settings.market_price_rule": "settings",
+  "settings.market_price_rule_removed": "settings",
+  "settings.market_prices_derived": "settings",
   // Marketing.
   "store.bonus_settings": "marketing",
   "store.affiliate_settings": "marketing",

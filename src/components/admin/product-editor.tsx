@@ -1276,6 +1276,7 @@ function VariantsSection({
                   pictures={product.media}
                   upload={upload}
                   onChange={(change) => setVariant(index, change)}
+                  ruled={context.ruledMarkets ?? []}
                   ruleAll={
                     product.kind === "goods" || product.kind === "bundle"
                       ? (rule) => update((p) => ({ ...p, variants: p.variants.map((v) => ({ ...v, ...rule })) }))
@@ -1532,8 +1533,11 @@ function VariantRow({
   upload,
   onChange,
   ruleAll = null,
+  ruled = [],
 }: {
   variant: VariantInput;
+  /** Markets whose prices a rule works out (D335 A.2): an empty price there says it is the rule's. */
+  ruled?: readonly string[];
   /** How many at a time for every variant (D323): set for goods and bundles, whose variants have a rule; null for any other kind. */
   ruleAll?: ((rule: Pick<VariantInput, "minQuantity" | "maxQuantity" | "quantityStep">) => void) | null;
   /** Its row's place in the whole table while only the rows on screen are drawn (`aria-rowindex`, the header being 1). */
@@ -1644,11 +1648,15 @@ function VariantRow({
             <input
               inputMode="decimal"
               value={variant.prices[market.code] ?? ""}
-              onChange={(e) => onChange({ prices: { ...variant.prices, [market.code]: e.target.value } })}
+              // A price typed over the rule's is the owner's own (D335 A.2), so the hint goes with the first key.
+              onChange={(e) =>
+                onChange({ prices: { ...variant.prices, [market.code]: e.target.value }, derivedIn: (variant.derivedIn ?? []).filter((code) => code !== market.code) })
+              }
               aria-label={fillWords(r.priceFor, { market: market.name, name, currency: market.currency })}
-              placeholder="0,00"
+              placeholder={ruled.includes(market.code) ? r.byRulePlaceholder : "0,00"}
               className={`${cell} w-28`}
             />
+            {variant.derivedIn?.includes(market.code) && <span className="mt-0.5 block text-xs text-muted">{r.byRule}</span>}
           </td>
         ))}
         <td className="py-2">

@@ -3571,6 +3571,20 @@
       "when": 1793094737564,
       "tag": "20261027095217_market_availability_sql",
       "breakpoints": true
+    },
+    {
+      "idx": 510,
+      "version": "7",
+      "when": 1793096364671,
+      "tag": "20261027101924_market_price_rules",
+      "breakpoints": true
+    },
+    {
+      "idx": 511,
+      "version": "7",
+      "when": 1793096385228,
+      "tag": "20261027101945_market_price_rules_sql",
+      "breakpoints": true
     }
   ]
 }
