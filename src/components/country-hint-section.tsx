@@ -7,7 +7,7 @@ import type { Market } from "@/lib/markets";
 import { marketLink, marketPath } from "@/lib/paths";
 import type { Store } from "@/server/stores";
 
-import { CountryHint } from "./lazy/extras";
+import { CountryHint } from "./lazy/country-hint";
 
 /**
  * The country suggestion (D338, `docs/wave-7-storefront.md` D3): read per request in its own `<Suspense>` hole, so the pages around it stay

@@ -12,7 +12,5 @@ import { lazyView, whenIdle } from "./lazy-view";
 export const ConsentManager = lazyView(dynamic(() => import("../consent/consent-manager").then((m) => m.ConsentManager)));
 export const StoreCustomCode = lazyView(dynamic(() => import("../consent/store-custom-code").then((m) => m.StoreCustomCode)));
 export const ChatWidget = whenIdle(lazyView(dynamic(() => import("../chat-widget").then((m) => m.ChatWidget))));
-// The country suggestion (D338), drawn only for a visitor from another country the store sells to, once the browser is idle.
-export const CountryHint = whenIdle(lazyView(dynamic(() => import("../country-hint").then((m) => m.CountryHint))));
 export const AffiliateCapture = whenIdle(lazyView(dynamic(() => import("../affiliate-capture").then((m) => m.AffiliateCapture))));
 
