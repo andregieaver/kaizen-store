@@ -153,6 +153,7 @@ export const STORE_SECTIONS: StoreSection[] = [
           item("/analytics/marketing", "Marketing", "Channels, ad spend, cost to win a customer, return on ad spend, discounts and coupons.", { feature: "shop" }),
           item("/analytics/subscriptions", "Subscriptions", "Monthly recurring revenue, how it moves, churn and failed renewals.", { feature: "subscriptions" }),
           item("/analytics/traffic", "Traffic", "Visits, the way from visit to purchase, devices, countries, searches and the busiest hours."),
+          item("/analytics/speed", "Speed", "How fast your pages load for your visitors, measured in their browsers, and what to fix."),
           item("/analytics/settings", "Analytics settings", "Costs, fees and targets that turn sales into profit, and whether visits are counted."),
         ],
       },

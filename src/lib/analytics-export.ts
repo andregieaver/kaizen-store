@@ -40,7 +40,7 @@ export type TableColumn = {
   previous?: boolean;
 };
 
-export const ANALYTICS_PAGES = ["overview", "finance", "customers", "products", "inventory", "marketing", "subscriptions", "traffic", "settings", "tax", "payouts"] as const;
+export const ANALYTICS_PAGES = ["overview", "finance", "customers", "products", "inventory", "marketing", "subscriptions", "traffic", "settings", "tax", "payouts", "speed"] as const;
 export type AnalyticsPage = (typeof ANALYTICS_PAGES)[number];
 
 /** What drew it: a table, a bar chart, a line chart's series, a heat map, a funnel or a cohort table (all have a data table behind them). */
@@ -90,6 +90,8 @@ const REGISTRY: AnalyticsTable[] = [
   table("overview.channels", "overview", "overview-sections.tsx", "Top channels by revenue", [text("channel"), amount("revenue"), int("orders"), pct("conversion"), dec("roas")], true),
 
   // Finance
+  // Speed (D336): the 75th percentile of each figure per kind of page and screen over 28 days; a figure with too few page loads is blank.
+  table("speed.figures", "speed", "speed-view.tsx", "Speed per kind of page and screen", [text("page"), text("screen"), int("page_loads"), int("lcp_ms"), int("inp_ms"), dec("cls"), int("ttfb_ms")]),
   table("finance.bridge", "finance", "finance-view.tsx", "From gross sales to operating profit", [text("line"), amount("amount", "amount", true), pct("share_of_net_revenue"), text("estimated")], true),
   bars("finance.where_it_went", "finance", "finance-view.tsx", "Where net revenue went"),
   series("finance.revenue_profit", "finance", "finance-view.tsx", "Net revenue and contribution profit", [amount("net", "net_revenue", true), amount("profit", "contribution_profit")], true),

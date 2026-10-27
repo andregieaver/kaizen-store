@@ -315,6 +315,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   return_exchanges: never("Exchanges of the original's returns (D239): copied orders have no returns."),
   return_exchange_lines: never("The replacement goods of the original's exchanges (D239): copied orders have no returns."),
   search_clicks: never("A log of the original's searches."),
+  speed_samples: never("How fast the original's pages loaded for its visitors (D336); a copy measures its own."),
   search_queries: never("A log of the original's searches."),
   shipments: never("Copied orders have no shipments."),
   shipment_lines: never("Which units of the original's orders went in which parcel (D174): copied orders have no parcels."),

@@ -700,7 +700,7 @@ export const en = {
     "Cookies are small text files stored in your browser. Here you can see which ones this site uses, who sets them, what they are for and how long they last.",
   onlyNecessary: "This site uses only cookies it needs to work. Those do not need consent.",
   visitCounting:
-    "This site counts visits without cookies. A visit is stored as one line with the country, the kind of device, where you came from, the first page and how many pages you looked at, under an id made with a key that changes every day, so it cannot be followed from one day to the next. No IP address or browser details are stored. If you add something to the cart the same day, the store can tell which channel that sale came from.",
+    "This site counts visits without cookies. A visit is stored as one line with the country, the kind of device, where you came from, the first page and how many pages you looked at, under an id made with a key that changes every day, so it cannot be followed from one day to the next. No IP address or browser details are stored. If you add something to the cart the same day, the store can tell which channel that sale came from. How fast each page loaded is also measured and stored with only the kind of page and whether the screen is a phone's, with nothing that tells who you are.",
   cookieName: "Name",
   cookieProvider: "Set by",
   cookiePurpose: "Purpose",

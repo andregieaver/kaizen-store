@@ -6,6 +6,7 @@ import { ANALYTICS_TABLES, lastDayOf, OWNER_ONLY_TABLES, tableFileName, tableFil
 import { COHORT_OFFSETS } from "@/lib/analytics-customers";
 import { financeStatement } from "@/lib/analytics-finance";
 import { payoutsReport } from "./payouts-report";
+import { speedReport } from "./analytics-speed";
 import { paymentMethodsReport } from "./analytics-payments-data";
 import { bandHours } from "@/lib/analytics-heatmap";
 import { addDays, bucketFor, todayIn, type AnalyticsPeriod } from "@/lib/analytics-period";
@@ -162,6 +163,16 @@ const BUILDERS: Record<string, (x: Run) => Promise<Built>> = {
       // A line the comparison lacks was 0 (rounding), as the page reads it; with no sales then, nothing to compare with.
       previous: comparable && x.against ? { period: span(x.against), rows: lines.map((l) => ({ amount: lineOf(comparable.statement, l.key)?.amountMinor ?? (l.key === "rounding" ? 0 : null) })) } : null,
       leftOut: left(current),
+    };
+  },
+  "speed.figures": async (x) => {
+    const r = await speedReport(x.ctx.store);
+    const value = (row: (typeof r.rows)[number], metric: "lcp" | "inp" | "cls" | "ttfb") => row.cells.find((c) => c.metric === metric)?.value ?? null;
+    return {
+      rows: r.rows.map((row) => {
+        const cls = value(row, "cls");
+        return { page: row.kind, screen: row.screen, page_loads: row.loads, lcp_ms: value(row, "lcp"), inp_ms: value(row, "inp"), cls: cls === null ? null : cls / 1000, ttfb_ms: value(row, "ttfb") };
+      }),
     };
   },
   "payouts.list": async (x) => {

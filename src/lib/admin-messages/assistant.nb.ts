@@ -325,6 +325,7 @@ export const assistantNb: AssistantMessages = {
     analytics_overview: "Leser analysene",
     explain_change: "Finner ut hvorfor salget endret seg",
     analytics_alerts: "Sjekker hva som bør ses på",
+    speed_report: "Ser på hvor raskt sidene lastes",
     list_data_jobs: "Ser på importer og eksporter",
     explain_import_problems: "Leser importens funn",
     redirect_overview: "Ser på videresendinger og manglende sider",

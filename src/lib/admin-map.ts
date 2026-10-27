@@ -666,6 +666,10 @@ const PAGES: readonly AdminPage[] = [
   store("analytics.traffic", "/analytics/traffic", "Traffic analytics", "Analytics", "Visits, the funnel from visit to purchase, devices, countries and cities, searches that found nothing, sales by weekday and hour, and at the bottom refunds and returns (return rate, reasons, most returned products, how fast refunds are made).", {
     keywords: ["visitors", "sessions", "funnel", "device", "mobile", "geography", "search", "heatmap", "refunds", "return rate", "returns analytics", "return reasons"],
   }),
+  store("analytics.speed", "/analytics/speed", "Speed", "Analytics", "How fast the store's pages load for its visitors, measured in their browsers while visits are counted: Largest Contentful Paint, Interaction to Next Paint, Cumulative Layout Shift and Time to First Byte at the 75th percentile over 28 days, for the front page, product, category, list and other pages on phones and computers, rated as Google does, with what to fix and what cannot be measured.", {
+    keywords: ["speed", "performance", "page speed", "core web vitals", "lcp", "inp", "cls", "ttfb", "slow", "lighthouse", "pagespeed"],
+    tasks: ["See how fast the store's pages load", "Find out why a page is slow"],
+  }),
   store("analytics.settings", "/analytics/settings", "Analytics settings", "Analytics", "Cost of goods, payment fee and shipping cost estimates, fixed costs, customer lifetime, monthly revenue targets, and whether visits are counted.", {
     needs: "owner",
     keywords: ["cost", "cogs", "fees", "target", "goal", "visit counting"],

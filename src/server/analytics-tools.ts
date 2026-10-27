@@ -6,7 +6,11 @@ import { addDays, parseAnalyticsParams, type AnalyticsPeriod } from "@/lib/analy
 import { costModeOf, ESTIMATE_MIN_COVERAGE, estimateText, formatKpi, kpiChange, kpiMissing, kpiValue, KPI_CARDS } from "@/lib/analytics-kpi";
 import type { OwnerToolInput } from "@/lib/owner-tools";
 
+import { metricsToFix, MIN_SPEED_SAMPLES, SPEED_DAYS, speedValueText } from "@/lib/speed";
+import { analyticsEn } from "@/lib/admin-messages/analytics.en";
+
 import { alertsForStore, diagnosisFor } from "./analytics-insights";
+import { speedReport } from "./analytics-speed";
 import { overviewData } from "./analytics-totals";
 import { sessionTotals } from "./analytics-traffic-data";
 import { OwnerToolError } from "./owner-tool-error";
@@ -131,5 +135,34 @@ export async function analyticsAlertsTool({ store }: Ctx) {
       action: a.action,
     })),
     note: alerts.length === 0 ? "No rule raised an alert from the figures that could be read: nothing needs a look in the analytics right now." : "Each rule has a minimum volume, so small numbers raise nothing.",
+  };
+}
+
+/**
+ * How fast the store's pages load for its visitors (D336), as the Speed page shows it: each figure written by code, with Google's rating, a
+ * figure with too few page loads named as such (never guessed), and what to fix first in the page's own words.
+ */
+export async function speedReportTool({ store }: Ctx) {
+  const r = await speedReport(store);
+  const w = analyticsEn.speed;
+  const locale = store.markets[0]?.locale ?? "en";
+  return {
+    measuring: r.collecting ? "Speed is measured while the store counts visits." : w.off,
+    period: `${r.from} to ${r.to} (the last ${SPEED_DAYS} days)`,
+    page_loads: r.loads,
+    figures: r.rows.map((row) => ({
+      page: w.kinds[row.kind],
+      screen: w.screens[row.screen],
+      page_loads: row.loads,
+      ...Object.fromEntries(
+        row.cells.map((c) => [
+          w.metrics[c.metric].name,
+          c.value === null ? `not enough page loads (${c.samples} of ${MIN_SPEED_SAMPLES})` : `${speedValueText(c.metric, c.value, locale)}, ${w.ratings[c.rating].toLowerCase()}`,
+        ]),
+      ),
+    })),
+    fix_first: metricsToFix(r.rows).map(({ metric, rating }) => ({ figure: w.metrics[metric].name, rating: w.ratings[rating].toLowerCase(), what_to_do: w.advice[metric] })),
+    cannot_measure: w.notMeasuredItems,
+    page: adminLink(store, "/analytics/speed"),
   };
 }

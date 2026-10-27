@@ -683,7 +683,7 @@ export const sv: Messages = {
     "Kakor (cookies) är små textfiler som sparas i din webbläsare. Här ser du vilka den här webbplatsen använder, vem som sätter dem, vad de används till och hur länge de finns kvar.",
   onlyNecessary: "Webbplatsen använder bara kakor som behövs för att den ska fungera. Sådana kräver inget samtycke.",
   visitCounting:
-    "Webbplatsen räknar besök utan kakor. Ett besök sparas som en rad med land, typ av enhet, varifrån du kom, första sidan och hur många sidor du tittade på, under ett id som skapas med en nyckel som byts varje dag, så det kan inte följas från en dag till nästa. IP-adress och webbläsaruppgifter sparas inte. Lägger du något i varukorgen samma dag kan butiken se vilken kanal försäljningen kom från.",
+    "Webbplatsen räknar besök utan kakor. Ett besök sparas som en rad med land, typ av enhet, varifrån du kom, första sidan och hur många sidor du tittade på, under ett id som skapas med en nyckel som byts varje dag, så det kan inte följas från en dag till nästa. IP-adress och webbläsaruppgifter sparas inte. Lägger du något i varukorgen samma dag kan butiken se vilken kanal försäljningen kom från. Hur snabbt varje sida laddades mäts också och sparas bara med typen av sida och om skärmen är en telefons, utan något som säger vem du är.",
   cookieName: "Namn",
   cookieProvider: "Sätts av",
   cookiePurpose: "Ändamål",

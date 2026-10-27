@@ -425,6 +425,10 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     title: "Trafikkanalyse",
     keywords: ["trafikk", "trafikkanalyse", "besøkende", "økter", "trakt", "enhet", "mobil", "returrate"],
   },
+  "store:analytics.speed": {
+    title: "Hastighet",
+    keywords: ["hastighet", "fart", "ytelse", "sidehastighet", "core web vitals", "treg", "lastetid"],
+  },
   "store:analytics.settings": {
     title: "Innstillinger for analyse",
     keywords: ["analyseinnstillinger", "varekost", "kostnader", "gebyrer", "mål", "besøkstelling"],

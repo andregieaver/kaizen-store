@@ -827,6 +827,11 @@ export const OWNER_TOOLS = [
     z.object({}),
   ),
   tool(
+    "speed_report",
+    "How fast the store's pages load for its visitors (D336), measured in their browsers while the store counts visits: Largest Contentful Paint, Interaction to Next Paint, Cumulative Layout Shift and Time to First Byte at the 75th percentile over the last 28 days, per kind of page (front page, product, category and tag, lists, other pages) and screen (phone, computer), each rated as Google does, what to fix first, and what the report cannot measure. A figure with fewer than 20 page loads is not given. Read-only; repeat its figures, never make one.",
+    z.object({}),
+  ),
+  tool(
     "list_data_jobs",
     "The store's file imports and exports (D165, D168), newest first: a product import or export, an order file, a customer file, or a redirect import or export. Each has its kind, status in words, how far it got, its counts (created, updated, unchanged, skipped, saved as draft, failed), the plain reason when it failed, when it finished and when its files are deleted (7 days after an export is made). It shows only the kinds the member may use: product jobs need access to products, redirect jobs the website, order and customer files are the owner's. It never gives a file's contents, a download link or a person's details, and it starts, applies, cancels and downloads nothing: say where the page is (Products, Import or Export, Redirects, an order or customer export page) and let the person press the button themselves.",
     z.object({

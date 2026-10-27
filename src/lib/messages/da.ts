@@ -683,7 +683,7 @@ export const da: Messages = {
     "Cookies er små tekstfiler, der gemmes i din browser. Her kan du se, hvilke dette websted bruger, hvem der sætter dem, hvad de bruges til, og hvor længe de varer.",
   onlyNecessary: "Webstedet bruger kun cookies, der er nødvendige for, at det virker. Sådanne kræver ikke samtykke.",
   visitCounting:
-    "Webstedet tæller besøg uden cookies. Et besøg gemmes som én linje med land, type enhed, hvor du kom fra, første side og hvor mange sider du så, under et id, der er lavet med en nøgle, som skiftes hver dag, så det ikke kan følges fra en dag til den næste. IP-adresse og browseroplysninger gemmes ikke. Lægger du noget i kurven samme dag, kan butikken se, hvilken kanal salget kom fra.",
+    "Webstedet tæller besøg uden cookies. Et besøg gemmes som én linje med land, type enhed, hvor du kom fra, første side og hvor mange sider du så, under et id, der er lavet med en nøgle, som skiftes hver dag, så det ikke kan følges fra en dag til den næste. IP-adresse og browseroplysninger gemmes ikke. Lægger du noget i kurven samme dag, kan butikken se, hvilken kanal salget kom fra. Hvor hurtigt hver side blev indlæst, måles også og gemmes kun med sidens type og om skærmen er en telefons, uden noget, der siger, hvem du er.",
   cookieName: "Navn",
   cookieProvider: "Sat af",
   cookiePurpose: "Formål",

@@ -2463,6 +2463,42 @@ export const searchClicks = commerce.table(
   ],
 );
 
+/**
+ * How fast one page load was for a visitor (D336, `docs/analytics.md` "Speed"): the Core Web Vitals the speed beacon measured, with the
+ * page's kind and the screen only. No address, visitor, IP address or user agent; written only by `src/server/analytics-speed.ts`, at
+ * most `SPEED_SAMPLES_PER_STORE_DAY` a store day, deleted after `SPEED_KEEP_DAYS`.
+ */
+export const speedSamples = commerce.table(
+  "speed_samples",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId(),
+    /** The store's calendar day the page was loaded on. */
+    day: date("day").notNull(),
+    /** `home`, `product`, `category`, `list` or `page` (`SPEED_KINDS`). */
+    kind: text("kind").notNull(),
+    /** `phone` or `computer`. */
+    screen: text("screen").notNull(),
+    lcpMs: integer("lcp_ms"),
+    inpMs: integer("inp_ms"),
+    /** Cumulative Layout Shift in thousandths. */
+    clsMilli: integer("cls_milli"),
+    ttfbMs: integer("ttfb_ms"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("speed_samples_store_day_idx").on(t.storeId, t.day),
+    check("speed_samples_kind", sql`${t.kind} in ('home', 'product', 'category', 'list', 'page')`),
+    check("speed_samples_screen", sql`${t.screen} in ('phone', 'computer')`),
+    check(
+      "speed_samples_values",
+      sql`coalesce(${t.lcpMs}, ${t.inpMs}, ${t.clsMilli}, ${t.ttfbMs}) is not null
+        and (${t.lcpMs} is null or ${t.lcpMs} between 0 and 120000) and (${t.inpMs} is null or ${t.inpMs} between 0 and 60000)
+        and (${t.clsMilli} is null or ${t.clsMilli} between 0 and 50000) and (${t.ttfbMs} is null or ${t.ttfbMs} between 0 and 120000)`,
+    ),
+  ],
+);
+
 export const productMedia = commerce.table(
   "product_media",
   {

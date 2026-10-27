@@ -687,7 +687,7 @@ export const nb: Messages = {
     "Informasjonskapsler (cookies) er små tekstfiler som lagres i nettleseren din. Her ser du hvilke dette nettstedet bruker, hvem som setter dem, hva de brukes til og hvor lenge de varer.",
   onlyNecessary: "Nettstedet bruker bare informasjonskapsler som er nødvendige for at det skal virke. Slike krever ikke samtykke.",
   visitCounting:
-    "Nettstedet teller besøk uten informasjonskapsler. Et besøk lagres som én linje med land, type enhet, hvor du kom fra, første side og hvor mange sider du så på, under en id som er laget med en nøkkel som skiftes hver dag, så den kan ikke følges fra en dag til neste. IP-adresse og nettleserinformasjon lagres ikke. Legger du noe i handlekurven samme dag, kan butikken se hvilken kanal salget kom fra.",
+    "Nettstedet teller besøk uten informasjonskapsler. Et besøk lagres som én linje med land, type enhet, hvor du kom fra, første side og hvor mange sider du så på, under en id som er laget med en nøkkel som skiftes hver dag, så den kan ikke følges fra en dag til neste. IP-adresse og nettleserinformasjon lagres ikke. Legger du noe i handlekurven samme dag, kan butikken se hvilken kanal salget kom fra. Hvor raskt hver side ble lastet, måles også og lagres bare med sidetypen og om skjermen er en telefons, uten noe som sier hvem du er.",
   cookieName: "Navn",
   cookieProvider: "Satt av",
   cookiePurpose: "Formål",
