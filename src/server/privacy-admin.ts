@@ -41,6 +41,7 @@ export const SECTION_LABELS: Record<(typeof EXPORT_SECTIONS)[number], string> = 
   customFields: "custom fields",
   support: "support conversations",
   reviews: "product reviews",
+  comments: "blog comments",
   marketing: "subscriber records",
 };
 

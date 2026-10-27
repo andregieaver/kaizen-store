@@ -42,6 +42,8 @@ export const TOOL_AREAS: Readonly<Record<string, AutonomyArea>> = {
   start_experiment: "website",
   stop_experiment: "website",
   apply_winner: "website",
+  // An article published at a set time (D341), as publish_page.
+  schedule_article: "website",
   set_recommendations: "website",
   add_recommendation_rule: "website",
   remove_recommendation_rule: "website",
@@ -89,6 +91,8 @@ export const NEVER_AUTOMATIC: ReadonlySet<string> = new Set([
   "set_market_price_rule",
   // A producer registration decides what a country's shoppers can buy, and its number is the owner's to give (D342): never automatic.
   "save_producer_registration",
+  // A visitor's comment is shown only once a person has read it (D341): never automatic.
+  "moderate_blog_comment",
   "invite_staff",
   "change_staff_role",
   "remove_staff",

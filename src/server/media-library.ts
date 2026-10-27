@@ -342,6 +342,10 @@ export async function mediaUses(owner: MediaOwner, ids: string[]): Promise<Map<s
     select m.id, 'theme', null, null, null, null, null from m join commerce.stores s on s.id = ${storeId}::uuid where ${found(sql`s.theme::text`)}
     union all
     select m.id, 'theme', null, null, null, null, null from m join commerce.store_theme_installs i on i.store_id = ${storeId}::uuid and i.look is not null where ${found(sql`i.look::text`)}
+    union all
+    -- An author's picture (D341): shown under their articles.
+    select m.id, 'author', a.id::text, a.name, null, null, true from m join commerce.blog_authors a on a.store_id = ${storeId}::uuid
+      where a.picture_url in (m.url, m.thumbnail_url)
     `
         : sql`
     select m.id, 'navigation', null, null, null, null, true from m join commerce.platform_settings k on true where ${found(sql`k.navigation::text`)}
@@ -455,6 +459,8 @@ function describePlace(row: UseRow, base: string, store: boolean): MediaUse {
       return { label: "Design", href: `${base}/settings/design` };
     case "theme_listing":
       return { label: `Theme: ${label || "Untitled"}`, href: `/admin/platform/themes/${row.ref_id}` };
+    case "author":
+      return { label: `Author: ${label}`, href: `${base}/articles/authors?author=${row.ref_id}` };
     default:
       return { label: row.source, href: null };
   }

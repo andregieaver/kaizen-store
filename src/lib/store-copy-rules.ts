@@ -334,6 +334,11 @@ export const COPY_RULES: Record<string, CopyRule> = {
   dns_zones: never("The DNS Kaizena Flow keeps for the original's domains (D315): a domain belongs to one store."),
   dns_changes: never("The history of the original's DNS (D315)."),
   page_versions: never("A page's earlier versions (D305) are its own history: a copy starts with its pages as they are now."),
+  // Blogs in depth (wave 7 unit G, D341).
+  blogs: derived("A store's first blog is made with it by a trigger (stores_first_blog()); the original's other blogs are not copied, so a copy's articles that were in them are its first blog's until its owner makes them again."),
+  blog_authors: never("The authors of the original's articles are its people: a copy's articles show the name typed on them until its owner adds authors."),
+  blog_comments: never("Visitors' comments on the original's articles are theirs and the original's: a copy starts with none."),
+  page_schedules: never("A schedule publishes the original's page in the name of who set it: a copy's pages are not scheduled."),
   page_ai_jobs: never("The AI manager's page work (D308) was asked by a person in the store it was asked in: a copy starts with its pages as they are."),
   page_theme_detaches: never("The original's theme migration runs (D243), kept for their undo: a copy's pages are the original's as they are now."),
   theme_purchases: never("What the original paid Kaizena Flow for its premium themes (D286): a copy starts with its own Custom and buys a theme itself when one goes live on it."),

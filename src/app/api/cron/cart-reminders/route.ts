@@ -34,6 +34,7 @@ import { pruneSearchCache } from "@/server/search-cache";
 import { refreshKnowledge } from "@/server/knowledge";
 import { refreshMediaEmbeddings } from "@/server/media-library";
 import { PAGES_TAG, pagesTag } from "@/server/pages";
+import { runSchedules } from "@/server/page-schedules";
 import { DESIGNS_TAG, designTags, runPlatformThemeUpdates, runThemeUpdates } from "@/server/design-presets";
 import { chargeDomainPurchases, registerPaidDomains } from "@/server/domain-purchases";
 import { chargeDueThemePurchases } from "@/server/theme-prices";
@@ -76,7 +77,7 @@ const EVERY = 300;
  * soon, and credits held by unpaid orders given back; and the referral program's emails (D131, never throws): the
  * customers whose friends' orders earned them credits are told, once per order; and recommendation events older than 90 days
  * forgotten (D139); and A/B tests' upkeep (D148, never throws): tests past their end stopped, guardrails looked at, old
- * carts' visitors forgotten; and copies of other websites' pages (D150) older than thirty days forgotten with their pictures; and withdrawals and returns (D153, never throws): a reminder to the store, once per return, when a refund is past its legal deadline, and the acknowledgement of a confirmed withdrawal tried again when the first email never got out; and invoices and credit notes (D159, never throws): refunds Stripe left pending asked of Stripe, invoices that waited for the seller's details issued, credit notes that waited for their invoice issued, and the stand-alone email for a document issued later than its payment or refund (no Chromium here: the PDFs are `/api/cron/document-pdfs`); and imports and exports (wave 2, D165, never throws): jobs nobody holds taken up where their cursor is (a dry run, an apply, an export), a few at a time within the time; and the low-stock notices (wave 3, D172, never throws): one email per store to its owners listing the variants that crossed the warning level they set since the last run (the history of stock is pruned daily, `runRetention()`); and the orders' upkeep (wave 3, D173, never throws): draft orders whose pay link ran out expired (their Stripe sessions closed first, an order paid in the last minute left alone, the unpaid order cancelled and its stock given back, its number kept so the sequence has no gap), and, for the open stores whose owner chose it, finished orders archived (up to 200 a store a run); and support (D216, never throws): conversations with the AI that went quiet for the desk's time ended; and notifications (wave 3, D238, never throw): tracked parcels' carriers asked (at most 60 parcels a run, 4 calls at once, 4 s each), their events kept, the out-for-delivery and delivered emails sent where switched on and a verified delivery recorded, and the staff summaries due at their hour sent; and installed themes that follow updates brought to their theme's latest version, a few a run (D245, never throws); and premium themes due to be paid invoiced through Kaizena Flow's billing (D286, never throws); and payments (D288, never throws): the method and risk of captured Stripe payments the reply did not read, and staff told once when a dispute's evidence is due within three days.
+ * carts' visitors forgotten; and copies of other websites' pages (D150) older than thirty days forgotten with their pictures; and withdrawals and returns (D153, never throws): a reminder to the store, once per return, when a refund is past its legal deadline, and the acknowledgement of a confirmed withdrawal tried again when the first email never got out; and invoices and credit notes (D159, never throws): refunds Stripe left pending asked of Stripe, invoices that waited for the seller's details issued, credit notes that waited for their invoice issued, and the stand-alone email for a document issued later than its payment or refund (no Chromium here: the PDFs are `/api/cron/document-pdfs`); and imports and exports (wave 2, D165, never throws): jobs nobody holds taken up where their cursor is (a dry run, an apply, an export), a few at a time within the time; and the low-stock notices (wave 3, D172, never throws): one email per store to its owners listing the variants that crossed the warning level they set since the last run (the history of stock is pruned daily, `runRetention()`); and the orders' upkeep (wave 3, D173, never throws): draft orders whose pay link ran out expired (their Stripe sessions closed first, an order paid in the last minute left alone, the unpaid order cancelled and its stock given back, its number kept so the sequence has no gap), and, for the open stores whose owner chose it, finished orders archived (up to 200 a store a run); and support (D216, never throws): conversations with the AI that went quiet for the desk's time ended; and notifications (wave 3, D238, never throw): tracked parcels' carriers asked (at most 60 parcels a run, 4 calls at once, 4 s each), their events kept, the out-for-delivery and delivered emails sent where switched on and a verified delivery recorded, and the staff summaries due at their hour sent; and installed themes that follow updates brought to their theme's latest version, a few a run (D245, never throws); and premium themes due to be paid invoiced through Kaizena Flow's billing (D286, never throws); and payments (D288, never throws): the method and risk of captured Stripe payments the reply did not read, and staff told once when a dispute's evidence is due within three days; and pages and articles scheduled to be published (D341, never throws), their drafts published in the name of who scheduled them while they still may.
  */
 async function run(request: Request) {
   await connection();
@@ -142,7 +143,10 @@ async function dispatch() {
     legalUpkeep: () => runLegalUpkeep(),
     // Legal pages the AI is writing (D311): what a press's own run did not finish and the upkeep's writes, a language at a time.
     legalWrites: () => runLegalWrites({}, 120_000),
+    // Pages and articles scheduled to be published (D341): the drafts whose time has come, in the name of who scheduled them.
+    schedules: () => runSchedules(),
   });
+  for (const storeId of r.schedules?.stores ?? []) revalidateTag(pagesTag(storeId), "max");
   // Installed themes that follow updates and are behind their theme's latest version (D245); the stores' pages then show it.
   const themeUpdates = (await tracked("dispatcher.theme-updates", EVERY, () => runThemeUpdates())) ?? { updated: 0, refused: 0, stores: [] };
   for (const store of themeUpdates.stores) for (const tag of designTags(store)) revalidateTag(tag, "max");
@@ -158,11 +162,12 @@ async function dispatch() {
     revalidateTag(pagesTag(owner.storeId), "max");
     if (owner.storeId) revalidateTag(catalogTag(owner.storeId), "max");
   }
-  const { altTexts, ...rest } = r;
+  const { altTexts, schedules, ...rest } = r;
   return Response.json(
     {
       ...rest,
       altTexts: altTexts?.written ?? null,
+      schedules: schedules ? { published: schedules.published, failed: schedules.failed } : null,
       themeUpdates: { updated: themeUpdates.updated, refused: themeUpdates.refused },
       platformThemeUpdates: { updated: platformThemeUpdates.updated, refused: platformThemeUpdates.refused },
       themePurchases,

@@ -9,7 +9,8 @@ import { EMPTY_GRID, type GridData, type GridItem } from "@/lib/content-grid";
 import { customGridData } from "@/lib/custom-grid";
 import { assertNever, sourceTraits } from "@/lib/grid-source";
 import { tileFieldIds } from "@/lib/tile-fields";
-import { pageExcerpt, parsePageContent, type ContentGridBlock, type PageType, termContentOf } from "@/lib/page-content";
+import { pageExcerpt, parsePageContent, type ContentGridBlock, type PageContent, type PageType, termContentOf } from "@/lib/page-content";
+import { articlePath, blogOfArticle } from "@/lib/blogs";
 import { localizePage } from "@/lib/page-translation";
 import { marketPath } from "@/lib/paths";
 import type { StoreRoute } from "@/lib/store-parts";
@@ -24,6 +25,7 @@ import { catalogTag, listGridProducts, type GridProduct } from "./catalog";
 import { gridEntries } from "./content-site";
 import { fieldsTag } from "./custom-fields";
 import { shownFieldsForItems } from "./field-tiles";
+import { storeBlogs } from "./blogs";
 import { pagesTag } from "./pages";
 import { getOpenStore, storeTag } from "./stores";
 import { currentTerms, termsTag } from "./taxonomy";
@@ -96,7 +98,7 @@ export async function gridData(block: ContentGridBlock, place: GridPlace): Promi
       return gridPages(place.owner, place.market ?? null, { ...filter, ...(source.parent && { parent: source.parent }) }, place.pageId, "page", place.owner ? "en" : (place.lang ?? "en"));
     case "articles":
       // The owner's blog articles (D57), newest first unless chosen.
-      return gridPages(place.owner, place.market ?? null, filter, place.pageId, "article", place.owner ? "en" : (place.lang ?? "en"));
+      return gridPages(place.owner, place.market ?? null, { ...filter, ...(source.blog && { blog: source.blog }) }, place.pageId, "article", place.owner ? "en" : (place.lang ?? "en"));
     case "products": {
       // On a store's page, its own products in the shopper's market (D53); on Kaizen's, the store and market chosen.
       const storeId = place.owner ?? source.storeId;
@@ -160,7 +162,7 @@ export async function ownerSells(owner: string | null): Promise<boolean> {
   return !shop || featureOn(shop.store, "shop");
 }
 
-type Filter = { categories: string[]; tags: string[]; sort: string; limit: number; tileFields: string[]; parent?: string };
+type Filter = { categories: string[]; tags: string[]; sort: string; limit: number; tileFields: string[]; parent?: string; /** One of the store's blogs (D341). */ blog?: string };
 
 /**
  * The items with the custom fields the grid's tiles show (D120): one batch read
@@ -205,8 +207,21 @@ async function gridPages(
   const shop = owner ? await storeAndMarket(owner, marketCode) : null;
   if (owner && !shop) return { ...EMPTY_GRID };
   const prefix = type === "article" ? "/blog" : "";
-  const href = (slug: string) =>
-    shop ? marketPath(shop.store.slug, shop.market.slug, `${prefix}/${slug}`) : `${prefix}/${slug}`;
+  // A store's articles are at their own blog's address (D341): `/blog/{slug}`, or `/blogs/{handle}/{slug}` for another blog.
+  const blogs = owner && type === "article" ? await storeBlogs(owner) : [];
+  const href = (slug: string, content?: PageContent) => {
+    const blog = content && blogs.length > 0 ? blogOfArticle(blogs, content) : null;
+    const path = blog ? articlePath(blog, slug) : `${prefix}/${slug}`;
+    return shop ? marketPath(shop.store.slug, shop.market.slug, path) : path;
+  };
+  // Only one blog's articles: the first blog's are those that name none, or a blog that is gone.
+  const wanted = filter.blog ? blogs.find((b) => b.id === filter.blog) : undefined;
+  if (filter.blog && !wanted) return { ...EMPTY_GRID };
+  const inWanted = !wanted
+    ? sql`true`
+    : wanted.main
+      ? sql`(p.published ->> 'blogId' is null or not exists (select 1 from commerce.blogs b where b.store_id = p.store_id and b.id::text = p.published ->> 'blogId' and not b.main))`
+      : sql`p.published ->> 'blogId' = ${wanted.id}`;
   const language = shop ? { lang: shop.market.lang, locale: shop.market.locale } : { lang: PLATFORM_LANG_FACTS[lang].messages, locale: PLATFORM_LANG_FACTS[lang].locale };
   const terms = await currentTerms(owner, termContentOf(type));
   const categories = withDescendants(terms, knownIds(terms, "category", filter.categories));
@@ -253,6 +268,7 @@ async function gridPages(
       -- A page for other countries only (D338) is not listed in this one; the same rule as \`pageInMarket()\`.
       and (${shop?.market.code ?? null}::text is null or coalesce(jsonb_array_length(p.published -> 'markets'), 0) = 0
         or (p.published -> 'markets') ? ${shop?.market.code ?? ""}::text)
+      and ${inWanted}
     order by ${dated && filter.sort !== "title" ? articleOrder : order}
     limit ${Math.max(1, Math.min(48, filter.limit))}
   `);
@@ -264,7 +280,7 @@ async function gridPages(
     return [
       {
         id: String(row.id),
-        href: href(String(row.slug)),
+        href: href(String(row.slug), stored),
         title: content.title,
         excerpt: content.excerpt || content.seo.description || pageExcerpt(content, EXCERPT_MAX),
         image: content.thumbnail ? { url: content.thumbnail.url, alt: content.thumbnail.alt } : null,

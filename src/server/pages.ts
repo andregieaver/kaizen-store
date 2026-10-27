@@ -256,7 +256,9 @@ export async function savePage(
   // Texts in the owner's other languages (D55); Kaizen's pages are in English only.
   const translated = cleanTranslations(parsed.data, (await ownerLanguages(owner)).slice(1));
   if (!translated.ok) return { ok: false, problems: translated.problems };
-  const { author, ...rest } = translated.content;
+  const { author, blogId, authorId, ...rest } = translated.content;
+  // An article's blog and author (D341): only the store's own; one that is not (another store's, or deleted meanwhile) is left out.
+  const refs: { blogId?: string; authorId?: string } = type === "article" ? await ownBlogRefs(owner, blogId, authorId) : {};
   let content: PageContent = {
     ...rest,
     categories: await scopedTermIds(scope, "category", parsed.data.categories),
@@ -273,10 +275,12 @@ export async function savePage(
       : { overlay: undefined }),
     // A footer's reveal (D184); only footers have it.
     footerReveal: shape === "footer" && parsed.data.footerReveal ? true : undefined,
-    // Only articles have an author (D57).
+    // Only articles have an author (D57), a blog and an author record (D341).
     ...(type === "article" && author ? { author } : {}),
     // The countries a store's page or article is for (D338): the store's own (kept ones too), none for Kaizena Flow's or any other kind.
     markets: owner !== null && (type === "page" || type === "article") ? ownMarkets(parsed.data.markets, await storeCountries(owner)) : undefined,
+    ...(refs.blogId ? { blogId: refs.blogId } : {}),
+    ...(refs.authorId ? { authorId: refs.authorId } : {}),
   };
   // Who sees a part (D179 phase 4): only the store's own groups, companies, products and categories stay in its conditions.
   content = { ...content, rows: await keepOwnRuleIds(owner, content.rows) };
@@ -401,6 +405,18 @@ export async function savePage(
     }
   }
   return result;
+}
+
+/** An article's blog and author ids (D341), each kept only when it is one of the store's own; Kaizena Flow's articles have neither. */
+async function ownBlogRefs(owner: PageOwner, blogId: string | undefined, authorId: string | undefined): Promise<{ blogId?: string; authorId?: string }> {
+  if (!owner || (!blogId && !authorId)) return {};
+  const [row] = await db().execute<Row>(sql`
+    select
+      (select b.id from commerce.blogs b where b.store_id = ${owner}::uuid and b.id = ${blogId ?? null}::uuid and not b.main) as blog,
+      (select a.id from commerce.blog_authors a where a.store_id = ${owner}::uuid and a.id = ${authorId ?? null}::uuid) as author
+  `);
+  // The first blog is the one an article belongs to without naming any, so it is never written down.
+  return { blogId: row?.blog ? String(row.blog) : undefined, authorId: row?.author ? String(row.author) : undefined };
 }
 
 type PageAuditFacts = { title: string; address: string; state: PageState; rowCount: number; blockCount: number };

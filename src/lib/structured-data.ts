@@ -435,6 +435,18 @@ export function pageJsonLd({
  * An article in a blog (D57): an `Article` by its author (a person, or the
  * store or Kaizen), published by the store or Kaizen, part of the site.
  */
+/** An article's author as a schema.org Person: their name, and from their record (D341) where they are described, their picture and a short text. */
+function personNode(author: string | { name: string; url?: string | null; image?: string | null; description?: string | null }, origin: string): JsonLd {
+  if (typeof author === "string") return { "@type": "Person", name: author };
+  return {
+    "@type": "Person",
+    name: author.name,
+    ...(author.url && /^(https?:\/\/|\/(?![/\\]))/.test(author.url.trim()) && { url: absoluteUrl(author.url.trim(), origin) }),
+    ...(author.image && { image: absoluteUrl(author.image, origin) }),
+    ...(author.description && { description: author.description.slice(0, 300) }),
+  };
+}
+
 export function articleJsonLd({
   origin,
   url,
@@ -454,8 +466,11 @@ export function articleJsonLd({
   image: string | null;
   publishedAt: string;
   modifiedAt: string;
-  /** The author's name, or null when the store or Kaizen wrote it. */
-  author: string | null;
+  /**
+   * The author's name, or their record (D341: name, a page about them, their picture, a short text), or null when the store or Kaizen
+   * wrote it.
+   */
+  author: string | { name: string; url?: string | null; image?: string | null; description?: string | null } | null;
   locale: string;
   /** For a store's article: its market's front page and the store's address. */
   store?: { homeUrl: string; storeUrl: string };
@@ -473,7 +488,7 @@ export function articleJsonLd({
     datePublished: publishedAt,
     dateModified: modifiedAt,
     ...(image && { image: [absoluteUrl(image, origin)] }),
-    author: author ? { "@type": "Person", name: author } : publisher,
+    author: author ? personNode(author, origin) : publisher,
     publisher,
     isPartOf: { "@id": store ? websiteNodeId(store.homeUrl) : `${origin}/#website` },
   };

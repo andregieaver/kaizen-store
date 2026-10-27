@@ -50,6 +50,9 @@ import {
   storeThemeSectionsAction,
 } from "./actions";
 import { duplicateStorePageAction } from "./duplicate-action";
+import { cancelScheduleAction, readScheduleAction, scheduleAction } from "./schedule-actions";
+import { authorsNow, blogsNow } from "@/server/blogs";
+import { blogPath, blogTitle } from "@/lib/blogs";
 import { storePageVersionAction, storePageVersionsAction } from "./version-actions";
 import { planMotionAction } from "./motion-action";
 import { signupCodeChoices } from "@/server/discounts";
@@ -94,6 +97,24 @@ export async function storePageContext(
     features: store.features,
     type,
     defaultAuthor: author,
+    // An article's blog and author record (D341), chosen in the editor's sidebar.
+    blog:
+      type === "article"
+        ? await (async () => {
+            const [blogs, authors] = await Promise.all([blogsNow(store.id), authorsNow(store.id)]);
+            const main = store.localization.locales[0];
+            return {
+              blogs: blogs.map((b) => ({ id: b.id, title: blogTitle(b, main ?? "en", main, t(market?.lang ?? "en").blog), address: blogPath(b), main: b.main })),
+              authors: authors.map((a) => ({ id: a.id, name: a.name })),
+              manageHref: `/admin/${store.slug}/articles/blogs`,
+            };
+          })()
+        : null,
+    // Publishing a page's or an article's draft at a set time (D341), on the store's clock.
+    schedule:
+      (type === "page" || type === "article") && !variantOf
+        ? { zone: store.timeZone, read: typed(readScheduleAction), set: typed(scheduleAction), cancel: typed(cancelScheduleAction) }
+        : null,
     adminBase: storePagesBase(store, type),
     // A full address once the store has its own host (P7), and origin then empty.
     siteBase: storeHref(store.slug, market ? marketPath(store.slug, market.slug) : storeBase(store.slug)) + PAGE_TYPE_COPY[type].sitePrefix,

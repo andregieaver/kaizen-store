@@ -141,6 +141,11 @@ export const NAV_NB: Record<string, string> = {
     "Butikkens egne sider, laget i sidebyggeren: utkast, publisering, og valg av forside og spesialsider.",
   Blog: "Blogg",
   "The store's blog: articles, their categories and tags.": "Butikkens blogg: artikler, kategoriene og stikkordene deres.",
+  Blogs: "Blogger",
+  "The store's blogs, each with its address, feed and comments setting, and the authors of its articles.":
+    "Butikkens blogger, hver med sin adresse, feed og innstilling for kommentarer, og forfatterne av artiklene.",
+  "Blog comments": "Bloggkommentarer",
+  "Visitors' comments on the articles: approve, refuse or mark them as spam.": "Besøkendes kommentarer på artiklene: godkjenn, avvis eller merk dem som søppelpost.",
   Content: "Innhold",
   "Your own kinds of content, such as team members or locations: entries listed on pages, each with a page if you like.": "Dine egne typer innhold, som ansatte eller steder: oppføringer som vises på sider, og en egen side for hver om du vil.",
   Media: "Medier",

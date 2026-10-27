@@ -1,131 +1,18 @@
 import type { Metadata } from "next";
-import { permanentRedirect } from "next/navigation";
 
-import { ArticleView } from "@/components/article-view";
-import { JsonLdScript } from "@/components/json-ld";
-import { PageEditLink } from "@/components/page-edit-link";
-import { t } from "@/lib/i18n";
-import type { Market } from "@/lib/markets";
-import { pageExcerpt, pageSlugProblem, reservedPageSlugs } from "@/lib/page-content";
-import { localizePage } from "@/lib/page-translation";
-import { pageInMarket } from "@/lib/page-markets";
-import { adminOrigin, marketMetaPath, marketPath, marketUrl, storeSiteUrl } from "@/lib/paths";
-import { articleJsonLd } from "@/lib/structured-data";
-import { bindForPlace } from "@/server/field-binding";
-import { findPublishedPage, listPublishedPages } from "@/server/pages";
-import { missOrRedirect } from "@/server/redirect-resolve";
-import { storeFacts, storeShareImage, storeShareTags } from "@/server/seo";
-import { marketMoved, resolveShop } from "@/server/shop";
+import { articleMetadata, articleStaticParams, StoreArticle } from "../article-page";
 
 type Props = PageProps<"/s/[store]/[market]/blog/[slug]">;
 
-/**
- * A store's articles (D57), in each of its markets and its languages (D55),
- * prerendered when the site is built; later ones render on first visit and
- * are then cached until the next change.
- */
+/** The first blog's articles (D57) at `/blog/{slug}`; an article of another blog (D341) moves to its own blog's address. */
 export async function generateStaticParams({ params }: { params: { store: string; market: string } }) {
-  const shop = await resolveShop(params.store, params.market);
-  const articles = shop ? await listPublishedPages(shop.store.id, "article") : [];
-  // Cache Components needs at least one entry; "_" simply renders a 404.
-  return articles.length > 0 ? articles.map((article) => ({ slug: article.slug })) : [{ slug: "_" }];
+  return articleStaticParams(params, null);
 }
 
-async function load(params: Props["params"]) {
-  const { store: storeSlug, market: marketSlug, slug } = await params;
-  const shop = await resolveShop(storeSlug, marketSlug);
-  if (!shop || pageSlugProblem(slug, reservedPageSlugs(shop.store.id, "article")) !== null) return null;
-  const found = await findPublishedPage(shop.store.id, slug, "article");
-  // An article for other countries only (D338) is not here: the route's 404, or a manual redirect.
-  if (found && "page" in found && !pageInMarket(found.page.content, shop.market.code)) return null;
-  return found ? { ...shop, found } : null;
+export function generateMetadata({ params }: Props): Promise<Metadata> {
+  return articleMetadata(params, null);
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const loaded = await load(params);
-  if (!loaded || "redirect" in loaded.found) return {};
-  const { store, market } = loaded;
-  const { page } = loaded.found;
-  const c = localizePage(page.content, market.locale);
-  const title = c.seo.title || c.title;
-  const description =
-    c.seo.description || pageExcerpt(c) || store.seo.description[market.locale] || t(market.lang).storeSummary(store.name, market.name);
-  const path = (m: Market) => marketMetaPath(store.slug, m.slug, `/blog/${page.slug}`);
-  const share = storeShareTags(store, market, {
-    title,
-    description,
-    url: path(market),
-    images: c.thumbnail
-      ? [{ url: c.thumbnail.url, alt: c.thumbnail.alt || c.title, width: c.thumbnail.width, height: c.thumbnail.height }]
-      : [storeShareImage(store, market.locale)],
-  });
-  return {
-    // The article's own search title is used as written; otherwise "Title · Store".
-    title: c.seo.title ? { absolute: c.seo.title } : c.title,
-    description,
-    alternates: {
-      canonical: path(market),
-      languages: Object.fromEntries(store.markets.filter((m) => pageInMarket(page.content, m.code)).map((m) => [m.locale, path(m)])),
-    },
-    ...(!c.searchEngines && { robots: { index: false } }),
-    ...share,
-    openGraph: {
-      ...share.openGraph,
-      type: "article",
-      publishedTime: page.firstPublishedAt,
-      modifiedTime: page.publishedAt,
-      ...(c.author && { authors: [c.author] }),
-    },
-  };
-}
-
-export default async function StoreArticlePage({ params }: Props) {
-  const loaded = await load(params);
-  if (!loaded) {
-    // An address that was an article's, or a manual redirect's source, goes on for good; anything else is the store's 404 (wave 2, D168).
-    const { store: storeSlug, market: marketSlug, slug } = await params;
-    const shop = await resolveShop(storeSlug, marketSlug);
-    // A country, language or currency the store no longer offers moves to one it does (D178).
-    if (!shop) return marketMoved(storeSlug, marketSlug, `/blog/${slug}`);
-    return missOrRedirect(shop, `/blog/${slug}`);
-  }
-  const { store, market, found } = loaded;
-  const blog = marketPath(store.slug, market.slug, "/blog");
-  // An article that moved: its old address leads to the new one for good.
-  if ("redirect" in found) permanentRedirect(`${blog}/${found.redirect}`);
-  const { page } = found;
-  const place = { pageId: page.id, owner: store.id, market: market.slug, pageType: "article" as const };
-  // Blocks bound to the article's custom fields (D118) show their values.
-  const c = await bindForPlace(localizePage(page.content, market.locale), place);
-  const origin = storeSiteUrl(store.slug);
-
-  return (
-    // Spans the window like a store's page (D54); its rows keep to the width themselves.
-    <div className="store-page py-8">
-      <JsonLdScript
-        data={articleJsonLd({
-          origin,
-          url: `${origin}${blog}/${page.slug}`,
-          title: c.title,
-          description: c.seo.description || pageExcerpt(c),
-          image: c.thumbnail?.url ?? null,
-          publishedAt: page.firstPublishedAt,
-          modifiedAt: page.publishedAt,
-          author: c.author || null,
-          locale: market.locale,
-          store: { homeUrl: marketUrl(store.slug, market.slug), storeUrl: storeFacts(store).url },
-        })}
-      />
-      <ArticleView
-        content={c}
-        date={page.firstPublishedAt}
-        byline={c.author || store.name}
-        lang={market.lang}
-        locale={market.locale}
-        place={place}
-        editable={market.locale === store.localization.locales[0]}
-      />
-      <PageEditLink pageId={page.id} store={store.slug} article adminOrigin={adminOrigin(store.slug)} textEditable={market.locale === store.localization.locales[0]} />
-    </div>
-  );
+export default function StoreArticlePage({ params }: Props) {
+  return <StoreArticle params={params} handle={null} />;
 }

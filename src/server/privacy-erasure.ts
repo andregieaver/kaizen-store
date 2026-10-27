@@ -28,6 +28,7 @@ import { getCheckoutAccount } from "./settings";
 import { refreshTag } from "./refresh";
 import { removePictureFiles, reviewPictureStorage, type ReviewPictureStorage, type StoredPicture } from "./review-picture-store";
 import { buyerKeysOf } from "./reviews";
+import { commentsTag, eraseComments } from "./blog-comments";
 import { anonymiseConversations } from "./support";
 import { changeSubscription } from "./subscriptions";
 import { mollieProvider } from "./payment-providers/mollie";
@@ -127,6 +128,7 @@ export async function planErasure(subject: PrivacySubject, now: Date = new Date(
            and e.kind <> all(${textList(EVIDENCE_EMAIL_KINDS)}))::int as email_messages,
         (select count(*) from commerce.email_opt_outs where store_id = ${sid}::uuid and lower(email) = any(${addresses}))::int as email_opt_outs,
         (select count(*) from commerce.form_submissions where store_id = ${sid}::uuid and lower(email) = any(${addresses}))::int as form_submissions,
+        (select count(*) from commerce.blog_comments where store_id = ${sid}::uuid and lower(email) = any(${addresses}))::int as blog_comments,
         (select count(*) from commerce.marketing_subscribers where store_id = ${sid}::uuid and (lower(email) = any(${addresses}) or customer_id = ${cid}::uuid))::int as marketing_subscribers,
         (select count(*) from commerce.marketing_consent_events e join commerce.marketing_subscribers m on m.store_id = e.store_id and m.id = e.subscriber_id
            where m.store_id = ${sid}::uuid and (lower(m.email) = any(${addresses}) or m.customer_id = ${cid}::uuid))::int as marketing_consent_events,
@@ -202,6 +204,7 @@ export async function planErasure(subject: PrivacySubject, now: Date = new Date(
       email_messages: n(c.email_messages),
       email_opt_outs: n(c.email_opt_outs),
       form_submissions: n(c.form_submissions),
+      blog_comments: n(c.blog_comments),
       marketing_subscribers: n(c.marketing_subscribers),
       marketing_consent_events: n(c.marketing_consent_events),
       customer_tags: n(c.customer_tags),
@@ -549,6 +552,8 @@ export async function eraseSubject(
   // Never stops the erasure: outside a request (a job or a test) there may be no cache to refresh.
   try {
     refreshTag(reviewsTag(storeId));
+    // And their comments (D341): the articles that showed them are drawn again.
+    refreshTag(commentsTag(storeId));
   } catch (error) {
     console.error("[privacy] the product pages' reviews could not be refreshed after an erasure", error);
   }
@@ -737,6 +742,8 @@ async function eraseRows(tx: Tx, s: PrivacySubject, store: PrivacyStore): Promis
   await tx.execute(sql`
     delete from commerce.product_reviews where store_id = ${sid}::uuid and source = 'buyer' and buyer_key = any(${textList(buyerKeysOf(cid, s.addresses))})
   `);
+  // The person's comments on the store's articles (D341), by their proven addresses: their name and words go.
+  await eraseComments(tx, sid, s.addresses);
   // The subscriber list (D295): the person's place on it and its history go (before the account, which it may name).
   await tx.execute(sql`
     delete from commerce.marketing_subscribers where store_id = ${sid}::uuid and (lower(email) = any(${addresses}) or customer_id = ${cid}::uuid)

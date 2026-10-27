@@ -15,6 +15,7 @@ import { LEGAL_ROLES } from "@/lib/legal-roles";
 import { inView, offeredMarkets, shown, toMarket, type Market } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import { marketOrigin, marketPath, marketUrl, storeBase, storeDomain, storeSiteUrl } from "@/lib/paths";
+import { articlePath, blogOfArticle, blogPath, inBlog } from "@/lib/blogs";
 import { pageExcerpt } from "@/lib/page-content";
 import { pageImageUrls } from "@/lib/page-images";
 import { localizePage } from "@/lib/page-translation";
@@ -43,6 +44,7 @@ import { parseTermSeo, type TermSeo } from "@/lib/term-seo";
 import { themeStoreCards } from "./theme-store";
 import { audit, type Account, type Membership } from "./auth";
 import { CATALOG_TAG, catalogTag, listProducts } from "./catalog";
+import { storeBlogs } from "./blogs";
 import { listPublishedPages } from "./pages";
 import { pageInMarket } from "@/lib/page-markets";
 import { getPlatformPageRoles } from "./platform-roles";
@@ -464,10 +466,15 @@ export async function siteRobots(): Promise<string> {
 async function storeGroups(store: Pick<Store, "id" | "slug" | "seo">) {
   const base = storeBase(store.slug);
   const groups = storeRobotsGroups(store.seo, base);
-  const [pages, articles] = await Promise.all([listPublishedPages(store.id), listPublishedPages(store.id, "article")]);
+  const [pages, articles, blogs] = await Promise.all([listPublishedPages(store.id), listPublishedPages(store.id, "article"), storeBlogs(store.id)]);
+  // An article is at its own blog's address (D341): `/blog/{slug}` or `/blogs/{handle}/{slug}`.
+  const at = (a: (typeof articles)[number]) => {
+    const blog = blogOfArticle(blogs, a.content);
+    return blog ? articlePath(blog, a.slug) : `/blog/${a.slug}`;
+  };
   const closed = [
     ...pages.filter((page) => !page.content.aiAssistants).flatMap((page) => [`${base}/*/${page.slug}$`, `${base}/${page.slug}$`]),
-    ...articles.filter((a) => !a.content.aiAssistants).flatMap((a) => [`${base}/*/blog/${a.slug}$`, `${base}/blog/${a.slug}$`]),
+    ...articles.filter((a) => !a.content.aiAssistants).flatMap((a) => [`${base}/*${at(a)}$`, `${base}${at(a)}$`]),
   ].map((path) => ({ allow: false, path }));
   // In every market, and without the market for a store that sells in one country (D181).
   if (closed.length > 0) addRules(groups, [...AI_ASSISTANT_BOTS, ...AI_TRAINING_BOTS], closed);
@@ -557,13 +564,16 @@ export async function storeSitemap(slug: string): Promise<string | null> {
   // Addresses without the country while the store sells in one (D181), as its pages' own links are.
   const address = (await getOpenStore(slug))?.address ?? null;
   // A website (D178 step 5: the online shop off) lists no products, categories or tags.
-  const [products, terms, pages, articles, entries] = await Promise.all([
+  const [products, terms, pages, articles, entries, blogs] = await Promise.all([
     store.selling ? listIndexedProducts(store.id) : Promise.resolve([]),
     store.selling ? listIndexedTerms(store.id) : Promise.resolve([]),
     listPublishedPages(store.id),
     listPublishedPages(store.id, "article"),
     listIndexedEntries(store.id),
+    storeBlogs(store.id),
   ]);
+  // The pages chosen to stand at another blog's address (D341) are there, not at their own.
+  const blogPageIds = blogs.flatMap((blog) => (blog.listingPageId ? [blog.listingPageId] : []));
   const base = `${origin}${storeBase(store.slug)}`;
 
   const entry = (
@@ -617,7 +627,7 @@ export async function storeSitemap(slug: string): Promise<string | null> {
     }),
     // Its pages (D54) open to search engines, in every market; the front page is the markets' own address.
     ...pages
-      .filter((page) => page.content.searchEngines && page.id !== store.frontPageId && page.id !== store.productsPageId && !store.rolePageIds.includes(page.id))
+      .filter((page) => page.content.searchEngines && page.id !== store.frontPageId && page.id !== store.productsPageId && !store.rolePageIds.includes(page.id) && !blogPageIds.includes(page.id))
       .flatMap((page) => {
         // Only in the countries it is for (D338).
         const versions = versionsOf(store.markets.filter((m) => pageInMarket(page.content, m.code)), `/${page.slug}`);
@@ -625,17 +635,21 @@ export async function storeSitemap(slug: string): Promise<string | null> {
         const image = pageImageUrls(page.content).slice(0, 10);
         return versions.map((version) => entry(version.href, versions, { lastmod: page.publishedAt, images: image }));
       }),
-    // Its blog (D57): the list in every market, and each article open to search engines.
-    ...(articles.length > 0
-      ? (() => {
-          const versions = versionsOf(store.markets, "/blog");
-          return versions.map((version) => entry(version.href, versions));
-        })()
-      : []),
+    // Its blogs (D57, D341): each one's list in every market while it has an article, and each article open to search engines at its blog's address.
+    ...blogs
+      .filter((blog) => articles.some((article) => inBlog(blogs, blog, article.content)))
+      .flatMap((blog) => {
+        const versions = versionsOf(store.markets, blogPath(blog));
+        return versions.map((version) => entry(version.href, versions));
+      }),
     ...articles
       .filter((article) => article.content.searchEngines)
       .flatMap((article) => {
-        const versions = versionsOf(store.markets.filter((m) => pageInMarket(article.content, m.code)), `/blog/${article.slug}`);
+        const blog = blogOfArticle(blogs, article.content);
+        const versions = versionsOf(
+          store.markets.filter((m) => pageInMarket(article.content, m.code)),
+          blog ? articlePath(blog, article.slug) : `/blog/${article.slug}`,
+        );
         const image = pageImageUrls(article.content).slice(0, 10);
         return versions.map((version) => entry(version.href, versions, { lastmod: article.publishedAt, images: image }));
       }),
@@ -730,6 +744,7 @@ export async function storeLlms(slug: string): Promise<string | null> {
     listPublishedPages(store.id),
     listPublishedPages(store.id, "article"),
   ]);
+  const blogs = await storeBlogs(store.id);
   const byHandle = new Map(indexed.map((p) => [p.handle, p]));
   const money = (minor: number, currency: string) => formatMoney(minor, currency, "en-GB");
   const d = store.details;
@@ -799,7 +814,8 @@ export async function storeLlms(slug: string): Promise<string | null> {
           .filter((article) => article.content.aiAssistants && pageInMarket(article.content, market.code))
           .map((article) => {
             const c = localizePage(article.content, market.locale);
-            return { title: c.title, url: `${home(market.code)}/blog/${article.slug}`, note: c.seo.description || pageExcerpt(c, 200) };
+            const blog = blogOfArticle(blogs, article.content);
+            return { title: c.title, url: `${home(market.code)}${blog ? articlePath(blog, article.slug) : `/blog/${article.slug}`}`, note: c.seo.description || pageExcerpt(c, 200) };
           }),
       },
       {

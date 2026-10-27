@@ -90,7 +90,9 @@ describe("the store's routes", () => {
       "src/app/s/[store]/[market]/[slug]/store-page-view.tsx",
       "src/app/s/[store]/[market]/p/[handle]/page.tsx",
       "src/app/s/[store]/[market]/term-listing.tsx",
-      "src/app/s/[store]/[market]/blog/[slug]/page.tsx",
+      // Articles in every blog (D341): the first blog's at /blog/{slug} and the others' at /blogs/{handle}/{slug} share this view.
+      "src/app/s/[store]/[market]/blog/article-page.tsx",
+      "src/app/s/[store]/[market]/blog/blog-listing.tsx",
       "src/app/s/[store]/[market]/[...rest]/page.tsx",
     ]) {
       const text = read(route);

@@ -346,6 +346,7 @@ export function countryHostDecision(request: StorePathRequest, address: StoreAdd
 export const MARKET_ROUTES: readonly string[] = [
   "account",
   "blog",
+  "blogs",
   "cart",
   "category",
   "checkout",

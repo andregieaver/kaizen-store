@@ -110,6 +110,11 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   // Producer responsibility (D342): the Producer responsibility page's own keys.
   producer_registrations: "settings:read",
   save_producer_registration: "settings:write",
+  // Blogs (D341): the Blogs and Comments pages' own keys (articles are the Website area's).
+  list_blogs: "website:read",
+  blog_comments: "website:read",
+  moderate_blog_comment: "website:write",
+  schedule_article: "website:write",
   search_merchandising: "settings:read",
   save_search_synonym: "settings:write",
   save_search_rule: "settings:write",

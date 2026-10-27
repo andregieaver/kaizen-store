@@ -562,6 +562,35 @@ export const OWNER_TOOLS = [
     }),
     "public",
   ),
+  // Blogs in depth (wave 7 unit G, D341).
+  tool(
+    "list_blogs",
+    "The store's blogs (Website, Blogs, D341): each one's name, address (the first at /blog, others at /blogs/{address}), Atom feed address, how comments are taken (off, held until a person approves them, or shown at once when they pass the spam check) and how many articles it has; and how many visitors' comments wait to be read. Read-only.",
+    z.object({}),
+  ),
+  tool(
+    "blog_comments",
+    "Visitors' comments on the store's articles in one state (waiting by default, or shown, spam, refused): how many there are in each, and for each its id, the article, when it was posted, its length and what the spam check found. A comment's words and name are a visitor's and are not given to you: the owner reads them on the Comments page. Read-only.",
+    z.object({
+      status: z.enum(["pending", "approved", "spam", "rejected"]).default("pending").describe("pending: waiting to be read; approved: shown; spam; rejected: refused."),
+      limit: z.number().int().min(1).max(50).default(20),
+    }),
+  ),
+  tool(
+    "moderate_blog_comment",
+    "Shows (approve), refuses (reject) or marks as spam one visitor's comment, by its id from blog_comments, as the Comments page does. Only for a comment the owner has read and told you what to do with. Needs the owner's approval: an approved comment is shown on the store's site.",
+    z.object({ comment: z.uuid("A comment is given by its id, from blog_comments."), action: z.enum(["approve", "reject", "spam"]) }),
+    "public",
+  ),
+  tool(
+    "schedule_article",
+    "Publishes an article's draft at a set time on the store's clock (`at`: YYYY-MM-DD HH:MM in the time zone of your instructions), as the editor's Schedule does: until then it is not on the site, in a list, the sitemap or the feed; the draft as it is at that time is published, within five minutes after it. `at` null cancels its schedule (the draft stays a draft). Refused while the draft has problems the accessibility checker blocks on, or is in a running A/B test. Needs the owner's approval.",
+    z.object({
+      article: z.string().trim().min(1).max(200).describe("The article's id or address, from list_pages with type article."),
+      at: z.string().trim().max(20).nullable().describe("When to publish it, YYYY-MM-DD HH:MM on the store's clock; null to cancel its schedule."),
+    }),
+    "public",
+  ),
   tool(
     "list_content_types",
     "The store's own kinds of content (Website, Content, D326), such as team members, questions and answers or locations: each type's key, name and web name (its entries' pages are at /{web name}/{entry} when it has pages), its fields (name, label, type, whether required, public or for staff only) with the one that is its title, and how many entries it has. Read-only.",
@@ -1723,6 +1752,16 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
       return input.from === null || input.from === undefined
         ? `Set the prices in ${text("country").toUpperCase()} by hand again (they stay as they are).`
         : `Work out every price in ${text("country").toUpperCase()} from ${text("from").toUpperCase()}: ${Number(input.percent ?? 0) >= 0 ? "+" : ""}${Number(input.percent ?? 0)} % on the price ${input.vat === "gross" ? "with" : "before"} VAT${input.round_to === undefined ? "" : `, rounded to ${Number(input.round_to)}${input.ending === undefined ? "" : ` ending in ${Number(input.ending)}`}`}. Prices typed by hand there stay.`;
+    case "moderate_blog_comment":
+      return input.action === "approve"
+        ? `Show the visitor's comment ${text("comment")} on its article.`
+        : input.action === "reject"
+          ? `Refuse the visitor's comment ${text("comment")} (it is not shown, and is deleted after 30 days).`
+          : `Mark the visitor's comment ${text("comment")} as spam (it is not shown, and is deleted after 30 days).`;
+    case "schedule_article":
+      return input.at === null || input.at === undefined
+        ? `Cancel the schedule of the article ${text("article")}; it stays a draft.`
+        : `Publish the article ${text("article")} at ${text("at")} on the store's clock (its draft as it is then).`;
     case "save_producer_registration":
       return input.kind === "exempt"
         ? `${input.id ? "Change the record" : "Record"} that no ${text("scheme").replace("_", " ")} registration is needed in ${text("country").toUpperCase()}: "${text("reason")}". Products under it are then sold there.`

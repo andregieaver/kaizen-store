@@ -84,7 +84,8 @@ rules below disagree.
    `orders.partial-and-full-refunds-with-restocking` (its open criterion, a refund as store credit, made that row partial);
    `ai.workflow-builder-with-ai-generation` into `platform.workflow-automation-flow`; `checkout.multi-currency-pricing-and-checkout`
    into `international.multi-currency-display-and-checkout`; `international.customs-duties-hs-codes-landed-cost` into
-   `orders.customs-and-duties` (still missing: nothing prices or declares duties). A survivor keeps its own
+   `orders.customs-and-duties` (still missing: nothing prices or declares duties). Merged on 2026-10-27 (wave 7 unit G, D341):
+   `customers.blog-and-content-marketing` into `storefront.blog-multiple-blogs-authors-comments-rss`, keeping the stricter criteria of each. A survivor keeps its own
    weight (rule 6), so a pair that disagreed on weight is for the next weight review.
 
 ## Waves

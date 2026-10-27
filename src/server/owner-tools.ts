@@ -107,6 +107,7 @@ import { DNS_RECORD_TOOLS } from "@/lib/domain-tools";
 import { addRedirectTool, preflightRedirectTool, redirectOverviewTool } from "./redirect-tools";
 import { marketPriceRulesTool, preflightPriceRuleTool, setMarketPriceRuleTool } from "./market-price-tools";
 import { preflightProducerTool, producerRegistrationsTool, saveProducerRegistrationTool } from "./producer-tools";
+import { blogCommentsTool, listBlogsTool, moderateBlogCommentTool, preflightModerateTool, preflightScheduleTool, scheduleArticleTool } from "./blog-tools";
 import { deleteSearchMerchandisingTool, preflightSearchTool, saveSearchRuleTool, saveSearchSynonymTool, searchMerchandisingTool } from "./search-tools";
 import {
   getEntryTool,
@@ -2092,6 +2093,13 @@ export async function preflightOwnerTool(ctx: OwnerToolContext, name: string, ra
     if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
     return preflightPriceRuleTool(ctx, input.input as Record<string, unknown>);
   }
+  // A comment that is not the store's, or a schedule the editor would refuse, is refused now, never kept for a yes (D341).
+  if (name === "moderate_blog_comment" || name === "schedule_article") {
+    const tool = OWNER_TOOLS_BY_NAME[name];
+    const input = readToolInput(tool, raw);
+    if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
+    return name === "moderate_blog_comment" ? preflightModerateTool(ctx, input.input as Record<string, unknown>) : preflightScheduleTool(ctx, input.input as Record<string, unknown>);
+  }
   // A producer registration the page would refuse is refused now, never kept for a yes (D342).
   if (name === "save_producer_registration") {
     const tool = OWNER_TOOLS_BY_NAME[name];
@@ -2427,6 +2435,10 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   set_market_price_rule: setMarketPriceRuleTool,
   producer_registrations: producerRegistrationsTool,
   save_producer_registration: saveProducerRegistrationTool,
+  list_blogs: listBlogsTool,
+  blog_comments: blogCommentsTool,
+  moderate_blog_comment: moderateBlogCommentTool,
+  schedule_article: scheduleArticleTool,
   save_search_synonym: saveSearchSynonymTool,
   save_search_rule: saveSearchRuleTool,
   delete_search_merchandising: deleteSearchMerchandisingTool,

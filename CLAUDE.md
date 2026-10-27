@@ -262,6 +262,22 @@ stand-in is the only fake, and only it is told it is one.
   (a product's in its save's entries, a batch as one entry); taking a rule away keeps its prices, fixed. A new writer of base prices or rates
   calls `deriveForProducts()`; a new caller of `set_price` is in `price-audit-scan.test.ts`. The AI manager's `market_price_rules` and the
   gated `set_market_price_rule` (never automatic) go through the same saver.
+- **Blogs in depth (wave 7 unit G, D341, `docs/wave-7-storefront.md` G)**: a store's blogs are `commerce.blogs` (the first, `main`, at `/blog`,
+  made for every store by `stores_first_blog()`; others at `/blogs/{handle}`), its authors `commerce.blog_authors`, both written only by
+  `src/server/blogs.ts` and read cached under `pagesTag(store)`. An article's blog and author are its content's `blogId`/`authorId` (kept by
+  `savePage()` only when the store's own; none, or a blog gone, is the first blog's: ask `blogOfArticle()`); its address is only
+  `articlePath()` (`blogPath()`, `feedPath()` in `src/lib/blogs.ts`), and an article asked for under another blog's address moves there
+  (308), so a new place that links an article in its own blog asks `articlePath()` (an old `/blog/{slug}` link still arrives). Each blog's
+  Atom feed is `{blog}/feed.atom`, only `blogFeed()` over `atomFeed()` (`src/lib/atom.ts`), linked in the page head (`feedAlternate()`).
+  Comments are `commerce.blog_comments`, written only by `src/server/blog-comments.ts`: posted to `/api/blog/comments` (same site, no
+  cookie or storage, counted per visitor under a keyed hash of the address in `chat_usage`, never the address), checked by `spamReasons()`
+  and kept only as `commentOutcome()` says for the blog's `comments` setting (`moderated` by default, `automatic`, `off`); only `approved`
+  ones are drawn (`approvedComments()`, `commentsTag()`), as plain text, and a visitor's words never reach a model (the AI manager's
+  `blog_comments` gives ids and facts; `moderate_blog_comment` is never automatic). They are personal data (export `comments`, erasure,
+  retention `blog_comments`). A page's or article's draft published at a set time is `commerce.page_schedules` (the start of D340's model),
+  written only by `src/server/page-schedules.ts` and run only by `runSchedules()` in the five-minute dispatcher through `savePage()`, in the
+  maker's name read again, never for a store that is not open or a page in a running A/B test; times are the store's clock
+  (`scheduleInstant()`). F adds a way back and the other kinds to this table and module, never a second scheduler.
 - Sorting and filtering listings (D78, `src/lib/listing-filters.ts`,
   `src/server/listing.ts`, `FilterDialog`, `ProductListing`): the products
   page, category and tag pages and search results take their filters from

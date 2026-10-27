@@ -226,6 +226,8 @@ export function rewriteAddresses(storeId: string | null, pairs: [string, string]
     // A category's or tag's own picture (wave 6 unit A, D319).
     ...exact(sql`commerce.terms`, sql`image_url`),
     ...exact(sql`commerce.terms`, sql`image_thumbnail_url`),
+    // An author's picture (D341).
+    ...exact(sql`commerce.blog_authors`, sql`picture_url`),
     json(sql`commerce.field_values`, sql`values`),
     // A content entry's values (D326), its draft and what is published.
     json(sql`commerce.content_entries`, sql`draft`),

@@ -34,6 +34,7 @@ export const EXPORT_SECTIONS = [
   "customFields",
   "support",
   "reviews",
+  "comments",
 ] as const;
 export type ExportSection = (typeof EXPORT_SECTIONS)[number];
 
@@ -179,6 +180,7 @@ export const PERSONAL_DATA: PersonalEntry[] = [
   entry("stock_requests", "shopper", via("customer", "customer_id", "email"), ["email", "customer_id", "locale", "market_code", "visitor"], "marketing", "delete", "A request to hear once when a sold-out variant is back (D298): the address, the product and its status, exported with the marketing data and deleted on erasure; unconfirmed ones go when their link runs out, waiting ones after 180 days, sent ones after 30."),
   entry("marketing_consent_events", "shopper", via("customer", "subscriber_id"), ["consent_text"], "marketing", "delete", "A subscriber's consent history (D295): each request, subscription and unsubscription with its source and words; exported with the subscriber and deleted with it."),
   entry("email_opt_outs", "shopper", via("email", "email"), ["email"], "consents", "keep", "A suppression record: kept so the store does not email the person again (their own wish); erasing it would undo it."),
+  entry("blog_comments", "shopper", via("email", "email"), ["name", "email", "body"], "comments", "delete", "A comment the person wrote on an article (D341): the name they chose, the email they gave (never shown) and their words, found by their proven addresses; exported, and deleted on erasure. Refused and spam comments are deleted 30 days after they were posted.", { until: "blog_comments" }),
   entry("form_submissions", "shopper", via("email", "email", "visitor"), ["email", "visitor", "payload"], "forms", "delete", "Sign-ups and messages sent by this address are deleted.", { also: ["consents"], until: "form_submissions" }),
   entry("consents", "pseudonymous", via("visitor", "visitor"), ["visitor", "choices"], null, "none", "Cookie consent is kept under a random browser id and cannot be tied to a person; said in the file's notIncluded.", { until: "consents" }),
   entry("visits", "pseudonymous", via("visitor", "visitor"), ["visitor"], null, "none", PSEUDO, { until: "visits" }),
@@ -245,6 +247,7 @@ export const PERSONAL_DATA: PersonalEntry[] = [
   entry("host_stripe_accounts", "host", via("none"), ["host_id"], null, "none", OWN),
   entry("host_tax_details", "host", via("none"), ["legal_name", "address"], null, "none", "A host's tax details (DAC7). " + OWN),
   entry("hosts", "host", via("none"), ["name"], null, "none", OWN),
+  entry("blog_authors", "staff", via("none"), ["name", "bio"], null, "none", "The authors of the store's articles (D341), named and described by the store for its own blog. " + OWN),
   entry("kaizen_life_links", "owner", via("none"), ["life_email"], null, "none", "An owner's link to Kaizen Life. " + OWN),
   entry("wordpress_connections", "owner", via("none"), ["site_name"], null, "none", "A WordPress site an owner connected (D169): its address and name, a hash of its token, never the token. " + OWN),
   entry("referral_entries", "owner", via("none"), ["note"], null, "none", "Referral credit between store owners (D131). " + OWN),

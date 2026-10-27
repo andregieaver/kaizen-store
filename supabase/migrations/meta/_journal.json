@@ -3648,6 +3648,20 @@
       "when": 1793112253290,
       "tag": "20261027144413_store_domain_market_sql",
       "breakpoints": true
+    },
+    {
+      "idx": 521,
+      "version": "7",
+      "when": 1793117618796,
+      "tag": "20261027161338_blogs",
+      "breakpoints": true
+    },
+    {
+      "idx": 522,
+      "version": "7",
+      "when": 1793117643901,
+      "tag": "20261027161403_blogs_sql",
+      "breakpoints": true
     }
   ]
 }
