@@ -6944,6 +6944,131 @@ export const pageRedirects = commerce.table(
 );
 
 /**
+ * A store's blogs (wave 7 unit G, D341, `src/server/blogs.ts`, the only writer): the first (`main`) is at `/blog`, made for every store
+ * by a trigger (`stores_first_blog()`), the others at `/blogs/{handle}`. An article names its blog in its content (`PageContent.blogId`);
+ * one that names none, or a blog that is gone, is the first blog's. `titles` is the blog's name per locale; `listing_page_id` a
+ * published page drawn at the blog's address instead of the standard list (the first blog's is the `blog` page role, D112, so it
+ * stays null there); `comments` whether visitors may comment and how their comments are shown (decision 3 of the wave's spec).
+ */
+export const blogs = commerce.table(
+  "blogs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    handle: text("handle").notNull(),
+    main: boolean("main").notNull().default(false),
+    titles: jsonb("titles").notNull().default({}),
+    listingPageId: uuid("listing_page_id").references(() => pages.id, { onDelete: "set null" }),
+    comments: text("comments").notNull().default("moderated"),
+    position: integer("position").notNull().default(0),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("blogs_store_handle_key").on(t.storeId, t.handle),
+    unique("blogs_store_id_key").on(t.storeId, t.id),
+    uniqueIndex("blogs_one_main_idx").on(t.storeId).where(sql`${t.main}`),
+    index("blogs_listing_page_idx").on(t.listingPageId),
+    check("blogs_handle_format", sql`${t.handle} ~ '^[a-z0-9]+(?:-[a-z0-9]+)*$' and length(${t.handle}) <= 60`),
+    check("blogs_comments", sql`${t.comments} in ('off', 'moderated', 'automatic')`),
+    check("blogs_main_lists_by_role", sql`not ${t.main} or ${t.listingPageId} is null`),
+  ],
+);
+
+/**
+ * The people a store's articles are written by (D341, `src/server/blogs.ts`): a name, a picture from the store's media library, a short
+ * text and a link (checked by `isSafeAddress()`), chosen on an article (`PageContent.authorId`) and shown on it and in its JSON-LD. An
+ * article without one keeps its free-text author name (D57).
+ */
+export const blogAuthors = commerce.table(
+  "blog_authors",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    name: text("name").notNull(),
+    pictureUrl: text("picture_url"),
+    bio: text("bio").notNull().default(""),
+    link: text("link"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("blog_authors_store_id_key").on(t.storeId, t.id),
+    check("blog_authors_name", sql`length(btrim(${t.name})) between 1 and 100`),
+    check("blog_authors_bio", sql`length(${t.bio}) <= 600`),
+    check("blog_authors_link", sql`${t.link} is null or length(${t.link}) <= 500`),
+  ],
+);
+
+/**
+ * Visitors' comments on a store's articles (D341, `src/server/blog-comments.ts`, the only writer): a name, an optional email (never
+ * shown), plain text, the article, and a status: `pending` (held for staff, the default), `approved` (shown), `rejected` or `spam`
+ * (never shown; deleted 30 days later by `runRetention()`). `spam_reasons` is what the check in code found; `body_hash` the normalised
+ * text's hash, so the same text posted again is found. No IP address or cookie is kept. Personal data (D162): exported and erased by
+ * the email.
+ */
+export const blogComments = commerce.table(
+  "blog_comments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    pageId: uuid("page_id").notNull(),
+    name: text("name").notNull(),
+    email: text("email"),
+    body: text("body").notNull(),
+    bodyHash: text("body_hash").notNull(),
+    locale: text("locale").notNull(),
+    status: text("status").notNull().default("pending"),
+    spamReasons: text("spam_reasons").array().notNull().default(sql`'{}'::text[]`),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    decidedBy: uuid("decided_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    foreignKey({ name: "blog_comments_page_fk", columns: [t.storeId, t.pageId], foreignColumns: [pages.storeId, pages.id] }).onDelete("cascade"),
+    index("blog_comments_page_idx").on(t.storeId, t.pageId, t.status, t.createdAt),
+    index("blog_comments_status_idx").on(t.storeId, t.status, t.createdAt),
+    index("blog_comments_hash_idx").on(t.storeId, t.bodyHash, t.createdAt),
+    index("blog_comments_email_idx").on(t.storeId, sql`lower(${t.email})`),
+    index("blog_comments_decided_by_idx").on(t.decidedBy),
+    check("blog_comments_status", sql`${t.status} in ('pending', 'approved', 'rejected', 'spam')`),
+    check("blog_comments_name", sql`length(btrim(${t.name})) between 1 and 80`),
+    check("blog_comments_body", sql`length(btrim(${t.body})) between 1 and 2000`),
+    check("blog_comments_email", sql`${t.email} is null or length(${t.email}) <= 254`),
+  ],
+);
+
+/**
+ * A page's draft published at a set time (D341 for articles and pages; the start of D340's model, `docs/wave-7-storefront.md` F, which
+ * adds a way back, headers, footers and themes): written only by `src/server/page-schedules.ts`, run by `runSchedules()` in the
+ * five-minute dispatcher in the name of `scheduled_by`, read again then (`passMembership()`). One waiting schedule per page;
+ * `acknowledged` holds the checker's blocking issues the person chose to publish with (as the builder's Publish anyway).
+ */
+export const pageSchedules = commerce.table(
+  "page_schedules",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    pageId: uuid("page_id").notNull(),
+    publishAt: timestamp("publish_at", { withTimezone: true }).notNull(),
+    scheduledBy: uuid("scheduled_by").references(() => accounts.id, { onDelete: "set null" }),
+    acknowledged: text("acknowledged").array().notNull().default(sql`'{}'::text[]`),
+    status: text("status").notNull().default("waiting"),
+    problem: text("problem"),
+    doneAt: timestamp("done_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    foreignKey({ name: "page_schedules_page_fk", columns: [t.storeId, t.pageId], foreignColumns: [pages.storeId, pages.id] }).onDelete("cascade"),
+    uniqueIndex("page_schedules_one_waiting_idx").on(t.pageId).where(sql`${t.status} = 'waiting'`),
+    index("page_schedules_due_idx").on(t.publishAt).where(sql`${t.status} = 'waiting'`),
+    index("page_schedules_store_idx").on(t.storeId, t.pageId),
+    index("page_schedules_scheduled_by_idx").on(t.scheduledBy),
+    check("page_schedules_status", sql`${t.status} in ('waiting', 'done', 'failed', 'cancelled')`),
+  ],
+);
+
+/**
  * A row, column, component or whole page layout saved to use again (D46, D127): Kaizen's own
  * (`store_id` null) or a store's, shown under Saved in the page builder.
  * Using one puts a copy on the page; changing it later changes what the

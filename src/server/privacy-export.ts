@@ -46,6 +46,7 @@ import { reviewPictureUrl } from "@/lib/review-view";
 import { audit } from "./auth";
 import { getFieldData, listFieldGroups } from "./custom-fields";
 import { buyerKeysOf } from "./reviews";
+import { commentsOf } from "./blog-comments";
 import { notifyOwners } from "./privacy-notices";
 import { privacyStore, resolveSubject, type PrivacySubject, type SubjectRef } from "./privacy-subject";
 
@@ -109,6 +110,7 @@ async function countRows(s: PrivacySubject): Promise<number> {
       (select count(*) from commerce.support_conversations where store_id = ${store}::uuid and customer_id = ${s.customerId}::uuid and anonymised_at is null) +
       (select count(*) from commerce.product_reviews where store_id = ${store}::uuid and source = 'buyer' and buyer_key = any(${textList(buyerKeysOf(s.customerId, s.addresses))})) +
       (select count(*) from commerce.abandoned_checkouts where store_id = ${store}::uuid and (lower(email) = any(${addresses}) or cart_id = any(${carts}))) +
+      (select count(*) from commerce.blog_comments where store_id = ${store}::uuid and lower(email) = any(${addresses})) +
       ${s.orderIds.length}::bigint + ${s.subscriptionIds.length}::bigint as n
   `);
   return num(row?.n);
@@ -1001,7 +1003,7 @@ export async function gatherExport(s: PrivacySubject, language: string, now: Dat
     loadForms(s),
     loadCompany(s),
   ]);
-  const [consents, customFields, support, marketing, customerTags, broadcasts, automations, stockRequests, reviews, savedAddresses, signupCodes] = await Promise.all([
+  const [consents, customFields, support, marketing, customerTags, broadcasts, automations, stockRequests, reviews, savedAddresses, signupCodes, comments] = await Promise.all([
     loadConsents(s, orders),
     loadCustomFields(s, orders, store.mainLocale),
     loadSupport(s),
@@ -1013,6 +1015,8 @@ export async function gatherExport(s: PrivacySubject, language: string, now: Dat
     loadReviews(s),
     loadSavedAddresses(s),
     loadSignupCodes(s),
+    // Comments on the store's articles (D341), by the person's proven addresses.
+    commentsOf(s.storeId, s.addresses),
   ]);
   const today = now.toISOString().slice(0, 10);
   return {
@@ -1051,6 +1055,7 @@ export async function gatherExport(s: PrivacySubject, language: string, now: Dat
     automations,
     stockRequests,
     reviews,
+    comments,
   };
 }
 

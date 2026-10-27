@@ -1,5 +1,8 @@
 import Image from "next/image";
 
+import { browserText } from "@/lib/browser-text";
+import type { BlogAuthor } from "@/lib/blogs";
+import { isSafeAddress } from "@/lib/field-parts";
 import { t } from "@/lib/i18n";
 import type { PageContent } from "@/lib/page-content";
 import type { GridPlace } from "@/server/content-grid";
@@ -21,6 +24,7 @@ export function ArticleView({
   place,
   inAdmin = false,
   editable = false,
+  author = null,
 }: {
   content: PageContent;
   /** When it was first published; a draft's preview has none yet. */
@@ -34,6 +38,8 @@ export function ArticleView({
   inAdmin?: boolean;
   /** Signed-in staff may change its headings' and texts' words where they stand (D192): `PageArticle`'s. */
   editable?: boolean;
+  /** Its author record (D341), drawn after the article with their picture, short text and link; none, the byline only. */
+  author?: BlogAuthor | null;
 }) {
   const m = t(lang);
   const day = new Intl.DateTimeFormat(locale, { dateStyle: "long", timeZone: "Europe/Oslo" });
@@ -63,6 +69,31 @@ export function ArticleView({
         )}
       </header>
       <PageArticle content={content} place={place} titled inAdmin={inAdmin} editable={editable} />
+      {author && <AuthorBox author={author} lang={lang} />}
     </article>
+  );
+}
+
+/** An article's author (D341): their picture, name, short text and link (drawn only when it is a safe address). Their words are text. */
+function AuthorBox({ author, lang }: { author: BlogAuthor; lang: string }) {
+  const m = browserText(lang).blogComments;
+  const link = author.link && isSafeAddress(author.link) ? author.link.trim() : null;
+  return (
+    <aside aria-label={m.aboutAuthor} data-blog-author="" className="mx-auto flex w-full max-w-(--content-width) gap-4 px-4">
+      {author.picture && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={author.picture} alt="" width={72} height={72} loading="lazy" className="size-18 shrink-0 rounded-full bg-surface object-cover" />
+      )}
+      <div className="flex flex-col gap-1">
+        <p className="text-sm text-muted">{m.aboutAuthor}</p>
+        <p className="text-lg font-heading">{author.name}</p>
+        {author.bio && <p className="whitespace-pre-line">{author.bio}</p>}
+        {link && (
+          <a href={link} className="w-fit underline" rel={link.startsWith("/") || link.startsWith("#") ? undefined : "noopener"}>
+            {m.authorLink}
+          </a>
+        )}
+      </div>
+    </aside>
   );
 }

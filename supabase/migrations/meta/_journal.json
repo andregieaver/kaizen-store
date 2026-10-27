@@ -3620,6 +3620,20 @@
       "when": 1793109354845,
       "tag": "20261027135554_producer_registrations_sql",
       "breakpoints": true
+    },
+    {
+      "idx": 517,
+      "version": "7",
+      "when": 1793111814577,
+      "tag": "20261027143654_blogs",
+      "breakpoints": true
+    },
+    {
+      "idx": 518,
+      "version": "7",
+      "when": 1793111848726,
+      "tag": "20261027143728_blogs_sql",
+      "breakpoints": true
     }
   ]
 }

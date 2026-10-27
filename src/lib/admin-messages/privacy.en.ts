@@ -160,6 +160,7 @@ export const privacyEn = {
       customFields: "custom fields",
       support: "support conversations",
       reviews: "product reviews",
+      comments: "blog comments",
       marketing: "subscriber records",
     },
     requestOpen: "{kind} request open",
@@ -206,6 +207,7 @@ export const privacyEn = {
       email_messages: "Emails sent",
       email_opt_outs: "Email opt-out",
       form_submissions: "Form submissions",
+      blog_comments: "Blog comments",
       support_conversations: "Support conversations",
       support_messages: "Support messages",
       field_values: "Custom fields",
@@ -290,6 +292,7 @@ export const privacyEn = {
       ai_usage: "AI usage log",
       support_transcripts: "Support chat transcripts",
       support_records: "Anonymised support records",
+      blog_comments: "Refused and spam blog comments",
     },
     bases: {
       read: "Read at the source",

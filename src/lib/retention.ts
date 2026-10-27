@@ -33,6 +33,7 @@ export const RETENTION_KINDS = [
   "ai_usage",
   "support_transcripts",
   "support_records",
+  "blog_comments",
 ] as const;
 export type RetentionKind = (typeof RETENTION_KINDS)[number];
 
@@ -189,6 +190,8 @@ export const RETENTION_SEED: readonly RetentionRuleRow[] = [
   // Support (D216, docs/support.md 3.5): the longest a desk may keep a transcript (desks choose 30, 60 or 90 days; one with support off keeps it a day).
   seed({ kind: "support_transcripts", country: null, periodValue: 90, periodUnit: "days", countsFrom: "event", source: POLICY, basis: "policy", enforcedBy: "runRetention: support_transcripts", note: "Counts from the conversation's end. The desk's own choice (TRANSCRIPT_DAYS) or a day with support off is shorter; a test holds the default equal.", checkedOn: "2026-10-13" }),
   seed({ kind: "support_records", country: null, periodValue: 24, periodUnit: "months", countsFrom: "event", source: POLICY, basis: "policy", enforcedBy: "runRetention: support_records", note: "Anonymised conversations (dates, counts, closed fields) for the desk's reports; RECORD_MONTHS, a test holds them equal.", checkedOn: "2026-10-13" }),
+  // Blog comments (wave 7 unit G, D341): a comment staff rejected or the check marked as spam is deleted 30 days after it was posted.
+  seed({ kind: "blog_comments", country: null, periodValue: 30, periodUnit: "days", countsFrom: "event", source: POLICY, basis: "policy", enforcedBy: "runRetention: blog_comments", note: "Rejected and spam comments only; an approved one stays with its article, a waiting one until staff decide. REFUSED_COMMENT_DAYS, a test holds them equal.", checkedOn: "2026-10-27" }),
 ];
 
 /** What an empty rules table means: the safe side, never "keep nothing" and never "delete everything". */

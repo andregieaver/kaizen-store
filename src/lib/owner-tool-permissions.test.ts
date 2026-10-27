@@ -10,7 +10,7 @@ const CHANGING = new Set([
   "set_discount_active", "create_campaign", "set_campaign_active", "set_recommendations", "add_recommendation_rule", "remove_recommendation_rule",
   "set_bonus_program", "adjust_customer_credits", "set_affiliate_program", "block_affiliate", "create_field_group", "set_fields", "email_customer",
   "resend_order_email", "set_stock", "set_backorder", "post_to_slack", "draft_experiment", "start_experiment", "stop_experiment", "apply_winner", "unpublish_page", "add_redirect",
-  "save_search_synonym", "save_search_rule", "delete_search_merchandising", "set_market_price_rule", "save_producer_registration",
+  "save_search_synonym", "save_search_rule", "delete_search_merchandising", "set_market_price_rule", "save_producer_registration", "moderate_blog_comment", "schedule_article",
   "save_entry", "publish_entry", "unpublish_entry", "save_content_type",
   "tag_orders", "archive_orders", "create_draft_order", "send_draft_order", "set_feature",
   "draft_broadcast", "send_broadcast", "tag_customer", "switch_email_automation", "issue_gift_card", "save_research_note", "compare_options", "set_brand", "design_look", "make_brand_marks",

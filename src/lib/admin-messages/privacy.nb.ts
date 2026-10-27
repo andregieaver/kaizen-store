@@ -192,6 +192,7 @@ export const privacyNb: PrivacyMessages = {
       customFields: "egne felt",
       support: "kundeservicesamtaler",
       reviews: "produktomtaler",
+      comments: "bloggkommentarer",
       marketing: "abonnentoppføringer",
     },
     requestOpen: "Åpen forespørsel: {kind}",
@@ -238,6 +239,7 @@ export const privacyNb: PrivacyMessages = {
       email_messages: "Sendte e-poster",
       email_opt_outs: "Reservasjon mot e-post",
       form_submissions: "Skjemainnsendinger",
+      blog_comments: "Bloggkommentarer",
       support_conversations: "Kundeservicesamtaler",
       support_messages: "Kundeservicemeldinger",
       field_values: "Egne felt",
@@ -323,6 +325,7 @@ export const privacyNb: PrivacyMessages = {
       ai_usage: "Logg over KI-bruk",
       support_transcripts: "Utskrifter av kundeservicechatter",
       support_records: "Anonymiserte kundeserviceoppføringer",
+      blog_comments: "Avviste bloggkommentarer og søppelpost",
     },
     bases: {
       read: "Lest i kilden",

@@ -47,7 +47,7 @@ import { undoDemoHomeAction, useDemoHomeAction } from "./home-actions";
 import { PageDrawing } from "./drawing";
 
 /** The catalogue areas the page editor's parts read (D312 A7): the builder, its components' fields, the font and picture pickers. */
-const EDITOR_AREAS = ["builder", "blocks", "fields", "products", "design", "website"] as const;
+const EDITOR_AREAS = ["builder", "blocks", "fields", "products", "design", "website", "blog"] as const;
 
 /**
  * A store's pages (D53) and blog articles (D57): the same list, editor,

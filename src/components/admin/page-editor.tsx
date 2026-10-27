@@ -79,6 +79,7 @@ import { PageIssuesPanel, PublishWithIssuesDialog } from "./page-issues-panel";
 import { FindReplaceDialog } from "./find-replace-dialog";
 import { PageVersionsDialog } from "./page-versions-dialog";
 import { SaveTemplateDialog, defaultTemplateName } from "./save-template-dialog";
+import { ScheduleButton } from "./schedule-dialog";
 
 const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm font-normal";
 const label = "flex flex-col gap-1 text-sm font-medium";
@@ -344,14 +345,14 @@ export function PageEditor({
     }
   }, [content, context.check, checkout, shape, context.owner]);
 
-  const submit = (publish: boolean, acknowledged?: string[]) =>
-    startBusy(async () => {
+  // Saves the page (as a draft, or published); true when it was saved. *Schedule* (D341) saves a changed draft first through it.
+  const save = async (publish: boolean, acknowledged?: string[]): Promise<boolean> => {
       setProblems([]);
       if (theme.current.dirty) {
         const failed = await theme.current.save().catch(() => [w.theme.couldNotSave]);
         if (failed) {
           setProblems(failed);
-          return;
+          return false;
         }
       }
       const sent = content;
@@ -363,7 +364,7 @@ export function PageEditor({
         // The server holds the same question as the dialog: something it found that this editor did not is asked about now.
         if (outcome.code === "needs_confirmation" && outcome.issues && outcome.issues.length > 0) setAsking(outcome.issues);
         else setProblems(outcome.problems);
-        return;
+        return false;
       }
       if (globalEdits.length > 0) {
         const now = new Map(known.current);
@@ -381,6 +382,11 @@ export function PageEditor({
       setMessage(publish ? fillWords(ew.publishedAt, { address: context.place ? context.place.address : `${siteBase}/${outcome.page.slug}` }) : ew.draftSaved);
       // A new page moves to its own address; the editor there says what happened.
       if (!saved) router.replace(`${adminBase}/${outcome.page.id}?saved=${publish ? "published" : "draft"}`);
+      return true;
+  };
+  const submit = (publish: boolean, acknowledged?: string[]) =>
+    startBusy(async () => {
+      await save(publish, acknowledged);
     });
 
   // Publish: a blocking problem (the checkout page's refusals are the server's to say) is asked about first; a draft is never held back.
@@ -676,6 +682,7 @@ export function PageEditor({
                 <h2 id="author-heading" className="text-title text-ink">
                   {ew.author}
                 </h2>
+                {context.blog && <ArticleBlogFields choices={context.blog} blogId={content.blogId} authorId={content.authorId} onChange={change} />}
                 <div className="flex flex-col gap-1">
                   <label className={label}>
                     {ew.writtenBy}
@@ -899,6 +906,10 @@ export function PageEditor({
               >
                 {busy ? w.savedPart.saving : saved?.published ? ew.publishChanges : ew.publish}
               </button>
+              {/* Publishing the draft at a set time (D341): once the page has been saved. */}
+              {context.schedule && saved && (context.type === "page" || context.type === "article") && (
+                <ScheduleButton pageId={saved.id} noun={context.type} schedule={context.schedule} dirty={dirty} saveDraft={() => save(false)} />
+              )}
             </>
           )}
           <div className="flex items-center" role="group" aria-label={ew.undoRedo}>
@@ -1518,5 +1529,55 @@ function HeaderOverlayFields({
         </div>
       )}
     </section>
+  );
+}
+
+/**
+ * An article's blog and author record (D341), above the free-text author name: the store's blogs (the first is the one an article belongs
+ * to without naming any, so choosing it writes nothing) and authors (none: the name typed below is shown).
+ */
+function ArticleBlogFields({
+  choices,
+  blogId,
+  authorId,
+  onChange,
+}: {
+  choices: NonNullable<PageOwnerContext["blog"]>;
+  blogId: string | undefined;
+  authorId: string | undefined;
+  onChange: (patch: Partial<PageContent>) => void;
+}) {
+  const bw = useAdminText("blog").editor;
+  const main = choices.blogs.find((b) => b.main);
+  const current = choices.blogs.some((b) => b.id === blogId) ? blogId! : (main?.id ?? "");
+  return (
+    <div className="flex flex-col gap-3">
+      {choices.blogs.length > 1 && (
+        <label className={label}>
+          {bw.blog}
+          <select value={current} onChange={(event) => onChange({ blogId: event.target.value === main?.id ? undefined : event.target.value })} className={input}>
+            {choices.blogs.map((blog) => (
+              <option key={blog.id} value={blog.id}>
+                {blog.title} ({blog.address})
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      <label className={label}>
+        {bw.author}
+        <select value={authorId ?? ""} onChange={(event) => onChange({ authorId: event.target.value || undefined })} className={input}>
+          <option value="">{bw.authorNone}</option>
+          {choices.authors.map((author) => (
+            <option key={author.id} value={author.id}>
+              {author.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <a href={choices.manageHref} className="w-fit rounded-pill text-sm underline">
+        {choices.authors.length === 0 ? bw.manageAuthors : bw.manageBlogs}
+      </a>
+    </div>
   );
 }

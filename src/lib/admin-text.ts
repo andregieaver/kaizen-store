@@ -101,6 +101,8 @@ import { setupEn, type SetupMessages } from "./admin-messages/setup.en";
 import { setupNb } from "./admin-messages/setup.nb";
 import { signInEn, type SignInMessages } from "./admin-messages/sign-in.en";
 import { signInNb } from "./admin-messages/sign-in.nb";
+import { blogEn, type BlogMessages } from "./admin-messages/blog.en";
+import { blogNb } from "./admin-messages/blog.nb";
 
 /**
  * The admin's words by area and language (D312, `docs/platform-admin-i18n.md` 3.3): one pair of catalogues per area in
@@ -159,6 +161,7 @@ export type AdminAreaMessages = {
   setup: SetupMessages;
   shell: ShellMessages;
   signIn: SignInMessages;
+  blog: BlogMessages;
 };
 
 export type AdminArea = keyof AdminAreaMessages;
@@ -215,6 +218,7 @@ const CATALOGUES: { [A in AdminArea]: Record<AdminLang, AdminAreaMessages[A]> } 
   setup: { en: setupEn, nb: setupNb },
   shell: { en: shellEn, nb: shellNb },
   signIn: { en: signInEn, nb: signInNb },
+  blog: { en: blogEn, nb: blogNb },
 };
 
 /** An area's words in `lang`, on the server; a client part reads its area's slice through `useAdminText()`. */

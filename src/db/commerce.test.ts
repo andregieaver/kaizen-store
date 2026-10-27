@@ -1898,7 +1898,8 @@ describe("pages", () => {
   });
 
   it("keeps a store's routes from its pages, as the app's list does (D53)", async () => {
-    for (const slug of RESERVED_STORE_PAGE_SLUGS) {
+    // `blogs` (a store's other blogs, D341) is refused by the app only, so a page a store already had there does not stop the migration.
+    for (const slug of RESERVED_STORE_PAGE_SLUGS.filter((s) => s !== "blogs")) {
       await expect(page(slug, store)).rejects.toThrow(/pages_store_slug_not_reserved/);
     }
     // Kaizen's pages may use them: they live at the site's root.

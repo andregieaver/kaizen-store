@@ -677,7 +677,8 @@ export type GridContent = keyof typeof GRID_CONTENT;
 export type GridSource =
   /** `parent`: only the pages nested directly under that address (`projects`), or `@this` for the page the grid is on. */
   | { type: "pages"; parent?: string }
-  | { type: "articles" }
+  /** `blog`: only one of the store's blogs' articles (D341), by id; none, every blog's. */
+  | { type: "articles"; blog?: string }
   /** Items the owner writes by hand (D155): they live in the block (`ContentGridBlock.items`), as testimonials' do. */
   | { type: "custom" }
   /** The published entries of one of the owner's content types (D326), named by the type's fixed key, so a copied page needs no remapping. */
@@ -2204,6 +2205,10 @@ export type PageContent = {
   tags: string[];
   /** An article's author, by name (D57); empty shows the store or Kaizen. Pages have none. */
   author?: string;
+  /** An article's blog (D341), by id: one of the store's blogs, else (none, or one that is gone) its first blog at `/blog`. */
+  blogId?: string;
+  /** An article's author record (D341), by id: shown on it and in its JSON-LD; without one, `author` (the free-text name) stands. */
+  authorId?: string;
   /** The content: rows of columns of blocks. */
   rows: PageRow[];
   /** A header's place over the page (D80); only headers have one. */
@@ -2280,11 +2285,14 @@ export function pageBlocks(content: Pick<PageContent, "rows">): PageBlock[] {
 
 /**
  * Kept in step with the `pages_store_slug_not_reserved` check: a store's own
- * routes inside each of its markets (`/s/{store}/{market}/…`), D53.
+ * routes inside each of its markets (`/s/{store}/{market}/…`), D53. `blogs`
+ * (the store's other blogs, D341) is refused here only, not by the check, so
+ * a page a store already has at that address is not refused by the database.
  */
 export const RESERVED_STORE_PAGE_SLUGS: readonly string[] = [
   "account",
   "blog",
+  "blogs",
   "cart",
   "category",
   "checkout",
@@ -2791,7 +2799,7 @@ const contentGridBlock = z
           })
           .optional(),
       }),
-      z.object({ type: z.literal("articles") }),
+      z.object({ type: z.literal("articles"), blog: z.uuid("Choose one of the store's blogs.").optional() }),
       z.object({ type: z.literal("custom") }),
       z.object({ type: z.literal("entries"), contentType: z.string().regex(/^t_[0-9a-f]{12}$/, "Choose the content type whose entries the grid shows.") }),
       z.object({
@@ -3656,6 +3664,9 @@ export const pageInput = z.preprocess(
       aiAssistants: z.boolean(),
       ...termIdsSchema.shape,
       author: z.string().trim().max(AUTHOR_MAX, `Keep the author's name under ${AUTHOR_MAX} characters.`).optional(),
+      // Checked against the store's own blogs and authors when saved (`savePage`): one that is not the store's is left out.
+      blogId: z.uuid("Choose one of the store's blogs.").optional(),
+      authorId: z.uuid("Choose one of the store's authors.").optional(),
       rows: z.array(pageRowSchema).max(ROWS_MAX, `A page takes at most ${ROWS_MAX} rows.`),
       footerReveal: z.boolean().optional(),
       overlay: z

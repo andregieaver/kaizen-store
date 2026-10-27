@@ -27,6 +27,7 @@ import { pruneAnonymisedOrderTags } from "./order-tags";
 import { pruneInventoryMovements } from "./stock-alerts";
 import { anonymiseConversations, deleteOldRecords, transcriptsDue } from "./support";
 import { textList } from "./sql-arrays";
+import { pruneRefusedComments } from "./blog-comments";
 
 type Row = Record<string, unknown>;
 
@@ -125,6 +126,7 @@ export const RETENTION_STEPS = [
   "order_rule_runs",
   "tracking_events",
   "exchanges",
+  "blog_comments",
 ] as const;
 export type RetentionStep = (typeof RETENTION_STEPS)[number];
 
@@ -403,6 +405,10 @@ const STEPS: Record<RetentionStep, StepFn> = {
   async exchanges(ctx) {
     const { pruneExchangeTokens, pruneExchangeWishes } = await import("./exchanges");
     return { count: (await pruneExchangeTokens(ctx.now)) + (await pruneExchangeWishes(ctx.now)) };
+  },
+  // Blog comments (wave 7 unit G, D341): a refused or spam comment goes after the rule's days; an approved one stays with its article.
+  async blog_comments(ctx) {
+    return { count: await pruneRefusedComments(cutoffInstant(await period(ctx, "blog_comments"), ctx.now), ctx.batch) };
   },
 };
 

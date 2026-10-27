@@ -293,6 +293,9 @@ export type SupportRow = {
   ratingComment: string | null;
 };
 /** A product review the person wrote (D301): the product, their stars and words, its state and the store's answer. */
+/** A comment the person wrote on an article (D341): where, the name they gave, their words and what became of it. */
+export type CommentExportRow = { article: string; name: string; email: string | null; body: string; status: string; postedAt: Ts };
+
 export type ReviewExportRow = {
   product: string;
   rating: number;
@@ -347,6 +350,8 @@ export type ExportInput = {
   marketing?: MarketingRow[];
   /** Product reviews the person wrote (D301); absent is none. */
   reviews?: ReviewExportRow[];
+  /** Comments the person wrote on the store's articles (D341), found by their proven addresses; absent is none. */
+  comments?: CommentExportRow[];
   /** Staff's tags on the person (D296); absent is none. */
   customerTags?: string[];
   /** Welcome codes a sign-up form gave the person (D304 J3): the discount and when; absent is none. */
@@ -389,6 +394,7 @@ export type ExportSections = {
   support: Json[];
   marketing: Json[];
   reviews: Json[];
+  comments: Json[];
 };
 
 export type ExportCounts = Record<ExportSection, number>;
@@ -719,6 +725,7 @@ export function countsOf(input: ExportInput): ExportCounts {
     customFields: input.customFields.length,
     support: (input.support ?? []).length,
     reviews: (input.reviews ?? []).length,
+    comments: (input.comments ?? []).length,
     marketing: (input.marketing ?? []).length + ((input.customerTags ?? []).length > 0 ? 1 : 0) + (input.broadcasts ?? []).length + (input.automations ?? []).length + (input.stockRequests ?? []).length + (input.signupCodes ?? []).length,
   };
 }
@@ -784,6 +791,7 @@ export function shapeExport(input: ExportInput): ExportFile {
       invites: input.company.invites.map((i) => ({ status: i.status, createdAt: iso(i.createdAt), expiresAt: iso(i.expiresAt), acceptedAt: iso(i.acceptedAt) })),
     },
     customFields: input.customFields.map((f) => ({ entity: f.entity, reference: text(f.reference), group: f.group, label: f.label, value: text(f.value), locale: text(f.locale) })),
+    comments: (input.comments ?? []).map((c) => ({ article: c.article, name: c.name, email: text(c.email), body: c.body, status: c.status, postedAt: iso(c.postedAt) })),
     reviews: (input.reviews ?? []).map((r) => ({
       product: r.product,
       rating: r.rating,
@@ -960,6 +968,7 @@ export function validateExport(file: unknown): string[] {
     support: listOf(sections.support),
     marketing: listOf(sections.marketing),
     reviews: listOf(sections.reviews),
+    comments: listOf(sections.comments),
   };
   for (const [s, n] of Object.entries(expected)) {
     if (counts[s] !== n) out.push(`counts.${s} is ${String(counts[s])} but the section holds ${n}`);

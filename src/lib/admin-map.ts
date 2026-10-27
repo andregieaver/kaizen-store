@@ -306,6 +306,18 @@ const PAGES: readonly AdminPage[] = [
   store("article", "/articles/[pageId]", "Article", "Main", "Writes a blog article in the page builder."),
   store("article.preview", "/articles/[pageId]/preview", "Article preview", "Main", "Previews an article's draft."),
   store("article.categories", "/articles/categories", "Blog categories and tags", "Main", "Categories and tags for articles."),
+  store("blogs", "/articles/blogs", "Blogs", "Main", "The store's blogs (D341): the first at /blog and others at /blogs/{address}, each with its own name per language, articles, Atom feed, comments setting (off, held for moderation, shown at once) and the page its address shows.", {
+    keywords: ["blogs", "several blogs", "news", "feed", "atom", "rss", "comments setting"],
+    tasks: ["Add a blog", "Switch comments off on a blog", "Show comments at once", "Find a blog's feed"],
+  }),
+  store("blog.authors", "/articles/authors", "Authors", "Main", "The authors of the store's articles (D341): name, picture, a few words and a link, chosen on an article, shown under it and in its structured data.", {
+    keywords: ["authors", "writers", "byline", "author bio"],
+    tasks: ["Add an author", "Give an author a picture"],
+  }),
+  store("blog.comments", "/articles/comments", "Blog comments", "Main", "Visitors' comments on the store's articles (D341): those waiting, shown, refused and marked as spam, with what the spam check found; approve, refuse, mark as spam or delete.", {
+    keywords: ["comments", "moderation", "spam", "approve comments"],
+    tasks: ["Approve a comment", "Refuse a comment", "See comments waiting"],
+  }),
   store("content", "/content", "Content", "Main", "Content types of the store's own, such as team members, questions and answers or locations, and their entries.", {
     tasks: ["Create a content type", "Add an entry", "Publish an entry"],
     keywords: ["content types", "entries", "metaobjects", "custom content", "team", "faq", "locations"],

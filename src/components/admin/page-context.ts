@@ -39,6 +39,12 @@ export type PageSaveState =
   /** `code: "needs_confirmation"` (wave 1, 1e): publishing was held for blocking problems the owner has not acknowledged; `issues` lists them. */
   | { status: "error"; problems: string[]; code?: "needs_confirmation" | "pay_page_block"; issues?: PageIssue[] };
 
+/** A page's schedule as the editor shows it (D341): the waiting one with its time in words, and the last one that did not publish. */
+export type ScheduleView = { waiting: { at: string; label: string } | null; failure: string | null };
+/** Saves the editor's draft as Save draft does: true when it could (*Schedule* saves a changed draft first, D341). */
+export type SaveDraft = () => Promise<boolean>;
+export type ScheduleAnswer = { ok: true; view: ScheduleView; message: string } | { ok: false; problem: string };
+
 /**
  * What the page editor and builder need from the pages' owner (D53):
  * Kaizen's own or a store's. The same editor serves both; only this
@@ -52,6 +58,21 @@ export type PageOwnerContext = {
   type: PageType;
   /** A new article's author: the signed-in person's name (D57). */
   defaultAuthor: string;
+  /**
+   * A store's article's blog and author record (D341): the store's blogs (its first first) and authors to choose from, and where they are
+   * managed. Absent for pages and Kaizena Flow's articles.
+   */
+  blog?: { blogs: { id: string; title: string; address: string; main: boolean }[]; authors: { id: string; name: string }[]; manageHref: string } | null;
+  /**
+   * Publishing the draft at a set time (D341; the start of D340's model): the store's time zone, and the actions bound to the store and
+   * the kind of page. Absent where pages are not scheduled (layouts, test versions, Kaizena Flow's own pages).
+   */
+  schedule?: {
+    zone: string;
+    read: (id: string) => Promise<ScheduleView | null>;
+    set: (id: string, day: string, time: string) => Promise<ScheduleAnswer>;
+    cancel: (id: string) => Promise<ScheduleAnswer>;
+  } | null;
   /** Where the owner's pages are edited: `/admin/platform/pages` or `/admin/{store}/pages`. */
   adminBase: string;
   /**
