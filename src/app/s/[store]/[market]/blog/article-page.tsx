@@ -42,6 +42,21 @@ export async function articleStaticParams(params: { store: string; market: strin
   return own.length > 0 ? own.map((article) => ({ slug: article.slug })) : [{ slug: "_" }];
 }
 
+/**
+ * The articles of the store's other blogs (D341) at `/blogs/{handle}/{slug}`, each with its blog: the route has no layout of its own for the
+ * blog, so it names both, or the build would meet a blog it does not know and could not prerender the page.
+ */
+export async function otherBlogArticleParams(params: { store: string; market: string }) {
+  const shop = await resolveShop(params.store, params.market);
+  const blogs = shop ? await storeBlogs(shop.store.id) : [];
+  const articles = shop && blogs.some((blog) => !blog.main) ? await listPublishedPages(shop.store.id, "article") : [];
+  const pairs = blogs
+    .filter((blog) => !blog.main)
+    .flatMap((blog) => articles.filter((article) => inBlog(blogs, blog, article.content)).map((article) => ({ blog: blog.handle, slug: article.slug })));
+  // Cache Components needs at least one entry; "_" simply renders a 404.
+  return pairs.length > 0 ? pairs : [{ blog: "_", slug: "_" }];
+}
+
 async function load(params: ArticleParams, handle: string | null) {
   const { store: storeSlug, market: marketSlug, slug } = await params;
   const shop = await resolveShop(storeSlug, marketSlug);

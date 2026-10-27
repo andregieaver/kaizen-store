@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 
-import { blogTermMetadata, blogTermStaticParams, StoreBlogTerm } from "../../../../blog/blog-listing";
+import { blogTermMetadata, otherBlogTermParams, StoreBlogTerm } from "../../../../blog/blog-listing";
 
 type Props = PageProps<"/s/[store]/[market]/blogs/[blog]/category/[slug]">;
 
 /** Another blog's articles in a category, with its subcategories (D341). */
 export function generateStaticParams({ params }: { params: { store: string; market: string } }) {
-  return blogTermStaticParams("category", params);
+  return otherBlogTermParams("category", params);
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

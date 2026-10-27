@@ -171,6 +171,15 @@ export async function blogTermStaticParams(kind: TermKind, params: { store: stri
   return terms.length > 0 ? terms.map((term) => ({ slug: term.slug })) : [{ slug: "_" }];
 }
 
+/** The same for the store's other blogs (D341) at `/blogs/{handle}/{kind}/{slug}`: each term with each blog, as that route names both. */
+export async function otherBlogTermParams(kind: TermKind, params: { store: string; market: string }) {
+  const shop = await resolveShop(params.store, params.market);
+  const blogs = shop ? (await storeBlogs(shop.store.id)).filter((blog) => !blog.main) : [];
+  const terms = blogs.length > 0 ? (await siteTerms(shop!.store.id, "article")).filter((t) => t.kind === kind) : [];
+  const pairs = blogs.flatMap((blog) => terms.map((term) => ({ blog: blog.handle, slug: term.slug })));
+  return pairs.length > 0 ? pairs : [{ blog: "_", slug: "_" }];
+}
+
 /** Prerender each of the store's blogs but the first (at `/blogs/{handle}`); later ones render on first visit. */
 export async function otherBlogsStaticParams(params: { store: string; market: string }) {
   const shop = await resolveShop(params.store, params.market);

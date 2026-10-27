@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 
-import { blogTermMetadata, blogTermStaticParams, StoreBlogTerm } from "../../../../blog/blog-listing";
+import { blogTermMetadata, otherBlogTermParams, StoreBlogTerm } from "../../../../blog/blog-listing";
 
 type Props = PageProps<"/s/[store]/[market]/blogs/[blog]/tag/[slug]">;
 
 /** Another blog's articles with a tag (D341). */
 export function generateStaticParams({ params }: { params: { store: string; market: string } }) {
-  return blogTermStaticParams("tag", params);
+  return otherBlogTermParams("tag", params);
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

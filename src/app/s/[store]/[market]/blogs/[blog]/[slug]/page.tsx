@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 
-import { articleMetadata, articleStaticParams, StoreArticle } from "../../../blog/article-page";
+import { articleMetadata, otherBlogArticleParams, StoreArticle } from "../../../blog/article-page";
 
 type Props = PageProps<"/s/[store]/[market]/blogs/[blog]/[slug]">;
 
 /** Another blog's articles (D341) at `/blogs/{handle}/{slug}`; an article of the first blog moves to `/blog/{slug}`. */
-export async function generateStaticParams({ params }: { params: { store: string; market: string; blog: string } }) {
-  return articleStaticParams(params, params.blog);
+export async function generateStaticParams({ params }: { params: { store: string; market: string } }) {
+  return otherBlogArticleParams(params);
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
