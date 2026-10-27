@@ -10,11 +10,11 @@ D152 (the store analytics cockpit) and D153 (the EU withdrawal function and the 
 
 <!-- parity:generated:start since -->
 
-- **Headline now 76.1%** (first report 59.5%), **must-have 83.2%** (first report 69.1%), over 203 core rows (first report 232).
-- Where the change comes from: +16.2 points from the 98 rating moves on core rows recorded below, and +0.4 points because the re-read changed which rows count as core (the tracker has 233 rows, the first report 232 core ones).
+- **Headline now 76.4%** (first report 59.5%), **must-have 83.2%** (first report 69.1%), over 203 core rows (first report 232).
+- Where the change comes from: +16.4 points from the 99 rating moves on core rows recorded below, and +0.4 points because the re-read changed which rows count as core (the tracker has 233 rows, the first report 232 core ones).
 - 232 of 233 rows have their Shopify side read from a page; the others are listed under evidence debt.
 
-Rated higher (82):
+Rated higher (83):
 
 - AI or rule-based customer segmentation (AI): missing to partial. D296 (wave 5 unit B): saved rule-based segments over customers and subscribers, counted live with a member list, and customer tags; read segments.ts and ran segments.test.ts, segments.int.test.ts (PGlite and integration, passed).
 - AI-written marketing email (AI): missing to partial. D297: Write with AI in the broadcast editor suggests the email's words through the claims filter, as a suggestion only; it does not yet read the store's products or campaigns.
@@ -44,6 +44,7 @@ Rated higher (82):
 - Search merchandising: synonyms, boosts, pins (Catalogue): missing to full. Wave 6 unit F (D324, docs/wave-6-catalogue.md Unit F): synonym groups per language, one-way and two-way, used by keyword search and query understanding (search-synonyms.int.test.ts); pins, boosts and buries of products or categories and ta…
 - Product feeds to Google and other channels (Catalogue): missing to partial. Wave 5 unit H (D302): the Google feed, the admin's left-out list and the euro scenario are built; custom labels and the API sync are not, so partial.
 - Standard product taxonomy (Catalogue): missing to full. Wave 6 unit I (D327, docs/wave-6-catalogue.md Unit I): Shopify's open Standard Product Taxonomy v2026-10 (MIT, 14,606 categories with attributes and values, names in en, nb, sv, da, Google's ids) kept in the repository; a product gets a ca…
+- Checkout branding (Checkout): partial to full. D337 (wave 7 unit C, docs/wave-7-storefront.md C).
 - Third-party and multiple payment gateways (Checkout): missing to full. The payment-provider adapter (E1) and Mollie behind it (E2, D292): a store chooses its checkout provider per mode, and a Mollie order is paid, refunded and charged back through the same order code as Stripe's, in tests.
 - Vipps (Checkout, not core): missing to partial. Mollie behind the payment-provider adapter (D292) offers Vipps where the store's Mollie account has it; a Mollie order's payment and refund are tested against a fake of Mollie's API, live access waits for Kaizena Flow's Mollie app.
 - Swish (Checkout): missing to partial. Mollie behind the payment-provider adapter (D292) offers Swish where the store's Mollie account has it; a Mollie order's payment and refund are tested against a fake of Mollie's API, live access waits for Kaizena Flow's Mollie app.
@@ -133,7 +134,7 @@ Rated lower (25):
 
 <!-- parity:generated:start summary -->
 
-Kaizena Flow has **76.1%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 203 core features weighted by importance to an EU small or mid-size merchant, and **83.2%** on the must-haves (the 83 features with weight 4 or 5). The unweighted figures are 73.4% overall and 83.1% for must-haves. Counting app-only features gives 75.6%; counting Plus-only as well gives 75.1%. Kaizena Flow is strongest on catalogue and products (90.7%) and weakest on platform, extensibility and operations (54.7%), checkout and payments (66.7%), ai and automation (67.9%). Of the 203 core features, 109 are full, 80 partial and 14 missing, so half-built features, not absent ones, are the main shape of the gap.
+Kaizena Flow has **76.4%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 203 core features weighted by importance to an EU small or mid-size merchant, and **83.2%** on the must-haves (the 83 features with weight 4 or 5). The unweighted figures are 73.6% overall and 83.1% for must-haves. Counting app-only features gives 75.8%; counting Plus-only as well gives 75.3%. Kaizena Flow is strongest on catalogue and products (90.7%) and weakest on platform, extensibility and operations (54.7%), ai and automation (67.9%), checkout and payments (69.2%). Of the 203 core features, 110 are full, 79 partial and 14 missing, so half-built features, not absent ones, are the main shape of the gap.
 
 <!-- parity:generated:end summary -->
 
@@ -143,10 +144,10 @@ The method is simple: a full match scores 1, a partial match 0.5, a missing feat
 
 | Measure | Features | Weighted parity | Unweighted parity | Full / partial / missing |
 | --- | --- | --- | --- | --- |
-| Headline: core (Shopify native, Basic to Advanced) | 203 | **76.1%** | 73.4% | 109 / 80 / 14 |
+| Headline: core (Shopify native, Basic to Advanced) | 203 | **76.4%** | 73.6% | 110 / 79 / 14 |
 | Must-have (core, weight 4 or 5) | 83 | **83.2%** | 83.1% | 55 / 28 / 0 |
-| Core plus app-only features | 227 | 75.6% | 73.1% | 120 / 92 / 15 |
-| Everything, including Plus-only | 233 | 75.1% | 72.1% | 121 / 94 / 18 |
+| Core plus app-only features | 227 | 75.8% | 73.3% | 121 / 91 / 15 |
+| Everything, including Plus-only | 233 | 75.3% | 72.3% | 122 / 93 / 18 |
 
 <!-- parity:generated:end headline -->
 
@@ -160,14 +161,14 @@ Counts are core features only. Weighted parity uses weights 1 to 5; must-have is
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | Catalogue and products | 26 | 22 | 3 | 1 | 90.7% | 8 | 92.6% |
 | Storefront, themes and content | 32 | 22 | 9 | 1 | 86.6% | 15 | 97.0% |
-| Checkout and payments | 17 | 6 | 11 | 0 | 66.7% | 8 | 62.9% |
+| Checkout and payments | 17 | 7 | 10 | 0 | 69.2% | 8 | 62.9% |
 | Orders, shipping, fulfilment and returns | 28 | 16 | 11 | 1 | 79.0% | 14 | 86.1% |
 | Customers, marketing and loyalty | 18 | 8 | 9 | 1 | 72.6% | 8 | 76.5% |
 | Analytics, reporting and finance | 24 | 15 | 6 | 3 | 79.9% | 11 | 89.1% |
 | International, compliance and trust | 16 | 7 | 9 | 0 | 71.4% | 10 | 70.2% |
 | Platform, extensibility and operations | 20 | 4 | 12 | 4 | 54.7% | 7 | 72.4% |
 | AI and automation | 22 | 9 | 10 | 3 | 67.9% | 2 | 100.0% |
-| **Total** | **203** | **109** | **80** | **14** | **76.1%** | **83** | **83.2%** |
+| **Total** | **203** | **110** | **79** | **14** | **76.4%** | **83** | **83.2%** |
 
 <!-- parity:generated:end domains -->
 
@@ -179,7 +180,7 @@ A row is Full only when it lists code and tests that exist (or says it is untest
 
 | Evidence | Rows |
 | --- | ---: |
-| Full, with tests | 115 |
+| Full, with tests | 116 |
 | Full, untested (debt, not hidden) | 6 |
 | Shopify side not read from a page | 1 |
 | Rows in the tracker | 233 |
@@ -188,7 +189,7 @@ Untested Full rows: `ai.assistant-voice-mode`, `customers.abandoned-checkout-rec
 
 | Bucket | What it means | Rows not Full | Core rows | Core headline points lacking |
 | --- | --- | ---: | ---: | ---: |
-| A | Build in-house | 72 | 61 | 15.1 |
+| A | Build in-house | 71 | 60 | 14.9 |
 | B | Build, live only with a third party | 15 | 13 | 3.5 |
 | C | Strategy decision first | 11 | 8 | 1.9 |
 | D | Not reachable by code | 14 | 12 | 3.4 |
@@ -201,17 +202,17 @@ The waves are those of `docs/parity-plan.md` section 3. This table is produced f
 
 <!-- parity:generated:start projection -->
 
-Now: **76.1%** core, 83.2% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 16 rows (12 core) have no wave yet and are not in them.
+Now: **76.4%** core, 83.2% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 16 rows (12 core) have no wave yet and are not in them.
 
 | Wave | Scope | Rows (core) | Core if every row of waves 1 to N is Full | Must-have | Adds (points) | Core if only bucket A rows are | Must-have |
 | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | Compliance and money | 10 (7) | 78.2% | 86.8% | +2.1 | 77.6% | 85.6% |
-| 2 | Data in and out | 3 (1) | 78.5% | 86.8% | +0.2 | 77.9% | 85.6% |
-| 3 | Inventory and orders | 14 (13) | 81.7% | 89.2% | +3.2 | 79.4% | 86.9% |
-| 4 | Payments | 7 (6) | 83.2% | 90.8% | +1.5 | 79.7% | 86.9% |
-| 5 | Customers and marketing | 19 (16) | 87.3% | 94.5% | +4.1 | 83.1% | 90.0% |
-| 6 | Catalogue | 0 (0) | 87.3% | 94.5% | +0.0 | 83.1% | 90.0% |
-| 7 | Storefront and international | 14 (13) | 90.4% | 95.1% | +3.1 | 86.1% | 90.6% |
+| 1 | Compliance and money | 10 (7) | 78.5% | 86.8% | +2.1 | 77.9% | 85.6% |
+| 2 | Data in and out | 3 (1) | 78.7% | 86.8% | +0.2 | 78.1% | 85.6% |
+| 3 | Inventory and orders | 14 (13) | 81.9% | 89.2% | +3.2 | 79.6% | 86.9% |
+| 4 | Payments | 7 (6) | 83.4% | 90.8% | +1.5 | 80.0% | 86.9% |
+| 5 | Customers and marketing | 19 (16) | 87.6% | 94.5% | +4.1 | 83.3% | 90.0% |
+| 6 | Catalogue | 0 (0) | 87.6% | 94.5% | +0.0 | 83.3% | 90.0% |
+| 7 | Storefront and international | 13 (12) | 90.4% | 95.1% | +2.9 | 86.1% | 90.6% |
 | 8 | Analytics and AI | 17 (17) | 94.4% | 95.8% | +3.9 | 89.8% | 91.3% |
 | 9 | Platform and extensibility | 12 (9) | 96.6% | 96.9% | +2.3 | 91.3% | 91.8% |
 
@@ -385,7 +386,7 @@ Legend. **Shopify**: Native = included on Basic to Advanced and scored in the he
 
 | Feature | Shopify | Kaizena Flow | W | Plan | Gap and evidence |
 | --- | --- | --- | ---: | --- | --- |
-| Checkout branding | Native. [page](https://help.shopify.com/en/manual/checkout-settings/checkout-extensibility) | Partial (was full) | 3 | A, wave 7 | The page around the payment form is the store's own: theme, header and footer, builder pieces and custom CSS (D60, D100, D113, D117). Stripe's payment form is still drawn by `appearance()` in `src/components/checkout-form.tsx` with fixed light and dark colours, a system font and a 6 px radius (rechecked 2026-10-25), so the store's accent colour, fonts and corner style stop at the payment fields (criterion 1); there is no checkout-specific logo, background or button setting in one place (criterion 4). Code: `src/components/checkout-form.tsx`, `src/lib/theme.ts`. |
+| Checkout branding | Native. [page](https://help.shopify.com/en/manual/checkout-settings/checkout-extensibility) | Full (was partial) | 3 |  | Evidence: `src/components/checkout-form.tsx`, `src/lib/theme.ts`, `src/lib/store-parts.ts` and 9 more; 9 test files; D22, D60, D100, D113, D117. |
 | Checkout extensibility (UI extensions, Functions) | Plus. [page](https://help.shopify.com/en/manual/checkout-settings/checkout-extensibility) | Partial | 2 | C, wave 9 | The checkout's layout is editable and testable (cart, checkout and order are page roles split into pieces, D113 and D117, A/B tested, D148). No extension API and no store-defined field the shopper fills in at checkout: custom fields for orders exist only for staff (D120, `staffGroupProblem()`), never shown to the shopper. Order rules (D238, `src/lib/order-rules.ts`) are a closed list that acts after payment, not a hook on shipping, payment or discount logic at checkout. There is no public Admin API with scoped tokens (wave 9); the MCP server (D96) serves only Kaizen Life. Code: `src/lib/store-parts.ts`, `src/lib/ab-site.ts`. |
 | Guest checkout and optional account | Native. [page](https://help.shopify.com/en/manual/checkout-settings) | Partial (was full) | 5 | A, wave 5 | Guest checkout and optional account creation at checkout work (criteria 1 to 4); signed-in shoppers are offered their saved addresses (D304). Missing: a store setting to require sign-in or turn customer accounts off, obeyed by checkout, express payment and the cart (criterion 5), and configurable checkout contact fields. Code: `src/server/checkout.ts`, `src/server/customers.ts`. |
 | Accelerated checkout (Apple Pay, Google Pay, Shop Pay) | Native. [page](https://help.shopify.com/en/manual/payments/shop-pay) | Partial | 4 | B, wave 4 | Stripe's `ExpressCheckoutElement` (Apple Pay, Google Pay, Link, Klarna where Stripe offers them) is drawn at the top of the checkout page only (D22, `src/components/checkout-form.tsx`, the only user), and the store's host is registered with Stripe by `ensurePaymentDomain()` when a session opens. The Payments page (D291) shows the state of cards (with Apple Pay and Google Pay together) and Link at Stripe, but not each wallet or each domain's registration. Missing: express buttons on the product page and the cart, a per-domain status, a test that an express payment ends as a paid order carrying the wallet's address and delivery choice, and a cross-store wallet like Shop Pay (bucket D for that part). Code: `src/components/checkout-form.tsx`, `src/server/connect.ts`. |
