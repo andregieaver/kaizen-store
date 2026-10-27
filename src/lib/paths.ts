@@ -22,9 +22,10 @@ export function storeDomain(): string | null {
 
 /**
  * Each store's own domains this deployment routes (P8): its primary, if any, and every active one; `languages` names the domains that are a
- * language's own (D313, `docs/language-domains.md`: a language, two letters, to its domain), each also in `hosts`.
+ * language's own (D313, `docs/language-domains.md`: a language, two letters, to its domain) and `countries` a country's own (D338: a market
+ * code in lower case to its domain; a store has one kind or the other), each also in `hosts`.
  */
-export type StoreHosts = Record<string, { primary: string | null; hosts: string[]; languages?: Record<string, string> }>;
+export type StoreHosts = Record<string, { primary: string | null; hosts: string[]; languages?: Record<string, string>; countries?: Record<string, string> }>;
 
 /**
  * The stores' custom domains as they were when this deployment was built
@@ -77,6 +78,23 @@ export function languageHosts(storeSlug: string): Record<string, string> {
   return storeDomain() ? (storeHosts()[storeSlug]?.languages ?? {}) : {};
 }
 
+/** The domains of a store that are a country's own (D338), market code (lower case) to host name; empty for most stores. */
+export function countryHosts(storeSlug: string): Record<string, string> {
+  return storeDomain() ? (storeHosts()[storeSlug]?.countries ?? {}) : {};
+}
+
+/** Whether a store has a language or a country on a domain of its own (D313, D338): its markets are then on more than one origin. */
+export function hasMarketHosts(storeSlug: string): boolean {
+  return Object.keys(languageHosts(storeSlug)).length > 0 || Object.keys(countryHosts(storeSlug)).length > 0;
+}
+
+/** A market slug without its country (`se-en-eur` → `en-eur`, `se` → ``): how it is written on the country's own domain (D338). */
+export function withoutCountry(marketSlug: string): string {
+  const parsed = parseMarketSlug(marketSlug);
+  if (!parsed) return marketSlug;
+  return [...(parsed.lang ? [parsed.lang] : []), ...(parsed.currency ? [parsed.currency.toLowerCase()] : [])].join("-");
+}
+
 /** The language a market is shown in, two letters: the slug's (`no-en`), else its country's own where the store's shape says it, else null. */
 export function marketLanguage(marketSlug: string, address: StoreAddress | null | undefined): string | null {
   const parsed = parseMarketSlug(marketSlug);
@@ -91,8 +109,16 @@ export function withoutLanguage(marketSlug: string, lang: string): string {
   return [parsed.country.toLowerCase(), ...(parsed.currency ? [parsed.currency.toLowerCase()] : [])].join("-");
 }
 
-/** The domain a market lives on when its language has one of its own (D313), else null (the store's address). */
+/** The domain a market's country has of its own (D338), else null. */
+export function marketCountryHost(storeSlug: string, marketSlug: string): string | null {
+  const parsed = parseMarketSlug(marketSlug);
+  return parsed ? (countryHosts(storeSlug)[parsed.country.toLowerCase()] ?? null) : null;
+}
+
+/** The domain a market lives on when its country (D338) or its language (D313) has one of its own, else null (the store's address). */
 export function marketHost(storeSlug: string, marketSlug: string, address: StoreAddress | null | undefined = storeAddress(storeSlug)): string | null {
+  const country = marketCountryHost(storeSlug, marketSlug);
+  if (country) return country;
   const lang = marketLanguage(marketSlug, address);
   return lang ? (languageHosts(storeSlug)[lang] ?? null) : null;
 }
@@ -104,6 +130,11 @@ export function marketHost(storeSlug: string, marketSlug: string, address: Store
  * as this process last read it (`getStore()`), or as the caller knows it (the proxy's facts).
  */
 export function marketPath(storeSlug: string, marketSlug: string, path = "", address: StoreAddress | null | undefined = storeAddress(storeSlug)): string {
+  // On a country's own domain (D338) the country goes without saying: `se` is `/` there, `se-en` `/en`, `se-eur` `/eur`.
+  if (marketCountryHost(storeSlug, marketSlug)) {
+    const tail = withoutCountry(marketSlug);
+    return `${storeBase(storeSlug)}${tail ? `/${tail}` : ""}${path}`;
+  }
   // On a language's own domain (D313) the language goes without saying: `no-en` is `/` there, `no-en-eur` `/eur`, `se-en` `/se`.
   const lang = marketHost(storeSlug, marketSlug, address) ? marketLanguage(marketSlug, address) : null;
   const segment = addressSegment(address, lang ? withoutLanguage(marketSlug, lang) : marketSlug);
@@ -134,7 +165,7 @@ export function marketUrl(storeSlug: string, marketSlug: string, path = "", addr
  * address once the store has a language on a domain of its own (D313), where another language is on another origin.
  */
 export function marketMetaPath(storeSlug: string, marketSlug: string, path = "", address: StoreAddress | null | undefined = storeAddress(storeSlug)): string {
-  if (Object.keys(languageHosts(storeSlug)).length === 0) return marketPath(storeSlug, marketSlug, path, address) || "/";
+  if (!hasMarketHosts(storeSlug)) return marketPath(storeSlug, marketSlug, path, address) || "/";
   return marketUrl(storeSlug, marketSlug, path, address);
 }
 

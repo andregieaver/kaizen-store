@@ -10,6 +10,14 @@ export const domainsNb: DomainsMessages = {
   forLanguage: "For {name}",
   explain:
     "Et språks eget domene viser butikken din på det språket, uten språket i adressene. Hvert domene har sin egen handlekurv, innlogging og sine egne valg for informasjonskapsler, fordi nettlesere holder dem per nettsted.",
+  forOneCountry: "Bruk for ett land",
+  country: "Land",
+  everyCountry: "Alle land: leder til adressen din",
+  countryOption: "{name}: butikken din for {name} her",
+  activeInCountry: "Aktiv: butikken din for {name}",
+  forCountry: "For {name}",
+  explainCountry:
+    "Et lands eget domene viser butikken din for det landet, uten landet i adressene, på alle språkene du tilbyr der. Butikken gir domener til landene sine eller til språkene sine, ikke begge. Hvert domene har sin egen handlekurv, innlogging og sine egne valg for informasjonskapsler, fordi nettlesere holder dem per nettsted.",
   save: "Lagre",
   address: "Butikkens adresse",
   leadsThere: "{host} fører dit også",

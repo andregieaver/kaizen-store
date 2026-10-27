@@ -26,7 +26,7 @@ import { apexOf } from "@/lib/domain-health";
 
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
-import { domainLanguages } from "@/lib/custom-domains";
+import { domainCountries, domainLanguages } from "@/lib/custom-domains";
 
 import {
   addDomainAction,
@@ -38,6 +38,7 @@ import {
   checkDomainAction,
   domainRenewalAction,
   languageDomainAction,
+  countryDomainAction,
   primaryDomainAction,
   removeDomainAction,
   renewDomainAction,
@@ -94,6 +95,7 @@ export default async function DomainsPage({ params, searchParams }: PageProps<"/
         owner={memberCan(current, "owner")}
         configured={domainsConfigured()}
         languages={domainLanguages(store, ADMIN_LANG_FACTS[lang].locale)}
+        countries={domainCountries(store, ADMIN_LANG_FACTS[lang].locale)}
         words={adminText(lang, "domains")}
         locale={ADMIN_LANG_FACTS[lang].locale}
         actions={{
@@ -102,6 +104,7 @@ export default async function DomainsPage({ params, searchParams }: PageProps<"/
           primary: primaryDomainAction.bind(null, store.slug),
           remove: removeDomainAction.bind(null, store.slug),
           language: languageDomainAction.bind(null, store.slug),
+          country: countryDomainAction.bind(null, store.slug),
         }}
       />
     </div>

@@ -13,6 +13,14 @@ export const domainsEn = {
   forLanguage: "For {name}",
   explain:
     "A language's own domain shows your store in that language without the language in its addresses. Each domain keeps its own cart, sign-in and cookie choices, as browsers keep them per site.",
+  forOneCountry: "Use for one country",
+  country: "Country",
+  everyCountry: "Every country: leads to your address",
+  countryOption: "{name}: your store for {name} here",
+  activeInCountry: "Active: your store for {name}",
+  forCountry: "For {name}",
+  explainCountry:
+    "A country's own domain shows your store for that country without the country in its addresses, in every language you offer there. Your store gives domains to its countries or to its languages, not both. Each domain keeps its own cart, sign-in and cookie choices, as browsers keep them per site.",
   save: "Save",
   address: "Your store's address",
   leadsThere: "{host} leads there too",

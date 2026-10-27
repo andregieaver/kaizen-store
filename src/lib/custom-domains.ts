@@ -28,6 +28,17 @@ export function domainLanguages(
     .map((l) => ({ lang: l, name: names.of(l) ?? l }));
 }
 
+/**
+ * The countries a domain may be the address of (D338): a store that sells in several, every country it keeps but its own, whose address is
+ * the store's (its primary). Names in the admin's language.
+ */
+export function domainCountries(store: { markets: readonly { code: string }[]; keptMarkets: readonly { code: string }[] }, shownIn = "en"): { code: string; name: string }[] {
+  if (store.keptMarkets.length < 2) return [];
+  const own = store.markets[0]?.code ?? null;
+  const names = new Intl.DisplayNames([shownIn, "en"], { type: "region" });
+  return store.keptMarkets.filter((m) => m.code !== own).map((m) => ({ code: m.code, name: names.of(m.code) ?? m.code }));
+}
+
 /** The TXT record that proves a domain is the store's: its name, with the claim's token as value. */
 export const verifyName = (hostname: string) => `_kaizen.${hostname}`;
 export const verifyValue = (token: string) => `kaizen-verify=${token}`;

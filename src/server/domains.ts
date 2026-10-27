@@ -32,6 +32,8 @@ export type StoreDomain = {
   isPrimary: boolean;
   /** The language this domain is the address of (D313), two letters; null for every language. */
   language: string | null;
+  /** The country this domain is the address of (D338), a market code; null for every country. */
+  market: string | null;
   checks: DomainChecks;
   checkedAt: string | null;
   activatedAt: string | null;
@@ -44,6 +46,7 @@ const toDomain = (row: Row): StoreDomain => ({
   status: row.status === "active" ? "active" : "pending",
   isPrimary: row.is_primary === true,
   language: row.language ? String(row.language) : null,
+  market: row.market ? String(row.market) : null,
   checks: (row.checks ?? {}) as DomainChecks,
   checkedAt: row.checked_at ? new Date(String(row.checked_at)).toISOString() : null,
   activatedAt: row.activated_at ? new Date(String(row.activated_at)).toISOString() : null,
@@ -51,7 +54,7 @@ const toDomain = (row: Row): StoreDomain => ({
 
 export async function listStoreDomains(storeId: string): Promise<StoreDomain[]> {
   const rows = await db().execute<Row>(sql`
-    select id, hostname, token, status, is_primary, language, checks, checked_at, activated_at
+    select id, hostname, token, status, is_primary, language, market, checks, checked_at, activated_at
     from commerce.store_domains where store_id = ${storeId}::uuid
     order by is_primary desc, status, created_at
   `);
@@ -70,7 +73,8 @@ export function routedAsSaved(storeSlug: string, domains: StoreDomain[]): boolea
   return (
     routed.primary === primary &&
     [...routed.hosts].sort().join(" ") === active.map((d) => d.hostname).sort().join(" ") &&
-    languages(Object.entries(routed.languages ?? {})) === languages(active.flatMap((d) => (d.language ? [[d.language, d.hostname] as [string, string]] : [])))
+    languages(Object.entries(routed.languages ?? {})) === languages(active.flatMap((d) => (d.language ? [[d.language, d.hostname] as [string, string]] : []))) &&
+    languages(Object.entries(routed.countries ?? {})) === languages(active.flatMap((d) => (d.market ? [[d.market.toLowerCase(), d.hostname] as [string, string]] : [])))
   );
 }
 
@@ -285,7 +289,7 @@ export async function setPrimaryDomain(
     if (domainId) {
       const [target] = await tx.execute<Row>(sql`
         select hostname from commerce.store_domains
-        where store_id = ${storeId}::uuid and id = ${domainId}::uuid and status = 'active' and language is null
+        where store_id = ${storeId}::uuid and id = ${domainId}::uuid and status = 'active' and language is null and market is null
       `);
       if (!target) return null;
     }
@@ -295,7 +299,7 @@ export async function setPrimaryDomain(
     }
     return true;
   });
-  if (!changed) return { ok: false, problems: ["Only an active domain for every language can be the store's address."] };
+  if (!changed) return { ok: false, problems: ["Only an active domain for every language and country can be the store's address."] };
   await audit(account.id, storeId, "store.domain_primary", { domainId });
   await requestDeploy(services).catch(() => {});
   return { ok: true };
@@ -344,6 +348,9 @@ export async function setDomainLanguage(
   }
   if ((row.language ?? null) === language) return { ok: true };
   if (language !== null) {
+    // Countries or languages on domains of their own, never both (D338): every market has one address.
+    const [country] = await db().execute<Row>(sql`select 1 as x from commerce.store_domains where store_id = ${storeId}::uuid and market is not null`);
+    if (country) return { ok: false, problems: ["The store's countries have domains of their own. A store gives domains to its countries or to its languages, not both."] };
     const [taken] = await db().execute<Row>(sql`
       select hostname from commerce.store_domains where store_id = ${storeId}::uuid and language = ${language} and id <> ${domainId}::uuid
     `);
@@ -351,6 +358,43 @@ export async function setDomainLanguage(
   }
   await db().execute(sql`update commerce.store_domains set language = ${language} where id = ${domainId}::uuid`);
   await audit(account.id, storeId, "store.domain_language", { hostname: String(row.hostname), language });
+  if (row.status === "active") await requestDeploy(services).catch(() => {});
+  return { ok: true };
+}
+
+/**
+ * Makes a domain the address of one of the store's countries (D338, `docs/wave-7-storefront.md` D2), or of every country again (`null`): owners
+ * only, checked by the action. `allowed` are the countries a domain may be for (`domainCountries()`: a store that sells in several, never its
+ * own, whose address is the store's); the primary stays for every country, a country has at most one domain, and a store gives domains to its
+ * countries or to its languages, never both. Routing follows with a deployment when the domain is active.
+ */
+export async function setDomainCountry(
+  account: Account,
+  storeId: string,
+  domainId: string,
+  market: string | null,
+  allowed: readonly string[],
+  services: DomainServices = vercelDomains,
+): Promise<Result> {
+  if (market !== null && !allowed.includes(market)) return { ok: false, problems: ["Choose one of the store's other countries."] };
+  const [row] = await db().execute<Row>(sql`
+    select hostname, status, is_primary, language, market from commerce.store_domains where store_id = ${storeId}::uuid and id = ${domainId}::uuid
+  `);
+  if (!row) return { ok: false, problems: ["That domain is gone."] };
+  if (row.is_primary && market !== null) {
+    return { ok: false, problems: ["The store's address is for every country. Make another domain its address first."] };
+  }
+  if ((row.market ?? null) === market) return { ok: true };
+  if (market !== null) {
+    const [language] = await db().execute<Row>(sql`select 1 as x from commerce.store_domains where store_id = ${storeId}::uuid and language is not null`);
+    if (language) return { ok: false, problems: ["The store's languages have domains of their own. A store gives domains to its countries or to its languages, not both."] };
+    const [taken] = await db().execute<Row>(sql`
+      select hostname from commerce.store_domains where store_id = ${storeId}::uuid and market = ${market} and id <> ${domainId}::uuid
+    `);
+    if (taken) return { ok: false, problems: [`${String(taken.hostname)} is already that country's domain.`] };
+  }
+  await db().execute(sql`update commerce.store_domains set market = ${market} where id = ${domainId}::uuid`);
+  await audit(account.id, storeId, "store.domain_country", { hostname: String(row.hostname), market });
   if (row.status === "active") await requestDeploy(services).catch(() => {});
   return { ok: true };
 }

@@ -1,0 +1,5 @@
+ALTER TABLE "commerce"."store_domains" ADD COLUMN "market" char(2);--> statement-breakpoint
+CREATE UNIQUE INDEX "store_domains_market_idx" ON "commerce"."store_domains" USING btree ("store_id","market") WHERE "commerce"."store_domains"."market" is not null;--> statement-breakpoint
+ALTER TABLE "commerce"."store_domains" ADD CONSTRAINT "store_domains_market" CHECK ("commerce"."store_domains"."market" is null or "commerce"."store_domains"."market" ~ '^[A-Z]{2}$');--> statement-breakpoint
+ALTER TABLE "commerce"."store_domains" ADD CONSTRAINT "store_domains_primary_market" CHECK (not "commerce"."store_domains"."is_primary" or "commerce"."store_domains"."market" is null);--> statement-breakpoint
+ALTER TABLE "commerce"."store_domains" ADD CONSTRAINT "store_domains_language_or_market" CHECK ("commerce"."store_domains"."language" is null or "commerce"."store_domains"."market" is null);

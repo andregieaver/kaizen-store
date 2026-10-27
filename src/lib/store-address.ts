@@ -279,6 +279,66 @@ export function languageHostDecision(request: StorePathRequest, address: StoreAd
   return { redirect: `${origin}${joinStorePath(request, writtenOn(address, full, target), rest)}` };
 }
 
+/** Where a store's countries with domains of their own are (D338): `here` the country of the host asked (lower case; null for the store's address). */
+export type CountryHostFacts = {
+  here: string | null;
+  /** Each country with a domain of its own, lower case, to its origin. */
+  origins: Record<string, string>;
+  /** The store's own origin, where every other country is. */
+  primary: string;
+};
+
+/**
+ * A short first part on a country's own domain (`en`, `eur`, `en-eur`) as that country's view (D338): the language a store has and the currency it
+ * converts to, the country's own language left out (it goes without saying there); null when it is no view (a page's address).
+ */
+function countryChoice(address: StoreAddress, country: string, segment: string): string | null {
+  const match = SHORT.exec(segment);
+  if (!match) return null;
+  let lang: string | null = match[1] ?? match[3] ?? null;
+  const currency = match[2] ?? match[4] ?? null;
+  const own = address.owns?.[country] ?? null;
+  const langs = new Set([...address.languages, ...address.keptLanguages, ...Object.values(address.owns ?? {})]);
+  if (lang !== null && !langs.has(lang)) return null;
+  if (currency !== null && !address.currencies.includes(currency) && !address.keptCurrencies.includes(currency)) return null;
+  if (lang === own) lang = null;
+  return [lang, currency].filter(Boolean).join("-");
+}
+
+/**
+ * Where a request goes for a store with countries on domains of their own (D338, `docs/wave-7-storefront.md` D2), pure; undefined where the other
+ * rules (`languageHostDecision()`, `addressDecision()`) decide. On a country's domain the country goes without saying: `/` is its front page, `/x`
+ * its page, `/en/x` it in English, `/eur/x` in euro; an address there that names the country (`/se/x`) moves to the short one, and one in another
+ * country moves to that country's own origin. On the store's address (or another's domain), an address in a country with a domain moves there.
+ */
+export function countryHostDecision(request: StorePathRequest, address: StoreAddress | null, hosts: CountryHostFacts): AddressDecision | undefined {
+  if (!address || !request.hostBased || Object.keys(hosts.origins).length === 0) return undefined;
+  const [first = "", ...rest] = request.parts;
+  const lower = first.toLowerCase();
+  const market = parseMarketSlug(lower);
+  const here = hosts.here;
+  if (market && viewOf(address, lower, market.country.toLowerCase()) !== null) {
+    const country = market.country.toLowerCase();
+    const tail = lower.slice(country.length + 1);
+    if (hosts.origins[country]) {
+      const short = countryChoice(address, country, tail) ?? tail;
+      const path = joinStorePath(request, short, rest);
+      return country === here ? { redirect: path } : { redirect: `${hosts.origins[country]}${path}` };
+    }
+    // A country without a domain, asked on another's: it is on the store's address.
+    return here === null ? undefined : { redirect: `${hosts.primary}${joinStorePath(request, lower, rest)}` };
+  }
+  if (here === null) return undefined;
+  if (request.parts.length === 0) return { rewrite: joinStorePath(request, here, []) };
+  const choice = countryChoice(address, here, lower);
+  if (choice !== null) {
+    // The country's own language named: the short address without it.
+    if (choice !== lower) return { redirect: joinStorePath(request, choice, rest) };
+    return { rewrite: joinStorePath(request, choice ? `${here}-${choice}` : here, rest) };
+  }
+  return { rewrite: joinStorePath(request, here, request.parts) };
+}
+
 /**
  * The routes of a market (`src/app/s/[store]/[market]/…`, a test holds the list to the folders): a store that sells in several countries
  * moves an address without a country that begins with one to its own country's (`/cart` → `/no/cart`), as it does a live page's.

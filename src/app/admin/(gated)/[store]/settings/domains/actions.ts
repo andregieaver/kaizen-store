@@ -7,8 +7,8 @@ import type { FormState } from "@/components/admin/action-form";
 import { NO_ACCESS, checkOwnerRole, checkPermission } from "@/server/permissions";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
-import { domainLanguages } from "@/lib/custom-domains";
-import { addStoreDomain, checkStoreDomain, listStoreDomains, removeStoreDomain, setDomainLanguage, setPrimaryDomain } from "@/server/domains";
+import { domainCountries, domainLanguages } from "@/lib/custom-domains";
+import { addStoreDomain, checkStoreDomain, listStoreDomains, removeStoreDomain, setDomainCountry, setDomainLanguage, setPrimaryDomain } from "@/server/domains";
 import { domainPricingRows, storeDomainCurrency } from "@/server/domain-prices";
 import { chargeDomainPurchases, renewDomainNow, setDomainRenewal, startDomainPurchase } from "@/server/domain-purchases";
 import { storeRegistrations } from "@/server/domain-registrations";
@@ -74,6 +74,17 @@ export async function languageDomainAction(storeSlug: string, _state: FormState,
   const result = await setDomainLanguage(member.account, member.store.id, String(form.get("id") ?? ""), language, allowed);
   if (!result.ok) return { status: "error", messages: result.problems };
   return done([language ? "Saved. The domain shows that language within a few minutes once it is active." : "Saved. The domain leads to your address."]);
+}
+
+/** Makes a domain one country's own address (D338), or every country's again. */
+export async function countryDomainAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
+  const member = await asOwner(storeSlug);
+  if (!member) return notOwner;
+  const market = String(form.get("market") ?? "") || null;
+  const allowed = domainCountries(member.store).map((c) => c.code);
+  const result = await setDomainCountry(member.account, member.store.id, String(form.get("id") ?? ""), market, allowed);
+  if (!result.ok) return { status: "error", messages: result.problems };
+  return done([market ? "Saved. The domain shows that country within a few minutes once it is active." : "Saved. The domain leads to your address."]);
 }
 
 /** Searches for a name to buy (D315 4.2): anyone who may change the store's settings (a search spends the store's hourly searches); buying is the owner's. */

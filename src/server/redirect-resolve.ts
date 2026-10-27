@@ -8,9 +8,9 @@ import { db, readDb } from "@/db/client";
 import { REDIRECT_HOPS_MAX } from "@/lib/data-limits";
 import { legacyPathOf, parseLegacyRequest } from "@/lib/legacy-path";
 import type { Market } from "@/lib/markets";
-import { hostOrigin, languageHosts, marketPath, marketUrl, storeSiteUrl } from "@/lib/paths";
+import { countryHosts, hasMarketHosts, hostOrigin, languageHosts, marketPath, marketUrl, storeSiteUrl } from "@/lib/paths";
 import { encodeAddress, firstSegment, mergeQuery, normalisePath, pathOfTarget } from "@/lib/redirect-path";
-import { MARKET_ROUTES, addressDecision, languageHostDecision, storePathOf, type StoreAddress } from "@/lib/store-address";
+import { MARKET_ROUTES, addressDecision, countryHostDecision, languageHostDecision, storePathOf, type StoreAddress } from "@/lib/store-address";
 import { localized } from "@/lib/store-localized";
 import { redirectsTag } from "@/lib/redirects";
 
@@ -160,7 +160,7 @@ const isPlaceholder = (path: string): boolean => path.split("/").some((part) => 
 export function locationIn(storeSlug: string, marketSlug: string, target: string): string {
   const tail = target === "/" ? "" : target.startsWith("/?") || target.startsWith("/#") ? target.slice(1) : target;
   // With languages on domains of their own (D313) the request may be on another origin than the market's: a full address then.
-  const address = Object.keys(languageHosts(storeSlug)).length > 0 ? marketUrl(storeSlug, marketSlug, tail) : marketPath(storeSlug, marketSlug, tail);
+  const address = hasMarketHosts(storeSlug) ? marketUrl(storeSlug, marketSlug, tail) : marketPath(storeSlug, marketSlug, tail);
   return encodeAddress(address);
 }
 
@@ -233,7 +233,7 @@ export async function mainMarketOf(storeSlug: string): Promise<string | null> {
 /** The address to go to in a market, shaped as the proxy's facts say (not as this process last read the store: the two may differ for a few seconds). */
 const locationBy = (facts: NonNullable<StoreFacts>, target: string): string => {
   const tail = target === "/" ? "" : target.startsWith("/?") || target.startsWith("/#") ? target.slice(1) : target;
-  const address = Object.keys(languageHosts(facts.slug)).length > 0 ? marketUrl(facts.slug, facts.mainMarket, tail, facts.address) : marketPath(facts.slug, facts.mainMarket, tail, facts.address);
+  const address = hasMarketHosts(facts.slug) ? marketUrl(facts.slug, facts.mainMarket, tail, facts.address) : marketPath(facts.slug, facts.mainMarket, tail, facts.address);
   return encodeAddress(address);
 };
 
@@ -255,10 +255,16 @@ export async function storeRequestAnswer(pathname: string, search: string, hostS
   if (!request) return null;
   const facts = await storeFactsOf(request.store);
   if (!facts) return null;
-  // A store with languages on domains of their own (D313): the domain asked decides the language.
+  // A store with countries (D338) or languages (D313) on domains of their own: the domain asked decides the country or the language.
+  const countries = countryHosts(request.store);
   const languages = languageHosts(request.store);
   const bare = host.toLowerCase().replace(/:\d+$/, "");
   const decision =
+    countryHostDecision(request, facts.address, {
+      here: Object.entries(countries).find(([, name]) => name === bare)?.[0] ?? null,
+      origins: Object.fromEntries(Object.entries(countries).map(([country, name]) => [country, hostOrigin(name)])),
+      primary: storeSiteUrl(request.store),
+    }) ??
     languageHostDecision(request, facts.address, {
       here: Object.entries(languages).find(([, name]) => name === bare)?.[0] ?? null,
       origins: Object.fromEntries(Object.entries(languages).map(([lang, name]) => [lang, hostOrigin(name)])),

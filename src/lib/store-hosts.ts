@@ -12,8 +12,9 @@
  * - A store's primary custom domain (P8) serves its pages as its host does;
  *   its `{store}.{domain}` host and its other domains move there. The
  *   domains come from the database when the deployment is built.
- * - A language's own domain (D313) serves the store's pages as the primary
- *   does (never moved there); the proxy reads its language from the host.
+ * - A language's own domain (D313), or a country's (D338), serves the store's
+ *   pages as the primary does (never moved there); the proxy reads its
+ *   language or country from the host.
  */
 
 import type { StoreHosts } from "./paths";
@@ -50,8 +51,9 @@ export function storeHostRoutes(
 
   // Stores with a primary domain of their own: every other address of theirs leads there.
   // A language's own domain (D313) serves the store's pages as its primary does; the proxy reads the language from the host.
-  const custom = Object.entries(customHosts).map(([slug, { primary, hosts, languages = {} }]) => {
-    const own = Object.values(languages);
+  // A country's own domain (D338) is served the same way; the proxy reads the country from the host.
+  const custom = Object.entries(customHosts).map(([slug, { primary, hosts, languages = {}, countries = {} }]) => {
+    const own = [...Object.values(languages), ...Object.values(countries)];
     return {
       slug,
       primary,

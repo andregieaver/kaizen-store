@@ -3634,6 +3634,20 @@
       "when": 1793111659551,
       "tag": "20261027143419_product_market_texts_sql",
       "breakpoints": true
+    },
+    {
+      "idx": 519,
+      "version": "7",
+      "when": 1793112232119,
+      "tag": "20261027144352_store_domain_market",
+      "breakpoints": true
+    },
+    {
+      "idx": 520,
+      "version": "7",
+      "when": 1793112253290,
+      "tag": "20261027144413_store_domain_market_sql",
+      "breakpoints": true
     }
   ]
 }

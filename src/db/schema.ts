@@ -7549,6 +7549,8 @@ export const storeDomains = commerce.table(
     isPrimary: boolean("is_primary").notNull().default(false),
     /** The language (two letters) this domain is the store's address for (D313); null for every language (the primary's). */
     language: text("language"),
+    /** The country (a market code) this domain is the store's address for (D338); never with a language, nor on the primary. */
+    market: char("market", { length: 2 }),
     checks: jsonb("checks").notNull().default({}),
     checkedAt: timestamp("checked_at", { withTimezone: true }),
     activatedAt: timestamp("activated_at", { withTimezone: true }),
@@ -7566,6 +7568,10 @@ export const storeDomains = commerce.table(
     uniqueIndex("store_domains_language_idx").on(t.storeId, t.language).where(sql`${t.language} is not null`),
     check("store_domains_language", sql`${t.language} is null or ${t.language} ~ '^[a-z]{2}$'`),
     check("store_domains_primary_language", sql`not ${t.isPrimary} or ${t.language} is null`),
+    uniqueIndex("store_domains_market_idx").on(t.storeId, t.market).where(sql`${t.market} is not null`),
+    check("store_domains_market", sql`${t.market} is null or ${t.market} ~ '^[A-Z]{2}$'`),
+    check("store_domains_primary_market", sql`not ${t.isPrimary} or ${t.market} is null`),
+    check("store_domains_language_or_market", sql`${t.language} is null or ${t.market} is null`),
     check(
       "store_domains_hostname",
       sql`${t.hostname} ~ '^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z][a-z0-9-]{0,61}[a-z0-9]$' and length(${t.hostname}) <= 253`,

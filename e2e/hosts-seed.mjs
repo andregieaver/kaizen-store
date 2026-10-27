@@ -10,6 +10,10 @@ const CUSTOM_STORE = "kari-domene";
 const CUSTOM_HOST = "butikk.kari.localhost";
 // English's own domain (D313).
 const ENGLISH_HOST = "english.kari.localhost";
+// A store that sells in Norway and Sweden, with Sweden on a domain of its own (D338).
+const COUNTRY_STORE = "lars-land";
+const COUNTRY_HOST = "butikk.lars.localhost";
+const SWEDEN_HOST = "sverige.lars.localhost";
 
 {
   const sql = postgres(process.env.DATABASE_URL, { max: 1, onnotice: () => {} });
@@ -29,6 +33,27 @@ const ENGLISH_HOST = "english.kari.localhost";
       insert into commerce.store_domains (store_id, hostname, token, status, is_primary, language, activated_at)
       select id, ${ENGLISH_HOST}, 'e2e-en', 'active', false, 'en', now() from commerce.stores where slug = ${CUSTOM_STORE}`;
     console.log(`${CUSTOM_STORE} is at ${CUSTOM_HOST}, in English at ${ENGLISH_HOST}`);
+  } finally {
+    await sql.end();
+  }
+}
+
+{
+  const sql = postgres(process.env.DATABASE_URL, { max: 1, onnotice: () => {} });
+  try {
+    const [request] = await sql`
+      insert into commerce.access_requests (email, name, store_name)
+      values ('lars-land@example.com', 'Lars', 'Lars Land') returning id`;
+    await sql`select commerce.approve_access_request(${request.id}, ${COUNTRY_STORE}, 'Lars Land', null)`;
+    // It sells in several countries (D178), Sweden among them.
+    await sql`update commerce.stores set features = array_append(features, 'countries') where slug = ${COUNTRY_STORE}`;
+    await sql`
+      insert into commerce.store_domains (store_id, hostname, token, status, is_primary, activated_at)
+      select id, ${COUNTRY_HOST}, 'e2e-land', 'active', true, now() from commerce.stores where slug = ${COUNTRY_STORE}`;
+    await sql`
+      insert into commerce.store_domains (store_id, hostname, token, status, is_primary, market, activated_at)
+      select id, ${SWEDEN_HOST}, 'e2e-se', 'active', false, 'SE', now() from commerce.stores where slug = ${COUNTRY_STORE}`;
+    console.log(`${COUNTRY_STORE} is at ${COUNTRY_HOST}, Sweden at ${SWEDEN_HOST}`);
   } finally {
     await sql.end();
   }

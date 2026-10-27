@@ -61,6 +61,47 @@ function LanguageChoice({
   );
 }
 
+/**
+ * Which country a domain is for (D338): every country by default, which leads to the store's address; one of the store's other countries makes
+ * the domain that country's own address, with the country left out of its addresses.
+ */
+function CountryChoice({
+  action,
+  domain,
+  countries,
+  nameOf,
+  words,
+}: {
+  action: Action;
+  domain: StoreDomain;
+  countries: { code: string; name: string }[];
+  nameOf: (code: string) => string;
+  words: DomainsMessages;
+}) {
+  const options = domain.market && !countries.some((c) => c.code === domain.market) ? [...countries, { code: domain.market, name: nameOf(domain.market) }] : countries;
+  return (
+    <details className="text-sm" open={domain.market !== null}>
+      <summary className="cursor-pointer text-muted">{words.forOneCountry}</summary>
+      <ActionForm action={action} className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-end">
+        <input type="hidden" name="id" value={domain.id} />
+        <label className="flex flex-1 flex-col gap-1 font-medium">
+          {words.country}
+          <select name="market" defaultValue={domain.market ?? ""} className={input}>
+            <option value="">{words.everyCountry}</option>
+            {options.map((c) => (
+              <option key={c.code} value={c.code}>
+                {named(words.countryOption, c.name)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <SubmitButton variant="secondary">{words.save}</SubmitButton>
+      </ActionForm>
+      <p className="mt-2 text-xs text-muted">{words.explainCountry}</p>
+    </details>
+  );
+}
+
 /** A catalogue text with a language's name in it. */
 const named = (text: string, value: string, key = "name") => text.replaceAll(`{${key}}`, value);
 
@@ -80,6 +121,7 @@ export function DomainsPanel({
   owner,
   configured,
   languages,
+  countries = [],
   words,
   locale = "en-GB",
   actions,
@@ -96,14 +138,20 @@ export function DomainsPanel({
   configured: boolean;
   /** The languages a domain may be the address of (D313, `domainLanguages()`); none for a store in one language. */
   languages: { lang: string; name: string }[];
+  /** The countries a domain may be the address of (D338, `domainCountries()`); none for a store in one country. */
+  countries?: { code: string; name: string }[];
   /** The page's words in the admin's language (D312: what is converted). */
   words: DomainsMessages;
   /** The admin's date format (D312 A11). */
   locale?: string;
-  actions: { add: Action; check: Action; primary: Action; remove: Action; language: Action };
+  actions: { add: Action; check: Action; primary: Action; remove: Action; language: Action; country?: Action };
 }) {
   const primary = domains.find((d) => d.isPrimary);
   const nameOf = (lang: string) => languages.find((l) => l.lang === lang)?.name ?? lang;
+  const countryName = (code: string) => countries.find((c) => c.code === code)?.name ?? code;
+  // A store gives domains to its countries or to its languages, never both (D338): once one kind is chosen, only it is offered.
+  const byCountry = domains.some((d) => d.market !== null);
+  const byLanguage = domains.some((d) => d.language !== null);
   return (
     <div className="flex flex-col gap-6">
       <section aria-labelledby="address-heading" className={card}>
@@ -176,11 +224,16 @@ export function DomainsPanel({
                       : domain.status === "active"
                         ? domain.language
                           ? named(words.activeInLanguage, nameOf(domain.language))
-                          : words.activeLeads
+                          : domain.market
+                            ? named(words.activeInCountry, countryName(domain.market))
+                            : words.activeLeads
                         : words.waitingDns}
                   </span>
                   {domain.language && domain.status === "pending" && (
                     <span className="rounded-full border border-line px-2 py-0.5 text-xs">{named(words.forLanguage, nameOf(domain.language))}</span>
+                  )}
+                  {domain.market && domain.status === "pending" && (
+                    <span className="rounded-full border border-line px-2 py-0.5 text-xs">{named(words.forCountry, countryName(domain.market))}</span>
                   )}
                 </div>
                 {domain.status === "pending" && (
@@ -234,8 +287,11 @@ export function DomainsPanel({
                   )}
                   {owner && <DomainButton action={actions.remove} id={domain.id} label={words.remove} />}
                 </div>
-                {owner && !domain.isPrimary && (languages.length > 0 || domain.language) && (
+                {owner && !domain.isPrimary && !byCountry && (languages.length > 0 || domain.language) && (
                   <LanguageChoice action={actions.language} domain={domain} languages={languages} nameOf={nameOf} words={words} />
+                )}
+                {owner && !domain.isPrimary && !byLanguage && actions.country && (countries.length > 0 || domain.market) && (
+                  <CountryChoice action={actions.country} domain={domain} countries={countries} nameOf={countryName} words={words} />
                 )}
               </li>
             ))}

@@ -8,7 +8,7 @@ import type { DomainServices } from "./vercel";
 
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {} }));
 
-const { addStoreDomain, checkStoreDomain, deployIfBehind, listStoreDomains, removeStoreDomain, routedAsSaved, setDomainLanguage, setPrimaryDomain } =
+const { addStoreDomain, checkStoreDomain, deployIfBehind, listStoreDomains, removeStoreDomain, routedAsSaved, setDomainCountry, setDomainLanguage, setPrimaryDomain } =
   await import("./domains");
 
 type Row = Record<string, unknown>;
@@ -164,5 +164,49 @@ describe("stores' own domains (P8)", () => {
       JSON.stringify({ [ola.slug]: { primary: `ola-${run}.example.no`, hosts, languages: { en: `ola-en-${run}.example.com` } } }),
     );
     expect(routedAsSaved(ola.slug, saved)).toBe(true);
+  });
+
+  it("makes an active domain one country's own address, never with a language's, and routes it as saved (D338)", async () => {
+    const { services, txt, pointed, calls } = fakeServices();
+    const shop = await (async () => {
+      const [row] = await db().execute<Row>(sql`insert into commerce.stores (slug, name) values (${`domains-per-${run}`}, 'Store') returning id`);
+      return { id: String(row.id), slug: `domains-per-${run}` };
+    })();
+    const add = async (hostname: string) => {
+      const added = await addStoreDomain(owner, shop.id, { hostname }, services, true);
+      if (!added.ok) throw new Error(added.problems.join(" "));
+      txt.set(`_kaizen.${hostname}`, [`kaizen-verify=${added.domain.token}`]);
+      pointed.add(hostname);
+      return (await checkStoreDomain(shop.id, added.domain.id, services)).ok ? added.domain.id : "";
+    };
+    const main = await add(`per-${run}.example.no`);
+    const swedish = await add(`per-${run}.example.se`);
+    const english = await add(`per-en-${run}.example.com`);
+
+    // Only a country the store offers for it, never the store's address.
+    expect(await setDomainCountry(owner, shop.id, swedish, "DK", ["SE"], services)).toMatchObject({ ok: false });
+    expect(await setDomainCountry(owner, shop.id, main, "SE", ["SE"], services)).toMatchObject({ ok: false });
+    calls.length = 0;
+    expect(await setDomainCountry(owner, shop.id, swedish, "SE", ["SE"], services)).toEqual({ ok: true });
+    expect(calls).toEqual(["deploy"]);
+    // Countries or languages on domains of their own, never both: the writer says so, and the database holds it.
+    expect(await setDomainLanguage(owner, shop.id, english, "en", ["en"], services)).toMatchObject({ ok: false });
+    await expect(db().execute(sql`update commerce.store_domains set language = 'en' where id = ${english}::uuid`)).rejects.toThrow();
+    await expect(db().execute(sql`update commerce.store_domains set market = 'DK', language = 'da' where id = ${english}::uuid`)).rejects.toThrow();
+    // A country's own domain is never the store's address.
+    expect(await setPrimaryDomain(owner, shop.id, swedish, services)).toMatchObject({ ok: false });
+
+    const saved = await listStoreDomains(shop.id);
+    expect(saved.find((d) => d.id === swedish)?.market).toBe("SE");
+    const hosts = saved.filter((d) => d.status === "active").map((d) => d.hostname);
+    vi.stubEnv("NEXT_PUBLIC_STORE_HOSTS", JSON.stringify({ [shop.slug]: { primary: `per-${run}.example.no`, hosts } }));
+    expect(routedAsSaved(shop.slug, saved)).toBe(false);
+    vi.stubEnv("NEXT_PUBLIC_STORE_HOSTS", JSON.stringify({ [shop.slug]: { primary: `per-${run}.example.no`, hosts, countries: { se: `per-${run}.example.se` } } }));
+    expect(routedAsSaved(shop.slug, saved)).toBe(true);
+
+    // Back to every country: then a language may have its own.
+    expect(await setDomainCountry(owner, shop.id, swedish, null, ["SE"], services)).toEqual({ ok: true });
+    expect(await setDomainLanguage(owner, shop.id, english, "en", ["en"], services)).toEqual({ ok: true });
+    expect(await setDomainCountry(owner, shop.id, swedish, "SE", ["SE"], services)).toMatchObject({ ok: false });
   });
 });

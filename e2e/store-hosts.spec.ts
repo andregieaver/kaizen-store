@@ -147,6 +147,30 @@ test("a language on a domain of its own shows the store in it, without the langu
   expect(await page.locator('link[rel=alternate][hreflang="nb-NO"]').getAttribute("href")).toBe(own);
 });
 
+test("a country on a domain of its own is served there without its code, and its addresses elsewhere move there (D338)", async ({ page }) => {
+  const port = new URL(`http://${domain}`).port || "80";
+  const own = `http://butikk.lars.localhost:${port}`;
+  const sweden = `http://sverige.lars.localhost:${port}`;
+  // Sweden's front page in Swedish at the domain's root, its links without the country.
+  expect((await page.goto(`${sweden}/`))?.status()).toBe(200);
+  expect(await page.locator("html").getAttribute("lang")).toBe("sv");
+  expect(await page.locator("link[rel=canonical]").getAttribute("href")).toBe(sweden);
+  await expect(page.locator('a[href="/cart"]').first()).toBeAttached();
+  expect((await page.goto(`${sweden}/products`))?.status()).toBe(200);
+
+  // Sweden on the store's address moves to its domain; the country is never in the addresses there; Norway on Sweden's goes home.
+  await page.goto(`${own}/se/products`);
+  await expect(page).toHaveURL(`${sweden}/products`);
+  await page.goto(`${sweden}/se/products`);
+  await expect(page).toHaveURL(`${sweden}/products`);
+  await page.goto(`${sweden}/no/products`);
+  await expect(page).toHaveURL(`${own}/no/products`);
+
+  // The store's address says where Sweden is.
+  await page.goto(`${own}/no`);
+  expect(await page.locator('link[rel=alternate][hreflang="sv-SE"]').getAttribute("href")).toBe(sweden);
+});
+
 test("staff who came from the admin get their way back, and the page's editor, on the store's own host", async ({ page }) => {
   await page.goto(storeUrl("demo", "/no/cart"));
   await expect(page.getByRole("link", { name: "← Back to admin" })).toHaveCount(0);
