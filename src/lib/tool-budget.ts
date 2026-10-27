@@ -27,6 +27,7 @@ export const CORE_TOOLS = [
   "list_customers",
   "get_customer",
   "analytics_overview",
+  "run_report",
   "support_overview",
 ] as const;
 

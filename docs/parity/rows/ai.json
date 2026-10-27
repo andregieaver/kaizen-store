@@ -800,14 +800,14 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "partial"
     },
     "weight": 3,
-    "gap": "The assistant answers only from fixed, code-counted tools: analytics_overview, explain_change, analytics_alerts, sales_summary, sales_trend, sales_funnel, product_performance, customer_insights, restock_suggestions, search_insights, cart_reminder_stats, vat_report and oss_return_data among them (D104, D152, D161). No arbitrary cut (by variant, category, channel, country, payment method), no saved or custom report and no query layer for the model to use; the analytics pages are fixed views, and the report builder this would rest on is missing. Merged on 2026-10-26 (README rule 8): `analytics.natural-language-analytics` was the same Shopify feature (rated partial); its criteria and evidence are here.",
-    "bucket": "A",
-    "wave": 8,
+    "gap": "Residual: the questions are the report catalogue's (D345), so a figure outside it (visits, conversion, shipping) or a cut it lacks (vendor, customer group, company) is declined with what can be asked; the fixed analytics tools still answer the rest.",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "Over a safe query layer (a typed spec, never free SQL) the assistant can answer a question that cuts a figure by dimension and period; amounts are per currency with a counted note for currencies without a rate.",
       "A figure that cannot be known is returned as what is missing and how to add it, never as zero, and every number is counted in code.",
@@ -824,13 +824,22 @@
         "src/server/analytics-insights.ts",
         "src/lib/owner-tools.ts",
         "src/lib/manager-tools.ts",
-        "src/lib/assistant-skills.ts"
+        "src/lib/assistant-skills.ts",
+        "src/server/report-tools.ts",
+        "src/lib/report-link.ts",
+        "src/server/report-query.ts",
+        "src/lib/report-catalogue.ts",
+        "src/components/admin/ai-manager.tsx"
       ],
       "tests": [
         "src/server/analytics-tools.int.test.ts",
         "src/lib/analytics-tools.test.ts",
         "src/server/owner-insights.int.test.ts",
-        "src/server/analytics-insights.int.test.ts"
+        "src/server/analytics-insights.int.test.ts",
+        "src/lib/report-tools.test.ts",
+        "src/server/report-query.int.test.ts",
+        "src/server/owner-assistant.int.test.ts",
+        "src/lib/agent-eval.test.ts"
       ],
       "untested": false
     },
@@ -839,9 +848,18 @@
       "D104",
       "D152",
       "D161",
-      "D216"
+      "D216",
+      "D345",
+      "D346"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-27",
+        "from": "partial",
+        "to": "full",
+        "why": "D346: the AI manager fills a report spec (`run_report`), checked by the same schema and `specProblems()` as the Reports builder and run by `runReport()` (store id, paid orders, `setBasedReplica()`), the rows written out in code with the notes on what is not known; the answer can be saved (`save_report`, or *Save as report* in the panel); a question the catalogue cannot put is declined in its words; the rounds after a report tool are metered as `analytics_question`."
+      }
+    ]
   },
   {
     "id": "ai.ai-or-rule-based-customer-segmentation",

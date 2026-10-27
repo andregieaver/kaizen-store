@@ -18,6 +18,7 @@ import { MAX_ENTRY_MINUTES, TIME_NOTE_MAX } from "./work-time";
 import { approveSummary, declineSummary } from "./return-tools";
 import { FROM_MAX, OVERVIEW_ROWS_DEFAULT, OVERVIEW_ROWS_MAX, TO_MAX, redirectSummary } from "./redirect-tools";
 import { searchApprovalSummary } from "./search-tools";
+import { reportSpecSchema } from "./report-catalogue-schema";
 import { ADJUST_REASONS, BACKORDER_DAYS_MAX, BACKORDER_DAYS_MIN, MOVEMENT_REASONS, NOTE_MAX, STOCK_MAX } from "./inventory";
 import { backorderSummary, setStockSummary } from "./stock-tools";
 import { featureSwitchSummaryOf, listFeaturesInput, setFeatureInput } from "./feature-tools";
@@ -901,6 +902,24 @@ export const OWNER_TOOLS = [
     "analytics_alerts",
     "What needs a look in the store's analytics right now, most pressing first, worked out in code with a minimum volume for every rule so small numbers raise nothing: conversion falling, a day's revenue far under its weekday's usual, a product's refunds over twice its usual, a channel's cost per new customer up, stock running out, checkouts left unfinished, discounts creeping up, the month's target at risk, product costs missing, and good news. Each comes with its figures and the page to look at. An empty list means nothing needs a look.",
     z.object({}),
+  ),
+  tool(
+    "report_catalogue",
+    "What a report can be asked for (D345): every figure run_report counts, what it means, and the cuts each figure allows, in the Reports page's own words, with the period presets and the comparisons. Call it before run_report when unsure what a question maps to.",
+    z.object({}),
+  ),
+  tool(
+    "run_report",
+    "Answers a question about the store's figures as a report (D345): fill a spec from the catalogue (figures, at most two cuts, filters, the period and comparison, sort, rows) and it is counted in code by the same compiler as Analytics → Reports, from paid orders, in the store's main currency without VAT. It answers the report's sentence (what it counts), the rows with their figures written out, the totals, notes on what the figures rest on, and the report's address. Repeat the rows and totals as given: never add, average, compare or convert figures yourself, and never give a figure it did not. When a question cannot be put as a spec, it says what can be asked.",
+    reportSpecSchema,
+  ),
+  tool(
+    "save_report",
+    "Saves a report under a name in the store's Reports (D345), so it can be opened again from Analytics → Reports; it changes nothing a shopper sees. The spec is checked as run_report checks it. Answers the saved report's address.",
+    z.object({
+      title: z.string().trim().min(1).max(80).describe("The report's name, as the person would look for it."),
+      spec: reportSpecSchema,
+    }),
   ),
   tool(
     "speed_report",

@@ -109,6 +109,8 @@ describe("the owner assistant (D94)", () => {
       get_product: { product: productHandle },
       get_fields: { entity: "product", item: productHandle },
       get_order: { order: "1" },
+      // A report (D346) names its figures; the rest of the spec has defaults.
+      run_report: { metrics: ["net_sales"], dimensions: ["market"] },
       // An order's parcels and their carrier events (D238) are asked for by the order's number too.
       parcel_tracking: { order: "1" },
       // The history of one variant's stock (D172) is asked for by SKU, like a product's by its handle.
@@ -147,7 +149,8 @@ describe("the owner assistant (D94)", () => {
     // Adding a theme to the library (D308): `design-tools.int.test.ts`; asking for a look at a page or the store (D310), which photographs it: `page-looks.int.test.ts`.
     // Searching the web and reading a page reach the network, and keeping a note or a comparison writes (D329): `research.int.test.ts`, with stand-ins.
     // Keeping the brand and designing a look write (D330): `brand.int.test.ts`. Writing an entry's draft (D326): `content-tools.int.test.ts`.
-    const WRITES_WITHOUT_A_YES = new Set(["set_brand", "design_look", "make_brand_marks", "search_web", "read_web_page", "save_research_note", "compare_options", "add_order_note", "draft_experiment", "tag_orders", "archive_orders", "create_draft_order", "create_product", "write_product_texts", "build_page", "edit_page", "draft_broadcast", "tag_customer", "add_support_note", "end_support_conversation", "log_time", "add_theme", "look_at_page", "look_at_store", "save_entry"]);
+    // Saving a report (D346): `report-query.int.test.ts`.
+    const WRITES_WITHOUT_A_YES = new Set(["save_report", "set_brand", "design_look", "make_brand_marks", "search_web", "read_web_page", "save_research_note", "compare_options", "add_order_note", "draft_experiment", "tag_orders", "archive_orders", "create_draft_order", "create_product", "write_product_texts", "build_page", "edit_page", "draft_broadcast", "tag_customer", "add_support_note", "end_support_conversation", "log_time", "add_theme", "look_at_page", "look_at_store", "save_entry"]);
     for (const tool of OWNER_TOOLS.filter((t) => !("gate" in t) && !WRITES_WITHOUT_A_YES.has(t.name))) {
       const result = ownerTools.runOwnerTool(ctx, tool.name, args[tool.name] ?? {});
       if (tool.name === "get_order" || tool.name === "parcel_tracking") await expect(result).rejects.toThrow("No order 1 in this store.");
@@ -271,6 +274,23 @@ describe("the owner assistant (D94)", () => {
     expect(requests[0].messages[0].content).toContain("Never add up");
     const saved = (await assistant.getConversation(member, conversationId))!;
     expect(saved.messages.map((m) => m.role)).toEqual(["user", "assistant"]);
+  });
+
+  it("answers a question about the figures from run_report, offers it as a report, and meters the answer as its own feature (D346)", async () => {
+    const before = await db().execute<Row>(sql`select feature, count(*)::int as n from commerce.ai_usage where store_id = ${member.store.id}::uuid group by feature`);
+    const count = (rows: Row[], feature: string) => Number(rows.find((r) => r.feature === feature)?.n ?? 0);
+    fakeModel(calls({ name: "run_report", args: { metrics: ["net_sales", "orders"], dimensions: ["market"], period: { preset: "30d", compare: "none" } } }), says("Ingen salg siste 30 dager."));
+    const events: AssistantEvent[] = [];
+    const usage = { storeId: member.store.id, feature: "ai_manager" as const, accountId: member.account.id };
+    await assistant.runTurn({ member, conversationId: null, message: "Salg per land?", emit: (e) => events.push(e), invalidate: () => {}, connection: { ...connection, source: "platform", usage } as AiConnection });
+    const done = events.at(-1) as { type: "done"; message: { tools: { name: string; ok: boolean; report?: string }[] } };
+    expect(done.message.tools).toEqual([{ name: "run_report", ok: true, report: expect.stringMatching(new RegExp(`^/admin/${member.store.slug}/analytics/reports/view\\?q=`)) }]);
+    const after = await db().execute<Row>(sql`select feature, count(*)::int as n from commerce.ai_usage where store_id = ${member.store.id}::uuid group by feature`);
+    // The round that chose the tool is the manager's; the round that answered from the report is the question's.
+    expect(count(after, "ai_manager") - count(before, "ai_manager")).toBe(1);
+    expect(count(after, "analytics_question") - count(before, "analytics_question")).toBe(1);
+    const started = events.find((e) => e.type === "conversation") as { id: string };
+    expect(await assistant.deleteConversation(member, started.id)).toBe(true);
   });
 
   it("gives the model a tool's refusal, and remembers the conversation", async () => {

@@ -51,6 +51,8 @@ export const assistantEn = {
     newConversation: "New conversation",
     used: "Used: {tools}",
     someProblem: " (some answered with a problem)",
+    /** Under an answer that ran a report (D346): opens the report, where it can be changed and saved. */
+    saveReport: "Save as report",
     good: "Good answer",
     notHelpful: "Not helpful",
     delete: "Delete",

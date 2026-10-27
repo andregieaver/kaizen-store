@@ -369,3 +369,42 @@ describe("the CSV", () => {
     expect(lines.slice(1).every((l) => l.endsWith(",NOK"))).toBe(true);
   });
 });
+
+describe("the AI manager's report tools (D346)", () => {
+  // The answers are read as the model reads them: loose JSON.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  type Answer = Record<string, any>;
+  const SEPT = { preset: "custom", from: "2026-09-01", to: "2026-09-07", compare: "none" };
+
+  it("run a report through the compiler, written out with its sentence, totals, notes and the page to open it on", async () => {
+    const { runOwnerTool } = await import("./owner-tools");
+    const [owner] = await db().execute<Row>(sql`select account_id from commerce.store_members where store_id = ${store.id}::uuid limit 1`);
+    // The tools are offered while the online shop is on (TOOL_FEATURES); the test's store is a bare cast, so it is said here.
+    const shop = { ...store, features: ["shop"] } as unknown as Store;
+    const ctx = { account: { id: String(owner.account_id), email: "owner@example.com", name: "Owner", platformAdmin: false } as never, store: shop, invalidate: () => {} };
+    const out = (await runOwnerTool(ctx, "run_report", { metrics: ["net_sales", "units"], dimensions: ["product"], period: SEPT })) as Answer;
+    const direct = await report({ metrics: ["net_sales", "units"], dimensions: ["product"], period: { preset: "custom", from: "2026-09-01", to: "2026-09-07", compare: "none" } });
+    expect(out.report).toMatch(/^Revenue and units sold by product/);
+    expect(out.rows.length).toBe(direct.rows.length);
+    // The rest row is named and its key left out, so it is never offered as a filter.
+    const rest = out.rows.find((r: Answer) => r.row === "Shipping and other order amounts");
+    expect(rest).toBeDefined();
+    expect(rest.key).toBeUndefined();
+    expect(out.total.Revenue).toMatch(/[\d\s,.]+/);
+    expect(out.notes.join(" ")).toMatch(/shipping and other order amounts/);
+    expect(out.link).toMatch(new RegExp(`^/admin/${store.slug}/analytics/reports/view\\?q=`));
+    expect(JSON.stringify(out)).not.toMatch(/NaN|undefined|\[object/);
+
+    // A cut the catalogue refuses is refused in words, with where to look.
+    await expect(runOwnerTool(ctx, "run_report", { metrics: ["refunds"], dimensions: ["product"], period: SEPT })).rejects.toThrow(/report_catalogue/);
+    const catalogue = (await runOwnerTool(ctx, "report_catalogue", {})) as Answer;
+    expect(catalogue.figures.find((f: Answer) => f.key === "refunds").can_be_cut_by).not.toContain("product");
+
+    // Saved for the store, and only for the store.
+    const saved = (await runOwnerTool(ctx, "save_report", { title: "From the AI manager", spec: { metrics: ["orders"], dimensions: ["market"] } })) as Answer;
+    expect(saved.link).toMatch(new RegExp(`^/admin/${store.slug}/analytics/reports/view\\?id=`));
+    expect((await listSavedReports(store.id)).map((r) => r.title)).toContain("From the AI manager");
+    expect((await listSavedReports(other.id)).map((r) => r.title)).not.toContain("From the AI manager");
+    await db().execute(sql`delete from commerce.saved_reports where store_id = ${store.id}::uuid`);
+  });
+});

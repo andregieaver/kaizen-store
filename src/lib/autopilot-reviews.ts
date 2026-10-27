@@ -33,6 +33,8 @@ export const REVIEW_READ_TOOLS = [
   "analytics_overview",
   "analytics_alerts",
   "explain_change",
+  "report_catalogue",
+  "run_report",
   "sales_summary",
   "sales_trend",
   "sales_funnel",

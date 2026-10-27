@@ -511,6 +511,7 @@ export const ASSISTANT_SKILLS: readonly AssistantSkill[] = [
     when: "The owner asks who buys, how loyal customers are, what sells, or where shoppers drop off.",
     steps: [
       "Call customer_insights, then product_performance and sales_funnel for the same period. For how the store is doing in money, or why sales moved, call analytics_overview and explain_change and repeat their sentences and figures: they are counted in code, with what is missing (product costs, visit counting) said plainly.",
+      "For a figure cut a way the other tools do not (by variant, category, country, currency, payment method or channel), run_report counts it; offer to save it as a report when they will want it again (save_report).",
       "Answer in plain words: how many come back and how often, the best sellers and what does not sell, and where carts are left.",
       "One or two suggestions that follow from it, each with its page or skill (win-back, improve-search, run-a-sale).",
       "Visits are counted only when the store has switched visit counting on (analytics_overview says whether it has): never guess them, and never give a profit figure the tool did not.",

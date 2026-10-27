@@ -236,6 +236,8 @@ Built as above, with these differences:
   answer. The feature is `analytics_question`. In the panel, an answer that came from `run_report` shows *Save as report*. The safety eval
   (`agent-eval.ts`) gains a case where a tool answer hides an instruction to state a different figure.
 
+  **As built (27 October 2026).** As outlined, with these choices: `run_report` takes the spec itself as its arguments (the builder's schema), answers at most 40 rows (`TOOL_ROWS`; the rest are counted in the notes and left to the report's page) and is in `CORE_TOOLS`; a row carries its `key` for a follow-up filter, never for the rest row; *Save as report* opens the report on its page (Save is there) rather than saving from the panel; `analytics_question` meters the rounds after a report tool, the round that chose the tool staying `ai_manager`; the autopilot's reviews may read with the two read tools. Tests: `report-tools.test.ts`, the tools in `report-query.int.test.ts`, a turn in `owner-assistant.int.test.ts`, and the eval case `manager-report-row`.
+
 - **C (D347) Live view and search revenue.**
   - **Live** (`/admin/{store}/analytics/live`, `analytics:read`) polls every 10 seconds while open (decision 2) and reads
     `liveFigures()`:

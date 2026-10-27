@@ -10,12 +10,13 @@ D152 (the store analytics cockpit) and D153 (the EU withdrawal function and the 
 
 <!-- parity:generated:start since -->
 
-- **Headline now 79.3%** (first report 59.5%), **must-have 84.5%** (first report 69.1%), over 202 core rows (first report 232).
-- Where the change comes from: +19.5 points from the 109 rating moves on core rows recorded below, and +0.3 points because the re-read changed which rows count as core (the tracker has 232 rows, the first report 232 core ones).
+- **Headline now 79.5%** (first report 59.5%), **must-have 84.5%** (first report 69.1%), over 202 core rows (first report 232).
+- Where the change comes from: +19.7 points from the 110 rating moves on core rows recorded below, and +0.3 points because the re-read changed which rows count as core (the tracker has 232 rows, the first report 232 core ones).
 - 231 of 232 rows have their Shopify side read from a page; the others are listed under evidence debt.
 
-Rated higher (95):
+Rated higher (96):
 
+- Natural-language analytics and custom reports (AI): partial to full. D346: the AI manager fills a report spec (`run_report`), checked by the same schema and `specProblems()` as the Reports builder and run by `runReport()` (store id, paid orders, `setBasedReplica()`), the rows written out in code with the no…
 - AI or rule-based customer segmentation (AI): missing to partial. D296 (wave 5 unit B): saved rule-based segments over customers and subscribers, counted live with a member list, and customer tags; read segments.ts and ran segments.test.ts, segments.int.test.ts (PGlite and integration, passed).
 - AI-written marketing email (AI): missing to partial. D297: Write with AI in the broadcast editor suggests the email's words through the claims filter, as a suggestion only; it does not yet read the store's products or campaigns.
 - Agentic storefronts (ChatGPT, Gemini, Copilot) (AI): missing to partial. Read src/server/feeds.ts, src/lib/feeds.ts, src/app/api/feeds/[token]/[file]/route.ts and the Product feeds page (D302): a normalised feed per store and market of offered goods at the storefront's VAT-inclusive price, as Google Merchant Ce…
@@ -145,7 +146,7 @@ Rated lower (24):
 
 <!-- parity:generated:start summary -->
 
-Kaizena Flow has **79.3%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 202 core features weighted by importance to an EU small or mid-size merchant, and **84.5%** on the must-haves (the 83 features with weight 4 or 5). The unweighted figures are 77.0% overall and 84.3% for must-haves. Counting app-only features gives 78.7%; counting Plus-only as well gives 78.1%. Kaizena Flow is strongest on storefront, themes and content (94.0%) and weakest on platform, extensibility and operations (54.7%), ai and automation (67.9%), checkout and payments (69.2%). Of the 202 core features, 120 are full, 71 partial and 11 missing, so half-built features, not absent ones, are the main shape of the gap.
+Kaizena Flow has **79.5%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 202 core features weighted by importance to an EU small or mid-size merchant, and **84.5%** on the must-haves (the 83 features with weight 4 or 5). The unweighted figures are 77.2% overall and 84.3% for must-haves. Counting app-only features gives 78.9%; counting Plus-only as well gives 78.3%. Kaizena Flow is strongest on storefront, themes and content (94.0%) and weakest on platform, extensibility and operations (54.7%), checkout and payments (69.2%), ai and automation (70.5%). Of the 202 core features, 121 are full, 70 partial and 11 missing, so half-built features, not absent ones, are the main shape of the gap.
 
 <!-- parity:generated:end summary -->
 
@@ -155,10 +156,10 @@ The method is simple: a full match scores 1, a partial match 0.5, a missing feat
 
 | Measure | Features | Weighted parity | Unweighted parity | Full / partial / missing |
 | --- | --- | --- | --- | --- |
-| Headline: core (Shopify native, Basic to Advanced) | 202 | **79.3%** | 77.0% | 120 / 71 / 11 |
+| Headline: core (Shopify native, Basic to Advanced) | 202 | **79.5%** | 77.2% | 121 / 70 / 11 |
 | Must-have (core, weight 4 or 5) | 83 | **84.5%** | 84.3% | 57 / 26 / 0 |
-| Core plus app-only features | 226 | 78.7% | 76.5% | 132 / 82 / 12 |
-| Everything, including Plus-only | 232 | 78.1% | 75.4% | 133 / 84 / 15 |
+| Core plus app-only features | 226 | 78.9% | 76.8% | 133 / 81 / 12 |
+| Everything, including Plus-only | 232 | 78.3% | 75.6% | 134 / 83 / 15 |
 
 <!-- parity:generated:end headline -->
 
@@ -178,8 +179,8 @@ Counts are core features only. Weighted parity uses weights 1 to 5; must-have is
 | Analytics, reporting and finance | 24 | 17 | 5 | 2 | 87.0% | 11 | 94.6% |
 | International, compliance and trust | 16 | 10 | 6 | 0 | 77.7% | 10 | 70.2% |
 | Platform, extensibility and operations | 20 | 4 | 12 | 4 | 54.7% | 7 | 72.4% |
-| AI and automation | 22 | 9 | 10 | 3 | 67.9% | 2 | 100.0% |
-| **Total** | **202** | **120** | **71** | **11** | **79.3%** | **83** | **84.5%** |
+| AI and automation | 22 | 10 | 9 | 3 | 70.5% | 2 | 100.0% |
+| **Total** | **202** | **121** | **70** | **11** | **79.5%** | **83** | **84.5%** |
 
 <!-- parity:generated:end domains -->
 
@@ -191,7 +192,7 @@ A row is Full only when it lists code and tests that exist (or says it is untest
 
 | Evidence | Rows |
 | --- | ---: |
-| Full, with tests | 127 |
+| Full, with tests | 128 |
 | Full, untested (debt, not hidden) | 6 |
 | Shopify side not read from a page | 1 |
 | Rows in the tracker | 232 |
@@ -200,7 +201,7 @@ Untested Full rows: `ai.assistant-voice-mode`, `customers.abandoned-checkout-rec
 
 | Bucket | What it means | Rows not Full | Core rows | Core headline points lacking |
 | --- | --- | ---: | ---: | ---: |
-| A | Build in-house | 58 | 48 | 11.7 |
+| A | Build in-house | 57 | 47 | 11.5 |
 | B | Build, live only with a third party | 16 | 14 | 3.7 |
 | C | Strategy decision first | 11 | 8 | 1.9 |
 | D | Not reachable by code | 14 | 12 | 3.4 |
@@ -213,18 +214,18 @@ The waves are those of `docs/parity-plan.md` section 3. This table is produced f
 
 <!-- parity:generated:start projection -->
 
-Now: **79.3%** core, 84.5% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 16 rows (12 core) have no wave yet and are not in them.
+Now: **79.5%** core, 84.5% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 16 rows (12 core) have no wave yet and are not in them.
 
 | Wave | Scope | Rows (core) | Core if every row of waves 1 to N is Full | Must-have | Adds (points) | Core if only bucket A rows are | Must-have |
 | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | Compliance and money | 10 (7) | 81.4% | 88.0% | +2.1 | 80.8% | 86.9% |
-| 2 | Data in and out | 3 (1) | 81.6% | 88.0% | +0.2 | 81.0% | 86.9% |
-| 3 | Inventory and orders | 14 (13) | 84.9% | 90.4% | +3.3 | 82.5% | 88.2% |
-| 4 | Payments | 7 (6) | 86.4% | 92.1% | +1.5 | 82.9% | 88.2% |
-| 5 | Customers and marketing | 19 (16) | 90.5% | 95.8% | +4.2 | 86.2% | 91.3% |
-| 6 | Catalogue | 0 (0) | 90.5% | 95.8% | +0.0 | 86.2% | 91.3% |
-| 7 | Storefront and international | 3 (3) | 91.2% | 95.8% | +0.7 | 86.7% | 91.3% |
-| 8 | Analytics and AI | 15 (15) | 94.3% | 95.8% | +3.1 | 89.6% | 91.3% |
+| 1 | Compliance and money | 10 (7) | 81.6% | 88.0% | +2.1 | 81.0% | 86.9% |
+| 2 | Data in and out | 3 (1) | 81.8% | 88.0% | +0.2 | 81.2% | 86.9% |
+| 3 | Inventory and orders | 14 (13) | 85.1% | 90.4% | +3.3 | 82.8% | 88.2% |
+| 4 | Payments | 7 (6) | 86.6% | 92.1% | +1.5 | 83.1% | 88.2% |
+| 5 | Customers and marketing | 19 (16) | 90.8% | 95.8% | +4.2 | 86.5% | 91.3% |
+| 6 | Catalogue | 0 (0) | 90.8% | 95.8% | +0.0 | 86.5% | 91.3% |
+| 7 | Storefront and international | 3 (3) | 91.5% | 95.8% | +0.7 | 86.9% | 91.3% |
+| 8 | Analytics and AI | 14 (14) | 94.3% | 95.8% | +2.9 | 89.6% | 91.3% |
 | 9 | Platform and extensibility | 12 (9) | 96.6% | 96.9% | +2.3 | 91.0% | 91.8% |
 
 Ceiling with every bucket A row Full and buckets B, C and D as they are: **91.0%** core, 91.8% must-have. With bucket B built and approved as well: 94.7% core, 95.8% must-have.
@@ -612,7 +613,7 @@ Legend. **Shopify**: Native = included on Basic to Advanced and scored in the he
 | AI customer-support chat agent | Native. [page](https://help.shopify.com/en/manual/inbox) | Partial | 3 | A, wave 8 | D81 and D216 (docs/support.md, steps 1-16): the chat keeps its conversations on the site; a visitor asks for a person and a store's people answer in a shared inbox (or the AI hands over when it cannot help, the tone falls, or it reaches its limit), with email follow-up when nobody is online; a signed-in customer's orders, returns, bookings, subscriptions and bonus are answered from read-only tools (support-tools.ts) through cleanReply(), with link chips made by code; the AI proposes self-service actions the customer confirms and passes other requests to staff. What keeps it partial: the consumer texts of docs/support.md section 8 need human legal review before the row is rated full. Proposed criteria change (docs/support.md 1.5; the criteria themselves are not edited here): order status only to a customer proven by an emailed code or a signed-in session, since an order number with an email proves nothing. Since D332 (step 16) a desk also takes email: a message to the desk's address becomes a conversation, which the AI answers first by email where the desk puts the AI first (no tool that needs a signed-in customer), each AI answer marked as the AI's (D334); a sender is never tied to a customer by the address. Code: `src/app/api/chat/route.ts`, `src/app/api/chat/voice/route.ts`. |
 | AI page and theme generation | Native. [page](https://changelog.shopify.com/posts/ai-block-generation-for-all-theme-store-themes) | Partial | 2 | A, wave 8 | The AI page studio (D92) interviews, plans sections from PATTERNS, writes the words, builds rows and makes the pictures as a draft, plus Make my page cool (D128), AI page translation and copying another site's page (D150); the builder's picture fields make and remake a picture from a description in the site's look (D283). Since D308 (A2) the AI manager builds a page from a brief and changes an existing page from a person's words (edit_page: texts through mapTexts() and replaceInPage() and the row edits, tried first by dryRunEdits(), saved as a draft by savePage(); publishing gated; src/server/site-tools.ts), and since D310 it photographs the draft on a phone and a computer and fixes what the checks find before asking to publish; since A4 it chooses among made themes and presets (list_themes, add_theme, try_theme, make_theme_live). Still short: (1) a described change is saved as a draft from the assistant's panel, not applied unsaved in the open builder (criterion 1); (2) no whole-store redesign in one step. Criterion 2 holds since D330: the AI manager designs a look of the store's own (design_look: a few brand colours, fonts and Design settings' named choices, both palettes worked out in code to 4.5:1, added to the theme library to try and make live) and keeps the brand in words (set_brand, get_brand); since F2a it draws the logo for light and dark and the site's icon from the brand's name in its own font (make_brand_marks, by code from the font's outlines, never a picture model) and puts them in place on the owner's yes (set_header_footer); since F2b the brand guides the page studio, the product writer, broadcasts' suggestions and the chat's tone, its words to avoid found by code beside the claims filter. Code: `src/lib/page-ai.ts`, `src/server/page-ai.ts`. |
 | AI translation | Native. [page](https://apps.shopify.com/translate-and-adapt) | Full | 4 |  | Evidence: `src/server/store-translate.ts`, `src/lib/store-translate.ts`, `src/lib/ui-catalog.ts` and 6 more; 6 test files; D55, D110, D111. |
-| Natural-language analytics and custom reports | Native. [page](https://help.shopify.com/en/manual/shopify-admin/productivity-tools/sidekick/generate-content) | Partial | 3 | A, wave 8 | The assistant answers only from fixed, code-counted tools: analytics_overview, explain_change, analytics_alerts, sales_summary, sales_trend, sales_funnel, product_performance, customer_insights, restock_suggestions, search_insights, cart_reminder_stats, vat_report and oss_return_data among them (D104, D152, D161). No arbitrary cut (by variant, category, channel, country, payment method), no saved or custom report and no query layer for the model to use; the analytics pages are fixed views, and the report builder this would rest on is missing. Merged on 2026-10-26 (README rule 8): `analytics.natural-language-analytics` was the same Shopify feature (rated partial); its criteria and evidence are here. Code: `src/server/analytics-tools.ts`, `src/server/owner-tools.ts`. |
+| Natural-language analytics and custom reports | Native. [page](https://help.shopify.com/en/manual/shopify-admin/productivity-tools/sidekick/generate-content) | Full (was partial) | 3 |  | Residual: the questions are the report catalogue's (D345), so a figure outside it (visits, conversion, shipping) or a cut it lacks (vendor, customer group, company) is declined with what can be asked; the fixed analytics tools still answer the rest. Evidence: `src/server/analytics-tools.ts`, `src/server/owner-tools.ts`, `src/server/owner-insights.ts` and 9 more; 8 test files; D103, D104, D152, D161, D216, D345, D346. |
 | AI or rule-based customer segmentation | Native. [page](https://help.shopify.com/en/manual/shopify-admin/productivity-tools/sidekick/generate-content) | Partial (was missing) | 3 | A, wave 5 | D296: rule-based segments (orders, spend, dates, country, group, RFM class, tags) saved per store, matched in code each time they are read, never readable on the shopper's side (criteria 1 and 4). D297: a broadcast's audience can be a segment, sent only to subscribed addresses (criterion 3; a discount code still reaches groups and named customers only, D299). Since D318 the AI manager lists segments with their counts (list_segments) and drafts a broadcast for one. Still missing (criterion 2): the assistant turning a sentence into a rule set; no tool makes or changes a segment. Code: `src/server/owner-insights.ts`, `src/server/analytics-tools.ts`. |
 | Create discounts and campaigns from a prompt | Native. [page](https://help.shopify.com/en/manual/shopify-admin/productivity-tools/sidekick/generate-content) | Full | 2 |  | Evidence: `src/lib/owner-tools.ts`, `src/server/owner-tools.ts`, `src/server/campaigns.ts` and 2 more; 3 test files; D31, D94, D114, D115. |
 | AI-written marketing email | Native. [page](https://help.shopify.com/en/manual/shopify-admin/productivity-tools/sidekick/generate-content) | Partial (was missing) | 3 | A, wave 8 | D297: the broadcast editor's Write with AI (suggestBroadcast()) suggests a subject, preview, heading, paragraphs and a button's words in the chosen language from the staff's own words, every text through findClaims() (a claim refuses the suggestion), never saved or sent; the person sends with their own press, only to subscribed addresses with an unsubscribe link. Since D318 the AI manager drafts one too (draft_broadcast, for everyone or one segment, saved as a draft) and sends only behind the send gate (send_broadcast). Still missing (criterion 1): writing from the store's own facts through tools (products, campaigns); the writer is given only the staff's words and told never to name a product or price it was not told. Since D330 F2b the store's brand guide (`brandGuide()`, its words to avoid found by `findAvoided()`) reaches the broadcast suggestions below the prompt's rules. Code: `src/server/owner-tools.ts`, `src/lib/owner-tools.ts`. |

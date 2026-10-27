@@ -638,11 +638,18 @@ function Bubble({ message, onRate, onOpen }: { message: AssistantMessage; onRate
   const mine = message.role === "user";
   const w = useAdminText("assistant").chat;
   const rateable = !mine && onRate && !message.id.startsWith("local-") && message.id !== "streaming";
+  // The last report the answer ran (D346), opened on its page, where Save keeps it.
+  const report = message.tools.findLast((t) => t.report)?.report;
   return (
     <div className={`flex flex-col gap-1 ${mine ? "items-end" : "items-start"}`}>
       <p className={`max-w-[46rem] whitespace-pre-wrap wrap-anywhere rounded-lg px-3 py-2 text-sm ${mine ? "bg-brand text-brand-ink" : "bg-sunken"}`}>
         {mine ? message.content : <Linked text={message.content} onOpen={onOpen} />}
       </p>
+      {report && (
+        <Link href={report} onClick={onOpen} className="rounded-pill border border-line px-3 py-1 text-xs text-ink hover:bg-sunken" data-save-report>
+          {w.saveReport}
+        </Link>
+      )}
       {(message.tools.length > 0 || rateable) && (
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
           {message.tools.length > 0 && (

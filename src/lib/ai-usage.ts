@@ -23,6 +23,7 @@ export const KIND_WORDS: Record<AiKind, string> = {
 /** What in Kaizen asked for the call, in words people read. */
 export const AI_FEATURES = {
   ai_manager: "AI manager",
+  analytics_question: "Questions about the figures",
   web_research: "Web research",
   autopilot: "Autopilot",
   chat_agent: "Chat agent",

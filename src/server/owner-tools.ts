@@ -62,6 +62,7 @@ import { activeFieldGroups, fieldsTag, getFieldData, listFieldGroups, pageFacts,
 import { listIntegrations, postToSlack } from "./integrations";
 import { ownedStores, usageRows } from "./ai-usage";
 import { analyticsAlertsTool, analyticsOverviewTool, explainChangeTool, speedReportTool } from "./analytics-tools";
+import { reportCatalogueTool, runReportTool, saveReportTool } from "./report-tools";
 import { issueWorkInvoiceTool, listWorkAssignmentsTool, listWorkClientsTool, logTimeTool, preflightIssueWorkInvoice, workOverviewTool } from "./work-tools";
 import { changeOrderTool, preflightChangeOrder, previewOrderChangeTool } from "./order-change-tools";
 import { preflightProcessExchange, preflightProposeExchange, previewExchangeTool, processExchangeTool, proposeExchangeTool } from "./exchange-tools";
@@ -2384,6 +2385,9 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   analytics_overview: analyticsOverviewTool,
   explain_change: explainChangeTool,
   analytics_alerts: analyticsAlertsTool,
+  report_catalogue: reportCatalogueTool,
+  run_report: runReportTool,
+  save_report: saveReportTool,
   speed_report: speedReportTool,
   support_overview: supportOverviewTool,
   list_support_conversations: listSupportConversationsTool,
