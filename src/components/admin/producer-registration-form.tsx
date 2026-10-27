@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 
-import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
+import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { useAdminText } from "@/components/admin/admin-text";
 import { buttonClass } from "@/components/admin/ui/button";
 import { numberShownByDefault, REGISTRATION_LIMITS, type Registration, type RegistrationKind, type SchemeId } from "@/lib/producer-registrations";
@@ -14,8 +14,11 @@ import { numberShownByDefault, REGISTRATION_LIMITS, type Registration, type Regi
  * Saying that no registration is needed in a country is one choice away, with the reason in the owner's words.
  */
 
+/** A server action bound to the store, as `ActionForm` takes it. */
+type FormAction = Parameters<typeof ActionForm>[0]["action"];
+
 type Props = {
-  action: (state: FormState, formData: FormData) => Promise<FormState>;
+  action: FormAction;
   schemes: { id: SchemeId; label: string }[];
   markets: { code: string; name: string }[];
   today: string;
@@ -139,7 +142,7 @@ export function ProducerRegistrationForm({ action, schemes, markets, today, edit
 }
 
 /** One registration's Remove button. */
-export function RemoveRegistration({ action, id }: { action: (state: FormState, formData: FormData) => Promise<FormState>; id: string }) {
+export function RemoveRegistration({ action, id }: { action: FormAction; id: string }) {
   const w = useAdminText("settings").producer;
   return (
     <ActionForm action={action} className="flex items-center gap-2">

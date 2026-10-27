@@ -199,6 +199,40 @@ A1 availability (model, view, editor, CSV, cart, copies, tools); A2 rules (model
   read by the cart and `placeOrder()` alike: a product under a scheme with no valid registration in a country is not sold there from the
   day after its registration ends, with a plain reason; staff see what is blocked; the number shown on the product page and the invoice
   where the scheme asks. Copies carry nothing (a registration is the company's).
+
+  **H as built (2026-10-27).** Settings → Selling → *Producer responsibility* (`/admin/{store}/settings/producer-responsibility`,
+  `settings:read`/`settings:write`, feature `shop`): what is not sold now and what has no registration recorded, each grouped by scheme and
+  country with the products named and *Add the registration* beside them; the store's registrations (scheme, country, number, authority,
+  valid from and to, state, *Shown on product pages*, a warning thirty days before one ends with nothing after it); and one form to add or
+  change one. Written only by `src/server/producer-registrations.ts` (`saveRegistration()`, `removeRegistration()`), checked by
+  `checkRegistration()` in `src/lib/producer-registrations.ts`, audited `settings.producer_registration_saved`/`_removed` (scheme, country and
+  days, never the number). Differences from the bullet above:
+  - **What blocks.** `commerce.registration_gaps()` lists every product under a scheme with nothing valid in an active market on the store's own
+    day (its time zone), each marked `recorded` when the store has any registration or exemption for that scheme and market;
+    `commerce.registration_blocks()` is the recorded gaps. A registration covers its last day, so a lapsed one stops sales from the next day,
+    and one not begun stops them until its first. A scheme and country the store **never recorded anything for** is listed as a warning
+    (*No registration recorded*) and **still sold**: every new product is ticked as packaging by default (`emptyProduct()`), so blocking it
+    would have taken almost every store's goods off sale at deploy. Making the rule strict is one line (`registration_blocks()` without
+    `WHERE g.recorded`) once the default tick is settled (an owner's decision; the row stays partial until then). Taking a registration away
+    (for one entered by mistake) leaves nothing on record, so the country is warned of again.
+  - **Exemptions.** A row may say why no registration is needed in a country (`producer_registrations.exemption`, in the owner's words; no
+    number or authority, never shown). It covers as a registration does: a furniture product sold in a country with no furniture scheme
+    would otherwise have no way to be sold once anything is on record.
+  - **The cart and the order.** `commerce.line_unregistered()` (the variant's product and a bundle's components') is read by `getCart()`
+    (line status `unregistered`, `m.producer.lineProblem`), `sellableQuantity()` (adding is refused) and `placeOrder()` (problem
+    `unregistered`, `m.producer.problem`); the product page's buy part says `m.producer.notSoldHere` in place of the button, read per request.
+    A euro scenario in `checkout-kinds.int.test.ts`.
+  - **The number.** Each registration has *Show the number on product pages in this country* (`show_number`), ticked to start with by
+    `numberShownByDefault()` (`SHOW_NUMBER_RULES`: Germany's WEEE and battery numbers, France's unique identifier for every scheme), our
+    reading and flagged for legal review; the product page's *Product safety* part lists the shown numbers valid today
+    (`ProductDetail.producerNumbers`, read in `getProduct()`'s cached read). **The invoice is left out**: the invoice snapshot is held to its SQL
+    twin by `invoice-parity.test.ts` (D159), and adding a field to both is a change of its own; an owner who must print the number on invoices
+    can put it in the invoice note meanwhile.
+  - **Copies.** `producer_registrations` is `never` in `COPY_RULES`; `duplicate_store()` no longer copies them (patched in place, as A1 did).
+  - **AI manager.** `producer_registrations` (read, `settings:read`) and `save_producer_registration` (gate `public`, `settings:write`,
+    `NEVER_AUTOMATIC`, its preflight the page's checks); the tool's description tells the model never to make up a number.
+  - Shopper words (`m.producer`, nb, sv, da, en by hand) are `HAND_WRITTEN_ONLY` until a legal review, as is the wording of what each country
+    asks.
 - **I (D343) Customs and duties.** A rates table the platform keeps (`commerce.duty_rates`: destination, HS heading prefix, rate,
   threshold, source, checked-on, verified; decision 2), `dutyEstimate()` pure in code (BigInt, a missing HS code gives no estimate and a
   plain message, never zero), shown at checkout for a destination outside the EU as an estimate, collected (DDP) or left to the carrier

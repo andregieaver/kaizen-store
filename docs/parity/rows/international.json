@@ -816,7 +816,7 @@
       "was": null
     },
     "weight": 3,
-    "gap": "Products are tagged with producer-responsibility schemes in the product editor (PRODUCER_SCHEMES, product_schemes written by saveProduct()), and the SQL view commerce.missing_registrations lists what is unregistered, but there is no admin screen to enter registrations (producer_registrations), nothing in the app reads the view, nothing blocks selling a product whose scheme has no valid registration in a market, and no registration number is shown on the product page or documents.",
+    "gap": "Built in wave 7 unit H (D342, docs/wave-7-storefront.md H as built): owners record registrations (scheme, country, number, authority, valid from and to) or an exemption on Settings, Producer responsibility, and tag products with schemes in the editor; commerce.registration_blocks() stops a sale in the cart (line status unregistered), when adding and in placeOrder() (problem unregistered) alike, from the day after a recorded registration ends or before one begins; staff see what is not sold and what has no registration recorded; numbers marked to show appear on the product page. What is left: a scheme and country with no registration ever recorded is only warned of and still sold (every new product is ticked as packaging by default, so blocking it would stop almost every store's sales; making the rule strict is one line once that default is decided), and the number is not on invoices (the invoice snapshot and its SQL twin are held equal by invoice-parity.test.ts and were left alone).",
     "bucket": "A",
     "wave": 7,
     "criteria": [
@@ -832,11 +832,24 @@
         "src/lib/store-copy-rules.ts",
         "src/lib/product-input.ts",
         "src/server/products.ts",
-        "src/components/admin/product-editor.tsx"
+        "src/components/admin/product-editor.tsx",
+        "supabase/migrations/20261027121155_producer_registrations.sql",
+        "supabase/migrations/20261027121229_producer_registrations_sql.sql",
+        "src/lib/producer-registrations.ts",
+        "src/server/producer-registrations.ts",
+        "src/server/producer-tools.ts",
+        "src/app/admin/(gated)/[store]/settings/producer-responsibility/page.tsx",
+        "src/components/admin/producer-registration-form.tsx",
+        "src/server/cart.ts",
+        "src/server/checkout.ts",
+        "src/components/product-parts.tsx"
       ],
       "tests": [
         "src/db/commerce.test.ts",
-        "src/lib/product-input.test.ts"
+        "src/lib/product-input.test.ts",
+        "src/lib/producer-registrations.test.ts",
+        "src/server/producer-registrations.int.test.ts",
+        "src/server/checkout-kinds.int.test.ts"
       ],
       "untested": false
     },
