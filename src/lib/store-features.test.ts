@@ -11,13 +11,10 @@ import {
   STORE_FEATURES,
   dependentsOf,
   effectiveFeatures,
-  featureBlockers,
   featureCount,
   featureInUse,
   featureKept,
   featureOn,
-  featureRows,
-  featureWarnings,
   featuresIn,
   isFeatureId,
   missingNeeds,
@@ -25,6 +22,7 @@ import {
   requirementLabel,
   requirementMet,
 } from "./store-features";
+import { featureBlockers, featureRows, featureWarnings } from "./feature-words";
 
 const money = (minor: number, currency: string) => `${(minor / 100).toFixed(2)} ${currency}`;
 

@@ -2,7 +2,8 @@ import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { FEATURE_GROUPS, NO_FACTS, featureCount, featureRows, featuresIn, type FeatureFacts } from "@/lib/store-features";
+import { FEATURE_GROUPS, NO_FACTS, featureCount, featuresIn, type FeatureFacts } from "@/lib/store-features";
+import { featureRows } from "@/lib/feature-words";
 
 import { requireFeature } from "./feature-off";
 import { FeaturesView, OffPanel } from "./features-view";

@@ -3,7 +3,8 @@ import "server-only";
 import { featureSwitchSummary, sameWarnings, type SetFeatureInput } from "@/lib/feature-tools";
 import { formatMoney } from "@/lib/money";
 import { homeMarket } from "@/lib/markets";
-import { FEATURE_IDS, FEATURES_BY_ID, featureBlockers, featureInUse, featureKept, featureOn, featureWarnings, missingNeeds, type FeatureId } from "@/lib/store-features";
+import { FEATURE_IDS, FEATURES_BY_ID, featureInUse, featureKept, featureOn, missingNeeds, type FeatureId } from "@/lib/store-features";
+import { featureBlockers, featureWarnings } from "@/lib/feature-words";
 
 import type { Account } from "./auth";
 import { OwnerToolError } from "./owner-tool-error";

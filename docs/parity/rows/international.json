@@ -193,14 +193,14 @@
       "checkedOn": "2026-10-02"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "partial"
     },
     "weight": 3,
-    "gap": "Path per market (/s/{store}/{market}, short addresses for one-country stores, D181) and up to 5 verified domains per store with one primary (P7, P8). Since D313 (docs/language-domains.md) an owner can give a LANGUAGE a domain of its own: verified like the others, served there, the other addresses of that language moved to it (308, languageHostDecision()), and canonical, hreflang, emails, Stripe return addresses, sitemap and structured data built on it (marketUrl(), marketMetaPath(), marketLink()); a store without one behaves as before (language-domains.test.ts, domains.int.test.ts, e2e/store-hosts.spec.ts). Still missing, as the criteria ask: a domain per market (country): no.example.com and de.example.com cannot be set per country, only per language, and a language's domain serves that language in every country.",
-    "bucket": "A",
-    "wave": 7,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "An owner assigns a domain (or subdomain) to a market, verified like the store's domains, and the market's pages are served on it.",
       "The other addresses of that market redirect to its domain, and hreflang and canonical links point to the chosen domain of each market.",
@@ -209,29 +209,39 @@
     ],
     "evidence": {
       "files": [
-        "src/server/domains.ts",
+        "docs/language-domains.md",
+        "src/components/admin/domains-panel.tsx",
         "src/lib/custom-domains.ts",
-        "src/lib/store-hosts.ts",
-        "src/lib/store-hosts-build.ts",
         "src/lib/paths.ts",
         "src/lib/store-address.ts",
-        "src/server/redirect-resolve.ts",
-        "docs/language-domains.md"
+        "src/lib/store-hosts-build.ts",
+        "src/lib/store-hosts.ts",
+        "src/server/domains.ts",
+        "src/server/redirect-resolve.ts"
       ],
       "tests": [
+        "e2e/store-hosts.spec.ts",
+        "src/lib/country-domains.test.ts",
         "src/lib/custom-domains.test.ts",
-        "src/lib/store-hosts.test.ts",
-        "src/server/domains.int.test.ts",
         "src/lib/language-domains.test.ts",
-        "e2e/store-hosts.spec.ts"
+        "src/lib/store-hosts.test.ts",
+        "src/server/domains.int.test.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D181",
-      "D313"
+      "D313",
+      "D338"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-27",
+        "from": "partial",
+        "to": "full",
+        "why": "Wave 7 unit D2 (D338): a store that sells in several countries gives one of them (never its own) a domain of its own (store_domains.market, setDomainCountry(), Settings, Domains), verified like the store's other domains and served there with the country left out of its addresses; an address in that country anywhere else moves there (308, countryHostDecision()), another country on it moves to its own address, and links, emails, Stripe's return addresses, the sitemap, canonical and hreflang follow through marketHost()/marketUrl()/marketMetaPath(). A store without one behaves as before. country-domains.test.ts, domains.int.test.ts and e2e/store-hosts.spec.ts (Sweden on sverige.lars.localhost) hold it."
+      }
+    ]
   },
   {
     "id": "international.market-specific-content-adaptation",
@@ -245,14 +255,14 @@
       "checkedOn": "2026-10-02"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "partial"
     },
     "weight": 2,
-    "gap": "Part of criterion 1 is now built by D179 phase 4: any row, column or block can be shown only for chosen countries (the market's country), languages or currencies (visibility.show conditions, src/lib/visibility.ts), drawn by <VisiblePart> from visitorFacts() so hidden words are never in the HTML (visibility.test.ts, visibility.int.test.ts, e2e/visibility.spec.ts). Missing: a whole page limited to chosen markets and left out of their sitemap; product texts and menus that differ by market on top of their language (they vary by language only, so a German-speaking shopper in Austria and in Germany sees the same text); the builder showing which market a view is for, and per-market overrides in the translation worklist. Campaigns can be limited to countries (D116).",
-    "bucket": "A",
-    "wave": 7,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "A page, row or block can be limited to chosen markets (countries) and is not drawn, and not in the sitemap, for the others.",
       "A product text or a menu can differ by market on top of its language, falling back to the language's text.",
@@ -260,26 +270,49 @@
     ],
     "evidence": {
       "files": [
-        "src/lib/page-translation.ts",
-        "src/lib/page-content.ts",
+        "src/components/admin/menu-editor.tsx",
+        "src/components/admin/page-editor.tsx",
+        "src/components/admin/product-editor.tsx",
         "src/lib/campaigns.ts",
+        "src/lib/navigation.ts",
+        "src/lib/page-content.ts",
+        "src/lib/page-markets.ts",
+        "src/lib/page-translation.ts",
         "src/lib/visibility.ts",
+        "src/server/catalog.ts",
+        "src/server/content-grid.ts",
+        "src/server/pages.ts",
+        "src/server/products.ts",
+        "src/server/seo.ts",
+        "src/server/store-translate.ts",
         "src/server/visibility.ts"
       ],
       "tests": [
-        "src/lib/page-translation.test.ts",
+        "e2e/country-content.spec.ts",
+        "e2e/signed-in/country-content.spec.ts",
+        "e2e/visibility.spec.ts",
         "src/lib/campaigns.test.ts",
+        "src/lib/page-markets.test.ts",
+        "src/lib/page-translation.test.ts",
         "src/lib/visibility.test.ts",
-        "src/server/visibility.int.test.ts",
-        "e2e/visibility.spec.ts"
+        "src/server/country-content.int.test.ts",
+        "src/server/visibility.int.test.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D116",
-      "D179"
+      "D179",
+      "D338"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-27",
+        "from": "partial",
+        "to": "full",
+        "why": "Wave 7 unit D1 (D338): a page or article limited to some of the store's countries (PageContent.markets, pageInMarket()) is the route's 404 elsewhere and out of hreflang, the sitemap, llms.txt and content grids; rows, columns and blocks already had it (D179). A product's description per country over its language's (product_market_texts, written by saveProduct(), shown on that country's page and in its structured data) and a menu label per country ({locale}@{COUNTRY}, read first by menuLabel()), each falling back to the language's. The builder's note names the country and language the canvas draws and a limited page's countries; the Translate page counts the texts written for one country. page-markets.test.ts, country-content.int.test.ts and both country-content e2e specs hold it."
+      }
+    ]
   },
   {
     "id": "international.multi-currency-display-and-checkout",
@@ -386,14 +419,14 @@
       "checkedOn": "2026-10-02"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "partial"
     },
     "weight": 2,
-    "gap": "A visitor's country (x-vercel-ip-country) is read only on the store's country chooser (src/app/s/[store]/(chooser)/page.tsx), which suggests and never redirects (Geo-blocking Regulation). There is no dismissible suggestion on other store pages; the visibility rules' country (D179) is the market's, not the visitor's location, and LanguageHint (D312) serves Kaizena Flow's own site only.",
-    "bucket": "A",
-    "wave": 7,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "A visitor whose country has a market other than the one shown sees a dismissible suggestion on any store page, linking to that market on the same page.",
       "The suggestion never redirects and is not shown to crawlers; dismissal is kept only after consent (KNOWN_COOKIES entry) or in memory.",
@@ -401,18 +434,32 @@
     ],
     "evidence": {
       "files": [
-        "src/lib/markets.ts",
-        "src/app/s/[store]/(chooser)/page.tsx"
+        "src/app/s/[store]/(chooser)/page.tsx",
+        "src/app/s/[store]/[market]/layout.tsx",
+        "src/components/country-hint-section.tsx",
+        "src/components/country-hint.tsx",
+        "src/lib/country-hint.ts",
+        "src/lib/markets.ts"
       ],
       "tests": [
+        "e2e/country-content.spec.ts",
+        "src/lib/country-hint.test.ts",
         "src/lib/markets.test.ts"
       ],
       "untested": false
     },
     "decisions": [
-      "D109"
+      "D109",
+      "D338"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-27",
+        "from": "partial",
+        "to": "full",
+        "why": "Wave 7 unit D3 (D338): a visitor whose country (x-vercel-ip-country) the store also sells to, on another country's page, sees a dismissible card linking to the same page in their country's market, in the shopper's language; never a redirect, never for crawlers, never on the pay routes, nothing for a country the store does not sell to; read per request in its own Suspense hole, so pages stay cached; closing it is kept in memory only (no cookie or storage). country-hint.test.ts and e2e/country-content.spec.ts hold it."
+      }
+    ]
   },
   {
     "id": "international.legal-page-templates-and-policy-generator",

@@ -27,7 +27,8 @@ import { storeThemePurchases } from "@/server/theme-prices";
 
 import { answersForFeatures, QUESTION_FEATURES } from "@/lib/onboarding";
 import { nextSetupStep, stepApplies } from "@/lib/setup-steps";
-import { FEATURES_BY_ID, featureOn, featureWarnings, kindFeature, kindOffered } from "@/lib/store-features";
+import { FEATURES_BY_ID, featureOn, kindFeature, kindOffered } from "@/lib/store-features";
+import { featureWarnings } from "@/lib/feature-words";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { setupEn, type SetupMessages } from "@/lib/admin-messages/setup.en";

@@ -231,6 +231,16 @@ A1 availability (model, view, editor, CSV, cart, copies, tools); A2 rules (model
     never on the pay routes; nothing for a country the store does not sell in; in the shopper's language. The country is read on the
     server per request inside a `<Suspense>` hole, so pages stay cached; a dismissal is kept in memory, or with preferences consent in
     `kaizen_country_hint_{store}` (session storage, in `KNOWN_COOKIES`).
+  **D as built (2026-10-27).** As above, with these choices. A product's text per country is its description only, in a table of its own
+  (`product_market_texts`) rather than a key of `product_translations` (68 modules read that by exact language), shown on that country's
+  product page and in its structured data; a country text is copied with the store, never translated, and counted on the Translate page.
+  A menu link's per-country label is in the country's own language (one field per country in the menu editor). The builder's note
+  (`ViewNote`) names the country and language the canvas draws and the countries a limited page is for; the Countries choice sits under the
+  page's *Who may read it*. Country domains are only for a store that sells in several countries, never its own country (the primary's),
+  and refused beside language domains (`setDomainCountry()`, `setDomainLanguage()`, trigger `store_domains_one_kind`); a country domain is
+  never the store's address. On a country's domain a short view (`/en/x`) is that country in that language, the country's own language
+  named is moved off (`/sv/x` to `/x`), and another country is moved to its own address. The suggestion is a fixed card, read per request
+  (`x-vercel-ip-country`, never a crawler); its dismissal is kept in memory only, so no cookie entry and no consent banner come with it.
 - **E (D339) Private mode.** `stores.private_mode` (a password's hash, a landing page chosen as a page role `private`), served by the proxy
   to anyone without the unlock cookie (`kaizen_unlock_{store}`, necessary, HttpOnly) or a staff session; noindex, robots disallow, no
   sitemap, llms.txt or feed; the pay routes of orders already placed, webhooks and after-sale links keep working; turning it on and off is

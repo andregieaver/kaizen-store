@@ -713,6 +713,12 @@ export const en = {
   demoNotice: "This is a demo store. Nothing can be bought yet.",
   starterNotice: "Demo store preview: this store does not take orders.",
   starterCheckout: "This is a demo store, shown for review. It does not take orders.",
+  countryHint: {
+    offer: (country: string) => `Shopping from ${country}? This page is also in the store for ${country}, with its prices and delivery.`,
+    go: (country: string) => `Show it for ${country}`,
+    close: "Close",
+    label: "Another country",
+  },
   cartCountryClosed: (country: string) => `The store no longer sells to ${country}, so this cart cannot be ordered.`,
   cartGoHome: (home: string) => `Go to the store for ${home}`,
   testNotice: "Test mode: no real payments. Pay with the test card 4242 4242 4242 4242.",

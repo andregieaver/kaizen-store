@@ -225,6 +225,15 @@ stand-in is the only fake, and only it is told it is one.
   screen; every figure is `speedRows()` (75th percentile, `MIN_SPEED_SAMPLES`, Google's `SPEED_THRESHOLDS`), never stored, and one with too
   few page loads says how many there are. The page, the CSV `speed.figures` and the AI manager's `speed_report` read `speedReport()`. CI's
   budgets are `SPEED_BUDGETS` in `e2e/performance.spec.ts`: a change past one is a regression to look at, not a number to raise.
+- **Each country's own (wave 7 unit D, D338, `docs/wave-7-storefront.md` D)**: a store's page or article is for the countries in
+  `PageContent.markets` (none: every country), asked only through `pageInMarket()` (the routes, `hreflang`, the sitemap, llms.txt, content
+  grids), so a new place that lists or draws a store's pages asks it too. A product's description for one country is `product_market_texts`,
+  written only by `saveProduct()` (`countryTexts`, left out = kept) and read by `getProduct()`; the title stays the language's everywhere. A menu
+  label for one country is the label key `{locale}@{COUNTRY}`, read only by `menuLabel()` given the market's country and kept by `cleanLabels()`.
+  A country's own domain is `store_domains.market` (written only by `setDomainCountry()`; never with language domains, never the primary):
+  `countryHostDecision()` routes it before `languageHostDecision()`, and `marketHost()`/`marketPath()` write a market on it without its country,
+  so full addresses still come only from `marketUrl()` and `marketMetaPath()`. The country suggestion is `CountryHintSection` (per request in its
+  `<Suspense>`, off the pay routes, never a crawler, never a redirect, dismissal in memory only).
 - **What is sold where (wave 7 unit A1, D335, `docs/wave-7-storefront.md` A.1)**: a product or a variant is switched off in one market by a row
   of `commerce.market_availability` (no variant: the whole product), its price kept; written only by `saveProduct()` (`writeAvailability()`,
   `ProductInput.availability`, left out = kept, only the countries the editor shows replaced). `commerce.current_prices` leaves out a variant

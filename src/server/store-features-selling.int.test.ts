@@ -350,7 +350,7 @@ describe("switching the Selling features off is refused while customers would be
     await db().execute(sql`update commerce.bookings set status = 'cancelled', cancelled_at = now() where id = ${id}::uuid`);
     expect(await features.storeFeatureBlockers(store.id, "bookings")).toEqual([]);
     const facts = { ...(await features.featureFacts(store.id)), unpaidHostCommissions: 1 };
-    const { featureBlockers } = await import("@/lib/store-features");
+    const { featureBlockers } = await import("@/lib/feature-words");
     expect(featureBlockers("bookings", facts)).toEqual([expect.objectContaining({ path: "/hosts" })]);
     await switchFeature("bookings", false);
   });

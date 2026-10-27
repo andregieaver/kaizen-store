@@ -184,7 +184,7 @@ describe("switching features (D178)", () => {
   it("refuses switching appointments off while one is still to come", async () => {
     expect(await features.setFeature(await owner(), "appointments", true)).toMatchObject({ ok: true });
     const facts = { ...(await features.featureFacts(store.id)), futureAppointments: 2 };
-    const { featureBlockers } = await import("@/lib/store-features");
+    const { featureBlockers } = await import("@/lib/feature-words");
     expect(featureBlockers("appointments", facts)).toEqual([expect.objectContaining({ path: "/bookings" })]);
     expect(await features.setFeature(await owner(), "appointments", false, { confirmed: true })).toMatchObject({ ok: true });
   });

@@ -10,11 +10,11 @@ D152 (the store analytics cockpit) and D153 (the EU withdrawal function and the 
 
 <!-- parity:generated:start since -->
 
-- **Headline now 76.7%** (first report 59.5%), **must-have 83.8%** (first report 69.1%), over 203 core rows (first report 232).
-- Where the change comes from: +16.7 points from the 100 rating moves on core rows recorded below, and +0.4 points because the re-read changed which rows count as core (the tracker has 233 rows, the first report 232 core ones).
+- **Headline now 77.2%** (first report 59.5%), **must-have 83.8%** (first report 69.1%), over 203 core rows (first report 232).
+- Where the change comes from: +17.2 points from the 103 rating moves on core rows recorded below, and +0.4 points because the re-read changed which rows count as core (the tracker has 233 rows, the first report 232 core ones).
 - 232 of 233 rows have their Shopify side read from a page; the others are listed under evidence debt.
 
-Rated higher (84):
+Rated higher (87):
 
 - AI or rule-based customer segmentation (AI): missing to partial. D296 (wave 5 unit B): saved rule-based segments over customers and subscribers, counted live with a member list, and customer tags; read segments.ts and ran segments.test.ts, segments.int.test.ts (PGlite and integration, passed).
 - AI-written marketing email (AI): missing to partial. D297: Write with AI in the broadcast editor suggests the email's words through the claims filter, as a suggestion only; it does not yet read the store's products or campaigns.
@@ -70,6 +70,9 @@ Rated higher (84):
 - Back-in-stock notifications (Customers, not core): missing to partial. D298 built the notify-me form with double opt-in, one email per waiting address when stock returns by any path, store scope, export, erasure and pruning, and the staff's waiting counts; the email does not show the live price, a waiting req…
 - Market-specific catalogs (International): partial to full. Wave 7 unit A (D335, docs/wave-7-storefront.md A.1, A.3): commerce.market_availability switches a product or a variant off in one market and back on, its price kept; commerce.current_prices leaves such a variant out, so listings, search, t…
 - Fixed per-market prices and adjustment rules (International): partial to full. Wave 7 unit A2 (D335, docs/wave-7-storefront.md A.2): a market's prices can be worked out from another's by a standing rule (commerce.market_price_rules: percentage, before or with VAT, rounding step, ending), by the one BigInt sum derived…
+- Domains and subfolders per market (International): partial to full. Wave 7 unit D2 (D338): a store that sells in several countries gives one of them (never its own) a domain of its own (store_domains.market, setDomainCountry(), Settings, Domains), verified like the store's other domains and served there wi…
+- Market-specific content adaptation (International): partial to full. Wave 7 unit D1 (D338): a page or article limited to some of the store's countries (PageContent.markets, pageInMarket()) is the route's 404 elsewhere and out of hreflang, the sitemap, llms.txt and content grids; rows, columns and blocks alr…
+- Geolocation suggestion (International): partial to full. Wave 7 unit D3 (D338): a visitor whose country (x-vercel-ip-country) the store also sells to, on another country's page, sees a dismissible card linking to the same page in their country's market, in the shopper's language; never a redirec…
 - Legal page templates and policy generator (International): missing to partial. Read src/lib/legal-starters/{nb,sv,da,en}.ts, src/lib/checkout-terms.ts, src/server/checkout-terms.ts and the order page; ran legal-starters.test.ts, checkout-terms.test.ts, legal-roles.test.ts, src/db/trust.test.ts, legal-starters.int.tes…
 - EU withdrawal function and self-service returns (International): partial to full. D153 shipped the function: /withdraw in two steps with a confirmation (unconfirmed requests expire in 24 hours), the same reply for a wrong email or order number, an acknowledgement email on a durable medium (stored in email_messages, retr…
 - Unit price indication (International): missing to partial. Wave 1 unit 1d (D160 proposed, tree not yet committed).
@@ -135,7 +138,7 @@ Rated lower (25):
 
 <!-- parity:generated:start summary -->
 
-Kaizena Flow has **76.7%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 203 core features weighted by importance to an EU small or mid-size merchant, and **83.8%** on the must-haves (the 83 features with weight 4 or 5). The unweighted figures are 73.9% overall and 83.7% for must-haves. Counting app-only features gives 76.1%; counting Plus-only as well gives 75.5%. Kaizena Flow is strongest on catalogue and products (90.7%) and weakest on platform, extensibility and operations (54.7%), ai and automation (67.9%), checkout and payments (69.2%). Of the 203 core features, 111 are full, 78 partial and 14 missing, so half-built features, not absent ones, are the main shape of the gap.
+Kaizena Flow has **77.2%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 203 core features weighted by importance to an EU small or mid-size merchant, and **83.8%** on the must-haves (the 83 features with weight 4 or 5). The unweighted figures are 74.6% overall and 83.7% for must-haves. Counting app-only features gives 76.5%; counting Plus-only as well gives 76.0%. Kaizena Flow is strongest on catalogue and products (90.7%) and weakest on platform, extensibility and operations (54.7%), ai and automation (67.9%), checkout and payments (69.2%). Of the 203 core features, 114 are full, 75 partial and 14 missing, so half-built features, not absent ones, are the main shape of the gap.
 
 <!-- parity:generated:end summary -->
 
@@ -145,10 +148,10 @@ The method is simple: a full match scores 1, a partial match 0.5, a missing feat
 
 | Measure | Features | Weighted parity | Unweighted parity | Full / partial / missing |
 | --- | --- | --- | --- | --- |
-| Headline: core (Shopify native, Basic to Advanced) | 203 | **76.7%** | 73.9% | 111 / 78 / 14 |
+| Headline: core (Shopify native, Basic to Advanced) | 203 | **77.2%** | 74.6% | 114 / 75 / 14 |
 | Must-have (core, weight 4 or 5) | 83 | **83.8%** | 83.7% | 56 / 27 / 0 |
-| Core plus app-only features | 227 | 76.1% | 73.6% | 122 / 90 / 15 |
-| Everything, including Plus-only | 233 | 75.5% | 72.5% | 123 / 92 / 18 |
+| Core plus app-only features | 227 | 76.5% | 74.2% | 125 / 87 / 15 |
+| Everything, including Plus-only | 233 | 76.0% | 73.2% | 126 / 89 / 18 |
 
 <!-- parity:generated:end headline -->
 
@@ -166,10 +169,10 @@ Counts are core features only. Weighted parity uses weights 1 to 5; must-have is
 | Orders, shipping, fulfilment and returns | 28 | 16 | 11 | 1 | 79.0% | 14 | 86.1% |
 | Customers, marketing and loyalty | 18 | 8 | 9 | 1 | 72.6% | 8 | 76.5% |
 | Analytics, reporting and finance | 24 | 15 | 6 | 3 | 79.9% | 11 | 89.1% |
-| International, compliance and trust | 16 | 7 | 9 | 0 | 71.4% | 10 | 70.2% |
+| International, compliance and trust | 16 | 10 | 6 | 0 | 77.7% | 10 | 70.2% |
 | Platform, extensibility and operations | 20 | 4 | 12 | 4 | 54.7% | 7 | 72.4% |
 | AI and automation | 22 | 9 | 10 | 3 | 67.9% | 2 | 100.0% |
-| **Total** | **203** | **111** | **78** | **14** | **76.7%** | **83** | **83.8%** |
+| **Total** | **203** | **114** | **75** | **14** | **77.2%** | **83** | **83.8%** |
 
 <!-- parity:generated:end domains -->
 
@@ -181,7 +184,7 @@ A row is Full only when it lists code and tests that exist (or says it is untest
 
 | Evidence | Rows |
 | --- | ---: |
-| Full, with tests | 117 |
+| Full, with tests | 120 |
 | Full, untested (debt, not hidden) | 6 |
 | Shopify side not read from a page | 1 |
 | Rows in the tracker | 233 |
@@ -190,7 +193,7 @@ Untested Full rows: `ai.assistant-voice-mode`, `customers.abandoned-checkout-rec
 
 | Bucket | What it means | Rows not Full | Core rows | Core headline points lacking |
 | --- | --- | ---: | ---: | ---: |
-| A | Build in-house | 70 | 59 | 14.6 |
+| A | Build in-house | 67 | 56 | 14.1 |
 | B | Build, live only with a third party | 15 | 13 | 3.5 |
 | C | Strategy decision first | 11 | 8 | 1.9 |
 | D | Not reachable by code | 14 | 12 | 3.4 |
@@ -203,17 +206,17 @@ The waves are those of `docs/parity-plan.md` section 3. This table is produced f
 
 <!-- parity:generated:start projection -->
 
-Now: **76.7%** core, 83.8% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 16 rows (12 core) have no wave yet and are not in them.
+Now: **77.2%** core, 83.8% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 16 rows (12 core) have no wave yet and are not in them.
 
 | Wave | Scope | Rows (core) | Core if every row of waves 1 to N is Full | Must-have | Adds (points) | Core if only bucket A rows are | Must-have |
 | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | Compliance and money | 10 (7) | 78.8% | 87.3% | +2.1 | 78.2% | 86.2% |
-| 2 | Data in and out | 3 (1) | 79.0% | 87.3% | +0.2 | 78.4% | 86.2% |
-| 3 | Inventory and orders | 14 (13) | 82.2% | 89.7% | +3.2 | 79.9% | 87.5% |
-| 4 | Payments | 7 (6) | 83.7% | 91.4% | +1.5 | 80.3% | 87.5% |
-| 5 | Customers and marketing | 19 (16) | 87.9% | 95.1% | +4.1 | 83.6% | 90.6% |
-| 6 | Catalogue | 0 (0) | 87.9% | 95.1% | +0.0 | 83.6% | 90.6% |
-| 7 | Storefront and international | 12 (11) | 90.4% | 95.1% | +2.6 | 86.1% | 90.6% |
+| 1 | Compliance and money | 10 (7) | 79.3% | 87.3% | +2.1 | 78.7% | 86.2% |
+| 2 | Data in and out | 3 (1) | 79.5% | 87.3% | +0.2 | 78.9% | 86.2% |
+| 3 | Inventory and orders | 14 (13) | 82.8% | 89.7% | +3.2 | 80.4% | 87.5% |
+| 4 | Payments | 7 (6) | 84.3% | 91.4% | +1.5 | 80.8% | 87.5% |
+| 5 | Customers and marketing | 19 (16) | 88.4% | 95.1% | +4.1 | 84.1% | 90.6% |
+| 6 | Catalogue | 0 (0) | 88.4% | 95.1% | +0.0 | 84.1% | 90.6% |
+| 7 | Storefront and international | 9 (8) | 90.4% | 95.1% | +2.0 | 86.1% | 90.6% |
 | 8 | Analytics and AI | 17 (17) | 94.4% | 95.8% | +3.9 | 89.8% | 91.3% |
 | 9 | Platform and extensibility | 12 (9) | 96.6% | 96.9% | +2.3 | 91.3% | 91.8% |
 
@@ -529,11 +532,11 @@ Legend. **Shopify**: Native = included on Basic to Advanced and scored in the he
 | Markets | Native. [page](https://help.shopify.com/manual/markets/managing-markets) | Full | 4 |  | Evidence: `src/lib/markets.ts`, `src/lib/market-slug.ts`, `src/server/stores.ts` and 1 more; 3 test files; D109. |
 | Market-specific catalogs | Native. [page](https://help.shopify.com/en/manual/markets/customizations/catalogs) | Full (was partial) | 3 |  | Evidence: `src/db/schema.ts`, `supabase/migrations/20261027095217_market_availability_sql.sql`, `src/server/products.ts` and 11 more; 7 test files; D178, D321, D335. |
 | Fixed per-market prices and adjustment rules | Native. [page](https://help.shopify.com/en/manual/international/pricing/currency-rounding) | Full (was partial) | 4 |  | Evidence: `src/components/admin/product-editor.tsx`, `src/db/schema.ts`, `src/lib/currency.ts` and 9 more; 10 test files; D109, D165, D321, D335. |
-| Domains and subfolders per market | Native. [page](https://help.shopify.com/en/manual/international/managing-international-domains) | Partial | 3 | A, wave 7 | Path per market (/s/{store}/{market}, short addresses for one-country stores, D181) and up to 5 verified domains per store with one primary (P7, P8). Since D313 (docs/language-domains.md) an owner can give a LANGUAGE a domain of its own: verified like the others, served there, the other addresses of that language moved to it (308, languageHostDecision()), and canonical, hreflang, emails, Stripe return addresses, sitemap and structured data built on it (marketUrl(), marketMetaPath(), marketLink()); a store without one behaves as before (language-domains.test.ts, domains.int.test.ts, e2e/store-hosts.spec.ts). Still missing, as the criteria ask: a domain per market (country): no.example.com and de.example.com cannot be set per country, only per language, and a language's domain serves that language in every country. Code: `src/server/domains.ts`, `src/lib/custom-domains.ts`. |
-| Market-specific content adaptation | Native. [page](https://help.shopify.com/manual/markets/languages/translate-adapt-app) | Partial | 2 | A, wave 7 | Part of criterion 1 is now built by D179 phase 4: any row, column or block can be shown only for chosen countries (the market's country), languages or currencies (visibility.show conditions, src/lib/visibility.ts), drawn by <VisiblePart> from visitorFacts() so hidden words are never in the HTML (visibility.test.ts, visibility.int.test.ts, e2e/visibility.spec.ts). Missing: a whole page limited to chosen markets and left out of their sitemap; product texts and menus that differ by market on top of their language (they vary by language only, so a German-speaking shopper in Austria and in Germany sees the same text); the builder showing which market a view is for, and per-market overrides in the translation worklist. Campaigns can be limited to countries (D116). Code: `src/lib/page-translation.ts`, `src/lib/page-content.ts`. |
+| Domains and subfolders per market | Native. [page](https://help.shopify.com/en/manual/international/managing-international-domains) | Full (was partial) | 3 |  | Evidence: `docs/language-domains.md`, `src/components/admin/domains-panel.tsx`, `src/lib/custom-domains.ts` and 6 more; 6 test files; D181, D313, D338. |
+| Market-specific content adaptation | Native. [page](https://help.shopify.com/manual/markets/languages/translate-adapt-app) | Full (was partial) | 2 |  | Evidence: `src/components/admin/menu-editor.tsx`, `src/components/admin/page-editor.tsx`, `src/components/admin/product-editor.tsx` and 13 more; 9 test files; D116, D179, D338. |
 | Multi-currency display and checkout | Native. [page](https://help.shopify.com/en/manual/international/pricing/currency-rounding) | Full | 4 |  | Merged on 2026-10-26 (README rule 8): `checkout.multi-currency-pricing-and-checkout` was the same Shopify feature (rated full); its criteria and evidence are here. Evidence: `src/lib/currency.ts`, `src/lib/ecb.ts`, `src/lib/localization.ts` and 5 more; 6 test files; D109. |
 | Currency rounding rules | Native. [page](https://help.shopify.com/en/manual/international/pricing/rounding) | Full | 2 |  | Evidence: `src/lib/currency.ts`, `src/server/localization.ts`; 1 test file; D109. |
-| Geolocation suggestion | Native. [page](https://help.shopify.com/en/manual/international/localization-tools/geolocation-app) | Partial | 2 | A, wave 7 | A visitor's country (x-vercel-ip-country) is read only on the store's country chooser (src/app/s/[store]/(chooser)/page.tsx), which suggests and never redirects (Geo-blocking Regulation). There is no dismissible suggestion on other store pages; the visibility rules' country (D179) is the market's, not the visitor's location, and LanguageHint (D312) serves Kaizena Flow's own site only. Code: `src/lib/markets.ts`, `src/app/s/[store]/(chooser)/page.tsx`. |
+| Geolocation suggestion | Native. [page](https://help.shopify.com/en/manual/international/localization-tools/geolocation-app) | Full (was partial) | 2 |  | Evidence: `src/app/s/[store]/(chooser)/page.tsx`, `src/app/s/[store]/[market]/layout.tsx`, `src/components/country-hint-section.tsx` and 3 more; 3 test files; D109, D338. |
 | Legal page templates and policy generator | Native. [page](https://help.shopify.com/en/manual/checkout-settings/refund-privacy-tos) | Partial (was missing) | 4 | D, no wave yet | Built and tested; not Full because no person has read the hand-written texts (docs/parity/WAVES.md step 4, bucket D). Starters for terms, privacy, returns, shipping, withdrawal information and an imprint exist in nb, sv, da and en (src/lib/legal-starters/*), filled from legalFacts(), made as drafts with a review notice and [[placeholders]] that the builder's checker blocks publishing over, out of the sitemap until published (held only indirectly: legal-starters.int.test.ts checks the sitemap reader's page lists, no test reads the sitemap with a draft and a published starter). Checkout shows a link or a required checkbox (stores.terms_at_checkout) and records order_terms with immutable legal_snapshots, also for draft pay links, exchanges, orders on payment terms and orders paid wholly by gift cards (migrations applied 2026-10-04). New since: D311 (owner's decision reversing D158's no-model rule) writes legal pages with AI from official sources fetched by code (src/lib/legal-sources.ts, src/server/legal-sources.ts: Cellar, Riksdagen, Retsinformation, Lovdata, read weekly), every quote checked word for word and every fact filled by code (src/lib/legal-writer.ts, src/server/legal-writer.ts), turned on once on the Legal page (legal-pages-panel.tsx) and kept current daily when a store fact or a cited passage changes (runLegalUpkeep()), never over a person's page; tested with a stand-in model only (legal-writer.int.test.ts, legal-sources.int.test.ts), no real model has written a page yet. Still missing: (1) a person's review of the starters and the eight questions in docs/wave-1-trust.md section 8 (D311 decides AI pages need none, but the starters and the checkout words remain hand-written legal text); (2) the checkbox is enforced in the browser only: nothing on the server refuses an order without an order_terms record; (3) orders confirmed wholly at the venue and subscription renewals have no sentence and no record, and the order confirmation email does not link the accepted terms; (4) the goods exclusions are printed for every store with a [[Check]] line rather than filtered by what it sells, and a translation made stale by a later edit is still shown (D55); (5) no end-to-end run reaches the pay button (the demo store takes no payments). Code: `src/lib/legal-starters.ts`, `src/lib/legal-starters/nb.ts`. |
 | GDPR data export and erasure | Native. [page](https://help.shopify.com/en/manual/your-account/privacy/processing-customer-data-requests) | Partial | 4 | A, wave 1 | Unit 1g (D162, in production) built and tested most of it: a personal-data register whose test fails for an unclassified new table (src/lib/personal-data.ts, src/db/privacy.test.ts), one JSON export for staff and for the shopper after a fresh sign-in, erasure that restricts orders under the bookkeeping duty and anonymises them when the seller country's period ends, a one-month request clock, and a daily retention run with seeded, sourced periods. Later units joined the register and the export: saved addresses (D304), reviews (D301), support conversations (D216), the subscriber list and its consent history (D295), customer tags (D296), broadcast recipients (D297). Why it is not Full: (1) the staff paths are held only at function level: no route test holds the staff download's headers, the customers:write refusal or the same-site check (only the shopper route has one), and no e2e opens the customer page, the erase preview or the privacy requests and retention pages (e2e/privacy.spec.ts is the shopper's); the guards are held by the permissions scan. (2) The retention periods (NO 5, SE 7, DK 5, DE 8, other 10 years) are unverified by an accountant and every consumer text in src/lib/privacy-text.ts is hand-written nb/sv/da/en and needs legal review; the nb texts name bokføringsloven even for a Danish or Swedish store viewed in nb. (3) Known edges: a payment that arrives after erasure completes an anonymised order, so its invoice would show '[removed]'; the shopper's export holds emails only for the proven account address; refund reasons written by code read '[removed]' after anonymisation. Code: `src/lib/personal-data.ts`, `src/lib/privacy-export.ts`. |
 | EU withdrawal function and self-service returns | Native. [page](https://help.shopify.com/en/manual/compliance/legal/eu-right-of-withdrawal) | Full (was partial) | 5 |  | Evidence: `src/server/withdrawals.ts`, `src/server/returns.ts`, `src/lib/withdrawal.ts` and 9 more; 13 test files; D153. |

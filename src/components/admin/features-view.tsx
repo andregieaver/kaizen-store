@@ -6,7 +6,8 @@ import { useState, useTransition } from "react";
 import { useAdminText } from "@/components/admin/admin-text";
 import { PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
-import type { FeatureBlocker, FeatureGroupId, FeatureId, FeatureRow } from "@/lib/store-features";
+import type { FeatureGroupId, FeatureId } from "@/lib/store-features";
+import type { FeatureBlocker, FeatureRow } from "@/lib/feature-words";
 
 /** What a switch's server action answers (`switchFeatureAction`). */
 export type SwitchResult = { ok: true } | { ok: false; problems: string[]; blockers?: FeatureBlocker[]; warnings?: string[]; needsConfirmation?: boolean };

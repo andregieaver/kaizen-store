@@ -34,6 +34,7 @@ import { siteLayoutForVisitor } from "@/server/site-layouts";
 import { uiTextsFor } from "@/server/ui-text";
 
 import { MarketExtras } from "./extras";
+import { CountryHintSection } from "@/components/country-hint-section";
 import { legacyLocation } from "./legacy-redirect";
 
 import "../../../globals.css";
@@ -214,6 +215,14 @@ export default async function MarketLayout({ children, drawer, params }: Props) 
             <MarketExtras store={store} market={market} />
           </OffPayRoutes>
         </Suspense>
+        {/* A suggestion of the store for the visitor's country (D338), read per request; never a redirect, never on the pay routes. */}
+        {store.markets.length > 1 && (
+          <Suspense fallback={null}>
+            <OffPayRoutes>
+              <CountryHintSection store={store} market={market} />
+            </OffPayRoutes>
+          </Suspense>
+        )}
         <BackToAdmin storeSlug={store.slug} adminOrigin={adminOrigin(store.slug)} />
         {/* Notes when this document has left the pay routes, so the cart, checkout and order load afresh (wave 1, 1e). */}
         <Suspense fallback={null}>

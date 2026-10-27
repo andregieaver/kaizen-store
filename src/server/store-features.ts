@@ -8,20 +8,16 @@ import { formatMoney } from "@/lib/money";
 import { planFeatureChanges, targetProblems } from "@/lib/onboarding";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import {
-  FEATURE_WORDS_EN,
   FEATURES_BY_ID,
   dependentsOf,
-  featureBlockers,
   featureOn,
-  featureWarnings,
   missingNeeds,
   needWords,
   normaliseFeatures,
-  type FeatureBlocker,
   type FeatureFacts,
   type FeatureId,
-  type FeatureWords,
 } from "@/lib/store-features";
+import { FEATURE_WORDS_EN, featureBlockers, featureWarnings, type FeatureBlocker, type FeatureWords } from "@/lib/feature-words";
 
 import { forgetStoreFacts } from "./redirect-resolve";
 import { affiliateTag } from "./affiliates";

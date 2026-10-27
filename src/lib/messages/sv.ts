@@ -696,6 +696,12 @@ export const sv: Messages = {
   demoNotice: "Det här är en demobutik. Inget kan köpas ännu.",
   starterNotice: "Förhandsvisning av demobutik: den här butiken tar inte emot beställningar.",
   starterCheckout: "Det här är en demobutik som visas för granskning. Den tar inte emot beställningar.",
+  countryHint: {
+    offer: (country: string) => `Handlar du från ${country}? Den här sidan finns också i butiken för ${country}, med priser och leverans där.`,
+    go: (country: string) => `Visa den för ${country}`,
+    close: "Stäng",
+    label: "Ett annat land",
+  },
   cartCountryClosed: (country: string) => `Butiken säljer inte längre till ${country}, så den här varukorgen kan inte beställas.`,
   cartGoHome: (home: string) => `Gå till butiken för ${home}`,
   testNotice: "Testläge: inga riktiga betalningar. Betala med testkortet 4242 4242 4242 4242.",

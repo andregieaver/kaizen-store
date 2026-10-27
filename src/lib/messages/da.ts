@@ -696,6 +696,12 @@ export const da: Messages = {
   demoNotice: "Dette er en demobutik. Intet kan købes endnu.",
   starterNotice: "Forhåndsvisning af demobutik: denne butik tager ikke imod ordrer.",
   starterCheckout: "Dette er en demobutik, der vises til gennemsyn. Den tager ikke imod ordrer.",
+  countryHint: {
+    offer: (country: string) => `Handler du fra ${country}? Denne side findes også i butikken for ${country}, med priser og levering der.`,
+    go: (country: string) => `Vis den for ${country}`,
+    close: "Luk",
+    label: "Et andet land",
+  },
   cartCountryClosed: (country: string) => `Butikken sælger ikke længere til ${country}, så denne kurv kan ikke bestilles.`,
   cartGoHome: (home: string) => `Gå til butikken for ${home}`,
   testNotice: "Testtilstand: ingen rigtige betalinger. Betal med testkortet 4242 4242 4242 4242.",
