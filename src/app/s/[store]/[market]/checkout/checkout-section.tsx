@@ -11,6 +11,7 @@ import { GiftCardForm } from "@/components/gift-card-form";
 import { GiftNote } from "@/components/gift-note";
 import { BackorderLine } from "@/components/backorder-note";
 import { LineThumbnail } from "@/components/line-thumbnail";
+import { LogoPicture } from "@/components/logo-picture";
 import { LineUnitPrice } from "@/components/price";
 import { VatNotes } from "@/components/vat-notes";
 import { creditsNet } from "@/lib/bonus-shopper";
@@ -22,6 +23,9 @@ import { bookingWhen, isRange } from "@/lib/booking-text";
 import { withoutVat } from "@/lib/b2b";
 import { CHECKOUT_MINUTES, stripeLocale } from "@/lib/checkout";
 import { checkoutLabels } from "@/lib/checkout-labels";
+import { checkoutAppearanceFor, checkoutLookOf } from "@/lib/checkout-look";
+import { fontStack } from "@/lib/fonts";
+import { darkBehindLogo, isDarkColor } from "@/lib/theme";
 import { termsTemplate, type TermsDisplay } from "@/lib/checkout-terms";
 import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
@@ -34,6 +38,7 @@ import { getOpenCheckout } from "@/server/checkout";
 import { termsDisplayFor } from "@/server/checkout-terms";
 import { cartRemindersOn, checkoutOptedOut } from "@/server/cart-reminders";
 import { getCustomer } from "@/server/customers";
+import { findFont } from "@/server/fonts";
 import { deliveryView } from "@/server/delivery-choice";
 import { orderCodeOutcomes, type CodeOutcome } from "@/server/discounts";
 import { codeProblemText } from "@/lib/code-words";
@@ -483,8 +488,22 @@ async function paymentForm(store: Store, market: Market, view: CheckoutView, dra
   const optedOut = reminders && !customer ? await checkoutOptedOut(store.id, cartId) : false;
   const money = moneyOf(view, market);
   const restart = open.expired || open.changed || !publishableKey;
+  // The checkout's look (D337): Stripe's form in the theme's colours, body font and corners, and the owner's *Checkout look* choices.
+  const theme = store.theme.settings;
+  const look = checkoutLookOf(theme);
+  const bodyFont = theme.fonts.body ? findFont(theme.fonts.body) : null;
+  const panel = look.background === "surface";
   return (
-    <>
+    <div data-checkout-look={look.background} className={`checkout-look flex flex-col gap-6 ${panel ? "rounded-lg bg-surface p-4 md:p-6" : ""}`}>
+      {look.mark && store.navigation.logo && (
+        <LogoPicture
+          logo={store.navigation.logo}
+          logoDark={store.navigation.logoDark}
+          darkBehind={panel ? { light: isDarkColor(theme.light.surface), dark: isDarkColor(theme.dark.surface) } : darkBehindLogo(theme, "page")}
+          alt={store.name}
+          className="h-10 w-auto max-w-56 min-w-0 object-contain object-left"
+        />
+      )}
       {restart ? (
         <div className="flex flex-col gap-4 rounded-lg border border-border p-4">
           <p role="status">
@@ -512,6 +531,7 @@ async function paymentForm(store: Store, market: Market, view: CheckoutView, dra
         <>
           <p className="text-sm text-muted">{m.heldFor(CHECKOUT_MINUTES)}</p>
           <CheckoutForm
+            look={checkoutAppearanceFor(theme, bodyFont ? fontStack(bodyFont.family, bodyFont.category) : null)}
             publishableKey={publishableKey}
             stripeAccount={open.accountId}
             clientSecret={open.clientSecret}
@@ -588,6 +608,6 @@ async function paymentForm(store: Store, market: Market, view: CheckoutView, dra
           />
         </>
       )}
-    </>
+    </div>
   );
 }

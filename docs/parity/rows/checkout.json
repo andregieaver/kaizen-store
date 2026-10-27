@@ -11,14 +11,14 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": "full"
+      "was": "partial"
     },
     "weight": 3,
-    "gap": "The page around the payment form is the store's own: theme, header and footer, builder pieces and custom CSS (D60, D100, D113, D117). Stripe's payment form is still drawn by `appearance()` in `src/components/checkout-form.tsx` with fixed light and dark colours, a system font and a 6 px radius (rechecked 2026-10-25), so the store's accent colour, fonts and corner style stop at the payment fields (criterion 1); there is no checkout-specific logo, background or button setting in one place (criterion 4).",
-    "bucket": "A",
-    "wave": 7,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "Stripe's payment form takes its primary colour, text colours, font family and corner radius from the store's theme, in the light and the dark set (a unit test of the appearance function for two themes).",
       "The checkout page shows the store's logo and the header and footer the owner chose, in the shopper's market and language.",
@@ -33,14 +33,23 @@
         "src/components/role-page.tsx",
         "src/components/store-part-section.tsx",
         "src/app/s/[store]/[market]/checkout/checkout-section.tsx",
-        "src/lib/custom-css.ts"
+        "src/lib/custom-css.ts",
+        "src/lib/checkout-appearance.ts",
+        "src/lib/checkout-look.ts",
+        "src/components/admin/theme-editor.tsx",
+        "src/app/globals.css",
+        "src/app/api/fonts/css/[slug]/route.ts"
       ],
       "tests": [
         "src/lib/theme.test.ts",
         "src/lib/store-parts.test.ts",
         "src/app/s/[store]/[market]/checkout/checkout-section.test.ts",
         "e2e/page-roles.spec.ts",
-        "e2e/custom-css.spec.ts"
+        "e2e/custom-css.spec.ts",
+        "src/lib/checkout-appearance.test.ts",
+        "src/lib/pay-routes.graph.test.ts",
+        "src/lib/admin-messages/design.test.ts",
+        "e2e/signed-in/checkout-branding.spec.ts"
       ],
       "untested": false
     },
@@ -49,7 +58,8 @@
       "D60",
       "D100",
       "D113",
-      "D117"
+      "D117",
+      "D337"
     ],
     "history": [
       {
@@ -57,6 +67,12 @@
         "from": "full",
         "to": "partial",
         "why": "Re-read at HEAD: the surroundings follow the theme, but Stripe's payment form uses fixed colours, font and radius (`appearance()` in checkout-form.tsx), so the claim 'checkout branding' does not hold for the payment fields."
+      },
+      {
+        "on": "2026-10-27",
+        "from": "partial",
+        "to": "full",
+        "why": "D337 (wave 7 unit C, docs/wave-7-storefront.md C). (1) Stripe's payment form is drawn by stripeAppearance() (src/lib/checkout-appearance.ts) from checkoutAppearanceFor() (src/lib/checkout-look.ts): the theme's (or the checkout's own) primary colour and the text on it, background, text, secondary text and line colours in the light and the dark set, the body font's stack with our own stylesheet as cssSrc, the fields' corners from the theme's field corners and the buttons' from its button corners; checkout-appearance.test.ts holds it for Minimal and Warm classic (light and dark, radius, font) and Bold modern's square corners, and checkout-section.test.ts holds the checkout section passing the store's look to the form. (2, 3) As before: the checkout is a role page in the store's layout (header, footer, market and language) and a builder layout keeps the store's look (page-roles.spec.ts, store-parts.test.ts); the checkout can now also show the logo above the payment form. (4) Design settings' Checkout look card sets the logo, a surface panel, the pay button's colour (light and dark) and corners and the fields' style, saved into the theme (ThemeSettings.checkout) without CSS; the page's own pay button reads them through themeCss()'s --checkout-* variables. The pay routes' policy is unchanged and the form's bundle reaches no zod (pay-routes.graph.test.ts). Ran: the unit tests named, typecheck and lint on 2026-10-27. Caveat: e2e/signed-in/checkout-branding.spec.ts is written and not yet run, and it checks the saved setting and the pay routes' variables, not Stripe's frames, since the end-to-end server has no Stripe keys; whether Stripe loads the font from our stylesheet has not been seen in a live session (the fallback is the system font)."
       }
     ]
   },

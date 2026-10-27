@@ -76,6 +76,29 @@ export type CardStyle = keyof typeof CARD_STYLES;
 export const CARD_ALIGNS = { left: "Left", center: "Centred" } as const;
 export type CardAlign = keyof typeof CARD_ALIGNS;
 
+/** What the checkout's payment form sits on (D337): the page's background, or a panel in the surface colour. */
+export const CHECKOUT_BACKGROUNDS = { page: "Like the page", surface: "A panel in the surface colour" } as const;
+export type CheckoutBackground = keyof typeof CHECKOUT_BACKGROUNDS;
+/** How Stripe's payment fields are drawn at checkout (D337): a box, a filled box, or a line under each field. */
+export const CHECKOUT_FIELDS = { outlined: "Outlined", filled: "Filled", underlined: "A line under" } as const;
+export type CheckoutFields = keyof typeof CHECKOUT_FIELDS;
+
+/**
+ * The checkout's look (D337, `src/lib/checkout-appearance.ts`). Stripe's payment form always takes the theme's colours, body font and
+ * corners; these change the checkout only, and what is left out follows the theme: no `button`, the pay button is the accent; no
+ * `corners`, the theme's button corners.
+ */
+export type CheckoutLook = {
+  /** The store's mark (its logo, from Header and footer) above the payment form; the header shows it too, unless a header of the store's own leaves it out. */
+  mark?: boolean;
+  background?: CheckoutBackground;
+  /** The pay button's colour (and Stripe's main colour) in the light and the dark set, over the accent. */
+  button?: { light: string; dark: string };
+  /** The pay button's corners (and Stripe's buttons'), over the theme's button corners. */
+  corners?: ButtonCorners;
+  fields?: CheckoutFields;
+};
+
 export type ThemeSettings = {
   mode: ColorMode;
   /** Visitors may choose light or dark for themselves (D99), over the store's mode; the header shows a switch. */
@@ -105,12 +128,22 @@ export type ThemeSettings = {
   library?: ColourLibrary;
   /** How hover changes play out on the site (D206): their time, easing and the buttons' default answer. */
   hover?: ThemeHover;
+  /** The checkout's look (D337): Design settings' *Checkout look*; what it leaves out follows the theme. */
+  checkout?: CheckoutLook;
 };
 
 const keys = <T extends Record<string, unknown>>(record: T) => Object.keys(record) as [keyof T & string, ...(keyof T & string)[]];
 const hex = z.string().regex(/^#[0-9a-fA-F]{6}$/, "A colour is written as # and six hex digits, like #1f2937.").transform((v) => v.toLowerCase());
 const palette = z.object(Object.fromEntries(PALETTE_KEYS.map((key) => [key, hex])) as Record<PaletteKey, typeof hex>);
 const optionalFamily = z.preprocess((v) => (v === "" || v === null ? undefined : v), fontFamily.optional());
+
+export const checkoutLookSchema = z.object({
+  mark: z.boolean().optional(),
+  background: z.enum(keys(CHECKOUT_BACKGROUNDS)).optional(),
+  button: z.object({ light: hex, dark: hex }).optional(),
+  corners: z.enum(keys(BUTTON_CORNERS)).optional(),
+  fields: z.enum(keys(CHECKOUT_FIELDS)).optional(),
+}) satisfies z.ZodType<CheckoutLook, unknown>;
 
 export const themeSettingsSchema = z.object({
   mode: z.enum(keys(COLOR_MODES)),
@@ -137,6 +170,7 @@ export const themeSettingsSchema = z.object({
   sectionStyles: sectionStylesSchema,
   library: colourLibrarySchema.optional(),
   hover: themeHoverSchema,
+  checkout: checkoutLookSchema.optional(),
 }) satisfies z.ZodType<ThemeSettings, unknown>;
 
 // ---------------------------------------------------------------------------
@@ -180,6 +214,7 @@ export const THEME_TEMPLATES = {
       layout: { width: "normal", headerAlign: "left", headerBackground: "page" },
       productCards: { image: "square", style: "plain", align: "left" },
       breakpoints: DEFAULT_BREAKPOINTS,
+      checkout: { mark: false, background: "page", fields: "outlined" },
     },
   },
   warm: {
@@ -213,6 +248,7 @@ export const THEME_TEMPLATES = {
       layout: { width: "normal", headerAlign: "center", headerBackground: "page" },
       productCards: { image: "portrait", style: "bordered", align: "center" },
       breakpoints: DEFAULT_BREAKPOINTS,
+      checkout: { mark: false, background: "page", fields: "outlined" },
     },
   },
   bold: {
@@ -246,6 +282,7 @@ export const THEME_TEMPLATES = {
       layout: { width: "wide", headerAlign: "left", headerBackground: "inverse" },
       productCards: { image: "portrait", style: "plain", align: "left" },
       breakpoints: DEFAULT_BREAKPOINTS,
+      checkout: { mark: false, background: "page", fields: "outlined" },
     },
   },
 } as const satisfies Record<string, { name: string; description: string; settings: ThemeSettings }>;
@@ -306,9 +343,9 @@ export function parseStoreTheme(value: unknown): StoreTheme {
 // CSS
 // ---------------------------------------------------------------------------
 
-const BUTTON_RADIUS: Record<ButtonCorners, string> = { square: "0", rounded: "0.375rem", pill: "9999px" };
+export const BUTTON_RADIUS: Record<ButtonCorners, string> = { square: "0", rounded: "0.375rem", pill: "9999px" };
 const CARD_RADIUS: Record<CardCorners, string> = { none: "0", small: "0.25rem", medium: "0.5rem", large: "1rem" };
-const FIELD_RADIUS: Record<FieldCorners, string> = { none: "0", small: "0.375rem", large: "0.75rem" };
+export const FIELD_RADIUS: Record<FieldCorners, string> = { none: "0", small: "0.375rem", large: "0.75rem" };
 const WIDTH: Record<ContentWidth, string> = { narrow: "56rem", normal: "64rem", wide: "80rem" };
 const ASPECT: Record<CardImage, string> = { square: "1 / 1", portrait: "3 / 4", landscape: "4 / 3" };
 
@@ -323,6 +360,24 @@ const paletteVars = (p: Palette, scheme: "light" | "dark") =>
     `--accent: ${p.accent}`,
     `--accent-foreground: ${p.accentText}`,
   ].join("; ");
+
+/**
+ * The checkout's pay button in a colour set (D337): the owner's own colour with the more readable of the set's background and text colours
+ * on it, else the accent and its text.
+ */
+export function checkoutButton(settings: ThemeSettings, scheme: "light" | "dark"): { fill: string; text: string } {
+  const set = settings[scheme];
+  const own = settings.checkout?.button?.[scheme];
+  if (!own) return { fill: set.accent, text: set.accentText };
+  const text = contrastRatio(own, set.background) >= contrastRatio(own, set.text) ? set.background : set.text;
+  return { fill: own, text };
+}
+
+/** The checkout's own variables in a colour set (D337), which `.checkout-look` (globals.css) puts in place of the accent's. */
+const checkoutVars = (settings: ThemeSettings, scheme: "light" | "dark") => {
+  const button = checkoutButton(settings, scheme);
+  return [`--checkout-accent: ${button.fill}`, `--checkout-accent-foreground: ${button.text}`].join("; ");
+};
 
 /**
  * Where a store's or Kaizena Flow's theme is drawn on its pages: on `<html>`. It must out-weigh globals.css's own colours for a mode
@@ -348,10 +403,12 @@ export function themeCss(settings: ThemeSettings, selector: string, preview?: "l
     `--content-width: ${settings.layout.maxWidth ? `${settings.layout.maxWidth}px` : WIDTH[settings.layout.width]}`,
     `--card-aspect: ${ASPECT[settings.productCards.image]}`,
     `--heading-weight: ${HEADING_WEIGHTS[settings.headings.weight]}`,
+    // The checkout's pay button (D337): its own corners, else the theme's buttons'.
+    `--checkout-button-radius: ${BUTTON_RADIUS[settings.checkout?.corners ?? settings.buttons.corners]}`,
     // The site's hover timing (D206): only what the owner set, so effects keep their own times otherwise.
     ...Object.entries(hoverTimingVars(settings.hover)).map(([name, value]) => `${name}: ${value}`),
   ].join("; ");
-  const colors = (scheme: "light" | "dark") => paletteVars(settings[scheme], scheme);
+  const colors = (scheme: "light" | "dark") => `${paletteVars(settings[scheme], scheme)}; ${checkoutVars(settings, scheme)}`;
   if (preview) return `${selector} { ${colors(preview)}; ${sizes}; }`;
   const base = baseScheme(settings);
   const other = base === "dark" ? "light" : "dark";

@@ -14,6 +14,7 @@ import { useId, useMemo, useRef, useState, useSyncExternalStore, type FormEvent,
 import { checkoutAccountAction } from "@/app/s/[store]/[market]/account/actions";
 import { captureCheckoutEmailAction, checkoutNewsAction, checkoutRemindersAction, deliveryReadyAction } from "@/app/s/[store]/[market]/checkout/actions";
 import { recordTermsAction } from "@/app/s/[store]/[market]/checkout/terms-actions";
+import { stripeAppearance, stripeFonts, type CheckoutAppearance } from "@/lib/checkout-appearance";
 import { payHeld, payStep, type TermsDisplay } from "@/lib/checkout-terms";
 
 import { useShowsDark } from "./color-mode-switch";
@@ -86,23 +87,9 @@ export type CheckoutDeliveryCheck = {
   labels: { postal_code: string; changed: string; no_shipping: string; seeNewPrice: string; checkFailed: string };
 };
 
-const FONT = 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
-
-/** Stripe's form in the storefront's own colours (globals.css), light or dark. */
-function appearance(dark: boolean): Appearance {
-  return {
-    theme: dark ? "night" : "stripe",
-    variables: {
-      colorPrimary: dark ? "#ededed" : "#171717",
-      colorBackground: dark ? "#0a0a0a" : "#ffffff",
-      colorText: dark ? "#ededed" : "#171717",
-      colorTextSecondary: dark ? "#a3a3a3" : "#525252",
-      colorDanger: dark ? "#f87171" : "#b91c1c",
-      fontFamily: FONT,
-      fontSizeBase: "16px",
-      borderRadius: "6px",
-    },
-  };
+/** Stripe's form in the store's own look (D337), light or dark: the theme's colours, body font and corners, and the checkout's own choices. */
+function appearance(look: CheckoutAppearance, dark: boolean): Appearance {
+  return stripeAppearance(look, dark);
 }
 
 const noSubscribe = () => () => {};
@@ -128,7 +115,10 @@ export function CheckoutForm({
   terms = null,
   termsSlot = null,
   delivery = null,
+  look,
 }: {
+  /** The store's look for Stripe's form (`checkoutAppearanceFor()`, D337), worked out on the server from its theme. */
+  look: CheckoutAppearance;
   publishableKey: string;
   stripeAccount: string;
   clientSecret: string;
@@ -154,11 +144,13 @@ export function CheckoutForm({
     () => (inBrowser ? loadStripe(publishableKey, { stripeAccount, locale: locale as StripeElementLocale }) : null),
     [inBrowser, publishableKey, stripeAccount, locale],
   );
+  // The body font from our own stylesheet, by the page's own origin (a font Stripe is given only once, when its form starts).
+  const fonts = useMemo(() => (inBrowser ? stripeFonts(look, window.location.origin) : []), [inBrowser, look]);
   if (!stripe) return <Waiting label={labels.loading} />;
   return (
     <CheckoutElementsProvider
       stripe={stripe}
-      options={{ clientSecret, elementsOptions: { appearance: appearance(dark), loader: "auto" } }}
+      options={{ clientSecret, elementsOptions: { appearance: appearance(look, dark), fonts, loader: "auto" } }}
     >
       <Form
         labels={labels}

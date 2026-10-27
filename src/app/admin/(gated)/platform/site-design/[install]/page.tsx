@@ -83,6 +83,7 @@ export default async function CustomisePlatformThemePage({ params }: PageProps<"
       <ThemeEditor
         installed={install.title}
         storeName="Kaizena Flow"
+        checkout={false}
         current={preview.theme}
         saved={[]}
         logos={{ logo: chrome.navigation.logo !== null, dark: chrome.navigation.logoDark !== null }}

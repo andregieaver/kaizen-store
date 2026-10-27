@@ -184,6 +184,22 @@ A1 availability (model, view, editor, CSV, cart, copies, tools); A2 rules (model
   font's family when it is a web font Stripe can load from our own font CSS, corner radius from the theme's button radius), with a unit
   test for two themes; a *Checkout look* card in Design settings (logo on checkout, background, the pay button's colour and corners, the
   form's field style) saved into the theme's settings; the pay routes' CSP unchanged (no new script origin).
+
+  **C as built (2026-10-27).** The look is `ThemeSettings.checkout` (`CheckoutLook`: `mark`, `background` `page`/`surface`, `button`
+  `{light, dark}`, `corners`, `fields` `outlined`/`filled`/`underlined`; every template carries the defaults, so a stored theme is filled in
+  on read and no migration is needed). The logo's switch is named `mark`, since a theme holds no `logo` key (D176's look and brand apart).
+  The server works the look out (`checkoutAppearanceFor()` in `src/lib/checkout-look.ts`: colours per set, the body font's stack from the
+  catalogue, radii in pixels) and hands it to the client as plain data; `stripeAppearance()` and `stripeFonts()` in
+  `src/lib/checkout-appearance.ts` (no zod, types only from the theme) draw Stripe's Appearance. One difference from the outline: Stripe's
+  fields take the theme's *field* corners (`borderRadius`) and its buttons the *button* corners (`buttonBorderRadius`, the express
+  buttons too), since a pill radius on every field and tab would not read as the theme. The font is our own stylesheet as `cssSrc` on the
+  page's own origin (`?for=stripe`, served now with `Access-Control-Allow-Origin: *`, as the font files already were); if Stripe cannot load
+  it, its system fallbacks show. The page's own pay button takes the checkout's colour and corners through `themeCss()`'s `--checkout-*`
+  variables, read by `.checkout-look` (globals.css) around the payment form, which also draws the surface panel and the logo. The card is
+  the theme editor's (Homer: one sentence and the logo; Lisa: *Customise the checkout*, and *Follow the theme again*), with a checkout in its
+  preview; Kaizena Flow's own site's editor leaves it out (`checkout={false}`). Not done: a checkout-only background colour of its own (the
+  surface panel is the one choice), and the e2e (`e2e/signed-in/checkout-branding.spec.ts`) checks the saved setting and the pay routes'
+  variables, not Stripe's frames, since the end-to-end server has no Stripe keys.
 - **D (D338) Each country's own.** A page's `markets` (none = all): not drawn, a 404 and out of the sitemap in the others; a product's
   title, description and a menu's labels may have a text per country over the language's (`texts.{locale}@{country}`), falling back to the
   language's; the builder's view bar names the country and language shown, and the translation worklist counts per-country texts. A

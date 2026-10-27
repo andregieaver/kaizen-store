@@ -28,21 +28,31 @@ const termsNow = vi.hoisted(() => ({ display: null as null | Record<string, unkn
 vi.mock("@/server/checkout-terms", () => ({ termsDisplayFor: async () => termsNow.display }));
 vi.mock("@/components/checkout-button", () => ({ CheckoutButton: () => null }));
 vi.mock("@/components/checkout-code-form", () => ({ CheckoutCodeForm: () => null }));
-vi.mock("@/components/checkout-form", () => ({ CheckoutForm: () => null }));
+// The payment form's props, as the section passes them (D337: the store's look for Stripe's form).
+const formNow = vi.hoisted(() => ({ props: null as null | Record<string, unknown> }));
+vi.mock("@/components/checkout-form", () => ({
+  CheckoutForm: (props: Record<string, unknown>) => {
+    formNow.props = props;
+    return "CHECKOUT-FORM";
+  },
+}));
 vi.mock("@/components/line-thumbnail", () => ({ LineThumbnail: () => null }));
 const deliveryNow = vi.hoisted(() => ({ options: null as null | { postalCode: string | null; options: unknown[] } }));
 vi.mock("@/server/delivery-choice", () => ({ deliveryView: async () => deliveryNow.options }));
 vi.mock("@/components/delivery-choice", () => ({ DeliveryChoice: () => "DELIVERY-CHOICE" }));
 
+import { stripeAppearance } from "@/lib/checkout-appearance";
 import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
+import { EMPTY_NAVIGATION } from "@/lib/navigation";
+import { parseStoreTheme, templateSettings } from "@/lib/theme";
 import type { Store } from "@/server/stores";
 
-import { Checkout, CheckoutCredits, CheckoutDelivery, CheckoutItems, CheckoutTerms, CheckoutTotals } from "./checkout-section";
+import { Checkout, CheckoutCredits, CheckoutDelivery, CheckoutItems, CheckoutPayment, CheckoutTerms, CheckoutTotals } from "./checkout-section";
 
 let bonusNow: CartBonus | null = null;
 const market = { slug: "ie", code: "IE", currency: "EUR", locale: "en-IE", lang: "en" } as Market;
-const store = { id: "s1", slug: "demo" } as Store;
+const store = { id: "s1", slug: "demo", name: "Demo", theme: parseStoreTheme(null), navigation: EMPTY_NAVIGATION } as Store;
 
 const order = (over: Record<string, unknown> = {}) => ({
   id: "o1",
@@ -381,5 +391,44 @@ describe("the checkout's gift line (wave 3, run 2, D173)", () => {
   it("shows nothing for an order that is not a gift", async () => {
     getOrder.mockResolvedValue(order({ gift: null }));
     expect(renderToString(await CheckoutItems({ store, market }))).not.toContain("data-gift-note");
+  });
+});
+
+describe("the checkout's look (D337)", () => {
+  beforeEach(() => {
+    stripeNow.key = "pk_test_1";
+    termsNow.display = null;
+    formNow.props = null;
+    getOrder.mockResolvedValue(order());
+  });
+
+  it("passes Stripe's form the store's theme, and draws the panel, the logo and the pay button's own colour", async () => {
+    const settings = {
+      ...templateSettings("warm"),
+      fonts: {},
+      checkout: { mark: true, background: "surface" as const, fields: "outlined" as const, button: { light: "#1d4ed8", dark: "#93c5fd" } },
+    };
+    const branded = {
+      ...store,
+      theme: { base: "warm" as const, savedId: null, settings },
+      navigation: { ...EMPTY_NAVIGATION, logo: { url: "https://cdn.example/logo.png", width: 200, height: 60 } },
+    } as Store;
+    const markup = renderToString(await CheckoutPayment({ store: branded, market }));
+    expect(markup).toContain('data-checkout-look="surface"');
+    expect(markup).toMatch(/class="checkout-look [^"]*bg-surface/);
+    expect(markup).toContain('src="https://cdn.example/logo.png"');
+    expect(markup).toContain("CHECKOUT-FORM");
+    const look = formNow.props!.look as Parameters<typeof stripeAppearance>[0];
+    expect(stripeAppearance(look, false).variables).toMatchObject({ colorPrimary: "#1d4ed8", colorBackground: "#f1e8da", colorText: "#2b2118", buttonBorderRadius: "6px" });
+    expect(stripeAppearance(look, true).variables).toMatchObject({ colorPrimary: "#93c5fd", colorText: "#f3eadf" });
+  });
+
+  it("follows the theme with no logo and no panel by default", async () => {
+    const markup = renderToString(await CheckoutPayment({ store, market }));
+    expect(markup).toContain('data-checkout-look="page"');
+    expect(markup).not.toContain("bg-surface p-4");
+    expect(markup).not.toContain("<img");
+    const look = formNow.props!.look as Parameters<typeof stripeAppearance>[0];
+    expect(stripeAppearance(look, false).variables).toMatchObject({ colorPrimary: "#171717", colorBackground: "#ffffff", buttonBorderRadius: "9999px" });
   });
 });
