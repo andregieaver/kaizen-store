@@ -35,7 +35,7 @@ export type AtomFeed = {
 export const FEED_ENTRIES_MAX = 50;
 
 // XML 1.0 allows tab, newline, carriage return and everything from space on, except the surrogates and U+FFFE/U+FFFF.
-const NOT_XML = /[^\u0009\u000a\u000d -퟿-�\u{10000}-\u{10ffff}]/gu;
+const NOT_XML = /[^\u0009\u000a\u000d\u0020-\ud7ff\ue000-\ufffd\u{10000}-\u{10ffff}]/gu;
 
 export const xmlText = (value: string): string =>
   value.replace(NOT_XML, "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");

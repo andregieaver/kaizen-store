@@ -223,6 +223,62 @@ A1 availability (model, view, editor, CSV, cart, copies, tools); A2 rules (model
   on an article, shown on it and in its JSON-LD; an Atom feed per blog (`/blog/{blog}.atom`, published articles only, a test parses it);
   comments (`commerce.blog_comments`, decision 3) held for moderation by default, checked for spam in code, rate-limited by hashed keys, no
   cookie, personal data with export and erasure; scheduled articles through F's schedules.
+
+  **G as built (2026-10-27).** As above, with these differences and choices.
+  - **Addresses.** The first blog stays `/blog` (its row is made for every store by the trigger `stores_first_blog()`, and for every store
+    there was by the migration, so no address moved); every other blog is at `/blogs/{handle}` (`blogPath()`, `articlePath()` in
+    `src/lib/blogs.ts`), with its articles at `/blogs/{handle}/{slug}` and its category and tag pages under it. An article's blog is a field of
+    its content (`PageContent.blogId`, kept by `savePage()` only when it is the store's own and not the first blog; none, or a blog that is
+    gone, is the first blog's), so moving an article between blogs is published with the article like any change. Article addresses stay
+    unique per store: an article asked for under another blog's address (an old `/blog/{slug}` link included) moves to its own for good
+    (308). `blogs` is reserved for pages by the app only (`RESERVED_STORE_PAGE_SLUGS`); the database's check is unchanged, so a page a store
+    already had there cannot stop the migration (such a page could no longer be saved under that address).
+  - **The feed** is each blog's address with `/feed.atom` after it (`/blog/feed.atom`, `/blogs/{handle}/feed.atom`, `feedPath()`), not
+    `/blog/{blog}.atom`: a dynamic segment cannot be both a page and `{handle}.atom`, and `feed.atom` cannot be an article's address. It is
+    Atom (RFC 4287) written by `atomFeed()` (`src/lib/atom.ts`: every text escaped, XML-forbidden characters dropped, the summary plain
+    text), the newest 50 published articles of that blog in the market's language (`blogFeed()` in `src/server/blogs.ts`, cached under the
+    store's pages tag, which publishing and a schedule's run refresh), and linked from the blog's, its term pages' and its articles' heads
+    (`alternates.types`) and from the standard list. `src/lib/atom.test.ts` and `blogs.int.test.ts` parse it with a strict reader.
+  - **Each blog's own categories and tags.** Terms stay the store's article terms (D50), shared by its blogs; a blog's list offers the
+    categories its own articles are in, and its category and tag pages list only its own articles (`source.blog` on the articles grid). A
+    content grid of articles can be limited to one blog in code (the builder's grid field does not offer it yet).
+  - **Its listing page.** The first blog's stays the `blog` page role (D112, chosen under Pages, Special pages); another blog names a page of
+    its own store (`blogs.listing_page_id`, `blogs_rules()`), left out of the sitemap as a page.
+  - **Authors** are `commerce.blog_authors`, written only by `src/server/blogs.ts` (`saveAuthor()`: the picture must be in the store's media
+    library, the link `isSafeAddress()`), chosen in the article editor (`PageContent.authorId`), drawn under the article (`ArticleView`'s
+    author box) and in its `Article` JSON-LD as a `Person` with `url`, `image` and `description`; the free-text name stays the fallback. Their
+    pictures are in `mediaUses()` (`author`, a picture that leaves the site) and `rewriteAddresses()`.
+  - **Comments** are `commerce.blog_comments`, written only by `src/server/blog-comments.ts`: posted to `/api/blog/comments` (same site, no
+    cookie, no storage), counted against `COMMENTS_PER_VISITOR_HOUR` per visitor (a keyed hash of the address and the store, bucket
+    `comment:…` in `commerce.chat_usage`) and `COMMENTS_PER_STORE_HOUR` per store, checked by `spamReasons()` (the hidden field, sent within
+    three seconds, more than one web address, an address as the name, the same normalised text in the store within 24 hours), and kept as
+    `commentOutcome()` says: a robot's (the hidden field) answered as taken and dropped, a flagged one kept as `spam` (staff may still
+    approve it), the rest `pending` (`moderated`, the default) or `approved` (`automatic`). The visitor is never told why one waits. Only
+    `approved` comments are drawn (`approvedComments()`, cached under `commentsTag()`), as plain text; `off` draws no form and no comments.
+    A comment's words, name and email are fixed by `blog_comments_rules()`; a decided one never waits again. Staff decide at Website, Blog
+    comments (`/admin/{store}/articles/comments`: waiting, shown, spam, refused, with the spam check's findings). Personal data: the
+    register's `blog_comments` (by the email, export section `comments`, erasure deletes), and the retention rule `blog_comments` deletes
+    refused and spam comments 30 days after they were posted (`runRetention()`). An approved comment stays with its article until erased
+    or deleted; a comment without an email cannot be found by a person's request (the store deletes it by hand).
+  - **Schedules** are `commerce.page_schedules` (D341, the start of F's model), written only by `src/server/page-schedules.ts`
+    (`schedulePage()`, `cancelSchedule()`), one waiting per page (`page_schedules_one_waiting_idx`), settled only once
+    (`page_schedules_rules()`), and run by `runSchedules()` in the five-minute dispatcher: each due row is claimed `for update skip locked`,
+    its maker read again (`passMembership()`, the kind of page's write key), refused for a page in a running A/B test, and published through
+    `savePage()` with the checker's issues the maker chose to publish with (`acknowledged`; the editor and the AI manager never schedule
+    past a blocking issue, so it stays empty for now), the store's pages tag refreshed. A schedule of a store that is not open waits (it is
+    not failed); one that cannot run fails with its reason, audited `store.{type}_schedule_failed` and shown in the editor's Schedule
+    dialog. The time is the store's clock (`scheduleInstant()`, at least two minutes ahead, at most a year); it publishes within five
+    minutes after it. Pages and articles both get *Schedule* beside Publish (it cost nothing more); layouts, test versions and Kaizena
+    Flow's own pages do not.
+  - **What F still adds to the schedules:** a way back (`revert_at` and the version before, put back at another time), headers, footers
+    and theme installs going live (`theme_schedules`), failures listed in the page lists, preview links, and the live look's versions.
+  - **The AI manager:** `list_blogs` and `blog_comments` (read-only, `website:read`; a comment's words, name and email never reach the model,
+    as a review's never do), `moderate_blog_comment` (gate `public`, `website:write`, `NEVER_AUTOMATIC`: a person reads a visitor's words
+    before they are shown) and `schedule_article` (gate `public`, `website:write`, `TOOL_AREAS` website as `publish_page`), each refused before
+    a yes by what its page would refuse.
+  - **Copies.** `blogs` is `derived` (the first blog is made with the new store; other blogs are not copied, and their articles fall to the
+    copy's first blog), `blog_authors`, `blog_comments` and `page_schedules` are `never`.
+  - Shopper words are `blogComments` in the browser catalogues (nb, sv, da, en by hand); admin words are the `blog` catalogue (en, nb).
 - **H (D342) Producer responsibility.** A *Producer responsibility* page under Settings: registrations (scheme, country, number,
   authority, valid from and to) written only by `src/server/producer-registrations.ts`; `commerce.registration_blocks()` (the view's rule)
   read by the cart and `placeOrder()` alike: a product under a scheme with no valid registration in a country is not sold there from the

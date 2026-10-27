@@ -19,7 +19,7 @@ function decode(raw: string): string {
   });
 }
 
-const FORBIDDEN = /[\u0000-\u0008\u000b\u000c\u000e-\u001f￾￿]/;
+const FORBIDDEN = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\ufffe\uffff]/;
 
 export function parseXml(source: string): XmlElement {
   if (FORBIDDEN.test(source)) throw new Error("A character XML forbids");

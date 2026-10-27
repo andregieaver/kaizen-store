@@ -262,7 +262,7 @@ describe("the request's query string", () => {
 
 describe("what is reserved", () => {
   it("is the store's working pages and the platform's routes, and nothing of the content routes", () => {
-    const content = ["blog", "category", "p", "products", "tag"];
+    const content = ["blog", "blogs", "category", "p", "products", "tag"];
     expect([...WORKING_SEGMENTS].sort()).toEqual(RESERVED_STORE_PAGE_SLUGS.filter((s) => !content.includes(s)).sort());
     for (const c of content) expect(RESERVED_SOURCE_SEGMENTS).not.toContain(c);
     expect(PLATFORM_SEGMENTS).toEqual(["admin", "api", "auth", "_next", "s", "r", "demo", "kaizen"]);

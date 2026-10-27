@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { articlePath, authorProblems, blogOfArticle, blogPath, blogProblems, blogTitle, feedPath, handleFromTitle, inBlog, type Blog } from "./blogs";
 import { isSafeAddress } from "./field-parts";
 import { SCHEDULE_LATEST_DAYS, scheduleInstant, wallClock } from "./page-schedules";
+import { articleJsonLd } from "./structured-data";
 
 /** Blogs, their addresses and authors (D341), and the schedule's time on the store's clock. */
 
@@ -89,5 +90,36 @@ describe("a schedule on the store's clock", () => {
   it("writes an instant back as the store's day and time", () => {
     expect(wallClock("2026-11-02T08:00:00Z", "Europe/Oslo")).toEqual({ day: "2026-11-02", time: "09:00" });
     expect(wallClock("2026-10-27T23:30:00Z", "Europe/Oslo")).toEqual({ day: "2026-10-28", time: "00:30" });
+  });
+});
+
+describe("an article's author in its structured data", () => {
+  const base = {
+    origin: "https://kopp.example",
+    url: "https://kopp.example/blog/hello",
+    title: "Hello",
+    description: "About hello",
+    image: null,
+    publishedAt: "2026-10-01T08:00:00.000Z",
+    modifiedAt: "2026-10-02T08:00:00.000Z",
+    locale: "nb-NO",
+    store: { homeUrl: "https://kopp.example/", storeUrl: "https://kopp.example/" },
+  };
+
+  it("is the author record as a Person with their page, picture and words", () => {
+    const ld = articleJsonLd({ ...base, author: { name: "Kari Nordmann", url: "/om-kari", image: "/media/kari.webp", description: "Writes about coffee." } });
+    expect(ld.author).toEqual({
+      "@type": "Person",
+      name: "Kari Nordmann",
+      url: "https://kopp.example/om-kari",
+      image: "https://kopp.example/media/kari.webp",
+      description: "Writes about coffee.",
+    });
+  });
+
+  it("leaves out a link that is not a web address or a path, and falls back to the typed name, then the store", () => {
+    expect(articleJsonLd({ ...base, author: { name: "Kari", url: "javascript:alert(1)" } }).author).toEqual({ "@type": "Person", name: "Kari" });
+    expect(articleJsonLd({ ...base, author: "Ola" }).author).toEqual({ "@type": "Person", name: "Ola" });
+    expect(articleJsonLd({ ...base, author: null }).author).toEqual({ "@id": expect.stringContaining("kopp.example") });
   });
 });

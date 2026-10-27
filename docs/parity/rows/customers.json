@@ -1412,65 +1412,6 @@
     "history": []
   },
   {
-    "id": "customers.blog-and-content-marketing",
-    "domain": "customers",
-    "feature": "Blog and content marketing",
-    "weight": 3,
-    "shopify": {
-      "tier": "native",
-      "text": "Native. Several blogs per store (the help centre has 'Manage blogs'), a built-in blogging engine, and customer comments that can be disabled, held for moderation or auto-published, with automatic spam flagging (replying to comments needs an app).",
-      "url": "https://help.shopify.com/en/manual/online-store/blogs/managing-comments",
-      "fetched": true,
-      "checkedOn": "2026-10-03"
-    },
-    "kaizen": {
-      "rating": "partial",
-      "rechecked": true,
-      "was": "full"
-    },
-    "gap": "Verified: one blog per store (`/blog`, articles are pages of type `article`, D57) with author name, categories, tags, search texts, JSON-LD `Article`, translations, versions and draft or publish. Missing: more than one blog, customer comments with moderation, an RSS or Atom feed and scheduled publishing (none in the code).",
-    "bucket": "A",
-    "wave": 7,
-    "criteria": [
-      "A store can have several blogs, each with its own address, listing, categories and tags.",
-      "Readers can comment on an article when the owner allows it (off, moderated or automatic); comments set no cookie, are rate-limited by hashed keys, pass a spam check and appear only when approved in the default setting.",
-      "Each blog has an RSS or Atom feed that lists only published articles, linked from the page head.",
-      "An article can be scheduled to publish at a set time in the store's time zone and is not visible, in sitemaps or in the feed before it."
-    ],
-    "evidence": {
-      "files": [
-        "src/server/pages.ts",
-        "src/components/page-article.tsx",
-        "src/app/s/[store]/[market]/blog/page.tsx",
-        "src/app/s/[store]/[market]/blog/blog-listing.tsx",
-        "src/app/s/[store]/[market]/blog/[slug]/page.tsx",
-        "src/lib/structured-data.ts",
-        "src/server/taxonomy.ts",
-        "src/lib/taxonomy.ts"
-      ],
-      "tests": [
-        "src/server/pages.int.test.ts",
-        "src/server/taxonomy.int.test.ts",
-        "src/lib/structured-data.test.ts",
-        "e2e/blog.spec.ts"
-      ],
-      "untested": false
-    },
-    "decisions": [
-      "D50",
-      "D57",
-      "D112"
-    ],
-    "history": [
-      {
-        "on": "2026-10-03",
-        "from": "full",
-        "to": "partial",
-        "why": "Skeptic recheck against Shopify's blog help page: comments with moderation and several blogs are native, and the code has neither (nor an RSS feed or scheduled publishing); docs/parity-plan.md wave 7 lists them as blog depth still to build. The first report's gap text already said 'no comments'."
-      }
-    ]
-  },
-  {
     "id": "customers.seo-fundamentals",
     "domain": "customers",
     "feature": "SEO fundamentals",

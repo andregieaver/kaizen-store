@@ -100,7 +100,7 @@ export function blogProblems(input: BlogInput, { main, others, count }: { main: 
 export function handleFromTitle(title: string): string {
   return title
     .normalize("NFKD")
-    .replace(/[̀-ͯ]/g, "")
+    .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .replace(/æ/g, "ae")
     .replace(/ø/g, "o")

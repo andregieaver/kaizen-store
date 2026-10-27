@@ -313,19 +313,20 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "partial"
     },
     "weight": 3,
-    "gap": "Articles are pages of type `article` built in the full page builder (D57), with a free-text author name, categories and tags, `Article` JSON-LD and one `/blog` per store (a page role, D112). Verified 2026-10-25: no second blog, no author records, no comments, and no RSS or Atom route.",
-    "bucket": "A",
-    "wave": 7,
+    "gap": "Merged on 2026-10-27 (README rule 8): `customers.blog-and-content-marketing` was the same Shopify feature (rated partial); its stricter criteria (each blog's own categories and tags, comments with no cookie and rate-limited by hashed keys, the feed linked from the page head, scheduled articles) and its evidence are here. Caveats, not gaps: a blog's categories and tags are the store's article terms (D50), shared by its blogs, and each blog lists and filters by the ones its own articles use (Shopify's blogs have tags per article, no categories); a blog's feed is its address with /feed.atom after it (Shopify appends .atom to the blog's address); comments are checked for spam in code, without a spam service (decision 3 of docs/wave-7-storefront.md), and a scheduled article goes live within five minutes after its time.",
+    "bucket": null,
+    "wave": null,
     "criteria": [
-      "A store can have several blogs, each with its own address, title, listing page and sitemap entries.",
-      "Each blog has a feed (Atom or RSS) at a stable address, listing published articles with title, summary, date and author; a test parses it.",
+      "A store can have several blogs, each with its own address, title, listing page, categories and tags, and sitemap entries.",
+      "Each blog has a feed (Atom or RSS) at a stable address, linked from the page head, listing only its published articles with title, summary, date and author; a test parses it.",
       "Authors are records (name, picture, short text, link) chosen on an article and shown on it and in its JSON-LD.",
-      "Visitors can comment on an article when the blog allows it; comments are held for moderation, checked for spam, and shown only when approved, with consent and erasure rules honoured."
+      "Visitors can comment on an article when the blog allows it (off, moderated or automatic); comments set no cookie, are rate-limited by hashed keys, pass a spam check, are held for moderation by default and shown only when approved, with consent and erasure rules honoured.",
+      "An article can be scheduled to publish at a set time in the store's time zone and is not visible, in sitemaps or in the feed before it."
     ],
     "evidence": {
       "files": [
@@ -336,20 +337,63 @@
         "src/lib/taxonomy.ts",
         "src/server/taxonomy.ts",
         "src/lib/structured-data.ts",
-        "src/lib/page-roles.ts"
+        "src/lib/page-roles.ts",
+        "src/server/pages.ts",
+        "src/app/s/[store]/[market]/blog/[slug]/page.tsx",
+        "src/lib/blogs.ts",
+        "src/server/blogs.ts",
+        "src/lib/atom.ts",
+        "src/app/s/[store]/[market]/blog/feed.atom/route.ts",
+        "src/app/s/[store]/[market]/blogs/[blog]/page.tsx",
+        "src/app/s/[store]/[market]/blogs/[blog]/[slug]/page.tsx",
+        "src/app/s/[store]/[market]/blogs/[blog]/feed.atom/route.ts",
+        "src/app/s/[store]/[market]/blog/article-page.tsx",
+        "src/lib/blog-comments.ts",
+        "src/server/blog-comments.ts",
+        "src/app/api/blog/comments/route.ts",
+        "src/components/blog-comments.tsx",
+        "src/components/blog-comment-form.tsx",
+        "src/app/admin/(gated)/[store]/articles/blogs/page.tsx",
+        "src/app/admin/(gated)/[store]/articles/authors/page.tsx",
+        "src/app/admin/(gated)/[store]/articles/comments/page.tsx",
+        "src/lib/page-schedules.ts",
+        "src/server/page-schedules.ts",
+        "src/components/admin/schedule-dialog.tsx",
+        "src/server/seo.ts",
+        "src/server/blog-tools.ts",
+        "src/lib/personal-data.ts",
+        "supabase/migrations/20261027143728_blogs_sql.sql"
       ],
       "tests": [
         "e2e/blog.spec.ts",
-        "src/server/seo.int.test.ts"
+        "src/server/seo.int.test.ts",
+        "src/server/pages.int.test.ts",
+        "src/server/taxonomy.int.test.ts",
+        "src/lib/structured-data.test.ts",
+        "src/lib/blogs.test.ts",
+        "src/lib/atom.test.ts",
+        "src/lib/blog-comments.test.ts",
+        "src/db/blogs.test.ts",
+        "src/server/blogs.int.test.ts",
+        "e2e/blog-feed.spec.ts",
+        "e2e/signed-in/blogs.spec.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D57",
       "D112",
-      "D143"
+      "D143",
+      "D50"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-27",
+        "from": "partial",
+        "to": "full",
+        "why": "Wave 7 unit G (D341) built it, read in the code and held by tests: several blogs (commerce.blogs: the first at /blog, others at /blogs/{handle}, each with its title per language, its list or chosen page, its categories and tags pages and sitemap entries); an Atom feed per blog at {blog}/feed.atom, published articles only, linked from the page head, parsed by atom.test.ts and blogs.int.test.ts; author records chosen on an article, shown under it and in its Article JSON-LD; comments (off, held for moderation by default, or automatic) posted with no cookie, counted per visitor by a keyed hash in chat_usage, checked for spam in code and shown only when approved, exported and erased by the person's address with a retention rule for refused ones; and articles (and pages) scheduled on the store's clock, published by the five-minute job in the scheduler's name and invisible (not published, so in no list, sitemap or feed) before. Merged customers.blog-and-content-marketing into this row (README rule 8, decision 6 of the wave's spec)."
+      }
+    ]
   },
   {
     "id": "storefront.navigation-menus-and-mega-menus",

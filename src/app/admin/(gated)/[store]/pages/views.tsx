@@ -29,7 +29,8 @@ import { listSavedParts } from "@/server/saved-parts";
 import { siteLayoutChoice } from "@/server/site-layouts";
 import { bothTerms, listTerms } from "@/server/taxonomy";
 import { getFieldData } from "@/server/custom-fields";
-import { Card, CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { Card, CARD_CLASS, CountBadge, PageHeader } from "@/components/admin/ui";
+import { commentCounts } from "@/server/blog-comments";
 
 import {
   chooseStoreSiteLayoutAction,
@@ -85,6 +86,8 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
   const context = await storePageContext(store, type);
   // Pages that have a place of their own (D112) are not offered for another.
   const roleIds = new Set(Object.values(store.pageRoles));
+  const blogWords = adminText(adminLangOf(gated.account.adminLocale), "blog");
+  const waitingComments = type === "article" ? (await commentCounts(store.id)).pending : 0;
   return (
     <AdminTextScope texts={adminTexts(adminLangOf(gated.account.adminLocale), ["website"])}>
     <div className="flex flex-col gap-6">
@@ -95,6 +98,18 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
             <Link href={`${base}/categories`} className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4 text-sm font-medium">
               Categories and tags
             </Link>
+          )}
+          {/* The store's blogs, their authors and the comments waiting (D341). */}
+          {type === "article" && (
+            <>
+              <Link href={`${base}/blogs`} className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4 text-sm font-medium">
+                {blogWords.links.blogs}
+              </Link>
+              <Link href={`${base}/comments`} className="inline-flex min-h-10 items-center gap-2 rounded-pill border border-edge px-4 text-sm font-medium">
+                {blogWords.links.comments}
+                {waitingComments > 0 && <CountBadge count={waitingComments} />}
+              </Link>
+            </>
           )}
           {type === "page" && (
             <Link href={`${base}/ai`} className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4 text-sm font-medium">

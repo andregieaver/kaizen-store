@@ -25,7 +25,7 @@ export const MARKET_SEGMENT = /^[a-z]{2}(?:-[a-z0-9]{2,8}){0,2}$/;
 
 /**
  * The first parts of a store's own pages that are not content: the working pages (the store's reserved page addresses, `RESERVED_STORE_PAGE_SLUGS`, less the
- * content routes `blog`, `category`, `p`, `products` and `tag`; a test holds the two together). Never redirected, never recorded as missing.
+ * content routes `blog`, `blogs` (D341), `category`, `p`, `products` and `tag`; a test holds the two together). Never redirected, never recorded as missing.
  */
 export const WORKING_SEGMENTS: readonly string[] = [
   "account",

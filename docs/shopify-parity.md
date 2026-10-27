@@ -10,11 +10,11 @@ D152 (the store analytics cockpit) and D153 (the EU withdrawal function and the 
 
 <!-- parity:generated:start since -->
 
-- **Headline now 76.7%** (first report 59.5%), **must-have 83.8%** (first report 69.1%), over 203 core rows (first report 232).
-- Where the change comes from: +16.7 points from the 100 rating moves on core rows recorded below, and +0.4 points because the re-read changed which rows count as core (the tracker has 233 rows, the first report 232 core ones).
-- 232 of 233 rows have their Shopify side read from a page; the others are listed under evidence debt.
+- **Headline now 77.0%** (first report 59.5%), **must-have 83.8%** (first report 69.1%), over 202 core rows (first report 232).
+- Where the change comes from: +17.2 points from the 100 rating moves on core rows recorded below, and +0.3 points because the re-read changed which rows count as core (the tracker has 232 rows, the first report 232 core ones).
+- 231 of 232 rows have their Shopify side read from a page; the others are listed under evidence debt.
 
-Rated higher (84):
+Rated higher (85):
 
 - AI or rule-based customer segmentation (AI): missing to partial. D296 (wave 5 unit B): saved rule-based segments over customers and subscribers, counted live with a member list, and customer tags; read segments.ts and ran segments.test.ts, segments.int.test.ts (PGlite and integration, passed).
 - AI-written marketing email (AI): missing to partial. D297: Write with AI in the broadcast editor suggests the email's words through the claims filter, as a suggestion only; it does not yet read the store's products or campaigns.
@@ -97,11 +97,12 @@ Rated higher (84):
 - Storefront API and headless (Platform): missing to partial. Read src/app/api/wordpress/v1/stores/[slug]/{products,product,terms,view,cart/quote,cart/handoff}/route.ts, src/server/wordpress-route.ts, src/server/wordpress-shop.ts and src/server/cart-handoff.ts (D169, D170): a token-gated, rate-limite…
 - Product, customer and order CSV (Platform): missing to partial. Wave 2, first run (docs/wave-2-data.md; working tree not yet committed).
 - Product, customer and order CSV (Platform): partial to full. D295 (wave 5 unit A): the customer export now carries each address's marketing-consent state from the subscriber list instead of not_recorded; read customer-export.ts and customer-csv.ts and ran customer-export.int.test.ts and customer-csv…
+- Blog (multiple blogs, authors, comments, RSS) (Storefront): partial to full. Wave 7 unit G (D341) built it, read in the code and held by tests: several blogs (commerce.blogs: the first at /blog, others at /blogs/{handle}, each with its title per language, its list or chosen page, its categories and tags pages and s…
 - Mobile-responsive storefront, per-device editing (Storefront): partial to full. D179 (docs/responsive-editing.md, phases 1 to 4) shipped after the last re-read.
 - Page speed: CDN, image optimisation, report (Storefront): partial to full. Wave 7 unit B (D336): product cards, content grid tiles, picture components and the product gallery offer the library's two files (WebP or AVIF from upload, 480 and up to 1600 px) by width with sizes from the columns (SizedPicture, picture…
 - URL redirect manager (Storefront): partial to full. D168 (wave 2, second run, docs/wave-2-redirects.md).
 
-Rated lower (25):
+Rated lower (24):
 
 - AI or rule-based customer segmentation (AI): partial to missing. No criterion holds; RFM counts are credited in analytics.rfm-segments-and-customer-lists, and there is no segment builder for the assistant to fill
 - AI-written marketing email (AI): partial to missing. email_customer is a one-customer gated mail, not a marketing email; no criterion holds
@@ -117,7 +118,6 @@ Rated lower (25):
 - Customer segments and tags (Customers): partial to missing. Skeptic recheck: no tags, no saved segments and no audience; RFM counts are the analytics rows and discount groups are assigned by hand; same capability is missing in analytics.dynamic-segments-for-marketing.
 - Automatic discounts (Customers): full to partial. Merged with checkout.discount-codes-and-automatic-discounts (rule 8): its open criterion, an owner's choice of whether a campaign and a code combine, is this row's now and is not met.
 - Loyalty and rewards (Customers, not core): full to partial. Skeptic recheck against the app side: Smile's listing offers VIP tiers and points for actions, and docs/bonus.md lists tier multipliers as not built; D130 covers earn, redeem, expiry and ledger only.
-- Blog and content marketing (Customers): full to partial. Skeptic recheck against Shopify's blog help page: comments with moderation and several blogs are native, and the code has neither (nor an RSS feed or scheduled publishing); docs/parity-plan.md wave 7 lists them as blog depth still to build.
 - PCI DSS (International): full to partial. No CSP; the chat widget and owner/tracking scripts load on /checkout, against the plan's own SAQ A gate (docs/plan.md)
 - Audit log of admin changes (International): full to partial. Skeptic re-rate: re-ran activity.int, audit-coverage.int, activity-export.int, security-jobs.int, audit.test, trust.test (all pass), then read src/server/activity.ts and the activity page.
 - Partial and full refunds with restocking (Orders): full to partial. Merged with checkout.refunds-and-cancellation (rule 8): its open criterion, a refund as store credit, is this row's now and is not met.
@@ -135,7 +135,7 @@ Rated lower (25):
 
 <!-- parity:generated:start summary -->
 
-Kaizena Flow has **76.7%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 203 core features weighted by importance to an EU small or mid-size merchant, and **83.8%** on the must-haves (the 83 features with weight 4 or 5). The unweighted figures are 73.9% overall and 83.7% for must-haves. Counting app-only features gives 76.1%; counting Plus-only as well gives 75.5%. Kaizena Flow is strongest on catalogue and products (90.7%) and weakest on platform, extensibility and operations (54.7%), ai and automation (67.9%), checkout and payments (69.2%). Of the 203 core features, 111 are full, 78 partial and 14 missing, so half-built features, not absent ones, are the main shape of the gap.
+Kaizena Flow has **77.0%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 202 core features weighted by importance to an EU small or mid-size merchant, and **83.8%** on the must-haves (the 83 features with weight 4 or 5). The unweighted figures are 74.3% overall and 83.7% for must-haves. Counting app-only features gives 76.4%; counting Plus-only as well gives 75.8%. Kaizena Flow is strongest on catalogue and products (90.7%) and weakest on platform, extensibility and operations (54.7%), ai and automation (67.9%), checkout and payments (69.2%). Of the 202 core features, 112 are full, 76 partial and 14 missing, so half-built features, not absent ones, are the main shape of the gap.
 
 <!-- parity:generated:end summary -->
 
@@ -145,10 +145,10 @@ The method is simple: a full match scores 1, a partial match 0.5, a missing feat
 
 | Measure | Features | Weighted parity | Unweighted parity | Full / partial / missing |
 | --- | --- | --- | --- | --- |
-| Headline: core (Shopify native, Basic to Advanced) | 203 | **76.7%** | 73.9% | 111 / 78 / 14 |
+| Headline: core (Shopify native, Basic to Advanced) | 202 | **77.0%** | 74.3% | 112 / 76 / 14 |
 | Must-have (core, weight 4 or 5) | 83 | **83.8%** | 83.7% | 56 / 27 / 0 |
-| Core plus app-only features | 227 | 76.1% | 73.6% | 122 / 90 / 15 |
-| Everything, including Plus-only | 233 | 75.5% | 72.5% | 123 / 92 / 18 |
+| Core plus app-only features | 226 | 76.4% | 73.9% | 123 / 88 / 15 |
+| Everything, including Plus-only | 232 | 75.8% | 72.8% | 124 / 90 / 18 |
 
 <!-- parity:generated:end headline -->
 
@@ -161,15 +161,15 @@ Counts are core features only. Weighted parity uses weights 1 to 5; must-have is
 | Domain | Core features | Full | Partial | Missing | Weighted parity | Must-have features | Must-have parity |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | Catalogue and products | 26 | 22 | 3 | 1 | 90.7% | 8 | 92.6% |
-| Storefront, themes and content | 32 | 23 | 8 | 1 | 88.4% | 15 | 100.0% |
+| Storefront, themes and content | 32 | 24 | 7 | 1 | 89.8% | 15 | 100.0% |
 | Checkout and payments | 17 | 7 | 10 | 0 | 69.2% | 8 | 62.9% |
 | Orders, shipping, fulfilment and returns | 28 | 16 | 11 | 1 | 79.0% | 14 | 86.1% |
-| Customers, marketing and loyalty | 18 | 8 | 9 | 1 | 72.6% | 8 | 76.5% |
+| Customers, marketing and loyalty | 17 | 8 | 8 | 1 | 73.7% | 8 | 76.5% |
 | Analytics, reporting and finance | 24 | 15 | 6 | 3 | 79.9% | 11 | 89.1% |
 | International, compliance and trust | 16 | 7 | 9 | 0 | 71.4% | 10 | 70.2% |
 | Platform, extensibility and operations | 20 | 4 | 12 | 4 | 54.7% | 7 | 72.4% |
 | AI and automation | 22 | 9 | 10 | 3 | 67.9% | 2 | 100.0% |
-| **Total** | **203** | **111** | **78** | **14** | **76.7%** | **83** | **83.8%** |
+| **Total** | **202** | **112** | **76** | **14** | **77.0%** | **83** | **83.8%** |
 
 <!-- parity:generated:end domains -->
 
@@ -181,16 +181,16 @@ A row is Full only when it lists code and tests that exist (or says it is untest
 
 | Evidence | Rows |
 | --- | ---: |
-| Full, with tests | 117 |
+| Full, with tests | 118 |
 | Full, untested (debt, not hidden) | 6 |
 | Shopify side not read from a page | 1 |
-| Rows in the tracker | 233 |
+| Rows in the tracker | 232 |
 
 Untested Full rows: `ai.assistant-voice-mode`, `customers.abandoned-checkout-recovery-emails`, `customers.seo-fundamentals`, `orders.order-statuses-timeline-notes`, `orders.cancel-order-with-refund-and-restock`, `storefront.automatic-sitemap-xml`. Shopify side not read: `international.br-nn-ysund-lookup-and-angrerett`.
 
 | Bucket | What it means | Rows not Full | Core rows | Core headline points lacking |
 | --- | --- | ---: | ---: | ---: |
-| A | Build in-house | 70 | 59 | 14.6 |
+| A | Build in-house | 68 | 57 | 14.2 |
 | B | Build, live only with a third party | 15 | 13 | 3.5 |
 | C | Strategy decision first | 11 | 8 | 1.9 |
 | D | Not reachable by code | 14 | 12 | 3.4 |
@@ -203,21 +203,21 @@ The waves are those of `docs/parity-plan.md` section 3. This table is produced f
 
 <!-- parity:generated:start projection -->
 
-Now: **76.7%** core, 83.8% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 16 rows (12 core) have no wave yet and are not in them.
+Now: **77.0%** core, 83.8% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 16 rows (12 core) have no wave yet and are not in them.
 
 | Wave | Scope | Rows (core) | Core if every row of waves 1 to N is Full | Must-have | Adds (points) | Core if only bucket A rows are | Must-have |
 | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | Compliance and money | 10 (7) | 78.8% | 87.3% | +2.1 | 78.2% | 86.2% |
-| 2 | Data in and out | 3 (1) | 79.0% | 87.3% | +0.2 | 78.4% | 86.2% |
-| 3 | Inventory and orders | 14 (13) | 82.2% | 89.7% | +3.2 | 79.9% | 87.5% |
-| 4 | Payments | 7 (6) | 83.7% | 91.4% | +1.5 | 80.3% | 87.5% |
-| 5 | Customers and marketing | 19 (16) | 87.9% | 95.1% | +4.1 | 83.6% | 90.6% |
-| 6 | Catalogue | 0 (0) | 87.9% | 95.1% | +0.0 | 83.6% | 90.6% |
-| 7 | Storefront and international | 12 (11) | 90.4% | 95.1% | +2.6 | 86.1% | 90.6% |
-| 8 | Analytics and AI | 17 (17) | 94.4% | 95.8% | +3.9 | 89.8% | 91.3% |
-| 9 | Platform and extensibility | 12 (9) | 96.6% | 96.9% | +2.3 | 91.3% | 91.8% |
+| 1 | Compliance and money | 10 (7) | 79.1% | 87.3% | +2.1 | 78.5% | 86.2% |
+| 2 | Data in and out | 3 (1) | 79.3% | 87.3% | +0.2 | 78.7% | 86.2% |
+| 3 | Inventory and orders | 14 (13) | 82.6% | 89.7% | +3.3 | 80.3% | 87.5% |
+| 4 | Payments | 7 (6) | 84.1% | 91.4% | +1.5 | 80.6% | 87.5% |
+| 5 | Customers and marketing | 19 (16) | 88.3% | 95.1% | +4.2 | 84.0% | 90.6% |
+| 6 | Catalogue | 0 (0) | 88.3% | 95.1% | +0.0 | 84.0% | 90.6% |
+| 7 | Storefront and international | 10 (9) | 90.4% | 95.1% | +2.1 | 86.1% | 90.6% |
+| 8 | Analytics and AI | 17 (17) | 94.3% | 95.8% | +3.9 | 89.8% | 91.3% |
+| 9 | Platform and extensibility | 12 (9) | 96.6% | 96.9% | +2.3 | 91.2% | 91.8% |
 
-Ceiling with every bucket A row Full and buckets B, C and D as they are: **91.3%** core, 91.8% must-have. With bucket B built and approved as well: 94.7% core, 95.8% must-have.
+Ceiling with every bucket A row Full and buckets B, C and D as they are: **91.2%** core, 91.8% must-have. With bucket B built and approved as well: 94.7% core, 95.8% must-have.
 
 <!-- parity:generated:end projection -->
 
@@ -350,7 +350,7 @@ Legend. **Shopify**: Native = included on Basic to Advanced and scored in the he
 | Templates per page type | Native. [page](https://help.shopify.com/en/manual/online-store/themes/theme-structure/sections) | Full | 4 |  | Evidence: `src/lib/page-roles.ts`, `src/server/page-roles.ts`, `src/server/role-pages.ts` and 5 more; 5 test files; D79, D112, D113, D117, D140. |
 | Global theme settings | Native. [page](https://help.shopify.com/en/manual/online-store/themes/customizing-themes/theme-settings/typography) | Full | 4 |  | Evidence: `src/lib/theme.ts`, `src/server/themes.ts`, `src/components/admin/theme-editor.tsx` and 3 more; 5 test files; D60, D99, D100. |
 | Custom pages and front page selection | Native. [page](https://help.shopify.com/en/manual/online-store/themes/theme-structure/sections) | Full | 5 |  | Evidence: `src/server/pages.ts`, `src/components/store-page-article.tsx`, `src/lib/page-duplicate.ts` and 3 more; 7 test files; D53, D54, D83, D92, D112, D126. |
-| Blog (multiple blogs, authors, comments, RSS) | Native. [page](https://help.shopify.com/manual/online-store/blogs/publishing-blogs) | Partial | 3 | A, wave 7 | Articles are pages of type `article` built in the full page builder (D57), with a free-text author name, categories and tags, `Article` JSON-LD and one `/blog` per store (a page role, D112). Verified 2026-10-25: no second blog, no author records, no comments, and no RSS or Atom route. Code: `src/components/page-article.tsx`, `src/components/article-view.tsx`. |
+| Blog (multiple blogs, authors, comments, RSS) | Native. [page](https://help.shopify.com/manual/online-store/blogs/publishing-blogs) | Full (was partial) | 3 |  | Merged on 2026-10-27 (README rule 8): `customers.blog-and-content-marketing` was the same Shopify feature (rated partial); its stricter criteria (each blog's own categories and tags, comments with no cookie and rate-limited by hashed keys, the feed linked from the page head, scheduled articles) and its evidence are here. Caveats, not gaps: a blog's categories and tags are the store's article terms (D50), shared by its blogs, and each blog lists and filters by the ones its own articles use (Shopify's blogs have tags per article, no categories); a blog's feed is its address with /feed.atom after it (Shopify appends .atom to the blog's address); comments are checked for spam in code, without a spam service (decision 3 of docs/wave-7-storefront.md), and a scheduled article goes live within five minutes after its time. Evidence: `src/components/page-article.tsx`, `src/components/article-view.tsx`, `src/app/s/[store]/[market]/blog/page.tsx` and 30 more; 12 test files; D57, D112, D143, D50. |
 | Navigation menus and mega menus | Native. [page](https://help.shopify.com/en/manual/online-store/menus-and-links/drop-down-menus) | Full | 4 |  | Evidence: `src/server/menus.ts`, `src/lib/menu-structure.ts`, `src/lib/navigation.ts` and 3 more; 4 test files; D52, D85, D87. |
 | Customizable header and footer | Native. [page](https://help.shopify.com/en/manual/online-store/themes/theme-structure/sections) | Full | 4 |  | Evidence: `src/lib/site-layout.ts`, `src/server/site-layouts.ts`, `src/components/site-parts.tsx` and 2 more; 4 test files; D80, D121, D153. |
 | Theme code access (Liquid and files) | Native. [page](https://help.shopify.com/en/manual/online-store/themes/theme-structure/extend/edit-theme-code) | Partial | 2 | C, no wave yet | Owner CSS for a page and for the whole site, checked by `cssProblem()` (D100), also typed on the live page beside Edit text and kept as a version (D306), a sandboxed HTML block (`HtmlFrame`) and consent-gated head and body snippets (D61, only on a store's own host). No templating language, no file editing, no custom sections or JavaScript of the owner's own in the page. Whether to offer one is a security and product decision, not a missing form. Code: `src/components/custom-css.tsx`, `src/components/html-frame.tsx`. |
@@ -478,7 +478,6 @@ Legend. **Shopify**: Native = included on Basic to Advanced and scored in the he
 | Wishlists | App. [page](https://community.shopify.com/t/will-shopify-launch-a-native-wishlist-app-soon/159761) | Full | 2 |  | Caveat: lists are private, with no way to share one, and nothing is emailed from them (no price-drop mail; back in stock is its own request, D298); at most 20 lists and 200 items per list. Evidence: `src/server/wishlists.ts`, `src/server/wishlist-admin.ts`, `src/components/wishlist-heart.tsx` and 5 more; 3 test files; D34, D36. |
 | Back-in-stock notifications | App. [page](https://apps.shopify.com/back-in-stock) | Partial (was missing) | 3 | A, wave 5 | D298: a sold-out physical variant that does not keep selling shows *Email me when it is back* while the store has back in stock on; a typed address confirms from its link first (a verified signed-in customer's waits at once), one open request per store, variant and address, limited per visitor key and address. Each run, waiting requests whose variant is in stock again by any path (`variant_availability`) and still offered get one email each, claimed before it goes; requests are store-scoped, exported, erased and pruned (unconfirmed after 7 days, waiting after 180, sent after 30). Staff see how many wait and the products most asked for, and the AI manager's `list_email_automations` repeats the waiting count (D318, `marketing-tools.ts`). Still missing: the live price in the email and a link in it to cancel a waiting request. Code: `src/server/stock-requests.ts`, `src/lib/stock-request-check.ts`. |
 | Customer accounts | Native. [page](https://help.shopify.com/en/manual/customers/customer-accounts) | Partial | 4 | B, wave 5 | Built (D28, D153, D162, D304): sign-in by emailed code or password; orders, subscriptions, company, bonus and referral pages, wishlist, account deletion; the order page shows withdrawals and returns and links to the withdrawal function; several saved addresses (up to 20, defaults for delivery and billing) offered where checkout asks the address itself (J1, `customer-addresses.ts`); the shopper's own data export after a fresh sign-in (D162, My account → Privacy); *Your orders* searches the customer's own orders by number, product or SKU and tracking number, filters by state and pages (J2, `findCustomerOrders()`). Still missing: social sign-in (criterion 4), which needs an OAuth client per provider (bucket B). Code: `src/server/customers.ts`, `src/app/s/[store]/[market]/account/page.tsx`. |
-| Blog and content marketing | Native. [page](https://help.shopify.com/en/manual/online-store/blogs/managing-comments) | Partial (was full) | 3 | A, wave 7 | Verified: one blog per store (`/blog`, articles are pages of type `article`, D57) with author name, categories, tags, search texts, JSON-LD `Article`, translations, versions and draft or publish. Missing: more than one blog, customer comments with moderation, an RSS or Atom feed and scheduled publishing (none in the code). Code: `src/server/pages.ts`, `src/components/page-article.tsx`. |
 | SEO fundamentals | Native. [page](https://help.shopify.com/en/manual/promoting-marketing/seo/seo-overview) | Full | 5 |  | Caveat: a changed address leaves a permanent redirect since D168 (`storefront.url-redirect-manager`). Evidence debt: e2e holds the description, canonical, hreflang and og:image output and `term-metadata.int.test.ts` the X tags of a category page, but nothing asserts the empty-SEO-field fallback to the product's own title and description (`productText()`) or the store's share tags (`storeShareTags()`). Evidence: `src/lib/seo.ts`, `src/lib/structured-data.ts`, `src/server/seo.ts` and 5 more; **untested**; D21, D168. |
 
 <!-- parity:generated:end detail-customers -->
