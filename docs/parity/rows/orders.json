@@ -1762,6 +1762,7 @@
       ],
       "tests": [
         "src/lib/duties.test.ts",
+        "src/lib/customs-text.test.ts",
         "src/server/customs.int.test.ts",
         "src/server/checkout-kinds.int.test.ts",
         "src/server/carriers/bring.test.ts",

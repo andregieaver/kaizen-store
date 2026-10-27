@@ -90,6 +90,8 @@ const standardTax = (over: Record<string, unknown> = {}) => ({
   fieldIfBusiness: { offered: false, reason: "market_not_eu" },
   ...over,
 });
+/** What `cartSummary().customs` holds where nothing crosses a customs border (D343). */
+const noCustoms = { chosen: "dap", mode: "dap", fallback: null, estimate: { kind: "none", reason: "no_border" }, collectMinor: 0, blocked: false, record: null };
 const summary = (over: Record<string, unknown> = {}) => ({
   payable: [line],
   blocked: false,
@@ -124,6 +126,7 @@ const summary = (over: Record<string, unknown> = {}) => ({
   gifts: [],
   atVenueOnly: false,
   digital: false,
+  customs: noCustoms,
   ...over,
 });
 const bonus = (over: Partial<CartBonus> = {}): CartBonus => ({
@@ -305,6 +308,32 @@ describe("the cart's totals with reverse charge (D157)", () => {
   it("say that import VAT and customs may be collected on delivery when the cart's goods come from outside the EU", async () => {
     cartSummary.mockResolvedValue(summary({ tax: standardTax({ importNotice: true }) }));
     expect(words(await draw(CartSummary))).toContain("Import VAT and customs charges may be collected on delivery.");
+  });
+});
+
+describe("the cart's customs and duties (D343)", () => {
+  const estimate = { kind: "estimate", currency: "EUR", dutyMinor: 1200, importVatMinor: 2500, ddpMinor: 1440, dapMinor: 3700, lines: [], verified: false, sources: [] };
+
+  it("shows duties collected at checkout as a row marked an estimate, and the total with them", async () => {
+    cartSummary.mockResolvedValue(summary({ customs: { ...noCustoms, chosen: "ddp", mode: "ddp", estimate, collectMinor: 1440 } }));
+    const text = words(await draw(CartSummary));
+    expect(text).toContain("Duties and import taxes (estimate)");
+    expect(text).toMatch(/Total €99\.40/);
+    expect(text).toContain("paid here, at checkout");
+  });
+
+  it("says what the carrier may collect with DAP, as an estimate, and adds nothing to the total", async () => {
+    cartSummary.mockResolvedValue(summary({ customs: { ...noCustoms, estimate } }));
+    const text = words(await draw(CartSummary));
+    expect(text).toContain("The carrier may collect duties and import taxes of about €37.00 on delivery. This is an estimate");
+    expect(text).not.toContain("Duties and import taxes (estimate)");
+    expect(text).toMatch(/Total €85\.00/);
+  });
+
+  it("names the products without a customs code when they block a DDP checkout", async () => {
+    const missing = { kind: "unknown", reason: "missing_hs", lines: [{ key: "0", title: "Mug" }] };
+    cartSummary.mockResolvedValue(summary({ blocked: true, customs: { ...noCustoms, chosen: "ddp", mode: "ddp", estimate: missing, blocked: true } }));
+    expect(words(await draw(CartSummary))).toContain("Duties can't be worked out for Mug: the seller hasn't given its customs code.");
   });
 });
 
