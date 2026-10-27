@@ -12,6 +12,7 @@ import type { Market } from "@/lib/markets";
 import { pageExcerpt, pageSlugProblem, RESERVED_STORE_PAGE_SLUGS } from "@/lib/page-content";
 import { PAGE_ROLES, roleAddress } from "@/lib/page-roles";
 import { featureOn } from "@/lib/store-features";
+import { pageInMarket } from "@/lib/page-markets";
 import { localizePage } from "@/lib/page-translation";
 import { adminOrigin, marketHome, marketMetaPath, marketPath, storeSiteUrl } from "@/lib/paths";
 import { pageJsonLd } from "@/lib/structured-data";
@@ -30,6 +31,8 @@ export async function loadStorePage(params: StorePageParams) {
   const shop = await resolveShop(storeSlug, marketSlug);
   if (!shop || pageSlugProblem(slug, RESERVED_STORE_PAGE_SLUGS) !== null) return null;
   const found = await findPublishedPage(shop.store.id, slug);
+  // A page for other countries only (D338) is not here: the route's 404, or a manual redirect.
+  if (found && "page" in found && !pageInMarket(found.page.content, shop.market.code)) return null;
   return found ? { ...shop, found } : null;
 }
 
@@ -88,7 +91,7 @@ export async function storePageMetadata(params: StorePageParams, variant: string
     description,
     alternates: {
       canonical: path(market),
-      languages: Object.fromEntries(store.markets.map((m) => [m.locale, path(m)])),
+      languages: Object.fromEntries(store.markets.filter((m) => pageInMarket(page.content, m.code)).map((m) => [m.locale, path(m)])),
     },
     ...(!c.searchEngines || variant ? { robots: { index: false } } : {}),
     ...storeShareTags(store, market, {

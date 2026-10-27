@@ -316,6 +316,28 @@ export async function translationCoverage({ store }: Pick<Membership, "store">):
   return Object.fromEntries(rows);
 }
 
+/**
+ * The texts written for one country over a language's (D338), counted by language: a product's description (`product_market_texts`) and a
+ * menu link's label (`{locale}@{COUNTRY}`). They are the country's own and never in the worklist; the page says how many there are.
+ */
+export async function countryTextCounts({ store }: Pick<Membership, "store">): Promise<{ locale: string; products: number; menus: number }[]> {
+  const [products, menus] = await Promise.all([
+    db().execute<Row>(sql`
+      select locale, count(*)::int as n from commerce.product_market_texts where store_id = ${store.id}::uuid group by locale
+    `),
+    db().execute<Row>(sql`
+      select split_part(k.key, '@', 1) as locale, count(*)::int as n
+        from commerce.menus mn, jsonb_array_elements(mn.items) as it(item), jsonb_each_text(it.item -> 'label') as k(key, value)
+       where mn.store_id = ${store.id}::uuid and position('@' in k.key) > 0 and length(trim(k.value)) > 0
+       group by 1
+    `),
+  ]);
+  const counts = new Map<string, { products: number; menus: number }>();
+  for (const row of products) counts.set(String(row.locale), { products: Number(row.n), menus: 0 });
+  for (const row of menus) counts.set(String(row.locale), { products: counts.get(String(row.locale))?.products ?? 0, menus: Number(row.n) });
+  return [...counts].map(([locale, n]) => ({ locale, ...n })).sort((a, b) => a.locale.localeCompare(b.locale));
+}
+
 export type ApplyResult = { ok: true; saved: number; skipped: string[] } | { ok: false; problem: string };
 
 const APPLY_LIMIT = 300;

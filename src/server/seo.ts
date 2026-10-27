@@ -44,6 +44,7 @@ import { themeStoreCards } from "./theme-store";
 import { audit, type Account, type Membership } from "./auth";
 import { CATALOG_TAG, catalogTag, listProducts } from "./catalog";
 import { listPublishedPages } from "./pages";
+import { pageInMarket } from "@/lib/page-markets";
 import { getPlatformPageRoles } from "./platform-roles";
 import type { SaveResult } from "./settings";
 import { getOpenStore, type Store } from "./stores";
@@ -618,7 +619,8 @@ export async function storeSitemap(slug: string): Promise<string | null> {
     ...pages
       .filter((page) => page.content.searchEngines && page.id !== store.frontPageId && page.id !== store.productsPageId && !store.rolePageIds.includes(page.id))
       .flatMap((page) => {
-        const versions = versionsOf(store.markets, `/${page.slug}`);
+        // Only in the countries it is for (D338).
+        const versions = versionsOf(store.markets.filter((m) => pageInMarket(page.content, m.code)), `/${page.slug}`);
         // Every picture on the page (D89), its own first, so search engines tie each to the page it is on.
         const image = pageImageUrls(page.content).slice(0, 10);
         return versions.map((version) => entry(version.href, versions, { lastmod: page.publishedAt, images: image }));
@@ -633,7 +635,7 @@ export async function storeSitemap(slug: string): Promise<string | null> {
     ...articles
       .filter((article) => article.content.searchEngines)
       .flatMap((article) => {
-        const versions = versionsOf(store.markets, `/blog/${article.slug}`);
+        const versions = versionsOf(store.markets.filter((m) => pageInMarket(article.content, m.code)), `/blog/${article.slug}`);
         const image = pageImageUrls(article.content).slice(0, 10);
         return versions.map((version) => entry(version.href, versions, { lastmod: article.publishedAt, images: image }));
       }),
@@ -784,7 +786,7 @@ export async function storeLlms(slug: string): Promise<string | null> {
         // Its own pages open to AI assistants (D54), in the first market's language.
         heading: "Pages",
         links: pages
-          .filter((page) => page.content.aiAssistants && page.id !== store.frontPageId && !(selling && page.id === store.productsPageId) && !Object.values(store.pageRoles).includes(page.id))
+          .filter((page) => page.content.aiAssistants && pageInMarket(page.content, market.code) && page.id !== store.frontPageId && !(selling && page.id === store.productsPageId) && !Object.values(store.pageRoles).includes(page.id))
           .map((page) => {
             const c = localizePage(page.content, market.locale);
             return { title: c.title, url: `${home(market.code)}/${page.slug}`, note: c.seo.description || pageExcerpt(c, 200) };
@@ -794,7 +796,7 @@ export async function storeLlms(slug: string): Promise<string | null> {
         // Its blog (D57), newest first, in the first market's language.
         heading: "Blog",
         links: articles
-          .filter((article) => article.content.aiAssistants)
+          .filter((article) => article.content.aiAssistants && pageInMarket(article.content, market.code))
           .map((article) => {
             const c = localizePage(article.content, market.locale);
             return { title: c.title, url: `${home(market.code)}/blog/${article.slug}`, note: c.seo.description || pageExcerpt(c, 200) };

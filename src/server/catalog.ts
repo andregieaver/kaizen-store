@@ -248,7 +248,11 @@ export async function getProduct(storeId: string, market: Market, handle: string
       p.id, p.handle, p.withdrawal_exclusion, p.subscription_only, p.kind, p.standard_category, p.standard_attributes,
       p.audience, ${STORE_AUDIENCE} as store_audience, commerce.vat_rate(${marketCode}, p.vat_category) as vat_rate,
       coalesce(tl.title, tf.title) as title,
-      coalesce(tl.description, tf.description, '') as description,
+      -- The country's own description over its language's (D338), else the language's.
+      coalesce(
+        (select mt.description from commerce.product_market_texts mt
+          where mt.product_id = p.id and mt.market_code = ${marketCode} and mt.locale = ${locale}),
+        tl.description, tf.description, '') as description,
       coalesce(tl.safety_information, tf.safety_information, '') as safety_information,
       -- Search text in the page's own language, or with the fallback text.
       coalesce(case when tl.product_id is null then tf.seo_title else tl.seo_title end, '') as seo_title,

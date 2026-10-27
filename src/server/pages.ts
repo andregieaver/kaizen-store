@@ -37,6 +37,7 @@ import { keepVersion } from "./page-versions";
 import { scopedTermIds } from "./taxonomy";
 import { getStore } from "./stores";
 import { keepOwnRuleIds } from "./visibility";
+import { ownMarkets } from "@/lib/page-markets";
 
 /**
  * Pages built in the page builder (D42), Kaizen's own (`owner` null, served
@@ -274,6 +275,8 @@ export async function savePage(
     footerReveal: shape === "footer" && parsed.data.footerReveal ? true : undefined,
     // Only articles have an author (D57).
     ...(type === "article" && author ? { author } : {}),
+    // The countries a store's page or article is for (D338): the store's own (kept ones too), none for Kaizena Flow's or any other kind.
+    markets: owner !== null && (type === "page" || type === "article") ? ownMarkets(parsed.data.markets, await storeCountries(owner)) : undefined,
   };
   // Who sees a part (D179 phase 4): only the store's own groups, companies, products and categories stay in its conditions.
   content = { ...content, rows: await keepOwnRuleIds(owner, content.rows) };
@@ -520,6 +523,12 @@ export async function ownerLanguages(owner: PageOwner): Promise<PageLanguage[]> 
   ]);
   // The store's languages (D109): the owner's own choice, then its countries' own that it lacks.
   return pageLanguages(mergeLocales(((chosen?.locales ?? []) as string[]).map(String), rows.map((row) => String(row.default_locale))));
+}
+
+/** A store's countries, every one it has had (a page may be kept for one switched off for now), as market codes. */
+async function storeCountries(storeId: string): Promise<string[]> {
+  const rows = await db().execute<Row>(sql`select code from commerce.markets where store_id = ${storeId}::uuid`);
+  return rows.map((row) => String(row.code));
 }
 
 /** Audit actions keep their names for Kaizen's pages (`platform.page_…`); a store's are `store.page_…`. */

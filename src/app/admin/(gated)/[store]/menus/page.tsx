@@ -100,6 +100,8 @@ async function Menus({ storeSlug, searchParams }: { storeSlug: string; searchPar
       uses={usedIn}
       basePath={base}
       languages={languages}
+      // A label for one country over its language (D338), for a store with several countries.
+      countries={store.keptMarkets.length > 1 ? store.keptMarkets.map((m) => ({ code: m.code, locale: m.ownLocale, name: m.name })) : []}
       kinds={STORE_KINDS.map((k) => ({ ...k, label: w.kinds[k.kind as keyof typeof w.kinds] ?? k.label }))}
       targets={{
         // A store's pages by address (D54); a page shows in the menu once it is published.

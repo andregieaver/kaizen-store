@@ -208,6 +208,29 @@ A1 availability (model, view, editor, CSV, cart, copies, tools); A2 rules (model
   through `marketUrl()`. A dismissible suggestion on every store page for a visitor whose country (`x-vercel-ip-country`) has another
   market: a link to the same page there, never a redirect, never for crawlers, dismissal kept in memory or, with preferences consent, in
   `kaizen_country_hint_{store}`.
+  **D in detail (2026-10-27).** Built in three steps, each its own commit.
+  - **D1, each country's content.** A page or article may be limited to chosen countries (`PageContent.markets`, country codes; none =
+    every country): in another country it is not drawn (the route's 404, so a manual redirect still applies), not in the sitemap, not
+    listed by a content grid of pages or articles and not in llms.txt. Rows, columns and blocks already have this (D179's visibility). A
+    product's description may have a text per country over its language's (`commerce.product_market_texts`: product, country, language,
+    description), written only by `saveProduct()`, drawn on that country's product page and in its structured data, falling back to the
+    language's; the title stays the language's everywhere (carts, orders, invoices, feeds and search name a product one way), and the copy,
+    the CSV and the AI manager leave country texts as they are. A menu link's label may have one per country over its language's (a label
+    keyed `{locale}@{COUNTRY}` in the link's labels, read first by `menuLabel()` given the market's country). The builder's bar names the
+    view the canvas draws (a country and a language) and the countries a limited page is for; the translation worklist counts the
+    country texts per language.
+  - **D2, a domain per country.** A domain may be one country's (`store_domains.market`, beside D313's `language`; one host is a country's
+    or a language's, never both, and a store gives domains to its countries or to its languages, never both, so every market has one
+    address). Only for a store that sells in several countries, and never its own country (its address is the store's). On a country's
+    domain the country goes without saying (`/x` is that country in its own language, `/en/x` in English, `/eur/x` in euro); an address in
+    that country anywhere else moves there (308), and one in another country on it moves to that country's own address. Routing, links
+    (`marketHost()`, `marketPath()`, `marketUrl()`, `marketMetaPath()`, `marketLink()`), emails, Stripe's return addresses, the sitemap,
+    canonical and `hreflang` follow it as they follow a language's domain (`countryHostDecision()` beside `languageHostDecision()`).
+  - **D3, the country suggestion.** A visitor whose country (`x-vercel-ip-country`) is one the store sells in, other than the market shown,
+    sees a dismissible line on every store page linking to the same page in that country's market. Never a redirect; never for crawlers;
+    never on the pay routes; nothing for a country the store does not sell in; in the shopper's language. The country is read on the
+    server per request inside a `<Suspense>` hole, so pages stay cached; a dismissal is kept in memory, or with preferences consent in
+    `kaizen_country_hint_{store}` (session storage, in `KNOWN_COOKIES`).
 - **E (D339) Private mode.** `stores.private_mode` (a password's hash, a landing page chosen as a page role `private`), served by the proxy
   to anyone without the unlock cookie (`kaizen_unlock_{store}`, necessary, HttpOnly) or a staff session; noindex, robots disallow, no
   sitemap, llms.txt or feed; the pay routes of orders already placed, webhooks and after-sale links keep working; turning it on and off is

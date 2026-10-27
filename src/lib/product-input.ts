@@ -384,6 +384,14 @@ export const productInput = z.object({
       variants: z.record(z.string().max(64), z.array(z.string().regex(/^[A-Z]{2}$/)).max(60)).default({}),
     })
     .optional(),
+  /**
+   * Its description for one country, over its language's (D338): a German text for Austria beside Germany's. Left out, what is stored is kept;
+   * given, it replaces what is stored for the countries the editor shows. Empty texts are not kept (the language's is shown).
+   */
+  countryTexts: z
+    .array(z.object({ market: z.string().regex(/^[A-Z]{2}$/), locale: z.string().min(2).max(10), description: text(10_000) }))
+    .max(200)
+    .optional(),
   /** How new variants are delivered; each variant can differ. */
   delivery: z.enum(DELIVERIES).default("physical"),
   /** Files for digital variants: already uploaded to the store's folder. */

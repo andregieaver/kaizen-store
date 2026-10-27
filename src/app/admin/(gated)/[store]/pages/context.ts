@@ -100,6 +100,9 @@ export async function storePageContext(
     origin: storeOrigin(store.slug) ? "" : siteUrl(),
     // One page in every language the store sells in, its own country's first (D55).
     languages: pageLanguages(store.localization.locales),
+    // The countries a page or article may be limited to (D338), and the one the canvas draws it as.
+    ...((type === "page" || type === "article") && store.keptMarkets.length > 1 && { countries: store.keptMarkets.map((m) => m.code) }),
+    viewCountry: store.markets[0]?.code,
     // A language or currency the store keeps is a short address of its own (D181), never a page's.
     reserved: [...reservedPageSlugs(store.id, type), ...(type === "page" ? reservedChoiceSlugs(store.address) : [])],
     // The pages a new or edited page can be nested under (`/projects/project-a`).

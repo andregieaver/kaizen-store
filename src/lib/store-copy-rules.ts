@@ -127,6 +127,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   search_synonyms: catalogue("The store's search synonyms per language (D324): copied with the store."),
   search_rules: catalogue("The store's pins, boosts, buries and search redirects (D324): copied with the store, products and terms mapped to the copy's."),
   price_breaks: catalogue("A product's price breaks (D323): copied with the product, a variant's where the variant is copied."),
+  product_market_texts: catalogue("A product's description for one country (D338): copied with the product, in the markets the copy has."),
   market_availability: catalogue("Where a product or variant is not sold (D335): copied with the product, a variant's where the variant is copied, in the markets the copy has."),
   product_translations: catalogue("Product titles and texts in every language."),
   product_variants: catalogue("Variants, with their pictures and options."),

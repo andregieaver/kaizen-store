@@ -8,6 +8,7 @@ import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import { pageExcerpt, pageSlugProblem, reservedPageSlugs } from "@/lib/page-content";
 import { localizePage } from "@/lib/page-translation";
+import { pageInMarket } from "@/lib/page-markets";
 import { adminOrigin, marketMetaPath, marketPath, marketUrl, storeSiteUrl } from "@/lib/paths";
 import { articleJsonLd } from "@/lib/structured-data";
 import { bindForPlace } from "@/server/field-binding";
@@ -35,6 +36,8 @@ async function load(params: Props["params"]) {
   const shop = await resolveShop(storeSlug, marketSlug);
   if (!shop || pageSlugProblem(slug, reservedPageSlugs(shop.store.id, "article")) !== null) return null;
   const found = await findPublishedPage(shop.store.id, slug, "article");
+  // An article for other countries only (D338) is not here: the route's 404, or a manual redirect.
+  if (found && "page" in found && !pageInMarket(found.page.content, shop.market.code)) return null;
   return found ? { ...shop, found } : null;
 }
 
@@ -62,7 +65,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     description,
     alternates: {
       canonical: path(market),
-      languages: Object.fromEntries(store.markets.map((m) => [m.locale, path(m)])),
+      languages: Object.fromEntries(store.markets.filter((m) => pageInMarket(page.content, m.code)).map((m) => [m.locale, path(m)])),
     },
     ...(!c.searchEngines && { robots: { index: false } }),
     ...share,

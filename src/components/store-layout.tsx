@@ -81,7 +81,7 @@ export async function MenuLinks({
       href,
       external,
       newTab: Boolean(item.newTab),
-      text: menuLabel(item, market.locale, builtIn, names),
+      text: menuLabel(item, market.locale, builtIn, names, market.code),
       ...(item.depth === 0 && item.mega && { mega: item.mega }),
       ...(item.image && { image: item.image }),
       children: children.map(toNode),
@@ -90,7 +90,7 @@ export async function MenuLinks({
   // A link with nothing to say (no text of its own and no name to take) is left out too.
   const nodes = menuTree(
     items,
-    (item) => (selling || !shopLink(item.link)) && linkExists(item.link, names) && menuLabel(item, market.locale, builtIn, names) !== "",
+    (item) => (selling || !shopLink(item.link)) && linkExists(item.link, names) && menuLabel(item, market.locale, builtIn, names, market.code) !== "",
   ).map(toNode);
   return <MenuTreeView nodes={nodes} layout={layout} linkClassName={linkClassName} newTabLabel={m.opensInNewTab} justify={justify} hover={hover} />;
 }

@@ -252,6 +252,7 @@ export function emptyProduct(context: EditorContext): ProductInput {
     standardCategory: null,
     standardAttributes: {},
     availability: { off: [], variants: {} },
+    countryTexts: [],
     appointment: null,
     bundle: null,
     priceBreaks: [],
@@ -583,6 +584,7 @@ export async function getProductForEdit(
     standardCategory: product.standard_category ? String(product.standard_category) : null,
     standardAttributes: (product.standard_attributes ?? {}) as StandardAttributes,
     availability: await availabilityOf(store.id, productId),
+    countryTexts: await countryTextsOf(store.id, productId),
     appointment: isBooked(kind)
         ? {
             durationMinutes: Number(appointment?.duration_minutes ?? DEFAULT_APPOINTMENT.durationMinutes),
@@ -885,6 +887,13 @@ export async function saveProduct(
     if (unknown.length > 0) return { ok: false, problems: [`No variant with the SKU ${unknown.join(", ")} to switch off.`] };
   }
 
+  // A description for one country (D338): only the countries the editor shows, in the store's languages.
+  if (input.countryTexts) {
+    const shown = new Set(context.markets.map((m) => m.code));
+    if (input.countryTexts.some((text) => !shown.has(text.market))) return { ok: false, problems: ["A country with a text of its own is not one the store sells to."] };
+    if (input.countryTexts.some((text) => !context.locales.includes(text.locale))) return { ok: false, problems: ["A country's text is in a language the store does not offer."] };
+  }
+
   const before = actor && productId ? await productSnapshot(store.id, productId, context.primaryLocale) : null;
   try {
     const id = await db().transaction(async (tx) => {
@@ -906,6 +915,7 @@ export async function saveProduct(
       if (input.kind === "bundle") await saveBundleComponents(tx, store.id, saved, input);
       await savePriceBreaks(tx, store.id, saved, input, context);
       await writeAvailability(tx, store.id, saved, input, context);
+      await writeCountryTexts(tx, store.id, saved, input, context);
       // Markets that work their prices out from another's (D335 A.2) follow this product's prices.
       await deriveForProducts(tx, store.id, { productIds: [saved] });
       await saveFiles(tx, store.id, saved, input);
@@ -1009,6 +1019,37 @@ async function writeAvailability(tx: Tx, storeId: string, productId: string, inp
     select ${storeId}::uuid, ${productId}::uuid, v.id, r.code
       from jsonb_to_recordset(${JSON.stringify(variantRows)}::jsonb) as r(sku text, code text)
       join commerce.product_variants v on v.store_id = ${storeId}::uuid and v.product_id = ${productId}::uuid and v.sku = r.sku
+  `);
+}
+
+/** Its descriptions for one country (D338), as the editor holds them. */
+export async function countryTextsOf(storeId: string, productId: string): Promise<NonNullable<ProductInput["countryTexts"]>> {
+  const rows = await db().execute<Row>(sql`
+    select market_code, locale, description from commerce.product_market_texts
+    where store_id = ${storeId}::uuid and product_id = ${productId}::uuid
+    order by market_code, locale
+  `);
+  return rows.map((row) => ({ market: String(row.market_code), locale: String(row.locale), description: String(row.description) }));
+}
+
+/**
+ * Its descriptions for one country (D338), written only here: the rows of the countries the editor shows are replaced by what was given, an
+ * empty text dropped (the language's shows); those of countries it does not show are kept. Left out (`countryTexts` undefined), nothing changes.
+ */
+async function writeCountryTexts(tx: Tx, storeId: string, productId: string, input: ProductInput, context: EditorContext) {
+  if (!input.countryTexts) return;
+  const shown = `{${context.markets.map((m) => m.code).join(",")}}`;
+  await tx.execute(sql`
+    delete from commerce.product_market_texts
+    where store_id = ${storeId}::uuid and product_id = ${productId}::uuid and market_code = any(${shown}::text[])
+  `);
+  const rows = input.countryTexts.filter((text) => text.description.trim() !== "").map((text) => ({ ...text, description: text.description.trim() }));
+  if (rows.length === 0) return;
+  await tx.execute(sql`
+    insert into commerce.product_market_texts (store_id, product_id, market_code, locale, description)
+    select ${storeId}::uuid, ${productId}::uuid, r.market, r.locale, r.description
+      from jsonb_to_recordset(${JSON.stringify(rows)}::jsonb) as r(market text, locale text, description text)
+    on conflict (product_id, market_code, locale) do update set description = excluded.description, updated_at = now()
   `);
 }
 

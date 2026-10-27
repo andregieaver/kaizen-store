@@ -673,6 +673,15 @@ function TextSection({
             className={`${input} py-2`}
           />
         </label>
+        {context.markets.length > 1 && (
+          <CountryTexts
+            locale={locale}
+            markets={context.markets}
+            texts={product.countryTexts ?? []}
+            fallback={current.description}
+            onChange={(countryTexts) => update((p) => ({ ...p, countryTexts }))}
+          />
+        )}
         <label className={label}>
           <span>
             {w.text.safety} <span className={hint}>{w.text.safetyHint}</span>
@@ -764,6 +773,57 @@ async function uploadPicture(
   } catch {
     return { problem: fillWords(unreadable, { name: file.name }) };
   }
+}
+
+/**
+ * A product's description for one country, over its language's (D338), in the language being edited: one field per country the store sells
+ * in, empty for the language's text. Folded away, as most products never need it; the count says how many countries have their own.
+ */
+function CountryTexts({
+  locale,
+  markets,
+  texts,
+  fallback,
+  onChange,
+}: {
+  locale: string;
+  markets: readonly { code: string; name: string }[];
+  texts: NonNullable<ProductInput["countryTexts"]>;
+  fallback: string;
+  onChange: (texts: NonNullable<ProductInput["countryTexts"]>) => void;
+}) {
+  const w = useAdminText("product").text;
+  const id = useId();
+  const own = texts.filter((t) => t.locale === locale && t.description.trim() !== "");
+  const set = (market: string, description: string) =>
+    onChange([...texts.filter((t) => !(t.market === market && t.locale === locale)), ...(description === "" ? [] : [{ market, locale, description }])]);
+  return (
+    <details className="rounded-panel border border-line p-3" open={own.length > 0} data-country-texts="">
+      <summary className="cursor-pointer text-sm font-medium">
+        {w.countryTexts}
+        {own.length > 0 && <span className="text-muted"> · {countWords(own.length, w.countryTextsCount)}</span>}
+      </summary>
+      <p id={`${id}-hint`} className="mt-2 text-xs text-muted">
+        {w.countryTextsHint}
+      </p>
+      <div className="mt-3 flex flex-col gap-3">
+        {markets.map((market) => (
+          <label key={market.code} className="flex flex-col gap-1 text-sm">
+            {fillWords(w.countryIn, { country: market.name })}
+            <textarea
+              value={texts.find((t) => t.market === market.code && t.locale === locale)?.description ?? ""}
+              onChange={(e) => set(market.code, e.target.value)}
+              placeholder={fallback}
+              rows={3}
+              lang={locale}
+              aria-describedby={`${id}-hint`}
+              className="rounded-md border border-line bg-card px-3 py-2"
+            />
+          </label>
+        ))}
+      </div>
+    </details>
+  );
 }
 
 function MediaSection({

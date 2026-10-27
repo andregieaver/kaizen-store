@@ -914,6 +914,12 @@ export const builderEn = {
     aiAssistants: "AI assistants",
     aiAssistantsHint:
       "ChatGPT, Claude, Perplexity and others may read the page. Off: it is left out of llms.txt and robots.txt asks AI crawlers to stay away.",
+    countries: "Countries",
+    everyCountry: "Every country",
+    someCountries: "Only some countries",
+    countriesHint: "In the other countries the page is not shown, listed or in the sitemap: a visitor there finds it not found.",
+    viewNote: "Drawn as visitors in {country} see it, in {language}.",
+    viewFor: "For {countries} only.",
     picture: "Picture",
     inMainAlt: "In {main}: {alt}",
     noDescription: "no description",

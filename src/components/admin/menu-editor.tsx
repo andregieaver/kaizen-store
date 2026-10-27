@@ -17,6 +17,8 @@ import { CSS } from "@dnd-kit/utilities";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  createContext,
+  useContext,
   useEffect,
   useId,
   useMemo,
@@ -27,7 +29,7 @@ import {
 } from "react";
 
 import { dropDepth, menuMoves, moveItem, subtreeEnd, type MenuMoves } from "@/lib/menu-structure";
-import { LABEL_MAX, MEGA_MAX_COLUMNS, MENU_MAX_ITEMS, MENU_NAME_MAX, type AnyLinkKind, type AnyMenuEntry, type AnyMenuLink } from "@/lib/navigation";
+import { countryLabelKey, LABEL_MAX, MEGA_MAX_COLUMNS, MENU_MAX_ITEMS, MENU_NAME_MAX, type AnyLinkKind, type AnyMenuEntry, type AnyMenuLink } from "@/lib/navigation";
 
 import { countWords, fillWords } from "@/lib/admin-fill";
 
@@ -83,12 +85,18 @@ const keyed = (item: AnyMenuEntry): Item => ({ ...item, key: `item-${++counter}`
  * are shown wherever they are chosen, so the editor says nothing about
  * places; it lists where the menu is used.
  */
+/** A store's country with its own language, for a link's label in that country over the language's (D338). */
+export type MenuCountry = { code: string; locale: string; name: string };
+/** The store's countries while it has several (D338), read by each link's panel; none for Kaizena Flow's own menus. */
+const MenuCountries = createContext<readonly MenuCountry[]>([]);
+
 export function MenuEditor({
   menus,
   menu,
   uses,
   basePath,
   languages,
+  countries = [],
   kinds,
   targets,
   copy,
@@ -103,6 +111,8 @@ export function MenuEditor({
   /** The Menus page: `?menu=` chooses the menu. */
   basePath: string;
   languages: MenuLanguage[];
+  /** A store's countries while it has several (D338): a link may have a label of its own in each. */
+  countries?: readonly MenuCountry[];
   kinds: KindOption[];
   targets: Targets;
   copy: MenuEditorCopy;
@@ -251,6 +261,7 @@ export function MenuEditor({
                 ? w.addFromLeft
                 : w.dragHint}
             </p>
+            <MenuCountries value={countries}>
             <Structure
               items={items}
               expanded={expanded}
@@ -270,6 +281,7 @@ export function MenuEditor({
               copy={copy}
               upload={upload}
             />
+            </MenuCountries>
             <p role="status" aria-live="polite" className="sr-only">
               {announcement}
             </p>
@@ -834,6 +846,7 @@ function MenuItemRow({
               </label>
             ))}
           </div>
+          <CountryLabels label={item.label} onChange={(label) => onChange({ ...item, label })} />
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
@@ -934,5 +947,40 @@ function MenuItemRow({
         </div>
       )}
     </li>
+  );
+}
+
+/**
+ * A link's label in one country over its language's (D338): one field per country, in the country's own language, folded away. Empty: the
+ * language's label. Only for a store with several countries.
+ */
+function CountryLabels({ label, onChange }: { label: Record<string, string>; onChange: (label: Record<string, string>) => void }) {
+  const countries = useContext(MenuCountries);
+  const w = useAdminText("website").menus;
+  if (countries.length < 2) return null;
+  const own = countries.filter((c) => label[countryLabelKey(c.locale, c.code)]?.trim()).length;
+  return (
+    <details className="rounded-panel border border-line p-3" open={own > 0}>
+      <summary className="cursor-pointer text-sm font-medium">{w.countryLabels}</summary>
+      <p className="mt-2 text-xs text-muted">{w.countryLabelsHint}</p>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        {countries.map((country) => {
+          const key = countryLabelKey(country.locale, country.code);
+          return (
+            <label key={country.code} className="flex flex-col gap-1 text-sm">
+              {fillWords(w.labelInCountry, { country: country.name })}
+              <input
+                value={label[key] ?? ""}
+                maxLength={LABEL_MAX}
+                onChange={(event) => onChange({ ...label, [key]: event.target.value })}
+                placeholder={label[country.locale] ?? ""}
+                lang={country.locale}
+                className="min-h-10 rounded-md border border-line bg-card px-3"
+              />
+            </label>
+          );
+        })}
+      </div>
+    </details>
   );
 }

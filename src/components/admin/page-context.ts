@@ -63,6 +63,13 @@ export type PageOwnerContext = {
   origin: string;
   /** The languages the owner's pages are written in, the main one first (D55); Kaizen's are English only. */
   languages: PageLanguage[];
+  /**
+   * A store's countries (market codes, its own first, kept ones too), which a page or article may be limited to (D338); absent for
+   * Kaizena Flow's own pages and a store with one country.
+   */
+  countries?: readonly string[];
+  /** The country the canvas draws the page as (the store's own, D338), named in the builder's bar; absent for Kaizena Flow's own pages. */
+  viewCountry?: string;
   /** Addresses the owner's pages cannot take. */
   reserved: readonly string[];
   /** The owner's pages, for choosing a parent to nest a page under (`/projects/project-a`); only pages nest. */

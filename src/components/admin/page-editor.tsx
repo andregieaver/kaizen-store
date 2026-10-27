@@ -506,6 +506,7 @@ export function PageEditor({
         rows={view.rows}
         onRows={changeRows}
         translate={translating ? { name: language.name, mainName: main.name, source: content.rows } : null}
+        viewNote={<ViewNote country={context.viewCountry} language={language.name} markets={content.markets} />}
         css={[siteCss, content.css ?? ""]}
         saved={parts}
         onSaved={updateParts}
@@ -746,6 +747,9 @@ export function PageEditor({
                 title={ew.aiAssistants}
                 help={ew.aiAssistantsHint}
               />
+              {context.countries && (
+                <CountriesField countries={context.countries} value={content.markets} onChange={(markets) => change({ markets })} />
+              )}
             </section>
             </>
             )}
@@ -1148,6 +1152,77 @@ function SlugField({
         )}
       </span>
     </div>
+  );
+}
+
+/** Whose view the canvas draws (D338): a country and a language, and the countries a limited page is for. */
+function ViewNote({ country, language, markets }: { country: string | undefined; language: string; markets: string[] | undefined }) {
+  const ew = useAdminText("builder").editor;
+  const name = useCountryName();
+  if (!country) return null;
+  return (
+    <p className="text-caption text-muted" data-view-note="">
+      {fillWords(ew.viewNote, { country: name(country), language })}
+      {markets && markets.length > 0 && <> {fillWords(ew.viewFor, { countries: markets.map(name).join(", ") })}</>}
+    </p>
+  );
+}
+
+/** A country's name in the admin's language (D338). */
+function useCountryName(): (code: string) => string {
+  const locale = ADMIN_LANG_FACTS[useAdminLang()].locale;
+  return useMemo(() => {
+    const names = new Intl.DisplayNames([locale], { type: "region" });
+    return (code: string) => names.of(code) ?? code;
+  }, [locale]);
+}
+
+/**
+ * The countries a store's page or article is for (D338): every country, as most pages are, or some, ticked. Homer leaves it; Lisa ticks.
+ * Ticking none is not a choice (the page would be nowhere): the last one stays until another is ticked or Every country is chosen.
+ */
+function CountriesField({ countries, value, onChange }: { countries: readonly string[]; value: string[] | undefined; onChange: (markets: string[] | undefined) => void }) {
+  const ew = useAdminText("builder").editor;
+  const name = useCountryName();
+  const id = useId();
+  const some = value !== undefined && value.length > 0;
+  return (
+    <fieldset className="flex flex-col gap-2" aria-describedby={`${id}-help`}>
+      <legend className="text-sm font-medium">{ew.countries}</legend>
+      <div className="flex flex-wrap gap-4 text-sm">
+        <label className="flex items-center gap-2">
+          <input type="radio" name={`${id}-scope`} checked={!some} onChange={() => onChange(undefined)} className="accent-brand" />
+          {ew.everyCountry}
+        </label>
+        <label className="flex items-center gap-2">
+          <input type="radio" name={`${id}-scope`} checked={some} onChange={() => onChange([countries[0]])} className="accent-brand" />
+          {ew.someCountries}
+        </label>
+      </div>
+      {some && (
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm" data-page-countries="">
+          {countries.map((code) => {
+            const on = value.includes(code);
+            return (
+              <label key={code} className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={on}
+                  // The last country stays ticked: a page for no country would be nowhere.
+                  disabled={on && value.length === 1}
+                  onChange={(event) => onChange(event.target.checked ? [...value, code].sort() : value.filter((c) => c !== code))}
+                  className="accent-brand"
+                />
+                {name(code)}
+              </label>
+            );
+          })}
+        </div>
+      )}
+      <p id={`${id}-help`} className="text-xs text-muted">
+        {ew.countriesHint}
+      </p>
+    </fieldset>
   );
 }
 

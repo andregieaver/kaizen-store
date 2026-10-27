@@ -3620,6 +3620,20 @@
       "when": 1793109354845,
       "tag": "20261027135554_producer_registrations_sql",
       "breakpoints": true
+    },
+    {
+      "idx": 517,
+      "version": "7",
+      "when": 1793111637928,
+      "tag": "20261027143357_product_market_texts",
+      "breakpoints": true
+    },
+    {
+      "idx": 518,
+      "version": "7",
+      "when": 1793111659551,
+      "tag": "20261027143419_product_market_texts_sql",
+      "breakpoints": true
     }
   ]
 }

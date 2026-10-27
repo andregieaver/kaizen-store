@@ -250,6 +250,9 @@ async function gridPages(
         and position('/' in substr(p.slug, length(${parent}::text) + 2)) = 0))
       and ${matches("categories", categories)}
       and ${matches("tags", tags)}
+      -- A page for other countries only (D338) is not listed in this one; the same rule as \`pageInMarket()\`.
+      and (${shop?.market.code ?? null}::text is null or coalesce(jsonb_array_length(p.published -> 'markets'), 0) = 0
+        or (p.published -> 'markets') ? ${shop?.market.code ?? ""}::text)
     order by ${dated && filter.sort !== "title" ? articleOrder : order}
     limit ${Math.max(1, Math.min(48, filter.limit))}
   `);

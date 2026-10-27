@@ -105,6 +105,8 @@ export async function saveStoreMenu({ account, store }: Membership, id: string |
   const { name, items } = parsed.data;
   // Every language the store keeps texts in (D178: a label in a language not shown now is kept, not dropped).
   const locales = store.localization.keptLocales;
+  // A label for one country over its language (D338), in the country's own language, for every country the store keeps.
+  const countryLocales = store.keptMarkets.length > 1 ? Object.fromEntries(store.keptMarkets.map((m) => [m.code, m.ownLocale])) : {};
 
   const handles = [...new Set(items.flatMap((i) => (i.link.kind === "product" ? [i.link.handle] : [])))];
   const titles = new Map<string, Record<string, string>>();
@@ -141,7 +143,7 @@ export async function saveStoreMenu({ account, store }: Membership, id: string |
     if (item.link.kind === "article" && !known.has(`article:${item.link.slug}`)) {
       problems.push("A link goes to an article that no longer exists. Choose another.");
     }
-    let label = cleanLabels(item.label, locales);
+    let label = cleanLabels(item.label, locales, countryLocales);
     if (item.link.kind === "product") {
       const own = titles.get(item.link.handle);
       if (!own) problems.push("A link goes to a product that no longer exists. Choose another.");

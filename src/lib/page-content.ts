@@ -2204,6 +2204,11 @@ export type PageContent = {
   tags: string[];
   /** An article's author, by name (D57); empty shows the store or Kaizen. Pages have none. */
   author?: string;
+  /**
+   * The countries a store's page or article is for (D338), as market codes (`NO`, `SE`); absent or empty, every country. In another country it
+   * is not drawn, not in the sitemap and not in a content grid's list (`pageInMarket()`); a store's own countries only, checked on save.
+   */
+  markets?: string[];
   /** The content: rows of columns of blocks. */
   rows: PageRow[];
   /** A header's place over the page (D80); only headers have one. */
@@ -3656,6 +3661,12 @@ export const pageInput = z.preprocess(
       aiAssistants: z.boolean(),
       ...termIdsSchema.shape,
       author: z.string().trim().max(AUTHOR_MAX, `Keep the author's name under ${AUTHOR_MAX} characters.`).optional(),
+      // Which countries are the store's is the owner's to check (`savePage`); here only the shape, and none means every country.
+      markets: z
+        .array(z.string().regex(/^[A-Z]{2}$/, "A country is two capital letters."))
+        .max(60)
+        .optional()
+        .transform((codes) => (codes && codes.length > 0 ? [...new Set(codes)].sort() : undefined)),
       rows: z.array(pageRowSchema).max(ROWS_MAX, `A page takes at most ${ROWS_MAX} rows.`),
       footerReveal: z.boolean().optional(),
       overlay: z

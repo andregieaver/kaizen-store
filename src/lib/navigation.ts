@@ -197,12 +197,19 @@ export function parseNavigation(value: unknown): StoreNavigation {
   return parsed.success ? parsed.data : EMPTY_NAVIGATION;
 }
 
-/** Only the store's own languages, with empty texts dropped. */
-export function cleanLabels(labels: Record<string, string>, locales: string[]): Record<string, string> {
+/** A label's key for one country over its language (D338): `de-DE@AT`. */
+export const countryLabelKey = (locale: string, country: string) => `${locale}@${country.toUpperCase()}`;
+
+/**
+ * Only the store's own languages, with empty texts dropped; and a country's own label over its language (D338, `de-DE@AT`) for the
+ * store's countries, each in its own language (`countries`: market code to the market's language).
+ */
+export function cleanLabels(labels: Record<string, string>, locales: string[], countries: Record<string, string> = {}): Record<string, string> {
+  const keys = [...locales, ...Object.entries(countries).map(([country, locale]) => countryLabelKey(locale, country))];
   return Object.fromEntries(
-    locales.flatMap((locale) => {
-      const text = labels[locale]?.trim();
-      return text ? [[locale, text]] : [];
+    keys.flatMap((key) => {
+      const text = labels[key]?.trim();
+      return text ? [[key, text]] : [];
     }),
   );
 }
@@ -252,7 +259,11 @@ export function menuLabel(
   builtIn: { home: string; account: string; cart: string; blog?: string; products?: string },
   /** Page titles, category and tag names by address, for links without a text of their own. */
   termNames?: MenuNames,
+  /** The shopper's country (a market code): its own label over the language's, where the owner wrote one (D338). */
+  country?: string,
 ): string {
+  const forCountry = country ? item.label[countryLabelKey(locale, country)] : undefined;
+  if (forCountry) return forCountry;
   const own = item.label[locale];
   if (own) return own;
   if (item.link.kind === "home" || item.link.kind === "account" || item.link.kind === "cart") {

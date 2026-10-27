@@ -2749,6 +2749,34 @@ export const priceBreaks = commerce.table(
  * treats it as not sold there, and the admin's own price reads use `commerce.kept_prices`. Written only by `saveProduct()`
  * (`writeAvailability()` in `src/server/products.ts`).
  */
+/**
+ * A product's description for one country, over its language's (D338, `docs/wave-7-storefront.md` D1): a German text for Austria beside the one
+ * for Germany. Written only by `saveProduct()`; read by the product page and its structured data in that country, the language's text otherwise.
+ * The title stays the language's everywhere (carts, orders, invoices, feeds and search name a product one way).
+ */
+export const productMarketTexts = commerce.table(
+  "product_market_texts",
+  {
+    storeId: storeId(),
+    productId: uuid("product_id").notNull(),
+    marketCode: char("market_code", { length: 2 }).notNull(),
+    locale: text("locale").notNull(),
+    description: text("description").notNull(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.productId, t.marketCode, t.locale] }),
+    productRef("product_market_texts_product_fk", t),
+    foreignKey({
+      name: "product_market_texts_market_fk",
+      columns: [t.storeId, t.marketCode],
+      foreignColumns: [markets.storeId, markets.code],
+    }).onDelete("cascade"),
+    index("product_market_texts_market_idx").on(t.storeId, t.marketCode),
+    check("product_market_texts_description", sql`length(${t.description}) between 1 and 20000`),
+  ],
+);
+
 export const marketAvailability = commerce.table(
   "market_availability",
   {

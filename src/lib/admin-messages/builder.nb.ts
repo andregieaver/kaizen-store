@@ -865,6 +865,12 @@ export const builderNb: BuilderMessages = {
     aiAssistants: "KI-assistenter",
     aiAssistantsHint:
       "ChatGPT, Claude, Perplexity og andre kan lese siden. Av: den holdes utenfor llms.txt, og robots.txt ber KI-robotene holde seg unna.",
+    countries: "Land",
+    everyCountry: "Alle land",
+    someCountries: "Bare noen land",
+    countriesHint: "I de andre landene vises ikke siden, den listes ikke og er ikke i nettstedskartet: en besøkende der får beskjed om at den ikke finnes.",
+    viewNote: "Vist slik besøkende i {country} ser den, på {language}.",
+    viewFor: "Bare for {countries}.",
     picture: "Bilde",
     inMainAlt: "På {main}: {alt}",
     noDescription: "ingen beskrivelse",

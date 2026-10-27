@@ -588,6 +588,7 @@ export function PageBuilder({
   grid,
   fonts,
   translate = null,
+  viewNote = null,
   templates = null,
   themeSections = null,
   pageType,
@@ -641,6 +642,8 @@ export function PageBuilder({
   library?: SavedPart[];
   /** Set while the page's texts are translated (D55). */
   translate?: Translating | null;
+  /** Whose view the canvas draws (D338: a country and a language), shown over it. */
+  viewNote?: ReactNode;
   /** Uploads a picture, shrunk in the browser first; null where uploads are not set up. */
   upload: Upload | null;
   /** Starts a row's background video upload; null where uploads are not set up. */
@@ -1187,6 +1190,7 @@ export function PageBuilder({
 
           {/* Its own scroll, with room at the sides for the rows' handles and tools, which reach past the canvas. */}
           <div className={`flex min-w-0 flex-col gap-3 lg:-mx-3 lg:px-3 lg:pb-6 ${STANDALONE}`}>
+          {viewNote}
           {!translate && (
             <div className="flex flex-wrap items-start gap-3">
               <div className="min-w-0 flex-1">
