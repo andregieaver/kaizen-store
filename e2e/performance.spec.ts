@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { storePageRows, testDb } from "./db";
+import { storePageRows, testDb, testStore } from "./db";
 
 /**
  * What a visitor's page loads first (D211, `docs/performance.md`): held here in the real build, as numbers a Lighthouse score
@@ -85,6 +85,103 @@ test("a first row's background picture loads at once, a later row's lazily, and 
   await expect(later).toHaveAttribute("loading", "lazy");
   // Blurred, the small copy is all it needs.
   await expect(later).toHaveAttribute("src", small);
+});
+
+/**
+ * The demo store's front page and a product page as a phone loads them (D336): the bytes sent over the wire, the largest picture and
+ * the time to the page's first byte, each under its budget. Bytes are as transferred (compressed), counted from every response the
+ * page asked for until two seconds after it loaded; the first load is cold (its bytes are the weight), and the first byte is the
+ * median of the three loads after it. Measured on the build of 2026-10-27: the front page 311 KB, the product page 331 KB, the largest
+ * picture about 1 KB (the demo's pictures are drawings), the first byte under 10 ms. The budgets leave room for ordinary growth and a
+ * slower runner: a change that passes one is a regression to look at, not a number to raise.
+ */
+const SPEED_BUDGETS = {
+  "/s/demo/no": { weight: 450_000, largestPicture: 200_000, firstByteMs: 250 },
+  "/s/demo/no/p/demo-keramikkopp": { weight: 450_000, largestPicture: 200_000, firstByteMs: 250 },
+} as const;
+
+for (const [path, budget] of Object.entries(SPEED_BUDGETS)) {
+  test(`${path} stays within its page weight, largest picture and first byte budget`, async ({ browser }) => {
+    test.setTimeout(120_000);
+    const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+    const page = await context.newPage();
+    try {
+      const firstBytes: number[] = [];
+      let weight = 0;
+      let largestPicture = 0;
+      for (let load = 0; load < 4; load++) {
+        const sizes: Promise<{ bytes: number; picture: boolean }>[] = [];
+        const counting = (response: import("@playwright/test").Response) => {
+          sizes.push(
+            response
+              .request()
+              .sizes()
+              .then((s) => ({ bytes: s.responseBodySize + s.responseHeadersSize, picture: response.request().resourceType() === "image" }))
+              .catch(() => ({ bytes: 0, picture: false })),
+          );
+        };
+        page.on("response", counting);
+        await page.goto(path, { waitUntil: "load" });
+        // What the page asks for after it has loaded (pictures coming near, the late scripts): a quiet moment, not "network idle",
+        // which a page that keeps a connection open never reaches.
+        await page.waitForTimeout(2_000);
+        page.off("response", counting);
+        if (load === 0) {
+          // The first load is the cold one, as a new visitor's: what it transfers is the page's weight. The browser's cache then
+          // serves the rest, so later loads only time the first byte.
+          const all = await Promise.all(sizes);
+          weight = all.reduce((sum, s) => sum + s.bytes, 0);
+          largestPicture = Math.max(0, ...all.filter((s) => s.picture).map((s) => s.bytes));
+          continue;
+        }
+        firstBytes.push(await page.evaluate(() => {
+          const [nav] = performance.getEntriesByType("navigation") as PerformanceNavigationTiming[];
+          return nav.responseStart - nav.requestStart;
+        }));
+      }
+      const firstByte = firstBytes.sort((a, b) => a - b)[1];
+      const measured = `${path}: ${weight} bytes, largest picture ${largestPicture} bytes, first byte ${firstByte.toFixed(0)} ms`;
+      console.log(measured);
+      expect(weight, measured).toBeLessThan(budget.weight);
+      expect(largestPicture, measured).toBeLessThan(budget.largestPicture);
+      expect(firstByte, measured).toBeLessThan(budget.firstByteMs);
+    } finally {
+      await context.close();
+    }
+  });
+}
+
+test("a page load's speed reaches the store's report when the visitor closes the tab, and nothing with Do Not Track (D336)", async ({ browser }) => {
+  const { slug, id } = await testStore("fart");
+  const sql = testDb();
+  try {
+    await sql`update commerce.stores set visit_counting = true where id = ${id}`;
+    const count = async () => Number((await sql`select count(*)::int as n from commerce.speed_samples where store_id = ${id}`)[0].n);
+    // With Do Not Track the beacon sends nothing.
+    const private_ = await browser.newContext({ extraHTTPHeaders: { DNT: "1" } });
+    const hidden = await private_.newPage();
+    await hidden.addInitScript(() => Object.defineProperty(navigator, "doNotTrack", { get: () => "1" }));
+    await hidden.goto(`/s/${slug}`);
+    await hidden.waitForTimeout(1_000);
+    await hidden.close();
+    await private_.close();
+    // A visitor on a phone opens the front page and closes the tab: its figures are sent as it is hidden, with its main content's
+    // time (which the browser knows only then), kept as the page's kind and the screen. (Headless Chromium does not deliver a
+    // beacon sent while it navigates to another page, so closing is what is tested here; a browser sends on either.)
+    const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    const page = await context.newPage();
+    await page.goto(`/s/${slug}`);
+    await page.waitForTimeout(1_000);
+    await page.close();
+    await expect.poll(count, { timeout: 10_000 }).toBe(1);
+    const [row] = await sql`select kind, screen, lcp_ms, ttfb_ms from commerce.speed_samples where store_id = ${id}`;
+    expect(row).toMatchObject({ kind: "home", screen: "phone" });
+    expect(row.lcp_ms).not.toBeNull();
+    expect(row.ttfb_ms).not.toBeNull();
+    await context.close();
+  } finally {
+    await sql.end();
+  }
 });
 
 test("an embedded HTML frame always has a name for screen readers", async ({ page }) => {

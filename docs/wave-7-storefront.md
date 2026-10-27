@@ -167,6 +167,19 @@ A1 availability (model, view, editor, CSV, cart, copies, tools); A2 rules (model
   page's place only, `placeOfPath()`), the 75th percentile per page kind over 28 days, with minimum samples, and lab runs of the front page
   and the top product and category page (decision 1). It says what it cannot measure. CI checks page weight, the largest picture and TTFB
   of the demo store's home and a product page (`e2e/performance.spec.ts`).
+  **B as built (2026-10-27).** Pictures: `SizedPicture` draws a product card, a content grid's tile, a picture component and the product
+  gallery's main picture with both files by width (`pictureSources()`) and `sizes` from `gridSizes()` (columns per screen size, on the
+  store's sizes) or `fixedSizes()` (a picture at its own size); product summaries carry the large file and its width from the library, and
+  page loaders give picture components their small copy (`withSmallCopies()`, never saved). The report has no lab scores (decision 1 is
+  open): it says so under *What this report cannot measure*. The beacon is `SpeedBeacon`, its own component beside the visit beacon (the
+  visit beacon sends before the page is used; speed is known only when it is hidden), loading `web-vitals` after the page and sending once
+  when the page is hidden (`visibilitychange`, never `pagehide`: leaving a page fires `pagehide` first, before `web-vitals` has the main
+  content's time). The e2e closes the tab: headless Chromium did not deliver a beacon sent while it navigated to another page, which was
+  not checked in other browsers. Samples are page kinds (`speedKind()`: front page, product, category or tag, lists, other pages; never the cart,
+  checkout or a working page) and screens (phone below 768 px), a figure needs 20 page loads, each figure counts its own (a load with no
+  press has no response time). The CSV `speed.figures` and the AI manager's `speed_report` repeat the page. CI's budget is three numbers
+  per page (bytes transferred, the largest picture, the median first byte of three warm loads) for the demo store's front page and a
+  product page on a phone's screen.
 - **C (D337) Checkout branding.** `appearance()` reads the theme (primary, text, background, border colours in light and dark, the body
   font's family when it is a web font Stripe can load from our own font CSS, corner radius from the theme's button radius), with a unit
   test for two themes; a *Checkout look* card in Design settings (logo on checkout, background, the pay button's colour and corners, the

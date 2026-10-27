@@ -725,14 +725,14 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "partial"
     },
     "weight": 4,
-    "gap": "Prerendered Next.js pages on Vercel's network, functions pinned to Dublin next to the database, and guarded budgets (`e2e/performance.spec.ts`: the first scripts' bytes and eager first pictures; campaign notices under 0.5 s; A/B proxy overhead by `scripts/ab-ttfb.mjs`). Pictures are compressed in the browser at upload to the smallest quality that measures the same (D213: WebP, AVIF for page pictures, at most 1600 px with a 480 px copy), videos to at most 1080p, and background pictures carry a `srcset` of the two (D211). Missing: a merchant-facing speed report (`pnpm perf` is a developer's Lighthouse run), and pictures at the visitor's device size: a product card draws one picture at 400 px with `unoptimized` (`src/components/product-card.tsx`), without a `srcset`.",
-    "bucket": "A",
-    "wave": 7,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "A speed report in the store admin shows lab scores (or measured Core Web Vitals) for the front page and a top product and category page, with the date of the run and what to fix.",
       "Pictures are served in a modern format at the visitor's device size with `srcset`, and a test checks the markup of a product card and a page picture.",
@@ -751,21 +751,44 @@
         "src/lib/image-quality.ts",
         "src/lib/video-compress.ts",
         "e2e/performance.spec.ts",
-        "e2e/compress.spec.ts"
+        "e2e/compress.spec.ts",
+        "src/lib/picture-sizes.ts",
+        "src/components/sized-picture.tsx",
+        "src/components/content-grid.tsx",
+        "src/components/product-gallery.tsx",
+        "src/lib/speed.ts",
+        "src/components/speed-beacon.tsx",
+        "src/server/analytics-speed.ts",
+        "src/app/api/visit/speed/route.ts",
+        "src/components/admin/analytics/speed-view.tsx",
+        "src/app/admin/(gated)/[store]/analytics/speed/page.tsx",
+        "docs/analytics.md"
       ],
       "tests": [
         "src/lib/image-quality.test.ts",
         "e2e/compress.spec.ts",
-        "e2e/performance.spec.ts"
+        "e2e/performance.spec.ts",
+        "src/lib/picture-sizes.test.ts",
+        "src/lib/speed.test.ts",
+        "src/components/admin/analytics/speed-view.test.ts",
+        "src/server/analytics-speed.int.test.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D115",
       "D211",
-      "D213"
+      "D213",
+      "D336"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-27",
+        "from": "partial",
+        "to": "full",
+        "why": "Wave 7 unit B (D336): product cards, content grid tiles, picture components and the product gallery offer the library's two files (WebP or AVIF from upload, 480 and up to 1600 px) by width with sizes from the columns (SizedPicture, picture-sizes.test.ts reads the markup of a card and a picture component). Analytics -> Speed shows measured Core Web Vitals (LCP, INP, CLS, TTFB) per kind of page (front page, product, category and tag, lists, other) and screen at the 75th percentile over 28 days, with the period, the last sample, Google's ratings and what to fix first, a figure under 20 page loads left out with its count, and what it cannot measure (lab runs not run); speed.test.ts, speed-view.test.ts and analytics-speed.int.test.ts hold it. e2e/performance.spec.ts holds page weight, the largest picture and the first byte of the demo store's front and product page on a phone."
+      }
+    ]
   },
   {
     "id": "storefront.customer-account-pages",

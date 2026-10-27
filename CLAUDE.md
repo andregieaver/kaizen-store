@@ -217,6 +217,14 @@ stand-in is the only fake, and only it is told it is one.
   Shopify's `Product Category`. A model only suggests (`categoryCandidates()` by code, `readCategoryChoice()` keeps a listed id, feature
   `product_taxonomy`), staff accept; the AI manager names a category by id or English path and attributes by name, resolved by code. A new
   release that moves or retires an id comes with a migration mapping products' ids.
+- **Speed (wave 7 unit B, D336, `docs/analytics.md` Speed, `src/lib/picture-sizes.ts`, `src/lib/speed.ts`, `src/server/analytics-speed.ts`)**: a
+  library picture is drawn with both its files by width through `SizedPicture` (`pictureSources()`, `sizes` from `gridSizes()` or
+  `fixedSizes()`), so a new place that draws a product's or a page's picture passes the small copy and its sizes; a picture with one file is
+  drawn as before. Speed is measured only by `SpeedBeacon` (inside `OffPayRoutes`, while the store counts visits, never with GPC or Do Not
+  Track, no cookie or identifier) and kept only by `recordSpeed()` in `commerce.speed_samples` as the page's kind (`speedKind()`) and the
+  screen; every figure is `speedRows()` (75th percentile, `MIN_SPEED_SAMPLES`, Google's `SPEED_THRESHOLDS`), never stored, and one with too
+  few page loads says how many there are. The page, the CSV `speed.figures` and the AI manager's `speed_report` read `speedReport()`. CI's
+  budgets are `SPEED_BUDGETS` in `e2e/performance.spec.ts`: a change past one is a regression to look at, not a number to raise.
 - **What is sold where (wave 7 unit A1, D335, `docs/wave-7-storefront.md` A.1)**: a product or a variant is switched off in one market by a row
   of `commerce.market_availability` (no variant: the whole product), its price kept; written only by `saveProduct()` (`writeAvailability()`,
   `ProductInput.availability`, left out = kept, only the countries the editor shows replaced). `commerce.current_prices` leaves out a variant
