@@ -1095,6 +1095,10 @@ const PAGES: readonly AdminPage[] = [
   platform("emails", "/emails", "Emails", "Platform", "Every email Kaizena Flow and the stores sent, and email setup."),
   platform("email", "/emails/[emailId]", "Email", "Platform", "One email."),
   platform("ai", "/ai", "AI", "Platform", "Kaizena Flow's default AI provider and models, and the search eval.", { keywords: ["model", "provider"] }),
+  platform("status", "/status", "Status page", "Platform", "The public status page: each part's checks, incidents to post and update, and how many subscribe.", {
+    keywords: ["status", "incident", "outage", "uptime", "downtime", "maintenance"],
+    tasks: ["Post an incident", "Update or resolve an incident", "See the latest checks"],
+  }),
   platform("capacity", "/capacity", "Usage and limits", "Platform", "What every store used this month against its limits (storage, products, staff, domains, visits, emails and AI), the database at a glance, and a CSV.", {
     keywords: ["usage", "limits", "quota", "storage", "bandwidth", "traffic", "capacity", "load", "database"],
     tasks: ["See every store's usage this month", "Find the stores closest to their limits", "Download the month as CSV"],

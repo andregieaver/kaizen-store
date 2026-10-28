@@ -58,6 +58,7 @@ export const SETTINGS_ITEMS: SectionItem[] = [
   item("/stripe", "Stripe", "Kaizena Flow's Stripe webhooks per mode, the default fee per sale and the checkout's look."),
   item("/ai", "AI", "Kaizena Flow's default AI provider and models.", true),
   item("/ai/usage", "AI usage", "What every store, owner and Kaizena Flow itself used of the AI."),
+  item("/status", "Status page", "The public status page: each part's checks every five minutes, incidents to post and update, and their subscribers."),
   item("/capacity", "Usage and limits", "What every store used this month against its limits: storage, products, staff, visits, emails and AI."),
   item("/domains", "Domains", "Domains stores buy through Kaizena Flow: prices per currency, which stores may buy, registrations and purchases that need a look."),
   item("/ai/prices", "AI prices", "What each model costs per million tokens, per picture, per audio minute and per million characters, so the usage pages can show cost."),

@@ -223,6 +223,7 @@ export const PERSONAL_DATA: PersonalEntry[] = [
 
   // Staff, hosts, owners, applicants, the platform ----------------------------------------------------------------------------------
   entry("accounts", "staff", via("none"), ["email", "name"], null, "none", OWN),
+  entry("status_subscribers", "owner", via("none"), ["email"], null, "none", "People who asked for emails about Kaizena Flow's incidents (D360): an address and a language. Leaving (the link in every email) deletes the row, and one never confirmed goes after a week. " + OWN),
   entry("access_requests", "owner", via("none"), ["email", "name", "message"], null, "none", "People who applied to open a store: the platform's applicants. " + OWN),
   entry("abandoned_plan_checkouts", "owner", via("none"), ["email"], null, "none", "A store owner's unfinished plan checkout. " + OWN),
   entry("accessibility_settings", "owner", via("none"), ["contact_email"], null, "none", "The store's own contact for its accessibility statement. " + OWN),
@@ -270,6 +271,9 @@ export const NOT_PERSONAL: Record<string, string> = {
   checkout_rule_skips: "How often a checkout rule was left out and why (D357): a rule id, a reason and counts; no customer.",
   checkout_fields: "The questions a store asks at checkout (D357): the owner's words; the answers are on carts and orders.",
   site_stagings: "A store's sets of changes made ready together (D358): a name, a theme install, menus as staged and the outcome of publishing; staff accounts only by id.",
+  status_checks: "The status page's checks (D360): a component, passed or not and a reason code; no person.",
+  status_incidents: "Incidents on the status page (D360): a platform admin's words and the parts affected; staff only by id.",
+  status_incident_updates: "Updates to incidents on the status page (D360): a platform admin's words; staff only by id.",
   site_staging_pages: "Which pages a set of changes made ready together holds (D358): ids only.",
   workflow_runs: "Each run of a workflow (D356): the event, the id of what it was about, whether its conditions held and each action's outcome; no name, address or words of a customer, kept 90 days.",
   api_tokens: "Admin API tokens (D355): a name the owner gives, the scopes, the token's hash and first characters, who made it and when it was last used; no customer.",
@@ -506,6 +510,9 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   "platform.access_approved": "staff",
   "platform.access_declined": "staff",
   "platform.access_confirm": "staff",
+  "platform.status_confirm": "staff",
+  "platform.status_incident": "staff",
+  "platform.status_alert": "staff",
   "referral.credit_applied": "staff",
   "plan_reminder": "staff",
   "plan_reminder.test": "staff",

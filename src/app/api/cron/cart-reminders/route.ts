@@ -35,6 +35,7 @@ import { refreshKnowledge } from "@/server/knowledge";
 import { refreshMediaEmbeddings } from "@/server/media-library";
 import { PAGES_TAG, pagesTag } from "@/server/pages";
 import { runSchedules } from "@/server/page-schedules";
+import { runStatusChecks, STATUS_TAG } from "@/server/status";
 import { DESIGNS_TAG, designTags, runPlatformThemeUpdates, runThemeUpdates } from "@/server/design-presets";
 import { chargeDomainPurchases, registerPaidDomains } from "@/server/domain-purchases";
 import { chargeDueThemePurchases } from "@/server/theme-prices";
@@ -148,8 +149,11 @@ async function dispatch() {
     // Pages, articles, headers and footers to be published or put back, and themes to go live or back (D341, D340): what is due, in
     // the name of who scheduled it.
     schedules: () => runSchedules(),
+    // The status page's checks (D360): each part measured, admins emailed once when one fails twice in a row.
+    status: () => runStatusChecks(),
   });
   for (const storeId of r.schedules?.stores ?? []) revalidateTag(pagesTag(storeId), "max");
+  if ((r.status?.measured ?? 0) > 0) revalidateTag(STATUS_TAG, "max");
   for (const store of r.schedules?.themeStores ?? []) for (const tag of designTags(store)) revalidateTag(tag, "max");
   // Installed themes that follow updates and are behind their theme's latest version (D245); the stores' pages then show it.
   const themeUpdates = (await tracked("dispatcher.theme-updates", EVERY, () => runThemeUpdates())) ?? { updated: 0, refused: 0, stores: [] };

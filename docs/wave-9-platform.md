@@ -165,6 +165,10 @@ Each unit adds its own paragraph here when it is built.
   address is taken from its name (a number or a short random end when taken); a request confirmed while the switch is off, or whose store
   could not be made, waits for a platform admin as before. The trial does not stop a store at its end, as no plan is required of any store to
   keep selling; it makes the first plan chosen during it free until its end. No password at sign-up: the email link is the sign-in.
+- **G (D360), built 28 October 2026.** As section 3 says, with these choices: five parts, each measured by what it rests on (the database read
+  behind every page, Supabase Auth, Stripe, the email log, the job ledger); checkout and the admin are not checked apart from the site, as
+  they are the same app and database. A part not set up is *Not measured* and a check that did not run is missing, never up. Admins are emailed
+  at the second failure in a row and again only after a pass. Links in subscribers' emails open pages with a button. The feed is per language.
 
 ## 5. Decisions
 

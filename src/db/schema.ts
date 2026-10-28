@@ -15166,3 +15166,99 @@ export const companyLocationBuyers = commerce.table(
     index("company_location_buyers_location_fk_idx").on(t.storeId, t.locationId),
   ],
 );
+
+/**
+ * The status page's checks (wave 9 unit G, D360, `src/server/status.ts`, the only writer): one row per component of `STATUS_COMPONENTS` and
+ * check, every five minutes from the dispatcher, `ok` or not with a short reason code (never a secret or a person's data). A component not
+ * measured has no row (the page says *Not measured*, never up). Kept 90 days.
+ */
+export const statusChecks = commerce.table(
+  "status_checks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    component: text("component").notNull(),
+    ok: boolean("ok").notNull(),
+    reason: text("reason"),
+    checkedAt: timestamp("checked_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    check("status_checks_component", sql`${t.component} in ('website', 'sign_in', 'payments', 'email', 'jobs')`),
+    check("status_checks_reason", sql`${t.reason} is null or ${t.reason} ~ '^[a-z0-9_]{1,40}$'`),
+    index("status_checks_component_idx").on(t.component, t.checkedAt),
+  ],
+);
+
+/**
+ * Incidents on the status page (D360), posted by platform admins in their own words (English, and Norwegian where given), with the
+ * components they touch; written only by `src/server/status.ts`. `resolved_at` is set by the update that resolves it.
+ */
+export const statusIncidents = commerce.table(
+  "status_incidents",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    title: text("title").notNull(),
+    titleNb: text("title_nb"),
+    impact: text("impact").notNull(),
+    components: text("components").array().notNull().default(sql`'{}'::text[]`),
+    status: text("status").notNull().default("investigating"),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    check("status_incidents_impact", sql`${t.impact} in ('minor', 'major', 'maintenance')`),
+    check("status_incidents_status", sql`${t.status} in ('investigating', 'identified', 'monitoring', 'resolved')`),
+    check("status_incidents_title", sql`length(btrim(${t.title})) between 1 and 120 and (${t.titleNb} is null or length(${t.titleNb}) <= 120)`),
+    check("status_incidents_components", sql`${t.components} <@ array['website', 'sign_in', 'payments', 'email', 'jobs']::text[]`),
+    check("status_incidents_resolved", sql`(${t.status} = 'resolved') = (${t.resolvedAt} is not null)`),
+    index("status_incidents_started_idx").on(t.startedAt),
+    index("status_incidents_created_by_idx").on(t.createdBy),
+  ],
+);
+
+/** What a platform admin said about an incident, in order (D360): its status then and their words. Never changed. */
+export const statusIncidentUpdates = commerce.table(
+  "status_incident_updates",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    incidentId: uuid("incident_id")
+      .notNull()
+      .references(() => statusIncidents.id, { onDelete: "cascade" }),
+    status: text("status").notNull(),
+    body: text("body").notNull(),
+    bodyNb: text("body_nb"),
+    createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    check("status_incident_updates_status", sql`${t.status} in ('investigating', 'identified', 'monitoring', 'resolved')`),
+    check("status_incident_updates_body", sql`length(btrim(${t.body})) between 1 and 2000 and (${t.bodyNb} is null or length(${t.bodyNb}) <= 2000)`),
+    index("status_incident_updates_incident_idx").on(t.incidentId, t.createdAt),
+    index("status_incident_updates_created_by_idx").on(t.createdBy),
+  ],
+);
+
+/**
+ * People who asked to hear about incidents by email (D360): an address, the language, confirmed by a link first (its token kept only as a
+ * hash, `confirm_hash`), and a token of its own for leaving (`unsubscribe_token`, in every email). Written only by `src/server/status.ts`;
+ * leaving deletes the row, and an unconfirmed one goes after a week.
+ */
+export const statusSubscribers = commerce.table(
+  "status_subscribers",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    email: text("email").notNull(),
+    locale: text("locale").notNull().default("en"),
+    confirmHash: text("confirm_hash"),
+    confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+    unsubscribeToken: text("unsubscribe_token").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    check("status_subscribers_locale", sql`${t.locale} in ('en', 'nb-NO')`),
+    uniqueIndex("status_subscribers_email_idx").on(sql`lower(${t.email})`),
+    uniqueIndex("status_subscribers_confirm_idx").on(t.confirmHash),
+    uniqueIndex("status_subscribers_unsubscribe_idx").on(t.unsubscribeToken),
+  ],
+);

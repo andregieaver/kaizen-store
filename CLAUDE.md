@@ -951,6 +951,11 @@ stand-in is the only fake, and only it is told it is one.
   with a link kept as its hash; a store is made only by `confirmSelfSignup()` from the press on `/sign-up/confirm/{token}` (never by opening
   the link), through `approveAccessRequest(null, …)`, and starts `store_billing.trial_ends_at`, which `choosePlan()` passes to Stripe as
   `trial_end` (`trialEndFor()`). A new way to make a store without an admin goes through the same path and audits `store.self_signup`.
+- **The status page (wave 9 unit G, D360, `src/lib/status.ts`, `src/server/status.ts`)**: `/status` and `/no/status` read only
+  `statusOverview()` (cached under `STATUS_TAG`); checks are written only by `runStatusChecks()` (the five-minute dispatcher), one row per part
+  of `STATUS_COMPONENTS` its probe could measure (a probe with nothing to measure returns null: *Not measured*, never up), incidents and
+  updates only by `postIncident()`/`updateIncident()`, subscribers only by that module. A new part is an id in `STATUS_COMPONENTS` (and the
+  tables' checks), a probe in `PROBES` and its words in the `status` catalogue of both platform languages; a missing check is never drawn as passed.
 - **Workflows (wave 9 unit C, D356, `src/lib/workflows.ts`, `src/server/workflows.ts`)**: a workflow is `commerce.workflows`, written only by
   `workflows.ts` (saved off; on only once *Test* ran the version saved); its runs are made by the database's `queue_integration_event()` (once
   per workflow, event and transaction, capped at `RUNS_PER_HOUR`) and by `queueScheduledRuns()`, and run only by `runWorkflows()` in the
