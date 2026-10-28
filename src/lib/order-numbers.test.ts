@@ -58,9 +58,10 @@ describe("where the order operations write (wave 3, D173)", () => {
 
   it("order tags are written only in order-tags.ts (and the anonymising prune beside them), and a draft only in the draft modules", () => {
     expect(writers(/insert\s+into\s+commerce\.order_tags\b/i)).toEqual(["src/server/order-tags.ts"]);
-    // The draft modules: the editor, the send, the jobs; the pay link and the email only read; the erasure deletes the draft's copy of a person's data.
+    // The draft modules: the editor, the send, the jobs; the pay link and the email only read; the erasure deletes the draft's copy of a person's data;
+    // a merge of two customers (D366) gives an open draft to the customer kept.
     const draftWriters = writers(/(insert\s+into|update|delete\s+from)\s+commerce\.draft_orders\b/i);
-    expect(draftWriters).toEqual(["src/server/draft-orders.ts", "src/server/privacy-erasure.ts"]);
+    expect(draftWriters).toEqual(["src/server/customer-merge.ts", "src/server/draft-orders.ts", "src/server/privacy-erasure.ts"]);
   });
 
   it("a payment taken outside Kaizena Flow is inserted only by the draft's paid-outside function, an order change's (D174), an exchange's difference (D239) and an invoice on payment terms (D293)", () => {

@@ -16,6 +16,7 @@ export const JOB_KINDS = [
   "redirect_export",
   "inventory_import",
   "inventory_export",
+  "customer_import",
 ] as const;
 export type JobKind = (typeof JOB_KINDS)[number];
 
@@ -25,8 +26,8 @@ export type JobStatus = (typeof JOB_STATUSES)[number];
 export const JOB_PHASES = ["check", "apply", "write", "assemble"] as const;
 export type JobPhase = (typeof JOB_PHASES)[number];
 
-/** The kinds that read a file the member uploaded: a dry run, then an apply (the redirect import is wave 2's second run, D168; the stock file is wave 3's, D172). */
-export const IMPORT_KINDS: readonly JobKind[] = ["product_import", "redirect_import", "inventory_import"];
+/** The kinds that read a file the member uploaded: a dry run, then an apply (the redirect import is wave 2's second run, D168; the stock file is wave 3's, D172; the customer file wave 10's, D366). */
+export const IMPORT_KINDS: readonly JobKind[] = ["product_import", "redirect_import", "inventory_import", "customer_import"];
 export const EXPORT_KINDS: readonly JobKind[] = ["product_export", "order_export", "customer_export", "redirect_export", "inventory_export"];
 export const isImport = (kind: JobKind): boolean => IMPORT_KINDS.includes(kind);
 export const isExport = (kind: JobKind): boolean => !isImport(kind);
@@ -346,6 +347,31 @@ export const FINDINGS = {
       `The stock of SKU "${p.sku ?? ""}" is ${p.now ?? 0} now, not ${p.was ?? 0} as in the file, so the row was skipped. Export again and count again.`,
   },
   "stockfile.failed": { severity: "error", sentence: (p) => `The stock of SKU "${p.sku ?? ""}" could not be saved${p.reason ? `: ${p.reason}` : ""}.` },
+
+  // Customer files (wave 10 unit C, D366): a row is one person by their email. A sentence names a column and NEVER a cell: an email, a name
+  // or a phone number is a person's data, and findings are stored, shown and downloaded.
+  "file.not_customers": {
+    severity: "error",
+    sentence: () => `This is not a customer file we know. The first row must name an "email" column. Export the customers to see the layout.`,
+  },
+  "customerfile.marketing_ignored": {
+    severity: "info",
+    sentence: (p) => `The "${p.column ?? "marketing"}" column was not read: an import never subscribes anyone to marketing email. People join the list themselves.`,
+  },
+  "customerfile.password_ignored": { severity: "info", sentence: (p) => `The "${p.column ?? "password"}" column was not read: an import never sets a password. A customer signs in with a code sent to their email.` },
+  "customerfile.email_missing": { severity: "error", sentence: () => "This row has no email address, so it was skipped." },
+  "customerfile.email_invalid": { severity: "error", sentence: () => "This row's email is not an email address, so it was skipped." },
+  "customerfile.duplicate": { severity: "error", sentence: () => "This row's email is in the file again further up, and the first row wins, so this one was skipped." },
+  "customerfile.phone_invalid": { severity: "error", sentence: (p) => `The "${p.column ?? "phone"}" column does not hold a phone number, so the row was skipped.` },
+  "customerfile.address_incomplete": {
+    severity: "error",
+    sentence: (p) => `The address is missing ${col(p)}. Give the whole address or leave every address column empty; the row was skipped.`,
+  },
+  "customerfile.company_both": { severity: "error", sentence: (p) => `A company needs both its name and its organisation number; ${col(p)} is empty, so the row was skipped.` },
+  "customerfile.company_number": { severity: "error", sentence: (p) => `${col(p).replace(/^t/, "T")} does not hold a valid organisation number for the address's country, so the row was skipped.` },
+  "customerfile.tag_skipped": { severity: "warning", sentence: (p) => `A tag in ${col(p)} is longer than ${p.max ?? 40} characters, so it was left out.` },
+  "customerfile.tags_full": { severity: "warning", sentence: (p) => `A person has at most ${p.max ?? 50} tags, so the tags past that were left out.` },
+  "customerfile.failed": { severity: "error", sentence: () => "This row could not be saved. Try the import again." },
 } as const satisfies Record<string, FindingRule>;
 
 export type FindingCode = keyof typeof FINDINGS;

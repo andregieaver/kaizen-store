@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { requireFeature } from "@/components/admin/feature-off";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { CustomerForm, CustomerNotes, EMPTY_CUSTOMER_FORM } from "@/components/admin/customer-staff";
 import { CustomerAffiliateSection, showsAffiliate } from "@/components/admin/customer-affiliate";
 import { CustomerBonus, showsBonus } from "@/components/admin/customer-bonus";
 import { StaffFieldsSection } from "@/components/admin/staff-fields-section";
@@ -26,13 +27,14 @@ import { getBonusSettings, customerBonus } from "@/server/bonus";
 import { findCustomer, getCustomerDetail } from "@/server/customer-admin";
 import { customerAccess, listTiers } from "@/server/customer-tiers";
 import { listEmails } from "@/server/email";
+import { notesOf, staffFormValues } from "@/server/customer-staff";
 import { privacyCard } from "@/server/privacy-admin";
 import { tagsOf } from "@/server/segments";
-import { CARD_CLASS, Chip, List, ListRow, PageHeader, RowAmount, RowDate, RowLead } from "@/components/admin/ui";
+import { ButtonLink, Card, CARD_CLASS, Chip, List, ListRow, PageHeader, RowAmount, RowDate, RowLead } from "@/components/admin/ui";
 
 import { blockAffiliateAction } from "../../affiliates/actions";
 import { setCustomerGroupAction } from "../../customer-groups/actions";
-import { addCustomerTagAction, adjustBonusAction, removeCustomerTagAction, saveCustomerFieldsAction } from "./actions";
+import { addCustomerTagAction, addGuestAction, addNoteAction, adjustBonusAction, deleteNoteAction, removeCustomerTagAction, saveCustomerFieldsAction, updateCustomerAction } from "./actions";
 
 export const metadata: Metadata = { title: "Customer" };
 
@@ -54,19 +56,24 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
   const all = adminText(lang, "customers");
   const words = all.customer;
   const statuses = adminText(lang, "common").orderStatus;
-  const exportParam = (await searchParams).export;
+  const query = await searchParams;
+  const exportParam = query.export;
+  const merged = query.merged === "1";
   if (!z.uuid().safeParse(customerId).success) notFound();
   const ref = await findCustomer(store.id, customerId);
   if (!ref) notFound();
   // An order's or subscription's id finds its customer; the page lives at the customer's own address.
   if (ref.key !== customerId) redirect(`/admin/${store.slug}/customers/${ref.key}`);
-  const [customer, emails, groups, privacy, tags] = await Promise.all([
+  const [customer, emails, groups, privacy, tags, notes, formValues] = await Promise.all([
     getCustomerDetail(store.id, ref),
     listEmails({ storeId: store.id, to: ref.email, limit: 20 }),
     listTiers(store.id),
     // What the store holds about the person, and the open privacy request if staff logged one (D162).
     privacyCard(store.id, ref.key),
     tagsOf(store.id, ref.email),
+    // Staff's own notes on the person and the details as the edit form starts (wave 10 unit C, D366).
+    notesOf(store.id, ref.email, member.account.id),
+    ref.customerId ? staffFormValues(store.id, ref.customerId) : Promise.resolve(null),
   ]);
   const mayTag = memberCan(member, "customers:write");
   if (!customer) notFound();
@@ -106,7 +113,16 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
           customer.accountCreatedAt && fillWords(words.accountSince, { date: date(customer.accountCreatedAt) }),
           customer.lastSignInAt && fillWords(words.lastSignIn, { date: date(customer.lastSignInAt) }),
         ]}
+        actions={
+          mayTag && customer.customerId ? (
+            <ButtonLink href={`${base}/customers/${ref.key}/merge`} kind="secondary">
+              {all.staff.merge.link}
+            </ButtonLink>
+          ) : undefined
+        }
       />
+
+      {merged && <p role="status" className={`p-4 text-sm ${CARD_CLASS}`}>{all.staff.merge.merged}</p>}
 
       {privacy && <PrivacyBanner base={base} data={privacy} />}
 
@@ -227,6 +243,28 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
             />
           )}
 
+          {/* Staff's own changes to the person's details (wave 10 unit C, D366); a guest is given an account first. */}
+          {mayTag && (customer.customerId ? (
+            <Card title={all.staff.edit.title} compact>
+              <CustomerForm
+                action={updateCustomerAction.bind(null, store.slug, customer.customerId)}
+                values={formValues ?? EMPTY_CUSTOMER_FORM}
+                words={all.staff.form}
+                submit={all.staff.form.save}
+                note={all.staff.form.emailChangeNote}
+              />
+            </Card>
+          ) : (
+            <Card title={all.staff.edit.title} compact>
+              <p className="mb-3 text-sm">{all.staff.edit.guest}</p>
+              <form action={addGuestAction.bind(null, store.slug, ref.key)}>
+                <button type="submit" className="min-h-10 rounded-pill border border-edge bg-card px-4 text-sm">
+                  {all.staff.edit.makeAccount}
+                </button>
+              </form>
+            </Card>
+          ))}
+
           <section aria-labelledby="emails" className={card}>
             <h2 id="emails" className="mb-3 text-title text-ink">{words.emails}</h2>
             {emails.length === 0 ? (
@@ -302,6 +340,13 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
               </form>
             )}
           </section>
+          <CustomerNotes
+            notes={notes}
+            words={all.staff.notes}
+            add={mayTag ? addNoteAction.bind(null, store.slug, ref.key) : null}
+            remove={mayTag ? (noteId: string) => deleteNoteAction.bind(null, store.slug, ref.key, noteId) : null}
+            date={date}
+          />
           {customer.customerId && (
             <section aria-labelledby="discount" className={`${card} text-sm`}>
               <h2 id="discount" className="mb-2 text-title text-ink">{words.discount}</h2>

@@ -7,6 +7,8 @@ import { Avatar } from "@/components/avatar";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { avatarFor } from "@/server/avatars";
 import { listCustomers } from "@/server/customer-admin";
+import { storeTags } from "@/server/segments";
+import { tagKey } from "@/lib/order-tags";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
@@ -24,9 +26,12 @@ export default async function CustomersPage({ params, searchParams }: PageProps<
   const { store } = member;
   const all = adminText(adminLangOf(member.account.adminLocale), "customers");
   const words = all.list;
-  const raw = (await searchParams).q;
-  const q = typeof raw === "string" ? raw : "";
-  const customers = await listCustomers(store.id, { q });
+  const query = await searchParams;
+  const q = typeof query.q === "string" ? query.q : "";
+  // A tag in the address (wave 10 unit C, D366) is read as a key; one the store does not have shows nobody.
+  const tag = typeof query.tag === "string" ? tagKey(query.tag) : null;
+  const [customers, tags] = await Promise.all([listCustomers(store.id, { q, tag }), storeTags(store.id)]);
+  const staff = all.staff;
   const locale = store.markets[0]?.locale ?? "nb-NO";
   const base = `/admin/${store.slug}/customers`;
   const date = (iso: string) => new Date(iso).toLocaleDateString(locale, { dateStyle: "medium", timeZone: "Europe/Oslo" });
@@ -38,12 +43,24 @@ export default async function CustomersPage({ params, searchParams }: PageProps<
           title={words.title}
           description={words.description}
         />
-        {/* The customer file (D165) holds personal data, so only the owner is offered it. */}
-        {memberCan(member, "owner") && (
-          <Link href={`${base}/export`} className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4 text-sm font-medium">
-            {words.export}
-          </Link>
-        )}
+        <div className="flex flex-wrap gap-2">
+          {/* The customer files (D165, D366) hold personal data, so only the owner is offered them. */}
+          {memberCan(member, "owner") && (
+            <>
+              <Link href={`${base}/import`} className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4 text-sm font-medium">
+                {staff.importCustomers}
+              </Link>
+              <Link href={`${base}/export`} className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4 text-sm font-medium">
+                {words.export}
+              </Link>
+            </>
+          )}
+          {memberCan(member, "customers:write") && (
+            <Link href={`${base}/new`} className="inline-flex min-h-10 items-center rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink">
+              {staff.addCustomer}
+            </Link>
+          )}
+        </div>
       </div>
       <form role="search" className="flex flex-wrap gap-2">
         <label className="sr-only" htmlFor="customer-search">
@@ -57,10 +74,23 @@ export default async function CustomersPage({ params, searchParams }: PageProps<
           placeholder={words.search}
           className="min-h-10 w-full max-w-sm rounded-md border border-line bg-card px-3 text-sm"
         />
+        {tags.length > 0 && (
+          <label className="flex items-center gap-2 text-sm">
+            <span className="sr-only">{staff.tagLabel}</span>
+            <select name="tag" defaultValue={tag ?? ""} className="min-h-10 rounded-md border border-line bg-card px-3">
+              <option value="">{staff.allTags}</option>
+              {tags.map((t) => (
+                <option key={t.key} value={t.key}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <button type="submit" className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink">
           {words.searchButton}
         </button>
-        {q && (
+        {(q || tag) && (
           <Link href={base} className="flex min-h-10 items-center px-2 text-sm underline">
             {words.showEveryone}
           </Link>
@@ -69,7 +99,7 @@ export default async function CustomersPage({ params, searchParams }: PageProps<
 
       {customers.length === 0 ? (
         <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>
-          {q ? words.noMatch : words.none}
+          {q || tag ? words.noMatch : words.none}
         </p>
       ) : (
         <Card compact>

@@ -12,13 +12,13 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "partial"
     },
-    "gap": "Built: the Customers list (search by name or email) and a customer page (D35) with figures, orders, subscriptions, emails sent, wishlist, discount group (D108), staff-only custom fields (D120), manual bonus adjustments (D130) and tags added and removed one by one (D296, `addCustomerTagAction()`); staff export one person's data and erase them from the customer page (D162: `privacy-export.ts`, `privacy-erasure.ts`, orders restricted and later anonymised, never deleted, audit-logged without personal data); the owner-only customer CSV export is a D165 job (held in `platform.product-customer-and-order-csv`). Still missing: staff adding a customer or editing their name, email, phone or address (only the shopper can, `customers.ts`), notes with author and time, a tag filter on the list, merging two customers, and a customer CSV import.",
-    "bucket": "A",
-    "wave": 5,
+    "gap": "Built: the Customers list (search by name or email, a filter by tag) and a customer page (D35) with figures, orders, subscriptions, emails sent, wishlist, discount group (D108), staff-only custom fields (D120), manual bonus adjustments (D130) and tags (D296). Staff add a customer and change their name, email, phone, address and company through one writer that refuses another customer's email and audits without the values, keep notes with author and time, and merge two customers (orders, subscriptions, wishlists, addresses, tags, notes and the bonus balance move; a merge that would lose a company, standing lists, reviews, gift cards or the referral program is refused with the reason) (D366); the owner imports customers from our own or Shopify's CSV as a D165 job with a dry run and per-row findings, never subscribing anyone; staff export one person's data and erase them (D162); the owner-only customer CSV export is a D165 job. Not built: bulk editing of customers' names or marketing preferences, and a merge of accounts with gift cards or in the referral program (refused instead).",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "Staff add a customer and edit name, email, phone, address and company details; an email already in the store is refused, every change is written to the audit log, and nothing leaks to another store (integration test).",
       "Staff add and remove notes and tags on a customer; the list filters by tag and the page shows notes with author and time.",
@@ -40,7 +40,18 @@
         "src/server/privacy-admin.ts",
         "src/app/admin/(gated)/[store]/customers/[customerId]/erase/page.tsx",
         "src/app/admin/(gated)/[store]/customers/[customerId]/export/route.ts",
-        "src/server/segments.ts"
+        "src/server/segments.ts",
+        "src/server/customer-staff.ts",
+        "src/server/customer-merge.ts",
+        "src/server/customer-import.ts",
+        "src/lib/customer-staff.ts",
+        "src/lib/customer-import.ts",
+        "src/components/admin/customer-staff.tsx",
+        "src/components/admin/customer-merge.tsx",
+        "src/app/admin/(gated)/[store]/customers/new/page.tsx",
+        "src/app/admin/(gated)/[store]/customers/[customerId]/merge/page.tsx",
+        "src/app/admin/(gated)/[store]/customers/import/page.tsx",
+        "src/app/admin/(gated)/[store]/customers/import/[jobId]/page.tsx"
       ],
       "tests": [
         "src/server/customer-admin.int.test.ts",
@@ -49,7 +60,10 @@
         "src/server/privacy-export.int.test.ts",
         "src/server/privacy-erasure.int.test.ts",
         "src/server/privacy-admin.int.test.ts",
-        "src/server/segments.int.test.ts"
+        "src/server/segments.int.test.ts",
+        "src/server/customer-staff.int.test.ts",
+        "src/lib/customer-import.test.ts",
+        "e2e/signed-in/customers-staff.spec.ts"
       ],
       "untested": false
     },
@@ -61,9 +75,17 @@
       "D130",
       "D162",
       "D165",
-      "D296"
+      "D296",
+      "D366"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-28",
+        "from": "partial",
+        "to": "full",
+        "why": "Staff add and edit customers, keep notes, filter by tag, merge two customers and import a customer CSV (D366), each held by integration tests and a signed-in e2e spec."
+      }
+    ]
   },
   {
     "id": "customers.customer-segments-and-tags",

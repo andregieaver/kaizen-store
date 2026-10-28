@@ -214,7 +214,7 @@ export function areaRulesAsSql(): { when: string; area: AuditArea }[] {
 // ---------------------------------------------------------------------------
 
 /** The kinds of thing whose changes are written as before and after. */
-export const AUDIT_KINDS = ["product", "price", "page", "discount", "shipping", "staff", "role", "payments", "store"] as const;
+export const AUDIT_KINDS = ["product", "price", "page", "discount", "shipping", "staff", "role", "payments", "store", "customer"] as const;
 export type AuditKind = (typeof AUDIT_KINDS)[number];
 
 /**
@@ -231,6 +231,8 @@ export const ALLOWED_FIELDS: Record<AuditKind, readonly string[]> = {
   role: ["name", "permissions"],
   payments: ["enabled", "mode", "orderInvoices"],
   store: ["termsAtCheckout", "requireTwoStep", "legalRole", "pageId", "customerAccounts"],
+  // A customer (D366): only whether the email is confirmed carries a value; a name, an email, a phone, an address or a company is a person's data and is written as changed, never its value.
+  customer: ["emailConfirmed"],
 };
 
 /** A key that may hold a secret, a token, a credential or a bank number: never written, whatever the allowlist says. */

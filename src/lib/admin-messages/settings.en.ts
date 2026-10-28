@@ -478,6 +478,13 @@ export const settingsEn = {
     },
   },
   close: {
+    takeTitle: "Take your store with you",
+    takeText: "One JSON file with the website (pages, articles, menus, categories, blogs and content), the look and the settings. Products, stock, orders and customers have their own CSV files.",
+    takeButton: "Download the store as a file",
+    takeProducts: "Products",
+    takeStock: "Stock",
+    takeOrders: "Orders",
+    takeCustomers: "Customers",
     closedTitle: "This store is closed",
     suspendedTitle: "This store is suspended",
     closedText:

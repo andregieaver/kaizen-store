@@ -52,6 +52,7 @@ export default async function CloseStorePage({ params }: PageProps<"/admin/[stor
             </div>
           </ActionForm>
         )}
+        <TakeAway slug={store.slug} w={w} />
         <p className="text-sm">
           <Link href={`/admin/${store.slug}/orders`} className="underline underline-offset-2">
             {w.orders}
@@ -124,7 +125,33 @@ export default async function CloseStorePage({ params }: PageProps<"/admin/[stor
           </div>
         </ActionForm>
       )}
+
+      <TakeAway slug={store.slug} w={w} />
     </div>
+  );
+}
+
+/** The whole store as one file (D377), and the CSV files of what has its own, so an owner can leave with everything. */
+function TakeAway({ slug, w }: { slug: string; w: { takeTitle: string; takeText: string; takeButton: string; takeProducts: string; takeStock: string; takeOrders: string; takeCustomers: string } }) {
+  const base = `/admin/${slug}`;
+  return (
+    <section aria-labelledby="take-away" className={`flex flex-col gap-3 p-4 ${CARD_CLASS}`}>
+      <h2 id="take-away" className="text-title text-ink">
+        {w.takeTitle}
+      </h2>
+      <p className="text-sm text-muted">{w.takeText}</p>
+      <form method="post" action={`${base}/settings/close/export`}>
+        <button type="submit" className="min-h-10 rounded-pill border border-edge bg-card px-4 text-sm">
+          {w.takeButton}
+        </button>
+      </form>
+      <p className="flex flex-wrap gap-x-3 text-sm">
+        <Link href={`${base}/products/export`} className="underline underline-offset-2">{w.takeProducts}</Link>
+        <Link href={`${base}/inventory/export`} className="underline underline-offset-2">{w.takeStock}</Link>
+        <Link href={`${base}/orders/export`} className="underline underline-offset-2">{w.takeOrders}</Link>
+        <Link href={`${base}/customers/export`} className="underline underline-offset-2">{w.takeCustomers}</Link>
+      </p>
+    </section>
   );
 }
 

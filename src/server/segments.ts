@@ -15,6 +15,7 @@ import {
   SEGMENT_SAMPLE,
   segmentInput,
   segmentRulesSchema,
+  TAGS_PER_PERSON,
   type Person,
   type SegmentCount,
   type SegmentRules,
@@ -281,6 +282,60 @@ export async function removeTag(storeId: string, accountId: string, email: strin
   if (!rows[0]) return false;
   await audit(accountId, storeId, "customer.tag_removed", { tag: String(rows[0].label) });
   return true;
+}
+
+type Tx = Parameters<Parameters<ReturnType<typeof db>["transaction"]>[0]>[0];
+
+/**
+ * Tags an address inside the caller's transaction (a customer import's row, D366): the tags it does not have yet, up to a person's
+ * `TAGS_PER_PERSON` (counted first, so the limit's trigger never aborts the transaction). No audit entry: the import writes one for the job.
+ */
+export async function tagIn(tx: Tx, storeId: string, accountId: string | null, email: string, tags: readonly Tag[]): Promise<{ added: number; full: boolean }> {
+  if (tags.length === 0) return { added: 0, full: false };
+  const [row] = await tx.execute<Row>(sql`select count(*)::int as n from commerce.customer_tags where store_id = ${storeId}::uuid and email = ${normal(email)}`);
+  let room = TAGS_PER_PERSON - Number(row?.n ?? 0);
+  let added = 0;
+  let full = false;
+  for (const tag of tags) {
+    if (room <= 0) {
+      full = true;
+      break;
+    }
+    const rows = await tx.execute<Row>(sql`
+      insert into commerce.customer_tags (store_id, email, key, label, created_by)
+      values (${storeId}::uuid, ${normal(email)}, ${tag.key}, ${tag.label}, ${accountId}::uuid)
+      on conflict do nothing returning key
+    `);
+    if (rows[0]) {
+      added += 1;
+      room -= 1;
+    }
+  }
+  return { added, full };
+}
+
+/** How many tags two addresses would have together (a merge refuses more than `TAGS_PER_PERSON`). */
+export async function tagsTogether(tx: Tx, storeId: string, a: string, b: string): Promise<number> {
+  const [row] = await tx.execute<Row>(sql`
+    select count(distinct key)::int as n from commerce.customer_tags where store_id = ${storeId}::uuid and email in (${normal(a)}, ${normal(b)})
+  `);
+  return Number(row?.n ?? 0);
+}
+
+/**
+ * Moves an address's tags to another (D366: a staff email change, a merge), in the caller's transaction: a tag the new address has already is
+ * kept as it is there. The caller checks the limit first (`tagsTogether()`). The number of tags the new address gained.
+ */
+export async function moveTags(tx: Tx, storeId: string, from: string, to: string): Promise<number> {
+  if (normal(from) === normal(to)) return 0;
+  const moved = await tx.execute<Row>(sql`
+    insert into commerce.customer_tags (store_id, email, key, label, created_by, created_at)
+    select store_id, ${normal(to)}, key, label, created_by, created_at from commerce.customer_tags
+    where store_id = ${storeId}::uuid and email = ${normal(from)}
+    on conflict do nothing returning key
+  `);
+  await tx.execute(sql`delete from commerce.customer_tags where store_id = ${storeId}::uuid and email = ${normal(from)}`);
+  return moved.length;
 }
 
 /**

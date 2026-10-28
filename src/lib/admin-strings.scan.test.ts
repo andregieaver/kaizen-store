@@ -20,7 +20,8 @@ const DIRS = ["src/app/admin", "src/components/admin"];
 /** Words the same in every language. */
 const NAMES = new Set(["Kaizena Flow", "Kaizen Life", "Stripe", "Mollie", "Google", "Slack", "WordPress", "Shopify", "CSV", "PDF", "SKU", "URL"]);
 
-const JSX_TEXT = />\s*([^<>{}]*[A-Za-z]{2,}[^<>{}]*?)\s*</g;
+/** Text between tags; a `>` of an arrow (`=> Promise<…>`) closes no tag. */
+const JSX_TEXT = /(?<!=)>\s*([^<>{}]*[A-Za-z]{2,}[^<>{}]*?)\s*</g;
 const READ_PROPS = /\b(label|title|description|placeholder|alt|aria-label|legend|hint)=\s*"([^"]+)"/g;
 
 /** The English a file writes into its markup: words between tags and in the props a person reads. */

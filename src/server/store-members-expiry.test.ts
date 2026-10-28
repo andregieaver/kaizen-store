@@ -22,6 +22,7 @@ const ALLOWED: Record<string, string> = {
   "platform-customers.ts": "the platform admin's own list of accounts and their stores",
   "platform.ts": "a platform count of members",
   "store-copy.ts": "counts the stores an account owns",
+  "account-erasure.ts": "a person's own memberships, ended or not, go with their account (D377); the last-owner check counts only current owners",
 };
 
 const dir = join(process.cwd(), "src/server");

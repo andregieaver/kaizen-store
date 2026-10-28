@@ -76,7 +76,7 @@ gift card ledger, and nothing new is needed at checkout.
 
 - **C (D366).** Staff add and edit a customer (name, email, phone, address, company) through one writer that refuses another customer's email
   in the store and audits the change; `customer_notes` (author, time, text, personal data); the list filters by tag; merging two customers
-  moves orders, subscriptions, wishlists, addresses, tags, notes and the bonus ledger (an entry pair, never an edit) to the one kept and
+  moves orders, subscriptions, wishlists, addresses, tags, notes and the bonus balance (an entry granted, never an edit) to the one kept and
   refuses a merge that would lose a company or a subscription's link; a customer CSV import is a D165 job (`customer_import`, dry run,
   per-line errors), never subscribing anyone.
 - **D (D367).** A campaign's `combines_with_codes` and a code's `combines_with_campaigns` (both default on, as today). When they do not

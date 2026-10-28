@@ -91,7 +91,12 @@ maturity for the run-up to launch. Point IDs are the audit's.
       the AI manager's conversations have no retention period and a shopper's erasure does not reach them, and tone scoring and
       summaries are on by default without a word to customers.
 - [ ] **REG-02** Legal review of the platform's terms, privacy notice and DPA; fill in the company name.
-- [ ] **REG-03, DATA-05** Owner and staff account erasure; a whole-store export.
+- [x] **REG-03, DATA-05** Owner and staff account erasure; a whole-store export. Built 28 October 2026 (D377): Your account → *Delete
+      your account* (`eraseOwnAccount()` in `src/server/account-erasure.ts`: the account made anonymous in place, its memberships, the AI
+      manager's conversations, memories, notices, skills and follow-ups, devices, recovery codes and staff emails gone, its applications
+      emptied, its sign-in user deleted; refused for the last owner of a store not closed, a platform admin, a host or a domain's holder;
+      a fresh sign-in and the email typed), and Close store → *Take your store with you* (`storeExport()` in `src/server/store-export.ts`:
+      the website, look and settings as one JSON file, never a secret or a person, the owner's), beside the CSV files.
 - [ ] **REL-09, PERF-01, PERF-02, PERF-11** Status page and SLOs; real-user vitals; a Dublin-side measurement of `/admin`; per-route
       bundle budgets.
 - [x] **SEC-02** Leaked-password protection is on (Supabase Auth, the owner, 25 October 2026), and the admin's password sign-in has

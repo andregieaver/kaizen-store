@@ -124,7 +124,7 @@ export type CustomerListRow = {
 };
 
 /** Everyone with an account or a paid order, most recently active first; optionally matching a search. */
-export async function listCustomers(storeId: string, { q = "", limit = 100 }: { q?: string; limit?: number } = {}): Promise<CustomerListRow[]> {
+export async function listCustomers(storeId: string, { q = "", tag = null, limit = 100 }: { q?: string; tag?: string | null; limit?: number } = {}): Promise<CustomerListRow[]> {
   const search = q.trim().toLowerCase().slice(0, 100);
   const like = `%${search.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
   const rows = await db().execute<Row>(sql`
@@ -167,6 +167,8 @@ export async function listCustomers(storeId: string, { q = "", limit = 100 }: { 
     left join subs s on s.email = coalesce(a.email, b.email)
     left join spent sp on sp.email = coalesce(a.email, b.email)
     where ${search ? sql`(coalesce(a.email, b.email) like ${like} or lower(coalesce(a.name, b.name, '')) like ${like})` : sql`true`}
+      -- A tag (D296, D366) is the store's own, by its key: the people staff tagged so.
+      and ${tag ? sql`exists (select 1 from commerce.customer_tags t where t.store_id = ${storeId}::uuid and t.email = coalesce(a.email, b.email) and t.key = ${tag})` : sql`true`}
     order by coalesce(b.last_order, a.created_at) desc nulls last
     limit ${limit}
   `);

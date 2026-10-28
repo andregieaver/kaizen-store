@@ -226,7 +226,7 @@ export async function failJob(job: Pick<DataJob, "id" | "storeId">, problem: str
 
 export type ItemInput = {
   seq: number;
-  kind: "product" | "redirect" | "stock" | "file";
+  kind: "product" | "redirect" | "stock" | "customer" | "file";
   ref: string | null;
   rows: number[];
   outcome: ItemOutcome;

@@ -474,6 +474,13 @@ export const settingsNb: SettingsMessages = {
     },
   },
   close: {
+    takeTitle: "Ta med deg butikken",
+    takeText: "Én JSON-fil med nettstedet (sider, artikler, menyer, kategorier, blogger og innhold), utseendet og innstillingene. Produkter, lager, ordrer og kunder har egne CSV-filer.",
+    takeButton: "Last ned butikken som en fil",
+    takeProducts: "Produkter",
+    takeStock: "Lager",
+    takeOrders: "Ordrer",
+    takeCustomers: "Kunder",
     closedTitle: "Denne butikken er stengt",
     suspendedTitle: "Denne butikken er suspendert",
     closedText:

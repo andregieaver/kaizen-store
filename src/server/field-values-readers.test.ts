@@ -37,9 +37,10 @@ const READERS = [
 
 /**
  * Staff-side modules that delete the values staff entered about a customer or an order when the person is erased or the order is anonymised
- * (D162): they name the entities and are reached by no shopper page, email, integration or feed.
+ * (D162), or move a customer's values to the account kept when two are merged (D366): they name the entities and are reached by no shopper
+ * page, email, integration or feed.
  */
-const PRIVACY = ["src/server/privacy-erasure.ts", "src/server/retention.ts"];
+const PRIVACY = ["src/server/privacy-erasure.ts", "src/server/retention.ts", "src/server/customer-merge.ts"];
 
 function sources(root: string): string[] {
   const found: string[] = [];

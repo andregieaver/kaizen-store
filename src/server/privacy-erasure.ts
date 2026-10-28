@@ -718,6 +718,8 @@ async function eraseRows(tx: Tx, s: PrivacySubject, store: PrivacyStore): Promis
   await tx.execute(sql`delete from commerce.form_submissions where store_id = ${sid}::uuid and lower(email) = any(${addresses})`);
   // Staff's tags on the person (D296).
   await tx.execute(sql`delete from commerce.customer_tags where store_id = ${sid}::uuid and email = any(${addresses})`);
+  // Staff's notes on the person (D366).
+  await tx.execute(sql`delete from commerce.customer_notes where store_id = ${sid}::uuid and email = any(${addresses})`);
   // Welcome codes sign-up forms gave the person (D304 J3); the code itself stays in the discount's list, used or not.
   await tx.execute(sql`delete from commerce.signup_incentives where store_id = ${sid}::uuid and email = any(${addresses})`);
   // The broadcasts sent to the person (D297): their addresses go (the subscriber's own go with it below too); the broadcasts' figures stay.

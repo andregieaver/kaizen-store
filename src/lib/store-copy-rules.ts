@@ -188,6 +188,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   customer_addresses: never("Shoppers' saved addresses (D304); a copied customer keeps `customers.address`."),
   signup_incentives: never("Welcome codes sign-up forms gave the store's people (D304 J3)."),
   customer_tags: never("Staff's tags on the store's people (D296)."),
+  customer_notes: never("Staff's notes on the store's people (D366)."),
   marketing_subscribers: never("People who asked for the store's marketing email: their consent was given to that store (D295)."),
   marketing_consent_events: never("A subscriber's consent history (D295)."),
   abandoned_checkouts: never("Carts left behind by shoppers, with their emails."),

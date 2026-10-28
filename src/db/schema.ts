@@ -47,6 +47,7 @@ import { USAGE_METRIC_IDS } from "../lib/usage-metrics";
 import { AUDIT_AREA_KEYS } from "../lib/audit";
 import { MOVEMENT_REASONS, MOVEMENT_SOURCES } from "../lib/inventory";
 import { WORKFLOW_TRIGGERS } from "../lib/workflows";
+import { CUSTOMER_NOTE_MAX } from "../lib/customer-staff";
 import {
   EXCHANGE_LINES_MAX,
   EXCHANGE_QUANTITY_MAX,
@@ -11941,7 +11942,7 @@ export const dataJobs = commerce.table(
     storeId: uuid("store_id")
       .notNull()
       .references(() => stores.id, { onDelete: "cascade" }),
-    /** `product_import`, `product_export`, `order_export`, `customer_export`, `redirect_import`, `redirect_export` (wave 2, D168), `inventory_import`, `inventory_export` (wave 3, D172). */
+    /** `product_import`, `product_export`, `order_export`, `customer_export`, `redirect_import`, `redirect_export` (wave 2, D168), `inventory_import`, `inventory_export` (wave 3, D172), `customer_import` (wave 10, D366). */
     kind: text("kind").notNull(),
     /** `uploaded`, `checking`, `checked`, `queued`, `running`, `done`, `failed`, `cancelled`, `expired` (`src/lib/data-job.ts`). */
     status: text("status").notNull(),
@@ -12000,9 +12001,13 @@ export const dataJobs = commerce.table(
     uniqueIndex("data_jobs_one_active_inventory_import_idx")
       .on(t.storeId)
       .where(sql`${t.kind} = 'inventory_import' and ${t.status} in ('uploaded', 'checking', 'checked', 'queued', 'running')`),
+    // One customer import is open per store at a time (wave 10 unit C, D366), beside the others.
+    uniqueIndex("data_jobs_one_active_customer_import_idx")
+      .on(t.storeId)
+      .where(sql`${t.kind} = 'customer_import' and ${t.status} in ('uploaded', 'checking', 'checked', 'queued', 'running')`),
     check(
       "data_jobs_kind",
-      sql`${t.kind} in ('product_import', 'product_export', 'order_export', 'customer_export', 'redirect_import', 'redirect_export', 'inventory_import', 'inventory_export')`,
+      sql`${t.kind} in ('product_import', 'product_export', 'order_export', 'customer_export', 'redirect_import', 'redirect_export', 'inventory_import', 'inventory_export', 'customer_import')`,
     ),
     check(
       "data_jobs_status",
@@ -12025,9 +12030,9 @@ export const dataJobs = commerce.table(
     // An export has no input file, an import has no output files, and the format of an export is Kaizen's own.
     check(
       "data_jobs_export_no_input",
-      sql`${t.kind} in ('product_import', 'redirect_import', 'inventory_import') or (${t.inputPath} is null and ${t.inputSha256} is null and ${t.format} is distinct from 'shopify')`,
+      sql`${t.kind} in ('product_import', 'redirect_import', 'inventory_import', 'customer_import') or (${t.inputPath} is null and ${t.inputSha256} is null and ${t.format} is distinct from 'shopify')`,
     ),
-    check("data_jobs_import_no_files", sql`${t.kind} not in ('product_import', 'redirect_import', 'inventory_import') or ${t.files} = '[]'::jsonb`),
+    check("data_jobs_import_no_files", sql`${t.kind} not in ('product_import', 'redirect_import', 'inventory_import', 'customer_import') or ${t.files} = '[]'::jsonb`),
     // An ended job says when.
     check(
       "data_jobs_finished",
@@ -12048,7 +12053,7 @@ export const dataJobItems = commerce.table(
     storeId: storeId(),
     jobId: uuid("job_id").notNull(),
     seq: integer("seq").notNull(),
-    /** `product` (one product of the file), `redirect` (one line of a redirect file, wave 2, D168), `stock` (one row of a stock file, wave 3, D172) or `file` (a finding about the file as a whole). */
+    /** `product` (one product of the file), `redirect` (one line of a redirect file, wave 2, D168), `stock` (one row of a stock file, wave 3, D172), `customer` (one row of a customer file, wave 10, D366; its `ref` is null, never the address) or `file` (a finding about the file as a whole). */
     kind: text("kind").notNull(),
     /** The handle, or null. */
     ref: text("ref"),
@@ -12071,7 +12076,7 @@ export const dataJobItems = commerce.table(
     }).onDelete("cascade"),
     index("data_job_items_job_idx").on(t.storeId, t.jobId, t.outcome),
     check("data_job_items_seq", sql`${t.seq} >= 0`),
-    check("data_job_items_kind", sql`${t.kind} in ('product', 'redirect', 'stock', 'file')`),
+    check("data_job_items_kind", sql`${t.kind} in ('product', 'redirect', 'stock', 'customer', 'file')`),
     check("data_job_items_outcome", sql`${t.outcome} in ('created', 'updated', 'unchanged', 'skipped', 'drafted', 'failed', 'checked')`),
     check("data_job_items_json", sql`jsonb_typeof(${t.messages}) = 'array' and jsonb_typeof(${t.changes}) = 'object'`),
   ],
@@ -13660,6 +13665,32 @@ export const customerTags = commerce.table(
     check("customer_tags_key", sql`char_length(${t.key}) between 1 and ${lit(TAG_MAX_LENGTH)} and ${t.key} = btrim(${t.key})`),
     check("customer_tags_label", sql`char_length(${t.label}) between 1 and ${lit(TAG_MAX_LENGTH)} and ${t.label} = btrim(${t.label})`),
     check("customer_tags_label_chars", sql`${t.label} !~ '[,\\x01-\\x1f\\x7f\\u202a-\\u202e\\u2066-\\u2069]'`),
+  ],
+);
+
+/**
+ * A staff note on a person (wave 10 unit C, D366): free text about a customer, by their address (lower case, as tags are, so a guest can have
+ * notes too), with who wrote it and when. Added and deleted by staff with `customers:write`, never edited, written only by
+ * `src/server/customer-staff.ts` (a merge and an email change move them with the person). Personal data: in the export (section `notes`),
+ * deleted on erasure, never copied.
+ */
+export const customerNotes = commerce.table(
+  "customer_notes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    /** Lower case. */
+    email: text("email").notNull(),
+    body: text("body").notNull(),
+    createdBy: uuid("created_by").references(() => accounts.id),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("customer_notes_store_id_key").on(t.storeId, t.id),
+    index("customer_notes_email_idx").on(t.storeId, t.email, t.createdAt),
+    index("customer_notes_created_by_idx").on(t.createdBy),
+    check("customer_notes_email", sql`${t.email} = lower(${t.email}) and char_length(${t.email}) between 3 and 254`),
+    check("customer_notes_body", sql`char_length(${t.body}) between 1 and ${lit(CUSTOMER_NOTE_MAX)} and ${t.body} = btrim(${t.body})`),
   ],
 );
 

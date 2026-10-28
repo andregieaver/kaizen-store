@@ -1223,3 +1223,8 @@ export const ALERT_EMAIL_KINDS: Record<StaffAlertEvent, string> = {
   payment_overdue: "staff.payment_overdue",
   analytics: "staff.analytics_alerts",
 };
+
+/** An account erased (D377) is told of nothing again: its choices in every store go, inside the erasure's transaction. */
+export async function forgetAlertRecipientIn(tx: Pick<ReturnType<typeof db>, "execute">, accountId: string): Promise<void> {
+  await tx.execute(sql`delete from commerce.staff_alert_recipients where account_id = ${accountId}::uuid`);
+}

@@ -356,6 +356,8 @@ export type ExportInput = {
   comments?: CommentExportRow[];
   /** Staff's tags on the person (D296); absent is none. */
   customerTags?: string[];
+  /** Staff's notes on the person (D366): the words and when, never who wrote them; absent is none. */
+  customerNotes?: { text: string; writtenAt: string }[];
   /** Welcome codes a sign-up form gave the person (D304 J3): the discount and when; absent is none. */
   signupCodes?: { discount: string; givenAt: string }[];
   /** The broadcasts sent to the person (D297): staff's name for each and when; absent is none. */
@@ -730,7 +732,7 @@ export function countsOf(input: ExportInput): ExportCounts {
     support: (input.support ?? []).length,
     reviews: (input.reviews ?? []).length,
     comments: (input.comments ?? []).length,
-    marketing: (input.marketing ?? []).length + ((input.customerTags ?? []).length > 0 ? 1 : 0) + (input.broadcasts ?? []).length + (input.automations ?? []).length + (input.stockRequests ?? []).length + (input.signupCodes ?? []).length,
+    marketing: (input.marketing ?? []).length + ((input.customerTags ?? []).length > 0 ? 1 : 0) + (input.customerNotes ?? []).length + (input.broadcasts ?? []).length + (input.automations ?? []).length + (input.stockRequests ?? []).length + (input.signupCodes ?? []).length,
   };
 }
 
@@ -830,6 +832,7 @@ export function shapeExport(input: ExportInput): ExportFile {
       history: m.history.map((h) => ({ kind: h.kind, source: h.source, consentText: text(h.consentText), at: iso(h.at) })),
       })),
       ...((input.customerTags ?? []).length > 0 ? [{ kind: "tags", tags: [...(input.customerTags ?? [])] }] : []),
+      ...(input.customerNotes ?? []).map((n) => ({ kind: "staff_note", text: n.text, writtenAt: n.writtenAt })),
       ...(input.broadcasts ?? []).map((b) => ({ kind: "broadcast", broadcast: b.broadcast, sentAt: b.sentAt })),
       ...(input.automations ?? []).map((a) => ({ kind: "automation", automation: a.automation, sentAt: a.sentAt })),
       ...(input.signupCodes ?? []).map((c) => ({ kind: "signup_code", discount: c.discount, givenAt: c.givenAt })),

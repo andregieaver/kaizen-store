@@ -252,6 +252,10 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
   // Customers
   "store:customers": { title: "Kunder", keywords: ["kunder", "kunde", "kjøpere", "kundeliste", "personer"] },
   "store:customers.export": { title: "Eksporter kunder", keywords: ["eksporter kunder", "csv", "kundeliste", "last ned kunder", "excel"] },
+  "store:customers.new": { title: "Legg til en kunde", keywords: ["ny kunde", "legg til kunde", "opprett kunde", "kundekonto"] },
+  "store:customers.import": { title: "Importer kunder", keywords: ["importer kunder", "csv", "shopify", "last opp kunder", "flytt kunder"] },
+  "store:customers.import.job": { title: "Kundeimport", keywords: ["kundeimport", "importjobb"] },
+  "store:customer.merge": { title: "Slå sammen kunder", keywords: ["slå sammen kunder", "duplikat", "samme kunde to ganger"] },
   "store:customer": { title: "Kunde", keywords: ["kunde", "kundens bestillinger", "kundegruppe", "bonus"] },
   "store:privacy": {
     title: "Personvernforespørsler",
@@ -595,6 +599,7 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     title: "Abonnement og faktura",
     keywords: ["plan", "abonnement", "faktura", "fakturering", "fornyes", "gebyr", "kostnad"],
   },
+  "account:account.delete": { title: "Slett kontoen din", keywords: ["slett konto", "slette konto", "personvern", "fjern opplysningene mine"] },
   "account:account.appearance": { title: "Utseende", keywords: ["utseende", "farger", "tema", "fargeskjema", "mørk", "lys"] },
   "account:account.domains": {
     title: "Domenene dine",

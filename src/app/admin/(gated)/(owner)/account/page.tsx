@@ -290,6 +290,19 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
           </ul>
         </section>
       )}
+
+      {/* Deleting one's own account (D377): the page says what goes, or why it cannot yet. */}
+      <section aria-labelledby="erase-heading" className="flex max-w-md flex-col gap-3">
+        <h2 id="erase-heading" className="text-title text-ink">
+          {w.erase.sectionTitle}
+        </h2>
+        <p className="text-sm text-muted">{w.erase.sectionText}</p>
+        <div>
+          <Link href="/admin/account/delete" className={smallButton + " inline-flex items-center"}>
+            {w.erase.open}
+          </Link>
+        </div>
+      </section>
     </div>
   );
 }

@@ -127,13 +127,42 @@ async function saveAddressIn(tx: Tx, storeId: string, customerId: string, input:
  * saved ones as they are (the Addresses page removes one).
  */
 export async function saveDefaultAddress(storeId: string, customerId: string, address: SavedAddressFields): Promise<AddressOutcome> {
-  return db().transaction(async (tx) => {
-    if (!(await lockCustomer(tx, storeId, customerId))) return { ok: false, reason: "not_found" } as const;
-    const [current] = await tx.execute<Row>(sql`
-      select id from commerce.customer_addresses where store_id = ${storeId}::uuid and customer_id = ${customerId}::uuid and is_default_shipping
-    `);
-    return saveAddressIn(tx, storeId, customerId, current ? { id: String(current.id), address } : { address, defaultShipping: true, defaultBilling: true });
-  });
+  return db().transaction((tx) => saveDefaultAddressIn(tx, storeId, customerId, address));
+}
+
+/** `saveDefaultAddress()` inside a transaction of the caller's (staff's edit of a customer, D366, writes the customer and the address together). */
+export async function saveDefaultAddressIn(tx: Tx, storeId: string, customerId: string, address: SavedAddressFields): Promise<AddressOutcome> {
+  if (!(await lockCustomer(tx, storeId, customerId))) return { ok: false, reason: "not_found" } as const;
+  const [current] = await tx.execute<Row>(sql`
+    select id from commerce.customer_addresses where store_id = ${storeId}::uuid and customer_id = ${customerId}::uuid and is_default_shipping
+  `);
+  return saveAddressIn(tx, storeId, customerId, current ? { id: String(current.id), address } : { address, defaultShipping: true, defaultBilling: true });
+}
+
+/** How many addresses a customer has saved (a merge checks the two together against `ADDRESSES_MAX` before it starts). */
+export async function addressCount(tx: Tx, storeId: string, customerId: string): Promise<number> {
+  const [row] = await tx.execute<Row>(sql`
+    select count(*)::int as n from commerce.customer_addresses where store_id = ${storeId}::uuid and customer_id = ${customerId}::uuid
+  `);
+  return Number(row?.n ?? 0);
+}
+
+/**
+ * A merge (D366) moves one customer's saved addresses to another of the same store, in the merge's transaction: they come as the kept
+ * customer's other addresses (never the defaults the kept one has; the newest becomes the default only when it had none), and both
+ * customers' `customers.address` follow. Refused as `too_many` when the two would hold more than `ADDRESSES_MAX`. The number moved.
+ */
+export async function moveAddresses(tx: Tx, storeId: string, fromCustomerId: string, toCustomerId: string): Promise<{ ok: true; moved: number } | { ok: false; reason: "too_many" }> {
+  const [from, to] = [await addressCount(tx, storeId, fromCustomerId), await addressCount(tx, storeId, toCustomerId)];
+  if (from + to > ADDRESSES_MAX) return { ok: false, reason: "too_many" };
+  if (from === 0) return { ok: true, moved: 0 };
+  await tx.execute(sql`
+    update commerce.customer_addresses set customer_id = ${toCustomerId}::uuid, is_default_shipping = false, is_default_billing = false, updated_at = now()
+    where store_id = ${storeId}::uuid and customer_id = ${fromCustomerId}::uuid
+  `);
+  await settle(tx, storeId, toCustomerId);
+  await settle(tx, storeId, fromCustomerId);
+  return { ok: true, moved: from };
 }
 
 /** Takes one of the customer's addresses away; a default it was passes to the newest left. */

@@ -26,6 +26,8 @@ const READERS: Record<string, "real" | "template" | "both"> = {
   // An Admin API token (D355) answers for a real store only.
   "src/server/api-tokens.ts": "real",
   "src/server/auth.ts": "real",
+  // An account's own erasure (D377): only a real store needs the account as its last owner.
+  "src/server/account-erasure.ts": "real",
   "src/server/billing.ts": "both",
   // Broadcasts (D297): a template or demo store sends no marketing email.
   "src/server/broadcasts.ts": "real",

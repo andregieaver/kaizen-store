@@ -946,6 +946,14 @@ async function loadCustomerTags(s: PrivacySubject): Promise<string[]> {
   return rows.map((r) => strs(r.label));
 }
 
+/** Staff's notes on the person (D366), by the subject's addresses: the words and when, never who wrote them. */
+async function loadCustomerNotes(s: PrivacySubject): Promise<{ text: string; writtenAt: string }[]> {
+  const rows = await db().execute<Row>(sql`
+    select body, created_at from commerce.customer_notes where store_id = ${s.storeId}::uuid and email = any(${textList(s.addresses)}) order by created_at, id
+  `);
+  return rows.map((r) => ({ text: strs(r.body), writtenAt: new Date(String(r.created_at)).toISOString() }));
+}
+
 /** What staff entered in the customer's and their orders' custom fields, as label and words in the store's main language. */
 async function loadCustomFields(s: PrivacySubject, orders: OrderRow[], main: string): Promise<CustomFieldRow[]> {
   const groups = await listFieldGroups(s.storeId);
@@ -1005,12 +1013,13 @@ export async function gatherExport(s: PrivacySubject, language: string, now: Dat
     loadForms(s),
     loadCompany(s),
   ]);
-  const [consents, customFields, support, marketing, customerTags, broadcasts, automations, stockRequests, reviews, savedAddresses, signupCodes, comments] = await Promise.all([
+  const [consents, customFields, support, marketing, customerTags, customerNotes, broadcasts, automations, stockRequests, reviews, savedAddresses, signupCodes, comments] = await Promise.all([
     loadConsents(s, orders),
     loadCustomFields(s, orders, store.mainLocale),
     loadSupport(s),
     loadMarketing(s),
     loadCustomerTags(s),
+    loadCustomerNotes(s),
     loadBroadcasts(s),
     loadAutomations(s),
     loadStockRequests(s),
@@ -1052,6 +1061,7 @@ export async function gatherExport(s: PrivacySubject, language: string, now: Dat
     support,
     marketing,
     customerTags,
+    customerNotes,
     signupCodes,
     broadcasts,
     automations,

@@ -472,7 +472,24 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["export customers", "csv", "customer list", "download customers", "mailing list", "excel", "eksporter kunder"],
     feature: "shop",
   }),
+  store("customers.new", "/customers/new", "Add a customer", "Sales", "Adds a customer by hand: email, name, phone, address and company. They get an account without a password and sign in with a code sent to their email; nothing is emailed when they are added, and nobody is put on the marketing list.", {
+    tasks: ["Add a customer by hand", "Create a customer account"],
+    keywords: ["new customer", "create customer", "add client", "legg til kunde", "ny kunde"],
+    feature: "shop",
+  }),
+  store("customers.import", "/customers/import", "Import customers", "Sales", "Brings customers in from a CSV file (Kaizena Flow's own customer file or Shopify's customer export): check the file first, then import it. A row finds its customer by email; an empty cell keeps what the store has; tags are added. An import never subscribes anyone to marketing, never sets a password and never deletes anyone. The owner's only.", {
+    needs: "owner",
+    tasks: ["Import customers from Shopify", "Import customers from a CSV file", "See what a customer import would do"],
+    keywords: ["import customers", "csv", "shopify customers", "upload customers", "migrate customers", "importer kunder"],
+    feature: "shop",
+  }),
+  store("customers.import.job", "/customers/import/[jobId]", "Customer import", "Sales", "One customer import: the file, what the check found row by row, the import and its result, and the problems as a CSV. The owner's only.", { needs: "owner", feature: "shop" }),
   store("customer", "/customers/[customerId]", "Customer", "Sales", "One customer: orders, subscriptions, emails, their customer group and their bonus credits (balance, history, and adding or removing credits with a reason).", { feature: "shop" }),
+  store("customer.merge", "/customers/[customerId]/merge", "Merge customers", "Sales", "Folds another customer's account into this one: their orders, subscriptions, wishlists, saved addresses, tags, notes, custom field values and bonus credits move here, and the other account is deleted. Refused, before anything changes, when it would lose something (a company, subscription box lists, reviews, gift cards, the referral program, pending credits, too many addresses or tags).", {
+    tasks: ["Merge two customers", "Combine duplicate customer accounts"],
+    keywords: ["merge customers", "duplicate customer", "combine accounts", "slå sammen kunder", "duplikat"],
+    feature: "shop",
+  }),
   store("privacy", "/privacy", "Privacy requests", "Sales", "The log of privacy requests: people asking for a copy of the data the store holds about them, or for it to be erased (GDPR). Each has the day it was received and a one-month clock with the days left, red when overdue. Log a request that came by email, post or phone, then download the data, erase it, extend the answer once, refuse it with a reason, close it as no data held, or cancel it. Filter by open or answered (?status=answered, ?status=all).", {
     tasks: ["Log a request for a person's data", "See which privacy requests are due or overdue", "Extend or refuse a request", "Close a request as no data held", "Find a request that was answered"],
     keywords: ["data request", "subject access request", "DSAR", "GDPR", "erase", "delete customer", "anonymise", "forget me", "right to be forgotten", "personvern", "innsyn", "sletting", "export customer data", "privacy request", "one month"],
@@ -922,6 +939,10 @@ const PAGES: readonly AdminPage[] = [
   account("account.appearance", "/account/appearance", "Appearance", "How the admin looks for you: light or dark, and the colour scheme, with every scheme drawn in light and dark with the admin's buttons, cards, figures and lists so you can compare them. Your stores keep their own colours.", {
     keywords: ["appearance", "colours", "colors", "theme", "scheme", "dark", "light", "meadow", "indigo", "look"],
     tasks: ["Choose light or dark", "Choose the admin's colour scheme", "Compare the schemes side by side"],
+  }),
+  account("account.delete", "/account/delete", "Delete your account", "Erases your own account: your sign-in, name, email and picture, your access to every store, and the AI manager's conversations, memories, notices and saved skills. What you did in a store stays there without your name. Refused while you are the only owner of a store that is not closed, a platform admin, a host or the holder of a domain; needs a sign-in from the last ten minutes and your email typed again.", {
+    keywords: ["delete account", "erase account", "close account", "gdpr", "remove my data", "slett konto"],
+    tasks: ["Delete your account", "Erase your data"],
   }),
   account("account.notices", "/account/notices", "AI manager notices", "What the AI manager finished or waits on while you were away, in every store and on Kaizena Flow's own site: pages it built, follow-ups it answered, autopilot questions and finished plans, changes waiting for your yes and reports. Each opens its conversation or page.", {
     keywords: ["notices", "notifications", "inbox", "ai manager", "assistant", "done", "waiting", "approvals", "follow-ups", "bell"],
