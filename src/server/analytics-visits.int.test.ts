@@ -18,7 +18,8 @@ vi.mock("next/headers", () => ({
 }));
 vi.mock("next/server", async (importOriginal) => ({ ...(await importOriginal<typeof import("next/server")>()), connection: async () => {} }));
 
-const { recordVisit, recordTouch, attachVisitToCart, pruneVisits } = await import("./analytics-visits");
+const { recordVisit, recordTouch, attachVisitToCart, pruneVisits, visitKeyOf } = await import("./analytics-visits");
+const { logSearch } = await import("./search");
 const { NEW_VISITS_PER_ADDRESS_WINDOW, NEW_VISITS_PER_STORE_DAY } = await import("@/lib/visit-record");
 const { POST } = await import("@/app/api/visit/route");
 const route = await import("@/app/api/visit/route");
@@ -385,6 +386,35 @@ describe("tying a cart to its visit", () => {
     requestHeaders = asRequest({}, DESKTOP);
     expect(await db().transaction((tx) => attachVisitToCart(tx, storeId, id, EVENING))).toBe(false);
     expect(await visitOf(id)).toBe(first);
+  });
+});
+
+describe("a search keeps the day's visit (D347)", () => {
+  const shopOf = () => ({ storeId, market: { code: market } }) as unknown as Parameters<typeof logSearch>[0];
+  const store = (counting = true) => ({ id: storeId, timeZone: "Europe/Oslo", visitCounting: counting });
+  const searched = async (query: string) =>
+    String((await db().execute<Row>(sql`select visit_id from commerce.search_queries where store_id = ${storeId}::uuid and query = ${query}`))[0].visit_id);
+
+  it("finds the visit of the same visitor and store day, and nothing for another visitor", async () => {
+    await recordVisit({ headers: asRequest(), body: view(page()), now: EVENING });
+    const [row] = await visits();
+    await logSearch(shopOf(), `kopp ${run}`, 3, undefined, null, visitKeyOf(store(), asRequest(), EVENING));
+    expect(await searched(`kopp ${run}`)).toBe(String(row.id));
+    // Another browser on the same address is another visitor: no visit of theirs was counted.
+    await logSearch(shopOf(), `tote ${run}`, 3, undefined, null, visitKeyOf(store(), asRequest({}, DESKTOP), EVENING));
+    expect(await searched(`tote ${run}`)).toBe("null");
+  });
+
+  it("keys nothing with counting off, for a robot, or with a privacy signal, so the search keeps no visit", () => {
+    expect(visitKeyOf(store(false), asRequest(), EVENING)).toBeNull();
+    expect(visitKeyOf(store(), asRequest({}, "curl/8.0"), EVENING)).toBeNull();
+    expect(visitKeyOf(store(), asRequest({ "sec-gpc": "1" }), EVENING)).toBeNull();
+    expect(visitKeyOf(store(), asRequest({ dnt: "1" }), EVENING)).toBeNull();
+    // The key is the store day's and a hash, never the address or the browser.
+    const key = visitKeyOf(store(), asRequest(), EVENING)!;
+    expect(key.day).toBe("2026-10-02");
+    expect(key.visitor).toMatch(/^[0-9a-f]{24}$/);
+    expect(JSON.stringify(key)).not.toContain(IP);
   });
 });
 

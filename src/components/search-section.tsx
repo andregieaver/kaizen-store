@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { Suspense } from "react";
@@ -16,6 +17,7 @@ import { normalizeQuery } from "@/lib/search";
 import { searchRedirect } from "@/lib/search-rules";
 import { featureOn } from "@/lib/store-features";
 import { byName, type Term } from "@/lib/taxonomy";
+import { visitKeyOf } from "@/server/analytics-visits";
 import { storeAndMarket, type GridPlace } from "@/server/content-grid";
 import { understandQuery } from "@/server/query-understanding";
 import { queryVector } from "@/server/query-vector";
@@ -87,7 +89,9 @@ async function Search({ place, results }: { place: GridPlace; results: boolean }
   const products = found?.products ?? [];
   // The search's id goes into its result links, so opening one is recorded against it.
   const searchId = crypto.randomUUID();
-  if (found) after(() => logSearch(where, query, products.length, found, { id: searchId, experimentId: experiment?.id ?? null, arm }));
+  // The day's visit (D347), keyed while the request's headers can still be read: `after()` cannot read them.
+  const visit = found ? visitKeyOf(store, await headers()) : null;
+  if (found) after(() => logSearch(where, query, products.length, found, { id: searchId, experimentId: experiment?.id ?? null, arm }, visit));
   const terms = query && (products.length === 0 || found?.filters) ? await siteTerms(store.id, "product") : [];
   const categories = products.length === 0 ? terms.filter((term) => term.kind === "category" && !term.parentId).sort(byName) : [];
   const understood = found?.filters ? describeFilters(found.filters, terms, m, market) : [];

@@ -127,6 +127,9 @@ export const NAV_NB: Record<string, string> = {
     "Besøk, veien fra besøk til kjøp, enheter, land, søk og de travleste timene.",
   "Your sales cut the way you need them: ready reports and your own, saved and downloaded.":
     "Salget ditt fordelt slik du trenger det: ferdige rapporter og dine egne, lagret og lastet ned.",
+  Live: "Akkurat nå",
+  "Who is in the store right now, carts and checkouts in progress, and today's orders so far.":
+    "Hvem som er i butikken nå, handlekurver og kasser som er i gang, og dagens ordrer så langt.",
   Speed: "Hastighet",
   "How fast your pages load for your visitors, measured in their browsers, and what to fix.":
     "Hvor raskt sidene lastes for de besøkende, målt i nettleserne deres, og hva du kan rette.",

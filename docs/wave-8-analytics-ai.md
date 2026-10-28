@@ -253,6 +253,8 @@ Built as above, with these differences:
   - Searches with no results and with low click-through are listed with links to synonyms and search rules (D324).
   - `docs/analytics.md`'s *Not tracked* line about search changes to say "before visit counting was switched on".
 
+  **As built (27 October 2026).** As outlined, with these choices: the order follows a search when it was placed at or after it from a cart of the same visit (a cart started before the search still counts, since the shopper may search and add more); a cart in use has a line and changed in the last 30 minutes; a checkout in progress is an order from a shopper's checkout placed in the last 30 minutes (`CHECKOUT_MINUTES`); today's orders leave out, and count, an order in a currency with no rate, as Finance does; the visit is found inside the search's own insert from a key made while rendering, so the search page makes no extra read; erasure deletes the searches of the person's carts' visits. Tests: `analytics-live.int.test.ts` (with a euro order), the revenue cases in `analytics-search-data.int.test.ts`, the visit key in `analytics-visits.int.test.ts`, and the view in `traffic-view.test.ts`.
+
 - **D (D348) Targets, alerts and a briefing.**
   - **Targets**: `analytics_targets` gains `metric` (net sales, orders, conversion, AOV) and `period` (week, month, quarter, custom up to
     two years). Progress is against the weekday-weighted expectation. One target per metric and period start.

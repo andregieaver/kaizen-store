@@ -5,6 +5,7 @@ import { formatCount, formatPercent, NO_FIGURE } from "@/lib/analytics-core";
 import { formatDecimal } from "@/lib/analytics-format";
 import type { LandingKind } from "@/lib/analytics-traffic";
 import type { GeoReport } from "@/server/analytics-geo-data";
+import { LOW_CLICK_MIN } from "@/lib/analytics-search";
 import type { SearchReport } from "@/server/analytics-search-data";
 import type { TimeReport } from "@/server/analytics-time-data";
 import type { SegmentRow, TrafficReport } from "@/server/analytics-traffic-data";
@@ -523,7 +524,7 @@ function LandingSection({ base, traffic, money, w }: { base: string; traffic: Tr
 // Search
 // ---------------------------------------------------------------------------
 
-function SearchSection({ search, timeZone, w }: { search: SearchReport; timeZone: string; w: TrafficWords }) {
+function SearchSection({ base, search, timeZone, money, w }: { base: string; search: SearchReport; timeZone: string; money: Money; w: TrafficWords }) {
   const t = search.totals;
   const none = t.searches === 0;
   const l = w.columns;
@@ -540,6 +541,48 @@ function SearchSection({ search, timeZone, w }: { search: SearchReport; timeZone
     { key: "zero", label: l.foundNothing, align: "right", cell: (r) => formatCount(r.zeroResults) },
     { key: "clicked", label: l.openedResult, align: "right", cell: (r) => formatCount(r.clicked) },
     { key: "ctr", label: l.clickThrough, align: "right", cell: (r) => (r.clickThrough === null ? dash(w.why.noSearches) : formatPercent(r.clickThrough)) },
+    // What the term's searches led to (D347), only where a search of the period was tied to a visit.
+    ...(search.afterSearch ? [{ key: "orders", label: l.ordersAfter, align: "right" as const, cell: (r: SearchReport["topTerms"][number]) => formatCount(r.orders ?? 0) }] : []),
+  ];
+  const lowColumns: Column<SearchReport["lowClickTerms"][number]>[] = [
+    { key: "term", label: l.search, cell: (r) => term(r.term) },
+    { key: "searches", label: l.searches, align: "right", cell: (r) => formatCount(r.searches) },
+    { key: "results", label: l.resultsShown, align: "right", cell: (r) => formatCount(r.avgResults) },
+    { key: "ctr", label: l.clickThrough, align: "right", cell: (r) => (r.clickThrough === null ? dash(w.why.noSearches) : formatPercent(r.clickThrough)) },
+    {
+      key: "fix",
+      label: w.fixColumn,
+      cell: (r) => (
+        <span className="flex flex-wrap gap-3">
+          <Link href={`${base}/search?synonym=${encodeURIComponent(r.term)}#synonyms`} className={linkClass}>
+            {w.addSynonym}
+          </Link>
+          <Link href={`${base}/search#rules`} className={linkClass}>
+            {w.pinProduct}
+          </Link>
+        </span>
+      ),
+    },
+  ];
+  const after = search.afterSearch;
+  const afterCards: KpiCardProps[] = after
+    ? [
+        { label: w.afterTied, value: formatCount(after.tiedSearches), help: w.afterTiedHelp, hint: fillWords(w.afterTiedHint, { tied: formatCount(after.tiedSearches), n: formatCount(t.searches) }) },
+        { label: w.afterConversion, value: after.conversion === null ? NO_FIGURE : formatPercent(after.conversion), good: "up", help: w.afterConversionHelp },
+        { label: w.afterOrders, value: formatCount(after.orders), help: w.afterOrdersHelp },
+        {
+          label: w.afterRevenue,
+          value: money(after.revenueMinor),
+          help: w.afterRevenueHelp,
+          hint: after.unconverted > 0 ? countWords(after.unconverted, w.afterUnconverted, { n: formatCount(after.unconverted), currencies: after.missingCurrencies.join(", ") }) : undefined,
+        },
+      ]
+    : [];
+  const dayColumns: Column<SearchReport["byDay"][number]>[] = [
+    { key: "day", label: l.day, cell: (r) => dayText(r.day) },
+    { key: "tied", label: l.tied, align: "right", cell: (r) => formatCount(r.tied) },
+    { key: "converted", label: l.converted, align: "right", cell: (r) => formatCount(r.converted) },
+    { key: "rate", label: l.rate, align: "right", cell: (r) => (r.tied > 0 ? formatPercent(r.converted / r.tied) : NO_FIGURE) },
   ];
   const cards: KpiCardProps[] = [
     { label: w.searchesLabel, value: formatCount(t.searches), help: w.searchesHelp, hint: countWords(t.distinctTerms, w.searchesHint, { n: formatCount(t.distinctTerms) }) },
@@ -600,9 +643,34 @@ function SearchSection({ search, timeZone, w }: { search: SearchReport; timeZone
             <h3 className="text-body-strong text-ink">{w.mostSearched}</h3>
             <DataTable caption={w.topCaption} columns={topColumns} rows={search.topTerms} rowKey={(r) => r.term} exportId="traffic.top_terms" />
           </div>
+          {search.lowClickTerms.length > 0 ? (
+            <div className="space-y-2" data-low-click>
+              <h3 className="text-body-strong text-ink">{w.lowClickTitle}</h3>
+              <p className="max-w-prose text-sm text-muted">{fillWords(w.lowClickText, { min: formatCount(LOW_CLICK_MIN) })}</p>
+              <DataTable caption={w.lowClickCaption} columns={lowColumns} rows={search.lowClickTerms} rowKey={(r) => r.term} exportId="traffic.low_click_terms" />
+            </div>
+          ) : null}
         </>
       )}
-      <Note title={w.noSalesTracked}>{search.revenueNote}</Note>
+      {after ? (
+        <div className="space-y-3" data-after-search>
+          <h3 className="text-body-strong text-ink">{w.afterTitle}</h3>
+          <p className="max-w-prose text-sm text-muted">{w.afterText}</p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {afterCards.map((c) => (
+              <KpiCard key={c.label} {...c} />
+            ))}
+          </div>
+          {search.byDay.length > 0 ? (
+            <>
+              <h3 className="text-body-strong text-ink">{w.byDayTitle}</h3>
+              <DataTable caption={w.byDayCaption} columns={dayColumns} rows={search.byDay} rowKey={(r) => r.day} exportId="traffic.search_days" />
+            </>
+          ) : null}
+        </div>
+      ) : (
+        <Note title={w.noSalesTracked}>{w.afterOff}</Note>
+      )}
     </AnalyticsSection>
   );
 }
@@ -707,7 +775,7 @@ export function TrafficView(props: TrafficViewProps) {
       ) : null}
       <GeographySection base={base} geo={geo} traffic={traffic} money={money} w={w} />
       <LandingSection base={base} traffic={traffic} money={money} w={w} />
-      <SearchSection search={search} timeZone={timeZone} w={w} />
+      <SearchSection base={base} search={search} timeZone={timeZone} money={money} w={w} />
       <WhenSection time={time} timeZone={timeZone} money={money} w={w} />
     </>
   );

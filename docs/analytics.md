@@ -250,6 +250,38 @@ or an order with two codes, is in both rows, so such a column does not add up an
 converted in code at today's rates; a currency with no rate is left out and counted. Visits, sessions and conversion are not in the
 catalogue yet (unit C).
 
+## Live and revenue after a search (D347, wave 8 unit C, `docs/wave-8-analytics-ai.md` section 4)
+
+**Live** (`/admin/{store}/analytics/live`, `liveFigures()` in `src/server/analytics-live.ts`) is read on each request and again every
+10 seconds while the tab is shown (`LiveRefresh`, polling, never a socket). Nothing is kept for it.
+
+| Figure | Definition |
+|---|---|
+| Visitors now | Visitor-days (`commerce.visits`) of today or yesterday with `last_seen` in the last 5 minutes. Only while the store counts visits: otherwise not known, never 0. |
+| Where visitors are now | The same, by `visits.market_code` (a visit keeps no place finer than the country, so there is no map). |
+| Visits today | Visitor-days of the store's day. Only while counting is on. |
+| Orders today, Revenue today | `periodTotals()` for the store's day: paid orders (`PAID`) and revenue without VAT in the main currency; an order in a currency with no rate is left out of both and counted. |
+| Carts in use | Open, unexpired carts with at least one line whose `updated_at` (moved by every change, `openCart()`) is in the last 30 minutes. |
+| Checkouts in progress | Orders from a shopper's checkout (`source = 'checkout'`) waiting for payment, placed in the last `CHECKOUT_MINUTES` (30), the time a checkout stays open. |
+
+**Revenue after a search** (`searchReport()` in `src/server/analytics-search-data.ts`, the Traffic page's search section). While the store
+counts visits, a search keeps the day's visit of the same hashed visitor (`search_queries.visit_id`): the search page keys the visitor as
+`/api/visit` does (`visitKeyOf()`, the store day and the keyed hash, never with a robot or a privacy signal) and the search's own insert
+finds the visit row. Nothing new is stored about the person, no cookie is set and nothing is kept in the browser.
+
+| Figure | Definition |
+|---|---|
+| Searches tied to a visit | Searches of the period with a visit; their share of all searches. Only these can be followed to an order. |
+| Searches followed by an order | Tied searches after which a paid order (`PAID`) was placed from a cart of the same visit (`carts.visit_id`), at or after the search; their share of tied searches. |
+| Orders after a search | Those orders, each once however many searches came before it. |
+| Revenue after a search | Their revenue (D152: without VAT, gift cards sold left out), summed per currency and converted (`inMain()`); a currency with no rate is left out and counted. |
+| Orders after (per term) | The orders that followed the term's searches, each once. |
+| Day by day | Tied and followed searches per store day. |
+| Found, but rarely opened | Terms with at least `LOW_CLICK_MIN` (5) searches that found something and a click-through under `LOW_CLICK_RATE` (10 %), linked to a synonym and to search rules. |
+
+A period with no tied search says so (*not counted for this period*) and why, never a zero. An erasure deletes the searches of the
+visits the person's carts were made in.
+
 ## Staff-made orders and the AI manager's order tools (D173, wave 3)
 
 The definitions of **Staff-made order**, **Custom item**, **Custom price** and **Drafts waiting for payment** are in the table above. Where they are implemented, once each:
@@ -504,5 +536,6 @@ A period with no paid order still sends (*No orders yesterday*), so the owner kn
 ## Not tracked (said on the pages)
 
 Refunds the payment provider cannot match to a payment here; returns made without Kaizen's withdrawal function or return request; subscription expansion, contraction and
-reactivation (no status history); regions inside a country (only country and city); revenue after a search (searches are
-not tied to a visit); anything before visit counting was switched on.
+reactivation (no status history); regions inside a country (only country and city); revenue after a search before visit
+counting was switched on (a search is tied to a visit only while it is on, and never with a privacy signal); anything else before visit
+counting was switched on.

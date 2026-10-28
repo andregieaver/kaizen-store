@@ -62,15 +62,22 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "missing"
     },
     "weight": 2,
-    "gap": "No live page, route or query. A visit row (one per hashed visitor and store day) now keeps `first_seen` and `last_seen` (`analytics-visits.ts`), which an active-now figure could read without new personal data, but nothing reads it for a live view.",
-    "history": [],
-    "bucket": "A",
-    "wave": 8,
+    "gap": "Residual: a table by country where Shopify draws a globe (visits keep no place finer than the country), and the page reads every 10 seconds rather than streaming.",
+    "history": [
+      {
+        "on": "2026-10-27",
+        "from": "missing",
+        "to": "full",
+        "why": "D347: Analytics → Live reads `liveFigures()` every 10 seconds while open: visitors in the last 5 minutes from the visit row's `last_seen` and their countries, today's visits, paid orders and revenue (store day, main currency without VAT, a euro case tested), carts in use and checkouts in progress; without visit counting the visitor figures say what is missing and link to switching it on."
+      }
+    ],
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "A Live page shows visitors active in the last 5 minutes, today's sessions, orders and sales so far (store time zone), and active carts and checkouts.",
       "Active-now is read from a last-seen time kept on the existing visitor-day row, with no new personal data, no cookie, no IP and no user agent (D152's promises hold).",
@@ -79,17 +86,22 @@
     ],
     "evidence": {
       "files": [
+        "src/server/analytics-live.ts",
+        "src/components/admin/analytics/live-view.tsx",
+        "src/components/admin/analytics/live-refresh.tsx",
+        "src/app/admin/(gated)/[store]/analytics/live/page.tsx",
         "src/server/analytics-visits.ts",
-        "src/lib/visit-record.ts",
-        "src/app/api/visit/route.ts"
+        "docs/analytics.md"
       ],
       "tests": [
+        "src/server/analytics-live.int.test.ts",
         "src/server/analytics-visits.int.test.ts"
       ],
       "untested": false
     },
     "decisions": [
-      "D152"
+      "D152",
+      "D347"
     ]
   },
   {
@@ -1061,15 +1073,22 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "partial"
     },
     "weight": 2,
-    "gap": "Searches, no-result queries and click-through are reported on the Traffic page (`analytics-search-data.ts`); revenue after a search is not tracked because a search is not tied to a visit or an order (`revenueTracked: false`, held by `analytics-search-data.int.test.ts`).",
-    "history": [],
-    "bucket": "A",
-    "wave": 8,
+    "gap": "Residual: revenue after a search is counted only while visit counting is on and for visitors who send no privacy signal; searches made before are in every other figure and say so.",
+    "history": [
+      {
+        "on": "2026-10-27",
+        "from": "partial",
+        "to": "full",
+        "why": "D347: a search keeps the day's visit of the same hashed visitor (`search_queries.visit_id`, no cookie or storage), and the Traffic page shows the paid orders placed after a search from a cart of the same visit, their revenue, conversion and orders per term and day; searches that found something but were rarely opened are listed with a synonym and search rules to act on them (zero-result searches already were, on the Search page)."
+      }
+    ],
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "Search analytics shows orders and revenue that followed a search in the same visit, without a cookie or storage.",
       "Zero-result and low click-through queries are listed with counts and a link to act on them.",
@@ -1081,18 +1100,24 @@
         "src/server/search.ts",
         "src/server/search-experiment.ts",
         "src/components/admin/analytics/traffic-view.tsx",
-        "src/app/admin/(gated)/[store]/search/page.tsx"
+        "src/app/admin/(gated)/[store]/search/page.tsx",
+        "src/lib/analytics-search.ts",
+        "src/server/analytics-visits.ts",
+        "src/components/search-section.tsx"
       ],
       "tests": [
         "src/server/analytics-search-data.int.test.ts",
         "src/server/search.int.test.ts",
-        "src/server/search-experiment.int.test.ts"
+        "src/server/search-experiment.int.test.ts",
+        "src/server/analytics-visits.int.test.ts",
+        "src/components/admin/analytics/traffic-view.test.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D72",
-      "D152"
+      "D152",
+      "D347"
     ]
   },
   {

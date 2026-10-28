@@ -698,6 +698,11 @@ const PAGES: readonly AdminPage[] = [
     feature: "shop",
   }),
   store("analytics.report", "/analytics/reports/view", "A report", "Analytics", "One report: a ready one, a saved one or a new one, with its builder, its table, the totals and a CSV.", { feature: "shop" }),
+  store("analytics.live", "/analytics/live", "Live", "Analytics", "What is happening in the store now, read again every 10 seconds while the page is open: visitors in the last five minutes and their countries (while visits are counted), today's visits, paid orders and revenue so far, carts changed in the last 30 minutes and checkouts waiting for payment.", {
+    keywords: ["live view", "real time", "right now", "active visitors", "online now", "today", "carts", "checkouts"],
+    tasks: ["See who is in the store now", "See today's sales so far"],
+    feature: "shop",
+  }),
   store("analytics.speed", "/analytics/speed", "Speed", "Analytics", "How fast the store's pages load for its visitors, measured in their browsers while visits are counted: Largest Contentful Paint, Interaction to Next Paint, Cumulative Layout Shift and Time to First Byte at the 75th percentile over 28 days, for the front page, product, category, list and other pages on phones and computers, rated as Google does, with what to fix and what cannot be measured.", {
     keywords: ["speed", "performance", "page speed", "core web vitals", "lcp", "inp", "cls", "ttfb", "slow", "lighthouse", "pagespeed"],
     tasks: ["See how fast the store's pages load", "Find out why a page is slow"],

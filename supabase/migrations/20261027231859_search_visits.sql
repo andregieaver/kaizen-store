@@ -1,0 +1,3 @@
+ALTER TABLE "commerce"."search_queries" ADD COLUMN "visit_id" uuid;--> statement-breakpoint
+ALTER TABLE "commerce"."search_queries" ADD CONSTRAINT "search_queries_visit_id_visits_id_fk" FOREIGN KEY ("visit_id") REFERENCES "commerce"."visits"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+CREATE INDEX "search_queries_visit_idx" ON "commerce"."search_queries" USING btree ("visit_id");

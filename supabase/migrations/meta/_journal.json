@@ -3739,6 +3739,13 @@
       "when": 1793136339002,
       "tag": "20261027212538_saved_reports_sql",
       "breakpoints": true
+    },
+    {
+      "idx": 534,
+      "version": "7",
+      "when": 1793143139611,
+      "tag": "20261027231859_search_visits",
+      "breakpoints": true
     }
   ]
 }

@@ -10,22 +10,24 @@ D152 (the store analytics cockpit) and D153 (the EU withdrawal function and the 
 
 <!-- parity:generated:start since -->
 
-- **Headline now 79.5%** (first report 59.5%), **must-have 84.5%** (first report 69.1%), over 202 core rows (first report 232).
-- Where the change comes from: +19.7 points from the 110 rating moves on core rows recorded below, and +0.3 points because the re-read changed which rows count as core (the tracker has 232 rows, the first report 232 core ones).
+- **Headline now 80.0%** (first report 59.5%), **must-have 84.5%** (first report 69.1%), over 202 core rows (first report 232).
+- Where the change comes from: +20.2 points from the 112 rating moves on core rows recorded below, and +0.3 points because the re-read changed which rows count as core (the tracker has 232 rows, the first report 232 core ones).
 - 231 of 232 rows have their Shopify side read from a page; the others are listed under evidence debt.
 
-Rated higher (96):
+Rated higher (98):
 
 - Natural-language analytics and custom reports (AI): partial to full. D346: the AI manager fills a report spec (`run_report`), checked by the same schema and `specProblems()` as the Reports builder and run by `runReport()` (store id, paid orders, `setBasedReplica()`), the rows written out in code with the no…
 - AI or rule-based customer segmentation (AI): missing to partial. D296 (wave 5 unit B): saved rule-based segments over customers and subscribers, counted live with a member list, and customer tags; read segments.ts and ran segments.test.ts, segments.int.test.ts (PGlite and integration, passed).
 - AI-written marketing email (AI): missing to partial. D297: Write with AI in the broadcast editor suggests the email's words through the claims filter, as a suggestion only; it does not yet read the store's products or campaigns.
 - Agentic storefronts (ChatGPT, Gemini, Copilot) (AI): missing to partial. Read src/server/feeds.ts, src/lib/feeds.ts, src/app/api/feeds/[token]/[file]/route.ts and the Product feeds page (D302): a normalised feed per store and market of offered goods at the storefront's VAT-inclusive price, as Google Merchant Ce…
+- Live View (Analytics): missing to full. D347: Analytics → Live reads `liveFigures()` every 10 seconds while open: visitors in the last 5 minutes from the visit row's `last_seen` and their countries, today's visits, paid orders and revenue (store day, main currency without VAT, a…
 - Standard sales reports (Analytics): partial to full. Analytics → Reports (D345) cuts sales by variant, SKU, category, tag, kind of product, the currency the shopper paid in and payment method beside product, time, country, channel, device and discount code; a line cut carries a rest row so t…
 - Custom report builder and ShopifyQL (Analytics): missing to full. Analytics → Reports (D345): ten ready reports and a builder over a closed catalogue of figures and cuts, filters, the period and comparison, sort, rows and a table, bar or line chart; saved under a name for the store (`commerce.saved_repor…
 - Marketing and channel attribution (Analytics): partial to full. D303 I3: campaign table with a last-visit and a first-visit-in-30-days model that states its coverage, a link builder and spend imported from CSV; spend sync from ad platforms stays out by the spec (bucket B, a credential per platform).
 - Payouts and reconciliation (Analytics): missing to full. Wave 4 unit C (D290): each Stripe payout of the store's own connected account is kept from the payout webhook events and a daily read, with its balance transactions as lines tied to the payment, refund or dispute and so the order each sett…
 - Payments reports by method (Analytics): missing to full. Wave 4 unit A (D288): a captured Stripe payment's method, wallet and card brand are read from its charge once (in after() the payment, and the five-minute job for any missed) and kept on the payment as Stripe gave them; one never read is U…
 - Returns and refund analytics (Analytics): partial to full. D153 shipped: `returnsReport()` gives return rate by orders and units, returned value, refunded for returns, return reasons (a fixed list, withdrawals shown as 'No reason given'), time to refund, refunds after the deadline, overdue refunds…
+- On-site search analytics (Analytics): partial to full. D347: a search keeps the day's visit of the same hashed visitor (`search_queries.visit_id`, no cookie or storage), and the Traffic page shows the paid orders placed after a search from a cart of the same visit, their revenue, conversion an…
 - Export reports to CSV (Analytics): missing to full. Wave 2, first run (docs/wave-2-data.md; working tree not yet committed).
 - Third-party analytics and pixels with consent (Analytics): partial to full. D303 I1 and I2: tags after consent, browser shop events, and server-side checkout and purchase events with consent; the browser purchase is replaced by the server event by design.
 - Products with variants and options (limits) (Catalogue): partial to full. Wave 6 unit B (D320, docs/wave-6-catalogue.md Unit B): 2,048 variants over 3 options, refused past that by productInput, the import, the tools and the database at commit (commerce.product_variants_limit()); the save writes variants, prices…
@@ -146,7 +148,7 @@ Rated lower (24):
 
 <!-- parity:generated:start summary -->
 
-Kaizena Flow has **79.5%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 202 core features weighted by importance to an EU small or mid-size merchant, and **84.5%** on the must-haves (the 83 features with weight 4 or 5). The unweighted figures are 77.2% overall and 84.3% for must-haves. Counting app-only features gives 78.9%; counting Plus-only as well gives 78.3%. Kaizena Flow is strongest on storefront, themes and content (94.0%) and weakest on platform, extensibility and operations (54.7%), checkout and payments (69.2%), ai and automation (70.5%). Of the 202 core features, 121 are full, 70 partial and 11 missing, so half-built features, not absent ones, are the main shape of the gap.
+Kaizena Flow has **80.0%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 202 core features weighted by importance to an EU small or mid-size merchant, and **84.5%** on the must-haves (the 83 features with weight 4 or 5). The unweighted figures are 78.0% overall and 84.3% for must-haves. Counting app-only features gives 79.3%; counting Plus-only as well gives 78.7%. Kaizena Flow is strongest on storefront, themes and content (94.0%) and weakest on platform, extensibility and operations (54.7%), checkout and payments (69.2%), ai and automation (70.5%). Of the 202 core features, 123 are full, 69 partial and 10 missing, so half-built features, not absent ones, are the main shape of the gap.
 
 <!-- parity:generated:end summary -->
 
@@ -156,10 +158,10 @@ The method is simple: a full match scores 1, a partial match 0.5, a missing feat
 
 | Measure | Features | Weighted parity | Unweighted parity | Full / partial / missing |
 | --- | --- | --- | --- | --- |
-| Headline: core (Shopify native, Basic to Advanced) | 202 | **79.5%** | 77.2% | 121 / 70 / 11 |
+| Headline: core (Shopify native, Basic to Advanced) | 202 | **80.0%** | 78.0% | 123 / 69 / 10 |
 | Must-have (core, weight 4 or 5) | 83 | **84.5%** | 84.3% | 57 / 26 / 0 |
-| Core plus app-only features | 226 | 78.9% | 76.8% | 133 / 81 / 12 |
-| Everything, including Plus-only | 232 | 78.3% | 75.6% | 134 / 83 / 15 |
+| Core plus app-only features | 226 | 79.3% | 77.4% | 135 / 80 / 11 |
+| Everything, including Plus-only | 232 | 78.7% | 76.3% | 136 / 82 / 14 |
 
 <!-- parity:generated:end headline -->
 
@@ -176,11 +178,11 @@ Counts are core features only. Weighted parity uses weights 1 to 5; must-have is
 | Checkout and payments | 17 | 7 | 10 | 0 | 69.2% | 8 | 62.9% |
 | Orders, shipping, fulfilment and returns | 28 | 16 | 12 | 0 | 80.5% | 14 | 86.1% |
 | Customers, marketing and loyalty | 17 | 8 | 8 | 1 | 73.7% | 8 | 76.5% |
-| Analytics, reporting and finance | 24 | 17 | 5 | 2 | 87.0% | 11 | 94.6% |
+| Analytics, reporting and finance | 24 | 19 | 4 | 1 | 90.9% | 11 | 94.6% |
 | International, compliance and trust | 16 | 10 | 6 | 0 | 77.7% | 10 | 70.2% |
 | Platform, extensibility and operations | 20 | 4 | 12 | 4 | 54.7% | 7 | 72.4% |
 | AI and automation | 22 | 10 | 9 | 3 | 70.5% | 2 | 100.0% |
-| **Total** | **202** | **121** | **70** | **11** | **79.5%** | **83** | **84.5%** |
+| **Total** | **202** | **123** | **69** | **10** | **80.0%** | **83** | **84.5%** |
 
 <!-- parity:generated:end domains -->
 
@@ -192,7 +194,7 @@ A row is Full only when it lists code and tests that exist (or says it is untest
 
 | Evidence | Rows |
 | --- | ---: |
-| Full, with tests | 128 |
+| Full, with tests | 130 |
 | Full, untested (debt, not hidden) | 6 |
 | Shopify side not read from a page | 1 |
 | Rows in the tracker | 232 |
@@ -201,7 +203,7 @@ Untested Full rows: `ai.assistant-voice-mode`, `customers.abandoned-checkout-rec
 
 | Bucket | What it means | Rows not Full | Core rows | Core headline points lacking |
 | --- | --- | ---: | ---: | ---: |
-| A | Build in-house | 57 | 47 | 11.5 |
+| A | Build in-house | 55 | 45 | 11.0 |
 | B | Build, live only with a third party | 16 | 14 | 3.7 |
 | C | Strategy decision first | 11 | 8 | 1.9 |
 | D | Not reachable by code | 14 | 12 | 3.4 |
@@ -214,18 +216,18 @@ The waves are those of `docs/parity-plan.md` section 3. This table is produced f
 
 <!-- parity:generated:start projection -->
 
-Now: **79.5%** core, 84.5% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 16 rows (12 core) have no wave yet and are not in them.
+Now: **80.0%** core, 84.5% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 16 rows (12 core) have no wave yet and are not in them.
 
 | Wave | Scope | Rows (core) | Core if every row of waves 1 to N is Full | Must-have | Adds (points) | Core if only bucket A rows are | Must-have |
 | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | Compliance and money | 10 (7) | 81.6% | 88.0% | +2.1 | 81.0% | 86.9% |
-| 2 | Data in and out | 3 (1) | 81.8% | 88.0% | +0.2 | 81.2% | 86.9% |
-| 3 | Inventory and orders | 14 (13) | 85.1% | 90.4% | +3.3 | 82.8% | 88.2% |
-| 4 | Payments | 7 (6) | 86.6% | 92.1% | +1.5 | 83.1% | 88.2% |
-| 5 | Customers and marketing | 19 (16) | 90.8% | 95.8% | +4.2 | 86.5% | 91.3% |
-| 6 | Catalogue | 0 (0) | 90.8% | 95.8% | +0.0 | 86.5% | 91.3% |
-| 7 | Storefront and international | 3 (3) | 91.5% | 95.8% | +0.7 | 86.9% | 91.3% |
-| 8 | Analytics and AI | 14 (14) | 94.3% | 95.8% | +2.9 | 89.6% | 91.3% |
+| 1 | Compliance and money | 10 (7) | 82.1% | 88.0% | +2.1 | 81.5% | 86.9% |
+| 2 | Data in and out | 3 (1) | 82.3% | 88.0% | +0.2 | 81.7% | 86.9% |
+| 3 | Inventory and orders | 14 (13) | 85.6% | 90.4% | +3.3 | 83.2% | 88.2% |
+| 4 | Payments | 7 (6) | 87.1% | 92.1% | +1.5 | 83.6% | 88.2% |
+| 5 | Customers and marketing | 19 (16) | 91.2% | 95.8% | +4.2 | 86.9% | 91.3% |
+| 6 | Catalogue | 0 (0) | 91.2% | 95.8% | +0.0 | 86.9% | 91.3% |
+| 7 | Storefront and international | 3 (3) | 91.9% | 95.8% | +0.7 | 87.4% | 91.3% |
+| 8 | Analytics and AI | 12 (12) | 94.3% | 95.8% | +2.4 | 89.6% | 91.3% |
 | 9 | Platform and extensibility | 12 (9) | 96.6% | 96.9% | +2.3 | 91.0% | 91.8% |
 
 Ceiling with every bucket A row Full and buckets B, C and D as they are: **91.0%** core, 91.8% must-have. With bucket B built and approved as well: 94.7% core, 95.8% must-have.
@@ -499,7 +501,7 @@ Legend. **Shopify**: Native = included on Basic to Advanced and scored in the he
 | Feature | Shopify | Kaizena Flow | W | Plan | Gap and evidence |
 | --- | --- | --- | ---: | --- | --- |
 | Dashboard with period comparison | Native. [page](https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/overview-dashboard) | Full | 4 |  | Residual: fixed layout, not owner-customisable. Evidence: `src/app/admin/(gated)/[store]/analytics/page.tsx`, `src/components/admin/analytics/overview-view.tsx`, `src/components/admin/analytics/kpi-card.tsx` and 4 more; 6 test files; D152. |
-| Live View | Native. [page](https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/live-view) | Missing | 2 | A, wave 8 | No live page, route or query. A visit row (one per hashed visitor and store day) now keeps `first_seen` and `last_seen` (`analytics-visits.ts`), which an active-now figure could read without new personal data, but nothing reads it for a live view. Code: `src/server/analytics-visits.ts`, `src/lib/visit-record.ts`. |
+| Live View | Native. [page](https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/live-view) | Full (was missing) | 2 |  | Residual: a table by country where Shopify draws a globe (visits keep no place finer than the country), and the page reads every 10 seconds rather than streaming. Evidence: `src/server/analytics-live.ts`, `src/components/admin/analytics/live-view.tsx`, `src/components/admin/analytics/live-refresh.tsx` and 3 more; 2 test files; D152, D347. |
 | Standard sales reports | Native. [page](https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/default-reports/sales-report) | Full (was partial) | 5 |  | Residual: no cut by vendor, referrer, bundle or subscription status, and no cut by customer group or company yet; time, product, variant, SKU, category, tag, kind of product, country, currency, channel, device, discount code, payment method and new or returning customers are ready reports or builder cuts (D345). Evidence: `src/server/analytics-products-data.ts`, `src/server/analytics-totals.ts`, `src/server/analytics-geo-data.ts` and 12 more; 10 test files; D152, D288, D345. |
 | Custom report builder and ShopifyQL | Native. [page](https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/custom-reports) | Full (was missing) | 3 |  | Residual: no annotations, no sharing or scheduling, and no query language (the catalogue is closed on purpose); asking for a report in words is wave 8 unit B (D346). Evidence: `src/lib/report-catalogue.ts`, `src/lib/report-catalogue-schema.ts`, `src/server/report-query.ts` and 7 more; 5 test files; D152, D345. |
 | Conversion funnel and rate | Native. [page](https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/default-reports/behaviour-reports) | Full | 4 |  | Residual: cookieless counting, off by default (the owner switches it on); nothing before it was switched on. Evidence: `src/lib/analytics-traffic.ts`, `src/server/analytics-traffic-data.ts`, `src/server/analytics-visits.ts` and 7 more; 7 test files; D152. |
@@ -517,7 +519,7 @@ Legend. **Shopify**: Native = included on Basic to Advanced and scored in the he
 | Inventory reports | Native. [page](https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/default-reports/inventory-reports) | Full | 3 |  | Evidence: `src/lib/analytics-inventory.ts`, `src/server/analytics-inventory-data.ts`, `src/components/admin/analytics/inventory-view.tsx` and 1 more; 3 test files; D152. |
 | Returns and refund analytics | Native. [page](https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/default-reports/sales-report) | Full (was partial) | 3 |  | Caveat: returns made outside Kaizena Flow's withdrawal or return request are not seen. Refunds made in the Stripe Dashboard now reach the refunds table (D159, `applyStripeRefund()`), but the refunds report still says they are not included (`NOT_SEEN_NOTE`, `analytics-refunds-data.ts`). Evidence: `src/lib/analytics-returns.ts`, `src/server/analytics-returns-data.ts`, `src/components/admin/analytics/returns-view.tsx` and 5 more; 5 test files; D152, D153, D159. |
 | Subscription analytics | Native. [page](https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/default-reports/sales-report) | Full | 2 |  | Residual: subscription expansion, contraction and reactivation are not tracked (no status history). Evidence: `src/lib/analytics-subscriptions.ts`, `src/server/analytics-subscriptions-data.ts`, `src/components/admin/analytics/subscriptions-view.tsx` and 1 more; 3 test files; D152, D102. |
-| On-site search analytics | Native. [page](https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/default-reports/behaviour-reports) | Partial | 2 | A, wave 8 | Searches, no-result queries and click-through are reported on the Traffic page (`analytics-search-data.ts`); revenue after a search is not tracked because a search is not tied to a visit or an order (`revenueTracked: false`, held by `analytics-search-data.int.test.ts`). Code: `src/server/analytics-search-data.ts`, `src/server/search.ts`. |
+| On-site search analytics | Native. [page](https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/default-reports/behaviour-reports) | Full (was partial) | 2 |  | Residual: revenue after a search is counted only while visit counting is on and for visitors who send no privacy signal; searches made before are in every other figure and say so. Evidence: `src/server/analytics-search-data.ts`, `src/server/search.ts`, `src/server/search-experiment.ts` and 5 more; 5 test files; D72, D152, D347. |
 | Targets, alerts, forecasting | Native. [page](https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/overview-dashboard/targets) | Partial | 2 | A, wave 8 | One monthly net-revenue target; alerts and the forecast exist (`alertsFor()`, `forecastMonth()`) and the AI manager repeats them, but alerts are shown only in the admin, never emailed or pushed (the autopilot's weekly report, D309, carries figures and goals, not alerts; since D331 an urgent alert can start an autopilot turn when the owner turns on *React to what happens*, which still sends no alert to staff), and the forecast covers month revenue only. Code: `src/lib/analytics-alerts.ts`, `src/lib/analytics-targets.ts`. |
 | Explaining why sales changed | App. [page](https://apps.shopify.com/lifetimely-lifetime-value-and-profit-analytics) | Full | 2 |  | Evidence: `src/lib/analytics-diagnosis.ts`, `src/server/analytics-tools.ts`, `src/server/analytics-insights.ts` and 1 more; 3 test files; D152. |
 | Export reports to CSV | Native. [page](https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/finances-report) | Full (was missing) | 4 |  | Evidence: `src/lib/analytics-export.ts`, `src/server/analytics-export.ts`, `src/lib/csv.ts` and 7 more; 8 test files. |

@@ -161,7 +161,10 @@ function emptySearch(over: Partial<SearchReport> = {}): SearchReport {
     zeroTerms: [],
     zeroTermCount: 0,
     revenueTracked: false,
-    revenueNote: "Revenue after a search is not tracked: a search is not tied to a visit or an order.",
+    revenueNote: "Revenue after a search is counted only while visit counting is on: no search in this period is tied to a visit.",
+    afterSearch: null,
+    lowClickTerms: [],
+    byDay: [],
     ...over,
   };
 }
@@ -423,8 +426,38 @@ describe("TrafficView, visit counting off and nothing sold", () => {
     expect(out).not.toContain("0.0 %");
   });
 
-  it("still tells that sales after a search are not tracked", () => {
-    expect(out).toContain("Sales after a search are not tracked");
+  it("still tells that revenue after a search is not counted, and why", () => {
+    expect(out).toContain("Revenue after a search is not counted for this period");
+    expect(out).toContain("only while visit counting is on");
+  });
+});
+
+describe("TrafficView, searches tied to visits (D347)", () => {
+  const search = normalSearch({
+    revenueTracked: true,
+    afterSearch: { tiedSearches: 300, tiedShare: 0.75, convertedSearches: 30, conversion: 0.1, orders: 24, revenueMinor: 1_234_500, unconverted: 2, missingCurrencies: ["SEK"] },
+    topTerms: [{ term: "wool sweater", searches: 80, avgResults: 6, zeroResults: 0, clicked: 50, clickThrough: 0.625, orders: 9 }],
+    lowClickTerms: [{ term: "lamp", searches: 12, avgResults: 4, zeroResults: 0, clicked: 0, clickThrough: 0 }],
+    byDay: [{ day: "2026-09-02", tied: 40, converted: 4 }],
+  });
+  const out = text(props({ search }));
+
+  it("shows what the searches led to: tied searches, the share followed by an order, the orders and their revenue, and what was left out", () => {
+    expect(out).toContain("What searches led to");
+    expect(out).toContain("300 of 400 searches.");
+    expect(out).toContain("Orders after a search");
+    expect(out).toMatch(/12[\s.,]?345/);
+    expect(out).toContain("2 orders in SEK are left out of the revenue");
+    expect(out).toContain("Orders after");
+    expect(out).toContain("Searches followed by an order, day by day");
+    expect(out).not.toContain("Revenue after a search is not counted");
+    expect(out).not.toMatch(BAD);
+  });
+
+  it("lists searches whose results were rarely opened, with a synonym and a pin to fix them", () => {
+    expect(out).toContain("Found, but rarely opened");
+    expect(out).toContain('href="/admin/shop/search?synonym=lamp#synonyms"');
+    expect(out).toContain('href="/admin/shop/search#rules"');
   });
 });
 

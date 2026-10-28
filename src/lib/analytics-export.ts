@@ -162,6 +162,8 @@ const REGISTRY: AnalyticsTable[] = [
   table("traffic.landing", "traffic", "traffic-view.tsx", "The pages most visits began on", [text("page"), text("kind"), int("sessions", "visits"), int("orders"), pct("conversion", "conversion_rate"), amount("revenue")], true),
   table("traffic.zero_terms", "traffic", "traffic-view.tsx", "Searches that found nothing", [text("term", "search"), int("searches", "times_it_found_nothing"), date("last", "last_searched_on")]),
   table("traffic.top_terms", "traffic", "traffic-view.tsx", "The most searched terms", [text("term", "search"), int("searches"), int("results", "results_shown"), int("zero", "found_nothing"), int("clicked", "opened_a_result"), pct("ctr", "click_through")]),
+  table("traffic.low_click_terms", "traffic", "traffic-view.tsx", "Searches that found something but whose results were rarely opened", [text("term", "search"), int("searches"), int("results", "results_shown"), pct("ctr", "click_through")]),
+  table("traffic.search_days", "traffic", "traffic-view.tsx", "Searches tied to a visit and those followed by an order, per day", [date("day"), int("tied", "searches_tied_to_a_visit"), int("converted", "followed_by_an_order"), pct("rate", "share")]),
   { id: "traffic.funnel", page: "traffic", view: "traffic-view.tsx", shape: "funnel", caption: "Visits, product views, carts, checkouts and purchases", columns: [text("stage"), int("count")], money: false },
   { id: "traffic.heatmap", page: "traffic", view: "traffic-view.tsx", shape: "heatmap", caption: "Paid orders by weekday and two-hour band", columns: [text("band"), int("monday"), int("tuesday"), int("wednesday"), int("thursday"), int("friday"), int("saturday"), int("sunday")], money: false },
   bars("traffic.weekdays", "traffic", "traffic-view.tsx", "Paid orders for each weekday", "int"),
@@ -188,6 +190,7 @@ export const ANALYTICS_TABLE_IDS: readonly string[] = REGISTRY.map((t) => t.id);
  * The VAT, OSS and IOSS tables keep the four files of D161 (`/admin/{store}/analytics/tax/export`, with their own log and drift check).
  */
 export const NOT_EXPORTED: Readonly<Record<string, string>> = Object.freeze({
+  "live.countries": "Live figures are now, read again every 10 seconds, and kept nowhere: there is no period for a file (D347).",
   "payout-lines": "One payout's lines are on its own page, for one payout, not a period; the period's payouts are in the payouts file and every line is in Stripe's payout report (D290).",
   "tax.vat": "VAT report: it has its own CSV, its log and its drift check (D161).",
   "tax.vat_chart": "The data behind the VAT chart is in the VAT file (D161).",

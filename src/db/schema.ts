@@ -2449,10 +2449,16 @@ export const searchQueries = commerce.table(
     arm: text("arm"),
     /** Sent on to a page by a search redirect (D324), so nothing was searched and none found. */
     redirected: boolean("redirected").notNull().default(false),
+    /**
+     * The day's visit of the same hashed visitor (D347), only while the store counts visits and never with a privacy signal: what ties a
+     * search to the orders paid from that visit's carts after it. Gone with the visit.
+     */
+    visitId: uuid("visit_id").references((): AnyPgColumn => visits.id, { onDelete: "set null" }),
     createdAt: createdAt(),
   },
   (t) => [
     index("search_queries_store_idx").on(t.storeId, t.createdAt),
+    index("search_queries_visit_idx").on(t.visitId),
     index("search_queries_created_idx").on(t.createdAt),
     index("search_queries_experiment_idx").on(t.experimentId, t.arm),
     check("search_queries_arm", sql`(${t.arm} is null) = (${t.experimentId} is null) and coalesce(${t.arm} in ('hybrid', 'keyword'), true)`),

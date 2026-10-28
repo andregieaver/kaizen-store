@@ -775,6 +775,11 @@ async function eraseRows(tx: Tx, s: PrivacySubject, store: PrivacyStore): Promis
   await tx.execute(sql`
     update commerce.delivery_quotes set postal_code = '', pickup_points = '[]'::jsonb where store_id = ${sid}::uuid and cart_id = any(${cartIds})
   `);
+  // What was searched in the visits the person's carts were made in (D347): the searches go (and their clicks with them), the visits stay.
+  await tx.execute(sql`
+    delete from commerce.search_queries where store_id = ${sid}::uuid
+      and visit_id in (select visit_id from commerce.carts where store_id = ${sid}::uuid and id = any(${cartIds}) and visit_id is not null)
+  `);
   await tx.execute(sql`
     update commerce.abandoned_checkouts set email = null, lines = '[]'::jsonb
     where store_id = ${sid}::uuid and (lower(email) = any(${addresses}) or cart_id = any(${cartIds}))

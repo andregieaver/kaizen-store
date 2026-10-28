@@ -53,11 +53,12 @@ describe("the registry", () => {
       expect(isExportable(id)).toBe(false);
       expect(reason.length).toBeGreaterThan(15);
     }
-    // The tax tables keep D161's files; the one other is a single payout's lines (D290).
+    // The tax tables keep D161's files; the others are a single payout's lines (D290) and the Live page's countries, which are now, not a period (D347).
     const tax = Object.entries(NOT_EXPORTED).filter(([i]) => i.startsWith("tax.") || i.startsWith("oss."));
-    expect(tax.length).toBe(Object.keys(NOT_EXPORTED).length - 1);
+    expect(tax.length).toBe(Object.keys(NOT_EXPORTED).length - 2);
     expect(tax.every(([, r]) => /D161/.test(r))).toBe(true);
     expect(NOT_EXPORTED["payout-lines"]).toMatch(/D290/);
+    expect(NOT_EXPORTED["live.countries"]).toMatch(/D347/);
     expect(isExportable("products.table")).toBe(true);
     expect(isExportable("nope")).toBe(false);
   });

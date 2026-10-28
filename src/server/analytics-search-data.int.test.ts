@@ -17,7 +17,7 @@ vi.mock("next/cache", () => ({
   revalidateTag: () => {},
 }));
 
-const { searchReport, TERM_LIMIT, SEARCH_REVENUE_NOTE } = await import("./analytics-search-data");
+const { searchReport, TERM_LIMIT, SEARCH_REVENUE_NOTE, SEARCH_REVENUE_OFF_NOTE, LOW_CLICK_MIN } = await import("./analytics-search-data");
 const { SEARCH_LOG_DAYS } = await import("./search");
 
 /**
@@ -145,11 +145,13 @@ describe("searchReport: totals", () => {
     expect(r.totals.clickThroughOfFound).toBe(3 / 9);
   });
 
-  it("says plainly that revenue after a search is not tracked", async () => {
+  it("says plainly that revenue after a search is not counted when no search is tied to a visit", async () => {
     const r = await searchReport(store, PERIOD, NOW);
     expect(r.revenueTracked).toBe(false);
-    expect(r.revenueNote).toBe(SEARCH_REVENUE_NOTE);
-    expect(r.revenueNote).toMatch(/not tracked/);
+    expect(r.afterSearch).toBeNull();
+    expect(r.byDay).toEqual([]);
+    expect(r.revenueNote).toBe(SEARCH_REVENUE_OFF_NOTE);
+    expect(r.revenueNote).toMatch(/only while visit counting is on/);
   });
 
   it("is empty, with no shares, for a store that has no searches", async () => {
@@ -238,5 +240,95 @@ describe("searchReport: the log's age", () => {
     const r = await searchReport(store, customPeriod("2026-07-05", "2026-07-10"), NOW);
     expect(r.clamped).toBe(false);
     expect(r.totals.searches).toBe(1);
+  });
+});
+
+/**
+ * Revenue after a search (D347), on a store of its own, all on 2 September (Oslo):
+ *
+ *   visit V1: search A "kopp" 10:00, search B "kopp" 12:00; its cart C1 has O1 (NOK, paid, 11:00) and O5 (SEK, paid, 13:00, no rate)
+ *   visit V2: search C "tote" 09:00; its cart C2 has O2 (paid, 08:00, before the search) and O3 (unpaid, 10:00)
+ *   no visit: search D "vase" 10:00, and "lampe" five times, found but never opened
+ *
+ * A is followed by O1 and O5, B by O5 only, C by nothing (O2 came before it, O3 is not paid): orders O1 and O5, each once.
+ */
+describe("revenue after a search (D347)", () => {
+  let shop: Store;
+
+  async function visit(day: string, visitor: string) {
+    const [row] = await db().execute<Row>(sql`
+      insert into commerce.visits (store_id, day, visitor, market_code, device, channel, landing_path)
+      values (${shop.id}::uuid, ${day}::date, ${visitor}, 'NO', 'desktop', 'direct', '/') returning id`);
+    return String(row.id);
+  }
+  async function cart(visitId: string) {
+    const [row] = await db().execute<Row>(sql`
+      insert into commerce.carts (store_id, market_code, currency, locale, visit_id, expires_at) values (${shop.id}::uuid, 'NO', 'NOK', 'nb-NO', ${visitId}::uuid, now() + interval '30 days') returning id`);
+    return String(row.id);
+  }
+  let serial = 0;
+  async function order(cartId: string, at: string, o: { currency?: string; total: number; tax: number; paid: boolean }) {
+    serial += 1;
+    const [row] = await db().execute<Row>(sql`
+      insert into commerce.orders (store_id, number, market_code, currency, locale, email, status, subtotal_minor, shipping_minor, discount_minor, tax_minor, total_minor,
+        billing_address, shipping_address, placed_at, cart_id)
+      values (${shop.id}::uuid, ${`S-${run}-${serial}`}, 'NO', ${o.currency ?? "NOK"}, 'nb-NO', 'shopper@example.com', ${o.paid ? "paid" : "pending_payment"},
+        ${o.total}, 0, 0, ${o.tax}, ${o.total}, '{}'::jsonb, '{}'::jsonb, ${at}::timestamptz, ${cartId}::uuid)
+      returning id`);
+    await db().execute(sql`
+      insert into commerce.payments (store_id, order_id, provider, provider_reference, provider_account, amount_minor, currency, status)
+      values (${shop.id}::uuid, ${String(row.id)}::uuid, 'stripe', ${`pi_s_${run}_${serial}`}, 'acct_search', ${o.total}, ${o.currency ?? "NOK"},
+        ${o.paid ? "captured" : "pending"}::commerce.payment_status)`);
+  }
+  async function tied(at: string, query: string, visitId: string | null, results = 3) {
+    await db().execute(sql`
+      insert into commerce.search_queries (store_id, market_code, query, results, visit_id, created_at)
+      values (${shop.id}::uuid, 'NO', ${query}, ${results}, ${visitId}::uuid, ${at}::timestamptz)`);
+  }
+
+  beforeAll(async () => {
+    shop = storeOf(await makeStore(`srch-rev-${run}`), `srch-rev-${run}`);
+    const v1 = await visit("2026-09-02", "a".repeat(24));
+    const v2 = await visit("2026-09-02", "b".repeat(24));
+    const c1 = await cart(v1);
+    const c2 = await cart(v2);
+    await tied("2026-09-02T10:00:00+02:00", "kopp", v1);
+    await tied("2026-09-02T12:00:00+02:00", "kopp", v1);
+    await tied("2026-09-02T09:00:00+02:00", "tote", v2);
+    await tied("2026-09-02T10:00:00+02:00", "vase", null, 0);
+    for (let i = 0; i < LOW_CLICK_MIN; i += 1) await tied(`2026-09-03T1${i}:00:00+02:00`, "lampe", null);
+    await order(c1, "2026-09-02T11:00:00+02:00", { total: 12_500, tax: 2_500, paid: true });
+    await order(c1, "2026-09-02T13:00:00+02:00", { currency: "SEK", total: 5_000, tax: 1_000, paid: true });
+    await order(c2, "2026-09-02T08:00:00+02:00", { total: 9_000, tax: 1_800, paid: true });
+    await order(c2, "2026-09-02T10:00:00+02:00", { total: 7_000, tax: 1_400, paid: false });
+  });
+
+  it("counts the paid orders placed after a search from a cart of its visit, each once, converted, a currency with no rate left out and counted", async () => {
+    const r = await searchReport(shop, PERIOD, NOW);
+    expect(r.revenueTracked).toBe(true);
+    expect(r.revenueNote).toBe(SEARCH_REVENUE_NOTE);
+    expect(r.afterSearch).toEqual({
+      tiedSearches: 3,
+      tiedShare: 3 / 9,
+      convertedSearches: 2,
+      conversion: 2 / 3,
+      orders: 2,
+      revenueMinor: 10_000,
+      unconverted: 1,
+      missingCurrencies: ["SEK"],
+    });
+    expect(r.topTerms.find((t) => t.term === "kopp")?.orders).toBe(2);
+    expect(r.topTerms.find((t) => t.term === "tote")?.orders).toBe(0);
+    expect(r.byDay).toEqual([{ day: "2026-09-02", tied: 3, converted: 2 }]);
+  });
+
+  it("lists terms searched often that found something but whose results were rarely opened", async () => {
+    const r = await searchReport(shop, PERIOD, NOW);
+    expect(r.lowClickTerms.map((t) => [t.term, t.searches, t.clicked])).toEqual([["lampe", LOW_CLICK_MIN, 0]]);
+  });
+
+  it("never counts another store's orders", async () => {
+    const r = await searchReport(store, PERIOD, NOW);
+    expect(r.afterSearch).toBeNull();
   });
 });

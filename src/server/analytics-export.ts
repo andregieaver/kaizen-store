@@ -431,6 +431,14 @@ const BUILDERS: Record<string, (x: Run) => Promise<Built>> = {
     const s = await search(x);
     return { rows: s.topTerms.map((r) => ({ term: r.term === "" ? "(empty search)" : r.term, searches: r.searches, results: r.avgResults, zero: r.zeroResults, clicked: r.clicked, ctr: r.clickThrough })) };
   },
+  "traffic.low_click_terms": async (x) => {
+    const s = await search(x);
+    return { rows: s.lowClickTerms.map((r) => ({ term: r.term === "" ? "(empty search)" : r.term, searches: r.searches, results: r.avgResults, ctr: r.clickThrough })) };
+  },
+  "traffic.search_days": async (x) => {
+    const s = await search(x);
+    return { rows: s.byDay.map((r) => ({ day: r.day, tied: r.tied, converted: r.converted, rate: r.tied > 0 ? r.converted / r.tied : null })) };
+  },
   "traffic.funnel": async (x) => {
     const t = await traffic(x);
     return { rows: t.funnel.stages.map((s) => ({ stage: s.label, count: s.count })), leftOut: left(t) };

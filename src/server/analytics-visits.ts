@@ -249,6 +249,24 @@ export async function recordTouch({ headers: h, body, now = new Date() }: { head
   return rows.length > 0;
 }
 
+/** The day's visit key of the visitor making a request: the store day and the hashed visitor, as `recordVisit()` keys a visit's row. */
+export type VisitKey = { day: string; visitor: string };
+
+/**
+ * The visit key of the request (D347), for a search to find the day's visit of the same visitor: only while the store counts visits, with
+ * the server's key, for a request that is not a robot's and sends no privacy signal (Global Privacy Control, Do Not Track). Pure over the
+ * headers: no database read and nothing stored; the search's own insert looks the visit up, and finds none when the visitor's page views
+ * were not counted. Read the headers while rendering (`after()` cannot), then pass the key on.
+ */
+export function visitKeyOf(store: { id: string; timeZone: string; visitCounting: boolean }, h: Headers, now: Date = new Date()): VisitKey | null {
+  if (!store.visitCounting) return null;
+  const secret = visitSecret();
+  const userAgent = h.get("user-agent");
+  if (!secret || isBot(userAgent) || wantsPrivacy(h)) return null;
+  const day = storeDayKey(now, store.timeZone);
+  return { day, visitor: visitorHash(store.id, addressOf(h), userAgent, day, secret) };
+}
+
 /**
  * Ties a cart that has just been made to the visitor-day that made it (D152): the order paid from the cart then knows its
  * channel and device. Called by `openCart()` inside its transaction, after inserting a cart; it does nothing when the store

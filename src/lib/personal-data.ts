@@ -188,7 +188,7 @@ export const PERSONAL_DATA: PersonalEntry[] = [
   entry("experiment_exposures", "pseudonymous", via("visitor", "visitor"), ["visitor"], null, "none", PSEUDO),
   entry("experiment_events", "pseudonymous", via("visitor", "visitor"), ["visitor"], null, "none", PSEUDO),
   entry("experiment_carts", "pseudonymous", via("visitor", "visitor"), ["visitor"], null, "none", PSEUDO),
-  entry("search_queries", "pseudonymous", via("none"), ["query", "filters"], null, "none", "What was typed in the search box is kept without any identifier; 90 days.", { until: "search_queries" }),
+  entry("search_queries", "pseudonymous", via("none"), ["query", "filters", "visit_id"], null, "delete", "What was typed in the search box, kept 90 days; while the store counts visits it keeps the day's visit (a hashed id that changes daily, D347), through which a cart and its order can be reached, so erasure deletes the searches of the person's carts' visits.", { until: "search_queries" }),
   entry("search_clicks", "pseudonymous", via("none"), [], null, "none", PSEUDO),
   entry("recommendation_events", "pseudonymous", via("visitor", "session"), ["session"], null, "none", PSEUDO, { until: "recommendation_events" }),
   entry("recommendation_adds", "pseudonymous", via("visitor", "session"), ["session"], null, "none", PSEUDO, { until: "recommendation_events" }),

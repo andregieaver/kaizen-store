@@ -11,6 +11,7 @@ import { expandQuery } from "@/lib/search-synonyms";
 import { vectorLiteral } from "@/lib/vectors";
 
 import { aiFor } from "./ai";
+import type { VisitKey } from "./analytics-visits";
 import { listGridProducts, type GridProduct } from "./catalog";
 import { convertedSql, inCategories, inStockNow, OFFERED, withTags } from "./product-conditions";
 import { rulesOf, termFacts } from "./search-rules";
@@ -369,14 +370,19 @@ export async function logSearch(
   meaning: { semanticBest: number | null; meaningOnly: number; filters?: SearchFilters | null } = { semanticBest: null, meaningOnly: 0 },
   /** The search's own id (its result links carry it), and its search test and arm (D77). */
   test: { id: string; experimentId: string | null; arm: "hybrid" | "keyword" | null } | null = null,
+  /** The visitor's key for the day (D347, `visitKeyOf()`): the search keeps the day's visit it finds, none without one. */
+  visit: VisitKey | null = null,
 ): Promise<void> {
   const text = normalizeQuery(query).slice(0, 100);
   if (!text) return;
   const filters = meaning.filters ? JSON.stringify(meaning.filters) : null;
+  const visitId = visit
+    ? sql`(select v.id from commerce.visits v where v.store_id = ${shop.storeId}::uuid and v.day = ${visit.day}::date and v.visitor = ${visit.visitor} limit 1)`
+    : sql`null::uuid`;
   await db().execute(sql`
-    insert into commerce.search_queries (id, store_id, market_code, query, results, semantic_best, meaning_results, filters, experiment_id, arm)
+    insert into commerce.search_queries (id, store_id, market_code, query, results, semantic_best, meaning_results, filters, experiment_id, arm, visit_id)
     values (coalesce(${test?.id ?? null}::uuid, gen_random_uuid()), ${shop.storeId}::uuid, ${shop.market.code}, ${text}, ${results}, ${meaning.semanticBest},
-      ${Math.min(meaning.meaningOnly, results)}, ${filters}::jsonb, ${test?.experimentId ?? null}::uuid, ${test?.arm ?? null})
+      ${Math.min(meaning.meaningOnly, results)}, ${filters}::jsonb, ${test?.experimentId ?? null}::uuid, ${test?.arm ?? null}, ${visitId})
   `);
 }
 
