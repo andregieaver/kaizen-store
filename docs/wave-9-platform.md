@@ -137,6 +137,10 @@ Each unit adds its own paragraph here when it is built.
   the AI manager's catalogue tools (`createProductTool()`, `updateProductTool()`), which build on the editor's own blank product and read and
   save through `saveProduct()`, and takes no pictures; another store's id is a 404 (rule 1), not a 403. Stock rows name a variant by id or SKU,
   as a warehouse knows it. The movement recorder's own source list had never learnt `exchange` (D239); the migration adds it with `api`.
+- **C (D356), built 28 October 2026.** As section 3 says, with these choices: order rules stay as they are (not moved into workflows); an
+  email to a customer and anything that spends are left out of the actions rather than kept for a yes (a person does them in the admin);
+  *Email staff* goes to those chosen for automation under Notifications and, with none chosen, to the owners; the loop guard is that no
+  action makes an event a workflow waits for, with the hourly cap behind it. A note on the order is an action too.
 
 ## 5. Decisions
 

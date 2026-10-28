@@ -280,6 +280,8 @@ export const NAV_NB: Record<string, string> = {
   "How the store's search works: keywords, meaning and what shoppers searched for.": "Hvordan butikkens søk virker: søkeord, betydning og hva kundene har søkt etter.",
   AI: "KI",
   "Apps and API": "Apper og API",
+  Workflows: "Arbeidsflyter",
+  "When something happens in the store, or at a set time: check what you choose, then tag, tell staff, post to Slack, send to your endpoint or ask the AI manager.": "Når noe skjer i butikken, eller til en fast tid: sjekk det du velger, og merk, gi beskjed til ansatte, skriv i Slack, send til endepunktet ditt eller spør KI-assistenten.",
   "The AI provider and models the store uses, or its own key.": "KI-leverandøren og modellene butikken bruker, eller dens egen nøkkel.",
   "Tokens for your own apps, warehouse or accounting to read and change the store through the Admin API.": "Nøkler som lar dine egne apper, lageret eller regnskapet lese og endre butikken gjennom Admin-API-et.",
   Account: "Konto",

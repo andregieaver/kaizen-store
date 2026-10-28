@@ -10,11 +10,11 @@ D152 (the store analytics cockpit) and D153 (the EU withdrawal function and the 
 
 <!-- parity:generated:start since -->
 
-- **Headline now 82.5%** (first report 59.5%), **must-have 84.5%** (first report 69.1%), over 201 core rows (first report 232).
-- Where the change comes from: +22.8 points from the 123 rating moves on core rows recorded below, and +0.3 points because the re-read changed which rows count as core (the tracker has 231 rows, the first report 232 core ones).
+- **Headline now 82.8%** (first report 59.5%), **must-have 84.5%** (first report 69.1%), over 201 core rows (first report 232).
+- Where the change comes from: +23.0 points from the 124 rating moves on core rows recorded below, and +0.3 points because the re-read changed which rows count as core (the tracker has 231 rows, the first report 232 core ones).
 - 230 of 231 rows have their Shopify side read from a page; the others are listed under evidence debt.
 
-Rated higher (110):
+Rated higher (111):
 
 - Admin AI assistant that performs tasks (AI): partial to full. D350: notices for background work that finished or waits (page builds, follow-ups, autopilot questions and finished plans, changes kept for a yes, reports), written once each by the jobs, counted on the launcher and in the account menu, li…
 - Assistant memory and saved skills (AI): partial to full. D350: saved skills: Save as skill in the panel, a Skills tab to list, edit and delete, save_skill and delete_skill, use_skill loading them like the built-ins; owners share with the store; built-in keys, secrets, customers' details and mark…
@@ -116,6 +116,7 @@ Rated higher (110):
 - Public Admin API and custom apps (Platform): missing to full. Built D355 (wave 9 unit B): commerce.api_tokens written only by src/server/api-tokens.ts (hash only, scopes, revocation, the maker's membership read again each call) and /api/admin/v1 over the screens' functions (src/server/admin-api.ts).
 - Storefront API and headless (Platform): missing to partial. Read src/app/api/wordpress/v1/stores/[slug]/{products,product,terms,view,cart/quote,cart/handoff}/route.ts, src/server/wordpress-route.ts, src/server/wordpress-shop.ts and src/server/cart-handoff.ts (D169, D170): a token-gated, rate-limite…
 - Outgoing webhooks (Platform): partial to full. Built D354 (wave 9 unit A): commerce.webhook_endpoints written only by src/server/webhook-endpoints.ts (address checked by checkEndpointUrl() and the address guard at save, safeFetch() at send), signed deliveries (signWebhook()/verifyWebho…
+- Workflow automation (Flow) (Platform): partial to full. Built D356 (wave 9 unit C): commerce.workflows and workflow_runs (src/server/workflows.ts, the database's intake in queue_integration_event()), the Workflows page and draft_workflow.
 - Product, customer and order CSV (Platform): missing to partial. Wave 2, first run (docs/wave-2-data.md; working tree not yet committed).
 - Product, customer and order CSV (Platform): partial to full. D295 (wave 5 unit A): the customer export now carries each address's marketing-consent state from the subscriber list instead of not_recorded; read customer-export.ts and customer-csv.ts and ran customer-export.int.test.ts and customer-csv…
 - Blog (multiple blogs, authors, comments, RSS) (Storefront): partial to full. Wave 7 unit G (D341) built it, read in the code and held by tests: several blogs (commerce.blogs: the first at /blog, others at /blogs/{handle}, each with its title per language, its list or chosen page, its categories and tags pages and s…
@@ -160,7 +161,7 @@ Rated lower (24):
 
 <!-- parity:generated:start summary -->
 
-Kaizena Flow has **82.5%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 201 core features weighted by importance to an EU small or mid-size merchant, and **84.5%** on the must-haves (the 83 features with weight 4 or 5). The unweighted figures are 81.6% overall and 84.3% for must-haves. Counting app-only features gives 81.8%; counting Plus-only as well gives 81.2%. Kaizena Flow is strongest on storefront, themes and content (94.9%) and weakest on platform, extensibility and operations (61.7%), checkout and payments (69.2%), customers, marketing and loyalty (73.7%). Of the 201 core features, 134 are full, 60 partial and 7 missing, so half-built features, not absent ones, are the main shape of the gap.
+Kaizena Flow has **82.8%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 201 core features weighted by importance to an EU small or mid-size merchant, and **84.5%** on the must-haves (the 83 features with weight 4 or 5). The unweighted figures are 81.8% overall and 84.3% for must-haves. Counting app-only features gives 82.0%; counting Plus-only as well gives 81.4%. Kaizena Flow is strongest on storefront, themes and content (94.9%) and weakest on platform, extensibility and operations (64.1%), checkout and payments (69.2%), customers, marketing and loyalty (73.7%). Of the 201 core features, 135 are full, 59 partial and 7 missing, so half-built features, not absent ones, are the main shape of the gap.
 
 <!-- parity:generated:end summary -->
 
@@ -170,10 +171,10 @@ The method is simple: a full match scores 1, a partial match 0.5, a missing feat
 
 | Measure | Features | Weighted parity | Unweighted parity | Full / partial / missing |
 | --- | --- | --- | --- | --- |
-| Headline: core (Shopify native, Basic to Advanced) | 201 | **82.5%** | 81.6% | 134 / 60 / 7 |
+| Headline: core (Shopify native, Basic to Advanced) | 201 | **82.8%** | 81.8% | 135 / 59 / 7 |
 | Must-have (core, weight 4 or 5) | 83 | **84.5%** | 84.3% | 57 / 26 / 0 |
-| Core plus app-only features | 225 | 81.8% | 80.9% | 147 / 70 / 8 |
-| Everything, including Plus-only | 231 | 81.2% | 79.7% | 148 / 72 / 11 |
+| Core plus app-only features | 225 | 82.0% | 81.1% | 148 / 69 / 8 |
+| Everything, including Plus-only | 231 | 81.4% | 79.9% | 149 / 71 / 11 |
 
 <!-- parity:generated:end headline -->
 
@@ -192,9 +193,9 @@ Counts are core features only. Weighted parity uses weights 1 to 5; must-have is
 | Customers, marketing and loyalty | 17 | 8 | 8 | 1 | 73.7% | 8 | 76.5% |
 | Analytics, reporting and finance | 24 | 20 | 3 | 1 | 92.2% | 11 | 94.6% |
 | International, compliance and trust | 16 | 10 | 6 | 0 | 77.7% | 10 | 70.2% |
-| Platform, extensibility and operations | 20 | 6 | 11 | 3 | 61.7% | 7 | 72.4% |
+| Platform, extensibility and operations | 20 | 7 | 10 | 3 | 64.1% | 7 | 72.4% |
 | AI and automation | 21 | 17 | 3 | 1 | 89.8% | 2 | 100.0% |
-| **Total** | **201** | **134** | **60** | **7** | **82.5%** | **83** | **84.5%** |
+| **Total** | **201** | **135** | **59** | **7** | **82.8%** | **83** | **84.5%** |
 
 <!-- parity:generated:end domains -->
 
@@ -206,7 +207,7 @@ A row is Full only when it lists code and tests that exist (or says it is untest
 
 | Evidence | Rows |
 | --- | ---: |
-| Full, with tests | 142 |
+| Full, with tests | 143 |
 | Full, untested (debt, not hidden) | 6 |
 | Shopify side not read from a page | 1 |
 | Rows in the tracker | 231 |
@@ -215,7 +216,7 @@ Untested Full rows: `ai.assistant-voice-mode`, `customers.abandoned-checkout-rec
 
 | Bucket | What it means | Rows not Full | Core rows | Core headline points lacking |
 | --- | --- | ---: | ---: | ---: |
-| A | Build in-house | 43 | 33 | 8.4 |
+| A | Build in-house | 42 | 32 | 8.2 |
 | B | Build, live only with a third party | 16 | 14 | 3.7 |
 | C | Strategy decision first | 10 | 8 | 1.9 |
 | D | Not reachable by code | 14 | 12 | 3.4 |
@@ -228,19 +229,19 @@ The waves are those of `docs/parity-plan.md` section 3. This table is produced f
 
 <!-- parity:generated:start projection -->
 
-Now: **82.5%** core, 84.5% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 16 rows (12 core) have no wave yet and are not in them.
+Now: **82.8%** core, 84.5% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 16 rows (12 core) have no wave yet and are not in them.
 
 | Wave | Scope | Rows (core) | Core if every row of waves 1 to N is Full | Must-have | Adds (points) | Core if only bucket A rows are | Must-have |
 | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | Compliance and money | 10 (7) | 84.7% | 88.0% | +2.1 | 84.1% | 86.9% |
-| 2 | Data in and out | 3 (1) | 84.9% | 88.0% | +0.2 | 84.3% | 86.9% |
-| 3 | Inventory and orders | 14 (13) | 88.2% | 90.4% | +3.3 | 85.8% | 88.2% |
-| 4 | Payments | 7 (6) | 89.7% | 92.1% | +1.5 | 86.2% | 88.2% |
-| 5 | Customers and marketing | 19 (16) | 93.9% | 95.8% | +4.2 | 89.5% | 91.3% |
-| 6 | Catalogue | 0 (0) | 93.9% | 95.8% | +0.0 | 89.5% | 91.3% |
-| 7 | Storefront and international | 3 (3) | 94.5% | 95.8% | +0.7 | 90.0% | 91.3% |
-| 8 | Analytics and AI | 2 (2) | 95.0% | 95.8% | +0.5 | 90.2% | 91.3% |
-| 9 | Platform and extensibility | 9 (7) | 96.6% | 96.9% | +1.6 | 91.0% | 91.8% |
+| 1 | Compliance and money | 10 (7) | 84.9% | 88.0% | +2.1 | 84.3% | 86.9% |
+| 2 | Data in and out | 3 (1) | 85.1% | 88.0% | +0.2 | 84.5% | 86.9% |
+| 3 | Inventory and orders | 14 (13) | 88.4% | 90.4% | +3.3 | 86.0% | 88.2% |
+| 4 | Payments | 7 (6) | 89.9% | 92.1% | +1.5 | 86.4% | 88.2% |
+| 5 | Customers and marketing | 19 (16) | 94.1% | 95.8% | +4.2 | 89.8% | 91.3% |
+| 6 | Catalogue | 0 (0) | 94.1% | 95.8% | +0.0 | 89.8% | 91.3% |
+| 7 | Storefront and international | 3 (3) | 94.8% | 95.8% | +0.7 | 90.2% | 91.3% |
+| 8 | Analytics and AI | 2 (2) | 95.2% | 95.8% | +0.5 | 90.4% | 91.3% |
+| 9 | Platform and extensibility | 8 (6) | 96.6% | 96.9% | +1.4 | 91.0% | 91.8% |
 
 Ceiling with every bucket A row Full and buckets B, C and D as they are: **91.0%** core, 91.8% must-have. With bucket B built and approved as well: 94.7% core, 95.8% must-have.
 
@@ -586,7 +587,7 @@ Legend. **Shopify**: Native = included on Basic to Advanced and scored in the he
 | Storefront API and headless | Native. [page](https://shopify.dev/docs/api/storefront) | Partial (was missing) | 2 | C, wave 9 | The WordPress plugin's API (D169, D170; `/api/wordpress/v1/*`, src/server/wordpress-route.ts, src/server/wordpress-shop.ts, src/server/cart-handoff.ts) is a storefront API in practice: a store's products, terms and one product as a market shows them (prices by wordpressPrice() from <Price>'s rules, never a cost or a private field), a cart quote at live price and stock, and a hand-off that makes a cart with the same checks as adding in the store and returns a once-only link that opens the store's own checkout; rate-limited, a store that is not the connection's is a 404. Still short: a token is issued only to a WordPress site an owner approved (exchangeCode() with a verifier), not a public token per store and market a developer can make for a front end of their own (criterion 1); the cart is goods and downloads only (no bookings, plans or gift cards) and is quoted and handed over rather than changed through the API (criterion 2); no documented, versioned public contract. Plan section 5 decision 4: cheap once the Admin API exists. Merged on 2026-10-25 (README rule 8): `storefront.headless-storefront-api-hydrogen` was the same Shopify feature (rated partial); its criteria and evidence are here. Code: `src/app/api/wordpress/v1/stores/[slug]/products/route.ts`, `src/app/api/wordpress/v1/stores/[slug]/cart/handoff/route.ts`. |
 | Outgoing webhooks | Native. [page](https://shopify.dev/docs/apps/build/webhooks) | Full (was partial) | 3 |  | None for the criteria (D354): an owner's own HTTPS endpoints beside Zapier, Make and Slack, each delivery signed with HMAC-SHA256 over a timestamp and the body, topics for orders, refunds, returns, withdrawals, customers, products, stock, subscriptions and discounts with a payload version, retries, switch-off after three days with the owners emailed, and sending again by hand. Shopify's Pub/Sub and EventBridge destinations are not offered. Evidence: `src/lib/integrations.ts`, `src/server/integrations.ts`, `src/app/api/cron/integrations/route.ts` and 8 more; 5 test files; D41, D101, D216, D354. |
 | Custom logic (Functions) | Plus. [page](https://shopify.dev/docs/apps/build/functions) | Missing (was partial) | 2 | A, wave 9 | No way to run an owner's or developer's own logic at checkout: no hook for discounts, shipping rates, payment methods or cart validation, and no sandbox to run one. What exists are Kaizen's built-in rule types (campaigns D114, customer groups D108, discount codes D31, carrier and store-priced delivery D135), which correspond to Shopify's native features and are counted in their own rows, not to Functions. Re-rated from partial for that reason. |
-| Workflow automation (Flow) | Native. [page](https://help.shopify.com/en/manual/shopify-flow) | Partial | 3 | A, wave 9 | Order rules (D238, Settings -> Automation, src/lib/order-rules.ts, src/server/order-rules.ts) are an owner-made trigger-condition-action builder for one trigger, an order paid: a closed list of conditions, actions tag, notify staff, hold fulfilment and ask the AI manager (D318), switched on or off, at most 50 a store and 20 AI asks a day, each run logged with what each condition and action came to. Fixed automations besides: cart and plan reminders (D33), email automations (D298), events to Zapier, Make and Slack (D41, D101), the AI manager's follow-ups (D318) and the autopilot's plans (D309). Still missing: triggers other than an order paid (return, customer, stock, schedule), actions that email, post to Slack or send an HTTP request through the address guard (criterion 1), and the AI manager drafting a workflow from a sentence (order_rules is a read-only tool, criterion 4). Merged on 2026-10-25 (README rule 8): `customers.workflow-automation-flow` was the same Shopify feature (rated partial); its criteria and evidence are here. No test run before a rule is switched on. Merged on 2026-10-26 (README rule 8): `ai.workflow-builder-with-ai-generation` was the same Shopify feature, Flow with Sidekick's drafting (rated partial); its criteria and evidence are here. The autopilot's plans (D309, D328) are steps toward goals, not event workflows an owner chooses. Code: `src/server/cart-reminders.ts`, `src/server/integrations.ts`. |
+| Workflow automation (Flow) | Native. [page](https://help.shopify.com/en/manual/shopify-flow) | Full (was partial) | 3 |  | None for the criteria (D356): workflows from a trigger (fourteen store events or a schedule), conditions on the event's fields and actions (tag or note the order, tag the customer, email staff, post to Slack, send a signed request through the address guard, ask the AI manager), saved off, tested before switched on, run once per event with each action's outcome logged, capped at 100 runs an hour, never copied; the AI manager drafts one from a sentence, saved off, its words through the claims filter. An email to a customer or a money action is not offered as an action at all, rather than gated. Order rules (D238) stay beside them. Evidence: `src/app/admin/(gated)/[store]/integrations/page.tsx`, `src/app/admin/(gated)/[store]/settings/automation/log/page.tsx`, `src/app/admin/(gated)/[store]/settings/automation/page.tsx` and 18 more; 11 test files; D33, D41, D94, D101, D103, D238, D298, D309, D318, D328, D356. |
 | Custom data (metafields) | Native. [page](https://help.shopify.com/en/manual/metafields) | Full | 3 |  | Evidence: `src/lib/custom-fields.ts`, `src/server/custom-fields.ts`, `src/lib/field-money.ts` and 3 more; 9 test files; D118, D119, D120. |
 | Staff accounts and roles | Native. [page](https://help.shopify.com/en/manual/your-account/users/users-plan-requirements) | Partial | 4 | A, wave 1 | Criteria 1, 2 and 4 are built and tested (roles of per-section permissions assigned from the Team page and refused by every page, action and route; collaborators with a role and an expiry, badged in the staff list, ignored by getMembership() once expired and ended by the daily job; an Activity log by person, area, action and period that holds every role change). Criterion 3 is Partial for the reason of international.staff-two-step-authentication: nothing has run against a real Supabase Auth, and the platform admin's real enrolment in production is still to be recorded. A staff limit by plan is built since D314 (`staff_seats` in LIMITS, checked when an invitation is made, src/server/settings.ts, held by limits-enforce.int.test.ts). Not built: passkeys (dropped from the criterion) and an agency account that invites itself (collaborators are invited by the owner). Merged on 2026-10-04 (parity README rule 8) with international.staff-roles-and-permissions, which was the same Shopify feature in the international domain and had reached Full on its own four criteria (roles, guards on every page and action, the AI manager and MCP respecting permissions, one owner and audited role changes: all built and tested); the survivor takes both rows' criteria and the larger weight, and stays Partial until the two-step criterion is shown against real Supabase Auth. Code: `src/app/admin/(gated)/[store]/activity/page.tsx`, `src/app/admin/(gated)/[store]/staff/page.tsx`. |
 | Multi-store management | Plus. [page](https://help.shopify.com/en/manual/shopify-plus/organization-admin) | Full | 2 |  | Evidence: `src/server/platform.ts`, `src/server/store-copy.ts`, `src/lib/store-copy-rules.ts` and 4 more; 6 test files; D19, D107, D129. |

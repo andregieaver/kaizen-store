@@ -90,6 +90,42 @@ export type AskOutcome = "ok" | "ask_limit" | "no_owner" | "not_found";
  * within five minutes and emails them. At most `RULE_LIMITS.asksPerDay` in a store in 24 hours, counted under the store's lock in the rule's own
  * transaction, so a busy day cannot run up the store's AI.
  */
+/**
+ * A workflow's *Ask the AI manager* (D356): as an order rule's ask, in the name of whoever last saved the workflow while an owner, counted
+ * against the same `RULE_LIMITS.asksPerDay` (origin `rule`, the order's id), in the run's transaction.
+ */
+export async function askFromWorkflow(
+  tx: Db,
+  input: { storeId: string; workflowId: string; name: string; question: string; orderId: string; orderNumber: string },
+): Promise<AskOutcome> {
+  const [flow] = await tx.execute<{ account: string | null; slug: string; time_zone: string }>(sql`
+    select coalesce(w.updated_by, w.created_by) as account, s.slug, s.time_zone from commerce.workflows w join commerce.stores s on s.id = w.store_id
+    where w.id = ${input.workflowId}::uuid and w.store_id = ${input.storeId}::uuid
+  `);
+  if (!flow) return "not_found";
+  if (!flow.account) return "no_owner";
+  const member = await passMembership(flow.slug, flow.account);
+  if (!member || !can(holderOf(member), "owner")) return "no_owner";
+  await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`follow-ups:rule:${input.storeId}`}))`);
+  const [asked] = await tx.execute<{ n: number }>(sql`
+    select count(*)::int as n from commerce.assistant_follow_ups
+    where store_id = ${input.storeId}::uuid and origin = 'rule' and created_at > now() - interval '24 hours'
+  `);
+  if (Number(asked.n) >= RULE_LIMITS.asksPerDay) return "ask_limit";
+  const [conversation] = await tx.execute<{ id: string }>(sql`
+    insert into commerce.assistant_conversations (store_id, account_id, title)
+    values (${input.storeId}::uuid, ${flow.account}::uuid, ${`${input.name}: order ${input.orderNumber}`.slice(0, 80)})
+    returning id
+  `);
+  const task = `The workflow "${input.name}" ran for order ${input.orderNumber} and asks you: ${input.question} Read the order with your tools first.`;
+  await tx.execute(sql`
+    insert into commerce.assistant_follow_ups (store_id, account_id, conversation_id, task, due_at, time_zone, origin, order_id)
+    values (${input.storeId}::uuid, ${flow.account}::uuid, ${String(conversation.id)}::uuid, ${task.slice(0, TASK_MAX)}, now(), ${flow.time_zone}, 'rule',
+      ${input.orderId}::uuid)
+  `);
+  return "ok";
+}
+
 export async function askAiManager(
   tx: Db,
   input: { storeId: string; orderId: string; ruleId: string; ruleName: string; question: string; orderNumber: string },

@@ -46,6 +46,7 @@ import { LIMIT_KEYS } from "../lib/limits";
 import { USAGE_METRIC_IDS } from "../lib/usage-metrics";
 import { AUDIT_AREA_KEYS } from "../lib/audit";
 import { MOVEMENT_REASONS, MOVEMENT_SOURCES } from "../lib/inventory";
+import { WORKFLOW_TRIGGERS } from "../lib/workflows";
 import {
   EXCHANGE_LINES_MAX,
   EXCHANGE_QUANTITY_MAX,
@@ -6904,6 +6905,71 @@ export const storeIntegrations = commerce.table(
     primaryKey({ columns: [t.storeId, t.provider] }),
     index("store_integrations_updated_by_idx").on(t.updatedBy),
     check("store_integrations_provider", sql`${t.provider} in ('zapier', 'make', 'slack')`),
+  ],
+);
+
+/**
+ * A workflow (D356, `src/server/workflows.ts`, its only writer with the runner): a trigger (an event of the store or a schedule), conditions on
+ * the event's fields and up to ten actions, as JSON checked by `workflowInputSchema` and `workflowProblems()`. Saved off; `version` rises
+ * with each save and it may be switched on only once `tested_version` equals it.
+ */
+export const workflows = commerce.table(
+  "workflows",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    name: text("name").notNull(),
+    trigger: text("trigger").notNull(),
+    schedule: jsonb("schedule"),
+    conditions: jsonb("conditions").notNull().default(sql`'[]'::jsonb`),
+    actions: jsonb("actions").notNull(),
+    enabled: boolean("enabled").notNull().default(false),
+    version: integer("version").notNull().default(1),
+    testedVersion: integer("tested_version"),
+    createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+    updatedBy: uuid("updated_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("workflows_store_id_key").on(t.storeId, t.id),
+    index("workflows_store_trigger_idx").on(t.storeId, t.trigger).where(sql`${t.enabled}`),
+    index("workflows_created_by_idx").on(t.createdBy),
+    index("workflows_updated_by_idx").on(t.updatedBy),
+    check("workflows_name", sql`char_length(${t.name}) between 1 and 80`),
+    check("workflows_trigger", sql`${t.trigger} in (${sqlList(WORKFLOW_TRIGGERS)})`),
+    check("workflows_on_when_tested", sql`not ${t.enabled} or ${t.testedVersion} = ${t.version}`),
+  ],
+);
+
+/**
+ * One run of a workflow (D356): once per event (`event_key`: the event, its subject and the transaction it happened in, or a schedule's
+ * day), claimed by the runner, with whether its conditions held and each action's outcome. Kept 90 days.
+ */
+export const workflowRuns = commerce.table(
+  "workflow_runs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    workflowId: uuid("workflow_id")
+      .notNull()
+      .references(() => workflows.id, { onDelete: "cascade" }),
+    event: text("event").notNull(),
+    subjectId: uuid("subject_id"),
+    eventKey: text("event_key").notNull(),
+    status: text("status").notNull().default("pending"),
+    matched: boolean("matched"),
+    outcome: jsonb("outcome"),
+    claimedUntil: timestamp("claimed_until", { withTimezone: true }),
+    createdAt: createdAt(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (t) => [
+    unique("workflow_runs_once_key").on(t.workflowId, t.eventKey),
+    index("workflow_runs_due_idx").on(t.createdAt).where(sql`${t.status} = 'pending'`),
+    index("workflow_runs_workflow_idx").on(t.workflowId, t.createdAt),
+    index("workflow_runs_store_idx").on(t.storeId, t.createdAt),
+    check("workflow_runs_status", sql`${t.status} in ('pending', 'done', 'failed', 'capped')`),
   ],
 );
 

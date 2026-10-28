@@ -834,6 +834,9 @@ const PAGES: readonly AdminPage[] = [
     feature: "shop",
   }),
   store("integrations.google-reviews", "/integrations/google-reviews", "Google reviews", "Store", "Shows the store's Google rating and reviews on its pages."),
+  store("workflows", "/settings/workflows", "Workflows", "Store", "Workflows (D356): a trigger (an event of the store or a schedule), conditions on its fields and actions (tag the order or customer, email staff, post to Slack, send to an own endpoint, ask the AI manager), saved off, tested on the latest event, then switched on; each one's recent runs.", {
+    keywords: ["workflow", "automation", "flow", "trigger", "schedule", "rules"],
+  }),
   store("api", "/settings/api", "Apps and API", "Store", "Tokens for the Admin API (D355): make one with the scopes it needs (shown once), see when each was last used, revoke one. The API's routes, scopes and limits are listed on the page.", {
     needs: "owner",
     keywords: ["api", "tokens", "developers", "warehouse", "3pl", "accounting", "integration"],

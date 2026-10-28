@@ -271,6 +271,7 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   set_header_footer: "website:write",
   draft_header_footer: "website:write",
   draft_store: "website:write",
+  draft_workflow: "settings:write",
   use_header_footer: "website:write",
   add_redirect: "website:write",
 };

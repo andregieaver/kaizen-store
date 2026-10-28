@@ -553,6 +553,7 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     keywords: ["fraktselskap", "posten", "bring", "postnord", "porterbuddy", "helthjem", "etiketter", "sporing"],
   },
   "store:integrations.google-reviews": { title: "Google-omtaler", keywords: ["google-omtaler", "google", "omtaler", "anmeldelser", "vurdering"] },
+  "store:workflows": { title: "Arbeidsflyter", keywords: ["arbeidsflyt", "automatisering", "flyt", "utløser", "tidsplan", "regler"] },
   "store:api": { title: "Apper og API", keywords: ["api", "nøkler", "utviklere", "lager", "3pl", "regnskap", "integrasjon"] },
   "store:ai": { title: "KI", keywords: ["ki", "kunstig intelligens", "modell", "leverandør", "openai"] },
   "store:features": {

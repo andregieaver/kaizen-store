@@ -432,6 +432,7 @@ export const assistantNb: AssistantMessages = {
     set_header_footer: "Forbereder endringen",
     draft_header_footer: "Lager et utkast til topp eller bunn",
     draft_store: "Lager et utkast til butikken",
+    draft_workflow: "Lager et utkast til en arbeidsflyt",
     use_header_footer: "Forbereder endringen",
     add_redirect: "Forbereder videresendingen",
     refund_order: "Forbereder refusjonen",

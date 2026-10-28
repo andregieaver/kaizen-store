@@ -518,6 +518,7 @@ export const TOOL_WORDS: Record<string, string> = {
   set_header_footer: "Preparing the change",
   draft_header_footer: "Drafting the header or footer",
   draft_store: "Drafting the store",
+  draft_workflow: "Drafting a workflow",
   use_header_footer: "Preparing the change",
   add_redirect: "Preparing the redirect",
   refund_order: "Preparing the refund",

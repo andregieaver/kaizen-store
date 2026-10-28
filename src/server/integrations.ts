@@ -294,8 +294,8 @@ async function subscriptionData(storeId: string, storeSlug: string, subscription
   };
 }
 
-/** What an event is about, as it is now; null when it is gone (or the event has no subject the services are sent). */
-async function subjectData(
+/** What an event is about, as it is now; null when it is gone (or the event has no subject the services are sent). Workflows (D356) test it too. */
+export async function subjectData(
   store: { id: string; slug: string; name: string },
   event: string,
   subjectId: string | null,

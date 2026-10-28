@@ -20,7 +20,8 @@ import { parsePrice } from "@/lib/product-input";
 import { categoryPath, isCategory, namedAttributes, type StandardAttributes } from "@/lib/product-taxonomy";
 
 import { storeUsageLines } from "./usage";
-import { audit, type Account } from "./auth";
+import { audit, passMembership, type Account } from "./auth";
+import { saveWorkflow } from "./workflows";
 import { listPriceListsTool } from "./price-lists";
 import { taxonomy, taxonomyWords } from "./product-taxonomy";
 import { draftBroadcastTool, issueGiftCardTool, preflightIssueGiftCard, listAutomationsTool, listBroadcastsTool, listSegmentsTool, preflightSendBroadcast, sendBroadcastTool, switchAutomationTool, tagCustomerTool } from "./marketing-tools";
@@ -2220,6 +2221,21 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   save_menu: (ctx: OwnerToolContext, input: OwnerToolInput<"save_menu">) => saveMenuTool(ctx, input),
   set_header_footer: (ctx: OwnerToolContext, input: OwnerToolInput<"set_header_footer">) => setHeaderFooterTool(ctx, input),
   draft_header_footer: (ctx: OwnerToolContext, input: OwnerToolInput<"draft_header_footer">) => draftHeaderFooterTool(ctx, input),
+  draft_workflow: async (ctx: OwnerToolContext, input: OwnerToolInput<"draft_workflow">) => {
+    const member = await passMembership(ctx.store.slug, ctx.account.id);
+    if (!member) throw new OwnerToolError("You are no longer a member of this store.");
+    // Words the AI wrote pass the claims filter, as all its copy does.
+    const words = input.actions.flatMap((a) => ("text" in a ? [a.text] : []).concat("subject" in a ? [a.subject] : [], "question" in a ? [a.question] : []));
+    const claims = [...new Set(words.flatMap((text) => findClaims(text).map((c) => c.phrase)))];
+    if (claims.length > 0) throw new OwnerToolError(`Leave out ${claims.map((c) => `"${c}"`).join(", ")}: they are claims the store has not shown to be true.`);
+    const saved = await saveWorkflow(member, null, input);
+    if (!saved.ok) throw new OwnerToolError(saved.problems.join(" "));
+    return {
+      done: `Saved the workflow "${input.name}", switched off. Test it on the latest event and switch it on at Settings, Workflows.`,
+      id: saved.id,
+      admin: `/admin/${ctx.store.slug}/settings/workflows`,
+    };
+  },
   draft_store: async (ctx: OwnerToolContext, input: OwnerToolInput<"draft_store">) => {
     const result = await draftStore({ account: ctx.account, store: ctx.store }, input);
     if (!result.ok) throw new OwnerToolError(result.problem);
@@ -2469,7 +2485,7 @@ export async function runOwnerTool(ctx: OwnerToolContext, name: string, raw: unk
 }
 
 /** Tools that change the store without a gate, written down all the same: a note on an order, products made or written for, pages built or changed (D308). */
-const AUDITED_UNGATED = new Set(["add_order_note", "create_product", "write_product_texts", "build_page", "edit_page", "draft_header_footer", "add_support_note", "end_support_conversation", "log_time"]);
+const AUDITED_UNGATED = new Set(["draft_workflow", "add_order_note", "create_product", "write_product_texts", "build_page", "edit_page", "draft_header_footer", "add_support_note", "end_support_conversation", "log_time"]);
 const PRODUCT_TOOLS = new Set(["create_product", "update_product", "set_prices", "set_product_status", "write_product_texts", "update_category"]);
 const PAGE_TOOLS = new Set(["build_page", "edit_page", "publish_page", "set_page_place", "save_menu", "set_header_footer", "draft_header_footer", "use_header_footer"]);
 

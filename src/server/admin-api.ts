@@ -3,7 +3,6 @@ import "server-only";
 import { sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 
-import { db } from "@/db/client";
 import { isUuid, pageSize, type ApiErrorCode, type ApiRoute } from "@/lib/admin-api";
 import { createProductInput, updateProductInput } from "@/lib/product-tools";
 

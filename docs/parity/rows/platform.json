@@ -285,14 +285,14 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "partial"
     },
     "weight": 3,
-    "gap": "Order rules (D238, Settings -> Automation, src/lib/order-rules.ts, src/server/order-rules.ts) are an owner-made trigger-condition-action builder for one trigger, an order paid: a closed list of conditions, actions tag, notify staff, hold fulfilment and ask the AI manager (D318), switched on or off, at most 50 a store and 20 AI asks a day, each run logged with what each condition and action came to. Fixed automations besides: cart and plan reminders (D33), email automations (D298), events to Zapier, Make and Slack (D41, D101), the AI manager's follow-ups (D318) and the autopilot's plans (D309). Still missing: triggers other than an order paid (return, customer, stock, schedule), actions that email, post to Slack or send an HTTP request through the address guard (criterion 1), and the AI manager drafting a workflow from a sentence (order_rules is a read-only tool, criterion 4). Merged on 2026-10-25 (README rule 8): `customers.workflow-automation-flow` was the same Shopify feature (rated partial); its criteria and evidence are here. No test run before a rule is switched on. Merged on 2026-10-26 (README rule 8): `ai.workflow-builder-with-ai-generation` was the same Shopify feature, Flow with Sidekick's drafting (rated partial); its criteria and evidence are here. The autopilot's plans (D309, D328) are steps toward goals, not event workflows an owner chooses.",
-    "bucket": "A",
-    "wave": 9,
+    "gap": "None for the criteria (D356): workflows from a trigger (fourteen store events or a schedule), conditions on the event's fields and actions (tag or note the order, tag the customer, email staff, post to Slack, send a signed request through the address guard, ask the AI manager), saved off, tested before switched on, run once per event with each action's outcome logged, capped at 100 runs an hour, never copied; the AI manager drafts one from a sentence, saved off, its words through the claims filter. An email to a customer or a money action is not offered as an action at all, rather than gated. Order rules (D238) stay beside them.",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "An owner builds a workflow from a trigger (an order, return, customer, stock or schedule event), conditions on its data and actions (email, tag, note, post to Slack, send an HTTP request through the address guard) and switches it on or off.",
       "Each run is logged with the trigger, the path taken and each action's result; a failing action does not run twice and the owner sees it.",
@@ -306,32 +306,40 @@
     ],
     "evidence": {
       "files": [
+        "src/app/admin/(gated)/[store]/integrations/page.tsx",
+        "src/app/admin/(gated)/[store]/settings/automation/log/page.tsx",
+        "src/app/admin/(gated)/[store]/settings/automation/page.tsx",
+        "src/app/admin/(gated)/[store]/settings/workflows/page.tsx",
+        "src/app/api/cron/integrations/route.ts",
+        "src/components/admin/automation/rule-editor.tsx",
+        "src/components/admin/workflows.tsx",
+        "src/lib/integrations.ts",
+        "src/lib/order-rules.ts",
+        "src/lib/slack.ts",
+        "src/lib/workflows.ts",
+        "src/server/autopilot-reviews.ts",
         "src/server/cart-reminders.ts",
         "src/server/integrations.ts",
-        "src/server/owner-assistant.ts",
         "src/server/manager-tools.ts",
-        "src/lib/order-rules.ts",
         "src/server/order-rules.ts",
-        "src/components/admin/automation/rule-editor.tsx",
-        "src/lib/integrations.ts",
+        "src/server/owner-assistant.ts",
         "src/server/slack.ts",
-        "src/lib/slack.ts",
-        "src/app/admin/(gated)/[store]/integrations/page.tsx",
-        "src/app/admin/(gated)/[store]/settings/automation/page.tsx",
-        "src/app/admin/(gated)/[store]/settings/automation/log/page.tsx",
-        "src/app/api/cron/integrations/route.ts",
-        "src/server/autopilot-reviews.ts"
+        "src/server/workflow-subjects.ts",
+        "src/server/workflows.ts",
+        "supabase/migrations/20261028101023_workflows.sql"
       ],
       "tests": [
-        "src/server/cart-reminders.int.test.ts",
-        "src/server/integrations.int.test.ts",
-        "src/server/owner-assistant.int.test.ts",
-        "src/lib/order-rules.test.ts",
-        "src/server/order-rules.int.test.ts",
         "e2e/signed-in/automation.spec.ts",
         "src/lib/integrations.test.ts",
+        "src/lib/order-rules.test.ts",
         "src/lib/slack.test.ts",
-        "src/server/autopilot-reviews.int.test.ts"
+        "src/lib/workflows.test.ts",
+        "src/server/autopilot-reviews.int.test.ts",
+        "src/server/cart-reminders.int.test.ts",
+        "src/server/integrations.int.test.ts",
+        "src/server/order-rules.int.test.ts",
+        "src/server/owner-assistant.int.test.ts",
+        "src/server/workflows.int.test.ts"
       ],
       "untested": false
     },
@@ -345,9 +353,17 @@
       "D298",
       "D309",
       "D318",
-      "D328"
+      "D328",
+      "D356"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-28",
+        "from": "partial",
+        "to": "full",
+        "why": "Built D356 (wave 9 unit C): commerce.workflows and workflow_runs (src/server/workflows.ts, the database's intake in queue_integration_event()), the Workflows page and draft_workflow. Held by src/lib/workflows.test.ts (fields, conditions, actions by trigger, schedules) and src/server/workflows.int.test.ts (saved off, switch-on refused until the saved version is tested and again after a change, once per paid order with a tag, a note, staff's email, a signed request queued to the owner's endpoint and the AI manager's follow-up, an order whose conditions do not hold recorded, the hourly cap, a schedule once a day), run and passing."
+      }
+    ]
   },
   {
     "id": "platform.custom-data-metafields",

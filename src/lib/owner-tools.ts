@@ -55,6 +55,7 @@ import {
   type StorePlace,
 } from "./site-tools";
 import { draftStoreInput } from "./store-drafts";
+import { workflowInputSchema } from "./workflows";
 
 /**
  * The owner assistant's tools (D94), modelled on Kaizen Life's MCP catalogue:
@@ -236,6 +237,11 @@ export const SITE_TOOLS = [
 ] as const satisfies readonly OwnerTool[];
 
 export const OWNER_TOOLS = [
+  tool(
+    "draft_workflow",
+    "Drafts a workflow from what the owner describes (D356), saved OFF: they test it on the latest event and switch it on at Settings, Workflows. trigger: one of the store's events (order.paid, order.sent, order.cancelled, order.refunded, customer.created, subscription.started, subscription.cancelled, return.requested, withdrawal.received, product.created, product.updated, stock.low, discount.created, support.waiting) or schedule, with schedule { every: day or week, at: HH:MM, weekday 1 to 7 for a week }. conditions (none for a schedule): { field, op (is, is_not, contains, more_than, less_than), value } on the trigger's fields, such as order.total (in the order's currency units), order.currency, order.market, order.lines.sku, order.shipping_address.country, customer.email, product.status, stock.available, return.kind. actions, 1 to 10: tag_order { tag }, note_order { text } and ask_ai_manager { question } after an order event; tag_customer { tag } after an order, customer or subscription event; email_staff { subject, text }; post_slack { text }; send_request { endpointId } (one of the owner's endpoints) after any event. Never an email to a customer, a refund or a price.",
+    workflowInputSchema,
+  ),
   tool(
     "draft_store",
     "Drafts the store from one description (D351): a front page and up to three more pages built by the page studio as DRAFTS in the background (a minute or two each, with pictures after), and, when you name one from list_themes, a free theme added to the library without going live. The owner reads them on Home's Your drafts card, changes what they like and publishes them with one press there (which also makes the first the front page, puts the others in the header's menu and makes the theme live). Nothing is on the site before that. One draft at a time. Give only facts the owner gave; never a price.",

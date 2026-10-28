@@ -360,6 +360,8 @@ export const COPY_RULES: Record<string, CopyRule> = {
   store_home_takes: never("A demo home page this store took and the front page it had before (docs/theme-showcase-phase-1.md step 4c): undo is the store's own, a copy has nothing to put back."),
   store_starters: never("A demo store's listing (D175) is the platform's: a copy of a demo store is an ordinary store, never offered as one."),
   store_integrations: never("Webhook addresses are secrets."),
+  workflows: never("A store's workflows name its own endpoints and act in its people's names (D356); a copy starts without them."),
+  workflow_runs: never("The log of the original's workflows (D356)."),
   api_tokens: never("Admin API tokens are secrets and act as one person of the original (D355)."),
   webhook_endpoints: never("An owner's endpoint addresses and signing secrets are secrets (D354)."),
   store_members: never("Only the person copying owns the new store."),
