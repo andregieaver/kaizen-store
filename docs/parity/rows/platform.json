@@ -165,14 +165,14 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "partial"
     },
     "weight": 3,
-    "gap": "Zapier, Make and Slack hosts only (`checkWebhookUrl()` refuses any other address, D41); eight events (order paid, sent, cancelled, refunded, customer created, subscription started and cancelled, and since D216 someone waiting in support; `EVENTS` in src/lib/integrations.ts); no signing secret or signature on deliveries; no events for products, stock, returns or withdrawals, or discounts; no payload version or per-endpoint topic choice beyond the event list. What exists is solid: queued by the database, five retries over about 8.6 hours (60 s, 5 min, 30 min, 2 h, 6 h), a delivery log kept 30 days, encrypted addresses, a test send.",
-    "bucket": "A",
-    "wave": 9,
+    "gap": "None for the criteria (D354): an owner's own HTTPS endpoints beside Zapier, Make and Slack, each delivery signed with HMAC-SHA256 over a timestamp and the body, topics for orders, refunds, returns, withdrawals, customers, products, stock, subscriptions and discounts with a payload version, retries, switch-off after three days with the owners emailed, and sending again by hand. Shopify's Pub/Sub and EventBridge destinations are not offered.",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "An owner adds an HTTPS endpoint of their own (not only Zapier, Make or Slack); private and loopback addresses are refused and every send goes through the same address guard as other outbound fetches.",
       "Every delivery is signed with HMAC-SHA256 over a timestamp and the body using a per-endpoint secret shown once; a test verifies the signature and rejects an old timestamp.",
@@ -185,21 +185,37 @@
         "src/server/integrations.ts",
         "src/app/api/cron/integrations/route.ts",
         "src/lib/slack.ts",
-        "src/server/slack.ts"
+        "src/server/slack.ts",
+        "src/lib/webhook-signature.ts",
+        "src/server/webhook-endpoints.ts",
+        "src/server/endpoint-emails.ts",
+        "src/app/admin/(gated)/[store]/integrations/endpoints/page.tsx",
+        "src/components/admin/webhook-endpoints.tsx",
+        "supabase/migrations/20261028084018_webhook_endpoints.sql"
       ],
       "tests": [
         "src/server/integrations.int.test.ts",
         "src/lib/integrations.test.ts",
-        "src/lib/slack.test.ts"
+        "src/lib/slack.test.ts",
+        "src/lib/webhook-signature.test.ts",
+        "src/server/webhook-endpoints.int.test.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D41",
       "D101",
-      "D216"
+      "D216",
+      "D354"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-28",
+        "from": "partial",
+        "to": "full",
+        "why": "Built D354 (wave 9 unit A): commerce.webhook_endpoints written only by src/server/webhook-endpoints.ts (address checked by checkEndpointUrl() and the address guard at save, safeFetch() at send), signed deliveries (signWebhook()/verifyWebhook() in src/lib/webhook-signature.ts), six new topics queued by triggers, a versioned payload (endpointPayload()), switch-off after three days of failures with an owner email, and resendDelivery(). Held by src/lib/webhook-signature.test.ts (signature, stale timestamp, addresses) and src/server/webhook-endpoints.int.test.ts (a signed delivery to a local server verified with the secret, topics, de-duplication, switch-off and email, sending again), run and passing."
+      }
+    ]
   },
   {
     "id": "platform.custom-logic-functions",

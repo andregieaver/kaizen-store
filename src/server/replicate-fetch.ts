@@ -53,6 +53,8 @@ export type FetchOptions = {
   maxRedirects?: number;
   resolve?: Resolve;
   signal?: AbortSignal;
+  /** A POST with a body and headers of its own (D354: a signed event to an owner's endpoint); a GET otherwise. */
+  post?: { body: string; headers: Record<string, string> };
 };
 
 /** One request, to one checked address, without following redirects. */
@@ -62,13 +64,14 @@ function once(url: URL, address: string, family: number, options: FetchOptions):
     const request = client.request(
       url,
       {
-        method: "GET",
+        method: options.post ? "POST" : "GET",
         headers: {
           "User-Agent": USER_AGENT,
           Accept: options.accept ?? "*/*",
           "Accept-Encoding": "identity",
           "Accept-Language": options.acceptLanguage ?? "en;q=0.9",
           ...(options.referer ? { Referer: options.referer } : {}),
+          ...(options.post ? { ...options.post.headers, "Content-Length": String(Buffer.byteLength(options.post.body)) } : {}),
         },
         // The connection goes to the address that was checked, whatever the name would answer now.
         lookup: (_host, lookupOptions, callback) => {
@@ -109,7 +112,7 @@ function once(url: URL, address: string, family: number, options: FetchOptions):
     );
     request.on("timeout", () => request.destroy(new Error("timeout")));
     request.on("error", reject);
-    request.end();
+    request.end(options.post?.body);
   });
 }
 

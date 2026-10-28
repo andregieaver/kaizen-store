@@ -42,6 +42,7 @@ const OTHERS: Record<string, "any" | "owner" | string> = {
 
 /** Files that ask for the owner role where the map would let a member in: each says why (a new file, so the baseline cannot). */
 const OWNER_ONLY_EXTRA: Record<string, string> = {
+  "src/app/admin/(gated)/[store]/integrations/endpoints/actions.ts": "an owner's own endpoints get customers' details and carry a signing secret (D354), so only an owner adds or changes them, as with the services (D41)",
   "src/app/admin/(gated)/[store]/settings/domains/page.tsx": "a closed store's owner still reaches its domains to renew or move them (D315 9.3): settings are closed there, the owner's key is not; everyone else still needs `settings:read`",
   "src/app/admin/(gated)/[store]/analytics/tax/actions.ts": "an exchange rate changes the figures a tax return is made from (wave 1, 1c): the ECB fetch and an owner's own rate are the owner's",
   "src/app/admin/(gated)/[store]/activity/export/route.ts": "the activity log's CSV export is the owner's (wave 1, 1f 2.9); the page itself is open to every member, narrowed by what they may read",

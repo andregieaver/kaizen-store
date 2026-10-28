@@ -3,11 +3,13 @@ import Link from "next/link";
 
 import { IntegrationMark } from "@/components/admin/integration-mark";
 import { adminLangOf } from "@/lib/admin-lang";
+import { countWords } from "@/lib/admin-fill";
 import { adminText } from "@/lib/admin-text";
 import { INTEGRATIONS } from "@/lib/integrations";
 import { CARRIERS } from "@/lib/shipping-carriers";
 import { requirePermission } from "@/server/permissions";
 import { listIntegrations } from "@/server/integrations";
+import { listEndpoints } from "@/server/webhook-endpoints";
 import { listCarriers } from "@/server/shipping-carriers";
 import { Card, CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
@@ -22,7 +24,7 @@ export default async function IntegrationsPage({ params }: PageProps<"/admin/[st
   const carrierWords = adminText(lang, "shipping").carrier.carriers as Record<string, { summary: string } | undefined>;
   const w = all.integrations;
   const k = w.carrier;
-  const [connected, carriers] = await Promise.all([listIntegrations(store.id), listCarriers(store.id)]);
+  const [connected, carriers, endpoints] = await Promise.all([listIntegrations(store.id), listCarriers(store.id), listEndpoints(store.id)]);
   const base = `/admin/${store.slug}/integrations`;
 
   return (
@@ -73,6 +75,17 @@ export default async function IntegrationsPage({ params }: PageProps<"/admin/[st
           );
         })}
       </ul>
+      <Card
+        title={w.endpoints.cardTitle}
+        description={w.endpoints.cardDescription}
+        aside={endpoints.length > 0 ? <span className="text-sm text-muted">{countWords(endpoints.length, w.endpoints.cardCount)}</span> : undefined}
+        className="flex flex-col gap-3"
+        compact
+      >
+        <Link href={`${base}/endpoints`} className="inline-flex min-h-10 w-fit items-center rounded-pill border border-edge px-4 text-sm font-medium hover:bg-sunken">
+          {w.endpoints.cardButton}
+        </Link>
+      </Card>
       <section aria-labelledby="shipping-carriers" className="flex flex-col gap-4">
         <div>
           <h2 id="shipping-carriers" className="text-title text-ink">

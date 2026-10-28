@@ -546,6 +546,7 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
   "store:company.place.new": { title: "Nytt sted", keywords: ["nytt sted", "butikk", "hentested", "legg til sted"] },
   "store:company.place": { title: "Sted", keywords: ["sted", "butikk", "hentested"] },
   "store:integrations": { title: "Integrasjoner", keywords: ["integrasjoner", "zapier", "make", "slack", "webhooks", "fraktselskaper"] },
+  "store:integrations.endpoints": { title: "Dine egne endepunkter", keywords: ["webhooks", "endepunkter", "signerte hendelser", "hmac", "utviklere"] },
   "store:integration": { title: "Integrasjon", keywords: ["integrasjon", "koble til", "hendelser", "test"] },
   "store:integrations.shipping": {
     title: "Fraktselskap",

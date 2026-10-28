@@ -274,4 +274,12 @@ export const staffEmailsNb: StaffEmailsMessages = {
     failed: "Du ba KI-assistenten følge opp «{task}»{where}. Den fikk ikke svar fra KI-en tre ganger på rad, så den stoppet. Be den igjen når KI-en virker.",
     failedButton: "Åpne KI-assistenten",
   },
+  endpointOff: {
+    subject: "Endepunktet ditt «{name}» ble slått av",
+    preview: "Alle hendelser sendt dit i tre dager feilet.",
+    heading: "Et endepunkt ble slått av",
+    body: "Alle hendelser Kaizena Flow sendte til «{name}» ({hint}) i {store} har feilet siden {since}, så det ble slått av og får ikke mer. Siste svar var: {error}.",
+    after: "Sjekk adressen og at den svarer 2xx, og slå det på igjen. Du kan sende feilede hendelser på nytt fra loggen.",
+    button: "Åpne endepunktene dine",
+  },
 };

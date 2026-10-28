@@ -827,6 +827,7 @@ const PAGES: readonly AdminPage[] = [
   store("company.place.new", "/settings/company/places/new", "New place", "Store", "Adds a shop or pickup point."),
   store("company.place", "/settings/company/places/[placeId]", "Place", "Store", "One shop or pickup point."),
   store("integrations", "/integrations", "Integrations", "Store", "Zapier, Make and Slack, and how their sends are doing; shipping carriers being prepared.", { keywords: ["zapier", "make", "slack", "webhooks", "shipping carriers"] }),
+  store("integrations.endpoints", "/integrations/endpoints", "Your own endpoints", "Store", "Sends signed events to the owner's own HTTPS endpoints: topics, the secret, a test, the log and sending again.", { keywords: ["webhooks", "endpoints", "signed events", "hmac", "developers"] }),
   store("integration", "/integrations/[provider]", "Integration", "Store", "Connects one integration, chooses its events, tests it, and shows recent sends."),
   store("integrations.shipping", "/integrations/shipping/[carrier]", "Shipping carrier", "Store", "Saves the store's own agreement with Posten / Bring, PostNord, Porterbuddy or Helthjem, ready for the day its connection arrives.", {
     keywords: ["posten", "bring", "postnord", "porterbuddy", "helthjem", "carrier", "freight", "labels", "tracking"],

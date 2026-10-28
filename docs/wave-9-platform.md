@@ -126,6 +126,13 @@ A public app directory, POS, a marketplace and checkout UI extensions in code st
 
 Each unit adds its own paragraph here when it is built.
 
+- **A (D354), built 28 October 2026.** As section 3 says, with one change: endpoints are a table of their own
+  (`commerce.webhook_endpoints`), not a provider of `store_integrations`, as a store keeps up to ten of them, each with its own address,
+  secret and topics; deliveries are `integration_deliveries` of provider `webhook` with an `endpoint_id`, so the queue, retries, log and
+  30 days are the services'. The new topics go to endpoints only (`SERVICE_EVENTS`), so Zapier, Make and Slack are unchanged. A product saved
+  twice, or made and saved in one transaction, before its delivery is built gives one delivery, which carries it as it is when sent.
+  `REPLICATE_ALLOW_PRIVATE` lets the integration test reach its own local server, as the replicator's tests do.
+
 ## 5. Decisions
 
 | # | Decision | Options | Recommendation |

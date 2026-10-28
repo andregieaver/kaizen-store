@@ -80,7 +80,14 @@ export type IntegrationEvent =
   | "customer.created"
   | "subscription.started"
   | "subscription.cancelled"
-  | "support.waiting";
+  | "support.waiting"
+  // D354: for an owner's own endpoints (and the services, when chosen).
+  | "return.requested"
+  | "withdrawal.received"
+  | "product.created"
+  | "product.updated"
+  | "stock.low"
+  | "discount.created";
 
 export const EVENTS: { id: IntegrationEvent; label: string; hint: string }[] = [
   { id: "order.paid", label: "Order paid", hint: "A shopper paid, or a subscription renewed." },
@@ -90,10 +97,31 @@ export const EVENTS: { id: IntegrationEvent; label: string; hint: string }[] = [
   { id: "customer.created", label: "New customer account", hint: "A shopper made an account." },
   { id: "subscription.started", label: "Subscription started", hint: "A subscription's first payment went through." },
   { id: "subscription.cancelled", label: "Subscription cancelled", hint: "A subscription was cancelled." },
+  { id: "return.requested", label: "Return requested", hint: "A shopper or staff started a return, or a withdrawal's return." },
+  { id: "withdrawal.received", label: "Withdrawal received", hint: "A shopper confirmed that they withdraw from a purchase." },
+  { id: "product.created", label: "Product created", hint: "A product was made, by hand, an import or the AI manager." },
+  { id: "product.updated", label: "Product changed", hint: "A product was saved." },
+  { id: "stock.low", label: "Stock low", hint: "A variant's stock fell to its low-stock level." },
+  { id: "discount.created", label: "Discount code created", hint: "A discount code was made." },
   { id: "support.waiting", label: "Someone waiting in support", hint: "A customer has waited for a person in the support chat as long as the support settings say: how many wait now, and a link to the inbox. Never who they are or what they wrote." },
 ];
 
 export const isEvent = (value: string): value is IntegrationEvent => EVENTS.some((e) => e.id === value);
+
+/** The events of D354 go to an owner's own endpoints only: Zapier, Make and Slack get the events they always had. */
+const ENDPOINT_ONLY: ReadonlySet<IntegrationEvent> = new Set([
+  "return.requested",
+  "withdrawal.received",
+  "product.created",
+  "product.updated",
+  "stock.low",
+  "discount.created",
+]);
+
+/** The events a service (Zapier, Make, Slack) may be sent. */
+export const SERVICE_EVENTS = EVENTS.filter((event) => !ENDPOINT_ONLY.has(event.id));
+
+export const isServiceEvent = (value: string): value is IntegrationEvent => isEvent(value) && !ENDPOINT_ONLY.has(value);
 
 /**
  * The address, if it is one of the service's own webhook addresses: https,

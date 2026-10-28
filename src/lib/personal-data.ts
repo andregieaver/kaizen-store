@@ -265,6 +265,7 @@ export const PERSONAL_DATA: PersonalEntry[] = [
 
 /** Tables the detectors matched (by a column name such as `name`, `note` or `content`, or a foreign key) that hold no person's data, and why. */
 export const NOT_PERSONAL: Record<string, string> = {
+  webhook_endpoints: "An owner's own endpoints (D354): a name the owner gives, the address and secret encrypted, the topics and whether it works; no customer (the deliveries' payloads are `integration_deliveries`').",
   speed_samples: "How fast one page load was (D336): the store day, the page's kind (front page, product, category, list, page), phone or computer and four timings; no address, visitor, IP address or user agent.",
   legal_source_reads: "Each read of an official legal text (D311): which act, language and version, when, and whether it worked; no person.",
   legal_source_texts: "Official legal texts cut into passages (D311), as the EU, Riksdagen, Retsinformation and Lovdata publish them; no person.",
@@ -477,6 +478,7 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   "return.exchange_wished": "staff",
   "stock.low": "staff",
   "experiment.guardrail": "staff",
+  "integration.endpoint_off": "staff",
   /** A follow-up the AI manager was asked for ran (PSI AGT-04): the person's own task and a link, never the answer. */
   "assistant.follow_up": "staff",
   /** The autopilot's daily digest and weekly report (D309): counts, the plans' step titles and the store's figures, never a customer. */

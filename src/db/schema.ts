@@ -6908,6 +6908,40 @@ export const storeIntegrations = commerce.table(
 );
 
 /**
+ * An endpoint of the owner's own (D354, `src/server/webhook-endpoints.ts`, its only writer): an HTTPS address that gets the topics chosen,
+ * each delivery signed with the endpoint's secret (`Kaizena-Webhook-Signature`). The address and the secret are encrypted; the secret is
+ * shown once. Switched off by Kaizena Flow after three days of failed deliveries (`disabled_reason = 'failing'`) and its owners told.
+ */
+export const webhookEndpoints = commerce.table(
+  "webhook_endpoints",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    name: text("name").notNull(),
+    urlEncrypted: text("url_encrypted").notNull(),
+    /** The address with its path hidden, shown to staff: `hooks.example.com/…`. */
+    hint: text("hint").notNull(),
+    secretEncrypted: text("secret_encrypted").notNull(),
+    topics: text("topics").array().notNull(),
+    enabled: boolean("enabled").notNull().default(true),
+    /** When its deliveries began failing without a success since; null while they arrive. */
+    failingSince: timestamp("failing_since", { withTimezone: true }),
+    disabledReason: text("disabled_reason"),
+    createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("webhook_endpoints_store_id_key").on(t.storeId, t.id),
+    index("webhook_endpoints_store_idx").on(t.storeId),
+    index("webhook_endpoints_created_by_idx").on(t.createdBy),
+    check("webhook_endpoints_name", sql`char_length(${t.name}) between 1 and 80`),
+    check("webhook_endpoints_topics", sql`cardinality(${t.topics}) between 1 and 40`),
+    check("webhook_endpoints_reason", sql`${t.disabledReason} is null or ${t.disabledReason} in ('failing', 'owner')`),
+  ],
+);
+
+/**
  * One event on its way to an integration (D41): queued by the database as
  * the event happens, its content built and sent by Kaizen, and tried again
  * later when the service does not take it. Kept 30 days.
@@ -6924,6 +6958,8 @@ export const integrationDeliveries = commerce.table(
     subjectId: uuid("subject_id"),
     /** What was sent, built at the first try and sent the same on every retry. */
     payload: jsonb("payload"),
+    /** The owner's endpoint it goes to (D354), for the provider `webhook`. */
+    endpointId: uuid("endpoint_id").references(() => webhookEndpoints.id, { onDelete: "cascade" }),
     status: text("status").notNull().default("pending"),
     attempts: integer("attempts").notNull().default(0),
     lastStatus: integer("last_status"),
@@ -6935,6 +6971,8 @@ export const integrationDeliveries = commerce.table(
   (t) => [
     index("integration_deliveries_due_idx").on(t.nextAttemptAt).where(sql`${t.status} = 'pending'`),
     index("integration_deliveries_store_idx").on(t.storeId, t.provider, t.createdAt),
+    index("integration_deliveries_endpoint_idx").on(t.endpointId, t.createdAt),
+    check("integration_deliveries_endpoint", sql`(${t.provider} = 'webhook') = (${t.endpointId} is not null)`),
     check("integration_deliveries_status", sql`${t.status} in ('pending', 'delivered', 'failed')`),
   ],
 );

@@ -278,6 +278,15 @@ export const staffEmailsEn = {
     failed: 'You asked the AI manager to follow up on "{task}"{where}. It could not get an answer from the AI three times in a row, so it stopped. Ask it again when the AI works.',
     failedButton: "Open the AI manager",
   },
+  /** An endpoint of the owner's own switched off after three days of failed deliveries (D354): its name and address hint, never a payload. */
+  endpointOff: {
+    subject: 'Your endpoint "{name}" was switched off',
+    preview: "Every event sent to it for three days failed.",
+    heading: "An endpoint was switched off",
+    body: 'Every event Kaizena Flow sent to "{name}" ({hint}) in {store} has failed since {since}, so it was switched off and gets nothing more. The last answer was: {error}.',
+    after: "Check the address and that it answers 2xx, then switch it on again. You can send failed events again from its log.",
+    button: "Open your endpoints",
+  },
 };
 
 export type StaffEmailsMessages = Widen<typeof staffEmailsEn>;

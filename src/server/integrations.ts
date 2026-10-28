@@ -6,6 +6,7 @@ import { db } from "@/db/client";
 import {
   checkWebhookUrl,
   isEvent,
+  isServiceEvent,
   webhookHint,
   type IntegrationEvent,
   type Provider,
@@ -14,10 +15,15 @@ import { minorUnitDigits } from "@/lib/money";
 import { decryptSecret, encryptSecret } from "@/lib/secret-box";
 import { siteUrl } from "@/lib/site";
 import { escapeSlack, slackMessage } from "@/lib/slack";
+import { ID_HEADER, PAYLOAD_VERSION, signWebhook, SIGNATURE_HEADER, TIMESTAMP_HEADER, TOPIC_HEADER } from "@/lib/webhook-signature";
 
 import { audit, type Membership } from "./auth";
+import { notifyEndpointOff } from "./endpoint-emails";
+import { log } from "./log";
 import { getOrder, type Address } from "./orders";
+import { safeFetch } from "./replicate-fetch";
 import { encryptionKey } from "./settings";
+import { FAILING_DAYS, openEndpoint } from "./webhook-endpoints";
 
 type Row = Record<string, unknown>;
 
@@ -102,7 +108,7 @@ export async function saveIntegration(
   provider: Provider,
   input: { url: string; events: string[]; enabled: boolean },
 ): Promise<SaveResult> {
-  const events = [...new Set(input.events.filter(isEvent))];
+  const events = [...new Set(input.events.filter(isServiceEvent))];
   const existing = await getIntegration(store.id, provider);
   let encrypted: string | null = null;
   let hint: string | null = null;
@@ -288,6 +294,64 @@ async function subscriptionData(storeId: string, storeSlug: string, subscription
   };
 }
 
+/** What an event is about, as it is now; null when it is gone (or the event has no subject the services are sent). */
+async function subjectData(
+  store: { id: string; slug: string; name: string },
+  event: string,
+  subjectId: string | null,
+): Promise<Record<string, unknown> | null> {
+  if (event === "support.waiting") return { support: await supportWaitingData(store.id, store.slug) };
+  if (!subjectId) return null;
+  if (event.startsWith("order.")) {
+    const order = await orderData(store.id, store.slug, subjectId);
+    return order && { order };
+  }
+  if (event === "customer.created") {
+    const customer = await customerData(store.id, store.slug, subjectId);
+    return customer && { customer };
+  }
+  if (event.startsWith("subscription.")) {
+    const subscription = await subscriptionData(store.id, store.slug, subjectId);
+    return subscription && { subscription };
+  }
+  if (event === "return.requested") {
+    const value = await returnData(store.id, store.slug, subjectId);
+    return value && { return: value };
+  }
+  if (event === "withdrawal.received") {
+    const withdrawal = await withdrawalData(store.id, store.slug, subjectId);
+    return withdrawal && { withdrawal };
+  }
+  if (event.startsWith("product.")) {
+    const product = await productData(store.id, store.slug, subjectId);
+    return product && { product };
+  }
+  if (event === "stock.low") {
+    const stock = await stockData(store.id, subjectId);
+    return stock && { stock };
+  }
+  if (event === "discount.created") {
+    const discount = await discountData(store.id, store.slug, subjectId);
+    return discount && { discount };
+  }
+  return null;
+}
+
+/** The latest paid order, or a sample in the store's own country and currency when it has none: what a test sends. */
+async function testOrder(store: { id: string; slug: string }) {
+  const [latest] = await db().execute<Row>(sql`
+    select id from commerce.orders where store_id = ${store.id}::uuid and status in ('paid', 'fulfilled', 'closed') and copied_from is null
+    order by placed_at desc limit 1
+  `);
+  const order = latest ? await orderData(store.id, store.slug, String(latest.id)) : null;
+  if (order) return order;
+  const [market] = await db().execute<Row>(sql`
+    select m.code, m.currency from commerce.markets m join commerce.stores s on s.id = m.store_id
+    where s.id = ${store.id}::uuid and m.active order by (m.code = s.country) desc nulls last, m.created_at, m.code limit 1
+  `);
+  return sampleOrder(market ? String(market.code) : "", market ? String(market.currency) : "");
+}
+
 /** The content of an event, as the service receives it; null when what it is about is gone. */
 export async function buildPayload(
   store: { id: string; slug: string; name: string },
@@ -299,35 +363,135 @@ export async function buildPayload(
     created_at: delivery.createdAt,
     store: { slug: store.slug, name: store.name },
   };
-  if (delivery.event === "test") {
-    const [latest] = await db().execute<Row>(sql`
-      select id from commerce.orders where store_id = ${store.id}::uuid and status in ('paid', 'fulfilled', 'closed') and copied_from is null
-      order by placed_at desc limit 1
-    `);
-    const order = latest ? await orderData(store.id, store.slug, String(latest.id)) : null;
-    if (order) return { ...head, test: true, order };
-    // A store with no orders yet gets a sample in its own country and currency.
-    const [market] = await db().execute<Row>(sql`
-      select m.code, m.currency from commerce.markets m join commerce.stores s on s.id = m.store_id
-      where s.id = ${store.id}::uuid and m.active order by (m.code = s.country) desc nulls last, m.created_at, m.code limit 1
-    `);
-    return { ...head, test: true, order: sampleOrder(market ? String(market.code) : "", market ? String(market.currency) : "") };
-  }
-  if (!delivery.subjectId) return null;
-  if (delivery.event.startsWith("order.")) {
-    const order = await orderData(store.id, store.slug, delivery.subjectId);
-    return order && { ...head, order };
-  }
-  if (delivery.event === "customer.created") {
-    const customer = await customerData(store.id, store.slug, delivery.subjectId);
-    return customer && { ...head, customer };
-  }
-  if (delivery.event.startsWith("subscription.")) {
-    const subscription = await subscriptionData(store.id, store.slug, delivery.subjectId);
-    return subscription && { ...head, subscription };
-  }
-  if (delivery.event === "support.waiting") return { ...head, support: await supportWaitingData(store.id, store.slug) };
-  return null;
+  if (delivery.event === "test") return { ...head, test: true, order: await testOrder(store) };
+  const data = await subjectData(store, delivery.event, delivery.subjectId);
+  return data && { ...head, ...data };
+}
+
+/**
+ * The content of an event to an owner's endpoint (D354): `{ id, topic, version, store, created_at, data }`, `data` holding what the event is
+ * about under its own name (`order`, `product`, …). A change to a shape raises `PAYLOAD_VERSION`. Null when what it is about is gone.
+ */
+export async function endpointPayload(
+  store: { id: string; slug: string; name: string },
+  delivery: { id: string; event: string; subjectId: string | null; createdAt: string },
+): Promise<Record<string, unknown> | null> {
+  const data = delivery.event === "test" ? { test: true, order: await testOrder(store) } : await subjectData(store, delivery.event, delivery.subjectId);
+  if (!data) return null;
+  return { id: delivery.id, topic: delivery.event, version: PAYLOAD_VERSION, store: { slug: store.slug, name: store.name }, created_at: delivery.createdAt, data };
+}
+
+/** A return as an endpoint gets it (D354): its number, kind, state, lines and what is refunded, in the order's own currency. */
+async function returnData(storeId: string, storeSlug: string, returnId: string) {
+  const [row] = await db().execute<Row>(sql`
+    select r.id, r.number, r.kind, r.status::text as status, r.created_at, r.order_id, o.number as order_number, o.currency,
+      r.refund_minor, r.withdrawal_request_id is not null as withdrawal,
+      coalesce((select json_agg(json_build_object('order_line_id', l.order_line_id, 'sku', ol.sku, 'title', ol.title, 'quantity', l.quantity)
+        order by ol.title) from commerce.return_lines l join commerce.order_lines ol on ol.id = l.order_line_id
+        where l.store_id = r.store_id and l.return_id = r.id), '[]'::json) as lines
+    from commerce.returns r join commerce.orders o on o.id = r.order_id
+    where r.store_id = ${storeId}::uuid and r.id = ${returnId}::uuid
+  `);
+  if (!row) return null;
+  const currency = String(row.currency).trim();
+  return {
+    id: String(row.id),
+    number: String(row.number ?? ""),
+    kind: String(row.kind),
+    status: String(row.status),
+    withdrawal: Boolean(row.withdrawal),
+    order_id: String(row.order_id),
+    order_number: String(row.order_number),
+    currency,
+    refund: row.refund_minor === null ? null : amount(Number(row.refund_minor), currency),
+    lines: row.lines as unknown[],
+    created_at: new Date(String(row.created_at)).toISOString(),
+    admin_url: `${siteUrl()}/admin/${storeSlug}/returns/${String(row.id)}`,
+  };
+}
+
+/** A confirmed withdrawal (D153): which order and when, never a reason (none is asked). The shopper's details are the order's. */
+async function withdrawalData(storeId: string, storeSlug: string, withdrawalId: string) {
+  const [row] = await db().execute<Row>(sql`
+    select w.id, w.order_id, o.number as order_number, w.channel, w.confirmed_at, w.acknowledgement_reference
+    from commerce.withdrawal_requests w join commerce.orders o on o.id = w.order_id
+    where w.store_id = ${storeId}::uuid and w.id = ${withdrawalId}::uuid and w.confirmed_at is not null
+  `);
+  if (!row) return null;
+  return {
+    id: String(row.id),
+    order_id: String(row.order_id),
+    order_number: String(row.order_number),
+    channel: String(row.channel),
+    confirmed_at: new Date(String(row.confirmed_at)).toISOString(),
+    reference: String(row.acknowledgement_reference ?? ""),
+    admin_url: `${siteUrl()}/admin/${storeSlug}/orders/${String(row.order_id)}`,
+  };
+}
+
+/** A product as the admin keeps it: its handle, state, kind, title in the store's main language and its variants with their SKUs. */
+async function productData(storeId: string, storeSlug: string, productId: string) {
+  const [row] = await db().execute<Row>(sql`
+    select p.id, p.handle, p.status::text as status, p.kind, p.created_at, p.updated_at,
+      (select t.title from commerce.product_translations t where t.product_id = p.id
+        order by (t.locale = (select m.default_locale from commerce.markets m join commerce.stores s on s.id = m.store_id
+          where s.id = p.store_id and m.active order by (m.code = s.country) desc nulls last, m.created_at limit 1)) desc, t.locale limit 1) as title,
+      coalesce((select json_agg(json_build_object('id', v.id, 'sku', v.sku, 'active', v.active) order by v.created_at, v.id)
+        from commerce.product_variants v where v.product_id = p.id), '[]'::json) as variants
+    from commerce.products p where p.store_id = ${storeId}::uuid and p.id = ${productId}::uuid
+  `);
+  if (!row) return null;
+  return {
+    id: String(row.id),
+    handle: String(row.handle),
+    title: String(row.title ?? ""),
+    status: String(row.status),
+    kind: String(row.kind),
+    variants: row.variants as unknown[],
+    created_at: new Date(String(row.created_at)).toISOString(),
+    updated_at: new Date(String(row.updated_at)).toISOString(),
+    admin_url: `${siteUrl()}/admin/${storeSlug}/products/${String(row.id)}`,
+  };
+}
+
+/** A variant whose stock fell to its low-stock level (D172): what is available now, as the store reads it. */
+async function stockData(storeId: string, variantId: string) {
+  const [row] = await db().execute<Row>(sql`
+    select v.id, v.sku, v.product_id, a.stock_at_crossing, a.crossed_at,
+      (select va.raw_available from commerce.variant_availability va where va.variant_id = v.id) as available
+    from commerce.stock_alerts a join commerce.product_variants v on v.id = a.variant_id
+    where a.store_id = ${storeId}::uuid and a.variant_id = ${variantId}::uuid
+  `);
+  if (!row) return null;
+  return {
+    variant_id: String(row.id),
+    sku: String(row.sku ?? ""),
+    product_id: String(row.product_id),
+    available: row.available === null ? null : Number(row.available),
+    stock_at_crossing: row.stock_at_crossing === null ? null : Number(row.stock_at_crossing),
+    crossed_at: row.crossed_at ? new Date(String(row.crossed_at)).toISOString() : null,
+  };
+}
+
+/** A discount code as made (D31, D299): its code, kind, amount and dates. */
+async function discountData(storeId: string, storeSlug: string, codeId: string) {
+  const [row] = await db().execute<Row>(sql`
+    select id, code, kind, percent, amounts, starts_at, ends_at, usage_limit
+    from commerce.discount_codes where store_id = ${storeId}::uuid and id = ${codeId}::uuid
+  `);
+  if (!row) return null;
+  return {
+    id: String(row.id),
+    code: String(row.code),
+    kind: String(row.kind),
+    percent: row.percent === null ? null : Number(row.percent),
+    // Amounts off, per country, in minor units of the country's currency.
+    amounts: row.amounts ?? null,
+    starts_at: row.starts_at ? new Date(String(row.starts_at)).toISOString() : null,
+    ends_at: row.ends_at ? new Date(String(row.ends_at)).toISOString() : null,
+    usage_limit: row.usage_limit === null ? null : Number(row.usage_limit),
+    admin_url: `${siteUrl()}/admin/${storeSlug}/discounts/${String(row.id)}`,
+  };
 }
 
 /**
@@ -412,6 +576,35 @@ async function post(provider: Provider, url: string, deliveryId: string, event: 
   }
 }
 
+/**
+ * A signed event to an owner's endpoint (D354): through the address guard again (`safeFetch()`: a public address, no redirect, ten seconds,
+ * a small answer read), with the delivery's id, the time, the topic and the HMAC of `"{time}.{body}"` in the headers. The secret is never
+ * logged or kept outside the endpoint's row.
+ */
+async function postSigned(url: string, secret: string, deliveryId: string, topic: string, payload: Record<string, unknown>): Promise<Outcome> {
+  const body = JSON.stringify(payload);
+  const timestamp = Math.floor(Date.now() / 1000);
+  const fetched = await safeFetch(url, {
+    maxBytes: 16_384,
+    timeoutMs: TIMEOUT_MS,
+    maxRedirects: 0,
+    accept: "application/json, */*",
+    post: {
+      body,
+      headers: {
+        "Content-Type": "application/json",
+        "User-Agent": "KaizenaFlow-Webhooks/1.0",
+        [ID_HEADER]: deliveryId,
+        [TIMESTAMP_HEADER]: String(timestamp),
+        [TOPIC_HEADER]: topic,
+        [SIGNATURE_HEADER]: signWebhook(secret, timestamp, body),
+      },
+    },
+  });
+  if (fetched.ok) return { ok: true, status: fetched.status, error: null };
+  return { ok: false, status: fetched.status ?? null, error: fetched.problem };
+}
+
 type Claimed = {
   id: string;
   storeId: string;
@@ -419,7 +612,8 @@ type Claimed = {
   storeName: string;
   /** The store's main language, for amounts in Slack's messages. */
   locale: string;
-  provider: Provider;
+  /** A service, or `webhook` for an owner's own endpoint (D354). */
+  provider: Provider | "webhook";
   event: string;
   subjectId: string | null;
   payload: Record<string, unknown> | null;
@@ -427,6 +621,9 @@ type Claimed = {
   createdAt: string;
   encryptedUrl: string | null;
   enabled: boolean;
+  /** An owner's endpoint (D354): its id and encrypted secret. */
+  endpointId: string | null;
+  encryptedSecret: string | null;
 };
 
 async function attempt(delivery: Claimed): Promise<Outcome> {
@@ -442,11 +639,11 @@ async function attempt(delivery: Claimed): Promise<Outcome> {
   if (!delivery.encryptedUrl) return fail("Disconnected");
   if (!delivery.enabled && delivery.event !== "test") return fail("Switched off");
   if (!key) return fail("Kaizena Flow could not read the address");
+  const endpoint = delivery.provider === "webhook";
   if (!payload) {
-    payload = await buildPayload(
-      { id: delivery.storeId, slug: delivery.storeSlug, name: delivery.storeName },
-      { id: delivery.id, event: delivery.event, subjectId: delivery.subjectId, createdAt: delivery.createdAt },
-    );
+    const store = { id: delivery.storeId, slug: delivery.storeSlug, name: delivery.storeName };
+    const about = { id: delivery.id, event: delivery.event, subjectId: delivery.subjectId, createdAt: delivery.createdAt };
+    payload = endpoint ? await endpointPayload(store, about) : await buildPayload(store, about);
     if (!payload) return fail("What it was about no longer exists");
     if (delivery.provider === "slack") {
       payload = slackMessage(payload, delivery.locale);
@@ -456,13 +653,20 @@ async function attempt(delivery: Claimed): Promise<Outcome> {
       update commerce.integration_deliveries set payload = ${JSON.stringify(payload)}::jsonb where id = ${delivery.id}::uuid
     `);
   }
-  let url: string;
-  try {
-    url = decryptSecret(delivery.encryptedUrl, key);
-  } catch {
-    return fail("Kaizena Flow could not read the address");
+  let outcome: Outcome;
+  if (endpoint) {
+    const opened = delivery.encryptedSecret ? openEndpoint(delivery.encryptedUrl, delivery.encryptedSecret) : null;
+    if (!opened) return fail("Kaizena Flow could not read the address");
+    outcome = await postSigned(opened.url, opened.secret, delivery.id, delivery.event, payload);
+  } else {
+    let url: string;
+    try {
+      url = decryptSecret(delivery.encryptedUrl, key);
+    } catch {
+      return fail("Kaizena Flow could not read the address");
+    }
+    outcome = await post(delivery.provider as Provider, url, delivery.id, delivery.event, payload);
   }
-  const outcome = await post(delivery.provider, url, delivery.id, delivery.event, payload);
   const tries = delivery.attempts + 1;
   const wait = outcome.final ? undefined : RETRY_SECONDS[tries - 1];
   await db().execute(sql`
@@ -475,12 +679,44 @@ async function attempt(delivery: Claimed): Promise<Outcome> {
       next_attempt_at = now() + make_interval(secs => ${wait ?? 0})
     where id = ${delivery.id}::uuid
   `);
+  if (endpoint && delivery.endpointId && delivery.event !== "test") await keepEndpointHealth(delivery, outcome);
   return outcome;
+}
+
+/**
+ * An endpoint's failures (D354): a delivery that arrives clears them; one that fails starts the count, and an endpoint where everything
+ * has failed for `FAILING_DAYS` is switched off (`disabled_reason = 'failing'`), what it still has queued marked failed, and its owners
+ * told once. Tests do not count.
+ */
+async function keepEndpointHealth(delivery: Claimed, outcome: Outcome): Promise<void> {
+  if (outcome.ok) {
+    await db().execute(sql`update commerce.webhook_endpoints set failing_since = null where id = ${delivery.endpointId}::uuid and failing_since is not null`);
+    return;
+  }
+  await db().execute(sql`
+    update commerce.webhook_endpoints set failing_since = now() where id = ${delivery.endpointId}::uuid and failing_since is null
+  `);
+  const [off] = await db().execute<Row>(sql`
+    update commerce.webhook_endpoints set enabled = false, disabled_reason = 'failing', updated_at = now()
+    where id = ${delivery.endpointId}::uuid and enabled and failing_since <= now() - make_interval(days => ${FAILING_DAYS})
+    returning id, name, hint, failing_since
+  `);
+  if (!off) return;
+  await db().execute(sql`
+    update commerce.integration_deliveries set status = 'failed', last_error = 'Switched off'
+    where endpoint_id = ${delivery.endpointId}::uuid and status = 'pending'
+  `);
+  log("warn", "integrations.endpoint_switched_off", { storeId: delivery.storeId, endpointId: delivery.endpointId });
+  await notifyEndpointOff(
+    { id: delivery.storeId, slug: delivery.storeSlug, name: delivery.storeName },
+    { id: String(off.id), name: String(off.name), hint: String(off.hint), since: new Date(String(off.failing_since)).toISOString(), error: outcome.error ?? String(outcome.status ?? "") },
+  );
 }
 
 const claimedColumns = sql`
   d.id, d.store_id, s.slug, s.name, d.provider, d.event, d.subject_id, d.payload, d.attempts, d.created_at,
-  i.webhook_url_encrypted, coalesce(i.enabled, false) as enabled,
+  coalesce(i.webhook_url_encrypted, e.url_encrypted) as webhook_url_encrypted, coalesce(i.enabled, e.enabled, false) as enabled,
+  d.endpoint_id, e.secret_encrypted,
   coalesce((
     select m.default_locale from commerce.markets m
     where m.store_id = s.id and m.active
@@ -495,7 +731,7 @@ function toClaimed(row: Row): Claimed {
     storeSlug: String(row.slug),
     storeName: String(row.name),
     locale: String(row.locale),
-    provider: row.provider as Provider,
+    provider: row.provider as Provider | "webhook",
     event: String(row.event),
     subjectId: row.subject_id ? String(row.subject_id) : null,
     payload: (row.payload as Record<string, unknown> | null) ?? null,
@@ -503,6 +739,8 @@ function toClaimed(row: Row): Claimed {
     createdAt: new Date(String(row.created_at)).toISOString(),
     encryptedUrl: row.webhook_url_encrypted ? String(row.webhook_url_encrypted) : null,
     enabled: Boolean(row.enabled),
+    endpointId: row.endpoint_id ? String(row.endpoint_id) : null,
+    encryptedSecret: row.secret_encrypted ? String(row.secret_encrypted) : null,
   };
 }
 
@@ -530,6 +768,7 @@ export async function deliverDue(limit = 50): Promise<{ delivered: number; retry
           from commerce.integration_deliveries d
           join commerce.stores s on s.id = d.store_id
           left join commerce.store_integrations i on i.store_id = d.store_id and i.provider = d.provider
+          left join commerce.webhook_endpoints e on e.id = d.endpoint_id
           where d.id in (${sql.join(ids.map((r) => sql`${String(r.id)}::uuid`), sql`, `)})
           order by d.created_at
         `);
@@ -558,8 +797,28 @@ export async function sendTest({ account, store }: Membership, provider: Provide
     select ${claimedColumns}
     from made d join commerce.stores s on s.id = d.store_id
     left join commerce.store_integrations i on i.store_id = d.store_id and i.provider = d.provider
+    left join commerce.webhook_endpoints e on e.id = d.endpoint_id
   `);
   await audit(account.id, store.id, "integration.test_sent", { provider });
+  return attempt(toClaimed(row));
+}
+
+/** Sends a test event to one of the owner's endpoints now (D354), signed as any other, and says how it went. */
+export async function sendEndpointTest({ account, store }: Membership, endpointId: string): Promise<Outcome | null> {
+  const [row] = await db().execute<Row>(sql`
+    with made as (
+      insert into commerce.integration_deliveries (store_id, provider, event, endpoint_id, next_attempt_at)
+      select e.store_id, 'webhook', 'test', e.id, now() + interval '5 minutes'
+      from commerce.webhook_endpoints e where e.store_id = ${store.id}::uuid and e.id = ${endpointId}::uuid
+      returning *
+    )
+    select ${claimedColumns}
+    from made d join commerce.stores s on s.id = d.store_id
+    left join commerce.store_integrations i on i.store_id = d.store_id and i.provider = d.provider
+    left join commerce.webhook_endpoints e on e.id = d.endpoint_id
+  `);
+  if (!row) return null;
+  await audit(account.id, store.id, "integration.endpoint_test_sent", {}, { target: { type: "webhook_endpoint", id: endpointId } });
   return attempt(toClaimed(row));
 }
 
@@ -582,6 +841,7 @@ export async function postToSlack(storeId: string, text: string): Promise<Outcom
     select ${claimedColumns}
     from made d join commerce.stores s on s.id = d.store_id
     left join commerce.store_integrations i on i.store_id = d.store_id and i.provider = d.provider
+    left join commerce.webhook_endpoints e on e.id = d.endpoint_id
   `);
   return attempt(toClaimed(row));
 }
