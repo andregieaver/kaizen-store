@@ -43,6 +43,19 @@ export const platformEn = {
       storeName: "Enter a name for your store.",
       message: "Keep the message under 1,000 characters.",
     },
+    /** Self-serve sign-up (D359): the form's words while it is on, and the page the email's link opens. */
+    selfServe: {
+      intro: "Tell us who you are and we will make your store at once, ready to try with demo products. It is free for 14 days and private until you open it.",
+      submit: "Start my store",
+      received: "Check your email: we have sent you a link to confirm your address. Your store is made when you press the button in it.",
+      confirmTitle: "Start your store",
+      confirmBody: "{store} is made when you press the button. It stays private until you open it, and it is free to try for 14 days.",
+      confirmButton: "Start my store",
+      done: "{store} is ready. We have emailed you a link to sign in.",
+      unknown: "This link does not work. It may have been used already or be more than a day old. Sign up again to get a new one.",
+      failed: "We could not make your store just now. We have kept your request and will set the store up for you.",
+      off: "Signing up on your own is closed just now. We have kept your request and will write to you when your store is ready.",
+    },
     kaizenLife: {
       // A plain text with `{email}`: the words go to a client component, which cannot take a function.
       noAccount:
@@ -265,6 +278,14 @@ export const platformEn = {
       preview: "About your request to open a store on Kaizena Flow.",
       heading: "About your request",
       body: "Thank you for your interest in Kaizena Flow. We cannot open {store} for you now. You are welcome to ask again later.",
+    },
+    confirm: {
+      subject: "Confirm your email to start {store}",
+      preview: "One press and your store is ready to try.",
+      heading: "Confirm your email, {name}",
+      body: "Press the button to confirm this address. {store} is made at once, ready to try with demo products, and stays private until you open it. The link works for 24 hours.",
+      button: "Confirm and start my store",
+      ignore: "If you did not sign up, ignore this email: nothing is made unless the button is pressed.",
     },
   },
   unsubscribe: {

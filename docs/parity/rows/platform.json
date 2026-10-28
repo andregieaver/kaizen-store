@@ -1369,7 +1369,7 @@
       "was": null
     },
     "weight": 4,
-    "gap": "Opening a store is invite-only with manual approval (P3 in `docs/platform.md`): `/sign-up` stores an access request with a theme and preset chosen (D259, D273), a platform admin approves it at `/admin/platform`, which calls `commerce.approve_access_request()` (account, `clone_store()` of the theme's content and decision in one transaction) and emails a sign-in link in the request's language (D312); a setup wizard (`/admin/{store}/setup/{step}`, progress derived from data in `src/server/setup.ts`, \"What will you sell?\" first, D178) then guides the owner. Since D317 a domain-only account is self-serve (`/get-domain`, behind a public switch that is off), but a store still needs a person's approval (D317 kept it so). No instant store creation, no trial or plan checkout at sign-up.",
+    "gap": "Since D359 self-serve sign-up is built behind a platform switch (off until a platform admin turns it on at Platform → Access requests): `/sign-up` (and `/no/sign-up`) keeps the request and emails a link to confirm the address, at most 3 sign-ups an address a day and 20 a network an hour (keyed hashes in `chat_usage`); the link's page has a button, and the press makes the account and the store through `commerce.approve_access_request()` with no admin (`confirmSelfSignup()`, `src/server/self-signup.ts`), copied from the theme's content with the person as owner, private until opened (D339), emails a sign-in link, starts a 14-day trial (`store_billing.trial_ends_at`, shown on Billing; the first plan chosen before it ends is first charged at its end, Stripe's `trial_end`) and is audited `store.self_signup`; the setup wizard then guides the owner (D178), and live payments need Stripe onboarding. Still short: no password at sign-up (the account signs in by email link and sets a password later); the trial ends without a hard stop, as no plan is required to keep selling for any store; a store being set up can take payments from someone given its private-mode password once payments are onboarded, which is private mode's purpose (criterion 3 asks that it cannot).",
     "bucket": "A",
     "wave": 9,
     "criteria": [
@@ -1384,11 +1384,18 @@
         "src/app/(platform)/sign-up/page.tsx",
         "src/server/platform.ts",
         "src/server/setup.ts",
-        "src/server/sign-in.ts"
+        "src/server/sign-in.ts",
+        "src/server/self-signup.ts",
+        "src/components/platform-routes/sign-up-confirm.tsx",
+        "src/components/platform-routes/sign-up.tsx",
+        "src/app/admin/(gated)/platform/requests/page.tsx",
+        "src/server/billing.ts"
       ],
       "tests": [
         "src/server/platform.int.test.ts",
-        "e2e/sign-up.spec.ts"
+        "e2e/sign-up.spec.ts",
+        "src/server/self-signup.int.test.ts",
+        "src/lib/access-emails.test.ts"
       ],
       "untested": false
     },
@@ -1397,7 +1404,9 @@
       "D259",
       "D273",
       "D312",
-      "D317"
+      "D317",
+      "D339",
+      "D359"
     ],
     "history": []
   }

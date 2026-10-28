@@ -505,6 +505,7 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   "platform.access_received": "staff",
   "platform.access_approved": "staff",
   "platform.access_declined": "staff",
+  "platform.access_confirm": "staff",
   "referral.credit_applied": "staff",
   "plan_reminder": "staff",
   "plan_reminder.test": "staff",

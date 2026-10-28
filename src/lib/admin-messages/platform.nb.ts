@@ -339,6 +339,15 @@ export const platformNb: PlatformMessages = {
   },
   requests: {
     title: "Forespørsler om tilgang",
+    selfServe: {
+      title: "Registrering på egen hånd",
+      on: "På: den som registrerer seg, bekrefter e-postadressen og får en butikk med en gang, privat til den åpnes og gratis å prøve i 14 dager. Forespørslene nedenfor er de som ble bekreftet uten at butikken kunne lages, eller som kom før.",
+      off: "Av: hver registrering venter her på at en plattformadministrator godkjenner den.",
+      turnOn: "Slå på registrering på egen hånd",
+      turnOff: "Slå av registrering på egen hånd",
+      unconfirmed: "Venter på at e-postadressen bekreftes: {n}",
+      saved: "Lagret.",
+    },
     description:
       "Å godkjenne oppretter butikken fra det valgte temaet (utseendet og demobutikken, eller standardbutikken), gjør den som spurte til eier og sender en innloggingslenke på e-post.",
     waiting: "Venter ({n})",

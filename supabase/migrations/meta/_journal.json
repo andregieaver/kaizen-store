@@ -3816,6 +3816,13 @@
       "when": 1793190090419,
       "tag": "20261028122130_site_staging",
       "breakpoints": true
+    },
+    {
+      "idx": 545,
+      "version": "7",
+      "when": 1793191446368,
+      "tag": "20261028124406_self_serve_signup",
+      "breakpoints": true
     }
   ]
 }

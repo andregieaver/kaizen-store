@@ -28,6 +28,7 @@ import { startVideoUpload, type UploadResult, type VideoUpload } from "@/server/
 import { registerVideo, uploadToLibrary } from "@/server/media-library";
 import { contentForLook, designTags } from "@/server/design-presets";
 import { approveAccessRequest, declineAccessRequest } from "@/server/platform";
+import { setSelfServe } from "@/server/self-signup";
 import { PLATFORM_SEO_TAG, savePlatformSeo } from "@/server/seo";
 import {
   createPlatformDiscount,
@@ -41,6 +42,14 @@ import { getStore } from "@/server/stores";
 import { fillWords } from "@/lib/admin-fill";
 import { adminText } from "@/lib/admin-text";
 import { actionAdminLang } from "@/server/admin-request-lang";
+
+/** Turns self-serve sign-up on or off (D359). */
+export async function selfServeAction(_state: FormState, form: FormData): Promise<FormState> {
+  const admin = await requirePlatformAdmin();
+  await setSelfServe(admin, form.get("on") === "on");
+  refresh();
+  return { status: "ok", messages: [adminText(await actionAdminLang(), "platform").requests.selfServe.saved] };
+}
 
 /** The refusals and confirmations here, in the account's language (D312 A11). */
 const said = async () => adminText(await actionAdminLang(), "platform").actions;

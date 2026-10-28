@@ -1,6 +1,6 @@
 "use server";
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { z } from "zod";
 
 import type { FormState } from "@/components/admin/action-form";
@@ -8,6 +8,8 @@ import { REFERRAL_COOKIE, referralCodeFor } from "@/lib/referrals";
 import { designLookChoice } from "@/lib/design-presets";
 import { contentForLook } from "@/server/design-presets";
 import { createAccessRequest } from "@/server/platform";
+import { addressOf } from "@/server/analytics-visits";
+import { confirmSelfSignup, selfServeOn, startSelfSignup } from "@/server/self-signup";
 import { langOfLocale, type PlatformLang } from "@/lib/platform-lang";
 import { platformText, type PlatformMessages } from "@/lib/platform-text";
 
@@ -52,16 +54,30 @@ export async function requestAccess(_state: FormState, formData: FormData): Prom
     // The theme and its preset (`docs/theme-showcase-phase-1.md` step 4) chosen, kept only when published (checked inside), and the demo
     // store the look starts a store with (D273): never chosen apart.
     const look = designLookChoice(formData.get("design"));
-    await createAccessRequest({
+    const input = {
       ...parsed.data,
       referralCode,
       starterId: await contentForLook(look),
       designPresetId: look?.id ?? null,
       designVariation: look?.variation ?? null,
       lang,
-    });
+    };
+    // Self-serve (D359): the address is confirmed by a link first, and the store is made on the press; the answer is the same either way.
+    if (await selfServeOn()) {
+      await startSelfSignup(input, addressOf(await headers()) || null);
+      return { status: "ok", messages: [w.selfServe.received] };
+    }
+    await createAccessRequest(input);
   } catch {
     return { status: "error", messages: [w.failed] };
   }
   return { status: "ok", messages: [w.received] };
+}
+
+/** The press on the confirmation page (D359): makes the store, or says why not, in the page's language. */
+export async function confirmSignup(_state: FormState, formData: FormData): Promise<FormState> {
+  const w = platformText(langOfForm(formData)).signUp.selfServe;
+  const done = await confirmSelfSignup(String(formData.get("token") ?? ""));
+  if (done.ok) return { status: "ok", messages: [w.done.replaceAll("{store}", done.storeName)] };
+  return { status: "error", messages: [w[done.problem]] };
 }

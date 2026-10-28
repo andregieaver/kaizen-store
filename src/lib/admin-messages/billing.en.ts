@@ -11,6 +11,8 @@ export const billingEn = {
     description: "What {store} pays Kaizena Flow. Each store has its own plan.",
     yourPlan: "Your plan: {name}",
     noPlan: "No plan yet",
+    trial: "Free to try until {date}. A plan you choose before then is first charged on that day.",
+    trialEnded: "Your free trial ended on {date}.",
     price: "Price",
     priceLine: "{price}, excluding VAT",
     status: "Status",

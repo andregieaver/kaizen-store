@@ -56,7 +56,11 @@ const publishedVariation = (presetId: unknown, key: string | null | undefined) =
  * (D176) are kept only when they are published ones; any other value is dropped
  * the same way.
  */
-export async function createAccessRequest(input: AccessRequestInput): Promise<void> {
+export async function createAccessRequest(
+  input: AccessRequestInput,
+  /** `quiet`: no "received" email (a self-serve sign-up, D359, sends its confirmation instead). */
+  options: { quiet?: boolean } = {},
+): Promise<void> {
   const referralCode = await usableReferralCode(input.referralCode);
   const [made] = await db().execute<Row>(sql`
     insert into commerce.access_requests (email, name, store_name, message, referral_code, starter_id, design_preset_id, design_variation, locale, domain)
@@ -69,25 +73,26 @@ export async function createAccessRequest(input: AccessRequestInput): Promise<vo
     returning id
   `);
   // A merged second request sends nothing again; the form says the same either way.
-  if (made) await sendAccessEmail("received", String(made.id));
+  if (made && !options.quiet) await sendAccessEmail("received", String(made.id));
 }
 
 /**
  * One of a request's emails (D312 P6), in the language it was made in, once per request and kind. Best effort: the request, the approval
  * or the refusal stands whatever the email does.
  */
-async function sendAccessEmail(kind: AccessEmailKind, requestId: string, signInUrl?: string): Promise<void> {
+export async function sendAccessEmail(kind: AccessEmailKind, requestId: string, url?: string): Promise<void> {
   try {
     const [row] = await db().execute<Row>(sql`select email, name, store_name, locale from commerce.access_requests where id = ${requestId}::uuid`);
     if (!row) return;
-    const email = renderEmail(accessEmail(kind, requestLang(row.locale as string | null), { name: String(row.name), storeName: String(row.store_name), signInUrl }));
+    const email = renderEmail(accessEmail(kind, requestLang(row.locale as string | null), { name: String(row.name), storeName: String(row.store_name), url }));
     await sendEmail({
       storeId: null,
       kind: ACCESS_EMAIL_KINDS[kind],
       to: String(row.email),
       email,
       fromName: "Kaizena Flow",
-      idempotencyKey: `access-${kind}:${requestId}`,
+      // A confirmation is sent again for each sign-up (a new link each time), so its key carries the link's own end.
+      idempotencyKey: kind === "confirm" && url ? `access-confirm:${requestId}:${url.slice(-12)}` : `access-${kind}:${requestId}`,
     });
   } catch (error) {
     console.error("[platform] a request's email could not be sent", error);
@@ -126,7 +131,7 @@ export async function listAccessRequests(): Promise<AccessRequest[]> {
      left join commerce.stores s on s.id = r.store_id
      left join commerce.store_starters st on st.id = r.starter_id
      left join commerce.design_presets dp on dp.id = r.design_preset_id
-     where r.status = 'pending'
+     where r.status = 'pending' and not (r.self_serve and r.confirmed_at is null)
      order by r.created_at)
     union all
     (select r.*, s.slug as store_slug, st.title as starter_title, dp.title as design_title, exists (
@@ -161,7 +166,7 @@ export async function listAccessRequests(): Promise<AccessRequest[]> {
 
 export async function countPendingRequests(): Promise<number> {
   const [row] = await db().execute<Row>(sql`
-    select count(*)::int as n from commerce.access_requests where status = 'pending'
+    select count(*)::int as n from commerce.access_requests where status = 'pending' and not (self_serve and confirmed_at is null)
   `);
   return Number(row?.n ?? 0);
 }
@@ -203,7 +208,8 @@ export type ApproveResult =
  * template's own look.
  */
 export async function approveAccessRequest(
-  admin: Account,
+  /** The platform admin approving; null for a self-serve sign-up the person confirmed themselves (D359). */
+  admin: Account | null,
   requestId: string,
   slug: string,
   storeName: string,
@@ -256,7 +262,7 @@ export async function approveAccessRequest(
       }
       const [approved] = await tx.execute<Row>(sql`
         select commerce.approve_access_request(
-          ${requestId}::uuid, ${slug}, ${storeName.trim()}, ${admin.id}::uuid
+          ${requestId}::uuid, ${slug}, ${storeName.trim()}, ${admin?.id ?? null}::uuid
         ) as store_id,
         (select email from commerce.access_requests where id = ${requestId}::uuid) as email,
         (select design_preset_id from commerce.access_requests where id = ${requestId}::uuid) as design_preset_id,
@@ -281,7 +287,9 @@ export async function approveAccessRequest(
   const starterFellBack =
     !starterId && asked?.starter_id && !asked.starter_offered ? (asked.starter_title ? String(asked.starter_title) : "A demo store") : null;
   // The design profile chosen (D176), applied right after the store is made; a failure leaves the store with its template's look.
-  const design = chosenDesign ? await applyChosenDesign(storeId, chosenDesign, admin.id, chosenVariation) : null;
+  // Applied in the admin's name, or the new owner's when they confirmed a self-serve sign-up (D359).
+  const actor = admin?.id ?? (await requesterOf(requestId));
+  const design = chosenDesign && actor ? await applyChosenDesign(storeId, chosenDesign, actor, chosenVariation) : null;
   // What the store template brought is its demo content, removable in one press from the store's Home (`docs/theme-showcase-phase-1.md` 4b).
   await markNewStore(storeId);
   // A store that came through a referral (D131, made by the approval itself): its referrer hears it is open. Best effort.
@@ -307,6 +315,14 @@ export async function approveAccessRequest(
     domain,
     fellBack: { starter: starterFellBack, design: designFellBack },
   };
+}
+
+/** The account a request's approval made or found for its address. */
+async function requesterOf(requestId: string): Promise<string | null> {
+  const [row] = await db().execute<Row>(sql`
+    select a.id from commerce.access_requests r join commerce.accounts a on lower(a.email) = lower(r.email) where r.id = ${requestId}::uuid
+  `);
+  return row ? String(row.id) : null;
 }
 
 /**

@@ -160,6 +160,11 @@ Each unit adds its own paragraph here when it is built.
   said, the rest goes live), switches the theme through `switchToInstall()` (a premium theme the store does not own is refused there, as its
   price is shown in Design settings) and saves each menu through `saveStoreMenu()`, each the new version it makes anyway; addresses that move
   leave their redirect as any publish does. One set is open at a time; products, orders and customers are never part of one.
+- **F (D359), built 28 October 2026.** As section 3 says, with these choices: the link opens a page with a button (a mail scanner opening it
+  makes nothing), and the press makes the store; the limits are counted before anything is kept and the answer never differs; the store's
+  address is taken from its name (a number or a short random end when taken); a request confirmed while the switch is off, or whose store
+  could not be made, waits for a platform admin as before. The trial does not stop a store at its end, as no plan is required of any store to
+  keep selling; it makes the first plan chosen during it free until its end. No password at sign-up: the email link is the sign-in.
 
 ## 5. Decisions
 

@@ -10,7 +10,7 @@ import { designLookValue, type DesignCard } from "@/lib/design-presets";
 import { requirePlatformAdmin } from "@/server/auth";
 import { isSlugTaken, listAccessRequests, type AccessRequest } from "@/server/platform";
 import { designChoices } from "@/server/design-presets";
-import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { CARD_CLASS, Card, PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
@@ -18,7 +18,8 @@ import type { PlatformMessages } from "@/lib/admin-messages/platform.en";
 
 type W = PlatformMessages["requests"];
 
-import { decideAction } from "../actions";
+import { decideAction, selfServeAction } from "../actions";
+import { selfServeOn, unconfirmedCount } from "@/server/self-signup";
 
 export const metadata: Metadata = { title: "Access requests" };
 
@@ -31,7 +32,7 @@ export default async function PlatformPage() {
   const account = await requirePlatformAdmin();
   const w = adminText(adminLangOf(account.adminLocale), "platform").requests;
   // The themes offered, each look with the demo store it starts a store with (D273); the first card is Standard.
-  const [requests, { cards }] = await Promise.all([listAccessRequests(), designChoices()]);
+  const [requests, { cards }, selfServe, unconfirmed] = await Promise.all([listAccessRequests(), designChoices(), selfServeOn(), unconfirmedCount()]);
   const designs = cards.filter((card) => card.id);
   const pending = requests.filter((r) => r.status === "pending");
   const decided = requests.filter((r) => r.status !== "pending");
@@ -42,6 +43,16 @@ export default async function PlatformPage() {
         title={w.title}
         description={w.description}
       />
+
+      <Card title={w.selfServe.title} description={selfServe ? w.selfServe.on : w.selfServe.off}>
+        <div className="flex flex-wrap items-center gap-3">
+          <ActionForm action={selfServeAction}>
+            {!selfServe && <input type="hidden" name="on" value="on" />}
+            <SubmitButton variant="secondary">{selfServe ? w.selfServe.turnOff : w.selfServe.turnOn}</SubmitButton>
+          </ActionForm>
+          {unconfirmed > 0 && <span className="text-sm text-muted">{fillWords(w.selfServe.unconfirmed, { n: unconfirmed })}</span>}
+        </div>
+      </Card>
 
       <section aria-labelledby="pending-heading" className="flex flex-col gap-4">
         <h2 id="pending-heading" className="text-title text-ink">

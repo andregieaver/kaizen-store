@@ -331,6 +331,15 @@ export const platformEn = {
   },
   requests: {
     title: "Access requests",
+    selfServe: {
+      title: "Self-serve sign-up",
+      on: "On: a person who signs up confirms their email and gets a store at once, private until they open it and free to try for 14 days. Requests below are those confirmed whose store could not be made, or made before.",
+      off: "Off: every sign-up waits here for a platform admin to approve it.",
+      turnOn: "Turn on self-serve sign-up",
+      turnOff: "Turn off self-serve sign-up",
+      unconfirmed: "Waiting for their email to be confirmed: {n}",
+      saved: "Saved.",
+    },
     description:
       "Approving creates the store from the theme chosen (its look and its demo store, or the Standard store), makes the requester its owner, and emails them a sign-in link.",
     waiting: "Waiting ({n})",

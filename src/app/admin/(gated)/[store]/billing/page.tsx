@@ -16,6 +16,7 @@ import { storeThemePurchases, type ThemePurchase } from "@/server/theme-prices";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
+import { trialEndOf } from "@/server/self-signup";
 import type { BillingMessages } from "@/lib/admin-messages/billing.en";
 import { PeaksForm, UsageDays, UsageLines } from "@/components/admin/usage-limits";
 import { storePeaks } from "@/server/capacity-events";
@@ -44,7 +45,7 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
   // Back from Stripe Checkout: record the new plan now rather than waiting for the webhook.
   if (typeof checkout === "string") await completePlanCheckout(store.id, checkout);
 
-  const [billing, plans, matrix, themes, usage, usageByDay, peaks] = await Promise.all([
+  const [billing, plans, matrix, themes, usage, usageByDay, peaks, trialEnd] = await Promise.all([
     getStoreBilling(store.id),
     listPlans(),
     getFeatureMatrix(),
@@ -52,6 +53,7 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
     storeUsageLines(store.id),
     usageDays(store.id),
     storePeaks(store.id),
+    trialEndOf(store.id),
   ]);
   const isOwner = memberCan(staffer, "owner");
   const [reminders, optedOut] = await Promise.all([planRemindersOn(), planRemindersOptedOut(account.id)]);
@@ -116,6 +118,10 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
           <dt className="text-muted">{w.fee}</dt>
           <dd>{fillWords(w.feeLine, { fee: feeText(billing?.feeBps ?? 0, locale) })}</dd>
         </dl>
+        {/* A self-serve store's trial (D359), while no plan is running. */}
+        {trialEnd && !onPlan && (
+          <p className="mt-3">{fillWords(trialEnd > new Date() ? w.trial : w.trialEnded, { date: trialEnd.toISOString().slice(0, 10) })}</p>
+        )}
         {mode === "test" && <p className="mt-3 text-muted">{w.testMode}</p>}
       </Card>
 

@@ -513,9 +513,20 @@ export const accessRequests = commerce.table(
     designVariation: text("design_variation"),
     /** The language the request was made in (D312 P6), its locale (`en`, `nb-NO`): its emails are written in it, and the account's admin starts in it. Null: English. */
     locale: text("locale"),
+    /**
+     * Made through self-serve sign-up (D359): the store is made when the person confirms their address, with no platform admin. The link's
+     * token is kept only as its SHA-256 (`confirm_hash`, cleared when used), good until `confirm_expires_at`; `confirmed_at` is when it was
+     * pressed (a request confirmed whose store could not be made stays pending for a platform admin).
+     */
+    selfServe: boolean("self_serve").notNull().default(false),
+    confirmHash: text("confirm_hash"),
+    confirmExpiresAt: timestamp("confirm_expires_at", { withTimezone: true }),
+    confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
     createdAt: createdAt(),
   },
   (t) => [
+    check("access_requests_confirm", sql`${t.confirmHash} is null or (${t.selfServe} and ${t.confirmExpiresAt} is not null)`),
+    uniqueIndex("access_requests_confirm_hash_idx").on(t.confirmHash),
     check("access_requests_locale", sql`${t.locale} is null or ${t.locale} in ('en', 'nb-NO')`),
     check(
       "access_requests_design_variation",
@@ -1611,6 +1622,8 @@ export const platformSettings = commerce.table(
      * (Vercel's written yes, VAT, withdrawal), then turned on from Platform → Settings → Domains.
      */
     domainsPublic: boolean("domains_public").notNull().default(false),
+    /** Self-serve sign-up (D359): `/sign-up` makes the account and a store once the address is confirmed; off, a request waits for approval. */
+    selfServeSignup: boolean("self_serve_signup").notNull().default(false),
     /** Search and sharing for Kaizen's own pages (`StoreSeo` in lib/seo, locale `en`). */
     seo: jsonb("seo").notNull().default({}),
     /**
@@ -1840,6 +1853,8 @@ export const storeBilling = commerce.table(
       onDelete: "set null",
     }),
     discountAppliedAt: timestamp("discount_applied_at", { withTimezone: true }),
+    /** The end of a self-serve store's trial (D359): its first plan chosen before then is free until then (Stripe's `trial_end`). */
+    trialEndsAt: timestamp("trial_ends_at", { withTimezone: true }),
     updatedAt: updatedAt(),
     updatedBy: uuid("updated_by").references(() => accounts.id),
   },

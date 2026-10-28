@@ -43,6 +43,18 @@ export const platformNb: PlatformMessages = {
       storeName: "Skriv inn et navn på nettbutikken.",
       message: "Meldingen kan ikke være lengre enn 1000 tegn.",
     },
+    selfServe: {
+      intro: "Fortell oss hvem du er, så lager vi butikken din med en gang, klar til å prøve med demoprodukter. Den er gratis i 14 dager og privat til du åpner den.",
+      submit: "Start butikken min",
+      received: "Sjekk e-posten din: vi har sendt deg en lenke for å bekrefte adressen. Butikken lages når du trykker på knappen i den.",
+      confirmTitle: "Start butikken din",
+      confirmBody: "{store} lages når du trykker på knappen. Den er privat til du åpner den, og gratis å prøve i 14 dager.",
+      confirmButton: "Start butikken min",
+      done: "{store} er klar. Vi har sendt deg en lenke på e-post for å logge inn.",
+      unknown: "Denne lenken virker ikke. Den kan være brukt allerede eller være eldre enn ett døgn. Registrer deg på nytt for å få en ny.",
+      failed: "Vi fikk ikke laget butikken din akkurat nå. Vi har tatt vare på forespørselen og setter opp butikken for deg.",
+      off: "Det er stengt for å registrere seg på egen hånd akkurat nå. Vi har tatt vare på forespørselen og skriver til deg når butikken er klar.",
+    },
     kaizenLife: {
       // A plain text with `{email}`: the words go to a client component, which cannot take a function.
       noAccount:
@@ -264,6 +276,14 @@ export const platformNb: PlatformMessages = {
       preview: "Om forespørselen din om å åpne en butikk i Kaizena Flow.",
       heading: "Om forespørselen din",
       body: "Takk for at du er interessert i Kaizena Flow. Vi kan ikke åpne {store} for deg nå. Du er velkommen til å spørre igjen senere.",
+    },
+    confirm: {
+      subject: "Bekreft e-postadressen din for å starte {store}",
+      preview: "Ett trykk, så er butikken klar til å prøve.",
+      heading: "Bekreft e-postadressen din, {name}",
+      body: "Trykk på knappen for å bekrefte denne adressen. {store} lages med en gang, klar til å prøve med demoprodukter, og er privat til du åpner den. Lenken virker i 24 timer.",
+      button: "Bekreft og start butikken",
+      ignore: "Hvis du ikke har registrert deg, kan du se bort fra denne e-posten: ingenting lages uten at knappen trykkes.",
     },
   },
   unsubscribe: {

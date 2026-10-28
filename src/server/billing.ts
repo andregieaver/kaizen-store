@@ -810,6 +810,8 @@ export async function choosePlan(
     const vatRates = await vatRatesFor(p);
     // Reminders if the owner does not finish (D33): said on Stripe's page too.
     const reminders = (await planRemindersOn()) && !(await planRemindersOptedOut(owner.id));
+    // A self-serve store's trial (D359): its first plan costs nothing until the trial ends (Stripe takes a trial end two days away or more).
+    const trialEnd = await trialEndFor(p.store.id);
     const session = await p.stripe.checkout.sessions.create({
       mode: "subscription",
       ...(reminders && {
@@ -827,6 +829,7 @@ export async function choosePlan(
       subscription_data: {
         description: `Kaizena Flow ${p.price.planName}: ${p.store.name}`,
         metadata: { ...p.metadata, ...waiting.metadata },
+        ...(trialEnd && { trial_end: trialEnd }),
       },
       metadata: p.metadata,
       locale: "auto",
@@ -840,6 +843,15 @@ export async function choosePlan(
   } catch (error) {
     return { ok: false, problems: [stripeProblem(error)] };
   }
+}
+
+/** A store's trial end (D359) in Unix seconds while it is at least two days away (Stripe's least for Checkout), else null. */
+export async function trialEndFor(storeId: string): Promise<number | null> {
+  const [row] = await db().execute<Record<string, unknown>>(sql`
+    select extract(epoch from trial_ends_at)::bigint as at from commerce.store_billing
+    where store_id = ${storeId}::uuid and trial_ends_at > now() + interval '2 days'
+  `);
+  return row?.at ? Number(row.at) : null;
 }
 
 /**

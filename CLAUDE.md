@@ -946,6 +946,11 @@ stand-in is the only fake, and only it is told it is one.
   live together, and *Make live* goes only through `savePage()`, `switchToInstall()` and `saveStoreMenu()`, each part refused or made on its own
   and the outcome kept; a new part a set may hold is staged as the store already holds it and made live through its own saver, never products,
   orders or customers.
+- **Self-serve sign-up (wave 9 unit F, D359, `src/server/self-signup.ts`)**: while `platform_settings.self_serve_signup` is on (written only by
+  `setSelfServe()`), a sign-up is counted by `takeSignupSlot()` (keyed hashes only), kept by `createAccessRequest()` and marked `self_serve`
+  with a link kept as its hash; a store is made only by `confirmSelfSignup()` from the press on `/sign-up/confirm/{token}` (never by opening
+  the link), through `approveAccessRequest(null, …)`, and starts `store_billing.trial_ends_at`, which `choosePlan()` passes to Stripe as
+  `trial_end` (`trialEndFor()`). A new way to make a store without an admin goes through the same path and audits `store.self_signup`.
 - **Workflows (wave 9 unit C, D356, `src/lib/workflows.ts`, `src/server/workflows.ts`)**: a workflow is `commerce.workflows`, written only by
   `workflows.ts` (saved off; on only once *Test* ran the version saved); its runs are made by the database's `queue_integration_event()` (once
   per workflow, event and transaction, capped at `RUNS_PER_HOUR`) and by `queueScheduledRuns()`, and run only by `runWorkflows()` in the

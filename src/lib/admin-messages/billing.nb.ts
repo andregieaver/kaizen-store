@@ -7,6 +7,8 @@ export const billingNb: BillingMessages = {
     description: "Hva {store} betaler Kaizena Flow. Hver butikk har sitt eget abonnement.",
     yourPlan: "Abonnementet ditt: {name}",
     noPlan: "Ikke noe abonnement ennå",
+    trial: "Gratis å prøve til {date}. Et abonnement du velger før det, belastes første gang den dagen.",
+    trialEnded: "Prøveperioden din sluttet {date}.",
     price: "Pris",
     priceLine: "{price}, ekskl. mva.",
     status: "Status",

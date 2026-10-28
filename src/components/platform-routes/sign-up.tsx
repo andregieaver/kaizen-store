@@ -5,6 +5,7 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { DesignCards } from "@/components/admin/design-cards";
 import { referralPublicSettings } from "@/server/referrals";
 import { designChoices } from "@/server/design-presets";
+import { selfServeShown } from "@/server/self-signup";
 
 import { requestAccess } from "@/app/(platform)/sign-up/actions";
 import { KaizenLifePrefill } from "@/app/(platform)/sign-up/kaizen-life-prefill";
@@ -33,12 +34,14 @@ export async function SignUpRoute({ lang }: { lang: PlatformLang }) {
   // The store templates a new store can start from (D175); with none published, there is nothing to choose.
   // The design profiles to apply after (D176); with none published, there is nothing to choose.
   const designs = await designChoices();
+  // Self-serve sign-up (D359): the same form, its words saying the store is made at once after the address is confirmed.
+  const selfServe = await selfServeShown();
   const w = platformText(lang).signUp;
   return (
     <main id="main" className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-6 py-16">
       <div>
         <h1 className="text-3xl font-semibold tracking-tight">{w.title}</h1>
-        <p className="mt-2 text-muted">{w.intro}</p>
+        <p className="mt-2 text-muted">{selfServe ? w.selfServe.intro : w.intro}</p>
       </div>
       <KaizenLifePrefill words={w.kaizenLife} />
       <ActionForm action={requestAccess} className="flex flex-col gap-4" replaceOnSuccess id="sign-up-form">
@@ -81,7 +84,7 @@ export async function SignUpRoute({ lang }: { lang: PlatformLang }) {
           </label>
         </div>
         <div>
-          <SubmitButton>{w.submit}</SubmitButton>
+          <SubmitButton>{selfServe ? w.selfServe.submit : w.submit}</SubmitButton>
         </div>
       </ActionForm>
       <p className="text-sm text-muted">
