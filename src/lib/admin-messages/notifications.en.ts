@@ -579,6 +579,29 @@ export const notificationsEn = {
     limits: "Each workflow runs once per event and at most 100 times an hour. An email to a customer, a refund or anything that spends is never a workflow's: those are yours.",
   },
   /** Settings → Apps and API (D355): the Admin API's tokens. */
+  /** The storefront API's tokens (D362), on Apps and API. */
+  storefrontTokens: {
+    title: "Storefront API",
+    description: "For a site or app of your own that shows your products and sends shoppers to your checkout. A storefront token is public: it opens only what any visitor of its country sees.",
+    name: "Name",
+    namePlaceholder: "My site",
+    market: "Country",
+    make: "Make a storefront token",
+    making: "Making …",
+    none: "No storefront tokens yet.",
+    lastUsed: "Last used {when}",
+    neverUsed: "Not used yet",
+    revoke: "Revoke",
+    revokeQuestion: "Revoke {name}? The site using it stops showing your products.",
+    how: "Call {base}/{store}/… with the header X-Storefront-Token and the token. Products and categories are as the token's country shows them; a cart is quoted and handed to your checkout, where the order is placed.",
+    routesTitle: "Routes",
+    problems: {
+      name: "Give the token a name of 1 to 60 characters.",
+      market: "Choose a country the store sells in.",
+      limit: "A store can have at most {max} storefront tokens in use. Revoke one first.",
+      gone: "That token was already revoked.",
+    },
+  },
   apiTokens: {
     title: "Apps and API",
     description: "Let your own app, a warehouse or your accounting read and change the store through the Admin API, each with a token of its own.",

@@ -123,7 +123,7 @@
       "was": "missing"
     },
     "weight": 2,
-    "gap": "The WordPress plugin's API (D169, D170; `/api/wordpress/v1/*`, src/server/wordpress-route.ts, src/server/wordpress-shop.ts, src/server/cart-handoff.ts) is a storefront API in practice: a store's products, terms and one product as a market shows them (prices by wordpressPrice() from <Price>'s rules, never a cost or a private field), a cart quote at live price and stock, and a hand-off that makes a cart with the same checks as adding in the store and returns a once-only link that opens the store's own checkout; rate-limited, a store that is not the connection's is a 404. Still short: a token is issued only to a WordPress site an owner approved (exchangeCode() with a verifier), not a public token per store and market a developer can make for a front end of their own (criterion 1); the cart is goods and downloads only (no bookings, plans or gift cards) and is quoted and handed over rather than changed through the API (criterion 2); no documented, versioned public contract. Plan section 5 decision 4: cheap once the Admin API exists. Merged on 2026-10-25 (README rule 8): `storefront.headless-storefront-api-hydrogen` was the same Shopify feature (rated partial); its criteria and evidence are here.",
+    "gap": "The WordPress plugin's API (D169, D170) and, since D362, a storefront API for a front end of one's own: an owner makes a public token for one of the store's markets on Settings → Apps and API (`commerce.storefront_tokens`, at most 10, revoked there), and `/api/storefront/v1/{store}/products`, `/products/{handle}`, `/categories`, `/cart` (a quote) and `/checkout` (a hand-off) answer with `X-Storefront-Token` from any site (CORS), through the storefront's own reads (`viewOf()`, `productPageOf()`, `termsOf()`, `quoteCart()`, `handoffCart()`: prices by `wordpressPrice()`, only offered products, never a cost), budgeted per token (`storefront`, 1,200 a minute), the reads cached a minute and the catalogue under the store's tags; a store that is private, not open or without the shop answers 404 (`src/server/storefront-api.ts`, `src/server/storefront-route.ts`). Still short: the cart is kept by the site and quoted and handed over, not stored and changed through the API, and it is goods and downloads only (no bookings, plans or gift cards; criterion 2); a quote says how many of a line may be bought (as the store's cart does), more than an available flag (criterion 3); the contract is listed on the settings page, not a versioned public document. Merged on 2026-10-25 (README rule 8): `storefront.headless-storefront-api-hydrogen` was the same Shopify feature (rated partial); its criteria and evidence are here.",
     "bucket": "C",
     "wave": 9,
     "criteria": [
@@ -145,19 +145,27 @@
         "src/lib/wordpress.ts",
         "src/lib/wordpress-cart.ts",
         "src/app/api/mcp/route.ts",
-        "src/server/store-mcp.ts"
+        "src/server/store-mcp.ts",
+        "src/lib/storefront-api.ts",
+        "src/server/storefront-api.ts",
+        "src/server/storefront-route.ts",
+        "src/app/api/storefront/v1/[store]/products/route.ts",
+        "src/components/admin/storefront-tokens.tsx"
       ],
       "tests": [
         "src/server/wordpress.int.test.ts",
         "src/lib/wordpress.test.ts",
-        "src/lib/wordpress-cart.test.ts"
+        "src/lib/wordpress-cart.test.ts",
+        "src/lib/storefront-api.test.ts",
+        "src/server/storefront-api.int.test.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D169",
       "D170",
-      "D96"
+      "D96",
+      "D362"
     ],
     "history": [
       {

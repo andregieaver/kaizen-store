@@ -173,6 +173,9 @@ Each unit adds its own paragraph here when it is built.
   and VAPID are easy to get subtly wrong); the service worker keeps only an offline page, never a signed-in page, as the admin's pages are per
   request and hold an account's data; push endpoints only on the browsers' own push services' hosts; a device whose person no longer reads the
   store's orders is removed when the next order would ring it, so a removed member stops at once without a hook in every way a membership ends.
+- **I (D362), built 28 October 2026.** As section 3 says, with these choices: the token is public and kept as it is (a site's code holds it);
+  the cart is the site's own, quoted and handed to checkout as the WordPress plugin's is, rather than kept by the API; any site may call it
+  from a browser (CORS), and answers vary by the token, as one store's tokens may be for different markets.
 
 ## 5. Decisions
 

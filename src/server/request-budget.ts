@@ -25,6 +25,8 @@ export const BUDGETS = {
   agent: { window: "minute", visitor: 60, store: 1200 },
   // The Admin API (D355): 120 calls a minute per token (the visitor is the token's id), a store's tokens together ten times that.
   api: { window: "minute", visitor: 120, store: 1200 },
+  // The storefront API (D362): a headless site's calls, its visitors' together under one token (the visitor is the token's id).
+  storefront: { window: "minute", visitor: 1200, store: 6000 },
 } as const satisfies Record<string, { window: BudgetWindow; visitor: number; store: number }>;
 
 export type BudgetEndpoint = keyof typeof BUDGETS;

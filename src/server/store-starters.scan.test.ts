@@ -70,6 +70,7 @@ const READERS: Record<string, "real" | "template" | "both"> = {
   "src/server/page-looks.ts": "real",
   "src/server/store-closure.ts": "template",
   "src/server/store-copy.ts": "real",
+  "src/server/storefront-api.ts": "real",
   "src/server/stores.ts": "both",
   "src/server/support-platform.ts": "real",
   // Premium themes (D286): only a real store keeps a theme it had as given when the theme gets its first price.

@@ -11,7 +11,10 @@ import { siteUrl } from "@/lib/site";
 import { listApiTokens } from "@/server/api-tokens";
 import { requireOwnerRole } from "@/server/permissions";
 
-import { makeApiTokenAction, revokeApiTokenAction } from "./actions";
+import { makeApiTokenAction, makeStorefrontTokenAction, revokeApiTokenAction, revokeStorefrontTokenAction } from "./actions";
+import { MakeStorefrontToken, RevokeStorefrontToken } from "@/components/admin/storefront-tokens";
+import { STOREFRONT_ROUTES } from "@/lib/storefront-api";
+import { listStorefrontTokens } from "@/server/storefront-api";
 
 export const metadata: Metadata = { title: "Apps and API" };
 
@@ -21,7 +24,8 @@ export default async function ApiTokensPage({ params }: PageProps<"/admin/[store
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
   const w = adminText(lang, "notifications").apiTokens;
-  const tokens = await listApiTokens(store.id);
+  const [tokens, storefrontTokens] = await Promise.all([listApiTokens(store.id), listStorefrontTokens(store.id)]);
+  const sw = adminText(lang, "notifications").storefrontTokens;
   const when = (iso: string) => new Date(iso).toLocaleString(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeStyle: "short", timeZone: store.timeZone || "Europe/Oslo" });
   const base = `${siteUrl()}/api/admin/v1`;
 
@@ -56,6 +60,39 @@ export default async function ApiTokensPage({ params }: PageProps<"/admin/[store
               ))}
             </List>
           )}
+        </Card>
+        <Card title={sw.title} description={sw.description}>
+          <div className="flex flex-col gap-4">
+            <MakeStorefrontToken markets={store.markets.map((m) => ({ slug: m.slug, name: m.name }))} make={makeStorefrontTokenAction.bind(null, store.slug)} />
+            {storefrontTokens.length === 0 ? (
+              <p className="text-sm text-muted">{sw.none}</p>
+            ) : (
+              <List label={sw.title}>
+                {storefrontTokens.map((token) => (
+                  <ListRow key={token.id}>
+                    <RowLead
+                      title={token.name}
+                      sub={
+                        <>
+                          <code className="break-all font-mono">{token.token}</code> · {token.market} ·{" "}
+                          {token.lastUsedAt ? fillWords(sw.lastUsed, { when: when(token.lastUsedAt) }) : sw.neverUsed}
+                        </>
+                      }
+                    />
+                    <RowActions>
+                      <RevokeStorefrontToken name={token.name} revoke={revokeStorefrontTokenAction.bind(null, store.slug, token.id)} />
+                    </RowActions>
+                  </ListRow>
+                ))}
+              </List>
+            )}
+            <p className="text-sm text-ink-2">{fillWords(sw.how, { base: `${siteUrl()}/api/storefront/v1`, store: store.slug })}</p>
+            <ul className="flex flex-col gap-1 font-mono text-xs">
+              {STOREFRONT_ROUTES.map((route) => (
+                <li key={`${route.method} ${route.path}`}>{`${route.method.padEnd(5, " ")} /api/storefront/v1/${store.slug}${route.path}`}</li>
+              ))}
+            </ul>
+          </div>
         </Card>
         <Card title={w.howTitle} compact>
           <div className="flex flex-col gap-3 text-sm text-ink-2">

@@ -961,6 +961,11 @@ stand-in is the only fake, and only it is told it is one.
   data, and opens only admin addresses on its own site. A device's push subscription is written only by `src/server/push.ts`, for a member with
   `orders:read`, on a push service's host (`isPushEndpoint()`; the server POSTs there); a push carries no customer's data. A new notification
   is a sender there that reads the membership again before each device and removes a device gone (404, 410).
+- **The storefront API (wave 9 unit I, D362, `src/lib/storefront-api.ts`, `src/server/storefront-api.ts`, `src/server/storefront-route.ts`)**:
+  `/api/storefront/v1/{store}/…` answers only through `asStorefront()` (the store's own token, `storefrontProblem()`, the `storefront`
+  budget) and only from the storefront's own reads (`viewOf()`, `productPageOf()`, `termsOf()`, `quoteCart()`, `handoffCart()`); tokens are
+  written only by that module. A new route reads only what a visitor of the token's market sees, never prices or stocks a thing itself, and
+  places no order.
 - **Workflows (wave 9 unit C, D356, `src/lib/workflows.ts`, `src/server/workflows.ts`)**: a workflow is `commerce.workflows`, written only by
   `workflows.ts` (saved off; on only once *Test* ran the version saved); its runs are made by the database's `queue_integration_event()` (once
   per workflow, event and transaction, capped at `RUNS_PER_HOUR`) and by `queueScheduledRuns()`, and run only by `runWorkflows()` in the

@@ -15293,3 +15293,28 @@ export const pushSubscriptions = commerce.table(
     index("push_subscriptions_account_idx").on(t.accountId, t.storeId),
   ],
 );
+
+/**
+ * Storefront API tokens (wave 9 unit I, D362, `src/server/storefront-api.ts`, the only writer): public by design (a site's own code holds
+ * one), each for one market of the store, opening only what any visitor of that market sees. Made and revoked by owners on Apps and API.
+ */
+export const storefrontTokens = commerce.table(
+  "storefront_tokens",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    name: text("name").notNull(),
+    token: text("token").notNull().unique(),
+    market: text("market").notNull(),
+    createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    check("storefront_tokens_name", sql`length(btrim(${t.name})) between 1 and 60`),
+    check("storefront_tokens_token", sql`${t.token} ~ '^kfs_[A-Za-z0-9_-]{32,48}$'`),
+    index("storefront_tokens_store_idx").on(t.storeId),
+    index("storefront_tokens_created_by_idx").on(t.createdBy),
+  ],
+);
