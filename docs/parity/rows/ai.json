@@ -369,14 +369,14 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "partial"
     },
     "weight": 2,
-    "gap": "generateImage()/makePicture() (the picture model named in the AI settings, never in code) is used by the AI page studio (src/server/page-ai.ts), the content packs (D257, D270), every picture field of the page builder since D283 (Make with AI and Make again with AI, in the site's look by pictureDirection(), metered as `page_pictures`, kept in the media library with alt text from the request; src/server/picture-maker.ts, /admin/{store}/media/make) and, since D308, the AI manager's create_product, which can make a product's picture from a brief through makeSitePicture(). Still short: (1) the media library and the product editor themselves have no generate-picture action (criterion 1); (2) a made picture is not marked as AI-made in the library, and its alt text (the request's first sentence, altFromBrief()) does not pass the claims filter (criterion 3).",
-    "bucket": "A",
-    "wave": 8,
+    "gap": "Met (D349). generateImage()/makePicture() (the picture model named in the AI settings, never in code) makes the AI page studio's pictures (src/server/page-ai.ts), the content packs' (D257, D270), every picture field of the page builder's (D283), the AI manager's create_product picture (D308), and since D349 the media library's own *Make with AI* (metered `library_pictures`) and the product editor's (from the product's title, never a price; `products:write`, /admin/{store}/products/picture). Each is shrunk to WebP with its small copy and kept in the library marked `media.made_by = 'ai_made'` (a chip in the list and the details), its alt text from the request only when it passes `findClaims()` (`checkedAlt()`), else left for the alt-text run. Without a picture model nothing is offered or spent.",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "The media library and the product editor each have a generate-picture action that takes a prompt, uses the store's picture model, shrinks to WebP with a thumbnail and registers the file in the library with alt text.",
       "Without a picture model the action says so and nothing is spent; every call is metered under an AI feature and counts toward the store's usage.",
@@ -384,34 +384,48 @@
     ],
     "evidence": {
       "files": [
+        "src/components/admin/media-library.tsx",
         "src/components/admin/page-studio.tsx",
         "src/components/admin/picture-maker.tsx",
+        "src/components/admin/product-editor.tsx",
         "src/lib/picture-direction.ts",
         "src/server/ai-pictures.ts",
         "src/server/ai.ts",
+        "src/server/media-library.ts",
         "src/server/page-ai.ts",
         "src/server/picture-maker.ts",
         "src/server/picture-route.ts",
-        "src/server/product-tools.ts"
+        "src/server/product-tools.ts",
+        "supabase/migrations/20261028020002_media_made.sql"
       ],
       "tests": [
+        "src/db/commerce.test.ts",
         "src/lib/picture-direction.test.ts",
         "src/server/ai-pictures.test.ts",
         "src/server/ai-usage.int.test.ts",
         "src/server/ai.int.test.ts",
         "src/server/page-ai.int.test.ts",
+        "src/server/picture-editor.int.test.ts",
         "src/server/product-tools.int.test.ts"
       ],
       "untested": false
     },
     "decisions": [
-      "D92",
       "D106",
       "D146",
       "D283",
-      "D308"
+      "D308",
+      "D349",
+      "D92"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-28",
+        "from": "partial",
+        "to": "full",
+        "why": "D349: Make with AI in the media library and the product editor (the same dialog and makeSitePicture(), metered library_pictures), made pictures marked made_by ai_made in the library, and their alt text kept only through findClaims() (checkedAlt())."
+      }
+    ]
   },
   {
     "id": "ai.ai-image-editing",
@@ -425,26 +439,47 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "missing"
     },
     "weight": 2,
-    "gap": "Text-to-image only: ai.ts calls /images/generations and nothing sends a picture to a model for editing (no background replacement or removal, no cleanup, no variants).",
-    "bucket": "A",
-    "wave": 8,
+    "gap": "Met (D349). A library picture has *Edit with AI*: remove the background, a new background described, or a described change (`editPrompt()`, src/lib/picture-edit.ts), sent by `editImage()` to the picture provider's OpenAI-compatible /images/edits with the AI settings' *Model that edits pictures* (`ai_providers.image_edit_model`, never a model in code). The file sent is the library's own, read from Storage by its row (never an address typed), as a PNG of at most 1024 px; the result is a new library item (`made_by = 'ai_edited'`, `edited_from` the original), the original never overwritten, metered `per_image` under `picture_edit`. Without an edit model the action shows as unavailable with the reason and a link to the AI settings.",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "From a library picture the owner can run an edit (replace or remove the background, and a prompted change) through the provider's image-edit endpoint, set in AI settings.",
       "The result is saved as a new library item and the original is never overwritten; the edit is metered and priced like other picture calls.",
       "A provider without an edit endpoint shows the action as unavailable with the reason."
     ],
     "evidence": {
-      "files": [],
-      "tests": [],
+      "files": [
+        "src/components/admin/ai-provider-form.tsx",
+        "src/components/admin/media-library.tsx",
+        "src/lib/picture-edit.ts",
+        "src/server/ai.ts",
+        "src/server/picture-editor.ts",
+        "src/server/picture-route.ts",
+        "supabase/migrations/20261028020002_media_made.sql"
+      ],
+      "tests": [
+        "src/db/commerce.test.ts",
+        "src/lib/picture-edit.test.ts",
+        "src/server/picture-editor.int.test.ts"
+      ],
       "untested": false
     },
-    "decisions": [],
-    "history": []
+    "decisions": [
+      "D349"
+    ],
+    "history": [
+      {
+        "on": "2026-10-28",
+        "from": "missing",
+        "to": "full",
+        "why": "D349: Edit with AI on a library picture through the provider's /images/edits and the AI settings' edit model; the result a new library item marked ai_edited with edited_from, the original kept; unavailable with its reason without an edit model."
+      }
+    ]
   },
   {
     "id": "ai.ai-alt-text",

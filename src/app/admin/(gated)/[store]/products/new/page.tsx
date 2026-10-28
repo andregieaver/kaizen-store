@@ -23,8 +23,8 @@ export default async function NewProductPage({ params }: PageProps<"/admin/[stor
   const fields = await fieldsForEditor(store.id, "product", null);
   const lang = adminLangOf(gated.account.adminLocale);
   return (
-    <AdminTextScope texts={adminTexts(lang, ["product", "products", "fields", "builder"])}>
-      <ProductEditor {...editorProps(store, context, lang)} productId={null} initial={emptyProduct(context)} fields={fields} />
+    <AdminTextScope texts={adminTexts(lang, ["product", "products", "fields", "builder", "website"])}>
+      <ProductEditor {...(await editorProps(store, context, lang))} productId={null} initial={emptyProduct(context)} fields={fields} />
     </AdminTextScope>
   );
 }

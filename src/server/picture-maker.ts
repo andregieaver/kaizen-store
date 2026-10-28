@@ -17,7 +17,7 @@ import {
 } from "@/lib/picture-direction";
 
 import { AiError, aiFor, type AiConnection } from "./ai";
-import { makePicture } from "./ai-pictures";
+import { checkedAlt, makePicture } from "./ai-pictures";
 import { getPlatformTheme } from "./platform-navigation";
 import { PLATFORM_DEFAULTS } from "./seo";
 import type { Store } from "./stores";
@@ -42,6 +42,8 @@ const input = z.object({
   shape: z.enum(PICTURE_SHAPES),
   /** Off: the picture is made from the description alone. */
   follow: z.boolean(),
+  /** Where it was asked for (D349): the page builder's fields (none), the media library, or the product editor; it names the AI feature it is metered as. */
+  place: z.enum(["library", "product"]).optional(),
 });
 
 /** The photographer's brief of the theme a site has live: a Kaizena Flow theme's content pack's `look`, else none. */
@@ -81,9 +83,10 @@ export async function makeSitePicture(
 ): Promise<MadeSitePicture> {
   const parsed = input.safeParse(raw);
   if (!parsed.success) return { ok: false, problem: `Describe the picture in ${BRIEF_MIN} to ${BRIEF_MAX} characters.` };
-  const { brief, shape, follow } = parsed.data;
+  const { brief, shape, follow, place } = parsed.data;
   const storeId = owner.store?.id ?? null;
-  const connection = deps.connection !== undefined ? deps.connection : await aiFor(storeId, { feature: "page_pictures", accountId: owner.accountId });
+  const feature = place ? "library_pictures" : "page_pictures";
+  const connection = deps.connection !== undefined ? deps.connection : await aiFor(storeId, { feature, accountId: owner.accountId });
   if (!connection?.image) {
     return {
       ok: false,
@@ -93,7 +96,8 @@ export async function makeSitePicture(
     };
   }
   const prompt = sitePicturePrompt(brief, follow ? pictureDirection(await siteLookOf(owner.store)) : null);
-  const alt = altFromBrief(brief);
+  // The description's words as the alt text only when they make no claim (D349); else none, for the alt-text run to write.
+  const alt = checkedAlt(altFromBrief(brief));
   try {
     const made = await (deps.make ?? makePicture)(connection, { storeId, accountId: owner.accountId }, { prompt, alt, shape });
     if (!made.ok) return { ok: false, problem: made.problem };

@@ -2,6 +2,8 @@ import "server-only";
 
 import sharp from "sharp";
 
+import { findClaims } from "@/lib/claims";
+
 import { AiError, generateImage, type AiConnection, type ImageShape } from "./ai";
 import { storePicture } from "./media-library";
 
@@ -62,15 +64,23 @@ export async function makePicture(
   } catch {
     throw new AiError("The provider's picture could not be read.");
   }
+  // The alt text from the description passes the claims filter (D349); one that makes a claim is left empty for the alt-text run (D89).
+  const alt = checkedAlt(request.alt);
   const name = pictureFileName(request.alt);
   const stored = await storePicture(
     owner,
     new File([new Uint8Array(shrunk.image)], name, { type: "image/webp" }),
     new File([new Uint8Array(shrunk.thumbnail)], name.replace(/\.webp$/, "-480.webp"), { type: "image/webp" }),
-    { fileName: name, alt: request.alt },
+    { fileName: name, alt, madeBy: "ai_made" },
   );
   if (!stored.ok) return { ok: false, problem: stored.problem };
   return { ok: true, picture: { url: stored.url, thumbnailUrl: stored.thumbnailUrl, width: shrunk.width, height: shrunk.height } };
+}
+
+/** A made picture's alt text as kept (D349): its words when they make no claim, else none (the AI's alt-text run writes one from the picture). */
+export function checkedAlt(alt: string): string {
+  // Its colours are what it looks like, as in D89's alt texts: only the other claims count.
+  return findClaims(alt, { colours: false }).length > 0 ? "" : alt;
 }
 
 /** A small copy of a test picture as a `data:` address, shown in the admin and not kept. */

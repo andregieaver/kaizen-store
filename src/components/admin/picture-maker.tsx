@@ -12,7 +12,7 @@ import { Button } from "./ui";
 /** Where the site's pictures are made (D283): its builder's route, which checks who asks and keeps the picture in the media library. */
 export type PictureMaker = { endpoint: string };
 
-export type MadePicture = { url: string; width: number; height: number; alt: string };
+export type MadePicture = { url: string; thumbnailUrl?: string | null; width: number; height: number; alt: string };
 
 /**
  * Lets any picture field in the page builder make its picture by prompt (D283), as `MediaPickerProvider` lets it choose from the library:
@@ -31,7 +31,19 @@ const asked = new Map<string, { brief: string; follow: boolean }>();
 export type CurrentPicture = { url: string; width: number; height: number; alt?: string };
 
 /** *Make with AI* (or *Make again with AI* for a field that has a picture); draws nothing where the site cannot make pictures. */
-export function MakePictureButton({ current, onMade }: { current?: CurrentPicture | null; onMade: (picture: MadePicture) => void }) {
+export function MakePictureButton({
+  current,
+  onMade,
+  brief,
+  place,
+}: {
+  current?: CurrentPicture | null;
+  onMade: (picture: MadePicture) => void;
+  /** The description the dialog starts from when the field has no picture (D349: a product's title and kind in the product editor). */
+  brief?: string;
+  /** Where it is asked for (D349), sent with the request: the media library or the product editor. */
+  place?: "library" | "product";
+}) {
   const w = useAdminText("website").pictureMaker;
   const maker = useContext(MakerContext);
   const [open, setOpen] = useState(false);
@@ -50,6 +62,8 @@ export function MakePictureButton({ current, onMade }: { current?: CurrentPictur
         <MakeDialog
           maker={maker}
           current={current ?? null}
+          startBrief={brief}
+          place={place}
           onClose={() => setOpen(false)}
           onUse={(picture) => {
             onMade(picture);
@@ -71,18 +85,22 @@ const pill = (on: boolean) =>
 function MakeDialog({
   maker,
   current,
+  startBrief,
+  place,
   onClose,
   onUse,
 }: {
   maker: PictureMaker;
   current: CurrentPicture | null;
+  startBrief?: string;
+  place?: "library" | "product";
   onClose: () => void;
   onUse: (picture: MadePicture) => void;
 }) {
   const w = useAdminText("website").pictureMaker;
   const id = useId();
   const before = current ? asked.get(current.url) : undefined;
-  const [brief, setBrief] = useState(before?.brief ?? current?.alt ?? "");
+  const [brief, setBrief] = useState(before?.brief ?? current?.alt ?? startBrief ?? "");
   const [shape, setShape] = useState<PictureShape>(current ? shapeOf(current.width, current.height) : "landscape");
   const [follow, setFollow] = useState(before?.follow ?? true);
   const [busy, setBusy] = useState(false);
@@ -96,7 +114,7 @@ function MakeDialog({
       const response = await fetch(maker.endpoint, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ brief, shape, follow }),
+        body: JSON.stringify({ brief, shape, follow, ...(place ? { place } : {}) }),
       });
       const result = (await response.json().catch(() => null)) as { ok: true; picture: MadePicture } | { ok: false; problem: string } | null;
       if (result?.ok) {

@@ -7526,12 +7526,19 @@ export const media = commerce.table(
      * again, so a picture cannot lose a little more each time.
      */
     compressedAt: timestamp("compressed_at", { withTimezone: true }),
+    /** Who made the file (D349): `person` (an upload), `ai_made` (by the site's picture model from a description) or `ai_edited` (a library picture changed by its edit model). */
+    madeBy: text("made_by").notNull().default("person"),
+    /** The library picture an `ai_edited` one was made from; the original is never overwritten. */
+    editedFrom: uuid("edited_from").references((): AnyPgColumn => media.id, { onDelete: "set null" }),
     createdAt: createdAt(),
     createdBy: uuid("created_by").references(() => accounts.id),
     updatedAt: updatedAt(),
   },
   (t) => [
     unique("media_url_key").on(t.url),
+    index("media_edited_from_idx").on(t.editedFrom),
+    check("media_made_by", sql`${t.madeBy} in ('person', 'ai_made', 'ai_edited')`),
+    check("media_edited", sql`(${t.madeBy} = 'ai_edited') or ${t.editedFrom} is null`),
     // The site finds a picture's alt text by either address (D89).
     index("media_thumbnail_url_idx").on(t.thumbnailUrl),
     index("media_store_created_idx").on(t.storeId, t.createdAt),
@@ -8804,6 +8811,8 @@ export const aiProviders = commerce.table(
     imageApiKeyHint: text("image_api_key_hint"),
     /** `low`, `medium`, `high` or `auto` where the model takes one; none leaves it to the model. */
     imageQuality: text("image_quality"),
+    /** The model that edits pictures (D349), at the picture provider's `/images/edits`; none leaves editing unavailable. */
+    imageEditModel: text("image_edit_model"),
     /**
      * Live voice (D105): a full-duplex voice model the AI manager talks
      * through (`/live/sessions` over WebRTC), with its voice; from this row's

@@ -257,6 +257,8 @@ export const aiProviderInput = z
           z.enum(Object.keys(IMAGE_QUALITIES) as [ImageQuality, ...ImageQuality[]], { error: "Choose a picture quality." }),
         ]),
       ),
+    // Editing pictures (D349): a model at the picture provider, optional.
+    imageEditModel: z.string().default("").pipe(modelName),
     // Live voice (D105): optional, like pictures; another provider needs its own key.
     liveModel: z.string().default("").pipe(modelName),
     liveVoice: z
@@ -328,6 +330,7 @@ export function aiFormValues(formData: FormData) {
     imageBaseUrl: String(formData.get("imageBaseUrl") ?? ""),
     imageApiKey: String(formData.get("imageApiKey") ?? ""),
     imageQuality: String(formData.get("imageQuality") ?? ""),
+    imageEditModel: String(formData.get("imageEditModel") ?? ""),
     liveModel: String(formData.get("liveModel") ?? ""),
     liveVoice: String(formData.get("liveVoice") ?? ""),
     liveProvider: String(formData.get("liveProvider") ?? ""),

@@ -53,6 +53,8 @@ export type AiSettings = {
   imageBaseUrl: string | null;
   imageApiKeyHint: string | null;
   imageQuality: ImageQuality | null;
+  /** The model that edits pictures (D349), at the picture provider; null: editing is unavailable. */
+  imageEditModel: string | null;
   /** Live voice (D105): the full-duplex model and its voice, and another provider's (with its own key) or null for this one's. */
   liveModel: string | null;
   liveVoice: string | null;
@@ -87,7 +89,15 @@ export type AiConnection = AiSettings & {
 export type LiveConnection = { provider: AiProviderId; apiUrl: string; apiKey: string; model: string; voice: string | null };
 
 /** A picture model and where to reach it. */
-export type ImageConnection = { provider: AiProviderId; apiUrl: string; apiKey: string; model: string; quality: ImageQuality | null };
+export type ImageConnection = {
+  provider: AiProviderId;
+  apiUrl: string;
+  apiKey: string;
+  model: string;
+  quality: ImageQuality | null;
+  /** The model that edits pictures at the same provider (D349); null: editing is unavailable. */
+  editModel?: string | null;
+};
 
 function toSettings(row: Row): AiSettings {
   return {
@@ -106,6 +116,7 @@ function toSettings(row: Row): AiSettings {
     imageBaseUrl: row.image_base_url ? String(row.image_base_url) : null,
     imageApiKeyHint: row.image_api_key_hint ? String(row.image_api_key_hint) : null,
     imageQuality: row.image_quality ? (String(row.image_quality) as ImageQuality) : null,
+    imageEditModel: row.image_edit_model ? String(row.image_edit_model) : null,
     liveModel: row.live_model ? String(row.live_model) : null,
     liveVoice: row.live_voice ? String(row.live_voice) : null,
     liveProvider: row.live_provider ? (String(row.live_provider) as AiProviderId) : null,
@@ -171,12 +182,13 @@ function liveConnection(row: Row, settings: AiSettings, own: { apiUrl: string; a
 function imageConnection(row: Row, settings: AiSettings, own: { apiUrl: string; apiKey: string }, key: Buffer): ImageConnection | null {
   if (!settings.imageModel) return null;
   const quality = settings.imageQuality;
-  if (!settings.imageProvider) return { provider: settings.provider, ...own, model: settings.imageModel, quality };
+  const editModel = settings.imageEditModel;
+  if (!settings.imageProvider) return { provider: settings.provider, ...own, model: settings.imageModel, quality, editModel };
   const apiUrl = apiBaseUrl(settings.imageProvider, settings.imageBaseUrl);
   if (!apiUrl || !row.image_api_key_encrypted) return null;
   try {
     const apiKey = decryptSecret(String(row.image_api_key_encrypted), key);
-    return { provider: settings.imageProvider, apiUrl, apiKey, model: settings.imageModel, quality };
+    return { provider: settings.imageProvider, apiUrl, apiKey, model: settings.imageModel, quality, editModel };
   } catch {
     return null;
   }
@@ -278,7 +290,7 @@ export async function saveAiSettings(accountId: string, storeId: string | null, 
     insert into commerce.ai_providers (
       store_id, provider, base_url, api_key_encrypted, api_key_hint, embedding_model, text_model, vision_model,
       transcription_model, speech_model, speech_voice,
-      image_model, image_provider, image_base_url, image_api_key_encrypted, image_api_key_hint, image_quality,
+      image_model, image_provider, image_base_url, image_api_key_encrypted, image_api_key_hint, image_quality, image_edit_model,
       live_model, live_voice, live_provider, live_base_url, live_api_key_encrypted, live_api_key_hint,
       min_similarity, embedding_eu_only, text_eu_only, zero_data_retention, enabled, updated_by
     ) values (
@@ -288,7 +300,7 @@ export async function saveAiSettings(accountId: string, storeId: string | null, 
       -- A kept key is carried into the row itself: the row's checks see it before the update does.
       case when ${input.imageProvider}::text is not null then coalesce(${imageEncrypted}::text, (select p.image_api_key_encrypted from commerce.ai_providers p where p.store_id is not distinct from ${storeId}::uuid)) end,
       case when ${input.imageProvider}::text is not null then coalesce(${imageHint}::text, (select p.image_api_key_hint from commerce.ai_providers p where p.store_id is not distinct from ${storeId}::uuid)) end,
-      ${input.imageQuality},
+      ${input.imageQuality}, ${input.imageEditModel},
       ${input.liveModel}, ${input.liveVoice}, ${input.liveProvider}, ${liveBaseUrl},
       case when ${input.liveProvider}::text is not null then coalesce(${liveEncrypted}::text, (select p.live_api_key_encrypted from commerce.ai_providers p where p.store_id is not distinct from ${storeId}::uuid)) end,
       case when ${input.liveProvider}::text is not null then coalesce(${liveHint}::text, (select p.live_api_key_hint from commerce.ai_providers p where p.store_id is not distinct from ${storeId}::uuid)) end,
@@ -302,7 +314,7 @@ export async function saveAiSettings(accountId: string, storeId: string | null, 
       transcription_model = excluded.transcription_model, speech_model = excluded.speech_model, speech_voice = excluded.speech_voice,
       image_model = excluded.image_model, image_provider = excluded.image_provider, image_base_url = excluded.image_base_url,
       image_api_key_encrypted = excluded.image_api_key_encrypted, image_api_key_hint = excluded.image_api_key_hint,
-      image_quality = excluded.image_quality,
+      image_quality = excluded.image_quality, image_edit_model = excluded.image_edit_model,
       live_model = excluded.live_model, live_voice = excluded.live_voice, live_provider = excluded.live_provider,
       live_base_url = excluded.live_base_url, live_api_key_encrypted = excluded.live_api_key_encrypted,
       live_api_key_hint = excluded.live_api_key_hint,
@@ -323,6 +335,7 @@ export async function saveAiSettings(accountId: string, storeId: string | null, 
     imageProvider: input.imageProvider,
     imageBaseUrl,
     imageQuality: input.imageQuality,
+    imageEditModel: input.imageEditModel,
     minSimilarity: input.minSimilarity,
     enabled: input.enabled,
     newKey: Boolean(encrypted),
@@ -853,6 +866,37 @@ async function generateImageOnce(image: ImageConnection, prompt: string, options
     return { bytes, usage: json.usage };
   }
   throw new AiError("The provider's answer held no picture.");
+}
+
+/**
+ * A library picture changed by the connection's edit model (D349), through the OpenAI-compatible `/images/edits` (multipart: the picture and the
+ * description of the change): the new picture's bytes. The picture given is always the site's own file, read from Storage by the caller, never an
+ * address. Metered like a made picture (`per_image`), under the connection's feature (`picture_edit`).
+ */
+export async function editImage(connection: AiConnection, picture: { bytes: Uint8Array; contentType: string }, prompt: string, timeoutMs = 150_000): Promise<{ bytes: Uint8Array }> {
+  const image = connection.image;
+  if (!image?.editModel) throw new AiError("No model that edits pictures is set.");
+  const model = image.editModel;
+  return metered(connection, { kind: "image", provider: image.provider, model }, async () => {
+    const form = new FormData();
+    form.set("model", model);
+    form.set("prompt", prompt.slice(0, 4000));
+    form.set("n", "1");
+    const extension = picture.contentType.split("/")[1] ?? "png";
+    form.set("image", new Blob([new Uint8Array(picture.bytes)], { type: picture.contentType }), `picture.${extension}`);
+    const response = await send({ ...connection, apiUrl: image.apiUrl, apiKey: image.apiKey }, "/images/edits", form, timeoutMs);
+    let json: Row;
+    try {
+      json = (await response.json()) as Row;
+    } catch {
+      throw new AiError("The provider's answer could not be read.");
+    }
+    const first = ((json.data ?? []) as Row[])[0];
+    if (typeof first?.b64_json !== "string" || !first.b64_json) throw new AiError("The provider's answer held no picture.");
+    const bytes = new Uint8Array(Buffer.from(first.b64_json, "base64"));
+    if (bytes.byteLength === 0 || bytes.byteLength > IMAGE_MAX_BYTES) throw new AiError("The picture was empty or too large.");
+    return { value: { bytes }, amounts: { images: 1, ...(readTokens(json.usage) ?? {}) } };
+  });
 }
 
 /** A request whose answer is not JSON (audio) or whose body is a form (a recording). */

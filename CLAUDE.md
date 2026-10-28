@@ -1418,6 +1418,13 @@ stand-in is the only fake, and only it is told it is one.
   `MADE_PICTURE_RULES`, kept in the media library by `makePicture()`. A theme content's pictures are made again one by one from its Content
   tab (`PackSlotPictures`): only by the pack job (`askToRemakePackPicture()`, a slot's `again`), put in place by `swapPackPicture()` through
   `rewriteAddresses()` with the one before kept (`putBackPackPicture()`); never re-save a pack's pages to place a remade picture.
+- **Pictures made and edited in the library (wave 8 unit E, D349, `src/lib/picture-edit.ts`, `src/server/picture-editor.ts`)**: the media library
+  and the product editor offer *Make with AI* through the same `makeSitePicture()` (`place`: `library` or `product`, metered `library_pictures`;
+  the product editor's route asks `products:write`); a library item's maker is `media.made_by` (`person`, `ai_made`, `ai_edited`), so a new way the
+  site's AI keeps a picture passes `madeBy` to `storePicture()`, and a made picture's alt text from a request goes through `checkedAlt()`
+  (`findClaims()`). A picture is edited only by `editLibraryPicture()` through `editImage()` (`/images/edits`, the AI settings' *Model that edits
+  pictures*, `ai_providers.image_edit_model`, feature `picture_edit`), from the library's own file read by its row, never an address typed; the
+  result is a new item with `edited_from`, never over the original. A new edit is a key in `EDIT_ACTIONS` with its prompt in `editPrompt()`.
 - The media library (D88, `src/server/media-library.ts`, `MediaLibrary`):
   `commerce.media`, one row per uploaded file per owner (a store, or Kaizen
   with a null store), at `/admin/{store}/media` and `/admin/platform/media`.

@@ -15,11 +15,13 @@ import type { MediaItem } from "@/server/media-library";
 import type { CompressOutcome } from "@/server/media-compress";
 
 import { compressPlan } from "@/lib/media-compress";
+import { EDIT_ACTIONS, EDIT_BRIEF_MAX, EDIT_BRIEF_MIN, needsBrief, type EditAction } from "@/lib/picture-edit";
 
 import { useAdminLang, useAdminText } from "./admin-text";
 import { uploadPicture, type Saving, type Upload } from "./image-upload";
 import { compressLibraryFile, type CompressActions } from "./media-compress";
 import { Modal } from "./modal";
+import { MakePictureButton, PictureMakerProvider } from "./picture-maker";
 import { uploadVideoFile, type StartVideo } from "./video-upload";
 import { CARD_CLASS } from "@/components/admin/ui";
 
@@ -101,6 +103,7 @@ export function MediaLibrary({
   altMissing,
   compress,
   waiting,
+  pictures,
 }: {
   items: MediaItem[];
   total: number;
@@ -123,6 +126,8 @@ export function MediaLibrary({
   compress: CompressActions | null;
   /** How many files wait for Compress. */
   waiting: number;
+  /** Making and editing pictures with the site's AI (D349): the routes, null where the site has no such model, and where its AI settings are. */
+  pictures?: PictureTools;
 }) {
   const w = useAdminText("website").media;
   const router = useRouter();
@@ -175,6 +180,14 @@ export function MediaLibrary({
   return (
     <div className="flex flex-col gap-6">
       <Uploader upload={upload} startVideo={startVideo} onDone={() => router.refresh()} />
+
+      {pictures?.make && (
+        <PictureMakerProvider maker={{ endpoint: pictures.make }}>
+          <div className={`flex flex-wrap items-center gap-3 p-4 ${CARD_CLASS}`} data-make-picture>
+            <MakePictureButton place="library" onMade={() => router.refresh()} />
+          </div>
+        </PictureMakerProvider>
+      )}
 
       <AltTexts missing={altMissing} ai={altAi} writeAlts={actions.writeAlts} onChanged={() => router.refresh()} />
 
@@ -370,6 +383,11 @@ export function MediaLibrary({
           compress={compress}
           languages={languages}
           altAi={altAi}
+          pictures={pictures}
+          onOpen={(id) => {
+            setOpenId(id);
+            router.refresh();
+          }}
           onCompressed={() => router.refresh()}
           onClose={() => setOpenId(null)}
           onDeleted={() => {
@@ -427,6 +445,11 @@ function FileList({ items, onOpen, chosen, onPick }: { items: MediaItem[]; onOpe
                 <button type="button" onClick={() => onOpen(item.id)} className="max-w-full truncate text-left underline-offset-2 hover:underline">
                   {item.fileName}
                 </button>
+                {item.madeBy !== "person" && (
+                  <span data-made-by={item.madeBy} title={w.madeBy[item.madeBy]} className="ml-2 rounded-full border border-line px-2 py-0.5 text-xs font-normal text-muted">
+                    {w.madeByChip[item.madeBy]}
+                  </span>
+                )}
               </th>
               <td className={`${cell} whitespace-nowrap text-muted`}>{describeType(item.contentType, w)}</td>
               <td className={`${cell} whitespace-nowrap text-right text-muted`}>{formatBytes(item.sizeBytes)}</td>
@@ -496,6 +519,8 @@ function Details({
   compress,
   languages,
   altAi,
+  pictures,
+  onOpen,
   onCompressed,
   onClose,
   onDeleted,
@@ -505,6 +530,8 @@ function Details({
   compress: CompressActions | null;
   languages: AltLanguage[];
   altAi: boolean;
+  pictures?: PictureTools;
+  onOpen: (id: string) => void;
   onCompressed: () => void;
   onClose: () => void;
   onDeleted: () => void;
@@ -523,6 +550,7 @@ function Details({
     [w.rows.fileSize, formatBytes(item.sizeBytes)],
     [w.rows.dimensions, dimensions(item) ?? w.measuredWhenShown],
     [w.rows.added, new Date(item.createdAt).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short" })],
+    ...(item.kind === "image" ? [[w.rows.madeBy, w.madeBy[item.madeBy]] as [string, string]] : []),
   ];
 
   return (
@@ -571,7 +599,9 @@ function Details({
             </h3>
             <Uses item={item} />
           </section>
+          {item.editedFrom && <p className="text-sm text-muted">{w.editedFrom}</p>}
           {compress && <CompressOne item={item} compress={compress} onCompressed={onCompressed} />}
+          {item.kind === "image" && pictures && <EditWithAi item={item} pictures={pictures} onOpen={onOpen} />}
           {item.kind === "image" && <AltTextForm item={item} languages={languages} altAi={altAi} actions={actions} />}
         </div>
       </Modal>
@@ -622,6 +652,117 @@ function Details({
         </div>
       </Modal>
     </>
+  );
+}
+
+/** Making and editing pictures with the site's AI (D349). */
+export type PictureTools = {
+  /** The route that makes a picture (`/media/make`), null without a picture model. */
+  make: string | null;
+  /** The route that edits one (`/media/edit`), null without a model that edits pictures. */
+  edit: string | null;
+  /** The site's AI settings, where an edit model is chosen. */
+  settingsHref: string;
+};
+
+/**
+ * *Edit with AI* on a library picture (D349): the background taken away, a new background described, or a described change. Each makes a new
+ * picture in the library, which opens; this one stays as it is. Without a model that edits pictures it says so, with the way to the settings.
+ */
+function EditWithAi({ item, pictures, onOpen }: { item: MediaItem; pictures: PictureTools; onOpen: (id: string) => void }) {
+  const w = useAdminText("website").media.edit;
+  const id = useId();
+  const [action, setAction] = useState<EditAction>("remove_background");
+  const [brief, setBrief] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+  const [made, setMade] = useState<{ id: string | null; url: string; alt: string } | null>(null);
+  if (!pictures.edit) {
+    return (
+      <section aria-labelledby={`${id}-edit`} className="flex flex-col gap-2 text-sm">
+        <h3 id={`${id}-edit`} className="text-body-strong text-ink">
+          {w.title}
+        </h3>
+        <p className="text-muted" data-edit-unavailable>
+          {w.unavailable}{" "}
+          <Link href={pictures.settingsHref} className="underline">
+            {w.settings}
+          </Link>
+        </p>
+      </section>
+    );
+  }
+  const endpoint = pictures.edit;
+  const wanted = needsBrief(action);
+  const enough = !wanted || brief.trim().length >= EDIT_BRIEF_MIN;
+  async function run() {
+    setBusy(true);
+    setProblem(null);
+    try {
+      const response = await fetch(endpoint, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ mediaId: item.id, action, brief: wanted ? brief : "" }) });
+      const result = (await response.json().catch(() => null)) as { ok: true; picture: { id: string | null; url: string; alt: string } } | { ok: false; problem: string } | null;
+      if (result?.ok) setMade(result.picture);
+      else setProblem(result?.problem ?? w.notEdited);
+    } catch {
+      setProblem(w.notEdited);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <section aria-labelledby={`${id}-edit`} className="flex flex-col gap-3 text-sm" data-edit-picture>
+      <h3 id={`${id}-edit`} className="text-body-strong text-ink">
+        {w.title}
+      </h3>
+      <p className="text-muted">{w.intro}</p>
+      <form
+        aria-busy={busy}
+        className="flex flex-col gap-3"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (enough && !busy) void run();
+        }}
+      >
+        <fieldset className="flex flex-wrap gap-2">
+          <legend className="sr-only">{w.title}</legend>
+          {EDIT_ACTIONS.map((one) => (
+            <label key={one} className={`cursor-pointer rounded-pill border px-3 py-1.5 focus-within:outline-2 ${action === one ? "border-ink bg-inverse text-inverse-ink" : "border-edge bg-card text-ink"}`}>
+              <input type="radio" name={`${id}-action`} value={one} checked={action === one} onChange={() => setAction(one)} className="sr-only" />
+              {w.actions[one]}
+            </label>
+          ))}
+        </fieldset>
+        {wanted && (
+          <label className="flex flex-col gap-1">
+            <span className="font-medium">{action === "new_background" ? w.describeBackground : w.describeChange}</span>
+            <textarea rows={3} maxLength={EDIT_BRIEF_MAX} value={brief} onChange={(event) => setBrief(event.target.value)} className="rounded-md border border-line bg-card px-3 py-2" />
+          </label>
+        )}
+        {busy && <p role="status" className="text-muted">{w.editing}</p>}
+        {problem && (
+          <p role="alert" className="text-danger-text">
+            {problem}
+          </p>
+        )}
+        {made && (
+          <div role="status" className="flex flex-wrap items-center gap-3">
+            {/* eslint-disable-next-line @next/next/no-img-element -- the picture just made, before the library is read again */}
+            <img src={made.url} alt={made.alt} className="h-20 w-20 rounded-md border border-line object-cover" />
+            <span>{w.done}</span>
+            {made.id && (
+              <button type="button" onClick={() => onOpen(made.id as string)} className={button}>
+                {w.open}
+              </button>
+            )}
+          </div>
+        )}
+        <div>
+          <button type="submit" disabled={!enough || busy} className={`${button} bg-brand text-brand-ink`}>
+            {w.run}
+          </button>
+        </div>
+      </form>
+    </section>
   );
 }
 

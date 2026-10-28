@@ -70,6 +70,11 @@ async function Library({ storeSlug, searchParams }: { storeSlug: string; searchP
       searched={searched}
       meaning={Boolean(ai?.space)}
       basePath={`/admin/${store.slug}/media`}
+      pictures={{
+        make: ai?.image && uploadsEnabled() ? `/admin/${store.slug}/media/make` : null,
+        edit: ai?.image?.editModel && uploadsEnabled() ? `/admin/${store.slug}/media/edit` : null,
+        settingsHref: `/admin/${store.slug}/settings/ai`,
+      }}
       upload={uploadsEnabled() ? uploadImageAction.bind(null, store.slug) : null}
       startVideo={uploadsEnabled() ? startVideoUploadAction.bind(null, store.slug) : null}
       actions={{

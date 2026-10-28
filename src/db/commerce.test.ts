@@ -3218,6 +3218,26 @@ describe("the media library (D88)", () => {
     expect((await one<{ n: number }>("select count(*)::int as n from commerce.media_embeddings where media_id = $1", [id])).n).toBe(0);
     await db.query("delete from commerce.media where url = 'https://x/kaizen.webp'");
   });
+  it("marks what the site's AI made or edited, an edit naming the picture it came from until that goes (D349)", async () => {
+    const owner = await createStore("media-made", ["NO"]);
+    const insert = (url: string, madeBy: string | null, editedFrom: string | null = null) =>
+      db.query(
+        `insert into commerce.media (store_id, kind, url, bucket, path, file_name, content_type, size_bytes, width, height, made_by, edited_from)
+         values ($1, 'image', $2, 'product-media', $2, 'bilde.webp', 'image/webp', 100, 10, 10, coalesce($3, 'person'), $4) returning id, made_by`,
+        [owner, url, madeBy, editedFrom],
+      );
+    const original = (await insert("https://x/made-1.webp", null)).rows[0] as { id: string; made_by: string };
+    // An upload is a person's by default.
+    expect(original.made_by).toBe("person");
+    await insert("https://x/made-2.webp", "ai_made");
+    await expect(insert("https://x/made-3.webp", "robot")).rejects.toThrow(/media_made_by/);
+    // Only an edit names an original.
+    await expect(insert("https://x/made-4.webp", "ai_made", original.id)).rejects.toThrow(/media_edited/);
+    const edit = (await insert("https://x/made-5.webp", "ai_edited", original.id)).rows[0] as { id: string };
+    // Deleting the original keeps the edit, without its link.
+    await db.query("delete from commerce.media where id = $1", [original.id]);
+    expect(await one("select made_by, edited_from from commerce.media where id = $1", [edit.id])).toEqual({ made_by: "ai_edited", edited_from: null });
+  });
 });
 
 describe("alt texts in the media library (D89)", () => {

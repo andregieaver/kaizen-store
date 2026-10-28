@@ -10,13 +10,15 @@ D152 (the store analytics cockpit) and D153 (the EU withdrawal function and the 
 
 <!-- parity:generated:start since -->
 
-- **Headline now 80.3%** (first report 59.5%), **must-have 84.5%** (first report 69.1%), over 202 core rows (first report 232).
-- Where the change comes from: +20.5 points from the 114 rating moves on core rows recorded below, and +0.3 points because the re-read changed which rows count as core (the tracker has 232 rows, the first report 232 core ones).
+- **Headline now 80.7%** (first report 59.5%), **must-have 84.5%** (first report 69.1%), over 202 core rows (first report 232).
+- Where the change comes from: +21.0 points from the 116 rating moves on core rows recorded below, and +0.3 points because the re-read changed which rows count as core (the tracker has 232 rows, the first report 232 core ones).
 - 231 of 232 rows have their Shopify side read from a page; the others are listed under evidence debt.
 
-Rated higher (100):
+Rated higher (102):
 
 - Proactive insights (AI): partial to full. D348: the staff summary is now the briefing, weekly or daily, built in code from alertsFor() over the store's snapshot, the store checkup (checkupFindings()) and the targets, every figure counted in code and every item linking to its page,…
+- AI image generation (AI): partial to full. D349: Make with AI in the media library and the product editor (the same dialog and makeSitePicture(), metered library_pictures), made pictures marked made_by ai_made in the library, and their alt text kept only through findClaims() (check…
+- AI image editing (AI): missing to full. D349: Edit with AI on a library picture through the provider's /images/edits and the AI settings' edit model; the result a new library item marked ai_edited with edited_from, the original kept; unavailable with its reason without an edit m…
 - Natural-language analytics and custom reports (AI): partial to full. D346: the AI manager fills a report spec (`run_report`), checked by the same schema and `specProblems()` as the Reports builder and run by `runReport()` (store id, paid orders, `setBasedReplica()`), the rows written out in code with the no…
 - AI or rule-based customer segmentation (AI): missing to partial. D296 (wave 5 unit B): saved rule-based segments over customers and subscribers, counted live with a member list, and customer tags; read segments.ts and ran segments.test.ts, segments.int.test.ts (PGlite and integration, passed).
 - AI-written marketing email (AI): missing to partial. D297: Write with AI in the broadcast editor suggests the email's words through the claims filter, as a suggestion only; it does not yet read the store's products or campaigns.
@@ -150,7 +152,7 @@ Rated lower (24):
 
 <!-- parity:generated:start summary -->
 
-Kaizena Flow has **80.3%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 202 core features weighted by importance to an EU small or mid-size merchant, and **84.5%** on the must-haves (the 83 features with weight 4 or 5). The unweighted figures are 78.5% overall and 84.3% for must-haves. Counting app-only features gives 79.5%; counting Plus-only as well gives 79.0%. Kaizena Flow is strongest on storefront, themes and content (94.0%) and weakest on platform, extensibility and operations (54.7%), checkout and payments (69.2%), ai and automation (72.3%). Of the 202 core features, 125 are full, 67 partial and 10 missing, so half-built features, not absent ones, are the main shape of the gap.
+Kaizena Flow has **80.7%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 202 core features weighted by importance to an EU small or mid-size merchant, and **84.5%** on the must-haves (the 83 features with weight 4 or 5). The unweighted figures are 79.2% overall and 84.3% for must-haves. Counting app-only features gives 80.0%; counting Plus-only as well gives 79.4%. Kaizena Flow is strongest on storefront, themes and content (94.0%) and weakest on platform, extensibility and operations (54.7%), checkout and payments (69.2%), customers, marketing and loyalty (73.7%). Of the 202 core features, 127 are full, 66 partial and 9 missing, so half-built features, not absent ones, are the main shape of the gap.
 
 <!-- parity:generated:end summary -->
 
@@ -160,10 +162,10 @@ The method is simple: a full match scores 1, a partial match 0.5, a missing feat
 
 | Measure | Features | Weighted parity | Unweighted parity | Full / partial / missing |
 | --- | --- | --- | --- | --- |
-| Headline: core (Shopify native, Basic to Advanced) | 202 | **80.3%** | 78.5% | 125 / 67 / 10 |
+| Headline: core (Shopify native, Basic to Advanced) | 202 | **80.7%** | 79.2% | 127 / 66 / 9 |
 | Must-have (core, weight 4 or 5) | 83 | **84.5%** | 84.3% | 57 / 26 / 0 |
-| Core plus app-only features | 226 | 79.5% | 77.9% | 137 / 78 / 11 |
-| Everything, including Plus-only | 232 | 79.0% | 76.7% | 138 / 80 / 14 |
+| Core plus app-only features | 226 | 80.0% | 78.5% | 139 / 77 / 10 |
+| Everything, including Plus-only | 232 | 79.4% | 77.4% | 140 / 79 / 13 |
 
 <!-- parity:generated:end headline -->
 
@@ -183,8 +185,8 @@ Counts are core features only. Weighted parity uses weights 1 to 5; must-have is
 | Analytics, reporting and finance | 24 | 20 | 3 | 1 | 92.2% | 11 | 94.6% |
 | International, compliance and trust | 16 | 10 | 6 | 0 | 77.7% | 10 | 70.2% |
 | Platform, extensibility and operations | 20 | 4 | 12 | 4 | 54.7% | 7 | 72.4% |
-| AI and automation | 22 | 11 | 8 | 3 | 72.3% | 2 | 100.0% |
-| **Total** | **202** | **125** | **67** | **10** | **80.3%** | **83** | **84.5%** |
+| AI and automation | 22 | 13 | 7 | 2 | 77.7% | 2 | 100.0% |
+| **Total** | **202** | **127** | **66** | **9** | **80.7%** | **83** | **84.5%** |
 
 <!-- parity:generated:end domains -->
 
@@ -196,7 +198,7 @@ A row is Full only when it lists code and tests that exist (or says it is untest
 
 | Evidence | Rows |
 | --- | ---: |
-| Full, with tests | 132 |
+| Full, with tests | 134 |
 | Full, untested (debt, not hidden) | 6 |
 | Shopify side not read from a page | 1 |
 | Rows in the tracker | 232 |
@@ -205,7 +207,7 @@ Untested Full rows: `ai.assistant-voice-mode`, `customers.abandoned-checkout-rec
 
 | Bucket | What it means | Rows not Full | Core rows | Core headline points lacking |
 | --- | --- | ---: | ---: | ---: |
-| A | Build in-house | 53 | 43 | 10.7 |
+| A | Build in-house | 51 | 41 | 10.3 |
 | B | Build, live only with a third party | 16 | 14 | 3.7 |
 | C | Strategy decision first | 11 | 8 | 1.9 |
 | D | Not reachable by code | 14 | 12 | 3.4 |
@@ -218,18 +220,18 @@ The waves are those of `docs/parity-plan.md` section 3. This table is produced f
 
 <!-- parity:generated:start projection -->
 
-Now: **80.3%** core, 84.5% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 16 rows (12 core) have no wave yet and are not in them.
+Now: **80.7%** core, 84.5% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 16 rows (12 core) have no wave yet and are not in them.
 
 | Wave | Scope | Rows (core) | Core if every row of waves 1 to N is Full | Must-have | Adds (points) | Core if only bucket A rows are | Must-have |
 | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | Compliance and money | 10 (7) | 82.4% | 88.0% | +2.1 | 81.8% | 86.9% |
-| 2 | Data in and out | 3 (1) | 82.6% | 88.0% | +0.2 | 82.0% | 86.9% |
-| 3 | Inventory and orders | 14 (13) | 85.9% | 90.4% | +3.3 | 83.5% | 88.2% |
-| 4 | Payments | 7 (6) | 87.4% | 92.1% | +1.5 | 83.9% | 88.2% |
-| 5 | Customers and marketing | 19 (16) | 91.5% | 95.8% | +4.2 | 87.2% | 91.3% |
-| 6 | Catalogue | 0 (0) | 91.5% | 95.8% | +0.0 | 87.2% | 91.3% |
-| 7 | Storefront and international | 3 (3) | 92.2% | 95.8% | +0.7 | 87.7% | 91.3% |
-| 8 | Analytics and AI | 10 (10) | 94.3% | 95.8% | +2.1 | 89.6% | 91.3% |
+| 1 | Compliance and money | 10 (7) | 82.8% | 88.0% | +2.1 | 82.2% | 86.9% |
+| 2 | Data in and out | 3 (1) | 83.1% | 88.0% | +0.2 | 82.5% | 86.9% |
+| 3 | Inventory and orders | 14 (13) | 86.3% | 90.4% | +3.3 | 84.0% | 88.2% |
+| 4 | Payments | 7 (6) | 87.8% | 92.1% | +1.5 | 84.3% | 88.2% |
+| 5 | Customers and marketing | 19 (16) | 92.0% | 95.8% | +4.2 | 87.7% | 91.3% |
+| 6 | Catalogue | 0 (0) | 92.0% | 95.8% | +0.0 | 87.7% | 91.3% |
+| 7 | Storefront and international | 3 (3) | 92.7% | 95.8% | +0.7 | 88.1% | 91.3% |
+| 8 | Analytics and AI | 8 (8) | 94.3% | 95.8% | +1.7 | 89.6% | 91.3% |
 | 9 | Platform and extensibility | 12 (9) | 96.6% | 96.9% | +2.3 | 91.0% | 91.8% |
 
 Ceiling with every bucket A row Full and buckets B, C and D as they are: **91.0%** core, 91.8% must-have. With bucket B built and approved as well: 94.7% core, 95.8% must-have.
@@ -609,8 +611,8 @@ Legend. **Shopify**: Native = included on Basic to Advanced and scored in the he
 | Assistant memory and saved skills | Native. [page](https://help.shopify.com/en/manual/shopify-admin/productivity-tools/sidekick) | Partial | 2 | A, wave 8 | Memory is complete: per account, found by keyword and meaning, learned after each turn and from thumbs, shown and editable on the Memory tab, learning can be switched off (D103). Skills are 41 fixed playbooks in code (36 for a store, 5 for the platform; ASSISTANT_SKILLS in src/lib/assistant-skills.ts) loaded by use_skill; there is no table, tool or screen to save a request as a skill, or to edit or delete one. Code: `src/server/assistant-memory.ts`, `src/lib/assistant-skills.ts`. |
 | Proactive insights | Native. [page](https://help.shopify.com/en/manual/shopify-admin/productivity-tools/sidekick) | Full (was partial) | 2 |  | Evidence: `src/lib/analytics-alerts.ts`, `src/server/analytics-insights.ts`, `src/server/analytics-tools.ts` and 12 more; 8 test files; D152, D309, D328, D348. |
 | AI product descriptions and SEO text | Native. [page](https://help.shopify.com/en/manual/shopify-admin/productivity-tools/shopify-magic) | Full | 4 |  | Merged on 2026-10-26 (README rule 8): `catalogue.ai-product-descriptions` was the same Shopify feature (rated full); its criteria and evidence are here. Evidence: `src/lib/product-writing.ts`, `src/server/product-writer.ts`, `src/components/admin/ai-writer.tsx` and 3 more; 5 test files; D73, D76, D106, D308. |
-| AI image generation | Native. [page](https://help.shopify.com/en/manual/shopify-admin/productivity-tools/sidekick/generate-content) | Partial | 2 | A, wave 8 | generateImage()/makePicture() (the picture model named in the AI settings, never in code) is used by the AI page studio (src/server/page-ai.ts), the content packs (D257, D270), every picture field of the page builder since D283 (Make with AI and Make again with AI, in the site's look by pictureDirection(), metered as `page_pictures`, kept in the media library with alt text from the request; src/server/picture-maker.ts, /admin/{store}/media/make) and, since D308, the AI manager's create_product, which can make a product's picture from a brief through makeSitePicture(). Still short: (1) the media library and the product editor themselves have no generate-picture action (criterion 1); (2) a made picture is not marked as AI-made in the library, and its alt text (the request's first sentence, altFromBrief()) does not pass the claims filter (criterion 3). Code: `src/components/admin/page-studio.tsx`, `src/components/admin/picture-maker.tsx`. |
-| AI image editing | Native. [page](https://help.shopify.com/en/manual/shopify-admin/productivity-tools/shopify-magic) | Missing | 2 | A, wave 8 | Text-to-image only: ai.ts calls /images/generations and nothing sends a picture to a model for editing (no background replacement or removal, no cleanup, no variants). |
+| AI image generation | Native. [page](https://help.shopify.com/en/manual/shopify-admin/productivity-tools/sidekick/generate-content) | Full (was partial) | 2 |  | Met (D349). generateImage()/makePicture() (the picture model named in the AI settings, never in code) makes the AI page studio's pictures (src/server/page-ai.ts), the content packs' (D257, D270), every picture field of the page builder's (D283), the AI manager's create_product picture (D308), and since D349 the media library's own *Make with AI* (metered `library_pictures`) and the product editor's (from the product's title, never a price; `products:write`, /admin/{store}/products/picture). Each is shrunk to WebP with its small copy and kept in the library marked `media.made_by = 'ai_made'` (a chip in the list and the details), its alt text from the request only when it passes `findClaims()` (`checkedAlt()`), else left for the alt-text run. Without a picture model nothing is offered or spent. Evidence: `src/components/admin/media-library.tsx`, `src/components/admin/page-studio.tsx`, `src/components/admin/picture-maker.tsx` and 10 more; 8 test files; D106, D146, D283, D308, D349, D92. |
+| AI image editing | Native. [page](https://help.shopify.com/en/manual/shopify-admin/productivity-tools/shopify-magic) | Full (was missing) | 2 |  | Met (D349). A library picture has *Edit with AI*: remove the background, a new background described, or a described change (`editPrompt()`, src/lib/picture-edit.ts), sent by `editImage()` to the picture provider's OpenAI-compatible /images/edits with the AI settings' *Model that edits pictures* (`ai_providers.image_edit_model`, never a model in code). The file sent is the library's own, read from Storage by its row (never an address typed), as a PNG of at most 1024 px; the result is a new library item (`made_by = 'ai_edited'`, `edited_from` the original), the original never overwritten, metered `per_image` under `picture_edit`. Without an edit model the action shows as unavailable with the reason and a link to the AI settings. Evidence: `src/components/admin/ai-provider-form.tsx`, `src/components/admin/media-library.tsx`, `src/lib/picture-edit.ts` and 4 more; 3 test files; D349. |
 | AI alt text | Native. [page](https://help.shopify.com/en/manual/products/product-media/add-alt-text) | Full | 3 |  | Evidence: `src/server/alt-texts.ts`, `src/lib/alt-text.ts`, `src/server/media-alts.ts` and 2 more; 2 test files; D89. |
 | AI and semantic storefront search | Native. [page](https://changelog.shopify.com/posts/semantic-search-is-now-available-on-more-plans) | Full | 3 |  | Evidence: `src/server/search.ts`, `src/lib/search.ts`, `src/server/query-understanding.ts` and 4 more; 6 test files; D72, D73, D74, D75, D77, D78. |
 | Product recommendations | Native. [page](https://help.shopify.com/en/manual/online-store/search-and-discovery/product-recommendations) | Full | 3 |  | Merged on 2026-10-26 (README rule 8): `catalogue.product-recommendations` was the same Shopify feature (rated full); its criteria and evidence are here. Evidence: `src/server/recommend.ts`, `src/lib/recommendations.ts`, `src/server/recommend-settings.ts` and 8 more; 5 test files; D139, D140. |

@@ -21,6 +21,8 @@ export type AiFormSettings = {
   speechModel: string | null;
   speechVoice: string | null;
   imageModel: string | null;
+  /** The model that edits a library picture (D349), from the same provider and key as the picture model. */
+  imageEditModel?: string | null;
   imageProvider: AiProviderId | null;
   imageBaseUrl: string | null;
   imageApiKeyHint: string | null;
@@ -229,6 +231,15 @@ export function AiProviderForm({
             hint={w.newestFirst}
             suggestions={imageInfo.imageModels}
             defaultValue={settings && (settings.imageProvider ?? "") === imageProvider ? (settings.imageModel ?? "") : ""}
+          />
+          <ModelField
+            key={`image-edit-${imageProvider || provider}`}
+            id={`${id}-image-edit`}
+            name="imageEditModel"
+            label={w.pictureEditModel}
+            hint={w.pictureEditModelHint}
+            suggestions={imageInfo.imageModels}
+            defaultValue={settings && (settings.imageProvider ?? "") === imageProvider ? (settings.imageEditModel ?? "") : ""}
           />
         </div>
         {imageProvider === "custom" && (

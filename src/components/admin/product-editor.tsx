@@ -78,6 +78,7 @@ import { BundleSection, NEW_BUNDLE } from "@/components/admin/bundle-section";
 import { PriceBreaksSection } from "@/components/admin/price-breaks-section";
 import { VatCategoryField } from "@/components/admin/vat-category-field";
 import { useAdminLang, useAdminText } from "@/components/admin/admin-text";
+import { MakePictureButton, PictureMakerProvider, type PictureMaker } from "@/components/admin/picture-maker";
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { contentState, withoutContentWhereNotGoods } from "@/lib/unit-price-editor";
@@ -119,6 +120,8 @@ type Props = {
   /** Every country, named on the server so the browser renders the same text. */
   countries: CountryOption[];
   uploads: boolean;
+  /** Where the product's pictures are made by prompt (D349), or none without a picture model. */
+  pictures?: PictureMaker | null;
   /** Where the product is shown in the storefront, once saved. */
   storefrontPath: string | null;
   /** The site's address, for the search result preview. */
@@ -340,6 +343,8 @@ export function ProductEditor(props: Props) {
         product={product}
         update={update}
         uploads={uploads}
+        pictures={props.pictures ?? null}
+        title={title}
         otherLocales={context.locales.filter((l) => l !== context.primaryLocale)}
         languageNames={languageNames}
       />
@@ -831,10 +836,20 @@ function MediaSection({
   product,
   update,
   uploads,
+  pictures,
+  title,
   otherLocales,
   languageNames,
-}: SectionProps & { storeSlug: string; uploads: boolean; otherLocales: string[]; languageNames: Record<string, string> }) {
+}: SectionProps & {
+  storeSlug: string;
+  uploads: boolean;
+  pictures: PictureMaker | null;
+  title: string;
+  otherLocales: string[];
+  languageNames: Record<string, string>;
+}) {
   const w = useAdminText("product");
+  const made = useAdminText("website").pictureMaker;
   const [busy, setBusy] = useState(0);
   const [problem, setProblem] = useState<string | null>(null);
   const [link, setLink] = useState("");
@@ -978,6 +993,17 @@ function MediaSection({
             </button>
           </div>
         ))}
+      {uploads && product.media.length < MAX_MEDIA && (
+        <PictureMakerProvider maker={pictures}>
+          <div className="mt-3" data-product-make-picture="">
+            <MakePictureButton
+              place="product"
+              brief={title.trim() ? fillWords(made.productBrief, { title: title.trim() }) : undefined}
+              onMade={(picture) => update((p) => ({ ...p, media: [...p.media, { ...pictureItem(picture.url, picture.thumbnailUrl ?? null), alt: picture.alt }] }))}
+            />
+          </div>
+        </PictureMakerProvider>
+      )}
       {uploads && product.media.length < MAX_MEDIA && (
         <div className="mt-3">
           <AddMedia

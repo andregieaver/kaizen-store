@@ -95,6 +95,20 @@ export async function uploadProductImage(
   };
 }
 
+/** A library picture's file as stored (D349: the picture an edit is made from), from its own bucket only; null when Storage cannot give it. */
+export async function downloadStoredFile(bucket: string, path: string): Promise<Uint8Array | null> {
+  if (bucket !== BUCKET) return null;
+  const secret = secretKey();
+  if ("problem" in secret) return null;
+  const storage = createClient(publicEnv().NEXT_PUBLIC_SUPABASE_URL, secret.key, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  }).storage.from(bucket);
+  const { data, error } = await storage.download(path);
+  if (error || !data) return null;
+  const bytes = new Uint8Array(await data.arrayBuffer());
+  return bytes.byteLength > 0 && bytes.byteLength <= 20 * 1024 * 1024 ? bytes : null;
+}
+
 /** Removes a library item's files from their public bucket (D88); false if Storage refused. */
 export async function removeStoredFiles(bucket: string, paths: string[]): Promise<boolean> {
   if (![BUCKET, VIDEOS_BUCKET].includes(bucket) || paths.length === 0) return false;

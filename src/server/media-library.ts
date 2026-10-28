@@ -62,9 +62,15 @@ export type MediaItem = {
   altSource: "ai" | "staff" | null;
   /** When it was compressed until it was as small as it could be while it looked the same (D213); null for files from before. */
   compressedAt: string | null;
+  /** Who made the file (D349): an upload, the site's picture model, or its edit model from another library picture. */
+  madeBy: MediaMadeBy;
+  /** The picture an edited one was made from, while it is in the library. */
+  editedFrom: string | null;
   createdAt: string;
   uses: MediaUse[];
 };
+
+export type MediaMadeBy = "person" | "ai_made" | "ai_edited";
 
 export type MediaOwner = { storeId: string | null; storeSlug: string | null };
 
@@ -115,25 +121,27 @@ export async function storePicture(
   owner: { storeId: string | null; accountId: string },
   image: File,
   thumbnail: File,
-  details: { fileName: string; alt?: string; compressed?: boolean },
-): Promise<UploadResult> {
+  details: { fileName: string; alt?: string; compressed?: boolean; madeBy?: MediaMadeBy; editedFrom?: string | null },
+): Promise<UploadResult & { id?: string }> {
   const uploaded = await uploadProductImage(owner.storeId ?? "platform", image, thumbnail);
   if (!uploaded.ok || !("stored" in uploaded)) return uploaded;
   const size = imageSize(new Uint8Array(await image.slice(0, 64 * 1024).arrayBuffer()));
   const alt = details.alt?.trim().slice(0, ALT_MAX) || null;
-  await db().execute(sql`
+  const [row] = await db().execute<Row>(sql`
     insert into commerce.media (
       store_id, kind, url, thumbnail_url, bucket, path, thumbnail_path, file_name, content_type, size_bytes, width, height, created_by,
-      alt, alt_source, alt_written_at, compressed_at
+      alt, alt_source, alt_written_at, compressed_at, made_by, edited_from
     ) values (
       ${owner.storeId}::uuid, 'image', ${uploaded.url}, ${uploaded.thumbnailUrl}, ${uploaded.stored.bucket}, ${uploaded.stored.path},
       ${uploaded.stored.thumbnailPath}, ${cleanName(details.fileName, "picture")},
       ${image.type}, ${image.size}, ${size?.width ?? null}, ${size?.height ?? null}, ${owner.accountId}::uuid,
-      ${alt ?? ""}, ${alt ? "ai" : null}, ${alt ? sql`now()` : null}, ${details.compressed ? sql`now()` : null}
+      ${alt ?? ""}, ${alt ? "ai" : null}, ${alt ? sql`now()` : null}, ${details.compressed ? sql`now()` : null},
+      ${details.madeBy ?? "person"}, ${details.madeBy === "ai_edited" ? (details.editedFrom ?? null) : null}::uuid
     )
     on conflict (url) do nothing
+    returning id
   `);
-  return { ok: true, url: uploaded.url, thumbnailUrl: uploaded.thumbnailUrl };
+  return { ok: true, url: uploaded.url, thumbnailUrl: uploaded.thumbnailUrl, ...(row ? { id: String(row.id) } : {}) };
 }
 
 /** Keeps a video in the library as its upload starts (it goes straight from the browser to Storage). */
@@ -183,6 +191,8 @@ export type LibraryFile = {
   sizeBytes: number;
   width: number | null;
   height: number | null;
+  /** Who made it (D349): a copy of a picture the site's AI made or edited stays the AI's (an edit's original is the other owner's, so not named). */
+  madeBy?: MediaMadeBy;
 };
 
 /**
@@ -194,7 +204,7 @@ export async function libraryFilesByUrl(storeId: string | null, urls: string[]):
   if (urls.length === 0) return found;
   const list = sql.join(urls.map((url) => sql`${url}`), sql`, `);
   const rows = await db().execute<Row>(sql`
-    select id, kind, url, thumbnail_url, bucket, path, thumbnail_path, file_name, content_type, size_bytes, width, height
+    select id, kind, url, thumbnail_url, bucket, path, thumbnail_path, file_name, content_type, size_bytes, width, height, made_by
     from commerce.media
     where ${owned(storeId)} and (url in (${list}) or thumbnail_url in (${list}))
   `);
@@ -212,6 +222,7 @@ export async function libraryFilesByUrl(storeId: string | null, urls: string[]):
       sizeBytes: Number(row.size_bytes),
       width: row.width === null ? null : Number(row.width),
       height: row.height === null ? null : Number(row.height),
+      madeBy: (row.made_by as MediaMadeBy | null) ?? "person",
     };
     for (const url of [file.url, file.thumbnailUrl]) if (url && urls.includes(url)) found.set(url, file);
   }
@@ -244,10 +255,10 @@ export async function copyToLibrary(
   }
   await db().execute(sql`
     insert into commerce.media (
-      store_id, kind, url, thumbnail_url, bucket, path, thumbnail_path, file_name, content_type, size_bytes, width, height, created_by
+      store_id, kind, url, thumbnail_url, bucket, path, thumbnail_path, file_name, content_type, size_bytes, width, height, created_by, made_by
     ) values (
       ${target.storeId}::uuid, ${file.kind}, ${url}, ${thumbnail?.url ?? null}, ${file.bucket}, ${path}, ${thumbnail?.path ?? null},
-      ${file.fileName}, ${file.contentType}, ${file.sizeBytes}, ${file.width}, ${file.height}, ${target.accountId}::uuid
+      ${file.fileName}, ${file.contentType}, ${file.sizeBytes}, ${file.width}, ${file.height}, ${target.accountId}::uuid, ${file.madeBy ?? "person"}
     )
     on conflict (url) do nothing
   `);
@@ -487,6 +498,8 @@ const toItem = (row: Row): Omit<MediaItem, "uses"> => ({
   altTranslations: stringRecord(row.alt_translations),
   altSource: row.alt_source === "ai" || row.alt_source === "staff" ? row.alt_source : null,
   compressedAt: row.compressed_at ? new Date(String(row.compressed_at)).toISOString() : null,
+  madeBy: row.made_by === "ai_made" || row.made_by === "ai_edited" ? row.made_by : "person",
+  editedFrom: row.edited_from ? String(row.edited_from) : null,
   createdAt: new Date(String(row.created_at)).toISOString(),
 });
 

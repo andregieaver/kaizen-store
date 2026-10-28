@@ -67,6 +67,11 @@ async function Library({ searchParams }: { searchParams: PageProps<"/admin/platf
       searched={searched}
       meaning={Boolean(ai?.space)}
       basePath="/admin/platform/media"
+      pictures={{
+        make: ai?.image && uploadsEnabled() ? "/admin/platform/media/make" : null,
+        edit: ai?.image?.editModel && uploadsEnabled() ? "/admin/platform/media/edit" : null,
+        settingsHref: "/admin/platform/ai",
+      }}
       upload={uploadsEnabled() ? uploadPlatformImageAction : null}
       startVideo={uploadsEnabled() ? startPlatformVideoUploadAction : null}
       actions={{

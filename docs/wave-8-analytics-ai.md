@@ -358,6 +358,15 @@ Built as above, with these differences:
     - `mediaUses()` and the copy rules are unchanged: an edited picture is an ordinary library file.
   - **Usage**: `checkLimit()` applies to AI on Kaizena Flow's key as for generation.
 
+  **As built (28 October 2026).** As outlined, with these choices: the library's *Make with AI* is a card of its own above the files (metered
+  `library_pictures`), the product editor's sits under its pictures while the store's AI has a picture model, and its brief names only the title
+  (the kind adds nothing a picture model can use); the library file sent for an edit is read from Storage by the row's bucket and path
+  (`downloadStoredFile()`, `product-media` only), which is what `ownMediaFile()` asks of a product; the edit is sent as a PNG of at most 1024 px;
+  an edited picture keeps its original's alt text when it passes the claims filter; existing pictures the AI made were marked `ai_made` by the
+  migration from their `ai-….webp` names and the AI alt text written as they were stored. The limit is `aiFor()`'s for AI on Kaizena Flow's key,
+  as for every model call. Tests: the edits in `picture-edit.test.ts`, the database's checks in `commerce.test.ts`, and the edit's path (the file
+  read, the request, the new item, refusals before anything is sent, a provider's failure, `/images/edits`) in `picture-editor.int.test.ts`.
+
 - **F (D350) The AI manager tells and remembers.**
   - **Notices**: `commerce.assistant_notices` holds `account_id`, `store_id` (null for the platform), the kind (`page_built`,
     `follow_up`, `plan_step`, `plan_question`, `approval_waiting`, `report_ready`), a reference, the words' key and facts, a link, `read_at`

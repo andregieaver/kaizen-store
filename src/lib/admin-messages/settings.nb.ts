@@ -673,6 +673,9 @@ export const settingsNb: SettingsMessages = {
       providerAbove: "Leverandøren ovenfor ({provider})",
       ownKey: "{provider}, med egen nøkkel",
       pictureModel: "Bildemodell",
+      pictureEditModel: "Modell som redigerer bilder",
+      pictureEditModelHint:
+        "For Rediger med KI i mediebiblioteket: selve bildet sendes til denne leverandøren sammen med hva som skal endres (/images/edits), så velg en med vilkår for data du godtar. Tom: bilder redigeres ikke.",
       newestFirst: "Nyeste først der Kaizena Flow kjenner dem; skriv inn en hvilken som helst annen.",
       picturesAddress: "API-adresse for bilder",
       picturesAddressHint: "Et OpenAI-kompatibelt API: Kaizena Flow legger til /images/generations på denne adressen.",
