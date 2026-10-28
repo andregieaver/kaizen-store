@@ -11,7 +11,18 @@ import { siteUrl } from "@/lib/site";
 import { listApiTokens } from "@/server/api-tokens";
 import { requireOwnerRole } from "@/server/permissions";
 
-import { makeApiTokenAction, makeStorefrontTokenAction, revokeApiTokenAction, revokeStorefrontTokenAction } from "./actions";
+import {
+  addCustomAppAction,
+  makeApiTokenAction,
+  makeStorefrontTokenAction,
+  relistCustomAppAction,
+  removeCustomAppAction,
+  revokeApiTokenAction,
+  revokeStorefrontTokenAction,
+  switchAppToolAction,
+} from "./actions";
+import { AddCustomApp, CustomAppCard } from "@/components/admin/custom-apps";
+import { listCustomApps } from "@/server/custom-apps";
 import { MakeStorefrontToken, RevokeStorefrontToken } from "@/components/admin/storefront-tokens";
 import { STOREFRONT_ROUTES } from "@/lib/storefront-api";
 import { listStorefrontTokens } from "@/server/storefront-api";
@@ -24,7 +35,8 @@ export default async function ApiTokensPage({ params }: PageProps<"/admin/[store
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
   const w = adminText(lang, "notifications").apiTokens;
-  const [tokens, storefrontTokens] = await Promise.all([listApiTokens(store.id), listStorefrontTokens(store.id)]);
+  const [tokens, storefrontTokens, apps] = await Promise.all([listApiTokens(store.id), listStorefrontTokens(store.id), listCustomApps(store.id)]);
+  const aw = adminText(lang, "notifications").customApps;
   const sw = adminText(lang, "notifications").storefrontTokens;
   const when = (iso: string) => new Date(iso).toLocaleString(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeStyle: "short", timeZone: store.timeZone || "Europe/Oslo" });
   const base = `${siteUrl()}/api/admin/v1`;
@@ -92,6 +104,27 @@ export default async function ApiTokensPage({ params }: PageProps<"/admin/[store
                 <li key={`${route.method} ${route.path}`}>{`${route.method.padEnd(5, " ")} /api/storefront/v1/${store.slug}${route.path}`}</li>
               ))}
             </ul>
+          </div>
+        </Card>
+        <Card title={aw.title} description={aw.description}>
+          <div className="flex flex-col gap-5">
+            <p className="text-sm text-muted">{aw.note}</p>
+            {apps.length === 0 ? (
+              <p className="text-sm text-muted">{aw.none}</p>
+            ) : (
+              apps.map((app) => (
+                <CustomAppCard
+                  key={app.id}
+                  app={{ id: app.id, name: app.name, endpointHint: app.endpointHint, tokenHint: app.tokenHint, tools: app.tools.map((t) => ({ name: t.name, description: t.description })), switched: app.switched, calls: app.calls, failed: app.failed, problem: app.problem }}
+                  actions={{
+                    switchTool: switchAppToolAction.bind(null, store.slug, app.id),
+                    relist: relistCustomAppAction.bind(null, store.slug, app.id),
+                    remove: removeCustomAppAction.bind(null, store.slug, app.id),
+                  }}
+                />
+              ))
+            )}
+            <AddCustomApp add={addCustomAppAction.bind(null, store.slug)} />
           </div>
         </Card>
         <Card title={w.howTitle} compact>

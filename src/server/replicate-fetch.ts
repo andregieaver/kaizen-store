@@ -38,7 +38,7 @@ export async function hostProblem(host: string, resolve: Resolve = resolveHost):
 }
 
 export type Fetched =
-  | { ok: true; url: string; status: number; contentType: string; bytes: Uint8Array }
+  | { ok: true; url: string; status: number; contentType: string; bytes: Uint8Array; headers?: http.IncomingHttpHeaders }
   | { ok: false; problem: string; status?: number };
 
 export type FetchOptions = {
@@ -158,7 +158,7 @@ export async function safeFetch(raw: string, options: FetchOptions): Promise<Fet
     }
     if (result.tooLarge) return { ok: false, problem: "The file is larger than can be copied.", status: result.status };
     if (result.status < 200 || result.status >= 300 || !result.bytes) return { ok: false, problem: `The site answered ${result.status}.`, status: result.status };
-    return { ok: true, url: url.toString(), status: result.status, contentType: String(result.headers["content-type"] ?? "").split(";")[0].trim().toLowerCase(), bytes: result.bytes };
+    return { ok: true, url: url.toString(), status: result.status, contentType: String(result.headers["content-type"] ?? "").split(";")[0].trim().toLowerCase(), bytes: result.bytes, headers: result.headers };
   }
   return { ok: false, problem: "The site redirected too many times." };
 }

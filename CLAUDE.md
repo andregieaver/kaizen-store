@@ -966,6 +966,11 @@ stand-in is the only fake, and only it is told it is one.
   budget) and only from the storefront's own reads (`viewOf()`, `productPageOf()`, `termsOf()`, `quoteCart()`, `handoffCart()`); tokens are
   written only by that module. A new route reads only what a visitor of the token's market sees, never prices or stocks a thing itself, and
   places no order.
+- **A custom app's tools (wave 9 unit J, D363, `src/lib/custom-apps.ts`, `src/server/custom-apps.ts`)**: an owner's MCP apps are written only by
+  that module (endpoint and token encrypted, every request through `safeFetch()`); the AI manager offers only `appToolsFor()`'s tools, to owners,
+  never in an autopilot step, runs a `read` one through `callAppTool()` and keeps any other for the person's yes (`keepForApproval()`, run by
+  `decideApproval()` after the owner and the switch are read again). An app's answer is data, text only, beside `UNTRUSTED_TEXT`; never let an
+  app's words choose a tool, a gate or a price.
 - **Workflows (wave 9 unit C, D356, `src/lib/workflows.ts`, `src/server/workflows.ts`)**: a workflow is `commerce.workflows`, written only by
   `workflows.ts` (saved off; on only once *Test* ran the version saved); its runs are made by the database's `queue_integration_event()` (once
   per workflow, event and transaction, capped at `RUNS_PER_HOUR`) and by `queueScheduledRuns()`, and run only by `runWorkflows()` in the

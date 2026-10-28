@@ -365,6 +365,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   checkout_rules: never("A store's checkout rules name its own delivery options, products, terms and groups (D357); a copy starts without them."),
   checkout_rule_skips: never("The original's record of rules left out (D357)."),
   checkout_fields: never("A store's own questions at checkout (D357); a copy asks none until its owner adds them."),
+  custom_apps: never("An owner's own app (D363) holds its endpoint's token; a copy connects its own."),
   storefront_tokens: never("Storefront API tokens (D362) belong to the site that uses them; a copy makes its own."),
   push_subscriptions: never("A staff member's own devices (D361): a copy has its own staff, who turn notifications on themselves."),
   site_stagings: never("A set of changes made ready together (D358) names the store's own pages, menus and themes; a copy starts with none."),

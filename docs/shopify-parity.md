@@ -10,11 +10,11 @@ D152 (the store analytics cockpit) and D153 (the EU withdrawal function and the 
 
 <!-- parity:generated:start since -->
 
-- **Headline now 82.8%** (first report 59.5%), **must-have 84.5%** (first report 69.1%), over 201 core rows (first report 232).
-- Where the change comes from: +23.0 points from the 124 rating moves on core rows recorded below, and +0.3 points because the re-read changed which rows count as core (the tracker has 231 rows, the first report 232 core ones).
+- **Headline now 82.9%** (first report 59.5%), **must-have 84.5%** (first report 69.1%), over 201 core rows (first report 232).
+- Where the change comes from: +23.1 points from the 125 rating moves on core rows recorded below, and +0.3 points because the re-read changed which rows count as core (the tracker has 231 rows, the first report 232 core ones).
 - 230 of 231 rows have their Shopify side read from a page; the others are listed under evidence debt.
 
-Rated higher (112):
+Rated higher (113):
 
 - Admin AI assistant that performs tasks (AI): partial to full. D350: notices for background work that finished or waits (page builds, follow-ups, autopilot questions and finished plans, changes kept for a yes, reports), written once each by the jobs, counted on the launcher and in the account menu, li…
 - Assistant memory and saved skills (AI): partial to full. D350: saved skills: Save as skill in the panel, a Skills tab to list, edit and delete, save_skill and delete_skill, use_skill loading them like the built-ins; owners share with the store; built-in keys, secrets, customers' details and mark…
@@ -27,6 +27,7 @@ Rated higher (112):
 - AI-written marketing email (AI): partial to full. D352: the writer chooses the store's own products and running campaigns through read-only tools, by id; code draws each with its picture and the price as the recipient's market shows it (euro included) and refuses a price or discount in th…
 - Agentic storefronts (ChatGPT, Gemini, Copilot) (AI): missing to partial. Read src/server/feeds.ts, src/lib/feeds.ts, src/app/api/feeds/[token]/[file]/route.ts and the Product feeds page (D302): a normalised feed per store and market of offered goods at the storefront's VAT-inclusive price, as Google Merchant Ce…
 - Agent-ready UCP or MCP endpoints (AI): missing to full. D353: a UCP profile, agents.md and a public MCP endpoint per store (search_catalog, lookup_catalog, get_product, create_cart handing the cart to the store's checkout), rate-limited, without cookies or personal data, behind the store's own…
+- Third-party apps extend the assistant (AI): missing to full. D363 built: owners connect their own MCP apps, switch each tool on read-only or gated, gated calls wait for the owner's yes, calls are time-limited, counted and logged, and answers are passed as data; tested end to end with a stand-in mode…
 - Live View (Analytics): missing to full. D347: Analytics → Live reads `liveFigures()` every 10 seconds while open: visitors in the last 5 minutes from the visit row's `last_seen` and their countries, today's visits, paid orders and revenue (store day, main currency without VAT, a…
 - Standard sales reports (Analytics): partial to full. Analytics → Reports (D345) cuts sales by variant, SKU, category, tag, kind of product, the currency the shopper paid in and payment method beside product, time, country, channel, device and discount code; a line cut carries a rest row so t…
 - Custom report builder and ShopifyQL (Analytics): missing to full. Analytics → Reports (D345): ten ready reports and a builder over a closed catalogue of figures and cuts, filters, the period and comparison, sort, rows and a table, bar or line chart; saved under a name for the store (`commerce.saved_repor…
@@ -162,7 +163,7 @@ Rated lower (24):
 
 <!-- parity:generated:start summary -->
 
-Kaizena Flow has **82.8%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 201 core features weighted by importance to an EU small or mid-size merchant, and **84.5%** on the must-haves (the 83 features with weight 4 or 5). The unweighted figures are 81.8% overall and 84.3% for must-haves. Counting app-only features gives 82.0%; counting Plus-only as well gives 81.5%. Kaizena Flow is strongest on storefront, themes and content (94.9%) and weakest on platform, extensibility and operations (64.1%), checkout and payments (69.2%), customers, marketing and loyalty (73.7%). Of the 201 core features, 135 are full, 59 partial and 7 missing, so half-built features, not absent ones, are the main shape of the gap.
+Kaizena Flow has **82.9%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 201 core features weighted by importance to an EU small or mid-size merchant, and **84.5%** on the must-haves (the 83 features with weight 4 or 5). The unweighted figures are 82.3% overall and 84.3% for must-haves. Counting app-only features gives 82.1%; counting Plus-only as well gives 81.6%. Kaizena Flow is strongest on storefront, themes and content (94.9%) and weakest on platform, extensibility and operations (64.1%), checkout and payments (69.2%), customers, marketing and loyalty (73.7%). Of the 201 core features, 136 are full, 59 partial and 6 missing, so half-built features, not absent ones, are the main shape of the gap.
 
 <!-- parity:generated:end summary -->
 
@@ -172,10 +173,10 @@ The method is simple: a full match scores 1, a partial match 0.5, a missing feat
 
 | Measure | Features | Weighted parity | Unweighted parity | Full / partial / missing |
 | --- | --- | --- | --- | --- |
-| Headline: core (Shopify native, Basic to Advanced) | 201 | **82.8%** | 81.8% | 135 / 59 / 7 |
+| Headline: core (Shopify native, Basic to Advanced) | 201 | **82.9%** | 82.3% | 136 / 59 / 6 |
 | Must-have (core, weight 4 or 5) | 83 | **84.5%** | 84.3% | 57 / 26 / 0 |
-| Core plus app-only features | 225 | 82.0% | 81.1% | 148 / 69 / 8 |
-| Everything, including Plus-only | 231 | 81.5% | 80.1% | 149 / 72 / 10 |
+| Core plus app-only features | 225 | 82.1% | 81.6% | 149 / 69 / 7 |
+| Everything, including Plus-only | 231 | 81.6% | 80.5% | 150 / 72 / 9 |
 
 <!-- parity:generated:end headline -->
 
@@ -195,8 +196,8 @@ Counts are core features only. Weighted parity uses weights 1 to 5; must-have is
 | Analytics, reporting and finance | 24 | 20 | 3 | 1 | 92.2% | 11 | 94.6% |
 | International, compliance and trust | 16 | 10 | 6 | 0 | 77.7% | 10 | 70.2% |
 | Platform, extensibility and operations | 20 | 7 | 10 | 3 | 64.1% | 7 | 72.4% |
-| AI and automation | 21 | 17 | 3 | 1 | 89.8% | 2 | 100.0% |
-| **Total** | **201** | **135** | **59** | **7** | **82.8%** | **83** | **84.5%** |
+| AI and automation | 21 | 18 | 3 | 0 | 91.7% | 2 | 100.0% |
+| **Total** | **201** | **136** | **59** | **6** | **82.9%** | **83** | **84.5%** |
 
 <!-- parity:generated:end domains -->
 
@@ -208,7 +209,7 @@ A row is Full only when it lists code and tests that exist (or says it is untest
 
 | Evidence | Rows |
 | --- | ---: |
-| Full, with tests | 143 |
+| Full, with tests | 144 |
 | Full, untested (debt, not hidden) | 6 |
 | Shopify side not read from a page | 1 |
 | Rows in the tracker | 231 |
@@ -219,7 +220,7 @@ Untested Full rows: `ai.assistant-voice-mode`, `customers.abandoned-checkout-rec
 | --- | --- | ---: | ---: | ---: |
 | A | Build in-house | 42 | 32 | 8.2 |
 | B | Build, live only with a third party | 16 | 14 | 3.7 |
-| C | Strategy decision first | 10 | 8 | 1.9 |
+| C | Strategy decision first | 9 | 7 | 1.7 |
 | D | Not reachable by code | 14 | 12 | 3.4 |
 
 <!-- parity:generated:end evidence -->
@@ -230,21 +231,21 @@ The waves are those of `docs/parity-plan.md` section 3. This table is produced f
 
 <!-- parity:generated:start projection -->
 
-Now: **82.8%** core, 84.5% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 16 rows (12 core) have no wave yet and are not in them.
+Now: **82.9%** core, 84.5% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 16 rows (12 core) have no wave yet and are not in them.
 
 | Wave | Scope | Rows (core) | Core if every row of waves 1 to N is Full | Must-have | Adds (points) | Core if only bucket A rows are | Must-have |
 | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | Compliance and money | 10 (7) | 84.9% | 88.0% | +2.1 | 84.3% | 86.9% |
-| 2 | Data in and out | 3 (1) | 85.1% | 88.0% | +0.2 | 84.5% | 86.9% |
-| 3 | Inventory and orders | 14 (13) | 88.4% | 90.4% | +3.3 | 86.0% | 88.2% |
-| 4 | Payments | 7 (6) | 89.9% | 92.1% | +1.5 | 86.4% | 88.2% |
-| 5 | Customers and marketing | 19 (16) | 94.1% | 95.8% | +4.2 | 89.8% | 91.3% |
-| 6 | Catalogue | 0 (0) | 94.1% | 95.8% | +0.0 | 89.8% | 91.3% |
-| 7 | Storefront and international | 3 (3) | 94.8% | 95.8% | +0.7 | 90.2% | 91.3% |
-| 8 | Analytics and AI | 2 (2) | 95.2% | 95.8% | +0.5 | 90.4% | 91.3% |
-| 9 | Platform and extensibility | 8 (6) | 96.6% | 96.9% | +1.4 | 91.0% | 91.8% |
+| 1 | Compliance and money | 10 (7) | 85.1% | 88.0% | +2.1 | 84.4% | 86.9% |
+| 2 | Data in and out | 3 (1) | 85.3% | 88.0% | +0.2 | 84.7% | 86.9% |
+| 3 | Inventory and orders | 14 (13) | 88.5% | 90.4% | +3.3 | 86.2% | 88.2% |
+| 4 | Payments | 7 (6) | 90.1% | 92.1% | +1.5 | 86.6% | 88.2% |
+| 5 | Customers and marketing | 19 (16) | 94.2% | 95.8% | +4.2 | 89.9% | 91.3% |
+| 6 | Catalogue | 0 (0) | 94.2% | 95.8% | +0.0 | 89.9% | 91.3% |
+| 7 | Storefront and international | 3 (3) | 94.9% | 95.8% | +0.7 | 90.4% | 91.3% |
+| 8 | Analytics and AI | 2 (2) | 95.4% | 95.8% | +0.5 | 90.6% | 91.3% |
+| 9 | Platform and extensibility | 7 (5) | 96.6% | 96.9% | +1.2 | 91.1% | 91.8% |
 
-Ceiling with every bucket A row Full and buckets B, C and D as they are: **91.0%** core, 91.8% must-have. With bucket B built and approved as well: 94.7% core, 95.8% must-have.
+Ceiling with every bucket A row Full and buckets B, C and D as they are: **91.1%** core, 91.8% must-have. With bucket B built and approved as well: 94.8% core, 95.8% must-have.
 
 <!-- parity:generated:end projection -->
 
@@ -635,7 +636,7 @@ Legend. **Shopify**: Native = included on Basic to Advanced and scored in the he
 | Agentic storefronts (ChatGPT, Gemini, Copilot) | Native. [page](https://help.shopify.com/en/manual/online-sales-channels/agentic-storefronts) | Partial (was missing) | 3 | B, wave 8 | D302 serves a normalised feed per store and market (storeFeed()): offered goods only, VAT-inclusive prices in the market's currency as the storefront shows them, as Google Merchant Center RSS (which Google's AI shopping surfaces read) and Meta, TikTok and Pinterest CSVs, every product left out named with its reason. Since D353: ChatGPT's own product feed (OpenAI's spec, read 28 October 2026: its required fields, variants grouped, search on and in-chat checkout off), behind a per-channel switch that is off by default; a shopping agents' endpoint (UCP and MCP, ai.agent-ready-ucp-or-mcp-endpoints); and attribution without a cookie: a visit from ChatGPT, Perplexity, Copilot or Gemini, or a link tagged with one, is the AI agents' channel, and an order from a cart an agent handed over counts there too. Still partial: no Perplexity or Copilot feed (their specs not read yet), and nothing is live until a programme accepts the store (bucket B). In-chat checkout stays off. Code: `src/lib/feeds.ts`, `src/server/feeds.ts`. |
 | Agent-ready UCP or MCP endpoints | Native. [page](https://shopify.dev/docs/apps/build/storefront-mcp) | Full (was missing) | 2 |  | Met (D353). Each store serves a UCP business profile (version 2026-08-25, read at ucp.dev on 28 October 2026) at /.well-known/ucp on its own host (/s/{store}/.well-known/ucp until then), an agents.md and a line in its llms.txt, all pointing to its public MCP endpoint /api/ucp/{store}/mcp (apart from /api/mcp, which still answers Kaizen Life's tokens only). Its tools are search_catalog (keyword search, never a model), lookup_catalog, get_product (the product page's own read: variants, options, pictures, the price with VAT in the country's currency in minor units, available or not from stock now) and create_cart (checked as adding in the store is, D170's hand-off: a link the shopper opens once to pay in the store's own checkout; nothing is ordered or paid at the endpoint). No token, no cookie and no personal data; a budget per store and per caller (a daily hash of the address); counts logged only. It answers only an open store with the shop on, not private, with AI assistants allowed under SEO & Reach and its Shopping agents switch on (off by default). Evidence: `src/app/api/mcp/route.ts`, `src/server/store-mcp.ts`, `src/lib/shopping-agents.ts` and 7 more; 3 test files; D96, D169, D302, D353. |
 | AI discovery signals | Native. [page](https://shopify.dev/docs/storefronts/themes/architecture/templates/agents-md-liquid) | Full | 3 |  | Evidence: `src/app/llms.txt/route.ts`, `src/app/s/[store]/llms.txt/route.ts`, `src/app/robots.txt/route.ts` and 5 more; 3 test files; D21, D56, D112. |
-| Third-party apps extend the assistant | Native. [page](https://help.shopify.com/en/manual/shopify-admin/productivity-tools/sidekick) | Missing | 1 | C, wave 9 | No app ecosystem, so nothing can add tools to the assistant; the tool catalogue is in code (OWNER_TOOLS). Only Kaizen Life reaches it from outside, through the owner-only MCP (D96). Depends on the extension-platform decision (plan section 5, decision 2). Code: `src/server/store-mcp.ts`, `src/lib/owner-tools.ts`. |
+| Third-party apps extend the assistant | Native. [page](https://help.shopify.com/en/manual/shopify-admin/productivity-tools/sidekick) | Full (was missing) | 1 |  | Since D363 an owner connects an app of their own that speaks MCP on Settings → Apps and API (`commerce.custom_apps`, at most 5 a store: the endpoint by the same rules as event endpoints, https on a host name, and its bearer token, both encrypted, shown back as hints), its `tools/list` is read through the address guard (`safeFetch()`, the session `initialize` gives), and the owner switches each tool off or on as read-only (runs at once) or behind one of the AI manager's gates (`public`, `send`, `spend`: kept for the owner's yes and run only then, while they are still an owner and the tool still on). The AI manager offers at most 20 such tools to owners only, as `app__{app}__{tool}`, never in an autopilot step; each call goes to the app within ten seconds, is counted on the app (calls, failed) and logged, and its answer is passed to the model as text only, cut short and marked as data from outside (`UNTRUSTED_TEXT`). Kaizen Life still reaches the assistant through the owner-only MCP (D96). Not built: an app store or listing of others' apps (`platform.app-store-and-ecosystem`), and calls are counted on the app rather than in the AI usage report. Evidence: `src/server/store-mcp.ts`, `src/lib/owner-tools.ts`, `src/lib/custom-apps.ts` and 3 more; 4 test files; D96, D363. |
 | AI controls, usage and cost visibility | Native. [page](https://help.shopify.com/en/manual/online-sales-channels/agentic-storefronts) | Full | 2 |  | Evidence: `src/server/ai-usage.ts`, `src/lib/ai-usage.ts`, `src/lib/ai-cost.ts` and 9 more; 5 test files; D73, D106, D145, D146. |
 
 <!-- parity:generated:end detail-ai -->

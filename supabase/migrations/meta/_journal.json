@@ -3844,6 +3844,13 @@
       "when": 1793195878510,
       "tag": "20261028135758_storefront_tokens",
       "breakpoints": true
+    },
+    {
+      "idx": 549,
+      "version": "7",
+      "when": 1793197258748,
+      "tag": "20261028142058_custom_apps",
+      "breakpoints": true
     }
   ]
 }

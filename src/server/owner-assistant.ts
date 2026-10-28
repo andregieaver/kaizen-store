@@ -35,6 +35,8 @@ import { featureApprovalDetails } from "./feature-tools";
 import { setFeatureInput } from "@/lib/feature-tools";
 import { gateNeeded, OwnerToolError, preflightOwnerTool, runOwnerTool } from "./owner-tools";
 import { offeredTools } from "./offered-tools";
+import { appToolsFor, callAppTool, type OfferedAppTool } from "./custom-apps";
+import { isAppToolName } from "@/lib/custom-apps";
 import { planApprovalDetails, settleStepApproval, startPlanNow } from "./autopilot-plans";
 import { autopilotDecision } from "./autopilot-gate";
 import { TASK_EXTRA_TOOLS } from "@/lib/autopilot-plans";
@@ -553,6 +555,9 @@ export async function runTurn(input: TurnInput): Promise<void> {
   const allowed = autopilot ? new Set<string>([...autopilot.tools, ...TASK_EXTRA_TOOLS]) : null;
   // At most `TOOLS_PER_TURN` a round (D333): the providers refuse more; what is held back is one `load_tools` call away.
   const offered = offeredTools({ store, holder });
+  // The owner's own apps' tools (D363): only for owners, never in an autopilot step, never more than `APP_TOOLS_OFFERED`.
+  const appTools: OfferedAppTool[] = store && !allowed && (!holder || can(holder, "owner")) ? await appToolsFor(store.id).catch(() => []) : [];
+  const appDefinitions = appTools.map((t) => ({ name: t.name, description: t.description, parameters: t.parameters }));
   const wanted: ToolArea[] = [];
   const used = [...new Set(history.flatMap((row) => ((row.tools as ToolTrail[] | null) ?? []).map((t) => t.name)))];
   const pageArea = store && input.path?.startsWith(`/admin/${store.slug}`) ? (areaOfPath(input.path.slice(`/admin/${store.slug}`.length)) as ToolArea | null) : null;
@@ -561,12 +566,12 @@ export async function runTurn(input: TurnInput): Promise<void> {
     if (allowed) return [...offered, ...MANAGER_TOOLS].filter((t) => allowed.has(t.name)).map(toolDefinition);
     const choice = chooseTools(
       offered.map((t) => ({ name: t.name, area: toolArea(t.name, toolKey(t.name)) })),
-      managerTools.length + 1,
+      managerTools.length + appDefinitions.length + 1,
       { used, wanted, pageArea },
     );
     const chosen = new Set(choice.names);
     const load = loadToolsDefinition(choice.heldBack);
-    return [...offered.filter((t) => chosen.has(t.name)).map(toolDefinition), ...managerTools, ...(load ? [load] : [])];
+    return [...offered.filter((t) => chosen.has(t.name)).map(toolDefinition), ...managerTools, ...appDefinitions, ...(load ? [load] : [])];
   };
   let tools = toolsNow();
   const loadTools = (raw: string): Record<string, unknown> => {
@@ -616,7 +621,9 @@ export async function runTurn(input: TurnInput): Promise<void> {
           ? loadTools(call.function.arguments)
           : withLife && call.function.name === ASK_KAIZEN_LIFE.name
             ? await askKaizenLife(p, call.function.arguments)
-            : await callTool(ctx, conversationId, call.function.name, call.function.arguments, emit);
+            : isAppToolName(call.function.name)
+              ? await callApp(ctx, conversationId, appTools, call.function.name, call.function.arguments, emit)
+              : await callTool(ctx, conversationId, call.function.name, call.function.arguments, emit);
         if (REPORT_TOOLS.has(call.function.name) && connection.usage) metered = { ...connection, usage: { ...connection.usage, feature: "analytics_question" } };
         const report = reportOfResult(call.function.name, result);
         trail.push({ name: call.function.name, ok: !("error" in result), ...(report ? { report } : {}) });
@@ -662,6 +669,38 @@ async function askKaizenLife(p: Principal, rawArgs: string): Promise<Record<stri
     console.error("[ai-manager] ask_kaizen_life", error);
     return { error: "Kaizen Life did not answer." };
   }
+}
+
+/**
+ * A call of an owner's own app's tool (D363): run at once when it is `read`, else kept for the person's yes under its gate, as any gated
+ * tool is; the app's answer is data from outside (`callAppTool()`).
+ */
+async function callApp(
+  ctx: ManagerContext,
+  conversationId: string,
+  appTools: OfferedAppTool[],
+  name: string,
+  rawArgs: string,
+  emit: (event: AssistantEvent) => void,
+): Promise<Record<string, unknown>> {
+  const tool = appTools.find((t) => t.name === name);
+  if (!tool || !ctx.store) return { error: `There is no tool called ${name}.` };
+  let args: unknown;
+  try {
+    args = rawArgs ? JSON.parse(rawArgs) : {};
+  } catch {
+    return { error: "The arguments were not valid JSON." };
+  }
+  if (typeof args !== "object" || args === null || Array.isArray(args)) return { error: "Give the arguments as an object." };
+  if (tool.gate === "read") return callAppTool(ctx.store.id, tool, args);
+  const approval = await keepForApproval(ctx, conversationId, name, tool.gate, args as Record<string, unknown>);
+  if (ctx.scheduled) await noticeApproval(approval, conversationId, ctx.account.id, ctx.store.id);
+  emit({ type: "approval", approval });
+  return {
+    queued_for_approval: true,
+    what: approval.summary,
+    note: "Not done yet: they approve or decline it with the button under your answer. Tell them it is waiting.",
+  };
 }
 
 /** One tool call: run, or kept for approval if it is gated; its answer (or error) for the model. */
@@ -763,6 +802,11 @@ export async function keepForApproval(
   planStepId?: string,
 ): Promise<Approval> {
   let summary = approvalSummary(tool, args);
+  // An app's tool (D363) is described by the app, the tool and what it is given, as the app's own words cannot be checked.
+  if (ctx.store && isAppToolName(tool)) {
+    const offered = (await appToolsFor(ctx.store.id)).find((t) => t.name === tool);
+    if (offered) summary = `Ask ${offered.app} to run ${offered.tool} with ${JSON.stringify(args).slice(0, 300)}.`;
+  }
   const store = ctx.store;
   if (store && tool === "cancel_booking") {
     const [booking] = await db().execute<Row>(sql`
@@ -936,6 +980,8 @@ export async function decideApproval(
     const answer = await actingAs(aiActor(), async () => (
       tool === "contact_kaizen_support"
         ? await contactKaizen(p, claimed.args as Record<string, unknown>)
+        : isAppToolName(tool) && p.store
+        ? await runApprovedAppTool(p, tool, claimed.args as Record<string, unknown>)
         : tool === "start_autopilot_plan" || tool === "resume_autopilot_plan"
         ? await startPlanNow({ account: p.account, store: p.store, holder: holderOfPrincipal(p) }, tool, claimed.args as Record<string, unknown>)
         : p.store
@@ -1024,4 +1070,15 @@ async function contactKaizen(p: Principal, args: Record<string, unknown>): Promi
   });
   if ("status" in answer) throw new OwnerToolError(answer.error);
   return { done: "Sent to Kaizena Flow support. Their answer comes under Kaizena Flow support (/admin/account/kaizen-support), and by email when you are away." };
+}
+
+/** An app's tool the person said yes to (D363): run only while the person is still an owner and the tool still switched on with a gate. */
+async function runApprovedAppTool(p: Principal, tool: string, args: Record<string, unknown>): Promise<{ done: string }> {
+  const holder = holderOfPrincipal(p);
+  if (!p.store || (holder && !can(holder, "owner"))) throw new OwnerToolError("Only an owner can run the store's own apps.");
+  const offered = (await appToolsFor(p.store.id)).find((t) => t.name === tool && t.gate !== "read");
+  if (!offered) throw new OwnerToolError("That app's tool is not switched on any more.");
+  const answer = await callAppTool(p.store.id, offered, args);
+  if ("error" in answer) throw new OwnerToolError(answer.error);
+  return { done: `${offered.app} answered: ${answer.answer_from_app.slice(0, 1000) || "(nothing)"}` };
 }

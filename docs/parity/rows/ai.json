@@ -1270,14 +1270,14 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "missing"
     },
     "weight": 1,
-    "gap": "No app ecosystem, so nothing can add tools to the assistant; the tool catalogue is in code (OWNER_TOOLS). Only Kaizen Life reaches it from outside, through the owner-only MCP (D96). Depends on the extension-platform decision (plan section 5, decision 2).",
-    "bucket": "C",
-    "wave": 9,
+    "gap": "Since D363 an owner connects an app of their own that speaks MCP on Settings → Apps and API (`commerce.custom_apps`, at most 5 a store: the endpoint by the same rules as event endpoints, https on a host name, and its bearer token, both encrypted, shown back as hints), its `tools/list` is read through the address guard (`safeFetch()`, the session `initialize` gives), and the owner switches each tool off or on as read-only (runs at once) or behind one of the AI manager's gates (`public`, `send`, `spend`: kept for the owner's yes and run only then, while they are still an owner and the tool still on). The AI manager offers at most 20 such tools to owners only, as `app__{app}__{tool}`, never in an autopilot step; each call goes to the app within ten seconds, is counted on the app (calls, failed) and logged, and its answer is passed to the model as text only, cut short and marked as data from outside (`UNTRUSTED_TEXT`). Kaizen Life still reaches the assistant through the owner-only MCP (D96). Not built: an app store or listing of others' apps (`platform.app-store-and-ecosystem`), and calls are counted on the app rather than in the AI usage report.",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "An owner can register a custom app with scoped tokens whose tools the assistant may call, each switched on by the owner.",
       "A custom app's tools are read-only unless declared gated; a gated call is only kept for the owner's yes.",
@@ -1286,17 +1286,32 @@
     "evidence": {
       "files": [
         "src/server/store-mcp.ts",
-        "src/lib/owner-tools.ts"
+        "src/lib/owner-tools.ts",
+        "src/lib/custom-apps.ts",
+        "src/server/custom-apps.ts",
+        "src/server/owner-assistant.ts",
+        "src/components/admin/custom-apps.tsx"
       ],
       "tests": [
-        "src/server/store-mcp.int.test.ts"
+        "src/server/store-mcp.int.test.ts",
+        "src/lib/custom-apps.test.ts",
+        "src/server/custom-apps.int.test.ts",
+        "src/server/custom-app-tools.int.test.ts"
       ],
       "untested": false
     },
     "decisions": [
-      "D96"
+      "D96",
+      "D363"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-28",
+        "from": "missing",
+        "to": "full",
+        "why": "D363 built: owners connect their own MCP apps, switch each tool on read-only or gated, gated calls wait for the owner's yes, calls are time-limited, counted and logged, and answers are passed as data; tested end to end with a stand-in model and MCP server."
+      }
+    ]
   },
   {
     "id": "ai.ai-controls-usage-and-cost-visibility",

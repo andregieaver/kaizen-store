@@ -176,6 +176,11 @@ Each unit adds its own paragraph here when it is built.
 - **I (D362), built 28 October 2026.** As section 3 says, with these choices: the token is public and kept as it is (a site's code holds it);
   the cart is the site's own, quoted and handed to checkout as the WordPress plugin's is, rather than kept by the API; any site may call it
   from a browser (CORS), and answers vary by the token, as one store's tokens may be for different markets.
+- **J (D363), built 28 October 2026.** As section 3 says, with these choices: the endpoint follows the event endpoints' rules (D354); a
+  JSON-RPC `initialize` precedes each list and call so servers that keep sessions work; at most 20 app tools are offered at once, to owners
+  only and never in an autopilot step; calls are counted on the app rather than as AI usage, as a tool call has no model, tokens or price.
+
+Wave 9 is built: units A to J, decisions D354 to D363.
 
 ## 5. Decisions
 

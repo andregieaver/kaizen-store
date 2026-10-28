@@ -580,6 +580,38 @@ export const notificationsEn = {
   },
   /** Settings → Apps and API (D355): the Admin API's tokens. */
   /** The storefront API's tokens (D362), on Apps and API. */
+  /** An owner's own apps for the AI manager (D363), on Apps and API. */
+  customApps: {
+    title: "Your apps for the AI manager",
+    description: "Connect an app of your own that speaks MCP, and choose which of its tools the AI manager may use. Read tools run at once; the others wait for your yes, as the AI manager's own changes do.",
+    name: "Name",
+    namePlaceholder: "Our warehouse",
+    endpoint: "MCP address (https)",
+    endpointPlaceholder: "https://",
+    token: "Bearer token (optional)",
+    add: "Connect app",
+    adding: "Connecting …",
+    none: "No apps connected yet.",
+    tokenEnds: "token …{hint}",
+    calls: "{calls} calls, {failed} failed",
+    relist: "Read tools again",
+    remove: "Remove",
+    removeQuestion: "Remove {name}? The AI manager stops using its tools.",
+    noTools: "The app lists no tools.",
+    toolsOf: "Tools of {name}",
+    howRuns: "How {tool} runs",
+    gates: { off: "Off", read: "On: reads only, runs at once", public: "On: changes the site, asks first", send: "On: sends something, asks first", spend: "On: costs money, asks first" },
+    ownerOnly: "Only an owner can connect apps.",
+    note: "Only owners use these tools in the AI manager. What an app answers is treated as data from outside, never as instructions, and at most 20 tools are offered at once.",
+    problems: {
+      name: "Give the app a name of 1 to 60 characters.",
+      endpoint: "Give the app's MCP address, starting with https://.",
+      limit: "A store can connect at most {max} apps.",
+      key: "Apps cannot be connected until the platform's encryption key is set.",
+      list: "The app's tools could not be read: {detail}",
+      unknown: "That app was not found.",
+    },
+  },
   storefrontTokens: {
     title: "Storefront API",
     description: "For a site or app of your own that shows your products and sends shoppers to your checkout. A storefront token is public: it opens only what any visitor of its country sees.",

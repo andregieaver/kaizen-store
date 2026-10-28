@@ -15318,3 +15318,39 @@ export const storefrontTokens = commerce.table(
     index("storefront_tokens_created_by_idx").on(t.createdBy),
   ],
 );
+
+/**
+ * An owner's own app whose tools the AI manager may use (wave 9 unit J, D363, `src/server/custom-apps.ts`, the only writer): its MCP
+ * endpoint and bearer token, both encrypted with the settings key (`endpoint_hint`, the host, and `token_hint` shown instead), the tools
+ * its `tools/list` named (`tools`), which the owner switched on and how each runs (`switched`: `read`, `public`, `send`, `spend`), and how
+ * many calls it took and failed. At most five a store.
+ */
+export const customApps = commerce.table(
+  "custom_apps",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    name: text("name").notNull(),
+    key: text("key").notNull(),
+    endpointEncrypted: text("endpoint_encrypted").notNull(),
+    endpointHint: text("endpoint_hint").notNull(),
+    tokenEncrypted: text("token_encrypted"),
+    tokenHint: text("token_hint"),
+    tools: jsonb("tools").notNull().default([]),
+    switched: jsonb("switched").notNull().default({}),
+    calls: integer("calls").notNull().default(0),
+    failed: integer("failed").notNull().default(0),
+    lastCalledAt: timestamp("last_called_at", { withTimezone: true }),
+    listedAt: timestamp("listed_at", { withTimezone: true }),
+    problem: text("problem"),
+    createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("custom_apps_store_key").on(t.storeId, t.key),
+    check("custom_apps_name", sql`length(btrim(${t.name})) between 1 and 60`),
+    check("custom_apps_key", sql`${t.key} ~ '^[a-z0-9][a-z0-9-]{0,15}$'`),
+    check("custom_apps_counts", sql`${t.calls} >= 0 and ${t.failed} >= 0`),
+    index("custom_apps_created_by_idx").on(t.createdBy),
+  ],
+);
