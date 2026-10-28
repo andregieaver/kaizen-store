@@ -95,6 +95,7 @@ const PREFIXES: Record<string, AuditArea> = {
   // Segments (D296): saved and deleted, with the name and how many conditions, never people.
   "segment.": "marketing",
   "broadcast.": "marketing",
+  "broadcast_template.": "marketing",
   // Marketing automations (D298); `automation.` is wave 3's order rules.
   "marketing_automation.": "marketing",
   // A sign-up form tagging confirmed addresses (D304 J3): the count, never an address.

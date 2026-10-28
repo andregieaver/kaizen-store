@@ -13705,6 +13705,28 @@ export const broadcasts = commerce.table(
 );
 
 /**
+ * A store's own broadcast templates (wave 10 unit E, D368): a broadcast's words saved to start the next one from, written only by
+ * `src/server/broadcast-templates.ts`. Content only (no audience, no schedule); a picture in it is the store's own library's, as in a broadcast.
+ */
+export const broadcastTemplates = commerce.table(
+  "broadcast_templates",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    title: text("title").notNull(),
+    content: jsonb("content").notNull().default({}),
+    createdBy: uuid("created_by").references(() => accounts.id),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("broadcast_templates_store_id_key").on(t.storeId, t.id),
+    index("broadcast_templates_list_idx").on(t.storeId, t.createdAt),
+    index("broadcast_templates_created_by_idx").on(t.createdBy),
+    check("broadcast_templates_title", sql`length(${t.title}) between 1 and 120`),
+  ],
+);
+
+/**
  * The addresses a broadcast went to (D297, 5.3), frozen when its send started: one row per address (the subscriber's own, its language and market),
  * claimed a batch at a time and sent once (`email_messages`' key `broadcast:{id}:{subscriber}`). Personal data (the address): in the export's
  * `marketing` section, deleted on erasure and 90 days after the send ended (its figures kept on the broadcast). Never copied.

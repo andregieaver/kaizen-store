@@ -161,13 +161,13 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": "missing"
+      "was": "partial"
     },
-    "gap": "D295 subscriber list (consent words, time, source, confirmation, language; one-click unsubscribe; export and erasure), D297 broadcasts (written per language from blocks, a test to staff, sent now or scheduled to everyone subscribed or a segment's subscribed people, once each, with List-Unsubscribe headers; hard bounces and complaints unsubscribe; a report of sent, delivered, bounced, complained, unsubscribed and link clicks; AI suggestions pass `findClaims()`), D298 lifecycle automations (welcome, after a delivered purchase, win-back: per store, words per language from hand-written starters, once per person and trigger, subscribed addresses only), and D318's AI manager tools, which save broadcasts as drafts and start or schedule them only behind the `send` gate. Still missing: email templates to start a broadcast from (criterion 2; a broadcast starts blank or from an AI suggestion), product blocks in emails, drip sequences of several emails, browse abandonment, and click counts for automation emails.",
-    "bucket": "A",
-    "wave": 5,
+    "gap": "D295 subscriber list (consent words, time, source, confirmation, language; one-click unsubscribe; export and erasure), D297 broadcasts (written per language from blocks, a test to staff, sent now or scheduled to everyone subscribed or a segment's subscribed people, once each, with List-Unsubscribe headers; hard bounces and complaints unsubscribe; a report of sent, delivered, bounced, complained, unsubscribed and link clicks; AI suggestions pass `findClaims()`), D298 lifecycle automations (welcome, after a delivered purchase, win-back: per store, words per language from hand-written starters, once per person and trigger, subscribed addresses only), and D318's AI manager tools, which save broadcasts as drafts and start or schedule them only behind the `send` gate. Since D352 a broadcast's product and campaign blocks are the store's own facts, drawn by code for each recipient's market. Since D368 a broadcast starts from one of five hand-written templates in nb, sv, da and en (no claim, `broadcast-templates.test.ts`) or from one of the store's own saved templates (`broadcast-templates.int.test.ts`), which closes criterion 2. Beyond the criteria and Shopify's own: drip sequences of several emails, browse abandonment and click counts for automation emails are not built.",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "A subscriber list with consent (source, consent text, time, double opt-in time, language) is kept apart from order customers; one-click unsubscribe with List-Unsubscribe headers; export and erase.",
       "An owner writes an email in the store's languages from a template, sends a test to staff, and sends now or later to a segment or all subscribers; only subscribed addresses receive it, once each (idempotency key).",
@@ -200,7 +200,10 @@
         "src/components/admin/automation-editor.tsx",
         "src/app/admin/(gated)/[store]/automations/page.tsx",
         "src/app/admin/(gated)/[store]/automations/[kind]/page.tsx",
-        "src/server/marketing-tools.ts"
+        "src/server/marketing-tools.ts",
+        "src/lib/broadcast-templates.ts",
+        "src/server/broadcast-templates.ts",
+        "src/app/admin/(gated)/[store]/broadcasts/new/page.tsx"
       ],
       "tests": [
         "src/server/cart-reminders.int.test.ts",
@@ -218,7 +221,9 @@
         "src/lib/automation-starters.test.ts",
         "src/server/automations.int.test.ts",
         "e2e/signed-in/automations.spec.ts",
-        "src/server/marketing-tools.int.test.ts"
+        "src/server/marketing-tools.int.test.ts",
+        "src/lib/broadcast-templates.test.ts",
+        "src/server/broadcast-templates.int.test.ts"
       ],
       "untested": false
     },
@@ -229,7 +234,9 @@
       "D295",
       "D297",
       "D298",
-      "D318"
+      "D318",
+      "D352",
+      "D368"
     ],
     "history": [
       {
@@ -237,6 +244,12 @@
         "from": "missing",
         "to": "partial",
         "why": "First report's skeptic recheck: abandoned-cart reminders (D33) are real automation and the AI manager can email one customer, so not missing; still no subscriber list, composer or send to a segment. Entry written in wave 0 from the first report, which did not log it."
+      },
+      {
+        "on": "2026-10-28",
+        "from": "partial",
+        "to": "full",
+        "why": "D368: broadcast templates, hand-written in four languages, and the store's own saved templates (criterion 2); product blocks were D352."
       }
     ]
   },

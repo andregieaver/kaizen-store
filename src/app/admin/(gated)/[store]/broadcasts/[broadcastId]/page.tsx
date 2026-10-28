@@ -17,6 +17,7 @@ import { storeById } from "@/server/shopper-emails";
 import {
   audienceCountAction,
   deleteBroadcastAction,
+  saveAsTemplateAction,
   saveBroadcastAction,
   scheduleBroadcastAction,
   sendTestAction,
@@ -98,6 +99,15 @@ export default async function BroadcastPage({ params }: PageProps<"/admin/[store
                 start={startBroadcastAction}
                 schedule={scheduleBroadcastAction}
               />
+            </Card>
+            <Card title={wb.saveAsTemplate} compact>
+              <form action={saveAsTemplateAction.bind(null, store.slug, broadcast.id)} className="flex flex-wrap items-end gap-3">
+                <label className="flex min-w-48 flex-1 flex-col gap-1 text-body">
+                  {wb.templateName}
+                  <input name="title" required maxLength={120} defaultValue={broadcast.title} className="min-h-10 rounded-md border border-line bg-card px-3" />
+                </label>
+                <Button type="submit">{wb.saveAsTemplate}</Button>
+              </form>
             </Card>
             <Card title={w.common.whatItSays} compact>
               <BroadcastEditor

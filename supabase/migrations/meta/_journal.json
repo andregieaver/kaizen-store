@@ -3872,6 +3872,13 @@
       "when": 1793201100237,
       "tag": "20261028152500_customer_accounts",
       "breakpoints": true
+    },
+    {
+      "idx": 553,
+      "version": "7",
+      "when": 1793202205622,
+      "tag": "20261028154325_broadcast_templates",
+      "breakpoints": true
     }
   ]
 }

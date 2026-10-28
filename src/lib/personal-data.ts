@@ -273,6 +273,7 @@ export const NOT_PERSONAL: Record<string, string> = {
   checkout_fields: "The questions a store asks at checkout (D357): the owner's words; the answers are on carts and orders.",
   site_stagings: "A store's sets of changes made ready together (D358): a name, a theme install, menus as staged and the outcome of publishing; staff accounts only by id.",
   custom_apps: "An owner's own app for the AI manager (D363): an encrypted endpoint and token, its tools and counts; staff only by id.",
+  broadcast_templates: "A store's own broadcast templates (D368): a name and a broadcast's words; never a recipient, staff only by id.",
   storefront_tokens: "Storefront API tokens (D362): a name, a public token and a market; staff only by id.",
   status_checks: "The status page's checks (D360): a component, passed or not and a reason code; no person.",
   status_incidents: "Incidents on the status page (D360): a platform admin's words and the parts affected; staff only by id.",

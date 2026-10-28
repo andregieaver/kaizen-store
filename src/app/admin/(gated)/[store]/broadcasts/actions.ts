@@ -11,6 +11,7 @@ import { BROADCAST_AUDIENCES, type BroadcastSuggestion, type CampaignFact, type 
 import { marketingProblem } from "@/lib/marketing-words";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { campaignFacts, emailMarket, findProductFacts } from "@/server/broadcast-facts";
+import { deleteOwnTemplate, saveAsTemplate } from "@/server/broadcast-templates";
 import {
   audienceCount,
   deleteBroadcast,
@@ -151,4 +152,20 @@ export async function uploadBroadcastPictureAction(storeSlug: string, data: Form
   const member = await checkPermission(storeSlug, "marketing:write");
   if (!member) return noAccess();
   return uploadToLibrary({ storeId: member.store.id, accountId: member.account.id }, data);
+}
+
+/** Saves a broadcast's words as one of the store's own templates (D368), then opens a new broadcast from it. */
+export async function saveAsTemplateAction(storeSlug: string, id: string, form: FormData): Promise<void> {
+  const member = await requirePermission(storeSlug, "marketing:write");
+  if (!uuid.safeParse(id).success) return;
+  const saved = await saveAsTemplate(member.store.id, member.account.id, id, String(form.get("title") ?? ""));
+  if (saved.ok) redirect(`/admin/${member.store.slug}/broadcasts/new?from=${saved.id}`);
+  refresh();
+}
+
+/** Deletes one of the store's own templates (D368). */
+export async function deleteTemplateAction(storeSlug: string, id: string): Promise<void> {
+  const member = await requirePermission(storeSlug, "marketing:write");
+  await deleteOwnTemplate(member.store.id, member.account.id, id);
+  refresh();
 }
