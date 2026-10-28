@@ -158,7 +158,9 @@ describe("the seeded rates", () => {
     for (const [country, rate] of [["NO", "0.1200"], ["SE", "0.1200"], ["DE", "0.0700"]]) {
       expect(await rateOn(country, "accommodation", "2026-10-03T12:00:00Z")).toBe(rate);
     }
-    const sources = await rows<{ source: string; checked_on: string }>("select source, checked_on::text from commerce.vat_rates where category = 'accommodation'");
+    const sources = await rows<{ source: string; checked_on: string }>(
+      "select source, checked_on::text from commerce.vat_rates where category = 'accommodation' and country_code in ('NO', 'SE', 'DE')",
+    );
     expect(sources).toHaveLength(3);
     expect(sources.every((s) => !s.source.startsWith("Kaizena Flow seed"))).toBe(true);
   });
@@ -171,9 +173,22 @@ describe("the seeded rates", () => {
     const byCategory = Object.fromEntries(counts.map((c) => [c.category, c.countries]));
     expect(byCategory.standard).toBe(28);
     expect(byCategory.food).toBeGreaterThanOrEqual(3);
-    // No row is the honest answer where no source was read.
-    expect(byCategory.medicines ?? 0).toBe(0);
-    expect(byCategory.children_goods ?? 0).toBe(0);
+    // D376: the reduced rates read from official sources; a country with no reduced rate for a category has no row.
+    expect(byCategory.medicines).toBe(21);
+    expect(byCategory.children_goods).toBe(2);
+    expect(byCategory.food).toBe(23);
+  });
+
+  it("holds D376's reduced rates unverified, each with its official source and the day it was read", async () => {
+    const d376 = await rows<{ source: string; checked_on: string; verified_at: string | null }>(
+      "select source, checked_on::text, verified_at from commerce.vat_rates where note like 'Unverified: read from%'",
+    );
+    expect(d376).toHaveLength(130);
+    expect(d376.every((r) => r.verified_at === null && r.checked_on === "2026-10-28" && /https:\/\//.test(r.source))).toBe(true);
+    // A rate starts on its day: Belgian accommodation went from 6 % (the standard rate's fallback was 21 %) to 12 % in 2026.
+    expect(await rateOn("BE", "accommodation", "2026-07-01T12:00:00Z")).toBe("0.1200");
+    expect(await rateOn("FR", "food", "2026-10-03T12:00:00Z")).toBe("0.0550");
+    expect(await rateOn("LU", "children_goods", "2026-10-03T12:00:00Z")).toBe("0.0300");
   });
 
   it("answers the standard rate where a country has no reduced rate for a category (Denmark's food)", async () => {
@@ -242,25 +257,25 @@ describe("vat_rate(country, category, at)", () => {
 
 describe("set_vat_rate()", () => {
   it("ends the open period, begins a new one and writes the audit log", async () => {
-    await setRate("FR", "books", 0.055, "2026-02-01", { note: "TEST first" });
-    await setRate("FR", "books", 0.05, "2026-06-01", { note: "TEST second" });
+    await setRate("DK", "books", 0.055, "2026-02-01", { note: "TEST first" });
+    await setRate("DK", "books", 0.05, "2026-06-01", { note: "TEST second" });
     const periods = await rows<{ rate: string; valid_from: string; valid_to: string | null; created_by: string }>(
-      "select rate::text, valid_from::text, valid_to::text, created_by from commerce.vat_rates where country_code = 'FR' and category = 'books' order by valid_from",
+      "select rate::text, valid_from::text, valid_to::text, created_by from commerce.vat_rates where country_code = 'DK' and category = 'books' order by valid_from",
     );
     expect(periods).toEqual([
       { rate: "0.0550", valid_from: "2026-02-01", valid_to: "2026-06-01", created_by: owner },
       { rate: "0.0500", valid_from: "2026-06-01", valid_to: null, created_by: owner },
     ]);
     const audit = await one<{ action: string; account_id: string; store_id: string | null; details: Record<string, unknown> }>(
-      "select action, account_id, store_id, details from commerce.audit_log where action = 'vat.rate_set' and details->>'country' = 'FR' order by id desc limit 1",
+      "select action, account_id, store_id, details from commerce.audit_log where action = 'vat.rate_set' and details->>'country' = 'DK' order by id desc limit 1",
     );
     expect(audit).toMatchObject({ action: "vat.rate_set", account_id: owner, store_id: null });
-    expect(audit.details).toMatchObject({ country: "FR", category: "books", rate: 0.05, previous_rate: 0.055, valid_from: "2026-06-01" });
+    expect(audit.details).toMatchObject({ country: "DK", category: "books", rate: 0.05, previous_rate: 0.055, valid_from: "2026-06-01" });
   });
 
   it("refuses a start that is not after the latest period, so history is never rewritten", async () => {
-    await rejects("select commerce.set_vat_rate('FR', 'books', 0.04, '2026-06-01', 'A source here', '2026-10-03', '', null)", [], /vat_rate_backdated/);
-    await rejects("select commerce.set_vat_rate('FR', 'books', 0.04, '2026-03-01', 'A source here', '2026-10-03', '', null)", [], /vat_rate_backdated/);
+    await rejects("select commerce.set_vat_rate('DK', 'books', 0.04, '2026-06-01', 'A source here', '2026-10-03', '', null)", [], /vat_rate_backdated/);
+    await rejects("select commerce.set_vat_rate('DK', 'books', 0.04, '2026-03-01', 'A source here', '2026-10-03', '', null)", [], /vat_rate_backdated/);
   });
 
   it("refuses exempt, an unknown country or category, a rate out of range and missing dates", async () => {
@@ -275,10 +290,10 @@ describe("set_vat_rate()", () => {
   });
 
   it("needs a source of 8 to 400 characters", async () => {
-    await rejects("select commerce.set_vat_rate('FR', 'books', 0.1, '2030-01-01', 'short', '2026-10-03', '', null)", [], /vat_rates_source/);
-    await rejects("select commerce.set_vat_rate('FR', 'books', 0.1, '2030-01-01', $1, '2026-10-03', '', null)", ["x".repeat(401)], /vat_rates_source/);
+    await rejects("select commerce.set_vat_rate('DK', 'books', 0.1, '2030-01-01', 'short', '2026-10-03', '', null)", [], /vat_rates_source/);
+    await rejects("select commerce.set_vat_rate('DK', 'books', 0.1, '2030-01-01', $1, '2026-10-03', '', null)", ["x".repeat(401)], /vat_rates_source/);
     // and the failed attempts left the open period alone
-    expect(await scalar("select valid_to from commerce.vat_rates where country_code = 'FR' and category = 'books' and valid_from = '2026-06-01'")).toBeNull();
+    expect(await scalar("select valid_to from commerce.vat_rates where country_code = 'DK' and category = 'books' and valid_from = '2026-06-01'")).toBeNull();
   });
 
   it("makes a zero rate possible (books in Norway)", async () => {
@@ -287,8 +302,8 @@ describe("set_vat_rate()", () => {
   });
 
   it("starts a category's history in a country that had none", async () => {
-    await setRate("PT", "medicines", 0.06, "2026-01-01");
-    expect(await rateOn("PT", "medicines", "2026-10-03T12:00:00Z")).toBe("0.0600");
+    await setRate("LT", "food", 0.05, "2026-01-01");
+    expect(await rateOn("LT", "food", "2026-10-03T12:00:00Z")).toBe("0.0500");
     expect(await rateOn("PT", "children_goods", "2026-10-03T12:00:00Z")).toBe("0.2300");
   });
 
@@ -335,17 +350,17 @@ describe("a rate's history", () => {
   it("never overlaps another period of the same country and category", async () => {
     const insert = (from: string, to: string | null) =>
       db.query(
-        "insert into commerce.vat_rates (country_code, category, rate, valid_from, valid_to, source, checked_on) values ('BE', 'periodicals', 0.06, $1, $2, 'A source here', '2026-10-03')",
+        "insert into commerce.vat_rates (country_code, category, rate, valid_from, valid_to, source, checked_on) values ('DK', 'periodicals', 0.06, $1, $2, 'A source here', '2026-10-03')",
         [from, to],
       );
     await insert("2026-01-01", "2026-06-01");
-    await rejects("insert into commerce.vat_rates (country_code, category, rate, valid_from, source, checked_on) values ('BE', 'periodicals', 0.06, '2026-03-01', 'A source here', '2026-10-03')", [], /vat_rate_overlap/);
-    await rejects("insert into commerce.vat_rates (country_code, category, rate, valid_from, valid_to, source, checked_on) values ('BE', 'periodicals', 0.06, '2025-01-01', '2026-02-01', 'A source here', '2026-10-03')", [], /vat_rate_overlap/);
-    await rejects("insert into commerce.vat_rates (country_code, category, rate, valid_from, valid_to, source, checked_on) values ('BE', 'periodicals', 0.06, '2025-01-01', '2027-01-01', 'A source here', '2026-10-03')", [], /vat_rate_overlap/);
+    await rejects("insert into commerce.vat_rates (country_code, category, rate, valid_from, source, checked_on) values ('DK', 'periodicals', 0.06, '2026-03-01', 'A source here', '2026-10-03')", [], /vat_rate_overlap/);
+    await rejects("insert into commerce.vat_rates (country_code, category, rate, valid_from, valid_to, source, checked_on) values ('DK', 'periodicals', 0.06, '2025-01-01', '2026-02-01', 'A source here', '2026-10-03')", [], /vat_rate_overlap/);
+    await rejects("insert into commerce.vat_rates (country_code, category, rate, valid_from, valid_to, source, checked_on) values ('DK', 'periodicals', 0.06, '2025-01-01', '2027-01-01', 'A source here', '2026-10-03')", [], /vat_rate_overlap/);
     // next to it is fine, and another country or category is another history
     await insert("2026-06-01", null);
-    await db.query("insert into commerce.vat_rates (country_code, category, rate, valid_from, source, checked_on) values ('BE', 'books', 0.06, '2026-01-01', 'A source here', '2026-10-03')");
-    await rejects("insert into commerce.vat_rates (country_code, category, rate, valid_from, source, checked_on) values ('BE', 'periodicals', 0.06, '2030-01-01', 'A source here', '2026-10-03')", [], /vat_rate_overlap/);
+    await db.query("insert into commerce.vat_rates (country_code, category, rate, valid_from, source, checked_on) values ('DK', 'culture_events', 0.06, '2026-01-01', 'A source here', '2026-10-03')");
+    await rejects("insert into commerce.vat_rates (country_code, category, rate, valid_from, source, checked_on) values ('DK', 'periodicals', 0.06, '2030-01-01', 'A source here', '2026-10-03')", [], /vat_rate_overlap/);
   });
 
   it("has no rate for exempt goods, and a period that ends after it begins", async () => {
@@ -844,7 +859,7 @@ describe("the tax migrations on a database that has data", () => {
 
   it("gives the old accommodation rows a start, a source and a date, unverified", async () => {
     const r = await old.query<{ country_code: string; rate: string; valid_from: string; valid_to: string | null; verified_at: string | null; source: string }>(
-      "select country_code, rate::text, valid_from::text, valid_to::text, verified_at, source from commerce.vat_rates where category = 'accommodation' order by country_code",
+      "select country_code, rate::text, valid_from::text, valid_to::text, verified_at, source from commerce.vat_rates where category = 'accommodation' and country_code in ('DE', 'NO', 'SE') order by country_code",
     );
     expect(r.rows.map((x) => [x.country_code, x.rate, x.valid_from, x.valid_to, x.verified_at])).toEqual([
       ["DE", "0.0700", "2026-01-01", null, null],
