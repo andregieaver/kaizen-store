@@ -27,6 +27,7 @@ const CALLERS: Record<string, { fresh: number; stale: number; why: string }> = {
     why: "The code, the password, registering with a password and the reset code each prove it; the one-time link on the order page after checkout (checkoutSignInAction) is a convenience and starts stale.",
   },
   "app/s/[store]/[market]/account/sign-in/[token]/actions.ts": { fresh: 1, stale: 0, why: "A one-time link emailed to the address on file, spent by a button press: the inbox proved it." },
+  "server/google-sign-in.ts": { fresh: 1, stale: 0, why: "Sign in with Google (D375): Google's ID token says the email is verified, checked with the request's nonce, for the store's own account." },
   "server/support-route.ts": { fresh: 1, stale: 0, why: "The chat's sign-in card (D216, step 9): the store's own emailed code, checked by verifySignInCode(), proves it." },
 };
 

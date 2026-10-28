@@ -94,3 +94,17 @@ export function vapidEnv(
   if (!/^(mailto:|https:\/\/)/.test(subject)) throw new Error("VAPID_SUBJECT must start with mailto: or https://.");
   return { publicKey, privateKey, subject };
 }
+
+/**
+ * Kaizena Flow's own Google OAuth client for customers' *Sign in with Google* (D375): its id and secret, from Google Cloud's console, with
+ * `{SITE_URL}/api/auth/google/callback` as its one redirect address. Null without both: the button is not shown anywhere.
+ */
+export function googleEnv(
+  source: Record<string, string | undefined> = { GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET },
+): { clientId: string; clientSecret: string } | null {
+  const clientId = source.GOOGLE_CLIENT_ID?.trim();
+  const clientSecret = source.GOOGLE_CLIENT_SECRET?.trim();
+  if (!clientId || !clientSecret) return null;
+  if (!/^[A-Za-z0-9._-]+\.apps\.googleusercontent\.com$/.test(clientId)) throw new Error("GOOGLE_CLIENT_ID must be a Google OAuth client id (….apps.googleusercontent.com).");
+  return { clientId, clientSecret };
+}

@@ -520,6 +520,21 @@ export const KNOWN_COOKIES: KnownCookie[] = [
     },
   },
   {
+    // Only while a customer signs in to a store with Google (D375), on Kaizena Flow's own address the sign-in passes through; closed to scripts.
+    name: "kaizen_google",
+    pattern: /^kaizen_google$/,
+    provider: "Kaizena Flow",
+    category: "necessary",
+    days: null,
+    on: "platform",
+    purpose: {
+      en: "Checks, for the ten minutes it takes, that a customer signing in with Google comes back from the Google page they started from.",
+      nb: "Sjekker, i de ti minuttene det tar, at en kunde som logger inn med Google kommer tilbake fra Google-siden de startet fra.",
+      sv: "Kontrollerar, under de tio minuter det tar, att en kund som loggar in med Google kommer tillbaka från Google-sidan de startade från.",
+      da: "Kontrollerer, i de ti minutter det tager, at en kunde, der logger ind med Google, kommer tilbage fra den Google-side, de startede fra.",
+    },
+  },
+  {
     // Only while an owner connects the store's Mollie account to Kaizena Flow (D292).
     name: "kaizen_mollie_connect",
     pattern: /^kaizen_mollie_connect$/,

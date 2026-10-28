@@ -24,6 +24,7 @@ import {
 import { affiliateSite } from "@/server/affiliates";
 import { shopperBonus } from "@/server/bonus";
 import { companyOf } from "@/server/companies";
+import { googleSignInOffered, googleStartUrl } from "@/server/google-sign-in";
 import { hasBuyerCatalogue } from "@/server/price-lists";
 import type { Store } from "@/server/stores";
 
@@ -304,8 +305,18 @@ async function Account({ store, market, query }: { store: Store; market: Market;
 /** Signing in or creating an account (D28), where the shopper is not signed in; `?tab=register` opens on Create account, e.g. from a link in the store's menu. */
 export async function SignInForm({ store, market, query }: { store: Store; market: Market; query: Promise<StoreQuery> }) {
   const a = t(market.lang).account;
-  const register = (await query).tab === "register";
+  const q = await query;
+  const register = q.tab === "register";
+  // Sign in with Google (D375): offered once Kaizena Flow's Google client exists; it signs in an account the store already has, by email.
+  const google = googleSignInOffered(store);
+  const googleSaid = q.google === "no_account" ? a.googleNoAccount : q.google === "failed" ? a.googleFailed : null;
   return (
+    <div className="flex flex-col gap-4">
+      {googleSaid && (
+        <p role="alert" className="rounded-md border border-border p-3 text-sm">
+          {googleSaid}
+        </p>
+      )}
     <AccountAccess
       store={store.slug}
       market={market.slug}
@@ -339,6 +350,16 @@ export async function SignInForm({ store, market, query }: { store: Store; marke
         saveAndSignIn: a.saveAndSignIn,
       }}
     />
+      {google && (
+        <div className="flex flex-col items-start gap-2">
+          <span className="text-sm text-muted">{a.googleOr}</span>
+          {/* A full page load: the sign-in passes through Kaizena Flow's own address and Google's. */}
+          <a href={googleStartUrl(store.slug, market.slug)} className="inline-flex min-h-11 items-center rounded-button border border-border px-5">
+            {a.googleSignIn}
+          </a>
+        </div>
+      )}
+    </div>
   );
 }
 

@@ -1043,6 +1043,10 @@ export const nb: Messages = {
   account: {
     title: "Min konto",
     signInTitle: "Logg inn",
+    googleSignIn: "Logg inn med Google",
+    googleOr: "eller",
+    googleNoAccount: "Ingen konto i denne butikken har e-posten Google-kontoen din bruker. Logg inn med en kode i stedet, eller opprett en konto.",
+    googleFailed: "Innlogging med Google virket ikke. Prøv igjen, eller logg inn med en kode.",
     signInIntro: "Skriv inn e-postadressen du handlet med. Vi sender deg en engangskode, så trenger du ikke passord.",
     email: "E-post",
     sendCode: "Send kode",

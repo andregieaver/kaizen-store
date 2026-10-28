@@ -1039,6 +1039,10 @@ export const sv: Messages = {
   account: {
     title: "Mitt konto",
     signInTitle: "Logga in",
+    googleSignIn: "Logga in med Google",
+    googleOr: "eller",
+    googleNoAccount: "Inget konto i den här butiken har e-postadressen ditt Google-konto använder. Logga in med en kod i stället, eller skapa ett konto.",
+    googleFailed: "Inloggningen med Google fungerade inte. Försök igen, eller logga in med en kod.",
     signInIntro: "Ange e-postadressen du handlade med. Vi skickar en engångskod, så du behöver inget lösenord.",
     email: "E-post",
     sendCode: "Skicka kod",

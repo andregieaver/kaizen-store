@@ -995,6 +995,10 @@ stand-in is the only fake, and only it is told it is one.
   address (never edited, personal data). A merge is only `mergeCustomers()` (plan read again under both rows' locks, refused before anything
   changes for `MERGE_REFUSALS`), so a new table that points at a customer gets a line there (move it, or a refusal) as well as in erasure. The
   customer import is a D165 job (`customer_import`, the owner's) that never sets a password or subscribes anyone and names a row by its number only.
+- **Sign in with Google (wave 10 unit L, D375, `src/lib/google-sign-in.ts`, `src/server/google-sign-in.ts`)**: customers sign in with Google
+  only through Kaizena Flow's own client on the platform's host (`/api/auth/google/start`, `/callback`) and a one-time hand-over on the store's
+  host (`/api/shop/google/enter`); only an account the store already has, by Google's verified email (`checkIdToken()`), signs in, and nothing
+  of the Google account is kept. Google's endpoints are constants, never configuration; a new provider follows the same shape.
 - **Leaving (wave 10 unit P, D377)**: an owner's or staff member's own account is erased only by `eraseOwnAccount()`
   (`src/server/account-erasure.ts`): the row is made anonymous in place (never deleted, many tables name it), what is only theirs is deleted,
   and it is refused for a platform admin, a store's last current owner, a host or a domain's holder; a new table of an account's own data

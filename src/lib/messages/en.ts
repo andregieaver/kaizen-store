@@ -1059,6 +1059,10 @@ export const en = {
   account: {
     title: "My account",
     signInTitle: "Sign in",
+    googleSignIn: "Sign in with Google",
+    googleOr: "or",
+    googleNoAccount: "No account in this store has the email your Google account uses. Sign in with a code instead, or create an account.",
+    googleFailed: "Signing in with Google did not work. Try again, or sign in with a code.",
     signInIntro: "Enter the email you shopped with. We will send you a one-time code, so you need no password.",
     email: "Email",
     sendCode: "Send code",

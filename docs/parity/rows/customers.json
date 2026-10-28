@@ -1411,13 +1411,13 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "partial"
     },
-    "gap": "Built (D28, D153, D162, D304): sign-in by emailed code or password; orders, subscriptions, company, bonus and referral pages, wishlist, account deletion; the order page shows withdrawals and returns and links to the withdrawal function; several saved addresses (up to 20, defaults for delivery and billing) offered where checkout asks the address itself (J1, `customer-addresses.ts`); the shopper's own data export after a fresh sign-in (D162, My account → Privacy); *Your orders* searches the customer's own orders by number, product or SKU and tracking number, filters by state and pages (J2, `findCustomerOrders()`). Still missing: social sign-in (criterion 4), which needs an OAuth client per provider (bucket B).",
-    "bucket": "B",
-    "wave": 5,
+    "gap": "Built (D28, D153, D162, D304): sign-in by emailed code or password; orders, subscriptions, company, bonus and referral pages, wishlist, account deletion; the order page shows withdrawals and returns and links to the withdrawal function; several saved addresses (up to 20, defaults for delivery and billing) offered where checkout asks the address itself (J1, `customer-addresses.ts`); the shopper's own data export after a fresh sign-in (D162, My account → Privacy); *Your orders* searches the customer's own orders by number, product or SKU and tracking number, filters by state and pages (J2, `findCustomerOrders()`). Sign in with Google (D375): through Kaizena Flow's own OAuth client on the platform's host with a one-time hand-over to the store's host, signing in only an account the store has by Google's verified email; tested against a stand-in for Google, and shown once `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set. Not built: Facebook or Apple sign-in.",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "A customer keeps several saved addresses (add, edit, delete, default), checkout offers them, and they are per customer and store.",
       "A customer downloads their own data (profile, addresses, orders, subscriptions, bonus ledger, wishlists, consents) as a machine-readable file after proving it is them again.",
@@ -1437,7 +1437,12 @@
         "src/app/s/[store]/[market]/account/addresses/page.tsx",
         "src/app/s/[store]/[market]/account/orders/page.tsx",
         "src/app/s/[store]/[market]/account/privacy/page.tsx",
-        "src/server/privacy-shopper.ts"
+        "src/server/privacy-shopper.ts",
+        "src/lib/google-sign-in.ts",
+        "src/server/google-sign-in.ts",
+        "src/app/api/auth/google/start/route.ts",
+        "src/app/api/auth/google/callback/route.ts",
+        "src/app/api/shop/google/enter/route.ts"
       ],
       "tests": [
         "src/server/customers.int.test.ts",
@@ -1446,7 +1451,9 @@
         "src/app/s/[store]/[market]/withdraw/actions.int.test.ts",
         "src/server/customer-addresses.int.test.ts",
         "src/server/account-orders.int.test.ts",
-        "src/server/privacy-shopper.int.test.ts"
+        "src/server/privacy-shopper.int.test.ts",
+        "src/lib/google-sign-in.test.ts",
+        "src/server/google-sign-in.int.test.ts"
       ],
       "untested": false
     },
@@ -1455,9 +1462,17 @@
       "D32",
       "D153",
       "D162",
-      "D304"
+      "D304",
+      "D375"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-28",
+        "from": "partial",
+        "to": "full",
+        "why": "D375: Sign in with Google by a verified email matched to an existing account, held by an integration test against a stand-in for Google (criterion 4); live once the OAuth client is set."
+      }
+    ]
   },
   {
     "id": "customers.seo-fundamentals",

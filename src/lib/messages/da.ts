@@ -1037,6 +1037,10 @@ export const da: Messages = {
   account: {
     title: "Min konto",
     signInTitle: "Log ind",
+    googleSignIn: "Log ind med Google",
+    googleOr: "eller",
+    googleNoAccount: "Ingen konto i denne butik har den e-mail, din Google-konto bruger. Log ind med en kode i stedet, eller opret en konto.",
+    googleFailed: "Login med Google virkede ikke. Prøv igen, eller log ind med en kode.",
     signInIntro: "Indtast den e-mail, du handlede med. Vi sender en engangskode, så du behøver ingen adgangskode.",
     email: "E-mail",
     sendCode: "Send kode",
