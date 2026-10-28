@@ -91,6 +91,10 @@ the plan:
 
 ### B. Money held for customers (D381)
 
+**B1 built (28 October 2026):** Finance's *Owed to customers* section, as designed below; `analytics.liabilities-gift-card-and-store-credit` is Full.
+The gift card ledger is rolled forward from all its entries, with a hold and its release on one line (`held`, in *used*), so it adds up.
+B2 (the shopper's own amount, a new code) follows.
+
 **What is missing.**
 - Bonus credit owed is shown only on the bonus page (`outstandingMinor`), not on Finance.
 - Neither bonus credit nor gift cards have an opening balance, so no roll-forward adds up from opening to closing.

@@ -107,6 +107,31 @@ const REGISTRY: AnalyticsTable[] = [
     money: true,
     rowCurrency: true,
   },
+  // Owed to customers (D381): bonus credit and gift cards, each ledger's roll-forward per currency and what is held now, never converted.
+  {
+    id: "finance.liabilities",
+    page: "finance",
+    view: "liabilities-view.tsx",
+    shape: "table",
+    caption: "Owed to customers per ledger and currency: the period's roll-forward and what is held now",
+    columns: [
+      text("ledger"),
+      amount("opening", "at_start"),
+      amount("granted", "given"),
+      amount("used"),
+      amount("returned", "given_back"),
+      amount("takenBack", "taken_back"),
+      amount("expired"),
+      amount("changed", "changed_by_staff"),
+      amount("other"),
+      amount("closing", "at_end"),
+      text("addsUp", "adds_up"),
+      amount("difference"),
+      amount("owedNow", "held_now"),
+    ],
+    money: true,
+    rowCurrency: true,
+  },
   // Gift cards (D300 F4): each currency on its own row, never converted; held now, and the period's movements.
   {
     id: "finance.gift_cards",

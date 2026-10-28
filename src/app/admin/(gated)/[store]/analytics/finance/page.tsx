@@ -5,6 +5,7 @@ import { AnalyticsHeader } from "@/components/admin/analytics/analytics-header";
 import { ExportScope } from "@/components/admin/analytics/export-scope";
 import { FinanceView, type FinancePeriodData } from "@/components/admin/analytics/finance-view";
 import { GiftCardsView } from "@/components/admin/analytics/gift-cards-view";
+import { LiabilitiesView } from "@/components/admin/analytics/liabilities-view";
 import { PaymentsView } from "@/components/admin/analytics/payments-view";
 import { TermsOwedView } from "@/components/admin/analytics/terms-owed-view";
 import { AdminTextScope } from "@/components/admin/admin-text";
@@ -18,6 +19,7 @@ import { paymentMethodsReport } from "@/server/analytics-payments-data";
 import { analyticsSetupSummary } from "@/server/analytics-settings-data";
 import { periodTotals, seriesByBucket } from "@/server/analytics-totals";
 import { giftCardLiability } from "@/server/gift-cards-admin";
+import { liabilityRows } from "@/server/liabilities";
 import { termsOwedReport } from "@/server/payment-terms";
 
 export const metadata: Metadata = { title: "Finance" };
@@ -45,7 +47,7 @@ export default async function AnalyticsFinancePage({ params, searchParams }: Pag
   const against = compare.previous ?? compare.lastYear;
   const bucket = bucketFor(period);
 
-  const [current, comparison, series, comparisonSeries, setup, payments, owed, giftCards] = await Promise.all([
+  const [current, comparison, series, comparisonSeries, setup, payments, owed, giftCards, liabilities] = await Promise.all([
     periodData(ctx, period),
     against ? periodData(ctx, against) : Promise.resolve(null),
     seriesByBucket(store, period, bucket, settings),
@@ -58,6 +60,8 @@ export default async function AnalyticsFinancePage({ params, searchParams }: Pag
     termsOwedReport(store),
     // What customers hold on gift cards (D300 F4): money owed, never a sale; each currency on its own.
     giftCardLiability(store, period),
+    // What the store owes customers as bonus credit and gift cards (D381): each ledger's roll-forward and what is held now.
+    liabilityRows(store, period),
   ]);
 
   return (
@@ -80,6 +84,7 @@ export default async function AnalyticsFinancePage({ params, searchParams }: Pag
         />
         <PaymentsView currency={mainCurrency(store)} locale={locale} report={payments} words={words} />
         <TermsOwedView base={ctx.base} currency={mainCurrency(store)} locale={locale} owed={owed} words={words} />
+        <LiabilitiesView locale={locale} rows={liabilities} words={words} />
         <GiftCardsView base={ctx.base} locale={locale} lines={giftCards.lines} words={words} />
       </div>
     </ExportScope>

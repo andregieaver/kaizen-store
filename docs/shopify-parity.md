@@ -10,11 +10,11 @@ D152 (the store analytics cockpit) and D153 (the EU withdrawal function and the 
 
 <!-- parity:generated:start since -->
 
-- **Headline now 87.1%** (first report 59.5%), **must-have 90.6%** (first report 69.1%), over 201 core rows (first report 232).
-- Where the change comes from: +27.3 points from the 139 rating moves on core rows recorded below, and +0.3 points because the re-read changed which rows count as core (the tracker has 231 rows, the first report 232 core ones).
+- **Headline now 87.3%** (first report 59.5%), **must-have 90.6%** (first report 69.1%), over 201 core rows (first report 232).
+- Where the change comes from: +27.5 points from the 140 rating moves on core rows recorded below, and +0.3 points because the re-read changed which rows count as core (the tracker has 231 rows, the first report 232 core ones).
 - 230 of 231 rows have their Shopify side read from a page; the others are listed under evidence debt.
 
-Rated higher (127):
+Rated higher (128):
 
 - Admin AI assistant that performs tasks (AI): partial to full. D350: notices for background work that finished or waits (page builds, follow-ups, autopilot questions and finished plans, changes kept for a yes, reports), written once each by the jobs, counted on the launcher and in the account menu, li…
 - Assistant memory and saved skills (AI): partial to full. D350: saved skills: Save as skill in the panel, a Skills tab to list, edit and delete, save_skill and delete_skill, use_skill loading them like the built-ins; owners share with the store; built-in keys, secrets, customers' details and mark…
@@ -35,6 +35,7 @@ Rated higher (127):
 - Marketing and channel attribution (Analytics): partial to full. D303 I3: campaign table with a last-visit and a first-visit-in-30-days model that states its coverage, a link builder and spend imported from CSV; spend sync from ad platforms stays out by the spec (bucket B, a credential per platform).
 - Payouts and reconciliation (Analytics): missing to full. Wave 4 unit C (D290): each Stripe payout of the store's own connected account is kept from the payout webhook events and a daily read, with its balance transactions as lines tied to the payment, refund or dispute and so the order each sett…
 - Payments reports by method (Analytics): missing to full. Wave 4 unit A (D288): a captured Stripe payment's method, wallet and card brand are read from its charge once (in after() the payment, and the five-minute job for any missed) and kept on the payment as Stripe gave them; one never read is U…
+- Liabilities: gift card and store credit (Analytics): partial to full. D381: bonus credit owed now on Finance as the sum of bonus_balance(), and a roll-forward of both ledgers from opening to closing that adds up; read the code and ran liabilities.int.test.ts, liabilities.test.ts and the view's test (passed).
 - RFM segments and customer lists (Analytics): partial to full. D380: a click-through from each customer type to a paged list with spend, a CSV for the owner, Save as a segment, and a test that the counts agree for every type; read the code and ran segment-audiences.int.test.ts (passed).
 - Returns and refund analytics (Analytics): partial to full. D153 shipped: `returnsReport()` gives return rate by orders and units, returned value, refunded for returns, return reasons (a fixed list, withdrawals shown as 'No reason given'), time to refund, refunds after the deadline, overdue refunds…
 - On-site search analytics (Analytics): partial to full. D347: a search keeps the day's visit of the same hashed visitor (`search_queries.visit_id`, no cookie or storage), and the Traffic page shows the paid orders placed after a search from a cart of the same visit, their revenue, conversion an…
@@ -177,7 +178,7 @@ Rated lower (24):
 
 <!-- parity:generated:start summary -->
 
-Kaizena Flow has **87.1%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 201 core features weighted by importance to an EU small or mid-size merchant, and **90.6%** on the must-haves (the 83 features with weight 4 or 5). The unweighted figures are 85.8% overall and 90.4% for must-haves. Counting app-only features gives 85.9%; counting Plus-only as well gives 85.4%. Kaizena Flow is strongest on storefront, themes and content (94.9%) and weakest on platform, extensibility and operations (67.2%), international, compliance and trust (77.7%), checkout and payments (80.0%). Of the 201 core features, 150 are full, 45 partial and 6 missing, so half-built features, not absent ones, are the main shape of the gap.
+Kaizena Flow has **87.3%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 201 core features weighted by importance to an EU small or mid-size merchant, and **90.6%** on the must-haves (the 83 features with weight 4 or 5). The unweighted figures are 86.1% overall and 90.4% for must-haves. Counting app-only features gives 86.0%; counting Plus-only as well gives 85.5%. Kaizena Flow is strongest on analytics, reporting and finance (95.5%) and weakest on platform, extensibility and operations (67.2%), international, compliance and trust (77.7%), checkout and payments (80.0%). Of the 201 core features, 151 are full, 44 partial and 6 missing, so half-built features, not absent ones, are the main shape of the gap.
 
 <!-- parity:generated:end summary -->
 
@@ -187,10 +188,10 @@ The method is simple: a full match scores 1, a partial match 0.5, a missing feat
 
 | Measure | Features | Weighted parity | Unweighted parity | Full / partial / missing |
 | --- | --- | --- | --- | --- |
-| Headline: core (Shopify native, Basic to Advanced) | 201 | **87.1%** | 85.8% | 150 / 45 / 6 |
+| Headline: core (Shopify native, Basic to Advanced) | 201 | **87.3%** | 86.1% | 151 / 44 / 6 |
 | Must-have (core, weight 4 or 5) | 83 | **90.6%** | 90.4% | 67 / 16 / 0 |
-| Core plus app-only features | 225 | 85.9% | 84.7% | 163 / 55 / 7 |
-| Everything, including Plus-only | 231 | 85.4% | 83.5% | 164 / 58 / 9 |
+| Core plus app-only features | 225 | 86.0% | 84.9% | 164 / 54 / 7 |
+| Everything, including Plus-only | 231 | 85.5% | 83.8% | 165 / 57 / 9 |
 
 <!-- parity:generated:end headline -->
 
@@ -207,11 +208,11 @@ Counts are core features only. Weighted parity uses weights 1 to 5; must-have is
 | Checkout and payments | 17 | 10 | 7 | 0 | 80.0% | 8 | 81.4% |
 | Orders, shipping, fulfilment and returns | 28 | 17 | 11 | 0 | 83.0% | 14 | 90.2% |
 | Customers, marketing and loyalty | 17 | 14 | 2 | 1 | 92.4% | 8 | 100.0% |
-| Analytics, reporting and finance | 24 | 21 | 2 | 1 | 94.2% | 11 | 94.6% |
+| Analytics, reporting and finance | 24 | 22 | 1 | 1 | 95.5% | 11 | 94.6% |
 | International, compliance and trust | 16 | 10 | 6 | 0 | 77.7% | 10 | 70.2% |
 | Platform, extensibility and operations | 20 | 8 | 9 | 3 | 67.2% | 7 | 79.3% |
 | AI and automation | 21 | 19 | 2 | 0 | 94.4% | 2 | 100.0% |
-| **Total** | **201** | **150** | **45** | **6** | **87.1%** | **83** | **90.6%** |
+| **Total** | **201** | **151** | **44** | **6** | **87.3%** | **83** | **90.6%** |
 
 <!-- parity:generated:end domains -->
 
@@ -223,7 +224,7 @@ A row is Full only when it lists code and tests that exist (or says it is untest
 
 | Evidence | Rows |
 | --- | ---: |
-| Full, with tests | 158 |
+| Full, with tests | 159 |
 | Full, untested (debt, not hidden) | 6 |
 | Shopify side not read from a page | 1 |
 | Rows in the tracker | 231 |
@@ -232,7 +233,7 @@ Untested Full rows: `ai.assistant-voice-mode`, `customers.abandoned-checkout-rec
 
 | Bucket | What it means | Rows not Full | Core rows | Core headline points lacking |
 | --- | --- | ---: | ---: | ---: |
-| A | Build in-house | 31 | 21 | 4.9 |
+| A | Build in-house | 30 | 20 | 4.8 |
 | B | Build, live only with a third party | 13 | 11 | 2.8 |
 | C | Strategy decision first | 9 | 7 | 1.7 |
 | D | Not reachable by code | 14 | 12 | 3.4 |
@@ -245,15 +246,15 @@ The waves are those of `docs/parity-plan.md` section 3. This table is produced f
 
 <!-- parity:generated:start projection -->
 
-Now: **87.1%** core, 90.6% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 16 rows (12 core) have no wave yet and are not in them.
+Now: **87.3%** core, 90.6% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 16 rows (12 core) have no wave yet and are not in them.
 
 | Wave | Scope | Rows (core) | Core if every row of waves 1 to N is Full | Must-have | Adds (points) | Core if only bucket A rows are | Must-have |
 | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | Compliance and money | 10 (7) | 89.2% | 94.1% | +2.1 | 88.6% | 93.0% |
-| 2 | Data in and out | 3 (1) | 89.5% | 94.1% | +0.2 | 88.8% | 93.0% |
-| 3 | Inventory and orders | 13 (12) | 92.3% | 95.8% | +2.9 | 90.0% | 93.5% |
-| 4 | Payments | 5 (4) | 93.2% | 96.3% | +0.9 | 90.4% | 93.5% |
-| 5 | Customers and marketing | 9 (6) | 94.5% | 96.3% | +1.3 | 91.1% | 93.5% |
+| 1 | Compliance and money | 10 (7) | 89.4% | 94.1% | +2.1 | 88.8% | 93.0% |
+| 2 | Data in and out | 3 (1) | 89.6% | 94.1% | +0.2 | 89.0% | 93.0% |
+| 3 | Inventory and orders | 13 (12) | 92.5% | 95.8% | +2.9 | 90.1% | 93.5% |
+| 4 | Payments | 5 (4) | 93.4% | 96.3% | +0.9 | 90.5% | 93.5% |
+| 5 | Customers and marketing | 8 (5) | 94.5% | 96.3% | +1.1 | 91.1% | 93.5% |
 | 6 | Catalogue | 0 (0) | 94.5% | 96.3% | +0.0 | 91.1% | 93.5% |
 | 7 | Storefront and international | 3 (3) | 95.2% | 96.3% | +0.7 | 91.6% | 93.5% |
 | 8 | Analytics and AI | 2 (2) | 95.7% | 96.3% | +0.5 | 91.8% | 93.5% |
@@ -531,7 +532,7 @@ Legend. **Shopify**: Native = included on Basic to Advanced and scored in the he
 | Tax and VAT reports by rate and jurisdiction | Native. [page](https://help.shopify.com/en/manual/taxes/tax-reports) | Partial | 5 | D, no wave yet | The four criteria are built and held by tests (see the evidence), and the migrations reached production (`docs/decisions.md` Migration versions), but an accountant has not read the part-assignment rules of `classify()`, the payment-day dating (Directive Art. 63 and 65), the euro rounding or the Part 3 handling (`docs/wave-1c-reports.md` section 8), so this is held at Partial like the other tax and legal rows (bucket D). The page is opened with data in a browser since D379 (`e2e/signed-in/tax-report.spec.ts`: one invoiced order, its row at 25 % and a reconciliation with nothing unnamed). Finance's PAID includes Stripe test-mode orders, which are never invoiced; the reconciliation names them as their own cause. Code: `src/server/analytics-sql.ts`, `src/lib/tax-periods.ts`. |
 | Payouts and reconciliation | Native. [page](https://help.shopify.com/en/manual/payments/shopify-payments/payouts/payout-reconciliation-report) | Full (was missing) | 4 |  | Evidence: `src/lib/payouts.ts`, `src/server/payouts.ts`, `src/server/payouts-report.ts` and 6 more; 6 test files; D17, D152, D290. |
 | Payments reports by method | Native. [page](https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/finances-report) | Full (was missing) | 2 |  | Evidence: `src/db/schema.ts`, `src/server/stripe-webhooks.ts`, `src/lib/analytics-payments.ts` and 3 more; 4 test files; D23, D288. |
-| Liabilities: gift card and store credit | Native. [page](https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/finances-report) | Partial (was missing) | 2 | A, wave 5 | Gift cards are a liability report of their own on Finance (D300 F4, `giftCardLiability()`): what customers hold now per currency and the period's issued, spent, refunded back, changed, expired and deactivated, with its CSV, never converted or added across currencies. Still missing: outstanding bonus credit on Finance (shown only at `/admin/{store}/bonus`, `outstandingMinor`), and an opening balance for either, so no roll-forward that adds up from opening to closing. Code: `src/server/bonus.ts`, `src/lib/bonus.ts`. |
+| Liabilities: gift card and store credit | Native. [page](https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/finances-report) | Full (was partial) | 2 |  | Built and held by tests (D300 F4, D381): Finance's Owed to customers section rolls bonus credit and gift cards forward from each ledger's own sums: at the start of the period, given, used, given back, taken back, expired, changed by staff, at the end, adding up to the minor unit (a row that does not says by how much, never made to fit), with what customers hold now beside it: bonus credit as the sum of commerce.bonus_balance() over the store's customers (the bonus page's figure, equal in liabilities.int.test.ts), shown in the main currency beside it for display only when the program's currency is another; gift cards per currency, never converted or added across currencies, with their own report below (giftCardLiability()) and both as CSVs (finance.liabilities, finance.gift_cards). Evidence: `src/server/bonus.ts`, `src/lib/bonus.ts`, `docs/bonus.md` and 7 more; 6 test files; D130, D300, D381. |
 | Customer reports: cohorts, repeat rate | Native. [page](https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/default-reports/customers-reports) | Full | 4 |  | Evidence: `src/lib/analytics-customers.ts`, `src/server/analytics-customers-data.ts`, `src/components/admin/analytics/customers-view.tsx` and 1 more; 3 test files; D152. |
 | Customer lifetime value | Native. [page](https://help.shopify.com/en/manual/customers/customer-segmentation/predicted-spend-tier) | Full | 3 |  | Residual: store and cohort level only (historic and predicted); no per-customer predicted value (Shopify's predicted spend tier is per customer). Evidence: `src/lib/analytics-customers.ts`, `src/server/analytics-customers-data.ts`, `src/components/admin/analytics/customers-view.tsx` and 1 more; 3 test files; D152. |
 | RFM segments and customer lists | Native. [page](https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/default-reports/customers-reports) | Full (was partial) | 3 |  | Built and held by tests (D152, D296, D380): each customer type on the Customers analytics page opens its people (/segments/rfm/{type}, for staff who may read segments and customers), a page of 100 at a time with name, orders, last order and money spent, from the page's own reader (rfmGroups()), so the list's count is the page's (segment-audiences.int.test.ts checks every type); a customer with an amount in a currency without a rate shows no amount and is counted, never listed at 0; the owner downloads it as a CSV (segmentCsv(), audited with counts) and anyone who may make segments saves it as one. Evidence: `src/lib/analytics-customers.ts`, `src/server/analytics-customers-data.ts`, `src/components/admin/analytics/customers-view.tsx` and 10 more; 9 test files; D152, D296, D380. |

@@ -729,22 +729,28 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": "missing"
+      "was": "partial"
     },
     "weight": 2,
-    "gap": "Gift cards are a liability report of their own on Finance (D300 F4, `giftCardLiability()`): what customers hold now per currency and the period's issued, spent, refunded back, changed, expired and deactivated, with its CSV, never converted or added across currencies. Still missing: outstanding bonus credit on Finance (shown only at `/admin/{store}/bonus`, `outstandingMinor`), and an opening balance for either, so no roll-forward that adds up from opening to closing.",
+    "gap": "Built and held by tests (D300 F4, D381): Finance's Owed to customers section rolls bonus credit and gift cards forward from each ledger's own sums: at the start of the period, given, used, given back, taken back, expired, changed by staff, at the end, adding up to the minor unit (a row that does not says by how much, never made to fit), with what customers hold now beside it: bonus credit as the sum of commerce.bonus_balance() over the store's customers (the bonus page's figure, equal in liabilities.int.test.ts), shown in the main currency beside it for display only when the program's currency is another; gift cards per currency, never converted or added across currencies, with their own report below (giftCardLiability()) and both as CSVs (finance.liabilities, finance.gift_cards).",
     "history": [
       {
         "on": "2026-10-02",
         "from": "missing",
         "to": "partial",
         "why": "First report's skeptic recheck: outstanding bonus credit (D130) is shown on the bonus page, so the row is not missing."
+      },
+      {
+        "on": "2026-10-28",
+        "from": "partial",
+        "to": "full",
+        "why": "D381: bonus credit owed now on Finance as the sum of bonus_balance(), and a roll-forward of both ledgers from opening to closing that adds up; read the code and ran liabilities.int.test.ts, liabilities.test.ts and the view's test (passed)."
       }
     ],
-    "bucket": "A",
-    "wave": 5,
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "Finance shows the store's outstanding liability for bonus credit, equal to the sum of `commerce.bonus_balance()` over customers, in the main currency.",
       "A roll-forward for the period shows opening balance, issued, redeemed, expired and closing, which adds up.",
@@ -758,18 +764,26 @@
         "docs/bonus.md",
         "src/app/admin/(gated)/[store]/bonus/page.tsx",
         "src/server/gift-cards-admin.ts",
-        "src/components/admin/analytics/gift-cards-view.tsx"
+        "src/components/admin/analytics/gift-cards-view.tsx",
+        "src/lib/liabilities.ts",
+        "src/server/liabilities.ts",
+        "src/components/admin/analytics/liabilities-view.tsx",
+        "src/app/admin/(gated)/[store]/analytics/finance/page.tsx"
       ],
       "tests": [
         "src/server/bonus.int.test.ts",
         "src/server/gift-cards.int.test.ts",
-        "src/components/admin/analytics/gift-cards-view.test.ts"
+        "src/components/admin/analytics/gift-cards-view.test.ts",
+        "src/lib/liabilities.test.ts",
+        "src/server/liabilities.int.test.ts",
+        "src/components/admin/analytics/liabilities-view.test.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D130",
-      "D300"
+      "D300",
+      "D381"
     ]
   },
   {

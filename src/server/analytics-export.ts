@@ -43,6 +43,7 @@ import { timeReport } from "./analytics-time-data";
 import { overviewHead, periodTotals, seriesByBucket, topProducts, type SeriesPoint } from "./analytics-totals";
 import { campaignReport, marketingReport, sessionTotals, trafficReport } from "./analytics-traffic-data";
 import { audit, type Membership } from "./auth";
+import { liabilityRows } from "./liabilities";
 import { giftCardLiability } from "./gift-cards-admin";
 import { memberCan } from "./permissions";
 
@@ -193,6 +194,22 @@ const BUILDERS: Record<string, (x: Run) => Promise<Built>> = {
         currency: p.currency,
       })),
       leftOut: { orders: r.unconverted, currencies: r.missingCurrencies },
+    };
+  },
+  "finance.liabilities": async (x) => {
+    const rows = await liabilityRows(x.ctx.store, x.period);
+    return {
+      rows: rows.map((r) => ({
+        ledger: r.ledger,
+        opening: r.openingMinor,
+        ...r.columns,
+        closing: r.closingMinor,
+        addsUp: r.addsUp ? "yes" : "no",
+        difference: r.differenceMinor,
+        owedNow: r.owedNowMinor,
+        currency: r.currency,
+      })),
+      leftOut: { orders: 0, currencies: [] },
     };
   },
   "finance.gift_cards": async (x) => {
