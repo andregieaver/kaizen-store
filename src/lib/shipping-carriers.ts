@@ -285,6 +285,11 @@ export type PickupPoint = { id: string; name: string; address: ShippingAddress; 
 
 export type BookingRequest = {
   orderReference: string;
+  /**
+   * What makes a retry of this parcel the same booking at a carrier that takes an idempotency key (Porterbuddy): one per parcel of the order
+   * (`parcelReference()`, D372), so a retry is never booked twice and another parcel of the same order is never taken for the first. None: the order's reference.
+   */
+  parcelReference?: string;
   serviceId: string;
   from: ShippingAddress;
   to: ShippingAddress;

@@ -181,6 +181,13 @@ export const ordersEn = {
     printOnPage: "Printing works on the orders ticked on a page.",
     printAtMost: "Tick at most {max} orders to print their packing slips or a pick list.",
     confirmLabel: "Confirm mark as sent",
+    confirmLabelsLabel: "Confirm booking labels",
+    confirmLabels: {
+      one: "Book a label for {n} order with its carrier: everything still to send, as one parcel. The carrier is the one the customer chose at checkout, or Posten / Bring's home parcel when they chose none, and the weight comes from the products. The order is marked as sent with its tracking number. If it cannot be booked, the reason is shown afterwards. While a carrier is in its test environment, nothing is shipped.",
+      many: "Book a label for each of {n} orders with its carrier, one order at a time: everything still to send, as one parcel. The carrier is the one the customer chose at checkout, or Posten / Bring's home parcel when they chose none, and the weight comes from the products. Each order is marked as sent with its tracking number. Orders that cannot be booked are listed afterwards with the reason. While a carrier is in its test environment, nothing is shipped.",
+    },
+    labelsAtMost: "Choose at most {max} orders to book their labels.",
+    printLabels: { one: "Print the label", many: "Print the {n} labels" },
     confirm: {
       one: "Mark {n} order as sent, without a tracking number. A partly sent order sends what is left as one parcel. Orders that are not paid, have nothing to ship, are copied history, wait for stock, have a change waiting for the customer's payment or were already sent are skipped and listed afterwards.",
       many: "Mark {n} orders as sent, without a tracking number. A partly sent order sends what is left as one parcel. Orders that are not paid, have nothing to ship, are copied history, wait for stock, have a change waiting for the customer's payment or were already sent are skipped and listed afterwards.",
@@ -287,6 +294,23 @@ export const ordersEn = {
     skip: { ...PICK_SKIP_WORDS },
     warnings: { ...PICK_WARNING_WORDS },
     notListed: "Downloads, services, items already sent, items withdrawn before sending and items that will not be sent are not on this list.",
+  },
+  labels: {
+    title: "Labels",
+    ready: {
+      one: "{n} label, booked with its carrier. It opens in your browser's PDF viewer, where you print it.",
+      many: "{n} labels, booked with their carriers, one after another. Each opens in your browser's PDF viewer, where you print it.",
+    },
+    none: "There is no label to print here. Book labels on the orders page: tick the orders and choose Book labels.",
+    tooMany: "Open at most {max} labels at a time.",
+    order: "Order #{number}",
+    frame: "Label of order #{number}",
+    open: "Open the label",
+    gone: {
+      one: "{n} label is not shown: its parcel was undone, it has no label, or it is not this store's.",
+      many: "{n} labels are not shown: their parcels were undone, they have no label, or they are not this store's.",
+    },
+    loading: "Loading the labels…",
   },
   slips: {
     title: "Packing slips",

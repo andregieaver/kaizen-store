@@ -35,8 +35,8 @@ const sendable = (over: Partial<MarkSentFacts> = {}): MarkSentFacts => ({
 });
 
 describe("the bulk actions", () => {
-  it("are tag, untag, archive, unarchive, mark sent, print and (D237) ready for pickup, each with words and a permission (printing is a read)", () => {
-    expect([...BULK_ACTIONS]).toEqual(["add_tags", "remove_tags", "archive", "unarchive", "mark_sent", "print_slips", "print_pick_list", "ready_for_pickup"]);
+  it("are tag, untag, archive, unarchive, mark sent, print, (D237) ready for pickup and (D374) book labels, each with words and a permission (printing is a read)", () => {
+    expect([...BULK_ACTIONS]).toEqual(["add_tags", "remove_tags", "archive", "unarchive", "mark_sent", "print_slips", "print_pick_list", "ready_for_pickup", "book_labels"]);
     for (const a of BULK_ACTIONS) {
       expect(BULK_ACTION_LABELS[a].length, a).toBeGreaterThan(3);
       expect(BULK_ACTION_PERMISSION[a], a).toBe(a === "print_slips" || a === "print_pick_list" ? "orders:read" : "orders:write");
@@ -46,10 +46,11 @@ describe("the bulk actions", () => {
     expect(isBulkAction(undefined)).toBe(false);
   });
 
-  it("name at most 250 orders, and 100 to print", () => {
+  it("name at most 250 orders, and 100 to print or to book labels (D374)", () => {
     expect([BULK_MAX, BULK_PRINT_MAX]).toEqual([250, 100]);
     expect(bulkMaxFor("archive")).toBe(250);
     expect(bulkMaxFor("print_slips")).toBe(100);
+    expect(bulkMaxFor("book_labels")).toBe(100);
   });
 
   it("has words for every reason and every request problem", () => {

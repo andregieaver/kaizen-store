@@ -12,7 +12,7 @@ import { adapterFor } from "./carriers";
 import { fetchBringLabel } from "./carriers/bring";
 import type { ParcelLine } from "@/lib/fulfilment";
 
-import { parcelPrecheck } from "./fulfilment";
+import { BOOKING_BUSY, bookingPrecheck, oneBookingAtATime, parcelReference } from "./carrier-booking";
 import { markSent, sendRefusalText, type Shipment } from "./order-admin";
 import { getOrder, type Address, type OrderView } from "./orders";
 import { bookingCustomsFor } from "./customs";
@@ -108,13 +108,23 @@ export type BringBooked =
 
 /**
  * Books the chosen service. A real booking marks the order as sent with the tracking number and keeps where its label is;
- * a test booking (the store's test environment) only says it worked.
+ * a test booking (the store's test environment) only says it worked. A parcel may hold part of the order (`lines`, D174), and
+ * another parcel of the same order may be booked straight after it (D372): one booking of an order runs at a time
+ * (`oneBookingAtATime()`), and a press made before the page showed the last parcel (`seen`) is refused before Bring is paid.
  */
 export async function bringBook(
   accountId: string,
   storeId: string,
   orderId: string,
-  input: { serviceId: string; pickupPointId?: string; parcel: unknown; /** What goes in this parcel (D174); none = everything still to send. */ lines?: readonly ParcelLine[] | null },
+  input: {
+    serviceId: string;
+    pickupPointId?: string;
+    parcel: unknown;
+    /** What goes in this parcel (D174); none = everything still to send. */
+    lines?: readonly ParcelLine[] | null;
+    /** The order's fulfilment as the screen showed it (`OrderFulfilment.basis`); none from a caller that showed nothing (the bulk action). */
+    seen?: string | null;
+  },
 ): Promise<BringBooked> {
   const parcel = parcelInput.safeParse(input.parcel);
   if (!parcel.success) return { ok: false, problem: parcel.error.issues[0].message };
@@ -122,14 +132,19 @@ export async function bringBook(
   if (!found.ok) return found;
   if (!["paid", "fulfilled"].includes(found.order.status)) return { ok: false, problem: "Only paid orders can be shipped." };
   if (found.order.copied) return { ok: false, problem: "A copied order is history and is never shipped." };
-  // A second click (or a second tab) must not pay Bring for the same parcel twice: one booking per order every two minutes.
-  const [recent] = await db().execute<Row>(sql`
-    select 1 from commerce.shipments
-    where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and carrier_id = 'bring' and created_at > now() - interval '2 minutes' and undone_at is null
-  `);
-  if (recent) return { ok: false, problem: "This order was just booked with Bring. Reload the page to see it." };
+  const booked = await oneBookingAtATime(orderId, () => bookUnderLock(accountId, storeId, orderId, found, { ...input, parcel: parcel.data }));
+  return booked ?? { ok: false, problem: BOOKING_BUSY };
+}
+
+async function bookUnderLock(
+  accountId: string,
+  storeId: string,
+  orderId: string,
+  found: Extract<Awaited<ReturnType<typeof prepared>>, { ok: true }>,
+  input: { serviceId: string; pickupPointId?: string; parcel: ParcelInput; lines?: readonly ParcelLine[] | null; seen?: string | null },
+): Promise<BringBooked> {
   // What goes in the parcel is checked before the carrier is paid for it (D174); `markSent()` checks it again under the order's lock.
-  const unfit = await parcelPrecheck(storeId, orderId, input.lines);
+  const unfit = await bookingPrecheck(storeId, orderId, input.lines, input.seen);
   if (unfit) return { ok: false, problem: unfit };
   const adapter = adapterFor("bring");
   if (!adapter?.book) return { ok: false, problem: "Bring is not available." };
@@ -140,10 +155,11 @@ export async function bringBook(
   try {
     const booked = await adapter.book(found.context, {
       orderReference: found.order.number,
+      parcelReference: await parcelReference(storeId, orderId, found.order.number),
       serviceId: input.serviceId,
       from,
       to: found.to,
-      parcels: [parcel.data],
+      parcels: [input.parcel],
       pickupPointId,
       ...(customs ? { customs } : {}),
     });

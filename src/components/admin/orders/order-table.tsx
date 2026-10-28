@@ -9,7 +9,7 @@ import { countWords, fillWords } from "@/lib/admin-fill";
 import { ordersEn, type OrdersMessages } from "@/lib/admin-messages/orders.en";
 import type { BulkResult } from "@/lib/order-bulk";
 import { appliedWords, refusalGroups, shipCellWords } from "@/lib/order-list-words";
-import { pickListHref, selectionBanner, printHref } from "@/lib/order-list-admin";
+import { labelsPageHref, pickListHref, selectionBanner, printHref } from "@/lib/order-list-admin";
 import { BULK_MAX, BULK_PRINT_MAX } from "@/lib/order-limits";
 import type { OrderColumn } from "@/lib/order-list";
 import type { DeliveryCell, OrderListItem } from "@/lib/order-list-row";
@@ -38,13 +38,13 @@ export type OrderTableProps = {
   locale?: string;
 };
 
-type Pending = "add_tags" | "remove_tags" | "archive" | "unarchive" | "mark_sent";
+type Pending = "add_tags" | "remove_tags" | "archive" | "unarchive" | "mark_sent" | "book_labels";
 
 const badge = "ml-2 inline-block rounded-full border border-line px-2 py-0.5 align-middle text-xs font-normal text-muted";
 
 /**
  * The Orders page's table with its selection and bulk bar (wave 3, D173, `docs/wave-3-orders.md` 2.2.3 and 2.2.5). A tick box on every row (staff who may only read see none), *Select all
- * on this page*, and, when every row is ticked and no more than 250 orders match, *Select all {n} matching*. The bar offers tags, archive, unarchive, mark as sent (asks first, and
+ * on this page*, and, when every row is ticked and no more than 250 orders match, *Select all {n} matching*. The bar offers tags, archive, unarchive, mark as sent and book labels (D374) (each asks first, and
  * says how many customers will be emailed when that is on) and print. After an action the panel says "Applied to 41 of 43 orders" and lists each refusal with its reason.
  */
 export function OrderTable({
@@ -82,6 +82,8 @@ export function OrderTable({
   // Mark as sent tells a customer only when the order is sent and has an address to tell.
   const emails = selectedRows.filter((r) => (r.ship === "to_send" || r.ship === "partly_sent") && !r.editPending && r.email !== null).length;
   const printable = !allMatching && ticked.size > 0 && ticked.size <= BULK_PRINT_MAX;
+  // Book labels (D374) takes as many orders as a printed set: its labels are printed together.
+  const bookable = selectedCount > 0 && selectedCount <= BULK_PRINT_MAX;
 
   const toggle = (id: string) => {
     setAllMatching(false);
@@ -115,7 +117,7 @@ export function OrderTable({
         action,
         ...(allMatching ? { matchingQuery } : { ids: [...ticked] }),
         ...(tags ? { tags } : {}),
-        ...(action === "mark_sent" ? { notify } : {}),
+        ...(action === "mark_sent" || action === "book_labels" ? { notify } : {}),
       });
       setConfirming(null);
       if (!answer.ok) {
@@ -133,7 +135,7 @@ export function OrderTable({
 
   return (
     <div className="flex flex-col gap-3">
-      {result && <ResultPanel result={result} onClose={() => setResult(null)} words={b} />}
+      {result && <ResultPanel result={result} onClose={() => setResult(null)} words={b} labelsHref={result.labels?.length ? labelsPageHref(slug, result.labels) : null} />}
       {problem && (
         <p role="alert" className="rounded-panel bg-sunken p-3 text-sm text-danger-text">
           {problem}
@@ -184,6 +186,13 @@ export function OrderTable({
             <button type="button" disabled={working} onClick={() => setConfirming(confirming === "mark_sent" ? null : "mark_sent")} className={secondary} aria-expanded={confirming === "mark_sent"}>
               {b.actions.mark_sent}
             </button>
+            {bookable ? (
+              <button type="button" disabled={working} onClick={() => setConfirming(confirming === "book_labels" ? null : "book_labels")} className={secondary} aria-expanded={confirming === "book_labels"}>
+                {b.actions.book_labels}
+              </button>
+            ) : (
+              <span className="text-xs text-muted">{fillWords(b.labelsAtMost, { max: BULK_PRINT_MAX })}</span>
+            )}
             {printable ? (
               <>
                 <Link href={printHref(slug, [...ticked])} target="_blank" className={secondary}>
@@ -199,9 +208,9 @@ export function OrderTable({
               </span>
             )}
           </div>
-          {confirming === "mark_sent" && (
-            <div role="group" aria-label={b.confirmLabel} className="flex flex-col gap-2 rounded-md border border-line bg-card p-3 text-sm">
-              <p>{countWords(selectedCount, b.confirm, { n: num(selectedCount) })}</p>
+          {(confirming === "mark_sent" || confirming === "book_labels") && (
+            <div role="group" aria-label={confirming === "book_labels" ? b.confirmLabelsLabel : b.confirmLabel} className="flex flex-col gap-2 rounded-md border border-line bg-card p-3 text-sm">
+              <p>{countWords(selectedCount, confirming === "book_labels" ? b.confirmLabels : b.confirm, { n: num(selectedCount) })}</p>
               <label className="flex items-center gap-2">
                 <input type="checkbox" checked={notify} onChange={(event) => setNotify(event.target.checked)} className="size-4" />
                 {b.tell}
@@ -210,8 +219,8 @@ export function OrderTable({
                 {notify ? (allMatching ? b.eachEmailed : countWords(emails, b.willEmail)) : b.noEmails}
               </p>
               <div className="flex gap-2">
-                <button type="button" disabled={working} onClick={() => run("mark_sent")} className={primary}>
-                  {working ? b.working : b.actions.mark_sent}
+                <button type="button" disabled={working} onClick={() => run(confirming)} className={primary}>
+                  {working ? b.working : b.actions[confirming]}
                 </button>
                 <button type="button" onClick={() => setConfirming(null)} className={secondary}>
                   {b.cancel}
@@ -431,9 +440,22 @@ function OrderRow({
 }
 
 /** What a bulk action did: "Applied to 41 of 43 orders", the emails sent, and each refusal grouped by its reason with the orders it was for. */
-export function ResultPanel({ result, onClose, words: b = ordersEn.bulk }: { result: BulkResult; onClose?: () => void; words?: OrdersMessages["bulk"] }) {
+export function ResultPanel({
+  result,
+  onClose,
+  words: b = ordersEn.bulk,
+  labelsHref = null,
+}: {
+  result: BulkResult;
+  onClose?: () => void;
+  words?: OrdersMessages["bulk"];
+  /** Book labels (D374): the page that shows the labels booked, one after another, to print. */
+  labelsHref?: string | null;
+}) {
   const groups = refusalGroups(result.refused, b);
-  const refusedName = (r: { number: string | null }) => (r.number ? `#${r.number}` : b.notFound);
+  // A carrier's own sentence (D374) goes with the order it was said of.
+  const refusedName = (r: { number: string | null; detail?: string }) => `${r.number ? `#${r.number}` : b.notFound}${r.detail ? ` (${r.detail})` : ""}`;
+  const labelCount = result.labels?.length ?? 0;
   return (
     <section aria-label={b.resultLabel} role="status" className="flex flex-col gap-2 rounded-panel bg-sunken p-4 text-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -446,6 +468,13 @@ export function ResultPanel({ result, onClose, words: b = ordersEn.bulk }: { res
       </div>
       {result.emailed !== undefined && (
         <p>{countWords(result.emailed, b.emailed)}</p>
+      )}
+      {labelsHref && labelCount > 0 && (
+        <p>
+          <Link href={labelsHref} target="_blank" className={primary}>
+            {countWords(labelCount, b.printLabels)}
+          </Link>
+        </p>
       )}
       {groups.length > 0 && (
         <ul className="flex flex-col gap-1">

@@ -26,16 +26,19 @@ export function ChosenDeliveryBooking({
   book,
   rows = [],
   notifyOff = null,
+  basis = null,
 }: {
   /** The *Order sent* email is switched off in Notifications (D238): no email is offered, and the box says so. */
   notifyOff?: string | null;
+  /** The order's fulfilment as this page shows it (`OrderFulfilment.basis`, D372): a press made before the page showed the last parcel is refused. */
+  basis?: string | null;
   carrierName: string;
   /** What the customer chose, written out. */
   chosenText: string;
   estimatedGrams: number;
   test: boolean;
   hasEmail: boolean;
-  book: (input: { notify: boolean; parcel: { weightGrams: number }; lines: ParcelLine[] | null }) => Promise<BookState>;
+  book: (input: { notify: boolean; parcel: { weightGrams: number }; lines: ParcelLine[] | null; seen: string | null }) => Promise<BookState>;
   /** The order's physical lines with what is still to send (D174), for the parcel's choice. */
   rows?: ParcelRow[];
 }) {
@@ -50,7 +53,7 @@ export function ChosenDeliveryBooking({
     start(async () => {
       if (lines === "invalid") return;
       const grams = Math.round(Number(weight.replace(",", ".")) * 1000);
-      setResult(await book({ notify: hasEmail && !test && !notifyOff && notify, parcel: { weightGrams: grams }, lines }));
+      setResult(await book({ notify: hasEmail && !test && !notifyOff && notify, parcel: { weightGrams: grams }, lines, seen: basis }));
     });
 
   return (

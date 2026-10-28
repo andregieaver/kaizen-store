@@ -21,7 +21,14 @@ export type PorterbuddyBookState = { ok: boolean; message: string };
 const noAccess = async () => adminText(await actionAdminLang(), "order").messages.noAccess;
 const wordsOf = (member: { account: { adminLocale?: string | null } }) => adminText(adminLangOf(member.account.adminLocale), "order").messages;
 
-const bookInput = z.object({ notify: z.boolean(), parcel: z.unknown(), /** What goes in this parcel (D174); none = everything still to send. */ lines: parcelLinesInput });
+const bookInput = z.object({
+  notify: z.boolean(),
+  parcel: z.unknown(),
+  /** What goes in this parcel (D174); none = everything still to send. */
+  lines: parcelLinesInput,
+  /** The order's fulfilment as the page showed it (D372): a press made before it showed the last parcel is refused. */
+  seen: z.string().max(100).nullish(),
+});
 
 /**
  * Books the window the customer chose with Porterbuddy (D137): a real booking marks the order as sent (and tells the

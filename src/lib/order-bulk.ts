@@ -9,7 +9,7 @@ import type { OrderListParams } from "./order-list";
 
 export { BULK_MAX, BULK_PRINT_MAX };
 
-export const BULK_ACTIONS = ["add_tags", "remove_tags", "archive", "unarchive", "mark_sent", "print_slips", "print_pick_list", "ready_for_pickup"] as const;
+export const BULK_ACTIONS = ["add_tags", "remove_tags", "archive", "unarchive", "mark_sent", "print_slips", "print_pick_list", "ready_for_pickup", "book_labels"] as const;
 export type BulkAction = (typeof BULK_ACTIONS)[number];
 export const isBulkAction = (value: unknown): value is BulkAction => typeof value === "string" && (BULK_ACTIONS as readonly string[]).includes(value);
 
@@ -22,6 +22,7 @@ export const BULK_ACTION_LABELS: Record<BulkAction, string> = {
   print_slips: "Print packing slips",
   print_pick_list: "Print pick list",
   ready_for_pickup: "Ready for pickup",
+  book_labels: "Book labels",
 };
 
 /** The permission each action needs: printing is a read, everything else a write. */
@@ -34,10 +35,14 @@ export const BULK_ACTION_PERMISSION: Record<BulkAction, "orders:read" | "orders:
   print_slips: "orders:read",
   print_pick_list: "orders:read",
   ready_for_pickup: "orders:write",
+  book_labels: "orders:write",
 };
 
-/** The most orders one request of this action names. */
-export const bulkMaxFor = (action: BulkAction): number => (action === "print_slips" || action === "print_pick_list" ? BULK_PRINT_MAX : BULK_MAX);
+/**
+ * The most orders one request of this action names. Booking labels (D374) takes the printed set's limit: its labels are printed together, and each
+ * order waits for its carrier's answer in turn.
+ */
+export const bulkMaxFor = (action: BulkAction): number => (action === "print_slips" || action === "print_pick_list" || action === "book_labels" ? BULK_PRINT_MAX : BULK_MAX);
 
 /** The orders a bulk action is for: ticked ones, or every order the list's own query matches (the server runs the query again). */
 export type BulkSelection = { kind: "ids"; ids: readonly string[] } | { kind: "matching"; params: OrderListParams };
@@ -47,7 +52,7 @@ export type BulkRequest = {
   selection: BulkSelection;
   /** Add and remove tags: the tags as typed (validated once before anything runs). */
   tags?: readonly string[];
-  /** Mark as sent: tell the customers (the *shipped* email, with no tracking line). Off by default. */
+  /** Mark as sent and Book labels: tell the customers (the *shipped* email; with a tracking line once a label is booked). Off by default. */
   notify?: boolean;
 };
 
@@ -77,6 +82,12 @@ export const BULK_REASONS = [
   "already_ready",
   "collected",
   "cancelled",
+  "local_order",
+  "no_carrier",
+  "carrier_cannot_book",
+  "no_weight",
+  "test_booking",
+  "carrier_refused",
 ] as const;
 export type BulkReason = (typeof BULK_REASONS)[number];
 
@@ -106,6 +117,12 @@ export const BULK_REASON_TEXT: Record<BulkReason, string> = {
   already_ready: "It was already marked ready.",
   collected: "It was already collected.",
   cancelled: "It is cancelled.",
+  local_order: "Your own driver takes it out: mark it out for delivery instead.",
+  no_carrier: "No carrier that books labels is connected for it: the customer chose a carrier that is not set up, or no carrier is set up.",
+  carrier_cannot_book: "The customer chose a carrier that cannot book labels from Kaizena Flow yet: book it with the carrier and enter the tracking number on the order.",
+  no_weight: "Some of what is left to send has no weight: book it from the order, where you enter the parcel's weight.",
+  test_booking: "The carrier booked it as a test (its test environment is on): nothing is shipped and the order is not marked as sent.",
+  carrier_refused: "The carrier did not book it:",
 };
 
 /** Why a whole request is refused before anything runs. */
@@ -115,7 +132,7 @@ export type BulkRequestProblem = (typeof BULK_REQUEST_PROBLEMS)[number];
 export const BULK_REQUEST_TEXT: Record<BulkRequestProblem, string> = {
   unknown_action: "That action is not known.",
   empty: "Choose at least one order.",
-  too_many: `A request names at most ${BULK_MAX} orders (${BULK_PRINT_MAX} to print). Narrow the list or do it in steps.`,
+  too_many: `A request names at most ${BULK_MAX} orders (${BULK_PRINT_MAX} to print or to book labels). Narrow the list or do it in steps.`,
   invalid_tag: "A tag cannot be empty, hold a comma or a control character, or be over 40 characters.",
   no_tags: "Write at least one tag.",
   too_many_tags: "Add or remove at most 50 tags at a time.",
@@ -125,7 +142,16 @@ export const BULK_REQUEST_TEXT: Record<BulkRequestProblem, string> = {
 export const BULK_TAGS_MAX = 50;
 
 /** One order a bulk action did not apply to: its number when it could be read (never an id that is not this store's), and why. */
-export type BulkRefusal = { id: string; number: string | null; reason: BulkReason };
+export type BulkRefusal = {
+  id: string;
+  number: string | null;
+  reason: BulkReason;
+  /** Book labels (D374): the carrier's own sentence for `carrier_refused`, as the order page shows it. */
+  detail?: string;
+};
+
+/** A label booked by *Book labels* (D374), to print with the others: the order, its new parcel and the carrier's name. */
+export type BulkLabel = { orderId: string; number: string; shipmentId: string; carrier: string };
 
 export type BulkResult = {
   action: BulkAction;
@@ -135,6 +161,8 @@ export type BulkResult = {
   refused: BulkRefusal[];
   /** Mark as sent with *Tell the customers*: emails that were sent. */
   emailed?: number;
+  /** Book labels (D374): the labels booked, in the order they were booked, to print together. */
+  labels?: BulkLabel[];
 };
 
 /** Collapses duplicate ids, keeping the first of each, in order. */

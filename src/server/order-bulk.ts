@@ -9,6 +9,7 @@ import {
   dedupeIds,
   isBulkAction,
   markSentBlock,
+  type BulkLabel,
   type BulkReason,
   type BulkRefusal,
   type BulkRequest,
@@ -21,11 +22,13 @@ import { tagsOf } from "@/lib/order-tags";
 
 import { audit } from "./auth";
 import { archiveOrder, unarchiveOrder } from "./order-archive";
+import { bookOrderLabel, connectedBookingCarriers, remainingWeights } from "./bulk-labels";
 import { fulfilmentOf } from "./fulfilment";
 import { markSent } from "./order-admin";
 import { loadOrderListContext, selectAllMatching } from "./order-list";
 import { type OrderActor } from "./order-actor";
 import { changeOrderTags } from "./order-tags";
+import { log } from "./log";
 import { packingSlipData } from "./packing-slips";
 import { pickListData } from "./pick-list";
 import { markReadyForPickup } from "./pickup";
@@ -40,7 +43,9 @@ type Row = Record<string, unknown>;
  * in its OWN transaction, one after another, so a refusal or a failure on one never undoes the others; the answer is `{ requested, applied, refused: [{ id, number, reason }] }`. An id that is
  * not this store's is `not_found` and nothing about it is revealed (no number). A request that cannot be run at all (an unknown action, nothing chosen, too many, an invalid tag) is refused
  * before anything runs. One audit entry per batch with counts, never the order numbers or the tags; each order's own history gets its own event from the function that did the work.
- * The batch never charges a card and never refunds. *Mark as sent* needs an open store and tells the customers only when asked (`notify`, off by default).
+ * The batch never charges a card and never refunds. *Mark as sent* needs an open store and tells the customers only when asked (`notify`, off by default). *Book labels*
+ * (D374) books each order's remaining units with its carrier through the order page's own booking functions (`bulk-labels.ts`), at most 100 orders, and
+ * hands back the labels booked (`labels`) to print together.
  */
 
 export type BulkOutcome = { ok: true; result: BulkResult } | { ok: false; problem: BulkRequestProblem };
@@ -126,6 +131,7 @@ export async function runBulk(storeId: string, actor: OrderActor, request: BulkR
   const refused: BulkRefusal[] = [];
   let applied = 0;
   let emailed: number | undefined;
+  let labels: BulkLabel[] | undefined;
 
   // Which of the ids are this store's, with their numbers: anything else is `not_found`, and nothing about it is told.
   const known = new Map<string, string>();
@@ -190,6 +196,48 @@ export async function runBulk(storeId: string, actor: OrderActor, request: BulkR
         refused.push(refusal(id, number, "failed"));
       }
     }
+  } else if (action === "book_labels") {
+    // D374: each order's remaining units booked with its carrier, one order after another (`bookOrderLabel()` through the order page's own booking
+    // functions), each refusal named, and the labels booked handed back to print together. The same blocks as *Mark as sent* come first.
+    emailed = 0;
+    labels = [];
+    const open = await isOpen(storeId);
+    const [facts, connected, weights] = open
+      ? await Promise.all([markSentFactsFor(storeId, mine), connectedBookingCarriers(storeId), remainingWeights(storeId, mine)])
+      : [new Map<string, MarkSentFacts & { number: string }>(), new Set<never>(), new Map<string, number | null>()];
+    for (const id of mine) {
+      const number = known.get(id) ?? null;
+      if (!open) {
+        refused.push(refusal(id, number, "store_closed"));
+        continue;
+      }
+      try {
+        const f = facts.get(id);
+        const block = !f ? "not_found" : (markSentBlock(f) ?? (f.deliveryMethod === "local" ? "local_order" : null));
+        if (block) {
+          refused.push(refusal(id, number, block));
+          continue;
+        }
+        if (!actor.accountId) {
+          refused.push(refusal(id, number, "failed"));
+          continue;
+        }
+        const booked = await bookOrderLabel(storeId, actor.accountId, id, { connected, grams: weights.get(id) });
+        if (!booked.ok) {
+          refused.push({ ...refusal(id, number, booked.reason), ...(booked.detail ? { detail: booked.detail } : {}) });
+          continue;
+        }
+        applied += 1;
+        if (booked.shipment.hasLabel) labels.push({ orderId: id, number: number ?? "", shipmentId: booked.shipment.id, carrier: booked.carrier });
+        if (request.notify) {
+          const outcome = await sendShipped(storeId, id, booked.shipment).catch(() => null);
+          if (outcome === "sent" || outcome === "logged") emailed += 1;
+        }
+      } catch (error) {
+        log("error", "orders.bulk_label_failed", { storeId, orderId: id }, error);
+        refused.push(refusal(id, number, "failed"));
+      }
+    }
   } else if (action === "ready_for_pickup") {
     // D237: each pickup order marked ready and emailed once (`markReadyForPickup()`), each refusal reported; backordered units are never confirmed in bulk.
     emailed = 0;
@@ -238,7 +286,7 @@ export async function runBulk(storeId: string, actor: OrderActor, request: BulkR
     }
   }
 
-  const result: BulkResult = { action, requested: ids.length, applied, refused, ...(emailed !== undefined ? { emailed } : {}) };
+  const result: BulkResult = { action, requested: ids.length, applied, refused, ...(emailed !== undefined ? { emailed } : {}), ...(labels ? { labels } : {}) };
   // One entry for the batch, with counts only: never the order numbers, never the tags.
   const auditAction =
     action === "add_tags" || action === "remove_tags"
@@ -249,7 +297,9 @@ export async function runBulk(storeId: string, actor: OrderActor, request: BulkR
           ? ORDER_AUDIT_ACTIONS.bulkUnarchived
           : action === "mark_sent"
             ? ORDER_AUDIT_ACTIONS.bulkSent
-            : null;
+            : action === "book_labels"
+              ? ORDER_AUDIT_ACTIONS.bulkLabelsBooked
+              : null;
   if (auditAction) {
     await audit(actor.accountId, storeId, auditAction, {
       action,
@@ -257,6 +307,7 @@ export async function runBulk(storeId: string, actor: OrderActor, request: BulkR
       applied: result.applied,
       refused: result.refused.length,
       ...(emailed !== undefined ? { emailed } : {}),
+      ...(labels ? { labels: labels.length } : {}),
       ...(parsedTags ? { tags: parsedTags.tags.length } : {}),
     });
   }

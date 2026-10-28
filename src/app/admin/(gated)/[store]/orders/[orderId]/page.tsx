@@ -612,6 +612,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                       chosen={order.delivery?.carrier === "bring" ? order.delivery : null}
                       rows={parcelRows}
                       notifyOff={notifyOff("order.sent")}
+                      basis={fulfilment.basis}
                     />
                   </div>
                 </details>
@@ -629,6 +630,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                       book={porterbuddyBookAction.bind(null, store.slug, order.id)}
                       rows={parcelRows}
                       notifyOff={notifyOff("order.sent")}
+                      basis={fulfilment.basis}
                     />
                   </div>
                 </details>
@@ -646,6 +648,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                       book={helthjemBookAction.bind(null, store.slug, order.id)}
                       rows={parcelRows}
                       notifyOff={notifyOff("order.sent")}
+                      basis={fulfilment.basis}
                     />
                   </div>
                 </details>

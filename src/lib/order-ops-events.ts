@@ -46,6 +46,7 @@ export const ORDER_AUDIT_ACTIONS = {
   bulkArchived: "order.bulk_archived",
   bulkUnarchived: "order.bulk_unarchived",
   bulkSent: "order.bulk_sent",
+  bulkLabelsBooked: "order.bulk_labels_booked",
   draftCreated: "order.draft_created",
   draftSent: "order.draft_sent",
   draftReopened: "order.draft_reopened",

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { BULK_MAX } from "./order-bulk";
-import { builtInHref, chipChange, clearHref, matchingText, pageHref, plainState, printHref, selectionBanner, stateQuery, viewHref } from "./order-list-admin";
+import { builtInHref, chipChange, clearHref, labelsPageHref, matchingText, pageHref, plainState, printHref, selectionBanner, stateQuery, viewHref } from "./order-list-admin";
 import { DEFAULT_ORDER_LIST, parseOrderListParams } from "./order-list";
 
 const base = "/admin/s/orders";
@@ -52,6 +52,10 @@ describe("the links of the orders list", () => {
 
   it("makes the print link from the ticked ids", () => {
     expect(printHref("shop", ["a", "b"])).toBe("/admin/shop/orders/packing-slips?ids=a,b");
+  });
+
+  it("makes the labels link from the parcels Book labels booked, in their order (D374)", () => {
+    expect(labelsPageHref("shop", [{ shipmentId: "s2" }, { shipmentId: "s1" }])).toBe("/admin/shop/orders/labels?ids=s2,s1");
   });
 });
 

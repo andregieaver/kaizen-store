@@ -14,6 +14,7 @@ type Row = Record<string, unknown>;
 const porter = vi.hoisted(() => {
   const calls: { url: string; method: string; headers: Record<string, string>; body: Record<string, unknown> | null }[] = [];
   const state = { windowGone: false, orderError: false, down: false };
+  const placed = new Map<string, string>();
   const at = (days: number, hour: number) => {
     const d = new Date(Date.now() + days * 86_400_000);
     d.setUTCHours(hour, 0, 0, 0);
@@ -35,7 +36,11 @@ const porter = vi.hoisted(() => {
     }
     if (String(url).endsWith("/order") && init.method === "POST") {
       if (state.orderError) return json({}, 422);
-      return json({ orderId: `PB-${calls.length}`, pickupTime: at(1, 14), _links: { labelInfo: { href: "https://api.porterbuddy.com/order/PB/label" }, userInformation: { href: "https://tracking.porterbuddy.com/abc" } } });
+      // As Porterbuddy does: a request with a key it has seen is answered with the order that key placed, nothing new.
+      const key = headers["Idempotency-Key"];
+      const orderId = placed.get(key) ?? `PB-${calls.length}`;
+      placed.set(key, orderId);
+      return json({ orderId, pickupTime: at(1, 14), _links: { labelInfo: { href: "https://api.porterbuddy.com/order/PB/label" }, userInformation: { href: "https://tracking.porterbuddy.com/abc" } } });
     }
     if (String(url).endsWith("/order/PB/label")) return json({ shipmentLabelUrl: "https://api.porterbuddy.com/order/PB/label/tok" });
     if (String(url).endsWith("/label/tok")) return new Response("%PDF-1.4 pb", { status: 200 });
@@ -216,10 +221,32 @@ describe("shipping an order with Porterbuddy", () => {
     expect((await getOrderAdmin(storeId, orderId))?.status).toBe("paid");
   });
 
-  it("does not book the same order twice in quick succession", async () => {
+  it("books part of an order as a parcel naming only its units, the order partly sent, then the rest as a parcel of its own (D372)", async () => {
     const orderId = await paidOrder();
-    expect((await porterbuddyBook(accountId, storeId, orderId, { parcel })).ok).toBe(true);
-    expect(await porterbuddyBook(accountId, storeId, orderId, { parcel })).toEqual({ ok: false, problem: "This order was just booked with Porterbuddy. Reload the page to see it." });
+    const before = (await getOrderAdmin(storeId, orderId))!;
+    const tote = before.fulfilment.lines.find((l) => l.sku === "DEMO-TOTE")!;
+    const orders = () => porter.calls.filter((c) => c.method === "POST" && c.url.endsWith("/order"));
+    const start = orders().length;
+    const first = await porterbuddyBook(accountId, storeId, orderId, { parcel: { weightGrams: 400 }, lines: [{ lineId: tote.lineId, quantity: 1 }], seen: before.fulfilment.basis });
+    expect(first.ok && !first.test && first.shipment.lines.map((l) => [l.lineId, l.quantity])).toEqual([[tote.lineId, 1]]);
+    const between = (await getOrderAdmin(storeId, orderId))!;
+    expect(between.status).toBe("paid");
+    expect(between.fulfilment.state).toBe("partly_sent");
+    // A press made before the page showed the first parcel is refused before Porterbuddy is asked.
+    expect(await porterbuddyBook(accountId, storeId, orderId, { parcel, seen: before.fulfilment.basis })).toEqual({ ok: false, problem: expect.stringMatching(/^The order changed while you were choosing/) });
+    expect(orders().length).toBe(start + 1);
+    const rest = await porterbuddyBook(accountId, storeId, orderId, { parcel: { weightGrams: 400 }, seen: between.fulfilment.basis });
+    expect(rest.ok && !rest.test && rest.shipment.lines.map((l) => [l.lineId, l.quantity])).toEqual([[tote.lineId, 1]]);
+    // Each parcel has an idempotency key of its own (the order's number, then `-2`): with the order's number for both, Porterbuddy would have answered
+    // the second with the first parcel's booking.
+    const [a, b] = orders().slice(start).map((c) => c.headers["Idempotency-Key"]);
+    expect(a).toBe(before.number);
+    expect(b).toBe(`${before.number}-2`);
+    expect(first.ok && !first.test && rest.ok && !rest.test && first.shipment.trackingNumber !== rest.shipment.trackingNumber).toBe(true);
+    const done = (await getOrderAdmin(storeId, orderId))!;
+    expect(done.status).toBe("fulfilled");
+    expect(done.shipments.filter((s) => !s.undone)).toHaveLength(2);
+    expect(await porterbuddyBook(accountId, storeId, orderId, { parcel })).toEqual({ ok: false, problem: "Nothing of this order is left to send." });
   });
 
   it("refuses an order the customer did not choose Porterbuddy for, an incomplete address and a bad weight", async () => {

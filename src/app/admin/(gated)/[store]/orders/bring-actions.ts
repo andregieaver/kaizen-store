@@ -41,6 +41,8 @@ const bookInput = z.object({
   parcel: z.unknown(),
   /** What goes in this parcel (D174); none = everything still to send. */
   lines: parcelLinesInput,
+  /** The order's fulfilment as the page showed it (D372): a press made before it showed the last parcel is refused. */
+  seen: z.string().max(100).nullish(),
 });
 
 /** Books the chosen service: a real booking marks the order as sent (and tells the customer when asked), a test one only says it worked. */

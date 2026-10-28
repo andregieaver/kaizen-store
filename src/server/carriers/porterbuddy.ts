@@ -106,8 +106,8 @@ export function createPorterbuddyAdapter(fetcher: Fetch = fetch): ShippingCarrie
       if (problems.length > 0) throw new Error(problems[0]);
       const answer = await call(fetcher, `${host(context)}/order`, {
         method: "POST",
-        // The same order is never placed twice, whatever is retried.
-        headers: headers(context, { "Content-Type": "application/json", "Idempotency-Key": request.orderReference }),
+        // The same parcel is never placed twice, whatever is retried; another parcel of the same order has a key of its own (D372).
+        headers: headers(context, { "Content-Type": "application/json", "Idempotency-Key": request.parcelReference ?? request.orderReference }),
         body: JSON.stringify(orderBody(request)),
       });
       if (!answer.ok) throw new Error(answer.problem);

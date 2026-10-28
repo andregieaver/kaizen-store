@@ -260,6 +260,26 @@ describe("the bulk result", () => {
     expect(plain(renderToString(h(ResultPanel, { result: result({ action: "mark_sent", emailed: 1, refused: [] }) })))).toContain("1 customer was emailed.");
     expect(plain(renderToString(h(ResultPanel, { result: result({ refused: [] }) })))).not.toContain("emailed");
   });
+
+  it("offers the labels Book labels made to print together, and names a carrier's own refusal with its order (D374)", () => {
+    const booked = result({
+      action: "book_labels",
+      refused: [{ id: "a", number: "1007", reason: "carrier_refused", detail: "Unknown customer number" }],
+      labels: [
+        { orderId: "o1", number: "1001", shipmentId: "s1", carrier: "Posten / Bring" },
+        { orderId: "o2", number: "1002", shipmentId: "s2", carrier: "Helthjem" },
+      ],
+    });
+    const html = renderToString(h(ResultPanel, { result: booked, labelsHref: "/admin/shop/orders/labels?ids=s1,s2" }));
+    const text = plain(html);
+    expect(text).toContain("Print the 2 labels");
+    expect(html).toContain('href="/admin/shop/orders/labels?ids=s1,s2"');
+    expect(text).toContain("The carrier did not book it:");
+    expect(text).toContain("#1007 (Unknown customer number)");
+    // Without labels, or without the page to show them, no link.
+    expect(plain(renderToString(h(ResultPanel, { result: booked })))).not.toContain("Print the");
+    expect(plain(renderToString(h(ResultPanel, { result: { ...booked, labels: [] }, labelsHref: "/x" })))).not.toContain("Print the");
+  });
 });
 
 describe("the saved views tools", () => {

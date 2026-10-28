@@ -1,21 +1,17 @@
 import "server-only";
 
-import { sql } from "drizzle-orm";
-
-import { db } from "@/db/client";
+import type { OrderDelivery } from "@/lib/delivery-options";
 import type { ShippingAddress } from "@/lib/shipping-carriers";
 
 import { audit } from "./auth";
-import { parcelInput, toParty } from "./bring-shipping";
+import { parcelInput, toParty, type ParcelInput } from "./bring-shipping";
 import { adapterFor } from "./carriers";
 import type { ParcelLine } from "@/lib/fulfilment";
 
-import { parcelPrecheck } from "./fulfilment";
+import { BOOKING_BUSY, bookingPrecheck, oneBookingAtATime, parcelReference } from "./carrier-booking";
 import { markSent, sendRefusalText, type Shipment } from "./order-admin";
 import { getOrder } from "./orders";
 import { carrierContext } from "./shipping-carriers";
-
-type Row = Record<string, unknown>;
 
 export type HelthjemBooked =
   | { ok: true; test: true; trackingNumber: string }
@@ -27,13 +23,20 @@ export type HelthjemBooked =
  * shopper chose) with the transport solution the store set for it. Helthjem is asked whether it reaches the address first
  * (for a home delivery), and nothing is booked if it does not. A real booking marks the order as sent with Helthjem's
  * shipment number as the tracking number and keeps where its label is; a test booking (the store's test environment) only
- * says it worked.
+ * says it worked. One booking of an order runs at a time, and a press made before the page showed the last parcel (`seen`)
+ * is refused before Helthjem is paid (D372, `carrier-booking.ts`).
  */
 export async function helthjemBook(
   accountId: string,
   storeId: string,
   orderId: string,
-  input: { parcel: unknown; /** What goes in this parcel (D174); none = everything still to send. */ lines?: readonly ParcelLine[] | null },
+  input: {
+    parcel: unknown;
+    /** What goes in this parcel (D174); none = everything still to send. */
+    lines?: readonly ParcelLine[] | null;
+    /** The order's fulfilment as the screen showed it (`OrderFulfilment.basis`); none from a caller that showed nothing (the bulk action). */
+    seen?: string | null;
+  },
 ): Promise<HelthjemBooked> {
   const parcel = parcelInput.safeParse(input.parcel);
   if (!parcel.success) return { ok: false, problem: parcel.error.issues[0].message };
@@ -48,15 +51,19 @@ export async function helthjemBook(
   if (!to) return { ok: false, problem: "The order's delivery address is not complete: it needs a name, street, postal code, city and country." };
   if (to.country !== "NO") return { ok: false, problem: "Helthjem delivers to Norway." };
   if (!to.phone) to.phone = order.billingAddress.phone ?? "";
+  const booked = await oneBookingAtATime(orderId, () => bookUnderLock(accountId, storeId, orderId, { number: order.number, chosen, to, context }, { ...input, parcel: parcel.data }));
+  return booked ?? { ok: false, problem: BOOKING_BUSY };
+}
 
-  // A second click (or tab) must not book the same parcel twice.
-  const [recent] = await db().execute<Row>(sql`
-    select 1 from commerce.shipments
-    where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and carrier_id = 'helthjem' and created_at > now() - interval '2 minutes' and undone_at is null
-  `);
-  if (recent) return { ok: false, problem: "This order was just booked with Helthjem. Reload the page to see it." };
+async function bookUnderLock(
+  accountId: string,
+  storeId: string,
+  orderId: string,
+  { number, chosen, to, context }: { number: string; chosen: OrderDelivery; to: ShippingAddress; context: NonNullable<Awaited<ReturnType<typeof carrierContext>>> },
+  input: { parcel: ParcelInput; lines?: readonly ParcelLine[] | null; seen?: string | null },
+): Promise<HelthjemBooked> {
   // What goes in the parcel is checked before the carrier is paid for it (D174); `markSent()` checks it again under the order's lock.
-  const unfit = await parcelPrecheck(storeId, orderId, input.lines);
+  const unfit = await bookingPrecheck(storeId, orderId, input.lines, input.seen);
   if (unfit) return { ok: false, problem: unfit };
 
   const adapter = adapterFor("helthjem");
@@ -71,11 +78,12 @@ export async function helthjemBook(
   };
   try {
     const booked = await adapter.book(context, {
-      orderReference: order.number,
+      orderReference: number,
+      parcelReference: await parcelReference(storeId, orderId, number),
       serviceId: chosen.serviceId,
       from,
       to,
-      parcels: [parcel.data],
+      parcels: [input.parcel],
       pickupPointId: chosen.pickupPoint?.id,
     });
     await audit(accountId, storeId, "shipping.helthjem_booked", { orderId, test: booked.test });

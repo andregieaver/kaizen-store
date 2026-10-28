@@ -57,6 +57,7 @@ describe("without the right to change orders", () => {
     expect(await archiveOrderAction(store.slug, order.id)).toMatchObject({ ok: false });
     expect(await unarchiveOrderAction(store.slug, order.id)).toMatchObject({ ok: false });
     expect(await bulkOrdersAction(store.slug, { action: "archive", ids: [order.id] })).toMatchObject({ ok: false, message: "You do not have access to do this." });
+    expect(await bulkOrdersAction(store.slug, { action: "book_labels", ids: [order.id] })).toMatchObject({ ok: false, message: "You do not have access to do this." });
     expect(await saveOrderViewAction(store.slug, { title: "Nope", query: "pay=paid" })).toMatchObject({ ok: false });
     expect(await deleteOrderViewAction(store.slug, crypto.randomUUID())).toMatchObject({ ok: false });
     expect(access.asked.every((key) => key === "orders:write")).toBe(true);

@@ -97,6 +97,8 @@ export function matchingText(count: number, capped: boolean): string {
 export const printHref = (slug: string, ids: readonly string[]): string => `/admin/${slug}/orders/packing-slips?ids=${ids.join(",")}`;
 /** The pick list of the ticked orders (D174): what is still to send of them, by product. */
 export const pickListHref = (slug: string, ids: readonly string[]): string => `/admin/${slug}/orders/pick-list?ids=${ids.join(",")}`;
+/** The labels *Book labels* booked (D374), shown one after another to print: the parcels' ids, in the order they were booked. */
+export const labelsPageHref = (slug: string, labels: readonly { shipmentId: string }[]): string => `/admin/${slug}/orders/labels?ids=${labels.map((l) => l.shipmentId).join(",")}`;
 
 /** A list row with the words the screen draws: the date in the store's own time zone and the total in the order's own currency (no sum across currencies is ever made on the page). */
 export function tableRowsOf<T extends { placedAt: string; totalMinor: number; currency: string }>(

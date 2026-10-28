@@ -144,6 +144,11 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["pick list", "picking list", "picklist", "warehouse", "pick", "plukkliste"],
     feature: "shop",
   }),
+  store("orders.labels", "/orders/labels", "Labels", "Main", "The carrier labels Book labels made on the orders page, one after another to print: each fetched from its carrier with your agreement when it is shown, never kept. Parcels undone since are left out.", {
+    tasks: ["Print the labels of the orders you booked together"],
+    keywords: ["labels", "shipping labels", "print labels", "bulk labels", "book labels", "bring", "helthjem", "porterbuddy", "etiketter"],
+    feature: "shop",
+  }),
   store("orders.drafts", "/orders/drafts", "Draft orders", "Main", "Draft orders: orders you make for a customer, newest first, with what each is worth and where it stands (open, sent, paid, expired). A draft holds no stock until it is sent as a pay link.", {
     tasks: ["Make a draft order", "See drafts waiting for payment (?status=sent)", "Open a draft"],
     keywords: ["draft", "quote", "manual order", "phone order", "payment link", "pay link", "invoice a customer", "create order", "utkast"],

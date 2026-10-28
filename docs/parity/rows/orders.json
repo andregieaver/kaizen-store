@@ -478,7 +478,7 @@
       "was": "full"
     },
     "weight": 4,
-    "gap": "Built and held by tests (D174): parcels name their lines and units (`shipment_lines`, `markSent()`; a parcel without lines is refused at commit), an order stays paid and Partly sent while units are left, each parcel has its own carrier, tracking and email listing its lines, the shopper's order pages list the parcels, bulk Mark as sent sends the remainder and names each refusal, withdrawn units are never sent, units refunded before sending are closed (`commerce.unsent_closures`, `unsent-closures.int.test.ts` in kroner and euros), a parcel can be undone (`undoShipment()`), a held card is captured before anything is sent (D289 `captureForSending()`), and the staff Send card is driven in a browser (`e2e/signed-in/order-send.spec.ts`). Still short of Full: (1) no carrier booking of part of an order is tested (`bring-shipping.int.test.ts`, `helthjem-shipping.int.test.ts`, `porterbuddy-shipping.int.test.ts` book whole orders), and Bring refuses a second booking of the same order within two minutes, so two Bring parcels of one order cannot be booked back to back; (2) the receipt sentence and parcel words shown to consumers (spec section 8 items 6 and 7) are not yet read by a person.",
+    "gap": "Built and held by tests (D174, D372): parcels name their lines and units (`shipment_lines`, `markSent()`; a parcel without lines is refused at commit), an order stays paid and Partly sent while units are left, each parcel has its own carrier, tracking and email listing its lines, the shopper's order pages list the parcels, bulk Mark as sent sends the remainder and names each refusal, withdrawn units are never sent, units refunded before sending are closed (`commerce.unsent_closures`, `unsent-closures.int.test.ts` in kroner and euros), a parcel can be undone (`undoShipment()`), a held card is captured before anything is sent (D289 `captureForSending()`), the staff Send card is driven in a browser (`e2e/signed-in/order-send.spec.ts`), and part of an order is booked with each carrier that books, the rest straight after as its own parcel (D372: `bring-shipping.int.test.ts`, `helthjem-shipping.int.test.ts`, `porterbuddy-shipping.int.test.ts`; one booking of an order at a time, a stale press refused before the carrier is paid, a key of its own for each Porterbuddy parcel). Still short of Full: the receipt sentence and parcel words shown to consumers (spec section 8 items 6 and 7) are not yet read by a person.",
     "bucket": "A",
     "wave": 3,
     "criteria": [
@@ -506,7 +506,8 @@
         "src/components/order-shipments.tsx",
         "src/server/return-facts.ts",
         "supabase/migrations/20261007042008_fulfilment_unsent_closures.sql",
-        "src/lib/shipment-undo.ts"
+        "src/lib/shipment-undo.ts",
+        "src/server/carrier-booking.ts"
       ],
       "tests": [
         "src/lib/fulfilment.test.ts",
@@ -521,7 +522,10 @@
         "e2e/partial-shipment.spec.ts",
         "src/server/unsent-closures.int.test.ts",
         "src/server/shipment-undo.int.test.ts",
-        "e2e/signed-in/order-send.spec.ts"
+        "e2e/signed-in/order-send.spec.ts",
+        "src/server/bring-shipping.int.test.ts",
+        "src/server/helthjem-shipping.int.test.ts",
+        "src/server/porterbuddy-shipping.int.test.ts"
       ],
       "untested": false
     },
@@ -529,7 +533,8 @@
       "D27",
       "D153",
       "D174",
-      "D289"
+      "D289",
+      "D372"
     ],
     "history": [
       {
@@ -760,7 +765,7 @@
       "was": null
     },
     "weight": 4,
-    "gap": "Booking from the order with Bring (D134), Porterbuddy (D137) and Helthjem (D138) for parcels in Norway; the booked parcel names its lines (D174), and the label is fetched from the carrier's own host when printed and never stored (`carrier-label.ts`). PostNord cannot book (D136, waiting for its EDI specification). In the store's test environment nothing real is booked. Bulk actions (`BULK_ACTIONS`: tags, archive, mark sent, slips, pick list, ready for pickup) do not book or print carrier labels (criterion 3). Undoing a parcel does not cancel the carrier's booking. Nothing has been verified against a carrier's live service (bucket B).",
+    "gap": "Booking from the order with Bring (D134), Porterbuddy (D137) and Helthjem (D138) for parcels in Norway; the booked parcel names its lines (D174), a second parcel of the same order is booked straight after the first (D372), and the label is fetched from the carrier's own host when printed and never stored (`carrier-label.ts`). *Book labels* on the Orders list (D374) books up to 100 orders' remaining units with their carriers through the same functions, names each refusal by order number (the carrier's own sentence included) and shows the labels one after another to print (`bulk-labels.int.test.ts`); it prints them from a page of the carriers' PDFs, not as one merged PDF. PostNord cannot book (D136, waiting for its EDI specification). In the store's test environment nothing real is booked. Undoing a parcel does not cancel the carrier's booking. Nothing has been verified against a carrier's live service (bucket B).",
     "bucket": "B",
     "wave": 3,
     "criteria": [
@@ -779,7 +784,10 @@
         "src/server/carriers/index.ts",
         "src/components/admin/orders/send-parcel.tsx",
         "src/lib/order-bulk.ts",
-        "src/server/order-bulk.ts"
+        "src/server/order-bulk.ts",
+        "src/server/bulk-labels.ts",
+        "src/server/carrier-booking.ts",
+        "src/app/admin/(gated)/[store]/orders/labels/page.tsx"
       ],
       "tests": [
         "src/server/bring-shipping.int.test.ts",
@@ -787,7 +795,8 @@
         "src/server/helthjem-shipping.int.test.ts",
         "src/server/carriers/bring.test.ts",
         "src/server/fulfilment.int.test.ts",
-        "src/server/order-bulk.int.test.ts"
+        "src/server/order-bulk.int.test.ts",
+        "src/server/bulk-labels.int.test.ts"
       ],
       "untested": false
     },
@@ -795,7 +804,9 @@
       "D134",
       "D137",
       "D138",
-      "D174"
+      "D174",
+      "D372",
+      "D374"
     ],
     "history": []
   },

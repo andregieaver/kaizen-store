@@ -24,6 +24,7 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
   "store:order.packing-slip": { title: "Pakkseddel", keywords: ["pakkseddel", "skriv ut", "pakke", "gavekvittering"] },
   "store:orders.packing-slips": { title: "Pakksedler", keywords: ["pakksedler", "pakkseddel", "skriv ut flere", "plukk"] },
   "store:orders.pick-list": { title: "Plukkliste", keywords: ["plukkliste", "plukking", "plukk", "lager"] },
+  "store:orders.labels": { title: "Etiketter", keywords: ["etiketter", "fraktetiketter", "skriv ut etiketter", "book etiketter", "bring", "helthjem", "porterbuddy"] },
   "store:orders.drafts": {
     title: "Utkast til bestillinger",
     keywords: ["utkast", "utkast til bestilling", "tilbud", "manuell ordre", "telefonordre", "betalingslenke", "opprett bestilling"],

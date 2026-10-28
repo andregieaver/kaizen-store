@@ -13,7 +13,8 @@ type Row = Record<string, unknown>;
 /** A stand-in for Bring that answers as its documentation says and records what it is asked. */
 const bring = vi.hoisted(() => {
   const calls: { url: string; headers: Record<string, string>; body: unknown }[] = [];
-  const state = { bookingError: false };
+  /** `gate`: a booking waits for it, so a second booking can be tried while the first is with Bring. */
+  const state: { bookingError: boolean; gate: Promise<void> | null; held: number } = { bookingError: false, gate: null, held: 0 };
   const guide = {
     consignments: [
       {
@@ -32,6 +33,10 @@ const bring = vi.hoisted(() => {
     if (String(url).includes("/pickuppoint/")) return json({ pickupPoint: [{ id: "PP1", name: "Kiwi Sentrum", address: "Storgata 9", postalCode: "0155", city: "OSLO", countryCode: "NO", distance: "0.3" }] });
     if (String(url).includes("/shippingguide/")) return json(guide);
     if (String(url).includes("/booking/api/create")) {
+      if (state.gate) {
+        state.held += 1;
+        await state.gate;
+      }
       if (state.bookingError) return json({ consignments: [{ errors: [{ code: "1", messages: [{ message: "Unknown customer number" }] }] }] });
       return json({ consignments: [{ confirmation: { consignmentNumber: "C-100" }, packages: [{ packageNumber: "P-100" }], links: { labels: "https://api.bring.com/labels/C-100", tracking: "https://tracking.bring.com/P-100" }, errors: [] }] });
     }
@@ -80,9 +85,11 @@ afterAll(async () => {
   await closeDb();
 });
 
-async function paidOrder(address: Record<string, unknown> = { name: "Kari Nordmann", line1: "Storgata 1", postalCode: "0155", city: "Oslo", country: "NO" }): Promise<string> {
+/** A paid order of two totes (and one of `also`, another product, when given). */
+async function paidOrder(address: Record<string, unknown> = { name: "Kari Nordmann", line1: "Storgata 1", postalCode: "0155", city: "Oslo", country: "NO" }, also: string | null = null): Promise<string> {
   const [cart] = await db().execute<Row>(sql`insert into commerce.carts (store_id, market_code, currency, locale, expires_at) values (${storeId}::uuid, 'NO', 'NOK', 'nb-NO', now() + interval '1 day') returning id`);
   await db().execute(sql`insert into commerce.cart_lines (store_id, cart_id, variant_id, quantity) select ${storeId}::uuid, ${String(cart.id)}::uuid, id, 2 from commerce.product_variants where store_id = ${storeId}::uuid and sku = 'DEMO-TOTE'`);
+  if (also) await db().execute(sql`insert into commerce.cart_lines (store_id, cart_id, variant_id, quantity) select ${storeId}::uuid, ${String(cart.id)}::uuid, id, 1 from commerce.product_variants where store_id = ${storeId}::uuid and sku = ${also}`);
   const result = await placeOrder({ storeId, market: no }, String(cart.id));
   if (!result.ok) throw new Error(result.problem);
   const { orderId, totalMinor } = result.order;
@@ -159,11 +166,79 @@ describe("shipping an order with Posten / Bring", () => {
     expect((await bringTracking(storeId, "P-100"))[0]).toMatchObject({ status: "IN_TRANSIT" });
   });
 
-  it("does not book the same order twice in quick succession", async () => {
+  it("books part of an order as a parcel naming only its lines, and the order stays partly sent (D372)", async () => {
+    await db().execute(sql`update commerce.inventory_levels set on_hand = on_hand + 50 where store_id = ${storeId}::uuid`);
+    const orderId = await paidOrder(undefined, "DEMO-MUG-BLACK");
+    const before = (await getOrderAdmin(storeId, orderId))!;
+    const tote = before.fulfilment.lines.find((l) => l.sku === "DEMO-TOTE")!;
+    const mug = before.fulfilment.lines.find((l) => l.sku === "DEMO-MUG-BLACK")!;
+    expect([tote.toSend, mug.toSend]).toEqual([2, 1]);
+    const booked = await bringBook(accountId, storeId, orderId, { serviceId: "5600", parcel, lines: [{ lineId: tote.lineId, quantity: 1 }, { lineId: mug.lineId, quantity: 0 }], seen: before.fulfilment.basis });
+    expect(booked.ok && !booked.test && booked.shipment.lines).toEqual([{ lineId: tote.lineId, sku: "DEMO-TOTE", title: expect.any(String), quantity: 1 }]);
+    const after = (await getOrderAdmin(storeId, orderId))!;
+    expect(after.status).toBe("paid");
+    expect(after.fulfilment.state).toBe("partly_sent");
+    expect(after.fulfilment.lines.map((l) => [l.sku, l.toSend])).toEqual(
+      expect.arrayContaining([
+        ["DEMO-TOTE", 1],
+        ["DEMO-MUG-BLACK", 1],
+      ]),
+    );
+    // The parcel at Bring is the one package of this parcel's weight; nothing of the order identifies it to Bring.
+    const sent = bring.calls.filter((c) => c.url.includes("/booking/")).at(-1)!;
+    expect(sent.body).toMatchObject({ consignments: [{ packages: [{ weightInKg: 0.8 }] }] });
+    expect(JSON.stringify(sent.body)).not.toContain(after.number);
+  });
+
+  it("books a second parcel of the same order straight after the first, which Bring never refused (D372)", async () => {
+    const orderId = await paidOrder(undefined, "DEMO-MUG-BLACK");
+    const first = (await getOrderAdmin(storeId, orderId))!;
+    const mug = first.fulfilment.lines.find((l) => l.sku === "DEMO-MUG-BLACK")!;
+    const bookings = () => bring.calls.filter((c) => c.url.includes("/booking/")).length;
+    const start = bookings();
+    expect((await bringBook(accountId, storeId, orderId, { serviceId: "5600", parcel, lines: [{ lineId: mug.lineId, quantity: 1 }], seen: first.fulfilment.basis })).ok).toBe(true);
+    const between = (await getOrderAdmin(storeId, orderId))!;
+    // The rest, seconds later, as the page shows it after the first parcel: a parcel of its own, and the order is sent.
+    const second = await bringBook(accountId, storeId, orderId, { serviceId: "5800", pickupPointId: "PP1", parcel, seen: between.fulfilment.basis });
+    expect(second.ok && !second.test && second.shipment.lines.map((l) => [l.sku, l.quantity])).toEqual([["DEMO-TOTE", 2]]);
+    expect(bookings()).toBe(start + 2);
+    const done = (await getOrderAdmin(storeId, orderId))!;
+    expect(done.status).toBe("fulfilled");
+    expect(done.shipments.filter((s) => !s.undone)).toHaveLength(2);
+  });
+
+  it("refuses a press made before the page showed the last parcel, before Bring is asked", async () => {
     const orderId = await paidOrder();
+    const seen = (await getOrderAdmin(storeId, orderId))!.fulfilment;
+    const tote = seen.lines.find((l) => l.sku === "DEMO-TOTE")!;
+    expect((await bringBook(accountId, storeId, orderId, { serviceId: "5600", parcel, lines: [{ lineId: tote.lineId, quantity: 1 }], seen: seen.basis })).ok).toBe(true);
+    const start = bring.calls.filter((c) => c.url.includes("/booking/")).length;
+    // The same press again (a double click, a second tab): the page had not shown the first parcel yet.
+    const again = await bringBook(accountId, storeId, orderId, { serviceId: "5600", parcel, lines: [{ lineId: tote.lineId, quantity: 1 }], seen: seen.basis });
+    expect(again).toEqual({ ok: false, problem: expect.stringMatching(/^The order changed while you were choosing/) });
+    expect(bring.calls.filter((c) => c.url.includes("/booking/")).length).toBe(start);
+    // Everything sent: a booking of what is left finds nothing, and Bring is not asked.
     expect((await bringBook(accountId, storeId, orderId, { serviceId: "5600", parcel })).ok).toBe(true);
-    const again = await bringBook(accountId, storeId, orderId, { serviceId: "5600", parcel });
-    expect(again).toEqual({ ok: false, problem: "This order was just booked with Bring. Reload the page to see it." });
+    expect(await bringBook(accountId, storeId, orderId, { serviceId: "5600", parcel })).toEqual({ ok: false, problem: "Nothing of this order is left to send." });
+    expect(bring.calls.filter((c) => c.url.includes("/booking/")).length).toBe(start + 1);
+  });
+
+  it("books one parcel of an order at a time: a second booking while Bring answers the first is told to wait", async () => {
+    const orderId = await paidOrder();
+    let open = () => {};
+    bring.state.gate = new Promise<void>((resolve) => (open = resolve));
+    const first = bringBook(accountId, storeId, orderId, { serviceId: "5600", parcel });
+    // Wait until the first is with Bring (holding the order's booking lock).
+    const held = bring.state.held;
+    for (let i = 0; i < 500 && bring.state.held === held; i++) {
+      await new Promise((r) => setTimeout(r, 10));
+    }
+    const second = await bringBook(accountId, storeId, orderId, { serviceId: "5600", parcel });
+    bring.state.gate = null;
+    open();
+    expect(second).toEqual({ ok: false, problem: "Another booking of this order is being made right now. Wait for it to finish, then reload the page." });
+    expect((await first).ok).toBe(true);
+    expect((await getOrderAdmin(storeId, orderId))?.shipments.filter((s) => !s.undone)).toHaveLength(1);
   });
 
   it("shows what Bring objected to and changes nothing", async () => {

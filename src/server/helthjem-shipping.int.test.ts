@@ -221,10 +221,32 @@ describe("shipping an order with Helthjem", () => {
     expect((await getOrderAdmin(storeId, orderId))?.status).toBe("paid");
   });
 
-  it("does not book the same order twice in quick succession", async () => {
+  it("books part of an order as a parcel naming only its units, the order partly sent, then the rest straight after (D372)", async () => {
     const orderId = await paidOrder("home");
-    expect((await helthjemBook(accountId, storeId, orderId, { parcel })).ok).toBe(true);
-    expect(await helthjemBook(accountId, storeId, orderId, { parcel })).toEqual({ ok: false, problem: "This order was just booked with Helthjem. Reload the page to see it." });
+    const before = (await getOrderAdmin(storeId, orderId))!;
+    const tote = before.fulfilment.lines.find((l) => l.sku === "DEMO-TOTE")!;
+    const bookings = () => helthjem.calls.filter((c) => c.url.endsWith("/parcels/v1/bookings") && c.method === "POST").length;
+    const start = bookings();
+    const first = await helthjemBook(accountId, storeId, orderId, { parcel: { weightGrams: 400 }, lines: [{ lineId: tote.lineId, quantity: 1 }], seen: before.fulfilment.basis });
+    expect(first.ok && !first.test && first.shipment.lines.map((l) => [l.lineId, l.quantity])).toEqual([[tote.lineId, 1]]);
+    const between = (await getOrderAdmin(storeId, orderId))!;
+    expect(between.status).toBe("paid");
+    expect(between.fulfilment.state).toBe("partly_sent");
+    expect(between.fulfilment.lines.find((l) => l.lineId === tote.lineId)?.toSend).toBe(1);
+    expect(helthjem.calls.filter((c) => c.url.endsWith("/parcels/v1/bookings")).at(-1)!.body).toMatchObject({ items: [{ itemNumber: 1, weight: 400 }] });
+    // A press made before the page showed the first parcel is refused before Helthjem is asked.
+    expect(await helthjemBook(accountId, storeId, orderId, { parcel, seen: before.fulfilment.basis })).toEqual({ ok: false, problem: expect.stringMatching(/^The order changed while you were choosing/) });
+    expect(bookings()).toBe(start + 1);
+    // The rest, straight after, as its own parcel.
+    const rest = await helthjemBook(accountId, storeId, orderId, { parcel: { weightGrams: 400 }, seen: between.fulfilment.basis });
+    expect(rest.ok && !rest.test && rest.shipment.lines.map((l) => [l.lineId, l.quantity])).toEqual([[tote.lineId, 1]]);
+    expect(bookings()).toBe(start + 2);
+    const done = (await getOrderAdmin(storeId, orderId))!;
+    expect(done.status).toBe("fulfilled");
+    expect(done.shipments.filter((s) => !s.undone)).toHaveLength(2);
+    // Nothing is left: a third booking finds nothing to send and Helthjem is not asked.
+    expect(await helthjemBook(accountId, storeId, orderId, { parcel })).toEqual({ ok: false, problem: "Nothing of this order is left to send." });
+    expect(bookings()).toBe(start + 2);
   });
 
   it("refuses an order the customer did not choose Helthjem for, an incomplete address and a bad weight", async () => {

@@ -30,9 +30,12 @@ export function BringBooking({
   chosen: shopperChoice = null,
   rows = [],
   notifyOff = null,
+  basis = null,
 }: {
   /** The *Order sent* email is switched off in Notifications (D238): no email is offered, and the box says so. */
   notifyOff?: string | null;
+  /** The order's fulfilment as this page shows it (`OrderFulfilment.basis`, D372): a press made before the page showed the last parcel is refused. */
+  basis?: string | null;
   storeSlug: string;
   orderId: string;
   estimatedGrams: number;
@@ -83,7 +86,7 @@ export function BringBooking({
     start(async () => {
       setProblem(null);
       if (lines === "invalid") return;
-      setResult(await bringBookAction(storeSlug, orderId, { serviceId: service, pickupPointId: chosen?.needsPickupPoint ? point : undefined, notify: hasEmail && !notifyOff && notify, parcel: parcel(), lines }));
+      setResult(await bringBookAction(storeSlug, orderId, { serviceId: service, pickupPointId: chosen?.needsPickupPoint ? point : undefined, notify: hasEmail && !notifyOff && notify, parcel: parcel(), lines, seen: basis }));
     });
 
   return (
