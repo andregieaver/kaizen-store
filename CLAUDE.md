@@ -939,6 +939,13 @@ stand-in is the only fake, and only it is told it is one.
   `conditionHolds()`/`goneIn()` and the editor, and a test; a rule never changes a price, VAT or a legal page. Payment methods a rule left out are
   `orders.rule_hidden_methods`, read by `excludedPaymentMethods()` given the order. Answers are kept on the cart through `cleanAnswers()` and copied
   by `placeOrder()` (`orders.checkout_answers`, read by `readAnswers()`): personal data, in the export, erasure, retention and `anonymise_order()`.
+- **Versions compared and staging (wave 9 unit E, D358, `src/lib/version-compare.ts`, `src/server/site-staging.ts`)**: what differs between two
+  versions of a page or the look is only `compareVersions()`/`compareLooks()` (pure, words from facts), shown by `VersionDifferences` and the
+  versions dialogs' *Compare*. A staging set is `commerce.site_stagings` (one open per store) and `site_staging_pages`, written only by
+  `site-staging.ts` (Website → Staging): it chooses drafts of `STAGED_TYPES`, one installed theme and menu changes (kept as `menuInput`) to go
+  live together, and *Make live* goes only through `savePage()`, `switchToInstall()` and `saveStoreMenu()`, each part refused or made on its own
+  and the outcome kept; a new part a set may hold is staged as the store already holds it and made live through its own saver, never products,
+  orders or customers.
 - **Workflows (wave 9 unit C, D356, `src/lib/workflows.ts`, `src/server/workflows.ts`)**: a workflow is `commerce.workflows`, written only by
   `workflows.ts` (saved off; on only once *Test* ran the version saved); its runs are made by the database's `queue_integration_event()` (once
   per workflow, event and transaction, capped at `RUNS_PER_HOUR`) and by `queueScheduledRuns()`, and run only by `runWorkflows()` in the

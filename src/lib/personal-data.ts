@@ -269,6 +269,8 @@ export const NOT_PERSONAL: Record<string, string> = {
   checkout_rules: "A store's checkout rules (D357): the owner's conditions on a basket (countries, amounts, ids of products, terms and groups) and an effect with the owner's words; no customer.",
   checkout_rule_skips: "How often a checkout rule was left out and why (D357): a rule id, a reason and counts; no customer.",
   checkout_fields: "The questions a store asks at checkout (D357): the owner's words; the answers are on carts and orders.",
+  site_stagings: "A store's sets of changes made ready together (D358): a name, a theme install, menus as staged and the outcome of publishing; staff accounts only by id.",
+  site_staging_pages: "Which pages a set of changes made ready together holds (D358): ids only.",
   workflow_runs: "Each run of a workflow (D356): the event, the id of what it was about, whether its conditions held and each action's outcome; no name, address or words of a customer, kept 90 days.",
   api_tokens: "Admin API tokens (D355): a name the owner gives, the scopes, the token's hash and first characters, who made it and when it was last used; no customer.",
   webhook_endpoints: "An owner's own endpoints (D354): a name the owner gives, the address and secret encrypted, the topics and whether it works; no customer (the deliveries' payloads are `integration_deliveries`').",

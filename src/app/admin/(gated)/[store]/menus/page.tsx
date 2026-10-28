@@ -21,6 +21,9 @@ import { fillWords } from "@/lib/admin-fill";
 
 import { uploadImageAction } from "../products/actions";
 import { deleteMenuAction, saveMenuAction } from "./actions";
+import { stageMenuAction } from "../staging/actions";
+import { openStagingOf } from "@/server/site-staging";
+import { ButtonLink } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Menus" };
 
@@ -51,7 +54,9 @@ async function Menus({ storeSlug, searchParams }: { storeSlug: string; searchPar
   const { store, account } = await requirePermission(storeSlug, "website:read");
   const lang = adminLangOf(account.adminLocale);
   const w = adminText(lang, "website").menusPage;
-  const { menu: wanted } = await searchParams;
+  const { menu: wanted, staged: stagedParam } = await searchParams;
+  // A change staged for the open staging set (D358): kept in the set and saved when it goes live, never here.
+  const staging = stagedParam === "1" ? await openStagingOf(store.id) : null;
   const [menus, uses, products, terms, pages, articles, blogTerms] = await Promise.all([
     listStoreMenus(store.id),
     menuUses(store.id),
@@ -92,11 +97,26 @@ async function Menus({ storeSlug, searchParams }: { storeSlug: string; searchPar
     })),
   ];
 
+  const stagedMenu = staging && chosen ? staging.menus[chosen.id] : undefined;
+  const sw = adminText(lang, "website").staging;
   return (
+    <>
+    {staging && chosen && (
+      <div className="flex flex-wrap items-center gap-3 rounded-panel border border-warning-line bg-warning-soft p-3 text-sm text-warning-text" data-staged-menu>
+        <span className="flex-1">{sw.stagedMenuNote}</span>
+        <ButtonLink kind="quiet" size="dense" href={`/admin/${store.slug}/staging`}>
+          {sw.backToStaging}
+        </ButtonLink>
+      </div>
+    )}
     <MenuEditor
-      key={chosen?.id ?? "new"}
+      key={`${chosen?.id ?? "new"}${staging ? ":staged" : ""}`}
       menus={menus.map(({ id, name }) => ({ id, name }))}
-      menu={chosen ?? { id: null, name: menus.length === 0 ? w.mainMenu : "", items: [] }}
+      menu={
+        stagedMenu && chosen
+          ? { id: chosen.id, name: stagedMenu.name, items: stagedMenu.items as typeof chosen.items }
+          : (chosen ?? { id: null, name: menus.length === 0 ? w.mainMenu : "", items: [] })
+      }
       uses={usedIn}
       basePath={base}
       languages={languages}
@@ -118,9 +138,10 @@ async function Menus({ storeSlug, searchParams }: { storeSlug: string; searchPar
         urlHint: w.urlHint,
         urlPlaceholder: w.urlPlaceholder,
       }}
-      save={saveMenuAction.bind(null, store.slug)}
+      save={staging && chosen ? stageMenuAction.bind(null, store.slug) : saveMenuAction.bind(null, store.slug)}
       upload={uploadsEnabled() ? uploadImageAction.bind(null, store.slug) : null}
       remove={deleteMenuAction.bind(null, store.slug)}
     />
+    </>
   );
 }

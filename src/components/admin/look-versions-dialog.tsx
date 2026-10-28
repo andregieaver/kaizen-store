@@ -6,6 +6,7 @@ import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import { LOOK_VERSIONS_KEPT, type LookVersionActions, type LookVersionItem } from "@/lib/look-versions";
 import type { StoreTheme } from "@/lib/theme";
+import { compareLooks, type LookArea } from "@/lib/version-compare";
 
 import { useAdminLang, useAdminText } from "./admin-text";
 import { Modal } from "./modal";
@@ -16,12 +17,27 @@ import { Button } from "./ui";
  * colours, newest first, with what made it, who and when. *Use this version* hands its theme to the editor (`onUse`), which holds it as
  * unsaved changes; nothing on the site changes here.
  */
-export function LookVersionsDialog({ open, onClose, actions, onUse }: { open: boolean; onClose: () => void; actions: LookVersionActions; onUse: (theme: StoreTheme) => void }) {
+export function LookVersionsDialog({
+  open,
+  onClose,
+  actions,
+  onUse,
+  current,
+}: {
+  open: boolean;
+  onClose: () => void;
+  actions: LookVersionActions;
+  onUse: (theme: StoreTheme) => void;
+  /** The look in the editor now, for *Compare* (D358); none offers no comparing. */
+  current?: StoreTheme;
+}) {
   const w = useAdminText("schedules").versions;
   const locale = ADMIN_LANG_FACTS[useAdminLang()].locale;
   const [items, setItems] = useState<LookVersionItem[] | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [taking, setTaking] = useState<string | null>(null);
+  // The areas a version differs in from the editor's look (D358), for the version compared.
+  const [compared, setCompared] = useState<{ id: string; areas: LookArea[] } | null>(null);
   // An answer for a dialog closed meanwhile is thrown away.
   const ticket = useRef(0);
 
@@ -61,6 +77,22 @@ export function LookVersionsDialog({ open, onClose, actions, onUse }: { open: bo
       setTaking(null);
     }
   };
+  const compare = async (item: LookVersionItem) => {
+    if (!current) return;
+    const mine = ticket.current;
+    setTaking(item.id);
+    setProblem(null);
+    try {
+      const result = await actions.read(item.id);
+      if (mine !== ticket.current) return;
+      if (!result.ok) return setProblem(result.problem);
+      setCompared({ id: item.id, areas: compareLooks(result.theme, current) });
+    } catch {
+      if (mine === ticket.current) setProblem(w.readFailed);
+    } finally {
+      setTaking(null);
+    }
+  };
   const when = (iso: string) => new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(iso));
 
   return (
@@ -92,9 +124,30 @@ export function LookVersionsDialog({ open, onClose, actions, onUse }: { open: bo
                     {item.by ? ` · ${item.by}` : ""}
                   </span>
                 </div>
+                {current && (
+                  <Button kind="quiet" size="dense" onClick={() => void compare(item)} disabled={taking !== null}>
+                    {w.compare}
+                  </Button>
+                )}
                 <Button kind="quiet" size="dense" onClick={() => void use(item)} disabled={taking !== null}>
                   {taking === item.id ? w.opening : w.use}
                 </Button>
+                {compared?.id === item.id && (
+                  <div className="basis-full text-sm" data-look-differences>
+                    {compared.areas.length === 0 ? (
+                      <p className="text-muted">{w.sameAsEditor}</p>
+                    ) : (
+                      <>
+                        <p className="text-muted">{w.differencesTitle}</p>
+                        <ul className="list-disc pl-5">
+                          {compared.areas.map((area) => (
+                            <li key={area}>{w.areas[area]}</li>
+                          ))}
+                        </ul>
+                      </>
+                    )}
+                  </div>
+                )}
               </li>
             ))}
           </ol>

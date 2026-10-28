@@ -838,6 +838,9 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["checkout", "rules", "hide shipping", "payment methods", "questions", "custom fields", "order notes", "functions"],
     feature: "shop",
   }),
+  store("staging", "/staging", "Staging", "Website", "Staging (D358): a set of page drafts, a theme installed but not live and staged menu changes, each compared with what visitors see (what changed in a page, the areas a look differs in), made live together through the builder's Publish, the theme switch and the menu saver; the last set's outcome.", {
+    keywords: ["staging", "release", "publish together", "compare", "versions", "preview", "launch"],
+  }),
   store("workflows", "/settings/workflows", "Workflows", "Store", "Workflows (D356): a trigger (an event of the store or a schedule), conditions on its fields and actions (tag the order or customer, email staff, post to Slack, send to an own endpoint, ask the AI manager), saved off, tested on the latest event, then switched on; each one's recent runs.", {
     keywords: ["workflow", "automation", "flow", "trigger", "schedule", "rules"],
   }),

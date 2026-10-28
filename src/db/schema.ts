@@ -6985,6 +6985,53 @@ export const workflowRuns = commerce.table(
 );
 
 /**
+ * A staging set of a store's site (D358, `src/server/site-staging.ts`, its only writer): page drafts chosen to go live together, a theme
+ * installed but not live to make live with them, and changes to menus kept here until then. One open set a store; published or discarded,
+ * it is kept with what became of each part (`outcome`).
+ */
+export const siteStagings = commerce.table(
+  "site_stagings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    name: text("name").notNull(),
+    status: text("status").notNull().default("open"),
+    installId: uuid("install_id").references(() => storeThemeInstalls.id, { onDelete: "set null" }),
+    /** Staged menus by id: `{ name, items }` as the menu editor sends them, saved by the menu saver when the set goes live. */
+    menus: jsonb("menus").notNull().default(sql`'{}'::jsonb`),
+    outcome: jsonb("outcome"),
+    createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+    publishedBy: uuid("published_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+  },
+  (t) => [
+    unique("site_stagings_store_id_key").on(t.storeId, t.id),
+    uniqueIndex("site_stagings_one_open").on(t.storeId).where(sql`${t.status} = 'open'`),
+    index("site_stagings_install_idx").on(t.installId),
+    index("site_stagings_created_by_idx").on(t.createdBy),
+    index("site_stagings_published_by_idx").on(t.publishedBy),
+    check("site_stagings_name", sql`char_length(${t.name}) between 1 and 80`),
+    check("site_stagings_status", sql`${t.status} in ('open', 'published', 'discarded')`),
+  ],
+);
+
+/** A page whose draft a staging set publishes (D358). */
+export const siteStagingPages = commerce.table(
+  "site_staging_pages",
+  {
+    stagingId: uuid("staging_id")
+      .notNull()
+      .references(() => siteStagings.id, { onDelete: "cascade" }),
+    storeId: storeId().references(() => stores.id),
+    pageId: uuid("page_id")
+      .notNull()
+      .references(() => pages.id, { onDelete: "cascade" }),
+  },
+  (t) => [primaryKey({ columns: [t.stagingId, t.pageId] }), index("site_staging_pages_page_idx").on(t.pageId), index("site_staging_pages_store_idx").on(t.storeId)],
+);
+
+/**
  * A checkout rule (D357, `src/server/checkout-rules.ts`, its only writer): conditions on the basket and one effect, evaluated in `position` order by
  * `applyCheckoutRules()` in the cart and checkout alike. Saved off or on; never a price, VAT or a legal page.
  */

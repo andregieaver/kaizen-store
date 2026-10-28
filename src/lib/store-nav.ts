@@ -183,6 +183,7 @@ export const STORE_SECTIONS: StoreSection[] = [
           item("/headers", "Headers", "Headers built from components; choose the one the store shows."),
           item("/footers", "Footers", "Footers built from components; choose the one the store shows."),
           item("/settings/design", "Design", "The store's look: template, colours, fonts, buttons and corners."),
+          item("/staging", "Staging", "Gather changes to pages, the look and menus, compare them with what visitors see, and make them live together."),
           // More than one language comes with Several languages or with countries of different languages (D178); the page says when there is one.
           item("/translate", "Translate the store", "Have AI suggest translations of the whole store, and read them before they are used.", { feature: ["languages", "countries"] }),
         ],

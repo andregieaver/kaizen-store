@@ -871,6 +871,7 @@ export function PageEditor({
           list={() => actions.versions!.list(saved.id)}
           read={(version) => actions.versions!.read(saved.id, version)}
           onUse={takeVersion}
+          current={content}
         />
       )}
 

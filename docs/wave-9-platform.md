@@ -147,6 +147,19 @@ Each unit adds its own paragraph here when it is built.
   the carrier); a weekly box is made by the store's job and is not ruled; the payment methods a rule left out are kept on the order, as the
   payment page is opened after the order is placed. Questions are asked above the cart's checkout button, the place the order's details are
   typed, and kept on the cart until the order is placed.
+- **E (D358), built 28 October 2026.** The comparison as section 3 says: `compareVersions()` and `compareLooks()` (`src/lib/version-compare.ts`,
+  pure), behind a *Compare* button on each version in the page builder's and the theme editor's Versions dialogs, against what is in the editor
+  now. Staging is **not** the hidden store section 3 and decision 5 describe: it is a *staging set* inside the store (`commerce.site_stagings`,
+  `site_staging_pages`, Website → Staging, `src/server/site-staging.ts`), because a page's draft, a theme installed but not live and a kept
+  menu are already how the site holds changes no visitor sees. A hidden copy would have had to copy pages, the theme, menus, saved parts,
+  terms and pictures out and write them back, with every id mapped twice, and would have put two stores' tables in step for nothing a draft
+  does not already do. A set holds the drafts the person ticks (pages, articles, headers, footers and product layouts of the store's own),
+  one installed theme and changes to menus kept as JSON (checked by `menuInput`, written by the menu editor in its staging mode,
+  `/menus?staged=1`); the page shows each with what differs from what visitors see. *Make live* publishes each page through `savePage()`
+  (the builder's own Publish: a running A/B test, a blocking issue or a kind of page the person may not write is refused for that page and
+  said, the rest goes live), switches the theme through `switchToInstall()` (a premium theme the store does not own is refused there, as its
+  price is shown in Design settings) and saves each menu through `saveStoreMenu()`, each the new version it makes anyway; addresses that move
+  leave their redirect as any publish does. One set is open at a time; products, orders and customers are never part of one.
 
 ## 5. Decisions
 

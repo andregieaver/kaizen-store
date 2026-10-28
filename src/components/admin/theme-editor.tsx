@@ -602,7 +602,7 @@ export function ThemeEditor({
                 {versionWords.button}
               </button>
             )}
-            {actions.versions && <LookVersionsDialog open={versionsOpen} onClose={() => setVersionsOpen(false)} actions={actions.versions} onUse={load} />}
+            {actions.versions && <LookVersionsDialog open={versionsOpen} onClose={() => setVersionsOpen(false)} actions={actions.versions} onUse={load} current={theme} />}
             {loaded && changedFromSource && (
               <button type="button" disabled={pending} onClick={() => set(structuredClone(loaded.settings))} className={`${button} border border-border`}>
                 {w.undoChanges}

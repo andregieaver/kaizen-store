@@ -282,6 +282,8 @@ export const NAV_NB: Record<string, string> = {
   "Apps and API": "Apper og API",
   Workflows: "Arbeidsflyter",
   "Checkout rules": "Regler i kassen",
+  Staging: "Klargjøring",
+  "Gather changes to pages, the look and menus, compare them with what visitors see, and make them live together.": "Samle endringer i sider, utseende og menyer, sammenlign dem med det besøkende ser, og publiser dem samtidig.",
   "Hide or rename a delivery option, leave a payment method out or stop an order when the basket matches; and questions the checkout asks.": "Skjul eller gi nytt navn til et leveringsvalg, hold en betalingsmåte utenfor eller stopp en bestilling når handlekurven passer; og spørsmål kassen stiller.",
   "When something happens in the store, or at a set time: check what you choose, then tag, tell staff, post to Slack, send to your endpoint or ask the AI manager.": "Når noe skjer i butikken, eller til en fast tid: sjekk det du velger, og merk, gi beskjed til ansatte, skriv i Slack, send til endepunktet ditt eller spør KI-assistenten.",
   "The AI provider and models the store uses, or its own key.": "KI-leverandøren og modellene butikken bruker, eller dens egen nøkkel.",

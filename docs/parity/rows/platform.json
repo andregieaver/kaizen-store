@@ -591,7 +591,7 @@
       "was": null
     },
     "weight": 3,
-    "gap": "D129 duplicates a whole store and D126 duplicates pages; A/B versions of pages (D148). Since D305 every save, publish and live-site edit of a page keeps a version (`commerce.page_versions`, written only by keepVersion(), the newest fifty kept; headers, footers and product layouts are pages, so theirs too), listed in the editor with who and when, and Use this version puts one back in the editor as unsaved changes; the editor has undo and redo. Themes keep versions (D241), an install's update keeps the look before for undo (D245), switching puts the live look away whole (D241, D244), and letting pages follow the theme keeps each page before and after (D243). Still short: no comparison of two versions, and a store's own theme settings and site CSS keep no revision history (criterion 1); no shareable, expiring preview address of an unpublished page or theme for someone without a sign-in (the agent's look tokens, D310, are for its own photographs; the installed-theme preview is for staff); no staging copy of a store merged back.",
+    "gap": "D129 duplicates a whole store and D126 duplicates pages; A/B versions of pages (D148). Since D305 every save, publish and live-site edit of a page keeps a version (`commerce.page_versions`, the newest fifty; headers, footers and product layouts are pages, so theirs too), and since D340 every save of the live look keeps the theme (`commerce.look_versions`); both are listed in the editors, and since D358 each version can be compared in words with what is in the editor (`compareVersions()`, `compareLooks()`) and put back as unsaved changes. Preview links (D340) show a draft page or an installed theme to anyone with the address for 1 to 30 days, no sign-in, no cookie, `noindex`. Staging (D358) is a set inside the store: drafts of pages, articles, headers, footers and product layouts, a theme installed but not live and menu changes, compared with what visitors see and made live together through the builder's Publish, the theme switch and the menu saver, never touching products, orders or customers. Still short: the site's own CSS keeps no revision history (criterion 1); a staging set works on the store's drafts, not on a copy, so a draft staged is the same draft anyone editing that page sees (criterion 3 asks for a copy); no duplicate of a whole store for trying apps against.",
     "bucket": "A",
     "wave": 9,
     "criteria": [
@@ -609,7 +609,13 @@
         "src/server/themes.ts",
         "src/lib/theme.ts",
         "src/server/page-versions.ts",
-        "src/lib/edit-history.ts"
+        "src/lib/edit-history.ts",
+        "src/lib/version-compare.ts",
+        "src/server/site-staging.ts",
+        "src/components/admin/site-staging.tsx",
+        "src/components/admin/version-differences.tsx",
+        "src/server/look-versions.ts",
+        "src/server/preview-links.ts"
       ],
       "tests": [
         "src/server/store-copy.int.test.ts",
@@ -620,7 +626,9 @@
         "e2e/themes.spec.ts",
         "src/server/page-versions.int.test.ts",
         "src/lib/edit-history.test.ts",
-        "e2e/signed-in/page-history.spec.ts"
+        "e2e/signed-in/page-history.spec.ts",
+        "src/lib/version-compare.test.ts",
+        "src/server/site-staging.int.test.ts"
       ],
       "untested": false
     },
@@ -632,7 +640,9 @@
       "D241",
       "D243",
       "D245",
-      "D305"
+      "D305",
+      "D340",
+      "D358"
     ],
     "history": []
   },

@@ -2,10 +2,13 @@
 
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 
+import type { PageContent } from "@/lib/page-content";
 import { VERSIONS_KEPT, type PageVersionItem } from "@/lib/page-versions";
+import { compareVersions, type PageDifference } from "@/lib/version-compare";
 
 import { useAdminLang, useAdminText } from "./admin-text";
 import { Modal } from "./modal";
+import { VersionDifferences } from "./version-differences";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 
@@ -25,16 +28,21 @@ export function PageVersionsDialog({
   list,
   read,
   onUse,
+  current,
 }: {
   open: boolean;
   onClose: () => void;
   list: () => Promise<PageVersionItem[]>;
   read: (version: string) => Promise<{ ok: true; content: string } | { ok: false; problem: string }>;
   onUse: (content: string, item: PageVersionItem) => void;
+  /** The page in the editor now, for *Compare* (D358); none offers no comparing. */
+  current?: PageContent;
 }) {
   const [items, setItems] = useState<PageVersionItem[] | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [taking, setTaking] = useState<string | null>(null);
+  // What the editor has that the version compared does not (D358).
+  const [compared, setCompared] = useState<{ id: string; differences: PageDifference[] } | null>(null);
   // An answer for a dialog closed meanwhile is thrown away.
   const ticket = useRef(0);
   const w = useAdminText("builder").versions;
@@ -70,6 +78,23 @@ export function PageVersionsDialog({
       if (!result.ok) return setProblem(result.problem);
       onUse(result.content, item);
       onClose();
+    } catch {
+      if (mine === ticket.current) setProblem(w.readFailed);
+    } finally {
+      setTaking(null);
+    }
+  };
+
+  const compare = async (item: PageVersionItem) => {
+    if (!current) return;
+    const mine = ticket.current;
+    setTaking(item.id);
+    setProblem(null);
+    try {
+      const result = await read(item.id);
+      if (mine !== ticket.current) return;
+      if (!result.ok) return setProblem(result.problem);
+      setCompared({ id: item.id, differences: compareVersions(JSON.parse(result.content) as PageContent, current) });
     } catch {
       if (mine === ticket.current) setProblem(w.readFailed);
     } finally {
@@ -118,9 +143,26 @@ export function PageVersionsDialog({
                     {item.title ? ` · ${item.title}` : ""}
                   </span>
                 </div>
+                {current && (
+                  <button type="button" onClick={() => void compare(item)} disabled={taking !== null} className={small}>
+                    {w.compare}
+                  </button>
+                )}
                 <button type="button" onClick={() => void use(item)} disabled={taking !== null} className={small}>
                   {taking === item.id ? w.opening : w.use}
                 </button>
+                {compared?.id === item.id && (
+                  <div className="flex basis-full flex-col gap-1">
+                    {compared.differences.length === 0 ? (
+                      <p className="text-sm text-muted">{w.sameAsEditor}</p>
+                    ) : (
+                      <>
+                        <p className="text-sm text-muted">{w.differencesTitle}</p>
+                        <VersionDifferences differences={compared.differences} />
+                      </>
+                    )}
+                  </div>
+                )}
               </li>
             ))}
           </ol>
