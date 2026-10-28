@@ -23,6 +23,8 @@ export const BUDGETS = {
   unlock: { window: "minute", visitor: 10, store: 120 },
   // A shopping agent's calls to the store's MCP endpoint (D353): the visitor is a daily hash of the caller's address.
   agent: { window: "minute", visitor: 60, store: 1200 },
+  // The Admin API (D355): 120 calls a minute per token (the visitor is the token's id), a store's tokens together ten times that.
+  api: { window: "minute", visitor: 120, store: 1200 },
 } as const satisfies Record<string, { window: BudgetWindow; visitor: number; store: number }>;
 
 export type BudgetEndpoint = keyof typeof BUDGETS;

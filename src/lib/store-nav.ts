@@ -283,6 +283,7 @@ export const STORE_SECTIONS: StoreSection[] = [
         items: [
           item("/search", "Search", "How the store's search works: keywords, meaning and what shoppers searched for.", { feature: "shop" }),
           item("/settings/ai", "AI", "The AI provider and models the store uses, or its own key."),
+          item("/settings/api", "Apps and API", "Tokens for your own apps, warehouse or accounting to read and change the store through the Admin API."),
         ],
       },
       {

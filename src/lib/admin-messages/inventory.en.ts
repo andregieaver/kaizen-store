@@ -145,6 +145,8 @@ export const inventoryEn = {
     file: "File import",
     fileBy: "File import ({name})",
     aiManager: "AI manager",
+    api: "Admin API",
+    apiBy: "Admin API ({name})",
     copy: "Store copy",
     system: "System",
     staff: "A staff member",

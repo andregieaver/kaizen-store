@@ -1672,14 +1672,14 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": "missing"
+      "was": "partial"
     },
     "weight": 2,
-    "gap": "Only outbound order events through Zapier, Make and Slack (D41, D101), and stock files a person imports (D172 `inventory_import` jobs). A warehouse cannot read orders, post shipments with tracking or post stock levels: there is no public Admin API with scoped tokens (wave 9; the MCP server of D96 serves only Kaizen Life). Weak partial.",
-    "bucket": "C",
-    "wave": 9,
+    "gap": "None for the criteria (D355, D354): a warehouse with a scoped token reads paid orders still to send, posts a parcel with tracking (marking its lines sent and emailing the customer) and posts stock levels per SKU with a reason; events to its own endpoint are signed and retried; it sees only its own store. No fulfilment network of Kaizena Flow's own.",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "A warehouse provider with a scoped token reads paid orders to fulfil and posts a shipment with tracking, which marks lines sent and emails the customer (integration test; needs the Admin API of wave 9).",
       "A provider posts stock levels per SKU, which update the inventory with an adjustment reason (integration test).",
@@ -1687,19 +1687,30 @@
     ],
     "evidence": {
       "files": [
+        "src/app/admin/(gated)/[store]/settings/api/page.tsx",
+        "src/app/api/admin/v1/[...path]/route.ts",
+        "src/lib/admin-api.ts",
+        "src/lib/integrations.ts",
+        "src/server/admin-api.ts",
+        "src/server/api-tokens.ts",
         "src/server/integrations.ts",
-        "src/lib/integrations.ts"
+        "src/server/webhook-endpoints.ts",
+        "supabase/migrations/20261028093849_api_tokens.sql"
       ],
       "tests": [
+        "src/lib/admin-api.test.ts",
+        "src/lib/integrations.test.ts",
+        "src/server/admin-api.int.test.ts",
         "src/server/integrations.int.test.ts",
-        "src/lib/integrations.test.ts"
+        "src/server/webhook-endpoints.int.test.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D41",
       "D101",
-      "D172"
+      "D172",
+      "D355"
     ],
     "history": [
       {
@@ -1707,6 +1718,12 @@
         "from": "missing",
         "to": "partial",
         "why": "First report's skeptic recheck: outbound order events through Zapier, Make and Slack (D41, D101) make it a weak partial, not missing; a warehouse cannot send anything back without a public API. Entry written in wave 0 from the first report, which did not log it."
+      },
+      {
+        "on": "2026-10-28",
+        "from": "partial",
+        "to": "full",
+        "why": "Built D355 on D354: GET /orders?unfulfilled=true, POST /orders/{id}/fulfillments through markSent() and sendShipped(), POST /inventory/set and /inventory/adjust by SKU through adjustStock() (source api), and signed, retried events (D354). Held by src/server/admin-api.int.test.ts (a euro order read, a parcel with tracking and its email, a second parcel refused, levels set by SKU with a conflict never overwritten) and src/server/webhook-endpoints.int.test.ts, run and passing."
       }
     ]
   },

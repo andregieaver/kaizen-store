@@ -45,14 +45,14 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "full",
       "rechecked": true,
-      "was": "partial"
+      "was": "missing"
     },
     "weight": 3,
-    "gap": "No merchant-facing API: an owner cannot create a token or choose scopes, and there are no REST or GraphQL endpoints that read or write products, orders or customers. `/api/mcp` (D96) accepts only access tokens issued to Kaizen Life (`mcpCaller()` compares the token's client id with `KAIZEN_LIFE_CLIENT_ID`), so it is a first-party integration; the WordPress plugin's API (D169, D170) reads only what a shopper can see, for a site an owner connected; one-way events go to Zapier, Make and Slack (D41). Re-rated from partial earlier: nothing here lets a merchant or their developer manage the store.",
-    "bucket": "A",
-    "wave": 9,
+    "gap": "None for the criteria (D355): owners make named tokens for one store with chosen scopes, shown once and kept as a hash; REST endpoints for products, variants, stock, orders, customers and discount codes with cursor pages, minor units and the currency, audited with the token's name, 429 with Retry-After, and gated effects (publishing, changing a live product) refused. Another store's ids answer 404 rather than 403. No GraphQL and no app directory (plan section 5).",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "An owner creates a named API token for one store with chosen scopes (for example read orders, write products), sees the secret once, and can revoke it; only a hash is stored.",
       "A request with the token reads or writes only that store's data inside its scopes; another store's id or an out-of-scope call is refused with 403, and an over-limit client gets 429 with a retry time.",
@@ -61,12 +61,20 @@
     ],
     "evidence": {
       "files": [
+        "src/app/admin/(gated)/[store]/settings/api/page.tsx",
+        "src/app/api/admin/v1/[...path]/route.ts",
         "src/app/api/mcp/route.ts",
-        "src/server/store-mcp.ts",
+        "src/lib/admin-api.ts",
         "src/lib/owner-tools.ts",
-        "src/server/owner-tools.ts"
+        "src/server/admin-api.ts",
+        "src/server/api-tokens.ts",
+        "src/server/owner-tools.ts",
+        "src/server/store-mcp.ts",
+        "supabase/migrations/20261028093849_api_tokens.sql"
       ],
       "tests": [
+        "src/lib/admin-api.test.ts",
+        "src/server/admin-api.int.test.ts",
         "src/server/store-mcp.int.test.ts"
       ],
       "untested": false
@@ -74,7 +82,8 @@
     "decisions": [
       "D95",
       "D96",
-      "D169"
+      "D169",
+      "D355"
     ],
     "history": [
       {
@@ -88,6 +97,12 @@
         "from": "partial",
         "to": "missing",
         "why": "Read at HEAD: store-mcp.ts line 53 refuses every token whose client_id is not Kaizen Life's; no token an owner or a developer can create exists. A first-party channel is not a public Admin API."
+      },
+      {
+        "on": "2026-10-28",
+        "from": "missing",
+        "to": "full",
+        "why": "Built D355 (wave 9 unit B): commerce.api_tokens written only by src/server/api-tokens.ts (hash only, scopes, revocation, the maker's membership read again each call) and /api/admin/v1 over the screens' functions (src/server/admin-api.ts). Held by src/lib/admin-api.test.ts (routes, scopes, tokens, pages) and src/server/admin-api.int.test.ts (401, 403 naming the scope, another store's id 404, revoked token refused, products in each market's currency with a euro market, a draft made and changed, a live product and publishing refused, audit with the token's name, stock with source api and a conflict never overwritten, a parcel with tracking and its email, tags, discount codes), run and passing."
       }
     ]
   },

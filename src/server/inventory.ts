@@ -277,7 +277,7 @@ export type AdjustResult =
   | { ok: true; written: number; unchanged: number; conflicts: number; refused: number; failed: number; rows: AdjustRowResult[] }
   | { ok: false; problems: string[] };
 
-export type StockSource = "inventory_page" | "ai_manager";
+export type StockSource = "inventory_page" | "ai_manager" | "api";
 
 const refusedWords = {
   not_found: "This variant or location is not in this store, or the variant is not goods that are shipped.",

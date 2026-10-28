@@ -132,6 +132,11 @@ Each unit adds its own paragraph here when it is built.
   30 days are the services'. The new topics go to endpoints only (`SERVICE_EVENTS`), so Zapier, Make and Slack are unchanged. A product saved
   twice, or made and saved in one transaction, before its delivery is built gives one delivery, which carries it as it is when sent.
   `REPLICATE_ALLOW_PRIVATE` lets the integration test reach its own local server, as the replicator's tests do.
+- **B (D355), built 28 October 2026.** As section 3 says, with these choices: a change to a product is made over the API only while it is a
+  draft (changing a live product is what the AI manager's gate `public` holds back, so it is refused as `gated` here); a product is made through
+  the AI manager's catalogue tools (`createProductTool()`, `updateProductTool()`), which build on the editor's own blank product and read and
+  save through `saveProduct()`, and takes no pictures; another store's id is a 404 (rule 1), not a 403. Stock rows name a variant by id or SKU,
+  as a warehouse knows it. The movement recorder's own source list had never learnt `exchange` (D239); the migration adds it with `api`.
 
 ## 5. Decisions
 

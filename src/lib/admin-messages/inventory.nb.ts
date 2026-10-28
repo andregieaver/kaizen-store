@@ -169,6 +169,8 @@ export const inventoryNb: InventoryMessages = {
     file: "Filimport",
     fileBy: "Filimport ({name})",
     aiManager: "KI-assistent",
+    api: "Admin-API",
+    apiBy: "Admin-API ({name})",
     copy: "Butikkopi",
     system: "System",
     staff: "En ansatt",

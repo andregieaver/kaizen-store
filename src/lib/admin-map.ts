@@ -834,6 +834,10 @@ const PAGES: readonly AdminPage[] = [
     feature: "shop",
   }),
   store("integrations.google-reviews", "/integrations/google-reviews", "Google reviews", "Store", "Shows the store's Google rating and reviews on its pages."),
+  store("api", "/settings/api", "Apps and API", "Store", "Tokens for the Admin API (D355): make one with the scopes it needs (shown once), see when each was last used, revoke one. The API's routes, scopes and limits are listed on the page.", {
+    needs: "owner",
+    keywords: ["api", "tokens", "developers", "warehouse", "3pl", "accounting", "integration"],
+  }),
   store("ai", "/settings/ai", "AI", "Store", "The store's own AI provider and models, or Kaizena Flow's.", { keywords: ["model", "provider", "openai"] }),
   store("features", "/settings/features", "Features", "Store", "Switches the online shop and the store's features on or off (D178): subscriptions, subscription boxes, appointments, stays and rentals, several countries, languages and currencies, selling to businesses, the bonus and referral programs; what is in use, what blocks switching it off, and the store's time zone and appointment reminder. Every member sees it; only owners switch. (Work is switched on under Work, at the owner's level.)", {
     tasks: ["Switch the online shop off to run a website only", "Switch a feature on or off", "Set the store's time zone"],

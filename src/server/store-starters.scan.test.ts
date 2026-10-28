@@ -23,6 +23,8 @@ const READERS: Record<string, "real" | "template" | "both"> = {
   // The agents' safety eval plays its cases on the template store (PSI 2026-10-24, AST-09).
   "src/server/agent-eval.ts": "template",
   "src/server/ai-usage.ts": "real",
+  // An Admin API token (D355) answers for a real store only.
+  "src/server/api-tokens.ts": "real",
   "src/server/auth.ts": "real",
   "src/server/billing.ts": "both",
   // Broadcasts (D297): a template or demo store sends no marketing email.

@@ -6908,6 +6908,36 @@ export const storeIntegrations = commerce.table(
 );
 
 /**
+ * A token for the Admin API (D355, `src/server/api-tokens.ts`, its only writer): one store, a name, the scopes it may use, kept only as the
+ * SHA-256 of the token (shown once, `kf_…`) with its first characters to tell tokens apart. It acts as the owner who made it, read again on
+ * every call: a maker no longer an owner, or a revoked token, is refused.
+ */
+export const apiTokens = commerce.table(
+  "api_tokens",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    name: text("name").notNull(),
+    scopes: text("scopes").array().notNull(),
+    tokenHash: text("token_hash").notNull(),
+    /** The token's first characters (`kf_ab12`), shown in the list. */
+    prefix: text("prefix").notNull(),
+    createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("api_tokens_hash_key").on(t.tokenHash),
+    unique("api_tokens_store_id_key").on(t.storeId, t.id),
+    index("api_tokens_store_idx").on(t.storeId),
+    index("api_tokens_created_by_idx").on(t.createdBy),
+    check("api_tokens_name", sql`char_length(${t.name}) between 1 and 80`),
+    check("api_tokens_scopes", sql`cardinality(${t.scopes}) between 1 and 20`),
+  ],
+);
+
+/**
  * An endpoint of the owner's own (D354, `src/server/webhook-endpoints.ts`, its only writer): an HTTPS address that gets the topics chosen,
  * each delivery signed with the endpoint's secret (`Kaizena-Webhook-Signature`). The address and the secret are encrypted; the secret is
  * shown once. Switched off by Kaizena Flow after three days of failed deliveries (`disabled_reason = 'failing'`) and its owners told.

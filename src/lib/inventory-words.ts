@@ -82,6 +82,8 @@ export function byIn(
       return movement.actorName ? fillWords(w.by.fileBy, { name: movement.actorName }) : w.by.file;
     case "ai_manager":
       return w.by.aiManager;
+    case "api":
+      return movement.actorName ? fillWords(w.by.apiBy, { name: movement.actorName }) : w.by.api;
     case "copy":
       return w.by.copy;
     case "system":
