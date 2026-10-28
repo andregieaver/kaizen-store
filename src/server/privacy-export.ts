@@ -3,6 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
+import { readAnswers } from "@/lib/checkout-rules";
 import { readField, isEmptyValue } from "@/lib/custom-fields";
 import { fieldValueText } from "@/lib/field-tools";
 import { t } from "@/lib/i18n";
@@ -168,7 +169,7 @@ async function loadOrders(s: PrivacySubject): Promise<OrderRow[]> {
         o.member_discount_minor, o.campaign_discount_minor, o.credit_minor, o.referral_discount_minor, o.vat_relief_minor, o.tax_minor, o.total_minor,
         o.vat_kind, o.vat_treatment ->> 'reason' as vat_reason, o.delivery ->> 'label' as delivery_label, o.delivery_method, o.delivery ->> 'name' as pickup_place, o.delivery_note, o.billing_address, o.shipping_address, o.email,
         o.company_name, o.organisation_number, o.discount_code, o.copied_from is not null as copied, o.host_id is not null as host,
-        o.restricted_at, o.anonymised_at, o.is_gift, o.gift_to, o.gift_from, o.gift_message
+        o.restricted_at, o.anonymised_at, o.is_gift, o.gift_to, o.gift_from, o.gift_message, o.checkout_answers
       from commerce.orders o where o.store_id = ${store}::uuid and o.id = any(${ids}) order by o.placed_at, o.id
     `),
     db().execute<Row>(sql`
@@ -288,6 +289,7 @@ async function loadOrders(s: PrivacySubject): Promise<OrderRow[]> {
       keptUntil: null,
       anonymisedAt: iso(o.anonymised_at),
       gift: o.is_gift ? { to: str(o.gift_to), from: str(o.gift_from), message: str(o.gift_message) } : null,
+      checkoutAnswers: readAnswers(o.checkout_answers).map((a) => ({ question: a.label, answer: a.answer })),
       tags: (byOrder.tags.get(id) ?? []).map((t) => strs(t.label)),
       lines: (byOrder.lines.get(id) ?? []).map((l) => {
         const b = bookingOf.get(strs(l.id));

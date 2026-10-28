@@ -29,7 +29,8 @@ import { formatMoney } from "@/lib/money";
 import { countryOfVatPrefix } from "@/lib/vat-number";
 import { countryName, vatNumberMessage, vatProblemTexts, vatText } from "@/lib/vat-text";
 import { getBuyer } from "@/server/b2b";
-import { getCart, getCartGift } from "@/server/cart";
+import { getCart, getCartGift, readCartId } from "@/server/cart";
+import { checkoutQuestionsFor } from "@/server/checkout-rules";
 import { perRequest } from "@/server/request-memo";
 import { cartSummary } from "@/server/cart-summary";
 import { getCustomer } from "@/server/customers";
@@ -118,6 +119,8 @@ async function loadCartView(store: Store, market: Market, m: Messages) {
         limitText: companyFacts.limit && chosenPlace?.role === "orderer" ? formatMoney(companyFacts.limit.minor, companyFacts.limit.currency, market.locale) : null,
       }
     : null;
+  // The store's own questions at checkout (D357), with what the cart holds of the answers.
+  const questions = await checkoutQuestionsFor(store.id, market.locale, await readCartId({ storeId: store.id, market }));
   // A signed-in customer's saved addresses in the market's country (D304), offered where this page asks the address itself.
   const addressChoices = customer && (asksPayer || onTerms) ? choicesFor(await listAddresses(store.id, customer.id), market.code) : [];
   const companyNeeded = companyRequired(
@@ -159,6 +162,7 @@ async function loadCartView(store: Store, market: Market, m: Messages) {
     onTerms,
     cardsPayAll,
     companyBuy,
+    questions,
   };
 }
 
@@ -854,6 +858,11 @@ function checkoutAction({ store, market, m, view }: Draw) {
           }
           cardsPayAll={cardsPayAll && !atVenueOnly ? cardsPayAll : undefined}
           savedAddresses={addressChoices.length ? { choices: addressChoices, label: m.account.addresses.choose, typeNew: m.account.addresses.typeNew } : undefined}
+          questions={
+            view.questions.fields.length > 0
+              ? { fields: view.questions.fields, answers: view.questions.answers, legend: m.checkoutQuestions.legend, required: m.checkoutQuestions.required }
+              : undefined
+          }
           company={{
             // Asked of businesses, and of anyone whose order needs it.
             ask: asksCompany,
@@ -883,7 +892,14 @@ function checkoutAction({ store, market, m, view }: Draw) {
           {checkout.starter ? m.starterCheckout : m.checkoutUnavailable}
         </p>
       )}
-      {blocked && <p className="text-sm">{m.noLongerAvailable}</p>}
+      {summary.refusal ? (
+        // A checkout rule refuses the basket (D357): the owner's own words, in the cart's language.
+        <p className="text-sm" role="alert" data-checkout-rule>
+          {summary.refusal}
+        </p>
+      ) : (
+        blocked && <p className="text-sm">{m.noLongerAvailable}</p>
+      )}
     </>
   );
 }

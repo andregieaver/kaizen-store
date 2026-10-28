@@ -93,6 +93,8 @@ export type OrderRow = {
   anonymisedAt: Ts;
   /** The buyer's gift (D173): the buyer's own words, and the name of another person (the recipient). Staff tags on the order (staff text, which can name a person). */
   gift?: { to: string | null; from: string | null; message: string | null } | null;
+  /** The answers to the store's checkout fields (D357): the buyer's own words. */
+  checkoutAnswers?: { question: string; answer: string | boolean }[];
   tags?: string[];
   lines: OrderLineRow[];
   payments: { provider: string; amountMinor: number; currency: string; status: string; createdAt: Ts; providerReference: string | null }[];
@@ -545,6 +547,8 @@ const shapeOrder = (o: OrderRow): Json => {
     anonymisedAt: iso(o.anonymisedAt),
     // The buyer's gift (D173): their own words and the recipient's name, kept with the order and exported with it; staff's tags on it.
     gift: o.gift ? { to: text(o.gift.to), from: text(o.gift.from), message: text(o.gift.message) } : null,
+    // The answers to the store's checkout fields (D357), as placed.
+    checkoutAnswers: o.checkoutAnswers ?? [],
     tags: o.tags ?? [],
     lines: o.lines.map((l) => ({
       id: l.id,

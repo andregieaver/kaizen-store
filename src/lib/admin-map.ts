@@ -834,6 +834,10 @@ const PAGES: readonly AdminPage[] = [
     feature: "shop",
   }),
   store("integrations.google-reviews", "/integrations/google-reviews", "Google reviews", "Store", "Shows the store's Google rating and reviews on its pages."),
+  store("checkout-rules", "/settings/checkout", "Checkout rules", "Store", "Checkout rules and questions (D357): rules on the basket (country, value, weight, products, categories, tags, customer groups) that hide or rename a delivery option, leave payment methods out or stop the order with the owner's words, applied by the cart and checkout alike and listed with the times one was left out; and questions the checkout asks, kept on the order.", {
+    keywords: ["checkout", "rules", "hide shipping", "payment methods", "questions", "custom fields", "order notes", "functions"],
+    feature: "shop",
+  }),
   store("workflows", "/settings/workflows", "Workflows", "Store", "Workflows (D356): a trigger (an event of the store or a schedule), conditions on its fields and actions (tag the order or customer, email staff, post to Slack, send to an own endpoint, ask the AI manager), saved off, tested on the latest event, then switched on; each one's recent runs.", {
     keywords: ["workflow", "automation", "flow", "trigger", "schedule", "rules"],
   }),

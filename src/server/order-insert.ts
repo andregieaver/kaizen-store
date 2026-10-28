@@ -91,6 +91,10 @@ export type OrderInsert = {
   /** Duties and import VAT collected at checkout (DDP, D343), beside the total; and what the order says about customs (`OrderCustoms`), null for none. */
   dutiesMinor?: number;
   customs?: unknown | null;
+  /** The answers to the store's checkout fields (D357), and the payment methods a checkout rule left out. */
+  checkoutAnswers?: unknown[] | null;
+  ruleHiddenMethods?: string[];
+  checkoutRulesApplied?: string[];
 };
 
 /** The order's own number, as `{prefix}{n}`, from the store's series (D141). Called only by `insertOrder()`. */
@@ -119,7 +123,7 @@ export async function insertOrder(tx: Db, input: OrderInsert): Promise<{ orderId
       vat_kind, vat_relief_minor, shipping_tax_rate, vat_treatment, vat_check_id, subscription_id,
       is_gift, gift_to, gift_from, gift_message, source, draft_id, made_by, staff_discount_minor, staff_discount_label,
       delivery_method, pickup_location_id, delivery_note, exchange_id, entered_codes, campaign_shipping,
-      company_location_id, po_number, approval, duties_minor, customs
+      company_location_id, po_number, approval, duties_minor, customs, checkout_answers, rule_hidden_methods, checkout_rules_applied
     ) values (
       ${input.storeId}::uuid, ${number}, ${input.marketCode}, ${input.currency}, ${input.locale},
       ${input.cartId ?? null}::uuid, ${input.email ?? ""}, 'pending_payment',
@@ -142,7 +146,9 @@ export async function insertOrder(tx: Db, input: OrderInsert): Promise<{ orderId
       ${input.enteredCodes ? sql`(select coalesce(array_agg(c order by n), '{}') from jsonb_array_elements_text(${JSON.stringify(input.enteredCodes)}::jsonb) with ordinality as t(c, n))` : sql`null`},
       ${input.campaignShipping ? JSON.stringify(input.campaignShipping) : null}::jsonb,
       ${input.companyLocationId ?? null}::uuid, ${input.poNumber ?? null}, ${input.approval ?? null},
-      ${input.dutiesMinor ?? 0}, ${input.customs === null || input.customs === undefined ? null : JSON.stringify(input.customs)}::jsonb
+      ${input.dutiesMinor ?? 0}, ${input.customs === null || input.customs === undefined ? null : JSON.stringify(input.customs)}::jsonb,
+      ${input.checkoutAnswers ? JSON.stringify(input.checkoutAnswers) : null}::jsonb, (select coalesce(array_agg(m), '{}') from jsonb_array_elements_text(${JSON.stringify(input.ruleHiddenMethods ?? [])}::jsonb) m),
+      (select coalesce(array_agg(r::uuid), '{}') from jsonb_array_elements_text(${JSON.stringify(input.checkoutRulesApplied ?? [])}::jsonb) r)
     )
     returning id
   `);

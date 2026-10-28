@@ -37,6 +37,9 @@ export function checkoutLabels(m: Messages, action: string = m.checkout, lang: s
       unregistered: m.producer.problem,
       // Customs and duties (D343): hand-written in the four languages (`customs-text.ts`), for legal review.
       customs: customsText(lang).problem,
+      // Checkout rules and fields (D357).
+      checkout_rule: m.problemCheckoutRule,
+      checkout_fields: m.checkoutQuestions.problem,
     },
   };
 }

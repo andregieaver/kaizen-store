@@ -329,6 +329,7 @@ export async function chooseDeliveryAction(
   const note = form.get("note");
   const chosen = await chooseDelivery({ storeId: shop.store.id, market: shop.market }, cartId, option, pickup || undefined, {
     note: typeof note === "string" ? note : undefined,
+    customerId: (await getCustomer(shop.store.id))?.id ?? null,
   });
   if (!chosen.ok) return { problem: chosen.problem };
   return placeAgain(found, open.digital);
@@ -346,7 +347,7 @@ export async function deliveryReadyAction(storeSlug: string, marketSlug: string)
   const found = await openCheckout(storeSlug, marketSlug);
   if (!found) return { ok: true };
   const { shop, cartId } = found;
-  const ready = await deliveryReady({ storeId: shop.store.id, market: shop.market }, cartId);
+  const ready = await deliveryReady({ storeId: shop.store.id, market: shop.market }, cartId, (await getCustomer(shop.store.id))?.id ?? null);
   if (ready.ok) return { ok: true };
   if (ready.problem !== "changed") return { ok: false, problem: ready.problem };
   const open = await getOpenCheckout(shop.store.id, cartId);

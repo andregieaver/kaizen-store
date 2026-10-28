@@ -5,6 +5,7 @@ import type { Market } from "@/lib/markets";
 
 import { getCart } from "./cart";
 import { cartSummary } from "./cart-summary";
+import { getCustomer } from "./customers";
 import { deliveryChoiceOn, deliveryOptionsFor } from "./delivery-options";
 
 /**
@@ -18,7 +19,8 @@ export async function deliveryView(
   flatLabel: string,
 ): Promise<DeliveryOptions | null> {
   if (!(await deliveryChoiceOn(shop.storeId, shop.market.code))) return null;
-  const summary = await cartSummary(shop, await getCart(shop), { cartId });
+  const customerId = (await getCustomer(shop.storeId))?.id ?? null;
+  const summary = await cartSummary(shop, await getCart(shop), { cartId, customerId });
   if (!summary.ships || summary.plan) return null;
-  return deliveryOptionsFor(shop, cartId, { label: flatLabel, rate: summary.checkout.shipping }, summary.shippingAt);
+  return deliveryOptionsFor(shop, cartId, { label: flatLabel, rate: summary.checkout.shipping }, summary.shippingAt, customerId);
 }

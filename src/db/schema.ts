@@ -3966,6 +3966,8 @@ export const carts = commerce.table(
     /** A company member's purchase (D321 C.2): the location the order is for and the PO number, checked again by `placeOrder()`. */
     companyLocationId: uuid("company_location_id"),
     poNumber: text("po_number"),
+    /** The shopper's answers to the store's checkout fields (D357), as checked by `cleanAnswers()`; copied to the order by `placeOrder()`. */
+    checkoutAnswers: jsonb("checkout_answers"),
     status: cartStatus("status").notNull().default("open"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
@@ -4282,6 +4284,15 @@ export const orders = commerce.table(
      * is none. Null when the goods cross no customs border. Kept as placed; never copied.
      */
     customs: jsonb("customs"),
+    /**
+     * The answers to the store's checkout fields as placed (D357, `CheckoutAnswer[]`: the question in the store's main words and the answer), shown to
+     * staff and in the order's export; null when the store asked none. Cleared when the order is anonymised.
+     */
+    checkoutAnswers: jsonb("checkout_answers"),
+    /** The payment methods a checkout rule left out for this order (D357), passed to Stripe with the owner's own choices; never cards. */
+    ruleHiddenMethods: text("rule_hidden_methods").array().notNull().default(sql`'{}'::text[]`),
+    /** The checkout rules that applied to the basket when it was placed (D357), by id: which of the store's rules changed what it was offered. */
+    checkoutRulesApplied: uuid("checkout_rules_applied").array().notNull().default(sql`'{}'::uuid[]`),
         heldAt: timestamp("held_at", { withTimezone: true }),
     heldReason: text("held_reason"),
     heldByRule: uuid("held_by_rule"),
@@ -6970,6 +6981,77 @@ export const workflowRuns = commerce.table(
     index("workflow_runs_workflow_idx").on(t.workflowId, t.createdAt),
     index("workflow_runs_store_idx").on(t.storeId, t.createdAt),
     check("workflow_runs_status", sql`${t.status} in ('pending', 'done', 'failed', 'capped')`),
+  ],
+);
+
+/**
+ * A checkout rule (D357, `src/server/checkout-rules.ts`, its only writer): conditions on the basket and one effect, evaluated in `position` order by
+ * `applyCheckoutRules()` in the cart and checkout alike. Saved off or on; never a price, VAT or a legal page.
+ */
+export const checkoutRules = commerce.table(
+  "checkout_rules",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    name: text("name").notNull(),
+    position: integer("position").notNull().default(0),
+    conditions: jsonb("conditions").notNull().default(sql`'[]'::jsonb`),
+    effect: jsonb("effect").notNull(),
+    enabled: boolean("enabled").notNull().default(false),
+    createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+    updatedBy: uuid("updated_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("checkout_rules_store_id_key").on(t.storeId, t.id),
+    index("checkout_rules_store_idx").on(t.storeId, t.position).where(sql`${t.enabled}`),
+    index("checkout_rules_created_by_idx").on(t.createdBy),
+    index("checkout_rules_updated_by_idx").on(t.updatedBy),
+    check("checkout_rules_name", sql`char_length(${t.name}) between 1 and 80`),
+    check("checkout_rules_effect", sql`${t.effect} ->> 'kind' in ('hide_shipping', 'rename_shipping', 'hide_payment_method', 'refuse')`),
+  ],
+);
+
+/** A rule left out (D357): it named something gone or could not be read. One row per rule and reason, counted, for the owner to put right. */
+export const checkoutRuleSkips = commerce.table(
+  "checkout_rule_skips",
+  {
+    storeId: storeId().references(() => stores.id),
+    ruleId: uuid("rule_id")
+      .notNull()
+      .references(() => checkoutRules.id, { onDelete: "cascade" }),
+    reason: text("reason").notNull(),
+    count: integer("count").notNull().default(1),
+    firstAt: timestamp("first_at", { withTimezone: true }).notNull().defaultNow(),
+    lastAt: timestamp("last_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.ruleId, t.reason] }),
+    index("checkout_rule_skips_store_idx").on(t.storeId),
+    check("checkout_rule_skips_reason", sql`${t.reason} in ('gone', 'unreadable')`),
+  ],
+);
+
+/** A question in the checkout (D357, written only by `src/server/checkout-rules.ts`): a text or a box, required or not, its words per language. */
+export const checkoutFields = commerce.table(
+  "checkout_fields",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    kind: text("kind").notNull(),
+    required: boolean("required").notNull().default(false),
+    label: jsonb("label").notNull(),
+    help: jsonb("help"),
+    position: integer("position").notNull().default(0),
+    enabled: boolean("enabled").notNull().default(true),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("checkout_fields_store_id_key").on(t.storeId, t.id),
+    index("checkout_fields_store_idx").on(t.storeId, t.position),
+    check("checkout_fields_kind", sql`${t.kind} in ('text', 'checkbox')`),
   ],
 );
 

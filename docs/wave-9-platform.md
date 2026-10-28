@@ -141,6 +141,12 @@ Each unit adds its own paragraph here when it is built.
   email to a customer and anything that spends are left out of the actions rather than kept for a yes (a person does them in the admin);
   *Email staff* goes to those chosen for automation under Notifications and, with none chosen, to the owners; the loop guard is that no
   action makes an event a workflow waits for, with the hourly cap behind it. A note on the order is an action too.
+- **D (D357), built 28 October 2026.** As section 3 says, with these choices: an amount condition holds only in its own currency (a basket
+  shown in euro is compared with a euro amount, never converted); category and tag conditions count parent categories and collections filled
+  by rules, as campaigns do; a rule may hide the flat rate, a method, a pickup place or a local area, never a carrier's service (quoted live by
+  the carrier); a weekly box is made by the store's job and is not ruled; the payment methods a rule left out are kept on the order, as the
+  payment page is opened after the order is placed. Questions are asked above the cart's checkout button, the place the order's details are
+  typed, and kept on the cart until the order is placed.
 
 ## 5. Decisions
 

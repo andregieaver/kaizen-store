@@ -931,6 +931,14 @@ stand-in is the only fake, and only it is told it is one.
   screens' own functions only, each change audited `integration.api_{what}` with the token's name. A new route is a case in `routeOf()` and
   `API_ROUTES` with its scope, a case in `runApiRoute()` over the screen's function, and a test; a gated effect (publishing, a live product,
   a refund, an email a person decides) is refused as `gated`, never run.
+- **Checkout rules and questions (wave 9 unit D, D357, `src/lib/checkout-rules.ts`, `src/server/checkout-rules.ts`)**: a store's rules
+  (`commerce.checkout_rules`) and questions (`commerce.checkout_fields`) are written only by `src/server/checkout-rules.ts`; what the rules do to a
+  basket is only `applyCheckoutRules()` through `checkoutRuleOutcome()`, read once by `cartSummary()` and by `placeOrder()` and handed to
+  `resolveDelivery()` (`rules`), which lays it over the offer (`rulesOnOffer()`); every other reader of a cart's delivery passes the buyer
+  (`customerId`). A new condition or effect is a kind in `CONDITION_KINDS`/`EFFECT_KINDS`, its schema in `checkout-rules-schema.ts`, its case in
+  `conditionHolds()`/`goneIn()` and the editor, and a test; a rule never changes a price, VAT or a legal page. Payment methods a rule left out are
+  `orders.rule_hidden_methods`, read by `excludedPaymentMethods()` given the order. Answers are kept on the cart through `cleanAnswers()` and copied
+  by `placeOrder()` (`orders.checkout_answers`, read by `readAnswers()`): personal data, in the export, erasure, retention and `anonymise_order()`.
 - **Workflows (wave 9 unit C, D356, `src/lib/workflows.ts`, `src/server/workflows.ts`)**: a workflow is `commerce.workflows`, written only by
   `workflows.ts` (saved off; on only once *Test* ran the version saved); its runs are made by the database's `queue_integration_event()` (once
   per workflow, event and transaction, capped at `RUNS_PER_HOUR`) and by `queueScheduledRuns()`, and run only by `runWorkflows()` in the

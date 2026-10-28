@@ -24,6 +24,7 @@ import {
   type QuotedPickupPoint,
 } from "@/lib/delivery-options";
 import type { ShippingRate } from "@/lib/checkout";
+import { rulesOnOffer, shownLabel, type RuleOutcome } from "@/lib/checkout-rules";
 import { cleanShopperText } from "@/lib/gift";
 import { t } from "@/lib/i18n";
 import { areaCovers, type AreaTerms } from "@/lib/local-delivery";
@@ -51,6 +52,7 @@ import { PORTERBUDDY_PRODUCTS } from "@/lib/porterbuddy";
 import { HELTHJEM_SERVICES } from "@/lib/helthjem";
 
 import { audit } from "./auth";
+import { checkoutRuleOutcome } from "./checkout-rules";
 import { adapterFor } from "./carriers";
 import { carrierContext } from "./shipping-carriers";
 
@@ -588,8 +590,10 @@ export type ChosenDelivery = {
 };
 
 export type DeliveryResolution = {
-  /** Everything the basket may choose (`deliveryOffer()`), for the page. */
+  /** Everything the basket may choose (`deliveryOffer()`, with the checkout rules laid over it, D357), for the page. */
   offer: DeliveryOffer;
+  /** What the checkout rules (D357) came to for this basket: hidden and renamed options, payment methods left out, a refusal. */
+  rules: RuleOutcome;
   shipping: MarketShipping;
   /** The delivery postal code the prices are for, and its zone (null: Rest of country). */
   postalCode: string | null;
@@ -628,7 +632,17 @@ export async function resolveDelivery(
   storeId: string,
   cartId: string,
   market: Pick<Market, "code" | "conversion" | "locale" | "lang">,
-  { basketValueMinor }: { basketValueMinor?: number } = {},
+  {
+    basketValueMinor,
+    customerId = null,
+    rules: given,
+  }: {
+    basketValueMinor?: number;
+    /** The buyer, for rules on customer groups (D357). */
+    customerId?: string | null;
+    /** The rules' outcome when the caller has it already (`checkoutRuleOutcome()`), else read here. */
+    rules?: RuleOutcome;
+  } = {},
 ): Promise<DeliveryResolution | null> {
   const cart = await cartDeliveryFacts(runner, storeId, cartId, market);
   if (!cart) return null;
@@ -642,8 +656,10 @@ export async function resolveDelivery(
     postalCode && shipping.areas.some((a) => a.kind === "radius")
       ? await runner.execute<Row>(sql`select latitude, longitude from commerce.postal_points where country = ${market.code} and postal_code = ${postalCode}`)
       : [];
+  // Checkout rules (D357) hide or rename the store's own options before anything is chosen from them; a carrier's services are not theirs.
+  const rules = given ?? (await checkoutRuleOutcome(runner, storeId, cartId, market, { customerId, basketValueMinor: value }));
   const offer = physical
-    ? deliveryOffer({
+    ? rulesOnOffer(deliveryOffer({
         physical,
         subscription: cart.subscription,
         view: market,
@@ -656,10 +672,11 @@ export async function resolveDelivery(
         areas: cart.subscription ? [] : shipping.areas,
         postalCode,
         point: point ? { lat: Number(point.latitude), lon: Number(point.longitude) } : null,
-      })
+      }), rules)
     : NOTHING;
   const base = {
     offer,
+    rules,
     shipping,
     postalCode,
     zone: zone ? { id: zone.id, name: zone.name } : null,
@@ -723,14 +740,14 @@ function deliverySnapshot(
 ): AnyOrderDelivery {
   switch (picked.kind) {
     case "flat":
-      return { kind: "flat", label: t(market.lang).shipping, postalCode };
+      return { kind: "flat", label: shownLabel(picked, t(market.lang).shipping), postalCode };
     case "method":
       return { kind: "method", methodId: picked.id, label: picked.label, zone: zone ? { id: zone.id, name: zone.name } : null, postalCode, estimate: picked.estimate };
     case "pickup": {
       const option = shipping.pickups.find((p) => p.id === picked.id)!;
       return {
         kind: "pickup",
-        label: option.place.name,
+        label: shownLabel(picked, option.place.name),
         locationId: option.locationId,
         ...option.place,
         instructions: localized(option.instructionsT, market, option.instructions),
@@ -740,7 +757,7 @@ function deliverySnapshot(
     case "local": {
       const area = shipping.areas.find((a) => a.id === picked.id)!;
       const name = localized(area.names, market, area.name);
-      return { kind: "local", label: name, areaId: area.id, name, postalCode: postalCode ?? "", info: localized(area.infoT, market, area.info) };
+      return { kind: "local", label: shownLabel(picked, name), areaId: area.id, name, postalCode: postalCode ?? "", info: localized(area.infoT, market, area.info) };
     }
   }
 }
@@ -754,7 +771,7 @@ export async function chosenDelivery(
   storeId: string,
   cartId: string,
   market: Pick<Market, "code" | "conversion"> & Partial<Pick<Market, "locale" | "lang">>,
-  options: { basketValueMinor?: number } = {},
+  options: { basketValueMinor?: number; customerId?: string | null } = {},
 ): Promise<ChosenDelivery | null> {
   const resolved = await resolveDelivery(runner, storeId, cartId, { locale: "en", lang: "en", ...market }, options);
   return resolved?.chosen ?? null;
@@ -815,7 +832,7 @@ export async function chooseDelivery(
   cartId: string,
   optionId: string,
   pickupPointId?: string,
-  { note }: { note?: unknown } = {},
+  { note, customerId = null }: { note?: unknown; customerId?: string | null } = {},
 ): Promise<ChooseResult> {
   const { storeId, market } = shop;
   const clear = sql`delivery_quote_id = null, shipping_method_id = null, pickup_option_id = null, local_area_id = null, delivery_note = null`;
@@ -841,7 +858,7 @@ export async function chooseDelivery(
         select id from commerce.carts where store_id = ${storeId}::uuid and id = ${cartId}::uuid and status = 'open' and market_code = ${market.code} for update
       `);
       if (!cart) return { ok: false, problem: "gone" };
-      const resolved = await resolveDelivery(tx, storeId, cartId, { locale: "en", lang: "en", ...market });
+      const resolved = await resolveDelivery(tx, storeId, cartId, { locale: "en", lang: "en", ...market }, { customerId });
       if (!resolved) return { ok: false, problem: "gone" };
       const pool = kind === "method" ? resolved.offer.ship : kind === "pickup" ? resolved.offer.pickups : resolved.offer.local ? [resolved.offer.local] : [];
       if (!pool.some((d) => d.kind === kind && d.id === id)) {
@@ -894,8 +911,9 @@ export type ReadyProblem = "postal_code" | "changed" | "no_shipping";
 export async function deliveryReady(
   shop: { storeId: string; market: Pick<Market, "code" | "conversion"> & Partial<Pick<Market, "locale" | "lang">> },
   cartId: string,
+  customerId: string | null = null,
 ): Promise<{ ok: true } | { ok: false; problem: ReadyProblem }> {
-  const resolved = await resolveDelivery(db(), shop.storeId, cartId, { locale: "en", lang: "en", ...shop.market });
+  const resolved = await resolveDelivery(db(), shop.storeId, cartId, { locale: "en", lang: "en", ...shop.market }, { customerId });
   if (!resolved || resolved.offer.status === "none") return { ok: true };
   if (resolved.changed) {
     await db().execute(sql`
@@ -919,10 +937,11 @@ export async function deliveryOptionsFor(
   cartId: string,
   flat: { label: string; rate: { amountMinor: number; freeOverMinor: number | null } | null },
   priceFor: (rate: { amountMinor: number; freeOverMinor: number | null }) => number,
+  customerId: string | null = null,
 ): Promise<DeliveryOptions> {
   const { storeId } = shop;
   const market = { locale: "en", lang: "en", ...shop.market };
-  const resolved = await resolveDelivery(db(), storeId, cartId, market);
+  const resolved = await resolveDelivery(db(), storeId, cartId, market, { customerId });
   const selectedId = resolved?.chosen?.optionId ?? "flat";
   const options: DeliveryOption[] = [];
   const plain = (): Pick<DeliveryOption, "needsPickupPoint" | "window" | "pickupPoints" | "pickupPointId"> => ({ needsPickupPoint: false, window: null, pickupPoints: [], pickupPointId: null });
@@ -931,7 +950,7 @@ export async function deliveryOptionsFor(
       // The flat rate as the caller shows it (`cartSummary().checkout.shipping`); a caller with none offers none.
       const rate = flat.rate;
       if (!rate) continue;
-      options.push({ id: "flat", kind: "flat", carrier: "flat", label: flat.label, priceMinor: priceFor(rate), freeOverMinor: rate.freeOverMinor, estimate: null, ...plain(), selected: selectedId === "flat" });
+      options.push({ id: "flat", kind: "flat", carrier: "flat", label: shownLabel(d, flat.label), priceMinor: priceFor(rate), freeOverMinor: rate.freeOverMinor, estimate: null, ...plain(), selected: selectedId === "flat" });
     } else if (d.kind === "method") {
       const id = `method:${d.id}`;
       options.push({ id, kind: "method", carrier: "flat", label: d.label, priceMinor: priceFor(d.rate), freeOverMinor: d.rate.freeOverMinor, estimate: d.estimate, ...plain(), selected: selectedId === id });
@@ -977,7 +996,7 @@ export async function deliveryOptionsFor(
       id,
       kind: "pickup",
       carrier: "flat",
-      label: option.place.name,
+      label: shownLabel(d, option.place.name),
       priceMinor: d.priceMinor,
       freeOverMinor: null,
       estimate: null,
@@ -994,7 +1013,7 @@ export async function deliveryOptionsFor(
       id,
       kind: "local",
       carrier: "flat",
-      label: localized(area.names, market, area.name),
+      label: shownLabel(local, localized(area.names, market, area.name)),
       priceMinor: priceFor(local.rate),
       freeOverMinor: local.rate.freeOverMinor,
       estimate: null,

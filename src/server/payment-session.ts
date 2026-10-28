@@ -234,7 +234,7 @@ export async function openPaymentSession(
     .join(" · ");
   const returnUrl = `${base}/order/${order.orderId}?session_id={CHECKOUT_SESSION_ID}`;
   // Methods the owner switched off for this country (D291): left out of Stripe's choice, never a list of methods of our own.
-  const excluded = await excludedPaymentMethods(shop.storeId, options.allowedCountry ?? shop.market.code);
+  const excluded = await excludedPaymentMethods(shop.storeId, options.allowedCountry ?? shop.market.code, order.orderId);
   // Wallets, Link and Klarna show in Stripe's form only on registered domains.
   if (ui === "custom" && origin.startsWith("https://")) {
     await ensurePaymentDomain(shop.storeId, connection.mode, seller, new URL(origin).hostname);

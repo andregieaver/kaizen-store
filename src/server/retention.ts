@@ -246,11 +246,12 @@ const STEPS: Record<RetentionStep, StepFn> = {
     return {
       count: await batched(ctx.batch, () =>
         db().execute(sql`
-          update commerce.carts set customer_id = null, company_name = null, organisation_number = null, vat_number = null, vat_check_id = null, affiliate_code = null
+          update commerce.carts set customer_id = null, company_name = null, organisation_number = null, vat_number = null, vat_check_id = null, affiliate_code = null,
+            checkout_answers = null
           where id in (
             select c.id from commerce.carts c
             where (c.customer_id is not null or c.company_name is not null or c.organisation_number is not null or c.vat_number is not null
-                   or c.vat_check_id is not null or c.affiliate_code is not null)
+                   or c.vat_check_id is not null or c.affiliate_code is not null or c.checkout_answers is not null)
               and coalesce(case when c.status = 'open' then c.expires_at end, c.updated_at) < ${cutoff}::timestamptz
             order by c.id limit ${ctx.batch})
           returning id

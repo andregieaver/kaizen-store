@@ -4,10 +4,12 @@ import { refresh } from "next/cache";
 import { headers } from "next/headers";
 import { z } from "zod";
 
+import { db } from "@/db/client";
 import { COMPANY_NAME_MAX, organisationNumber } from "@/lib/b2b";
 import { MAX_RANGE_LENGTH } from "@/lib/booking-ranges";
 import { MAX_ORDER_QUANTITY } from "@/lib/cart";
 import type { CreditsState } from "@/lib/bonus-shopper";
+import { cleanAnswers } from "@/lib/checkout-rules";
 import type { GiftFields, GiftProblem } from "@/lib/gift";
 import { cleanGiftCardRecipient, type GiftCardProblem } from "@/lib/gift-card-line";
 import { todayIn } from "@/lib/analytics-period";
@@ -23,6 +25,7 @@ import { recordExperimentCart } from "@/server/experiments";
 import { productOfVariant, recordRecommendedAdd } from "@/server/recommend-events";
 import { attributionOf } from "@/lib/recommendations";
 import { parseAttribution } from "@/lib/recommendations-schema";
+import { listCheckoutFields, setCartAnswers } from "@/server/checkout-rules";
 import { recordTermsForOrder } from "@/server/checkout-terms";
 import { startCheckout, type CheckoutConsent, type CheckoutProblem } from "@/server/checkout";
 import { resolveSellingShop } from "@/server/shop";
@@ -177,6 +180,8 @@ export async function checkoutAction(
   onTerms: { termsTicked: boolean } | null = null,
   /** Gift cards pay it all (D300 F3): no payment page follows, so the store's terms of sale are accepted here, as on terms. */
   paidByCards: { termsTicked: boolean } | null = null,
+  /** The answers to the store's checkout fields (D357), by field; checked here and again when the order is placed. */
+  answers: Record<string, string | boolean> | null = null,
 ): Promise<CheckoutState> {
   const shop = await resolveSellingShop(storeSlug, marketSlug);
   if (!shop) return { problem: "empty" };
@@ -194,6 +199,14 @@ export async function checkoutAction(
       if (!number) return { problem: "company_number" };
       await setCartCompany(cartShop, { name, number });
     }
+  }
+
+  // The store's questions (D357): kept on the cart as answered, so placing the order again (a code, a delivery) keeps them.
+  const fields = await listCheckoutFields(db(), shop.store.id, { onlyOn: true });
+  if (fields.length > 0) {
+    const asked = cleanAnswers(fields, answers);
+    await setCartAnswers(shop.store.id, cartId, asked.answers);
+    if (asked.missing.length > 0) return { problem: "checkout_fields" };
   }
 
   const who = contact ? contactInput.safeParse(contact) : null;

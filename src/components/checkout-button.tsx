@@ -4,6 +4,7 @@ import { useActionState, useEffect, useState, useTransition } from "react";
 
 import { checkoutAction, vatNumberAction, type CheckoutState } from "@/app/s/[store]/[market]/cart/actions";
 import { payHeld, type TermsDisplay } from "@/lib/checkout-terms";
+import type { ShownField } from "@/lib/checkout-rules";
 import type { AddressChoice } from "@/lib/customer-addresses";
 import type { VatNumberMessage } from "@/lib/vat-text";
 import type { CheckoutProblem } from "@/server/checkout";
@@ -138,6 +139,7 @@ export function CheckoutButton({
   terms,
   cardsPayAll,
   savedAddresses,
+  questions,
 }: {
   store: string;
   market: string;
@@ -158,6 +160,8 @@ export function CheckoutButton({
   cardsPayAll?: { display: TermsDisplay | null; template: string; newTab: string; place: string };
   /** A signed-in customer's saved addresses in the market's country (D304): choosing one fills the address fields, which stay editable. */
   savedAddresses?: { choices: AddressChoice[]; label: string; typeNew: string };
+  /** The store's own questions (D357), in the shopper's language, with what the cart holds of the answers. */
+  questions?: { fields: ShownField[]; answers: Record<string, string | boolean>; legend: string; required: string };
 }) {
   const [way, setWay] = useState<"now" | "terms">(terms?.onlyWay ? "terms" : "now");
   const onTerms = Boolean(terms) && way === "terms";
@@ -233,6 +237,11 @@ export function CheckoutButton({
           : null,
         onTerms ? { termsTicked: ticked } : null,
         cardsPayAll && !onTerms ? { termsTicked: ticked } : null,
+        questions
+          ? Object.fromEntries(
+              questions.fields.map((f) => [f.id, f.kind === "checkbox" ? form.get(`question_${f.id}`) === "on" : String(form.get(`question_${f.id}`) ?? "")]),
+            )
+          : null,
       );
     },
     { problem: null },
@@ -279,6 +288,7 @@ export function CheckoutButton({
           <span className="block text-muted">{terms.note}</span>
         </p>
       )}
+      {questions && questions.fields.length > 0 && <Questions questions={questions} field={field} />}
       {company?.ask && (
         <fieldset className="flex min-w-0 flex-col gap-2 text-sm">
           <legend className="mb-1 font-medium">{company.labels.legend}</legend>
@@ -443,5 +453,38 @@ export function CheckoutButton({
         {state.problem && labels.problems[state.problem]}
       </p>
     </form>
+  );
+}
+
+/** The store's own questions (D357): a text or a box each, kept as typed while the form is sent (`defaultValue` from the cart). */
+function Questions({ questions, field }: { questions: NonNullable<Parameters<typeof CheckoutButton>[0]["questions"]>; field: string }) {
+  return (
+    <fieldset className="flex min-w-0 flex-col gap-2 text-sm" data-checkout-questions>
+      <legend className="mb-1 font-medium">{questions.legend}</legend>
+      {questions.fields.map((f) => {
+        const answer = questions.answers[f.id];
+        const label = (
+          <>
+            {f.label}
+            {f.required && <span className="text-muted"> ({questions.required})</span>}
+          </>
+        );
+        return f.kind === "checkbox" ? (
+          <label key={f.id} className="flex items-start gap-2">
+            <input type="checkbox" name={`question_${f.id}`} defaultChecked={answer === true} required={f.required} className="mt-0.5 size-4 shrink-0" />
+            <span>
+              {label}
+              {f.help && <span className="block text-muted">{f.help}</span>}
+            </span>
+          </label>
+        ) : (
+          <label key={f.id} className="flex flex-col gap-1">
+            <span>{label}</span>
+            <input name={`question_${f.id}`} defaultValue={typeof answer === "string" ? answer : ""} required={f.required} maxLength={500} className={field} />
+            {f.help && <span className="text-muted">{f.help}</span>}
+          </label>
+        );
+      })}
+    </fieldset>
   );
 }

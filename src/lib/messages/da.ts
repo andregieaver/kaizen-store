@@ -734,6 +734,12 @@ export const da: Messages = {
   problemCompanyNumber: "CVR-nummeret ser ikke rigtigt ud. Tjek det, og prøv igen.",
   /** A cart line whose quantity breaks its variant's rule (D323). */
   problemQuantity: "Antallet af en vare i kurven kan ikke købes sådan. Ret det i kurven og prøv igen.",
+  problemCheckoutRule: "Butikken tager ikke imod denne bestilling, som den er. Kurven siger hvorfor.",
+  checkoutQuestions: {
+    legend: "Et par spørgsmål fra butikken",
+    required: "skal udfyldes",
+    problem: "Svar på butikkens spørgsmål, der skal udfyldes, og prøv igen.",
+  },
   producer: {
     notSoldHere: "Sælges ikke i dette land lige nu: sælgerens registrering under producentansvaret mangler her.",
     lineProblem: "Sælges ikke i dette land lige nu: sælgerens registrering under producentansvaret mangler her. Fjern varen for at fortsætte.",

@@ -108,6 +108,9 @@ export const orderEn = {
     organisationNumber: "Organisation number {number}",
     /** A company's purchase (D321 C.2). */
     poNumber: "PO number {po}",
+    checkoutAnswers: "Answers at checkout",
+    answerYes: "Yes",
+    answerNo: "No",
     forLocation: "For {location}",
     approval: { waiting: "Waiting for the company's approval", approved: "Approved by the company; waiting for the buyer to pay", declined: "Declined by the company" },
     collectsAt: "Collects at",

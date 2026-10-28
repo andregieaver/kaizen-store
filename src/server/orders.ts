@@ -5,6 +5,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 
 import type { OrderBonus } from "@/lib/bonus-shopper";
+import { readAnswers, type CheckoutAnswer } from "@/lib/checkout-rules";
 import { giftOfRow, type GiftFields } from "@/lib/gift";
 import { parseOrderCustoms, type OrderCustoms } from "@/lib/duties";
 import { giftCardRecipientOfRow, type GiftCardRecipient } from "@/lib/gift-card-line";
@@ -181,6 +182,8 @@ export type OrderView = {
   company: { name: string; number: string } | null;
   /** A company's purchase (D321 C.2): the location it was for (its name now, null once deleted), the buyer's PO number and its approval. */
   companyPurchase: { location: string | null; poNumber: string | null; approval: "waiting" | "approved" | "declined" | null };
+  /** The answers to the store's checkout fields (D357), as placed: the question in the store's main words and the answer. */
+  checkoutAnswers: CheckoutAnswer[];
   /** The VAT rate the shipping was charged at, as it was then (`orders.shipping_tax_rate`; the country's rate for an order that has none), for showing businesses amounts without VAT. */
   shippingVatRate: number;
   /**
@@ -365,6 +368,7 @@ const toOrder = (row: Row, lines: Row[]): OrderView => ({
     poNumber: row.po_number ? String(row.po_number) : null,
     approval: row.approval === "waiting" || row.approval === "approved" || row.approval === "declined" ? row.approval : null,
   },
+  checkoutAnswers: readAnswers(row.checkout_answers),
   shippingVatRate: Number(row.shipping_vat_rate ?? 0),
   copied: row.copied_from !== null && row.copied_from !== undefined,
 });

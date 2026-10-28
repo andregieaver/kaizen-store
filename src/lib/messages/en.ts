@@ -751,6 +751,12 @@ export const en = {
   problemCompanyNumber: "The organisation number does not look right. Check it and try again.",
   /** A cart line whose quantity breaks its variant's rule (D323). */
   problemQuantity: "The quantity of something in your cart can't be bought as it is. Change it in the cart and try again.",
+  problemCheckoutRule: "The store doesn't take this order as it is. The cart says why.",
+  checkoutQuestions: {
+    legend: "A few questions from the store",
+    required: "required",
+    problem: "Answer the store's questions marked required, then try again.",
+  },
   /**
    * Producer responsibility (D342): a product under a scheme the seller has no valid registration for in the shopper's country is not sold
    * there; the product page shows the numbers the seller chose to show. Hand-written in nb, sv, da and en, for legal review (`HAND_WRITTEN_ONLY`).

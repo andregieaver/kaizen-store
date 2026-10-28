@@ -4,6 +4,7 @@ import { cartSubtotal } from "@/lib/cart";
 import { NO_CART_AFFILIATE } from "@/lib/affiliates";
 import { memberOffAfterCampaign } from "@/lib/campaigns";
 import { minChargeMinor } from "@/lib/bonus";
+import { NO_RULES } from "@/lib/checkout-rules";
 import { giftCardsPay } from "@/lib/gift-cards";
 import { venuePart } from "@/lib/pay-later";
 import { basketShipping, planPrice } from "@/lib/subscriptions";
@@ -16,6 +17,7 @@ import { readCartId, type Cart, type CartLine, type Shop } from "./cart";
 import { evaluateCampaigns } from "./campaigns";
 import { memberDiscountFor } from "./customer-tiers";
 import { resolveDelivery } from "./delivery-options";
+import { checkoutRuleOutcome } from "./checkout-rules";
 import { getCustomer } from "./customers";
 import { previewCartCodes } from "./discounts";
 import { cartGiftCards } from "./gift-card-cart";
@@ -68,7 +70,10 @@ export async function cartSummary(
   // A gift card (D300) is money paid now to be spent later: nothing comes off it and it counts towards no threshold, as `placeOrder()` reads it.
   const voucher = (line: (typeof payable)[number]) => line.giftCard !== null;
   const basketValueMinor = payable.filter((line) => !voucher(line)).reduce((sum, line) => sum + line.unitPriceMinor * line.quantity, 0);
-  const resolved = ships && !plan && cartId ? await resolveDelivery(db(), storeId, cartId, market, { basketValueMinor }) : null;
+  const customerId = who.customerId !== undefined ? who.customerId : ((await getCustomer(storeId))?.id ?? null);
+  // Checkout rules (D357): what they hide, rename or refuse for this basket, read once and handed to the delivery reader, as `placeOrder()` does.
+  const rules = cartId ? await checkoutRuleOutcome(db(), storeId, cartId, market, { customerId, basketValueMinor }) : NO_RULES;
+  const resolved = ships && !plan && cartId ? await resolveDelivery(db(), storeId, cartId, market, { basketValueMinor, customerId, rules }) : null;
   const chosen = resolved?.chosen ?? null;
   const rate = resolved ? resolved.rate : checkout.shipping;
   const basketLines = payable.filter((line) => !voucher(line)).map((line) => ({
@@ -81,7 +86,6 @@ export async function cartSummary(
   const shippingAt = (other: { amountMinor: number; freeOverMinor: number | null }) => basketShipping(basketLines, other, { trial }).first;
   const shipping = !ships ? 0 : rate ? basket.first : null;
   // The buyer's group or company discount (D108), off what is bought once, before any code, as checkout takes it.
-  const customerId = who.customerId !== undefined ? who.customerId : ((await getCustomer(storeId))?.id ?? null);
   const member = await memberDiscountFor(db(), storeId, customerId);
   // Campaigns (D114) come first: reductions on goods bought once, and the free products the basket has earned.
   const campaigns = await evaluateCampaigns(
@@ -266,8 +270,10 @@ export async function cartSummary(
   };
   return {
     payable,
-    /** Something stops the checkout: a line's own problem, or DDP chosen for a basket with no duty estimate (D343). */
-    blocked: linesBlocked || customs.blocked,
+    /** Something stops the checkout: a line's own problem, DDP chosen for a basket with no duty estimate (D343), or a checkout rule's refusal (D357). */
+    blocked: linesBlocked || customs.blocked || rules.refusal !== null,
+    /** A checkout rule refuses this basket (D357): the owner's words, in the cart's language; null when none does. */
+    refusal: rules.refusal?.message ?? null,
     checkout,
     plan,
     trial,

@@ -27,6 +27,7 @@ import { ChosenDeliveryBooking } from "@/components/admin/chosen-delivery-bookin
 import { sendDocumentAgainAction } from "../../invoices/actions";
 import { helthjemBookAction } from "../helthjem-actions";
 import { porterbuddyBookAction } from "../porterbuddy-actions";
+import { answerText } from "@/lib/checkout-rules";
 import { pickupPointLine } from "@/lib/delivery-options";
 import { formatWindow } from "@/lib/porterbuddy";
 import { CustomerBar, storeCustomerBar } from "@/components/admin/customer-bar";
@@ -809,6 +810,20 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
             )}
             {order.companyPurchase.location && <p className="mt-1">{fillWords(w.forLocation, { location: order.companyPurchase.location })}</p>}
             {order.companyPurchase.poNumber && <p className="mt-1">{fillWords(w.poNumber, { po: order.companyPurchase.poNumber })}</p>}
+            {order.checkoutAnswers.length > 0 && (
+              // The store's own questions at checkout (D357): what the buyer answered, as placed.
+              <>
+                <h3 className="mt-3 mb-1 text-body-strong text-ink">{w.checkoutAnswers}</h3>
+                <dl className="flex flex-col gap-1" data-checkout-answers>
+                  {order.checkoutAnswers.map((a) => (
+                    <div key={a.fieldId}>
+                      <dt className="text-muted">{a.label}</dt>
+                      <dd>{answerText(a, w.answerYes, w.answerNo)}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </>
+            )}
             {order.companyPurchase.approval && order.status === "pending_payment" && (
               <p className="mt-1 text-warning-text">{w.approval[order.companyPurchase.approval]}</p>
             )}

@@ -45,7 +45,10 @@ vi.mock("@/server/cart", () => ({
     company: cartState.company,
   }),
   getCartGift: async () => ({ enabled: giftState.enabled, gift: giftState.gift }),
+  readCartId: async () => null,
 }));
+// The store's questions at checkout (D357): none here.
+vi.mock("@/server/checkout-rules", () => ({ checkoutQuestionsFor: async () => ({ fields: [], answers: {} }) }));
 // The box itself is a client component with its own test; here only where the cart draws it, and what it is given.
 vi.mock("./cart-gift", () => ({
   GiftBox: (props: { store: string; market: string; lang: string; initial: { isGift: boolean } }) =>

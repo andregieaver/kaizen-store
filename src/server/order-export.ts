@@ -4,6 +4,7 @@ import { sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/client";
+import { answerText, readAnswers } from "@/lib/checkout-rules";
 import { isDialect, type Cell, type DialectId } from "@/lib/csv";
 import { ORDER_SELECTION_MAX } from "@/lib/data-limits";
 import { mainCurrency } from "@/lib/markets";
@@ -147,7 +148,7 @@ async function readOrders(store: Store, o: OrderExportOptions, position: unknown
             or (tp.provider in ('venue', 'mollie', 'terms', 'gift_card') and tp.test_mode))
       ) as test_payment,
       (o.restricted_at is not null or o.anonymised_at is not null) as erased,
-      o.archived_at is not null as archived, o.source as order_source, o.is_gift, o.gift_to, o.gift_from, o.gift_message,
+      o.archived_at is not null as archived, o.source as order_source, o.is_gift, o.gift_to, o.gift_from, o.gift_message, o.checkout_answers,
       coalesce((select array_agg(t.label order by t.key) from commerce.order_tags t where t.store_id = o.store_id and t.order_id = o.id), '{}'::text[]) as tag_labels,
       pay.status as payment_status, pay.provider_reference as payment_reference,
       coalesce(
@@ -251,6 +252,7 @@ async function readOrders(store: Store, o: OrderExportOptions, position: unknown
       giftTo: str(r.gift_to),
       giftFrom: str(r.gift_from),
       giftMessage: str(r.gift_message),
+      checkoutAnswers: readAnswers(r.checkout_answers).map((a) => `${a.label}: ${answerText(a, "yes", "no")}`).join("; ") || null,
       paymentReference: exportablePaymentReference(str(r.payment_reference)),
       lines: byOrder.get(String(r.id)) ?? [],
     };

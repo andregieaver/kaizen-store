@@ -59,7 +59,7 @@ export async function openMolliePayment(shop: CheckoutShop, order: PlacedOrder, 
   const fee = mollieFee(order.dueNowMinor, saleFee(order.dueNowMinor - (order.dutiesMinor ?? 0), await storeFeeBps(shop.storeId)));
   // What Mollie has on for this amount, less what this unit leaves out and what the owner switched off for the order's own country (D291).
   const active = await activeMollieMethods(shop.storeId, mode, amount, locale);
-  const methods = checkoutMethods(active?.map((m) => m.id) ?? null, await excludedPaymentMethods(shop.storeId, shop.market.code));
+  const methods = checkoutMethods(active?.map((m) => m.id) ?? null, await excludedPaymentMethods(shop.storeId, shop.market.code, order.orderId));
   if (methods !== null && methods.length === 0) return { ok: false, problem: "payments_off" };
   const base = `${storeOrigin(shop.storeSlug) ?? origin}${marketPath(shop.storeSlug, shop.market.slug)}`;
   const site = siteUrl();

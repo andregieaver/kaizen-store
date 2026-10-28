@@ -244,12 +244,12 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "partial",
       "rechecked": true,
-      "was": "partial"
+      "was": "missing"
     },
     "weight": 2,
-    "gap": "No way to run an owner's or developer's own logic at checkout: no hook for discounts, shipping rates, payment methods or cart validation, and no sandbox to run one. What exists are Kaizen's built-in rule types (campaigns D114, customer groups D108, discount codes D31, carrier and store-priced delivery D135), which correspond to Shopify's native features and are counted in their own rows, not to Functions. Re-rated from partial for that reason.",
+    "gap": "Declarative checkout rules (D357): conditions on the basket (country, value in its own currency, weight, products, categories, tags, customer groups) and one effect each (hide or rename a delivery option, leave payment methods out, stop the order with the owner's words), run by `applyCheckoutRules()` in `cartSummary()` and `placeOrder()` alike, in kroner and euro; a rule that names something gone or cannot be read is left out and counted; the order keeps the rules that applied and the payment methods left out. Missing: pricing logic of the owner's own (discounts stay the native campaigns, codes and groups, by choice), reordering options, and code of a developer's own (WebAssembly), which wave 9 decided against until developers ask.",
     "bucket": "A",
     "wave": 9,
     "criteria": [
@@ -259,17 +259,35 @@
       "A rule can never set a price below zero, change VAT, or touch a legal page; the order keeps which rule changed what."
     ],
     "evidence": {
-      "files": [],
-      "tests": [],
+      "files": [
+        "src/lib/checkout-rules.ts",
+        "src/server/checkout-rules.ts",
+        "src/server/cart-summary.ts",
+        "src/server/checkout.ts",
+        "src/server/delivery-options.ts",
+        "src/app/admin/(gated)/[store]/settings/checkout/page.tsx"
+      ],
+      "tests": [
+        "src/lib/checkout-rules.test.ts",
+        "src/server/checkout-rules.int.test.ts"
+      ],
       "untested": false
     },
-    "decisions": [],
+    "decisions": [
+      "D357"
+    ],
     "history": [
       {
         "on": "2026-10-03",
         "from": "partial",
         "to": "missing",
         "why": "Read at HEAD: no hook, sandbox or custom-code runtime exists (grep for vm, wasm and eval finds nothing outside the cookie scan). The built-in rule types are Shopify's native discounts and shipping, already rated in other rows, so they do not make Functions partial."
+      },
+      {
+        "on": "2026-10-28",
+        "from": "missing",
+        "to": "partial",
+        "why": "D357 built: declarative rules on shipping options, payment methods and cart validation, evaluated the same in the cart and at checkout, skipped and recorded when broken; no pricing rule and no developer code."
       }
     ]
   },

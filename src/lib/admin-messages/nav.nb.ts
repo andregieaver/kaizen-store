@@ -281,6 +281,8 @@ export const NAV_NB: Record<string, string> = {
   AI: "KI",
   "Apps and API": "Apper og API",
   Workflows: "Arbeidsflyter",
+  "Checkout rules": "Regler i kassen",
+  "Hide or rename a delivery option, leave a payment method out or stop an order when the basket matches; and questions the checkout asks.": "Skjul eller gi nytt navn til et leveringsvalg, hold en betalingsmåte utenfor eller stopp en bestilling når handlekurven passer; og spørsmål kassen stiller.",
   "When something happens in the store, or at a set time: check what you choose, then tag, tell staff, post to Slack, send to your endpoint or ask the AI manager.": "Når noe skjer i butikken, eller til en fast tid: sjekk det du velger, og merk, gi beskjed til ansatte, skriv i Slack, send til endepunktet ditt eller spør KI-assistenten.",
   "The AI provider and models the store uses, or its own key.": "KI-leverandøren og modellene butikken bruker, eller dens egen nøkkel.",
   "Tokens for your own apps, warehouse or accounting to read and change the store through the Admin API.": "Nøkler som lar dine egne apper, lageret eller regnskapet lese og endre butikken gjennom Admin-API-et.",

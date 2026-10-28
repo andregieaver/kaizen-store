@@ -100,6 +100,8 @@ export type ExportOrder = {
   giftTo?: string | null;
   giftFrom?: string | null;
   giftMessage?: string | null;
+  /** The answers to the store's checkout fields (D357), as `Question: answer` joined by `; `: the buyer's own words, so the Full profile only. */
+  checkoutAnswers?: string | null;
   /** Where the sending stands (D174, `commerce.order_fulfilment()`): `none`, `unsent`, `partly_sent`, `sent`, `withdrawn`, `closed` (nothing sent, the rest taken off as not to be sent); null for an order not paid. Absent in older callers. */
   fulfilment?: string | null;
   /** Staff changed the order after purchase (D174, `orders.edited_at`): its lines and amounts are the changed ones. */
@@ -122,7 +124,7 @@ const AMOUNTS = [
 /** What staff and shoppers added to an order in wave 3 (D173; `fulfilment` and `edited` D174): in both profiles, after the amounts (so the line columns and the payment reference still end the lines layout). `gift_order` is the ORDER's gift (the line column `gift` is a free gift line). */
 const OPS = ["tags", "archived", "source", "gift_order", "fulfilment", "edited"] as const;
 /** The words of a gift: a third party's name and a message, so the Full profile only (and blanked for an erased person's order). */
-const GIFT_FULL = ["gift_to", "gift_from", "gift_message"] as const;
+const GIFT_FULL = ["gift_to", "gift_from", "gift_message", "checkout_answers"] as const;
 const LINE = ["line_number", "sku", "title", "quantity", "unit_price", "line_discount", "line_total", "line_tax_rate", "line_net", "line_tax", "unit_cost_main", "gift", "line_delivery"] as const;
 
 /** The header row of a layout and profile, in the contract's order (4.2). */
@@ -242,6 +244,7 @@ function orderCells(order: ExportOrder, profile: OrderProfile, main: MainConvers
     cells.gift_to = personal(order, order.giftTo);
     cells.gift_from = personal(order, order.giftFrom);
     cells.gift_message = personal(order, order.giftMessage);
+    cells.checkout_answers = personal(order, order.checkoutAnswers ?? null);
     cells.email = personal(order, order.email);
     cells.billing_name = personal(order, order.billing.name);
     cells.billing_line1 = personal(order, order.billing.line1);

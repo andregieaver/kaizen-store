@@ -769,7 +769,9 @@ async function eraseRows(tx: Tx, s: PrivacySubject, store: PrivacyStore): Promis
     update commerce.carts set customer_id = null, company_name = null, organisation_number = null, vat_number = null, vat_check_id = null, affiliate_code = null,
       is_gift = false, gift_to = null, gift_from = null, gift_message = null,
       -- The postal code typed for delivery prices and the note for the driver (D237).
-      delivery_postal_code = null, delivery_note = null
+      delivery_postal_code = null, delivery_note = null,
+      -- The answers to the store's checkout fields (D357).
+      checkout_answers = null
     where store_id = ${sid}::uuid and id = any(${cartIds})
   `);
   await tx.execute(sql`

@@ -31,9 +31,18 @@ export async function methodChoices(storeId: string): Promise<MethodChoice[]> {
   return rows.map((r) => ({ market: String(r.market_code).trim(), method: String(r.method), enabled: Boolean(r.enabled) }));
 }
 
-/** The methods a country's checkout sessions pass in `excluded_payment_method_types` (never `payment_method_types`). */
-export async function excludedPaymentMethods(storeId: string, marketCode: string): Promise<string[]> {
-  return excludedTypes(await methodChoices(storeId), marketCode);
+/**
+ * The methods a country's checkout sessions pass in `excluded_payment_method_types` (never `payment_method_types`): the owner's choices for the
+ * country, and for an order those a checkout rule left out when it was placed (D357, `orders.rule_hidden_methods`). Never cards.
+ */
+export async function excludedPaymentMethods(storeId: string, marketCode: string, orderId: string | null = null): Promise<string[]> {
+  const own = excludedTypes(await methodChoices(storeId), marketCode);
+  if (!orderId) return own;
+  const [order] = await db().execute<Row>(sql`
+    select rule_hidden_methods from commerce.orders where store_id = ${storeId}::uuid and id = ${orderId}::uuid
+  `);
+  const byRule = (Array.isArray(order?.rule_hidden_methods) ? order.rule_hidden_methods : []).map(String).filter((m) => methodInfo(m) && !methodInfo(m)!.always);
+  return [...new Set([...own, ...byRule])].sort();
 }
 
 /**

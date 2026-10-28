@@ -93,7 +93,7 @@
       "was": null
     },
     "weight": 2,
-    "gap": "The checkout's layout is editable and testable (cart, checkout and order are page roles split into pieces, D113 and D117, A/B tested, D148). No extension API and no store-defined field the shopper fills in at checkout: custom fields for orders exist only for staff (D120, `staffGroupProblem()`), never shown to the shopper. Order rules (D238, `src/lib/order-rules.ts`) are a closed list that acts after payment, not a hook on shipping, payment or discount logic at checkout. There is no public Admin API with scoped tokens (wave 9); the MCP server (D96) serves only Kaizen Life.",
+    "gap": "The checkout's layout is editable and testable (D113, D117, D148). Since D357 an owner adds questions the shopper answers above the checkout button (text or tick box, required or not, per language), kept on the order and shown to staff and in the export, and declarative rules hide or rename delivery options and leave payment methods out for a basket, falling back to the standard checkout when a rule is broken. Missing: reordering options, an Admin API route for the rules and questions, and UI extensions of a developer's own.",
     "bucket": "C",
     "wave": 9,
     "criteria": [
@@ -107,12 +107,21 @@
         "src/lib/store-parts.ts",
         "src/lib/ab-site.ts",
         "src/components/store-part-section.tsx",
-        "src/app/s/[store]/[market]/checkout/checkout-section.tsx"
+        "src/app/s/[store]/[market]/checkout/checkout-section.tsx",
+        "src/lib/checkout-rules.ts",
+        "src/server/checkout-rules.ts",
+        "src/server/cart-summary.ts",
+        "src/server/checkout.ts",
+        "src/server/delivery-options.ts",
+        "src/app/admin/(gated)/[store]/settings/checkout/page.tsx",
+        "src/components/checkout-button.tsx"
       ],
       "tests": [
         "src/lib/store-parts.test.ts",
         "e2e/ab-working-pages.spec.ts",
-        "e2e/page-roles.spec.ts"
+        "e2e/page-roles.spec.ts",
+        "src/lib/checkout-rules.test.ts",
+        "src/server/checkout-rules.int.test.ts"
       ],
       "untested": false
     },
@@ -120,9 +129,10 @@
       "D113",
       "D117",
       "D118",
-      "D148",
       "D120",
-      "D238"
+      "D148",
+      "D238",
+      "D357"
     ],
     "history": []
   },

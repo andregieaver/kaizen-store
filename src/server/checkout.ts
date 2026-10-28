@@ -11,6 +11,7 @@ import { formatClock, formatRangeDates, parseRentalPeriod, rangeEndsAt } from "@
 import { formatBookingTime } from "@/lib/booking-slots";
 import { companyRequired, parseProductAudience, parseStoreAudience } from "@/lib/b2b";
 import { CHECKOUT_MINUTES, lineWithdrawal, vatIncluded } from "@/lib/checkout";
+import { answersByField, cleanAnswers, NO_RULES } from "@/lib/checkout-rules";
 import { isNative, shown, type Market } from "@/lib/markets";
 import { quantityProblem, ruleForKind } from "@/lib/quantity-rules";
 import { marketPath, storeOrigin } from "@/lib/paths";
@@ -43,6 +44,7 @@ import { decideCustoms, loadCustomsFacts } from "./customs";
 import { decideTax, loadTaxFacts } from "./tax-treatment";
 import { refreshStaleCartCheck } from "./vat-checks";
 import { bookable } from "./cart";
+import { checkoutRuleOutcome, listCheckoutFields } from "./checkout-rules";
 import { STORE_AUDIENCE, offeredTo, plansOffered, LIST_PRICED } from "./product-conditions";
 import { ensureStorePaymentMethods, getCheckoutUi } from "./connect";
 import { evaluateCampaigns } from "./campaigns";
@@ -167,7 +169,11 @@ export type CheckoutProblem =
   /** A product under a producer responsibility scheme with no valid registration in the country today (D342). */
   | "unregistered"
   /** Duties are collected at checkout (DDP) for this country, but no estimate can be made: a product has no HS code, or the rates do not cover it (D343). */
-  | "customs";
+  | "customs"
+  /** One of the store's checkout rules refuses this basket (D357); the cart shows the owner's words. */
+  | "checkout_rule"
+  /** A question the store asks at checkout is required and was left unanswered (D357). */
+  | "checkout_fields";
 
 export type PlaceResult = { ok: true; order: PlacedOrder } | { ok: false; problem: CheckoutProblem };
 
@@ -290,7 +296,7 @@ export async function placeOrder(
       select c.id, c.discount_code, c.more_codes, ${STORE_AUDIENCE} as store_audience, s.time_zone,
         case when ${STORE_AUDIENCE} <> 'consumers' then c.company_name end as company_name,
         case when ${STORE_AUDIENCE} <> 'consumers' then c.organisation_number end as organisation_number,
-        c.bonus_request_minor, c.affiliate_code, c.is_gift, c.gift_to, c.gift_from, c.gift_message, c.company_location_id, c.po_number,
+        c.bonus_request_minor, c.affiliate_code, c.is_gift, c.gift_to, c.gift_from, c.gift_message, c.company_location_id, c.po_number, c.checkout_answers,
         coalesce((select os.gift_messages from commerce.order_settings os where os.store_id = c.store_id), false) as gift_on,
         commerce.market_offered(c.store_id, c.market_code, ${market.currency}) as offered
       from commerce.carts c
@@ -570,7 +576,14 @@ export async function placeOrder(
     // discounts, gifts out), so both charge the same. The store's own methods are priced for the basket here and now; a subscription pays the
     // flat rate on each delivery (D25), and so does a weekly box (`flatRateOnly`, D237 2.8).
     const basketValueMinor = priced.filter((p) => !p.gift && !p.voucher).reduce((sum, p) => sum + p.renewUnit * p.quantity, 0);
-    const resolved = ships && !rhythm && !flatRateOnly ? await resolveDelivery(tx, storeId, cartId, market, { basketValueMinor }) : null;
+    // Checkout rules (D357), on the same facts `cartSummary()` reads: they hide or rename delivery options, leave payment methods out or refuse the
+    // basket. A weekly box is made by the store's own job (`flatRateOnly`), not at a checkout, and is left to its own settings.
+    const rules = flatRateOnly ? NO_RULES : await checkoutRuleOutcome(tx, storeId, cartId, market, { customerId, basketValueMinor });
+    if (rules.refusal) return { ok: false, problem: "checkout_rule" };
+    // The store's questions (D357): the answers kept on the cart, checked again against the fields as they are now.
+    const asked = flatRateOnly ? { answers: [], missing: [] } : cleanAnswers(await listCheckoutFields(tx, storeId, { onlyOn: true }), answersByField(cart.checkout_answers));
+    if (asked.missing.length > 0) return { ok: false, problem: "checkout_fields" };
+    const resolved = ships && !rhythm && !flatRateOnly ? await resolveDelivery(tx, storeId, cartId, market, { basketValueMinor, customerId, rules }) : null;
     const chosen = resolved?.chosen ?? null;
     const flatRate = rate
       ? {
@@ -871,6 +884,9 @@ export async function placeOrder(
       approval: purchase.approval,
       dutiesMinor,
       customs: customs.record,
+      checkoutAnswers: asked.answers.length > 0 ? asked.answers : null,
+      ruleHiddenMethods: rules.hiddenMethods,
+      checkoutRulesApplied: rules.applied,
     });
 
     if (onTerms) await recordOrderTerms(tx, storeId, orderId, onTerms.companyId, onTerms);
@@ -1320,7 +1336,7 @@ export async function startCheckout(
   let cleanedPayer: PayerDetails | null = null;
   // An order gift cards pay in full (D300 F3) has no provider's page either: who pays is asked on the cart and given here, checked the same way.
   if (mollieMode || onTerms || payer) {
-    const resolved = await resolveDelivery(db(), shop.storeId, cartId, shop.market);
+    const resolved = await resolveDelivery(db(), shop.storeId, cartId, shop.market, { customerId });
     const needs = { address: onTerms || (resolved?.delivery != null && resolved.method !== "pickup"), phone: resolved?.method === "local" };
     const cleaned = payer ? cleanPayer(payer, needs) : null;
     if (cleaned?.ok) cleanedPayer = cleaned.payer;

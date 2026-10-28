@@ -740,6 +740,12 @@ export const nb: Messages = {
   problemCompanyNumber: "Organisasjonsnummeret ser ikke riktig ut. Sjekk det og prøv igjen.",
   /** A cart line whose quantity breaks its variant's rule (D323). */
   problemQuantity: "Antallet av en vare i handlekurven kan ikke kjøpes slik. Endre det i handlekurven og prøv igjen.",
+  problemCheckoutRule: "Butikken tar ikke imot denne bestillingen slik den er. Handlekurven sier hvorfor.",
+  checkoutQuestions: {
+    legend: "Noen spørsmål fra butikken",
+    required: "må fylles ut",
+    problem: "Svar på butikkens spørsmål som må fylles ut, og prøv igjen.",
+  },
   producer: {
     notSoldHere: "Selges ikke i dette landet nå: selgerens registrering for produsentansvar mangler her.",
     lineProblem: "Selges ikke i dette landet nå: selgerens registrering for produsentansvar mangler her. Fjern varen for å fortsette.",

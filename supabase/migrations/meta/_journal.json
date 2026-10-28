@@ -3802,6 +3802,13 @@
       "when": 1793182223323,
       "tag": "20261028101023_workflows",
       "breakpoints": true
+    },
+    {
+      "idx": 543,
+      "version": "7",
+      "when": 1793187146654,
+      "tag": "20261028113226_checkout_rules",
+      "breakpoints": true
     }
   ]
 }
