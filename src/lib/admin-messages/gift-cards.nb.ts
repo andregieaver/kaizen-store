@@ -79,8 +79,7 @@ export const giftCardsNb: GiftCardsMessages = {
     notYet: "Ikke ennå",
     forWhom: "Til",
     message: "Hilsenen deres",
-    codeNote:
-      "Koden vises ikke her: Kaizena Flow tar bare vare på et fingeravtrykk av den, så ingen kan lese den igjen. En tapt kode kan ikke sendes på nytt: deaktiver gavekortet og utsted et nytt for det som var igjen.",
+    codeNote: "Koden vises ikke her: Kaizena Flow tar bare vare på et fingeravtrykk av den, så ingen kan lese den tilbake. En kode som er borte, erstattes nedenfor med en ny, og den gamle slutter å virke.",
     sendAgain: "Prøv å sende det på nytt",
     ordersPaid: "Bestillinger det betalte",
     order: "Bestilling {number}",
@@ -99,6 +98,16 @@ export const giftCardsNb: GiftCardsMessages = {
     whyOptional: "Hvorfor (valgfritt)",
     forGood: "Deaktiver dette gavekortet for godt",
     deactivate: "Deaktiver",
+    newCodeTitle: "En ny kode",
+    newCodeDescription: "For en kode som er borte, eller som noen andre har sett. Den gamle koden slutter å virke med en gang; det som står på kortet, blir stående.",
+    newCodeSure: "Stopp den gamle koden og lag en ny",
+    newCodeButton: "Send en ny kode",
+    newCodeEmailed: "Den nye koden ble sendt på e-post til adressen kortet gikk til. ",
+    newCodeEmailFailed: "E-posten gikk ikke: gi koden videre selv. ",
+    newCodePassOn: "Kortet gikk ikke til noen adresse: gi koden videre selv. ",
+    newCodeOnlyTime: "Dette er den eneste gangen den vises.",
+    copy: "Kopier koden",
+    copied: "Kopiert",
   },
   issue: {
     title: "Utsted et gavekort",
@@ -142,5 +151,6 @@ export const giftCardsNb: GiftCardsMessages = {
     notSent: "Det ble ikke sendt: dagen er kanskje ikke kommet, eller e-posten mislyktes igjen. Se under E-poster for hvorfor.",
     expiryRange: "Velg 12 til 120 måneder, eller Aldri.",
     saved: "Lagret. Gavekort som allerede er utstedt, beholder datoen sin.",
+    newCode: { no_codes: "Gavekort kan ikke lages på denne serveren: innstillingsnøkkelen mangler.", unknown: "Det gavekortet finnes ikke i denne butikken.", not_active: "Bare et aktivt kort får ny kode.", not_delivered: "Koden til dette kortet har ikke nådd noen ennå: det sendes på sin dag.", expired: "Dette kortet har gått ut.", empty: "Det er ingenting igjen på dette kortet." },
   },
 };

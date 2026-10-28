@@ -126,6 +126,8 @@ function cardEmail(
 export async function sendIssuedCard(
   storeId: string,
   card: { id: string; code: string; amountMinor: number; currency: string; to: string; lang: string; expiresAt: string | null; message: string | null },
+  /** A new code for a delivered card (D381) is an email of its own. */
+  idempotencyKey = `gift-card:${card.id}:staff`,
 ): Promise<SendOutcome> {
   const store = await storeById(storeId);
   if (!store) return "failed";
@@ -149,7 +151,7 @@ export async function sendIssuedCard(
     email,
     fromName: store.name,
     replyTo: store.details.contactEmail ?? null,
-    idempotencyKey: `gift-card:${card.id}:staff`,
+    idempotencyKey,
     secrets: [formatGiftCode(card.code), card.code],
   });
 }

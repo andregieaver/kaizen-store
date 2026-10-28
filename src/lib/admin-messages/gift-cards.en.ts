@@ -68,8 +68,7 @@ export const giftCardsEn = {
     notYet: "Not yet",
     forWhom: "For",
     message: "Their message",
-    codeNote:
-      "The code is not shown here: Kaizena Flow keeps only a fingerprint of it, so nobody can read it back. A lost code cannot be sent again: deactivate the card and issue a new one for what was left.",
+    codeNote: "The code is not shown here: Kaizena Flow keeps only a fingerprint of it, so nobody can read it back. A lost code is replaced below with a new one, and the old one stops working.",
     sendAgain: "Try sending it again",
     ordersPaid: "Orders it paid for",
     order: "Order {number}",
@@ -88,6 +87,16 @@ export const giftCardsEn = {
     whyOptional: "Why (optional)",
     forGood: "Deactivate this card for good",
     deactivate: "Deactivate",
+    newCodeTitle: "A new code",
+    newCodeDescription: "For a code that was lost, or seen by someone it was not for. The old code stops working at once; what is on the card stays.",
+    newCodeSure: "Stop the old code and make a new one",
+    newCodeButton: "Send a new code",
+    newCodeEmailed: "The new code was emailed to the address the card went to. ",
+    newCodeEmailFailed: "The email did not go: pass the code on yourself. ",
+    newCodePassOn: "The card went to no address: pass the code on yourself. ",
+    newCodeOnlyTime: "This is the only time it is shown.",
+    copy: "Copy the code",
+    copied: "Copied",
   },
   issue: {
     title: "Issue a gift card",
@@ -131,6 +140,7 @@ export const giftCardsEn = {
     notSent: "It was not sent: its day may not have come, or the email failed again. Look at Emails for why.",
     expiryRange: "Choose 12 to 120 months, or Never.",
     saved: "Saved. Cards already issued keep their date.",
+    newCode: { no_codes: "Gift cards can't be made on this server: its settings key is missing.", unknown: "That gift card is not in this store.", not_active: "Only an active card gets a new code.", not_delivered: "This card's code has not reached anyone yet: it is sent on its day.", expired: "This card has expired.", empty: "Nothing is left on this card." },
   },
 };
 

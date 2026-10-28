@@ -77,6 +77,27 @@ describe("gift cards", () => {
     await rejects("update commerce.gift_cards set code_hash = 'other', last4 = 'ZZ99' where id = $1", [card], /gift_cards.code/);
   });
 
+  it("get a new code once delivered only through gift_card_new_code(), and only while live with money on it (D381)", async () => {
+    const hash = (c: string) => c.padEnd(64, "0");
+    const card = await staffCard(30000);
+    // Not delivered yet: the code is still made again the ordinary way.
+    expect(await scalar("select commerce.gift_card_new_code($1, $2, $3, 'NE01')", [store, card, hash("a")])).toBe("not_delivered");
+    expect(await scalar("select commerce.gift_card_mark_sent($1, $2)", [store, card])).toBe(true);
+    expect(await scalar("select commerce.gift_card_new_code($1, $2, $3, 'NE02')", [store, card, hash("b")])).toBe("ok");
+    expect(await scalar("select last4 from commerce.gift_cards where id = $1", [card])).toBe("NE02");
+    expect(await balance(card)).toBe(30000);
+    // Anything else still finds the code fixed, the function's mark gone with its update.
+    await rejects("update commerce.gift_cards set code_hash = 'x', last4 = 'ZZ99' where id = $1", [card], /gift_cards.code/);
+    await rejects("select commerce.gift_card_new_code($1, $2, 'short', 'NE03')", [store, card], /gift_cards.code/);
+    // Another store's card is not this store's to change.
+    await rejects("select commerce.gift_card_new_code($1, $2, $3, 'NE04')", [other, card, hash("c")], /gift_cards.unknown/);
+    // Empty, then deactivated: no new code.
+    await db.query("select commerce.gift_card_adjust($1, $2, $3, -30000, 'test', 'empty:new')", [store, card, staff]);
+    expect(await scalar("select commerce.gift_card_new_code($1, $2, $3, 'NE05')", [store, card, hash("d")])).toBe("empty");
+    await db.query("select commerce.gift_card_void($1, $2, $3, 'test')", [store, card, staff]);
+    expect(await scalar("select commerce.gift_card_new_code($1, $2, $3, 'NE06')", [store, card, hash("e")])).toBe("not_active");
+  });
+
   it("hold, spend and refund for an order, never more than the card holds or the order spent", async () => {
     const card = await staffCard(50000);
     const o = await order("GC-1");

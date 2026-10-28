@@ -93,7 +93,9 @@ the plan:
 
 **B1 built (28 October 2026):** Finance's *Owed to customers* section, as designed below; `analytics.liabilities-gift-card-and-store-credit` is Full.
 The gift card ledger is rolled forward from all its entries, with a hold and its release on one line (`held`, in *used*), so it adds up.
-B2 (the shopper's own amount, a new code) follows.
+**B2 built (28 October 2026): a new code**, as designed below (`commerce.gift_card_new_code()`, *Send a new code* on the card's page).
+**Course change:** the shopper's own amount is not built. It would be a second way a line is priced through every price reader, and the gift card
+row stays partial on the voucher review whatever is built; fixed amounts stay until that review (D381).
 
 **What is missing.**
 - Bonus credit owed is shown only on the bonus page (`outstandingMinor`), not on Finance.

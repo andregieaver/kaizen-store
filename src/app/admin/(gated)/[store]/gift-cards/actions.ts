@@ -10,7 +10,7 @@ import { adminText } from "@/lib/admin-text";
 import { parseAmount } from "@/lib/field-money";
 import { GIFT_CARD_NOTE_MAX } from "@/lib/gift-card-admin";
 import { deliverGiftCards } from "@/server/gift-card-delivery";
-import { adjustGiftCard, deactivateGiftCard, issueGiftCard, saveGiftCardSettings, type ChangeProblem } from "@/server/gift-cards-admin";
+import { adjustGiftCard, deactivateGiftCard, issueGiftCard, saveGiftCardSettings, sendNewGiftCardCode, type ChangeProblem } from "@/server/gift-cards-admin";
 import { requirePermission } from "@/server/permissions";
 
 /** What issuing a card by hand answers: the code to show once, or why not. */
@@ -112,6 +112,20 @@ export async function sendGiftCardAgainAction(storeSlug: string, cardId: string,
   const run = await deliverGiftCards({ cardId });
   refresh();
   return run.sent > 0 ? { status: "ok", messages: [w.sent] } : { status: "error", messages: [w.notSent] };
+}
+
+/** What a new code answers: the code to show once, or why not. */
+export type NewCodeState = { status: "idle" } | { status: "error"; message: string } | { status: "ok"; code: string; emailed: "sent" | "failed" | "not_asked" };
+
+/** Sends a delivered card a new code, the old one stopping at once (`products:write`, D381); the code is answered once and never kept. */
+export async function newGiftCardCodeAction(storeSlug: string, cardId: string, _state: NewCodeState): Promise<NewCodeState> {
+  const member = await requirePermission(storeSlug, "products:write");
+  const w = wordsOf(member);
+  if (!z.uuid().safeParse(cardId).success) return { status: "error", message: w.unknown };
+  const done = await sendNewGiftCardCode(member.store.id, member.account.id, cardId);
+  if (!done.ok) return { status: "error", message: w.newCode[done.problem] };
+  refresh();
+  return { status: "ok", code: done.code, emailed: done.emailed };
 }
 
 /** How long new cards last (`products:write`): cards already issued keep their date. */

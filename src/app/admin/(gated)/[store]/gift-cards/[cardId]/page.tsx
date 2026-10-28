@@ -12,7 +12,8 @@ import { formatMoney } from "@/lib/money";
 import { giftCardDetail } from "@/server/gift-cards-admin";
 import { memberCan, requirePermission } from "@/server/permissions";
 
-import { adjustGiftCardAction, deactivateGiftCardAction, sendGiftCardAgainAction } from "../actions";
+import { adjustGiftCardAction, deactivateGiftCardAction, newGiftCardCodeAction, sendGiftCardAgainAction } from "../actions";
+import { NewCodeForm } from "./new-code-form";
 
 export const metadata: Metadata = { title: "Gift card" };
 
@@ -129,6 +130,12 @@ export default async function GiftCardPage({ params }: PageProps<"/admin/[store]
           ))}
         </List>
       </Card>
+
+      {canChange && card.state === "active" && card.sentAt && (
+        <Card title={w.newCodeTitle} description={w.newCodeDescription} compact>
+          <NewCodeForm action={newGiftCardCodeAction.bind(null, store.slug, card.id)} words={w} />
+        </Card>
+      )}
 
       {canChange && (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">

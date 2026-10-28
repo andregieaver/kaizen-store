@@ -854,7 +854,7 @@
       "rechecked": true,
       "was": "missing"
     },
-    "gap": "D300: gift cards are sold in fixed amounts (a product of kind gift_card, its variants the amounts), delivered by email to the buyer or a recipient on a chosen day with their message, spent at checkout as payments (never a discount; NOK and euro scenarios agree to the minor unit; a card never pays for a gift card, a subscription, a change or an exchange), refunded back to the card, issued by hand, changed, deactivated and expired by the ledger's functions (balance only from `commerce.gift_card_balance()`), and reported per currency on Finance with its CSV. Still missing: a custom amount the shopper chooses, sending a card's code again after delivery (codes are kept only as hashes); the voucher VAT treatment and the expiry rules wait for an accountant's and a lawyer's review.",
+    "gap": "D300: gift cards are sold in fixed amounts (a product of kind gift_card, its variants the amounts), delivered by email to the buyer or a recipient on a chosen day with their message, spent at checkout as payments (never a discount; NOK and euro scenarios agree to the minor unit; a card never pays for a gift card, a subscription, a change or an exchange), refunded back to the card, issued by hand, changed, deactivated and expired by the ledger's functions (balance only from `commerce.gift_card_balance()`), and reported per currency on Finance with its CSV. D381: staff send a delivered card a new code (`commerce.gift_card_new_code()`: the old code stops working, the balance stays, the code is shown once and emailed only to the address the card was delivered to). Still missing: a custom amount the shopper chooses (left until the voucher review, D381); the voucher VAT treatment and the expiry rules wait for an accountant's and a lawyer's review.",
     "bucket": "A",
     "wave": 5,
     "criteria": [
@@ -883,7 +883,8 @@
     },
     "decisions": [
       "D130",
-      "D300"
+      "D300",
+      "D381"
     ],
     "history": [
       {

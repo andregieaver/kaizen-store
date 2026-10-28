@@ -3928,6 +3928,13 @@
       "when": 1793226717586,
       "tag": "20261028223157_segment_audiences",
       "breakpoints": true
+    },
+    {
+      "idx": 561,
+      "version": "7",
+      "when": 1793229524993,
+      "tag": "20261028231844_gift_card_new_code",
+      "breakpoints": true
     }
   ]
 }

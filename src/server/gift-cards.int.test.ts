@@ -264,6 +264,34 @@ describe("the owner's screens and figures (D300 F4)", () => {
     String((await db().execute<Row>(sql`select to_char(commerce.store_day(${storeId}::uuid, now()), 'YYYY-MM-DD') as d`))[0].d);
   const balanceOf = async (id: string) => Number((await db().execute<Row>(sql`select commerce.gift_card_balance(${id}::uuid) as b`))[0].b);
 
+  it("send a delivered card a new code: the old one stops, the balance stays, the code goes to the card's own address and never into the log (D381)", async () => {
+    const fx = await giftCardStore("gc-admin-new-code");
+    const store = await storeOf(fx);
+    const test = (await storePaymentMode(store.id)) === "test";
+    const issued = await admin.issueGiftCard(store, fx.accountId, {
+      amountMinor: 20_000, currency: "NOK", recipientEmail: "kari-ny@example.com", recipientName: "Kari", message: null, lang: "nb", note: "",
+    });
+    if (!issued.ok) throw new Error(issued.problem);
+    const renewed = await admin.sendNewGiftCardCode(store.id, fx.accountId, issued.cardId);
+    if (!renewed.ok) throw new Error(renewed.problem);
+    expect(renewed.emailed).toBe("sent");
+    expect(renewed.code).not.toBe(issued.code);
+    expect(await findGiftCard(db(), store.id, issued.code, { currency: "NOK", testMode: test })).toEqual({ ok: false, problem: "unusable" });
+    expect(await findGiftCard(db(), store.id, renewed.code, { currency: "NOK", testMode: test })).toEqual({ ok: true, id: issued.cardId });
+    expect(await balanceOf(issued.cardId)).toBe(20_000);
+    const mails = await emailsOf(null, "gift_card.issued", "kari-ny@example.com");
+    expect(mails).toHaveLength(2);
+    expect(String(mails[1].text)).toContain("[code]");
+    const [entry] = await db().execute<Row>(sql`select details from commerce.audit_log where store_id = ${store.id}::uuid and action = 'gift_card.new_code'`);
+    expect(JSON.stringify(entry.details)).not.toContain(renewed.code.replace(/-/g, "").slice(0, 8));
+    // A card with no address shows its new code to staff only; another store's card is not found.
+    const kept = await admin.issueGiftCard(store, fx.accountId, { amountMinor: 5_000, currency: "NOK", recipientEmail: null, recipientName: null, message: null, lang: "nb", note: "" });
+    if (!kept.ok) throw new Error(kept.problem);
+    expect(await admin.sendNewGiftCardCode(store.id, fx.accountId, kept.cardId)).toMatchObject({ ok: true, emailed: "not_asked" });
+    const elsewhere = await giftCardStore("gc-admin-new-code-other");
+    expect(await admin.sendNewGiftCardCode(elsewhere.storeId, fx.accountId, kept.cardId)).toEqual({ ok: false, problem: "unknown" });
+  });
+
   it("issue a card by hand that can be spent at once, its code shown once and never kept, then change and deactivate it with reasons", async () => {
     const fx = await giftCardStore("gc-admin-issue");
     const store = await storeOf(fx);

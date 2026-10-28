@@ -289,6 +289,59 @@ export async function issueGiftCard(store: Pick<Store, "id" | "localization">, a
   return { ok: true, cardId, code: formatGiftCode(code.code), emailed };
 }
 
+export type NewCodeOutcome =
+  | { ok: true; code: string; emailed: "sent" | "failed" | "not_asked" }
+  | { ok: false; problem: "no_codes" | "unknown" | "not_active" | "not_delivered" | "expired" | "empty" };
+
+/**
+ * A new code for a delivered card (wave 11 unit B2, D381): a code lost or seen by someone else. Only `commerce.gift_card_new_code()` changes a
+ * delivered card's code, and only for a live card with money on it; the old code stops working at once and the balance is unchanged. The new
+ * code is shown once to the staff member and emailed only to the address the card was delivered to (the person it was for, else the order's
+ * own address, never one typed here and never for an erased person's order); audited with the card's id, never the code.
+ */
+export async function sendNewGiftCardCode(storeId: string, accountId: string, cardId: string): Promise<NewCodeOutcome> {
+  const code = newGiftCode();
+  if (!code) return { ok: false, problem: "no_codes" };
+  let answer: string;
+  try {
+    const [row] = await db().execute<Row>(sql`select commerce.gift_card_new_code(${storeId}::uuid, ${cardId}::uuid, ${code.hash}, ${code.last4}) as answer`);
+    answer = String(row?.answer ?? "unknown");
+  } catch (error) {
+    if (problemOf(error) === "unknown") return { ok: false, problem: "unknown" };
+    throw error;
+  }
+  if (answer !== "ok") return { ok: false, problem: answer as Exclude<NewCodeOutcome, { ok: true }>["problem"] };
+  await audit(accountId, storeId, "gift_card.new_code", { card: cardId }, { target: { type: "gift_card", id: cardId } });
+  const [card] = await db().execute<Row>(sql`
+    select g.id, g.currency, g.expires_at, commerce.gift_card_balance(g.id) as balance,
+      coalesce(g.recipient_email, case when o.restricted_at is null and o.anonymised_at is null then nullif(o.email, '') end) as address,
+      coalesce(nullif(o.locale, ''), (select s.locales[1] from commerce.stores s where s.id = g.store_id)) as locale
+    from commerce.gift_cards g
+    left join commerce.orders o on o.store_id = g.store_id and o.id = g.order_id
+    where g.store_id = ${storeId}::uuid and g.id = ${cardId}::uuid
+  `);
+  let emailed: "sent" | "failed" | "not_asked" = "not_asked";
+  if (card?.address) {
+    const outcome = await sendIssuedCard(
+      storeId,
+      {
+        id: cardId,
+        code: code.code,
+        amountMinor: Number(card.balance),
+        currency: String(card.currency).trim(),
+        to: String(card.address),
+        lang: String(card.locale ?? "en").slice(0, 2) || "en",
+        expiresAt: card.expires_at ? new Date(String(card.expires_at)).toISOString() : null,
+        message: null,
+      },
+      // Each new code is its own email: the one before told a code that no longer works.
+      `gift-card:${cardId}:new:${code.hash.slice(0, 16)}`,
+    ).catch(() => "failed" as const);
+    emailed = outcome === "sent" || outcome === "logged" ? "sent" : "failed";
+  }
+  return { ok: true, code: formatGiftCode(code.code), emailed };
+}
+
 /** Why a change to a card was refused, in words staff read. */
 export type ChangeProblem = "unknown" | "inactive" | "below_zero" | "reason" | "amount";
 
