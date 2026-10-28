@@ -14,12 +14,12 @@ import { db } from "@/db/client";
 import { cartAffiliateOf, codeInPlay, friendState, welcomeFor } from "./affiliates";
 import { bonusProgram, cartBonusOf, creditState, planFor } from "./bonus";
 import { readCartId, type Cart, type CartLine, type Shop } from "./cart";
-import { evaluateCampaigns } from "./campaigns";
 import { memberDiscountFor } from "./customer-tiers";
 import { resolveDelivery } from "./delivery-options";
 import { checkoutRuleOutcome } from "./checkout-rules";
 import { getCustomer } from "./customers";
-import { previewCartCodes } from "./discounts";
+import { getCartCodes, previewCartCodes } from "./discounts";
+import { campaignsAndCodes } from "./discount-combinations";
 import { cartGiftCards } from "./gift-card-cart";
 import { getCheckoutInfo } from "./orders";
 import { decideCustoms, loadCustomsFacts } from "./customs";
@@ -87,8 +87,49 @@ export async function cartSummary(
   const shipping = !ships ? 0 : rate ? basket.first : null;
   // The buyer's group or company discount (D108), off what is bought once, before any code, as checkout takes it.
   const member = await memberDiscountFor(db(), storeId, customerId);
-  // Campaigns (D114) come first: reductions on goods bought once, and the free products the basket has earned.
-  const campaigns = await evaluateCampaigns(
+  // The friend's welcome discount (D131) comes after campaigns and the group's discount and before any code and the credits; only a
+  // signed-in friend's first order, and never a host's.
+  const program = await bonusProgram(db(), storeId);
+  const sellerIsHost = payable.some((line) => line.hostId);
+  const friend = sellerIsHost ? null : await friendState(db(), storeId, customerId, await codeInPlay(db(), storeId, cartId), program);
+  /** The group's discount on each line after what campaigns took off it. */
+  const memberOffAfter = (campaignOff: readonly number[]) =>
+    payable.map((line, i) =>
+      member && !line.plan && !line.priceListId && !voucher(line) && line.unitPriceMinor > 0 ? memberOffAfterCampaign(line.unitPriceMinor, line.quantity, campaignOff[i], member.percent) : 0,
+    );
+  /** The welcome discount on each line after campaigns and the group's discount. */
+  const welcomeAfter = (campaignOff: readonly number[], memberOff: readonly number[]) =>
+    friend
+      ? welcomeFor(
+          friend,
+          market,
+          payable.map((line, i) => (line.plan || voucher(line) || line.unitPriceMinor <= 0 ? 0 : Math.max(0, today(line) - campaignOff[i] - memberOff[i]))),
+        )
+      : { totalMinor: 0, lines: payable.map(() => 0) };
+  /** What the codes are checked against once campaigns, the group's discount and the welcome discount took their parts. */
+  const codeLines = (campaignOff: readonly number[], memberOff: readonly number[], referralOff: readonly number[]) =>
+    // A gift card is never in what a code reaches or counts (D300).
+    payable.flatMap((line, i) =>
+      voucher(line)
+        ? []
+        : [
+            {
+              key: String(i),
+              productId: line.productId,
+              // What the code is taken off: the price after the group's discount for what is bought once.
+              unitMinor: member && !line.plan && !line.priceListId ? planPrice(line.unitPriceMinor, member.percent) : line.unitPriceMinor,
+              quantity: line.quantity,
+              todayMinor: today(line) - campaignOff[i] - memberOff[i] - referralOff[i],
+              recurring: line.plan !== null,
+            },
+          ],
+    );
+  // Campaigns (D114) come first: reductions on goods bought once, and the free products the basket has earned; where a campaign and a
+  // code on the cart do not combine (D367), whichever saves the shopper more, decided as `placeOrder()` decides it.
+  const codeTexts = await getCartCodes(shop);
+  // Free shipping from a campaign (D299 E3): the basket's first shipping, before any code, never with a subscription.
+  const freeShippingWorth = ships && !plan ? (shipping ?? 0) : 0;
+  const chosenCampaigns = await campaignsAndCodes(
     db(),
     { storeId, market },
     payable.map((line, i) => ({
@@ -100,52 +141,34 @@ export async function cartSummary(
       valueMinor: voucher(line) ? 0 : today(line),
     })),
     { ships, customerId },
+    codeTexts,
+    freeShippingWorth,
+    (lineOff, shippingOff) => {
+      const off = payable.map((_, i) => lineOff[String(i)] ?? 0);
+      const memberOff = memberOffAfter(off);
+      const welcome = welcomeAfter(off, memberOff);
+      return {
+        codes: { lines: codeLines(off, memberOff, welcome.lines), shippingMinor: (shipping ?? 0) - shippingOff },
+        otherMinor: memberOff.reduce((sum, minor) => sum + minor, 0) + welcome.totalMinor,
+      };
+    },
   );
+  const campaigns = chosenCampaigns.outcome;
   const campaignOff = payable.map((_, i) => campaigns.result.lineOff[String(i)] ?? 0);
-  // Free shipping from a campaign (D299 E3): the basket's first shipping, before any code, never with a subscription.
-  const freeShipping = campaigns.result.freeShipping && ships && !plan && (shipping ?? 0) > 0 ? campaigns.result.freeShipping : null;
-  const campaignShippingMinor = freeShipping ? (shipping ?? 0) : 0;
+  const freeShipping = campaigns.result.freeShipping && freeShippingWorth > 0 ? campaigns.result.freeShipping : null;
+  const campaignShippingMinor = freeShipping ? freeShippingWorth : 0;
   const campaignDiscountMinor = campaignOff.reduce((sum, off) => sum + off, 0) + campaignShippingMinor;
-  const memberOff = payable.map((line, i) =>
-    member && !line.plan && !line.priceListId && !voucher(line) && line.unitPriceMinor > 0 ? memberOffAfterCampaign(line.unitPriceMinor, line.quantity, campaignOff[i], member.percent) : 0,
-  );
+  const memberOff = memberOffAfter(campaignOff);
   const memberDiscountMinor = memberOff.reduce((sum, off) => sum + off, 0);
-  // The friend's welcome discount (D131) comes next, off goods bought once after campaigns and the group's discount and
-  // before any code and the credits; only a signed-in friend's first order, and never a host's.
-  const program = await bonusProgram(db(), storeId);
-  const sellerIsHost = payable.some((line) => line.hostId);
-  const friend = sellerIsHost ? null : await friendState(db(), storeId, customerId, await codeInPlay(db(), storeId, cartId), program);
-  const welcome = friend
-    ? welcomeFor(
-        friend,
-        market,
-        payable.map((line, i) => (line.plan || voucher(line) || line.unitPriceMinor <= 0 ? 0 : Math.max(0, today(line) - campaignOff[i] - memberOff[i]))),
-      )
-    : { totalMinor: 0, lines: payable.map(() => 0) };
+  const welcome = welcomeAfter(campaignOff, memberOff);
   const referralOff = welcome.lines;
   const referralMinor = welcome.totalMinor;
-  // The discount codes, checked against this basket as checkout will (D31); the best of them that may be used together (D299 E2).
+  // The discount codes, checked against this basket as checkout will (D31); the best of them that may be used together (D299 E2),
+  // as far as the campaigns taken let them in (D367).
   const code = await previewCartCodes(
     { storeId, market },
-    {
-      // A gift card is never in what a code reaches or counts (D300).
-      lines: payable.flatMap((line, i) =>
-        voucher(line)
-          ? []
-          : [
-              {
-                key: String(i),
-                productId: line.productId,
-                // What the code is taken off: the price after the group's discount for what is bought once.
-                unitMinor: member && !line.plan && !line.priceListId ? planPrice(line.unitPriceMinor, member.percent) : line.unitPriceMinor,
-                quantity: line.quantity,
-                todayMinor: today(line) - campaignOff[i] - memberOff[i] - referralOff[i],
-                recurring: line.plan !== null,
-              },
-            ],
-      ),
-      shippingMinor: (shipping ?? 0) - campaignShippingMinor,
-    },
+    { lines: codeLines(campaignOff, memberOff, referralOff), shippingMinor: (shipping ?? 0) - campaignShippingMinor },
+    { texts: codeTexts, customerId, campaigns: chosenCampaigns.codeRule },
   );
   const applied = code?.applied ?? null;
   const codeDiscountMinor = applied?.totalMinor ?? 0;
@@ -304,6 +327,8 @@ export async function cartSummary(
     /** What campaigns give (D114): the names of those that reduced something, the amount, and the free products earned. */
     campaignDiscountMinor,
     campaignNames: [...campaigns.result.applied.map((a) => a.name), ...(freeShipping ? [freeShipping.name] : [])],
+    /** Campaigns not used because a discount code they do not combine with gives the shopper more (D367), for the cart to say. */
+    campaignsLeftOut: chosenCampaigns.leftOut,
     /** The shipping a campaign made free (D299 E3), in the currency shown: part of `campaignDiscountMinor`, taken at the shipping's rate. */
     campaignShippingMinor,
     /** How far each campaign's next step is (D299 E3); free shipping only for a basket that ships and has no subscription. */

@@ -398,6 +398,7 @@ export const en = {
     not_applicable: "The code does not apply to what is in your cart.",
     not_combinable: "Can't be used together with {code}.",
     codes_full: "You can use up to five codes.",
+    with_campaigns: "Not used: the offer in your cart gives you more, and the two cannot be combined.",
   },
   minimumFor: "The code applies when the items come to at least",
   problemPaid: "This cart has already been paid for.",
@@ -406,6 +407,8 @@ export const en = {
   freeShipping: "Free shipping",
   freeGift: "Free",
   giftFrom: (campaign: string) => `Gift: ${campaign}`,
+  /** A campaign the cart does not use because a discount code it does not combine with gives more (D367). */
+  campaignNotWithCode: (campaign: string) => `${campaign}: not used, as your discount code gives you more and the two cannot be combined.`,
   /**
    * Backorder (wave 3, D172): said on the product page, in the cart and checkout and on the order and its confirmation, always with the days the store
    * states (Directive 2011/83/EU Art. 6(1)(g) and 18), never a date and never "in stock". Hand-written; needs human legal review before real use.

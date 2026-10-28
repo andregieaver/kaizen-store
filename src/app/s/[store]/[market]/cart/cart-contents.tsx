@@ -672,6 +672,14 @@ function summaryList({ store, market, m, view }: Draw) {
           ))}
         </ul>
       )}
+      {summary.campaignsLeftOut.length > 0 && (
+        // Campaigns a discount code they do not combine with won over (D367): said, so the shopper knows why the offer is not taken off.
+        <ul className="flex flex-col gap-1 text-sm text-muted" data-campaign-left-out>
+          {summary.campaignsLeftOut.map((campaign) => (
+            <li key={campaign.campaignId}>{m.campaignNotWithCode(campaign.name)}</li>
+          ))}
+        </ul>
+      )}
       {from !== null && <p className="text-sm">{m.deliveryOptions.priceInfo.atCheckout}</p>}
       {((!business && !tax.reverseCharge) || shipping === null) && (
         <p className="text-sm text-muted">

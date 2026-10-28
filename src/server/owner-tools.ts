@@ -891,6 +891,7 @@ async function listDiscountsTool({ store }: OwnerToolContext) {
       runs: { from: d.startsAt, until: d.endsAt },
       used: d.used,
       limit: d.usageLimit,
+      not_with_campaigns: !d.combinesWithCampaigns || undefined,
     })),
   };
 }
@@ -913,6 +914,7 @@ async function listCampaignsTool({ store }: OwnerToolContext) {
       applies_to: c.productIds.length + c.termIds.length === 0 ? "everything" : [...c.productIds.map((id) => name(products, id)), ...c.termIds.map((id) => name(terms, id))],
       only_for_customer_groups: c.tierIds.length > 0 ? c.tierIds.length : undefined,
       adds_on_top_of_other_campaigns: c.stacks || undefined,
+      not_with_discount_codes: !c.combinesWithCodes || undefined,
       runs: { from: c.startsAt, until: c.endsAt },
       orders: c.orders,
       orders_limit: c.usageLimit,
@@ -1279,6 +1281,7 @@ async function createDiscountTool(ctx: OwnerToolContext, input: OwnerToolInput<"
     endsAt: input.ends_at ? `${input.ends_at}T23:59` : null,
     usageLimit: input.usage_limit ?? null,
     oncePerCustomer: input.once_per_customer,
+    combinesWithCampaigns: input.combines_with_campaigns,
     active: true,
   });
   if (!result.ok) return fail(result.problems.join(" "));
@@ -1354,6 +1357,7 @@ async function createCampaignTool(ctx: OwnerToolContext, input: OwnerToolInput<"
     perCustomerLimit: input.per_customer_limit ?? null,
     markets,
     stacks: input.kind !== "gift" && input.stacks,
+    combinesWithCodes: input.combines_with_codes,
     startsAt: input.starts_on ? `${input.starts_on}T00:00` : null,
     endsAt: input.ends_on ? `${input.ends_on}T23:59` : null,
     active: true,

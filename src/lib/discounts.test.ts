@@ -18,6 +18,7 @@ import {
 
 const base: StoreDiscount = {
   id: "d1",
+  combinesWithCampaigns: true,
   code: "SOMMER",
   kind: "percent",
   percent: 20,

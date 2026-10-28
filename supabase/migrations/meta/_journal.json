@@ -3886,6 +3886,20 @@
       "when": 1793207896087,
       "tag": "20261028171816_reduced_vat_rates",
       "breakpoints": true
+    },
+    {
+      "idx": 555,
+      "version": "7",
+      "when": 1793208158906,
+      "tag": "20261028172238_discount_combinations",
+      "breakpoints": true
+    },
+    {
+      "idx": 556,
+      "version": "7",
+      "when": 1793208182300,
+      "tag": "20261028172302_discount_combinations_copy",
+      "breakpoints": true
     }
   ]
 }

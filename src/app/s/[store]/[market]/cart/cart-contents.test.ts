@@ -97,6 +97,7 @@ const standardTax = (over: Record<string, unknown> = {}) => ({
 const noCustoms = { chosen: "dap", mode: "dap", fallback: null, estimate: { kind: "none", reason: "no_border" }, collectMinor: 0, blocked: false, record: null };
 const summary = (over: Record<string, unknown> = {}) => ({
   payable: [line],
+  campaignsLeftOut: [],
   blocked: false,
   checkout: { vatRate: 0.25, paymentsOn: true, starter: false, shipping: null },
   fees: [],

@@ -3006,6 +3006,8 @@ export const discountCodes = commerce.table(
     uniqueCodes: boolean("unique_codes").notNull().default(false),
     /** The classes of other codes it may be used with on one order (D299 E2: `products`, `order`, `shipping`); empty, alone. */
     combinesWith: jsonb("combines_with").notNull().default([]),
+    /** Whether it may be used on an order a campaign also reduces (D367); off, the basket takes whichever gives the shopper more. */
+    combinesWithCampaigns: boolean("combines_with_campaigns").notNull().default(true),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -3284,6 +3286,8 @@ export const campaigns = commerce.table(
     markets: jsonb("markets").notNull().default([]),
     /** A percentage or a "buy N pay for M" that also applies on top of other campaigns instead of competing with them. */
     stacks: boolean("stacks").notNull().default(false),
+    /** Whether a discount code may be used on an order it reduces (D367); off, the basket takes whichever gives the shopper more. */
+    combinesWithCodes: boolean("combines_with_codes").notNull().default(true),
     startsAt: timestamp("starts_at", { withTimezone: true }),
     endsAt: timestamp("ends_at", { withTimezone: true }),
     active: boolean("active").notNull().default(true),

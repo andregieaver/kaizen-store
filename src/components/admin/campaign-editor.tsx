@@ -61,6 +61,8 @@ export type CampaignDraft = {
   /** Countries (market codes) it runs in; none for all. */
   markets: string[];
   stacks: boolean;
+  /** Whether discount codes may be used beside it (D367). */
+  combinesWithCodes: boolean;
   startsAt: string;
   endsAt: string;
   active: boolean;
@@ -148,6 +150,7 @@ export function CampaignEditor({
         perCustomerLimit: d.perCustomerLimit || null,
         markets: d.markets,
         stacks: STACKING.includes(d.kind) && d.stacks,
+        combinesWithCodes: d.combinesWithCodes,
         startsAt: d.startsAt || null,
         endsAt: d.endsAt || null,
         active: d.active,
@@ -402,6 +405,13 @@ export function CampaignEditor({
             </span>
           </label>
         )}
+        <label className="flex items-start gap-3 text-sm">
+          <input type="checkbox" checked={d.combinesWithCodes} onChange={(event) => set("combinesWithCodes", event.target.checked)} className="mt-0.5 size-4" />
+          <span>
+            {w.withCodes}
+            <span className={`block ${hint}`}>{w.withCodesHint}</span>
+          </span>
+        </label>
 
         {d.kind === "multi_buy" && (
           <div className="flex flex-col gap-2">

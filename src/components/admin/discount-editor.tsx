@@ -33,6 +33,8 @@ export type DiscountDraft = {
   uniqueCodes: boolean;
   /** The classes of other codes it may be used with (D299 E2). */
   combinesWith: ("products" | "order" | "shipping")[];
+  /** Whether it may be used beside the store's campaigns (D367). */
+  combinesWithCampaigns: boolean;
 };
 
 type Who = "everyone" | "groups" | "customers";
@@ -104,6 +106,7 @@ export function DiscountEditor({
         customerEmails: who === "customers" ? d.customerEmails : "",
         uniqueCodes: d.uniqueCodes,
         combinesWith: d.combinesWith,
+        combinesWithCampaigns: d.combinesWithCampaigns,
         recurring: d.kind === "percent" && d.recurring,
         startsAt: d.startsAt || null,
         endsAt: d.endsAt || null,
@@ -446,6 +449,13 @@ export function DiscountEditor({
             {w.combines[kind]}
           </label>
         ))}
+        <label className="flex items-start gap-3 text-sm">
+          <input type="checkbox" checked={d.combinesWithCampaigns} onChange={(event) => set("combinesWithCampaigns", event.target.checked)} className="mt-0.5 size-4" />
+          <span>
+            {w.withCampaigns}
+            <span className={`block ${hint}`}>{w.withCampaignsHint}</span>
+          </span>
+        </label>
       </section>
 
       <div className="flex items-center gap-3">

@@ -54,6 +54,8 @@ export type StoreDiscount = {
   uniqueCodes: boolean;
   /** The classes of other codes it may be used with on one order (D299 E2); empty: alone. */
   combinesWith: CodeClass[];
+  /** Whether it may be used on a basket a campaign also reduces (D367); off, the basket takes whichever gives the shopper more. */
+  combinesWithCampaigns: boolean;
 };
 
 export type DiscountProblem =
@@ -71,7 +73,9 @@ export type DiscountProblem =
   | "not_applicable"
   | "not_combinable"
   /** The cart holds five codes already (D299 E2). */
-  | "codes_full";
+  | "codes_full"
+  /** The basket's campaigns gave more, and the code and they are not used together (D367). */
+  | "with_campaigns";
 
 /** Whether a code can be used at all right now, before looking at the basket. */
 export function availability(
@@ -407,6 +411,8 @@ export const storeDiscountInput = z
     customerEmails: z.string().max(20_000).default(""),
     uniqueCodes: z.boolean().default(false),
     combinesWith: z.array(z.enum(["products", "order", "shipping"])).max(3).default([]),
+    /** Whether it may be used beside the store's campaigns (D367). */
+    combinesWithCampaigns: z.boolean().default(true),
   })
   .refine((input) => input.productIds === null || input.productIds.length > 0 || input.termIds.length > 0, {
     message: "Choose at least one product, category or tag, or let the code apply to everything.",

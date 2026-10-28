@@ -6,6 +6,7 @@ import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import { writeCsv } from "@/lib/csv";
+import { codeAllowed, codeRuleFor, type CodeRule } from "@/lib/discount-combinations";
 import {
   applyDiscount,
   CODE_CLASSES,
@@ -70,6 +71,8 @@ function toDiscount(row: Row): StoreDiscount {
     customerIds: ids(row.customer_ids),
     uniqueCodes: Boolean(row.unique_codes),
     combinesWith: (Array.isArray(row.combines_with) ? row.combines_with : []).filter((c): c is CodeClass => (CODE_CLASSES as readonly string[]).includes(String(c))),
+    // Older rows and reads without the column combine, as every code did before D367.
+    combinesWithCampaigns: row.combines_with_campaigns !== false,
   };
 }
 
@@ -275,20 +278,21 @@ export async function saveDiscount(
             usage_limit = ${d.usageLimit}, once_per_customer = ${d.oncePerCustomer}, active = ${d.active},
             term_ids = ${values.termIds}::jsonb, min_quantity = ${d.minQuantity}, tier_ids = ${values.tierIds}::jsonb,
             customer_ids = ${values.customerIds}::jsonb, unique_codes = ${d.uniqueCodes}, combines_with = ${values.combinesWith}::jsonb,
-            updated_at = now()
+            combines_with_campaigns = ${d.combinesWithCampaigns}, updated_at = now()
           where store_id = ${store.id}::uuid and id = ${id}::uuid
           returning id
         `)
       : await db().execute<Row>(sql`
           insert into commerce.discount_codes (
             store_id, code, kind, percent, amounts, min_subtotals, product_ids, recurring,
-            starts_at, ends_at, usage_limit, once_per_customer, active, term_ids, min_quantity, tier_ids, customer_ids, unique_codes, combines_with
+            starts_at, ends_at, usage_limit, once_per_customer, active, term_ids, min_quantity, tier_ids, customer_ids, unique_codes, combines_with,
+            combines_with_campaigns
           ) values (
             ${store.id}::uuid, ${values.code}, ${values.kind}, ${values.percent}, ${values.amounts}::jsonb,
             ${values.minSubtotals}::jsonb, ${values.productIds}::jsonb, ${values.recurring},
             ${startsAt}::timestamptz, ${endsAt}::timestamptz, ${d.usageLimit}, ${d.oncePerCustomer}, ${d.active},
             ${values.termIds}::jsonb, ${d.minQuantity}, ${values.tierIds}::jsonb, ${values.customerIds}::jsonb, ${d.uniqueCodes},
-            ${values.combinesWith}::jsonb
+            ${values.combinesWith}::jsonb, ${d.combinesWithCampaigns}
           )
           returning id
         `);
@@ -497,7 +501,13 @@ export async function stackForBasket(
   runner: Runner,
   storeId: string,
   texts: string[],
-  context: { market: Market; customerId: string | null; lock?: boolean },
+  context: {
+    market: Market;
+    customerId: string | null;
+    lock?: boolean;
+    /** Which codes the basket's campaigns let in (D367, `campaignsAndCodes()`); a code kept out is refused as `with_campaigns`. */
+    campaigns?: CodeRule;
+  },
   basket: { marketCode: string; lines: DiscountLine[]; shippingMinor: number },
 ): Promise<CodesResult> {
   const typed = [...new Set(texts.map(normalizeCode).filter(Boolean))].slice(0, CODES_MAX);
@@ -519,7 +529,9 @@ export async function stackForBasket(
     `);
   }
   const found = await Promise.all(typed.map((text) => findUsableDiscount(runner, storeId, text, context).then((f) => ({ text, f }))));
-  const usable = found.filter((x): x is { text: string; f: Extract<FoundDiscount, { ok: true }> } => x.f.ok);
+  const usable = found.filter(
+    (x): x is { text: string; f: Extract<FoundDiscount, { ok: true }> } => x.f.ok && codeAllowed(context.campaigns, x.f.discount),
+  );
   const termed = usable.some((x) => x.f.discount.termIds.length > 0);
   const terms = termed ? await termsOfProducts(runner, storeId, [...new Set(basket.lines.map((l) => l.productId))]) : null;
   const candidates: StackCandidate[] = usable.map(({ text, f }) => ({
@@ -538,6 +550,8 @@ export async function stackForBasket(
   });
   const codes: CodeOutcome[] = found.map(({ text, f }): CodeOutcome => {
     if (!f.ok) return { code: text, ok: false, problem: f.problem, with: null, minimumMinor: null, alone: true };
+    // Left out for the basket's campaigns, which gave more (D367): it would apply, so it does not stop the checkout.
+    if (!codeAllowed(context.campaigns, f.discount)) return { code: text, ok: false, problem: "with_campaigns", with: null, minimumMinor: null, alone: false };
     const hit = stack.used.find((u) => u.key === text);
     if (hit) return { code: text, ok: true, amountMinor: hit.applied.totalMinor };
     const refusal: StackRefusal = stack.refused[text] ?? { problem: "not_applicable", with: null, alone: true };
@@ -562,11 +576,19 @@ export async function stackForBasket(
  * What the cart's codes do to this basket, checked as checkout will
  * check them, so the cart shows what the shopper will pay.
  */
-export async function previewCartCodes(shop: Shop, basket: { lines: DiscountLine[]; shippingMinor: number }): Promise<CodesResult | null> {
-  const texts = await getCartCodes(shop);
+export async function previewCartCodes(
+  shop: Shop,
+  basket: { lines: DiscountLine[]; shippingMinor: number },
+  /**
+   * The cart's codes and the buyer when the caller has read them (else the cookie's cart and the signed-in customer), and which codes
+   * the basket's campaigns let in (D367, `campaignsAndCodes()`).
+   */
+  options: { texts?: string[]; customerId?: string | null; campaigns?: CodeRule } = {},
+): Promise<CodesResult | null> {
+  const texts = options.texts ?? (await getCartCodes(shop));
   if (texts.length === 0) return null;
-  const customer = await getCustomer(shop.storeId);
-  return stackForBasket(db(), shop.storeId, texts, { market: shop.market, customerId: customer?.id ?? null }, { marketCode: shop.market.code, ...basket });
+  const customerId = options.customerId !== undefined ? options.customerId : ((await getCustomer(shop.storeId))?.id ?? null);
+  return stackForBasket(db(), shop.storeId, texts, { market: shop.market, customerId, campaigns: options.campaigns }, { marketCode: shop.market.code, ...basket });
 }
 
 /**
@@ -589,7 +611,8 @@ export async function checkCodeForOrder(
   const result = await stackOnOrder(shop, orderId, [...current, typed]);
   const outcome = result?.codes.find((c) => c.code === typed);
   if (!result || !outcome) return { ok: false, problem: "not_applicable", with: null, minimumMinor: null };
-  if (outcome.ok) return { ok: true, code: typed };
+  // Kept out only by the order's campaigns (D367): placing the order again weighs the code against them and takes the better.
+  if (outcome.ok || outcome.problem === "with_campaigns") return { ok: true, code: typed };
   return { ok: false, problem: outcome.problem, with: outcome.with, minimumMinor: outcome.minimumMinor };
 }
 
@@ -607,13 +630,26 @@ async function stackOnOrder(shop: Shop, orderId: string, texts: string[]): Promi
     select shipping_minor, member_percent from commerce.orders where store_id = ${shop.storeId}::uuid and id = ${orderId}::uuid
   `);
   if (!order) return null;
+  // The campaigns the order got (D367): a code they do not combine with is kept out, as placing the order kept it.
+  const [given] = await db().execute<Row>(sql`
+    select count(*)::int as n, coalesce(bool_and(c.combines_with_codes), true) as combine
+    from commerce.campaigns c
+    where c.store_id = ${shop.storeId}::uuid and c.id::text in (
+      select o.campaign_shipping ->> 'id' from commerce.orders o
+      where o.store_id = ${shop.storeId}::uuid and o.id = ${orderId}::uuid and o.campaign_shipping is not null
+      union
+      select part ->> 'id' from commerce.order_lines ol cross join lateral jsonb_array_elements(ol.campaign_parts) part
+      where ol.store_id = ${shop.storeId}::uuid and ol.order_id = ${orderId}::uuid
+    )
+  `);
+  const campaigns = codeRuleFor(Number(given?.n ?? 0) > 0 ? [{ combinesWithCodes: Boolean(given.combine) }] : []);
   const lines = await db().execute<Row>(sql`
     select ol.id, v.product_id, ol.unit_price_minor, ol.member_discount_minor, ol.campaign_discount_minor, ol.referral_discount_minor, ol.quantity, ol.selling_plan_id is not null as recurring
     from commerce.order_lines ol
     join commerce.product_variants v on v.store_id = ol.store_id and v.id = ol.variant_id
     where ol.store_id = ${shop.storeId}::uuid and ol.order_id = ${orderId}::uuid
   `);
-  return stackForBasket(db(), shop.storeId, texts, { market: shop.market, customerId: customer?.id ?? null }, {
+  return stackForBasket(db(), shop.storeId, texts, { market: shop.market, customerId: customer?.id ?? null, campaigns }, {
     marketCode: shop.market.code,
     // The codes count what a campaign (D114), the buyer's group or company discount (D108) and the friend's welcome discount (D131) left, as placing the order does.
     lines: lines.map((line) => ({

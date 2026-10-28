@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."campaigns" ADD COLUMN "combines_with_codes" boolean DEFAULT true NOT NULL;--> statement-breakpoint
+ALTER TABLE "commerce"."discount_codes" ADD COLUMN "combines_with_campaigns" boolean DEFAULT true NOT NULL;

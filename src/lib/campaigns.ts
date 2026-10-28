@@ -97,6 +97,8 @@ export type Campaign = {
   markets: string[];
   /** A percentage or a "buy N pay for M" that also applies on top of other campaigns, instead of competing with them. */
   stacks: boolean;
+  /** Whether a discount code may be used on a basket it reduces (D367); off, the basket takes whichever gives the shopper more. */
+  combinesWithCodes: boolean;
   createdAt: string;
 };
 
@@ -605,6 +607,8 @@ export const campaignInput = z
     markets: z.array(z.string().regex(/^[A-Z]{2}$/)).default([]),
     /** A percentage or "buy N pay for M" also applied on top of other campaigns. */
     stacks: z.boolean().default(false),
+    /** Whether discount codes may be used beside it (D367). */
+    combinesWithCodes: z.boolean().default(true),
     startsAt: z.string().trim().nullable().default(null),
     endsAt: z.string().trim().nullable().default(null),
     active: z.boolean().default(true),

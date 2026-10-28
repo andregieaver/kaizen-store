@@ -60,6 +60,7 @@ export default async function CampaignsPage({ params }: PageProps<"/admin/[store
                 c.perCustomerLimit !== null && countWords(c.perCustomerLimit, w.perCustomer),
                 c.tierIds.length > 0 && countWords(c.tierIds.length, w.groups),
                 c.stacks && w.stacks,
+                !c.combinesWithCodes && w.notWithCodes,
               ].filter(Boolean);
               return (
                 <ListRow key={c.id}>

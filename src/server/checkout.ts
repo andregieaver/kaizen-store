@@ -47,7 +47,6 @@ import { bookable } from "./cart";
 import { checkoutRuleOutcome, listCheckoutFields } from "./checkout-rules";
 import { STORE_AUDIENCE, offeredTo, plansOffered, LIST_PRICED } from "./product-conditions";
 import { ensureStorePaymentMethods, getCheckoutUi } from "./connect";
-import { evaluateCampaigns } from "./campaigns";
 import { memberDiscountFor } from "./customer-tiers";
 import { flagDeliveryMismatch, resolveDelivery } from "./delivery-options";
 import { checkoutProviderOf } from "./mollie";
@@ -55,6 +54,7 @@ import { mollieProvider, openMolliePayment } from "./payment-providers/mollie";
 import { friendState, rememberAffiliate, welcomeFor } from "./affiliates";
 import { bonusProgram, creditState, debitFor, planFor } from "./bonus";
 import { cartCodesOf, stackForBasket } from "./discounts";
+import { campaignsAndCodes } from "./discount-combinations";
 import { openPaymentSession, paymentConnection } from "./payment-session";
 import { prepareCapture } from "./payment-capture";
 import { decideTerms, recordOrderTerms, termsFacts } from "./payment-terms";
@@ -474,9 +474,51 @@ export async function placeOrder(
     };
     const priced = lines.map(price);
 
+    // The basket's delivery (D135, D237): the one reader `cartSummary()` uses too, with the same basket value (the lines' totals before
+    // discounts, gifts out), so both charge the same. The store's own methods are priced for the basket here and now; a subscription pays the
+    // flat rate on each delivery (D25), and so does a weekly box (`flatRateOnly`, D237 2.8).
+    const basketValueMinor = priced.filter((p) => !p.gift && !p.voucher).reduce((sum, p) => sum + p.renewUnit * p.quantity, 0);
+    // Checkout rules (D357), on the same facts `cartSummary()` reads: they hide or rename delivery options, leave payment methods out or refuse the
+    // basket. A weekly box is made by the store's own job (`flatRateOnly`), not at a checkout, and is left to its own settings.
+    const rules = flatRateOnly ? NO_RULES : await checkoutRuleOutcome(tx, storeId, cartId, market, { customerId, basketValueMinor });
+    if (rules.refusal) return { ok: false, problem: "checkout_rule" };
+    // The store's questions (D357): the answers kept on the cart, checked again against the fields as they are now.
+    const asked = flatRateOnly ? { answers: [], missing: [] } : cleanAnswers(await listCheckoutFields(tx, storeId, { onlyOn: true }), answersByField(cart.checkout_answers));
+    if (asked.missing.length > 0) return { ok: false, problem: "checkout_fields" };
+    const resolved = ships && !rhythm && !flatRateOnly ? await resolveDelivery(tx, storeId, cartId, market, { basketValueMinor, customerId, rules }) : null;
+    const chosen = resolved?.chosen ?? null;
+    const flatRate = rate
+      ? {
+          amountMinor: shown(market, Number(rate.amount_minor)),
+          freeOverMinor: rate.free_over_minor === null ? null : shown(market, Number(rate.free_over_minor)),
+        }
+      : null;
+    const shippingRate = resolved ? resolved.rate : flatRate;
+    if (ships && !shippingRate) return { ok: false, problem: "no_shipping" };
+    // Free shipping counts the whole basket, downloads included; a
+    // subscription pays shipping on each delivery (D25).
+    const shippingWith = (offer: typeof shippingRate) =>
+      basketShipping(
+        priced.filter((p) => !p.gift && !p.voucher).map((p) => ({ totalMinor: p.renewUnit * p.quantity, delivery: p.delivery, recurring: p.recurring })),
+        offer,
+        { trial },
+      );
+    const shippingFor = () => shippingWith(shippingRate);
+    let basket = shippingFor();
+
+    // The buyer's group or company discount (D108) and the friend's welcome discount (D131), read before the campaigns, which are
+    // weighed with what these then take (D367); they keep their place after the campaigns and before any code.
+    const member = await memberDiscountFor(tx, storeId, customerId);
+    const program = await bonusProgram(tx, storeId);
+    const friend = hostId ? null : await friendState(tx, storeId, customerId, cart.affiliate_code ? String(cart.affiliate_code) : null, program);
+    const enteredCodes = cartCodesOf(cart);
+    // Free shipping from a campaign (D299 E3): the basket's first shipping, before any code, never with a subscription.
+    const freeShippingWorth = ships && !rhythm ? basket.first : 0;
+
     // Campaigns (D114): reductions on goods bought once, and the free products the basket has earned,
-    // before the buyer's group discount and any code, which count what is left.
-    const outcome = await evaluateCampaigns(
+    // before the buyer's group discount and any code, which count what is left; where a campaign and a code on the cart do not
+    // combine (D367), whichever saves the shopper more, decided as the cart page (`cartSummary()`) decides it.
+    const chosenCampaigns = await campaignsAndCodes(
       tx,
       { storeId, market },
       priced.map((p, i) => ({
@@ -487,8 +529,42 @@ export async function placeOrder(
         discountable: !p.recurring && !p.range && (p.line.kind === "goods" || p.line.kind === "bundle") && p.unit > 0,
         valueMinor: p.voucher ? 0 : p.unit * p.quantity,
       })),
-      { ships: physical.length > 0, customerId, lock: true },
+      { ships, customerId, lock: true },
+      enteredCodes,
+      freeShippingWorth,
+      (lineOff, shippingOff) => {
+        // The same arithmetic as below, on the lines before any free product is added.
+        const off = priced.map((_, i) => lineOff[String(i)] ?? 0);
+        const memberOff = priced.map((p, i) =>
+          member && !p.gift && !p.voucher && !p.recurring && !p.priceListId && p.unit > 0 ? memberOffAfterCampaign(p.unit, p.quantity, off[i], member.percent) : 0,
+        );
+        const left = priced.map((p, i) => p.unit * p.quantity - off[i] - memberOff[i]);
+        const welcomed = friend
+          ? welcomeFor(friend, market, priced.map((p, i) => (p.gift || p.voucher || p.recurring || p.unit <= 0 ? 0 : Math.max(0, left[i]))))
+          : { totalMinor: 0, lines: priced.map(() => 0) };
+        return {
+          codes: {
+            lines: priced.flatMap((p, i) =>
+              p.voucher
+                ? []
+                : [
+                    {
+                      key: String(i),
+                      productId: String(p.line.product_id),
+                      unitMinor: member && !p.recurring && !p.priceListId ? planPrice(p.unit, member.percent) : p.renewUnit,
+                      quantity: p.quantity,
+                      todayMinor: left[i] - (welcomed.lines[i] ?? 0),
+                      recurring: p.recurring,
+                    },
+                  ],
+            ),
+            shippingMinor: basket.first - shippingOff,
+          },
+          otherMinor: memberOff.reduce((sum, minor) => sum + minor, 0) + welcomed.totalMinor,
+        };
+      },
     );
+    const outcome = chosenCampaigns.outcome;
     priced.forEach((p, i) => {
       const off = outcome.result.lineOff[String(i)] ?? 0;
       if (off === 0) return;
@@ -578,41 +654,9 @@ export async function placeOrder(
     const feeTotal = fees.reduce((sum, fee) => sum + fee.amount, 0);
     // Before any discount code: what the items and fees come to.
     const subtotal = priced.reduce((sum, p) => sum + p.unit * p.quantity, 0) + feeTotal;
-    // The basket's delivery (D135, D237): the one reader `cartSummary()` uses too, with the same basket value (the lines' totals before
-    // discounts, gifts out), so both charge the same. The store's own methods are priced for the basket here and now; a subscription pays the
-    // flat rate on each delivery (D25), and so does a weekly box (`flatRateOnly`, D237 2.8).
-    const basketValueMinor = priced.filter((p) => !p.gift && !p.voucher).reduce((sum, p) => sum + p.renewUnit * p.quantity, 0);
-    // Checkout rules (D357), on the same facts `cartSummary()` reads: they hide or rename delivery options, leave payment methods out or refuse the
-    // basket. A weekly box is made by the store's own job (`flatRateOnly`), not at a checkout, and is left to its own settings.
-    const rules = flatRateOnly ? NO_RULES : await checkoutRuleOutcome(tx, storeId, cartId, market, { customerId, basketValueMinor });
-    if (rules.refusal) return { ok: false, problem: "checkout_rule" };
-    // The store's questions (D357): the answers kept on the cart, checked again against the fields as they are now.
-    const asked = flatRateOnly ? { answers: [], missing: [] } : cleanAnswers(await listCheckoutFields(tx, storeId, { onlyOn: true }), answersByField(cart.checkout_answers));
-    if (asked.missing.length > 0) return { ok: false, problem: "checkout_fields" };
-    const resolved = ships && !rhythm && !flatRateOnly ? await resolveDelivery(tx, storeId, cartId, market, { basketValueMinor, customerId, rules }) : null;
-    const chosen = resolved?.chosen ?? null;
-    const flatRate = rate
-      ? {
-          amountMinor: shown(market, Number(rate.amount_minor)),
-          freeOverMinor: rate.free_over_minor === null ? null : shown(market, Number(rate.free_over_minor)),
-        }
-      : null;
-    const shippingRate = resolved ? resolved.rate : flatRate;
-    if (ships && !shippingRate) return { ok: false, problem: "no_shipping" };
-    // Free shipping counts the whole basket, downloads included; a
-    // subscription pays shipping on each delivery (D25).
-    const shippingWith = (offer: typeof shippingRate) =>
-      basketShipping(
-        priced.filter((p) => !p.gift && !p.voucher).map((p) => ({ totalMinor: p.renewUnit * p.quantity, delivery: p.delivery, recurring: p.recurring })),
-        offer,
-        { trial },
-      );
-    const shippingFor = () => shippingWith(shippingRate);
-    let basket = shippingFor();
 
     // The buyer's group or company discount (D108): off what is bought once, before any
     // code, which then counts the lowered prices. Not off subscriptions, sign-up fees or shipping.
-    const member = await memberDiscountFor(tx, storeId, customerId);
     if (member) {
       for (const p of priced) {
         if (p.gift || p.voucher || p.recurring || p.priceListId || p.unit <= 0) continue;
@@ -625,8 +669,6 @@ export async function placeOrder(
     // The friend's welcome discount (D131): a signed-in customer's first order, through an affiliate's link, off goods
     // bought once after campaigns and the group's discount, before any code. Never a host's order. The same arithmetic
     // as the cart page (`cartSummary()`), worked out under the customer's lock.
-    const program = await bonusProgram(tx, storeId);
-    const friend = hostId ? null : await friendState(tx, storeId, customerId, cart.affiliate_code ? String(cart.affiliate_code) : null, program);
     const welcome = friend
       ? welcomeFor(friend, market, priced.map((p) => (p.gift || p.voucher || p.recurring || p.unit <= 0 ? 0 : Math.max(0, p.total))))
       : { totalMinor: 0, lines: priced.map(() => 0) };
@@ -643,17 +685,16 @@ export async function placeOrder(
     let usedCodes: { code: string; discountId: string; itemId: string | null; amountMinor: number }[] = [];
     // Free shipping from a campaign (D299 E3): the basket's first shipping, before any code, as the cart page takes it; never with a
     // subscription (a renewal pays its shipping).
-    const freeShipping = outcome.result.freeShipping && ships && !rhythm && basket.first > 0 ? outcome.result.freeShipping : null;
-    const campaignShipping = freeShipping ? basket.first : 0;
+    const freeShipping = outcome.result.freeShipping && freeShippingWorth > 0 ? outcome.result.freeShipping : null;
+    const campaignShipping = freeShipping ? freeShippingWorth : 0;
     let shippingDiscount = campaignShipping;
     const lowered = new Set<number>();
-    const enteredCodes = cartCodesOf(cart);
     if (enteredCodes.length > 0) {
       const result = await stackForBasket(
         tx,
         storeId,
         enteredCodes,
-        { market, customerId, lock: true },
+        { market, customerId, lock: true, campaigns: chosenCampaigns.codeRule },
         {
           marketCode: market.code,
           // A gift card is never in what a code reaches or counts (D300).

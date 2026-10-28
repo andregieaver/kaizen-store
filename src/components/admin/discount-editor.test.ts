@@ -10,6 +10,7 @@ const draft = (over: Partial<DiscountDraft> = {}): DiscountDraft => ({
   code: "SOMMER",
   kind: "percent",
   percent: "10",
+  combinesWithCampaigns: true,
   amounts: {},
   minSubtotals: {},
   productIds: null,

@@ -85,6 +85,9 @@ export const discountsEn = {
     combineHint:
       "A shopper can put up to five codes on one order. Tick the kinds this code may be used with; the other code must allow this one too. Where two cannot be used together, the shopper gets the one that takes more off, and the cart says why of the other.",
     combines: { products: "Codes on chosen products, categories or tags", order: "Codes on everything", shipping: "Free shipping codes" },
+    withCampaigns: "Can be used with campaigns",
+    withCampaignsHint:
+      "On, the code comes off what the store's campaigns leave. Off, a basket a campaign also reduces gets either the code or the campaigns, whichever gives the shopper more, and the cart says why of the other.",
     save: "Save code",
   },
   generated: {
@@ -137,6 +140,7 @@ export const discountsEn = {
     perCustomer: { one: "Once per customer", many: "{n} orders per customer" },
     groups: { one: "For a customer group", many: "For {n} customer groups" },
     stacks: "Adds on top",
+    notWithCodes: "Not with codes",
     from: "From {date}",
     fromNow: "From now",
     noDates: "No dates",
@@ -205,6 +209,9 @@ export const discountsEn = {
       "Normally a product gets one campaign, the one that gives the shopper most. With this on, {how}, one campaign after the other in the order they were made.",
     stacksMulti: "it also works on the items still to be paid for after the other campaigns, so two 3 for 2 free more items",
     stacksPercent: "the percentage also comes off what the other campaign left",
+    withCodes: "Can be used with discount codes",
+    withCodesHint:
+      "On, a code the shopper types comes off what the campaign leaves. Off, a basket with a code gets either the code or this campaign, whichever gives the shopper more, and the cart says why of the other.",
     buys: "Shopper buys",
     paysFor: "and pays for",
     multiHint: "In every full group of {buy} items {free}. The items can be different products, as long as the campaign applies to them.",

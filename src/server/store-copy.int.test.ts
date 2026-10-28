@@ -321,7 +321,11 @@ beforeAll(async () => {
 
   // Codes, campaigns, groups; shoppers and their history.
   await db().execute(
-    sql`insert into commerce.discount_codes (store_id, code, kind, percent) values (${S}::uuid, 'ALL10', 'percent', 10)`,
+    sql`insert into commerce.discount_codes (store_id, code, kind, percent, combines_with_campaigns) values (${S}::uuid, 'ALL10', 'percent', 10, false)`,
+  );
+  // A campaign that is not used beside codes (D367): the copy says the same.
+  await db().execute(
+    sql`insert into commerce.campaigns (store_id, name, kind, percent, combines_with_codes) values (${S}::uuid, 'Alone', 'percent', 15, false)`,
   );
   await db().execute(sql`insert into commerce.customer_tiers (store_id, name, percent) values (${S}::uuid, 'VIP', 10)`);
   ids.customerVip = String(
@@ -985,6 +989,11 @@ describe("a whole copy, run to the end", () => {
     // Codes and campaigns count no use from copied orders.
     const codes = await discounts.listDiscounts(N);
     expect(codes.map((c) => [c.code, c.used, c.given])).toEqual([["ALL10", 0, {}]]);
+    // Whether a code and a campaign combine (D367) is copied as the original says.
+    expect(codes.map((c) => c.combinesWithCampaigns)).toEqual([false]);
+    expect(
+      (await rows(sql`select name, combines_with_codes from commerce.campaigns where store_id = ${N}::uuid`)).map((c) => [c.name, c.combines_with_codes]),
+    ).toEqual([["Alone", false]]);
     // A shopper who signs up with the same email is not handed the history.
     const [vip] = await rows(
       sql`select id from commerce.customers where store_id = ${N}::uuid and lower(email) = 'vip@copy.example'`,

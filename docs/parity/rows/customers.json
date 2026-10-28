@@ -487,13 +487,13 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": "full"
+      "was": "partial"
     },
-    "gap": "Automatic campaigns (D114 to D116, D299 E3 and E4): percentage, buy N pay M, free product, an amount off per market, free shipping, tiers by items or spend and buy X get Y, for categories, tags and customer groups, each optionally stacking with other campaigns, announced from the cached `campaignNotices()`; all with scenarios in `checkout-kinds.int.test.ts`, euro included. Left (criterion 5): a campaign and a code always combine (campaigns come first, codes count what is left), so an owner cannot say a code is not to be used with a campaign, or a campaign with codes. Merged on 2026-10-26 (README rule 8): `checkout.discount-codes-and-automatic-discounts` covered codes and automatic discounts together (rated partial for this); its code criteria are held by `customers.discount-codes`, its evidence is here.",
-    "bucket": "A",
-    "wave": 5,
+    "gap": "Automatic campaigns (D114 to D116, D299 E3 and E4): percentage, buy N pay M, free product, an amount off per market, free shipping, tiers by items or spend and buy X get Y, for categories, tags and customer groups, each optionally stacking with other campaigns, announced from the cached `campaignNotices()`; all with scenarios in `checkout-kinds.int.test.ts`, euro included. An owner chooses whether a campaign combines with discount codes and a code with campaigns (D367, both on by default); where they do not, the basket takes whichever saves the shopper more, decided once by `campaignsAndCodes()` for `cartSummary()` and `placeOrder()`, and the cart says why of the other. Kaizena Flow's combinations are between campaigns and codes (and between codes, D299 E2), not Shopify's product, order and shipping classes for automatic discounts among themselves; campaigns among themselves compete or stack (D115). Merged on 2026-10-26 (README rule 8): `checkout.discount-codes-and-automatic-discounts` covered codes and automatic discounts together (rated partial for this); its code criteria are held by `customers.discount-codes`, its evidence is here.",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "An owner makes an automatic discount of a fixed amount per market off chosen products or the order, and an automatic free-shipping discount above a basket value per market.",
       "An automatic discount can be tiered by spend (spend X get a % off), applied without a code.",
@@ -520,7 +520,11 @@
         "src/app/admin/(gated)/[store]/discounts/[discountId]/codes/route.ts",
         "src/lib/code-words.ts",
         "src/components/checkout-code-form.tsx",
-        "src/components/discount-code-form.tsx"
+        "src/components/discount-code-form.tsx",
+        "src/lib/discount-combinations.ts",
+        "src/server/discount-combinations.ts",
+        "supabase/migrations/20261028172238_discount_combinations.sql",
+        "supabase/migrations/20261028172302_discount_combinations_copy.sql"
       ],
       "tests": [
         "src/lib/campaigns.test.ts",
@@ -531,7 +535,9 @@
         "src/db/campaigns-depth.test.ts",
         "src/lib/discounts.test.ts",
         "src/server/discounts.int.test.ts",
-        "e2e/discounts.spec.ts"
+        "e2e/discounts.spec.ts",
+        "src/lib/discount-combinations.test.ts",
+        "src/server/store-copy.int.test.ts"
       ],
       "untested": false
     },
@@ -542,7 +548,8 @@
       "D114",
       "D115",
       "D116",
-      "D299"
+      "D299",
+      "D367"
     ],
     "history": [
       {
@@ -556,6 +563,12 @@
         "from": "full",
         "to": "partial",
         "why": "Merged with checkout.discount-codes-and-automatic-discounts (rule 8): its open criterion, an owner's choice of whether a campaign and a code combine, is this row's now and is not met."
+      },
+      {
+        "on": "2026-10-28",
+        "from": "partial",
+        "to": "full",
+        "why": "D367: an owner chooses whether a campaign combines with codes and a code with campaigns; the basket takes whichever saves more, `cartSummary()` and `placeOrder()` agreeing in NOK and euro scenarios."
       }
     ]
   },

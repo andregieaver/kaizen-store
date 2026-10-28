@@ -390,6 +390,7 @@ export const da: Messages = {
     not_applicable: "Koden gælder ikke for det, der ligger i kurven.",
     not_combinable: "Kan ikke bruges sammen med {code}.",
     codes_full: "Du kan bruge op til fem koder.",
+    with_campaigns: "Ikke brugt: tilbuddet i kurven giver dig mere, og de kan ikke kombineres.",
   },
   minimumFor: "Koden gælder, når varerne koster mindst",
   problemPaid: "Denne kurv er allerede betalt.",
@@ -398,6 +399,7 @@ export const da: Messages = {
   freeShipping: "Gratis fragt",
   freeGift: "Gratis",
   giftFrom: (campaign: string) => `Gave: ${campaign}`,
+  campaignNotWithCode: (campaign: string) => `${campaign}: ikke brugt, fordi din rabatkode giver dig mere, og de ikke kan kombineres.`,
   /**
    * Backorder (wave 3, D172): said on the product page, in the cart and checkout and on the order and its confirmation, always with the days the store
    * states (Directive 2011/83/EU Art. 6(1)(g) and 18), never a date and never "in stock". Hand-written; needs human legal review before real use.

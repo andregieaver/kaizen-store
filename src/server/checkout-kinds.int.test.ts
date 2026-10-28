@@ -464,6 +464,11 @@ type Scenario = {
   gift?: { to: string; from: string; message: string };
   /** Gift cards on the cart (D300 F3), of these amounts in the currency shown: they pay part of it, and Stripe is asked only for the rest. */
   giftCards?: number[];
+  /**
+   * A basket with campaigns and a code (D367): which way it went. Both together (they combine), the campaigns (the code is not used,
+   * `with_campaigns`), or the codes (the campaigns named in `leftOut` are not used, the others still are).
+   */
+  combination?: { taken: "both" | "campaigns" | "codes"; leftOut?: string[] };
 };
 
 /** A gift card of the store, issued by a person, delivered, in its current mode: its code, as the email would carry it. */
@@ -755,6 +760,65 @@ const campaignScenarios: Scenario[] = [
   },
 ];
 
+/**
+ * Campaigns and codes that do not combine (D367): the basket takes whichever saves the shopper more, the same in the cart and the
+ * order, in kroner and shown in euro. `SOLO` (10 %) and `SOLOBIG` (40 %) are codes that do not combine with campaigns; `TI` (10 %)
+ * combines, as every code and campaign did before.
+ */
+const combinationScenarios: Scenario[] = [false, true].flatMap((euro): Scenario[] => {
+  const shownIn = euro ? ", shown in euro" : "";
+  return [
+    {
+      name: `a code that does not combine with a campaign that gives more${shownIn}`,
+      fill: () => add("DEMO-MUG-WHITE", 2),
+      campaigns: () => [percentCampaign(20)],
+      code: `SOLO${run}`.toUpperCase(),
+      combination: { taken: "campaigns" },
+      euro,
+      bookings: 0,
+    },
+    {
+      name: `a code that does not combine with a campaign and gives more${shownIn}`,
+      fill: () => add("DEMO-MUG-WHITE", 2),
+      campaigns: () => [percentCampaign(10)],
+      code: `SOLOBIG${run}`.toUpperCase(),
+      combination: { taken: "codes", leftOut: ["10 % off"] },
+      euro,
+      bookings: 0,
+    },
+    {
+      // The 5 % does not combine with codes and gives less than the code; the free notebook combines and stays.
+      name: `a campaign that does not combine with codes, a combining code that gives more and a free product that stays${shownIn}`,
+      fill: () => add("DEMO-MUG-WHITE", 2),
+      campaigns: () => [percentCampaign(5, { combinesWithCodes: false }), freeNotebook()],
+      code: `TI${run}`.toUpperCase(),
+      combination: { taken: "codes", leftOut: ["5 % off"] },
+      gifts: 1,
+      euro,
+      bookings: 0,
+    },
+    {
+      name: `a campaign and a code that combine, as they always did${shownIn}`,
+      fill: () => add("DEMO-MUG-WHITE", 2),
+      campaigns: () => [percentCampaign(20)],
+      code: `TI${run}`.toUpperCase(),
+      combination: { taken: "both" },
+      euro,
+      bookings: 0,
+    },
+  ];
+});
+combinationScenarios.push({
+  // A campaign that does not combine with codes and gives more: no code comes in beside it, a combining one neither.
+  name: "a campaign that does not combine with codes and gives more than a combining code, for a group member",
+  fill: () => add("DEMO-MUG-WHITE", 2),
+  campaigns: () => [percentCampaign(30, { combinesWithCodes: false })],
+  code: `TI${run}`.toUpperCase(),
+  combination: { taken: "campaigns" },
+  buyer: "group",
+  bookings: 0,
+});
+
 const euroScenarios: Scenario[] = [
   { name: "goods, shown in euro", fill: () => add("DEMO-MUG-WHITE", 2), euro: true, bookings: 0 },
   {
@@ -895,6 +959,9 @@ describe("checkout for every kind of product", () => {
     for (const input of [
       { code: `PAR${run}A`.toUpperCase(), kind: "percent", percent: 10, termIds: [homeCategory], combinesWith: ["order"] },
       { code: `PAR${run}B`.toUpperCase(), kind: "fixed", amounts: { NO: "40" }, combinesWith: ["products"] },
+      // Codes that are not used beside a campaign (D367).
+      { code: `SOLO${run}`.toUpperCase(), kind: "percent", percent: 10, combinesWithCampaigns: false },
+      { code: `SOLOBIG${run}`.toUpperCase(), kind: "percent", percent: 40, combinesWithCampaigns: false },
     ]) {
       const made = await saveDiscount(member, null, input);
       if (!made.ok) throw new Error(made.problems.join(" "));
@@ -915,7 +982,7 @@ describe("checkout for every kind of product", () => {
     companyId = String(company.id);
   });
 
-  it.each([...scenarios, ...euroScenarios, ...campaignScenarios, ...deliveryScenarios, ...backorderScenarios, ...giftScenarios, ...giftCardScenarios, ...giftCardSpendScenarios])("$name: from the cart to the payment form to a paid order", async (scenario) => {
+  it.each([...scenarios, ...euroScenarios, ...campaignScenarios, ...combinationScenarios, ...deliveryScenarios, ...backorderScenarios, ...giftScenarios, ...giftCardScenarios, ...giftCardSpendScenarios])("$name: from the cart to the payment form to a paid order", async (scenario) => {
     jar.clear();
     view = scenario.euro ? noInEuro : no;
     // Campaigns run only in the scenarios that make them (D114).
@@ -973,7 +1040,23 @@ describe("checkout for every kind of product", () => {
     if (scenario.code) expect(summary.discountMinor).toBeGreaterThan(0);
     // Every code the scenario typed is used, in the order they apply (D299 E2).
     if (scenario.moreCodes) expect(summary.code?.used.map((u) => u.code)).toEqual([scenario.code, ...scenario.moreCodes]);
-    if (scenario.campaigns) expect(summary.campaignDiscountMinor + summary.gifts.length).toBeGreaterThan(0);
+    if (scenario.campaigns && scenario.combination?.taken !== "codes") expect(summary.campaignDiscountMinor + summary.gifts.length).toBeGreaterThan(0);
+    // Campaigns and a code that do not combine (D367): the cart takes the one that saves more and says why of the other.
+    if (scenario.combination) {
+      const { taken, leftOut = [] } = scenario.combination;
+      const typed = summary.code?.codes.find((c) => c.code === scenario.code);
+      if (taken === "campaigns") {
+        expect(typed).toMatchObject({ ok: false, problem: "with_campaigns", alone: false });
+        expect(summary.codeDiscountMinor).toBe(0);
+        expect(summary.campaignDiscountMinor).toBeGreaterThan(0);
+      } else {
+        expect(typed).toMatchObject({ ok: true });
+        expect(summary.codeDiscountMinor).toBeGreaterThan(0);
+      }
+      if (taken === "both") expect(summary.campaignDiscountMinor).toBeGreaterThan(0);
+      expect(summary.campaignsLeftOut.map((c) => c.name)).toEqual(leftOut);
+      for (const name of leftOut) expect(summary.campaignNames).not.toContain(name);
+    }
     expect(summary.gifts).toHaveLength(scenario.gifts ?? 0);
     expect(cart.currency).toBe(scenario.euro ? "EUR" : "NOK");
     if (scenario.buyer) expect(summary.member).toMatchObject({ percent: scenario.buyer === "group" ? 10 : 5 });
@@ -1009,6 +1092,8 @@ describe("checkout for every kind of product", () => {
       off: summary.discountMinor + summary.gifts.reduce((sum, gift) => sum + gift.unitPriceMinor * gift.quantity, 0),
     });
     await expectUnitPrices(cart, order!, scenario);
+    // The order took the same way as the cart (D367): the code on it only when the cart used it.
+    if (scenario.combination) expect(order?.discountCode).toBe(scenario.combination.taken === "campaigns" ? null : scenario.code);
     // Free shipping from a campaign (D299 E3): the whole shipping, kept on the order with the campaign, part of what campaigns took off.
     const [kept] = await db().execute<Row>(sql`select campaign_shipping from commerce.orders where id = ${open!.orderId}::uuid`);
     if (scenario.freeShipping) {

@@ -22,6 +22,7 @@ const campaign = (over: Partial<Campaign>): Campaign => ({
   name: `Campaign ${n}`,
   kind: "percent",
   active: true,
+  combinesWithCodes: true,
   startsAt: null,
   endsAt: null,
   percent: 20,

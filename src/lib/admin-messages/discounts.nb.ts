@@ -79,6 +79,9 @@ export const discountsNb: DiscountsMessages = {
     combineHint:
       "En kunde kan bruke opptil fem koder på én ordre. Kryss av for hvilke slags koder denne kan brukes sammen med; den andre koden må også tillate denne. Der to ikke kan brukes sammen, får kunden den som gir mest rabatt, og handlekurven sier hvorfor om den andre.",
     combines: { products: "Koder på utvalgte produkter, kategorier eller stikkord", order: "Koder på alt", shipping: "Koder for gratis frakt" },
+    withCampaigns: "Kan brukes sammen med kampanjer",
+    withCampaignsHint:
+      "Når dette er på, trekkes koden fra det butikkens kampanjer lar stå igjen. Når det er av, får en handlekurv som også har en kampanje, enten koden eller kampanjene, det som gir kunden mest, og handlekurven sier hvorfor om det andre.",
     save: "Lagre koden",
   },
   generated: {
@@ -131,6 +134,7 @@ export const discountsNb: DiscountsMessages = {
     perCustomer: { one: "Én gang per kunde", many: "{n} ordrer per kunde" },
     groups: { one: "For én kundegruppe", many: "For {n} kundegrupper" },
     stacks: "Kommer i tillegg",
+    notWithCodes: "Ikke med koder",
     from: "Fra {date}",
     fromNow: "Fra nå",
     noDates: "Ingen datoer",
@@ -199,6 +203,9 @@ export const discountsNb: DiscountsMessages = {
       "Vanligvis får et produkt én kampanje, den som gir kunden mest. Når dette er på, {how}, én kampanje etter den andre i den rekkefølgen de ble laget.",
     stacksMulti: "virker den også på varene som gjenstår å betale for etter de andre kampanjene, så to 3 for 2 gjør flere varer gratis",
     stacksPercent: "trekkes prosenten også fra det den andre kampanjen lot stå igjen",
+    withCodes: "Kan brukes sammen med rabattkoder",
+    withCodesHint:
+      "Når dette er på, trekkes en kode kunden skriver inn, fra det kampanjen lar stå igjen. Når det er av, får en handlekurv med en kode enten koden eller denne kampanjen, det som gir kunden mest, og handlekurven sier hvorfor om det andre.",
     buys: "Kunden kjøper",
     paysFor: "og betaler for",
     multiHint: "I hver hele gruppe på {buy} varer {free}. Varene kan være forskjellige produkter, så lenge kampanjen gjelder dem.",

@@ -72,6 +72,8 @@ function toCampaign(row: Row): Campaign {
     perCustomerLimit: row.per_customer_limit === null || row.per_customer_limit === undefined ? null : Number(row.per_customer_limit),
     markets: ids(row.markets),
     stacks: Boolean(row.stacks),
+    // Older rows and reads without the column combine, as every campaign did before D367.
+    combinesWithCodes: row.combines_with_codes !== false,
     createdAt: new Date(String(row.created_at)).toISOString(),
   };
 }
@@ -292,7 +294,7 @@ export async function saveCampaign({ account, store }: Membership, id: string | 
           get_kind = ${values.getKind}, get_percent = ${values.getPercent}, get_amounts = ${values.getAmounts}::jsonb, uses_per_order = ${values.usesPerOrder},
           product_ids = ${values.productIds}::jsonb, term_ids = ${values.termIds}::jsonb,
           tier_ids = ${values.tierIds}::jsonb, usage_limit = ${c.usageLimit}, per_customer_limit = ${c.perCustomerLimit},
-          markets = ${values.markets}::jsonb, stacks = ${values.stacks},
+          markets = ${values.markets}::jsonb, stacks = ${values.stacks}, combines_with_codes = ${c.combinesWithCodes},
           starts_at = ${startsAt}::timestamptz, ends_at = ${endsAt}::timestamptz, active = ${c.active}, updated_at = now()
         where store_id = ${store.id}::uuid and id = ${id}::uuid
         returning id
@@ -301,13 +303,13 @@ export async function saveCampaign({ account, store }: Membership, id: string | 
         insert into commerce.campaigns (
           store_id, name, kind, percent, buy_quantity, pay_quantity, gift_variant_id, gift_quantity, thresholds, amounts, tier_basis, tiers,
           buy_min_quantity, buy_min_amounts, get_product_ids, get_term_ids, get_quantity, get_kind, get_percent, get_amounts, uses_per_order,
-          product_ids, term_ids, tier_ids, usage_limit, per_customer_limit, markets, stacks, starts_at, ends_at, active
+          product_ids, term_ids, tier_ids, usage_limit, per_customer_limit, markets, stacks, combines_with_codes, starts_at, ends_at, active
         ) values (
           ${store.id}::uuid, ${c.name}, ${c.kind}, ${values.percent}, ${values.buy}, ${values.pay}, ${values.gift}::uuid,
           ${values.giftQuantity}, ${values.thresholds}::jsonb, ${values.amounts}::jsonb, ${values.tierBasis}, ${values.tiers}::jsonb,
           ${values.buyMinQuantity}, ${values.buyMinAmounts}::jsonb, ${values.getProductIds}::jsonb, ${values.getTermIds}::jsonb, ${values.getQuantity},
           ${values.getKind}, ${values.getPercent}, ${values.getAmounts}::jsonb, ${values.usesPerOrder}, ${values.productIds}::jsonb, ${values.termIds}::jsonb,
-          ${values.tierIds}::jsonb, ${c.usageLimit}, ${c.perCustomerLimit}, ${values.markets}::jsonb, ${values.stacks}, ${startsAt}::timestamptz, ${endsAt}::timestamptz, ${c.active}
+          ${values.tierIds}::jsonb, ${c.usageLimit}, ${c.perCustomerLimit}, ${values.markets}::jsonb, ${values.stacks}, ${c.combinesWithCodes}, ${startsAt}::timestamptz, ${endsAt}::timestamptz, ${c.active}
         )
         returning id
       `);
@@ -437,24 +439,36 @@ export type GiftItem = {
   vatRate: number;
 };
 
-export type CampaignOutcome = { result: CampaignResult; gifts: GiftItem[] };
+export type CampaignOutcome = {
+  result: CampaignResult;
+  gifts: GiftItem[];
+  /** The campaigns that were weighed (running, for this customer, not left out), with whether each combines with codes (D367). */
+  weighed: Pick<Campaign, "id" | "name" | "combinesWithCodes">[];
+};
 
-const none: CampaignOutcome = { result: { lineOff: {}, lineBy: {}, lineParts: {}, applied: [], gifts: [], valueMinor: 0, freeShipping: null, next: [] }, gifts: [] };
+const none: CampaignOutcome = { result: { lineOff: {}, lineBy: {}, lineParts: {}, applied: [], gifts: [], valueMinor: 0, freeShipping: null, next: [] }, gifts: [], weighed: [] };
 
 /**
  * What the running campaigns do to a basket: the reductions per line, and
  * the free products it has earned that can be given (goods the store ships,
  * in stock, only when the order ships anyway). The cart and `placeOrder()`
- * both use it, so they cannot disagree.
+ * both use it, so they cannot disagree. `leaveOut` names campaigns the basket
+ * does not take because a discount code won over them (D367,
+ * `campaignsAndCodes()`).
  */
 export async function evaluateCampaigns(
   runner: Runner,
   { storeId, market }: { storeId: string; market: Market },
   lines: BasketLine[],
-  { ships, customerId = null, lock = false }: { ships: boolean; customerId?: string | null; lock?: boolean },
+  {
+    ships,
+    customerId = null,
+    lock = false,
+    leaveOut,
+  }: { ships: boolean; customerId?: string | null; lock?: boolean; leaveOut?: ReadonlySet<string> },
 ): Promise<CampaignOutcome> {
   if (lines.length === 0) return none;
-  const campaigns = await runningCampaigns(runner, storeId, market, { customerId, lock });
+  const campaigns = (await runningCampaigns(runner, storeId, market, { customerId, lock })).filter((c) => !leaveOut?.has(c.id));
   if (campaigns.length === 0) return none;
   const terms = await termsOfProducts(runner, storeId, [...new Set(lines.map((l) => l.productId))]);
   const result = applyCampaigns(
@@ -465,7 +479,7 @@ export async function evaluateCampaigns(
   // A host's listings are paid to the host on their own (D71): no free product from the store goes with them.
   const hosted = result.gifts.length > 0 && ships ? await hasHostListings(runner, storeId, [...new Set(lines.map((l) => l.productId))]) : false;
   const gifts = ships && !hosted ? await giftItems(runner, storeId, market, result.gifts) : [];
-  return { result, gifts };
+  return { result, gifts, weighed: campaigns.map((c) => ({ id: c.id, name: c.name, combinesWithCodes: c.combinesWithCodes })) };
 }
 
 async function hasHostListings(runner: Runner, storeId: string, productIds: string[]): Promise<boolean> {
