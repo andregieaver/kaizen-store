@@ -1421,6 +1421,8 @@ async function saveVariants(
   const fresh = columns.filter((c) => c.id === null);
   const newIds = new Map<string, string>();
   if (fresh.length > 0) {
+    // A new variant's low-stock level is written after its first stock (below), so the level is compared with that stock and not with the
+    // nothing it has before it (D370): one created at or below its level is one crossing, with its real figure; one above it is none.
     const rows = await tx.execute<Row>(sql`
       insert into commerce.product_variants (
         store_id, product_id, sku, gtin, options, active, delivery, rental_period, weight_grams, hs_code, origin_country,
@@ -1429,7 +1431,7 @@ async function saveVariants(
       )
       select ${storeId}::uuid, ${productId}::uuid, r.sku, r.gtin, r.options, r.active, r.delivery, r.rental_period, r.weight_grams, r.hs_code,
              r.origin_country, r.image_url, r.image_thumbnail_url, r.cost_minor, r.measure_amount, r.measure_unit, r.measure_base,
-             r.stock_policy, r.backorder_days, r.low_stock_threshold, r.min_quantity, r.max_quantity, r.quantity_step
+             r.stock_policy, r.backorder_days, null::integer, r.min_quantity, r.max_quantity, r.quantity_step
       from jsonb_to_recordset(${JSON.stringify(fresh)}::jsonb) as ${VARIANT_RECORD}
       order by r.n
       returning id, sku
@@ -1479,6 +1481,16 @@ async function saveVariants(
     return [{ id: idOf(c), isNew: c.id === null, typed: variant.stock, base: c.id !== null ? stockMode?.loaded.get(c.id) : undefined }];
   });
   await writeStock(tx, storeId, stockWrites, locationId, stockMode, actorId);
+
+  // The new variants' low-stock levels, now that their stock is written (`commerce.refresh_stock_alert()` runs on the change of the level).
+  const levels = fresh.filter((c) => c.low_stock_threshold !== null).map((c) => ({ id: idOf(c), low_stock_threshold: c.low_stock_threshold }));
+  if (levels.length > 0) {
+    await tx.execute(sql`
+      update commerce.product_variants v set low_stock_threshold = r.low_stock_threshold
+      from jsonb_to_recordset(${JSON.stringify(levels)}::jsonb) as r(id uuid, low_stock_threshold integer)
+      where v.id = r.id and v.store_id = ${storeId}::uuid and v.product_id = ${productId}::uuid
+    `);
+  }
 
   // Variants taken out of the editor are switched off, not deleted: orders and price history may refer to them.
   const keep = `{${columns.map(idOf).join(",")}}`;

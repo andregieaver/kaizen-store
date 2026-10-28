@@ -269,7 +269,9 @@ level is compared with **on hand summed over active locations**. A variant **cro
 or below it. Each crossing produces **one** notice, however many sales follow; the sum must rise above the level again before the next
 crossing can happen. Rules (the state machine is `commerce.stock_alerts`, 3.4):
 
-- Setting a level on a variant that is already at or below it does **not** send a notice (it is recorded as already told).
+- ~~Setting a level on a variant that is already at or below it does **not** send a notice (it is recorded as already told).~~ Changed
+  by D370 (wave 10, unit G): a variant created at or below its level, or a level set on a variant already at or below it, is a crossing
+  at once and is in the next run's email, once.
 - Raising the level above the current stock counts as a crossing at that moment; lowering or clearing it re-arms or switches it off.
 - The notices are sent by the five-minute cron as **one email per store per run** to the store's **owners** listing the variants that
   crossed since the last run (at most 50 lines and "and {n} more"), kind `stock.low`; the email says the stock figure, the level, the
@@ -401,8 +403,9 @@ Indexes: `(store_id, variant_id, id desc)`, `(store_id, created_at desc)`, `(sto
 `commerce.refresh_stock_alert(p_store, p_variant)` (called by the level trigger, by an update of a variant's threshold and by an update
 of a location's `active`, always inside a sub-block that turns an error into a warning) computes the sum of `on_hand` over active
 locations and moves the state: no threshold gives `off`; above gives `ok`; at or below gives `low`. `ok` to `low` sets `crossed_at = now()`
-and clears `notified_at`; `off` to `low` (a level set on a low variant) sets `crossed_at` and `notified_at = now()` (already told);
-`low` to `ok` clears `crossed_at`. The five-minute job reads the `low` rows with `notified_at is null`. Deleting rows is never needed
+and clears `notified_at`; `off` to `low` (a level set on a low variant) sets `crossed_at` and `notified_at = now()` (already told until
+D370, which reads it as untold: the two are the same transaction's `now()`); `low` to `ok` clears `crossed_at`. The five-minute job reads
+the `low` rows with `notified_at is null` (since D370: or equal to `crossed_at`, `UNTOLD_SQL`) and marks them with its own, later time. Deleting rows is never needed
 (a cleared threshold is state `off`).
 
 ### 3.5 Functions and the one stock reader

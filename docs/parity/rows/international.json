@@ -562,7 +562,7 @@
       "was": null
     },
     "weight": 4,
-    "gap": "Unit 1g (D162, in production) built and tested most of it: a personal-data register whose test fails for an unclassified new table (src/lib/personal-data.ts, src/db/privacy.test.ts), one JSON export for staff and for the shopper after a fresh sign-in, erasure that restricts orders under the bookkeeping duty and anonymises them when the seller country's period ends, a one-month request clock, and a daily retention run with seeded, sourced periods. Later units joined the register and the export: saved addresses (D304), reviews (D301), support conversations (D216), the subscriber list and its consent history (D295), customer tags (D296), broadcast recipients (D297). Why it is not Full: (1) the staff paths are held only at function level: no route test holds the staff download's headers, the customers:write refusal or the same-site check (only the shopper route has one), and no e2e opens the customer page, the erase preview or the privacy requests and retention pages (e2e/privacy.spec.ts is the shopper's); the guards are held by the permissions scan. (2) The retention periods (NO 5, SE 7, DK 5, DE 8, other 10 years) are unverified by an accountant and every consumer text in src/lib/privacy-text.ts is hand-written nb/sv/da/en and needs legal review; the nb texts name bokføringsloven even for a Danish or Swedish store viewed in nb. (3) Known edges: a payment that arrives after erasure completes an anonymised order, so its invoice would show '[removed]'; the shopper's export holds emails only for the proven account address; refund reasons written by code read '[removed]' after anonymisation.",
+    "gap": "Unit 1g (D162, in production) built and tested most of it: a personal-data register whose test fails for an unclassified new table (src/lib/personal-data.ts, src/db/privacy.test.ts), one JSON export for staff and for the shopper after a fresh sign-in, erasure that restricts orders under the bookkeeping duty and anonymises them when the seller country's period ends, a one-month request clock, and a daily retention run with seeded, sourced periods. Later units joined the register and the export: saved addresses (D304), reviews (D301), support conversations (D216), the subscriber list and its consent history (D295), customer tags (D296), broadcast recipients (D297). The staff paths are tested since D371: a route test holds the staff download's headers, the customers:write refusal and the same-site check, and `e2e/signed-in/privacy.spec.ts` opens the customer page's Privacy card and download, the erase preview, the privacy requests and the retention pages, and a Read-only member's view. Why it is not Full: (1) The retention periods (NO 5, SE 7, DK 5, DE 8, other 10 years) are unverified by an accountant and every consumer text in src/lib/privacy-text.ts is hand-written nb/sv/da/en and needs legal review; the nb texts name bokføringsloven even for a Danish or Swedish store viewed in nb. (2) Known edges: a payment that arrives after erasure completes an anonymised order, so its invoice would show '[removed]'; the shopper's export holds emails only for the proven account address; refund reasons written by code read '[removed]' after anonymisation.",
     "bucket": "A",
     "wave": 1,
     "criteria": [
@@ -613,7 +613,9 @@
         "src/server/search.int.test.ts",
         "src/app/s/[store]/[market]/account/privacy/export/route.test.ts",
         "src/app/api/cron/subscription-reminders/route.test.ts",
-        "e2e/privacy.spec.ts"
+        "e2e/privacy.spec.ts",
+        "src/app/admin/(gated)/[store]/customers/[customerId]/export/route.test.ts",
+        "e2e/signed-in/privacy.spec.ts"
       ],
       "untested": false
     },
@@ -623,7 +625,8 @@
       "D216",
       "D295",
       "D301",
-      "D304"
+      "D304",
+      "D371"
     ],
     "history": []
   },

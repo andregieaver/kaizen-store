@@ -43,7 +43,7 @@ import { sendBookingStaffNotices, sendOrderConfirmation } from "./shopper-emails
 import { decideCustoms, loadCustomsFacts } from "./customs";
 import { decideTax, loadTaxFacts } from "./tax-treatment";
 import { refreshStaleCartCheck } from "./vat-checks";
-import { bookable } from "./cart";
+import { bookable, cartLinesFirst } from "./cart";
 import { checkoutRuleOutcome, listCheckoutFields } from "./checkout-rules";
 import { STORE_AUDIENCE, offeredTo, plansOffered, LIST_PRICED } from "./product-conditions";
 import { ensureStorePaymentMethods, getCheckoutUi } from "./connect";
@@ -320,13 +320,10 @@ export async function placeOrder(
       await tx.execute(sql`select id from commerce.customers where store_id = ${storeId}::uuid and id = ${customerId}::uuid for update`);
     }
 
-    const cartLines = await orderLineRows(
-      tx,
-      market,
-      sql`commerce.cart_lines cl`,
-      sql`cl.store_id = ${storeId}::uuid and cl.cart_id = ${cartId}::uuid`,
-      customerId,
-    );
+    // The cart's own lines first, behind `offset 0` (`cartLinesFirst()`), so the store's id never reaches the variants and products as a filter
+    // of their own: with no planner statistics for a new or grown store, that made a plan that scans every variant once per product (a 20-line
+    // order on 5 000 variants ran past a minute in `inventory-perf.int.test.ts`; this way it is a few lookups per line, D370).
+    const cartLines = await orderLineRows(tx, market, cartLinesFirst(storeId, cartId), sql`true`, customerId);
     const lines: Row[] = [...cartLines];
     if (lines.length === 0) return { ok: false, problem: "empty" };
     // A subscription is bought in the country's own currency only (D109).

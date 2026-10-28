@@ -89,18 +89,35 @@ describe("the stock file: an export, and the same file imported back", () => {
     const made = await jobs.requestInventoryExport(store.member, { dialect: "standard" });
     if (!made.ok || made.mode !== "file") throw new Error(JSON.stringify(made));
     const [header, ...rows] = rowsOfCsv(made.csv);
-    expect(header).toEqual(["sku", "product", "options", "location", "on_hand", "committed", "available", "stock_policy", "backorder_days", "low_stock_threshold"]);
+    expect(header).toEqual(["sku", "product", "options", "location", "on_hand", "on_hand_was", "committed", "available", "stock_policy", "backorder_days", "low_stock_threshold"]);
     const tote = rows.filter((r) => r[0] === "DEMO-TOTE");
-    expect(tote.map((r) => [r[3], r[4], r[5], r[6]])).toEqual([[OSLO, "7", "0", "7"], ["Bergen", "3", "0", "3"]]);
+    // on_hand_was is on_hand as exported (D370), so a count made from the file gets the conflict check.
+    expect(tote.map((r) => [r[3], r[4], r[5], r[6], r[7]])).toEqual([[OSLO, "7", "7", "0", "7"], ["Bergen", "3", "3", "0", "3"]]);
     // A variant with no level at a location is listed there with 0; a download has no stock and is not listed.
     expect(rows.filter((r) => r[0] === "DEMO-MUG-WHITE").map((r) => [r[3], r[4]])).toEqual([[OSLO, "4"], ["Bergen", "0"]]);
     expect(rows.some((r) => r[0] === "DEMO-LAMP")).toBe(false);
-    expect(rows.find((r) => r[0] === "DEMO-THERMOS")).toMatchObject({ 7: "continue", 8: "7" });
+    expect(rows.find((r) => r[0] === "DEMO-THERMOS")).toMatchObject({ 8: "continue", 9: "7" });
     expect((await auditOf(store.storeId, "products.stock_export_made")).at(-1)?.details).toMatchObject({ direct: true });
     // The same file, imported: nothing to change.
     const run = await check(csvBytes(rowsOfCsv(made.csv)));
     expect(run.dry).toMatchObject({ toUpdate: 0, conflicts: 0, withProblems: 0 });
     expect(run.dry.unchanged).toBe(rows.length);
+  });
+
+  it("makes a count from the export a conflict where the stock moved since, without the person adding a column (D370)", async () => {
+    await setLevel(store.storeId, "DEMO-TOTE", oslo, 7);
+    await setLevel(store.storeId, "DEMO-TOTE", bergen, 3);
+    const made = await jobs.requestInventoryExport(store.member, { dialect: "standard" });
+    if (!made.ok || made.mode !== "file") throw new Error(JSON.stringify(made));
+    const [header, ...rows] = rowsOfCsv(made.csv);
+    const onHand = header.indexOf("on_hand");
+    // The person counts 5 at both places and changes on_hand only.
+    const counted = rows.map((r) => (r[0] === "DEMO-TOTE" ? r.map((c, i) => (i === onHand ? "5" : c)) : r));
+    // A sale at Oslo since the file was made.
+    await setLevel(store.storeId, "DEMO-TOTE", oslo, 6);
+    const run = await check(csvBytes([header, ...counted]));
+    expect(run.dry).toMatchObject({ toUpdate: 1, conflicts: 1 });
+    expect(await codes(run.jobId)).toContain("DEMO-TOTE:stockfile.conflict");
   });
 
   it("escapes a title that starts like a formula, in the one writer", async () => {

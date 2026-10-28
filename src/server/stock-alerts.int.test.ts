@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
 import { LOW_STOCK_EMAIL_LINES } from "@/lib/inventory";
-import { nextAlertState, type AlertState } from "@/lib/stock-alerts";
+import { nextAlertState, untold, type AlertState } from "@/lib/stock-alerts";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {}, refresh: () => {} }));
@@ -12,6 +12,7 @@ vi.mock("./stripe", () => ({ platformStripe: () => ({}), platformPublishableKey:
 
 const { sendLowStockNotices, pruneInventoryMovements } = await import("./stock-alerts");
 const { adjustStock } = await import("./inventory");
+const { getEditorContext, getProductForEdit, saveProduct } = await import("./products");
 const { sendEmail } = await import("./email");
 const support = await import("./inventory-test-support");
 const { clearLevels, ledgerIsWhole, mainLocation, newStore, pay, place, setLevel, variantId } = support;
@@ -36,6 +37,15 @@ const alertOf = async (sku: string): Promise<Row | undefined> =>
 const threshold = (sku: string, level: number | null) =>
   db().execute(sql`update commerce.product_variants set low_stock_threshold = ${level} where store_id = ${store.storeId}::uuid and sku = ${sku}`);
 const sellOne = async (sku: string) => pay(store.storeId, await place(store.storeId, [[sku, 1]]), store.account);
+/** Whether the job reads the variant's row as a crossing still to tell (`UNTOLD_SQL`, compared in the database to the microsecond). */
+const untoldInDb = async (sku: string): Promise<boolean> =>
+  Boolean(
+    (
+      await db().execute<Row>(sql`
+        select (a.state = 'low' and a.crossed_at is not null and (a.notified_at is null or a.notified_at = a.crossed_at)) as untold
+        from commerce.stock_alerts a where a.store_id = ${store.storeId}::uuid and a.variant_id = ${await variantId(store.storeId, sku)}::uuid`)
+    )[0]?.untold,
+  );
 
 describe("telling the owners when stock crosses the level they set", () => {
   it("sends one email for the crossing, however many sales follow, and none for a job that runs twice", async () => {
@@ -85,25 +95,72 @@ describe("telling the owners when stock crosses the level they set", () => {
     expect(keys.every((k) => k.startsWith(`stock.low:${store.storeId}:`))).toBe(true);
   }, 60_000);
 
-  it("sends none for a level set on a variant that is already at or below it, and one when the level is raised above the stock", async () => {
+  it("tells once of a level set on a variant already at or below it (D370), never twice, and of a level raised above the stock", async () => {
     await clearLevels(store.storeId, "DEMO-MUG-WHITE");
     await setLevel(store.storeId, "DEMO-MUG-WHITE", oslo, 2);
     const before = (await mails()).length;
     await threshold("DEMO-MUG-WHITE", 4);
-    expect((await alertOf("DEMO-MUG-WHITE"))).toMatchObject({ state: "low" });
-    expect((await alertOf("DEMO-MUG-WHITE"))?.notified_at).not.toBeNull();
+    expect((await alertOf("DEMO-MUG-WHITE"))).toMatchObject({ state: "low", stock_at_crossing: 2 });
+    // The database writes the crossing's own time as notified_at (refresh_stock_alert() unchanged): the job reads it as untold.
+    expect(await untoldInDb("DEMO-MUG-WHITE")).toBe(true);
+    expect(await sendLowStockNotices()).toMatchObject({ failed: 0 });
+    expect((await mails()).length).toBe(before + 1);
+    const mail = (await mails())[before];
+    expect(String(mail.subject)).toMatch(/^Low stock: /);
+    expect(String(mail.text)).toContain("DEMO-MUG-WHITE");
+    expect(String(mail.text)).toContain("2 left, level 4");
+    expect(await untoldInDb("DEMO-MUG-WHITE")).toBe(false);
+    // Told once: another run, a sale, and the level changed while it stays low send nothing more.
     await sendLowStockNotices();
-    expect((await mails()).length).toBe(before);
+    await sellOne("DEMO-MUG-WHITE");
+    await threshold("DEMO-MUG-WHITE", 3);
+    expect((await alertOf("DEMO-MUG-WHITE"))?.state).toBe("low");
+    await sendLowStockNotices();
+    expect((await mails()).length).toBe(before + 1);
     // Lowered below the stock it is armed; raised above the stock it is a crossing at that moment.
+    await setLevel(store.storeId, "DEMO-MUG-WHITE", oslo, 2);
     await threshold("DEMO-MUG-WHITE", 1);
     expect((await alertOf("DEMO-MUG-WHITE"))?.state).toBe("ok");
     await threshold("DEMO-MUG-WHITE", 3);
     expect((await alertOf("DEMO-MUG-WHITE"))).toMatchObject({ state: "low", notified_at: null });
     await sendLowStockNotices();
-    expect((await mails()).length).toBe(before + 1);
+    expect((await mails()).length).toBe(before + 2);
     // Cleared: off, nothing more.
     await threshold("DEMO-MUG-WHITE", null);
     expect((await alertOf("DEMO-MUG-WHITE"))?.state).toBe("off");
+    await sendLowStockNotices();
+    expect((await mails()).length).toBe(before + 2);
+  });
+
+  it("tells once of a variant the product editor creates at or below its level (D370), and of none created above it", async () => {
+    const context = await getEditorContext(store.member.store);
+    const [row] = await db().execute<Row>(sql`select product_id from commerce.product_variants where store_id = ${store.storeId}::uuid and sku = 'DEMO-TOTE'`);
+    const productId = String(row.product_id);
+    const { archived: _archived, ...edit } = (await getProductForEdit(store.member.store, context, productId))!;
+    void _archived;
+    const first = edit.variants[0];
+    edit.variants.push(
+      { ...first, id: null, sku: "DEMO-TOTE-LOW", stock: 2, lowStockThreshold: 5, options: { ...first.options } },
+      { ...first, id: null, sku: "DEMO-TOTE-PLENTY", stock: 10, lowStockThreshold: 5, options: { ...first.options } },
+    );
+    const before = (await mails()).length;
+    expect(await saveProduct(store.member.store, context, productId, edit, undefined, undefined, store.member.account)).toMatchObject({ ok: true });
+    expect(await alertOf("DEMO-TOTE-LOW")).toMatchObject({ state: "low", stock_at_crossing: 2 });
+    // Created above its level: the moment with no stock yet inside the save is not a crossing anyone hears of.
+    expect(await alertOf("DEMO-TOTE-PLENTY")).toMatchObject({ state: "ok", crossed_at: null });
+    await sendLowStockNotices();
+    expect((await mails()).length).toBe(before + 1);
+    const mail = (await mails())[before];
+    expect(String(mail.text)).toContain("DEMO-TOTE-LOW");
+    expect(String(mail.text)).toContain("2 left, level 5");
+    expect(String(mail.text)).not.toContain("DEMO-TOTE-PLENTY");
+    // Never twice: the job again, and the product saved again as it is.
+    await sendLowStockNotices();
+    const { archived: _again, ...same } = (await getProductForEdit(store.member.store, context, productId))!;
+    void _again;
+    expect(await saveProduct(store.member.store, context, productId, same, undefined, undefined, store.member.account)).toMatchObject({ ok: true });
+    await sendLowStockNotices();
+    expect((await mails()).length).toBe(before + 1);
   });
 
   it("lists several variants that crossed in one email, each once", async () => {
@@ -212,16 +269,20 @@ describe("the database's state machine is the pure one", () => {
     expect(n).toBe(24);
   }, 120_000);
 
-  it("marks a new crossing as not told, and a level set on a low variant as told already, as the pure table does", async () => {
+  it("marks a new crossing as not told, and a level set on a low variant with the crossing's own time (untold, D370), as the pure table does", async () => {
     await startAt("ok");
     await setLevel(store.storeId, SKU, oslo, 2);
     expect(nextAlertState("ok", 5, 2)).toMatchObject({ crossing: true, notifiedAt: "clear" });
     expect(await alertOf(SKU)).toMatchObject({ state: "low", notified_at: null });
+    expect(await untoldInDb(SKU)).toBe(true);
     await startAt("off");
     await setLevel(store.storeId, SKU, oslo, 2);
     await threshold(SKU, 5);
-    expect(nextAlertState("off", 5, 2)).toMatchObject({ crossing: false, notifiedAt: "now" });
-    expect((await alertOf(SKU))?.notified_at).not.toBeNull();
+    expect(nextAlertState("off", 5, 2)).toMatchObject({ crossing: true, notifiedAt: "now" });
+    const row = (await alertOf(SKU))!;
+    expect(row.notified_at).not.toBeNull();
+    expect(untold({ crossedAt: row.crossed_at as Date, notifiedAt: row.notified_at as Date })).toBe(true);
+    expect(await untoldInDb(SKU)).toBe(true);
   });
 });
 

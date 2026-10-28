@@ -29,7 +29,7 @@
   "src/app/admin/(gated)/[store]/companies/[companyId]/page.tsx": 1,
   "src/app/admin/(gated)/[store]/gift-cards/new/issue-form.tsx": 1,
   "src/app/admin/(gated)/[store]/hosts/host-form.tsx": 1,
-  "src/app/admin/(gated)/[store]/inventory/export/page.tsx": 6,
+  "src/app/admin/(gated)/[store]/inventory/export/page.tsx": 5,
   "src/app/admin/(gated)/[store]/inventory/import/page.tsx": 6,
   "src/app/admin/(gated)/[store]/orders/[orderId]/loading.tsx": 1,
   "src/app/admin/(gated)/[store]/orders/loading.tsx": 1,

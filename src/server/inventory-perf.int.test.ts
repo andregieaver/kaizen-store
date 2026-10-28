@@ -5,12 +5,18 @@ import { closeDb, db } from "@/db/client";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {}, refresh: () => {} }));
-vi.mock("next/headers", () => ({ cookies: async () => ({ get: () => undefined, set: () => {}, delete: () => {} }), headers: async () => new Headers() }));
+// The cart page's read finds its cart by the cookie: the one cart this file reads that way.
+const browser = vi.hoisted(() => ({ cartId: undefined as string | undefined }));
+vi.mock("next/headers", () => ({
+  cookies: async () => ({ get: () => (browser.cartId ? { value: browser.cartId } : undefined), getAll: () => [], set: () => {}, delete: () => {} }),
+  headers: async () => new Headers(),
+}));
 vi.mock("./stripe", () => ({ platformStripe: () => ({}), platformPublishableKey: () => "pk_test_x", platformModes: () => ["test"], WEBHOOK_EVENTS: [] }));
 
 const { inventoryPage, inventoryCounts } = await import("./inventory");
 const { variantStockOf } = await import("./catalog");
 const { placeOrder } = await import("./checkout");
+const { getCart } = await import("./cart");
 const support = await import("./inventory-test-support");
 const { cartOf, newStore, no } = support;
 
@@ -21,6 +27,12 @@ type Row = Record<string, unknown>;
  * variants at 3 locations and 3 000 movements, made by set-based SQL and NOT analysed afterwards on purpose. A planner that knows nothing of the
  * tables is when a read that leans on its estimates turns into a nested loop over the whole catalogue. The bound is generous, a few times what a
  * read takes here, so that only a plan that has gone quadratic breaks it.
+ *
+ * The order (and the cart page's read, which has the same shape) failed it now and then until D370: after other tests had made many small
+ * stores, the statistics gave this store one variant and one product, and with the store's id a filter of both the planner scanned every
+ * variant once per product (past a minute). Whether it did hung on when autovacuum had last analysed the tables, hence "flaky". Both reads
+ * now take the cart's lines first (`cartLinesFirst()` in `cart.ts`). To see the old failure on demand: switch autovacuum off for the
+ * `commerce` tables, run another integration file, then this one.
  */
 const VARIANTS = 5_000;
 const BOUND_MS = 3_000;
@@ -108,6 +120,14 @@ describe("the stock reads and checkout stay fast on a large catalogue", () => {
   it("the stock of 200 variants, as the cart and the product pages ask", async () => {
     const { ms, value } = await timed(() => variantStockOf(db(), store.storeId, ids));
     expect(value.size).toBe(200);
+    expect(ms).toBeLessThan(BOUND_MS);
+  });
+
+  it("a 20-line cart, as the cart page reads it", { timeout: 60_000 }, async () => {
+    expect(ordered).toHaveLength(20);
+    browser.cartId = await cartOf(store.storeId, ordered.map((sku) => [sku, 1] as [string, number]), no);
+    const { ms, value } = await timed(() => getCart({ storeId: store.storeId, market: no }, { customerId: null }));
+    expect(value.lines).toHaveLength(20);
     expect(ms).toBeLessThan(BOUND_MS);
   });
 

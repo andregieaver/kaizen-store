@@ -31,7 +31,7 @@ export const inventoryNb: InventoryMessages = {
     export: {
       title: "Eksporter lager",
       intro:
-        "Én rad for hver variant på hvert aktive lagersted, med på lager, holdt, tilgjengelig, hva som skjer ved tomt lager og nivået for lavt lager. En butikk med mer enn {max} rader får filen som en jobb.",
+        "Én rad for hver variant på hvert aktive lagersted, med på lager (to ganger: den andre står som den var, så en telling som tas tilbake sjekkes mot den), holdt, tilgjengelig, hva som skjer ved tomt lager og nivået for lavt lager. En butikk med mer enn {max} rader får filen som en jobb.",
     },
   },
   status: {
@@ -438,9 +438,9 @@ export const inventoryNb: InventoryMessages = {
       countStart: "For å telle fra den endrer du",
       countBack: "og tar filen tilbake med",
       importLink: "Importer lager",
-      conflictStart: ". For at en utdatert rad skal bli en konflikt i stedet for å angre et salg, kopierer du først kolonnen",
-      conflictMid: "til en ny kolonne som heter",
-      conflictEnd: ": importen lar da en rad være når lageret har endret seg siden filen ble laget.",
+      conflictStart: ". La kolonnen",
+      conflictEnd:
+        " stå som den er: den er tallet da filen ble laget, så en rad der lageret har endret seg siden (for eksempel et salg), blir en konflikt og står urørt i stedet for å angre salget.",
       negative: "Et tall under null eksporteres som det er (det er lager som ble solgt på restordre og fortsatt skyldes); en import skriver aldri et tall under null.",
     },
   },

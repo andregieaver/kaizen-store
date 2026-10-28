@@ -46,7 +46,7 @@ describe("the codes and the columns", () => {
   });
 
   it("keeps the export's columns and the import's apart, with the required two", () => {
-    expect(EXPORT_COLUMNS).toEqual(["sku", "product", "options", "location", "on_hand", "committed", "available", "stock_policy", "backorder_days", "low_stock_threshold"]);
+    expect(EXPORT_COLUMNS).toEqual(["sku", "product", "options", "location", "on_hand", "on_hand_was", "committed", "available", "stock_policy", "backorder_days", "low_stock_threshold"]);
     expect(IMPORT_COLUMNS).toEqual(["sku", "location", "on_hand", "on_hand_was", "reason", "note", "stock_policy", "backorder_days", "low_stock_threshold"]);
   });
 
@@ -100,9 +100,29 @@ describe("the header", () => {
     const cells = parseCsv(csv).rows.slice(1);
     // A positive count reads back as it was; a negative one (owed) is not a count and is refused with the sentence, never rewritten.
     const first = parseInventoryRow(cells[0], idx, locations);
-    expect(first.row).toMatchObject({ sku: "A-1", locationId: "loc-oslo", onHand: 10, stockPolicy: "continue", backorderDays: 7, lowStockThreshold: 3, reason: DEFAULT_FILE_REASON });
+    expect(first.row).toMatchObject({ sku: "A-1", locationId: "loc-oslo", onHand: 10, onHandWas: 10, stockPolicy: "continue", backorderDays: 7, lowStockThreshold: 3, reason: DEFAULT_FILE_REASON });
     expect(records).toHaveLength(2);
     expect(parseInventoryRow(cells[1], idx, locations).findings.map((f) => f.code)).toEqual(["stockfile.on_hand_invalid"]);
+  });
+
+  it("gives a count made from an export the conflict check: on_hand_was is the figure exported (D370)", () => {
+    const csv = writeInventoryCsv([
+      { sku: "A-1", product: "Mug", options: "white", location: "Oslo", onHand: 10, committed: 2, available: 8, stockPolicy: "deny", backorderDays: null, lowStockThreshold: null },
+    ]);
+    const [head, exported] = parseCsv(csv).rows;
+    const idx = readHeader(head);
+    expect(idx.on_hand_was).toBe(head.indexOf("on_hand_was"));
+    // The person counts 7 and changes on_hand only, leaving on_hand_was as the export wrote it.
+    const counted = [...exported];
+    counted[idx.on_hand] = "7";
+    const row = parseInventoryRow(counted, idx, locations).row!;
+    expect(row).toMatchObject({ onHand: 7, onHandWas: 10 });
+    // Nothing sold since the export: the count is applied.
+    expect(decideRow(row, 10)).toEqual({ kind: "change", delta: -3, from: 10, to: 7 });
+    // A sale since the export: the row is a conflict and skipped, never set over the sale.
+    expect(decideRow(row, 9)).toEqual({ kind: "conflict", was: 10, now: 9 });
+    // The export read back unchanged changes nothing.
+    expect(decideRow(parseInventoryRow(exported, idx, locations).row!, 10)).toEqual({ kind: "unchanged" });
   });
 });
 
@@ -236,7 +256,7 @@ describe("the export", () => {
     ]);
     const lines = csv.split("\r\n").filter(Boolean);
     expect(lines[0]).toBe(EXPORT_COLUMNS.join(","));
-    expect(lines[1]).toBe("A-1,'=SUM(1),white / large,Oslo,-2,1,-3,continue,7,");
+    expect(lines[1]).toBe("A-1,'=SUM(1),white / large,Oslo,-2,-2,1,-3,continue,7,");
   });
 
   it("is only a header for no rows, and uses the Nordic dialect when asked", () => {

@@ -24,12 +24,21 @@ type Row = Record<string, unknown>;
  * The low-stock notice (wave 3, D172, `docs/wave-3-inventory.md` 2.7, 3.4) and the clean-up of the history.
  *
  * `commerce.stock_alerts` holds the state of each variant with a warning level (`ok`, `low`, `off`); the database moves it on every change of a level,
- * a location or a threshold, and marks a NEW crossing (`state = 'low'`, `notified_at` null). This module only tells the owners: ONE email per store
+ * a location or a threshold, and marks a NEW crossing (`state = 'low'`, `notified_at` null, or the crossing's own time for a variant created at
+ * or set to a level at or below it: `UNTOLD_SQL`, D370). This module only tells the owners: ONE email per store
  * per run listing the variants that crossed since the last run (at most `LOW_STOCK_EMAIL_LINES` lines and "and {n} more"), sent to the recipients
  * of *Low stock* (D238, the store's owners by default), English like the other staff emails, saying the stock, the level and the SKU and linking to the Inventory page: nothing about sales,
  * customers or prices. `notified_at` is set only after the send succeeded, so a failure is retried by the next run, and the idempotency key (the
  * store plus the newest crossing's time, per owner) makes a retry after a lost answer the same email. A store that is not open gets none.
  */
+
+/**
+ * A `low` row the owners are still to be told of (`untold()` in `src/lib/stock-alerts.ts`): never marked (a crossing from `ok`), or marked with
+ * the crossing's own time, which `commerce.refresh_stock_alert()` writes for a crossing from `off` (a variant created at or below its level, or a
+ * level set on one already there; D370 makes that a crossing at once without changing the function). Compared in the database, to the
+ * microsecond: the job's mark is a later transaction's `now()`, so a crossing it told is never untold again.
+ */
+const UNTOLD_SQL = sql`(a.notified_at is null or a.notified_at = a.crossed_at)`;
 
 /** `crossedRaw` is the time as the database kept it (microseconds): a JavaScript date has milliseconds, so it never answers for an equality. */
 type Pending = PendingCrossing & { storeId: string; crossedRaw: string };
@@ -47,7 +56,7 @@ async function pendingCrossings(): Promise<Pending[]> {
     left join commerce.stores s on s.id = a.store_id
     left join commerce.product_translations tl on tl.product_id = p.id and tl.locale = coalesce((s.locales)[1], 'en')
     left join lateral (select title from commerce.product_translations where product_id = p.id order by locale limit 1) tf on true
-    where a.state = 'low' and a.notified_at is null and a.crossed_at is not null and v.active and v.low_stock_threshold is not null
+    where a.state = 'low' and ${UNTOLD_SQL} and a.crossed_at is not null and v.active and v.low_stock_threshold is not null
       and commerce.store_is_active(a.store_id) and commerce.feature_on(a.store_id, 'shop')
     order by a.store_id, a.crossed_at, a.variant_id
   `);
@@ -127,7 +136,7 @@ export async function sendLowStockNotices(deps: { send?: typeof sendEmail } = {}
       await db().execute(sql`
         update commerce.stock_alerts a set notified_at = now()
         from (select * from unnest(${`{${crossings.map((c) => c.variantId).join(",")}}`}::uuid[], ${`{${crossings.map((c) => `"${c.crossedRaw}"`).join(",")}}`}::timestamptz[]) as t(variant_id, crossed_at)) c
-        where a.store_id = ${storeId}::uuid and a.variant_id = c.variant_id and a.crossed_at = c.crossed_at and a.state = 'low' and a.notified_at is null
+        where a.store_id = ${storeId}::uuid and a.variant_id = c.variant_id and a.crossed_at = c.crossed_at and a.state = 'low' and ${UNTOLD_SQL}
       `);
       out.stores += 1;
       out.emails += outcomes.filter((o) => TOLD.includes(o)).length;

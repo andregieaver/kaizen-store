@@ -41,7 +41,7 @@ export const inventoryEn = {
     export: {
       title: "Export stock",
       intro:
-        "One row for each variant at each active location, with on hand, committed, available, the policy at zero stock and the low-stock level. A store with more than {max} rows gets the file as a job.",
+        "One row for each variant at each active location, with on hand (twice: the second is kept as it was, so a count brought back is checked against it), committed, available, the policy at zero stock and the low-stock level. A store with more than {max} rows gets the file as a job.",
     },
   },
   /** The list's filter choices (`STATUS_WORDS`), the marks of a row (`STATE_WORDS`) and what they mean (`STATE_HELP`). */
@@ -401,9 +401,9 @@ export const inventoryEn = {
       countStart: "To count from it, change",
       countBack: "and bring the file back with",
       importLink: "Import stock",
-      conflictStart: ". To make a row that is out of date become a conflict instead of undoing a sale, first copy the",
-      conflictMid: "column into a new column named",
-      conflictEnd: ": the import then leaves a row alone when the stock has changed since the file was made.",
+      conflictStart: ". Leave the",
+      conflictEnd:
+        " column as it is: it is the figure when the file was made, so a row whose stock has changed since (a sale, say) is a conflict and left alone instead of undoing the sale.",
       negative: "A figure below zero is exported as it is (it is stock that was sold on backorder and is still owed); an import never writes a figure below zero.",
     },
   },

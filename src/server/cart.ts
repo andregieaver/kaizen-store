@@ -175,6 +175,17 @@ export const bookable = sql`
   and (cl.starts_at is null or cl.starts_at > now() + make_interval(mins => coalesce(aps.min_notice_minutes, 0)))
 `;
 
+/**
+ * One cart's lines as the source `cl` of a read that joins them to their variants and products (the cart page's and `placeOrder()`'s), found
+ * first: `offset 0` keeps the subquery apart, so the store's id stays a condition of the cart's lines and never becomes one of the variants and
+ * products as well (so the read using it must not repeat `cl.store_id = …` in its own WHERE). With it there, a planner with no statistics for a new or grown store (estimating one row for each) chose to scan every
+ * variant of the store once per product: a 20-line order on 5 000 variants ran past a minute (`inventory-perf.int.test.ts`, D370). From the
+ * lines, each variant and product is one lookup by its key.
+ */
+export const cartLinesFirst = (storeId: string, cartId: string) => sql`(
+  select * from commerce.cart_lines where store_id = ${storeId}::uuid and cart_id = ${cartId}::uuid offset 0
+) as cl`;
+
 /** The cart for this store and market, read fresh on every request. */
 export async function getCart(
   shop: Shop,
@@ -211,7 +222,7 @@ export async function getCart(
       -- Under a producer responsibility scheme with no valid registration in this country today (D342), as placeOrder() reads it.
       commerce.line_unregistered(cl.store_id, c.market_code, v.id) as unregistered,
       va.in_stock, va.raw_available, va.stock_policy, va.backorder_days, qr.min_quantity, qr.max_quantity, qr.quantity_step
-    from commerce.cart_lines cl
+    from ${cartLinesFirst(storeId, cartId)}
     join commerce.carts c on c.store_id = cl.store_id and c.id = cl.cart_id
     join commerce.stores st on st.id = cl.store_id
     left join commerce.vat_checks vk on vk.store_id = c.store_id and vk.id = c.vat_check_id
@@ -238,9 +249,8 @@ export async function getCart(
     left join commerce.variant_availability va on va.store_id = v.store_id and va.variant_id = v.id
     -- How many at a time for this buyer (D323): a price list's rule, else the variant's.
     left join lateral commerce.quantity_rule(cl.store_id, ${customerId}::uuid, v.id) qr on true
-    where cl.store_id = ${storeId}::uuid
-      and cl.cart_id = ${cartId}::uuid
-      and c.market_code = ${market.code}
+    -- The store and the cart are the lines' own conditions (cartLinesFirst()): repeated here, they would reach the variants again.
+    where c.market_code = ${market.code}
       and c.status = 'open'
       and c.expires_at > now()
     order by p.handle, v.sku, cl.selling_plan_id nulls first, cl.starts_at, cl.gift_card_key nulls first

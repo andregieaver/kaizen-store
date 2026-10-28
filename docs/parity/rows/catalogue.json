@@ -900,13 +900,13 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "partial"
     },
-    "gap": "Built and tested (wave 3, D172): every change of `inventory_levels.on_hand` is an append-only `inventory_movements` row written by a trigger (reason, source, account, order, return; `inventory_ledger_check()` proves the movements add up to the level, also after the 24-month clean-up), an Inventory page with on hand, committed to checkouts in progress, available and owed per variant and location, adjust with a reason (Set to or Adjust by, reviewed, a stale row is a conflict), a history page, stock files as D165 jobs with a dry run (`inventory_import`, `inventory_export`), a per-variant low-stock level with one digest email per crossing (`stock_alerts`, `sendLowStockNotices()`), negative stock in analytics and the control center, and the AI manager's `stock_levels`, `stock_history` and `set_stock`. Why it stays Partial: (1) the signed-in e2e fixture exists since D234 (`e2e/signed-in/`), but no spec there opens the Inventory pages, so the table, review list, history and stock-file pages are held by `renderToString` tests and integration tests of `adjustStock()`, `inventoryPage()` and `stockHistory()` only; (2) the stock export has no `on_hand_was` column (`EXPORT_COLUMNS` in `src/lib/inventory-csv.ts`; the import reads one), so a file counted from an export gets no conflict check unless the person adds it; (3) a variant created at or under its level sends no first email until it recovers and crosses again; (4) the history page and pending crossings are not load-tested at 100,000 movements; (5) `src/server/inventory-perf.int.test.ts` (the 20-line `placeOrder()` guard) is flaky on a busy or long-lived database, cause not found. Not matching Shopify: no unavailable or incoming states, no transfers or purchase orders (`catalogue.inventory-transfers-and-purchase-orders`), no untracked variants; 'committed' is live checkout holds only, because a paid order has already drawn its units.",
-    "bucket": "A",
-    "wave": 3,
+    "gap": "Built and tested (wave 3, D172; wave 10 unit G, D370): every change of `inventory_levels.on_hand` is an append-only `inventory_movements` row written by a trigger (reason, source, account, order, return; `inventory_ledger_check()` proves the movements add up to the level, also after the 24-month clean-up), an Inventory page with on hand, committed to checkouts in progress, available and owed per variant and location, adjust with a reason (Set to or Adjust by, reviewed, a stale row is a conflict), a history page, stock files as D165 jobs with a dry run whose export carries `on_hand_was` so a counted file is checked against the stock it came from, a per-variant low-stock level with one digest email per crossing (`stock_alerts`, `sendLowStockNotices()`; a variant created or set at or below its level is a crossing at once), negative stock in analytics and the control center, and the AI manager's `stock_levels`, `stock_history` and `set_stock`; the screens are driven in a browser (`e2e/signed-in/inventory.spec.ts`). The 20-line checkout guard's flakiness was a planner choice on a long-lived database, fixed by reading the cart's lines first. The history page and pending crossings are not load-tested at 100,000 movements. Not matching Shopify: no unavailable or incoming states, no transfers or purchase orders (`catalogue.inventory-transfers-and-purchase-orders`), no untracked variants; 'committed' is live checkout holds only, because a paid order has already drawn its units.",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "An inventory page lists variants per location with on hand, committed to checkouts in progress, and available, and staff adjust a level with a reason (received, damaged, correction, recount).",
       "Every change to a level, from an adjustment, sale, cancellation, refund or return, is an append-only history row with who, when, reason and the order (integration test).",
@@ -963,7 +963,8 @@
         "src/lib/inventory-admin.test.ts",
         "src/lib/inventory-csv.test.ts",
         "src/lib/stock-alerts.test.ts",
-        "src/lib/stock-writers.scan.test.ts"
+        "src/lib/stock-writers.scan.test.ts",
+        "e2e/signed-in/inventory.spec.ts"
       ],
       "untested": false
     },
@@ -972,9 +973,17 @@
       "D152",
       "D153",
       "D172",
-      "D234"
+      "D234",
+      "D370"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-28",
+        "from": "partial",
+        "to": "full",
+        "why": "D370: the stock export carries `on_hand_was`, a variant created or set at or below its level is a crossing at once, the Inventory pages are driven in a browser, and the checkout guard's flakiness was found and fixed."
+      }
+    ]
   },
   {
     "id": "catalogue.inventory-transfers-and-purchase-orders",

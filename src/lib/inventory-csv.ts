@@ -24,8 +24,11 @@ import {
   type StockPolicy,
 } from "./inventory";
 
-/** The columns of the export, in order. */
-export const EXPORT_COLUMNS = ["sku", "product", "options", "location", "on_hand", "committed", "available", "stock_policy", "backorder_days", "low_stock_threshold"] as const;
+/**
+ * The columns of the export, in order. `on_hand_was` (D370) is `on_hand` as it stood when the file was made: a person changes `on_hand`
+ * and leaves it, so a file counted from an export is read back with the conflict check (a sale since makes that row a conflict).
+ */
+export const EXPORT_COLUMNS = ["sku", "product", "options", "location", "on_hand", "on_hand_was", "committed", "available", "stock_policy", "backorder_days", "low_stock_threshold"] as const;
 
 /** The columns an import reads: `sku` and `on_hand` are required, the others optional. */
 export const IMPORT_COLUMNS = ["sku", "location", "on_hand", "on_hand_was", "reason", "note", "stock_policy", "backorder_days", "low_stock_threshold"] as const;
@@ -80,12 +83,13 @@ export function writeInventoryCsv(rows: readonly ExportRow[], dialect: DialectId
   return writeCsv([header, ...rows.map(inventoryExportCells)], dialect);
 }
 
-/** One export row's cells in the order of `EXPORT_COLUMNS`: what the export job's reader hands the one CSV writer. */
+/** One export row's cells in the order of `EXPORT_COLUMNS`: what the export job's reader hands the one CSV writer. `on_hand_was` is the figure written as `on_hand`. */
 export const inventoryExportCells = (r: ExportRow): Cell[] => [
   r.sku,
   r.product,
   r.options,
   r.location,
+  r.onHand,
   r.onHand,
   r.committed,
   r.available,

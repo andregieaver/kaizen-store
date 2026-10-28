@@ -72,7 +72,7 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
             <Link className="underline underline-offset-2" href={base.import}>
               {a.importLink}
             </Link>
-            {a.conflictStart} <code>on_hand</code> {a.conflictMid} <code>on_hand_was</code>
+            {a.conflictStart} <code>on_hand_was</code>
             {a.conflictEnd}
           </li>
           <li>{a.negative}</li>

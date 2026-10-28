@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ALERT_STATES, lowStockKey, lowStockLines, nextAlertState, stateFor, type AlertState } from "./stock-alerts";
+import { ALERT_STATES, lowStockKey, lowStockLines, nextAlertState, stateFor, untold, type AlertState } from "./stock-alerts";
 
 describe("the state a figure and a level make", () => {
   it("is off without a level, low at or below it and ok above it", () => {
@@ -14,6 +14,17 @@ describe("the state a figure and a level make", () => {
   });
 });
 
+describe("whether a crossing is still to be told (D370)", () => {
+  const at = "2026-10-28T10:00:00.123Z";
+  it("is untold when never marked, or marked with the crossing's own time (a crossing from off), and told once marked later", () => {
+    expect(untold({ crossedAt: at, notifiedAt: null })).toBe(true);
+    expect(untold({ crossedAt: at, notifiedAt: at })).toBe(true);
+    expect(untold({ crossedAt: new Date(at), notifiedAt: new Date(at) })).toBe(true);
+    expect(untold({ crossedAt: at, notifiedAt: "2026-10-28T10:05:00.000Z" })).toBe(false);
+    expect(untold({ crossedAt: null, notifiedAt: null })).toBe(false);
+  });
+});
+
 describe("the transitions", () => {
   it("makes a crossing, to be told, from ok to low", () => {
     expect(nextAlertState("ok", 5, 5)).toEqual({ state: "low", crossedAt: "now", notifiedAt: "clear", stockAtCrossing: "set", crossing: true });
@@ -23,9 +34,9 @@ describe("the transitions", () => {
     for (const stock of [4, 3, 0, -1]) expect(nextAlertState("low", 5, stock)).toEqual({ state: "low", crossedAt: "keep", notifiedAt: "keep", stockAtCrossing: "keep", crossing: false });
   });
 
-  it("sets a level on a variant that is already at or below it as already told, with no notice", () => {
-    expect(nextAlertState("off", 5, 2)).toEqual({ state: "low", crossedAt: "now", notifiedAt: "now", stockAtCrossing: "set", crossing: false });
-    expect(nextAlertState(null, 5, 5)).toEqual({ state: "low", crossedAt: "now", notifiedAt: "now", stockAtCrossing: "set", crossing: false });
+  it("makes a level set on a variant already at or below it, or a variant created there, a crossing at once (D370)", () => {
+    expect(nextAlertState("off", 5, 2)).toEqual({ state: "low", crossedAt: "now", notifiedAt: "now", stockAtCrossing: "set", crossing: true });
+    expect(nextAlertState(null, 5, 5)).toEqual({ state: "low", crossedAt: "now", notifiedAt: "now", stockAtCrossing: "set", crossing: true });
   });
 
   it("re-arms when stock rises above the level, and a level set above the stock is just ok", () => {
@@ -43,7 +54,7 @@ describe("the transitions", () => {
     expect(nextAlertState(null, null, 10).state).toBe("off");
   });
 
-  it("tells the owners only of a crossing from ok, never from off or low, for every combination", () => {
+  it("tells the owners of a crossing from ok or off, never while it stays low, for every combination", () => {
     const levels = [null, 0, 5];
     const stocks = [-3, 0, 5, 6, 40];
     for (const prev of [null, ...ALERT_STATES] as (AlertState | null)[]) {
@@ -51,12 +62,14 @@ describe("the transitions", () => {
         for (const stock of stocks) {
           const change = nextAlertState(prev, level, stock);
           expect(change.state).toBe(stateFor(level, stock));
-          expect(change.crossing, `${prev} ${level} ${stock}`).toBe(change.state === "low" && prev === "ok");
+          expect(change.crossing, `${prev} ${level} ${stock}`).toBe(change.state === "low" && prev !== "low");
           // The crossing's columns agree with the state: a low state has a crossing, anything else has none.
           if (change.state !== "low") expect([change.crossedAt, change.stockAtCrossing]).toEqual(["clear", "clear"]);
           else expect(change.crossedAt === "now" || change.crossedAt === "keep").toBe(true);
-          // The owners are told once: only a new crossing from ok clears the told mark.
-          expect(change.notifiedAt === "clear").toBe(change.crossing);
+          // The owners are told once: a new crossing from ok clears the told mark, one from off writes it as the crossing's own time
+          // (read as untold), and nothing else touches it.
+          expect(change.notifiedAt === "clear").toBe(change.crossing && prev === "ok");
+          expect(change.notifiedAt === "now").toBe(change.crossing && prev !== "ok");
         }
       }
     }
