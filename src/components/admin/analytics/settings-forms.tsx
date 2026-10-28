@@ -15,7 +15,8 @@ import {
   type AnalyticsSettingsInput,
 } from "@/lib/analytics-settings";
 import type { AnalyticsSetupSummary } from "@/server/analytics-settings-data";
-import type { StoredTarget } from "@/server/analytics-settings";
+import type { StoredPeriodTarget, StoredTarget } from "@/server/analytics-settings";
+import { TARGET_METRICS, TARGET_PERIODS } from "@/lib/analytics-targets";
 
 import { DataTable, StatusPill, type Column } from "./data-table";
 import { AnalyticsSection, Note } from "./section";
@@ -34,6 +35,8 @@ export type SettingsActions = {
   saveSettings: FormAction;
   saveTarget: FormAction;
   deleteTarget: FormAction;
+  savePeriodTarget?: FormAction;
+  deletePeriodTarget?: FormAction;
   setVisitCounting: FormAction;
   backfillCosts: FormAction;
 };
@@ -50,6 +53,8 @@ export type AnalyticsSettingsViewProps = {
   settings: AnalyticsSettings & { saved: boolean };
   summary: AnalyticsSetupSummary;
   targets: readonly StoredTarget[];
+  /** Targets of every kind that have not ended (D348); the month net-sales ones are listed above, under the month's form. */
+  periodTargets?: readonly StoredPeriodTarget[];
   visitCounting: boolean;
   /** Null for a member who may look but not change. */
   actions: SettingsActions | null;
@@ -397,6 +402,103 @@ function TargetsSection({ currency, locale, today, targets, actions }: Pick<Anal
 }
 
 // ---------------------------------------------------------------------------
+// 4b. Targets of every kind (D348)
+// ---------------------------------------------------------------------------
+
+/** The targets listed under "Targets for orders, conversion and more": every kind but a month's net sales, which the table above lists. */
+export function otherTargets(targets: readonly StoredPeriodTarget[]): StoredPeriodTarget[] {
+  return targets.filter((t) => !(t.metric === "net_sales" && t.period === "month"));
+}
+
+/** A target's value written in its metric's unit. */
+function targetValueText(t: Pick<StoredPeriodTarget, "metric" | "targetValue">, currency: string, locale: string): string {
+  if (t.metric === "orders") return formatCount(t.targetValue);
+  if (t.metric === "conversion") return formatPercent(t.targetValue / 10_000, 2);
+  return formatAmount(t.targetValue, currency, locale);
+}
+
+/** A target's period in words: a week by its first day, a month, a quarter, or the days chosen. */
+export function targetPeriodText(t: Pick<StoredPeriodTarget, "period" | "startsOn" | "endsOn">, words = analyticsWords()): string {
+  const w = words.overview.target;
+  if (t.period === "week") return fillWords(w.periodWeek, { start: dayLabel(t.startsOn) });
+  if (t.period === "month") return monthLabel(t.startsOn);
+  if (t.period === "quarter") return fillWords(w.periodQuarter, { q: String(Math.floor((Number(t.startsOn.slice(5, 7)) - 1) / 3) + 1), year: t.startsOn.slice(0, 4) });
+  return fillWords(w.periodCustom, { start: dayLabel(t.startsOn), end: dayLabel(t.endsOn) });
+}
+
+function PeriodTargetsSection({ currency, locale, today, periodTargets, actions }: Pick<AnalyticsSettingsViewProps, "currency" | "locale" | "today" | "periodTargets" | "actions">) {
+  const words = analyticsWords();
+  const w = words.settings.targets;
+  const metrics = words.overview.target.metrics;
+  const listed = otherTargets(periodTargets ?? []);
+  const columns: Column<StoredPeriodTarget>[] = [
+    { key: "what", label: w.columns.what, cell: (t) => metrics[t.metric] },
+    { key: "when", label: w.columns.when, cell: (t) => targetPeriodText(t, words) },
+    { key: "target", label: w.columns.target, align: "right", cell: (t) => targetValueText(t, currency, locale) },
+  ];
+  if (actions?.deletePeriodTarget) {
+    const remove = actions.deletePeriodTarget;
+    columns.push({
+      key: "remove",
+      label: w.remove,
+      align: "right",
+      cell: (t) => (
+        <ActionForm action={remove} replaceOnSuccess successMessage={w.removed} className="flex justify-end">
+          <input type="hidden" name="id" value={t.id} />
+          <SubmitButton variant="secondary">
+            {w.remove}
+            <span className="sr-only">{fillWords(w.removeKind, { what: metrics[t.metric], when: targetPeriodText(t, words) })}</span>
+          </SubmitButton>
+        </ActionForm>
+      ),
+    });
+  }
+  return (
+    <AnalyticsSection id="targets-more" title={w.kinds} description={w.kindsDescription}>
+      <div className={card}>
+        {actions?.savePeriodTarget ? (
+          <ActionForm action={actions.savePeriodTarget} className="flex flex-col gap-4" successMessage={w.savedKind}>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <Field label={w.metric}>
+                <select name="metric" defaultValue="orders" className={field}>
+                  {TARGET_METRICS.map((m) => (
+                    <option key={m} value={m}>
+                      {metrics[m]}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label={w.period}>
+                <select name="period" defaultValue="month" className={field}>
+                  {TARGET_PERIODS.map((p) => (
+                    <option key={p} value={p}>
+                      {w.periods[p]}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label={w.value} hint={TARGET_METRICS.map((m) => `${metrics[m]}: ${fillWords(w.valueHints[m], { currency })}`).join(" ")}>
+                <input name="value" inputMode="decimal" required className={field} autoComplete="off" />
+              </Field>
+              <Field label={w.start}>
+                <input type="date" name="start" defaultValue={today} required className={field} />
+              </Field>
+              <Field label={w.end} hint={w.endHint}>
+                <input type="date" name="end" className={field} />
+              </Field>
+            </div>
+            <div>
+              <SubmitButton>{w.saveKind}</SubmitButton>
+            </div>
+          </ActionForm>
+        ) : null}
+        <DataTable caption={w.listCaption} columns={columns} rows={listed} rowKey={(t) => t.id} empty={w.listEmpty} exportId="settings.period_targets" />
+      </div>
+    </AnalyticsSection>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // 5. Visit counting
 // ---------------------------------------------------------------------------
 
@@ -491,6 +593,7 @@ export function AnalyticsSettingsView(props: AnalyticsSettingsViewProps) {
       <FeesSection currency={currency} locale={locale} settings={settings} actions={actions} />
       <LifetimeSection settings={settings} actions={actions} />
       <TargetsSection currency={currency} locale={locale} today={today} targets={targets} actions={actions} />
+      <PeriodTargetsSection currency={currency} locale={locale} today={today} periodTargets={props.periodTargets} actions={actions} />
       <VisitsSection summary={summary} visitCounting={visitCounting} actions={actions} />
     </div>
   );

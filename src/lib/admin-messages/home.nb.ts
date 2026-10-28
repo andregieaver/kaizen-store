@@ -237,6 +237,16 @@ export const homeNb: HomeMessages = {
       done: "Ferdig",
     },
   },
+  briefing: {
+    title: "Få en statusrapport på e-post",
+    description: "Tallene dine mot perioden før, det analysene fant, det som bør sees på og målene dine, hvert punkt med siden som tar seg av det. Den kommer bare når noe har skjedd.",
+    weekly: "Ukentlig",
+    daily: "Daglig",
+    notNow: "Ikke nå",
+    on: "Ferdig. Den første statusrapporten kommer når perioden er over. Velg hvem andre som skal få den, og når, under Varsler til ansatte.",
+    dismissed: "Greit. Du kan slå den på senere under Innstillinger, Varsler, Varsler til ansatte.",
+    onlyOwner: "Bare en eier slår på statusrapporten.",
+  },
   demo: {
     title: "Demoinnhold",
     removedTitle: "Demoinnholdet er fjernet",

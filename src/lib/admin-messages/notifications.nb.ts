@@ -212,9 +212,13 @@ export const notificationsNb: NotificationsMessages = {
     contact: "Butikkens kontaktadresse",
     contactNone: "Ingen er satt: legg til en under Firma",
     contactCheckbox: "E-post om {alert} til butikkens kontaktadresse",
-    summary: "Sammendrag",
+    summary: "Statusrapport",
     summaryHint:
-      "Betalte bestillinger, nettosalg ekskl. mva., refusjoner, returer, bestillinger som skal sendes, lavt lager og kundeservicesamtaler som venter, sendt til dem som er krysset av under Sammendrag. Klokkeslettet er butikkens egen tid.",
+      "Betalte bestillinger og nettosalg ekskl. mva. mot perioden før, det analysene fant, det butikksjekken fant, målene og hva som er åpent nå, hvert punkt med siden som tar seg av det, sendt til dem som er krysset av under Statusrapport. En stille periode, uten betalte bestillinger og uten varsler, gir ingen e-post. Klokkeslettet er butikkens egen tid.",
+    alertFloor: "Analysevarsler på e-post",
+    alertFloorHint:
+      "Analysevarslene sendes én gang om dagen, etter kl. 20 butikkens tid, til dem som er krysset av under Analysevarsler: hvert varsel én gang per dag, med de samme minstegrensene som siden. Gode nyheter sendes aldri.",
+    floors: { urgent: "Bare det som haster", warning: "Det som haster og advarsler", info: "Alt unntatt gode nyheter" },
     howOften: "Hvor ofte",
     offChoice: "Av",
     daily: "Daglig (i går)",
@@ -229,10 +233,11 @@ export const notificationsNb: NotificationsMessages = {
       return_requested: "Retur ønsket",
       refund_overdue: "Refusjon forsinket",
       low_stock: "Lavt lager",
-      summary: "Sammendrag",
+      summary: "Statusrapport",
       automation: "Automatisering",
       dispute: "Tilbakeføring",
       payment_overdue: "Betaling forfalt",
+      analytics: "Analysevarsler",
     },
     areas: {
       new_order: "Bestillinger",
@@ -243,6 +248,7 @@ export const notificationsNb: NotificationsMessages = {
       automation: "Bestillinger",
       dispute: "Bestillinger",
       payment_overdue: "Bestillinger",
+      analytics: "Analyse",
     },
     weekdays: ["Mandag", "Tirsdag", "Onsdag", "Torsdag", "Fredag", "Lørdag", "Søndag"],
     failed: {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { MIN_DAYS_FOR_VERDICT, targetProgress, weekdayWeights, type DailyActual } from "./analytics-targets";
+import { LEVEL_MINIMUMS, MIN_DAYS_FOR_VERDICT, periodBounds, periodProgress, targetProgress, weekdayWeights, type DailyActual } from "./analytics-targets";
 
 // September 2026 has 30 days and starts on a Tuesday; 2026-08-03 is a Monday.
 const SEPT = "2026-09-01";
@@ -211,5 +211,90 @@ describe("invalid days", () => {
   it("throws on a day that does not exist, rather than guessing", () => {
     expect(() => targetProgress({ targetMinor: 1, actualMinor: 0, monthStart: "2026-02-30", today: "2026-02-10" })).toThrow(RangeError);
     expect(() => targetProgress({ targetMinor: 1, actualMinor: 0, monthStart: SEPT, today: "yesterday" })).toThrow(RangeError);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Targets of any metric and period (D348)
+// ---------------------------------------------------------------------------
+
+describe("periodBounds (D348)", () => {
+  it("makes a week Monday to Sunday, a month and a quarter whole, and a custom period at most two years", () => {
+    // 2026-10-28 is a Wednesday.
+    expect(periodBounds("week", "2026-10-28")).toEqual({ startsOn: "2026-10-26", endsOn: "2026-11-01" });
+    expect(periodBounds("month", "2026-02-14")).toEqual({ startsOn: "2026-02-01", endsOn: "2026-02-28" });
+    expect(periodBounds("quarter", "2026-11-30")).toEqual({ startsOn: "2026-10-01", endsOn: "2026-12-31" });
+    expect(periodBounds("custom", "2026-01-01", "2027-12-31")).toEqual({ startsOn: "2026-01-01", endsOn: "2027-12-31" });
+    expect(periodBounds("custom", "2026-01-01", "2028-01-02")).toBeNull();
+    expect(periodBounds("custom", "2026-05-02", "2026-05-01")).toBeNull();
+    expect(periodBounds("custom", "2026-05-02")).toBeNull();
+    expect(periodBounds("month", "not a day")).toBeNull();
+  });
+});
+
+describe("periodProgress (D348)", () => {
+  const sofar = (o: Partial<{ orders: number; checkoutOrders: number; netRevenueMinor: number; sessions: number | null }>) => ({
+    orders: 0,
+    checkoutOrders: 0,
+    netRevenueMinor: 0,
+    sessions: null,
+    ...o,
+  });
+
+  it("holds a sum against the expected share of the period, counted evenly without a weekday pattern", () => {
+    // A week target of 70 orders: at the end of the third day (Wednesday) 30 are expected.
+    const p = periodProgress({ metric: "orders", targetValue: 70, startsOn: "2026-10-26", endsOn: "2026-11-01", today: "2026-10-28", todayShare: 1, sofar: sofar({ orders: 36 }) });
+    expect(p.expected).toBe(30);
+    expect(p.status).toBe("ahead");
+    expect(p.projected).toBe(84);
+    expect(p.daysLeft).toBe(4);
+    expect(p.tooEarly).toBe(false);
+    const behind = periodProgress({ metric: "orders", targetValue: 70, startsOn: "2026-10-26", endsOn: "2026-11-01", today: "2026-10-28", todayShare: 1, sofar: sofar({ orders: 20 }) });
+    expect(behind.status).toBe("behind");
+  });
+
+  it("weights a sum by the weekday pattern when the history has four weeks of every weekday", () => {
+    // Saturdays sell everything: a Monday-to-Wednesday stretch is expected to bring nothing.
+    const history = Array.from({ length: 35 }, (_, i) => {
+      const day = new Date(Date.UTC(2026, 8, 21 + i)).toISOString().slice(0, 10);
+      const saturday = new Date(`${day}T00:00:00Z`).getUTCDay() === 6;
+      return { day, orders: saturday ? 10 : 0, checkoutOrders: 0, netRevenueMinor: saturday ? 10_000 : 0, sessions: null };
+    });
+    const p = periodProgress({ metric: "net_sales", targetValue: 20_000, startsOn: "2026-10-26", endsOn: "2026-11-01", today: "2026-10-28", todayShare: 1, sofar: sofar({}), history });
+    expect(p.weekdayWeighted).toBe(true);
+    expect(p.expected).toBe(0);
+    expect(p.status).toBe("on_track");
+  });
+
+  it("says a level is not judged before its minimum, and judges it against the target after", () => {
+    const few = periodProgress({ metric: "aov", targetValue: 50_000, startsOn: "2026-10-01", endsOn: "2026-10-31", today: "2026-10-20", sofar: sofar({ orders: 4, netRevenueMinor: 240_000 }) });
+    expect(few.actual).toBe(60_000);
+    expect(few.missing).toBe("orders");
+    expect(few.tooEarly).toBe(true);
+    const enough = periodProgress({ metric: "aov", targetValue: 50_000, startsOn: "2026-10-01", endsOn: "2026-10-31", today: "2026-10-20", sofar: sofar({ orders: LEVEL_MINIMUMS.aov.orders, netRevenueMinor: 400_000 }) });
+    expect(enough.actual).toBe(40_000);
+    expect(enough.status).toBe("behind");
+    expect(enough.missing).toBeNull();
+    expect(enough.projected).toBeNull();
+  });
+
+  it("counts conversion in basis points, and does not know it while visits were not counted", () => {
+    const unknown = periodProgress({ metric: "conversion", targetValue: 250, startsOn: "2026-10-01", endsOn: "2026-10-31", today: "2026-10-20", sofar: sofar({ checkoutOrders: 9, sessions: null }) });
+    expect(unknown.status).toBe("not_known");
+    expect(unknown.actual).toBeNull();
+    expect(unknown.missing).toBe("visits");
+    const known = periodProgress({ metric: "conversion", targetValue: 250, startsOn: "2026-10-01", endsOn: "2026-10-31", today: "2026-10-20", sofar: sofar({ checkoutOrders: 12, sessions: 400 }) });
+    expect(known.actual).toBe(300);
+    expect(known.status).toBe("ahead");
+  });
+
+  it("is upcoming before its first day, and holds the whole target once it has ended", () => {
+    const later = periodProgress({ metric: "orders", targetValue: 10, startsOn: "2026-11-02", endsOn: "2026-11-08", today: "2026-10-28", sofar: sofar({}) });
+    expect(later.status).toBe("upcoming");
+    expect(later.actual).toBeNull();
+    const over = periodProgress({ metric: "orders", targetValue: 10, startsOn: "2026-10-19", endsOn: "2026-10-25", today: "2026-10-28", sofar: sofar({ orders: 9 }) });
+    expect(over.ended).toBe(true);
+    expect(over.expected).toBe(10);
+    expect(over.status).toBe("behind");
   });
 });

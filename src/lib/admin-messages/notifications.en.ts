@@ -122,9 +122,13 @@ export const notificationsEn = {
     contact: "The store's contact address",
     contactNone: "None set: add one under Company",
     contactCheckbox: "{alert} emails to the store's contact address",
-    summary: "Summary",
+    summary: "Briefing",
     summaryHint:
-      "Paid orders, net sales without VAT, refunds, returns, orders to send, low stock and support conversations waiting, sent to the people ticked under Summary. The hour is the store's own time.",
+      "Paid orders and net sales without VAT against the period before, what the analytics found, what the store checkup found, your targets and what is open now, each with the page that acts on it, sent to the people ticked under Briefing. A quiet period, with no paid order and no alert, sends nothing. The hour is the store's own time.",
+    alertFloor: "Analytics alerts by email",
+    alertFloorHint:
+      "Analytics alerts are sent once a day, after 20:00 in the store's time, to the people ticked under Analytics alerts: each alert once a day, with the same minimum volumes as the page. Good news is never emailed.",
+    floors: { urgent: "Only what is urgent", warning: "Urgent and warnings", info: "Everything but good news" },
     howOften: "How often",
     offChoice: "Off",
     daily: "Daily (yesterday)",

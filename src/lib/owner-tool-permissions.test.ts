@@ -21,6 +21,7 @@ const CHANGING = new Set([
   "set_store_details", "set_countries", "set_languages", "set_currencies", "set_flat_shipping", "save_shipping_method", "open_store",
   "add_theme", "make_theme_live",
   "save_report",
+  "set_target",
   "buy_domain", "renew_domain", "set_domain_renewal", "change_dns", "set_up_email", "verify_domain_for", "undo_dns_change", "switch_nameservers", "connect_domain",
 ]);
 

@@ -9,6 +9,7 @@ import type { ConversationSummary } from "@/server/owner-assistant";
 import { AiManagerChat, MicIcon, type Abilities, type AiManagerActions } from "./ai-manager";
 import { unlockVoiceAudio } from "./voice-mode";
 import { useAdminText } from "./admin-text";
+import { ASK_AI_MANAGER_EVENT, type AskDetail } from "@/lib/alert-ask";
 
 export type AiManagerStart = () => Promise<{ abilities: Abilities; conversations: ConversationSummary[] }>;
 
@@ -49,6 +50,8 @@ export function AiManagerLauncher({
   const [ready, setReady] = useState<Awaited<ReturnType<AiManagerStart>> | null>(null);
   /** Counts the microphone's clicks: each asks the panel to start voice mode. */
   const [talk, setTalk] = useState(0);
+  /** An alert handed over (D348): its first message, counted per press so the same one can be asked again. */
+  const [ask, setAsk] = useState<{ text: string; n: number } | undefined>(undefined);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const onItsPage = pathname === base;
@@ -85,6 +88,28 @@ export function AiManagerLauncher({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
+  }, [toggle, onItsPage]);
+
+  // An alert's *Ask the AI manager* (D348): the page is marked while the launcher is on it, and a press opens the panel with the alert's message.
+  useEffect(() => {
+    const root = document.documentElement;
+    root.dataset.aiManager = "on";
+    const onAsk = (event: Event) => {
+      const message = (event as CustomEvent<AskDetail>).detail?.message;
+      if (typeof message !== "string" || !message.trim()) return;
+      setAsk((prev) => ({ text: message, n: (prev?.n ?? 0) + 1 }));
+      if (onItsPage) {
+        const box = document.querySelector<HTMLTextAreaElement>("textarea[placeholder^='Ask or tell']");
+        if (box) box.focus();
+        return;
+      }
+      toggle(true);
+    };
+    window.addEventListener(ASK_AI_MANAGER_EVENT, onAsk);
+    return () => {
+      window.removeEventListener(ASK_AI_MANAGER_EVENT, onAsk);
+      delete root.dataset.aiManager;
+    };
   }, [toggle, onItsPage]);
 
   // Focus the message box when the panel opens.
@@ -140,6 +165,7 @@ export function AiManagerLauncher({
             inputRef={inputRef}
             onNavigate={closeOnPhones}
             startVoice={talk}
+            ask={ask}
           />
         ) : (
           <p className="p-4 text-sm text-muted" role="status">

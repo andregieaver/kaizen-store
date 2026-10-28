@@ -6,7 +6,7 @@
  */
 import type { PermissionKey } from "./permission-keys";
 
-export const STAFF_ALERT_EVENTS = ["new_order", "return_requested", "refund_overdue", "low_stock", "summary", "automation", "dispute", "payment_overdue"] as const;
+export const STAFF_ALERT_EVENTS = ["new_order", "return_requested", "refund_overdue", "low_stock", "summary", "automation", "dispute", "payment_overdue", "analytics"] as const;
 export type StaffAlertEvent = (typeof STAFF_ALERT_EVENTS)[number];
 export const isStaffAlertEvent = (value: unknown): value is StaffAlertEvent => (STAFF_ALERT_EVENTS as readonly unknown[]).includes(value);
 
@@ -20,6 +20,7 @@ export const ALERT_NEEDS: Record<StaffAlertEvent, PermissionKey> = {
   automation: "orders:read",
   dispute: "orders:read",
   payment_overdue: "orders:read",
+  analytics: "analytics:read",
 };
 
 /** The columns of the staff alerts page. */
@@ -28,10 +29,11 @@ export const ALERT_LABELS: Record<StaffAlertEvent, string> = {
   return_requested: "Return requested",
   refund_overdue: "Refund overdue",
   low_stock: "Low stock",
-  summary: "Summary",
+  summary: "Briefing",
   automation: "Automation",
   dispute: "Dispute",
   payment_overdue: "Payment overdue",
+  analytics: "Analytics alerts",
 };
 
 /** The area named in *Needs {area} access* when a member's role does not hold the key. */
@@ -44,6 +46,7 @@ export const ALERT_AREA_WORDS: Record<StaffAlertEvent, string> = {
   automation: "Orders",
   dispute: "Orders",
   payment_overdue: "Orders",
+  analytics: "Analytics",
 };
 
 /** A member as the server read them: active, not expired, in an open store (anyone else is not passed in), with what their role holds. */

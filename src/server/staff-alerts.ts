@@ -8,6 +8,8 @@ import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf, type AdminLang } from "@/lib/admin-lang";
 import type { StaffEmailsMessages } from "@/lib/admin-messages/staff-emails.en";
 import { adminText } from "@/lib/admin-text";
+import { alertsFor, type Alert } from "@/lib/analytics-alerts";
+import { analyticsWordsIn } from "@/lib/analytics-words";
 import { renderEmail, type EmailBlock, type RenderedEmail } from "@/lib/email-layout";
 import { emailText } from "@/lib/email-text";
 import { formatMoney } from "@/lib/money";
@@ -20,8 +22,11 @@ import {
   ALERT_KEYS,
   ALERT_LABELS,
   STAFF_ALERT_EVENTS,
+  defaultRecipients,
+  isStaffAlertEvent,
   localNow,
   memberMayReceive,
+  recipientKey,
   recipientsFor,
   summaryChoiceProblem,
   summaryDue,
@@ -32,14 +37,18 @@ import {
   type SummaryKind,
 } from "@/lib/staff-alerts";
 
+import { alertSnapshotFor, type TargetCard } from "./analytics-insights";
 import { audit } from "./auth";
+import { briefingAlerts, briefingFacts, briefingNote, quietPeriod } from "./briefing";
 import { sendEmail, type SendOutcome } from "./email";
+import { log } from "./log";
 import { getOrder } from "./orders";
 import { emailFooter, storeById, type EmailStore } from "./shopper-emails";
 import { takeTestSlot, TESTS_PER_HOUR } from "./notifications";
 import { staffSummaryFigures, type StaffSummaryFigures } from "./staff-summary";
 import { uuidList } from "./sql-arrays";
-import { getStore } from "./stores";
+import type { CheckupFinding } from "./store-checkup";
+import { getStore, type Store } from "./stores";
 
 type Row = Record<string, unknown>;
 
@@ -112,12 +121,13 @@ type Settings = {
   summaryWeekday: number;
   summaryHour: number;
   summaryLastPeriod: string | null;
+  alertFloor: AlertFloor;
 };
 
 async function readSettings(storeId: string): Promise<Settings> {
   const [[row], recipients] = await Promise.all([
     db().execute<Row>(sql`
-      select s.contact_email, (select m.default_locale from commerce.markets m where m.store_id = s.id and m.code = commerce.home_market(s.id) limit 1) as main_locale, a.configured_at, a.summary, a.summary_weekday, a.summary_hour, a.summary_last_period, a.contact_events
+      select s.contact_email, (select m.default_locale from commerce.markets m where m.store_id = s.id and m.code = commerce.home_market(s.id) limit 1) as main_locale, a.configured_at, a.summary, a.summary_weekday, a.summary_hour, a.summary_last_period, a.contact_events, a.alert_floor
       from commerce.stores s left join commerce.staff_alert_settings a on a.store_id = s.id
       where s.id = ${storeId}::uuid
     `),
@@ -137,6 +147,7 @@ async function readSettings(storeId: string): Promise<Settings> {
     summaryWeekday: Number(row?.summary_weekday ?? 1),
     summaryHour: Number(row?.summary_hour ?? 8),
     summaryLastPeriod: row?.summary_last_period ? String(row.summary_last_period) : null,
+    alertFloor: (ALERT_FLOORS as readonly string[]).includes(String(row?.alert_floor)) ? (String(row?.alert_floor) as AlertFloor) : "warning",
   };
 }
 
@@ -160,6 +171,7 @@ export type StaffAlertsView = {
   summary: SummaryKind;
   summaryWeekday: number;
   summaryHour: number;
+  alertFloor: AlertFloor;
 };
 
 /** What the staff alerts page shows (2.4): each member with the events they may receive and get now (the defaults while it was never saved). */
@@ -181,6 +193,7 @@ export async function staffAlertsView(storeId: string): Promise<StaffAlertsView>
     summary: settings.summary,
     summaryWeekday: settings.summaryWeekday,
     summaryHour: settings.summaryHour,
+    alertFloor: settings.alertFloor,
   };
 }
 
@@ -192,6 +205,8 @@ export const staffAlertsInput = z.object({
   summary: z.enum(["off", "daily", "weekly"]),
   summaryWeekday: z.coerce.number().int(),
   summaryHour: z.coerce.number().int(),
+  /** The least severe analytics alert emailed (D348); kept as it is when left out. */
+  alertFloor: z.enum(["urgent", "warning", "info"]).optional(),
 });
 
 export type SaveStaffAlertsResult = { ok: true } | { ok: false; problem: "not_owner" | "invalid" | "not_member" | "not_allowed" | "no_contact"; message: string };
@@ -224,10 +239,10 @@ export async function saveStaffAlerts(storeId: string, input: unknown, accountId
   const chosen = data.recipients.filter((r) => r.events.length > 0);
   await db().transaction(async (tx) => {
     await tx.execute(sql`
-      insert into commerce.staff_alert_settings (store_id, configured_at, summary, summary_weekday, summary_hour, contact_events, updated_by)
-      values (${storeId}::uuid, now(), ${data.summary}, ${data.summaryWeekday}, ${data.summaryHour}, ${`{${data.contactEvents.join(",")}}`}::text[], ${accountId}::uuid)
+      insert into commerce.staff_alert_settings (store_id, configured_at, summary, summary_weekday, summary_hour, contact_events, alert_floor, updated_by)
+      values (${storeId}::uuid, now(), ${data.summary}, ${data.summaryWeekday}, ${data.summaryHour}, ${`{${data.contactEvents.join(",")}}`}::text[], ${data.alertFloor ?? settings.alertFloor}, ${accountId}::uuid)
       on conflict (store_id) do update set configured_at = now(), summary = excluded.summary, summary_weekday = excluded.summary_weekday,
-        summary_hour = excluded.summary_hour, contact_events = excluded.contact_events, updated_by = excluded.updated_by, updated_at = now()
+        summary_hour = excluded.summary_hour, contact_events = excluded.contact_events, alert_floor = excluded.alert_floor, updated_by = excluded.updated_by, updated_at = now()
     `);
     await tx.execute(sql`delete from commerce.staff_alert_recipients where store_id = ${storeId}::uuid`);
     for (const r of chosen) {
@@ -409,18 +424,80 @@ async function returnFacts(storeId: string, returnId: string): Promise<ReturnFac
   };
 }
 
-/** The staff summary email (2.8): the period's figures with a link each; nothing per customer. */
-export function summaryEmail(store: EmailStore, kind: "daily" | "weekly", f: StaffSummaryFigures, lang: AdminLang = "en"): RenderedEmail {
+/**
+ * What the briefing adds to the summary's figures (D348), already in the recipient's language: the alerts (`briefingAlerts()`), the checkup's findings,
+ * the targets as lines, and the note checked by `checkedNote()`. Each item links to the page that acts on it.
+ */
+export type BriefingParts = {
+  alerts: readonly Alert[];
+  checkup: readonly CheckupFinding[];
+  targets: readonly { label: string; value: string }[];
+  note: string | null;
+};
+
+/** The running targets as the briefing's lines, in a language: "Orders, Q4 2026" and "120 of 300", or not known yet. */
+export function briefingTargetLines(cards: readonly TargetCard[], currency: string, lang: AdminLang): { label: string; value: string }[] {
+  const words = analyticsWordsIn(lang).overview.target;
+  const w = wordsOf(lang).summary;
+  const locale = formatOf(lang);
+  const day = (iso: string) => new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(`${iso}T00:00:00Z`));
+  const period = (c: TargetCard): string => {
+    const t = c.target;
+    if (t.period === "week") return fillWords(words.periodWeek, { start: day(t.startsOn) });
+    if (t.period === "month") return new Intl.DateTimeFormat(locale, { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${t.startsOn}T00:00:00Z`));
+    if (t.period === "quarter") return fillWords(words.periodQuarter, { q: String(Math.floor((Number(t.startsOn.slice(5, 7)) - 1) / 3) + 1), year: t.startsOn.slice(0, 4) });
+    return fillWords(words.periodCustom, { start: day(t.startsOn), end: day(t.endsOn) });
+  };
+  const write = (c: TargetCard, value: number): string => {
+    if (c.target.metric === "orders") return new Intl.NumberFormat(locale).format(value);
+    if (c.target.metric === "conversion") return `${new Intl.NumberFormat(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value / 100)} %`;
+    return formatMoney(value, currency, locale);
+  };
+  return cards.map((c) => ({
+    label: fillWords(words.cardTitle, { metric: words.metrics[c.target.metric], period: period(c) }),
+    value: c.progress.actual === null ? w.targetNotKnown : fillWords(w.targetLine, { actual: write(c, c.progress.actual), target: write(c, c.target.targetValue) }),
+  }));
+}
+
+/** The staff summary email (2.8), grown into the briefing (D348) when given its parts: the period's figures with a link each; nothing per customer. */
+export function summaryEmail(store: EmailStore, kind: "daily" | "weekly", f: StaffSummaryFigures, lang: AdminLang = "en", parts?: BriefingParts): RenderedEmail {
   const w = wordsOf(lang).summary;
   const money = (minor: number) => formatMoney(minor, f.currency, formatOf(lang));
   const daily = kind === "daily";
   const period = daily ? fillWords(w.periodDay, { to: f.to }) : fillWords(w.periodWeek, { from: f.from, to: f.to });
+  const beside = (now: string, before: string | null) => (before === null ? now : fillWords(w.before, { now, before }));
   const rows = [
-    { label: w.paidOrders, value: String(f.orders) },
-    { label: w.netSales, value: money(f.netSalesMinor), strong: true },
+    { label: w.paidOrders, value: beside(String(f.orders), parts && f.before ? String(f.before.orders) : null) },
+    { label: w.netSales, value: beside(money(f.netSalesMinor), parts && f.before ? money(f.before.netSalesMinor) : null), strong: true },
     { label: w.refunds, value: money(f.refundsMinor) },
     { label: w.returnsRequested, value: String(f.returnsRequested) },
   ];
+  const briefing: EmailBlock[] = parts
+    ? [
+        ...(parts.alerts.length > 0
+          ? [
+              { type: "paragraph" as const, text: w.found },
+              { type: "lines" as const, rows: parts.alerts.map((a) => ({ label: a.text, value: w.open, url: adminUrl(store.slug, a.href.startsWith("/") ? a.href : `/${a.href}`) })) },
+            ]
+          : []),
+        ...(parts.checkup.length > 0
+          ? [
+              { type: "paragraph" as const, text: w.checkup },
+              {
+                type: "lines" as const,
+                rows: parts.checkup.map((c) => ({ label: countWords(c.count, w.checkupWords[c.key], { n: c.count }), value: w.open, url: adminUrl(store.slug, c.page) })),
+              },
+            ]
+          : []),
+        ...(parts.targets.length > 0
+          ? [
+              { type: "paragraph" as const, text: w.targets },
+              { type: "lines" as const, rows: parts.targets.map((t) => ({ ...t, url: adminUrl(store.slug, "/analytics") })) },
+            ]
+          : []),
+        ...(parts.note ? [{ type: "paragraph" as const, text: w.note }, { type: "paragraph" as const, text: parts.note }] : []),
+      ]
+    : [];
   const open = [
     { label: w.openReturns, value: String(f.openReturns) },
     { label: w.toSend, value: String(f.toSend) },
@@ -428,7 +505,7 @@ export function summaryEmail(store: EmailStore, kind: "daily" | "weekly", f: Sta
     ...(f.supportWaiting !== null ? [{ label: w.supportWaiting, value: String(f.supportWaiting) }] : []),
   ];
   return renderEmail({
-    subject: fillWords(daily ? w.subjectDay : w.subjectWeek, { store: store.name, from: f.from, to: f.to }),
+    subject: fillWords(parts ? (daily ? w.subjectBriefingDay : w.subjectBriefingWeek) : daily ? w.subjectDay : w.subjectWeek, { store: store.name, from: f.from, to: f.to }),
     preview: f.orders === 0 ? (daily ? w.noOrdersDay : w.noOrdersWeek) : countWords(f.orders, w.ordersPreview, { net: money(f.netSalesMinor) }),
     lang: ADMIN_LANG_FACTS[lang].tag,
     footer: emailFooter(store, footerText(lang)),
@@ -439,6 +516,7 @@ export function summaryEmail(store: EmailStore, kind: "daily" | "weekly", f: Sta
       ...(f.unconverted > 0 ? [{ type: "paragraph" as const, text: countWords(f.unconverted, w.unconverted, { currencies: f.missingCurrencies.join(", ") }) }] : []),
       { type: "paragraph", text: w.now },
       { type: "lines", rows: open },
+      ...briefing,
       { type: "button", text: w.analytics, url: adminUrl(store.slug, "/analytics") },
       { type: "button", text: w.orders, url: adminUrl(store.slug, "/orders") },
     ],
@@ -815,7 +893,9 @@ export async function pruneStoreEvents(now = new Date()): Promise<number> {
  * period was not sent yet: the figures built once, one email per recipient of `summary` (key per store, period and recipient), then the period marked
  * sent. Never throws.
  */
-export async function sendDueSummaries(options: { now?: Date; send?: typeof sendEmail } = {}): Promise<{ stores: number; emails: number }> {
+export async function sendDueSummaries(
+  options: { now?: Date; send?: typeof sendEmail; note?: (store: Store, lang: AdminLang, items: readonly string[]) => Promise<string | null> } = {},
+): Promise<{ stores: number; emails: number }> {
   const now = options.now ?? new Date();
   const send = options.send ?? sendEmail;
   const out = { stores: 0, emails: 0 };
@@ -845,9 +925,22 @@ export async function sendDueSummaries(options: { now?: Date; send?: typeof send
       let ok = true;
       if (targets.length > 0) {
         const figures = await staffSummaryFigures(store, due);
-        const result = await sendToAll(storeId, emailStore.name, "staff.summary", targets, (lang) => summaryEmail(emailStore, row.summary as "daily" | "weekly", figures, lang), (r) => ALERT_KEYS.summary(storeId, due.key, r), null, send);
-        ok = result.ok;
-        out.emails += result.outcomes.filter((o) => o === "sent" || o === "logged").length;
+        // The briefing (D348): the alerts, the checkup and the targets, read once; a quiet period (no paid order, no alert) sends nothing.
+        const facts = await briefingFacts(store, now);
+        if (!quietPeriod(figures.orders, facts)) {
+          const parts = new Map<AdminLang, BriefingParts>();
+          for (const lang of new Set(targets.map((t) => t.lang))) {
+            const alerts = briefingAlerts(facts, lang);
+            const lines = briefingTargetLines(facts.targets, figures.currency, lang);
+            const w = wordsOf(lang).summary;
+            const items = [...alerts.map((a) => a.text), ...facts.checkup.map((c) => countWords(c.count, w.checkupWords[c.key], { n: c.count })), ...lines.map((l) => `${l.label}: ${l.value}`)];
+            const note = await (options.note ?? briefingNote)(store, lang, items);
+            parts.set(lang, { alerts, checkup: facts.checkup, targets: lines, note });
+          }
+          const result = await sendToAll(storeId, emailStore.name, "staff.summary", targets, (lang) => summaryEmail(emailStore, row.summary as "daily" | "weekly", figures, lang, parts.get(lang)), (r) => ALERT_KEYS.summary(storeId, due.key, r), null, send);
+          ok = result.ok;
+          out.emails += result.outcomes.filter((o) => o === "sent" || o === "logged").length;
+        }
       }
       if (!ok) continue;
       await db().execute(sql`update commerce.staff_alert_settings set summary_last_period = ${due.key} where store_id = ${storeId}::uuid`);
@@ -857,6 +950,171 @@ export async function sendDueSummaries(options: { now?: Date; send?: typeof send
     }
   }
   return out;
+}
+
+// ---------------------------------------------------------------------------
+// Analytics alerts by email (D348)
+// ---------------------------------------------------------------------------
+
+/** The store hour from which the day's analytics alerts are emailed: every rule's own hour has passed by then (the latest, the weekday's revenue, is 20:00). */
+export const ALERT_EMAIL_HOUR = 20;
+const ALERT_SENDS_KEPT_DAYS = 90;
+const FLOOR_RANK: Record<AlertFloor, number> = { urgent: 0, warning: 1, info: 2 };
+const SEVERITY_RANK: Record<Alert["severity"], number> = { urgent: 0, warning: 1, info: 2, good: 3 };
+
+export const ALERT_FLOORS = ["urgent", "warning", "info"] as const;
+export type AlertFloor = (typeof ALERT_FLOORS)[number];
+
+/** Whether an alert is at or above the store's floor; good news is never emailed. */
+export const aboveFloor = (alert: Pick<Alert, "severity">, floor: AlertFloor): boolean => alert.severity !== "good" && SEVERITY_RANK[alert.severity] <= FLOOR_RANK[floor];
+
+/** The analytics alerts email (D348): each alert's words and figures and its page; nothing per customer. */
+export function analyticsAlertsEmail(store: EmailStore, day: string, alerts: readonly Alert[], lang: AdminLang = "en"): RenderedEmail {
+  const w = wordsOf(lang).analyticsAlerts;
+  const severity = analyticsWordsIn(lang).alerts.severity;
+  return renderEmail({
+    subject: fillWords(w.subject, { store: store.name }),
+    preview: countWords(alerts.length, w.preview, { n: alerts.length }),
+    lang: ADMIN_LANG_FACTS[lang].tag,
+    footer: emailFooter(store, footerText(lang)),
+    blocks: [
+      { type: "heading", text: w.heading },
+      { type: "paragraph", text: fillWords(w.intro, { day }) },
+      ...alerts.flatMap((a): EmailBlock[] => [
+        { type: "divider" },
+        { type: "paragraph", text: `${severity[a.severity]}: ${a.text}` },
+        ...(a.evidence.length > 0
+          ? [{ type: "lines" as const, rows: a.evidence.map((e) => ({ label: e.label, value: e.baseline ? `${e.value} (${fillWords(w.against, { baseline: e.baseline })})` : e.value, muted: true })) }]
+          : []),
+        { type: "button", text: a.action || w.open, url: adminUrl(store.slug, a.href.startsWith("/") ? a.href : `/${a.href}`) },
+      ]),
+      { type: "divider" },
+      { type: "paragraph", text: w.settings },
+      { type: "button", text: w.overview, url: adminUrl(store.slug, "/analytics") },
+    ],
+  });
+}
+
+/**
+ * The analytics alerts by email (every-minute integrations job, D348): for each open, selling store with someone chosen for them, once per store day
+ * from `ALERT_EMAIL_HOUR` in the store's time (the day claimed first in `staff_alert_settings.alerts_checked_on`), the alerts worked out once
+ * (`alertSnapshotFor()`, so the page's own minimum volumes, and `PAID` without copied or host orders), those at or above the store's floor and not
+ * emailed today (rows of `analytics_alert_sends` claimed first), worded in each recipient's language, one email per recipient. Never throws.
+ */
+export async function sendAnalyticsAlertEmails(options: { now?: Date; send?: typeof sendEmail } = {}): Promise<{ stores: number; emails: number }> {
+  const now = options.now ?? new Date();
+  const send = options.send ?? sendEmail;
+  const out = { stores: 0, emails: 0 };
+  let rows: Row[];
+  try {
+    rows = await db().execute<Row>(sql`
+      select s.id as store_id, s.slug, s.time_zone, coalesce(a.alert_floor, 'warning') as alert_floor, a.alerts_checked_on::text as checked_on
+      from commerce.stores s left join commerce.staff_alert_settings a on a.store_id = s.id
+      where commerce.store_is_active(s.id) and commerce.feature_on(s.id, 'shop')
+        and (exists (select 1 from commerce.staff_alert_recipients r where r.store_id = s.id and 'analytics' = any(r.events))
+          or 'analytics' = any(coalesce(a.contact_events, '{}'::text[])))
+    `);
+  } catch {
+    return out;
+  }
+  for (const row of rows) {
+    const storeId = String(row.store_id);
+    try {
+      const local = localNow(now, String(row.time_zone ?? "Europe/Oslo"));
+      if (local.hour < ALERT_EMAIL_HOUR || row.checked_on === local.date) continue;
+      // The day is claimed before anything is worked out, so overlapping runs check a store once a day.
+      const claimed = await db().execute<Row>(sql`
+        insert into commerce.staff_alert_settings (store_id, alerts_checked_on) values (${storeId}::uuid, ${local.date}::date)
+        on conflict (store_id) do update set alerts_checked_on = excluded.alerts_checked_on
+          where commerce.staff_alert_settings.alerts_checked_on is distinct from excluded.alerts_checked_on
+        returning store_id
+      `);
+      if (claimed.length === 0) continue;
+      await db().execute(sql`delete from commerce.analytics_alert_sends where store_id = ${storeId}::uuid and day < ${local.date}::date - ${ALERT_SENDS_KEPT_DAYS}::int`);
+      const [store, emailStore, targets] = await Promise.all([getStore(String(row.slug)), storeById(storeId), alertRecipients(storeId, "analytics")]);
+      if (!store || !emailStore || targets.length === 0) continue;
+      const snapshot = await alertSnapshotFor(store, now);
+      const floor = (ALERT_FLOORS as readonly string[]).includes(String(row.alert_floor)) ? (String(row.alert_floor) as AlertFloor) : "warning";
+      const due = alertsFor(snapshot).filter((a) => aboveFloor(a, floor));
+      if (due.length === 0) continue;
+      const fresh = new Set<string>();
+      for (const alert of due) {
+        const [kept] = await db().execute<Row>(sql`
+          insert into commerce.analytics_alert_sends (store_id, day, alert_id, severity) values (${storeId}::uuid, ${local.date}::date, ${alert.id.slice(0, 80)}, ${alert.severity})
+          on conflict do nothing returning alert_id
+        `);
+        if (kept) fresh.add(alert.id);
+      }
+      if (fresh.size === 0) continue;
+      const email = (lang: AdminLang) => analyticsAlertsEmail(emailStore, local.date, alertsFor(snapshot, analyticsWordsIn(lang).alertText).filter((a) => fresh.has(a.id)), lang);
+      const result = await sendToAll(storeId, emailStore.name, "staff.analytics_alerts", targets, email, (r) => `staff-analytics:${storeId}:${local.date}:${recipientKey(r)}`, null, send);
+      out.emails += result.outcomes.filter((o) => o === "sent" || o === "logged").length;
+      out.stores++;
+    } catch (error) {
+      log("error", "analytics_alerts.email_failed", { store: storeId }, error);
+    }
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// The briefing's offer on Home (D348)
+// ---------------------------------------------------------------------------
+
+/** Whether Home offers the briefing to an owner: it is off and no owner said *Not now*. */
+export async function briefingOffered(storeId: string): Promise<boolean> {
+  const [row] = await db().execute<Row>(sql`select summary, briefing_offer_dismissed_at from commerce.staff_alert_settings where store_id = ${storeId}::uuid`);
+  return !row || (String(row.summary) === "off" && row.briefing_offer_dismissed_at === null);
+}
+
+/**
+ * Turns the briefing on from Home's one press (D348), for an owner: the frequency chosen, the owner among its recipients, every other choice kept (the
+ * defaults written out first when the page was never saved, as `recipientsFor()` reads them). Audited `notification.briefing_on`.
+ */
+export async function turnOnBriefing(storeId: string, accountId: string, kind: "daily" | "weekly"): Promise<SaveStaffAlertsResult> {
+  const [owner] = await db().execute<Row>(sql`
+    select 1 from commerce.store_members where store_id = ${storeId}::uuid and account_id = ${accountId}::uuid and role = 'owner' and disabled_at is null
+      and (expires_at is null or expires_at > now())
+  `);
+  if (!owner) return { ok: false, problem: "not_owner", message: "Only an owner turns on the briefing." };
+  const [members, settings] = await Promise.all([alertMembers(storeId), readSettings(storeId)]);
+  const current = new Map<string, StaffAlertEvent[]>();
+  if (settings.choices.configuredAt === null) {
+    for (const [id, events] of defaultRecipients(members, settings.choices.hasContact).accounts) current.set(id, [...events]);
+  } else {
+    for (const r of settings.choices.recipients) current.set(r.accountId, r.events.filter(isStaffAlertEvent));
+  }
+  current.set(accountId, [...new Set([...(current.get(accountId) ?? []), "summary" as const])]);
+  const contact = settings.choices.configuredAt === null ? defaultRecipients(members, settings.choices.hasContact).contact : settings.choices.contactEvents.filter(isStaffAlertEvent);
+  await db().transaction(async (tx) => {
+    await tx.execute(sql`
+      insert into commerce.staff_alert_settings (store_id, configured_at, summary, summary_weekday, summary_hour, contact_events, updated_by)
+      values (${storeId}::uuid, now(), ${kind}, ${settings.summaryWeekday}, ${settings.summaryHour}, ${`{${contact.join(",")}}`}::text[], ${accountId}::uuid)
+      on conflict (store_id) do update set configured_at = now(), summary = excluded.summary, contact_events = excluded.contact_events,
+        updated_by = excluded.updated_by, updated_at = now()
+    `);
+    await tx.execute(sql`delete from commerce.staff_alert_recipients where store_id = ${storeId}::uuid`);
+    for (const [id, events] of current) {
+      if (events.length === 0 || !members.some((m) => m.accountId === id)) continue;
+      await tx.execute(sql`
+        insert into commerce.staff_alert_recipients (store_id, account_id, events) values (${storeId}::uuid, ${id}::uuid, ${`{${events.join(",")}}`}::text[])
+      `);
+    }
+  });
+  await audit(accountId, storeId, "notification.briefing_on", { summary: kind });
+  return { ok: true };
+}
+
+/** *Not now* on Home's offer (D348), for an owner: the offer is not shown again; the Staff alerts page still turns the briefing on. */
+export async function dismissBriefingOffer(storeId: string, accountId: string): Promise<boolean> {
+  const rows = await db().execute<Row>(sql`
+    insert into commerce.staff_alert_settings (store_id, briefing_offer_dismissed_at, updated_by)
+    select ${storeId}::uuid, now(), ${accountId}::uuid
+    where exists (select 1 from commerce.store_members where store_id = ${storeId}::uuid and account_id = ${accountId}::uuid and role = 'owner' and disabled_at is null)
+    on conflict (store_id) do update set briefing_offer_dismissed_at = now(), updated_at = now()
+    returning store_id
+  `);
+  return rows.length > 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -904,6 +1162,10 @@ export async function sendStaffTest(storeId: string, event: StaffAlertEvent, acc
         }, lang)
       : event === "return_requested"
       ? returnRequestedEmail(store, sampleId, { number: "R-1001-1", orderNumber: "1001", kind: "return", lines: sampleLines }, lang)
+      : event === "analytics"
+      ? analyticsAlertsEmail(store, "2026-01-01", [
+          { id: "sample", severity: "warning", text: "Sample: refunds of a product are higher than usual.", href: "/analytics/products", action: "", evidence: [], size: 1 },
+        ], lang)
       : event === "summary"
         ? summaryEmail(store, "daily", {
             from: "2026-01-01",
@@ -957,4 +1219,5 @@ export const ALERT_EMAIL_KINDS: Record<StaffAlertEvent, string> = {
   automation: "automation.notify",
   dispute: "staff.dispute",
   payment_overdue: "staff.payment_overdue",
+  analytics: "staff.analytics_alerts",
 };

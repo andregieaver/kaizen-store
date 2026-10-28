@@ -440,6 +440,8 @@ export const TOOL_WORDS: Record<string, string> = {
   report_catalogue: "Reading what reports can show",
   run_report: "Running a report",
   save_report: "Saving a report",
+  list_targets: "Reading your targets",
+  set_target: "Setting a target",
   speed_report: "Looking at how fast the pages load",
   list_data_jobs: "Looking at imports and exports",
   explain_import_problems: "Reading the import's findings",

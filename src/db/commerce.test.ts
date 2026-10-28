@@ -5985,9 +5985,44 @@ describe("store analytics data (D152)", () => {
     const insert = "insert into commerce.analytics_targets (store_id, month, revenue_target_minor) values ($1, $2, $3)";
     await db.query(insert, [shop, "2026-10-01", 500000]);
     await rejects(insert, [shop, "2026-10-01", 600000], /analytics_targets_month_key/);
-    await rejects(insert, [shop, "2026-11-15", 600000], /analytics_targets_first_of_month/);
-    await rejects(insert, [shop, "2026-11-01", 0], /analytics_targets_amount/);
+    // A month not on its first day is refused by the first form's check or the period's bounds, whichever the database meets first (D348).
+    await rejects(insert, [shop, "2026-11-15", 600000], /analytics_targets_first_of_month|analytics_targets_bounds/);
+    await rejects(insert, [shop, "2026-11-01", 0], /analytics_targets_amount|analytics_targets_value/);
     await db.query(insert, [other, "2026-10-01", 1]);
+  });
+
+  it("keeps targets of every kind to whole periods, one per metric, period and start, and the first form in step (D348)", async () => {
+    const shop = await createStore("analytics-targets-kinds", ["NO"]);
+    const insert = "insert into commerce.analytics_targets (store_id, metric, period, starts_on, ends_on, target_value) values ($1, $2, $3, $4, $5, $6)";
+    // 2026-10-26 is a Monday.
+    await db.query(insert, [shop, "orders", "week", "2026-10-26", "2026-11-01", 40]);
+    await rejects(insert, [shop, "orders", "week", "2026-10-26", "2026-11-01", 50], /analytics_targets_period_key/);
+    await rejects(insert, [shop, "orders", "week", "2026-10-27", "2026-11-02", 40], /analytics_targets_bounds/);
+    await rejects(insert, [shop, "orders", "quarter", "2026-11-01", "2027-01-31", 40], /analytics_targets_bounds/);
+    await rejects(insert, [shop, "orders", "custom", "2026-01-01", "2028-01-05", 40], /analytics_targets_bounds/);
+    await rejects(insert, [shop, "conversion", "month", "2026-10-01", "2026-10-31", 10001], /analytics_targets_value/);
+    await rejects(insert, [shop, "revenue", "month", "2026-10-01", "2026-10-31", 1], /analytics_targets_metric/);
+    await db.query(insert, [shop, "conversion", "quarter", "2026-10-01", "2026-12-31", 250]);
+    await db.query(insert, [shop, "aov", "custom", "2026-10-03", "2027-03-31", 45000]);
+    // A monthly net-sales target written the new way gets the first form; any other target has none.
+    await db.query(insert, [shop, "net_sales", "month", "2026-12-01", "2026-12-31", 700000]);
+    const rows = await db.query<{ metric: string; month: string | null; revenue_target_minor: number | null }>(
+      "select metric, month::text as month, revenue_target_minor from commerce.analytics_targets where store_id = $1 order by metric",
+      [shop],
+    );
+    expect(rows.rows).toEqual([
+      { metric: "aov", month: null, revenue_target_minor: null },
+      { metric: "conversion", month: null, revenue_target_minor: null },
+      { metric: "net_sales", month: "2026-12-01", revenue_target_minor: 700000 },
+      { metric: "orders", month: null, revenue_target_minor: null },
+    ]);
+    // The first form's writer fills in the new columns.
+    await db.query("insert into commerce.analytics_targets (store_id, month, revenue_target_minor) values ($1, '2027-01-01', 80000)", [shop]);
+    const [first] = (await db.query<{ period: string; ends_on: string; target_value: number }>(
+      "select period, ends_on::text as ends_on, target_value from commerce.analytics_targets where store_id = $1 and month = '2027-01-01'",
+      [shop],
+    )).rows;
+    expect(first).toEqual({ period: "month", ends_on: "2027-01-31", target_value: 80000 });
   });
 
   it("keeps one spend per day, channel and campaign, from a known channel, above zero", async () => {

@@ -191,3 +191,194 @@ export function targetProgress(input: TargetInput): TargetProgress {
     projectedPct: projected === null ? null : projected / target,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Targets for more than a month's revenue (wave 8 unit D, D348)
+// ---------------------------------------------------------------------------
+
+/** What a target can count. Net sales and AOV are minor units of the main currency without VAT, orders a count, conversion basis points (250 is 2.50 %). */
+export const TARGET_METRICS = ["net_sales", "orders", "conversion", "aov"] as const;
+export type TargetMetric = (typeof TARGET_METRICS)[number];
+export const isTargetMetric = (value: unknown): value is TargetMetric => (TARGET_METRICS as readonly unknown[]).includes(value);
+
+export const TARGET_PERIODS = ["week", "month", "quarter", "custom"] as const;
+export type TargetPeriod = (typeof TARGET_PERIODS)[number];
+export const isTargetPeriod = (value: unknown): value is TargetPeriod => (TARGET_PERIODS as readonly unknown[]).includes(value);
+
+/** The longest custom period: two years (the last day at most 730 days after the first), as the database checks. */
+export const CUSTOM_MAX_SPAN_DAYS = 730;
+
+/** Sums are expected to grow over the period (weekday-weighted); levels are a figure to hold. */
+export const isSumMetric = (metric: TargetMetric): boolean => metric === "net_sales" || metric === "orders";
+
+/**
+ * What a level needs before it gets a verdict: an average order value of fewer than 10 orders, or a conversion rate of fewer than 300 visits, is shown
+ * with what is missing and judged neither ahead nor behind.
+ */
+export const LEVEL_MINIMUMS = { aov: { orders: 10 }, conversion: { sessions: 300 } } as const;
+
+const isoOf = (ms: number): string => new Date(ms).toISOString().slice(0, 10);
+
+/**
+ * A period's first and last day from its kind and any day in it (a custom period takes its own last day), or null when it is not a period the
+ * database would keep: a week runs Monday to Sunday, a month and a quarter are whole, a custom period lasts at most two years.
+ */
+export function periodBounds(period: TargetPeriod, day: string, lastDay?: string): { startsOn: string; endsOn: string } | null {
+  const ms = dayMs(day);
+  if (ms === null) return null;
+  const d = new Date(ms);
+  const y = d.getUTCFullYear();
+  const m = d.getUTCMonth();
+  if (period === "week") {
+    const start = ms - weekdayOf(ms) * DAY_MS;
+    return { startsOn: isoOf(start), endsOn: isoOf(start + 6 * DAY_MS) };
+  }
+  if (period === "month") return { startsOn: isoOf(Date.UTC(y, m, 1)), endsOn: isoOf(Date.UTC(y, m + 1, 0)) };
+  if (period === "quarter") {
+    const q = Math.floor(m / 3) * 3;
+    return { startsOn: isoOf(Date.UTC(y, q, 1)), endsOn: isoOf(Date.UTC(y, q + 3, 0)) };
+  }
+  const end = lastDay === undefined ? null : dayMs(lastDay);
+  if (end === null || end < ms || (end - ms) / DAY_MS > CUSTOM_MAX_SPAN_DAYS) return null;
+  return { startsOn: day, endsOn: isoOf(end) };
+}
+
+/** One day of the store, as the daily history gives it. Sessions are null on a day visits were not counted (never 0 for "not known"). */
+export type PeriodDay = { day: string; orders: number; checkoutOrders: number; netRevenueMinor: number; sessions: number | null };
+
+export type PeriodProgressInput = {
+  metric: TargetMetric;
+  /** In the metric's unit (see `TARGET_METRICS`). */
+  targetValue: number;
+  startsOn: string;
+  endsOn: string;
+  /** The store's today. */
+  today: string;
+  /** How much of today has passed, 0 to 1 (1 by default). */
+  todayShare?: number;
+  /** What the period has so far: its sums up to and including today (in the main currency; a currency with no rate left out by the caller). */
+  sofar: { orders: number; checkoutOrders: number; netRevenueMinor: number; sessions: number | null };
+  /** The days before today for the weekday pattern (sums only); every day present, zeros included. */
+  history?: readonly PeriodDay[];
+};
+
+export type PeriodStatus = TargetStatus | "upcoming" | "not_known";
+
+export type PeriodProgress = {
+  metric: TargetMetric;
+  status: PeriodStatus;
+  targetValue: number;
+  /** The figure so far in the metric's unit; null when it cannot be known (conversion without visits on every day, a level with nothing to divide). */
+  actual: number | null;
+  /** What should have been reached by now: a share of the target for a sum, the target itself for a level. Null before the period. */
+  expected: number | null;
+  /** A sum's end if the pace so far holds (an estimate); null for a level and before anything has passed. */
+  projected: number | null;
+  /** Actual over target. */
+  pct: number | null;
+  shareElapsed: number;
+  weekdayWeighted: boolean;
+  daysInPeriod: number;
+  daysLeft: number;
+  /** Too little has passed, or too little was counted, for a verdict: shown, but judged neither way. */
+  tooEarly: boolean;
+  /** Why the figure is not known or not judged: visits were not counted on every day, or too few orders or visits so far. */
+  missing: "visits" | "orders" | "sessions" | null;
+  ended: boolean;
+};
+
+function sumWeights(history: readonly PeriodDay[] | undefined, metric: TargetMetric, before: string): number[] | null {
+  if (!history) return null;
+  return weekdayWeights(
+    history.map((d) => ({ day: d.day, revenueMinor: metric === "orders" ? d.orders : d.netRevenueMinor })),
+    before,
+  );
+}
+
+/**
+ * Progress of a target over its period (D348). A sum (net sales, orders) is held against the weekday-weighted expectation over the period's own days, as
+ * `targetProgress()` does for a month; a level (conversion, AOV) is the figure so far against the target, with `LEVEL_MINIMUMS` before any verdict.
+ * Conversion counts checkout orders over visits and is not known while visits were not counted on every day of the period so far. Pure.
+ */
+export function periodProgress(input: PeriodProgressInput): PeriodProgress {
+  const start = dayMs(input.startsOn);
+  const end = dayMs(input.endsOn);
+  const today = dayMs(input.today);
+  if (start === null || end === null || end < start) throw new RangeError(`not a period: ${input.startsOn} to ${input.endsOn}`);
+  if (today === null) throw new RangeError(`today is not a day: ${input.today}`);
+  const days = Math.round((end - start) / DAY_MS) + 1;
+  const dayOfPeriod = Math.floor((today - start) / DAY_MS) + 1;
+  const share = Number.isFinite(input.todayShare) ? Math.min(1, Math.max(0, input.todayShare as number)) : 1;
+  const elapsed = dayOfPeriod < 1 ? 0 : dayOfPeriod > days ? days : dayOfPeriod - 1 + share;
+  const daysLeft = dayOfPeriod < 1 ? days : Math.max(0, days - dayOfPeriod);
+  const ended = dayOfPeriod > days;
+  const target = input.targetValue;
+  const base = { metric: input.metric, targetValue: target, daysInPeriod: days, daysLeft, ended };
+
+  if (dayOfPeriod < 1) {
+    return { ...base, status: "upcoming", actual: null, expected: null, projected: null, pct: null, shareElapsed: 0, weekdayWeighted: false, tooEarly: true, missing: null };
+  }
+
+  if (isSumMetric(input.metric)) {
+    const actual = input.metric === "orders" ? input.sofar.orders : input.sofar.netRevenueMinor;
+    const weights = sumWeights(input.history, input.metric, input.today);
+    let shareElapsed = elapsed / days;
+    if (weights) {
+      let done = 0;
+      let all = 0;
+      for (let d = 1; d <= days; d++) {
+        const weight = weights[weekdayOf(start + (d - 1) * DAY_MS)];
+        all += weight;
+        done += weight * Math.min(1, Math.max(0, elapsed - (d - 1)));
+      }
+      if (all > 0) shareElapsed = done / all;
+    }
+    const expected = Math.round(target * shareElapsed);
+    const aheadByPct = safeRatio(actual - expected, expected);
+    const tooEarly = !ended && elapsed < MIN_DAYS_FOR_VERDICT;
+    let status: PeriodStatus;
+    if (actual >= target) status = "ahead";
+    else if (aheadByPct === null) status = "on_track";
+    else if (aheadByPct > ON_TRACK_TOLERANCE) status = "ahead";
+    else if (aheadByPct < -ON_TRACK_TOLERANCE) status = "behind";
+    else status = "on_track";
+    return {
+      ...base,
+      status,
+      actual,
+      expected,
+      projected: shareElapsed > 0 ? Math.round(actual / shareElapsed) : null,
+      pct: actual / target,
+      shareElapsed,
+      weekdayWeighted: weights !== null,
+      tooEarly,
+      missing: null,
+    };
+  }
+
+  // A level: the figure so far against the target itself.
+  let actual: number | null = null;
+  let missing: PeriodProgress["missing"] = null;
+  let enough = false;
+  if (input.metric === "aov") {
+    const orders = input.sofar.orders;
+    actual = orders > 0 ? Math.round(input.sofar.netRevenueMinor / orders) : null;
+    enough = orders >= LEVEL_MINIMUMS.aov.orders;
+    if (!enough) missing = "orders";
+  } else {
+    const sessions = input.sofar.sessions;
+    if (sessions === null) {
+      missing = "visits";
+    } else {
+      actual = sessions > 0 ? Math.round((input.sofar.checkoutOrders / sessions) * 10_000) : null;
+      enough = sessions >= LEVEL_MINIMUMS.conversion.sessions;
+      if (!enough) missing = "sessions";
+    }
+  }
+  if (actual === null) {
+    return { ...base, status: "not_known", actual: null, expected: target, projected: null, pct: null, shareElapsed: elapsed / days, weekdayWeighted: false, tooEarly: true, missing };
+  }
+  const by = (actual - target) / target;
+  const status: PeriodStatus = actual >= target ? "ahead" : by < -ON_TRACK_TOLERANCE ? "behind" : "on_track";
+  return { ...base, status, actual, expected: target, projected: null, pct: actual / target, shareElapsed: elapsed / days, weekdayWeighted: false, tooEarly: !enough, missing };
+}

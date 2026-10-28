@@ -14,7 +14,7 @@ import {
 import { forecastMonth, HISTORY_DAYS as FORECAST_HISTORY_DAYS, type MonthForecast } from "@/lib/analytics-forecast";
 import { derive } from "@/lib/analytics-kpi";
 import { addDays, addMonths, addYears, customPeriod, lastYearOf, previousPeriodOf, startOfMonth, todayIn, type AnalyticsParams, type AnalyticsPeriod } from "@/lib/analytics-period";
-import { targetProgress, type DailyActual, type TargetProgress } from "@/lib/analytics-targets";
+import { periodProgress, targetProgress, type DailyActual, type PeriodDay, type PeriodProgress, type TargetProgress } from "@/lib/analytics-targets";
 import { isNotAChannel, UNKNOWN_CHANNEL } from "@/lib/analytics-traffic";
 import { mainCurrency } from "@/lib/markets";
 import { analyticsWords, countText } from "@/lib/analytics-words";
@@ -23,7 +23,7 @@ import { geoReport } from "./analytics-geo-data";
 import { discountsReport } from "./analytics-discounts-data";
 import { inventoryReport } from "./analytics-inventory-data";
 import { OTHER_ID, productsReport } from "./analytics-products-data";
-import { getAnalyticsSettings, listTargets, type StoredAnalyticsSettings } from "./analytics-settings";
+import { getAnalyticsSettings, listPeriodTargets, listTargets, type StoredAnalyticsSettings, type StoredPeriodTarget } from "./analytics-settings";
 import { CUSTOMER_JOIN, CUSTOMER_KEY, dayStart, HAS_CUSTOMER, inMain, inPeriod, NOT_EDIT_REFUND, num, PAID, type Row } from "./analytics-sql";
 import { periodTotals, seriesByBucket, setBased } from "./analytics-totals";
 import { marketingReport, sessionTotals, trafficReport, type MarketingReport, type TrafficReport } from "./analytics-traffic-data";
@@ -143,6 +143,61 @@ export function targetFrom(history: DailyHistory, targetMinor: number | null): T
 export async function monthTargetMinor(store: Store, today: string): Promise<number | null> {
   const key = startOfMonth(today).slice(0, 7);
   return (await listTargets(store.id)).find((t) => t.month.slice(0, 7) === key)?.revenueTargetMinor ?? null;
+}
+
+// ---------------------------------------------------------------------------
+// Targets of any metric and period (D348)
+// ---------------------------------------------------------------------------
+
+export type TargetCard = {
+  target: StoredPeriodTarget;
+  progress: PeriodProgress;
+  /** Paid orders left out of the period's figures for want of an exchange rate, and their currencies. */
+  unconverted: number;
+  missingCurrencies: string[];
+};
+
+/** Whether a target is the month's net-sales target the Overview already draws on its own. */
+const isMonthCard = (t: StoredPeriodTarget, today: string) => t.metric === "net_sales" && t.period === "month" && t.startsOn === startOfMonth(today);
+
+/**
+ * The progress of every target whose period covers today (`periodProgress()`), soonest ending first; `withMonth` keeps the month's net-sales target,
+ * which the Overview draws apart. The period's own figures come from `periodTotals()` (paid orders without VAT in the main currency, a currency with no
+ * rate left out and counted) and the visits from `sessionTotals()`, known only when visits were counted on every day of the period so far; the weekday
+ * pattern from the daily history. A target that cannot be read is left out.
+ */
+export async function runningTargets(store: Store, now: Date, options: HistoryOption & { withMonth?: boolean } = {}): Promise<TargetCard[]> {
+  const history = await (options.history ?? dailyHistory(store, now));
+  const today = history.today;
+  const targets = (await listPeriodTargets(store.id, { from: today })).filter((t) => t.startsOn <= today && (options.withMonth || !isMonthCard(t, today)));
+  const days: PeriodDay[] = history.days.map((d) => ({ day: d.day, orders: d.orders, checkoutOrders: d.checkoutOrders, netRevenueMinor: d.netRevenueMinor, sessions: d.sessions }));
+  const cards = await Promise.all(
+    targets.map((target) =>
+      safe("a target", async (): Promise<TargetCard> => {
+        const last = target.endsOn < today ? target.endsOn : today;
+        const period = customPeriod(target.startsOn, last);
+        const [totals, visits] = await Promise.all([
+          periodTotals(store, period),
+          target.metric === "conversion" ? sessionTotals(store, period) : Promise.resolve(null),
+        ]);
+        // Visits are known for the period only when they were counted from its first day on.
+        const sessions = visits && visits.sessions !== null && visits.firstDay !== null && visits.firstDay <= target.startsOn ? visits.sessions : null;
+        const t = totals.totals;
+        const progress = periodProgress({
+          metric: target.metric,
+          targetValue: target.targetValue,
+          startsOn: target.startsOn,
+          endsOn: target.endsOn,
+          today,
+          todayShare: history.dayShare,
+          sofar: { orders: t.orders, checkoutOrders: t.checkoutOrders ?? t.orders, netRevenueMinor: t.revenueMinor - t.refundsMinor, sessions },
+          history: days,
+        });
+        return { target, progress, unconverted: totals.unconverted, missingCurrencies: totals.missingCurrencies };
+      }),
+    ),
+  );
+  return cards.filter((c): c is TargetCard => c !== null).sort((a, b) => a.target.endsOn.localeCompare(b.target.endsOn));
 }
 
 // ---------------------------------------------------------------------------
@@ -394,19 +449,21 @@ export type StoreForecast = {
   /** The first day of the month forecast. */
   monthStart: string;
   forecast: MonthForecast;
+  /** The month's paid orders, forecast the same way (D348): its `*Minor` figures are counts of orders. */
+  orders: MonthForecast;
   /** The month's target; null when none is set. */
   targetMinor: number | null;
 };
 
 /** Net revenue of last year's days the seasonal factor reads: the eight weeks before this year's today, and the rest of this month, a year back. Days before last year's first sale are not in it. */
-async function lastYearDays(store: Store, today: string, monthStart: string): Promise<{ day: string; value: number }[]> {
+async function lastYearDays(store: Store, today: string, monthStart: string): Promise<{ day: string; value: number; orders: number }[]> {
   const monthEnd = addDays(addMonths(monthStart, 1), -1);
   const from = addDays(addYears(today, -1), -FORECAST_HISTORY_DAYS);
   const to = addYears(monthEnd, -1);
   if (to < from) return [];
   const points = await seriesByBucket(store, customPeriod(from, to), "day");
   const first = points.findIndex((p) => p.orders > 0 || p.netRevenueMinor !== 0);
-  return first < 0 ? [] : points.slice(first).map((p) => ({ day: p.key, value: p.netRevenueMinor }));
+  return first < 0 ? [] : points.slice(first).map((p) => ({ day: p.key, value: p.netRevenueMinor, orders: p.orders }));
 }
 
 /**
@@ -422,10 +479,18 @@ export async function forecastForStore(store: Store, now: Date, options: History
       monthStart,
       today: history.today,
       dailyHistory: history.days.map((d) => ({ day: d.day, value: d.netRevenueMinor })),
-      ...(lastYear && lastYear.length > 0 ? { lastYear } : {}),
+      ...(lastYear && lastYear.length > 0 ? { lastYear: lastYear.map((d) => ({ day: d.day, value: d.value })) } : {}),
       todayShare: history.dayShare,
     });
-    return { currency: history.currency, monthStart, forecast, targetMinor };
+    // The month's orders, by the same method (D348): a count per day in place of an amount.
+    const orders = forecastMonth({
+      monthStart,
+      today: history.today,
+      dailyHistory: history.days.map((d) => ({ day: d.day, value: d.orders })),
+      ...(lastYear && lastYear.length > 0 ? { lastYear: lastYear.map((d) => ({ day: d.day, value: d.orders })) } : {}),
+      todayShare: history.dayShare,
+    });
+    return { currency: history.currency, monthStart, forecast, orders, targetMinor };
   });
 }
 

@@ -511,6 +511,8 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   "staff.capture_due": "staff",
   "staff.payment_overdue": "staff",
   "staff.summary": "staff",
+  /** Analytics alerts to the staff chosen for them (D348): the alerts' words and figures and a link each, never a customer. */
+  "staff.analytics_alerts": "staff",
   "staff.test": "staff",
   "automation.notify": "staff",
   // To a Work client (the owner's own bookkeeping)

@@ -922,6 +922,22 @@ export const OWNER_TOOLS = [
     }),
   ),
   tool(
+    "list_targets",
+    "The store's targets that have not ended (D348): net sales, paid orders, the conversion rate or the average order value, over a week, a month, a quarter or chosen days, each with its progress worked out in code while its period runs (against the weekday-weighted expectation for a sum, against the target itself for a rate or an average), or what is missing for a verdict. Repeat its figures, never make one.",
+    z.object({}),
+  ),
+  tool(
+    "set_target",
+    "Sets a target for the store (D348), shown on the Analytics overview while its period runs; it changes nothing a shopper sees. A metric, period and first day has one target, so setting it again replaces it. `value` is typed in the metric's terms: an amount in the store's main currency without VAT for net_sales and aov, a number of orders, or a percentage such as 2.5 for conversion. `start` is any day of the period (YYYY-MM-DD; a custom period's first day) and `end` a custom period's last day (at most two years later).",
+    z.object({
+      metric: z.enum(["net_sales", "orders", "conversion", "aov"]),
+      period: z.enum(["week", "month", "quarter", "custom"]),
+      start: z.string().trim().max(10).describe("Any day of the period, YYYY-MM-DD; a custom period's first day."),
+      end: z.string().trim().max(10).optional().describe("A custom period's last day, YYYY-MM-DD; leave it out for the others."),
+      value: z.string().trim().max(20).describe("The target in the metric's terms, as a person would type it."),
+    }),
+  ),
+  tool(
     "speed_report",
     "How fast the store's pages load for its visitors (D336), measured in their browsers while the store counts visits: Largest Contentful Paint, Interaction to Next Paint, Cumulative Layout Shift and Time to First Byte at the 75th percentile over the last 28 days, per kind of page (front page, product, category and tag, lists, other pages) and screen (phone, computer), each rated as Google does, what to fix first, and what the report cannot measure. A figure with fewer than 20 page loads is not given. Read-only; repeat its figures, never make one.",
     z.object({}),

@@ -15,7 +15,15 @@ export type EmailBlock =
   | { type: "divider" };
 
 /** A row of a list of lines: a product with its picture (a full address), or a total. */
-export type EmailLine = { label: string; value: string; strong?: boolean; muted?: boolean; image?: string | null };
+export type EmailLine = {
+  label: string;
+  value: string;
+  strong?: boolean;
+  muted?: boolean;
+  image?: string | null;
+  /** A full address the value links to (D348: a briefing's item opens the page that acts on it). */
+  url?: string | null;
+};
 
 export type EmailContent = {
   subject: string;
@@ -64,7 +72,7 @@ function blockHtml(block: EmailBlock): string {
       return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px;border-collapse:collapse">${block.rows
         .map(
           (row) =>
-            `<tr>${pictures ? `<td width="56" style="width:56px;padding:6px 12px 6px 0;vertical-align:middle">${row.image ? `<img src="${escapeHtml(row.image)}" alt="" width="56" height="56" style="display:block;width:56px;height:56px;border-radius:8px;object-fit:cover;background:#f5f5f4">` : ""}</td>` : ""}<td style="padding:6px 0;font-size:15px;vertical-align:middle;color:${row.muted ? "#525252" : "#171717"};${row.strong ? "font-weight:700;" : ""}">${escapeHtml(row.label)}</td><td align="right" style="padding:6px 0 6px 12px;font-size:15px;white-space:nowrap;vertical-align:middle;color:${row.muted ? "#525252" : "#171717"};${row.strong ? "font-weight:700;" : ""}">${escapeHtml(row.value)}</td></tr>`,
+            `<tr>${pictures ? `<td width="56" style="width:56px;padding:6px 12px 6px 0;vertical-align:middle">${row.image ? `<img src="${escapeHtml(row.image)}" alt="" width="56" height="56" style="display:block;width:56px;height:56px;border-radius:8px;object-fit:cover;background:#f5f5f4">` : ""}</td>` : ""}<td style="padding:6px 0;font-size:15px;vertical-align:middle;color:${row.muted ? "#525252" : "#171717"};${row.strong ? "font-weight:700;" : ""}">${escapeHtml(row.label)}</td><td align="right" style="padding:6px 0 6px 12px;font-size:15px;white-space:nowrap;vertical-align:middle;color:${row.muted ? "#525252" : "#171717"};${row.strong ? "font-weight:700;" : ""}">${row.url ? `<a href="${escapeHtml(row.url)}" style="color:#171717">${escapeHtml(row.value)}</a>` : escapeHtml(row.value)}</td></tr>`,
         )
         .join("")}</table>`;
     }
@@ -86,7 +94,7 @@ function blockText(block: EmailBlock): string {
     case "image":
       return [block.alt && `[${block.alt}]`, block.href].filter(Boolean).join(" ");
     case "lines":
-      return block.rows.map((row) => `${row.label}: ${row.value}`).join("\n");
+      return block.rows.map((row) => `${row.label}: ${row.value}${row.url ? ` (${row.url})` : ""}`).join("\n");
   }
 }
 

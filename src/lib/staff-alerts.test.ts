@@ -25,7 +25,7 @@ const defaults = (hasContact: boolean): AlertChoices => ({ configuredAt: null, r
 
 describe("the events and what each needs (4.7)", () => {
   it("pins the events and their keys", () => {
-    expect(STAFF_ALERT_EVENTS).toEqual(["new_order", "return_requested", "refund_overdue", "low_stock", "summary", "automation", "dispute", "payment_overdue"]);
+    expect(STAFF_ALERT_EVENTS).toEqual(["new_order", "return_requested", "refund_overdue", "low_stock", "summary", "automation", "dispute", "payment_overdue", "analytics"]);
     expect(ALERT_NEEDS).toEqual({
       new_order: "orders:read",
       return_requested: "orders:read",
@@ -35,6 +35,7 @@ describe("the events and what each needs (4.7)", () => {
       automation: "orders:read",
       dispute: "orders:read",
       payment_overdue: "orders:read",
+      analytics: "analytics:read",
     });
     for (const key of Object.values(ALERT_NEEDS)) expect(PERMISSION_KEYS).toContain(key);
   });

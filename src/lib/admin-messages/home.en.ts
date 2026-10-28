@@ -239,6 +239,16 @@ export const homeEn = {
       done: "Done",
     },
   },
+  briefing: {
+    title: "Get a briefing by email",
+    description: "Your figures against the period before, what the analytics found, what needs a look and your targets, each with the page that acts on it. It comes only when something happened.",
+    weekly: "Weekly",
+    daily: "Daily",
+    notNow: "Not now",
+    on: "Done. Your first briefing comes after the period ends. Choose who else gets it, and when, under Staff alerts.",
+    dismissed: "All right. You can turn it on later under Settings, Notifications, Staff alerts.",
+    onlyOwner: "Only an owner turns on the briefing.",
+  },
   demo: {
     title: "Demo content",
     removedTitle: "Demo content removed",

@@ -80,6 +80,8 @@ export const TOOL_FEATURES: Partial<Record<OwnerToolName, FeatureRequirement>> =
   report_catalogue: "shop",
   run_report: "shop",
   save_report: "shop",
+  list_targets: "shop",
+  set_target: "shop",
   restock_suggestions: "shop",
   add_order_note: "shop",
   mark_order_sent: "shop",

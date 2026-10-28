@@ -231,7 +231,9 @@ describe("recipients (6.3 C2)", () => {
 describe("the summary (2.8, 4.7)", () => {
   it("sends daily at the store's hour, once per period; weekly only on its day", async () => {
     const fx = await newStore("alerts-summary");
-    await paidOrder(fx, [["DEMO-TOTE", 1]]);
+    const sold = await paidOrder(fx, [["DEMO-TOTE", 1]]);
+    // The briefing (D348) is sent only for a period with a paid order or an alert: the order is the day the daily one covers.
+    await db().execute(sql`update commerce.orders set placed_at = '2031-01-14T12:00:00+01:00' where id = ${sold.orderId}::uuid`);
     expect(
       await alerts.saveStaffAlerts(fx.storeId, { recipients: [{ accountId: fx.accountId, events: ["summary"] }], contactEvents: [], summary: "daily", summaryWeekday: 1, summaryHour: 8 }, fx.accountId),
     ).toEqual({ ok: true });
@@ -245,7 +247,7 @@ describe("the summary (2.8, 4.7)", () => {
     const daily = await staffMails(fx.storeId, "staff.summary");
     expect(daily).toHaveLength(1);
     expect(daily[0].idempotency_key).toBe(`staff-summary:${fx.storeId}:daily:2031-01-14:${fx.accountId}`);
-    expect(String(daily[0].text)).toContain("No orders yesterday");
+    expect(String(daily[0].text)).toContain("Paid orders: 1");
 
     await alerts.saveStaffAlerts(fx.storeId, { recipients: [{ accountId: fx.accountId, events: ["summary"] }], contactEvents: [], summary: "weekly", summaryWeekday: 1, summaryHour: 8 }, fx.accountId);
     await alerts.sendDueSummaries({ now: new Date("2031-01-16T08:00:00Z") }); // a Thursday
@@ -296,6 +298,8 @@ describe("no shopper's personal field in a staff email (4.8, 6.3 C4)", () => {
     );
     await completeOrderPayment(orderId, `cs_${orderId}`);
     await drain();
+    // The daily briefing covers yesterday and is sent only for a period with a paid order (D348): the order is yesterday's.
+    await db().execute(sql`update commerce.orders set placed_at = now() - interval '1 day' where id = ${orderId}::uuid`);
     const [line] = await db().execute<Row>(sql`select id from commerce.order_lines where order_id = ${order.orderId}::uuid`);
     const [ret] = await db().transaction(async (tx) => {
       const made = await tx.execute<Row>(sql`

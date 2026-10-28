@@ -246,14 +246,14 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "partial"
     },
     "weight": 2,
-    "gap": "The store's Home shows the top three alerts (eleven kinds: conversion drop, weekday revenue, refund rate, CAC, stock-outs, checkout abandonment, discount creep, targets, cost coverage, good news) with figures and a page to open (D152), the full list is on the Analytics overview and the assistant has analytics_alerts. All of it is worked out on read, in code, from analytics: nothing is pushed (no morning or weekly briefing by email or in the admin), and nothing outside analytics (catalogue, SEO, marketing) is suggested. Since D309 the autopilot emails a weekly report (sales and orders counted in code, goals, an optional checked note) and a daily digest, but only to people whose plans run, not built from the alerts and with no switch of its own. Since D328 the autopilot also looks at each goal again on its own and proposes (or starts) the next plan, from the goal's figures rather than the alerts. Since D331, with *React to what happens* on, an urgent or warning alert (checked once a day) brings a turn of the autopilot at once that may plan what to do about it (started as a review's plan, by the owner's setting), as does a customer waiting for a person (a staff note) and an A/B test that ended by itself (choosing the winner within the owner's levels).",
-    "bucket": "A",
-    "wave": 8,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "A weekly (or daily) briefing is built in code from alertsForStore and the store checkup, sent to owners who switched it on, once per period (idempotent key), and never sent for a quiet store.",
       "Every figure in the briefing is counted in code and each item links to the admin page that acts on it; the model never makes a number.",
@@ -270,7 +270,13 @@
         "src/server/control-center.ts",
         "src/server/autopilot-reports.ts",
         "src/server/autopilot-reviews.ts",
-        "src/server/autopilot-events.ts"
+        "src/server/autopilot-events.ts",
+        "src/server/briefing.ts",
+        "src/server/store-checkup.ts",
+        "src/server/staff-alerts.ts",
+        "src/lib/alert-ask.ts",
+        "src/components/admin/analytics/ask-about-alert.tsx",
+        "src/components/admin/briefing-offer.tsx"
       ],
       "tests": [
         "src/lib/analytics-alerts.test.ts",
@@ -278,16 +284,26 @@
         "src/server/analytics-tools.int.test.ts",
         "src/server/control-center.int.test.ts",
         "src/server/autopilot-reports.int.test.ts",
-        "src/server/autopilot-reviews.int.test.ts"
+        "src/server/autopilot-reviews.int.test.ts",
+        "src/server/analytics-briefing.int.test.ts",
+        "src/server/briefing-emails.test.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D152",
       "D309",
-      "D328"
+      "D328",
+      "D348"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-28",
+        "from": "partial",
+        "to": "full",
+        "why": "D348: the staff summary is now the briefing, weekly or daily, built in code from alertsFor() over the store's snapshot, the store checkup (checkupFindings()) and the targets, every figure counted in code and every item linking to its page, sent once per period by key to the people chosen (store members only, so never a platform admin as such), never for a quiet period; the owner turns it on or off and chooses its frequency (Home offers it once); each alert on Home and the Overview hands its own words and figures to the AI manager to propose a gated next step."
+      }
+    ]
   },
   {
     "id": "ai.ai-product-descriptions-and-seo-text",

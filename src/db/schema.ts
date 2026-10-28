@@ -11170,14 +11170,40 @@ export const analyticsTargets = commerce.table(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
-    month: date("month", { mode: "string" }).notNull(),
-    revenueTargetMinor: bigint("revenue_target_minor", { mode: "number" }).notNull(),
+    /** A monthly net-sales target's month (the first form, D152); null for every other target. Kept in step with `starts_on` by the database. */
+    month: date("month", { mode: "string" }),
+    /** A monthly net-sales target's amount; null for every other target. Kept in step with `target_value`. */
+    revenueTargetMinor: bigint("revenue_target_minor", { mode: "number" }),
+    /** What the target counts (D348): `net_sales` and `aov` in minor units of the main currency without VAT, `orders` a count, `conversion` basis points. */
+    metric: text("metric").notNull().default("net_sales"),
+    period: text("period").notNull().default("month"),
+    startsOn: date("starts_on", { mode: "string" }).notNull(),
+    endsOn: date("ends_on", { mode: "string" }).notNull(),
+    targetValue: bigint("target_value", { mode: "number" }).notNull(),
     createdAt: createdAt(),
   },
   (t) => [
     unique("analytics_targets_month_key").on(t.storeId, t.month),
-    check("analytics_targets_first_of_month", sql`${t.month} = date_trunc('month', ${t.month}::timestamp)::date`),
-    check("analytics_targets_amount", sql`${t.revenueTargetMinor} > 0`),
+    uniqueIndex("analytics_targets_period_key").on(t.storeId, t.metric, t.period, t.startsOn),
+    check("analytics_targets_first_of_month", sql`${t.month} is null or ${t.month} = date_trunc('month', ${t.month}::timestamp)::date`),
+    check("analytics_targets_amount", sql`${t.revenueTargetMinor} is null or ${t.revenueTargetMinor} > 0`),
+    check("analytics_targets_metric", sql`${t.metric} in ('net_sales', 'orders', 'conversion', 'aov')`),
+    check("analytics_targets_period", sql`${t.period} in ('week', 'month', 'quarter', 'custom')`),
+    check("analytics_targets_value", sql`${t.targetValue} > 0 and (${t.metric} <> 'conversion' or ${t.targetValue} <= 10000)`),
+    check(
+      "analytics_targets_bounds",
+      sql`${t.endsOn} >= ${t.startsOn} and ${t.endsOn} <= ${t.startsOn} + 730 and case ${t.period}
+        when 'week' then extract(isodow from ${t.startsOn}) = 1 and ${t.endsOn} = ${t.startsOn} + 6
+        when 'month' then ${t.startsOn} = date_trunc('month', ${t.startsOn}::timestamp)::date and ${t.endsOn} = (date_trunc('month', ${t.startsOn}::timestamp) + interval '1 month - 1 day')::date
+        when 'quarter' then ${t.startsOn} = date_trunc('quarter', ${t.startsOn}::timestamp)::date and ${t.endsOn} = (date_trunc('quarter', ${t.startsOn}::timestamp) + interval '3 months - 1 day')::date
+        else true end`,
+    ),
+    // The first form's two columns are a monthly net-sales target's, and say what the new ones say.
+    check(
+      "analytics_targets_first_form",
+      sql`(${t.month} is null) = (${t.revenueTargetMinor} is null) and (${t.month} is null
+        or (${t.metric} = 'net_sales' and ${t.period} = 'month' and ${t.month} = ${t.startsOn} and ${t.revenueTargetMinor} = ${t.targetValue}))`,
+    ),
   ],
 );
 
@@ -12964,12 +12990,19 @@ export const staffAlertSettings = commerce.table(
     /** The last period a summary was sent for (`summaryDue()`'s key); the five-minute job's guard. */
     summaryLastPeriod: text("summary_last_period"),
     contactEvents: text("contact_events").array().notNull().default(sql`'{}'::text[]`),
+    /** The least severe analytics alert emailed (D348): `urgent`, `warning` or `info`; good news is never emailed. */
+    alertFloor: text("alert_floor").notNull().default("warning"),
+    /** The store day the analytics alerts were last checked for their email (D348), claimed before they are worked out. */
+    alertsCheckedOn: date("alerts_checked_on", { mode: "string" }),
+    /** When an owner answered *Not now* to the briefing's offer on Home (D348); the offer is not shown again. */
+    briefingOfferDismissedAt: timestamp("briefing_offer_dismissed_at", { withTimezone: true }),
     updatedBy: uuid("updated_by").references(() => accounts.id, { onDelete: "set null" }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (t) => [
     index("staff_alert_settings_updated_by_idx").on(t.updatedBy),
+    check("staff_alert_settings_alert_floor", sql`${t.alertFloor} in ('urgent', 'warning', 'info')`),
     check("staff_alert_settings_summary", sql`${t.summary} in ('off', 'daily', 'weekly')`),
     check("staff_alert_settings_weekday", sql`${t.summaryWeekday} between 1 and 7`),
     check("staff_alert_settings_hour", sql`${t.summaryHour} between 0 and 23`),
@@ -12996,6 +13029,29 @@ export const staffAlertRecipients = commerce.table(
     primaryKey({ columns: [t.storeId, t.accountId] }),
     index("staff_alert_recipients_account_idx").on(t.accountId),
     check("staff_alert_recipients_events", sql`cardinality(${t.events}) > 0 and ${t.events} <@ array[${sqlList(STAFF_ALERT_EVENTS)}]::text[]`),
+  ],
+);
+
+/**
+ * An analytics alert emailed to a store's staff (D348): one row per store, store day and alert (`Alert.id`), claimed before the email goes, so an alert is
+ * emailed once a day however often the job runs. The alert's id and severity only; its words and figures are in the email. Deleted after 90 days by the
+ * retention job.
+ */
+export const analyticsAlertSends = commerce.table(
+  "analytics_alert_sends",
+  {
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id, { onDelete: "cascade" }),
+    day: date("day", { mode: "string" }).notNull(),
+    alertId: text("alert_id").notNull(),
+    severity: text("severity").notNull(),
+    sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.day, t.alertId] }),
+    check("analytics_alert_sends_alert", sql`char_length(${t.alertId}) between 1 and 80`),
+    check("analytics_alert_sends_severity", sql`${t.severity} in ('urgent', 'warning', 'info')`),
   ],
 );
 

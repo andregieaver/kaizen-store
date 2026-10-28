@@ -11,8 +11,10 @@ import {
   isValidDay,
   parseAnalyticsSettings,
   parseSpend,
+  parsePeriodTarget,
   parseTarget,
   type AnalyticsSettings,
+  type PeriodTarget,
 } from "@/lib/analytics-settings";
 import { parseCsv, recordsOf } from "@/lib/csv";
 import { mainCurrency } from "@/lib/markets";
@@ -143,11 +145,11 @@ export async function backfillCosts({ account, store, role }: Membership): Promi
 
 export type StoredTarget = { month: string; revenueTargetMinor: number };
 
-/** The store's monthly targets, newest month first. */
+/** The store's monthly net-sales targets, newest month first (the first form, D152; every other target is `listPeriodTargets()`). */
 export async function listTargets(storeId: string, limit = 24): Promise<StoredTarget[]> {
   const rows = await db().execute<Row>(sql`
     select month::text as month, revenue_target_minor from commerce.analytics_targets
-    where store_id = ${storeId}::uuid order by month desc limit ${Math.min(Math.max(Math.floor(limit), 1), 120)}
+    where store_id = ${storeId}::uuid and month is not null order by month desc limit ${Math.min(Math.max(Math.floor(limit), 1), 120)}
   `);
   return rows.map((r) => ({ month: String(r.month), revenueTargetMinor: Number(r.revenue_target_minor) }));
 }
@@ -164,6 +166,56 @@ export async function saveTarget({ account, store }: Membership, input: unknown)
   `);
   await audit(account.id, store.id, "analytics.target", { month: t.month, revenueTargetMinor: t.revenueTargetMinor, currency: mainCurrency(store) });
   return { ok: true, target: t };
+}
+
+/** A target of any metric and period (D348), in the metric's unit (`TARGET_METRICS`). */
+export type StoredPeriodTarget = PeriodTarget & { id: string };
+
+/** The store's targets of every kind whose period ends on or after `from` (every one without it), soonest first; at most `limit`. */
+export async function listPeriodTargets(storeId: string, { from, limit = 100 }: { from?: string; limit?: number } = {}): Promise<StoredPeriodTarget[]> {
+  const after = from && isValidDay(from) ? sql`and ends_on >= ${from}::date` : sql``;
+  const rows = await db().execute<Row>(sql`
+    select id, metric, period, starts_on::text as starts_on, ends_on::text as ends_on, target_value from commerce.analytics_targets
+    where store_id = ${storeId}::uuid ${after}
+    order by starts_on, metric, period limit ${Math.min(Math.max(Math.floor(limit), 1), 500)}
+  `);
+  return rows.map((r) => ({
+    id: String(r.id),
+    metric: String(r.metric) as PeriodTarget["metric"],
+    period: String(r.period) as PeriodTarget["period"],
+    startsOn: String(r.starts_on),
+    endsOn: String(r.ends_on),
+    targetValue: Number(r.target_value),
+  }));
+}
+
+/**
+ * Sets a target of any metric and period (`parsePeriodTarget()`: `{ metric, period, start, end?, value }`); a metric, period and first day has one, so
+ * it replaces. Any member with the analytics' write key, as a month's target was (a target changes nothing a shopper sees).
+ */
+export async function savePeriodTarget({ account, store }: Pick<Membership, "account" | "store">, input: unknown): Promise<AnalyticsResult<{ target: StoredPeriodTarget; replaced: boolean }>> {
+  const parsed = parsePeriodTarget(input, mainCurrency(store));
+  if (!parsed.ok) return refuse(...parsed.problems);
+  const t = parsed.value;
+  const [row] = await db().execute<Row>(sql`
+    insert into commerce.analytics_targets (store_id, metric, period, starts_on, ends_on, target_value)
+    values (${store.id}::uuid, ${t.metric}, ${t.period}, ${t.startsOn}::date, ${t.endsOn}::date, ${t.targetValue})
+    on conflict (store_id, metric, period, starts_on) do update set ends_on = excluded.ends_on, target_value = excluded.target_value
+    returning id, (xmax <> 0) as replaced
+  `);
+  await audit(account.id, store.id, "analytics.target", { ...t, currency: mainCurrency(store) });
+  return { ok: true, target: { ...t, id: String(row.id) }, replaced: Boolean(row.replaced) };
+}
+
+/** Takes a target of any kind away by its id, if it is the store's own; false when there was none. */
+export async function deletePeriodTarget({ account, store }: Pick<Membership, "account" | "store">, id: string): Promise<AnalyticsResult<{ deleted: boolean }>> {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) return { ok: true, deleted: false };
+  const rows = await db().execute<Row>(sql`
+    delete from commerce.analytics_targets where store_id = ${store.id}::uuid and id = ${id}::uuid
+    returning metric, period, starts_on::text as starts_on
+  `);
+  if (rows.length > 0) await audit(account.id, store.id, "analytics.target_delete", { metric: String(rows[0].metric), period: String(rows[0].period), startsOn: String(rows[0].starts_on) });
+  return { ok: true, deleted: rows.length > 0 };
 }
 
 /** Takes a month's target away (`month` as `YYYY-MM` or any day of it); true when there was one. */

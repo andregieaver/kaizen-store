@@ -80,6 +80,7 @@ export function AiManagerChat({
   inputRef: givenInputRef,
   onNavigate,
   startVoice = 0,
+  ask,
 }: {
   area: "store" | "platform";
   /** The AI manager's page; its turn route is `{base}/turn`. */
@@ -96,6 +97,8 @@ export function AiManagerChat({
   onNavigate?: () => void;
   /** Asked to talk (the launcher's microphone, counted per click): voice mode starts. */
   startVoice?: number;
+  /** A first message handed over from the page (an alert's *Ask the AI manager*, D348), counted per press: it is sent once each time. */
+  ask?: { text: string; n: number };
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -171,6 +174,14 @@ export function AiManagerChat({
   useEffect(() => {
     if (startVoice > 0) startRef.current();
   }, [startVoice]);
+
+  // An alert handed over from the page (D348): sent as the person's message, once per press.
+  const askedRef = useRef(0);
+  useEffect(() => {
+    if (!ask || ask.n <= askedRef.current) return;
+    askedRef.current = ask.n;
+    sendRef.current(ask.text);
+  }, [ask]);
 
   // Escape ends voice mode and calls.
   const { stop: stopVoiceMode } = voice;

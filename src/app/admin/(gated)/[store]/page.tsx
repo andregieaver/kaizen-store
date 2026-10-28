@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
 import { AfterSaleNote } from "@/components/admin/after-sale-gate";
+import { BriefingOffer } from "@/components/admin/briefing-offer";
 import { DemoContentCard } from "@/components/admin/demo-content-card";
 import { HomeAnalyticsAlerts, HomeAnalyticsAlertsFallback } from "@/components/admin/analytics/home-alerts";
 import { StaffAlertsFailed } from "@/components/admin/notifications/staff-alerts-failed";
@@ -21,6 +22,7 @@ import { getSetupProgress } from "@/server/setup";
 import { platformModes } from "@/server/stripe";
 
 import { removeDemoContentAction } from "./demo-actions";
+import { dismissBriefingAction, turnOnBriefingAction } from "./settings/notifications/staff/actions";
 
 type Props = PageProps<"/admin/[store]">;
 
@@ -110,6 +112,12 @@ export default async function AdminOverview({ params }: Props) {
       {store.setupCompletedAt && selling && memberCan(current, "analytics:read") && (
         <Suspense fallback={<HomeAnalyticsAlertsFallback />}>
           <HomeAnalyticsAlerts store={store} base={base} now={now} lang={lang} />
+        </Suspense>
+      )}
+      {/* The briefing by email, offered once to an owner (D348): read after the page is shown. */}
+      {store.setupCompletedAt && selling && owner && (
+        <Suspense fallback={null}>
+          <BriefingOffer storeId={store.id} lang={lang} turnOn={turnOnBriefingAction.bind(null, store.slug)} dismiss={dismissBriefingAction.bind(null, store.slug)} />
         </Suspense>
       )}
       {store.setupCompletedAt && selling && !(figures && hidden(figures, "sales") && hidden(figures, "stock")) && (

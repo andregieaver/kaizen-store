@@ -6,7 +6,7 @@ import type { ChangeExplanation } from "@/lib/analytics-diagnosis";
 import type { MonthForecast } from "@/lib/analytics-forecast";
 import { costsKnown, estimateText, kpiChange } from "@/lib/analytics-kpi";
 import { formatAmount, formatTimes } from "@/lib/analytics-format";
-import type { TargetProgress } from "@/lib/analytics-targets";
+import { isSumMetric, LEVEL_MINIMUMS, type PeriodProgress, type TargetMetric, type TargetProgress } from "@/lib/analytics-targets";
 import type { OverviewHead, PeriodFigures } from "@/server/analytics-totals";
 
 import type { BarRow } from "./charts";
@@ -26,6 +26,19 @@ export type OverviewTarget = {
   monthLabel: string;
   /** This month's net revenue against its target; status `no_target` when none is set. */
   progress: TargetProgress;
+  /** Every other target whose period covers today (D348), soonest ending first; absent or empty when there is none. */
+  others?: readonly OverviewTargetCard[];
+};
+
+/** A running target of any metric and period (`runningTargets()`), with its period in words. */
+export type OverviewTargetCard = {
+  id: string;
+  metric: TargetMetric;
+  /** "the week of 26 Oct 2026", "Q4 2026", "October 2026", "1 Oct 2026 to 31 Dec 2026". */
+  periodLabel: string;
+  progress: PeriodProgress;
+  unconverted: number;
+  missingCurrencies: readonly string[];
 };
 
 /** This month's forecast (`forecastForStore()`), for the card under the target. */
@@ -33,6 +46,8 @@ export type OverviewForecast = {
   /** "October 2026". */
   monthLabel: string;
   forecast: MonthForecast;
+  /** The month's paid orders, forecast the same way (D348; its `*Minor` figures are counts); absent in older callers. */
+  orders?: MonthForecast;
   /** The month's target; null when none is set. */
   targetMinor: number | null;
 };
@@ -128,6 +143,48 @@ export function targetLines(p: TargetProgress, money: (minor: number) => string,
   if (p.daysLeft > 0) lines.push(countText(w.daysLeft, p.daysLeft, {}, formatCount(p.daysLeft)));
   lines.push(p.weekdayWeighted ? w.weekdays : w.flat);
   return lines;
+}
+
+/** A figure of a target's metric written: an amount for net sales and AOV, a count of orders, a percentage for conversion (basis points). */
+export function metricWriter(metric: TargetMetric, money: (minor: number) => string): (value: number) => string {
+  if (metric === "orders") return (n) => formatCount(Math.round(n));
+  if (metric === "conversion") return (bps) => formatPercent(bps / 10_000, 2);
+  return money;
+}
+
+/** The sentences under a running target's meter (D348): where it stands, what is missing for a verdict, and how long is left. */
+export function periodTargetLines(card: OverviewTargetCard, money: (minor: number) => string, words: AnalyticsMessages = analyticsWords()): string[] {
+  const w = words.overview.target;
+  const p = card.progress;
+  const write = metricWriter(card.metric, money);
+  const lines: string[] = [];
+  if (p.missing === "visits") return [w.notKnownVisits];
+  if (isSumMetric(card.metric)) {
+    if (p.actual !== null && p.actual >= p.targetValue) lines.push(w.reached);
+    if (p.tooEarly) lines.push(w.periodEarly);
+    else {
+      if (p.expected !== null && p.actual !== null) {
+        const gap = p.actual - p.expected;
+        lines.push(fillWords(gap >= 0 ? w.ahead : w.behind, { amount: write(Math.abs(gap)), expected: write(p.expected) }));
+      }
+      if (p.projected !== null && !p.ended) lines.push(fillWords(w.projectedPeriod, { amount: write(p.projected), share: formatPercent(p.projected / p.targetValue, 0) }));
+    }
+    lines.push(p.weekdayWeighted ? w.weekdays : w.flat);
+  } else {
+    if (p.actual !== null) lines.push(fillWords(w.levelSoFar, { actual: write(p.actual), target: write(p.targetValue) }));
+    if (p.missing === "orders") lines.push(fillWords(w.fewOrders, { n: formatCount(LEVEL_MINIMUMS.aov.orders) }));
+    else if (p.missing === "sessions") lines.push(fillWords(w.fewSessions, { n: formatCount(LEVEL_MINIMUMS.conversion.sessions) }));
+    else if (p.actual !== null) lines.push(p.actual >= p.targetValue ? w.levelReached : fillWords(w.levelBehind, { amount: write(p.targetValue - p.actual) }));
+  }
+  if (p.daysLeft > 0) lines.push(countText(w.periodDaysLeft, p.daysLeft, {}, formatCount(p.daysLeft)));
+  return lines;
+}
+
+/** The month's orders forecast in one sentence: about how many, the range and what is banked, or that there is too little history. */
+export function ordersForecastLine(orders: MonthForecast, words: AnalyticsMessages = analyticsWords()): string {
+  const w = words.overview.forecast;
+  if (orders.expectedMinor === null || orders.lowMinor === null || orders.highMinor === null) return w.ordersTooLittle;
+  return fillWords(w.orders, { n: formatCount(orders.expectedMinor), low: formatCount(orders.lowMinor), high: formatCount(orders.highMinor), sofar: formatCount(orders.soFarMinor) });
 }
 
 /** The month's name in a month label: "October 2026" is "October", "oktober 2026" "oktober". */

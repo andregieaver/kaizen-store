@@ -15,7 +15,6 @@ import { OWNER_TOOLS_BY_NAME, readToolInput, type OwnerToolInput, type OwnerTool
 import { toolFeatureRefusal, toolOffered } from "@/lib/owner-tool-features";
 import { mayUseTool, toolRefusal } from "@/lib/owner-tool-permissions";
 import type { PermissionHolder } from "@/lib/permissions";
-import { auditProblems } from "@/lib/order-numbers";
 import { marketPath, storeHref } from "@/lib/paths";
 import { parsePrice } from "@/lib/product-input";
 import { categoryPath, isCategory, namedAttributes, type StandardAttributes } from "@/lib/product-taxonomy";
@@ -124,7 +123,8 @@ import {
 } from "./content-tools";
 import { ossReturnDataTool, vatReportTool } from "./tax-report-tools";
 import { customerInsights, productPerformance, restockSuggestions, salesFunnel, salesTrend } from "./owner-insights";
-import { getSetupProgress } from "./setup";
+import { checkupFindings } from "./store-checkup";
+import { listTargetsTool, setTargetTool } from "./target-tools";
 import {
   openStoreTool,
   preflightSetupTool,
@@ -191,14 +191,12 @@ import { listCampaigns, saveCampaign, setCampaignActive } from "./campaigns";
 import { campaignStatus, describeCampaign } from "@/lib/campaigns";
 import { listDiscounts, saveDiscount } from "./discounts";
 import { getInvoiceSettings, invoiceReadiness, seriesStates } from "./invoice-settings";
-import { invoiceCheckupFindings, invoiceCounts, listCreditNotes, listInvoices, waitingCreditNotes, waitingInvoices } from "./invoices";
-import { orderNumberAudit } from "./order-numbers";
-import { inventoryCounts, ledgerProblems } from "./inventory";
+import { invoiceCounts, listCreditNotes, listInvoices, waitingCreditNotes, waitingInvoices } from "./invoices";
 import { preflightStockTool, setBackorderTool, setStockTool, stockHistoryTool, stockLevelsTool } from "./stock-tools";
 import { pickupOrdersTool, shippingOverviewTool } from "./shipping-tools";
 import { notificationSettingsTool, orderRulesTool, parcelTrackingTool } from "./notification-tools";
 import { onHandActive } from "./stock-sql";
-import { taxCheckupFindings, taxProfileView } from "./tax-profile";
+import { taxProfileView } from "./tax-profile";
 import { addOrderNote, CARRIERS, getOrderAdmin, liveShipments, markSent, refundOrder, sendRefusalText } from "./order-admin";
 import { archiveOrdersTool, createDraftOrderTool, listDraftOrdersTool, listOrdersTool, preflightSendDraft, sendDraftOrderTool, tagOrdersTool } from "./order-ops-tools";
 import { listPages, pagesTag, unpublishPage } from "./pages";
@@ -994,67 +992,8 @@ type Handler = (ctx: OwnerToolContext, input: never) => Promise<unknown>;
 const adminLink = (store: Store, path: string) => `/admin/${store.slug}${path}`;
 
 async function storeCheckup(ctx: OwnerToolContext) {
-  const { store } = ctx;
-  const [[counts], [low], progress, integrations, restock, numbering, taxFindings, documentFindings, ledger, levels] = await Promise.all([
-    db().execute<Row>(sql`
-      select
-        (select count(*)::int from commerce.orders o where o.store_id = ${store.id}::uuid and o.status = 'paid' and o.copied_from is null
-           and o.placed_at < now() - interval '2 days' and o.delivery_method = 'ship'
-           and exists (select 1 from commerce.order_lines l where l.order_id = o.id and l.delivery = 'physical')) as late_orders,
-        (select count(*)::int from commerce.orders o where o.store_id = ${store.id}::uuid and o.status = 'paid' and o.copied_from is null
-           and o.delivery_method = 'ship'
-           and exists (select 1 from commerce.order_lines l where l.order_id = o.id and l.delivery = 'physical')) as to_send,
-        -- Handed over by the store itself (D237): collected at a place, or its own local delivery not delivered yet (the Orders page's views).
-        (select count(*)::int from commerce.orders o where o.store_id = ${store.id}::uuid and o.copied_from is null and o.archived_at is null
-           and o.delivery_method = 'pickup' and o.status = 'paid') as to_collect,
-        (select count(*)::int from commerce.orders o where o.store_id = ${store.id}::uuid and o.copied_from is null and o.archived_at is null
-           and o.delivery_method = 'local' and o.status in ('paid', 'fulfilled') and o.delivered_at is null) as local_waiting,
-        (select count(distinct lower(q.query))::int from commerce.search_queries q
-           where q.store_id = ${store.id}::uuid and q.results = 0 and not q.redirected and q.created_at > now() - interval '7 days') as searches_missed,
-        (select count(*)::int from commerce.assistant_approvals a
-           where a.store_id = ${store.id}::uuid and a.account_id = ${ctx.account.id}::uuid and a.status = 'pending') as approvals,
-        (select count(*)::int from commerce.products p where p.store_id = ${store.id}::uuid and p.status = 'draft') as drafts
-    `),
-    db().execute<Row>(sql`
-      select count(*)::int as n from commerce.product_variants v
-      join commerce.products p on p.store_id = v.store_id and p.id = v.product_id
-      where v.store_id = ${store.id}::uuid and p.status = 'active' and v.active and v.delivery = 'physical' and p.kind = 'goods'
-        and ${onHandActive(sql`v.id`)} <= 3
-    `),
-    getSetupProgress(store),
-    listIntegrations(store.id),
-    restockSuggestions({ store }, { days: 30, cover_days: 30, lead_days: 7 }),
-    orderNumberAudit(store.id),
-    taxCheckupFindings(store.id),
-    invoiceCheckupFindings(store.id),
-    ledgerProblems(store.id),
-    inventoryCounts(store.id),
-  ]);
-  const findings: { what: string; page: string }[] = [];
-  const add = (when: boolean, what: string, page: string) => when && findings.push({ what, page: adminLink(store, page) });
-  add(!progress.readyToOpen, "The store is not ready to open yet: setup_progress says what is left.", "");
-  add(Number(counts.late_orders) > 0, `${counts.late_orders} paid order(s) have waited more than two days to be sent.`, "/orders?show=to-send");
-  add(Number(counts.to_send) > 0 && Number(counts.late_orders) === 0, `${counts.to_send} paid order(s) are waiting to be sent.`, "/orders?show=to-send");
-  add(Number(counts.to_collect) > 0, `${counts.to_collect} paid order(s) are waiting to be collected at a pickup place: pickup_orders lists them.`, "/orders?show=to-hand-over");
-  add(Number(counts.local_waiting) > 0, `${counts.local_waiting} ${Number(counts.local_waiting) === 1 ? "local delivery is" : "local deliveries are"} not delivered yet: pickup_orders lists them.`, "/orders?show=local");
-  add(Number(low.n) > 0, `${low.n} variant(s) have 3 or fewer left in stock.`, "/products");
-  // The owner's own levels and what is owed on backorder (D172): the Inventory page's own counts.
-  add(levels.low > 0, `${levels.low} variant(s) are at or below the warning level you set: stock_levels with status low lists them.`, "/inventory?status=low");
-  add(levels.owed > 0, `${levels.owed} unit(s) are owed to customers on backorder, on orders that are paid and not sent.`, "/inventory?status=backorder");
-  add(restock.urgent > 0, `${restock.urgent} variant(s) will run out within a week at the current pace: restock_suggestions says how many to order.`, "/products");
-  add(Number(counts.searches_missed) > 0, `${counts.searches_missed} different search(es) found nothing this week.`, "/search");
-  add(Number(counts.approvals) > 0, `${counts.approvals} change(s) you asked me for are waiting for your approval.`, "/assistant");
-  for (const problem of auditProblems(numbering)) add(true, `Order numbering is not in sequence: ${problem}`, "/orders");
-  // The history of stock (D172): the movements of a variant at a location add up to its level; a pair that does not is a level written in a way no trigger saw.
-  add(ledger.length > 0, `The stock history does not add up for ${ledger.length === 50 ? "50 or more" : ledger.length} variant(s) at a location. Tell Kaizena Flow's support.`, "/inventory/history");
-  // The tax profile (D157): registered without a number, a number never checked valid, IOSS or OSS half filled in.
-  for (const finding of taxFindings) add(true, finding.message, "/settings/tax");
-  // Invoices and credit notes (D159): numbering in sequence, invoices waiting, a refund with no credit note, PDFs that could not be made.
-  for (const finding of documentFindings) add(true, finding.message, "/invoices");
-  add(Number(counts.drafts) > 0, `${counts.drafts} product(s) are drafts, not on the site.`, "/products");
-  add(store.paymentsTest && store.paymentsOn, "Payments are in test mode: shoppers cannot really pay yet.", "/settings/payments");
-  for (const i of integrations) add(i.enabled && i.recentFailures > 0, `${i.provider} failed ${i.recentFailures} send(s) this week.`, `/integrations/${i.provider}`);
-  return { findings, all_good: findings.length === 0 };
+  const findings = await checkupFindings(ctx.store, ctx.account.id);
+  return { findings: findings.map((f) => ({ what: f.what, page: adminLink(ctx.store, f.page) })), all_good: findings.length === 0 };
 }
 
 /** The store's tax registration (D157), read only. The seller's own number is on its documents; no buyer's is ever here. */
@@ -2388,6 +2327,8 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   report_catalogue: reportCatalogueTool,
   run_report: runReportTool,
   save_report: saveReportTool,
+  list_targets: listTargetsTool,
+  set_target: setTargetTool,
   speed_report: speedReportTool,
   support_overview: supportOverviewTool,
   list_support_conversations: listSupportConversationsTool,

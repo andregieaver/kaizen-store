@@ -150,7 +150,7 @@ describe("the owner assistant (D94)", () => {
     // Searching the web and reading a page reach the network, and keeping a note or a comparison writes (D329): `research.int.test.ts`, with stand-ins.
     // Keeping the brand and designing a look write (D330): `brand.int.test.ts`. Writing an entry's draft (D326): `content-tools.int.test.ts`.
     // Saving a report (D346): `report-query.int.test.ts`.
-    const WRITES_WITHOUT_A_YES = new Set(["save_report", "set_brand", "design_look", "make_brand_marks", "search_web", "read_web_page", "save_research_note", "compare_options", "add_order_note", "draft_experiment", "tag_orders", "archive_orders", "create_draft_order", "create_product", "write_product_texts", "build_page", "edit_page", "draft_broadcast", "tag_customer", "add_support_note", "end_support_conversation", "log_time", "add_theme", "look_at_page", "look_at_store", "save_entry"]);
+    const WRITES_WITHOUT_A_YES = new Set(["save_report", "set_target", "set_brand", "design_look", "make_brand_marks", "search_web", "read_web_page", "save_research_note", "compare_options", "add_order_note", "draft_experiment", "tag_orders", "archive_orders", "create_draft_order", "create_product", "write_product_texts", "build_page", "edit_page", "draft_broadcast", "tag_customer", "add_support_note", "end_support_conversation", "log_time", "add_theme", "look_at_page", "look_at_store", "save_entry"]);
     for (const tool of OWNER_TOOLS.filter((t) => !("gate" in t) && !WRITES_WITHOUT_A_YES.has(t.name))) {
       const result = ownerTools.runOwnerTool(ctx, tool.name, args[tool.name] ?? {});
       if (tool.name === "get_order" || tool.name === "parcel_tracking") await expect(result).rejects.toThrow("No order 1 in this store.");

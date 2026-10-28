@@ -3746,6 +3746,13 @@
       "when": 1793143139611,
       "tag": "20261027231859_search_visits",
       "breakpoints": true
+    },
+    {
+      "idx": 535,
+      "version": "7",
+      "when": 1793149682721,
+      "tag": "20261028010802_analytics_targets_more",
+      "breakpoints": true
     }
   ]
 }

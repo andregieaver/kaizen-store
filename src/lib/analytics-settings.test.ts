@@ -11,6 +11,7 @@ import {
   parseAnalyticsSettings,
   parsePercentBps,
   parseSpend,
+  parsePeriodTarget,
   parseTarget,
   settingsEntered,
 } from "./analytics-settings";
@@ -212,5 +213,31 @@ describe("parseSpend", () => {
     for (const channel of ["direct", "organic_search", "paid_search", "organic_social", "paid_social", "email", "affiliate", "referral", "other"]) {
       expect(parseSpend({ ...typed, channel }, "NOK").ok, channel).toBe(true);
     }
+  });
+});
+
+describe("parsePeriodTarget (D348)", () => {
+  it("reads each metric in its own terms and the period's bounds", () => {
+    expect(parsePeriodTarget({ metric: "orders", period: "week", start: "2026-10-28", value: "1 200" }, "NOK")).toEqual({
+      ok: true,
+      value: { metric: "orders", period: "week", startsOn: "2026-10-26", endsOn: "2026-11-01", targetValue: 1200 },
+    });
+    expect(parsePeriodTarget({ metric: "conversion", period: "quarter", start: "2026-11", value: "2,5" }, "NOK")).toEqual({
+      ok: true,
+      value: { metric: "conversion", period: "quarter", startsOn: "2026-10-01", endsOn: "2026-12-31", targetValue: 250 },
+    });
+    expect(parsePeriodTarget({ metric: "aov", period: "custom", start: "2026-10-01", end: "2027-03-31", value: "450" }, "EUR")).toEqual({
+      ok: true,
+      value: { metric: "aov", period: "custom", startsOn: "2026-10-01", endsOn: "2027-03-31", targetValue: 45_000 },
+    });
+  });
+
+  it("refuses what the database would refuse, in words", () => {
+    expect(parsePeriodTarget({ metric: "orders", period: "month", start: "2026-10", value: "lots" }, "NOK")).toEqual({ ok: false, problems: ['"lots" is not a number of orders.'] });
+    expect(parsePeriodTarget({ metric: "conversion", period: "month", start: "2026-10", value: "120" }, "NOK").ok).toBe(false);
+    expect(parsePeriodTarget({ metric: "net_sales", period: "month", start: "2026-10", value: "0" }, "NOK")).toEqual({ ok: false, problems: ["The target must be more than 0."] });
+    expect(parsePeriodTarget({ metric: "orders", period: "custom", start: "2026-10-01", value: "5" }, "NOK")).toEqual({ ok: false, problems: ["Choose the last day."] });
+    expect(parsePeriodTarget({ metric: "orders", period: "custom", start: "2026-10-01", end: "2029-01-01", value: "5" }, "NOK").ok).toBe(false);
+    expect(parsePeriodTarget({ metric: "revenue", period: "month", start: "2026-10", value: "5" }, "NOK").ok).toBe(false);
   });
 });

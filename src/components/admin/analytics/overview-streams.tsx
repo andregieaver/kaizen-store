@@ -13,11 +13,12 @@ import {
   TargetSection,
   type OverviewFrame,
 } from "./overview-sections";
-import type { OverviewDiagnosis, OverviewForecast, OverviewTarget } from "./overview-text";
+import { dayText, type OverviewDiagnosis, type OverviewForecast, type OverviewTarget, type OverviewTargetCard } from "./overview-text";
 import { analyticsDateLocale } from "@/lib/analytics-lang";
 import { analyticsWords } from "@/lib/analytics-words";
 import type { AnalyticsContext } from "@/server/analytics-context";
-import { alertsForStore, diagnosisFor, forecastForStore, monthTargetMinor, targetFrom, type StoreDiagnosis, type StoreForecast } from "@/server/analytics-insights";
+import { alertsForStore, diagnosisFor, forecastForStore, monthTargetMinor, runningTargets, targetFrom, type StoreDiagnosis, type StoreForecast, type TargetCard } from "@/server/analytics-insights";
+import type { StoredPeriodTarget } from "@/server/analytics-settings";
 import type { OverviewReads } from "@/server/analytics-overview-reads";
 import { topProducts } from "@/server/analytics-totals";
 
@@ -51,7 +52,21 @@ const monthLabel = (monthStart: string) => new Intl.DateTimeFormat(analyticsDate
 
 /** The forecast as the view takes it (words for the month; nothing from the server module's own types). */
 export function forecastView(f: StoreForecast | null): OverviewForecast | null {
-  return f ? { monthLabel: monthLabel(f.monthStart), forecast: f.forecast, targetMinor: f.targetMinor } : null;
+  return f ? { monthLabel: monthLabel(f.monthStart), forecast: f.forecast, orders: f.orders, targetMinor: f.targetMinor } : null;
+}
+
+/** A target's period in words (D348): "the week of 26 Oct 2026", "Q4 2026", "October 2026", "1 Oct 2026 to 31 Dec 2026". */
+export function periodLabelOf(t: Pick<StoredPeriodTarget, "period" | "startsOn" | "endsOn">): string {
+  const w = analyticsWords().overview.target;
+  if (t.period === "week") return fillWords(w.periodWeek, { start: dayText(t.startsOn) });
+  if (t.period === "month") return monthLabel(t.startsOn);
+  if (t.period === "quarter") return fillWords(w.periodQuarter, { q: String(Math.floor((Number(t.startsOn.slice(5, 7)) - 1) / 3) + 1), year: t.startsOn.slice(0, 4) });
+  return fillWords(w.periodCustom, { start: dayText(t.startsOn), end: dayText(t.endsOn) });
+}
+
+/** Running targets as the view takes them. */
+export function targetCardsView(cards: readonly TargetCard[]): OverviewTargetCard[] {
+  return cards.map((c) => ({ id: c.target.id, metric: c.target.metric, periodLabel: periodLabelOf(c.target), progress: c.progress, unconverted: c.unconverted, missingCurrencies: c.missingCurrencies }));
 }
 
 /** The diagnosis as the view takes it, with what it is compared with in words. */
@@ -78,8 +93,8 @@ export function AlertsStream({ ctx, frame, reads }: StreamProps) {
 export function TargetStream({ ctx, frame, reads }: StreamProps) {
   const load = async (): Promise<OverviewTarget> => {
     const history = await reads.history();
-    const target = await monthTargetMinor(ctx.store, history.today);
-    return { monthLabel: monthLabel(`${history.today.slice(0, 7)}-01`), progress: targetFrom(history, target) };
+    const [target, others] = await Promise.all([monthTargetMinor(ctx.store, history.today), runningTargets(ctx.store, ctx.now, { history: Promise.resolve(history) })]);
+    return { monthLabel: monthLabel(`${history.today.slice(0, 7)}-01`), progress: targetFrom(history, target), others: targetCardsView(others) };
   };
   return (
     <Streamed id="overview-target" title={analyticsWords().overview.sections.target} load={load}>

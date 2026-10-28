@@ -128,6 +128,7 @@ const view = (over: Partial<StaffAlertsView> = {}): StaffAlertsView => ({
   summary: "off",
   summaryWeekday: 1,
   summaryHour: 8,
+  alertFloor: "warning",
   ...over,
 });
 

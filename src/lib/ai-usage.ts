@@ -24,6 +24,7 @@ export const KIND_WORDS: Record<AiKind, string> = {
 export const AI_FEATURES = {
   ai_manager: "AI manager",
   analytics_question: "Questions about the figures",
+  analytics_briefing: "The note in the briefing email",
   web_research: "Web research",
   autopilot: "Autopilot",
   chat_agent: "Chat agent",

@@ -186,6 +186,8 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   report_catalogue: "analytics:read",
   run_report: "analytics:read",
   save_report: "analytics:write",
+  list_targets: "analytics:read",
+  set_target: "analytics:write",
   // Data in and out (D165): product jobs are read like the products page; the tool narrows the kinds to what the member may see (order and customer files are the owner's).
   list_data_jobs: "products:read",
   explain_import_problems: "products:read",

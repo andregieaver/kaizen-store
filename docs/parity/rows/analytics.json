@@ -1132,15 +1132,22 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "partial"
     },
     "weight": 2,
-    "gap": "One monthly net-revenue target; alerts and the forecast exist (`alertsFor()`, `forecastMonth()`) and the AI manager repeats them, but alerts are shown only in the admin, never emailed or pushed (the autopilot's weekly report, D309, carries figures and goals, not alerts; since D331 an urgent alert can start an autopilot turn when the owner turns on *React to what happens*, which still sends no alert to staff), and the forecast covers month revenue only.",
-    "history": [],
-    "bucket": "A",
-    "wave": 8,
+    "gap": "",
+    "history": [
+      {
+        "on": "2026-10-28",
+        "from": "partial",
+        "to": "full",
+        "why": "D348: targets of net sales, orders, conversion or AOV over a week, month, quarter or chosen days (up to two years), followed by periodProgress() against the weekday-weighted expectation; the forecast also covers the month's orders, with its range, its estimate label and its too-little-history answer under 14 days; analytics alerts are emailed once a store day after 20:00 to the staff chosen (none by default), each alert once, through the same alertsFor() and its minimum volumes, so no email for a small number, and PAID leaves copied and host orders out."
+      }
+    ],
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "An owner can opt in to alert emails, sent once per alert per day to chosen staff, with the same minimum-volume rules as the page. (Beyond Shopify's native Targets, which have no alerts.)",
       "Targets can be set for orders, conversion or AOV as well as net revenue, with progress against the weekday-weighted expectation.",
@@ -1154,21 +1161,29 @@
         "src/lib/analytics-forecast.ts",
         "src/server/analytics-insights.ts",
         "src/components/admin/analytics/alerts.tsx",
-        "src/components/admin/analytics/home-alerts.tsx"
+        "src/components/admin/analytics/home-alerts.tsx",
+        "src/server/staff-alerts.ts",
+        "src/server/analytics-settings.ts",
+        "src/components/admin/analytics/settings-forms.tsx",
+        "src/components/admin/analytics/overview-sections.tsx"
       ],
       "tests": [
         "src/lib/analytics-alerts.test.ts",
         "src/lib/analytics-targets.test.ts",
         "src/lib/analytics-forecast.test.ts",
         "src/server/analytics-insights.int.test.ts",
-        "src/components/admin/analytics/alerts.test.ts"
+        "src/components/admin/analytics/alerts.test.ts",
+        "src/server/analytics-briefing.int.test.ts",
+        "src/server/briefing-emails.test.ts",
+        "src/lib/analytics-settings.test.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D152",
       "D309",
-      "D331"
+      "D331",
+      "D348"
     ]
   },
   {

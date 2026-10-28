@@ -12,9 +12,11 @@ import { mainCurrency } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import {
   backfillCosts,
+  deletePeriodTarget,
   deleteTarget,
   getAnalyticsSettings,
   saveAnalyticsSettings,
+  savePeriodTarget,
   saveTarget,
   setVisitCounting,
 } from "@/server/analytics-settings";
@@ -69,6 +71,30 @@ export async function deleteTargetAction(storeSlug: string, _state: FormState, f
   if (!member) return failed([w.ownerOnly]);
   const month = form.get("month");
   const result = await deleteTarget(member, typeof month === "string" ? month : "");
+  if (!result.ok) return failed(result.problems);
+  refresh();
+  return { status: "ok", messages: [result.deleted ? w.targets.removed : w.targets.alreadyGone] };
+}
+
+/** Sets a target of any metric and period (D348). */
+export async function savePeriodTargetAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
+  const member = await checkOwnerRole(storeSlug);
+  const w = await wordsOf(member);
+  if (!member) return failed([w.ownerOnly]);
+  const fields = Object.fromEntries(form);
+  const result = await savePeriodTarget(member, { ...fields, end: fields.period === "custom" ? fields.end : undefined });
+  if (!result.ok) return failed(result.problems);
+  refresh();
+  return { status: "ok", messages: [w.targets.savedKind] };
+}
+
+/** Takes a target of any kind away, by its id. */
+export async function deletePeriodTargetAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
+  const member = await checkOwnerRole(storeSlug);
+  const w = await wordsOf(member);
+  if (!member) return failed([w.ownerOnly]);
+  const id = form.get("id");
+  const result = await deletePeriodTarget(member, typeof id === "string" ? id : "");
   if (!result.ok) return failed(result.problems);
   refresh();
   return { status: "ok", messages: [result.deleted ? w.targets.removed : w.targets.alreadyGone] };

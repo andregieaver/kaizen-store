@@ -22,7 +22,7 @@ import { contributionProfit } from "@/components/admin/analytics/marketing-view"
 import { factorRows } from "@/components/admin/analytics/overview-text";
 import { TOP_CHART, parseProductsSort, sortProducts } from "@/components/admin/analytics/products-view";
 import { marketName } from "@/components/admin/analytics/refunds-view";
-import { upcomingTargets } from "@/components/admin/analytics/settings-forms";
+import { otherTargets, upcomingTargets } from "@/components/admin/analytics/settings-forms";
 import { bridgeBars, bridgeRows } from "@/components/admin/analytics/subscriptions-view";
 import { FULL_WEEKDAYS, KIND_LABEL, countryRows, deviceShare, landingLabel } from "@/components/admin/analytics/traffic-view";
 
@@ -37,7 +37,7 @@ import { productsReport } from "./analytics-products-data";
 import { refundsReport } from "./analytics-refunds-data";
 import { returnsReport } from "./analytics-returns-data";
 import { searchReport } from "./analytics-search-data";
-import { listSpend, listTargets } from "./analytics-settings";
+import { listPeriodTargets, listSpend, listTargets } from "./analytics-settings";
 import { subscriptionsReport } from "./analytics-subscriptions-data";
 import { timeReport } from "./analytics-time-data";
 import { overviewHead, periodTotals, seriesByBucket, topProducts, type SeriesPoint } from "./analytics-totals";
@@ -509,6 +509,16 @@ const BUILDERS: Record<string, (x: Run) => Promise<Built>> = {
     const today = todayIn(x.ctx.now, x.ctx.store.timeZone);
     const shown = upcomingTargets(await listTargets(x.ctx.store.id, 60), today);
     return { rows: shown.map((t) => ({ month: t.month.slice(0, 7), target: t.revenueTargetMinor })), period: asOf(x) };
+  },
+  "settings.period_targets": async (x) => {
+    const today = todayIn(x.ctx.now, x.ctx.store.timeZone);
+    const currency = mainCurrency(x.ctx.store);
+    const unit = { net_sales: `minor units of ${currency}`, aov: `minor units of ${currency}`, orders: "orders", conversion: "basis points" } as const;
+    const shown = otherTargets(await listPeriodTargets(x.ctx.store.id, { from: today }));
+    return {
+      rows: shown.map((t) => ({ metric: t.metric, period: t.period, starts_on: t.startsOn, ends_on: t.endsOn, target_value: t.targetValue, unit: unit[t.metric] })),
+      period: asOf(x),
+    };
   },
 };
 

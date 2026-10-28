@@ -8,6 +8,7 @@
 import { z } from "zod";
 
 import { CHANNEL_KEYS } from "./analytics-channels";
+import { CUSTOM_MAX_SPAN_DAYS, periodBounds, TARGET_METRICS, TARGET_PERIODS, type TargetMetric, type TargetPeriod } from "./analytics-targets";
 import { formatPriceInput, parsePrice } from "./product-input";
 
 export const ANALYTICS_DEFAULTS = {
@@ -169,6 +170,56 @@ export function parseTarget(raw: unknown, currency: string): Parsed<MonthTarget>
   if (minor === null) return { ok: false, problems: [`"${parsed.data.revenueTarget}" is not an amount in ${currency}.`] };
   if (minor <= 0) return { ok: false, problems: ["The target must be more than 0."] };
   return { ok: true, value: { month, revenueTargetMinor: minor } };
+}
+
+// ---------------------------------------------------------------------------
+// Targets for any metric and period (wave 8 unit D, D348)
+// ---------------------------------------------------------------------------
+
+export const periodTargetInput = z.object({
+  metric: z.enum(TARGET_METRICS),
+  period: z.enum(TARGET_PERIODS),
+  /** Any day of the period (`YYYY-MM-DD`), or a month as `YYYY-MM`; a custom period's first day. */
+  start: z.string().trim().max(10),
+  /** A custom period's last day; ignored for the others. */
+  end: z.string().trim().max(10).optional(),
+  /** Typed in the metric's own terms: an amount in the main currency, a number of orders, or a percentage. */
+  value: typed,
+});
+
+export type PeriodTarget = { metric: TargetMetric; period: TargetPeriod; startsOn: string; endsOn: string; targetValue: number };
+
+/** A whole number typed with spaces or a thousands separator ("1 200", "1,200"); null otherwise. */
+function parseCount(value: string): number | null {
+  const text = value.replace(/[\s\u00a0\u202f]/g, "").replace(/[.,](?=\d{3}(?:\D|$))/g, "");
+  if (!/^\d{1,9}$/.test(text)) return null;
+  return Number(text);
+}
+
+/** A target as typed on Analytics → Settings or by the AI manager's `set_target`, checked as the database will check it. */
+export function parsePeriodTarget(raw: unknown, currency: string): Parsed<PeriodTarget> {
+  const parsed = periodTargetInput.safeParse(raw);
+  if (!parsed.success) return { ok: false, problems: problemsOf(parsed.error) };
+  const input = parsed.data;
+  const startDay = /^\d{4}-\d{2}$/.test(input.start) ? `${input.start}-01` : input.start;
+  if (!isValidDay(startDay)) return { ok: false, problems: [input.period === "custom" ? "Choose the first day." : "Choose when the target is for."] };
+  if (input.period === "custom" && (!input.end || !isValidDay(input.end))) return { ok: false, problems: ["Choose the last day."] };
+  const bounds = periodBounds(input.period, startDay, input.end);
+  if (!bounds) return { ok: false, problems: [`A period ends on or after its first day and lasts at most ${CUSTOM_MAX_SPAN_DAYS + 1} days.`] };
+  let value: number | null;
+  if (input.metric === "net_sales" || input.metric === "aov") {
+    value = parseAmountMinor(input.value, currency);
+    if (value === null) return { ok: false, problems: [`"${input.value}" is not an amount in ${currency}.`] };
+  } else if (input.metric === "orders") {
+    value = parseCount(input.value);
+    if (value === null) return { ok: false, problems: [`"${input.value}" is not a number of orders.`] };
+  } else {
+    value = parsePercentBps(input.value);
+    if (value === null) return { ok: false, problems: [`"${input.value}" is not a percentage, such as 2.5.`] };
+    if (value > 10_000) return { ok: false, problems: ["A conversion rate is at most 100 %."] };
+  }
+  if (value <= 0) return { ok: false, problems: ["The target must be more than 0."] };
+  return { ok: true, value: { metric: input.metric, period: input.period, ...bounds, targetValue: value } };
 }
 
 // ---------------------------------------------------------------------------

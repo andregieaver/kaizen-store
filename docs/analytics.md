@@ -372,10 +372,26 @@ delivery method is wave 8. Counts only, never a customer, for a member who may r
   days of the month, 30 orders in it, and a shortfall over 2.5 standard deviations of what the days so far could add up
   to by chance (from the last 56 days' spread of a day's revenue).
 - **Targets** (`analytics_targets`): a month's net revenue; progress, the share expected by today (the month's
-  weekday-weighted run), and ahead or behind.
+  weekday-weighted run), and ahead or behind. Since D348 a target is also of **orders**, the **conversion rate** or the
+  **average order value**, over a **week** (Monday to Sunday), a **month**, a **quarter** or **chosen days** (up to two years),
+  one per metric, period and first day, each worked out by `periodProgress()` (`runningTargets()` for every target whose period
+  covers today):
+  - *Net sales* and *orders* are sums: the period's `revenueMinor − refundsMinor` (or `orders`) of `periodTotals()` so far,
+    against the target times the share of the period passed, weighted by the weekday pattern of the daily history when it has
+    four weeks of every weekday (`weekdayWeights()`), else every day alike; ahead or behind past 3 % of the expected figure,
+    no verdict in the first three days, and where the period ends if the pace holds (an estimate).
+  - *Average order value* is net sales over paid orders so far, against the target itself; no verdict under 10 paid orders.
+  - *Conversion* is checkout orders over visits so far, in basis points, against the target itself; **not known** while visits
+    were not counted on every day of the period, and no verdict under 300 visits.
+  - A currency without a rate is left out of the period's figures and counted beside the target.
 - **Forecast** (`forecastMonth()`): level from the last eight weeks × weekday profile × last year's seasonality when a year
   exists; a range from the spread of the days; labelled an estimate. Under 14 days of sales it says too little history and
   gives no figure. The level is the plain eight-week mean, so a steady rise or fall is not extended (the card says so).
+  Since D348 the month's **paid orders** are forecast the same way, from orders per day, with their own range.
+- **Alerts by email** (D348): the staff alert event *Analytics alerts* (members whose role reads analytics, chosen on Staff
+  alerts, none by default), checked once per store day from 20:00 store time (`sendAnalyticsAlertEmails()`): the same
+  `alertsFor()` over one snapshot, so the same minimum volumes, at or above the store's floor (urgent; urgent and warnings, the
+  default; or everything but good news, which is never emailed), each alert emailed once a day (`analytics_alert_sends`).
 - **Diagnosis** (`explainChange()`): revenue = sessions × conversion × AOV (orders × AOV without visits), each factor's
   share of the change in code, the segment that moved most (device, channel, market, product), when it started, and
   a recommended place to look. The words are templates; a model is never involved. Revenue here is before refunds,
@@ -531,7 +547,12 @@ The period is yesterday, or the seven store days ending yesterday, in the store'
 | **Variants at or below their level** | Now: `stock_alerts` in state `low`. |
 | **Conversations waiting in support** | Now, only while the desk is not off: open conversations in the queue (`handler = 'queue'`), as the control center counts them. |
 
-A period with no paid order still sends (*No orders yesterday*), so the owner knows the summary works.
+Since D348 the summary is the **briefing**: beside each figure the same figure of the period before (as long, ending the day
+before the period; left out when a currency of either has no rate), then what the analytics found (`alertsFor()`, the top
+five), the findings of the store checkup (`checkupFindings()`, each counted, the approvals one person waits on left out), the
+targets running (`runningTargets()`), and an optional note a model writes from those items only, kept only through
+`checkedNote()` (no digit, no claim). Every item links to the admin page that acts on it. A **quiet period**, with no paid order
+and no alert, sends nothing and is marked done (`quietPeriod()`); before D348 it sent *No orders yesterday*.
 
 ## Not tracked (said on the pages)
 

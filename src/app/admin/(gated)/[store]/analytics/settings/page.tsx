@@ -10,12 +10,14 @@ import { adminTexts } from "@/lib/admin-text";
 import { analyticsWords } from "@/lib/analytics-words";
 import { analyticsContext } from "@/server/analytics-context";
 import { analyticsSetupSummary } from "@/server/analytics-settings-data";
-import { listTargets } from "@/server/analytics-settings";
+import { listPeriodTargets, listTargets } from "@/server/analytics-settings";
 
 import {
   backfillCostsAction,
+  deletePeriodTargetAction,
   deleteTargetAction,
   saveAnalyticsSettingsAction,
+  savePeriodTargetAction,
   saveTargetAction,
   setVisitCountingAction,
 } from "./actions";
@@ -30,7 +32,8 @@ export const metadata: Metadata = { title: "Analytics settings" };
 export default async function AnalyticsSettingsPage({ params }: PageProps<"/admin/[store]/analytics/settings">) {
   const ctx = await analyticsContext((await params).store, {}, "owner");
   const { store, settings, base, now } = ctx;
-  const [summary, targets] = await Promise.all([analyticsSetupSummary(store.id), listTargets(store.id, 60)]);
+  const today = todayIn(now, store.timeZone);
+  const [summary, targets, periodTargets] = await Promise.all([analyticsSetupSummary(store.id), listTargets(store.id, 60), listPeriodTargets(store.id, { from: today })]);
   const owner = ctx.owner;
   const w = analyticsWords().settings;
   return (
@@ -48,10 +51,11 @@ export default async function AnalyticsSettingsPage({ params }: PageProps<"/admi
           base={base}
           currency={mainCurrency(store)}
           locale={store.markets[0]?.locale ?? "en"}
-          today={todayIn(now, store.timeZone)}
+          today={today}
           settings={settings}
           summary={summary}
           targets={targets}
+          periodTargets={periodTargets}
           visitCounting={store.visitCounting}
           actions={
             owner
@@ -59,6 +63,8 @@ export default async function AnalyticsSettingsPage({ params }: PageProps<"/admi
                   saveSettings: saveAnalyticsSettingsAction.bind(null, store.slug),
                   saveTarget: saveTargetAction.bind(null, store.slug),
                   deleteTarget: deleteTargetAction.bind(null, store.slug),
+                  savePeriodTarget: savePeriodTargetAction.bind(null, store.slug),
+                  deletePeriodTarget: deletePeriodTargetAction.bind(null, store.slug),
                   setVisitCounting: setVisitCountingAction.bind(null, store.slug),
                   backfillCosts: backfillCostsAction.bind(null, store.slug),
                 }

@@ -273,6 +273,75 @@ Built as above, with these differences:
     the first message (the facts from `alertsFor()`, not the model's), to propose a gated next step.
   - Words go in the `analytics` and `staffEmails` catalogues.
 
+  **Detail (28 October 2026, read in the code before building).** Two things already exist that the outline did not know of, and the unit
+  builds on them rather than beside them:
+  - The staff summary of D238 (`staff_alert_settings.summary`: off, daily or weekly, a weekday and an hour; `sendDueSummaries()` in the
+    every-minute integrations job; recipients chosen per member on Settings → Notifications → Staff alerts, event `summary`, needing
+    `analytics:read`, off by default; once per period by `summary_last_period` and a key per recipient) is the briefing's frame. The briefing
+    *is* that email, grown. So there is no `briefing_sends` table and no second frequency setting.
+  - The staff alerts' recipients (`staff_alert_recipients`, `memberMayReceive()`, the members read again at each send by `alertMembers()`) are
+    how alert emails are addressed. So there is no `analytics_alert_settings` table: alert emails are a new staff alert event.
+
+  The parts:
+  1. **Targets** (`analytics_targets`, migration `analytics_targets_more`):
+     - New columns: `metric` (`net_sales`, `orders`, `conversion`, `aov`), `period` (`week`, `month`, `quarter`, `custom`), `starts_on`,
+       `ends_on` and `target_value`. The value is minor units for money, a count for orders, and basis points for conversion (250 is 2.50 %).
+     - Rows already there become `net_sales`/`month`. A trigger fills the new columns from `month` and `revenue_target_minor` when a writer
+       leaves them out, so the code running during the deploy keeps working.
+     - `month` and `revenue_target_minor` are kept for a monthly net-sales target only; the database checks that they agree. They are dropped
+       in a later change.
+     - One target per metric, period and start (a unique index). A period's bounds are checked by the database: a week is Monday to Sunday, a
+       month and a quarter are whole, and a custom period lasts at most two years.
+     - Progress is `periodProgress()` in `src/lib/analytics-targets.ts`:
+       - for sums (net sales, orders), against the weekday-weighted expectation over the period's own days, as `targetProgress()` does for a
+         month (which stays as it is for the alert);
+       - for levels (conversion, AOV), the figure so far against the target, with a minimum before any verdict (`LEVEL_MINIMUMS`);
+       - conversion is not known while visits were not counted on every day of the period so far, and says so.
+     - Amounts are without VAT in the main currency (`seriesByBucket()` per day), a currency with no rate left out and counted.
+     - Set and removed on Analytics → Settings (`analytics:write`). The Overview shows every target running today as a meter, under the
+       month's net-sales target.
+     - The AI manager's `list_targets` and `set_target` (ungated: a target changes nothing a shopper sees; `analytics:write`) go through the
+       same saver.
+  2. **Forecast**: `forecastForStore()` also forecasts the month's paid orders with the same `forecastMonth()` (its range, its *too little
+     history* under 14 days, its estimate label). The Overview's forecast card shows both.
+  3. **Alert emails**: the staff alert event `analytics` (needs `analytics:read`, in no one's defaults: decision 5).
+     - `sendAnalyticsAlertEmails()` runs in the integrations job. For each open, selling store with a recipient of the event, it runs once per
+       store day, after 20:00 in the store's time (every rule's own hour has passed by then; the claim is
+       `staff_alert_settings.alerts_checked_on`).
+     - It works out the store's alerts once (`alertSnapshotFor()`) and words them in each recipient's language (`alertsFor()` with its words).
+     - It keeps those at or above the store's floor (`alert_floor`: `urgent`, `warning` (the default) or `info`; good news is never emailed).
+     - An alert is emailed once per store, alert and day: the rows of `analytics_alert_sends` are claimed before the email.
+     - The email carries the figures and each alert's page, never a customer. The same minimum volumes as the page apply, because it is the
+       same `alertsFor()`. Copied and host orders are out of `PAID`.
+  4. **The briefing** (the summary grown, words *Briefing* in the interface; the key stays `summary`):
+     - The period's figures as before, with the period before beside them.
+     - The alerts of `alertsForStore()` (top five, each with its page).
+     - The findings of the store checkup, now one function, `checkupFindings()` in `src/server/store-checkup.ts`, shared with the
+       `store_checkup` tool. Each finding has a key, a count and a page; the briefing words each by its key.
+     - The targets running, with their progress.
+     - An optional note: one call per period and language, with the feature `analytics_briefing`, only through `checkedNote()` (no digit, no
+       claim), from the facts the email already holds.
+     - A quiet period (no paid order and no alert) is marked done without an email.
+  5. **The offer on Home**: an owner of a store whose briefing is off, and who has not dismissed the offer, sees *Get a briefing by email*:
+     - *Weekly*, *Daily* and *Not now*;
+     - one press turns it on with them as a recipient (`turnOnBriefing()`, keeping every other choice, the defaults written out when there were
+       none);
+     - *Not now* sets `staff_alert_settings.briefing_offer_dismissed_at`;
+     - the full choice (who, when, the floor) stays on the Staff alerts page.
+  6. **To the AI manager**: each alert on Home and the Overview has *Ask the AI manager*.
+     - It opens the panel and sends a first message written by code from the alert's own words and figures (`askAboutAlert()`). The message
+       asks for a next step to be proposed and kept for a yes.
+     - It is drawn only where the AI manager is (its launcher marks the page).
+
+  **As built (28 October 2026).** As the detail says, with these choices: the alert emails run in the every-minute integrations job beside the
+  summaries; the floor is a choice on the Staff alerts page (default *Urgent and warnings*); the briefing's note is one call per period and
+  language and states no figure; a briefing item from the checkup leaves out the approvals one person waits on (several people get the email);
+  Home's offer is drawn for owners of an open, selling store, its actions are the Staff alerts page's own (`owner`); the AI manager's
+  `list_targets` and `set_target` go through the same functions. Tests: `periodProgress()` and `periodBounds()` in
+  `analytics-targets.test.ts`, the parser in `analytics-settings.test.ts`, the database's rules in `commerce.test.ts`, the emails and the
+  hand-over in `briefing-emails.test.ts`, and the whole path in `analytics-briefing.int.test.ts` (the busy store's alerts emailed once a day after
+  20:00, the briefing with its parts, a quiet period that sends nothing, Home's offer); the staff summary's own tests now give their period an order.
+
 - **E (D349) Pictures.**
   - **Making**: *Make with AI* opens in the media library and the product editor's pictures (the same dialog as D283's, through
     `makeSitePicture()`). The product editor's brief starts from the product's title and kind, never a price. The result is shrunk to WebP

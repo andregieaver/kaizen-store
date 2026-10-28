@@ -45,7 +45,7 @@ import { sendDuePlanReminders } from "@/server/plan-reminders";
 import { sendDueBookingReminders } from "@/server/shopper-emails";
 import { sendLowStockNotices } from "@/server/stock-alerts";
 import { pollTracking } from "@/server/shipment-tracking";
-import { sendDueSummaries } from "@/server/staff-alerts";
+import { sendAnalyticsAlertEmails, sendDueSummaries } from "@/server/staff-alerts";
 import { prepareDueDeliveries } from "@/server/standing-orders";
 import { runStoreCopies } from "@/server/store-copy";
 import { prepareDueRecurringWork } from "@/server/work-recurring";
@@ -131,6 +131,8 @@ async function dispatch() {
     // Notifications (D238): parcels followed at their carriers, and the staff summaries that are due.
     tracking: () => pollTracking(),
     summaries: () => sendDueSummaries(),
+    // Analytics alerts by email (D348): once a store day after 20:00, each alert once, to the staff chosen for them.
+    analyticsAlerts: () => sendAnalyticsAlertEmails(),
     // Payments (D288): what a captured Stripe payment was, for any the reply missed, and disputes whose evidence is due within three days.
     payments: () => runPaymentJobs(),
     // The AI manager's follow-ups (PSI AGT-04): a few due ones given back to it, in the asker's name, and the asker emailed.

@@ -338,6 +338,8 @@ export const assistantNb: AssistantMessages = {
     report_catalogue: "Leser hva rapporter kan vise",
     run_report: "Kjører en rapport",
     save_report: "Lagrer en rapport",
+    list_targets: "Leser målene dine",
+    set_target: "Setter et mål",
     speed_report: "Ser på hvor raskt sidene lastes",
     list_data_jobs: "Ser på importer og eksporter",
     explain_import_problems: "Leser importens funn",

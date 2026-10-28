@@ -14,7 +14,8 @@ import { Funnel, HorizontalBars, LineChart, Meter, type BarRow } from "./charts"
 import { DataTable, StatusPill, type Column, type DeltaView } from "./data-table";
 import { KpiCard, type KpiCardProps } from "./kpi-card";
 import { AnalyticsSection, ChartCard, Note } from "./section";
-import { dayText, factorRows, forecastLines, formatTimes, moneyLines, moneySignals, moneyWriter, noSales, targetLines, type OverviewDiagnosis, type OverviewForecast, type OverviewTarget } from "./overview-text";
+import { dayText, factorRows, forecastLines, formatTimes, metricWriter, moneyLines, moneySignals, moneyWriter, noSales, ordersForecastLine, periodTargetLines, targetLines, type OverviewDiagnosis, type OverviewForecast, type OverviewTarget } from "./overview-text";
+import { isSumMetric } from "@/lib/analytics-targets";
 import { CARD_CLASS } from "@/components/admin/ui";
 
 /**
@@ -584,6 +585,39 @@ export function TargetSection({ frame, target }: { frame: OverviewFrame; target:
           </ul>
         </div>
       )}
+      {target.others && target.others.length > 0 ? (
+        <div className="space-y-3 pt-2" data-running-targets>
+          <h3 className="text-body-strong text-ink">{w.others}</h3>
+          <p className="text-sm text-muted">{w.othersDescription}</p>
+          <ul className="grid gap-3 md:grid-cols-2">
+            {target.others.map((card) => {
+              const metric = w.metrics[card.metric];
+              const write = metricWriter(card.metric, money);
+              const level = !isSumMetric(card.metric);
+              return (
+                <li key={card.id} data-target={card.metric} className={`space-y-2 p-4 ${CARD_CLASS}`}>
+                  <p className="text-body-strong text-ink">{fillWords(w.cardTitle, { metric, period: card.periodLabel })}</p>
+                  <Meter
+                    label={fillWords(w.cardMeter, { metric, period: card.periodLabel })}
+                    value={card.progress.actual}
+                    target={card.progress.targetValue}
+                    expected={level || card.progress.tooEarly ? null : card.progress.expected}
+                    format={write}
+                  />
+                  <ul className="space-y-1 text-sm text-muted">
+                    {periodTargetLines(card, money, words).map((line, i) => (
+                      <li key={i}>{line}</li>
+                    ))}
+                    {card.unconverted > 0 ? (
+                      <li>{countText(words.overview.unconverted, card.unconverted, { currencies: card.missingCurrencies.join(", "), main: frame.currency })}</li>
+                    ) : null}
+                  </ul>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ) : null}
     </AnalyticsSection>
   );
 }
@@ -607,6 +641,7 @@ export function ForecastSection({ frame, forecast }: { frame: OverviewFrame; for
             {line}
           </p>
         ))}
+        {forecast.orders ? <p className="text-muted" data-orders-forecast>{ordersForecastLine(forecast.orders, words)}</p> : null}
         {forecast.forecast.expectedMinor !== null && forecast.forecast.notes.length > 0 ? (
           <ul className="space-y-1 pt-1 text-xs text-muted">
             {forecast.forecast.notes.map((n, i) => (

@@ -2,6 +2,8 @@
 
 import { refresh } from "next/cache";
 
+import type { FormState } from "@/components/admin/action-form";
+
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import type { NotificationsMessages } from "@/lib/admin-messages/notifications.en";
@@ -10,7 +12,7 @@ import { ALERT_LABELS, isStaffAlertEvent, STAFF_ALERT_EVENTS } from "@/lib/staff
 import { actionAdminLang } from "@/server/admin-request-lang";
 import type { Membership } from "@/server/auth";
 import { checkPermission } from "@/server/permissions";
-import { saveStaffAlerts, sendStaffTest } from "@/server/staff-alerts";
+import { dismissBriefingOffer, saveStaffAlerts, sendStaffTest, turnOnBriefing } from "@/server/staff-alerts";
 
 /** The words of a member's language, or of the request's before a member is known. */
 const wordsOf = async (member: Membership | null) => adminText(member ? adminLangOf(member.account.adminLocale) : await actionAdminLang(), "notifications").staff;
@@ -53,4 +55,28 @@ export async function sendStaffTestAction(storeSlug: string, event: string): Pro
   if (!result.ok) return { ok: false, message: refusal(result, w) };
   if (result.outcome === "logged") return { ok: true, message: w.answers.logged };
   return { ok: true, message: fillWords(w.answers.sentTo, { to: member.account.email }) };
+}
+
+/**
+ * The briefing's offer on the store's Home (wave 8 unit D, D348), an owner's as the rest of this page: one press turns the briefing on, weekly or daily,
+ * with the owner among its recipients and every other choice kept; *Not now* hides the offer.
+ */
+export async function turnOnBriefingAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
+  const member = await checkPermission(storeSlug, "owner");
+  const lang = member ? adminLangOf(member.account.adminLocale) : await actionAdminLang();
+  const w = adminText(lang, "home").briefing;
+  if (!member) return { status: "error", messages: [w.onlyOwner] };
+  const result = await turnOnBriefing(member.store.id, member.account.id, form.get("kind") === "daily" ? "daily" : "weekly");
+  if (!result.ok) return { status: "error", messages: [w.onlyOwner] };
+  refresh();
+  return { status: "ok", messages: [w.on] };
+}
+
+export async function dismissBriefingAction(storeSlug: string): Promise<FormState> {
+  const member = await checkPermission(storeSlug, "owner");
+  const lang = member ? adminLangOf(member.account.adminLocale) : await actionAdminLang();
+  const w = adminText(lang, "home").briefing;
+  if (!member) return { status: "error", messages: [w.onlyOwner] };
+  await dismissBriefingOffer(member.store.id, member.account.id);
+  return { status: "ok", messages: [w.dismissed] };
 }

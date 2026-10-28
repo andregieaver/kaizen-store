@@ -15,6 +15,7 @@ export type StaffAlertsInput = {
   summary: SummaryKind;
   summaryWeekday: number;
   summaryHour: number;
+  alertFloor: "urgent" | "warning" | "info";
 };
 
 type Said = { ok: boolean; message: string };
@@ -41,6 +42,7 @@ export function StaffAlertsForm({ view, save, test }: { view: StaffAlertsView; s
   const [summary, setSummary] = useState<SummaryKind>(view.summary);
   const [weekday, setWeekday] = useState(view.summaryWeekday);
   const [hour, setHour] = useState(view.summaryHour);
+  const [floor, setFloor] = useState(view.alertFloor);
   const [message, setMessage] = useState<Said | null>(null);
   const [busy, start] = useTransition();
 
@@ -52,6 +54,7 @@ export function StaffAlertsForm({ view, save, test }: { view: StaffAlertsView; s
         summary,
         summaryWeekday: weekday,
         summaryHour: hour,
+        alertFloor: floor,
       });
       setMessage(answer);
       if (answer.ok) router.refresh();
@@ -181,6 +184,23 @@ export function StaffAlertsForm({ view, save, test }: { view: StaffAlertsView; s
         </div>
       </section>
 
+      <section aria-labelledby={`${uid}-floor`} className={`flex flex-col gap-3 p-5 ${CARD_CLASS}`}>
+        <h2 id={`${uid}-floor`} className="text-title text-ink">
+          {w.alertFloor}
+        </h2>
+        <p className="text-sm text-muted">{w.alertFloorHint}</p>
+        <label className="flex flex-col gap-1 text-sm font-medium">
+          {w.howOften}
+          <select value={floor} onChange={(e) => setFloor(e.target.value as typeof floor)} className={`${select} max-w-sm`}>
+            {(["urgent", "warning", "info"] as const).map((f) => (
+              <option key={f} value={f}>
+                {w.floors[f]}
+              </option>
+            ))}
+          </select>
+        </label>
+      </section>
+
       <div className="flex flex-wrap items-center gap-3">
         <button type="button" onClick={submit} disabled={busy} className={mainPill}>
           {busy ? all.common.working : all.common.save}
@@ -193,7 +213,7 @@ export function StaffAlertsForm({ view, save, test }: { view: StaffAlertsView; s
         </h2>
         <p className="text-sm text-muted">{w.testHint}</p>
         <div className="flex flex-wrap gap-2">
-          {(["new_order", "return_requested", "summary"] as const).map((e) => (
+          {(["new_order", "return_requested", "summary", "analytics"] as const).map((e) => (
             <button key={e} type="button" onClick={() => sendTest(e)} disabled={busy} className={pill}>
               {fillWords(w.testOne, { alert: w.alerts[e] })}
             </button>

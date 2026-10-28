@@ -1,9 +1,11 @@
 import Link from "next/link";
 
 import { fillWords } from "@/lib/admin-fill";
+import { askAboutAlert } from "@/lib/alert-ask";
 import type { Alert, AlertSeverity } from "@/lib/analytics-alerts";
 import { analyticsWords } from "@/lib/analytics-words";
 
+import { AskAboutAlert } from "./ask-about-alert";
 import { StatusPill, type PillTone } from "./data-table";
 import { AnalyticsSection } from "./section";
 import { CARD_CLASS } from "@/components/admin/ui";
@@ -36,6 +38,7 @@ export function AlertList({ alerts, base }: { alerts: readonly Alert[]; base: st
           <Link href={alertHref(base, a)} className={linkClass}>
             {a.action || w.open}
           </Link>
+          <AskAboutAlert message={askAboutAlert(a, w)} label={w.ask} srLabel={fillWords(w.askFor, { text: a.text })} />
           {a.evidence.length > 0 ? (
             <details className="basis-full text-xs text-muted">
               <summary className="cursor-pointer select-none">{w.figures}</summary>

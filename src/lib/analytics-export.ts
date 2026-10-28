@@ -179,6 +179,14 @@ const REGISTRY: AnalyticsTable[] = [
   // Settings pages: what the owner entered
   table("settings.spend", "settings", "spend-form.tsx", "Latest ad spend entries", [date("day"), text("channel"), text("campaign"), amount("amount"), text("note")], true),
   table("settings.targets", "settings", "settings-forms.tsx", "Revenue targets for the next 12 months", [text("month"), amount("target", "net_revenue_target")], true),
+  // D348: a target's value is in its metric's unit, named in `unit` (minor units of the main currency, orders, or basis points of a rate).
+  table(
+    "settings.period_targets",
+    "settings",
+    "settings-forms.tsx",
+    "Targets of every kind that have not ended",
+    [text("metric"), text("period"), text("starts_on"), text("ends_on"), int("target_value"), text("unit")],
+  ),
 ];
 
 /** Every exportable table, by id. */
@@ -208,7 +216,7 @@ export const NOT_EXPORTED: Readonly<Record<string, string>> = Object.freeze({
  * Tables only the owner downloads, besides `analytics:write`: the top customers lists people (the customer file of D165 is the owner's too,
  * `docs/wave-2-data.md` 4.7), and the targets are what the owner entered on the owner-only settings page.
  */
-export const OWNER_ONLY_TABLES: ReadonlySet<string> = new Set(["customers.top", "settings.targets"]);
+export const OWNER_ONLY_TABLES: ReadonlySet<string> = new Set(["customers.top", "settings.targets", "settings.period_targets"]);
 
 export const isExportable = (id: string): boolean => Object.hasOwn(ANALYTICS_TABLES, id);
 

@@ -3,7 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
-import { customPeriod } from "@/lib/analytics-period";
+import { addDays, customPeriod, daysBetween } from "@/lib/analytics-period";
 import { mainCurrency } from "@/lib/markets";
 
 import { periodTotals } from "./analytics-totals";
@@ -37,13 +37,17 @@ export type StaffSummaryFigures = {
   lowStock: number;
   /** Null while the store's support desk is off. */
   supportWaiting: number | null;
+  /** The period before, as long (D348's briefing sets the two side by side); null when a currency of either had no rate. */
+  before?: { orders: number; netSalesMinor: number } | null;
 };
 
 /** The summary's figures for the store days `from` to `to` (both included), and what is open at the time it is built. */
 export async function staffSummaryFigures(store: Store, period: { from: string; to: string }): Promise<StaffSummaryFigures> {
   const p = customPeriod(period.from, period.to);
-  const [totals, [counts]] = await Promise.all([
+  const length = daysBetween(period.from, addDays(period.to, 1));
+  const [totals, previous, [counts]] = await Promise.all([
     periodTotals(store, p),
+    periodTotals(store, customPeriod(addDays(period.from, -length), addDays(period.from, -1))),
     db().execute<Row>(sql`
       select
         (select count(*)::int from commerce.returns r join commerce.stores s on s.id = r.store_id
@@ -75,5 +79,9 @@ export async function staffSummaryFigures(store: Store, period: { from: string; 
     toSend: Number(counts?.to_send ?? 0),
     lowStock: Number(counts?.low_stock ?? 0),
     supportWaiting: deskOn ? Number(counts?.support_waiting ?? 0) : null,
+    before:
+      totals.unconverted > 0 || previous.unconverted > 0
+        ? null
+        : { orders: previous.totals.orders, netSalesMinor: previous.totals.revenueMinor - previous.totals.refundsMinor },
   };
 }
