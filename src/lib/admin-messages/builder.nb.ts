@@ -1036,6 +1036,17 @@ export const builderNb: BuilderMessages = {
     save: "Lagre CSS for hele nettstedet",
     notSaved: "Ikke lagret ennå.",
   },
+  aiChange: {
+    label: "Endre med KI",
+    text: "Si hva som skal endres på denne siden. KI-en endrer ordene og radene, eller legger til en seksjon, og du ser det her før du lagrer. Angre tar det tilbake.",
+    what: "Hva skal endres?",
+    placeholder: "Gjør åpningen kortere og vennligere, og legg til en seksjon med åpningstidene våre.",
+    working: "Endrer siden …",
+    failed: "Noe gikk galt da siden skulle endres. Prøv igjen.",
+    cancel: "Avbryt",
+    go: "Endre",
+    done: "Endret med KI: {done} Lagre for å beholde det, eller angre.",
+  },
   cool: {
     label: "Gjør siden min kul",
     text: "KI-assistenten ser på siden din og legger til smakfull bevegelse: innganger, hover-effekter og bakgrunner i bevegelse. Ingenting du allerede har animert, blir endret.",

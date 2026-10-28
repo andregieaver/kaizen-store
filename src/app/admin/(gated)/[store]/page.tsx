@@ -4,6 +4,8 @@ import { Suspense } from "react";
 
 import { AfterSaleNote } from "@/components/admin/after-sale-gate";
 import { BriefingOffer } from "@/components/admin/briefing-offer";
+import { StoreDraftsSection } from "@/components/admin/store-drafts-section";
+import { AdminTextScope } from "@/components/admin/admin-text";
 import { DemoContentCard } from "@/components/admin/demo-content-card";
 import { HomeAnalyticsAlerts, HomeAnalyticsAlertsFallback } from "@/components/admin/analytics/home-alerts";
 import { StaffAlertsFailed } from "@/components/admin/notifications/staff-alerts-failed";
@@ -11,7 +13,7 @@ import { Attention, Section, Stat, StatGrid } from "@/components/admin/overview-
 import { ButtonLink, Card, Chip, List, ListRow, PageHeader, RowAmount, RowDate, RowId, RowText } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import { attentionFor, changeText, hidden, money, totalSales } from "@/lib/control-center";
 import { demoTotal, demoWords } from "@/lib/demo-content";
 import { featureOn } from "@/lib/store-features";
@@ -97,6 +99,14 @@ export default async function AdminOverview({ params }: Props) {
         <p role="status" className="text-body text-muted">
           {h.notOpenText}
         </p>
+      )}
+      {/* A store drafted from one description (D351): its drafts, or the form while it is being set up; read after the page is shown. */}
+      {memberCan(current, "website:write") && (
+        <AdminTextScope texts={adminTexts(lang, ["home"])}>
+          <Suspense fallback={null}>
+            <StoreDraftsSection storeId={store.id} storeSlug={store.slug} offerStart={!store.setupCompletedAt} />
+          </Suspense>
+        </AdminTextScope>
       )}
       {/* Setup has its own checklist below; what else needs someone is listed here. */}
       {/* A website keeps Orders out of the menu, but reachable while an order can still be withdrawn from or returned (D178 step 5). */}

@@ -65,6 +65,8 @@ import {
   publishPageTool,
   saveMenuTool,
   setHeaderFooterTool,
+  draftHeaderFooterTool,
+  chooseHeaderFooterTool,
   setPagePlaceTool,
 } from "./site-tools";
 import { compareOptionsTool, listResearchNotesTool, readWebPageTool, saveResearchNoteTool, searchWebTool } from "./research-tools";
@@ -563,6 +565,8 @@ const PLATFORM_HANDLERS: Record<PlatformToolName, Handler> = {
   publish_page: (ctx: ManagerContext, input: PlatformToolInput<"publish_page">) => publishPageTool(ownSite(ctx), input),
   get_menus: (ctx: ManagerContext) => getMenusTool(ownSite(ctx)),
   set_header_footer: (ctx: ManagerContext, input: PlatformToolInput<"set_header_footer">) => setHeaderFooterTool(ownSite(ctx), input),
+  draft_header_footer: (ctx: ManagerContext, input: PlatformToolInput<"draft_header_footer">) => draftHeaderFooterTool(ownSite(ctx), input),
+  use_header_footer: (ctx: ManagerContext, input: PlatformToolInput<"use_header_footer">) => chooseHeaderFooterTool(ownSite(ctx), input),
   set_page_place: (ctx: ManagerContext, input: PlatformToolInput<"set_page_place">) => setPagePlaceTool(ownSite(ctx), input),
   save_menu: (ctx: ManagerContext, input: PlatformToolInput<"save_menu">) => saveMenuTool(ownSite(ctx), input),
   search_web: (ctx: ManagerContext, input: PlatformToolInput<"search_web">) => searchWebTool(ownSite(ctx), input),
@@ -606,7 +610,7 @@ export async function runPlatformTool(ctx: ManagerContext, name: string, raw: un
   return result;
 }
 
-const SITE_CHANGES = new Set(["build_page", "edit_page", "publish_page", "set_page_place", "save_menu", "set_header_footer"]);
+const SITE_CHANGES = new Set(["build_page", "edit_page", "publish_page", "set_page_place", "save_menu", "set_header_footer", "draft_header_footer", "use_header_footer"]);
 
 /** Whether a platform tool's call needs the admin's yes: a site tool asks its own rule (a menu only while shown), the rest always. */
 export async function platformGateNeeded(name: string, raw: unknown): Promise<boolean> {

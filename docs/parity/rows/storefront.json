@@ -1705,25 +1705,29 @@
     "feature": "AI store and page building",
     "shopify": {
       "tier": "native",
-      "text": "Native. Sidekick adjusts a theme from a description and creates custom blocks in any Theme Store theme; AI generates a whole store from a description of what to sell.",
+      "text": "Native. Sidekick adjusts a theme from a description and creates custom blocks in any Theme Store theme; AI generates a whole store from a description of what to sell. Sidekick in the theme editor (from ai.ai-page-and-theme-generation): AI block generation works with every Theme Store theme since 10 December 2025; describe a design, Sidekick writes the block and can be iterated.",
       "url": "https://www.shopify.com/editions/winter2026",
       "fetched": true,
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": "full"
+      "was": "partial"
     },
     "weight": 2,
-    "gap": "Built since the last read (D308 to D310): the AI manager builds and edits page drafts (`build_page`, `edit_page`; built after the answer by `runPageJobs()`, `publish_page` gated), makes menus of the store's own links only (`save_menu`, gated while a menu is shown), chooses the standard header's and footer's menus and logo (`set_header_footer`, gated), adds, previews and makes a theme or preset live (`add_theme`, `try_theme`, `make_theme_live`, gated, the charge kept with the approval), sets the store's details, countries, languages, currencies and shipping (setup tools, at once while the store is being set up), and looks at what it built (`look_at_page`, `look_at_store`); the page studio (D92), the replicator (D150) and a theme's starting content (D275) remain. Since D330 criterion 1 holds: `design_look` designs a look of the store's own from a description (a few brand colours, fonts and Design settings' named choices, both palettes worked out by `designedTheme()` and refused under 4.5:1 by `themeWarnings()`), adds it to the theme library not live, and it reaches visitors only through the gated `make_theme_live`. Still short: (1) no custom header or footer layout from AI, only the standard one's menus and logo (criterion 2); (2) no single flow from one description to theme, front page, pages and menus as drafts: the owner, or a plan the owner approves (D309), drives it tool by tool.",
-    "bucket": "A",
-    "wave": 8,
+    "gap": "Met (D351). Merged with ai.ai-page-and-theme-generation (README rule 8, wave 8 decision 7), keeping the stricter criteria of each. In the builder, *Change with AI* takes a description of a change to the open page: the model returns only a plan of edits on its existing parts (texts by key, rows moved or removed, new sections from the page studio's PATTERNS written by its writer), tried by dryRunEdits() and made by the builder's own pure edits on the editor's copy, unsaved and one Undo step (src/server/page-change-ai.ts, AiChangeDialog); never CSS, script or a link outside the site's own. A theme from a description is design_look (D330: colours worked out in code to 4.5:1, added to the library, live only through the gated make_theme_live). draft_header_footer drafts a header or footer of the site's own from the standard parts, arranged as asked, showing one of its menus, in a section style of the live theme; use_header_footer (gated public) publishes and shows it; menus link only to the store's own pages (save_menu). *Start from a description* (the setup wizard and Home) and draft_store turn one description into a front page and up to three pages built as drafts, and a free or owned theme (named, or chosen by the model by id and checked by code) added to the library not live; *Your drafts* shows each page as it is built and one press publishes them, makes the first the front page, adds the rest to the header's menu and makes the theme live; nothing reaches visitors before it. Without a text model the builder offers no *Change with AI* and the drafts card says what to set up. The page studio (D92), Make my page cool (D128), the replicator (D150) and pictures by prompt (D283) remain.",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "The AI manager can propose a theme change (colours, fonts, buttons) from a description as a gated change the owner approves, with contrast warnings applied.",
       "The AI can draft a header, footer and menus as drafts, linking only to the store's real pages.",
       "A store setup from one description produces theme, front page, a few pages and menus as drafts for the owner to read; nothing is published without a yes.",
-      "Every AI text passes the claims filter and the feature falls back with a plain message when no model is set."
+      "Every AI text passes the claims filter and the feature falls back with a plain message when no model is set.",
+      "In the builder an owner can describe a change to the open page; the model returns a validated plan of edits on existing parts and it is applied to the editor unsaved, so nothing is saved or published until the owner saves.",
+      "A theme change request returns only ThemeSettings values checked by parseStoreTheme, previewed and applied only on the owner's yes.",
+      "Every text passes the claims filter, links go only to SiteFacts.links, and a model never writes CSS or script.",
+      "Without AI the studio says so and the builder is unchanged."
     ],
     "evidence": {
       "files": [
@@ -1739,7 +1743,21 @@
         "src/server/setup-tools.ts",
         "src/server/page-looks.ts",
         "src/lib/brand-design.ts",
-        "src/server/brand-tools.ts"
+        "src/server/brand-tools.ts",
+        "src/components/admin/page-studio-view.tsx",
+        "src/server/motion-ai.ts",
+        "src/lib/page-translate-ai.ts",
+        "src/lib/design-tools.ts",
+        "src/lib/page-look.ts",
+        "src/lib/page-look-shoot.ts",
+        "src/lib/site-tools.ts",
+        "src/server/page-change-ai.ts",
+        "src/server/page-change-route.ts",
+        "src/components/admin/ai-change-dialog.tsx",
+        "src/lib/store-drafts.ts",
+        "src/server/store-drafts.ts",
+        "src/components/admin/store-drafts.tsx",
+        "supabase/migrations/20261028031326_store_drafts.sql"
       ],
       "tests": [
         "src/lib/page-ai.test.ts",
@@ -1752,7 +1770,17 @@
         "src/server/setup-tools.int.test.ts",
         "src/server/page-looks.int.test.ts",
         "src/lib/brand-design.test.ts",
-        "src/server/brand.int.test.ts"
+        "src/server/brand.int.test.ts",
+        "src/server/motion-ai.test.ts",
+        "src/lib/page-translate-ai.test.ts",
+        "src/server/page-translate.test.ts",
+        "src/lib/design-tools.test.ts",
+        "src/lib/page-look.test.ts",
+        "e2e/page-look.spec.ts",
+        "src/lib/site-tools.test.ts",
+        "src/lib/store-builder-ai.test.ts",
+        "src/server/page-change-ai.test.ts",
+        "src/server/store-builder-ai.int.test.ts"
       ],
       "untested": false
     },
@@ -1766,7 +1794,9 @@
       "D308",
       "D309",
       "D310",
-      "D330"
+      "D330",
+      "D283",
+      "D351"
     ],
     "history": [
       {
@@ -1774,6 +1804,12 @@
         "from": "full",
         "to": "partial",
         "why": "Read Shopify's Winter '26 edition page (Sidekick edits themes and builds blocks; AI generates a whole store) and the code: Kaizen's AI builds page drafts only, with no AI path to the theme, header, footer or menus and no whole-store generation. The first report's own caveat ('not whole-store redesigns') now matters because Shopify's claim is store-wide."
+      },
+      {
+        "on": "2026-10-28",
+        "from": "partial",
+        "to": "full",
+        "why": "D351: Change with AI in the builder (a plan of edits on the open page, applied unsaved), drafted headers and footers shown on a yes, and a store drafted from one description (front page, pages, a theme not live, the header's menu) published with one press; merged with ai.ai-page-and-theme-generation."
       }
     ]
   },

@@ -36,6 +36,8 @@ export const AI_FEATURES = {
   page_studio: "Page studio",
   page_pictures: "Pictures made in the page builder",
   library_pictures: "Pictures made in the media library or the product editor",
+  page_change: "Changes to a page described to the page builder",
+  store_draft: "A store drafted from one description",
   picture_edit: "Pictures edited in the media library",
   page_look: "Looking at pages",
   legal_pages: "Legal pages",

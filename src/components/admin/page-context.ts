@@ -124,6 +124,11 @@ export type PageOwnerContext = {
    * elsewhere (a theme's workspace, whose pictures are the theme's).
    */
   pictures?: PictureMaker | null;
+  /**
+   * *Change with AI* (D351): the route a described change to the open page is sent to, where the site's AI has a text model and the page is a
+   * page or an article; absent or null elsewhere. The answer is the page changed, unsaved, which the editor holds as one change.
+   */
+  aiChange?: { endpoint: string } | null;
   /** The store's discounts with single-use codes, for a newsletter form's welcome code (D304 J3); absent on Kaizena Flow's own pages. */
   signupCodes?: { id: string; code: string }[];
   /** Starts a row's background video upload from the browser; null where uploads are not set up. */

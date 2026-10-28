@@ -233,8 +233,12 @@ import {
   publishPageTool,
   saveMenuTool,
   setHeaderFooterTool,
+  draftHeaderFooterTool,
+  chooseHeaderFooterTool,
+  preflightChooseHeaderFooter,
   setPagePlaceTool,
 } from "./site-tools";
+import { draftStore } from "./store-drafts";
 
 type Row = Record<string, unknown>;
 
@@ -2091,12 +2095,13 @@ export async function preflightOwnerTool(ctx: OwnerToolContext, name: string, ra
     return preflightUpdateCategory(ctx, input.input as OwnerToolInput<"update_category">);
   }
   // A page that could not be published (gone, in a running test, with a problem the checker blocks on) is refused now, never kept for a yes (D308).
-  if (name === "publish_page" || name === "set_page_place" || name === "save_menu" || name === "set_header_footer") {
+  if (name === "publish_page" || name === "set_page_place" || name === "save_menu" || name === "set_header_footer" || name === "use_header_footer") {
     const input = readToolInput(OWNER_TOOLS_BY_NAME[name], raw);
     if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
     if (name === "publish_page") return preflightPublishPage(ctx, input.input as OwnerToolInput<"publish_page">);
     if (name === "set_page_place") return preflightPagePlace(ctx, input.input as OwnerToolInput<"set_page_place">);
     if (name === "save_menu") return preflightSaveMenu(ctx, input.input as OwnerToolInput<"save_menu">);
+    if (name === "use_header_footer") return preflightChooseHeaderFooter(ctx, input.input as OwnerToolInput<"use_header_footer">);
     return preflightHeaderFooter(ctx, input.input as OwnerToolInput<"set_header_footer">);
   }
   // A setup change the screen would refuse (or one on a store that is not active) is refused now, never kept for a yes (D308).
@@ -2214,6 +2219,16 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   get_menus: (ctx: OwnerToolContext) => getMenusTool(ctx),
   save_menu: (ctx: OwnerToolContext, input: OwnerToolInput<"save_menu">) => saveMenuTool(ctx, input),
   set_header_footer: (ctx: OwnerToolContext, input: OwnerToolInput<"set_header_footer">) => setHeaderFooterTool(ctx, input),
+  draft_header_footer: (ctx: OwnerToolContext, input: OwnerToolInput<"draft_header_footer">) => draftHeaderFooterTool(ctx, input),
+  draft_store: async (ctx: OwnerToolContext, input: OwnerToolInput<"draft_store">) => {
+    const result = await draftStore({ account: ctx.account, store: ctx.store }, input);
+    if (!result.ok) throw new OwnerToolError(result.problem);
+    return {
+      done: `Drafting ${result.pages} page${result.pages === 1 ? "" : "s"}${result.theme ? ` and added the theme "${result.theme}" to the library` : ""}. Nothing is on the site: the owner reads the drafts on Home (Your drafts) and publishes them there.`,
+      home: `/admin/${ctx.store.slug}`,
+    };
+  },
+  use_header_footer: (ctx: OwnerToolContext, input: OwnerToolInput<"use_header_footer">) => chooseHeaderFooterTool(ctx, input),
   store_overview: storeOverview,
   sales_summary: salesSummary,
   list_orders: listOrdersTool,
@@ -2454,9 +2469,9 @@ export async function runOwnerTool(ctx: OwnerToolContext, name: string, raw: unk
 }
 
 /** Tools that change the store without a gate, written down all the same: a note on an order, products made or written for, pages built or changed (D308). */
-const AUDITED_UNGATED = new Set(["add_order_note", "create_product", "write_product_texts", "build_page", "edit_page", "add_support_note", "end_support_conversation", "log_time"]);
+const AUDITED_UNGATED = new Set(["add_order_note", "create_product", "write_product_texts", "build_page", "edit_page", "draft_header_footer", "add_support_note", "end_support_conversation", "log_time"]);
 const PRODUCT_TOOLS = new Set(["create_product", "update_product", "set_prices", "set_product_status", "write_product_texts", "update_category"]);
-const PAGE_TOOLS = new Set(["build_page", "edit_page", "publish_page", "set_page_place", "save_menu", "set_header_footer"]);
+const PAGE_TOOLS = new Set(["build_page", "edit_page", "publish_page", "set_page_place", "save_menu", "set_header_footer", "draft_header_footer", "use_header_footer"]);
 
 /**
  * Whether a gated tool needs the owner's yes for this call. Most always do; a catalogue tool of `GATED_WHEN_LIVE` only while its product is on

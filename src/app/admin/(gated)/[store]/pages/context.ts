@@ -20,6 +20,7 @@ import { themeAttributes, themeCss } from "@/lib/theme";
 import { siteFontStyle } from "@/server/fonts";
 import { uploadsEnabled } from "@/server/media";
 import { canMakePictures } from "@/server/picture-maker";
+import { canChangePages } from "@/server/page-change-ai";
 import { EMPTY_LOOKUPS, needsLookups } from "@/lib/custom-fields";
 import { allActiveFieldGroups, fieldLookups } from "@/server/custom-fields";
 import { storeMenuPreviews } from "@/server/menus";
@@ -143,6 +144,7 @@ export async function storePageContext(
     media: pickMediaAction.bind(null, store.slug),
     // Pictures made by prompt in the store's look (D283), through its own route, while its AI has a picture model.
     pictures: (await canMakePictures(store.id)) ? { endpoint: `/admin/${store.slug}/media/make` } : null,
+    aiChange: (type === "page" || type === "article") && (await canChangePages(store.id)) ? { endpoint: `/admin/${store.slug}/pages/change` } : null,
     // A newsletter form's welcome code is one of the store's discounts with single-use codes (D304 J3).
     signupCodes: await signupCodeChoices(store.id),
     startVideo: uploadsEnabled() ? startVideoUploadAction.bind(null, store.slug) : null,

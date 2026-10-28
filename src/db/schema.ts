@@ -14090,6 +14090,40 @@ export const assistantNotices = commerce.table(
 );
 
 /**
+ * A store drafted from one description (D351): the page builds it asked for (`page_ai_jobs`, the first the front page) and a theme added to the
+ * library without going live, read on Home's *Your drafts* card and published there with one press, or discarded. Written only by
+ * `src/server/store-drafts.ts`; nothing in it reaches visitors until the press.
+ */
+export const storeDrafts = commerce.table(
+  "store_drafts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id, { onDelete: "cascade" }),
+    accountId: uuid("account_id").references(() => accounts.id, { onDelete: "set null" }),
+    description: text("description").notNull(),
+    /** The page builds, in order: the first is the front page. */
+    jobIds: uuid("job_ids").array().notNull(),
+    installId: uuid("install_id").references(() => storeThemeInstalls.id, { onDelete: "set null" }),
+    status: text("status").notNull().default("drafting"),
+    problem: text("problem"),
+    createdAt: createdAt(),
+    settledAt: timestamp("settled_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("store_drafts_store_idx").on(t.storeId, t.createdAt),
+    index("store_drafts_account_idx").on(t.accountId),
+    index("store_drafts_install_idx").on(t.installId),
+    uniqueIndex("store_drafts_one_open").on(t.storeId).where(sql`${t.status} = 'drafting'`),
+    check("store_drafts_status", sql`${t.status} in ('drafting', 'published', 'discarded')`),
+    check("store_drafts_description", sql`length(${t.description}) between 10 and 1500`),
+    check("store_drafts_jobs", sql`cardinality(${t.jobIds}) between 1 and 4`),
+    check("store_drafts_problem", sql`${t.problem} is null or length(${t.problem}) <= 1000`),
+  ],
+);
+
+/**
  * Skills a person saves for the AI manager (D350), beside the built-in playbooks of `ASSISTANT_SKILLS`: a key, a title, when to use it and
  * the steps in words. A person's own in a store (or on Kaizena Flow's own site, `store_id` null); an owner may share one with the store's
  * staff (`shared`). Written only by `src/server/assistant-saved-skills.ts`, never with a customer's details or a secret.

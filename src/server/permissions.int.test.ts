@@ -261,6 +261,7 @@ describe("what the guards promise the scan test", () => {
       "currentRequest",
       "startRequest",
       "statusRequest",
+      "storeChangeRequest",
       "storeEditRequest",
       "storePictureRequest",
       "storeProductPictureRequest",

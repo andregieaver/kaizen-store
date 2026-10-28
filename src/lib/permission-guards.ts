@@ -36,6 +36,8 @@ export const DELEGATED_GUARDS: Record<string, string> = {
   /** *Make with AI* in the product editor (D349): `products:write`; *Edit with AI* in the media library: `website:write`. */
   storeProductPictureRequest: "src/server/picture-route.ts",
   storeEditRequest: "src/server/picture-route.ts",
+  /** *Change with AI* in the page builder (D351): `checkPageTypeAccess()` for the kind of page sent. */
+  storeChangeRequest: "src/server/page-change-route.ts",
   /** The page builder's lists and editors, for every kind of page: each calls `requirePageTypeAccess()` with the kind it was given. */
   StorePagesListView: "src/app/admin/(gated)/[store]/pages/views.tsx",
   StorePageTermsView: "src/app/admin/(gated)/[store]/pages/views.tsx",

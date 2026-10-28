@@ -28,6 +28,7 @@ export const TOOL_AREAS: Readonly<Record<string, AutonomyArea>> = {
   set_fields: "catalogue",
   // Website
   set_header_footer: "website",
+  use_header_footer: "website",
   publish_page: "website",
   set_page_place: "website",
   save_menu: "website",

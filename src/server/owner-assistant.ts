@@ -45,7 +45,8 @@ import type { OwnerToolInput } from "@/lib/owner-tools";
 
 import { dnsApprovalDetails, domainApprovalDetails, moveApprovalDetails } from "./domain-tools";
 import { productApprovalWords } from "./product-tools";
-import { headerFooterApprovalWords, menuApprovalWords, placeApprovalWords, publishApprovalWords } from "./site-tools";
+import { headerFooterApprovalWords,
+  chooseHeaderFooterApprovalWords, menuApprovalWords, placeApprovalWords, publishApprovalWords } from "./site-tools";
 import { categoryApprovalWords } from "./category-tools";
 import { contentApprovalWords } from "./content-tools";
 import { setupApprovalWords } from "./setup-tools";
@@ -788,6 +789,7 @@ export async function keepForApproval(
   if (tool === "set_page_place") summary = (await placeApprovalWords(site, args)) ?? summary;
   if (tool === "save_menu") summary = (await menuApprovalWords(site, args)) ?? summary;
   if (tool === "set_header_footer") summary = (await headerFooterApprovalWords(site, args)) ?? summary;
+  if (tool === "use_header_footer") summary = (await chooseHeaderFooterApprovalWords(site, args)) ?? summary;
   // An entry's or content type's change is described with its own name (D326).
   if (store && (tool === "publish_entry" || tool === "unpublish_entry" || tool === "save_content_type")) {
     summary = await contentApprovalWords({ account: ctx.account, store, invalidate: ctx.invalidate }, tool, args);

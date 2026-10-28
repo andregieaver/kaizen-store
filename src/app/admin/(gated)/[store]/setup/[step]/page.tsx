@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { Suspense } from "react";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { BusinessDetailsFields } from "@/components/admin/business-details-fields";
 import { CountriesForm } from "@/components/admin/countries-form";
 import { FeatureQuestion, type QuestionWarning } from "@/components/admin/feature-question";
 import { SetupFrame } from "@/components/admin/setup-frame";
+import { StoreDraftsSection } from "@/components/admin/store-drafts-section";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { StripeAccountPanel } from "@/components/admin/stripe-account-panel";
 import { storeBase, storeHref } from "@/lib/paths";
@@ -80,6 +82,14 @@ export default async function SetupStepPage({ params }: Props) {
           intro={w.features.intro}
         >
           <FeaturesStep member={member} answered={progress.features} w={w} />
+          {/* Or let the AI draft the pages from a few sentences (D351): nothing is on the site until the owner publishes. */}
+          <div className="mt-8">
+            <AdminTextScope texts={adminTexts(adminLangOf(member.account.adminLocale), ["home"])}>
+              <Suspense fallback={null}>
+                <StoreDraftsSection storeId={member.store.id} storeSlug={member.store.slug} offerStart />
+              </Suspense>
+            </AdminTextScope>
+          </div>
         </SetupFrame>
       );
     case "details":

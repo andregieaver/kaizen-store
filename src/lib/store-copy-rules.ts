@@ -212,6 +212,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   ),
   assistant_notices: never("The AI manager's notices belong to the account they were written for (D350)."),
   assistant_skills: never("A person's saved skills belong to their account; a copy of the store starts with none (D350)."),
+  store_drafts: never("A draft of the store is the owner's work in progress; a copy starts with none (D351)."),
   assistant_follow_ups: never("The AI manager's follow-ups belong to the account and the conversation they were asked in."),
   assistant_goals: never("The owner's goals are the store's own business, not a setting to copy (D309)."),
   assistant_plans: never("The autopilot's plans run in an account's name in the store they were made for (D309)."),

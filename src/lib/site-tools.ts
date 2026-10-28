@@ -13,6 +13,7 @@ import { insertRow, moveRow, removeRow } from "./page-rows";
 import { isSharedBlock } from "./inline-edit";
 import { mapBlockTexts, mapTexts, pageTextLabels, pageTexts } from "./page-translation";
 import { textToRichText } from "./simple-rich-text";
+import { defaultFooter, defaultHeader } from "./site-layout";
 
 /**
  * The AI manager's website tools for pages (D308, `docs/ai-autopilot.md` 4): the arguments the model gives, and the pure parts of
@@ -415,6 +416,51 @@ export const setHeaderFooterInput = z.object({
     .describe("The site's icon in browser tabs: a square picture of at least 256 pixels from the media library (make_brand_marks makes one); null for the standard icon; left out to keep it."),
 });
 export type SetHeaderFooterArgs = z.output<typeof setHeaderFooterInput>;
+
+/** How a drafted header or footer is laid out (D351): the standard one, or another arrangement of the same parts. */
+export const HEADER_LOOKS = ["standard", "centred"] as const;
+export const FOOTER_LOOKS = ["columns", "simple"] as const;
+
+export const draftHeaderFooterInput = z.object({
+  kind: z.enum(["header", "footer"]),
+  look: z.enum([...HEADER_LOOKS, ...FOOTER_LOOKS]).optional().describe("A header: standard (logo left, menu, tools right) or centred (menu left, logo in the middle). A footer: columns or simple (one column)."),
+  menu: z.string().trim().min(1).max(MENU_NAME_MAX).optional().describe("The menu it shows, by id or name from get_menus; the standard one's when left out."),
+  section_style: z.string().trim().min(1).max(40).optional().describe("One of the live theme's section styles (plain, hero, feature, muted, contrast, quote, or the theme's own), for its colours; plain when left out."),
+  title: z.string().trim().min(1).max(120).optional().describe("Its name in the builder."),
+});
+export type DraftHeaderFooterArgs = z.output<typeof draftHeaderFooterInput>;
+
+export const useHeaderFooterInput = z.object({
+  kind: z.enum(["header", "footer"]),
+  page: z.string().trim().min(1).max(200).describe("The header's or footer's id (draft_header_footer gives it), or standard to go back to the standard one."),
+});
+export type UseHeaderFooterArgs = z.output<typeof useHeaderFooterInput>;
+
+/**
+ * A header or footer drafted for the site (D351): the standard layout's own parts (`defaultHeader()`/`defaultFooter()`, so the logo, the
+ * cart, the business details, the cookies and withdrawal links are always there), arranged by `look`, showing `menuId`, in a section style of
+ * the theme. Pure; the server checks it with `siteLayoutProblem()` and saves it as a draft.
+ */
+export function draftedLayout(
+  storeId: string | null,
+  kind: "header" | "footer",
+  options: { look?: string; menuId: string | null; sectionStyle?: string; title?: string },
+): PageContent {
+  const menus = { header: kind === "header" ? options.menuId : null, footer: kind === "footer" ? options.menuId : null };
+  const base = kind === "header" ? defaultHeader(storeId, menus) : defaultFooter(storeId, menus);
+  const rows = base.rows.map((row): PageRow => {
+    let next: PageRow = { ...row, ...(options.sectionStyle && options.sectionStyle !== "plain" ? { sectionStyle: options.sectionStyle } : {}) };
+    if (kind === "header" && options.look === "centred") {
+      const [brand, nav, tools] = next.columns;
+      next = { ...next, columns: [{ ...nav, justify: "start" }, { ...brand, justify: "center" }, tools] };
+    }
+    if (kind === "footer" && options.look === "simple") {
+      next = { ...next, layout: "1", columns: [{ id: "footer-all", blocks: next.columns.flatMap((column) => column.blocks) }] };
+    }
+    return next;
+  });
+  return { ...base, title: options.title ?? (kind === "header" ? "Header" : "Footer"), rows };
+}
 
 /** Kaizena Flow's own hosts, where `/s/{store}` is a store's address. */
 const PLATFORM_HOSTS = ["kaizenaflow.com", "www.kaizenaflow.com"];

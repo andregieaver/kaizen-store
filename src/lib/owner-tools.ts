@@ -40,6 +40,7 @@ import {
 } from "./setup-tools";
 import {
   buildPageInput,
+  draftHeaderFooterInput,
   editPageInput,
   getMenusInput,
   getPageInput,
@@ -50,8 +51,10 @@ import {
   saveMenuInput,
   setHeaderFooterInput,
   setPagePlaceInput,
+  useHeaderFooterInput,
   type StorePlace,
 } from "./site-tools";
+import { draftStoreInput } from "./store-drafts";
 
 /**
  * The owner assistant's tools (D94), modelled on Kaizen Life's MCP catalogue:
@@ -214,6 +217,17 @@ export const SITE_TOOLS = [
     "public",
   ),
   tool(
+    "draft_header_footer",
+    "Drafts a header or footer of the site's own (D351): the standard one's parts (logo, menu, search and cart, or the business details, cookies and withdrawal links), arranged as asked, showing one of the site's menus, in a section style of the live theme. Saved as a DRAFT the owner can open and change in the builder; the site keeps its header and footer until use_header_footer.",
+    draftHeaderFooterInput,
+  ),
+  tool(
+    "use_header_footer",
+    "Makes one of the site's own headers or footers the one the site shows (publishing its draft first), or goes back to the standard one, as Header and footer chooses it. Needs the owner's approval.",
+    useHeaderFooterInput,
+    "public",
+  ),
+  tool(
     "publish_page",
     "Publishes a page's or article's draft, as the builder's Publish does. Refused while the page has problems the accessibility checker blocks on (fix them with edit_page first; the owner can publish past them in the builder) or while it is in a running A/B test. Needs the owner's approval.",
     publishPageInput,
@@ -222,6 +236,11 @@ export const SITE_TOOLS = [
 ] as const satisfies readonly OwnerTool[];
 
 export const OWNER_TOOLS = [
+  tool(
+    "draft_store",
+    "Drafts the store from one description (D351): a front page and up to three more pages built by the page studio as DRAFTS in the background (a minute or two each, with pictures after), and, when you name one from list_themes, a free theme added to the library without going live. The owner reads them on Home's Your drafts card, changes what they like and publishes them with one press there (which also makes the first the front page, puts the others in the header's menu and makes the theme live). Nothing is on the site before that. One draft at a time. Give only facts the owner gave; never a price.",
+    draftStoreInput,
+  ),
   tool(
     "store_overview",
     "The store at a glance: its name, whether it is open, its countries with their currencies and languages, who it sells to, the features switched on (Settings, Features), and how many products and orders it has. Start here when unsure what the store is.",
@@ -1863,6 +1882,9 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
       return `${input.menu ? `Change the menu "${text("menu")}"` : `Make the menu "${text("name")}"`} to ${Array.isArray(input.items) ? input.items.length : 0} links.`;
     case "set_header_footer":
       return "Change the standard header and footer.";
+    // The header's or footer's own title is put in by the server (`chooseHeaderFooterApprovalWords()`).
+    case "use_header_footer":
+      return input.page === "standard" ? `Show the standard ${text("kind")} again.` : `Make ${text("page")} the site's ${text("kind")}.`;
     // The setup tools' own words come from the store as it is (`setupApprovalWords()`); these stand when it cannot be read.
     case "set_store_details":
       return "Change the store's business details.";

@@ -1089,6 +1089,17 @@ export const builderEn = {
     notSaved: "Not saved yet.",
   },
   /** "Make my page cool" (D128). `label` and `text` are `MAKE_COOL_LABEL` and `MAKE_COOL_TEXT`. */
+  aiChange: {
+    label: "Change with AI",
+    text: "Say what to change on this page. The AI changes its words and rows, or adds a section, and you see it here before you save. Undo takes it back.",
+    what: "What should change?",
+    placeholder: "Make the opening shorter and friendlier, and add a section with our opening hours.",
+    working: "Changing the page…",
+    failed: "Something went wrong while changing the page. Try again.",
+    cancel: "Cancel",
+    go: "Change it",
+    done: "Changed with AI: {done} Save to keep it, or undo.",
+  },
   cool: {
     label: "Make my page cool",
     text: "Your AI manager looks at your page and adds tasteful motion: entrances, hover effects and moving backgrounds. Nothing you already animated is changed.",

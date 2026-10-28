@@ -230,6 +230,7 @@ export const PERSONAL_DATA: PersonalEntry[] = [
   entry("assistant_messages", "staff", via("none"), ["content"], null, "none", "The AI manager's conversations hold what its tools returned; a retention period is the owner's decision (docs/wave-1g-gdpr.md section 7)."),
   entry("assistant_notices", "staff", via("none"), ["facts"], null, "none", "What the AI manager finished or waits on for a staff member (D350): a title or summary of their own work, never a customer's details; it goes with the account after 60 days."),
   entry("assistant_skills", "staff", via("none"), ["title", "when_to_use", "steps"], null, "none", "Skills a staff member saved for the AI manager in their own words (D350), refused when they hold an email address, a long number or a password; they go with the account."),
+  entry("store_drafts", "staff", via("none"), ["description"], null, "none", "A store drafted from an owner's description of their own business (D351), never a customer's details; it goes with the store."),
   entry("assistant_follow_ups", "staff", via("none"), ["task"], null, "none", "Follow-ups a staff member asked the AI manager for, in their own words; they go with the account or its conversation."),
   entry("assistant_goals", "staff", via("none"), ["vision"], null, "none", "The owner's goals for the business in their own words (D309); the store's, not a shopper's."),
   entry("assistant_plans", "staff", via("none"), ["summary"], null, "none", "The autopilot's plans (D309), run in a staff member's name; they go with the account or its conversation."),

@@ -417,6 +417,20 @@ Built as above, with these differences:
     card and publishes with one press (gated as each tool is). Nothing is published or made live without a yes.
   - **Merging rows**: decision 7 merges the two rows.
 
+  **As built (28 October 2026).** As outlined, with these choices: *Change with AI* reads the model's plan as the AI manager's `edit_page`
+  changes (`readChangePlan()` over `pageChange`, the existing schema, rather than a parser of its own) and makes them with `applyPageEdits()`
+  on the editor's copy, which the editor then takes as one change (one Undo step); a new section's pictures are left to the person (Make with
+  AI or the library), so a change in the editor starts no background job, and at most two new sections are asked for at a time. The drafted
+  header and footer start from the standard parts (`draftedLayout()`: a centred header, a simple footer) rather than the theme's sections, so
+  the business details, cookies and withdrawal links are always there; making one the site's is a tool of its own, `use_header_footer`, since
+  `set_header_footer` changes the standard one. A store drafted from a description takes a theme named by id or, if none is named, one the
+  model chooses by id among the free and owned themes (checked by code), and no designed look (`design_look` stays its own tool); publishing
+  adds the pages after the links of the menu the header already shows (a new store has one), else makes a menu of their own and shows it.
+  *Start from a description* is on Home and the wizard's first step; the panel needs a text model and says what to set up otherwise. Tests:
+  `store-builder-ai.test.ts`, `page-change-ai.test.ts` and `store-builder-ai.int.test.ts` (drafted pages built, published with one press,
+  discarded; a theme chosen by id and not live; a drafted header shown on the gated tool and the standard one again; Change with AI applied
+  unsaved and refused for an unknown key, a claim or an answer that is not a plan).
+
 - **H (D352) Marketing email from the store's own facts.**
   - *Write with AI* in the broadcast editor and the AI manager's `draft_broadcast` get read-only tools:
     - `find_products` (the store's offered products: title, kind, picture, the market's price as shown, through the catalogue's cached

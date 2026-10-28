@@ -12,6 +12,8 @@ import { menuInput, parseBusinessDetails, parseNavigation, platformMenuInput, ty
 import { isSpecialRole, type SpecialRole } from "@/lib/platform-roles";
 import { storeDomain } from "@/lib/paths";
 import { can, type PermissionHolder } from "@/lib/permissions";
+import { CORE_SECTION_STYLES } from "@/lib/section-styles";
+import { siteLayoutProblem } from "@/lib/site-layout";
 import {
   applyPageEdits,
   briefClaims,
@@ -34,8 +36,14 @@ import {
   setPagePlaceInput,
   setPlatformPlaceInput,
   toMenuEntries,
+  draftedLayout,
+  FOOTER_LOOKS,
+  HEADER_LOOKS,
+  useHeaderFooterInput,
   type BuildPageArgs,
+  type DraftHeaderFooterArgs,
   type PageChange,
+  type UseHeaderFooterArgs,
   type SaveMenuArgs,
   type SavePlatformMenuArgs,
   type SetHeaderFooterArgs,
@@ -56,6 +64,8 @@ import { memberCan } from "./permissions";
 import { PLATFORM_NAVIGATION_TAG, getPlatformTheme, savePlatformNavigation } from "./platform-navigation";
 import { setPlatformPageRole } from "./platform-roles";
 import { storeTag, type Store } from "./stores";
+import { chooseSiteLayout } from "./site-layouts";
+import { themeLayersFor } from "./theme-elements";
 import { aiFor } from "./ai";
 
 type Row = Record<string, unknown>;
@@ -834,6 +844,76 @@ export async function setHeaderFooterTool(ctx: SiteToolContext, args: SetHeaderF
 
 export const preflightHeaderFooter = async (ctx: SiteToolContext, args: SetHeaderFooterArgs) => void (await headerFooterChange(ctx, args));
 
+// A header or footer of the site's own, drafted and chosen (D351) ------------------------------
+
+/** The live theme's section styles a drafted layout may take: the core ones and the theme's own. */
+async function sectionStyleNames(ctx: SiteToolContext): Promise<string[]> {
+  const layers = await themeLayersFor(ownerOf(ctx));
+  return [...new Set([...CORE_SECTION_STYLES, ...Object.keys(layers.sections ?? {})])];
+}
+
+/** `draft_header_footer` (ungated: a draft only staff see): the standard parts arranged as asked, saved by the builder's own save. */
+export async function draftHeaderFooterTool(ctx: SiteToolContext, args: DraftHeaderFooterArgs) {
+  const looks: readonly string[] = args.kind === "header" ? HEADER_LOOKS : FOOTER_LOOKS;
+  if (args.look && !looks.includes(args.look)) return fail(`A ${args.kind} is laid out as ${looks.join(" or ")}.`);
+  if (args.section_style) {
+    const names = await sectionStyleNames(ctx);
+    if (!names.includes(args.section_style)) return fail(`The theme's section styles are ${names.join(", ")}.`);
+  }
+  const standard = await headerFooterChange(ctx, {});
+  const menuId = args.menu ? (await findMenu(ctx, args.menu)).id : args.kind === "header" ? standard.headerMenuId : standard.footerMenuId;
+  const content = draftedLayout(ownerOf(ctx), args.kind, { look: args.look, menuId, sectionStyle: args.section_style, title: args.title });
+  const problem = siteLayoutProblem(ownerOf(ctx), args.kind, content);
+  if (problem) return fail(problem);
+  const saved = await savePage(ctx.account, ownerOf(ctx), null, content, { publish: false, type: args.kind });
+  if (!saved.ok) return fail(`The ${args.kind} could not be saved: ${saved.problems.join(" ")}`);
+  return {
+    done: `Drafted the ${args.kind} "${content.title}". The site keeps its ${args.kind} until use_header_footer, with the owner's yes.`,
+    [args.kind]: saved.id,
+    editor: `${adminBase(ctx)}/${args.kind}s/${saved.id}`,
+  };
+}
+
+/** The header or footer page asked for: one of the site's own of that kind, or null for the standard one. */
+async function headerFooterPage(ctx: SiteToolContext, args: UseHeaderFooterArgs): Promise<{ id: string; title: string } | null> {
+  if (args.page === "standard") return null;
+  if (!/^[0-9a-f-]{36}$/i.test(args.page)) return fail(`Give the ${args.kind}'s id, as draft_header_footer gave it, or standard.`);
+  const [row] = await db().execute<Row>(sql`
+    select id, coalesce(draft ->> 'title', published ->> 'title', '') as title from commerce.pages
+    where id = ${args.page}::uuid and type = ${args.kind} and store_id is not distinct from ${ownerOf(ctx)}::uuid
+  `);
+  if (!row) return fail(`The site has no such ${args.kind}.`);
+  return { id: String(row.id), title: String(row.title) };
+}
+
+export const preflightChooseHeaderFooter = async (ctx: SiteToolContext, args: UseHeaderFooterArgs) => void (await headerFooterPage(ctx, args));
+
+/** `use_header_footer` (gated `public`): its draft published, then chosen as Header and footer chooses it; or the standard one again. */
+export async function chooseHeaderFooterTool(ctx: SiteToolContext, args: UseHeaderFooterArgs) {
+  const page = await headerFooterPage(ctx, args);
+  if (page) {
+    const held = await getPageForEdit(ownerOf(ctx), page.id, args.kind);
+    if (!held) return fail(`That ${args.kind} is gone.`);
+    const problem = siteLayoutProblem(ownerOf(ctx), args.kind, held.draft);
+    if (problem) return fail(problem);
+    const saved = await savePage(ctx.account, ownerOf(ctx), page.id, held.draft, { publish: true, type: args.kind });
+    if (!saved.ok) return fail(`The ${args.kind} could not be published: ${saved.problems.join(" ")}`);
+  }
+  const chosen = await chooseSiteLayout(ctx.account, ownerOf(ctx), args.kind, page?.id ?? null);
+  if (!chosen.ok) return fail(chosen.problems.join(" "));
+  ctx.invalidate(pagesTag(ownerOf(ctx)));
+  ctx.invalidate(navigationTag(ctx));
+  return { done: page ? `The site now shows the ${args.kind} "${page.title}".` : `The site shows the standard ${args.kind} again.` };
+}
+
+export async function chooseHeaderFooterApprovalWords(ctx: SiteToolContext, args: Record<string, unknown>): Promise<string | null> {
+  const parsed = useHeaderFooterInput.safeParse(args);
+  if (!parsed.success) return null;
+  const page = await headerFooterPage(ctx, parsed.data).catch(() => undefined);
+  if (page === undefined) return null;
+  return page ? `Publish the ${parsed.data.kind} "${page.title}" and show it on the whole site.` : `Show the standard ${parsed.data.kind} again.`;
+}
+
 export async function headerFooterApprovalWords(ctx: SiteToolContext, args: Record<string, unknown>): Promise<string | null> {
   const parsed = setHeaderFooterInput.safeParse(args);
   if (!parsed.success) return null;
@@ -855,6 +935,7 @@ export async function preflightPlatformSiteTool(ctx: SiteToolContext, name: stri
   if (name === "set_page_place") return preflightPagePlace(ctx, input as { place: StorePlace; page: string | null });
   if (name === "save_menu") return preflightSaveMenu(ctx, input as SavePlatformMenuArgs);
   if (name === "set_header_footer") return preflightHeaderFooter(ctx, input as SetHeaderFooterArgs);
+  if (name === "use_header_footer") return preflightChooseHeaderFooter(ctx, input as UseHeaderFooterArgs);
 }
 
 /** The site tools' approval words on Kaizena Flow's own site, from its own pages, menus and logos; null for any other tool. */
@@ -863,5 +944,6 @@ export async function platformSiteApprovalWords(ctx: SiteToolContext, name: stri
   if (name === "set_page_place") return placeApprovalWords(ctx, args);
   if (name === "save_menu") return menuApprovalWords(ctx, args);
   if (name === "set_header_footer") return headerFooterApprovalWords(ctx, args);
+  if (name === "use_header_footer") return chooseHeaderFooterApprovalWords(ctx, args);
   return null;
 }

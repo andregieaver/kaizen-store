@@ -34,11 +34,12 @@ import {
 import { layoutOf } from "@/lib/page-layout";
 import { blockingIssues, issueId, pageIssues, type PageIssue } from "@/lib/page-a11y";
 import { applyMotionPlan, type MotionPlan } from "@/lib/motion-plan";
-import { History, Redo2, Replace, Undo2, WandSparkles } from "lucide-react";
+import { History, Redo2, Replace, Sparkles, Undo2, WandSparkles } from "lucide-react";
 import { emptyHistory, historyKey, record, redo as redoStep, undo as undoStep, type History as EditHistory } from "@/lib/edit-history";
 import type { PageVersionItem } from "@/lib/page-versions";
 
 import { MakeCoolDialog } from "./make-cool-dialog";
+import { AiChangeDialog } from "./ai-change-dialog";
 import { copyRow, newBlock, newRow } from "@/lib/page-rows";
 import { DEFAULT_PRODUCT_LAYOUT } from "@/lib/product-layout";
 import { defaultFooter, defaultHeader, type StandardMenus } from "@/lib/site-layout";
@@ -209,6 +210,8 @@ export function PageEditor({
   const [templateOpen, setTemplateOpen] = useState(false);
   // "Make my page cool" (D128): the AI manager adds motion; the rows from before are kept for one undo, and the canvas plays it.
   const [coolOpen, setCoolOpen] = useState(false);
+  // *Change with AI* (D351): a described change to the page, held as one change the person can undo.
+  const [changeOpen, setChangeOpen] = useState(false);
   const [coolUndo, setCoolUndo] = useState<{ before: PageRow[]; after: PageRow[] } | null>(null);
   const [motionRequest, setMotionRequest] = useState(0);
   const [siteCss, setSiteCss] = useState(context.siteCss);
@@ -973,6 +976,31 @@ export function PageEditor({
             >
               <WandSparkles aria-hidden className="size-5" />
             </button>
+          )}
+          {!translating && context.aiChange && (
+            <>
+              <button
+                type="button"
+                onClick={() => setChangeOpen(true)}
+                aria-label={w.aiChange.label}
+                title={w.aiChange.label}
+                data-open-ai-change=""
+                className="flex size-11 items-center justify-center rounded-pill border border-edge hover:bg-sunken"
+              >
+                <Sparkles aria-hidden className="size-5" />
+              </button>
+              <AiChangeDialog
+                open={changeOpen}
+                onClose={() => setChangeOpen(false)}
+                endpoint={context.aiChange.endpoint}
+                type={context.type}
+                content={content}
+                onApply={(next, done) => {
+                  edit(() => next, "ai-change");
+                  setMessage(fillWords(w.aiChange.done, { done: done.join(" ") }));
+                }}
+              />
+            </>
           )}
           <MakeCoolDialog
             open={coolOpen}

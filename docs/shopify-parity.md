@@ -10,11 +10,11 @@ D152 (the store analytics cockpit) and D153 (the EU withdrawal function and the 
 
 <!-- parity:generated:start since -->
 
-- **Headline now 81.1%** (first report 59.5%), **must-have 84.5%** (first report 69.1%), over 202 core rows (first report 232).
-- Where the change comes from: +21.3 points from the 118 rating moves on core rows recorded below, and +0.3 points because the re-read changed which rows count as core (the tracker has 232 rows, the first report 232 core ones).
-- 231 of 232 rows have their Shopify side read from a page; the others are listed under evidence debt.
+- **Headline now 81.3%** (first report 59.5%), **must-have 84.5%** (first report 69.1%), over 201 core rows (first report 232).
+- Where the change comes from: +21.5 points from the 119 rating moves on core rows recorded below, and +0.3 points because the re-read changed which rows count as core (the tracker has 231 rows, the first report 232 core ones).
+- 230 of 231 rows have their Shopify side read from a page; the others are listed under evidence debt.
 
-Rated higher (104):
+Rated higher (105):
 
 - Admin AI assistant that performs tasks (AI): partial to full. D350: notices for background work that finished or waits (page builds, follow-ups, autopilot questions and finished plans, changes kept for a yes, reports), written once each by the jobs, counted on the launcher and in the account menu, li…
 - Assistant memory and saved skills (AI): partial to full. D350: saved skills: Save as skill in the panel, a Skills tab to list, edit and delete, save_skill and delete_skill, use_skill loading them like the built-ins; owners share with the store; built-in keys, secrets, customers' details and mark…
@@ -119,6 +119,7 @@ Rated higher (104):
 - Scheduled storefront changes with auto-revert (Storefront): missing to full. Wave 7 unit F (D340) built it, read in the code and held by tests: a page's, article's, header's or footer's draft is published at a day and time on the store's clock by the five-minute job in the name of who scheduled it (read again then)…
 - Version history, restore, shareable preview (Storefront): partial to full. Wave 7 unit F (D340) built what was missing, read in the code and held by tests: preview links (preview_links: the token shown once and kept only as its SHA-256, an expiry of 1, 7 or 30 days, revocable, made from the builder's Share and an…
 - URL redirect manager (Storefront): partial to full. D168 (wave 2, second run, docs/wave-2-redirects.md).
+- AI store and page building (Storefront): partial to full. D351: Change with AI in the builder (a plan of edits on the open page, applied unsaved), drafted headers and footers shown on a yes, and a store drafted from one description (front page, pages, a theme not live, the header's menu) publishe…
 - Storefront password or pre-launch page (Storefront): partial to full. Wave 7 unit E (D339): an owner makes the store private at Settings, Private mode (audited as store.private_mode), with a password kept as a scrypt hash (store.private_password); every page request of a private store from a visitor without…
 
 Rated lower (24):
@@ -154,7 +155,7 @@ Rated lower (24):
 
 <!-- parity:generated:start summary -->
 
-Kaizena Flow has **81.1%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 202 core features weighted by importance to an EU small or mid-size merchant, and **84.5%** on the must-haves (the 83 features with weight 4 or 5). The unweighted figures are 79.7% overall and 84.3% for must-haves. Counting app-only features gives 80.3%; counting Plus-only as well gives 79.7%. Kaizena Flow is strongest on storefront, themes and content (94.0%) and weakest on platform, extensibility and operations (54.7%), checkout and payments (69.2%), customers, marketing and loyalty (73.7%). Of the 202 core features, 129 are full, 64 partial and 9 missing, so half-built features, not absent ones, are the main shape of the gap.
+Kaizena Flow has **81.3%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 201 core features weighted by importance to an EU small or mid-size merchant, and **84.5%** on the must-haves (the 83 features with weight 4 or 5). The unweighted figures are 80.1% overall and 84.3% for must-haves. Counting app-only features gives 80.5%; counting Plus-only as well gives 79.9%. Kaizena Flow is strongest on storefront, themes and content (94.9%) and weakest on platform, extensibility and operations (54.7%), checkout and payments (69.2%), customers, marketing and loyalty (73.7%). Of the 201 core features, 130 are full, 62 partial and 9 missing, so half-built features, not absent ones, are the main shape of the gap.
 
 <!-- parity:generated:end summary -->
 
@@ -164,10 +165,10 @@ The method is simple: a full match scores 1, a partial match 0.5, a missing feat
 
 | Measure | Features | Weighted parity | Unweighted parity | Full / partial / missing |
 | --- | --- | --- | --- | --- |
-| Headline: core (Shopify native, Basic to Advanced) | 202 | **81.1%** | 79.7% | 129 / 64 / 9 |
+| Headline: core (Shopify native, Basic to Advanced) | 201 | **81.3%** | 80.1% | 130 / 62 / 9 |
 | Must-have (core, weight 4 or 5) | 83 | **84.5%** | 84.3% | 57 / 26 / 0 |
-| Core plus app-only features | 226 | 80.3% | 79.0% | 141 / 75 / 10 |
-| Everything, including Plus-only | 232 | 79.7% | 77.8% | 142 / 77 / 13 |
+| Core plus app-only features | 225 | 80.5% | 79.3% | 142 / 73 / 10 |
+| Everything, including Plus-only | 231 | 79.9% | 78.1% | 143 / 75 / 13 |
 
 <!-- parity:generated:end headline -->
 
@@ -180,15 +181,15 @@ Counts are core features only. Weighted parity uses weights 1 to 5; must-have is
 | Domain | Core features | Full | Partial | Missing | Weighted parity | Must-have features | Must-have parity |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | Catalogue and products | 26 | 22 | 3 | 1 | 90.7% | 8 | 92.6% |
-| Storefront, themes and content | 32 | 27 | 5 | 0 | 94.0% | 15 | 100.0% |
+| Storefront, themes and content | 32 | 28 | 4 | 0 | 94.9% | 15 | 100.0% |
 | Checkout and payments | 17 | 7 | 10 | 0 | 69.2% | 8 | 62.9% |
 | Orders, shipping, fulfilment and returns | 28 | 16 | 12 | 0 | 80.5% | 14 | 86.1% |
 | Customers, marketing and loyalty | 17 | 8 | 8 | 1 | 73.7% | 8 | 76.5% |
 | Analytics, reporting and finance | 24 | 20 | 3 | 1 | 92.2% | 11 | 94.6% |
 | International, compliance and trust | 16 | 10 | 6 | 0 | 77.7% | 10 | 70.2% |
 | Platform, extensibility and operations | 20 | 4 | 12 | 4 | 54.7% | 7 | 72.4% |
-| AI and automation | 22 | 15 | 5 | 2 | 82.1% | 2 | 100.0% |
-| **Total** | **202** | **129** | **64** | **9** | **81.1%** | **83** | **84.5%** |
+| AI and automation | 21 | 15 | 4 | 2 | 83.3% | 2 | 100.0% |
+| **Total** | **201** | **130** | **62** | **9** | **81.3%** | **83** | **84.5%** |
 
 <!-- parity:generated:end domains -->
 
@@ -200,16 +201,16 @@ A row is Full only when it lists code and tests that exist (or says it is untest
 
 | Evidence | Rows |
 | --- | ---: |
-| Full, with tests | 136 |
+| Full, with tests | 137 |
 | Full, untested (debt, not hidden) | 6 |
 | Shopify side not read from a page | 1 |
-| Rows in the tracker | 232 |
+| Rows in the tracker | 231 |
 
 Untested Full rows: `ai.assistant-voice-mode`, `customers.abandoned-checkout-recovery-emails`, `customers.seo-fundamentals`, `orders.order-statuses-timeline-notes`, `orders.cancel-order-with-refund-and-restock`, `storefront.automatic-sitemap-xml`. Shopify side not read: `international.br-nn-ysund-lookup-and-angrerett`.
 
 | Bucket | What it means | Rows not Full | Core rows | Core headline points lacking |
 | --- | --- | ---: | ---: | ---: |
-| A | Build in-house | 49 | 39 | 9.9 |
+| A | Build in-house | 47 | 37 | 9.6 |
 | B | Build, live only with a third party | 16 | 14 | 3.7 |
 | C | Strategy decision first | 11 | 8 | 1.9 |
 | D | Not reachable by code | 14 | 12 | 3.4 |
@@ -222,18 +223,18 @@ The waves are those of `docs/parity-plan.md` section 3. This table is produced f
 
 <!-- parity:generated:start projection -->
 
-Now: **81.1%** core, 84.5% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 16 rows (12 core) have no wave yet and are not in them.
+Now: **81.3%** core, 84.5% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 16 rows (12 core) have no wave yet and are not in them.
 
 | Wave | Scope | Rows (core) | Core if every row of waves 1 to N is Full | Must-have | Adds (points) | Core if only bucket A rows are | Must-have |
 | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | Compliance and money | 10 (7) | 83.2% | 88.0% | +2.1 | 82.6% | 86.9% |
-| 2 | Data in and out | 3 (1) | 83.4% | 88.0% | +0.2 | 82.8% | 86.9% |
-| 3 | Inventory and orders | 14 (13) | 86.7% | 90.4% | +3.3 | 84.3% | 88.2% |
-| 4 | Payments | 7 (6) | 88.2% | 92.1% | +1.5 | 84.7% | 88.2% |
-| 5 | Customers and marketing | 19 (16) | 92.4% | 95.8% | +4.2 | 88.0% | 91.3% |
-| 6 | Catalogue | 0 (0) | 92.4% | 95.8% | +0.0 | 88.0% | 91.3% |
-| 7 | Storefront and international | 3 (3) | 93.0% | 95.8% | +0.7 | 88.5% | 91.3% |
-| 8 | Analytics and AI | 6 (6) | 94.3% | 95.8% | +1.3 | 89.6% | 91.3% |
+| 1 | Compliance and money | 10 (7) | 83.5% | 88.0% | +2.1 | 82.9% | 86.9% |
+| 2 | Data in and out | 3 (1) | 83.7% | 88.0% | +0.2 | 83.1% | 86.9% |
+| 3 | Inventory and orders | 14 (13) | 86.9% | 90.4% | +3.3 | 84.6% | 88.2% |
+| 4 | Payments | 7 (6) | 88.5% | 92.1% | +1.5 | 85.0% | 88.2% |
+| 5 | Customers and marketing | 19 (16) | 92.6% | 95.8% | +4.2 | 88.3% | 91.3% |
+| 6 | Catalogue | 0 (0) | 92.6% | 95.8% | +0.0 | 88.3% | 91.3% |
+| 7 | Storefront and international | 3 (3) | 93.3% | 95.8% | +0.7 | 88.8% | 91.3% |
+| 8 | Analytics and AI | 4 (4) | 94.3% | 95.8% | +1.0 | 89.5% | 91.3% |
 | 9 | Platform and extensibility | 12 (9) | 96.6% | 96.9% | +2.3 | 91.0% | 91.8% |
 
 Ceiling with every bucket A row Full and buckets B, C and D as they are: **91.0%** core, 91.8% must-have. With bucket B built and approved as well: 94.7% core, 95.8% must-have.
@@ -392,7 +393,7 @@ Legend. **Shopify**: Native = included on Basic to Advanced and scored in the he
 | Multilingual storefront content | Native. [page](https://help.shopify.com/manual/markets/languages/translate-adapt-app) | Full | 5 |  | Caveat: a language may also have a domain of its own (D313). Category and tag names and descriptions are translatable since D319 (`terms.texts`, read through `termTextFor()`, in the translation worklist). Merged on 2026-10-26 (README rule 8): `international.multi-language-storefront-and-ai-translation` was the same Shopify feature (rated full); its criteria and evidence are here. Evidence: `src/lib/localization.ts`, `src/server/localization.ts`, `src/lib/page-translation.ts` and 9 more; 11 test files; D55, D109, D110, D111, D168, D313. |
 | Custom data rendered in the theme | Native. [page](https://help.shopify.com/en/manual/custom-data/metafields/displaying-metafields-on-your-online-store) | Full | 3 |  | Evidence: `src/lib/custom-fields.ts`, `src/server/custom-fields.ts`, `src/lib/field-binding.ts` and 5 more; 7 test files; D118, D119, D120. |
 | Cookie consent banner and log | Native. [page](https://help.shopify.com/en/manual/privacy-and-security/privacy/customer-privacy-settings/privacy-settings) | Full | 5 |  | Caveat: the Consent Mode v2 signals sent by `consent-manager.tsx` are read from the code and held by no test. Merged on 2026-10-26 (README rule 8): `international.cookie-consent-banner-and-api` was the same Shopify feature (rated full); its criteria and evidence are here. Evidence: `src/lib/cookie-consent.ts`, `src/server/consents.ts`, `src/lib/cookie-scan.ts` and 6 more; 6 test files; D58, D61. |
-| AI store and page building | Native. [page](https://www.shopify.com/editions/winter2026) | Partial (was full) | 2 | A, wave 8 | Built since the last read (D308 to D310): the AI manager builds and edits page drafts (`build_page`, `edit_page`; built after the answer by `runPageJobs()`, `publish_page` gated), makes menus of the store's own links only (`save_menu`, gated while a menu is shown), chooses the standard header's and footer's menus and logo (`set_header_footer`, gated), adds, previews and makes a theme or preset live (`add_theme`, `try_theme`, `make_theme_live`, gated, the charge kept with the approval), sets the store's details, countries, languages, currencies and shipping (setup tools, at once while the store is being set up), and looks at what it built (`look_at_page`, `look_at_store`); the page studio (D92), the replicator (D150) and a theme's starting content (D275) remain. Since D330 criterion 1 holds: `design_look` designs a look of the store's own from a description (a few brand colours, fonts and Design settings' named choices, both palettes worked out by `designedTheme()` and refused under 4.5:1 by `themeWarnings()`), adds it to the theme library not live, and it reaches visitors only through the gated `make_theme_live`. Still short: (1) no custom header or footer layout from AI, only the standard one's menus and logo (criterion 2); (2) no single flow from one description to theme, front page, pages and menus as drafts: the owner, or a plan the owner approves (D309), drives it tool by tool. Code: `src/server/page-ai.ts`, `src/lib/page-ai.ts`. |
+| AI store and page building | Native. [page](https://www.shopify.com/editions/winter2026) | Full (was partial) | 2 |  | Met (D351). Merged with ai.ai-page-and-theme-generation (README rule 8, wave 8 decision 7), keeping the stricter criteria of each. In the builder, *Change with AI* takes a description of a change to the open page: the model returns only a plan of edits on its existing parts (texts by key, rows moved or removed, new sections from the page studio's PATTERNS written by its writer), tried by dryRunEdits() and made by the builder's own pure edits on the editor's copy, unsaved and one Undo step (src/server/page-change-ai.ts, AiChangeDialog); never CSS, script or a link outside the site's own. A theme from a description is design_look (D330: colours worked out in code to 4.5:1, added to the library, live only through the gated make_theme_live). draft_header_footer drafts a header or footer of the site's own from the standard parts, arranged as asked, showing one of its menus, in a section style of the live theme; use_header_footer (gated public) publishes and shows it; menus link only to the store's own pages (save_menu). *Start from a description* (the setup wizard and Home) and draft_store turn one description into a front page and up to three pages built as drafts, and a free or owned theme (named, or chosen by the model by id and checked by code) added to the library not live; *Your drafts* shows each page as it is built and one press publishes them, makes the first the front page, adds the rest to the header's menu and makes the theme live; nothing reaches visitors before it. Without a text model the builder offers no *Change with AI* and the drafts card says what to set up. The page studio (D92), Make my page cool (D128), the replicator (D150) and pictures by prompt (D283) remain. Evidence: `src/server/page-ai.ts`, `src/lib/page-ai.ts`, `src/components/admin/page-studio.tsx` and 24 more; 21 test files; D92, D94, D110, D128, D150, D275, D308, D309, D310, D330, D283, D351. |
 | Storefront password or pre-launch page | Native. [page](https://help.shopify.com/en/manual/online-store/themes/password-page) | Full (was partial) | 2 |  | Evidence: `src/app/admin/(gated)/[store]/settings/private/page.tsx`, `src/app/api/private/enter/route.ts`, `src/app/api/private/preview/route.ts` and 16 more; 7 test files; D21, D171, D178, D339. |
 | Accessibility and theme quality guarantees | Native. [page](https://www.shopify.com/partners/blog/theme-store-accessibility-requirements) | Partial | 3 | D, no wave yet | All four criteria are built and tested; Partial because the independent audit is bucket D and the checkout's own markup and Stripe's form are not scanned. `e2e/a11y.spec.ts` (axe up to `wcag22aa`, light and dark, serious and critical fail) covers the signed-out pages CI reaches, and since PSI ACC-01 `e2e/signed-in/a11y.spec.ts` scans the owner's and platform admin's most-used pages and the skip link; the builder's Checks tab (`src/lib/page-a11y.ts`: alt text, empty links and buttons, heading order, contrast with opacity, placeholders, translations) links each issue to its block; `savePage()` asks before publishing with a blocking issue and records the choice (`page.published_with_issues`); the statement is generated from facts the site holds and flagged for review. Missing: (1) the independent audit (bucket D); (2) the checkout page itself: the demo store takes no payments, so `a11y.spec.ts`'s checkout test follows the redirect to the cart and scans that, and `csp.spec.ts` reads headers only, so the address, delivery choice, terms tick box and pay button are scanned by nobody, nor is Stripe's form, and the manual run is recorded nowhere (docs/pci.md); (3) the checker reads a page's own content only (owner CSS and a picture behind text are not read) and does not notice a translation made stale by a later edit. Code: `src/lib/theme.ts`, `src/lib/alt-text.ts`. |
 
@@ -619,7 +620,6 @@ Legend. **Shopify**: Native = included on Basic to Advanced and scored in the he
 | AI and semantic storefront search | Native. [page](https://changelog.shopify.com/posts/semantic-search-is-now-available-on-more-plans) | Full | 3 |  | Evidence: `src/server/search.ts`, `src/lib/search.ts`, `src/server/query-understanding.ts` and 4 more; 6 test files; D72, D73, D74, D75, D77, D78. |
 | Product recommendations | Native. [page](https://help.shopify.com/en/manual/online-store/search-and-discovery/product-recommendations) | Full | 3 |  | Merged on 2026-10-26 (README rule 8): `catalogue.product-recommendations` was the same Shopify feature (rated full); its criteria and evidence are here. Evidence: `src/server/recommend.ts`, `src/lib/recommendations.ts`, `src/server/recommend-settings.ts` and 8 more; 5 test files; D139, D140. |
 | AI customer-support chat agent | Native. [page](https://help.shopify.com/en/manual/inbox) | Partial | 3 | A, wave 8 | D81 and D216 (docs/support.md, steps 1-16): the chat keeps its conversations on the site; a visitor asks for a person and a store's people answer in a shared inbox (or the AI hands over when it cannot help, the tone falls, or it reaches its limit), with email follow-up when nobody is online; a signed-in customer's orders, returns, bookings, subscriptions and bonus are answered from read-only tools (support-tools.ts) through cleanReply(), with link chips made by code; the AI proposes self-service actions the customer confirms and passes other requests to staff. What keeps it partial: the consumer texts of docs/support.md section 8 need human legal review before the row is rated full. Proposed criteria change (docs/support.md 1.5; the criteria themselves are not edited here): order status only to a customer proven by an emailed code or a signed-in session, since an order number with an email proves nothing. Since D332 (step 16) a desk also takes email: a message to the desk's address becomes a conversation, which the AI answers first by email where the desk puts the AI first (no tool that needs a signed-in customer), each AI answer marked as the AI's (D334); a sender is never tied to a customer by the address. Code: `src/app/api/chat/route.ts`, `src/app/api/chat/voice/route.ts`. |
-| AI page and theme generation | Native. [page](https://changelog.shopify.com/posts/ai-block-generation-for-all-theme-store-themes) | Partial | 2 | A, wave 8 | The AI page studio (D92) interviews, plans sections from PATTERNS, writes the words, builds rows and makes the pictures as a draft, plus Make my page cool (D128), AI page translation and copying another site's page (D150); the builder's picture fields make and remake a picture from a description in the site's look (D283). Since D308 (A2) the AI manager builds a page from a brief and changes an existing page from a person's words (edit_page: texts through mapTexts() and replaceInPage() and the row edits, tried first by dryRunEdits(), saved as a draft by savePage(); publishing gated; src/server/site-tools.ts), and since D310 it photographs the draft on a phone and a computer and fixes what the checks find before asking to publish; since A4 it chooses among made themes and presets (list_themes, add_theme, try_theme, make_theme_live). Still short: (1) a described change is saved as a draft from the assistant's panel, not applied unsaved in the open builder (criterion 1); (2) no whole-store redesign in one step. Criterion 2 holds since D330: the AI manager designs a look of the store's own (design_look: a few brand colours, fonts and Design settings' named choices, both palettes worked out in code to 4.5:1, added to the theme library to try and make live) and keeps the brand in words (set_brand, get_brand); since F2a it draws the logo for light and dark and the site's icon from the brand's name in its own font (make_brand_marks, by code from the font's outlines, never a picture model) and puts them in place on the owner's yes (set_header_footer); since F2b the brand guides the page studio, the product writer, broadcasts' suggestions and the chat's tone, its words to avoid found by code beside the claims filter. Code: `src/lib/page-ai.ts`, `src/server/page-ai.ts`. |
 | AI translation | Native. [page](https://apps.shopify.com/translate-and-adapt) | Full | 4 |  | Evidence: `src/server/store-translate.ts`, `src/lib/store-translate.ts`, `src/lib/ui-catalog.ts` and 6 more; 6 test files; D55, D110, D111. |
 | Natural-language analytics and custom reports | Native. [page](https://help.shopify.com/en/manual/shopify-admin/productivity-tools/sidekick/generate-content) | Full (was partial) | 3 |  | Residual: the questions are the report catalogue's (D345), so a figure outside it (visits, conversion, shipping) or a cut it lacks (vendor, customer group, company) is declined with what can be asked; the fixed analytics tools still answer the rest. Evidence: `src/server/analytics-tools.ts`, `src/server/owner-tools.ts`, `src/server/owner-insights.ts` and 9 more; 8 test files; D103, D104, D152, D161, D216, D345, D346. |
 | AI or rule-based customer segmentation | Native. [page](https://help.shopify.com/en/manual/shopify-admin/productivity-tools/sidekick/generate-content) | Partial (was missing) | 3 | A, wave 5 | D296: rule-based segments (orders, spend, dates, country, group, RFM class, tags) saved per store, matched in code each time they are read, never readable on the shopper's side (criteria 1 and 4). D297: a broadcast's audience can be a segment, sent only to subscribed addresses (criterion 3; a discount code still reaches groups and named customers only, D299). Since D318 the AI manager lists segments with their counts (list_segments) and drafts a broadcast for one. Still missing (criterion 2): the assistant turning a sentence into a rule set; no tool makes or changes a segment. Code: `src/server/owner-insights.ts`, `src/server/analytics-tools.ts`. |
