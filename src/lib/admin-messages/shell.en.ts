@@ -70,6 +70,26 @@ export const shellEn = {
     reopen: "Reopen the store",
     aboutReopening: "About reopening",
   },
+  /** The installable admin and its notifications (D361): Your account's card and the offline page. */
+  push: {
+    title: "Notifications on this device",
+    description: "Get a notification on this device when a store has a new order: its number and total only, nothing about the customer.",
+    unsupported: "This browser cannot get notifications. On an iPhone or iPad, add Kaizena Flow to the Home Screen first (Share, then Add to Home Screen).",
+    off: "Notifications are not set up on Kaizena Flow yet.",
+    blocked: "Notifications are blocked for this site in the browser's settings.",
+    on: "On",
+    turnOn: "Turn on",
+    turnOff: "Turn off",
+    working: "Working…",
+    devices: "Devices that get them",
+    none: "No devices yet.",
+    remove: "Remove",
+    thisDevice: "this device",
+    failed: "That did not work. Try again.",
+    offlineTitle: "You are offline",
+    offlineBody: "Kaizena Flow's admin needs a connection. Your work is kept on the server; reload when you are back online.",
+    reload: "Reload",
+  },
 };
 
 export type ShellMessages = Widen<typeof shellEn>;

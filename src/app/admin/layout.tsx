@@ -21,6 +21,8 @@ export async function generateMetadata(): Promise<Metadata> {
     robots: { index: false, follow: false },
     // Kaizen's icon (D62).
     icons: siteIcons(await getPlatformFavicon()),
+    // Installable (D361): opens the admin on its own, its service worker registered by the signed-in shell.
+    manifest: "/admin/manifest.webmanifest",
   };
 }
 

@@ -7,6 +7,7 @@ import { AdminLangSync, AdminTextProvider } from "@/components/admin/admin-text"
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminTexts } from "@/lib/admin-text";
 import { SessionKeeper, SessionRecovery } from "@/components/admin/session";
+import { AdminServiceWorker } from "@/components/admin/push-settings";
 import { getAccount, getAssurance, heldDestination } from "@/server/auth";
 
 /**
@@ -44,6 +45,7 @@ async function Gate({ children }: { children: React.ReactNode }) {
         <AdminColorSync saved={account.colorMode ?? "system"} />
         <AdminSchemeSync saved={account.adminScheme ?? "meadow"} />
         <AdminLangSync lang={lang} />
+        <AdminServiceWorker />
         {children}
       </div>
     </AdminTextProvider>

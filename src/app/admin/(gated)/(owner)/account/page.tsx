@@ -13,7 +13,11 @@ import { ManageTwoStep } from "@/components/admin/two-step-panel";
 import { AvatarPicker } from "@/components/avatar-picker";
 import { MIN_PASSWORD_LENGTH } from "@/lib/password";
 import { createClient } from "@/lib/supabase/server";
-import { requireAccount } from "@/server/auth";
+import { listStores, passMembership, requireAccount } from "@/server/auth";
+import { memberCan } from "@/server/permissions";
+import { pushDevicesOf, pushPublicKey } from "@/server/push";
+import { PushSettings } from "@/components/admin/push-settings";
+import { removePushAction, removePushDeviceAction, savePushAction } from "./push-actions";
 import { avatarFor } from "@/server/avatars";
 import { isOwner, kaizenLifeIdentity, kaizenLifeSignInOn } from "@/server/kaizen-life";
 import { lifeLink, lifeLinkOn } from "@/server/kaizen-life-link";
@@ -52,6 +56,14 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
   const owner = await isOwner(account);
   const supabase = await createClient();
   const twoStep = await twoStepStatus(account);
+  // The stores whose orders this person reads, each a switch for notifications on this device (D361).
+  const [pushStores, pushDevices] = await Promise.all([
+    listStores(account).then(async (stores) => {
+      const read = await Promise.all(stores.map(async (s) => ({ s, member: await passMembership(s.slug, account.id) })));
+      return read.filter(({ member }) => member && memberCan(member, "orders:read")).map(({ s, member }) => ({ slug: s.slug, id: member!.store.id, name: s.name }));
+    }),
+    pushDevicesOf(account.id),
+  ]);
   const [identity, grants, link] = await Promise.all([
     owner && kaizenLifeSignInOn() ? kaizenLifeIdentity(supabase) : null,
     owner ? supabase.auth.oauth.listGrants().then(({ data }) => data ?? [], () => []) : [],
@@ -172,6 +184,16 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
           <p className="text-sm text-muted">{w.twoStepAgain}</p>
         )}
       </section>
+
+      {/* Notifications on this device (D361): the stores whose orders this person reads. */}
+      <div className="max-w-2xl">
+        <PushSettings
+          publicKey={pushPublicKey()}
+          stores={pushStores}
+          devices={pushDevices.map((d) => ({ id: d.id, storeId: d.storeId, storeName: d.storeName, device: d.device, endpoint: d.endpoint }))}
+          actions={{ save: savePushAction, remove: removePushAction, removeDevice: removePushDeviceAction }}
+        />
+      </div>
 
       {owner && kaizenLifeSignInOn() && (
         <section aria-labelledby="kaizen-life-heading" className="flex max-w-md flex-col gap-3">

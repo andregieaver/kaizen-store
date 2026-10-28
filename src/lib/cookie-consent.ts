@@ -217,6 +217,22 @@ export const KNOWN_COOKIES: KnownCookie[] = [
     },
   },
   {
+    // In Cache Storage, not a cookie: kept by the admin's service worker for someone signed in (D361), the offline page and the icon only.
+    name: "kaizen-admin-shell-…",
+    pattern: /^kaizen-admin-shell-\d+$/,
+    provider: "Kaizena Flow",
+    category: "necessary",
+    days: null,
+    on: "platform",
+    staff: true,
+    purpose: {
+      en: "In Kaizena Flow's admin: keeps the page shown when you are offline, so the installed admin can say so. It holds none of your data.",
+      nb: "I Kaizena Flows administrasjon: tar vare på siden som vises når du er frakoblet, så den installerte administrasjonen kan si fra. Den inneholder ingen av dine data.",
+      sv: "I Kaizena Flows administration: sparar sidan som visas när du är offline, så att den installerade administrationen kan säga det. Den innehåller inga av dina uppgifter.",
+      da: "I Kaizena Flows administration: gemmer den side, der vises, når du er offline, så den installerede administration kan sige det. Den indeholder ingen af dine data.",
+    },
+  },
+  {
     // In local storage, not a cookie: set in Kaizen's admin by someone signed in who shows the rail's names (D262).
     name: "kaizen_admin_rail",
     pattern: /^kaizen_admin_rail$/,

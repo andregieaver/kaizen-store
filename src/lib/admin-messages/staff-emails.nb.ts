@@ -282,4 +282,5 @@ export const staffEmailsNb: StaffEmailsMessages = {
     after: "Sjekk adressen og at den svarer 2xx, og slå det på igjen. Du kan sende feilede hendelser på nytt fra loggen.",
     button: "Åpne endepunktene dine",
   },
+  push: { newOrderTitle: "Ny ordre {number}", newOrderBody: "{total} · {store}" },
 };

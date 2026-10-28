@@ -1066,7 +1066,7 @@
       "was": "missing"
     },
     "weight": 3,
-    "gap": "An admin shell with a few responsive classes (`admin-frame.tsx`; no test holds the admin at phone width, the phone e2e tests cover the storefront only) and an AI manager with voice and live voice that works from a phone (D104, D105); order events reach a phone only as staff alert emails (D238) or Slack messages (D101). No web app manifest or service worker (none under `src/app` or `public`), so the admin cannot be installed, and no push notification for new orders. Plan section 5 decision 6: an installable PWA with push, native apps not worth it yet.",
+    "gap": "An admin shell with a few responsive classes (`admin-frame.tsx`) and an AI manager with voice and live voice that works from a phone (D104, D105). Since D361 the admin is installable: a web app manifest (`/admin/manifest.webmanifest`, Kaizena Flow's icon) and a service worker scoped to `/admin/` (`/admin/sw.js`, `src/lib/admin-sw.ts`) that keeps only an offline page and answers a page load it cannot fetch with it; and Web Push with VAPID keys from the environment: on Your account a person switches notifications on per device and store (only where they read orders), a paid order rings each device with its number and total only and opens that order, a device the push service says is gone is removed, and one whose person no longer reads the store's orders is removed at the next send (`src/server/push.ts`). Still short: offline it shows a page saying so, not the signed-in shell (criterion 1 asks for the shell; the admin's pages are per request and hold an account's data, so none is kept in the browser); no e2e test holds the admin at 390 px (criterion 4); and notifications need the VAPID keys set in production.",
     "bucket": "C",
     "wave": 9,
     "criteria": [
@@ -1081,11 +1081,19 @@
         "src/components/admin/live-voice.ts",
         "src/components/admin/voice-mode.ts",
         "src/components/admin/ai-manager-launcher.tsx",
-        "src/lib/slack.ts"
+        "src/lib/slack.ts",
+        "src/lib/admin-sw.ts",
+        "src/lib/push.ts",
+        "src/server/push.ts",
+        "src/components/admin/push-settings.tsx",
+        "src/app/admin/sw.js/route.ts",
+        "src/app/admin/manifest.webmanifest/route.ts"
       ],
       "tests": [
         "src/lib/speech-text.test.ts",
-        "src/lib/slack.test.ts"
+        "src/lib/slack.test.ts",
+        "src/lib/push.test.ts",
+        "src/server/push.int.test.ts"
       ],
       "untested": false
     },
@@ -1093,7 +1101,8 @@
       "D101",
       "D104",
       "D105",
-      "D238"
+      "D238",
+      "D361"
     ],
     "history": [
       {

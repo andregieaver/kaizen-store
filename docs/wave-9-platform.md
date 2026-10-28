@@ -169,6 +169,10 @@ Each unit adds its own paragraph here when it is built.
   behind every page, Supabase Auth, Stripe, the email log, the job ledger); checkout and the admin are not checked apart from the site, as
   they are the same app and database. A part not set up is *Not measured* and a check that did not run is missing, never up. Admins are emailed
   at the second failure in a row and again only after a pass. Links in subscribers' emails open pages with a button. The feed is per language.
+- **H (D361), built 28 October 2026.** As section 3 says, with these choices: the `web-push` library rather than our own encryption (RFC 8291
+  and VAPID are easy to get subtly wrong); the service worker keeps only an offline page, never a signed-in page, as the admin's pages are per
+  request and hold an account's data; push endpoints only on the browsers' own push services' hosts; a device whose person no longer reads the
+  store's orders is removed when the next order would ring it, so a removed member stops at once without a hook in every way a membership ends.
 
 ## 5. Decisions
 

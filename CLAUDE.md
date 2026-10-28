@@ -956,6 +956,11 @@ stand-in is the only fake, and only it is told it is one.
   of `STATUS_COMPONENTS` its probe could measure (a probe with nothing to measure returns null: *Not measured*, never up), incidents and
   updates only by `postIncident()`/`updateIncident()`, subscribers only by that module. A new part is an id in `STATUS_COMPONENTS` (and the
   tables' checks), a probe in `PROBES` and its words in the `status` catalogue of both platform languages; a missing check is never drawn as passed.
+- **The installable admin and push (wave 9 unit H, D361, `src/lib/admin-sw.ts`, `src/lib/push.ts`, `src/server/push.ts`)**: the service worker is
+  only `adminServiceWorker()` at `/admin/sw.js` (scoped to `/admin/`): it caches the offline page and the icon only, never a signed-in page or
+  data, and opens only admin addresses on its own site. A device's push subscription is written only by `src/server/push.ts`, for a member with
+  `orders:read`, on a push service's host (`isPushEndpoint()`; the server POSTs there); a push carries no customer's data. A new notification
+  is a sender there that reads the membership again before each device and removes a device gone (404, 410).
 - **Workflows (wave 9 unit C, D356, `src/lib/workflows.ts`, `src/server/workflows.ts`)**: a workflow is `commerce.workflows`, written only by
   `workflows.ts` (saved off; on only once *Test* ran the version saved); its runs are made by the database's `queue_integration_event()` (once
   per workflow, event and transaction, capped at `RUNS_PER_HOUR`) and by `queueScheduledRuns()`, and run only by `runWorkflows()` in the

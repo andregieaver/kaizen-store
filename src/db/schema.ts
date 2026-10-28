@@ -15262,3 +15262,34 @@ export const statusSubscribers = commerce.table(
     uniqueIndex("status_subscribers_unsubscribe_idx").on(t.unsubscribeToken),
   ],
 );
+
+/**
+ * A device that gets a store's push notifications for a staff member (wave 9 unit H, D361, `src/server/push.ts`, the only writer): the
+ * browser's push endpoint (only a push service's own host, `isPushEndpoint()`), its keys, and a name for the person to tell devices apart.
+ * Removed when the push service says the device is gone (404 or 410), when the person's membership no longer reads orders, and by the
+ * person on Your account.
+ */
+export const pushSubscriptions = commerce.table(
+  "push_subscriptions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    accountId: uuid("account_id")
+      .notNull()
+      .references(() => accounts.id, { onDelete: "cascade" }),
+    storeId: storeId().references(() => stores.id),
+    endpoint: text("endpoint").notNull(),
+    p256dh: text("p256dh").notNull(),
+    auth: text("auth").notNull(),
+    device: text("device").notNull().default(""),
+    failures: integer("failures").notNull().default(0),
+    lastSentAt: timestamp("last_sent_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("push_subscriptions_endpoint_store_key").on(t.endpoint, t.storeId),
+    check("push_subscriptions_endpoint", sql`${t.endpoint} like 'https://%' and length(${t.endpoint}) <= 2000`),
+    check("push_subscriptions_device", sql`length(${t.device}) <= 60`),
+    index("push_subscriptions_store_idx").on(t.storeId),
+    index("push_subscriptions_account_idx").on(t.accountId, t.storeId),
+  ],
+);

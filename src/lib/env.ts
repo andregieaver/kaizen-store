@@ -74,3 +74,23 @@ export function domainConnectKey(source: Record<string, string | undefined> = { 
   if (!/^-----BEGIN (RSA )?PRIVATE KEY-----/.test(pem)) throw new Error("DOMAIN_CONNECT_PRIVATE_KEY must be a PEM private key.");
   return pem;
 }
+
+/**
+ * The admin's Web Push keys (D361): the VAPID key pair (base64url, as `web-push generate-vapid-keys` prints them) and who the push services
+ * may contact (`mailto:` or a web address; Kaizena Flow's site by default). Null without both keys: notifications are then not offered.
+ */
+export function vapidEnv(
+  source: Record<string, string | undefined> = {
+    VAPID_PUBLIC_KEY: process.env.VAPID_PUBLIC_KEY,
+    VAPID_PRIVATE_KEY: process.env.VAPID_PRIVATE_KEY,
+    VAPID_SUBJECT: process.env.VAPID_SUBJECT,
+  },
+): { publicKey: string; privateKey: string; subject: string } | null {
+  const publicKey = source.VAPID_PUBLIC_KEY?.trim();
+  const privateKey = source.VAPID_PRIVATE_KEY?.trim();
+  if (!publicKey || !privateKey) return null;
+  if (!/^[A-Za-z0-9_-]{80,100}$/.test(publicKey) || !/^[A-Za-z0-9_-]{40,50}$/.test(privateKey)) throw new Error("VAPID keys must be base64url, as web-push generates them.");
+  const subject = source.VAPID_SUBJECT?.trim() || "https://kaizenaflow.com";
+  if (!/^(mailto:|https:\/\/)/.test(subject)) throw new Error("VAPID_SUBJECT must start with mailto: or https://.");
+  return { publicKey, privateKey, subject };
+}

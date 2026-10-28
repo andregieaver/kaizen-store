@@ -223,6 +223,7 @@ export const PERSONAL_DATA: PersonalEntry[] = [
 
   // Staff, hosts, owners, applicants, the platform ----------------------------------------------------------------------------------
   entry("accounts", "staff", via("none"), ["email", "name"], null, "none", OWN),
+  entry("push_subscriptions", "staff", via("none"), ["device", "endpoint"], null, "none", "A staff member's device that gets a store's new-order notifications (D361): its push address and a name; removed by the person, when the push service says it is gone, and when the person no longer reads the store's orders. " + OWN),
   entry("status_subscribers", "owner", via("none"), ["email"], null, "none", "People who asked for emails about Kaizena Flow's incidents (D360): an address and a language. Leaving (the link in every email) deletes the row, and one never confirmed goes after a week. " + OWN),
   entry("access_requests", "owner", via("none"), ["email", "name", "message"], null, "none", "People who applied to open a store: the platform's applicants. " + OWN),
   entry("abandoned_plan_checkouts", "owner", via("none"), ["email"], null, "none", "A store owner's unfinished plan checkout. " + OWN),

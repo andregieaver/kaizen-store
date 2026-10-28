@@ -287,6 +287,8 @@ export const staffEmailsEn = {
     after: "Check the address and that it answers 2xx, then switch it on again. You can send failed events again from its log.",
     button: "Open your endpoints",
   },
+  /** A push notification of a new order (D361): its number and total only. */
+  push: { newOrderTitle: "New order {number}", newOrderBody: "{total} · {store}" },
 };
 
 export type StaffEmailsMessages = Widen<typeof staffEmailsEn>;

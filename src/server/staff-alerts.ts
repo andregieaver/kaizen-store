@@ -852,6 +852,8 @@ export async function processStoreEvents(
         if (result && !result.ok) throw new Error("an email could not be sent");
         out.emails += result?.sent ?? 0;
         await markPart(e, "alerts");
+        // A paid order also rings the staff devices that asked for it (D361), once, after its emails: best effort, never retried.
+        if (e.event === "order.paid" && result) await (await import("./push")).sendOrderPush(e.storeId, e.subjectId);
       }
       await releaseEvent(e, now, null);
       out.done++;
