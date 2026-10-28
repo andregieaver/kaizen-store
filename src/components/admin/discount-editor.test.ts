@@ -11,6 +11,7 @@ const draft = (over: Partial<DiscountDraft> = {}): DiscountDraft => ({
   kind: "percent",
   percent: "10",
   combinesWithCampaigns: true,
+  segmentId: null,
   amounts: {},
   minSubtotals: {},
   productIds: null,

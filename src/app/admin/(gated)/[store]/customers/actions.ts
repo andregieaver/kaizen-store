@@ -9,6 +9,10 @@ import { adminText } from "@/lib/admin-text";
 import { customerFormFields, staffProblemText } from "@/lib/customer-staff";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { createCustomer } from "@/server/customer-staff";
+import { listCustomers } from "@/server/customer-admin";
+import { BULK_TAG_MAX, tagMany } from "@/server/segments";
+import { tagKey } from "@/lib/order-tags";
+import { countWords, fillWords } from "@/lib/admin-fill";
 import { cancelJob, registerCustomerImport, startCustomerApply, startCustomerCheck, startCustomerUpload } from "@/server/data-jobs";
 import { checkPermission } from "@/server/permissions";
 
@@ -69,4 +73,25 @@ export async function cancelCustomerImportAction(storeSlug: string, jobId: strin
   const result = await cancelJob(member, text(jobId, 60));
   refresh();
   return result;
+}
+
+/**
+ * Adds a tag to, or takes it off, everyone the list's search and tag find (D380, `customers:write`): the people are read again here from the
+ * same filter, never sent from the browser, at most `BULK_TAG_MAX`.
+ */
+export async function bulkTagAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
+  const member = await checkPermission(storeSlug, "customers:write");
+  if (!member) return { status: "error", messages: [await noAccess()] };
+  const w = adminText(adminLangOf(member.account.adminLocale), "customers").staff;
+  const q = text(form.get("q"), 100);
+  const tagText = text(form.get("filterTag"), 80);
+  const filter = tagText ? tagKey(tagText) : null;
+  const mode = form.get("mode") === "remove" ? "remove" : "add";
+  const people = await listCustomers(member.store.id, { q, tag: filter, limit: BULK_TAG_MAX + 1 });
+  if (people.length > BULK_TAG_MAX) return { status: "error", messages: [w.bulk.tooMany] };
+  const result = await tagMany(member.store.id, member.account.id, people.map((p) => p.email), text(form.get("tag"), 200), mode);
+  if (!result.ok) return { status: "error", messages: [result.problem === "too_many" ? w.bulk.tooMany : w.bulk.badTag] };
+  refresh();
+  const done = countWords(result.changed, w.bulk.done);
+  return { status: "ok", messages: [result.full > 0 ? done + fillWords(w.bulk.full, { n: String(result.full) }) : done] };
 }

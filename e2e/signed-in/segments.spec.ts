@@ -45,3 +45,45 @@ test("a ready segment is counted as it is chosen, saved, and opened with its peo
   await page.goto(`/admin/${STORE}/segments`);
   await expect(page.getByRole("list", { name: "Segments" }).getByRole("link", { name: "People who want your emails" })).toBeVisible();
 });
+
+/**
+ * Segments everywhere (wave 11 unit A, D380): a tag put on everyone the Customers list finds, a code limited to a segment in the code editor, and
+ * the segment's page saying which code uses it and refusing to delete it while one does.
+ */
+test("a tag goes on everyone the list finds, a code is limited to a segment, and that segment is kept while the code uses it", async ({ page }) => {
+  const sql = testDb();
+  try {
+    const [store] = await sql`select id from commerce.stores where slug = ${STORE}`;
+    await sql`insert into commerce.customers (store_id, email, name, locale) values (${store.id}, ${`bulk-${RUN}@example.com`}, ${`Bulk ${RUN}`}, 'nb-NO')`;
+  } finally {
+    await sql.end();
+  }
+
+  // Everyone the search finds gets the tag at once.
+  await page.goto(`/admin/${STORE}/customers?q=${encodeURIComponent(`bulk-${RUN}`)}`);
+  await page.getByRole("textbox", { name: "Tag", exact: true }).fill(`Messe ${RUN}`);
+  await page.getByRole("button", { name: "Add the tag" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "1 person changed." })).toBeVisible();
+
+  // A segment of the tag, and a code for its people.
+  await page.goto(`/admin/${STORE}/segments/new`);
+  await page.getByLabel("Name").fill(`Messe ${RUN}`);
+  await page.getByRole("button", { name: "Save segment" }).click();
+  await expect(page).toHaveURL(new RegExp(`/admin/${STORE}/segments/[0-9a-f-]{36}$`));
+  const segmentUrl = page.url();
+
+  await page.goto(`/admin/${STORE}/discounts/new`);
+  const code = `MESSE${RUN}`.toUpperCase();
+  await page.getByLabel(/^Code shoppers type/).fill(code);
+  await page.getByRole("radio", { name: "People in a segment" }).check();
+  await page.getByRole("combobox", { name: /^Segment/ }).selectOption({ label: `Messe ${RUN}` });
+  await page.getByRole("button", { name: "Save code" }).click();
+  await expect(page).toHaveURL(new RegExp(`/admin/${STORE}/discounts$`));
+
+  // The segment's page names the code, and Delete is refused while it does.
+  await page.goto(segmentUrl);
+  await expect(page.getByText(`Codes: ${code}`)).toBeVisible();
+  await page.getByRole("button", { name: "Delete" }).click();
+  await expect(page.getByRole("alert").filter({ hasText: "cannot be deleted while a code or campaign is limited to it" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: `Messe ${RUN}` })).toBeVisible();
+});

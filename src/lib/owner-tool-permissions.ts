@@ -54,6 +54,8 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   list_email_automations: "marketing:read",
   switch_email_automation: "marketing:write",
   list_segments: "customers:read",
+  count_segment: "customers:read",
+  save_segment: "marketing:write",
   list_price_lists: "customers:read",
   tag_customer: "customers:write",
   usage_and_limits: "billing:read",

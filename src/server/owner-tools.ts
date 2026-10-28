@@ -24,7 +24,20 @@ import { audit, passMembership, type Account } from "./auth";
 import { saveWorkflow } from "./workflows";
 import { listPriceListsTool } from "./price-lists";
 import { taxonomy, taxonomyWords } from "./product-taxonomy";
-import { draftBroadcastTool, issueGiftCardTool, preflightIssueGiftCard, listAutomationsTool, listBroadcastsTool, listSegmentsTool, preflightSendBroadcast, sendBroadcastTool, switchAutomationTool, tagCustomerTool } from "./marketing-tools";
+import {
+  countSegmentTool,
+  draftBroadcastTool,
+  issueGiftCardTool,
+  preflightIssueGiftCard,
+  listAutomationsTool,
+  listBroadcastsTool,
+  listSegmentsTool,
+  saveSegmentTool,
+  preflightSendBroadcast,
+  sendBroadcastTool,
+  switchAutomationTool,
+  tagCustomerTool,
+} from "./marketing-tools";
 import { OwnerToolError } from "./owner-tool-error";
 import {
   applyWinnerTool,
@@ -2395,6 +2408,8 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   draft_broadcast: draftBroadcastTool,
   send_broadcast: sendBroadcastTool,
   list_segments: listSegmentsTool,
+  count_segment: countSegmentTool,
+  save_segment: saveSegmentTool,
   list_price_lists: listPriceListsTool,
   tag_customer: tagCustomerTool,
   list_email_automations: listAutomationsTool,

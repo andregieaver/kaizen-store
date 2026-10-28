@@ -360,6 +360,17 @@ export const customersNb: CustomersMessages = {
     importCustomers: "Importer",
     allTags: "Alle merker",
     tagLabel: "Merke",
+    bulk: {
+      title: "Merk alle i denne listen",
+      description: "Legger til et merke, eller tar det bort, for alle søket og merket over finner, opptil 1 000 personer.",
+      tag: "Merke",
+      add: "Legg til merket",
+      remove: "Ta bort merket",
+      done: { one: "{n} person endret.", many: "{n} personer endret." },
+      full: " {n} hadde allerede 50 merker og ble latt være.",
+      badTag: "Skriv et merke på høyst 40 tegn, uten komma.",
+      tooMany: "Listen har mer enn 1 000 personer. Snevre den inn med søket eller et merke først.",
+    },
     form: {
       email: "E-post",
       name: "Navn",

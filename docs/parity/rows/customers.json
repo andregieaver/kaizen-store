@@ -100,13 +100,13 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": "missing"
+      "was": "partial"
     },
-    "gap": "D296: staff tag people one by one on the customer page (by address, so guests too; `addTag()`/`removeTag()`, also the AI manager's tag tools, D318), and save segments from rules (orders, money spent, first and last order, RFM group, country, language, customer group, company, account, tag, email consent) joined by all or any, with a live count and a member list for staff with customers:read. A segment is the audience of a broadcast (D297, `broadcasts.ts`, held by `broadcasts.int.test.ts`). Still missing: bulk tagging and a tag filter on the Customers list, a test that a segment's RFM count equals the Customers analytics page's, and a segment as the audience of a campaign or discount (codes and campaigns target customer groups and named customers only). Merged on 2026-10-25 (README rule 8): `analytics.dynamic-segments-for-marketing` was the same Shopify feature (rated full); its criteria and evidence are here.",
-    "bucket": "A",
-    "wave": 5,
+    "gap": "Built and held by tests (D296, D366, D380): staff tag people one by one on the customer page (by address, so guests too; also the AI manager's tag_customer) and in bulk, everyone the Customers list's search and tag find, at most 1,000 at once (tagMany(), one transaction, a person at 50 tags left as they were, one audit entry with counts), and the list filters by tag (D366); segments from rules (orders, money spent, first and last order, RFM type, country, language, customer group, company, account, tag, email consent) joined by all or any, counted live with a paged member list for staff with customers:read; a segment's customer types are the Customers analytics page's own (rfmGroups(), held for every type by segment-audiences.int.test.ts); a segment is the audience of a broadcast (D297), a code or a campaign (D380, matched for the signed-in buyer when the cart is read and again when the order is placed, so someone who stops matching leaves at once; checkout-kinds.int.test.ts in kroner and euros). Merged on 2026-10-25 (README rule 8): analytics.dynamic-segments-for-marketing was the same Shopify feature; its criteria and evidence are here.",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "Customers carry tags that staff add and remove one by one or in bulk, and the customer list filters by tag (store-scoped, integration test).",
       "An owner saves a segment from rules (orders, total spent, last order date, country, discount group, tag, RFM group, marketing consent) joined by all or any; it shows a live count and a member list.",
@@ -132,7 +132,14 @@
         "src/server/broadcasts.ts",
         "src/server/marketing-tools.ts",
         "src/lib/broadcasts.ts",
-        "src/components/admin/broadcast-send.tsx"
+        "src/components/admin/broadcast-send.tsx",
+        "src/server/customer-admin.ts",
+        "src/app/admin/(gated)/[store]/customers/page.tsx",
+        "src/app/admin/(gated)/[store]/customers/actions.ts",
+        "src/server/segment-membership.ts",
+        "src/components/admin/segment-people.tsx",
+        "src/app/admin/(gated)/[store]/segments/rfm/[group]/page.tsx",
+        "src/app/admin/(gated)/[store]/segments/csv/route.ts"
       ],
       "tests": [
         "src/lib/analytics-customers.test.ts",
@@ -144,7 +151,9 @@
         "src/server/segments.int.test.ts",
         "e2e/signed-in/segments.spec.ts",
         "src/server/broadcasts.int.test.ts",
-        "src/server/marketing-tools.int.test.ts"
+        "src/server/marketing-tools.int.test.ts",
+        "src/server/segment-audiences.int.test.ts",
+        "src/server/checkout-kinds.int.test.ts"
       ],
       "untested": false
     },
@@ -153,7 +162,8 @@
       "D152",
       "D296",
       "D297",
-      "D318"
+      "D318",
+      "D380"
     ],
     "history": [
       {
@@ -167,6 +177,12 @@
         "from": "missing",
         "to": "partial",
         "why": "D296 (wave 5 unit B): saved rule-based segments over customers and subscribers, counted live with a member list, and customer tags; read segments.ts and ran segments.test.ts, segments.int.test.ts (PGlite and integration, passed)."
+      },
+      {
+        "on": "2026-10-28",
+        "from": "partial",
+        "to": "full",
+        "why": "D380: bulk tagging of everyone a list's filter finds, a segment as the audience of a code or campaign (matched for the buyer at the cart and the order, kroner and euro scenario), and RFM types taken from the analytics page's own reader with a test that every type's count agrees; read the code and ran segment-audiences.int.test.ts and the checkout-kinds scenario (passed)."
       }
     ]
   },
@@ -726,13 +742,13 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "partial"
     },
-    "gap": "D299 E2: up to five codes on an order, each saying which kinds of code it combines with (products, order, free shipping, `combines_with`); where two cannot combine the shopper gets the one taking more off and the cart says why (`stackCodes()`); codes are limited to customer groups or named customers (E1). Campaigns may stack with each other (D115 `stacks`) and be limited per group and customer (D115, D116). Still missing: an owner's choice of whether a code combines with campaigns (campaigns always come first, then the group discount, the referral welcome discount, codes and bonus credits, fixed in code), and limiting a code or campaign to a segment.",
-    "bucket": "A",
-    "wave": 5,
+    "gap": "Built and held by tests (D299 E2, D367, D380): up to five codes on an order, each saying which kinds of code it combines with; whether a code combines with campaigns and a campaign with codes is the owner's choice per discount (D367, both on by default, so nothing changed unasked), and where they cannot, the shopper gets whichever takes more off and the cart says why; a code is limited to customer groups, named customers or a segment (D380, any of them lets a signed-in buyer in; a guest is told to sign in, someone outside is told it is not for them), and a campaign to groups or a segment; cartSummary() and placeOrder() agree for every combination, in kroner and euro scenarios (checkout-kinds.int.test.ts).",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "An owner chooses per discount which kinds it may combine with (campaign, code, shipping); the defaults equal today's fixed order so nothing changes unasked.",
       "When discounts cannot combine, the one best for the shopper is applied and the cart says why another was not.",
@@ -746,14 +762,19 @@
         "src/lib/customer-tiers.ts",
         "src/server/cart-summary.ts",
         "src/server/checkout.ts",
-        "src/server/discounts.ts"
+        "src/server/discounts.ts",
+        "src/server/segment-membership.ts",
+        "src/components/admin/segment-people.tsx",
+        "src/app/admin/(gated)/[store]/segments/rfm/[group]/page.tsx",
+        "src/app/admin/(gated)/[store]/segments/csv/route.ts"
       ],
       "tests": [
         "src/lib/discounts.test.ts",
         "src/lib/campaigns.test.ts",
         "src/server/campaigns.int.test.ts",
         "src/server/checkout-kinds.int.test.ts",
-        "src/server/discounts.int.test.ts"
+        "src/server/discounts.int.test.ts",
+        "src/server/segment-audiences.int.test.ts"
       ],
       "untested": false
     },
@@ -763,9 +784,17 @@
       "D114",
       "D115",
       "D116",
-      "D299"
+      "D299",
+      "D380"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-28",
+        "from": "partial",
+        "to": "full",
+        "why": "D380: a code or campaign limited to a segment, matched for the signed-in buyer in the cart and the order alike (checkout-kinds.int.test.ts, kroner and euro); with D367's choice of combining with campaigns, every criterion is met; read the code and ran the scenario (passed)."
+      }
+    ]
   },
   {
     "id": "customers.omnibus-30-day-lowest-price-reference",

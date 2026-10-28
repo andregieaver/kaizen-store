@@ -35,9 +35,11 @@ export type DiscountDraft = {
   combinesWith: ("products" | "order" | "shipping")[];
   /** Whether it may be used beside the store's campaigns (D367). */
   combinesWithCampaigns: boolean;
+  /** A segment whose people may use it (D380). */
+  segmentId: string | null;
 };
 
-type Who = "everyone" | "groups" | "customers";
+type Who = "everyone" | "groups" | "customers" | "segment";
 
 const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm font-normal";
 const label = "flex flex-col gap-1 text-sm font-medium";
@@ -58,7 +60,10 @@ export function DiscountEditor({
   subscriptions = true,
   terms = [],
   tiers = [],
+  segments = [],
 }: {
+  /** The store's segments (D380), to limit the code to one's people. */
+  segments?: { id: string; name: string }[];
   terms?: { id: string; name: string; kind: "category" | "tag"; parentId: string | null }[];
   tiers?: { id: string; name: string; active: boolean }[];
   /** Subscriptions is on (D178): only then is "keep it on every renewal" offered (a code that already has it keeps the tick). */
@@ -80,7 +85,9 @@ export function DiscountEditor({
   const [saving, startSaving] = useTransition();
   const set = <K extends keyof DiscountDraft>(key: K, value: DiscountDraft[K]) => setD((current) => ({ ...current, [key]: value }));
   const [some, setSome] = useState(initial.productIds !== null || initial.termIds.length > 0);
-  const [who, setWho] = useState<Who>(initial.customerEmails.trim() ? "customers" : initial.tierIds.length > 0 ? "groups" : "everyone");
+  const [who, setWho] = useState<Who>(
+    initial.segmentId ? "segment" : initial.customerEmails.trim() ? "customers" : initial.tierIds.length > 0 ? "groups" : "everyone",
+  );
   const chosen = d.productIds ?? [];
   const categories = terms.filter((term) => term.kind === "category");
   const tags = terms.filter((term) => term.kind === "tag");
@@ -104,6 +111,7 @@ export function DiscountEditor({
         minQuantity: d.minQuantity || null,
         tierIds: who === "groups" ? d.tierIds : [],
         customerEmails: who === "customers" ? d.customerEmails : "",
+        segmentId: who === "segment" ? d.segmentId : null,
         uniqueCodes: d.uniqueCodes,
         combinesWith: d.combinesWith,
         combinesWithCampaigns: d.combinesWithCampaigns,
@@ -340,7 +348,27 @@ export function DiscountEditor({
             <input type="radio" name="who" checked={who === "customers"} onChange={() => setWho("customers")} className="size-4" />
             {w.customers}
           </label>
+          {segments.length > 0 && (
+            <label className="flex min-h-10 items-center gap-3 text-sm">
+              <input type="radio" name="who" checked={who === "segment"} onChange={() => setWho("segment")} className="size-4" />
+              {w.segmentOnly}
+            </label>
+          )}
         </fieldset>
+        {who === "segment" && (
+          <label className={label}>
+            {w.segment}
+            <select value={d.segmentId ?? ""} onChange={(event) => set("segmentId", event.target.value || null)} className={input}>
+              <option value="">{w.chooseSegment}</option>
+              {segments.map((segment) => (
+                <option key={segment.id} value={segment.id}>
+                  {segment.name}
+                </option>
+              ))}
+            </select>
+            <span className={hint}>{w.segmentHint}</span>
+          </label>
+        )}
         {who === "groups" && (
           <ul className="grid gap-1 rounded-md border border-line p-2 sm:grid-cols-2">
             {tiers.map((tier) => (

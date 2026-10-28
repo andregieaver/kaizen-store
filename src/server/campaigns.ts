@@ -18,6 +18,7 @@ import { parsePrice } from "@/lib/product-input";
 
 import { audit, type Membership } from "./auth";
 import { customerTierIds } from "./customer-tiers";
+import { segmentsOfBuyer } from "./segment-membership";
 import { osloTime } from "./discounts";
 import type { SaveResult } from "./settings";
 
@@ -74,6 +75,7 @@ function toCampaign(row: Row): Campaign {
     stacks: Boolean(row.stacks),
     // Older rows and reads without the column combine, as every campaign did before D367.
     combinesWithCodes: row.combines_with_codes !== false,
+    segmentId: row.segment_id ? String(row.segment_id) : null,
     createdAt: new Date(String(row.created_at)).toISOString(),
   };
 }
@@ -225,6 +227,10 @@ export async function saveCampaign({ account, store }: Membership, id: string | 
     `);
     if (Number(row.n) !== tierIds.length) problems.push("A chosen customer group no longer exists.");
   }
+  if (c.segmentId) {
+    const [row] = await db().execute<Row>(sql`select 1 from commerce.segments where store_id = ${store.id}::uuid and id = ${c.segmentId}::uuid`);
+    if (!row) problems.push("The chosen segment no longer exists.");
+  }
   // What it reaches and what it gives must be the store's own.
   const chosenProducts = [...new Set([...productIds, ...getProductIds])];
   const chosenTerms = [...new Set([...termIds, ...getTermIds])];
@@ -295,6 +301,7 @@ export async function saveCampaign({ account, store }: Membership, id: string | 
           product_ids = ${values.productIds}::jsonb, term_ids = ${values.termIds}::jsonb,
           tier_ids = ${values.tierIds}::jsonb, usage_limit = ${c.usageLimit}, per_customer_limit = ${c.perCustomerLimit},
           markets = ${values.markets}::jsonb, stacks = ${values.stacks}, combines_with_codes = ${c.combinesWithCodes},
+          segment_id = ${c.segmentId}::uuid,
           starts_at = ${startsAt}::timestamptz, ends_at = ${endsAt}::timestamptz, active = ${c.active}, updated_at = now()
         where store_id = ${store.id}::uuid and id = ${id}::uuid
         returning id
@@ -303,13 +310,15 @@ export async function saveCampaign({ account, store }: Membership, id: string | 
         insert into commerce.campaigns (
           store_id, name, kind, percent, buy_quantity, pay_quantity, gift_variant_id, gift_quantity, thresholds, amounts, tier_basis, tiers,
           buy_min_quantity, buy_min_amounts, get_product_ids, get_term_ids, get_quantity, get_kind, get_percent, get_amounts, uses_per_order,
-          product_ids, term_ids, tier_ids, usage_limit, per_customer_limit, markets, stacks, combines_with_codes, starts_at, ends_at, active
+          product_ids, term_ids, tier_ids, usage_limit, per_customer_limit, markets, stacks, combines_with_codes, starts_at, ends_at, active,
+          segment_id
         ) values (
           ${store.id}::uuid, ${c.name}, ${c.kind}, ${values.percent}, ${values.buy}, ${values.pay}, ${values.gift}::uuid,
           ${values.giftQuantity}, ${values.thresholds}::jsonb, ${values.amounts}::jsonb, ${values.tierBasis}, ${values.tiers}::jsonb,
           ${values.buyMinQuantity}, ${values.buyMinAmounts}::jsonb, ${values.getProductIds}::jsonb, ${values.getTermIds}::jsonb, ${values.getQuantity},
           ${values.getKind}, ${values.getPercent}, ${values.getAmounts}::jsonb, ${values.usesPerOrder}, ${values.productIds}::jsonb, ${values.termIds}::jsonb,
-          ${values.tierIds}::jsonb, ${c.usageLimit}, ${c.perCustomerLimit}, ${values.markets}::jsonb, ${values.stacks}, ${c.combinesWithCodes}, ${startsAt}::timestamptz, ${endsAt}::timestamptz, ${c.active}
+          ${values.tierIds}::jsonb, ${c.usageLimit}, ${c.perCustomerLimit}, ${values.markets}::jsonb, ${values.stacks}, ${c.combinesWithCodes}, ${startsAt}::timestamptz, ${endsAt}::timestamptz, ${c.active},
+          ${c.segmentId}::uuid
         )
         returning id
       `);
@@ -369,13 +378,21 @@ export async function runningCampaigns(
     where c.store_id = ${storeId}::uuid and c.active
   `);
   const tiers = rows.some((row) => ids(row.tier_ids).length > 0) ? await customerTierIds(runner, storeId, customerId) : [];
+  // Campaigns for a segment's people (D380): whether this buyer is one of them now, asked once for every segment named.
+  const named = rows.filter((row) => row.segment_id).map((row) => String(row.segment_id));
+  const inSegments = named.length > 0 ? await segmentsOfBuyer(runner, storeId, customerId, named, now) : new Set<string>();
   return rows
     .filter((row) => {
       const campaign = toCampaign(row);
       if (!campaignRunning(campaign, now) || !runsIn(campaign, market.code)) return false;
       // One for each customer needs to know who the customer is: signed in, and not yet at the limit.
       if (campaign.perCustomerLimit !== null && (customerId === null || Number(row.used_by_customer) >= campaign.perCustomerLimit)) return false;
-      if (campaign.tierIds.length > 0 && !campaign.tierIds.some((id) => tiers.includes(id))) return false;
+      // For some customers only: a group they are in, or the segment they are in (either lets them in).
+      if (campaign.tierIds.length > 0 || campaign.segmentId) {
+        const inTier = campaign.tierIds.some((id) => tiers.includes(id));
+        const inSegment = campaign.segmentId !== null && inSegments.has(campaign.segmentId);
+        if (!inTier && !inSegment) return false;
+      }
       return campaign.usageLimit === null || Number(row.used) < campaign.usageLimit;
     })
     .map((row) => shownIn(toCampaign(row), market));

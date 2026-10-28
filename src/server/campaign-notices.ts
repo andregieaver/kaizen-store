@@ -49,7 +49,7 @@ export async function campaignNotices(storeId: string, market: Market): Promise<
           ))
       ) end as used
     from commerce.campaigns c
-    where c.store_id = ${storeId}::uuid and c.active and c.tier_ids = '[]'::jsonb
+    where c.store_id = ${storeId}::uuid and c.active and c.tier_ids = '[]'::jsonb and c.segment_id is null
       and (c.ends_at is null or c.ends_at > now())
   `);
 

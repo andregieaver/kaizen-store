@@ -29,6 +29,7 @@ export const reportsEn = {
     customerCount: { one: "customer", many: "customers" },
     shareOfRevenue: "Share of all revenue",
     segmentAverage: "Average {money} spent in {orders} orders; last order {days} days ago on average.",
+    seeWho: "See who they are",
     whatToDo: "What to do: ",
     emptyGroup: "No customers in this group right now.",
     sameMonth: "Same month",

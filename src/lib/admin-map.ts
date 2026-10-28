@@ -552,6 +552,7 @@ const PAGES: readonly AdminPage[] = [
   store("broadcast", "/broadcasts/[broadcastId]", "Broadcast", "Sales", "One broadcast: its words, a test to yourself, send now or schedule; once sent, how many it went to, delivered, bounced, unsubscribed and presses on its links."),
   store("segment.new", "/segments/new", "New segment", "Sales", "Makes a segment from a ready one or from rules, with the count as they change."),
   store("segment", "/segments/[segmentId]", "Segment", "Sales", "One segment: how many people are in it, how many want the store's emails, who they are, and its rules."),
+  store("segment.rfm", "/segments/rfm/[group]", "Customers of a type", "Sales", "The customers of one type on the Customers analytics page (VIP, loyal, promising, new, at risk, lost), a page at a time, with a CSV for the owner and Save as a segment."),
   store("subscribers", "/subscribers", "Subscribers", "Sales", "The subscriber list: people who asked for the store's emails with news and offers, from sign-up forms, checkout or My account, with the words they agreed to, when, and whether they confirmed by email. Search, see who is waiting for their link and who left, open one for their consent history, unsubscribe a person who asked, and export the list (owners).", {
     keywords: ["newsletter", "mailing list", "email list", "marketing consent", "opt-in", "double opt-in", "unsubscribe", "nyhetsbrev", "abonnenter"],
     tasks: ["See who subscribed to the newsletter", "Export the subscriber list", "Unsubscribe a person"],

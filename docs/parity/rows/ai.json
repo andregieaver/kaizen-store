@@ -878,14 +878,14 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": "missing"
+      "was": "partial"
     },
     "weight": 3,
-    "gap": "D296: rule-based segments (orders, spend, dates, country, group, RFM class, tags) saved per store, matched in code each time they are read, never readable on the shopper's side (criteria 1 and 4). D297: a broadcast's audience can be a segment, sent only to subscribed addresses (criterion 3; a discount code still reaches groups and named customers only, D299). Since D318 the AI manager lists segments with their counts (list_segments) and drafts a broadcast for one. Still missing (criterion 2): the assistant turning a sentence into a rule set; no tool makes or changes a segment.",
-    "bucket": "A",
-    "wave": 5,
+    "gap": "Built and held by tests (D296, D297, D318, D380): rule-based segments (orders, spend, dates, country, language, group, RFM type, tags, consent) saved per store and matched in code each time they are read, never readable on the shopper's side; the AI manager turns a sentence into rules through count_segment (read: the editor's own schema, counted by the store, never naming who) and save_segment (marketing:write, through the Segments page's saver), so the model never lists or counts people; a segment is the audience of a broadcast (only subscribed addresses are mailed) and of a code or campaign (D380).",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "An owner can build a segment from rules (orders, spend, dates, country, group, RFM class, tags) and save it; the member count and list are worked out in code.",
       "The assistant turns a sentence into a rule set that passes the same validation as the editor; the model never lists customers or counts them.",
@@ -905,7 +905,13 @@
         "src/app/admin/(gated)/[store]/segments/[segmentId]/page.tsx",
         "src/components/admin/segment-editor.tsx",
         "src/server/broadcasts.ts",
-        "src/server/marketing-tools.ts"
+        "src/server/marketing-tools.ts",
+        "src/lib/owner-tools.ts",
+        "src/server/owner-tools.ts",
+        "src/server/segment-membership.ts",
+        "src/components/admin/segment-people.tsx",
+        "src/app/admin/(gated)/[store]/segments/rfm/[group]/page.tsx",
+        "src/app/admin/(gated)/[store]/segments/csv/route.ts"
       ],
       "tests": [
         "src/server/owner-insights.int.test.ts",
@@ -914,7 +920,9 @@
         "src/db/segments.test.ts",
         "src/server/segments.int.test.ts",
         "e2e/signed-in/segments.spec.ts",
-        "src/server/marketing-tools.int.test.ts"
+        "src/server/marketing-tools.int.test.ts",
+        "src/server/segment-audiences.int.test.ts",
+        "src/server/checkout-kinds.int.test.ts"
       ],
       "untested": false
     },
@@ -924,7 +932,8 @@
       "D152",
       "D296",
       "D297",
-      "D318"
+      "D318",
+      "D380"
     ],
     "history": [
       {
@@ -938,6 +947,12 @@
         "from": "missing",
         "to": "partial",
         "why": "D296 (wave 5 unit B): saved rule-based segments over customers and subscribers, counted live with a member list, and customer tags; read segments.ts and ran segments.test.ts, segments.int.test.ts (PGlite and integration, passed)."
+      },
+      {
+        "on": "2026-10-28",
+        "from": "partial",
+        "to": "full",
+        "why": "D380: the AI manager's count_segment and save_segment take rules in the editor's own schema and are counted by the store, and a segment is the audience of a code or campaign; read the code and ran segment-audiences.int.test.ts, owner-tool-permissions.test.ts (passed)."
       }
     ]
   },

@@ -194,7 +194,16 @@ function predictionReason(report: CustomersReport, w: CustomersWords): string {
 // The view
 // ---------------------------------------------------------------------------
 
-export function CustomersView({ base, locale, timeZone, isOwner, report, bonusOn = true, words: w = reportsEn.customers }: CustomersViewProps & { words?: CustomersWords }) {
+export function CustomersView({
+  base,
+  locale,
+  timeZone,
+  isOwner,
+  report,
+  bonusOn = true,
+  seesPeople = false,
+  words: w = reportsEn.customers,
+}: CustomersViewProps & { words?: CustomersWords; /** Whether the member may read customers: each type then opens its people (D380). */ seesPeople?: boolean }) {
   const money = moneyOf(report.currency, locale);
   const decimal = decimalOf();
   const settingsHref = `${base}/analytics/settings`;
@@ -529,6 +538,11 @@ export function CustomersView({ base, locale, timeZone, isOwner, report, bonusOn
                         <span className="font-medium">{w.whatToDo}</span>
                         {segmentAction(s.segment, bonusOn, w)}
                       </p>
+                      {seesPeople && (
+                        <a href={`${base}/segments/rfm/${encodeURIComponent(s.segment)}`} className="rounded-pill text-sm text-ink underline underline-offset-2">
+                          {w.seeWho}
+                        </a>
+                      )}
                     </>
                   ) : (
                     <p className="text-sm text-muted">{w.emptyGroup}</p>

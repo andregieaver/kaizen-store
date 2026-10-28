@@ -3009,11 +3009,18 @@ export const discountCodes = commerce.table(
     combinesWith: jsonb("combines_with").notNull().default([]),
     /** Whether it may be used on an order a campaign also reduces (D367); off, the basket takes whichever gives the shopper more. */
     combinesWithCampaigns: boolean("combines_with_campaigns").notNull().default(true),
+    /**
+     * A segment of the store's (D380) whose people may use it, beside `tier_ids` and `customer_ids` (any of them lets a buyer in); matched for
+     * the signed-in buyer when the code is used, never a stored list. A segment in use cannot be deleted.
+     */
+    segmentId: uuid("segment_id"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (t) => [
     unique("discount_codes_store_id_key").on(t.storeId, t.id),
+    foreignKey({ name: "discount_codes_segment_fk", columns: [t.storeId, t.segmentId], foreignColumns: [segments.storeId, segments.id] }).onDelete("restrict"),
+    index("discount_codes_segment_idx").on(t.storeId, t.segmentId),
     check(
       "discount_codes_combines_with",
       sql`jsonb_typeof(${t.combinesWith}) = 'array' and ${t.combinesWith} <@ '["products", "order", "shipping"]'::jsonb`,
@@ -3289,6 +3296,8 @@ export const campaigns = commerce.table(
     stacks: boolean("stacks").notNull().default(false),
     /** Whether a discount code may be used on an order it reduces (D367); off, the basket takes whichever gives the shopper more. */
     combinesWithCodes: boolean("combines_with_codes").notNull().default(true),
+    /** A segment of the store's (D380) whose people get it, beside `tier_ids` (either lets a buyer in); matched for the signed-in buyer. */
+    segmentId: uuid("segment_id"),
     startsAt: timestamp("starts_at", { withTimezone: true }),
     endsAt: timestamp("ends_at", { withTimezone: true }),
     active: boolean("active").notNull().default(true),
@@ -3297,6 +3306,8 @@ export const campaigns = commerce.table(
   },
   (t) => [
     unique("campaigns_store_id_key").on(t.storeId, t.id),
+    foreignKey({ name: "campaigns_segment_fk", columns: [t.storeId, t.segmentId], foreignColumns: [segments.storeId, segments.id] }).onDelete("restrict"),
+    index("campaigns_segment_idx").on(t.storeId, t.segmentId),
     variantRef("campaigns_gift_variant_fk", { storeId: t.storeId, variantId: t.giftVariantId }),
     index("campaigns_store_idx").on(t.storeId, t.active),
     index("campaigns_gift_variant_idx").on(t.storeId, t.giftVariantId),

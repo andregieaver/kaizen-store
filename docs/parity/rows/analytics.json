@@ -873,15 +873,22 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "partial"
     },
     "weight": 3,
-    "gap": "D296: an RFM group is a segment condition (the same `rfm()` as the Customers page, over paid orders), so a segment of one group lists its customers (first 100, by last order) with last order and orders, for staff with customers:read; money outside the converted currencies is counted, not judged. Still missing: a click-through from the analytics group to its list, a paged list beyond the first 100, a CSV of a segment's people, and a test that the counts agree.",
-    "history": [],
-    "bucket": "A",
-    "wave": 5,
+    "gap": "Built and held by tests (D152, D296, D380): each customer type on the Customers analytics page opens its people (/segments/rfm/{type}, for staff who may read segments and customers), a page of 100 at a time with name, orders, last order and money spent, from the page's own reader (rfmGroups()), so the list's count is the page's (segment-audiences.int.test.ts checks every type); a customer with an amount in a currency without a rate shows no amount and is counted, never listed at 0; the owner downloads it as a CSV (segmentCsv(), audited with counts) and anyone who may make segments saves it as one.",
+    "history": [
+      {
+        "on": "2026-10-28",
+        "from": "partial",
+        "to": "full",
+        "why": "D380: a click-through from each customer type to a paged list with spend, a CSV for the owner, Save as a segment, and a test that the counts agree for every type; read the code and ran segment-audiences.int.test.ts (passed)."
+      }
+    ],
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "Clicking an RFM group opens a paged list of its customers (name, last order, orders, spend) that matches the group's count.",
       "The list is store-scoped, uses the same keyed customer definition, and customers outside the converted currencies are counted, not listed as zero.",
@@ -896,7 +903,12 @@
         "src/server/segments.ts",
         "src/app/admin/(gated)/[store]/segments/page.tsx",
         "src/app/admin/(gated)/[store]/segments/[segmentId]/page.tsx",
-        "src/components/admin/segment-editor.tsx"
+        "src/components/admin/segment-editor.tsx",
+        "src/app/admin/(gated)/[store]/analytics/customers/page.tsx",
+        "src/server/segment-membership.ts",
+        "src/components/admin/segment-people.tsx",
+        "src/app/admin/(gated)/[store]/segments/rfm/[group]/page.tsx",
+        "src/app/admin/(gated)/[store]/segments/csv/route.ts"
       ],
       "tests": [
         "src/lib/analytics-customers.test.ts",
@@ -905,13 +917,16 @@
         "src/lib/segments.test.ts",
         "src/db/segments.test.ts",
         "src/server/segments.int.test.ts",
-        "e2e/signed-in/segments.spec.ts"
+        "e2e/signed-in/segments.spec.ts",
+        "src/server/segment-audiences.int.test.ts",
+        "src/server/checkout-kinds.int.test.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D152",
-      "D296"
+      "D296",
+      "D380"
     ]
   },
   {

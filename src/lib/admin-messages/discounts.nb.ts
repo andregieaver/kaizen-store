@@ -45,6 +45,10 @@ export const discountsNb: DiscountsMessages = {
     ofAllowed: " av {limit} tillatt",
   },
   editor: {
+    segmentOnly: "Personer i et segment",
+    segment: "Segment",
+    chooseSegment: "Velg et segment",
+    segmentHint: "Regnes ut for den innloggede kjøperen hver gang koden brukes: den som ikke lenger passer, kan ikke bruke den.",
     theCode: "Koden",
     codeLabel: "Koden kundene skriver",
     codeHint: "3–40 bokstaver, sifre, - eller _. Kundene kan skrive den med store eller små bokstaver.",

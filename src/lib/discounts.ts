@@ -56,6 +56,8 @@ export type StoreDiscount = {
   combinesWith: CodeClass[];
   /** Whether it may be used on a basket a campaign also reduces (D367); off, the basket takes whichever gives the shopper more. */
   combinesWithCampaigns: boolean;
+  /** A segment whose people may use it (D380), beside `tierIds` and `customerIds`: any of the three lets a signed-in buyer in. */
+  segmentId: string | null;
 };
 
 export type DiscountProblem =
@@ -77,6 +79,11 @@ export type DiscountProblem =
   /** The basket's campaigns gave more, and the code and they are not used together (D367). */
   | "with_campaigns";
 
+/** Whether a code is for some signed-in customers only: groups, named customers or a segment (D380). */
+export function limitedToSome(discount: Pick<StoreDiscount, "tierIds" | "customerIds" | "segmentId">): boolean {
+  return discount.tierIds.length > 0 || discount.customerIds.length > 0 || discount.segmentId !== null;
+}
+
 /** Whether a code can be used at all right now, before looking at the basket. */
 export function availability(
   discount: StoreDiscount,
@@ -88,8 +95,11 @@ export function availability(
     marketCode: string;
     /** A generated code (D299 E1): how often that one was used; it works once, and the code's own limits do not apply. */
     itemUsed?: number;
-    /** The signed-in customer's own id and groups (theirs or their company's), for a code limited to some. */
-    customer?: { id: string; tierIds: string[] } | null;
+    /**
+     * The signed-in customer's own id and groups (theirs or their company's), and the segments of the code they are in (D380, worked out by
+     * `segmentsOfBuyer()`), for a code limited to some.
+     */
+    customer?: { id: string; tierIds: string[]; segmentIds?: readonly string[] } | null;
   },
 ): DiscountProblem | null {
   if (!discount.active) return "inactive";
@@ -102,10 +112,11 @@ export function availability(
     if (discount.oncePerCustomer && !context.signedIn) return "sign_in";
     if (discount.oncePerCustomer && context.usedByCustomer > 0) return "already_used";
   }
-  if (discount.tierIds.length > 0 || discount.customerIds.length > 0) {
+  if (limitedToSome(discount)) {
     const customer = context.customer ?? null;
     if (!customer) return "sign_in";
-    if (!discount.customerIds.includes(customer.id) && !discount.tierIds.some((id) => customer.tierIds.includes(id))) return "not_eligible";
+    const inSegment = discount.segmentId !== null && (customer.segmentIds ?? []).includes(discount.segmentId);
+    if (!discount.customerIds.includes(customer.id) && !discount.tierIds.some((id) => customer.tierIds.includes(id)) && !inSegment) return "not_eligible";
   }
   if (discount.kind === "fixed" && !(discount.amounts[context.marketCode] > 0)) return "market";
   return null;
@@ -413,6 +424,8 @@ export const storeDiscountInput = z
     combinesWith: z.array(z.enum(["products", "order", "shipping"])).max(3).default([]),
     /** Whether it may be used beside the store's campaigns (D367). */
     combinesWithCampaigns: z.boolean().default(true),
+    /** A segment whose people may use it (D380); the server checks it is the store's. */
+    segmentId: z.uuid().nullable().default(null),
   })
   .refine((input) => input.productIds === null || input.productIds.length > 0 || input.termIds.length > 0, {
     message: "Choose at least one product, category or tag, or let the code apply to everything.",

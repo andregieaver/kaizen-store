@@ -369,6 +369,17 @@ export const customersEn = {
     importCustomers: "Import",
     allTags: "Every tag",
     tagLabel: "Tag",
+    bulk: {
+      title: "Tag everyone in this list",
+      description: "Adds a tag to, or takes it off, everyone the search and tag above find, up to 1,000 people.",
+      tag: "Tag",
+      add: "Add the tag",
+      remove: "Take the tag off",
+      done: { one: "{n} person changed.", many: "{n} people changed." },
+      full: " {n} already had 50 tags and were left as they were.",
+      badTag: "Write a tag of at most 40 characters, without commas.",
+      tooMany: "The list holds more than 1,000 people. Narrow it with the search or a tag first.",
+    },
     form: {
       email: "Email",
       name: "Name",

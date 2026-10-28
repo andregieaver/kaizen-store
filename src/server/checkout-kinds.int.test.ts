@@ -1882,6 +1882,70 @@ describe("the unit price with the country table as read (D160)", () => {
   });
 });
 
+/**
+ * A code and a campaign for a segment's people (D380): the segment (people tagged so) is matched for the signed-in buyer when the cart is
+ * read and again when the order is placed, so the cart and the order agree, in kroner and in the euro view; a guest and a buyer outside it get
+ * neither.
+ */
+describe("a code and a campaign for a segment's people (D380)", () => {
+  it("are given to the segment's signed-in buyers, the cart and the order agreeing in kroner and in euro, and to no one else", async () => {
+    const { addTag, saveSegment } = await import("./segments");
+    const tag = `vip-${run}`;
+    const segment = await saveSegment(storeId, member.account.id, null, { name: `VIP ${run}`, rules: { match: "all", conditions: [{ kind: "tag", tags: [tag] }] } });
+    if (!segment.ok) throw new Error(segment.problem);
+    await db().execute(sql`delete from commerce.campaigns where store_id = ${storeId}::uuid`);
+    const campaign = await saveCampaign(member, null, percentCampaign(20, { segmentId: segment.id }));
+    if (!campaign.ok) throw new Error(campaign.problems.join(" "));
+    const code = `SEG${run}`.toUpperCase();
+    const made = await saveDiscount(member, null, { code, kind: "percent", percent: 10, segmentId: segment.id });
+    if (!made.ok) throw new Error(made.problems.join(" "));
+    try {
+      for (const euro of [false, true]) {
+        // A buyer tagged into the segment gets both, and the order charges what the cart said.
+        jar.clear();
+        view = euro ? noInEuro : no;
+        const email = `vip-${euro ? "eur" : "nok"}-${Date.now()}-${run}@example.com`;
+        const buyer = await preRegisterCustomer(storeId, email);
+        expect(await addTag(storeId, member.account.id, email, tag)).toEqual({ ok: true });
+        await startSession(storeId, buyer);
+        await add("DEMO-MUG-WHITE", 2);
+        expect(await setCartCode(shop(), code)).toBe(true);
+        const summary = await cartSummary(shop(), await getCart(shop()));
+        expect(summary.campaignDiscountMinor).toBeGreaterThan(0);
+        expect(summary.code?.codes.find((c) => c.code === code)).toMatchObject({ ok: true });
+        expect(await startCheckout({ ...shop(), storeSlug: slug }, cartId(), origin, "Frakt", {}, { customerId: buyer })).toMatchObject({ ok: true });
+        const open = await getOpenCheckout(storeId, cartId());
+        const order = (await getOrder(storeId, open!.orderId))!;
+        expect(order.currency).toBe(euro ? "EUR" : "NOK");
+        expect(order.totalMinor).toBe(summary.total);
+        expect(order.discountCode).toBe(code);
+        await (await import("./checkout")).cancelUnpaidOrder(open!.orderId, "test");
+
+        // A buyer outside the segment, and a guest, get neither.
+        jar.clear();
+        const stranger = await preRegisterCustomer(storeId, `out-${euro ? "eur" : "nok"}-${Date.now()}-${run}@example.com`);
+        await startSession(storeId, stranger);
+        await add("DEMO-MUG-WHITE", 2);
+        expect(await setCartCode(shop(), code)).toBe(true);
+        const outside = await cartSummary(shop(), await getCart(shop()));
+        expect(outside.campaignDiscountMinor).toBe(0);
+        expect(outside.code?.codes.find((c) => c.code === code)).toMatchObject({ ok: false, problem: "not_eligible" });
+        jar.clear();
+        await add("DEMO-MUG-WHITE", 2);
+        expect(await setCartCode(shop(), code)).toBe(true);
+        const guest = await cartSummary(shop(), await getCart(shop()));
+        expect(guest.campaignDiscountMinor).toBe(0);
+        expect(guest.code?.codes.find((c) => c.code === code)).toMatchObject({ ok: false, problem: "sign_in" });
+      }
+    } finally {
+      view = no;
+      await db().execute(sql`delete from commerce.campaigns where store_id = ${storeId}::uuid`);
+      await db().execute(sql`delete from commerce.discount_codes where store_id = ${storeId}::uuid and code = ${code}`);
+      await db().execute(sql`delete from commerce.segments where store_id = ${storeId}::uuid and id = ${segment.id}::uuid`);
+    }
+  });
+});
+
 describe("campaigns with limits (D115)", () => {
   const cancel = async (orderId: string) => (await import("./checkout")).cancelUnpaidOrder(orderId, "test");
 

@@ -23,6 +23,7 @@ export const reportsNb: ReportsMessages = {
     customerCount: { one: "kunde", many: "kunder" },
     shareOfRevenue: "Andel av all omsetning",
     segmentAverage: "I snitt {money} handlet i {orders} bestillinger; siste bestilling for {days} dager siden i snitt.",
+    seeWho: "Se hvem de er",
     whatToDo: "Hva du kan gjøre: ",
     emptyGroup: "Ingen kunder i denne gruppen akkurat nå.",
     sameMonth: "Samme måned",

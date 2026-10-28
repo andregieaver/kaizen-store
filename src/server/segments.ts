@@ -3,8 +3,8 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
-import { rfm, RFM_MIN_CUSTOMERS, type RfmSegment } from "@/lib/analytics-customers";
 import { toMain } from "@/lib/analytics-core";
+import { amountCell, writeCsv } from "@/lib/csv";
 import { mainCurrency } from "@/lib/markets";
 import type { SubscriberStatus } from "@/lib/marketing-consent";
 import { normaliseTag, tagKey, type Tag } from "@/lib/order-tags";
@@ -22,6 +22,7 @@ import {
 } from "@/lib/segments";
 
 import { audit } from "./auth";
+import { rfmGroups } from "./analytics-customers-data";
 import { NOT_EDIT_REFUND, PAID } from "./analytics-sql";
 import type { Store } from "./stores";
 
@@ -43,12 +44,21 @@ export type People = {
   rfmReady: boolean;
 };
 
+/** What the people reader needs of a store; its time zone is read when not given (the RFM groups' months are the store's). */
+export type SegmentStore = Pick<Store, "id" | "markets" | "localization"> & { timeZone?: string };
+
 /**
  * Every person of the store, by lower-case address: accounts, guests with a paid order (D152's `PAID`, never a copied or host's order, never an
- * erased person's), and the subscriber list. One query; money is net revenue without VAT per currency, converted in code.
+ * erased person's), and the subscriber list. One query; money is net revenue without VAT per currency, converted in code. With `emails`, only
+ * those people (a discount limited to a segment asks for one buyer, D380); `rfm: false` leaves their RFM group unread (no rule asks it).
  */
-export async function segmentPeople(store: Pick<Store, "id" | "markets" | "localization">, now = new Date()): Promise<People> {
+export async function segmentPeople(
+  store: SegmentStore,
+  now = new Date(),
+  options: { emails?: readonly string[]; rfm?: boolean } = {},
+): Promise<People> {
   const id = store.id;
+  const only = options.emails ? JSON.stringify([...new Set(options.emails.map((e) => e.trim().toLowerCase()))]) : null;
   const rows = await db().execute<Row>(sql`
     with ord as (
       select lower(coalesce(c.email, o.email)) as email, o.placed_at, trim(o.currency) as currency, o.market_code,
@@ -93,7 +103,8 @@ export async function segmentPeople(store: Pick<Store, "id" | "markets" | "local
       select email, array_agg(key order by key) as tags from commerce.customer_tags where store_id = ${id}::uuid group by email
     ),
     keys as (
-      select email from accounts union select email from buyers union select email from subs
+      select email from (select email from accounts union select email from buyers union select email from subs) k
+      where ${only}::jsonb is null or k.email in (select jsonb_array_elements_text(${only}::jsonb))
     )
     select k.email, a.id as customer_id, a.verified, a.tier_id, coalesce(a.company, false) as company,
       coalesce(a.name, b.ship_name, s.name, '') as name, coalesce(a.locale, s.locale) as locale,
@@ -136,28 +147,69 @@ export async function segmentPeople(store: Pick<Store, "id" | "markets" | "local
       tags: ((r.tags ?? []) as string[]).map(String),
     };
   });
-  // D152's groups, over the customers with a paid order: a store's analytics and its segments agree.
-  const buyers = people.filter((p) => p.lastOrderAt !== null);
-  const rfmReady = buyers.length >= RFM_MIN_CUSTOMERS;
-  if (rfmReady) {
-    const scored = rfm(
-      buyers.map((p) => ({ key: p.email, lastOrderAt: p.lastOrderAt as string, orders: p.orders, revenueMinor: p.spentMinor ?? 0 })),
-      now,
-    );
-    const groups = new Map<string, RfmSegment>(scored.map((s) => [s.key, s.segment]));
-    for (const p of people) p.rfm = groups.get(p.email) ?? null;
+  // The Customers page's own groups (D380, `rfmGroups()`): a segment of Champions is the page's Champions.
+  let rfmReady = false;
+  if (options.rfm !== false) {
+    const timeZone = store.timeZone ?? (await storeTimeZone(id));
+    const scored = await rfmGroups({ ...store, timeZone }, now);
+    rfmReady = scored.ready;
+    if (rfmReady) for (const p of people) p.rfm = scored.groups.get(p.email) ?? null;
   }
   return { people, capped, moneyUnknown: unknown, missingRates: [...missing], rfmReady };
 }
 
-export type SegmentResult = SegmentCount & { capped: boolean; rfmReady: boolean; missingRates: string[]; sample: Person[] };
+async function storeTimeZone(storeId: string): Promise<string> {
+  const [row] = await db().execute<Row>(sql`select time_zone from commerce.stores where id = ${storeId}::uuid`);
+  return row?.time_zone ? String(row.time_zone) : "Europe/Oslo";
+}
 
-/** A rule set counted over the store's people now, with the first people by last order. */
-export async function evaluateSegment(store: Pick<Store, "id" | "markets" | "localization">, rules: SegmentRules, now = new Date()): Promise<SegmentResult> {
+export type SegmentResult = SegmentCount & {
+  capped: boolean;
+  rfmReady: boolean;
+  missingRates: string[];
+  /** One page of the people in it, by last order (`SEGMENT_SAMPLE` a page). */
+  sample: Person[];
+  /** The page shown (from 0) and how many there are (D380). */
+  page: number;
+  pages: number;
+};
+
+/** A rule set counted over the store's people now, with one page of them by last order (the first unless `page` says). */
+export async function evaluateSegment(store: SegmentStore, rules: SegmentRules, now = new Date(), page = 0): Promise<SegmentResult> {
   const all = await segmentPeople(store, now);
   const count = countSegment(rules, all.people, now);
-  const sample = all.people.filter((p) => matches(rules, p, now)).slice(0, SEGMENT_SAMPLE);
-  return { ...count, capped: all.capped, rfmReady: all.rfmReady, missingRates: all.missingRates, sample };
+  const matched = all.people.filter((p) => matches(rules, p, now));
+  const pages = Math.max(1, Math.ceil(matched.length / SEGMENT_SAMPLE));
+  const shown = Math.min(Math.max(0, Math.floor(page)), pages - 1);
+  const sample = matched.slice(shown * SEGMENT_SAMPLE, (shown + 1) * SEGMENT_SAMPLE);
+  return { ...count, capped: all.capped, rfmReady: all.rfmReady, missingRates: all.missingRates, sample, page: shown, pages };
+}
+
+/**
+ * Everyone in a segment as a CSV (D380), for the owner: address, name, orders, first and last order, money spent without VAT in the main
+ * currency (blank where a currency had no rate, never 0), customer type, email consent and tags. Through `writeCsv()`, formula-safe.
+ */
+export async function segmentCsv(store: SegmentStore, rules: SegmentRules, now = new Date()): Promise<{ csv: string; rows: number }> {
+  const all = await segmentPeople(store, now);
+  const currency = mainCurrency(store as Store);
+  const people = all.people.filter((p) => matches(rules, p, now));
+  const day = (iso: string | null) => (iso ? iso.slice(0, 10) : "");
+  const rows = [
+    ["email", "name", "orders", "first_order", "last_order", "spent_without_vat", "currency", "customer_type", "email_consent", "tags"],
+    ...people.map((p) => [
+      p.email,
+      p.name,
+      p.orders,
+      day(p.firstOrderAt),
+      day(p.lastOrderAt),
+      amountCell(p.spentMinor, currency),
+      currency,
+      p.rfm ?? "",
+      p.consent,
+      p.tags.join(" "),
+    ]),
+  ];
+  return { csv: writeCsv(rows), rows: people.length };
 }
 
 /** A database error's own words, with its cause's (the driver wraps them), for telling a known refusal from a fault. */
@@ -223,8 +275,31 @@ export async function saveSegment(storeId: string, accountId: string, id: string
   }
 }
 
-export async function deleteSegment(storeId: string, accountId: string, id: string): Promise<boolean> {
-  const rows = await db().execute<Row>(sql`delete from commerce.segments where store_id = ${storeId}::uuid and id = ${id}::uuid returning title`);
+/** The codes and campaigns limited to a segment (D380), by their own names: while any is, the segment cannot be deleted. */
+export async function segmentUses(storeId: string, id: string): Promise<{ codes: string[]; campaigns: string[] }> {
+  const rows = await db().execute<Row>(sql`
+    select 'code' as kind, code as name from commerce.discount_codes where store_id = ${storeId}::uuid and segment_id = ${id}::uuid
+    union all
+    select 'campaign', name from commerce.campaigns where store_id = ${storeId}::uuid and segment_id = ${id}::uuid
+    order by 1, 2
+  `);
+  return {
+    codes: rows.filter((r) => r.kind === "code").map((r) => String(r.name)),
+    campaigns: rows.filter((r) => r.kind === "campaign").map((r) => String(r.name)),
+  };
+}
+
+/** Deletes a segment; `in_use` while a code or campaign is limited to it (the database refuses it too, D380). */
+export async function deleteSegment(storeId: string, accountId: string, id: string): Promise<boolean | "in_use"> {
+  const uses = await segmentUses(storeId, id);
+  if (uses.codes.length > 0 || uses.campaigns.length > 0) return "in_use";
+  let rows: Row[];
+  try {
+    rows = await db().execute<Row>(sql`delete from commerce.segments where store_id = ${storeId}::uuid and id = ${id}::uuid returning title`);
+  } catch (error) {
+    if (/discount_codes_segment_fk|campaigns_segment_fk/.test(errorText(error))) return "in_use";
+    throw error;
+  }
   if (!rows[0]) return false;
   await audit(accountId, storeId, "segment.deleted", { name: String(rows[0].title) }, { target: { type: "segment", id } });
   return true;
@@ -285,6 +360,60 @@ export async function removeTag(storeId: string, accountId: string, email: strin
 }
 
 type Tx = Parameters<Parameters<ReturnType<typeof db>["transaction"]>[0]>[0];
+
+/** The most people one bulk tag change reaches (D380). */
+export const BULK_TAG_MAX = 1000;
+
+export type BulkTagResult = { ok: true; changed: number; full: number } | { ok: false; problem: "too_many" | "bad_tag" };
+
+/**
+ * Adds a tag to, or takes it off, many people at once (D380, staff with `customers:write`): the addresses a list's filter found, at most
+ * `BULK_TAG_MAX`, in one transaction. A person already at `TAGS_PER_PERSON` tags is left as they were and counted in `full`. One audit entry
+ * for the batch, with the tag's words and the counts, never an address.
+ */
+export async function tagMany(storeId: string, accountId: string, emails: readonly string[], typed: string, mode: "add" | "remove"): Promise<BulkTagResult> {
+  const people = [...new Set(emails.map(normal).filter(Boolean))];
+  if (people.length > BULK_TAG_MAX) return { ok: false, problem: "too_many" };
+  const result = normaliseTag(typed);
+  if (!result.ok) return { ok: false, problem: "bad_tag" };
+  const tag = result.tag;
+  if (people.length === 0) return { ok: true, changed: 0, full: 0 };
+  const list = JSON.stringify(people);
+  let changed = 0;
+  let full = 0;
+  await db().transaction(async (tx) => {
+    if (mode === "remove") {
+      const rows = await tx.execute<Row>(sql`
+        delete from commerce.customer_tags
+        where store_id = ${storeId}::uuid and key = ${tag.key} and email in (select jsonb_array_elements_text(${list}::jsonb))
+        returning email
+      `);
+      changed = rows.length;
+      return;
+    }
+    // Who has room for one more, counted first, so the limit's trigger never aborts the batch.
+    const counts = await tx.execute<Row>(sql`
+      select e.email, count(t.key)::int as n, bool_or(t.key = ${tag.key}) as has
+      from jsonb_array_elements_text(${list}::jsonb) e(email)
+      left join commerce.customer_tags t on t.store_id = ${storeId}::uuid and t.email = e.email
+      group by e.email
+    `);
+    const room = counts.filter((r) => !r.has && Number(r.n) < TAGS_PER_PERSON).map((r) => String(r.email));
+    full = counts.filter((r) => !r.has && Number(r.n) >= TAGS_PER_PERSON).length;
+    if (room.length === 0) return;
+    const rows = await tx.execute<Row>(sql`
+      insert into commerce.customer_tags (store_id, email, key, label, created_by)
+      select ${storeId}::uuid, e.email, ${tag.key}, ${tag.label}, ${accountId}::uuid
+      from jsonb_array_elements_text(${JSON.stringify(room)}::jsonb) e(email)
+      on conflict do nothing returning email
+    `);
+    changed = rows.length;
+  });
+  if (changed > 0) {
+    await audit(accountId, storeId, mode === "add" ? "customer.tags_added" : "customer.tags_removed", { tag: tag.label, people: changed, full });
+  }
+  return { ok: true, changed, full };
+}
 
 /**
  * Tags an address inside the caller's transaction (a customer import's row, D366): the tags it does not have yet, up to a person's

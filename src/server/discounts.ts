@@ -19,6 +19,7 @@ import {
   generateCodesInput,
   generatedCode,
   availability,
+  limitedToSome,
   normalizeCode,
   type AppliedDiscount,
   type DiscountLine,
@@ -36,6 +37,7 @@ import { termsOfProducts } from "./campaigns";
 import { readCartId, type Shop } from "./cart";
 import { customerTierIds } from "./customer-tiers";
 import { getCustomer } from "./customers";
+import { segmentsOfBuyer } from "./segment-membership";
 import type { SaveResult } from "./settings";
 
 type Row = Record<string, unknown>;
@@ -73,6 +75,7 @@ function toDiscount(row: Row): StoreDiscount {
     combinesWith: (Array.isArray(row.combines_with) ? row.combines_with : []).filter((c): c is CodeClass => (CODE_CLASSES as readonly string[]).includes(String(c))),
     // Older rows and reads without the column combine, as every code did before D367.
     combinesWithCampaigns: row.combines_with_campaigns !== false,
+    segmentId: row.segment_id ? String(row.segment_id) : null,
   };
 }
 
@@ -144,7 +147,9 @@ export async function getDiscount(storeId: string, id: string): Promise<(StoreDi
 }
 
 /** What the activity log keeps of a code: the fields of `ALLOWED_FIELDS.discount`, amounts in minor units per country (never a customer, never an order). */
-function discountFacts(d: Pick<StoreDiscount, "code" | "kind" | "percent" | "amounts" | "minSubtotals" | "usageLimit" | "oncePerCustomer" | "startsAt" | "endsAt" | "active">): Record<string, unknown> {
+function discountFacts(
+  d: Pick<StoreDiscount, "code" | "kind" | "percent" | "amounts" | "minSubtotals" | "usageLimit" | "oncePerCustomer" | "startsAt" | "endsAt" | "active" | "segmentId">,
+): Record<string, unknown> {
   return {
     code: d.code,
     kind: d.kind,
@@ -155,6 +160,8 @@ function discountFacts(d: Pick<StoreDiscount, "code" | "kind" | "percent" | "amo
     startsAt: d.startsAt,
     endsAt: d.endsAt,
     active: d.active,
+    // The segment's id (D380), never who is in it.
+    segment: d.segmentId,
   };
 }
 
@@ -244,6 +251,10 @@ export async function saveDiscount(
     if (unknown.length > 0) problems.push(`No customer has the email ${unknown.slice(0, 3).join(", ")}${unknown.length > 3 ? ` and ${unknown.length - 3} more` : ""}.`);
     customerIds = [...new Set(emails.map((e) => known.get(e)).filter((v): v is string => Boolean(v)))];
   }
+  if (d.segmentId) {
+    const [row] = await db().execute<Row>(sql`select 1 from commerce.segments where store_id = ${store.id}::uuid and id = ${d.segmentId}::uuid`);
+    if (!row) problems.push("The chosen segment no longer exists.");
+  }
   const existing = id ? await getDiscount(store.id, id) : null;
   if (id && !existing) return { ok: false, problems: ["The code no longer exists."] };
   if (problems.length > 0) return { ok: false, problems: [...new Set(problems)] };
@@ -278,7 +289,7 @@ export async function saveDiscount(
             usage_limit = ${d.usageLimit}, once_per_customer = ${d.oncePerCustomer}, active = ${d.active},
             term_ids = ${values.termIds}::jsonb, min_quantity = ${d.minQuantity}, tier_ids = ${values.tierIds}::jsonb,
             customer_ids = ${values.customerIds}::jsonb, unique_codes = ${d.uniqueCodes}, combines_with = ${values.combinesWith}::jsonb,
-            combines_with_campaigns = ${d.combinesWithCampaigns}, updated_at = now()
+            combines_with_campaigns = ${d.combinesWithCampaigns}, segment_id = ${d.segmentId}::uuid, updated_at = now()
           where store_id = ${store.id}::uuid and id = ${id}::uuid
           returning id
         `)
@@ -286,13 +297,13 @@ export async function saveDiscount(
           insert into commerce.discount_codes (
             store_id, code, kind, percent, amounts, min_subtotals, product_ids, recurring,
             starts_at, ends_at, usage_limit, once_per_customer, active, term_ids, min_quantity, tier_ids, customer_ids, unique_codes, combines_with,
-            combines_with_campaigns
+            combines_with_campaigns, segment_id
           ) values (
             ${store.id}::uuid, ${values.code}, ${values.kind}, ${values.percent}, ${values.amounts}::jsonb,
             ${values.minSubtotals}::jsonb, ${values.productIds}::jsonb, ${values.recurring},
             ${startsAt}::timestamptz, ${endsAt}::timestamptz, ${d.usageLimit}, ${d.oncePerCustomer}, ${d.active},
             ${values.termIds}::jsonb, ${d.minQuantity}, ${values.tierIds}::jsonb, ${values.customerIds}::jsonb, ${d.uniqueCodes},
-            ${values.combinesWith}::jsonb, ${d.combinesWithCampaigns}
+            ${values.combinesWith}::jsonb, ${d.combinesWithCampaigns}, ${d.segmentId}::uuid
           )
           returning id
         `);
@@ -374,8 +385,10 @@ export async function findUsableDiscount(
     from commerce.discount_codes d where d.id = ${row.id}
   `);
   const discount = inShownCurrency(toDiscount(row), market);
-  const limited = discount.tierIds.length > 0 || discount.customerIds.length > 0;
+  const limited = limitedToSome(discount);
   const tierIds = limited && customerId ? await customerTierIds(runner, storeId, customerId) : [];
+  // A code for a segment's people (D380) asks whether this buyer is one of them now.
+  const segmentIds = discount.segmentId && customerId ? [...(await segmentsOfBuyer(runner, storeId, customerId, [discount.segmentId]))] : [];
   const problem = availability(discount, {
     now: new Date(),
     used: Number(counts.used),
@@ -383,7 +396,7 @@ export async function findUsableDiscount(
     signedIn: customerId !== null,
     marketCode: market.code,
     itemUsed: item ? Number(counts.item_used) : undefined,
-    customer: customerId ? { id: customerId, tierIds } : null,
+    customer: customerId ? { id: customerId, tierIds, segmentIds } : null,
   });
   return problem ? { ok: false, problem } : { ok: true, discount, item };
 }

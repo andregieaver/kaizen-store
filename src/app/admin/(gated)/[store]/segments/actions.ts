@@ -43,7 +43,9 @@ export async function saveSegmentAction(storeSlug: string, id: string | null, in
 export async function deleteSegmentAction(storeSlug: string, id: string): Promise<void> {
   const member = await requirePermission(storeSlug, "marketing:write");
   if (!z.uuid().safeParse(id).success) return;
-  await deleteSegment(member.store.id, member.account.id, id);
+  const deleted = await deleteSegment(member.store.id, member.account.id, id);
+  // A code or campaign is limited to it (D380): the page says which.
+  if (deleted === "in_use") redirect(`/admin/${member.store.slug}/segments/${id}?inUse=1`);
   refresh();
   redirect(`/admin/${member.store.slug}/segments`);
 }

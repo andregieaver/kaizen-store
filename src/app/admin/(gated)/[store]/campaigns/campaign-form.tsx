@@ -4,6 +4,7 @@ import { formatPriceInput } from "@/lib/product-input";
 import { mainCurrency } from "@/lib/markets";
 import { listGiftChoices } from "@/server/campaigns";
 import { listTiers } from "@/server/customer-tiers";
+import { listSegments } from "@/server/segments";
 import { listProductChoices } from "@/server/discounts";
 import { listTerms } from "@/server/taxonomy";
 import type { Store } from "@/server/stores";
@@ -34,11 +35,12 @@ function osloLocal(iso: string | null): string {
 /** The editor for a new campaign or an existing one, with the store's markets, products, categories and tags. */
 export async function CampaignForm({ store, campaign, orders = 0 }: { store: Store; campaign: Campaign | null; orders?: number }) {
   const locale = store.markets[0]?.locale ?? "nb-NO";
-  const [products, terms, gifts, tiers] = await Promise.all([
+  const [products, terms, gifts, tiers, segments] = await Promise.all([
     listProductChoices(store.id, locale),
     listTerms({ storeId: store.id, contentType: "product" }),
     listGiftChoices(store.id, locale),
     listTiers(store.id),
+    listSegments(store.id),
   ]);
   const currency = (code: string) => store.markets.find((m) => m.code === code)?.currency ?? mainCurrency(store);
   const typed = (values: Record<string, number>) => Object.fromEntries(Object.entries(values).map(([code, minor]) => [code, formatPriceInput(minor, currency(code))]));
@@ -73,6 +75,7 @@ export async function CampaignForm({ store, campaign, orders = 0 }: { store: Sto
         productIds: campaign.productIds,
         termIds: campaign.termIds,
         tierIds: campaign.tierIds,
+        segmentId: campaign.segmentId,
         usageLimit: campaign.usageLimit === null ? "" : String(campaign.usageLimit),
         perCustomerLimit: campaign.perCustomerLimit === null ? "" : String(campaign.perCustomerLimit),
         markets: campaign.markets,
@@ -109,6 +112,7 @@ export async function CampaignForm({ store, campaign, orders = 0 }: { store: Sto
         productIds: [],
         termIds: [],
         tierIds: [],
+        segmentId: null,
         usageLimit: "",
         perCustomerLimit: "",
         markets: [],
@@ -126,6 +130,7 @@ export async function CampaignForm({ store, campaign, orders = 0 }: { store: Sto
       terms={terms.map((t) => ({ id: t.id, name: t.name, kind: t.kind, parentId: t.parentId }))}
       gifts={gifts}
       tiers={tiers.map((t) => ({ id: t.id, name: t.name, percent: t.percent, active: t.active }))}
+      segments={segments.map((s) => ({ id: s.id, name: s.name }))}
       orders={orders}
       save={saveCampaignAction.bind(null, store.slug, campaign?.id ?? null)}
       back={`/admin/${store.slug}/campaigns`}

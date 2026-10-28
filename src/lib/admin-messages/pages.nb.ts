@@ -314,6 +314,7 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
   "store:broadcast": { title: "Utsendelse", keywords: ["utsendelse", "nyhetsbrev", "send nå", "planlegg", "test-e-post"] },
   "store:segment.new": { title: "Nytt segment", keywords: ["nytt segment", "opprett segment", "regler", "målgruppe"] },
   "store:segment": { title: "Segment", keywords: ["segment", "målgruppe", "antall", "personer"] },
+  "store:segment.rfm": { title: "Kunder av en type", keywords: ["kundetype", "rfm", "vip", "lojale", "i faresonen", "tapte", "kundeliste", "csv"] },
   "store:subscribers": {
     title: "Abonnenter",
     keywords: ["abonnenter", "nyhetsbrev", "e-postliste", "samtykke", "dobbel bekreftelse", "avmelding", "meld av"],

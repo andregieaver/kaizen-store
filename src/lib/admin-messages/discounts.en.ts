@@ -51,6 +51,10 @@ export const discountsEn = {
     ofAllowed: " of {limit} allowed",
   },
   editor: {
+    segmentOnly: "People in a segment",
+    segment: "Segment",
+    chooseSegment: "Choose a segment",
+    segmentHint: "Worked out for the signed-in buyer each time the code is used: someone who stops matching can no longer use it.",
     theCode: "The code",
     codeLabel: "Code shoppers type",
     codeHint: "3–40 letters, digits, - or _. Shoppers can type it in any case.",

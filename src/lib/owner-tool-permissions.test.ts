@@ -6,6 +6,7 @@ import { ROLE_TEMPLATES, isPermissionKey, type PermissionHolder } from "./permis
 
 /** The tools that change something: the table must ask a `write` (or the owner) for each, and a `read` for none. */
 const CHANGING = new Set([
+  "save_segment",
   "draft_store", "draft_header_footer", "use_header_footer", "draft_workflow",
   "add_order_note", "mark_order_sent", "cancel_booking", "archive_product", "refund_order", "approve_return", "decline_return", "create_discount",
   "set_discount_active", "create_campaign", "set_campaign_active", "set_recommendations", "add_recommendation_rule", "remove_recommendation_rule",

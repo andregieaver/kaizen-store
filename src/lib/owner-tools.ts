@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { segmentRulesSchema } from "./segments";
+
 import { AFFILIATE_COOKIE_DAYS_MAX, AFFILIATE_FRIEND_PERCENT_MAX } from "./affiliates";
 import { EMAIL_PROVIDERS, toolRecord } from "./domain-tools";
 import { BONUS_EXPIRY_MONTHS_MAX, BONUS_PENDING_DAYS_MAX, BONUS_REDEEM_PERCENT_MAX } from "./bonus";
@@ -1724,6 +1726,20 @@ export const OWNER_TOOLS = [
     "list_segments",
     "The store's saved customer segments: each one's name, its rules in words and how many people match now, counted in code. Never who they are. Read-only.",
     z.object({}),
+  ),
+  tool(
+    "count_segment",
+    "Counts how many people match a set of segment rules now, and how many of them want the store's emails, worked out by the store (D380). Turn the owner's words into rules: conditions on orders, money spent (in minor units of the main currency, without VAT), first or last order (days), customer type from analytics (VIP, Loyal, Promising, New, At risk, Lost), country or language (two-letter codes), customer group (ids from the groups the store has), company, account, tags (by name) and email consent; all or any of them. Never lists who. Read-only.",
+    z.object({ rules: segmentRulesSchema }),
+  ),
+  tool(
+    "save_segment",
+    "Saves a segment under a name, with rules as count_segment takes them; give the id of an existing one (from list_segments) to change it. It changes nothing a shopper sees: a broadcast, a code or a campaign uses it only when the owner chooses it there.",
+    z.object({
+      name: z.string().trim().min(1).max(80),
+      rules: segmentRulesSchema,
+      segment: z.string().trim().max(120).optional().describe("An existing segment's id or name, to change it; leave out for a new one."),
+    }),
   ),
   tool(
     "tag_customer",

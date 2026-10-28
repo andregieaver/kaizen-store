@@ -47,7 +47,18 @@ checked against the code on that day. Code, tests and texts follow this file. A 
 
 ## 2. The units
 
-### A. Segments everywhere (D380)
+### A. Segments everywhere (D380): built
+
+**As built (28 October 2026).** Everything below is built and the four rows are Full (core parity 86.2 % to 87.1 %), with these changes from
+the plan:
+- **Bulk tagging** works on everyone the list's search and tag find, rather than on rows ticked one by one (the list rows are links): Homer
+  narrows the list and presses once.
+- **The RFM groups** of a segment are now the analytics page's own (`rfmGroups()`), not worked out over the segment's people. Before, the two
+  pools differed (an erased person's order counted on the page only, and money was rounded differently), so the counts could disagree.
+- **Membership at the cart** reads the buyer's facts alone, and the store's whole RFM pool only when the rules ask for a customer type.
+- **The AI manager's tools** are `count_segment` (read) and `save_segment` (saves at once, no gate). No editor is opened unsaved.
+- **A store's copy** switches a segment-limited code or campaign off, since segments are never copied.
+
 
 **What is missing, checked in the code.**
 - Staff tag customers only one at a time.

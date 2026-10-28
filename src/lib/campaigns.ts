@@ -99,6 +99,8 @@ export type Campaign = {
   stacks: boolean;
   /** Whether a discount code may be used on a basket it reduces (D367); off, the basket takes whichever gives the shopper more. */
   combinesWithCodes: boolean;
+  /** A segment whose people get it (D380), beside `tierIds`: either lets a signed-in buyer in. */
+  segmentId: string | null;
   createdAt: string;
 };
 
@@ -609,6 +611,8 @@ export const campaignInput = z
     stacks: z.boolean().default(false),
     /** Whether discount codes may be used beside it (D367). */
     combinesWithCodes: z.boolean().default(true),
+    /** A segment whose people get it (D380); the server checks it is the store's. */
+    segmentId: z.uuid().nullable().default(null),
     startsAt: z.string().trim().nullable().default(null),
     endsAt: z.string().trim().nullable().default(null),
     active: z.boolean().default(true),

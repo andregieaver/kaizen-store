@@ -10,6 +10,7 @@ import { queryText } from "@/lib/analytics-export";
 import { analyticsContext } from "@/server/analytics-context";
 import { customersReport } from "@/server/analytics-customers-data";
 import { featureOn } from "@/lib/store-features";
+import { memberCan } from "@/server/permissions";
 
 export const metadata: Metadata = { title: "Customer analytics" };
 
@@ -40,7 +41,7 @@ export default async function AnalyticsCustomersPage({ params, searchParams }: P
           title={w.pages.customers.title}
           description={w.pages.customers.description}
         />
-        <CustomersView base={ctx.base} locale={locale} timeZone={store.timeZone} isOwner={ctx.owner} report={report} bonusOn={featureOn(store, "bonus")} words={w.customers} />
+        <CustomersView base={ctx.base} locale={locale} timeZone={store.timeZone} isOwner={ctx.owner} report={report} bonusOn={featureOn(store, "bonus")} seesPeople={memberCan(ctx, "customers:read") && memberCan(ctx, "marketing:read")} words={w.customers} />
       </div>
     </ExportScope>
     </AdminTextScope>

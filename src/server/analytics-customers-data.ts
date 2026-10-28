@@ -14,6 +14,7 @@ import {
   rfm,
   RFM_MIN_CUSTOMERS,
   segmentSummary,
+  type RfmSegment,
   type CohortTable,
   type CohortTrend,
   type CustomerAggregate,
@@ -31,7 +32,7 @@ import { convertMinor } from "@/lib/currency";
 import { mainCurrency } from "@/lib/markets";
 
 import { CUSTOMER_JOIN, CUSTOMER_KEY, dayStart, HAS_CUSTOMER, inPeriod, NOT_EDIT_REFUND, num, type Row } from "./analytics-sql";
-import { setBasedReplica as setBased } from "./analytics-totals";
+import { setBased as setBasedPrimary, setBasedReplica as setBased } from "./analytics-totals";
 import type { Store } from "./stores";
 
 /**
@@ -450,4 +451,72 @@ export async function customersReport(
     unconverted: folded.unconverted,
     missingRates: folded.missing,
   };
+}
+
+/**
+ * Each customer's RFM group as the Customers page works it out (D380): the same paid orders, customer key and cap, the same net revenue
+ * rounded per customer, month and currency and converted one month at a time (a currency with no rate counting nothing, as `fold()` does), and
+ * the same `rfm()`. Segments read their groups here, so a segment of "Champions" is the page's Champions. An erased person's order is its own
+ * anonymous customer here as there, so it is scored but is never a person a segment can hold. Read on the primary, as a discount limited to a
+ * segment asks it while an order is placed.
+ */
+export async function rfmGroups(
+  store: Pick<Store, "id" | "timeZone" | "markets" | "localization">,
+  now: Date,
+  cap = CUSTOMER_CAP,
+): Promise<{ groups: Map<string, RfmSegment>; scored: number; ready: boolean }> {
+  const id = store.id;
+  const rows = await setBasedPrimary<Row>(sql`
+    with ord as materialized (
+      select ${CUSTOMER_KEY} as customer_key, o.placed_at, trim(o.currency) as currency,
+        to_char(o.placed_at at time zone ${store.timeZone}, 'YYYY-MM') as month, n.net
+      from commerce.orders o
+      ${CUSTOMER_JOIN}
+      join (
+        select p.order_id from commerce.payments p
+        where p.store_id = ${id}::uuid and p.status = 'captured'
+        group by p.order_id
+      ) pf on pf.order_id = o.id
+      left join (
+        select p.order_id, sum(r.amount_minor)::numeric as amount
+        from commerce.refunds r
+        join commerce.payments p on p.store_id = r.store_id and p.id = r.payment_id
+        where r.store_id = ${id}::uuid and r.status = 'succeeded' and ${NOT_EDIT_REFUND}
+        group by p.order_id
+      ) rf on rf.order_id = o.id
+      cross join lateral (
+        select (o.total_minor - o.tax_minor)::numeric - coalesce(rf.amount * (o.total_minor - o.tax_minor)::numeric / nullif(o.total_minor::numeric, 0), 0) as net
+      ) n
+      where o.store_id = ${id}::uuid and o.copied_from is null and o.host_id is null and ${HAS_CUSTOMER}
+    ),
+    cust as (
+      select customer_key, max(placed_at) as last_at, count(*)::int as orders from ord group by customer_key
+    ),
+    capped as (
+      select * from cust order by last_at desc, customer_key limit ${cap + 1}
+    ),
+    months as (
+      select m.customer_key, json_agg(json_build_object('currency', m.currency, 'net', round(m.net))) as months
+      from (select customer_key, month, currency, sum(net) as net from ord group by customer_key, month, currency) m
+      join capped using (customer_key)
+      group by m.customer_key
+    )
+    select c.customer_key, c.last_at, c.orders, mo.months
+    from capped c left join months mo using (customer_key)
+    order by c.last_at desc, c.customer_key
+  `);
+  const main = mainCurrency(store);
+  const rates = store.localization.rates;
+  const aggregates = rows.slice(0, cap).map((row) => ({
+    key: String(row.customer_key),
+    lastOrderAt: iso(row.last_at),
+    orders: num(row, "orders"),
+    revenueMinor: ((row.months ?? []) as { currency: string; net: number }[]).reduce((sum, m) => {
+      const net = Number(m.net);
+      if (!net) return sum;
+      return sum + (convertMinor(net, m.currency.trim(), main, rates) ?? 0);
+    }, 0),
+  }));
+  const scored = rfm(aggregates, now);
+  return { groups: new Map(scored.map((s) => [s.key, s.segment])), scored: scored.length, ready: scored.length >= RFM_MIN_CUSTOMERS };
 }

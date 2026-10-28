@@ -15,7 +15,7 @@ import { audienceCount, getBroadcast, listBroadcasts, saveBroadcast, scheduleBro
 import { listTiers } from "./customer-tiers";
 import { issueGiftCard } from "./gift-cards-admin";
 import { OwnerToolError } from "./owner-tool-error";
-import { addTag, evaluateSegment, listSegments, removeTag, type SavedSegment } from "./segments";
+import { addTag, evaluateSegment, listSegments, removeTag, saveSegment, type SavedSegment } from "./segments";
 import { storeById } from "./shopper-emails";
 import type { Store } from "./stores";
 import type { Account } from "./auth";
@@ -171,6 +171,29 @@ export async function listSegmentsTool({ store }: Ctx) {
     });
   }
   return { segments: rows, total: segments.length, link: adminLink(store, "/segments") };
+}
+
+/** The people the rules match now and how many want the store's emails (D380), counted by the segments' reader; never who. */
+export async function countSegmentTool({ store }: Ctx, { rules }: OwnerToolInput<"count_segment">) {
+  const [counted, tiers] = await Promise.all([evaluateSegment(store, rules), listTiers(store.id)]);
+  const money = (minor: number) => formatMoney(minor, mainCurrency(store), store.localization.locales[0] ?? "en-GB");
+  return {
+    rules: describeRules(rules, { money, groupName: (id) => tiers.find((t) => t.id === id)?.name }),
+    people: counted.people,
+    want_emails: counted.subscribed,
+    ...(counted.moneyUnknown > 0 && { not_judged_on_money: counted.moneyUnknown }),
+    ...(!counted.rfmReady && rules.conditions.some((c) => c.kind === "rfm") && { note: "customer types are not worked out yet: the store has too few customers with a paid order" }),
+    ...(counted.capped && { capped: "counted from the first people only: the store has more than a segment reads" }),
+  };
+}
+
+/** Saves a segment through the Segments page's own saver (D380); changing one finds it by id or name. */
+export async function saveSegmentTool({ account, store }: Ctx, { name, rules, segment }: OwnerToolInput<"save_segment">) {
+  const existing = segment ? await findSegment(store, segment) : null;
+  const saved = await saveSegment(store.id, account.id, existing?.id ?? null, { name, rules });
+  if (!saved.ok) return fail(saved.problem);
+  const counted = await evaluateSegment(store, rules);
+  return { done: existing ? `The segment "${name}" is changed.` : `The segment "${name}" is saved.`, id: saved.id, people: counted.people, link: adminLink(store, `/segments/${saved.id}`) };
 }
 
 export async function tagCustomerTool({ account, store }: Ctx, { email, tag, remove }: OwnerToolInput<"tag_customer">) {

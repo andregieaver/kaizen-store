@@ -225,7 +225,7 @@ export const ALLOWED_FIELDS: Record<AuditKind, readonly string[]> = {
   product: ["title", "status", "handle", "kind", "vatCategory", "categoryIds", "tagIds", "variantCount", "soldByMeasure", "measures", "standardCategory", "notSoldIn"],
   price: ["sku", "market", "currency", "priceMinor"],
   page: ["title", "address", "state", "rowCount", "blockCount"],
-  discount: ["code", "kind", "value", "minimumMinor", "usageLimit", "perCustomerLimit", "startsAt", "endsAt", "active"],
+  discount: ["code", "kind", "value", "minimumMinor", "usageLimit", "perCustomerLimit", "startsAt", "endsAt", "active", "segment"],
   shipping: ["rates", "freeAboveMinor", "currency"],
   staff: ["email", "role", "roleName", "kind", "expiresAt", "disabled"],
   role: ["name", "permissions"],

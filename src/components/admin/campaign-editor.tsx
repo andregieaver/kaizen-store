@@ -63,6 +63,8 @@ export type CampaignDraft = {
   stacks: boolean;
   /** Whether discount codes may be used beside it (D367). */
   combinesWithCodes: boolean;
+  /** A segment whose people get it (D380). */
+  segmentId: string | null;
   startsAt: string;
   endsAt: string;
   active: boolean;
@@ -91,10 +93,13 @@ export function CampaignEditor({
   terms,
   gifts,
   tiers,
+  segments = [],
   orders,
   save,
   back,
 }: {
+  /** The store's segments (D380), to give it to one's people. */
+  segments?: { id: string; name: string }[];
   initial: CampaignDraft;
   markets: Market[];
   products: { id: string; title: string }[];
@@ -115,6 +120,7 @@ export function CampaignEditor({
   const [problems, setProblems] = useState<string[]>([]);
   const [saving, startSaving] = useTransition();
   const set = <K extends keyof CampaignDraft>(key: K, value: CampaignDraft[K]) => setD((current) => ({ ...current, [key]: value }));
+  const [who, setWho] = useState<"everyone" | "groups" | "segment">(initial.segmentId ? "segment" : initial.tierIds.length > 0 ? "groups" : "everyone");
   const toggle = (key: "productIds" | "termIds" | "tierIds" | "markets" | "getProductIds" | "getTermIds", id: string, on: boolean) => set(key, on ? [...d[key], id] : d[key].filter((x) => x !== id));
 
   const submit = () =>
@@ -145,7 +151,8 @@ export function CampaignEditor({
         scope: d.scope,
         productIds: d.productIds,
         termIds: d.termIds,
-        tierIds: d.tierIds,
+        tierIds: who === "groups" ? d.tierIds : [],
+        segmentId: who === "segment" ? d.segmentId : null,
         usageLimit: d.usageLimit || null,
         perCustomerLimit: d.perCustomerLimit || null,
         markets: d.markets,
@@ -594,22 +601,39 @@ export function CampaignEditor({
         <h2 id="who-heading" className="text-title text-ink">
           {w.who}
         </h2>
-        {tiers.length === 0 ? (
+        {tiers.length === 0 && segments.length === 0 ? (
           <p className="text-sm text-muted">{w.noGroups}</p>
         ) : (
           <>
             <fieldset className="flex flex-col gap-2">
               <legend className="sr-only">{w.whoFor}</legend>
               <label className="flex min-h-10 items-center gap-3 text-sm">
-                <input type="radio" name="who" checked={d.tierIds.length === 0} onChange={() => set("tierIds", [])} className="size-4" />
+                <input type="radio" name="who" checked={who === "everyone"} onChange={() => setWho("everyone")} className="size-4" />
                 {w.everyShopper}
               </label>
-              <label className="flex min-h-10 items-center gap-3 text-sm">
-                <input type="radio" name="who" checked={d.tierIds.length > 0} onChange={() => d.tierIds.length === 0 && set("tierIds", [tiers[0].id])} className="size-4" />
-                {f.groupsOnly}
-              </label>
+              {tiers.length > 0 && (
+                <label className="flex min-h-10 items-center gap-3 text-sm">
+                  <input
+                    type="radio"
+                    name="who"
+                    checked={who === "groups"}
+                    onChange={() => {
+                      setWho("groups");
+                      if (d.tierIds.length === 0) set("tierIds", [tiers[0].id]);
+                    }}
+                    className="size-4"
+                  />
+                  {f.groupsOnly}
+                </label>
+              )}
+              {segments.length > 0 && (
+                <label className="flex min-h-10 items-center gap-3 text-sm">
+                  <input type="radio" name="who" checked={who === "segment"} onChange={() => setWho("segment")} className="size-4" />
+                  {t.editor.segmentOnly}
+                </label>
+              )}
             </fieldset>
-            {d.tierIds.length > 0 && (
+            {who === "groups" && (
               <ul className="grid gap-1 rounded-md border border-line p-2 sm:grid-cols-2">
                 {tiers.map((tier) => (
                   <li key={tier.id}>
@@ -622,7 +646,21 @@ export function CampaignEditor({
                 ))}
               </ul>
             )}
-            <p className={hint}>{w.groupsHint}</p>
+            {who === "segment" && (
+              <label className="flex flex-col gap-1 text-sm">
+                {t.editor.segment}
+                <select value={d.segmentId ?? ""} onChange={(event) => set("segmentId", event.target.value || null)} className="min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm">
+                  <option value="">{t.editor.chooseSegment}</option>
+                  {segments.map((segment) => (
+                    <option key={segment.id} value={segment.id}>
+                      {segment.name}
+                    </option>
+                  ))}
+                </select>
+                <span className={hint}>{t.editor.segmentHint}</span>
+              </label>
+            )}
+            {who === "groups" && <p className={hint}>{w.groupsHint}</p>}
           </>
         )}
       </section>

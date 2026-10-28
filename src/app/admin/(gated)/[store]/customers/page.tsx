@@ -14,6 +14,9 @@ import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { featureOn } from "@/lib/store-features";
 import { Card, CARD_CLASS, List, ListRow, PageHeader, RowAmount, RowFact, RowLead } from "@/components/admin/ui";
+import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+
+import { bulkTagAction } from "./actions";
 
 export const metadata: Metadata = { title: "Customers" };
 
@@ -96,6 +99,25 @@ export default async function CustomersPage({ params, searchParams }: PageProps<
           </Link>
         )}
       </form>
+
+      {memberCan(member, "customers:write") && customers.length > 0 && (
+        <Card title={staff.bulk.title} description={staff.bulk.description} compact>
+          <ActionForm action={bulkTagAction.bind(null, store.slug)} className="flex flex-wrap items-end gap-2">
+            <input type="hidden" name="q" value={q} />
+            <input type="hidden" name="filterTag" value={tag ?? ""} />
+            <label className="flex flex-col gap-1 text-sm">
+              {staff.bulk.tag}
+              <input name="tag" required maxLength={40} className="min-h-10 w-56 rounded-md border border-line bg-card px-3" />
+            </label>
+            <SubmitButton name="mode" value="add">
+              {staff.bulk.add}
+            </SubmitButton>
+            <SubmitButton name="mode" value="remove" variant="secondary">
+              {staff.bulk.remove}
+            </SubmitButton>
+          </ActionForm>
+        </Card>
+      )}
 
       {customers.length === 0 ? (
         <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>

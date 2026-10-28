@@ -6,6 +6,7 @@ import type { Store } from "@/server/stores";
 import { customerEmailsOf, listProductChoices } from "@/server/discounts";
 import { listTerms } from "@/server/taxonomy";
 import { listTiers } from "@/server/customer-tiers";
+import { listSegments } from "@/server/segments";
 
 import { saveDiscountAction } from "./actions";
 import { featureOn } from "@/lib/store-features";
@@ -26,11 +27,12 @@ function osloLocal(iso: string | null): string {
 
 /** The editor for a new code or an existing one, with the store's markets and products. */
 export async function DiscountForm({ store, discount }: { store: Store; discount: (StoreDiscount & { used: number }) | null }) {
-  const [products, terms, tiers, emails] = await Promise.all([
+  const [products, terms, tiers, emails, segments] = await Promise.all([
     listProductChoices(store.id, store.markets[0]?.locale ?? "nb-NO"),
     listTerms({ storeId: store.id, contentType: "product" }),
     listTiers(store.id),
     customerEmailsOf(store.id, discount?.customerIds ?? []),
+    listSegments(store.id),
   ]);
   const currency = (code: string) => store.markets.find((m) => m.code === code)?.currency ?? mainCurrency(store);
   const texts = (values: Record<string, number>) =>
@@ -56,6 +58,7 @@ export async function DiscountForm({ store, discount }: { store: Store; discount
         uniqueCodes: discount.uniqueCodes,
         combinesWith: discount.combinesWith,
         combinesWithCampaigns: discount.combinesWithCampaigns,
+        segmentId: discount.segmentId,
       }
     : {
         code: "",
@@ -77,6 +80,7 @@ export async function DiscountForm({ store, discount }: { store: Store; discount
         uniqueCodes: false,
         combinesWith: [],
         combinesWithCampaigns: true,
+        segmentId: null,
       };
   return (
     <DiscountEditor
@@ -85,6 +89,7 @@ export async function DiscountForm({ store, discount }: { store: Store; discount
       products={products}
       terms={terms.map((t) => ({ id: t.id, name: t.name, kind: t.kind, parentId: t.parentId }))}
       tiers={tiers.map((t) => ({ id: t.id, name: t.name, active: t.active }))}
+      segments={segments.map((s) => ({ id: s.id, name: s.name }))}
       used={discount?.used ?? 0}
       save={saveDiscountAction.bind(null, store.slug, discount?.id ?? null)}
       back={`/admin/${store.slug}/discounts`}
