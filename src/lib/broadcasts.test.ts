@@ -4,6 +4,7 @@ import {
   broadcastInput,
   buildBroadcastEmail,
   isBroadcastAddress,
+  keepHanded,
   languageFor,
   linkKey,
   linksOf,
@@ -111,10 +112,77 @@ describe("a suggestion from the AI", () => {
     const s = parseSuggestion('Here:\n```json\n{"subject":"Autumn","preview":"New in","heading":"Autumn is here","paragraphs":["Come and look."],"button":"See more"}\n```');
     expect(s).not.toBeNull();
     expect(suggestionClaims(s!)).toEqual([]);
-    expect(suggestionBlocks(s!).map((b) => b.type)).toEqual(["heading", "paragraph", "button"]);
+    expect(suggestionBlocks(keepHanded(s!, { products: new Map(), campaigns: new Map() })).map((b) => b.type)).toEqual(["heading", "paragraph", "button"]);
     const claim = parseSuggestion('{"subject":"Only today","heading":"Sustainable choices","paragraphs":["Everything is sustainable."],"button":""}');
     expect(suggestionClaims(claim!).length).toBeGreaterThan(0);
+    expect(suggestionClaims({ subject: "News", preview: "", heading: "Socks", paragraphs: ["Now 20 % off, just kr 99."], button: "" }).length).toBeGreaterThan(0);
     expect(parseSuggestion("no json")).toBeNull();
     expect(parseSuggestion('{"subject":"x"}')).toBeNull();
+  });
+});
+
+const P1 = "11111111-1111-4111-8111-111111111111";
+const P2 = "22222222-2222-4222-8222-222222222222";
+const C1 = "33333333-3333-4333-8333-333333333333";
+
+describe("the store's own facts in an email (D352)", () => {
+  it("keeps only the products and campaigns the writer's tools handed it, each once, and puts them in as blocks", () => {
+    const draft = parseSuggestion(
+      JSON.stringify({ subject: "Socks", preview: "", heading: "Warm feet", paragraphs: ["Wool for winter."], button: "", products: [P1, "made-up", P1, P2], campaigns: [C1, "x"] }),
+    )!;
+    const kept = keepHanded(draft, {
+      products: new Map([
+        [P1, { handle: "wool-socks", title: "Wool socks" }],
+        [P2, { handle: "slippers", title: "Slippers" }],
+      ]),
+      campaigns: new Map([[C1, { name: "Winter" }]]),
+    });
+    expect(kept.products).toEqual([
+      { id: P1, handle: "wool-socks", label: "Wool socks" },
+      { id: P2, handle: "slippers", label: "Slippers" },
+    ]);
+    expect(kept.campaigns).toEqual([{ id: C1, label: "Winter" }]);
+    expect(suggestionBlocks(kept).map((b) => b.type)).toEqual(["heading", "paragraph", "campaign", "product", "product"]);
+  });
+
+  it("draws a product and a campaign only from what code read, linking the product to its page; one not read is left out", () => {
+    const lang = {
+      subject: "Socks",
+      preview: "",
+      blocks: [
+        { type: "product" as const, product: P1, handle: "wool-socks", label: "Wool socks" },
+        { type: "product" as const, product: P2, handle: "gone", label: "Gone" },
+        { type: "campaign" as const, campaign: C1, label: "Winter" },
+      ],
+    };
+    expect(broadcastInput.safeParse({ title: "x", audience: "everyone", segmentId: null, content: { "nb-NO": lang } }).success).toBe(true);
+    const email = renderEmail(
+      buildBroadcastEmail({
+        content: lang,
+        facts: {
+          products: new Map([[P1, { title: "Ullsokker", image: "https://cdn.example/s.webp", alt: "Grå sokker", price: "kr 199,00", small: ["inkl. mva."] }]]),
+          campaigns: new Map([[C1, { title: "Vinter", text: "20 % rabatt", until: "31. desember 2026" }]]),
+          linkText: "Se produktet",
+        },
+        locale: "nb-NO",
+        footer: [],
+        unsubscribe: { text: "", linkText: "Meld deg av", url: "https://shop.example/unsubscribe/t" },
+        resolve: (url) => `https://shop.example/no${url}`,
+        link: (key, target) => `https://kf.example/c/${key}?to=${encodeURIComponent(target)}`,
+      }),
+    );
+    expect(email.html).toContain("Ullsokker");
+    expect(email.html).toContain("kr 199,00");
+    expect(email.html).toContain("inkl. mva.");
+    expect(email.html).toContain(encodeURIComponent("https://shop.example/no/p/wool-socks"));
+    expect(email.html).toContain("20 % rabatt");
+    expect(email.html).not.toContain("Gone");
+    expect(email.text).toContain("Ullsokker");
+    const content: BroadcastContent = { "nb-NO": lang };
+    expect(linkTarget(content, linkKey("nb-NO", 0))).toBe("/p/wool-socks");
+    expect(linksOf(content).map((l) => l.label)).toEqual(["Wool socks", "Gone"]);
+    // Without facts, nothing of them is drawn.
+    const bare = buildBroadcastEmail({ content: lang, locale: "nb-NO", footer: [], unsubscribe: { text: "", linkText: "", url: "" }, resolve: (u) => u, link: (_k, t) => t });
+    expect(bare.blocks).toEqual([]);
   });
 });

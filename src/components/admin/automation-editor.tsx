@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 
-import type { BroadcastContent, BroadcastSuggestion } from "@/lib/broadcasts";
+import type { BroadcastContent, BroadcastSuggestion, FindFacts } from "@/lib/broadcasts";
 
 import { fillWords } from "@/lib/admin-fill";
 
@@ -66,6 +66,8 @@ type Props = {
   test: (storeSlug: string, kind: string, locale: string) => Promise<Problem | { ok: true; to: string }>;
   suggest: (storeSlug: string, brief: string, locale: string) => Promise<Problem | { ok: true; suggestion: BroadcastSuggestion }>;
   upload: ((storeSlug: string, data: FormData) => Promise<{ ok: true; url: string } | { ok: false; problem: string }>) | null;
+  /** The store's products and running campaigns to put in (D352). */
+  facts?: FindFacts;
 };
 
 /**
@@ -121,6 +123,7 @@ export function AutomationEditor(props: Props) {
         aiReady={props.aiReady}
         suggest={props.suggest}
         upload={props.upload}
+        facts={props.facts}
       />
 
       {message && (

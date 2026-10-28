@@ -82,7 +82,7 @@ export async function listBroadcastsTool({ store }: Ctx, { limit }: OwnerToolInp
 export async function draftBroadcastTool({ account, store }: Ctx, input: OwnerToolInput<"draft_broadcast">) {
   const segment = input.segment ? await findSegment(store, input.segment) : null;
   const locale = store.localization.locales[0] ?? "en";
-  const suggested = await suggestBroadcast(store, account.id, input.brief, locale);
+  const suggested = await suggestBroadcast(store, account.id, input.brief, locale, { segmentId: segment?.id ?? null });
   if (!suggested.ok) return fail(suggested.problem);
   const s = suggested.suggestion;
   const saved = await saveBroadcast(store, account.id, null, {
@@ -97,6 +97,9 @@ export async function draftBroadcastTool({ account, store }: Ctx, input: OwnerTo
     id: saved.id,
     subject: s.subject,
     words: [s.heading, ...s.paragraphs],
+    // Chosen by the store's AI from its own products and running campaigns; their pictures, prices and offers are drawn by code (D352).
+    ...(s.products.length > 0 && { products: s.products.map((p) => p.label) }),
+    ...(s.campaigns.length > 0 && { campaigns: s.campaigns.map((c) => c.label) }),
     ...(s.button && { button: `${s.button} (it links to the store's front page until the owner changes it)` }),
     next: "Ask the owner to read and change it on its page (the link), then send it with send_broadcast, which needs their approval.",
     link: adminLink(store, `/broadcasts/${saved.id}`),

@@ -1001,14 +1001,14 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": "missing"
+      "was": "partial"
     },
     "weight": 3,
-    "gap": "D297: the broadcast editor's Write with AI (suggestBroadcast()) suggests a subject, preview, heading, paragraphs and a button's words in the chosen language from the staff's own words, every text through findClaims() (a claim refuses the suggestion), never saved or sent; the person sends with their own press, only to subscribed addresses with an unsubscribe link. Since D318 the AI manager drafts one too (draft_broadcast, for everyone or one segment, saved as a draft) and sends only behind the send gate (send_broadcast). Still missing (criterion 1): writing from the store's own facts through tools (products, campaigns); the writer is given only the staff's words and told never to name a product or price it was not told. Since D330 F2b the store's brand guide (`brandGuide()`, its words to avoid found by `findAvoided()`) reaches the broadcast suggestions below the prompt's rules.",
-    "bucket": "A",
-    "wave": 8,
+    "gap": "Met (D352). The broadcast editor's Write with AI and the AI manager's draft_broadcast write from the store's own facts: the writer asks two read-only tools, find_products (the store's offered products by keyword, else the newest: title, picture or not, the price as the store shows it) and running_campaigns (each offer in the shop's own words), read in the store's own country through the catalogue's cached reads, and chooses products and campaigns by id; keepHanded() keeps only ids its tools handed it. Code puts them in as product and campaign blocks, drawn for each recipient's market when the email is made (picture, title, price written by the storefront's rules in that market's currency, a link to the page; a campaign's offer and end), and leaves out a product the market no longer sells or a campaign that ended. A price, discount, stock or delivery claim in the model's own words refuses the suggestion (findClaims()). The segment chosen shapes the words (its name and rules, never its people). The editor also finds and adds products and campaigns by hand. The suggestion is never saved or sent; sending stays the person's press or the gated send_broadcast, to subscribed addresses with the unsubscribe link (D297, D318). Since D330 F2b the brand guide steers the words.",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "In the broadcast editor the assistant writes subject, preview text and body for a chosen segment from the store's own facts (products, campaigns), each text passing findClaims.",
       "The draft is only a suggestion in the editor; sending is a gated action and goes only to customers who consented, with an unsubscribe link.",
@@ -1023,13 +1023,18 @@
         "src/server/broadcasts.ts",
         "src/lib/broadcasts.ts",
         "src/components/admin/broadcast-editor.tsx",
-        "src/server/marketing-tools.ts"
+        "src/server/marketing-tools.ts",
+        "src/server/broadcast-facts.ts",
+        "src/lib/email-layout.ts",
+        "src/components/admin/automation-editor.tsx"
       ],
       "tests": [
         "src/server/owner-insights.int.test.ts",
         "src/lib/claims.test.ts",
         "src/lib/broadcasts.test.ts",
-        "src/server/marketing-tools.int.test.ts"
+        "src/server/marketing-tools.int.test.ts",
+        "src/server/broadcast-facts.int.test.ts",
+        "src/server/broadcasts.int.test.ts"
       ],
       "untested": false
     },
@@ -1037,7 +1042,8 @@
       "D104",
       "D297",
       "D318",
-      "D330"
+      "D330",
+      "D352"
     ],
     "history": [
       {
@@ -1057,6 +1063,12 @@
         "from": "missing",
         "to": "partial",
         "why": "D297: Write with AI in the broadcast editor suggests the email's words through the claims filter, as a suggestion only; it does not yet read the store's products or campaigns."
+      },
+      {
+        "on": "2026-10-28",
+        "from": "partial",
+        "to": "full",
+        "why": "D352: the writer chooses the store's own products and running campaigns through read-only tools, by id; code draws each with its picture and the price as the recipient's market shows it (euro included) and refuses a price or discount in the model's words; the segment shapes the words."
       }
     ]
   },

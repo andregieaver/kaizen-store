@@ -12,6 +12,13 @@ export type EmailBlock =
   | { type: "code"; text: string }
   /** A picture at the email's width (a full address), optionally a link (D297's broadcasts). */
   | { type: "image"; url: string; alt: string; href?: string | null }
+  /**
+   * A product as the store shows it (D352): its picture, title and price written by code from the catalogue's read for the recipient's
+   * market, and a link to its page; `small` lines under the price (the VAT label, a reduction's 30-day price, the unit price).
+   */
+  | { type: "product"; title: string; image: string | null; alt: string; price: string; small: string[]; url: string; linkText: string }
+  /** A running campaign's offer in the shop's own words (D352: `noticeText()`), with when it ends. */
+  | { type: "offer"; title: string; text: string; until: string | null }
   | { type: "divider" };
 
 /** A row of a list of lines: a product with its picture (a full address), or a total. */
@@ -66,6 +73,15 @@ function blockHtml(block: EmailBlock): string {
       const picture = `<img src="${escapeHtml(block.url)}" alt="${escapeHtml(block.alt)}" width="512" style="display:block;width:100%;max-width:512px;height:auto;border:0;border-radius:8px">`;
       return `<p style="margin:0 0 16px">${block.href ? `<a href="${escapeHtml(block.href)}">${picture}</a>` : picture}</p>`;
     }
+    case "product": {
+      const picture = block.image
+        ? `<td width="120" style="width:120px;padding:0 16px 0 0;vertical-align:top"><a href="${escapeHtml(block.url)}"><img src="${escapeHtml(block.image)}" alt="${escapeHtml(block.alt)}" width="120" height="120" style="display:block;width:120px;height:120px;border:0;border-radius:8px;object-fit:cover;background:#f5f5f4"></a></td>`
+        : "";
+      const small = block.small.map((line) => `<br><span style="font-size:13px;color:#525252">${escapeHtml(line)}</span>`).join("");
+      return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px;border-collapse:collapse"><tr>${picture}<td style="vertical-align:top;font-size:16px;line-height:1.4;color:#171717"><a href="${escapeHtml(block.url)}" style="color:#171717;font-weight:600;text-decoration:none">${escapeHtml(block.title)}</a><br><span style="font-size:16px">${escapeHtml(block.price)}</span>${small}<br><a href="${escapeHtml(block.url)}" style="display:inline-block;margin-top:8px;font-size:14px;color:#171717">${escapeHtml(block.linkText)}</a></td></tr></table>`;
+    }
+    case "offer":
+      return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px;border-collapse:collapse"><tr><td style="padding:12px 16px;background:#f5f5f4;border-radius:8px;font-size:16px;line-height:1.4;color:#171717"><strong>${escapeHtml(block.text)}</strong><br><span style="font-size:14px;color:#525252">${escapeHtml(block.title)}${block.until ? ` · ${escapeHtml(block.until)}` : ""}</span></td></tr></table>`;
     case "lines": {
       // With pictures, a column for them; rows without one (totals) leave it empty, so the titles line up.
       const pictures = block.rows.some((row) => row.image);
@@ -95,6 +111,10 @@ function blockText(block: EmailBlock): string {
       return [block.alt && `[${block.alt}]`, block.href].filter(Boolean).join(" ");
     case "lines":
       return block.rows.map((row) => `${row.label}: ${row.value}${row.url ? ` (${row.url})` : ""}`).join("\n");
+    case "product":
+      return [block.title, block.price, ...block.small, block.url].join("\n");
+    case "offer":
+      return [block.text, block.title, block.until].filter(Boolean).join("\n");
   }
 }
 

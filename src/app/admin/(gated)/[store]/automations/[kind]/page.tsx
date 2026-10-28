@@ -12,7 +12,7 @@ import { getAutomation } from "@/server/automations";
 import { uploadsEnabled } from "@/server/media";
 import { memberCan, requirePermission } from "@/server/permissions";
 
-import { suggestBroadcastAction, uploadBroadcastPictureAction } from "../../broadcasts/actions";
+import { findBroadcastFactsAction, suggestBroadcastAction, uploadBroadcastPictureAction } from "../../broadcasts/actions";
 import { broadcastChoices } from "../../broadcasts/editor-props";
 import { saveAutomationAction, switchAutomationAction, testAutomationAction } from "../actions";
 
@@ -61,6 +61,7 @@ export default async function AutomationPage({ params }: PageProps<"/admin/[stor
             save={saveAutomationAction}
             test={testAutomationAction}
             suggest={suggestBroadcastAction}
+            facts={findBroadcastFactsAction}
             upload={uploadsEnabled() ? uploadBroadcastPictureAction : null}
           />
         </Card>

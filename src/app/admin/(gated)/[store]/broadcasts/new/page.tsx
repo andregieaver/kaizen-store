@@ -8,7 +8,7 @@ import { adminText, adminTexts } from "@/lib/admin-text";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { uploadsEnabled } from "@/server/media";
 
-import { audienceCountAction, saveBroadcastAction, suggestBroadcastAction, uploadBroadcastPictureAction } from "../actions";
+import { audienceCountAction, saveBroadcastAction, findBroadcastFactsAction, suggestBroadcastAction, uploadBroadcastPictureAction } from "../actions";
 import { broadcastChoices } from "../editor-props";
 
 export const metadata: Metadata = { title: "New broadcast" };
@@ -42,6 +42,7 @@ export default async function NewBroadcastPage({ params }: PageProps<"/admin/[st
           save={saveBroadcastAction}
           count={audienceCountAction}
           suggest={suggestBroadcastAction}
+            facts={findBroadcastFactsAction}
           upload={uploadsEnabled() ? uploadBroadcastPictureAction : null}
         />
         </AdminTextScope>

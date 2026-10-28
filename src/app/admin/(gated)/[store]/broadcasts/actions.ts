@@ -7,9 +7,10 @@ import { z } from "zod";
 
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
-import { BROADCAST_AUDIENCES, type BroadcastSuggestion } from "@/lib/broadcasts";
+import { BROADCAST_AUDIENCES, type BroadcastSuggestion, type CampaignFact, type ProductFact } from "@/lib/broadcasts";
 import { marketingProblem } from "@/lib/marketing-words";
 import { actionAdminLang } from "@/server/admin-request-lang";
+import { campaignFacts, emailMarket, findProductFacts } from "@/server/broadcast-facts";
 import {
   audienceCount,
   deleteBroadcast,
@@ -125,12 +126,24 @@ export async function deleteBroadcastAction(storeSlug: string, id: string): Prom
   redirect(`/admin/${member.store.slug}/broadcasts`);
 }
 
-/** A suggestion from the AI for the editor; nothing is saved. */
-export async function suggestBroadcastAction(storeSlug: string, brief: string, locale: string): Promise<Problem | { ok: true; suggestion: BroadcastSuggestion }> {
+/** A suggestion from the AI for the editor; nothing is saved. The segment chosen (the store's own) shapes the words (D352). */
+export async function suggestBroadcastAction(storeSlug: string, brief: string, locale: string, segmentId?: string | null): Promise<Problem | { ok: true; suggestion: BroadcastSuggestion }> {
   const who = await writer(storeSlug);
   if (!who) return noAccess();
   if (typeof brief !== "string" || typeof locale !== "string" || !who.store.localization.keptLocales.includes(locale)) return { ok: false, problem: who.w.storeLanguage };
-  return said(await suggestBroadcast(who.store, who.member.account.id, brief, locale), who.w);
+  const segment = typeof segmentId === "string" && uuid.safeParse(segmentId).success ? segmentId : null;
+  return said(await suggestBroadcast(who.store, who.member.account.id, brief, locale, { segmentId: segment }), who.w);
+}
+
+/** The editor's finder (D352): the store's products by words and its running campaigns, read in its own country; nothing is saved. */
+export async function findBroadcastFactsAction(storeSlug: string, words: string): Promise<Problem | { ok: true; products: ProductFact[]; campaigns: CampaignFact[] }> {
+  const who = await writer(storeSlug);
+  if (!who) return noAccess();
+  const market = emailMarket(who.store, null, who.store.localization.locales[0] ?? "");
+  if (!market) return { ok: true, products: [], campaigns: [] };
+  const query = typeof words === "string" ? words : "";
+  const [products, campaigns] = await Promise.all([findProductFacts(who.store, market, query), campaignFacts(who.store, market)]);
+  return { ok: true, products, campaigns };
 }
 
 /** A picture for an email, kept in the store's media library (D88); the browser sends a JPEG. */

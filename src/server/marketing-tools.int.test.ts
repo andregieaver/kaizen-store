@@ -18,6 +18,8 @@ vi.mock("./ai", async (importOriginal) => {
     ...real,
     aiFor: async () => ({ provider: "openai", textModel: "fake", usage: { storeId: null, feature: "marketing_email", accountId: null } }),
     completeText: async () => ({ text: model.reply }),
+    // The broadcast writer asks with its tools (D352); this model answers at once without asking for any.
+    chatWithTools: async () => ({ content: model.reply, toolCalls: [] }),
   };
 });
 

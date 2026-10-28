@@ -3,13 +3,14 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
-import { buildBroadcastEmail, languageFor, type BroadcastContent } from "@/lib/broadcasts";
+import { buildBroadcastEmail, languageFor, type BroadcastContent, type EmailFacts } from "@/lib/broadcasts";
 import { renderEmail } from "@/lib/email-layout";
 import { emailText } from "@/lib/email-text";
 import { t } from "@/lib/i18n";
 import { marketUrl } from "@/lib/paths";
 import { siteUrl } from "@/lib/site";
 
+import { emailFactsFor } from "./broadcast-facts";
 import { emailFooter, type EmailStore } from "./shopper-emails";
 
 /**
@@ -40,6 +41,8 @@ export function marketingEmail(input: {
   token: string | null;
   /** The address a link goes to in the email (a broadcast's click address); its target when left out. */
   link?: (key: string, target: string, marketSlug: string) => string;
+  /** The products and campaigns the content names, as code read them for this subscriber (D352, `factsForEmail()`); none, left out. */
+  facts?: EmailFacts;
 }): MarketingEmail | null {
   const { store, token } = input;
   const main = store.localization.locales[0];
@@ -53,6 +56,7 @@ export function marketingEmail(input: {
   const email = renderEmail(
     buildBroadcastEmail({
       content,
+      facts: input.facts,
       locale: language,
       footer: emailFooter(store, emailText(lang)),
       unsubscribe: { text: m.news.emailReason(store.name), linkText: m.news.unsubscribe, url: `${base}/unsubscribe/${token ?? "test"}` },
@@ -64,6 +68,12 @@ export function marketingEmail(input: {
     ...email,
     headers: token ? { "List-Unsubscribe": `<${siteUrl()}/api/unsubscribe/${token}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" } : undefined,
   };
+}
+
+/** The facts one subscriber's email draws (D352): the content's products and campaigns read in their market and the language they get. */
+export function factsForEmail(store: EmailStore, content: BroadcastContent, locale: string | null, marketCode: string | null): Promise<EmailFacts> {
+  const language = languageFor(content, locale, store.localization.locales[0]);
+  return emailFactsFor(store, content, marketCode, language);
 }
 
 /** The pictures of the content that are not the store's own JPEG, PNG or GIF in its media library (5.1). */

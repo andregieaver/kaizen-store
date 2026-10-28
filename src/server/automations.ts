@@ -22,7 +22,7 @@ import { limitFor, usageNow } from "./limits";
 import { PAID } from "./analytics-sql";
 import { audit } from "./auth";
 import { sendEmail, type SendOutcome } from "./email";
-import { emailPictureProblem, marketingEmail } from "./marketing-email";
+import { emailPictureProblem, factsForEmail, marketingEmail } from "./marketing-email";
 import { storeById, type EmailStore } from "./shopper-emails";
 import { runBackInStock, type BackInStockResult } from "./stock-requests";
 
@@ -141,7 +141,7 @@ export async function sendTestAutomation(storeId: string, to: string, kind: Life
   const automation = await getAutomation(store, kind);
   const content = automation.content?.[locale];
   if (!content?.subject || content.blocks.length === 0) return "empty";
-  const email = marketingEmail({ store, content: { [locale]: content }, locale, marketCode: null, token: null });
+  const email = marketingEmail({ store, content: { [locale]: content }, locale, marketCode: null, token: null, facts: await factsForEmail(store, { [locale]: content }, locale, null) });
   if (!email) return "empty";
   return sendEmail({ storeId, kind: "marketing.automation.test", to, email: { ...email, subject: `[Test] ${email.subject}` }, fromName: store.name, replyTo: store.details.contactEmail ?? null });
 }
@@ -290,7 +290,8 @@ export async function runAutomations(options: { only?: string; deadline?: number
           continue;
         }
         rooms.set(automation.storeId, (rooms.get(automation.storeId) ?? 0) - 1);
-        const email = marketingEmail({ store, content: content.data, locale: due.locale, marketCode: due.marketCode, token: due.token });
+        const facts = await factsForEmail(store, content.data, due.locale, due.marketCode);
+        const email = marketingEmail({ store, content: content.data, locale: due.locale, marketCode: due.marketCode, token: due.token, facts });
         const outcome: SendOutcome = email
           ? await sendEmail({
               storeId: automation.storeId,

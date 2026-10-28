@@ -12,8 +12,12 @@ import {
   linkTarget,
   parseSuggestion,
   RECIPIENTS_KEEP_DAYS,
+  keepHanded,
   sendProblems,
+  SUGGEST_CAMPAIGNS_MAX,
+  SUGGEST_PRODUCTS_MAX,
   suggestionClaims,
+  type EmailFacts,
   type BroadcastAudience,
   type BroadcastContent,
   type BroadcastCounts,
@@ -30,15 +34,16 @@ import { describeRules, matches, SEGMENT_CAP } from "@/lib/segments";
 import { siteUrl } from "@/lib/site";
 
 import { limitFor, usageNow } from "./limits";
-import { AiError, aiFor, completeText } from "./ai";
+import { AiError, aiFor, chatWithTools, type ToolChatMessage, type ToolDefinition } from "./ai";
 import { audit } from "./auth";
 import { brandOf } from "./brand";
+import { campaignFacts, emailMarket, findProductFacts } from "./broadcast-facts";
 import { listTiers } from "./customer-tiers";
 import { BATCH_MAX, deliverBatch, emailSettings, sendEmail, type Delivery, type SendOutcome } from "./email";
-import { emailPictureProblem, marketingEmail, marketSlugFor, resolverFor, type MarketingEmail } from "./marketing-email";
+import { emailPictureProblem, factsForEmail, marketingEmail, marketSlugFor, resolverFor, type MarketingEmail } from "./marketing-email";
 import { getSegment, segmentPeople } from "./segments";
 import { storeById, type EmailStore } from "./shopper-emails";
-import { RULES_STAND } from "@/lib/prompt-safety";
+import { RULES_STAND, UNTRUSTED_TEXT } from "@/lib/prompt-safety";
 
 type Row = Record<string, unknown>;
 
@@ -180,10 +185,18 @@ function errorText(error: unknown): string {
 type Rendered = MarketingEmail;
 
 /** One recipient's email: their language, their market's links, their own unsubscribe token. A test (`token` null) links straight to targets. */
-function emailFor(store: EmailStore, broadcast: Pick<Broadcast, "id" | "content">, locale: string | null, marketCode: string | null, token: string | null): Rendered | null {
+function emailFor(
+  store: EmailStore,
+  broadcast: Pick<Broadcast, "id" | "content">,
+  locale: string | null,
+  marketCode: string | null,
+  token: string | null,
+  facts: EmailFacts,
+): Rendered | null {
   return marketingEmail({
     store,
     content: broadcast.content,
+    facts,
     locale,
     marketCode,
     token,
@@ -201,7 +214,8 @@ export async function sendTestBroadcast(storeId: string, to: string, id: string,
   const [store, broadcast] = await Promise.all([storeById(storeId), getBroadcast(storeId, id)]);
   if (!store || !broadcast) return "failed";
   if (!broadcast.content[locale]?.subject || !broadcast.content[locale]?.blocks.length) return "empty";
-  const email = emailFor(store, { ...broadcast, content: { [locale]: broadcast.content[locale] } }, locale, null, null);
+  const content = { [locale]: broadcast.content[locale] };
+  const email = emailFor(store, { ...broadcast, content }, locale, null, null, await factsForEmail(store, content, locale, null));
   if (!email) return "empty";
   return sendEmail({
     storeId,
@@ -492,6 +506,13 @@ async function sendBatch(
   fetcher?: typeof fetch,
 ) {
   const toSend: { r: Claimed; id: string; store: EmailStore; email: Rendered }[] = [];
+  // The products and campaigns are read once per broadcast, market and language in a batch (D352).
+  const facts = new Map<string, Promise<EmailFacts>>();
+  const factsOf = (store: EmailStore, broadcast: Broadcast, r: Claimed) => {
+    const key = `${broadcast.id}:${r.marketCode ?? ""}:${r.locale ?? ""}`;
+    if (!facts.has(key)) facts.set(key, factsForEmail(store, broadcast.content, r.locale, r.marketCode));
+    return facts.get(key)!;
+  };
   for (const r of batch) {
     if (r.status !== "subscribed") {
       await markRecipient(r, "skipped", null, "unsubscribed");
@@ -502,7 +523,7 @@ async function sendBatch(
     if (!broadcasts.has(r.broadcastId)) broadcasts.set(r.broadcastId, await getBroadcast(r.storeId, r.broadcastId));
     const store = stores.get(r.storeId);
     const broadcast = broadcasts.get(r.broadcastId);
-    const email = store && broadcast ? emailFor(store, broadcast, r.locale, r.marketCode, r.token) : null;
+    const email = store && broadcast ? emailFor(store, broadcast, r.locale, r.marketCode, r.token, await factsOf(store, broadcast, r)) : null;
     if (!store || !email) {
       await markRecipient(r, "failed", null);
       result.failed += 1;
@@ -694,8 +715,38 @@ export type SuggestResult = { ok: true; suggestion: BroadcastSuggestion } | { ok
 
 const LANGUAGE_NAMES: Record<string, string> = { nb: "Norwegian (Bokmål)", nn: "Norwegian (Nynorsk)", sv: "Swedish", da: "Danish", en: "English", de: "German", fi: "Finnish", fr: "French", nl: "Dutch", es: "Spanish", it: "Italian", pl: "Polish" };
 
-/** A suggestion for the editor, never saved or sent: from the staff's few words, the language and the store's name only. */
-export async function suggestBroadcast(store: Pick<EmailStore, "id" | "name">, accountId: string, brief: string, locale: string): Promise<SuggestResult> {
+/** At most this many rounds of tools before the writer must answer. */
+const WRITER_ROUNDS = 4;
+
+const WRITER_TOOLS: ToolDefinition[] = [
+  {
+    name: "find_products",
+    description:
+      "The shop's products offered to these readers: id, title, whether it has a picture, its price as the shop shows it, a short summary. Words find products by keyword; without words, or when none match, the newest. To show a product in the email, put its id in your answer's products: the email then shows its picture, price and link itself.",
+    parameters: { type: "object", properties: { words: { type: "string", description: "Words to find products by, such as 'wool socks'." } } },
+  },
+  {
+    name: "running_campaigns",
+    description:
+      "The shop's campaigns running now: id, name, its offer in the shop's own words, when it ends and what it reaches. To show one in the email, put its id in your answer's campaigns: the email then states the offer itself.",
+    parameters: { type: "object", properties: {} },
+  },
+];
+
+/**
+ * A suggestion for the editor, never saved or sent (D297, D352): from the staff's few words, the store's name, the segment it is for (its
+ * description, never its people) and the store's own facts the writer asks for through two read-only tools (`find_products`,
+ * `running_campaigns`, read in the store's own country and the email's language). The model writes words and chooses products and
+ * campaigns by id; `keepHanded()` keeps only those its tools handed it, and code draws them into each email. Every text passes the claims
+ * filter and the brand's words to avoid.
+ */
+export async function suggestBroadcast(
+  store: EmailStore,
+  accountId: string,
+  brief: string,
+  locale: string,
+  options: { segmentId?: string | null; complete?: typeof chatWithTools } = {},
+): Promise<SuggestResult> {
   const words = brief.trim().slice(0, 1000);
   if (words.length < 5) return { ok: false, problem: "Say in a few words what the email is about." };
   const connection = await aiFor(store.id, { feature: "marketing_email", accountId });
@@ -704,27 +755,67 @@ export async function suggestBroadcast(store: Pick<EmailStore, "id" | "name">, a
   // The brand guides the words (D330 F2b); its words to avoid are refused as claims are.
   const brand = await brandOf(store.id);
   const guide = brandGuide(brand);
+  const audience = await audienceWords(store, options.segmentId ?? null);
+  const market = emailMarket(store, null, locale);
+  const handed = { products: new Map<string, { handle: string; title: string }>(), campaigns: new Map<string, { name: string }>() };
+  const runTool = async (name: string, raw: string): Promise<unknown> => {
+    if (!market) return { error: "The shop sells in no country yet." };
+    if (name === "find_products") {
+      let query = "";
+      try {
+        const args = JSON.parse(raw || "{}") as { words?: unknown };
+        query = typeof args.words === "string" ? args.words : "";
+      } catch {
+        query = "";
+      }
+      const found = await findProductFacts(store, market, query);
+      for (const p of found) handed.products.set(p.id, { handle: p.handle, title: p.title });
+      return { products: found };
+    }
+    if (name === "running_campaigns") {
+      const found = await campaignFacts(store, market);
+      for (const c of found) handed.campaigns.set(c.id, { name: c.name });
+      return { campaigns: found };
+    }
+    return { error: `No tool called ${name}.` };
+  };
+  const messages: ToolChatMessage[] = [
+    {
+      role: "system",
+      content: [
+        `You write a short marketing email for the shop "${store.name}" to people who asked for its news, in ${language}.`,
+        audience,
+        "Write only from what the shop's staff say it is about and what the tools find_products and running_campaigns return.",
+        "To show products or a campaign, put their ids in your answer: the email shows each product's picture, price and link, and each campaign's offer, itself.",
+        "So never write a price, a discount, an amount off, a stock level or a delivery time in your words, and never name a product or an offer the tools did not return.",
+        "No urgency or scarcity (no 'only today', 'last chance', 'few left'), no best or lowest price claims, no environmental claims such as sustainable or eco-friendly.",
+        RULES_STAND,
+        UNTRUSTED_TEXT,
+        `Plain, warm and short. Answer only with JSON: {"subject": string, "preview": string, "heading": string, "paragraphs": string[] (1 to 3), "button": string (a few words, or empty), "products": string[] (ids, at most ${SUGGEST_PRODUCTS_MAX}, or empty), "campaigns": string[] (ids, at most ${SUGGEST_CAMPAIGNS_MAX}, or empty)}.`,
+        ...(guide ? [`\n\n${guide}`] : []),
+      ].join(" "),
+    },
+    { role: "user", content: `<staff-words>${words.replace(/</g, "‹")}</staff-words>` },
+  ];
+  const chat = options.complete ?? chatWithTools;
   try {
-    const reply = await completeText(
-      connection,
-      [
-        {
-          role: "system",
-          content: [
-            `You write a short marketing email for the shop "${store.name}" to people who asked for its news, in ${language}.`,
-            "Write only from what the shop's staff say it is about. Never state a price, a discount amount, a stock level, a delivery time or a product the staff did not name.",
-            "No urgency or scarcity (no 'only today', 'last chance', 'few left'), no best or lowest price claims, no environmental claims such as sustainable or eco-friendly.",
-            RULES_STAND,
-            "Plain, warm and short. Answer only with JSON: {\"subject\": string, \"preview\": string, \"heading\": string, \"paragraphs\": string[] (1 to 3), \"button\": string (a few words, or empty)}.",
-            ...(guide ? [`\n\n${guide}`] : []),
-          ].join(" "),
-        },
-        { role: "user", content: `<staff-words>${words.replace(/</g, "‹")}</staff-words>` },
-      ],
-      { maxTokens: 800, timeoutMs: 30_000 },
-    );
-    const suggestion = parseSuggestion(reply.text);
-    if (!suggestion) return { ok: false, problem: "The AI did not answer with an email. Try again or write it yourself." };
+    let answer: string | null = null;
+    for (let round = 0; round < WRITER_ROUNDS && answer === null; round++) {
+      const last = round === WRITER_ROUNDS - 1;
+      const reply = await chat(connection, messages, last ? [] : WRITER_TOOLS, { maxTokens: 1200, timeoutMs: 45_000 });
+      if (reply.toolCalls.length === 0 || last) {
+        answer = reply.content;
+        break;
+      }
+      messages.push({ role: "assistant", content: reply.content, tool_calls: reply.toolCalls });
+      for (const call of reply.toolCalls.slice(0, 4)) {
+        messages.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify(await runTool(call.function.name, call.function.arguments)) });
+      }
+      for (const call of reply.toolCalls.slice(4)) messages.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify({ error: "Ask for at most four at a time." }) });
+    }
+    const draft = answer ? parseSuggestion(answer) : null;
+    if (!draft) return { ok: false, problem: "The AI did not answer with an email. Try again or write it yourself." };
+    const suggestion = keepHanded(draft, handed);
     const claims = suggestionClaims(suggestion, brand.avoid);
     if (claims.length > 0) {
       const found = [...new Set(claims.map((c) => `${(c.kind === "avoided" ? AVOIDED_LABEL : CLAIM_LABELS[c.kind]).toLowerCase()} ("${c.phrase}")`))].join(", ");
@@ -735,4 +826,14 @@ export async function suggestBroadcast(store: Pick<EmailStore, "id" | "name">, a
     if (error instanceof AiError) return { ok: false, problem: "The AI did not answer. Try again in a moment." };
     throw error;
   }
+}
+
+/** Who the email is for, in words for the writer (D352): the segment's name and rules, never its people; everyone on the list without one. */
+async function audienceWords(store: EmailStore, segmentId: string | null): Promise<string> {
+  const segment = segmentId ? await getSegment(store.id, segmentId) : null;
+  if (!segment?.rules) return "It goes to everyone on the shop's list.";
+  const tiers = await listTiers(store.id);
+  const money = (minor: number) => formatMoney(minor, mainCurrency(store), store.localization.locales[0] ?? "en-GB");
+  const rules = describeRules(segment.rules, { money, groupName: (gid) => tiers.find((x) => x.id === gid)?.name });
+  return `It goes to the segment "${segment.name.replace(/[<>]/g, "")}": ${rules}. Write for them.`;
 }

@@ -1685,7 +1685,7 @@ export const OWNER_TOOLS = [
   ),
   tool(
     "draft_broadcast",
-    "Writes a draft broadcast from a few words about what it should say: the store's AI writes the subject and words in the store's main language (no prices, discounts, stock or claims it was not told; checked by the claims filter), saved as a draft for everyone on the list or one segment. Nothing is sent: the owner reads and changes it on the Broadcasts page (the link), then it is sent with send_broadcast.",
+    "Writes a draft broadcast from a few words about what it should say: the store's AI writes the subject and words in the store's main language for everyone on the list or the segment named, and may choose the store's own products and running campaigns to show (it finds them itself; the email then shows each product's picture and price, and each campaign's offer, as the store does), never writing a price, discount, stock or claim in its words (checked by the claims filter); saved as a draft. Nothing is sent: the owner reads and changes it on the Broadcasts page (the link), then it is sent with send_broadcast.",
     z.object({
       brief: z.string().trim().min(5).max(1000).describe("What the email is about, in the owner's words."),
       name: z.string().trim().min(1).max(80).describe("The broadcast's name in the admin, such as 'Autumn news'."),

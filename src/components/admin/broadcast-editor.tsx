@@ -10,6 +10,7 @@ import {
   type BroadcastBlock,
   type BroadcastContent,
   type BroadcastSuggestion,
+  type FindFacts,
   type LanguageContent,
 } from "@/lib/broadcasts";
 import { countWords, fillWords } from "@/lib/admin-fill";
@@ -32,15 +33,18 @@ type Props = {
   aiReady: boolean;
   save: (storeSlug: string, id: string | null, input: unknown) => Promise<Problem | { ok: true }>;
   count: (storeSlug: string, audience: string, segmentId: string | null) => Promise<Problem | { ok: true; people: number }>;
-  suggest: (storeSlug: string, brief: string, locale: string) => Promise<Problem | { ok: true; suggestion: BroadcastSuggestion }>;
+  suggest: (storeSlug: string, brief: string, locale: string, segmentId?: string | null) => Promise<Problem | { ok: true; suggestion: BroadcastSuggestion }>;
   upload: ((storeSlug: string, data: FormData) => Promise<{ ok: true; url: string } | { ok: false; problem: string }>) | null;
+  /** The store's products and running campaigns to put in (D352); none, the finder is not offered. */
+  facts?: FindFacts;
 };
 
 const field = "min-h-10 w-full rounded-md border border-line bg-card px-3";
 
-const ADD: BroadcastBlock["type"][] = ["heading", "paragraph", "button", "image", "divider"];
+type Addable = "heading" | "paragraph" | "button" | "image" | "divider";
+const ADD: Addable[] = ["heading", "paragraph", "button", "image", "divider"];
 
-function newBlock(type: BroadcastBlock["type"]): BroadcastBlock {
+function newBlock(type: Addable): BroadcastBlock {
   switch (type) {
     case "heading":
       return { type, text: "" };
@@ -146,6 +150,8 @@ export function BroadcastEditor(props: Props) {
         aiReady={props.aiReady}
         suggest={props.suggest}
         upload={props.upload}
+        facts={props.facts}
+        segmentId={audience === "segment" ? segmentId : null}
       />
 
       {problem && (
@@ -177,6 +183,9 @@ export function EmailContentFields(props: {
   aiReady: boolean;
   suggest: Props["suggest"];
   upload: Props["upload"];
+  facts?: FindFacts;
+  /** The segment the email is for, which shapes the AI's words (D352). */
+  segmentId?: string | null;
 }) {
   const { storeSlug, content } = props;
   const wm = useAdminText("marketing");
@@ -211,7 +220,7 @@ export function EmailContentFields(props: {
         </div>
       )}
 
-      {props.aiReady && <AiWriter storeSlug={storeSlug} locale={locale} suggest={props.suggest} onUse={(s) => setCurrent({ subject: s.subject, preview: s.preview, blocks: suggestionBlocks(s) })} />}
+      {props.aiReady && <AiWriter storeSlug={storeSlug} locale={locale} segmentId={props.segmentId ?? null} suggest={props.suggest} onUse={(s) => setCurrent({ subject: s.subject, preview: s.preview, blocks: suggestionBlocks(s) })} />}
 
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-1">
@@ -259,6 +268,9 @@ export function EmailContentFields(props: {
               </Button>
             ))}
           </div>
+        )}
+        {current.blocks.length < BLOCKS_MAX && props.facts && (
+          <FactFinder storeSlug={storeSlug} find={props.facts} onAdd={(block) => setCurrent({ ...current, blocks: [...current.blocks, block] })} />
         )}
       </div>
 
@@ -317,9 +329,97 @@ function BlockFields({
           </label>
         </div>
       );
+    case "product":
+      return (
+        <div className="flex flex-col gap-1">
+          <span className="text-body text-ink">{block.label || block.handle}</span>
+          <span className="text-caption text-muted">{we.productNote}</span>
+        </div>
+      );
+    case "campaign":
+      return (
+        <div className="flex flex-col gap-1">
+          <span className="text-body text-ink">{block.label}</span>
+          <span className="text-caption text-muted">{we.campaignNote}</span>
+        </div>
+      );
     case "divider":
       return <hr className="border-line" />;
   }
+}
+
+/** Finds the store's products by words, with the campaigns running now, to put in the email as blocks code draws when it is sent (D352). */
+function FactFinder({ storeSlug, find, onAdd }: { storeSlug: string; find: FindFacts; onAdd: (block: BroadcastBlock) => void }) {
+  const we = useAdminText("marketing").email;
+  const [words, setWords] = useState("");
+  const [found, setFound] = useState<Extract<Awaited<ReturnType<FindFacts>>, { ok: true }> | null>(null);
+  const [problem, setProblem] = useState<string | null>(null);
+  const [busy, start] = useTransition();
+  const search = () =>
+    start(async () => {
+      setProblem(null);
+      const result = await find(storeSlug, words);
+      if (result.ok) setFound(result);
+      else setProblem(result.problem);
+    });
+  return (
+    <details className="rounded-panel border border-line p-3" data-fact-finder="">
+      <summary className="cursor-pointer text-body text-ink">{we.findLabel}</summary>
+      <div className="mt-3 flex flex-col gap-3">
+        <div className="flex flex-wrap gap-2">
+          <input
+            aria-label={we.findLabel}
+            value={words}
+            maxLength={120}
+            placeholder={we.findPlaceholder}
+            onChange={(e) => setWords(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                search();
+              }
+            }}
+            className={`${field} max-w-sm`}
+          />
+          <Button size="dense" disabled={busy} onClick={search}>
+            {busy ? we.finding : we.find}
+          </Button>
+        </div>
+        {problem && (
+          <p role="alert" className="text-caption text-danger-text">
+            {problem}
+          </p>
+        )}
+        {found && found.products.length === 0 && found.campaigns.length === 0 && <p className="text-caption text-muted">{we.noneFound}</p>}
+        {found && found.products.length > 0 && (
+          <ul className="flex flex-col divide-y divide-line" aria-label={we.productsFound}>
+            {found.products.map((p) => (
+              <li key={p.id} className="flex flex-wrap items-center gap-2 py-2">
+                <span className="text-body text-ink">{p.title}</span>
+                <span className="text-caption text-muted">{p.price}</span>
+                <Button size="dense" kind="quiet" className="ml-auto" onClick={() => onAdd({ type: "product", product: p.id, handle: p.handle, label: p.title })}>
+                  {we.addThis}
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+        {found && found.campaigns.length > 0 && (
+          <ul className="flex flex-col divide-y divide-line" aria-label={we.campaignsRunning}>
+            {found.campaigns.map((c) => (
+              <li key={c.id} className="flex flex-wrap items-center gap-2 py-2">
+                <span className="text-body text-ink">{c.name}</span>
+                <span className="text-caption text-muted">{c.offer}</span>
+                <Button size="dense" kind="quiet" className="ml-auto" onClick={() => onAdd({ type: "campaign", campaign: c.id, label: c.name })}>
+                  {we.addThis}
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </details>
+  );
 }
 
 /** A picture for an email: made a JPEG in the browser (mail apps show no WebP or AVIF) and kept in the store's media library. */
@@ -363,7 +463,19 @@ function PictureUpload({ storeSlug, upload, onUploaded, has }: { storeSlug: stri
   );
 }
 
-function AiWriter({ storeSlug, locale, suggest, onUse }: { storeSlug: string; locale: string; suggest: Props["suggest"]; onUse: (s: BroadcastSuggestion) => void }) {
+function AiWriter({
+  storeSlug,
+  locale,
+  segmentId,
+  suggest,
+  onUse,
+}: {
+  storeSlug: string;
+  locale: string;
+  segmentId: string | null;
+  suggest: Props["suggest"];
+  onUse: (s: BroadcastSuggestion) => void;
+}) {
   const [brief, setBrief] = useState("");
   const [suggestion, setSuggestion] = useState<BroadcastSuggestion | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
@@ -383,7 +495,7 @@ function AiWriter({ storeSlug, locale, suggest, onUse }: { storeSlug: string; lo
             onClick={() =>
               start(async () => {
                 setProblem(null);
-                const r = await suggest(storeSlug, brief, locale);
+                const r = await suggest(storeSlug, brief, locale, segmentId);
                 if (r.ok) setSuggestion(r.suggestion);
                 else setProblem(r.problem);
               })
@@ -406,6 +518,15 @@ function AiWriter({ storeSlug, locale, suggest, onUse }: { storeSlug: string; lo
                 {p}
               </p>
             ))}
+            {[...suggestion.campaigns, ...suggestion.products].length > 0 && (
+              <ul className="flex flex-wrap gap-2">
+                {[...suggestion.campaigns, ...suggestion.products].map((item) => (
+                  <li key={item.id} className="rounded-pill bg-sunken px-3 py-1 text-caption text-ink-2">
+                    {item.label}
+                  </li>
+                ))}
+              </ul>
+            )}
             <p className="text-caption text-muted">{we.readIt}</p>
             <div>
               <Button onClick={() => (onUse(suggestion), setSuggestion(null))}>{we.useThis}</Button>

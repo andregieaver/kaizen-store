@@ -444,6 +444,17 @@ Built as above, with these differences:
   - Sending stays the person's press, or the gated `send_broadcast`, to subscribed addresses with the unsubscribe link.
   - A euro scenario covers a broadcast for a euro market's segment.
 
+  **As built (28 October 2026).** As outlined, with these choices: the blocks hold only ids (and a product's address for its link), so the
+  picture, the price and the offer are read for each recipient's own market when the email is made, never at writing, and a product their
+  market does not sell is left out; a campaign is a block of its own (its offer and end, in the shop's words) rather than words in a paragraph;
+  the writer's tools read in the store's own country (the facts the model sees are never shown to a reader); `find_products` is keyword search
+  only (no meaning model in a writer's turn) and hands at most eight; the tools also serve a *Find a product or a campaign* box in the editor;
+  automations draw the same blocks. Product pictures are the product's own, as the order emails' are, so a mail app without WebP shows the alt
+  text. The euro scenario is a store selling in Finland: `broadcast-facts.int.test.ts` sends one broadcast to a Norwegian and a Finnish
+  subscriber and holds each email's price to the storefront's in its own currency, with a product Finland does not sell left out of its email.
+  Tests: `broadcasts.test.ts` (the blocks, `keepHanded()`, the email drawn only from facts), `broadcast-facts.int.test.ts` and the updated
+  `marketing-tools.int.test.ts`.
+
 - **I (D353) Shopping agents.**
   - **Discovery**: `/.well-known/ucp` on a store's own host (and `/s/{store}/.well-known/ucp` until P7 domains) describes the store and its
     endpoint. `/agents.md` and llms.txt link it.
