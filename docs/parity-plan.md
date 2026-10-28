@@ -128,6 +128,7 @@ waves 1 to N becoming Full, and the same with only the bucket A rows), computed 
   email, agentic storefront endpoints (UCP/MCP and feeds for ChatGPT, Gemini and Copilot shopping).
 
 ### Wave 9: Platform and extensibility (6 to 8 runs, after the decisions in section 5)
+- The contract is `docs/wave-9-platform.md` (units A to J, D354 to D363, written 2026-10-28).
 - Public **Admin API** with scoped tokens, **outgoing webhooks** for every event with signing and retries, workflow
   automation (Flow equivalent: triggers, conditions, actions), custom logic hooks (sandboxed, pricing and shipping
   rules, not arbitrary code), store staging and theme versions, a **status page**, self-serve sign-up and onboarding, a
