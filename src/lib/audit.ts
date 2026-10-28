@@ -229,7 +229,7 @@ export const ALLOWED_FIELDS: Record<AuditKind, readonly string[]> = {
   staff: ["email", "role", "roleName", "kind", "expiresAt", "disabled"],
   role: ["name", "permissions"],
   payments: ["enabled", "mode", "orderInvoices"],
-  store: ["termsAtCheckout", "requireTwoStep", "legalRole", "pageId"],
+  store: ["termsAtCheckout", "requireTwoStep", "legalRole", "pageId", "customerAccounts"],
 };
 
 /** A key that may hold a secret, a token, a credential or a bank number: never written, whatever the allowlist says. */
@@ -342,6 +342,7 @@ const WORDS: Record<string, (label: string) => string> = {
   "store.two_step_required": () => "Required two-step sign-in for the store",
   "store.two_step_optional": () => "Stopped requiring two-step sign-in for the store",
   "store.terms_mode_changed": () => "Changed what checkout says about the terms",
+  "store.customer_accounts": () => "Changed whether shoppers can, must or cannot have an account",
   "store.legal_starter_made": (l) => `Made a draft of ${l}`,
   "store.legal_role_changed": (l) => `Chose the page for ${l}`,
   "account.wordpress_approved": (l) => `${l} connected a WordPress site to their stores`,

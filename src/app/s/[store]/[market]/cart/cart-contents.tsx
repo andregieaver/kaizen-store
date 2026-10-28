@@ -40,6 +40,7 @@ import { termsDisplayFor } from "@/server/checkout-terms";
 import { termsTemplate } from "@/lib/checkout-terms";
 import { dayWords, TERMS_DAYS } from "@/lib/payment-terms";
 import { featureOn } from "@/lib/store-features";
+import { accountsMode, signInRequired } from "@/lib/customer-accounts";
 import type { Store } from "@/server/stores";
 
 import { applyGiftCardAction, companyPurchaseAction, removeGiftCardAction, setCartCreditsAction, updateCartLine } from "./actions";
@@ -81,7 +82,8 @@ async function loadCartView(store: Store, market: Market, m: Messages) {
   const businessOn = featureOn(store, "business");
   // Who pays is asked here when no payment page follows: a booking paid at the venue, Mollie's page, or gift cards that pay it all (D300 F3).
   const asksPayer = summary.atVenueOnly || checkout.provider === "mollie" || summary.giftCards.coverAll;
-  const customer = (business && !cart.company) || asksPayer || businessOn ? await getCustomer(store.id) : null;
+  const mustSignIn = accountsMode(store) === "required";
+  const customer = (business && !cart.company) || asksPayer || businessOn || mustSignIn ? await getCustomer(store.id) : null;
   const saved = (business && !cart.company) || asksPayer ? customer : null;
   // Goods bought once only: no booking, subscription, venue part or host's listing (`placeOrder()` checks the same under the company's lock).
   const goodsOnly = summary.balance === 0 && cart.lines.every((line) => !line.plan && !line.booking && !line.hostId && !line.payment);
@@ -154,6 +156,8 @@ async function loadCartView(store: Store, market: Market, m: Messages) {
     net,
     sumNet,
     saved,
+    // A store that requires accounts (D365) asks the shopper to sign in before the checkout button.
+    mustSignInFirst: signInRequired(store, Boolean(customer)),
     addressChoices,
     companyNeeded,
     company,
@@ -792,7 +796,12 @@ function checkoutAction({ store, market, m, view }: Draw) {
       {view.companyBuy && (
         <CompanyPurchase {...view.companyBuy} action={companyPurchaseAction.bind(null, store.slug, market.slug)} m={m.companyAccount} />
       )}
-      {checkout.paymentsOn || onTerms ? (
+      {view.mustSignInFirst ? (
+        // A store that requires an account (D365): the shopper signs in first; `placeOrder()` refuses a cart without one.
+        <Link href={marketPath(store.slug, market.slug, "/account")} className="button-primary flex min-h-12 items-center justify-center rounded-button px-6 font-medium">
+          {m.signInToCheckOut}
+        </Link>
+      ) : checkout.paymentsOn || onTerms ? (
         <CheckoutButton
           store={store.slug}
           market={market.slug}

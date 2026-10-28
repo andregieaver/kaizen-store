@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Suspense, type ReactNode } from "react";
 
+import { accountsShown } from "@/lib/customer-accounts";
 import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import { motionNeeds } from "@/lib/motion-attrs";
@@ -59,6 +60,9 @@ export function sitePartShows(block: SiteBlock, ctx: SiteContext): boolean {
   switch (block.part) {
     case "signUp":
       return false;
+    case "account":
+      // No sign-in or account while the store has customer accounts off (D365).
+      return accountsShown(store);
     case "markets":
       // Countries, languages or currencies (D109): whichever have more than one choice here (D178: with one country, the languages and currencies still).
       return store.markets.length > 1 || hasViewChoices(store, ctx.market);

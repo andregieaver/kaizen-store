@@ -80,7 +80,19 @@ export async function deliverGiftCards(options: { orderId?: string; cardId?: str
 /** The email that carries a card's code: its amount, who it is from and their words, the code, how long it lasts and the store's link. */
 function cardEmail(
   store: EmailStore,
-  card: { code: string; amount: string; lang: string; locale: string; marketCode: string | null; expiresAt: string | null; timeZone: string; from: string | null; message: string | null },
+  card: {
+    code: string;
+    amount: string;
+    lang: string;
+    locale: string;
+    marketCode: string | null;
+    expiresAt: string | null;
+    timeZone: string;
+    from: string | null;
+    message: string | null;
+    /** The order's number when the card is a refund as store credit (D364). */
+    refundOf?: string | null;
+  },
 ) {
   const m = t(card.lang);
   const slug = marketSlugFor(store, card.marketCode);
@@ -88,6 +100,7 @@ function cardEmail(
   const until = card.expiresAt ? new Date(card.expiresAt).toLocaleDateString(card.locale, { dateStyle: "long", timeZone: card.timeZone }) : null;
   const blocks: EmailBlock[] = [
     { type: "heading", text: m.giftCardEmail.heading(card.amount, store.name) },
+    ...(card.refundOf ? ([{ type: "paragraph", text: m.giftCardEmail.refundText(card.refundOf) }] satisfies EmailBlock[]) : []),
     ...(card.from || card.message
       ? ([{ type: "paragraph", text: [card.from ? m.giftCardEmail.from(card.from) : null, card.message].filter(Boolean).join("\n") }] satisfies EmailBlock[])
       : []),
@@ -98,7 +111,7 @@ function cardEmail(
     { type: "button", text: m.giftCardEmail.visit(store.name), url: link },
   ];
   return renderEmail({
-    subject: m.giftCardEmail.subject(store.name),
+    subject: card.refundOf ? m.giftCardEmail.refundSubject(store.name) : m.giftCardEmail.subject(store.name),
     preview: m.giftCardEmail.heading(card.amount, store.name),
     blocks,
     footer: emailFooter(store, emailText(card.lang)),
@@ -205,4 +218,40 @@ async function deliverOne(store: EmailStore, card: Row): Promise<"sent" | "faile
     });
   }
   return "sent";
+}
+
+/**
+ * A refund as store credit (D364) emailed to the order's own address, with the code staff were shown: once, by the card's id. The card was
+ * marked delivered when its code was made, so a failed email changes nothing on it; staff still have the code to pass on.
+ */
+export async function sendRefundCredit(
+  storeId: string,
+  card: { id: string; code: string; amountMinor: number; currency: string; to: string; lang: string; expiresAt: string | null; orderNumber: string; marketCode: string | null },
+): Promise<SendOutcome> {
+  const store = await storeById(storeId);
+  if (!store) return "failed";
+  const [zone] = await db().execute<Row>(sql`select coalesce(time_zone, 'UTC') as tz from commerce.stores where id = ${storeId}::uuid`);
+  const locale = store.markets.find((market) => market.locale.startsWith(card.lang))?.locale ?? card.lang;
+  const email = cardEmail(store, {
+    code: card.code,
+    amount: formatMoney(card.amountMinor, card.currency, locale),
+    lang: card.lang,
+    locale,
+    marketCode: card.marketCode,
+    expiresAt: card.expiresAt,
+    timeZone: String(zone?.tz ?? "UTC"),
+    from: null,
+    message: null,
+    refundOf: card.orderNumber,
+  });
+  return sendEmail({
+    storeId,
+    kind: "gift_card.issued",
+    to: card.to,
+    email,
+    fromName: store.name,
+    replyTo: store.details.contactEmail ?? null,
+    idempotencyKey: `gift-card:${card.id}:refund`,
+    secrets: [formatGiftCode(card.code), card.code],
+  });
 }

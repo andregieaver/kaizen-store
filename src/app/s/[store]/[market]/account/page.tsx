@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { RolePage } from "@/components/role-page";
+import { accountsShown } from "@/lib/customer-accounts";
 import { resolveShop } from "@/server/shop";
 import { pageShopOrMoved } from "@/server/shop-page";
 import { getCustomer } from "@/server/customers";
@@ -34,6 +35,8 @@ async function AccountRoute({ params, searchParams }: Pick<Props, "params" | "se
   const { store: storeSlug, market: marketSlug } = await params;
   const shop = await resolveShop(storeSlug, marketSlug);
   if (!shop) notFound();
+  // Customer accounts off (D365): the account's own pages are not there.
+  if (!accountsShown(shop.store)) notFound();
   const { store, market } = shop;
   const account = (
     <RolePage store={store} market={market} ab={shop.ab} role="account" route={{ part: "account", query: searchParams }}>

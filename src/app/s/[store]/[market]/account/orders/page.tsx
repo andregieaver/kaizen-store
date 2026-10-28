@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 
+import { accountsShown } from "@/lib/customer-accounts";
 import { ACCOUNT_ORDER_STATES, accountOrdersQuery, parseAccountOrderParams } from "@/lib/account-orders";
 import { t } from "@/lib/i18n";
 import { formatMoney } from "@/lib/money";
@@ -33,6 +34,8 @@ async function Orders({ params, searchParams }: Pick<Props, "params" | "searchPa
   // What was sold stays reachable while the shop is off (D178): an after-sale page.
   const shop = await resolveAfterSaleShop(storeSlug, marketSlug);
   if (!shop) notFound();
+  // Customer accounts off (D365): the account's own pages are not there.
+  if (!accountsShown(shop.store)) notFound();
   const { store, market } = shop;
   const account = marketPath(store.slug, market.slug, "/account");
   const customer = await getCustomer(store.id);

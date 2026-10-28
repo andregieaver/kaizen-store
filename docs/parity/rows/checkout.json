@@ -148,14 +148,14 @@
       "checkedOn": "2026-10-02"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": "full"
+      "was": "partial"
     },
     "weight": 5,
-    "gap": "Guest checkout and optional account creation at checkout work (criteria 1 to 4); signed-in shoppers are offered their saved addresses (D304). Missing: a store setting to require sign-in or turn customer accounts off, obeyed by checkout, express payment and the cart (criterion 5), and configurable checkout contact fields.",
-    "bucket": "A",
-    "wave": 5,
+    "gap": "Guest checkout and optional account creation at checkout work (criteria 1 to 4); signed-in shoppers are offered their saved addresses (D304). Since D365 the owner chooses on Settings → Checkout whether accounts are optional, required or off (`stores.customer_accounts`, written only by `saveAccountsMode()`, audited): required, the cart asks the shopper to sign in instead of its checkout button and `placeOrder()` refuses a cart without a signed-in customer (`sign_in_required`, so every way to an order, express payment included, obeys it); off, the store draws no sign-in or account link, the account's own pages answer 404 and checkout offers no account, while the links sent after a sale still work; a feature that needs accounts (subscriptions, bonus, referrals) or a company account keeps them from being switched off (`customer-accounts.int.test.ts`). The questions a store asks at checkout are D357's checkout fields.",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "A shopper pays with only an email address and delivery details, no account.",
       "A shopper not signed in may tick 'create an account' and choose a password at checkout; the account opens when the order is paid, with that order.",
@@ -168,20 +168,26 @@
         "src/server/checkout.ts",
         "src/server/customers.ts",
         "src/components/checkout-form.tsx",
-        "src/app/s/[store]/[market]/account/actions.ts"
+        "src/app/s/[store]/[market]/account/actions.ts",
+        "src/lib/customer-accounts.ts",
+        "src/server/customer-accounts.ts",
+        "src/components/admin/customer-accounts-card.tsx",
+        "src/app/s/[store]/[market]/cart/cart-contents.tsx"
       ],
       "tests": [
         "src/server/customers.int.test.ts",
         "src/server/checkout.int.test.ts",
         "src/server/checkout-kinds.int.test.ts",
-        "e2e/account.spec.ts"
+        "e2e/account.spec.ts",
+        "src/server/customer-accounts.int.test.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D28",
       "D32",
-      "D304"
+      "D304",
+      "D365"
     ],
     "history": [
       {
@@ -189,6 +195,12 @@
         "from": "full",
         "to": "partial",
         "why": "Shopify lets an owner set accounts to required, optional or off; Kaizen offers optional accounts only, with no store setting and no configurable contact fields"
+      },
+      {
+        "on": "2026-10-28",
+        "from": "partial",
+        "to": "full",
+        "why": "D365: customer accounts optional, required or off, obeyed by the cart, checkout and placeOrder(), held by an integration test (criterion 5)."
       }
     ]
   },

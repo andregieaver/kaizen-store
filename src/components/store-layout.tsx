@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { accountsShown } from "@/lib/customer-accounts";
 import { t, type Messages } from "@/lib/i18n";
 import { currencyChoices, currencyName, languageChoices, languageName } from "@/lib/localization";
 import { marketSlug } from "@/lib/market-slug";
@@ -90,7 +91,12 @@ export async function MenuLinks({
   // A link with nothing to say (no text of its own and no name to take) is left out too.
   const nodes = menuTree(
     items,
-    (item) => (selling || !shopLink(item.link)) && linkExists(item.link, names) && menuLabel(item, market.locale, builtIn, names, market.code) !== "",
+    (item) =>
+      (selling || !shopLink(item.link)) &&
+      // A menu's My account link is left out while the store has customer accounts off (D365).
+      (item.link.kind !== "account" || accountsShown(store)) &&
+      linkExists(item.link, names) &&
+      menuLabel(item, market.locale, builtIn, names, market.code) !== "",
   ).map(toNode);
   return <MenuTreeView nodes={nodes} layout={layout} linkClassName={linkClassName} newTabLabel={m.opensInNewTab} justify={justify} hover={hover} />;
 }
@@ -222,13 +228,16 @@ function ShopTools({ store, market }: Props) {
         <Icon name="search" />
         <span className="sr-only">{m.search.title}</span>
       </Link>
-      <Link
-        href={`${base}/account`}
-        className="hidden size-11 items-center justify-center rounded-full hover:bg-current/5 kzb-md-flex"
-      >
-        <Icon name="user" />
-        <span className="sr-only">{m.account.title}</span>
-      </Link>
+      {/* No sign-in or account while the store has customer accounts off (D365). */}
+      {accountsShown(store) && (
+        <Link
+          href={`${base}/account`}
+          className="hidden size-11 items-center justify-center rounded-full hover:bg-current/5 kzb-md-flex"
+        >
+          <Icon name="user" />
+          <span className="sr-only">{m.account.title}</span>
+        </Link>
+      )}
       <Link href={`${base}/wishlist`} className="relative flex size-11 items-center justify-center rounded-full hover:bg-current/5">
         <Icon name="heart" />
         <WishlistCount base={base} />
@@ -341,11 +350,13 @@ export function StoreMenu({ store, market }: Props) {
       {/* A website (D178 step 5: the online shop off) has no My account or cart to link to. */}
       {featureOn(store, "shop") && (
         <ul className="flex flex-col">
-          <li>
-            <Link href={`${base}/account`} className="flex min-h-12 items-center gap-3">
-              <Icon name="user" /> {m.account.title}
-            </Link>
-          </li>
+          {accountsShown(store) && (
+            <li>
+              <Link href={`${base}/account`} className="flex min-h-12 items-center gap-3">
+                <Icon name="user" /> {m.account.title}
+              </Link>
+            </li>
+          )}
           <li>
             <Link href={`${base}/cart`} className="flex min-h-12 items-center gap-3">
               <Icon name="bag" /> {m.cart}
@@ -515,10 +526,12 @@ export function StoreBottomBar({ store, market }: Props) {
         {/* A website (D178 step 5: the online shop off) has no My account or cart to link to. */}
         {featureOn(store, "shop") && (
           <>
-            <Link href={`${base}/account`} className={item}>
-              <Icon name="user" />
-              {m.account.title}
-            </Link>
+            {accountsShown(store) && (
+              <Link href={`${base}/account`} className={item}>
+                <Icon name="user" />
+                {m.account.title}
+              </Link>
+            )}
             <Suspense fallback={<CartLinkShell storeSlug={store.slug} market={market} variant="bar" />}>
               <CartLink storeId={store.id} storeSlug={store.slug} market={market} variant="bar" />
             </Suspense>

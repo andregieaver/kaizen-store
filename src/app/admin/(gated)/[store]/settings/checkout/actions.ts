@@ -14,6 +14,8 @@ import {
   switchCheckoutField,
   switchCheckoutRule,
 } from "@/server/checkout-rules";
+import type { AccountsMode } from "@/lib/customer-accounts";
+import { saveAccountsMode } from "@/server/customer-accounts";
 import { checkPermission } from "@/server/permissions";
 
 /** Checkout rules and questions change what shoppers are offered and asked, so they are `settings:write` (D357). */
@@ -68,4 +70,16 @@ export async function deleteFieldAction(storeSlug: string, id: string): Promise<
   if (!member) return;
   await deleteCheckoutField(member, id);
   refresh();
+}
+
+/** Whether shoppers can, must or cannot have an account (D365): `settings:write`, refused while a feature or a company account needs them. */
+export async function saveAccountsModeAction(storeSlug: string, mode: AccountsMode): Promise<{ ok: true } | { ok: false; problems: string[] }> {
+  const member = await checkPermission(storeSlug, "settings:write");
+  if (!member) return { ok: false, problems: [await noAccess()] };
+  const lang = await actionAdminLang();
+  const words = adminText(lang, "shipping").customerAccounts;
+  const labels = adminText(lang, "common").features.labels as Record<string, string>;
+  const saved = await saveAccountsMode(member, mode, words, (id) => labels[id] ?? id);
+  if (saved.ok) refresh();
+  return saved;
 }

@@ -189,6 +189,7 @@ export const settingsEn = {
       needs: { one: "{label} needs {needs}. Switch it on first.", many: "{label} needs {needs}. Switch them on first." },
       cantYet: "{label} can't be switched off yet.",
       confirm: "Confirm to switch it off.",
+      accountsOff: "{label} needs customer accounts. Turn them on under Settings → Checkout first.",
     },
   },
   company: {

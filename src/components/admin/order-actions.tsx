@@ -113,6 +113,22 @@ export function RefundForm({
       ) : outside ? null : (
         <p className="text-sm text-muted">{w.refundInStripe}</p>
       )}
+      {canRefund && !outside && (
+        <fieldset className="flex flex-col gap-1 text-sm">
+          <legend className="mb-1">{w.refundTo}</legend>
+          <label className="flex items-center gap-2">
+            <input type="radio" name="refundTo" value="payment" defaultChecked className="size-4" />
+            {w.refundToPayment}
+          </label>
+          <label className="flex items-start gap-2">
+            <input type="radio" name="refundTo" value="credit" className="mt-0.5 size-4" />
+            <span>
+              {w.refundToCredit}
+              <span className="block text-xs text-muted">{w.refundToCreditHint}</span>
+            </span>
+          </label>
+        </fieldset>
+      )}
       <label className={label}>
         <span>
           {w.reason} <span className="font-normal text-muted">{w.forRecords}</span>

@@ -504,6 +504,20 @@ export const shippingNb: ShippingMessages = {
     checkoutOn: "Lagret. Kunder i de valgte landene kan nå velge disse tjenestene i kassen.",
     checkoutOff: "Lagret. Tjenestene er av i kassen.",
   },
+  customerAccounts: {
+    title: "Kundekontoer",
+    description: "Om kundene kan, må eller ikke kan ha en konto i butikken din.",
+    optional: "Valgfritt",
+    optionalHint: "Kundene handler som gjest eller med konto, og kan opprette en konto med bestillingen.",
+    required: "Påkrevd",
+    requiredHint: "Kundene logger inn før de går til kassen. Bestillingene havner på kontoen deres.",
+    off: "Av",
+    offHint: "Butikken viser ingen innlogging eller konto. Lenker du sender etter et kjøp, virker fortsatt.",
+    save: "Lagre",
+    saved: "Lagret.",
+    blockedFeature: "Slå av {label} først: den trenger kundekontoer.",
+    blockedCompanies: { one: "{n} bedriftskonto handler i butikken din. Fjern den først: den trenger kundekontoer.", many: "{n} bedriftskontoer handler i butikken din. Fjern dem først: de trenger kundekontoer." },
+  },
   checkoutRules: {
     title: "Regler i kassen",
     description:

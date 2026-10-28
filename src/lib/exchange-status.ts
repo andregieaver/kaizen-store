@@ -88,5 +88,5 @@ export type LabelSource = (typeof LABEL_SOURCES)[number];
  * invoice of an order on payment terms cancelled before it was paid (`void`, D293: no money and no provider call, only its credit note; never a refund in
  * the figures, `NOT_EDIT_REFUND`).
  */
-export const REFUND_KINDS = ["money", "transfer", "release", "void"] as const;
+export const REFUND_KINDS = ["money", "transfer", "release", "void", "store_credit"] as const;
 export type RefundKind = (typeof REFUND_KINDS)[number];

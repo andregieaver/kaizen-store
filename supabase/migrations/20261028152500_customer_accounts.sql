@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."stores" ADD COLUMN "customer_accounts" text DEFAULT 'optional' NOT NULL;--> statement-breakpoint
+ALTER TABLE "commerce"."stores" ADD CONSTRAINT "stores_customer_accounts" CHECK ("commerce"."stores"."customer_accounts" in ('optional', 'required', 'off'));

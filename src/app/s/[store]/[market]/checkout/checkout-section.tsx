@@ -14,6 +14,7 @@ import { LineThumbnail } from "@/components/line-thumbnail";
 import { LogoPicture } from "@/components/logo-picture";
 import { LineUnitPrice } from "@/components/price";
 import { VatNotes } from "@/components/vat-notes";
+import { offersAccountAtCheckout } from "@/lib/customer-accounts";
 import { creditsNet } from "@/lib/bonus-shopper";
 import { discountNote } from "@/lib/customer-tiers";
 import { pickupPointLine } from "@/lib/delivery-options";
@@ -574,7 +575,8 @@ async function paymentForm(store: Store, market: Market, view: CheckoutView, dra
               seeOrder: m.seeOrder,
             }}
             account={
-              customer
+              // Opening an account with the order is offered only where accounts are optional (D365).
+              customer || !offersAccountAtCheckout(store)
                 ? null
                 : {
                     store: store.slug,

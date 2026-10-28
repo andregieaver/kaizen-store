@@ -17,6 +17,7 @@ import {
   type FeatureFacts,
   type FeatureId,
 } from "@/lib/store-features";
+import { FEATURES_NEEDING_ACCOUNTS } from "@/lib/customer-accounts";
 import { FEATURE_WORDS_EN, featureBlockers, featureWarnings, type FeatureBlocker, type FeatureWords } from "@/lib/feature-words";
 
 import { forgetStoreFacts } from "./redirect-resolve";
@@ -199,13 +200,17 @@ export async function setFeature(member: Membership, id: FeatureId, on: boolean,
   const label = w.c.labels[id];
 
   const outcome = await db().transaction(async (tx): Promise<SetFeatureResult & { before?: FeatureId[] }> => {
-    const [row] = await tx.execute<Row>(sql`select features from commerce.stores where id = ${store.id}::uuid for update`);
+    const [row] = await tx.execute<Row>(sql`select features, customer_accounts from commerce.stores where id = ${store.id}::uuid for update`);
     if (!row) return { ok: false, problems: ["That store is gone."] };
     const before = normaliseFeatures(((row.features ?? []) as unknown[]).map(String));
     const kept = before.includes(id);
     if (kept === on) return { ok: true, features: before, changed: false };
 
     if (on) {
+      // A feature that needs customer accounts is not switched on while the store has them off (D365).
+      if (row.customer_accounts === "off" && (FEATURES_NEEDING_ACCOUNTS as readonly string[]).includes(id)) {
+        return { ok: false, problems: [fillWords(w.s.actions.accountsOff, { label })] };
+      }
       const missing = missingNeeds(before, id);
       if (missing.length > 0) {
         const labels = missing.map((need) => needWords(need, w.c));

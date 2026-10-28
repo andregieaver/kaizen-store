@@ -735,6 +735,8 @@ export const sv: Messages = {
   /** A cart line whose quantity breaks its variant's rule (D323). */
   problemQuantity: "Antalet av en vara i varukorgen kan inte köpas så. Ändra det i varukorgen och försök igen.",
   problemCheckoutRule: "Butiken tar inte emot den här beställningen som den är. Varukorgen säger varför.",
+  problemSignIn: "Logga in på ditt konto för att gå till kassan i den här butiken.",
+  signInToCheckOut: "Logga in för att gå till kassan",
   checkoutQuestions: {
     legend: "Några frågor från butiken",
     required: "obligatorisk",
@@ -1413,5 +1415,7 @@ export const sv: Messages = {
     copySubject: (store: string) => `Ditt presentkort från ${store} är på väg`,
     copyHeading: "Ditt presentkort är på väg",
     copyText: (amount: string, to: string) => `Vi har mejlat presentkortet på ${amount} till ${to}. Koden finns bara i deras mejl.`,
+    refundSubject: (store: string) => `Din återbetalning från ${store} som tillgodokvitto`,
+    refundText: (number: string) => `Det här är din återbetalning för order ${number}, som tillgodokvitto. Du använder det som ett presentkort.`,
   },
 };

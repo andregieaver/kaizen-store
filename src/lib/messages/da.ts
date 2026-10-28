@@ -735,6 +735,8 @@ export const da: Messages = {
   /** A cart line whose quantity breaks its variant's rule (D323). */
   problemQuantity: "Antallet af en vare i kurven kan ikke købes sådan. Ret det i kurven og prøv igen.",
   problemCheckoutRule: "Butikken tager ikke imod denne bestilling, som den er. Kurven siger hvorfor.",
+  problemSignIn: "Log ind på din konto for at gå til kassen i denne butik.",
+  signInToCheckOut: "Log ind for at gå til kassen",
   checkoutQuestions: {
     legend: "Et par spørgsmål fra butikken",
     required: "skal udfyldes",
@@ -1411,5 +1413,7 @@ export const da: Messages = {
     copySubject: (store: string) => `Dit gavekort fra ${store} er på vej`,
     copyHeading: "Dit gavekort er på vej",
     copyText: (amount: string, to: string) => `Vi har sendt gavekortet på ${amount} til ${to}. Koden står kun i deres e-mail.`,
+    refundSubject: (store: string) => `Din refusion fra ${store} som tilgodebevis`,
+    refundText: (number: string) => `Dette er din refusion for ordre ${number}, som tilgodebevis. Du bruger det som et gavekort.`,
   },
 };

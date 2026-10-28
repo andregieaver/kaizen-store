@@ -319,14 +319,14 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": "full"
+      "was": "partial"
     },
     "weight": 5,
-    "gap": "Refunds, partial refunds, restock and the customer's email work (`order-admin.int.test.ts`); returns and withdrawals refund through the same path (D153), a refund is split over the order's captured payments and sent to each payment's provider (D174 `splitRefund()`, D292), and an uncaptured card is released rather than refunded (D289). Missing (criterion 6): a refund as store credit. Gift cards exist and staff can issue one by hand (D300 F4), but a refund cannot be paid to one, and bonus credits (D130) are earned, not refunded to. Merged on 2026-10-26 (README rule 8): `checkout.refunds-and-cancellation` covered refunds and cancelling together (rated partial for this); its cancel criteria are held by `orders.cancel-order-with-refund-and-restock`, its evidence is here.",
-    "bucket": "A",
-    "wave": 5,
+    "gap": "Refunds, partial refunds, restock and the customer's email work (`order-admin.int.test.ts`); returns and withdrawals refund through the same path (D153), a refund is split over the order's captured payments and sent to each payment's provider (D174 `splitRefund()`, D292), and an uncaptured card is released rather than refunded (D289). Since D364 staff can refund to store credit: `refundOrder({ toCredit })` records `store_credit` refunds (no provider call, capped by the database like money taken outside) and issues one gift card of the store's for the amount (`commerce.gift_card_issue_refund()`), its balance the gift card ledger's, spent at checkout as any card, its code emailed to the order's own address and shown once to staff (`store-credit-refunds.int.test.ts`, kroner and euros). Kaizena Flow's fee is not returned on a store credit refund, as Stripe is not asked.",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "A refund of any amount up to what is left goes through Stripe on the store's account with Kaizen's fee on the refunded part returned, and more than is left is refused (integration test).",
       "Staff choose which units go back in stock, with or without money back, never more than were bought or already restocked (integration test).",
@@ -343,13 +343,16 @@
         "src/components/admin/order-actions.tsx",
         "src/app/admin/(gated)/[store]/orders/actions.ts",
         "src/server/shopper-emails.ts",
-        "src/server/order-returns.ts"
+        "src/server/order-returns.ts",
+        "src/server/gift-card-delivery.ts",
+        "supabase/migrations/20261028151136_store_credit_refunds_rules.sql"
       ],
       "tests": [
         "src/server/order-admin.int.test.ts",
         "src/server/returns.int.test.ts",
         "src/server/returns-money-review.int.test.ts",
-        "src/lib/return-refund.test.ts"
+        "src/lib/return-refund.test.ts",
+        "src/server/store-credit-refunds.int.test.ts"
       ],
       "untested": false
     },
@@ -358,7 +361,8 @@
       "D153",
       "D289",
       "D292",
-      "D300"
+      "D300",
+      "D364"
     ],
     "history": [
       {
@@ -366,6 +370,12 @@
         "from": "full",
         "to": "partial",
         "why": "Merged with checkout.refunds-and-cancellation (rule 8): its open criterion, a refund as store credit, is this row's now and is not met."
+      },
+      {
+        "on": "2026-10-28",
+        "from": "partial",
+        "to": "full",
+        "why": "D364: a refund to store credit, recorded as its own refund kind and paid as a gift card of the store's, held by an integration test in kroner and euros (criterion 6)."
       }
     ]
   },

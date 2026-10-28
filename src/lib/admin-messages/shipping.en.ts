@@ -523,6 +523,20 @@ export const shippingEn = {
     checkoutOn: "Saved. Shoppers in the chosen countries can now choose these services at checkout.",
     checkoutOff: "Saved. The services are off at checkout.",
   },
+  customerAccounts: {
+    title: "Customer accounts",
+    description: "Whether shoppers can, must or cannot have an account in your store.",
+    optional: "Optional",
+    optionalHint: "Shoppers check out as guests or with an account, and can open one with their order.",
+    required: "Required",
+    requiredHint: "Shoppers sign in before they check out. Orders join their account.",
+    off: "Off",
+    offHint: "The store shows no sign-in or account. Links you send after a sale still work.",
+    save: "Save",
+    saved: "Saved.",
+    blockedFeature: "Switch off {label} first: it needs customer accounts.",
+    blockedCompanies: { one: "{n} company account buys in your store. Remove it first: it needs customer accounts.", many: "{n} company accounts buy in your store. Remove them first: they need customer accounts." },
+  },
   checkoutRules: {
     title: "Checkout rules",
     description:

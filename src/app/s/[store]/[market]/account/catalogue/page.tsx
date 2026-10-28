@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 
+import { accountsShown } from "@/lib/customer-accounts";
 import { optionLabel, t } from "@/lib/i18n";
 import { shown } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
@@ -39,6 +40,8 @@ async function Catalogue({ params }: { params: Props["params"] }) {
   const { store: storeSlug, market: marketSlug } = await params;
   const shop = await resolveSellingShop(storeSlug, marketSlug);
   if (!shop) notFound();
+  // Customer accounts off (D365): the account's own pages are not there.
+  if (!accountsShown(shop.store)) notFound();
   const { store, market } = shop;
   const account = marketPath(store.slug, market.slug, "/account");
   const customer = await getCustomer(store.id);

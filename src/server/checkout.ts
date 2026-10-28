@@ -173,7 +173,9 @@ export type CheckoutProblem =
   /** One of the store's checkout rules refuses this basket (D357); the cart shows the owner's words. */
   | "checkout_rule"
   /** A question the store asks at checkout is required and was left unanswered (D357). */
-  | "checkout_fields";
+  | "checkout_fields"
+  /** The store requires customers to sign in before they buy (D365), and the shopper is not signed in. */
+  | "sign_in_required";
 
 export type PlaceResult = { ok: true; order: PlacedOrder } | { ok: false; problem: CheckoutProblem };
 
@@ -293,7 +295,7 @@ export async function placeOrder(
   return inTransaction(async (tx): Promise<PlaceResult> => {
     const [cart] = await tx.execute<Row>(sql`
       -- A company is bought for only where the store sells to businesses (B2B; D178: never with Sell to businesses off).
-      select c.id, c.discount_code, c.more_codes, ${STORE_AUDIENCE} as store_audience, s.time_zone,
+      select c.id, c.discount_code, c.more_codes, ${STORE_AUDIENCE} as store_audience, s.time_zone, s.customer_accounts,
         case when ${STORE_AUDIENCE} <> 'consumers' then c.company_name end as company_name,
         case when ${STORE_AUDIENCE} <> 'consumers' then c.organisation_number end as organisation_number,
         c.bonus_request_minor, c.affiliate_code, c.is_gift, c.gift_to, c.gift_from, c.gift_message, c.company_location_id, c.po_number, c.checkout_answers,
@@ -306,6 +308,8 @@ export async function placeOrder(
       for update of c
     `);
     if (!cart) return { ok: false, problem: "empty" };
+    // A store that requires an account (D365) sells only to a signed-in customer; every way to an order that has none comes through here.
+    if (cart.customer_accounts === "required" && !customerId) return { ok: false, problem: "sign_in_required" };
     // A country or a currency the store no longer offers (D178) sells nothing: the cart's lines are unavailable there, as the cart shows them.
     if (!cart.offered) return { ok: false, problem: "unavailable" };
     // Bonus credits (D130) are taken under the customer's lock, so two checkouts cannot both spend the same credits; the

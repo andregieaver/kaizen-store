@@ -40,6 +40,8 @@ export function checkoutLabels(m: Messages, action: string = m.checkout, lang: s
       // Checkout rules and fields (D357).
       checkout_rule: m.problemCheckoutRule,
       checkout_fields: m.checkoutQuestions.problem,
+      // Customer accounts required (D365).
+      sign_in_required: m.problemSignIn,
     },
   };
 }

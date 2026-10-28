@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 
 import { ConfirmForm, InviteForm } from "@/components/company-forms";
+import { accountsShown } from "@/lib/customer-accounts";
 import { percentText } from "@/lib/customer-tiers";
 import { t } from "@/lib/i18n";
 import { marketPath } from "@/lib/paths";
@@ -48,6 +49,8 @@ async function Company({ params, searchParams }: { params: Props["params"]; sear
   // Company accounts are part of selling to businesses (D178): not there while it is switched off.
   const shop = await resolveFeatureShop(storeSlug, marketSlug, "business");
   if (!shop) notFound();
+  // Customer accounts off (D365): the account's own pages are not there.
+  if (!accountsShown(shop.store)) notFound();
   const { store, market } = shop;
   const account = marketPath(store.slug, market.slug, "/account");
   const customer = await getCustomer(store.id);

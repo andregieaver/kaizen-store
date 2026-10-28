@@ -5,6 +5,7 @@ import { Suspense } from "react";
 
 import { PrivacyPageView, type PrivacyNotice } from "@/components/privacy-account-view";
 import { StepUpForm } from "@/components/privacy-forms";
+import { accountsShown } from "@/lib/customer-accounts";
 import { t } from "@/lib/i18n";
 import { marketPath } from "@/lib/paths";
 import { stepUpLabels } from "@/lib/privacy-labels";
@@ -45,6 +46,8 @@ async function Privacy({ params, searchParams }: Pick<Props, "params" | "searchP
   const { store: storeSlug, market: marketSlug } = await params;
   const shop = await resolveShop(storeSlug, marketSlug);
   if (!shop) notFound();
+  // Customer accounts off (D365): the account's own pages are not there.
+  if (!accountsShown(shop.store)) notFound();
   const { store, market } = shop;
   const base = marketPath(store.slug, market.slug);
   const state = await shopperPrivacyState(store.id);

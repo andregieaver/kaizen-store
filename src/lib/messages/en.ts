@@ -752,6 +752,8 @@ export const en = {
   /** A cart line whose quantity breaks its variant's rule (D323). */
   problemQuantity: "The quantity of something in your cart can't be bought as it is. Change it in the cart and try again.",
   problemCheckoutRule: "The store doesn't take this order as it is. The cart says why.",
+  problemSignIn: "Sign in to your account to check out in this store.",
+  signInToCheckOut: "Sign in to check out",
   checkoutQuestions: {
     legend: "A few questions from the store",
     required: "required",
@@ -1433,6 +1435,8 @@ export const en = {
     copySubject: (store: string) => `Your gift card from ${store} is on its way`,
     copyHeading: "Your gift card is on its way",
     copyText: (amount: string, to: string) => `We have emailed the gift card of ${amount} to ${to}. The code is only in their email.`,
+    refundSubject: (store: string) => `Your refund from ${store} as store credit`,
+    refundText: (number: string) => `This is your refund for order ${number}, as store credit. Spend it like a gift card.`,
   },
 };
 

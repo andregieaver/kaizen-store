@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 
 import { StarRating } from "@/components/star-rating";
+import { accountsShown } from "@/lib/customer-accounts";
 import { t } from "@/lib/i18n";
 import { marketPath } from "@/lib/paths";
 import { getCustomer } from "@/server/customers";
@@ -32,6 +33,8 @@ async function AccountReviews({ params, searchParams }: Pick<Props, "params" | "
   const { store: storeSlug, market: marketSlug } = await params;
   const shop = await resolveFeatureShop(storeSlug, marketSlug, "reviews");
   if (!shop) notFound();
+  // Customer accounts off (D365): the account's own pages are not there.
+  if (!accountsShown(shop.store)) notFound();
   const { store, market } = shop;
   const base = marketPath(store.slug, market.slug);
   const customer = await getCustomer(store.id);

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 
+import { accountsShown } from "@/lib/customer-accounts";
 import { addressLine, type SavedAddress } from "@/lib/customer-addresses";
 import { t } from "@/lib/i18n";
 import { marketPath } from "@/lib/paths";
@@ -34,6 +35,8 @@ async function Addresses({ params, searchParams }: Pick<Props, "params" | "searc
   const { store: storeSlug, market: marketSlug } = await params;
   const shop = await resolveShop(storeSlug, marketSlug);
   if (!shop) notFound();
+  // Customer accounts off (D365): the account's own pages are not there.
+  if (!accountsShown(shop.store)) notFound();
   const { store, market } = shop;
   const account = marketPath(store.slug, market.slug, "/account");
   const customer = await getCustomer(store.id);

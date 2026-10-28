@@ -626,6 +626,11 @@ export const stores = commerce.table(
      */
     termsAtCheckout: text("terms_at_checkout").notNull().default("link"),
     /**
+     * Customer accounts (wave 10 unit B, D365): `optional` (shoppers may check out as guests or with an account), `required` (only a signed-in
+     * customer buys) or `off` (the store draws no sign-in or account). Read only through `accountsMode()`, written only by `saveAccountsMode()`.
+     */
+    customerAccounts: text("customer_accounts").notNull().default("optional"),
+    /**
      * Every member of the store must have a second step (wave 1, 1f); a member without one is held at enrolment before
      * the store's admin. Switched on by an owner who has one themselves. A copy starts with it off.
      */
@@ -715,6 +720,7 @@ export const stores = commerce.table(
   (t) => [
     check("stores_audience", sql`${t.audience} in ('consumers', 'businesses', 'both')`),
     check("stores_terms_at_checkout", sql`${t.termsAtCheckout} in ('link', 'checkbox', 'off')`),
+    check("stores_customer_accounts", sql`${t.customerAccounts} in ('optional', 'required', 'off')`),
     check("stores_modules", sql`${t.modules} <@ array['bookings', 'deliveries', 'work']::text[]`),
     check(
       "stores_features",
@@ -5116,7 +5122,8 @@ export const refunds = commerce.table(
     exchangeId: uuid("exchange_id"),
     /**
      * `money` (a refund through the provider or recorded outside), `transfer` (the credit moved to an exchange order: no provider call, created `succeeded`),
-     * `release` (D289) or `void` (D293: an unpaid order on terms cancelled, only its credit note); `REFUND_KINDS`.
+     * `release` (D289), `void` (D293: an unpaid order on terms cancelled, only its credit note) or `store_credit` (D364: paid back as a gift card of the
+     * store's, no provider call, created `succeeded`); `REFUND_KINDS`.
      */
     kind: text("kind").notNull().default("money"),
     createdAt: createdAt(),
@@ -5138,6 +5145,7 @@ export const refunds = commerce.table(
     ),
     check("refunds_release", sql`${t.kind} <> 'release' or (${t.providerReference} is null and ${t.status} = 'succeeded' and ${t.exchangeId} is null and ${t.orderEditId} is null)`),
     check("refunds_void", sql`${t.kind} <> 'void' or (${t.providerReference} is null and ${t.status} = 'succeeded' and ${t.exchangeId} is null and ${t.orderEditId} is null)`),
+    check("refunds_store_credit", sql`${t.kind} <> 'store_credit' or (${t.status} = 'succeeded' and ${t.exchangeId} is null and ${t.orderEditId} is null)`),
     foreignKey({
       name: "refunds_order_edit_fk",
       columns: [t.storeId, t.orderEditId],
@@ -10592,9 +10600,11 @@ export const giftCards = commerce.table(
     last4: text("last4"),
     currency: char("currency", { length: 3 }).notNull(),
     initialMinor: bigint("initial_minor", { mode: "number" }).notNull(),
-    /** `order` (bought) or `staff` (issued by hand). */
+    /** `order` (bought), `staff` (issued by hand) or `refund` (store credit from a refund of the order, D364). */
     source: text("source").notNull(),
     orderId: uuid("order_id"),
+    /** The `store_credit` refund this card was issued for (D364); one card a refund. */
+    refundId: uuid("refund_id"),
     orderLineId: uuid("order_line_id"),
     /** Which of the line's units this card is (1, 2, …): a line of three cards issues three, once each. */
     unitIndex: integer("unit_index"),
@@ -10621,6 +10631,8 @@ export const giftCards = commerce.table(
     unique("gift_cards_store_id_key").on(t.storeId, t.id),
     uniqueIndex("gift_cards_code_key").on(t.storeId, t.codeHash).where(sql`${t.codeHash} is not null`),
     uniqueIndex("gift_cards_order_line_key").on(t.storeId, t.orderLineId, t.unitIndex).where(sql`${t.orderLineId} is not null`),
+    uniqueIndex("gift_cards_refund_key").on(t.storeId, t.refundId).where(sql`${t.refundId} is not null`),
+    foreignKey({ name: "gift_cards_refund_fk", columns: [t.storeId, t.refundId], foreignColumns: [refunds.storeId, refunds.id] }),
     foreignKey({ name: "gift_cards_order_fk", columns: [t.storeId, t.orderId], foreignColumns: [orders.storeId, orders.id] }),
     index("gift_cards_order_idx").on(t.storeId, t.orderId).where(sql`${t.orderId} is not null`),
     index("gift_cards_customer_idx").on(t.storeId, t.customerId).where(sql`${t.customerId} is not null`),
@@ -10629,7 +10641,7 @@ export const giftCards = commerce.table(
     index("gift_cards_to_send_idx").on(t.sendAt).where(sql`${t.sentAt} is null and ${t.codeHash} is not null`),
     check("gift_cards_currency", sql`${t.currency} ~ '^[A-Z]{3}$'`),
     check("gift_cards_initial", sql`${t.initialMinor} > 0`),
-    check("gift_cards_source", sql`(${t.source} = 'order' and ${t.orderId} is not null and ${t.orderLineId} is not null and ${t.unitIndex} >= 1) or (${t.source} = 'staff' and ${t.orderId} is null and ${t.orderLineId} is null and ${t.unitIndex} is null and ${t.issuedBy} is not null)`),
+    check("gift_cards_source", sql`(${t.source} = 'order' and ${t.orderId} is not null and ${t.orderLineId} is not null and ${t.unitIndex} >= 1) or (${t.source} = 'staff' and ${t.orderId} is null and ${t.orderLineId} is null and ${t.unitIndex} is null and ${t.issuedBy} is not null) or (${t.source} = 'refund' and ${t.orderId} is not null and ${t.refundId} is not null and ${t.orderLineId} is null and ${t.unitIndex} is null)`),
     check("gift_cards_status", sql`${t.status} in ('active', 'deactivated') and ((${t.status} = 'deactivated') = (${t.deactivatedAt} is not null))`),
     check("gift_cards_code", sql`(${t.codeHash} is null) = (${t.last4} is null) and (${t.last4} is null or ${t.last4} ~ '^[A-Z0-9]{4}$')`),
     check("gift_cards_recipient", sql`(${t.recipientEmail} is null or length(${t.recipientEmail}) <= 254) and (${t.recipientName} is null or length(${t.recipientName}) <= 80) and (${t.message} is null or length(${t.message}) <= 500)`),

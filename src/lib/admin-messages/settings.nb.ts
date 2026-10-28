@@ -187,6 +187,7 @@ export const settingsNb: SettingsMessages = {
       needs: { one: "{label} trenger {needs}. Slå den på først.", many: "{label} trenger {needs}. Slå dem på først." },
       cantYet: "{label} kan ikke slås av ennå.",
       confirm: "Bekreft for å slå den av.",
+      accountsOff: "{label} trenger kundekontoer. Slå dem på under Innstillinger → Kassen først.",
     },
   },
   company: {

@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { FieldList, RuleList, type CheckoutRuleActions, type RuleChoices } from "@/components/admin/checkout-rules";
+import { CustomerAccountsCard } from "@/components/admin/customer-accounts-card";
+import { accountsMode } from "@/lib/customer-accounts";
 import { requireFeature } from "@/components/admin/feature-off";
 import { PageHeader } from "@/components/admin/ui";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
@@ -15,7 +17,7 @@ import { db } from "@/db/client";
 import { listCheckoutFields, listCheckoutRules, ruleChoices } from "@/server/checkout-rules";
 import { memberCan, requirePermission } from "@/server/permissions";
 
-import { deleteFieldAction, deleteRuleAction, moveRuleAction, saveFieldAction, saveRuleAction, switchFieldAction, switchRuleAction } from "./actions";
+import { saveAccountsModeAction, deleteFieldAction, deleteRuleAction, moveRuleAction, saveFieldAction, saveRuleAction, switchFieldAction, switchRuleAction } from "./actions";
 
 export const metadata: Metadata = { title: "Checkout rules" };
 
@@ -54,6 +56,7 @@ export default async function CheckoutRulesPage({ params }: PageProps<"/admin/[s
     <AdminTextScope texts={adminTexts(lang, ["shipping"])}>
       <div className="flex flex-col gap-6">
         <PageHeader title={w.title} description={<>{w.description}</>} />
+        <CustomerAccountsCard mode={accountsMode(store)} canWrite={canWrite} save={saveAccountsModeAction.bind(null, slug)} />
         <RuleList
           rules={rules.map((r) => ({ id: r.id, name: r.name, enabled: r.enabled, conditions: r.conditions, effect: r.effect, skips: r.skips.map((s) => ({ reason: s.reason, count: s.count, since: when(s.lastAt) })) }))}
           choices={choices}

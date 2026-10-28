@@ -3851,6 +3851,27 @@
       "when": 1793197258748,
       "tag": "20261028142058_custom_apps",
       "breakpoints": true
+    },
+    {
+      "idx": 550,
+      "version": "7",
+      "when": 1793200257726,
+      "tag": "20261028151057_store_credit_refunds",
+      "breakpoints": true
+    },
+    {
+      "idx": 551,
+      "version": "7",
+      "when": 1793200296200,
+      "tag": "20261028151136_store_credit_refunds_rules",
+      "breakpoints": true
+    },
+    {
+      "idx": 552,
+      "version": "7",
+      "when": 1793201100237,
+      "tag": "20261028152500_customer_accounts",
+      "breakpoints": true
     }
   ]
 }

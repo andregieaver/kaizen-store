@@ -8,6 +8,7 @@ import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { orderEn } from "@/lib/admin-messages/order.en";
 import { putBackChoice } from "@/lib/inventory-admin";
+import { formatMoney } from "@/lib/money";
 import { parsePrice } from "@/lib/product-input";
 import { checkPermission, requirePermission } from "@/server/permissions";
 import { actionAdminLang } from "@/server/admin-request-lang";
@@ -180,8 +181,15 @@ export async function refundOrderAction(
   const reason = String(form.get("reason") ?? "").trim().slice(0, 500) || "Refund";
   // "These units were not sent" (D174): the units put back come off what is still to send. Only a checkbox ticked "on" counts; the server decides how many under the order's lock.
   const notSent = form.get("notSent") === "on";
-  const outcome = await refundOrder(found.member.store.id, orderId, { amountMinor, reason, restock, notSent }, found.member.account.id);
+  // Refund to store credit (D364): a gift card of the store's, emailed to the order's own address by `refundOrder()`; the refund email is not sent.
+  const toCredit = form.get("refundTo") === "credit";
+  const outcome = await refundOrder(found.member.store.id, orderId, { amountMinor, reason, restock, notSent, toCredit }, found.member.account.id);
   if (!outcome.ok) return failed(outcome.problem);
+  if (outcome.credit) {
+    refresh();
+    const amount = formatMoney(outcome.credit.amountMinor, found.order.currency, "en-GB");
+    return done(`${fillWords(w.creditIssued, { amount, code: outcome.credit.code })}${outcome.credit.emailed === "sent" ? w.creditEmailed : w.creditNotEmailed}`);
+  }
   if (amountMinor > 0 && form.get("notify") === "on") {
     await sendRefunded(found.member.store.id, orderId, outcome.refundId, amountMinor);
   }

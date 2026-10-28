@@ -21,7 +21,10 @@ import { captureForSending } from "./payment-capture";
 import { audit } from "./auth";
 import { cancelUnpaidOrder } from "./checkout";
 import { EDIT_REFUND_OWED_SQL } from "./edit-refund-owed";
-import { reverseHostCommission } from "./host-payments";
+import { formatGiftCode } from "@/lib/gift-cards";
+import { sendRefundCredit } from "./gift-card-delivery";
+import { newGiftCode } from "./gift-card-codes";
+import { reverseHostCommission, storePaymentMode } from "./host-payments";
 import { orderFulfilment, refreshFulfilment, shipmentLinesFor, type OrderFulfilment, type ShipmentLineView } from "./fulfilment";
 import { getOrder, type Address, type OrderView } from "./orders";
 import { accountMayRecordOutside } from "./order-settings";
@@ -615,6 +618,13 @@ export type RefundInput = {
    * and nothing more (a sent unit that came back, as before). Only staff's refund form passes it.
    */
   notSent?: boolean;
+  /**
+   * Pay the refund back as store credit (wave 10 unit A, D364): no provider is asked; the amount is recorded as `store_credit` refunds (split over the
+   * captured payments as any refund, so the card can later be refunded only what is left) and issued as ONE gift card of the store's in the order's
+   * currency, for the order's customer, its code emailed to the order's own address after the commit and shown once to staff. A gift card's own part
+   * still goes back on that card. Only staff's refund form passes it.
+   */
+  toCredit?: boolean;
 };
 
 export type RefundOutcome =
@@ -628,6 +638,8 @@ export type RefundOutcome =
       status?: string;
       /** Units taken off what is still to send (`notSent`). */
       closedUnits?: number;
+      /** The store credit issued (`toCredit`): the card, its code (shown once, never kept) and whether its email went. */
+      credit?: { cardId: string; code: string; amountMinor: number; emailed: "sent" | "failed" };
     }
   | { ok: false; problem: string };
 
@@ -705,6 +717,12 @@ export async function refundOrder(
   if (!order) return { ok: false, problem: "This order no longer exists." };
   if (order.copied) return { ok: false, problem: COPIED_ORDER_MESSAGE };
   if (options.outside && input.amountMinor !== 0) return { ok: false, problem: "Nothing is sent from here for a refund made outside Stripe." };
+  if (input.toCredit) {
+    if (options.outside || options.within || options.exchangeId || options.paymentId) return { ok: false, problem: "This refund cannot be paid as store credit." };
+    if (input.amountMinor <= 0) return { ok: false, problem: "Enter an amount to refund as store credit." };
+    const [facts] = await db().execute<Row>(sql`select host_id is not null as host from commerce.orders where store_id = ${storeId}::uuid and id = ${orderId}::uuid`);
+    if (facts?.host) return { ok: false, problem: "A host's booking is refunded to the payment, not as store credit." };
+  }
   if (!order.canRefund && !options.outside) return { ok: false, problem: "This order was not paid through Kaizena Flow's Stripe, so refund it in Stripe." };
   // A change waiting for the customer's payment (D174) keeps the order as it was sold until it is paid, cancelled or expired: no refund meanwhile.
   if (order.fulfilment.editPending && !options.whileEditPending) return { ok: false, problem: "A change to this order waits for the customer's payment: cancel the change, or wait for it, before refunding." };
@@ -777,8 +795,9 @@ export async function refundOrder(
       );
   if (!options.outside && payments.length === 0) return { ok: false, problem: "Stripe cannot be reached for this store right now." };
   if (parts === null) return { ok: false, problem: "The amount is more than is left to refund." };
-  // Who may record a refund of money taken outside Kaizen is who may record the payment: the owner, or staff when the owner allows it (D173). A refund through Stripe is any staff member's.
-  if (parts.some((part) => part.provider === "manual") && !(await accountMayRecordOutside(storeId, accountId))) {
+  // Who may record a refund of money taken outside Kaizen is who may record the payment: the owner, or staff when the owner allows it (D173). A refund through Stripe is any staff member's,
+  // as is store credit (D364), which pays nothing back outside.
+  if (!input.toCredit && parts.some((part) => part.provider === "manual") && !(await accountMayRecordOutside(storeId, accountId))) {
     return { ok: false, problem: "Only the owner can record a refund of a payment taken outside Kaizena Flow, unless the owner has allowed staff to." };
   }
 
@@ -787,6 +806,11 @@ export async function refundOrder(
   const made: MadeRefund[] = [];
   for (const [i, part] of parts.entries()) {
     const payment = byId.get(part.paymentId)!;
+    // Store credit (D364): recorded here, never sent to a provider; a gift card's own part still goes back on its card below.
+    if (input.toCredit && part.provider !== "gift_card") {
+      made.push({ part, providerReference: `store_credit_${randomUUID()}`, status: "succeeded", recorded: true, kind: "store_credit" });
+      continue;
+    }
     if (part.provider === "manual") {
       made.push({ part, providerReference: `manual_refund_${randomUUID()}`, status: "succeeded", recorded: true });
       continue;
@@ -828,9 +852,18 @@ export async function refundOrder(
     }
   }
 
-  let written: { ids: string[]; closed: number };
+  // The card's code is made before the transaction (its hash and last four are written with the card) and shown once; the test mode is the payments'.
+  let credit: CreditCard | undefined;
+  if (made.some((m) => m.kind === "store_credit")) {
+    const code = newGiftCode();
+    if (!code) return { ok: false, problem: "No gift card code could be made right now. Try again." };
+    const modes = made.filter((m) => m.kind === "store_credit").map((m) => byId.get(m.part.paymentId)?.mode);
+    const test = modes.some((mode) => mode === "test") || (modes.every((mode) => !mode) && (await storePaymentMode(storeId)) === "test");
+    credit = { code, test };
+  }
+  let written: { ids: string[]; closed: number; cardId: string | null };
   try {
-    written = await writeRefunds(storeId, orderId, input.reason, accountId, made, restock, options.eventData, options.returnId, options.inTransaction, options.within, notSent, options.exchangeId, options.restockIf);
+    written = await writeRefunds(storeId, orderId, input.reason, accountId, made, restock, options.eventData, options.returnId, options.inTransaction, options.within, notSent, options.exchangeId, options.restockIf, credit);
   } catch (error) {
     if (error instanceof RefundOverCap) return { ok: false, problem: "The amount is more than is left to refund." };
     throw error;
@@ -838,7 +871,35 @@ export async function refundOrder(
   const status = made.length === 0 ? "succeeded" : made.some((m) => m.status === "failed") ? "failed" : made.every((m) => m.status === "succeeded") ? "succeeded" : "pending";
   // A host's order (D71): the store gives back the refunded share of its commission, per Stripe payment refunded (after the commit; never inside a caller's own transaction).
   if (!options.within) for (const m of made) if (!m.recorded && m.status !== "failed") await reverseHostCommission(storeId, m.part.paymentId);
-  return { ok: true, refundId: written.ids[0] ?? "", refundIds: written.ids, amountMinor: input.amountMinor, status, ...(written.closed > 0 ? { closedUnits: written.closed } : {}) };
+  let issued: { cardId: string; code: string; amountMinor: number; emailed: "sent" | "failed" } | undefined;
+  if (credit && written.cardId) {
+    const creditMinor = made.filter((m) => m.kind === "store_credit").reduce((sum, m) => sum + m.part.amountMinor, 0);
+    const [card] = await db().execute<Row>(sql`select expires_at from commerce.gift_cards where store_id = ${storeId}::uuid and id = ${written.cardId}::uuid`);
+    const outcome = order.email
+      ? await sendRefundCredit(storeId, {
+          id: written.cardId,
+          code: credit.code.code,
+          amountMinor: creditMinor,
+          currency: order.currency,
+          to: order.email,
+          lang: order.locale.split("-")[0] ?? "en",
+          expiresAt: card?.expires_at ? new Date(String(card.expires_at)).toISOString() : null,
+          orderNumber: order.number,
+          marketCode: order.marketCode,
+        }).catch(() => "failed" as const)
+      : "failed";
+    issued = { cardId: written.cardId, code: formatGiftCode(credit.code.code), amountMinor: creditMinor, emailed: outcome === "sent" || outcome === "logged" ? "sent" : "failed" };
+    await audit(accountId, storeId, "gift_card.refund_credit", { card: written.cardId, amount_minor: creditMinor, currency: order.currency, order: orderId, test: credit.test }, { target: { type: "gift_card", id: written.cardId } });
+  }
+  return {
+    ok: true,
+    refundId: written.ids[0] ?? "",
+    refundIds: written.ids,
+    amountMinor: input.amountMinor,
+    status,
+    ...(written.closed > 0 ? { closedUnits: written.closed } : {}),
+    ...(issued ? { credit: issued } : {}),
+  };
 }
 
 /** A line whose restocked units may be closed as not to be sent (`RefundInput.notSent`): at most `quantity`, never more than the line has still to send. */
@@ -885,8 +946,11 @@ async function closeUnsent(tx: Tx, storeId: string, orderId: string, refundId: s
   return units;
 }
 
-/** One part of a refund once Stripe answered (or, for money taken outside Kaizen, once it is to be recorded). */
-type MadeRefund = { part: RefundPart; providerReference: string; status: "succeeded" | "pending" | "failed"; recorded: boolean };
+/** One part of a refund once Stripe answered (or, for money taken outside Kaizen or paid as store credit, once it is to be recorded). */
+type MadeRefund = { part: RefundPart; providerReference: string; status: "succeeded" | "pending" | "failed"; recorded: boolean; kind?: "store_credit" };
+
+/** The store credit a refund pays (D364): the card's code, made before the transaction, and whether it is a test card. */
+type CreditCard = { code: { code: string; hash: string; last4: string }; test: boolean };
 
 /** Kaizen could not ask Stripe for a part of a refund (no Stripe for the mode, or no PaymentIntent behind the payment): the words for staff. */
 /**
@@ -907,7 +971,8 @@ async function writeRefunds(
   notSent: readonly NotSentCandidate[] = [],
   exchangeId?: string,
   restockIf?: RefundOptions["restockIf"],
-): Promise<{ ids: string[]; closed: number }> {
+  credit?: CreditCard,
+): Promise<{ ids: string[]; closed: number; cardId: string | null }> {
   const run = <T,>(body: (tx: Tx) => Promise<T>): Promise<T> => (within ? within.transaction(body) : db().transaction(body));
   const statusOf = (): "succeeded" | "pending" | "failed" =>
     made.length === 0 ? "succeeded" : made.some((m) => m.status === "failed") ? "failed" : made.every((m) => m.status === "succeeded") ? "succeeded" : "pending";
@@ -935,9 +1000,10 @@ async function writeRefunds(
     let fresh = 0;
     for (const m of made) {
       const [row] = await tx.execute<Row>(sql`
-        insert into commerce.refunds (store_id, payment_id, amount_minor, reason, provider_reference, status, restocked, created_by, exchange_id)
+        insert into commerce.refunds (store_id, payment_id, amount_minor, reason, provider_reference, status, restocked, created_by, exchange_id, kind)
         values (${storeId}::uuid, ${m.part.paymentId}::uuid, ${m.part.amountMinor}, ${reason},
-                ${m.providerReference}, ${m.status}::commerce.refund_status, ${ids.length === 0 ? restockJson : "[]"}::jsonb, ${accountId}::uuid, ${exchangeId ?? null}::uuid)
+                ${m.providerReference}, ${m.status}::commerce.refund_status, ${ids.length === 0 ? restockJson : "[]"}::jsonb, ${accountId}::uuid, ${exchangeId ?? null}::uuid,
+                ${m.kind ?? "money"})
         on conflict (store_id, provider_reference) do nothing
         returning id
       `);
@@ -1000,7 +1066,7 @@ async function writeRefunds(
     }
     // A refund recorded outside Kaizen (D173) also says so in the order's history, in words that name no one: `data.note` is the reason (the one free-text key the erasure removes).
     // A gift card's part (D300 F3) went back on the card: never money the store paid back itself.
-    const outsideAmount = manual.filter((m) => m.part.provider === "manual").reduce((sum, m) => sum + m.part.amountMinor, 0);
+    const outsideAmount = manual.filter((m) => m.part.provider === "manual" && m.kind !== "store_credit").reduce((sum, m) => sum + m.part.amountMinor, 0);
     if (outsideAmount > 0) {
       await tx.execute(sql`
         insert into commerce.order_events (store_id, order_id, type, data, actor)
@@ -1008,8 +1074,23 @@ async function writeRefunds(
       `);
     }
     const status = made.length === 0 ? "succeeded" : failed ? "failed" : made.every((m) => m.status === "succeeded") ? "succeeded" : "pending";
+    // Store credit (D364): one card for the refund's `store_credit` rows, issued by the database in this transaction, its code set and the card delivered.
+    let cardId: string | null = null;
+    const creditIds = made.flatMap((m, i) => (m.kind === "store_credit" ? [ids[i]] : []));
+    if (credit && creditIds.length > 0) {
+      const [card] = await tx.execute<Row>(sql`
+        select commerce.gift_card_issue_refund(${storeId}::uuid, ${`{${creditIds.join(",")}}`}::uuid[], ${accountId}::uuid, ${credit.test}) as id
+      `);
+      cardId = String(card.id);
+      await tx.execute(sql`select commerce.gift_card_set_code(${storeId}::uuid, ${cardId}::uuid, ${credit.code.hash}, ${credit.code.last4})`);
+      await tx.execute(sql`select commerce.gift_card_mark_sent(${storeId}::uuid, ${cardId}::uuid)`);
+      await tx.execute(sql`
+        insert into commerce.order_events (store_id, order_id, type, data, actor)
+        values (${storeId}::uuid, ${orderId}::uuid, 'order.store_credit', ${JSON.stringify({ card: cardId, amount: made.filter((m) => m.kind === "store_credit").reduce((sum, m) => sum + m.part.amountMinor, 0) })}::jsonb, 'staff')
+      `);
+    }
     await inTransaction?.(tx, { refundId: ids[0] ?? "", refundIds: ids, status });
-    return { ids, closed };
+    return { ids, closed, cardId };
   });
 }
 

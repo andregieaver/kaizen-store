@@ -741,6 +741,8 @@ export const nb: Messages = {
   /** A cart line whose quantity breaks its variant's rule (D323). */
   problemQuantity: "Antallet av en vare i handlekurven kan ikke kjøpes slik. Endre det i handlekurven og prøv igjen.",
   problemCheckoutRule: "Butikken tar ikke imot denne bestillingen slik den er. Handlekurven sier hvorfor.",
+  problemSignIn: "Logg inn på kontoen din for å gå til kassen i denne butikken.",
+  signInToCheckOut: "Logg inn for å gå til kassen",
   checkoutQuestions: {
     legend: "Noen spørsmål fra butikken",
     required: "må fylles ut",
@@ -1417,5 +1419,7 @@ export const nb: Messages = {
     copySubject: (store: string) => `Gavekortet ditt fra ${store} er på vei`,
     copyHeading: "Gavekortet ditt er på vei",
     copyText: (amount: string, to: string) => `Vi har sendt gavekortet på ${amount} til ${to}. Koden står bare i deres e-post.`,
+    refundSubject: (store: string) => `Refusjonen din fra ${store} som tilgodelapp`,
+    refundText: (number: string) => `Dette er refusjonen din for ordre ${number}, som tilgodelapp. Du bruker den som et gavekort.`,
   },
 };
