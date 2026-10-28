@@ -48,6 +48,20 @@ async function Confirm({ lang, params }: { lang: PlatformLang; params: Promise<{
       <input type="hidden" name="token" value={token} />
       <input type="hidden" name="locale" value={PLATFORM_LANG_FACTS[lang].locale} />
       <p>{w.confirmBody.replaceAll("{store}", found.storeName)}</p>
+      <label className="flex flex-col gap-1 text-sm font-medium">
+        {w.passwordLabel}
+        <input
+          type="password"
+          name="password"
+          autoComplete="new-password"
+          maxLength={200}
+          aria-describedby="signup-password-hint"
+          className="min-h-11 rounded-md border border-border bg-background px-3 text-base font-normal"
+        />
+        <span id="signup-password-hint" className="font-normal text-muted">
+          {w.passwordHint}
+        </span>
+      </label>
       <div>
         <SubmitButton>{w.confirmButton}</SubmitButton>
       </div>

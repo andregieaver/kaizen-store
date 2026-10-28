@@ -743,6 +743,7 @@ export const nb: Messages = {
   problemCheckoutRule: "Butikken tar ikke imot denne bestillingen slik den er. Handlekurven sier hvorfor.",
   problemSignIn: "Logg inn på kontoen din for å gå til kassen i denne butikken.",
   signInToCheckOut: "Logg inn for å gå til kassen",
+  problemNotOpen: "Denne butikken har ikke åpnet ennå, så den tar ikke imot bestillinger. Kom tilbake når den åpner.",
   checkoutQuestions: {
     legend: "Noen spørsmål fra butikken",
     required: "må fylles ut",

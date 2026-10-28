@@ -54,6 +54,10 @@ export const platformNb: PlatformMessages = {
       unknown: "Denne lenken virker ikke. Den kan være brukt allerede eller være eldre enn ett døgn. Registrer deg på nytt for å få en ny.",
       failed: "Vi fikk ikke laget butikken din akkurat nå. Vi har tatt vare på forespørselen og setter opp butikken for deg.",
       off: "Det er stengt for å registrere seg på egen hånd akkurat nå. Vi har tatt vare på forespørselen og skriver til deg når butikken er klar.",
+      passwordLabel: "Velg et passord (valgfritt)",
+      passwordHint: "Minst 12 tegn, og ikke e-postadressen din. Uten passord logger du inn med en lenke vi sender på e-post.",
+      password: "Velg et passord på minst 12 tegn som ikke er e-postadressen din, eller la feltet stå tomt.",
+      doneWithPassword: "{store} er klar. Logg inn med e-postadressen din og passordet du valgte.",
     },
     kaizenLife: {
       // A plain text with `{email}`: the words go to a client component, which cannot take a function.

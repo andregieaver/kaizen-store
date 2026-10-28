@@ -737,6 +737,7 @@ export const da: Messages = {
   problemCheckoutRule: "Butikken tager ikke imod denne bestilling, som den er. Kurven siger hvorfor.",
   problemSignIn: "Log ind på din konto for at gå til kassen i denne butik.",
   signInToCheckOut: "Log ind for at gå til kassen",
+  problemNotOpen: "Denne butik er ikke åbnet endnu, så den tager ikke imod bestillinger. Kom tilbage, når den åbner.",
   checkoutQuestions: {
     legend: "Et par spørgsmål fra butikken",
     required: "skal udfyldes",

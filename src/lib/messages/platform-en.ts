@@ -55,6 +55,10 @@ export const platformEn = {
       unknown: "This link does not work. It may have been used already or be more than a day old. Sign up again to get a new one.",
       failed: "We could not make your store just now. We have kept your request and will set the store up for you.",
       off: "Signing up on your own is closed just now. We have kept your request and will write to you when your store is ready.",
+      passwordLabel: "Choose a password (optional)",
+      passwordHint: "At least 12 characters, not your email address. Without one, you sign in with a link we email you.",
+      password: "Choose a password of at least 12 characters that is not your email address, or leave it empty.",
+      doneWithPassword: "{store} is ready. Sign in with your email address and the password you chose.",
     },
     kaizenLife: {
       // A plain text with `{email}`: the words go to a client component, which cannot take a function.

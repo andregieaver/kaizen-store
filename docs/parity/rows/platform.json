@@ -1388,14 +1388,14 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "partial"
     },
     "weight": 4,
-    "gap": "Since D359 self-serve sign-up is built behind a platform switch (off until a platform admin turns it on at Platform → Access requests): `/sign-up` (and `/no/sign-up`) keeps the request and emails a link to confirm the address, at most 3 sign-ups an address a day and 20 a network an hour (keyed hashes in `chat_usage`); the link's page has a button, and the press makes the account and the store through `commerce.approve_access_request()` with no admin (`confirmSelfSignup()`, `src/server/self-signup.ts`), copied from the theme's content with the person as owner, private until opened (D339), emails a sign-in link, starts a 14-day trial (`store_billing.trial_ends_at`, shown on Billing; the first plan chosen before it ends is first charged at its end, Stripe's `trial_end`) and is audited `store.self_signup`; the setup wizard then guides the owner (D178), and live payments need Stripe onboarding. Still short: no password at sign-up (the account signs in by email link and sets a password later); the trial ends without a hard stop, as no plan is required to keep selling for any store; a store being set up can take payments from someone given its private-mode password once payments are onboarded, which is private mode's purpose (criterion 3 asks that it cannot).",
-    "bucket": "A",
-    "wave": 9,
+    "gap": "Since D359 self-serve sign-up is built behind a platform switch (off until a platform admin turns it on at Platform → Access requests): `/sign-up` (and `/no/sign-up`) keeps the request and emails a link to confirm the address, at most 3 sign-ups an address a day and 20 a network an hour; the press on the link's page makes the account and the store through `commerce.approve_access_request()` with no admin (`confirmSelfSignup()`), copied from the theme's content with the person as owner, private until opened (D339), starts a 14-day trial (`store_billing.trial_ends_at`, Stripe's `trial_end` on the first plan) and is audited `store.self_signup`. Since D369 the person may choose a password on that page (checked before the link is used, set through Supabase Auth's admin API; without one they sign in by the emailed link), and a store that is still private with its setup not completed takes no live payment (`startCheckout()` refuses `not_open`), while its owner tries checkout in test mode. The trial ends without a hard stop, as no plan is required to keep selling for any store (a platform decision, not a criterion).",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "A visitor signs up with an email and password or magic link and gets a store at once, without a person approving it, behind email verification and per-address and per-network limits against abuse.",
       "The new store is copied from the template with its owner as the only member, opens the setup wizard, and records no payment details until Stripe onboarding.",
@@ -1413,13 +1413,15 @@
         "src/components/platform-routes/sign-up-confirm.tsx",
         "src/components/platform-routes/sign-up.tsx",
         "src/app/admin/(gated)/platform/requests/page.tsx",
-        "src/server/billing.ts"
+        "src/server/billing.ts",
+        "src/components/platform-routes/sign-up-confirm.tsx"
       ],
       "tests": [
         "src/server/platform.int.test.ts",
         "e2e/sign-up.spec.ts",
         "src/server/self-signup.int.test.ts",
-        "src/lib/access-emails.test.ts"
+        "src/lib/access-emails.test.ts",
+        "src/server/checkout-kinds.int.test.ts"
       ],
       "untested": false
     },
@@ -1430,8 +1432,16 @@
       "D312",
       "D317",
       "D339",
-      "D359"
+      "D359",
+      "D369"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-28",
+        "from": "partial",
+        "to": "full",
+        "why": "D369: a password at sign-up, and no live payment for a store not opened yet (criteria 1 and 3), held by integration tests."
+      }
+    ]
   }
 ]

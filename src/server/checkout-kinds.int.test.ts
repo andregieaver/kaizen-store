@@ -4327,3 +4327,34 @@ describe("a price list's breaks and rule in euro (D323 E3)", () => {
     }
   });
 });
+
+describe("a store not open yet (D369)", () => {
+  it("takes no live payment while private with its setup not completed, and test payments still", async () => {
+    view = no;
+    jar.clear();
+    await add("DEMO-MUG-WHITE", 1);
+    const [before] = await db().execute<Row>(sql`select private_mode, setup_completed_at from commerce.stores where id = ${storeId}::uuid`);
+    await db().execute(sql`update commerce.stores set private_mode = true, setup_completed_at = null where id = ${storeId}::uuid`);
+    await db().execute(sql`update commerce.stripe_accounts set mode = 'live', card_payments = 'active' where store_id = ${storeId}::uuid`);
+    await db().execute(sql`update commerce.payment_providers set active_mode = 'live' where store_id = ${storeId}::uuid and provider = 'stripe'`);
+    try {
+      expect(await startCheckout({ ...shop(), storeSlug: slug }, cartId(), origin, "Frakt", {}, { customerId: null })).toEqual({ ok: false, problem: "not_open" });
+      expect(await getOpenCheckout(storeId, cartId())).toBeNull();
+    } finally {
+      await db().execute(sql`update commerce.stripe_accounts set mode = 'test' where store_id = ${storeId}::uuid`);
+      await db().execute(sql`update commerce.payment_providers set active_mode = 'test' where store_id = ${storeId}::uuid and provider = 'stripe'`);
+      await db().execute(sql`
+        update commerce.stores set private_mode = ${Boolean(before.private_mode)}, setup_completed_at = ${before.setup_completed_at ? String(before.setup_completed_at) : null}::timestamptz
+        where id = ${storeId}::uuid
+      `);
+    }
+    // In test mode the owner tries the checkout as before.
+    await db().execute(sql`update commerce.stores set private_mode = true where id = ${storeId}::uuid`);
+    try {
+      const started = await startCheckout({ ...shop(), storeSlug: slug }, cartId(), origin, "Frakt", {}, { customerId: null });
+      expect(started.ok).toBe(true);
+    } finally {
+      await db().execute(sql`update commerce.stores set private_mode = ${Boolean(before.private_mode)} where id = ${storeId}::uuid`);
+    }
+  });
+});

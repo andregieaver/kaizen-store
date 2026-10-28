@@ -69,7 +69,7 @@ describe("self-serve sign-up (D359)", () => {
     expect(await signup.confirmationOf("x".repeat(43))).toBeNull();
 
     const done = await signup.confirmSelfSignup(token);
-    expect(done).toEqual({ ok: true, storeName: `Shop ${run}` });
+    expect(done).toEqual({ ok: true, storeName: `Shop ${run}`, password: false });
     const after = await requestOf(email);
     expect(after).toMatchObject({ status: "approved", confirm_hash: null, decided_by: null });
     const storeId = String(after.store_id);
@@ -89,6 +89,29 @@ describe("self-serve sign-up (D359)", () => {
     // The link is good once.
     expect(await signup.confirmSelfSignup(token)).toEqual({ ok: false, problem: "unknown" });
     expect(await signup.confirmationOf(token)).toBeNull();
+  });
+
+  it("sets a password chosen at sign-up after the store is made, and refuses a weak one before the link is used (D369)", async () => {
+    const email = `pw-${run}@example.com`;
+    await signup.startSelfSignup(input(email, `Pw ${run}`), null);
+    const token = await linkSentTo(email);
+    const set: { email: string; password: string }[] = [];
+    const setPassword = async (who: string, password: string) => {
+      set.push({ email: who, password });
+      return true;
+    };
+    // Too short, or the address itself: refused, and the link still works.
+    expect(await signup.confirmSelfSignup(token, { password: "short", setPassword })).toEqual({ ok: false, problem: "password" });
+    expect(await signup.confirmSelfSignup(token, { password: email, setPassword })).toEqual({ ok: false, problem: "password" });
+    expect(await signup.confirmationOf(token)).not.toBeNull();
+    expect(set).toEqual([]);
+    const strong = "lantern orbit maple 42";
+    expect(await signup.confirmSelfSignup(token, { password: strong, setPassword })).toEqual({ ok: true, storeName: `Pw ${run}`, password: true });
+    expect(set).toEqual([{ email, password: strong }]);
+    // A password that could not be set leaves the emailed link: the store is still made.
+    const other = `pw2-${run}@example.com`;
+    await signup.startSelfSignup(input(other, `Pw2 ${run}`), null);
+    expect(await signup.confirmSelfSignup(await linkSentTo(other), { password: strong, setPassword: async () => false })).toEqual({ ok: true, storeName: `Pw2 ${run}`, password: false });
   });
 
   it("gives a taken store name a free address", async () => {

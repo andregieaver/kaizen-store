@@ -175,7 +175,9 @@ export type CheckoutProblem =
   /** A question the store asks at checkout is required and was left unanswered (D357). */
   | "checkout_fields"
   /** The store requires customers to sign in before they buy (D365), and the shopper is not signed in. */
-  | "sign_in_required";
+  | "sign_in_required"
+  /** The store is not open yet (D369): private and its setup not completed, so it takes no live payment. */
+  | "not_open";
 
 export type PlaceResult = { ok: true; order: PlacedOrder } | { ok: false; problem: CheckoutProblem };
 
@@ -1238,6 +1240,12 @@ export async function confirmOnTerms(storeId: string, order: Pick<PlacedOrder, "
  * The mode a store's checkout is in when its provider there is Mollie (D292), else null: payments switched on (the store's `payment_providers` row, D15),
  * and Mollie chosen for that mode and connected.
  */
+/** A store still private with its setup not completed (D369): not open for live payments. */
+async function notOpenYet(storeId: string): Promise<boolean> {
+  const [row] = await db().execute<Row>(sql`select private_mode and setup_completed_at is null as closed from commerce.stores where id = ${storeId}::uuid`);
+  return Boolean(row?.closed);
+}
+
 async function mollieCheckoutMode(storeId: string): Promise<PaymentModeName | null> {
   const [row] = await db().execute<Row>(sql`
     select active_mode from commerce.payment_providers where store_id = ${storeId}::uuid and provider = 'stripe' and enabled
@@ -1334,6 +1342,9 @@ export async function startCheckout(
   // Who pays given with no provider on: gift cards may pay it all (D300 F3); if they do not, the order is refused below as `payments_off`.
   if (!onTerms && !connected && !mollieMode && !payer) return { ok: false, problem: "payments_off" };
   if (onTerms && !customerId) return { ok: false, problem: "terms" };
+  // A store not opened yet (wave 10 unit F, D369: still private, its setup not completed) takes no live payment, whoever has its password; its owner
+  // tries checkout in test mode. `completeSetup()` opens it.
+  if ((mollieMode ?? connected?.connection.mode) === "live" && (await notOpenYet(shop.storeId))) return { ok: false, problem: "not_open" };
   const ui = await getCheckoutUi();
   // Mollie's page asks for no address: who pays is checked before the order is placed, for what the basket needs. On terms (D293) no provider's page asks
   // anything, and a business's invoice needs its full address (Art. 226 point 5): asked always.

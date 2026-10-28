@@ -77,7 +77,7 @@ export async function requestAccess(_state: FormState, formData: FormData): Prom
 /** The press on the confirmation page (D359): makes the store, or says why not, in the page's language. */
 export async function confirmSignup(_state: FormState, formData: FormData): Promise<FormState> {
   const w = platformText(langOfForm(formData)).signUp.selfServe;
-  const done = await confirmSelfSignup(String(formData.get("token") ?? ""));
-  if (done.ok) return { status: "ok", messages: [w.done.replaceAll("{store}", done.storeName)] };
+  const done = await confirmSelfSignup(String(formData.get("token") ?? ""), { password: String(formData.get("password") ?? "") });
+  if (done.ok) return { status: "ok", messages: [(done.password ? w.doneWithPassword : w.done).replaceAll("{store}", done.storeName)] };
   return { status: "error", messages: [w[done.problem]] };
 }

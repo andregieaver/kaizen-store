@@ -42,6 +42,8 @@ export function checkoutLabels(m: Messages, action: string = m.checkout, lang: s
       checkout_fields: m.checkoutQuestions.problem,
       // Customer accounts required (D365).
       sign_in_required: m.problemSignIn,
+      // A store not opened yet (D369).
+      not_open: m.problemNotOpen,
     },
   };
 }

@@ -754,6 +754,7 @@ export const en = {
   problemCheckoutRule: "The store doesn't take this order as it is. The cart says why.",
   problemSignIn: "Sign in to your account to check out in this store.",
   signInToCheckOut: "Sign in to check out",
+  problemNotOpen: "This store is not open yet, so it takes no orders. Come back when it opens.",
   checkoutQuestions: {
     legend: "A few questions from the store",
     required: "required",

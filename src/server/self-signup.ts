@@ -6,6 +6,7 @@ import { sql } from "drizzle-orm";
 import { cacheLife, cacheTag, updateTag } from "next/cache";
 
 import { db } from "@/db/client";
+import { passwordProblem } from "@/lib/password";
 import { requestLang } from "@/lib/access-emails";
 import { platformPath, type PlatformLang } from "@/lib/platform-lang";
 import { parseKey } from "@/lib/secret-box";
@@ -14,6 +15,7 @@ import { suggestSlug } from "@/lib/slug";
 
 import { audit, type Account } from "./auth";
 import { log } from "./log";
+import { adminAuth } from "./supabase-admin";
 import { approveAccessRequest, createAccessRequest, isSlugTaken, sendAccessEmail, type AccessRequestInput } from "./platform";
 
 type Row = Record<string, unknown>;
@@ -144,15 +146,53 @@ export async function freeSlug(storeName: string): Promise<string> {
   return `${stem}-${randomBytes(3).toString("hex")}`;
 }
 
-export type ConfirmResult = { ok: true; storeName: string } | { ok: false; problem: "unknown" | "off" | "failed" };
+export type ConfirmResult = { ok: true; storeName: string; password: boolean } | { ok: false; problem: "unknown" | "off" | "failed" | "password" };
+
+/** Sets the new owner's password in Supabase Auth (an account confirmed by our own link); false when it could not be set. Injectable for tests. */
+export type SetOwnerPassword = (email: string, password: string) => Promise<boolean>;
+
+/** Through Supabase Auth's admin API: a new user with the address confirmed, or the existing one's password set. Never throws. */
+export const setOwnerPasswordWithSupabase: SetOwnerPassword = async (email, password) => {
+  const client = adminAuth();
+  if (!client.ok) return false;
+  try {
+    const made = await client.admin.createUser({ email, password, email_confirm: true });
+    if (!made.error) return true;
+    // An address Supabase already knows (an earlier magic-link sign-in): its password is set instead, found among the users by address.
+    for (let page = 1; page <= 20; page++) {
+      const listed = await client.admin.listUsers({ page, perPage: 200 });
+      if (listed.error) return false;
+      const user = listed.data.users.find((u) => u.email?.toLowerCase() === email.toLowerCase());
+      if (user) return !(await client.admin.updateUserById(user.id, { password })).error;
+      if (listed.data.users.length < 200) return false;
+    }
+    return false;
+  } catch (error) {
+    log("error", "self_signup.password_failed", {}, error);
+    return false;
+  }
+};
 
 /**
  * The press on the confirmation page: the link is used once (claimed before anything is made), then, with the switch still on, the store
  * is made through the approval's own path and its trial started. Off, or when making the store fails, the request stays pending (confirmed)
  * for a platform admin, and the person is told.
  */
-export async function confirmSelfSignup(token: string): Promise<ConfirmResult> {
+export async function confirmSelfSignup(
+  token: string,
+  options: { password?: string | null; setPassword?: SetOwnerPassword } = {},
+): Promise<ConfirmResult> {
   if (!isToken(token)) return { ok: false, problem: "unknown" };
+  // A password chosen at sign-up (wave 10 unit F, D369) is checked before the link is used, so a weak one can be put right on the same page.
+  const password = (options.password ?? "").trim() === "" ? null : String(options.password);
+  if (password) {
+    const [request] = await db().execute<Row>(sql`
+      select email from commerce.access_requests
+      where confirm_hash = ${hashOf(token)} and status = 'pending' and self_serve and confirm_expires_at > now()
+    `);
+    if (!request) return { ok: false, problem: "unknown" };
+    if (passwordProblem(password, String(request.email))) return { ok: false, problem: "password" };
+  }
   const [claimed] = await db().execute<Row>(sql`
     update commerce.access_requests set confirmed_at = now(), confirm_hash = null
      where confirm_hash = ${hashOf(token)} and status = 'pending' and self_serve and confirm_expires_at > now()
@@ -176,7 +216,10 @@ export async function confirmSelfSignup(token: string): Promise<ConfirmResult> {
     const [owner] = await db().execute<Row>(sql`select id from commerce.accounts where lower(email) = lower(${made.email})`);
     await audit(owner ? String(owner.id) : null, made.storeId, "store.self_signup", { requestId, trialDays: TRIAL_DAYS }, { area: "settings", target: { type: "store", id: made.storeId } });
     log("info", "self_signup.store_made", { requestId, storeId: made.storeId });
-    return { ok: true, storeName };
+    // The password is set after the store is made: a failure leaves the owner the emailed link, and never undoes the store.
+    const passwordSet = password ? await (options.setPassword ?? setOwnerPasswordWithSupabase)(made.email, password) : false;
+    if (password && !passwordSet) log("warn", "self_signup.password_not_set", { requestId });
+    return { ok: true, storeName, password: passwordSet };
   } catch (error) {
     log("error", "self_signup.store_failed", { requestId }, error);
     return { ok: false, problem: "failed" };

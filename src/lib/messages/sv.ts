@@ -737,6 +737,7 @@ export const sv: Messages = {
   problemCheckoutRule: "Butiken tar inte emot den här beställningen som den är. Varukorgen säger varför.",
   problemSignIn: "Logga in på ditt konto för att gå till kassan i den här butiken.",
   signInToCheckOut: "Logga in för att gå till kassan",
+  problemNotOpen: "Den här butiken har inte öppnat än, så den tar inte emot beställningar. Kom tillbaka när den öppnar.",
   checkoutQuestions: {
     legend: "Några frågor från butiken",
     required: "obligatorisk",
