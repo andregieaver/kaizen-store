@@ -6,6 +6,7 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { MollieCard } from "@/components/admin/mollie-card";
 import { PaymentMethodsCard } from "@/components/admin/payment-methods-card";
+import { WalletsCard } from "@/components/admin/wallets-card";
 import { StripeAccountPanel } from "@/components/admin/stripe-account-panel";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf, ADMIN_LANG_FACTS } from "@/lib/admin-lang";
@@ -19,11 +20,13 @@ import { ensureTestAccount, requestIp } from "@/server/connect";
 import { kaizenInvoicingOn } from "@/server/invoice-settings";
 import { checkoutProviderOf, chosenCheckoutProviders, mollieAppOn, mollieConnection, mollieMethodStates } from "@/server/mollie";
 import { methodChoices, methodStates } from "@/server/payment-methods";
+import { walletDomains, walletHosts } from "@/server/express-checkout";
 import { getPaymentSettings, recentAudit } from "@/server/settings";
 import { Card, PageHeader } from "@/components/admin/ui";
 
 import {
   activateMollieMethodAction,
+  checkWalletsAction,
   connectMollieAction,
   disconnectMollieAction,
   saveCheckoutProviderAction,
@@ -61,7 +64,10 @@ export default async function PaymentSettingsPage({
       : null;
   const testReady = accounts.test?.cardPayments === "active" || (testSetup?.ok === true && testSetup.ready);
   // What Stripe says of each method (D291), on the account checkout uses: the live one once it is there, else the test one.
-  const methods = { choices, states: await methodStates(store.id, stripe.enabled ? stripe.activeMode : modes.includes("live") && accounts.live ? "live" : "test") };
+  const methodMode = stripe.enabled ? stripe.activeMode : modes.includes("live") && accounts.live ? "live" : "test";
+  const methods = { choices, states: await methodStates(store.id, methodMode) };
+  // Wallets on each web address (D373), on the same account: what was last read from Stripe, and when.
+  const wallets = { hosts: walletHosts(store.slug), read: await walletDomains(store.id, methodMode) };
   // Mollie (D292): offered once Kaizena Flow's Mollie app is set up; its methods are read for the mode the store is in, in its main currency.
   const mollieOn = mollieAppOn();
   const [mollie, mollieChosen] = mollieOn ? await Promise.all([mollieConnection(store.id), chosenCheckoutProviders(store.id)]) : [null, {}];
@@ -182,6 +188,20 @@ export default async function PaymentSettingsPage({
           isOwner={isOwner}
           action={savePaymentMethodsAction.bind(null, store.slug)}
           words={w.methods}
+          locale={ADMIN_LANG_FACTS[lang].locale}
+        />
+      )}
+
+      {modes.length > 0 && (
+        <WalletsCard
+          hosts={wallets.hosts}
+          domains={wallets.read?.domains ?? null}
+          readAt={wallets.read?.readAt ?? null}
+          states={methods.states}
+          isOwner={isOwner}
+          action={checkWalletsAction.bind(null, store.slug, methodMode)}
+          words={w.wallets}
+          methodWords={w.methods}
           locale={ADMIN_LANG_FACTS[lang].locale}
         />
       )}

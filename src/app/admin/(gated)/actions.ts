@@ -22,6 +22,7 @@ import { saveStoreSeo, STORES_TAG } from "@/server/seo";
 import { storeTag } from "@/server/stores";
 import { parsePrice } from "@/lib/product-input";
 import { saveMethodChoices } from "@/server/payment-methods";
+import { checkWalletDomains } from "@/server/express-checkout";
 import { MOLLIE_COOKIE, MOLLIE_COOKIE_PATH } from "@/lib/mollie";
 import { activateMollieMethod, chooseCheckoutProvider, disconnectMollie, mollieStart } from "@/server/mollie";
 import { saveShippingSettings, setStripeProvider, type SaveResult } from "@/server/settings";
@@ -140,6 +141,21 @@ export async function savePaymentMethodsAction(
   const on = new Set(formData.getAll("on").map(String));
   const { changed } = await saveMethodChoices(owner.store.id, owner.account.id, { markets, on });
   return toState({ ok: true }, await paymentsWord((w) => (changed === 0 ? w.nothingChanged : w.methodsSaved)));
+}
+
+/**
+ * *Check again* on the wallets card (D373): every address the store's shoppers pay on is registered on its Stripe account in the mode it takes
+ * payments in, and Stripe's record of each is read back. Owners only, as the rest of the Payments page's changes.
+ */
+export async function checkWalletsAction(storeSlug: string, mode: PaymentModeName, _state: FormState, _form: FormData): Promise<FormState> {
+  const owner = await asOwner(storeSlug);
+  if (!("store" in owner)) return inPayments(owner);
+  if (!PAYMENT_MODES.includes(mode)) return inPayments({ status: "error", messages: [] });
+  const done = await checkWalletDomains(owner.store.id, owner.store.slug, mode, owner.account.id);
+  refresh();
+  return done.ok
+    ? toState({ ok: true }, await paymentsWord((w) => w.walletsChecked))
+    : inPayments({ status: "error", messages: [await paymentsWord((w) => (done.problem === "no_account" ? w.walletsNoAccount : w.walletsFailed))] });
 }
 
 /** "Connect Mollie" (D292): off to Mollie to approve Kaizena Flow, back to `/api/integrations/mollie/callback`. Owners only. */

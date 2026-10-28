@@ -113,6 +113,27 @@ export const paymentsEn = {
       unsupported_entity_type: "Stripe does not offer it to your kind of company",
     } as Record<string, string>,
   },
+  /** Wallets on each of the store's web addresses (D373). */
+  wallets: {
+    title: "Wallets and express checkout",
+    description:
+      "Apple Pay, Google Pay, Link and Klarna show only on web addresses registered on your Stripe account. Kaizena Flow registers each address your shoppers pay on; this table shows what Stripe says of each.",
+    caption: "Each wallet's state on your Stripe account and on each web address",
+    wallet: "Wallet",
+    account: "On your account",
+    check: "Check again",
+    checkedAt: "Last read {when}.",
+    neverRead: "Not read from Stripe yet. Press Check again.",
+    ownerOnly: "Only an owner can check again.",
+    expressNote: "Shoppers see the wallets their device offers on product pages, in the cart and at checkout. A wallet that is not active anywhere is not shown.",
+    states: {
+      active: "Active",
+      inactive: "Not active",
+      off: "Switched off",
+      not_registered: "Not registered",
+      not_read: "Not read yet",
+    },
+  },
   mollie: {
     payPage: "Shoppers pay on Mollie's own page. Kaizena Flow asks for their name, email and delivery address first.",
     fee: "Kaizena Flow's fee is taken on each Mollie payment and is not given back when you refund one.",
@@ -188,6 +209,9 @@ export const paymentsEn = {
     providerSaved: "Saved. New checkouts use it.",
     disconnected: "Mollie is disconnected. Checkouts use Stripe.",
     asked: "Asked Mollie. It shows as active once Mollie has switched it on.",
+    walletsChecked: "Checked. The table shows what Stripe says now.",
+    walletsNoAccount: "There is no Stripe account for this mode yet.",
+    walletsFailed: "Stripe did not answer. Try again in a moment.",
   },
   /** What the server answers in English, said in the account's language (`paymentsProblem()`). */
   problems: {

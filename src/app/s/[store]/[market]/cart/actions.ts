@@ -15,6 +15,10 @@ import { cleanGiftCardRecipient, type GiftCardProblem } from "@/lib/gift-card-li
 import { todayIn } from "@/lib/analytics-period";
 import { t } from "@/lib/i18n";
 import { siteUrl } from "@/lib/site";
+import { stripeLocale } from "@/lib/checkout";
+import { expressProblemText } from "@/lib/checkout-labels";
+import type { ExpressProblem } from "@/lib/express-checkout";
+import { marketPath } from "@/lib/paths";
 import { rememberAffiliate } from "@/server/affiliates";
 import { changeLine, readCartId, setCartCompany, setCartGift, setCartVatNumber } from "@/server/cart";
 import { viesClientKey } from "@/server/vat-checks";
@@ -29,6 +33,7 @@ import { listCheckoutFields, setCartAnswers } from "@/server/checkout-rules";
 import { recordTermsForOrder } from "@/server/checkout-terms";
 import { startCheckout, type CheckoutConsent, type CheckoutProblem } from "@/server/checkout";
 import { resolveSellingShop } from "@/server/shop";
+import { expressOn, startExpress } from "@/server/express-checkout";
 import { setCartCompanyPurchase } from "@/server/company-locations";
 
 import { applyCreditsForm } from "./bonus";
@@ -395,4 +400,56 @@ export async function setGiftAction(
   if (!result.ok) return { ok: false, problems: result.problem === "too_long" ? result.problems : [] };
   refresh();
   return { ok: true, gift: result.gift };
+}
+
+/**
+ * What pressing the express area gives the browser (wave 10 unit J, D373): Stripe's keys for the order's Checkout Session, or the reason in
+ * the shopper's words with the cart's address (the checkout there asks what an express payment cannot).
+ */
+export type ExpressState =
+  | { ok: true; publishableKey: string; stripeAccount: string; clientSecret: string; locale: string; orderHref: string; lines: number }
+  | { ok: false; message: string; cartHref: string };
+
+/**
+ * The express area's press, on a product page (`add`: the chosen variant, put in the cart first exactly as Add to cart does) or in the cart:
+ * the order placed and its session opened by `startExpress()` through `startCheckout()`. The keys go only to the cart's own browser (its
+ * cookie), as the checkout page's do.
+ */
+export async function expressCheckoutAction(
+  storeSlug: string,
+  marketSlug: string,
+  add: { variantId: string; quantity: number } | null,
+): Promise<ExpressState> {
+  const shop = await resolveSellingShop(storeSlug, marketSlug);
+  const m = t(shop?.market.lang ?? "en");
+  const cartHref = shop ? marketPath(shop.store.slug, shop.market.slug, "/cart") : "/";
+  if (!shop) return { ok: false, message: m.problemEmpty, cartHref };
+  const problem = (key: CheckoutProblem | ExpressProblem) => ({ ok: false as const, message: expressProblemText(m, key, shop.market.lang), cartHref });
+  if (!(await expressOn(shop.store, shop.market))) return problem("not_here");
+  if (add) {
+    const form = new FormData();
+    form.set("store", shop.store.slug);
+    form.set("market", shop.market.slug);
+    form.set("variantId", add.variantId);
+    form.set("quantity", String(Math.max(1, Math.min(MAX_ORDER_QUANTITY, Math.trunc(add.quantity) || 1))));
+    const added = await addToCart({ outcome: "idle", quantity: 0 }, form);
+    if (added.outcome !== "added" && added.outcome !== "capped") return problem("add");
+  }
+  const cartId = await readCartId({ storeId: shop.store.id, market: shop.market });
+  if (!cartId) return problem("empty");
+  const header = (await headers()).get("origin");
+  const started = await startExpress(shop, cartId, header ? new URL(header).origin : siteUrl(), m.shipping);
+  if (!started.ok) {
+    refresh();
+    return problem(started.problem);
+  }
+  return {
+    ok: true,
+    publishableKey: started.publishableKey,
+    stripeAccount: started.stripeAccount,
+    clientSecret: started.clientSecret,
+    locale: stripeLocale(shop.market.lang),
+    orderHref: marketPath(shop.store.slug, shop.market.slug, `/order/${started.orderId}?session_id=${encodeURIComponent(started.sessionId)}`),
+    lines: started.lines,
+  };
 }

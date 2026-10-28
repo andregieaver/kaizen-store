@@ -49,6 +49,8 @@ vi.mock("@/server/cart", () => ({
 }));
 // The store's questions at checkout (D357): none here.
 vi.mock("@/server/checkout-rules", () => ({ checkoutQuestionsFor: async () => ({ fields: [], answers: {} }) }));
+// Express checkout and Klarna's line (D373) are not offered here: their own tests hold them.
+vi.mock("@/server/express-checkout", () => ({ expressAreaFor: async () => null, klarnaMessaging: async () => null }));
 // The box itself is a client component with its own test; here only where the cart draws it, and what it is given.
 vi.mock("./cart-gift", () => ({
   GiftBox: (props: { store: string; market: string; lang: string; initial: { isGift: boolean } }) =>

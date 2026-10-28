@@ -11,6 +11,8 @@ import { AddToCart, type AddToCartLabels } from "./add-to-cart";
 import { AddToDelivery, type AddToDeliveryLabels } from "./add-to-delivery";
 import { BackInStock, type BackInStockLabels } from "./back-in-stock";
 import { Dropdown } from "./dropdown";
+import { ExpressArea, type ExpressSetup } from "./express-area";
+import { KlarnaMessage, type KlarnaSetup } from "./klarna-message";
 import { showVariantPicture, type VariantPicture } from "./variant-picture";
 import { announceVariant } from "./variant-selected";
 
@@ -111,6 +113,8 @@ export function VariantPurchase({
   labels,
   delivery,
   notify,
+  express,
+  klarna,
 }: {
   variants: OfferedVariant[];
   prices: OfferedPrice[];
@@ -127,6 +131,10 @@ export function VariantPurchase({
   delivery?: { variants: string[]; listHref: string; labels: AddToDeliveryLabels };
   /** Back in stock (D298): the sold-out variants a shopper may ask to hear about, the signed-in customer's address, and the words. */
   notify?: { variants: string[]; email: string; labels: BackInStockLabels };
+  /** Express checkout (D373): offered to this shopper, for the variants sent by post. */
+  express?: ExpressSetup & { variants: string[] };
+  /** Klarna's line under the price (D373), each price's amount by its place in `prices`. */
+  klarna?: KlarnaSetup & { amounts: number[] };
 }) {
   const [chosen, setChosen] = useVariantChoice(variants[0]?.id ?? "");
   const variant = variants.find((v) => v.id === chosen) ?? variants[0];
@@ -180,6 +188,12 @@ export function VariantPurchase({
             labels={labels}
             capped={variant.capped}
           />
+          {klarna && klarna.amounts[variant.priceIndex] !== undefined && (
+            <KlarnaMessage key={`klarna-${variant.id}`} {...klarna} amountMinor={klarna.amounts[variant.priceIndex]} />
+          )}
+          {express?.variants.includes(variant.id) && variant.available && (
+            <ExpressArea key={`express-${variant.id}`} store={store} market={market} variantId={variant.id} labels={express.labels} terms={express.terms} look={express.look} />
+          )}
           {delivery?.variants.includes(variant.id) && (
             <AddToDelivery key={`delivery-${variant.id}`} store={store} market={market} variantId={variant.id} listHref={delivery.listHref} labels={delivery.labels} />
           )}

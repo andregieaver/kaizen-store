@@ -739,6 +739,17 @@ export const sv: Messages = {
   problemCheckoutRule: "Butiken tar inte emot den här beställningen som den är. Varukorgen säger varför.",
   problemSignIn: "Logga in på ditt konto för att gå till kassan i den här butiken.",
   signInToCheckOut: "Logga in för att gå till kassan",
+  express: {
+    title: "Snabb betalning",
+    hint: "Apple Pay, Google Pay, Link eller Klarna, där din enhet erbjuder dem.",
+    start: "Betala med plånbok",
+    loading: "Gör snabb betalning redo …",
+    forCart: (n: string) => `Det här betalar för allt i din varukorg (${n} varor).`,
+    noWallet: "Din enhet erbjuder ingen snabb betalning här. Gå till kassan i stället.",
+    toCart: "Gå till varukorgen",
+    notHere: "Snabb betalning kan inte betala för det som finns i din varukorg. Gå till kassan från varukorgen.",
+    delivery: "Välj leverans i varukorgen först och betala sedan.",
+  },
   problemNotOpen: "Den här butiken har inte öppnat än, så den tar inte emot beställningar. Kom tillbaka när den öppnar.",
   checkoutQuestions: {
     legend: "Några frågor från butiken",

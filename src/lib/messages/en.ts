@@ -757,6 +757,18 @@ export const en = {
   problemCheckoutRule: "The store doesn't take this order as it is. The cart says why.",
   problemSignIn: "Sign in to your account to check out in this store.",
   signInToCheckOut: "Sign in to check out",
+  /** Express checkout on a product page and in the cart (wave 10 unit J, D373). */
+  express: {
+    title: "Express checkout",
+    hint: "Apple Pay, Google Pay, Link or Klarna, where your device offers them.",
+    start: "Pay with a wallet",
+    loading: "Getting express payment ready…",
+    forCart: (n: string) => `This pays for everything in your cart (${n} items).`,
+    noWallet: "Your device offers no express payment here. Use the checkout instead.",
+    toCart: "Go to the cart",
+    notHere: "Express payment can't pay for what is in your cart. Use the checkout in the cart.",
+    delivery: "Choose how your order is delivered in the cart first, then pay.",
+  },
   problemNotOpen: "This store is not open yet, so it takes no orders. Come back when it opens.",
   checkoutQuestions: {
     legend: "A few questions from the store",

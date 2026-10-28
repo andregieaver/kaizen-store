@@ -112,6 +112,15 @@ redirect that ends on `/checkout` use a full navigation (the cart's action hands
 market layout's `PayDocumentWatcher` notes that in a module variable (nothing is stored, a reload starts clean, so it cannot loop).
 The cart's slide-out on phones is not a pay page and is left alone. A scan test fails on a `<Link>` to `/checkout`.
 
+**Express checkout outside the pay routes (D373).** A product page draws Stripe's Express Checkout Element and Klarna's messaging element,
+and the product page is not a pay route: it carries the store's own code, the consent manager and the chat. Neither element takes a card on the
+page: a wallet's card stays in the wallet (Apple Pay's and Google Pay's sheets are the browser's or the device's), Link opens its own window on
+`link.com`, Klarna sends the shopper to Klarna, and the messaging element only shows words. Both are Stripe's frames from `js.stripe.com`,
+loaded only after a press (the express area) or once the price is on the screen (Klarna's line), never in the page's first scripts. The cart
+draws the same elements under the pay routes' policy. The client secret of the order's session reaches only the browser that owns the cart,
+as on the checkout page. The SAQ A question is still the company's: an assessor may ask whether a page with other scripts may hold a wallet's
+button; the elements can be taken off the product page by removing `ExpressArea` and `KlarnaMessage` from `VariantPurchase`.
+
 **A store on Mollie (D292) adds no origin to the policy.** The cart's action hands back the address of Mollie's own hosted page and the
 browser leaves with a full navigation; the shopper types nothing about a card on Kaizena Flow's pages (their name, email and address only,
 which the cart asks before Mollie's page asks for none), and comes back to the order page by Mollie's redirect. Nothing of Mollie's is

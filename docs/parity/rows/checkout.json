@@ -216,14 +216,14 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "partial"
     },
     "weight": 4,
-    "gap": "Stripe's `ExpressCheckoutElement` (Apple Pay, Google Pay, Link, Klarna where Stripe offers them) is drawn at the top of the checkout page only (D22, `src/components/checkout-form.tsx`, the only user), and the store's host is registered with Stripe by `ensurePaymentDomain()` when a session opens. The Payments page (D291) shows the state of cards (with Apple Pay and Google Pay together) and Link at Stripe, but not each wallet or each domain's registration. Missing: express buttons on the product page and the cart, a per-domain status, a test that an express payment ends as a paid order carrying the wallet's address and delivery choice, and a cross-store wallet like Shop Pay (bucket D for that part).",
-    "bucket": "B",
-    "wave": 4,
+    "gap": "Stripe's Express Checkout Element (Apple Pay, Google Pay, Link, Klarna where Stripe offers them) is on the checkout page (D22) and, since D373, on the product page and in the cart: the area is a button until pressed, the press places the cart's order through `startCheckout()` and only then loads the element, and the wallet's address and the cart's delivery reach the order through `applySession()` (`express-checkout.int.test.ts`, a fake Stripe). The Payments page lists each wallet's state on the account and on each web address the store's shoppers pay on, with Stripe's reason (`WalletsCard`, `checkWalletDomains()`). Link is Stripe's saved-details wallet across merchants; there is no wallet of Kaizena Flow's own like Shop Pay. A product page's express payment pays for the whole cart.",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "Express buttons are on the cart and product page as well as the checkout, and an express payment ends as a paid order (integration test with a fake Stripe).",
       "The store's domain is registered for Apple Pay and Google Pay on every host it is served from, and the admin shows the status per domain.",
@@ -232,23 +232,38 @@
     ],
     "evidence": {
       "files": [
+        "src/components/admin/payment-methods-card.tsx",
+        "src/components/admin/wallets-card.tsx",
         "src/components/checkout-form.tsx",
-        "src/server/connect.ts",
+        "src/components/express-area.tsx",
+        "src/components/express-panel.tsx",
+        "src/lib/express-checkout.ts",
         "src/server/checkout.ts",
-        "src/server/payment-session.ts",
-        "src/components/admin/payment-methods-card.tsx"
+        "src/server/connect.ts",
+        "src/server/express-checkout.ts",
+        "src/server/payment-session.ts"
       ],
       "tests": [
-        "src/server/checkout-stripe.int.test.ts"
+        "src/lib/express-checkout.test.ts",
+        "src/server/checkout-stripe.int.test.ts",
+        "src/server/express-checkout.int.test.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D22",
       "D23",
-      "D291"
+      "D291",
+      "D373"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-28",
+        "from": "partial",
+        "to": "full",
+        "why": "D373: express buttons on the product page and in the cart through the checkout's own path, each wallet's state per web address on the Payments page, and an integration test with a fake Stripe that an express payment ends as a paid order with the wallet's address and the cart's delivery (criteria 1 to 4)."
+      }
+    ]
   },
   {
     "id": "checkout.integrated-payments-provider-in-the-nordics-and-eu",
@@ -383,14 +398,14 @@
       "checkedOn": "2026-10-02"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "partial"
     },
     "weight": 4,
-    "gap": "Kaizena Flow requests `klarna_payments` for every store account, the Payments page shows its state at Stripe with the reason, and the owner switches it off per country, which leaves it out of that country's sessions (D291, `payment-methods.int.test.ts`): criteria 1 and 2 are held. Missing: Klarna's payment messaging on product and cart pages (nothing in the code draws it), and a test that an eligible checkout is offered Klarna (Stripe decides that, outside Kaizena Flow).",
-    "bucket": "B",
-    "wave": 4,
+    "gap": "Kaizena Flow requests `klarna_payments` for every store account, the Payments page shows its state at Stripe with the reason, and the owner switches it off per country, which leaves it out of that country's sessions (D291). Since D373 product pages and the cart show Stripe's Klarna messaging where Klarna is active on the account and on for the country (`klarnaMessaging()`, `KlarnaMessage`), and an eligible checkout's session leaves nothing out of Stripe's choice, Klarna included (`express-checkout.int.test.ts`). Whether Klarna then shows to a shopper is Stripe's decision by country, currency and amount.",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "The admin shows whether Klarna is requested, active or held back for the store, with Stripe's reason.",
       "An owner switches Klarna on or off per market from Kaizen, and checkout offers it only where on.",
@@ -399,28 +414,41 @@
     ],
     "evidence": {
       "files": [
-        "src/server/connect.ts",
+        "src/app/admin/(gated)/[store]/settings/payments/page.tsx",
+        "src/components/admin/payment-methods-card.tsx",
+        "src/components/klarna-element.tsx",
+        "src/components/klarna-message.tsx",
+        "src/lib/payment-methods.ts",
         "src/lib/stripe-account.ts",
         "src/server/checkout.ts",
-        "src/app/admin/(gated)/[store]/settings/payments/page.tsx",
-        "src/lib/payment-methods.ts",
-        "src/server/payment-methods.ts",
-        "src/components/admin/payment-methods-card.tsx"
+        "src/server/connect.ts",
+        "src/server/express-checkout.ts",
+        "src/server/payment-methods.ts"
       ],
       "tests": [
-        "src/server/billing.int.test.ts",
+        "src/lib/express-checkout.test.ts",
+        "src/lib/payment-methods.test.ts",
         "src/lib/stripe-account.test.ts",
-        "src/server/payment-methods.int.test.ts",
-        "src/lib/payment-methods.test.ts"
+        "src/server/billing.int.test.ts",
+        "src/server/express-checkout.int.test.ts",
+        "src/server/payment-methods.int.test.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D22",
       "D23",
-      "D291"
+      "D291",
+      "D373"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-28",
+        "from": "partial",
+        "to": "full",
+        "why": "D373: Klarna's messaging on product and cart pages where Klarna is active and on for the country (criterion 3), and a test that an eligible session leaves Klarna in Stripe's choice (criterion 4)."
+      }
+    ]
   },
   {
     "id": "checkout.vipps",

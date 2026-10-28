@@ -6595,6 +6595,13 @@ export const stripeAccounts = commerce.table(
     paymentMethodsShown: boolean("payment_methods_shown").notNull().default(false),
     /** What Stripe last said of each of Kaizena Flow's payment capabilities on this account (`capabilityStates()`, D291): status and Stripe's reason. */
     methodStates: jsonb("method_states").notNull().default({}),
+    /**
+     * What Stripe last said of each web address registered on this account (D373, `checkWalletDomains()`): by host, whether it is on and
+     * Apple Pay's, Google Pay's, Link's and Klarna's state with Stripe's reason. Read on the Payments page.
+     */
+    walletDomains: jsonb("wallet_domains").notNull().default({}),
+    /** When `wallet_domains` was read; null: never, so the page says *not read* rather than *not registered*. */
+    walletDomainsAt: timestamp("wallet_domains_at", { withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
     createdBy: uuid("created_by").references(() => accounts.id),

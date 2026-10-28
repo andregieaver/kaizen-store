@@ -1,6 +1,7 @@
 import type { CheckoutLabels } from "@/components/checkout-button";
 
 import { customsText } from "./customs-text";
+import type { ExpressProblem } from "./express-checkout";
 import type { Messages } from "./i18n";
 
 /** The checkout button's texts, shared by the cart and the checkout page. */
@@ -46,4 +47,11 @@ export function checkoutLabels(m: Messages, action: string = m.checkout, lang: s
       not_open: m.problemNotOpen,
     },
   };
+}
+
+/** Why an express payment did not start (D373), in the shopper's words: the checkout's own reasons, and the three of the express area. */
+export function expressProblemText(m: Messages, problem: string, lang: string = "en"): string {
+  const express: Record<ExpressProblem, string> = { not_here: m.express.notHere, delivery: m.express.delivery, add: m.tryAgain };
+  if (problem in express) return express[problem as ExpressProblem];
+  return (checkoutLabels(m, undefined, lang).problems as Record<string, string>)[problem] ?? m.problemPayment;
 }

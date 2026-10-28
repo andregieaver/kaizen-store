@@ -56,6 +56,7 @@ import { appointmentSlots, getAppointmentOffer } from "@/server/appointments";
 import { getVariantStock, type EconomicOperator, type ProductDetail } from "@/server/catalog";
 import { relatedProducts } from "@/server/listing";
 import { priceBreaksFor } from "@/server/price-breaks";
+import { expressAreaFor, klarnaMessaging } from "@/server/express-checkout";
 import { blockedSchemes } from "@/server/producer-registrations";
 import { buyerRulesFor, listPricesFor } from "@/server/price-lists";
 import { getRangeOffer, getRangePricing, rangeDates } from "@/server/ranges";
@@ -64,6 +65,7 @@ import type { ReviewFacts } from "@/server/review-facts";
 import { backInStockOn } from "@/server/stock-requests";
 import type { Store } from "@/server/stores";
 import { partFeatureOn } from "@/lib/part-features";
+import { stripeLocale } from "@/lib/checkout";
 import { featureOn, type FeatureSource } from "@/lib/store-features";
 import { themeLayersOf } from "@/lib/section-styles";
 
@@ -853,13 +855,18 @@ async function VariantsWithStock({
   // cart prices them (`LIST_PRICED`).
   const buyer = product.plans.length === 0 ? getCustomer(store.id).then((customer) => customer?.id ?? null) : null;
   const ids = product.variants.map((v) => v.id);
-  const [availability, notifyOn, listed, breaks, listRules] = await Promise.all([
+  // Express checkout and Klarna's line (D373): goods (a bundle reads as goods here) sent by post, bought once; whether this shopper is offered them
+  // is read per request.
+  const expressKind = product.kind === "goods" && product.plans.length === 0 && !product.subscriptionOnly;
+  const [availability, notifyOn, listed, breaks, listRules, express, klarna] = await Promise.all([
     getVariantStock(store.id, ids),
     backInStockOn(store.id),
     buyer ? buyer.then((id) => listPricesFor(store.id, id, ids, market.code)) : new Map<string, { amountMinor: number; listId: string }>(),
     buyer ? buyer.then((id) => priceBreaksFor(store.id, id, ids, market.code)) : new Map<string, BreakStep[]>(),
     // A buyer's price lists may give a variant a rule of their own (D323 E3); the page's cached rule is the variant's.
     buyer ? buyer.then((id) => buyerRulesFor(store.id, id, ids)) : new Map<string, QuantityRule>(),
+    expressKind ? expressAreaFor(store, market, m) : null,
+    expressKind ? klarnaMessaging(store, market) : null,
   ]);
   const ruleOfVariant = (variant: ProductDetail["variants"][number]) => listRules.get(variant.id) ?? variant.rule;
   // The price a variant is offered at: the buyer's list price where a list gives one (in the market's view, never a reduction), else the shop's.
@@ -891,11 +898,14 @@ async function VariantsWithStock({
   const priced = (() => {
     const places = new Map<string, number>();
     const prices: { price: ReactNode; amount: ReactNode }[] = [];
+    // Each price's amount as shown, for Klarna's line under it (D373).
+    const amounts: number[] = [];
     const index = ({ price, yours }: ReturnType<typeof offered>) => {
       const key = JSON.stringify([price, yours]);
       const known = places.get(key);
       if (known !== undefined) return known;
       places.set(key, prices.length);
+      amounts.push(price.amountMinor);
       prices.push({
         price: (
           <PlanPrice
@@ -922,7 +932,7 @@ async function VariantsWithStock({
       });
       return prices.length - 1;
     };
-    return { index, prices };
+    return { index, prices, amounts };
   })();
 
   // One table of price breaks drawn per distinct table (D323), each variant naming its own by place, as its price.
@@ -979,6 +989,12 @@ async function VariantsWithStock({
           })}
           prices={priced.prices}
           breakTables={breakTables.tables}
+          express={
+            express
+              ? { ...express, variants: product.variants.filter((v) => v.delivery === "physical").map((v) => v.id) }
+              : undefined
+          }
+          klarna={klarna ? { ...klarna, currency: market.currency, country: market.code, locale: stripeLocale(market.lang), amounts: priced.amounts } : undefined}
           labels={{
             addToCart: m.addToCart,
             adding: m.adding,

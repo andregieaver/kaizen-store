@@ -110,6 +110,26 @@ export const paymentsNb: PaymentsMessages = {
       unsupported_entity_type: "Stripe tilbyr den ikke til din type selskap",
     },
   },
+  wallets: {
+    title: "Lommebøker og rask betaling",
+    description:
+      "Apple Pay, Google Pay, Link og Klarna vises bare på nettadresser som er registrert på Stripe-kontoen din. Kaizena Flow registrerer hver adresse kundene dine betaler på; tabellen viser hva Stripe sier om hver.",
+    caption: "Hver lommeboks status på Stripe-kontoen din og på hver nettadresse",
+    wallet: "Lommebok",
+    account: "På kontoen din",
+    check: "Sjekk igjen",
+    checkedAt: "Sist lest {when}.",
+    neverRead: "Ikke lest fra Stripe ennå. Trykk Sjekk igjen.",
+    ownerOnly: "Bare en eier kan sjekke igjen.",
+    expressNote: "Kundene ser lommebøkene enheten deres tilbyr på produktsider, i handlekurven og i kassen. En lommebok som ikke er aktiv noe sted, vises ikke.",
+    states: {
+      active: "Aktiv",
+      inactive: "Ikke aktiv",
+      off: "Slått av",
+      not_registered: "Ikke registrert",
+      not_read: "Ikke lest ennå",
+    },
+  },
   mollie: {
     payPage: "Kundene betaler på Mollies egen side. Kaizena Flow spør først om navn, e-post og leveringsadresse.",
     fee: "Kaizena Flows gebyr tas av hver Mollie-betaling og gis ikke tilbake når du gjør en tilbakebetaling.",
@@ -184,6 +204,9 @@ export const paymentsNb: PaymentsMessages = {
     providerSaved: "Lagret. Nye kasser bruker den.",
     disconnected: "Mollie er koblet fra. Kassene bruker Stripe.",
     asked: "Mollie er spurt. Den vises som aktiv når Mollie har slått den på.",
+    walletsChecked: "Sjekket. Tabellen viser hva Stripe sier nå.",
+    walletsNoAccount: "Det finnes ingen Stripe-konto for denne modusen ennå.",
+    walletsFailed: "Stripe svarte ikke. Prøv igjen om litt.",
   },
   problems: {
     noAccess: "Du har ikke tilgang til dette.",

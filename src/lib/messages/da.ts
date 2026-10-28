@@ -739,6 +739,17 @@ export const da: Messages = {
   problemCheckoutRule: "Butikken tager ikke imod denne bestilling, som den er. Kurven siger hvorfor.",
   problemSignIn: "Log ind på din konto for at gå til kassen i denne butik.",
   signInToCheckOut: "Log ind for at gå til kassen",
+  express: {
+    title: "Hurtig betaling",
+    hint: "Apple Pay, Google Pay, Link eller Klarna, hvor din enhed tilbyder dem.",
+    start: "Betal med wallet",
+    loading: "Gør hurtig betaling klar …",
+    forCart: (n: string) => `Dette betaler for alt i din kurv (${n} varer).`,
+    noWallet: "Din enhed tilbyder ingen hurtig betaling her. Gå til kassen i stedet.",
+    toCart: "Gå til kurven",
+    notHere: "Hurtig betaling kan ikke betale for det, der er i din kurv. Gå til kassen fra kurven.",
+    delivery: "Vælg levering i kurven først, og betal derefter.",
+  },
   problemNotOpen: "Denne butik er ikke åbnet endnu, så den tager ikke imod bestillinger. Kom tilbage, når den åbner.",
   checkoutQuestions: {
     legend: "Et par spørgsmål fra butikken",

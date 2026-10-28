@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."stripe_accounts" ADD COLUMN "wallet_domains" jsonb DEFAULT '{}'::jsonb NOT NULL;--> statement-breakpoint
+ALTER TABLE "commerce"."stripe_accounts" ADD COLUMN "wallet_domains_at" timestamp with time zone;

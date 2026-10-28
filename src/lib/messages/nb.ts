@@ -745,6 +745,17 @@ export const nb: Messages = {
   problemCheckoutRule: "Butikken tar ikke imot denne bestillingen slik den er. Handlekurven sier hvorfor.",
   problemSignIn: "Logg inn på kontoen din for å gå til kassen i denne butikken.",
   signInToCheckOut: "Logg inn for å gå til kassen",
+  express: {
+    title: "Rask betaling",
+    hint: "Apple Pay, Google Pay, Link eller Klarna, der enheten din tilbyr dem.",
+    start: "Betal med lommebok",
+    loading: "Gjør klar rask betaling …",
+    forCart: (n: string) => `Dette betaler for alt i handlekurven din (${n} varer).`,
+    noWallet: "Enheten din tilbyr ingen rask betaling her. Gå til kassen i stedet.",
+    toCart: "Gå til handlekurven",
+    notHere: "Rask betaling kan ikke betale for det som er i handlekurven din. Gå til kassen fra handlekurven.",
+    delivery: "Velg levering i handlekurven først, og betal så.",
+  },
   problemNotOpen: "Denne butikken har ikke åpnet ennå, så den tar ikke imot bestillinger. Kom tilbake når den åpner.",
   checkoutQuestions: {
     legend: "Noen spørsmål fra butikken",

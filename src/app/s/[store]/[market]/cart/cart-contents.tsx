@@ -6,6 +6,11 @@ import Link from "next/link";
 import { BackorderLine } from "@/components/backorder-note";
 import { BonusCredits } from "@/components/bonus-credits";
 import { CheckoutButton } from "@/components/checkout-button";
+import { ExpressArea } from "@/components/express-area";
+import { KlarnaMessage } from "@/components/klarna-message";
+import { stripeLocale } from "@/lib/checkout";
+import { expressFits } from "@/lib/express-checkout";
+import { expressAreaFor, klarnaMessaging } from "@/server/express-checkout";
 import { DiscountCodeForm } from "@/components/discount-code-form";
 import { GiftCardForm } from "@/components/gift-card-form";
 import { shownCartGiftCards } from "@/lib/gift-card-words";
@@ -133,6 +138,13 @@ async function loadCartView(store: Store, market: Market, m: Messages) {
     name: saved?.companyName ?? "",
     number: saved?.organisationNumber ?? "",
   };
+  // Express checkout (D373): a basket of goods sent by post, nothing to ask first (a company, questions, terms or cards that pay it all).
+  const expressable =
+    expressFits(cart.lines) && !summary.blocked && !summary.giftCards.coverAll && !termsOffer?.ok && !companyNeeded && !business && questions.fields.length === 0;
+  const [express, klarna] = await Promise.all([
+    expressable ? expressAreaFor(store, market, m) : null,
+    expressable ? klarnaMessaging(store, market) : null,
+  ]);
   // The subscription's terms, said the same way in the summary and the consent (D29).
   const terms = plan
     ? [
@@ -167,6 +179,8 @@ async function loadCartView(store: Store, market: Market, m: Messages) {
     cardsPayAll,
     companyBuy,
     questions,
+    express,
+    klarna: klarna ? { ...klarna, currency: market.currency, country: market.code, locale: stripeLocale(market.lang) } : null,
   };
 }
 
@@ -908,6 +922,11 @@ function checkoutAction({ store, market, m, view }: Draw) {
         <p className="text-sm" role={checkout.starter ? "note" : undefined}>
           {checkout.starter ? m.starterCheckout : m.checkoutUnavailable}
         </p>
+      )}
+      {!view.mustSignInFirst && view.klarna && <KlarnaMessage {...view.klarna} amountMinor={summary.total} />}
+      {/* Express checkout (D373): the wallets over the same order the button places, loaded only when this area is pressed. */}
+      {!view.mustSignInFirst && view.express && (
+        <ExpressArea store={store.slug} market={market.slug} labels={view.express.labels} terms={view.express.terms} look={view.express.look} />
       )}
       {summary.refusal ? (
         // A checkout rule refuses the basket (D357): the owner's own words, in the cart's language.

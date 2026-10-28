@@ -96,7 +96,22 @@ gift card ledger, and nothing new is needed at checkout.
 - **J (D373).** Stripe's Express Checkout Element on the product page (loaded on the press of the area, never in the first scripts) and in the
   cart, each making the cart and the order through the existing checkout path; the Payments page lists each wallet's state and each host's
   registration; Klarna's messaging element where Klarna is active; a fake-Stripe integration test that an express payment ends as a paid
-  order with the wallet's address and delivery choice.
+  order with the wallet's address and delivery choice. **As built:** the area is a plain button (`ExpressArea`) until pressed; the press calls
+  `expressCheckoutAction()`, which on a product page puts the chosen variant in the cart through `addToCart()` and then runs
+  `startExpress()`: the basket checked by `expressFits()` (goods sent by post, bought once: no download, booking, plan, gift card or host),
+  the delivery settled without waiting for a postal code (`deliveryReady()`), then `startCheckout()` exactly as the cart's button, and the
+  open checkout's client secret handed to the cart's own browser; only then is `express-panel.tsx` (Stripe's Express Checkout Element over
+  `CheckoutElementsProvider`) loaded, and a wallet's press runs the checkout page's steps (delivery, terms) before Stripe's `confirm`. The
+  wallet's address and the cart's delivery reach the order through `applySession()` as for any payment. Offered only by `expressOn()`:
+  Kaizena Flow's own checkout page, Stripe as the store's checkout, payments on, not a store template, a signed-in shopper where accounts
+  are required (D365), a private buyer, no checkout questions (D357). The basket a product page's press pays for is the whole cart; the
+  panel says so when the cart holds more than the one line. Klarna's line (`KlarnaMessage`, Stripe's messaging element) is loaded when the
+  price is on the screen and the browser is idle, only where `klarnaMessaging()` finds Klarna active on the account in the mode payments are
+  taken in and on for the country. The Payments page's *Wallets and express checkout* card lists Apple Pay, Google Pay, Link and Klarna:
+  the capability on the account, and each web address the store's shoppers pay on (`walletHosts()`) as Stripe's `PaymentMethodDomain`
+  reports it, with Stripe's reason, kept in `stripe_accounts.wallet_domains` by *Check again* (`checkWalletDomains()`, the owner's). "Host"
+  is read as a web address the store is served from; outside hosts' own accounts (D71) register the address when their session opens, as
+  before, and are not listed.
 - **K (D374).** *Book labels* as a bulk action: one booking at a time per carrier, each failure named, and the labels printed together.
 - **L (D375).** Sign in with Google for customers, through Kaizena Flow's own OAuth client on the platform's host and a one-time hand-over
   to the store's host; only a verified email matched to an account; tested against a stubbed provider; live when the client exists.
