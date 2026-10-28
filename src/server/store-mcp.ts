@@ -12,6 +12,7 @@ import { GATED_WHEN_LIVE } from "@/lib/product-tools";
 import { GATED_WHEN_OPEN } from "@/lib/setup-tools";
 import { siteUrl } from "@/lib/site";
 
+import { noticeApproval } from "./assistant-notices";
 import { holderOf, type Account, type Membership } from "./auth";
 import { keepForApproval, kaizenLifeConversation, runTurn, type AssistantEvent } from "./owner-assistant";
 import { gateNeeded, OwnerToolError, preflightOwnerTool, runOwnerTool } from "./owner-tools";
@@ -190,6 +191,8 @@ export async function callMcpTool(
       tool.gate,
       input.input as Record<string, unknown>,
     );
+    // The owner hears of it in the admin too (D350): the change waits in this conversation.
+    await noticeApproval(approval, conversation, member.account.id, member.store.id);
     return text({
       kept_for_approval: true,
       what: approval.summary,

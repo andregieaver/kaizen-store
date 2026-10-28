@@ -14051,6 +14051,76 @@ export const assistantFollowUps = commerce.table(
   ],
 );
 
+/**
+ * What the AI manager finished or waits on while the person was away (D350): a page built, a follow-up answered, an autopilot question or
+ * finished plan, a change kept for their yes, a report sent. Written only by `src/server/assistant-notices.ts`, once per account, kind and
+ * reference; read and marked read by the person; kept 60 days. A staff member's own work queue, never a shopper's data.
+ */
+export const assistantNotices = commerce.table(
+  "assistant_notices",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    accountId: uuid("account_id")
+      .notNull()
+      .references(() => accounts.id, { onDelete: "cascade" }),
+    /** Null for Kaizena Flow's own AI manager. */
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    /** What it is about (a job's, follow-up's, step's, plan's, approval's or report's id), so it is written once. */
+    ref: text("ref").notNull(),
+    /** The facts its words are made from (a title, a summary), never a customer's details. */
+    facts: jsonb("facts").notNull().default({}),
+    /** Where it opens: an admin path of the person's own place. */
+    href: text("href").notNull(),
+    readAt: timestamp("read_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("assistant_notices_once").on(t.accountId, t.kind, t.ref),
+    index("assistant_notices_unread_idx").on(t.accountId, t.storeId, t.createdAt).where(sql`${t.readAt} is null`),
+    index("assistant_notices_store_idx").on(t.storeId),
+    index("assistant_notices_created_idx").on(t.createdAt),
+    check(
+      "assistant_notices_kind",
+      sql`${t.kind} in ('page_built', 'follow_up', 'plan_question', 'plan_done', 'approval_waiting', 'report_ready')`,
+    ),
+    check("assistant_notices_ref", sql`length(${t.ref}) between 1 and 200`),
+    check("assistant_notices_href", sql`${t.href} like '/admin/%' and length(${t.href}) <= 300`),
+  ],
+);
+
+/**
+ * Skills a person saves for the AI manager (D350), beside the built-in playbooks of `ASSISTANT_SKILLS`: a key, a title, when to use it and
+ * the steps in words. A person's own in a store (or on Kaizena Flow's own site, `store_id` null); an owner may share one with the store's
+ * staff (`shared`). Written only by `src/server/assistant-saved-skills.ts`, never with a customer's details or a secret.
+ */
+export const assistantSkills = commerce.table(
+  "assistant_skills",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    accountId: uuid("account_id")
+      .notNull()
+      .references(() => accounts.id, { onDelete: "cascade" }),
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    key: text("key").notNull(),
+    title: text("title").notNull(),
+    whenToUse: text("when_to_use").notNull().default(""),
+    steps: text("steps").notNull(),
+    shared: boolean("shared").notNull().default(false),
+    createdAt: createdAt(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique("assistant_skills_key").on(t.accountId, t.storeId, t.key).nullsNotDistinct(),
+    index("assistant_skills_store_idx").on(t.storeId, t.shared),
+    check("assistant_skills_key_shape", sql`${t.key} ~ '^[a-z0-9]+(-[a-z0-9]+)*$' and length(${t.key}) between 2 and 60`),
+    check("assistant_skills_title", sql`length(${t.title}) between 1 and 120`),
+    check("assistant_skills_when", sql`length(${t.whenToUse}) <= 300`),
+    check("assistant_skills_steps", sql`length(${t.steps}) between 1 and 2000`),
+    check("assistant_skills_shared", sql`not ${t.shared} or ${t.storeId} is not null`),
+  ],
+);
+
 // ---------------------------------------------------------------------------
 // The autopilot's goals and plans (D309, `docs/ai-autopilot.md` 7)
 // ---------------------------------------------------------------------------

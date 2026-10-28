@@ -8,6 +8,7 @@ import { MANAGER_TOOLS_BY_NAME, PLATFORM_TOOLS_BY_NAME } from "@/lib/manager-too
 import { OWNER_TOOLS_BY_NAME, readToolInput, type GateCategory } from "@/lib/owner-tools";
 import type { AutonomySettings } from "@/lib/autopilot-autonomy";
 
+import { noticeApproval, noticeAutopilot } from "./assistant-notices";
 import { actingAs } from "./actor";
 import { aiFor, type AiConnection } from "./ai";
 import { activeAccount, passMembership } from "./auth";
@@ -83,6 +84,8 @@ export async function runAutopilot(deps: AutopilotDeps = {}): Promise<AutopilotR
       result.retried++;
     }
   }
+  // The questions this run asked and the plans it finished are notices for their makers (D350).
+  if (taken > 0) await noticeAutopilot();
   return result;
 }
 
@@ -237,6 +240,7 @@ async function runToolStep(plan: PlanFacts, p: Principal, step: PlanStep, settin
         if (ownerCtx) await preflightOwnerTool(ownerCtx, name, args);
         else await preflightPlatformTool(managerCtx, name, args);
         const kept = await keepForApproval({ account: p.account, store: p.store, invalidate: refreshTag }, plan.conversation_id, name, tool.gate, read.input as Record<string, unknown>, step.id);
+        await noticeApproval(kept, plan.conversation_id, p.account.id, p.store?.id ?? null);
         await db().execute(sql`
           update commerce.assistant_plan_steps set status = 'waiting', claimed_until = null, result = ${JSON.stringify({ done: `Waiting for your yes: ${kept.summary}` })}::jsonb
           where id = ${step.id}::uuid and status = 'running'

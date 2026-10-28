@@ -11,6 +11,8 @@ import {
   deleteConversationAction,
   loadConversationAction,
   rateAnswerAction,
+  deleteSkillAction,
+  saveSkillAction,
 } from "./actions";
 
 export const metadata: Metadata = { title: "AI manager" };
@@ -33,16 +35,19 @@ export default async function StoreAssistantPage({ params, searchParams }: PageP
       siteName={member.store.name}
       settingsHref={`/admin/${slug}/settings/ai`}
       accountId={member.account.id}
+      storeId={member.store.id}
       tab={typeof tab === "string" ? tab : undefined}
       abilities={abilities}
       conversations={conversations}
       conversation={conversation}
+      skillActions={{ save: saveSkillAction.bind(null, slug), remove: deleteSkillAction.bind(null, slug) }}
       actions={{
         decide: decideApprovalAction.bind(null, slug),
         remove: deleteConversationAction.bind(null, slug),
         load: loadConversationAction.bind(null, slug),
         rate: rateAnswerAction.bind(null, slug),
         hear: abilities.hear ? assistantHearAction.bind(null, slug) : null,
+        saveSkill: saveSkillAction.bind(null, slug),
       }}
     />
   );

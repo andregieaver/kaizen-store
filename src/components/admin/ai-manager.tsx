@@ -11,6 +11,7 @@ import { PAGES_NB } from "@/lib/admin-messages/pages.nb";
 
 import { useAdminLang, useAdminText } from "./admin-text";
 
+import { SkillForm, type SaveSkill } from "./ai-skills";
 import { useLiveVoice, type LiveState } from "./live-voice";
 import { useVoice, type VoiceStatus } from "./voice-mode";
 import type { Approval, AssistantEvent, AssistantMessage, Conversation, ConversationSummary } from "@/server/owner-assistant";
@@ -25,6 +26,8 @@ export type AiManagerActions = {
   load: (conversationId: string) => Promise<Conversation | null>;
   rate: (messageId: string, value: 1 | -1 | null) => Promise<boolean>;
   hear: ((form: FormData) => Promise<Result<{ text: string }>>) | null;
+  /** *Save as skill* on a request (D350); none where skills cannot be saved. */
+  saveSkill?: SaveSkill;
 };
 
 const button = "inline-flex min-h-10 items-center justify-center rounded-md px-4 text-sm font-medium disabled:opacity-50";
@@ -364,7 +367,7 @@ export function AiManagerChat({
   const thread: ReactNode[] = [];
   const shown = new Set<string>();
   for (const message of messages) {
-    thread.push(<Bubble key={message.id} message={message} onRate={rate} onOpen={onNavigate} />);
+    thread.push(<Bubble key={message.id} message={message} onRate={rate} onOpen={onNavigate} saveSkill={actions.saveSkill} canShare={area === "store"} />);
     if (message.role !== "assistant" || !message.createdAt) continue;
     for (const approval of approvals) {
       if (shown.has(approval.id) || approval.createdAt > message.createdAt) continue;
@@ -645,9 +648,24 @@ function CallBar({ state, working, muted, onMute, onEnd }: { state: LiveState; w
   );
 }
 
-function Bubble({ message, onRate, onOpen }: { message: AssistantMessage; onRate?: (message: AssistantMessage, value: 1 | -1) => void; onOpen?: () => void }) {
+function Bubble({
+  message,
+  onRate,
+  onOpen,
+  saveSkill,
+  canShare = false,
+}: {
+  message: AssistantMessage;
+  onRate?: (message: AssistantMessage, value: 1 | -1) => void;
+  onOpen?: () => void;
+  saveSkill?: SaveSkill;
+  canShare?: boolean;
+}) {
   const mine = message.role === "user";
   const w = useAdminText("assistant").chat;
+  const sw = useAdminText("assistant").skills;
+  const [saving, setSaving] = useState<"form" | "saved" | null>(null);
+  const savable = mine && saveSkill && !message.id.startsWith("local-") && message.content.trim().length >= 10;
   const rateable = !mine && onRate && !message.id.startsWith("local-") && message.id !== "streaming";
   // The last report the answer ran (D346), opened on its page, where Save keeps it.
   const report = message.tools.findLast((t) => t.report)?.report;
@@ -656,6 +674,27 @@ function Bubble({ message, onRate, onOpen }: { message: AssistantMessage; onRate
       <p className={`max-w-[46rem] whitespace-pre-wrap wrap-anywhere rounded-lg px-3 py-2 text-sm ${mine ? "bg-brand text-brand-ink" : "bg-sunken"}`}>
         {mine ? message.content : <Linked text={message.content} onOpen={onOpen} />}
       </p>
+      {savable && saving === null && (
+        <button type="button" onClick={() => setSaving("form")} className="rounded-pill px-2 py-0.5 text-xs text-muted hover:bg-sunken hover:text-ink" data-save-skill>
+          {sw.saveAs}
+        </button>
+      )}
+      {savable && saving === "saved" && (
+        <p className="text-xs text-muted" role="status">
+          {sw.saved}
+        </p>
+      )}
+      {savable && saving === "form" && (
+        <div className="w-full max-w-[46rem] rounded-panel border border-line bg-card p-3" role="group" aria-label={sw.saveAsTitle}>
+          <SkillForm
+            start={{ title: message.content.replace(/\s+/g, " ").trim().slice(0, 60), when: "", steps: message.content.trim().slice(0, 2000) }}
+            save={saveSkill}
+            canShare={canShare}
+            onDone={() => setSaving("saved")}
+            onCancel={() => setSaving(null)}
+          />
+        </div>
+      )}
       {report && (
         <Link href={report} onClick={onOpen} className="rounded-pill border border-line px-3 py-1 text-xs text-ink hover:bg-sunken" data-save-report>
           {w.saveReport}

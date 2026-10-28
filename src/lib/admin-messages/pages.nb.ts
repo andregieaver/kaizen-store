@@ -602,6 +602,10 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     title: "Flytt et domene",
     keywords: ["flytt domene", "overfør domene", "overføringskode", "autorisasjonskode", "navnetjenere"],
   },
+  "account:account.notices": {
+    title: "Varsler fra KI-assistenten",
+    keywords: ["varsler", "varslinger", "innboks", "ki-assistent", "assistent", "ferdig", "venter", "godkjenning", "oppfølging"],
+  },
   "account:account.usage": {
     title: "KI-bruk",
     keywords: ["ki-bruk", "tokens", "kostnad", "forbruk", "forespørsler", "modell", "leverandør"],

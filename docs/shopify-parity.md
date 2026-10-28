@@ -10,12 +10,14 @@ D152 (the store analytics cockpit) and D153 (the EU withdrawal function and the 
 
 <!-- parity:generated:start since -->
 
-- **Headline now 80.7%** (first report 59.5%), **must-have 84.5%** (first report 69.1%), over 202 core rows (first report 232).
-- Where the change comes from: +21.0 points from the 116 rating moves on core rows recorded below, and +0.3 points because the re-read changed which rows count as core (the tracker has 232 rows, the first report 232 core ones).
+- **Headline now 81.1%** (first report 59.5%), **must-have 84.5%** (first report 69.1%), over 202 core rows (first report 232).
+- Where the change comes from: +21.3 points from the 118 rating moves on core rows recorded below, and +0.3 points because the re-read changed which rows count as core (the tracker has 232 rows, the first report 232 core ones).
 - 231 of 232 rows have their Shopify side read from a page; the others are listed under evidence debt.
 
-Rated higher (102):
+Rated higher (104):
 
+- Admin AI assistant that performs tasks (AI): partial to full. D350: notices for background work that finished or waits (page builds, follow-ups, autopilot questions and finished plans, changes kept for a yes, reports), written once each by the jobs, counted on the launcher and in the account menu, li…
+- Assistant memory and saved skills (AI): partial to full. D350: saved skills: Save as skill in the panel, a Skills tab to list, edit and delete, save_skill and delete_skill, use_skill loading them like the built-ins; owners share with the store; built-in keys, secrets, customers' details and mark…
 - Proactive insights (AI): partial to full. D348: the staff summary is now the briefing, weekly or daily, built in code from alertsFor() over the store's snapshot, the store checkup (checkupFindings()) and the targets, every figure counted in code and every item linking to its page,…
 - AI image generation (AI): partial to full. D349: Make with AI in the media library and the product editor (the same dialog and makeSitePicture(), metered library_pictures), made pictures marked made_by ai_made in the library, and their alt text kept only through findClaims() (check…
 - AI image editing (AI): missing to full. D349: Edit with AI on a library picture through the provider's /images/edits and the AI settings' edit model; the result a new library item marked ai_edited with edited_from, the original kept; unavailable with its reason without an edit m…
@@ -152,7 +154,7 @@ Rated lower (24):
 
 <!-- parity:generated:start summary -->
 
-Kaizena Flow has **80.7%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 202 core features weighted by importance to an EU small or mid-size merchant, and **84.5%** on the must-haves (the 83 features with weight 4 or 5). The unweighted figures are 79.2% overall and 84.3% for must-haves. Counting app-only features gives 80.0%; counting Plus-only as well gives 79.4%. Kaizena Flow is strongest on storefront, themes and content (94.0%) and weakest on platform, extensibility and operations (54.7%), checkout and payments (69.2%), customers, marketing and loyalty (73.7%). Of the 202 core features, 127 are full, 66 partial and 9 missing, so half-built features, not absent ones, are the main shape of the gap.
+Kaizena Flow has **81.1%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 202 core features weighted by importance to an EU small or mid-size merchant, and **84.5%** on the must-haves (the 83 features with weight 4 or 5). The unweighted figures are 79.7% overall and 84.3% for must-haves. Counting app-only features gives 80.3%; counting Plus-only as well gives 79.7%. Kaizena Flow is strongest on storefront, themes and content (94.0%) and weakest on platform, extensibility and operations (54.7%), checkout and payments (69.2%), customers, marketing and loyalty (73.7%). Of the 202 core features, 129 are full, 64 partial and 9 missing, so half-built features, not absent ones, are the main shape of the gap.
 
 <!-- parity:generated:end summary -->
 
@@ -162,10 +164,10 @@ The method is simple: a full match scores 1, a partial match 0.5, a missing feat
 
 | Measure | Features | Weighted parity | Unweighted parity | Full / partial / missing |
 | --- | --- | --- | --- | --- |
-| Headline: core (Shopify native, Basic to Advanced) | 202 | **80.7%** | 79.2% | 127 / 66 / 9 |
+| Headline: core (Shopify native, Basic to Advanced) | 202 | **81.1%** | 79.7% | 129 / 64 / 9 |
 | Must-have (core, weight 4 or 5) | 83 | **84.5%** | 84.3% | 57 / 26 / 0 |
-| Core plus app-only features | 226 | 80.0% | 78.5% | 139 / 77 / 10 |
-| Everything, including Plus-only | 232 | 79.4% | 77.4% | 140 / 79 / 13 |
+| Core plus app-only features | 226 | 80.3% | 79.0% | 141 / 75 / 10 |
+| Everything, including Plus-only | 232 | 79.7% | 77.8% | 142 / 77 / 13 |
 
 <!-- parity:generated:end headline -->
 
@@ -185,8 +187,8 @@ Counts are core features only. Weighted parity uses weights 1 to 5; must-have is
 | Analytics, reporting and finance | 24 | 20 | 3 | 1 | 92.2% | 11 | 94.6% |
 | International, compliance and trust | 16 | 10 | 6 | 0 | 77.7% | 10 | 70.2% |
 | Platform, extensibility and operations | 20 | 4 | 12 | 4 | 54.7% | 7 | 72.4% |
-| AI and automation | 22 | 13 | 7 | 2 | 77.7% | 2 | 100.0% |
-| **Total** | **202** | **127** | **66** | **9** | **80.7%** | **83** | **84.5%** |
+| AI and automation | 22 | 15 | 5 | 2 | 82.1% | 2 | 100.0% |
+| **Total** | **202** | **129** | **64** | **9** | **81.1%** | **83** | **84.5%** |
 
 <!-- parity:generated:end domains -->
 
@@ -198,7 +200,7 @@ A row is Full only when it lists code and tests that exist (or says it is untest
 
 | Evidence | Rows |
 | --- | ---: |
-| Full, with tests | 134 |
+| Full, with tests | 136 |
 | Full, untested (debt, not hidden) | 6 |
 | Shopify side not read from a page | 1 |
 | Rows in the tracker | 232 |
@@ -207,7 +209,7 @@ Untested Full rows: `ai.assistant-voice-mode`, `customers.abandoned-checkout-rec
 
 | Bucket | What it means | Rows not Full | Core rows | Core headline points lacking |
 | --- | --- | ---: | ---: | ---: |
-| A | Build in-house | 51 | 41 | 10.3 |
+| A | Build in-house | 49 | 39 | 9.9 |
 | B | Build, live only with a third party | 16 | 14 | 3.7 |
 | C | Strategy decision first | 11 | 8 | 1.9 |
 | D | Not reachable by code | 14 | 12 | 3.4 |
@@ -220,18 +222,18 @@ The waves are those of `docs/parity-plan.md` section 3. This table is produced f
 
 <!-- parity:generated:start projection -->
 
-Now: **80.7%** core, 84.5% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 16 rows (12 core) have no wave yet and are not in them.
+Now: **81.1%** core, 84.5% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 16 rows (12 core) have no wave yet and are not in them.
 
 | Wave | Scope | Rows (core) | Core if every row of waves 1 to N is Full | Must-have | Adds (points) | Core if only bucket A rows are | Must-have |
 | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | Compliance and money | 10 (7) | 82.8% | 88.0% | +2.1 | 82.2% | 86.9% |
-| 2 | Data in and out | 3 (1) | 83.1% | 88.0% | +0.2 | 82.5% | 86.9% |
-| 3 | Inventory and orders | 14 (13) | 86.3% | 90.4% | +3.3 | 84.0% | 88.2% |
-| 4 | Payments | 7 (6) | 87.8% | 92.1% | +1.5 | 84.3% | 88.2% |
-| 5 | Customers and marketing | 19 (16) | 92.0% | 95.8% | +4.2 | 87.7% | 91.3% |
-| 6 | Catalogue | 0 (0) | 92.0% | 95.8% | +0.0 | 87.7% | 91.3% |
-| 7 | Storefront and international | 3 (3) | 92.7% | 95.8% | +0.7 | 88.1% | 91.3% |
-| 8 | Analytics and AI | 8 (8) | 94.3% | 95.8% | +1.7 | 89.6% | 91.3% |
+| 1 | Compliance and money | 10 (7) | 83.2% | 88.0% | +2.1 | 82.6% | 86.9% |
+| 2 | Data in and out | 3 (1) | 83.4% | 88.0% | +0.2 | 82.8% | 86.9% |
+| 3 | Inventory and orders | 14 (13) | 86.7% | 90.4% | +3.3 | 84.3% | 88.2% |
+| 4 | Payments | 7 (6) | 88.2% | 92.1% | +1.5 | 84.7% | 88.2% |
+| 5 | Customers and marketing | 19 (16) | 92.4% | 95.8% | +4.2 | 88.0% | 91.3% |
+| 6 | Catalogue | 0 (0) | 92.4% | 95.8% | +0.0 | 88.0% | 91.3% |
+| 7 | Storefront and international | 3 (3) | 93.0% | 95.8% | +0.7 | 88.5% | 91.3% |
+| 8 | Analytics and AI | 6 (6) | 94.3% | 95.8% | +1.3 | 89.6% | 91.3% |
 | 9 | Platform and extensibility | 12 (9) | 96.6% | 96.9% | +2.3 | 91.0% | 91.8% |
 
 Ceiling with every bucket A row Full and buckets B, C and D as they are: **91.0%** core, 91.8% must-have. With bucket B built and approved as well: 94.7% core, 95.8% must-have.
@@ -606,9 +608,9 @@ Legend. **Shopify**: Native = included on Basic to Advanced and scored in the he
 
 | Feature | Shopify | Kaizena Flow | W | Plan | Gap and evidence |
 | --- | --- | --- | ---: | --- | --- |
-| Admin AI assistant that performs tasks | Native. [page](https://help.shopify.com/en/manual/shopify-admin/productivity-tools/sidekick) | Partial | 3 | A, wave 8 | Owner tools plus manager tools (D94, D103 to D105, D153); calls that send, publish, spend or change access are only kept for the owner's yes. D308: it makes and changes products (A1: create_product, update_product, set_prices, set_product_status, write_product_texts, set_stock, through saveProduct()), the website (A2: build_page by the page studio after the answer with its pictures one by one, list_page_builds, edit_page, publish_page, unpublish_page, set_page_place, save_menu, set_header_footer, for a store and for Kaizena Flow's own site, through the builder's and the menu editor's own saves), the setup (A3: set_store_details, set_countries, set_languages, set_currencies, set_flat_shipping, save_shipping_method, open_store, with setup_progress saying what only the owner can do) and themes (A4: list_themes, add_theme, try_theme, make_theme_live, a premium theme only at the charge the owner was shown). D318 (PSI AGT-01, AGT-04): marketing (broadcasts, segments, customer tags, automations, gift cards), support (read, note, reply, end), the team and the plan (owner only, gate `access`), order changes and exchanges, Work, and follow-ups that come back as background turns at their time and email the person where the answer is; an order rule can ask it to look at a paid order. D309: goals with targets measured by code, plans checked against the tools it offers, the autopilot working through them every minute on the maker's yes by the owner's autonomy level and budgets, the Autopilot page and a daily digest and weekly report by email. D310: it photographs a page's draft or the live store and judges it before asking to publish (look_at_page, look_at_store). D311: legal pages written and kept current by the AI (legal_pages_status). D315: domains (search, buy, renew, DNS changes, moves) through domain-tools.ts, buying and DNS behind their gates. Still missing (criterion 3): the owner is told about finished background work only on the Autopilot page, in the conversation or by email; nothing in the admin's header or the assistant's launcher says that a build, follow-up or plan step is ready for review. Merged on 2026-10-25 (README rule 8): `platform.admin-ai-assistant` was the same Shopify feature (rated partial); its criteria and evidence are here. D329: it researches on the web (search_web through the platform's search service, metered as AI usage; read_web_page through safeFetch()), keeps findings with the addresses they rest on (save_research_note, list_research_notes) and compares options with totals worked out in code (compare_options); a store's own search key is not offered yet. D330: it keeps the brand in words (set_brand, get_brand), designs a look of the store's own with contrast worked out in code (design_look) and draws the logo and icon from the brand's font (make_brand_marks). D331: with *React to what happens* on, a customer waiting for a person, an A/B test that ended and an urgent alert each start an autopilot turn with only the tools that event needs. D333: with about 190 store tools and 24 of its own, a round sends at most 120 (`chooseTools()`), the rest one `load_tools` call away. D334: everything the autopilot causes counts in its AI budget, broadcasts are never automatic and emails to customers are capped a week. Code: `src/lib/owner-tools.ts`, `src/server/owner-tools.ts`. |
+| Admin AI assistant that performs tasks | Native. [page](https://help.shopify.com/en/manual/shopify-admin/productivity-tools/sidekick) | Full (was partial) | 3 |  | Owner tools plus manager tools (D94, D103 to D105, D153); calls that send, publish, spend or change access are only kept for the owner's yes. D308: it makes and changes products (A1: create_product, update_product, set_prices, set_product_status, write_product_texts, set_stock, through saveProduct()), the website (A2: build_page by the page studio after the answer with its pictures one by one, list_page_builds, edit_page, publish_page, unpublish_page, set_page_place, save_menu, set_header_footer, for a store and for Kaizena Flow's own site, through the builder's and the menu editor's own saves), the setup (A3: set_store_details, set_countries, set_languages, set_currencies, set_flat_shipping, save_shipping_method, open_store, with setup_progress saying what only the owner can do) and themes (A4: list_themes, add_theme, try_theme, make_theme_live, a premium theme only at the charge the owner was shown). D318 (PSI AGT-01, AGT-04): marketing (broadcasts, segments, customer tags, automations, gift cards), support (read, note, reply, end), the team and the plan (owner only, gate `access`), order changes and exchanges, Work, and follow-ups that come back as background turns at their time and email the person where the answer is; an order rule can ask it to look at a paid order. D309: goals with targets measured by code, plans checked against the tools it offers, the autopilot working through them every minute on the maker's yes by the owner's autonomy level and budgets, the Autopilot page and a daily digest and weekly report by email. D310: it photographs a page's draft or the live store and judges it before asking to publish (look_at_page, look_at_store). D311: legal pages written and kept current by the AI (legal_pages_status). D315: domains (search, buy, renew, DNS changes, moves) through domain-tools.ts, buying and DNS behind their gates. D350 (criterion 3): background work that finishes while the person is away is a notice (a page built, a follow-up answered, an autopilot question or finished plan, a change kept for their yes, a report), counted on the AI manager's launcher and in the account menu and listed in the panel and on Your account, each opening its conversation or page. Merged on 2026-10-25 (README rule 8): `platform.admin-ai-assistant` was the same Shopify feature (rated partial); its criteria and evidence are here. D329: it researches on the web (search_web through the platform's search service, metered as AI usage; read_web_page through safeFetch()), keeps findings with the addresses they rest on (save_research_note, list_research_notes) and compares options with totals worked out in code (compare_options); a store's own search key is not offered yet. D330: it keeps the brand in words (set_brand, get_brand), designs a look of the store's own with contrast worked out in code (design_look) and draws the logo and icon from the brand's font (make_brand_marks). D331: with *React to what happens* on, a customer waiting for a person, an A/B test that ended and an urgent alert each start an autopilot turn with only the tools that event needs. D333: with about 190 store tools and 24 of its own, a round sends at most 120 (`chooseTools()`), the rest one `load_tools` call away. D334: everything the autopilot causes counts in its AI budget, broadcasts are never automatic and emails to customers are capped a week. Evidence: `src/app/admin/(gated)/(owner)/account/notices/feed/route.ts`, `src/components/admin/ai-manager-launcher.tsx`, `src/components/admin/ai-manager.tsx` and 47 more; 38 test files; D103, D104, D105, D106, D145, D153, D308, D309, D310, D311, D315, D318, D329, D330, D331, D333, D334, D350, D94, D96. |
 | Assistant voice mode | Native. [page](https://help.shopify.com/en/manual/shopify-admin/productivity-tools/sidekick) | Full | 1 |  | Evidence debt: hands-free listening by loudness and barge-in are browser code (`voice-mode.ts`, `live-voice.ts`) with no test, and no test covers the path with no speech model; `speech-text.test.ts` holds sentence cutting and `saysYes`, `live-voice.int.test.ts` the server side. Evidence: `src/components/admin/voice-mode.ts`, `src/components/admin/live-voice.ts`, `src/lib/speech-text.ts` and 5 more; **untested**; D104, D105. |
-| Assistant memory and saved skills | Native. [page](https://help.shopify.com/en/manual/shopify-admin/productivity-tools/sidekick) | Partial | 2 | A, wave 8 | Memory is complete: per account, found by keyword and meaning, learned after each turn and from thumbs, shown and editable on the Memory tab, learning can be switched off (D103). Skills are 41 fixed playbooks in code (36 for a store, 5 for the platform; ASSISTANT_SKILLS in src/lib/assistant-skills.ts) loaded by use_skill; there is no table, tool or screen to save a request as a skill, or to edit or delete one. Code: `src/server/assistant-memory.ts`, `src/lib/assistant-skills.ts`. |
+| Assistant memory and saved skills | Native. [page](https://help.shopify.com/en/manual/shopify-admin/productivity-tools/sidekick) | Full (was partial) | 2 |  | Met (D350). Memory is complete: per account, found by keyword and meaning, learned after each turn and from thumbs, shown and editable on the Memory tab, learning can be switched off (D103). Skills: besides the built-in playbooks (ASSISTANT_SKILLS), a person saves skills of their own (`commerce.assistant_skills`, written only by src/server/assistant-saved-skills.ts) from *Save as skill* on any request in the panel, the Skills tab (list, edit, delete) or the save_skill tool, in their place (a store, or Kaizena Flow's own site), an owner sharing one with the store (the scope: theirs, or the store's); use_skill loads one after the built-ins as words only, so the turn's tools and gates are unchanged; a key never takes a built-in's, and a skill never holds an email address, a long number, a password or a marketing claim. Evidence: `src/components/admin/ai-manager-page.tsx`, `src/components/admin/ai-manager.tsx`, `src/components/admin/ai-memory.tsx` and 8 more; 3 test files; D103, D350. |
 | Proactive insights | Native. [page](https://help.shopify.com/en/manual/shopify-admin/productivity-tools/sidekick) | Full (was partial) | 2 |  | Evidence: `src/lib/analytics-alerts.ts`, `src/server/analytics-insights.ts`, `src/server/analytics-tools.ts` and 12 more; 8 test files; D152, D309, D328, D348. |
 | AI product descriptions and SEO text | Native. [page](https://help.shopify.com/en/manual/shopify-admin/productivity-tools/shopify-magic) | Full | 4 |  | Merged on 2026-10-26 (README rule 8): `catalogue.ai-product-descriptions` was the same Shopify feature (rated full); its criteria and evidence are here. Evidence: `src/lib/product-writing.ts`, `src/server/product-writer.ts`, `src/components/admin/ai-writer.tsx` and 3 more; 5 test files; D73, D76, D106, D308. |
 | AI image generation | Native. [page](https://help.shopify.com/en/manual/shopify-admin/productivity-tools/sidekick/generate-content) | Full (was partial) | 2 |  | Met (D349). generateImage()/makePicture() (the picture model named in the AI settings, never in code) makes the AI page studio's pictures (src/server/page-ai.ts), the content packs' (D257, D270), every picture field of the page builder's (D283), the AI manager's create_product picture (D308), and since D349 the media library's own *Make with AI* (metered `library_pictures`) and the product editor's (from the product's title, never a price; `products:write`, /admin/{store}/products/picture). Each is shrunk to WebP with its small copy and kept in the library marked `media.made_by = 'ai_made'` (a chip in the list and the details), its alt text from the request only when it passes `findClaims()` (`checkedAlt()`), else left for the alt-text run. Without a picture model nothing is offered or spent. Evidence: `src/components/admin/media-library.tsx`, `src/components/admin/page-studio.tsx`, `src/components/admin/picture-maker.tsx` and 10 more; 8 test files; D106, D146, D283, D308, D349, D92. |

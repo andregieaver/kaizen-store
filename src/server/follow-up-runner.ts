@@ -13,6 +13,7 @@ import { siteUrl } from "@/lib/site";
 
 import type { AiConnection } from "./ai";
 import { activeAccount, passMembership, type Account } from "./auth";
+import { addNotice } from "./assistant-notices";
 import { sendEmail, type OutgoingEmail, type SendOutcome } from "./email";
 import { log } from "./log";
 import { runTurn, type Principal, type TurnInput } from "./owner-assistant";
@@ -131,8 +132,18 @@ async function runOne(item: Due, deps: FollowUpDeps, now: () => Date): Promise<k
     ...(deps.connection !== undefined && { connection: deps.connection }),
   });
   const next = nextDue(new Date(item.due_at), item.repeat, item.time_zone, now());
-  const email = (outcome: "done" | "failed") =>
-    tell(principal.account, item, { outcome, slug, storeName: principal.store?.name ?? null, waiting: seen.kept > 0, next }, deps.send ?? sendEmail);
+  const email = async (outcome: "done" | "failed") => {
+    // The same news in the admin (D350): the conversation where the answer is, once per run.
+    await addNotice({
+      accountId: principal.account.id,
+      storeId: item.store_id,
+      notice: "follow_up",
+      ref: `${item.id}:${new Date(item.due_at).toISOString()}`,
+      path: `assistant?c=${item.conversation_id}`,
+      facts: { task: item.task, outcome },
+    });
+    await tell(principal.account, item, { outcome, slug, storeName: principal.store?.name ?? null, waiting: seen.kept > 0, next }, deps.send ?? sendEmail);
+  };
   if (seen.error === null) {
     await settle(
       item.id,

@@ -21,6 +21,7 @@ import {
   platformHearAction,
   ratePlatformAnswerAction,
   startPlatformAssistantAction,
+  savePlatformSkillAction,
 } from "./assistant/actions";
 
 /**
@@ -87,6 +88,7 @@ export default async function PlatformLayout({ children }: LayoutProps<"/admin/p
               load: loadPlatformConversationAction,
               rate: ratePlatformAnswerAction,
               hear: platformHearAction,
+              saveSkill: savePlatformSkillAction,
             }}
           />
         </AdminTextScope>

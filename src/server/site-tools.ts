@@ -42,6 +42,7 @@ import {
   type StorePlace,
 } from "@/lib/site-tools";
 
+import { addNotice } from "./assistant-notices";
 import { ACTORS, actingAs, currentActor, type Actor } from "./actor";
 import { activeAccount, passMembership, type Account, type Membership } from "./auth";
 import { runningTestOf } from "./experiment-admin";
@@ -512,8 +513,28 @@ export async function runPageJobs(until: number, deps: SiteToolDeps = {}): Promi
     }
     if (outcome.status === "done") result.done += 1;
     else if (outcome.status !== "retry") result.failed += 1;
+    await tellPageBuilt(job, outcome);
   }
   return result;
+}
+
+/** A page built (or given up) in the background is a notice for whoever asked (D350); a picture's job tells nothing of its own. */
+async function tellPageBuilt(job: ClaimedJob, outcome: Outcome): Promise<void> {
+  if (job.kind !== "build") return;
+  const given = outcome.status === "failed" || outcome.status === "gone" || (outcome.status === "retry" && job.tries >= PAGE_JOB_TRIES);
+  if (outcome.status !== "done" && !given) return;
+  const pageId = outcome.status === "done" ? (outcome.pageId ?? job.pageId) : null;
+  const [page] = pageId
+    ? await db().execute<Row>(sql`select coalesce(draft ->> 'title', published ->> 'title', '') as title, type from commerce.pages where id = ${pageId}::uuid`)
+    : [];
+  await addNotice({
+    accountId: job.askedBy,
+    storeId: job.storeId,
+    notice: "page_built",
+    ref: job.id,
+    path: pageId ? `${page?.type === "article" ? "articles" : "pages"}/${pageId}` : "assistant",
+    facts: pageId ? { title: String(page?.title ?? "") } : { problem: outcome.status === "done" ? "" : outcome.problem },
+  });
 }
 
 /** Jobs done, given up or gone are kept `PAGE_JOB_DAYS` for the owner to ask about, then deleted (the daily job). */

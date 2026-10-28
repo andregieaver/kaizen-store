@@ -3,6 +3,7 @@ import { cache } from "react";
 import { AdminColorSwitch } from "@/components/admin/admin-colors";
 import { SignOutForm } from "@/components/admin/admin-trail";
 import { AccountMenu, AdminSwitcher, MenuLink, MenuRow } from "@/components/admin/admin-menus";
+import { MenuNotices } from "@/components/admin/ai-notices";
 import { Avatar } from "@/components/avatar";
 import { listStores, type Account } from "@/server/auth";
 import { avatarFor } from "@/server/avatars";
@@ -46,6 +47,7 @@ export function AdminAccountMenu({ account, role }: { account: Account; role?: s
         {w.yourAccount}
         {role ? <span className="ml-auto text-xs text-muted">{role}</span> : null}
       </MenuLink>
+      <MenuNotices label={adminText(adminLangOf(account.adminLocale), "assistant").notices.menu} href="/admin/account/notices" />
       <MenuLink href="/admin/account/kaizen-support">{w.contactSupport}</MenuLink>
       <MenuRow label={w.colours}>
         <AdminColorSwitch save={colorModeAction} labels={{ toDark: w.toDark, toLight: w.toLight }} />

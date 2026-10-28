@@ -11,6 +11,8 @@ import { unlockVoiceAudio } from "./voice-mode";
 import { useAdminText } from "./admin-text";
 import { ASK_AI_MANAGER_EVENT, type AskDetail } from "@/lib/alert-ask";
 
+import { NoticeBadge, NoticeList, useNoticeCount } from "./ai-notices";
+
 export type AiManagerStart = () => Promise<{ abilities: Abilities; conversations: ConversationSummary[] }>;
 
 function Spark({ className }: { className?: string }) {
@@ -55,6 +57,10 @@ export function AiManagerLauncher({
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const onItsPage = pathname === base;
+  // What it finished or waits on while the person was away (D350): this place's notices, counted on the button and listed in the panel.
+  const place = base.split("/")[2] ?? "platform";
+  const [unread, recount] = useNoticeCount(place);
+  const [showNotices, setShowNotices] = useState(false);
 
   const openRef = useRef(false);
   const startedRef = useRef(false);
@@ -139,11 +145,20 @@ export function AiManagerLauncher({
           <span className="truncate text-sm text-muted">{siteName}</span>
           <button
             type="button"
+            onClick={() => setShowNotices((on) => !on)}
+            aria-pressed={showNotices}
+            className="ml-auto inline-flex min-h-9 items-center gap-1.5 rounded-pill px-3 text-sm hover:bg-sunken aria-pressed:bg-sunken"
+          >
+            {w.notices.button}
+            <NoticeBadge count={unread} />
+          </button>
+          <button
+            type="button"
             onClick={() => {
               toggle(false);
               buttonRef.current?.focus();
             }}
-            className="ml-auto flex size-9 items-center justify-center rounded-pill hover:bg-sunken"
+            className="flex size-9 items-center justify-center rounded-pill hover:bg-sunken"
             aria-label={w.launcher.close}
           >
             <svg viewBox="0 0 24 24" aria-hidden="true" className="size-5" fill="none" stroke="currentColor" strokeWidth="2">
@@ -151,6 +166,19 @@ export function AiManagerLauncher({
             </svg>
           </button>
         </div>
+        {showNotices && (
+          <div className="min-h-0 flex-1 overflow-y-auto p-2">
+            <NoticeList
+              place={place}
+              onChange={recount}
+              onOpen={() => {
+                setShowNotices(false);
+                closeOnPhones();
+              }}
+            />
+          </div>
+        )}
+        <div className={showNotices ? "hidden" : "flex min-h-0 flex-1 flex-col"}>
         {ready ? (
           <AiManagerChat
             area={area}
@@ -172,6 +200,7 @@ export function AiManagerLauncher({
             {w.launcher.loading}
           </p>
         )}
+        </div>
       </aside>
     ) : null;
 
@@ -188,6 +217,7 @@ export function AiManagerLauncher({
       >
         <Spark className="size-4" />
         <span className="sr-only sm:not-sr-only">{w.name}</span>
+        <NoticeBadge count={unread} />
         <kbd className="hidden rounded border border-card/30 px-1 font-sans text-xs opacity-80 md:inline">⌘K</kbd>
       </button>
       {!onItsPage && (

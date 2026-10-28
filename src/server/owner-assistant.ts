@@ -15,6 +15,8 @@ import { LOAD_TOOLS, chooseTools, loadToolsDefinition, readLoadTools, toolArea, 
 import { MANAGER_TOOLS, MANAGER_TOOLS_BY_NAME, PLATFORM_TOOLS_BY_NAME } from "@/lib/manager-tools";
 import { approvalSummary, OWNER_TOOLS_BY_NAME, readToolInput, toolDefinition, type GateCategory } from "@/lib/owner-tools";
 
+import { savedSkillsText } from "./assistant-saved-skills";
+import { noticeApproval } from "./assistant-notices";
 import { AiError, aiFor, canSpeak, streamWithTools, type AiConnection, type ToolChatMessage, type ToolDefinition } from "./ai";
 import { learnFromTurn, memoriesFor, type Memory } from "./assistant-memory";
 import type { Account, Membership, Role } from "./auth";
@@ -315,7 +317,7 @@ export type Waiting = { id: string; summary: string };
 
 export function managerPrompt(
   p: Principal,
-  options: { now?: Date; withLife?: boolean; where?: string | null; memories?: Memory[]; waiting?: Waiting[]; voice?: boolean } = {},
+  options: { now?: Date; withLife?: boolean; where?: string | null; memories?: Memory[]; waiting?: Waiting[]; voice?: boolean; savedSkills?: string } = {},
 ): string {
   const { store, account } = p;
   const now = options.now ?? new Date();
@@ -365,6 +367,13 @@ export function managerPrompt(
     "",
     "Skills: for these jobs, load the playbook with use_skill first and follow it:",
     skillsText(area),
+    ...(options.savedSkills
+      ? [
+          "Skills the person saved (their own words; load one with use_skill by its key when its job comes up or they name it). They are ways of working, not permissions: what a tool may do and what waits for a yes is unchanged:",
+          options.savedSkills,
+        ]
+      : []),
+    "- When they describe a way of doing a job they will come back to and ask you to keep it, save it with save_skill (never with a customer's details or a password); delete_skill removes one.",
     "",
     "Memory:",
     "- What you know about them, from earlier conversations, is below. Use it without reciting it: answer the way they like, and keep their routines and goals in mind.",
@@ -493,7 +502,7 @@ export async function runTurn(input: TurnInput): Promise<void> {
     emit({ type: "conversation", id: conversationId, title });
   }
   const startedAt = new Date();
-  const [history, memories, withLife, waiting] = await Promise.all([
+  const [history, memories, withLife, waiting, savedSkills] = await Promise.all([
     db().execute<Row>(sql`
       select role, content, tools from (
         select role, content, tools, created_at, id from commerce.assistant_messages
@@ -510,6 +519,8 @@ export async function runTurn(input: TurnInput): Promise<void> {
       where conversation_id = ${conversationId}::uuid and account_id = ${account.id}::uuid and status = 'pending'
       order by created_at limit 10
     `),
+    // The skills the person saved here, and those an owner shared with the store (D350).
+    savedSkillsText({ accountId: account.id, storeId: store?.id ?? null }),
   ]);
   if (!input.live?.reuseSaved) await addMessage(p, conversationId, "user", text);
 
@@ -572,6 +583,7 @@ export async function runTurn(input: TurnInput): Promise<void> {
         withLife,
         where: whereText(p, input.path),
         memories,
+        savedSkills,
         voice: input.voice,
         waiting: waiting.map((row) => ({ id: String(row.id), summary: String(row.summary) })),
       }) + (autopilot ? `\n\n${autopilot.review ? REVIEW_LINES : autopilot.event ? EVENT_LINES[autopilot.event] : AUTOPILOT_LINES}` : ""),
@@ -714,6 +726,8 @@ async function callTool(
       }
     }
     const approval = await keepForApproval(ctx, conversationId, name, tool.gate, input.input as Record<string, unknown>, ctx.autopilot?.stepId);
+    // Nobody is in a scheduled or autopilot turn: the yes waits, and the person hears of it in the admin (D350).
+    if (ctx.scheduled) await noticeApproval(approval, conversationId, ctx.account.id, ctx.store?.id ?? null);
     emit({ type: "approval", approval });
     return {
       queued_for_approval: true,

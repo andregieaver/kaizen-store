@@ -19,6 +19,7 @@ import {
 } from "@/lib/autopilot-reviews";
 import { can } from "@/lib/permissions";
 
+import { noticeApproval } from "./assistant-notices";
 import { actingAs } from "./actor";
 import { aiFor, type AiConnection } from "./ai";
 import { goalsWithProgress } from "./autopilot-goals";
@@ -257,7 +258,8 @@ async function reviewGoal(reviewId: string, due: Due, deps: ReviewDeps): Promise
     await finish(reviewId, "done", { outcome: `Made and started "${plan.title}".`, planId: plan.id, started: true });
     return "started";
   }
-  await keepForApproval({ account: p.account, store: p.store, invalidate: refreshTag }, conversationId, "start_autopilot_plan", "plan", { plan: plan.id });
+  const kept = await keepForApproval({ account: p.account, store: p.store, invalidate: refreshTag }, conversationId, "start_autopilot_plan", "plan", { plan: plan.id });
+  await noticeApproval(kept, conversationId, p.account.id, p.store?.id ?? null);
   const why = decision.start ? "" : ` ${decision.why}`;
   await finish(reviewId, "done", { outcome: `Made "${plan.title}"; it waits for your yes to start.${why}`, planId: plan.id });
   return "planned";

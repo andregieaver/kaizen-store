@@ -23,6 +23,7 @@ import {
 import { startDecision } from "@/lib/autopilot-reviews";
 import { can } from "@/lib/permissions";
 
+import { noticeApproval } from "./assistant-notices";
 import { actingAs } from "./actor";
 import { aiFor, type AiConnection } from "./ai";
 import { alertsForStore } from "./analytics-insights";
@@ -344,7 +345,8 @@ async function reactTo(event: Pending, settings: Awaited<ReturnType<typeof auton
     await finish(event.id, "done", { outcome: `Made and started "${plan.title}". ${said}`, planId: plan.id, started: true, ...who });
     return "started";
   }
-  await keepForApproval({ account: p.account, store: p.store, invalidate: refreshTag }, conversationId, "start_autopilot_plan", "plan", { plan: plan.id });
+  const kept = await keepForApproval({ account: p.account, store: p.store, invalidate: refreshTag }, conversationId, "start_autopilot_plan", "plan", { plan: plan.id });
+  await noticeApproval(kept, conversationId, p.account.id, p.store?.id ?? null);
   await finish(event.id, "done", { outcome: `Made "${plan.title}"; it waits for your yes to start. ${said}`, planId: plan.id, ...who });
   return "planned";
 }

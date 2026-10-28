@@ -903,6 +903,10 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["appearance", "colours", "colors", "theme", "scheme", "dark", "light", "meadow", "indigo", "look"],
     tasks: ["Choose light or dark", "Choose the admin's colour scheme", "Compare the schemes side by side"],
   }),
+  account("account.notices", "/account/notices", "AI manager notices", "What the AI manager finished or waits on while you were away, in every store and on Kaizena Flow's own site: pages it built, follow-ups it answered, autopilot questions and finished plans, changes waiting for your yes and reports. Each opens its conversation or page.", {
+    keywords: ["notices", "notifications", "inbox", "ai manager", "assistant", "done", "waiting", "approvals", "follow-ups", "bell"],
+    tasks: ["See what the AI manager finished while you were away", "Open a change waiting for your yes", "Mark notices as read"],
+  }),
   account("account.usage", "/account/usage", "AI usage", "What the AI used for the stores you own, per provider and model and per store.", {
     keywords: ["tokens", "cost", "spend", "requests", "usage", "consumption", "ai", "provider", "model"],
     tasks: ["See your total AI usage per provider and model", "See usage per store", "Choose the period"],

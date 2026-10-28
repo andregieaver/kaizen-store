@@ -15,6 +15,7 @@ import {
   type Approval,
   type Conversation,
 } from "@/server/owner-assistant";
+import { deleteSkill, saveSkill } from "@/server/assistant-saved-skills";
 import { hearOwner } from "@/server/page-ai";
 import { readRecording, unreadable } from "@/server/page-studio-input";
 
@@ -57,3 +58,17 @@ export async function assistantHearAction(storeSlug: string, form: FormData) {
   return audio ? hearOwner(member.store.id, audio) : unreadable;
 }
 
+
+/** A skill the owner saves, changes or shares (D350), from the Skills tab or *Save as skill*. */
+export async function saveSkillAction(storeSlug: string, input: { id?: string; title: string; when: string; steps: string; share?: boolean }) {
+  const member = await requireOwner(storeSlug);
+  return saveSkill(
+    { accountId: member.account.id, storeId: member.store.id, owner: true },
+    { id: typeof input.id === "string" ? input.id : undefined, title: String(input.title ?? ""), when: String(input.when ?? ""), steps: String(input.steps ?? ""), share: input.share === true },
+  );
+}
+
+export async function deleteSkillAction(storeSlug: string, id: string): Promise<boolean> {
+  const member = await requireOwner(storeSlug);
+  return deleteSkill({ accountId: member.account.id, storeId: member.store.id, owner: true }, { id: String(id) });
+}

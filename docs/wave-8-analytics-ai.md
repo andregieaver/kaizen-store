@@ -387,6 +387,16 @@ Built as above, with these differences:
       stay gated.
     - The tools `save_skill` and `delete_skill` are ungated, the person's own.
 
+  **As built (28 October 2026).** As outlined, with these choices: the kinds are `page_built`, `follow_up`, `plan_question`, `plan_done`,
+  `approval_waiting` and `report_ready` (a finished plan is its own kind; a step that needs a yes is `approval_waiting`); the autopilot's questions
+  and finished plans are swept after each run of its loop (`noticeAutopilot()`), so a question asked by a failed step is told like one asked by a
+  question step; approvals are told where they are kept with nobody in the turn (a follow-up's or the autopilot's turn, a step, a review, an
+  event, Kaizen Life); the count is polled every minute while the tab is shown; besides the launcher and the account menu, Your account has
+  *AI manager notices* for every place. Saved skills refuse only the green, urgency and best-price claims of `findClaims()` (a step may name
+  prices and stock); at most 30 a person and place; an owner may take a colleague's shared skill off the store; the audit's actions are `ai.skill_*`
+  (the existing `ai.` area). Tests: `saved-skills.test.ts`, `assistant-notices.test.ts` and `assistant-notices.int.test.ts` (notices once each, by
+  place, read, swept and pruned; skills saved, loaded, refused, shared and deleted).
+
 - **G (D351) AI in the builder and a store from one description.**
   - **Change the page in front of you**: the builder's *Change with AI* takes a description. The model returns a plan of edits on the
     open page's existing parts (`parsePagePlan()`: the row and text edits of `src/lib/page-rows.ts` and `mapTexts()`, by part id; new

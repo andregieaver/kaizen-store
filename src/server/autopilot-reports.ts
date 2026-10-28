@@ -14,6 +14,7 @@ import { formatMoney } from "@/lib/money";
 import { UNTRUSTED_TEXT } from "@/lib/prompt-safety";
 import { siteUrl } from "@/lib/site";
 
+import { addNotice } from "./assistant-notices";
 import { aiFor, AiError, completeText, type AiConnection } from "./ai";
 import { periodTotals } from "./analytics-totals";
 import { activeAccount, passMembership, type Account } from "./auth";
@@ -209,6 +210,8 @@ async function sendOne(who: Recipient, kind: "daily" | "weekly", periodStart: st
     `,
   );
   if (!claimed) return false;
+  // The same news in the admin (D350), whether or not the email goes.
+  await addNotice({ accountId: who.account.id, storeId, notice: "report_ready", ref: claimed.id, path: "assistant/autopilot", facts: { report: kind } });
   const lang = adminLangOf(who.account.adminLocale ?? null);
   const url = `${siteUrl()}/admin/${who.store?.slug ?? "platform"}/assistant/autopilot`;
   try {

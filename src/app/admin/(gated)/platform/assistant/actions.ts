@@ -15,6 +15,7 @@ import {
   type Conversation,
   type Principal,
 } from "@/server/owner-assistant";
+import { deleteSkill, saveSkill } from "@/server/assistant-saved-skills";
 import { hearOwner } from "@/server/page-ai";
 import { readRecording, unreadable } from "@/server/page-studio-input";
 
@@ -53,3 +54,17 @@ export async function platformHearAction(form: FormData) {
   return audio ? hearOwner(null, audio) : unreadable;
 }
 
+
+/** A skill a platform admin saves or changes for Kaizena Flow's own AI manager (D350); theirs alone, never shared. */
+export async function savePlatformSkillAction(input: { id?: string; title: string; when: string; steps: string }) {
+  const p = await principal();
+  return saveSkill(
+    { accountId: p.account.id, storeId: null, owner: false },
+    { id: typeof input.id === "string" ? input.id : undefined, title: String(input.title ?? ""), when: String(input.when ?? ""), steps: String(input.steps ?? "") },
+  );
+}
+
+export async function deletePlatformSkillAction(id: string): Promise<boolean> {
+  const p = await principal();
+  return deleteSkill({ accountId: p.account.id, storeId: null, owner: false }, { id: String(id) });
+}

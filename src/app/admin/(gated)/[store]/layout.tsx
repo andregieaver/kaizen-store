@@ -32,6 +32,7 @@ import {
   loadConversationAction,
   rateAnswerAction,
   startAssistantAction,
+  saveSkillAction,
 } from "./assistant/actions";
 
 /**
@@ -112,6 +113,7 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
                   load: loadConversationAction.bind(null, store.slug),
                   rate: rateAnswerAction.bind(null, store.slug),
                   hear: assistantHearAction.bind(null, store.slug),
+                  saveSkill: saveSkillAction.bind(null, store.slug),
                 }}
               />
             </AdminTextScope>

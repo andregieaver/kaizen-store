@@ -5,6 +5,7 @@ import { savePlatformMenuInput, setPlatformPlaceInput } from "./site-tools";
 import { FOLLOW_UP_REPEATS, TASK_MAX } from "./follow-ups";
 import { goalTargetInput, TARGETS_MAX } from "./autopilot-goals";
 import { planInput } from "./autopilot-plans";
+import { SKILL_TITLE_MAX, SKILL_WHEN_MAX } from "./saved-skills";
 import { REFERRAL_COMMISSION_BPS_MAX, REFERRAL_COOKIE_DAYS_MAX, REFERRAL_MONTHS_MAX, REFERRAL_PENDING_DAYS_MAX } from "./referrals";
 
 /**
@@ -31,7 +32,22 @@ export const MANAGER_TOOLS = [
   ),
   tool(
     "use_skill",
-    "Loads a skill: the playbook for a job, from the list in your instructions. Load it before doing that job, then follow it.",
+    "Loads a skill: the playbook for a job, from the list in your instructions (built in, or saved by the person). Load it before doing that job, then follow it.",
+    z.object({ skill: z.string().trim().min(1).max(60) }),
+  ),
+  tool(
+    "save_skill",
+    "Saves a skill for the person (D350): a way of doing a job they come back to, in their words, which you load with use_skill next time. Give skill (its key) to change one of theirs. Never with a customer's details, an email address, a password or a marketing claim. Use it when they ask you to remember how they want a job done, or to save what you just did as a skill.",
+    z.object({
+      skill: z.string().trim().max(60).optional().describe("To change one of theirs: its key from the list in your instructions."),
+      title: z.string().trim().min(1).max(SKILL_TITLE_MAX).describe("A short name, such as 'Weekly stock check'."),
+      when: z.string().trim().max(SKILL_WHEN_MAX).default("").describe("When to use it, in one line."),
+      steps: z.array(z.string().trim().min(1).max(500)).min(1).max(20).describe("The steps, each a short line naming the tools or pages to use."),
+    }),
+  ),
+  tool(
+    "delete_skill",
+    "Deletes one of the person's saved skills, by its key. Use it when they no longer want it.",
     z.object({ skill: z.string().trim().min(1).max(60) }),
   ),
   tool(
@@ -521,6 +537,8 @@ export const TOOL_WORDS: Record<string, string> = {
   find_admin_page: "Finding the page",
   open_admin_page: "Opening the page",
   use_skill: "Getting the playbook",
+  save_skill: "Saving the skill",
+  delete_skill: "Deleting the skill",
   remember: "Remembering",
   forget: "Forgetting",
   recall: "Remembering",

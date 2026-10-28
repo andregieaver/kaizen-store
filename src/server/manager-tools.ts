@@ -19,10 +19,11 @@ import {
 import { formatMoney } from "@/lib/money";
 import { referralUrl } from "@/lib/referrals";
 import { readToolInput } from "@/lib/owner-tools";
-import type { PermissionHolder } from "@/lib/permissions";
+import { can, type PermissionHolder } from "@/lib/permissions";
 import { saysYes } from "@/lib/speech-text";
 import { siteUrl } from "@/lib/site";
 
+import { deleteSkill, findSkill, saveSkill, skillForUse } from "./assistant-saved-skills";
 import { platformUsage, storeUsageLines } from "./usage";
 import type { AiConnection } from "./ai";
 import { platformSupportOverviewTool } from "./support-manager-tools";
@@ -144,8 +145,28 @@ async function openAdminPage(ctx: ManagerContext, { page: id, params }: ManagerT
 
 async function useSkill(ctx: ManagerContext, { skill }: ManagerToolInput<"use_skill">) {
   const found = ASSISTANT_SKILLS.find((s) => s.id === skill && s.area === area(ctx));
-  if (!found) return fail(`There is no skill "${skill}" here. The list is in your instructions.`);
-  return { skill: found.id, title: found.title, steps: found.steps };
+  if (found) return { skill: found.id, title: found.title, steps: found.steps };
+  // A skill the person saved, or one an owner shared with the store (D350): words only, the turn's tools and gates unchanged.
+  const saved = await findSkill({ accountId: ctx.account.id, storeId: ctx.store?.id ?? null }, skill);
+  if (!saved) return fail(`There is no skill "${skill}" here. The list is in your instructions.`);
+  return { ...skillForUse(saved), note: "Their own words: follow them with the tools you have here, and what needs their yes still waits for it." };
+}
+
+/** Whether the person owns the store (sharing a skill with it is an owner's). */
+const ownsStore = (ctx: ManagerContext) => Boolean(ctx.store) && can(ctx.holder ?? { role: "owner" }, "owner");
+
+async function saveSkillTool(ctx: ManagerContext, { skill, title, when, steps }: ManagerToolInput<"save_skill">) {
+  const person = { accountId: ctx.account.id, storeId: ctx.store?.id ?? null, owner: ownsStore(ctx) };
+  const existing = skill ? await findSkill(person, skill) : null;
+  if (skill && (!existing || !existing.mine)) return fail(`There is no skill "${skill}" of theirs here.`);
+  const saved = await saveSkill(person, { id: existing?.id, title, when, steps: steps.join("\n") });
+  if (!saved.ok) return fail(saved.problem);
+  return { done: existing ? "Changed the skill." : "Saved the skill.", skill: saved.skill.key, title: saved.skill.title };
+}
+
+async function deleteSkillTool(ctx: ManagerContext, { skill }: ManagerToolInput<"delete_skill">) {
+  const person = { accountId: ctx.account.id, storeId: ctx.store?.id ?? null, owner: false };
+  return (await deleteSkill(person, { key: skill })) ? { done: "Deleted the skill." } : fail(`There is no skill "${skill}" of theirs here.`);
 }
 
 // Memory ----------------------------------------------------------------------------------
@@ -240,6 +261,8 @@ const MANAGER_HANDLERS: Record<ManagerToolName, Handler> = {
   find_admin_page: findAdminPage,
   open_admin_page: openAdminPage,
   use_skill: useSkill,
+  save_skill: saveSkillTool,
+  delete_skill: deleteSkillTool,
   remember: rememberTool,
   forget: forgetTool,
   recall: recallTool,

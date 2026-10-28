@@ -11,6 +11,8 @@ import {
   loadPlatformConversationAction,
   platformHearAction,
   ratePlatformAnswerAction,
+  deletePlatformSkillAction,
+  savePlatformSkillAction,
 } from "./actions";
 
 export const metadata: Metadata = { title: "AI manager" };
@@ -37,12 +39,14 @@ export default async function PlatformAssistantPage({ searchParams }: PageProps<
       abilities={abilities}
       conversations={conversations}
       conversation={conversation}
+      skillActions={{ save: savePlatformSkillAction, remove: deletePlatformSkillAction }}
       actions={{
         decide: decidePlatformApprovalAction,
         remove: deletePlatformConversationAction,
         load: loadPlatformConversationAction,
         rate: ratePlatformAnswerAction,
         hear: abilities.hear ? platformHearAction : null,
+        saveSkill: savePlatformSkillAction,
       }}
     />
   );
