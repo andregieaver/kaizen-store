@@ -535,7 +535,7 @@
       "rechecked": true
     },
     "weight": 5,
-    "gap": "The four criteria are built and held by tests (see the evidence), and the migrations reached production (`docs/decisions.md` Migration versions), but an accountant has not read the part-assignment rules of `classify()`, the payment-day dating (Directive Art. 63 and 65), the euro rounding or the Part 3 handling (`docs/wave-1c-reports.md` section 8), so this is held at Partial like the other tax and legal rows (bucket D). No browser test opens the page with data (`e2e/admin.spec.ts` checks only the signed-out refusal). Finance's PAID includes Stripe test-mode orders, which are never invoiced; the reconciliation names them as their own cause.",
+    "gap": "The four criteria are built and held by tests (see the evidence), and the migrations reached production (`docs/decisions.md` Migration versions), but an accountant has not read the part-assignment rules of `classify()`, the payment-day dating (Directive Art. 63 and 65), the euro rounding or the Part 3 handling (`docs/wave-1c-reports.md` section 8), so this is held at Partial like the other tax and legal rows (bucket D). The page is opened with data in a browser since D379 (`e2e/signed-in/tax-report.spec.ts`: one invoiced order, its row at 25 % and a reconciliation with nothing unnamed). Finance's PAID includes Stripe test-mode orders, which are never invoiced; the reconciliation names them as their own cause.",
     "history": [],
     "bucket": "D",
     "wave": null,
@@ -573,28 +573,30 @@
         "docs/analytics.md"
       ],
       "tests": [
-        "src/lib/tax-periods.test.ts",
-        "src/lib/ecb-history.test.ts",
-        "src/lib/tax-classes.test.ts",
-        "src/lib/tax-report.test.ts",
-        "src/lib/oss-return.test.ts",
-        "src/lib/tax-reconciliation.test.ts",
-        "src/lib/tax-csv.test.ts",
+        "e2e/signed-in/tax-report.spec.ts",
+        "src/components/admin/analytics/oss-view.test.ts",
+        "src/components/admin/analytics/tax-view.test.ts",
         "src/db/tax-reports.test.ts",
-        "src/server/tax-reports.int.test.ts",
-        "src/server/tax-reports-money-review.int.test.ts",
+        "src/lib/ecb-history.test.ts",
+        "src/lib/oss-return.test.ts",
+        "src/lib/tax-classes.test.ts",
+        "src/lib/tax-csv.test.ts",
+        "src/lib/tax-periods.test.ts",
+        "src/lib/tax-reconciliation.test.ts",
+        "src/lib/tax-report.test.ts",
+        "src/server/checkout-kinds.int.test.ts",
+        "src/server/ecb-rates.int.test.ts",
         "src/server/tax-report-admin.int.test.ts",
         "src/server/tax-report-exports.int.test.ts",
-        "src/server/ecb-rates.int.test.ts",
-        "src/server/checkout-kinds.int.test.ts",
-        "src/components/admin/analytics/tax-view.test.ts",
-        "src/components/admin/analytics/oss-view.test.ts"
+        "src/server/tax-reports-money-review.int.test.ts",
+        "src/server/tax-reports.int.test.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D152",
-      "D161"
+      "D161",
+      "D379"
     ]
   },
   {

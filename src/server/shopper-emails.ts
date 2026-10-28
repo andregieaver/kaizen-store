@@ -138,6 +138,31 @@ async function orderUrl(storeId: string, store: EmailStore, market: Market, orde
   return `${marketUrl(store.slug, market.slug, `/order/${orderId}`)}?session_id=${encodeURIComponent(String(payment.provider_reference))}`;
 }
 
+/**
+ * The terms the order was placed under (D379), as the order page lists them: when and whether ticked, and a link to each text as kept then
+ * (`/order/{id}/terms/{role}`, opened by the order page's own key). Nothing for an order with no record. Never throws.
+ */
+async function termsBlocks(storeId: string, order: OrderView, store: EmailStore, market: Market, m: Messages): Promise<EmailBlock[]> {
+  try {
+    const { termsForOrder } = await import("./checkout-terms");
+    const record = await termsForOrder(storeId, order.id);
+    const url = record && record.snapshots.length > 0 ? await orderUrl(storeId, store, market, order.id) : null;
+    if (!record || !url) return [];
+    const key = new URL(url).searchParams.get("session_id") ?? "";
+    const date = record.acceptedAt.toLocaleDateString(market.locale, { dateStyle: "long" });
+    return [
+      { type: "paragraph", text: `${m.terms.orderHeading}\n${record.mode === "checkbox" ? m.terms.orderTicked(date) : m.terms.orderShown(date)}` },
+      ...record.snapshots.map((shown) => ({
+        type: "button" as const,
+        text: shown.title,
+        url: `${marketUrl(store.slug, market.slug, `/order/${order.id}/terms/${shown.role}`)}?session_id=${encodeURIComponent(key)}`,
+      })),
+    ];
+  } catch {
+    return [];
+  }
+}
+
 function orderLines(
   order: OrderView,
   text: EmailText,
@@ -341,6 +366,8 @@ export async function sendOrderConfirmation(
       : []),
     ...(documents?.blocks ?? []),
     ...(url ? [{ type: "button" as const, text: text.seeOrder, url }] : []),
+    // The store's terms the order was placed under (D158, D379): when and how they were shown, and each text as it was then.
+    ...(await termsBlocks(storeId, order, store, market, m)),
     // The right of withdrawal (D153): a consumer's order says so and links to the withdrawal function.
     ...(await withdrawBlocks(storeId, store, market, order, text)),
     ...(subscription

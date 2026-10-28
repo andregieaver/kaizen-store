@@ -1486,6 +1486,11 @@ export async function startCheckout(
       await cancelUnpaidOrder(order.orderId, "no contact details");
       return { ok: false, problem: "contact" };
     }
+    // No payment page follows either (D379): the store's terms of sale shown on the cart are recorded with the order before it is confirmed.
+    if (recordTerms && !(await recordTerms(order.orderId)).ok) {
+      await cancelUnpaidOrder(order.orderId, "the terms could not be recorded");
+      return { ok: false, problem: "consent" };
+    }
     const base = `${storeOrigin(shop.storeSlug) ?? origin}${marketPath(shop.storeSlug, shop.market.slug)}`;
     const token = await confirmAtVenue(shop.storeId, order, contact);
     return { ok: true, url: `${base}/order/${order.orderId}?session_id=${token}` };

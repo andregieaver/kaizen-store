@@ -286,3 +286,30 @@ describe("what the shopper and staff are shown afterwards", () => {
     expect(await ct.termsForOrder(store.id, id)).toMatchObject({ orderId: id, mode: "link" });
   });
 });
+
+describe("a subscription's renewals (D379)", () => {
+  it("read the terms accepted with the subscription's first order, and an order of its own keeps its own", async () => {
+    await db().execute(sql`update commerce.stores set terms_at_checkout = 'checkbox' where id = ${store.id}::uuid`);
+    const first = await order();
+    expect(await record(first)).toMatchObject({ ok: true, recorded: true });
+    const [sub] = await db().execute<Row>(sql`
+      insert into commerce.subscriptions (store_id, number, status, market_code, currency, locale, email, interval, interval_count,
+        subtotal_minor, shipping_minor, total_minor, tax_minor, first_order_id, manage_token)
+      values (${store.id}::uuid, ${`SUB-${run}-terms`}, 'active', 'NO', 'NOK', 'nb-NO', 'shopper@example.com', 'month', 1,
+        20000, 0, 20000, 4000, ${first}::uuid, ${`tok-terms-${run}`})
+      returning id
+    `);
+    await db().execute(sql`update commerce.orders set subscription_id = ${String(sub.id)}::uuid where id = ${first}::uuid`);
+    const renewal = await order(store.id, { status: "paid" });
+    await db().execute(sql`update commerce.orders set subscription_id = ${String(sub.id)}::uuid where id = ${renewal}::uuid`);
+
+    const inherited = await ct.termsForOrder(store.id, renewal);
+    expect(inherited).toMatchObject({ orderId: first, mode: "checkbox" });
+    expect(inherited?.snapshots.map((s) => s.role).sort()).toEqual(["privacy", "terms"]);
+    // Another order, of no subscription, has none.
+    expect(await ct.termsForOrder(store.id, await order())).toBeNull();
+    // Another store never reads it.
+    const other = await makeStore("terms-other");
+    expect(await ct.termsForOrder(other.id, renewal)).toBeNull();
+  });
+});

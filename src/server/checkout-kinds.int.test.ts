@@ -2280,6 +2280,8 @@ describe("checkout with bonus credits (D130)", () => {
     await pay(open!, params);
     expect(await used(open!.orderId)).toBe(debit);
     expect((await ledger(buyerId)).pending).toBe(before.pending + toNok(earned, order!.currency, "down"));
+    // The invoice is the order with its credits, and the credit notes of two refunds add up to them (D159, D379).
+    await expectDocuments(open!.orderId, { euro: scenario.euro, gifts: scenario.gifts });
   });
 
   /** A cart for the signed-in shopper with what `fill` adds, credits asked for (all by default); the checkout, unpaid. */
@@ -4440,6 +4442,51 @@ describe("a store not open yet (D369)", () => {
       expect(started.ok).toBe(true);
     } finally {
       await db().execute(sql`update commerce.stores set private_mode = ${Boolean(before.private_mode)} where id = ${storeId}::uuid`);
+    }
+  });
+});
+
+describe("a booking paid wholly at the venue (D379)", () => {
+  it("records the store's terms with the order before it is confirmed, and confirms nothing when they cannot be recorded", async () => {
+    view = no;
+    await db().execute(sql`
+      update commerce.appointment_settings set payment = 'venue' where store_id = ${storeId}::uuid and product_id = ${product["demo-massasje"]}::uuid
+    `);
+    const contact = { name: "Kari", email: `venue-${run}@example.com`, phone: "99999999" };
+    try {
+      jar.clear();
+      await addAppointment();
+      const recorded: string[] = [];
+      const kept = await startCheckout({ ...shop(), storeSlug: slug }, cartId(), origin, "Frakt", {}, {
+        customerId: null,
+        contact,
+        recordTerms: async (orderId) => {
+          // Asked while the order still waits: nothing is confirmed before the terms are kept.
+          const [o] = await db().execute<Row>(sql`select status from commerce.orders where id = ${orderId}::uuid`);
+          expect(o.status).toBe("pending_payment");
+          recorded.push(orderId);
+          return { ok: true };
+        },
+      });
+      expect(kept).toMatchObject({ ok: true });
+      expect(recorded).toHaveLength(1);
+      const [confirmed] = await db().execute<Row>(sql`select status from commerce.orders where id = ${recorded[0]}::uuid`);
+      expect(confirmed.status).not.toBe("pending_payment");
+
+      jar.clear();
+      await addAppointment();
+      const refused = await startCheckout({ ...shop(), storeSlug: slug }, cartId(), origin, "Frakt", {}, {
+        customerId: null,
+        contact,
+        recordTerms: async () => ({ ok: false }),
+      });
+      expect(refused).toEqual({ ok: false, problem: "consent" });
+      const [left] = await db().execute<Row>(sql`select status from commerce.orders where cart_id = ${cartId()}::uuid order by placed_at desc limit 1`);
+      expect(left.status).toBe("cancelled");
+    } finally {
+      await db().execute(sql`
+        update commerce.appointment_settings set payment = 'now' where store_id = ${storeId}::uuid and product_id = ${product["demo-massasje"]}::uuid
+      `);
     }
   });
 });

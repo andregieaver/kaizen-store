@@ -30,6 +30,7 @@ that each remaining row waits on one named thing only, and says what that thing 
 | L | D375 | Customers sign in with Google | `customers.customer-accounts` |
 | M | D376 | Reduced VAT rates with their sources | `checkout.eu-vat-by-destination-…` |
 | P | D377 | PSI: owner and staff erasure, a whole-store export, the documents the audit asks for | PSI REG-03, DATA-05, SEC-01, REG-07, REG-08 |
+| N | D379 | The code's part of the rows still partial: what each gap names that code can do | the rows below, so each waits on people only |
 
 Rows that this wave can only bring to "waits only on…": staff two-step and staff roles (one sign-in against the real Supabase Auth,
 recorded), PCI (one test payment under the enforced policy, recorded, and the SAQ A), PayPal (Kaizena Flow's Mollie app), pickup points
@@ -121,3 +122,15 @@ gift card ledger, and nothing new is needed at checkout.
 - **P (D377).** Owner and staff erasure of their own account (refused while the last owner of an open store), a whole-store export as a D165
   job, `docs/security.md` (assets, boundaries, controls and the tests that hold them), the breach runbook and a DPIA draft for the AI
   features, each marked for the owner's or a lawyer's review.
+- **N (D379).** Added on 2026-10-28, when every unit above was built: the partial must-have rows were read again and each gap that names
+  something code can do was done, so each row waits on a person (an accountant, a lawyer, an audit, a live account) only. A bonus-credit
+  order's invoice and credit notes held in every D130 checkout scenario (`expectDocuments()`, kroner and euros); the catalogue's VAT
+  labels refreshed in the first minutes of a country's day when a rate begins or ends (`refreshVatLabelsAtMidnight()`, the five-minute
+  dispatcher; the daily job stays as the net); the store's terms recorded with a booking confirmed wholly at the venue (the cart shows the
+  sentence and box beside *Confirm booking*, `startCheckout()` records before `confirmAtVenue()`), a subscription's renewal reading the terms
+  accepted with its first order (`termsForOrder()`), and the order confirmation linking each accepted text (`termsBlocks()`); a browser test
+  of the product editor's content fields with the price per litre on the storefront (`e2e/signed-in/unit-price-editor.spec.ts`) and of the
+  VAT report with data and its reconciliation (`e2e/signed-in/tax-report.spec.ts`). Left as they are, with the reason on the row: the
+  per-measure price on the invoice (not a criterion), the exclusions printed whole (the code cannot know which fit what a store sells), and
+  the checkbox enforced at the press only (a payment Stripe's form confirms cannot be refused by Kaizena Flow's server afterwards; holding it
+  at Stripe would mean Stripe's own consent collection, not read for the custom form and not used: a decision for the owner).

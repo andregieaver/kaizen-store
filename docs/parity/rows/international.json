@@ -478,7 +478,7 @@
       "was": "missing"
     },
     "weight": 4,
-    "gap": "Built and tested; not Full because no person has read the hand-written texts (docs/parity/WAVES.md step 4, bucket D). Starters for terms, privacy, returns, shipping, withdrawal information and an imprint exist in nb, sv, da and en (src/lib/legal-starters/*), filled from legalFacts(), made as drafts with a review notice and [[placeholders]] that the builder's checker blocks publishing over, out of the sitemap until published (held only indirectly: legal-starters.int.test.ts checks the sitemap reader's page lists, no test reads the sitemap with a draft and a published starter). Checkout shows a link or a required checkbox (stores.terms_at_checkout) and records order_terms with immutable legal_snapshots, also for draft pay links, exchanges, orders on payment terms and orders paid wholly by gift cards (migrations applied 2026-10-04). New since: D311 (owner's decision reversing D158's no-model rule) writes legal pages with AI from official sources fetched by code (src/lib/legal-sources.ts, src/server/legal-sources.ts: Cellar, Riksdagen, Retsinformation, Lovdata, read weekly), every quote checked word for word and every fact filled by code (src/lib/legal-writer.ts, src/server/legal-writer.ts), turned on once on the Legal page (legal-pages-panel.tsx) and kept current daily when a store fact or a cited passage changes (runLegalUpkeep()), never over a person's page; tested with a stand-in model only (legal-writer.int.test.ts, legal-sources.int.test.ts), no real model has written a page yet. Still missing: (1) a person's review of the starters and the eight questions in docs/wave-1-trust.md section 8 (D311 decides AI pages need none, but the starters and the checkout words remain hand-written legal text); (2) the checkbox is enforced in the browser only: nothing on the server refuses an order without an order_terms record; (3) orders confirmed wholly at the venue and subscription renewals have no sentence and no record, and the order confirmation email does not link the accepted terms; (4) the goods exclusions are printed for every store with a [[Check]] line rather than filtered by what it sells, and a translation made stale by a later edit is still shown (D55); (5) no end-to-end run reaches the pay button (the demo store takes no payments).",
+    "gap": "Built and tested; not Full because no person has read the hand-written texts (docs/parity/WAVES.md step 4, bucket D). Starters for terms, privacy, returns, shipping, withdrawal information and an imprint exist in nb, sv, da and en (src/lib/legal-starters/*), filled from legalFacts(), made as drafts with a review notice and [[placeholders]] that the builder's checker blocks publishing over, out of the sitemap until published (held only indirectly: legal-starters.int.test.ts checks the sitemap reader's page lists, no test reads the sitemap with a draft and a published starter). Checkout shows a link or a required checkbox (stores.terms_at_checkout) and records order_terms with immutable legal_snapshots, also for draft pay links, exchanges, orders on payment terms and orders paid wholly by gift cards (migrations applied 2026-10-04). New since: D311 (owner's decision reversing D158's no-model rule) writes legal pages with AI from official sources fetched by code (src/lib/legal-sources.ts, src/server/legal-sources.ts: Cellar, Riksdagen, Retsinformation, Lovdata, read weekly), every quote checked word for word and every fact filled by code (src/lib/legal-writer.ts, src/server/legal-writer.ts), turned on once on the Legal page (legal-pages-panel.tsx) and kept current daily when a store fact or a cited passage changes (runLegalUpkeep()), never over a person's page; tested with a stand-in model only (legal-writer.int.test.ts, legal-sources.int.test.ts), no real model has written a page yet. Still missing: (1) a person's review of the starters and the eight questions in docs/wave-1-trust.md section 8 (D311 decides AI pages need none, but the starters and the checkout words remain hand-written legal text); (2) the checkbox is enforced at the press only: a payment Stripe's form confirms cannot be refused afterwards, and holding it at Stripe would need Stripe's own consent collection, not used (the owner's decision); (3) since D379 a booking confirmed wholly at the venue shows the sentence (and box) and is recorded before it is confirmed, a subscription's renewal reads the terms accepted with its first order, and the order confirmation links each accepted text (`checkout-terms.int.test.ts`, `order-email-terms.int.test.ts`, the venue case in `checkout-kinds.int.test.ts`); (4) the goods exclusions are printed for every store with a [[Check]] line, by design (the code cannot know which fit what a store sells), and a translation made stale by a later edit is still shown (D55); (5) no end-to-end run reaches the pay button (the demo store takes no payments).",
     "bucket": "D",
     "wave": null,
     "criteria": [
@@ -514,27 +514,29 @@
         "docs/ai-autopilot.md"
       ],
       "tests": [
-        "src/lib/legal-starters.test.ts",
-        "src/lib/legal-roles.test.ts",
-        "src/lib/checkout-terms.test.ts",
-        "src/components/checkout-terms.test.ts",
-        "src/server/legal-starters.int.test.ts",
-        "src/server/checkout-terms.int.test.ts",
-        "src/db/trust.test.ts",
         "e2e/legal-pages.spec.ts",
-        "src/lib/legal-sources.test.ts",
+        "src/components/admin/legal-pages-panel.test.ts",
+        "src/components/checkout-terms.test.ts",
+        "src/db/trust.test.ts",
+        "src/lib/checkout-terms.test.ts",
         "src/lib/legal-passages.test.ts",
+        "src/lib/legal-roles.test.ts",
+        "src/lib/legal-sources.test.ts",
+        "src/lib/legal-starters.test.ts",
         "src/lib/legal-writer.test.ts",
+        "src/server/checkout-terms.int.test.ts",
         "src/server/legal-sources.int.test.ts",
+        "src/server/legal-starters.int.test.ts",
         "src/server/legal-writer.int.test.ts",
-        "src/components/admin/legal-pages-panel.test.ts"
+        "src/server/order-email-terms.int.test.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D112",
       "D158",
-      "D311"
+      "D311",
+      "D379"
     ],
     "history": [
       {
@@ -935,7 +937,7 @@
       "was": "missing"
     },
     "weight": 4,
-    "gap": "Built and held by tests (D160, in production). A goods variant carries a measure, a unit and a base (`product_variants.measure_*`, database checks), `unitPrice()` (BigInt, half up, `src/lib/unit-price.ts`) is the only place a price is divided, and the figure follows the price as shown: the product page and its variant and plan choice, cards (the variant the card's price is of), cart and slide-out cart, checkout, order page, emails, chat cards and the subscription and weekly-delivery lists, with the business buyer's net price and the euro view's own figure (435 cents shown is 1740 per kg; converting the krone figure would say 1739), frozen on the order line (`order_lines.measure_*`, copied by `placeOrder()`, the renewal and `copy_orders()`), `priceSpecification` in the JSON-LD, and a deferred constraint trigger that refuses an active product without a measure under `sold_by_measure` or a marked category or ancestor. I ran these in my own database on 2026-10-04 after a fresh build: 20 unit files (355 tests), `unit-price.int.test.ts`, `checkout-kinds.int.test.ts` (every scenario runs `expectUnitPrices()`, euro included), `standing-orders.int.test.ts` (146 integration tests in all) and `e2e/unit-price.spec.ts` (8 of 8) passed. Still short of Full, by WAVES.md step 4: (1) the rules and words are unreviewed. The country table has no country that allows 100 g or 100 ml (Germany read in a PAngV mirror, Sweden's KOVFS 2012:1 6 § read on lagen.nu, Norway's FOR-2012-11-14-1066 read on lovdata.no on 2026-10-04, Denmark's BEK 1696/2017 never read and closed, flagged `verified: false`), so the criterion's \"100 g and 100 ml where allowed\" is a mechanism an owner cannot reach today and a test opens by a test helper; the rule that discounts, codes, campaigns, credits and reverse-charge relief leave a line's unit price alone, whether Directive Art. 6a wants a prior unit price (not read), the business buyer's net unit price, a multi-pack's total as the measure, the nb/sv/da/en words (Enhetspris, Jämförpris, Enhedspris) and the JSON-LD unit codes (from memory) all need a lawyer or a native speaker (spec section 8). (2) The owner's side (the editor's measure fields and the category and product flags) is held by server integration tests and render tests; nothing drives it in a browser because the e2e suite has no admin sign-in. (3) Checkout is held by `checkout-section.test.ts` and the integration scenarios, not by e2e (the page cannot be driven there). (4) The email line is held by one integration test (`unit-price.int.test.ts`), not a render test (the spec named `shopper-emails.test.ts`, which does not exist). (5) Orders placed before this unit carry no snapshot and show no unit price; the invoice document does not show the per-measure price. Merchant Center's `unit_pricing_measure` and `unit_pricing_base_measure` are now written by the product feed (D302, `src/lib/feeds.ts`, `feeds.test.ts`). (6) The migrations (`unit_price`, `unit_price_rules` and the `clone_store`, `duplicate_store` and `copy_orders` patches) are applied in production (checked 2026-10-14), but nothing about it was seen working there beyond that.",
+    "gap": "Built and held by tests (D160, in production). A goods variant carries a measure, a unit and a base (`product_variants.measure_*`, database checks), `unitPrice()` (BigInt, half up, `src/lib/unit-price.ts`) is the only place a price is divided, and the figure follows the price as shown: the product page and its variant and plan choice, cards (the variant the card's price is of), cart and slide-out cart, checkout, order page, emails, chat cards and the subscription and weekly-delivery lists, with the business buyer's net price and the euro view's own figure (435 cents shown is 1740 per kg; converting the krone figure would say 1739), frozen on the order line (`order_lines.measure_*`, copied by `placeOrder()`, the renewal and `copy_orders()`), `priceSpecification` in the JSON-LD, and a deferred constraint trigger that refuses an active product without a measure under `sold_by_measure` or a marked category or ancestor. I ran these in my own database on 2026-10-04 after a fresh build: 20 unit files (355 tests), `unit-price.int.test.ts`, `checkout-kinds.int.test.ts` (every scenario runs `expectUnitPrices()`, euro included), `standing-orders.int.test.ts` (146 integration tests in all) and `e2e/unit-price.spec.ts` (8 of 8) passed. Still short of Full, by WAVES.md step 4: (1) the rules and words are unreviewed. The country table has no country that allows 100 g or 100 ml (Germany read in a PAngV mirror, Sweden's KOVFS 2012:1 6 § read on lagen.nu, Norway's FOR-2012-11-14-1066 read on lovdata.no on 2026-10-04, Denmark's BEK 1696/2017 never read and closed, flagged `verified: false`), so the criterion's \"100 g and 100 ml where allowed\" is a mechanism an owner cannot reach today and a test opens by a test helper; the rule that discounts, codes, campaigns, credits and reverse-charge relief leave a line's unit price alone, whether Directive Art. 6a wants a prior unit price (not read), the business buyer's net unit price, a multi-pack's total as the measure, the nb/sv/da/en words (Enhetspris, Jämförpris, Enhedspris) and the JSON-LD unit codes (from memory) all need a lawyer or a native speaker (spec section 8). (2) The owner's side: the editor's content fields are driven in a browser since D379 (`e2e/signed-in/unit-price-editor.spec.ts`: typed, saved, kept, and 711,43 kr/l on the storefront); the category and product flags by integration and render tests. (3) Checkout is held by `checkout-section.test.ts` and the integration scenarios, not by e2e (the page cannot be driven there). (4) The email line is held by one integration test (`unit-price.int.test.ts`), not a render test (the spec named `shopper-emails.test.ts`, which does not exist). (5) Orders placed before this unit carry no snapshot and show no unit price; the invoice document does not show the per-measure price. Merchant Center's `unit_pricing_measure` and `unit_pricing_base_measure` are now written by the product feed (D302, `src/lib/feeds.ts`, `feeds.test.ts`). (6) The migrations (`unit_price`, `unit_price_rules` and the `clone_store`, `duplicate_store` and `copy_orders` patches) are applied in production (checked 2026-10-14), but nothing about it was seen working there beyond that.",
     "bucket": "D",
     "wave": 1,
     "criteria": [
@@ -977,37 +979,39 @@
         "src/lib/feeds.ts"
       ],
       "tests": [
-        "src/lib/unit-price.test.ts",
-        "src/lib/unit-price-rules.test.ts",
-        "src/lib/unit-price-text.test.ts",
-        "src/lib/unit-price-editor.test.ts",
-        "src/lib/unit-price-readers.test.ts",
-        "src/lib/unit-price-tools.test.ts",
-        "src/lib/product-input.test.ts",
-        "src/lib/pricing.test.ts",
-        "src/lib/structured-data.test.ts",
-        "src/db/unit-price.test.ts",
-        "src/components/price.test.ts",
-        "src/components/product-card.test.ts",
-        "src/components/chat-widget.test.ts",
-        "src/components/subscription-contents-form.test.ts",
-        "src/components/admin/unit-price-fields.test.ts",
-        "src/components/admin/product-editor-unit-price.test.ts",
+        "e2e/signed-in/unit-price-editor.spec.ts",
+        "e2e/unit-price.spec.ts",
         "src/app/s/[store]/[market]/cart/cart-contents.test.ts",
         "src/app/s/[store]/[market]/checkout/checkout-section.test.ts",
         "src/app/s/[store]/[market]/order/[orderId]/order-section.test.ts",
-        "src/server/unit-price.int.test.ts",
-        "src/server/unit-price-tools.int.test.ts",
+        "src/components/admin/product-editor-unit-price.test.ts",
+        "src/components/admin/unit-price-fields.test.ts",
+        "src/components/chat-widget.test.ts",
+        "src/components/price.test.ts",
+        "src/components/product-card.test.ts",
+        "src/components/subscription-contents-form.test.ts",
+        "src/db/unit-price.test.ts",
+        "src/lib/feeds.test.ts",
+        "src/lib/pricing.test.ts",
+        "src/lib/product-input.test.ts",
+        "src/lib/structured-data.test.ts",
+        "src/lib/unit-price-editor.test.ts",
+        "src/lib/unit-price-readers.test.ts",
+        "src/lib/unit-price-rules.test.ts",
+        "src/lib/unit-price-text.test.ts",
+        "src/lib/unit-price-tools.test.ts",
+        "src/lib/unit-price.test.ts",
         "src/server/checkout-kinds.int.test.ts",
         "src/server/standing-orders.int.test.ts",
-        "e2e/unit-price.spec.ts",
-        "src/lib/feeds.test.ts"
+        "src/server/unit-price-tools.int.test.ts",
+        "src/server/unit-price.int.test.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D160",
-      "D302"
+      "D302",
+      "D379"
     ],
     "history": [
       {
@@ -1347,7 +1351,7 @@
       "was": null
     },
     "weight": 4,
-    "gap": "Built and held by tests (unit 1b, D159, in production): the invoice and credit-note machinery of the two rows above, in the store's own gap-free series, with seller and buyer, VAT per rate, VAT number, payment and dates, the VAT in the seller's currency (`vatHome`) for an order in another currency (Art. 230), reverse charge with both numbers and the IOSS number, a PDF and a link in the emails, on the order page and on the hosted page, and the rules that copied and host orders get none and that numbers cannot be re-prefixed, lowered, skipped or removed (`invoices.test.ts`, `document_audit()` finds a hand-made gap). Euro views of every product kind, with a code, a group discount, a campaign, a gift and a delivery quote, are held in `checkout-kinds.int.test.ts` (invoice total and VAT per rate equal the order's, credit notes sum to the refunds and bring the VAT per rate to zero), and the reverse-charge and IOSS orders in `vat-engine.int.test.ts`. I ran these in my own database on 2026-10-04: all passed. Still short of Full: (1) the legal wording is unreviewed (spec section 8, ten items) and the content list is checked for NO, SE, DK, DE and the Directive only, from sources that were partly secondary or unreadable (EUR-Lex, gesetze-im-internet.de); nothing is claimed for any other member state; so by WAVES.md step 4 the row is not Full until an accountant or lawyer per country has read the real PDFs (spec 9.7); (2) a bonus-credit order, the criterion's own example, is held only by the fixture-based `invoice-parity.test.ts` (the SQL snapshot equals the pure oracle, with a bonus line and a welcome discount) and not by a checkout scenario: the D130 scenarios in `checkout-kinds.int.test.ts` do not call the document check; (3) the criterion's totals are the order's less free-trial subscription lines billed at the first renewal, and the notes sum to the refunds up to what the invoice left uncredited; a refund of a payment not on the invoice (a no-show fee) gets none; (4) the e2e is a fixture order, no Storage, no Chromium on Vercel, no real Stripe; the migrations are applied in production (checked 2026-10-14) but no document has been seen issued there; invoicing off for stores with history (see the invoice row); (5) not built: simplified invoices, exemption references, structured e-invoices (Germany's issuing mandate starts 2027 and 2028), and the per-measure unit price (D160) on the document itself. Since unit 1b, the VAT, OSS and IOSS reports (1c, D161) read these documents, erasure (1g, D162) anonymises them when the seller country's period ends, an order change issues its own invoice and edit credit note (D174, `commerce.issue_edit_documents()`), an exchange one `return_exchange` credit note (D239), an order on payment terms carries its due date (D293), and a gift card line is marked `voucher` (D300).",
+    "gap": "Built and held by tests (unit 1b, D159, in production): the invoice and credit-note machinery of the two rows above, in the store's own gap-free series, with seller and buyer, VAT per rate, VAT number, payment and dates, the VAT in the seller's currency (`vatHome`) for an order in another currency (Art. 230), reverse charge with both numbers and the IOSS number, a PDF and a link in the emails, on the order page and on the hosted page, and the rules that copied and host orders get none and that numbers cannot be re-prefixed, lowered, skipped or removed (`invoices.test.ts`, `document_audit()` finds a hand-made gap). Euro views of every product kind, with a code, a group discount, a campaign, a gift and a delivery quote, are held in `checkout-kinds.int.test.ts` (invoice total and VAT per rate equal the order's, credit notes sum to the refunds and bring the VAT per rate to zero), and the reverse-charge and IOSS orders in `vat-engine.int.test.ts`. I ran these in my own database on 2026-10-04: all passed. Still short of Full: (1) the legal wording is unreviewed (spec section 8, ten items) and the content list is checked for NO, SE, DK, DE and the Directive only, from sources that were partly secondary or unreadable (EUR-Lex, gesetze-im-internet.de); nothing is claimed for any other member state; so by WAVES.md step 4 the row is not Full until an accountant or lawyer per country has read the real PDFs (spec 9.7); (2) since D379 every D130 bonus-credit scenario in `checkout-kinds.int.test.ts` checks its invoice and the credit notes of two refunds (`expectDocuments()`, kroner and euros), besides the fixture-based `invoice-parity.test.ts`; (3) the criterion's totals are the order's less free-trial subscription lines billed at the first renewal, and the notes sum to the refunds up to what the invoice left uncredited; a refund of a payment not on the invoice (a no-show fee) gets none; (4) the e2e is a fixture order, no Storage, no Chromium on Vercel, no real Stripe; the migrations are applied in production (checked 2026-10-14) but no document has been seen issued there; invoicing off for stores with history (see the invoice row); (5) not built: simplified invoices, exemption references, structured e-invoices (Germany's issuing mandate starts 2027 and 2028), and the per-measure unit price (D160) on the document itself. Since unit 1b, the VAT, OSS and IOSS reports (1c, D161) read these documents, erasure (1g, D162) anonymises them when the seller country's period ends, an order change issues its own invoice and edit credit note (D174, `commerce.issue_edit_documents()`), an exchange one `return_exchange` credit note (D239), an order on payment terms carries its due date (D293), and a gift card line is marked `voucher` (D300).",
     "bucket": "A",
     "wave": 1,
     "criteria": [
@@ -1390,29 +1394,29 @@
         "src/server/retention.ts"
       ],
       "tests": [
-        "src/db/invoices.test.ts",
-        "src/db/invoice-parity.test.ts",
-        "src/db/invoices-money-review.test.ts",
-        "src/lib/invoice-snapshot.test.ts",
-        "src/lib/credit-allocation.test.ts",
-        "src/lib/invoice-eligibility.test.ts",
-        "src/lib/invoice-text.test.ts",
-        "src/lib/invoice-retention.test.ts",
-        "src/server/document-readers.test.ts",
-        "src/server/stripe-refunds.test.ts",
+        "e2e/invoices.spec.ts",
         "src/components/documents/order-document-view.test.ts",
         "src/components/documents/order-documents.test.ts",
         "src/components/documents/shopper-documents.test.ts",
-        "src/server/invoice-issue.int.test.ts",
-        "src/server/invoice-documents.int.test.ts",
-        "src/server/invoice-refunds.int.test.ts",
-        "src/server/invoice-refunds-stale.security.int.test.ts",
-        "src/server/invoice-returns.int.test.ts",
+        "src/db/invoice-parity.test.ts",
         "src/db/invoices-concurrency.int.test.ts",
+        "src/db/invoices-money-review.test.ts",
+        "src/db/invoices.test.ts",
+        "src/lib/credit-allocation.test.ts",
+        "src/lib/invoice-eligibility.test.ts",
+        "src/lib/invoice-retention.test.ts",
+        "src/lib/invoice-snapshot.test.ts",
+        "src/lib/invoice-text.test.ts",
         "src/server/checkout-kinds.int.test.ts",
-        "src/server/vat-engine.int.test.ts",
         "src/server/checkout-stripe.int.test.ts",
-        "e2e/invoices.spec.ts"
+        "src/server/document-readers.test.ts",
+        "src/server/invoice-documents.int.test.ts",
+        "src/server/invoice-issue.int.test.ts",
+        "src/server/invoice-refunds-stale.security.int.test.ts",
+        "src/server/invoice-refunds.int.test.ts",
+        "src/server/invoice-returns.int.test.ts",
+        "src/server/stripe-refunds.test.ts",
+        "src/server/vat-engine.int.test.ts"
       ],
       "untested": false
     },
@@ -1423,7 +1427,8 @@
       "D174",
       "D239",
       "D293",
-      "D300"
+      "D300",
+      "D379"
     ],
     "history": []
   },

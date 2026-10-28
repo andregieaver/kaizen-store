@@ -183,7 +183,7 @@ export async function checkoutAction(
   payer: Partial<Record<"name" | "email" | "phone" | "line1" | "line2" | "postalCode" | "city", string>> | null = null,
   /** Bought on the company's payment terms (D293), with whether the store's terms of sale were ticked (in `checkbox` mode). */
   onTerms: { termsTicked: boolean } | null = null,
-  /** Gift cards pay it all (D300 F3): no payment page follows, so the store's terms of sale are accepted here, as on terms. */
+  /** Gift cards pay it all (D300 F3), or a booking is paid wholly at the venue (D379): no payment page follows, so the store's terms of sale are accepted here, as on terms. */
   paidByCards: { termsTicked: boolean } | null = null,
   /** The answers to the store's checkout fields (D357), by field; checked here and again when the order is placed. */
   answers: Record<string, string | boolean> | null = null,

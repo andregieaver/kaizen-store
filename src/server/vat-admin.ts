@@ -348,3 +348,30 @@ export async function syncStandardRates(): Promise<{ changed: number; recent: nu
     return { changed: 0, recent: 0 };
   }
 }
+
+/** How long after a country's midnight the five-minute check still refreshes the catalogue for a rate that began or ended that day. */
+export const VAT_MIDNIGHT_MINUTES = 10;
+
+/**
+ * Every five minutes (D379): a rate of any category that begins or ends today in a country whose day began less than
+ * `VAT_MIDNIGHT_MINUTES` ago refreshes the catalogue, so the cached "incl. VAT" label and the business buyer's price follow the new rate
+ * from the country's midnight, not from the daily job's hour (`syncStandardRates()` still runs daily and catches a missed window). Keeps
+ * no state: within the window it may refresh twice. Never throws: whether it refreshed.
+ */
+export async function refreshVatLabelsAtMidnight(): Promise<{ refreshed: boolean }> {
+  try {
+    const [row] = await db().execute<Row>(sql`
+      select exists (
+        select 1 from commerce.vat_rates r join commerce.countries c on c.code = r.country_code
+        where ((now() at time zone coalesce(c.time_zone, 'UTC'))::time < make_interval(mins => ${VAT_MIDNIGHT_MINUTES})::time)
+          and (r.valid_from = (now() at time zone coalesce(c.time_zone, 'UTC'))::date
+               or r.valid_to = (now() at time zone coalesce(c.time_zone, 'UTC'))::date)
+      ) as due
+    `);
+    if (!row?.due) return { refreshed: false };
+    revalidateTag(CATALOG_TAG, "max");
+    return { refreshed: true };
+  } catch {
+    return { refreshed: false };
+  }
+}

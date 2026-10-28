@@ -191,10 +191,23 @@ function toRecord(row: Row): OrderTermsRecord {
   };
 }
 
-/** The record on an order (`OrderView.terms` reads this), or null. Always for the store's own order only. */
+/**
+ * The record on an order (`OrderView.terms` reads this), or null. Always for the store's own order only. A subscription's renewal (D25) is
+ * bought under the terms accepted when the subscription began: it has no record of its own and reads its subscription's first order's (D379),
+ * so `orderId` on the record is that order's.
+ */
 export async function termsForOrder(storeId: string, orderId: string): Promise<OrderTermsRecord | null> {
   const [row] = await db().execute<Row>(sql`
-    select order_id, mode, accepted_at, locale, snapshots from commerce.order_terms where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid
+    select t.order_id, t.mode, t.accepted_at, t.locale, t.snapshots
+    from commerce.order_terms t
+    where t.store_id = ${storeId}::uuid
+      and t.order_id = coalesce(
+        (select own.order_id from commerce.order_terms own where own.store_id = ${storeId}::uuid and own.order_id = ${orderId}::uuid),
+        (select first.id from commerce.orders o
+           join commerce.orders first on first.store_id = o.store_id and first.subscription_id = o.subscription_id and first.copied_from is null
+          where o.store_id = ${storeId}::uuid and o.id = ${orderId}::uuid and o.subscription_id is not null and o.copied_from is null
+          order by first.placed_at, first.id limit 1)
+      )
   `);
   return row ? toRecord(row) : null;
 }
