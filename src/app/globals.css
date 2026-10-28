@@ -1,4 +1,12 @@
-@import "tailwindcss";
+/*
+ * Tailwind reads class names from `src` and the migrations' SQL only (28 October 2026): left to itself it read every file git
+ * tracks, among them 560 MB of Drizzle's snapshots in `supabase/migrations/meta`, which held Vercel's build past its memory.
+ * The taxonomy's 13 MB of names (`src/data`) hold no class either.
+ */
+@import "tailwindcss" source(none);
+@source "../";
+@source not "../data";
+@source "../../supabase/migrations/*.sql";
 @import "./motion.css";
 
 /*

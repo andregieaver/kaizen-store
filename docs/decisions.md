@@ -705,6 +705,7 @@ Supabase records each migration with the version it was applied at, not the
 timestamp in the file name. This does not matter while migrations are applied
 through Supabase's API. If the Supabase CLI is adopted later (for example for
 branching), run `supabase migration repair` once to align the history.
+| D378 | **The build fits Vercel's 8 GB again (28 October 2026, `docs/build-memory.md`).** Deploys failed from `72751a02`: the type check ran out of heap, and with a 7 GB heap the build was killed for memory. Reproduced under an 8 GB cgroup cap. On Vercel only (`ON_VERCEL` in `next.config.ts`): no type check (CI's `static` job runs it on every push), no Turbopack build cache and one worker. `pnpm build` (`scripts/next-build.mjs`) gives `next build` a 7 GB heap everywhere but Vercel. Tailwind reads `src` (without `src/data`) and the migrations' SQL, no longer the 560 MB of Drizzle snapshots; the CSS lost 37 selectors, none of them used. The measured peak is about 7.2 GB. The trade-off: a type error in a push without a migration now reaches production, with CI red beside it. No migration. |
 
 ## Open
 

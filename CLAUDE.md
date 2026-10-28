@@ -36,6 +36,8 @@ pnpm db:check    # fails if migrations and schema disagree (runs in CI)
 node scripts/db-setup.mjs --seed  # migrations + demo catalogue on an empty DATABASE_URL
 ```
 
+On Vercel the build skips the type check and runs with one worker and no Turbopack cache, to fit its 8 GB machine (D378, `docs/build-memory.md`); keep Tailwind's `@source` lines in `globals.css` pointed at code, never at data or snapshots.
+
 `pnpm build` and the storefront need a database: product lists are prerendered
 from it. Locally, point `DATABASE_URL` at an empty Postgres and run
 `scripts/db-setup.mjs --seed` first; CI does the same with a Postgres service.

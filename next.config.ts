@@ -24,9 +24,19 @@ const DOCUMENT_PDF_FILES = [
   "./node_modules/.pnpm/scheduler@*/node_modules/scheduler/**",
 ];
 
+/**
+ * Vercel's build machine has 8 GB, and the build outgrew it from 27 October 2026: the type check needs a 5 GB heap of its own since
+ * the admin's catalogues were typed (D312), Turbopack's compile holds up to 7 GB, and the workers that collect and render pages start
+ * before it lets go. Each setting that reads this was measured under an 8 GB cap (`docs/build-memory.md`).
+ */
+const ON_VERCEL = Boolean(process.env.VERCEL);
+
 const nextConfig: NextConfig = {
   cacheComponents: true,
   poweredByHeader: false,
+  // On Vercel (`ON_VERCEL`) the type check is left to CI, whose `static` job runs
+  // `pnpm typecheck` on every push and whose builds still check; everywhere else `next build` checks as ever.
+  typescript: { ignoreBuildErrors: ON_VERCEL },
   // Chromium (the cookie scan, D58; the page replicator, D150) is read from disk, not
   // imported, so the trace needs telling; only the routes that launch it carry it.
   outputFileTracingIncludes: {
@@ -50,6 +60,9 @@ const nextConfig: NextConfig = {
     "/**": ["./src/data/product-taxonomy/*"],
   },
   experimental: {
+    // On Vercel, Turbopack without its build cache (its compile held 7.2 GB with it, 5.8 GB without) and one worker for the pages
+    // (each holds about 1.3 GB, and the first starts while the compile's memory is still held).
+    ...(ON_VERCEL ? { turbopackFileSystemCacheForBuild: false, cpus: 1 } : {}),
     // Market pages each have their own root layout, so the 404 page is global.
     globalNotFound: true,
     // Product pictures are uploaded through a server action. The browser
