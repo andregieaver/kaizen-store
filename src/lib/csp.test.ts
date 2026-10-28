@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { CSP_ENFORCE, SITE_HEADERS, adminFrameHeaders, baseRouteHeaders, checkoutCsp, payHeaders, payRouteHeaders, storageOrigin } from "./csp";
+import { CSP_ENFORCE, PERMISSIONS_POLICY, SITE_HEADERS, adminFrameHeaders, baseRouteHeaders, checkoutCsp, payHeaders, payRouteHeaders, storageOrigin } from "./csp";
 
 const directives = (policy: string) =>
   Object.fromEntries(
@@ -106,10 +106,13 @@ describe("the headers sent with it", () => {
 });
 
 describe("the headers every route gets (PSI 2026-10-24, SEC-07)", () => {
-  it("sends nosniff everywhere and leaves Referrer-Policy to the routes that set a stricter one", () => {
+  it("sends nosniff and the device policy everywhere and leaves Referrer-Policy to the routes that set a stricter one", () => {
     const [all] = baseRouteHeaders(null);
     expect(all.source).toBe("/:path*");
-    expect(all.headers).toEqual([{ key: "X-Content-Type-Options", value: "nosniff" }]);
+    expect(all.headers).toEqual([
+      { key: "X-Content-Type-Options", value: "nosniff" },
+      { key: "Permissions-Policy", value: PERMISSIONS_POLICY },
+    ]);
     expect(SITE_HEADERS.some((h) => h.key === "Referrer-Policy")).toBe(false);
   });
 
@@ -120,6 +123,14 @@ describe("the headers every route gets (PSI 2026-10-24, SEC-07)", () => {
     expect(adminFrameHeaders("https://themes.kaizenaflow.com")).toEqual([
       { key: "Content-Security-Policy", value: "frame-ancestors 'self' https://themes.kaizenaflow.com" },
     ]);
+  });
+
+  it("keeps the microphone for the site's own voice features and never restricts payment, which Stripe's wallets need", () => {
+    const features = Object.fromEntries(PERMISSIONS_POLICY.split(", ").map((d) => d.split("=") as [string, string]));
+    expect(features.microphone).toBe("(self)");
+    expect(features.camera).toBe("()");
+    expect(features.geolocation).toBe("()");
+    expect("payment" in features).toBe(false);
   });
 
   it("restricts nothing on the admin but who may frame it", () => {

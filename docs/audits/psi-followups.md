@@ -26,6 +26,8 @@ maturity for the run-up to launch. Point IDs are the audit's.
   `src/app/global-error.tsx` for a failing root layout.
 - **SEC-07** `nosniff` on every response; the admin may be framed only by Kaizena Flow and the theme store's own host
   (`frame-ancestors`, `src/lib/csp.ts`). `Referrer-Policy` is left to the routes, which set `no-referrer` where it matters.
+  `Permissions-Policy` everywhere (28 October 2026, `PERMISSIONS_POLICY`): no camera, location, USB or topics; the microphone for the site's
+  own voice features only; payment left to the default Stripe's wallets need.
 
 ## Build into development (conventions that compound)
 
@@ -83,8 +85,11 @@ maturity for the run-up to launch. Point IDs are the audit's.
       24 hours, revisit at launch); `docs/runbooks/restore.md` has the targets (RTO 1 hour proposed), the copy's scheduled jobs as the
       first step, the replay of Stripe, Mollie, carriers and emails, and `scripts/restore-check.mjs` for the checks. Still to do: the drill
       itself (lifts the audit's only gating cap) and a daily copy of `product-media`, `documents` and `digital-files` to a second EU bucket.
-- [ ] **REG-06, REG-07, REG-08** Sign the pending DPAs, move the platform's AI to the EU path, write the breach runbook, a DPIA for the
-      AI features and an AI Act note; tell customers about tone scoring.
+- [ ] **REG-06, REG-07, REG-08** Sign the pending DPAs, move the platform's AI to the EU path, an AI Act note; tell customers about tone
+      scoring. Written as drafts for the owner's and a lawyer's review (28 October 2026): the threat model (`docs/security.md`, SEC-01),
+      the breach runbook (`docs/runbooks/breach.md`) and the DPIA for the AI features (`docs/dpia-ai.md`), whose findings are still open:
+      the AI manager's conversations have no retention period and a shopper's erasure does not reach them, and tone scoring and
+      summaries are on by default without a word to customers.
 - [ ] **REG-02** Legal review of the platform's terms, privacy notice and DPA; fill in the company name.
 - [ ] **REG-03, DATA-05** Owner and staff account erasure; a whole-store export.
 - [ ] **REL-09, PERF-01, PERF-02, PERF-11** Status page and SLOs; real-user vitals; a Dublin-side measurement of `/admin`; per-route

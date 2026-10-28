@@ -267,6 +267,7 @@ export const PERSONAL_DATA: PersonalEntry[] = [
 
 /** Tables the detectors matched (by a column name such as `name`, `note` or `content`, or a foreign key) that hold no person's data, and why. */
 export const NOT_PERSONAL: Record<string, string> = {
+  search_cache: "What a search asked the store's AI (D74, D75, D139): a vector, the filters a search was read as or a recommendation's order, keyed by an md5; never tied to a visitor, deleted after 30 days (`pruneSearchCache()`), since the words typed could name someone.",
   workflows: "A store's workflows (D356): the owner's own words (a name, conditions, a staff email's text, a question) and who saved them; no customer.",
   checkout_rules: "A store's checkout rules (D357): the owner's conditions on a basket (countries, amounts, ids of products, terms and groups) and an effect with the owner's words; no customer.",
   checkout_rule_skips: "How often a checkout rule was left out and why (D357): a rule id, a reason and counts; no customer.",

@@ -94,11 +94,21 @@ export function payRouteHeaders(env: CspEnv = {}, enforce: boolean = CSP_ENFORCE
 }
 
 /**
- * Sent with every response (PSI 2026-10-24, SEC-07): a file is only ever taken as the type it says it is. `Referrer-Policy` is left
- * out on purpose: the browsers' default is already `strict-origin-when-cross-origin`, and routes that need `no-referrer` set it
- * themselves, which a site-wide entry could override.
+ * What a page and the frames in it may ask the device for (PSI 2026-10-28, SEC-07): the microphone only for the site's own pages (the
+ * chat's and the AI manager's voice, the page studio's interview), never a frame's; no camera, location, USB or interest topics, which
+ * nothing here uses. Payment is left to the browsers' default, which Stripe's wallets in its own frames need.
  */
-export const SITE_HEADERS: HeaderEntry[] = [{ key: "X-Content-Type-Options", value: "nosniff" }];
+export const PERMISSIONS_POLICY = "camera=(), geolocation=(), microphone=(self), usb=(), browsing-topics=()";
+
+/**
+ * Sent with every response (PSI 2026-10-24, SEC-07): a file is only ever taken as the type it says it is, and `PERMISSIONS_POLICY`.
+ * `Referrer-Policy` is left out on purpose: the browsers' default is already `strict-origin-when-cross-origin`, and routes that need
+ * `no-referrer` set it themselves, which a site-wide entry could override.
+ */
+export const SITE_HEADERS: HeaderEntry[] = [
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "Permissions-Policy", value: PERMISSIONS_POLICY },
+];
 
 /**
  * The admin may be framed only by Kaizena Flow itself and, when the theme store has a host of its own, by that host: its pages show
