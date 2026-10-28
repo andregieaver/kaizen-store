@@ -1,6 +1,6 @@
 import { connection } from "next/server";
 
-import { FEED_EXTENSION, feedFile, parseFeedFile } from "@/lib/feeds";
+import { FEED_EXTENSION, feedFile, isAgentChannel, parseFeedFile } from "@/lib/feeds";
 import { marketUrl } from "@/lib/paths";
 import { featureOn } from "@/lib/store-features";
 import { feedTokenHash, storeOfFeedToken } from "@/server/feed-settings";
@@ -11,7 +11,7 @@ import { getStore } from "@/server/stores";
 
 /**
  * A store's product feed (D302, `docs/wave-5-marketing.md` 13): `/api/feeds/{token}/{market}-{channel}.{xml|csv}`, for Google Merchant Center,
- * Meta, TikTok and Pinterest to fetch. The token is the only key: anything that is not an open store's feed while it is on is a plain 404.
+ * Meta, TikTok and Pinterest to fetch, and ChatGPT's (D353) while its own switch is on. The token is the only key: anything that is not an open store's feed while it is on is a plain 404.
  * Cached for 15 minutes, the stated refresh time, and limited per address by `takeBudget()`.
  */
 const notFound = () => new Response("Not found", { status: 404, headers: { "Cache-Control": "no-store", "X-Robots-Tag": "noindex" } });
@@ -23,6 +23,8 @@ export async function GET(_request: Request, { params }: RouteContext<"/api/feed
   if (!name) return notFound();
   const owner = await storeOfFeedToken(token);
   if (!owner) return notFound();
+  // An AI shopping channel's feed (D353) only while the store has switched that channel on.
+  if (isAgentChannel(name.channel) && !owner.channels.includes(name.channel)) return notFound();
   const store = await getStore(owner.slug);
   // A private store (D339) has no feed: its products are not for any channel while it is private.
   if (!store || store.status !== "active" || store.isTemplate || store.starter || store.privateMode || !featureOn(store, "shop")) return notFound();

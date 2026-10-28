@@ -1089,7 +1089,7 @@
       "was": "missing"
     },
     "weight": 3,
-    "gap": "D302 serves a normalised feed per store and market (storeFeed(), src/server/feeds.ts): offered goods only, VAT-inclusive prices in the market's currency as the storefront shows them, as Google Merchant Center RSS (which Google's AI shopping surfaces read) and Meta, TikTok and Pinterest CSVs, every product left out named with its reason on Marketing -> Product feeds; llms.txt, crawler switches and JSON-LD besides (ai.ai-discovery-signals). Still missing: a feed in the AI channels' own specs (ChatGPT, Copilot, Perplexity) and a per-channel opt-in (the feeds are on or off for the store as a whole, criterion 1); attribution of an order to an agent channel (criterion 3). In-chat checkout stays off. Merged on 2026-10-25 (README rule 8): `customers.ai-assistant-discoverability-and-agentic-commerce` was the same Shopify feature (rated partial); its criteria and evidence are here.",
+    "gap": "D302 serves a normalised feed per store and market (storeFeed()): offered goods only, VAT-inclusive prices in the market's currency as the storefront shows them, as Google Merchant Center RSS (which Google's AI shopping surfaces read) and Meta, TikTok and Pinterest CSVs, every product left out named with its reason. Since D353: ChatGPT's own product feed (OpenAI's spec, read 28 October 2026: its required fields, variants grouped, search on and in-chat checkout off), behind a per-channel switch that is off by default; a shopping agents' endpoint (UCP and MCP, ai.agent-ready-ucp-or-mcp-endpoints); and attribution without a cookie: a visit from ChatGPT, Perplexity, Copilot or Gemini, or a link tagged with one, is the AI agents' channel, and an order from a cart an agent handed over counts there too. Still partial: no Perplexity or Copilot feed (their specs not read yet), and nothing is live until a programme accepts the store (bucket B). In-chat checkout stays off.",
     "bucket": "B",
     "wave": 8,
     "criteria": [
@@ -1115,21 +1115,28 @@
         "src/app/s/[store]/llms.txt/route.ts",
         "src/app/robots.txt/route.ts",
         "src/lib/structured-data.ts",
-        "src/app/api/mcp/route.ts"
+        "src/app/api/mcp/route.ts",
+        "src/lib/analytics-traffic.ts",
+        "src/lib/analytics-channels.ts",
+        "src/server/analytics-traffic-data.ts",
+        "src/server/shopping-agents.ts"
       ],
       "tests": [
         "src/lib/feeds.test.ts",
         "src/server/feeds.int.test.ts",
         "src/lib/seo.test.ts",
         "src/server/seo.int.test.ts",
-        "src/lib/structured-data.test.ts"
+        "src/lib/structured-data.test.ts",
+        "src/lib/shopping-agents.test.ts",
+        "src/server/shopping-agents.int.test.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D302",
       "D21",
-      "D96"
+      "D96",
+      "D353"
     ],
     "history": [
       {
@@ -1152,14 +1159,14 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "missing"
     },
     "weight": 2,
-    "gap": "`/api/mcp` serves the owner tools to Kaizen Life only (D96) and answers 401 without a Kaizen Life token. The WordPress plugin's API (D169, D170: products, terms, a cart quote and a hand-off to the store's own checkout) answers only a site an owner connected, with that connection's token. There is no public, rate-limited endpoint for shopping agents, no /.well-known/ucp profile and no /agents.md; agents get llms.txt, JSON-LD and the product feeds (D302) only.",
-    "bucket": "A",
-    "wave": 8,
+    "gap": "Met (D353). Each store serves a UCP business profile (version 2026-08-25, read at ucp.dev on 28 October 2026) at /.well-known/ucp on its own host (/s/{store}/.well-known/ucp until then), an agents.md and a line in its llms.txt, all pointing to its public MCP endpoint /api/ucp/{store}/mcp (apart from /api/mcp, which still answers Kaizen Life's tokens only). Its tools are search_catalog (keyword search, never a model), lookup_catalog, get_product (the product page's own read: variants, options, pictures, the price with VAT in the country's currency in minor units, available or not from stock now) and create_cart (checked as adding in the store is, D170's hand-off: a link the shopper opens once to pay in the store's own checkout; nothing is ordered or paid at the endpoint). No token, no cookie and no personal data; a budget per store and per caller (a daily hash of the address); counts logged only. It answers only an open store with the shop on, not private, with AI assistants allowed under SEO & Reach and its Shopping agents switch on (off by default).",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "A store serves a discovery profile and a public MCP endpoint whose catalog tools (search, lookup, get product) answer from the store's published products only, with the market's VAT-inclusive prices and stock as available or not.",
       "The endpoint is rate-limited, returns no personal data, sets no cookie, and obeys the store's per-bot switches.",
@@ -1169,19 +1176,37 @@
     "evidence": {
       "files": [
         "src/app/api/mcp/route.ts",
-        "src/server/store-mcp.ts"
+        "src/server/store-mcp.ts",
+        "src/lib/shopping-agents.ts",
+        "src/server/shopping-agents.ts",
+        "src/server/shopping-agent-settings.ts",
+        "src/app/api/ucp/[store]/mcp/route.ts",
+        "src/app/s/[store]/.well-known/ucp/route.ts",
+        "src/app/s/[store]/agents.md/route.ts",
+        "src/server/cart-handoff.ts",
+        "supabase/migrations/20261028075823_shopping_agents.sql"
       ],
       "tests": [
-        "src/server/store-mcp.int.test.ts"
+        "src/server/store-mcp.int.test.ts",
+        "src/lib/shopping-agents.test.ts",
+        "src/server/shopping-agents.int.test.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D96",
       "D169",
-      "D302"
+      "D302",
+      "D353"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-28",
+        "from": "missing",
+        "to": "full",
+        "why": "D353: a UCP profile, agents.md and a public MCP endpoint per store (search_catalog, lookup_catalog, get_product, create_cart handing the cart to the store's checkout), rate-limited, without cookies or personal data, behind the store's own switch."
+      }
+    ]
   },
   {
     "id": "ai.ai-discovery-signals",

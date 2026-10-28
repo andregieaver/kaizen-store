@@ -213,7 +213,7 @@ function ordersCte(store: Store, period: AnalyticsPeriod, used: ReadonlySet<Dime
     ),
     po as materialized (
       select po0.*,
-        ${visit ? sql`coalesce(vv.channel, ${NONE_KEY})` : sql`null::text`} as d_channel,
+        ${visit ? sql`(case when c.source = 'agent' then 'ai_agent' else coalesce(vv.channel, ${NONE_KEY}) end)` : sql`null::text`} as d_channel,
         ${visit ? sql`coalesce(vv.device, ${NONE_KEY})` : sql`null::text`} as d_device,
         ${used.has("payment_method") ? sql`coalesce(mp.k, ${NONE_KEY})` : sql`null::text`} as d_method,
         ${used.has("customer_type") ? sql`(case when po0.ckey is null then ${NONE_KEY} when po0.placed_at <= f.first_at then 'new' else 'returning' end)` : sql`null::text`} as d_customer,

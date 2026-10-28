@@ -60,6 +60,10 @@ const READERS: Record<string, "real" | "template" | "both"> = {
   "src/server/referrals.ts": "real",
   "src/server/seo.ts": "real",
   "src/server/setup-tools.ts": "real",
+  // Shopping agents (D353): a template or demo store never serves agents.
+  "src/server/shopping-agent-settings.ts": "real",
+  "src/server/shopping-agents.ts": "real",
+  "src/app/s/[store]/agents.md/route.ts": "real",
   "src/server/legal-writer.ts": "real",
   "src/server/page-looks.ts": "real",
   "src/server/store-closure.ts": "template",

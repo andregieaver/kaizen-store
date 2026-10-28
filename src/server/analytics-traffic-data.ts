@@ -502,7 +502,8 @@ async function channelOrders(store: Store, range: Range, feesOn: boolean): Promi
   const known = convertibleCurrencies(store);
   // A staff-made order (D173) came from no visit: its own row, whatever cart or visit it might be tied to.
   // An exchange order (D239) likewise: its own row.
-  const channel = sql`(case when ${STAFF_MADE} then ${STAFF_CHANNEL} when ${EXCHANGE_ORDER} then ${EXCHANGE_CHANNEL} else coalesce(v.channel, ${UNKNOWN_CHANNEL}) end)`;
+  // A cart a shopping agent handed over (D353, `carts.source = 'agent'`) is the AI agents' whatever visit opened it.
+  const channel = sql`(case when ${STAFF_MADE} then ${STAFF_CHANNEL} when ${EXCHANGE_ORDER} then ${EXCHANGE_CHANNEL} when c.source = 'agent' then 'ai_agent' else coalesce(v.channel, ${UNKNOWN_CHANNEL}) end)`;
   const rows = await setBased<Row>(sql`
     with po0 as materialized (
       select o.id, o.store_id, o.currency::text as currency, (o.currency = any(${known})) as ok, o.total_minor, o.tax_minor, (${channel})::text as k
@@ -584,7 +585,7 @@ async function newCustomersByChannel(store: Store, range: Range): Promise<Map<st
       from q join ko on ko.k = q.k and ko.placed_at = q.first_at
       order by q.k, ko.placed_at, ko.id
     )
-    select (case when fr.staff_made then ${STAFF_CHANNEL} when fr.exchange then ${EXCHANGE_CHANNEL} else coalesce(v.channel, ${UNKNOWN_CHANNEL}) end) as ch, count(*) as n
+    select (case when fr.staff_made then ${STAFF_CHANNEL} when fr.exchange then ${EXCHANGE_CHANNEL} when c.source = 'agent' then 'ai_agent' else coalesce(v.channel, ${UNKNOWN_CHANNEL}) end) as ch, count(*) as n
     from fr
     left join commerce.carts c on c.store_id = ${store.id}::uuid and c.id = fr.cart_id
     left join commerce.visits v on v.store_id = ${store.id}::uuid and v.id = c.visit_id

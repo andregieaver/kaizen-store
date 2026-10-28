@@ -485,6 +485,7 @@ export const reportsNb: ReportsMessages = {
     email: "E-post",
     affiliate: "Partnere",
     referral: "Henvisning",
+    ai_agent: "KI-agenter",
     other: "Annet",
     unknown: "Ukjent",
     staff: "Laget av ansatte",

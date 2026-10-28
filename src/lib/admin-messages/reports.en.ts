@@ -494,6 +494,7 @@ export const reportsEn = {
     email: "Email",
     affiliate: "Affiliate",
     referral: "Referral",
+    ai_agent: "AI agents",
     other: "Other",
     unknown: "Unknown",
     staff: "Staff-made",

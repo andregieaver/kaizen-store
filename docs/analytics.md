@@ -145,10 +145,12 @@ cannot be followed from one day to the next, and that adding to the cart lets th
   `/cart/restore/{token}`, `/download/{token}`) makes the whole path `(other)`; the query and fragment are dropped first.
   The product counter still follows the real product handle.
 - **Channel** is decided once, on the visitor-day's first page view, by `classifyChannel()` (referrer host and `utm_medium`
-  / `utm_source`): direct, organic search, paid search, organic social, paid social, email, affiliate, referral, other.
+  / `utm_source`): direct, organic search, paid search, organic social, paid social, email, affiliate, referral, AI agents, other.
+  **AI agents** (`ai_agent`, D353) is a visit from ChatGPT (`chatgpt.com`, `chat.openai.com`), Perplexity, Copilot or Gemini, or one whose
+  `utm_source` names one; an order from a cart a shopping agent handed over (`carts.source = 'agent'`) counts there whatever visit opened it.
 - **Carts.** A cart made when the same visitor-day already has a row gets `carts.visit_id` (`openCart()` →
   `attachVisitToCart()`: the same store day, one lookup), which is how an order knows its channel and device; orders with no
-  visit are "Unknown". This is the one place a visit meets an order, and so a customer: nothing else links them, and deleting a
+  visit are "Unknown" (a shopping agent's cart excepted, above). This is the one place a visit meets an order, and so a customer: nothing else links them, and deleting a
   visit (below) sets `visit_id` to null.
 - **Limits against abuse** (`NEW_VISITS_PER_STORE_DAY` = 50,000 new rows per store per day; `NEW_VISITS_PER_ADDRESS_WINDOW` =
   100 new rows per address in ten minutes; `PAGE_VIEW_CAP` = 3,000 page views per visitor-day). They are counted in

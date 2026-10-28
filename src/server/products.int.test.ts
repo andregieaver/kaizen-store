@@ -56,6 +56,7 @@ async function createStore(slug: string): Promise<Store> {
     returnPolicy: DEFAULT_RETURN_POLICY,
     visitCounting: false,
     privateMode: false,
+    shoppingAgents: false,
     privatePassword: false,
     // The Selling features are on (D178): these tests save subscriptions, appointments and stays.
     features: ["shop", "subscriptions", "appointments", "bookings"],

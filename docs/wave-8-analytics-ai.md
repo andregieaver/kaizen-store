@@ -477,6 +477,17 @@ Built as above, with these differences:
     carries `carts.source = 'agent'`. Orders count by channel as before.
   - **Live**: the row is bucket B. It is live only once each channel's programme accepts the store, which the row says.
 
+  **As built (28 October 2026).** As outlined, with these choices: the profile and the tools follow UCP version `2026-08-25` as read at ucp.dev
+  (the arguments nested under `catalog` and `cart`, flat ones read too; Global IDs; prices in minor units), and the endpoint adds
+  `lookup_catalog` beside `search_catalog` and `get_product`; search is keyword only (no meaning model, so no cost per call); the endpoint also
+  needs the store's *AI assistants* switch under SEO & Reach on, as the parity criterion asks it to obey the per-bot switches; robots.txt
+  already closes `/api/` to every crawler, so a switched-off store says so by a 404 profile and an `agents.md` that says it takes no
+  requests; `create_cart`'s totals are the WordPress quote's subtotal (shipping and discounts are the checkout's); the `ai_agent` channel is
+  a classifier host kind of its own, and an agent's cart wins over the visit that opened it. Perplexity and Copilot feeds are not built: their
+  specs have not been read (decision 4). Tests: `shopping-agents.test.ts` (profile, ids, arguments, the ChatGPT feed against the spec's
+  required fields, the classifier) and `shopping-agents.int.test.ts` (off, on, private, AI assistants shut out; prices in NOK and euro; a cart
+  handed over and nothing ordered; an agent's order in its channel).
+
 ## 5. Decisions (to be taken by the owner)
 
 | # | Decision | Options | Recommendation |

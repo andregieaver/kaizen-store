@@ -21,6 +21,8 @@ export const BUDGETS = {
   feed: { window: "hour", visitor: 60, store: 600 },
   // A private store's password (D339): a few tries a minute for one visitor, the store's own ceiling against guessing from many.
   unlock: { window: "minute", visitor: 10, store: 120 },
+  // A shopping agent's calls to the store's MCP endpoint (D353): the visitor is a daily hash of the caller's address.
+  agent: { window: "minute", visitor: 60, store: 1200 },
 } as const satisfies Record<string, { window: BudgetWindow; visitor: number; store: number }>;
 
 export type BudgetEndpoint = keyof typeof BUDGETS;

@@ -19,23 +19,29 @@ type Row = Record<string, unknown>;
  * is sent to a one-time link that makes it their cart in the store. The lines are checked as if the shopper had added them here (`sellableQuantity()`:
  * an active variant with a price in the market, goods only, never a subscription-only or business-only product, stock for the quantity), and a
  * quantity above the stock is cut to it. The link is a secret kept only as a hash, works once and for fifteen minutes; until it is used the
- * cart is no one's, holds no stock, and runs out with the link.
+ * cart is no one's, holds no stock, and runs out with the link. A shopping agent's cart (D353) is marked `source = 'agent'`, so its order counts
+ * in the AI agents' channel.
  */
 export type HandoffResult =
-  | { ok: true; token: string; lines: { variantId: string; quantity: number; outcome: LineOutcome | "unavailable" }[] }
+  | { ok: true; token: string; cartId: string; lines: { variantId: string; quantity: number; outcome: LineOutcome | "unavailable" }[] }
   | { ok: false; reason: "nothing_to_buy" };
 
 class NothingToBuy extends Error {}
 
-export async function createHandoffCart(shop: Shop, lines: CartLineInput[], to: "cart" | "checkout"): Promise<HandoffResult> {
+export async function createHandoffCart(
+  shop: Shop,
+  lines: CartLineInput[],
+  to: "cart" | "checkout",
+  options: { source?: "agent" } = {},
+): Promise<HandoffResult> {
   const token = `${HANDOFF_PREFIX}${randomBytes(32).toString("base64url")}`;
   try {
     return await db().transaction(async (tx) => {
       const [cart] = await tx.execute<Row>(sql`
-        insert into commerce.carts (store_id, market_code, currency, locale, expires_at, handoff_hash, handoff_expires_at, handoff_to)
+        insert into commerce.carts (store_id, market_code, currency, locale, expires_at, handoff_hash, handoff_expires_at, handoff_to, source)
         values (${shop.storeId}::uuid, ${shop.market.code}, ${shop.market.currency}, ${shop.market.locale},
                 now() + make_interval(mins => ${HANDOFF_MINUTES}), ${hashSecret(token)},
-                now() + make_interval(mins => ${HANDOFF_MINUTES}), ${to})
+                now() + make_interval(mins => ${HANDOFF_MINUTES}), ${to}, ${options.source ?? null})
         returning id
       `);
       const cartId = String(cart.id);
@@ -60,7 +66,7 @@ export async function createHandoffCart(shop: Shop, lines: CartLineInput[], to: 
       }
       // Nothing could be bought: no cart is made (the transaction is undone).
       if (!kept.some((line) => line.quantity > 0)) throw new NothingToBuy();
-      return { ok: true as const, token, lines: kept };
+      return { ok: true as const, token, cartId, lines: kept };
     });
   } catch (error) {
     if (error instanceof NothingToBuy) return { ok: false, reason: "nothing_to_buy" };

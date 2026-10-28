@@ -49,7 +49,7 @@ export function normalizeHost(raw: unknown): string {
 /** `host` is `domain` or a subdomain of it. */
 const under = (host: string, domain: string): boolean => host === domain || host.endsWith(`.${domain}`);
 
-type HostKind = "search" | "social" | "email";
+type HostKind = "search" | "social" | "email" | "ai";
 type KnownHost = { label: string; kind: HostKind; test: (host: string) => boolean };
 
 const is = (...domains: string[]) => (host: string) => domains.some((d) => under(host, d));
@@ -65,6 +65,12 @@ const KNOWN_HOSTS: readonly KnownHost[] = [
   { label: "gmail", kind: "email", test: (h) => h === "mail.google.com" || h === "com.google.android.gm" },
   { label: "outlook", kind: "email", test: is("outlook.live.com", "outlook.office.com", "outlook.office365.com", "outlook.com") },
   { label: "yahoo mail", kind: "email", test: (h) => h === "mail.yahoo.com" },
+  // Shopping agents and AI assistants (D353): their links bring a visit of the `ai_agent` channel. Before search, so Google's
+  // assistant is not Google search.
+  { label: "chatgpt", kind: "ai", test: (h) => is("chatgpt.com")(h) || h === "chat.openai.com" },
+  { label: "perplexity", kind: "ai", test: is("perplexity.ai") },
+  { label: "copilot", kind: "ai", test: (h) => h === "copilot.microsoft.com" },
+  { label: "gemini", kind: "ai", test: (h) => h === "gemini.google.com" },
   // Search
   { label: "google", kind: "search", test: (h) => /^(?:images\.)?google\.(?:com?\.)?[a-z]{2,3}$/.test(h) || h === "com.google.android.googlequicksearchbox" },
   { label: "bing", kind: "search", test: is("bing.com") },
@@ -239,6 +245,7 @@ export function classifyChannel(input: ClassifyInput): Classified {
   if (!MEDIUM_NONE.has(medium)) return done("other");
 
   if (tagged) {
+    if (taggedKind === "ai") return done("ai_agent");
     if (taggedKind === "search") return done("organic_search");
     if (taggedKind === "social") return done("organic_social");
     if (taggedKind === "email") return done("email");
@@ -246,6 +253,7 @@ export function classifyChannel(input: ClassifyInput): Classified {
   }
 
   if (referrer === "" || fromOwn) return clicks.fbclid && referrer === "" ? done("organic_social", "facebook") : done("direct");
+  if (referrerKnown?.kind === "ai") return done("ai_agent");
   if (referrerKnown?.kind === "email") return done("email");
   if (referrerKnown?.kind === "search") return done("organic_search");
   if (referrerKnown?.kind === "social") return done("organic_social");

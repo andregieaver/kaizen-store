@@ -37,6 +37,8 @@ const REFRESHED_BY_CALLERS = new Set([
   "src/server/site-cookies.ts",
   "src/server/site-css.ts",
   "src/server/site-layouts.ts",
+  // The Shopping agents switch (D353): its action refreshes the store.
+  "src/server/shopping-agent-settings.ts",
   "src/server/standing-orders.ts",
   "src/server/store-roles.ts",
   "src/server/store-starters.ts",

@@ -637,6 +637,12 @@ export const stores = commerce.table(
     privatePassword: text("private_password"),
     /** Raised when the password changes or the owner signs everyone out: a password pass given under another version no longer opens. */
     privateVersion: integer("private_version").notNull().default(1),
+    /**
+     * Shopping agents (wave 8 unit I, D353, `src/server/shopping-agents.ts`): the store's public MCP endpoint for AI shopping agents
+     * (`/api/ucp/{store}/mcp`) and its UCP profile answer only while this is on. Off by default (decision 4); written only by
+     * `src/server/shopping-agent-settings.ts`. Never copied with a store.
+     */
+    shoppingAgents: boolean("shopping_agents").notNull().default(false),
     /** Modules the store has switched on (D65): `bookings` for appointments, `deliveries` (D102), `work` (D122). */
     modules: text("modules").array().notNull().default(sql`'{}'::text[]`),
     /**
@@ -3945,6 +3951,8 @@ export const carts = commerce.table(
     handoffHash: text("handoff_hash"),
     handoffExpiresAt: timestamp("handoff_expires_at", { withTimezone: true }),
     handoffTo: text("handoff_to"),
+    /** Where a cart was made when not by a shopper in the store (D353): `agent`, a shopping agent's `create_cart`. Its order counts as AI agents'. */
+    source: text("source"),
     /**
      * A gift message (wave 3, run 2, D173): the shopper marks the order as a gift and may write a name, a sender and a message
      * (`src/lib/gift.ts` cleans them and refuses a text over the limit; only when the store's `order_settings.gift_messages` is on).
@@ -3966,6 +3974,7 @@ export const carts = commerce.table(
     unique("carts_store_id_key").on(t.storeId, t.id),
     uniqueIndex("carts_handoff_idx").on(t.handoffHash),
     check("carts_handoff_to", sql`${t.handoffTo} is null or ${t.handoffTo} in ('cart', 'checkout')`),
+    check("carts_source", sql`${t.source} is null or ${t.source} in ('agent')`),
     check("carts_gift_fields", giftFieldsCheck(t)),
     check("carts_bonus_request", sql`${t.bonusRequestMinor} >= 0`),
     check("carts_po_number", sql`${t.poNumber} is null or char_length(${t.poNumber}) between 1 and 40`),
@@ -13945,10 +13954,16 @@ export const feedSettings = commerce.table(
     tokenHash: text("token_hash").notNull(),
     token: text("token").notNull(),
     on: boolean("on").notNull().default(true),
+    /** The AI shopping channels the store serves a feed to (D353, `AGENT_FEED_CHANNELS`): each off until switched on. */
+    channels: text("channels").array().notNull().default(sql`'{}'::text[]`),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
-  (t) => [unique("feed_settings_token_hash").on(t.tokenHash), check("feed_settings_hash", sql`${t.tokenHash} ~ '^[0-9a-f]{64}$'`)],
+  (t) => [
+    unique("feed_settings_token_hash").on(t.tokenHash),
+    check("feed_settings_hash", sql`${t.tokenHash} ~ '^[0-9a-f]{64}$'`),
+    check("feed_settings_channels", sql`${t.channels} <@ array['openai']::text[]`),
+  ],
 );
 
 /**

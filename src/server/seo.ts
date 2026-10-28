@@ -3,6 +3,7 @@ import "server-only";
 import { languageAlternates, platformPath, type PlatformLang } from "@/lib/platform-lang";
 import { listIndexedEntries } from "./content-site";
 import { getPlatformLangs } from "./platform-navigation";
+import { agentEndpoint, agentProblem, agentProfileUrl } from "./shopping-agents";
 import { sql } from "drizzle-orm";
 import type { Metadata } from "next";
 import { cacheLife, cacheTag } from "next/cache";
@@ -781,6 +782,10 @@ export async function storeLlms(slug: string): Promise<string | null> {
               }),
               "Shoppers have 14 days to change their mind (right of withdrawal), except for products the listing says are excluded.",
               `To buy: add products to the cart on the product page, then pay by card at checkout (${home(market.code)}/cart).`,
+              // Shopping agents (D353): only while the store serves them.
+              ...(agentProblem(store) === null
+                ? [`Shopping agents: the store's UCP profile is ${agentProfileUrl(store.slug)}, its MCP endpoint ${agentEndpoint(store.slug)} (see ${origin}/agents.md).`]
+                : []),
             ],
           },
           {

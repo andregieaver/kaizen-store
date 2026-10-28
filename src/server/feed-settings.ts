@@ -5,6 +5,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
+import { AGENT_FEED_CHANNELS, type AgentFeedChannel } from "@/lib/feeds";
 import { decryptSecret, encryptSecret, parseKey } from "@/lib/secret-box";
 
 import { audit } from "./auth";
@@ -24,11 +25,11 @@ export const feedTokenHash = (token: string) => createHash("sha256").update(toke
 /** A token as it appears in an address: 32 url-safe characters. */
 export const FEED_TOKEN = /^[A-Za-z0-9_-]{32}$/;
 
-export type FeedSettingsView = { on: boolean; token: string | null };
+export type FeedSettingsView = { on: boolean; token: string | null; channels: AgentFeedChannel[] };
 
 /** The store's feeds as the page shows them: whether they are on and, when the key can open it, the token. */
 export async function feedSettingsOf(storeId: string): Promise<FeedSettingsView | null> {
-  const [row] = await db().execute<Row>(sql`select token, "on" from commerce.feed_settings where store_id = ${storeId}::uuid`);
+  const [row] = await db().execute<Row>(sql`select token, "on", channels from commerce.feed_settings where store_id = ${storeId}::uuid`);
   if (!row) return null;
   const secretKey = key();
   let token: string | null = null;
@@ -37,7 +38,32 @@ export async function feedSettingsOf(storeId: string): Promise<FeedSettingsView 
   } catch {
     token = null;
   }
-  return { on: Boolean(row.on), token };
+  return { on: Boolean(row.on), token, channels: channelsOf(row.channels) };
+}
+
+const channelsOf = (value: unknown): AgentFeedChannel[] =>
+  (Array.isArray(value) ? value : []).filter((c): c is AgentFeedChannel => (AGENT_FEED_CHANNELS as readonly unknown[]).includes(c));
+
+/**
+ * Switches one AI shopping channel's feed on or off (D353; off by default). Its feed is served only while the feeds are on as well, so the
+ * feeds are made on first when a channel is switched on.
+ */
+export async function switchAgentChannel(storeId: string, accountId: string, channel: AgentFeedChannel, on: boolean): Promise<FeedSettingsResult> {
+  if (on) {
+    const [existing] = await db().execute<Row>(sql`select "on" from commerce.feed_settings where store_id = ${storeId}::uuid`);
+    if (!existing?.on) {
+      const made = await switchFeedsOn(storeId, accountId);
+      if (!made.ok) return made;
+    }
+  }
+  const rows = await db().execute<Row>(sql`
+    update commerce.feed_settings
+    set channels = ${on ? sql`array(select distinct unnest(channels || array[${channel}]::text[]))` : sql`array_remove(channels, ${channel})`}, updated_at = now()
+    where store_id = ${storeId}::uuid and (${channel} = any(channels)) is distinct from ${on}
+    returning 1
+  `);
+  if (rows.length > 0) await audit(accountId, storeId, on ? "marketing.feed_channel_on" : "marketing.feed_channel_off", { channel });
+  return { ok: true };
 }
 
 export type FeedSettingsResult = { ok: true } | { ok: false; problem: "no_key" };
@@ -69,11 +95,11 @@ export async function switchFeedsOff(storeId: string, accountId: string): Promis
 }
 
 /** The store whose feeds a token opens, while they are on; null for anything else. */
-export async function storeOfFeedToken(token: string): Promise<{ storeId: string; slug: string } | null> {
+export async function storeOfFeedToken(token: string): Promise<{ storeId: string; slug: string; channels: AgentFeedChannel[] } | null> {
   if (!FEED_TOKEN.test(token)) return null;
   const [row] = await db().execute<Row>(sql`
-    select f.store_id, s.slug from commerce.feed_settings f join commerce.stores s on s.id = f.store_id
+    select f.store_id, s.slug, f.channels from commerce.feed_settings f join commerce.stores s on s.id = f.store_id
     where f.token_hash = ${feedTokenHash(token)} and f."on"
   `);
-  return row ? { storeId: String(row.store_id), slug: String(row.slug) } : null;
+  return row ? { storeId: String(row.store_id), slug: String(row.slug), channels: channelsOf(row.channels) } : null;
 }

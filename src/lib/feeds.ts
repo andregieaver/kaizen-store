@@ -8,11 +8,19 @@ import { writeCsv, type Cell } from "./csv";
 import { minorUnitDigits } from "./money";
 import type { Base, Measure } from "./unit-price";
 
-export const FEED_CHANNELS = ["google", "meta", "tiktok", "pinterest"] as const;
+export const FEED_CHANNELS = ["google", "meta", "tiktok", "pinterest", "openai"] as const;
 export type FeedChannel = (typeof FEED_CHANNELS)[number];
 
+/**
+ * The AI shopping channels (D353): served only while the store has switched each on (`feed_settings.channels`, off by default), besides the
+ * feeds being on. ChatGPT's (`openai`) follows OpenAI's product feed spec, read on 28 October 2026 (developers.openai.com/commerce/specs/feed).
+ */
+export const AGENT_FEED_CHANNELS = ["openai"] as const satisfies readonly FeedChannel[];
+export type AgentFeedChannel = (typeof AGENT_FEED_CHANNELS)[number];
+export const isAgentChannel = (channel: FeedChannel): channel is AgentFeedChannel => (AGENT_FEED_CHANNELS as readonly string[]).includes(channel);
+
 /** The file each channel is written as. */
-export const FEED_EXTENSION: Record<FeedChannel, "xml" | "csv"> = { google: "xml", meta: "csv", tiktok: "csv", pinterest: "csv" };
+export const FEED_EXTENSION: Record<FeedChannel, "xml" | "csv"> = { google: "xml", meta: "csv", tiktok: "csv", pinterest: "csv", openai: "csv" };
 
 export type FeedAvailability = "in_stock" | "out_of_stock" | "backorder";
 
@@ -105,6 +113,7 @@ export const FEED_LIMITS: Record<FeedChannel, { title: number; description: numb
   meta: { title: 200, description: 9999 },
   tiktok: { title: 150, description: 10000 },
   pinterest: { title: 500, description: 10000 },
+  openai: { title: 150, description: 5000 },
 };
 
 /** A text cut to a length at most, by code points, and stripped of control characters. */
@@ -163,20 +172,22 @@ export function googleFeed(items: readonly FeedItem[], channel: { title: string;
   ].join("\n");
 }
 
-const CSV_AVAILABILITY: Record<Exclude<FeedChannel, "google">, Record<FeedAvailability, string>> = {
+type CsvChannel = Exclude<FeedChannel, "google" | "openai">;
+
+const CSV_AVAILABILITY: Record<CsvChannel, Record<FeedAvailability, string>> = {
   meta: { in_stock: "in stock", out_of_stock: "out of stock", backorder: "available for order" },
   tiktok: { in_stock: "in stock", out_of_stock: "out of stock", backorder: "available for order" },
   pinterest: { in_stock: "in stock", out_of_stock: "out of stock", backorder: "preorder" },
 };
 
 /** The CSV columns of each catalogue, in its own names. */
-export const CSV_COLUMNS: Record<Exclude<FeedChannel, "google">, readonly string[]> = {
+export const CSV_COLUMNS: Record<CsvChannel, readonly string[]> = {
   meta: ["id", "title", "description", "availability", "condition", "price", "sale_price", "link", "image_link", "additional_image_link", "brand", "gtin", "item_group_id", "shipping", "google_product_category", "color", "material", "pattern"],
   tiktok: ["sku_id", "title", "description", "availability", "condition", "price", "sale_price", "link", "image_link", "additional_image_link", "brand", "gtin", "item_group_id"],
   pinterest: ["id", "title", "description", "link", "image_link", "additional_image_link", "price", "sale_price", "availability", "condition", "brand", "gtin", "item_group_id", "google_product_category"],
 };
 
-function csvFeed(channel: Exclude<FeedChannel, "google">, items: readonly FeedItem[]): string {
+function csvFeed(channel: CsvChannel, items: readonly FeedItem[]): string {
   const limits = FEED_LIMITS[channel];
   const rows: Cell[][] = items.map((item) => {
     const { price, sale } = pricePair(item);
@@ -207,6 +218,71 @@ function csvFeed(channel: Exclude<FeedChannel, "google">, items: readonly FeedIt
   return writeCsv([[...CSV_COLUMNS[channel]], ...rows]);
 }
 
+/**
+ * ChatGPT's product feed (D353): OpenAI's columns, its required ones first (`item_id`, `title`, `description`, `url`, `brand`, `seller_name`,
+ * `image_url`, `availability`, `price`), variants grouped (`group_id`, `listing_has_variations`), search on and checkout off (in-chat checkout
+ * stays off until a payment path exists).
+ */
+export const OPENAI_COLUMNS = [
+  "item_id",
+  "title",
+  "description",
+  "url",
+  "brand",
+  "seller_name",
+  "image_url",
+  "availability",
+  "price",
+  "sale_price",
+  "group_id",
+  "listing_has_variations",
+  "gtin",
+  "condition",
+  "additional_image_urls",
+  "shipping_price",
+  "color",
+  "material",
+  "seller_url",
+  "is_eligible_search",
+  "is_eligible_checkout",
+] as const;
+
+export function openaiFeed(items: readonly FeedItem[], store: { title: string; link: string }): string {
+  const limits = FEED_LIMITS.openai;
+  const variants = new Map<string, number>();
+  for (const item of items) variants.set(item.groupId, (variants.get(item.groupId) ?? 0) + 1);
+  const rows: Cell[][] = items.map((item) => {
+    const { price, sale } = pricePair(item);
+    const grouped = (variants.get(item.groupId) ?? 0) > 1 && item.groupId !== item.id;
+    const cells: Record<(typeof OPENAI_COLUMNS)[number], string> = {
+      item_id: item.id,
+      title: cut(item.title, limits.title),
+      description: cut(item.description || item.title, limits.description),
+      url: item.link,
+      brand: item.brand,
+      seller_name: store.title,
+      image_url: item.images[0] ?? "",
+      availability: item.availability,
+      price,
+      sale_price: sale ?? "",
+      group_id: grouped ? item.groupId : "",
+      listing_has_variations: grouped ? "true" : "false",
+      gtin: item.gtin ?? "",
+      condition: "new",
+      // Commas inside an address are percent-encoded, as the spec asks of a comma-separated list.
+      additional_image_urls: item.images.slice(1, 11).map((url) => url.replace(/,/g, "%2C")).join(","),
+      shipping_price: item.shippingMinor === null ? "" : feedAmount(item.shippingMinor, item.currency),
+      color: item.color ?? "",
+      material: item.material ?? "",
+      seller_url: store.link,
+      is_eligible_search: "true",
+      is_eligible_checkout: "false",
+    };
+    return OPENAI_COLUMNS.map((column) => cells[column]);
+  });
+  return writeCsv([[...OPENAI_COLUMNS], ...rows]);
+}
+
 export const metaFeed = (items: readonly FeedItem[]) => csvFeed("meta", items);
 export const tiktokFeed = (items: readonly FeedItem[]) => csvFeed("tiktok", items);
 export const pinterestFeed = (items: readonly FeedItem[]) => csvFeed("pinterest", items);
@@ -222,6 +298,8 @@ export function feedFile(channel: FeedChannel, items: readonly FeedItem[], store
       return tiktokFeed(items);
     case "pinterest":
       return pinterestFeed(items);
+    case "openai":
+      return openaiFeed(items, store);
   }
 }
 
@@ -229,7 +307,7 @@ export function feedFile(channel: FeedChannel, items: readonly FeedItem[], store
 export const feedFileName = (market: string, channel: FeedChannel) => `${market}-${channel}.${FEED_EXTENSION[channel]}`;
 
 export function parseFeedFile(name: string): { market: string; channel: FeedChannel } | null {
-  const match = /^([a-z]{2}(?:-[a-z0-9]{2,3}){0,2})-(google|meta|tiktok|pinterest)\.(xml|csv)$/.exec(name);
+  const match = /^([a-z]{2}(?:-[a-z0-9]{2,3}){0,2})-(google|meta|tiktok|pinterest|openai)\.(xml|csv)$/.exec(name);
   if (!match) return null;
   const channel = match[2] as FeedChannel;
   return match[3] === FEED_EXTENSION[channel] ? { market: match[1], channel } : null;

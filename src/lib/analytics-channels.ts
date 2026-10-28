@@ -12,6 +12,8 @@ export const CHANNELS = [
   { key: "email", label: "Email" },
   { key: "affiliate", label: "Affiliate" },
   { key: "referral", label: "Referral" },
+  // A shopping agent (D353): a visit from ChatGPT, Perplexity, Copilot or Gemini, a feed link tagged with one, or a cart its agent handed over.
+  { key: "ai_agent", label: "AI agents" },
   { key: "other", label: "Other" },
 ] as const;
 
