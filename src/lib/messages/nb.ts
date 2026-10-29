@@ -692,6 +692,7 @@ export const nb: Messages = {
   manufacturer: "Produsent",
   euResponsiblePerson: "Ansvarlig person i EU",
   noWithdrawal: "Denne varen er unntatt fra angreretten.",
+  sealedWithdrawal: "Angreretten faller bort hvis forseglingen brytes etter levering.",
   backToProducts: "Tilbake til produkter",
   backTo: (name: string): string => `Tilbake til ${name}`,
   bundleIncludes: (items: string): string => `Inneholder ${items}`,

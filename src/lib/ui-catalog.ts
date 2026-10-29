@@ -111,6 +111,8 @@ export const HAND_WRITTEN_ONLY: readonly string[] = [
   "ui:chat.aiUse.",
   "ui:chat.emailCard.",
   "ui:chat.thread.",
+  // D407: what the law says of sealed goods, checked against the law's own words (docs/legal/check-2026-10-29.md), never machine-translated.
+  "ui:sealedWithdrawal",
   "ui:backorder.",
   "ui:preorder.",
   // Wave 5 unit A (D295): the marketing consent words, the confirmation email and the pages its links open, until the legal review clears them.

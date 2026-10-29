@@ -516,9 +516,11 @@ function withdrawalText(product: ProductDetail, m: Messages): string | null {
       ? m.stay.noWithdrawal(product.kind === "stay")
       : product.variants.some((v) => v.delivery === "digital")
         ? m.digitalWithdrawal
-        : product.withdrawalExclusion !== "none"
-          ? m.noWithdrawal
-          : null;
+        : product.withdrawalExclusion === "sealed_hygiene" || product.withdrawalExclusion === "sealed_media"
+          ? m.sealedWithdrawal
+          : product.withdrawalExclusion !== "none"
+            ? m.noWithdrawal
+            : null;
 }
 
 /** Products like this one (D79), as the store's product cards. */

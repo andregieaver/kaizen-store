@@ -689,6 +689,7 @@ export const sv: Messages = {
   manufacturer: "Tillverkare",
   euResponsiblePerson: "Ansvarig person i EU",
   noWithdrawal: "Den här varan är undantagen från ångerrätten.",
+  sealedWithdrawal: "Ångerrätten upphör om förseglingen bryts efter leveransen.",
   backToProducts: "Tillbaka till produkter",
   backTo: (name: string): string => `Tillbaka till ${name}`,
   bundleIncludes: (items: string): string => `Innehåller ${items}`,

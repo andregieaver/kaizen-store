@@ -709,6 +709,7 @@ export const en = {
   manufacturer: "Manufacturer",
   euResponsiblePerson: "Responsible person in the EU",
   noWithdrawal: "This item is excluded from the right of withdrawal.",
+  sealedWithdrawal: "The right of withdrawal ends if the seal is broken after delivery.",
   backToProducts: "Back to products",
   backTo: (name: string): string => `Back to ${name}`,
   /** A bundle's components on an order or its page (D322): "Includes 2 × Mug, 1 × Tote". */

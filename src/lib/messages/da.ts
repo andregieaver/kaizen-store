@@ -689,6 +689,7 @@ export const da: Messages = {
   manufacturer: "Producent",
   euResponsiblePerson: "Ansvarlig person i EU",
   noWithdrawal: "Denne vare er undtaget fra fortrydelsesretten.",
+  sealedWithdrawal: "Fortrydelsesretten bortfalder, hvis forseglingen brydes efter leveringen.",
   backToProducts: "Tilbage til produkter",
   backTo: (name: string): string => `Tilbage til ${name}`,
   bundleIncludes: (items: string): string => `Indeholder ${items}`,
