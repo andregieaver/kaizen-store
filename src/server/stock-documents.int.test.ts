@@ -15,6 +15,9 @@ const { variantStockOf } = await import("./catalog");
 const support = await import("./inventory-test-support");
 const { addLocation, cartOf, clearLevels, levelsOf, mainLocation, movementsOf, newStore, setLevel, variantId } = support;
 const { placeOrder } = await import("./checkout");
+const { allocateStock } = await import("./order-insert");
+const { runOwnerTool } = await import("./owner-tools");
+const { saveOrderSettings } = await import("./order-settings");
 
 type Row = Record<string, unknown>;
 
@@ -241,5 +244,52 @@ describe("a location that does not fulfil online orders", () => {
     expect(await deactivateLocation(store.member, oslo, 0)).toMatchObject({ ok: false });
     expect(await setFulfilsOnline(store.member, bergen, true)).toEqual({ ok: true, id: bergen });
     expect((await stockOf(SKU)).inStock).toBe(3);
+  });
+});
+
+describe("unit D2 (D383)", () => {
+  it("takes an order's units from the delivery country's locations first when the store says so", async () => {
+    const stockholm = await addLocation(store.storeId, "Stockholm", 2);
+    await db().execute(sql`update commerce.inventory_locations set country = 'SE' where id = ${stockholm}::uuid`);
+    for (const l of [oslo, bergen, stockholm]) await setLevel(store.storeId, SKU2, l, 0);
+    await setLevel(store.storeId, SKU2, oslo, 5);
+    await setLevel(store.storeId, SKU2, stockholm, 5);
+    const mug = await variantId(store.storeId, SKU2);
+    const takenAt = () =>
+      db().transaction(async (tx) => {
+        const plan = await allocateStock(tx, store.storeId, [{ variantId: mug, quantity: 1, policy: "deny" }], [], { country: "SE" });
+        if (!plan.ok) throw new Error("no plan");
+        return plan.holds.map((h) => h.locationId);
+      });
+    expect(await takenAt()).toEqual([oslo]);
+    expect(await saveOrderSettings(store.member, { stockRouting: "nearest" })).toMatchObject({ ok: true });
+    expect(await takenAt()).toEqual([stockholm]);
+    await saveOrderSettings(store.member, { stockRouting: "rank" });
+    await db().execute(sql`update commerce.inventory_locations set active = false where id = ${stockholm}::uuid`);
+  });
+
+  it("draws stock no checkout held only from locations that fulfil online orders when the order is paid", async () => {
+    await setLevel(store.storeId, SKU, oslo, 2);
+    await setLevel(store.storeId, SKU, bergen, 0);
+    const order = await support.place(store.storeId, [[SKU, 2]]);
+    // The hold lapsed before payment: the draw takes free stock, and Bergen (now holding all of it) does not fulfil online orders.
+    await db().execute(sql`update commerce.inventory_reservations set released_at = now() where order_id = ${order.orderId}::uuid`);
+    await setLevel(store.storeId, SKU, oslo, 0);
+    await setLevel(store.storeId, SKU, bergen, 5);
+    await setFulfilsOnline(store.member, bergen, false);
+    await support.pay(store.storeId, order, store.account);
+    expect((await levelsOf(store.storeId, SKU)).Bergen).toBe(5);
+    await setFulfilsOnline(store.member, bergen, true);
+  });
+
+  it("lets the AI manager make a draft transfer by the locations' names, which moves nothing", async () => {
+    await setLevel(store.storeId, SKU2, oslo, 4);
+    const ctx = { account: store.member.account, store: store.member.store, invalidate: () => {} };
+    const made = (await runOwnerTool(ctx, "create_transfer", { from: "lager oslo", to: "Bergen", lines: [{ sku: SKU2, quantity: 2 }] })) as { pages: { transfer: string } };
+    expect(made).toMatchObject({ made: "a draft transfer", from: "Lager Oslo", to: "Bergen", units: 2 });
+    const id = made.pages.transfer.split("/").at(-1)!;
+    expect((await transfers.getTransfer(store.storeId, id))?.status).toBe("draft");
+    expect((await levelsOf(store.storeId, SKU2))["Lager Oslo"]).toBe(4);
+    await expect(runOwnerTool(ctx, "create_transfer", { from: "Nowhere", to: "Bergen", lines: [{ sku: SKU2, quantity: 1 }] })).rejects.toThrow("no location called Nowhere");
   });
 });

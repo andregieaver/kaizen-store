@@ -135,7 +135,7 @@ describe("the packing slip", () => {
 });
 
 describe("the order settings", () => {
-  const settings: OrderSettings = { giftMessages: false, autoArchiveDays: null, draftValidDays: 7, staffMarkPaid: false, capture: "at_checkout" };
+  const settings: OrderSettings = { giftMessages: false, autoArchiveDays: null, draftValidDays: 7, staffMarkPaid: false, capture: "at_checkout", stockRouting: "rank" };
   const draw2 = (over: { settings?: typeof settings; canEdit?: boolean; isOwner?: boolean } = {}) =>
     renderToString(h(OrderSettingsForm, { settings: over.settings ?? settings, canEdit: over.canEdit ?? true, isOwner: over.isOwner ?? true, action: async () => ({ status: "ok" as const, messages: [] as string[] }) }));
 
@@ -160,7 +160,7 @@ describe("the order settings", () => {
   });
 
   it("shows what is saved", () => {
-    const html = draw2({ settings: { giftMessages: true, autoArchiveDays: 30, draftValidDays: 14, staffMarkPaid: true, capture: "when_sent" } });
+    const html = draw2({ settings: { giftMessages: true, autoArchiveDays: 30, draftValidDays: 14, staffMarkPaid: true, capture: "when_sent", stockRouting: "rank" } });
     expect(html).toMatch(/value="when_sent"[^>]*checked=""|checked=""[^>]*value="when_sent"/);
     expect(html).toMatch(/name="giftMessages"[^>]*checked=""|checked=""[^>]*name="giftMessages"/);
     expect(html).toMatch(/name="autoArchive"[^>]*checked=""|checked=""[^>]*name="autoArchive"/);

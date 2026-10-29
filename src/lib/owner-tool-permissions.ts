@@ -199,6 +199,7 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   stock_history: "products:read",
   list_transfers: "products:read",
   list_purchase_orders: "products:read",
+  create_transfer: "products:write",
   // The redirects and the 404 report are the Website section's (D168): read like its pages, added with the right to change the website.
   redirect_overview: "website:read",
   list_integrations: "settings:read",

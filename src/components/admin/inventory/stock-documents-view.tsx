@@ -8,8 +8,9 @@ import { useAdminLang, useAdminText } from "@/components/admin/admin-text";
 import { card, field, hint, primary, secondary, tableShell, td, th } from "@/components/admin/data/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
+import { parseCsv } from "@/lib/csv";
 import { formatMoney } from "@/lib/money";
-import { DOCUMENT_LINES_MAX, type DocumentState } from "@/lib/stock-documents";
+import { DOCUMENT_LINES_MAX, linesFromCsv, type DocumentState } from "@/lib/stock-documents";
 
 /**
  * Stock transfers and purchase orders in the admin (wave 11 unit D, D383): the lists, the form that makes a draft from SKUs and units, and a
@@ -83,6 +84,19 @@ export function NewStockDocument({
   const id = (part: string) => `${kind}-${part}`;
   const setLine = (i: number, patch: Partial<Line>) => setLines(lines.map((l, n) => (n === i ? { ...l, ...patch } : l)));
   const filled = lines.filter((l) => l.sku.trim() !== "");
+  const [fileMessage, setFileMessage] = useState<string | null>(null);
+  const fromFile = async (file: File | undefined) => {
+    if (!file) return;
+    const read = linesFromCsv(parseCsv(new Uint8Array(await file.arrayBuffer())));
+    if (!read.ok) {
+      const p = read.problem;
+      setFileMessage(fillWords(w.fileProblems[p.kind], { row: p.kind === "bad_row" ? p.row : "", max: DOCUMENT_LINES_MAX }));
+      return;
+    }
+    const kept = filled.slice(0, Math.max(0, DOCUMENT_LINES_MAX - read.lines.length));
+    setLines([...kept, ...read.lines].length > 0 ? [...kept, ...read.lines] : [blankLine()]);
+    setFileMessage(countWords(read.lines.length, w.fileAdded, { n: read.lines.length }));
+  };
 
   const submit = () =>
     run(
@@ -200,10 +214,18 @@ export function NewStockDocument({
             </button>
           </div>
         ))}
-        <div>
+        <div className="flex flex-wrap items-center gap-3">
           <button type="button" disabled={lines.length >= DOCUMENT_LINES_MAX} onClick={() => setLines([...lines, blankLine()])} className={secondary}>
             {w.addLine}
           </button>
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="font-medium">{w.fromFile}</span>
+            <input type="file" accept=".csv,text/csv" onChange={(e) => void fromFile(e.target.files?.[0])} className="text-sm" />
+          </label>
+        </div>
+        <p className={hint}>{fillWords(w.fromFileHint, { cost: kind === "order" ? w.fromFileCost : "" })}</p>
+        <div role="status" aria-live="polite">
+          {fileMessage && <p className="text-sm">{fileMessage}</p>}
         </div>
       </fieldset>
       {kind === "order" && <p className={hint}>{fillWords(w.costNote, { currency: mainCurrency })}</p>}
@@ -329,7 +351,10 @@ export function StockDocumentDetail({
   items,
   canWrite,
   tools,
+  csvHref,
 }: {
+  /** Where the lines are downloaded as a file. */
+  csvHref?: string;
   kind: Kind;
   status: string;
   /** A transfer's origin. */
@@ -424,6 +449,13 @@ export function StockDocumentDetail({
         </table>
       </div>
 
+      {csvHref && (
+        <div>
+          <a href={csvHref} download className="inline-flex min-h-9 items-center rounded-pill border border-edge px-3 text-sm">
+            {w.download}
+          </a>
+        </div>
+      )}
       {!canWrite && <p className={hint}>{w.readOnly}</p>}
 
       {canWrite && status === "draft" && (

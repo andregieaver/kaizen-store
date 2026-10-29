@@ -998,13 +998,13 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": "missing"
+      "was": "partial"
     },
-    "gap": "Built and tested (wave 11 unit D1, D383): stock transfers between a store's locations (`commerce.stock_transfers`, written only by `src/server/stock-transfers.ts`: a draft from SKUs, sent with each line's units leaving the origin as `transfer_out` movements, never what live checkouts hold there, counted in at the destination in parts as `transfer_in`, never past what was sent, cancelled with what was not counted in going back), shown as incoming at the destination and never sold on the way; purchase orders (`commerce.purchase_orders`, `src/server/purchase-orders.ts`: supplier, reference, currency, place, expected date, lines with units and unit cost, ordered then counted in as `received` movements naming the order) that set each received variant's cost converted into the main currency at the store's rates, kept in `commerce.variant_cost_history` by a trigger for every cost change from any writer (order lines keep the cost they froze, D152); the database moves both only forward and fixes a document's lines once out of draft; Inventory → Transfers and Purchase orders, the AI manager's read-only `list_transfers` and `list_purchase_orders`; and a location can be kept out of online orders (`fulfils_online`: the storefront's stock and `allocate()` leave it out). Not matching Shopify: no bulk CSV import of transfers or purchase orders, no transfers to or from an external location, no link between a purchase order and a transfer, and the AI manager cannot make a transfer (unit D2).",
-    "bucket": "A",
-    "wave": 3,
+    "gap": "Built and tested (wave 11 unit D1, D383): stock transfers between a store's locations (`commerce.stock_transfers`, written only by `src/server/stock-transfers.ts`: a draft from SKUs, sent with each line's units leaving the origin as `transfer_out` movements, never what live checkouts hold there, counted in at the destination in parts as `transfer_in`, never past what was sent, cancelled with what was not counted in going back), shown as incoming at the destination and never sold on the way; purchase orders (`commerce.purchase_orders`, `src/server/purchase-orders.ts`: supplier, reference, currency, place, expected date, lines with units and unit cost, ordered then counted in as `received` movements naming the order) that set each received variant's cost converted into the main currency at the store's rates, kept in `commerce.variant_cost_history` by a trigger for every cost change from any writer (order lines keep the cost they froze, D152); the database moves both only forward and fixes a document's lines once out of draft; Inventory → Transfers and Purchase orders, the AI manager's read-only `list_transfers` and `list_purchase_orders`; and a location can be kept out of online orders (`fulfils_online`: the storefront's stock and `allocate()` leave it out). Not matching Shopify: no transfers to or from an external location and no link between a purchase order and a transfer; a CSV file fills one document's lines rather than making many documents.",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "Staff create a transfer between two locations; sending reduces the origin and shows incoming stock at the destination, receiving adds it (partial receipt supported, integration test).",
       "A purchase order to a supplier lists variants, quantities and cost, is received in parts, and updates stock and variant cost history without rewriting earlier orders' cost.",
@@ -1021,11 +1021,18 @@
         "src/components/admin/inventory/stock-documents-view.tsx",
         "src/app/admin/(gated)/[store]/inventory/transfers/page.tsx",
         "src/app/admin/(gated)/[store]/inventory/purchase-orders/page.tsx",
-        "supabase/migrations/20261029002132_stock_transfers_purchase_orders.sql"
+        "supabase/migrations/20261029002132_stock_transfers_purchase_orders.sql",
+        "src/lib/stock-routing.ts",
+        "src/app/admin/(gated)/[store]/inventory/transfers/[id]/csv/route.ts",
+        "src/server/stock-tools.ts",
+        "supabase/migrations/20261029004946_stock_routing.sql"
       ],
       "tests": [
         "src/server/stock-documents.int.test.ts",
-        "src/lib/stock-documents.test.ts"
+        "src/lib/stock-documents.test.ts",
+        "src/lib/stock-routing.test.ts",
+        "src/server/inventory-perf.int.test.ts",
+        "e2e/signed-in/stock-transfers.spec.ts"
       ],
       "untested": false
     },
@@ -1040,6 +1047,12 @@
         "from": "missing",
         "to": "partial",
         "why": "Read src/server/stock-transfers.ts, src/server/purchase-orders.ts, the migration 20261029002132_stock_transfers_purchase_orders and the Transfers and Purchase orders pages (D383): every criterion holds and is held by src/server/stock-documents.int.test.ts (run, passing): sending reduces the origin and shows incoming at the destination, partial receipts, a purchase order received in parts sets stock and the cost history, both name their document in the history, a cancel returns what was not received, and a send never takes units checkouts hold. No CSV import of either and no external locations, so partial."
+      },
+      {
+        "on": "2026-10-29",
+        "from": "partial",
+        "to": "full",
+        "why": "Read unit D2 (D383): CSV lines in and out for both documents, the AI manager's draft transfer, the nearest-first routing rule and payment drawing only from online locations, held by src/server/stock-documents.int.test.ts and src/lib/stock-documents.test.ts (run, passing) and driven by e2e/signed-in/stock-transfers.spec.ts. Every criterion holds; what still differs from Shopify (external locations, a purchase order linked to a transfer) is named in the gap."
       }
     ]
   },

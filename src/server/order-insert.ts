@@ -5,7 +5,7 @@ import { sql } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import type { GiftFields } from "@/lib/gift";
 import type { GiftCardRecipient } from "@/lib/gift-card-line";
-import { allocate, totalsOf } from "@/lib/stock-routing";
+import { allocate, routingOrder, totalsOf } from "@/lib/stock-routing";
 
 type Row = Record<string, unknown>;
 
@@ -286,17 +286,32 @@ export type StockPlan = { ok: false } | { ok: true; holds: StockHold[]; /** The 
  * stops at zero fails (`ok: false`). `ensureLevelFor` names the variants that keep selling and may have no level at any active location: they get one (at 0) at the first, so there is a row to lock and draw.
  * It writes only those rows; nothing is held until `reserveStock()`.
  */
-export async function allocateStock(tx: Db, storeId: string, wants: readonly StockWant[], ensureLevelFor: readonly string[]): Promise<StockPlan> {
+export async function allocateStock(
+  tx: Db,
+  storeId: string,
+  wants: readonly StockWant[],
+  ensureLevelFor: readonly string[],
+  /** The delivery country: with the store's routing set to nearest first (D383), its locations are taken first. */
+  options: { country?: string | null } = {},
+): Promise<StockPlan> {
   const variantIds = [...new Set(wants.map((w) => w.variantId))].sort();
   if (variantIds.length === 0) return { ok: true, holds: [], behind: new Map() };
   const ids = sql.join(variantIds.map((id) => sql`${id}::uuid`), sql`, `);
   const places = await tx.execute<Row>(sql`
-    select id, priority, created_at from commerce.inventory_locations
+    select id, priority, created_at, country from commerce.inventory_locations
     where store_id = ${storeId}::uuid and active and fulfils_online
     order by priority, created_at, id
   `);
+  const [routing] = options.country
+    ? await tx.execute<Row>(sql`select stock_routing from commerce.order_settings where store_id = ${storeId}::uuid`)
+    : [];
+  const nearCountry = routing?.stock_routing === "nearest" ? options.country : null;
   // A variant that keeps selling past zero and has no level at any active location gets one at the first, so there is a row to lock and draw.
-  const home = places[0] ? String(places[0].id) : null;
+  const firstPlace = routingOrder(
+    places.map((l) => ({ id: String(l.id), priority: Number(l.priority), createdAt: new Date(String(l.created_at)).toISOString(), active: true, country: String(l.country) })),
+    nearCountry,
+  )[0];
+  const home = firstPlace ? firstPlace.id : null;
   if (home) {
     for (const variantId of ensureLevelFor) {
       await tx.execute(sql`
@@ -327,7 +342,8 @@ export async function allocateStock(tx: Db, storeId: string, wants: readonly Sto
   `);
   const heldAt = new Map(holds.map((h) => [`${h.variant_id}:${h.location_id}`, Number(h.held)]));
   const outcome = allocate({
-    locations: places.map((l) => ({ id: String(l.id), priority: Number(l.priority), createdAt: new Date(String(l.created_at)).toISOString(), active: true })),
+    locations: places.map((l) => ({ id: String(l.id), priority: Number(l.priority), createdAt: new Date(String(l.created_at)).toISOString(), active: true, country: String(l.country) })),
+    nearCountry,
     cells: levels.map((l) => ({
       variantId: String(l.variant_id),
       locationId: String(l.location_id),

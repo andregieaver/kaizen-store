@@ -51,6 +51,7 @@ export default async function PurchaseOrderPage({ params }: Props) {
           mainCurrency={mainCurrency(store)}
           items={order.items}
           canWrite={memberCan(member, "products:write")}
+          csvHref={`${inventoryPaths(store.slug).purchase_orders}/${order.id}/csv`}
           tools={{
             advance: placePurchaseOrderAction.bind(null, store.slug, order.id),
             receive: receivePurchaseOrderAction.bind(null, store.slug, order.id),

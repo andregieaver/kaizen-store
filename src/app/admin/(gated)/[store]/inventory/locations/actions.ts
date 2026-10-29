@@ -6,6 +6,7 @@ import { adminText } from "@/lib/admin-text";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { deactivateLocation, moveLocation, reactivateLocation, saveLocation, setFulfilsOnline, type DeactivateResult } from "@/server/inventory-locations";
 import type { LocationImpact } from "@/server/inventory";
+import { saveOrderSettings, type StockRouting } from "@/server/order-settings";
 import { checkOwnerRole, checkPermission } from "@/server/permissions";
 
 /**
@@ -57,4 +58,13 @@ export async function setOnlineAction(storeSlug: string, id: string, on: boolean
   const result = await setFulfilsOnline(member, String(id), on === true);
   if (result.ok) refresh();
   return result.ok ? { ok: true } : result;
+}
+
+/** How orders choose a location (D383): the locations' order, or the delivery country's first. Asked where the locations are kept: `products:write`. */
+export async function setRoutingAction(storeSlug: string, routing: StockRouting): Promise<Step> {
+  const member = await checkPermission(storeSlug, "products:write");
+  if (!member) return { ok: false, problem: await noAccess() };
+  const result = await saveOrderSettings(member, { stockRouting: routing });
+  if (result.ok) refresh();
+  return result.ok ? { ok: true } : { ok: false, problem: result.problem };
 }

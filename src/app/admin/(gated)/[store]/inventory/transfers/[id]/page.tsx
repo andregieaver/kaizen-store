@@ -48,6 +48,7 @@ export default async function TransferPage({ params }: Props) {
           to={transfer.destination}
           items={transfer.items}
           canWrite={memberCan(member, "products:write")}
+          csvHref={`${inventoryPaths(store.slug).transfers}/${transfer.id}/csv`}
           tools={{
             advance: sendTransferAction.bind(null, store.slug, transfer.id),
             receive: receiveTransferAction.bind(null, store.slug, transfer.id),

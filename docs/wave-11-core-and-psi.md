@@ -144,7 +144,7 @@ every desk. `storefront.signup-and-contact-forms-feeding-customers-and-consent` 
 
 ### D. Stock transfers and purchase orders; the rest of several locations (D383)
 
-**D1 built (D383):** transfers, purchase orders, the cost history, incoming units and locations kept out of online orders, with the AI manager's two read tools. D2 is the rest of the design below: CSV in and out, the second routing rule, stock per location in the product editor, the payment-time shelf check, the perf test by plan, the e2e and `create_transfer`.
+**Built (D383).** D1: transfers, purchase orders, the cost history, incoming units and locations kept out of online orders, with the AI manager's two read tools. D2: the nearest-first routing rule, payment drawing only from online locations, CSV lines in and out, `create_transfer` (a draft), the perf test by plan and the e2e. Not built, with the reasons in D383: the payment-time shelf check (it would break what a shopper was told) and stock per location in the product editor.
 
 **What is missing.**
 - Nothing moves stock between locations or receives it from a supplier.

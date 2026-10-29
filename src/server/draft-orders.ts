@@ -865,6 +865,7 @@ export async function placeDraftOrder(
     storeId,
     goods.map((l) => ({ variantId: l.variantId!, quantity: l.quantity, policy: variants.get(l.variantId!)?.policy ?? "deny" })),
     keeps,
+    { country: market.code },
   );
   if (!plan.ok) return { ok: false, problems: [problemOf("stock_short")] };
   const behind = new Map(plan.behind);

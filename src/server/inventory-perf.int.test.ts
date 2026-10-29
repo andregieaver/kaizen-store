@@ -33,9 +33,38 @@ type Row = Record<string, unknown>;
  * variant once per product (past a minute). Whether it did hung on when autovacuum had last analysed the tables, hence "flaky". Both reads
  * now take the cart's lines first (`cartLinesFirst()` in `cart.ts`). To see the old failure on demand: switch autovacuum off for the
  * `commerce` tables, run another integration file, then this one.
+ *
+ * Since D383 the criterion for the reads whose SQL this file can name is the PLAN, not the clock: `rowsRead()` runs the query under
+ * `EXPLAIN (ANALYZE, FORMAT JSON)` and adds up the rows every scan of the catalogue's tables read (rows given plus rows a filter removed,
+ * times the scan's loops), which is the same on a busy server as on an idle one. The bound is reading those tables twice over
+ * (`linearBound()`): a planner with no statistics may well scan a table once, which stays linear, while a nested loop over the
+ * catalogue reads it once per variant, thousands of times more. The reads behind a function (the Inventory page, the cart, placing an order) keep a wall-time backstop of ten
+ * seconds: before D370 the failure took more than a minute.
  */
 const VARIANTS = 5_000;
-const BOUND_MS = 3_000;
+const BOUND_MS = 10_000;
+const CATALOGUE = new Set(["product_variants", "products", "inventory_levels", "inventory_locations", "inventory_reservations"]);
+
+type PlanNode = { "Relation Name"?: string; "Actual Rows"?: number; "Actual Loops"?: number; "Rows Removed by Filter"?: number; Plans?: PlanNode[] };
+
+/** The rows a query's scans of the catalogue's tables read, from its executed plan; the query runs and its result is thrown away. */
+async function rowsRead(query: ReturnType<typeof sql>): Promise<number> {
+  const [row] = await db().execute<Row>(sql`explain (analyze, format json) ${query}`);
+  const plan = (Object.values(row)[0] as { Plan: PlanNode }[])[0].Plan;
+  const walk = (node: PlanNode): number =>
+    (node["Relation Name"] && CATALOGUE.has(node["Relation Name"]) ? ((node["Actual Rows"] ?? 0) + (node["Rows Removed by Filter"] ?? 0)) * (node["Actual Loops"] ?? 1) : 0) +
+    (node.Plans ?? []).reduce((sum, child) => sum + walk(child), 0);
+  return walk(plan);
+}
+
+/** Twice every row of the catalogue's tables, every store's: what a plan that is linear in the catalogue stays under. */
+async function linearBound(): Promise<number> {
+  const [row] = await db().execute<Row>(sql`
+    select (select count(*) from commerce.product_variants) + (select count(*) from commerce.products) + (select count(*) from commerce.inventory_levels)
+      + (select count(*) from commerce.inventory_locations) + (select count(*) from commerce.inventory_reservations) as n
+  `);
+  return 2 * Number(row.n);
+}
 
 let store: Awaited<ReturnType<typeof newStore>>;
 let ids: string[] = [];
@@ -121,6 +150,20 @@ describe("the stock reads and checkout stay fast on a large catalogue", () => {
     const { ms, value } = await timed(() => variantStockOf(db(), store.storeId, ids));
     expect(value.size).toBe(200);
     expect(ms).toBeLessThan(BOUND_MS);
+    // The same read by its plan: linear in the catalogue, never the catalogue once per variant.
+    const list = sql.join(ids.map((id) => sql`${id}::uuid`), sql`, `);
+    const read = await rowsRead(sql`select * from commerce.variant_availability va where va.store_id = ${store.storeId}::uuid and va.variant_id in (${list})`);
+    expect(read).toBeLessThan(await linearBound());
+  });
+
+  it("the level rows a 20-line order locks, by their plan", async () => {
+    const variants = await db().execute<Row>(sql`select id from commerce.product_variants where store_id = ${store.storeId}::uuid and sku = any(${`{${ordered.join(",")}}`}::text[])`);
+    const list = sql.join(variants.map((v) => sql`${String(v.id)}::uuid`), sql`, `);
+    const read = await rowsRead(sql`
+      select l.variant_id, l.location_id, l.on_hand from commerce.inventory_levels l
+      where l.store_id = ${store.storeId}::uuid and l.variant_id in (${list}) order by l.variant_id, l.location_id
+    `);
+    expect(read).toBeLessThan(await linearBound());
   });
 
   it("a 20-line cart, as the cart page reads it", { timeout: 60_000 }, async () => {

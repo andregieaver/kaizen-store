@@ -430,6 +430,16 @@ export const OWNER_TOOLS = [
     z.object({ open_only: z.boolean().default(false).describe("Only drafts and transfers on their way."), limit: limit(50, 20) }),
   ),
   tool(
+    "create_transfer",
+    "Makes a DRAFT stock transfer from one of the store's locations to another (D383), by the locations' names (stock_levels lists them) and each line's SKU and units. Nothing moves and nothing changes for shoppers: a person sends it on its page (open the link in the answer), when its units leave the origin. A SKU the store does not have, or two names that are not two of its active locations, is refused with the reason.",
+    z.object({
+      from: z.string().trim().min(1).max(60).describe("The location the stock leaves, by its name."),
+      to: z.string().trim().min(1).max(60).describe("The location it goes to, by its name."),
+      lines: z.array(z.object({ sku: z.string().trim().min(1).max(64), quantity: z.number().int().min(1).max(1_000_000) })).min(1).max(200),
+      note: z.string().trim().max(500).optional().describe("A short note about the stock; never about a person."),
+    }),
+  ),
+  tool(
     "list_purchase_orders",
     "The store's purchase orders from its suppliers (D383), newest first: the supplier and its reference, where the stock arrives, the state (draft, ordered, partly received, received, cancelled), units ordered and received, and the total in the order's own currency, worked out by the store. Read-only: an order is made, marked as ordered and counted in on its page (open_admin_page, inventory.purchase_orders); counting in sets each variant's cost from it.",
     z.object({ open_only: z.boolean().default(false).describe("Only drafts and orders not yet received in full."), limit: limit(50, 20) }),

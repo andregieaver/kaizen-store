@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { allIn, documentState, purchaseOrderInput, receiptPlan, transferInput, unitCostMinor, unitsToCome } from "./stock-documents";
+import { allIn, documentState, linesFromCsv, purchaseOrderInput, receiptPlan, transferInput, unitCostMinor, unitsToCome } from "./stock-documents";
 
 const A = "00000000-0000-4000-8000-00000000000a";
 const B = "00000000-0000-4000-8000-00000000000b";
@@ -46,5 +46,29 @@ describe("what a person sends to make one", () => {
     expect(unitCostMinor("45,50", "NOK")).toBe(4550);
     expect(unitCostMinor("lots", "NOK")).toBeNull();
     expect(unitCostMinor("-1", "NOK")).toBeNull();
+  });
+});
+
+describe("lines from a file", () => {
+  const rows = (text: string) => ({ rows: text.split("\n").map((l) => l.split(",")), unterminated: false });
+
+  it("reads SKU, units and an optional unit cost by their headers, skipping empty rows", () => {
+    expect(linesFromCsv(rows("Variant SKU,Title,Quantity,Unit cost\nA,Cup,3,12.50\n,,,\nB,Mug,1,"))).toEqual({
+      ok: true,
+      lines: [
+        { sku: "A", quantity: "3", unitCost: "12.50" },
+        { sku: "B", quantity: "1", unitCost: "" },
+      ],
+    });
+    expect(linesFromCsv(rows("varenummer,antall\nA,2"))).toMatchObject({ ok: true, lines: [{ sku: "A", quantity: "2" }] });
+  });
+
+  it("names what it cannot read", () => {
+    expect(linesFromCsv(rows("Title,Quantity\nCup,1"))).toEqual({ ok: false, problem: { kind: "no_sku" } });
+    expect(linesFromCsv(rows("SKU,Title\nA,Cup"))).toEqual({ ok: false, problem: { kind: "no_units" } });
+    expect(linesFromCsv(rows("SKU,Quantity\nA,1\nB,1.5"))).toEqual({ ok: false, problem: { kind: "bad_row", row: 3 } });
+    expect(linesFromCsv({ rows: [["SKU", "Quantity"]], unterminated: true })).toEqual({ ok: false, problem: { kind: "unreadable" } });
+    const many = ["SKU,Quantity", ...Array.from({ length: 201 }, (_, i) => `S${i},1`)].join("\n");
+    expect(linesFromCsv(rows(many))).toEqual({ ok: false, problem: { kind: "too_many" } });
   });
 });

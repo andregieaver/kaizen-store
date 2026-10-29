@@ -3949,6 +3949,13 @@
       "when": 1793233292964,
       "tag": "20261029002132_stock_transfers_purchase_orders",
       "breakpoints": true
+    },
+    {
+      "idx": 564,
+      "version": "7",
+      "when": 1793234986899,
+      "tag": "20261029004946_stock_routing",
+      "breakpoints": true
     }
   ]
 }

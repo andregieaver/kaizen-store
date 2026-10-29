@@ -16,11 +16,16 @@
  *
  * Two lines of one variant are one want (summed, at the position of the first). Lines with no quantity are ignored. The caller
  * passes only physical goods lines.
+ *
+ * NEAREST FIRST (D383, the store's `order_settings.stock_routing = 'nearest'`): with `nearCountry` given, the locations in that country come
+ * first and the others after, each group in rank order; every step above reads that order. A location that does not fulfil online orders
+ * is never a candidate: the caller passes only those that do.
  */
 
 import { inRankOrder, type Rankable } from "./inventory";
 
-export type RoutingLocation = Rankable & { active: boolean };
+/** A candidate location; `country` (ISO 3166-1 alpha-2) is read only for the nearest-first order. */
+export type RoutingLocation = Rankable & { active: boolean; country?: string };
 
 /** What the store holds of a variant at a location: a level row (its figure) and the units live reservations hold there. */
 export type StockCell = { variantId: string; locationId: string; onHand: number; reserved: number };
@@ -62,11 +67,25 @@ export function wantsOf(lines: readonly WantedLine[]): Want[] {
   return [...byVariant.values()];
 }
 
-export function allocate(args: { locations: readonly RoutingLocation[]; cells: readonly StockCell[]; lines: readonly WantedLine[] }): AllocateResult {
+/** The candidates in the order the steps read them: rank order, or the delivery country's first (each group in rank) when one is given. */
+export function routingOrder<L extends RoutingLocation>(locations: readonly L[], nearCountry?: string | null): L[] {
+  const ranked = inRankOrder(locations.filter((l) => l.active));
+  if (!nearCountry) return ranked;
+  const near = nearCountry.toUpperCase();
+  return [...ranked.filter((l) => l.country?.toUpperCase() === near), ...ranked.filter((l) => l.country?.toUpperCase() !== near)];
+}
+
+export function allocate(args: {
+  locations: readonly RoutingLocation[];
+  cells: readonly StockCell[];
+  lines: readonly WantedLine[];
+  /** The delivery country, for a store that takes the nearest locations first; none: rank order. */
+  nearCountry?: string | null;
+}): AllocateResult {
   const wants = wantsOf(args.lines);
   if (wants.length === 0) return { ok: true, takes: [], wholeOrderAt: null };
 
-  const ranked = inRankOrder(args.locations.filter((l) => l.active));
+  const ranked = routingOrder(args.locations, args.nearCountry);
   const cellAt = new Map<string, StockCell>();
   for (const cell of args.cells) cellAt.set(`${cell.variantId}\u0000${cell.locationId}`, cell);
   const cell = (variantId: string, locationId: string) => cellAt.get(`${variantId}\u0000${locationId}`);

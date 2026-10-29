@@ -12607,6 +12607,8 @@ export const orderSettings = commerce.table(
     staffMarkPaid: boolean("staff_mark_paid").notNull().default(false),
     /** When the customer's card is charged (D289): at checkout, when the order is sent, or when staff capture it. */
     capture: text("capture").notNull().default("at_checkout"),
+    /** Which location an order's units come from (D383): the locations' rank (`rank`), or the ones in the delivery country first, each group in rank (`nearest`). */
+    stockRouting: text("stock_routing").notNull().default("rank"),
     /** The next draft's number (`D-{n}`); a counter that promises no gaps, never an order number (D141). */
     nextDraftNumber: bigint("next_draft_number", { mode: "number" }).notNull().default(1),
     updatedAt: updatedAt(),
@@ -12617,6 +12619,7 @@ export const orderSettings = commerce.table(
       sql`${t.autoArchiveDays} is null or ${t.autoArchiveDays} between ${lit(AUTO_ARCHIVE_MIN_DAYS)} and ${lit(AUTO_ARCHIVE_MAX_DAYS)}`,
     ),
     check("order_settings_draft_valid", sql`${t.draftValidDays} between ${lit(DRAFT_VALID_DAYS_MIN)} and ${lit(DRAFT_VALID_DAYS_MAX)}`),
+    check("order_settings_stock_routing", sql`${t.stockRouting} in ('rank', 'nearest')`),
     check("order_settings_next_draft", sql`${t.nextDraftNumber} >= 1`),
     check("order_settings_capture", sql`${t.capture} in (${sqlList(CAPTURE_SETTINGS)})`),
   ],

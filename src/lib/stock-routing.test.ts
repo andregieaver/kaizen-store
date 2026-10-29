@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { allocate, freeUnits, lockOrder, totalsOf, wantsOf, type RoutingLocation, type StockCell, type Take, type WantedLine } from "./stock-routing";
+import { allocate, freeUnits, lockOrder, routingOrder, totalsOf, wantsOf, type RoutingLocation, type StockCell, type Take, type WantedLine } from "./stock-routing";
 
 const loc = (id: string, priority = 0, createdAt = "2026-01-01T00:00:00Z", active = true): RoutingLocation => ({ id, priority, createdAt, active });
 const cell = (variantId: string, locationId: string, onHand: number, reserved = 0): StockCell => ({ variantId, locationId, onHand, reserved });
@@ -141,6 +141,30 @@ describe("the backordered remainder (step 4)", () => {
       { variantId: "v", locationId: "a", quantity: 2, backordered: 0 },
       { variantId: "v", locationId: "b", quantity: 1, backordered: 0 },
     ]);
+  });
+});
+
+describe("nearest first (D383)", () => {
+  const oslo = { ...loc("oslo", 1), country: "NO" };
+  const stockholm = { ...loc("sthlm", 2), country: "SE" };
+  const bergen = { ...loc("bergen", 3), country: "NO" };
+
+  it("puts the delivery country's locations first, each group in rank, and is rank order without a country", () => {
+    expect(routingOrder([bergen, stockholm, oslo], "se").map((l) => l.id)).toEqual(["sthlm", "oslo", "bergen"]);
+    expect(routingOrder([bergen, stockholm, oslo], "NO").map((l) => l.id)).toEqual(["oslo", "bergen", "sthlm"]);
+    expect(routingOrder([bergen, stockholm, oslo], null).map((l) => l.id)).toEqual(["oslo", "sthlm", "bergen"]);
+    expect(routingOrder([bergen, stockholm, oslo], "DK").map((l) => l.id)).toEqual(["oslo", "sthlm", "bergen"]);
+  });
+
+  it("keeps an order together at the nearest location that can supply it, and splits from the nearest first", () => {
+    const cells = [cell("v", "oslo", 5), cell("v", "sthlm", 5), cell("w", "oslo", 1)];
+    expect(takesOf(allocate({ locations: [oslo, stockholm], cells, lines: [line("v", 2)], nearCountry: "SE" }))).toEqual([{ variantId: "v", locationId: "sthlm", quantity: 2, backordered: 0 }]);
+    expect(takesOf(allocate({ locations: [oslo, stockholm], cells, lines: [line("v", 7)], nearCountry: "SE" }))).toEqual([
+      { variantId: "v", locationId: "sthlm", quantity: 5, backordered: 0 },
+      { variantId: "v", locationId: "oslo", quantity: 2, backordered: 0 },
+    ]);
+    // Rank order still decides without the rule.
+    expect(takesOf(allocate({ locations: [oslo, stockholm], cells, lines: [line("v", 2)] }))[0].locationId).toBe("oslo");
   });
 });
 

@@ -36,6 +36,8 @@ export type LocationTools = {
   deactivate: (id: string, confirmedUnits: number) => Promise<DeactivateResult>;
   reactivate: (id: string) => Promise<{ ok: true; impact: LocationImpact } | { ok: false; problem: string }>;
   online: (id: string, on: boolean) => Promise<Step>;
+  /** How orders choose a location (D383); absent for a member who may not change store settings. */
+  routing?: (routing: "rank" | "nearest") => Promise<Step>;
 };
 
 /**
@@ -51,12 +53,15 @@ export function LocationsView({
   canWrite,
   isOwner,
   tools,
+  routing = "rank",
 }: {
   rows: LocationRowView[];
   countries: { code: string; name: string }[];
   canWrite: boolean;
   isOwner: boolean;
   tools: LocationTools;
+  /** The store's routing as saved. */
+  routing?: "rank" | "nearest";
 }) {
   const router = useRouter();
   const t = useAdminText("inventory");
@@ -130,6 +135,25 @@ export function LocationsView({
   return (
     <div className="flex flex-col gap-4" aria-busy={pending}>
       <p className="max-w-3xl text-sm text-muted">{w.takenFirst}</p>
+      {tools.routing && rows.filter((r) => r.active).length > 1 && (
+        <fieldset className={`${card} flex flex-col gap-2`}>
+          <legend className="text-sm font-medium">{w.routingTitle}</legend>
+          {(["rank", "nearest"] as const).map((choice) => (
+            <label key={choice} className="flex items-center gap-2 text-sm">
+              <input
+                type="radio"
+                name="stock-routing"
+                value={choice}
+                defaultChecked={routing === choice}
+                disabled={pending}
+                onChange={() => run(async () => void show(await tools.routing!(choice), w.routingSaved))}
+              />
+              {choice === "rank" ? w.routingRank : w.routingNearest}
+            </label>
+          ))}
+          <p className={hint}>{w.routingHint}</p>
+        </fieldset>
+      )}
       <div className={tableShell}>
         <table className="w-full text-sm">
           <caption className="sr-only">{w.caption}</caption>

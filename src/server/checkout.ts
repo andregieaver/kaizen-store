@@ -622,6 +622,7 @@ export async function placeOrder(
           ];
         }),
         keeps,
+        { country: market.code },
       );
       if (!plan.ok) return { ok: false, problem: "stock" };
       allocations = plan.holds;

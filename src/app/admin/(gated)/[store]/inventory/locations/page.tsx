@@ -11,11 +11,12 @@ import { adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { locationImpact } from "@/server/inventory";
 import { listLocations } from "@/server/inventory-locations";
+import { getOrderSettings } from "@/server/order-settings";
 import { incomingStock } from "@/server/stock-transfers";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { listCountries } from "@/server/stores";
 
-import { deactivateLocationAction, moveLocationAction, reactivateLocationAction, saveLocationAction, setOnlineAction } from "./actions";
+import { deactivateLocationAction, moveLocationAction, reactivateLocationAction, saveLocationAction, setOnlineAction, setRoutingAction } from "./actions";
 
 export const metadata: Metadata = { title: "Stock locations" };
 
@@ -46,7 +47,7 @@ export default async function LocationsPage({ params }: Props) {
 async function Body({ storeSlug }: { storeSlug: string }) {
   const member = await requirePermission(storeSlug, "products:read");
   const { store } = member;
-  const [locations, countries, incoming] = await Promise.all([listLocations(store.id), listCountries(), incomingStock(store.id)]);
+  const [locations, countries, incoming, settings] = await Promise.all([listLocations(store.id), listCountries(), incomingStock(store.id), getOrderSettings(store.id)]);
   // Units on their way to each location (D383): sent transfers and ordered purchase orders not yet counted in.
   const incomingAt = new Map<string, number>();
   for (const [key, units] of incoming) {
@@ -63,12 +64,14 @@ async function Body({ storeSlug }: { storeSlug: string }) {
       countries={countries.map((c) => ({ code: c.code, name: c.name }))}
       canWrite={memberCan(member, "products:write")}
       isOwner={isOwner}
+      routing={settings.stockRouting}
       tools={{
         save: saveLocationAction.bind(null, store.slug),
         move: moveLocationAction.bind(null, store.slug),
         deactivate: deactivateLocationAction.bind(null, store.slug),
         reactivate: reactivateLocationAction.bind(null, store.slug),
         online: setOnlineAction.bind(null, store.slug),
+        routing: memberCan(member, "settings:write") ? setRoutingAction.bind(null, store.slug) : undefined,
       }}
     />
     </AdminTextScope>

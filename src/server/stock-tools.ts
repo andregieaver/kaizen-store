@@ -13,7 +13,7 @@ import type { Membership } from "./auth";
 import { adjustStock, inventoryPage, setVariantPolicies, stockHistory } from "./inventory";
 import { listLocations } from "./inventory-locations";
 import { listPurchaseOrders } from "./purchase-orders";
-import { listTransfers } from "./stock-transfers";
+import { createTransfer, listTransfers } from "./stock-transfers";
 import { OwnerToolError } from "./owner-tool-error";
 import type { Store } from "./stores";
 
@@ -142,6 +142,29 @@ export async function listPurchaseOrdersTool(ctx: Ctx, { open_only, limit }: Own
 // ---------------------------------------------------------------------------
 // Changes
 // ---------------------------------------------------------------------------
+
+/**
+ * A draft transfer made by the screen's own `createTransfer()` (D383) with the person as its maker: the locations by name through `pickLocation()`
+ * (an ambiguous or unknown name is a question, never a guess). A draft moves nothing, so it needs no yes; sending is the person's press on its page.
+ */
+export async function createTransferTool(ctx: Ctx, { from, to, lines, note }: OwnerToolInput<"create_transfer">) {
+  const locations = await listLocations(ctx.store.id);
+  const origin = pickLocation(from, locations);
+  if (!origin.ok) return fail(origin.problem);
+  const destination = pickLocation(to, locations);
+  if (!destination.ok) return fail(destination.problem);
+  const made = await createTransfer(memberOf(ctx), { origin: origin.location.id, destination: destination.location.id, note, lines });
+  if (!made.ok) return fail(made.problems.join(" "));
+  return {
+    made: "a draft transfer",
+    from: origin.location.name,
+    to: destination.location.name,
+    lines: lines.length,
+    units: lines.reduce((sum, l) => sum + l.quantity, 0),
+    note: "Nothing has moved. The units leave the origin when a person sends the transfer on its page.",
+    pages: { transfer: adminLink(ctx.store, `/inventory/transfers/${made.id}`) },
+  };
+}
 
 type Target = { variant: Variant; location: { id: string; name: string; active: boolean }; was: number; several: boolean };
 

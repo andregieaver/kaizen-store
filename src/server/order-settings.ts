@@ -26,7 +26,13 @@ export type OrderSettings = {
   staffMarkPaid: boolean;
   /** When the card is charged (D289): at checkout, when the first parcel is recorded, or when staff press Capture. The owner's alone. */
   capture: CaptureSetting;
+  /** Which location an order's units come from (D383): the locations' rank, or the delivery country's locations first. */
+  stockRouting: StockRouting;
 };
+
+export const STOCK_ROUTINGS = ["rank", "nearest"] as const;
+export type StockRouting = (typeof STOCK_ROUTINGS)[number];
+const isStockRouting = (value: unknown): value is StockRouting => typeof value === "string" && (STOCK_ROUTINGS as readonly string[]).includes(value);
 
 export const DEFAULT_ORDER_SETTINGS: OrderSettings = {
   giftMessages: false,
@@ -34,11 +40,12 @@ export const DEFAULT_ORDER_SETTINGS: OrderSettings = {
   draftValidDays: DRAFT_VALID_DAYS_DEFAULT,
   staffMarkPaid: false,
   capture: "at_checkout",
+  stockRouting: "rank",
 };
 
 export async function getOrderSettings(storeId: string): Promise<OrderSettings> {
   const [row] = await db().execute<Row>(sql`
-    select gift_messages, auto_archive_days, draft_valid_days, staff_mark_paid, capture
+    select gift_messages, auto_archive_days, draft_valid_days, staff_mark_paid, capture, stock_routing
     from commerce.order_settings where store_id = ${storeId}::uuid
   `);
   if (!row) return DEFAULT_ORDER_SETTINGS;
@@ -48,6 +55,7 @@ export async function getOrderSettings(storeId: string): Promise<OrderSettings> 
     draftValidDays: Number(row.draft_valid_days),
     staffMarkPaid: Boolean(row.staff_mark_paid),
     capture: isCaptureSetting(row.capture) ? row.capture : "at_checkout",
+    stockRouting: isStockRouting(row.stock_routing) ? row.stock_routing : "rank",
   };
 }
 
@@ -61,10 +69,11 @@ export const SETTINGS_PROBLEMS = {
   owner_only: "Only the owner can change whether staff may record payments taken outside Kaizena Flow.",
   capture_owner_only: "Only the owner can change when the customer's card is charged.",
   capture: "Choose when the card is charged: when the order is placed, when it is sent, or when you capture it.",
+  routing: "Choose how orders choose a location: by the locations' order, or the delivery country's first.",
 } as const;
 
 /**
- * Saves the settings named in `input` (the others keep their value). The action layer needs `settings:write`; `staffMarkPaid` is the owner's alone, checked
+ * Saves the settings named in `input` (the others keep their value). The action layer needs `settings:write` (the stock routing `products:write`, from the Locations page); `staffMarkPaid` is the owner's alone, checked
  * here too (a request that names it from anyone else is refused whole, not silently dropped). Writes one audit entry that names the settings changed, never a value that is a person's.
  */
 export async function saveOrderSettings(member: Pick<Membership, "account" | "store" | "role" | "kind" | "permissions">, input: OrderSettingsInput): Promise<SaveSettingsResult> {
@@ -76,6 +85,7 @@ export async function saveOrderSettings(member: Pick<Membership, "account" | "st
   if (input.capture !== undefined && input.capture !== before.capture && !memberCan(member, "owner")) {
     return { ok: false, problem: SETTINGS_PROBLEMS.capture_owner_only };
   }
+  if (input.stockRouting !== undefined && !isStockRouting(input.stockRouting)) return { ok: false, problem: SETTINGS_PROBLEMS.routing };
   if (input.autoArchiveDays !== undefined && input.autoArchiveDays !== null && !isAutoArchiveDays(input.autoArchiveDays)) {
     return { ok: false, problem: SETTINGS_PROBLEMS.archive_days };
   }
@@ -88,12 +98,14 @@ export async function saveOrderSettings(member: Pick<Membership, "account" | "st
     draftValidDays: input.draftValidDays ?? before.draftValidDays,
     staffMarkPaid: input.staffMarkPaid ?? before.staffMarkPaid,
     capture: input.capture ?? before.capture,
+    stockRouting: input.stockRouting ?? before.stockRouting,
   };
   await db().execute(sql`
-    insert into commerce.order_settings (store_id, gift_messages, auto_archive_days, draft_valid_days, staff_mark_paid, capture)
-    values (${member.store.id}::uuid, ${next.giftMessages}, ${next.autoArchiveDays}, ${next.draftValidDays}, ${next.staffMarkPaid}, ${next.capture})
+    insert into commerce.order_settings (store_id, gift_messages, auto_archive_days, draft_valid_days, staff_mark_paid, capture, stock_routing)
+    values (${member.store.id}::uuid, ${next.giftMessages}, ${next.autoArchiveDays}, ${next.draftValidDays}, ${next.staffMarkPaid}, ${next.capture}, ${next.stockRouting})
     on conflict (store_id) do update set gift_messages = excluded.gift_messages, auto_archive_days = excluded.auto_archive_days,
-      draft_valid_days = excluded.draft_valid_days, staff_mark_paid = excluded.staff_mark_paid, capture = excluded.capture, updated_at = now()
+      draft_valid_days = excluded.draft_valid_days, staff_mark_paid = excluded.staff_mark_paid, capture = excluded.capture,
+      stock_routing = excluded.stock_routing, updated_at = now()
   `);
   const changed = (Object.keys(next) as (keyof OrderSettings)[]).filter((key) => next[key] !== before[key]);
   if (changed.length > 0) await audit(member.account.id, member.store.id, ORDER_AUDIT_ACTIONS.settingsChanged, { changed });

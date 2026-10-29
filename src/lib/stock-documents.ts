@@ -105,3 +105,38 @@ export const receiptInput = z.object({
     .array(z.object({ variantId: z.uuid(), quantity: z.coerce.number().int().min(0).max(DOCUMENT_UNITS_MAX) }))
     .max(DOCUMENT_LINES_MAX),
 });
+
+/** Why a file's lines could not be read (D383): the form says it in the admin's words. */
+export type LinesFileProblem = { kind: "no_sku" } | { kind: "no_units" } | { kind: "too_many" } | { kind: "bad_row"; row: number } | { kind: "unreadable" };
+
+const header = (name: string) => name.trim().toLowerCase().replace(/[\s_-]+/g, " ");
+const SKU_NAMES = new Set(["sku", "variant sku", "varenummer"]);
+const UNIT_NAMES = new Set(["quantity", "units", "qty", "antall", "enheter"]);
+const COST_NAMES = new Set(["unit cost", "cost", "cost per item", "kostpris", "kostpris per enhet"]);
+
+/**
+ * A file's lines for a transfer or a purchase order (D383), read in the browser by `parseCsv()`: a column of SKUs, one of units and, for an
+ * order, an optional one of unit costs (left empty, the form's field stays to fill). A row with a SKU and no whole number of units is a
+ * problem named by its row; a row with neither is skipped. At most `DOCUMENT_LINES_MAX` lines; the server checks everything again.
+ */
+export function linesFromCsv(
+  parsed: { rows: string[][]; unterminated: boolean },
+): { ok: true; lines: { sku: string; quantity: string; unitCost: string }[] } | { ok: false; problem: LinesFileProblem } {
+  if (parsed.unterminated) return { ok: false, problem: { kind: "unreadable" } };
+  const head = (parsed.rows[0] ?? []).map(header);
+  const skuAt = head.findIndex((h) => SKU_NAMES.has(h));
+  const unitsAt = head.findIndex((h) => UNIT_NAMES.has(h));
+  const costAt = head.findIndex((h) => COST_NAMES.has(h));
+  if (skuAt < 0) return { ok: false, problem: { kind: "no_sku" } };
+  if (unitsAt < 0) return { ok: false, problem: { kind: "no_units" } };
+  const lines: { sku: string; quantity: string; unitCost: string }[] = [];
+  for (const [i, row] of parsed.rows.slice(1).entries()) {
+    const sku = (row[skuAt] ?? "").trim();
+    const units = (row[unitsAt] ?? "").trim();
+    if (sku === "" && units === "") continue;
+    if (sku === "" || !/^\d{1,7}$/.test(units) || Number(units) < 1) return { ok: false, problem: { kind: "bad_row", row: i + 2 } };
+    lines.push({ sku, quantity: units, unitCost: costAt >= 0 ? (row[costAt] ?? "").trim() : "" });
+    if (lines.length > DOCUMENT_LINES_MAX) return { ok: false, problem: { kind: "too_many" } };
+  }
+  return { ok: true, lines };
+}
