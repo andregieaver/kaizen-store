@@ -35,7 +35,7 @@ const row = (over: Record<string, unknown> = {}) => ({ variantId: id(1), locatio
 describe("the reasons and sources", () => {
   it("has the manual reasons a person can give, and the system's on top of them", () => {
     expect(ADJUST_REASONS).toEqual(["received", "correction", "count", "damaged", "lost", "promotion"]);
-    expect(MOVEMENT_REASONS).toEqual([...ADJUST_REASONS, "sale", "order_restock", "return_restock", "opening", "system"]);
+    expect(MOVEMENT_REASONS).toEqual([...ADJUST_REASONS, "sale", "order_restock", "return_restock", "opening", "system", "transfer_out", "transfer_in"]);
     expect(MOVEMENT_REASONS).toHaveLength(new Set(MOVEMENT_REASONS).size);
     expect(MOVEMENT_SOURCES).toHaveLength(new Set(MOVEMENT_SOURCES).size);
     expect(MOVEMENT_SOURCES).toContain("file");
