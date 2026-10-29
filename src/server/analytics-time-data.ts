@@ -8,7 +8,7 @@ import { addDays, type AnalyticsPeriod } from "@/lib/analytics-period";
 import { canConvert } from "@/lib/currency";
 import { mainCurrency } from "@/lib/markets";
 
-import { dayKey, dayOf, inMain, inPeriod, num, PAID, REVENUE_EX_VAT, type Row } from "./analytics-sql";
+import { dayKey, dayOf, inMain, num, PAID, REVENUE_EX_VAT, type Row, SOLD_AT, soldIn } from "./analytics-sql";
 import { setBasedReplica as setBased } from "./analytics-totals";
 import type { Store } from "./stores";
 
@@ -82,8 +82,8 @@ function isoWeekday(day: string): number {
 
 export async function timeReport(store: Store, period: Pick<AnalyticsPeriod, "from" | "to" | "days">): Promise<TimeReport> {
   const convertible = convertibleCurrencies(store);
-  const inRange = inPeriod(store, sql`o.placed_at`, period);
-  const local = sql`(o.placed_at at time zone ${store.timeZone})`;
+  const inRange = soldIn(store, period);
+  const local = sql`(${SOLD_AT} at time zone ${store.timeZone})`;
 
   const [cellRows, dayRows] = await Promise.all([
     setBased<Row>(sql`
@@ -94,7 +94,7 @@ export async function timeReport(store: Store, period: Pick<AnalyticsPeriod, "fr
       group by 1, 2, 3
     `),
     setBased<Row>(sql`
-      select (${dayOf(store, sql`o.placed_at`)})::text as day, o.currency::text as currency, count(*) as orders, sum(${REVENUE_EX_VAT}) as revenue
+      select (${dayOf(store, SOLD_AT)})::text as day, o.currency::text as currency, count(*) as orders, sum(${REVENUE_EX_VAT}) as revenue
       from commerce.orders o
       where o.store_id = ${store.id}::uuid and ${PAID} and ${inRange}
       group by 1, 2

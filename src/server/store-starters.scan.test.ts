@@ -131,8 +131,15 @@ describe("demo stores are not real stores (D175)", () => {
   it("copies a new store only from the source the database decides", () => {
     const copiers = files.filter((f) => /commerce\.clone_store\(/.test(code(f))).map((f) => path.relative(ROOT, f)).sort();
     // design-presets.ts makes a design profile's workspace (D177) from the default template, `starter_source(null)`; demo-stores.ts makes a
-    // demo store (D277) from published starting content; a store template's frozen copy is made in SQL (`commerce.freeze_starter()`), never here.
-    expect(copiers).toEqual(["src/server/demo-stores.ts", "src/server/design-presets.ts", "src/server/platform.ts", "src/server/store-starters.ts"]);
+    // demo store (D277) from published starting content; submission-content.ts a theme submission's pages' store (D388) from the default
+    // template; a store template's frozen copy is made in SQL (`commerce.freeze_starter()`), never here.
+    expect(copiers).toEqual([
+      "src/server/demo-stores.ts",
+      "src/server/design-presets.ts",
+      "src/server/platform.ts",
+      "src/server/store-starters.ts",
+      "src/server/submission-content.ts",
+    ]);
     for (const file of copiers) {
       const calls = code(path.join(ROOT, file)).match(/commerce\.clone_store\(\s*[^,]+/g) ?? [];
       for (const call of calls) expect(call, file).toMatch(/commerce\.starter_source\(/);

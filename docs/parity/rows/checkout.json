@@ -528,14 +528,14 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": "full"
+      "was": "partial"
     },
     "weight": 3,
-    "gap": "Kaizena Flow requests `mobilepay_payments`, the Payments page shows its state at Stripe with the reason, and the owner switches it off per country (D291, `payment-methods.int.test.ts`): criteria 1 and 4 are held. Missing: a test that a Danish or Finnish checkout is offered MobilePay and others are not (Stripe decides which methods suit a country), a MobilePay payment and refund taken to a paid and refunded order in a test, and subscription boxes stay card-only. Also through Mollie (D292) where the store has its own MobilePay agreement, live only with Kaizena Flow's Mollie app.",
-    "bucket": "A",
-    "wave": 4,
+    "gap": "Kaizena Flow requests `mobilepay_payments`, the Payments page shows its state at Stripe with the reason, and the owner switches it off per country (D291). Since D387 `mobilepay.int.test.ts` holds what a checkout sends Stripe: a Danish and a Finnish checkout leave MobilePay in, a country where the owner switched it off or a checkout rule hides it names it in `excluded_payment_method_types`; a payment Stripe reports as MobilePay ends as a paid order whose method is MobilePay, and its refund is recorded. What still differs from Shopify: which methods Stripe then shows a shopper in each country is Stripe's own decision (Kaizena Flow never names the methods to offer); subscription boxes stay card-only; through Mollie (D292) only where the store has its own MobilePay agreement.",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "The admin shows MobilePay's state for the store (requested, active, held back and why).",
       "A checkout in DKK or EUR for a Danish or Finnish shopper offers MobilePay, and one for other countries does not (integration test).",
@@ -555,14 +555,16 @@
         "src/server/billing.int.test.ts",
         "src/lib/stripe-account.test.ts",
         "src/server/payment-methods.int.test.ts",
-        "src/lib/payment-methods.test.ts"
+        "src/lib/payment-methods.test.ts",
+        "src/server/mobilepay.int.test.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D23",
       "D291",
-      "D292"
+      "D292",
+      "D387"
     ],
     "history": [
       {
@@ -570,6 +572,12 @@
         "from": "full",
         "to": "partial",
         "why": "Re-read at HEAD: the same code and tests hold Klarna (partial); nothing tests that a checkout offers MobilePay, there is no Kaizen switch and live availability rests on the owner's Stripe Dashboard."
+      },
+      {
+        "on": "2026-10-29",
+        "from": "partial",
+        "to": "full",
+        "why": "Read unit H (D387): src/server/mobilepay.int.test.ts (run, passing) holds a Danish and a Finnish checkout with MobilePay left in, Norway with it excluded by the owner's switch and Denmark by a checkout rule, and a MobilePay payment to a paid order with its method read from the charge and its refund recorded. Every criterion holds as far as Kaizena Flow decides; Stripe's own choice of methods is named in the gap."
       }
     ]
   },
@@ -1205,14 +1213,14 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": "missing"
+      "was": "partial"
     },
     "weight": 2,
-    "gap": "Built (D293): a company has payment terms (15, 30 or 60 days) and an optional credit limit; its accounts choose Pay by invoice at checkout, the order is confirmed with nothing paid, its stock drawn and its invoice issued with the due date; reminders go three days before and the day after, staff get an overdue alert, the control center and Finance show what is due and overdue, and the order is paid from its page on Stripe's hosted page or recorded as paid outside (`payment-terms.int.test.ts`, `checkout-kinds.int.test.ts`). Left: a paid order counts in sales dated by the day it was placed, as every order in Kaizena Flow's figures is, not the day it was paid (criterion 3, `docs/analytics.md`); a balance cannot be paid in part; a store on Mollie alone has no Pay now; the shopper and email words (`m.paymentTerms`, `TERMS_EMAIL_TEXT`) are hand-written and need legal review; no browser test of the checkout choice.",
-    "bucket": "A",
-    "wave": 4,
+    "gap": "Built (D293): a company has payment terms (15, 30 or 60 days) and an optional credit limit; its accounts choose Pay by invoice at checkout, the order is confirmed with nothing paid, its stock drawn and its invoice issued with the due date; reminders go three days before and the day after, staff get an overdue alert, the control center and Finance show what is due and overdue, and the order is paid from its page or recorded as paid outside. Since D387 an order on terms counts in sales on the day its balance is paid in full (`orders.sold_at`, `SOLD_AT`/`soldIn()` in every analytics reader, `docs/analytics.md`), a balance can be paid in part (money recorded outside with an amount, or a payment; paid at zero), a store on Mollie alone gets Pay now through Mollie, and `e2e/payment-terms.spec.ts` chooses Pay by invoice at checkout. What still differs from Shopify: the shopper and email words (`m.paymentTerms`, `TERMS_EMAIL_TEXT`) are hand-written and need legal review before real use; *Pay now* pays the whole of what is left, never a part the buyer picks; the control center's seven-day glance still dates by the day placed.",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "A company account has payment terms (net 15, 30, 60); its checkout places the order unpaid with a due date and holds stock.",
       "Staff or the customer see the due date; a reminder goes before it and an overdue mark after.",
@@ -1229,7 +1237,9 @@
         "src/components/checkout-button.tsx",
         "src/app/s/[store]/[market]/order/terms-actions.ts",
         "src/components/admin/analytics/terms-owed-view.tsx",
-        "supabase/migrations/20261020001647_payment_terms_rules.sql"
+        "supabase/migrations/20261020001647_payment_terms_rules.sql",
+        "supabase/migrations/20261029032141_orders_sold_at_rules.sql",
+        "src/server/analytics-sql.ts"
       ],
       "tests": [
         "src/lib/payment-terms.test.ts",
@@ -1237,13 +1247,16 @@
         "src/server/payment-terms.int.test.ts",
         "src/server/checkout-kinds.int.test.ts",
         "src/components/documents/order-document-view.test.ts",
-        "src/components/admin/analytics/terms-owed-view.test.ts"
+        "src/components/admin/analytics/terms-owed-view.test.ts",
+        "src/server/payment-terms-parts.int.test.ts",
+        "e2e/payment-terms.spec.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D66",
-      "D293"
+      "D293",
+      "D387"
     ],
     "history": [
       {
@@ -1251,6 +1264,12 @@
         "from": "missing",
         "to": "partial",
         "why": "Payment terms for company accounts (D293): placed unpaid with a due date and its invoice, reminded, overdue in the control center and Finance, paid by a link or recorded, in tests. Sales are dated by the order day, not the payment day."
+      },
+      {
+        "on": "2026-10-29",
+        "from": "partial",
+        "to": "full",
+        "why": "Read unit H (D387): the sale's day (order_payment_terms_sold(), SOLD_AT and soldIn() through Finance, the reports and the analytics readers), part payments (applyTermsMoney()) and Mollie's Pay now, held by src/server/payment-terms-parts.int.test.ts (run, passing: no sale while part is paid, a sale of the day the balance reached zero; Mollie's page and webhook) and e2e/payment-terms.spec.ts. Every criterion holds; the legal review of the words is named in the gap."
       }
     ]
   }

@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."orders" ADD COLUMN "sold_at" timestamp with time zone;--> statement-breakpoint
+CREATE INDEX "orders_sold_idx" ON "commerce"."orders" USING btree ("store_id","sold_at") WHERE "commerce"."orders"."sold_at" is not null;

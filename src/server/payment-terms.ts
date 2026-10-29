@@ -3,12 +3,14 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 
 import { db, type Db } from "@/db/client";
 import { checkCash } from "@/lib/cash-limits";
 import { convertMinor, toRates, type Rates } from "@/lib/currency";
 import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
+import type { PaymentModeName } from "@/lib/stripe-account";
 import { editPaidOutsideInput } from "@/lib/order-edit-input";
 import { MANUAL_RECEIVED_DAYS_MAX } from "@/lib/order-limits";
 import { marketPath, storeOrigin } from "@/lib/paths";
@@ -31,6 +33,8 @@ import { settleOrderSessions } from "./draft-sessions";
 import { writeOrderEvent } from "./order-actor";
 import { accountMayRecordOutside } from "./order-settings";
 import { getOrder, type OrderView } from "./orders";
+import { checkoutProviderOf } from "./mollie";
+import { openMolliePayment } from "./payment-providers/mollie";
 import { openPaymentSession, paymentConnection } from "./payment-session";
 import { sendTermsNotice } from "./shopper-emails";
 import { sendTermsOverdueAlert } from "./staff-alerts";
@@ -53,6 +57,8 @@ export const TERMS_EVENTS = {
   placed: "order.terms_placed",
   /** The balance arrived: `data.via` (`stripe` or `outside`), `data.amount`, and for money outside `data.method`, `data.receivedOn` and the reference as `data.note`. */
   paid: "order.terms_paid",
+  /** Part of the balance arrived (D387): as `paid`, with `data.left`, what is still owed. The order is paid when it reaches zero. */
+  partPaid: "order.terms_part_paid",
   /** The invoice was cancelled before it was paid (a `void` refund on the terms payment). */
   voided: "order.terms_voided",
   reminded: "order.terms_reminded",
@@ -180,6 +186,22 @@ async function unpaidTerms(tx: Runner, storeId: string, orderId: string): Promis
   return row ?? null;
 }
 
+/**
+ * Money towards an order's balance on terms (D387): the whole balance or more settles it (`markTermsPaid()`); less is a part paid, the balance lowered
+ * and the history saying what is left. Under the order's lock (the caller's `unpaidTerms()`).
+ */
+async function applyTermsMoney(tx: Runner, storeId: string, order: Row, amount: number, data: Record<string, unknown>, actor: string): Promise<"paid" | "part"> {
+  const orderId = String(order.id);
+  const left = Number(order.balance_minor) - amount;
+  if (left <= 0) {
+    await markTermsPaid(tx, storeId, orderId, data, actor);
+    return "paid";
+  }
+  await tx.execute(sql`update commerce.orders set balance_minor = ${left} where store_id = ${storeId}::uuid and id = ${orderId}::uuid`);
+  await writeOrderEvent(tx, storeId, orderId, TERMS_EVENTS.partPaid, { ...data, left }, actor);
+  return "part";
+}
+
 /** The balance is in: the order's balance is 0, the terms are paid, the terms payment (never money) ends, and the history says how. Once. */
 async function markTermsPaid(tx: Runner, storeId: string, orderId: string, data: Record<string, unknown>, actor: string): Promise<void> {
   await tx.execute(sql`update commerce.orders set balance_minor = 0 where store_id = ${storeId}::uuid and id = ${orderId}::uuid`);
@@ -247,6 +269,9 @@ export async function startTermsPayment(shop: { store: Store; market: Market }, 
   if (order.status !== "paid" && order.status !== "fulfilled") return { ok: false, problem: "not_found" };
   if (order.marketCode.trim().toUpperCase() !== market.code.toUpperCase()) return { ok: false, problem: "not_found" };
   if (!(await takePress(store.id, orderId))) return { ok: false, problem: "limit" };
+  // A store whose checkout is Mollie's (D292) takes the balance through Mollie too (D387).
+  const mollieMode = await mollieTermsMode(store.id);
+  if (mollieMode) return startMollieTermsPayment(shop, order, origin, mollieMode);
   const connected = await paymentConnection(store.id);
   if (!connected) return { ok: false, problem: "payments_off" };
   const settled = await settleOrderSessions(store.id, orderId);
@@ -272,38 +297,74 @@ export async function startTermsPayment(shop: { store: Store; market: Market }, 
   return { ok: true, url: opened.url };
 }
 
+/** The mode a store's checkout runs on Mollie in, or null when its checkout is Stripe's (`checkoutProviderOf()`, as `startCheckout()` asks it). */
+async function mollieTermsMode(storeId: string): Promise<PaymentModeName | null> {
+  const [row] = await db().execute<Row>(sql`
+    select active_mode from commerce.payment_providers where store_id = ${storeId}::uuid and provider = 'stripe' and enabled
+  `);
+  if (!row) return null;
+  const mode = row.active_mode as PaymentModeName;
+  return (await checkoutProviderOf(storeId, mode)) === "mollie" ? mode : null;
+}
+
+/**
+ * *Pay now* for a store whose checkout is Mollie's (D387): the balance as one Mollie payment on its hosted page, one per press (Mollie's idempotency key
+ * counts the earlier ones), returning to the order. Mollie's answer settles it through `applyPaymentAnswer()`'s `terms` purpose, as Stripe's does.
+ */
+async function startMollieTermsPayment(shop: { store: Store; market: Market }, order: OrderView, origin: string, mode: PaymentModeName): Promise<TermsPayResult> {
+  const { store, market } = shop;
+  const [open] = await db().execute<Row>(sql`
+    select count(*)::int as n from commerce.payments where store_id = ${store.id}::uuid and order_id = ${order.id}::uuid and provider = 'mollie' and status = 'pending'
+  `);
+  if (Number(open?.n ?? 0) > 0) return { ok: false, problem: "processing" };
+  const [earlier] = await db().execute<Row>(sql`select count(*)::int as n from commerce.payments where store_id = ${store.id}::uuid and order_id = ${order.id}::uuid and provider = 'mollie'`);
+  const opened = await openMolliePayment(
+    { storeId: store.id, storeSlug: store.slug, market },
+    balanceOrder(order, t(market.lang).paymentTerms.stripeLine(order.number)),
+    origin,
+    mode,
+    { name: "", email: order.email, phone: "", address: null },
+    { idempotencyKey: `terms-pay-${order.id}-${Number(earlier?.n ?? 0)}`, cancelPath: "/account" },
+  );
+  return opened.ok ? { ok: true, url: opened.url } : { ok: false, problem: opened.problem === "payments_off" ? "payments_off" : "payment_error" };
+}
+
 /**
  * A Stripe payment of a balance on terms is in (`applyPaymentAnswer()`'s `terms` purpose): the payment is captured and the order settled, under the
  * order's lock, once. Money that arrives for an order no longer owing (paid outside meanwhile, or cancelled) stays a captured payment on the order for staff
  * to refund (the order page shows it); nothing else is changed.
  */
-export async function settleTerms(storeId: string, reference: string): Promise<boolean> {
+export async function settleTerms(storeId: string, reference: string, provider: "stripe" | "mollie" = "stripe"): Promise<boolean> {
   return db().transaction(async (tx) => {
     const [payment] = await tx.execute<Row>(sql`
       update commerce.payments set status = 'captured', updated_at = now()
-      where store_id = ${storeId}::uuid and provider = 'stripe' and provider_reference = ${reference} and status = 'pending'
+      where store_id = ${storeId}::uuid and provider = ${provider} and provider_reference = ${reference} and status = 'pending'
       returning order_id, amount_minor
     `);
     if (!payment) return false;
     const orderId = String(payment.order_id);
     const order = await unpaidTerms(tx, storeId, orderId);
     if (!order) return false;
-    await markTermsPaid(tx, storeId, orderId, { via: "stripe", amount: Number(payment.amount_minor) }, "shopper");
+    // The payment was for what was owed when it was opened; money recorded outside meanwhile may make it the rest, or more (`applyTermsMoney()`).
+    await applyTermsMoney(tx, storeId, order, Number(payment.amount_minor), { via: provider, amount: Number(payment.amount_minor) }, "shopper");
     return true;
   });
 }
 
-/** A balance payment on Stripe's page that failed or lapsed: its row ends; the order still owes. */
-export async function endTermsSession(storeId: string, reference: string, status: "failed" | "cancelled"): Promise<void> {
+/** A balance payment on Stripe's (or Mollie's) page that failed or lapsed: its row ends; the order still owes. */
+export async function endTermsSession(storeId: string, reference: string, status: "failed" | "cancelled", provider: "stripe" | "mollie" = "stripe"): Promise<void> {
   await db().execute(sql`
     update commerce.payments set status = ${status}, updated_at = now()
-    where store_id = ${storeId}::uuid and provider = 'stripe' and provider_reference = ${reference} and status = 'pending'
+    where store_id = ${storeId}::uuid and provider = ${provider} and provider_reference = ${reference} and status = 'pending'
   `);
 }
 
 export type TermsOutsideResult =
-  | { ok: true; cashWarning?: boolean }
-  | { ok: false; problem: "invalid" | "not_allowed" | "not_found" | "received_on" | "processing" | "already_paid" | "cash_limit" };
+  | { ok: true; cashWarning?: boolean; left?: number }
+  | { ok: false; problem: "invalid" | "not_allowed" | "not_found" | "received_on" | "processing" | "already_paid" | "cash_limit" | "amount" };
+
+/** Money received outside Kaizena Flow towards a balance on terms: D173's record, with the amount when it is only part of the balance (D387). */
+const termsOutsideInput = editPaidOutsideInput.extend({ amountMinor: z.int().min(1).max(10_000_000_000).optional() });
 
 /**
  * Staff record the balance of an order on terms as paid outside Kaizena Flow (D173's rule: the owner, or staff while `staff_mark_paid` is on): a `manual`
@@ -311,7 +372,7 @@ export type TermsOutsideResult =
  * in one transaction. A Stripe session the buyer opened is closed first; one found paid means the order is settled already.
  */
 export async function recordTermsPaidOutside(storeId: string, orderId: string, raw: unknown, accountId: string | null): Promise<TermsOutsideResult> {
-  const parsed = editPaidOutsideInput.safeParse(raw);
+  const parsed = termsOutsideInput.safeParse(raw);
   if (!parsed.success) return { ok: false, problem: "invalid" };
   const input = parsed.data;
   if (!accountId || !(await accountMayRecordOutside(storeId, accountId))) return { ok: false, problem: "not_allowed" };
@@ -325,11 +386,14 @@ export async function recordTermsPaidOutside(storeId: string, orderId: string, r
   if (settled === "paid") return { ok: false, problem: "already_paid" };
   if (settled === "processing") return { ok: false, problem: "processing" };
   let cashWarning = false;
-  type Done = { ok: true; amount: number; currency: string; number: string } | { ok: false; problem: "not_found" | "processing" | "cash_limit" };
+  type Done = { ok: true; amount: number; currency: string; number: string; left: number } | { ok: false; problem: "not_found" | "processing" | "cash_limit" | "amount" };
   const done = await db().transaction(async (tx): Promise<Done> => {
     const order = await unpaidTerms(tx, storeId, orderId);
     if (!order) return { ok: false, problem: "not_found" };
-    const amount = Number(order.balance_minor);
+    // The whole balance unless the person names a part of it (D387); never more than is owed.
+    const balance = Number(order.balance_minor);
+    const amount = input.amountMinor ?? balance;
+    if (amount > balance) return { ok: false, problem: "amount" };
     const currency = String(order.currency);
     // A session the buyer opened after the step above (*Pay now* reads the order without this lock): money could still arrive, so nothing is recorded now.
     const [open] = await tx.execute<Row>(sql`select count(*)::int as n from commerce.payments where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and provider = 'stripe' and status = 'pending'`);
@@ -349,18 +413,19 @@ export async function recordTermsPaidOutside(storeId: string, orderId: string, r
       values (${storeId}::uuid, ${orderId}::uuid, 'manual', ${`manual_terms_${randomUUID()}`}, ${amount}, ${currency}, 'captured', 0, ${input.method},
               ${accountId}::uuid, ${input.receivedOn ?? null}::date)
     `);
-    await markTermsPaid(
+    await applyTermsMoney(
       tx,
       storeId,
-      orderId,
+      order,
+      amount,
       { via: "outside", amount, method: input.method, ...(input.receivedOn ? { receivedOn: input.receivedOn } : {}), ...(input.reference ? { note: input.reference } : {}) },
       "staff",
     );
-    return { ok: true, amount, currency, number: String(order.number) };
+    return { ok: true, amount, currency, number: String(order.number), left: balance - amount };
   });
   if (!done.ok) return done;
-  await audit(accountId, storeId, TERMS_AUDIT_ACTIONS.paidOutside, { order: done.number, method: input.method, amountMinor: done.amount, currency: done.currency }, { target: { type: "order", id: orderId } });
-  return { ok: true, ...(cashWarning ? { cashWarning } : {}) };
+  await audit(accountId, storeId, TERMS_AUDIT_ACTIONS.paidOutside, { order: done.number, method: input.method, amountMinor: done.amount, currency: done.currency, leftMinor: done.left }, { target: { type: "order", id: orderId } });
+  return { ok: true, ...(cashWarning ? { cashWarning } : {}), ...(done.left > 0 ? { left: done.left } : {}) };
 }
 
 /**

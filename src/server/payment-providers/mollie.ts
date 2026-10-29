@@ -49,7 +49,15 @@ export type MollieOpenResult = { ok: true; url: string; sessionId: string } | { 
  * The order's return address names the payment (`?session_id=tr_…`) once Mollie has made it, as Stripe's does. It never cancels the order: the caller
  * decides. Who pays was asked by Kaizena Flow before (`payer`) and is on the order.
  */
-export async function openMolliePayment(shop: CheckoutShop, order: PlacedOrder, origin: string, mode: PaymentModeName, payer: PayerDetails): Promise<MollieOpenResult> {
+export async function openMolliePayment(
+  shop: CheckoutShop,
+  order: PlacedOrder,
+  origin: string,
+  mode: PaymentModeName,
+  payer: PayerDetails,
+  /** A balance paid later (D387: an order on terms) opens one payment per press and returns to the order, not the cart. */
+  options: { idempotencyKey?: string; cancelPath?: string } = {},
+): Promise<MollieOpenResult> {
   const profileId = await mollieProfile(shop.storeId);
   if (!profileId) return { ok: false, problem: "payments_off" };
   const amount = mollieAmount(order.dueNowMinor, order.currency);
@@ -70,7 +78,7 @@ export async function openMolliePayment(shop: CheckoutShop, order: PlacedOrder, 
         amount,
         description: `Order ${order.number}`.slice(0, 255),
         redirectUrl: `${base}/order/${order.orderId}`,
-        cancelUrl: `${base}/cart`,
+        cancelUrl: `${base}${options.cancelPath ?? "/cart"}`,
         // Mollie only calls an address it can reach: a site on a local address reads the payment when the shopper returns.
         ...(site.startsWith("https://") ? { webhookUrl: `${site}/api/mollie/${mode}` } : {}),
         metadata: { order_id: order.orderId, order_number: order.number, store_id: shop.storeId },
@@ -80,7 +88,7 @@ export async function openMolliePayment(shop: CheckoutShop, order: PlacedOrder, 
         profileId,
         ...(fee ? { applicationFee: { amount: mollieAmount(fee.feeMinor, order.currency), description: `Kaizena Flow ${order.number}`.slice(0, 255) } } : {}),
       },
-      idempotencyKey: `checkout-${order.orderId}`,
+      idempotencyKey: options.idempotencyKey ?? `checkout-${order.orderId}`,
     });
   } catch {
     return { ok: false, problem: "payment_error" };

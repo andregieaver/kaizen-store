@@ -54,8 +54,10 @@ export async function applyPaymentAnswer(storeId: string, answer: PaymentAnswer,
     if (fate.kind !== "settle_change") return;
     if (purpose === "terms") {
       const { endTermsSession, settleTerms } = await import("./payment-terms");
-      if (fate.outcome !== "pay") await endTermsSession(storeId, answer.reference, fate.outcome);
-      else if ((await settleTerms(storeId, answer.reference)) && hooks.afterPaid) await hooks.afterPaid({ orderId, delivery: false });
+      // Stripe's pay link, or Mollie's for a store whose checkout is Mollie's (D387).
+      const provider = answer.provider === "mollie" ? "mollie" : "stripe";
+      if (fate.outcome !== "pay") await endTermsSession(storeId, answer.reference, fate.outcome, provider);
+      else if ((await settleTerms(storeId, answer.reference, provider)) && hooks.afterPaid) await hooks.afterPaid({ orderId, delivery: false });
     } else if (purpose === "edit") {
       if (fate.outcome === "pay") await completeEditPayment(storeId, answer.reference);
       else await markEditSessionEnded(storeId, answer.reference, fate.outcome);

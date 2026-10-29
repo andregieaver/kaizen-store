@@ -9,7 +9,7 @@ import { allocateRefund } from "@/lib/analytics-products";
 import { canConvert } from "@/lib/currency";
 import { mainCurrency } from "@/lib/markets";
 
-import { CUSTOMER_JOIN, CUSTOMER_KEY, dayStart, HAS_CUSTOMER, inPeriod, NOT_EDIT_REFUND, num, PAID, toMainOne, type Row } from "./analytics-sql";
+import { CUSTOMER_JOIN, CUSTOMER_KEY, dayStart, HAS_CUSTOMER, inPeriod, NOT_EDIT_REFUND, num, PAID, type Row, soldIn, toMainOne } from "./analytics-sql";
 import { setBasedReplica as setBased } from "./analytics-totals";
 import type { Store } from "./stores";
 
@@ -287,7 +287,7 @@ async function readCohort(store: Store, period: AnalyticsPeriod): Promise<Row[]>
       join commerce.payments p on p.store_id = r.store_id and p.id = r.payment_id
       where r.store_id = ${store.id}::uuid and r.status = 'succeeded' and ${NOT_EDIT_REFUND}
     ) rfo on rfo.order_id = o.id
-    where o.store_id = ${store.id}::uuid and ${PAID} and ${inPeriod(store, sql`o.placed_at`, period)}
+    where o.store_id = ${store.id}::uuid and ${PAID} and ${soldIn(store, period)}
     group by 1, 2
   `);
 }

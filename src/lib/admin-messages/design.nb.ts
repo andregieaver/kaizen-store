@@ -438,11 +438,11 @@ export const designNb: DesignMessages = {
   },
   share: {
     card: "Del dette utseendet som et tema",
-    cardHint: "Tilby butikkens utseende til andre Kaizena Flow-butikker, gratis, i temabutikken. Kaizena Flow går gjennom det først; tekstene dine, bilder av produkter og sider deles aldri.",
+    cardHint: "Tilby butikkens utseende til andre Kaizena Flow-butikker, gratis, i temabutikken. Kaizena Flow går gjennom det først; produktene dine deles aldri, og sidene bare hvis du velger å sende dem.",
     open: "Del dette utseendet",
     title: "Del dette utseendet som et tema",
     description:
-      "Butikkens utseende slik besøkende ser det nå (temaets innstillinger, toppfelt, bunnfelt, produktside og CSS) sendes til Kaizena Flow for gjennomgang. Tekstene, produktene, sidene og lenkene i menyene dine forblir dine. Når det er godkjent, kan andre butikker legge det til fra temabutikken, gratis.",
+      "Butikkens utseende slik besøkende ser det nå (temaets innstillinger, toppfelt, bunnfelt, produktside og CSS) sendes til Kaizena Flow for gjennomgang. Tekstene, produktene, sidene og lenkene i menyene dine forblir dine, med mindre du velger å sende sidene som temaets demoinnhold. Når det er godkjent, kan andre butikker legge det til fra temabutikken, gratis.",
     as: "Send det som",
     asNew: "Et nytt tema",
     asUpdate: "En oppdatering av {title}",
@@ -453,6 +453,9 @@ export const designNb: DesignMessages = {
     authorHint: "Vises på temaets side som «Av …».",
     notes: "Hva er nytt",
     notesHint: "For en oppdatering: vises for butikkene som bruker temaet, sammen med oppdateringen.",
+    pages: "Send også de publiserte sidene mine, som temaets demoinnhold",
+    pagesHint:
+      "Opptil 12 sider, forsiden først, med tekster og bilder: temabutikken viser temaet på dem, og butikker som starter fra temaet, får en kopi. Sider som er valgt for et sted (juridiske sider, handlekurven, bloggen), produkter, kunder og skjemaenes mottakere sendes aldri.",
     submit: "Send til gjennomgang",
     sent: "Sendt til gjennomgang. Du kan følge det under Dine temaer.",
     readOnly: "Bare den som kan endre butikkens nettsted, kan dele utseendet.",

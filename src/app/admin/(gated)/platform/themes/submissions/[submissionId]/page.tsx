@@ -4,15 +4,15 @@ import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { ButtonLink, Card, Chip, PageHeader } from "@/components/admin/ui";
-import { fillWords } from "@/lib/admin-fill";
-import { designTabHref } from "@/lib/design-presets";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { designPreviewPath, designTabHref } from "@/lib/design-presets";
 import { THEMES_ADMIN } from "@/lib/theme-admin-paths";
 import { SUBMISSION_LIMITS, SUBMISSION_SIGNAL, canMove } from "@/lib/theme-submissions";
 import { requirePlatformAdmin } from "@/server/auth";
 import { platformSiteWords } from "@/server/platform-site-words";
 import { getSubmission } from "@/server/theme-submissions";
 
-import { approveSubmissionAction, rejectSubmissionAction, reviewSubmissionAction } from "../actions";
+import { approveSubmissionAction, openSubmissionPagesAction, rejectSubmissionAction, reviewSubmissionAction } from "../actions";
 
 export const metadata: Metadata = { title: "Submission" };
 
@@ -53,6 +53,20 @@ export default async function SubmissionPage({ params }: PageProps<"/admin/platf
           </div>
         )}
       </Card>
+      {submission.pages > 0 && (
+        // The author store's pages sent with the look (D388): the theme's content once approved.
+        <Card title={s.pagesTitle} description={countWords(submission.pages, s.pagesSent)}>
+          <p className="text-sm text-ink-2">{submission.contentStarterId ? s.pagesPlaced : s.pagesLater}</p>
+          {submission.contentStarterId && submission.presetId && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              <ButtonLink href={designPreviewPath(submission.presetId, submission.contentStarterId, true, true)}>{s.previewOnPages}</ButtonLink>
+              <ActionForm action={openSubmissionPagesAction.bind(null, submission.id)}>
+                <SubmitButton variant="secondary">{s.openPages}</SubmitButton>
+              </ActionForm>
+            </div>
+          )}
+        </Card>
+      )}
       {canMove(submission.status, "reviewing") && (
         <Card title={s.review} description={s.reviewHint}>
           <ActionForm action={reviewSubmissionAction.bind(null, submission.id)} successMessage={s.reviewed}>

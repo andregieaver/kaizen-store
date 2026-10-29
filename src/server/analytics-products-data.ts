@@ -9,7 +9,7 @@ import { allocateRefund, paretoSummary, productTable, type ParetoSummary, type P
 import { canConvert } from "@/lib/currency";
 import { mainCurrency } from "@/lib/markets";
 
-import { dayKey, dayStart, FROM_CHECKOUT, inMain, inPeriod, NOT_EDIT_REFUND, num, PAID, type Row } from "./analytics-sql";
+import { dayKey, dayStart, FROM_CHECKOUT, inMain, inPeriod, NOT_EDIT_REFUND, num, PAID, type Row, soldIn } from "./analytics-sql";
 import { setBasedReplica as setBased } from "./analytics-totals";
 import type { Store } from "./stores";
 
@@ -148,7 +148,7 @@ async function loadLines(store: Store, period: Pick<AnalyticsPeriod, "from" | "t
       from commerce.orders o
       join commerce.order_lines ol on ol.store_id = o.store_id and ol.order_id = o.id
       left join commerce.product_variants v on v.store_id = ol.store_id and v.id = ol.variant_id
-      where o.store_id = ${store.id}::uuid and ${PAID} and ${inPeriod(store, sql`o.placed_at`, period)} and o.currency = any(${currencyList(known)})
+      where o.store_id = ${store.id}::uuid and ${PAID} and ${soldIn(store, period)} and o.currency = any(${currencyList(known)})
     ),
     sums as (
       select currency, pid, sum(rev) as rev, sum(units) as units, sum(cogs) as cogs, sum(known_rev) as known_rev
@@ -205,7 +205,7 @@ async function loadPeriodFigures(store: Store, period: AnalyticsPeriod, converti
     with po as materialized (
       select o.id, o.currency::text as currency, o.total_minor, o.tax_minor, o.shipping_minor, o.discount_minor, o.vat_relief_minor
       from commerce.orders o
-      where o.store_id = ${store.id}::uuid and ${PAID} and ${inPeriod(store, sql`o.placed_at`, period)}
+      where o.store_id = ${store.id}::uuid and ${PAID} and ${soldIn(store, period)}
     ),
     -- Each order's lines once, so an order's discount beyond them (a free-shipping code's) can be taken off its shipping.
     lo as (

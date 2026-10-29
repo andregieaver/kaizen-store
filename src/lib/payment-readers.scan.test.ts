@@ -59,9 +59,9 @@ const READERS: Record<string, { count: number; reason: string }> = {
   "src/server/checkout-terms.ts": { count: 1, reason: "the order page's key for the terms the order was placed under: stripe, venue and manual" },
   "src/db/schema.ts": { count: 1, reason: "a comment on the column naming the manual provider" },
   "src/server/payment-terms.ts": {
-    count: 5,
+    count: 4,
     reason:
-      "payment terms (D293): the terms payment (never money) that is the order page's key and is ended or voided, the Stripe session of a balance (counted per press, settled when paid, ended when it lapses), the order's cash recorded outside Kaizena Flow for the cash ceiling, and its pending sessions before money paid outside is recorded",
+      "payment terms (D293): the terms payment (never money) that is the order page's key and is ended or voided, the Stripe or Mollie session of a balance (counted per press; settled when paid, part or whole, and ended when it lapses, by the provider the answer came from, D387), the order's cash recorded outside Kaizena Flow for the cash ceiling, and its pending sessions before money paid outside is recorded",
   },
   "src/server/payment-facts.ts": { count: 3, reason: "what a payment was, and its real fee (D290), is read from its Stripe charge (D288); a manual, venue or exchange payment keeps its own method and has no charge" },
   "src/server/payment-methods.ts": { count: 1, reason: "a bank payment on its way is a Stripe session waiting for the bank (D291); no other provider's payment waits so" },

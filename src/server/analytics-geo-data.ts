@@ -8,7 +8,7 @@ import type { AnalyticsPeriod } from "@/lib/analytics-period";
 import { canConvert } from "@/lib/currency";
 import { mainCurrency } from "@/lib/markets";
 
-import { CUSTOMER_JOIN, CUSTOMER_KEY, dayStart, HAS_CUSTOMER, inMain, inPeriod, num, PAID, type Row } from "./analytics-sql";
+import { CUSTOMER_JOIN, CUSTOMER_KEY, dayStart, HAS_CUSTOMER, inMain, num, PAID, type Row, soldIn } from "./analytics-sql";
 import { setBasedReplica as setBased } from "./analytics-totals";
 import type { Store } from "./stores";
 
@@ -112,7 +112,7 @@ export async function geoReport(store: Store, period: Pick<AnalyticsPeriod, "fro
   const id = store.id;
   const convertible = convertibleCurrencies(store);
   const known = `{${[...convertible].join(",")}}`;
-  const inRange = inPeriod(store, sql`o.placed_at`, period);
+  const inRange = soldIn(store, period);
 
   const [marketRows, freshRows, cityRows, addressRows] = await Promise.all([
     // Orders and revenue per market and currency.

@@ -21,7 +21,7 @@ import { mainCurrency } from "@/lib/markets";
 import { DEFAULT_RETURN_SETTINGS } from "@/lib/withdrawal";
 
 import { productNames } from "./analytics-refunds-data";
-import { PAID, inPeriod, num, toMainOne, type Row } from "./analytics-sql";
+import { inPeriod, num, PAID, type Row, soldIn, toMainOne } from "./analytics-sql";
 import { setBasedReplica as setBased } from "./analytics-totals";
 import { OVERDUE_SQL } from "./return-sql";
 import { getReturnSettings } from "./return-settings";
@@ -163,7 +163,7 @@ async function readCohortOrders(store: Store, period: AnalyticsPeriod): Promise<
     left join (
       select distinct r.order_id from commerce.returns r where r.store_id = ${store.id}::uuid and ${COUNTING}
     ) rt on rt.order_id = o.id
-    where o.store_id = ${store.id}::uuid and ${PAID} and ${inPeriod(store, sql`o.placed_at`, period)}
+    where o.store_id = ${store.id}::uuid and ${PAID} and ${soldIn(store, period)}
       and exists (select 1 from commerce.order_lines g where g.store_id = o.store_id and g.order_id = o.id and ${GOODS("g")})
     group by 1
   `);
@@ -176,7 +176,7 @@ async function readSold(store: Store, period: AnalyticsPeriod): Promise<Row[]> {
     from commerce.orders o
     join commerce.order_lines ol on ol.store_id = o.store_id and ol.order_id = o.id
     join commerce.product_variants pv on pv.store_id = ol.store_id and pv.id = ol.variant_id
-    where o.store_id = ${store.id}::uuid and ${PAID} and ${inPeriod(store, sql`o.placed_at`, period)} and ${GOODS("ol")}
+    where o.store_id = ${store.id}::uuid and ${PAID} and ${soldIn(store, period)} and ${GOODS("ol")}
     group by 1, 2
   `);
 }
@@ -191,7 +191,7 @@ async function readReturned(store: Store, period: AnalyticsPeriod): Promise<Row[
     join commerce.return_lines rl on rl.store_id = r.store_id and rl.return_id = r.id and rl.decision = 'accept'
     join commerce.order_lines ol on ol.store_id = rl.store_id and ol.id = rl.order_line_id
     join commerce.product_variants pv on pv.store_id = ol.store_id and pv.id = ol.variant_id
-    where o.store_id = ${store.id}::uuid and ${PAID} and ${inPeriod(store, sql`o.placed_at`, period)} and ${GOODS("ol")}
+    where o.store_id = ${store.id}::uuid and ${PAID} and ${soldIn(store, period)} and ${GOODS("ol")}
     group by 1, 2
   `);
 }

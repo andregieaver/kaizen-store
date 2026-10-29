@@ -444,11 +444,11 @@ export const designEn = {
   },
   share: {
     card: "Share this look as a theme",
-    cardHint: "Offer your store's look to other Kaizena Flow stores, free, in the theme store. Kaizena Flow reviews it first; your words, pictures of products and pages are never shared.",
+    cardHint: "Offer your store's look to other Kaizena Flow stores, free, in the theme store. Kaizena Flow reviews it first; your products are never shared, and your pages only if you choose to send them.",
     open: "Share this look",
     title: "Share this look as a theme",
     description:
-      "Your store's look as visitors see it now (the theme's settings, header, footer, product page and CSS) goes to Kaizena Flow to review. Your words, products, pages and menus' links stay yours. Once approved, other stores can add it from the theme store, free.",
+      "Your store's look as visitors see it now (the theme's settings, header, footer, product page and CSS) goes to Kaizena Flow to review. Your words, products, pages and menus' links stay yours, unless you choose to send your pages as the theme's demo content. Once approved, other stores can add it from the theme store, free.",
     as: "Send it as",
     asNew: "A new theme",
     asUpdate: "An update of {title}",
@@ -459,6 +459,9 @@ export const designEn = {
     authorHint: "Shown on the theme's page as “By …”.",
     notes: "What's new",
     notesHint: "For an update: shown to the stores that use the theme, beside the update.",
+    pages: "Send my published pages too, as the theme's demo content",
+    pagesHint:
+      "Up to 12 pages, your front page first, with their words and pictures: the theme store shows the theme on them, and stores that start from the theme get a copy. Pages chosen for a place (legal pages, the cart, the blog), products, customers and forms' recipients are never sent.",
     submit: "Send for review",
     sent: "Sent for review. You can follow it under Your themes.",
     readOnly: "Only someone who may change this store's website can share its look.",

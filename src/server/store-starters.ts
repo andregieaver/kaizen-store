@@ -110,13 +110,15 @@ const ROW_SELECT = sql`
 
 /**
  * The store templates for the platform admin: the current ones (published or not), or the archived ones. A theme's own copy of content
- * (D275) is the theme's, seen on its Content tab, and a demo store (D277) is listed with the demo stores (`listDemoStores()`), never here.
+ * (D275) is the theme's, seen on its Content tab, and a demo store (D277) is listed with the demo stores (`listDemoStores()`), never here;
+ * a theme submission's pages (D388) are seen from the submission.
  */
 export async function listStarters(filter: ListFilter = "current"): Promise<StarterRow[]> {
   const rows = await db().execute<Row>(sql`
     ${ROW_SELECT}
     where ${filter === "archived" ? sql`st.archived_at is not null` : sql`st.archived_at is null`}
       and st.kind = 'content' and (st.design_preset_id is null or st.pack_key is not null)
+      and not exists (select 1 from commerce.theme_submissions ts where ts.content_starter_id = st.id)
     order by st.position, lower(st.title), st.id
   `);
   return rows.map(toRow);

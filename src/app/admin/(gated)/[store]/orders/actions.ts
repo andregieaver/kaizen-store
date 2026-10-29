@@ -4,10 +4,11 @@ import { refresh } from "next/cache";
 import { z } from "zod";
 
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { adminLangOf } from "@/lib/admin-lang";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { orderEn } from "@/lib/admin-messages/order.en";
 import { putBackChoice } from "@/lib/inventory-admin";
+import { parseAmount } from "@/lib/field-money";
 import { formatMoney } from "@/lib/money";
 import { parsePrice } from "@/lib/product-input";
 import { checkPermission, requirePermission } from "@/server/permissions";
@@ -252,17 +253,27 @@ export async function recordTermsPaidAction(
   const { w } = found;
   if (found.order.copied) return failed(COPIED_ORDER_MESSAGE);
   const text = (name: string) => String(form.get(name) ?? "").trim();
+  // A part of what is owed (D387): the amount typed in the order's currency; left empty, the whole balance.
+  const currency = found.order.currency;
+  const amountMinor = text("amount") ? parseAmount(text("amount"), currency) : undefined;
+  if (amountMinor === null || amountMinor === 0) return failed(w.terms.amount);
   const result = await recordTermsPaidOutside(
     found.member.store.id,
     orderId,
-    { method: text("method"), ...(text("receivedOn") ? { receivedOn: text("receivedOn") } : {}), ...(text("reference") ? { reference: text("reference") } : {}) },
+    {
+      method: text("method"),
+      ...(amountMinor ? { amountMinor } : {}),
+      ...(text("receivedOn") ? { receivedOn: text("receivedOn") } : {}),
+      ...(text("reference") ? { reference: text("reference") } : {}),
+    },
     found.member.account.id,
   );
   if (!result.ok) {
     return failed(w.terms[result.problem]);
   }
   refresh();
-  return done(result.cashWarning ? w.recordedCashWarning : w.recordedPaid);
+  const recorded = result.left ? fillWords(w.recordedPart, { left: formatMoney(result.left, currency, ADMIN_LANG_FACTS[adminLangOf(found.member.account.adminLocale)].locale) }) : w.recordedPaid;
+  return done(result.cashWarning ? `${recorded} ${w.cashNearLimit}` : recorded);
 }
 
 /** Corrects the customer's email or delivery address. */

@@ -33,7 +33,7 @@ import { canConvert } from "@/lib/currency";
 import { mainCurrency } from "@/lib/markets";
 
 import { getAnalyticsSettings, type StoredAnalyticsSettings } from "./analytics-settings";
-import { dayKey, dayOf, dayStart, GIFT_CARD_LINE, inMain, inPeriod, NOT_EDIT_REFUND, num, PAID, toMainOne, VOUCHER_NET, type Row } from "./analytics-sql";
+import { dayKey, dayOf, dayStart, GIFT_CARD_LINE, inMain, inPeriod, NOT_EDIT_REFUND, num, PAID, type Row, SOLD_AT, soldIn, toMainOne, VOUCHER_NET } from "./analytics-sql";
 import type { Store } from "./stores";
 
 /**
@@ -316,7 +316,7 @@ async function loadBundles(
 ): Promise<Loaded> {
   const id = store.id;
   const known = knownCurrencies(store);
-  const placed = dayOf(store, sql`o.placed_at`);
+  const placed = dayOf(store, SOLD_AT);
   const feesOn = settings.paymentFeeBps > 0 || settings.paymentFeeFixedMinor > 0;
   const firstDays = first ?? firstOrderDays(store, period.from);
 
@@ -335,7 +335,7 @@ async function loadBundles(
           and not exists (select 1 from commerce.payments fp where fp.store_id = o.store_id and fp.order_id = o.id and fp.provider = 'stripe' and fp.status = 'captured'
             and (fp.provider_fee_minor is null or not (fp.fee_currency = any(${known}))))) as fee_known
       from commerce.orders o
-      where o.store_id = ${id}::uuid and ${PAID} and ${inPeriod(store, sql`o.placed_at`, period)}
+      where o.store_id = ${id}::uuid and ${PAID} and ${soldIn(store, period)}
     ),
     pl as materialized (
       select po0.id, po0.bk, po0.currency,
@@ -669,7 +669,7 @@ export async function topProducts(store: Store, period: AnalyticsPeriod): Promis
       from commerce.orders o
       join commerce.order_lines ol on ol.store_id = o.store_id and ol.order_id = o.id
       join commerce.product_variants v on v.store_id = ol.store_id and v.id = ol.variant_id
-      where o.store_id = ${store.id}::uuid and ${PAID} and ${inPeriod(store, sql`o.placed_at`, period)} and o.currency = any(${known})
+      where o.store_id = ${store.id}::uuid and ${PAID} and ${soldIn(store, period)} and o.currency = any(${known})
       group by 1, 2
     ),
     ranked as (

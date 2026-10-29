@@ -23,7 +23,7 @@ import {
   type SpecProblem,
 } from "@/lib/report-catalogue";
 
-import { CUSTOMER_JOIN, CUSTOMER_KEY, dayOf, GIFT_CARD_LINE, HAS_CUSTOMER, inPeriod, NOT_EDIT_REFUND, PAID, toMainOne, VOUCHER_NET, type Row } from "./analytics-sql";
+import { CUSTOMER_JOIN, CUSTOMER_KEY, dayOf, GIFT_CARD_LINE, HAS_CUSTOMER, inPeriod, NOT_EDIT_REFUND, PAID, type Row, SOLD_AT, soldIn, toMainOne, VOUCHER_NET } from "./analytics-sql";
 import { setBasedReplica } from "./analytics-totals";
 import type { Store } from "./stores";
 
@@ -203,13 +203,14 @@ function ordersCte(store: Store, period: AnalyticsPeriod, used: ReadonlySet<Dime
       group by 1
     ),` : sql``}
     po0 as materialized (
-      select o.id, o.store_id, o.currency, o.market_code, o.placed_at, o.total_minor, o.tax_minor, o.cart_id, o.discount_code,
+      -- A sale's day (D387): an order on terms by when its balance was paid, every other by when it was placed.
+      select o.id, o.store_id, o.currency, o.market_code, ${SOLD_AT} as placed_at, o.total_minor, o.tax_minor, o.cart_id, o.discount_code,
         (case when ${HAS_CUSTOMER} then ${CUSTOMER_KEY} end) as ckey,
         (o.currency = any(${knownCurrencies(store)})) as ok,
         ${VOUCHER_NET} as voucher_rev,
         exists (select 1 from commerce.order_lines ol where ol.store_id = o.store_id and ol.order_id = o.id and not ${GIFT_CARD_LINE}) as has_lines
       from commerce.orders o ${CUSTOMER_JOIN}
-      where o.store_id = ${id}::uuid and ${PAID} and ${inPeriod(store, sql`o.placed_at`, period)}
+      where o.store_id = ${id}::uuid and ${PAID} and ${soldIn(store, period)}
     ),
     po as materialized (
       select po0.*,
@@ -394,7 +395,7 @@ async function readRefunds(store: Store, period: AnalyticsPeriod, read: Read): P
 async function leftOutOrders(store: Store, period: AnalyticsPeriod): Promise<Map<string, number>> {
   const rows = await setBasedReplica<Row>(sql`
     select o.currency::text as currency, count(*) as n from commerce.orders o
-    where o.store_id = ${store.id}::uuid and ${PAID} and ${inPeriod(store, sql`o.placed_at`, period)} and not (o.currency = any(${knownCurrencies(store)}))
+    where o.store_id = ${store.id}::uuid and ${PAID} and ${soldIn(store, period)} and not (o.currency = any(${knownCurrencies(store)}))
     group by 1`);
   return new Map(rows.map((r) => [String(r.currency).trim(), Number(r.n)]));
 }

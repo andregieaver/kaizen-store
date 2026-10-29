@@ -10,6 +10,7 @@ import {
   OPEN_SUBMISSIONS_MAX,
   SUBMISSION_LIMITS,
   submissionProblems,
+  submittedPagesOf,
   themeSlugFrom,
   type SubmissionInput,
   type SubmissionKind,
@@ -20,6 +21,9 @@ import {
 import { audit, type Account, type Membership } from "./auth";
 import { archiveDesign, archiveWithdrawnDraft, createDesign, giveThemeAddress, publishDesign, takeSnapshot, writeDesignLook } from "./design-presets";
 import { memberCan } from "./permissions";
+import type { TemplateDeps } from "./templates";
+import { publishStarter } from "./store-starters";
+import { adoptSubmittedContent, archiveSubmittedContent, makeSubmittedContent, pagesToSubmit } from "./submission-content";
 
 /**
  * Themes from outside (D344, `docs/wave-7-storefront.md` J): the only writer of `commerce.theme_submissions` and of a theme's author. Anyone
@@ -59,11 +63,16 @@ export type Submission = {
   reason: string | null;
   createdAt: string;
   decidedAt: string | null;
+  /** How many of the author store's pages it carries as the theme's content (D388); 0: the look only. */
+  pages: number;
+  /** The store template its pages were placed in at review (D388). */
+  contentStarterId: string | null;
 };
 
 const SELECT = sql`
   select s.id, s.kind, s.status, s.title, s.summary, s.description, s.notes, s.author_name, s.account_id, s.store_id, st.name as store_name,
-         st.slug as store_slug, s.preset_id, p.title as preset_title, s.reason, s.created_at, s.decided_at
+         st.slug as store_slug, s.preset_id, p.title as preset_title, s.reason, s.created_at, s.decided_at,
+         coalesce(jsonb_array_length(case when jsonb_typeof(s.pages) = 'array' then s.pages end), 0) as page_count, s.content_starter_id
     from commerce.theme_submissions s
     join commerce.stores st on st.id = s.store_id
     left join commerce.design_presets p on p.id = s.preset_id`;
@@ -89,6 +98,8 @@ function submissionOf(row: Row): Submission {
     reason: row.reason ? String(row.reason) : null,
     createdAt: iso(row.created_at)!,
     decidedAt: iso(row.decided_at),
+    pages: Number(row.page_count ?? 0),
+    contentStarterId: row.content_starter_id ? String(row.content_starter_id) : null,
   };
 }
 
@@ -128,11 +139,14 @@ async function insertSubmission(
   presetId: string | null,
   words: ReturnType<typeof cleaned>,
   snapshot: DesignSnapshot,
+  withPages: boolean,
 ): Promise<string> {
+  // The store's published pages as the theme's content (D388), copied as a template is now, so the store can change after.
+  const pages = withPages ? await pagesToSubmit(member.store.id) : [];
   const [row] = await db().execute<Row>(sql`
-    insert into commerce.theme_submissions (account_id, store_id, kind, preset_id, title, summary, description, notes, author_name, snapshot)
+    insert into commerce.theme_submissions (account_id, store_id, kind, preset_id, title, summary, description, notes, author_name, snapshot, pages)
     values (${member.account.id}::uuid, ${member.store.id}::uuid, ${kind}, ${presetId}::uuid, ${words.title}, ${words.summary}, ${words.description},
-      ${words.notes}, ${words.authorName}, ${JSON.stringify(snapshot)}::jsonb)
+      ${words.notes}, ${words.authorName}, ${JSON.stringify(snapshot)}::jsonb, ${pages.length > 0 ? JSON.stringify(pages) : null}::jsonb)
     returning id
   `);
   return String(row.id);
@@ -142,7 +156,7 @@ async function insertSubmission(
  * Submits the store's live look as a new theme: taken now by `takeSnapshot()` (the look only, never the store's words or products) and kept
  * with the submission, so the store can change after. Audited as `store.theme_submitted`.
  */
-export async function submitTheme(member: Membership, input: SubmissionInput): Promise<SubmissionResult<{ id: string }>> {
+export async function submitTheme(member: Membership, input: SubmissionInput, options: { pages?: boolean } = {}): Promise<SubmissionResult<{ id: string }>> {
   const refusal = storeRefusal(member);
   if (refusal) return refuse(refusal);
   const fields = submissionProblems(input, "theme");
@@ -153,8 +167,8 @@ export async function submitTheme(member: Membership, input: SubmissionInput): P
   const taken = await takeSnapshot(member.store.id);
   if (!taken.ok) return taken;
   const words = cleaned(input);
-  const id = await insertSubmission(member, "theme", null, words, taken.snapshot);
-  await audit(member.account.id, member.store.id, "store.theme_submitted", { submission: id, kind: "theme" }, {
+  const id = await insertSubmission(member, "theme", null, words, taken.snapshot, options.pages === true);
+  await audit(member.account.id, member.store.id, "store.theme_submitted", { submission: id, kind: "theme", pages: options.pages === true }, {
     area: "website",
     target: { type: "theme_submission", id },
   });
@@ -165,7 +179,12 @@ export async function submitTheme(member: Membership, input: SubmissionInput): P
  * Submits the store's live look as an update of a theme its author made (the database refuses anyone else), with what's new in their words.
  * The theme's name, line and description stay its own; the update changes its look.
  */
-export async function submitThemeUpdate(member: Membership, presetId: string, input: Pick<SubmissionInput, "notes" | "authorName">): Promise<SubmissionResult<{ id: string }>> {
+export async function submitThemeUpdate(
+  member: Membership,
+  presetId: string,
+  input: Pick<SubmissionInput, "notes" | "authorName">,
+  options: { pages?: boolean } = {},
+): Promise<SubmissionResult<{ id: string }>> {
   const refusal = storeRefusal(member);
   if (refusal) return refuse(refusal);
   if (!UUID.test(presetId)) return refuse("Unknown theme.");
@@ -188,8 +207,8 @@ export async function submitThemeUpdate(member: Membership, presetId: string, in
   }
   const taken = await takeSnapshot(member.store.id);
   if (!taken.ok) return taken;
-  const id = await insertSubmission(member, "update", presetId, cleaned(full), taken.snapshot);
-  await audit(member.account.id, member.store.id, "store.theme_submitted", { submission: id, kind: "update", preset: presetId }, {
+  const id = await insertSubmission(member, "update", presetId, cleaned(full), taken.snapshot, options.pages === true);
+  await audit(member.account.id, member.store.id, "store.theme_submitted", { submission: id, kind: "update", preset: presetId, pages: options.pages === true }, {
     area: "website",
     target: { type: "theme_submission", id },
   });
@@ -202,9 +221,10 @@ export async function withdrawSubmission(account: Account, id: string): Promise<
   const [row] = await db().execute<Row>(sql`
     update commerce.theme_submissions set status = 'withdrawn', decided_by = ${account.id}::uuid, decided_at = now()
      where id = ${id}::uuid and account_id = ${account.id}::uuid and status in ('waiting', 'reviewing')
-    returning store_id, kind, preset_id
+    returning store_id, kind, preset_id, content_starter_id
   `);
   if (!row) return refuse("That submission is no longer waiting.");
+  if (row.content_starter_id) await archiveSubmittedContent(account.id, String(row.content_starter_id));
   // A new theme drafted for it in review was never published: put away as an admin's Archive would.
   if (row.kind === "theme" && row.preset_id) {
     await archiveWithdrawnDraft(String(row.preset_id), account.id);
@@ -280,6 +300,11 @@ export async function getSubmission(admin: Account, id: string): Promise<Submiss
   return row ? submissionOf(row) : null;
 }
 
+async function pagesOf(id: string): Promise<unknown> {
+  const [row] = await db().execute<Row>(sql`select pages from commerce.theme_submissions where id = ${id}::uuid`);
+  return row?.pages ?? null;
+}
+
 async function snapshotOf(id: string): Promise<DesignSnapshot | null> {
   const [row] = await db().execute<Row>(sql`select snapshot from commerce.theme_submissions where id = ${id}::uuid`);
   return row ? parseDesignSnapshot(row.snapshot) : null;
@@ -290,7 +315,7 @@ async function snapshotOf(id: string): Promise<DesignSnapshot | null> {
  * the store's library), an update is written into its theme's draft; the reviewer then previews it and reads its checks on the theme's own
  * pages. Audited as `platform.theme_submission_reviewed`.
  */
-export async function reviewSubmission(admin: Account, id: string): Promise<SubmissionResult<{ presetId: string; notes: string[] }>> {
+export async function reviewSubmission(admin: Account, id: string, deps: TemplateDeps = {}): Promise<SubmissionResult<{ presetId: string; notes: string[] }>> {
   const submission = await getSubmission(admin, id);
   if (!submission) return refuse("Unknown submission.");
   if (!canMove(submission.status, "reviewing")) return refuse("Only a waiting submission can be taken into review.");
@@ -317,7 +342,19 @@ export async function reviewSubmission(admin: Account, id: string): Promise<Subm
      where id = ${id}::uuid and status = 'waiting' returning id
   `);
   if (!row) return refuse("Someone else took it into review first.");
-  await audit(admin.id, submission.storeId, "platform.theme_submission_reviewed", { submission: id, preset: presetId }, {
+  // Its pages (D388): placed in a store template of their own to review the look on, the theme's content once approved.
+  const pages = submittedPagesOf(await pagesOf(id));
+  let contentStarterId: string | null = null;
+  if (pages.length > 0) {
+    const content = await makeSubmittedContent(admin, { title: submission.title, sourceStoreId: submission.storeId, pages }, deps);
+    if (!content.ok) notes = [...notes, ...content.problems];
+    else {
+      contentStarterId = content.starterId;
+      notes = [...notes, ...content.notes];
+      await db().execute(sql`update commerce.theme_submissions set content_starter_id = ${content.starterId}::uuid where id = ${id}::uuid`);
+    }
+  }
+  await audit(admin.id, submission.storeId, "platform.theme_submission_reviewed", { submission: id, preset: presetId, pages: pages.length, content: contentStarterId }, {
     target: { type: "theme_submission", id },
   });
   return { ok: true, presetId, notes };
@@ -348,6 +385,16 @@ export async function approveSubmission(admin: Account, id: string): Promise<Sub
     const slug = await freeSlug(submission.title);
     await giveThemeAddress(presetId, slug);
   }
+  const notes = [...published.notes];
+  // Its pages become the theme's content (D388) once its look is published, and are published with it; a refusal is said, never fatal.
+  if (submission.contentStarterId) {
+    const adopted = await adoptSubmittedContent(admin, presetId, submission.contentStarterId);
+    if (!adopted.ok) notes.push(`Its pages did not become the theme's content: ${adopted.problems.join(" ")}`);
+    else {
+      const shown = await publishStarter(admin, submission.contentStarterId);
+      if (!shown.ok) notes.push(`Its pages are the theme's content but were not published: ${shown.problems.join(" ")}`);
+    }
+  }
   const [row] = await db().execute<Row>(sql`
     update commerce.theme_submissions set status = 'approved', decided_by = ${admin.id}::uuid, decided_at = now()
      where id = ${id}::uuid and status = 'reviewing' returning id
@@ -356,7 +403,7 @@ export async function approveSubmission(admin: Account, id: string): Promise<Sub
   await audit(admin.id, submission.storeId, "platform.theme_submission_approved", { submission: id, preset: presetId }, {
     target: { type: "theme_submission", id },
   });
-  return { ok: true, presetId, notes: published.notes };
+  return { ok: true, presetId, notes };
 }
 
 /**
@@ -379,6 +426,7 @@ export async function rejectSubmission(admin: Account, id: string, reason: strin
     const [theme] = await db().execute<Row>(sql`select published from commerce.design_presets where id = ${submission.presetId}::uuid`);
     if (theme && theme.published !== true) await archiveDesign(admin, submission.presetId);
   }
+  if (submission.contentStarterId) await archiveSubmittedContent(admin.id, submission.contentStarterId);
   await audit(admin.id, submission.storeId, "platform.theme_submission_rejected", { submission: id }, { target: { type: "theme_submission", id } });
   return { ok: true };
 }

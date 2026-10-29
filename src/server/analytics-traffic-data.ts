@@ -25,7 +25,7 @@ import { canConvert } from "@/lib/currency";
 import { mainCurrency } from "@/lib/markets";
 
 import { getAnalyticsSettings } from "./analytics-settings";
-import { CUSTOMER_JOIN, CUSTOMER_KEY, dayKey, dayStart, EXCHANGE_ORDER, FROM_CHECKOUT, HAS_CUSTOMER, inMain, inPeriod, num, PAID, STAFF_MADE, toMainOne, type Row } from "./analytics-sql";
+import { CUSTOMER_JOIN, CUSTOMER_KEY, dayKey, dayStart, EXCHANGE_ORDER, FROM_CHECKOUT, HAS_CUSTOMER, inMain, num, PAID, type Row, soldIn, STAFF_MADE, toMainOne } from "./analytics-sql";
 import { setBasedReplica as setBased } from "./analytics-totals";
 import type { Store } from "./stores";
 
@@ -154,7 +154,7 @@ async function ordersBy(store: Store, range: Range, key: SQL, options: { extra?:
   return setBased<Row>(sql`
     select (${key})::text as k, o.currency::text as currency, count(*) as orders, sum(o.total_minor - o.tax_minor) as revenue
     from commerce.orders o ${ORDER_VISIT}
-    where o.store_id = ${store.id}::uuid and ${PAID} and ${FROM_CHECKOUT} and ${inPeriod(store, sql`o.placed_at`, range)}
+    where o.store_id = ${store.id}::uuid and ${PAID} and ${FROM_CHECKOUT} and ${soldIn(store, range)}
       and o.currency = any(${convertibleCurrencies(store)}) ${options.extra ?? sql``}
     group by 1, 2
   `);
@@ -171,7 +171,7 @@ async function ordersByKeys<K extends string>(store: Store, range: Range, keys: 
       select o.currency::text as currency, (o.total_minor - o.tax_minor) as revenue,
         ${sql.join(names.map((name, i) => sql`(${keys[name]})::text as k${sql.raw(String(i))}`), sql`, `)}
       from commerce.orders o ${ORDER_VISIT}
-      where o.store_id = ${store.id}::uuid and ${PAID} and ${FROM_CHECKOUT} and ${inPeriod(store, sql`o.placed_at`, range)} and o.currency = any(${convertibleCurrencies(store)})
+      where o.store_id = ${store.id}::uuid and ${PAID} and ${FROM_CHECKOUT} and ${soldIn(store, range)} and o.currency = any(${convertibleCurrencies(store)})
     )
     ${sql.join(
       names.map((name, i) => sql`select ${name} as kind, k${sql.raw(String(i))} as k, currency, count(*) as orders, sum(revenue) as revenue from po group by k${sql.raw(String(i))}, currency`),
@@ -193,7 +193,7 @@ async function staffMadeIn(store: Store, range: Range, which: SQL = STAFF_MADE):
   const rows = await setBased<Row>(sql`
     select o.currency::text as currency, count(*) as orders, sum(o.total_minor - o.tax_minor) as revenue
     from commerce.orders o
-    where o.store_id = ${store.id}::uuid and ${PAID} and ${which} and ${inPeriod(store, sql`o.placed_at`, range)}
+    where o.store_id = ${store.id}::uuid and ${PAID} and ${which} and ${soldIn(store, range)}
       and o.currency = any(${convertibleCurrencies(store)})
     group by 1
   `);
@@ -231,12 +231,12 @@ const sumMoney = (maps: Iterable<Money>): Money => {
  * figure, with the currencies.
  */
 async function orderGaps(store: Store, period: AnalyticsPeriod, range: Range | null): Promise<{ uncovered: Money; excluded: { unconverted: number; missing: string[] } }> {
-  const outside = range ? sql`not ${inPeriod(store, sql`o.placed_at`, range)}` : sql`true`;
+  const outside = range ? sql`not ${soldIn(store, range)}` : sql`true`;
   const rows = await setBased<Row>(sql`
     select o.currency::text as currency, (o.currency = any(${convertibleCurrencies(store)})) as converts, (${outside}) as outside,
       count(*) as orders, sum(o.total_minor - o.tax_minor) as revenue
     from commerce.orders o
-    where o.store_id = ${store.id}::uuid and ${PAID} and ${inPeriod(store, sql`o.placed_at`, period)}
+    where o.store_id = ${store.id}::uuid and ${PAID} and ${soldIn(store, period)}
     group by 1, 2, 3
   `);
   const uncoveredRows = rows.filter((r) => r.converts === true && r.outside === true);
@@ -508,7 +508,7 @@ async function channelOrders(store: Store, range: Range, feesOn: boolean): Promi
     with po0 as materialized (
       select o.id, o.store_id, o.currency::text as currency, (o.currency = any(${known})) as ok, o.total_minor, o.tax_minor, (${channel})::text as k
       from commerce.orders o ${ORDER_VISIT}
-      where o.store_id = ${store.id}::uuid and ${PAID} and ${inPeriod(store, sql`o.placed_at`, range)}
+      where o.store_id = ${store.id}::uuid and ${PAID} and ${soldIn(store, range)}
     ),
     by_order as (
       select k, currency, count(*) as orders, sum(total_minor - tax_minor) as revenue
@@ -747,7 +747,7 @@ export async function campaignReport(store: Store, period: AnalyticsPeriod, mode
       ? setBased<Row>(sql`
           select count(*) as orders, count(*) filter (where v.first_channel is not null) as known
           from commerce.orders o ${ORDER_VISIT}
-          where o.store_id = ${store.id}::uuid and ${PAID} and ${FROM_CHECKOUT} and ${inPeriod(store, sql`o.placed_at`, range)}
+          where o.store_id = ${store.id}::uuid and ${PAID} and ${FROM_CHECKOUT} and ${soldIn(store, range)}
         `)
       : Promise.resolve([] as Row[]),
   ]);

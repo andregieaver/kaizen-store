@@ -31,7 +31,7 @@ import type { AnalyticsSettings } from "@/lib/analytics-settings";
 import { convertMinor } from "@/lib/currency";
 import { mainCurrency } from "@/lib/markets";
 
-import { CUSTOMER_JOIN, CUSTOMER_KEY, dayStart, HAS_CUSTOMER, inPeriod, NOT_EDIT_REFUND, num, type Row } from "./analytics-sql";
+import { CUSTOMER_JOIN, CUSTOMER_KEY, dayStart, HAS_CUSTOMER, NOT_EDIT_REFUND, num, type Row, SOLD_AT, soldIn } from "./analytics-sql";
 import { setBased as setBasedPrimary, setBasedReplica as setBased } from "./analytics-totals";
 import type { Store } from "./stores";
 
@@ -146,8 +146,8 @@ async function readCustomers(store: Store, period: AnalyticsPeriod, settings: An
   return setBased<Row>(sql`
     with ord as materialized (
       select ${CUSTOMER_KEY} as customer_key, o.placed_at, trim(o.currency) as currency,
-        ${inPeriod(store, sql`o.placed_at`, period)} as in_period,
-        to_char(o.placed_at at time zone ${store.timeZone}, 'YYYY-MM') as month,
+        ${soldIn(store, period)} as in_period,
+        to_char(${SOLD_AT} at time zone ${store.timeZone}, 'YYYY-MM') as month,
         n.net, n.net - o.total_minor::numeric * ${settings.paymentFeeBps}::numeric / 10000 - coalesce(pf.fee, 0) as contribution,
         coalesce(ln.cogs, 0) + ${settings.paymentFeeFixedMinor}::bigint + case when coalesce(ln.physical, false) then ${settings.shippingCostMinor}::bigint else 0 end as cost_main,
         coalesce(ln.unknown, false) as unknown
@@ -469,7 +469,7 @@ export async function rfmGroups(
   const rows = await setBasedPrimary<Row>(sql`
     with ord as materialized (
       select ${CUSTOMER_KEY} as customer_key, o.placed_at, trim(o.currency) as currency,
-        to_char(o.placed_at at time zone ${store.timeZone}, 'YYYY-MM') as month, n.net
+        to_char(${SOLD_AT} at time zone ${store.timeZone}, 'YYYY-MM') as month, n.net
       from commerce.orders o
       ${CUSTOMER_JOIN}
       join (

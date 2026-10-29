@@ -6,7 +6,7 @@ import type { AnalyticsPeriod } from "@/lib/analytics-period";
 import { paymentsByMethod, type PaymentGroupRow, type PaymentsByMethod } from "@/lib/analytics-payments";
 import type { AnalyticsSettings } from "@/lib/analytics-kpi";
 
-import { inPeriod, num, PAID, toMainOne, type Row } from "./analytics-sql";
+import { inPeriod, num, PAID, type Row, soldIn, toMainOne } from "./analytics-sql";
 import { setBasedReplica as setBased } from "./analytics-totals";
 import type { Store } from "./stores";
 
@@ -25,7 +25,7 @@ export async function paymentMethodsReport(store: Store, period: AnalyticsPeriod
         case when p.provider_fee_minor is not null and p.fee_currency = p.currency then p.provider_fee_minor end as real_fee
         from commerce.payments p
         join commerce.orders o on o.store_id = p.store_id and o.id = p.order_id
-       where p.store_id = ${id}::uuid and p.status = 'captured' and ${PAID} and ${inPeriod(store, sql`o.placed_at`, period)}
+       where p.store_id = ${id}::uuid and p.status = 'captured' and ${PAID} and ${soldIn(store, period)}
     ),
     refunded as (
       select r.payment_id, sum(r.amount_minor) as amount

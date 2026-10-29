@@ -806,5 +806,12 @@ export const platformSiteNb: PlatformSiteMessages = {
     rejected: "Skaperen kan lese hvorfor.",
     notes: "Hva er nytt",
     reasonShown: "Hvorfor: {reason}",
+    pagesTitle: "Sidene",
+    pagesSent: { one: "Sendt med {n} side fra butikken, som skal bli temaets innhold.", many: "Sendt med {n} sider fra butikken, som skal bli temaets innhold." },
+    pagesLater: "De legges i en egen demobutikk når du tar innsendingen til gjennomgang, og blir temaets innhold når du godkjenner den.",
+    pagesPlaced: "Lagt i en egen demobutikk. Forhåndsvis utseendet på dem, eller åpne dem for å lese dem; når du godkjenner, blir de temaets innhold.",
+    previewOnPages: "Forhåndsvis på sidene",
+    openPages: "Åpne sidene",
+    pagesNotPlaced: "Sidene legges ut når innsendingen tas til gjennomgang.",
   },
 };

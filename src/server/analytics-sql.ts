@@ -23,9 +23,10 @@ export const num = (row: Row | undefined, key: string): number => Number(row?.[k
 
 /**
  * A paid order: not copied from another store, not a host's (the store earns a commission there, not the sale), with a
- * captured payment. Cancelled orders that were paid still count; their refund is subtracted as a refund.
+ * captured payment. Cancelled orders that were paid still count; their refund is subtracted as a refund. An order on payment terms is one only once
+ * its balance is paid in full (D387: `sold_at` is `infinity` until then), even while part of it is paid.
  */
-export const PAID = sql`(o.copied_from is null and o.host_id is null and exists (select 1 from commerce.payments p where p.store_id = o.store_id and p.order_id = o.id and p.status = 'captured'))`;
+export const PAID = sql`(o.copied_from is null and o.host_id is null and exists (select 1 from commerce.payments p where p.store_id = o.store_id and p.order_id = o.id and p.status = 'captured') and (o.sold_at is null or o.sold_at < 'infinity'))`;
 
 /**
  * An order made from a shopper's own cart (`orders.source = 'checkout'`), as opposed to a staff-made one (D173, a draft order sent as a pay link or
@@ -100,6 +101,16 @@ export const dayStart = (store: Store, day: string): SQL => sql`((${day}::date):
 /** `col` (a timestamptz) falls in the period, days being the store's. */
 export const inPeriod = (store: Store, col: SQL, period: Pick<AnalyticsPeriod, "from" | "to">): SQL =>
   sql`(${col} >= ${dayStart(store, period.from)} and ${col} < ${dayStart(store, period.to)})`;
+
+/**
+ * When a paid order counts as a sale (D387, docs/analytics.md "Paid order"): its `placed_at`, except an order on payment terms, which counts when its
+ * balance was paid in full (`orders.sold_at`, `infinity` until then, so in no period). `o` is the order. Group or show a sale's day by this.
+ */
+export const SOLD_AT = sql`coalesce(o.sold_at, o.placed_at)`;
+
+/** The order `o` counts as a sale in the period (`SOLD_AT` in it), written so each of its two dates can use its own index and it is never null (so `not` of it is true or false). */
+export const soldIn = (store: Store, period: Pick<AnalyticsPeriod, "from" | "to">): SQL =>
+  sql`((o.sold_at is null and ${inPeriod(store, sql`o.placed_at`, period)}) or (o.sold_at is not null and ${inPeriod(store, sql`o.sold_at`, period)}))`;
 
 /** The store's calendar day of a timestamptz. */
 export const dayOf = (store: Store, col: SQL): SQL => sql`((${col} at time zone ${store.timeZone})::date)`;

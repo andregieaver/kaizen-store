@@ -42,6 +42,7 @@ import { putBackWords, takenFromWords } from "@/lib/inventory-admin";
 import { percentText } from "@/lib/customer-tiers";
 import { t } from "@/lib/i18n";
 import { formatMoney, minorUnitDigits } from "@/lib/money";
+import { amountText } from "@/lib/field-money";
 import { archiveBlock } from "@/lib/order-archive";
 import { fulfilmentEventText } from "@/lib/fulfilment-events-text";
 import { opsEventText } from "@/lib/order-ops-events-text";
@@ -501,7 +502,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                     : fillWords(w.termsDue, { state: words.termsStates[order.paymentTerms.state], amount: money(order.balanceMinor), day: dayWords(order.paymentTerms.dueOn, adminLocale) })}
               </p>
               {order.balanceMinor > 0 && order.paymentTerms.state !== "cancelled" && !order.paymentTerms.paidAt && mayRecordOutside && (
-                <TermsPaidForm {...ids} amountLabel={money(order.balanceMinor)} today={todayIn(store.timeZone)} />
+                <TermsPaidForm {...ids} balance={amountText(order.balanceMinor, order.currency)} currency={order.currency} today={todayIn(store.timeZone)} />
               )}
             </section>
           )}

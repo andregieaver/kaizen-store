@@ -75,6 +75,15 @@ export default async function ShareLookPage({ params }: PageProps<"/admin/[store
                 </span>
               </label>
             )}
+            <label className="flex items-start gap-2 text-sm">
+              <input type="checkbox" name="pages" className="mt-0.5 size-4" aria-describedby="share-pages-hint" />
+              <span className="flex flex-col gap-1">
+                {w.pages}
+                <span id="share-pages-hint" className="text-caption text-muted">
+                  {w.pagesHint}
+                </span>
+              </span>
+            </label>
             <div>
               <SubmitButton>{w.submit}</SubmitButton>
             </div>

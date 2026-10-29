@@ -2,6 +2,8 @@ import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
+import { newPageContent } from "@/lib/page-content";
+import { newBlock, newRow } from "@/lib/page-rows";
 
 import type { Account, Membership } from "./auth";
 import { makeStore, ownerOf, type Fixture } from "./invoice-test-fixture";
@@ -27,6 +29,7 @@ const {
   waitingSubmissions,
 } = await import("./theme-submissions");
 const { setThemePrices } = await import("./theme-prices");
+const { themeContentOf } = await import("./store-starters");
 
 type Row = Record<string, unknown>;
 
@@ -145,5 +148,72 @@ describe("the review", () => {
   it("keeps a theme from outside free", async () => {
     const [theme] = await db().execute<Row>(sql`select id from commerce.design_presets where author_id = ${fx.ownerId}::uuid and published limit 1`);
     expect(await setThemePrices(admin, String(theme.id), [{ currency: "NOK", amountMinor: 9900 }])).toMatchObject({ ok: false });
+  });
+});
+
+describe("with its own pages (D388)", () => {
+  it("carries the store's published pages without forms' recipients, places them on review and makes them the theme's content on approval", async () => {
+    for (const s of (await mySubmissions(fx.ownerId)).filter((s) => s.status === "waiting" || s.status === "reviewing")) await withdrawSubmission(owner.account, s.id);
+    // A page of the author's own, with a form that emails the owner: its words travel, its recipients never do.
+    const id = () => crypto.randomUUID();
+    const row = newRow("2", id);
+    row.columns[0].blocks = [{ ...newBlock("heading", id), text: `Welcome to Fjord ${run}` } as never];
+    row.columns[1].blocks = [{ ...newBlock("emailForm", id), recipients: ["owner@example.com"] } as never];
+    const content = { ...newPageContent(), title: `Our story ${run}`, slug: `our-story-${run}`, rows: [row], categories: [], tags: [] };
+    const json = JSON.stringify(content);
+    await db().execute(sql`
+      insert into commerce.pages (store_id, type, slug, draft, published, published_at, first_published_at, created_by, updated_by)
+      values (${fx.storeId}::uuid, 'page', ${content.slug}, ${json}::jsonb, ${json}::jsonb, now(), now(), ${fx.ownerId}::uuid, ${fx.ownerId}::uuid)
+    `);
+
+    // Without the tick, only the look goes.
+    const lookOnly = await submitTheme(owner, words(`Look only ${run}`));
+    expect((await mySubmissions(fx.ownerId)).find((s) => s.id === (lookOnly as { id: string }).id)?.pages).toBe(0);
+    await withdrawSubmission(owner.account, (lookOnly as { id: string }).id);
+
+    const sent = await submitTheme(owner, words(`Harbour ${run}`), { pages: true });
+    expect(sent).toMatchObject({ ok: true });
+    const submissionId = (sent as { id: string }).id;
+    const [kept] = await db().execute<Row>(sql`select pages from commerce.theme_submissions where id = ${submissionId}::uuid`);
+    const pages = kept.pages as { title: string; content: unknown }[];
+    expect(pages.map((p) => p.title)).toContain(`Our story ${run}`);
+    // Pages chosen for a place (legal pages, the cart) stay the store's.
+    const roles = await db().execute<Row>(sql`select g.slug from commerce.page_roles r join commerce.pages g on g.id = r.page_id where r.store_id = ${fx.storeId}::uuid`);
+    for (const role of roles) expect(pages.map((p) => (p as { slug?: string }).slug)).not.toContain(String(role.slug));
+    expect(JSON.stringify(pages)).not.toContain("owner@example.com");
+    // What was sent is kept as it was sent.
+    await expect(db().execute(sql`update commerce.theme_submissions set pages = '[]'::jsonb where id = ${submissionId}::uuid`)).rejects.toThrow();
+
+    const reviewed = await reviewSubmission(admin, submissionId);
+    expect(reviewed).toMatchObject({ ok: true });
+    const presetId = (reviewed as { presetId: string }).presetId;
+    const [placed] = await db().execute<Row>(sql`
+      select ts.content_starter_id, st.design_preset_id, st.published, st.store_id from commerce.theme_submissions ts
+        join commerce.store_starters st on st.id = ts.content_starter_id where ts.id = ${submissionId}::uuid
+    `);
+    expect(placed).toMatchObject({ design_preset_id: null, published: false });
+    const [story] = await db().execute<Row>(sql`
+      select published ->> 'title' as title, published::text as body from commerce.pages
+       where store_id = ${String(placed.store_id)}::uuid and published ->> 'title' = ${`Our story ${run}`}
+    `);
+    expect(story?.title).toBe(`Our story ${run}`);
+    expect(String(story.body)).toContain(`Welcome to Fjord ${run}`);
+    // The content is set once.
+    await expect(db().execute(sql`update commerce.theme_submissions set content_starter_id = null where id = ${submissionId}::uuid`)).rejects.toThrow();
+
+    expect(await approveSubmission(admin, submissionId)).toMatchObject({ ok: true, presetId });
+    expect(await themeContentOf(presetId)).toMatchObject({ starterId: String(placed.content_starter_id), published: true });
+  });
+
+  it("puts the pages away when the submission is not accepted", async () => {
+    const sent = await submitTheme(owner, words(`Turned down ${run}`), { pages: true });
+    const submissionId = (sent as { id: string }).id;
+    expect(await reviewSubmission(admin, submissionId)).toMatchObject({ ok: true });
+    expect(await rejectSubmission(admin, submissionId, "Not this time.")).toEqual({ ok: true });
+    const [starter] = await db().execute<Row>(sql`
+      select st.archived_at is not null as archived, st.published from commerce.theme_submissions ts
+        join commerce.store_starters st on st.id = ts.content_starter_id where ts.id = ${submissionId}::uuid
+    `);
+    expect(starter).toEqual({ archived: true, published: false });
   });
 });

@@ -24,7 +24,7 @@ import { discountsReport } from "./analytics-discounts-data";
 import { inventoryReport } from "./analytics-inventory-data";
 import { OTHER_ID, productsReport } from "./analytics-products-data";
 import { getAnalyticsSettings, listPeriodTargets, listTargets, type StoredAnalyticsSettings, type StoredPeriodTarget } from "./analytics-settings";
-import { CUSTOMER_JOIN, CUSTOMER_KEY, dayStart, HAS_CUSTOMER, inMain, inPeriod, NOT_EDIT_REFUND, num, PAID, type Row } from "./analytics-sql";
+import { CUSTOMER_JOIN, CUSTOMER_KEY, dayStart, HAS_CUSTOMER, inMain, inPeriod, NOT_EDIT_REFUND, num, PAID, type Row, soldIn } from "./analytics-sql";
 import { periodTotals, seriesByBucket, setBased } from "./analytics-totals";
 import { marketingReport, sessionTotals, trafficReport, type MarketingReport, type TrafficReport } from "./analytics-traffic-data";
 import type { Store } from "./stores";
@@ -219,15 +219,15 @@ export async function productRefundRows(store: Store, today: string): Promise<Pr
   const rows = await setBased<Row>(sql`
     with sold as (
       select v.product_id,
-        coalesce(sum(ol.quantity) filter (where ${inPeriod(store, sql`o.placed_at`, recent)}), 0) as sold_recent,
-        coalesce(sum(ol.quantity) filter (where ${inPeriod(store, sql`o.placed_at`, baseline)}), 0) as sold_baseline
+        coalesce(sum(ol.quantity) filter (where ${soldIn(store, recent)}), 0) as sold_recent,
+        coalesce(sum(ol.quantity) filter (where ${soldIn(store, baseline)}), 0) as sold_baseline
       from commerce.orders o
       join commerce.order_lines ol on ol.store_id = o.store_id and ol.order_id = o.id
       join commerce.product_variants v on v.store_id = ol.store_id and v.id = ol.variant_id
-      where o.store_id = ${store.id}::uuid and ${PAID} and ${inPeriod(store, sql`o.placed_at`, whole)} and ol.delivery <> 'service'
+      where o.store_id = ${store.id}::uuid and ${PAID} and ${soldIn(store, whole)} and ol.delivery <> 'service'
       group by v.product_id
-      having coalesce(sum(ol.quantity) filter (where ${inPeriod(store, sql`o.placed_at`, recent)}), 0) >= ${r.minSold}
-        and coalesce(sum(ol.quantity) filter (where ${inPeriod(store, sql`o.placed_at`, baseline)}), 0) >= ${r.minBaselineSold}
+      having coalesce(sum(ol.quantity) filter (where ${soldIn(store, recent)}), 0) >= ${r.minSold}
+        and coalesce(sum(ol.quantity) filter (where ${soldIn(store, baseline)}), 0) >= ${r.minBaselineSold}
     ),
     refunded as (
       select v.product_id,

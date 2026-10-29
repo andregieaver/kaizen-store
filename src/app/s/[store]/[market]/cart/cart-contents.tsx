@@ -886,7 +886,14 @@ function checkoutAction({ store, market, m, view }: Draw) {
                   postalCode: onTerms.customer.address.postalCode ?? "",
                   city: onTerms.customer.address.city ?? "",
                   phoneNeeded: summary.deliveryState?.method === "local",
-                  labels: m.paymentTerms,
+                  // Words only: the catalogue also holds a function (`dueShort`), which cannot reach a client component.
+                  labels: {
+                    choice: m.paymentTerms.choice,
+                    legend: m.paymentTerms.legend,
+                    address: m.paymentTerms.address,
+                    place: m.paymentTerms.place,
+                    note: m.paymentTerms.note,
+                  },
                   payerLabels: m.payer,
                   display: onTerms.display,
                   template: onTerms.template,

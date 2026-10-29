@@ -5,7 +5,7 @@ import { sql } from "drizzle-orm";
 import { mainCurrency } from "@/lib/markets";
 import { CAUSES, allBalanced, bridgeSentence, reconcile, reconcileMain, refundsLine, type Cause, type CurrencyBridge, type CurrencySums, type MainBridge, type RefundsLine, type Sum } from "@/lib/tax-reconciliation";
 
-import { inPeriod, NOT_EDIT_REFUND, num, PAID, toMainOne, type Row } from "./analytics-sql";
+import { inPeriod, NOT_EDIT_REFUND, num, PAID, type Row, soldIn, toMainOne } from "./analytics-sql";
 import { setBasedSnapshot, type SetBasedRead } from "./analytics-totals";
 import type { Store } from "./stores";
 import { checkRange, documentGroups, sellerFacts, vatReportOf, type TaxRange, type VatReportView } from "./tax-reports";
@@ -94,7 +94,7 @@ export async function currencySums(store: Store, range: TaxRange, read: SetBased
         from commerce.orders o
         left join commerce.invoices i on i.store_id = o.store_id and i.order_id = o.id and i.kind = 'order'
         left join lateral (${EDIT_MOVED}) ed on true
-        where o.store_id = ${id}::uuid and ${PAID} and ${inPeriod(store, sql`o.placed_at`, range)}
+        where o.store_id = ${id}::uuid and ${PAID} and ${soldIn(store, range)}
       ) t
       group by currency, cause
     `);
@@ -111,20 +111,20 @@ export async function currencySums(store: Store, range: TaxRange, read: SetBased
         join commerce.invoices i on i.store_id = o.store_id and i.order_id = o.id and i.kind = 'order'
         join commerce.order_edits e on e.store_id = o.store_id and e.order_id = o.id and e.status = 'applied' and e.documents = 'issued'
         join commerce.invoices ei on ei.store_id = e.store_id and ei.order_edit_id = e.id and ei.kind = 'order_edit'
-        where o.store_id = ${id}::uuid and ${PAID} and ${inPeriod(store, sql`o.placed_at`, range)}
+        where o.store_id = ${id}::uuid and ${PAID} and ${soldIn(store, range)}
         union all
         select o.currency::text, ec.tax_minor, 'edit_credited'
         from commerce.orders o
         join commerce.invoices i on i.store_id = o.store_id and i.order_id = o.id and i.kind = 'order'
         join commerce.order_edits e on e.store_id = o.store_id and e.order_id = o.id and e.status = 'applied' and e.documents = 'issued'
         join commerce.credit_notes ec on ec.store_id = e.store_id and ec.order_edit_id = e.id and ec.source = 'order_edit'
-        where o.store_id = ${id}::uuid and ${PAID} and ${inPeriod(store, sql`o.placed_at`, range)}
+        where o.store_id = ${id}::uuid and ${PAID} and ${soldIn(store, range)}
         union all
         select o.currency::text, e.tax_delta, 'edit_waiting'
         from commerce.orders o
         join commerce.invoices i on i.store_id = o.store_id and i.order_id = o.id and i.kind = 'order'
         join commerce.order_edits e on e.store_id = o.store_id and e.order_id = o.id and e.status = 'applied' and e.documents = 'waiting'
-        where o.store_id = ${id}::uuid and ${PAID} and ${inPeriod(store, sql`o.placed_at`, range)}
+        where o.store_id = ${id}::uuid and ${PAID} and ${soldIn(store, range)}
       ) t
       group by currency, cause
     `);
@@ -136,7 +136,7 @@ export async function currencySums(store: Store, range: TaxRange, read: SetBased
         select i.currency::text as currency, i.tax_minor, i.order_id,
           case
             when not ${PAID} then 'not_captured'
-            when ${inPeriod(store, sql`o.placed_at`, range)} then null
+            when ${soldIn(store, range)} then null
             when i.kind = 'order_edit' then 'edit_in'
             else 'timing_in'
           end as cause

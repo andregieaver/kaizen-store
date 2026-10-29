@@ -277,8 +277,8 @@ export function BalanceForm({ storeSlug, orderId, amountLabel }: Ids & { amountL
   );
 }
 
-/** Records the invoice of an order on payment terms as paid outside Kaizena Flow (D293): how, the day it arrived and a reference. */
-export function TermsPaidForm({ storeSlug, orderId, amountLabel, today }: Ids & { amountLabel: string; today: string }) {
+/** Records money for an order on payment terms paid outside Kaizena Flow (D293, D387): how much (all that is owed, or part), how, the day it arrived and a reference. */
+export function TermsPaidForm({ storeSlug, orderId, balance, currency, today }: Ids & { balance: string; currency: string; today: string }) {
   const [state, action, pending] = useActionState(recordTermsPaidAction.bind(null, storeSlug, orderId), initial);
   const words = useAdminText("order");
   const w = words.forms;
@@ -296,6 +296,11 @@ export function TermsPaidForm({ storeSlug, orderId, amountLabel, today }: Ids & 
           </select>
         </label>
         <label className={label}>
+          {/* The whole balance unless part of it came (D387). */}
+          {`${w.amountReceived} (${currency})`}
+          <input name="amount" inputMode="decimal" defaultValue={balance} required className={`${input} w-32`} />
+        </label>
+        <label className={label}>
           {w.receivedOn}
           <input type="date" name="receivedOn" defaultValue={today} max={today} className={input} />
         </label>
@@ -306,7 +311,7 @@ export function TermsPaidForm({ storeSlug, orderId, amountLabel, today }: Ids & 
       </div>
       <div className="flex flex-wrap items-center gap-3">
         <button type="submit" disabled={pending} className={primary}>
-          {pending ? w.saving : fillWords(w.recordPaid, { amount: amountLabel })}
+          {pending ? w.saving : w.recordPayment}
         </button>
         <Result state={state} />
       </div>

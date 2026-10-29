@@ -78,3 +78,27 @@ export function nextSlug(base: string, n: number): string {
   const tail = `-${n}`;
   return `${base.slice(0, 60 - tail.length).replace(/-+$/g, "")}${tail}`;
 }
+
+/**
+ * How many of the author store's published pages a submission may carry as the theme's content (D388): the front page first, then the
+ * pages changed most recently. Pages chosen for a place (a legal page, the cart, the blog) stay the store's; the content store has its own.
+ */
+export const SUBMISSION_PAGES_MAX = 12;
+
+/**
+ * One page sent with a look (D388), as kept on the submission: its content copied as a template is when it was sent (`sanitizeTemplate()`,
+ * forms without recipients, no categories, tags, countries or author), its pictures still the author store's library's until a review
+ * copies them into the theme's content store.
+ */
+export type SubmittedPage = { title: string; slug: string; front: boolean; content: unknown };
+
+/** The pages a submission carries, as stored (null or anything else: none). */
+export function submittedPagesOf(value: unknown): SubmittedPage[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    if (!item || typeof item !== "object") return [];
+    const { title, slug, front, content } = item as Record<string, unknown>;
+    if (typeof title !== "string" || typeof slug !== "string" || !content || typeof content !== "object") return [];
+    return [{ title, slug, front: front === true, content }];
+  });
+}

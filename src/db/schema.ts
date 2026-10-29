@@ -1042,6 +1042,13 @@ export const themeSubmissions = commerce.table(
     notes: text("notes"),
     authorName: text("author_name").notNull(),
     snapshot: jsonb("snapshot").notNull(),
+    /**
+     * The author store's published pages sent with the look (D388), copied as a template is when sent (`SubmittedPage[]`); null: the look
+     * only. They become the theme's content on approval.
+     */
+    pages: jsonb("pages"),
+    /** The store template its pages were placed in at review (D388), the theme's content once approved; set once. */
+    contentStarterId: uuid("content_starter_id").references(() => storeStarters.id),
     status: text("status").notNull().default("waiting"),
     /** Why it was rejected, for the author. */
     reason: text("reason"),
@@ -1056,6 +1063,7 @@ export const themeSubmissions = commerce.table(
     index("theme_submissions_store_idx").on(t.storeId),
     index("theme_submissions_preset_idx").on(t.presetId),
     index("theme_submissions_decided_by_idx").on(t.decidedBy),
+    index("theme_submissions_content_starter_idx").on(t.contentStarterId),
     check("theme_submissions_kind", sql`${t.kind} in ('theme', 'update')`),
     check("theme_submissions_status", sql`${t.status} in ('waiting', 'reviewing', 'approved', 'rejected', 'withdrawn')`),
     check("theme_submissions_update_preset", sql`${t.kind} = 'theme' or ${t.presetId} is not null`),
@@ -4188,6 +4196,11 @@ export const orders = commerce.table(
     shippingAddress: jsonb("shipping_address").notNull(),
     placedAt: timestamp("placed_at", { withTimezone: true }).notNull().defaultNow(),
     /**
+     * When a paid order counts as a sale, where that is not `placed_at` (D387): an order on payment terms, `infinity` until its balance is paid in
+     * full, then that moment (trigger `order_payment_terms_sold()`). Null for every other order. Read as `SOLD_AT` in `analytics-sql.ts`.
+     */
+    soldAt: timestamp("sold_at", { withTimezone: true }),
+    /**
      * When the shopper asked for digital content to be delivered at once and
      * acknowledged losing the right of withdrawal for it (CRD Art. 16(m),
      * angrerettloven § 22 n). Null when the order has no such content.
@@ -4374,6 +4387,7 @@ export const orders = commerce.table(
     ),
     index("orders_held_by_idx").on(t.heldBy),
     index("orders_held_idx").on(t.storeId, t.heldAt).where(sql`${t.heldAt} is not null`),
+    index("orders_sold_idx").on(t.storeId, t.soldAt).where(sql`${t.soldAt} is not null`),
     check("orders_delivery_method", sql`${t.deliveryMethod} in ('ship', 'pickup', 'local')`),
     check("orders_po_number", sql`${t.poNumber} is null or char_length(${t.poNumber}) between 1 and 40`),
     check("orders_approval", sql`${t.approval} is null or ${t.approval} in ('waiting', 'approved', 'declined')`),

@@ -9,7 +9,7 @@ import { arr, churnRate, monthlyMinor, mrrMovements, type MrrMovements } from "@
 import { canConvert } from "@/lib/currency";
 import { mainCurrency } from "@/lib/markets";
 
-import { PAID, dayStart, inPeriod, num, toMainOne, type Row } from "./analytics-sql";
+import { dayStart, num, PAID, type Row, soldIn, toMainOne } from "./analytics-sql";
 import { setBasedReplica as setBased } from "./analytics-totals";
 import type { Store } from "./stores";
 
@@ -150,7 +150,7 @@ async function readOrders(store: Store, period: AnalyticsPeriod): Promise<Row[]>
     select trim(o.currency) as currency, (o.id = s.first_order_id) as first, count(*)::int as n, sum(o.total_minor - o.tax_minor) as revenue
     from commerce.orders o
     join commerce.subscriptions s on s.store_id = o.store_id and s.id = o.subscription_id
-    where o.store_id = ${store.id}::uuid and o.subscription_id is not null and ${PAID} and ${inPeriod(store, sql`o.placed_at`, period)}
+    where o.store_id = ${store.id}::uuid and o.subscription_id is not null and ${PAID} and ${soldIn(store, period)}
     group by 1, 2
   `);
 }

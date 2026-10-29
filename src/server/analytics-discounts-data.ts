@@ -17,7 +17,7 @@ import { safeRatio } from "@/lib/analytics-core";
 import { canConvert } from "@/lib/currency";
 import { mainCurrency } from "@/lib/markets";
 
-import { PAID, inPeriod, num, toMainOne, type Row } from "./analytics-sql";
+import { num, PAID, type Row, SOLD_AT, soldIn, toMainOne } from "./analytics-sql";
 import { setBasedReplica as setBased } from "./analytics-totals";
 import type { Store } from "./stores";
 
@@ -128,10 +128,10 @@ const lineExVat = (col: string) => sql.raw(`(case when ${col} > 0 then round(${c
  */
 async function readTrendRows(store: Store, window: Pick<AnalyticsPeriod, "from" | "to">): Promise<Row[]> {
   return setBased<Row>(sql`
-    select to_char(o.placed_at at time zone ${store.timeZone}, 'YYYY-MM') as month,
+    select to_char(${SOLD_AT} at time zone ${store.timeZone}, 'YYYY-MM') as month,
       (o.discount_minor - o.vat_relief_minor > 0 or o.discount_code_id is not null) as discounted, trim(o.currency) as currency, count(*)::int as orders
     from commerce.orders o
-    where o.store_id = ${store.id}::uuid and ${PAID} and ${inPeriod(store, sql`o.placed_at`, window)}
+    where o.store_id = ${store.id}::uuid and ${PAID} and ${soldIn(store, window)}
     group by 1, 2, 3
   `);
 }
@@ -145,10 +145,10 @@ async function readOrderRows(store: Store, period: Pick<AnalyticsPeriod, "from" 
   return setBased<Row>(sql`
     with po as materialized (
       select o.id, trim(o.currency) as currency, (o.total_minor - o.tax_minor) as revenue,
-        to_char(o.placed_at at time zone ${store.timeZone}, 'YYYY-MM') as month,
+        to_char(${SOLD_AT} at time zone ${store.timeZone}, 'YYYY-MM') as month,
         (o.discount_minor - o.vat_relief_minor > 0 or o.discount_code_id is not null) as discounted
       from commerce.orders o
-      where o.store_id = ${store.id}::uuid and ${PAID} and ${inPeriod(store, sql`o.placed_at`, period)}
+      where o.store_id = ${store.id}::uuid and ${PAID} and ${soldIn(store, period)}
     ),
     by_order as (
       select month, discounted, currency, count(*)::int as orders, sum(revenue) as revenue
@@ -190,7 +190,7 @@ async function readKinds(store: Store, period: AnalyticsPeriod): Promise<Row[]> 
       count(distinct ol.order_id) filter (where ${sql.raw(code)} > 0)::int as code_orders
     from commerce.orders o
     join commerce.order_lines ol on ol.store_id = o.store_id and ol.order_id = o.id
-    where o.store_id = ${store.id}::uuid and ${PAID} and ${inPeriod(store, sql`o.placed_at`, period)}
+    where o.store_id = ${store.id}::uuid and ${PAID} and ${soldIn(store, period)}
     group by trim(o.currency)
   `);
 }
@@ -215,7 +215,7 @@ async function readCoupons(store: Store, period: AnalyticsPeriod): Promise<Row[]
         left join commerce.discount_codes dc on dc.store_id = o.store_id and dc.id = o.discount_code_id
         where not exists (select 1 from commerce.order_discount_codes y where y.store_id = o.store_id and y.order_id = o.id)
       ) c
-      where o.store_id = ${store.id}::uuid and ${PAID} and ${inPeriod(store, sql`o.placed_at`, period)}
+      where o.store_id = ${store.id}::uuid and ${PAID} and ${soldIn(store, period)}
         and (o.discount_code_id is not null or nullif(o.discount_code, '') is not null)
     ),
     by_order as (

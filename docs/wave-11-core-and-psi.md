@@ -248,6 +248,9 @@ money, payout record or creator page.
 
 ### H. Payments: MobilePay, and orders on terms (D387)
 
+**Built (29 October 2026),** as designed below with three course changes (D387): *Pay now* asks for the whole of what is left (a part is money
+recorded outside or a later payment); the control center's glance and the AI manager's own analyses keep `placed_at`; subscription boxes stay card-only.
+
 **MobilePay.**
 - An integration test with the stand-in Stripe holds what Kaizena Flow sends for a Danish and a Finnish checkout (MobilePay not excluded)
   and for a Norwegian one (excluded, where the owner or the rules leave it out).
@@ -262,6 +265,11 @@ money, payout record or creator page.
 - A signed-in e2e chooses *Pay by invoice* at checkout.
 
 ### I. Theme submissions with their own pages (D388)
+
+**Built (29 October 2026),** as designed below with three course changes (D388): the pages are copied when the look is sent and kept with
+it, as the look is (the store may change after); a review places them in a store template of their own, tied to the theme only on approval
+(an update's theme keeps its content until then), and the reviewer previews the look on them from the submission; pages chosen for a place
+(legal pages, the cart, the blog) are never sent, as the content store has its own. The row stays partial on decision 4 alone.
 
 - A submission (D344) may carry the author store's published pages as the theme's content. They are copied as a template is
   (`sanitizeTemplate()`, pictures into the theme's own content store, never products, customers, forms' recipients or secrets).

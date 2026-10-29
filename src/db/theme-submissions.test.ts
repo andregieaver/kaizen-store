@@ -7,7 +7,7 @@ import { createTestDatabase } from "./testing";
 /**
  * Themes from outside (wave 7 unit J, D344) as the database holds them: a submission starts waiting and moves only forward, is kept as it was
  * submitted, a decision once made stays, only a theme's author submits an update of it, and a theme from outside has no price. A new install
- * no longer follows its theme's updates by itself (decision 4).
+ * no longer follows its theme's updates by itself (decision 4). Pages sent with a look (D388) are kept as sent and placed once.
  */
 
 let db: PGlite;
@@ -86,6 +86,32 @@ describe("a submission", () => {
     const open = await submit("theme", author);
     await db.query("update commerce.theme_submissions set status = 'reviewing' where id = $1", [open]);
     await rejects("update commerce.theme_submissions set status = 'approved' where id = $1", [open], /theme_submissions\.approved/);
+  });
+});
+
+describe("its own pages (D388)", () => {
+  it("are kept as they were sent, and the store they are placed in is set once, only for a submission with pages", async () => {
+    const pages = JSON.stringify([{ title: "Our story", slug: "our-story", front: true, content: {} }]);
+    const id = await scalar<string>(
+      `insert into commerce.theme_submissions (account_id, store_id, kind, title, author_name, snapshot, pages)
+       values ($1, $2, 'theme', 'Fjord', 'Ada', $3::jsonb, $4::jsonb) returning id`,
+      [author, store, LOOK, pages],
+    );
+    await rejects("update commerce.theme_submissions set pages = '[]'::jsonb where id = $1", [id], /theme_submissions\.fixed/);
+    const content = await createInvoiceStore(db, "outside-pages");
+    await db.query("update commerce.stores set starter = true where id = $1", [content]);
+    const starter = await scalar<string>("insert into commerce.store_starters (store_id, title, category) values ($1, 'Fjord', 'other') returning id", [content]);
+    await rejects(
+      `insert into commerce.theme_submissions (account_id, store_id, kind, title, author_name, snapshot, pages, content_starter_id)
+       values ($1, $2, 'theme', 'X', 'Ada', $3::jsonb, $4::jsonb, $5)`,
+      [author, store, LOOK, pages, starter],
+      /theme_submissions\.content/,
+    );
+    await db.query("update commerce.theme_submissions set status = 'reviewing', content_starter_id = $2 where id = $1", [id, starter]);
+    await rejects("update commerce.theme_submissions set content_starter_id = null where id = $1", [id], /theme_submissions\.content/);
+    // A submission of the look only has no pages to place.
+    const lookOnly = await submit("theme", author);
+    await rejects("update commerce.theme_submissions set content_starter_id = $2 where id = $1", [lookOnly, starter], /theme_submissions\.content/);
   });
 });
 

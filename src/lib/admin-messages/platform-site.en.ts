@@ -812,6 +812,13 @@ export const platformSiteEn = {
     rejected: "The author can read why.",
     notes: "What's new",
     reasonShown: "Why: {reason}",
+    pagesTitle: "Its pages",
+    pagesSent: { one: "Sent with {n} page of its store, to become the theme's content.", many: "Sent with {n} pages of its store, to become the theme's content." },
+    pagesLater: "They are placed in a demo store of their own when you take it into review, and become the theme's content when you approve it.",
+    pagesPlaced: "Placed in a demo store of their own. Preview the look on them, or open them to read them; on approval they become the theme's content.",
+    previewOnPages: "Preview on its pages",
+    openPages: "Open its pages",
+    pagesNotPlaced: "Its pages are placed when it is taken into review.",
   },
 } as const;
 
