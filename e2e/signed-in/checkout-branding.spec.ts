@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { testDb } from "../db";
-import { E2E_STORE, OWNER } from "./accounts";
+import { OWNER } from "./accounts";
 
 /**
  * Checkout branding as the owner sets it and the storefront draws it (wave 7 unit C, D337; row checkout.checkout-branding): in Design
@@ -15,7 +15,10 @@ import { E2E_STORE, OWNER } from "./accounts";
 test.use({ storageState: OWNER.state });
 test.describe.configure({ mode: "serial" });
 
-const design = `/admin/${E2E_STORE}/settings/design`;
+// A store of the owner's own: the theme specs switch the shared store's live look at the same time, which a save here must never meet.
+const STORE = "e2e-checkout-look";
+
+const design = `/admin/${STORE}/settings/design`;
 const LIGHT = "#1d4ed8";
 const DARK = "#93c5fd";
 let themeBefore: unknown = null;
@@ -24,8 +27,15 @@ let marketSlug = "";
 test.beforeAll(async () => {
   const sql = testDb();
   try {
-    await sql`update commerce.stores set setup_completed_at = coalesce(setup_completed_at, now()) where slug = ${E2E_STORE}`;
-    const [store] = await sql`select id, theme from commerce.stores where slug = ${E2E_STORE}`;
+    // The owner's store, made once: other specs make theirs for the same owner at the same time, and a pending request is one per email.
+    await sql.begin(async (tx) => {
+      await tx`select pg_advisory_xact_lock(hashtext('e2e-owner-request'))`;
+      if ((await tx`select 1 from commerce.stores where slug = ${STORE}`).length > 0) return;
+      const [request] = await tx`insert into commerce.access_requests (email, name, store_name) values (${OWNER.email}, ${OWNER.name}, 'E2E Checkout look') returning id`;
+      await tx`select commerce.approve_access_request(${request.id}, ${STORE}, 'E2E Checkout look', null)`;
+    });
+    await sql`update commerce.stores set setup_completed_at = coalesce(setup_completed_at, now()) where slug = ${STORE}`;
+    const [store] = await sql`select id, theme from commerce.stores where slug = ${STORE}`;
     themeBefore = store.theme;
     const [market] = await sql`select code from commerce.markets where store_id = ${store.id} and active order by created_at, code limit 1`;
     marketSlug = String(market.code).toLowerCase();
@@ -38,7 +48,7 @@ test.afterAll(async () => {
   // The store's look as it was, so the other theme specs meet the look they expect.
   const sql = testDb();
   try {
-    await sql`update commerce.stores set theme = ${sql.json(themeBefore as never)} where slug = ${E2E_STORE}`;
+    await sql`update commerce.stores set theme = ${sql.json(themeBefore as never)} where slug = ${STORE}`;
   } finally {
     await sql.end();
   }
@@ -75,7 +85,7 @@ test("the owner sets the checkout's look in Design settings, and the theme keeps
 
   const sql = testDb();
   try {
-    const [row] = await sql`select theme -> 'settings' -> 'checkout' as checkout from commerce.stores where slug = ${E2E_STORE}`;
+    const [row] = await sql`select theme -> 'settings' -> 'checkout' as checkout from commerce.stores where slug = ${STORE}`;
     expect(row.checkout).toMatchObject({ background: "surface", fields: "underlined", corners: "square", button: { light: LIGHT, dark: DARK } });
   } finally {
     await sql.end();
@@ -84,7 +94,7 @@ test("the owner sets the checkout's look in Design settings, and the theme keeps
 
 test("the store's pay routes carry the checkout's colour and corners, which the checkout's payment form reads", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light" });
-  await page.goto(`/s/${E2E_STORE}/${marketSlug}/cart`);
+  await page.goto(`/s/${STORE}/${marketSlug}/cart`);
   const read = () =>
     page.evaluate(() => {
       const root = getComputedStyle(document.documentElement);
@@ -120,7 +130,7 @@ test("the store's pay routes carry the checkout's colour and corners, which the 
 });
 
 test("the checkout without an order waiting goes back to the cart, under the same policy as before", async ({ page, request }) => {
-  const checkout = `/s/${E2E_STORE}/${marketSlug}/checkout`;
+  const checkout = `/s/${STORE}/${marketSlug}/checkout`;
   const response = await request.get(checkout, { maxRedirects: 0 });
   // No new script origin: the policy names Stripe's and the address autocomplete's only (csp.test.ts holds the list).
   const policy = response.headers()["content-security-policy"] ?? response.headers()["content-security-policy-report-only"] ?? "";
