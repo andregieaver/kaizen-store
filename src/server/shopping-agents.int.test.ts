@@ -125,8 +125,9 @@ describe("attribution", () => {
     const order = await place(store.storeId, [[SKU, 1]]);
     await db().execute(sql`update commerce.carts set source = 'agent' where id = (select cart_id from commerce.orders where id = ${order.orderId}::uuid)`);
     await pay(store.storeId, order, store.account);
-    const today = new Date().toISOString().slice(0, 10);
     const s = (await getStore(store.slug))!;
+    // The store's own day: around midnight UTC it is already tomorrow in Oslo.
+    const today = new Intl.DateTimeFormat("sv-SE", { timeZone: s.timeZone }).format(new Date());
     const outcome = await runReport(s, { ...blankSpec(), metrics: ["orders"], dimensions: ["channel"], filters: [], period: { preset: "custom", from: today, to: today, compare: "none" } } as never, new Date());
     if (!outcome.ok) throw new Error(JSON.stringify(outcome.problems));
     expect(outcome.report.rows.find((r) => r.keys[0] === "ai_agent")?.values.orders).toBe(1);

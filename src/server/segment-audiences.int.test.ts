@@ -181,3 +181,18 @@ describe("tags on many people at once (D380)", () => {
     expect(JSON.stringify(audit.details)).not.toContain("@");
   });
 });
+
+describe("the AI manager's segment tools (D380)", () => {
+  it("counts a segment from rules, and saves one under a name and changes it by its id", async () => {
+    const { countSegmentTool, saveSegmentTool } = await import("./marketing-tools");
+    const rules = { match: "all" as const, conditions: [] };
+    const counted = (await countSegmentTool({ store } as never, { rules } as never)) as { people: number };
+    expect(counted.people).toBeGreaterThan(0);
+    const saved = (await saveSegmentTool({ account: { id: owner }, store } as never, { name: `Alle ${run}`, rules } as never)) as { id: string; people: number };
+    expect(saved).toMatchObject({ people: counted.people });
+    const changed = (await saveSegmentTool({ account: { id: owner }, store } as never, { name: `Alle igjen ${run}`, rules, segment: saved.id } as never)) as { id: string; done: string };
+    expect(changed.id).toBe(saved.id);
+    const [row] = await db().execute<Row>(sql`select title from commerce.segments where store_id = ${store.id}::uuid and id = ${saved.id}::uuid`);
+    expect(row.title).toBe(`Alle igjen ${run}`);
+  });
+});
