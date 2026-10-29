@@ -671,6 +671,8 @@ export const notificationsEn = {
       "customers:write": "Tag customers",
       "discounts:read": "Read discount codes",
       "discounts:write": "Make discount codes",
+      "checkout:read": "Read checkout rules and questions",
+      "checkout:write": "Change checkout rules and questions",
     } as Record<string, string>,
     problems: {
       name: "Give the token a name of 1 to 80 characters.",

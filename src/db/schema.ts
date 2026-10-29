@@ -7328,7 +7328,7 @@ export const checkoutRules = commerce.table(
     index("checkout_rules_created_by_idx").on(t.createdBy),
     index("checkout_rules_updated_by_idx").on(t.updatedBy),
     check("checkout_rules_name", sql`char_length(${t.name}) between 1 and 80`),
-    check("checkout_rules_effect", sql`${t.effect} ->> 'kind' in ('hide_shipping', 'rename_shipping', 'hide_payment_method', 'refuse')`),
+    check("checkout_rules_effect", sql`${t.effect} ->> 'kind' in ('hide_shipping', 'rename_shipping', 'order_delivery', 'hide_payment_method', 'refuse')`),
   ],
 );
 

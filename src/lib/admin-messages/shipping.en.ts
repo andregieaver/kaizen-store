@@ -584,6 +584,7 @@ export const shippingEn = {
     effectKinds: {
       hide_shipping: "Hide delivery options",
       rename_shipping: "Rename a delivery option",
+      order_delivery: "Show delivery options first",
       hide_payment_method: "Leave payment methods out",
       refuse: "Stop the order with a message",
     },
@@ -592,6 +593,8 @@ export const shippingEn = {
     message: "Message to the customer",
     otherLanguages: "In other languages",
     choose: "Choose…",
+    shownFirst: "Shown first, in the order ticked:",
+    orderHint: "Tick the options to show first, in the order you want them. The option chosen at first stays the same until the customer chooses.",
     cardsAlways: "Cards are always offered.",
     fields: "Questions at checkout",
     fieldsHint: "Asked above the checkout button. The answers are on the order and in its export.",

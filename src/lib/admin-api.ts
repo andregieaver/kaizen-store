@@ -16,6 +16,8 @@ export const API_SCOPES = [
   "customers:write",
   "discounts:read",
   "discounts:write",
+  "checkout:read",
+  "checkout:write",
 ] as const;
 export type ApiScope = (typeof API_SCOPES)[number];
 
@@ -60,7 +62,9 @@ export type ApiRoute =
   | { name: "customers.list"; scope: ApiScope }
   | { name: "customers.get" | "customers.tag"; scope: ApiScope; id: string }
   | { name: "customers.untag"; scope: ApiScope; id: string; tag: string }
-  | { name: "discounts.list" | "discounts.create"; scope: ApiScope };
+  | { name: "discounts.list" | "discounts.create"; scope: ApiScope }
+  | { name: "checkout.rules" | "checkout.rule_create" | "checkout.fields" | "checkout.field_create"; scope: ApiScope }
+  | { name: "checkout.rule_update" | "checkout.rule_delete" | "checkout.field_update" | "checkout.field_delete"; scope: ApiScope; id: string };
 
 /** The route a method and path (after `/api/admin/v1/`) name, or null for none (a 404). */
 export function routeOf(method: ApiMethod, path: readonly string[]): ApiRoute | null {
@@ -91,6 +95,17 @@ export function routeOf(method: ApiMethod, path: readonly string[]): ApiRoute | 
     if (sub !== "tags") return null;
     if (!extra) return method === "POST" ? { name: "customers.tag", scope: "customers:write", id } : null;
     return method === "DELETE" ? { name: "customers.untag", scope: "customers:write", id, tag: decodeURIComponent(extra) } : null;
+  }
+  // Checkout rules and questions (D399): `/checkout/rules`, `/checkout/rules/{id}`, `/checkout/fields`, `/checkout/fields/{id}`.
+  if (resource === "checkout" && (id === "rules" || id === "fields") && !extra) {
+    const one = id === "rules" ? "rule" : "field";
+    if (!sub) {
+      if (method === "GET") return { name: id === "rules" ? "checkout.rules" : "checkout.fields", scope: "checkout:read" };
+      return method === "POST" ? { name: `checkout.${one}_create`, scope: "checkout:write" } : null;
+    }
+    if (!isUuid(sub)) return null;
+    if (method === "PATCH") return { name: `checkout.${one}_update`, scope: "checkout:write", id: sub };
+    return method === "DELETE" ? { name: `checkout.${one}_delete`, scope: "checkout:write", id: sub } : null;
   }
   if (resource === "discounts" && !id) {
     return method === "GET" ? { name: "discounts.list", scope: "discounts:read" } : method === "POST" ? { name: "discounts.create", scope: "discounts:write" } : null;
@@ -134,4 +149,12 @@ export const API_ROUTES: { method: ApiMethod; path: string; scope: ApiScope }[] 
   { method: "DELETE", path: "/customers/{id}/tags/{tag}", scope: "customers:write" },
   { method: "GET", path: "/discounts", scope: "discounts:read" },
   { method: "POST", path: "/discounts", scope: "discounts:write" },
+  { method: "GET", path: "/checkout/rules", scope: "checkout:read" },
+  { method: "POST", path: "/checkout/rules", scope: "checkout:write" },
+  { method: "PATCH", path: "/checkout/rules/{id}", scope: "checkout:write" },
+  { method: "DELETE", path: "/checkout/rules/{id}", scope: "checkout:write" },
+  { method: "GET", path: "/checkout/fields", scope: "checkout:read" },
+  { method: "POST", path: "/checkout/fields", scope: "checkout:write" },
+  { method: "PATCH", path: "/checkout/fields/{id}", scope: "checkout:write" },
+  { method: "DELETE", path: "/checkout/fields/{id}", scope: "checkout:write" },
 ];

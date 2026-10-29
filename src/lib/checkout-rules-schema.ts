@@ -32,6 +32,7 @@ export const effectSchema: z.ZodType<RuleEffect> = z.discriminatedUnion("kind", 
   z.object({ kind: z.literal("rename_shipping"), option: optionKey, label: words(FIELD_LABEL_MAX) }),
   z.object({ kind: z.literal("hide_payment_method"), methods: z.array(z.string().regex(/^[a-z_0-9]{2,40}$/)).min(1).max(20) }),
   z.object({ kind: z.literal("refuse"), message: words(REFUSAL_MAX) }),
+  z.object({ kind: z.literal("order_delivery"), options: z.array(optionKey).min(1).max(30) }),
 ]) as z.ZodType<RuleEffect>;
 
 export const ruleInputSchema = z.object({

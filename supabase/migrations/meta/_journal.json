@@ -4152,6 +4152,13 @@
       "when": 1793292109319,
       "tag": "20261029164149_api_carts",
       "breakpoints": true
+    },
+    {
+      "idx": 593,
+      "version": "7",
+      "when": 1793293708526,
+      "tag": "20261029170828_checkout_rules_order",
+      "breakpoints": true
     }
   ]
 }

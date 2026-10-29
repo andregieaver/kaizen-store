@@ -181,3 +181,48 @@ describe("customers and discounts", () => {
     expect((await call("POST", "discounts", full, { code: "", kind: "percent" })).status).toBe(422);
   });
 });
+
+describe("checkout rules and questions (D399)", () => {
+  it("lists, makes, switches, changes and deletes them through the Shipping page's writers, with the checkout scopes only", async () => {
+    const made = await makeApiToken(store.member, { name: "Checkout app", scopes: ["checkout:write"] });
+    if (!made.ok) throw new Error(made.problem);
+    const token = made.token;
+    expect((await call("GET", "checkout/rules", readOnly)).status).toBe(403);
+    expect((await call("GET", "checkout/rules", token)).body.data).toEqual([]);
+
+    const rule = await call("POST", "checkout/rules", token, { name: "Flat first", effect: { kind: "order_delivery", options: ["flat"] } });
+    expect(rule.status).toBe(201);
+    const id = rule.body.data.id as string;
+    // A rule naming an option the store does not have is refused, as on the page.
+    expect((await call("POST", "checkout/rules", token, { name: "Nope", effect: { kind: "order_delivery", options: ["method:00000000-0000-4000-8000-000000000000"] } })).status).toBe(422);
+    // A new rule is saved off; `enabled` alone switches it.
+    expect((await call("GET", "checkout/rules", token)).body.data).toEqual([expect.objectContaining({ id, enabled: false, effect: { kind: "order_delivery", options: ["flat"] } })]);
+    expect((await call("PATCH", `checkout/rules/${id}`, token, { enabled: true })).status).toBe(200);
+    expect((await call("PATCH", `checkout/rules/${id}`, token, { name: "Hide flat", effect: { kind: "hide_shipping", options: ["flat"] } })).status).toBe(200);
+    const [kept] = (await call("GET", "checkout/rules", token)).body.data;
+    expect(kept).toMatchObject({ name: "Hide flat", enabled: true, effect: { kind: "hide_shipping" } });
+    expect((await call("PATCH", "checkout/rules/00000000-0000-4000-8000-000000000000", token, { enabled: true })).status).toBe(404);
+
+    const field = await call("POST", "checkout/fields", token, { kind: "text", label: { text: "Door code" } });
+    expect(field.status).toBe(201);
+    const fieldId = field.body.data.id as string;
+    expect((await call("PATCH", `checkout/fields/${fieldId}`, token, { enabled: false })).status).toBe(200);
+    expect((await call("GET", "checkout/fields", token)).body.data).toEqual([expect.objectContaining({ id: fieldId, enabled: false, kind: "text" })]);
+
+    expect((await call("DELETE", `checkout/rules/${id}`, token)).body.data).toEqual({ id, deleted: true });
+    expect((await call("DELETE", `checkout/fields/${fieldId}`, token)).status).toBe(200);
+    expect((await call("DELETE", `checkout/fields/${fieldId}`, token)).status).toBe(404);
+    const audit = await db().execute<Row>(sql`
+      select action from commerce.audit_log where store_id = ${store.storeId}::uuid and action like 'integration.api_checkout%' order by created_at
+    `);
+    expect(audit.map((a) => a.action)).toEqual([
+      "integration.api_checkout_rule_made",
+      "integration.api_checkout_rule_changed",
+      "integration.api_checkout_rule_changed",
+      "integration.api_checkout_field_made",
+      "integration.api_checkout_field_changed",
+      "integration.api_checkout_rule_deleted",
+      "integration.api_checkout_field_deleted",
+    ]);
+  });
+});

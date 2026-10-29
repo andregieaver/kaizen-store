@@ -14,7 +14,7 @@ D152 (the store analytics cockpit) and D153 (the EU withdrawal function and the 
 - Where the change comes from: +29.1 points from the 149 rating moves on core rows recorded below, and +0.3 points because the re-read changed which rows count as core (the tracker has 231 rows, the first report 232 core ones).
 - 230 of 231 rows have their Shopify side read from a page; the others are listed under evidence debt.
 
-Rated higher (141):
+Rated higher (142):
 
 - Admin AI assistant that performs tasks (AI): partial to full. D350: notices for background work that finished or waits (page builds, follow-ups, autopilot questions and finished plans, changes kept for a yes, reports), written once each by the jobs, counted on the launcher and in the account menu, li…
 - Assistant memory and saved skills (AI): partial to full. D350: saved skills: Save as skill in the panel, a Skills tab to list, edit and delete, save_skill and delete_skill, use_skill loading them like the built-ins; owners share with the store; built-in keys, secrets, customers' details and mark…
@@ -67,6 +67,7 @@ Rated higher (141):
 - Product feeds to Google and other channels (Catalogue): missing to partial. Wave 5 unit H (D302): the Google feed, the admin's left-out list and the euro scenario are built; custom labels and the API sync are not, so partial.
 - Standard product taxonomy (Catalogue): missing to full. Wave 6 unit I (D327, docs/wave-6-catalogue.md Unit I): Shopify's open Standard Product Taxonomy v2026-10 (MIT, 14,606 categories with attributes and values, names in en, nb, sv, da, Google's ids) kept in the repository; a product gets a ca…
 - Checkout branding (Checkout): partial to full. D337 (wave 7 unit C, docs/wave-7-storefront.md C).
+- Checkout extensibility (UI extensions, Functions) (Checkout, not core): partial to full. The two missing parts the row named are built (D399): a rule that reorders delivery options (checkout-rules.test.ts and checkout-rules.int.test.ts, the cart and the order agreeing on what is charged) and Admin API routes for the rules and…
 - Guest checkout and optional account (Checkout): partial to full. D365: customer accounts optional, required or off, obeyed by the cart, checkout and placeOrder(), held by an integration test (criterion 5).
 - Accelerated checkout (Apple Pay, Google Pay, Shop Pay) (Checkout): partial to full. D373: express buttons on the product page and in the cart through the checkout's own path, each wallet's state per web address on the Payments page, and an integration test with a fake Stripe that an express payment ends as a paid order wi…
 - Third-party and multiple payment gateways (Checkout): missing to full. The payment-provider adapter (E1) and Mollie behind it (E2, D292): a store chooses its checkout provider per mode, and a Mollie order is paid, refunded and charged back through the same order code as Stripe's, in tests.
@@ -191,7 +192,7 @@ Rated lower (24):
 
 <!-- parity:generated:start summary -->
 
-Kaizena Flow has **88.9%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 201 core features weighted by importance to an EU small or mid-size merchant, and **90.6%** on the must-haves (the 83 features with weight 4 or 5). The unweighted figures are 88.3% overall and 90.4% for must-haves. Counting app-only features gives 88.4%; counting Plus-only as well gives 87.8%. Kaizena Flow is strongest on catalogue and products (96.3%) and weakest on platform, extensibility and operations (71.9%), international, compliance and trust (77.7%), orders, shipping, fulfilment and returns (84.0%). Of the 201 core features, 159 are full, 37 partial and 5 missing, so half-built features, not absent ones, are the main shape of the gap.
+Kaizena Flow has **88.9%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 201 core features weighted by importance to an EU small or mid-size merchant, and **90.6%** on the must-haves (the 83 features with weight 4 or 5). The unweighted figures are 88.3% overall and 90.4% for must-haves. Counting app-only features gives 88.4%; counting Plus-only as well gives 88.0%. Kaizena Flow is strongest on catalogue and products (96.3%) and weakest on platform, extensibility and operations (71.9%), international, compliance and trust (77.7%), orders, shipping, fulfilment and returns (84.0%). Of the 201 core features, 159 are full, 37 partial and 5 missing, so half-built features, not absent ones, are the main shape of the gap.
 
 <!-- parity:generated:end summary -->
 
@@ -204,7 +205,7 @@ The method is simple: a full match scores 1, a partial match 0.5, a missing feat
 | Headline: core (Shopify native, Basic to Advanced) | 201 | **88.9%** | 88.3% | 159 / 37 / 5 |
 | Must-have (core, weight 4 or 5) | 83 | **90.6%** | 90.4% | 67 / 16 / 0 |
 | Core plus app-only features | 225 | 88.4% | 88.0% | 176 / 44 / 5 |
-| Everything, including Plus-only | 231 | 87.8% | 86.8% | 177 / 47 / 7 |
+| Everything, including Plus-only | 231 | 88.0% | 87.0% | 178 / 46 / 7 |
 
 <!-- parity:generated:end headline -->
 
@@ -237,7 +238,7 @@ A row is Full only when it lists code and tests that exist (or says it is untest
 
 | Evidence | Rows |
 | --- | ---: |
-| Full, with tests | 171 |
+| Full, with tests | 172 |
 | Full, untested (debt, not hidden) | 6 |
 | Shopify side not read from a page | 1 |
 | Rows in the tracker | 231 |
@@ -248,7 +249,7 @@ Untested Full rows: `ai.assistant-voice-mode`, `customers.abandoned-checkout-rec
 | --- | --- | ---: | ---: | ---: |
 | A | Build in-house | 18 | 12 | 3.1 |
 | B | Build, live only with a third party | 13 | 11 | 2.8 |
-| C | Strategy decision first | 9 | 7 | 1.7 |
+| C | Strategy decision first | 8 | 7 | 1.7 |
 | D | Not reachable by code | 14 | 12 | 3.4 |
 
 <!-- parity:generated:end evidence -->
@@ -271,7 +272,7 @@ Now: **88.9%** core, 90.6% must-have. The projections are what the score would b
 | 6 | Catalogue | 0 (0) | 94.8% | 96.3% | +0.0 | 91.4% | 93.5% |
 | 7 | Storefront and international | 3 (3) | 95.4% | 96.3% | +0.7 | 91.8% | 93.5% |
 | 8 | Analytics and AI | 2 (2) | 95.9% | 96.3% | +0.5 | 92.0% | 93.5% |
-| 9 | Platform and extensibility | 5 (3) | 96.6% | 96.9% | +0.7 | 92.0% | 93.5% |
+| 9 | Platform and extensibility | 4 (3) | 96.6% | 96.9% | +0.7 | 92.0% | 93.5% |
 
 Ceiling with every bucket A row Full and buckets B, C and D as they are: **92.0%** core, 93.5% must-have. With bucket B built and approved as well: 94.8% core, 95.8% must-have.
 
@@ -432,7 +433,7 @@ Legend. **Shopify**: Native = included on Basic to Advanced and scored in the he
 | Feature | Shopify | Kaizena Flow | W | Plan | Gap and evidence |
 | --- | --- | --- | ---: | --- | --- |
 | Checkout branding | Native. [page](https://help.shopify.com/en/manual/checkout-settings/checkout-extensibility) | Full (was partial) | 3 |  | Evidence: `src/components/checkout-form.tsx`, `src/lib/theme.ts`, `src/lib/store-parts.ts` and 9 more; 9 test files; D22, D60, D100, D113, D117, D337. |
-| Checkout extensibility (UI extensions, Functions) | Plus. [page](https://help.shopify.com/en/manual/checkout-settings/checkout-extensibility) | Partial | 2 | C, wave 9 | The checkout's layout is editable and testable (D113, D117, D148). Since D357 an owner adds questions the shopper answers above the checkout button (text or tick box, required or not, per language), kept on the order and shown to staff and in the export, and declarative rules hide or rename delivery options and leave payment methods out for a basket, falling back to the standard checkout when a rule is broken. Missing: reordering options, an Admin API route for the rules and questions, and UI extensions of a developer's own. Code: `src/lib/store-parts.ts`, `src/lib/ab-site.ts`. |
+| Checkout extensibility (UI extensions, Functions) | Plus. [page](https://help.shopify.com/en/manual/checkout-settings/checkout-extensibility) | Full (was partial) | 2 |  | The checkout's layout is editable and testable (D113, D117, D148). Since D357 an owner adds questions the shopper answers above the checkout button (text or tick box, required or not, per language), kept on the order and shown to staff and in the export, and declarative rules hide or rename delivery options and leave payment methods out for a basket, falling back to the standard checkout when a rule is broken. Since D399 a rule can also order the delivery options (`order_delivery`: the ones named first, the rest after, the option chosen at first unchanged), and an outside app reads and changes the rules and questions through the Admin API with the `checkout:read`/`checkout:write` scopes, through the Shipping page's own writers (`admin-api.int.test.ts`). Not built: UI extensions of a developer's own code in the checkout (no criterion asks for them; the pay routes run no outside script, D158). Evidence: `src/lib/store-parts.ts`, `src/lib/ab-site.ts`, `src/components/store-part-section.tsx` and 10 more; 7 test files; D113, D117, D118, D120, D148, D238, D357, D399. |
 | Guest checkout and optional account | Native. [page](https://help.shopify.com/en/manual/checkout-settings) | Full (was partial) | 5 |  | Guest checkout and optional account creation at checkout work (criteria 1 to 4); signed-in shoppers are offered their saved addresses (D304). Since D365 the owner chooses on Settings → Checkout whether accounts are optional, required or off (`stores.customer_accounts`, written only by `saveAccountsMode()`, audited): required, the cart asks the shopper to sign in instead of its checkout button and `placeOrder()` refuses a cart without a signed-in customer (`sign_in_required`, so every way to an order, express payment included, obeys it); off, the store draws no sign-in or account link, the account's own pages answer 404 and checkout offers no account, while the links sent after a sale still work; a feature that needs accounts (subscriptions, bonus, referrals) or a company account keeps them from being switched off (`customer-accounts.int.test.ts`). The questions a store asks at checkout are D357's checkout fields. Evidence: `src/server/checkout.ts`, `src/server/customers.ts`, `src/components/checkout-form.tsx` and 5 more; 5 test files; D28, D32, D304, D365. |
 | Accelerated checkout (Apple Pay, Google Pay, Shop Pay) | Native. [page](https://help.shopify.com/en/manual/payments/shop-pay) | Full (was partial) | 4 |  | Stripe's Express Checkout Element (Apple Pay, Google Pay, Link, Klarna where Stripe offers them) is on the checkout page (D22) and, since D373, on the product page and in the cart: the area is a button until pressed, the press places the cart's order through `startCheckout()` and only then loads the element, and the wallet's address and the cart's delivery reach the order through `applySession()` (`express-checkout.int.test.ts`, a fake Stripe). The Payments page lists each wallet's state on the account and on each web address the store's shoppers pay on, with Stripe's reason (`WalletsCard`, `checkWalletDomains()`). Link is Stripe's saved-details wallet across merchants; there is no wallet of Kaizena Flow's own like Shop Pay. A product page's express payment pays for the whole cart. Evidence: `src/components/admin/payment-methods-card.tsx`, `src/components/admin/wallets-card.tsx`, `src/components/checkout-form.tsx` and 7 more; 3 test files; D22, D23, D291, D373. |
 | Integrated payments provider in the Nordics and EU | Native. [page](https://help.shopify.com/en/manual/payments/shopify-payments/supported-countries) | Full | 5 |  | Evidence: `src/server/connect.ts`, `src/lib/stripe-account.ts`, `src/server/stripe.ts` and 3 more; 4 test files; D16, D17, D20. |

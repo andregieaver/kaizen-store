@@ -565,6 +565,7 @@ export const shippingNb: ShippingMessages = {
     effectKinds: {
       hide_shipping: "Skjul leveringsvalg",
       rename_shipping: "Gi et leveringsvalg nytt navn",
+      order_delivery: "Vis leveringsvalg først",
       hide_payment_method: "Hold betalingsmåter utenfor",
       refuse: "Stopp bestillingen med en melding",
     },
@@ -573,6 +574,8 @@ export const shippingNb: ShippingMessages = {
     message: "Melding til kunden",
     otherLanguages: "På andre språk",
     choose: "Velg …",
+    shownFirst: "Vises først, i den rekkefølgen de er krysset av:",
+    orderHint: "Kryss av valgene som skal vises først, i den rekkefølgen du vil ha dem. Valget som er valgt fra start, er det samme til kunden velger.",
     cardsAlways: "Kort tilbys alltid.",
     fields: "Spørsmål i kassen",
     fieldsHint: "Stilles over kasseknappen. Svarene står på bestillingen og i eksporten av den.",

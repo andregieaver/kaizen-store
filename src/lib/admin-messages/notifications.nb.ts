@@ -877,6 +877,8 @@ export const notificationsNb: NotificationsMessages = {
       "customers:write": "Merke kunder",
       "discounts:read": "Lese rabattkoder",
       "discounts:write": "Lage rabattkoder",
+      "checkout:read": "Lese kasseregler og spørsmål",
+      "checkout:write": "Endre kasseregler og spørsmål",
     },
     problems: {
       name: "Gi nøkkelen et navn på 1 til 80 tegn.",

@@ -88,14 +88,14 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "partial"
     },
     "weight": 2,
-    "gap": "The checkout's layout is editable and testable (D113, D117, D148). Since D357 an owner adds questions the shopper answers above the checkout button (text or tick box, required or not, per language), kept on the order and shown to staff and in the export, and declarative rules hide or rename delivery options and leave payment methods out for a basket, falling back to the standard checkout when a rule is broken. Missing: reordering options, an Admin API route for the rules and questions, and UI extensions of a developer's own.",
-    "bucket": "C",
-    "wave": 9,
+    "gap": "The checkout's layout is editable and testable (D113, D117, D148). Since D357 an owner adds questions the shopper answers above the checkout button (text or tick box, required or not, per language), kept on the order and shown to staff and in the export, and declarative rules hide or rename delivery options and leave payment methods out for a basket, falling back to the standard checkout when a rule is broken. Since D399 a rule can also order the delivery options (`order_delivery`: the ones named first, the rest after, the option chosen at first unchanged), and an outside app reads and changes the rules and questions through the Admin API with the `checkout:read`/`checkout:write` scopes, through the Shipping page's own writers (`admin-api.int.test.ts`). Not built: UI extensions of a developer's own code in the checkout (no criterion asks for them; the pay routes run no outside script, D158).",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "An owner defines a checkout field (text or checkbox); the shopper fills it in at checkout and staff see the answer on the order.",
       "A sandboxed rule can hide or reorder shipping options or payment methods for a basket, tested with one rule per kind.",
@@ -114,14 +114,18 @@
         "src/server/checkout.ts",
         "src/server/delivery-options.ts",
         "src/app/admin/(gated)/[store]/settings/checkout/page.tsx",
-        "src/components/checkout-button.tsx"
+        "src/components/checkout-button.tsx",
+        "src/lib/admin-api.ts",
+        "src/server/admin-api.ts"
       ],
       "tests": [
         "src/lib/store-parts.test.ts",
         "e2e/ab-working-pages.spec.ts",
         "e2e/page-roles.spec.ts",
         "src/lib/checkout-rules.test.ts",
-        "src/server/checkout-rules.int.test.ts"
+        "src/server/checkout-rules.int.test.ts",
+        "src/server/admin-api.int.test.ts",
+        "src/lib/admin-api.test.ts"
       ],
       "untested": false
     },
@@ -132,9 +136,17 @@
       "D120",
       "D148",
       "D238",
-      "D357"
+      "D357",
+      "D399"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-29",
+        "from": "partial",
+        "to": "full",
+        "why": "The two missing parts the row named are built (D399): a rule that reorders delivery options (checkout-rules.test.ts and checkout-rules.int.test.ts, the cart and the order agreeing on what is charged) and Admin API routes for the rules and questions under checkout scopes (admin-api.int.test.ts), all run and passing. Questions, hiding, renaming and leaving out payment methods, and the fallback, were held already (D357)."
+      }
+    ]
   },
   {
     "id": "checkout.guest-checkout-and-optional-account",

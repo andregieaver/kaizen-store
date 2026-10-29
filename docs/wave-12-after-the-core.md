@@ -102,6 +102,9 @@ value), and the contract is an OpenAPI document at `/api/storefront/v1/openapi.j
 **Design.** An effect `order_delivery` (the options named first, the rest after in their own order) in `checkout-rules.ts` through
 `rulesOnOffer()`; Admin API routes `checkout_rules` and `checkout_fields` (read and write, scope `checkout`) over the same writers.
 
+**As built (D399).** As designed; the default stays the store's own first option, so ordering never changes what is charged before the
+shopper chooses. Pickup places are ordered too.
+
 ### F. The PSI's engineering follow-ups (D400)
 
 - REL-02: every remaining `console.error` in `src/server` moves to `log()`.

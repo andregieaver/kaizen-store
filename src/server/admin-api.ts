@@ -3,11 +3,13 @@ import "server-only";
 import { sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 
+import { db } from "@/db/client";
 import { isUuid, pageSize, type ApiErrorCode, type ApiRoute } from "@/lib/admin-api";
 import { createProductInput, updateProductInput } from "@/lib/product-tools";
 
 import type { ApiCaller } from "./api-tokens";
 import { audit } from "./auth";
+import { deleteCheckoutField, deleteCheckoutRule, listCheckoutFields, listCheckoutRules, saveCheckoutField, saveCheckoutRule, switchCheckoutField, switchCheckoutRule } from "./checkout-rules";
 import { saveDiscount } from "./discounts";
 import { adjustStock } from "./inventory";
 import { CARRIERS, getOrderAdmin, markSent, sendRefusalText } from "./order-admin";
@@ -528,6 +530,52 @@ export async function runApiRoute(caller: ApiCaller, route: ApiRoute, request: R
       if (!saved.ok) return fail("invalid", saved.problems.join(" "));
       await record(caller, "discount_created", {}, saved.id ? { type: "discount", id: saved.id } : undefined);
       return ok({ data: { id: saved.id } }, 201);
+    }
+    // Checkout rules and questions (D399): through the Shipping page's own writers, which audit each change in the token holder's name.
+    case "checkout.rules":
+      return ok({ data: (await listCheckoutRules(storeId)).map(({ skips, ...rule }) => ({ ...rule, skipped: skips })) });
+    case "checkout.fields":
+      return ok({ data: await listCheckoutFields(db(), storeId) });
+    case "checkout.rule_create":
+    case "checkout.field_create": {
+      const raw = await body(request);
+      const saved = route.name === "checkout.rule_create" ? await saveCheckoutRule(caller.member, null, raw) : await saveCheckoutField(caller.member, null, raw);
+      if (!saved.ok) return fail("invalid", saved.problems.join(" "));
+      await record(caller, route.name === "checkout.rule_create" ? "checkout_rule_made" : "checkout_field_made", {}, { type: route.name === "checkout.rule_create" ? "checkout_rule" : "checkout_field", id: saved.id });
+      return ok({ data: { id: saved.id } }, 201);
+    }
+    case "checkout.rule_update":
+    case "checkout.field_update": {
+      const raw = await body(request);
+      const rule = route.name === "checkout.rule_update";
+      const { enabled, ...rest } = raw;
+      if (enabled !== undefined && typeof enabled !== "boolean") return fail("invalid", "`enabled` is true or false.");
+      // A body of `enabled` alone switches it; anything else is the whole rule or question as made, its switch kept unless given.
+      if (Object.keys(rest).length > 0) {
+        const saved = rule ? await saveCheckoutRule(caller.member, route.id, rest) : await saveCheckoutField(caller.member, route.id, rest);
+        if (!saved.ok) return saved.problems.some((p) => / is gone\.$/.test(p)) ? fail("not_found", saved.problems.join(" ")) : fail("invalid", saved.problems.join(" "));
+      } else if (enabled === undefined) return fail("invalid", "Send the changes, or `enabled`.");
+      if (typeof enabled === "boolean") {
+        if (rule) {
+          if (!(await switchCheckoutRule(caller.member, route.id, enabled))) return fail("not_found", "No such checkout rule in this store.");
+        } else {
+          const exists = (await listCheckoutFields(db(), storeId)).some((f) => f.id === route.id);
+          if (!exists) return fail("not_found", "No such checkout question in this store.");
+          await switchCheckoutField(caller.member, route.id, enabled);
+        }
+      }
+      await record(caller, rule ? "checkout_rule_changed" : "checkout_field_changed", { enabled: enabled ?? null }, { type: rule ? "checkout_rule" : "checkout_field", id: route.id });
+      return ok({ data: { id: route.id } });
+    }
+    case "checkout.rule_delete":
+    case "checkout.field_delete": {
+      const rule = route.name === "checkout.rule_delete";
+      const exists = rule ? (await listCheckoutRules(storeId)).some((r) => r.id === route.id) : (await listCheckoutFields(db(), storeId)).some((f) => f.id === route.id);
+      if (!exists) return fail("not_found", rule ? "No such checkout rule in this store." : "No such checkout question in this store.");
+      if (rule) await deleteCheckoutRule(caller.member, route.id);
+      else await deleteCheckoutField(caller.member, route.id);
+      await record(caller, rule ? "checkout_rule_deleted" : "checkout_field_deleted", {}, { type: rule ? "checkout_rule" : "checkout_field", id: route.id });
+      return ok({ data: { id: route.id, deleted: true } });
     }
   }
 }

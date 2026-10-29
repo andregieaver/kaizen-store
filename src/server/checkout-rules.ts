@@ -76,7 +76,7 @@ async function ruleProblems(storeId: string, rule: Omit<CheckoutRule, "id">): Pr
     if (c.kind === "group" && c.ids.some((id) => !known.tiers.has(id))) problems.push("Choose customer groups of this store.");
   }
   const e = rule.effect;
-  if (e.kind === "hide_shipping" && e.options.some((o) => !known.options.has(o))) problems.push("Choose delivery options of this store.");
+  if ((e.kind === "hide_shipping" || e.kind === "order_delivery") && e.options.some((o) => !known.options.has(o))) problems.push("Choose delivery options of this store.");
   if (e.kind === "rename_shipping" && !known.options.has(e.option)) problems.push("Choose a delivery option of this store.");
   if (e.kind === "hide_payment_method" && e.methods.some((m) => !known.methods.has(m))) problems.push("Cards are always offered; choose other methods.");
   return [...new Set(problems)];

@@ -80,6 +80,8 @@ function blankEffect(kind: RuleEffect["kind"]): RuleEffect {
       return { kind, methods: [] };
     case "refuse":
       return { kind, message: EMPTY_WORDS };
+    case "order_delivery":
+      return { kind, options: [] };
   }
 }
 
@@ -295,6 +297,16 @@ export function RuleEditor({
               ))}
             </select>
             <WordsField value={effect.label} onChange={(label) => setEffect({ ...effect, label })} label={w.newName} locales={choices.locales} max={80} />
+          </>
+        )}
+        {effect.kind === "order_delivery" && (
+          <>
+            <Many choices={choices.options} chosen={effect.options} onChange={(options) => setEffect({ ...effect, options })} label={w.effectKinds.order_delivery} />
+            <p className="text-sm text-muted">
+              {effect.options.length > 0
+                ? `${w.shownFirst} ${effect.options.map((o) => choices.options.find((c) => c.id === o)?.label ?? o).join(", ")}`
+                : w.orderHint}
+            </p>
           </>
         )}
         {effect.kind === "hide_payment_method" && (

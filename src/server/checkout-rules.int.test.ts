@@ -103,6 +103,24 @@ describe("delivery options", () => {
     expect(row.label).toBe("Vanlig pakke");
   });
 
+  it("shows the options a rule orders first, keeps the store's own first chosen, and charges what is chosen (D399)", async () => {
+    const standard = await methodOf("Standard", 4900);
+    const express = await methodOf("Express", 9900);
+    const cartId = await cartOf(store, [["DEMO-MUG-WHITE", 1]]);
+    const before = await resolveDelivery(db(), store.storeId, cartId, NO);
+    await ruleOn({ name: "Express first", conditions: [], effect: { kind: "order_delivery", options: [`method:${express}`] } });
+    const after = await resolveDelivery(db(), store.storeId, cartId, NO);
+    expect(after?.offer.ship[0]?.id).toBe(express);
+    expect(after?.offer.ship.map((d) => d.id).sort()).toEqual(before?.offer.ship.map((d) => d.id).sort());
+    expect(after?.offer.default?.id).toBe(before?.offer.default?.id);
+    expect(after?.offer.ship.map((d) => d.id)).toContain(standard);
+    // The cart and the order still agree on what the basket's shipping costs.
+    const summary = await summaryOf(cartId);
+    const placed = await placeOrder({ storeId: store.storeId, market: NO }, cartId, {}, { customerId: null });
+    if (!placed.ok) throw new Error(placed.problem);
+    expect(placed.order.shippingMinor).toBe(summary.shipping);
+  });
+
   it("hiding every way to ship leaves the basket with nothing to ship it, as checkout refuses", async () => {
     await ruleOn({ name: "No flat", conditions: [], effect: { kind: "hide_shipping", options: ["flat"] } });
     const cartId = await cartOf(store, [["DEMO-MUG-WHITE", 1]]);

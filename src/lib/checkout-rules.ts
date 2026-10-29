@@ -35,9 +35,11 @@ export type RuleEffect =
   | { kind: "hide_shipping"; options: string[] }
   | { kind: "rename_shipping"; option: string; label: Words }
   | { kind: "hide_payment_method"; methods: string[] }
-  | { kind: "refuse"; message: Words };
+  | { kind: "refuse"; message: Words }
+  /** Shows these options first, in this order, the rest after in their own (D399); never changes which is chosen until the shopper chooses. */
+  | { kind: "order_delivery"; options: string[] };
 
-export const EFFECT_KINDS = ["hide_shipping", "rename_shipping", "hide_payment_method", "refuse"] as const;
+export const EFFECT_KINDS = ["hide_shipping", "rename_shipping", "order_delivery", "hide_payment_method", "refuse"] as const;
 
 export type CheckoutRule = { id: string; name: string; conditions: RuleCondition[]; effect: RuleEffect };
 
@@ -74,13 +76,15 @@ export type RuleOutcome = {
   hiddenMethods: string[];
   /** The first rule that refuses the basket, with its words in the basket's language. */
   refusal: { ruleId: string; message: string } | null;
+  /** The options to show first, in order, from the first rule that orders them (D399); null when none does. */
+  order: string[] | null;
   /** The rules whose conditions held and whose effect counts. */
   applied: string[];
   /** The rules left out, and why. */
   skipped: { ruleId: string; reason: SkipReason }[];
 };
 
-export const NO_RULES: RuleOutcome = { hidden: new Set(), renamed: new Map(), hiddenMethods: [], refusal: null, applied: [], skipped: [] };
+export const NO_RULES: RuleOutcome = { hidden: new Set(), renamed: new Map(), hiddenMethods: [], refusal: null, order: null, applied: [], skipped: [] };
 
 /** A shipping option's key, as rules name it: `flat`, `method:{id}`, `pickup:{id}` or `local:{id}`. */
 export const optionKey = (d: Pick<OfferedDelivery, "kind" | "id">): string => (d.kind === "flat" ? "flat" : `${d.kind}:${d.id}`);
@@ -127,7 +131,7 @@ function goneIn(rule: CheckoutRule, known: KnownIds): boolean {
     if (c.kind === "group" && c.ids.some((id) => !known.tiers.has(id))) return true;
   }
   const e = rule.effect;
-  if (e.kind === "hide_shipping") return e.options.some((o) => !known.options.has(o));
+  if (e.kind === "hide_shipping" || e.kind === "order_delivery") return e.options.some((o) => !known.options.has(o));
   if (e.kind === "rename_shipping") return !known.options.has(e.option);
   if (e.kind === "hide_payment_method") return e.methods.some((m) => !known.methods.has(m));
   return false;
@@ -149,6 +153,7 @@ export function applyCheckoutRules(rules: readonly CheckoutRule[], facts: Checko
   const renamed = new Map<string, string>();
   const methods = new Set<string>();
   let refusal: RuleOutcome["refusal"] = null;
+  let order: string[] | null = null;
   const applied: string[] = [];
   const skipped: RuleOutcome["skipped"] = [];
   for (const rule of rules) {
@@ -168,13 +173,15 @@ export function applyCheckoutRules(rules: readonly CheckoutRule[], facts: Checko
         if (!renamed.has(e.option)) renamed.set(e.option, wordsIn(e.label, locale).slice(0, FIELD_LABEL_MAX));
       } else if (e.kind === "hide_payment_method") {
         for (const m of e.methods) if (m !== ALWAYS_PAID_BY) methods.add(m);
+      } else if (e.kind === "order_delivery") {
+        if (!order) order = [...new Set(e.options)];
       } else if (!refusal) refusal = { ruleId: rule.id, message: wordsIn(e.message, locale).slice(0, REFUSAL_MAX) };
       applied.push(rule.id);
     } catch {
       skipped.push({ ruleId: rule?.id ?? "", reason: "unreadable" });
     }
   }
-  return { hidden, renamed, hiddenMethods: [...methods].sort(), refusal, applied, skipped };
+  return { hidden, renamed, hiddenMethods: [...methods].sort(), refusal, order, applied, skipped };
 }
 
 /** A delivery as a rule renamed it: the label the page and the order show (`renamed`); null where no rule renamed it. */
@@ -185,7 +192,7 @@ export type RenamedDelivery = OfferedDelivery & { renamed?: string };
  * new label, and the default the cheapest that is left. Hiding every way to ship leaves the basket with `no_shipping`, as a store with none.
  */
 export function rulesOnOffer(offer: DeliveryOffer, outcome: RuleOutcome): DeliveryOffer {
-  if (outcome.hidden.size === 0 && outcome.renamed.size === 0) return offer;
+  if (outcome.hidden.size === 0 && outcome.renamed.size === 0 && !outcome.order) return offer;
   const keep = (d: OfferedDelivery) => !outcome.hidden.has(optionKey(d));
   const name = (d: OfferedDelivery): RenamedDelivery => {
     const label = outcome.renamed.get(optionKey(d));
@@ -199,12 +206,24 @@ export function rulesOnOffer(offer: DeliveryOffer, outcome: RuleOutcome): Delive
   return {
     ...offer,
     status: ship.length > 0 ? "ok" : "no_shipping",
-    ship,
-    pickups,
+    // Ordering moves options on the page only: the default stays the first left in the store's own order (D399), so a rule that orders never
+    // chooses another option, or another price, for the shopper.
+    ship: orderedBy(ship, outcome.order),
+    pickups: orderedBy(pickups, outcome.order),
     local,
     localBelowMinimum: local ? null : offer.localBelowMinimum,
     default: ship[0] ?? null,
   };
+}
+
+/** Options with the ones a rule names first, in its order, and the rest after in their own order (D399). */
+export function orderedBy<T extends OfferedDelivery>(options: T[], order: readonly string[] | null): T[] {
+  if (!order || order.length === 0) return options;
+  const place = (d: T) => {
+    const at = order.indexOf(optionKey(d));
+    return at === -1 ? order.length : at;
+  };
+  return options.map((d, i) => ({ d, i })).sort((a, b) => place(a.d) - place(b.d) || a.i - b.i).map(({ d }) => d);
 }
 
 /** The label a delivery shows: a rule's new name, else its own. */

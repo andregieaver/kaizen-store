@@ -110,6 +110,25 @@ describe("rulesOnOffer", () => {
     expect(out.pickups).toEqual([]);
     expect(out.default?.id).toBe("m2");
   });
+  it("shows the options a rule orders first, in its order, and keeps the default as it was (D399)", () => {
+    const three: DeliveryOffer = { ...offer, ship: [...offer.ship, { kind: "method", id: "m3", label: "Night", position: 2, rate, priceMinor: 19900, estimate: null }] };
+    const ordered = applyCheckoutRules([rule("o", { effect: { kind: "order_delivery", options: ["method:m3", "method:m2"] } })], facts, { ...known, options: new Set([...known.options, "method:m3"]) }, "en");
+    expect(ordered.order).toEqual(["method:m3", "method:m2"]);
+    const out = rulesOnOffer(three, ordered);
+    expect(out.ship.map((d) => d.id)).toEqual(["m3", "m2", "m1"]);
+    expect(out.default?.id).toBe("m1");
+    // The first ordering rule stands; a rule naming an option gone is skipped.
+    const two = applyCheckoutRules(
+      [rule("o1", { effect: { kind: "order_delivery", options: ["method:m2"] } }), rule("o2", { effect: { kind: "order_delivery", options: ["method:m1"] } })],
+      facts,
+      known,
+      "en",
+    );
+    expect(two.order).toEqual(["method:m2"]);
+    const gone = applyCheckoutRules([rule("g", { effect: { kind: "order_delivery", options: ["method:nope"] } })], facts, known, "en");
+    expect(gone.order).toBeNull();
+    expect(gone.skipped).toEqual([{ ruleId: "g", reason: "gone" }]);
+  });
   it("leaves nothing to ship when every way is hidden", () => {
     const out = rulesOnOffer(offer, { ...applyCheckoutRules([], facts, known, "en"), hidden: new Set(["method:m1", "method:m2"]) });
     expect(out.status).toBe("no_shipping");
