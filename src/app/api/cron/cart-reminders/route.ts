@@ -27,6 +27,7 @@ import { invoiceJobs } from "@/server/invoice-issue";
 import { readDueLegalSources } from "@/server/legal-sources";
 import { runLegalUpkeep, runLegalWrites } from "@/server/legal-writer";
 import { runPaymentJobs } from "@/server/payment-disputes";
+import { keepStripeWebhooksCurrent } from "@/server/stripe-endpoints";
 import { pruneReplications } from "@/server/replicate-store";
 import { runReturnJobs } from "@/server/return-jobs";
 import { pruneFormSubmissions } from "@/server/forms";
@@ -138,6 +139,8 @@ async function dispatch() {
     analyticsAlerts: () => sendAnalyticsAlertEmails(),
     // Payments (D288): what a captured Stripe payment was, for any the reply missed, and disputes whose evidence is due within three days.
     payments: () => runPaymentJobs(),
+    // Kaizena Flow's Stripe endpoints kept at the site's own address: Stripe follows no redirect (consolidation, 29 October 2026).
+    stripeWebhooks: () => keepStripeWebhooksCurrent(),
     // The AI manager's follow-ups (PSI AGT-04): a few due ones given back to it, in the asker's name, and the asker emailed.
     followUps: () => runFollowUps(),
     // The autopilot's daily digests and weekly reports (D309), to the people whose plans ran lately.

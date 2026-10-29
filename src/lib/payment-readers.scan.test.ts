@@ -24,6 +24,7 @@ const READERS: Record<string, { count: number; reason: string }> = {
   "src/server/dac7.ts": { count: 2, reason: "a host's orders are paid through Stripe on the host's account (D71); a draft order has no host" },
   "src/server/host-payments.ts": { count: 3, reason: "a host's payments and commissions are Stripe's (D71); a draft order has no host" },
   "src/server/checkout.ts": { count: 3, reason: "closes the Stripe sessions or Mollie payments of an order waiting for payment (D292); a manual payment has no session" },
+  "src/server/stripe-endpoints.ts": { count: 2, reason: "reads `platform_webhooks`, Kaizena Flow's own endpoints at Stripe" },
   "src/server/store-closure.ts": { count: 1, reason: "counts pending Stripe sessions that closing a store must wait for" },
   "src/server/privacy-erasure.ts": { count: 1, reason: "closes pending Stripe sessions before an unpaid order is cancelled" },
   "src/server/draft-pay.ts": { count: 3, reason: "the draft's pay link opens, counts and closes Stripe sessions" },
