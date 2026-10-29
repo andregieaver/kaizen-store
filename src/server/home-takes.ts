@@ -22,6 +22,7 @@ import { audit } from "./auth";
 import { copyToLibrary, libraryFilesByUrl, type LibraryFile } from "./media-library";
 import { pageRulesProblem } from "./page-rules";
 import { starterPreviewHref } from "./store-starters";
+import { refreshStoreById } from "./stores";
 import type { TemplateDeps } from "./templates";
 import { carryTextStyles } from "./text-styles";
 
@@ -207,6 +208,7 @@ export async function takePackHome(accountId: string, storeId: string, packKey: 
   // The text styles its words wear come with it (D393); a failure leaves the words as they are, unstyled.
   await carryTextStyles({ id: accountId }, placed.sourceId, storeId, placed.content);
   await audit(accountId, storeId, "store.front_page_from_pack", { pack: pack.key, page: made.pageId, previous: made.previous }, { target: { type: "page", id: made.pageId } });
+  await refreshStoreById(storeId);
   return { ok: true, pageId: made.pageId, notes: placed.notes };
 }
 
@@ -261,6 +263,7 @@ export async function undoHomeTake(accountId: string, storeId: string, takeId: s
   });
   if (!result) return refuse("There is nothing to put back.");
   await audit(accountId, storeId, "store.front_page_put_back", { take: takeId, page: result.copy, front: result.front });
+  await refreshStoreById(storeId);
   return { ok: true, messages: result.messages };
 }
 

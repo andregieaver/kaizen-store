@@ -6,44 +6,22 @@ import { describe, expect, it } from "vitest";
 /**
  * A change to a store reaches its pages only when `getStore()`'s cache tag is refreshed (`storeTag(slug)`, PSI 2026-10-24 DATA-02):
  * a module that writes `commerce.stores` refreshes it itself (`refreshTag(storeTag(slug))`, which works from an action, a job and
- * the AI manager alike) or is listed below. The list is the modules that relied on their callers when the check began; it only
+ * the AI manager alike, or `refreshStoreById()` where it knows only the id) or is listed below. The list is the modules that relied on their callers when the check began; it only
  * shrinks: a listed module that now refreshes or no longer writes fails until it is taken off, and a new writer is never added.
  */
 
 const ROOT = process.cwd();
 const WRITES_STORES = /\b(update|insert\s+into)\s+commerce\.stores\b/i;
 /** A refresh of the store's tag, directly or through the helpers that include it. */
-const REFRESHES = /\bstoreTag\(|\bstoreTags\(|\bdesignTags\(/;
+const REFRESHES = /\bstoreTag\(|\bstoreTags\(|\bdesignTags\(|\brefreshStoreById\(/;
 /** Test support writes stores to arrange a case; nothing is cached there. */
 const TEST_SUPPORT = /(fixture|test-support)\.ts$/;
 
 /** Writers whose callers (the server action or tool that runs them) refresh the tag. Take a module off when it refreshes itself. */
 const REFRESHED_BY_CALLERS = new Set([
-  "src/server/b2b.ts",
-  "src/server/bookings.ts",
-  "src/server/cart-reminders.ts",
-  "src/server/cart.ts",
-  "src/server/demo-stores.ts",
-  "src/server/domain-admin.ts",
-  "src/server/domain-dns.ts",
-  "src/server/fonts.ts",
-  "src/server/home-takes.ts",
-  "src/server/localization.ts",
-  "src/server/navigation.ts",
-  "src/server/pages.ts",
-  "src/server/product-layouts.ts",
-  "src/server/seo.ts",
-  "src/server/setup.ts",
-  "src/server/site-cookies.ts",
-  "src/server/site-css.ts",
-  "src/server/site-layouts.ts",
-  // The Shopping agents switch (D353): its action refreshes the store.
-  "src/server/shopping-agent-settings.ts",
-  "src/server/standing-orders.ts",
+  // `ensureStoreRoles()` runs while the Team and Roles pages render, where a tag cannot be refreshed, and it writes only
+  // `role_templates_offered`, which `getStore()` does not read.
   "src/server/store-roles.ts",
-  "src/server/store-starters.ts",
-  "src/server/themes.ts",
-  "src/server/work-settings.ts",
 ]);
 
 function sources(dir: string): string[] {

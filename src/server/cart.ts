@@ -24,6 +24,8 @@ import { audit, type Membership } from "./auth";
 import { getCustomer } from "./customers";
 import { LIST_PRICED, STORE_AUDIENCE, offeredTo, plansOffered } from "./product-conditions";
 import { checkRange, linePrice, rangePricing } from "./ranges";
+import { refreshTag } from "./refresh";
+import { storeTag } from "./stores";
 import { checkCartVatNumber, type CartVatDeps, type CartVatOutcome } from "./vat-checks";
 
 /** Where a cart belongs: one market of one store. */
@@ -755,4 +757,5 @@ async function otherRhythm(tx: Tx, cartId: string, sellingPlanId: string): Promi
 export async function setOpenCartOnAdd({ account, store }: Membership, enabled: boolean): Promise<void> {
   await db().execute(sql`update commerce.stores set open_cart_on_add = ${enabled} where id = ${store.id}::uuid`);
   await audit(account.id, store.id, "store.open_cart_on_add", { enabled });
+  refreshTag(storeTag(store.slug));
 }

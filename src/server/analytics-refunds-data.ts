@@ -1,6 +1,7 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 
 import { db } from "@/db/client";
 import { safeRatio } from "@/lib/analytics-core";
@@ -12,6 +13,7 @@ import { mainCurrency } from "@/lib/markets";
 import { CUSTOMER_JOIN, CUSTOMER_KEY, dayStart, HAS_CUSTOMER, inPeriod, NOT_EDIT_REFUND, num, PAID, type Row, soldIn, toMainOne } from "./analytics-sql";
 import { setBasedReplica as setBased } from "./analytics-totals";
 import type { Store } from "./stores";
+import { checkedRows, col } from "./typed-rows";
 
 /**
  * The refunds drill-down (D152, docs/analytics.md): what was given back, how that compares with what was sold, why, for which
@@ -184,18 +186,22 @@ const rated = (store: Store, currency: string): boolean => canConvert(currency.t
 type Group = { n: number; orders: number; value: number };
 
 /** Refunds by currency, and by market, with the number of different orders. */
-async function readTotals(store: Store, period: AnalyticsPeriod): Promise<{ byCurrency: Row[]; byMarket: Row[] }> {
+/** A currency's (or a market's in a currency) refunds: counted, and their value in minor units (CODE-02: money reads are checked). */
+const REFUND_TOTAL = z.object({ currency: col.currency, n: col.int, orders: col.int, value: col.minorOrNull });
+const MARKET_REFUND_TOTAL = REFUND_TOTAL.extend({ market: col.text });
+
+async function readTotals(store: Store, period: AnalyticsPeriod) {
   const [byCurrency, byMarket] = await Promise.all([
     setBased<Row>(sql`
       with rf as (${refundsOf(store, period)})
       select trim(currency) as currency, count(*)::int as n, count(distinct order_id)::int as orders, sum(value) as value
       from rf group by 1
-    `),
+    `).then((rows) => checkedRows(REFUND_TOTAL, rows)),
     setBased<Row>(sql`
       with rf as (${refundsOf(store, period)})
       select trim(market) as market, trim(currency) as currency, count(*)::int as n, count(distinct order_id)::int as orders, sum(value) as value
       from rf group by 1, 2
-    `),
+    `).then((rows) => checkedRows(MARKET_REFUND_TOTAL, rows)),
   ]);
   return { byCurrency, byMarket };
 }

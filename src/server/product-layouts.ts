@@ -11,6 +11,7 @@ import { CATALOG_TAG, catalogTag } from "./catalog";
 import { siteTests, siteVersionContent, type SiteTest } from "./experiments";
 import { withPageAlts } from "./media-alts";
 import { pagesTag } from "./pages";
+import { refreshStoreById } from "./stores";
 import { termsTag } from "./taxonomy";
 
 type Row = Record<string, unknown>;
@@ -161,5 +162,6 @@ export async function assignLayout(
     `);
   });
   await audit(account.id, storeId, "product_layout.assigned", { layoutId, standard: choice.standard, terms: choice.termIds.length });
+  await refreshStoreById(storeId);
   return { ok: true };
 }

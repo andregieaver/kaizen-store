@@ -14,6 +14,8 @@ import {
 import type { ReadinessProblem, SellerDetails } from "@/lib/work-vat";
 
 import { audit, type Membership } from "./auth";
+import { refreshTag } from "./refresh";
+import { storeTag } from "./stores";
 import { refreshDraftInvoices } from "./work-draft-sync";
 import { problem, workGuard, zodProblems, type WorkResult } from "./work-errors";
 import { can } from "@/lib/permissions";
@@ -42,6 +44,7 @@ export async function setWorkModule({ account, store }: Membership, enabled: boo
     where id = ${store.id}::uuid
   `);
   await audit(account.id, store.id, enabled ? "work.enabled" : "work.disabled", {});
+  refreshTag(storeTag(store.slug));
 }
 
 // --- Settings ------------------------------------------------------------------

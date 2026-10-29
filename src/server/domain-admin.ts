@@ -5,6 +5,8 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 
 import { audit, type Account } from "./auth";
+import { refreshTag } from "./refresh";
+import { storeTag } from "./stores";
 export { domainsPublic } from "./domain-purchases";
 
 type Row = Record<string, unknown>;
@@ -38,6 +40,7 @@ export async function setStoreDomainBuying(account: Account, slug: string, open:
   `);
   if (rows.length === 0) return { ok: false, problems: [`There is no store at ${slug}.`] };
   await audit(account.id, String(rows[0].id), "platform.domain_buying_set", { open });
+  refreshTag(storeTag(slug.trim().toLowerCase()));
   return { ok: true };
 }
 

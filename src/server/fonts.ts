@@ -12,6 +12,7 @@ import { siteFontsSchema, type SiteFonts } from "@/lib/fonts-schema";
 import rows from "@/lib/fonts/google-fonts.json";
 
 import { audit, type Account } from "./auth";
+import { refreshStoreById } from "./stores";
 
 /**
  * Google Fonts, self-hosted (D59): the first time a site uses a family,
@@ -238,5 +239,6 @@ export async function saveSiteFonts(
     `);
   }
   await audit(account.id, storeId, `${storeId === null ? "platform" : "store"}.fonts_updated`, fonts);
+  if (storeId !== null) await refreshStoreById(storeId);
   return { ok: true, fonts };
 }

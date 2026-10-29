@@ -18,6 +18,7 @@ import { audit, type Account } from "./auth";
 import { keepLookVersion } from "./look-versions";
 import { platformTheme } from "./platform-navigation";
 import { findFont, installFonts } from "./fonts";
+import { refreshStoreById } from "./stores";
 
 /**
  * A store's design (D60): the theme its storefront shows (`stores.theme`)
@@ -93,6 +94,7 @@ export async function saveStoreTheme(
     await keepLookVersion(tx, { store: storeId, kind, theme, account: account.id });
   });
   await audit(account.id, storeId, "store.theme_updated", { base: theme.base, savedId: theme.savedId });
+  await refreshStoreById(storeId);
   return { ok: true, theme };
 }
 
@@ -257,5 +259,6 @@ export async function deleteSavedTheme(account: Account, storeId: string, id: st
     where id = ${storeId}::uuid and theme ->> 'savedId' = ${id}
   `);
   await audit(account.id, storeId, "store.saved_theme_deleted", { id, name: row.name });
+  await refreshStoreById(storeId);
   return true;
 }

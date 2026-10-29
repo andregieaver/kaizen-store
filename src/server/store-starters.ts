@@ -31,7 +31,7 @@ import { normaliseFeatures, type FeatureId } from "@/lib/store-features";
 
 import { audit, type Account } from "./auth";
 import { setFeatures } from "./store-features";
-import { getStore, templateStoreSlug } from "./stores";
+import { getStore, refreshStoreById, templateStoreSlug } from "./stores";
 import { askForThemeShots } from "./theme-shots";
 
 /**
@@ -233,6 +233,7 @@ export async function createStarter(
   await audit(admin.id, created.storeId, "platform.starter_created", { starter: created.id, slug: input.slug, category }, {
     target: { type: "store_starter", id: created.id },
   });
+  await refreshStoreById(created.storeId);
   return { ok: true, id: created.id, slug: input.slug };
 }
 
@@ -420,6 +421,7 @@ export async function giveThemeContent(admin: Account, presetId: string, sourceI
   await audit(admin.id, made.storeId, "platform.design_preset_content", { preset: presetId, starter: made.id, from: sourceId }, {
     target: { type: "design_preset", id: presetId },
   });
+  await refreshStoreById(made.storeId);
   return { ok: true, id: made.id };
 }
 
@@ -524,6 +526,7 @@ export async function deleteStarter(admin: Account, id: string): Promise<Starter
     return { ok: false, problems: [starterProblem(error)] };
   }
   await audit(admin.id, starter.storeId, "platform.starter_deleted", { starter: id, title: starter.title }, { target: { type: "store_starter", id } });
+  await refreshStoreById(starter.storeId);
   return { ok: true };
 }
 

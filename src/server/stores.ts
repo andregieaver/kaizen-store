@@ -3,7 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 
-import { readDb } from "@/db/client";
+import { db, readDb } from "@/db/client";
 import { isAccountsMode, type AccountsMode } from "@/lib/customer-accounts";
 import { effectiveAudience, parseStoreAudience, type StoreAudience } from "@/lib/b2b";
 import type { StoreCurrency } from "@/lib/currency";
@@ -155,9 +155,19 @@ export type Country = { code: string; name: string; currency: string; inEu: bool
 export const storeTag = (slug: string) => `store:${slug}`;
 export const TEMPLATE_TAG = "template-store";
 
+import { refreshTag } from "./refresh";
 import { platformModes } from "./stripe";
 
 type Row = Record<string, unknown>;
+
+/**
+ * Refreshes a store's cache tag by its id (PSI DATA-02): for a writer of `commerce.stores` that knows the store by its id alone. Call it after
+ * the write's transaction has committed, so the page drawn again reads the new row.
+ */
+export async function refreshStoreById(storeId: string): Promise<void> {
+  const [row] = await db().execute<Row>(sql`select slug from commerce.stores where id = ${storeId}::uuid`);
+  if (row) refreshTag(storeTag(String(row.slug)));
+}
 
 const text = (value: unknown): string | null =>
   value === null || value === undefined ? null : String(value);

@@ -8,6 +8,7 @@ import { describeRecord, recordKey, type DnsRecord, type DnsRecordInput } from "
 
 import { audit, type Account } from "./auth";
 import { heldBy, holderColumns, holderOf, storeOf, type HolderRef } from "./domain-holder";
+import { refreshStoreById } from "./stores";
 import { domainsConfigured } from "./vercel";
 import { vercelDns, type DnsHostApi } from "./vercel-dns";
 
@@ -248,6 +249,7 @@ export async function setDnsAuto(account: Account, holder: HolderRef, on: boolea
   if (h.kind === "store") await db().execute(sql`update commerce.stores set domain_dns_auto = ${on} where id = ${h.storeId}::uuid`);
   else await db().execute(sql`update commerce.accounts set domain_dns_auto = ${on} where id = ${h.accountId}::uuid`);
   await audit(account.id, storeOf(h), "store.domain_dns_auto_set", { on });
+  if (h.kind === "store") await refreshStoreById(h.storeId);
 }
 
 /**

@@ -7,6 +7,7 @@ import { cssProblem } from "@/lib/custom-css";
 
 import { audit, type Account } from "./auth";
 import { keepCssVersion } from "./css-versions";
+import { refreshStoreById } from "./stores";
 
 /**
  * An owner's own CSS for every page of its site (D100): a store's
@@ -31,5 +32,6 @@ export async function saveSiteCss(
     await keepCssVersion(tx, { owner, css, account: account.id });
   });
   await audit(account.id, owner, owner === null ? "platform.css_saved" : "store.css_saved", { length: css.length });
+  if (owner !== null) await refreshStoreById(owner);
   return { ok: true };
 }

@@ -46,7 +46,14 @@ export class RowShapeError extends Error {
 
 /** Every row of a query, each checked against `schema`. */
 export async function typedRows<S extends z.ZodType>(schema: S, query: SQLWrapper, executor: Executor = db()): Promise<z.output<S>[]> {
-  const rows = await executor.execute(query);
+  return checkedRows(schema, await executor.execute(query));
+}
+
+/**
+ * Rows another runner fetched (the analytics' planner-guarded `setBased()`, a snapshot's read), each checked against `schema` as
+ * `typedRows()` checks its own.
+ */
+export function checkedRows<S extends z.ZodType>(schema: S, rows: readonly unknown[]): z.output<S>[] {
   return rows.map((row, index) => {
     const parsed = schema.safeParse(row);
     if (!parsed.success) throw new RowShapeError(parsed.error.issues, index);

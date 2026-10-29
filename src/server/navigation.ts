@@ -8,7 +8,9 @@ import { z } from "zod";
 import { navigationSchema, type StoreNavigation } from "@/lib/navigation";
 
 import { audit, type Membership } from "./auth";
+import { refreshTag } from "./refresh";
 import type { SaveResult } from "./settings";
+import { storeTag } from "./stores";
 
 type Row = Record<string, unknown>;
 
@@ -73,5 +75,6 @@ export async function saveNavigation({ account, store }: Membership, input: unkn
     headerMenuId,
     footerMenuId,
   });
+  refreshTag(storeTag(store.slug));
   return { ok: true };
 }

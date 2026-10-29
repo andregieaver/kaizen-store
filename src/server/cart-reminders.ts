@@ -23,8 +23,10 @@ import { siteUrl } from "@/lib/site";
 
 import { audit, type Membership } from "./auth";
 import { sendEmail, type SendOutcome } from "./email";
+import { refreshTag } from "./refresh";
 import type { SaveResult } from "./settings";
 import { emailFooter, storeById } from "./shopper-emails";
+import { storeTag } from "./stores";
 
 type Row = Record<string, unknown>;
 
@@ -110,6 +112,7 @@ export async function setCartRemindersEnabled({ account, store }: Membership, en
     }
   });
   await audit(account.id, store.id, enabled ? "cart_reminders.enabled" : "cart_reminders.disabled", {});
+  refreshTag(storeTag(store.slug));
 }
 
 /** Creates a reminder (id null) or changes one; every language the store sells in needs its text. */

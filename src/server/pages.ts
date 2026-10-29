@@ -37,7 +37,7 @@ import { pageRulesProblem, payPageProblem } from "./page-rules";
 import { keepVersion } from "./page-versions";
 import { listTextStyles } from "./text-styles";
 import { scopedTermIds } from "./taxonomy";
-import { getStore } from "./stores";
+import { getStore, refreshStoreById } from "./stores";
 import { keepOwnRuleIds } from "./visibility";
 import { ownMarkets } from "@/lib/page-markets";
 
@@ -688,6 +688,7 @@ export async function setFrontPage(
   }
   await db().execute(sql`update commerce.stores set front_page_id = ${pageId}::uuid where id = ${storeId}::uuid`);
   await audit(account.id, storeId, "store.front_page_changed", { page: pageId });
+  await refreshStoreById(storeId);
   return { ok: true };
 }
 
@@ -716,6 +717,7 @@ export async function setProductsPage(
   }
   await db().execute(sql`update commerce.stores set products_page_id = ${pageId}::uuid where id = ${storeId}::uuid`);
   await audit(account.id, storeId, "store.products_page_changed", { page: pageId });
+  await refreshStoreById(storeId);
   return { ok: true };
 }
 

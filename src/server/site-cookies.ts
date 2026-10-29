@@ -20,6 +20,7 @@ import { getRecommendSettings } from "./recommend-settings";
 import { getChatAgent } from "./chat-agent";
 import { usesRememberedModals } from "./page-modals";
 import { referralPublicSettings } from "./referrals";
+import { refreshStoreById } from "./stores";
 
 type Row = Record<string, unknown>;
 
@@ -191,6 +192,7 @@ export async function saveTracking(
   await audit(account.id, storeId, `${storeId === null ? "platform" : "store"}.tracking_updated`, {
     tools: Object.keys(parsed.data),
   });
+  if (storeId !== null) await refreshStoreById(storeId);
   return { ok: true, tracking: parsed.data };
 }
 
@@ -209,5 +211,6 @@ export async function saveCustomCode(
   await audit(account.id, storeId, "store.custom_code_updated", {
     places: Object.fromEntries(Object.entries(parsed.data).map(([place, snippet]) => [place, { category: snippet.category, length: snippet.code.length }])),
   });
+  await refreshStoreById(storeId);
   return { ok: true, code: parsed.data };
 }

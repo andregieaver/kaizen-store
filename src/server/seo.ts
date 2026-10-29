@@ -3,6 +3,7 @@ import "server-only";
 import { languageAlternates, platformPath, type PlatformLang } from "@/lib/platform-lang";
 import { listIndexedEntries } from "./content-site";
 import { getPlatformLangs } from "./platform-navigation";
+import { refreshTag } from "./refresh";
 import { agentEndpoint, agentProblem, agentProfileUrl } from "./shopping-agents";
 import { sql } from "drizzle-orm";
 import type { Metadata } from "next";
@@ -50,7 +51,7 @@ import { listPublishedPages } from "./pages";
 import { pageInMarket } from "@/lib/page-markets";
 import { getPlatformPageRoles } from "./platform-roles";
 import type { SaveResult } from "./settings";
-import { getOpenStore, type Store } from "./stores";
+import { getOpenStore, type Store, storeTag } from "./stores";
 import { termsTag } from "./taxonomy";
 import { OFFERED } from "./product-conditions";
 
@@ -126,6 +127,7 @@ export async function saveStoreSeo({ account, store }: Membership, input: unknow
     update commerce.stores set seo = ${JSON.stringify(checked.seo)}::jsonb where id = ${store.id}::uuid
   `);
   await audit(account.id, store.id, "store.seo_updated", { hidden: checked.seo.hidden });
+  refreshTag(storeTag(store.slug));
   return { ok: true };
 }
 

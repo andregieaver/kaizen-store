@@ -2,6 +2,7 @@ import "server-only";
 
 import { analyticsWords, countText } from "@/lib/analytics-words";
 import { sql, type SQL, type SQLWrapper } from "drizzle-orm";
+import { z } from "zod";
 
 import { db, replicaDb } from "@/db/client";
 import { paymentFees, shippingCostsFor } from "@/lib/analytics-finance";
@@ -35,6 +36,7 @@ import { mainCurrency } from "@/lib/markets";
 import { getAnalyticsSettings, type StoredAnalyticsSettings } from "./analytics-settings";
 import { dayKey, dayOf, dayStart, GIFT_CARD_LINE, inMain, inPeriod, NOT_EDIT_REFUND, num, PAID, type Row, SOLD_AT, soldIn, toMainOne, VOUCHER_NET } from "./analytics-sql";
 import type { Store } from "./stores";
+import { checkedRows, col, typedRows } from "./typed-rows";
 
 /**
  * The totals every analytics page starts from (D152, docs/analytics.md): one period's figures, the same figures per bucket
@@ -294,6 +296,9 @@ async function firstOrderDays(store: Store, from: string): Promise<FirstDays> {
   return new Map(rows.map((r) => [String(r.k), dayKey(r.first_day)]));
 }
 
+/** A refund's or a lost dispute's sum per bucket and currency (CODE-02): whether the store converts the currency, how many, how much without VAT. */
+const MONEY_BY_BUCKET = z.object({ bk: col.text, currency: col.currency, converts: col.bool, n: col.minor, amount: col.minorOrNull });
+
 type Loaded = {
   bundles: Map<string, Bundle>;
   /** Paid orders and refunds left out for want of a rate, per currency (every bucket together). */
@@ -432,7 +437,7 @@ async function loadBundles(
 
   // Succeeded refunds by their own date, each scaled to without VAT by its order's share; a currency with no rate is counted.
   const refundDay = dayOf(store, sql`r.created_at`);
-  const refunds = setBased<Row>(sql`
+  const refunds = setBased(sql`
     select (${bucketOf(grain, period, refundDay)})::text as bk, rp.currency::text as currency, (rp.currency = any(${known})) as converts, count(*) as n,
       -- An order's gift cards are not in its revenue (D300 F4), so a refund of it is shared by the rest.
       sum(round(r.amount_minor::numeric * greatest(o.total_minor - o.tax_minor - ${VOUCHER_NET}, 0) / nullif(o.total_minor, 0))) as amount
@@ -442,12 +447,12 @@ async function loadBundles(
     where r.store_id = ${id}::uuid and r.status = 'succeeded' and ${NOT_EDIT_REFUND} and ${inPeriod(store, sql`r.created_at`, period)}
       and o.copied_from is null and o.host_id is null
     group by 1, 2, 3
-  `);
+  `).then((rows) => checkedRows(MONEY_BY_BUCKET, rows));
 
   // Lost disputes (D288) by the day they closed: the amount scaled to without VAT by the order's share, as refunds are, plus the provider's fee where known
   // (no VAT on a fee). Copied orders and hosts' orders never count; Stripe test-mode disputes neither.
   const disputeDay = dayOf(store, sql`d.closed_at`);
-  const disputes = setBased<Row>(sql`
+  const disputes = setBased(sql`
     select (${bucketOf(grain, period, disputeDay)})::text as bk, d.currency::text as currency, (d.currency = any(${known})) as converts, count(*) as n,
       sum(round(d.amount_minor::numeric * (o.total_minor - o.tax_minor) / nullif(o.total_minor, 0)) + coalesce(d.fee_minor, 0)) as amount
     from commerce.payment_disputes d
@@ -455,14 +460,17 @@ async function loadBundles(
     where d.store_id = ${id}::uuid and d.outcome = 'lost' and not d.test_mode and ${inPeriod(store, sql`d.closed_at`, period)}
       and o.copied_from is null and o.host_id is null
     group by 1, 2, 3
-  `);
+  `).then((rows) => checkedRows(MONEY_BY_BUCKET, rows));
 
-  const spend = db().execute<Row>(sql`
-    select (${bucketOf(grain, period, sql`s.day`)})::text as bk, sum(s.amount_minor) as amount
-    from commerce.marketing_spend s
-    where s.store_id = ${id}::uuid and s.day >= ${period.from}::date and s.day < ${period.to}::date
-    group by 1
-  `);
+  const spend = typedRows(
+    z.object({ bk: col.text, amount: col.minor }),
+    sql`
+      select (${bucketOf(grain, period, sql`s.day`)})::text as bk, sum(s.amount_minor) as amount
+      from commerce.marketing_spend s
+      where s.store_id = ${id}::uuid and s.day >= ${period.from}::date and s.day < ${period.to}::date
+      group by 1
+    `,
+  );
 
   const [mainRows, refundRows, spendRows, firsts, disputeRows] = await Promise.all([main, refunds, spend, firstDays, disputes]);
   const bundles = new Map<string, Bundle>();

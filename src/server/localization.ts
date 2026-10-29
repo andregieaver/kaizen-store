@@ -10,9 +10,11 @@ import { isCurrency } from "@/lib/money";
 
 import { audit, type Membership } from "./auth";
 import { listLanguages } from "./languages";
+import { refreshTag } from "./refresh";
 import type { SaveResult } from "./settings";
 import type { Store } from "./stores";
 import { deriveForProducts } from "./market-prices";
+import { refreshStoreById, storeTag } from "./stores";
 
 /**
  * A store's languages and currencies (D109), chosen independently of each
@@ -90,6 +92,7 @@ export async function saveLanguages(
     }
   });
   await audit(account.id, store.id, "localization.languages", { locales: unique, marketLocales });
+  refreshTag(storeTag(store.slug));
   return { ok: true };
 }
 
@@ -153,6 +156,7 @@ export async function saveCurrencies(
   });
   await audit(account.id, store.id, "localization.currencies", { currencies: list.map((c) => c.currency), ratesAuto });
   if (derived.written + derived.ended > 0) await audit(account.id, store.id, "settings.market_prices_derived", { cause: "rates", ...derived }, { area: "settings" });
+  refreshTag(storeTag(store.slug));
   return { ok: true };
 }
 
@@ -180,6 +184,7 @@ async function applyEcbRates(storeId: string, ecb: EcbRates): Promise<number> {
   // its meaning. One entry for the batch, by no person.
   const derived = await deriveForProducts(db(), storeId);
   if (derived.written + derived.ended > 0) await audit(null, storeId, "settings.market_prices_derived", { cause: "ecb", ...derived }, { area: "settings" });
+  await refreshStoreById(storeId);
   return updated;
 }
 

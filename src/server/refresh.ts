@@ -11,7 +11,20 @@ export function refreshTag(tag: string): void {
   try {
     updateTag(tag);
   } catch {
-    revalidateTag(tag, "max");
+    outsideNext(() => revalidateTag(tag, "max"));
+  }
+}
+
+/**
+ * Runs a revalidation, doing nothing where no Next request is running (a script, a test): there is no cache there to refresh, and Next
+ * says so by throwing that its static generation store is missing. Anything else it throws (a refresh during render) is thrown on.
+ */
+function outsideNext(revalidate: () => void): void {
+  try {
+    revalidate();
+  } catch (error) {
+    if (error instanceof Error && /static generation store missing/i.test(error.message)) return;
+    throw error;
   }
 }
 
@@ -24,6 +37,6 @@ export function refreshTagNow(tag: string): void {
   try {
     updateTag(tag);
   } catch {
-    revalidateTag(tag, { expire: 0 });
+    outsideNext(() => revalidateTag(tag, { expire: 0 }));
   }
 }

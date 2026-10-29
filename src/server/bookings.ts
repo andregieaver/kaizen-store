@@ -10,6 +10,8 @@ import { featureOffText, featureOn, resourceFeature } from "@/lib/store-features
 
 import { audit, type Membership } from "./auth";
 import { noShowFeeFor } from "./no-show";
+import { refreshTag } from "./refresh";
+import { storeTag } from "./stores";
 
 type Row = Record<string, unknown>;
 
@@ -54,6 +56,7 @@ export async function setBookingsModule(
     timeZone: input.timeZone,
     reminderHours: input.reminderHours,
   });
+  refreshTag(storeTag(store.slug));
 }
 
 /** Where the store's times are and when reminders go (D65), without the switch: the features are switched on the Features page (D178). */
@@ -66,6 +69,7 @@ export async function saveBookingSettings({ account, store }: Membership, input:
     where id = ${store.id}::uuid
   `);
   await audit(account.id, store.id, "bookings.settings", { timeZone: input.timeZone, reminderHours: input.reminderHours });
+  refreshTag(storeTag(store.slug));
 }
 
 // ---------------------------------------------------------------------------

@@ -10,6 +10,7 @@ import { audit, type Account } from "./auth";
 import { siteTests, siteVersionContent, type SiteTest } from "./experiments";
 import { withPageAlts } from "./media-alts";
 import { pagesTag } from "./pages";
+import { refreshStoreById } from "./stores";
 
 type Row = Record<string, unknown>;
 
@@ -105,5 +106,6 @@ export async function chooseSiteLayout(
       : sql`update commerce.stores set ${column} = ${value} where id = ${storeId}::uuid`,
   );
   await audit(account.id, storeId, `site_${type}.chosen`, { layoutId });
+  if (storeId !== null) await refreshStoreById(storeId);
   return { ok: true };
 }

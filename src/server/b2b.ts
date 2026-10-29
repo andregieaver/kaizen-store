@@ -9,7 +9,9 @@ import { featureOn } from "@/lib/store-features";
 import { BUYER_DAYS, buyerCookie, parseBuyer, STORE_AUDIENCES, storeBuyer, type Buyer } from "@/lib/b2b";
 
 import { audit, type Membership } from "./auth";
+import { refreshTag } from "./refresh";
 import type { Store } from "./stores";
+import { storeTag } from "./stores";
 
 export const audienceInput = z.object({
   audience: z.enum(STORE_AUDIENCES, { error: "Choose who the store sells to." }),
@@ -28,6 +30,7 @@ export async function saveStoreAudience({ account, store }: Membership, input: z
     where id = ${store.id}::uuid
   `);
   await audit(account.id, store.id, "store.audience_updated", { audience: input.audience, businessPopup });
+  refreshTag(storeTag(store.slug));
   return { ok: true };
 }
 

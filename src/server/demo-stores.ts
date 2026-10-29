@@ -14,7 +14,9 @@ import { parseStoreTheme } from "@/lib/theme";
 import { audit, type Account } from "./auth";
 import { addVariation } from "./design-variations";
 import { applyDesignPreset, copyStoreLookToDraft, createDesign, liveLookChanges, type ApplyDeps } from "./design-presets";
+import { refreshTag } from "./refresh";
 import { STARTERS_TAG, getStarter, giveThemeContent, joinStarter, type StarterResult } from "./store-starters";
+import { storeTag } from "./stores";
 
 /**
  * Demo stores (D277, `docs/themes-content-and-demo-stores.md` section 4): live stores a platform admin makes from starting content, dressed
@@ -159,6 +161,7 @@ export async function createDemoStore(
   const applied = await applyDesignPreset(made.storeId, input.look.id, admin.id, deps, input.look.variation);
   if (applied.ok) notes.push(...applied.notes);
   else notes.push(`The demo store is made, but the theme could not be applied (${applied.problems.join(" ")}). Choose it in its Design settings.`);
+  refreshTag(storeTag(input.slug));
   return { ok: true, id: made.id, slug: input.slug, themed: applied.ok, notes };
 }
 

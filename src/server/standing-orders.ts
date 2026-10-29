@@ -32,8 +32,10 @@ import { storeFeeBps } from "./billing";
 import { cancelUnpaidOrder, completeOrderPayment, placeOrder } from "./checkout";
 import { ensureTestAccount } from "./connect";
 import type { Address } from "./orders";
+import { refreshTag } from "./refresh";
 import { getCheckoutAccount } from "./settings";
 import { sendDeliveryCard, sendDeliveryPrepared, sendDeliveryStarted } from "./shopper-emails";
+import { storeTag } from "./stores";
 import { platformStripe } from "./stripe";
 import { OFFERED, STORE_AUDIENCE } from "./product-conditions";
 
@@ -140,6 +142,7 @@ export async function setDeliveriesModule({ account, store }: Membership, enable
     where id = ${store.id}::uuid
   `);
   await audit(account.id, store.id, enabled ? "deliveries.enabled" : "deliveries.disabled", {});
+  refreshTag(storeTag(store.slug));
 }
 
 // ---------------------------------------------------------------------------
