@@ -155,6 +155,7 @@ export const invoicesNb: InvoicesMessages = {
     none: "Denne bestillingen har ingen faktura.",
     view: "Vis",
     pdf: "PDF",
+    xml: "E-faktura (XML)",
     sendAgain: "Send til kunden på nytt",
   },
   forms: {

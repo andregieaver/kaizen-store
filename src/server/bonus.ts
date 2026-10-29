@@ -13,6 +13,7 @@ import { formatMoney } from "@/lib/money";
 
 import { audit, type Account } from "./auth";
 import type { Shop } from "./cart";
+import { log } from "./log";
 
 type Row = Record<string, unknown>;
 export type Runner = Pick<ReturnType<typeof db>, "execute">;
@@ -55,6 +56,7 @@ const toSettings = (row: Row | undefined): BonusSettings =>
         expiresMonths: row.expires_months === null ? null : Number(row.expires_months),
         levels: readLevels(row.levels),
         signupMinor: Number(row.signup_minor ?? 0),
+        birthdayMinor: Number(row.birthday_minor ?? 0),
       }
     : { ...BONUS_DEFAULTS };
 
@@ -66,7 +68,7 @@ export async function getBonusSettings(storeId: string): Promise<BonusSettings> 
 /** Settings, credits' currency and rates in one read: what every calculation starts from. */
 export async function bonusProgram(runner: Runner, storeId: string): Promise<BonusProgram> {
   const [row] = await runner.execute<Row>(sql`
-    select b.enabled, b.earn_bps, b.pending_days, b.max_redeem_percent, b.min_redeem_minor, b.expires_months, b.levels, b.signup_minor,
+    select b.enabled, b.earn_bps, b.pending_days, b.max_redeem_percent, b.min_redeem_minor, b.expires_months, b.levels, b.signup_minor, b.birthday_minor,
            commerce.bonus_currency(${storeId}::uuid) as currency, commerce.feature_on(${storeId}::uuid, 'bonus') as feature_on
     from (select 1) one
     left join commerce.bonus_settings b on b.store_id = ${storeId}::uuid
@@ -113,16 +115,16 @@ export async function saveBonusSettings(account: Account, storeId: string, raw: 
   const before = await getBonusSettings(storeId);
   await db().execute(sql`
     insert into commerce.bonus_settings (
-      store_id, enabled, earn_bps, pending_days, max_redeem_percent, min_redeem_minor, expires_months, levels, signup_minor, currency, updated_by
+      store_id, enabled, earn_bps, pending_days, max_redeem_percent, min_redeem_minor, expires_months, levels, signup_minor, birthday_minor, currency, updated_by
     ) values (
       ${storeId}::uuid, ${s.enabled}, ${s.earnBps}, ${s.pendingDays}, ${s.maxRedeemPercent}, ${s.minRedeemMinor},
-      ${s.expiresMonths}, ${JSON.stringify(s.levels)}::jsonb, ${s.signupMinor}, commerce.bonus_currency(${storeId}::uuid), ${account.id}::uuid
+      ${s.expiresMonths}, ${JSON.stringify(s.levels)}::jsonb, ${s.signupMinor}, ${s.birthdayMinor}, commerce.bonus_currency(${storeId}::uuid), ${account.id}::uuid
     )
     on conflict (store_id) do update set
       enabled = excluded.enabled, earn_bps = excluded.earn_bps, pending_days = excluded.pending_days,
       max_redeem_percent = excluded.max_redeem_percent, min_redeem_minor = excluded.min_redeem_minor,
       expires_months = excluded.expires_months, levels = excluded.levels, signup_minor = excluded.signup_minor,
-      updated_by = excluded.updated_by, updated_at = now()
+      birthday_minor = excluded.birthday_minor, updated_by = excluded.updated_by, updated_at = now()
   `);
   await audit(account.id, storeId, "store.bonus_settings", { before, after: s });
   return { ok: true };
@@ -509,6 +511,7 @@ export async function shopperBonus(shop: Shop, customerId: string): Promise<Shop
     expiresMonths: program.settings.expiresMonths,
     level: levels.length > 0 ? levelView(levels, spent, inShown) : null,
     signupMinor: inShown(program.settings.signupMinor),
+    birthdayMinor: inShown(program.settings.birthdayMinor),
   };
 }
 
@@ -544,8 +547,15 @@ const BATCH = 200;
  * telling us are given back (a payment that arrives later is still accepted: the credits are taken again). Never
  * throws: a failing step is left for the next run.
  */
-export async function runBonusJobs(): Promise<{ expired: number; reminded: number; released: number }> {
-  const out = { expired: 0, reminded: 0, released: 0 };
+export async function runBonusJobs(): Promise<{ expired: number; reminded: number; released: number; birthdays: number }> {
+  const out = { expired: 0, reminded: 0, released: 0, birthdays: 0 };
+  try {
+    // The birthday credit (D401): on each store's own day, once a year per customer, so running every few minutes is safe.
+    const [row] = await db().execute<Row>(sql`select commerce.bonus_birthday_grants() as given`);
+    out.birthdays = Number(row?.given ?? 0);
+  } catch (error) {
+    log("error", "bonus.birthday_grants_failed", {}, error);
+  }
   try {
     const [row] = await db().execute<Row>(sql`select commerce.bonus_expire_due(2000) as expired`);
     out.expired = Number(row?.expired ?? 0);

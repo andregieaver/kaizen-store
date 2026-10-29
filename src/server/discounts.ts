@@ -76,6 +76,8 @@ function toDiscount(row: Row): StoreDiscount {
     // Older rows and reads without the column combine, as every code did before D367.
     combinesWithCampaigns: row.combines_with_campaigns !== false,
     segmentId: row.segment_id ? String(row.segment_id) : null,
+    maxUnits: row.max_units === null || row.max_units === undefined ? null : Number(row.max_units),
+    reward: row.reward === true,
   };
 }
 
@@ -128,7 +130,8 @@ export async function listDiscounts(storeId: string): Promise<DiscountListRow[]>
           and o.status not in ('cancelled', 'pending_payment')
         group by o.currency) g) as given
     from commerce.discount_codes d
-    where d.store_id = ${storeId}::uuid
+    -- A loyalty reward's code (D401) is the reward's, kept on the Bonus page.
+    where d.store_id = ${storeId}::uuid and not d.reward
     order by d.active desc, d.created_at desc
   `);
   return rows.map((row) => ({
@@ -257,6 +260,7 @@ export async function saveDiscount(
   }
   const existing = id ? await getDiscount(store.id, id) : null;
   if (id && !existing) return { ok: false, problems: ["The code no longer exists."] };
+  if (existing?.reward) return { ok: false, problems: ["This code belongs to a loyalty reward: change it on the Bonus page."] };
   if (problems.length > 0) return { ok: false, problems: [...new Set(problems)] };
   // A country the store keeps but does not offer now (Several countries off, D178) is not in the editor: its amounts are kept as they were.
   if (existing) {
@@ -290,7 +294,7 @@ export async function saveDiscount(
             term_ids = ${values.termIds}::jsonb, min_quantity = ${d.minQuantity}, tier_ids = ${values.tierIds}::jsonb,
             customer_ids = ${values.customerIds}::jsonb, unique_codes = ${d.uniqueCodes}, combines_with = ${values.combinesWith}::jsonb,
             combines_with_campaigns = ${d.combinesWithCampaigns}, segment_id = ${d.segmentId}::uuid, updated_at = now()
-          where store_id = ${store.id}::uuid and id = ${id}::uuid
+          where store_id = ${store.id}::uuid and id = ${id}::uuid and not reward
           returning id
         `)
       : await db().execute<Row>(sql`
@@ -331,8 +335,8 @@ export async function saveDiscount(
  */
 export async function deleteDiscount({ account, store }: Membership, id: string): Promise<SaveResult> {
   const current = await getDiscount(store.id, id);
-  if (!current) return { ok: true };
-  await db().execute(sql`delete from commerce.discount_codes where store_id = ${store.id}::uuid and id = ${id}::uuid`);
+  if (!current || current.reward) return { ok: true };
+  await db().execute(sql`delete from commerce.discount_codes where store_id = ${store.id}::uuid and id = ${id}::uuid and not reward`);
   await auditChange({ accountId: account.id, storeId: store.id }, "discount.deleted", { type: "discount", id, label: current.code }, discountFacts(current), null, "discount", { code: current.code, used: current.used });
   return { ok: true };
 }
@@ -362,10 +366,11 @@ export async function findUsableDiscount(
     ${lock ? sql`for update` : sql``}
   `);
   let item: { id: string; code: string } | null = null;
+  let itemFacts: { customerId: string | null; endsAt: string | null } | undefined;
   if (row?.unique_codes) return { ok: false, problem: "unknown" };
   if (!row) {
     const [found] = await runner.execute<Row>(sql`
-      select i.id as item_id, i.code as item_code, i.discount_id from commerce.discount_code_items i
+      select i.id as item_id, i.code as item_code, i.discount_id, i.customer_id as item_customer, i.ends_at as item_ends from commerce.discount_code_items i
       where i.store_id = ${storeId}::uuid and i.code = ${code}
       ${lock ? sql`for update` : sql``}
     `);
@@ -377,6 +382,7 @@ export async function findUsableDiscount(
     `);
     if (!row) return { ok: false, problem: "unknown" };
     item = { id: String(found.item_id), code: String(found.item_code) };
+    itemFacts = { customerId: found.item_customer ? String(found.item_customer) : null, endsAt: iso(found.item_ends) };
   }
   const [counts] = await runner.execute<Row>(sql`
     select ${used(customerId)},
@@ -396,6 +402,7 @@ export async function findUsableDiscount(
     signedIn: customerId !== null,
     marketCode: market.code,
     itemUsed: item ? Number(counts.item_used) : undefined,
+    item: itemFacts,
     customer: customerId ? { id: customerId, tierIds, segmentIds } : null,
   });
   return problem ? { ok: false, problem } : { ok: true, discount, item };
@@ -706,6 +713,7 @@ export async function generateCodes({ account, store }: Membership, id: string, 
   const discount = await getDiscount(store.id, id);
   if (!discount) return { ok: false, problem: "The code no longer exists." };
   if (!discount.uniqueCodes) return { ok: false, problem: "Switch on single-use codes for this discount first." };
+  if (discount.reward) return { ok: false, problem: "A reward's codes are made when customers redeem it." };
   const made = await db().transaction(async (tx) => {
     await tx.execute(sql`select 1 from commerce.discount_codes where store_id = ${store.id}::uuid and id = ${id}::uuid for update`);
     const [state] = await tx.execute<Row>(sql`
@@ -786,7 +794,7 @@ export async function customerEmailsOf(storeId: string, ids: string[]): Promise<
 /** The store's discounts with single-use codes, as a newsletter form's welcome code can be (the builder's choice). */
 export async function signupCodeChoices(storeId: string): Promise<{ id: string; code: string }[]> {
   const rows = await db().execute<Row>(sql`
-    select id, code from commerce.discount_codes where store_id = ${storeId}::uuid and unique_codes order by active desc, code
+    select id, code from commerce.discount_codes where store_id = ${storeId}::uuid and unique_codes and not reward order by active desc, code
   `);
   return rows.map((r) => ({ id: String(r.id), code: String(r.code) }));
 }

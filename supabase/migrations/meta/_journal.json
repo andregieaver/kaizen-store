@@ -4166,6 +4166,20 @@
       "when": 1793296657749,
       "tag": "20261029175737_checkout_rules_delivery_price",
       "breakpoints": true
+    },
+    {
+      "idx": 595,
+      "version": "7",
+      "when": 1793296933446,
+      "tag": "20261029180213_loyalty_rewards",
+      "breakpoints": true
+    },
+    {
+      "idx": 596,
+      "version": "7",
+      "when": 1793297030037,
+      "tag": "20261029180350_loyalty_rewards_rules",
+      "breakpoints": true
     }
   ]
 }

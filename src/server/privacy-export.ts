@@ -131,7 +131,7 @@ const titleOf = (variant: string) => sql`coalesce(
 async function loadProfile(s: PrivacySubject): Promise<ProfileRow | null> {
   if (!s.customerId) return null;
   const [c] = await db().execute<Row>(sql`
-    select c.id, c.email, c.name, c.phone, c.address, c.locale, c.created_at, c.last_sign_in_at, c.email_verified_at,
+    select c.id, c.email, c.name, c.phone, c.address, c.locale, c.created_at, c.last_sign_in_at, c.email_verified_at, c.birthday,
       c.password_hash is not null as has_password, c.avatar_path is not null as has_avatar, c.company_name, c.organisation_number,
       t.name as group_name, t.percent as group_percent, cc.name as membership_company_name, c.company_role as membership_role
     from commerce.customers c
@@ -150,6 +150,7 @@ async function loadProfile(s: PrivacySubject): Promise<ProfileRow | null> {
     createdAt: iso(c.created_at),
     lastSignInAt: iso(c.last_sign_in_at),
     emailVerifiedAt: iso(c.email_verified_at),
+    birthday: c.birthday == null ? null : str(c.birthday),
     hasPassword: Boolean(c.has_password),
     hasAvatar: Boolean(c.has_avatar),
     companyName: str(c.company_name),

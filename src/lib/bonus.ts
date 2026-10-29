@@ -43,6 +43,8 @@ export type BonusSettings = {
   levels: BonusLevel[];
   /** Credits given once for opening an account, in minor units of the credits' currency; 0 for none (D392). */
   signupMinor: number;
+  /** Credits given on a customer's birthday, once a year, in minor units of the credits' currency; 0 for none (D401). */
+  birthdayMinor: number;
 };
 
 export const BONUS_DEFAULTS: BonusSettings = {
@@ -54,6 +56,7 @@ export const BONUS_DEFAULTS: BonusSettings = {
   expiresMonths: null,
   levels: [],
   signupMinor: 0,
+  birthdayMinor: 0,
 };
 
 /** What the ledger records: a grant, a use, and what undoes or ends one. */
@@ -65,7 +68,9 @@ export type BonusEntryKind =
   | "expire" // credits that passed their expiry unused
   | "adjust" // added or removed by staff, with a reason
   | "referral" // granted to a referrer for a friend's paid order (D131, the affiliate program)
-  | "signup"; // granted once for opening an account (D392)
+  | "signup" // granted once for opening an account (D392)
+  | "reward" // spent on a reward: free shipping, a free product or an amount off, as a code (D401)
+  | "birthday"; // granted on the customer's birthday, once a year (D401)
 
 export const BONUS_KIND_LABELS: Record<BonusEntryKind, string> = {
   earn: "Earned",
@@ -76,10 +81,12 @@ export const BONUS_KIND_LABELS: Record<BonusEntryKind, string> = {
   adjust: "Adjusted by the store",
   referral: "Referral reward",
   signup: "For opening your account",
+  reward: "Spent on a reward",
+  birthday: "For your birthday",
 };
 
 /** Kinds that are lots: credits granted to be used until they are (earned on an order, or for a friend's order). */
-export const isGrantKind = (kind: BonusEntryKind): boolean => kind === "earn" || kind === "referral" || kind === "signup";
+export const isGrantKind = (kind: BonusEntryKind): boolean => kind === "earn" || kind === "referral" || kind === "signup" || kind === "birthday";
 
 /** One line of a customer's history, amounts in the credits' currency (signed: what was added or taken). */
 export type BonusEntry = {
@@ -188,6 +195,8 @@ export type ShopperBonus = {
   } | null;
   /** The credit for opening an account, in the shown currency; 0 for none. */
   signupMinor: number;
+  /** The birthday credit in the currency shown; 0 when the store gives none (D401). */
+  birthdayMinor: number;
 };
 
 // ---------------------------------------------------------------------------

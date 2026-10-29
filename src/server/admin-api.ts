@@ -11,6 +11,7 @@ import type { ApiCaller } from "./api-tokens";
 import { audit } from "./auth";
 import { deleteCheckoutField, deleteCheckoutRule, listCheckoutFields, listCheckoutRules, saveCheckoutField, saveCheckoutRule, switchCheckoutField, switchCheckoutRule } from "./checkout-rules";
 import { saveDiscount } from "./discounts";
+import { documentUbl } from "./einvoices";
 import { adjustStock } from "./inventory";
 import { CARRIERS, getOrderAdmin, markSent, sendRefusalText } from "./order-admin";
 import { OwnerToolError } from "./owner-tool-error";
@@ -420,6 +421,13 @@ export async function runApiRoute(caller: ApiCaller, route: ApiRoute, request: R
     }
     case "orders.get":
       return ok({ data: (await orderOut(storeId, route.id)) ?? fail("not_found", "No such order in this store.") });
+    case "invoices.ubl":
+    case "credit_notes.ubl": {
+      const out = await documentUbl(storeId, route.name === "invoices.ubl" ? "invoice" : "credit_note", route.id);
+      if (!out) return fail("not_found", "No such document in this store.");
+      if (!out.ok) return fail("invalid", `This document cannot be made as EN 16931: ${out.problems.join(", ")}.`);
+      return ok({ data: { file_name: out.fileName, content_type: "application/xml", xml: out.xml } });
+    }
     case "orders.fulfil": {
       const order = await getOrderAdmin(storeId, route.id);
       if (!order) return fail("not_found", "No such order in this store.");

@@ -47,6 +47,12 @@ product, and nothing is given for a birthday.
 - Words in four languages by hand (`m.bonus`), the owner's in the `loyalty` catalogue; a scenario in `checkout-kinds.int.test.ts` (a reward's
   code in kroner and euro), a ledger test, an e2e of the redeem press.
 
+**As built (D401).** As designed, with two changes: a redeemed code is a generated code of the reward's own code carrying the customer
+(`discount_code_items.customer_id`, `ends_at`), so no table of redeemed codes is kept beside it; and My account's press and birthday are
+plain forms posting to server actions (no script needed). The row stays partial: criterion 2 names points for a newsletter confirmation
+and a review, which the house rules refuse; a criteria change is proposed in the row. No e2e of the press yet: `bonus-rewards.int.test.ts`
+drives the redeem, the code, the order and the birthday on a real database.
+
 ### B. Checkout rules that price a delivery option (D402)
 
 **Design.** A rule's effect may be `delivery_price`: the options it names cost a percentage more or less, or a fixed amount more or less per
@@ -65,6 +71,10 @@ API; the totals and VAT breakdown are the snapshot's, the seller's and buyer's V
 document's, the VAT in the seller's currency as `TaxCurrencyCode` where they differ. A document that cannot be one (a missing seller VAT
 number where VAT was charged, a credit note's invoice missing) says why instead. Checked against the schema's rules we can test in code
 (the BR- and BR-CO- sums); sending through a Peppol access point is not part of this unit.
+
+**As built (D403).** As designed, the API's route named `/invoices/{id}/ubl` and `/credit-notes/{id}/ubl` (JSON carrying the XML, as every
+Admin API answer is JSON). A credit note is one line per VAT bucket, since its rows carry their gross only. Not checked against the official
+schematron in CI; the rules the code can hold are tested.
 
 ### D. The remaining analytics money reads (D404)
 

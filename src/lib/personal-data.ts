@@ -83,7 +83,7 @@ const KEEP_ORDER = "No personal field of its own; it is linked to a person only 
 
 export const PERSONAL_DATA: PersonalEntry[] = [
   // The person -----------------------------------------------------------------------------------------------------------------------
-  entry("customers", "shopper", via("customer", "id"), ["email", "name", "phone", "address", "company_name", "organisation_number", "locale", "last_sign_in_at", "email_verified_at", "avatar_path", "referred_by_customer_id"], "profile", "delete", "The account is deleted; the password and sign-in records go with it.", { also: ["addresses"] }),
+  entry("customers", "shopper", via("customer", "id"), ["email", "name", "phone", "address", "company_name", "organisation_number", "locale", "last_sign_in_at", "email_verified_at", "avatar_path", "referred_by_customer_id", "birthday", "birthday_set_at"], "profile", "delete", "The account is deleted; the password and sign-in records go with it.", { also: ["addresses"] }),
   entry("storage:avatars", "shopper", via("customer", "avatar_path"), ["avatar_path"], "profile", "delete", "The picture is removed from storage after the account is deleted.", {}),
 
   // Orders and what hangs on them ------------------------------------------------------------------------------------------------------
@@ -154,6 +154,7 @@ export const PERSONAL_DATA: PersonalEntry[] = [
   // Loyalty ---------------------------------------------------------------------------------------------------------------------------
   entry("gift_cards", "shopper", via("customer", "customer_id"), ["customer_id", "recipient_email", "recipient_name", "message"], "orders", "anonymise", "A gift card (D300) is money the card holds: erasure clears who bought it and whom it was for, and the words with it, and keeps the card and its balance, which the holder of the code may still spend."),
   entry("gift_card_entries", "shopper", via("order", "order_id"), ["order_id"], "orders", "keep", "A gift card's ledger (D300): amounts and the orders they paid, no personal field. " + KEEP_ORDER),
+  entry("discount_code_items", "shopper", via("customer", "customer_id"), ["customer_id"], "bonus", "anonymise", "A loyalty reward's code a customer redeemed (D401): exported with the bonus data; deleting the account cuts the tie (the foreign key sets it to null), the code and its use stay the store's."),
   entry("bonus_entries", "shopper", via("customer", "customer_id"), ["customer_id", "note"], "bonus", "delete", "The ledger is deleted with the account: credits are forfeited (said before the person confirms)."),
   entry("bonus_allocations", "shopper", via("customer", "entry_id"), ["entry_id"], "bonus", "delete", "Which credits paid for what; deleted with the ledger."),
   entry("affiliates", "shopper", via("customer", "customer_id"), ["customer_id", "code", "blocked_reason"], "referrals", "delete", "The referral code and its record are deleted with the account."),
@@ -271,6 +272,7 @@ export const PERSONAL_DATA: PersonalEntry[] = [
 
 /** Tables the detectors matched (by a column name such as `name`, `note` or `content`, or a foreign key) that hold no person's data, and why. */
 export const NOT_PERSONAL: Record<string, string> = {
+  bonus_rewards: "A store's loyalty rewards (D401): their names and costs are the store's words, no person's.",
   search_cache: "What a search asked the store's AI (D74, D75, D139): a vector, the filters a search was read as or a recommendation's order, keyed by an md5; never tied to a visitor, deleted after 30 days (`pruneSearchCache()`), since the words typed could name someone.",
   workflows: "A store's workflows (D356): the owner's own words (a name, conditions, a staff email's text, a question) and who saved them; no customer.",
   checkout_rules: "A store's checkout rules (D357): the owner's conditions on a basket (countries, amounts, ids of products, terms and groups) and an effect with the owner's words; no customer.",

@@ -59,6 +59,7 @@ export type ApiRoute =
   | { name: "inventory.locations" | "inventory.levels" | "inventory.adjust" | "inventory.set"; scope: ApiScope }
   | { name: "orders.list"; scope: ApiScope }
   | { name: "orders.get" | "orders.fulfil"; scope: ApiScope; id: string }
+  | { name: "invoices.ubl" | "credit_notes.ubl"; scope: ApiScope; id: string }
   | { name: "customers.list"; scope: ApiScope }
   | { name: "customers.get" | "customers.tag"; scope: ApiScope; id: string }
   | { name: "customers.untag"; scope: ApiScope; id: string; tag: string }
@@ -87,6 +88,10 @@ export function routeOf(method: ApiMethod, path: readonly string[]): ApiRoute | 
     if (!isUuid(id)) return null;
     if (!sub) return method === "GET" ? { name: "orders.get", scope: "orders:read", id } : null;
     return sub === "fulfillments" && !extra && method === "POST" ? { name: "orders.fulfil", scope: "orders:write", id } : null;
+  }
+  // An invoice or a credit note as EN 16931 UBL (D403): `/invoices/{id}/ubl`, `/credit-notes/{id}/ubl`.
+  if ((resource === "invoices" || resource === "credit-notes") && id && isUuid(id) && sub === "ubl" && !extra) {
+    return method === "GET" ? { name: resource === "invoices" ? "invoices.ubl" : "credit_notes.ubl", scope: "orders:read", id } : null;
   }
   if (resource === "customers") {
     if (!id) return method === "GET" ? { name: "customers.list", scope: "customers:read" } : null;
@@ -142,6 +147,8 @@ export const API_ROUTES: { method: ApiMethod; path: string; scope: ApiScope }[] 
   { method: "POST", path: "/inventory/set", scope: "inventory:write" },
   { method: "GET", path: "/orders", scope: "orders:read" },
   { method: "GET", path: "/orders/{id}", scope: "orders:read" },
+  { method: "GET", path: "/invoices/{id}/ubl", scope: "orders:read" },
+  { method: "GET", path: "/credit-notes/{id}/ubl", scope: "orders:read" },
   { method: "POST", path: "/orders/{id}/fulfillments", scope: "orders:write" },
   { method: "GET", path: "/customers", scope: "customers:read" },
   { method: "GET", path: "/customers/{id}", scope: "customers:read" },

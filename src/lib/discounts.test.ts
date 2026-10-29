@@ -73,6 +73,29 @@ describe("availability", () => {
   });
 });
 
+describe("a reward's code (D401)", () => {
+  it("is used only by the customer it was redeemed by, signed in, and not after it ends", () => {
+    const item = (customerId: string | null, endsAt: string | null = null) => ({ ...context, itemUsed: 0, item: { customerId, endsAt } });
+    expect(availability(base, item("c1"))).toBe("sign_in");
+    expect(availability(base, { ...item("c1"), customer: { id: "c2", tierIds: [] } })).toBe("not_eligible");
+    expect(availability(base, { ...item("c1"), customer: { id: "c1", tierIds: [] } })).toBeNull();
+    expect(availability(base, { ...item(null, "2026-06-01T12:00:00Z") })).toBe("ended");
+    expect(availability(base, { ...item("c1"), itemUsed: 1, customer: { id: "c1", tierIds: [] } })).toBe("used_up");
+  });
+
+  it("takes so many units off, the dearest first, and never a subscription's", () => {
+    const one = { ...base, percent: 100, maxUnits: 1 };
+    expect(applyDiscount(one, { marketCode: "NO", lines: [line("a", 12900, 3), line("b", 24900, 2)], shippingMinor: 0 })).toEqual({
+      ok: true,
+      applied: { lines: { b: 24900 }, shippingMinor: 0, totalMinor: 24900, renewalUnits: {} },
+    });
+    const three = { ...base, percent: 100, maxUnits: 3 };
+    const out = applyDiscount(three, { marketCode: "NO", lines: [line("a", 12900, 3), line("b", 24900, 2)], shippingMinor: 0 });
+    expect(out.ok && out.applied.lines).toEqual({ b: 49800, a: 12900 });
+    expect(applyDiscount(one, { marketCode: "NO", lines: [line("s", 9900, 1, { recurring: true })], shippingMinor: 0 })).toEqual({ ok: false, problem: "not_applicable" });
+  });
+});
+
 describe("applyDiscount", () => {
   it("takes a percentage off each unit", () => {
     const result = applyDiscount(base, { marketCode: "NO", lines: [line("a", 24900, 2), line("b", 12900)], shippingMinor: 9900 });

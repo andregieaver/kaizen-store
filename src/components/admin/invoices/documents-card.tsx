@@ -3,7 +3,7 @@ import Link from "next/link";
 import type { FormState } from "@/components/admin/action-form";
 import { fillWords } from "@/lib/admin-fill";
 import { invoicesEn, type InvoicesMessages } from "@/lib/admin-messages/invoices.en";
-import { dayLabel, documentPdfHref, documentPrintHref, invoicesHref } from "@/lib/invoice-admin";
+import { dayLabel, documentPdfHref, documentPrintHref, documentXmlHref, invoicesHref } from "@/lib/invoice-admin";
 import { WAITING_WORDS } from "@/lib/invoice-readiness";
 import { formatMoney } from "@/lib/money";
 import type { DocumentLink, OrderDocuments } from "@/server/invoices";
@@ -108,6 +108,9 @@ function DocumentRow({
           </Link>
           <a href={documentPdfHref(base, link.type, link.id)} className="underline">
             {w.card.pdf}
+          </a>
+          <a href={documentXmlHref(base, link.type, link.id)} className="underline">
+            {w.card.xml}
           </a>
         </p>
       </div>

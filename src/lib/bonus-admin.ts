@@ -58,6 +58,7 @@ export type BonusFormValues = {
   levels: { name: string; from: string; percent: string }[];
   /** Credits for opening an account, as an amount in the credits' currency; empty for none. */
   signup: string;
+  birthday: string;
 };
 
 export type BonusField = Exclude<keyof BonusFormValues, "enabled" | "expires">;
@@ -71,6 +72,7 @@ export const BONUS_FIELD_ORDER: readonly BonusField[] = [
   "expiresMonths",
   "levels",
   "signup",
+  "birthday",
 ];
 
 export function formFromSettings(settings: BonusSettings, currency: string): BonusFormValues {
@@ -84,6 +86,7 @@ export function formFromSettings(settings: BonusSettings, currency: string): Bon
     expiresMonths: String(settings.expiresMonths ?? 12),
     levels: settings.levels.map((l) => ({ name: l.name, from: formatPriceInput(l.fromMinor, currency), percent: bpsToPercentText(l.earnBps) })),
     signup: settings.signupMinor > 0 ? formatPriceInput(settings.signupMinor, currency) : "",
+    birthday: settings.birthdayMinor > 0 ? formatPriceInput(settings.birthdayMinor, currency) : "",
   };
 }
 
@@ -145,6 +148,12 @@ export function readBonusForm(
     if (signupMinor === null) errors.signup = fillWords(w.signup, { currency });
   }
 
+  let birthdayMinor: number | null = 0;
+  if (values.birthday.trim() !== "") {
+    birthdayMinor = parsePrice(values.birthday, currency);
+    if (birthdayMinor === null) errors.birthday = fillWords(w.signup, { currency });
+  }
+
   // What could be read is checked against the contract, so its limits are said in its own words.
   const parsed = bonusSettingsInput.safeParse({
     enabled: values.enabled,
@@ -155,6 +164,7 @@ export function readBonusForm(
     expiresMonths: values.expires ? (expiresMonths ?? 1) : null,
     levels: errors.levels ? [] : levels,
     signupMinor: signupMinor ?? 0,
+    birthdayMinor: birthdayMinor ?? 0,
   });
   if (!parsed.success) {
     const fieldOf: Record<string, BonusField> = {
@@ -165,6 +175,7 @@ export function readBonusForm(
       expiresMonths: "expiresMonths",
       levels: "levels",
       signupMinor: "signup",
+      birthdayMinor: "birthday",
     };
     for (const issue of parsed.error.issues) {
       const field = fieldOf[String(issue.path[0])];
@@ -256,6 +267,7 @@ export function rulesSummary(settings: BonusSettings, money: MoneyFormat, curren
   for (const level of settings.levels)
     lines.push(fillWords(w.level, { name: level.name, from: money(level.fromMinor), percent: percentNumber(level.earnBps, w) }));
   if (settings.signupMinor > 0) lines.push(fillWords(w.signup, { amount: money(settings.signupMinor) }));
+  if (settings.birthdayMinor > 0) lines.push(fillWords(w.birthday, { amount: money(settings.birthdayMinor) }));
   return lines;
 }
 

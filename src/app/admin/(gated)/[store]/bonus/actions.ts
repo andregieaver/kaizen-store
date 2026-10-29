@@ -6,8 +6,9 @@ import { adminText } from "@/lib/admin-text";
 import type { BonusResult } from "@/lib/bonus";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { affiliateTag } from "@/server/affiliates";
-import { checkOwnerRole } from "@/server/permissions";
+import { checkOwnerRole, checkPermission } from "@/server/permissions";
 import { saveBonusSettings } from "@/server/bonus";
+import { saveReward, switchReward, type RewardSave } from "@/server/bonus-rewards";
 import { catalogTag } from "@/server/catalog";
 import { cookiesTag } from "@/server/site-cookies";
 import { storeTag } from "@/server/stores";
@@ -30,4 +31,22 @@ export async function saveBonusAction(storeSlug: string, raw: unknown): Promise<
     refresh();
   }
   return result;
+}
+
+/** Makes or changes a loyalty reward (D401, `marketing:write`): its code follows it, so codes already handed out take off what it now says. */
+export async function saveRewardAction(storeSlug: string, id: string | null, raw: unknown): Promise<RewardSave> {
+  const member = await checkPermission(storeSlug, "marketing:write");
+  if (!member) return { ok: false, problems: [adminText(await actionAdminLang(), "loyalty").rewards.notAllowed] };
+  const result = await saveReward(member, id, raw);
+  if (result.ok) refresh();
+  return result;
+}
+
+/** Switches a reward on or off (D401); its codes stop or start working with it. */
+export async function switchRewardAction(storeSlug: string, id: string, active: boolean): Promise<boolean> {
+  const member = await checkPermission(storeSlug, "marketing:write");
+  if (!member) return false;
+  const done = await switchReward(member, id, active);
+  if (done) refresh();
+  return done;
 }

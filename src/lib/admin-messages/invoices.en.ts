@@ -164,6 +164,7 @@ export const invoicesEn = {
     none: "This order has no invoice.",
     view: "View",
     pdf: "PDF",
+    xml: "E-invoice (XML)",
     sendAgain: "Send to the customer again",
   },
   forms: {

@@ -3068,11 +3068,19 @@ export const discountCodes = commerce.table(
      * the signed-in buyer when the code is used, never a stored list. A segment in use cannot be deleted.
      */
     segmentId: uuid("segment_id"),
+    /**
+     * A loyalty reward's own code (D401, `src/server/bonus-rewards.ts`): made and changed only with its reward, hidden from the codes list, its
+     * generated codes handed out one per redemption and never copied with a store.
+     */
+    reward: boolean("reward").notNull().default(false),
+    /** The most units of what it reaches that it takes off, the dearest first (D401: a free product is one unit); null for every unit. */
+    maxUnits: integer("max_units"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (t) => [
     unique("discount_codes_store_id_key").on(t.storeId, t.id),
+    check("discount_codes_max_units", sql`${t.maxUnits} is null or (${t.maxUnits} between 1 and 100 and ${t.reward})`),
     foreignKey({ name: "discount_codes_segment_fk", columns: [t.storeId, t.segmentId], foreignColumns: [segments.storeId, segments.id] }).onDelete("restrict"),
     index("discount_codes_segment_idx").on(t.storeId, t.segmentId),
     check(
@@ -3110,10 +3118,15 @@ export const discountCodeItems = commerce.table(
     /** In capitals. */
     code: text("code").notNull(),
     batch: integer("batch").notNull(),
+    /** The customer a reward's code was redeemed by (D401): only they, signed in, may use it; null for a code anyone holding it may use. */
+    customerId: uuid("customer_id").references(() => customers.id, { onDelete: "set null" }),
+    /** When this one code stops working (D401: a reward's code), beside its discount's own dates; null for never. */
+    endsAt: timestamp("ends_at", { withTimezone: true }),
     createdAt: createdAt(),
   },
   (t) => [
     unique("discount_code_items_store_id_key").on(t.storeId, t.id),
+    index("discount_code_items_customer_idx").on(t.customerId),
     unique("discount_code_items_store_code_key").on(t.storeId, t.code),
     index("discount_code_items_discount_idx").on(t.storeId, t.discountId, t.batch),
     foreignKey({
@@ -3827,6 +3840,10 @@ export const customers = commerce.table(
      * of theirs.
      */
     emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
+    /** Their birthday as month and day (`MM-DD`, never a year), given on My account for the bonus program's birthday credit (D401). */
+    birthday: text("birthday"),
+    /** When the birthday was last given: a credit waits 30 days after it, so a date is not typed to claim one. */
+    birthdaySetAt: timestamp("birthday_set_at", { withTimezone: true }),
     /** Set on a customer copied from another store (D129): the original's id, so a rerun copies nobody twice. */
     copiedFrom: uuid("copied_from"),
     /** The affiliate (D131, a customer of the same store) whose link they registered through; null for none. */
@@ -3857,6 +3874,7 @@ export const customers = commerce.table(
     index("customers_tier_idx").on(t.storeId, t.tierId),
     index("customers_company_idx").on(t.storeId, t.companyId),
     index("customers_referred_by_idx").on(t.storeId, t.referredByCustomerId),
+    check("customers_birthday", sql`${t.birthday} is null or ${t.birthday} ~ '^(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$'`),
     check(
       "customers_company_role",
       sql`(${t.companyId} is null and ${t.companyRole} is null) or (${t.companyId} is not null and ${t.companyRole} is not null and ${t.companyRole} in ('owner', 'employee'))`,
@@ -10812,6 +10830,8 @@ export const bonusSettings = commerce.table(
     levels: jsonb("levels").notNull().default([]),
     /** Credits given once for opening an account (an email proven for the first time), minor units of `currency`; 0 for none (D392). */
     signupMinor: bigint("signup_minor", { mode: "number" }).notNull().default(0),
+    /** Credits given on a customer's birthday, once a year, minor units of `currency`; 0 for none (D401). */
+    birthdayMinor: bigint("birthday_minor", { mode: "number" }).notNull().default(0),
     /** The credits' currency: what the ledger's amounts are in. */
     currency: char("currency", { length: 3 }).notNull(),
     /**
@@ -10830,6 +10850,48 @@ export const bonusSettings = commerce.table(
     check("bonus_settings_max_redeem", sql`${t.maxRedeemPercent} between 1 and 90`),
     check("bonus_settings_min_redeem", sql`${t.minRedeemMinor} between 0 and 1000000`),
     check("bonus_settings_expiry", sql`${t.expiresMonths} is null or ${t.expiresMonths} between 1 and 60`),
+    check("bonus_settings_birthday", sql`${t.birthdayMinor} between 0 and 1000000`),
+  ],
+);
+
+/**
+ * A store's loyalty rewards (D401, `docs/bonus.md` Rewards): what a signed-in customer may spend credits on besides a price reduction. Each owns
+ * one discount code (`discount_codes.reward`), so what it takes off a basket is the code engine's; redeeming takes its cost from the ledger
+ * (`commerce.bonus_redeem_reward()`, kind `reward`) and hands the customer one generated code. Written only by `src/server/bonus-rewards.ts`.
+ */
+export const bonusRewards = commerce.table(
+  "bonus_rewards",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id),
+    /** In the store's main language; `names` in its others. */
+    name: text("name").notNull(),
+    names: jsonb("names").notNull().default({}),
+    /** What it costs, in minor units of the program's currency. */
+    costMinor: bigint("cost_minor", { mode: "number" }).notNull(),
+    /** `free_shipping`, `product` (one unit of `product_id` free) or `amount` (`discount_codes.amounts` per market). */
+    kind: text("kind").notNull(),
+    productId: uuid("product_id"),
+    discountId: uuid("discount_id").notNull(),
+    active: boolean("active").notNull().default(true),
+    position: integer("position").notNull().default(0),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+    updatedBy: uuid("updated_by").references(() => accounts.id),
+  },
+  (t) => [
+    unique("bonus_rewards_store_id_key").on(t.storeId, t.id),
+    foreignKey({ name: "bonus_rewards_discount_fk", columns: [t.storeId, t.discountId], foreignColumns: [discountCodes.storeId, discountCodes.id] }).onDelete("restrict"),
+    foreignKey({ name: "bonus_rewards_product_fk", columns: [t.storeId, t.productId], foreignColumns: [products.storeId, products.id] }).onDelete("restrict"),
+    uniqueIndex("bonus_rewards_discount_key").on(t.discountId),
+    index("bonus_rewards_product_idx").on(t.storeId, t.productId),
+    index("bonus_rewards_updated_by_idx").on(t.updatedBy),
+    check("bonus_rewards_kind", sql`${t.kind} in ('free_shipping', 'product', 'amount')`),
+    check("bonus_rewards_product", sql`(${t.kind} = 'product') = (${t.productId} is not null)`),
+    check("bonus_rewards_cost", sql`${t.costMinor} between 1 and 100000000`),
+    check("bonus_rewards_name", sql`length(${t.name}) between 1 and 80`),
   ],
 );
 

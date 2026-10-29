@@ -26,6 +26,7 @@ export const bonusSettingsInput = z.object({
     .max(BONUS_LEVELS_MAX, `At most ${BONUS_LEVELS_MAX} levels.`)
     .default([]),
   signupMinor: z.number().int().min(0).max(BONUS_SIGNUP_MAX_MINOR).default(0),
+  birthdayMinor: z.number().int().min(0).max(BONUS_SIGNUP_MAX_MINOR).default(0),
 }).superRefine((s, ctx) => {
   const problem = levelsProblem(s.levels, s.earnBps, BONUS_EARN_BPS_MAX);
   if (problem === "order") ctx.addIssue({ code: "custom", path: ["levels"], message: "Each level starts above the one before it." });

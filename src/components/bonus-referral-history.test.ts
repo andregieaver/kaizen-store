@@ -69,6 +69,7 @@ describe("referral credits in the ledger's views", () => {
       expiresMonths: null,
       level: null,
       signupMinor: 0,
+      birthdayMinor: 0,
     };
     const words = renderToString(createElement(BonusAccountView, { bonus, m: t("en"), locale: "en-IE", base: "/s/demo/ie", orderIds: {}, now }))
       .replace(/<!-- -->/g, "")

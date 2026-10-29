@@ -78,6 +78,10 @@ export function invoicesHref(base: string, query: Partial<InvoiceQuery>, today?:
 export function documentPdfHref(base: string, type: "invoice" | "credit_note", id: string): string {
   return type === "invoice" ? `${base}/invoices/${id}/pdf` : `${base}/invoices/credit-notes/${id}/pdf`;
 }
+/** A document as EN 16931 UBL (D403). */
+export function documentXmlHref(base: string, type: "invoice" | "credit_note", id: string): string {
+  return type === "invoice" ? `${base}/invoices/${id}/xml` : `${base}/invoices/credit-notes/${id}/xml`;
+}
 export function documentPrintHref(base: string, type: "invoice" | "credit_note", id: string): string {
   return type === "invoice" ? `${base}/invoices/${id}/print` : `${base}/invoices/credit-notes/${id}/print`;
 }

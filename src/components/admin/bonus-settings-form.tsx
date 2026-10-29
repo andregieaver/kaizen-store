@@ -347,6 +347,19 @@ export function BonusSettingsView({
               />
             )}
           </Field>
+          <Field id="bonus-birthday" label={w.birthdayLabel} suffix={currency} error={errors.birthday} hint={w.birthdayHint}>
+            {(props) => (
+              <input
+                {...props}
+                type="text"
+                inputMode="decimal"
+                autoComplete="off"
+                value={values.birthday}
+                onChange={(event) => set("birthday", event.target.value)}
+                className={control}
+              />
+            )}
+          </Field>
         </fieldset>
 
         <fieldset className={card}>

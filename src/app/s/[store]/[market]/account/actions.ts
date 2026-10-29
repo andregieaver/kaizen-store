@@ -13,6 +13,7 @@ import { marketPath } from "@/lib/paths";
 import { attachReferral } from "@/server/affiliates";
 import { removeCustomerAvatar, setCustomerAvatar } from "@/server/avatars";
 import { chooseBusinessBuyer } from "@/server/b2b";
+import { redeemReward, saveBirthday } from "@/server/bonus-rewards";
 import { readCartId } from "@/server/cart";
 import { getOpenCheckout } from "@/server/checkout";
 import {
@@ -326,5 +327,28 @@ export async function newsAction(storeSlug: string, marketSlug: string, on: bool
     locale: shop.market.locale,
     marketCode: shop.market.code,
   });
+  refresh();
+}
+
+/** The signed-in customer spends credits on a reward (D401) and gets their code; the page lists it under Your codes. */
+export async function redeemRewardAction(storeSlug: string, marketSlug: string, rewardId: string): Promise<void> {
+  const shop = await resolveShop(storeSlug, marketSlug);
+  if (!shop) return;
+  const customer = await getCustomer(shop.store.id);
+  if (!customer) return;
+  const done = await redeemReward({ storeId: shop.store.id, market: shop.market }, customer.id, rewardId);
+  redirect(`${marketPath(shop.store.slug, shop.market.slug)}/account/bonus?reward=${done.ok ? "ok" : "failed"}`);
+}
+
+/** The signed-in customer's birthday as month and day (D401), or none when both are left empty. */
+export async function birthdayAction(storeSlug: string, marketSlug: string, form: FormData): Promise<void> {
+  const shop = await resolveShop(storeSlug, marketSlug);
+  if (!shop) return;
+  const customer = await getCustomer(shop.store.id);
+  if (!customer) return;
+  const month = String(form.get("month") ?? "").padStart(2, "0");
+  const day = String(form.get("day") ?? "").padStart(2, "0");
+  const remove = form.get("remove") === "1" || (month === "00" && day === "00");
+  await saveBirthday(shop.store.id, customer.id, remove ? null : `${month}-${day}`);
   refresh();
 }

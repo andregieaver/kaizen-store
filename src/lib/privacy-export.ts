@@ -39,6 +39,8 @@ export type ProfileRow = {
   createdAt: Ts;
   lastSignInAt: Ts;
   emailVerifiedAt: Ts;
+  /** Month and day (`MM-DD`) given for the bonus program's birthday credit (D401). */
+  birthday: string | null;
   hasPassword: boolean;
   hasAvatar: boolean;
   companyName: string | null;

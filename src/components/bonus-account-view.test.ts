@@ -48,6 +48,7 @@ const shopper = (over: Partial<ShopperBonus> = {}): ShopperBonus => ({
   earnPercent: 5,
   level: null,
   signupMinor: 0,
+  birthdayMinor: 0,
   pendingDays: 14,
   expiresMonths: null,
   ...over,

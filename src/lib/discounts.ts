@@ -58,6 +58,10 @@ export type StoreDiscount = {
   combinesWithCampaigns: boolean;
   /** A segment whose people may use it (D380), beside `tierIds` and `customerIds`: any of the three lets a signed-in buyer in. */
   segmentId: string | null;
+  /** The most units of what it reaches it takes off, the dearest first (D401: a reward's free product is one unit); null or absent for every unit. */
+  maxUnits?: number | null;
+  /** A loyalty reward's own code (D401): hidden from the codes list and changed only with its reward. */
+  reward?: boolean;
 };
 
 export type DiscountProblem =
@@ -95,6 +99,8 @@ export function availability(
     marketCode: string;
     /** A generated code (D299 E1): how often that one was used; it works once, and the code's own limits do not apply. */
     itemUsed?: number;
+    /** A generated code redeemed as a loyalty reward (D401): the customer it is for (only they, signed in, may use it) and when it ends. */
+    item?: { customerId: string | null; endsAt: string | null };
     /**
      * The signed-in customer's own id and groups (theirs or their company's), and the segments of the code they are in (D380, worked out by
      * `segmentsOfBuyer()`), for a code limited to some.
@@ -107,6 +113,11 @@ export function availability(
   if (discount.endsAt && new Date(discount.endsAt) <= context.now) return "ended";
   if (context.itemUsed !== undefined) {
     if (context.itemUsed > 0) return "used_up";
+    if (context.item?.endsAt && new Date(context.item.endsAt) <= context.now) return "ended";
+    if (context.item?.customerId) {
+      if (!context.customer) return "sign_in";
+      if (context.customer.id !== context.item.customerId) return "not_eligible";
+    }
   } else {
     if (discount.usageLimit !== null && context.used >= discount.usageLimit) return "used_up";
     if (discount.oncePerCustomer && !context.signedIn) return "sign_in";
@@ -176,6 +187,19 @@ export function applyDiscount(
   if (discount.kind === "free_shipping") {
     if (basket.shippingMinor <= 0) return { ok: false, problem: "not_applicable" };
     applied.shippingMinor = basket.shippingMinor;
+  } else if (discount.kind === "percent" && discount.maxUnits) {
+    // Only so many units (D401): the dearest units first, each line's units at what one costs today; never a subscription's.
+    let left = discount.maxUnits;
+    const units = eligible.filter((line) => !line.recurring && line.todayMinor > 0 && line.quantity > 0);
+    for (const line of [...units].sort((a, b) => b.todayMinor / b.quantity - a.todayMinor / a.quantity || (a.key < b.key ? -1 : 1))) {
+      if (left === 0) break;
+      const taken = Math.min(left, line.quantity);
+      left -= taken;
+      const part = taken === line.quantity ? line.todayMinor : Math.floor((line.todayMinor * taken) / line.quantity);
+      const off = part - planPrice(part, discount.percent);
+      if (off > 0) applied.lines[line.key] = off;
+    }
+    if (Object.keys(applied.lines).length === 0) return { ok: false, problem: "not_applicable" };
   } else if (discount.kind === "percent") {
     for (const line of eligible) {
       const lowered = planPrice(line.unitMinor, discount.percent);

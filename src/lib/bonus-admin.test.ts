@@ -74,6 +74,7 @@ describe("the settings form", () => {
       expiresMonths: "12",
       levels: [],
       signup: "",
+      birthday: "",
     });
     const values = formFromSettings({ ...on, minRedeemMinor: 4950, expiresMonths: 18, earnBps: 250 }, "NOK");
     expect(values).toMatchObject({ earnPercent: "2.5", minRedeem: "49,50", expires: true, expiresMonths: "18" });
@@ -89,6 +90,7 @@ describe("the settings form", () => {
       expiresMonths: 24,
       levels: [{ name: "Gold", fromMinor: 500_000, earnBps: 750 }],
       signupMinor: 5_000,
+      birthdayMinor: 2_500,
     };
     expect(readBonusForm(formFromSettings(settings, "NOK"), "NOK")).toEqual({ ok: true, settings });
     expect(readBonusForm(formFromSettings(on, "NOK"), "NOK")).toEqual({ ok: true, settings: on });
@@ -115,6 +117,7 @@ describe("the settings form", () => {
         expiresMonths: "0",
         levels: [{ name: "Gold", from: "lots", percent: "7" }],
         signup: "free",
+        birthday: "",
       },
       "NOK",
     );

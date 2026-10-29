@@ -127,8 +127,25 @@ audited (`store.bonus_settings`) and never touch what was already earned.
 - **The credit for opening an account.** `bonus_settings.signup_minor`, given once (ledger kind `signup`, keyed `signup:{customer}`,
   usable at once, expiring as any credit) by the trigger `customers_bonus_signup` when a customer's email is proven for the first time,
   only while the program works in a real, open store. A staff-made customer gets it when they first sign in.
-- **Not built.** Points for a review (never: a review is never rewarded, D301), for a birthday (no birthday is kept) or for a newsletter
-  sign-up (consent is never bought); rewards other than a price reduction (free shipping, a free product).
+- **Not built, by rule.** Points for a review (a review is never rewarded, D301) or for a newsletter sign-up (a consent is never
+  bought with credits).
+
+## Rewards and the birthday credit (D401)
+
+- **Rewards** (`commerce.bonus_rewards`, at most `REWARDS_MAX`, written only by `src/server/bonus-rewards.ts` from the Bonus page,
+  `marketing:write`): a name (and its words in the store's other languages), a cost in the credits' currency, and what it gives: free
+  shipping, one unit of a product free, or an amount off per country. Each reward owns one discount code of the store's
+  (`discount_codes.reward`, hidden from the codes list, refused by the code editor, never copied with a store); a product reward's code is
+  100 % on that product limited to one unit (`discount_codes.max_units`, the dearest unit first). What a reward takes off a basket is
+  therefore only the code engine's (`applyDiscount()`), in the cart and the order alike (`checkout-kinds.int.test.ts`, kroner and euro).
+- **Redeeming** is the signed-in customer's press on My account's credits (`redeemReward()`): `commerce.bonus_redeem_reward()` takes the
+  cost exactly from usable credits (ledger kind `reward`, keyed `reward:{code}`) and makes one generated code for that customer in the same
+  transaction (`discount_code_items.customer_id`, `ends_at`: as long as credits last, else a year). Only that customer, signed in, may
+  use it, once (`availability()`'s `item`). Credits spent on a reward are not given back when its code is not used, as the page says.
+- **The birthday credit** (`bonus_settings.birthday_minor`): a customer gives their birthday as month and day on My account
+  (`customers.birthday`, never a year); `commerce.bonus_birthday_grants()` in the bonus jobs gives the credit on the store's own date once
+  a year (kind `birthday`, keyed `birthday:{customer}:{year}`; 29 February on the 28th in other years), only for a proven email and a
+  birthday given at least 30 days before. The birthday is personal data: in the export's profile, gone with the account.
 
 ## Copying a store (D129)
 

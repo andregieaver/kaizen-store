@@ -53,6 +53,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   ),
   review_settings: settings("Whether the store's reviews wait for staff and when it asks for one (D301); the reviews themselves are never copied."),
   gift_card_settings: settings("How long the store's gift cards last (D300); the cards themselves are never copied."),
+  bonus_rewards: never("Loyalty rewards (D401) own a code each and customers' redeemed codes; a copy sets up its own (its reward codes are not copied either)."),
   bonus_settings: settings("The bonus program's rules (D130): percentages, waits and expiry; balances are not copied."),
   affiliate_settings: settings("The store's referral program's rules (D131): the friend's discount, the reward, limits and cookie days; its customers' links and earnings are not copied."),
   booking_seasons: catalogue("A stay's or rental's seasonal prices; go with the product."),

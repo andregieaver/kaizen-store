@@ -919,9 +919,9 @@
       "rechecked": true,
       "was": "full"
     },
-    "gap": "The bonus program (D130) earns credits on paid goods (5 % by default) for signed-in customers, holds them pending then usable, expires them, redeems them as a last price reduction and keeps an append-only ledger with refund reversals and manual adjustment. Since D392 levels (up to four, each with its own rate back, reached by what a customer paid for goods in the last 365 days less refunds, worked out by the database when an order is paid and shown on My account with what more the next needs) and a credit for opening an account (given once when the email is first proven) are built (`bonus-levels.int.test.ts`). Still missing next to a loyalty app: reward kinds beyond a price reduction (free shipping, a free product) and points for a birthday; points for a review are never given (D301: a review is never rewarded) and a sign-up's consent is never bought.",
-    "bucket": "A",
-    "wave": 5,
+    "gap": "The bonus program (D130) earns credits on paid goods (5 % by default) for signed-in customers, holds them pending then usable, expires them, redeems them as a last price reduction and keeps an append-only ledger with refund reversals and manual adjustment. Since D392 levels (up to four, each with its own rate back, reached by what a customer paid for goods in the last 365 days less refunds) and a credit for opening an account are built (`bonus-levels.int.test.ts`). Since D401 rewards other than a price reduction (free shipping, a product free, an amount off) are redeemed for a code of the customer's own, taken off by the code engine so `cartSummary()` and `placeOrder()` agree (`checkout-kinds.int.test.ts` in kroner and euro, `bonus-rewards.int.test.ts`), and a birthday credit comes once a year on the store's day, the ledger append-only throughout (criteria 1, 3 and 4 met). What keeps it partial is criterion 2's list: points for a newsletter confirmation and for a review are refused by the house rules (a consent is never bought with credits, a review is never rewarded, D301), which the criterion would need to leave out. Proposed criteria change (not edited here): actions are account creation and a birthday, and any the store's legal rules allow.",
+    "bucket": "C",
+    "wave": null,
     "criteria": [
       "An owner defines tiers by spend over a window, each with a higher earn rate; a customer sees their tier and the way to the next in My account.",
       "Points are given for actions (account creation, birthday, newsletter confirmation, review when reviews exist), each once per customer through an idempotent ledger key.",
@@ -930,34 +930,42 @@
     ],
     "evidence": {
       "files": [
-        "src/lib/bonus.ts",
-        "src/server/bonus.ts",
-        "src/server/bonus-emails.ts",
-        "src/lib/bonus-admin.ts",
-        "src/lib/bonus-shopper.ts",
-        "src/components/admin/bonus-overview.tsx",
-        "src/components/admin/bonus-settings-form.tsx",
-        "src/components/bonus-credits.tsx",
         "src/app/admin/(gated)/[store]/bonus/page.tsx",
         "src/app/s/[store]/[market]/account/bonus/page.tsx",
-        "src/lib/bonus-levels.ts"
+        "src/components/admin/bonus-overview.tsx",
+        "src/components/admin/bonus-rewards-card.tsx",
+        "src/components/admin/bonus-settings-form.tsx",
+        "src/components/bonus-credits.tsx",
+        "src/components/bonus-rewards-section.tsx",
+        "src/lib/bonus-admin.ts",
+        "src/lib/bonus-levels.ts",
+        "src/lib/bonus-rewards.ts",
+        "src/lib/bonus-shopper.ts",
+        "src/lib/bonus.ts",
+        "src/lib/discounts.ts",
+        "src/server/bonus-emails.ts",
+        "src/server/bonus-rewards.ts",
+        "src/server/bonus.ts"
       ],
       "tests": [
-        "src/lib/bonus.test.ts",
-        "src/server/bonus.int.test.ts",
-        "src/server/bonus-subscription.int.test.ts",
-        "src/lib/bonus-admin.test.ts",
-        "src/lib/bonus-shopper.test.ts",
         "src/components/admin/bonus-ui.test.ts",
-        "src/server/checkout-kinds.int.test.ts",
+        "src/lib/bonus-admin.test.ts",
         "src/lib/bonus-levels.test.ts",
-        "src/server/bonus-levels.int.test.ts"
+        "src/lib/bonus-shopper.test.ts",
+        "src/lib/bonus.test.ts",
+        "src/lib/discounts.test.ts",
+        "src/server/bonus-levels.int.test.ts",
+        "src/server/bonus-rewards.int.test.ts",
+        "src/server/bonus-subscription.int.test.ts",
+        "src/server/bonus.int.test.ts",
+        "src/server/checkout-kinds.int.test.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D130",
-      "D392"
+      "D392",
+      "D401"
     ],
     "history": [
       {

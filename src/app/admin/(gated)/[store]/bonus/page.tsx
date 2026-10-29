@@ -3,15 +3,18 @@ import type { Metadata } from "next";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { requireFeature } from "@/components/admin/feature-off";
 import { BonusOverviewCard } from "@/components/admin/bonus-overview";
+import { BonusRewardsCard } from "@/components/admin/bonus-rewards-card";
 import { BonusSettingsForm } from "@/components/admin/bonus-settings-form";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { mainCurrency } from "@/lib/markets";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { bonusOverview, getBonusSettings } from "@/server/bonus";
+import { listRewards } from "@/server/bonus-rewards";
+import { listProductChoices } from "@/server/discounts";
 import { PageHeader } from "@/components/admin/ui";
 
-import { saveBonusAction } from "./actions";
+import { saveBonusAction, saveRewardAction, switchRewardAction } from "./actions";
 
 export const metadata: Metadata = { title: "Bonus credits" };
 
@@ -27,8 +30,13 @@ export default async function BonusPage({ params }: PageProps<"/admin/[store]/bo
   const lang = adminLangOf(current.account.adminLocale);
   const words = adminText(lang, "loyalty");
   const w = words.bonusPage;
-  const [settings, overview] = await Promise.all([getBonusSettings(store.id), bonusOverview(store.id)]);
   const locale = store.markets[0]?.locale ?? "nb-NO";
+  const [settings, overview, rewards, products] = await Promise.all([
+    getBonusSettings(store.id),
+    bonusOverview(store.id),
+    listRewards(store.id),
+    listProductChoices(store.id, locale),
+  ]);
 
   return (
     <AdminTextScope texts={adminTexts(lang, ["loyalty"])}>
@@ -41,6 +49,16 @@ export default async function BonusPage({ params }: PageProps<"/admin/[store]/bo
           locale={locale}
           canEdit={memberCan(current, "owner")}
           save={saveBonusAction.bind(null, store.slug)}
+        />
+        <BonusRewardsCard
+          rewards={rewards}
+          currency={mainCurrency(store)}
+          products={products}
+          markets={store.markets.map((m) => ({ code: m.code, currency: m.nativeCurrency, name: m.name }))}
+          canEdit={memberCan(current, "marketing:write")}
+          save={saveRewardAction.bind(null, store.slug)}
+          toggle={switchRewardAction.bind(null, store.slug)}
+          locale={locale}
         />
       </div>
     </AdminTextScope>

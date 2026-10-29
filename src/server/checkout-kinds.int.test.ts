@@ -444,6 +444,8 @@ type Scenario = {
   code?: string;
   /** Codes added after `code` (D299 E2), in this order. */
   moreCodes?: string[];
+  /** The code is a loyalty reward's (D401), redeemed by the signed-in buyer: made for them before it is typed. */
+  reward?: boolean;
   /** Shown in euro instead of the country's own currency (D109). */
   euro?: boolean;
   /** Who buys (D108): in a discount group, or an employee of a company that gives half of one. */
@@ -874,6 +876,9 @@ const euroScenarios: Scenario[] = [
   },
   // A single-use code from a code that hands them out (D299 E1), in euro.
   { name: "goods with a single-use code, shown in euro", fill: () => add("DEMO-MUG-WHITE", 2), code: `GEN${run}-ABCDEFGH`.toUpperCase(), euro: true, bookings: 0 },
+  // A loyalty reward's code (D401): one mug of two free, for the customer who redeemed it, in kroner and in euro.
+  { name: "goods with a loyalty reward's free product", fill: () => add("DEMO-MUG-WHITE", 2), code: `RWD${run}-N`.toUpperCase(), reward: true, buyer: "group", bookings: 0 },
+  { name: "goods with a loyalty reward's free product, shown in euro", fill: () => add("DEMO-MUG-WHITE", 2), code: `RWD${run}-E`.toUpperCase(), reward: true, buyer: "group", euro: true, bookings: 0 },
 ];
 
 /**
@@ -1017,6 +1022,12 @@ describe("checkout for every kind of product", () => {
       const made = await saveDiscount(member, null, input);
       if (!made.ok) throw new Error(made.problems.join(" "));
     }
+    // A loyalty reward's own code (D401): one unit of the mug free; its single-use codes are made per scenario for the buyer.
+    await db().execute(sql`
+      insert into commerce.discount_codes (store_id, code, kind, percent, product_ids, unique_codes, combines_with, reward, max_units)
+      select ${storeId}::uuid, ${`RWD${run}`.toUpperCase()}, 'percent', 100, jsonb_build_array(v.product_id), true, '["products", "order", "shipping"]'::jsonb, true, 1
+      from commerce.product_variants v where v.store_id = ${storeId}::uuid and v.sku = 'DEMO-MUG-WHITE'
+    `);
     // The one generated code the euro scenario types, with a text the test knows.
     await db().execute(sql`
       insert into commerce.discount_code_items (store_id, discount_id, code, batch)
@@ -1050,6 +1061,13 @@ describe("checkout for every kind of product", () => {
     }
     const buyerId = scenario.buyer ? await signInBuyer(scenario.buyer) : null;
     await scenario.fill();
+    if (scenario.reward && scenario.code) {
+      await db().execute(sql`
+        insert into commerce.discount_code_items (store_id, discount_id, code, batch, customer_id)
+        select ${storeId}::uuid, d.id, ${scenario.code}, 1, ${buyerId}::uuid from commerce.discount_codes d
+        where d.store_id = ${storeId}::uuid and d.code = ${`RWD${run}`.toUpperCase()}
+      `);
+    }
     if (scenario.code) expect(await setCartCode(shop(), scenario.code)).toBe(true);
     for (const more of scenario.moreCodes ?? []) expect(await addCartCode(shop(), more)).toBe("saved");
     // The store's gift messages are on only while a gift scenario runs (D173).
