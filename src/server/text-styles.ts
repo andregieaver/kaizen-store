@@ -5,7 +5,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import { z } from "zod";
 
 import { db, readDb } from "@/db/client";
-import { TEXT_STYLES_MAX, TEXT_STYLE_KINDS, cleanStyleDeclarations, slugFor, stylesInMarkup, textStylesCss, type TextStyle, type TextStyleSettings } from "@/lib/text-styles";
+import { TEXT_STYLES_MAX, TEXT_STYLE_KINDS, slugFor, styleCssBody, styleCssProblem, stylesInMarkup, textStylesCss, type TextStyle, type TextStyleSettings } from "@/lib/text-styles";
 import { textStyleInput } from "@/lib/text-styles-schema";
 
 import { audit, type Account } from "./auth";
@@ -69,19 +69,18 @@ export type TextStyleResult = { ok: true; style: TextStyle; styles: TextStyle[];
 
 /**
  * Saves a style: a new one (no `slug`) gets a slug from its name and the next place in the library; an existing one keeps its slug.
- * A `custom` style keeps only the declarations `cleanStyleDeclarations()` allows, and says what it left out.
+ * A `custom` style keeps its own CSS as its rule's body (`styleCssBody()`), refused only where the site's own CSS would be (`styleCssProblem()`).
  */
 export async function saveTextStyle(account: Account, owner: string | null, raw: unknown): Promise<TextStyleResult> {
   const parsed = textStyleInput.safeParse(raw);
   if (!parsed.success) return { ok: false, problems: [...new Set(parsed.error.issues.map((issue) => issue.message))] };
   const input = parsed.data;
   let css: string | null = null;
-  let dropped: string[] = [];
+  const dropped: string[] = [];
   if (input.kind === "custom") {
-    const cleaned = cleanStyleDeclarations(input.css ?? "");
-    if (cleaned.declarations.length === 0) return { ok: false, problems: ["Write at least one declaration the style may set, such as color: #1d4ed8."] };
-    css = cleaned.declarations.map(([property, value]) => `${property}: ${value};`).join("\n");
-    dropped = cleaned.dropped;
+    const problem = styleCssProblem(input.css ?? "");
+    if (problem) return { ok: false, problems: [problem] };
+    css = styleCssBody(input.css ?? "");
   }
   const existing = await listTextStyles(owner);
   let slug = input.slug;

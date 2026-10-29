@@ -46,6 +46,7 @@ export function MarkupInput({
     editorProps: {
       attributes: {
         id,
+        "data-style-marks": "",
         role: "textbox",
         "aria-multiline": String(multiline),
         class: `block min-h-10 w-full whitespace-pre-wrap break-words px-3 py-2 text-sm outline-none ${className}`,

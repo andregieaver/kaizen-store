@@ -1,9 +1,13 @@
 /**
  * Text styles (D393, `docs/text-styles.md`): named looks for words, made from a gallery look's settings or, under Advanced, from the
  * owner's own declarations, and drawn as one CSS rule per style on the class `ts-{slug}`. Pure and without zod (the schema is
- * `text-styles-schema.ts`): every declaration a style becomes is written here by code from checked values, or kept from the owner's
- * own by `cleanStyleDeclarations()`'s closed list of text properties.
+ * `text-styles-schema.ts`): every declaration a gallery look becomes is written here by code from checked values; a `custom` style's own
+ * CSS is any CSS the site's own CSS may hold (`styleCssProblem()`, the same check as `cssProblem()`), drawn as the body of its rule, so
+ * it may set any property, `!important`, and nested rules such as `&:hover { … }` or `@media (…) { … }` (the owner's request of
+ * 29 October 2026: no limits on what a style can do).
  */
+
+import { cssProblem } from "./custom-css";
 
 export const TEXT_STYLE_KINDS = ["gradient", "highlight", "outline", "underline", "glow", "colour", "smallCaps", "spacedCaps", "custom"] as const;
 export type TextStyleKind = (typeof TEXT_STYLE_KINDS)[number];
@@ -39,13 +43,13 @@ export type TextStyle = {
   name: string;
   kind: TextStyleKind;
   settings: TextStyleSettings;
-  /** `custom` only: the owner's own declarations, as kept by `cleanStyleDeclarations()`. */
+  /** `custom` only: the owner's own CSS, the body of the style's rule (`styleCssBody()`). */
   css: string | null;
 };
 
 export const TEXT_STYLES_MAX = 50;
 export const TEXT_STYLE_NAME_MAX = 60;
-export const TEXT_STYLE_CSS_MAX = 2000;
+export const TEXT_STYLE_CSS_MAX = 10_000;
 export const SLUG_SHAPE = /^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$/;
 export const CLASS_PREFIX = "ts-";
 
@@ -164,81 +168,40 @@ export function textStyleDeclarations(style: Pick<TextStyle, "kind" | "settings"
         ["letter-spacing", `${within(s.spacing, 5, 50, 12) / 100}em`],
       ];
     case "custom":
-      return cleanStyleDeclarations(style.css ?? "").declarations;
+      // A style's own CSS is drawn as its rule's body (`textStyleRule()`), never split into declarations.
+      return [];
   }
 }
 
-/** The properties a style's own CSS may set: text only, so a style can never move or hide a part of the page. */
-export const STYLE_PROPERTIES = new Set([
-  "color",
-  "background-color",
-  "background-image",
-  "background-clip",
-  "-webkit-background-clip",
-  "-webkit-text-fill-color",
-  "-webkit-text-stroke",
-  "-webkit-text-stroke-color",
-  "-webkit-text-stroke-width",
-  "text-decoration",
-  "text-decoration-line",
-  "text-decoration-color",
-  "text-decoration-style",
-  "text-decoration-thickness",
-  "text-underline-offset",
-  "text-shadow",
-  "text-transform",
-  "font-weight",
-  "font-style",
-  "font-variant",
-  "font-variant-caps",
-  "letter-spacing",
-  "word-spacing",
-  "padding",
-  "border-radius",
-  "box-decoration-break",
-  "-webkit-box-decoration-break",
-  "opacity",
-]);
-
-/** A value that could reach outside the rule or load something: refused whole. */
-const UNSAFE_VALUE = /url\s*\(|expression\s*\(|@|[{}<>;\\]|\/\*|javascript:/i;
-/** A background is a colour or a linear gradient of colours, nothing that loads. */
-const BACKGROUND_VALUE = /^(?:(?:repeating-)?linear-gradient\([#\w\s.,%()-]*\)|#[0-9a-f]{3,8}|[a-z]+|rgba?\([\d\s.,%]+\)|hsla?\([\d\s.,%deg]+\))$/i;
-const DECLARATION_MAX = 300;
-
 /**
- * The owner's own declarations as kept: `property: value` pairs of `STYLE_PROPERTIES` with a safe value, each at most 300
- * characters; `!important` is dropped (a style is one class, the page's own CSS can still say otherwise). What was left out is named.
+ * A style's own CSS as kept: the body of its rule. A whole rule pasted (`.anything { … }`) is unwrapped to its body; the rest is kept as
+ * written, declarations and nested rules alike.
  */
-export function cleanStyleDeclarations(css: string): { declarations: [string, string][]; dropped: string[] } {
-  const declarations: [string, string][] = [];
-  const dropped: string[] = [];
-  const body = css.slice(0, TEXT_STYLE_CSS_MAX).replace(/^\s*\.[\w-]+\s*\{/, "").replace(/\}\s*$/, "");
-  for (const raw of body.split(/;|\n/)) {
-    const text = raw.trim();
-    if (!text) continue;
-    const colon = text.indexOf(":");
-    if (colon <= 0) {
-      dropped.push(text.slice(0, 60));
-      continue;
-    }
-    const property = text.slice(0, colon).trim().toLowerCase();
-    const value = text.slice(colon + 1).replace(/!important\s*$/i, "").trim();
-    const safe =
-      STYLE_PROPERTIES.has(property) &&
-      value !== "" &&
-      text.length <= DECLARATION_MAX &&
-      !UNSAFE_VALUE.test(value) &&
-      (!property.startsWith("background-") || property === "background-clip" || BACKGROUND_VALUE.test(value));
-    if (safe) declarations.push([property, value]);
-    else dropped.push(property || text.slice(0, 60));
-  }
-  return { declarations, dropped };
+export function styleCssBody(css: string): string {
+  const text = css.trim();
+  // Only a single class selector around everything is a pasted rule; `&:hover { … }` or a declaration before a nested rule is a body.
+  const whole = /^\.[\w-]+\s*\{([\s\S]*)\}$/.exec(text);
+  if (whole && cssProblem(whole[1]) === null) return whole[1].trim();
+  return text;
+}
+
+/** Why a style's own CSS cannot be drawn, or null: the site's own CSS rules (`cssProblem()`), nothing narrower. */
+export function styleCssProblem(css: string): string | null {
+  const body = styleCssBody(css);
+  if (!body) return "Write the style's CSS, such as color: #1d4ed8;";
+  if (body.length > TEXT_STYLE_CSS_MAX) return `A style's CSS is at most ${TEXT_STYLE_CSS_MAX.toLocaleString("en")} characters.`;
+  // The body balances on its own (so it can never close the style's rule and write one of its own) and as the rule it is drawn in.
+  return cssProblem(body) ?? cssProblem(`.ts-style{${body}}`);
 }
 
 /** One style's rule. */
 export function textStyleRule(style: Pick<TextStyle, "slug" | "kind" | "settings" | "css">, scope = ""): string {
   if (!SLUG_SHAPE.test(style.slug)) return "";
+  if (style.kind === "custom") {
+    // The owner's own CSS as its rule's body (nesting drawn by the browser); one the site's CSS check refuses is not drawn.
+    const own = styleCssBody(style.css ?? "");
+    return own && styleCssProblem(own) === null ? `${scope}.${textStyleClass(style.slug)}{${own}}` : "";
+  }
   const body = textStyleDeclarations(style)
     .map(([property, value]) => `${property}:${value}`)
     .join(";");

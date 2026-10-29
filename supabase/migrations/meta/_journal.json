@@ -4082,6 +4082,13 @@
       "when": 1793277822342,
       "tag": "20261029124342_agents_privacy_rule",
       "breakpoints": true
+    },
+    {
+      "idx": 583,
+      "version": "7",
+      "when": 1793280675703,
+      "tag": "20261029133115_text_styles_any_css",
+      "breakpoints": true
     }
   ]
 }

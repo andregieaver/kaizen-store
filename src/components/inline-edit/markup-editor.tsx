@@ -89,7 +89,7 @@ export function InlineMarkupEditor({
     content: markupToDoc(start.text),
     immediatelyRender: false,
     editorProps: {
-      attributes: { class: "outline-none", "aria-label": headingWord, "aria-multiline": "false", role: "textbox", spellcheck: "true" },
+      attributes: { class: "outline-none", "data-style-marks": "", "aria-label": headingWord, "aria-multiline": "false", role: "textbox", spellcheck: "true" },
       handleKeyDown: (_view, event) => {
         if (event.key === "Enter" && !event.shiftKey) {
           event.preventDefault();

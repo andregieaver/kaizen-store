@@ -1363,3 +1363,13 @@ html:has(dialog.kz-lightbox[open]) {
 .kz-star-choice:hover ~ .kz-star-choice > span[aria-hidden] {
   color: var(--color-amber-500, #f59e0b);
 }
+
+/*
+ * Words that wear a text style (D393), marked while they are edited (the owner's request of 29 October 2026: what is customised shows):
+ * a dashed outline around them in every editor of words (the panel's fields, the rich text editor, the canvas and the live site's
+ * editing), drawn outside the words so their own look is untouched. Never on a page as visitors see it.
+ */
+[data-style-marks] :is([class^="ts-"], [class*=" ts-"]) {
+  outline: 1.5px dashed color-mix(in srgb, currentColor 60%, transparent);
+  outline-offset: 2px;
+}

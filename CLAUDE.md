@@ -1114,8 +1114,9 @@ stand-in is the only fake, and only it is told it is one.
 - **Icon list gradient (D199)**: `IconListBlock.iconGradient` (`TextGradient`, `textGradientSchema` from `typography.ts`) fills the icons' strokes through `ListIcon`'s SVG `linearGradient` (id from the colours and angle, defined beside the icon, taking no room) and wins over `iconColor`; edited with `GradientText` from `typography-fields.tsx`.
 - **Text styles (D393, `docs/text-styles.md`, `src/lib/text-styles.ts`, `src/server/text-styles.ts`, `src/components/admin/text-styles.tsx`)**: a
   site's named looks for words are `commerce.text_styles`, written only by `src/server/text-styles.ts`, drawn as the class `ts-{slug}` (a slug
-  never changes) only from `textStylesCss()` (a gallery look's CSS written by code, or its own declarations through
-  `cleanStyleDeclarations()`'s closed list of text properties: never owner text as CSS another way), after the theme and before the owner's
+  never changes) only from `textStylesCss()` (a gallery look's CSS written by code, or a `custom` style's own CSS as its rule's body, any
+  property and nested rules, refused only where the site's own CSS would be by `styleCssProblem()`: never owner text as CSS another way;
+  words wearing a style are outlined in every editor through `data-style-marks`, never on a page), after the theme and before the owner's
   own CSS. Words take a style only through the *Style* menu (`StyleMenu`): the rich-text mark `textClass` or `<span class="ts-…">` in inline
   markup, which a heading edited in place and a panel's plain field (`MarkupInput`, `TextField`'s `markup`) write through the one-line
   editor (`src/lib/inline-doc.ts`); a new plain field that takes inline markup is a `MarkupInput`. Content placed from another site carries

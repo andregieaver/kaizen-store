@@ -7990,7 +7990,7 @@ export const textStyles = commerce.table(
       "text_styles_kind",
       sql`${t.kind} in ('gradient', 'highlight', 'outline', 'underline', 'glow', 'colour', 'smallCaps', 'spacedCaps', 'custom')`,
     ),
-    check("text_styles_css", sql`${t.css} is null or length(${t.css}) <= 2000`),
+    check("text_styles_css", sql`${t.css} is null or length(${t.css}) <= 10000`),
   ],
 );
 

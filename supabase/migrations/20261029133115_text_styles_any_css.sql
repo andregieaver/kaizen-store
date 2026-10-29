@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."text_styles" DROP CONSTRAINT "text_styles_css";--> statement-breakpoint
+ALTER TABLE "commerce"."text_styles" ADD CONSTRAINT "text_styles_css" CHECK ("commerce"."text_styles"."css" is null or length("commerce"."text_styles"."css") <= 10000);

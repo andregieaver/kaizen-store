@@ -60,12 +60,15 @@ describe("text styles", () => {
     expect(css).toContain(".ts-gradient-text-2{text-shadow:");
   });
 
-  it("keeps a custom style's CSS to text properties, and refuses one with none", async () => {
-    const made = await styles.saveTextStyle(owner.account, owner.store.id, { name: "Mine", kind: "custom", settings: {}, css: "color: #1d4ed8;\nposition: fixed;\nbackground-image: url(x.png);" });
-    expect(made.ok && made.dropped).toEqual(["position", "background-image"]);
-    expect(made.ok && made.style.css).toBe("color: #1d4ed8;");
-    const none = await styles.saveTextStyle(owner.account, owner.store.id, { name: "Nothing", kind: "custom", settings: {}, css: "display: none;" });
-    expect(none.ok).toBe(false);
+  it("keeps a custom style's own CSS as written, any property and nested rules, and refuses only what the site's CSS would", async () => {
+    const own = "padding: 5px 10px;\nborder: 2px solid #fff;\nposition: relative;\n&:hover { color: #1d4ed8; }";
+    const made = await styles.saveTextStyle(owner.account, owner.store.id, { name: "Mine", kind: "custom", settings: {}, css: `.mine { ${own} }` });
+    expect(made.ok && made.style.css).toBe(own);
+    expect(await styles.textStylesCssFor(owner.store.id)).toContain(`.ts-mine{${own}}`);
+    const empty = await styles.saveTextStyle(owner.account, owner.store.id, { name: "Nothing", kind: "custom", settings: {}, css: "  " });
+    expect(empty.ok).toBe(false);
+    const escape = await styles.saveTextStyle(owner.account, owner.store.id, { name: "Escape", kind: "custom", settings: {}, css: "color: red}body{display:none" });
+    expect(escape.ok).toBe(false);
     const bad = await styles.saveTextStyle(owner.account, owner.store.id, { name: "Bad", kind: "glow", settings: { color: "red" } });
     expect(bad.ok).toBe(false);
   });

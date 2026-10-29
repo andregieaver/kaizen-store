@@ -54,6 +54,7 @@ export function InlineRichEditor({
     editorProps: {
       attributes: {
         class: "rich-text min-h-[1.5em] cursor-text rounded-sm outline-2 outline-offset-4 outline-blue-600/70 focus:outline-blue-600",
+        "data-style-marks": "",
         "aria-label": label,
         "aria-multiline": "true",
         role: "textbox",

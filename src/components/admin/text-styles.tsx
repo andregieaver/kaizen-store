@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { createContext, useContext, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { fillWords } from "@/lib/admin-fill";
@@ -7,9 +8,10 @@ import {
   FONT_WEIGHTS,
   GALLERY_KINDS,
   HIGHLIGHT_HEIGHTS,
+  TEXT_STYLE_CSS_MAX,
   UNDERLINE_STYLES,
-  cleanStyleDeclarations,
   starterSettings,
+  styleCssProblem,
   textStyleClass,
   textStyleDeclarations,
   textStyleRule,
@@ -21,6 +23,13 @@ import {
 
 import { useAdminText } from "./admin-text";
 import { ColorField } from "./colour-field";
+
+/** The CSS code editor (D394), fetched when a style's own CSS is opened; the plain field it hands down until then and if it cannot load. */
+const PlainCss = createContext<ReactNode>(null);
+function PlainCssField() {
+  return <>{useContext(PlainCss)}</>;
+}
+const StyleCssEditor = dynamic(() => import("./css-code-editor").catch(() => PlainCssField), { ssr: false, loading: PlainCssField });
 import { Modal } from "./modal";
 import type { TextStylesContext } from "./page-context";
 
@@ -304,7 +313,8 @@ function StyleDialog({
     if (next !== "custom") setSettings(starterSettings(next, starter));
     if (!named) setName(w.kinds[next]);
   };
-  const dropped = kind === "custom" ? cleanStyleDeclarations(css).dropped : [];
+  const cssProblemNow = kind === "custom" && css.trim() ? styleCssProblem(css) : null;
+  const cssId = useId();
   const preview = textStyleRule({ ...current, slug: DRAFT_SLUG }, "[data-ts-draft] ");
   const sample = w.sample.split(w.sampleWord);
   const colors = settings.colors ?? [];
@@ -401,19 +411,44 @@ function StyleDialog({
               </button>
             )}
             {kind === "custom" && (
-              <label className="flex flex-col gap-1 text-sm font-medium">
-                {w.css}
-                <textarea
-                  value={css}
-                  rows={6}
-                  maxLength={2000}
-                  spellCheck={false}
-                  onChange={(event) => setCss(event.target.value)}
-                  className="rounded-md border border-line bg-card px-3 py-2 font-mono text-caption"
-                />
-              </label>
+              <div className="flex flex-col gap-1">
+                <label id={`${cssId}-label`} htmlFor={`${cssId}-css`} className="text-sm font-medium">
+                  {w.css}
+                </label>
+                <div className="flex h-56 flex-col">
+                  <PlainCss.Provider
+                    value={
+                      <textarea
+                        id={`${cssId}-css`}
+                        value={css}
+                        maxLength={TEXT_STYLE_CSS_MAX}
+                        spellCheck={false}
+                        onChange={(event) => setCss(event.target.value)}
+                        aria-describedby={`${cssId}-help`}
+                        className="min-h-0 flex-1 resize-none rounded-md border border-line bg-card px-3 py-2 font-mono text-caption"
+                      />
+                    }
+                  >
+                    <StyleCssEditor
+                      id={`${cssId}-css`}
+                      value={css}
+                      onChange={setCss}
+                      max={TEXT_STYLE_CSS_MAX}
+                      placeholderText={w.cssPlaceholder}
+                      labelledBy={`${cssId}-label`}
+                      describedBy={`${cssId}-help`}
+                      invalid={cssProblemNow !== null}
+                      classNames={[]}
+                    />
+                  </PlainCss.Provider>
+                </div>
+              </div>
             )}
-            {dropped.length > 0 && <p className="text-caption text-warning-text">{fillWords(w.dropped, { list: dropped.join(", ") })}</p>}
+            {cssProblemNow && (
+              <p id={`${cssId}-help`} role="alert" className="text-caption text-danger-text">
+                {cssProblemNow}
+              </p>
+            )}
           </div>
         </details>
       </div>

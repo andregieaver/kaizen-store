@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { cleanStyleDeclarations, slugFor, slugOfClass, starterSettings, stylesInMarkup, textStyleDeclarations, textStylesCss } from "./text-styles";
+import { slugFor, styleCssBody, styleCssProblem, slugOfClass, starterSettings, stylesInMarkup, textStyleDeclarations, textStylesCss } from "./text-styles";
 
-/** Text styles (D393): every declaration a style becomes is written by code or kept from a closed list. */
+/** Text styles (D393): a gallery look is written by code; a style's own CSS is any CSS the site's own may hold. */
 describe("text styles", () => {
   it("writes a gallery look's CSS from its checked settings only", () => {
     const css = textStylesCss([{ slug: "gradient-text", kind: "gradient", settings: { colors: ["#FF0000", "#0000ff"], angle: 45 }, css: null }]);
@@ -15,16 +15,19 @@ describe("text styles", () => {
     expect(textStylesCss([{ slug: "Bad Slug", kind: "colour", settings: {}, css: null }])).toBe("");
   });
 
-  it("keeps only text properties with safe values from a style's own CSS, and names the rest", () => {
-    const { declarations, dropped } = cleanStyleDeclarations(
-      "color: #1d4ed8;\nposition: absolute;\nbackground-image: url(https://x.example/a.png);\ntext-shadow: 0 2px 4px #0003 !important;\nbackground-image: linear-gradient(90deg, #fff, #000);\nfont-weight: 700}body{color:red",
-    );
-    expect(declarations).toEqual([
-      ["color", "#1d4ed8"],
-      ["text-shadow", "0 2px 4px #0003"],
-      ["background-image", "linear-gradient(90deg, #fff, #000)"],
-    ]);
-    expect(dropped).toEqual(["position", "background-image", "font-weight"]);
+  it("draws a style's own CSS as it is written, any property and nested rules, refused only where the site's own CSS is", () => {
+    const own = "padding: 5px 10px;\nborder-radius: 99px;\nborder: 2px solid #fff !important;\n&:hover { color: #1d4ed8; }\n@media (max-width: 600px) { padding: 2px; }";
+    expect(styleCssProblem(own)).toBeNull();
+    expect(textStylesCss([{ slug: "pill", kind: "custom", settings: {}, css: own }])).toBe(`.ts-pill{${own}}`);
+    // A whole rule pasted is kept as its body; a declaration before a nested rule is a body, never unwrapped.
+    expect(styleCssBody(".pill { border: 1px solid red; }")).toBe("border: 1px solid red;");
+    expect(styleCssBody("color: red; &:hover { color: blue; }")).toBe("color: red; &:hover { color: blue; }");
+    expect(styleCssBody("&:hover { color: blue; }")).toBe("&:hover { color: blue; }");
+    // What would reach outside the rule, or load from elsewhere, is refused and never drawn.
+    for (const bad of ["color: red}body{display:none", "color: red; </style>", "@import url(x.css);", "background: url(https://x.example/a.png)", ""]) {
+      expect(styleCssProblem(bad), bad).not.toBeNull();
+      expect(textStylesCss([{ slug: "bad", kind: "custom", settings: {}, css: bad }]), bad).toBe("");
+    }
   });
 
   it("makes slugs from names, unique, and reads a style's class", () => {

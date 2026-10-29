@@ -143,6 +143,7 @@ export function RichTextEditor({
     editorProps: {
       attributes: {
         class: "rich-text min-h-32 px-4 py-3 focus:outline-none",
+        "data-style-marks": "",
         "aria-label": label,
         "aria-multiline": "true",
         role: "textbox",

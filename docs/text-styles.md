@@ -46,11 +46,13 @@ Stored formats do not change:
   The prefix keeps a style from ever colliding with the site's own classes or Tailwind's.
 - **What it is drawn from.** Its declarations come only from `textStyleDeclarations()` (`src/lib/text-styles.ts`): a gallery look's
   settings, each a checked colour, number or choice, turned into CSS by code.
-  - Advanced CSS is read by `cleanStyleDeclarations()`. It keeps a closed list of text properties: colour, background as a colour or
-    a linear gradient, background-clip, text fill colour, text stroke, text decoration and its offset, text shadow, font weight,
-    style and variant, letter spacing, text transform, padding, corner rounding and box-decoration-break.
-  - The values have no `url()`, `expression`, `@`, braces, semicolons or angle brackets, and each declaration is at most 300 characters.
-  - Anything else is dropped and named.
+  - Advanced CSS (changed on 29 October 2026, the owner's request: no limits on what a style can do) is the body of the style's rule,
+    written in the code editor (D394): any property, `!important`, and nested rules such as `&:hover { … }`, `&::before { … }` or
+    `@media (…) { … }`, drawn by the browser's own nesting. A whole rule pasted (`.name { … }`) is kept as its body.
+  - It is refused only where the site's own CSS would be (`styleCssProblem()`, `cssProblem()`): `<`, unbalanced braces (the body must
+    balance on its own, so it can never close its rule and write another), `@import`, and addresses on other sites. Up to 10,000 characters.
+  - Words wearing a style are outlined with a dashed line in every editor of words (the panel's fields, the rich text editor, the canvas
+    while editing, the live site's editing), so what is customised shows; visitors never see the outline.
 - **Where it is drawn.** The site's stylesheet of styles is `textStylesCss()`, one rule per style, drawn:
   - in the store's layouts and Kaizena Flow's root, after the theme and before the owner's own CSS, so their own CSS can still say
     otherwise;
