@@ -107,6 +107,7 @@ export const ordersEn = {
       to_send: "To send",
       partly_sent: "Partly sent",
       edit_pending: "Change awaiting payment",
+      edit_refund_owed: "Change refund owed",
       sent: "Sent",
       waiting: "Waiting for stock",
       no_shipping: "Nothing to ship",

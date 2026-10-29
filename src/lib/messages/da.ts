@@ -563,6 +563,11 @@ export const da: Messages = {
     tierSpend: (percent: number, amount: string) => `${percent} % rabat, når du handler for ${amount}`,
     nextQuantity: (items: number, percent: number) => `Køb ${items} mere for at få ${percent} % rabat`,
     nextSpend: (amount: string, percent: number) => `Handl for ${amount} mere for at få ${percent} % rabat`,
+    upToAmount: (amount: string) => `Op til ${amount} rabat`,
+    tierQuantityAmount: (amount: string, items: number) => `${amount} rabat, når du køber ${items}`,
+    tierSpendAmount: (amount: string, spend: string) => `${amount} rabat, når du handler for ${spend}`,
+    nextQuantityAmount: (items: number, amount: string) => `Køb ${items} mere for at få ${amount} rabat`,
+    nextSpendAmount: (spend: string, amount: string) => `Handl for ${spend} mere for at få ${amount} rabat`,
     nextAmount: (amount: string, off: string) => `Handl for ${amount} mere for at få ${off} rabat`,
     nextFreeShipping: (amount: string) => `Handl for ${amount} mere for at få gratis fragt`,
     bxgyBuy: (items: number) => `Køb ${items}`,
@@ -893,6 +898,14 @@ export const da: Messages = {
     backText: "Du bad os sige til, når den var tilgængelig igen. Nu er den på lager.",
     backButton: "Se den",
     backReason: (date: string) => `Du får denne e-mail én gang, fordi du bad om det ${date}.`,
+    // D392: stopping a waiting request (the confirmation email's link and its page) and the live price in the email that it is back.
+    cancelLine: "Fortrudt? Du kan stoppe anmodningen når som helst, før vi sender dig en e-mail.",
+    cancelLink: "Stop denne anmodning",
+    cancelHeading: "Stop anmodningen",
+    cancelIntro: (product: string) => `Stop anmodningen om at få besked, når ${product} er tilbage? Vi sender dig ikke en e-mail om det.`,
+    cancelButton: "Stop anmodningen",
+    cancelled: "Stoppet. Vi sender dig ikke en e-mail om det.",
+    priceNow: (price: string) => `Pris nu: ${price}`,
   },
   /** A business's details at checkout (B2B), and its prices without VAT. */
   company: {

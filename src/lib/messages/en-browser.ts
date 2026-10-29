@@ -151,6 +151,8 @@ form: {
     busy: "Too many tries. Try again later.",
     failed: "It did not work. Try again.",
     note: "We email you once about this product, nothing else.",
+    stop: "Stop this request",
+    stopped: "Stopped. We will not email you about it.",
   },
   /** Buying a gift card (D300 F2): its amount, and sending it to someone on a day. */
   giftCard: {

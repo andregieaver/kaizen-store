@@ -126,6 +126,10 @@ export const homeNb: HomeMessages = {
       one: "; betalingslenken til 1 utløper innen {days}, og bestillingen blir da stående som den var",
       many: "; betalingslenkene til {n} utløper innen {days}, og bestillingene blir da stående som de var",
     },
+    editRefundsOwed: {
+      one: "{store}: tilbakebetalingen for {n} endring av en bestilling feilet; kunden har fortsatt penger til gode.",
+      many: "{store}: tilbakebetalingene for {n} endringer av bestillinger feilet; kundene har fortsatt penger til gode.",
+    },
     privacyOverdue: {
       one: "{store}: {n} personvernforespørsel har passert fristen på én måned for svar.",
       many: "{store}: {n} personvernforespørsler har passert fristen på én måned for svar.",

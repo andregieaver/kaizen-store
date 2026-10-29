@@ -333,6 +333,26 @@ describe("campaigns in depth (D299 E3)", () => {
     expect(applyCampaigns([bySpend], [line("a", 600000)], "SE").applied).toEqual([]);
   });
 
+  it("takes an amount off at a step that gives one, shared over the lines it reaches (D392)", () => {
+    const amounts = campaign({
+      kind: "tiered",
+      percent: 0,
+      tierBasis: "quantity",
+      tiers: [
+        { quantity: 2, amounts: {}, percent: 0, off: { NO: 5000, DE: 500 } },
+        { quantity: 4, amounts: {}, percent: 0, off: { NO: 15000 } },
+      ],
+    });
+    expect(applyCampaigns([amounts], [line("a", 10000)], "NO").applied).toEqual([]);
+    expect(applyCampaigns([amounts], [line("a", 10000, 2)], "NO").lineOff).toEqual({ a: 5000 });
+    // Split by what each line costs; never more than the lines come to.
+    expect(applyCampaigns([amounts], [line("a", 10000, 2), line("b", 20000, 2)], "NO").lineOff).toEqual({ a: 5000, b: 10000 });
+    expect(applyCampaigns([amounts], [line("a", 1000, 4)], "NO").lineOff).toEqual({ a: 4000 });
+    // In euro, a market with only the first step's amount has only that step.
+    expect(applyCampaigns([amounts], [line("a", 2000, 5)], "DE").lineOff).toEqual({ a: 500 });
+    expect(applyCampaigns([amounts], [line("a", 10000, 3)], "NO").next).toMatchObject([{ kind: "tiered", missingUnits: 1, percent: null, offMinor: 15000 }]);
+  });
+
   it("stacks a tiered campaign on what the others left, counting the lines before any reduction", () => {
     const first = campaign({ percent: 50 });
     const tier = campaign({ kind: "tiered", percent: 0, stacks: true, tierBasis: "quantity", tiers: [{ quantity: 2, amounts: {}, percent: 10 }, { quantity: 3, amounts: {}, percent: 20 }] });
@@ -374,9 +394,14 @@ describe("campaigns in depth (D299 E3)", () => {
     expect(campaignInput.safeParse({ ...base, tiers: [{ quantity: "2", percent: "10" }] }).success).toBe(false);
     expect(campaignInput.safeParse({ ...base, tiers: [{ quantity: "2", percent: "10" }, { quantity: "", percent: "20" }] }).success).toBe(false);
     expect(campaignInput.safeParse({ ...base, tiers: [{ quantity: "2", percent: "10" }, { quantity: "4", percent: "20" }], stacks: true }).data?.tiers).toEqual([
-      { quantity: 2, amounts: {}, percent: 10 },
-      { quantity: 4, amounts: {}, percent: 20 },
+      { quantity: 2, amounts: {}, percent: 10, off: {} },
+      { quantity: 4, amounts: {}, percent: 20, off: {} },
     ]);
+    // A percentage step needs its percentage; an amount step takes its amounts instead and never stacks (D392).
+    expect(campaignInput.safeParse({ ...base, tiers: [{ quantity: "2", percent: "" }, { quantity: "4", percent: "20" }] }).success).toBe(false);
+    const amountSteps = { ...base, tierGive: "amount", tiers: [{ quantity: "2", off: { NO: "50" } }, { quantity: "4", off: { NO: "150" } }] };
+    expect(campaignInput.safeParse(amountSteps).success).toBe(true);
+    expect(campaignInput.safeParse({ ...amountSteps, stacks: true }).success).toBe(false);
     expect(campaignInput.safeParse({ name: "Frakt", kind: "free_shipping", stacks: true }).success).toBe(false);
     expect(campaignInput.safeParse({ name: "Kroner", kind: "amount", amounts: { NO: "100" }, stacks: true }).success).toBe(false);
     expect(campaignInput.safeParse({ name: "Kroner", kind: "amount", amounts: { NO: "100" } }).success).toBe(true);
@@ -390,6 +415,9 @@ describe("campaigns in depth (D299 E3)", () => {
     expect(
       describeCampaign({ ...plain, kind: "tiered", thresholds: {}, tierBasis: "quantity", tiers: [{ quantity: 2, amounts: {}, percent: 10 }, { quantity: 4, amounts: {}, percent: 20 }] }, money),
     ).toBe("10 % from 2 items, 20 % from 4 items");
+    expect(
+      describeCampaign({ ...plain, kind: "tiered", thresholds: {}, tierBasis: "quantity", tiers: [{ quantity: 2, amounts: {}, percent: 0, off: { NO: 5000 } }] }, money),
+    ).toBe("NO 50 off from 2 items");
   });
 });
 

@@ -15,4 +15,4 @@ export function isRequestAddress(value: string): boolean {
 export type StockRequestBody = { store: string; market: string; variant: string; email: string; lang: string };
 
 /** The answers the route gives the form. */
-export type StockRequestReply = { ok: true; outcome: "waiting" | "check" } | { ok: false; error: "invalid" | "busy" | "failed" };
+export type StockRequestReply = { ok: true; outcome: "waiting" | "check" | "cancelled" } | { ok: false; error: "invalid" | "busy" | "failed" };

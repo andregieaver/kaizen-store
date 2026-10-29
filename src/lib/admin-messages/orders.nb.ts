@@ -95,6 +95,7 @@ export const ordersNb: OrdersMessages = {
       to_send: "Skal sendes",
       partly_sent: "Delvis sendt",
       edit_pending: "Endring venter på betaling",
+      edit_refund_owed: "Tilbakebetaling for endring skyldes",
       sent: "Sendt",
       waiting: "Venter på varer",
       no_shipping: "Ingenting å sende",

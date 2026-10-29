@@ -684,13 +684,13 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": "missing"
+      "was": "partial"
     },
-    "gap": "D299 E3: a tiered campaign (two to five steps, by items or by spend per market, the highest step reached applies, never the sum) with its ladder on the product page and how far the next step is in the cart (`nextSteps()`), held in NOK and euro scenarios of `checkout-kinds.int.test.ts`. Still missing: a step that gives an amount off (`tierPercent()`: percentages only), which criterion 1 asks for.",
-    "bucket": "A",
-    "wave": 5,
+    "gap": "D299 E3: a tiered campaign (two to five steps, by items or by spend per market, the highest step reached applies, never the sum) with its ladder on the product page and how far the next step is in the cart (`nextSteps()`), held in NOK and euro scenarios of `checkout-kinds.int.test.ts`. Since D392 a step gives a percentage or an amount off per market (`tierGive`, a step's `off`, `tierReward()`; the amount spread over the lines reached and converted for a shown currency), the ladder and the cart's next step say amounts, and NOK and euro scenarios of amount steps hold the cart to the order.",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "An owner defines tiers on one discount from quantity or spend thresholds, each with a percentage or amount; the highest tier reached applies, never the sum of tiers.",
       "The product page shows the ladder for that product and the cart says how far the next tier is.",
@@ -718,7 +718,8 @@
     "decisions": [
       "D114",
       "D115",
-      "D299"
+      "D299",
+      "D392"
     ],
     "history": [
       {
@@ -726,6 +727,12 @@
         "from": "missing",
         "to": "partial",
         "why": "First report's skeptic recheck: overlapping multi-buy campaigns and a stacking percentage approximate a ladder, so not missing; no true spend-more-save-more discount. Entry written in wave 0 from the first report, which did not log it."
+      },
+      {
+        "on": "2026-10-29",
+        "from": "partial",
+        "to": "full",
+        "why": "D392: tier steps give an amount off as well as a percentage (criterion 1), shown on the ladder and in the cart's next step, with NOK and euro scenarios in checkout-kinds.int.test.ts."
       }
     ]
   },
@@ -1395,13 +1402,13 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": "missing"
+      "was": "partial"
     },
-    "gap": "D298: a sold-out physical variant that does not keep selling shows *Email me when it is back* while the store has back in stock on; a typed address confirms from its link first (a verified signed-in customer's waits at once), one open request per store, variant and address, limited per visitor key and address. Each run, waiting requests whose variant is in stock again by any path (`variant_availability`) and still offered get one email each, claimed before it goes; requests are store-scoped, exported, erased and pruned (unconfirmed after 7 days, waiting after 180, sent after 30). Staff see how many wait and the products most asked for, and the AI manager's `list_email_automations` repeats the waiting count (D318, `marketing-tools.ts`). Still missing: the live price in the email and a link in it to cancel a waiting request.",
-    "bucket": "A",
-    "wave": 5,
+    "gap": "D298: a sold-out physical variant that does not keep selling shows *Email me when it is back* while the store has back in stock on; a typed address confirms from its link first (a verified signed-in customer's waits at once), one open request per store, variant and address, limited per visitor key and address. Each run, waiting requests whose variant is in stock again by any path (`variant_availability`) and still offered get one email each, claimed before it goes; requests are store-scoped, exported, erased and pruned (unconfirmed after 7 days, waiting after 180, sent after 30). Staff see how many wait and the products most asked for, and the AI manager's `list_email_automations` repeats the waiting count (D318, `marketing-tools.ts`). Since D392 the email says the price now, as the storefront shows it in the request's market and language (`livePrice()`), and every request can be stopped: from the confirmation email's link (a page with a button) or the product page's *Stop* for a signed-in customer's own (`cancelStockRequest()`, `cancelOwnStockRequest()`), the answer the same whether or not one was found (`automations.int.test.ts`).",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "A sold-out variant shows a notify-me form for an email address with a consent text and double opt-in; one waiting request per email and variant per store.",
       "When a variant's stock rises from 0 above 0 by any path (restock, return, cancelled order), each waiting address gets one email, keyed so none goes twice, showing the live price and stock read at send time.",
@@ -1433,7 +1440,8 @@
     "decisions": [
       "D172",
       "D298",
-      "D318"
+      "D318",
+      "D392"
     ],
     "history": [
       {
@@ -1441,6 +1449,12 @@
         "from": "missing",
         "to": "partial",
         "why": "D298 built the notify-me form with double opt-in, one email per waiting address when stock returns by any path, store scope, export, erasure and pruning, and the staff's waiting counts; the email does not show the live price, a waiting request has no cancel link, and the AI manager does not read the count."
+      },
+      {
+        "on": "2026-10-29",
+        "from": "partial",
+        "to": "full",
+        "why": "D392: the back-in-stock email shows the live price read at send time, and a waiting request is cancelled from the confirmation email's link or the product page's Stop; held in automations.int.test.ts. Every criterion met, no person's review named."
       }
     ]
   },

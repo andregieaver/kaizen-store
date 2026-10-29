@@ -6,6 +6,7 @@ import { dateWindow, decodeCursor, excludesCopied, expandShow, SORTS, type Order
 import { escapeLike, searchWords, type SearchWord } from "@/lib/order-search";
 
 import { textList } from "./sql-arrays";
+import { EDIT_REFUND_OWED_SQL } from "./edit-refund-owed";
 
 /**
  * The ONE builder of the Orders list's conditions (wave 3, run 2, D173, `docs/wave-3-orders.md` 3.4 and 4.4): the list, its count, the "select all matching" of a bulk action, the
@@ -135,6 +136,9 @@ function shipCondition(filter: OrderListParams["ship"][number]): SQL {
       return sql`(o.status = 'paid' and exists (select 1 from commerce.shipments sh where sh.store_id = o.store_id and sh.order_id = o.id and sh.undone_at is null))`;
     case "edit_pending":
       return sql`exists (select 1 from commerce.order_edits e where e.store_id = o.store_id and e.order_id = o.id and e.status = 'awaiting_payment')`;
+    // D392: a change whose refund failed still owes the customer money (the order page's own figure).
+    case "edit_refund_owed":
+      return sql`exists (select 1 from commerce.order_edits e where e.store_id = o.store_id and e.order_id = o.id and ${EDIT_REFUND_OWED_SQL} > 0)`;
     // D238: on a fulfilment hold, put by a rule or a person.
     case "held":
       return sql`(o.held_at is not null)`;

@@ -4089,6 +4089,20 @@
       "when": 1793280675703,
       "tag": "20261029133115_text_styles_any_css",
       "breakpoints": true
+    },
+    {
+      "idx": 584,
+      "version": "7",
+      "when": 1793282784559,
+      "tag": "20261029140624_stock_request_cancel",
+      "breakpoints": true
+    },
+    {
+      "idx": 585,
+      "version": "7",
+      "when": 1793284134105,
+      "tag": "20261029142854_return_refund_parts",
+      "breakpoints": true
     }
   ]
 }

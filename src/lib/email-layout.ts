@@ -8,6 +8,8 @@ export type EmailBlock =
   | { type: "heading"; text: string }
   | { type: "paragraph"; text: string }
   | { type: "button"; text: string; url: string }
+  /** A quiet link on a line of its own (D392: a back-in-stock request's *Cancel*), where a button would compete with the main one. */
+  | { type: "link"; text: string; url: string }
   | { type: "lines"; rows: EmailLine[] }
   | { type: "code"; text: string }
   /** A picture at the email's width (a full address), optionally a link (D297's broadcasts). */
@@ -65,6 +67,8 @@ function blockHtml(block: EmailBlock): string {
       return `<p style="margin:0 0 16px;font-size:16px;line-height:1.5;color:#171717">${escapeHtml(block.text).replace(/\n/g, "<br>")}</p>`;
     case "button":
       return `<p style="margin:8px 0 24px"><a href="${escapeHtml(block.url)}" style="display:inline-block;background:#171717;color:#ffffff;text-decoration:none;font-weight:600;font-size:16px;padding:12px 22px;border-radius:999px">${escapeHtml(block.text)}</a></p>`;
+    case "link":
+      return `<p style="margin:0 0 16px;font-size:14px;line-height:1.5"><a href="${escapeHtml(block.url)}" style="color:#525252;text-decoration:underline">${escapeHtml(block.text)}</a></p>`;
     case "code":
       return `<p style="margin:0 0 16px;font-size:32px;letter-spacing:6px;font-weight:700;font-family:ui-monospace,Menlo,monospace;color:#171717">${escapeHtml(block.text)}</p>`;
     case "divider":
@@ -102,6 +106,7 @@ function blockText(block: EmailBlock): string {
     case "paragraph":
       return block.text;
     case "button":
+    case "link":
       return `${block.text}: ${block.url}`;
     case "code":
       return block.text;

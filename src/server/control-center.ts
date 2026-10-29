@@ -18,6 +18,7 @@ import { returnAttention } from "./return-attention";
 import { taxAttention } from "./tax-attention";
 import { taxReturnsAttention } from "./tax-returns-attention";
 import { workAttention } from "./work-attention";
+import { EDIT_REFUND_OWED_SQL } from "./edit-refund-owed";
 
 type Row = Record<string, unknown>;
 
@@ -90,7 +91,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
   const supportIds = idsWith(storeRows, "support:read");
 
   const none = <T>() => Promise.resolve<T[]>([]);
-  const [salesRows, sendRows, stockRows, owedRows, latestRows, usage, workItems, returnItems, taxItems, invoiceItems, taxReturnItems, privacyItems, draftRows, partlyRows, changeRows, supportRows, handRows, termsRows, reviewRows] = await Promise.all([
+  const [salesRows, sendRows, stockRows, owedRows, latestRows, usage, workItems, returnItems, taxItems, invoiceItems, taxReturnItems, privacyItems, draftRows, partlyRows, changeRows, supportRows, handRows, termsRows, reviewRows, owedEditRows] = await Promise.all([
     orderIds.length === 0 ? none<Row>() : db().execute<Row>(sql`
       select o.store_id, o.currency,
         coalesce(sum(o.total_minor) filter (where o.placed_at >= now() - interval '7 days'), 0)::bigint as week,
@@ -224,6 +225,16 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
       where r.store_id in (${idList(productIds)}) and r.status = 'pending' and commerce.feature_on(r.store_id, 'reviews')
       group by r.store_id
     `),
+    // Order changes whose refund failed and still owe the customer (D392, `EDIT_REFUND_OWED_SQL`, the order page's figure): a count only.
+    orderIds.length === 0 ? none<Row>() : db().execute<Row>(sql`
+      select e.store_id, count(*)::int as n
+      from commerce.order_edits e
+      join commerce.orders o on o.store_id = e.store_id and o.id = e.order_id and o.copied_from is null
+      where e.store_id in (${idList(orderIds)}) and e.status = 'applied' and e.difference_minor < 0
+        and exists (select 1 from commerce.order_events ev where ev.store_id = e.store_id and ev.order_id = e.order_id and ev.type = 'order.edit_refund_failed')
+        and ${EDIT_REFUND_OWED_SQL} > 0
+      group by e.store_id
+    `),
   ]);
 
   const salesBy = new Map<string, SalesFigure[]>();
@@ -238,6 +249,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
   const draftsBy = new Map(draftRows.map((r) => [String(r.store_id), r]));
   const partlyBy = new Map(partlyRows.map((r) => [String(r.store_id), r]));
   const changesBy = new Map(changeRows.map((r) => [String(r.store_id), r]));
+  const owedEditsBy = new Map(owedEditRows.map((r) => [String(r.store_id), Number(r.n)]));
   const supportBy = new Map(supportRows.map((r) => [String(r.store_id), Number(r.waiting)]));
   const handBy = new Map(handRows.filter((r) => Number(r.pickup) > 0 || Number(r.local) > 0).map((r) => [String(r.store_id), r]));
   const reviewsBy = new Map(reviewRows.filter((r) => Number(r.waiting) > 0).map((r) => [String(r.store_id), Number(r.waiting)]));
@@ -294,6 +306,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
         ? { handOver: { pickup: Number(handBy.get(id)!.pickup), oldestPickupAt: handBy.get(id)!.oldest_pickup ? new Date(String(handBy.get(id)!.oldest_pickup)).toISOString() : null, local: Number(handBy.get(id)!.local) } }
         : {}),
       ...(changesBy.has(id) ? { orderChanges: { waiting: Number(changesBy.get(id)!.waiting), expiringSoon: Number(changesBy.get(id)!.expiring) } } : {}),
+      ...(owedEditsBy.has(id) ? { editRefundsOwed: owedEditsBy.get(id)! } : {}),
       ...(termsBy.has(id) ? { termsOverdue: termsBy.get(id) } : {}),
       ...(reviewsBy.has(id) ? { reviewsWaiting: reviewsBy.get(id) } : {}),
       ...((limitsBy.get(id) ?? 0) > 0 ? { limitsReached: limitsBy.get(id) } : {}),

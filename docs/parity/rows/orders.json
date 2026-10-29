@@ -202,7 +202,7 @@
       "was": null
     },
     "weight": 3,
-    "gap": "Built and held by tests (D174, `docs/wave-3-fulfilment.md`): staff add, remove and lower lines of a paid, unsent order at `/admin/{store}/orders/{orderId}/edit` (`previewOrderEdit()`/`applyOrderEdit()`/`sendOrderEdit()` in `src/server/order-edits.ts`, priced by `priceOrderEdit()`, equal to `cartSummary()` in kroner and a euro view); kept units keep their price and discounts; a lower total is refunded through `refundOrder()` under the order lock, a higher one applies only when the customer pays the link (`/account/change/{token}`) or staff record it paid outside under the cash ceiling; one `order.edit_applied` event, the number unchanged; an edit credit note and an additional invoice; the revised confirmation emailed. The AI manager previews and makes the same changes through the editor's own functions, gated as `spend` and refused when the order moved since the owner saw it (D318, `src/server/order-change-tools.ts`, `order-change-tools.int.test.ts`). Still short of Full: (1) the consumer texts (change emails, pay page, edit invoice and credit-note words, the cash-ceiling question) are hand-written and not yet read by a person (spec section 8); (2) no change has been paid in Stripe test mode on a real store, only against the repo's fake Stripe; (3) a refund owed after a change's pending refund fails shows on the order page and store checkup, not in the control center, and no test covers a D153 return refund after a paid change. Merged here on 2026-10-07: `checkout.order-editing-after-purchase` (README rule 8); its criteria are criteria 3 to 5. Since D322 an order holding a bundle cannot be edited (`editBlock()`'s `bundle`).",
+    "gap": "Built and held by tests (D174, `docs/wave-3-fulfilment.md`): staff add, remove and lower lines of a paid, unsent order at `/admin/{store}/orders/{orderId}/edit` (`previewOrderEdit()`/`applyOrderEdit()`/`sendOrderEdit()` in `src/server/order-edits.ts`, priced by `priceOrderEdit()`, equal to `cartSummary()` in kroner and a euro view); kept units keep their price and discounts; a lower total is refunded through `refundOrder()` under the order lock, a higher one applies only when the customer pays the link (`/account/change/{token}`) or staff record it paid outside under the cash ceiling; one `order.edit_applied` event, the number unchanged; an edit credit note and an additional invoice; the revised confirmation emailed. The AI manager previews and makes the same changes through the editor's own functions, gated as `spend` and refused when the order moved since the owner saw it (D318, `src/server/order-change-tools.ts`, `order-change-tools.int.test.ts`). Still short of Full: (1) the consumer texts (change emails, pay page, edit invoice and credit-note words, the cash-ceiling question) are hand-written and not yet read by a person (spec section 8); (2) no change has been paid in Stripe test mode on a real store, only against the repo's fake Stripe. Since D392 a refund owed after a change's refund failed is counted in the control center and filtered on the Orders list, and a D153 return refunded after a paid change is tested (it found and fixed a return refunded in parts being refused after Stripe paid it). Merged here on 2026-10-07: `checkout.order-editing-after-purchase` (README rule 8); its criteria are criteria 3 to 5. Since D322 an order holding a bundle cannot be edited (`editBlock()`'s `bundle`).",
     "bucket": "A",
     "wave": 3,
     "criteria": [
@@ -258,7 +258,8 @@
       "D141",
       "D174",
       "D318",
-      "D322"
+      "D322",
+      "D392"
     ],
     "history": []
   },
@@ -1616,7 +1617,7 @@
       "was": "missing"
     },
     "weight": 2,
-    "gap": "Built and held by tests (D239, `docs/wave-3-exchanges.md`): staff add catalogue replacements to a return (`ExchangeBuilder`), priced by `priceExchange()` over `priceDraft()` and equal to `cartSummary()` in kroner and a euro view, netted against `refundFor()`'s credit; processing makes an order with `source = 'exchange'` through `insertOrder()` (next D141 number, stock held only then); a difference owed goes out as a pay link to Stripe's hosted page or is recorded paid outside, one due is refunded through `refundOrder()`; a withdrawal's exchange needs the customer's own press on `/account/exchange/{token}` (`exchanges.int.test.ts`, `exchange-admin.int.test.ts`, `src/db/exchanges.test.ts`, `e2e/signed-in/admin-exchange.spec.ts`). The AI manager previews, proposes (emailed only) and processes exchanges through the same functions, gated (D318, `src/server/exchange-tools.ts`, `order-change-tools.int.test.ts`). Partial because: (1) the consumer texts (exchange page, proposal and pay emails, agreement and withdrawal-right sentences, `settled_by_return` invoice wording, the `return_exchange` credit note) are hand-written and not yet read by a person; (2) no pay link has been paid in Stripe test mode on a real store; (3) the euro scenario is in `exchanges.int.test.ts`, not in `checkout-kinds.int.test.ts` as the spec says. A replacement is goods only, so a bundle cannot be one (D322).",
+    "gap": "Built and held by tests (D239, `docs/wave-3-exchanges.md`): staff add catalogue replacements to a return (`ExchangeBuilder`), priced by `priceExchange()` over `priceDraft()` and equal to `cartSummary()` in kroner and a euro view, netted against `refundFor()`'s credit; processing makes an order with `source = 'exchange'` through `insertOrder()` (next D141 number, stock held only then); a difference owed goes out as a pay link to Stripe's hosted page or is recorded paid outside, one due is refunded through `refundOrder()`; a withdrawal's exchange needs the customer's own press on `/account/exchange/{token}` (`exchanges.int.test.ts`, `exchange-admin.int.test.ts`, `src/db/exchanges.test.ts`, `e2e/signed-in/admin-exchange.spec.ts`). The AI manager previews, proposes (emailed only) and processes exchanges through the same functions, gated (D318, `src/server/exchange-tools.ts`, `order-change-tools.int.test.ts`). Partial because: (1) the consumer texts (exchange page, proposal and pay emails, agreement and withdrawal-right sentences, `settled_by_return` invoice wording, the `return_exchange` credit note) are hand-written and not yet read by a person; (2) no pay link has been paid in Stripe test mode on a real store. Since D392 the euro scenario is in `checkout-kinds.int.test.ts`, as the spec asks. A replacement is goods only, so a bundle cannot be one (D322).",
     "bucket": "A",
     "wave": 3,
     "criteria": [
@@ -1662,7 +1663,8 @@
         "src/app/s/[store]/[market]/account/exchange/[token]/exchange-view.test.ts",
         "e2e/exchange.spec.ts",
         "e2e/signed-in/admin-exchange.spec.ts",
-        "src/server/order-change-tools.int.test.ts"
+        "src/server/order-change-tools.int.test.ts",
+        "src/server/checkout-kinds.int.test.ts"
       ],
       "untested": false
     },
@@ -1670,7 +1672,8 @@
       "D153",
       "D239",
       "D318",
-      "D322"
+      "D322",
+      "D392"
     ],
     "history": [
       {

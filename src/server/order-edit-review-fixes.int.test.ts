@@ -63,6 +63,11 @@ const { sendShipped } = await import("./shopper-emails");
 const { invoiceCheckupFindings } = await import("./invoices");
 const { getStore } = await import("./stores");
 const { staffActor } = await import("./order-actor");
+const { controlCenter } = await import("./control-center");
+const withdrawals = await import("./withdrawals");
+const returns = await import("./returns");
+const { listOrdersPage, loadOrderListContext } = await import("./order-list");
+const { parseOrderListParams } = await import("@/lib/order-list");
 const { fxStore, paidOrder, lineOf, variantOf, onHand, mailsOf, eventsOf, NO, NO_EUR } = await import("./fulfilment-test-fixture");
 
 type Row = Record<string, unknown>;
@@ -264,11 +269,81 @@ describe("a change applied on a pending refund that then fails is said (review f
     const admin = await getOrderAdmin(store.storeId, order.orderId);
     expect(admin?.edits.find((e) => e.id === done.editId)?.refundOwedMinor).toBe(-done.differenceMinor);
     expect((await invoiceCheckupFindings(store.storeId)).map((f) => f.code)).toContain("edit_refund_failed");
+    // The control center counts it and the Orders list finds it (unit M, D392), until it is refunded.
+    const [owner] = await db().execute<Row>(sql`select id, email from commerce.accounts where id = ${store.accountId}::uuid`);
+    const account = { id: String(owner.id), email: String(owner.email), name: "Owner", platformAdmin: false };
+    const owedCount = async () => (await controlCenter(account, store.slug)).stores.find((s) => s.slug === store.slug)?.editRefundsOwed ?? 0;
+    const owedList = async () =>
+      (await listOrdersPage(store.storeId, parseOrderListParams(new URLSearchParams("ship=edit_refund_owed")), await loadOrderListContext(store.storeId))).rows.map((r) => r.id);
+    expect(await owedCount()).toBe(1);
+    expect(await owedList()).toEqual([order.orderId]);
     // Staff refund the customer again from the order page: nothing is owed any more.
     const again = await refundOrder(store.storeId, order.orderId, { amountMinor: -done.differenceMinor, reason: "Refund of change E1 again", restock: [] }, store.accountId);
     expect(again).toMatchObject({ ok: true });
     expect((await getOrderAdmin(store.storeId, order.orderId))?.edits.find((e) => e.id === done.editId)?.refundOwedMinor).toBe(0);
     expect((await invoiceCheckupFindings(store.storeId)).map((f) => f.code)).not.toContain("edit_refund_failed");
+    expect(await owedCount()).toBe(0);
+    expect(await owedList()).toEqual([]);
+  });
+});
+
+describe("a D153 return refunded after a paid change (unit M, D392)", () => {
+  it("refunds the added unit within what was paid, taking from the change's payment once the order's own has too little left", async () => {
+    const order = await paidOrder(store, [["DEMO-TOTE", 1]]);
+    const sent = await edits.sendOrderEdit(store.storeId, order.orderId, { added: [{ variantId: await variantOf(store, "DEMO-LAMP"), quantity: 1 }], reason: "customer_request" }, actor(), { email: false });
+    if (!sent.ok) throw new Error(JSON.stringify(sent.problems));
+    await pay.startEditPayment({ store: (await getStore(store.slug))!, market: NO }, sent.link.split("/").at(-1)!, { origin });
+    const [payment] = await db().execute<Row>(sql`select provider_reference, amount_minor from commerce.payments where order_edit_id = ${sent.editId}::uuid`);
+    const change = { reference: String(payment.provider_reference), amount: Number(payment.amount_minor) };
+    fake.sessions.set(change.reference, { status: "complete", payment_status: "paid", payment_intent: `pi_${change.reference}` });
+    await applySession(store.storeId, { id: change.reference, status: "complete", payment_status: "paid" } as never, "checkout.session.completed");
+    const [lamp] = await db().execute<Row>(sql`
+      select l.id, l.total_minor from commerce.order_lines l join commerce.product_variants v on v.id = l.variant_id
+      where l.order_id = ${order.orderId}::uuid and v.sku = 'DEMO-LAMP'`);
+    expect(lamp).toBeDefined();
+    // A goodwill refund leaves 100 on the order's own payment, so the lamp's refund needs the change's payment too.
+    expect(await refundOrder(store.storeId, order.orderId, { amountMinor: order.totalMinor - 100, reason: "Goodwill", restock: [] }, store.accountId)).toMatchObject({ ok: true });
+    expect(await markSent(store.storeId, order.orderId, { carrier: "posten", trackingNumber: "R1", trackingUrl: null }, store.accountId)).toMatchObject({ ok: true });
+
+    const started = await withdrawals.startWithdrawal(store.storeId, { orderNumber: order.number, email: order.email, name: "Kari Nordmann", lines: [{ lineId: String(lamp.id), quantity: 1 }] }, { floorMs: 0 });
+    if (!started.ok || !started.matched || !started.request) throw new Error(JSON.stringify(started));
+    const confirmed = await withdrawals.confirmWithdrawal(store.storeId, { requestId: started.request.id });
+    if (!confirmed.ok) throw new Error(JSON.stringify(confirmed));
+    const returnId = confirmed.returns[0].id;
+    expect(await returns.markInTransit(store.storeId, { returnId }, null)).toMatchObject({ ok: true });
+    expect(await returns.markReceived(store.storeId, { returnId }, null)).toMatchObject({ ok: true });
+    const preview = (await returns.previewRefund(store.storeId, returnId))!;
+    expect(preview.refund.amountMinor).toBe(Number(lamp.total_minor));
+
+    const before = fake.refunds.length;
+    const done = await returns.refundReturn(store.storeId, { returnId, amountMinor: preview.refund.amountMinor }, null);
+    expect(done).toMatchObject({ ok: true, amountMinor: Number(lamp.total_minor) });
+    const asked = fake.refunds.slice(before).map((r) => ({ intent: String(r.params.payment_intent), amount: Number(r.params.amount) }));
+    expect(asked).toEqual([
+      { intent: `pi_for_cs_${order.orderId}`, amount: 100 },
+      { intent: `pi_${change.reference}`, amount: Number(lamp.total_minor) - 100 },
+    ]);
+    // Within what was paid in all; the return names the first part and records the whole, which the database checks against both parts (D392).
+    expect((await getOrderAdmin(store.storeId, order.orderId))?.refundableMinor).toBe(change.amount - (Number(lamp.total_minor) - 100));
+    const [ret] = await db().execute<Row>(sql`select refund_minor, refund_id from commerce.returns where id = ${returnId}::uuid`);
+    expect(Number(ret.refund_minor)).toBe(Number(lamp.total_minor));
+    expect(String(ret.refund_id)).toBe((done as { refundId: string }).refundId);
+    // A part list naming a refund of another order is refused.
+    const other = await paidOrder(store, [["DEMO-TOTE", 1]]);
+    expect(await refundOrder(store.storeId, other.orderId, { amountMinor: 100, reason: "Other", restock: [] }, store.accountId)).toMatchObject({ ok: true });
+    const [foreign] = await db().execute<Row>(sql`
+      select r.id from commerce.refunds r join commerce.payments p on p.id = r.payment_id where p.order_id = ${other.orderId}::uuid limit 1`);
+    const partsSum = (parts: string[]) =>
+      db().transaction(async (tx) => {
+        await tx.execute(sql`select set_config('kaizen.return_refund_parts', ${`{${parts.join(",")}}`}, true)`);
+        const [row] = await tx.execute<Row>(sql`select commerce.return_refund_parts_sum(${store.storeId}::uuid, ${order.orderId}::uuid, ${String(ret.refund_id)}::uuid, 1) as n`);
+        return Number(row.n);
+      });
+    const parts = (await db().execute<Row>(sql`
+      select r.id from commerce.refunds r join commerce.payments p on p.id = r.payment_id
+      where p.order_id = ${order.orderId}::uuid and r.created_at = (select created_at from commerce.refunds where id = ${String(ret.refund_id)}::uuid)`)).map((r) => String(r.id));
+    expect(await partsSum(parts)).toBe(Number(lamp.total_minor));
+    expect(await partsSum([String(ret.refund_id), String(foreign.id)])).toBe(-1);
   });
 });
 

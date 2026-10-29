@@ -563,6 +563,11 @@ export const sv: Messages = {
     tierSpend: (percent: number, amount: string) => `${percent} % rabatt när du handlar för ${amount}`,
     nextQuantity: (items: number, percent: number) => `Köp ${items} till för att få ${percent} % rabatt`,
     nextSpend: (amount: string, percent: number) => `Handla för ${amount} till för att få ${percent} % rabatt`,
+    upToAmount: (amount: string) => `Upp till ${amount} rabatt`,
+    tierQuantityAmount: (amount: string, items: number) => `${amount} rabatt när du köper ${items}`,
+    tierSpendAmount: (amount: string, spend: string) => `${amount} rabatt när du handlar för ${spend}`,
+    nextQuantityAmount: (items: number, amount: string) => `Köp ${items} till för att få ${amount} rabatt`,
+    nextSpendAmount: (spend: string, amount: string) => `Handla för ${spend} till för att få ${amount} rabatt`,
     nextAmount: (amount: string, off: string) => `Handla för ${amount} till för att få ${off} rabatt`,
     nextFreeShipping: (amount: string) => `Handla för ${amount} till för att få fri frakt`,
     bxgyBuy: (items: number) => `Köp ${items}`,
@@ -893,6 +898,14 @@ export const sv: Messages = {
     backText: "Du bad oss säga till när den fanns igen. Nu finns den i lager.",
     backButton: "Se den",
     backReason: (date: string) => `Du får det här mejlet en gång, eftersom du bad om det ${date}.`,
+    // D392: stopping a waiting request (the confirmation email's link and its page) and the live price in the email that it is back.
+    cancelLine: "Ångrat dig? Du kan stoppa förfrågan när som helst innan vi mejlar dig.",
+    cancelLink: "Stoppa den här förfrågan",
+    cancelHeading: "Stoppa förfrågan",
+    cancelIntro: (product: string) => `Stoppa förfrågan om att få veta när ${product} är tillbaka? Vi mejlar dig inte om det.`,
+    cancelButton: "Stoppa förfrågan",
+    cancelled: "Stoppad. Vi mejlar dig inte om det.",
+    priceNow: (price: string) => `Pris nu: ${price}`,
   },
   /** A business's details at checkout (B2B), and its prices without VAT. */
   company: {

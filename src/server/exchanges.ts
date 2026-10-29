@@ -1272,7 +1272,7 @@ export async function settleExchange(storeId: string, exchangeId: string, option
   const reason = `Exchange for return ${x.returnNumber}`;
   let settledHere = false;
 
-  const write = async (tx: Tx, remainderId: string | null) => {
+  const write = async (tx: Tx, remainderId: string | null, remainderParts: string[] = []) => {
     await tx.execute(sql`select set_config('kaizen.exchange', ${exchangeId}, true)`);
     const [locked] = await tx.execute<Row>(sql`select status from commerce.return_exchanges where store_id = ${storeId}::uuid and id = ${exchangeId}::uuid for update`);
     if (locked?.status !== "processed") return;
@@ -1322,6 +1322,8 @@ export async function settleExchange(storeId: string, exchangeId: string, option
       outside: false,
     };
     const refundWorking = { ...working, adjustmentMinor: adjustmentOf(working) };
+    // A remainder split over the order's payments (D174, D392) is recorded by its first part; the rule sums the parts named here.
+    if (remainderId && remainderParts.length > 1) await tx.execute(sql`select set_config('kaizen.return_refund_parts', ${`{${remainderParts.join(",")}}`}, true)`);
     await tx.execute(sql`
       update commerce.returns set refund_id = ${remainderId}::uuid, refund_minor = ${credit}, refund_computed_minor = ${refund.amountMinor},
         refund_outside = false, return_shipping_minor = ${refund.returnShippingMinor}, shipping_refund_minor = ${working.deliveryMinor},
@@ -1363,7 +1365,7 @@ export async function settleExchange(storeId: string, exchangeId: string, option
         },
         inTransaction: async (tx, out) => {
           if (out.status === "failed") return;
-          await write(tx, outcome.refundMinor > 0 ? out.refundId || null : null);
+          await write(tx, outcome.refundMinor > 0 ? out.refundId || null : null, outcome.refundMinor > 0 ? out.refundIds : []);
         },
       });
     } else {

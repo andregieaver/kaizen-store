@@ -22,13 +22,17 @@ export { ORDERS_COUNT_CAP, ORDERS_PAGE_SIZE, VIEWS_MAX, VIEW_TITLE_MAX };
 export const PAY_FILTERS = ["paid", "partially_refunded", "refunded", "balance_due", "unpaid", "disputed", "elevated_risk", "authorized", "terms_due", "terms_overdue"] as const;
 export type PayFilter = (typeof PAY_FILTERS)[number];
 
-/** `partly_sent` (D174): a parcel is recorded and units are still to send; `edit_pending`: an order change waits for the customer's payment (the spec's `edit=pending`, kept with the fulfilment filters). */
+/**
+ * `partly_sent` (D174): a parcel is recorded and units are still to send; `edit_pending`: an order change waits for the customer's payment (the spec's
+ * `edit=pending`, kept with the fulfilment filters); `edit_refund_owed` (D392): a change's refund failed and the customer is still owed money
+ * (`EDIT_REFUND_OWED_SQL`).
+ */
 /**
  * D237: `pickup` (paid orders to collect, not handed over yet), `local` (paid orders for the store's own local delivery, not delivered yet) and
  * `delivery_mismatch` (the priced postal code differs from the address); `to_send` holds parcels only.
  */
 /** D238: `held`, orders on a fulfilment hold (`orders.held_at`, *On hold*); a held order is still listed in *To send*, with its chip. */
-export const SHIP_FILTERS = ["to_send", "sent", "waiting", "no_shipping", "partly_sent", "edit_pending", "pickup", "local", "delivery_mismatch", "held"] as const;
+export const SHIP_FILTERS = ["to_send", "sent", "waiting", "no_shipping", "partly_sent", "edit_pending", "edit_refund_owed", "pickup", "local", "delivery_mismatch", "held"] as const;
 export type ShipFilter = (typeof SHIP_FILTERS)[number];
 
 /** The order's own status (`orders.status`); an unfinished checkout is `pending_payment` and is the `unpaid` payment filter's, not a status. */

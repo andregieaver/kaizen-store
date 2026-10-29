@@ -147,6 +147,8 @@ form: {
     busy: "For mange forsøk. Prøv igjen senere.",
     failed: "Det gikk ikke. Prøv igjen.",
     note: "Vi sender deg bare én e-post om dette produktet, ikke noe annet.",
+    stop: "Stopp denne forespørselen",
+    stopped: "Stoppet. Vi sender deg ikke e-post om det.",
   },
   giftCard: {
     amount: "Beløp",

@@ -42,7 +42,11 @@ export const GET_QUANTITY_MAX = 20;
 export const USES_PER_ORDER_MAX = 100;
 
 /** A step of a tiered campaign: so many units, or what the lines come to per market (in the currency shown), for a percentage off. */
-export type CampaignTier = { quantity: number | null; amounts: Record<string, number>; percent: number };
+/**
+ * A step gives a percentage off (`percent`), or an amount off per market in the currency shown (`off`, D392: a step of a tiered campaign
+ * may take an amount off, as criterion 1 of `customers.tiered-and-volume-discounts` asks); `percent` is 0 on an amount step.
+ */
+export type CampaignTier = { quantity: number | null; amounts: Record<string, number>; percent: number; off?: Record<string, number> };
 
 export const CAMPAIGN_NAME_MAX = 80;
 /** Most units a "buy N" offer can ask for. */
@@ -145,9 +149,9 @@ export type CampaignNext = {
   kind: "tiered" | "amount" | "free_shipping";
   missingUnits: number | null;
   missingMinor: number | null;
-  /** The percentage the next step gives (tiered). */
+  /** The percentage the next step gives (tiered, a percentage step). */
   percent: number | null;
-  /** The amount it then takes off (amount). */
+  /** The amount it then takes off (amount, and a tiered campaign's amount step). */
   offMinor: number | null;
 };
 
@@ -209,11 +213,21 @@ export function multiBuyFree(lines: Pick<CampaignLine, "key" | "unitMinor" | "qu
 /** What "buy N pay for M" makes free, per line. */
 export const multiBuyOff = (lines: Pick<CampaignLine, "key" | "unitMinor" | "quantity">[], buy: number, pay: number): Record<string, number> => multiBuyFree(lines, buy, pay).off;
 
-/** The steps of a tiered campaign a market has, lowest first: quantity steps everywhere, spend steps where they have an amount. */
-export function tiersIn(campaign: Pick<Campaign, "tierBasis" | "tiers">, marketCode: string): { at: number; percent: number }[] {
+/**
+ * The steps of a tiered campaign a market has, lowest first: quantity steps everywhere, spend steps where they have an amount; an amount
+ * step only where it takes an amount off in this market (`off`, null on a percentage step).
+ */
+export function tiersIn(campaign: Pick<Campaign, "tierBasis" | "tiers">, marketCode: string): { at: number; percent: number; off: number | null }[] {
   return campaign.tiers
-    .map((tier) => ({ at: campaign.tierBasis === "quantity" ? (tier.quantity ?? 0) : (tier.amounts[marketCode] ?? 0), percent: tier.percent }))
-    .filter((tier) => tier.at > 0)
+    .map((tier) => {
+      const amountStep = tier.off !== undefined && Object.keys(tier.off).length > 0;
+      return {
+        at: campaign.tierBasis === "quantity" ? (tier.quantity ?? 0) : (tier.amounts[marketCode] ?? 0),
+        percent: amountStep ? 0 : tier.percent,
+        off: amountStep ? (tier.off?.[marketCode] ?? 0) : null,
+      };
+    })
+    .filter((tier) => tier.at > 0 && (tier.off === null || tier.off > 0))
     .sort((a, b) => a.at - b.at);
 }
 
@@ -221,10 +235,16 @@ export function tiersIn(campaign: Pick<Campaign, "tierBasis" | "tiers">, marketC
 export const tierCount = (campaign: Pick<Campaign, "tierBasis">, lines: Pick<CampaignLine, "unitMinor" | "quantity">[]): number =>
   lines.reduce((sum, line) => sum + (campaign.tierBasis === "quantity" ? line.quantity : line.unitMinor * line.quantity), 0);
 
-/** The percentage the highest step reached gives (0 for none). */
-export function tierPercent(campaign: Pick<Campaign, "tierBasis" | "tiers">, lines: Pick<CampaignLine, "unitMinor" | "quantity">[], marketCode: string): number {
+/** What the highest step reached gives: a percentage, or an amount off in the currency shown (none reached: 0 and null). */
+export function tierReward(campaign: Pick<Campaign, "tierBasis" | "tiers">, lines: Pick<CampaignLine, "unitMinor" | "quantity">[], marketCode: string): { percent: number; off: number | null } {
   const count = tierCount(campaign, lines);
-  return tiersIn(campaign, marketCode).reduce((best, tier) => (count >= tier.at ? Math.max(best, tier.percent) : best), 0);
+  const reached = tiersIn(campaign, marketCode).filter((tier) => count >= tier.at).at(-1);
+  return reached ? { percent: reached.percent, off: reached.off } : { percent: 0, off: null };
+}
+
+/** The percentage the highest step reached gives (0 for none, and for an amount step). */
+export function tierPercent(campaign: Pick<Campaign, "tierBasis" | "tiers">, lines: Pick<CampaignLine, "unitMinor" | "quantity">[], marketCode: string): number {
+  return tierReward(campaign, lines, marketCode).percent;
 }
 
 /**
@@ -258,6 +278,11 @@ const worthOf = (lines: Pick<CampaignLine, "unitMinor" | "quantity">[]) => lines
 
 function priceOff(campaign: Campaign, lines: CampaignLine[], marketCode: string): Record<string, number> {
   const reached = lines.filter((line) => line.discountable && line.unitMinor > 0 && reaches(campaign, line));
+  if (campaign.kind === "tiered") {
+    // An amount step's amount is shared over the lines it reaches, as an amount off is.
+    const reward = tierReward(campaign, reached, marketCode);
+    if (reward.off !== null) return splitAmount(reached, reward.off);
+  }
   if (campaign.kind === "percent" || campaign.kind === "tiered") {
     const percent = campaign.kind === "percent" ? campaign.percent : tierPercent(campaign, reached, marketCode);
     const off: Record<string, number> = {};
@@ -479,7 +504,15 @@ function nextSteps(campaigns: Campaign[], lines: CampaignLine[], marketCode: str
       const step = tiersIn(campaign, marketCode).find((tier) => tier.at > count);
       if (!step) continue;
       const quantity = campaign.tierBasis === "quantity";
-      next.push({ campaignId: campaign.id, name: campaign.name, kind: "tiered", missingUnits: quantity ? step.at - count : null, missingMinor: quantity ? null : step.at - count, percent: step.percent, offMinor: null });
+      next.push({
+        campaignId: campaign.id,
+        name: campaign.name,
+        kind: "tiered",
+        missingUnits: quantity ? step.at - count : null,
+        missingMinor: quantity ? null : step.at - count,
+        percent: step.off === null ? step.percent : null,
+        offMinor: step.off,
+      });
     } else if (campaign.kind === "amount") {
       const reached = own(campaign);
       const threshold = campaign.thresholds[marketCode] ?? 0;
@@ -540,9 +573,10 @@ export function describeCampaign(
     return fillWords(words.bxgy, { buy, n: campaign.getQuantity ?? 1, get });
   }
   if (campaign.kind === "tiered") {
-    const steps = (campaign.tiers ?? []).map((tier) =>
-      fillWords(words.tierStep, { percent: tier.percent, from: campaign.tierBasis === "quantity" ? fillWords(words.tierItems, { n: tier.quantity ?? "" }) : per(tier.amounts) }),
-    );
+    const steps = (campaign.tiers ?? []).map((tier) => {
+      const from = campaign.tierBasis === "quantity" ? fillWords(words.tierItems, { n: tier.quantity ?? "" }) : per(tier.amounts);
+      return tier.off && Object.keys(tier.off).length > 0 ? fillWords(words.tierStepAmount, { amount: per(tier.off), from }) : fillWords(words.tierStep, { percent: tier.percent, from });
+    });
     return steps.join(", ") || words.tiers;
   }
   return fillWords(words.gift, { over: over || words.anAmountLower });
@@ -573,6 +607,8 @@ export const campaignInput = z
     amounts: z.record(z.string(), z.string().trim()).default({}),
     /** A tiered campaign's basis and its steps, amounts typed per market. */
     tierBasis: z.enum(TIER_BASES).default("quantity"),
+    /** What every step of a tiered campaign gives: a percentage off, or an amount off per market (D392). */
+    tierGive: z.enum(["percent", "amount"]).default("percent"),
     /** Buy X get Y (D299 E4): the buy measure (`items` or `spend`), the get set (`same` or chosen), what each given unit gets. */
     buyBasis: z.enum(["items", "spend"]).default("items"),
     buyMinQuantity: whole(1, BUY_MIN_MAX, `Ask for between 1 and ${BUY_MIN_MAX} items.`).default(2),
@@ -590,7 +626,9 @@ export const campaignInput = z
         z.object({
           quantity: z.preprocess((v) => (v === "" || v === undefined || v === null ? null : typeof v === "string" ? Number(v) : v), z.number().int("Whole items, please.").min(1, "A step asks for at least 1 item.").max(TIER_QUANTITY_MAX, `A step asks for at most ${TIER_QUANTITY_MAX} items.`).nullable()).default(null),
           amounts: z.record(z.string(), z.string().trim()).default({}),
-          percent: whole(1, 100, "Each step takes off between 1 and 100 %."),
+          // A percentage step takes 1 to 100 %; an amount step (`tierGive` "amount") takes its amounts per market instead (D392).
+          percent: z.preprocess((v) => (v === "" || v === undefined || v === null ? 0 : typeof v === "string" ? Number(v) : v), z.number().int("Whole percentages, please.").min(0).max(100, "Each step takes off between 1 and 100 %.")).default(0),
+          off: z.record(z.string(), z.string().trim()).default({}),
         }),
       )
       .max(TIERS_MAX, `Give at most ${TIERS_MAX} steps.`)
@@ -629,6 +667,10 @@ export const campaignInput = z
   })
   .refine((input) => !input.stacks || input.kind !== "bxgy", { message: "Buy one thing, get another cannot be added on top of other campaigns." })
   .refine((input) => input.kind !== "tiered" || input.tiers.length >= TIERS_MIN, { message: `Give at least ${TIERS_MIN} steps.` })
+  .refine((input) => input.kind !== "tiered" || input.tierGive !== "percent" || input.tiers.every((tier) => tier.percent >= 1), {
+    message: "Each step takes off between 1 and 100 %.",
+  })
+  .refine((input) => !input.stacks || input.kind !== "tiered" || input.tierGive !== "amount", { message: "Steps that take an amount off cannot be added on top of other campaigns." })
   .refine((input) => input.kind !== "tiered" || input.tierBasis !== "quantity" || input.tiers.every((tier) => tier.quantity !== null), {
     message: "Say how many items each step asks for.",
   })

@@ -24,7 +24,7 @@ export type CampaignNotice = {
   amountMinor: number | null;
   /** A tiered campaign's ladder in this market, lowest first: units, or an amount in the currency shown. */
   tierBasis: TierBasis | null;
-  tiers: { at: number; percent: number }[];
+  tiers: { at: number; percent: number; off: number | null }[];
   /**
    * Buy X get Y (D299 E4): units one use asks for, or what they come to in the currency shown; units given and what each gets (a
    * percentage, or an amount in the currency shown).
@@ -70,9 +70,19 @@ export function noticeText(notice: CampaignNotice, m: Messages, money: (minor: n
     return `${buy}, ${get}`;
   }
   if (notice.kind === "tiered") {
-    if (card) return m.campaigns.upTo(Math.max(0, ...notice.tiers.map((tier) => tier.percent)));
+    // Amount steps (D392) say what they take off in the currency shown; percentage steps their percentage.
+    const amounts = notice.tiers.some((tier) => tier.off !== null);
+    if (card) return amounts ? m.campaigns.upToAmount(money(Math.max(0, ...notice.tiers.map((tier) => tier.off ?? 0)))) : m.campaigns.upTo(Math.max(0, ...notice.tiers.map((tier) => tier.percent)));
     return notice.tiers
-      .map((tier) => (notice.tierBasis === "quantity" ? m.campaigns.tierQuantity(tier.percent, tier.at) : m.campaigns.tierSpend(tier.percent, money(tier.at))))
+      .map((tier) =>
+        tier.off !== null
+          ? notice.tierBasis === "quantity"
+            ? m.campaigns.tierQuantityAmount(money(tier.off), tier.at)
+            : m.campaigns.tierSpendAmount(money(tier.off), money(tier.at))
+          : notice.tierBasis === "quantity"
+            ? m.campaigns.tierQuantity(tier.percent, tier.at)
+            : m.campaigns.tierSpend(tier.percent, money(tier.at)),
+      )
       .join(" · ");
   }
   return m.campaigns.gift(notice.giftTitle ?? "", money(notice.thresholdMinor ?? 0));
@@ -97,6 +107,11 @@ const CARD_KINDS: readonly CampaignNotice["kind"][] = ["percent", "multi_buy", "
 /** How far a campaign's next step is, in the cart's words (D299 E3): "Buy 2 more to get 15 % off", "Spend NOK 120 more for free shipping". */
 export function nextStepText(step: CampaignNext, m: Messages, money: (minor: number) => string): string {
   if (step.kind === "tiered") {
+    if (step.offMinor !== null) {
+      return step.missingUnits !== null
+        ? m.campaigns.nextQuantityAmount(step.missingUnits, money(step.offMinor))
+        : m.campaigns.nextSpendAmount(money(step.missingMinor ?? 0), money(step.offMinor));
+    }
     return step.missingUnits !== null ? m.campaigns.nextQuantity(step.missingUnits, step.percent ?? 0) : m.campaigns.nextSpend(money(step.missingMinor ?? 0), step.percent ?? 0);
   }
   if (step.kind === "amount") return m.campaigns.nextAmount(money(step.missingMinor ?? 0), money(step.offMinor ?? 0));

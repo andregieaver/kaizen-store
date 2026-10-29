@@ -576,6 +576,11 @@ export const en = {
     tierSpend: (percent: number, amount: string) => `${percent} % off when you spend ${amount}`,
     nextQuantity: (items: number, percent: number) => `Buy ${items} more to get ${percent} % off`,
     nextSpend: (amount: string, percent: number) => `Spend ${amount} more to get ${percent} % off`,
+    upToAmount: (amount: string) => `Up to ${amount} off`,
+    tierQuantityAmount: (amount: string, items: number) => `${amount} off when you buy ${items}`,
+    tierSpendAmount: (amount: string, spend: string) => `${amount} off when you spend ${spend}`,
+    nextQuantityAmount: (items: number, amount: string) => `Buy ${items} more to get ${amount} off`,
+    nextSpendAmount: (spend: string, amount: string) => `Spend ${spend} more to get ${amount} off`,
     nextAmount: (amount: string, off: string) => `Spend ${amount} more to get ${off} off`,
     nextFreeShipping: (amount: string) => `Spend ${amount} more for free shipping`,
     /** D299 E4: buy X get Y, as "Buy 2" and "get 1 free" joined by a comma. */
@@ -916,6 +921,14 @@ export const en = {
     backText: "You asked us to tell you when it was available again. It is in stock now.",
     backButton: "See it",
     backReason: (date: string) => `You get this email once, because you asked for it on ${date}.`,
+    // D392: stopping a waiting request (the confirmation email's link and its page) and the live price in the email that it is back.
+    cancelLine: "Changed your mind? You can stop the request at any time before we email you.",
+    cancelLink: "Stop this request",
+    cancelHeading: "Stop the request",
+    cancelIntro: (product: string) => `Stop the request to be told when ${product} is back? We will not email you about it.`,
+    cancelButton: "Stop the request",
+    cancelled: "Stopped. We will not email you about it.",
+    priceNow: (price: string) => `Price now: ${price}`,
   },
   /** A business's details at checkout (B2B), and its prices without VAT. */
   company: {

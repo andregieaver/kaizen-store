@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."stock_requests" ADD COLUMN "cancel_hash" text;--> statement-breakpoint
+CREATE UNIQUE INDEX "stock_requests_cancel_idx" ON "commerce"."stock_requests" USING btree ("cancel_hash");

@@ -1132,7 +1132,7 @@ export async function refundReturn(storeId: string, input: unknown, accountId: s
   let recordedRefundId: string | null = null;
 
   /** Written in the same transaction as the refund (or on its own when no money or stock moves). */
-  const record = async (tx: Tx, refundId: string) => {
+  const record = async (tx: Tx, refundId: string, parts: string[] = []) => {
     // The working the credit note reads (D159): each line returned at its own rate, the deductions, the delivery given back, the
     // return shipping the shopper pays and what staff added or took (the difference to the amount). Written with the refund, once.
     const working = {
@@ -1143,6 +1143,8 @@ export async function refundReturn(storeId: string, input: unknown, accountId: s
       outside,
     };
     const refundWorking = { ...working, adjustmentMinor: adjustmentOf(working) };
+    // A refund split over the order's payments (D174, D392) is recorded by its first part; the rule sums the parts named here.
+    if (parts.length > 1) await tx.execute(sql`select set_config('kaizen.return_refund_parts', ${`{${parts.join(",")}}`}, true)`);
     await tx.execute(sql`
       update commerce.returns set refund_id = ${refundId || null}::uuid, refund_minor = ${amount}, refund_computed_minor = ${refund.amountMinor},
         refund_note = ${adjusted ? reason : null}, refund_outside = ${outside}, return_shipping_minor = ${returnShipping},
@@ -1208,7 +1210,7 @@ export async function refundReturn(storeId: string, input: unknown, accountId: s
           eventData: { returnId: ret.id, returnNumber: ret.number },
           inTransaction: async (tx, outcome) => {
             if (outcome.status === "failed") return;
-            await record(tx, outcome.refundId);
+            await record(tx, outcome.refundId, outcome.refundIds);
           },
         });
         if (!sent.ok) return refusal("refund", sent.problem);

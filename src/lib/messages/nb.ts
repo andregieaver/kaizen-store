@@ -566,6 +566,11 @@ export const nb: Messages = {
     tierSpend: (percent: number, amount: string) => `${percent} % rabatt når du handler for ${amount}`,
     nextQuantity: (items: number, percent: number) => `Kjøp ${items} til for å få ${percent} % rabatt`,
     nextSpend: (amount: string, percent: number) => `Handle for ${amount} til for å få ${percent} % rabatt`,
+    upToAmount: (amount: string) => `Opptil ${amount} rabatt`,
+    tierQuantityAmount: (amount: string, items: number) => `${amount} rabatt når du kjøper ${items}`,
+    tierSpendAmount: (amount: string, spend: string) => `${amount} rabatt når du handler for ${spend}`,
+    nextQuantityAmount: (items: number, amount: string) => `Kjøp ${items} til for å få ${amount} rabatt`,
+    nextSpendAmount: (spend: string, amount: string) => `Handle for ${spend} til for å få ${amount} rabatt`,
     nextAmount: (amount: string, off: string) => `Handle for ${amount} til for å få ${off} rabatt`,
     nextFreeShipping: (amount: string) => `Handle for ${amount} til for å få gratis frakt`,
     bxgyBuy: (items: number) => `Kjøp ${items}`,
@@ -899,6 +904,14 @@ export const nb: Messages = {
     backText: "Du ba oss si fra når den var tilgjengelig igjen. Nå er den på lager.",
     backButton: "Se den",
     backReason: (date: string) => `Du får denne e-posten én gang, fordi du ba om det ${date}.`,
+    // D392: stopping a waiting request (the confirmation email's link and its page) and the live price in the email that it is back.
+    cancelLine: "Ombestemt deg? Du kan stoppe forespørselen når som helst før vi sender deg e-post.",
+    cancelLink: "Stopp denne forespørselen",
+    cancelHeading: "Stopp forespørselen",
+    cancelIntro: (product: string) => `Stoppe forespørselen om å få beskjed når ${product} er tilbake? Vi sender deg ikke e-post om det.`,
+    cancelButton: "Stopp forespørselen",
+    cancelled: "Stoppet. Vi sender deg ikke e-post om det.",
+    priceNow: (price: string) => `Pris nå: ${price}`,
   },
   /** A business's details at checkout (B2B), and its prices without VAT. */
   company: {

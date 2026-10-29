@@ -329,14 +329,27 @@ plan, a waiting follow-up or a pending approval uses is kept empty rather than d
 
 ### M. The code's part of the weight-3 rows still partial (D392)
 
-As wave 10's N did, it closes what each gap names that code can do, so the row waits only on people. Known on 2026-10-28:
+As wave 10's N did, it closes what each gap names that code can do, so the row waits only on people. **Built** (29 October 2026):
 
-- `orders.exchanges`: the euro scenario moved into `checkout-kinds.int.test.ts`, where the spec asks for it.
+- `customers.back-in-stock-notifications`:
+  - the email says the price now, as the storefront shows it in the request's market and language (`livePrice()`);
+  - a request can be stopped from the confirmation email's link (a page with a button, `?cancel=1`) or the product page's *Stop*
+    (`cancelStockRequest()`, `cancelOwnStockRequest()`); the answer never says whether a request existed.
+- `customers.tiered-and-volume-discounts`: a step gives a percentage or an amount off per market (`tierGive`, `off`, `tierReward()`), spread
+  over the lines reached and converted for a shown currency; the ladder and the notices say amounts; NOK and euro scenarios.
 - `orders.edit-an-order-after-placement`:
-  - a refund owed after a failed change refund is shown in the control center;
-  - a test of a D153 return refund after a paid change.
+  - a refund owed after a failed change refund is counted in the control center and filtered on the Orders list (`ship=edit_refund_owed`);
+  - a test of a D153 return refunded after a paid change, which found that a return refunded in parts (over the order's payment and the
+    change's) was refused by the return's rule after Stripe had paid it back; the return and the exchange now name every part
+    (`kaizen.return_refund_parts`, `commerce.return_refund_parts_sum()`).
+- `orders.exchanges`: the euro scenario moved into `checkout-kinds.int.test.ts`, where the spec asks for it.
 
-The rest is listed when the unit starts, from the rows as they stand then.
+Left, each named on its row:
+
+- `customers.loyalty-and-rewards`: VIP tiers, points for actions and reward kinds beyond a price reduction.
+- `orders.credit-notes-for-refunds`: a manual credit note, and one for a cancelled order that was never refunded (an accountant's word on
+  what such a document may say first).
+- `customers.gift-cards`: a custom amount (the voucher review, D381).
 
 ## 3. Rules for every unit
 

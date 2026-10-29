@@ -13,8 +13,8 @@ import { saveCampaignAction } from "./actions";
 
 /** A new tiered campaign's steps, to change: 10 % from 2 items, 15 % from 4. */
 const NEW_TIERS: CampaignDraft["tiers"] = [
-  { quantity: "2", amounts: {}, percent: "10" },
-  { quantity: "4", amounts: {}, percent: "15" },
+  { quantity: "2", amounts: {}, percent: "10", off: {} },
+  { quantity: "4", amounts: {}, percent: "15", off: {} },
 ];
 
 /** `datetime-local` text for a time, in Norwegian time. */
@@ -56,9 +56,15 @@ export async function CampaignForm({ store, campaign, orders = 0 }: { store: Sto
         thresholds: typed(campaign.thresholds),
         amounts: typed(campaign.amounts),
         tierBasis: campaign.tierBasis ?? "quantity",
+        tierGive: campaign.kind === "tiered" && campaign.tiers.some((tier) => tier.off && Object.keys(tier.off).length > 0) ? "amount" : "percent",
         tiers:
           campaign.kind === "tiered"
-            ? campaign.tiers.map((tier) => ({ quantity: tier.quantity === null ? "" : String(tier.quantity), amounts: typed(tier.amounts), percent: String(tier.percent) }))
+            ? campaign.tiers.map((tier) => ({
+                quantity: tier.quantity === null ? "" : String(tier.quantity),
+                amounts: typed(tier.amounts),
+                percent: tier.percent > 0 ? String(tier.percent) : "",
+                off: typed(tier.off ?? {}),
+              }))
             : NEW_TIERS,
         buyBasis: campaign.kind === "bxgy" && campaign.buyMinQuantity === null ? "spend" : "items",
         buyMinQuantity: String(campaign.buyMinQuantity ?? 2),
@@ -96,6 +102,7 @@ export async function CampaignForm({ store, campaign, orders = 0 }: { store: Sto
         thresholds: {},
         amounts: {},
         tierBasis: "quantity",
+        tierGive: "percent",
         tiers: NEW_TIERS,
         buyBasis: "items",
         buyMinQuantity: "2",

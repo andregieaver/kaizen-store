@@ -38,7 +38,9 @@ export type CampaignDraft = {
   amounts: Record<string, string>;
   /** A tiered campaign's basis and steps, typed. */
   tierBasis: TierBasis;
-  tiers: { quantity: string; amounts: Record<string, string>; percent: string }[];
+  /** What every step gives: a percentage, or an amount per country (D392). */
+  tierGive: "percent" | "amount";
+  tiers: { quantity: string; amounts: Record<string, string>; percent: string; off: Record<string, string> }[];
   /** Buy X get Y (D299 E4): what one use asks for, what they get and what each given item takes off, typed. */
   buyBasis: "items" | "spend";
   buyMinQuantity: string;
@@ -136,6 +138,7 @@ export function CampaignEditor({
         thresholds: d.thresholds,
         amounts: d.amounts,
         tierBasis: d.tierBasis,
+        tierGive: d.tierGive,
         tiers: d.tiers,
         buyBasis: d.buyBasis,
         buyMinQuantity: d.buyMinQuantity,
@@ -286,6 +289,17 @@ export function CampaignEditor({
                 {w.basketTotal}
               </label>
             </fieldset>
+            <fieldset className="flex flex-wrap gap-4">
+              <legend className="mb-1 text-sm font-medium">{w.stepGives}</legend>
+              <label className="flex min-h-10 items-center gap-2 text-sm">
+                <input type="radio" name="tierGive" checked={d.tierGive === "percent"} onChange={() => set("tierGive", "percent")} className="size-4" />
+                {w.givesPercent}
+              </label>
+              <label className="flex min-h-10 items-center gap-2 text-sm">
+                <input type="radio" name="tierGive" checked={d.tierGive === "amount"} onChange={() => set("tierGive", "amount")} className="size-4" />
+                {w.givesAmount}
+              </label>
+            </fieldset>
             <ol className="flex flex-col gap-3">
               {d.tiers.map((tier, i) => (
                 <li key={i} className="flex flex-col gap-2 rounded-md border border-line p-3">
@@ -297,10 +311,12 @@ export function CampaignEditor({
                         <input type="number" min={1} max={TIER_QUANTITY_MAX} value={tier.quantity} onChange={(event) => setTier(i, { quantity: event.target.value })} required inputMode="numeric" className={input} />
                       </label>
                     )}
-                    <label className={`${label} w-32`}>
-                      {f.percentOff}
-                      <input type="number" min={1} max={100} value={tier.percent} onChange={(event) => setTier(i, { percent: event.target.value })} required inputMode="numeric" className={input} />
-                    </label>
+                    {d.tierGive === "percent" && (
+                      <label className={`${label} w-32`}>
+                        {f.percentOff}
+                        <input type="number" min={1} max={100} value={tier.percent} onChange={(event) => setTier(i, { percent: event.target.value })} required inputMode="numeric" className={input} />
+                      </label>
+                    )}
                     {d.tiers.length > TIERS_MIN && (
                       <button type="button" onClick={() => set("tiers", d.tiers.filter((_, j) => j !== i))} className="min-h-10 rounded-pill px-3 text-sm underline">
                         {fillWords(w.removeStep, { n: i + 1 })}
@@ -308,13 +324,19 @@ export function CampaignEditor({
                     )}
                   </div>
                   {d.tierBasis === "spend" && perMarket(tier.amounts, (next) => setTier(i, { amounts: next }), f.notOffered, fillWords(w.stepFrom, { n: i + 1 }))}
+                  {d.tierGive === "amount" && (
+                    <div className="flex flex-col gap-2">
+                      <p className="text-sm font-medium">{fillWords(w.stepOff, { n: i + 1 })}</p>
+                      {perMarket(tier.off, (next) => setTier(i, { off: next }), f.notOffered, fillWords(w.stepOff, { n: i + 1 }))}
+                    </div>
+                  )}
                 </li>
               ))}
             </ol>
             {d.tiers.length < TIERS_MAX && (
               <button
                 type="button"
-                onClick={() => set("tiers", [...d.tiers, { quantity: "", amounts: {}, percent: "" }])}
+                onClick={() => set("tiers", [...d.tiers, { quantity: "", amounts: {}, percent: "", off: {} }])}
                 className="self-start rounded-pill border border-line px-4 py-2 text-sm"
               >
                 {w.addStep}

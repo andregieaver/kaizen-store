@@ -85,6 +85,8 @@ export type StoreFigures = {
   partlySent?: PartlySentFigures;
   /** Order changes waiting for the customer's payment (D174), only when some do and only for a member who may read orders. Counts only. */
   orderChanges?: OrderChangeFigures;
+  /** Order changes whose refund failed and still owe the customer money (D392), only when some do, for a member who may read orders. A count only. */
+  editRefundsOwed?: number;
   /** Support conversations waiting for a person (D216, step 14), only when some do and only for a member who may read the desk. A count only. */
   supportWaiting?: number;
   /** Hard limits of its plan the store has used up this month (D314), only when one is: for its owner. */
@@ -240,6 +242,10 @@ export function attentionFor(stores: StoreFigures[], now = Date.now(), w: Attent
         href: `${base}/orders?ship=edit_pending`,
         action: a.openOrders,
       });
+    }
+    // A change's refund that failed (D392): the order reads lower and the customer has not been paid back, so it is urgent.
+    if (s.editRefundsOwed && s.editRefundsOwed > 0 && !hidden(s, "sales")) {
+      items.push({ text: count(s.editRefundsOwed, w.editRefundsOwed), href: `${base}/orders?ship=edit_refund_owed`, action: a.openOrders, urgent: true });
     }
     // A privacy request has a legal clock of one month (GDPR Art. 12(3)): overdue is urgent, due this week is a heads-up.
     const privacy = s.privacy;

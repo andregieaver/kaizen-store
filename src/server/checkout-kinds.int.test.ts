@@ -591,6 +591,18 @@ const stepsByItems = (over: Record<string, unknown> = {}) => ({
   ],
   ...over,
 });
+// Steps that take an amount off (D392), shared over the lines they reach.
+const amountStepsByItems = (over: Record<string, unknown> = {}) => ({
+  name: "Buy more, get kroner off",
+  kind: "tiered",
+  tierBasis: "quantity",
+  tierGive: "amount",
+  tiers: [
+    { quantity: "2", off: { NO: "30" } },
+    { quantity: "3", off: { NO: "70" } },
+  ],
+  ...over,
+});
 // Buy X get Y (D299 E4): the buy set is the campaign's reach; the get set, when chosen, its own.
 const buyGet = (over: Record<string, unknown> = {}) => ({ name: "Buy 2, get 1", kind: "bxgy", buyBasis: "items", buyMinQuantity: "2", getQuantity: "1", getKind: "free", ...over });
 const stepsBySpend = (over: Record<string, unknown> = {}) => ({
@@ -708,6 +720,22 @@ const campaignScenarios: Scenario[] = [
     fill: () => add("DEMO-MUG-WHITE", 3),
     campaigns: () => [stepsBySpend()],
     buyer: "company",
+    euro: true,
+    bookings: 0,
+  },
+  {
+    name: "a tiered campaign whose steps take an amount off, over two products (D392)",
+    fill: async () => {
+      await add("DEMO-MUG-WHITE", 2);
+      await add("DEMO-NOTEBOOK-LINED", 1);
+    },
+    campaigns: () => [amountStepsByItems()],
+    bookings: 0,
+  },
+  {
+    name: "a tiered campaign whose steps take an amount off, shown in euro (D392)",
+    fill: () => add("DEMO-MUG-WHITE", 3),
+    campaigns: () => [amountStepsByItems()],
     euro: true,
     bookings: 0,
   },
@@ -4552,5 +4580,71 @@ describe("a booking paid wholly at the venue (D379)", () => {
         update commerce.appointment_settings set payment = 'now' where store_id = ${storeId}::uuid and product_id = ${product["demo-massasje"]}::uuid
       `);
     }
+  });
+});
+
+/**
+ * Exchanges (D239, `docs/wave-3-exchanges.md` 6.1, moved here by wave 11 unit M, D392): a return's replacements are priced as the checkout prices the same
+ * goods in a cart, in kroner and in a euro view of the country, and the exchange nets them against the refund the return would get.
+ */
+describe("exchanges priced as the cart prices the same goods (D239)", () => {
+  it.each([false, true])("in euro: %s", async (euro) => {
+    const { markSent } = await import("./order-admin");
+    const { confirmWithdrawal, startWithdrawal } = await import("./withdrawals");
+    const { markInTransit, previewRefund } = await import("./returns");
+    const { previewExchange } = await import("./exchanges");
+    view = euro ? noInEuro : no;
+    await db().execute(sql`update commerce.inventory_levels set on_hand = on_hand + 50 where store_id = ${storeId}::uuid`);
+
+    // An order of two mugs, paid and sent, then withdrawn from in full and on its way back.
+    jar.clear();
+    await add("DEMO-MUG-WHITE", 2);
+    expect(await startCheckout({ ...shop(), storeSlug: slug }, cartId(), origin, "Frakt", {}, { customerId: null })).toMatchObject({ ok: true });
+    const open = (await getOpenCheckout(storeId, cartId()))!;
+    fake.sessions.set(open.sessionId, { status: "complete", payment_status: "paid", mode: "payment", payment_intent: `pi_${open.sessionId}` });
+    expect((await getShopperOrder(storeId, open.orderId, open.sessionId))?.status).toBe("paid");
+    const email = `exchange-${euro ? "eur" : "nok"}-${run}@example.com`;
+    await db().execute(sql`update commerce.orders set email = ${email}, shipping_address = shipping_address || '{"country": "NO"}'::jsonb where id = ${open.orderId}::uuid`);
+    expect(await markSent(storeId, open.orderId, { carrier: "other", trackingNumber: `X-${open.orderId.slice(0, 6)}`, trackingUrl: null }, null)).toMatchObject({ ok: true });
+    const order = (await getOrder(storeId, open.orderId))!;
+    expect(order.currency).toBe(view.currency);
+    const started = await startWithdrawal(storeId, { orderNumber: order.number, email, name: "Kari Nordmann", lines: order.lines.map((l) => ({ lineId: l.id, quantity: l.quantity })) }, { floorMs: 0 });
+    if (!started.ok || !started.matched || !started.request) throw new Error(JSON.stringify(started));
+    const confirmed = await confirmWithdrawal(storeId, { requestId: started.request.id });
+    if (!confirmed.ok) throw new Error(JSON.stringify(confirmed));
+    const returnId = confirmed.returns[0].id;
+    expect(await markInTransit(storeId, { returnId }, null)).toMatchObject({ ok: true });
+
+    // Replacements at their list price as the view shows it, with the standard shipping.
+    const goods: [string, number][] = [["DEMO-NOTEBOOK-LINED", 3], ["DEMO-MUG-WHITE", 1]];
+    const lines = [];
+    for (const [sku, quantity] of goods) {
+      const [row] = await db().execute<Row>(sql`select amount_minor from commerce.current_prices where variant_id = ${variant[sku]}::uuid and market_code = 'NO'`);
+      lines.push({ variantId: variant[sku], quantity, unitPriceMinor: shown(view, Number(row.amount_minor)) });
+    }
+    const preview = await previewExchange(storeId, returnId, {
+      lines,
+      shipping: { kind: "standard" },
+      deliveryAddress: { name: "Kari Nordmann", street: "Storgata 1", postalCode: "0155", city: "Oslo", country: "NO" },
+    });
+    if (!("lines" in preview)) throw new Error(JSON.stringify(preview));
+
+    // The same goods in a cart, in the same view.
+    jar.clear();
+    for (const [sku, quantity] of goods) await add(sku, quantity);
+    const summary = await cartSummary(shop(), await getCart(shop()));
+    expect(preview.currency).toBe(view.currency);
+    expect({ subtotal: preview.subtotalMinor, shipping: preview.shippingMinor, vat: preview.taxMinor, total: preview.totalMinor }).toEqual({
+      subtotal: summary.subtotal,
+      shipping: summary.shipping,
+      vat: summary.vat,
+      total: summary.total,
+    });
+    // The credit is the return's refund, in the order's own currency, and the outcome nets the two.
+    const refund = (await previewRefund(storeId, returnId))!;
+    expect(preview.credit?.amountMinor).toBe(refund.refund.amountMinor);
+    expect(preview.outcome?.differenceMinor).toBe(preview.totalMinor - refund.refund.amountMinor);
+    jar.clear();
+    view = no;
   });
 });

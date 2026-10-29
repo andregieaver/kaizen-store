@@ -131,6 +131,10 @@ export const homeEn = {
       one: "; the pay link of 1 ends within {days}, and the order then stays as it was",
       many: "; the pay links of {n} end within {days}, and the order then stays as it was",
     },
+    editRefundsOwed: {
+      one: "{store}: the refund of {n} order change failed; the customer is still owed the money.",
+      many: "{store}: the refunds of {n} order changes failed; the customers are still owed the money.",
+    },
     privacyOverdue: {
       one: "{store}: {n} privacy request is past the one-month deadline for an answer.",
       many: "{store}: {n} privacy requests are past the one-month deadline for an answer.",

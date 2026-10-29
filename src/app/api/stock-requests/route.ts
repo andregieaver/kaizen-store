@@ -4,7 +4,7 @@ import { isRequestAddress, type StockRequestReply } from "@/lib/stock-request-ch
 import { sameSite } from "@/lib/same-site";
 import { getCustomer } from "@/server/customers";
 import { resolveSellingShop } from "@/server/shop";
-import { requestStock, stockVisitor } from "@/server/stock-requests";
+import { cancelOwnStockRequest, requestStock, stockVisitor } from "@/server/stock-requests";
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const reply = (body: StockRequestReply, status = 200) => Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
@@ -46,4 +46,31 @@ export async function POST(request: Request) {
   if (answer === "invalid") return reply({ ok: false, error: "invalid" }, 422);
   if (answer === "busy") return reply({ ok: false, error: "busy" }, 429);
   return reply({ ok: false, error: "failed" }, 409);
+}
+
+/**
+ * A signed-in customer stopping their own request for a variant from the product page (D392). Only their own verified address's request
+ * stops; the answer is the same whether there was one.
+ */
+export async function DELETE(request: Request) {
+  await connection();
+  if (!sameSite(request)) return reply({ ok: false, error: "failed" }, 403);
+  let body: Record<string, unknown>;
+  try {
+    const text = await request.text();
+    if (text.length > 2_000) return reply({ ok: false, error: "failed" }, 413);
+    body = JSON.parse(text) as Record<string, unknown>;
+  } catch {
+    return reply({ ok: false, error: "failed" }, 400);
+  }
+  const { store, market, variant } = body;
+  if (typeof store !== "string" || typeof market !== "string" || typeof variant !== "string" || !uuid.test(variant)) {
+    return reply({ ok: false, error: "failed" }, 400);
+  }
+  const shop = await resolveSellingShop(store.slice(0, 100), market.slice(0, 40));
+  if (!shop) return reply({ ok: false, error: "failed" }, 404);
+  const customer = await getCustomer(shop.store.id);
+  if (!customer) return reply({ ok: false, error: "failed" }, 401);
+  await cancelOwnStockRequest(shop.store.id, customer.id, variant);
+  return reply({ ok: true, outcome: "cancelled" });
 }

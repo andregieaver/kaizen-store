@@ -26,7 +26,7 @@ export function BackInStock({
 }) {
   const id = useId();
   const [email, setEmail] = useState(initial);
-  const [state, setState] = useState<{ kind: "idle" | "busy" } | { kind: "done" | "problem"; text: string }>({ kind: "idle" });
+  const [state, setState] = useState<{ kind: "idle" | "busy" } | { kind: "done" | "problem"; text: string; waiting?: boolean }>({ kind: "idle" });
 
   const send = async () => {
     if (!isRequestAddress(email)) return setState({ kind: "problem", text: labels.invalid });
@@ -38,8 +38,23 @@ export function BackInStock({
         body: JSON.stringify({ store, market, variant: variantId, email: email.trim(), lang: "" }),
       });
       const reply = (await response.json()) as StockRequestReply;
-      if (reply.ok) setState({ kind: "done", text: reply.outcome === "waiting" ? labels.waiting : labels.check });
+      if (reply.ok) setState({ kind: "done", text: reply.outcome === "waiting" ? labels.waiting : labels.check, waiting: reply.outcome === "waiting" });
       else setState({ kind: "problem", text: reply.error === "invalid" ? labels.invalid : reply.error === "busy" ? labels.busy : labels.failed });
+    } catch {
+      setState({ kind: "problem", text: labels.failed });
+    }
+  };
+
+  // A signed-in customer's request waits at once; they can stop it here (D392). A typed address stops it from its email's link.
+  const stop = async () => {
+    try {
+      const response = await fetch("/api/stock-requests", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ store, market, variant: variantId }),
+      });
+      const reply = (await response.json()) as StockRequestReply;
+      setState(reply.ok ? { kind: "done", text: labels.stopped } : { kind: "problem", text: labels.failed });
     } catch {
       setState({ kind: "problem", text: labels.failed });
     }
@@ -47,9 +62,16 @@ export function BackInStock({
 
   if (state.kind === "done") {
     return (
-      <p role="status" className="text-sm" data-back-in-stock>
-        {state.text}
-      </p>
+      <div className="flex flex-wrap items-center gap-3" data-back-in-stock>
+        <p role="status" className="text-sm">
+          {state.text}
+        </p>
+        {state.waiting && (
+          <button type="button" onClick={() => void stop()} className="min-h-11 text-sm underline">
+            {labels.stop}
+          </button>
+        )}
+      </div>
     );
   }
   return (

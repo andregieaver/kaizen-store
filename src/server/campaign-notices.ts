@@ -87,9 +87,17 @@ export async function campaignNotices(storeId: string, market: Market): Promise<
     const tiers =
       kind === "tiered" && basis
         ? tiersIn(
-            { tierBasis: basis, tiers: (row.tiers as { quantity?: number | null; amounts?: Record<string, number>; percent: number }[]).map((t) => ({ quantity: t.quantity ?? null, amounts: t.amounts ?? {}, percent: Number(t.percent) })) },
+            {
+              tierBasis: basis,
+              tiers: (row.tiers as { quantity?: number | null; amounts?: Record<string, number>; percent: number; off?: Record<string, number> }[]).map((t) => ({
+                quantity: t.quantity ?? null,
+                amounts: t.amounts ?? {},
+                percent: Number(t.percent ?? 0),
+                ...(t.off && Object.keys(t.off).length > 0 ? { off: t.off } : {}),
+              })),
+            },
             market.code,
-          ).map((t) => ({ at: basis === "spend" ? shown(market, t.at) : t.at, percent: t.percent }))
+          ).map((t) => ({ at: basis === "spend" ? shown(market, t.at) : t.at, percent: t.percent, off: t.off === null ? null : shown(market, t.off) }))
         : [];
     if (kind === "tiered" && tiers.length === 0) continue;
     // Buy X get Y (D299 E4) only where its buy measure and what it gives have their amounts here.

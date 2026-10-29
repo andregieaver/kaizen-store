@@ -54,7 +54,8 @@ function toCampaign(row: Row): Campaign {
       ? (row.tiers as Record<string, unknown>[]).map((tier) => ({
           quantity: tier.quantity === null || tier.quantity === undefined ? null : Number(tier.quantity),
           amounts: (tier.amounts ?? {}) as Record<string, number>,
-          percent: Number(tier.percent),
+          percent: Number(tier.percent ?? 0),
+          ...(tier.off && typeof tier.off === "object" && Object.keys(tier.off).length > 0 ? { off: tier.off as Record<string, number> } : {}),
         }))
       : [],
     buyMinQuantity: row.buy_min_quantity === null || row.buy_min_quantity === undefined ? null : Number(row.buy_min_quantity),
@@ -179,17 +180,28 @@ export async function saveCampaign({ account, store }: Membership, id: string | 
   // A tiered campaign's steps: each asking for more than the one before and giving more (D299 E3).
   const tiers: Campaign["tiers"] =
     c.kind === "tiered"
-      ? c.tiers.map((tier, i) => ({
-          quantity: c.tierBasis === "quantity" ? tier.quantity : null,
-          amounts: c.tierBasis === "spend" ? perMarket(tier.amounts, existing?.tierBasis === "spend" ? existing.tiers[i]?.amounts : undefined, `Step ${i + 1}'s amount`) : {},
-          percent: tier.percent,
-        }))
+      ? c.tiers.map((tier, i) => {
+          const step: Campaign["tiers"][number] = {
+            quantity: c.tierBasis === "quantity" ? tier.quantity : null,
+            amounts: c.tierBasis === "spend" ? perMarket(tier.amounts, existing?.tierBasis === "spend" ? existing.tiers[i]?.amounts : undefined, `Step ${i + 1}'s amount`) : {},
+            percent: c.tierGive === "amount" ? 0 : tier.percent,
+          };
+          // An amount step (D392): what it takes off per market, kept for countries the editor does not show.
+          if (c.tierGive === "amount") step.off = perMarket(tier.off, existing?.tiers[i]?.off, `Step ${i + 1}'s amount off`);
+          return step;
+        })
       : [];
   if (c.kind === "tiered" && problems.length === 0) {
     for (let i = 1; i < tiers.length; i++) {
       const before = tiers[i - 1];
       const now = tiers[i];
-      if (now.percent <= before.percent) problems.push(`Step ${i + 1} must give more than step ${i}.`);
+      if (c.tierGive === "amount") {
+        for (const market of store.markets) {
+          const a = before.off?.[market.code];
+          const b = now.off?.[market.code];
+          if (a !== undefined && b !== undefined && b <= a) problems.push(`Step ${i + 1} must take more off than step ${i} in ${market.name}.`);
+        }
+      } else if (now.percent <= before.percent) problems.push(`Step ${i + 1} must give more than step ${i}.`);
       if (c.tierBasis === "quantity" && (now.quantity ?? 0) <= (before.quantity ?? 0)) problems.push(`Step ${i + 1} must ask for more items than step ${i}.`);
       if (c.tierBasis === "spend") {
         for (const market of store.markets) {
@@ -200,6 +212,7 @@ export async function saveCampaign({ account, store }: Membership, id: string | 
       }
     }
     if (c.tierBasis === "spend" && !tiers.some((tier) => someMarket(tier.amounts))) problems.push("Say what each step asks the basket to come to, in at least one country's currency.");
+    if (c.tierGive === "amount" && !tiers.every((tier) => someMarket(tier.off ?? {}))) problems.push("Say what each step takes off, in at least one country's currency.");
   }
   // Buy X get Y (D299 E4): what one use asks for, what shoppers get and what each given unit takes off.
   const bxgy = c.kind === "bxgy";
@@ -405,7 +418,7 @@ export function shownIn(c: Campaign, market: Market): Campaign {
     ...c,
     thresholds: one(c.thresholds),
     amounts: one(c.amounts),
-    tiers: c.tiers.map((tier) => ({ ...tier, amounts: one(tier.amounts) })),
+    tiers: c.tiers.map((tier) => ({ ...tier, amounts: one(tier.amounts), ...(tier.off ? { off: one(tier.off) } : {}) })),
     buyMinAmounts: one(c.buyMinAmounts),
     getAmounts: one(c.getAmounts),
   };

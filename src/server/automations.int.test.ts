@@ -7,6 +7,7 @@ import { closeDb, db } from "@/db/client";
 import type { BroadcastContent } from "@/lib/broadcasts";
 
 vi.mock("server-only", () => ({}));
+vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {}, refresh: () => {} }));
 
 const au = await import("./automations");
 const stock = await import("./stock-requests");
@@ -250,6 +251,35 @@ describe("back in stock", () => {
     expect(await ask(`someone-${run}@example.com`, String(c.id))).toBe("check");
   });
 
+  it("stops a request from its email's link, or from the product page for the signed-in customer's own (D392)", async () => {
+    const changed = `changed-${run}@example.com`;
+    expect(await ask(changed)).toBe("check");
+    const [mail] = await db().execute<Row>(sql`select html from commerce.email_messages where store_id = ${storeId}::uuid and kind = 'stock.confirm' and to_address = ${changed}`);
+    const token = /\/account\/stock\/([A-Za-z0-9_-]{43})\?cancel=1/.exec(String(mail.html))?.[1] ?? "";
+    expect(token).not.toBe("");
+    // Confirmed first, it can still be stopped with the same link while it waits.
+    expect(await stock.confirmStockRequest(storeId, token)).toBe(true);
+    expect(await stock.stockCancelWaiting(storeId, token, "nb-NO")).toBeTruthy();
+    expect(await stock.cancelStockRequest(storeId, token)).toBe(true);
+    expect(await stock.cancelStockRequest(storeId, token)).toBe(false);
+    expect(await stock.stockCancelWaiting(storeId, token, "nb-NO")).toBeNull();
+    expect(await statusOf(changed)).toEqual(["cancelled"]);
+
+    const mine = `mine-${run}@example.com`;
+    const [me] = await db().execute<Row>(sql`
+      insert into commerce.customers (store_id, email, name, email_verified_at) values (${storeId}::uuid, ${mine}, 'Ola', now()) returning id
+    `);
+    const [other] = await db().execute<Row>(sql`
+      insert into commerce.customers (store_id, email, name, email_verified_at) values (${storeId}::uuid, ${`other-${run}@example.com`}, 'Per', now()) returning id
+    `);
+    expect(await ask(mine, String(me.id))).toBe("waiting");
+    // Another signed-in customer cannot stop it.
+    await stock.cancelOwnStockRequest(storeId, String(other.id), variant);
+    expect(await statusOf(mine)).toEqual(["waiting"]);
+    await stock.cancelOwnStockRequest(storeId, String(me.id), variant);
+    expect(await statusOf(mine)).toEqual(["cancelled"]);
+  });
+
   it("emails every waiting address once when stock is back, and never for another store", async () => {
     expect((await au.runAutomations({ only: storeId })).backInStock.sent).toBe(0);
     await db().execute(sql`update commerce.inventory_levels set on_hand = 5 where store_id = ${storeId}::uuid and variant_id = ${variant}::uuid`);
@@ -259,6 +289,9 @@ describe("back in stock", () => {
     expect(await statusOf(`typed-${run}@example.com`)).toEqual(["sent"]);
     const emails = await db().execute<Row>(sql`select to_address from commerce.email_messages where store_id = ${storeId}::uuid and kind = 'stock.back_in_stock' order by to_address`);
     expect(emails.map((r) => r.to_address)).toEqual([`typed-${run}@example.com`, `verified-${run}@example.com`]);
+    // The price as the shopper's market shows it now (D392).
+    const [back] = await db().execute<Row>(sql`select text from commerce.email_messages where store_id = ${storeId}::uuid and kind = 'stock.back_in_stock' and to_address = ${`verified-${run}@example.com`}`);
+    expect(String(back.text)).toMatch(/Pris nå: .*kr/);
     expect((await au.runAutomations({ only: storeId })).backInStock.sent).toBe(0);
     // In stock now, so it cannot be asked for.
     expect(await ask(`instock-${run}@example.com`)).toBe("unavailable");

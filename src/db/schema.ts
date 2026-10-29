@@ -14363,6 +14363,11 @@ export const stockRequests = commerce.table(
     confirmHash: text("confirm_hash"),
     confirmUntil: timestamp("confirm_until", { withTimezone: true }),
     confirmSentAt: timestamp("confirm_sent_at", { withTimezone: true }),
+    /**
+     * sha256 of the token of the confirmation email's *Cancel* link (wave 11 unit M, D392), hex: the same token as the confirmation's, kept
+     * after it is confirmed so the request can be stopped while it waits.
+     */
+    cancelHash: text("cancel_hash"),
     visitor: text("visitor"),
     confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
     notifiedAt: timestamp("notified_at", { withTimezone: true }),
@@ -14387,6 +14392,7 @@ export const stockRequests = commerce.table(
     }).onDelete("cascade"),
     uniqueIndex("stock_requests_open_idx").on(t.storeId, t.variantId, t.email).where(sql`${t.status} in ('pending', 'waiting')`),
     uniqueIndex("stock_requests_confirm_idx").on(t.confirmHash),
+    uniqueIndex("stock_requests_cancel_idx").on(t.cancelHash),
     index("stock_requests_waiting_idx").on(t.storeId, t.variantId).where(sql`${t.status} = 'waiting'`),
     index("stock_requests_email_idx").on(t.storeId, t.email),
     index("stock_requests_customer_idx").on(t.storeId, t.customerId),

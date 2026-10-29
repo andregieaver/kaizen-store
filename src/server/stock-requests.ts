@@ -19,6 +19,8 @@ import { TOKEN_PATTERN } from "@/lib/marketing-consent";
 import { marketUrl } from "@/lib/paths";
 import { isRequestAddress } from "@/lib/stock-request-check";
 
+import { emailMarket, priceLines } from "./broadcast-facts";
+import { getProduct } from "./catalog";
 import { sendEmail, type SendOutcome } from "./email";
 import { marketSlugFor } from "./marketing-email";
 import { OFFERED } from "./product-conditions";
@@ -122,7 +124,7 @@ export async function requestStock(ask: StockAsk): Promise<StockAnswer> {
       if (open.sent_lately) return { answer: "check" as StockAnswer, send: null };
       const token = newToken();
       await tx.execute(sql`
-        update commerce.stock_requests set confirm_hash = ${hash(token)}, confirm_until = now() + make_interval(days => ${STOCK_CONFIRM_DAYS}),
+        update commerce.stock_requests set confirm_hash = ${hash(token)}, cancel_hash = ${hash(token)}, confirm_until = now() + make_interval(days => ${STOCK_CONFIRM_DAYS}),
           confirm_sent_at = now(), locale = ${ask.locale}, market_code = ${ask.marketCode}
         where id = ${String(open.id)}::uuid
       `);
@@ -133,10 +135,10 @@ export async function requestStock(ask: StockAsk): Promise<StockAnswer> {
     const token = proven ? null : newToken();
     const [row] = await tx.execute<Row>(sql`
       insert into commerce.stock_requests (
-        store_id, variant_id, product_id, email, customer_id, locale, market_code, status, confirm_hash, confirm_until, confirm_sent_at, visitor, confirmed_at
+        store_id, variant_id, product_id, email, customer_id, locale, market_code, status, confirm_hash, cancel_hash, confirm_until, confirm_sent_at, visitor, confirmed_at
       ) values (
         ${ask.storeId}::uuid, ${ask.variantId}::uuid, ${variant.productId}::uuid, ${email}, ${proven ? ask.customerId : null}::uuid, ${ask.locale},
-        ${ask.marketCode}, ${proven ? "waiting" : "pending"}, ${token ? hash(token) : null},
+        ${ask.marketCode}, ${proven ? "waiting" : "pending"}, ${token ? hash(token) : null}, ${token ? hash(token) : null},
         case when ${token !== null} then now() + make_interval(days => ${STOCK_CONFIRM_DAYS}) end,
         case when ${token !== null} then now() end, ${ask.visitor}, case when ${proven} then now() end
       )
@@ -187,6 +189,9 @@ async function sendConfirmation(ask: StockAsk, to: string, requestId: string, to
       { type: "paragraph", text: m.stockNotice.confirmText(store.name, named(names)) },
       { type: "button", text: m.stockNotice.confirmButton, url: link },
       { type: "paragraph", text: m.stockNotice.confirmValid },
+      // The same token stops the request later, while it waits (D392).
+      { type: "paragraph", text: m.stockNotice.cancelLine },
+      { type: "link", text: m.stockNotice.cancelLink, url: `${link}?cancel=1` },
     ],
     footer: emailFooter(store, emailText(lang)),
     lang,
@@ -223,6 +228,42 @@ export async function confirmStockRequest(storeId: string, token: string): Promi
     returning id
   `);
   return rows.length > 0;
+}
+
+/** The product a cancel link is about, while its request still waits or waits for confirming (D392). */
+export async function stockCancelWaiting(storeId: string, token: string, locale: string): Promise<string | null> {
+  if (!TOKEN_PATTERN.test(token)) return null;
+  const [row] = await db().execute<Row>(sql`
+    select variant_id from commerce.stock_requests
+    where store_id = ${storeId}::uuid and cancel_hash = ${hash(token)} and status in ('pending', 'waiting')
+  `);
+  if (!row) return null;
+  const names = await namesOf(storeId, String(row.variant_id), locale);
+  return names ? named(names) : null;
+}
+
+/** The cancel page's button (D392): the request stops, and no email about it goes. */
+export async function cancelStockRequest(storeId: string, token: string): Promise<boolean> {
+  if (!TOKEN_PATTERN.test(token)) return false;
+  const rows = await db().execute<Row>(sql`
+    update commerce.stock_requests set status = 'cancelled', confirm_hash = null, confirm_until = null, cancel_hash = null
+    where store_id = ${storeId}::uuid and cancel_hash = ${hash(token)} and status in ('pending', 'waiting')
+    returning id
+  `);
+  return rows.length > 0;
+}
+
+/**
+ * A signed-in customer stopping their own request for a variant from the product page (D392): only one made for their own verified address,
+ * so a session never stops another person's request. Says nothing about whether one was found.
+ */
+export async function cancelOwnStockRequest(storeId: string, customerId: string, variantId: string): Promise<void> {
+  await db().execute(sql`
+    update commerce.stock_requests r set status = 'cancelled', confirm_hash = null, confirm_until = null, cancel_hash = null
+      from commerce.customers c
+     where r.store_id = ${storeId}::uuid and r.variant_id = ${variantId}::uuid and r.status in ('pending', 'waiting')
+       and c.store_id = r.store_id and c.id = ${customerId}::uuid and c.email_verified_at is not null and lower(c.email) = r.email
+  `);
 }
 
 // ---------------------------------------------------------------------------
@@ -291,12 +332,14 @@ async function sendBack(store: EmailStore, row: Row): Promise<SendOutcome> {
   const slug = marketSlugFor(store, row.market_code ? String(row.market_code) : null);
   const link = `${marketUrl(store.slug, slug, `/p/${names.handle}`)}`;
   const asked = new Date(String(row.created_at)).toLocaleDateString(locale, { dateStyle: "long", timeZone: row.time_zone ? String(row.time_zone) : "UTC" });
+  const price = await livePrice(store, row, names.handle, locale);
   const email = renderEmail({
     subject: m.stockNotice.backSubject(names.product, store.name),
     preview: m.stockNotice.backText,
     blocks: [
       { type: "heading", text: m.stockNotice.backHeading(named(names)) },
       { type: "paragraph", text: m.stockNotice.backText },
+      ...(price ? [{ type: "paragraph" as const, text: [m.stockNotice.priceNow(price.price), ...price.small].join(" · ") }] : []),
       { type: "button", text: m.stockNotice.backButton, url: link },
       { type: "paragraph", text: m.stockNotice.backReason(asked) },
     ],
@@ -312,6 +355,22 @@ async function sendBack(store: EmailStore, row: Row): Promise<SendOutcome> {
     replyTo: store.details.contactEmail ?? null,
     idempotencyKey: `stock-back:${String(row.id)}`,
   });
+}
+
+/**
+ * The variant's price as the shopper's market shows it now (D392): the storefront's own read (`getProduct()`) written by `<Price>`'s rules
+ * (`priceLines()`), never worked out here. None when the product is not offered there.
+ */
+async function livePrice(store: EmailStore, row: Row, handle: string, locale: string): Promise<{ price: string; small: string[] } | null> {
+  try {
+    const market = emailMarket(store, row.market_code ? String(row.market_code) : null, locale);
+    if (!market) return null;
+    const product = await getProduct(store.id, market, handle);
+    const variant = product?.variants.find((v) => v.id === String(row.variant_id));
+    return variant ? priceLines({ price: variant.price, priceVaries: false }, market) : null;
+  } catch {
+    return null;
+  }
 }
 
 /** Daily (6.5): unconfirmed requests past their link, waiting ones older than 180 days, sent and cancelled ones after 30. */
