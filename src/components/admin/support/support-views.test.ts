@@ -213,7 +213,7 @@ describe("the desk's settings (step 5)", () => {
     summariesOn: true,
     partner: true,
     aiActions: null,
-    formMessages: "inbox_and_email",
+    formMessages: "inbox_and_email" as const,
     aiReady: false,
   };
   const form = (over: Partial<Parameters<typeof SupportSettingsForm>[0]> = {}) =>
