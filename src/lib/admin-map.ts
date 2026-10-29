@@ -260,6 +260,26 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["locations", "warehouse", "stock locations", "routing", "order routing", "deactivate location", "multi location", "lager", "lokasjon"],
     feature: "shop",
   }),
+  store("inventory.transfers", "/inventory/transfers", "Stock transfers", "Main", "Moves stock between the store's locations: a draft made from SKUs and units, sent (the units leave the origin, never what checkouts hold there) and counted in where it arrives, in parts. Units on their way are not for sale. Cancelling puts what was not counted in back at the origin.", {
+    tasks: ["Move stock from one location to another", "Send a transfer", "Count a transfer in", "Cancel a transfer"],
+    keywords: ["transfer", "stock transfer", "move stock", "between locations", "warehouse transfer", "overføring", "flytt lager"],
+    feature: "shop",
+  }),
+  store("inventory.transfer", "/inventory/transfers/[id]", "Stock transfer", "Main", "One stock transfer: its lines, what has arrived and what is still to come, and its next step (send, count in, cancel).", {
+    tasks: ["Send this transfer", "Count units in", "Cancel this transfer"],
+    keywords: ["transfer", "receive transfer", "count in"],
+    feature: "shop",
+  }),
+  store("inventory.purchase_orders", "/inventory/purchase-orders", "Purchase orders", "Main", "What the store buys from its suppliers: a draft with the supplier, the currency it bills in, where the stock arrives and each line's units and unit cost; marked as ordered, then counted in as it arrives. Each variant's cost becomes what one unit cost, converted into the store's currency, and every cost change is kept.", {
+    tasks: ["Record a purchase order", "Mark it as ordered", "Count a delivery in", "See what is still to come from a supplier"],
+    keywords: ["purchase order", "po", "supplier", "receive stock", "goods in", "restock", "cost price", "innkjøpsordre", "leverandør", "varemottak"],
+    feature: "shop",
+  }),
+  store("inventory.purchase_order", "/inventory/purchase-orders/[id]", "Purchase order", "Main", "One purchase order: its lines and unit costs, what has arrived and what is still to come, and its next step (mark as ordered, count in, cancel).", {
+    tasks: ["Mark this order as ordered", "Count units in", "Cancel this order"],
+    keywords: ["purchase order", "receive", "count in", "supplier delivery"],
+    feature: "shop",
+  }),
   store("inventory.import", "/inventory/import", "Import stock", "Main", "Sets stock from a counted CSV file: SKU, location and on hand, with an optional on-hand-was column so a row that is out of date becomes a conflict instead of undoing a sale. Upload the file, check it (a dry run that lists every row and changes nothing), then import. Never creates a variant or a location. Needs the right to change products.", {
     tasks: ["Upload a counted stock file", "Check a file before it is imported", "Import after the check", "Continue an open import"],
     keywords: ["import stock", "stock count", "csv", "inventory upload", "recount", "bulk stock", "importer lager"],

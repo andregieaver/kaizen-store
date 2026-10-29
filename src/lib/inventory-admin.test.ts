@@ -36,6 +36,8 @@ describe("the Inventory pages' addresses", () => {
       list: "/admin/shop/inventory",
       history: "/admin/shop/inventory/history",
       locations: "/admin/shop/inventory/locations",
+      transfers: "/admin/shop/inventory/transfers",
+      purchase_orders: "/admin/shop/inventory/purchase-orders",
       import: "/admin/shop/inventory/import",
       export: "/admin/shop/inventory/export",
     });

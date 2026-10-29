@@ -197,6 +197,8 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   // Stock (D172): read like the Inventory page (`products:read`), changed with the right to change products.
   stock_levels: "products:read",
   stock_history: "products:read",
+  list_transfers: "products:read",
+  list_purchase_orders: "products:read",
   // The redirects and the 404 report are the Website section's (D168): read like its pages, added with the right to change the website.
   redirect_overview: "website:read",
   list_integrations: "settings:read",

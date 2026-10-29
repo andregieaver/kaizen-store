@@ -257,11 +257,12 @@ describe("the stock locations", () => {
     move: async () => ({ ok: true }),
     deactivate: async () => ({ ok: false, problem: "x" }),
     reactivate: async () => ({ ok: false, problem: "x" }),
+    online: async () => ({ ok: true }),
   };
   const impact = { units: 12, variants: 3, committedUnits: 0, owedUnits: 0 };
   const rows: LocationRowView[] = [
-    { id: L1, name: "Oslo", country: "NO", active: true, priority: 1, units: 12, variants: 3, impact },
-    { id: L2, name: "Bergen", country: "NO", active: false, priority: 2, units: 4, variants: 1, impact: null },
+    { id: L1, name: "Oslo", country: "NO", active: true, fulfilsOnline: true, priority: 1, units: 12, variants: 3, impact },
+    { id: L2, name: "Bergen", country: "NO", active: false, fulfilsOnline: true, priority: 2, units: 4, variants: 1, impact: null },
   ];
   const countries = [{ code: "NO", name: "Norway" }, { code: "SE", name: "Sweden" }];
 

@@ -17,9 +17,13 @@ export type LocationRowView = {
   name: string;
   country: string;
   active: boolean;
+  /** Whether online orders take units from here (D383). */
+  fulfilsOnline: boolean;
   priority: number;
   units: number;
   variants: number;
+  /** Units on their way here (D383), not for sale until they are counted in. */
+  incoming?: number;
   /** What deactivating it would take off sale (read when the page was drawn); null for a location that is already inactive. */
   impact: LocationImpact | null;
 };
@@ -31,6 +35,7 @@ export type LocationTools = {
   move: (id: string, direction: "up" | "down") => Promise<Step>;
   deactivate: (id: string, confirmedUnits: number) => Promise<DeactivateResult>;
   reactivate: (id: string) => Promise<{ ok: true; impact: LocationImpact } | { ok: false; problem: string }>;
+  online: (id: string, on: boolean) => Promise<Step>;
 };
 
 /**
@@ -67,6 +72,7 @@ export function LocationsView({
   const [pending, start] = useTransition();
 
   const activeCount = rows.filter((r) => r.active).length;
+  const onlineCount = rows.filter((r) => r.active && r.fulfilsOnline).length;
   const countryName = (code: string) => countries.find((c) => c.code === code)?.name ?? code;
 
   const run = (job: () => Promise<void>) =>
@@ -142,6 +148,9 @@ export function LocationsView({
                 {w.state}
               </th>
               <th scope="col" className={th}>
+                {w.online}
+              </th>
+              <th scope="col" className={th}>
                 {w.holds}
               </th>
               <th scope="col" className={th}>
@@ -159,7 +168,15 @@ export function LocationsView({
                   <td className={`${td} font-medium`}>{row.name}</td>
                   <td className={td}>{countryName(row.country)}</td>
                   <td className={td}>{row.active ? w.active : w.inactive}</td>
-                  <td className={td}>{heldWords(row.units, row.variants)}</td>
+                  <td className={td}>{row.fulfilsOnline ? w.onlineYes : w.onlineNo}</td>
+                  <td className={td}>
+                    {heldWords(row.units, row.variants)}
+                    {row.incoming ? (
+                      <span className={`${hint} block`} title={t.documents.incomingHint}>
+                        {t.documents.incoming}: {unitsWords(row.incoming)}
+                      </span>
+                    ) : null}
+                  </td>
                   <td className={`${td} whitespace-nowrap text-right`}>
                     <span className="flex flex-wrap justify-end gap-2">
                       {canWrite && row.active && (
@@ -187,6 +204,19 @@ export function LocationsView({
                           className="min-h-9 rounded-pill border border-line px-2 text-xs disabled:opacity-40"
                         >
                           {w.deactivate}
+                        </button>
+                      )}
+                      {isOwner && row.active && (
+                        <button
+                          type="button"
+                          disabled={pending || (row.fulfilsOnline && onlineCount <= 1)}
+                          onClick={() =>
+                            run(async () => void show(await tools.online(row.id, !row.fulfilsOnline), fillWords(row.fulfilsOnline ? w.onlineOffDone : w.onlineOnDone, { name: row.name })))
+                          }
+                          aria-label={fillWords(row.fulfilsOnline ? w.onlineOffLabel : w.onlineOnLabel, { name: row.name })}
+                          className="min-h-9 rounded-pill border border-line px-2 text-xs disabled:opacity-40"
+                        >
+                          {row.fulfilsOnline ? w.onlineOff : w.onlineOn}
                         </button>
                       )}
                       {isOwner && !row.active && (

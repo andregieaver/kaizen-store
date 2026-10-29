@@ -292,7 +292,7 @@ export async function allocateStock(tx: Db, storeId: string, wants: readonly Sto
   const ids = sql.join(variantIds.map((id) => sql`${id}::uuid`), sql`, `);
   const places = await tx.execute<Row>(sql`
     select id, priority, created_at from commerce.inventory_locations
-    where store_id = ${storeId}::uuid and active
+    where store_id = ${storeId}::uuid and active and fulfils_online
     order by priority, created_at, id
   `);
   // A variant that keeps selling past zero and has no level at any active location gets one at the first, so there is a row to lock and draw.
@@ -304,7 +304,7 @@ export async function allocateStock(tx: Db, storeId: string, wants: readonly Sto
         select ${storeId}::uuid, ${variantId}::uuid, ${home}::uuid, 0
         where not exists (
           select 1 from commerce.inventory_levels l
-          join commerce.inventory_locations loc on loc.store_id = l.store_id and loc.id = l.location_id and loc.active
+          join commerce.inventory_locations loc on loc.store_id = l.store_id and loc.id = l.location_id and loc.active and loc.fulfils_online
           where l.store_id = ${storeId}::uuid and l.variant_id = ${variantId}::uuid
         )
         on conflict (variant_id, location_id) do nothing

@@ -998,11 +998,11 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "partial",
       "rechecked": true,
-      "was": null
+      "was": "missing"
     },
-    "gap": "No transfers and no purchase orders: no transfer or purchase-order table, screen or tool (verified 2026-10-25). Kaizen has ranked stock locations and an append-only history of every stock change with a reason (wave 3, D172, `inventory_movements`), so a build has the ledger to write to, but nothing moves stock between locations or receives it from a supplier, and variant cost (`product_variants.cost_minor`, D152) has no history of its own beyond what order lines froze. One row for the one Shopify feature (it replaces orders.inventory-transfers).",
+    "gap": "Built and tested (wave 11 unit D1, D383): stock transfers between a store's locations (`commerce.stock_transfers`, written only by `src/server/stock-transfers.ts`: a draft from SKUs, sent with each line's units leaving the origin as `transfer_out` movements, never what live checkouts hold there, counted in at the destination in parts as `transfer_in`, never past what was sent, cancelled with what was not counted in going back), shown as incoming at the destination and never sold on the way; purchase orders (`commerce.purchase_orders`, `src/server/purchase-orders.ts`: supplier, reference, currency, place, expected date, lines with units and unit cost, ordered then counted in as `received` movements naming the order) that set each received variant's cost converted into the main currency at the store's rates, kept in `commerce.variant_cost_history` by a trigger for every cost change from any writer (order lines keep the cost they froze, D152); the database moves both only forward and fixes a document's lines once out of draft; Inventory → Transfers and Purchase orders, the AI manager's read-only `list_transfers` and `list_purchase_orders`; and a location can be kept out of online orders (`fulfils_online`: the storefront's stock and `allocate()` leave it out). Not matching Shopify: no bulk CSV import of transfers or purchase orders, no transfers to or from an external location, no link between a purchase order and a transfer, and the AI manager cannot make a transfer (unit D2).",
     "bucket": "A",
     "wave": 3,
     "criteria": [
@@ -1012,15 +1012,36 @@
       "A cancelled transfer returns committed stock to the origin, and a transfer never takes a location below zero (integration test)."
     ],
     "evidence": {
-      "files": [],
-      "tests": [],
+      "files": [
+        "src/lib/stock-documents.ts",
+        "src/server/stock-transfers.ts",
+        "src/server/purchase-orders.ts",
+        "src/server/inventory-locations.ts",
+        "src/server/order-insert.ts",
+        "src/components/admin/inventory/stock-documents-view.tsx",
+        "src/app/admin/(gated)/[store]/inventory/transfers/page.tsx",
+        "src/app/admin/(gated)/[store]/inventory/purchase-orders/page.tsx",
+        "supabase/migrations/20261029002132_stock_transfers_purchase_orders.sql"
+      ],
+      "tests": [
+        "src/server/stock-documents.int.test.ts",
+        "src/lib/stock-documents.test.ts"
+      ],
       "untested": false
     },
     "decisions": [
       "D152",
-      "D172"
+      "D172",
+      "D383"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-29",
+        "from": "missing",
+        "to": "partial",
+        "why": "Read src/server/stock-transfers.ts, src/server/purchase-orders.ts, the migration 20261029002132_stock_transfers_purchase_orders and the Transfers and Purchase orders pages (D383): every criterion holds and is held by src/server/stock-documents.int.test.ts (run, passing): sending reduces the origin and shows incoming at the destination, partial receipts, a purchase order received in parts sets stock and the cost history, both name their document in the history, a cancel returns what was not received, and a send never takes units checkouts hold. No CSV import of either and no external locations, so partial."
+      }
+    ]
   },
   {
     "id": "catalogue.selling-plans-and-subscriptions",

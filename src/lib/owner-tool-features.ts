@@ -47,6 +47,8 @@ export const TOOL_FEATURES: Partial<Record<OwnerToolName, FeatureRequirement>> =
   low_stock: "shop",
   stock_levels: "shop",
   stock_history: "shop",
+  list_transfers: "shop",
+  list_purchase_orders: "shop",
   list_discounts: "shop",
   list_campaigns: "shop",
   search_insights: "shop",

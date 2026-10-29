@@ -25,6 +25,8 @@ export const INVENTORY_TABS = [
   { id: "list", label: "Inventory", path: "" },
   { id: "history", label: "History", path: "/history" },
   { id: "locations", label: "Locations", path: "/locations" },
+  { id: "transfers", label: "Transfers", path: "/transfers" },
+  { id: "purchase_orders", label: "Purchase orders", path: "/purchase-orders" },
   { id: "import", label: "Import", path: "/import" },
   { id: "export", label: "Export", path: "/export" },
 ] as const;

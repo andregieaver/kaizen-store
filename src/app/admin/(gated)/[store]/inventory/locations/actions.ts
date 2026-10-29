@@ -4,7 +4,7 @@ import { refresh } from "next/cache";
 
 import { adminText } from "@/lib/admin-text";
 import { actionAdminLang } from "@/server/admin-request-lang";
-import { deactivateLocation, moveLocation, reactivateLocation, saveLocation, type DeactivateResult } from "@/server/inventory-locations";
+import { deactivateLocation, moveLocation, reactivateLocation, saveLocation, setFulfilsOnline, type DeactivateResult } from "@/server/inventory-locations";
 import type { LocationImpact } from "@/server/inventory";
 import { checkOwnerRole, checkPermission } from "@/server/permissions";
 
@@ -49,4 +49,12 @@ export async function reactivateLocationAction(storeSlug: string, id: string): P
   const result = await reactivateLocation(member, String(id));
   if (result.ok) refresh();
   return result;
+}
+
+export async function setOnlineAction(storeSlug: string, id: string, on: boolean): Promise<Step> {
+  const member = await checkOwnerRole(storeSlug);
+  if (!member) return { ok: false, problem: await noAccess() };
+  const result = await setFulfilsOnline(member, String(id), on === true);
+  if (result.ok) refresh();
+  return result.ok ? { ok: true } : result;
 }

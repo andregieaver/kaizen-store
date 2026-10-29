@@ -6,11 +6,14 @@ import { db } from "@/db/client";
 import { todayIn } from "@/lib/analytics-period";
 import { policyProblem, reasonWord, type AdjustReason } from "@/lib/inventory";
 import type { OwnerToolInput } from "@/lib/owner-tools";
+import { formatMoney } from "@/lib/money";
 import { STOCK_LEVEL_NOTES, dayBefore, pickLocation, shapeLevel, shapeMovement } from "@/lib/stock-tools";
 
 import type { Membership } from "./auth";
 import { adjustStock, inventoryPage, setVariantPolicies, stockHistory } from "./inventory";
 import { listLocations } from "./inventory-locations";
+import { listPurchaseOrders } from "./purchase-orders";
+import { listTransfers } from "./stock-transfers";
 import { OwnerToolError } from "./owner-tool-error";
 import type { Store } from "./stores";
 
@@ -101,6 +104,38 @@ export async function stockHistoryTool(ctx: Ctx, { sku, days, reason, limit }: O
     more_changes_exist: nextCursor !== null,
     note: rows.length === 0 ? "No change of this variant's stock was recorded in that time." : "Newest first. The history is kept 24 months.",
     pages: { history: adminLink(store, `/inventory/history?variant=${variant.id}`) },
+  };
+}
+
+const DOCUMENT_STATE_WORDS = { draft: "draft", open: "on its way", partly_received: "partly received", received: "received", cancelled: "cancelled" } as const;
+
+/** The store's transfers as their page lists them (D383): every figure the store's own. */
+export async function listTransfersTool(ctx: Ctx, { open_only, limit }: OwnerToolInput<"list_transfers">) {
+  const rows = await listTransfers(ctx.store.id, { open: open_only, limit });
+  return {
+    transfers: rows.map((t) => ({ from: t.origin, to: t.destination, state: DOCUMENT_STATE_WORDS[t.state], lines: t.lines, units: t.units, received: t.received, made: t.createdAt.slice(0, 10) })),
+    note: rows.length === 0 ? "The store has no stock transfers." : "Newest first. Units on their way are not for sale until they are counted in.",
+    pages: { transfers: adminLink(ctx.store, "/inventory/transfers") },
+  };
+}
+
+/** The store's purchase orders as their page lists them (D383): totals in each order's own currency, written by code. */
+export async function listPurchaseOrdersTool(ctx: Ctx, { open_only, limit }: OwnerToolInput<"list_purchase_orders">) {
+  const rows = await listPurchaseOrders(ctx.store.id, { open: open_only, limit });
+  return {
+    purchase_orders: rows.map((o) => ({
+      supplier: o.supplier,
+      reference: o.reference,
+      arrives_at: o.location,
+      state: o.state === "open" ? "ordered" : DOCUMENT_STATE_WORDS[o.state],
+      expected_on: o.expectedOn,
+      units: o.units,
+      received: o.received,
+      total: formatMoney(o.totalMinor, o.currency, "en-GB"),
+      made: o.createdAt.slice(0, 10),
+    })),
+    note: rows.length === 0 ? "The store has no purchase orders." : "Newest first. Totals are in each order's own currency; they are never added across currencies.",
+    pages: { purchase_orders: adminLink(ctx.store, "/inventory/purchase-orders") },
   };
 }
 

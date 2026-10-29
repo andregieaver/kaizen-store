@@ -25,6 +25,8 @@ export type StockLocation = {
   name: string;
   country: string;
   active: boolean;
+  /** Whether online orders take units from here (D383); a location that does not is still counted, moved and received at. */
+  fulfilsOnline: boolean;
   priority: number;
   deactivatedAt: string | null;
   /** Units on hand and variants that have units here (positive levels). */
@@ -35,7 +37,7 @@ export type StockLocation = {
 /** The store's locations in rank order, active ones first; with what each holds. */
 export async function listLocations(storeId: string): Promise<StockLocation[]> {
   const rows = await db().execute<Row>(sql`
-    select loc.id, loc.name, loc.country, loc.active, loc.priority, loc.deactivated_at,
+    select loc.id, loc.name, loc.country, loc.active, loc.fulfils_online, loc.priority, loc.deactivated_at,
            coalesce(sum(greatest(l.on_hand, 0)), 0)::int as units, count(l.variant_id) filter (where l.on_hand > 0)::int as variants
     from commerce.inventory_locations loc
     left join commerce.inventory_levels l on l.store_id = loc.store_id and l.location_id = loc.id
@@ -48,6 +50,7 @@ export async function listLocations(storeId: string): Promise<StockLocation[]> {
     name: String(r.name),
     country: String(r.country),
     active: Boolean(r.active),
+    fulfilsOnline: Boolean(r.fulfils_online),
     priority: Number(r.priority),
     deactivatedAt: r.deactivated_at ? new Date(String(r.deactivated_at)).toISOString() : null,
     units: Number(r.units),
@@ -156,6 +159,14 @@ export async function deactivateLocation(member: Membership, id: string, confirm
   if (!Number.isInteger(confirmedUnits) || confirmedUnits !== impact.units) {
     return { ok: false, problem: `The stock at this location changed to ${impact.units} ${impact.units === 1 ? "unit" : "units"}. Read the figures again and confirm.`, impact };
   }
+  // With other active locations, one of them must still take online orders (D383); the last active one is the database's refusal below.
+  const [others] = await db().execute<Row>(sql`
+    select count(*)::int as active, (count(*) filter (where fulfils_online))::int as online
+    from commerce.inventory_locations where store_id = ${storeId}::uuid and active and id <> ${id}::uuid
+  `);
+  if (Number(others.active) > 0 && Number(others.online) === 0) {
+    return { ok: false, problem: "Online orders need at least one active location to take stock from. Turn it on for another one first.", impact };
+  }
   try {
     const [row] = await db().execute<Row>(sql`
       update commerce.inventory_locations set active = false
@@ -197,4 +208,33 @@ export async function reactivateLocation(member: Membership, id: string): Promis
   );
   refreshTag(catalogTag(storeId));
   return { ok: true, impact };
+}
+
+/**
+ * Whether online orders take units from a location (D383): off, its stock stays counted and can be moved or received at, but the storefront
+ * neither shows it nor sells it. OWNER only, as deactivating is. One active location fulfilling online orders always stays.
+ */
+export async function setFulfilsOnline(member: Membership, id: string, on: boolean): Promise<LocationResult> {
+  if (!memberCan(member, "owner")) return { ok: false, problem: NO_ACCESS };
+  const storeId = member.store.id;
+  const outcome = await db().transaction(async (tx): Promise<LocationResult> => {
+    await tx.execute(sql`select id from commerce.stores where id = ${storeId}::uuid for no key update`);
+    const [row] = await tx.execute<Row>(sql`select active, fulfils_online from commerce.inventory_locations where store_id = ${storeId}::uuid and id = ${id}::uuid`);
+    if (!row) return { ok: false, problem: "This location is not in this store." };
+    if (Boolean(row.fulfils_online) === on) return { ok: true, id };
+    if (!on) {
+      const [others] = await tx.execute<Row>(sql`
+        select count(*)::int as n from commerce.inventory_locations where store_id = ${storeId}::uuid and active and fulfils_online and id <> ${id}::uuid
+      `);
+      if (Number(others.n) === 0) return { ok: false, problem: "Online orders need at least one active location to take stock from. Turn it on for another one first." };
+    }
+    await tx.execute(sql`update commerce.inventory_locations set fulfils_online = ${on} where store_id = ${storeId}::uuid and id = ${id}::uuid`);
+    return { ok: true, id };
+  });
+  if (!outcome.ok) return outcome;
+  await audit(member.account.id, storeId, on ? "products.location_online_on" : "products.location_online_off", {}, { area: "products", target: { type: "inventory_location", id } }).catch(
+    (error) => console.error("[inventory] the change could not be logged", error),
+  );
+  refreshTag(catalogTag(storeId));
+  return outcome;
 }

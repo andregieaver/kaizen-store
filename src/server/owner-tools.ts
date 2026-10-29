@@ -206,7 +206,7 @@ import { campaignStatus, describeCampaign } from "@/lib/campaigns";
 import { listDiscounts, saveDiscount } from "./discounts";
 import { getInvoiceSettings, invoiceReadiness, seriesStates } from "./invoice-settings";
 import { invoiceCounts, listCreditNotes, listInvoices, waitingCreditNotes, waitingInvoices } from "./invoices";
-import { preflightStockTool, setBackorderTool, setStockTool, stockHistoryTool, stockLevelsTool } from "./stock-tools";
+import { listPurchaseOrdersTool, listTransfersTool, preflightStockTool, setBackorderTool, setStockTool, stockHistoryTool, stockLevelsTool } from "./stock-tools";
 import { pickupOrdersTool, shippingOverviewTool } from "./shipping-tools";
 import { notificationSettingsTool, orderRulesTool, parcelTrackingTool } from "./notification-tools";
 import { onHandActive } from "./stock-sql";
@@ -2464,6 +2464,8 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   set_backorder: setBackorderTool,
   stock_levels: stockLevelsTool,
   stock_history: stockHistoryTool,
+  list_transfers: listTransfersTool,
+  list_purchase_orders: listPurchaseOrdersTool,
   ai_usage: aiUsageTool,
   post_to_slack: postToSlackTool,
   list_experiments: listExperimentsTool,

@@ -467,6 +467,8 @@ export const TOOL_WORDS: Record<string, string> = {
   restock_suggestions: "Working out what to reorder",
   stock_levels: "Looking at stock",
   stock_history: "Reading the stock history",
+  list_transfers: "Looking at stock transfers",
+  list_purchase_orders: "Looking at purchase orders",
   list_integrations: "Looking at integrations",
   email_customer: "Preparing the email",
   resend_order_email: "Preparing the email",

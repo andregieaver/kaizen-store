@@ -144,6 +144,8 @@ every desk. `storefront.signup-and-contact-forms-feeding-customers-and-consent` 
 
 ### D. Stock transfers and purchase orders; the rest of several locations (D383)
 
+**D1 built (D383):** transfers, purchase orders, the cost history, incoming units and locations kept out of online orders, with the AI manager's two read tools. D2 is the rest of the design below: CSV in and out, the second routing rule, stock per location in the product editor, the payment-time shelf check, the perf test by plan, the e2e and `create_transfer`.
+
 **What is missing.**
 - Nothing moves stock between locations or receives it from a supplier.
 - Variant cost has no history of its own.

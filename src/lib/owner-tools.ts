@@ -425,6 +425,16 @@ export const OWNER_TOOLS = [
     }),
   ),
   tool(
+    "list_transfers",
+    "The store's stock transfers between its locations (D383), newest first: from and to, the state (draft, on its way, partly received, received, cancelled), units sent and received. Units on their way are not for sale. Read-only: a transfer is made, sent and counted in on its page (open_admin_page, inventory.transfers).",
+    z.object({ open_only: z.boolean().default(false).describe("Only drafts and transfers on their way."), limit: limit(50, 20) }),
+  ),
+  tool(
+    "list_purchase_orders",
+    "The store's purchase orders from its suppliers (D383), newest first: the supplier and its reference, where the stock arrives, the state (draft, ordered, partly received, received, cancelled), units ordered and received, and the total in the order's own currency, worked out by the store. Read-only: an order is made, marked as ordered and counted in on its page (open_admin_page, inventory.purchase_orders); counting in sets each variant's cost from it.",
+    z.object({ open_only: z.boolean().default(false).describe("Only drafts and orders not yet received in full."), limit: limit(50, 20) }),
+  ),
+  tool(
     "stock_history",
     "The history of one variant's stock (D172): every change of a figure, newest first, with when, the location, how much it changed by, the new figure, the reason (counted, received, damaged, sale, put back after an order ...) and who or what made it (a staff member, an order, a return, the AI manager). Kept 24 months. Read-only; each line is the store's own record, so repeat it as it is. Give the variant's SKU (from stock_levels or get_product).",
     z.object({

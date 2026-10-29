@@ -97,6 +97,16 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     title: "Lagersteder",
     keywords: ["lagersteder", "lager", "lokasjon", "varelager", "ruting", "deaktiver lagersted"],
   },
+  "store:inventory.transfers": {
+    title: "Lageroverføringer",
+    keywords: ["overføring", "lageroverføring", "flytt lager", "mellom lagersteder", "send overføring"],
+  },
+  "store:inventory.transfer": { title: "Lageroverføring", keywords: ["overføring", "tell inn", "motta overføring"] },
+  "store:inventory.purchase_orders": {
+    title: "Innkjøpsordrer",
+    keywords: ["innkjøpsordre", "leverandør", "varemottak", "bestilling", "kostpris", "påfyll"],
+  },
+  "store:inventory.purchase_order": { title: "Innkjøpsordre", keywords: ["innkjøpsordre", "tell inn", "varemottak", "levering fra leverandør"] },
   "store:inventory.import": { title: "Importer lager", keywords: ["importer lager", "lagertelling", "varetelling", "csv", "telling"] },
   "store:inventory.import.job": { title: "Lagerimport", keywords: ["lagerimport", "prøvekjøring", "konflikt", "importresultat", "avbryt import"] },
   "store:inventory.export": { title: "Eksporter lager", keywords: ["eksporter lager", "lagerfil", "csv", "last ned lager", "telleliste"] },

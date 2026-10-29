@@ -3604,6 +3604,11 @@ export const inventoryLocations = commerce.table(
     priority: integer("priority").notNull().default(0),
     /** Set when an owner deactivates the location and cleared on reactivation, for the report; never copied. */
     deactivatedAt: timestamp("deactivated_at", { withTimezone: true }),
+    /**
+     * Whether online orders take stock from here (wave 11 unit D, D383): off, the location's stock is neither sold by the storefront
+     * (`variant_availability`) nor allocated to an order (`allocate()`), as a shop's back room or a market stall's.
+     */
+    fulfilsOnline: boolean("fulfils_online").notNull().default(true),
     createdAt: createdAt(),
   },
   (t) => [
@@ -5714,6 +5719,151 @@ export const inventoryMovements = commerce.table(
     check("inventory_movements_reason", sql`${t.reason} in (${sqlList(MOVEMENT_REASONS)})`),
     check("inventory_movements_source", sql`${t.source} in (${sqlList(MOVEMENT_SOURCES)})`),
     check("inventory_movements_note", sql`${t.note} is null or length(${t.note}) <= 200`),
+  ],
+);
+
+/**
+ * Stock moved from one of a store's locations to another (wave 11 unit D, D383): a draft, then sent (each line's units leave the origin
+ * as movements of reason `transfer_out`), received in parts at the destination (`transfer_in`), or cancelled (what was sent and not
+ * received goes back to the origin as `transfer_in`). Written only by `src/server/stock-transfers.ts`; the database moves the status
+ * only forward and lets lines change only as `stock_transfers_rules()` allows. A movement names its transfer by `job_id`.
+ */
+export const stockTransfers = commerce.table(
+  "stock_transfers",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId(),
+    originId: uuid("origin_id").notNull(),
+    destinationId: uuid("destination_id").notNull(),
+    /** `draft`, `sent`, `received` (every line in full) or `cancelled`. */
+    status: text("status").notNull().default("draft"),
+    note: text("note"),
+    createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    receivedAt: timestamp("received_at", { withTimezone: true }),
+    cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("stock_transfers_store_id_key").on(t.storeId, t.id),
+    locationRef("stock_transfers_origin_fk", { storeId: t.storeId, locationId: t.originId }),
+    locationRef("stock_transfers_destination_fk", { storeId: t.storeId, locationId: t.destinationId }),
+    index("stock_transfers_store_idx").on(t.storeId, t.createdAt.desc()),
+    index("stock_transfers_origin_idx").on(t.storeId, t.originId),
+    index("stock_transfers_destination_idx").on(t.storeId, t.destinationId),
+    index("stock_transfers_created_by_idx").on(t.createdBy),
+    check("stock_transfers_status", sql`${t.status} in ('draft', 'sent', 'received', 'cancelled')`),
+    check("stock_transfers_places", sql`${t.originId} <> ${t.destinationId}`),
+    check("stock_transfers_note", sql`${t.note} is null or length(${t.note}) <= 500`),
+  ],
+);
+
+export const stockTransferLines = commerce.table(
+  "stock_transfer_lines",
+  {
+    storeId: storeId(),
+    transferId: uuid("transfer_id").notNull(),
+    variantId: uuid("variant_id").notNull(),
+    quantity: integer("quantity").notNull(),
+    /** Units counted in at the destination so far; never more than were sent. */
+    received: integer("received").notNull().default(0),
+  },
+  (t) => [
+    primaryKey({ columns: [t.transferId, t.variantId] }),
+    foreignKey({ name: "stock_transfer_lines_transfer_fk", columns: [t.storeId, t.transferId], foreignColumns: [stockTransfers.storeId, stockTransfers.id] }).onDelete("cascade"),
+    variantRef("stock_transfer_lines_variant_fk", t),
+    index("stock_transfer_lines_variant_idx").on(t.storeId, t.variantId),
+    check("stock_transfer_lines_quantity", sql`${t.quantity} between 1 and 1000000`),
+    check("stock_transfer_lines_received", sql`${t.received} between 0 and ${t.quantity}`),
+  ],
+);
+
+/**
+ * Stock ordered from a supplier (wave 11 unit D, D383): a draft, then ordered, received in parts at its location (movements of reason
+ * `received`, each receipt writing the variant's cost and a row of `variant_cost_history`), or cancelled (what is not received stays
+ * unreceived). Costs are in the order's own currency. Written only by `src/server/purchase-orders.ts`; the status only moves forward.
+ */
+export const purchaseOrders = commerce.table(
+  "purchase_orders",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId(),
+    supplier: text("supplier").notNull(),
+    /** The supplier's or the store's own reference, as typed. */
+    reference: text("reference"),
+    currency: char("currency", { length: 3 }).notNull(),
+    locationId: uuid("location_id").notNull(),
+    /** `draft`, `ordered`, `received` (every line in full) or `cancelled`. */
+    status: text("status").notNull().default("draft"),
+    expectedOn: date("expected_on", { mode: "string" }),
+    note: text("note"),
+    createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+    orderedAt: timestamp("ordered_at", { withTimezone: true }),
+    receivedAt: timestamp("received_at", { withTimezone: true }),
+    cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("purchase_orders_store_id_key").on(t.storeId, t.id),
+    locationRef("purchase_orders_location_fk", t),
+    index("purchase_orders_store_idx").on(t.storeId, t.createdAt.desc()),
+    index("purchase_orders_location_idx").on(t.storeId, t.locationId),
+    index("purchase_orders_created_by_idx").on(t.createdBy),
+    check("purchase_orders_status", sql`${t.status} in ('draft', 'ordered', 'received', 'cancelled')`),
+    check("purchase_orders_texts", sql`length(${t.supplier}) between 1 and 120 and coalesce(length(${t.reference}) <= 60, true) and coalesce(length(${t.note}) <= 500, true)`),
+    check("purchase_orders_currency", sql`${t.currency} ~ '^[A-Z]{3}$'`),
+  ],
+);
+
+export const purchaseOrderLines = commerce.table(
+  "purchase_order_lines",
+  {
+    storeId: storeId(),
+    purchaseOrderId: uuid("purchase_order_id").notNull(),
+    variantId: uuid("variant_id").notNull(),
+    quantity: integer("quantity").notNull(),
+    /** What one unit costs, in the order's currency, without VAT. */
+    unitCostMinor: bigint("unit_cost_minor", { mode: "number" }).notNull(),
+    received: integer("received").notNull().default(0),
+  },
+  (t) => [
+    primaryKey({ columns: [t.purchaseOrderId, t.variantId] }),
+    foreignKey({ name: "purchase_order_lines_order_fk", columns: [t.storeId, t.purchaseOrderId], foreignColumns: [purchaseOrders.storeId, purchaseOrders.id] }).onDelete("cascade"),
+    variantRef("purchase_order_lines_variant_fk", t),
+    index("purchase_order_lines_variant_idx").on(t.storeId, t.variantId),
+    check("purchase_order_lines_quantity", sql`${t.quantity} between 1 and 1000000`),
+    check("purchase_order_lines_received", sql`${t.received} between 0 and ${t.quantity}`),
+    check("purchase_order_lines_cost", sql`${t.unitCostMinor} between 0 and 100000000000`),
+  ],
+);
+
+/**
+ * Every change of a variant's cost (wave 11 unit D, D383), kept by a trigger on `product_variants.cost_minor` whoever writes it: the cost
+ * in the store's main currency (null: taken away), where it came from (`editor`, `purchase_order`, `file`, `system`, from the setting
+ * `kaizen.cost_source`) and, for a purchase order's receipt, the order and the cost in its own currency. Append-only. Order lines keep the
+ * cost they froze (D152), so this never rewrites a sale.
+ */
+export const variantCostHistory = commerce.table(
+  "variant_cost_history",
+  {
+    id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+    storeId: storeId(),
+    variantId: uuid("variant_id").notNull(),
+    costMinor: bigint("cost_minor", { mode: "number" }),
+    source: text("source").notNull(),
+    purchaseOrderId: uuid("purchase_order_id"),
+    sourceCurrency: char("source_currency", { length: 3 }),
+    sourceCostMinor: bigint("source_cost_minor", { mode: "number" }),
+    accountId: uuid("account_id"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    variantRef("variant_cost_history_variant_fk", t),
+    index("variant_cost_history_variant_idx").on(t.storeId, t.variantId, t.id.desc()),
+    index("variant_cost_history_order_idx").on(t.storeId, t.purchaseOrderId).where(sql`${t.purchaseOrderId} is not null`),
+    check("variant_cost_history_source", sql`${t.source} in ('editor', 'purchase_order', 'file', 'system')`),
   ],
 );
 
