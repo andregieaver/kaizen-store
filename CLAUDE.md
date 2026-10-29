@@ -1637,6 +1637,9 @@ stand-in is the only fake, and only it is told it is one.
   Custom CSS panel. Draw it only through `<CustomCss>` on the site and
   `<ScopedCss>` in the admin (kept inside its box), which check it with
   `cssProblem()` again; never put owner CSS in a page any other way.
+  The panel's editor is `CssCodeEditor` (D394, CodeMirror, loaded only when the panel
+  opens): its own suggestions are `src/lib/css-completions.ts` (`THEME_VARIABLES`, a
+  new theme variable goes there; `knownClassNames()`), and the plain field stays its fallback.
 - Slack (D101, `src/lib/slack.ts`, `src/server/slack.ts`): a third
   integration (`store_integrations.provider` `slack`) with D41's events,
   queue and retries, sent as messages by `slackMessage()`: never shoppers'

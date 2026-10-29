@@ -22,6 +22,7 @@ import {
   PAGE_TITLE_MAX,
   newPageContent,
   pageExcerpt,
+  pageParts,
   pageSlugFromTitle,
   pageSlugProblem,
   sitePartsFor,
@@ -31,6 +32,7 @@ import {
   type PageType,
   type PageThumbnail,
 } from "@/lib/page-content";
+import { knownClassNames } from "@/lib/css-completions";
 import { layoutOf } from "@/lib/page-layout";
 import { blockingIssues, issueId, pageIssues, type PageIssue } from "@/lib/page-a11y";
 import { applyMotionPlan, type MotionPlan } from "@/lib/motion-plan";
@@ -222,6 +224,11 @@ export function PageEditor({
     accent: context.colours.find((swatch) => swatch.name === "Accent")?.colour ?? "#2563eb",
     text: context.colours.find((swatch) => swatch.name === "Text")?.colour ?? "#111111",
   };
+  // What the CSS editor offers after a `.` (D394): the classes given to this page's parts and the site's text styles.
+  const cssClassNames = useMemo(
+    () => knownClassNames(pageParts(content.rows).map((part) => (part as { className?: string }).className), textStyles.styles.map((style) => style.slug)),
+    [content.rows, textStyles.styles],
+  );
   const language = context.languages.find((l) => l.locale === locale) ?? main;
   const translating = language.locale !== main.locale;
 
@@ -870,6 +877,7 @@ export function PageEditor({
         onSiteCss={setSiteCss}
         saveSiteCss={actions.saveSiteCss}
         versions={actions.cssVersions}
+        classNames={cssClassNames}
       />
 
       <FindReplaceDialog open={findOpen} onClose={() => setFindOpen(false)} content={view} onReplace={replaceWords} />

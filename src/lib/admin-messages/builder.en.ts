@@ -1114,6 +1114,7 @@ export const builderEn = {
     pageBroken: { layout: "Until it is fixed, the canvas leaves it out and the layout cannot be saved.", header: "Until it is fixed, the canvas leaves it out and the header cannot be saved.", footer: "Until it is fixed, the canvas leaves it out and the footer cannot be saved.", version: "Until it is fixed, the canvas leaves it out and the version cannot be saved.", article: "Until it is fixed, the canvas leaves it out and the article cannot be saved.", page: "Until it is fixed, the canvas leaves it out and the page cannot be saved." },
     siteBroken: "Until it is fixed, it cannot be saved.",
     help: "Style parts by the classes and ids you give them under Advanced. Pictures and fonts come from your site or media library only.",
+    keys: "Tab indents. Suggestions show as you type (Ctrl+Space asks for them); Enter takes one. Press Esc, then Tab, to leave the editor.",
     saving: "Saving …",
     save: "Save global CSS",
     notSaved: "Not saved yet.",

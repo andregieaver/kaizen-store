@@ -1062,6 +1062,7 @@ export const builderNb: BuilderMessages = {
     pageBroken: { layout: "Til den er rettet, utelater lerretet den, og oppsettet kan ikke lagres.", header: "Til den er rettet, utelater lerretet den, og toppteksten kan ikke lagres.", footer: "Til den er rettet, utelater lerretet den, og bunnteksten kan ikke lagres.", version: "Til den er rettet, utelater lerretet den, og versjonen kan ikke lagres.", article: "Til den er rettet, utelater lerretet den, og artikkelen kan ikke lagres.", page: "Til den er rettet, utelater lerretet den, og siden kan ikke lagres." },
     siteBroken: "Til den er rettet, kan den ikke lagres.",
     help: "Gi deler stil med klassene og id-ene du gir dem under Avansert. Bilder og skrifter kan bare komme fra nettstedet ditt eller mediebiblioteket.",
+    keys: "Tab rykker inn. Forslag vises mens du skriver (Ctrl+mellomrom ber om dem); Enter velger ett. Trykk Esc og så Tab for å gå ut av feltet.",
     saving: "Lagrer …",
     save: "Lagre CSS for hele nettstedet",
     notSaved: "Ikke lagret ennå.",

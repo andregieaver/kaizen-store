@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, useTransition, type KeyboardEvent } from "react";
+import dynamic from "next/dynamic";
+import { createContext, useContext, useEffect, useId, useRef, useState, useTransition, type KeyboardEvent, type ReactNode } from "react";
 
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
@@ -8,6 +9,16 @@ import { cssLineChanges, type CssVersionActions, type CssVersionItem } from "@/l
 import { CSS_MAX, cssProblem } from "@/lib/custom-css";
 
 import { useAdminLang, useAdminText } from "./admin-text";
+
+/**
+ * The code editor (D394), fetched the first time a panel opens; until it arrives, and if it cannot, the plain field the panel hands
+ * down is drawn in its place.
+ */
+const PlainField = createContext<ReactNode>(null);
+function Plain() {
+  return <>{useContext(PlainField)}</>;
+}
+const CodeEditor = dynamic(() => import("./css-code-editor").catch(() => Plain), { ssr: false, loading: Plain });
 
 type Nouned = { layout: string; header: string; footer: string; version: string; article: string; page: string };
 
@@ -32,6 +43,7 @@ export function CssPanel({
   onSiteCss,
   saveSiteCss,
   versions,
+  classNames = [],
 }: {
   open: boolean;
   onClose: () => void;
@@ -47,6 +59,8 @@ export function CssPanel({
   saveSiteCss: (css: string) => Promise<{ ok: true } | { ok: false; problems: string[] }>;
   /** The site CSS's earlier saves (D385); none shows no Versions. */
   versions?: CssVersionActions;
+  /** The classes the page's parts and the site's text styles have, offered after a `.` (`knownClassNames()`). */
+  classNames?: readonly string[];
 }) {
   const id = useId();
   const [tab, setTab] = useState<"page" | "site">("page");
@@ -95,7 +109,10 @@ export function CssPanel({
       aria-modal="false"
       aria-labelledby={`${id}-title`}
       onKeyDown={(event) => {
-        if (event.key === "Escape") onClose();
+        // Escape in the code editor is the editor's (closing its suggestions, or letting Tab leave it); elsewhere it closes the panel.
+        if (event.key !== "Escape" || event.defaultPrevented) return;
+        if (event.target instanceof Element && event.target.closest("[data-css-editor]")) return;
+        onClose();
       }}
       className="fixed inset-y-0 right-0 z-30 flex w-full max-w-md flex-col border-l border-line bg-card shadow-2xl"
     >
@@ -132,26 +149,46 @@ export function CssPanel({
             ? byNoun(w.pageHint, noun)
             : fillWords(byNoun(w.siteHint, noun), { site: siteName })}
         </p>
-        <label htmlFor={`${id}-css`} className="sr-only">
+        <label id={`${id}-label`} htmlFor={`${id}-css`} className="sr-only">
           {tab === "page" ? byNoun(w.pageField, noun) : fillWords(w.siteField, { site: siteName })}
         </label>
-        <textarea
-          key={tab}
-          id={`${id}-css`}
-          value={value}
-          onChange={(event) => {
-            setStatus(null);
-            (tab === "page" ? onPageCss : onSiteCss)(event.target.value);
-          }}
-          maxLength={CSS_MAX}
-          spellCheck={false}
-          autoCapitalize="off"
-          autoCorrect="off"
-          placeholder={tab === "page" ? ".hero h1 {\n  letter-spacing: -0.02em;\n}" : "h2 {\n  text-wrap: balance;\n}"}
-          aria-describedby={`${id}-help`}
-          aria-invalid={problem ? true : undefined}
-          className="min-h-0 w-full flex-1 resize-none rounded-md border border-line bg-sunken p-3 font-mono text-[13px] leading-relaxed"
-        />
+        <PlainField.Provider
+          value={
+            <textarea
+              key={tab}
+              id={`${id}-css`}
+              value={value}
+              onChange={(event) => {
+                setStatus(null);
+                (tab === "page" ? onPageCss : onSiteCss)(event.target.value);
+              }}
+              maxLength={CSS_MAX}
+              spellCheck={false}
+              autoCapitalize="off"
+              autoCorrect="off"
+              placeholder={placeholderOf(tab)}
+              aria-describedby={`${id}-help`}
+              aria-invalid={problem ? true : undefined}
+              className="min-h-0 w-full flex-1 resize-none rounded-md border border-line bg-sunken p-3 font-mono text-[13px] leading-relaxed"
+            />
+          }
+        >
+          <CodeEditor
+            key={tab}
+            id={`${id}-css`}
+            value={value}
+            onChange={(css: string) => {
+              setStatus(null);
+              (tab === "page" ? onPageCss : onSiteCss)(css);
+            }}
+            max={CSS_MAX}
+            placeholderText={placeholderOf(tab)}
+            labelledBy={`${id}-label`}
+            describedBy={`${id}-help ${id}-keys`}
+            invalid={problem !== null}
+            classNames={classNames}
+          />
+        </PlainField.Provider>
         <div id={`${id}-help`} className="flex flex-col gap-1 text-xs">
           {problem ? (
             <p role="alert" className="text-danger-text">
@@ -163,6 +200,9 @@ export function CssPanel({
               {w.help}
             </p>
           )}
+          <p id={`${id}-keys`} className="text-muted">
+            {w.keys}
+          </p>
         </div>
         {tab === "site" && versions && (
           <CssVersions
@@ -193,6 +233,8 @@ export function CssPanel({
     </div>
   );
 }
+
+const placeholderOf = (tab: "page" | "site") => (tab === "page" ? ".hero h1 {\n  letter-spacing: -0.02em;\n}" : "h2 {\n  text-wrap: balance;\n}");
 
 const when = (iso: string, locale: string) =>
   new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
