@@ -72,6 +72,8 @@ describe("the settings form", () => {
       minRedeem: "",
       expires: false,
       expiresMonths: "12",
+      levels: [],
+      signup: "",
     });
     const values = formFromSettings({ ...on, minRedeemMinor: 4950, expiresMonths: 18, earnBps: 250 }, "NOK");
     expect(values).toMatchObject({ earnPercent: "2.5", minRedeem: "49,50", expires: true, expiresMonths: "18" });
@@ -85,6 +87,8 @@ describe("the settings form", () => {
       maxRedeemPercent: 30,
       minRedeemMinor: 10000,
       expiresMonths: 24,
+      levels: [{ name: "Gold", fromMinor: 500_000, earnBps: 750 }],
+      signupMinor: 5_000,
     };
     expect(readBonusForm(formFromSettings(settings, "NOK"), "NOK")).toEqual({ ok: true, settings });
     expect(readBonusForm(formFromSettings(on, "NOK"), "NOK")).toEqual({ ok: true, settings: on });
@@ -109,6 +113,8 @@ describe("the settings form", () => {
         minRedeem: "lots",
         expires: true,
         expiresMonths: "0",
+        levels: [{ name: "Gold", from: "lots", percent: "7" }],
+        signup: "free",
       },
       "NOK",
     );
@@ -119,6 +125,8 @@ describe("the settings form", () => {
     expect(read.errors.maxRedeemPercent).toBe("Keep the most at 90% so the order still has something to pay.");
     expect(read.errors.minRedeem).toContain("Write an amount in NOK");
     expect(read.errors.expiresMonths).toBe("Write a number of months from 1 to 60.");
+    expect(read.errors.levels).toContain("Give each level a name");
+    expect(read.errors.signup).toContain("Write an amount in NOK");
     // The form's order is the order problems are read and focused in.
     expect(orderedProblems(read.errors).map((p) => p.field)).toEqual([
       "earnPercent",
@@ -126,6 +134,8 @@ describe("the settings form", () => {
       "maxRedeemPercent",
       "minRedeem",
       "expiresMonths",
+      "levels",
+      "signup",
     ]);
   });
 
@@ -285,5 +295,21 @@ describe("what a refund does to an order's credits", () => {
     expect(notes[0]).toContain("NOK 25.00 so far");
     expect(notes[1]).toContain("takes back the credits the refunded part earned");
     expect(notes[1]).toContain("already used stay used");
+  });
+});
+
+describe("levels in the settings form (D392)", () => {
+  it("reads levels as amounts and percentages, drops an empty row, and refuses a level that is not a step up", () => {
+    const base = { ...formFromSettings(on, "NOK"), earnPercent: "5" };
+    const read = readBonusForm({ ...base, levels: [{ name: "Silver", from: "2000", percent: "6" }, { name: "", from: "", percent: "" }, { name: "Gold", from: "5000,50", percent: "7,5" }], signup: "50" }, "NOK");
+    expect(read).toMatchObject({ ok: true, settings: { levels: [{ name: "Silver", fromMinor: 200_000, earnBps: 600 }, { name: "Gold", fromMinor: 500_050, earnBps: 750 }], signupMinor: 5_000 } });
+    expect(readBonusForm({ ...base, levels: [{ name: "Silver", from: "5000", percent: "6" }, { name: "Gold", from: "2000", percent: "7" }] }, "NOK")).toMatchObject({ ok: false, errors: { levels: expect.any(String) } });
+    expect(readBonusForm({ ...base, levels: [{ name: "Silver", from: "2000", percent: "4" }] }, "NOK")).toMatchObject({ ok: false, errors: { levels: expect.any(String) } });
+  });
+
+  it("says the levels and the account credit in the summary", () => {
+    const lines = rulesSummary({ ...on, levels: [{ name: "Gold", fromMinor: 500_000, earnBps: 750 }], signupMinor: 5_000 }, (m) => `${m / 100} kr`, "NOK");
+    expect(lines).toContain("Gold: from 5000 kr paid for goods in the last 12 months, less refunds, customers earn 7.5% back.");
+    expect(lines).toContain("A customer who opens an account gets 50 kr in bonus credits once, usable at once.");
   });
 });

@@ -120,6 +120,15 @@ export const loyaltyNb: LoyaltyMessages = {
     savedOff: "Lagret. Bonusprogrammet er av. Saldoene beholdes.",
     readOnly: "Bare en eier kan endre bonusprogrammet. Du kan se hvordan det er satt opp.",
     example: "En bestilling på {order} gir {earn} i bonuskreditt.",
+    levelsHeading: "Nivåer og ekstra",
+    levelsHint: "Valgfritt. Et nivå gir mer tilbake til kunder som har handlet varer for mer de siste 12 månedene, minus refusjoner; det høyeste nivået som er nådd, gjelder. Opptil 4.",
+    levelName: "Navn",
+    levelFrom: "Fra handlet for på et år",
+    levelPercent: "Tilbake",
+    addLevel: "Legg til et nivå",
+    removeLevel: "Fjern",
+    signupLabel: "Kreditt for å opprette konto",
+    signupHint: "Gis én gang, kan brukes med en gang, når en kunde oppretter konto mens programmet er på. La feltet stå tomt for ingen.",
     errors: {
       earnPercent: "Skriv en prosent, for eksempel 5 eller 2,5.",
       pendingDays: "Skriv et antall dager, eller 0 for at den kan brukes med en gang.",
@@ -130,6 +139,10 @@ export const loyaltyNb: LoyaltyMessages = {
       minRange: "Hold den nedre grensen på et fornuftig beløp.",
       monthsRange: "Skriv et antall måneder fra 1 til 60.",
       checkNumber: "Se over dette tallet.",
+      levels: "Gi hvert nivå et navn, beløpet i {currency} handlet for på et år som nivået gjelder fra (for eksempel 5000), og en prosent tilbake, for eksempel 7,5.",
+      levelsRange: "Hvert nivå starter over det forrige og gir mer tilbake enn programmets egen sats og nivået før, høyst 50 %; høyst 4 nivåer.",
+      signup: "Skriv et beløp i {currency}, for eksempel 50, eller la feltet stå tomt for ingen.",
+      signupRange: "Hold kreditten for å opprette konto på et rimelig beløp.",
     },
   },
   bonusRules: {
@@ -146,6 +159,8 @@ export const loyaltyNb: LoyaltyMessages = {
     after: "{days} etter at du har betalt",
     days: { one: "{n} dag", many: "{n} dager" },
     months: { one: "{n} måned", many: "{n} måneder" },
+    level: "{name}: fra {from} betalt for varer de siste 12 månedene, minus refusjoner, tjener kundene {percent} % tilbake.",
+    signup: "En kunde som oppretter konto, får {amount} i bonuskreditt én gang, brukbart med en gang.",
   },
   bonusOverview: {
     heading: "Kreditt i korte trekk",
@@ -166,6 +181,7 @@ export const loyaltyNb: LoyaltyMessages = {
     expire: "Utløpt",
     adjust: "Justert av butikken",
     referral: "Vervebelønning",
+    signup: "For å opprette konto",
   },
   adjust: {
     amountProblem: "Skriv et beløp, for eksempel 50 for å legge til eller -20 for å trekke fra.",

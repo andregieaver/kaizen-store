@@ -268,6 +268,87 @@ export function BonusSettingsView({
           </Field>
         </fieldset>
 
+        <fieldset className={card} aria-describedby="bonus-levels-hint">
+          <legend className="float-left mb-0 w-full font-medium">{w.levelsHeading}</legend>
+          <p id="bonus-levels-hint" className="text-sm text-muted">
+            {w.levelsHint}
+          </p>
+          {values.levels.length > 0 && (
+            <ul id="bonus-levels" tabIndex={-1} className="flex flex-col gap-3" aria-invalid={errors.levels ? true : undefined}>
+              {values.levels.map((level, i) => (
+                <li key={i} className="flex flex-wrap items-end gap-2 text-sm">
+                  <label className="flex flex-col gap-1">
+                    <span className="font-medium">{w.levelName}</span>
+                    <input
+                      type="text"
+                      value={level.name}
+                      maxLength={40}
+                      onChange={(event) => set("levels", values.levels.map((l, j) => (j === i ? { ...l, name: event.target.value } : l)))}
+                      className={`${control} w-40`}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="font-medium">
+                      {w.levelFrom} <span className="font-normal text-muted">({currency})</span>
+                    </span>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={level.from}
+                      onChange={(event) => set("levels", values.levels.map((l, j) => (j === i ? { ...l, from: event.target.value } : l)))}
+                      className={`${control} w-32`}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="font-medium">
+                      {w.levelPercent} <span className="font-normal text-muted">(%)</span>
+                    </span>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={level.percent}
+                      onChange={(event) => set("levels", values.levels.map((l, j) => (j === i ? { ...l, percent: event.target.value } : l)))}
+                      className={`${control} w-24`}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => set("levels", values.levels.filter((_, j) => j !== i))}
+                    className="min-h-10 rounded-pill border border-line px-3 text-sm"
+                  >
+                    {w.removeLevel}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {errors.levels && <p className={errorText}>{errors.levels}</p>}
+          {values.levels.length < 4 && (
+            <div>
+              <button
+                type="button"
+                onClick={() => set("levels", [...values.levels, { name: "", from: "", percent: "" }])}
+                className="min-h-10 rounded-pill border border-line px-4 text-sm"
+              >
+                {w.addLevel}
+              </button>
+            </div>
+          )}
+          <Field id="bonus-signup" label={w.signupLabel} suffix={currency} error={errors.signup} hint={w.signupHint}>
+            {(props) => (
+              <input
+                {...props}
+                type="text"
+                inputMode="decimal"
+                autoComplete="off"
+                value={values.signup}
+                onChange={(event) => set("signup", event.target.value)}
+                className={control}
+              />
+            )}
+          </Field>
+        </fieldset>
+
         <fieldset className={card}>
           <legend className="float-left mb-0 w-full font-medium">{w.expiry}</legend>
           <label className="flex items-start gap-2 text-sm">

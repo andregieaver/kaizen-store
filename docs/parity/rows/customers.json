@@ -919,7 +919,7 @@
       "rechecked": true,
       "was": "full"
     },
-    "gap": "The bonus program (D130) earns credits on paid goods (5 % by default) for signed-in customers, holds them pending then usable, expires them, redeems them as a last price reduction and keeps an append-only ledger with refund reversals and manual adjustment. Missing next to a loyalty app: VIP tiers or tier multipliers (listed as not built in `docs/bonus.md`), points for actions (account creation, birthday, review, sign-up) and reward kinds beyond a price reduction (free shipping, free product).",
+    "gap": "The bonus program (D130) earns credits on paid goods (5 % by default) for signed-in customers, holds them pending then usable, expires them, redeems them as a last price reduction and keeps an append-only ledger with refund reversals and manual adjustment. Since D392 levels (up to four, each with its own rate back, reached by what a customer paid for goods in the last 365 days less refunds, worked out by the database when an order is paid and shown on My account with what more the next needs) and a credit for opening an account (given once when the email is first proven) are built (`bonus-levels.int.test.ts`). Still missing next to a loyalty app: reward kinds beyond a price reduction (free shipping, a free product) and points for a birthday; points for a review are never given (D301: a review is never rewarded) and a sign-up's consent is never bought.",
     "bucket": "A",
     "wave": 5,
     "criteria": [
@@ -939,7 +939,8 @@
         "src/components/admin/bonus-settings-form.tsx",
         "src/components/bonus-credits.tsx",
         "src/app/admin/(gated)/[store]/bonus/page.tsx",
-        "src/app/s/[store]/[market]/account/bonus/page.tsx"
+        "src/app/s/[store]/[market]/account/bonus/page.tsx",
+        "src/lib/bonus-levels.ts"
       ],
       "tests": [
         "src/lib/bonus.test.ts",
@@ -948,12 +949,15 @@
         "src/lib/bonus-admin.test.ts",
         "src/lib/bonus-shopper.test.ts",
         "src/components/admin/bonus-ui.test.ts",
-        "src/server/checkout-kinds.int.test.ts"
+        "src/server/checkout-kinds.int.test.ts",
+        "src/lib/bonus-levels.test.ts",
+        "src/server/bonus-levels.int.test.ts"
       ],
       "untested": false
     },
     "decisions": [
-      "D130"
+      "D130",
+      "D392"
     ],
     "history": [
       {

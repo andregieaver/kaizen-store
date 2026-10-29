@@ -4103,6 +4103,20 @@
       "when": 1793284134105,
       "tag": "20261029142854_return_refund_parts",
       "breakpoints": true
+    },
+    {
+      "idx": 586,
+      "version": "7",
+      "when": 1793285870447,
+      "tag": "20261029145750_bonus_levels",
+      "breakpoints": true
+    },
+    {
+      "idx": 587,
+      "version": "7",
+      "when": 1793285907373,
+      "tag": "20261029145827_bonus_levels_rules",
+      "breakpoints": true
     }
   ]
 }

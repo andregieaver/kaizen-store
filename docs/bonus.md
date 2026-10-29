@@ -114,15 +114,31 @@ Programs that were off when this came (migration `store_features_customers_rules
 removing takes usable credits first and never goes below zero. Audited (`customer.bonus_adjusted`). Settings changes are
 audited (`store.bonus_settings`) and never touch what was already earned.
 
+## Levels and the credit for opening an account (D392)
+
+- **Levels.** `bonus_settings.levels` holds up to four `{ name, fromMinor, earnBps }`, each starting above the one before it and giving
+  more back than the program's own rate and the level below (`levelsProblem()` in `src/lib/bonus-levels.ts`, the schema, and the
+  table's check for the count). A customer's level is the highest whose `fromMinor` their spending reaches: what they paid for goods in
+  the last 365 days, less what was refunded, in the credits' currency, orders with a captured payment only, never a copied or a host's
+  order (`commerce.bonus_level_spend()`). `commerce.bonus_order_paid()` earns at `commerce.bonus_earn_bps()`, the order being paid left
+  out of the spending, so an order never lifts itself; the cart's estimate asks the same function (`creditState().earnBps`). The level is
+  read when it is needed, never stored, so a refund or the year passing moves a customer down by itself. My account says the level and
+  what more the next needs; the history names the program's own rate when there is no level.
+- **The credit for opening an account.** `bonus_settings.signup_minor`, given once (ledger kind `signup`, keyed `signup:{customer}`,
+  usable at once, expiring as any credit) by the trigger `customers_bonus_signup` when a customer's email is proven for the first time,
+  only while the program works in a real, open store. A staff-made customer gets it when they first sign in.
+- **Not built.** Points for a review (never: a review is never rewarded, D301), for a birthday (no birthday is kept) or for a newsletter
+  sign-up (consent is never bought); rewards other than a price reduction (free shipping, a free product).
+
 ## Copying a store (D129)
 
-`bonus_settings` is copied (`duplicate_store()`); the ledger never is: customers' balances stay with the original store.
+`bonus_settings` is copied (`duplicate_store()`, levels and the account credit included since D392); the ledger never is: customers' balances stay with the original store.
 
 ## Not in v1
 
 - **Subscription renewals redeeming.** Renewals earn when paid (on their lines, not shipping) but cannot use credits; the
   first order can use them on goods bought once next to the subscription.
-- Tier multipliers (higher earn rates per customer group), transfers between customers, credits as gift cards, credits on
+- Transfers between customers, credits as gift cards, credits on
   shipping, reminders in the customer's own currency preference.
 - Refunds made directly in Stripe's Dashboard: Kaizen has no refund webhook, so such a refund is not seen and credits do not
   move; refund from the order page (`refundOrder`), which records the refund and so moves the credits.

@@ -54,6 +54,10 @@ export type BonusFormValues = {
   /** Whether credits expire at all. */
   expires: boolean;
   expiresMonths: string;
+  /** Levels (D392), as typed: a name, from what amount spent in the last 365 days, and the percentage back. */
+  levels: { name: string; from: string; percent: string }[];
+  /** Credits for opening an account, as an amount in the credits' currency; empty for none. */
+  signup: string;
 };
 
 export type BonusField = Exclude<keyof BonusFormValues, "enabled" | "expires">;
@@ -65,6 +69,8 @@ export const BONUS_FIELD_ORDER: readonly BonusField[] = [
   "maxRedeemPercent",
   "minRedeem",
   "expiresMonths",
+  "levels",
+  "signup",
 ];
 
 export function formFromSettings(settings: BonusSettings, currency: string): BonusFormValues {
@@ -76,6 +82,8 @@ export function formFromSettings(settings: BonusSettings, currency: string): Bon
     minRedeem: settings.minRedeemMinor > 0 ? formatPriceInput(settings.minRedeemMinor, currency) : "",
     expires: settings.expiresMonths !== null,
     expiresMonths: String(settings.expiresMonths ?? 12),
+    levels: settings.levels.map((l) => ({ name: l.name, from: formatPriceInput(l.fromMinor, currency), percent: bpsToPercentText(l.earnBps) })),
+    signup: settings.signupMinor > 0 ? formatPriceInput(settings.signupMinor, currency) : "",
   };
 }
 
@@ -118,6 +126,25 @@ export function readBonusForm(
     if (expiresMonths === null) errors.expiresMonths = w.expiresMonths;
   }
 
+  // Levels: every row read whole, or the levels' own message (a row left entirely empty is dropped, as an unfinished line).
+  const levels: { name: string; fromMinor: number; earnBps: number }[] = [];
+  for (const row of values.levels) {
+    if (!row.name.trim() && !row.from.trim() && !row.percent.trim()) continue;
+    const fromMinor = parsePrice(row.from, currency);
+    const earnRow = percentTextToBps(row.percent);
+    if (!row.name.trim() || fromMinor === null || earnRow === null) {
+      errors.levels = fillWords(w.levels, { currency });
+      break;
+    }
+    levels.push({ name: row.name.trim(), fromMinor, earnBps: earnRow });
+  }
+
+  let signupMinor: number | null = 0;
+  if (values.signup.trim() !== "") {
+    signupMinor = parsePrice(values.signup, currency);
+    if (signupMinor === null) errors.signup = fillWords(w.signup, { currency });
+  }
+
   // What could be read is checked against the contract, so its limits are said in its own words.
   const parsed = bonusSettingsInput.safeParse({
     enabled: values.enabled,
@@ -126,6 +153,8 @@ export function readBonusForm(
     maxRedeemPercent: maxRedeemPercent ?? 1,
     minRedeemMinor: minRedeemMinor ?? 0,
     expiresMonths: values.expires ? (expiresMonths ?? 1) : null,
+    levels: errors.levels ? [] : levels,
+    signupMinor: signupMinor ?? 0,
   });
   if (!parsed.success) {
     const fieldOf: Record<string, BonusField> = {
@@ -134,6 +163,8 @@ export function readBonusForm(
       maxRedeemPercent: "maxRedeemPercent",
       minRedeemMinor: "minRedeem",
       expiresMonths: "expiresMonths",
+      levels: "levels",
+      signupMinor: "signup",
     };
     for (const issue of parsed.error.issues) {
       const field = fieldOf[String(issue.path[0])];
@@ -154,6 +185,10 @@ function friendly(field: BonusField, message: string, w: LoyaltyMessages["bonus"
         return w.minRange;
       case "expiresMonths":
         return w.monthsRange;
+      case "levels":
+        return w.levelsRange;
+      case "signup":
+        return w.signupRange;
       default:
         return w.checkNumber;
     }
@@ -218,6 +253,9 @@ export function rulesSummary(settings: BonusSettings, money: MoneyFormat, curren
   const least = settings.minRedeemMinor > 0 ? fillWords(w.least, { amount: money(settings.minRedeemMinor) }) : "";
   lines.push(fillWords(w.limit, { percent: settings.maxRedeemPercent, least, currency }));
   if (settings.expiresMonths !== null) lines.push(w.reminder);
+  for (const level of settings.levels)
+    lines.push(fillWords(w.level, { name: level.name, from: money(level.fromMinor), percent: percentNumber(level.earnBps, w) }));
+  if (settings.signupMinor > 0) lines.push(fillWords(w.signup, { amount: money(settings.signupMinor) }));
   return lines;
 }
 

@@ -346,7 +346,8 @@ As wave 10's N did, it closes what each gap names that code can do, so the row w
 
 Left, each named on its row:
 
-- `customers.loyalty-and-rewards`: VIP tiers, points for actions and reward kinds beyond a price reduction.
+- `customers.loyalty-and-rewards`: rewards other than a price reduction (free shipping, a free product) and points for a birthday. Levels
+  and the credit for opening an account are built (`docs/bonus.md`); a review is never rewarded (D301) and consent is never bought.
 - `orders.credit-notes-for-refunds`: a manual credit note, and one for a cancelled order that was never refunded (an accountant's word on
   what such a document may say first).
 - `customers.gift-cards`: a custom amount (the voucher review, D381).

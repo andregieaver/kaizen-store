@@ -7,6 +7,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { BONUS_DEFAULTS, BONUS_EXPIRY_REMINDER_DAYS, BONUS_HISTORY_LIMIT, convertCredits, earnAmount, minChargeMinor, planCredit, type BonusBalance, type BonusEntry, type BonusEntryKind, type BonusExpiryReminder, type BonusOverview, type BonusResult, type BonusSettings, type CartBonus, type CreditPlan, type ShopperBonus } from "@/lib/bonus";
 import { bonusSettingsInput } from "@/lib/bonus-schema";
+import { levelFor, nextLevel, readLevels } from "@/lib/bonus-levels";
 import type { Market } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 
@@ -52,6 +53,8 @@ const toSettings = (row: Row | undefined): BonusSettings =>
         maxRedeemPercent: Number(row.max_redeem_percent),
         minRedeemMinor: Number(row.min_redeem_minor),
         expiresMonths: row.expires_months === null ? null : Number(row.expires_months),
+        levels: readLevels(row.levels),
+        signupMinor: Number(row.signup_minor ?? 0),
       }
     : { ...BONUS_DEFAULTS };
 
@@ -63,7 +66,7 @@ export async function getBonusSettings(storeId: string): Promise<BonusSettings> 
 /** Settings, credits' currency and rates in one read: what every calculation starts from. */
 export async function bonusProgram(runner: Runner, storeId: string): Promise<BonusProgram> {
   const [row] = await runner.execute<Row>(sql`
-    select b.enabled, b.earn_bps, b.pending_days, b.max_redeem_percent, b.min_redeem_minor, b.expires_months,
+    select b.enabled, b.earn_bps, b.pending_days, b.max_redeem_percent, b.min_redeem_minor, b.expires_months, b.levels, b.signup_minor,
            commerce.bonus_currency(${storeId}::uuid) as currency, commerce.feature_on(${storeId}::uuid, 'bonus') as feature_on
     from (select 1) one
     left join commerce.bonus_settings b on b.store_id = ${storeId}::uuid
@@ -110,15 +113,16 @@ export async function saveBonusSettings(account: Account, storeId: string, raw: 
   const before = await getBonusSettings(storeId);
   await db().execute(sql`
     insert into commerce.bonus_settings (
-      store_id, enabled, earn_bps, pending_days, max_redeem_percent, min_redeem_minor, expires_months, currency, updated_by
+      store_id, enabled, earn_bps, pending_days, max_redeem_percent, min_redeem_minor, expires_months, levels, signup_minor, currency, updated_by
     ) values (
       ${storeId}::uuid, ${s.enabled}, ${s.earnBps}, ${s.pendingDays}, ${s.maxRedeemPercent}, ${s.minRedeemMinor},
-      ${s.expiresMonths}, commerce.bonus_currency(${storeId}::uuid), ${account.id}::uuid
+      ${s.expiresMonths}, ${JSON.stringify(s.levels)}::jsonb, ${s.signupMinor}, commerce.bonus_currency(${storeId}::uuid), ${account.id}::uuid
     )
     on conflict (store_id) do update set
       enabled = excluded.enabled, earn_bps = excluded.earn_bps, pending_days = excluded.pending_days,
       max_redeem_percent = excluded.max_redeem_percent, min_redeem_minor = excluded.min_redeem_minor,
-      expires_months = excluded.expires_months, updated_by = excluded.updated_by, updated_at = now()
+      expires_months = excluded.expires_months, levels = excluded.levels, signup_minor = excluded.signup_minor,
+      updated_by = excluded.updated_by, updated_at = now()
   `);
   await audit(account.id, storeId, "store.bonus_settings", { before, after: s });
   return { ok: true };
@@ -210,7 +214,7 @@ export async function bonusOverview(storeId: string): Promise<BonusOverview> {
       (select coalesce(sum(remaining) filter (where available_at <= now()), 0) from live)::bigint as outstanding,
       (select coalesce(sum(remaining) filter (where available_at > now()), 0) from live)::bigint as pending,
       (select count(distinct customer_id) from live)::int as customers,
-      (select coalesce(sum(amount_minor) filter (where kind in ('earn', 'referral')), 0) from commerce.bonus_entries
+      (select coalesce(sum(amount_minor) filter (where kind in ('earn', 'referral', 'signup')), 0) from commerce.bonus_entries
         where store_id = ${storeId}::uuid and created_at > now() - interval '30 days')::bigint as earned,
       (select coalesce(-sum(amount_minor) filter (where kind = 'redeem'), 0) from commerce.bonus_entries
         where store_id = ${storeId}::uuid and created_at > now() - interval '30 days')::bigint as redeemed,
@@ -297,6 +301,8 @@ export type CreditState = {
   /** The owner's minimum, and the payment provider's smallest charge, in the market's currency. */
   minRedeemMinor: number;
   minPayableMinor: number;
+  /** The rate this customer earns at: their level's, else the program's own (D392, `commerce.bonus_earn_bps()`, the database's rule). */
+  earnBps: number;
 };
 
 /**
@@ -315,6 +321,12 @@ export async function creditState(
   if (!program.on) return null;
   const market = shop.market;
   const balance = await readBalance(runner, shop.storeId, customerId);
+  // With levels, the customer's rate is the database's (what earning will use when the order is paid); without, the program's own.
+  let earnBps = program.settings.earnBps;
+  if (program.settings.levels.length > 0) {
+    const [rate] = await runner.execute<Row>(sql`select commerce.bonus_earn_bps(${shop.storeId}::uuid, ${customerId}::uuid, null) as bps`);
+    earnBps = Number(rate?.bps ?? earnBps);
+  }
   const inMarket = (minor: number, rounding: "down" | "up" = "down") =>
     convertCredits(minor, program.currency, market.currency, program.rates, rounding);
   let requestMinor = 0;
@@ -343,6 +355,7 @@ export async function creditState(
     requestMinor,
     minRedeemMinor: inMarket(program.settings.minRedeemMinor, "up") ?? 0,
     minPayableMinor: minChargeMinor(market.currency),
+    earnBps,
   };
 }
 
@@ -406,8 +419,8 @@ export function cartBonusOf(
     pendingAvailableAt: state?.pendingMinor ? state.pendingAt : null,
     maxUsableMinor: plan.maxUsableMinor,
     usingMinor: plan.usingMinor,
-    willEarnMinor: state && earns ? earnAmount(paidOnlineMinor, settings.earnBps) : 0,
-    earnPercent: settings.earnBps / 100,
+    willEarnMinor: state && earns ? earnAmount(paidOnlineMinor, state.earnBps) : 0,
+    earnPercent: (state?.earnBps ?? settings.earnBps) / 100,
     pendingDays: settings.pendingDays,
   };
 }
@@ -467,9 +480,11 @@ export async function setCartCredits(
  */
 export async function shopperBonus(shop: Shop, customerId: string): Promise<ShopperBonus> {
   const program = await bonusProgram(db(), shop.storeId);
-  const [raw, entries] = await Promise.all([
+  const levels = program.settings.levels;
+  const [raw, entries, spent] = await Promise.all([
     readBalance(db(), shop.storeId, customerId),
     readEntries(shop.storeId, customerId),
+    levels.length > 0 ? levelSpend(shop.storeId, customerId) : Promise.resolve(0),
   ]);
   const rate = (minor: number) => convertCredits(minor, program.currency, shop.market.currency, program.rates, "down");
   const convertible = rate(1_000_000) !== null;
@@ -489,9 +504,27 @@ export async function shopperBonus(shop: Shop, customerId: string): Promise<Shop
         : null,
     },
     entries: entries.map((entry) => ({ ...entry, amountMinor: inShown(entry.amountMinor) })),
-    earnPercent: program.settings.earnBps / 100,
+    earnPercent: (levels.length > 0 ? (levelFor(levels, spent)?.earnBps ?? program.settings.earnBps) : program.settings.earnBps) / 100,
     pendingDays: program.settings.pendingDays,
     expiresMonths: program.settings.expiresMonths,
+    level: levels.length > 0 ? levelView(levels, spent, inShown) : null,
+    signupMinor: inShown(program.settings.signupMinor),
+  };
+}
+
+/** What a customer paid for goods in the last 365 days, less refunds, in the credits' currency: the database's measure of their level (D392). */
+export async function levelSpend(storeId: string, customerId: string): Promise<number> {
+  const [row] = await db().execute<Row>(sql`select commerce.bonus_level_spend(${storeId}::uuid, ${customerId}::uuid, null) as spent`);
+  return Number(row?.spent ?? 0);
+}
+
+/** A customer's level and the next, amounts shown through `shown` (the credits converted to what the page shows). */
+export function levelView(levels: BonusSettings["levels"], spent: number, shown: (minor: number) => number): NonNullable<ShopperBonus["level"]> {
+  const current = levelFor(levels, spent);
+  const next = nextLevel(levels, spent);
+  return {
+    current: current ? { name: current.name, earnPercent: current.earnBps / 100 } : null,
+    next: next ? { name: next.level.name, earnPercent: next.level.earnBps / 100, remainingMinor: shown(next.remainingMinor) } : null,
   };
 }
 

@@ -10795,6 +10795,13 @@ export const bonusSettings = commerce.table(
     minRedeemMinor: bigint("min_redeem_minor", { mode: "number" }).notNull().default(0),
     /** Months after which unused credits expire, counted from when they become usable; null for never. */
     expiresMonths: integer("expires_months"),
+    /**
+     * Levels above the program's own rate (D392, `src/lib/bonus-levels.ts`): up to four `{ name, fromMinor, earnBps }`, a customer's the
+     * highest whose `fromMinor` what they paid for goods in the last 365 days, less refunds, reaches (`commerce.bonus_earn_bps()`).
+     */
+    levels: jsonb("levels").notNull().default([]),
+    /** Credits given once for opening an account (an email proven for the first time), minor units of `currency`; 0 for none (D392). */
+    signupMinor: bigint("signup_minor", { mode: "number" }).notNull().default(0),
     /** The credits' currency: what the ledger's amounts are in. */
     currency: char("currency", { length: 3 }).notNull(),
     /**

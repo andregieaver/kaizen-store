@@ -19,6 +19,8 @@
  * Pure types, checks and arithmetic, shared by the browser and the server, which checks everything again.
  */
 
+import type { BonusLevel } from "./bonus-levels";
+
 export const BONUS_EARN_BPS_MAX = 5000;
 export const BONUS_PENDING_DAYS_MAX = 90;
 export const BONUS_REDEEM_PERCENT_MAX = 90;
@@ -37,6 +39,10 @@ export type BonusSettings = {
   minRedeemMinor: number;
   /** Months after which unused credits expire (oldest first); null for never. */
   expiresMonths: number | null;
+  /** Levels above the program's own rate, reached by what a customer paid in the last 365 days (D392, `bonus-levels.ts`); none by default. */
+  levels: BonusLevel[];
+  /** Credits given once for opening an account, in minor units of the credits' currency; 0 for none (D392). */
+  signupMinor: number;
 };
 
 export const BONUS_DEFAULTS: BonusSettings = {
@@ -46,6 +52,8 @@ export const BONUS_DEFAULTS: BonusSettings = {
   maxRedeemPercent: 50,
   minRedeemMinor: 0,
   expiresMonths: null,
+  levels: [],
+  signupMinor: 0,
 };
 
 /** What the ledger records: a grant, a use, and what undoes or ends one. */
@@ -56,7 +64,8 @@ export type BonusEntryKind =
   | "reverse" // granted credits taken back because the order was cancelled or refunded
   | "expire" // credits that passed their expiry unused
   | "adjust" // added or removed by staff, with a reason
-  | "referral"; // granted to a referrer for a friend's paid order (D131, the affiliate program)
+  | "referral" // granted to a referrer for a friend's paid order (D131, the affiliate program)
+  | "signup"; // granted once for opening an account (D392)
 
 export const BONUS_KIND_LABELS: Record<BonusEntryKind, string> = {
   earn: "Earned",
@@ -66,10 +75,11 @@ export const BONUS_KIND_LABELS: Record<BonusEntryKind, string> = {
   expire: "Expired",
   adjust: "Adjusted by the store",
   referral: "Referral reward",
+  signup: "For opening your account",
 };
 
 /** Kinds that are lots: credits granted to be used until they are (earned on an order, or for a friend's order). */
-export const isGrantKind = (kind: BonusEntryKind): boolean => kind === "earn" || kind === "referral";
+export const isGrantKind = (kind: BonusEntryKind): boolean => kind === "earn" || kind === "referral" || kind === "signup";
 
 /** One line of a customer's history, amounts in the credits' currency (signed: what was added or taken). */
 export type BonusEntry = {
@@ -168,6 +178,16 @@ export type ShopperBonus = {
   earnPercent: number;
   pendingDays: number;
   expiresMonths: number | null;
+  /**
+   * The customer's level (D392), when the store has levels: the one reached (null below the first) and the next, with what more it
+   * needs, amounts in the shown currency; null when the store has none.
+   */
+  level: {
+    current: { name: string; earnPercent: number } | null;
+    next: { name: string; earnPercent: number; remainingMinor: number } | null;
+  } | null;
+  /** The credit for opening an account, in the shown currency; 0 for none. */
+  signupMinor: number;
 };
 
 // ---------------------------------------------------------------------------

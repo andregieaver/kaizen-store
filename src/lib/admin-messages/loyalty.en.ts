@@ -122,6 +122,15 @@ export const loyaltyEn = {
     savedOff: "Saved. The bonus program is off. Balances are kept.",
     readOnly: "Only an owner can change the bonus program. You can see how it is set up.",
     example: "A {order} order earns {earn} in credits.",
+    levelsHeading: "Levels and extras",
+    levelsHint: "Optional. A level gives more back to customers who spent more for goods in the last 12 months, less refunds; the highest level reached applies. Up to 4.",
+    levelName: "Name",
+    levelFrom: "From spent in a year",
+    levelPercent: "Back",
+    addLevel: "Add a level",
+    removeLevel: "Remove",
+    signupLabel: "Credits for opening an account",
+    signupHint: "Given once, usable at once, when a customer opens an account while the program is on. Leave it empty for none.",
     errors: {
       earnPercent: "Write a percentage such as 5 or 2.5.",
       pendingDays: "Write a number of days, or 0 to allow use at once.",
@@ -132,6 +141,10 @@ export const loyaltyEn = {
       minRange: "Keep the minimum at a sensible amount.",
       monthsRange: "Write a number of months from 1 to 60.",
       checkNumber: "Check this number.",
+      levels: "Give each level a name, the amount in {currency} spent in a year from which it applies (such as 5000), and a percentage back such as 7.5.",
+      levelsRange: "Each level starts above the one before it and gives more back than the program's own rate and the level before it, at most 50%; at most 4 levels.",
+      signup: "Write an amount in {currency} such as 50, or leave it empty for none.",
+      signupRange: "Keep the credit for opening an account at a sensible amount.",
     },
   },
   /** The rules as a shopper reads them: the English is the storefront's own (`bonus.howEarn` and co.), which a test holds it to. */
@@ -149,6 +162,8 @@ export const loyaltyEn = {
     after: "{days} after you pay",
     days: { one: "{n} day", many: "{n} days" },
     months: { one: "{n} month", many: "{n} months" },
+    level: "{name}: from {from} paid for goods in the last 12 months, less refunds, customers earn {percent}% back.",
+    signup: "A customer who opens an account gets {amount} in bonus credits once, usable at once.",
   },
   bonusOverview: {
     heading: "Credits at a glance",
@@ -169,6 +184,7 @@ export const loyaltyEn = {
     expire: "Expired",
     adjust: "Adjusted by the store",
     referral: "Referral reward",
+    signup: "For opening an account",
   },
   adjust: {
     amountProblem: "Write an amount such as 50 to add, or -20 to take away.",

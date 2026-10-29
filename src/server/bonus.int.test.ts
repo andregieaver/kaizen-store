@@ -146,6 +146,8 @@ describe("the bonus program's settings", () => {
       maxRedeemPercent: 40,
       minRedeemMinor: 2_000,
       expiresMonths: 12,
+      levels: [],
+      signupMinor: 0,
     });
     const [logged] = await db().execute<Row>(sql`
       select details from commerce.audit_log where store_id = ${storeId}::uuid and action = 'store.bonus_settings' order by id desc limit 1

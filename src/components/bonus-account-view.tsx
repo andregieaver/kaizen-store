@@ -79,6 +79,15 @@ export function BonusAccountView({
           {b.howHeading}
         </h2>
         <p>{b.howEarn(earnPercentText(bonus.earnPercent, locale), waitPhrase(m, bonus.pendingDays))}</p>
+        {bonus.level && (
+          <div data-bonus-level className="flex flex-col gap-1">
+            {bonus.level.current && <p className="font-medium">{b.levelLine(bonus.level.current.name, earnPercentText(bonus.level.current.earnPercent, locale))}</p>}
+            {bonus.level.next && (
+              <p>{b.nextLevel(money(bonus.level.next.remainingMinor), bonus.level.next.name, earnPercentText(bonus.level.next.earnPercent, locale))}</p>
+            )}
+            <p className="text-sm text-muted">{b.levelsNote}</p>
+          </div>
+        )}
         <p>{bonus.expiresMonths ? b.howUseExpires(b.monthCount(bonus.expiresMonths)) : b.howUse}</p>
       </section>
 

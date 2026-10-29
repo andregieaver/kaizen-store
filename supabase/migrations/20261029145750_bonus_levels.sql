@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."bonus_settings" ADD COLUMN "levels" jsonb DEFAULT '[]'::jsonb NOT NULL;--> statement-breakpoint
+ALTER TABLE "commerce"."bonus_settings" ADD COLUMN "signup_minor" bigint DEFAULT 0 NOT NULL;

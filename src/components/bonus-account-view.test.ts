@@ -46,6 +46,8 @@ const shopper = (over: Partial<ShopperBonus> = {}): ShopperBonus => ({
     entry({ id: "4", kind: "expire", amountMinor: -200, at: "2026-08-01T00:00:00Z" }),
   ],
   earnPercent: 5,
+  level: null,
+  signupMinor: 0,
   pendingDays: 14,
   expiresMonths: null,
   ...over,
