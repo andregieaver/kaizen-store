@@ -94,7 +94,7 @@ async function Body({ storeSlug, jobId, searchParams }: { storeSlug: string; job
     <AdminTextScope texts={adminTexts(lang, ["products"])}>
       <section className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm" aria-label={w.theFile}>
         <span className="font-medium break-all">{job.inputName ?? w.productFile}</span>
-        <span className="text-muted">{job.format === "shopify" ? w.shopifyFile : w.kaizenFile}</span>
+        <span className="text-muted">{job.format === "shopify" ? w.shopifyFile : job.format === "woocommerce" ? w.woocommerceFile : w.kaizenFile}</span>
         <span className="text-muted">{fillWords(w.uploaded, { moment: momentText(job.createdAt, store.timeZone, locale) })}</span>
         <span className="text-muted">{all.jobStatus[job.status]}</span>
       </section>
@@ -114,7 +114,7 @@ async function Body({ storeSlug, jobId, searchParams }: { storeSlug: string; job
           checked={stage === "checked"}
           check={checkImportAction.bind(null, store.slug, job.id)}
           choices={{
-            format: job.format === "shopify" ? "shopify" : "kaizen",
+            format: job.format === "shopify" || job.format === "woocommerce" ? job.format : "kaizen",
             markets: editor.markets.map((m) => ({ code: m.code, name: m.name, currency: m.currency })),
             operators: editor.operators.map((o) => ({ id: o.id, name: o.name })),
             initial: options,

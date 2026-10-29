@@ -1,0 +1,11 @@
+ALTER TABLE "commerce"."data_job_items" DROP CONSTRAINT "data_job_items_kind";--> statement-breakpoint
+ALTER TABLE "commerce"."data_jobs" DROP CONSTRAINT "data_jobs_kind";--> statement-breakpoint
+ALTER TABLE "commerce"."data_jobs" DROP CONSTRAINT "data_jobs_format";--> statement-breakpoint
+ALTER TABLE "commerce"."data_jobs" DROP CONSTRAINT "data_jobs_export_no_input";--> statement-breakpoint
+ALTER TABLE "commerce"."data_jobs" DROP CONSTRAINT "data_jobs_import_no_files";--> statement-breakpoint
+CREATE UNIQUE INDEX "data_jobs_one_active_order_history_import_idx" ON "commerce"."data_jobs" USING btree ("store_id") WHERE "commerce"."data_jobs"."kind" = 'order_history_import' and "commerce"."data_jobs"."status" in ('uploaded', 'checking', 'checked', 'queued', 'running');--> statement-breakpoint
+ALTER TABLE "commerce"."data_job_items" ADD CONSTRAINT "data_job_items_kind" CHECK ("commerce"."data_job_items"."kind" in ('product', 'redirect', 'stock', 'customer', 'order', 'file'));--> statement-breakpoint
+ALTER TABLE "commerce"."data_jobs" ADD CONSTRAINT "data_jobs_kind" CHECK ("commerce"."data_jobs"."kind" in ('product_import', 'product_export', 'order_export', 'customer_export', 'redirect_import', 'redirect_export', 'inventory_import', 'inventory_export', 'customer_import', 'order_history_import'));--> statement-breakpoint
+ALTER TABLE "commerce"."data_jobs" ADD CONSTRAINT "data_jobs_format" CHECK ("commerce"."data_jobs"."format" is null or "commerce"."data_jobs"."format" in ('kaizen', 'shopify', 'woocommerce'));--> statement-breakpoint
+ALTER TABLE "commerce"."data_jobs" ADD CONSTRAINT "data_jobs_export_no_input" CHECK ("commerce"."data_jobs"."kind" in ('product_import', 'redirect_import', 'inventory_import', 'customer_import', 'order_history_import') or ("commerce"."data_jobs"."input_path" is null and "commerce"."data_jobs"."input_sha256" is null and "commerce"."data_jobs"."format" is distinct from 'shopify'));--> statement-breakpoint
+ALTER TABLE "commerce"."data_jobs" ADD CONSTRAINT "data_jobs_import_no_files" CHECK ("commerce"."data_jobs"."kind" not in ('product_import', 'redirect_import', 'inventory_import', 'customer_import', 'order_history_import') or "commerce"."data_jobs"."files" = '[]'::jsonb);

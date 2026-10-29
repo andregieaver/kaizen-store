@@ -17,6 +17,7 @@ export const JOB_KINDS = [
   "inventory_import",
   "inventory_export",
   "customer_import",
+  "order_history_import",
 ] as const;
 export type JobKind = (typeof JOB_KINDS)[number];
 
@@ -26,8 +27,8 @@ export type JobStatus = (typeof JOB_STATUSES)[number];
 export const JOB_PHASES = ["check", "apply", "write", "assemble"] as const;
 export type JobPhase = (typeof JOB_PHASES)[number];
 
-/** The kinds that read a file the member uploaded: a dry run, then an apply (the redirect import is wave 2's second run, D168; the stock file is wave 3's, D172; the customer file wave 10's, D366). */
-export const IMPORT_KINDS: readonly JobKind[] = ["product_import", "redirect_import", "inventory_import", "customer_import"];
+/** The kinds that read a file the member uploaded: a dry run, then an apply (the redirect import is wave 2's second run, D168; the stock file is wave 3's, D172; the customer file wave 10's, D366; an order history wave 11's, D384). */
+export const IMPORT_KINDS: readonly JobKind[] = ["product_import", "redirect_import", "inventory_import", "customer_import", "order_history_import"];
 export const EXPORT_KINDS: readonly JobKind[] = ["product_export", "order_export", "customer_export", "redirect_export", "inventory_export"];
 export const isImport = (kind: JobKind): boolean => IMPORT_KINDS.includes(kind);
 export const isExport = (kind: JobKind): boolean => !isImport(kind);
@@ -152,7 +153,7 @@ export const FINDINGS = {
   "file.no_header": { severity: "error", sentence: () => "The file has no header row with column names." },
   "file.unknown_format": {
     severity: "error",
-    sentence: () => "This is not a product file we know. Use a file exported from Kaizena Flow, or Shopify's product export.",
+    sentence: () => "This is not a product file we know. Use a file exported from Kaizena Flow, or Shopify's or WooCommerce's product export.",
   },
   "file.encoding_assumed": {
     severity: "warning",
@@ -249,6 +250,18 @@ export const FINDINGS = {
     severity: "warning",
     sentence: (p) => `Charge tax or a tax code was in the file for ${prod(p)}. It keeps its VAT category, and an import never sets the exempt category.`,
   },
+  "woocommerce.type_skipped": {
+    severity: "info",
+    sentence: (p) => `${p.n ?? 0} grouped or external ${p.n === 1 ? "product was" : "products were"} left out: Kaizena Flow imports WooCommerce's simple and variable products.`,
+  },
+  "woocommerce.parent_missing": {
+    severity: "warning",
+    sentence: (p) => `A variation${p.sku ? ` (${p.sku})` : ""} names a parent product that is not in the file, so it was left out.`,
+  },
+  "history.problem": { severity: "error", sentence: (p) => p.reason ?? "The order could not be read." },
+  "history.already": { severity: "info", sentence: () => "This order is in the store already, so it was left as it is." },
+  "redirect.made": { severity: "info", sentence: (p) => `${prod(p)}'s old address now leads to it.` },
+  "redirect.not_made": { severity: "info", sentence: (p) => `No redirect was made from ${prod(p)}'s old address${p.reason ? `: ${p.reason}` : ""}.` },
   "compare_at.ignored": {
     severity: "info",
     sentence: () => "Compare-at prices are never imported: Kaizena Flow shows a reduction only against the lowest price of the last 30 days, from its own price history.",

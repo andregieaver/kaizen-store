@@ -141,6 +141,7 @@ export function workingWords(kind: JobKind, status: JobStatus, phase: JobPhase |
   if (kind === "redirect_import") return status === "checking" ? "Checking the file" : "Saving redirects";
   if (kind === "inventory_import") return status === "checking" ? "Checking the file" : "Saving stock";
   if (kind === "customer_import") return status === "checking" ? "Checking the file" : "Saving customers";
+  if (kind === "order_history_import") return status === "checking" ? "Checking the file" : "Saving orders";
   if (status === "queued") return "Waiting to start";
   return phase === "assemble" ? "Putting the file together" : "Preparing your file";
 }
@@ -154,7 +155,7 @@ export function doneOfTotal(done: number | null, total: number | null, unit: str
 export const jobEnded = (status: JobStatus): boolean => isEnded(status);
 
 /** The page of a kind of export job, after the store's address. */
-export const exportPath = (kind: Exclude<JobKind, "product_import" | "redirect_import" | "inventory_import" | "customer_import">): string =>
+export const exportPath = (kind: Exclude<JobKind, "product_import" | "redirect_import" | "inventory_import" | "customer_import" | "order_history_import">): string =>
   kind === "product_export"
     ? "/products/export"
     : kind === "order_export"
@@ -175,6 +176,7 @@ export const KIND_TITLES: Record<JobKind, string> = {
   inventory_import: "Stock import",
   inventory_export: "Stock export",
   customer_import: "Customer import",
+  order_history_import: "Order history import",
 };
 
 // ---------------------------------------------------------------------------

@@ -34,7 +34,7 @@ export type DataJob = {
   kind: JobKind;
   status: JobStatus;
   phase: JobPhase | null;
-  format: "kaizen" | "shopify" | null;
+  format: "kaizen" | "shopify" | "woocommerce" | null;
   options: Record<string, unknown>;
   requestedBy: string;
   inputPath: string | null;
@@ -68,7 +68,7 @@ export function jobFromRow(row: Row): DataJob {
     kind: String(row.kind) as JobKind,
     status: String(row.status) as JobStatus,
     phase: row.phase ? (String(row.phase) as JobPhase) : null,
-    format: row.format ? (String(row.format) as "kaizen" | "shopify") : null,
+    format: row.format ? (String(row.format) as "kaizen" | "shopify" | "woocommerce") : null,
     options: obj(row.options),
     requestedBy: String(row.requested_by),
     inputPath: row.input_path ? String(row.input_path) : null,
@@ -226,7 +226,7 @@ export async function failJob(job: Pick<DataJob, "id" | "storeId">, problem: str
 
 export type ItemInput = {
   seq: number;
-  kind: "product" | "redirect" | "stock" | "customer" | "file";
+  kind: "product" | "redirect" | "stock" | "customer" | "order" | "file";
   ref: string | null;
   rows: number[];
   outcome: ItemOutcome;

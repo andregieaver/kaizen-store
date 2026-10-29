@@ -187,8 +187,8 @@ describe("the findings", () => {
 describe("the redirect kinds (wave 2, second run, D168)", () => {
   it("add an import and an export to the four of the first run, and the imports are the kinds that read a file", () => {
     // The first four are the first run's, the redirect pair wave 2's second, the stock pair wave 3's (D172).
-    expect(JOB_KINDS).toEqual(["product_import", "product_export", "order_export", "customer_export", "redirect_import", "redirect_export", "inventory_import", "inventory_export", "customer_import"]);
-    expect(IMPORT_KINDS).toEqual(["product_import", "redirect_import", "inventory_import", "customer_import"]);
+    expect(JOB_KINDS).toEqual(["product_import", "product_export", "order_export", "customer_export", "redirect_import", "redirect_export", "inventory_import", "inventory_export", "customer_import", "order_history_import"]);
+    expect(IMPORT_KINDS).toEqual(["product_import", "redirect_import", "inventory_import", "customer_import", "order_history_import"]);
     expect(EXPORT_KINDS).toEqual(["product_export", "order_export", "customer_export", "redirect_export", "inventory_export"]);
     for (const kind of JOB_KINDS) expect(isImport(kind) !== isExport(kind)).toBe(true);
     expect(isImport("redirect_import")).toBe(true);

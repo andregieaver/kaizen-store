@@ -865,14 +865,14 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "partial"
     },
     "weight": 3,
-    "gap": "The page replicator (D150) copies another site's pages into the builder, store copy (D129) duplicates one Kaizena Flow store, and `scripts/import-life-work.mjs` imports Work history from Kaizen Life. Since wave 2 (D165) the product import job reads Shopify's product CSV: a check step lists findings before anything is saved (a dry run), it asks whether prices include VAT and which market the plain Price column is for, fetches pictures only through `safeFetch()`, matches products by handle so a repeated import updates rather than duplicates, and never imports the compare-at price or turns Vendor into a manufacturer; a redirect import reads Shopify's `Redirect from`/`Redirect to` file (D168), a stock file is imported per location (D172), and reviews are imported from a file (D301 G3b, src/server/review-import.ts, never marked verified). Still missing: a WooCommerce product file; any customer or subscriber import (customers.customer-profiles-notes-csv-import-and-export); redirects made automatically from a product import's old addresses; and order history import (Shopify's own migration app imports no orders either).",
-    "bucket": "A",
-    "wave": 2,
+    "gap": "The page replicator (D150) copies another site's pages into the builder, store copy (D129) duplicates one Kaizena Flow store, and `scripts/import-life-work.mjs` imports Work history from Kaizen Life. The product import job (D165) reads Shopify's product CSV and, since wave 11 (D384), WooCommerce's own product export (its CSV import schema, read 29 October 2026: variable products with their variations by `id:` or SKU, the sale price while its dates hold, categories with `>`, every picture), each with a dry run that lists findings before anything is saved, a question whether prices include VAT, pictures fetched only through `safeFetch()`, products matched by handle so a repeated import updates rather than duplicates, and never the compare-at price; each product it makes leaves a manual redirect from its old address (`/products/{handle}`, `/product/{slug}`) through the redirect service unless the owner unticks it. Customers come in from a file without consent or a password (D366); redirects (D168), stock per location (D172) and reviews (D301) by file. Shopify's order export comes in as history (D384): copied orders `C-{name}` in the file's currency and amounts, never paid, refunded, sent, emailed, invoiced or counted in sales, tied to a customer only by an email the store has, an order already imported left as it is. What still differs from Shopify's app: no direct connection to another platform's API (files only), no Square, Etsy, Wix, Amazon, eBay, Clover or Lightspeed files, and order history from Shopify's export only.",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "An owner uploads a Shopify or WooCommerce product export and gets products, variants, prices, stock and pictures (fetched through `safeFetch()`) with a dry run that lists what cannot be mapped.",
       "A customer file is imported without marketing consent unless the file proves it, and a customer's password or payment data is never imported.",
@@ -891,7 +891,12 @@
         "src/server/data-jobs.ts",
         "src/lib/redirect-csv.ts",
         "src/server/redirect-import.ts",
-        "src/server/review-import.ts"
+        "src/server/review-import.ts",
+        "src/lib/product-csv-woocommerce.ts",
+        "src/lib/order-history.ts",
+        "src/server/order-history-import.ts",
+        "src/server/order-insert.ts",
+        "src/server/customer-import.ts"
       ],
       "tests": [
         "src/server/replicate.int.test.ts",
@@ -903,7 +908,11 @@
         "src/lib/product-import.test.ts",
         "src/server/redirect-import.int.test.ts",
         "src/lib/redirect-csv.test.ts",
-        "src/server/review-import.int.test.ts"
+        "src/server/review-import.int.test.ts",
+        "src/lib/product-csv-woocommerce.test.ts",
+        "src/lib/order-history.test.ts",
+        "src/server/old-shop-import.int.test.ts",
+        "src/server/customer-staff.int.test.ts"
       ],
       "untested": false
     },
@@ -913,9 +922,18 @@
       "D165",
       "D168",
       "D172",
-      "D301"
+      "D301",
+      "D366",
+      "D384"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-29",
+        "from": "partial",
+        "to": "full",
+        "why": "Read unit E (D384): the WooCommerce product file through the product import with redirects from old addresses, and Shopify's order export as copied orders, held by src/server/old-shop-import.int.test.ts, src/lib/product-csv-woocommerce.test.ts and src/lib/order-history.test.ts (run, passing); the customer criterion is D366's import, held by src/server/customer-staff.int.test.ts. Every criterion holds; what still differs from Shopify's app (no API connections, fewer source platforms) is named in the gap."
+      }
+    ]
   },
   {
     "id": "platform.pos-and-retail",

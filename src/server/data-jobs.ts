@@ -40,6 +40,7 @@ import { countProductExportRows, parseProductExportOptions, productExportReader,
 import { applyImport, checkImport, dryCountsOf, registerImport, runImportApply, runImportCheck, startImportUpload, type StepResult } from "./product-import";
 import { applyRedirectImport, checkRedirectImport, redirectDryCountsOf, redirectProblemsCsv, registerRedirectImport, runRedirectApply, runRedirectCheck, startRedirectUpload } from "./redirect-import";
 import { countRedirectExportRows, parseRedirectExportOptions, redirectExportReader, type RedirectExportOptions } from "./redirect-export";
+import { applyHistoryImport, checkHistoryImport, historyDryCountsOf, historyProblemsCsv, registerHistoryImport, runHistoryApply, runHistoryCheck, startHistoryUpload } from "./order-history-import";
 import { applyCustomerImport, checkCustomerImport, customerDryCountsOf, customerProblemsCsv, registerCustomerImport, runCustomerApply, runCustomerCheck, startCustomerUpload } from "./customer-import";
 import { applyInventoryImport, checkInventoryImport, countInventoryExportRows, inventoryDryCountsOf, inventoryExportReader, inventoryProblemsCsv, parseInventoryExportOptions, registerInventoryImport, runInventoryApply, runInventoryCheck, startInventoryUpload, type InventoryExportOptions } from "./inventory-jobs";
 import { storeOf } from "./product-data";
@@ -68,6 +69,8 @@ export const JOB_KEY: Record<JobKind, PermissionKey> = {
   inventory_export: "products:read",
   // A customer file holds personal data (wave 10 unit C, D366), so only the owner brings one in, as only the owner takes one out.
   customer_import: "owner",
+  // So does an order history (wave 11 unit E, D384): its orders carry people's names, addresses and emails.
+  order_history_import: "owner",
 };
 
 export const mayUseKind = (member: Pick<Membership, "role" | "kind" | "permissions">, kind: JobKind): boolean => memberCan(member, JOB_KEY[kind]);
@@ -77,7 +80,7 @@ const AUDIT_DOWNLOADED: Record<string, string> = { product_export: "products.exp
 const AREA: Record<string, "products" | "orders" | "customers" | "website"> = { product_export: "products", order_export: "orders", customer_export: "customers", redirect_export: "website", inventory_export: "products" };
 
 /** The kinds that are exports (the rest read an uploaded file). */
-type ExportKind = Exclude<JobKind, "product_import" | "redirect_import" | "inventory_import" | "customer_import">;
+type ExportKind = Exclude<JobKind, "product_import" | "redirect_import" | "inventory_import" | "customer_import" | "order_history_import">;
 
 const NOT_LOGGED = "The activity log could not be written, so no file was made. Try again.";
 
@@ -289,7 +292,7 @@ export async function runJob(id: string, deps: DataDeps = {}): Promise<RunOutcom
   const until = Date.now() + (deps.budgetMs ?? DATA_JOB_BUDGET_MS);
   try {
     if (isImport(job.kind)) {
-      const [check, apply] = job.kind === "redirect_import" ? [runRedirectCheck, runRedirectApply] : job.kind === "inventory_import" ? [runInventoryCheck, runInventoryApply] : job.kind === "customer_import" ? [runCustomerCheck, runCustomerApply] : [runImportCheck, runImportApply];
+      const [check, apply] = job.kind === "redirect_import" ? [runRedirectCheck, runRedirectApply] : job.kind === "inventory_import" ? [runInventoryCheck, runInventoryApply] : job.kind === "customer_import" ? [runCustomerCheck, runCustomerApply] : job.kind === "order_history_import" ? [runHistoryCheck, runHistoryApply] : [runImportCheck, runImportApply];
       const outcome = job.status === "checking" ? await check(job, deps, until) : await apply(job, deps, until);
       // A run that stops lets go of the job so the next run (the page's, the cron's) takes it up at once.
       if (outcome === "paused") await releaseJob(job);
@@ -381,7 +384,8 @@ export async function cancelJob(member: Membership, jobId: string, deps: DataDep
     const redirects = job.kind === "redirect_import";
     const stock = job.kind === "inventory_import";
     const people = job.kind === "customer_import";
-    await audit(member.account.id, member.store.id, redirects ? "redirects.import_cancelled" : stock ? "products.inventory_import_cancelled" : people ? "customer.import_cancelled" : "products.import_cancelled", { job: job.id, ...(redirects || stock || people ? {} : { format: job.format }), file: job.inputName, ...(typeof now.counts === "object" ? { written: Number((now.counts as { created?: number }).created ?? 0) + Number((now.counts as { updated?: number }).updated ?? 0) } : {}) }, { area: redirects ? "website" : people ? "customers" : "products", target: { type: "data_job", id: job.id } }).catch((error) => console.error("[import] the cancel could not be logged", error));
+    const history = job.kind === "order_history_import";
+    await audit(member.account.id, member.store.id, redirects ? "redirects.import_cancelled" : stock ? "products.inventory_import_cancelled" : people ? "customer.import_cancelled" : history ? "order.history_import_cancelled" : "products.import_cancelled", { job: job.id, ...(redirects || stock || people || history ? {} : { format: job.format }), file: job.inputName, ...(typeof now.counts === "object" ? { written: Number((now.counts as { created?: number }).created ?? 0) + Number((now.counts as { updated?: number }).updated ?? 0) } : {}) }, { area: redirects ? "website" : people ? "customers" : history ? "orders" : "products", target: { type: "data_job", id: job.id } }).catch((error) => console.error("[import] the cancel could not be logged", error));
   } else {
     await removeExportFiles(now, deps);
   }
@@ -533,10 +537,10 @@ export async function pruneDataJobs(deps: DataDeps = {}): Promise<{ filesRemoved
     const due = await db().execute<Row>(sql`
       select * from commerce.data_jobs
       where purged_at is null and (
-        (kind not in ('product_import', 'redirect_import', 'inventory_import', 'customer_import') and expires_at is not null and expires_at < now())
-        or (kind not in ('product_import', 'redirect_import', 'inventory_import', 'customer_import') and status in ('failed', 'cancelled') and finished_at < now() - interval '7 days')
-        or (kind in ('product_import', 'redirect_import', 'inventory_import', 'customer_import') and status in ('done', 'failed', 'cancelled') and finished_at < now() - interval '30 days')
-        or (kind in ('product_import', 'redirect_import', 'inventory_import', 'customer_import') and status in ('uploaded', 'checked') and created_at < now() - interval '30 days')
+        (kind not in ('product_import', 'redirect_import', 'inventory_import', 'customer_import', 'order_history_import') and expires_at is not null and expires_at < now())
+        or (kind not in ('product_import', 'redirect_import', 'inventory_import', 'customer_import', 'order_history_import') and status in ('failed', 'cancelled') and finished_at < now() - interval '7 days')
+        or (kind in ('product_import', 'redirect_import', 'inventory_import', 'customer_import', 'order_history_import') and status in ('done', 'failed', 'cancelled') and finished_at < now() - interval '30 days')
+        or (kind in ('product_import', 'redirect_import', 'inventory_import', 'customer_import', 'order_history_import') and status in ('uploaded', 'checked') and created_at < now() - interval '30 days')
       )
       order by created_at limit 200
     `);
@@ -634,3 +638,12 @@ export const startCustomerCheck = (member: Membership, jobId: string, deps: Data
 
 /** Starts the apply of a customer import whose dry run finished on the same file: logged first, each row its own transaction, judged again when written. */
 export const startCustomerApply = (member: Membership, jobId: string, deps: DataDeps = {}): Promise<StepResult> => applyCustomerImport(member, jobId, (id) => runJob(id, deps), deps);
+
+/** An order history's steps (wave 11 unit E, D384): upload, register, the dry run, the apply, the problems as a file. The owner's. */
+export { historyDryCountsOf, historyProblemsCsv, registerHistoryImport, startHistoryUpload };
+
+/** Starts (or restarts) the dry run of an uploaded or checked order history: it writes no order. */
+export const startHistoryCheck = (member: Membership, jobId: string, deps: DataDeps = {}): Promise<StepResult> => checkHistoryImport(member, jobId, (id) => runJob(id, deps), deps);
+
+/** Starts the apply of an order history whose dry run finished on the same file: logged first, each order its own transaction, judged again when written. */
+export const startHistoryApply = (member: Membership, jobId: string, deps: DataDeps = {}): Promise<StepResult> => applyHistoryImport(member, jobId, (id) => runJob(id, deps), deps);

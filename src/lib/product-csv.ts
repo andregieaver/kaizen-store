@@ -289,7 +289,7 @@ export const rowCountOf = (variants: number, pictures: number): number => Math.m
 // Reading
 // ---------------------------------------------------------------------------
 
-export type FileFormat = "kaizen" | "shopify";
+export type FileFormat = "kaizen" | "shopify" | "woocommerce";
 
 /** One row of a file as neutral cells by Kaizen column name (text unescaped). `row` is the member's number: the header is row 1. */
 export type NeutralRow = { row: number; v: Record<string, string> };

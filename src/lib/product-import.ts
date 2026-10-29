@@ -44,11 +44,21 @@ export type ImportOptions = {
   manufacturerId: string | null;
   /** Variants of an existing product that are not in the file: keep (the default) or switch off (leave out of the saved product). */
   missingVariants: "keep" | "switch_off";
-  /** For a Shopify file: whether its prices include VAT. No default: null until the member chooses. */
+  /** For a Shopify or WooCommerce file: whether its prices include VAT. No default: null until the member chooses. */
   pricesIncludeVat: boolean | null;
-  /** For a Shopify file: the market its plain Price column is for (the store's first market when null). */
+  /** For a Shopify or WooCommerce file: the market its plain prices are for (the store's first market when null). */
   priceMarket: string | null;
+  /**
+   * For a Shopify or WooCommerce file (D384): leave a redirect from each product's address in the old shop (`/products/{handle}`,
+   * `/product/{slug}`) to its page here. On unless the member turns it off; a redirect already there is kept.
+   */
+  redirects: boolean;
 };
+
+/** The address a product had in the shop its file came from (D384), or null for Kaizena Flow's own file. */
+export function oldProductAddress(format: "kaizen" | "shopify" | "woocommerce", handle: string): string | null {
+  return format === "shopify" ? `/products/${handle}` : format === "woocommerce" ? `/product/${handle}` : null;
+}
 
 export const DEFAULT_IMPORT_OPTIONS: ImportOptions = {
   mode: "upsert",
@@ -57,6 +67,7 @@ export const DEFAULT_IMPORT_OPTIONS: ImportOptions = {
   missingVariants: "keep",
   pricesIncludeVat: null,
   priceMarket: null,
+  redirects: true,
 };
 
 /** The member's options from what a form or a job's `options` column holds; anything unknown is the default. */
@@ -69,6 +80,7 @@ export function parseImportOptions(raw: unknown): ImportOptions {
     missingVariants: o.missingVariants === "switch_off" ? "switch_off" : "keep",
     pricesIncludeVat: typeof o.pricesIncludeVat === "boolean" ? o.pricesIncludeVat : null,
     priceMarket: typeof o.priceMarket === "string" && /^[A-Za-z]{2}$/.test(o.priceMarket) ? o.priceMarket.toUpperCase() : null,
+    redirects: o.redirects !== false,
   };
 }
 
@@ -193,7 +205,7 @@ export function checkFile(file: NeutralFile, grouped: Grouped, env: PlanEnv): Fi
     const differs = file.rows.some((r) => t(r.v.price_basis) !== "" && t(r.v.price_basis) !== store);
     if (differs) add(finding("price_basis.mismatch"));
   }
-  if (file.format === "shopify" && hasPrices && env.options.pricesIncludeVat === null) add(finding("price_basis.required"));
+  if (file.format !== "kaizen" && hasPrices && env.options.pricesIncludeVat === null) add(finding("price_basis.required"));
   return out;
 }
 
@@ -390,7 +402,7 @@ function fieldChangesFor(
 
 function convertPrice(c: Ctx, minor: number, marketCode: string, category: string): number {
   const { options, ctx } = c.env;
-  if (c.file.format !== "shopify" || options.pricesIncludeVat === null) return minor;
+  if (c.file.format === "kaizen" || options.pricesIncludeVat === null) return minor;
   const market = ctx.markets.find((m) => m.code === marketCode);
   const rate = market ? (market.vatRates[category] ?? market.vatRates.standard ?? 0) : 0;
   if (ctx.audience === "businesses") return options.pricesIncludeVat ? withoutVat(minor, rate) : minor;

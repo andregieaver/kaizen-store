@@ -537,8 +537,11 @@ describe("options", () => {
   it("reads the member's choices, with the default for anything unknown", () => {
     expect(parseImportOptions(undefined)).toEqual(DEFAULT_IMPORT_OPTIONS);
     expect(parseImportOptions({ mode: "update", unpublishable: "skip", missingVariants: "switch_off", pricesIncludeVat: false, priceMarket: "se", manufacturerId: OPERATOR })).toEqual({
-      mode: "update", unpublishable: "skip", missingVariants: "switch_off", pricesIncludeVat: false, priceMarket: "SE", manufacturerId: OPERATOR,
+      mode: "update", unpublishable: "skip", missingVariants: "switch_off", pricesIncludeVat: false, priceMarket: "SE", manufacturerId: OPERATOR, redirects: true,
     });
+    // Redirects from the old shop's addresses are on unless turned off in so many words (D384).
+    expect(parseImportOptions({ redirects: false }).redirects).toBe(false);
+    expect(parseImportOptions({ redirects: "no" }).redirects).toBe(true);
     expect(parseImportOptions({ mode: "delete", unpublishable: "x", missingVariants: "delete", pricesIncludeVat: "yes", priceMarket: "Norway", manufacturerId: "x" })).toEqual(DEFAULT_IMPORT_OPTIONS);
   });
 });

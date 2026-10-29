@@ -10,11 +10,11 @@ D152 (the store analytics cockpit) and D153 (the EU withdrawal function and the 
 
 <!-- parity:generated:start since -->
 
-- **Headline now 87.8%** (first report 59.5%), **must-have 90.6%** (first report 69.1%), over 201 core rows (first report 232).
-- Where the change comes from: +28.0 points from the 143 rating moves on core rows recorded below, and +0.3 points because the re-read changed which rows count as core (the tracker has 231 rows, the first report 232 core ones).
+- **Headline now 88.0%** (first report 59.5%), **must-have 90.6%** (first report 69.1%), over 201 core rows (first report 232).
+- Where the change comes from: +28.2 points from the 144 rating moves on core rows recorded below, and +0.3 points because the re-read changed which rows count as core (the tracker has 231 rows, the first report 232 core ones).
 - 230 of 231 rows have their Shopify side read from a page; the others are listed under evidence debt.
 
-Rated higher (131):
+Rated higher (132):
 
 - Admin AI assistant that performs tasks (AI): partial to full. D350: notices for background work that finished or waits (page builds, follow-ups, autopilot questions and finished plans, changes kept for a yes, reports), written once each by the jobs, counted on the launcher and in the account menu, li…
 - Assistant memory and saved skills (AI): partial to full. D350: saved skills: Save as skill in the panel, a Skills tab to list, edit and delete, save_skill and delete_skill, use_skill loading them like the built-ins; owners share with the store; built-in keys, secrets, customers' details and mark…
@@ -137,6 +137,7 @@ Rated higher (131):
 - Workflow automation (Flow) (Platform): partial to full. Built D356 (wave 9 unit C): commerce.workflows and workflow_runs (src/server/workflows.ts, the database's intake in queue_integration_event()), the Workflows page and draft_workflow.
 - Product, customer and order CSV (Platform): missing to partial. Wave 2, first run (docs/wave-2-data.md; working tree not yet committed).
 - Product, customer and order CSV (Platform): partial to full. D295 (wave 5 unit A): the customer export now carries each address's marketing-consent state from the subscriber list instead of not_recorded; read customer-export.ts and customer-csv.ts and ran customer-export.int.test.ts and customer-csv…
+- Migration from other platforms (Platform): partial to full. Read unit E (D384): the WooCommerce product file through the product import with redirects from old addresses, and Shopify's order export as copied orders, held by src/server/old-shop-import.int.test.ts, src/lib/product-csv-woocommerce.tes…
 - Self-serve sign-up and onboarding (Platform): partial to full. D369: a password at sign-up, and no live payment for a store not opened yet (criteria 1 and 3), held by integration tests.
 - Blog (multiple blogs, authors, comments, RSS) (Storefront): partial to full. Wave 7 unit G (D341) built it, read in the code and held by tests: several blogs (commerce.blogs: the first at /blog, others at /blogs/{handle}, each with its title per language, its list or chosen page, its categories and tags pages and s…
 - Mobile-responsive storefront, per-device editing (Storefront): partial to full. D179 (docs/responsive-editing.md, phases 1 to 4) shipped after the last re-read.
@@ -181,7 +182,7 @@ Rated lower (24):
 
 <!-- parity:generated:start summary -->
 
-Kaizena Flow has **87.8%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 201 core features weighted by importance to an EU small or mid-size merchant, and **90.6%** on the must-haves (the 83 features with weight 4 or 5). The unweighted figures are 86.8% overall and 90.4% for must-haves. Counting app-only features gives 86.5%; counting Plus-only as well gives 86.0%. Kaizena Flow is strongest on catalogue and products (96.3%) and weakest on platform, extensibility and operations (67.2%), international, compliance and trust (77.7%), checkout and payments (80.0%). Of the 201 core features, 153 are full, 43 partial and 5 missing, so half-built features, not absent ones, are the main shape of the gap.
+Kaizena Flow has **88.0%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 201 core features weighted by importance to an EU small or mid-size merchant, and **90.6%** on the must-haves (the 83 features with weight 4 or 5). The unweighted figures are 87.1% overall and 90.4% for must-haves. Counting app-only features gives 86.7%; counting Plus-only as well gives 86.2%. Kaizena Flow is strongest on catalogue and products (96.3%) and weakest on platform, extensibility and operations (69.5%), international, compliance and trust (77.7%), checkout and payments (80.0%). Of the 201 core features, 154 are full, 42 partial and 5 missing, so half-built features, not absent ones, are the main shape of the gap.
 
 <!-- parity:generated:end summary -->
 
@@ -191,10 +192,10 @@ The method is simple: a full match scores 1, a partial match 0.5, a missing feat
 
 | Measure | Features | Weighted parity | Unweighted parity | Full / partial / missing |
 | --- | --- | --- | --- | --- |
-| Headline: core (Shopify native, Basic to Advanced) | 201 | **87.8%** | 86.8% | 153 / 43 / 5 |
+| Headline: core (Shopify native, Basic to Advanced) | 201 | **88.0%** | 87.1% | 154 / 42 / 5 |
 | Must-have (core, weight 4 or 5) | 83 | **90.6%** | 90.4% | 67 / 16 / 0 |
-| Core plus app-only features | 225 | 86.5% | 85.6% | 166 / 53 / 6 |
-| Everything, including Plus-only | 231 | 86.0% | 84.4% | 167 / 56 / 8 |
+| Core plus app-only features | 225 | 86.7% | 85.8% | 167 / 52 / 6 |
+| Everything, including Plus-only | 231 | 86.2% | 84.6% | 168 / 55 / 8 |
 
 <!-- parity:generated:end headline -->
 
@@ -213,9 +214,9 @@ Counts are core features only. Weighted parity uses weights 1 to 5; must-have is
 | Customers, marketing and loyalty | 17 | 14 | 2 | 1 | 92.4% | 8 | 100.0% |
 | Analytics, reporting and finance | 24 | 22 | 1 | 1 | 95.5% | 11 | 94.6% |
 | International, compliance and trust | 16 | 10 | 6 | 0 | 77.7% | 10 | 70.2% |
-| Platform, extensibility and operations | 20 | 8 | 9 | 3 | 67.2% | 7 | 79.3% |
+| Platform, extensibility and operations | 20 | 9 | 8 | 3 | 69.5% | 7 | 79.3% |
 | AI and automation | 21 | 19 | 2 | 0 | 94.4% | 2 | 100.0% |
-| **Total** | **201** | **153** | **43** | **5** | **87.8%** | **83** | **90.6%** |
+| **Total** | **201** | **154** | **42** | **5** | **88.0%** | **83** | **90.6%** |
 
 <!-- parity:generated:end domains -->
 
@@ -227,7 +228,7 @@ A row is Full only when it lists code and tests that exist (or says it is untest
 
 | Evidence | Rows |
 | --- | ---: |
-| Full, with tests | 161 |
+| Full, with tests | 162 |
 | Full, untested (debt, not hidden) | 6 |
 | Shopify side not read from a page | 1 |
 | Rows in the tracker | 231 |
@@ -236,7 +237,7 @@ Untested Full rows: `ai.assistant-voice-mode`, `customers.abandoned-checkout-rec
 
 | Bucket | What it means | Rows not Full | Core rows | Core headline points lacking |
 | --- | --- | ---: | ---: | ---: |
-| A | Build in-house | 28 | 18 | 4.2 |
+| A | Build in-house | 27 | 17 | 4.0 |
 | B | Build, live only with a third party | 13 | 11 | 2.8 |
 | C | Strategy decision first | 9 | 7 | 1.7 |
 | D | Not reachable by code | 14 | 12 | 3.4 |
@@ -249,12 +250,12 @@ The waves are those of `docs/parity-plan.md` section 3. This table is produced f
 
 <!-- parity:generated:start projection -->
 
-Now: **87.8%** core, 90.6% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 16 rows (12 core) have no wave yet and are not in them.
+Now: **88.0%** core, 90.6% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 16 rows (12 core) have no wave yet and are not in them.
 
 | Wave | Scope | Rows (core) | Core if every row of waves 1 to N is Full | Must-have | Adds (points) | Core if only bucket A rows are | Must-have |
 | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | Compliance and money | 10 (7) | 89.9% | 94.1% | +2.1 | 89.3% | 93.0% |
-| 2 | Data in and out | 3 (1) | 90.1% | 94.1% | +0.2 | 89.5% | 93.0% |
+| 1 | Compliance and money | 10 (7) | 90.1% | 94.1% | +2.1 | 89.5% | 93.0% |
+| 2 | Data in and out | 2 (0) | 90.1% | 94.1% | +0.0 | 89.5% | 93.0% |
 | 3 | Inventory and orders | 12 (11) | 92.7% | 95.8% | +2.6 | 90.4% | 93.5% |
 | 4 | Payments | 5 (4) | 93.6% | 96.3% | +0.9 | 90.7% | 93.5% |
 | 5 | Customers and marketing | 7 (4) | 94.5% | 96.3% | +0.9 | 91.1% | 93.5% |
@@ -605,7 +606,7 @@ Legend. **Shopify**: Native = included on Basic to Advanced and scored in the he
 | Themes and templates marketplace | Native. [page](https://help.shopify.com/en/manual/online-store/themes/theme-store) | Partial | 3 | A, wave 7 | Rows, columns and components (D46, D125) and whole page layouts (D127) are shared as templates (`private`, `stores`, `marketplace`), switched on per store, moderated by platform admins and previewed before use. Whole themes exist since D241 to D287 (design, header, footer, product layout, presets and their own demo content, versioned, free or paid, listed in the theme store). Since D344 (wave 7 unit J) anyone who may change a store's website submits its live look as a theme, or as the next version of a theme they are the author of, from Design settings (`src/server/theme-submissions.ts`, the look only, kept as sent); Kaizena Flow's admins review it at Themes → Submissions (Review makes it a draft theme to preview and check, Approve publishes it through the theme checks, Not accepted says why to the author, Hide is the theme's Archive), the database moving a submission only forward; a theme names its author on its page with the number of stores using it, the author's Your themes page lists their submissions with the reasons and their themes with version and stores; a new install no longer follows updates by itself (offered with What's new, decision 4), and a theme from outside is free (the database refuses a price). Still short: (1) the first criterion's starter pages: a submission carries the look only, never the author store's pages, so an outside theme's demo content is given by Kaizena Flow on its Content tab; (2) installs that followed updates before D344 keep following, by the owner's decision, so for them an update is still applied on its own. The supply of outside designers is a business matter code does not create. Code: `src/app/admin/(gated)/(owner)/account/themes/page.tsx`, `src/app/admin/(gated)/platform/themes/submissions/[submissionId]/page.tsx`. |
 | Developer access to storefront code | Native. [page](https://shopify.dev/docs/storefronts/themes) | Partial | 2 | C, no wave yet | Owners write CSS for one page and for the whole site (D100, checked by `cssProblem()`, also on the live site since D306), an HTML block (D91), and head and body code that loads only after consent and only on a store's own host (D61, `liveCustomCode()`). No templating language, no theme files, no CLI or Git workflow, no way for a developer to change markup the page builder does not expose. The builder's model (rows, columns, blocks) is a deliberate alternative to theme code, which is why the plan leaves it unplaced. Code: `src/lib/custom-css.ts`, `src/lib/custom-code.ts`. |
 | Product, customer and order CSV | Native. [page](https://help.shopify.com/en/manual/products/import-export/using-csv) | Full (was partial) | 4 |  | All four criteria hold. Since D295 the customer file's marketing_consent column is the address's place on the store's subscriber list (subscribed, pending, unsubscribed, or none), read from the recorded consent (customer-export.int.test.ts, customer-csv.test.ts). Still open, as a report matter rather than a criterion: this row is the same Shopify feature as catalogue.bulk-product-import-and-export-csv (products), orders.order-export-to-csv, analytics.export-reports-to-csv and the export half of customers.customer-profiles-notes-csv-import-and-export, so the headline counts it more than once until the merge README rule 8 asks for is made (docs/wave-2-data.md 6.6 point 3). Evidence: `src/lib/csv.ts`, `src/lib/product-csv.ts`, `src/lib/product-import.ts` and 15 more; 12 test files; D295. |
-| Migration from other platforms | Native. [page](https://www.shopify.com/blog/store-migration-shopify-app) | Partial | 3 | A, wave 2 | The page replicator (D150) copies another site's pages into the builder, store copy (D129) duplicates one Kaizena Flow store, and `scripts/import-life-work.mjs` imports Work history from Kaizen Life. Since wave 2 (D165) the product import job reads Shopify's product CSV: a check step lists findings before anything is saved (a dry run), it asks whether prices include VAT and which market the plain Price column is for, fetches pictures only through `safeFetch()`, matches products by handle so a repeated import updates rather than duplicates, and never imports the compare-at price or turns Vendor into a manufacturer; a redirect import reads Shopify's `Redirect from`/`Redirect to` file (D168), a stock file is imported per location (D172), and reviews are imported from a file (D301 G3b, src/server/review-import.ts, never marked verified). Still missing: a WooCommerce product file; any customer or subscriber import (customers.customer-profiles-notes-csv-import-and-export); redirects made automatically from a product import's old addresses; and order history import (Shopify's own migration app imports no orders either). Code: `src/server/replicate.ts`, `src/lib/replicate-build.ts`. |
+| Migration from other platforms | Native. [page](https://www.shopify.com/blog/store-migration-shopify-app) | Full (was partial) | 3 |  | The page replicator (D150) copies another site's pages into the builder, store copy (D129) duplicates one Kaizena Flow store, and `scripts/import-life-work.mjs` imports Work history from Kaizen Life. The product import job (D165) reads Shopify's product CSV and, since wave 11 (D384), WooCommerce's own product export (its CSV import schema, read 29 October 2026: variable products with their variations by `id:` or SKU, the sale price while its dates hold, categories with `>`, every picture), each with a dry run that lists findings before anything is saved, a question whether prices include VAT, pictures fetched only through `safeFetch()`, products matched by handle so a repeated import updates rather than duplicates, and never the compare-at price; each product it makes leaves a manual redirect from its old address (`/products/{handle}`, `/product/{slug}`) through the redirect service unless the owner unticks it. Customers come in from a file without consent or a password (D366); redirects (D168), stock per location (D172) and reviews (D301) by file. Shopify's order export comes in as history (D384): copied orders `C-{name}` in the file's currency and amounts, never paid, refunded, sent, emailed, invoiced or counted in sales, tied to a customer only by an email the store has, an order already imported left as it is. What still differs from Shopify's app: no direct connection to another platform's API (files only), no Square, Etsy, Wix, Amazon, eBay, Clover or Lightspeed files, and order history from Shopify's export only. Evidence: `src/server/replicate.ts`, `src/lib/replicate-build.ts`, `src/server/store-copy.ts` and 13 more; 14 test files; D129, D150, D165, D168, D172, D301, D366, D384. |
 | POS and retail | Native. [page](https://www.shopify.com/pos/pricing) | Missing | 2 | C, no wave yet | No in-person selling: no tablet or phone register, no card reader, no receipts, no store-location stock drawn at a till. Plan section 5 decision 3: defer, revisit after wave 9 (weight 2, a large build with hardware and offline). |
 | Marketplace and multi-vendor | App. [page](https://www.shopify.com/blog/multi-vendor-ecommerce-platform) | Partial | 1 | C, no wave yet | Hosts for stays and rentals only (D71): outside hosts sign in to their own area, are paid through their own Stripe account with Kaizen's fee and a commission, and report DAC7 details. No hosts for ordinary goods, no vendor product catalogue with moderation, no split orders or payouts for several sellers in one cart (`placeOrder()` refuses a mix as `host_mix`). Plan section 5 decision 7: keep hosts, weight 1. Code: `src/server/hosts.ts`, `src/server/host-payments.ts`. |
 | Bookings, appointments, rentals | App. [page](https://apps.shopify.com/appointo) | Full | 2 |  | Evidence: `src/server/bookings.ts`, `src/server/appointments.ts`, `src/server/ranges.ts` and 5 more; 11 test files; D65, D66, D67, D68, D69, D70. |

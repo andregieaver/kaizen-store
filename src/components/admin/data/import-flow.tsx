@@ -109,7 +109,7 @@ export function ImportUpload({
 }
 
 export type OptionChoices = {
-  format: "kaizen" | "shopify";
+  format: "kaizen" | "shopify" | "woocommerce";
   markets: { code: string; name: string; currency: string }[];
   operators: { id: string; name: string }[];
   initial: ImportOptions;
@@ -127,7 +127,8 @@ export function ImportOptionsForm({ choices, check, checked }: { choices: Option
   const [options, setOptions] = useState<ImportOptions>(choices.initial);
   const [problem, setProblem] = useState<string | null>(null);
   const [pending, start] = useTransition();
-  const shopify = choices.format === "shopify";
+  // A file from another shop (Shopify's or WooCommerce's): its prices' VAT, their market and the old addresses' redirects are asked.
+  const shopify = choices.format !== "kaizen";
   const set = <K extends keyof ImportOptions>(key: K, value: ImportOptions[K]) => setOptions((o) => ({ ...o, [key]: value }));
   const needsBasis = shopify && options.pricesIncludeVat === null;
 
@@ -197,7 +198,7 @@ export function ImportOptionsForm({ choices, check, checked }: { choices: Option
       </div>
       {shopify && (
         <fieldset className="flex flex-col gap-3 rounded-md border border-line bg-card p-3">
-          <legend className={`${label} px-1`}>{w.shopify}</legend>
+          <legend className={`${label} px-1`}>{choices.format === "woocommerce" ? w.woocommerce : w.shopify}</legend>
           <div className="flex flex-col gap-1">
             <span className={label}>{w.vatQuestion}</span>
             <label className="flex items-center gap-2 text-sm">
@@ -223,6 +224,13 @@ export function ImportOptionsForm({ choices, check, checked }: { choices: Option
               <p className={hint}>{w.marketHint}</p>
             </div>
           )}
+          <div className="flex flex-col gap-1">
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={options.redirects} onChange={(e) => set("redirects", e.target.checked)} />
+              {fillWords(w.redirects, { path: choices.format === "woocommerce" ? "/product/…" : "/products/…" })}
+            </label>
+            <p className={hint}>{w.redirectsHint}</p>
+          </div>
         </fieldset>
       )}
       <div className="flex flex-wrap items-center gap-3">

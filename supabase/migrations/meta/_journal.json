@@ -3956,6 +3956,20 @@
       "when": 1793234986899,
       "tag": "20261029004946_stock_routing",
       "breakpoints": true
+    },
+    {
+      "idx": 565,
+      "version": "7",
+      "when": 1793237677438,
+      "tag": "20261029013437_old_shop_imports",
+      "breakpoints": true
+    },
+    {
+      "idx": 566,
+      "version": "7",
+      "when": 1793237716843,
+      "tag": "20261029013516_old_shop_imports_rules",
+      "breakpoints": true
     }
   ]
 }

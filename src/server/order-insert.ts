@@ -2,10 +2,15 @@ import "server-only";
 
 import { sql } from "drizzle-orm";
 
-import type { Db } from "@/db/client";
+import { z } from "zod";
+
+import { db, type Db } from "@/db/client";
 import type { GiftFields } from "@/lib/gift";
 import type { GiftCardRecipient } from "@/lib/gift-card-line";
+import { historyNumber, type HistoryAddress, type HistoryOrder } from "@/lib/order-history";
 import { allocate, routingOrder, totalsOf } from "@/lib/stock-routing";
+
+import { col, typedRow } from "./typed-rows";
 
 type Row = Record<string, unknown>;
 
@@ -13,7 +18,8 @@ type Row = Record<string, unknown>;
  * The one place an order is written and numbered (D141, wave 3 run 2, D173, `docs/wave-3-orders.md` 4.5). `insertOrder()` takes the next number from the
  * store's gap-free series (`commerce.next_document_number(store, 'order')`) in the SAME transaction that inserts the order, so a number is used only by an order
  * that exists; a transaction that rolls back gives the number back. Four callers use it: `placeOrder()` (a cart), the subscription renewal, `placeDraftOrder()`
- * (a draft order sent or paid outside Kaizen) and `processExchange()` (an exchange's order, D239). A unit test (`src/lib/order-numbers.test.ts`) fails for any other file that inserts into `commerce.orders` or numbers an
+ * (a draft order sent or paid outside Kaizen) and `processExchange()` (an exchange's order, D239); `insertHistoryOrder()` writes an order history from
+ * another shop as copied orders (`C-…`, D384), outside the series. A unit test (`src/lib/order-numbers.test.ts`) fails for any other file that inserts into `commerce.orders` or numbers an
  * order. Orders are never deleted or renumbered (a cancelled one keeps its number): the sequence has no gap.
  *
  * `insertOrderLine()` writes a line with every column an order line has, so the checkout and a draft write them one way; `reserveStock()` holds what was
@@ -161,6 +167,66 @@ export async function insertOrder(tx: Db, input: OrderInsert): Promise<{ orderId
     `);
   }
   return { orderId: String(order.id), number };
+}
+
+const addressJson = (a: HistoryAddress | null) => (a ? { name: a.name, line1: a.line1, ...(a.line2 ? { line2: a.line2 } : {}), postalCode: a.postalCode, city: a.city, country: a.country } : {});
+
+/**
+ * One order of another shop's history (D384) as a COPIED order (D129): `copied_from` is a key made from the store and the order's name, so the
+ * same order imported again is `already`; its number is `C-{name}` (`historyNumber()`), outside the store's series; its status is what the file
+ * says (paid, fulfilled or cancelled, never one that waits), so the triggers that pay, email, invoice, queue events or count revenue pass it by as
+ * they pass every copied order. It is in the store's own country with the file's currency and amounts as they were: the total is the file's, the
+ * subtotal worked out so the order adds up (`total = subtotal + shipping − discount`), lines at their own prices with no VAT of their own and no
+ * variant. A customer is named only when the store already has one with the order's email; nobody is made. One transaction per order.
+ */
+export async function insertHistoryOrder(storeId: string, order: HistoryOrder): Promise<"created" | "already" | "failed"> {
+  const subtotal = order.totalMinor - order.shippingMinor + order.discountMinor;
+  if (subtotal < 0 || order.taxMinor > order.totalMinor || order.lines.length === 0) return "failed";
+  return db().transaction(async (tx) => {
+    const key = sql`md5(${storeId} || ':history:' || ${order.name})::uuid`;
+    const seen = await typedRow(z.object({ id: col.uuid }), sql`select id from commerce.orders where store_id = ${storeId}::uuid and copied_from = ${key}`, tx);
+    if (seen) return "already" as const;
+    const home = await typedRow(
+      z.object({ code: col.text, locale: col.text }),
+      sql`select m.code, m.default_locale as locale from commerce.markets m where m.store_id = ${storeId}::uuid and m.code = commerce.home_market(${storeId}::uuid)`,
+      tx,
+    );
+    if (!home) return "failed" as const;
+    await tx.execute(sql`select set_config('commerce.copying', 'on', true)`);
+    const made = await typedRow(
+      z.object({ id: col.uuid }),
+      sql`
+        insert into commerce.orders (
+          store_id, number, market_code, currency, locale, customer_id, email, status,
+          subtotal_minor, shipping_minor, discount_minor, tax_minor, total_minor,
+          billing_address, shipping_address, placed_at, discount_code, copied_from
+        ) values (
+          ${storeId}::uuid, ${historyNumber(order.name)}, ${home.code}, ${order.currency}, ${home.locale},
+          (select c.id from commerce.customers c where c.store_id = ${storeId}::uuid and lower(c.email) = lower(${order.email})),
+          ${order.email}, ${order.status}::commerce.order_status,
+          ${subtotal}, ${order.shippingMinor}, ${order.discountMinor}, ${order.taxMinor}, ${order.totalMinor},
+          ${JSON.stringify(addressJson(order.billing))}::jsonb, ${JSON.stringify(addressJson(order.shipping))}::jsonb,
+          ${order.placedAt}::timestamptz, ${order.discountCode}, ${key}
+        )
+        returning id
+      `,
+      tx,
+    );
+    if (!made) return "failed" as const;
+    const rows = order.lines.map((l, position) => ({ sku: l.sku, title: l.title, quantity: l.quantity, unit: l.unitPriceMinor, total: l.totalMinor, position }));
+    await tx.execute(sql`
+      insert into commerce.order_lines (store_id, order_id, variant_id, sku, title, quantity, unit_price_minor, discount_minor, total_minor, tax_minor, tax_rate, tax_code, withdrawal_exclusion, delivery)
+      select ${storeId}::uuid, ${made.id}::uuid, null, r.sku, r.title, r.quantity, r.unit, 0, r.total, 0, 0, 'txcd_99999999', 'none', 'physical'
+      from jsonb_to_recordset(${JSON.stringify(rows)}::jsonb) as r(sku text, title text, quantity integer, unit bigint, total bigint, position integer)
+      order by r.position
+    `);
+    await tx.execute(sql`
+      insert into commerce.order_events (store_id, order_id, type, data, actor)
+      values (${storeId}::uuid, ${made.id}::uuid, 'copied', jsonb_build_object('from', 'import', 'original_number', ${order.name}::text, 'original_status', ${order.status}::text), 'system')
+    `);
+    await tx.execute(sql`select set_config('commerce.copying', 'off', true)`);
+    return "created" as const;
+  });
 }
 
 /** An order line as the checkout and a draft write it. Anything not named takes the column's default. */

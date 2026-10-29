@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
 
 import { useAdminLang, useAdminText } from "@/components/admin/admin-text";
+import type { ImportWords } from "@/components/admin/customer-import-views";
 import { card, field, hint, label, primary, secondary } from "@/components/admin/data/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
@@ -23,10 +24,26 @@ const TYPES = ["text/csv", "text/plain", "application/vnd.ms-excel"];
  * import with its confirmation. The browser checks only the name and the size; the server checks everything again. The words shared with
  * the stock import (a file's upload, the check, the buttons) are the `inventory` catalogue's; the customer import's own are `customers`.
  */
-export function CustomerUpload({ slug, rowsMax, start, register }: { slug: string; rowsMax: number; start: (fileName: string) => Promise<Upload>; register: (input: { path: string; name: string }) => Promise<Registered> }) {
+export function CustomerUpload({
+  slug,
+  rowsMax,
+  start,
+  register,
+  jobBase,
+  words,
+}: {
+  slug: string;
+  rowsMax: number;
+  start: (fileName: string) => Promise<Upload>;
+  register: (input: { path: string; name: string }) => Promise<Registered>;
+  /** Where a registered job's page is, after the store's address (the order history's, D384); the customer import's by default. */
+  jobBase?: string;
+  words?: Pick<ImportWords, "fileLabel" | "hint">;
+}) {
   const router = useRouter();
   const w = useAdminText("inventory").import.upload;
-  const own = useAdminText("customers").staff.import;
+  const customers = useAdminText("customers").staff.import;
+  const own = words ?? customers;
   const locale = ADMIN_LANG_FACTS[useAdminLang()].locale;
   const input = useRef<HTMLInputElement>(null);
   const [problems, setProblems] = useState<string[]>([]);
@@ -48,7 +65,7 @@ export function CustomerUpload({ slug, rowsMax, start, register }: { slug: strin
       if (stored.error) return setProblems([w.didNotArrive]);
       const registered = await register({ path: started.path, name: file.name });
       if (!registered.ok) return setProblems(registered.problems);
-      router.push(`/admin/${slug}/customers/import/${registered.jobId}`);
+      router.push(`/admin/${slug}${jobBase ?? "/customers/import"}/${registered.jobId}`);
     } catch {
       setProblems([w.notSent]);
     } finally {
@@ -117,10 +134,21 @@ export function CustomerCheck({ check, checked }: { check: () => Promise<Step>; 
 }
 
 /** Importing a checked file: the counts, the confirmation and the button; and cancelling the import. */
-export function CustomerImportApply({ counts, apply, cancel }: { counts: { toCreate: number; toUpdate: number; withProblems: number }; apply: () => Promise<Step>; cancel: () => Promise<Step> }) {
+export function CustomerImportApply({
+  counts,
+  apply,
+  cancel,
+  words,
+}: {
+  counts: { toCreate: number; toUpdate: number; withProblems: number };
+  apply: () => Promise<Step>;
+  cancel: () => Promise<Step>;
+  words?: Pick<ImportWords, "ready" | "counts" | "skippedRows" | "confirm">;
+}) {
   const router = useRouter();
   const shared = useAdminText("inventory").import.apply;
-  const w = useAdminText("customers").staff.import;
+  const customers = useAdminText("customers").staff.import;
+  const w = words ?? customers;
   const locale = ADMIN_LANG_FACTS[useAdminLang()].locale;
   const n = (value: number) => numberIn(value, locale);
   const [confirming, setConfirming] = useState(false);

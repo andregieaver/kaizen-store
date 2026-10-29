@@ -11,6 +11,7 @@ import { finding, summariseCounts, type Finding, type ItemSummary, type JobCount
 import { BULK_CHUNK, IMPORT_MAX_BYTES, IMPORT_MAX_PRODUCTS, IMPORT_MAX_ROWS, IMPORT_PICTURE_MAX_BYTES, IMPORT_PICTURE_TYPES, IMPORT_PICTURE_WIDTH, IMPORT_THUMBNAIL_WIDTH } from "@/lib/data-limits";
 import { groupProducts, readNeutral, type FileFinding, type Grouped, type NeutralFile, type ProductCsvContext, type ProductDraft } from "@/lib/product-csv";
 import { detectFormat, readShopify } from "@/lib/product-csv-shopify";
+import { isWooCommerce, readWooCommerce } from "@/lib/product-csv-woocommerce";
 import {
   checkFile,
   blockingFinding,
@@ -18,6 +19,7 @@ import {
   dryRunCounts,
   itemOf,
   namedKeys,
+  oldProductAddress,
   parseImportOptions,
   pendingKey,
   planProduct,
@@ -29,7 +31,7 @@ import {
   type StoreSnapshot,
 } from "@/lib/product-import";
 import type { Account } from "./auth";
-import { audit, type Membership } from "./auth";
+import { audit, passMembership, type Membership } from "./auth";
 import { catalogTag } from "./catalog";
 import {
   IMPORTS_BUCKET,
@@ -59,6 +61,7 @@ import { storePicture as storeLibraryPicture } from "./media-library";
 import { NO_ACCESS, memberCan } from "./permissions";
 import { csvContextFor, getEditorContext, inBatches, libraryAddresses, loadStored, ownPictureTest, pgTextArray, pgUuidArray, publishContextFor, storeOf } from "./product-data";
 import { emptyProduct, saveProduct, setArchived, type EditorContext, type StockMode } from "./products";
+import { addRedirects } from "./redirects";
 import { refreshTag } from "./refresh";
 import { safeFetch } from "./replicate-fetch";
 import { createTerm, listTerms } from "./taxonomy";
@@ -105,7 +108,13 @@ const isUniqueViolation = (error: unknown): boolean => {
 const shownName = (name: string): string => name.replace(/[\p{Cc}\p{Cf}]/gu, "").replace(/[/\\]/g, "-").trim().slice(0, 120) || "products.csv";
 
 /** The file as neutral rows and what was found out about it, or why it is refused. Pure given the context. */
-export function readImportFile(bytes: Uint8Array, ctx: ProductCsvContext, options: ImportOptions): { ok: true; parsed: ParsedCsv; file: NeutralFile; grouped: Grouped; extra: FileFinding[] } | { ok: false; problems: string[] } {
+export function readImportFile(
+  bytes: Uint8Array,
+  ctx: ProductCsvContext,
+  options: ImportOptions,
+  /** Today in the store's time zone, for a WooCommerce sale's dates. */
+  today?: string,
+): { ok: true; parsed: ParsedCsv; file: NeutralFile; grouped: Grouped; extra: FileFinding[] } | { ok: false; problems: string[] } {
   if (bytes.length === 0) return { ok: false, problems: [finding("file.empty").text] };
   if (bytes.length > IMPORT_MAX_BYTES) return { ok: false, problems: [finding("file.too_large", { max: Math.floor(IMPORT_MAX_BYTES / 1024 / 1024) }).text] };
   const parsed = parseCsv(bytes);
@@ -114,9 +123,14 @@ export function readImportFile(bytes: Uint8Array, ctx: ProductCsvContext, option
   const header = parsed.rows[0].map((h) => h.replace(/^﻿/, "").trim());
   if (header.every((h) => h === "")) return { ok: false, problems: [finding("file.no_header").text] };
   if (parsed.rows.length - 1 > IMPORT_MAX_ROWS) return { ok: false, problems: [finding("file.too_many_rows", { n: parsed.rows.length - 1, max: IMPORT_MAX_ROWS }).text] };
-  const format = detectFormat(header);
+  const format = isWooCommerce(header) ? "woocommerce" : detectFormat(header);
   if (!format) return { ok: false, problems: [finding("file.unknown_format").text] };
-  const file = format === "shopify" ? readShopify(parsed.rows, ctx, { priceMarket: options.priceMarket }) : readNeutral(parsed.rows, ctx);
+  const file =
+    format === "shopify"
+      ? readShopify(parsed.rows, ctx, { priceMarket: options.priceMarket })
+      : format === "woocommerce"
+        ? readWooCommerce(parsed.rows, ctx, { priceMarket: options.priceMarket, today: today ?? new Date().toISOString().slice(0, 10) })
+        : readNeutral(parsed.rows, ctx);
   const grouped = groupProducts(file);
   if (grouped.drafts.length > IMPORT_MAX_PRODUCTS) return { ok: false, problems: [finding("file.too_many_products", { n: grouped.drafts.length, max: IMPORT_MAX_PRODUCTS }).text] };
   const extra: FileFinding[] = [];
@@ -477,6 +491,23 @@ async function thumbnailOf(storeId: string, url: string): Promise<string | null>
 type Written = { item: ItemInput; summary: ItemSummary; wrote: boolean };
 
 /**
+ * The redirect from a product's address in the shop its file came from (D384), through the redirect service's own checks (`addRedirects()`,
+ * `validateRedirect()`): never over a live address, a redirect already from it kept. In the name of who started the import, read again,
+ * and only when they may change the website's redirects; whatever happens is the item's finding, never a failure of the product.
+ */
+async function redirectFromOldShop(job: DataJob, p: Prepared, format: NeutralFile["format"], handle: string): Promise<Finding | null> {
+  const from = oldProductAddress(format, handle);
+  if (!from || !p.options.redirects || !job.requestedBy) return null;
+  const member = await passMembership(p.store.slug, job.requestedBy);
+  if (!member || !memberCan(member, "website:write")) return finding("redirect.not_made", { handle, reason: "you may not change the website's redirects" });
+  const made = await addRedirects(member, [{ from, to: `/p/${handle}` }], { origin: "import", existing: "skip" });
+  if (!made.ok) return finding("redirect.not_made", { handle, reason: "the redirect service refused it" });
+  const line = made.plans[0];
+  if (line?.action === "error") return finding("redirect.not_made", { handle, reason: line.findings[0]?.text.replace(/\.$/, "") });
+  return line?.action === "create" ? finding("redirect.made", { handle }) : null;
+}
+
+/**
  * One product written. The slow work comes first and writes nothing to the product: the pictures a plan names are fetched (seconds each) and the
  * categories made. Only then is the store read AGAIN and the product planned a second time from that fresh state, which `saveProduct()` writes at
  * once, so what was sold, priced or edited while a picture was fetched is not written over (D165 review: a 3-unit sale paid during the fetch used to
@@ -523,6 +554,8 @@ async function applyProduct(job: DataJob, p: Prepared, account: Account, loaded:
           wrote = true;
           // The editor's save makes an archived product a draft: archive it again when the file says archived.
           if (plan.archiveAfter) await setArchived(p.store, saved.productId, true);
+          const redirect = await redirectFromOldShop(job, p, loaded.file.format, draft.handle);
+          if (redirect) messages.push(redirect);
         }
       }
     }

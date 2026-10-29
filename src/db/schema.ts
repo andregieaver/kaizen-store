@@ -12110,7 +12110,7 @@ export const dataJobs = commerce.table(
     storeId: uuid("store_id")
       .notNull()
       .references(() => stores.id, { onDelete: "cascade" }),
-    /** `product_import`, `product_export`, `order_export`, `customer_export`, `redirect_import`, `redirect_export` (wave 2, D168), `inventory_import`, `inventory_export` (wave 3, D172), `customer_import` (wave 10, D366). */
+    /** `product_import`, `product_export`, `order_export`, `customer_export`, `redirect_import`, `redirect_export` (wave 2, D168), `inventory_import`, `inventory_export` (wave 3, D172), `customer_import` (wave 10, D366), `order_history_import` (wave 11, D384). */
     kind: text("kind").notNull(),
     /** `uploaded`, `checking`, `checked`, `queued`, `running`, `done`, `failed`, `cancelled`, `expired` (`src/lib/data-job.ts`). */
     status: text("status").notNull(),
@@ -12173,16 +12173,20 @@ export const dataJobs = commerce.table(
     uniqueIndex("data_jobs_one_active_customer_import_idx")
       .on(t.storeId)
       .where(sql`${t.kind} = 'customer_import' and ${t.status} in ('uploaded', 'checking', 'checked', 'queued', 'running')`),
+    // One order-history import is open per store at a time (wave 11 unit E, D384).
+    uniqueIndex("data_jobs_one_active_order_history_import_idx")
+      .on(t.storeId)
+      .where(sql`${t.kind} = 'order_history_import' and ${t.status} in ('uploaded', 'checking', 'checked', 'queued', 'running')`),
     check(
       "data_jobs_kind",
-      sql`${t.kind} in ('product_import', 'product_export', 'order_export', 'customer_export', 'redirect_import', 'redirect_export', 'inventory_import', 'inventory_export', 'customer_import')`,
+      sql`${t.kind} in ('product_import', 'product_export', 'order_export', 'customer_export', 'redirect_import', 'redirect_export', 'inventory_import', 'inventory_export', 'customer_import', 'order_history_import')`,
     ),
     check(
       "data_jobs_status",
       sql`${t.status} in ('uploaded', 'checking', 'checked', 'queued', 'running', 'done', 'failed', 'cancelled', 'expired')`,
     ),
     check("data_jobs_phase", sql`${t.phase} is null or ${t.phase} in ('check', 'apply', 'write', 'assemble')`),
-    check("data_jobs_format", sql`${t.format} is null or ${t.format} in ('kaizen', 'shopify')`),
+    check("data_jobs_format", sql`${t.format} is null or ${t.format} in ('kaizen', 'shopify', 'woocommerce')`),
     check("data_jobs_rows", sql`${t.rowsTotal} is null or ${t.rowsTotal} >= 0`),
     check(
       "data_jobs_rows_done",
@@ -12198,9 +12202,9 @@ export const dataJobs = commerce.table(
     // An export has no input file, an import has no output files, and the format of an export is Kaizen's own.
     check(
       "data_jobs_export_no_input",
-      sql`${t.kind} in ('product_import', 'redirect_import', 'inventory_import', 'customer_import') or (${t.inputPath} is null and ${t.inputSha256} is null and ${t.format} is distinct from 'shopify')`,
+      sql`${t.kind} in ('product_import', 'redirect_import', 'inventory_import', 'customer_import', 'order_history_import') or (${t.inputPath} is null and ${t.inputSha256} is null and ${t.format} is distinct from 'shopify')`,
     ),
-    check("data_jobs_import_no_files", sql`${t.kind} not in ('product_import', 'redirect_import', 'inventory_import', 'customer_import') or ${t.files} = '[]'::jsonb`),
+    check("data_jobs_import_no_files", sql`${t.kind} not in ('product_import', 'redirect_import', 'inventory_import', 'customer_import', 'order_history_import') or ${t.files} = '[]'::jsonb`),
     // An ended job says when.
     check(
       "data_jobs_finished",
@@ -12244,7 +12248,7 @@ export const dataJobItems = commerce.table(
     }).onDelete("cascade"),
     index("data_job_items_job_idx").on(t.storeId, t.jobId, t.outcome),
     check("data_job_items_seq", sql`${t.seq} >= 0`),
-    check("data_job_items_kind", sql`${t.kind} in ('product', 'redirect', 'stock', 'customer', 'file')`),
+    check("data_job_items_kind", sql`${t.kind} in ('product', 'redirect', 'stock', 'customer', 'order', 'file')`),
     check("data_job_items_outcome", sql`${t.outcome} in ('created', 'updated', 'unchanged', 'skipped', 'drafted', 'failed', 'checked')`),
     check("data_job_items_json", sql`jsonb_typeof(${t.messages}) = 'array' and jsonb_typeof(${t.changes}) = 'object'`),
   ],

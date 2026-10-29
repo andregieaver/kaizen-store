@@ -130,6 +130,13 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["export orders", "csv", "orders spreadsheet", "accountant", "bookkeeping", "download orders", "excel", "eksporter ordre"],
     feature: "shop",
   }),
+  store("orders.history-import", "/orders/history-import", "Import order history", "Main", "Brings the orders of another shop in from Shopify's order export, as history: each order is numbered C- and its old name, keeps the file's amounts in its own currency, and is never paid, refunded, sent, emailed, invoiced or counted in sales. An order is tied to a customer only when the store has one with its email; an order already imported is left as it is. Check the file first, then import it. The owner's only.", {
+    needs: "owner",
+    tasks: ["Import orders from Shopify", "Bring order history from another shop", "See what an order history import would do"],
+    keywords: ["import orders", "order history", "shopify orders", "migrate orders", "csv", "importer ordre", "ordrehistorikk"],
+    feature: "shop",
+  }),
+  store("orders.history-import.job", "/orders/history-import/[jobId]", "Order history import", "Main", "One order history import: the file, what the check found order by order, the import and its result, and the problems as a CSV. The owner's only.", { needs: "owner", feature: "shop" }),
   store("order.packing-slip", "/orders/[orderId]/packing-slip", "Packing slip", "Main", "A printable packing slip for one order, without prices: what is still to send (all of it, marked already sent, when nothing is left), or one parcel's items (?shipment=) with a line when more follows; for a gift order it also prints the buyer's gift message.", {
     keywords: ["print", "slip", "pack", "gift receipt", "gift slip"],
     feature: "shop",

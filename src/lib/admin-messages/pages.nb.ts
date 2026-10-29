@@ -21,6 +21,11 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     title: "Eksporter bestillinger",
     keywords: ["eksporter bestillinger", "eksporter ordre", "csv", "regnskap", "regnskapsfører", "excel", "last ned"],
   },
+  "store:orders.history-import": {
+    title: "Importer bestillingshistorikk",
+    keywords: ["importer bestillinger", "bestillingshistorikk", "ordrehistorikk", "shopify", "flytt bestillinger", "csv"],
+  },
+  "store:orders.history-import.job": { title: "Import av bestillingshistorikk", keywords: ["bestillingshistorikk", "importjobb"] },
   "store:order.packing-slip": { title: "Pakkseddel", keywords: ["pakkseddel", "skriv ut", "pakke", "gavekvittering"] },
   "store:orders.packing-slips": { title: "Pakksedler", keywords: ["pakksedler", "pakkseddel", "skriv ut flere", "plukk"] },
   "store:orders.pick-list": { title: "Plukkliste", keywords: ["plukkliste", "plukking", "plukk", "lager"] },

@@ -56,6 +56,7 @@ export default async function OrderExportPage({ params, searchParams }: Props) {
 async function Body({ storeSlug, searchParams }: { storeSlug: string; searchParams: Props["searchParams"] }) {
   const member = await requireOwnerRole(storeSlug);
   const w = adminText(adminLangOf(member.account.adminLocale), "orders").export;
+  const history = adminText(adminLangOf(member.account.adminLocale), "orders").historyImport;
   const query = await searchParams;
   const code = first(query.problem);
   const problem = code && Object.hasOwn(EXPORT_PROBLEM_TEXT, code) ? EXPORT_PROBLEM_TEXT[code as ExportProblemCode] : code ? EXPORT_PROBLEM_TEXT.failed : null;
@@ -74,6 +75,12 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
         </p>
       </Notice>
       <ExportSection member={member} kind="order_export" jobId={first(query.job)} base={`/admin/${member.store.slug}/orders/export`} now={new Date()} />
+      <p className="text-sm">
+        {history.moving}{" "}
+        <Link className="underline underline-offset-2" href={`/admin/${member.store.slug}/orders/history-import`}>
+          {history.link}
+        </Link>
+      </p>
     </>
   );
 }

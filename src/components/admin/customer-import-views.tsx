@@ -14,6 +14,26 @@ import { numberIn, rowsIn } from "@/lib/inventory-words";
  * The words shared with the stock import are the `inventory` catalogue's.
  */
 
+/**
+ * The words of an import of people's records, row by row: the customer import's (`customers` catalogue, `staff.import`) or the order history's
+ * (`orders` catalogue, `historyImport`, D384), which share these views.
+ */
+export type ImportWords = {
+  fileLabel: string;
+  hint: string;
+  ready: string;
+  counts: string;
+  skippedRows: string;
+  confirm: { one: string; many: string };
+  dry: { label: string; toCreate: string; toUpdate: string; withProblems: string };
+  applied: { label: string; written: string; stopped: string; created: string; updated: string; skipped: string; failed: string };
+  will: Record<string, string>;
+  done: Record<string, string>;
+  result: string;
+};
+
+const customerWords = (lang: AdminLang): ImportWords => adminText(lang, "customers").staff.import;
+
 const SEVERITY_STYLE = { error: "text-danger-text", warning: "text-warning-text", info: "text-muted" } as const;
 
 function Figures({ title, label, items, lang }: { title: string; label: string; items: [string, number][]; lang: AdminLang }) {
@@ -32,13 +52,13 @@ function Figures({ title, label, items, lang }: { title: string; label: string; 
   );
 }
 
-export function CustomerDryRun({ counts, lang }: { counts: { toCreate: number; toUpdate: number; withProblems: number }; lang: AdminLang }) {
-  const w = adminText(lang, "customers").staff.import.dry;
+export function CustomerDryRun({ counts, lang, words }: { counts: { toCreate: number; toUpdate: number; withProblems: number }; lang: AdminLang; words?: ImportWords }) {
+  const w = (words ?? customerWords(lang)).dry;
   return <Figures title={w.label} label={w.label} lang={lang} items={[[w.toCreate, counts.toCreate], [w.toUpdate, counts.toUpdate], [w.withProblems, counts.withProblems]]} />;
 }
 
-export function CustomerApplied({ counts, written, lang }: { counts: { created: number; updated: number; skipped: number; failed: number }; written: boolean; lang: AdminLang }) {
-  const w = adminText(lang, "customers").staff.import.applied;
+export function CustomerApplied({ counts, written, lang, words }: { counts: { created: number; updated: number; skipped: number; failed: number }; written: boolean; lang: AdminLang; words?: ImportWords }) {
+  const w = (words ?? customerWords(lang)).applied;
   return (
     <Figures
       title={written ? w.written : w.stopped}
@@ -52,8 +72,7 @@ export function CustomerApplied({ counts, written, lang }: { counts: { created: 
 export type CustomerItem = { seq: number; rows: number[]; outcome: ItemOutcome; will: string | null; file: boolean; messages: Finding[] };
 
 /** What a row's result is called: the check's advice, or what the apply did. */
-function resultOf(item: CustomerItem, lang: AdminLang): string {
-  const w = adminText(lang, "customers").staff.import;
+function resultOf(item: CustomerItem, w: ImportWords): string {
   const will: Record<string, string | undefined> = w.will;
   const done: Record<string, string | undefined> = w.done;
   if (item.outcome === "checked") return (item.will && will[item.will]) || "";
@@ -70,6 +89,7 @@ export function CustomerFindings({
   hrefFor,
   problemsHref,
   lang,
+  words,
 }: {
   items: CustomerItem[];
   total: number;
@@ -79,9 +99,10 @@ export function CustomerFindings({
   hrefFor: (query: { severity?: SeverityFilter; page?: number }) => string;
   problemsHref: string;
   lang: AdminLang;
+  words?: ImportWords;
 }) {
   const w = adminText(lang, "inventory").import.findings;
-  const own = adminText(lang, "customers").staff.import;
+  const own = words ?? customerWords(lang);
   const pages = Math.max(1, Math.ceil(total / pageSize));
   return (
     <section aria-labelledby="customer-findings-title" className="flex flex-col gap-3">
@@ -125,7 +146,7 @@ export function CustomerFindings({
               {items.map((item) => (
                 <tr key={item.seq} className="border-b border-line last:border-0">
                   <td className={`${td} whitespace-nowrap`}>{item.file ? <span className={hint}>{w.wholeFile}</span> : rowsIn(item.rows, w)}</td>
-                  <td className={td}>{item.file ? "" : resultOf(item, lang)}</td>
+                  <td className={td}>{item.file ? "" : resultOf(item, own)}</td>
                   <td className={td}>
                     {item.messages.length === 0 ? (
                       <span className={hint}>{w.nothingToNote}</span>

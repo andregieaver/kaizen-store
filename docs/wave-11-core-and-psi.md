@@ -182,6 +182,11 @@ every desk. `storefront.signup-and-contact-forms-feeding-customers-and-consent` 
 
 ### E. Moving in from another platform (D384)
 
+**Built (29 October 2026),** as designed below with four course changes (D384): an order is tied to a customer by the order's email matching
+one the store already has (the customer import keeps no link from a row to a customer); a WooCommerce product's handle is its name as WordPress
+slugs it (the file has no address column); a sale price's dates are judged on today's UTC date; an order number already taken counts as
+imported. `platform.migration-from-other-platforms` is Full.
+
 **What is missing.** A WooCommerce product file, redirects made from the old product addresses, and order history.
 
 **Design.**
