@@ -4046,6 +4046,8 @@ export const carts = commerce.table(
      * runs out, and where it goes (the cart or the checkout). The link sets the browser's cart cookie once and is then cleared.
      */
     handoffHash: text("handoff_hash"),
+    /** A cart kept through the storefront API (D398): the hash of its key, which only the token holder knows; null for any other cart. */
+    apiHash: text("api_hash"),
     handoffExpiresAt: timestamp("handoff_expires_at", { withTimezone: true }),
     handoffTo: text("handoff_to"),
     /** Where a cart was made when not by a shopper in the store (D353): `agent`, a shopping agent's `create_cart`. Its order counts as AI agents'. */
@@ -4072,8 +4074,9 @@ export const carts = commerce.table(
   (t) => [
     unique("carts_store_id_key").on(t.storeId, t.id),
     uniqueIndex("carts_handoff_idx").on(t.handoffHash),
+    uniqueIndex("carts_api_idx").on(t.apiHash),
     check("carts_handoff_to", sql`${t.handoffTo} is null or ${t.handoffTo} in ('cart', 'checkout')`),
-    check("carts_source", sql`${t.source} is null or ${t.source} in ('agent')`),
+    check("carts_source", sql`${t.source} is null or ${t.source} in ('agent', 'api')`),
     check("carts_gift_fields", giftFieldsCheck(t)),
     check("carts_bonus_request", sql`${t.bonusRequestMinor} >= 0`),
     check("carts_po_number", sql`${t.poNumber} is null or char_length(${t.poNumber}) between 1 and 40`),

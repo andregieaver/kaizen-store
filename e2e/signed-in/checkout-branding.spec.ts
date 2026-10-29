@@ -37,6 +37,9 @@ test.beforeAll(async () => {
     await sql`update commerce.stores set setup_completed_at = coalesce(setup_completed_at, now()) where slug = ${STORE}`;
     const [store] = await sql`select id, theme from commerce.stores where slug = ${STORE}`;
     themeBefore = store.theme;
+    // Each attempt starts with the theme's own checkout: a save from an attempt that timed out may still land after it, and a retry that
+    // found its colours already saved would have nothing to save.
+    await sql`update commerce.stores set theme = theme #- '{settings,checkout}' where id = ${store.id}`;
     const [market] = await sql`select code from commerce.markets where store_id = ${store.id} and active order by created_at, code limit 1`;
     marketSlug = String(market.code).toLowerCase();
   } finally {

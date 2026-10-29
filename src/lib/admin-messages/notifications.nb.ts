@@ -831,7 +831,8 @@ export const notificationsNb: NotificationsMessages = {
     neverUsed: "Ikke brukt ennå",
     revoke: "Trekk tilbake",
     revokeQuestion: "Trekke tilbake {name}? Nettstedet som bruker den, slutter å vise produktene dine.",
-    how: "Kall {base}/{store}/… med overskriften X-Storefront-Token og nøkkelen. Produkter og kategorier er slik nøkkelens land viser dem; en handlekurv prisberegnes og gis videre til kassen din, der bestillingen legges inn.",
+    how: "Kall {base}/{store}/… med overskriften X-Storefront-Token og nøkkelen. Produkter og kategorier er slik nøkkelens land viser dem; en handlekurv holdes av butikken og gis videre til kassen din, der bestillingen legges inn.",
+    contract: "Kontrakten (OpenAPI)",
     routesTitle: "Ruter",
     problems: {
       name: "Gi nøkkelen et navn på 1 til 60 tegn.",

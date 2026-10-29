@@ -99,11 +99,17 @@ export default async function ApiTokensPage({ params }: PageProps<"/admin/[store
               </List>
             )}
             <p className="text-sm text-ink-2">{fillWords(sw.how, { base: `${siteUrl()}/api/storefront/v1`, store: store.slug })}</p>
-            <ul className="flex flex-col gap-1 font-mono text-xs">
+            <ul className="flex flex-col gap-2 text-xs">
               {STOREFRONT_ROUTES.map((route) => (
-                <li key={`${route.method} ${route.path}`}>{`${route.method.padEnd(5, " ")} /api/storefront/v1/${store.slug}${route.path}`}</li>
+                <li key={`${route.method} ${route.path}`}>
+                  <span className="font-mono">{`${route.method.padEnd(6, " ")} /api/storefront/v1/${store.slug}${route.path}`}</span>
+                  <span className="block text-muted">{route.text}</span>
+                </li>
               ))}
             </ul>
+            <a href={`${siteUrl()}/api/storefront/v1/openapi.json`} className="self-start text-sm underline underline-offset-2">
+              {sw.contract}
+            </a>
           </div>
         </Card>
         <Card title={aw.title} description={aw.description}>

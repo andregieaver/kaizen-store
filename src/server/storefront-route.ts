@@ -13,7 +13,7 @@ import { storefrontCaller, storefrontProblem, type StorefrontCaller } from "./st
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, X-Storefront-Token",
   "Access-Control-Max-Age": "600",
   Vary: "X-Storefront-Token",

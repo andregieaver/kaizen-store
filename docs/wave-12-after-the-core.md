@@ -91,6 +91,10 @@ bought; the contract is listed on a settings page only.
 - A line says `available` (what `sellableQuantity()` allows).
 - The contract is a page (`/developers/storefront-api`, versioned, English), its routes from `STOREFRONT_ROUTES`.
 
+**As built (D398).** As designed, with two changes: a cart is named by a key kept as a hash (never its id, which is also a cookie's
+value), and the contract is an OpenAPI document at `/api/storefront/v1/openapi.json` made from the routes, not a page of Kaizena Flow's site
+(a page would take a reserved address and a Norwegian twin). `available` existed already in the quote.
+
 ### E. Checkout rules that reorder, and rules through the API (D399)
 
 **What is missing.** Rules hide and rename options but cannot order them; the rules and questions have no Admin API route.
@@ -111,7 +115,12 @@ and the export for a new table; a euro scenario for a new money read; hand-writt
 `typedRows()` for new server code; an integration test, a signed-in e2e where a unit adds a screen; parity rows re-rated with history;
 a decision row; migration versions recorded after CI.
 
-## 4. Waiting on the owner (unchanged)
+## 4. Waiting on the owner
 
 The decisions of `docs/wave-11-core-and-psi.md` section 4, and the agents' eval recording: run it once on Platform → AI so its recording
 can be committed and CI's replay goes live (D391).
+
+New in this wave: whether the storefront API may say how many of a variant a line can hold (D398). Today a line's `available` and a
+variant's `stock.max` are the store's own capped figures (the stock up to the line's most), as its quantity picker and cart show them; the
+parity row's criterion 3 asks for no more than an available flag. Narrowing it to a flag is a small change, at the cost of a front end
+that cannot cap its own quantity field.

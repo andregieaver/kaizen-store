@@ -123,7 +123,7 @@
       "was": "missing"
     },
     "weight": 2,
-    "gap": "The WordPress plugin's API (D169, D170) and, since D362, a storefront API for a front end of one's own: an owner makes a public token for one of the store's markets on Settings → Apps and API (`commerce.storefront_tokens`, at most 10, revoked there), and `/api/storefront/v1/{store}/products`, `/products/{handle}`, `/categories`, `/cart` (a quote) and `/checkout` (a hand-off) answer with `X-Storefront-Token` from any site (CORS), through the storefront's own reads (`viewOf()`, `productPageOf()`, `termsOf()`, `quoteCart()`, `handoffCart()`: prices by `wordpressPrice()`, only offered products, never a cost), budgeted per token (`storefront`, 1,200 a minute), the reads cached a minute and the catalogue under the store's tags; a store that is private, not open or without the shop answers 404 (`src/server/storefront-api.ts`, `src/server/storefront-route.ts`). Still short: the cart is kept by the site and quoted and handed over, not stored and changed through the API, and it is goods and downloads only (no bookings, plans or gift cards; criterion 2); a quote says how many of a line may be bought (as the store's cart does), more than an available flag (criterion 3); the contract is listed on the settings page, not a versioned public document. Merged on 2026-10-25 (README rule 8): `storefront.headless-storefront-api-hydrogen` was the same Shopify feature (rated partial); its criteria and evidence are here.",
+    "gap": "The WordPress plugin's API (D169, D170) and, since D362, a storefront API for a front end of one's own: an owner makes a public token for one of the store's markets on Settings → Apps and API (`commerce.storefront_tokens`, at most 10, revoked there), and `/api/storefront/v1/{store}/products`, `/products/{handle}`, `/categories`, `/cart` (a quote) and `/checkout` (a hand-off) answer with `X-Storefront-Token` from any site (CORS), through the storefront's own reads (`viewOf()`, `productPageOf()`, `termsOf()`, `quoteCart()`, `handoffCart()`: prices by `wordpressPrice()`, only offered products, never a cost), budgeted per token (`storefront`, 1,200 a minute), the reads cached a minute and the catalogue under the store's tags; a store that is private, not open or without the shop answers 404 (`src/server/storefront-api.ts`, `src/server/storefront-route.ts`). Since D398 a cart is kept by the store and changed through the API (`POST /carts`, `GET /carts/{cart}`, lines added, set and removed, each through `sellableQuantity()` and the quantity rule under the cart's lock; `src/server/api-carts.ts`), found by a key kept only as a hash, and handed to the store's own checkout by the one-time link, after which it is ordered through `placeOrder()` (`storefront-api.int.test.ts`); the contract is a versioned OpenAPI document at `/api/storefront/v1/openapi.json`. Still short: an API cart holds goods and downloads only (no bookings, plans or gift cards); and criterion 3 as written (no stock beyond an available flag) is not met: a line's `available` and a variant's `stock.max` are the same capped figures the store's own quantity picker and cart allow (the stock up to the line's most), a choice for the owner to keep or narrow. Merged on 2026-10-25 (README rule 8): `storefront.headless-storefront-api-hydrogen` was the same Shopify feature (rated partial); its criteria and evidence are here.",
     "bucket": "C",
     "wave": 9,
     "criteria": [
@@ -150,7 +150,10 @@
         "src/server/storefront-api.ts",
         "src/server/storefront-route.ts",
         "src/app/api/storefront/v1/[store]/products/route.ts",
-        "src/components/admin/storefront-tokens.tsx"
+        "src/components/admin/storefront-tokens.tsx",
+        "src/server/api-carts.ts",
+        "src/app/api/storefront/v1/[store]/carts/route.ts",
+        "src/app/api/storefront/v1/openapi.json/route.ts"
       ],
       "tests": [
         "src/server/wordpress.int.test.ts",
@@ -165,7 +168,8 @@
       "D169",
       "D170",
       "D96",
-      "D362"
+      "D362",
+      "D398"
     ],
     "history": [
       {

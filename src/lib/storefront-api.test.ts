@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { cartBody, isHandle, looksLikeStorefrontToken, productsQuery, STOREFRONT_ROUTES } from "./storefront-api";
+import { cartBody, cartQuantityBody, isHandle, looksLikeApiCartKey, looksLikeStorefrontToken, newCartBody, productsQuery, STOREFRONT_ROUTES, storefrontOpenApi } from "./storefront-api";
 
 describe("the storefront API's requests (D362)", () => {
   it("knows a storefront token by its shape", () => {
@@ -28,5 +28,30 @@ describe("the storefront API's requests (D362)", () => {
     expect(isHandle("blue-mug")).toBe(true);
     expect(isHandle("../admin")).toBe(false);
     expect(STOREFRONT_ROUTES.map((r) => `${r.method} ${r.path}`)).toContain("POST /checkout");
+  });
+});
+
+describe("kept carts and the contract (D398)", () => {
+  it("knows a cart's key by its shape and reads a new cart and a line's quantity", () => {
+    expect(looksLikeApiCartKey(`kfc_${"a".repeat(43)}`)).toBe(true);
+    expect(looksLikeApiCartKey(`kfs_${"a".repeat(43)}`)).toBe(false);
+    expect(looksLikeApiCartKey("kfc_short")).toBe(false);
+    expect(newCartBody.parse({})).toEqual({ lines: [] });
+    expect(cartQuantityBody.safeParse({ quantity: 0 }).success).toBe(true);
+    expect(cartQuantityBody.safeParse({ quantity: -1 }).success).toBe(false);
+  });
+
+  it("publishes every route in an OpenAPI document made from the routes, with the token as its security", () => {
+    const doc = storefrontOpenApi("https://example.com/api/storefront/v1");
+    expect(doc.openapi).toBe("3.1.0");
+    expect(doc.info.version).toBe("v1");
+    const listed = Object.entries(doc.paths).flatMap(([path, ops]) =>
+      Object.keys(ops)
+        .filter((k) => k !== "parameters")
+        .map((method) => `${method.toUpperCase()} ${path.replace(/^\/\{store\}/, "")}`),
+    );
+    expect(listed.sort()).toEqual(STOREFRONT_ROUTES.map((r) => `${r.method} ${r.path}`).sort());
+    expect((doc.paths["/{store}/carts/{cart}/lines/{variantId}"] as { parameters: { name: string }[] }).parameters.map((p) => p.name)).toEqual(["store", "cart", "variantId"]);
+    expect(doc.components.securitySchemes.storefrontToken).toEqual({ type: "apiKey", in: "header", name: "X-Storefront-Token" });
   });
 });

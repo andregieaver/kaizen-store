@@ -988,7 +988,9 @@ stand-in is the only fake, and only it is told it is one.
   `/api/storefront/v1/{store}/…` answers only through `asStorefront()` (the store's own token, `storefrontProblem()`, the `storefront`
   budget) and only from the storefront's own reads (`viewOf()`, `productPageOf()`, `termsOf()`, `quoteCart()`, `handoffCart()`); tokens are
   written only by that module. A new route reads only what a visitor of the token's market sees, never prices or stocks a thing itself, and
-  places no order.
+  places no order. A cart kept through the API (D398) is a real cart (`carts.source = 'api'`) found only by its key's hash, changed only by
+  `src/server/api-carts.ts` through the store's own line checks, read through `quoteCart()`, and handed to checkout by the one-time link that
+  clears its key; a new route is an entry of `STOREFRONT_ROUTES` with its words, which the OpenAPI document (`storefrontOpenApi()`) is made from.
 - **A custom app's tools (wave 9 unit J, D363, `src/lib/custom-apps.ts`, `src/server/custom-apps.ts`)**: an owner's MCP apps are written only by
   that module (endpoint and token encrypted, every request through `safeFetch()`); the AI manager offers only `appToolsFor()`'s tools, to owners,
   never in an autopilot step, runs a `read` one through `callAppTool()` and keeps any other for the person's yes (`keepForApproval()`, run by

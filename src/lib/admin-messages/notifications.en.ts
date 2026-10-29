@@ -625,7 +625,8 @@ export const notificationsEn = {
     neverUsed: "Not used yet",
     revoke: "Revoke",
     revokeQuestion: "Revoke {name}? The site using it stops showing your products.",
-    how: "Call {base}/{store}/… with the header X-Storefront-Token and the token. Products and categories are as the token's country shows them; a cart is quoted and handed to your checkout, where the order is placed.",
+    how: "Call {base}/{store}/… with the header X-Storefront-Token and the token. Products and categories are as the token's country shows them; a cart is kept by the store and handed to your checkout, where the order is placed.",
+    contract: "The contract (OpenAPI)",
     routesTitle: "Routes",
     problems: {
       name: "Give the token a name of 1 to 60 characters.",
