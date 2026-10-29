@@ -1,6 +1,7 @@
 import "server-only";
 
 import { sql, type SQL } from "drizzle-orm";
+import { z } from "zod";
 
 import { db } from "@/db/client";
 import { safeRatio } from "@/lib/analytics-core";
@@ -28,6 +29,7 @@ import { getAnalyticsSettings } from "./analytics-settings";
 import { CUSTOMER_JOIN, CUSTOMER_KEY, dayKey, dayStart, EXCHANGE_ORDER, FROM_CHECKOUT, HAS_CUSTOMER, inMain, num, PAID, type Row, soldIn, STAFF_MADE, toMainOne } from "./analytics-sql";
 import { setBasedReplica as setBased } from "./analytics-totals";
 import type { Store } from "./stores";
+import { checkedRows, col, typedRows } from "./typed-rows";
 
 /**
  * Traffic and marketing reads (D152, docs/analytics.md, "Visit counting", "Traffic", "Marketing"): sessions, the funnel, devices,
@@ -148,25 +150,45 @@ const ORDER_VISIT = sql`left join commerce.carts c on c.store_id = o.store_id an
   left join commerce.visits v on v.store_id = o.store_id and v.id = c.visit_id`;
 
 /**
+ * The money reads here (CODE-02). Revenue is without VAT in minor units of the row's currency; a key (`k`) is null where its SQL is
+ * (a device or campaign of no visit). Spend and costs of goods are in the main currency already.
+ */
+const CURRENCY_MONEY = z.object({ currency: col.currency, orders: col.minor, revenue: col.minor });
+const KEYED_MONEY = CURRENCY_MONEY.extend({ k: col.textOrNull });
+type KeyedMoney = z.output<typeof KEYED_MONEY>;
+const GAP_ROW = CURRENCY_MONEY.extend({ converts: col.bool, outside: col.bool });
+/** `channelOrders()`'s three kinds of row, each a JSON object (numbers come as JSON numbers). */
+const CHANNEL_ORDERS = KEYED_MONEY.extend({ k: col.text, cogs: col.minor, known_rev: col.minor, physical_orders: col.minor });
+const CHANNEL_PLATFORM = z.object({ ch: col.text, currency: col.currency, fee: col.minorOrNull });
+const CHANNEL_FEES = z.object({ ch: col.text, currency: col.currency, total_minor: col.minor, n: col.minor });
+const CHANNEL_ROW = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("orders"), r: CHANNEL_ORDERS }),
+  z.object({ kind: z.literal("platform"), r: CHANNEL_PLATFORM }),
+  z.object({ kind: z.literal("fees"), r: CHANNEL_FEES }),
+]);
+const SPEND_BY_CHANNEL = z.object({ ch: col.text, amount: col.minor });
+const SPEND_BY_CAMPAIGN = z.object({ campaign: col.text, amount: col.minor });
+
+/**
  * Paid orders of a range grouped by `key` (SQL over `o` and `v`) and currency: orders and revenue without VAT. `extra` narrows the orders.
  */
-async function ordersBy(store: Store, range: Range, key: SQL, options: { extra?: SQL } = {}): Promise<Row[]> {
-  return setBased<Row>(sql`
+async function ordersBy(store: Store, range: Range, key: SQL, options: { extra?: SQL } = {}): Promise<KeyedMoney[]> {
+  return setBased(sql`
     select (${key})::text as k, o.currency::text as currency, count(*) as orders, sum(o.total_minor - o.tax_minor) as revenue
     from commerce.orders o ${ORDER_VISIT}
     where o.store_id = ${store.id}::uuid and ${PAID} and ${FROM_CHECKOUT} and ${soldIn(store, range)}
       and o.currency = any(${convertibleCurrencies(store)}) ${options.extra ?? sql``}
     group by 1, 2
-  `);
+  `).then((rows) => checkedRows(KEYED_MONEY, rows));
 }
 
 /**
  * Several `ordersBy()` groupings of the same orders from one read: the paid orders of the range are found and joined to their
  * visits once, and each key (SQL over `o` and `v`) is its own grouping of that.
  */
-async function ordersByKeys<K extends string>(store: Store, range: Range, keys: Record<K, SQL>): Promise<Record<K, Row[]>> {
+async function ordersByKeys<K extends string>(store: Store, range: Range, keys: Record<K, SQL>): Promise<Record<K, KeyedMoney[]>> {
   const names = Object.keys(keys) as K[];
-  const rows = await setBased<Row>(sql`
+  const rows = await setBased(sql`
     with po as materialized (
       select o.currency::text as currency, (o.total_minor - o.tax_minor) as revenue,
         ${sql.join(names.map((name, i) => sql`(${keys[name]})::text as k${sql.raw(String(i))}`), sql`, `)}
@@ -177,9 +199,9 @@ async function ordersByKeys<K extends string>(store: Store, range: Range, keys: 
       names.map((name, i) => sql`select ${name} as kind, k${sql.raw(String(i))} as k, currency, count(*) as orders, sum(revenue) as revenue from po group by k${sql.raw(String(i))}, currency`),
       sql` union all `,
     )}
-  `);
-  const out = Object.fromEntries(names.map((name) => [name, [] as Row[]])) as Record<K, Row[]>;
-  for (const row of rows) out[String(row.kind) as K].push(row);
+  `).then((read) => checkedRows(KEYED_MONEY.extend({ kind: col.text }), read));
+  const out = Object.fromEntries(names.map((name) => [name, [] as KeyedMoney[]])) as Record<K, KeyedMoney[]>;
+  for (const row of rows) out[row.kind as K].push(row);
   return out;
 }
 
@@ -190,19 +212,19 @@ type Money = { orders: number; revenueMinor: number };
  * report names them.
  */
 async function staffMadeIn(store: Store, range: Range, which: SQL = STAFF_MADE): Promise<Money> {
-  const rows = await setBased<Row>(sql`
+  const rows = await setBased(sql`
     select o.currency::text as currency, count(*) as orders, sum(o.total_minor - o.tax_minor) as revenue
     from commerce.orders o
     where o.store_id = ${store.id}::uuid and ${PAID} and ${which} and ${soldIn(store, range)}
       and o.currency = any(${convertibleCurrencies(store)})
     group by 1
-  `);
+  `).then((read) => checkedRows(CURRENCY_MONEY, read));
   return { orders: rows.reduce((s, r) => s + num(r, "orders"), 0), revenueMinor: inMain(store, rows.map((r) => ({ ...r, currency: String(r.currency) })), ["revenue"]).values.revenue };
 }
 
 /** Rows from `ordersBy()` folded into the main currency, per key. */
-function foldByKey(store: Store, rows: Row[]): Map<string, Money & { unconverted: number }> {
-  const groups = new Map<string, Row[]>();
+function foldByKey(store: Store, rows: readonly KeyedMoney[]): Map<string, Money & { unconverted: number }> {
+  const groups = new Map<string, KeyedMoney[]>();
   for (const row of rows) {
     const list = groups.get(String(row.k)) ?? [];
     list.push(row);
@@ -232,13 +254,13 @@ const sumMoney = (maps: Iterable<Money>): Money => {
  */
 async function orderGaps(store: Store, period: AnalyticsPeriod, range: Range | null): Promise<{ uncovered: Money; excluded: { unconverted: number; missing: string[] } }> {
   const outside = range ? sql`not ${soldIn(store, range)}` : sql`true`;
-  const rows = await setBased<Row>(sql`
+  const rows = await setBased(sql`
     select o.currency::text as currency, (o.currency = any(${convertibleCurrencies(store)})) as converts, (${outside}) as outside,
       count(*) as orders, sum(o.total_minor - o.tax_minor) as revenue
     from commerce.orders o
     where o.store_id = ${store.id}::uuid and ${PAID} and ${soldIn(store, period)}
     group by 1, 2, 3
-  `);
+  `).then((read) => checkedRows(GAP_ROW, read));
   const uncoveredRows = rows.filter((r) => r.converts === true && r.outside === true);
   const left = rows.filter((r) => r.converts !== true);
   return {
@@ -498,13 +520,17 @@ const blank = (): Acc => ({ sessions: 0, orders: 0, revenue: 0, newCustomers: 0,
  * payments (`platform`); and, with payment fees on, the orders' distinct totals with how many have each (`fees`: the fee is worked
  * out per order by the caller). Orders in a currency the store cannot convert are left out of all three.
  */
-async function channelOrders(store: Store, range: Range, feesOn: boolean): Promise<{ orders: Row[]; platform: Row[]; fees: Row[] }> {
+async function channelOrders(
+  store: Store,
+  range: Range,
+  feesOn: boolean,
+): Promise<{ orders: z.output<typeof CHANNEL_ORDERS>[]; platform: z.output<typeof CHANNEL_PLATFORM>[]; fees: z.output<typeof CHANNEL_FEES>[] }> {
   const known = convertibleCurrencies(store);
   // A staff-made order (D173) came from no visit: its own row, whatever cart or visit it might be tied to.
   // An exchange order (D239) likewise: its own row.
   // A cart a shopping agent handed over (D353, `carts.source = 'agent'`) is the AI agents' whatever visit opened it.
   const channel = sql`(case when ${STAFF_MADE} then ${STAFF_CHANNEL} when ${EXCHANGE_ORDER} then ${EXCHANGE_CHANNEL} when c.source = 'agent' then 'ai_agent' else coalesce(v.channel, ${UNKNOWN_CHANNEL}) end)`;
-  const rows = await setBased<Row>(sql`
+  const rows = await setBased(sql`
     with po0 as materialized (
       select o.id, o.store_id, o.currency::text as currency, (o.currency = any(${known})) as ok, o.total_minor, o.tax_minor, (${channel})::text as k
       from commerce.orders o ${ORDER_VISIT}
@@ -556,9 +582,13 @@ async function channelOrders(store: Store, range: Range, feesOn: boolean): Promi
         ? sql`union all select 'fees', to_jsonb(t) from (select k as ch, currency, total_minor, count(*) as n from po0 where ok group by k, currency, total_minor) t`
         : sql``
     }
-  `);
-  const out = { orders: [] as Row[], platform: [] as Row[], fees: [] as Row[] };
-  for (const { kind, r } of rows as unknown as { kind: keyof typeof out; r: Row }[]) out[kind].push(r);
+  `).then((read) => checkedRows(CHANNEL_ROW, read));
+  const out = { orders: [] as z.output<typeof CHANNEL_ORDERS>[], platform: [] as z.output<typeof CHANNEL_PLATFORM>[], fees: [] as z.output<typeof CHANNEL_FEES>[] };
+  for (const row of rows) {
+    if (row.kind === "orders") out.orders.push(row.r);
+    else if (row.kind === "platform") out.platform.push(row.r);
+    else out.fees.push(row.r);
+  }
   return out;
 }
 
@@ -595,11 +625,14 @@ async function newCustomersByChannel(store: Store, range: Range): Promise<Map<st
 }
 
 async function spendByChannel(store: Store, from: string, to: string): Promise<Map<string, number>> {
-  const rows = await db().execute<Row>(sql`
+  const rows = await typedRows(
+    SPEND_BY_CHANNEL,
+    sql`
     select s.channel as ch, sum(s.amount_minor) as amount from commerce.marketing_spend s
     where s.store_id = ${store.id}::uuid and s.day >= ${from}::date and s.day < ${to}::date
     group by 1
-  `);
+  `,
+  );
   return count(rows, "ch", "amount");
 }
 
@@ -738,11 +771,14 @@ export async function campaignReport(store: Store, period: AnalyticsPeriod, mode
       where coalesce(${camp}, '') <> ''
       group by 1
     `),
-    db().execute<Row>(sql`
+    typedRows(
+      SPEND_BY_CAMPAIGN,
+      sql`
       select lower(btrim(s.campaign)) as campaign, sum(s.amount_minor) as amount from commerce.marketing_spend s
       where s.store_id = ${store.id}::uuid and s.day >= ${range.from}::date and s.day < ${range.to}::date and s.campaign <> ''
       group by 1
-    `),
+    `,
+    ),
     model === "first"
       ? setBased<Row>(sql`
           select count(*) as orders, count(*) filter (where v.first_channel is not null) as known

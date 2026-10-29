@@ -1,6 +1,7 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 
 import { db } from "@/db/client";
 import { safeRatio } from "@/lib/analytics-core";
@@ -11,6 +12,7 @@ import { mainCurrency } from "@/lib/markets";
 import { CUSTOMER_JOIN, CUSTOMER_KEY, dayStart, HAS_CUSTOMER, inMain, num, PAID, type Row, soldIn } from "./analytics-sql";
 import { setBasedReplica as setBased } from "./analytics-totals";
 import type { Store } from "./stores";
+import { checkedRows, col } from "./typed-rows";
 
 /**
  * Sales by country and city for the Traffic page's geography (D152, docs/analytics.md).
@@ -104,6 +106,11 @@ function convertibleCurrencies(store: Store): Set<string> {
 
 const asCurrency = (r: Row) => ({ ...r, currency: String(r.currency).trim() });
 
+/** Paid orders and their revenue without VAT, in minor units of the row's currency (CODE-02): per market, per city, without a city. */
+const MARKET_ROW = z.object({ market: col.text, currency: col.currency, orders: col.minor, revenue: col.minor });
+const CITY_ROW = z.object({ currency: col.currency, country: col.text, ckey: col.text, city: col.text, orders: col.minor, revenue: col.minor, n: col.minor });
+const NO_CITY_ROW = z.object({ currency: col.currency, orders: col.minor, revenue: col.minor });
+
 /** What an address's city is for grouping: lower case, trimmed, runs of spaces as one. */
 const CITY_KEY = sql`regexp_replace(lower(btrim(o.shipping_address ->> 'city')), '[[:space:]]+', ' ', 'g')`;
 const HAS_CITY = sql`nullif(btrim(o.shipping_address ->> 'city'), '') is not null`;
@@ -116,12 +123,12 @@ export async function geoReport(store: Store, period: Pick<AnalyticsPeriod, "fro
 
   const [marketRows, freshRows, cityRows, addressRows] = await Promise.all([
     // Orders and revenue per market and currency.
-    setBased<Row>(sql`
+    setBased(sql`
       select o.market_code::text as market, o.currency::text as currency, count(*) as orders, sum(o.total_minor - o.tax_minor) as revenue
       from commerce.orders o
       where o.store_id = ${id}::uuid and ${PAID} and ${inRange}
       group by 1, 2
-    `),
+    `).then((rows) => checkedRows(MARKET_ROW, rows)),
     // New customers by the market of their first paid order (the same customers as the Overview counts: first paid order in the
     // period, with an order in the period in a currency that can be converted). One pass over the store's paid orders up to the
     // period's end finds the customer keys that qualify (a grouped minimum, no sorting); only their first orders are then looked at.
@@ -146,7 +153,7 @@ export async function geoReport(store: Store, period: Pick<AnalyticsPeriod, "fro
       group by 1
     `),
     // Cities, per currency, the best by revenue (revenue of that currency).
-    setBased<Row>(sql`
+    setBased(sql`
       with g as (
         select o.currency::text as currency,
           coalesce(nullif(upper(btrim(o.shipping_address ->> 'country')), ''), o.market_code::text) as country,
@@ -162,14 +169,14 @@ export async function geoReport(store: Store, period: Pick<AnalyticsPeriod, "fro
         from g
       )
       select currency, country, ckey, city, orders, revenue, n from ranked where rn <= ${CITY_READ_CAP}
-    `),
+    `).then((rows) => checkedRows(CITY_ROW, rows)),
     // Orders with no city.
-    setBased<Row>(sql`
+    setBased(sql`
       select o.currency::text as currency, count(*) as orders, sum(o.total_minor - o.tax_minor) as revenue
       from commerce.orders o
       where o.store_id = ${id}::uuid and ${PAID} and ${inRange} and not (${HAS_CITY})
       group by 1
-    `),
+    `).then((rows) => checkedRows(NO_CITY_ROW, rows)),
   ]);
 
   const usable = marketRows.filter((r) => convertible.has(String(r.currency).trim()));

@@ -1,6 +1,7 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 
 import { db } from "@/db/client";
 import { ALERT_RULES, alertsFor, type Alert, type AlertSnapshot, type ChannelCacRow, type DailyPoint, type ProductRefundRow, type ReturningMonth } from "@/lib/analytics-alerts";
@@ -28,6 +29,7 @@ import { CUSTOMER_JOIN, CUSTOMER_KEY, dayStart, HAS_CUSTOMER, inMain, inPeriod, 
 import { periodTotals, seriesByBucket, setBased } from "./analytics-totals";
 import { marketingReport, sessionTotals, trafficReport, type MarketingReport, type TrafficReport } from "./analytics-traffic-data";
 import type { Store } from "./stores";
+import { checkedRows, col } from "./typed-rows";
 
 /**
  * What the store's own figures say needs a look, where sales are heading and why they moved (D152, docs/analytics.md, "Alerts,
@@ -276,6 +278,9 @@ async function productNames(store: Store, ids: readonly string[]): Promise<Map<s
   return new Map(rows.map((row) => [String(row.id), row.title ? String(row.title) : String(row.handle)]));
 }
 
+/** Returning customers' paid orders of a month in one currency, revenue without VAT in its minor units (CODE-02). */
+const RETURNING_MONTH = z.object({ month: col.text, currency: col.currency, orders: col.minor, revenue: col.minor, store_first: col.textOrNull });
+
 /**
  * Revenue and orders of returning customers (a paid order in the month, the customer's first one before the month began) for the last
  * twelve completed months, oldest first, without VAT and before refunds, in the main currency. A month before the store's first
@@ -284,7 +289,7 @@ async function productNames(store: Store, ids: readonly string[]): Promise<Map<s
 export async function returningMonths(store: Store, today: string): Promise<ReturningMonth[]> {
   const thisMonth = startOfMonth(today);
   const from = addMonths(thisMonth, -ALERT_RULES.returningHigh.months);
-  const rows = await setBased<Row>(sql`
+  const rows = await setBased(sql`
     with ko as materialized (
       select ${CUSTOMER_KEY} as k, o.placed_at, o.currency::text as currency, (o.total_minor - o.tax_minor) as revenue
       from commerce.orders o ${CUSTOMER_JOIN}
@@ -299,7 +304,7 @@ export async function returningMonths(store: Store, today: string): Promise<Retu
     join first_order f on f.k = ko.k
     where ko.placed_at >= ${dayStart(store, from)} and f.first_at < date_trunc('month', ko.placed_at at time zone ${store.timeZone}) at time zone ${store.timeZone}
     group by 1, 2
-  `);
+  `).then((read) => checkedRows(RETURNING_MONTH, read));
   // The store's first month with a customer comes from the same read; with no returning order at all, from a read of its own.
   let storeFirst = rows.length > 0 ? String(rows[0].store_first) : null;
   if (storeFirst === null) {

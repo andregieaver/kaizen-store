@@ -3,6 +3,7 @@ import "server-only";
 import { revalidateTag, updateTag } from "next/cache";
 
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 
 import { db } from "@/db/client";
 import {
@@ -22,9 +23,23 @@ import { mainCurrency } from "@/lib/markets";
 import { audit, type Membership } from "./auth";
 import { cookiesTag } from "./site-cookies";
 import { storeTag } from "./stores";
+import { col, typedRow, typedRows } from "./typed-rows";
 import { can } from "@/lib/permissions";
 
 type Row = Record<string, unknown>;
+
+/** The money reads here (CODE-02): amounts in minor units of the store's main currency, a target in its metric's unit. */
+const SETTINGS_ROW = z.object({
+  payment_fee_bps: col.int,
+  payment_fee_fixed_minor: col.minor,
+  shipping_cost_minor: col.minor,
+  fixed_costs_monthly_minor: col.minor,
+  ltv_lifespan_years: col.int,
+  updated_at: col.timestamp,
+});
+const MONTH_TARGET_ROW = z.object({ month: col.text, revenue_target_minor: col.minor });
+const PERIOD_TARGET_ROW = z.object({ id: col.text, metric: col.text, period: col.text, starts_on: col.text, ends_on: col.text, target_value: col.minor });
+const SPEND_ROW = z.object({ id: col.text, day: col.text, channel: col.text, campaign: col.text, amount_minor: col.minor, note: col.textOrNull });
 
 /**
  * The store's analytics set-up (D152, `docs/analytics.md`): cost assumptions, monthly targets, marketing spend, the switch
@@ -63,19 +78,22 @@ export type StoredAnalyticsSettings = AnalyticsSettings & {
 
 /** The store's cost assumptions, or the defaults (everything zero, lifespan 3 years) when none were saved. */
 export async function getAnalyticsSettings(storeId: string): Promise<StoredAnalyticsSettings> {
-  const [row] = await db().execute<Row>(sql`
+  const row = await typedRow(
+    SETTINGS_ROW,
+    sql`
     select payment_fee_bps, payment_fee_fixed_minor, shipping_cost_minor, fixed_costs_monthly_minor, ltv_lifespan_years, updated_at
     from commerce.analytics_settings where store_id = ${storeId}::uuid
-  `);
+  `,
+  );
   if (!row) return { ...ANALYTICS_DEFAULTS, saved: false, updatedAt: null };
   return {
-    paymentFeeBps: Number(row.payment_fee_bps),
-    paymentFeeFixedMinor: Number(row.payment_fee_fixed_minor),
-    shippingCostMinor: Number(row.shipping_cost_minor),
-    fixedCostsMonthlyMinor: Number(row.fixed_costs_monthly_minor),
-    ltvLifespanYears: Number(row.ltv_lifespan_years),
+    paymentFeeBps: row.payment_fee_bps,
+    paymentFeeFixedMinor: row.payment_fee_fixed_minor,
+    shippingCostMinor: row.shipping_cost_minor,
+    fixedCostsMonthlyMinor: row.fixed_costs_monthly_minor,
+    ltvLifespanYears: row.ltv_lifespan_years,
     saved: true,
-    updatedAt: new Date(String(row.updated_at)).toISOString(),
+    updatedAt: row.updated_at,
   };
 }
 
@@ -147,11 +165,14 @@ export type StoredTarget = { month: string; revenueTargetMinor: number };
 
 /** The store's monthly net-sales targets, newest month first (the first form, D152; every other target is `listPeriodTargets()`). */
 export async function listTargets(storeId: string, limit = 24): Promise<StoredTarget[]> {
-  const rows = await db().execute<Row>(sql`
+  const rows = await typedRows(
+    MONTH_TARGET_ROW,
+    sql`
     select month::text as month, revenue_target_minor from commerce.analytics_targets
     where store_id = ${storeId}::uuid and month is not null order by month desc limit ${Math.min(Math.max(Math.floor(limit), 1), 120)}
-  `);
-  return rows.map((r) => ({ month: String(r.month), revenueTargetMinor: Number(r.revenue_target_minor) }));
+  `,
+  );
+  return rows.map((r) => ({ month: r.month, revenueTargetMinor: r.revenue_target_minor }));
 }
 
 /** Sets a month's net revenue target (typed `{ month: "2026-10", revenueTarget: "500 000" }`); a month has one, so it replaces. */
@@ -174,18 +195,21 @@ export type StoredPeriodTarget = PeriodTarget & { id: string };
 /** The store's targets of every kind whose period ends on or after `from` (every one without it), soonest first; at most `limit`. */
 export async function listPeriodTargets(storeId: string, { from, limit = 100 }: { from?: string; limit?: number } = {}): Promise<StoredPeriodTarget[]> {
   const after = from && isValidDay(from) ? sql`and ends_on >= ${from}::date` : sql``;
-  const rows = await db().execute<Row>(sql`
+  const rows = await typedRows(
+    PERIOD_TARGET_ROW,
+    sql`
     select id, metric, period, starts_on::text as starts_on, ends_on::text as ends_on, target_value from commerce.analytics_targets
     where store_id = ${storeId}::uuid ${after}
     order by starts_on, metric, period limit ${Math.min(Math.max(Math.floor(limit), 1), 500)}
-  `);
+  `,
+  );
   return rows.map((r) => ({
-    id: String(r.id),
-    metric: String(r.metric) as PeriodTarget["metric"],
-    period: String(r.period) as PeriodTarget["period"],
-    startsOn: String(r.starts_on),
-    endsOn: String(r.ends_on),
-    targetValue: Number(r.target_value),
+    id: r.id,
+    metric: r.metric as PeriodTarget["metric"],
+    period: r.period as PeriodTarget["period"],
+    startsOn: r.starts_on,
+    endsOn: r.ends_on,
+    targetValue: r.target_value,
   }));
 }
 
@@ -252,19 +276,22 @@ export async function listSpend(
 ): Promise<StoredSpend[]> {
   const since = from && isValidDay(from) ? sql`and day >= ${from}::date` : sql``;
   const until = to && isValidDay(to) ? sql`and day < ${to}::date` : sql``;
-  const rows = await db().execute<Row>(sql`
+  const rows = await typedRows(
+    SPEND_ROW,
+    sql`
     select id, day::text as day, channel, campaign, amount_minor, note from commerce.marketing_spend
     where store_id = ${storeId}::uuid ${since} ${until}
     order by day desc, channel, campaign
     limit ${Math.min(Math.max(Math.floor(limit), 1), 1000)}
-  `);
+  `,
+  );
   return rows.map((r) => ({
-    id: String(r.id),
-    day: String(r.day),
-    channel: String(r.channel),
-    campaign: String(r.campaign),
-    amountMinor: Number(r.amount_minor),
-    note: r.note === null ? null : String(r.note),
+    id: r.id,
+    day: r.day,
+    channel: r.channel,
+    campaign: r.campaign,
+    amountMinor: r.amount_minor,
+    note: r.note,
   }));
 }
 

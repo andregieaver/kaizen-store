@@ -1,6 +1,7 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 
 import { db } from "@/db/client";
 import {
@@ -31,9 +32,10 @@ import type { AnalyticsSettings } from "@/lib/analytics-settings";
 import { convertMinor } from "@/lib/currency";
 import { mainCurrency } from "@/lib/markets";
 
-import { CUSTOMER_JOIN, CUSTOMER_KEY, dayStart, HAS_CUSTOMER, NOT_EDIT_REFUND, num, type Row, SOLD_AT, soldIn } from "./analytics-sql";
+import { CUSTOMER_JOIN, CUSTOMER_KEY, dayStart, HAS_CUSTOMER, NOT_EDIT_REFUND, type Row, SOLD_AT, soldIn } from "./analytics-sql";
 import { setBased as setBasedPrimary, setBasedReplica as setBased } from "./analytics-totals";
 import type { Store } from "./stores";
+import { checkedRows, col } from "./typed-rows";
 
 /**
  * The Customers page's figures (D152, docs/analytics.md): new and returning customers, repeat purchase rate, purchase
@@ -124,9 +126,30 @@ export type CustomersReport = {
   missingRates: string[];
 };
 
-/** What the aggregate query returns for a customer: their months and their period, as JSON. */
-type MonthRow = { month: string; currency: string; orders: number; net: number; contribution: number };
-type PeriodRow = { currency: string; orders: number; net: number };
+/** What the aggregate query returns for a customer (CODE-02): their months and their period, as JSON, amounts in the currency the shopper saw. */
+const MONTH_ROW = z.object({ month: col.text, currency: col.currency, orders: col.int, net: col.minor, contribution: col.minor });
+const PERIOD_ROW = z.object({ currency: col.currency, orders: col.int, net: col.minor });
+const CUSTOMER_ROW = z.object({
+  customer_key: col.text,
+  first_at: col.timestamp,
+  second_at: col.timestampOrNull,
+  last_at: col.timestamp,
+  orders: col.int,
+  orders_365: col.int,
+  cost_main: col.minor,
+  unknown: col.bool.nullable(),
+  months: z.array(MONTH_ROW).nullable(),
+  period: z.array(PERIOD_ROW).nullable(),
+});
+type CustomerRow = z.output<typeof CUSTOMER_ROW>;
+
+/** A customer's net revenue per month and currency, for their RFM group. */
+const RFM_ROW = z.object({
+  customer_key: col.text,
+  last_at: col.timestamp,
+  orders: col.int,
+  months: z.array(z.object({ currency: col.currency, net: col.minor })).nullable(),
+});
 
 const iso = (value: unknown): string => new Date(value as string | Date).toISOString();
 
@@ -134,7 +157,7 @@ const iso = (value: unknown): string => new Date(value as string | Date).toISOSt
  * Everything about the store's customers to date, in a form the pure library takes: one row per customer, the most recently
  * active first, at most `CUSTOMER_CAP + 1` (the extra one only says there are more).
  */
-async function readCustomers(store: Store, period: AnalyticsPeriod, settings: AnalyticsSettings, now: Date, cap: number): Promise<Row[]> {
+async function readCustomers(store: Store, period: AnalyticsPeriod, settings: AnalyticsSettings, now: Date, cap: number): Promise<CustomerRow[]> {
   const nowIso = now.toISOString();
   const id = store.id;
   // `ord` is one row per paid order with what the figures need of its payments, refunds and lines. Those three are summed per order
@@ -143,7 +166,7 @@ async function readCustomers(store: Store, period: AnalyticsPeriod, settings: An
   // An inner join to the captured payments is the paid-order rule (a captured payment exists). Each order's net revenue and
   // contribution are worked out once, here; the groupings below (`m` per customer, month and currency, `cust` per customer, `during`
   // per customer and currency in the period) are narrow sums over that, so none of them outgrows the memory a hash aggregate gets.
-  return setBased<Row>(sql`
+  return setBased(sql`
     with ord as materialized (
       select ${CUSTOMER_KEY} as customer_key, o.placed_at, trim(o.currency) as currency,
         ${soldIn(store, period)} as in_period,
@@ -215,7 +238,7 @@ async function readCustomers(store: Store, period: AnalyticsPeriod, settings: An
     left join months mo using (customer_key)
     left join during d using (customer_key)
     order by c.last_at desc, c.customer_key
-  `);
+  `).then((rows) => checkedRows(CUSTOMER_ROW, rows));
 }
 
 /**
@@ -283,7 +306,7 @@ type Folded = {
 };
 
 /** Rows from the database as the pure library's customers, amounts converted into the main currency one by one. */
-function fold(store: Store, rows: readonly Row[]): Folded {
+function fold(store: Store, rows: readonly CustomerRow[]): Folded {
   const main = mainCurrency(store);
   const rates = store.localization.rates;
   const missing = new Set<string>();
@@ -302,48 +325,48 @@ function fold(store: Store, rows: readonly Row[]): Folded {
     };
     const byMonth = new Map<string, OrderMonth>();
     let contribution = 0;
-    for (const m of (row.months ?? []) as MonthRow[]) {
-      const net = convert(Number(m.net), m.currency);
+    for (const m of row.months ?? []) {
+      const net = convert(m.net, m.currency);
       const had = byMonth.get(m.month);
       if (had) {
-        had.orders += Number(m.orders);
+        had.orders += m.orders;
         had.revenueMinor += net;
       } else {
-        byMonth.set(m.month, { month: m.month, orders: Number(m.orders), revenueMinor: net });
+        byMonth.set(m.month, { month: m.month, orders: m.orders, revenueMinor: net });
       }
-      contribution += convert(Number(m.contribution), m.currency);
+      contribution += convert(m.contribution, m.currency);
     }
     const orderMonths = [...byMonth.values()].sort((a, b) => (a.month < b.month ? -1 : 1));
     const revenueMinor = orderMonths.reduce((a, m) => a + m.revenueMinor, 0);
     const costsKnown = row.unknown === false || row.unknown === null;
     const customerKey = String(row.customer_key);
-    const periodRows = (row.period ?? []) as PeriodRow[];
+    const periodRows = row.period ?? [];
     let periodOrders = 0;
     let periodNet = 0;
     for (const p of periodRows) {
       // As the Overview does: orders in a currency with no rate are left out of the period's orders and customers (the customer is
       // counted in `unconverted`), never counted with an amount of 0.
-      const net = convertMinor(Number(p.net), p.currency.trim(), main, rates);
+      const net = convertMinor(p.net, p.currency, main, rates);
       if (net === null) {
         lost = true;
         missing.add(p.currency.trim());
         continue;
       }
-      periodOrders += Number(p.orders);
+      periodOrders += p.orders;
       periodNet += net;
     }
     out.aggregates.push({
       key: customerKey,
       firstOrderAt: iso(row.first_at),
       lastOrderAt: iso(row.last_at),
-      orders: num(row, "orders"),
+      orders: row.orders,
       revenueMinor,
       // Contribution before marketing spend; known only when every goods line of their orders had a cost and every amount converted.
-      contributionMinor: costsKnown && !lost ? contribution - Math.round(num(row, "cost_main")) : null,
+      contributionMinor: costsKnown && !lost ? contribution - Math.round(row.cost_main) : null,
       secondOrderAt: row.second_at ? iso(row.second_at) : null,
       orderMonths,
     });
-    out.orders365.push(num(row, "orders_365"));
+    out.orders365.push(row.orders_365);
     out.affected.push(lost);
     if (lost) out.unconverted += 1;
     if (periodOrders > 0) {
@@ -466,7 +489,7 @@ export async function rfmGroups(
   cap = CUSTOMER_CAP,
 ): Promise<{ groups: Map<string, RfmSegment>; scored: number; ready: boolean }> {
   const id = store.id;
-  const rows = await setBasedPrimary<Row>(sql`
+  const rows = await setBasedPrimary(sql`
     with ord as materialized (
       select ${CUSTOMER_KEY} as customer_key, o.placed_at, trim(o.currency) as currency,
         to_char(${SOLD_AT} at time zone ${store.timeZone}, 'YYYY-MM') as month, n.net
@@ -504,17 +527,17 @@ export async function rfmGroups(
     select c.customer_key, c.last_at, c.orders, mo.months
     from capped c left join months mo using (customer_key)
     order by c.last_at desc, c.customer_key
-  `);
+  `).then((rows) => checkedRows(RFM_ROW, rows));
   const main = mainCurrency(store);
   const rates = store.localization.rates;
   const aggregates = rows.slice(0, cap).map((row) => ({
-    key: String(row.customer_key),
-    lastOrderAt: iso(row.last_at),
-    orders: num(row, "orders"),
-    revenueMinor: ((row.months ?? []) as { currency: string; net: number }[]).reduce((sum, m) => {
-      const net = Number(m.net);
+    key: row.customer_key,
+    lastOrderAt: row.last_at,
+    orders: row.orders,
+    revenueMinor: (row.months ?? []).reduce((sum, m) => {
+      const net = m.net;
       if (!net) return sum;
-      return sum + (convertMinor(net, m.currency.trim(), main, rates) ?? 0);
+      return sum + (convertMinor(net, m.currency, main, rates) ?? 0);
     }, 0),
   }));
   const scored = rfm(aggregates, now);

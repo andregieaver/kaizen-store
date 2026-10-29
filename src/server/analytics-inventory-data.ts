@@ -1,6 +1,7 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 
 import { safeRatio } from "@/lib/analytics-core";
 import {
@@ -19,9 +20,10 @@ import {
 import { todayIn } from "@/lib/analytics-period";
 import { mainCurrency } from "@/lib/markets";
 
-import { dayOf, num, OWED_LINE, OWED_UNITS, PAID, type Row } from "./analytics-sql";
+import { dayOf, num, OWED_LINE, OWED_UNITS, PAID } from "./analytics-sql";
 import { setBasedReplica as setBased } from "./analytics-totals";
 import type { Store } from "./stores";
+import { checkedRows, col } from "./typed-rows";
 
 /**
  * The Inventory page's figures (D152, docs/analytics.md): what is in stock, how fast it sells, what is stuck and what is about to
@@ -118,6 +120,34 @@ export type InventoryReport = {
   alertsTotal: number;
 };
 
+/**
+ * A stocked variant with how it sold (CODE-02): its cost, cost of goods sold and price without VAT in minor units of the main
+ * currency, units as whole numbers except the costed units of restocked orders, which are a share.
+ */
+const VARIANT_ROW = z.object({
+  variant_id: col.text,
+  product_id: col.text,
+  sku: col.textOrNull,
+  options: z.unknown(),
+  cost_minor: col.minorOrNull,
+  handle: col.text,
+  title: col.text,
+  on_hand: col.minor,
+  stock_policy: col.text,
+  low_stock_threshold: col.int.nullable(),
+  owed: col.int,
+  sold7: col.minor,
+  sold30: col.minor,
+  sold90: col.minor,
+  units365: col.minor,
+  cogs365: col.minor,
+  known_units365: col.decimal,
+  last_sold: col.timestampOrNull,
+  last_days: col.int.nullable(),
+  age_days: col.int,
+  price_ex_vat: col.minorOrNull,
+});
+
 const iso = (value: unknown): string | null => (value === null || value === undefined ? null : new Date(value as string | number | Date).toISOString());
 
 const optionValues = (options: unknown): string[] =>
@@ -157,7 +187,7 @@ export async function inventoryReport(store: Store, now: Date): Promise<Inventor
   // (`timestamptz - interval` is not folded to a constant: as a subquery it is worked out once, not for every order and line.)
   const inWindow = sql`o.placed_at > (select ${at} - (${SALES_LOOKBACK_DAYS}::int * interval '1 day')) and o.placed_at <= ${at}`;
 
-  const rows = await setBased<Row>(sql`
+  const rows = await setBased(sql`
     with vs as (
       select v.id, v.product_id, v.sku, v.options, v.cost_minor, v.created_at, v.stock_policy, v.low_stock_threshold, p.handle, p.vat_category
       from commerce.product_variants v
@@ -272,7 +302,7 @@ export async function inventoryReport(store: Store, now: Date): Promise<Inventor
     left join rates rt on rt.category = vs.vat_category
     order by coalesce(agg.sold90, 0) desc, coalesce(oh.on_hand, 0) desc, vs.id
     limit ${VARIANT_CAP + 1}
-  `);
+  `).then((read) => checkedRows(VARIANT_ROW, read));
 
   const readTruncated = rows.length > VARIANT_CAP;
   const read = readTruncated ? rows.slice(0, VARIANT_CAP) : rows;

@@ -299,6 +299,49 @@ async function firstOrderDays(store: Store, from: string): Promise<FirstDays> {
 /** A refund's or a lost dispute's sum per bucket and currency (CODE-02): whether the store converts the currency, how many, how much without VAT. */
 const MONEY_BY_BUCKET = z.object({ bk: col.text, currency: col.currency, converts: col.bool, n: col.minor, amount: col.minorOrNull });
 
+/**
+ * The main read's rows (CODE-02), each a kind and a JSON object, per bucket and currency: the paid orders' sums in minor units of the
+ * currency without VAT (VAT itself apart), their cost of goods in the main currency, the platform's and Stripe's fees, the orders'
+ * totals a fee is estimated on, the orders left out for want of a rate, and the customers active in the bucket.
+ */
+const BUCKET_ORDERS = z.object({
+  bk: col.text,
+  currency: col.currency,
+  orders: col.minor,
+  checkout_orders: col.minor,
+  gross: col.minor,
+  disc: col.minor,
+  shipping: col.minor,
+  vat: col.minor,
+  revenue: col.minor,
+  units: col.minor,
+  cogs: col.minor,
+  line_rev: col.minor,
+  known_rev: col.minor,
+  physical_orders: col.minor,
+});
+const BUCKET_FEE = z.object({ bk: col.text, currency: col.currency, fee: col.minorOrNull });
+const MAIN_ROW = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("orders"), r: BUCKET_ORDERS }),
+  z.object({ kind: z.literal("platform"), r: BUCKET_FEE }),
+  z.object({ kind: z.literal("left_out"), r: z.object({ currency: col.currency, n: col.minor }) }),
+  z.object({ kind: z.literal("real_fees"), r: BUCKET_FEE.extend({ n: col.minor }) }),
+  z.object({ kind: z.literal("fees"), r: z.object({ bk: col.text, currency: col.currency, total_minor: col.minor, n: col.minor }) }),
+  z.object({ kind: z.literal("customers"), r: z.object({ bk: col.text, k: col.text }) }),
+]);
+
+/** A product's paid lines in one currency (CODE-02): revenue without VAT in its minor units, cost of goods in the main currency (null when no line had one). */
+const TOP_PRODUCT_ROW = z.object({
+  currency: col.currency,
+  product_id: col.text,
+  title: col.text,
+  rev: col.minor,
+  units: col.minor,
+  cogs: col.minorOrNull,
+  known_rev: col.minorOrNull,
+  n: col.minor,
+});
+
 type Loaded = {
   bundles: Map<string, Bundle>;
   /** Paid orders and refunds left out for want of a rate, per currency (every bucket together). */
@@ -327,7 +370,7 @@ async function loadBundles(
 
   // Paid orders of every currency (`po0`), with the bucket they fall in and whether the store can convert their currency. Orders and
   // lines are summed per bucket and currency in two small aggregates (a line-level one, an order-level one), never per order.
-  const main = setBased<Row>(sql`
+  const main = setBased(sql`
     with po0 as materialized (
       select o.id, o.store_id, o.customer_id, o.email, o.restricted_at, o.anonymised_at, o.source, o.currency, o.total_minor, o.tax_minor, o.shipping_minor, o.discount_minor, o.vat_relief_minor,
         coalesce(o.shipping_tax_rate, commerce.vat_rate(o.market_code, 'standard', o.placed_at)) as ship_rate,
@@ -433,7 +476,7 @@ async function loadBundles(
       from po0 o left join commerce.customers c on c.id = o.customer_id and c.store_id = ${id}::uuid
       where o.ok and (o.restricted_at is not null or o.anonymised_at is not null or coalesce(c.email, o.email) <> '') group by o.bk, 2
     ) t
-  `);
+  `).then((rows) => checkedRows(MAIN_ROW, rows));
 
   // Succeeded refunds by their own date, each scaled to without VAT by its order's share; a currency with no rate is counted.
   const refundDay = dayOf(store, sql`r.created_at`);
@@ -481,25 +524,37 @@ async function loadBundles(
     if (!bundle) bundles.set(k, (bundle = emptyBundle()));
     return bundle;
   };
-  const kinds: Record<string, (row: Row) => void> = {
-    orders: (r) => at(String(r.bk)).orders.push(r),
-    platform: (r) => at(String(r.bk)).platform.push(r),
-    fees: (r) => at(String(r.bk)).fees.push(r),
-    real_fees: (r) => at(String(r.bk)).realFees.push(r),
-    left_out: (r) => excluded.set(String(r.currency).trim(), (excluded.get(String(r.currency).trim()) ?? 0) + num(r, "n")),
-  };
   // Customers: the keys active in each bucket, and of them those whose first paid order falls on or after the bucket's first day.
   const active = new Map<string, { active: number; fresh: number }>();
-  for (const { kind, r } of mainRows as unknown as { kind: string; r: Row }[]) {
-    if (kind === "customers") {
-      const first = firsts.get(String(r.k));
-      if (first === undefined) continue;
-      const bk = String(r.bk);
-      const counts = active.get(bk) ?? { active: 0, fresh: 0 };
-      counts.active += 1;
-      if (first >= (bk > period.from ? bk : period.from)) counts.fresh += 1;
-      active.set(bk, counts);
-    } else kinds[kind](r);
+  for (const row of mainRows) {
+    switch (row.kind) {
+      case "orders":
+        at(row.r.bk).orders.push(row.r);
+        break;
+      case "platform":
+        at(row.r.bk).platform.push(row.r);
+        break;
+      case "fees":
+        at(row.r.bk).fees.push(row.r);
+        break;
+      case "real_fees":
+        at(row.r.bk).realFees.push(row.r);
+        break;
+      case "left_out":
+        excluded.set(row.r.currency, (excluded.get(row.r.currency) ?? 0) + row.r.n);
+        break;
+      case "customers": {
+        const { r } = row;
+        const first = firsts.get(r.k);
+        if (first === undefined) continue;
+        const bk = r.bk;
+        const counts = active.get(bk) ?? { active: 0, fresh: 0 };
+        counts.active += 1;
+        if (first >= (bk > period.from ? bk : period.from)) counts.fresh += 1;
+        active.set(bk, counts);
+        break;
+      }
+    }
   }
   for (const [bk, counts] of active) at(bk).customers.push(counts);
   for (const r of refundRows) {
@@ -667,7 +722,7 @@ export async function seriesByBucket(store: Store, period: AnalyticsPeriod, buck
  */
 export async function topProducts(store: Store, period: AnalyticsPeriod): Promise<TopProducts> {
   const known = knownCurrencies(store);
-  const rows = await setBased<Row>(sql`
+  const rows = await setBased(sql`
     with li as (
       select o.currency::text as currency, v.product_id::text as product_id, max(ol.title) as title,
         sum(ol.total_minor - ol.tax_minor) as rev,
@@ -689,7 +744,7 @@ export async function topProducts(store: Store, period: AnalyticsPeriod): Promis
     select currency, product_id, title, rev, units, cogs, known_rev, n
     from ranked
     where r_rev <= ${TOP_CANDIDATES} or (cogs is not null and r_profit <= ${TOP_CANDIDATES})
-  `);
+  `).then((read) => checkedRows(TOP_PRODUCT_ROW, read));
 
   const byProduct = new Map<string, Row[]>();
   let truncated = false;

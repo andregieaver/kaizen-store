@@ -1,6 +1,7 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 
 import { safeRatio } from "@/lib/analytics-core";
 import { buildHeatmap, type Heatmap, type HeatmapRow } from "@/lib/analytics-heatmap";
@@ -11,6 +12,11 @@ import { mainCurrency } from "@/lib/markets";
 import { dayKey, dayOf, inMain, num, PAID, REVENUE_EX_VAT, type Row, SOLD_AT, soldIn } from "./analytics-sql";
 import { setBasedReplica as setBased } from "./analytics-totals";
 import type { Store } from "./stores";
+import { checkedRows, col } from "./typed-rows";
+
+/** Paid orders and their revenue without VAT in minor units of the row's currency (CODE-02): per weekday and hour, per day. */
+const CELL_ROW = z.object({ weekday: col.int, hour: col.int, currency: col.currency, orders: col.minor, revenue: col.minor });
+const DAY_ROW = z.object({ day: col.text, currency: col.currency, orders: col.minor, revenue: col.minor });
 
 /**
  * Sales by weekday, hour and day for the Traffic page (D152, docs/analytics.md).
@@ -86,19 +92,19 @@ export async function timeReport(store: Store, period: Pick<AnalyticsPeriod, "fr
   const local = sql`(${SOLD_AT} at time zone ${store.timeZone})`;
 
   const [cellRows, dayRows] = await Promise.all([
-    setBased<Row>(sql`
+    setBased(sql`
       select extract(isodow from ${local})::int as weekday, extract(hour from ${local})::int as hour, o.currency::text as currency,
         count(*) as orders, sum(${REVENUE_EX_VAT}) as revenue
       from commerce.orders o
       where o.store_id = ${store.id}::uuid and ${PAID} and ${inRange}
       group by 1, 2, 3
-    `),
-    setBased<Row>(sql`
+    `).then((read) => checkedRows(CELL_ROW, read)),
+    setBased(sql`
       select (${dayOf(store, SOLD_AT)})::text as day, o.currency::text as currency, count(*) as orders, sum(${REVENUE_EX_VAT}) as revenue
       from commerce.orders o
       where o.store_id = ${store.id}::uuid and ${PAID} and ${inRange}
       group by 1, 2
-    `),
+    `).then((read) => checkedRows(DAY_ROW, read)),
   ]);
 
   // The weekday x hour matrix.

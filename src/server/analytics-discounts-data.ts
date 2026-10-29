@@ -1,6 +1,7 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 
 import {
   couponTable,
@@ -17,9 +18,10 @@ import { safeRatio } from "@/lib/analytics-core";
 import { canConvert } from "@/lib/currency";
 import { mainCurrency } from "@/lib/markets";
 
-import { num, PAID, type Row, SOLD_AT, soldIn, toMainOne } from "./analytics-sql";
+import { num, PAID, SOLD_AT, soldIn, toMainOne } from "./analytics-sql";
 import { setBasedReplica as setBased } from "./analytics-totals";
 import type { Store } from "./stores";
+import { checkedRows, col } from "./typed-rows";
 
 /**
  * Discounts and coupons for the Marketing page (D152, docs/analytics.md): how much of the business is sold at a discount,
@@ -120,20 +122,52 @@ export type DiscountsReport = {
  * A line's amount without VAT, rounded the way the totals round it. A line with nothing to take off is 0 without the division: most
  * lines have no discount, and a decimal division per line and kind is what this report spends most of its time on.
  */
-const lineExVat = (col: string) => sql.raw(`(case when ${col} > 0 then round(${col}::numeric / (1 + ol.tax_rate)) else 0 end)`);
+const lineExVat = (column: string) => sql.raw(`(case when ${column} > 0 then round(${column}::numeric / (1 + ol.tax_rate)) else 0 end)`);
+
+/** The rows read here (CODE-02): amounts in minor units of the row's currency, without VAT. */
+const TREND_ROW = z.object({ month: col.text, discounted: col.bool, currency: col.currency, orders: col.int });
+const ORDER_ROW = TREND_ROW.extend({ revenue: col.minor, gross: col.minor, disc: col.minor });
+const KIND_ROW = z.object({
+  currency: col.currency,
+  total: col.minor,
+  member: col.minor,
+  campaign: col.minor,
+  referral: col.minor,
+  credit: col.minor,
+  staff: col.minor,
+  code: col.minor,
+  member_orders: col.int,
+  campaign_orders: col.int,
+  referral_orders: col.int,
+  credit_orders: col.int,
+  staff_orders: col.int,
+  code_orders: col.int,
+});
+const COUPON_ROW = z.object({
+  code: col.text,
+  code_kind: col.textOrNull,
+  code_active: col.bool.nullable(),
+  currency: col.currency,
+  orders: col.int,
+  revenue: col.minor,
+  gross: col.minor,
+  code_off: col.minor,
+});
+type TrendRow = z.output<typeof TREND_ROW>;
+type OrderRow = z.output<typeof ORDER_ROW>;
 
 /**
  * Paid orders of a window of whole days by month, discounted or not, and currency (`orders` only: the trend needs no more, and reads
  * a year whatever the period is, so it never touches the order lines).
  */
-async function readTrendRows(store: Store, window: Pick<AnalyticsPeriod, "from" | "to">): Promise<Row[]> {
-  return setBased<Row>(sql`
+async function readTrendRows(store: Store, window: Pick<AnalyticsPeriod, "from" | "to">): Promise<TrendRow[]> {
+  return setBased(sql`
     select to_char(${SOLD_AT} at time zone ${store.timeZone}, 'YYYY-MM') as month,
       (o.discount_minor - o.vat_relief_minor > 0 or o.discount_code_id is not null) as discounted, trim(o.currency) as currency, count(*)::int as orders
     from commerce.orders o
     where o.store_id = ${store.id}::uuid and ${PAID} and ${soldIn(store, window)}
     group by 1, 2, 3
-  `);
+  `).then((rows) => checkedRows(TREND_ROW, rows));
 }
 
 /**
@@ -141,8 +175,8 @@ async function readTrendRows(store: Store, window: Pick<AnalyticsPeriod, "from" 
  * summed once (`by_order`) and their lines once (`by_line`), each straight into the groups: both are plain sums, so no order is
  * worked out on its own.
  */
-async function readOrderRows(store: Store, period: Pick<AnalyticsPeriod, "from" | "to">): Promise<Row[]> {
-  return setBased<Row>(sql`
+async function readOrderRows(store: Store, period: Pick<AnalyticsPeriod, "from" | "to">): Promise<OrderRow[]> {
+  return setBased(sql`
     with po as materialized (
       select o.id, trim(o.currency) as currency, (o.total_minor - o.tax_minor) as revenue,
         to_char(${SOLD_AT} at time zone ${store.timeZone}, 'YYYY-MM') as month,
@@ -167,13 +201,13 @@ async function readOrderRows(store: Store, period: Pick<AnalyticsPeriod, "from" 
     select o.month, o.discounted, o.currency, o.orders, o.revenue, coalesce(l.gross, 0) as gross, coalesce(l.disc, 0) as disc
     from by_order o
     left join by_line l on l.month = o.month and l.discounted = o.discounted and l.currency = o.currency
-  `);
+  `).then((rows) => checkedRows(ORDER_ROW, rows));
 }
 
 /** A discount's kinds over the period's paid orders, by currency: what each took off without VAT, and how many orders had it. */
-async function readKinds(store: Store, period: AnalyticsPeriod): Promise<Row[]> {
+async function readKinds(store: Store, period: AnalyticsPeriod): Promise<z.output<typeof KIND_ROW>[]> {
   const code = "ol.discount_minor - ol.vat_relief_minor - ol.member_discount_minor - ol.campaign_discount_minor - ol.bonus_discount_minor - ol.referral_discount_minor - ol.staff_discount_minor";
-  return setBased<Row>(sql`
+  return setBased(sql`
     select trim(o.currency) as currency,
       sum(${lineExVat("(ol.discount_minor - ol.vat_relief_minor)")}) as total,
       sum(${lineExVat("ol.member_discount_minor")}) as member,
@@ -192,12 +226,12 @@ async function readKinds(store: Store, period: AnalyticsPeriod): Promise<Row[]> 
     join commerce.order_lines ol on ol.store_id = o.store_id and ol.order_id = o.id
     where o.store_id = ${store.id}::uuid and ${PAID} and ${soldIn(store, period)}
     group by trim(o.currency)
-  `);
+  `).then((rows) => checkedRows(KIND_ROW, rows));
 }
 
 /** The codes used by the period's paid orders, by code and currency, the biggest by revenue first (one more than the cap, to know). */
-async function readCoupons(store: Store, period: AnalyticsPeriod): Promise<Row[]> {
-  return setBased<Row>(sql`
+async function readCoupons(store: Store, period: AnalyticsPeriod): Promise<z.output<typeof COUPON_ROW>[]> {
+  return setBased(sql`
     -- One row per order and code: an order with several codes (D299 E2) gives each its share of what the codes took off, by
     -- what each took; one placed before has its one code, on the order.
     with po as materialized (
@@ -238,7 +272,7 @@ async function readCoupons(store: Store, period: AnalyticsPeriod): Promise<Row[]
     left join by_line l on l.code = o.code and l.currency = o.currency
     order by o.revenue desc, o.code
     limit ${COUPON_CAP + 1}
-  `);
+  `).then((rows) => checkedRows(COUPON_ROW, rows));
 }
 
 // ---------------------------------------------------------------------------
@@ -249,19 +283,19 @@ async function readCoupons(store: Store, period: AnalyticsPeriod): Promise<Row[]
 const rated = (store: Store, currency: string): boolean => canConvert(currency.trim(), mainCurrency(store), store.localization.rates);
 
 /** Order rows into `DiscountOrderRow`s, one per month and flag, each currency group converted by itself; unrated currencies are skipped. */
-function foldOrderRows(store: Store, rows: readonly Row[]): DiscountOrderRow[] {
+function foldOrderRows(store: Store, rows: readonly (TrendRow & Partial<OrderRow>)[]): DiscountOrderRow[] {
   const merged = new Map<string, DiscountOrderRow>();
   for (const r of rows) {
-    const currency = String(r.currency);
+    const currency = r.currency;
     if (!rated(store, currency)) continue;
-    const month = String(r.month);
-    const discounted = r.discounted === true;
+    const month = r.month;
+    const discounted = r.discounted;
     const key = `${month}|${discounted}`;
     const row = merged.get(key) ?? { month, discounted, orders: 0, revenueMinor: 0, grossGoodsMinor: 0, discountMinor: 0 };
-    row.orders += num(r, "orders");
-    row.revenueMinor += toMainOne(store, currency, num(r, "revenue")) ?? 0;
-    row.grossGoodsMinor += toMainOne(store, currency, num(r, "gross")) ?? 0;
-    row.discountMinor += toMainOne(store, currency, num(r, "disc")) ?? 0;
+    row.orders += r.orders;
+    row.revenueMinor += toMainOne(store, currency, r.revenue ?? 0) ?? 0;
+    row.grossGoodsMinor += toMainOne(store, currency, r.gross ?? 0) ?? 0;
+    row.discountMinor += toMainOne(store, currency, r.disc ?? 0) ?? 0;
     merged.set(key, row);
   }
   return [...merged.values()];

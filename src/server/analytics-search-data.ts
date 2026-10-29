@@ -1,6 +1,7 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 
 import { db } from "@/db/client";
 import { safeRatio } from "@/lib/analytics-core";
@@ -10,6 +11,10 @@ import { LOW_CLICK_MIN, LOW_CLICK_RATE } from "@/lib/analytics-search";
 import { dayKey, dayOf, inMain, inPeriod, num, PAID, VOUCHER_NET, type Row } from "./analytics-sql";
 import { SEARCH_LOG_DAYS } from "./search";
 import type { Store } from "./stores";
+import { col, typedRows } from "./typed-rows";
+
+/** What the orders after searches came to in one currency, without VAT and gift cards, in its minor units (CODE-02). */
+const REVENUE_AFTER_SEARCH = z.object({ currency: col.currency, revenue: col.minor });
 
 /**
  * What shoppers searched for, for the Traffic page (D152, docs/analytics.md): the searches of the store's own search page
@@ -207,12 +212,15 @@ export async function searchReport(store: Store, period: Pick<AnalyticsPeriod, "
       limit ${TERM_LIMIT}
     `),
     // Each order once, its revenue by D152's definition, per currency.
-    db().execute<Row>(sql`
+    typedRows(
+      REVENUE_AFTER_SEARCH,
+      sql`
       select o.currency, sum(o.total_minor - o.tax_minor - ${VOUCHER_NET}) as revenue
       from commerce.orders o
       where o.store_id = ${store.id}::uuid and o.id in (select f.order_id from (${followed}) f)
       group by o.currency
-    `),
+    `,
+    ),
     db().execute<Row>(sql`
       with f as (${followed})
       select ${dayOf(store, sql`q.created_at`)} as day, count(*) as tied, count(*) filter (where exists (select 1 from f where f.search_id = q.id)) as converted

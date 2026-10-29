@@ -1,6 +1,7 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 
 import { todayIn, type AnalyticsPeriod } from "@/lib/analytics-period";
 import {
@@ -26,6 +27,7 @@ import { setBasedReplica as setBased } from "./analytics-totals";
 import { OVERDUE_SQL } from "./return-sql";
 import { getReturnSettings } from "./return-settings";
 import type { Store } from "./stores";
+import { checkedRows, col } from "./typed-rows";
 
 /**
  * The Returns section of the Traffic page (D153, docs/analytics.md "Returns"): how much comes back, why, which products, how fast
@@ -181,9 +183,24 @@ async function readSold(store: Store, period: AnalyticsPeriod): Promise<Row[]> {
   `);
 }
 
+/** The money reads here (CODE-02): values without VAT in minor units of the row's currency; a time as milliseconds since the epoch. */
+const RETURNED_ROW = z.object({ product_id: col.text, currency: col.currency, units: col.int, value: col.minor });
+const REFUNDED_ROW = z.object({
+  id: col.text,
+  kind: col.text,
+  currency: col.currency,
+  refund_outside: col.bool.nullable(),
+  refunded_ms: col.decimal,
+  asked_ms: col.decimal,
+  received_ms: col.decimal.nullable(),
+  deadline_ms: col.decimal.nullable(),
+  value: col.minorOrNull,
+});
+const TRANSFER_ROW = z.object({ currency: col.currency, n: col.int, value: col.minorOrNull });
+
 /** Units on accepted lines of counting returns of the cohort and their value without VAT, by product and currency. */
-async function readReturned(store: Store, period: AnalyticsPeriod): Promise<Row[]> {
-  return setBased<Row>(sql`
+async function readReturned(store: Store, period: AnalyticsPeriod): Promise<z.output<typeof RETURNED_ROW>[]> {
+  return setBased(sql`
     select pv.product_id::text as product_id, trim(o.currency) as currency, sum(rl.quantity)::int as units,
       sum(round((ol.total_minor - ol.tax_minor)::numeric * rl.quantity / ol.quantity)) as value
     from commerce.orders o
@@ -193,12 +210,12 @@ async function readReturned(store: Store, period: AnalyticsPeriod): Promise<Row[
     join commerce.product_variants pv on pv.store_id = ol.store_id and pv.id = ol.variant_id
     where o.store_id = ${store.id}::uuid and ${PAID} and ${soldIn(store, period)} and ${GOODS("ol")}
     group by 1, 2
-  `);
+  `).then((rows) => checkedRows(RETURNED_ROW, rows));
 }
 
 /** Returns refunded in the period (a refund of more than nothing), the newest first, with the instants the times are made of. */
-async function readRefunded(store: Store, period: AnalyticsPeriod): Promise<Row[]> {
-  return setBased<Row>(sql`
+async function readRefunded(store: Store, period: AnalyticsPeriod): Promise<z.output<typeof REFUNDED_ROW>[]> {
+  return setBased(sql`
     select r.id::text as id, r.kind, trim(o.currency) as currency, r.refund_outside,
       extract(epoch from r.refunded_at) * 1000 as refunded_ms,
       extract(epoch from (case when r.kind = 'withdrawal' then coalesce(w.confirmed_at, r.created_at) else r.created_at end)) * 1000 as asked_ms,
@@ -211,7 +228,7 @@ async function readRefunded(store: Store, period: AnalyticsPeriod): Promise<Row[
     where r.store_id = ${store.id}::uuid and ${OWN_ORDER} and r.refund_minor > 0 and ${inPeriod(store, sql`r.refunded_at`, period)}
     order by r.refunded_at desc, r.id
     limit ${TIMING_CAP + 1}
-  `);
+  `).then((rows) => checkedRows(REFUNDED_ROW, rows));
 }
 
 /** The store's returns in all, the ones past their refund deadline right now (the queue's condition), and the ones ever exchanged. */
@@ -230,8 +247,8 @@ async function readStanding(store: Store): Promise<{ total: number; overdue: num
  * The period's transfers (D239, docs/analytics.md "Transfer"): the part of a return's credit that paid for an exchange order, a succeeded refund of
  * `kind = 'transfer'` on the original order, dated by its own day and scaled to without VAT by that order's `(total − tax) / total`, by currency.
  */
-async function readTransfers(store: Store, period: AnalyticsPeriod): Promise<Row[]> {
-  return setBased<Row>(sql`
+async function readTransfers(store: Store, period: AnalyticsPeriod): Promise<z.output<typeof TRANSFER_ROW>[]> {
+  return setBased(sql`
     select trim(o.currency) as currency, count(*)::int as n,
       sum(round(rf.amount_minor::numeric * (o.total_minor - o.tax_minor) / nullif(o.total_minor, 0))) as value
     from commerce.refunds rf
@@ -240,7 +257,7 @@ async function readTransfers(store: Store, period: AnalyticsPeriod): Promise<Row
     where rf.store_id = ${store.id}::uuid and rf.kind = 'transfer' and rf.status = 'succeeded' and ${OWN_ORDER}
       and ${inPeriod(store, sql`rf.created_at`, period)}
     group by 1
-  `);
+  `).then((rows) => checkedRows(TRANSFER_ROW, rows));
 }
 
 // ---------------------------------------------------------------------------

@@ -189,6 +189,18 @@ type Group = { n: number; orders: number; value: number };
 /** A currency's (or a market's in a currency) refunds: counted, and their value in minor units (CODE-02: money reads are checked). */
 const REFUND_TOTAL = z.object({ currency: col.currency, n: col.int, orders: col.int, value: col.minorOrNull });
 const MARKET_REFUND_TOTAL = REFUND_TOTAL.extend({ market: col.text });
+/** Refunds by their reason (null where none was given) in a currency, and by the kind of customer. */
+const REASON_TOTAL = z.object({ reason: col.textOrNull, currency: col.currency, n: col.int, value: col.minorOrNull });
+const SEGMENT_TOTAL = z.object({ segment: col.text, currency: col.currency, n: col.int, orders: col.int, value: col.minorOrNull });
+/** A refund without VAT in its currency's minor units, with its order's lines and what each was sold for (their weight). */
+const PRODUCT_REFUND = z.object({
+  id: col.text,
+  currency: col.currency,
+  value: col.minor,
+  lines: z.array(z.object({ product: col.textOrNull, title: col.text, weight: col.minor })).nullable(),
+});
+/** The period's paid orders of a country in a currency, revenue without VAT in its minor units. */
+const COHORT_ROW = z.object({ market: col.text, currency: col.currency, orders: col.int, revenue: col.minor, refunded_orders: col.int });
 
 async function readTotals(store: Store, period: AnalyticsPeriod) {
   const [byCurrency, byMarket] = await Promise.all([
@@ -207,15 +219,15 @@ async function readTotals(store: Store, period: AnalyticsPeriod) {
 }
 
 /** Refunds by their normalised reason and currency (the biggest first, one more than the cap, to know). */
-async function readReasons(store: Store, period: AnalyticsPeriod): Promise<Row[]> {
-  return setBased<Row>(sql`
+async function readReasons(store: Store, period: AnalyticsPeriod): Promise<z.output<typeof REASON_TOTAL>[]> {
+  return setBased(sql`
     with rf as (${refundsOf(store, period)})
     select lower(regexp_replace(trim(reason), '\\s+', ' ', 'g')) as reason, trim(currency) as currency, count(*)::int as n, sum(value) as value
     from rf
     group by 1, 2
     order by sum(value) desc, 1
     limit ${REASON_CAP + 1}
-  `);
+  `).then((rows) => checkedRows(REASON_TOTAL, rows));
 }
 
 /**
@@ -224,8 +236,8 @@ async function readReasons(store: Store, period: AnalyticsPeriod): Promise<Row[]
  * orders with no account: a customer key is an account's email or a guest's. The read is set-based (no nested loops), so the number
  * of refunded customers never multiplies the orders read.
  */
-async function readSegments(store: Store, period: AnalyticsPeriod): Promise<Row[]> {
-  return setBased<Row>(sql`
+async function readSegments(store: Store, period: AnalyticsPeriod): Promise<z.output<typeof SEGMENT_TOTAL>[]> {
+  return setBased(sql`
     with rf as materialized (${refundsOf(store, period)}),
     keys as (
       select distinct ckey from rf where ckey is not null
@@ -249,12 +261,12 @@ async function readSegments(store: Store, period: AnalyticsPeriod): Promise<Row[
       trim(rf.currency) as currency, count(*)::int as n, count(distinct rf.order_id)::int as orders, sum(rf.value) as value
     from rf left join fr on fr.k = rf.ckey
     group by 1, 2
-  `);
+  `).then((rows) => checkedRows(SEGMENT_TOTAL, rows));
 }
 
 /** The refunds with their order's lines, the biggest first (one more than the cap, to know): what the products are made of. */
-async function readProductRefunds(store: Store, period: AnalyticsPeriod): Promise<Row[]> {
-  return setBased<Row>(sql`
+async function readProductRefunds(store: Store, period: AnalyticsPeriod): Promise<z.output<typeof PRODUCT_REFUND>[]> {
+  return setBased(sql`
     with rf as (${refundsOf(store, period)})
     select rf.id::text as id, trim(rf.currency) as currency, rf.value,
       (select jsonb_agg(jsonb_build_object('product', pv.product_id, 'title', ol.title, 'weight', ol.total_minor - ol.tax_minor) order by ol.id)
@@ -264,7 +276,7 @@ async function readProductRefunds(store: Store, period: AnalyticsPeriod): Promis
     from rf
     order by rf.value desc, rf.id
     limit ${PRODUCT_REFUND_CAP + 1}
-  `);
+  `).then((rows) => checkedRows(PRODUCT_REFUND, rows));
 }
 
 /** Units put back into stock by the period's refunds, per product (matched by SKU): evidence beside the allocated value. */
@@ -281,9 +293,9 @@ async function readRestocked(store: Store, period: AnalyticsPeriod): Promise<Row
 }
 
 /** The period's paid orders, their revenue and how many have a refund (at any time), by country and currency. */
-async function readCohort(store: Store, period: AnalyticsPeriod): Promise<Row[]> {
+async function readCohort(store: Store, period: AnalyticsPeriod): Promise<z.output<typeof COHORT_ROW>[]> {
   // The orders with a succeeded refund are found once (there are few) and joined, not looked up order by order.
-  return setBased<Row>(sql`
+  return setBased(sql`
     select o.market_code::text as market, trim(o.currency) as currency, count(*)::int as orders, sum(o.total_minor - o.tax_minor) as revenue,
       count(rfo.order_id)::int as refunded_orders
     from commerce.orders o
@@ -295,7 +307,7 @@ async function readCohort(store: Store, period: AnalyticsPeriod): Promise<Row[]>
     ) rfo on rfo.order_id = o.id
     where o.store_id = ${store.id}::uuid and ${PAID} and ${soldIn(store, period)}
     group by 1, 2
-  `);
+  `).then((rows) => checkedRows(COHORT_ROW, rows));
 }
 
 /** The products' own names, in the store's main language where there is one. */
@@ -314,8 +326,6 @@ export async function productNames(store: Store, ids: readonly string[]): Promis
 // ---------------------------------------------------------------------------
 // The report
 // ---------------------------------------------------------------------------
-
-type LineJson = { product: string | null; title: string; weight: number };
 
 /**
  * The Refunds drill-down for a period. See the module's description for what every figure is.
@@ -437,9 +447,9 @@ export async function refundsReport(store: Store, period: AnalyticsPeriod): Prom
   for (const row of productRows.slice(0, PRODUCT_REFUND_CAP)) {
     const currency = String(row.currency);
     if (!rated(store, currency)) continue;
-    const lines = (row.lines ?? []) as LineJson[];
-    const value = num(row, "value");
-    const shares = allocateRefund(value, lines.map((l) => ({ amountMinor: Number(l.weight) })));
+    const lines = row.lines ?? [];
+    const value = row.value;
+    const shares = allocateRefund(value, lines.map((l) => ({ amountMinor: l.weight })));
     const touched = new Set<string>();
     if (lines.length === 0) {
       const acc = accs.get(NONE) ?? { title: "No product", refunds: 0, byCurrency: new Map() };

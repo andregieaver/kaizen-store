@@ -1,6 +1,7 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 
 import { db } from "@/db/client";
 import { change, safeRatio, type Delta } from "@/lib/analytics-core";
@@ -12,6 +13,7 @@ import { mainCurrency } from "@/lib/markets";
 import { dayKey, dayStart, FROM_CHECKOUT, inMain, inPeriod, NOT_EDIT_REFUND, num, PAID, type Row, soldIn } from "./analytics-sql";
 import { setBasedReplica as setBased } from "./analytics-totals";
 import type { Store } from "./stores";
+import { checkedRows, col } from "./typed-rows";
 
 /**
  * The Products page's figures (D152, docs/analytics.md): every product's revenue, units, orders, cost, refunds, views and
@@ -133,11 +135,31 @@ type Lines = {
  */
 const currencyList = (known: string) => sql`${known}::char(3)[]`;
 
+/**
+ * The rows read here (CODE-02). Amounts are minor units of the row's currency without VAT, except a product's cost of goods, which
+ * is in the main currency already and null while no line of it had a cost.
+ */
+const PRODUCT_LINES = z.object({
+  currency: col.currency,
+  pid: col.text,
+  rev: col.minor,
+  units: col.minor,
+  orders: col.minor,
+  orders_since: col.minor,
+  cogs: col.minorOrNull,
+  known_rev: col.minor,
+  n: col.minor,
+});
+const PERIOD_FIGURES = z.object({ currency: col.currency, orders: col.minor, revenue: col.minor, shipping: col.minor });
+/** A refunded order's line: the refund without VAT (null for an order of nothing) and what the line was sold for. */
+const REFUND_LINE = z.object({ refund_id: col.text, currency: col.currency, amount: col.minorOrNull, pid: col.text, line_amount: col.minor });
+const REFUNDS_LEFT_OUT = z.object({ currency: col.currency, n: col.minor });
+
 /** The lines of a period's paid orders per product, converted into the main currency. `since` is the first day orders count for conversion. */
 async function loadLines(store: Store, period: Pick<AnalyticsPeriod, "from" | "to">, since: string, known: string, cap: number): Promise<Lines> {
   // `pl` is one narrow row per line; the sums per currency and product read it once, and the orders (an order counts once for a
   // product, whatever its lines) are counted from the distinct (order, product) pairs, so no wide row is ever sorted.
-  const rows = await setBased<Row>(sql`
+  const rows = await setBased(sql`
     with pl as materialized (
       select o.id as oid, o.currency::text as currency, ${PRODUCT_ID} as pid,
         (ol.total_minor - ol.tax_minor) as rev,
@@ -172,7 +194,7 @@ async function loadLines(store: Store, period: Pick<AnalyticsPeriod, "from" | "t
     select currency, pid, rev, units, orders, orders_since, cogs, known_rev, n
     from ranked
     where rn <= ${cap}
-  `);
+  `).then((read) => checkedRows(PRODUCT_LINES, read));
   let truncated = false;
   const byProduct = new Map<string, Row[]>();
   for (const r of rows) {
@@ -201,7 +223,7 @@ async function loadLines(store: Store, period: Pick<AnalyticsPeriod, "from" | "t
  * rate. The shipping is what shoppers were charged without VAT and after a free-shipping code's discount: revenue = lines + this.
  */
 async function loadPeriodFigures(store: Store, period: AnalyticsPeriod, convertible: Set<string>) {
-  const rows = await setBased<Row>(sql`
+  const rows = await setBased(sql`
     with po as materialized (
       select o.id, o.currency::text as currency, o.total_minor, o.tax_minor, o.shipping_minor, o.discount_minor, o.vat_relief_minor
       from commerce.orders o
@@ -220,7 +242,7 @@ async function loadPeriodFigures(store: Store, period: AnalyticsPeriod, converti
     from po o
     left join lo l on l.id = o.id
     group by o.currency
-  `);
+  `).then((read) => checkedRows(PERIOD_FIGURES, read));
   const usable = rows.filter((r) => convertible.has(String(r.currency).trim()));
   const money = inMain(store, usable.map((r) => ({ ...r, currency: String(r.currency) })), ["revenue", "shipping"]).values;
   const left = rows.filter((r) => !convertible.has(String(r.currency).trim()));
@@ -236,7 +258,7 @@ async function loadPeriodFigures(store: Store, period: AnalyticsPeriod, converti
 /** Each product's share of the period's succeeded refunds (by their own date), in the main currency. */
 async function loadRefunds(store: Store, period: AnalyticsPeriod, known: string) {
   const [lineRows, excluded] = await Promise.all([
-    setBased<Row>(sql`
+    setBased(sql`
       select r.id::text as refund_id, rp.currency::text as currency,
         round(r.amount_minor::numeric * (o.total_minor - o.tax_minor) / nullif(o.total_minor, 0)) as amount,
         ${PRODUCT_ID} as pid, (ol.total_minor - ol.tax_minor) as line_amount
@@ -249,8 +271,8 @@ async function loadRefunds(store: Store, period: AnalyticsPeriod, known: string)
         and o.copied_from is null and o.host_id is null and rp.currency = any(${currencyList(known)})
       order by r.id, ol.id
       limit ${REFUND_ROW_CAP + 1}
-    `),
-    setBased<Row>(sql`
+    `).then((read) => checkedRows(REFUND_LINE, read)),
+    setBased(sql`
       select rp.currency::text as currency, count(*) as n
       from commerce.refunds r
       join commerce.payments rp on rp.store_id = r.store_id and rp.id = r.payment_id
@@ -258,7 +280,7 @@ async function loadRefunds(store: Store, period: AnalyticsPeriod, known: string)
       where r.store_id = ${store.id}::uuid and r.status = 'succeeded' and ${NOT_EDIT_REFUND} and ${inPeriod(store, sql`r.created_at`, period)}
         and o.copied_from is null and o.host_id is null and not (rp.currency = any(${currencyList(known)}))
       group by 1
-    `),
+    `).then((read) => checkedRows(REFUNDS_LEFT_OUT, read)),
   ]);
   const truncated = lineRows.length > REFUND_ROW_CAP;
   const rows = truncated ? lineRows.slice(0, REFUND_ROW_CAP) : lineRows;

@@ -1,6 +1,7 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 
 import { db } from "@/db/client";
 import { safeRatio } from "@/lib/analytics-core";
@@ -12,6 +13,7 @@ import { mainCurrency } from "@/lib/markets";
 import { dayStart, num, PAID, type Row, soldIn, toMainOne } from "./analytics-sql";
 import { setBasedReplica as setBased } from "./analytics-totals";
 import type { Store } from "./stores";
+import { checkedRows, col, typedRows } from "./typed-rows";
 
 /**
  * The Subscriptions page's figures (D152, docs/analytics.md): monthly recurring revenue and how it moved, churn, failed
@@ -112,18 +114,42 @@ export type SubscriptionsReport = {
 // SQL
 // ---------------------------------------------------------------------------
 
+/** A price point (CODE-02): its currency, interval and amount without VAT in that currency's minor units, and how many fall in each set. */
+const PRICE_GROUP = z.object({
+  currency: col.currency,
+  interval: col.text,
+  interval_count: col.int,
+  amount: col.minor,
+  n: col.int,
+  live_n: col.int,
+  past_due_n: col.int,
+  paused_n: col.int,
+  trial_n: col.int,
+  cancelling_n: col.int,
+  start_n: col.int,
+  end_n: col.int,
+  new_n: col.int,
+  cancelled_n: col.int,
+  cancelled_start_n: col.int,
+});
+
+/** The period's paid subscription orders of one currency, first or renewal, revenue without VAT in its minor units. */
+const SUBSCRIPTION_ORDERS = z.object({ currency: col.currency, first: col.bool.nullable(), n: col.int, revenue: col.minor });
+
 /**
  * Started subscriptions grouped by price point (currency, interval, count, amount without VAT), with how many fall in each of the
  * sets the report needs. A price point has many subscriptions, so the rows are few and each is valued once.
  */
-async function readGroups(store: Store, period: AnalyticsPeriod, now: Date): Promise<Row[]> {
+async function readGroups(store: Store, period: AnalyticsPeriod, now: Date): Promise<z.output<typeof PRICE_GROUP>[]> {
   const from = dayStart(store, period.from);
   const to = dayStart(store, period.to);
   const nowAt = sql`${now.toISOString()}::timestamptz`;
   const liveAt = (t: ReturnType<typeof dayStart>) =>
     sql`(s.created_at < ${t} and ((s.cancelled_at is null and s.status <> 'cancelled') or s.cancelled_at >= ${t}))`;
   const cancelledIn = sql`(s.cancelled_at >= ${from} and s.cancelled_at < ${to})`;
-  return db().execute<Row>(sql`
+  return typedRows(
+    PRICE_GROUP,
+    sql`
     select trim(s.currency) as currency, s."interval"::text as "interval", s.interval_count, (s.total_minor - s.tax_minor) as amount,
       count(*)::int as n,
       count(*) filter (where s.status in ('active', 'past_due'))::int as live_n,
@@ -141,18 +167,19 @@ async function readGroups(store: Store, period: AnalyticsPeriod, now: Date): Pro
     group by 1, 2, 3, 4
     order by count(*) desc, 1, 2, 3, 4
     limit ${GROUP_CAP + 1}
-  `);
+  `,
+  );
 }
 
 /** The period's paid subscription orders, split into the one a subscription started with and its renewals, by currency. */
-async function readOrders(store: Store, period: AnalyticsPeriod): Promise<Row[]> {
-  return setBased<Row>(sql`
+async function readOrders(store: Store, period: AnalyticsPeriod): Promise<z.output<typeof SUBSCRIPTION_ORDERS>[]> {
+  return setBased(sql`
     select trim(o.currency) as currency, (o.id = s.first_order_id) as first, count(*)::int as n, sum(o.total_minor - o.tax_minor) as revenue
     from commerce.orders o
     join commerce.subscriptions s on s.store_id = o.store_id and s.id = o.subscription_id
     where o.store_id = ${store.id}::uuid and o.subscription_id is not null and ${PAID} and ${soldIn(store, period)}
     group by 1, 2
-  `);
+  `).then((rows) => checkedRows(SUBSCRIPTION_ORDERS, rows));
 }
 
 /** How long ended subscriptions lasted, over all of them and over those that ended in the period; and ones that ended with no date. */

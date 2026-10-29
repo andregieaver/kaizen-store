@@ -1,14 +1,32 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 
 import type { AnalyticsPeriod } from "@/lib/analytics-period";
 import { paymentsByMethod, type PaymentGroupRow, type PaymentsByMethod } from "@/lib/analytics-payments";
 import type { AnalyticsSettings } from "@/lib/analytics-kpi";
 
-import { inPeriod, num, PAID, type Row, soldIn, toMainOne } from "./analytics-sql";
+import { inPeriod, PAID, soldIn, toMainOne } from "./analytics-sql";
 import { setBasedReplica as setBased } from "./analytics-totals";
 import type { Store } from "./stores";
+import { checkedRows, col } from "./typed-rows";
+
+/** Captured payments of one kind in one currency (CODE-02): how many, and what moved, with VAT, in its minor units. */
+const PAYMENT_GROUP = z.object({
+  provider: col.text,
+  method_type: col.textOrNull,
+  wallet: col.textOrNull,
+  method: col.textOrNull,
+  currency: col.currency,
+  payments: col.minor,
+  received: col.minor,
+  refunded: col.minor,
+  fee_share: col.minor,
+  fee_payments: col.minor,
+  real_fee: col.minor,
+  real_fee_payments: col.minor,
+});
 
 /**
  * Payments by method for a period (wave 4 unit A, D288, docs/analytics.md "Payments by method"): the captured payments of the period's paid orders (`PAID`,
@@ -18,7 +36,7 @@ import type { Store } from "./stores";
  */
 export async function paymentMethodsReport(store: Store, period: AnalyticsPeriod, settings: Pick<AnalyticsSettings, "paymentFeeBps" | "paymentFeeFixedMinor">): Promise<PaymentsByMethod> {
   const id = store.id;
-  const rows = await setBased<Row>(sql`
+  const rows = await setBased(sql`
     with pay as (
       select p.id, p.provider, p.method_type, p.wallet, p.method, p.currency::text as currency, p.amount_minor,
         -- Stripe's own fee, where read in the payment's currency (D290); the others are estimated.
@@ -42,20 +60,20 @@ export async function paymentMethodsReport(store: Store, period: AnalyticsPeriod
       count(*) filter (where pay.provider = 'stripe' and pay.real_fee is not null) as real_fee_payments
     from pay left join refunded on refunded.payment_id = pay.id
     group by 1, 2, 3, 4, 5
-  `);
+  `).then((read) => checkedRows(PAYMENT_GROUP, read));
   const groups: PaymentGroupRow[] = rows.map((r) => ({
-    provider: String(r.provider),
-    methodType: r.method_type ? String(r.method_type) : null,
-    wallet: r.wallet ? String(r.wallet) : null,
-    manualMethod: r.method ? String(r.method) : null,
-    currency: String(r.currency).trim(),
-    payments: num(r, "payments"),
-    receivedMinor: num(r, "received"),
-    refundedMinor: num(r, "refunded"),
-    feeShareMinor: num(r, "fee_share"),
-    feePayments: num(r, "fee_payments"),
-    realFeeMinor: num(r, "real_fee"),
-    realFeePayments: num(r, "real_fee_payments"),
+    provider: r.provider,
+    methodType: r.method_type || null,
+    wallet: r.wallet || null,
+    manualMethod: r.method || null,
+    currency: r.currency,
+    payments: r.payments,
+    receivedMinor: r.received,
+    refundedMinor: r.refunded,
+    feeShareMinor: r.fee_share,
+    feePayments: r.fee_payments,
+    realFeeMinor: r.real_fee,
+    realFeePayments: r.real_fee_payments,
   }));
   return paymentsByMethod(groups, (currency, minor) => toMainOne(store, currency, minor), settings.paymentFeeFixedMinor);
 }
