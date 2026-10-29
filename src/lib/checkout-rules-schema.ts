@@ -1,6 +1,16 @@
 import { z } from "zod";
 
-import { FIELD_LABEL_MAX, REFUSAL_MAX, RULE_CONDITIONS_MAX, type CheckoutRule, type RuleCondition, type RuleEffect } from "./checkout-rules";
+import {
+  DELIVERY_PERCENT_MAX,
+  DELIVERY_PERCENT_MIN,
+  FIELD_LABEL_MAX,
+  REFUSAL_MAX,
+  RULE_CONDITIONS_MAX,
+  type CheckoutRule,
+  type DeliveryPrice,
+  type RuleCondition,
+  type RuleEffect,
+} from "./checkout-rules";
 
 /**
  * The shapes a checkout rule and a checkout field are saved in (wave 9 unit D, D357), for the admin's save and the AI manager; kept apart from
@@ -16,6 +26,17 @@ const words = (max: number) =>
     text: z.string().trim().min(1).max(max),
     byLocale: z.record(z.string().regex(/^[a-z]{2}(-[A-Z]{2})?$/), z.string().trim().max(max)).default({}),
   });
+
+export const deliveryPriceSchema: z.ZodType<DeliveryPrice> = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("free") }),
+  z.object({ kind: z.literal("percent"), percent: z.int().min(DELIVERY_PERCENT_MIN).max(DELIVERY_PERCENT_MAX).refine((p) => p !== 0, "Choose a percentage other than 0.") }),
+  z.object({
+    kind: z.literal("amount"),
+    amounts: z
+      .record(z.string().regex(/^[A-Z]{3}$/), z.int().min(-10_000_000).max(10_000_000))
+      .refine((a) => Object.keys(a).length > 0 && Object.keys(a).length <= 30, "Give an amount in at least one currency."),
+  }),
+]) as z.ZodType<DeliveryPrice>;
 
 export const conditionSchema: z.ZodType<RuleCondition> = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("country"), op: z.enum(["is", "is_not"]), countries: z.array(z.string().regex(/^[A-Z]{2}$/)).min(1).max(60) }),
@@ -33,6 +54,7 @@ export const effectSchema: z.ZodType<RuleEffect> = z.discriminatedUnion("kind", 
   z.object({ kind: z.literal("hide_payment_method"), methods: z.array(z.string().regex(/^[a-z_0-9]{2,40}$/)).min(1).max(20) }),
   z.object({ kind: z.literal("refuse"), message: words(REFUSAL_MAX) }),
   z.object({ kind: z.literal("order_delivery"), options: z.array(optionKey).min(1).max(30) }),
+  z.object({ kind: z.literal("delivery_price"), options: z.array(optionKey).min(1).max(30), price: deliveryPriceSchema }),
 ]) as z.ZodType<RuleEffect>;
 
 export const ruleInputSchema = z.object({

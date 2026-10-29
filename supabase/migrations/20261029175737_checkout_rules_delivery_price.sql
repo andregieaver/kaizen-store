@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."checkout_rules" DROP CONSTRAINT "checkout_rules_effect";--> statement-breakpoint
+ALTER TABLE "commerce"."checkout_rules" ADD CONSTRAINT "checkout_rules_effect" CHECK ("commerce"."checkout_rules"."effect" ->> 'kind' in ('hide_shipping', 'rename_shipping', 'order_delivery', 'delivery_price', 'hide_payment_method', 'refuse'));

@@ -256,14 +256,14 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": "missing"
+      "was": "partial"
     },
     "weight": 2,
-    "gap": "Declarative checkout rules (D357): conditions on the basket (country, value in its own currency, weight, products, categories, tags, customer groups) and one effect each (hide or rename a delivery option, leave payment methods out, stop the order with the owner's words), run by `applyCheckoutRules()` in `cartSummary()` and `placeOrder()` alike, in kroner and euro; a rule that names something gone or cannot be read is left out and counted; the order keeps the rules that applied and the payment methods left out. Missing: pricing logic of the owner's own (discounts stay the native campaigns, codes and groups, by choice), reordering options, and code of a developer's own (WebAssembly), which wave 9 decided against until developers ask.",
-    "bucket": "A",
-    "wave": 9,
+    "gap": "Declarative checkout rules (D357, D399, D402): conditions on the basket (country, value in its own currency, weight, products, categories, tags, customer groups) and one effect each: hide, rename, order or price a delivery option (free, a percentage or an amount more or less per currency, never below zero, a delivery free above a basket value staying free), leave payment methods out, or stop the order with the owner's words; registered by the owner in Settings or by an app through the Admin API's checkout scopes; run by `applyCheckoutRules()` in `cartSummary()` and `placeOrder()` alike, in kroner and euro (`checkout-rules.int.test.ts`); a rule that names something gone or cannot be read is left out and counted; the order keeps the rules that applied and the payment methods left out. Declarative rules run no code, so they have no network and a bounded cost (30 rules of 10 conditions). Not built by choice: product pricing of the owner's own (discounts stay the native campaigns, codes, groups and price lists) and code of a developer's own (WebAssembly), which wave 9 decided against until developers ask.",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "An owner or an installed app registers a pricing, shipping-rate, payment-method or cart-validation rule as sandboxed, declarative or WebAssembly logic, with a time and memory limit and no network access.",
       "`cartSummary()` and `placeOrder()` run the same rule and agree to the minor unit in a store's own currency and in euro (a scenario in `checkout-kinds.int.test.ts`).",
@@ -272,21 +272,26 @@
     ],
     "evidence": {
       "files": [
+        "src/app/admin/(gated)/[store]/settings/checkout/page.tsx",
+        "src/lib/checkout-rules-schema.ts",
         "src/lib/checkout-rules.ts",
-        "src/server/checkout-rules.ts",
+        "src/server/admin-api.ts",
         "src/server/cart-summary.ts",
+        "src/server/checkout-rules.ts",
         "src/server/checkout.ts",
-        "src/server/delivery-options.ts",
-        "src/app/admin/(gated)/[store]/settings/checkout/page.tsx"
+        "src/server/delivery-options.ts"
       ],
       "tests": [
         "src/lib/checkout-rules.test.ts",
+        "src/server/admin-api.int.test.ts",
         "src/server/checkout-rules.int.test.ts"
       ],
       "untested": false
     },
     "decisions": [
-      "D357"
+      "D357",
+      "D399",
+      "D402"
     ],
     "history": [
       {
@@ -300,6 +305,12 @@
         "from": "missing",
         "to": "partial",
         "why": "D357 built: declarative rules on shipping options, payment methods and cart validation, evaluated the same in the cart and at checkout, skipped and recorded when broken; no pricing rule and no developer code."
+      },
+      {
+        "on": "2026-10-29",
+        "from": "partial",
+        "to": "full",
+        "why": "Criterion 1 asks for a pricing, shipping-rate, payment-method or cart-validation rule: D402 adds the shipping-rate rule (`delivery_price`, checkout-rules.test.ts and checkout-rules.int.test.ts in kroner and euro, the cart and the order charging the rule's price, the order keeping the rule), beside the payment-method and cart-validation rules of D357, and D399's Admin API routes let an app register them. Criteria 2 to 4 were met by D357 (the same evaluator in both, skips recorded, no price below zero, no VAT or legal page change). Owner pricing logic and WebAssembly stay out by the wave-9 decision."
       }
     ]
   },

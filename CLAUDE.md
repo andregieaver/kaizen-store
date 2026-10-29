@@ -959,7 +959,8 @@ stand-in is the only fake, and only it is told it is one.
   basket is only `applyCheckoutRules()` through `checkoutRuleOutcome()`, read once by `cartSummary()` and by `placeOrder()` and handed to
   `resolveDelivery()` (`rules`), which lays it over the offer (`rulesOnOffer()`); every other reader of a cart's delivery passes the buyer
   (`customerId`). A new condition or effect is a kind in `CONDITION_KINDS`/`EFFECT_KINDS`, its schema in `checkout-rules-schema.ts`, its case in
-  `conditionHolds()`/`goneIn()` and the editor, and a test; a rule never changes a price, VAT or a legal page. Payment methods a rule left out are
+  `conditionHolds()`/`goneIn()` and the editor, and a test; a rule never changes a product's price, VAT or a legal page, and prices a delivery
+  option only as `delivery_price` (D402) through `pricedBy()` in `rulesOnOffer()`, never below zero. Payment methods a rule left out are
   `orders.rule_hidden_methods`, read by `excludedPaymentMethods()` given the order. A rule that orders delivery options (`order_delivery`, D399) only moves them (`orderedBy()`), never the default. The Admin API reaches rules and questions only through this module's writers (scopes `checkout:*`). Answers are kept on the cart through `cleanAnswers()` and copied
   by `placeOrder()` (`orders.checkout_answers`, read by `readAnswers()`): personal data, in the export, erasure, retention and `anonymise_order()`.
 - **Versions compared and staging (wave 9 unit E, D358, `src/lib/version-compare.ts`, `src/server/site-staging.ts`)**: what differs between two Since D385 a staged page is a COPY (`site_staging_pages.content`, with `base`, what visitors saw when copied): the builder edits it at `?staging=1` only through `saveStagedPage()` (draft-only, the page's own draft untouched), and *Make live* refuses while a copy's live page changed since (`liveChanges()`) until `keepStagedCopy()`; a new way into a set's copy goes through `stagedCopy()`. Each save of a site's own CSS keeps a version (`commerce.css_versions`, written only by `keepCssVersion()` in `saveSiteCss()`'s transaction, the newest 50), read back into the CSS panel unsaved, so a new writer of a site's own CSS from the panel goes through `saveSiteCss()`.
@@ -1678,10 +1679,12 @@ stand-in is the only fake, and only it is told it is one.
 - Server-only modules import `server-only`.
 - New reads, and every read that carries money, describe their row with `col` and go through `typedRows()`/`typedRow()`
   (`src/server/typed-rows.ts`: each row checked with zod; a `bigint` sum is `col.minor`, a `char(3)` code `col.currency`; a row of
-  another shape throws `RowShapeError`, naming the column, never the value); `coalesce()` a sum that may meet no rows. Older
+  another shape throws `RowShapeError`, naming the column, never the value; rows another runner fetched, such as analytics'
+  `setBased()`, through `checkedRows()`); `coalesce()` a sum that may meet no rows. A writer of `commerce.stores` refreshes the store's
+  tag itself (`refreshTag(storeTag(slug))`, `refreshStoreById()`; `store-writers.scan.test.ts`), which does nothing outside Next. Older
   `execute<Row>()` reads move over when touched (`gift-cards-admin.ts` is the first).
 - New server code logs through `log(level, event, fields, error)` (`src/server/log.ts`: one JSON line, ids and counts, never a
-  person's data or a secret); older `console.error` lines move over when touched. Every cron route has a `maxDuration` and runs
+  person's data or a secret, D400: no `console.error` is left in `src/server` but `log.ts`). Every cron route has a `maxDuration` and runs
   inside `trackedRoute()`/`tracked()`, and the five-minute dispatcher runs each job through `runJobs()` (`src/server/cron-runs.ts`):
   each run is kept in `commerce.cron_jobs`, a job that throws is logged and the others finish, and the platform home and
   Usage and limits say which job is late or failing (`src/lib/cron-health.ts`); `cron-routes.scan.test.ts` holds new routes to it.

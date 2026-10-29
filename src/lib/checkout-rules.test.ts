@@ -4,6 +4,7 @@ import {
   answersByField,
   applyCheckoutRules,
   cleanAnswers,
+  pricedBy,
   rulesOnOffer,
   wordsIn,
   type CheckoutFacts,
@@ -165,3 +166,52 @@ describe("words and answers", () => {
     expect(answersByField([{ fieldId: "f1", label: "A", kind: "text", answer: "x" }, { fieldId: "f2", label: "B", kind: "checkbox", answer: "yes" }, null])).toEqual({ f1: "x" });
   });
 });
+
+describe("delivery prices (D402)", () => {
+  const rate = (amountMinor: number, freeOverMinor: number | null = null) => ({ amountMinor, freeOverMinor });
+  const offer: DeliveryOffer = {
+    status: "ok",
+    ship: [
+      { kind: "method", id: "m2", label: "Standard", position: 1, rate: rate(4900), priceMinor: 4900, estimate: null },
+      { kind: "method", id: "m1", label: "Express", position: 0, rate: rate(9900), priceMinor: 9900, estimate: null },
+    ],
+    pickups: [{ kind: "pickup", id: "x1", locationId: "l1", position: 0, rate: rate(2900), priceMinor: 2900, readyInHours: 2 }],
+    local: null,
+    localBelowMinimum: null,
+    default: { kind: "method", id: "m2", label: "Standard", position: 1, rate: rate(4900), priceMinor: 4900, estimate: null },
+  };
+  const priceRule = (id: string, options: string[], price: Extract<CheckoutRule["effect"], { kind: "delivery_price" }>["price"]) =>
+    rule(id, { effect: { kind: "delivery_price", options, price } });
+
+  it("prices an amount: free, a percentage half up, an amount, never below zero", () => {
+    expect(pricedBy(4900, { kind: "free" })).toBe(0);
+    expect(pricedBy(4950, { kind: "percent", percent: -10 })).toBe(4455);
+    expect(pricedBy(4945, { kind: "percent", percent: -10 })).toBe(4450);
+    expect(pricedBy(4900, { kind: "percent", percent: 50 })).toBe(7350);
+    expect(pricedBy(4900, { kind: "amount", amountMinor: -6000 })).toBe(0);
+    expect(pricedBy(4900, { kind: "amount", amountMinor: 1500 })).toBe(6400);
+  });
+
+  it("applies an amount only in a currency it names, and the first price of an option stands", () => {
+    const amount = priceRule("a", ["method:m1"], { kind: "amount", amounts: { EUR: -500 } });
+    expect(applyCheckoutRules([amount], facts, known, "en").prices.size).toBe(0);
+    expect(applyCheckoutRules([amount], facts, known, "en").applied).toEqual([]);
+    const both = applyCheckoutRules([priceRule("f", ["method:m1"], { kind: "free" }), priceRule("p", ["method:m1", "flat"], { kind: "percent", percent: 20 })], facts, known, "en");
+    expect(both.prices.get("method:m1")).toEqual({ kind: "free" });
+    expect(both.prices.get("flat")).toEqual({ kind: "percent", percent: 20 });
+    expect(both.applied).toEqual(["f", "p"]);
+    // A percentage out of bounds is not read.
+    expect(applyCheckoutRules([priceRule("x", ["flat"], { kind: "percent", percent: -150 })], facts, known, "en").prices.size).toBe(0);
+  });
+
+  it("lays the price over the rate, keeps what is free over a value free, and makes the cheapest the default again", () => {
+    const out = rulesOnOffer(offer, applyCheckoutRules([priceRule("f", ["method:m1"], { kind: "free" }), priceRule("p", ["pickup:x1"], { kind: "amount", amounts: { NOK: 1000 } })], facts, known, "en"));
+    expect(out.ship.map((d) => [d.id, d.priceMinor, d.rate.amountMinor])).toEqual([["m1", 0, 0], ["m2", 4900, 4900]]);
+    expect(out.default?.id).toBe("m1");
+    expect(out.pickups[0]).toMatchObject({ priceMinor: 3900, rate: { amountMinor: 3900 } });
+    const freeOver: DeliveryOffer = { ...offer, ship: [{ kind: "flat", id: "flat", rate: rate(4900, 50_000), priceMinor: 0 }], default: null };
+    const up = rulesOnOffer(freeOver, applyCheckoutRules([priceRule("u", ["flat"], { kind: "amount", amounts: { NOK: 2000 } })], facts, known, "en"));
+    expect(up.ship[0]).toMatchObject({ priceMinor: 0, rate: { amountMinor: 6900, freeOverMinor: 50_000 } });
+  });
+});
+

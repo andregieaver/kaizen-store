@@ -35,11 +35,16 @@ maturity for the run-up to launch. Point IDs are the audit's.
       route and of each dispatcher job (`tracked()`, `runJobs()`, `trackedRoute()`), a throwing job no longer fails the others, the
       platform home lists jobs that are late or failing (`src/lib/cron-health.ts`) and Usage and limits shows them all; `maxDuration`
       on every cron route, held by `cron-routes.scan.test.ts`.
-- [ ] **REL-02** Move the remaining `console.error` lines in `src/server` to `log()` as each module is touched; send an alert (email
-      to platform admins) when a job turns failing. Done for the alert (D389): a job whose runs ending in an error reach `FAILING_AFTER` emails the platform's admins once for that turn (`alertFailingJob()`, `src/server/cron-alerts.ts`); the `console.error` lines still move over as modules are touched.
+- [x] **REL-02** Move the remaining `console.error` lines in `src/server` to `log()`; send an alert (email to platform admins) when a
+      job turns failing. The alert is D389's (`alertFailingJob()`, `src/server/cron-alerts.ts`); every `console.error` in `src/server`
+      outside `log.ts` went to `log()` in D400 (206 calls in 81 modules, ids and counts only: a visitor's path and a provider's error text
+      are no longer logged).
 - [x] **CODE-02** `typedRows()`/`typedRow()` and `col` (`src/server/typed-rows.ts`) for new reads and money reads, a rule in CLAUDE.md,
       and the gift card liability reads converted first.
-- [ ] **CODE-02** Convert the other money reads as they are touched (analytics, payouts, refunds, tax reports first).
+- [ ] **CODE-02** Convert the other money reads as they are touched (analytics, payouts, refunds, tax reports first). D400 converted
+      Finance's refunds, lost disputes and spend (`analytics-totals.ts`, through `checkedRows()` over `setBased()`), the payouts report
+      (`payouts-report.ts`) and the refunds page's totals (`analytics-refunds-data.ts`); the tax reports read documents through
+      `tax_document_groups()` and their exports log no money. The other analytics loaders still read `Row` and move over when touched.
 - [x] **AGT-10, AST-09** The agents' safety eval (`src/lib/agent-eval.ts`, `src/server/agent-eval.ts`): the chat and the manager with
       their real prompts and tools on scripted tool answers that hide instructions (product text, knowledge, a customer's note, a
       support message, a page), plus off-topic, invented prices, prompt extraction and an asked-for refund; run from Platform → AI,
@@ -82,7 +87,10 @@ maturity for the run-up to launch. Point IDs are the audit's.
       the 23 that rely on their callers are listed and the list only shrinks. The search cache's `understand` entries were already keyed
       on the store's categories and tags (the instructions are part of the key, `src/server/query-understanding.ts`): the audit's doubt
       there was unfounded.
-- [ ] **DATA-02** Move the 23 listed writers to refreshing the tag themselves, as each is next touched.
+- [x] **DATA-02** Move the 23 listed writers to refreshing the tag themselves (D400: each now calls `refreshTag(storeTag(slug))` or
+      `refreshStoreById()` after its write; `refreshTag()` does nothing outside Next, so jobs and tests run them as they are). One stays
+      listed in `store-writers.scan.test.ts`: `store-roles.ts`, which runs while a page renders (a tag cannot be refreshed there) and
+      writes only `role_templates_offered`, which no cached read shows.
 - [ ] Dev-only advisories (Vitest's and drizzle-kit's local dev servers: vite, `@vitest/mocker`, esbuild) at the next Vitest upgrade.
 
 ## Leave for the launch run-up

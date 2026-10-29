@@ -82,6 +82,8 @@ function blankEffect(kind: RuleEffect["kind"]): RuleEffect {
       return { kind, message: EMPTY_WORDS };
     case "order_delivery":
       return { kind, options: [] };
+    case "delivery_price":
+      return { kind, options: [], price: { kind: "free" } };
   }
 }
 
@@ -307,6 +309,60 @@ export function RuleEditor({
                 ? `${w.shownFirst} ${effect.options.map((o) => choices.options.find((c) => c.id === o)?.label ?? o).join(", ")}`
                 : w.orderHint}
             </p>
+          </>
+        )}
+        {effect.kind === "delivery_price" && (
+          <>
+            <Many choices={choices.options} chosen={effect.options} onChange={(options) => setEffect({ ...effect, options })} label={w.effectKinds.delivery_price} />
+            <select
+              value={effect.price.kind}
+              onChange={(e) => {
+                const kind = e.target.value as "free" | "percent" | "amount";
+                setEffect({ ...effect, price: kind === "free" ? { kind } : kind === "percent" ? { kind, percent: -10 } : { kind, amounts: {} } });
+              }}
+              className={`${FIELD} self-start`}
+              aria-label={w.priceKind}
+            >
+              <option value="free">{w.priceKinds.free}</option>
+              <option value="percent">{w.priceKinds.percent}</option>
+              <option value="amount">{w.priceKinds.amount}</option>
+            </select>
+            {effect.price.kind === "percent" && (
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="number"
+                  min={-100}
+                  max={300}
+                  step={1}
+                  value={effect.price.percent}
+                  onChange={(e) => setEffect({ ...effect, price: { kind: "percent", percent: Math.round(Number(e.target.value)) } })}
+                  className={`${FIELD} w-24`}
+                />
+                %
+              </label>
+            )}
+            {effect.price.kind === "amount" &&
+              choices.currencies.map((currency) => {
+                const amounts = effect.price.kind === "amount" ? effect.price.amounts : {};
+                return (
+                  <label key={currency} className="flex items-center gap-2 text-sm">
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={amounts[currency] === undefined ? "" : amounts[currency] / 100}
+                      onChange={(e) => {
+                        const next = { ...amounts };
+                        if (e.target.value === "") delete next[currency];
+                        else next[currency] = Math.round(Number(e.target.value) * 100);
+                        setEffect({ ...effect, price: { kind: "amount", amounts: next } });
+                      }}
+                      className={`${FIELD} w-32`}
+                    />
+                    {currency}
+                  </label>
+                );
+              })}
+            <p className="text-sm text-muted">{w.priceHint}</p>
           </>
         )}
         {effect.kind === "hide_payment_method" && (

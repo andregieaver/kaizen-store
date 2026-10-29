@@ -67,7 +67,7 @@ export async function listCheckoutRules(storeId: string): Promise<RuleRow[]> {
 export type SaveRuleOutcome = { ok: true; id: string } | { ok: false; problems: string[] };
 
 /** What the store's own ids say of a rule: a product, category, tag, group, delivery option or payment method not the store's is refused. */
-async function ruleProblems(storeId: string, rule: Omit<CheckoutRule, "id">): Promise<string[]> {
+async function ruleProblems(storeId: string, rule: Omit<CheckoutRule, "id">, currencies: readonly string[]): Promise<string[]> {
   const known = await knownIds(db(), storeId);
   const problems: string[] = [];
   for (const c of rule.conditions) {
@@ -76,7 +76,11 @@ async function ruleProblems(storeId: string, rule: Omit<CheckoutRule, "id">): Pr
     if (c.kind === "group" && c.ids.some((id) => !known.tiers.has(id))) problems.push("Choose customer groups of this store.");
   }
   const e = rule.effect;
-  if ((e.kind === "hide_shipping" || e.kind === "order_delivery") && e.options.some((o) => !known.options.has(o))) problems.push("Choose delivery options of this store.");
+  if ((e.kind === "hide_shipping" || e.kind === "order_delivery" || e.kind === "delivery_price") && e.options.some((o) => !known.options.has(o))) problems.push("Choose delivery options of this store.");
+  // A delivery priced by an amount is priced in the currencies the store shows (D402); another would never apply.
+  if (e.kind === "delivery_price" && e.price.kind === "amount" && Object.keys(e.price.amounts).some((c) => !currencies.includes(c))) {
+    problems.push("Give amounts in the store's own currencies.");
+  }
   if (e.kind === "rename_shipping" && !known.options.has(e.option)) problems.push("Choose a delivery option of this store.");
   if (e.kind === "hide_payment_method" && e.methods.some((m) => !known.methods.has(m))) problems.push("Cards are always offered; choose other methods.");
   return [...new Set(problems)];
@@ -87,7 +91,7 @@ export async function saveCheckoutRule(member: Membership, id: string | null, ra
   const parsed = ruleInputSchema.safeParse(raw);
   if (!parsed.success) return { ok: false, problems: [...new Set(parsed.error.issues.map((i) => i.message))] };
   const input = parsed.data;
-  const problems = await ruleProblems(member.store.id, input);
+  const problems = await ruleProblems(member.store.id, input, member.store.localization.currencies.map((c) => c.currency));
   if (problems.length > 0) return { ok: false, problems };
   const storeId = member.store.id;
   if (id) {

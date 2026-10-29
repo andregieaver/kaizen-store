@@ -111,6 +111,11 @@ shopper chooses. Pickup places are ordered too.
 - CODE-02: the remaining money reads in analytics, payouts, refunds and tax reports go through `typedRows()`.
 - DATA-02: the listed writers refresh their own tags.
 
+**As built (D400).** REL-02 and DATA-02 in full (one writer, `store-roles.ts`, stays listed: it runs while a page renders). CODE-02 in
+part: Finance's refunds, disputes and spend, the payouts report and the refunds page's totals are checked reads (`checkedRows()` checks
+rows another runner fetched, such as the analytics' planner-guarded `setBased()`); the tax reports carry no money read of their own (they
+read documents through one SQL function), and the other analytics loaders move over when touched.
+
 ## 3. Rules for every unit
 
 The house rules of `docs/wave-11-core-and-psi.md` section 3 hold: one writer per table, audited; `COPY_RULES`, the personal-data register

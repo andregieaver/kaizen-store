@@ -4159,6 +4159,13 @@
       "when": 1793293708526,
       "tag": "20261029170828_checkout_rules_order",
       "breakpoints": true
+    },
+    {
+      "idx": 594,
+      "version": "7",
+      "when": 1793296657749,
+      "tag": "20261029175737_checkout_rules_delivery_price",
+      "breakpoints": true
     }
   ]
 }

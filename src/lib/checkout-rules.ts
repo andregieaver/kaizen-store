@@ -3,8 +3,9 @@ import type { DeliveryOffer, OfferedDelivery } from "./shipping-methods";
 /**
  * Checkout rules and fields (wave 9 unit D, D357, `docs/wave-9-platform.md` section 3, D): the pure parts, free of zod so the cart (a pay route)
  * can import them. A rule is a list of conditions on the basket (all must hold) and one effect: hide shipping options, rename one, hide payment
- * methods, or refuse the basket with the owner's words. `applyCheckoutRules()` is the one evaluator: `cartSummary()` and `placeOrder()` both reach
- * it through the server's `checkoutRuleOutcome()`, so they agree. A rule never changes a price, VAT or a legal page. A rule that names something
+ * methods, or refuse the basket with the owner's words; since D402 a rule may also price a delivery option (`delivery_price`). `applyCheckoutRules()`
+ * is the one evaluator: `cartSummary()` and `placeOrder()` both reach it through the server's `checkoutRuleOutcome()`, so they agree. A rule never
+ * changes a product's price, VAT or a legal page, and a delivery it prices never costs less than nothing. A rule that names something
  * gone (a method, a product, a category, a group) or cannot be read is skipped, never half applied, and the skip is recorded.
  */
 
@@ -37,9 +38,17 @@ export type RuleEffect =
   | { kind: "hide_payment_method"; methods: string[] }
   | { kind: "refuse"; message: Words }
   /** Shows these options first, in this order, the rest after in their own (D399); never changes which is chosen until the shopper chooses. */
-  | { kind: "order_delivery"; options: string[] };
+  | { kind: "order_delivery"; options: string[] }
+  /** Prices these options (D402): free, a percentage more or less (−100 to 300), or an amount more or less per currency, never below zero. */
+  | { kind: "delivery_price"; options: string[]; price: DeliveryPrice };
 
-export const EFFECT_KINDS = ["hide_shipping", "rename_shipping", "order_delivery", "hide_payment_method", "refuse"] as const;
+/** How a rule prices a delivery option: amounts are signed minor units of the currency shown, a basket in a currency it names none of is untouched. */
+export type DeliveryPrice = { kind: "free" } | { kind: "percent"; percent: number } | { kind: "amount"; amounts: Record<string, number> };
+
+export const DELIVERY_PERCENT_MIN = -100;
+export const DELIVERY_PERCENT_MAX = 300;
+
+export const EFFECT_KINDS = ["hide_shipping", "rename_shipping", "order_delivery", "delivery_price", "hide_payment_method", "refuse"] as const;
 
 export type CheckoutRule = { id: string; name: string; conditions: RuleCondition[]; effect: RuleEffect };
 
@@ -78,13 +87,18 @@ export type RuleOutcome = {
   refusal: { ruleId: string; message: string } | null;
   /** The options to show first, in order, from the first rule that orders them (D399); null when none does. */
   order: string[] | null;
+  /** Delivery options priced by a rule, by key (D402): the first rule that prices an option stands; amounts already in the basket's currency. */
+  prices: ReadonlyMap<string, PriceChange>;
   /** The rules whose conditions held and whose effect counts. */
   applied: string[];
   /** The rules left out, and why. */
   skipped: { ruleId: string; reason: SkipReason }[];
 };
 
-export const NO_RULES: RuleOutcome = { hidden: new Set(), renamed: new Map(), hiddenMethods: [], refusal: null, order: null, applied: [], skipped: [] };
+/** A rule's price for one basket: free, a percentage, or a signed amount in the basket's currency. */
+export type PriceChange = { kind: "free" } | { kind: "percent"; percent: number } | { kind: "amount"; amountMinor: number };
+
+export const NO_RULES: RuleOutcome = { hidden: new Set(), renamed: new Map(), hiddenMethods: [], refusal: null, order: null, prices: new Map(), applied: [], skipped: [] };
 
 /** A shipping option's key, as rules name it: `flat`, `method:{id}`, `pickup:{id}` or `local:{id}`. */
 export const optionKey = (d: Pick<OfferedDelivery, "kind" | "id">): string => (d.kind === "flat" ? "flat" : `${d.kind}:${d.id}`);
@@ -131,7 +145,7 @@ function goneIn(rule: CheckoutRule, known: KnownIds): boolean {
     if (c.kind === "group" && c.ids.some((id) => !known.tiers.has(id))) return true;
   }
   const e = rule.effect;
-  if (e.kind === "hide_shipping" || e.kind === "order_delivery") return e.options.some((o) => !known.options.has(o));
+  if (e.kind === "hide_shipping" || e.kind === "order_delivery" || e.kind === "delivery_price") return e.options.some((o) => !known.options.has(o));
   if (e.kind === "rename_shipping") return !known.options.has(e.option);
   if (e.kind === "hide_payment_method") return e.methods.some((m) => !known.methods.has(m));
   return false;
@@ -154,6 +168,7 @@ export function applyCheckoutRules(rules: readonly CheckoutRule[], facts: Checko
   const methods = new Set<string>();
   let refusal: RuleOutcome["refusal"] = null;
   let order: string[] | null = null;
+  const prices = new Map<string, PriceChange>();
   const applied: string[] = [];
   const skipped: RuleOutcome["skipped"] = [];
   for (const rule of rules) {
@@ -168,6 +183,9 @@ export function applyCheckoutRules(rules: readonly CheckoutRule[], facts: Checko
       }
       if (!rule.conditions.every((c) => conditionHolds(c, facts))) continue;
       const e = rule.effect;
+      // An amount for another currency does not price this basket: the rule does not apply to it, as a total in another currency never holds.
+      const change = e.kind === "delivery_price" ? priceChangeIn(e.price, facts.currency) : null;
+      if (e.kind === "delivery_price" && !change) continue;
       if (e.kind === "hide_shipping") for (const o of e.options) hidden.add(o);
       else if (e.kind === "rename_shipping") {
         if (!renamed.has(e.option)) renamed.set(e.option, wordsIn(e.label, locale).slice(0, FIELD_LABEL_MAX));
@@ -175,13 +193,46 @@ export function applyCheckoutRules(rules: readonly CheckoutRule[], facts: Checko
         for (const m of e.methods) if (m !== ALWAYS_PAID_BY) methods.add(m);
       } else if (e.kind === "order_delivery") {
         if (!order) order = [...new Set(e.options)];
+      } else if (e.kind === "delivery_price") {
+        for (const o of e.options) if (!prices.has(o)) prices.set(o, change!);
       } else if (!refusal) refusal = { ruleId: rule.id, message: wordsIn(e.message, locale).slice(0, REFUSAL_MAX) };
       applied.push(rule.id);
     } catch {
       skipped.push({ ruleId: rule?.id ?? "", reason: "unreadable" });
     }
   }
-  return { hidden, renamed, hiddenMethods: [...methods].sort(), refusal, order, applied, skipped };
+  return { hidden, renamed, hiddenMethods: [...methods].sort(), refusal, order, prices, applied, skipped };
+}
+
+/** A rule's price for a basket in `currency`: null for an amount the rule names none of in that currency, or a shape it cannot read. */
+export function priceChangeIn(price: DeliveryPrice, currency: string): PriceChange | null {
+  if (!price || typeof price !== "object") return null;
+  if (price.kind === "free") return { kind: "free" };
+  if (price.kind === "percent") {
+    const p = price.percent;
+    return Number.isInteger(p) && p >= DELIVERY_PERCENT_MIN && p <= DELIVERY_PERCENT_MAX ? { kind: "percent", percent: p } : null;
+  }
+  if (price.kind === "amount") {
+    const a = price.amounts?.[currency];
+    return Number.isSafeInteger(a) ? { kind: "amount", amountMinor: a } : null;
+  }
+  return null;
+}
+
+/** An amount as a rule prices it: half up for a percentage, never below zero (D402). */
+export function pricedBy(amountMinor: number, change: PriceChange): number {
+  if (change.kind === "free") return 0;
+  if (change.kind === "percent") return Math.max(0, amountMinor + Math.sign(change.percent) * Math.floor((Math.abs(amountMinor * change.percent) + 50) / 100));
+  return Math.max(0, amountMinor + change.amountMinor);
+}
+
+/** A delivery with a rule's price laid over its rate: the rate's amount priced, its free-over threshold kept, what it costs this basket with it. */
+function priced(d: OfferedDelivery, change: PriceChange | undefined): OfferedDelivery {
+  if (!change) return d;
+  const amountMinor = pricedBy(d.rate.amountMinor, change);
+  // Free over a value stays free: the rule prices what the basket would otherwise pay.
+  const freeAlready = d.priceMinor === 0 && d.rate.amountMinor > 0;
+  return { ...d, rate: { ...d.rate, amountMinor }, priceMinor: freeAlready ? 0 : amountMinor };
 }
 
 /** A delivery as a rule renamed it: the label the page and the order show (`renamed`); null where no rule renamed it. */
@@ -189,18 +240,21 @@ export type RenamedDelivery = OfferedDelivery & { renamed?: string };
 
 /**
  * An offer with the rules laid over it: hidden options taken out of what ships, the pickup places and local delivery, renamed ones carrying their
- * new label, and the default the cheapest that is left. Hiding every way to ship leaves the basket with `no_shipping`, as a store with none.
+ * new label, priced ones their rule's price (D402), and the default the cheapest that is left. Hiding every way to ship leaves the basket with `no_shipping`, as a store with none.
  */
 export function rulesOnOffer(offer: DeliveryOffer, outcome: RuleOutcome): DeliveryOffer {
-  if (outcome.hidden.size === 0 && outcome.renamed.size === 0 && !outcome.order) return offer;
+  const prices = outcome.prices ?? new Map<string, PriceChange>();
+  if (outcome.hidden.size === 0 && outcome.renamed.size === 0 && !outcome.order && prices.size === 0) return offer;
   const keep = (d: OfferedDelivery) => !outcome.hidden.has(optionKey(d));
-  const name = (d: OfferedDelivery): RenamedDelivery => {
+  const name = (option: OfferedDelivery): RenamedDelivery => {
+    const d = priced(option, prices.get(optionKey(option)));
     const label = outcome.renamed.get(optionKey(d));
     if (!label) return d;
     return d.kind === "method" ? { ...d, label, renamed: label } : { ...d, renamed: label };
   };
   if (offer.status === "none") return offer;
-  const ship = offer.ship.filter(keep).map(name);
+  // A rule that prices options may change which is cheapest: what ships is sorted again as the offer sorts it (price, then the store's position).
+  const ship = cheapestFirst(offer.ship.filter(keep).map(name), prices.size > 0);
   const pickups = offer.pickups.filter(keep).map(name);
   const local = offer.local && keep(offer.local) ? name(offer.local) : null;
   return {
@@ -214,6 +268,13 @@ export function rulesOnOffer(offer: DeliveryOffer, outcome: RuleOutcome): Delive
     localBelowMinimum: local ? null : offer.localBelowMinimum,
     default: ship[0] ?? null,
   };
+}
+
+/** Options cheapest first, then by the store's position and id, as `deliveryOffer()` sorts them; unchanged when nothing was priced. */
+function cheapestFirst<T extends OfferedDelivery>(options: T[], repriced: boolean): T[] {
+  if (!repriced) return options;
+  const position = (d: T) => ("position" in d ? d.position : 0);
+  return [...options].sort((a, b) => a.priceMinor - b.priceMinor || position(a) - position(b) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 }
 
 /** Options with the ones a rule names first, in its order, and the rest after in their own order (D399). */

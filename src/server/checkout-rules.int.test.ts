@@ -39,7 +39,7 @@ let member: Member;
 beforeAll(async () => {
   store = await fxStore("rules");
   other = await fxStore("rules-other");
-  member = { account: { id: store.accountId }, store: { id: store.storeId } } as unknown as Member;
+  member = { account: { id: store.accountId }, store: { id: store.storeId, localization: { currencies: [{ currency: "NOK" }, { currency: "EUR" }] } } } as unknown as Member;
 });
 afterAll(async () => {
   await closeDb();
@@ -119,6 +119,33 @@ describe("delivery options", () => {
     const placed = await placeOrder({ storeId: store.storeId, market: NO }, cartId, {}, { customerId: null });
     if (!placed.ok) throw new Error(placed.problem);
     expect(placed.order.shippingMinor).toBe(summary.shipping);
+  });
+
+  it("prices a delivery option: the cart and the order charge the rule's price, in kroner and in euro, and the order keeps the rule (D402)", async () => {
+    const express = await methodOf("Express", 9900);
+    // An amount in a currency the store does not show is refused.
+    expect(await rules.saveCheckoutRule(member, null, { name: "Bad", conditions: [], effect: { kind: "delivery_price", options: ["flat"], price: { kind: "amount", amounts: { USD: 100 } } } })).toMatchObject({ ok: false });
+    const id = await ruleOn({
+      name: "Express cheaper",
+      conditions: [],
+      effect: { kind: "delivery_price", options: [`method:${express}`], price: { kind: "amount", amounts: { NOK: -4000, EUR: -300 } } },
+    });
+    for (const market of [NO, NO_EUR]) {
+      const cartId = await cartOf(store, [["DEMO-MUG-WHITE", 1]], market);
+      const before = (await resolveDelivery(db(), store.storeId, cartId, market))!;
+      const own = before.offer.ship.find((d) => d.id === express)!;
+      expect(own).toBeDefined();
+      const unpriced = market === NO ? 9900 : null;
+      if (unpriced !== null) expect(own.priceMinor).toBe(9900 - 4000);
+      expect(await chooseDelivery({ storeId: store.storeId, market }, cartId, `method:${express}`)).toMatchObject({ ok: true });
+      const summary = await summaryOf(cartId, market);
+      expect(summary.shipping).toBe(own.priceMinor);
+      const placed = await placeOrder({ storeId: store.storeId, market }, cartId, {}, { customerId: null });
+      if (!placed.ok) throw new Error(placed.problem);
+      expect(placed.order.shippingMinor).toBe(summary.shipping);
+      const [kept] = await db().execute<Row>(sql`select checkout_rules_applied from commerce.orders where id = ${placed.order.orderId}::uuid`);
+      expect(kept.checkout_rules_applied).toContain(id);
+    }
   });
 
   it("hiding every way to ship leaves the basket with nothing to ship it, as checkout refuses", async () => {
