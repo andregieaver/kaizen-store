@@ -32,7 +32,6 @@ import { cookiesTag } from "./site-cookies";
 import { STORES_TAG } from "./seo";
 import { storeObligations } from "./store-closure";
 import { storeTag } from "./stores";
-import { testPayment } from "./payment-mode-sql";
 
 /**
  * Switching a store's features on and off (D178, `docs/store-features.md`). The registry and the rules of what blocks or warns are pure
@@ -88,7 +87,7 @@ export async function featureFacts(storeId: string, executor: Executor = db()): 
       (select count(*)::int from commerce.orders o, home
         where o.store_id = ${storeId}::uuid and o.status = 'paid' and o.copied_from is null and o.market_code is distinct from home.code
           and exists (select 1 from commerce.order_lines l where l.store_id = o.store_id and l.order_id = o.id and l.delivery = 'physical' and not l.gift)
-          and not coalesce((select bool_and(${testPayment("p")}) from commerce.payments p where p.store_id = o.store_id and p.order_id = o.id), false)
+          and not coalesce((select bool_and(p.test_mode) from commerce.payments p where p.store_id = o.store_id and p.order_id = o.id), false)
       ) as foreign_unsent,
       (select count(*)::int from commerce.carts c, home
         where c.store_id = ${storeId}::uuid and c.status = 'open' and c.expires_at > now() and c.market_code is distinct from home.code

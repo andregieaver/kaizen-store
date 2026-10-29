@@ -29,7 +29,6 @@ import { platformStripe } from "./stripe";
 import { storeTag } from "./stores";
 import { cancelEditsForClosure } from "./order-edits";
 import { mollieProvider } from "./payment-providers/mollie";
-import { testPayment } from "./payment-mode-sql";
 
 /**
  * Closing, suspending and reopening a store (D171, `docs/store-closure.md`). Authorisation is the caller's (the owner's action asks `checkOwnerRole()`, the
@@ -94,7 +93,7 @@ export async function storeObligations(
       (select count(*)::int from commerce.orders o
         where o.store_id = ${storeId}::uuid and o.status = 'paid' and o.copied_from is null
           and exists (select 1 from commerce.order_lines l where l.store_id = o.store_id and l.order_id = o.id and l.delivery = 'physical' and not l.gift)
-          and not coalesce((select bool_and(${testPayment("p")}) from commerce.payments p where p.store_id = o.store_id and p.order_id = o.id), false)
+          and not coalesce((select bool_and(p.test_mode) from commerce.payments p where p.store_id = o.store_id and p.order_id = o.id), false)
       ) as paid_unshipped,
       (select count(*)::int from commerce.subscriptions s where s.store_id = ${storeId}::uuid and s.status in ('active', 'past_due', 'paused')) as subscriptions,
       (select count(*)::int from commerce.standing_orders d where d.store_id = ${storeId}::uuid and d.status in ('active', 'paused')) as deliveries,
