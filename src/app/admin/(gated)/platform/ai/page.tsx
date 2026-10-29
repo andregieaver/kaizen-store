@@ -6,9 +6,9 @@ import { DeleteDiscountButton } from "@/components/admin/delete-discount-button"
 import { providerInfo } from "@/lib/ai-provider";
 import { pictureLine } from "@/lib/ai-vision";
 import { EVAL_CASES, PASS_RATE } from "@/lib/query-eval";
-import { AGENT_EVAL_CASES } from "@/lib/agent-eval";
+import { AGENT_EVAL_CASES, samePrompts, versionWords } from "@/lib/agent-eval";
 import { AgentEvalButton } from "@/components/admin/agent-eval-button";
-import { recentAgentEvalRuns } from "@/server/agent-eval";
+import { promptVersions, recentAgentEvalRuns } from "@/server/agent-eval";
 import { countStoresWithOwnAi, getAiSettings } from "@/server/ai";
 import { requirePlatformAdmin } from "@/server/auth";
 import { searchSettings } from "@/server/web-search-settings";
@@ -41,6 +41,7 @@ export default async function PlatformAiPage() {
   const w = adminText(lang, "platformTools").ai;
   const shared = adminText(lang, "settings").ai;
   const agentRuns = await recentAgentEvalRuns();
+  const current = promptVersions();
   const [settings, ownCount, search] = await Promise.all([getAiSettings(null), countStoresWithOwnAi(), searchSettings()]);
   const status = settings
     ? `${settings.enabled ? w.on : w.off} · ${providerInfo(settings.provider).name}` +
@@ -122,11 +123,26 @@ export default async function PlatformAiPage() {
                 <p className="text-muted">{shared.agentsRuns}</p>
                 <ul className="mt-1 flex flex-col gap-0.5">
                   {agentRuns.map((run) => (
-                    <li key={run.ranAt} className={run.passed < run.total ? "text-danger-text" : "text-ink-2"}>
+                    <li key={run.id} className={run.passed < run.total ? "text-danger-text" : "text-ink-2"}>
                       {fillWords(shared.agentsRun, { date: run.ranAt.slice(0, 16).replace("T", " "), model: run.model, passed: run.passed, total: run.total })}
+                      {run.prompts && (
+                        <span className="text-muted">
+                          {" · "}
+                          {fillWords(samePrompts(run.prompts, current) ? shared.agentsPromptsNow : shared.agentsPromptsOld, { versions: versionWords(run.prompts) })}
+                        </span>
+                      )}
+                      {run.recorded && (
+                        <>
+                          {" · "}
+                          <a href={`/admin/platform/ai/eval/${run.id}/recording`} download className="underline">
+                            {shared.agentsDownload}
+                          </a>
+                        </>
+                      )}
                     </li>
                   ))}
                 </ul>
+                <p className="mt-2 text-xs text-muted">{fillWords(shared.agentsRecordingHelp, { versions: versionWords(current) })}</p>
               </div>
             )}
           </div>
@@ -148,3 +164,4 @@ export default async function PlatformAiPage() {
     </AdminTextScope>
   );
 }
+

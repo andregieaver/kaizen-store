@@ -15,6 +15,7 @@ import type { Desk } from "./support-desk";
 import type { Account } from "./auth";
 import { aboutStoreOf, kaizenToolsFor } from "./support-kaizen";
 import { supportToolsFor, type SupportCustomer } from "./support-tools";
+import { chatPromptVersion } from "./prompt-versions";
 
 /**
  * The AI's answer in a support conversation (D216, `docs/support.md` 5.2): its history comes from the database (the customer's
@@ -76,6 +77,7 @@ export async function runSupportTurn(
   if (reply.chips?.length) data.chips = reply.chips;
   if (reply.card) data.card = reply.card;
   const body = (reply.reply || m.chat.sorry).slice(0, MESSAGE_MAX.ai);
-  await addMessage(desk, conversationId, "ai", null, body, { ...(Object.keys(data).length > 0 ? { data } : {}), ...(reply.action ? { action: reply.action } : {}) });
+  // The prompt version the answer was written under (D391) is kept with it, for the desk; the visitor's feed leaves it out.
+  await addMessage(desk, conversationId, "ai", null, body, { data: { ...data, prompt: chatPromptVersion() }, ...(reply.action ? { action: reply.action } : {}) });
   return { reply, ...(reply.handoff ? { handoff: reply.handoff } : {}) };
 }

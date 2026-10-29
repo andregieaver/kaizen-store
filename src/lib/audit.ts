@@ -35,6 +35,7 @@ const EXACT: Record<string, AuditArea> = {
   "settings.producer_registration_removed": "settings",
   // Marketing.
   "store.bonus_settings": "marketing",
+  "store.assistant_keep": "settings",
   "store.affiliate_settings": "marketing",
   // Website.
   "store.fields_updated": "website",

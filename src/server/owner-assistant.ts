@@ -60,6 +60,7 @@ import { effectiveFeatures } from "@/lib/store-features";
 import { can, canOpenPath, type PermissionHolder } from "@/lib/permissions";
 import { UNTRUSTED_TEXT } from "@/lib/prompt-safety";
 import { EVENT_LINES, type EventKind } from "@/lib/autopilot-events";
+import { PROMPT_DAY, promptHash } from "./prompt-versions";
 
 type Row = Record<string, unknown>;
 
@@ -236,9 +237,10 @@ export async function deleteConversation(p: Principal, id: string): Promise<bool
 }
 
 export async function addMessage(p: Principal, conversationId: string, role: "user" | "assistant", content: string, tools: ToolTrail[] = []) {
+  const version = role === "assistant" ? managerPromptVersion() : null;
   const [row] = await db().execute<Row>(sql`
-    insert into commerce.assistant_messages (store_id, conversation_id, role, content, tools)
-    values (${storeIdOf(p)}, ${conversationId}::uuid, ${role}, ${content.slice(0, 20_000)}, ${JSON.stringify(tools)}::jsonb)
+    insert into commerce.assistant_messages (store_id, conversation_id, role, content, tools, prompt_version)
+    values (${storeIdOf(p)}, ${conversationId}::uuid, ${role}, ${content.slice(0, 20_000)}, ${JSON.stringify(tools)}::jsonb, ${version})
     returning *
   `);
   await db().execute(sql`update commerce.assistant_conversations set updated_at = now() where id = ${conversationId}::uuid`);
@@ -404,6 +406,27 @@ export function managerPrompt(
     "What you know about them:",
     memories.length ? memories.map(memoryLine).join("\n") : "Nothing yet.",
   ].join("\n");
+}
+
+/**
+ * The AI manager's prompt drawn with fixed inputs (D391, `prompt-versions.ts`): Eval Store in Norway, its owner with no name, a fixed day,
+ * no memories. Only the fields `managerPrompt()` reads are given, so the hash changes only with the prompt's code.
+ */
+export function fixedManagerPrompt(account: Pick<Account, "id"> = { id: "00000000-0000-4000-8000-000000000000" }): string {
+  return managerPrompt(fixedPrincipal(account), { now: PROMPT_DAY });
+}
+
+/** The owner the AI manager's eval plays for. */
+export function fixedPrincipal(account: Pick<Account, "id">): Principal {
+  const store = { name: "Eval Store", timeZone: "Europe/Oslo", status: "active", markets: [{ name: "Norway", currency: "NOK", lang: "nb" }] } as unknown as Store;
+  return { account: { id: account.id, email: "eval@example.invalid", name: "", platformAdmin: false, adminLocale: "en" } as Account, store, role: "owner" };
+}
+
+let managerVersion: string | null = null;
+
+/** The AI manager's prompt version, kept with each of its answers. */
+export function managerPromptVersion(): string {
+  return (managerVersion ??= promptHash(fixedManagerPrompt()));
 }
 
 // A turn ---------------------------------------------------------------------------------

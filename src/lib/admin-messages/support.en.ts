@@ -376,10 +376,15 @@ export const supportEn = {
       text: "Beside a conversation someone has, it looks up facts with that person's own permissions, recommends what to do and drafts a reply they may use. It never writes to the customer or acts, and each person can switch it off for themselves. Needs a text model{none}.",
     },
     noneConnected: " (none is connected)",
+    aiOn: "On for this desk: {what}. Customers are told so in the chat's notice before they write; switch either off below.",
+    aiOnTone: "tone of customers' messages read by AI",
+    aiOnSummaries: "AI summaries",
+    aiOnAnd: " and ",
     toneTitle: "The customer's tone",
     tone: {
       title: "Read the tone of customers' messages.",
       text: "The AI scores each message from very bad to very good, only for your team; the customer never sees it and nothing is decided about them from it. Needs a text model{none}.",
+      toldInChat: "While this is on, the chat's notice tells customers that an AI reads the tone of their messages.",
     },
     toneAlert: {
       before: "Alert the inbox when a conversation's tone reaches",
@@ -391,6 +396,7 @@ export const supportEn = {
     summaries: {
       title: "Summarise ended conversations, and brief whoever takes one over.",
       text: "Written by the AI from the conversation, in English, for your team only; you can correct a summary. Needs a text model{none}.",
+      toldInChat: "While this is on, the chat's notice tells customers that an AI summarises their conversation for your team.",
     },
     conversationsTitle: "Conversations",
     endAfter: {

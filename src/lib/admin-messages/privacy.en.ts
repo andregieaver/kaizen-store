@@ -293,6 +293,7 @@ export const privacyEn = {
       support_transcripts: "Support chat transcripts",
       support_records: "Anonymised support records",
       blog_comments: "Refused and spam blog comments",
+      assistant_conversations: "AI manager conversations",
     },
     bases: {
       read: "Read at the source",

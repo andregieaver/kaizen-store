@@ -15,7 +15,19 @@ import { getAiSettings, type AiSettings } from "@/server/ai";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { PageHeader } from "@/components/admin/ui";
 
-import { checkStoreVisionAction, evalStoreAiAction, removeStoreAiAction, saveStoreAiAction, testStoreAiAction, testStoreImageAction } from "./actions";
+import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { ASSISTANT_KEEP, ASSISTANT_KEEP_MONTHS } from "@/lib/assistant-keep";
+import { assistantKeepOf } from "@/server/assistant-retention";
+
+import {
+  checkStoreVisionAction,
+  evalStoreAiAction,
+  removeStoreAiAction,
+  saveAssistantKeepAction,
+  saveStoreAiAction,
+  testStoreAiAction,
+  testStoreImageAction,
+} from "./actions";
 
 export const metadata: Metadata = { title: "AI" };
 
@@ -39,7 +51,7 @@ export default async function StoreAiPage({ params }: PageProps<"/admin/[store]/
   const { store: slug } = await params;
   const staffer = await requirePermission(slug, "settings:read");
   const { store } = staffer;
-  const [own, kaizen] = await Promise.all([getAiSettings(store.id), getAiSettings(null)]);
+  const [own, kaizen, keepMonths] = await Promise.all([getAiSettings(store.id), getAiSettings(null), assistantKeepOf(store.id)]);
   const owner = memberCan(staffer, "owner");
   const lang = adminLangOf(staffer.account.adminLocale);
   const w = adminText(lang, "settings").ai;
@@ -87,6 +99,31 @@ export default async function StoreAiPage({ params }: PageProps<"/admin/[store]/
           <p className="text-sm">{w.onlyOwner}</p>
         )}
       </section>
+
+      {owner && (
+        <section aria-labelledby="keep" className={card}>
+          <h2 id="keep" className="mb-1 text-title text-ink">{w.keep.title}</h2>
+          <p className="mb-3 text-sm text-muted">
+            {fillWords(w.keep.text, { months: keepMonths ?? ASSISTANT_KEEP_MONTHS, default: ASSISTANT_KEEP_MONTHS, ...ASSISTANT_KEEP })}
+          </p>
+          <ActionForm action={saveAssistantKeepAction.bind(null, store.slug)} className="flex flex-col items-start gap-3">
+            <label className="flex max-w-xs flex-col gap-1 text-sm">
+              {w.keep.label}
+              <input
+                type="number"
+                name="months"
+                min={ASSISTANT_KEEP.min}
+                max={ASSISTANT_KEEP.max}
+                step={1}
+                defaultValue={keepMonths ?? ""}
+                placeholder={String(ASSISTANT_KEEP_MONTHS)}
+                className="rounded-md border border-edge bg-card px-3 py-2"
+              />
+            </label>
+            <SubmitButton>{w.keep.save}</SubmitButton>
+          </ActionForm>
+        </section>
+      )}
 
       {own && owner && (
         <section aria-labelledby="test" className={card}>

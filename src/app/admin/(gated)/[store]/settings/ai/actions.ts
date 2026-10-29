@@ -4,12 +4,15 @@ import { refresh, updateTag } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
 import type { AiEvalResult, AiImageTestResult, AiTestResult, AiVisionCheckResult } from "@/components/admin/ai-provider-form";
+import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { aiFormValues } from "@/lib/ai-provider";
+import { ASSISTANT_KEEP, ASSISTANT_KEEP_MONTHS } from "@/lib/assistant-keep";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { AI_TAG, ownConnection, removeAiSettings, saveAiSettings, testAi } from "@/server/ai";
 import { testPicture } from "@/server/ai-pictures";
+import { saveAssistantKeep } from "@/server/assistant-retention";
 import { checkVisionFor } from "@/server/ai-vision";
 import { type Membership } from "@/server/auth";
 import { checkOwnerRole } from "@/server/permissions";
@@ -71,4 +74,15 @@ export async function checkStoreVisionAction(storeSlug: string, model: string): 
   const owner = await asOwner(storeSlug);
   if (typeof owner === "string") return { ok: false, model, message: owner };
   return checkVisionFor(await ownConnection(owner.store.id), model);
+}
+
+/** How long the AI manager's conversations are kept (D391): the owner's choice, an empty field the default. */
+export async function saveAssistantKeepAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const owner = await asOwner(storeSlug);
+  if (typeof owner === "string") return { status: "error", messages: [owner] };
+  const w = adminText(adminLangOf(owner.account.adminLocale), "settings").ai.keep;
+  const result = await saveAssistantKeep(owner, formData.get("months"));
+  if (!result.ok) return { status: "error", messages: [fillWords(w.invalid, ASSISTANT_KEEP)] };
+  refresh();
+  return { status: "ok", messages: [fillWords(w.saved, { months: result.months ?? ASSISTANT_KEEP_MONTHS })] };
 }

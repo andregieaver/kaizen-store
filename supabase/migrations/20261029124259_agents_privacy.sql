@@ -1,0 +1,8 @@
+ALTER TABLE "commerce"."retention_rules" DROP CONSTRAINT "retention_rules_kind";--> statement-breakpoint
+ALTER TABLE "commerce"."ai_eval_runs" ADD COLUMN "prompt_versions" jsonb;--> statement-breakpoint
+ALTER TABLE "commerce"."ai_eval_runs" ADD COLUMN "recording" jsonb;--> statement-breakpoint
+ALTER TABLE "commerce"."assistant_messages" ADD COLUMN "prompt_version" text;--> statement-breakpoint
+ALTER TABLE "commerce"."stores" ADD COLUMN "assistant_keep_months" integer;--> statement-breakpoint
+ALTER TABLE "commerce"."assistant_messages" ADD CONSTRAINT "assistant_messages_prompt_version" CHECK ("commerce"."assistant_messages"."prompt_version" is null or "commerce"."assistant_messages"."prompt_version" ~ '^[0-9a-f]{12}$');--> statement-breakpoint
+ALTER TABLE "commerce"."retention_rules" ADD CONSTRAINT "retention_rules_kind" CHECK ("commerce"."retention_rules"."kind" in ('bookkeeping', 'host_bookkeeping', 'unpaid_orders', 'email_bodies', 'security_emails', 'carts', 'delivery_quotes', 'customer_codes', 'customer_sessions', 'webhook_payloads', 'consents', 'privacy_request_contact', 'privacy_requests', 'search_queries', 'visits', 'audit_log', 'form_submissions', 'integration_deliveries', 'abandoned_checkouts', 'recommendation_events', 'ai_usage', 'support_transcripts', 'support_records', 'blog_comments', 'assistant_conversations'));--> statement-breakpoint
+ALTER TABLE "commerce"."stores" ADD CONSTRAINT "stores_assistant_keep_months" CHECK ("commerce"."stores"."assistant_keep_months" is null or "commerce"."stores"."assistant_keep_months" between 1 and 60);

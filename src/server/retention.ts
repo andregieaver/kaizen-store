@@ -16,6 +16,7 @@ import {
   type RetentionRuleRow,
 } from "@/lib/retention";
 
+import { pruneAssistantConversations } from "./assistant-retention";
 import { audit } from "./auth";
 import { SCHEME_RETENTION_YEARS } from "@/lib/invoice-retention";
 import { anonymiseDocuments } from "./invoice-retention";
@@ -129,6 +130,7 @@ export const RETENTION_STEPS = [
   "exchanges",
   "blog_comments",
   "unconfirmed_signups",
+  "assistant_conversations",
 ] as const;
 export type RetentionStep = (typeof RETENTION_STEPS)[number];
 
@@ -417,6 +419,20 @@ const STEPS: Record<RetentionStep, StepFn> = {
   // Self-serve sign-ups never confirmed (wave 9 unit F, D359): the request (a name, an address) goes a week after its link ended.
   async unconfirmed_signups() {
     return { count: await pruneUnconfirmedSignups() };
+  },
+
+  // The AI manager's conversations (wave 11 unit L, D391): messages and decided approvals after the store's own period or the rule's, then
+  // conversations left empty that nothing still works in.
+  async assistant_conversations(ctx) {
+    const rule = await period(ctx, "assistant_conversations");
+    const months = rule.periodUnit === "months" ? rule.periodValue : Math.max(1, Math.ceil(rule.periodValue / 30));
+    let count = 0;
+    for (let round = 0; round < MAX_ROUNDS; round++) {
+      const n = await pruneAssistantConversations(ctx.now, months, ctx.batch);
+      count += n;
+      if (n < ctx.batch) break;
+    }
+    return { count };
   },
 };
 

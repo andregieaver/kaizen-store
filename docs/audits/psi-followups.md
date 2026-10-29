@@ -48,7 +48,9 @@ maturity for the run-up to launch. Point IDs are the audit's.
       builds, pictures and page looks run as whoever asked, so the autopilot's monthly budget counts everything it causes; a call no price
       covers stops it while it has a limit; broadcasts are never automatic and emails to customers at most `customerEmailsPerWeek`
       (default 5) a week; AI answers by email are marked as the AI's; D334.
-- [ ] **AGT-14** Replay stored manager turns with thumbs as labels; run the evals in CI against a recorded model; version the prompts.
+- [ ] **AGT-14** Replay stored manager turns with thumbs as labels. Done (D391): the prompts are versioned (`promptVersions()`, kept with
+      every AI manager and chat answer and eval run) and the evals run in CI against a recorded model (`agent-eval-replay.int.test.ts`
+      replays `src/data/agent-eval-recording.json`, a run downloaded from Platform → AI; the gate is live once the first recording is kept).
 - [x] **AGT-04, AGT-11** The AI manager can start an A/B test at a time (`start_experiment` with `at`) and keep follow-ups
       (`follow_up`, daily or weekly too, which also covers a weekly "what needs a look"); D318.
 - [x] **AGT-04** Turns started by events: the order rule action *Ask the AI manager* queues a follow-up for the paid order in the name of
@@ -92,8 +94,9 @@ maturity for the run-up to launch. Point IDs are the audit's.
 - [ ] **REG-06, REG-07, REG-08** Sign the pending DPAs, move the platform's AI to the EU path, an AI Act note; tell customers about tone
       scoring. Written as drafts for the owner's and a lawyer's review (28 October 2026): the threat model (`docs/security.md`, SEC-01),
       the breach runbook (`docs/runbooks/breach.md`) and the DPIA for the AI features (`docs/dpia-ai.md`), whose findings are still open:
-      the AI manager's conversations have no retention period and a shopper's erasure does not reach them, and tone scoring and
-      summaries are on by default without a word to customers.
+      a shopper's erasure does not reach the AI manager's conversations. Done in code (D391): those conversations are kept 12 months after
+      each message or the owner's own period, and the chat tells customers when their tone is read and conversations summarised, the
+      support settings page telling the owner.
 - [ ] **REG-02** Legal review of the platform's terms, privacy notice and DPA; fill in the company name.
 - [x] **REG-03, DATA-05** Owner and staff account erasure; a whole-store export. Built 28 October 2026 (D377): Your account → *Delete
       your account* (`eraseOwnAccount()` in `src/server/account-erasure.ts`: the account made anonymous in place, its memberships, the AI

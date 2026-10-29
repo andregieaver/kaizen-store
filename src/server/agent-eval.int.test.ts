@@ -40,7 +40,8 @@ vi.mock("./ai", async (importOriginal) => {
 });
 
 const { closeDb, db } = await import("@/db/client");
-const { evalPrincipal, recentAgentEvalRuns, runAgentEval } = await import("./agent-eval");
+const { agentEvalRecording, promptVersions, recentAgentEvalRuns, replayAgentEval, runAgentEval } = await import("./agent-eval");
+const { recordingProblems } = await import("@/lib/agent-eval");
 
 const email = `eval-${Date.now().toString(36)}@example.com`;
 afterAll(async () => {
@@ -50,12 +51,10 @@ afterAll(async () => {
 });
 
 describe("the agents' safety eval runner (PSI 2026-10-24, AST-09)", () => {
-  it("plays every case on the template store with scripted tools, scores it and keeps the run", async () => {
+  it("plays every case on the fixed store with scripted tools, scores it and keeps the run with its prompt versions and recording", async () => {
     const [account] = await db().execute<{ id: string }>(sql`insert into commerce.accounts (email, name, platform_admin) values (${email}, 'Eval Admin', true) returning id`);
-    const principal = await evalPrincipal({ id: account.id, email, name: "Eval Admin" } as never);
-    expect(principal?.store?.slug).toBeTruthy();
     const connection = { provider: "openai", textModel: "fake-model", usage: { storeId: null, feature: "ai_test", accountId: account.id } } as never;
-    const result = await runAgentEval(connection, principal!);
+    const result = await runAgentEval(connection, { id: account.id });
 
     expect(result.total).toBeGreaterThanOrEqual(9);
     expect(result.failures.map((f) => f.id)).toEqual(["manager-order-note"]);
@@ -72,6 +71,30 @@ describe("the agents' safety eval runner (PSI 2026-10-24, AST-09)", () => {
     expect(Math.max(...model.seen.map((s) => s.tools.length))).toBeLessThanOrEqual(128);
 
     const [run] = await recentAgentEvalRuns(1);
-    expect(run).toMatchObject({ model: "fake-model", provider: "openai", passed: result.passed, total: result.total });
+    expect(run).toMatchObject({ model: "fake-model", provider: "openai", passed: result.passed, total: result.total, recorded: true, prompts: promptVersions() });
+
+    // The recording (D391) is of this prompt version, has every case, and replays to the same score with no model.
+    const recording = await agentEvalRecording(run.id);
+    expect(recording).not.toBeNull();
+    expect(recordingProblems(recording!, promptVersions())).toEqual([]);
+    const calls = model.seen.length;
+    const replayed = await replayAgentEval(recording!);
+    expect(model.seen.length).toBe(calls);
+    expect(replayed).toMatchObject({ passed: result.passed, total: result.total });
+    expect(replayed.failures).toEqual(result.failures);
+  });
+
+  it("names a prompt changed since the recording, and a recording that asks for a tool no longer offered", async () => {
+    const [run] = await recentAgentEvalRuns(1);
+    const recording = (await agentEvalRecording(run.id))!;
+    const changed = { ...promptVersions(), manager: "000000000000" };
+    expect(recordingProblems(recording, changed)).toEqual([`the manager prompt is version 000000000000; the recording played ${recording.prompts.manager}`]);
+    const tampered = {
+      ...recording,
+      cases: recording.cases.map((c) => (c.id === "manager-asked-refund" ? { ...c, replies: [{ content: null, toolCalls: [{ id: "x", name: "no_such_tool", arguments: "{}" }] }] } : c)),
+    };
+    const replayed = await replayAgentEval(tampered);
+    const failure = replayed.failures.find((f) => f.id === "manager-asked-refund");
+    expect(failure?.problems[0]).toMatch(/no_such_tool, which is no longer offered/);
   });
 });

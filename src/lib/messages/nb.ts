@@ -1303,6 +1303,11 @@ export const nb: Messages = {
     // legal: needs review (D216, docs/support.md 8): the notices before the first message while support is on.
     notice: (agent: string, days: number) => `Du chatter med ${agent}, en AI-assistent. Du kan når som helst be om å snakke med en person. Vi tar vare på samtalen i opptil ${days} dager.`,
     peopleNotice: (desk: string, days: number) => `Folk fra ${desk} svarer her. Vi tar vare på samtalen i opptil ${days} dager.`,
+    // legal: needs review (D391, docs/dpia-ai.md R4).
+    aiUse: {
+      tone: "En KI leser tonen i meldingene dine, slik at en person kan ta over hvis samtalen går dårlig. Du ser aldri poengsummen.",
+      summaries: "Når samtalen er over, skriver en KI et kort sammendrag av den til de ansatte.",
+    },
     peopleTitle: "Teamet vårt svarer her",
     peopleGreeting: (desk: string) => `Skriv til oss, så svarer noen fra ${desk}.`,
     privacy: "Personvern",

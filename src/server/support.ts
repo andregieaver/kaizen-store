@@ -334,6 +334,13 @@ async function assertOnDesk(desk: Desk, conversationId: string): Promise<void> {
 
 // What the visitor sees -----------------------------------------------------------------------------------------------------------
 
+/** A message's data as the visitor gets it: the prompt version an AI answer was written under (D391) stays with the desk. */
+function visitorData(data: unknown): { data?: VisitorMessageData } {
+  if (!data || typeof data !== "object") return {};
+  const { prompt: _version, ...rest } = data as VisitorMessageData & { prompt?: string };
+  return Object.keys(rest).length > 0 ? { data: rest } : {};
+}
+
 /** The messages after `after` that the visitor may see: never a note or the partner's help (a scan test holds the condition). */
 export async function visitorFeed(desk: Desk, conversationId: string, after: number, limit = 100): Promise<VisitorMessage[]> {
   const rows = await db().execute<Row>(sql`
@@ -350,7 +357,7 @@ export async function visitorFeed(desk: Desk, conversationId: string, after: num
     author: String(r.author) as VisitorMessage["author"],
     body: String(r.body),
     ...(r.kind ? { kind: String(r.kind) } : {}),
-    ...(r.data ? { data: r.data as VisitorMessageData } : {}),
+    ...visitorData(r.data),
     ...(r.action_id
       ? { action: { id: String(r.action_id), summary: String(r.action_summary), status: String(r.action_status) as VisitorAction["status"], confirmer: String(r.action_confirmer) as VisitorAction["confirmer"] } }
       : {}),

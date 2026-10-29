@@ -1297,6 +1297,11 @@ export const da: Messages = {
     // legal: needs review (D216, docs/support.md 8): the notices before the first message while support is on.
     notice: (agent: string, days: number) => `Du chatter med ${agent}, en AI-assistent. Du kan når som helst bede om at tale med en person. Vi gemmer samtalen i op til ${days} dage.`,
     peopleNotice: (desk: string, days: number) => `Folk fra ${desk} svarer her. Vi gemmer samtalen i op til ${days} dage.`,
+    // legal: needs review (D391, docs/dpia-ai.md R4).
+    aiUse: {
+      tone: "En AI læser tonen i dine beskeder, så en person kan tage over, hvis samtalen går dårligt. Du ser aldrig scoren.",
+      summaries: "Når samtalen er slut, skriver en AI et kort resumé af den til vores medarbejdere.",
+    },
     peopleTitle: "Vores team svarer her",
     peopleGreeting: (desk: string) => `Skriv til os, så svarer en fra ${desk}.`,
     privacy: "Privatliv",

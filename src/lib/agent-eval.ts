@@ -244,3 +244,68 @@ export function scoreAgentCase(testCase: AgentEvalCase, run: AgentRun, gated: Re
   if (e.noCode && CODE.test(run.answer)) problems.push("wrote code");
   return problems;
 }
+
+// Recording and replay (wave 11 unit L, D391, PSI AGT-14) ---------------------------------------------------------------------------
+
+/** One answer of the model in a case: its words, or the tools it asked for (a step), or the legal writer's whole answer. */
+export type RecordedReply = { content: string | null; toolCalls: { id: string; name: string; arguments: string }[] };
+
+/** A case as the model played it: every answer in order. */
+export type RecordedCase = { id: string; agent: AgentKind; replies: RecordedReply[] };
+
+/**
+ * A run of the eval as recorded (`ai_eval_runs.recording`, downloaded from Platform → AI and kept as `src/data/agent-eval-recording.json`):
+ * the prompt versions it played and each case's answers, so CI replays it without a model.
+ */
+export type EvalRecording = {
+  v: 1;
+  model: string;
+  provider: string;
+  recordedAt: string;
+  prompts: Record<AgentKind, string>;
+  cases: RecordedCase[];
+};
+
+/**
+ * Why a recording cannot stand for the code as it is: a prompt it was not made with, a case it does not have, a case it has that is gone.
+ * Empty when it can be replayed.
+ */
+export function recordingProblems(recording: EvalRecording, current: Record<AgentKind, string>, cases: readonly AgentEvalCase[] = AGENT_EVAL_CASES): string[] {
+  const problems: string[] = [];
+  for (const agent of Object.keys(current) as AgentKind[]) {
+    if (recording.prompts[agent] !== current[agent]) problems.push(`the ${agent} prompt is version ${current[agent]}; the recording played ${recording.prompts[agent] ?? "none"}`);
+  }
+  const recorded = new Set(recording.cases.map((c) => c.id));
+  for (const testCase of cases) if (!recorded.has(testCase.id)) problems.push(`the case ${testCase.id} was not recorded`);
+  const known = new Set(cases.map((c) => c.id));
+  for (const id of recorded) if (!known.has(id)) problems.push(`the recording has a case ${id} that is no longer one`);
+  return problems;
+}
+
+/**
+ * The recorded model: gives a case's answers back in order. It refuses a tool call the harness no longer offers at that step, and runs
+ * out when the harness asks for more than was recorded: either means the code changed what the model was asked.
+ */
+export function replayReplies(recorded: RecordedCase): { next(offered: readonly string[]): RecordedReply } {
+  let at = 0;
+  return {
+    next(offered) {
+      const reply = recorded.replies[at++];
+      if (!reply) throw new Error(`the recording of ${recorded.id} has no answer ${at}: the harness asked the model more than it was asked when recorded`);
+      const allowed = new Set(offered);
+      for (const call of reply.toolCalls) {
+        if (!allowed.has(call.name)) throw new Error(`the recording of ${recorded.id} calls ${call.name}, which is no longer offered at that step`);
+      }
+      return reply;
+    },
+  };
+}
+
+/** Prompt versions as written on the AI page: `chat abc…, manager def…, legal …`. */
+export const versionWords = (versions: Record<string, string>): string =>
+  Object.entries(versions)
+    .map(([agent, hash]) => `${agent} ${hash}`)
+    .join(", ");
+
+/** Whether a run played the prompts as they are now: its recording can then be what CI replays. */
+export const samePrompts = (run: Record<string, string>, now: Record<string, string>): boolean => Object.entries(now).every(([agent, hash]) => run[agent] === hash);

@@ -127,8 +127,9 @@ answers sooner), but that is for the lawyer.
 **Default.** `support_settings.tone_on` defaults to **true** in the schema (`src/db/schema.ts`), so it is on for every desk whose
 support mode is not `off`, unless the owner turns it off.
 
-**Risks and gaps.** Customers are **not told** their messages are tone-scored: neither the store privacy starter nor the chat says so
-(`legalFacts()` passes only whether the chat is on; PSI REG-02, REG-08). A message holding health or other sensitive details is
+**Risks and gaps.** Since D391 the chat's notice tells customers, before they write, that an AI reads their messages' tone while it is
+on (`m.chat.aiUse.tone`, hand-written in four languages, for legal review); the store privacy starter does not say so yet (`legalFacts()`
+passes only whether the chat is on; PSI REG-02, REG-08). A message holding health or other sensitive details is
 scored like any other (PSI REG-11).
 
 ### 4.3 Summaries and briefs in support
@@ -144,8 +145,8 @@ cut first.
 (closed lists of outcomes and topics).
 
 **Basis candidates.** Art. 6(1)(f) (running the desk). **Retention**: the summary is on the conversation and cleared by erasure;
-summaries are on by default where support is on (`summaries_on` defaults to true). **Gap**: customers are not told transcripts are
-summarised by AI (PSI REG-02).
+summaries are on by default where support is on (`summaries_on` defaults to true). Since D391 the chat's notice says an AI
+summarises the conversation while summaries are on (`m.chat.aiUse.summaries`); **gap**: the store privacy starter does not say so yet (PSI REG-02).
 
 ### 4.4 The silent partner and translation for staff
 
@@ -188,7 +189,8 @@ Art. 6(1)(b) or (f)); whether reading customer records through a model is compat
 (Art. 6(4)) is a question for the lawyer.
 
 **Retention: the main gap.** `assistant_messages` holds what tools returned, so customers' names and emails can sit in staff's
-conversations, **with no retention period** (`src/lib/personal-data.ts`: "a retention period is the owner's decision") and **not reached
+conversations. Since D391 they are deleted 12 months after each message was written, or after the store owner's own period (Settings →
+AI, 1 to 60 months), with decided approvals, by the daily retention run; until then they are **not reached
 by a shopper's erasure** (`src/server/privacy-erasure.ts` does not touch `assistant_messages`; checked by search). Learned memories lose importance after
 60 days unused and the least important go after 180 days unused; memories the person told it to keep stay until they forget them (`fadeMemories()`); approvals keep the gated call's arguments (`assistant_approvals`).
 Owner and staff accounts cannot yet be erased (PSI REG-03).
@@ -264,9 +266,9 @@ Likelihood and severity are proposals for the owner to confirm.
 | R1 | Customers' words and, through the AI manager and partner, customers' names, emails and phone numbers go to a US provider without a signed DPA | all, mostly 4.1 to 4.5 | certain while the platform's AI is direct OpenAI | medium | privacy notice names OpenAI; transfer by DPF or SCC claimed | DPA unsigned; no ZDR on the direct path; provider retention not recorded |
 | R2 | A visitor or a text the model reads makes it act or say something it should not (prompt injection) | 4.1, 4.4, 4.5 | possible | medium to high | `UNTRUSTED_TEXT`; tools checked by role; actions gated or confirmed; outputs cleaned; injection eval | the eval is not in CI |
 | R3 | The model states something false about an order, a price or a right | 4.1, 4.5 | possible | medium | facts only from tools; claims filter; withdrawals only to the withdrawal page | none beyond the model's errors in wording |
-| R4 | Customers are scored and summarised without being told | 4.2, 4.3 | certain today | low to medium | score never shown, never decides more than the queue; can be turned off per desk | not disclosed (REG-02, REG-08); on by default |
+| R4 | Customers are scored and summarised without being told | 4.2, 4.3 | lower since D391 | low to medium | score never shown, never decides more than the queue; can be turned off per desk; the chat's notice says so while each is on (D391, `m.chat.aiUse`), and the support settings page tells the owner | the store privacy starter does not say it yet; the chat's words need legal review; on by default |
 | R5 | Sensitive data (health, in a clinic or care store) in messages, searches or checkout answers goes to the model | 4.1 to 4.5, 4.9 | possible in some stores | high for those people | the starter tells shoppers not to write sensitive data to the chat | no store setting that turns AI summaries, tone or AI email answers off for sensitive trades (REG-11) |
-| R6 | Customer data copied into the AI manager's conversations outlives the customer's erasure and has no retention | 4.5 | likely | medium | erased orders show no person to the model | `assistant_messages` not erased and not pruned |
+| R6 | Customer data copied into the AI manager's conversations outlives the customer's erasure and has no retention | 4.5 | likely | medium | erased orders show no person to the model; messages deleted 12 months after they were written, or the owner's own period (D391, `runRetention()`: `assistant_conversations`) | a shopper's erasure does not reach `assistant_messages` before that |
 | R7 | A store's own provider or an owner's custom app receives data outside Kaizena Flow's contracts | 4.1, 4.5 | possible | medium | the store's choice, said on the page; https and `safeFetch()` | relies on the store's own agreements |
 | R8 | Search caches and recommendation storage hold shoppers' words longer or more widely than the register says | 4.9 | possible | low | 30-day prune; random tab id | `search_cache` not in the register; `kaizen_rec` classed necessary |
 | R9 | A person in an uploaded picture is described or sent to a model | 4.7 | possible | low | alt text only from the store's own library; no faces asked for in made pictures | none |

@@ -314,6 +314,12 @@ this plan said `useKeepFocus()` in each form.
 
 ### L. PSI: agents and privacy (D391)
 
+**Built (29 October 2026)** (D391). The prompt's hash is of the prompt drawn with fixed inputs (a fixed store, day and owner), so it
+changes with the prompt's code and never with a store's name or the date; the recording comes from a run on Platform → AI against the
+real model, downloaded and kept in the repository, and CI replays it from the first one kept (until then the replay is a to-do, never a
+pass). Retention counts from each message, so an old part of a long conversation goes while the rest stays; a conversation an autopilot
+plan, a waiting follow-up or a pending approval uses is kept empty rather than deleted.
+
 - **The evals in CI.** The agents' safety eval runs in CI against a recorded model: answers recorded once per prompt version and replayed.
   Each system prompt carries a hash, kept with every run and turn, so a changed prompt is a new version (AGT-14).
 - **The DPIA's open findings that code can close** (`docs/dpia-ai.md`):

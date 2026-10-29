@@ -411,10 +411,15 @@ export const supportNb: SupportMessages = {
       text: "Ved siden av en samtale noen har, slår den opp fakta med personens egne tillatelser, anbefaler hva som bør gjøres, og skriver et utkast til svar de kan bruke. Den skriver aldri til kunden og gjør ingenting selv, og hver person kan slå den av for seg selv. Krever en tekstmodell{none}.",
     },
     noneConnected: " (ingen er koblet til)",
+    aiOn: "På for denne kundeservicen: {what}. Kundene får vite det i chattens melding før de skriver; slå av nedenfor.",
+    aiOnTone: "KI leser tonen i kundenes meldinger",
+    aiOnSummaries: "KI-sammendrag",
+    aiOnAnd: " og ",
     toneTitle: "Tonen til kunden",
     tone: {
       title: "Les tonen i kundenes meldinger.",
       text: "KI-en gir hver melding en poengsum fra svært dårlig til svært god, bare for teamet ditt; kunden ser den aldri, og ingenting avgjøres om kunden ut fra den. Krever en tekstmodell{none}.",
+      toldInChat: "Når dette er på, forteller chatten kundene at en KI leser tonen i meldingene deres.",
     },
     toneAlert: {
       before: "Varsle innboksen når tonen i en samtale når",
@@ -427,6 +432,7 @@ export const supportNb: SupportMessages = {
       title:
         "Lag sammendrag av avsluttede samtaler, og oppsummer for den som tar over en.",
       text: "Skrevet av KI-en ut fra samtalen, på engelsk, bare for teamet ditt; du kan rette et sammendrag. Krever en tekstmodell{none}.",
+      toldInChat: "Når dette er på, forteller chatten kundene at en KI lager et sammendrag av samtalen til teamet ditt.",
     },
     conversationsTitle: "Samtaler",
     endAfter: {

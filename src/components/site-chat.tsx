@@ -32,7 +32,12 @@ function chatLabels(lang: string, locale: string, profile: ChatWidgetProfile, de
     micDenied: c.micDenied,
     restart: c.restart,
     conversation: c.conversation,
-    notice: profile.mode === "off" ? c.kept : people ? c.peopleNotice(deskName, profile.keptDays) : c.notice(profile.name, profile.keptDays),
+    notice: [
+      profile.mode === "off" ? c.kept : people ? c.peopleNotice(deskName, profile.keptDays) : c.notice(profile.name, profile.keptDays),
+      // What an AI does with the customer's messages besides answering (D391).
+      ...(profile.aiUse.tone ? [c.aiUse.tone] : []),
+      ...(profile.aiUse.summaries ? [c.aiUse.summaries] : []),
+    ].join(" "),
     privacy: c.privacy,
     peopleTitle: c.peopleTitle,
     talkToPerson: c.talkToPerson,

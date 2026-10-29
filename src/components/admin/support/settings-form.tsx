@@ -86,8 +86,18 @@ export function SupportSettingsForm({
   const needsModel = settings.aiReady ? "" : w.noneConnected;
   const [mode, setMode] = useState<SupportMode>(settings.mode);
   const disabled = !canWrite || !save;
+  // What an AI does with customers' messages besides answering, as saved (D391): the owner reads that it is on and that customers are told.
+  const aiOn = [
+    ...(settings.mode !== "off" && settings.toneOn ? [w.aiOnTone] : []),
+    ...(settings.mode !== "off" && settings.summariesOn ? [w.aiOnSummaries] : []),
+  ];
   const body = (
     <fieldset disabled={disabled} className="flex flex-col gap-8">
+      {aiOn.length > 0 && (
+        <p role="note" data-ai-use="" className="rounded-panel border border-insight-line bg-insight-soft p-3 text-sm text-ink">
+          {fillWords(w.aiOn, { what: aiOn.join(w.aiOnAnd) })}
+        </p>
+      )}
       <section className="flex flex-col gap-3">
         <h2 className="text-title text-ink">{w.whoAnswers}</h2>
         <div
@@ -229,7 +239,8 @@ export function SupportSettingsForm({
           />
           <span>
             <span className="font-medium">{w.tone.title}</span>{" "}
-            {fillWords(w.tone.text, { none: needsModel })}
+            {fillWords(w.tone.text, { none: needsModel })}{" "}
+            <span className="text-muted">{w.tone.toldInChat}</span>
           </span>
         </label>
         <label className="flex flex-wrap items-center gap-2 text-sm">
@@ -254,7 +265,8 @@ export function SupportSettingsForm({
           />
           <span>
             <span className="font-medium">{w.summaries.title}</span>{" "}
-            {fillWords(w.summaries.text, { none: needsModel })}
+            {fillWords(w.summaries.text, { none: needsModel })}{" "}
+            <span className="text-muted">{w.summaries.toldInChat}</span>
           </span>
         </label>
       </section>

@@ -116,6 +116,11 @@ export type ChatWidgetProfile = {
   ai: boolean;
   /** How long a conversation is kept after it ends, in days, for the notice. */
   keptDays: number;
+  /**
+   * What an AI does with the customer's messages besides answering, said in the notice (D391): reading their tone and summarising the
+   * conversation, each while the desk is on, has it switched on and has a text model to do it.
+   */
+  aiUse: { tone: boolean; summaries: boolean };
 };
 
 /** The desk's settings as the site's cached pages read them, or null before its first conversation. */
@@ -148,6 +153,10 @@ export async function chatWidgetFor(storeId: string | null): Promise<ChatWidgetP
     mode,
     ai,
     keptDays: mode === "off" || !settings ? TRANSCRIPT_DAYS_OFF : settings.transcriptDays,
+    aiUse: {
+      tone: mode !== "off" && Boolean(settings?.toneOn) && Boolean(connection?.textModel),
+      summaries: mode !== "off" && Boolean(settings?.summariesOn) && Boolean(connection?.textModel),
+    },
   };
 }
 

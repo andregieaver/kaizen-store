@@ -7,7 +7,7 @@ import type { AiEvalResult, AiImageTestResult, AiTestResult, AiVisionCheckResult
 import { aiFormValues } from "@/lib/ai-provider";
 import { AI_TAG, AiError, ownConnection, removeAiSettings, saveAiSettings, testAi } from "@/server/ai";
 import type { AgentEvalOutcome } from "@/components/admin/agent-eval-button";
-import { evalPrincipal, runAgentEval } from "@/server/agent-eval";
+import { runAgentEval } from "@/server/agent-eval";
 import { testPicture } from "@/server/ai-pictures";
 import { checkVisionFor } from "@/server/ai-vision";
 import { requirePlatformAdmin } from "@/server/auth";
@@ -67,16 +67,15 @@ export async function evalPlatformAiAction(): Promise<AiEvalResult> {
 
 /**
  * The agents' safety eval (PSI 2026-10-24, AST-09) against Kaizena Flow's saved text model: the shopper chat and the AI manager with
- * their real prompts and tools, every tool answered from a script, played on the template store. The run is kept per model.
+ * their real prompts and tools, every tool answered from a script, played on a fixed store (D391: so a run is of one prompt version). The
+ * run is kept per model with its recording, which CI replays.
  */
 export async function evalPlatformAgentsAction(): Promise<AgentEvalOutcome> {
   const account = await requirePlatformAdmin();
   const connection = await ownConnection(null);
   if (!connection?.textModel) return { error: wordsOf(account).textFirst };
-  const principal = await evalPrincipal(account);
-  if (!principal) return { error: wordsOf(account).noTemplate };
   try {
-    const result = await runAgentEval({ ...connection, usage: { storeId: null, feature: "ai_test", accountId: account.id } }, principal);
+    const result = await runAgentEval({ ...connection, usage: { storeId: null, feature: "ai_test", accountId: account.id } }, account);
     refresh();
     return result;
   } catch (error) {

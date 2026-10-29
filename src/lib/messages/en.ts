@@ -1321,6 +1321,11 @@ export const en = {
     // legal: needs review (D216, docs/support.md 8): the notices before the first message while support is on.
     notice: (agent: string, days: number) => `You're chatting with ${agent}, an AI assistant. You can ask for a person at any time. We keep this conversation for up to ${days} days.`,
     peopleNotice: (desk: string, days: number) => `People from ${desk} answer here. We keep this conversation for up to ${days} days.`,
+    // legal: needs review (D391, docs/dpia-ai.md R4): what the AI does with a customer's messages while the desk reads their tone or summarises.
+    aiUse: {
+      tone: "An AI reads the tone of your messages so that a person can step in if the conversation is going badly. You never see the score.",
+      summaries: "When the conversation ends, an AI writes a short summary of it for our staff.",
+    },
     peopleTitle: "Our team answers here",
     peopleGreeting: (desk: string) => `Write to us and someone from ${desk} will answer.`,
     privacy: "Privacy",

@@ -107,6 +107,8 @@ export const HAND_WRITTEN_ONLY: readonly string[] = [
   // Step 5: the notices while support is on, the email card and the page an answer email opens.
   "ui:chat.notice",
   "ui:chat.peopleNotice",
+  // D391: what an AI does with a customer's messages (tone, summaries), for legal review.
+  "ui:chat.aiUse.",
   "ui:chat.emailCard.",
   "ui:chat.thread.",
   "ui:backorder.",

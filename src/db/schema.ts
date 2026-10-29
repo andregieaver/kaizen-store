@@ -632,6 +632,11 @@ export const stores = commerce.table(
      */
     customerAccounts: text("customer_accounts").notNull().default("optional"),
     /**
+     * How many months the AI manager's conversations about the store are kept after their last message (wave 11 unit L, D391); null is the
+     * retention rule's period (`assistant_conversations`, 12 months). The owner's choice, written only by `saveAssistantKeep()`.
+     */
+    assistantKeepMonths: integer("assistant_keep_months"),
+    /**
      * Every member of the store must have a second step (wave 1, 1f); a member without one is held at enrolment before
      * the store's admin. Switched on by an owner who has one themselves. A copy starts with it off.
      */
@@ -722,6 +727,7 @@ export const stores = commerce.table(
     check("stores_audience", sql`${t.audience} in ('consumers', 'businesses', 'both')`),
     check("stores_terms_at_checkout", sql`${t.termsAtCheckout} in ('link', 'checkbox', 'off')`),
     check("stores_customer_accounts", sql`${t.customerAccounts} in ('optional', 'required', 'off')`),
+    check("stores_assistant_keep_months", sql`${t.assistantKeepMonths} is null or ${t.assistantKeepMonths} between 1 and 60`),
     check("stores_modules", sql`${t.modules} <@ array['bookings', 'deliveries', 'work']::text[]`),
     check(
       "stores_features",
@@ -9816,6 +9822,8 @@ export const assistantMessages = commerce.table(
     tools: jsonb("tools").notNull().default([]),
     /** The person's thumbs on an answer (D103): 1 up, -1 down; it learns from them. */
     feedback: integer("feedback"),
+    /** The version of the AI manager's prompt an answer was written under (`promptVersions()`, D391); null on the person's own messages. */
+    promptVersion: text("prompt_version"),
     createdAt: createdAt(),
   },
   (t) => [
@@ -9825,6 +9833,7 @@ export const assistantMessages = commerce.table(
     check("assistant_messages_role", sql`${t.role} in ('user', 'assistant')`),
     check("assistant_messages_content", sql`length(${t.content}) <= 20000`),
     check("assistant_messages_feedback", sql`${t.feedback} is null or ${t.feedback} in (-1, 1)`),
+    check("assistant_messages_prompt_version", sql`${t.promptVersion} is null or ${t.promptVersion} ~ '^[0-9a-f]{12}$'`),
   ],
 );
 
@@ -14798,6 +14807,13 @@ export const aiEvalRuns = commerce.table(
     total: integer("total").notNull(),
     failures: jsonb("failures").notNull().default(sql`'[]'::jsonb`),
     durationMs: integer("duration_ms").notNull(),
+    /** Each agent's prompt version the run played (`promptVersions()`, D391): `{ chat, manager, legal }`. */
+    promptVersions: jsonb("prompt_versions"),
+    /**
+     * What the model answered at each step of each case (`EvalRecording`, D391), so CI can replay the run without a model: downloaded from
+     * Platform → AI and kept as `src/data/agent-eval-recording.json`.
+     */
+    recording: jsonb("recording"),
     ranBy: uuid("ran_by").references(() => accounts.id, { onDelete: "set null" }),
     ranAt: timestamp("ran_at", { withTimezone: true }).notNull().defaultNow(),
   },

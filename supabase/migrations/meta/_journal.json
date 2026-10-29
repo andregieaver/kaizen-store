@@ -4068,6 +4068,20 @@
       "when": 1793267166303,
       "tag": "20261029094606_text_styles_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 581,
+      "version": "7",
+      "when": 1793277779462,
+      "tag": "20261029124259_agents_privacy",
+      "breakpoints": true
+    },
+    {
+      "idx": 582,
+      "version": "7",
+      "when": 1793277822342,
+      "tag": "20261029124342_agents_privacy_rule",
+      "breakpoints": true
     }
   ]
 }
