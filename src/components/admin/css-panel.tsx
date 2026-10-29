@@ -3,9 +3,11 @@
 import { useEffect, useId, useRef, useState, useTransition, type KeyboardEvent } from "react";
 
 import { fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
+import { cssLineChanges, type CssVersionActions, type CssVersionItem } from "@/lib/css-versions";
 import { CSS_MAX, cssProblem } from "@/lib/custom-css";
 
-import { useAdminText } from "./admin-text";
+import { useAdminLang, useAdminText } from "./admin-text";
 
 type Nouned = { layout: string; header: string; footer: string; version: string; article: string; page: string };
 
@@ -16,7 +18,8 @@ const byNoun = (words: Nouned, noun: string) => (noun in words ? words[noun as k
  * The page builder's CSS panel (D100): a side panel over the editor's right
  * column, so the canvas stays in view and shows the CSS as it is typed. Its
  * first tab is the page's own (saved with the page, live when published),
- * its second the whole site's (live when saved here).
+ * its second the whole site's (live when saved here), with its earlier saves
+ * one press away (D385).
  */
 export function CssPanel({
   open,
@@ -28,6 +31,7 @@ export function CssPanel({
   siteCss,
   onSiteCss,
   saveSiteCss,
+  versions,
 }: {
   open: boolean;
   onClose: () => void;
@@ -41,6 +45,8 @@ export function CssPanel({
   siteCss: string;
   onSiteCss: (css: string) => void;
   saveSiteCss: (css: string) => Promise<{ ok: true } | { ok: false; problems: string[] }>;
+  /** The site CSS's earlier saves (D385); none shows no Versions. */
+  versions?: CssVersionActions;
 }) {
   const id = useId();
   const [tab, setTab] = useState<"page" | "site">("page");
@@ -158,6 +164,16 @@ export function CssPanel({
             </p>
           )}
         </div>
+        {tab === "site" && versions && (
+          <CssVersions
+            versions={versions}
+            current={siteCss}
+            onUse={(css) => {
+              onSiteCss(css);
+              setStatus({ ok: true, text: w.versionUsed });
+            }}
+          />
+        )}
         {tab === "site" && (
           <div className="flex flex-wrap items-center gap-3">
             <button
@@ -175,5 +191,81 @@ export function CssPanel({
         )}
       </div>
     </div>
+  );
+}
+
+const when = (iso: string, locale: string) =>
+  new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
+
+/**
+ * The site CSS's earlier saves (D385), folded away until asked for: each with when and who, and how it differs from what the panel holds
+ * in lines. *Use this version* puts it in the panel unsaved; it reaches the site only through Save.
+ */
+function CssVersions({ versions, current, onUse }: { versions: CssVersionActions; current: string; onUse: (css: string) => void }) {
+  const w = useAdminText("builder").css;
+  const locale = ADMIN_LANG_FACTS[useAdminLang()].locale;
+  const [items, setItems] = useState<CssVersionItem[] | null>(null);
+  const [texts, setTexts] = useState<Record<string, string>>({});
+  const [problem, setProblem] = useState<string | null>(null);
+  const [busy, start] = useTransition();
+  const load = () =>
+    start(async () => {
+      const list = await versions.list();
+      setItems(list);
+      const read = await Promise.all(list.slice(0, 10).map(async (item) => [item.id, await versions.read(item.id)] as const));
+      setTexts(Object.fromEntries(read.flatMap(([id, r]) => (r.ok ? [[id, r.css]] : []))));
+    });
+  const use = (item: CssVersionItem) =>
+    start(async () => {
+      const known = texts[item.id];
+      if (known !== undefined) return onUse(known);
+      const read = await versions.read(item.id);
+      if (read.ok) onUse(read.css);
+      else setProblem(read.problem);
+    });
+  return (
+    <details
+      className="rounded-panel border border-line"
+      onToggle={(event) => {
+        if ((event.currentTarget as HTMLDetailsElement).open && items === null) load();
+      }}
+    >
+      <summary className="cursor-pointer px-3 py-2 text-sm">{w.versions}</summary>
+      <div className="flex max-h-64 flex-col gap-2 overflow-y-auto border-t border-line p-3" aria-busy={busy}>
+        <p className="text-xs text-muted">{w.versionsHint}</p>
+        {items === null ? (
+          <p className="text-sm text-muted">{w.versionsLoading}</p>
+        ) : items.length === 0 ? (
+          <p className="text-sm text-muted">{w.versionsNone}</p>
+        ) : (
+          <ul aria-label={w.versionsTitle} className="flex flex-col divide-y divide-line">
+            {items.map((item) => {
+              const text = texts[item.id];
+              const changes = text === undefined ? null : cssLineChanges(current, text);
+              return (
+                <li key={item.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
+                  <span className="flex flex-col">
+                    <span>{item.by ? fillWords(w.versionBy, { when: when(item.at, locale), by: item.by }) : fillWords(w.versionAt, { when: when(item.at, locale) })}</span>
+                    {changes && (
+                      <span className="text-xs text-muted">
+                        {changes.added === 0 && changes.removed === 0 ? w.versionSame : fillWords(w.versionChanges, { added: changes.added, removed: changes.removed })}
+                      </span>
+                    )}
+                  </span>
+                  <button type="button" disabled={busy} onClick={() => use(item)} className="min-h-9 rounded-pill border border-edge px-3 text-sm hover:bg-sunken disabled:opacity-50">
+                    {w.useVersion}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        {problem && (
+          <p role="alert" className="text-sm text-danger-text">
+            {problem}
+          </p>
+        )}
+      </div>
+    </details>
   );
 }

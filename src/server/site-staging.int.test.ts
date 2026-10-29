@@ -15,6 +15,8 @@ const { passMembership } = await import("./auth");
 const pages = await import("./pages");
 const installs = await import("./theme-installs");
 const { listStoreMenus } = await import("./menus");
+const { saveSiteCss } = await import("./site-css");
+const cssVersions = await import("./css-versions");
 
 /**
  * A staging set (D358) against a real database: page drafts chosen, a theme waiting and a menu change kept, compared with what visitors see,
@@ -132,5 +134,81 @@ describe("a staging set of a store's site (D358)", () => {
     expect(byId.get(page)).toMatchObject({ ok: true });
     expect(byId.get(layout)).toMatchObject({ ok: false, problem: "access" });
     expect(await publishedOf(layout)).toBeNull();
+  });
+
+  it("stages a copy: editing it leaves the page's draft and the live page alone, and the copy is what goes live (D385)", async () => {
+    const id = await save(owner, null, content(`copy-${run}`, "Live words"), true);
+    expect(await staging.startStaging(owner, "Copies")).toEqual({ ok: true });
+    expect(await staging.stagePage(owner, id, true)).toEqual({ ok: true });
+    expect((await staging.stagedCopy(owner.store.id, id))?.content.rows[0].columns[0].blocks[0]).toMatchObject({ text: "Live words" });
+
+    // The copy is edited; the page's own draft, edited too, is not in the set.
+    expect(await staging.saveStagedPage(owner, id, content(`copy-${run}`, "Staged words"))).toMatchObject({ ok: true });
+    await save(owner, id, content(`copy-${run}`, "Draft words"), false);
+    const [row] = await db().execute<Row>(sql`select draft from commerce.pages where id = ${id}::uuid`);
+    expect(parsePageContent(row.draft)?.rows[0].columns[0].blocks[0]).toMatchObject({ text: "Draft words" });
+    expect((await publishedOf(id))?.rows[0].columns[0].blocks[0]).toMatchObject({ text: "Live words" });
+    const view = (await staging.stagingOverview(owner.store.id)).pages.find((p) => p.id === id);
+    expect(view).toMatchObject({ copy: true, staged: true, liveChanged: { changed: false } });
+    expect(view!.differences).toContainEqual(expect.objectContaining({ kind: "text", before: "Live words", after: "Staged words" }));
+    // A copy is checked as the builder checks a page.
+    expect(await staging.saveStagedPage(owner, id, { ...content(`copy-${run}`, "x"), title: "" })).toMatchObject({ ok: false });
+    // Another store's page is never the set's.
+    expect(await staging.saveStagedPage(other, id, content(`copy-${run}`, "Not yours"))).toEqual({ ok: false, problems: ["none"] });
+
+    const published = await staging.publishStaging(owner);
+    if (!published.ok) throw new Error(published.problem);
+    expect((await publishedOf(id))?.rows[0].columns[0].blocks[0]).toMatchObject({ text: "Staged words" });
+  });
+
+  it("refuses to make the set live while a copy's live page changed since it was copied, until the copy is kept anyway", async () => {
+    const id = await save(owner, null, content(`moved-${run}`, "First"), true);
+    expect(await staging.startStaging(owner, "Moved")).toEqual({ ok: true });
+    expect(await staging.stagePage(owner, id, true)).toEqual({ ok: true });
+    expect(await staging.saveStagedPage(owner, id, content(`moved-${run}`, "Staged"))).toMatchObject({ ok: true });
+    // Someone publishes the page from the builder meanwhile.
+    await save(owner, id, content(`moved-${run}`, "Published meanwhile"), true);
+
+    const view = (await staging.stagingOverview(owner.store.id)).pages.find((p) => p.id === id)!;
+    expect(view.liveChanged.changed).toBe(true);
+    expect(view.liveChanged.differences).toContainEqual(expect.objectContaining({ kind: "text", before: "First", after: "Published meanwhile" }));
+    expect(await staging.publishStaging(owner)).toEqual({ ok: false, problem: "changed", changed: [{ id, title: `Page moved-${run}` }] });
+    expect(await staging.openStagingOf(owner.store.id)).not.toBeNull();
+    expect((await publishedOf(id))?.rows[0].columns[0].blocks[0]).toMatchObject({ text: "Published meanwhile" });
+
+    expect(await staging.keepStagedCopy(owner, id)).toEqual({ ok: true });
+    const published = await staging.publishStaging(owner);
+    if (!published.ok) throw new Error(published.problem);
+    expect((await publishedOf(id))?.rows[0].columns[0].blocks[0]).toMatchObject({ text: "Staged" });
+  });
+});
+
+describe("versions of a site's own CSS (D385)", () => {
+  it("keeps each save in its transaction, newest first, per site, and reads one back without saving it", async () => {
+    for (const css of ["h1 { color: red; }", "h1 { color: blue; }", "h1 { color: blue; }"]) {
+      const saved = await saveSiteCss(owner.account, owner.store.id, css);
+      if (!saved.ok) throw new Error(saved.problems.join(" "));
+    }
+    const list = await cssVersions.listCssVersions(owner.store.id);
+    // A save that changes nothing keeps no new version.
+    expect(list.slice(0, 2).map((v) => v.length)).toEqual(["h1 { color: blue; }".length, "h1 { color: red; }".length]);
+    expect(list.length).toBe(2);
+    expect(await cssVersions.readCssVersion(owner.store.id, list[1].id)).toBe("h1 { color: red; }");
+    expect(await cssVersions.readCssVersion(other.store.id, list[1].id)).toBeNull();
+    expect(await cssVersions.listCssVersions(other.store.id)).toEqual([]);
+    const [row] = await db().execute<Row>(sql`select custom_css from commerce.stores where id = ${owner.store.id}::uuid`);
+    expect(row.custom_css).toBe("h1 { color: blue; }");
+  });
+
+  it("keeps the newest 50", async () => {
+    for (let i = 0; i < 53; i += 1) {
+      const saved = await saveSiteCss(owner.account, owner.store.id, `p { margin: ${i}px; }`);
+      if (!saved.ok) throw new Error(saved.problems.join(" "));
+    }
+    const list = await cssVersions.listCssVersions(owner.store.id);
+    expect(list.length).toBe(50);
+    expect(await cssVersions.readCssVersion(owner.store.id, list[0].id)).toBe("p { margin: 52px; }");
+    const [n] = await db().execute<Row>(sql`select count(*)::int as n from commerce.css_versions where store_id = ${owner.store.id}::uuid`);
+    expect(n.n).toBe(50);
   });
 });

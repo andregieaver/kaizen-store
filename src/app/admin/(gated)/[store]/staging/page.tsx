@@ -12,6 +12,7 @@ import { lastStaging, stagingOverview } from "@/server/site-staging";
 import {
   discardStagingAction,
   dropStagedMenuAction,
+  keepStagedCopyAction,
   publishStagingAction,
   stagePageAction,
   stageThemeAction,
@@ -38,7 +39,10 @@ export default async function StagingPage({ params }: PageProps<"/admin/[store]/
       isNew: p.isNew,
       staged: p.staged,
       differences: p.differences,
-      editHref: `${base}/${PAGE_TYPE_COPY[p.type]?.segment ?? "pages"}/${p.id}`,
+      // A copy is edited in the builder's staging mode (D385), the page's own draft untouched.
+      editHref: `${base}/${PAGE_TYPE_COPY[p.type]?.segment ?? "pages"}/${p.id}${p.copy ? "?staging=1" : ""}`,
+      copy: p.copy,
+      liveChanged: p.liveChanged,
     })),
     themes: overview.themes,
     menus: overview.menus.map((m) => ({ ...m, stageHref: `${base}/menus?menu=${m.id}&staged=1` })),
@@ -48,6 +52,7 @@ export default async function StagingPage({ params }: PageProps<"/admin/[store]/
   const actions: StagingActions = {
     start: startStagingAction.bind(null, slug),
     stagePage: stagePageAction.bind(null, slug),
+    keepCopy: keepStagedCopyAction.bind(null, slug),
     stageTheme: stageThemeAction.bind(null, slug),
     dropMenu: dropStagedMenuAction.bind(null, slug),
     discard: discardStagingAction.bind(null, slug),

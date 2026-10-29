@@ -85,7 +85,7 @@ const BASELINE_FALSE_OWNER = new Set([
 ]);
 
 /** Actions that only read (a preview, a list, a lookup): they ask the area's `read`, so a view-only role can still open the screen that calls them. */
-const READ_ONLY_ACTIONS = new Set(["storeGridPreviewAction", "storeGridTermsAction", "storeLinkTargetsAction", "storeVisibilityChoicesAction", "templatesListAction", "termFieldsAction", "worklistAction", "workReader", "pickMediaAction", "supportHeartbeatAction", "previewNotificationAction", "checkParcelNowAction"]);
+const READ_ONLY_ACTIONS = new Set(["storeGridPreviewAction", "storeGridTermsAction", "storeLinkTargetsAction", "storeVisibilityChoicesAction", "templatesListAction", "termFieldsAction", "worklistAction", "workReader", "pickMediaAction", "supportHeartbeatAction", "previewNotificationAction", "checkParcelNowAction", "storeCssVersionsAction", "storeCssVersionAction"]);
 
 const strip = (source: string) => source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'`\\])\/\/.*$/gm, "$1");
 

@@ -357,6 +357,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   theme_submissions: never("A look shared as a theme (D344) is its author's, sent from the original: a copy shares nothing until someone sends its look."),
   preview_links: never("A link opens the original's draft or theme to whoever it was given: a copy shares nothing until its owner makes links."),
   look_versions: never("The original's earlier looks are its own history: a copy starts with its look as it is now."),
+  css_versions: never("The original's earlier CSS is its own history: a copy starts with its CSS as it is now (D385)."),
   page_ai_jobs: never("The AI manager's page work (D308) was asked by a person in the store it was asked in: a copy starts with its pages as they are."),
   page_theme_detaches: never("The original's theme migration runs (D243), kept for their undo: a copy's pages are the original's as they are now."),
   theme_purchases: never("What the original paid Kaizena Flow for its premium themes (D286): a copy starts with its own Custom and buys a theme itself when one goes live on it."),

@@ -860,6 +860,7 @@ export function PageEditor({
         siteCss={siteCss}
         onSiteCss={setSiteCss}
         saveSiteCss={actions.saveSiteCss}
+        versions={actions.cssVersions}
       />
 
       <FindReplaceDialog open={findOpen} onClose={() => setFindOpen(false)} content={view} onReplace={replaceWords} />

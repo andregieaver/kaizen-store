@@ -29,6 +29,7 @@ import { isScheduledType } from "@/lib/page-schedules";
 import { layoutUses, type LayoutUse } from "@/server/product-layouts";
 import { listSavedParts } from "@/server/saved-parts";
 import { siteLayoutChoice } from "@/server/site-layouts";
+import { stagedCopy } from "@/server/site-staging";
 import { bothTerms, listTerms } from "@/server/taxonomy";
 import { getFieldData } from "@/server/custom-fields";
 import { Card, CARD_CLASS, CountBadge, PageHeader } from "@/components/admin/ui";
@@ -48,6 +49,7 @@ import { termFieldsSetup } from "../fields/data";
 import { storePageContext, storePagesBase } from "./context";
 import { undoDemoHomeAction, useDemoHomeAction } from "./home-actions";
 import { PageDrawing } from "./drawing";
+import { saveStagedPageAction } from "./staging-actions";
 
 /** The catalogue areas the page editor's parts read (D312 A7): the builder, its components' fields, the font and picture pickers. */
 const EDITOR_AREAS = ["builder", "blocks", "fields", "products", "design", "website", "blog", "schedules"] as const;
@@ -297,19 +299,34 @@ export async function StoreEditPageView({ type, params, searchParams }: { type: 
   const shopOff = type === "product_layout" ? requireFeature(gated, "shop") : null;
   if (shopOff) return shopOff;
   const { store, account } = gated;
-  const [page, { saved: justSaved }, saved, terms, gridTerms] = await Promise.all([
+  const [found, { saved: justSaved, staging: stagingMode }, saved, terms, gridTerms] = await Promise.all([
     z.uuid().safeParse(pageId).success ? getPageForEdit(store.id, pageId, type) : null,
     searchParams,
     listSavedParts(store.id),
     listTerms({ storeId: store.id, contentType: termContentOf(type) }),
     bothTerms(store.id),
   ]);
-  if (!page) notFound();
+  if (!found) notFound();
+  // The staging set's copy of the page (D385): edited here in place of the page's own draft, which stays as it is.
+  const staged = stagingMode === "1" ? await stagedCopy(store.id, found.id) : null;
+  if (stagingMode === "1" && (!staged || staged.type !== type)) notFound();
+  const page = staged ? { ...found, draft: staged.content } : found;
   // A version made for an A/B test (D148) says which test it is in, what it is a version of, and what may be changed in it.
   const test = type === "variant" ? await testOfVersionPage(store.id, page.id) : null;
   // An entry layout (D326) offers its type's fields to its blocks.
   const entryType = type === "entry_layout" ? await typeOfLayout(store.id, page.id) : null;
-  const context = await storePageContext(store, type, account.name ?? "", test?.targetType ?? null, entryType);
+  const ownContext = await storePageContext(store, type, account.name ?? "", test?.targetType ?? null, entryType);
+  const sw = adminText(adminLangOf(account.adminLocale), "website").staging;
+  // In staging mode every save is the set's copy's (D385): no Publish, schedule or share link, which would act on the page itself.
+  const context = staged
+    ? {
+        ...ownContext,
+        schedule: null,
+        share: null,
+        draftOnly: { preview: `${storePagesBase(store, type)}/${page.id}/preview?staging=1`, note: sw.stagedCopyNote },
+        actions: { ...ownContext.actions, save: saveStagedPageAction.bind(null, store.slug, type) },
+      }
+    : ownContext;
   // What is entered in the page's or article's custom fields (D118).
   const fieldData = type === "page" || type === "article" ? await getFieldData(store.id, type, page.id) : undefined;
   const lang = adminLangOf(account.adminLocale);
@@ -317,6 +334,14 @@ export async function StoreEditPageView({ type, params, searchParams }: { type: 
   return (
     <AdminTextScope texts={adminTexts(lang, EDITOR_AREAS)}>
       <h1 className="sr-only">Edit {page.draft.title || `Untitled ${PAGE_TYPE_COPY[type].one}`}</h1>
+      {staged && (
+        <p role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-insight-soft px-4 py-3 text-sm text-insight-text" data-staging-mode>
+          <span>{sw.stagedCopyNote}</span>
+          <Link href={`/admin/${store.slug}/staging`} className="font-medium underline">
+            {sw.backToStaging}
+          </Link>
+        </p>
+      )}
       {test && (
         <p role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-brand px-4 py-3 text-sm text-brand-ink">
           <span>
@@ -374,8 +399,13 @@ export async function StorePreviewPageView({
   const shopOff = type === "product_layout" ? requireFeature(gated, "shop") : null;
   if (shopOff) return shopOff;
   const { store } = gated;
-  const page = z.uuid().safeParse(pageId).success ? await getPageForEdit(store.id, pageId, type) : null;
-  if (!page) notFound();
+  const found = z.uuid().safeParse(pageId).success ? await getPageForEdit(store.id, pageId, type) : null;
+  if (!found) notFound();
+  // `?staging=1`: the staging set's copy (D385), drawn in place of the page's own draft.
+  const query = await searchParams;
+  const staged = query?.staging === "1" ? await stagedCopy(store.id, found.id) : null;
+  if (query?.staging === "1" && !staged) notFound();
+  const page = staged ? { ...found, draft: staged.content } : found;
   const copy = PAGE_TYPE_COPY[type];
   // A version made for an A/B test (D148) is drawn as the kind of page it stands in for.
   const drawnAs: PageType = type === "variant" ? ((await testOfVersionPage(store.id, page.id))?.targetType ?? "page") : type;
@@ -383,14 +413,14 @@ export async function StorePreviewPageView({
     <div className="flex flex-col gap-6">
       <p role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-brand px-4 py-3 text-sm text-brand-ink">
         <span>
-          Preview of the saved draft.{" "}
+          {staged ? "Preview of the staging set's copy. " : "Preview of the saved draft. "}
           {page.state === "draft"
             ? `The ${copy.one} is not in your store yet.`
             : page.state === "changed"
               ? "Your store still shows the published version."
               : "This is what your store shows."}
         </span>
-        <Link href={`${storePagesBase(store, type)}/${page.id}`} className="font-medium underline">
+        <Link href={`${storePagesBase(store, type)}/${page.id}${staged ? "?staging=1" : ""}`} className="font-medium underline">
           Back to editing
         </Link>
       </p>
@@ -400,7 +430,7 @@ export async function StorePreviewPageView({
         id={page.id}
         content={page.draft}
         publishedAt={page.publishedAt}
-        asked={(await searchParams)?.product}
+        asked={query?.product}
       />
     </div>
   );

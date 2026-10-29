@@ -4,7 +4,7 @@ import { refresh, updateTag } from "next/cache";
 
 import type { MenuSaveResult } from "@/server/menus";
 import { checkPermission, NO_ACCESS } from "@/server/permissions";
-import { discardStaging, publishStaging, stageMenu, stagePage, stageTheme, startStaging, type PublishOutcome } from "@/server/site-staging";
+import { discardStaging, keepStagedCopy, publishStaging, stageMenu, stagePage, stageTheme, startStaging, type PublishOutcome } from "@/server/site-staging";
 import { designTags } from "@/server/design-presets";
 import { pagesTag } from "@/server/pages";
 import { storeTag } from "@/server/stores";
@@ -24,6 +24,15 @@ export async function stagePageAction(storeSlug: string, pageId: string, staged:
   const member = await checkPermission(storeSlug, "website:write");
   if (!member) return { ok: false, problem: NO_ACCESS };
   const done = await stagePage(member, pageId, staged);
+  refresh();
+  return done;
+}
+
+/** Keeps the set's copy of a page whose live version changed since it was copied (D385): the person has seen what changed. */
+export async function keepStagedCopyAction(storeSlug: string, pageId: string): Promise<Done> {
+  const member = await checkPermission(storeSlug, "website:write");
+  if (!member) return { ok: false, problem: NO_ACCESS };
+  const done = await keepStagedCopy(member, pageId);
   refresh();
   return done;
 }
@@ -61,7 +70,9 @@ export async function discardStagingAction(storeSlug: string): Promise<Done> {
   return done;
 }
 
-export async function publishStagingAction(storeSlug: string): Promise<{ ok: true; outcome: PublishOutcome } | { ok: false; problem: string }> {
+export async function publishStagingAction(
+  storeSlug: string,
+): Promise<{ ok: true; outcome: PublishOutcome } | { ok: false; problem: string; changed?: { id: string; title: string }[] }> {
   const member = await checkPermission(storeSlug, "website:write");
   if (!member) return { ok: false, problem: NO_ACCESS };
   const done = await publishStaging(member);

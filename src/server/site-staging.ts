@@ -4,7 +4,7 @@ import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import { menuInput } from "@/lib/navigation";
-import { parsePageContent, type PageContent, type PageType } from "@/lib/page-content";
+import { pageInput, parsePageContent, type PageContent, type PageType } from "@/lib/page-content";
 import { pageTypeKey } from "@/lib/permissions";
 import { parseStoreTheme } from "@/lib/theme";
 import { compareLooks, compareVersions, type LookArea, type PageDifference } from "@/lib/version-compare";
@@ -13,6 +13,7 @@ import { audit, type Membership } from "./auth";
 import { log } from "./log";
 import { listStoreMenus, saveStoreMenu } from "./menus";
 import { savePage } from "./pages";
+import { pageRulesProblem } from "./page-rules";
 import { memberCan } from "./permissions";
 import { installLook, listInstalls, liveLook, switchToInstall } from "./theme-installs";
 
@@ -24,6 +25,11 @@ type Row = Record<string, unknown>;
  * (`publishStaging()`) through the builder's own Publish (`savePage()`), `switchToInstall()` and the menu saver (`saveStoreMenu()`), each a
  * new version as any of those makes. Products, orders and customers are never part of it. The only writer of `commerce.site_stagings` and
  * `site_staging_pages`.
+ *
+ * Since D385 (wave 11 unit F) a page staged is a COPY: `stagePage()` copies its draft into the set (`content`) with what visitors saw then
+ * (`base`), the builder's staging mode edits only the copy (`saveStagedPage()`, the page's own draft untouched), and *Make live* refuses, before
+ * anything is written, while a page's live version changed since it was copied (`liveChanges()`), showing what changed, until the person
+ * keeps the copy anyway (`keepStagedCopy()`). A row staged before D385 holds no copy and publishes the page's draft as before.
  */
 
 /** The kinds of page a staging set may hold: those of the site (an A/B test's versions and content types' entry pages are not). */
@@ -46,8 +52,13 @@ export type StagingPage = {
   title: string;
   /** Never published: going live makes it public for the first time. */
   isNew: boolean;
+  /** What the set would change on the live page: the copy's differences for a page staged with one, else the draft's. */
   differences: PageDifference[];
   staged: boolean;
+  /** Staged as a copy (D385): the builder edits the set's copy, never the page's own draft. */
+  copy: boolean;
+  /** Whether the live page changed since the copy was made, and how; *Make live* is refused until the copy is kept anyway. */
+  liveChanged: { changed: boolean; differences: PageDifference[] };
 };
 
 export type StagingOverview = {
@@ -95,7 +106,10 @@ export async function startStaging(member: Membership, name: string): Promise<St
   return { ok: true };
 }
 
-/** Puts a page's draft in the open set or takes it out: only the store's own pages of the site's kinds. */
+/**
+ * Puts a page in the open set or takes it out: only the store's own pages of the site's kinds. Putting it in copies its draft into the set
+ * with what visitors see now (D385), so the set's changes are its own and later edits of the page's draft are not in it.
+ */
 export async function stagePage(member: Membership, pageId: string, staged: boolean): Promise<StagingResult> {
   const staging = await openStagingOf(member.store.id);
   if (!staging) return { ok: false, problem: "none" };
@@ -110,10 +124,72 @@ export async function stagePage(member: Membership, pageId: string, staged: bool
   `);
   if (!page) return { ok: false, problem: "page" };
   await db().execute(sql`
-    insert into commerce.site_staging_pages (staging_id, store_id, page_id) values (${staging.id}::uuid, ${member.store.id}::uuid, ${pageId}::uuid)
+    insert into commerce.site_staging_pages (staging_id, store_id, page_id, content, base, copied_at)
+    select ${staging.id}::uuid, ${member.store.id}::uuid, p.id, p.draft, p.published, now()
+    from commerce.pages p where p.id = ${pageId}::uuid and p.store_id = ${member.store.id}::uuid
     on conflict do nothing
   `);
   return { ok: true };
+}
+
+/** The open set's copy of a page (D385), as the builder's staging mode edits it; null when the page is not staged as a copy. */
+export async function stagedCopy(storeId: string, pageId: string): Promise<{ content: PageContent; type: PageType } | null> {
+  if (!isUuid(pageId)) return null;
+  const [row] = await db().execute<Row>(sql`
+    select sp.content, p.type from commerce.site_staging_pages sp
+    join commerce.site_stagings s on s.id = sp.staging_id and s.status = 'open'
+    join commerce.pages p on p.id = sp.page_id and p.store_id = sp.store_id
+    where sp.store_id = ${storeId}::uuid and sp.page_id = ${pageId}::uuid and sp.content is not null
+  `);
+  const content = row ? parsePageContent(row.content) : null;
+  return content ? { content, type: row.type as PageType } : null;
+}
+
+/**
+ * Saves what the builder's staging mode holds into the set's copy (D385): checked as the builder's save checks a page's content
+ * (`pageInput`, `pageRulesProblem()`), the address, fonts and translations again by `savePage()` when it goes live. The page's own draft and
+ * what visitors see do not change. The caller asks that the person may write the page's kind.
+ */
+export async function saveStagedPage(member: Membership, pageId: string, input: unknown): Promise<{ ok: true; content: PageContent } | { ok: false; problems: string[] }> {
+  const copy = await stagedCopy(member.store.id, pageId);
+  if (!copy) return { ok: false, problems: ["none"] };
+  const parsed = pageInput.safeParse(input);
+  if (!parsed.success) return { ok: false, problems: [...new Set(parsed.error.issues.map((i) => i.message))] };
+  const rule = pageRulesProblem(member.store.id, copy.type, parsed.data);
+  if (rule) return { ok: false, problems: [rule] };
+  const done = await db().execute<Row>(sql`
+    update commerce.site_staging_pages sp set content = ${JSON.stringify(parsed.data)}::jsonb
+    from commerce.site_stagings s
+    where s.id = sp.staging_id and s.status = 'open' and sp.store_id = ${member.store.id}::uuid and sp.page_id = ${pageId}::uuid
+      and sp.content is not null
+    returning sp.page_id
+  `);
+  if (done.length === 0) return { ok: false, problems: ["none"] };
+  return { ok: true, content: parsed.data };
+}
+
+/** Keeps the set's copy of a page after its live version changed (D385): what visitors see now becomes the copy's base, the copy unchanged. */
+export async function keepStagedCopy(member: Membership, pageId: string): Promise<StagingResult> {
+  if (!isUuid(pageId)) return { ok: false, problem: "page" };
+  const done = await db().execute<Row>(sql`
+    update commerce.site_staging_pages sp set base = p.published, copied_at = now()
+    from commerce.site_stagings s, commerce.pages p
+    where s.id = sp.staging_id and s.status = 'open' and p.id = sp.page_id and p.store_id = sp.store_id
+      and sp.store_id = ${member.store.id}::uuid and sp.page_id = ${pageId}::uuid and sp.content is not null
+    returning sp.page_id
+  `);
+  return done.length > 0 ? { ok: true } : { ok: false, problem: "page" };
+}
+
+/**
+ * What changed on the live page since its copy was made: changed when the page's published content is not the copy's base any more (published
+ * for the first time, taken off or edited), with the differences where both are pages.
+ */
+function liveChanges(base: unknown, published: unknown): { changed: boolean; differences: PageDifference[] } {
+  const before = parsePageContent(base);
+  const now = parsePageContent(published);
+  if (JSON.stringify(before) === JSON.stringify(now)) return { changed: false, differences: [] };
+  return { changed: true, differences: before && now ? compareVersions(before, now) : [] };
 }
 
 /** Chooses the theme the set makes live (one installed and not live), or none. */
@@ -160,6 +236,33 @@ export async function discardStaging(member: Membership): Promise<StagingResult>
 /** What the staging page shows: the open set, the pages with changes not yet live, the themes waiting and the menus. */
 export async function stagingOverview(storeId: string): Promise<StagingOverview> {
   const staging = await openStagingOf(storeId);
+  const pages: StagingPage[] = [];
+  // The set's own copies first (D385): what each would change on the live page, and whether the live page moved since it was copied.
+  const copies = staging
+    ? await db().execute<Row>(sql`
+        select p.id, p.type, sp.content, sp.base, p.published from commerce.site_staging_pages sp
+        join commerce.pages p on p.id = sp.page_id and p.store_id = sp.store_id
+        where sp.staging_id = ${staging.id}::uuid and sp.content is not null
+        order by p.type, p.updated_at desc
+      `)
+    : [];
+  const copied = new Set<string>();
+  for (const row of copies) {
+    const content = parsePageContent(row.content);
+    if (!content) continue;
+    const published = parsePageContent(row.published);
+    copied.add(String(row.id));
+    pages.push({
+      id: String(row.id),
+      type: row.type as PageType,
+      title: content.title,
+      isNew: !published,
+      differences: published ? compareVersions(published, content) : [],
+      staged: true,
+      copy: true,
+      liveChanged: liveChanges(row.base, row.published),
+    });
+  }
   const rows = await db().execute<Row>(sql`
     select id, type, draft, published from commerce.pages
     where store_id = ${storeId}::uuid and type in (${sql.join(STAGED_TYPES.map((t) => sql`${t}`), sql`, `)})
@@ -167,14 +270,23 @@ export async function stagingOverview(storeId: string): Promise<StagingOverview>
     order by type, updated_at desc
     limit 200
   `);
-  const pages: StagingPage[] = [];
   for (const row of rows) {
+    if (copied.has(String(row.id))) continue;
     const draft = parsePageContent(row.draft);
     if (!draft) continue;
     const published = parsePageContent(row.published);
     const differences = published ? compareVersions(published, draft) : [];
     if (published && differences.length === 0) continue;
-    pages.push({ id: String(row.id), type: row.type as PageType, title: draft.title, isNew: !published, differences, staged: staging?.pageIds.includes(String(row.id)) ?? false });
+    pages.push({
+      id: String(row.id),
+      type: row.type as PageType,
+      title: draft.title,
+      isNew: !published,
+      differences,
+      staged: staging?.pageIds.includes(String(row.id)) ?? false,
+      copy: false,
+      liveChanged: { changed: false, differences: [] },
+    });
   }
   const live = await liveLook(storeId);
   const liveTheme = parseStoreTheme(live?.theme);
@@ -201,14 +313,25 @@ export type PublishOutcome = {
 };
 
 /**
- * Makes the open set live: each staged page's draft published through `savePage()` (only a kind of page the person may write; a page in a
+ * Makes the open set live: each staged page's copy (or, staged before D385, its draft) published through `savePage()` (only a kind of page the person may write; a page in a
  * running A/B test, a blocking issue or anything the builder's Publish refuses is refused here the same way and said), then the theme through
  * `switchToInstall()` (a premium theme the store does not have is refused: it is made live from Design settings, where its price is shown),
  * then each staged menu through `saveStoreMenu()`. A part refused does not stop the others; the set is closed with what became of each.
  */
-export async function publishStaging(member: Membership): Promise<{ ok: true; outcome: PublishOutcome } | { ok: false; problem: string }> {
+export async function publishStaging(
+  member: Membership,
+): Promise<{ ok: true; outcome: PublishOutcome } | { ok: false; problem: string; changed?: { id: string; title: string }[] }> {
   const staging = await openStagingOf(member.store.id);
   if (!staging) return { ok: false, problem: "none" };
+  // A copy whose live page changed since it was copied would undo that change unseen (D385): nothing is made live until each is kept anyway.
+  const copies = await db().execute<Row>(sql`
+    select sp.page_id, sp.content, sp.base, p.published from commerce.site_staging_pages sp
+    join commerce.pages p on p.id = sp.page_id and p.store_id = sp.store_id
+    where sp.staging_id = ${staging.id}::uuid and sp.content is not null
+  `);
+  const changed = copies.filter((c) => liveChanges(c.base, c.published).changed).map((c) => ({ id: String(c.page_id), title: parsePageContent(c.content)?.title ?? "" }));
+  if (changed.length > 0) return { ok: false, problem: "changed", changed };
+  const copyOf = new Map(copies.map((c) => [String(c.page_id), c.content]));
   const claimed = await db().execute<Row>(sql`
     update commerce.site_stagings set status = 'published', published_by = ${member.account.id}::uuid, published_at = now()
     where id = ${staging.id}::uuid and status = 'open' returning id
@@ -218,7 +341,8 @@ export async function publishStaging(member: Membership): Promise<{ ok: true; ou
 
   for (const pageId of staging.pageIds) {
     const [row] = await db().execute<Row>(sql`select type, draft from commerce.pages where id = ${pageId}::uuid and store_id = ${member.store.id}::uuid`);
-    const draft: PageContent | null = row ? parsePageContent(row.draft) : null;
+    // The set's copy (D385), else, for a page staged before copies, the page's own draft.
+    const draft: PageContent | null = row ? parsePageContent(copyOf.has(pageId) ? copyOf.get(pageId) : row.draft) : null;
     if (!row || !draft) {
       outcome.pages.push({ id: pageId, title: "", ok: false, problem: "gone" });
       continue;

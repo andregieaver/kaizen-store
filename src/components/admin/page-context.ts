@@ -1,3 +1,4 @@
+import type { CssVersionActions } from "@/lib/css-versions";
 import type { PageVersionItem } from "@/lib/page-versions";
 import type { PreviewLinkAnswer, PreviewLinkItem } from "@/lib/preview-links";
 import type { PickerList } from "@/lib/media-picker";
@@ -241,6 +242,8 @@ export type PageOwnerContext = {
     saveThemeTab?: (payload: string) => Promise<{ ok: true; theme: StoreTheme } | { ok: false; problems: string[] }>;
     /** Saves the owner's CSS for every page (D100); it is live at once. */
     saveSiteCss: (css: string) => Promise<{ ok: true } | { ok: false; problems: string[] }>;
+    /** The site CSS's versions (D385), listed in the CSS panel and taken back into it as unsaved; absent where none are kept (a theme's workspace). */
+    cssVersions?: CssVersionActions;
     /** Copies a Google Fonts family to Kaizen before a block uses it (D59). */
     installFont: (family: string) => Promise<{ ok: true } | { ok: false; problem: string }>;
     /** Translates texts with the owner's AI (D109); null where the owner has one language only (Kaizen's pages). */

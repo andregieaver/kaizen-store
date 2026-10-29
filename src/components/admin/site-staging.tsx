@@ -17,11 +17,22 @@ type Outcome = {
   theme: { title: string; ok: boolean; problem?: string } | null;
   menus: { id: string; name: string; ok: boolean; problem?: string }[];
 };
-type AsyncPublished = Promise<{ ok: true; outcome: Outcome } | { ok: false; problem: string }>;
+type AsyncPublished = Promise<{ ok: true; outcome: Outcome } | { ok: false; problem: string; changed?: { id: string; title: string }[] }>;
 
 export type StagingView = {
   open: { name: string; since: string; installId: string | null } | null;
-  pages: { id: string; title: string; type: string; isNew: boolean; staged: boolean; differences: PageDifference[]; editHref: string }[];
+  pages: {
+    id: string;
+    title: string;
+    type: string;
+    isNew: boolean;
+    staged: boolean;
+    differences: PageDifference[];
+    editHref: string;
+    /** Staged as the set's own copy (D385): `editHref` opens the copy. */
+    copy: boolean;
+    liveChanged: { changed: boolean; differences: PageDifference[] };
+  }[];
   themes: { id: string; title: string; areas: LookArea[] }[];
   menus: { id: string; name: string; staged: { name: string; before: number; after: number; renamed: boolean } | null; stageHref: string }[];
   last: { name: string; status: string; when: string | null; outcome: Outcome | null } | null;
@@ -30,6 +41,8 @@ export type StagingView = {
 export type StagingActions = {
   start: (name: string) => AsyncDone;
   stagePage: (id: string, staged: boolean) => AsyncDone;
+  /** Keeps a copy whose live page changed since it was made (D385). */
+  keepCopy: (id: string) => AsyncDone;
   stageTheme: (installId: string | null) => AsyncDone;
   dropMenu: (id: string) => AsyncDone;
   discard: () => AsyncDone;
@@ -135,7 +148,7 @@ export function SiteStaging({ view, canWrite, actions }: { view: StagingView; ca
                     if (done.ok) {
                       setOutcome(done.outcome);
                       setProblem(null);
-                    } else setProblem(say(done.problem));
+                    } else setProblem(done.changed ? fillWords(w.problems.changed, { titles: done.changed.map((c) => c.title).join(", ") }) : say(done.problem));
                   });
                 }}
               >
@@ -172,6 +185,7 @@ export function SiteStaging({ view, canWrite, actions }: { view: StagingView; ca
                     />
                     <span className="text-body-strong text-ink">{page.title}</span>
                     {page.isNew && <Chip signal="neutral">{w.newPage}</Chip>}
+                    {page.copy && <Chip signal="insight">{w.copyChip}</Chip>}
                   </label>
                   {!page.isNew && (
                     <Button kind="quiet" size="dense" onClick={() => setShown(shown === page.id ? null : page.id)}>
@@ -179,10 +193,23 @@ export function SiteStaging({ view, canWrite, actions }: { view: StagingView; ca
                     </Button>
                   )}
                   <ButtonLink kind="quiet" size="dense" href={page.editHref}>
-                    {w.edit}
+                    {page.copy ? w.editCopy : w.edit}
                   </ButtonLink>
                 </div>
                 {shown === page.id && <VersionDifferences differences={page.differences} />}
+                {page.liveChanged.changed && (
+                  <div className="flex flex-col gap-2 rounded-panel bg-warning-soft p-3 text-sm text-warning-text" data-live-changed>
+                    <p>{w.liveChanged}</p>
+                    {page.liveChanged.differences.length > 0 && <VersionDifferences differences={page.liveChanged.differences} />}
+                    {canWrite && (
+                      <div>
+                        <Button kind="quiet" size="dense" disabled={pending} onClick={() => act(() => actions.keepCopy(page.id))}>
+                          {w.keepCopy}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </li>
             ))}
           </List>

@@ -204,6 +204,10 @@ imported. `platform.migration-from-other-platforms` is Full.
 
 ### F. A staging copy, and versions of the site's own CSS (D385)
 
+**Built (29 October 2026),** as designed below with three course changes (D385): a theme switch's CSS keeps no CSS version (its look is kept by
+the installs and `look_versions`); a refused *Make live* leaves the set open so no copy is lost; a version is compared by its lines.
+`platform.store-duplication-staging-theme-versions` is Full.
+
 **What is missing.**
 - A staging set (D358) works on the store's live drafts, not on a copy, so a page staged is the draft anyone editing it sees.
 - The site's own CSS keeps no versions.

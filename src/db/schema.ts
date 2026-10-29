@@ -5774,6 +5774,8 @@ export const stockTransferLines = commerce.table(
     foreignKey({ name: "stock_transfer_lines_transfer_fk", columns: [t.storeId, t.transferId], foreignColumns: [stockTransfers.storeId, stockTransfers.id] }).onDelete("cascade"),
     variantRef("stock_transfer_lines_variant_fk", t),
     index("stock_transfer_lines_variant_idx").on(t.storeId, t.variantId),
+    // The foreign key to its transfer, store first (D385: the advisor found it unindexed).
+    index("stock_transfer_lines_transfer_idx").on(t.storeId, t.transferId),
     check("stock_transfer_lines_quantity", sql`${t.quantity} between 1 and 1000000`),
     check("stock_transfer_lines_received", sql`${t.received} between 0 and ${t.quantity}`),
   ],
@@ -5833,6 +5835,8 @@ export const purchaseOrderLines = commerce.table(
     foreignKey({ name: "purchase_order_lines_order_fk", columns: [t.storeId, t.purchaseOrderId], foreignColumns: [purchaseOrders.storeId, purchaseOrders.id] }).onDelete("cascade"),
     variantRef("purchase_order_lines_variant_fk", t),
     index("purchase_order_lines_variant_idx").on(t.storeId, t.variantId),
+    // The foreign key to its purchase order, store first (D385: the advisor found it unindexed).
+    index("purchase_order_lines_order_idx").on(t.storeId, t.purchaseOrderId),
     check("purchase_order_lines_quantity", sql`${t.quantity} between 1 and 1000000`),
     check("purchase_order_lines_received", sql`${t.received} between 0 and ${t.quantity}`),
     check("purchase_order_lines_cost", sql`${t.unitCostMinor} between 0 and 100000000000`),
@@ -7212,7 +7216,11 @@ export const siteStagings = commerce.table(
   ],
 );
 
-/** A page whose draft a staging set publishes (D358). */
+/**
+ * A page a staging set publishes (D358), with its own copy since D385: `content` is the page as the set holds it, edited in the builder's
+ * staging mode while the page's own draft is untouched (null for a row staged before: the set then publishes the page's draft), and `base`
+ * is what visitors saw when it was copied (null: never published), so *Make live* refuses a page whose live version changed since.
+ */
 export const siteStagingPages = commerce.table(
   "site_staging_pages",
   {
@@ -7223,6 +7231,9 @@ export const siteStagingPages = commerce.table(
     pageId: uuid("page_id")
       .notNull()
       .references(() => pages.id, { onDelete: "cascade" }),
+    content: jsonb("content"),
+    base: jsonb("base"),
+    copiedAt: timestamp("copied_at", { withTimezone: true }),
   },
   (t) => [primaryKey({ columns: [t.stagingId, t.pageId] }), index("site_staging_pages_page_idx").on(t.pageId), index("site_staging_pages_store_idx").on(t.storeId)],
 );
@@ -7870,6 +7881,26 @@ export const lookVersions = commerce.table(
     index("look_versions_created_by_idx").on(t.createdBy),
     check("look_versions_kind", sql`${t.kind} in ('design', 'theme_tab', 'colours')`),
     check("look_versions_theme", sql`jsonb_typeof(${t.theme}) = 'object'`),
+  ],
+);
+
+/**
+ * A version of a site's own CSS (wave 11 unit F, D385, `src/server/css-versions.ts`, its only writer): the CSS as each save of the CSS panel
+ * left it, a store's (`stores.custom_css`) or Kaizena Flow's (`store_id` null, `platform_settings.custom_css`), with who saved it; the newest
+ * 50 per site stay, never changed, taken back only into the editor as unsaved.
+ */
+export const cssVersions = commerce.table(
+  "css_versions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id").references(() => stores.id),
+    css: text("css").notNull(),
+    createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("css_versions_store_idx").on(t.storeId, t.createdAt),
+    index("css_versions_created_by_idx").on(t.createdBy),
   ],
 );
 

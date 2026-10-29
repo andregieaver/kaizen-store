@@ -10,11 +10,11 @@ D152 (the store analytics cockpit) and D153 (the EU withdrawal function and the 
 
 <!-- parity:generated:start since -->
 
-- **Headline now 88.0%** (first report 59.5%), **must-have 90.6%** (first report 69.1%), over 201 core rows (first report 232).
-- Where the change comes from: +28.2 points from the 144 rating moves on core rows recorded below, and +0.3 points because the re-read changed which rows count as core (the tracker has 231 rows, the first report 232 core ones).
+- **Headline now 88.2%** (first report 59.5%), **must-have 90.6%** (first report 69.1%), over 201 core rows (first report 232).
+- Where the change comes from: +28.5 points from the 145 rating moves on core rows recorded below, and +0.3 points because the re-read changed which rows count as core (the tracker has 231 rows, the first report 232 core ones).
 - 230 of 231 rows have their Shopify side read from a page; the others are listed under evidence debt.
 
-Rated higher (132):
+Rated higher (133):
 
 - Admin AI assistant that performs tasks (AI): partial to full. D350: notices for background work that finished or waits (page builds, follow-ups, autopilot questions and finished plans, changes kept for a yes, reports), written once each by the jobs, counted on the launcher and in the account menu, li…
 - Assistant memory and saved skills (AI): partial to full. D350: saved skills: Save as skill in the panel, a Skills tab to list, edit and delete, save_skill and delete_skill, use_skill loading them like the built-ins; owners share with the store; built-in keys, secrets, customers' details and mark…
@@ -135,6 +135,7 @@ Rated higher (132):
 - Outgoing webhooks (Platform): partial to full. Built D354 (wave 9 unit A): commerce.webhook_endpoints written only by src/server/webhook-endpoints.ts (address checked by checkEndpointUrl() and the address guard at save, safeFetch() at send), signed deliveries (signWebhook()/verifyWebho…
 - Custom logic (Functions) (Platform, not core): missing to partial. D357 built: declarative rules on shipping options, payment methods and cart validation, evaluated the same in the cart and at checkout, skipped and recorded when broken; no pricing rule and no developer code.
 - Workflow automation (Flow) (Platform): partial to full. Built D356 (wave 9 unit C): commerce.workflows and workflow_runs (src/server/workflows.ts, the database's intake in queue_integration_event()), the Workflows page and draft_workflow.
+- Store duplication, staging, theme versions (Platform): partial to full. Read unit F (D385): the staging copy (stagePage() copies, saveStagedPage() edits only the copy, publishStaging() refuses a copy whose live page moved until keepStagedCopy()) and the CSS versions (keepCssVersion() in saveSiteCss()'s transac…
 - Product, customer and order CSV (Platform): missing to partial. Wave 2, first run (docs/wave-2-data.md; working tree not yet committed).
 - Product, customer and order CSV (Platform): partial to full. D295 (wave 5 unit A): the customer export now carries each address's marketing-consent state from the subscriber list instead of not_recorded; read customer-export.ts and customer-csv.ts and ran customer-export.int.test.ts and customer-csv…
 - Migration from other platforms (Platform): partial to full. Read unit E (D384): the WooCommerce product file through the product import with redirects from old addresses, and Shopify's order export as copied orders, held by src/server/old-shop-import.int.test.ts, src/lib/product-csv-woocommerce.tes…
@@ -182,7 +183,7 @@ Rated lower (24):
 
 <!-- parity:generated:start summary -->
 
-Kaizena Flow has **88.0%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 201 core features weighted by importance to an EU small or mid-size merchant, and **90.6%** on the must-haves (the 83 features with weight 4 or 5). The unweighted figures are 87.1% overall and 90.4% for must-haves. Counting app-only features gives 86.7%; counting Plus-only as well gives 86.2%. Kaizena Flow is strongest on catalogue and products (96.3%) and weakest on platform, extensibility and operations (69.5%), international, compliance and trust (77.7%), checkout and payments (80.0%). Of the 201 core features, 154 are full, 42 partial and 5 missing, so half-built features, not absent ones, are the main shape of the gap.
+Kaizena Flow has **88.2%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 201 core features weighted by importance to an EU small or mid-size merchant, and **90.6%** on the must-haves (the 83 features with weight 4 or 5). The unweighted figures are 87.3% overall and 90.4% for must-haves. Counting app-only features gives 86.9%; counting Plus-only as well gives 86.4%. Kaizena Flow is strongest on catalogue and products (96.3%) and weakest on platform, extensibility and operations (71.9%), international, compliance and trust (77.7%), checkout and payments (80.0%). Of the 201 core features, 155 are full, 41 partial and 5 missing, so half-built features, not absent ones, are the main shape of the gap.
 
 <!-- parity:generated:end summary -->
 
@@ -192,10 +193,10 @@ The method is simple: a full match scores 1, a partial match 0.5, a missing feat
 
 | Measure | Features | Weighted parity | Unweighted parity | Full / partial / missing |
 | --- | --- | --- | --- | --- |
-| Headline: core (Shopify native, Basic to Advanced) | 201 | **88.0%** | 87.1% | 154 / 42 / 5 |
+| Headline: core (Shopify native, Basic to Advanced) | 201 | **88.2%** | 87.3% | 155 / 41 / 5 |
 | Must-have (core, weight 4 or 5) | 83 | **90.6%** | 90.4% | 67 / 16 / 0 |
-| Core plus app-only features | 225 | 86.7% | 85.8% | 167 / 52 / 6 |
-| Everything, including Plus-only | 231 | 86.2% | 84.6% | 168 / 55 / 8 |
+| Core plus app-only features | 225 | 86.9% | 86.0% | 168 / 51 / 6 |
+| Everything, including Plus-only | 231 | 86.4% | 84.8% | 169 / 54 / 8 |
 
 <!-- parity:generated:end headline -->
 
@@ -214,9 +215,9 @@ Counts are core features only. Weighted parity uses weights 1 to 5; must-have is
 | Customers, marketing and loyalty | 17 | 14 | 2 | 1 | 92.4% | 8 | 100.0% |
 | Analytics, reporting and finance | 24 | 22 | 1 | 1 | 95.5% | 11 | 94.6% |
 | International, compliance and trust | 16 | 10 | 6 | 0 | 77.7% | 10 | 70.2% |
-| Platform, extensibility and operations | 20 | 9 | 8 | 3 | 69.5% | 7 | 79.3% |
+| Platform, extensibility and operations | 20 | 10 | 7 | 3 | 71.9% | 7 | 79.3% |
 | AI and automation | 21 | 19 | 2 | 0 | 94.4% | 2 | 100.0% |
-| **Total** | **201** | **154** | **42** | **5** | **88.0%** | **83** | **90.6%** |
+| **Total** | **201** | **155** | **41** | **5** | **88.2%** | **83** | **90.6%** |
 
 <!-- parity:generated:end domains -->
 
@@ -228,7 +229,7 @@ A row is Full only when it lists code and tests that exist (or says it is untest
 
 | Evidence | Rows |
 | --- | ---: |
-| Full, with tests | 162 |
+| Full, with tests | 163 |
 | Full, untested (debt, not hidden) | 6 |
 | Shopify side not read from a page | 1 |
 | Rows in the tracker | 231 |
@@ -237,7 +238,7 @@ Untested Full rows: `ai.assistant-voice-mode`, `customers.abandoned-checkout-rec
 
 | Bucket | What it means | Rows not Full | Core rows | Core headline points lacking |
 | --- | --- | ---: | ---: | ---: |
-| A | Build in-house | 27 | 17 | 4.0 |
+| A | Build in-house | 26 | 16 | 3.8 |
 | B | Build, live only with a third party | 13 | 11 | 2.8 |
 | C | Strategy decision first | 9 | 7 | 1.7 |
 | D | Not reachable by code | 14 | 12 | 3.4 |
@@ -250,19 +251,19 @@ The waves are those of `docs/parity-plan.md` section 3. This table is produced f
 
 <!-- parity:generated:start projection -->
 
-Now: **88.0%** core, 90.6% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 16 rows (12 core) have no wave yet and are not in them.
+Now: **88.2%** core, 90.6% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 16 rows (12 core) have no wave yet and are not in them.
 
 | Wave | Scope | Rows (core) | Core if every row of waves 1 to N is Full | Must-have | Adds (points) | Core if only bucket A rows are | Must-have |
 | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | Compliance and money | 10 (7) | 90.1% | 94.1% | +2.1 | 89.5% | 93.0% |
-| 2 | Data in and out | 2 (0) | 90.1% | 94.1% | +0.0 | 89.5% | 93.0% |
-| 3 | Inventory and orders | 12 (11) | 92.7% | 95.8% | +2.6 | 90.4% | 93.5% |
-| 4 | Payments | 5 (4) | 93.6% | 96.3% | +0.9 | 90.7% | 93.5% |
-| 5 | Customers and marketing | 7 (4) | 94.5% | 96.3% | +0.9 | 91.1% | 93.5% |
-| 6 | Catalogue | 0 (0) | 94.5% | 96.3% | +0.0 | 91.1% | 93.5% |
-| 7 | Storefront and international | 3 (3) | 95.2% | 96.3% | +0.7 | 91.6% | 93.5% |
-| 8 | Analytics and AI | 2 (2) | 95.7% | 96.3% | +0.5 | 91.8% | 93.5% |
-| 9 | Platform and extensibility | 6 (4) | 96.6% | 96.9% | +0.9 | 92.0% | 93.5% |
+| 1 | Compliance and money | 10 (7) | 90.4% | 94.1% | +2.1 | 89.8% | 93.0% |
+| 2 | Data in and out | 2 (0) | 90.4% | 94.1% | +0.0 | 89.8% | 93.0% |
+| 3 | Inventory and orders | 12 (11) | 92.9% | 95.8% | +2.6 | 90.6% | 93.5% |
+| 4 | Payments | 5 (4) | 93.9% | 96.3% | +0.9 | 91.0% | 93.5% |
+| 5 | Customers and marketing | 7 (4) | 94.8% | 96.3% | +0.9 | 91.4% | 93.5% |
+| 6 | Catalogue | 0 (0) | 94.8% | 96.3% | +0.0 | 91.4% | 93.5% |
+| 7 | Storefront and international | 3 (3) | 95.4% | 96.3% | +0.7 | 91.8% | 93.5% |
+| 8 | Analytics and AI | 2 (2) | 95.9% | 96.3% | +0.5 | 92.0% | 93.5% |
+| 9 | Platform and extensibility | 5 (3) | 96.6% | 96.9% | +0.7 | 92.0% | 93.5% |
 
 Ceiling with every bucket A row Full and buckets B, C and D as they are: **92.0%** core, 93.5% must-have. With bucket B built and approved as well: 94.8% core, 95.8% must-have.
 
@@ -602,7 +603,7 @@ Legend. **Shopify**: Native = included on Basic to Advanced and scored in the he
 | Custom data (metafields) | Native. [page](https://help.shopify.com/en/manual/metafields) | Full | 3 |  | Evidence: `src/lib/custom-fields.ts`, `src/server/custom-fields.ts`, `src/lib/field-money.ts` and 3 more; 9 test files; D118, D119, D120. |
 | Staff accounts and roles | Native. [page](https://help.shopify.com/en/manual/your-account/users/users-plan-requirements) | Partial | 4 | A, wave 1 | Criteria 1, 2 and 4 are built and tested (roles of per-section permissions assigned from the Team page and refused by every page, action and route; collaborators with a role and an expiry, badged in the staff list, ignored by getMembership() once expired and ended by the daily job; an Activity log by person, area, action and period that holds every role change). Criterion 3 is Partial for the reason of international.staff-two-step-authentication: nothing has run against a real Supabase Auth, and the platform admin's real enrolment in production is still to be recorded. A staff limit by plan is built since D314 (`staff_seats` in LIMITS, checked when an invitation is made, src/server/settings.ts, held by limits-enforce.int.test.ts). Not built: passkeys (dropped from the criterion) and an agency account that invites itself (collaborators are invited by the owner). Merged on 2026-10-04 (parity README rule 8) with international.staff-roles-and-permissions, which was the same Shopify feature in the international domain and had reached Full on its own four criteria (roles, guards on every page and action, the AI manager and MCP respecting permissions, one owner and audited role changes: all built and tested); the survivor takes both rows' criteria and the larger weight, and stays Partial until the two-step criterion is shown against real Supabase Auth. Code: `src/app/admin/(gated)/[store]/activity/page.tsx`, `src/app/admin/(gated)/[store]/staff/page.tsx`. |
 | Multi-store management | Plus. [page](https://help.shopify.com/en/manual/shopify-plus/organization-admin) | Full | 2 |  | Evidence: `src/server/platform.ts`, `src/server/store-copy.ts`, `src/lib/store-copy-rules.ts` and 4 more; 6 test files; D19, D107, D129. |
-| Store duplication, staging, theme versions | Native. [page](https://help.shopify.com/en/manual/online-store/themes/managing-themes/duplicating-themes) | Partial | 3 | A, wave 9 | D129 duplicates a whole store and D126 duplicates pages; A/B versions of pages (D148). Since D305 every save, publish and live-site edit of a page keeps a version (`commerce.page_versions`, the newest fifty; headers, footers and product layouts are pages, so theirs too), and since D340 every save of the live look keeps the theme (`commerce.look_versions`); both are listed in the editors, and since D358 each version can be compared in words with what is in the editor (`compareVersions()`, `compareLooks()`) and put back as unsaved changes. Preview links (D340) show a draft page or an installed theme to anyone with the address for 1 to 30 days, no sign-in, no cookie, `noindex`. Staging (D358) is a set inside the store: drafts of pages, articles, headers, footers and product layouts, a theme installed but not live and menu changes, compared with what visitors see and made live together through the builder's Publish, the theme switch and the menu saver, never touching products, orders or customers. Still short: the site's own CSS keeps no revision history (criterion 1); a staging set works on the store's drafts, not on a copy, so a draft staged is the same draft anyone editing that page sees (criterion 3 asks for a copy); no duplicate of a whole store for trying apps against. Code: `src/server/store-copy.ts`, `src/lib/store-copy.ts`. |
+| Store duplication, staging, theme versions | Native. [page](https://help.shopify.com/en/manual/online-store/themes/managing-themes/duplicating-themes) | Full (was partial) | 3 |  | D129 duplicates a whole store and D126 duplicates pages; A/B versions of pages (D148). Since D305 every save, publish and live-site edit of a page keeps a version (`commerce.page_versions`, the newest fifty; headers, footers and product layouts are pages, so theirs too), and since D340 every save of the live look keeps the theme (`commerce.look_versions`); both are listed in the editors, and since D358 each version can be compared in words with what is in the editor (`compareVersions()`, `compareLooks()`) and put back as unsaved changes. Preview links (D340) show a draft page or an installed theme to anyone with the address for 1 to 30 days, no sign-in, no cookie, `noindex`. Staging (D358) is a set inside the store: drafts of pages, articles, headers, footers and product layouts, a theme installed but not live and menu changes, compared with what visitors see and made live together through the builder's Publish, the theme switch and the menu saver, never touching products, orders or customers. Since D385 a staging set holds its own copy of each page (`site_staging_pages.content`, what visitors saw then as `base`), edited in the builder's staging mode while the page's own draft stays as it is, and *Make live* refuses, before anything is written, while a copy's live page changed since it was copied, showing what changed, until the person keeps the copy; and each save of a site's own CSS keeps a version (`commerce.css_versions`, the newest fifty), listed in the CSS panel with how it differs in lines and put back as unsaved. What still differs from Shopify: a staging set copies pages, a theme and menus, not a whole second store to try apps against (D129's duplicate is a separate store), and a CSS version is compared by lines, not side by side. Evidence: `src/server/store-copy.ts`, `src/lib/store-copy.ts`, `src/server/page-duplicate.ts` and 15 more; 12 test files; D60, D126, D129, D148, D241, D243, D245, D305, D340, D358, D385. |
 | Themes and templates marketplace | Native. [page](https://help.shopify.com/en/manual/online-store/themes/theme-store) | Partial | 3 | A, wave 7 | Rows, columns and components (D46, D125) and whole page layouts (D127) are shared as templates (`private`, `stores`, `marketplace`), switched on per store, moderated by platform admins and previewed before use. Whole themes exist since D241 to D287 (design, header, footer, product layout, presets and their own demo content, versioned, free or paid, listed in the theme store). Since D344 (wave 7 unit J) anyone who may change a store's website submits its live look as a theme, or as the next version of a theme they are the author of, from Design settings (`src/server/theme-submissions.ts`, the look only, kept as sent); Kaizena Flow's admins review it at Themes → Submissions (Review makes it a draft theme to preview and check, Approve publishes it through the theme checks, Not accepted says why to the author, Hide is the theme's Archive), the database moving a submission only forward; a theme names its author on its page with the number of stores using it, the author's Your themes page lists their submissions with the reasons and their themes with version and stores; a new install no longer follows updates by itself (offered with What's new, decision 4), and a theme from outside is free (the database refuses a price). Still short: (1) the first criterion's starter pages: a submission carries the look only, never the author store's pages, so an outside theme's demo content is given by Kaizena Flow on its Content tab; (2) installs that followed updates before D344 keep following, by the owner's decision, so for them an update is still applied on its own. The supply of outside designers is a business matter code does not create. Code: `src/app/admin/(gated)/(owner)/account/themes/page.tsx`, `src/app/admin/(gated)/platform/themes/submissions/[submissionId]/page.tsx`. |
 | Developer access to storefront code | Native. [page](https://shopify.dev/docs/storefronts/themes) | Partial | 2 | C, no wave yet | Owners write CSS for one page and for the whole site (D100, checked by `cssProblem()`, also on the live site since D306), an HTML block (D91), and head and body code that loads only after consent and only on a store's own host (D61, `liveCustomCode()`). No templating language, no theme files, no CLI or Git workflow, no way for a developer to change markup the page builder does not expose. The builder's model (rows, columns, blocks) is a deliberate alternative to theme code, which is why the plan leaves it unplaced. Code: `src/lib/custom-css.ts`, `src/lib/custom-code.ts`. |
 | Product, customer and order CSV | Native. [page](https://help.shopify.com/en/manual/products/import-export/using-csv) | Full (was partial) | 4 |  | All four criteria hold. Since D295 the customer file's marketing_consent column is the address's place on the store's subscriber list (subscribed, pending, unsubscribed, or none), read from the recorded consent (customer-export.int.test.ts, customer-csv.test.ts). Still open, as a report matter rather than a criterion: this row is the same Shopify feature as catalogue.bulk-product-import-and-export-csv (products), orders.order-export-to-csv, analytics.export-reports-to-csv and the export half of customers.customer-profiles-notes-csv-import-and-export, so the headline counts it more than once until the merge README rule 8 asks for is made (docs/wave-2-data.md 6.6 point 3). Evidence: `src/lib/csv.ts`, `src/lib/product-csv.ts`, `src/lib/product-import.ts` and 15 more; 12 test files; D295. |

@@ -46,7 +46,7 @@ import {
   translatePlatformPageAction,
 } from "./actions";
 import { duplicatePageAction } from "./duplicate-action";
-import { platformPageVersionAction, platformPageVersionsAction } from "./version-actions";
+import { platformCssVersionAction, platformCssVersionsAction, platformPageVersionAction, platformPageVersionsAction } from "./version-actions";
 import { planChoices } from "@/lib/plan-offer";
 import { getPublicPlans } from "@/server/public-plans";
 
@@ -125,6 +125,7 @@ export async function platformPageContext(type: PageType = "page", author = ""):
       linkTargets: platformLinkTargetsAction,
       installFont: installPlatformFontAction,
       saveSiteCss: savePlatformCssAction,
+      cssVersions: { list: platformCssVersionsAction, read: platformCssVersionAction },
       saveThemeTab: savePlatformThemeTabAction,
       saveLibrary: savePlatformLibraryAction,
       translate: translatePlatformPageAction,

@@ -3970,6 +3970,27 @@
       "when": 1793237716843,
       "tag": "20261029013516_old_shop_imports_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 567,
+      "version": "7",
+      "when": 1793238981998,
+      "tag": "20261029015621_staging_copy_css_versions",
+      "breakpoints": true
+    },
+    {
+      "idx": 568,
+      "version": "7",
+      "when": 1793239716865,
+      "tag": "20261029020836_staging_copy_css_versions_rls",
+      "breakpoints": true
+    },
+    {
+      "idx": 569,
+      "version": "7",
+      "when": 1793239941331,
+      "tag": "20261029021221_stock_document_line_indexes",
+      "breakpoints": true
     }
   ]
 }

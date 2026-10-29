@@ -55,7 +55,7 @@ import { cancelScheduleAction, readScheduleAction, scheduleAction } from "./sche
 import { listPageLinksAction, makePageLinkAction, revokePageLinkAction } from "./share-actions";
 import { authorsNow, blogsNow } from "@/server/blogs";
 import { blogPath, blogTitle } from "@/lib/blogs";
-import { storePageVersionAction, storePageVersionsAction } from "./version-actions";
+import { storeCssVersionAction, storeCssVersionsAction, storePageVersionAction, storePageVersionsAction } from "./version-actions";
 import { planMotionAction } from "./motion-action";
 import { signupCodeChoices } from "@/server/discounts";
 
@@ -206,6 +206,7 @@ export async function storePageContext(
       saveThemeTab: bind(saveThemeTabAction),
       saveLibrary: bind(saveLibraryAction),
       saveSiteCss: bind(saveStoreCssAction),
+      cssVersions: { list: bind(storeCssVersionsAction), read: bind(storeCssVersionAction) },
       translate: bind(translateStorePageAction),
     },
   };

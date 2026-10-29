@@ -1117,6 +1117,17 @@ export const builderEn = {
     saving: "Saving …",
     save: "Save global CSS",
     notSaved: "Not saved yet.",
+    versions: "Versions",
+    versionsTitle: "Earlier saves of the global CSS",
+    versionsHint: "Each save is kept, the newest 50. Using one puts it here unsaved; it goes live when you save.",
+    versionsNone: "No save is kept yet.",
+    versionsLoading: "Loading versions …",
+    versionBy: "{when}, by {by}",
+    versionAt: "{when}",
+    versionChanges: "{added} lines more, {removed} fewer than here",
+    versionSame: "The same as here",
+    useVersion: "Use this version",
+    versionUsed: "The version is here, not saved yet.",
   },
   /** "Make my page cool" (D128). `label` and `text` are `MAKE_COOL_LABEL` and `MAKE_COOL_TEXT`. */
   aiChange: {
