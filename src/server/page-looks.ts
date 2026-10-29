@@ -299,7 +299,7 @@ async function draftFindings(store: Store, pageId: string): Promise<Finding[]> {
   const page = type === "page" || type === "article" ? await getPageForEdit(store.id, pageId, type) : null;
   if (!page) return [];
   const out: Finding[] = [];
-  for (const issue of blockingIssues(pageIssues(page.draft, { theme: { sets: themeSetsOf(store.theme.settings) } })).slice(0, 5)) {
+  for (const issue of blockingIssues(pageIssues(page.draft, { theme: { sets: themeSetsOf(store.theme.settings) }, siteCss: store.customCss })).slice(0, 5)) {
     out.push({ check: "accessibility", where: "page", place: issue.where, severity: "blocking", says: issue.message, by: "checker" });
   }
   const phrases = new Set<string>();

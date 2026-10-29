@@ -124,7 +124,7 @@ export async function a11yFacts(store: Store): Promise<A11yFacts> {
   let blocked = 0;
   for (const page of pages) {
     const content = parsePageContent(page.published);
-    if (content && blockingIssues(pageIssues(content, { theme: { sets } })).length > 0) blocked += 1;
+    if (content && blockingIssues(pageIssues(content, { theme: { sets }, siteCss: store.customCss })).length > 0) blocked += 1;
   }
   const names = new Intl.DisplayNames(["en"], { type: "language" });
   const origin = storeSiteUrl(store.slug);

@@ -78,7 +78,7 @@ export async function scheduleAction(
   const page = await getPageForEdit(member.store.id, id, type);
   if (!page) return { ok: false, problem: fillWords(w.problems.missing, { noun }) };
   // What Publish would ask about is not decided by a clock: the person publishes past it from the editor, or fixes it first.
-  if (blockingIssues(pageIssues(page.draft, { theme: { sets: themeSetsOf(member.store.theme.settings) } })).length > 0) {
+  if (blockingIssues(pageIssues(page.draft, { theme: { sets: themeSetsOf(member.store.theme.settings) }, siteCss: member.store.customCss })).length > 0) {
     return { ok: false, problem: fillWords(w.problems.blocking, { noun }) };
   }
   const result = await schedulePage(member.account, member.store.id, id, type, at.at, [], revertAt);

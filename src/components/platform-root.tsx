@@ -1,4 +1,6 @@
 import { FooterRevealGuard } from "@/components/footer-reveal";
+import { KeepFocusEverywhere } from "@/components/keep-focus-everywhere";
+import { SpeedBeacon } from "@/components/speed-beacon";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
@@ -81,6 +83,10 @@ export async function PlatformRoot({ lang, children }: { lang: PlatformLang; chi
         {/* A footer revealed on scroll (D184) lies under the page, which covers it. */}
         {footerLayout?.content.footerReveal ? <div className="over-footer relative z-10 bg-background">{children}</div> : children}
         {footerLayout?.content.footerReveal && <FooterRevealGuard />}
+        {/* A button disabled while it sends gets the focus back when done (D390, ACC-02). */}
+        <KeepFocusEverywhere />
+        {/* How fast Kaizena Flow's own pages are for their visitors (D390), as a store's (D336), never on a pay route (it has none). */}
+        <SpeedBeacon own="platform" />
         {footerLayout ? <KaizenSiteFooter chrome={chrome} layout={footerLayout} lang={lang} /> : <PlatformFooter chrome={chrome} lang={lang} />}
         {chrome.langs.length > 1 && (
           <Suspense fallback={null}>

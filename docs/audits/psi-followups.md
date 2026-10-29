@@ -70,8 +70,12 @@ maturity for the run-up to launch. Point IDs are the audit's.
 - [x] **ACC-02, UX-11** Focus stays on the button that sent a buy form (`useKeepFocus()`, `src/components/keep-focus.ts`: add to cart,
       the phone's bar, gift cards, bookings, box deliveries); a skip link in the admin shell (`#admin-main`); a Pause button on a moving
       brands strip (ACC-06, reversing D204's choice of none).
-- [ ] **ACC-02** The other storefront forms that disable their button while sending (account, company, privacy, codes, withdrawal,
-      reviews, exchanges, pay links: about 25) take `useKeepFocus()` too.
+- [x] **ACC-02** The other storefront forms that disable their button while sending (account, company, privacy, codes, withdrawal,
+      reviews, exchanges, pay links: about 25) keep the focus: one listener per page, `KeepFocusEverywhere` (D390), in the storefront
+      and Kaizena Flow's own site; the AI manager's box is focused by ref or `data-ai-composer`, never its placeholder (ACC-08).
+- [x] **ACC-04** Kaizena Flow's front page reads at 4.5:1 (migration `platform_front_contrast`), text on a part's own background holds
+      that background's colour set (`kz-on-light`/`kz-on-dark`, the footer's *Cookies* link in dark mode), and `pageIssues()` checks the
+      colours the site's and the page's CSS give class names (D390).
 - [x] **DATA-02, PERF-04** `src/server/store-writers.scan.test.ts`: a new writer of `commerce.stores` must refresh `storeTag(slug)`;
       the 23 that rely on their callers are listed and the list only shrinks. The search cache's `understand` entries were already keyed
       on the store's categories and tags (the instructions are part of the key, `src/server/query-understanding.ts`): the audit's doubt
@@ -98,7 +102,8 @@ maturity for the run-up to launch. Point IDs are the audit's.
       a fresh sign-in and the email typed), and Close store → *Take your store with you* (`storeExport()` in `src/server/store-export.ts`:
       the website, look and settings as one JSON file, never a secret or a person, the owner's), beside the CSV files.
 - [ ] **REL-09, PERF-01, PERF-02, PERF-11** Status page and SLOs; real-user vitals; a Dublin-side measurement of `/admin`; per-route
-      bundle budgets.
+      bundle budgets. Real-user vitals of Kaizena Flow's own site and the admin are measured (D390, Platform → Usage and limits); the
+      status page is D360; SLOs and per-route budgets remain.
 - [x] **SEC-02** Leaked-password protection is on (Supabase Auth, the owner, 25 October 2026), and the admin's password sign-in has
       its own limit per email: 10 wrong tries in 15 minutes stop it for that address, counted alike for every address under a keyed
       hash (`src/server/sign-in-limit.ts`); a sign-in link still works.

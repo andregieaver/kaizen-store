@@ -13,7 +13,7 @@ import { AnalyticsSection, Note } from "./section";
 const SIGNAL: Record<SpeedRating, "positive" | "warning" | "danger"> = { good: "positive", improve: "warning", poor: "danger" };
 
 /** One figure: the value with Google's rating, or how many page loads there are of the 20 a figure needs. */
-function Figure({ cell, locale, w }: { cell: SpeedCell; locale: string; w: AnalyticsMessages["speed"] }) {
+export function Figure({ cell, locale, w }: { cell: SpeedCell; locale: string; w: AnalyticsMessages["speed"] }) {
   if (cell.value === null) {
     return <span className="text-muted">{cell.samples === 0 ? NO_FIGURE : fillWords(w.tooFew, { n: formatCount(cell.samples), min: MIN_SPEED_SAMPLES })}</span>;
   }

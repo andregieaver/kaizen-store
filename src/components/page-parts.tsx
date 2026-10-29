@@ -10,6 +10,7 @@ import {
   type RowBackground,
   type VerticalAlign,
 } from "@/lib/page-content";
+import { surfaceClass } from "@/lib/background-surface";
 import { fontClass } from "@/lib/fonts";
 import { backgroundSources } from "@/lib/page-images";
 import type { BackgroundMotion } from "@/lib/motion";
@@ -62,6 +63,8 @@ export function rowBox(row: PageRow, mode: PartsMode, inPanel = false): Box {
       rowStyle(row, inPanel, mode).className,
       // Its font (D179), which what it holds inherits.
       ...boxFamilies(row).map(fontClass),
+      // Text in the theme's colours over its own background reads in the colour set made for it (D390).
+      surfaceClass(row),
       "relative isolate flex flex-col",
       row.fullHeight && "min-h-svh",
       clipsAnywhere(row) && !inPanel && "overflow-clip",
@@ -127,6 +130,7 @@ export function columnBox(column: PageColumn, row: PageRow, mode: PartsMode): Bo
       partClass(column),
       columnStyle(column, mode).className,
       ...boxFamilies(column).map(fontClass),
+      surfaceClass(column),
       // Side by side (D80): its components in a line that wraps, centred on each other, placed by `justify`.
       // In a row that never stacks (a header's), they stay on one line, the widest (a logo) narrowing first.
       column.inline

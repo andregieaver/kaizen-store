@@ -4,6 +4,7 @@ import { connection } from "next/server";
 
 import { pruneUsage } from "@/server/ai-usage";
 import { pruneSpeedSamples } from "@/server/analytics-speed";
+import { pruneOwnSpeedSamples } from "@/server/own-speed";
 import { pruneVisits } from "@/server/analytics-visits";
 import { fadeMemories } from "@/server/assistant-memory";
 import { resumeErasures } from "@/server/privacy-erasure";
@@ -55,7 +56,7 @@ export const maxDuration = 300;
 async function run(request: Request) {
   await connection();
   if (!(await cronAuthorised(request))) return new Response("Unauthorized", { status: 401 });
-  const [run, memories, usage, company, rates, visits, withdrawals, security, vatRates, vatChecks, ecb, speedSamplesPruned] = await Promise.all([sendDueReminders(), fadeMemories(), pruneUsage(), pruneCompanyRecords(), refreshAutoRates(), pruneVisits(), expireWithdrawalRequests(), runSecurityJobs(), syncStandardRates(), pruneVatChecks(), storeEcbRates(), pruneSpeedSamples()]);
+  const [run, memories, usage, company, rates, visits, withdrawals, security, vatRates, vatChecks, ecb, speedSamplesPruned, ownSpeedSamplesPruned] = await Promise.all([sendDueReminders(), fadeMemories(), pruneUsage(), pruneCompanyRecords(), refreshAutoRates(), pruneVisits(), expireWithdrawalRequests(), runSecurityJobs(), syncStandardRates(), pruneVatChecks(), storeEcbRates(), pruneSpeedSamples(), pruneOwnSpeedSamples()]);
   // Ad platforms' ids on orders go 90 days after (D303 I2).
   await pruneAdSignals();
   // The AI manager's notices go after 60 days (D350, never throws).
@@ -74,7 +75,7 @@ async function run(request: Request) {
     revalidateTag(storeTag(store.slug), "max");
     revalidateTag(catalogTag(store.id), "max");
   }
-  return Response.json({ ...run, memories, usageDeleted: usage, companyRecordsDeleted: company, ratesRefreshed: rates.length, visitsDeleted: visits.visits, productViewsDeleted: visits.productViews, speedSamplesPruned, withdrawalRequestsExpired: withdrawals, ...security, vatRatesChanged: vatRates.changed, vatRatesLately: vatRates.recent, vatChecksDeleted: vatChecks.deleted, vatCartsCleared: vatChecks.cartsCleared, retention: { counts: retention.counts, errors: retention.errors, filesLeft: retention.filesLeft.length }, erasuresResumed: erasures.resumed, erasuresFailed: erasures.failed, privacyRemindersDueSoon: privacyReminders.dueSoon, privacyRemindersOverdue: privacyReminders.overdue, ecbRatesStored: ecb.inserted, ecbRatesDiffering: ecb.differing, ecbRatesOk: ecb.ok, dataJobs, notFoundDeleted, themeDetachesDeleted, themeUpdatesDeleted, subscribersPruned, broadcastsPruned, automationsPruned, stockRequestsPruned, giftCardsExpired, pageJobsPruned, reviewRequestsPruned, reviewPicturesSwept: reviewPictureFiles.removed, pageLooksPruned, researchPruned, autopilotEventsPruned, inboundEmailsPruned, noticesPruned, domainRenewals, domainReminders, domainMoves, domainsArrived }, { headers: { "Cache-Control": "no-store" } });
+  return Response.json({ ...run, memories, usageDeleted: usage, companyRecordsDeleted: company, ratesRefreshed: rates.length, visitsDeleted: visits.visits, productViewsDeleted: visits.productViews, speedSamplesPruned, ownSpeedSamplesPruned, withdrawalRequestsExpired: withdrawals, ...security, vatRatesChanged: vatRates.changed, vatRatesLately: vatRates.recent, vatChecksDeleted: vatChecks.deleted, vatCartsCleared: vatChecks.cartsCleared, retention: { counts: retention.counts, errors: retention.errors, filesLeft: retention.filesLeft.length }, erasuresResumed: erasures.resumed, erasuresFailed: erasures.failed, privacyRemindersDueSoon: privacyReminders.dueSoon, privacyRemindersOverdue: privacyReminders.overdue, ecbRatesStored: ecb.inserted, ecbRatesDiffering: ecb.differing, ecbRatesOk: ecb.ok, dataJobs, notFoundDeleted, themeDetachesDeleted, themeUpdatesDeleted, subscribersPruned, broadcastsPruned, automationsPruned, stockRequestsPruned, giftCardsExpired, pageJobsPruned, reviewRequestsPruned, reviewPicturesSwept: reviewPictureFiles.removed, pageLooksPruned, researchPruned, autopilotEventsPruned, inboundEmailsPruned, noticesPruned, domainRenewals, domainReminders, domainMoves, domainsArrived }, { headers: { "Cache-Control": "no-store" } });
 }
 
 // Kept in commerce.cron_jobs (PSI 2026-10-24, REL-06): the platform home says when it is late or failing.

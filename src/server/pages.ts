@@ -454,18 +454,27 @@ async function checkBeforeSave(
   try {
     let theme: ReturnType<typeof themeSetsOf> | undefined;
     let checkout = false;
+    let siteCss = "";
     if (owner !== null) {
       const [row] = await db().execute<Row>(sql`
-        select s.theme,
+        select s.theme, s.custom_css,
           exists (select 1 from commerce.page_roles r where r.store_id = s.id and r.role = 'checkout' and r.page_id = ${id}::uuid) as checkout
         from commerce.stores s where s.id = ${owner}::uuid
       `);
       if (row) {
         theme = themeSetsOf(parseStoreTheme(row.theme).settings);
         checkout = Boolean(row.checkout);
+        siteCss = String(row.custom_css ?? "");
+      }
+    } else {
+      // Kaizena Flow's own pages: its theme (D235) and site CSS, read as a store's are (D390).
+      const [row] = await db().execute<Row>(sql`select theme, custom_css from commerce.platform_settings limit 1`);
+      if (row) {
+        theme = themeSetsOf(parseStoreTheme(row.theme).settings);
+        siteCss = String(row.custom_css ?? "");
       }
     }
-    const issues = pageIssues(content, { ...(theme && { theme: { sets: theme } }), checkout });
+    const issues = pageIssues(content, { ...(theme && { theme: { sets: theme } }), checkout, siteCss });
     if (checkout && refusedIssues(issues).length > 0) {
       return { result: { ok: false, problems: [payPageProblem(content) ?? "The checkout page cannot hold this."], code: "pay_page_block", issues: refusedIssues(issues) }, acknowledged: [] };
     }

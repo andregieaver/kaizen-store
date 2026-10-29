@@ -100,6 +100,20 @@ export const capacityNb: CapacityMessages = {
     needReason: "Si hvorfor, med noen få ord.",
     needLimit: "Velg en grense.",
   },
+  speed: {
+    title: "Hastigheten til Kaizena Flows egne sider og adminpanelet",
+    description:
+      "Hvor raskt sidene lastet for dem som brukte dem de siste 28 dagene, ved 75-persentilen, målt slik en butikks sider måles: ingen informasjonskapsel, ingen identifikator, ingenting med Global Privacy Control eller Do Not Track. Et tall trenger 20 sidevisninger.",
+    sites: { platform: "Kaizena Flows eget nettsted", admin: "Adminpanelet" },
+    page: "Sider",
+    screen: "Skjerm",
+    none: "Ingen sidevisninger målt de siste 28 dagene.",
+    loads: "{n} sidevisninger",
+    kinds: {
+      platform: { home: "Forsiden", product: "Et temas side", category: "Andre sider", list: "Temabutikken og bloggen", page: "Andre sider" },
+      admin: { home: "Oversikter", product: "Redigering (produkter, sider)", category: "Andre sider", list: "Lister (ordrer, produkter, kunder …)", page: "Andre sider" },
+    },
+  },
   jobs: {
     title: "Planlagte jobber",
     description: "Hver jobbs siste kjøring. En jobb er forsinket når den ikke har fullført en kjøring på lenger enn planen tillater, og feiler etter tre mislykkede kjøringer på rad.",

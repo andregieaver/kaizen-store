@@ -116,6 +116,11 @@ export async function getPlatformTheme(): Promise<StoreTheme> {
   return (await loadSettings()).theme;
 }
 
+/** Kaizena Flow's own site CSS (D100), for the page checker (D390). */
+export async function getPlatformSiteCss(): Promise<string> {
+  return (await loadSettings()).customCss;
+}
+
 /** Kaizen's own icon (D62), or none for the default. */
 export async function getPlatformFavicon(): Promise<Favicon | null> {
   return (await loadSettings()).navigation.favicon;

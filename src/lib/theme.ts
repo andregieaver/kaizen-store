@@ -409,7 +409,10 @@ export function themeCss(settings: ThemeSettings, selector: string, preview?: "l
     ...Object.entries(hoverTimingVars(settings.hover)).map(([name, value]) => `${name}: ${value}`),
   ].join("; ");
   const colors = (scheme: "light" | "dark") => `${paletteVars(settings[scheme], scheme)}; ${checkoutVars(settings, scheme)}`;
-  if (preview) return `${selector} { ${colors(preview)}; ${sizes}; }`;
+  // A row or column on a light or dark background of its own (D390, `src/lib/background-surface.ts`) holds the colour set made for that
+  // background, whatever the page's, so text in the theme's colours stays readable on it in both.
+  const surfaces = (["light", "dark"] as const).map((scheme) => `\n${selector} .kz-on-${scheme} { ${colors(scheme)}; color: var(--foreground); }`).join("");
+  if (preview) return `${selector} { ${colors(preview)}; ${sizes}; }${surfaces}`;
   const base = baseScheme(settings);
   const other = base === "dark" ? "light" : "dark";
   let css = `${selector} { ${colors(base)}; ${sizes}; }`;
@@ -417,7 +420,7 @@ export function themeCss(settings: ThemeSettings, selector: string, preview?: "l
     css += `\n@media (prefers-color-scheme: dark) { ${selector}:not([data-color-mode="light"], [data-color-mode="light"] *) { ${colors("dark")}; } }`;
   }
   css += `\n${selector}[data-color-mode="${other}"], :where([data-color-mode="${other}"]) ${selector}:not([data-color-mode]) { ${colors(other)}; }`;
-  return css;
+  return css + surfaces;
 }
 
 /**

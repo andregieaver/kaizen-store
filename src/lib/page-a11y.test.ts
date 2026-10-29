@@ -449,3 +449,37 @@ describe("a footer missing what the law asks (D183)", () => {
     expect(siteLayoutProblem("s", "footer", { ...newPageContent(), rows: [] })).toBeNull();
   });
 });
+
+/** The colours the owner's own CSS gives class names (D390): Kaizena Flow's front page shipped at 2.6 to 3.8:1 through them. */
+describe("contrast from the owner's CSS", () => {
+  const white = { background: { type: "color" as const, color: "#ffffff" } };
+  const siteCss = ".green-text{\ncolor:#709900;\n}\n.super-heading.dark-color {\ndisplay:block;\ncolor:#709900;\n}\n.ok{color:#557400}";
+
+  it("checks a span's class in a heading against the row's background", () => {
+    const h = heading(2, '<span class="super-heading dark-color">AI Automation</span> Kaizena', {});
+    const issues = pageIssues(page(row([col([h])], white)), { siteCss });
+    expect(issues.map((i) => [i.rule, i.blockId])).toEqual([["contrast", h.id]]);
+    expect(issues[0].message).toContain(".super-heading.dark-color");
+    // A class the CSS does not colour, or one that reads, says nothing.
+    expect(rules(pageIssues(page(row([col([heading(2, '<span class="ok">Fine</span>')])], white)), { siteCss }))).toEqual([]);
+    expect(rules(pageIssues(page(row([col([heading(2, '<span class="dark-color">One class</span>')])], white)), { siteCss }))).toEqual([]);
+  });
+
+  it("checks a block's or column's class where the block sets no colour, and the page's CSS after the site's", () => {
+    const t = text(doc(para("Words")), { className: "green-text" });
+    expect(rules(pageIssues(page(row([col([t])], white)), { siteCss }))).toEqual(["contrast"]);
+    expect(rules(pageIssues(page(row([col([text(doc(para("Words")))], { className: "green-text" })], white)), { siteCss }))).toEqual(["contrast"]);
+    // The block's own colour wins over owner CSS.
+    expect(rules(pageIssues(page(row([col([text(doc(para("Words")), { className: "green-text", ...ink("#171717") })])], white)), { siteCss }))).toEqual([]);
+    // The page's own CSS can put it right.
+    expect(rules(pageIssues({ ...page(row([col([t])], white)), css: ".green-text{color:#3d5300}" }, { siteCss }))).toEqual([]);
+  });
+
+  it("checks against the theme's backgrounds where the part has none", () => {
+    const t = text(doc(para("Words")), { className: "ok" });
+    const sets = [{ name: "light", text: "#171717", background: "#ffffff" }, { name: "dark", text: "#ededed", background: "#1c1c1c" }];
+    const issues = pageIssues(page(row([col([t])])), { siteCss, theme: { sets } });
+    expect(issues.map((i) => i.rule)).toEqual(["contrast"]);
+    expect(issues[0].message).toContain("dark colours");
+  });
+});

@@ -104,6 +104,20 @@ export const capacityEn = {
     needReason: "Say why, in a few words.",
     needLimit: "Choose a limit.",
   },
+  speed: {
+    title: "Speed of Kaizena Flow's own pages and the admin",
+    description:
+      "How fast pages loaded for the people using them over the last 28 days, at the 75th percentile, measured as a store's are: no cookie, no identifier, nothing with Global Privacy Control or Do Not Track. A figure needs 20 page loads.",
+    sites: { platform: "Kaizena Flow's own site", admin: "The admin" },
+    page: "Pages",
+    screen: "Screen",
+    none: "No page loads measured in the last 28 days.",
+    loads: "{n} page loads",
+    kinds: {
+      platform: { home: "Front page", product: "A theme's page", category: "Other pages", list: "The theme store and the blog", page: "Other pages" },
+      admin: { home: "Overviews", product: "Editors (products, pages)", category: "Other pages", list: "Lists (orders, products, customers …)", page: "Other pages" },
+    },
+  },
   jobs: {
     title: "Scheduled jobs",
     description: "Each job's last run. A job is late when it has not finished a run for longer than its schedule allows, and failing after three failed runs in a row.",

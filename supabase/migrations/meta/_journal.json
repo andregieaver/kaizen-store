@@ -4033,6 +4033,27 @@
       "when": 1793246565990,
       "tag": "20261029040245_theme_submission_pages_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 576,
+      "version": "7",
+      "when": 1793263969053,
+      "tag": "20261029085248_platform_front_contrast",
+      "breakpoints": true
+    },
+    {
+      "idx": 577,
+      "version": "7",
+      "when": 1793264469502,
+      "tag": "20261029090109_own_speed_samples",
+      "breakpoints": true
+    },
+    {
+      "idx": 578,
+      "version": "7",
+      "when": 1793264516623,
+      "tag": "20261029090156_own_speed_samples_rls",
+      "breakpoints": true
     }
   ]
 }

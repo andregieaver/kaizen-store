@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
+import { focusAiComposer } from "@/lib/ai-composer";
 import type { ConversationSummary } from "@/server/owner-assistant";
 
 import { AiManagerChat, MicIcon, type Abilities, type AiManagerActions } from "./ai-manager";
@@ -86,7 +87,7 @@ export function AiManagerLauncher({
       if ((event.metaKey || event.ctrlKey) && !event.shiftKey && !event.altKey && event.key.toLowerCase() === "k") {
         event.preventDefault();
         if (onItsPage) {
-          document.querySelector<HTMLTextAreaElement>("textarea[placeholder^='Ask or tell']")?.focus();
+          focusAiComposer();
           return;
         }
         toggle();
@@ -105,8 +106,7 @@ export function AiManagerLauncher({
       if (typeof message !== "string" || !message.trim()) return;
       setAsk((prev) => ({ text: message, n: (prev?.n ?? 0) + 1 }));
       if (onItsPage) {
-        const box = document.querySelector<HTMLTextAreaElement>("textarea[placeholder^='Ask or tell']");
-        if (box) box.focus();
+        focusAiComposer();
         return;
       }
       toggle(true);

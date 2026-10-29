@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  ownSpeedKind,
   keptFigure,
   metricsToFix,
   MIN_SPEED_SAMPLES,
@@ -124,5 +125,27 @@ describe("the figures", () => {
     expect(speedValueText("lcp", 2345, "en")).toBe("2.35 s");
     expect(speedValueText("inp", 180, "en")).toBe("180 ms");
     expect(speedValueText("cls", 120, "nb-NO")).toBe("0,12");
+  });
+});
+
+describe("ownSpeedKind", () => {
+  it("reads Kaizena Flow's own pages by their shape, in both languages", () => {
+    expect(ownSpeedKind("platform", "/")).toBe("home");
+    expect(ownSpeedKind("platform", "/no")).toBe("home");
+    expect(ownSpeedKind("platform", "/themes")).toBe("list");
+    expect(ownSpeedKind("platform", "/no/themes/atelier")).toBe("product");
+    expect(ownSpeedKind("platform", "/pricing?x=1")).toBe("page");
+    expect(ownSpeedKind("platform", "/admin")).toBeNull();
+    expect(ownSpeedKind("platform", "/s/acme/no")).toBeNull();
+  });
+
+  it("reads the admin's overviews, lists and editors, never its sign-in", () => {
+    expect(ownSpeedKind("admin", "/admin")).toBe("home");
+    expect(ownSpeedKind("admin", "/admin/acme")).toBe("home");
+    expect(ownSpeedKind("admin", "/admin/acme/orders")).toBe("list");
+    expect(ownSpeedKind("admin", "/admin/acme/products/123")).toBe("product");
+    expect(ownSpeedKind("admin", "/admin/acme/settings/tax")).toBe("page");
+    expect(ownSpeedKind("admin", "/admin/sign-in")).toBeNull();
+    expect(ownSpeedKind("admin", "/pricing")).toBeNull();
   });
 });

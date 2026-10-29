@@ -343,11 +343,11 @@ export function PageEditor({
   const checkout = context.check?.checkoutPageId != null && saved?.id === context.check.checkoutPageId;
   const issues = useMemo<PageIssue[] | null>(() => {
     try {
-      return pageIssues(content, { ...(context.check && { theme: { sets: context.check.theme } }), checkout, ...(shape === "footer" && { footer: { storeId: context.owner } }) });
+      return pageIssues(content, { ...(context.check && { theme: { sets: context.check.theme } }), checkout, siteCss: context.siteCss, ...(shape === "footer" && { footer: { storeId: context.owner } }) });
     } catch {
       return null;
     }
-  }, [content, context.check, checkout, shape, context.owner]);
+  }, [content, context.check, checkout, shape, context.owner, context.siteCss]);
 
   // Saves the page (as a draft, or published); true when it was saved. *Schedule* (D341) saves a changed draft first through it.
   const save = async (publish: boolean, acknowledged?: string[]): Promise<boolean> => {

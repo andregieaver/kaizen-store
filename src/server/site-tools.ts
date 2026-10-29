@@ -61,7 +61,7 @@ import { listPlatformMenus, listStoreMenus, menuUses, savePlatformMenu, saveStor
 import { saveNavigation } from "./navigation";
 import { getPageForEdit, pagesTag, savePage, setFrontPage, setPageRole, setProductsPage } from "./pages";
 import { memberCan } from "./permissions";
-import { PLATFORM_NAVIGATION_TAG, getPlatformTheme, savePlatformNavigation } from "./platform-navigation";
+import { PLATFORM_NAVIGATION_TAG, getPlatformSiteCss, getPlatformTheme, savePlatformNavigation } from "./platform-navigation";
 import { setPlatformPageRole } from "./platform-roles";
 import { storeTag, type Store } from "./stores";
 import { chooseSiteLayout } from "./site-layouts";
@@ -144,6 +144,11 @@ async function themeSets(ctx: SiteToolContext) {
   return themeSetsOf((ctx.store ? ctx.store.theme : await getPlatformTheme()).settings);
 }
 
+/** What the checker is given of the site (D390): its theme's colour sets and its own CSS. */
+async function checkContext(ctx: SiteToolContext) {
+  return { theme: { sets: await themeSets(ctx) }, siteCss: ctx.store ? ctx.store.customCss : await getPlatformSiteCss() };
+}
+
 /** How the pictures of a page are coming along: made, waiting, and given up (the page changed, or the picture model failed). */
 async function pictureCounts(pageId: string): Promise<{ made: number; waiting: number; not_made: number }> {
   const [row] = await db().execute<Row>(sql`
@@ -165,7 +170,7 @@ export async function getPageTool(ctx: SiteToolContext, { page: ref, type }: { p
   const page = await getPageForEdit(ownerOf(ctx), id, type);
   if (!page) return fail("That page is gone.");
   const outline = pageOutline(page.draft);
-  const blocking = blockingIssues(pageIssues(page.draft, { theme: { sets: await themeSets(ctx) } }));
+  const blocking = blockingIssues(pageIssues(page.draft, await checkContext(ctx)));
   const test = ctx.store && type !== "article" ? await runningTestOf(ctx.store.id, id) : null;
   return {
     id,
@@ -333,7 +338,7 @@ async function refusePublish(ctx: SiteToolContext, id: string, type: PageType, d
   }
   // Until the owner's autonomy level says otherwise (unit B), a page with a blocking issue is never published by the AI manager: the
   // builder is where a person decides to publish past one.
-  const blocking = blockingIssues(pageIssues(draft, { theme: { sets: await themeSets(ctx) } }));
+  const blocking = blockingIssues(pageIssues(draft, await checkContext(ctx)));
   if (blocking.length > 0) {
     fail(
       `The page has ${blocking.length === 1 ? "a problem" : `${blocking.length} problems`} to fix before it is published: ${blocking

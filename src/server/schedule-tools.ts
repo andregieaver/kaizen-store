@@ -129,7 +129,7 @@ async function checkedSiteSchedule(store: Store, input: OwnerToolInput<"schedule
   const page = await getPageForEdit(store.id, id, kind);
   if (!page) return fail(`That ${kind} is gone.`);
   if (await runningTestOf(store.id, id)) fail(`This ${kind} is in a running A/B test: stop the test first.`);
-  const blocking = blockingIssues(pageIssues(page.draft, { theme: { sets: themeSetsOf(store.theme.settings) } }));
+  const blocking = blockingIssues(pageIssues(page.draft, { theme: { sets: themeSetsOf(store.theme.settings) }, siteCss: store.customCss }));
   if (blocking.length > 0) {
     fail(`The ${kind} has ${blocking.length === 1 ? "a problem" : `${blocking.length} problems`} to fix before it is published: ${blocking.slice(0, 6).map((i) => `${i.where}: ${i.message}`).join(" ")} Fix them first.`);
   }

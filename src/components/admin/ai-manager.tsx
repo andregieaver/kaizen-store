@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, type ReactNode, type RefObject } from "react";
 
+import { AI_COMPOSER_ATTRIBUTE } from "@/lib/ai-composer";
 import { matchPath } from "@/lib/admin-map";
 import { TOOL_WORDS } from "@/lib/manager-tools";
 import { fillWords } from "@/lib/admin-fill";
@@ -501,6 +502,7 @@ export function AiManagerChat({
         <textarea
           id={inputId}
           ref={inputRef}
+          {...{ [AI_COMPOSER_ATTRIBUTE]: "" }}
           value={draft}
           rows={2}
           maxLength={4000}

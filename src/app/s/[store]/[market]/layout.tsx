@@ -6,6 +6,7 @@ import { Suspense } from "react";
 import { BackToAdmin } from "@/components/back-to-admin";
 import { AbMarker } from "@/components/ab/ab-marker";
 import { StoreExperiments } from "@/components/ab/store-experiments";
+import { KeepFocusEverywhere } from "@/components/keep-focus-everywhere";
 import { OffPayRoutes } from "@/components/off-pay-routes";
 import { PayDocumentWatcher } from "@/components/pay-route-guard";
 import { StoreVisits } from "@/components/store-visits";
@@ -225,6 +226,8 @@ export default async function MarketLayout({ children, drawer, params }: Props) 
           </Suspense>
         )}
         <BackToAdmin storeSlug={store.slug} adminOrigin={adminOrigin(store.slug)} />
+        {/* A button disabled while it sends gets the focus back when done (D390, ACC-02). */}
+        <KeepFocusEverywhere />
         {/* Notes when this document has left the pay routes, so the cart, checkout and order load afresh (wave 1, 1e). */}
         <Suspense fallback={null}>
           <PayDocumentWatcher />

@@ -142,3 +142,43 @@ export function speedValueText(metric: SpeedMetric, value: number, locale: strin
   if (value >= 1000) return `${new Intl.NumberFormat(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value / 1000)} s`;
   return `${new Intl.NumberFormat(locale).format(value)} ms`;
 }
+
+// ---------------------------------------------------------------------------
+// Kaizena Flow's own site and the admin (wave 11 unit K, D390)
+// ---------------------------------------------------------------------------
+
+/** Where the beacon sends a page load of Kaizena Flow's own site or of the admin. */
+export const OWN_SPEED_ENDPOINT = "/api/visit/speed/own";
+/** The two sites of Kaizena Flow's own measured: its public pages and the admin. */
+export const OWN_SPEED_SITES = ["platform", "admin"] as const;
+export type OwnSpeedSite = (typeof OWN_SPEED_SITES)[number];
+
+const LANGUAGE_PREFIX = /^\/no(?=\/|$)/;
+/** Admin lists of records, at `/admin/{store}/{list}` or `/admin/platform/{list}`. */
+const ADMIN_LISTS = new Set(["orders", "products", "customers", "stores", "requests", "pages", "articles", "media", "invoices", "returns", "support"]);
+
+/**
+ * The kind of a page of Kaizena Flow's own site or of the admin, by the address's shape only (never kept): for the site, its front page,
+ * a theme's page (`product`), the theme store and the blog (`list`) and any other page; for the admin, an overview (`/admin`,
+ * `/admin/{store}`, `/admin/platform`: `home`), a list of records (`list`), a product's or page's editor (`product`) and any other page.
+ * Sign-in and the API are not measured.
+ */
+export function ownSpeedKind(site: OwnSpeedSite, path: string): SpeedKind | null {
+  const clean = path.split(/[?#]/, 1)[0];
+  if (!clean.startsWith("/")) return null;
+  if (site === "platform") {
+    if (clean.startsWith("/admin") || clean.startsWith("/api") || clean.startsWith("/s/")) return null;
+    const segments = clean.replace(LANGUAGE_PREFIX, "").split("/").filter(Boolean);
+    if (segments.length === 0) return "home";
+    if (segments[0] === "themes" && segments.length === 2) return "product";
+    if ((segments[0] === "themes" || segments[0] === "blog") && segments.length === 1) return "list";
+    return "page";
+  }
+  const segments = clean.split("/").filter(Boolean);
+  if (segments[0] !== "admin") return null;
+  if (segments[1] === "sign-in" || segments[1] === "forgot-password" || segments[1] === "oauth") return null;
+  if (segments.length <= 2) return "home";
+  if (segments.length === 3 && ADMIN_LISTS.has(segments[2])) return "list";
+  if (segments.length === 4 && (segments[2] === "products" || segments[2] === "pages" || segments[2] === "articles")) return "product";
+  return "page";
+}

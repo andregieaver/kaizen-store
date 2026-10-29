@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { AdminProgress } from "@/components/admin/admin-progress";
+import { SpeedBeacon } from "@/components/speed-beacon";
 import { railNamesScript } from "@/lib/admin-rail";
 import { adminLangScript } from "@/lib/admin-lang";
 import { adminSchemeScript } from "@/lib/admin-schemes";
@@ -40,6 +41,8 @@ export default function AdminRootLayout({ children }: LayoutProps<"/admin">) {
           <AdminProgress />
         </Suspense>
         {children}
+        {/* How fast the admin is for the people working in it (D390): the speed beacon, no cookie or identifier, GPC and DNT honoured. */}
+        <SpeedBeacon own="admin" />
       </body>
     </html>
   );

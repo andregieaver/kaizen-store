@@ -16,7 +16,8 @@
 import { withoutIcons } from "./table-icons";
 import { SIZES, SIZE_LABELS, type Size } from "./breakpoints";
 import { blend } from "./colour";
-import { inlinePlain } from "./inline-text";
+import { classColours, classNames, colourOfClasses, type ClassColour } from "./css-class-colours";
+import { inlinePlain, parseInline, type InlineNode as InlineMarkup } from "./inline-text";
 import { contrastRatio } from "./theme";
 import { galleryItemShows, withChildren, type PageBlock, type PageColumn, type PageContent, type PageRow, type RichTextDoc, type BlockNode, type InlineNode } from "./page-content";
 import { footerHasWithdrawal, footerRequired, siteBlocks } from "./site-layout";
@@ -95,6 +96,8 @@ export type CheckContext = {
   checkout?: boolean;
   /** The page is a footer (of the store, or Kaizen's with null): what the law asks to be in it and is missing is a warning (`footer_legal`), never a reason not to save. */
   footer?: { storeId: string | null };
+  /** The site's own CSS (D100): the colours it gives class names are checked with the page's own CSS's (D390). */
+  siteCss?: string;
 };
 
 /** The longest alt text before it is a warning; a convention, not a WCAG rule. */
@@ -267,8 +270,13 @@ const aroundAt = (row: PageRow, column: PageColumn, size: Size): Ink | null => i
 /** Kinds of text drawn on their own fill (a button's), not on the block's background. */
 const ON_FILL: ReadonlySet<string> = new Set(["button"]);
 
-export function pageIssues(content: Pick<PageContent, "rows" | "title"> & Partial<Pick<PageContent, "translations" | "seo" | "thumbnail">>, context: CheckContext = {}): PageIssue[] {
+export function pageIssues(
+  content: Pick<PageContent, "rows" | "title"> & Partial<Pick<PageContent, "translations" | "seo" | "thumbnail" | "css">>,
+  context: CheckContext = {},
+): PageIssue[] {
   const issues: PageIssue[] = [];
+  // The colours the site's and the page's own CSS give class names (D390), the page's after the site's as they are drawn.
+  const classRules: ClassColour[] = classColours(`${context.siteCss ?? ""}\n${content.css ?? ""}`);
   const add = (rule: PageIssueRule, place: { rowId: string | null; columnId: string | null; blockId: string | null }, where: string, message: string) =>
     issues.push({ rule, severity: RULE_SEVERITY[rule], blockId: place.blockId, rowId: place.rowId, columnId: place.columnId, where, message });
 
@@ -383,6 +391,27 @@ export function pageIssues(content: Pick<PageContent, "rows" | "title"> & Partia
           }
         };
 
+        /**
+         * Text coloured by the owner's CSS through a class (D390): a `<span class>` in the block's words, and the block's, column's or
+         * row's own classes where the block sets no colour of its own (which wins over owner CSS).
+         */
+        const classInks = () => {
+          if (classRules.length === 0) return;
+          for (const name of spanClassSets(blockWords(block))) {
+            const color = colourOfClasses(name, classRules);
+            if (color) textOver(`Text with the class ${name.map((c) => `.${c}`).join("")}`, (size) => ({ ink: { color }, ...behindOf(size) }), false);
+          }
+          if (SIZES.some((size) => inkAt(block, TEXT_ROLE, size))) return;
+          for (const part of [block, column, row] as const) {
+            const names = classNames(part.className);
+            const color = colourOfClasses(names, classRules);
+            if (!color) continue;
+            textOver(`Text with the class ${names.map((c) => `.${c}`).join("")}`, (size) => ({ ink: { color }, ...behindOf(size) }), false);
+            break;
+          }
+        };
+        classInks();
+
         switch (block.type) {
           case "gallery": {
             // A picture says what it shows; a video is named (D209).
@@ -495,6 +524,20 @@ export function pageIssues(content: Pick<PageContent, "rows" | "title"> & Partia
     }
   }
   return issues;
+}
+
+/** The class names of every element written in a block's words (D191's inline markup), one list per element. */
+function spanClassSets(words: readonly string[]): string[][] {
+  const found: string[][] = [];
+  const walk = (nodes: InlineMarkup[]) => {
+    for (const node of nodes) {
+      if (node.type !== "el") continue;
+      if (node.className) found.push(classNames(node.className));
+      walk(node.children);
+    }
+  };
+  for (const word of words) if (word.includes("<")) walk(parseInline(word));
+  return found;
 }
 
 /** The words of a block that a person reads, for the checks that look for text still to fill in. */

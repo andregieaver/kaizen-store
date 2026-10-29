@@ -2622,6 +2622,41 @@ export const speedSamples = commerce.table(
   ],
 );
 
+/**
+ * How fast one page load of Kaizena Flow's own site or of the admin was (wave 11 unit K, D390, PSI PERF-01, PERF-02): the speed beacon's
+ * figures, as a store's (`speed_samples`), for `site` `platform` or `admin`, with the kind of page and the screen only. No address,
+ * person, account, IP address or user agent; written only by `src/server/own-speed.ts`, at most `SPEED_SAMPLES_PER_STORE_DAY` a site
+ * and UTC day, deleted after `SPEED_KEEP_DAYS`.
+ */
+export const ownSpeedSamples = commerce.table(
+  "own_speed_samples",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    site: text("site").notNull(),
+    /** The UTC day the page was loaded on. */
+    day: date("day").notNull(),
+    kind: text("kind").notNull(),
+    screen: text("screen").notNull(),
+    lcpMs: integer("lcp_ms"),
+    inpMs: integer("inp_ms"),
+    clsMilli: integer("cls_milli"),
+    ttfbMs: integer("ttfb_ms"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("own_speed_samples_site_day_idx").on(t.site, t.day),
+    check("own_speed_samples_site", sql`${t.site} in ('platform', 'admin')`),
+    check("own_speed_samples_kind", sql`${t.kind} in ('home', 'product', 'category', 'list', 'page')`),
+    check("own_speed_samples_screen", sql`${t.screen} in ('phone', 'computer')`),
+    check(
+      "own_speed_samples_values",
+      sql`coalesce(${t.lcpMs}, ${t.inpMs}, ${t.clsMilli}, ${t.ttfbMs}) is not null
+        and (${t.lcpMs} is null or ${t.lcpMs} between 0 and 120000) and (${t.inpMs} is null or ${t.inpMs} between 0 and 60000)
+        and (${t.clsMilli} is null or ${t.clsMilli} between 0 and 50000) and (${t.ttfbMs} is null or ${t.ttfbMs} between 0 and 120000)`,
+    ),
+  ],
+);
+
 export const productMedia = commerce.table(
   "product_media",
   {

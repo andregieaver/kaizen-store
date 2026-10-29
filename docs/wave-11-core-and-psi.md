@@ -298,6 +298,11 @@ counts a later push's deployment that includes the commit.
 
 ### K. PSI: accessibility and speed (D390)
 
+**Built (29 October 2026)** (D390). The dark-mode findings came from text in the theme's colours over a part's own light background, so a
+part with a solid background now holds the colour set made for it (`kz-on-light`, `kz-on-dark`); the front page's own colours were darkened
+by a migration that keeps each version before; one listener per page gives the focus back to any button disabled while it sent, where
+this plan said `useKeepFocus()` in each form.
+
 - **Kaizena Flow's front page.** Fix the front page's contrast (the re-score found 12 serious findings in light and 14 in dark, from the
   page's own CSS classes) and the footer's *Cookies* link in dark mode.
 - **The checker.** `pageIssues()` reads the colours a page's own CSS gives the classes its blocks use, so the builder blocks publishing over

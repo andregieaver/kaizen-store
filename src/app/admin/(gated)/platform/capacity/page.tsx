@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { OwnSpeedView } from "@/components/admin/own-speed-view";
 import { ButtonLink, Card, PageHeader } from "@/components/admin/ui";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
@@ -12,6 +13,7 @@ import { requirePlatformAdmin } from "@/server/auth";
 import { upcomingPeaks } from "@/server/capacity-events";
 import { databaseGlance, drainConnected, platformUsage } from "@/server/usage";
 import { cronJobRows } from "@/server/cron-runs";
+import { ownSpeedReport } from "@/server/own-speed";
 import { cronHealth } from "@/lib/cron-health";
 
 export const metadata: Metadata = { title: "Usage and limits" };
@@ -30,7 +32,15 @@ export default async function PlatformCapacityPage({ searchParams }: PageProps<"
   const lang = adminLangOf(admin.adminLocale);
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const w = adminText(lang, "capacity");
-  const [rows, glance, drain, peaks, jobs] = await Promise.all([platformUsage(month), databaseGlance(), drainConnected(), upcomingPeaks(), cronJobRows()]);
+  const [rows, glance, drain, peaks, jobs, platformSpeed, adminSpeed] = await Promise.all([
+    platformUsage(month),
+    databaseGlance(),
+    drainConnected(),
+    upcomingPeaks(),
+    cronJobRows(),
+    ownSpeedReport("platform"),
+    ownSpeedReport("admin"),
+  ]);
   const now = new Date();
   const ordered = sort ? [...rows].sort((a, b) => (b.values[sort] ?? 0) - (a.values[sort] ?? 0)) : rows;
   const cell = (metric: UsageMetric, value: number | undefined) => (value === undefined ? "" : formatUsage(metric, value, locale));
@@ -85,6 +95,18 @@ export default async function PlatformCapacityPage({ searchParams }: PageProps<"
             </div>
           )}
         </Card>
+      </div>
+      {/* How fast Kaizena Flow's own pages and the admin are for the people using them (D390, PSI PERF-01, PERF-02). */}
+      <div id="speed">
+        <OwnSpeedView
+          reports={[
+            { site: "platform", report: platformSpeed },
+            { site: "admin", report: adminSpeed },
+          ]}
+          locale={locale}
+          words={w.speed}
+          speed={adminText(lang, "analytics").speed}
+        />
       </div>
       {peaks.length > 0 && (
         <Card title={w.peaks.upcoming} compact>

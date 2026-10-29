@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 
-import { SPEED_ENDPOINT, speedBody, type SpeedMetric } from "@/lib/speed";
+import { OWN_SPEED_ENDPOINT, SPEED_ENDPOINT, speedBody, type OwnSpeedSite, type SpeedMetric } from "@/lib/speed";
 import { optedOut } from "@/lib/visit-beacon";
 
 /**
@@ -11,9 +11,10 @@ import { optedOut } from "@/lib/visit-beacon";
  * (closed, left, put in the background: `visibilitychange`, never `pagehide`, which a browser fires first when a page is left, before
  * `web-vitals` has its final figures), with the path the server turns into the page's kind and whether the screen is a phone's.
  * No cookie, no storage, no identifier; nothing at all with Global Privacy Control or Do Not Track. Never on the pay routes
- * (`StoreVisits` draws it inside `OffPayRoutes`). Draws nothing.
+ * (`StoreVisits` draws it inside `OffPayRoutes`). Draws nothing. With `own`, the page is Kaizena Flow's own site's or the admin's (D390),
+ * measured always (it is the platform's own speed, not a store's choice) under the same rules, and sent to its own endpoint.
  */
-export function SpeedBeacon({ store }: { store: string }) {
+export function SpeedBeacon({ store, own }: { store?: string; own?: OwnSpeedSite }) {
   useEffect(() => {
     const nav = navigator as Navigator & { globalPrivacyControl?: boolean; msDoNotTrack?: string };
     try {
@@ -38,11 +39,11 @@ export function SpeedBeacon({ store }: { store: string }) {
     // Once, the first time the page is hidden.
     const send = () => {
       if (sent || document.visibilityState !== "hidden") return;
-      const body = speedBody({ store, path, width: window.innerWidth, values });
+      const body = speedBody({ store: own ?? store ?? "", path, width: window.innerWidth, values });
       if (!body) return;
       sent = true;
       try {
-        nav.sendBeacon(SPEED_ENDPOINT, new Blob([body], { type: "text/plain" }));
+        nav.sendBeacon(own ? OWN_SPEED_ENDPOINT : SPEED_ENDPOINT, new Blob([body], { type: "text/plain" }));
       } catch {
         // Measuring is never worth an error on a page.
       }
@@ -63,7 +64,7 @@ export function SpeedBeacon({ store }: { store: string }) {
       stopped = true;
       document.removeEventListener("visibilitychange", hidden);
     };
-  }, [store]);
+  }, [store, own]);
 
   return null;
 }
