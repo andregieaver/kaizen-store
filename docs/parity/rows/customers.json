@@ -359,9 +359,9 @@
       "rechecked": true,
       "was": null
     },
-    "gap": "No SMS channel: no provider, no phone-number consent, no sender id (no SMS code in `src/`). Plan section 5, decision 5 is open: integrate one EU-hosted provider after email broadcasts, which now exist (D297), so the precondition is met. Shopify's own SMS marketing does not reach Norway.",
+    "gap": "No SMS channel: no provider, no phone-number consent, no sender id (no SMS code in `src/`). Plan section 5, decision 5 is open: integrate one EU-hosted provider after email broadcasts, which now exist (D297), so the precondition is met. Shopify's own SMS marketing does not reach Norway. Decided on 29 October 2026 (D405): skipped for now, revisited when Nordic shops ask for it (criterion 1's decision recorded).",
     "bucket": "C",
-    "wave": 5,
+    "wave": null,
     "criteria": [
       "A decision is recorded (docs/parity-plan.md section 5, decision 5) to integrate one EU-hosted SMS provider or to skip it.",
       "If built: a phone number is collected with explicit SMS consent text, time and source; STOP unsubscribes at once; nothing is sent to a number without consent (test).",
@@ -372,7 +372,9 @@
       "tests": [],
       "untested": false
     },
-    "decisions": [],
+    "decisions": [
+      "D405"
+    ],
     "history": []
   },
   {
@@ -915,16 +917,16 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": "full"
+      "was": "partial"
     },
-    "gap": "The bonus program (D130) earns credits on paid goods (5 % by default) for signed-in customers, holds them pending then usable, expires them, redeems them as a last price reduction and keeps an append-only ledger with refund reversals and manual adjustment. Since D392 levels (up to four, each with its own rate back, reached by what a customer paid for goods in the last 365 days less refunds) and a credit for opening an account are built (`bonus-levels.int.test.ts`). Since D401 rewards other than a price reduction (free shipping, a product free, an amount off) are redeemed for a code of the customer's own, taken off by the code engine so `cartSummary()` and `placeOrder()` agree (`checkout-kinds.int.test.ts` in kroner and euro, `bonus-rewards.int.test.ts`), and a birthday credit comes once a year on the store's day, the ledger append-only throughout (criteria 1, 3 and 4 met). What keeps it partial is criterion 2's list: points for a newsletter confirmation and for a review are refused by the house rules (a consent is never bought with credits, a review is never rewarded, D301), which the criterion would need to leave out. Proposed criteria change (not edited here): actions are account creation and a birthday, and any the store's legal rules allow.",
-    "bucket": "C",
+    "gap": "The bonus program (D130) earns credits on paid goods (5 % by default) for signed-in customers, holds them pending then usable, expires them, redeems them as a last price reduction and keeps an append-only ledger with refund reversals and manual adjustment. Since D392 levels (up to four, each with its own rate back, reached by what a customer paid for goods in the last 365 days less refunds) and a credit for opening an account are built (`bonus-levels.int.test.ts`). Since D401 rewards other than a price reduction (free shipping, a product free, an amount off) are redeemed for a code of the customer's own, taken off by the code engine so `cartSummary()` and `placeOrder()` agree (`checkout-kinds.int.test.ts` in kroner and euro, `bonus-rewards.int.test.ts`), and a birthday credit comes once a year on the store's day, the ledger append-only throughout (criteria 1, 3 and 4 met). Points for a review or a newsletter consent are not given, by the house rules (D301; a consent is never bought), and the criterion leaves them out by the owner's decision (D405).",
+    "bucket": null,
     "wave": null,
     "criteria": [
       "An owner defines tiers by spend over a window, each with a higher earn rate; a customer sees their tier and the way to the next in My account.",
-      "Points are given for actions (account creation, birthday, newsletter confirmation, review when reviews exist), each once per customer through an idempotent ledger key.",
+      "Points are given for actions (account creation and a birthday, and any other the store's legal rules allow; never for a review or a marketing consent), each once per customer through an idempotent ledger key.",
       "A reward can be free shipping or a free product as well as a price reduction, and `cartSummary()` and `placeOrder()` agree on it (`checkout-kinds.int.test.ts`).",
       "The ledger stays append-only and balances come only from `commerce.bonus_balance()`."
     ],
@@ -965,7 +967,8 @@
     "decisions": [
       "D130",
       "D392",
-      "D401"
+      "D401",
+      "D405"
     ],
     "history": [
       {
@@ -973,6 +976,12 @@
         "from": "full",
         "to": "partial",
         "why": "Skeptic recheck against the app side: Smile's listing offers VIP tiers and points for actions, and docs/bonus.md lists tier multipliers as not built; D130 covers earn, redeem, expiry and ledger only. The first report's own gap text already said 'no tiers or action points'."
+      },
+      {
+        "on": "2026-10-29",
+        "from": "partial",
+        "to": "full",
+        "why": "Criterion 2 changed by the owner's decision of 29 October 2026 (D405): actions are account creation, a birthday and any the store's legal rules allow, never a review or a marketing consent. All four criteria are then met: levels (D392), the account and birthday credits (D392, D401), rewards of free shipping and a free product taken off by the code engine in cartSummary() and placeOrder() alike (checkout-kinds.int.test.ts in kroner and euro, bonus-rewards.int.test.ts), and the append-only ledger."
       }
     ]
   },

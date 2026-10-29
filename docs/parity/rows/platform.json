@@ -16,7 +16,7 @@
       "was": null
     },
     "weight": 3,
-    "gap": "No app model: no installable third-party apps, no app directory, no OAuth apps with scopes and no extension points inside the admin or the page builder. Integrations are a fixed list Kaizena Flow builds (Zapier, Make, Slack: D41, D101; shipping carriers D133 to D138; Mollie D292; the WordPress plugin D169), and the owner's own code is limited to CSS (D100, D306), an HTML block (D91) and consent-gated head and body code (D61). Understated by the weight: this is the structural gap. Plan section 5 decision 2: API, webhooks and scoped custom apps first, a public directory only when outside developers ask.",
+    "gap": "No app model: no installable third-party apps, no app directory, no OAuth apps with scopes and no extension points inside the admin or the page builder. Integrations are a fixed list Kaizena Flow builds (Zapier, Make, Slack: D41, D101; shipping carriers D133 to D138; Mollie D292; the WordPress plugin D169), and the owner's own code is limited to CSS (D100, D306), an HTML block (D91) and consent-gated head and body code (D61). Understated by the weight: this is the structural gap. Plan section 5 decision 2: API, webhooks and scoped custom apps first, a public directory only when outside developers ask. Decided again on 29 October 2026 (D405): deferred until outside developers ask for a directory.",
     "bucket": "C",
     "wave": null,
     "criteria": [
@@ -30,7 +30,9 @@
       "tests": [],
       "untested": false
     },
-    "decisions": [],
+    "decisions": [
+      "D405"
+    ],
     "history": []
   },
   {
@@ -118,18 +120,18 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": "missing"
+      "was": "partial"
     },
     "weight": 2,
-    "gap": "The WordPress plugin's API (D169, D170) and, since D362, a storefront API for a front end of one's own: an owner makes a public token for one of the store's markets on Settings → Apps and API (`commerce.storefront_tokens`, at most 10, revoked there), and `/api/storefront/v1/{store}/products`, `/products/{handle}`, `/categories`, `/cart` (a quote) and `/checkout` (a hand-off) answer with `X-Storefront-Token` from any site (CORS), through the storefront's own reads (`viewOf()`, `productPageOf()`, `termsOf()`, `quoteCart()`, `handoffCart()`: prices by `wordpressPrice()`, only offered products, never a cost), budgeted per token (`storefront`, 1,200 a minute), the reads cached a minute and the catalogue under the store's tags; a store that is private, not open or without the shop answers 404 (`src/server/storefront-api.ts`, `src/server/storefront-route.ts`). Since D398 a cart is kept by the store and changed through the API (`POST /carts`, `GET /carts/{cart}`, lines added, set and removed, each through `sellableQuantity()` and the quantity rule under the cart's lock; `src/server/api-carts.ts`), found by a key kept only as a hash, and handed to the store's own checkout by the one-time link, after which it is ordered through `placeOrder()` (`storefront-api.int.test.ts`); the contract is a versioned OpenAPI document at `/api/storefront/v1/openapi.json`. Still short: an API cart holds goods and downloads only (no bookings, plans or gift cards); and criterion 3 as written (no stock beyond an available flag) is not met: a line's `available` and a variant's `stock.max` are the same capped figures the store's own quantity picker and cart allow (the stock up to the line's most), a choice for the owner to keep or narrow. Merged on 2026-10-25 (README rule 8): `storefront.headless-storefront-api-hydrogen` was the same Shopify feature (rated partial); its criteria and evidence are here.",
-    "bucket": "C",
-    "wave": 9,
+    "gap": "The WordPress plugin's API (D169, D170) and, since D362, a storefront API for a front end of one's own: an owner makes a public token for one of the store's markets on Settings → Apps and API (`commerce.storefront_tokens`, at most 10, revoked there), and `/api/storefront/v1/{store}/products`, `/products/{handle}`, `/categories`, `/cart` (a quote) and `/checkout` (a hand-off) answer with `X-Storefront-Token` from any site (CORS), through the storefront's own reads (`viewOf()`, `productPageOf()`, `termsOf()`, `quoteCart()`, `handoffCart()`: prices by `wordpressPrice()`, only offered products, never a cost), budgeted per token (`storefront`, 1,200 a minute), the reads cached a minute and the catalogue under the store's tags; a store that is private, not open or without the shop answers 404 (`src/server/storefront-api.ts`, `src/server/storefront-route.ts`). Since D398 a cart is kept by the store and changed through the API (`POST /carts`, `GET /carts/{cart}`, lines added, set and removed, each through `sellableQuantity()` and the quantity rule under the cart's lock; `src/server/api-carts.ts`), found by a key kept only as a hash, and handed to the store's own checkout by the one-time link, after which it is ordered through `placeOrder()` (`storefront-api.int.test.ts`); the contract is a versioned OpenAPI document at `/api/storefront/v1/openapi.json`. Still short: an API cart holds goods and downloads only (no bookings, plans or gift cards); a line's `available` and a variant's `stock.max` stay the capped figures the store's own quantity picker and cart allow (the stock up to the line's most), by the owner's decision (D405), so the API shows no more than the storefront does. Merged on 2026-10-25 (README rule 8): `storefront.headless-storefront-api-hydrogen` was the same Shopify feature (rated partial); its criteria and evidence are here.",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "A read endpoint returns a store's published products, categories and prices as a given market shows them (VAT label and currency included) with a public token tied to that store and market; hidden, draft and business-only products are never returned.",
       "A cart can be created and changed through the API with live stock checks and the same caps as the site, and the checkout hand-off URL opens Kaizen's own checkout with that cart.",
-      "Responses never contain cost, exact stock beyond an available flag, or other stores' data, and the endpoint is rate limited and cached by store tag.",
+      "Responses never contain cost, stock beyond what the store's own quantity picker shows (the stock up to the line's most), or other stores' data, and the endpoint is rate limited and cached by store tag.",
       "Decision recorded (docs/parity-plan.md section 5, decision 4) to build or skip.",
       "If built: a read API for catalogue, prices (per market, VAT-inclusive), stock and a cart, behind per-store public tokens, rate-limited and cached, with the same prices as the storefront (euro scenario).",
       "A cart created by the API reaches checkout through `placeOrder()` and agrees with `cartSummary()`."
@@ -167,9 +169,10 @@
     "decisions": [
       "D169",
       "D170",
-      "D96",
       "D362",
-      "D398"
+      "D398",
+      "D405",
+      "D96"
     ],
     "history": [
       {
@@ -177,6 +180,12 @@
         "from": "missing",
         "to": "partial",
         "why": "Read src/app/api/wordpress/v1/stores/[slug]/{products,product,terms,view,cart/quote,cart/handoff}/route.ts, src/server/wordpress-route.ts, src/server/wordpress-shop.ts and src/server/cart-handoff.ts (D169, D170): a token-gated, rate-limited, read-only storefront API with prices from <Price>'s rules per market, a live cart quote and a hand-off that creates a cart with the store's own checks and opens its checkout; held by src/server/wordpress.int.test.ts (run, passing), src/lib/wordpress.test.ts and src/lib/wordpress-cart.test.ts. Criteria 1 and 2 hold in part (the token belongs to an owner-connected WordPress site, not a public per-store token)."
+      },
+      {
+        "on": "2026-10-29",
+        "from": "partial",
+        "to": "full",
+        "why": "Criterion 3 changed by the owner's decision of 29 October 2026 (D405): the API may show the same capped stock the store's own quantity picker shows, never more. With that, every criterion is met (D362, D398: the read endpoints, a kept cart with the store's checks, handed to the store's checkout and ordered through placeOrder(), storefront-api.int.test.ts)."
       }
     ]
   },
@@ -694,14 +703,14 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "partial"
     },
     "weight": 3,
-    "gap": "Rows, columns and components (D46, D125) and whole page layouts (D127) are shared as templates (`private`, `stores`, `marketplace`), switched on per store, moderated by platform admins and previewed before use. Whole themes exist since D241 to D287 (design, header, footer, product layout, presets and their own demo content, versioned, free or paid, listed in the theme store). Since D344 (wave 7 unit J) anyone who may change a store's website submits its live look as a theme, or as the next version of a theme they are the author of, from Design settings (`src/server/theme-submissions.ts`, the look only, kept as sent); Kaizena Flow's admins review it at Themes → Submissions (Review makes it a draft theme to preview and check, Approve publishes it through the theme checks, Not accepted says why to the author, Hide is the theme's Archive), the database moving a submission only forward; a theme names its author on its page with the number of stores using it, the author's Your themes page lists their submissions with the reasons and their themes with version and stores; a new install no longer follows updates by itself (offered with What's new, decision 4), and a theme from outside is free (the database refuses a price). Since D388 (wave 11 unit I) a submission may carry the author store's published pages (never a page chosen for a place), copied as a template is when sent, placed in a store template of their own at review (previewed with the look) and made the theme's content on approval, so an outside theme brings its own starter pages (`src/server/submission-content.ts`, theme-submissions.int.test.ts). Still short: installs that followed updates before D344 keep following, by the owner's decision 4, so for them an update is still applied on its own. The supply of outside designers is a business matter code does not create.",
-    "bucket": "A",
-    "wave": 7,
+    "gap": "Rows, columns and components (D46, D125) and whole page layouts (D127) are shared as templates (`private`, `stores`, `marketplace`), switched on per store, moderated by platform admins and previewed before use. Whole themes exist since D241 to D287 (design, header, footer, product layout, presets and their own demo content, versioned, free or paid, listed in the theme store). Since D344 (wave 7 unit J) anyone who may change a store's website submits its live look as a theme, or as the next version of a theme they are the author of, from Design settings (`src/server/theme-submissions.ts`, the look only, kept as sent); Kaizena Flow's admins review it at Themes → Submissions (Review makes it a draft theme to preview and check, Approve publishes it through the theme checks, Not accepted says why to the author, Hide is the theme's Archive), the database moving a submission only forward; a theme names its author on its page with the number of stores using it, the author's Your themes page lists their submissions with the reasons and their themes with version and stores; a new install no longer follows updates by itself (offered with What's new, decision 4), and a theme from outside is free (the database refuses a price). Since D388 (wave 11 unit I) a submission may carry the author store's published pages (never a page chosen for a place), copied as a template is when sent, placed in a store template of their own at review (previewed with the look) and made the theme's content on approval, so an outside theme brings its own starter pages (`src/server/submission-content.ts`, theme-submissions.int.test.ts). Since D405 the installs that followed updates before D344 have them offered too (migration `theme_updates_offered`; an install whose owner switched following on keeps it, as the owner chose). The supply of outside designers is a business matter code does not create.",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "An owner publishes a whole-store theme (design settings, header, footer, product layout and starter pages) to the marketplace, and another store previews and applies it without any of the first store's products, customers or secrets.",
       "A submitted template waits in a review queue; a platform admin approves, rejects with a reason or hides it, and `visibleTo()` is the only way a template is listed.",
@@ -741,8 +750,6 @@
       "untested": false
     },
     "decisions": [
-      "D46",
-      "D60",
       "D125",
       "D127",
       "D241",
@@ -750,9 +757,19 @@
       "D247",
       "D277",
       "D286",
-      "D344"
+      "D344",
+      "D405",
+      "D46",
+      "D60"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-29",
+        "from": "partial",
+        "to": "full",
+        "why": "The last criterion's gap is closed by the owner's decision of 29 October 2026 (D405): the installs that followed updates before D344 were switched to having them offered (migration theme_updates_offered), so an author's update reaches a store only by the owner's Update unless the owner switched following on. The other criteria were met by D125, D344 and D388."
+      }
+    ]
   },
   {
     "id": "platform.developer-access-to-storefront-code",
@@ -981,7 +998,7 @@
       "was": null
     },
     "weight": 2,
-    "gap": "No in-person selling: no tablet or phone register, no card reader, no receipts, no store-location stock drawn at a till. Plan section 5 decision 3: defer, revisit after wave 9 (weight 2, a large build with hardware and offline).",
+    "gap": "No in-person selling: no tablet or phone register, no card reader, no receipts, no store-location stock drawn at a till. Plan section 5 decision 3: defer, revisit after wave 9 (weight 2, a large build with hardware and offline). Decided again on 29 October 2026 (D405): deferred.",
     "bucket": "C",
     "wave": null,
     "criteria": [
@@ -994,7 +1011,9 @@
       "tests": [],
       "untested": false
     },
-    "decisions": [],
+    "decisions": [
+      "D405"
+    ],
     "history": []
   },
   {

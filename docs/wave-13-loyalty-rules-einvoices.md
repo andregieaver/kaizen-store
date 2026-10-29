@@ -88,4 +88,5 @@ The house rules of `docs/wave-11-core-and-psi.md` section 3 hold, as in wave 12.
 
 ## 4. Waiting on the owner
 
-As in wave 12 section 4.
+Settled on 29 October 2026 (D405): the storefront API keeps its capped stock figures, the loyalty row's criteria leave out reviews and consents,
+and wave 11's section 4 is decided. The agents' eval recording is the owner's to run on Platform → AI.

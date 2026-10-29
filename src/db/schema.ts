@@ -1341,7 +1341,8 @@ export const storeThemeInstalls = commerce.table(
     switchedAt: timestamp("switched_at", { withTimezone: true }),
     /**
      * Whether a new version of its theme is applied by itself (D245); the owner switches it per install. Off for a new install (D344,
-     * decision 4: an update is offered, with *What's new*, and made by the owner's press); installs that followed before keep following.
+     * decision 4: an update is offered, with *What's new*, and made by the owner's press); installs that followed before were switched to
+     * offered too (D405), unless their owner had switched following on.
      */
     followsUpdates: boolean("follows_updates").notNull().default(false),
     /**

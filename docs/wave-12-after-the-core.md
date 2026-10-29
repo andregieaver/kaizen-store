@@ -125,10 +125,5 @@ a decision row; migration versions recorded after CI.
 
 ## 4. Waiting on the owner
 
-The decisions of `docs/wave-11-core-and-psi.md` section 4, and the agents' eval recording: run it once on Platform → AI so its recording
-can be committed and CI's replay goes live (D391).
-
-New in this wave: whether the storefront API may say how many of a variant a line can hold (D398). Today a line's `available` and a
-variant's `stock.max` are the store's own capped figures (the stock up to the line's most), as its quantity picker and cart show them; the
-parity row's criterion 3 asks for no more than an available flag. Narrowing it to a flag is a small change, at the cost of a front end
-that cannot cap its own quantity field.
+Settled on 29 October 2026 (D405): the storefront API keeps its capped stock figures, the loyalty row's criteria leave out reviews and consents,
+and wave 11's section 4 is decided. The agents' eval recording is the owner's to run on Platform → AI.

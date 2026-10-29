@@ -369,6 +369,9 @@ Left, each named on its row:
 
 ## 4. Decisions needed from the owner
 
+**Settled on 29 October 2026 (D405):** 1 deferred until outside developers ask; 2 skipped for now; 3 deferred; 4 installs switched to offered
+updates; 5 shown, never tied, as built; 6 a push keeps deploying at once. The list below is kept as it was asked.
+
 1. **The app directory** (`platform.app-store-and-ecosystem`, weight 3, 0.46 points). Developers registering apps with scopes, an install
    screen, review and suspension, and extension points. The API, webhooks and custom apps it would rest on exist (D354, D355, D363).
    - The plan's decision 2 said: a directory only when outside developers ask.

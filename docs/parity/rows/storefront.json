@@ -511,7 +511,7 @@
       "was": null
     },
     "weight": 2,
-    "gap": "Owner CSS for a page and for the whole site, checked by `cssProblem()` (D100), also typed on the live page beside Edit text and kept as a version (D306), a sandboxed HTML block (`HtmlFrame`) and consent-gated head and body snippets (D61, only on a store's own host). No templating language, no file editing, no custom sections or JavaScript of the owner's own in the page. Whether to offer one is a security and product decision, not a missing form.",
+    "gap": "Owner CSS for a page and for the whole site, checked by `cssProblem()` (D100), also typed on the live page beside Edit text and kept as a version (D306), a sandboxed HTML block (`HtmlFrame`) and consent-gated head and body snippets (D61, only on a store's own host). No templating language, no file editing, no custom sections or JavaScript of the owner's own in the page. Whether to offer one is a security and product decision, not a missing form. Decided on 29 October 2026 (D405): no templating language or owner script in pages, for security (one store's code must never reach another's data, cookies or the admin); the extension surface stays CSS, the sandboxed HTML block and consent-gated snippets (criterion 1's decision recorded).",
     "bucket": "C",
     "wave": null,
     "criteria": [
@@ -540,6 +540,7 @@
     "decisions": [
       "D100",
       "D306",
+      "D405",
       "D61",
       "D91"
     ],
