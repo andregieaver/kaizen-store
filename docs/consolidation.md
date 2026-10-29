@@ -49,3 +49,18 @@ Driven in a real browser (Playwright) against the dev store at its own domain, S
 Staff actions (a refund by staff, marking sent, capture later, order changes, exchanges) need a signed-in member, and the Admin API and the AI manager keep
 refunds for a person's yes, so neither the agent nor the platform could run them. Live drills (D406) are the platform's own way: a platform admin (or the
 platform's AI) asks for a store's drills, and the five-minute dispatcher runs them through the screens' own functions on that store's test payments only.
+
+## 4. Legal texts against the law (29 October 2026)
+
+Checked by reading the official sources (Lovdata, Riksdagen, Retsinformation, the EU's Cellar for EUR-Lex texts, the three tax
+authorities), in place of a lawyer by the owner's decision. The full record with every claim, section and address read is
+`docs/legal/check-2026-10-29.md`. The corrections are D407, built in this order:
+
+| Step | Finding | Correction |
+|---|---|---|
+| 1 | Every appointment, stay and rental is refused withdrawal (`lineWithdrawal()` makes every service line `dated_service`; the product page always says it has no right). The law exempts only accommodation, transport of goods, car rental, catering and leisure services on a set date (CRD Art. 16(l); angrerettloven § 22 m; distansavtalslagen 2 kap. 11 § 12; forbrugeraftaleloven § 18 stk. 2 nr. 12), read narrowly (Commission guidance 2021/C 525/01, 5.11.6). | A service product is exempt only where the owner says it is one of those (the product's withdrawal exclusion `dated_service`, offered for services in the law's own words); stays start exempt, appointments and rentals do not. A service that keeps the right can be withdrawn from within 14 days of the order, through the same withdrawal function, which cancels the booking and refunds. |
+| 2 | A service that starts inside the 14 days loses the right only when performed after the customer's express request and acknowledgment (CRD Art. 16(a), § 22 c), and without that request the customer owes nothing for it (Art. 14(4)(a)(ii)). Nothing asks or records it. | Checkout asks for the request and the acknowledgment for each such line, the order keeps it, and the withdrawal function counts a fully performed service with the request as out of the right and a partly performed one as a proportionate amount. |
+| 3 | Sealed hygiene products and sealed media are shown as excluded outright; the law excludes them only once unsealed after delivery. | The product page says the right ends when the seal is broken after delivery. |
+| 4 | The withdrawal information reaches the customer only as a link; a link is not a durable medium (CJEU C-49/11), which extends the period by up to 12 months. The download consent is not confirmed by email. | The order confirmation carries the withdrawal information, the model form, the statements of no right and the download consent in the email itself. |
+| 5 | The last day is not moved off a Saturday, Sunday or public holiday (Regulation 1182/71 Art. 3(4); forbrugeraftaleloven § 19 stk. 6; lag 1930:173 2 §). | `withdrawalWindow()` moves it to the next working day for Denmark and Sweden (Norway not verified). |
+| 6 | Danish newspapers take 25 % (momsloven § 34 stk. 1 nr. 18 says 0 %); Norwegian periodicals take 0 % as a whole (mval § 6-3 sets conditions); Sweden's culture category's 6 % does not hold for amusement parks. | Rates through `commerce.set_vat_rate()` with their sources, and the categories' words narrowed. |
