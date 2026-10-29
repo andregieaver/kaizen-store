@@ -68,7 +68,8 @@ Stored formats do not change:
   `website`). It is read through `textStylesFor(owner)`, cached under `textStylesTag(owner)`.
 - **Who.** A store's styles need `website:write`; Kaizena Flow's need a platform admin.
 - **Deleting.** A style in use says where it is used. Deleting it leaves the words as they are, unstyled.
-- **Copies.** Copied with a store (`COPY_RULES` settings, `clone_store()` and `duplicate_store()`). A template or theme content that
-  names a style carries it when placed in another store. Not personal data.
+- **Copies.** Copied with a store: `COPY_RULES` settings, `copy_text_styles()` in the copy's transaction, and from a store template in
+  `clone_starter_setup()`. In the store export, not personal data. A template or theme content that names a style carrying it when placed
+  in another store is step 2.
 - **The checker.** `pageIssues()` reads a style's colour as the colour of the words it is on (unit K's class colours).
 - **Limits.** At most 50 styles per site; a name is at most 60 characters.
