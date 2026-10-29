@@ -7,6 +7,7 @@ import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import { cssLineChanges, type CssVersionActions, type CssVersionItem } from "@/lib/css-versions";
 import { CSS_MAX, cssProblem } from "@/lib/custom-css";
+import { BUILDER_PANEL, builderPanelWidth } from "@/lib/panel-box";
 
 import { useAdminLang, useAdminText } from "./admin-text";
 
@@ -19,6 +20,28 @@ function Plain() {
   return <>{useContext(PlainField)}</>;
 }
 const CodeEditor = dynamic(() => import("./css-code-editor").catch(() => Plain), { ssr: false, loading: Plain });
+
+/** Where the panel's width is kept in this browser (`KNOWN_COOKIES`); nothing kept is its usual width. */
+const WIDTH_KEY = "kaizen_admin_builder_css_width";
+
+function keptWidth(): number | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const value = window.localStorage.getItem(WIDTH_KEY);
+    return value === null ? null : builderPanelWidth(value, window.innerWidth);
+  } catch {
+    return null;
+  }
+}
+
+function keepWidth(width: number | null): void {
+  try {
+    if (width === null) window.localStorage.removeItem(WIDTH_KEY);
+    else window.localStorage.setItem(WIDTH_KEY, String(width));
+  } catch {
+    /* kept for this page only */
+  }
+}
 
 type Nouned = { layout: string; header: string; footer: string; version: string; article: string; page: string };
 
@@ -68,6 +91,7 @@ export function CssPanel({
   const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null);
   const [saving, start] = useTransition();
   const panel = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState<number | null>(keptWidth);
   const w = useAdminText("builder").css;
   const tabs = { page: byNoun(w.thisTab, noun), site: w.global } as const;
 
@@ -114,8 +138,20 @@ export function CssPanel({
         if (event.target instanceof Element && event.target.closest("[data-css-editor]")) return;
         onClose();
       }}
-      className="fixed inset-y-0 right-0 z-30 flex w-full max-w-md flex-col border-l border-line bg-card shadow-2xl"
+      style={{ width: width ?? BUILDER_PANEL.usual }}
+      className="fixed inset-y-0 right-0 z-30 flex max-w-full flex-col border-l border-line bg-card shadow-2xl"
     >
+      <PanelWidthHandle
+        width={width}
+        measure={() => panel.current?.offsetWidth ?? BUILDER_PANEL.usual}
+        onWidth={(next, keep) => {
+          setWidth(next);
+          if (keep) keepWidth(next);
+        }}
+        label={w.width}
+        hint={w.widthHint}
+        valueText={width === null ? null : fillWords(w.widthPixels, { n: width })}
+      />
       <div className="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
         <h2 id={`${id}-title`} className="text-title text-ink">
           {w.title}
@@ -230,6 +266,77 @@ export function CssPanel({
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/**
+ * The panel's left edge, dragged with the pointer or moved with the arrow keys to make it wider or narrower (D394); a double press, Enter or
+ * Home gives it back its usual width. What was chosen is kept in this browser when the drag ends.
+ */
+function PanelWidthHandle({
+  width,
+  measure,
+  onWidth,
+  label,
+  hint,
+  valueText,
+}: {
+  width: number | null;
+  measure: () => number;
+  onWidth: (width: number | null, keep: boolean) => void;
+  label: string;
+  hint: string;
+  valueText: string | null;
+}) {
+  const step = (by: number) => onWidth(builderPanelWidth(measure() + by, window.innerWidth), true);
+  return (
+    <div
+      role="separator"
+      aria-orientation="vertical"
+      aria-label={label}
+      aria-valuenow={width ?? undefined}
+      aria-valuemin={BUILDER_PANEL.min}
+      aria-valuemax={BUILDER_PANEL.max}
+      aria-valuetext={valueText ?? undefined}
+      title={hint}
+      tabIndex={0}
+      data-css-panel-width=""
+      onPointerDown={(event) => {
+        if (event.button !== 0) return;
+        event.preventDefault();
+        const target = event.currentTarget;
+        target.setPointerCapture(event.pointerId);
+        const startX = event.clientX;
+        const start = measure();
+        let last: number | null = null;
+        const move = (moving: PointerEvent) => {
+          last = builderPanelWidth(start - (moving.clientX - startX), window.innerWidth);
+          onWidth(last, false);
+        };
+        const end = () => {
+          target.removeEventListener("pointermove", move);
+          target.removeEventListener("pointerup", end);
+          target.removeEventListener("pointercancel", end);
+          if (last !== null) onWidth(last, true);
+        };
+        target.addEventListener("pointermove", move);
+        target.addEventListener("pointerup", end);
+        target.addEventListener("pointercancel", end);
+      }}
+      onDoubleClick={() => onWidth(null, true)}
+      onKeyDown={(event) => {
+        const by = event.shiftKey ? 64 : 16;
+        // The panel is on the right: to the left is wider.
+        if (event.key === "ArrowLeft") step(by);
+        else if (event.key === "ArrowRight") step(-by);
+        else if (event.key === "Enter" || event.key === "Home") onWidth(null, true);
+        else return;
+        event.preventDefault();
+      }}
+      className="group absolute inset-y-0 -left-1.5 z-10 hidden w-3 cursor-col-resize touch-none justify-center outline-none focus-visible:ring-2 focus-visible:ring-brand md:flex"
+    >
+      <span aria-hidden className="my-auto h-16 w-1 rounded-pill bg-line transition-colors group-hover:bg-brand group-focus-visible:bg-brand group-active:bg-brand" />
     </div>
   );
 }

@@ -15,36 +15,56 @@ import { THEME_VARIABLES, classNameStart } from "@/lib/css-completions";
  * The CSS panel's editor (D394): CodeMirror with CSS's own highlighting and completion (properties, values, at-rules, pseudo-classes),
  * Tab to indent (Escape, then Tab, leaves it, as CodeMirror's own rule), brackets closed as they are typed and the site's own names
  * offered: the theme's variables after `var(` and the page's and the site's classes after a `.`. Loaded only when the panel opens
- * (`lazy/css-code-editor.tsx`); until then, and where it cannot load, the panel draws its plain field. Colours are the admin's roles, so it
- * follows the scheme in light and dark. The text is still only checked by `cssProblem()` and drawn by `<CustomCss>`/`<ScopedCss>`.
+ * (by the panel that draws it); until then, and where it cannot load, the panel draws its plain field. Colours are the admin's roles (on the live site, the
+ * site's own theme colours), so it follows the scheme in light and dark. The text is still only checked by `cssProblem()` and drawn by `<CustomCss>`/`<ScopedCss>`.
  */
 
+/**
+ * The colours: the admin's roles where they are set (the page builder), else the site's own theme colours (the live site's panel, D394),
+ * the syntax's hues mixed with the site's text colour so they read on its background in light and in dark.
+ */
+const ROLE = {
+  ink: "var(--ink, var(--foreground))",
+  ink2: "var(--ink-2, color-mix(in oklab, var(--foreground) 80%, var(--background)))",
+  muted: "var(--muted)",
+  line: "var(--line, var(--border))",
+  sunken: "var(--sunken, var(--surface))",
+  card: "var(--card, var(--background))",
+  brand: "var(--brand, var(--accent))",
+  brandInk: "var(--brand-ink, var(--accent-foreground))",
+  insight: "var(--insight-text, color-mix(in oklab, #1d5fd1 65%, var(--foreground)))",
+  positive: "var(--positive-text, color-mix(in oklab, #0a7d3a 65%, var(--foreground)))",
+  warning: "var(--warning-text, color-mix(in oklab, #9a5b00 65%, var(--foreground)))",
+  danger: "var(--danger-text, color-mix(in oklab, #b3261e 65%, var(--foreground)))",
+  brandText: "var(--brand-text, color-mix(in oklab, #7a3cc2 65%, var(--foreground)))",
+} as const;
+
 const highlight = HighlightStyle.define([
-  { tag: [t.propertyName, t.attributeName], color: "var(--insight-text)" },
-  { tag: [t.number, t.unit, t.color, t.atom, t.bool, t.keyword], color: "var(--positive-text)" },
-  { tag: [t.string, t.special(t.string)], color: "var(--warning-text)" },
-  { tag: [t.className, t.tagName, t.labelName, t.constant(t.className)], color: "var(--ink)", fontWeight: "500" },
-  { tag: [t.definitionKeyword, t.modifier, t.controlKeyword, t.operatorKeyword], color: "var(--danger-text)" },
-  { tag: [t.variableName, t.special(t.variableName)], color: "var(--brand-text)" },
-  { tag: [t.comment, t.lineComment, t.blockComment], color: "var(--muted)", fontStyle: "italic" },
-  { tag: [t.punctuation, t.bracket, t.separator], color: "var(--ink-2)" },
+  { tag: [t.propertyName, t.attributeName], color: ROLE.insight },
+  { tag: [t.number, t.unit, t.color, t.atom, t.bool, t.keyword], color: ROLE.positive },
+  { tag: [t.string, t.special(t.string)], color: ROLE.warning },
+  { tag: [t.className, t.tagName, t.labelName, t.constant(t.className)], color: ROLE.ink, fontWeight: "500" },
+  { tag: [t.definitionKeyword, t.modifier, t.controlKeyword, t.operatorKeyword], color: ROLE.danger },
+  { tag: [t.variableName, t.special(t.variableName)], color: ROLE.brandText },
+  { tag: [t.comment, t.lineComment, t.blockComment], color: ROLE.muted, fontStyle: "italic" },
+  { tag: [t.punctuation, t.bracket, t.separator], color: ROLE.ink2 },
 ]);
 
 const look = EditorView.theme({
-  "&": { height: "100%", backgroundColor: "var(--sunken)", color: "var(--ink)", fontSize: "13px", borderRadius: "6px", border: "1px solid var(--line)" },
-  "&.cm-focused": { outline: "2px solid var(--brand)", outlineOffset: "1px" },
+  "&": { height: "100%", backgroundColor: ROLE.sunken, color: ROLE.ink, fontSize: "13px", borderRadius: "6px", border: `1px solid ${ROLE.line}` },
+  "&.cm-focused": { outline: `2px solid ${ROLE.brand}`, outlineOffset: "1px" },
   ".cm-scroller": { fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace", lineHeight: "1.6" },
-  ".cm-content": { padding: "10px 0", caretColor: "var(--ink)" },
-  ".cm-gutters": { backgroundColor: "var(--sunken)", color: "var(--muted)", border: "none", borderTopLeftRadius: "6px", borderBottomLeftRadius: "6px" },
-  ".cm-activeLine": { backgroundColor: "color-mix(in srgb, var(--ink) 5%, transparent)" },
-  ".cm-activeLineGutter": { backgroundColor: "transparent", color: "var(--ink-2)" },
-  ".cm-selectionBackground, &.cm-focused .cm-selectionBackground, ::selection": { backgroundColor: "color-mix(in srgb, var(--brand) 30%, transparent) !important" },
-  ".cm-cursor": { borderLeftColor: "var(--ink)" },
-  ".cm-matchingBracket": { backgroundColor: "color-mix(in srgb, var(--brand) 25%, transparent)", outline: "none" },
-  ".cm-placeholder": { color: "var(--muted)" },
-  ".cm-tooltip": { backgroundColor: "var(--card)", color: "var(--ink)", border: "1px solid var(--line)", borderRadius: "6px", overflow: "hidden" },
+  ".cm-content": { padding: "10px 0", caretColor: ROLE.ink },
+  ".cm-gutters": { backgroundColor: ROLE.sunken, color: ROLE.muted, border: "none", borderTopLeftRadius: "6px", borderBottomLeftRadius: "6px" },
+  ".cm-activeLine": { backgroundColor: `color-mix(in srgb, ${ROLE.ink} 5%, transparent)` },
+  ".cm-activeLineGutter": { backgroundColor: "transparent", color: ROLE.ink2 },
+  ".cm-selectionBackground, &.cm-focused .cm-selectionBackground, ::selection": { backgroundColor: `color-mix(in srgb, ${ROLE.brand} 30%, transparent) !important` },
+  ".cm-cursor": { borderLeftColor: ROLE.ink },
+  ".cm-matchingBracket": { backgroundColor: `color-mix(in srgb, ${ROLE.brand} 25%, transparent)`, outline: "none" },
+  ".cm-placeholder": { color: ROLE.muted },
+  ".cm-tooltip": { backgroundColor: ROLE.card, color: ROLE.ink, border: `1px solid ${ROLE.line}`, borderRadius: "6px", overflow: "hidden" },
   ".cm-tooltip-autocomplete > ul > li": { padding: "3px 8px" },
-  ".cm-tooltip-autocomplete > ul > li[aria-selected]": { backgroundColor: "var(--brand)", color: "var(--brand-ink)" },
+  ".cm-tooltip-autocomplete > ul > li[aria-selected]": { backgroundColor: ROLE.brand, color: ROLE.brandInk },
   ".cm-completionDetail": { color: "inherit", opacity: "0.7", marginLeft: "1em", fontStyle: "normal" },
 });
 
@@ -84,6 +104,7 @@ export default function CssCodeEditor({
   describedBy,
   invalid,
   classNames,
+  autoFocus = false,
 }: {
   id: string;
   value: string;
@@ -96,6 +117,8 @@ export default function CssCodeEditor({
   invalid: boolean;
   /** The classes the page's parts and the site's text styles have (`knownClassNames()`). */
   classNames: readonly string[];
+  /** Takes the focus once made (the live site's panel, which opens to be typed in). */
+  autoFocus?: boolean;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
@@ -145,6 +168,7 @@ export default function CssCodeEditor({
       }),
     });
     view.current = made;
+    if (autoFocus) made.focus();
     return () => {
       made.destroy();
       view.current = null;

@@ -249,19 +249,35 @@ export const KNOWN_COOKIES: KnownCookie[] = [
     },
   },
   {
-    // In local storage, not a cookie: set in the admin's page builder by someone signed in who folds a sidebar or drags its edge (D125, D262).
+    // In local storage, not a cookie: set in the admin's page builder by someone signed in who folds a sidebar or drags its edge, or the CSS panel's (D125, D262, D394).
     name: "kaizen_admin_builder_…",
-    pattern: /^kaizen_admin_builder_(left|right)(_width)?$/,
+    pattern: /^kaizen_admin_builder_((left|right)(_width)?|css_width)$/,
     provider: "Kaizena Flow",
     category: "necessary",
     days: null,
     on: "platform",
     staff: true,
     purpose: {
-      en: "In Kaizena Flow's page builder: remembers whether you folded a sidebar away and how wide you made it.",
-      nb: "I Kaizena Flows sidebygger: husker om du skjulte et sidepanel og hvor bredt du gjorde det.",
-      sv: "I Kaizena Flows sidbyggare: kommer ihåg om du fällde ihop en sidopanel och hur bred du gjorde den.",
-      da: "I Kaizena Flows sidebygger: husker, om du foldede et sidepanel sammen, og hvor bredt du gjorde det.",
+      en: "In Kaizena Flow's page builder: remembers whether you folded a sidebar away and how wide you made it and the CSS panel.",
+      nb: "I Kaizena Flows sidebygger: husker om du skjulte et sidepanel og hvor bredt du gjorde det og CSS-panelet.",
+      sv: "I Kaizena Flows sidbyggare: kommer ihåg om du fällde ihop en sidopanel och hur bred du gjorde den och CSS-panelen.",
+      da: "I Kaizena Flows sidebygger: husker, om du foldede et sidepanel sammen, og hvor bredt du gjorde det og CSS-panelet.",
+    },
+  },
+  {
+    // In local storage, not a cookie: set on the live site by signed-in staff who move or resize the Custom CSS panel (D394).
+    name: "kaizen_site_css_panel",
+    pattern: /^kaizen_site_css_panel$/,
+    provider: "Kaizena Flow",
+    category: "necessary",
+    days: null,
+    on: "both",
+    staff: true,
+    purpose: {
+      en: "For a site's own signed-in staff: remembers where you moved the Custom CSS panel and how big you made it.",
+      nb: "For nettstedets egne innloggede ansatte: husker hvor du flyttet panelet for egen CSS og hvor stort du gjorde det.",
+      sv: "För webbplatsens egna inloggade medarbetare: kommer ihåg var du flyttade panelen för egen CSS och hur stor du gjorde den.",
+      da: "For webstedets egne loggede ansatte: husker, hvor du flyttede panelet til egen CSS, og hvor stort du gjorde det.",
     },
   },
   {
