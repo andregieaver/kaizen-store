@@ -15,6 +15,7 @@ import {
 import { HoursEditor } from "@/components/admin/hours-editor";
 import {
   END_AFTER_MINUTES,
+  FORM_MESSAGES,
   NOTIFY_AFTER_MINUTES,
   TRANSCRIPT_DAYS,
   type SupportMode,
@@ -65,6 +66,7 @@ export function SupportSettingsForm({
   aiSettingsHref,
   chatHref,
   openCount,
+  formChoice = false,
 }: {
   settings: DeskSettingsView;
   save: ((state: FormState, form: FormData) => Promise<FormState>) | null;
@@ -76,6 +78,8 @@ export function SupportSettingsForm({
   chatHref: string;
   /** Open conversations now, for the note on changing who answers. */
   openCount: number;
+  /** A store's desk: where its contact forms' messages go (D382). */
+  formChoice?: boolean;
 }) {
   const w = useAdminText("support").settings;
   const kindWords = w.actionKinds as Record<string, string>;
@@ -308,6 +312,23 @@ export function SupportSettingsForm({
           </select>
           {owner ? w.keep.after : w.keep.afterNotOwner}
         </label>
+        {formChoice && (
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="font-medium">{w.forms.title}</span>
+            <select
+              name="formMessages"
+              defaultValue={settings.formMessages}
+              className={field}
+            >
+              {FORM_MESSAGES.map((choice) => (
+                <option key={choice} value={choice}>
+                  {w.forms.choices[choice]}
+                </option>
+              ))}
+            </select>
+            <span className="text-muted">{w.forms.note}</span>
+          </label>
+        )}
       </section>
 
       {!disabled && (

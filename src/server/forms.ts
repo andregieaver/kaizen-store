@@ -20,6 +20,7 @@ import { issueSignupCode } from "./discounts";
 import { joinList } from "./marketing-subscribers";
 import { tagFromForm } from "./segments";
 import { storeById, type EmailStore } from "./shopper-emails";
+import { formToInbox } from "./support-forms";
 
 type Row = Record<string, unknown>;
 
@@ -163,11 +164,25 @@ export async function submitForm(request: FormRequest, visitor: string): Promise
     // A test of this form counts it once the site has accepted the answer (D148, phase 11).
     if (owner.storeId) await recordFormSent(owner.storeId, block.id);
     const answers = [...checked.answers, ...(block.consent ? [{ label: o.form.consent, value: `${block.consent} (${o.form.yes})` }] : [])];
+    const subject = block.subject || o.form.messageSubject(owner.name);
+    // A store's message goes to its support inbox while the desk is on (D382), and its recipients are emailed too unless the owner chose the inbox alone.
+    const nameField = block.fields.find((f) => f.kind === "name");
+    const typedName = nameField ? request.values[nameField.id] : undefined;
+    const inbox = await formToInbox(
+      owner.storeId,
+      { blockId: block.id, subject, path: request.path, lang: request.lang },
+      answers,
+      { email: checked.replyTo, name: typeof typedName === "string" ? typedName : null },
+    );
+    if (inbox.kept && !inbox.emailToo) {
+      await db().execute(sql`update commerce.form_submissions set status = 'sent' where id = ${String(row.id)}::uuid`);
+      return { status: 200, body: { ok: true, outcome: "sent" } };
+    }
     const status = await relay(
       found,
       "form.message",
       {
-        subject: block.subject || o.form.messageSubject(owner.name),
+        subject,
         heading: o.form.messageHeading,
         intro: checked.replyTo ? o.form.replyHint : "",
         blocks: [{ type: "divider" }, ...answerBlocks(answers), { type: "divider" }, pageLine(o, owner, request.path)],

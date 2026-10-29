@@ -46,12 +46,13 @@ export function toReportConversation(r: Row): ReportConversation {
     outcome,
     topics: Array.isArray(summary?.topics) ? summary.topics.filter((t): t is string => typeof t === "string").slice(0, 3) : [],
     anonymised: Boolean(r.anonymised_at),
+    byForm: r.by_form === true,
   };
 }
 
 /** The counted columns: the summary without its title, text and follow-up (only its outcome and topics are read). */
 export const ROW_COLUMNS = sql`c.store_id, c.desk_mode, c.status, c.created_at, c.queued_at, c.claimed_at, c.first_agent_at, c.ended_at, c.handoff_reason, c.rating, c.tone,
-  c.summary - 'text' - 'followUp' - 'title' as summary, c.anonymised_at`;
+  c.summary - 'text' - 'followUp' - 'title' as summary, c.anonymised_at, c.source = 'form' as by_form`;
 
 export type DeskReport = { report: SupportReport; cut: boolean; timeZone: string };
 

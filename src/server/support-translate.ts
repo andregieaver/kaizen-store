@@ -23,12 +23,12 @@ export type Translation = { ok: true; text: string; language: string } | { ok: f
 const NO_AI = "Translation needs a text model in the AI settings.";
 const COULD_NOT = "The text could not be translated just now. Try again.";
 
-async function conversationOf(staff: StaffDesk, conversationId: string): Promise<{ locale: string } | null> {
+async function conversationOf(staff: StaffDesk, conversationId: string): Promise<{ locale: string; form: boolean } | null> {
   const [row] = await db().execute<Row>(sql`
-    select locale from commerce.support_conversations
+    select locale, source from commerce.support_conversations
     where id = ${conversationId}::uuid and ${staff.desk.storeId ? sql`store_id = ${staff.desk.storeId}::uuid` : sql`store_id is null`} and anonymised_at is null
   `);
-  return row ? { locale: String(row.locale) } : null;
+  return row ? { locale: String(row.locale), form: row.source === "form" } : null;
 }
 
 async function translate(staff: StaffDesk, text: string, to: string, max: number): Promise<Translation> {
@@ -53,7 +53,10 @@ async function translate(staff: StaffDesk, text: string, to: string, max: number
 
 /** A customer's message of the desk's conversation in English, for the person reading; never stored. */
 export async function translateMessage(staff: StaffDesk, conversationId: string, seq: number): Promise<Translation> {
-  if (!(await conversationOf(staff, conversationId))) return { ok: false, problem: "This conversation is gone." };
+  const conversation = await conversationOf(staff, conversationId);
+  if (!conversation) return { ok: false, problem: "This conversation is gone." };
+  // A form's message is read by people only (D382): its words are never sent to a model.
+  if (conversation.form) return { ok: false, problem: "Messages sent through the contact form are not translated by AI." };
   const [message] = await db().execute<Row>(sql`
     select body from commerce.support_messages where conversation_id = ${conversationId}::uuid and seq = ${seq} and author = 'customer'
   `);

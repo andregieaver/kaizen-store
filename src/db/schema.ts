@@ -12931,10 +12931,16 @@ export const supportSettings = commerce.table(
     channelKey: text("channel_key").notNull().default(sql`replace(gen_random_uuid()::text, '-', '')`),
     /** The desk's email address `desk-{key}@{SUPPORT_INBOUND_DOMAIN}` (D332): random, made when the settings first show it; it only routes mail. */
     emailKey: text("email_key"),
+    /**
+     * Where a store's email form sends its messages while the desk is on (D382): `inbox_and_email` (a conversation in the inbox and the
+     * form's recipients emailed, the default), `inbox` (the inbox only) or `email` (the recipients only, as before).
+     */
+    formMessages: text("form_messages").notNull().default("inbox_and_email"),
     updatedAt: updatedAt(),
     updatedBy: uuid("updated_by").references(() => accounts.id, { onDelete: "set null" }),
   },
   (t) => [
+    check("support_settings_form_messages", sql`${t.formMessages} in ('inbox_and_email', 'inbox', 'email')`),
     unique("support_settings_store_key").on(t.storeId).nullsNotDistinct(),
     unique("support_settings_email_key").on(t.emailKey),
     check("support_settings_email_key_shape", sql`${t.emailKey} is null or ${t.emailKey} ~ '^[a-z0-9]{12,32}$'`),
@@ -12960,7 +12966,7 @@ export const supportConversations = commerce.table(
     id: uuid("id").primaryKey().defaultRandom(),
     /** Null for Kaizen's desk. */
     storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
-    /** `site` (a site's chat) or `admin` (an account asking Kaizen). */
+    /** `site` (a site's chat), `admin` (an account asking Kaizen), `email` (D332) or `form` (a store's email form, D382: people only). */
     source: text("source").notNull(),
     status: text("status").notNull().default("open"),
     handler: text("handler").notNull(),
@@ -13045,7 +13051,7 @@ export const supportConversations = commerce.table(
     index("support_conversations_ended_idx")
       .on(t.endedAt)
       .where(sql`${t.anonymisedAt} is null`),
-    check("support_conversations_source", sql`${t.source} in ('site', 'admin', 'email')`),
+    check("support_conversations_source", sql`${t.source} in ('site', 'admin', 'email', 'form')`),
     check("support_conversations_status", sql`${t.status} in ('open', 'ended')`),
     check("support_conversations_desk_mode", sql`${t.deskMode} is null or ${t.deskMode} in ('off', 'ai_first', 'people')`),
     check("support_conversations_handler", sql`${t.handler} in ('ai', 'queue', 'human')`),

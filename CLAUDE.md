@@ -487,6 +487,7 @@ stand-in is the only fake, and only it is told it is one.
   from that conversation's own address. A conversation by email (source `email`) is never tied to a customer by the address; the AI
   answers it only with the AI first, through `runSupportTurn(..., { email: true })` (no tool that needs a signed-in customer or a
   button, `NOT_BY_EMAIL`), and its answers go back by `sendReplyEmails()` as a reply in the thread, each marked as the AI's (`aiLabel`, `aiNote`, D334).
+  Contact forms (D382, `src/server/support-forms.ts`): a store's email form's message is a conversation of source `form` through `formToInbox()` while the desk is on and its `form_messages` is not `email` (the recipients emailed too unless it is `inbox`); it is people only (the database starts it in the queue, never lets it go to the AI and skips its summary), so no model ever reads its words: a new AI helper on a conversation (tone, brief, partner, translation, a manager tool) leaves `source = 'form'` out. Its answers go back as a conversation by email's do, and a customer with its address is shown, never tied (`addressCustomer`).
 - Prices are shown with `<Price>`, which adds the VAT label and shows the
   30-day reference only for a genuine reduction.
 - Choosing in the storefront (D82) uses `Dropdown` (`src/components/dropdown.tsx`,

@@ -99,7 +99,7 @@ export async function sendReplyEmails(now: Date = new Date(), limit = 100): Prom
     left join commerce.customers cu on cu.store_id = c.store_id and cu.id = c.customer_id
     -- An account asking Kaizena Flow from the admin (step 11) is answered at its own address.
     left join commerce.accounts ra on c.source = 'admin' and ra.id = c.requester_id
-    where c.anonymised_at is null and c.source <> 'email' and s.mode <> 'off' and (s.email_followup or c.source = 'admin')
+    where c.anonymised_at is null and c.source not in ('email', 'form') and s.mode <> 'off' and (s.email_followup or c.source = 'admin')
       and coalesce(cu.email, ra.email, c.contact_email) is not null and c.email_count < ${EMAILS_MAX}
       and (c.email_sent_at is null or c.email_sent_at <= ${at} - make_interval(mins => ${EMAIL_EVERY_MINUTES}))
       and (c.visitor_seen_at is null or c.visitor_seen_at <= ${at} - make_interval(secs => ${REPLY_AFTER_SECONDS}))
@@ -111,12 +111,12 @@ export async function sendReplyEmails(now: Date = new Date(), limit = 100): Prom
           and m.created_at <= ${at} - make_interval(secs => ${REPLY_AFTER_SECONDS}))
     order by c.last_message_at limit ${limit}
   `);
-  // Conversations by email (D332): the AI's and people's answers, once the newest has settled.
+  // Conversations by email (D332) and by a store's email form (D382): the AI's and people's answers, once the newest has settled.
   const byEmail = await db().execute<Row>(sql`
     select c.id, c.store_id, c.locale, c.market, c.email_sent_seq, c.source, c.contact_email as address, c.reply_key, c.email_subject, c.email_message_id
     from commerce.support_conversations c
     join commerce.support_settings s on s.store_id is not distinct from c.store_id
-    where c.source = 'email' and c.anonymised_at is null and s.mode <> 'off' and c.contact_email is not null and c.email_count < ${EMAIL_CHANNEL_MAX}
+    where c.source in ('email', 'form') and c.anonymised_at is null and s.mode <> 'off' and c.contact_email is not null and c.email_count < ${EMAIL_CHANNEL_MAX}
       and (c.store_id is null or commerce.store_is_active(c.store_id))
       and exists (select 1 from commerce.support_messages m where m.conversation_id = c.id and m.author in ('ai', 'agent') and m.seq > c.email_sent_seq)
       and not exists (select 1 from commerce.support_messages m where m.conversation_id = c.id and m.author in ('ai', 'agent') and m.seq > c.email_sent_seq
@@ -141,7 +141,7 @@ async function sendReply(row: Row, now: Date): Promise<SendOutcome | null> {
   const id = String(row.id);
   const storeId = row.store_id ? String(row.store_id) : null;
   const desk = systemDesk(storeId);
-  const byEmail = row.source === "email";
+  const byEmail = row.source === "email" || row.source === "form";
   const messages = await db().execute<Row>(sql`
     select seq, author, body, data from commerce.support_messages
     where conversation_id = ${id}::uuid and author in ${byEmail ? sql`('ai', 'agent')` : sql`('agent')`} and seq > ${Number(row.email_sent_seq)}
@@ -204,7 +204,8 @@ async function sendReply(row: Row, now: Date): Promise<SendOutcome | null> {
     ? [
         ...lines,
         ...(messages.some((m) => m.author === "ai") ? [{ type: "paragraph" as const, text: words.aiNote }] : []),
-        { type: "paragraph", text: words.replyNote },
+        // Replying continues the conversation only while receiving is set up; a form's conversation (D382) may be answered without it.
+        ...(replyKey ? [{ type: "paragraph" as const, text: words.replyNote }] : []),
         { type: "paragraph", text: words.emailWhy(deskName) },
       ]
     : [

@@ -152,6 +152,28 @@ describe("support in the database (D216)", () => {
     ).toBe("support_bad_event");
   });
 
+  it("keeps a contact form's message with people (D382): queued on any desk that is on, never on one that is off, never given to the AI, no summary", async () => {
+    const form = async () =>
+      (await one<{ id: string }>("insert into commerce.support_conversations (store_id, source, handler, locale) values ($1, 'form', 'queue', 'en') returning id", [store])).id;
+    await setMode("off");
+    expect(await refusal(form())).toBe("support_off");
+    await setMode("ai_first");
+    // With the AI first it still starts in the queue, and never with the AI.
+    expect(await refusal(db.query("insert into commerce.support_conversations (store_id, source, handler, locale) values ($1, 'form', 'ai', 'en')", [store]))).toBe(
+      "support_bad_event",
+    );
+    const id = await form();
+    expect(await stateOf(id)).toMatchObject({ status: "open", handler: "queue" });
+    await transition(id, "claim", { kind: "agent", id: agentA });
+    expect(await refusal(transition(id, "hand_back", { kind: "agent", id: agentA }))).toBe("support_no_ai");
+    await db.query("update commerce.support_settings set summaries_on = true where store_id = $1", [store]);
+    await transition(id, "end", { kind: "agent", id: agentA });
+    expect(await one<{ summary_status: string }>("select summary_status from commerce.support_conversations where id = $1", [id])).toEqual({ summary_status: "skipped" });
+    // Kaizena Flow's desk takes no form's message.
+    await setMode("people", null);
+    expect(await refusal(db.query("insert into commerce.support_conversations (store_id, source, handler, locale) values (null, 'form', 'queue', 'en')"))).toBe("support_off");
+  });
+
   it("2. drops a message from the AI after a person took over: no row, no number used", async () => {
     const id = await conversation("ai_first");
     await add(id, "customer", null, "Hello");

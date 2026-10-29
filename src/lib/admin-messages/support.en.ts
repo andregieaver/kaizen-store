@@ -142,6 +142,7 @@ export const supportEn = {
     signedIn: "Signed in",
     fromAdmin: "From the admin",
     fromEmail: "By email",
+    fromForm: "Contact form",
     toneAlert: "Tone alert",
   },
   tone: {
@@ -195,6 +196,12 @@ export const supportEn = {
     fromAdmin: "The admin",
     fromChat: "The site's chat",
     fromEmail: "Email",
+    fromForm: "The contact form",
+    formPage: "Sent from",
+    addressCustomer: "A customer has this address: not verified",
+    openCustomer: "Open the customer",
+    noAddress: "No email address was given, so this message cannot be answered by email.",
+    noAi: "Sent through the contact form: only people read it, never the AI.",
   },
   actions: {
     why: {
@@ -402,6 +409,15 @@ export const supportEn = {
         "after a conversation ends. Then the words are deleted and only counts are kept.",
       afterNotOwner:
         "after a conversation ends (only the owner changes this). Then the words are deleted and only counts are kept.",
+    },
+    forms: {
+      title: "Messages from your contact forms",
+      choices: {
+        inbox_and_email: "In this inbox, and emailed to the form's recipients",
+        inbox: "In this inbox only",
+        email: "Emailed to the form's recipients only",
+      },
+      note: "While support is on, a message sent through a contact form on your site becomes a conversation here that your people answer by email. The AI never reads or answers it.",
     },
     save: "Save",
     toneLine: { off: "Off", veryBad: "very bad", bad: "bad" },

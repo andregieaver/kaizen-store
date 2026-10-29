@@ -1474,14 +1474,14 @@
       "checkedOn": "2026-10-02"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "partial"
     },
     "weight": 3,
-    "gap": "D295: a confirmed newsletter sign-up feeds the store's subscriber list with consent (words, time, source, language, confirmation time), unsubscribes by the subscriber's own link or one-click, and is in the person's export and erasure. D304 J3: a form's tags are put on the confirmed address as customer tags (`tagFromForm()`), which segments select (`kind: 'tag'`, D296), held by `signup-codes.int.test.ts` and `segments.int.test.ts`. Still missing: contact messages in an admin inbox: the email form only emails its recipients and counts a row in `form_submissions` (`src/server/forms.ts`), with no status and no link to the customer with that address (the support inbox, D216, takes chat conversations and, since D332, emails to the desk's address, but not form messages, and on purpose never ties an email to a customer by its address, so criterion 3 is still unmet).",
-    "bucket": "A",
-    "wave": 5,
+    "gap": "D295: a confirmed newsletter sign-up feeds the store's subscriber list with consent (words, time, source, language, confirmation time), unsubscribes by the subscriber's own link or one-click, and is in the person's export and erasure. D304 J3: a form's tags are put on the confirmed address as customer tags (`tagFromForm()`), which segments select (`kind: 'tag'`, D296). D382: a store's email form's message is a conversation in the support inbox (source `form`, people only) while support is on, with the inbox's states, assignee, notes and replies emailed from the desk; the form's recipients are still emailed unless the owner chose the inbox alone; the conversation shows the customer with that address (not verified, never tied) to people who may read customers. Held by `support-forms.int.test.ts` and `src/db/support.test.ts`. With support off the form only emails its recipients, as before.",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "A confirmed newsletter sign-up creates or updates a subscriber (store, email, source form, consent text and time, language, double opt-in time), not only an email to the owner.",
       "A subscriber unsubscribes by a signed link, the record shows it, and it can be exported and erased.",
@@ -1500,7 +1500,10 @@
         "src/server/marketing-subscribers.ts",
         "src/app/admin/(gated)/[store]/subscribers/page.tsx",
         "src/app/s/[store]/[market]/account/news/[token]/page.tsx",
-        "src/server/segments.ts"
+        "src/server/segments.ts",
+        "src/server/support-forms.ts",
+        "src/components/admin/support/conversation-view.tsx",
+        "supabase/migrations/20261028233738_support_form_messages.sql"
       ],
       "tests": [
         "src/lib/forms.test.ts",
@@ -1511,7 +1514,9 @@
         "src/server/marketing-subscribers.int.test.ts",
         "e2e/signed-in/subscribers.spec.ts",
         "src/server/signup-codes.int.test.ts",
-        "src/server/segments.int.test.ts"
+        "src/server/segments.int.test.ts",
+        "src/server/support-forms.int.test.ts",
+        "src/db/support.test.ts"
       ],
       "untested": false
     },
@@ -1520,9 +1525,18 @@
       "D148",
       "D295",
       "D296",
-      "D304"
+      "D304",
+      "D216",
+      "D382"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-28",
+        "from": "partial",
+        "to": "full",
+        "why": "D382: contact messages reach the support inbox with a status and show the customer with the same email, so criterion 3 is met."
+      }
+    ]
   },
   {
     "id": "storefront.multilingual-storefront-content",

@@ -177,6 +177,16 @@ function whoAnswers(c: StaffConversation, me: string): string {
 /** `get_support_conversation`: the words, roles marked, notes marked, the partner's help left out; no email address or phone. */
 export async function getSupportConversationTool(ctx: AnswerCtx, { conversation }: { conversation: string }) {
   const c = await conversationOf(ctx, conversation);
+  // A message sent through the store's contact form is read by people only (D382): its words never reach a model.
+  if (c.source === "form")
+    return {
+      status: whoAnswers(c, ctx.account.id),
+      customer: { signed_in: false, language: c.locale },
+      started: c.startedAt.slice(0, 16).replace("T", " "),
+      transcript: null,
+      link: inboxLink(ctx.store, c.id),
+      note: "This is a message sent through the store's contact form: the AI does not read its words. Tell the person to open it in the inbox.",
+    };
   const lines: TranscriptLine[] = c.messages
     .filter((m) => m.author !== "partner")
     .slice(-READ_MESSAGES)

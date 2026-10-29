@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { openingHoursInput } from "./opening-hours-schema";
-import { END_AFTER_MINUTES, NOTIFY_AFTER_MINUTES, SUPPORT_MODES, TRANSCRIPT_DAYS } from "./support-rules";
+import { END_AFTER_MINUTES, FORM_MESSAGES, NOTIFY_AFTER_MINUTES, SUPPORT_MODES, TRANSCRIPT_DAYS } from "./support-rules";
 
 /**
  * A desk's settings as the settings page sends them (D216, `docs/support.md` 2.10, step 5), as form fields. `transcriptDays` is the
@@ -59,6 +59,8 @@ export const deskSettingsInput = z.object({
     .int()
     .refine((days) => (TRANSCRIPT_DAYS as readonly number[]).includes(days), "Keep transcripts for 30, 60 or 90 days.")
     .optional(),
+  /** A store's desk only (D382): a form without it (Kaizena Flow's desk) keeps what the desk has. */
+  formMessages: z.enum(FORM_MESSAGES, "Choose where your contact forms' messages go.").optional(),
 });
 
 export type DeskSettingsInput = z.infer<typeof deskSettingsInput>;

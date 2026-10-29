@@ -123,6 +123,10 @@ row stays partial on the voucher review whatever is built; fixed amounts stay un
 
 ### C. Contact messages in the support inbox (D382)
 
+**Built (28 October 2026),** as designed below with two course changes (D382): a form's message reaches the inbox only while the desk is on
+(with support off the form emails its recipients as before), and there is no *AI reads form messages*: a form's conversation is people only on
+every desk. `storefront.signup-and-contact-forms-feeding-customers-and-consent` is Full.
+
 **What is missing.** The email form only emails its recipients and counts a row in `form_submissions`. Nothing reaches an inbox with a status.
 
 **Design.**

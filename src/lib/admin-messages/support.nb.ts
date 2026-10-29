@@ -162,6 +162,7 @@ export const supportNb: SupportMessages = {
     signedIn: "Logget inn",
     fromAdmin: "Fra administrasjonen",
     fromEmail: "På e-post",
+    fromForm: "Kontaktskjema",
     toneAlert: "Varsel om tone",
   },
   tone: {
@@ -215,6 +216,12 @@ export const supportNb: SupportMessages = {
     fromAdmin: "Administrasjonen",
     fromChat: "Chatten på nettstedet",
     fromEmail: "E-post",
+    fromForm: "Kontaktskjemaet",
+    formPage: "Sendt fra",
+    addressCustomer: "En kunde har denne adressen: ikke bekreftet",
+    openCustomer: "Åpne kunden",
+    noAddress: "Ingen e-postadresse ble oppgitt, så meldingen kan ikke besvares på e-post.",
+    noAi: "Sendt via kontaktskjemaet: bare mennesker leser den, aldri AI-en.",
   },
   actions: {
     why: {
@@ -438,6 +445,15 @@ export const supportNb: SupportMessages = {
         "etter at en samtale er avsluttet. Deretter slettes ordene, og bare antall tas vare på.",
       afterNotOwner:
         "etter at en samtale er avsluttet (bare eieren endrer dette). Deretter slettes ordene, og bare antall tas vare på.",
+    },
+    forms: {
+      title: "Meldinger fra kontaktskjemaene dine",
+      choices: {
+        inbox_and_email: "I denne innboksen, og sendt på e-post til skjemaets mottakere",
+        inbox: "Bare i denne innboksen",
+        email: "Bare på e-post til skjemaets mottakere",
+      },
+      note: "Mens kundeservice er på, blir en melding sendt via et kontaktskjema på nettstedet ditt en samtale her som teamet ditt svarer på e-post. AI-en leser eller svarer aldri på den.",
     },
     save: "Lagre",
     toneLine: { off: "Av", veryBad: "svært dårlig", bad: "dårlig" },

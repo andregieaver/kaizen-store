@@ -760,7 +760,7 @@ async function eraseRows(tx: Tx, s: PrivacySubject, store: PrivacyStore): Promis
   }
   // Conversations by email from the person's own addresses (D332), and the emails received from them.
   const byEmail = await tx.execute<Row>(sql`
-    select id from commerce.support_conversations where store_id = ${sid}::uuid and source = 'email' and lower(contact_email) = any(${addresses}) and anonymised_at is null
+    select id from commerce.support_conversations where store_id = ${sid}::uuid and source in ('email', 'form') and lower(contact_email) = any(${addresses}) and anonymised_at is null
   `);
   await anonymiseConversations(tx, byEmail.map((row) => String(row.id)));
   await tx.execute(sql`delete from commerce.support_inbound_emails where store_id = ${sid}::uuid and from_address = any(${addresses})`);

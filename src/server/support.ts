@@ -13,6 +13,7 @@ import {
   CONTACT_CHANGES_MAX,
   EMAILS_MAX,
   END_AFTER_MINUTES,
+  FORM_MESSAGES,
   HUMAN_IDLE_END_HOURS,
   MESSAGE_MAX,
   NOTIFY_AFTER_MINUTES,
@@ -22,6 +23,7 @@ import {
   TRANSCRIPT_DAYS_DEFAULT,
   TRANSCRIPT_DAYS_OFF,
   type ConversationStatus,
+  type FormMessages,
   type Handler,
   type MessageAuthor,
   type SupportMode,
@@ -106,6 +108,8 @@ export type DeskSettings = {
   partner: boolean;
   /** The customer actions the AI may propose (4.4, step 10); null: all of them. The owner's alone to change. */
   aiActions: CustomerActionKind[] | null;
+  /** Where a store's email form sends its messages while the desk is on (D382). */
+  formMessages: FormMessages;
 };
 
 /** The desk's settings, made on its first conversation with support off (S5): the chat agent alone, as before. */
@@ -134,6 +138,7 @@ export function settingsOf(row: Row): DeskSettings {
     summariesOn: row.summaries_on === undefined ? true : Boolean(row.summaries_on),
     partner: row.partner === undefined ? true : Boolean(row.partner),
     aiActions: Array.isArray(row.ai_actions) ? (row.ai_actions as string[]).filter(isCustomerAction) : null,
+    formMessages: (FORM_MESSAGES as readonly string[]).includes(String(row.form_messages)) ? (String(row.form_messages) as FormMessages) : "inbox_and_email",
   };
 }
 
@@ -565,7 +570,7 @@ export type InboxRow = {
   store: { slug: string; name: string } | null;
   status: ConversationStatus;
   handler: Handler;
-  source: "site" | "admin" | "email";
+  source: "site" | "admin" | "email" | "form";
   /** Who wrote: the customer's or the account's name, else their email, else "Visitor" and four letters of the id. */
   who: string;
   email: string | null;
@@ -736,7 +741,7 @@ export type StaffConversation = {
   store: { slug: string; name: string } | null;
   status: ConversationStatus;
   handler: Handler;
-  source: "site" | "admin" | "email";
+  source: "site" | "admin" | "email" | "form";
   who: string;
   email: string | null;
   signedIn: boolean;
@@ -763,6 +768,11 @@ export type StaffConversation = {
   /** The desk scores customers' messages (support and tone on): a customer message without a score is *not measured*. */
   toneMeasured: boolean;
   toneAlertAt: string | null;
+  /**
+   * A conversation by email or form (D332, D382): a customer of the store has the address it was written from. Never proof of who wrote
+   * (the address was typed), nothing is tied by it, and the inbox shows it only to people who may read customers.
+   */
+  addressCustomer: string | null;
   messages: StaffMessage[];
 };
 
@@ -773,7 +783,10 @@ export async function staffConversation(desk: Desk, conversationId: string, afte
       coalesce(nullif(cu.name, ''), nullif(c.contact_name, ''), nullif(ra.name, '')) as who_name,
       coalesce(cu.email, c.contact_email, ra.email) as who_email,
       coalesce(nullif(a.name, ''), a.email) as assignee_name,
-      coalesce(ss.mode, 'off') <> 'off' and coalesce(ss.tone_on, true) as tone_measured
+      coalesce(ss.mode, 'off') <> 'off' and coalesce(ss.tone_on, true) as tone_measured,
+      case when c.source in ('email', 'form') and c.customer_id is null and c.contact_email is not null then
+        (select x.id from commerce.customers x where x.store_id = c.store_id and lower(x.email) = lower(c.contact_email) limit 1)
+      end as address_customer
     from commerce.support_conversations c
     left join commerce.stores s on s.id = c.store_id
     left join commerce.customers cu on cu.store_id = c.store_id and cu.id = c.customer_id
@@ -829,6 +842,7 @@ export async function staffConversation(desk: Desk, conversationId: string, afte
     messageSeq: Number(c.message_seq),
     toneMeasured: Boolean(c.tone_measured),
     toneAlertAt: c.tone_alert_at ? iso(c.tone_alert_at) : null,
+    addressCustomer: c.address_customer ? String(c.address_customer) : null,
     messages: messages.map((m) => ({
       seq: Number(m.seq),
       author: String(m.author) as MessageAuthor,

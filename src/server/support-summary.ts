@@ -148,9 +148,11 @@ export type BriefResult = { ok: true; brief: string | null } | { ok: false; prob
  */
 export async function makeBrief(desk: Desk, conversationId: string): Promise<BriefResult> {
   const [row] = await db().execute<Row>(sql`
-    select message_seq, brief from commerce.support_conversations where id = ${conversationId}::uuid and ${deskIs(desk)} and anonymised_at is null
+    select message_seq, brief, source from commerce.support_conversations where id = ${conversationId}::uuid and ${deskIs(desk)} and anonymised_at is null
   `);
   if (!row) return { ok: false, problem: "This conversation is no longer here." };
+  // A form's message is read by people only (D382).
+  if (row.source === "form") return { ok: true, brief: null };
   const seq = Number(row.message_seq);
   const kept = row.brief as { seq?: number; text?: string } | null;
   if (kept && kept.seq === seq && typeof kept.text === "string") return { ok: true, brief: kept.text };

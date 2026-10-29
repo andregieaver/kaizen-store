@@ -817,14 +817,18 @@ async function loadCompany(s: PrivacySubject): Promise<CompanySource> {
 }
 
 /**
- * The customer's support conversations (D216, docs/support.md 3.5): by the account only (a conversation is never matched by an address
- * someone typed), with what the customer, the AI and the store's people wrote. Staff's notes and the partner's help stay out.
+ * The customer's support conversations (D216, docs/support.md 3.5): the account's, and those written by email or through the contact
+ * form (D332, D382) from the person's own addresses (`addresses`: proven, never one typed), as erasure finds them, with what the
+ * customer, the AI and the store's people wrote. Staff's notes and the partner's help stay out.
  */
 async function loadSupport(s: PrivacySubject): Promise<SupportRow[]> {
-  if (!s.customerId) return [];
+  if (!s.customerId && s.addresses.length === 0) return [];
   const conversations = await db().execute<Row>(sql`
     select id, created_at, ended_at, summary, rating, rating_comment from commerce.support_conversations
-    where store_id = ${s.storeId}::uuid and customer_id = ${s.customerId}::uuid and anonymised_at is null order by created_at, id
+    where store_id = ${s.storeId}::uuid and anonymised_at is null
+      and (${s.customerId ? sql`customer_id = ${s.customerId}::uuid` : sql`false`}
+        or (source in ('email', 'form') and lower(contact_email) = any(${textList(s.addresses)})))
+    order by created_at, id
   `);
   if (conversations.length === 0) return [];
   const messages = await db().execute<Row>(sql`

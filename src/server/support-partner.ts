@@ -71,12 +71,15 @@ type ConversationFacts = {
   locale: string;
   market: string | null;
   pagePath: string | null;
+  source: string;
 };
+
+const FORM_NO_AI = "The silent partner does not read messages sent through the contact form.";
 
 async function factsOf(staff: StaffDesk, conversationId: string): Promise<ConversationFacts | null> {
   const [row] = await db().execute<Row>(sql`
     select c.id, c.status, c.handler, c.assignee_id, c.partner_paused, c.customer_id, c.requester_id, c.contact_name, c.contact_email,
-      c.locale, c.market, c.page_path, cu.name as customer_name, cu.email as customer_email
+      c.locale, c.market, c.page_path, c.source, cu.name as customer_name, cu.email as customer_email
     from commerce.support_conversations c
     left join commerce.customers cu on cu.store_id = c.store_id and cu.id = c.customer_id
     where c.id = ${conversationId}::uuid and c.store_id is not distinct from ${staff.desk.storeId}::uuid and c.anonymised_at is null
@@ -99,6 +102,7 @@ async function factsOf(staff: StaffDesk, conversationId: string): Promise<Conver
     locale: String(row.locale),
     market: text(row.market),
     pagePath: text(row.page_path),
+    source: String(row.source),
   };
 }
 
@@ -119,6 +123,8 @@ export async function runPartner(staff: StaffDesk, conversationId: string, trigg
   if (!staff.canWrite) return { ok: false, problem: "You can read this desk's conversations but not answer them." };
   const facts = await factsOf(staff, conversationId);
   if (!facts) return { ok: false, problem: "This conversation is no longer here." };
+  // A form's message is read by people only (D382): the partner never runs on it.
+  if (facts.source === "form") return trigger.kind === "question" ? { ok: false, problem: FORM_NO_AI } : { ok: true, ran: false };
   const settings = await deskSettings(staff.desk);
   if (!settings) return { ok: false, problem: "This conversation is no longer here." };
   const connection = await aiFor(staff.desk.storeId, { feature: "support_partner", accountId: staff.account.id });

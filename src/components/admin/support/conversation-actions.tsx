@@ -75,11 +75,13 @@ export function availableActs(
     return { ...none, note: true, editSummary: true, why: words.ended };
   if (c.mode === "off") return { ...none, note: true, why: words.off };
   const mine = c.handler === "human" && c.assignee?.id === c.me;
+  // A form's message is answered by people only (D382): no brief by AI, and never given to the AI.
+  const form = c.source === "form";
   return {
-    brief: true,
+    brief: !form,
     editSummary: false,
     claim: c.handler === "ai" || c.handler === "queue",
-    handBack: mine && c.mode === "ai_first",
+    handBack: mine && c.mode === "ai_first" && !form,
     transfer: mine,
     end: mine,
     askSignIn: mine && c.store !== null && c.source === "site" && !c.signedIn,

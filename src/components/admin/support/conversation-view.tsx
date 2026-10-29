@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { fillWords } from "@/lib/admin-fill";
 import {
   authorWords,
@@ -250,7 +252,7 @@ export function ConversationContext({
       ? ([[w.store, conversation.store.name]] as [string, string][])
       : []),
     ...(conversation.pagePath
-      ? ([[w.startedOn, conversation.pagePath]] as [string, string][])
+      ? ([[conversation.source === "form" ? w.formPage : w.startedOn, conversation.pagePath]] as [string, string][])
       : []),
     [w.started, conversation.startedAt.slice(0, 16).replace("T", " ")],
     ...(conversation.endedAt
@@ -259,8 +261,18 @@ export function ConversationContext({
           string,
         ][])
       : []),
-    [w.from, conversation.source === "admin" ? w.fromAdmin : conversation.source === "email" ? w.fromEmail : w.fromChat],
+    [
+      w.from,
+      conversation.source === "admin"
+        ? w.fromAdmin
+        : conversation.source === "email"
+          ? w.fromEmail
+          : conversation.source === "form"
+            ? w.fromForm
+            : w.fromChat,
+    ],
   ];
+  const form = conversation.source === "form";
   return (
     <div className="flex flex-col gap-4 p-4">
       <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-sm">
@@ -271,6 +283,22 @@ export function ConversationContext({
           </div>
         ))}
       </dl>
+      {/* A customer with the address it was written from (D382): never proof, nothing is tied, and only for people who may read customers. */}
+      {conversation.addressCustomer && conversation.store && (
+        <p className="text-sm">
+          {w.addressCustomer}.{" "}
+          <Link
+            href={`/admin/${conversation.store.slug}/customers/${conversation.addressCustomer}`}
+            className="rounded-pill underline"
+          >
+            {w.openCustomer}
+          </Link>
+        </p>
+      )}
+      {form && <p className="text-sm text-muted">{w.noAi}</p>}
+      {form && !conversation.email && (
+        <p className="text-sm text-muted">{w.noAddress}</p>
+      )}
       {conversation.toneMeasured && (
         <ToneChart messages={conversation.messages} />
       )}

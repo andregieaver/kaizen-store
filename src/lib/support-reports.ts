@@ -28,6 +28,8 @@ export type ReportConversation = {
   topics: string[];
   /** Its transcript and actions were deleted (only its own row's figures remain). */
   anonymised: boolean;
+  /** A message sent through the store's contact form (D382): people only, so never counted in what the AI did. */
+  byForm?: boolean;
 };
 
 /** A staff request of the period's conversations. */
@@ -133,7 +135,7 @@ export function supportReport(
   drafts: { offered: number; used: number } = { offered: 0, used: 0 },
 ): SupportReport {
   const ended = conversations.filter((c) => c.status === "ended");
-  const aiFirst = ended.filter((c) => c.mode === "ai_first");
+  const aiFirst = ended.filter((c) => c.mode === "ai_first" && !c.byForm);
   const alone = aiFirst.filter(
     (c) =>
       c.queuedAt === null && c.claimedAt === null && c.firstAgentAt === null,

@@ -5,6 +5,9 @@
 
 /** Who answers a desk's customers (S5): the chat agent alone, the AI first and then people, or people only. */
 export const SUPPORT_MODES = ["off", "ai_first", "people"] as const;
+/** Where a store's email form sends its messages while the desk is on (D382): the inbox and the form's recipients, the inbox only, or the recipients only. */
+export const FORM_MESSAGES = ["inbox_and_email", "inbox", "email"] as const;
+export type FormMessages = (typeof FORM_MESSAGES)[number];
 export type SupportMode = (typeof SUPPORT_MODES)[number];
 
 /** Who answers a conversation now. */

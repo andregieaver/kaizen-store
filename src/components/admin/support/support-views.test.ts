@@ -68,6 +68,7 @@ const conversation = (over: Partial<StaffConversation> = {}): StaffConversation 
   messageSeq: 5,
   toneMeasured: true,
   toneAlertAt: null,
+  addressCustomer: null,
   messages: [
     { seq: 1, author: "customer", body: "Hei, har dere lamper?", kind: null, data: null, by: null, tone: -30, toneLabel: "worried", tools: [], at: "2026-10-13T11:50:00Z" },
     { seq: 2, author: "ai", body: "Ja, her er bordlampen.", kind: null, data: null, by: null, tone: null, toneLabel: null, tools: ["search_products"], at: "2026-10-13T11:50:05Z" },
@@ -212,6 +213,7 @@ describe("the desk's settings (step 5)", () => {
     summariesOn: true,
     partner: true,
     aiActions: null,
+    formMessages: "inbox_and_email",
     aiReady: false,
   };
   const form = (over: Partial<Parameters<typeof SupportSettingsForm>[0]> = {}) =>

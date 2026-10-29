@@ -6,6 +6,7 @@ import { TONE_BANDS, type ToneBand } from "@/lib/support-tone";
 
 import { aiFor } from "./ai";
 import { INBOX_TABS, conversationChannel, deskChannels, deskSettings, lastToneAlert, markRead, presence, mineUnreadCount, staffConversation, staffList, waitingCount, type InboxRow, type InboxTab, type StaffConversation } from "./support";
+import { memberCan } from "./permissions";
 import { deskAgents } from "./support-agent";
 import type { StaffDesk } from "./support-desk";
 
@@ -88,15 +89,19 @@ export async function conversationFeed(desk: StaffDesk, id: string, after: numbe
     conversationChannel(desk.desk, id),
   ]);
   const mode = settings?.mode ?? "off";
+  // A form's message is read by people only (D382): no partner and no translation by AI.
+  const form = conversation.source === "form";
   return {
     ...conversation,
+    // The customer with the address it was written from, only for people who may read customers.
+    addressCustomer: desk.holder && memberCan(desk.holder, "customers:read") ? conversation.addressCustomer : null,
     me: desk.account.id,
     canWrite: desk.canWrite,
     mode,
     agents: agents.filter((a) => a.id !== desk.account.id),
-    partner: { available: desk.canWrite && mode !== "off" && Boolean(settings?.partner) && Boolean(connection?.textModel), mine: mine.partner },
+    partner: { available: !form && desk.canWrite && mode !== "off" && Boolean(settings?.partner) && Boolean(connection?.textModel), mine: mine.partner },
     channel,
-    translate: desk.canWrite && Boolean(connection?.textModel),
+    translate: !form && desk.canWrite && Boolean(connection?.textModel),
   };
 }
 
