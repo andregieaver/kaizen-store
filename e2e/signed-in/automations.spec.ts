@@ -17,10 +17,13 @@ const STORE = "e2e-automations";
 test.beforeAll(async () => {
   const sql = testDb();
   try {
-    if ((await sql`select 1 from commerce.stores where slug = ${STORE}`).length === 0) {
-      const [request] = await sql`insert into commerce.access_requests (email, name, store_name) values (${OWNER.email}, ${OWNER.name}, 'E2E Automations') returning id`;
-      await sql`select commerce.approve_access_request(${request.id}, ${STORE}, 'E2E Automations', null)`;
-    }
+    // The owner's store, made once: other specs make theirs for the same owner at the same time, and a pending request is one per email.
+    await sql.begin(async (tx) => {
+      await tx`select pg_advisory_xact_lock(hashtext('e2e-owner-request'))`;
+      if ((await tx`select 1 from commerce.stores where slug = ${STORE}`).length > 0) return;
+      const [request] = await tx`insert into commerce.access_requests (email, name, store_name) values (${OWNER.email}, ${OWNER.name}, 'E2E Automations') returning id`;
+      await tx`select commerce.approve_access_request(${request.id}, ${STORE}, 'E2E Automations', null)`;
+    });
     await sql`update commerce.stores set setup_completed_at = coalesce(setup_completed_at, now()), status = 'active' where slug = ${STORE}`;
     // Every run starts with nothing set up.
     await sql`delete from commerce.automations where store_id = (select id from commerce.stores where slug = ${STORE})`;

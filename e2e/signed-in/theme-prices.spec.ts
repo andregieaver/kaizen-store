@@ -20,11 +20,13 @@ test.beforeAll(async () => {
   const sql = testDb();
   try {
     // A store of the owner's own, open, so applying a theme here never meets another spec's look.
-    if ((await sql`select 1 from commerce.stores where slug = ${STORE}`).length === 0) {
-      const [request] = await sql`
-        insert into commerce.access_requests (email, name, store_name) values (${OWNER.email}, ${OWNER.name}, 'E2E Premium') returning id`;
-      await sql`select commerce.approve_access_request(${request.id}, ${STORE}, 'E2E Premium', null)`;
-    }
+    // The owner's store, made once: other specs make theirs for the same owner at the same time, and a pending request is one per email.
+    await sql.begin(async (tx) => {
+      await tx`select pg_advisory_xact_lock(hashtext('e2e-owner-request'))`;
+      if ((await tx`select 1 from commerce.stores where slug = ${STORE}`).length > 0) return;
+      const [request] = await tx`insert into commerce.access_requests (email, name, store_name) values (${OWNER.email}, ${OWNER.name}, 'E2E Premium') returning id`;
+      await tx`select commerce.approve_access_request(${request.id}, ${STORE}, 'E2E Premium', null)`;
+    });
     await sql`update commerce.stores set setup_completed_at = coalesce(setup_completed_at, now()) where slug = ${STORE}`;
     // A published theme of its own for this run, free until the admin prices it.
     const snapshot = LAUNCH_THEMES[0].snapshot;

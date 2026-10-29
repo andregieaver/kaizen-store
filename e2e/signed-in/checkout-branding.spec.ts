@@ -55,16 +55,22 @@ test("the owner sets the checkout's look in Design settings, and the theme keeps
     if (!(await panel.isVisible())) await card.getByText("Customise the checkout", { exact: true }).click();
     await expect(panel).toBeVisible({ timeout: 1_000 });
   }).toPass({ timeout: 20_000 });
-  await panel.click();
-  await card.getByText("A colour of its own", { exact: true }).click();
-  await card.getByLabel("Pay button in light colours").fill(LIGHT);
-  await card.getByLabel("Pay button in dark colours").fill(DARK);
-  await card.getByRole("group", { name: "Pay button corners" }).getByText("Square", { exact: true }).click();
-  await card.getByText("A line under", { exact: true }).click();
-  await expect(card.getByLabel("Pay button in light colours")).toHaveValue(LIGHT);
+  // A choice made before the editor's scripts hold the card is lost (the field shows it, the editor never heard): make them again until
+  // the editor has a change to save.
+  const save = page.getByRole("button", { name: "Save", exact: true }).first();
+  await expect(async () => {
+    await panel.click();
+    await card.getByText("A colour of its own", { exact: true }).click();
+    await card.getByLabel("Pay button in light colours").fill(LIGHT);
+    await card.getByLabel("Pay button in dark colours").fill(DARK);
+    await card.getByRole("group", { name: "Pay button corners" }).getByText("Square", { exact: true }).click();
+    await card.getByText("A line under", { exact: true }).click();
+    await expect(card.getByLabel("Pay button in light colours")).toHaveValue(LIGHT);
+    await expect(save).toBeEnabled({ timeout: 2_000 });
+  }).toPass({ timeout: 30_000 });
   // The preview's checkout shows the new pay button colour at once.
   await expect(page.locator("[data-checkout-sample]").first()).toBeVisible();
-  await page.getByRole("button", { name: "Save", exact: true }).first().click();
+  await save.click();
   await expect(page.getByText("Saved. The store shows this theme now.").first()).toBeVisible({ timeout: 30_000 });
 
   const sql = testDb();

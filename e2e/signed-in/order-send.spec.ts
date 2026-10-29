@@ -21,11 +21,13 @@ let orderId = "";
 test.beforeAll(async () => {
   const sql = testDb();
   try {
-    if ((await sql`select 1 from commerce.stores where slug = ${STORE}`).length === 0) {
-      const [request] = await sql`
-        insert into commerce.access_requests (email, name, store_name) values (${OWNER.email}, ${OWNER.name}, 'E2E Send') returning id`;
-      await sql`select commerce.approve_access_request(${request.id}, ${STORE}, 'E2E Send', null)`;
-    }
+    // The owner's store, made once: other specs make theirs for the same owner at the same time, and a pending request is one per email.
+    await sql.begin(async (tx) => {
+      await tx`select pg_advisory_xact_lock(hashtext('e2e-owner-request'))`;
+      if ((await tx`select 1 from commerce.stores where slug = ${STORE}`).length > 0) return;
+      const [request] = await tx`insert into commerce.access_requests (email, name, store_name) values (${OWNER.email}, ${OWNER.name}, 'E2E Send') returning id`;
+      await tx`select commerce.approve_access_request(${request.id}, ${STORE}, 'E2E Send', null)`;
+    });
     await sql`update commerce.stores set setup_completed_at = coalesce(setup_completed_at, now()) where slug = ${STORE}`;
     const [store] = await sql`select id from commerce.stores where slug = ${STORE}`;
     const address = sql.json({ name: "Kari Nordmann", line1: "Storgata 5", line2: null, postalCode: "0182", city: "Oslo", country: "NO" });
