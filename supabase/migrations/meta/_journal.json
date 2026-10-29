@@ -4117,6 +4117,20 @@
       "when": 1793285907373,
       "tag": "20261029145827_bonus_levels_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 588,
+      "version": "7",
+      "when": 1793287459323,
+      "tag": "20261029152419_report_schedules",
+      "breakpoints": true
+    },
+    {
+      "idx": 589,
+      "version": "7",
+      "when": 1793288221277,
+      "tag": "20261029153701_report_schedules_rules",
+      "breakpoints": true
     }
   ]
 }

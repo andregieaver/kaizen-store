@@ -22,6 +22,7 @@ import { refreshEmbeddings } from "@/server/embeddings";
 import { runExperimentJobs } from "@/server/experiment-jobs";
 import { runFollowUps } from "@/server/follow-up-runner";
 import { sendAutopilotReports } from "@/server/autopilot-reports";
+import { sendScheduledReports } from "@/server/report-schedules";
 import { invoiceJobs } from "@/server/invoice-issue";
 import { readDueLegalSources } from "@/server/legal-sources";
 import { runLegalUpkeep, runLegalWrites } from "@/server/legal-writer";
@@ -141,6 +142,8 @@ async function dispatch() {
     followUps: () => runFollowUps(),
     // The autopilot's daily digests and weekly reports (D309), to the people whose plans ran lately.
     autopilotReports: () => sendAutopilotReports(),
+    // Saved reports emailed on their schedules (D395), each once a store day.
+    reportEmails: () => sendScheduledReports(),
     // The official legal texts the AI's legal pages rest on (D311): a few due reads, each source a week after its last good read.
     legalSources: () => readDueLegalSources(),
     // Legal pages the AI keeps (D311): stores with it on compared with their facts and the law daily, a write queued for each page that needs one.

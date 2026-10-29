@@ -265,6 +265,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   analytics_settings: never("The original's cost assumptions (D152): fees, shipping and fixed costs are the new owner's own to enter."),
   analytics_targets: never("The original's monthly revenue targets (D152)."),
   saved_reports: never("The original's saved reports (D345): definitions its staff made for its own figures; a copy starts from the ready reports."),
+  report_schedules: never("The original's report emails (D395): its saved reports are not copied, and its recipients are its own members."),
   marketing_spend: never("What the original's owner entered as marketing spend (D152): history of the original's business."),
   visits: never("The original's counted visitor-days (D152); a copy starts with visit counting off and counts nothing of its own until chosen."),
   product_views: never("How often the original's products were viewed (D152)."),

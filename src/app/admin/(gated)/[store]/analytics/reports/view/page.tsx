@@ -16,9 +16,10 @@ import { analyticsContext } from "@/server/analytics-context";
 import { memberCan } from "@/server/permissions";
 import { labelOf, reportLabels } from "@/server/report-labels";
 import { runReport } from "@/server/report-query";
+import { listReportSchedules, reportRecipients } from "@/server/report-schedules";
 import { getSavedReport } from "@/server/saved-reports";
 
-import { deleteReportAction, saveReportAction } from "../actions";
+import { deleteReportAction, deleteReportScheduleAction, saveReportAction, saveReportScheduleAction } from "../actions";
 
 export const metadata: Metadata = { title: "Report" };
 
@@ -70,6 +71,12 @@ export default async function ReportViewPage({ params, searchParams }: PageProps
       : undefined;
   const canWrite = memberCan(ctx, "analytics:write");
   const path = `${ctx.base}/analytics/reports/view`;
+  // The report's email schedule (D395), for people who may change reports.
+  const [schedule, people] =
+    saved && canWrite
+      ? await Promise.all([listReportSchedules(ctx.store.id).then((all) => all.find((s) => s.reportId === saved.id) ?? null), reportRecipients(ctx.store.id)])
+      : [null, []];
+  const sw = w.schedule;
 
   return (
     <AdminTextScope texts={adminTexts(ctx.lang, ["analytics", "customReports"])}>
@@ -145,6 +152,79 @@ export default async function ReportViewPage({ params, searchParams }: PageProps
                 <input type="hidden" name="id" value={saved.id} />
                 <SubmitButton variant="secondary">{w.save.delete}</SubmitButton>
                 <span className="text-caption text-muted">{w.save.deleteNote}</span>
+              </ActionForm>
+            )}
+          </Card>
+        )}
+
+        {saved && canWrite && (
+          <Card title={sw.title} description={sw.description}>
+            <ActionForm action={saveReportScheduleAction.bind(null, ctx.store.slug)} className="flex flex-col gap-4">
+              <input type="hidden" name="reportId" value={saved.id} />
+              <input type="hidden" name="id" value={schedule?.id ?? ""} />
+              <div className="flex flex-wrap items-end gap-3">
+                <label className="flex flex-col gap-1 text-sm">
+                  {sw.frequency}
+                  <select name="frequency" defaultValue={schedule?.frequency ?? "weekly"}>
+                    {(["daily", "weekly", "monthly"] as const).map((f) => (
+                      <option key={f} value={f}>
+                        {sw.frequencies[f]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="flex flex-col gap-1 text-sm">
+                  {sw.weekday}
+                  <select name="weekday" defaultValue={String(schedule?.weekday ?? 1)}>
+                    {sw.weekdays.map((day, i) => (
+                      <option key={day} value={String(i + 1)}>
+                        {day}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="flex flex-col gap-1 text-sm">
+                  {sw.monthDay}
+                  <input name="monthDay" type="number" min={1} max={28} defaultValue={schedule?.monthDay ?? 1} className="w-20" />
+                </label>
+                <label className="flex flex-col gap-1 text-sm">
+                  {sw.hour}
+                  <select name="hour" defaultValue={String(schedule?.hour ?? 7)}>
+                    {Array.from({ length: 24 }, (_, h) => (
+                      <option key={h} value={String(h)}>
+                        {String(h).padStart(2, "0")}:00
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <fieldset className="flex flex-col gap-1 text-sm">
+                <legend className="mb-1">{sw.recipients}</legend>
+                {people.map((p) => (
+                  <label key={p.accountId} className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      name="recipients"
+                      value={p.accountId}
+                      defaultChecked={schedule ? schedule.recipients.includes(p.accountId) : p.accountId === ctx.account.id}
+                    />
+                    {p.name ? `${p.name} (${p.email})` : p.email}
+                  </label>
+                ))}
+                <span className="text-caption text-muted">{sw.recipientsHint}</span>
+              </fieldset>
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" name="enabled" value="1" defaultChecked={schedule?.enabled ?? true} />
+                {sw.enabled}
+              </label>
+              <div>
+                <SubmitButton>{sw.save}</SubmitButton>
+              </div>
+            </ActionForm>
+            {schedule && (
+              <ActionForm action={deleteReportScheduleAction.bind(null, ctx.store.slug)} className="mt-4">
+                <input type="hidden" name="id" value={schedule.id} />
+                <SubmitButton variant="secondary">{sw.remove}</SubmitButton>
               </ActionForm>
             )}
           </Card>

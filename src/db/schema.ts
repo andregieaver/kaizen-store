@@ -11991,6 +11991,47 @@ export const savedReports = commerce.table(
 );
 
 /**
+ * A saved report emailed on a schedule (wave 12 unit A, D395): which report, how often (`daily`, `weekly` on `weekday` 1 to 7, `monthly` on
+ * `month_day` 1 to 28), at `hour` on the store's clock, to which members (`recipients`, account ids read again before each send). Written only by
+ * `src/server/report-schedules.ts`; `last_run_on` is the store day a run was claimed for, so a schedule sends once a day at most.
+ */
+export const reportSchedules = commerce.table(
+  "report_schedules",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+    reportId: uuid("report_id")
+      .notNull()
+      .references(() => savedReports.id, { onDelete: "cascade" }),
+    frequency: text("frequency").notNull(),
+    weekday: smallint("weekday"),
+    monthDay: smallint("month_day"),
+    hour: smallint("hour").notNull().default(7),
+    recipients: uuid("recipients").array().notNull().default(sql`'{}'::uuid[]`),
+    enabled: boolean("enabled").notNull().default(true),
+    lastRunOn: date("last_run_on", { mode: "string" }),
+    createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+    updatedBy: uuid("updated_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index("report_schedules_store_idx").on(t.storeId),
+    index("report_schedules_report_idx").on(t.reportId),
+    index("report_schedules_created_by_idx").on(t.createdBy),
+    index("report_schedules_updated_by_idx").on(t.updatedBy),
+    check("report_schedules_frequency", sql`${t.frequency} in ('daily', 'weekly', 'monthly')`),
+    check(
+      "report_schedules_day",
+      sql`(${t.frequency} = 'weekly') = (${t.weekday} is not null) and (${t.frequency} = 'monthly') = (${t.monthDay} is not null)
+        and (${t.weekday} is null or ${t.weekday} between 1 and 7) and (${t.monthDay} is null or ${t.monthDay} between 1 and 28)`,
+    ),
+    check("report_schedules_hour", sql`${t.hour} between 0 and 23`),
+    check("report_schedules_recipients", sql`cardinality(${t.recipients}) between 1 and 10`),
+  ],
+);
+
+/**
  * Marketing spend the owner entered (D152): what was paid for a channel (and a campaign within it) on a day, in the
  * store's main currency. Entered by hand, so the pages say when none has been.
  */

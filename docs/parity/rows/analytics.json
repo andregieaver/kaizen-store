@@ -1335,15 +1335,22 @@
       "checkedOn": "2026-10-02"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "missing"
     },
     "weight": 2,
-    "gap": "No owner-scheduled report email. The nearest thing is the autopilot's weekly report (D309, `sendAutopilotReports()`), which only people with an autopilot plan get, with the week's figures from `periodTotals()` and their goals: no choice of report, schedule or recipients.",
-    "history": [],
-    "bucket": "A",
-    "wave": 2,
+    "gap": "Met (D395): a saved report (D345) is emailed daily, weekly on a weekday or monthly on a day, from an hour on the store's clock, to the members chosen (only those who may read analytics, each read again before every send); the email holds the report's first 25 rows and total worked out by `runReport()`, says what the figures leave out (currencies with no rate, profit's cost coverage), links to the report and attaches the whole table as a CSV; a schedule claims its store day before it runs (`last_run_on`) and each recipient's email is keyed by schedule, day and account, so nothing goes twice, and one schedule's failure is logged and the others go on (`report-schedules.int.test.ts`).",
+    "history": [
+      {
+        "on": "2026-10-29",
+        "from": "missing",
+        "to": "full",
+        "why": "D395: saved reports emailed on a schedule to members who may read analytics, in the store's time zone, once per schedule and day, with the table attached; held in report-schedules.int.test.ts."
+      }
+    ],
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "An owner schedules a daily, weekly or monthly email of a chosen report to chosen staff, sent in the store's time zone.",
       "The email holds the figures worked out in code, with what is missing said plainly, and a link to the page.",
@@ -1351,13 +1358,22 @@
       "Recipients are staff of the store only."
     ],
     "evidence": {
-      "files": [],
-      "tests": [],
+      "files": [
+        "src/server/report-schedules.ts",
+        "src/lib/report-schedules.ts",
+        "src/app/admin/(gated)/[store]/analytics/reports/view/page.tsx",
+        "src/app/admin/(gated)/[store]/analytics/reports/actions.ts"
+      ],
+      "tests": [
+        "src/lib/report-schedules.test.ts",
+        "src/server/report-schedules.int.test.ts"
+      ],
       "untested": false
     },
     "decisions": [
       "D41",
-      "D309"
+      "D309",
+      "D395"
     ]
   },
   {

@@ -295,6 +295,7 @@ export const NOT_PERSONAL: Record<string, string> = {
   theme_submissions:
     "Looks shared as themes by people who work on a store (D344): the look, its name and words, and the name its author chose to be shown by (author_name, a staff account's own choice, shown publicly once approved); never a shopper.",
   saved_reports: "A store's saved report definitions (D345): a name, the catalogue's keys and the staff account that saved it; never figures or a shopper.",
+  report_schedules: "When a saved report is emailed (D395): the report, how often and at what hour, and the staff accounts it goes to; never figures or a shopper.",
   ai_eval_runs: "Runs of the AI evals per model (PSI 2026-10-24): counts, failed cases' ids, problems and the model's answers to scripted cases, and the platform admin account that ran it; no shopper.",
   cron_jobs: "The last run of each scheduled job (PSI 2026-10-24): its name, times, run counts and the last error's message; no person.",
   ad_connections: "A store's connection to an ad platform (D303 I2): the platform's id and the owner's encrypted token; no shopper.",
@@ -551,6 +552,8 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   "staff.summary": "staff",
   /** Analytics alerts to the staff chosen for them (D348): the alerts' words and figures and a link each, never a customer. */
   "staff.analytics_alerts": "staff",
+  /** A saved report emailed on its schedule (D395): the report's figures, names of products and countries; never a customer. */
+  "staff.report": "staff",
   "staff.test": "staff",
   "automation.notify": "staff",
   // To a Work client (the owner's own bookkeeping)
