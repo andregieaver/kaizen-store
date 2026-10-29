@@ -75,6 +75,9 @@ function marked(text: string, marks: Mark[], key: number): ReactNode {
     const opacity = isOpacity(colour.attrs.opacity) ? colour.attrs.opacity : undefined;
     out = <span style={{ color: colourCss(colour.attrs.color, opacity) }}>{out}</span>;
   }
+  // A text style (D393): only its class, whose look is the site's stylesheet of styles.
+  const style = marks.find((mark) => mark.type === "textClass");
+  if (style && /^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$/.test(style.attrs.name)) out = <span className={`ts-${style.attrs.name}`}>{out}</span>;
   const link = marks.find((mark) => mark.type === "link");
   if (link) {
     const href = link.attrs.href;

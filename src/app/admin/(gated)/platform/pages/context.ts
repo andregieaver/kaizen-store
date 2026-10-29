@@ -51,6 +51,8 @@ import { planChoices } from "@/lib/plan-offer";
 import { getPublicPlans } from "@/server/public-plans";
 
 import { planMotionAction } from "./motion-action";
+import { deletePlatformTextStyleAction, savePlatformTextStyleAction } from "./text-style-actions";
+import { listTextStyles } from "@/server/text-styles";
 
 /** The page editor's context for Kaizen's own pages (D42, D53) or articles (D57); `author` starts a new article. */
 export async function platformPageContext(type: PageType = "page", author = ""): Promise<PageOwnerContext> {
@@ -109,6 +111,7 @@ export async function platformPageContext(type: PageType = "page", author = ""):
     experimentsHref: null,
     fields: null,
     siteCss: chrome.customCss,
+    textStyles: { styles: await listTextStyles(null), save: savePlatformTextStyleAction, remove: deletePlatformTextStyleAction },
     actions: {
       save: savePageAction.bind(null, type),
       unpublish: unpublishPageAction.bind(null, type),

@@ -32,6 +32,7 @@ export const STORE_EXPORT_TABLES = [
   "content_types",
   "content_entries",
   "saved_parts",
+  "text_styles",
   "field_groups",
   "redirects",
   "store_theme_installs",

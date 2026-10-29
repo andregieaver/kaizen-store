@@ -289,6 +289,7 @@ export const NOT_PERSONAL: Record<string, string> = {
   webhook_endpoints: "An owner's own endpoints (D354): a name the owner gives, the address and secret encrypted, the topics and whether it works; no customer (the deliveries' payloads are `integration_deliveries`').",
   speed_samples: "How fast one page load was (D336): the store day, the page's kind (front page, product, category, list, page), phone or computer and four timings; no address, visitor, IP address or user agent.",
   own_speed_samples: "How fast one page load of Kaizena Flow's own site or of the admin was (D390): the site, the UTC day, the page's kind, phone or computer and four timings; no address, person, account, IP address or user agent.",
+  text_styles: "A site's named looks for words (D393): a name, a look's settings or its CSS, and the staff who saved it.",
   legal_source_reads: "Each read of an official legal text (D311): which act, language and version, when, and whether it worked; no person.",
   legal_source_texts: "Official legal texts cut into passages (D311), as the EU, Riksdagen, Retsinformation and Lovdata publish them; no person.",
   theme_submissions:

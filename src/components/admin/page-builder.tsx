@@ -10,7 +10,7 @@ import { ROW_GAP, meetsAbove } from "@/lib/row-join";
 import { THEME_ELEMENT_KEYS, elementAsPart, elementFromPart, rowWidthPatch, sectionStylesSchema, themeElementsSchema, themedRows, type ThemeElementKey } from "@/lib/theme-elements";
 import { SECTION_STYLE_NAME, SECTION_STYLES_MAX, isCoreSectionStyle, sectionStyleChoices, sectionStyleLabel } from "@/lib/section-styles";
 import { columnSlotAt, slotAnchor, type Box, type ColumnSlot, type SlotLine } from "@/lib/column-slot";
-import { InlineHeadingEditor } from "@/components/inline-edit/heading-editor";
+import { InlineMarkupEditor } from "@/components/inline-edit/markup-editor";
 import { InlineRichEditor } from "@/components/inline-edit/rich-text-inline";
 import { inlineKindOf } from "@/lib/inline-edit";
 import {
@@ -3150,7 +3150,8 @@ function BlockItem({
         {/* A block that takes its content from a custom field (D118): the canvas has no values, so it shows its own and says so. */}
         {bindingOf(block) && <BindBadge bind={bindingOf(block)!} />}
         {editingInline && block.type === "heading" ? (
-          <InlineHeadingEditor
+          // Its words as they look, text styles and all (D393), written back as the same inline markup.
+          <InlineMarkupEditor
             level={block.level}
             className="leading-tight text-balance font-heading"
             text={block.text}

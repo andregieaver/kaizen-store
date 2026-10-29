@@ -26,6 +26,7 @@ import { isLegalRole, LEGAL_ROLE_COPY, type LegalRole } from "@/lib/legal-roles"
 import { issueCounts, pageIssues, blockingIssues, refusedIssues, themeSetsOf, unacknowledged, type PageIssue } from "@/lib/page-a11y";
 import { reservedChoiceSlugs } from "@/lib/store-address";
 import { parseStoreTheme } from "@/lib/theme";
+import { textStylesCss } from "@/lib/text-styles";
 
 import { audit, type Account } from "./auth";
 import { auditChange } from "./audit";
@@ -34,6 +35,7 @@ import { GlobalsRefused, globalsIn, lockSavedParts, spreadGlobals } from "./glob
 import { withPageAlts } from "./media-alts";
 import { pageRulesProblem, payPageProblem } from "./page-rules";
 import { keepVersion } from "./page-versions";
+import { listTextStyles } from "./text-styles";
 import { scopedTermIds } from "./taxonomy";
 import { getStore } from "./stores";
 import { keepOwnRuleIds } from "./visibility";
@@ -474,7 +476,9 @@ async function checkBeforeSave(
         siteCss = String(row.custom_css ?? "");
       }
     }
-    const issues = pageIssues(content, { ...(theme && { theme: { sets: theme } }), checkout, siteCss });
+    // The site's text styles (D393) colour the words that wear them, as its own CSS does.
+    const styles = textStylesCss(await listTextStyles(owner));
+    const issues = pageIssues(content, { ...(theme && { theme: { sets: theme } }), checkout, siteCss: `${styles}\n${siteCss}` });
     if (checkout && refusedIssues(issues).length > 0) {
       return { result: { ok: false, problems: [payPageProblem(content) ?? "The checkout page cannot hold this."], code: "pay_page_block", issues: refusedIssues(issues) }, acknowledged: [] };
     }

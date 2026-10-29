@@ -51,6 +51,8 @@ import {
   storeThemeSectionsAction,
 } from "./actions";
 import { duplicateStorePageAction } from "./duplicate-action";
+import { deleteStoreTextStyleAction, saveStoreTextStyleAction } from "./text-style-actions";
+import { listTextStyles } from "@/server/text-styles";
 import { cancelScheduleAction, readScheduleAction, scheduleAction } from "./schedule-actions";
 import { listPageLinksAction, makePageLinkAction, revokePageLinkAction } from "./share-actions";
 import { authorsNow, blogsNow } from "@/server/blogs";
@@ -187,6 +189,7 @@ export async function storePageContext(
       startFile: uploadsEnabled() ? startFieldFileUploadAction.bind(null, store.slug) : null,
     },
     siteCss: store.customCss,
+    textStyles: { styles: await listTextStyles(store.id), save: bind(saveStoreTextStyleAction), remove: bind(deleteStoreTextStyleAction) },
     actions: {
       save: typed(saveStorePageAction),
       unpublish: typed(unpublishStorePageAction),

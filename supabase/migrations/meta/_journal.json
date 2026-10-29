@@ -4054,6 +4054,20 @@
       "when": 1793264516623,
       "tag": "20261029090156_own_speed_samples_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 579,
+      "version": "7",
+      "when": 1793267060833,
+      "tag": "20261029094420_text_styles",
+      "breakpoints": true
+    },
+    {
+      "idx": 580,
+      "version": "7",
+      "when": 1793267166303,
+      "tag": "20261029094606_text_styles_rules",
+      "breakpoints": true
     }
   ]
 }

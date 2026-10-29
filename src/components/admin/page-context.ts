@@ -28,6 +28,8 @@ import type { ItemLinkTargets } from "@/server/link-targets";
 import type { PlanChoice } from "@/lib/plan-offer";
 import type { MenuPreview } from "@/server/menus";
 import type { EditablePage } from "@/server/pages";
+import type { DeleteStyleResult, TextStyleResult } from "@/server/text-styles";
+import type { TextStyle } from "@/lib/text-styles";
 import type { SavedResult } from "@/server/saved-parts";
 import type { TermsResult } from "@/server/taxonomy";
 
@@ -35,6 +37,13 @@ import type { StartFieldFile } from "./field-file-upload";
 import type { Upload } from "./image-upload";
 import type { PictureMaker } from "./picture-maker";
 import type { StartVideo } from "./video-upload";
+
+/** A site's text styles in the builder (D393): what it starts with, and the actions that save and delete one. */
+export type TextStylesContext = {
+  styles: TextStyle[];
+  save: (payload: string) => Promise<TextStyleResult>;
+  remove: (slug: string, confirmed: boolean) => Promise<DeleteStyleResult>;
+};
 
 export type PageSaveState =
   | { status: "saved"; page: EditablePage }
@@ -157,6 +166,11 @@ export type PageOwnerContext = {
   themeStore?: { parts: readonly ThemeStorePart[] } | null;
   /** The owner's own CSS for every page of its site (D100), edited in the builder's CSS panel. */
   siteCss: string;
+  /**
+   * The site's text styles (D393, `docs/text-styles.md`): the library the builder's Styles tab edits and the *Style* menu applies, with its
+   * saver and remover; absent or null where the page's owner keeps none (a theme's workspace).
+   */
+  textStyles?: TextStylesContext | null;
   /** The store's custom field groups (D118), for the builder's field components and the page's own fields; null for Kaizen, which has none yet. */
   fields: {
     groups: FieldGroup[];

@@ -113,7 +113,9 @@ export type Mark =
   | { type: "italic" }
   | { type: "underline" }
   | { type: "link"; attrs: { href: string } }
-  | { type: "textStyle"; attrs: TextColourAttrs };
+  | { type: "textStyle"; attrs: TextColourAttrs }
+  /** A text style (D393, `docs/text-styles.md`): drawn as the class `ts-{name}`, the site's stylesheet of styles giving its look. */
+  | { type: "textClass"; attrs: { name: string } };
 
 export type TextColourAttrs = { color: string; opacity?: number };
 
@@ -199,6 +201,14 @@ function cleanMarks(value: unknown): Mark[] | undefined {
         const color = attrs.color.toLowerCase();
         if (marks.some((m) => m.type === "textStyle")) throw new RichTextProblem("A text has one colour.");
         marks.push({ type: "textStyle", attrs: typeof opacity === "number" && opacity < 100 ? { color, opacity } : { color } });
+        break;
+      }
+      case "textClass": {
+        // A text style (D393): its slug only; the site's styles say what it looks like. One a text.
+        const name = isObject(mark.attrs) && typeof mark.attrs.name === "string" ? mark.attrs.name : "";
+        if (!/^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$/.test(name)) throw new RichTextProblem("A text style's name could not be read.");
+        if (marks.some((m) => m.type === "textClass")) throw new RichTextProblem("A text has one text style.");
+        marks.push({ type: "textClass", attrs: { name } });
         break;
       }
       default:

@@ -112,6 +112,8 @@ const PREFIXES: Record<string, AuditArea> = {
   "analytics.": "analytics",
   // Website
   "page.": "website",
+  // Text styles (D393): made, changed, deleted; the slug and the kind, never the CSS.
+  "text_style.": "website",
   // Content types and their entries (D326).
   "content.": "website",
   "article.": "website",

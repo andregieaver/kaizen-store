@@ -90,7 +90,8 @@ export function InlineRichEditor({
         // The window losing the focus does not end it, nor does the focus moving between the text and its bar.
         if (!endOnBlur || !document.hasFocus()) return;
         const next = event.relatedTarget;
-        if (next instanceof Node && (wrapper.current?.contains(next) || bar.current?.contains(next))) return;
+        // Nor does a dialog opened from its bar (a new text style, D393).
+        if (next instanceof Node && (wrapper.current?.contains(next) || bar.current?.contains(next) || (next instanceof Element && next.closest("dialog")))) return;
         finish("save");
       }}
     >

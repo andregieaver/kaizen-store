@@ -303,6 +303,8 @@ export async function startStoreCopy(
         ) as id
       `);
       const storeId = String(made.id);
+      // The site's text styles (D393), so the copied pages' words look as they did.
+      await tx.execute(sql`select commerce.copy_text_styles(${source.id}::uuid, ${storeId}::uuid)`);
       // The owner's own wording of the customer emails (D238, copy group `emails`): only when ticked, in the same transaction.
       if (options.emailTexts === true) {
         await tx.execute(sql`select commerce.copy_email_templates(${source.id}::uuid, ${storeId}::uuid)`);

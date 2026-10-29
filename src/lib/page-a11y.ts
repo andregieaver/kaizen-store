@@ -173,6 +173,8 @@ type RichFacts = {
   links: string[];
   /** The colours marked on words (D180), each once. */
   colours: Ink[];
+  /** The text styles on words (D393), each once: read as their class's colour (`classInks`). */
+  styles: string[];
 };
 
 function inlineText(nodes: InlineNode[] | undefined): string {
@@ -180,7 +182,7 @@ function inlineText(nodes: InlineNode[] | undefined): string {
 }
 
 function richFacts(doc: RichTextDoc | undefined): RichFacts {
-  const facts: RichFacts = { text: "", headings: [], links: [], colours: [] };
+  const facts: RichFacts = { text: "", headings: [], links: [], colours: [], styles: [] };
   const lines: string[] = [];
   const visitInline = (nodes: InlineNode[] | undefined) => {
     // Adjacent text nodes with the same link are one link.
@@ -197,6 +199,7 @@ function richFacts(doc: RichTextDoc | undefined): RichFacts {
         continue;
       }
       for (const mark of node.marks ?? []) {
+        if (mark.type === "textClass" && node.text.trim() !== "" && !facts.styles.includes(mark.attrs.name)) facts.styles.push(mark.attrs.name);
         if (mark.type !== "textStyle" || node.text.trim() === "") continue;
         const ink: Ink = { color: mark.attrs.color.toLowerCase(), ...(mark.attrs.opacity !== undefined && { opacity: mark.attrs.opacity }) };
         if (!facts.colours.some((c) => c.color === ink.color && c.opacity === ink.opacity)) facts.colours.push(ink);
@@ -397,7 +400,8 @@ export function pageIssues(
          */
         const classInks = () => {
           if (classRules.length === 0) return;
-          for (const name of spanClassSets(blockWords(block))) {
+          const richStyles = block.type === "richText" ? richFacts(block.doc).styles.map((name) => [`ts-${name}`]) : [];
+          for (const name of [...spanClassSets(blockWords(block)), ...richStyles]) {
             const color = colourOfClasses(name, classRules);
             if (color) textOver(`Text with the class ${name.map((c) => `.${c}`).join("")}`, (size) => ({ ink: { color }, ...behindOf(size) }), false);
           }

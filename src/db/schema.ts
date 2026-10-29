@@ -7954,6 +7954,41 @@ export const cssVersions = commerce.table(
 );
 
 /**
+ * A text style (D393, `docs/text-styles.md`): a named look for words, a store's or Kaizena Flow's own (`store_id` null), drawn as the
+ * class `ts-{slug}` from a gallery look's settings or its own CSS (`kind` `custom`). Written only by `src/server/text-styles.ts`; the slug
+ * is fixed once made, so a rename never breaks a word that wears it.
+ */
+export const textStyles = commerce.table(
+  "text_styles",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id").references(() => stores.id),
+    slug: text("slug").notNull(),
+    name: text("name").notNull(),
+    kind: text("kind").notNull(),
+    settings: jsonb("settings").notNull().default({}),
+    css: text("css"),
+    position: integer("position").notNull().default(0),
+    createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+    updatedBy: uuid("updated_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique("text_styles_owner_slug").on(t.storeId, t.slug).nullsNotDistinct(),
+    index("text_styles_created_by_idx").on(t.createdBy),
+    index("text_styles_updated_by_idx").on(t.updatedBy),
+    check("text_styles_slug", sql`${t.slug} ~ '^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$'`),
+    check("text_styles_name", sql`length(btrim(${t.name})) between 1 and 60`),
+    check(
+      "text_styles_kind",
+      sql`${t.kind} in ('gradient', 'highlight', 'outline', 'underline', 'glow', 'colour', 'smallCaps', 'spacedCaps', 'custom')`,
+    ),
+    check("text_styles_css", sql`${t.css} is null or length(${t.css}) <= 2000`),
+  ],
+);
+
+/**
  * A row, column, component or whole page layout saved to use again (D46, D127): Kaizen's own
  * (`store_id` null) or a store's, shown under Saved in the page builder.
  * Using one puts a copy on the page; changing it later changes what the

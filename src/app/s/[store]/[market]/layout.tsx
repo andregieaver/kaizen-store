@@ -7,6 +7,7 @@ import { BackToAdmin } from "@/components/back-to-admin";
 import { AbMarker } from "@/components/ab/ab-marker";
 import { StoreExperiments } from "@/components/ab/store-experiments";
 import { KeepFocusEverywhere } from "@/components/keep-focus-everywhere";
+import { textStylesCssFor } from "@/server/text-styles";
 import { OffPayRoutes } from "@/components/off-pay-routes";
 import { PayDocumentWatcher } from "@/components/pay-route-guard";
 import { StoreVisits } from "@/components/store-visits";
@@ -159,6 +160,8 @@ export default async function MarketLayout({ children, drawer, params }: Props) 
         <StoreColorScript store={store} />
         {/* The store's own fonts (D59) and theme (D60). */}
         <StoreThemeStyles store={store} />
+        {/* The site's text styles (D393), after the theme and before the owner's own CSS, which can still say otherwise. */}
+        <CustomCss css={await textStylesCssFor(store.id)} name={`text-styles-${store.id}`} />
         {/* The owner's own CSS for every page, and the header's and footer's (D100), after the theme. */}
         <CustomCss css={store.customCss} name={`store-${store.id}`} />
         <CustomCss css={headerLayout?.content.css} name={`header-${headerLayout?.id}`} />

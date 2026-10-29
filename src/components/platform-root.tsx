@@ -22,6 +22,7 @@ import { siteFontStyle } from "@/server/fonts";
 import { getPlatformChrome, getPlatformFavicon } from "@/server/platform-navigation";
 import { getPlatformSeo, PLATFORM_DEFAULTS, verificationTags } from "@/server/seo";
 import { siteLayoutFor } from "@/server/site-layouts";
+import { textStylesCssFor } from "@/server/text-styles";
 
 
 /**
@@ -63,6 +64,8 @@ export async function PlatformRoot({ lang, children }: { lang: PlatformLang; chi
       >
         {/* Kaizen's own fonts, from its copies (D59), its theme (D235) and its screen sizes' breakpoint classes (D179). */}
         <StoreThemeStyles store={{ id: "kaizen", theme: chrome.theme, fonts: chrome.fonts }} />
+        {/* Kaizena Flow's text styles (D393), before its own CSS. */}
+        <CustomCss css={await textStylesCssFor(null)} name="text-styles-kaizen" />
         {/* Kaizen's own CSS for every page, and its header's and footer's (D100). */}
         <CustomCss css={chrome.customCss} name="kaizen" />
         <CustomCss css={headerLayout?.content.css} name={`header-${headerLayout?.id}`} />

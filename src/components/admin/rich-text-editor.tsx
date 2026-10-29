@@ -7,11 +7,15 @@ import StarterKit from "@tiptap/starter-kit";
 import { useId, useState, type ReactNode } from "react";
 
 import { HEX6, colourCss, isOpacity } from "@/lib/colour";
+import { formatHtml, htmlLeftOut } from "@/lib/rich-html";
+import { SLUG_SHAPE, slugOfClass, textStyleClass } from "@/lib/text-styles";
 import { isLinkAddress, type RichTextDoc } from "@/lib/page-content";
 
 import { fillWords } from "@/lib/admin-fill";
 import { useAdminText } from "./admin-text";
 import { ColorField } from "./colour-field";
+import { StyleMenu, useTextStyles } from "./text-styles";
+
 
 /**
  * A rich-text block in the page editor (D42): Tiptap (ProseMirror) in the
@@ -57,6 +61,38 @@ const TextColour = Mark.create({
   },
 });
 
+/**
+ * A text style on words (D393): the mark `textClass` with the style's slug, drawn as `<span class="ts-{slug}">`. Only a style's class is
+ * read back from HTML (a paste, the HTML view), never another class; it reads alongside a colour's span (`consuming: false`).
+ */
+const TextClass = Mark.create({
+  name: "textClass",
+  addAttributes() {
+    return {
+      name: {
+        default: null,
+        parseHTML: (element: HTMLElement) => styleSlugOf(element),
+        renderHTML: () => ({}),
+      },
+    };
+  },
+  parseHTML() {
+    return [{ tag: "span", consuming: false, getAttrs: (element: HTMLElement) => (styleSlugOf(element) ? null : false) }];
+  },
+  renderHTML({ mark }) {
+    const name = typeof mark.attrs.name === "string" && SLUG_SHAPE.test(mark.attrs.name) ? mark.attrs.name : null;
+    return ["span", name ? { class: textStyleClass(name) } : {}, 0];
+  },
+});
+
+function styleSlugOf(element: HTMLElement): string | null {
+  for (const name of Array.from(element.classList)) {
+    const slug = slugOfClass(name);
+    if (slug) return slug;
+  }
+  return null;
+}
+
 /** What a rich text can hold, for the editor in the page builder's panel and the one that edits in place (D191). */
 export const RICH_TEXT_EXTENSIONS = [
   StarterKit.configure({
@@ -75,6 +111,7 @@ export const RICH_TEXT_EXTENSIONS = [
   }),
   Placeholder.configure({ placeholder: "Write here …" }),
   TextColour,
+  TextClass,
 ];
 
 /** What a person types as a link: "kaizen.no" means https://kaizen.no. */
@@ -114,10 +151,66 @@ export function RichTextEditor({
     onUpdate: ({ editor }) => onChange(editor.getJSON() as RichTextDoc),
   });
 
+  const w = useAdminText("builder").textStyles;
+  const styles = useTextStyles();
+  // The HTML view (D393): the editor's HTML to edit as text, read back into the editor's parts on Visual, naming what was left out.
+  const [html, setHtml] = useState<string | null>(null);
+  const [leftOut, setLeftOut] = useState<string[]>([]);
+  const htmlId = useId();
+  const toVisual = () => {
+    if (!editor || html === null) return;
+    const known = new Set((styles?.styles ?? []).map((style) => style.slug));
+    setLeftOut(htmlLeftOut(html, known));
+    editor.commands.setContent(html, { emitUpdate: true });
+    setHtml(null);
+  };
   return (
     <div className="rounded-md border border-line bg-card focus-within:border-brand">
-      {editor ? <RichTextToolbar editor={editor} label={label} /> : <div className="h-11 border-b border-line" />}
-      <EditorContent editor={editor} />
+      <div role="group" aria-label={w.html} className="flex justify-end gap-1 border-b border-line px-1 py-1">
+        {(["visual", "html"] as const).map((view) => (
+          <button
+            key={view}
+            type="button"
+            aria-pressed={(html !== null) === (view === "html")}
+            disabled={!editor}
+            onClick={() => {
+              if (view === "html" && editor && html === null) {
+                setLeftOut([]);
+                setHtml(formatHtml(editor.getHTML()));
+              } else if (view === "visual") toVisual();
+            }}
+            className="min-h-8 rounded px-2 text-caption text-ink-2 hover:bg-sunken aria-pressed:bg-inverse aria-pressed:text-inverse-ink"
+          >
+            {view === "visual" ? w.visual : w.html}
+          </button>
+        ))}
+      </div>
+      {/* The editor stays mounted while the HTML is edited, only hidden. */}
+      <div hidden={html !== null}>
+        {editor ? <RichTextToolbar editor={editor} label={label} /> : <div className="h-11 border-b border-line" />}
+        <EditorContent editor={editor} />
+      </div>
+      {html !== null && (
+        <div className="flex flex-col gap-2 p-2">
+          <label htmlFor={htmlId} className="sr-only">
+            {fillWords(w.htmlLabel, { label })}
+          </label>
+          <textarea
+            id={htmlId}
+            value={html}
+            onChange={(event) => setHtml(event.target.value)}
+            rows={10}
+            spellCheck={false}
+            className="min-h-40 w-full rounded border border-line bg-card px-3 py-2 font-mono text-caption"
+          />
+          <p className="text-caption text-muted">{w.htmlHint}</p>
+        </div>
+      )}
+      {leftOut.length > 0 && (
+        <p role="status" className="border-t border-line px-3 py-2 text-caption text-warning-text">
+          {fillWords(w.leftOut, { list: leftOut.join(", ") })}
+        </p>
+      )}
     </div>
   );
 }
@@ -143,6 +236,8 @@ export function RichTextToolbar({ editor, label }: { editor: Editor; label: stri
       link: e.isActive("link"),
       href: (e.getAttributes("link").href as string | undefined) ?? "",
       color: (e.getAttributes("textStyle").color as string | null | undefined) ?? undefined,
+      textClass: (e.getAttributes("textClass").name as string | null | undefined) ?? null,
+      selected: !e.state.selection.empty,
       opacity: (e.getAttributes("textStyle").opacity as number | null | undefined) ?? undefined,
       canUndo: e.can().undo(),
       canRedo: e.can().redo(),
@@ -210,6 +305,16 @@ export function RichTextToolbar({ editor, label }: { editor: Editor; label: stri
             <span className="mt-0.5 h-1 w-4 rounded-sm border border-line" style={state.color ? { backgroundColor: colourCss(state.color, state.opacity) } : undefined} />
           </span>,
         )}
+        <StyleMenu
+          active={state.textClass}
+          hasSelection={state.selected}
+          apply={(slug) => {
+            // The selected words, or the styled words the cursor is in.
+            let next = chain();
+            if (editor.state.selection.empty && state.textClass) next = next.extendMarkRange("textClass");
+            (slug ? next.setMark("textClass", { name: slug }) : next.unsetMark("textClass")).run();
+          }}
+        />
         <span aria-hidden className="mx-1 h-6 w-px bg-line" />
         {button(w.bullets, state.bulletList, () => chain().toggleBulletList().run(), <ListIcon />)}
         {button(w.numbers, state.orderedList, () => chain().toggleOrderedList().run(), <NumberedIcon />)}

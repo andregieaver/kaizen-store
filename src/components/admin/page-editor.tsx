@@ -82,6 +82,7 @@ import { PageVersionsDialog } from "./page-versions-dialog";
 import { SaveTemplateDialog, defaultTemplateName } from "./save-template-dialog";
 import { ScheduleButton } from "./schedule-dialog";
 import { ShareButton } from "./share-links";
+import { TextStylesProvider, useTextStylesState } from "./text-styles";
 
 const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm font-normal";
 const label = "flex flex-col gap-1 text-sm font-medium";
@@ -215,6 +216,12 @@ export function PageEditor({
   const [coolUndo, setCoolUndo] = useState<{ before: PageRow[]; after: PageRow[] } | null>(null);
   const [motionRequest, setMotionRequest] = useState(0);
   const [siteCss, setSiteCss] = useState(context.siteCss);
+  // The site's text styles (D393) as this editor holds them, and the colours a new one starts from (the theme's accent and text).
+  const textStyles = useTextStylesState(context.textStyles);
+  const styleStarter = {
+    accent: context.colours.find((swatch) => swatch.name === "Accent")?.colour ?? "#2563eb",
+    text: context.colours.find((swatch) => swatch.name === "Text")?.colour ?? "#111111",
+  };
   const language = context.languages.find((l) => l.locale === locale) ?? main;
   const translating = language.locale !== main.locale;
 
@@ -343,11 +350,11 @@ export function PageEditor({
   const checkout = context.check?.checkoutPageId != null && saved?.id === context.check.checkoutPageId;
   const issues = useMemo<PageIssue[] | null>(() => {
     try {
-      return pageIssues(content, { ...(context.check && { theme: { sets: context.check.theme } }), checkout, siteCss: context.siteCss, ...(shape === "footer" && { footer: { storeId: context.owner } }) });
+      return pageIssues(content, { ...(context.check && { theme: { sets: context.check.theme } }), checkout, siteCss: `${textStyles.css}\n${context.siteCss}`, ...(shape === "footer" && { footer: { storeId: context.owner } }) });
     } catch {
       return null;
     }
-  }, [content, context.check, checkout, shape, context.owner, context.siteCss]);
+  }, [content, context.check, checkout, shape, context.owner, context.siteCss, textStyles.css]);
 
   // Saves the page (as a draft, or published); true when it was saved. *Schedule* (D341) saves a changed draft first through it.
   const save = async (publish: boolean, acknowledged?: string[]): Promise<boolean> => {
@@ -492,7 +499,9 @@ export function PageEditor({
   const state: PageState | null = saved ? (dirty && saved.published ? "changed" : saved.state) : null;
 
   return (
-    // Every colour field offers the theme's colours (D180).
+    // The site's text styles (D393): the Style menu's library, drawn on the canvas as it changes.
+    <TextStylesProvider value={context.textStyles} state={textStyles} starter={styleStarter}>
+    {/* Every colour field offers the theme's colours (D180). */}
     <ColourSwatches value={context.colours}>
     <MediaPickerProvider list={context.media}>
     {/* Every picture field can make its picture by prompt in the site's look (D283) where the site's AI has a picture model. */}
@@ -520,7 +529,7 @@ export function PageEditor({
         onRows={changeRows}
         translate={translating ? { name: language.name, mainName: main.name, source: content.rows } : null}
         viewNote={<ViewNote country={context.viewCountry} language={language.name} markets={content.markets} />}
-        css={[siteCss, content.css ?? ""]}
+        css={[textStyles.css, siteCss, content.css ?? ""]}
         saved={parts}
         onSaved={updateParts}
         templates={context.templates}
@@ -1106,6 +1115,7 @@ export function PageEditor({
     </PictureMakerProvider>
     </MediaPickerProvider>
     </ColourSwatches>
+    </TextStylesProvider>
   );
 }
 
