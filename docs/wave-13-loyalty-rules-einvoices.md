@@ -80,6 +80,8 @@ schematron in CI; the rules the code can hold are tested.
 
 The loaders in `src/server/analytics-*.ts` that read money through `setBased<Row>` describe their rows and go through `checkedRows()`.
 
+**As built (D404).** 41 reads in 15 loaders; reads of counts, names and dates only were left as they were.
+
 ## 3. Rules for every unit
 
 The house rules of `docs/wave-11-core-and-psi.md` section 3 hold, as in wave 12.

@@ -41,10 +41,12 @@ maturity for the run-up to launch. Point IDs are the audit's.
       are no longer logged).
 - [x] **CODE-02** `typedRows()`/`typedRow()` and `col` (`src/server/typed-rows.ts`) for new reads and money reads, a rule in CLAUDE.md,
       and the gift card liability reads converted first.
-- [ ] **CODE-02** Convert the other money reads as they are touched (analytics, payouts, refunds, tax reports first). D400 converted
+- [x] **CODE-02** Convert the other money reads as they are touched (analytics, payouts, refunds, tax reports first). D400 converted
       Finance's refunds, lost disputes and spend (`analytics-totals.ts`, through `checkedRows()` over `setBased()`), the payouts report
       (`payouts-report.ts`) and the refunds page's totals (`analytics-refunds-data.ts`); the tax reports read documents through
       `tax_document_groups()` and their exports log no money. The other analytics loaders still read `Row` and move over when touched.
+      D404 converted the rest: 41 money reads in 15 analytics loaders, each row described with `col` and checked (`checkedRows()`,
+      `typedRows()`), jsonb results included; reads of counts, names and dates only stay as they were.
 - [x] **AGT-10, AST-09** The agents' safety eval (`src/lib/agent-eval.ts`, `src/server/agent-eval.ts`): the chat and the manager with
       their real prompts and tools on scripted tool answers that hide instructions (product text, knowledge, a customer's note, a
       support message, a page), plus off-topic, invented prices, prompt extraction and an asked-for refund; run from Platform → AI,
