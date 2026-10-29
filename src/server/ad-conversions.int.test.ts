@@ -77,7 +77,7 @@ afterAll(async () => {
     await db().execute(sql`delete from commerce.ad_conversions where store_id = ${id}::uuid`);
     await db().execute(sql`delete from commerce.ad_connections where store_id = ${id}::uuid`);
   }
-  await db().execute(sql`delete from commerce.stripe_accounts where account_id = ${`acct_ads_${run}`}`);
+  await db().execute(sql`delete from commerce.stripe_accounts where account_id = ${`acct_ads${run}`}`);
   await closeDb();
 });
 
@@ -125,10 +125,10 @@ describe("ad conversions (D303 I2)", () => {
     // Test mode: a checkout started, but no purchase.
     expect((await conversions(testMode)).map((r) => r.event)).toEqual(["begin_checkout", "begin_checkout"]);
     // A Stripe payment's own flag is always false: its mode is its account's, a test account here (found in production, 29 October 2026).
-    await db().execute(sql`insert into commerce.stripe_accounts (store_id, mode, account_id, card_payments, requirements_due) values (${storeId}::uuid, 'test', ${`acct_ads_${run}`}, 'active', false)`);
+    await db().execute(sql`insert into commerce.stripe_accounts (store_id, mode, account_id, card_payments, requirements_due) values (${storeId}::uuid, 'test', ${`acct_ads${run}`}, 'active', false)`);
     const stripeCart = await cart(storeId, true);
     await recordAdSignals(storeId, [stripeCart], true, { fbp: "fb.1.1760000000000.4" });
-    const onTestAccount = await order(storeId, stripeCart, "4", { account: `acct_ads_${run}` });
+    const onTestAccount = await order(storeId, stripeCart, "4", { account: `acct_ads${run}` });
     await queueAdConversions();
     expect((await conversions(onTestAccount)).map((r) => r.event)).toEqual(["begin_checkout", "begin_checkout"]);
   });
