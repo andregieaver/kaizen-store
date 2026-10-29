@@ -317,7 +317,7 @@ const post = (path: string, token: string, body: unknown) =>
   new Request(`https://kaizen.test${path}`, { method: "POST", headers: { authorization: `Bearer ${token}`, "content-type": "application/json" }, body: JSON.stringify(body) });
 const forStore = (s: string) => ({ params: Promise.resolve({ slug: s }) }) as never;
 
-/** Goods of the store with their variants, and the appointment product that cannot be put in such a cart. */
+/** Goods of the store with their variants, and a product booked for a time (an appointment, a stay or a rental) that cannot be put in such a cart: never a gift card or a bundle, which can. */
 async function catalogue() {
   const goods = await db().execute<Row>(sql`
     select distinct p.handle, v.id as variant_id, p.id as product_id, v.sku from commerce.products p join commerce.product_variants v on v.product_id = p.id and v.active
@@ -327,7 +327,8 @@ async function catalogue() {
   `);
   const [appointment] = await db().execute<Row>(sql`
     select p.handle, v.id as variant_id from commerce.products p join commerce.product_variants v on v.product_id = p.id
-    where p.store_id = (select id from commerce.stores where slug = ${slug}) and p.kind <> 'goods' and p.status = 'active' limit 1
+    where p.store_id = (select id from commerce.stores where slug = ${slug}) and p.kind in ('appointment', 'stay', 'rental') and p.status = 'active'
+    order by p.kind, p.handle limit 1
   `);
   return { goods: goods.map((g) => ({ handle: String(g.handle), variantId: String(g.variant_id), productId: String(g.product_id) })), appointment: appointment ? { handle: String(appointment.handle), variantId: String(appointment.variant_id) } : null };
 }
