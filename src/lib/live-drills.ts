@@ -3,8 +3,8 @@
  * result. The runs are `src/server/live-drills.ts`.
  */
 
-/** In the order a run takes them: the checks that read come first, the drills that change an order after. */
-export const DRILL_KINDS = ["webhooks", "payment_facts", "mark_sent", "partial_refund", "full_refund"] as const;
+/** In the order a run takes them: the checks that read come first, the drills that change an order after, the agents' eval (no store's data) last. */
+export const DRILL_KINDS = ["webhooks", "payment_facts", "mark_sent", "partial_refund", "full_refund", "agent_eval"] as const;
 export type DrillKind = (typeof DRILL_KINDS)[number];
 
 export const DRILL_WORDS: Record<DrillKind, string> = {
@@ -13,6 +13,7 @@ export const DRILL_WORDS: Record<DrillKind, string> = {
   mark_sent: "A paid order is marked sent with a tracking number",
   partial_refund: "1 unit of the order's currency is refunded through Stripe",
   full_refund: "What is left of an order is refunded through Stripe",
+  agent_eval: "The agents' safety eval runs on the platform's own model and its recording is kept for CI",
 };
 
 export type DrillOutcome = "passed" | "failed" | "skipped";

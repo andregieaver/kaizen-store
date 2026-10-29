@@ -7,6 +7,8 @@ import { db } from "@/db/client";
 import { DRILL_EMAIL_DOMAIN, DRILL_WORDS, drillPlan, type DrillKind, type DrillResult } from "@/lib/live-drills";
 import { siteUrl } from "@/lib/site";
 
+import { runAgentEval } from "./agent-eval";
+import { ownConnection } from "./ai";
 import { log } from "./log";
 import { markSent, refundOrder, getOrderAdmin } from "./order-admin";
 import { readMissingPaymentFacts } from "./payment-facts";
@@ -128,8 +130,21 @@ async function refundDrill(storeId: string, kind: "partial_refund" | "full_refun
   };
 }
 
-async function runOne(storeId: string, kind: DrillKind): Promise<DrillResult> {
+/** The agents' safety eval (D391) on Kaizena Flow's own text model, kept with its recording as a run from Platform → AI is. */
+async function evalDrill(requestedBy: string | null): Promise<DrillResult> {
+  const connection = await ownConnection(null);
+  if (!connection?.textModel) return { kind: "agent_eval", outcome: "skipped", detail: "Kaizena Flow's AI has no text model." };
+  const result = await runAgentEval({ ...connection, usage: { storeId: null, feature: "ai_test", accountId: requestedBy } }, { id: requestedBy as string });
+  return {
+    kind: "agent_eval",
+    outcome: result.ok ? "passed" : "failed",
+    detail: `${result.passed} of ${result.total} cases passed on ${result.model}${result.failures.length ? `; failed: ${result.failures.map((f) => f.id).join(", ")}` : ""}.`,
+  };
+}
+
+async function runOne(storeId: string, kind: DrillKind, requestedBy: string | null): Promise<DrillResult> {
   try {
+    if (kind === "agent_eval") return await evalDrill(requestedBy);
     if (kind === "webhooks") return await webhooksDrill();
     if (kind === "payment_facts") return await factsDrill(storeId);
     if (kind === "mark_sent") return await sentDrill(storeId);
@@ -143,11 +158,11 @@ async function runOne(storeId: string, kind: DrillKind): Promise<DrillResult> {
 /** The five-minute dispatcher's part: one requested run, claimed under a lock, each drill in order, the results kept. Returns how many drills ran. */
 export async function runLiveDrills(): Promise<number> {
   const [claimed] = await typedRows(
-    z.object({ id: col.uuid, store_id: col.uuid, kinds: z.array(z.string()) }),
+    z.object({ id: col.uuid, store_id: col.uuid, requested_by: col.uuid.nullable(), kinds: z.array(z.string()) }),
     sql`
       update commerce.live_drills set status = 'running', started_at = now()
       where id = (select id from commerce.live_drills where status = 'requested' order by requested_at limit 1 for update skip locked)
-      returning id, store_id, kinds
+      returning id, store_id, requested_by, kinds
     `,
   );
   if (!claimed) return 0;
@@ -155,7 +170,7 @@ export async function runLiveDrills(): Promise<number> {
   if (!(await inTestMode(claimed.store_id))) {
     results.push(...drillPlan(claimed.kinds).map((kind) => ({ kind, outcome: "skipped" as const, detail: "The store's checkout is not in test mode." })));
   } else {
-    for (const kind of drillPlan(claimed.kinds)) results.push(await runOne(claimed.store_id, kind));
+    for (const kind of drillPlan(claimed.kinds)) results.push(await runOne(claimed.store_id, kind, claimed.requested_by));
   }
   await db().execute(sql`
     update commerce.live_drills set status = 'done', finished_at = now(), results = ${JSON.stringify(results)}::jsonb where id = ${claimed.id}::uuid
