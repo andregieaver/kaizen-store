@@ -16008,3 +16008,29 @@ export const customApps = commerce.table(
     index("custom_apps_created_by_idx").on(t.createdBy),
   ],
 );
+
+/**
+ * Live drills (consolidation, D406): a platform admin's (or the platform's AI's) request that Kaizena Flow run a store's money paths for real in Stripe's test
+ * mode (refunds, marking sent, payment facts, its webhooks) and keep what each found. Run only by `runLiveDrills()` in the five-minute dispatcher, only on a
+ * store whose checkout is in test mode and only on orders paid on a test account to Resend's test domain; never on real money.
+ */
+export const liveDrills = commerce.table(
+  "live_drills",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    requestedBy: uuid("requested_by").references(() => accounts.id, { onDelete: "set null" }),
+    kinds: text("kinds").array().notNull(),
+    status: text("status").notNull().default("requested"),
+    results: jsonb("results").notNull().default([]),
+    requestedAt: timestamp("requested_at", { withTimezone: true }).notNull().defaultNow(),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (t) => [
+    check("live_drills_status", sql`${t.status} in ('requested', 'running', 'done')`),
+    check("live_drills_kinds", sql`cardinality(${t.kinds}) between 1 and 10`),
+    index("live_drills_store_idx").on(t.storeId, t.requestedAt),
+    index("live_drills_requested_by_idx").on(t.requestedBy),
+  ],
+);

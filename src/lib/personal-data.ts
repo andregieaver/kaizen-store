@@ -289,6 +289,7 @@ export const NOT_PERSONAL: Record<string, string> = {
   workflow_runs: "Each run of a workflow (D356): the event, the id of what it was about, whether its conditions held and each action's outcome; no name, address or words of a customer, kept 90 days.",
   api_tokens: "Admin API tokens (D355): a name the owner gives, the scopes, the token's hash and first characters, who made it and when it was last used; no customer.",
   webhook_endpoints: "An owner's own endpoints (D354): a name the owner gives, the address and secret encrypted, the topics and whether it works; no customer (the deliveries' payloads are `integration_deliveries`').",
+  live_drills: "A run of a store's money paths in Stripe's test mode (D406): the kinds asked, who asked (an admin's account) and each outcome with order numbers and amounts; no shopper.",
   speed_samples: "How fast one page load was (D336): the store day, the page's kind (front page, product, category, list, page), phone or computer and four timings; no address, visitor, IP address or user agent.",
   own_speed_samples: "How fast one page load of Kaizena Flow's own site or of the admin was (D390): the site, the UTC day, the page's kind, phone or computer and four timings; no address, person, account, IP address or user agent.",
   text_styles: "A site's named looks for words (D393): a name, a look's settings or its CSS, and the staff who saved it.",
