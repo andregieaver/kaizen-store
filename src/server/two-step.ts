@@ -12,6 +12,7 @@ import { attemptState, lockedText, normaliseTotp, TWO_STEP_LIMIT } from "@/lib/t
 
 import { auditAccount, auditChange } from "./audit";
 import { readSession, type Account, type Membership } from "./auth";
+import { log } from "./log";
 import { memberCan, NO_ACCESS } from "./permissions";
 import { refreshTag } from "./refresh";
 import { claimRecoveryCode, makeRecoveryCodes, recoveryAvailable, recoveryCodesLeft, revokeRecoveryCodes } from "./recovery-codes";
@@ -107,6 +108,7 @@ async function clearAttempt(accountId: string, key: string): Promise<void> {
 
 /** The wrong code's own entry, for the platform and each store's log; the try it used was reserved already, so this one carries its key and counts for nothing. */
 async function recordFailure(accountId: string, via: "totp" | "recovery" | "enrol", attempt: string): Promise<void> {
+  log("warn", "admin_sign_in.two_step_failed", { accountId, via });
   await auditAccount(accountId, "account.two_step_failed", { via, attempt });
 }
 

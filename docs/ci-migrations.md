@@ -29,6 +29,10 @@ A push to `main` takes one of two paths, chosen by reading production's ledger (
   environment `production`. A failed check
   or migration deploys nothing, so new code never meets the old schema.
 
+Either way the job then waits for production to run the commit (D389, `scripts/await-deploy.mjs`): it reads `/api/health` until the
+`commit` there is this one, or a later one that includes it, and fails, saying what production reports, after twenty minutes. Set the
+repository variable `PRODUCTION_URL` when the site's address is not `https://kaizenaflow.com`.
+
 Both need the repository variable `AUTO_MIGRATE` to be `true` (the `pending` job is off without it, and
 every push then deploys only after the three checks, in `release`). A run on `main` is never cancelled by a newer push (it may be
 mid-migration) and never waits for another: each has a concurrency group of its own, so a quick deploy is not

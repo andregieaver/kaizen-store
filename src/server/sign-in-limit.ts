@@ -49,8 +49,9 @@ export async function signInLocked(email: string): Promise<boolean> {
   }
 }
 
-/** Counts a wrong try for the address. */
+/** Counts a wrong try for the address, and logs it (D389, SEC-11) without the address: a security log line names no one. */
 export async function countFailedSignIn(email: string): Promise<void> {
+  log("warn", "admin_sign_in.failed", { via: "password" });
   try {
     await db().execute(sql`
       insert into commerce.chat_usage (store_id, bucket, "window", count) values (null, ${signInBucket(email)}, ${windowStart}, 1)

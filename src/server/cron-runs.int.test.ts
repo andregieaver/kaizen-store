@@ -38,6 +38,35 @@ describe("the cron run ledger (PSI 2026-10-24, REL-06)", () => {
     quiet.mockRestore();
   });
 
+  it("tells the platform's admins once when a job turns failing, and again only after it ran well and failed again (D389)", async () => {
+    const email = `ops-${prefix}@example.com`;
+    await db().execute(sql`insert into commerce.accounts (email, name, platform_admin) values (${email}, 'Ops', true)`);
+    const sent = async () => {
+      const [row] = await db().execute<{ n: number }>(sql`
+        select count(*)::int as n from commerce.email_messages where kind = 'platform.job_failing' and to_address = ${email}`);
+      return Number(row.n);
+    };
+    const job = `${prefix}.alerting`;
+    const quiet = vi.spyOn(console, "error").mockImplementation(() => {});
+    const fail = () => tracked(job, 300, async () => Promise.reject(new Error("bank feed down")));
+    await tracked(job, 300, async () => 1);
+    for (let i = 0; i < 2; i++) await fail();
+    expect(await sent()).toBe(0);
+    await fail();
+    expect(await sent()).toBe(1);
+    await fail();
+    expect(await sent()).toBe(1);
+    const [message] = await db().execute<{ subject: string; text: string }>(sql`
+      select subject, text from commerce.email_messages where kind = 'platform.job_failing' and to_address = ${email}`);
+    expect(message.subject).toContain(job);
+    expect(message.text).toContain("bank feed down");
+    // A good run ends the turn; failing again is a new one.
+    await tracked(job, 300, async () => 1);
+    for (let i = 0; i < 3; i++) await fail();
+    expect(await sent()).toBe(2);
+    quiet.mockRestore();
+  });
+
   it("runs a dispatcher's jobs side by side, and one that throws leaves the others' answers", async () => {
     const quiet = vi.spyOn(console, "error").mockImplementation(() => {});
     const results = await runJobs(prefix, 300, {

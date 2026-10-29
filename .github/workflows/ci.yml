@@ -225,7 +225,7 @@ jobs:
   pending:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.AUTO_MIGRATE == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 35
     outputs:
       pending: ${{ steps.status.outputs.pending }}
     env:
@@ -251,6 +251,12 @@ jobs:
           # A busy Vercel answers 429: wait as it asks (Retry-After) and try again, up to five minutes.
           curl --fail --silent --show-error --max-time 30 --retry 6 --retry-max-time 300 -X POST "$VERCEL_DEPLOY_HOOK_URL"
           echo
+      - name: Wait until production runs this commit
+        if: steps.status.outputs.pending == 'false' && vars.DEPLOY_VIA_CI == 'true'
+        env:
+          PRODUCTION_URL: ${{ vars.PRODUCTION_URL || 'https://kaizenaflow.com' }}
+        # The deploy is verified (D389): /api/health reports the deployment's commit; a later push's deployment that includes it counts.
+        run: node scripts/await-deploy.mjs
 
   # Migrations were pending (or AUTO_MIGRATE is off): after the three checks, apply the files, then deploy, in one
   # job. A failed check, a failed migration or a status that could not be read deploys nothing. Re-running a
@@ -266,14 +272,14 @@ jobs:
       && needs.static.result == 'success' && needs.integration.result == 'success' && needs.e2e.result == 'success'
     needs: [pending, static, integration, e2e]
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 45
     environment: production
     env:
       DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
       MIGRATE_EXPECT: ybsozesfuxuitoacntfo
     steps:
+      # Checked out for the deploy's wait too (D389).
       - uses: actions/checkout@v5
-        if: needs.pending.outputs.pending == 'true'
       - uses: pnpm/action-setup@v4
         if: needs.pending.outputs.pending == 'true'
       - uses: actions/setup-node@v5
@@ -298,13 +304,20 @@ jobs:
           # A busy Vercel answers 429: wait as it asks (Retry-After) and try again, up to five minutes.
           curl --fail --silent --show-error --max-time 30 --retry 6 --retry-max-time 300 -X POST "$VERCEL_DEPLOY_HOOK_URL"
           echo
+      - name: Wait until production runs this commit
+        if: vars.DEPLOY_VIA_CI == 'true'
+        env:
+          PRODUCTION_URL: ${{ vars.PRODUCTION_URL || 'https://kaizenaflow.com' }}
+        # The deploy is verified (D389): /api/health reports the deployment's commit; a later push's deployment that includes it counts.
+        run: node scripts/await-deploy.mjs
 
   # Manual: deploy again (to test the hook, or after a failed deploy) without running anything else.
   redeploy:
     if: github.event_name == 'workflow_dispatch' && inputs.redeploy
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 30
     steps:
+      - uses: actions/checkout@v5
       - name: Ask Vercel to deploy the head of main
         env:
           VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
@@ -313,6 +326,11 @@ jobs:
           # A busy Vercel answers 429: wait as it asks (Retry-After) and try again, up to five minutes.
           curl --fail --silent --show-error --max-time 30 --retry 6 --retry-max-time 300 -X POST "$VERCEL_DEPLOY_HOOK_URL"
           echo
+      - name: Wait until production runs this commit
+        env:
+          PRODUCTION_URL: ${{ vars.PRODUCTION_URL || 'https://kaizenaflow.com' }}
+        # The deploy is verified (D389): /api/health reports the deployment's commit; a later push's deployment that includes it counts.
+        run: node scripts/await-deploy.mjs
 
   baseline:
     if: github.event_name == 'workflow_dispatch' && inputs.baseline_through != ''

@@ -279,6 +279,11 @@ it, as the look is (the store may change after); a review places them in a store
 
 ### J. PSI: security and operations (D389)
 
+**Built (29 October 2026),** as designed below with two course changes (D389): the site-wide policy is Report-Only without a nonce (a nonce
+needs every page rendered per request, which the prerendered pages are not; it names every origin a script may come from and reports the
+rest), and its reports are counted as log lines by `/api/csp-report` rather than kept. Deploy verification waits up to twenty minutes and
+counts a later push's deployment that includes the commit.
+
 - **Deploys verified.** After the deploy hook, CI polls `/api/health` until it reports the pushed commit, up to a time limit. The job fails
   and says so when it does not.
 

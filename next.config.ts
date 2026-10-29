@@ -82,10 +82,10 @@ export default async function config(phase: string): Promise<NextConfig> {
   return {
     ...nextConfig,
     ...(building ? { env: { NEXT_PUBLIC_STORE_HOSTS: JSON.stringify(hosts) } } : {}),
-    // `nosniff` everywhere and frame protection on the admin (PSI 2026-10-24, SEC-07), then a strict Content-Security-Policy on the
+    // `nosniff` and a Report-Only policy everywhere (D389) and frame protection on the admin (PSI 2026-10-24, SEC-07), then a strict Content-Security-Policy on the
     // cart, checkout and order of every store, on both shapes of address (wave 1, 1e, docs/pci.md): later entries win where both match.
     headers: async () => [
-      ...baseRouteHeaders(themesOrigin()),
+      ...baseRouteHeaders(themesOrigin(), { supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL }),
       ...payRouteHeaders({ supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL, vercel: Boolean(process.env.VERCEL) }),
     ],
     // Work moved to the owner's level (D123): its old store-level addresses go to the new ones.

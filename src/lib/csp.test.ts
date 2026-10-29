@@ -1,6 +1,19 @@
 import { describe, expect, it } from "vitest";
 
-import { CSP_ENFORCE, PERMISSIONS_POLICY, SITE_HEADERS, adminFrameHeaders, baseRouteHeaders, checkoutCsp, payHeaders, payRouteHeaders, storageOrigin } from "./csp";
+import {
+  CSP_ENFORCE,
+  CSP_REPORT_PATH,
+  PERMISSIONS_POLICY,
+  SITE_HEADERS,
+  adminFrameHeaders,
+  baseRouteHeaders,
+  checkoutCsp,
+  payHeaders,
+  payRouteHeaders,
+  reportOnlyHeaders,
+  siteReportOnlyCsp,
+  storageOrigin,
+} from "./csp";
 
 const directives = (policy: string) =>
   Object.fromEntries(
@@ -112,6 +125,7 @@ describe("the headers every route gets (PSI 2026-10-24, SEC-07)", () => {
     expect(all.headers).toEqual([
       { key: "X-Content-Type-Options", value: "nosniff" },
       { key: "Permissions-Policy", value: PERMISSIONS_POLICY },
+      ...reportOnlyHeaders(),
     ]);
     expect(SITE_HEADERS.some((h) => h.key === "Referrer-Policy")).toBe(false);
   });
@@ -136,5 +150,30 @@ describe("the headers every route gets (PSI 2026-10-24, SEC-07)", () => {
   it("restricts nothing on the admin but who may frame it", () => {
     const policy = adminFrameHeaders(null)[0].value;
     expect(policy.split(";").map((d) => d.trim().split(" ")[0])).toEqual(["frame-ancestors"]);
+  });
+});
+
+describe("the site-wide Report-Only policy (D389, SEC-05)", () => {
+  const env = { supabaseUrl: "https://abc.supabase.co" };
+  const directives = (policy: string) => Object.fromEntries(policy.split("; ").map((d) => [d.split(" ")[0], d.split(" ").slice(1)]));
+
+  it("only reports, to the site's own endpoint, on every route", () => {
+    const headers = reportOnlyHeaders(env);
+    expect(headers.map((h) => h.key)).toEqual(["Content-Security-Policy-Report-Only", "Reporting-Endpoints"]);
+    expect(headers[1].value).toBe(`csp="${CSP_REPORT_PATH}"`);
+    const policy = directives(siteReportOnlyCsp(env));
+    expect(policy["report-uri"]).toEqual([CSP_REPORT_PATH]);
+    expect(policy["report-to"]).toEqual(["csp"]);
+    expect(baseRouteHeaders(null, env)[0].headers).toEqual(expect.arrayContaining(headers));
+  });
+
+  it("names the origins the site loads, allows no eval and leaves frame-ancestors to the enforced headers", () => {
+    const policy = directives(siteReportOnlyCsp(env));
+    expect(policy["script-src"]).toEqual(expect.arrayContaining(["'self'", "https://js.stripe.com", "https://www.googletagmanager.com"]));
+    expect(policy["script-src"]).not.toContain("'unsafe-eval'");
+    expect(policy["connect-src"]).toEqual(expect.arrayContaining(["https://abc.supabase.co", "wss://abc.supabase.co"]));
+    expect(policy["frame-src"]).toEqual(expect.arrayContaining(["https://www.youtube-nocookie.com", "https://player.vimeo.com"]));
+    expect(policy["object-src"]).toEqual(["'none'"]);
+    expect(policy["frame-ancestors"]).toBeUndefined();
   });
 });

@@ -7,6 +7,7 @@ import { allowedWhenNotOpen } from "@/lib/store-closure";
 
 import { getMembership, holderOf, requireMember, type Membership } from "./auth";
 import { passMember } from "./edit-pass";
+import { log } from "./log";
 
 /**
  * Who may do what in a store's admin (wave 1, 1f, docs/wave-1-trust.md 2.7): the one place the rule lives. Every store admin
@@ -41,29 +42,41 @@ export const memberCan = (member: Pick<Membership, "role" | "kind" | "permission
 export const mayFindDraftCustomers = (member: Pick<Membership, "role" | "kind" | "permissions"> & { store?: { status?: string } }): boolean =>
   memberCan(member, "orders:write") && memberCan(member, "customers:read");
 
+/** A member refused a key (D389, SEC-11): one log line with the account, the store and the keys, never a name or an address. */
+function logRefusal(member: Membership, keys: readonly PermissionKey[]): void {
+  log("warn", "auth.permission_refused", { accountId: member.account.id, storeId: member.store.id, keys: keys.join(",") });
+}
+
+function refused(member: Membership, keys: readonly PermissionKey[]): never {
+  logRefusal(member, keys);
+  notFound();
+}
+
 /** For a page or a route handler: the membership when the member holds the key, else a redirect to sign in or the second step, or a 404. */
 export async function requirePermission(storeSlug: string, key: PermissionKey): Promise<Membership> {
   const member = await requireMember(storeSlug);
-  if (!memberCan(member, key)) notFound();
+  if (!memberCan(member, key)) refused(member, [key]);
   return member;
 }
 
 /** For an action: the membership when the member holds the key, else null (not a member, held at their second step, or lacking the key). */
 export async function checkPermission(storeSlug: string, key: PermissionKey): Promise<Membership | null> {
   const member = await getMembership(storeSlug);
+  if (member && !memberCan(member, key)) logRefusal(member, [key]);
   return member && memberCan(member, key) ? member : null;
 }
 
 /** For a page or a route handler that any of several keys opens (the page builder's side actions): the first the member holds, else a 404. */
 export async function requireAnyPermission(storeSlug: string, keys: readonly PermissionKey[]): Promise<Membership> {
   const member = await requireMember(storeSlug);
-  if (!keys.some((key) => memberCan(member, key))) notFound();
+  if (!keys.some((key) => memberCan(member, key))) refused(member, keys);
   return member;
 }
 
 /** For an action that any of several keys opens: the membership, or null. */
 export async function checkAnyPermission(storeSlug: string, keys: readonly PermissionKey[]): Promise<Membership | null> {
   const member = await getMembership(storeSlug);
+  if (member && !keys.some((key) => memberCan(member, key))) logRefusal(member, keys);
   return member && keys.some((key) => memberCan(member, key)) ? member : null;
 }
 

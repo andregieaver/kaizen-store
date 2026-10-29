@@ -36,7 +36,7 @@ maturity for the run-up to launch. Point IDs are the audit's.
       platform home lists jobs that are late or failing (`src/lib/cron-health.ts`) and Usage and limits shows them all; `maxDuration`
       on every cron route, held by `cron-routes.scan.test.ts`.
 - [ ] **REL-02** Move the remaining `console.error` lines in `src/server` to `log()` as each module is touched; send an alert (email
-      to platform admins) when a job turns failing.
+      to platform admins) when a job turns failing. Done for the alert (D389): a job whose runs ending in an error reach `FAILING_AFTER` emails the platform's admins once for that turn (`alertFailingJob()`, `src/server/cron-alerts.ts`); the `console.error` lines still move over as modules are touched.
 - [x] **CODE-02** `typedRows()`/`typedRow()` and `col` (`src/server/typed-rows.ts`) for new reads and money reads, a rule in CLAUDE.md,
       and the gift card liability reads converted first.
 - [ ] **CODE-02** Convert the other money reads as they are touched (analytics, payouts, refunds, tax reports first).
@@ -102,8 +102,8 @@ maturity for the run-up to launch. Point IDs are the audit's.
 - [x] **SEC-02** Leaked-password protection is on (Supabase Auth, the owner, 25 October 2026), and the admin's password sign-in has
       its own limit per email: 10 wrong tries in 15 minutes stop it for that address, counted alike for every address under a keyed
       hash (`src/server/sign-in-limit.ts`); a sign-in link still works.
-- [ ] **SEC-05, SEC-10, SEC-11** Nonce-based CSP on admin and storefront (Report-Only first); budgets on `/api/consent` and
-      `/api/ab/*`; logging failed sign-ins and permission denials.
+- [x] **SEC-05, SEC-10, SEC-11** Nonce-based CSP on admin and storefront (Report-Only first); budgets on `/api/consent` and
+      `/api/ab/*`; logging failed sign-ins and permission denials. Done (D389): a site-wide `Content-Security-Policy-Report-Only` (`siteReportOnlyCsp()`, without a nonce, which the prerendered pages cannot carry) reporting to `/api/csp-report`, counted as `csp.violation` log lines with the directive, the blocked origin and the area only; `takeBudget()` on `/api/consent` (`consent`) and `/api/ab/assign` (`ab`); `admin_sign_in.failed`, `admin_sign_in.locked`, `admin_sign_in.two_step_failed` and `auth.permission_refused` log lines with ids only. Enforcing it waits for what the reports show.
 - [x] **SEC (advisor)** `public.rls_auto_enable()`: EXECUTE revoked from PUBLIC, `anon` and `authenticated` (migration
       `revoke_rls_auto_enable`; the event trigger still fires, tested).
 - [ ] **ACC-09, UX-12** A recorded manual screen-reader pass of checkout, the builder and the inbox; WebKit in the storefront e2e.

@@ -16,6 +16,8 @@ async function watchViolations(page: Page) {
   await page.addInitScript(() => {
     (window as unknown as { __csp: string[] }).__csp = [];
     document.addEventListener("securitypolicyviolation", (event) => {
+      // The site-wide Report-Only policy (D389) only reports, to /api/csp-report; this counts what the pay routes' policy enforces.
+      if (event.disposition === "report") return;
       (window as unknown as { __csp: string[] }).__csp.push(`${event.violatedDirective} blocked ${event.blockedURI || "inline"}`);
     });
   });
@@ -72,6 +74,8 @@ test("the cart, checkout and order send the policy, and the rest of the store do
   for (const path of ["/s/demo/no", "/s/demo/no/products", "/s/demo/no/account", "/s/demo/no/withdraw", "/", "/s/demo/store-sitemap.xml"]) {
     const response = await request.get(path, { maxRedirects: 0 });
     expect(response.headers()["content-security-policy"], path).toBeUndefined();
+    // Every page reports what a stricter policy would block, and blocks nothing (D389).
+    expect(response.headers()["content-security-policy-report-only"], path).toContain("report-uri /api/csp-report");
   }
 });
 

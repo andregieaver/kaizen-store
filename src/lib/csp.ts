@@ -119,10 +119,66 @@ export function adminFrameHeaders(themesOrigin: string | null): HeaderEntry[] {
   return [{ key: "Content-Security-Policy", value: `frame-ancestors 'self'${themesOrigin ? ` ${themesOrigin}` : ""}` }];
 }
 
-/** The entries `next.config.ts` returns before the pay routes', whose stricter set comes later and so wins where both match. */
-export function baseRouteHeaders(themesOrigin: string | null): { source: string; headers: HeaderEntry[] }[] {
+/** Where browsers send what the site-wide Report-Only policy would have blocked (D389), counted by the route as log lines. */
+export const CSP_REPORT_PATH = "/api/csp-report";
+
+/** The ad and statistics tags `ConsentManager` loads after consent (D303 I1): their scripts and the addresses they report to. */
+const TAG_SCRIPT = ["https://www.googletagmanager.com", "https://connect.facebook.net", "https://analytics.tiktok.com", "https://s.pinimg.com"];
+const TAG_CONNECT = [
+  "https://*.google-analytics.com",
+  "https://*.analytics.google.com",
+  "https://www.googletagmanager.com",
+  "https://www.facebook.com",
+  "https://analytics.tiktok.com",
+  "https://ct.pinterest.com",
+];
+/** The videos a page may embed (D209, D325): YouTube's privacy-enhanced player and Vimeo's. */
+const VIDEO_FRAME = ["https://www.youtube-nocookie.com", "https://www.youtube.com", "https://player.vimeo.com"];
+/** Stripe's embedded components on the Payments page (Connect, D17) beside its payment forms. */
+const STRIPE_CONNECT_SCRIPT = ["https://connect-js.stripe.com"];
+
+/**
+ * The site-wide policy (wave 11 unit J, D389; PSI SEC-05), sent as `Content-Security-Policy-Report-Only` on the admin, the storefront
+ * and Kaizena Flow's own pages, so the site learns what loads before any of it is enforced: what it would block is reported to
+ * `CSP_REPORT_PATH`, nothing is blocked. Without a nonce, said plainly: a nonce needs every page rendered per request, which the
+ * prerendered pages (cache components, D211) are not, so `script-src` keeps `'unsafe-inline'` as the pay routes' enforced policy does;
+ * it names every origin a script may come from. A store's own code (D61) from elsewhere is reported, which is what it is for.
+ * `frame-ancestors` is left to the enforced headers (browsers ignore it in a Report-Only policy).
+ */
+export function siteReportOnlyCsp(env: CspEnv = {}): string {
+  const storage = storageOrigin(env.supabaseUrl);
+  const realtime = storage ? storage.replace(/^http/, "ws") : null;
+  const directives: [string, string[]][] = [
+    ["default-src", ["'self'"]],
+    ["script-src", ["'self'", "'unsafe-inline'", ...STRIPE_SCRIPT, ...STRIPE_CONNECT_SCRIPT, ...TAG_SCRIPT]],
+    ["style-src", ["'self'", "'unsafe-inline'"]],
+    ["img-src", ["'self'", "data:", "blob:", "https:"]],
+    ["font-src", ["'self'", "data:"]],
+    ["connect-src", ["'self'", ...(storage ? [storage] : []), ...(realtime ? [realtime] : []), ...STRIPE_CONNECT, ...TAG_CONNECT]],
+    ["frame-src", ["'self'", ...STRIPE_FRAME, "https://connect-js.stripe.com", ...VIDEO_FRAME]],
+    ["media-src", ["'self'", "blob:", ...(storage ? [storage] : [])]],
+    ["worker-src", ["'self'", "blob:"]],
+    ["object-src", ["'none'"]],
+    ["base-uri", ["'self'"]],
+    ["form-action", ["'self'"]],
+    ["report-uri", [CSP_REPORT_PATH]],
+    ["report-to", ["csp"]],
+  ];
+  return directives.map(([name, values]) => `${name} ${values.join(" ")}`).join("; ");
+}
+
+/** The Report-Only policy's headers: the policy and the reporting endpoint its `report-to` names. */
+export function reportOnlyHeaders(env: CspEnv = {}): HeaderEntry[] {
   return [
-    { source: "/:path*", headers: SITE_HEADERS },
+    { key: "Content-Security-Policy-Report-Only", value: siteReportOnlyCsp(env) },
+    { key: "Reporting-Endpoints", value: `csp="${CSP_REPORT_PATH}"` },
+  ];
+}
+
+/** The entries `next.config.ts` returns before the pay routes', whose stricter set comes later and so wins where both match. */
+export function baseRouteHeaders(themesOrigin: string | null, env: CspEnv = {}): { source: string; headers: HeaderEntry[] }[] {
+  return [
+    { source: "/:path*", headers: [...SITE_HEADERS, ...reportOnlyHeaders(env)] },
     { source: "/admin/:path*", headers: adminFrameHeaders(themesOrigin) },
   ];
 }

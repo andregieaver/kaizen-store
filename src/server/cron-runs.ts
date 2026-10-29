@@ -3,7 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
-import type { CronJobRow } from "@/lib/cron-health";
+import { FAILING_AFTER, type CronJobRow } from "@/lib/cron-health";
 
 import { cronAuthorised } from "./cron-auth";
 import { log } from "./log";
@@ -23,7 +23,7 @@ async function record(job: string, everySeconds: number, started: Date, error: u
   const cause = error instanceof Error && error.cause instanceof Error ? ` (${error.cause.message})` : "";
   const message = ok ? null : (error instanceof Error ? `${error.name}: ${error.message}${cause}` : String(error)).slice(0, 1000);
   try {
-    await db().execute(sql`
+    const [row] = await db().execute<Row>(sql`
       insert into commerce.cron_jobs as j
         (job, every_seconds, last_started_at, last_finished_at, last_ok_at, last_error, last_error_at, last_duration_ms, runs, failures)
       values (
@@ -40,7 +40,13 @@ async function record(job: string, everySeconds: number, started: Date, error: u
         last_error_at = coalesce(excluded.last_error_at, j.last_error_at),
         last_duration_ms = excluded.last_duration_ms,
         runs = j.runs + 1,
-        failures = case when excluded.failures = 0 then 0 else j.failures + 1 end`);
+        failures = case when excluded.failures = 0 then 0 else j.failures + 1 end
+      returning failures, last_ok_at`);
+    // The run that makes it failing (D389, REL-02): the platform's admins are told once for this turn.
+    if (!ok && Number(row?.failures) === FAILING_AFTER) {
+      const { alertFailingJob } = await import("./cron-alerts");
+      await alertFailingJob(job, { failedAt: finished, lastOkAt: row?.last_ok_at ? new Date(String(row.last_ok_at)).toISOString() : null, error: message });
+    }
   } catch (writeError) {
     log("warn", "cron.record_failed", { job }, writeError);
   }

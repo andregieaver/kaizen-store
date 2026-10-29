@@ -14,6 +14,7 @@ import { canSignIn, signInAccount } from "@/server/auth";
 import { KAIZEN_LIFE_PROVIDER, kaizenLifeSignInOn } from "@/server/kaizen-life";
 import { requestAdminLang } from "@/server/admin-request-lang";
 import { admit } from "@/server/sign-in";
+import { log } from "@/server/log";
 import { clearSignIns, countFailedSignIn, signInLocked } from "@/server/sign-in-limit";
 
 /** The forms' answers in the request's language (D312 A1), never the typed email's account's: the same words whatever the email. */
@@ -60,7 +61,10 @@ async function signInWithPassword(formData: FormData): Promise<FormState> {
   if (!email.success) return fail(w.invalidEmail);
   if (!password) return fail(w.noPassword);
   // The admin's own limit per email (PSI SEC-02): every address is counted alike, so the answer never says which have access.
-  if (await signInLocked(email.data)) return fail(w.tooManyAttempts);
+  if (await signInLocked(email.data)) {
+    log("warn", "admin_sign_in.locked", { via: "password" });
+    return fail(w.tooManyAttempts);
+  }
   if (!(await canSignIn(email.data))) {
     await countFailedSignIn(email.data);
     return fail(w.wrong);

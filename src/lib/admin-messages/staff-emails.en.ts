@@ -287,6 +287,16 @@ export const staffEmailsEn = {
     after: "Check the address and that it answers 2xx, then switch it on again. You can send failed events again from its log.",
     button: "Open your endpoints",
   },
+  /** A scheduled job that turned failing (D389, REL-02), to the platform's admins: its name, the runs failed and the last error. */
+  jobFailing: {
+    subject: "A scheduled job is failing: {job}",
+    preview: "It has failed {n} runs in a row.",
+    heading: "A scheduled job is failing",
+    body: "The job {job} has failed {n} runs in a row, most recently on {when}. Its last good run was {lastOk}. The last error was: {error}.",
+    never: "never",
+    after: "Usage and limits lists every job with when it last ran. One email is sent each time a job starts failing; the next comes only after it has run well again and failed again.",
+    button: "Open usage and limits",
+  },
   /** A push notification of a new order (D361): its number and total only. */
   push: { newOrderTitle: "New order {number}", newOrderBody: "{total} · {store}" },
 };

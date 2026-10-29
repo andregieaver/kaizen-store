@@ -282,5 +282,14 @@ export const staffEmailsNb: StaffEmailsMessages = {
     after: "Sjekk adressen og at den svarer 2xx, og slå det på igjen. Du kan sende feilede hendelser på nytt fra loggen.",
     button: "Åpne endepunktene dine",
   },
+  jobFailing: {
+    subject: "En planlagt jobb feiler: {job}",
+    preview: "Den har feilet {n} kjøringer på rad.",
+    heading: "En planlagt jobb feiler",
+    body: "Jobben {job} har feilet {n} kjøringer på rad, sist {when}. Siste vellykkede kjøring var {lastOk}. Siste feil var: {error}.",
+    never: "aldri",
+    after: "Bruk og grenser viser alle jobbene og når de sist kjørte. Det sendes én e-post hver gang en jobb begynner å feile; den neste kommer først når den har kjørt bra igjen og feilet på nytt.",
+    button: "Åpne bruk og grenser",
+  },
   push: { newOrderTitle: "Ny ordre {number}", newOrderBody: "{total} · {store}" },
 };

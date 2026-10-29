@@ -527,6 +527,7 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   "platform.status_confirm": "staff",
   "platform.status_incident": "staff",
   "platform.status_alert": "staff",
+  "platform.job_failing": "staff",
   "referral.credit_applied": "staff",
   "plan_reminder": "staff",
   "plan_reminder.test": "staff",

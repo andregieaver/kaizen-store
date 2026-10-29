@@ -1,8 +1,12 @@
 import "server-only";
 
+import { createHash } from "node:crypto";
+
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
+
+import { log } from "./log";
 
 /**
  * Budgets on a store's costly public endpoints (D314, `docs/capacity.md` step 3.2), so one busy or misbehaving visitor or store cannot
@@ -27,6 +31,12 @@ export const BUDGETS = {
   api: { window: "minute", visitor: 120, store: 1200 },
   // The storefront API (D362): a headless site's calls, its visitors' together under one token (the visitor is the token's id).
   storefront: { window: "minute", visitor: 1200, store: 6000 },
+  // A cookie choice (D58, D389 SEC-10): a visitor makes a few; the store's ceiling stops a flood of records from many.
+  consent: { window: "minute", visitor: 20, store: 3000 },
+  // A browser's versions of the running A/B tests (D148, D389 SEC-10): asked once a page view at most.
+  ab: { window: "minute", visitor: 60, store: 6000 },
+  // The site-wide Report-Only policy's reports (D389 SEC-05), counted under no store: the whole platform shares the ceiling.
+  csp: { window: "minute", visitor: 20, store: 2000 },
 } as const satisfies Record<string, { window: BudgetWindow; visitor: number; store: number }>;
 
 export type BudgetEndpoint = keyof typeof BUDGETS;
@@ -36,8 +46,21 @@ export function budgetBuckets(endpoint: BudgetEndpoint, visitor: string): { stor
   return { store: `budget:${endpoint}`, visitor: `budget:${endpoint}:${visitor}` };
 }
 
-/** Counts one ask and says whether it is within both budgets. Counting never blocks the answer when the database is busy: a failure allows. */
-export async function takeBudget(storeId: string, endpoint: BudgetEndpoint, visitor: string): Promise<boolean> {
+/**
+ * A visitor as a budget knows them from the request: a hash of their address that changes every day (as the chat's `visitorKey()`), so
+ * it names no one and is never kept beyond the counters' two days.
+ */
+export function budgetVisitor(headers: Headers): string {
+  const address = headers.get("x-forwarded-for")?.split(",")[0]?.trim() || headers.get("x-real-ip")?.trim() || "";
+  const day = new Date().toISOString().slice(0, 10);
+  return createHash("sha256").update(`${address}|${day}|kaizen-budget`).digest("hex").slice(0, 32);
+}
+
+/**
+ * Counts one ask and says whether it is within both budgets; `storeId` null is Kaizena Flow's own site (its counters, `store_id` null,
+ * are one bucket as the table's key treats nulls as equal). Counting never blocks the answer when the database is busy: a failure allows.
+ */
+export async function takeBudget(storeId: string | null, endpoint: BudgetEndpoint, visitor: string): Promise<boolean> {
   const budget = BUDGETS[endpoint];
   const buckets = budgetBuckets(endpoint, visitor);
   const window = budget.window === "minute" ? sql`date_trunc('minute', now())` : sql`date_trunc('hour', now())`;
@@ -51,7 +74,7 @@ export async function takeBudget(storeId: string, endpoint: BudgetEndpoint, visi
     const count = (bucket: string) => Number(rows.find((r) => r.bucket === bucket)?.count ?? 0);
     return count(buckets.visitor) <= budget.visitor && count(buckets.store) <= budget.store;
   } catch (error) {
-    console.error("[budget] could not count", endpoint, error instanceof Error ? error.message : "");
+    log("warn", "budget.count_failed", { endpoint }, error);
     return true;
   }
 }

@@ -7,6 +7,7 @@ import { assignAll } from "@/lib/experiment-assign";
 import { COOKIE_DAYS, dataCookieName, decodeAssignments, encodeAssignments, MARKER_COOKIE } from "@/lib/experiments";
 import { abRequest, quiet } from "@/server/ab-request";
 import { acceptedStatistics, runningExperiments } from "@/server/experiments";
+import { budgetVisitor, takeBudget } from "@/server/request-budget";
 
 /**
  * Gives a browser its versions of the stores' running tests (D148). Called by the page after the visitor has accepted
@@ -18,6 +19,8 @@ export async function POST(request: Request) {
   const ctx = await abRequest(request);
   if (ctx instanceof Response) return ctx;
   const { storeId, body, device } = ctx;
+  // Budgeted per visitor and for the store (D389, SEC-10); event and exposure count through `takeExperimentRequest()`.
+  if (!(await takeBudget(storeId, "ab", budgetVisitor(request.headers)))) return new Response(null, { status: 429 });
   if (!(await acceptedStatistics(storeId))) return quiet();
   const jar = await cookies();
   const existing = decodeAssignments(jar.get(dataCookieName(storeId))?.value);
