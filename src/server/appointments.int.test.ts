@@ -205,7 +205,7 @@ describe("appointment emails (D65)", () => {
     sent.length = 0;
     await sendOrderConfirmation(storeId, paidOrder);
     const [confirmation] = sent;
-    expect(confirmation.email.text).toContain("Timen din:");
+    expect(confirmation.email.text).toContain("Bestillingen din:");
     expect(confirmation.email.text).toContain("Massasje: ");
     expect(confirmation.email.text).toContain("hos Kari");
     const [file] = confirmation.attachments ?? [];
@@ -238,7 +238,7 @@ describe("appointment emails (D65)", () => {
     await sendDueBookingReminders();
     const reminders = sent.filter((e) => e.orderId === paidOrder);
     expect(reminders.map((e) => e.kind)).toEqual(["booking.reminder"]);
-    expect(reminders[0].email.subject).toMatch(/^Påminnelse: timen din hos /);
+    expect(reminders[0].email.subject).toMatch(/^Påminnelse: bestillingen din hos /);
     expect(reminders[0].attachments?.[0].content).toContain("METHOD:PUBLISH");
   });
 
@@ -323,7 +323,7 @@ describe("shoppers changing their own bookings (D66)", () => {
     `);
     expect(state).toEqual({ status: "cancelled", booking: "cancelled" });
     const shopperEmail = sent.find((e) => e.kind === "booking.cancelled_by_customer");
-    expect(shopperEmail?.email.subject).toMatch(/^Du har avbestilt timen /);
+    expect(shopperEmail?.email.subject).toMatch(/^Du har avbestilt bestillingen /);
     expect(shopperEmail?.attachments?.[0]).toMatchObject({ filename: "cancelled.ics" });
   });
 });

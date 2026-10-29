@@ -157,6 +157,6 @@ test("a shopper moves their booking to another time, then cancels it, from the o
   await expect(bookings.getByText(/10[:.]00, hos Kari/)).toHaveCount(0);
 
   await bookings.getByRole("button", { name: "Avbestill" }).click();
-  await bookings.getByRole("button", { name: "Ja, avbestill timen" }).click();
+  await bookings.getByRole("button", { name: "Ja, avbestill", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Bestillingen er kansellert." })).toBeVisible();
 });
