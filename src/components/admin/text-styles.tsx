@@ -34,9 +34,11 @@ export type TextStylesValue = {
   styles: TextStyle[];
   /** The stylesheet the canvas draws: the library with the style being edited as it now stands. */
   css: string;
-  /** Opens the dialog for a new style; `then` gets its slug once saved (the menu puts it on the selection). */
-  makeNew: (then?: (slug: string) => void) => void;
-  manage: () => void;
+  /** Opens the dialog for a new style; `then` gets its slug once saved (the menu puts it on the selection). None on the live site. */
+  makeNew?: (then?: (slug: string) => void) => void;
+  manage?: () => void;
+  /** Takes the library as the server now has it, after something placed on the page brought styles with it (a template). */
+  adopt?: (styles: TextStyle[]) => void;
 };
 
 const TextStyles = createContext<TextStylesValue | null>(null);
@@ -81,9 +83,10 @@ export function TextStylesProvider({
             css,
             makeNew: (then) => setEditing({ style: null, then }),
             manage: () => setManaging(true),
+            adopt: setStyles,
           }
         : null,
-    [value, styles, css],
+    [value, styles, css, setStyles],
   );
   if (!value) return <>{children}</>;
   return (
@@ -126,6 +129,20 @@ export function TextStylesProvider({
           }}
         />
       )}
+    </TextStyles.Provider>
+  );
+}
+
+/**
+ * The site's styles to choose from where they are only applied, never made or changed (*Edit text* on the live site, D393 step 2): the
+ * page already draws them, so only the menu's previews are added.
+ */
+export function TextStylesView({ styles, children }: { styles: TextStyle[]; children: ReactNode }) {
+  const value = useMemo<TextStylesValue>(() => ({ styles, css: "" }), [styles]);
+  return (
+    <TextStyles.Provider value={value}>
+      {children}
+      <style>{textStylesCss(styles, "[data-ts-preview]")}</style>
     </TextStyles.Provider>
   );
 }
@@ -212,31 +229,35 @@ export function StyleMenu({ active, hasSelection, apply }: { active: string | nu
               {w.none}
             </button>
           )}
-          <span aria-hidden className="my-0.5 h-px bg-line" />
-          <button
-            type="button"
-            role="menuitem"
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={() => {
-              setOpen(false);
-              library.makeNew(hasSelection ? (slug) => apply(slug) : undefined);
-            }}
-            className={item}
-          >
-            {w.newStyle}
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={() => {
-              setOpen(false);
-              library.manage();
-            }}
-            className={item}
-          >
-            {w.manage}
-          </button>
+          {library.makeNew && library.manage && (
+            <>
+              <span aria-hidden className="my-0.5 h-px bg-line" />
+              <button
+                type="button"
+                role="menuitem"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => {
+                  setOpen(false);
+                  library.makeNew?.(hasSelection ? (slug) => apply(slug) : undefined);
+                }}
+                className={item}
+              >
+                {w.newStyle}
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => {
+                  setOpen(false);
+                  library.manage?.();
+                }}
+                className={item}
+              >
+                {w.manage}
+              </button>
+            </>
+          )}
         </div>
       )}
     </div>
@@ -321,7 +342,7 @@ function StyleDialog({
     >
       <style>{preview}</style>
       <div className="flex flex-col gap-5">
-        <div data-ts-draft="" aria-live="polite" className="rounded-panel border border-line bg-background p-5 text-center text-display" aria-label={w.preview}>
+        <div data-ts-draft="" aria-live="polite" className="rounded-panel border border-line bg-canvas p-5 text-center text-display" aria-label={w.preview}>
           {sample.length === 2 ? (
             <>
               {sample[0]}

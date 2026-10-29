@@ -64,7 +64,8 @@ describe("the editor of a grid's custom items", () => {
 
   it("limits each text as the schema does", () => {
     const out = editor();
-    for (const max of ["200", "600", "60", "40"]) expect(out).toContain(`maxLength="${max}"`);
+    // A field that takes inline markup is a one-line editor drawn in the browser (D393), its limit on its box.
+    for (const max of ["200", "600", "60", "40"]) expect(out).toMatch(new RegExp(`(?:maxLength|data-max-length)="${max}"`));
   });
 
   it("names an item by its title, else by its place", () => {

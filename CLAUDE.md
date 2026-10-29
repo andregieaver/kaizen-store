@@ -1117,7 +1117,9 @@ stand-in is the only fake, and only it is told it is one.
   never changes) only from `textStylesCss()` (a gallery look's CSS written by code, or its own declarations through
   `cleanStyleDeclarations()`'s closed list of text properties: never owner text as CSS another way), after the theme and before the owner's
   own CSS. Words take a style only through the *Style* menu (`StyleMenu`): the rich-text mark `textClass` or `<span class="ts-…">` in inline
-  markup, which a heading edited in place writes through `InlineMarkupEditor` (`src/lib/inline-doc.ts`). A new place that draws a store's
+  markup, which a heading edited in place and a panel's plain field (`MarkupInput`, `TextField`'s `markup`) write through the one-line
+  editor (`src/lib/inline-doc.ts`); a new plain field that takes inline markup is a `MarkupInput`. Content placed from another site carries
+  the styles its words wear through `carryTextStyles()` after its own transaction, so a new way to place another site's content calls it. A new place that draws a store's
   rows outside its layouts draws its styles too; a new place that edits words where they stand offers `StyleMenu`. The rich-text editor's
   HTML view reads HTML back only through the editor's schema and names what it left out (`htmlLeftOut()`); a rich text is never saved as HTML.
 - **Text on a part's own background (D390, `src/lib/background-surface.ts`)**: a row or column whose own background hides what is behind it is

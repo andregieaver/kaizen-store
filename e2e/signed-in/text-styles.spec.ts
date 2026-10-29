@@ -29,7 +29,10 @@ test.beforeAll(async () => {
       aiAssistants: true,
       categories: [],
       tags: [],
-      rows: [{ id: "row-s", type: "row", layout: "1", columns: [{ id: "col-s", blocks: [{ id: "head-s", type: "heading", text: "My awesome heading", level: 2 }] }] }],
+      rows: [{ id: "row-s", type: "row", layout: "1", columns: [{ id: "col-s", blocks: [
+        { id: "head-s", type: "heading", text: "My awesome heading", level: 2 },
+        { id: "rich-s", type: "richText", doc: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Words to edit as HTML" }] }] } },
+      ] }] }],
     };
     const [row] = await sql`insert into commerce.pages (store_id, slug, draft) values (${store.id}, ${SLUG}, ${sql.json(content)}) returning id`;
     pageId = String(row.id);
@@ -97,10 +100,19 @@ test("a word of a heading takes a new style from the Style menu, shown on the ca
   }
 });
 
+test("the heading's settings field shows its styled word as it looks", async ({ page }) => {
+  await page.goto(`/admin/${E2E_STORE}/pages/${pageId}`);
+  await expect(page.locator("[data-editor-bar]")).toBeVisible();
+  await page.locator('[data-builder-item="block"] h2', { hasText: "My awesome heading" }).dblclick();
+  const field = page.locator("[data-markup-input]").first();
+  await expect(field.locator("span.ts-sunset")).toHaveText("awesome");
+});
+
 test("a rich text's HTML is edited, read back with what was left out named, and its styled words drawn", async ({ page }) => {
   await page.goto(`/admin/${E2E_STORE}/pages/${pageId}`);
   await expect(page.locator("[data-editor-bar]")).toBeVisible();
-  await page.locator('[data-builder-item="column"]').first().getByRole("button", { name: /^Add rich text/ }).click();
+  // A double press on the rich text opens its settings.
+  await page.locator('[data-builder-item="block"]', { hasText: "Words to edit as HTML" }).dblclick();
   await page.getByRole("button", { name: "HTML", exact: true }).click();
   const html = page.getByLabel(/^HTML of /);
   await expect(html).toBeVisible();

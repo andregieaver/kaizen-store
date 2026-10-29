@@ -1,5 +1,6 @@
 "use client";
 
+import { MarkupInput } from "./markup-input";
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -316,6 +317,7 @@ export function TextField({
   placeholder,
   hint,
   multiline = false,
+  markup = false,
   onChange,
 }: {
   label: string;
@@ -324,6 +326,8 @@ export function TextField({
   placeholder?: string;
   hint?: string;
   multiline?: boolean;
+  /** Its words take inline markup (D191): edited as they look, a text style from *Style* among them (D393). */
+  markup?: boolean;
   onChange: (value: string) => void;
 }) {
   const id = useId();
@@ -332,7 +336,9 @@ export function TextField({
       <label htmlFor={id} className="text-sm font-medium">
         {label}
       </label>
-      {multiline ? (
+      {markup ? (
+        <MarkupInput id={id} label={label} value={value} max={max} placeholder={placeholder} multiline={multiline} onChange={onChange} />
+      ) : multiline ? (
         <textarea
           id={id}
           value={value}
@@ -619,7 +625,7 @@ export function LinkFields({
   const problem = address === "" ? w.noAddress : isLinkAddress(address) ? null : w.badAddress;
   return (
     <div className="flex flex-col gap-4">
-      <TextField label={w.text} value={label} max={BUTTON_LABEL_MAX} placeholder={placeholder} onChange={(value) => onChange({ label: value })} />
+      <TextField label={w.text} markup value={label} max={BUTTON_LABEL_MAX} placeholder={placeholder} onChange={(value) => onChange({ label: value })} />
       <div className="flex flex-col gap-1">
         <label htmlFor={`${id}-href`} className="text-sm font-medium">
           {w.address}
@@ -1004,7 +1010,7 @@ function PanelItemsFields({
     >
       {(item, change) => (
         <>
-          <TextField label={names.title} value={item.title} max={ITEM_TITLE_MAX} onChange={(title) => change({ title })} />
+          <TextField label={names.title} markup value={item.title} max={ITEM_TITLE_MAX} onChange={(title) => change({ title })} />
           <RichTextEditor key={item.id} value={item.body} onChange={(body) => change({ body })} label={names.body} />
         </>
       )}
@@ -1085,7 +1091,7 @@ function FaqFields({ block, onChange, context }: BlockEditorProps<FaqBlock>) {
       >
         {(item, change) => (
           <>
-            <TextField label={w.question} value={item.title} max={ITEM_TITLE_MAX} onChange={(title) => change({ title })} />
+            <TextField label={w.question} markup value={item.title} max={ITEM_TITLE_MAX} onChange={(title) => change({ title })} />
             <RichTextEditor key={item.id} value={item.body} onChange={(body) => change({ body })} label={w.answer} />
             <AnswerPartsFields blocks={item.blocks ?? []} editPart={context.editPart} onChange={(blocks) => change({ blocks: blocks.length > 0 ? blocks : undefined })} />
           </>
@@ -1428,10 +1434,11 @@ function TestimonialsFields({ block, onChange, context }: BlockEditorProps<Testi
       >
         {(item, change) => (
           <>
-            <TextField label={w.said} value={item.quote} max={TESTIMONIAL_QUOTE_MAX} multiline onChange={(quote) => change({ quote })} />
+            <TextField label={w.said} markup value={item.quote} max={TESTIMONIAL_QUOTE_MAX} multiline onChange={(quote) => change({ quote })} />
             <TextField label={w.name} value={item.name} max={TESTIMONIAL_NAME_MAX} onChange={(name) => change({ name })} />
             <TextField
               label={w.role}
+              markup
               value={item.role}
               max={TESTIMONIAL_NAME_MAX}
               placeholder={w.rolePlaceholder}
@@ -2086,7 +2093,7 @@ function IconListFields({ block, onChange }: BlockEditorProps<IconListBlock>) {
           const address = item.href.trim();
           return (
             <>
-              <TextField label={w.words} value={item.text} max={ICON_LIST_TEXT_MAX} placeholder={w.wordsPlaceholder} onChange={(text) => change({ text })} />
+              <TextField label={w.words} markup value={item.text} max={ICON_LIST_TEXT_MAX} placeholder={w.wordsPlaceholder} onChange={(text) => change({ text })} />
               <TextField
                 label={w.links}
                 value={item.href}
@@ -2197,7 +2204,7 @@ function TableFields({ block, onChange }: BlockEditorProps<TableBlock>) {
   return (
     <>
       <Check label={w.header} hint={w.headerHint} checked={Boolean(block.header)} onChange={(header) => onChange({ header: header || undefined })} />
-      <TextField label={w.caption} value={block.caption ?? ""} max={200} placeholder={w.captionPlaceholder} onChange={(caption) => onChange({ caption: caption || undefined })} />
+      <TextField label={w.caption} markup value={block.caption ?? ""} max={200} placeholder={w.captionPlaceholder} onChange={(caption) => onChange({ caption: caption || undefined })} />
       <div className="overflow-x-auto rounded border border-line p-2">
         <table className="border-separate border-spacing-1 text-sm">
           <thead>
@@ -2430,9 +2437,10 @@ function FormTexts({
   const w = useAdminText("blocks").form;
   return (
     <>
-      <TextField label={w.buttonText} value={block.submitLabel} max={BUTTON_LABEL_MAX} placeholder={usual.submit} hint={w.usualWords} onChange={(submitLabel) => onChange({ submitLabel })} />
+      <TextField label={w.buttonText} markup value={block.submitLabel} max={BUTTON_LABEL_MAX} placeholder={usual.submit} hint={w.usualWords} onChange={(submitLabel) => onChange({ submitLabel })} />
       <TextField
         label={w.thanks}
+        markup
         value={block.successMessage}
         max={FORM_TEXT_MAX}
         multiline

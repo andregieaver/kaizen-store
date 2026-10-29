@@ -5,7 +5,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import { z } from "zod";
 
 import { db, readDb } from "@/db/client";
-import { TEXT_STYLES_MAX, TEXT_STYLE_KINDS, cleanStyleDeclarations, slugFor, textStylesCss, type TextStyle, type TextStyleSettings } from "@/lib/text-styles";
+import { TEXT_STYLES_MAX, TEXT_STYLE_KINDS, cleanStyleDeclarations, slugFor, stylesInMarkup, textStylesCss, type TextStyle, type TextStyleSettings } from "@/lib/text-styles";
 import { textStyleInput } from "@/lib/text-styles-schema";
 
 import { audit, type Account } from "./auth";
@@ -138,4 +138,55 @@ export async function deleteTextStyle(account: Account, owner: string | null, sl
   await audit(account.id, owner, "text_style.deleted", { slug, uses: uses.length });
   refreshTag(textStylesTag(owner));
   return { ok: true, styles: await listTextStyles(owner) };
+}
+
+/**
+ * The slugs of the styles a piece of content's words wear (D393 step 2): `<span class="ts-…">` in inline markup and the rich-text mark,
+ * found in its JSON as it is kept.
+ */
+export function stylesWorn(content: unknown): string[] {
+  const text = JSON.stringify(content ?? null);
+  const found = new Set(stylesInMarkup(text.replace(/\\"/g, '"')));
+  for (const match of text.matchAll(/"type":"textClass","attrs":\{"name":"([a-z0-9-]{1,40})"\}/g)) found.add(match[1]);
+  return [...found];
+}
+
+/**
+ * Carries the styles a piece of content wears from the site it comes from to the site it is placed in (a template used, a theme's section
+ * placed, a demo store's home page taken, a theme applied): each style the receiving site lacks by slug is copied, up to its limit; one it
+ * already has by that slug keeps its own look. Returns the receiving site's library when anything was copied, else null. Never throws:
+ * words without their style are still the words. Called after the content's own transaction, never inside it.
+ */
+export async function carryTextStyles(
+  account: { id: string },
+  from: string | null,
+  to: string | null,
+  content: unknown,
+): Promise<TextStyle[] | null> {
+  try {
+    if (from === to) return null;
+    const worn = stylesWorn(content);
+    if (worn.length === 0) return null;
+    const rows = await db().execute<Record<string, unknown>>(sql`
+      insert into commerce.text_styles (store_id, slug, name, kind, settings, css, position, created_by, updated_by)
+      select ${to}::uuid, s.slug, s.name, s.kind, s.settings, s.css,
+             (select coalesce(max(position), 0) from commerce.text_styles where ${ownerIs(to)}) + row_number() over (order by s.position, s.slug),
+             ${account.id}::uuid, ${account.id}::uuid
+        from commerce.text_styles s
+       where ${from === null ? sql`s.store_id is null` : sql`s.store_id = ${from}::uuid`}
+         and s.slug = any(${`{${worn.join(",")}}`}::text[])
+         and not exists (select 1 from commerce.text_styles t where ${to === null ? sql`t.store_id is null` : sql`t.store_id = ${to}::uuid`} and t.slug = s.slug)
+       order by s.position, s.slug
+       limit greatest(0, ${TEXT_STYLES_MAX} - (select count(*) from commerce.text_styles where ${ownerIs(to)}))::int
+      on conflict on constraint text_styles_owner_slug do nothing
+      returning slug
+    `);
+    if (rows.length === 0) return null;
+    await audit(account.id, to, "text_style.carried", { from: from ?? "kaizen", slugs: rows.map((r) => String(r.slug)) });
+    refreshTag(textStylesTag(to));
+    return await listTextStyles(to);
+  } catch (error) {
+    log("warn", "text_styles.carry_failed", { from, to }, error);
+    return null;
+  }
 }

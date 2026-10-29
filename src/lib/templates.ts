@@ -1,5 +1,6 @@
 import type { PageRow, PageType } from "./page-content";
 import type { SavedPart, SavedPartKind } from "./saved-parts";
+import type { TextStyle } from "./text-styles";
 
 /**
  * Templates (D125): the rows, columns and components an owner saves (D46) can be shared, and other stores use them.
@@ -84,7 +85,7 @@ export type TemplateActions = {
   /** Switches a template on or off for this store. */
   setActive: (id: string, active: boolean) => Promise<TemplateResult>;
   /** A template made ready to place on a page: a copy that is not saved, with what belonged to the other store left out. */
-  use: (id: string) => Promise<TemplateResult<{ part: SavedPart }>>;
+  use: (id: string) => Promise<TemplateResult<{ part: SavedPart; styles?: TextStyle[] }>>;
   /**
    * The store a template is previewed for (D127): the builder shows `templatePreviewPath(previewStore, id)`, a page
    * with nothing but the template on it, drawn as the store's own pages are, in a frame. Nothing is copied or saved.

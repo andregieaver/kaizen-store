@@ -4,6 +4,9 @@ import { useState } from "react";
 
 import type { SavedPart } from "@/lib/saved-parts";
 import type { TemplateActions, TemplateItem, TemplateResult } from "@/lib/templates";
+import type { TextStyle } from "@/lib/text-styles";
+
+import { useTextStyles } from "./text-styles";
 
 /**
  * Using a template (D125, D127): asking the server for its copy, from the Templates tab, the Browse modal or the preview,
@@ -14,7 +17,7 @@ import type { TemplateActions, TemplateItem, TemplateResult } from "@/lib/templa
 export const USE_PROBLEM = "It could not be added. Try again.";
 
 /** Asks for a template's copy; a network failure or a thrown error becomes a problem to show, never an exception. */
-export async function fetchTemplate(actions: TemplateActions, id: string): Promise<TemplateResult<{ part: SavedPart }>> {
+export async function fetchTemplate(actions: TemplateActions, id: string): Promise<TemplateResult<{ part: SavedPart; styles?: TextStyle[] }>> {
   try {
     return await actions.use(id);
   } catch {
@@ -37,6 +40,7 @@ export function useTemplateUse(actions: TemplateActions | null, onPart: (part: S
   const [using, setUsing] = useState<string | null>(null);
   const [issues, setIssues] = useState<Record<string, string[]>>({});
   const [added, setAdded] = useState<string | null>(null);
+  const textStyles = useTextStyles();
   const run = async (item: TemplateItem) => {
     if (!actions || using !== null) return;
     setUsing(item.id);
@@ -44,6 +48,8 @@ export function useTemplateUse(actions: TemplateActions | null, onPart: (part: S
     setIssues((current) => ({ ...current, [item.id]: [] }));
     const result = await fetchTemplate(actions, item.id);
     if (result.ok) {
+      // The text styles its words wear came with it into this site's library (D393): the canvas draws them at once.
+      if (result.styles) textStyles?.adopt?.(result.styles);
       onPart(result.part, item);
       if (result.part.kind !== "page") setAdded(item.id);
     } else {

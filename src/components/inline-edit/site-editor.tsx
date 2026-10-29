@@ -1,13 +1,14 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import type { RichTextDoc } from "@/lib/page-content";
+import type { TextStyle } from "@/lib/text-styles";
 
-import { FloatingBar } from "./floating-bar";
-import { InlineHeadingEditor } from "./heading-editor";
+import { TextStylesView } from "../admin/text-styles";
+import { InlineMarkupEditor } from "./markup-editor";
 import { InlineRichEditor } from "./rich-text-inline";
 
 /**
@@ -19,8 +20,8 @@ import { InlineRichEditor } from "./rich-text-inline";
  */
 
 type Fetched =
-  | { ok: true; kind: "heading"; text: string; rev: string }
-  | { ok: true; kind: "richText"; doc: RichTextDoc; rev: string }
+  | { ok: true; kind: "heading"; text: string; rev: string; styles?: TextStyle[] }
+  | { ok: true; kind: "richText"; doc: RichTextDoc; rev: string; styles?: TextStyle[] }
   | { ok: false; message?: string };
 
 type Session = {
@@ -30,6 +31,8 @@ type Session = {
   block: string;
   rev: string;
   point: { x: number; y: number } | null;
+  /** The site's text styles, put on selected words from the bar's *Style* (D393 step 2). */
+  styles: TextStyle[];
 } & ({ kind: "heading"; level: number; className: string; text: string } | { kind: "richText"; doc: RichTextDoc });
 
 const ENDPOINT = "/api/platform/editor/text";
@@ -78,8 +81,8 @@ export default function SiteTextEditor({ pageId, store, onNotice }: { pageId: st
       latest.current = {};
       setSession(
         found.kind === "heading"
-          ? { element, slot, block, rev: found.rev, point, kind: "heading", level: Number(original?.tagName.slice(1)) || 2, className: original?.className ?? "", text: found.text }
-          : { element, slot, block, rev: found.rev, point, kind: "richText", doc: found.doc },
+          ? { element, slot, block, rev: found.rev, point, styles: found.styles ?? [], kind: "heading", level: Number(original?.tagName.slice(1)) || 2, className: original?.className ?? "", text: found.text }
+          : { element, slot, block, rev: found.rev, point, styles: found.styles ?? [], kind: "richText", doc: found.doc },
       );
     } catch {
       onNotice("This text could not be opened. Check the connection and try again.");
@@ -159,7 +162,6 @@ export default function SiteTextEditor({ pageId, store, onNotice }: { pageId: st
     }
   }
 
-  const anchor = useMemo(() => ({ current: session?.slot ?? null }), [session]);
   const controls = (
     <div className="flex flex-wrap items-center gap-2 border-t border-border p-2 text-sm first:border-t-0">
       <button type="button" onClick={() => void save()} disabled={saving} className="min-h-9 rounded bg-foreground px-3 font-medium text-background disabled:opacity-60">
@@ -184,34 +186,36 @@ export default function SiteTextEditor({ pageId, store, onNotice }: { pageId: st
       {session &&
         createPortal(
           session.kind === "heading" ? (
-            <>
-              <InlineHeadingEditor
+            <TextStylesView styles={session.styles}>
+              <InlineMarkupEditor
                 level={session.level}
                 className={session.className}
                 text={session.text}
                 point={session.point}
                 endOnBlur={false}
+                actions={controls}
                 onChange={(text) => {
                   latest.current.text = text;
                   unsaved.current = text !== session.text;
                 }}
                 onDone={(how) => (how === "save" ? void save() : cancel())}
               />
-              <FloatingBar anchor={anchor}>{controls}</FloatingBar>
-            </>
+            </TextStylesView>
           ) : (
-            <InlineRichEditor
-              doc={session.doc}
-              point={session.point}
-              label="Text on the page"
-              endOnBlur={false}
-              actions={controls}
-              onChange={(doc) => {
-                latest.current.doc = doc;
-                unsaved.current = true;
-              }}
-              onDone={(how) => (how === "save" ? void save() : cancel())}
-            />
+            <TextStylesView styles={session.styles}>
+              <InlineRichEditor
+                doc={session.doc}
+                point={session.point}
+                label="Text on the page"
+                endOnBlur={false}
+                actions={controls}
+                onChange={(doc) => {
+                  latest.current.doc = doc;
+                  unsaved.current = true;
+                }}
+                onDone={(how) => (how === "save" ? void save() : cancel())}
+              />
+            </TextStylesView>
           ),
           session.slot,
         )}

@@ -23,6 +23,7 @@ import { copyToLibrary, libraryFilesByUrl, type LibraryFile } from "./media-libr
 import { pageRulesProblem } from "./page-rules";
 import { starterPreviewHref } from "./store-starters";
 import type { TemplateDeps } from "./templates";
+import { carryTextStyles } from "./text-styles";
 
 /**
  * Taking a demo store's home page (`docs/theme-showcase-phase-1.md` step 4c): an existing store may make the home page of a content pack
@@ -102,7 +103,7 @@ export async function latestHomeTake(storeId: string): Promise<HomeTake | null> 
 }
 
 /** The pack's home page made ready for this store, before anything of the store is written but its pictures' copies. */
-async function placedHome(storeId: string, accountId: string, packKey: PackKey, deps: TemplateDeps): Promise<{ ok: true; content: PageContent; notes: string[] } | { ok: false; problems: string[] }> {
+async function placedHome(storeId: string, accountId: string, packKey: PackKey, deps: TemplateDeps): Promise<{ ok: true; content: PageContent; notes: string[]; sourceId: string } | { ok: false; problems: string[] }> {
   const [source] = await db().execute<Row>(sql`
     select st.store_id as working_id, src.id as source_id, src.slug as source_slug, pg.published
     from commerce.store_starters st
@@ -164,7 +165,7 @@ async function placedHome(storeId: string, accountId: string, packKey: PackKey, 
   const problem = content ? pageRulesProblem(storeId, "page", content) : "it cannot be read";
   if (!content || problem) return refuse(`That demo store's home page does not fit your store: ${problem}`);
   if (leftoverStorageUrls(content, new Set(replaced.values())).length > 0) return refuse("That demo store's home page could not be made ready for your store.");
-  return { ok: true, content, notes };
+  return { ok: true, content, notes, sourceId };
 }
 
 /**
@@ -203,6 +204,8 @@ export async function takePackHome(accountId: string, storeId: string, packKey: 
     if (/experiment/i.test(describe(error))) return refuse("Your front page is in an A/B test. Stop the test first.");
     throw error;
   }
+  // The text styles its words wear come with it (D393); a failure leaves the words as they are, unstyled.
+  await carryTextStyles({ id: accountId }, placed.sourceId, storeId, placed.content);
   await audit(accountId, storeId, "store.front_page_from_pack", { pack: pack.key, page: made.pageId, previous: made.previous }, { target: { type: "page", id: made.pageId } });
   return { ok: true, pageId: made.pageId, notes: placed.notes };
 }

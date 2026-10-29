@@ -1047,13 +1047,13 @@ export function PageEditor({
             {context.place
               ? liveSlug &&
                 context.place.view && (
-                  <a href={context.place.view} target="_blank" rel="noopener" className="underline">
+                  <a href={context.place.view} className="underline">
                     {ew.view[noun]}
                   </a>
                 )
               : liveSlug &&
                 !layout && (
-                  <a href={`${siteBase}/${liveSlug}`} target="_blank" rel="noopener" className="underline">
+                  <a href={`${siteBase}/${liveSlug}`} className="underline">
                     {ew.view[noun]}
                   </a>
                 )}

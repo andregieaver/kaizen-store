@@ -94,4 +94,32 @@ describe("text styles", () => {
     const copied = await styles.listTextStyles(String(made.id));
     expect(copied.map((s) => s.slug).sort()).toEqual((await styles.listTextStyles(owner.store.id)).map((s) => s.slug).sort());
   });
+
+  it("carries the styles content wears to the site it is placed in, keeping a style the site has by that slug", async () => {
+    const email = `styles-to-${run}@example.com`;
+    const slug = `styles-to-${run}`;
+    const [request] = await db().execute<Row>(sql`insert into commerce.access_requests (email, name, store_name) values (${email}, 'Owner', ${slug}) returning id`);
+    await db().execute(sql`select commerce.approve_access_request(${String(request.id)}::uuid, ${slug}, ${slug}, null)`);
+    const [store] = await db().execute<Row>(sql`select id from commerce.stores where slug = ${slug}`);
+    const to = String(store.id);
+    await db().execute(sql`delete from commerce.text_styles where store_id = ${to}::uuid`);
+    const own = await styles.saveTextStyle(owner.account, to, { name: "Mine", kind: "colour", settings: { color: "#123456" } });
+    expect(own.ok).toBe(true);
+
+    const content = page(`carried-${run}`, 'A <span class="ts-mine">kept</span> and <span class="lead ts-missing">gone</span>', {
+      id: "text-2",
+      type: "richText",
+      doc: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "glow", marks: [{ type: "textClass", attrs: { name: "gradient-text-2" } }] }] }] },
+    });
+    expect(styles.stylesWorn(content).sort()).toEqual(["gradient-text-2", "mine", "missing"]);
+    expect(await styles.carryTextStyles(owner.account, owner.store.id, owner.store.id, content)).toBeNull();
+
+    const library = await styles.carryTextStyles(owner.account, owner.store.id, to, content);
+    expect(library?.map((s) => s.slug).sort()).toEqual(["gradient-text-2", "mine"]);
+    // The site's own "Mine" keeps its look; the one it lacked came with its words.
+    expect(library?.find((s) => s.slug === "mine")).toMatchObject({ kind: "colour", settings: { color: "#123456" } });
+    expect(library?.find((s) => s.slug === "gradient-text-2")?.kind).toBe("glow");
+    // Placing it again carries nothing new.
+    expect(await styles.carryTextStyles(owner.account, owner.store.id, to, content)).toBeNull();
+  });
 });

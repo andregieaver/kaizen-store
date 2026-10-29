@@ -28,6 +28,7 @@ import { pageRulesProblem } from "./page-rules";
 import { refreshTag } from "./refresh";
 import { storeTag } from "./stores";
 import type { TemplateDeps } from "./templates";
+import { carryTextStyles } from "./text-styles";
 
 /**
  * A theme submission's own pages (wave 11 unit I, D388, `docs/wave-11-core-and-psi.md` I). When the look is sent, the author store's
@@ -184,6 +185,8 @@ export async function makeSubmittedContent(
     log("error", "theme_submission.pages_failed", { storeId: made.storeId }, error);
     notes.push("Its pages could not be saved; the theme's content is the standard store's until they are placed again.");
   }
+  // The text styles its pages' words wear come with them from the submitting store (D393).
+  await carryTextStyles(admin, input.sourceStoreId, made.storeId, ready.map(({ content }) => content));
   // Its front page was chosen: the store's cached read follows (DATA-02).
   refreshTag(storeTag(slug));
   return { ok: true, starterId: made.starterId, storeId: made.storeId, notes };

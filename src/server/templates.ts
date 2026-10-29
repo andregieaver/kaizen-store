@@ -28,10 +28,12 @@ import {
   type TemplateSource,
 } from "@/lib/templates";
 import { storeOrigins } from "@/lib/paths";
+import type { TextStyle } from "@/lib/text-styles";
 
 import { audit, type Account } from "./auth";
 import { copyStoredFile } from "./media";
 import { copyToLibrary, libraryFilesByUrl, type LibraryFile } from "./media-library";
+import { carryTextStyles } from "./text-styles";
 
 /**
  * Templates (D125): a store's saved rows, columns and components (D46) shared with its owner's other stores or with
@@ -220,7 +222,7 @@ export async function applyTemplate(
   account: Account,
   id: string,
   deps: TemplateDeps = {},
-): Promise<TemplateResult<{ part: SavedPart }>> {
+): Promise<TemplateResult<{ part: SavedPart; styles?: TextStyle[] }>> {
   const read = await readTemplate(storeId, account, id);
   if (!read.ok) return read;
   const { template, sourceId, clean } = read;
@@ -283,7 +285,9 @@ export async function applyTemplate(
     uses: 0,
     sharing: "private",
   } as SavedPart;
-  return { ok: true, part };
+  // The text styles its words wear come with it (D393), so they look as they did; the builder takes the library back.
+  const styles = await carryTextStyles(account, sourceId, storeId, part.content);
+  return { ok: true, part, ...(styles && { styles }) };
 }
 
 // ---------------------------------------------------------------------------

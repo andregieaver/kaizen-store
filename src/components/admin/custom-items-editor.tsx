@@ -140,11 +140,12 @@ function ItemFields({
           />
         )}
       </div>
-      <TextField label={w.title} value={item.title} max={CUSTOM_TITLE_MAX} onChange={(title) => change({ title })} />
+      <TextField label={w.title} markup value={item.title} max={CUSTOM_TITLE_MAX} onChange={(title) => change({ title })} />
       <TextField label={w.text} value={item.text} max={CUSTOM_TEXT_MAX} multiline hint={w.textHint} onChange={(text) => change({ text })} />
       <LinkPicker link={item.link} targets={targets} onChange={(link) => change({ link })} />
       <TextField
         label={w.button}
+        markup
         value={item.buttonLabel}
         max={CUSTOM_BUTTON_MAX}
         placeholder={w.buttonPlaceholder}
@@ -173,6 +174,7 @@ function ItemFields({
       <TextField label={w.badge} value={item.badge} max={CUSTOM_BADGE_MAX} placeholder={w.badgePlaceholder} hint={w.badgeHint} onChange={(badge) => change({ badge })} />
       <TextField
         label={w.price}
+        markup
         value={item.priceText}
         max={CUSTOM_PRICE_TEXT_MAX}
         placeholder={w.pricePlaceholder}

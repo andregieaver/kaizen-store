@@ -61,6 +61,7 @@ import { storeTag } from "./stores";
 import { INSTALLS_FULL, INSTALLS_MAX, InstallRefused, installCount, makeLive, putAwayLive } from "./theme-installs";
 import { CHARGE_CHANGED, isChargeRefusal, setThemeCharge, themePrices } from "./theme-prices";
 import { askForThemeShots, lookOf, themeShotsFor } from "./theme-shots";
+import { carryTextStyles } from "./text-styles";
 import { parseSiteFonts } from "@/lib/fonts-schema";
 
 import { platformTheme } from "./platform-navigation";
@@ -972,7 +973,8 @@ type Placed = { pages: Partial<Record<DesignLayoutKind, PageContent>>; siteCss: 
  * Makes a snapshot ready for a store (D176, shared by applying and by writing a profile's workspace, D177): the fonts installed (D59), the
  * source store's pictures copied into the store's library as D125's `applyTemplate()` copies a template's (any other upload left out), each
  * layout placed with the store's own menus (`layoutForStore()`) and checked as the builder checks a save (`pageInput`,
- * `pageRulesProblem()`, no other store's file left), and the CSS checked. Writes nothing but the fonts and the pictures' copies.
+ * `pageRulesProblem()`, no other store's file left), and the CSS checked. Writes nothing but the fonts, the pictures' copies and the text
+ * styles the layouts' words wear (`carryTextStyles()`, D393).
  */
 async function placeSnapshot(
   storeId: string | null,
@@ -1036,6 +1038,8 @@ async function placeSnapshot(
     pages[kind] = parsed.data;
   }
   const siteCss = cssProblem(mapped.css) === null ? mapped.css : "";
+  // The text styles its words wear come from the store it was taken from, as its pictures do (D393); one the site has by name keeps its own.
+  await carryTextStyles({ id: options.accountId }, sourceId, storeId, pages);
 
   return { ok: true, pages, siteCss, notes, copies: copies.size, leftOut };
 }

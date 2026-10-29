@@ -11,6 +11,7 @@ import { THEME_ELEMENT_KEYS, elementAsPart, elementFromPart, rowWidthPatch, sect
 import { SECTION_STYLE_NAME, SECTION_STYLES_MAX, isCoreSectionStyle, sectionStyleChoices, sectionStyleLabel } from "@/lib/section-styles";
 import { columnSlotAt, slotAnchor, type Box, type ColumnSlot, type SlotLine } from "@/lib/column-slot";
 import { InlineMarkupEditor } from "@/components/inline-edit/markup-editor";
+import { MarkupInput } from "@/components/admin/markup-input";
 import { InlineRichEditor } from "@/components/inline-edit/rich-text-inline";
 import { inlineKindOf } from "@/lib/inline-edit";
 import {
@@ -4679,13 +4680,7 @@ function ImageFields({
         <span>
           {iw.caption} <span className="font-normal text-muted">({iw.captionHint})</span>
         </span>
-        <input
-          id={`${id}-caption`}
-          value={block.caption}
-          maxLength={300}
-          onChange={(event) => onChange({ ...block, caption: event.target.value })}
-          className="min-h-10 rounded-md border border-border bg-background px-3 text-sm font-normal"
-        />
+        <MarkupInput id={`${id}-caption`} label={iw.caption} value={block.caption} max={300} className="font-normal" onChange={(caption) => onChange({ ...block, caption })} />
       </label>
     </div>
   );
@@ -5820,14 +5815,8 @@ function HeadingFields({
         <label htmlFor={`${id}-text`} className="text-sm font-medium">
           {hw.heading}
         </label>
-        <input
-          id={`${id}-text`}
-          value={block.text}
-          maxLength={HEADING_MAX}
-          onChange={(event) => onChange({ ...block, text: event.target.value })}
-          className="min-h-11 rounded-md border border-border bg-background px-3 text-base font-medium"
-        />
-        <p className="text-xs text-muted">{words.inlineHint}</p>
+        {/* Its words as they look, text styles and all (D393); no tag to type. */}
+        <MarkupInput id={`${id}-text`} label={hw.heading} value={block.text} max={HEADING_MAX} className="text-base font-medium" onChange={(text) => onChange({ ...block, text })} />
       </div>
       <div className="flex flex-col gap-1">
         <Choices
@@ -5858,15 +5847,7 @@ function ButtonFields({ block, onChange }: { block: ButtonBlock; onChange: (bloc
         <label htmlFor={`${id}-label`} className="text-sm font-medium">
           {bw.text}
         </label>
-        <input
-          id={`${id}-label`}
-          value={block.label}
-          maxLength={BUTTON_LABEL_MAX}
-          placeholder={bw.placeholder}
-          onChange={(event) => onChange({ ...block, label: event.target.value })}
-          className="min-h-10 rounded-md border border-border bg-background px-3 text-sm"
-        />
-        <p className="text-xs text-muted">{w.inlineHint}</p>
+        <MarkupInput id={`${id}-label`} label={bw.text} value={block.label} max={BUTTON_LABEL_MAX} placeholder={bw.placeholder} onChange={(label) => onChange({ ...block, label })} />
       </div>
       <div className="flex flex-col gap-1">
         <label htmlFor={`${id}-href`} className="text-sm font-medium">
@@ -6405,14 +6386,7 @@ function ContentGridFields({
         <label htmlFor={`${id}-empty`} className="text-sm font-medium">
           {gw.whenNothing}
         </label>
-        <input
-          id={`${id}-empty`}
-          value={block.emptyText}
-          maxLength={300}
-          placeholder={gw.showNothing}
-          onChange={(event) => onChange({ emptyText: event.target.value })}
-          className={gridField}
-        />
+        <MarkupInput id={`${id}-empty`} label={gw.whenNothing} value={block.emptyText} max={300} placeholder={gw.showNothing} onChange={(emptyText) => onChange({ emptyText })} />
       </div>
     </div>
   );

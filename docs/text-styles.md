@@ -27,8 +27,12 @@ in the rich-text editor.
   - A heading in place on the canvas: the in-place editor becomes a rich one-line editor that shows marks as they look and writes
     the stored inline markup.
   - The Visual / HTML toggle on the panel's rich-text editor.
-- **Step 2:** every plain text field of the settings panel that takes inline markup (D191 `<Inline>`). These are button words,
-  captions, titles, list lines and table cells. Each becomes the same one-line editor, so styled words show as they look there too.
+- **Step 2 (built):** every plain text field of the settings panel that takes inline markup (D191 `<Inline>`): button words, captions,
+  titles, list lines, a form's words, a testimonial's quote and role, a table's caption and a custom grid item's words. Each is the same
+  one-line editor (`MarkupInput`), so styled words show as they look there too. A table's cells stay plain fields: their icon tokens
+  (`{{name}}`) are typed in them.
+  - *Edit text* on the live site edits a heading with the same one-line editor. It offers the site's styles to apply, never to make or
+    change one (`TextStylesView`).
 
 Stored formats do not change:
 - **Plain fields** keep inline markup, `<span class="ts-{slug}">awesome</span>`, which `parseInline()` already reads and `<Inline>`
@@ -69,7 +73,9 @@ Stored formats do not change:
 - **Who.** A store's styles need `website:write`; Kaizena Flow's need a platform admin.
 - **Deleting.** A style in use says where it is used. Deleting it leaves the words as they are, unstyled.
 - **Copies.** Copied with a store: `COPY_RULES` settings, `copy_text_styles()` in the copy's transaction, and from a store template in
-  `clone_starter_setup()`. In the store export, not personal data. A template or theme content that names a style carrying it when placed
-  in another store is step 2.
+  `clone_starter_setup()`. In the store export, not personal data.
+- **Carried.** Content placed from another site brings the styles its words wear (`carryTextStyles()`, after the content's own
+  transaction, never failing the placing): a template used, a demo store's home page taken, a theme placed (from the store it was taken
+  from) and a submitted theme's pages. A style the receiving site already has by that slug keeps its own look; the limit of 50 holds.
 - **The checker.** `pageIssues()` reads a style's colour as the colour of the words it is on (unit K's class colours).
 - **Limits.** At most 50 styles per site; a name is at most 60 characters.

@@ -7,6 +7,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { applyBlockEdit, blockWords, inlineProblem, locateBlock, type BlockEdit } from "@/lib/inline-edit";
 import { pageInput, parsePageContent, type PageContent, type PageType, type RichTextDoc } from "@/lib/page-content";
+import type { TextStyle } from "@/lib/text-styles";
 
 import { audit, getAccount, type Account } from "./auth";
 import { runningTestOf } from "./experiment-admin";
@@ -14,6 +15,7 @@ import { keepVersion } from "./page-versions";
 import { pagesTag } from "./pages";
 import { checkPageTypeAccess, checkPassPageTypeAccess } from "./permissions";
 import { refreshTagNow } from "./refresh";
+import { listTextStyles } from "./text-styles";
 
 /**
  * Editing a page's words on the live site (D192): signed-in staff who may change the website press a heading or a text on the page
@@ -66,9 +68,13 @@ export async function authorise(store: string | null, row: Row): Promise<{ accou
 }
 
 /** What the page shows now, and the words of one of its blocks to edit. */
-export type PageTextRead =
+export type PageTextRead = (
   | { ok: true; kind: "heading"; text: string; rev: string }
-  | { ok: true; kind: "richText"; doc: RichTextDoc; rev: string };
+  | { ok: true; kind: "richText"; doc: RichTextDoc; rev: string }
+) & {
+  /** The site's text styles, to put on the words being edited (D393 step 2); never made or changed here. */
+  styles: TextStyle[];
+};
 
 /** The words of a heading or a text of a published page, for the person who may change them. */
 export async function readPageText(input: { store: string | null; page: string; block: string }): Promise<PageTextRead | PageTextFailure> {
@@ -86,7 +92,10 @@ export async function readPageText(input: { store: string | null; page: string; 
   if (problem) return fail(422, "refused", problem);
   const { block } = locateBlock(published.rows, input.block)!;
   const rev = revisionOf(blockWords(block));
-  return block.type === "heading" ? { ok: true, kind: "heading", text: block.text, rev } : { ok: true, kind: "richText", doc: (block as { doc: RichTextDoc }).doc, rev };
+  const styles = await listTextStyles(who.owner);
+  return block.type === "heading"
+    ? { ok: true, kind: "heading", text: block.text, rev, styles }
+    : { ok: true, kind: "richText", doc: (block as { doc: RichTextDoc }).doc, rev, styles };
 }
 
 /**

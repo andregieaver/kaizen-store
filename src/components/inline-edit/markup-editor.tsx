@@ -3,9 +3,10 @@
 import { Mark, Node } from "@tiptap/core";
 import { EditorContent, useEditor, useEditorState, type Editor } from "@tiptap/react";
 import { UndoRedo } from "@tiptap/extensions";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { docToMarkup, markupToDoc, withStyleClass, MARK_ORDER, type MarkupDoc } from "@/lib/inline-doc";
+import { fillWords } from "@/lib/admin-fill";
 import { cleanHeadingText } from "@/lib/inline-edit";
 import { slugOfClass, textStyleClass } from "@/lib/text-styles";
 
@@ -56,6 +57,7 @@ export function InlineMarkupEditor({
   text,
   point,
   endOnBlur = true,
+  actions,
   onChange,
   onDone,
 }: {
@@ -66,11 +68,14 @@ export function InlineMarkupEditor({
   text: string;
   point: { x: number; y: number } | null;
   endOnBlur?: boolean;
+  /** More controls in its bar, after the formatting (the live site's Save and Cancel). */
+  actions?: ReactNode;
   onChange: (text: string) => void;
   onDone: (how: "save" | "cancel") => void;
 }) {
   const wrapper = useRef<HTMLDivElement | null>(null);
   const bar = useRef<HTMLDivElement | null>(null);
+  const headingWord = useAdminText("builder").heading.heading;
   const [start] = useState(() => ({ text, point }));
   const done = useRef(false);
   const finish = (how: "save" | "cancel") => {
@@ -84,7 +89,7 @@ export function InlineMarkupEditor({
     content: markupToDoc(start.text),
     immediatelyRender: false,
     editorProps: {
-      attributes: { class: "outline-none", "aria-label": "Heading text", "aria-multiline": "false", role: "textbox", spellcheck: "true" },
+      attributes: { class: "outline-none", "aria-label": headingWord, "aria-multiline": "false", role: "textbox", spellcheck: "true" },
       handleKeyDown: (_view, event) => {
         if (event.key === "Enter" && !event.shiftKey) {
           event.preventDefault();
@@ -131,13 +136,26 @@ export function InlineMarkupEditor({
       <Tag className={`${className} cursor-text rounded-sm outline-2 outline-offset-4 outline-blue-600/70 focus-within:outline-blue-600`}>
         <EditorContent editor={editor} />
       </Tag>
-      {editor && <MarkupBar editor={editor} anchor={wrapper} barRef={bar} />}
+      {editor && <MarkupBar editor={editor} anchor={wrapper} barRef={bar} label={headingWord} actions={actions} />}
     </div>
   );
 }
 
 /** The bar over the selected words: Bold, Italic and *Style* (a text style on the selection, or off). */
-function MarkupBar({ editor, anchor, barRef }: { editor: Editor; anchor: React.RefObject<HTMLDivElement | null>; barRef: React.RefObject<HTMLDivElement | null> }) {
+export function MarkupBar({
+  editor,
+  anchor,
+  barRef,
+  label,
+  actions,
+}: {
+  editor: Editor;
+  anchor: React.RefObject<HTMLDivElement | null>;
+  barRef: React.RefObject<HTMLDivElement | null>;
+  /** What the words are, for the bar's name ("Formatting for …"). */
+  label: string;
+  actions?: ReactNode;
+}) {
   const w = useAdminText("builder").richText;
   const state = useEditorState({
     editor,
@@ -152,7 +170,7 @@ function MarkupBar({ editor, anchor, barRef }: { editor: Editor; anchor: React.R
   const tool = "flex min-h-9 min-w-9 items-center justify-center rounded px-2 text-sm hover:bg-sunken aria-pressed:bg-inverse aria-pressed:text-inverse-ink";
   return (
     <FloatingBar anchor={anchor} barRef={barRef}>
-      <div role="toolbar" aria-label={w.toolbar.replace("{label}", "Heading")} className="flex items-center gap-0.5 p-1">
+      <div role="toolbar" aria-label={fillWords(w.toolbar, { label })} className="flex items-center gap-0.5 p-1">
         <button type="button" title={w.bold} aria-label={w.bold} aria-pressed={state.bold} onMouseDown={(e) => e.preventDefault()} onClick={() => editor.chain().focus().toggleMark("m_strong").run()} className={tool}>
           <strong>B</strong>
         </button>
@@ -170,6 +188,7 @@ function MarkupBar({ editor, anchor, barRef }: { editor: Editor; anchor: React.R
           }}
         />
       </div>
+      {actions}
     </FloatingBar>
   );
 }
