@@ -355,7 +355,8 @@ async function workOut(storeId: string, ret: Ret, lines: DetailLine[], returnShi
     return {
       lineId: line.id,
       quantity: line.quantity,
-      totalMinor: line.totalMinor,
+      // A booking's part paid at the venue (D66) was never paid online, so a refund never counts it (D407).
+      totalMinor: line.totalMinor - line.venueMinor,
       priorQuantity: prior.get(line.id) ?? 0,
       completedByOthers: done.get(line.id) ?? 0,
       returnQuantity: mine?.quantity ?? 0,

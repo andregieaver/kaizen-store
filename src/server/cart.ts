@@ -85,6 +85,8 @@ export type CartLine = {
   backorder: { units: number; days: number } | null;
   status: CartLineStatus;
   delivery: Delivery;
+  /** The product's withdrawal exclusion (D407): a booked service keeps the right unless it is `dated_service`. */
+  withdrawalExclusion: string;
   /** Who the product is for (B2B), as kept; `companyRequired()` reads it with the store's audience. */
   audience: ProductAudience;
   /** Its product's VAT rate in the market (D65). */
@@ -205,7 +207,7 @@ export async function getCart(
       v.measure_amount, v.measure_unit, v.measure_base,
       commerce.vat_rate(c.market_code, p.vat_category) as vat_rate,
       cl.starts_at, cl.resource_id, br.name as staff, st.time_zone, aps.payment, aps.deposit_percent,
-      p.kind, aps.check_in_time, aps.check_out_time, v.rental_period, p.host_id,
+      p.kind, aps.check_in_time, aps.check_out_time, v.rental_period, p.host_id, p.withdrawal_exclusion,
       c.company_name, c.organisation_number, c.vat_number, vk.status as vat_status, vk.requested_at as vat_checked_at,
       c.is_gift, c.gift_to, c.gift_from, c.gift_message, c.company_location_id, c.po_number,
       coalesce((select os.gift_messages from commerce.order_settings os where os.store_id = c.store_id), false) as gift_on,
@@ -357,6 +359,7 @@ export async function getCart(
         backorder: stock && status === "ok" ? backorderNote(quantity, stock) : null,
         status,
         delivery: parseDelivery(row.delivery),
+        withdrawalExclusion: String(row.withdrawal_exclusion ?? "none"),
         audience: parseProductAudience(row.audience),
         vatRate: Number(row.vat_rate ?? 0),
         plan,

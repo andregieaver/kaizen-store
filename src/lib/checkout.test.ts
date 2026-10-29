@@ -33,4 +33,10 @@ describe("lineWithdrawal", () => {
     expect(lineWithdrawal("physical", "digital_content")).toBe("none");
     expect(lineWithdrawal("physical", "custom_made")).toBe("custom_made");
   });
+
+  it("keeps a booked service's right unless the owner marked it a dated service the law exempts (D407)", () => {
+    expect(lineWithdrawal("service", "none")).toBe("none");
+    expect(lineWithdrawal("service", "custom_made")).toBe("none");
+    expect(lineWithdrawal("service", "dated_service")).toBe("dated_service");
+  });
 });

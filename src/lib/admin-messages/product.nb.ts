@@ -539,6 +539,7 @@ export const productNb: ProductMessages = {
       alcohol_future_delivery: "Alkohol prissatt ved salget, men levert etter 30 dager",
       periodicals: "Avis, tidsskrift eller blad (ikke abonnementer)",
       digital_content: "Digitalt innhold levert med en gang, med kundens samtykke",
+      dated_service: "Overnatting, bilutleie, servering eller fritidsaktivitet på en bestemt dato",
     },
     withdrawalHint: "De fleste produkter har ikke noe unntak. Velg bare et som tydelig gjelder.",
     withdrawalDownloads:

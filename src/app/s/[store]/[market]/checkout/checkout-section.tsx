@@ -540,6 +540,7 @@ async function paymentForm(store: Store, market: Market, view: CheckoutView, dra
               labels={checkoutLabels(m, m.restartCheckout, market.lang)}
               consents={{
                 digital: open.digital ? m.digitalConsent : undefined,
+                service: open.serviceRequest ? m.serviceRequest : undefined,
                 subscription: open.subscription
                   ? m.subscriptionConsent(
                       m.planEvery(open.subscription.interval, open.subscription.intervalCount),

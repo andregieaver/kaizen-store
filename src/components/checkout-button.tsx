@@ -20,8 +20,8 @@ export type CheckoutLabels = {
   problems: Record<CheckoutProblem, string>;
 };
 
-/** What the shopper must agree to first: downloads (D24) or a subscription (D25). */
-export type CheckoutConsents = { digital?: string; subscription?: string };
+/** What the shopper must agree to first: downloads (D24), a subscription (D25) or a booked service inside the 14 days (D407). */
+export type CheckoutConsents = { digital?: string; subscription?: string; service?: string };
 
 /**
  * The company a business buys for (B2B): asked for when the shopper buys as
@@ -211,6 +211,7 @@ export function CheckoutButton({
         {
           digital: form.get("digitalConsent") === "on",
           subscription: form.get("subscriptionConsent") === "on",
+          service: form.get("serviceConsent") === "on",
         },
         company === undefined
           ? undefined
@@ -423,7 +424,7 @@ export function CheckoutButton({
           <p className="text-muted">{shownPayer.labels.note}</p>
         </fieldset>
       )}
-      {(["subscription", "digital"] as const).map(
+      {(["subscription", "digital", "service"] as const).map(
         (kind) =>
           consents[kind] && (
             <label key={kind} className="flex items-start gap-2 text-sm">

@@ -105,6 +105,7 @@ export const enReturns = {
     business_order: "The order was placed for a company, which has no statutory right of withdrawal.",
     period_over: "By our records the 14 days for withdrawing have passed. If you were not given information about your right of withdrawal, or you received the goods later, the period may be longer: write to the store.",
     gift_card_spent: "Part of this gift card has been used, so it can no longer be withdrawn from. Write to the store if something is wrong.",
+    service_performed: "The service has been fully provided at your request, so the right of withdrawal has ended.",
   },
   sealedLine: "The right of withdrawal applies only while the seal is unbroken.",
   nothingToSend: "Nothing to send back",

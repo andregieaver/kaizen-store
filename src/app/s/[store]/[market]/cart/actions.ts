@@ -228,7 +228,7 @@ export async function checkoutAction(
     cartId,
     origin,
     t(shop.market.lang).shipping,
-    { digital: consent.digital === true, subscription: consent.subscription === true },
+    { digital: consent.digital === true, subscription: consent.subscription === true, service: consent.service === true },
     // A signed-in customer's order is theirs from the start, and codes for one use each know them (D31).
     {
       customerId: (await getCustomer(shop.store.id))?.id ?? null,

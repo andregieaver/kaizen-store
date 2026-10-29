@@ -33,6 +33,7 @@ import { convertMinor } from "@/lib/currency";
 import type { PaymentModeName } from "@/lib/stripe-account";
 import { shownMeasureFromColumns } from "@/lib/unit-price-rules";
 import { giftOfRow, NO_GIFT, type GiftFields } from "@/lib/gift";
+import { needsServiceRequest } from "@/lib/withdrawal";
 
 import { holdAppointment } from "./appointments";
 import { cartGiftCards } from "./gift-card-cart";
@@ -186,7 +187,7 @@ export type PlaceResult = { ok: true; order: PlacedOrder } | { ok: false; proble
  * so buying one needs the shopper's express consent to that and their
  * acknowledgement that the right of withdrawal then ends (D24).
  */
-export type CheckoutConsent = { digital?: boolean; subscription?: boolean };
+export type CheckoutConsent = { digital?: boolean; subscription?: boolean; service?: boolean };
 
 /** A bundle line's components as its row carries them (D322), each with its title as shoppers read it; null for any other line. */
 function bundleComponentsOf(line: Row): { variantId: string; sku: string; title: string; quantity: number }[] | null {
@@ -372,6 +373,16 @@ export async function placeOrder(
     // Downloads (D24): a gift card is emailed as a code (D300), so it asks no tick and keeps its right of withdrawal.
     const digital = lines.some((l) => l.delivery === "digital" && l.kind !== "gift_card");
     if (digital && !consent.digital) return { ok: false, problem: "consent" };
+    // A booked service inside the 14 days (D407) is provided at the shopper's express request, with the acknowledgement that the right ends once
+    // it is fully performed: the cart's tick, kept on the order. Without it nothing is refused, and the customer keeps the whole right and owes
+    // nothing for what was provided (CRD Art. 14(4)(a)(ii)), which `lineEligibility()` reads from the order.
+    const serviceRequest =
+      consent.service === true &&
+      needsServiceRequest(
+        lines.map((l) => ({ delivery: String(l.delivery), startsAt: l.starts_at ? new Date(String(l.starts_at)) : null, withdrawalExclusion: String(l.withdrawal_exclusion) })),
+        new Date(),
+        String(cart.time_zone ?? "Europe/Oslo"),
+      );
 
     const [rate] = await tx.execute<Row>(sql`
       select amount_minor, free_over_minor from commerce.shipping_rates
@@ -894,6 +905,7 @@ export async function placeOrder(
       taxMinor: tax,
       totalMinor: total,
       digitalConsentAt: digital ? "now" : null,
+      serviceRequestAt: serviceRequest ? "now" : null,
       customerId,
       discountCodeId: discount?.id ?? null,
       discountCodeItemId: discount?.itemId ?? null,
@@ -1112,7 +1124,7 @@ export async function placeOrder(
     await tx.execute(sql`
       insert into commerce.order_events (store_id, order_id, type, data, actor)
       values (${storeId}::uuid, ${orderId}::uuid, 'order.placed',
-              ${JSON.stringify({ ...(digital && { digitalConsent: true }), ...(rhythm && { subscriptionConsent: true }) })}::jsonb,
+              ${JSON.stringify({ ...(digital && { digitalConsent: true }), ...(rhythm && { subscriptionConsent: true }), ...(serviceRequest && { serviceRequest: true }) })}::jsonb,
               'shopper')
     `);
 
@@ -1557,6 +1569,8 @@ export type OpenCheckout = {
   ships: boolean;
   /** The order has downloads, so starting again needs the shopper's consent. */
   digital: boolean;
+  /** The order needs the shopper's request for a booked service inside the 14 days (D407), so starting again asks it again. */
+  serviceRequest: boolean;
   /** The order starts a subscription: its schedule and what each renewal costs (D25). */
   subscription: { interval: PlanInterval; intervalCount: number; totalMinor: number } | null;
 };
@@ -1621,6 +1635,8 @@ export async function getOpenCheckout(storeId: string, cartId: string): Promise<
                  -- A gift card (D300) is emailed as a code, never a download: no tick for it.
                  and not exists (select 1 from commerce.product_variants v join commerce.products p on p.store_id = v.store_id and p.id = v.product_id
                                  where v.store_id = ol.store_id and v.id = ol.variant_id and p.kind = 'gift_card')) as digital,
+      -- The order kept the shopper's request for a booked service inside the 14 days (D407): starting again asks it again.
+      o.service_request_at is not null as service_request,
       s.interval, s.interval_count, s.total_minor as renewal_minor
     from commerce.orders o
     join commerce.payments pay on pay.store_id = o.store_id and pay.order_id = o.id and pay.provider = 'stripe'
@@ -1642,6 +1658,7 @@ export async function getOpenCheckout(storeId: string, cartId: string): Promise<
         changed: Boolean(row.changed),
         ships: Boolean(row.ships),
         digital: Boolean(row.digital),
+        serviceRequest: Boolean(row.service_request),
         subscription: row.interval
           ? {
               interval: row.interval as PlanInterval,

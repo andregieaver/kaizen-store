@@ -8,7 +8,7 @@ import { z } from "zod";
 import { db } from "@/db/client";
 import { registerWithdrawal as registerSchema, returnRequest, withdrawalConfirm, withdrawalStart } from "@/lib/return-input";
 import { noonOf, dayIn } from "@/lib/work-dates";
-import { refundDeadline, sendBackDay } from "@/lib/withdrawal";
+import { refundDeadline, sendBackDay, serviceShare } from "@/lib/withdrawal";
 import {
   declaredProblems,
   type LineEligibility,
@@ -26,6 +26,8 @@ import { buildAcknowledgement, sendWithdrawalAcknowledgement } from "./return-em
 import { refreshFulfilment } from "./fulfilment";
 import { cancelEditsForWithdrawal, closeEditSessionsAfterWithdrawal } from "./order-edits";
 import { NOTHING_SENT_SQL } from "./return-sql";
+import { log } from "./log";
+import { sendBookingStaffChange } from "./shopper-emails";
 
 type Row = Record<string, unknown>;
 
@@ -599,7 +601,7 @@ async function writeConfirmation(
   facts: OrderFacts,
   eligible: LineEligibility[],
   by: { actor: "shopper" | "staff"; confirmedAt?: Date | null; note?: string | null; registered?: Record<string, unknown> },
-): Promise<{ ok: true; returnId: string; number: string; endedEdits: number } | Refused> {
+): Promise<{ ok: true; returnId: string; number: string; endedEdits: number; cancelledBookings: string[] } | Refused> {
   const declared = await tx.execute<Row>(sql`
     select order_line_id, quantity from commerce.withdrawal_request_lines
     where store_id = ${storeId}::uuid and withdrawal_request_id = ${requestId}::uuid order by order_line_id
@@ -648,11 +650,32 @@ async function writeConfirmation(
   for (const card of voided) {
     await tx.execute(sql`select commerce.gift_card_withdraw(${storeId}::uuid, ${card}::uuid, ${facts.orderId}::uuid)`);
   }
+  // A booked service withdrawn from (D407): its booking is cancelled now and nothing is left to pay for it at the venue; one partly provided at
+  // the customer's express request is paid for in proportion to the time that passed (CRD Art. 14(3)), taken off as the line's deduction.
+  const at = new Date();
+  const cancelledBookings: string[] = [];
   for (const line of keep) {
+    const fact = facts.lines.find((x) => x.id === line.lineId);
+    const service = line.decision === "accept" && fact?.delivery === "service" ? fact.service : null;
+    const share = service ? serviceShare(fact!.totalMinor - fact!.venueMinor, service, Boolean(facts.order.serviceRequest), at) : 0;
     await tx.execute(sql`
-      insert into commerce.return_lines (store_id, return_id, order_line_id, quantity, decision, decline_reason)
-      values (${storeId}::uuid, ${String(ret.id)}::uuid, ${line.lineId}::uuid, ${line.quantity}, ${line.decision}, ${line.reason})
+      insert into commerce.return_lines (store_id, return_id, order_line_id, quantity, decision, decline_reason, deduction_minor, deduction_note)
+      values (${storeId}::uuid, ${String(ret.id)}::uuid, ${line.lineId}::uuid, ${line.quantity}, ${line.decision}, ${line.reason},
+              ${share}, ${share > 0 ? SERVICE_SHARE_NOTE : null})
     `);
+    if (!service) continue;
+    const cancelled = await tx.execute<Row>(sql`
+      update commerce.bookings set status = 'cancelled', cancelled_at = now(), updated_at = now()
+      where store_id = ${storeId}::uuid and order_line_id = ${line.lineId}::uuid and status = 'confirmed'
+      returning id
+    `);
+    cancelledBookings.push(...cancelled.map((b) => String(b.id)));
+    if (fact!.venueMinor > 0) {
+      await tx.execute(sql`
+        update commerce.orders set balance_minor = greatest(0, balance_minor - ${fact!.venueMinor})
+        where store_id = ${storeId}::uuid and id = ${facts.orderId}::uuid
+      `);
+    }
   }
   const data = {
     returnId: String(ret.id),
@@ -672,7 +695,21 @@ async function writeConfirmation(
   // are closed after the commit. And a withdrawal of the last units still to send of a partly sent order makes it sent (`fulfilled`), in this transaction.
   const ended = await cancelEditsForWithdrawal(tx, storeId, facts.orderId);
   await refreshFulfilment(tx, storeId, facts.orderId);
-  return { ok: true, returnId: String(ret.id), number: String(ret.number), endedEdits: ended.length };
+  return { ok: true, returnId: String(ret.id), number: String(ret.number), endedEdits: ended.length, cancelledBookings };
+}
+
+/** The deduction's note on a service partly provided before the withdrawal (D407). */
+const SERVICE_SHARE_NOTE = "The service was partly provided at the customer's request before the withdrawal (CRD Art. 14(3)).";
+
+/** The staff are told of each booking a withdrawal cancelled (D407), after the commit; a failure here never undoes the withdrawal. */
+async function tellStaffOfCancelled(storeId: string, bookings: readonly string[]): Promise<void> {
+  for (const booking of bookings) {
+    try {
+      await sendBookingStaffChange(storeId, booking, "cancelled");
+    } catch (error) {
+      log("warn", "withdrawal.booking_notice_failed", { storeId, booking }, error);
+    }
+  }
 }
 
 /**
@@ -700,7 +737,7 @@ export async function confirmWithdrawal(storeId: string, input: unknown): Promis
   const { lines: eligible } = judge(facts, new Date(String(first.submitted_at)));
 
   const made = await guarded(async () =>
-    db().transaction(async (tx): Promise<{ ok: true; already: boolean; endedEdits?: number } | Refused> => {
+    db().transaction(async (tx): Promise<{ ok: true; already: boolean; endedEdits?: number; cancelledBookings?: string[] } | Refused> => {
       const [request] = await tx.execute<Row>(sql`
         select * from commerce.withdrawal_requests where store_id = ${storeId}::uuid and id = ${requestId}::uuid for update
       `);
@@ -711,11 +748,12 @@ export async function confirmWithdrawal(storeId: string, input: unknown): Promis
       }
       const written = await writeConfirmation(tx, storeId, requestId, facts, eligible, { actor: "shopper" });
       if (!written.ok) return written;
-      return { ok: true, already: false, endedEdits: written.endedEdits };
+      return { ok: true, already: false, endedEdits: written.endedEdits, cancelledBookings: written.cancelledBookings };
     }),
   );
   if (!made.ok) return made;
   if ("endedEdits" in made && made.endedEdits) await closeEditSessionsAfterWithdrawal(storeId, facts.orderId);
+  if (made.cancelledBookings?.length) await tellStaffOfCancelled(storeId, made.cancelledBookings);
   return confirmedOutcome(storeId, requestId, made.already);
 }
 
@@ -814,11 +852,12 @@ export async function registerWithdrawal(storeId: string, input: unknown, accoun
         registered: { by: accountId, channel: data.channel, late: data.late },
       });
       if (!written.ok) return written;
-      return { ok: true as const, requestId, returnId: written.returnId, number: written.number, endedEdits: written.endedEdits };
+      return { ok: true as const, requestId, returnId: written.returnId, number: written.number, endedEdits: written.endedEdits, cancelledBookings: written.cancelledBookings };
     }),
   );
   if (!made.ok) return made;
   if (made.endedEdits) await closeEditSessionsAfterWithdrawal(storeId, facts.orderId);
+  if (made.cancelledBookings.length) await tellStaffOfCancelled(storeId, made.cancelledBookings);
   // The acknowledgement goes out in the same request, to the order's own address, as for the consumer's own statement.
   const outcome = await sendWithdrawalAcknowledgement(storeId, made.requestId);
   await recordAcknowledgement(storeId, made.requestId, outcome.messageId);

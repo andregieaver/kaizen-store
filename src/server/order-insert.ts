@@ -44,6 +44,8 @@ export type OrderInsert = {
   shippingAddress?: Record<string, unknown>;
   /** The moment the shopper consented to downloads starting at once (D24): `"now"` or a time. */
   digitalConsentAt?: "now" | string | null;
+  /** The moment the shopper asked for a booked service to start inside the 14 days (D407): `"now"` or null. */
+  serviceRequestAt?: "now" | null;
   customerId?: string | null;
   discountCodeId?: string | null;
   /** The generated single-use code used (D299 E1). */
@@ -129,7 +131,8 @@ export async function insertOrder(tx: Db, input: OrderInsert): Promise<{ orderId
       vat_kind, vat_relief_minor, shipping_tax_rate, vat_treatment, vat_check_id, subscription_id,
       is_gift, gift_to, gift_from, gift_message, source, draft_id, made_by, staff_discount_minor, staff_discount_label,
       delivery_method, pickup_location_id, delivery_note, exchange_id, entered_codes, campaign_shipping,
-      company_location_id, po_number, approval, duties_minor, customs, checkout_answers, rule_hidden_methods, checkout_rules_applied
+      company_location_id, po_number, approval, duties_minor, customs, checkout_answers, rule_hidden_methods, checkout_rules_applied,
+      service_request_at
     ) values (
       ${input.storeId}::uuid, ${number}, ${input.marketCode}, ${input.currency}, ${input.locale},
       ${input.cartId ?? null}::uuid, ${input.email ?? ""}, 'pending_payment',
@@ -154,7 +157,8 @@ export async function insertOrder(tx: Db, input: OrderInsert): Promise<{ orderId
       ${input.companyLocationId ?? null}::uuid, ${input.poNumber ?? null}, ${input.approval ?? null},
       ${input.dutiesMinor ?? 0}, ${input.customs === null || input.customs === undefined ? null : JSON.stringify(input.customs)}::jsonb,
       ${input.checkoutAnswers ? JSON.stringify(input.checkoutAnswers) : null}::jsonb, (select coalesce(array_agg(m), '{}') from jsonb_array_elements_text(${JSON.stringify(input.ruleHiddenMethods ?? [])}::jsonb) m),
-      (select coalesce(array_agg(r::uuid), '{}') from jsonb_array_elements_text(${JSON.stringify(input.checkoutRulesApplied ?? [])}::jsonb) r)
+      (select coalesce(array_agg(r::uuid), '{}') from jsonb_array_elements_text(${JSON.stringify(input.checkoutRulesApplied ?? [])}::jsonb) r),
+      ${input.serviceRequestAt === "now" ? sql`now()` : sql`null`}
     )
     returning id
   `);

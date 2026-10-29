@@ -510,17 +510,18 @@ const safetyShows = (product: ProductDetail): boolean =>
 /** The line on the right of withdrawal: none for ordinary goods, which can be sent back. */
 function withdrawalText(product: ProductDetail, m: Messages): string | null {
   if (product.kind === "gift_card") return m.giftCardLine.withdrawal;
-  return product.kind === "appointment"
-    ? m.booking.noWithdrawal
-    : product.kind === "stay" || product.kind === "rental"
-      ? m.stay.noWithdrawal(product.kind === "stay")
-      : product.variants.some((v) => v.delivery === "digital")
-        ? m.digitalWithdrawal
-        : product.withdrawalExclusion === "sealed_hygiene" || product.withdrawalExclusion === "sealed_media"
-          ? m.sealedWithdrawal
-          : product.withdrawalExclusion !== "none"
-            ? m.noWithdrawal
-            : null;
+  // A booked service keeps the right unless the owner marked it one the law exempts on a set date (D407).
+  if (product.kind === "appointment" || product.kind === "stay" || product.kind === "rental") {
+    if (product.withdrawalExclusion !== "dated_service") return m.serviceWithdrawal;
+    return product.kind === "appointment" ? m.booking.noWithdrawal : m.stay.noWithdrawal(product.kind === "stay");
+  }
+  return product.variants.some((v) => v.delivery === "digital")
+    ? m.digitalWithdrawal
+    : product.withdrawalExclusion === "sealed_hygiene" || product.withdrawalExclusion === "sealed_media"
+      ? m.sealedWithdrawal
+      : product.withdrawalExclusion !== "none"
+        ? m.noWithdrawal
+        : null;
 }
 
 /** Products like this one (D79), as the store's product cards. */

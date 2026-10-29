@@ -326,4 +326,53 @@ describe("shoppers changing their own bookings (D66)", () => {
     expect(shopperEmail?.email.subject).toMatch(/^Du har avbestilt bestillingen /);
     expect(shopperEmail?.attachments?.[0]).toMatchObject({ filename: "cancelled.ics" });
   });
+
+  it("keeps the right of withdrawal for an appointment the owner did not mark as exempt, and withdrawing cancels the booking (D407)", async () => {
+    const w = await import("./withdrawals");
+    const times = await freeTimes();
+    newShopper();
+    expect((await changeLine(shop, variantId, 1, "add", null, undefined, { startsAt: times[times.length - 2], resourceId: null })).outcome).toBe("added");
+    // The shopper asks for it to be provided inside the 14 days: the order keeps the request.
+    const placed = await placeOrder(shop, cartId(), { service: true });
+    if (!placed.ok) throw new Error(placed.problem);
+    const orderId = placed.order.orderId;
+    const [kept] = await db().execute<Row>(sql`
+      select o.number, o.service_request_at is not null as requested, ol.withdrawal_exclusion
+      from commerce.orders o join commerce.order_lines ol on ol.order_id = o.id where o.id = ${orderId}::uuid
+    `);
+    expect(kept).toMatchObject({ requested: true, withdrawal_exclusion: "none" });
+    await db().execute(sql`update commerce.orders set status = 'paid', email = 'angrer@example.com' where id = ${orderId}::uuid`);
+    await db().execute(sql`update commerce.bookings set status = 'confirmed', hold_expires_at = null where order_id = ${orderId}::uuid`);
+
+    const statement = { orderNumber: String(kept.number), email: "angrer@example.com", name: "Kari Nordmann" };
+    const view = await w.lookupWithdrawableOrder(storeId, statement, { floorMs: 0 });
+    expect(view?.lines[0]).toMatchObject({ right: "withdrawal" });
+    const started = await w.startWithdrawal(storeId, { ...statement, lines: [{ lineId: view!.lines[0].lineId, quantity: 1 }] }, { floorMs: 0 });
+    if (!started.ok || !started.matched || !started.request) throw new Error(JSON.stringify(started));
+    sent.length = 0;
+    const confirmed = await w.confirmWithdrawal(storeId, { requestId: started.request.id });
+    expect(confirmed).toMatchObject({ ok: true });
+
+    // The time is free again, nothing is owed for a service that had not started, and the staff are told.
+    const [after] = await db().execute<Row>(sql`
+      select b.status, rl.decision, rl.deduction_minor from commerce.bookings b
+      join commerce.return_lines rl on rl.order_line_id = b.order_line_id
+      where b.order_id = ${orderId}::uuid
+    `);
+    expect({ ...after, deduction_minor: Number(after.deduction_minor) }).toEqual({ status: "cancelled", decision: "accept", deduction_minor: 0 });
+    expect(sent.map((e) => e.kind)).toContain("booking.staff_cancelled");
+
+    // Marked by the owner as leisure on a set date, the same booking has no right.
+    await db().execute(sql`update commerce.products set withdrawal_exclusion = 'dated_service' where id = ${productId}::uuid`);
+    newShopper();
+    await changeLine(shop, variantId, 1, "add", null, undefined, { startsAt: times[times.length - 3], resourceId: null });
+    const exempt = await placeOrder(shop, cartId(), { service: true });
+    if (!exempt.ok) throw new Error(exempt.problem);
+    const [line] = await db().execute<Row>(sql`
+      select ol.withdrawal_exclusion, o.service_request_at is null as no_request from commerce.order_lines ol join commerce.orders o on o.id = ol.order_id
+      where ol.order_id = ${exempt.order.orderId}::uuid
+    `);
+    expect(line).toEqual({ withdrawal_exclusion: "dated_service", no_request: true });
+    await db().execute(sql`update commerce.products set withdrawal_exclusion = 'none' where id = ${productId}::uuid`);
+  });
 });

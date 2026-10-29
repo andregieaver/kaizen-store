@@ -4275,6 +4275,11 @@ export const orders = commerce.table(
      */
     digitalConsentAt: timestamp("digital_consent_at", { withTimezone: true }),
     /**
+     * When the shopper asked for a booked service to start inside the 14 days and acknowledged that the right of withdrawal ends once it is
+     * fully performed (D407; CRD Art. 7(3) and 16(a), angrerettloven § 22 c). Null when no such booking was in the order.
+     */
+    serviceRequestAt: timestamp("service_request_at", { withTimezone: true }),
+    /**
      * When the goods reached the customer; starts the withdrawal period (D153). Written by staff (*Mark delivered*) or
      * by a carrier's tracking, never estimated: the statutory period does not start from the date a parcel was sent.
      */

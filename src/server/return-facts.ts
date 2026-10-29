@@ -29,6 +29,8 @@ export type FactLine = WithdrawalLine & {
   variantId: string | null;
   unitPriceMinor: number;
   totalMinor: number;
+  /** What of the line is paid at the venue (D66), not online: a refund never counts it. */
+  venueMinor: number;
   gift: boolean;
 };
 
@@ -77,6 +79,24 @@ export const GIFT_CARD_LINE_FACTS = sql`
   coalesce((select min(e.created_at) from commerce.order_events e where e.store_id = ol.store_id and e.order_id = ol.order_id and e.type = 'order.paid'),
            (select x.created_at from commerce.orders x where x.store_id = ol.store_id and x.id = ol.order_id)) as gift_card_bought_at`;
 
+/**
+ * A booked service line's facts for `lineEligibility()` (D407): its booking (the one made for the line, the latest when moved) and when the order
+ * was made (its 14 days count from it). Read against `ol` and `o`.
+ */
+export const SERVICE_LINE_FACTS = sql`
+  (select jsonb_build_object('startsAt', b.starts_at, 'endsAt', b.ends_at, 'status', b.status)
+     from commerce.bookings b where b.store_id = ol.store_id and b.order_line_id = ol.id and ol.delivery = 'service'
+     order by b.created_at desc limit 1) as service_booking,
+  coalesce((select min(e.created_at) from commerce.order_events e where e.store_id = ol.store_id and e.order_id = ol.order_id and e.type = 'order.paid'),
+           (select x.created_at from commerce.orders x where x.store_id = ol.store_id and x.id = ol.order_id)) as service_ordered_at`;
+
+/** The service facts of a row read with `SERVICE_LINE_FACTS`; null for a line without a booking. */
+export function serviceFactsOf(row: Row): { startsAt: Date; endsAt: Date; status: string; orderedAt: Date } | null {
+  const b = row.service_booking as { startsAt?: string; endsAt?: string; status?: string } | null | undefined;
+  if (!b?.startsAt || !b.endsAt) return null;
+  return { startsAt: new Date(b.startsAt), endsAt: new Date(b.endsAt), status: String(b.status), orderedAt: new Date(String(row.service_ordered_at)) };
+}
+
 /** The gift card facts of a row read with `GIFT_CARD_LINE_FACTS`; null for any other line. */
 export function giftCardFactsOf(row: Row): { unspent: number; boughtAt: Date } | null {
   return row.is_gift_card ? { unspent: Number(row.gift_cards_whole ?? 0), boughtAt: new Date(String(row.gift_card_bought_at)) } : null;
@@ -86,7 +106,7 @@ export function giftCardFactsOf(row: Row): { unspent: number; boughtAt: Date } |
 export async function loadFacts(storeId: string, orderId: string): Promise<OrderFacts | null> {
   const [order] = await db().execute<Row>(sql`
     select o.id, o.number, o.email, o.customer_id, o.market_code, o.locale, o.currency, o.status, o.total_minor, o.shipping_minor,
-      o.delivery is not null as chosen_delivery, o.delivered_at, o.company_name, o.subscription_id, o.digital_consent_at,
+      o.delivery is not null as chosen_delivery, o.delivered_at, o.company_name, o.subscription_id, o.digital_consent_at, o.service_request_at,
       o.return_cost_payer, o.standard_shipping_minor,
       (select c.email from commerce.customers c where c.store_id = o.store_id and c.id = o.customer_id) as customer_email,
       o.copied_from is not null as copied, s.time_zone, s.name as store_name, s.contact_email,
@@ -98,7 +118,7 @@ export async function loadFacts(storeId: string, orderId: string): Promise<Order
   const [lines, settings] = await Promise.all([
     db().execute<Row>(sql`
       select ol.id, ol.title, ol.sku, ol.variant_id, ol.quantity, ol.unit_price_minor, ol.total_minor, ol.delivery,
-        ol.withdrawal_exclusion, ol.gift, ${GIFT_CARD_LINE_FACTS},
+        ol.withdrawal_exclusion, ol.gift, ol.venue_minor, ${GIFT_CARD_LINE_FACTS}, ${SERVICE_LINE_FACTS},
         -- Units staff closed as never to be sent (D174) were refunded and are not the shopper's to withdraw.
         commerce.returned_quantity(ol.id) + commerce.closed_quantity(ol.id) as taken
       from commerce.order_lines ol
@@ -130,6 +150,8 @@ export async function loadFacts(storeId: string, orderId: string): Promise<Order
       lastShippedAt: order.last_shipped_at ? new Date(String(order.last_shipped_at)) : null,
       subscription: Boolean(order.subscription_id),
       digitalConsent: Boolean(order.digital_consent_at),
+      serviceRequest: Boolean(order.service_request_at),
+      country: String(order.market_code),
     },
     lines: lines.map((line) => ({
       id: String(line.id),
@@ -139,11 +161,13 @@ export async function loadFacts(storeId: string, orderId: string): Promise<Order
       quantity: Number(line.quantity),
       unitPriceMinor: Number(line.unit_price_minor),
       totalMinor: Number(line.total_minor),
+      venueMinor: Number(line.venue_minor ?? 0),
       delivery: String(line.delivery),
       withdrawalExclusion: String(line.withdrawal_exclusion),
       takenQuantity: Number(line.taken),
       gift: Boolean(line.gift),
       giftCard: giftCardFactsOf(line),
+      service: serviceFactsOf(line),
     })),
     settings,
     timeZone: String(order.time_zone ?? "Europe/Oslo"),

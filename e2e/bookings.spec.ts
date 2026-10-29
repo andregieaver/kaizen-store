@@ -51,7 +51,8 @@ test("a shopper books a time and finds it in the cart", async ({ page }) => {
   await page.goto(`/s/${slug}/no/p/massasje`);
 
   await expect(page.getByText("60 min · hos Kari")).toBeVisible();
-  await expect(page.getByText("Timer til en fast dato har ikke angrerett.")).toBeVisible();
+  // An appointment keeps the right of withdrawal unless the owner marks it as exempt on a set date (D407).
+  await expect(page.getByText(/^Du kan angre innen 14 dager etter bestillingen\./)).toBeVisible();
   const add = page.getByRole("button", { name: "Legg i handlekurven" });
   await expect(add).toBeDisabled();
 

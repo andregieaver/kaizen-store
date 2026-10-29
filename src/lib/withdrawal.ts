@@ -1,3 +1,4 @@
+import { lastWorkingDay } from "./withdrawal-days";
 import { addCalendarDays, daysBetween, dayIn } from "./work-dates";
 
 /**
@@ -98,6 +99,17 @@ export type WithdrawalOrder = {
   subscription?: boolean;
   /** The shopper's tick for digital content delivered at once (`digital_consent_at is not null`). */
   digitalConsent?: boolean;
+  /**
+   * The shopper's express request that a service start inside the 14 days, with the acknowledgement that the right ends once it is fully
+   * performed (`service_request_at is not null`; CRD Art. 7(3), 16(a); angrerettloven § 22 c). Without it a performed service keeps the right
+   * and costs the customer nothing (Art. 14(4)(a)(ii)).
+   */
+  serviceRequest?: boolean;
+  /**
+   * The order's country (`orders.market_code`): whose law moves a last day off a weekend or holiday (D407 step 5, `lastWorkingDay()`). Absent
+   * or unknown, the period ends on day 14 as counted.
+   */
+  country?: string | null;
 };
 
 export type WithdrawalLine = {
@@ -115,6 +127,11 @@ export type WithdrawalLine = {
    * that has not started until it is spent: withdrawn within 14 days of the purchase, card by card, while a card is whole.
    */
   giftCard?: { unspent: number; boughtAt: Instant } | null;
+  /**
+   * A booked service (D407): its booking's time and status and when the order was made. The 14 days of a service count from the contract
+   * (CRD Art. 9(2)(a)), so from the order, not from a delivery. Absent or null for any other line.
+   */
+  service?: { startsAt: Instant; endsAt: Instant; status: string; orderedAt: Instant } | null;
 };
 
 export type WithdrawalWindow = {
@@ -149,7 +166,7 @@ export type WithdrawalWindow = {
  * window counts from the same receipt.
  */
 export function withdrawalWindow(
-  order: Pick<WithdrawalOrder, "deliveredAt" | "lastShippedAt">,
+  order: Pick<WithdrawalOrder, "deliveredAt" | "lastShippedAt" | "country">,
   settings: Pick<ReturnSettings, "windowDays" | "transitDays">,
   timeZone: string,
   now: Instant,
@@ -167,11 +184,17 @@ export function withdrawalWindow(
   }
   const startDay = dayIn(order.deliveredAt, timeZone);
   const windowDays = Math.max(LEGAL_WITHDRAWAL_DAYS, clampInt(settings.windowDays, MIN_WINDOW_DAYS, MAX_WINDOW_DAYS));
-  const statutoryEndDay = addCalendarDays(startDay, LEGAL_WITHDRAWAL_DAYS);
-  const voluntaryEndDay = addCalendarDays(startDay, windowDays);
+  const statutoryEndDay = periodEnd(startDay, order.country);
+  const own = addCalendarDays(startDay, windowDays);
+  const voluntaryEndDay = own > statutoryEndDay ? own : statutoryEndDay;
   const state = today <= statutoryEndDay ? "statutory" : today <= voluntaryEndDay ? "voluntary" : "closed";
   const daysLeft = state === "statutory" ? daysBetween(today, statutoryEndDay) : state === "voluntary" ? daysBetween(today, voluntaryEndDay) : null;
   return { state, basis: "delivered", startDay, statutoryEndDay, voluntaryEndDay, daysLeft, estimatedEndDay: null };
+}
+
+/** The last day of the 14 days counted from day 0, moved off a weekend or holiday where the order's country's law says so (D407 step 5). */
+export function periodEnd(day0: string, country: string | null | undefined): string {
+  return lastWorkingDay(addCalendarDays(day0, LEGAL_WITHDRAWAL_DAYS), country);
 }
 
 function clampInt(value: number, min: number, max: number): number {
@@ -213,6 +236,7 @@ export const REFUSALS = [
   "business_order",
   "period_over",
   "gift_card_spent",
+  "service_performed",
 ] as const;
 export type Refusal = (typeof REFUSALS)[number];
 export const REFUSAL_KEYS: Record<Refusal, Refusal> = Object.fromEntries(REFUSALS.map((r) => [r, r])) as Record<Refusal, Refusal>;
@@ -299,7 +323,7 @@ export function lineEligibility(
     const whole = Math.min(remaining, line.giftCard.unspent);
     if (whole <= 0) return none("gift_card_spent");
     if (order.business) return none("business_order");
-    if (dayIn(now, timeZone) > addCalendarDays(dayIn(line.giftCard.boughtAt, timeZone), LEGAL_WITHDRAWAL_DAYS)) return none("period_over");
+    if (dayIn(now, timeZone) > periodEnd(dayIn(line.giftCard.boughtAt, timeZone), order.country)) return none("period_over");
     return { ...some("withdrawal"), maxQuantity: whole };
   }
 
@@ -307,7 +331,7 @@ export function lineEligibility(
   // What the shopper's own tick or the kind of line takes away, whatever the product says.
   const digitalLost = line.delivery === "digital" && Boolean(order.digitalConsent);
 
-  if (line.delivery === "service") return none("booking", exclusion);
+  if (line.delivery === "service") return serviceEligibility(line, order, timeZone, now, exclusion, none, some);
   if (exclusion === "digital_content" || digitalLost) return none("digital_content", exclusion);
   if (exclusion === "dated_service") return none("booking", exclusion);
   if (exclusion && !sealed) {
@@ -330,6 +354,63 @@ export function lineEligibility(
     default:
       return none("period_over");
   }
+}
+
+/**
+ * A booked service (D407). Accommodation, car rental, catering and leisure on a set date have no right (the line's `dated_service`, which the
+ * owner sets on the product; CRD Art. 16(l), angrerettloven § 22 m, distansavtalslagen 2 kap. 11 § 12, forbrugeraftaleloven § 18 stk. 2
+ * nr. 12), and are cancelled under the store's rules. Any other service can be withdrawn from within 14 days of the order: not once it is
+ * fully performed at the customer's express request (Art. 16(a)); partly performed, the customer pays for what was provided
+ * (`serviceShare()`). A booking already cancelled has nothing left. A line with no booking, or from before D407, stays with the booking tools.
+ */
+function serviceEligibility(
+  line: WithdrawalLine,
+  order: WithdrawalOrder,
+  timeZone: string,
+  now: Instant,
+  exclusion: string | null,
+  none: (refusal: Refusal, exclusion?: string | null) => LineEligibility,
+  some: (right: Exclude<LineRight, "none">) => LineEligibility,
+): LineEligibility {
+  const service = line.service;
+  if (exclusion === "dated_service" || !service) return none("booking", exclusion);
+  if (service.status !== "confirmed") return none("already_returned");
+  if (order.business) return none("business_order");
+  if (dayIn(now, timeZone) > periodEnd(dayIn(service.orderedAt, timeZone), order.country)) return none("period_over");
+  if (order.serviceRequest && new Date(service.endsAt).getTime() <= new Date(now).getTime()) return none("service_performed");
+  return some("withdrawal");
+}
+
+/**
+ * Whether a booking starts inside the 14 days of an order made at `orderedAt` (the store's days): such a service can be provided only at the
+ * customer's express request (CRD Art. 7(3)), so checkout asks for it (`serviceRequest`). A service on a set date the law exempts asks nothing.
+ */
+export function startsInPeriod(startsAt: Instant, orderedAt: Instant, timeZone: string): boolean {
+  return dayIn(startsAt, timeZone) <= addCalendarDays(dayIn(orderedAt, timeZone), LEGAL_WITHDRAWAL_DAYS);
+}
+
+/** The booked lines that need the express request: a service with a time inside the 14 days that keeps the right (not `dated_service`). */
+export function needsServiceRequest(
+  lines: readonly { delivery: string; startsAt: Instant | null; withdrawalExclusion: string }[],
+  orderedAt: Instant,
+  timeZone: string,
+): boolean {
+  return lines.some((l) => l.delivery === "service" && l.startsAt !== null && l.withdrawalExclusion !== "dated_service" && startsInPeriod(l.startsAt, orderedAt, timeZone));
+}
+
+/**
+ * What a customer who withdraws from a service owes for the part already provided (CRD Art. 14(3)): nothing without the express request
+ * (Art. 14(4)(a)(ii)) or before it starts; otherwise the share of the booked time that has passed, of what was paid for it, rounded down in
+ * the customer's favour. Integer minor units.
+ */
+export function serviceShare(paidMinor: number, service: { startsAt: Instant; endsAt: Instant }, requested: boolean, at: Instant): number {
+  if (!requested || paidMinor <= 0) return 0;
+  const start = new Date(service.startsAt).getTime();
+  const end = new Date(service.endsAt).getTime();
+  const t = new Date(at).getTime();
+  if (t <= start || end <= start) return 0;
+  if (t >= end) return paidMinor;
+  return Number((BigInt(Math.trunc(paidMinor)) * BigInt(t - start)) / BigInt(end - start));
 }
 
 /** Every line of an order with its eligibility, the lines that cannot be withdrawn listed with their reason. */

@@ -233,6 +233,8 @@ BEGIN
   -- 6. A stay and a rental (D67), with a cabin and bikes to book.
   PERFORM commerce.add_demo_stay(v_store);
   PERFORM commerce.add_demo_rental(v_store);
+  -- A stay is accommodation on set dates, which the law exempts from withdrawal (D407; migration stays_dated_service).
+  UPDATE commerce.products SET withdrawal_exclusion = 'dated_service' WHERE store_id = v_store AND kind = 'stay';
   -- 7. A gift card (D300), two amounts, hidden until the owner switches gift cards on.
   PERFORM commerce.add_demo_gift_card(v_store);
   -- 8. A bundle (D322): two mugs and a tote sold together, priced from them.

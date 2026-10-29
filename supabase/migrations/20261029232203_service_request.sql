@@ -1,0 +1,1 @@
+ALTER TABLE "commerce"."orders" ADD COLUMN "service_request_at" timestamp with time zone;

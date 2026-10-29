@@ -73,6 +73,7 @@ export const WITHDRAWAL_EXCLUSIONS = [
   { id: "alcohol_future_delivery", label: "Alcohol priced at sale but delivered after 30 days" },
   { id: "periodicals", label: "Newspaper, periodical or magazine (not subscriptions)" },
   { id: "digital_content", label: "Digital content delivered at once, with the customer's consent" },
+  { id: "dated_service", label: "Accommodation, car rental, catering or leisure on a set date" },
 ] as const;
 
 /** Producer responsibility schemes (recycling fees) a product can fall under. */
@@ -606,6 +607,11 @@ export function productProblems(input: ProductInput, context: PublishContext): s
         return currency ? parsePrice(typed, currency) : null;
       }),
     );
+  }
+
+  // Only a booked service can be one the law exempts on a set date (D407): goods have their own exclusions.
+  if (input.withdrawalExclusion === "dated_service" && !BOOKED_KINDS.includes(input.kind as (typeof BOOKED_KINDS)[number])) {
+    problems.push("Only an appointment, stay or rental can be a service on a set date without a right of withdrawal.");
   }
 
   // A stay's or rental's fee per booking (D70), typed like a price.

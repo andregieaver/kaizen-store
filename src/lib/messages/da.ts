@@ -690,6 +690,8 @@ export const da: Messages = {
   euResponsiblePerson: "Ansvarlig person i EU",
   noWithdrawal: "Denne vare er undtaget fra fortrydelsesretten.",
   sealedWithdrawal: "Fortrydelsesretten bortfalder, hvis forseglingen brydes efter leveringen.",
+  serviceWithdrawal:
+    "Du kan fortryde inden for 14 dage efter bestillingen. For en tid inden for de 14 dage anmoder du os om at begynde, og fortrydelsesretten bortfalder, når tjenesten er fuldt leveret.",
   backToProducts: "Tilbage til produkter",
   backTo: (name: string): string => `Tilbage til ${name}`,
   bundleIncludes: (items: string): string => `Indeholder ${items}`,
@@ -975,6 +977,8 @@ export const da: Messages = {
   planConflict: "Kurven har allerede et abonnement med en anden frekvens. Køb det først, eller vælg samme frekvens.",
   problemPlans: "Abonnementerne i kurven fornyes forskelligt. Behold én frekvens, og prøv igen.",
   problemSubscriptionConsent: "Sæt kryds ved, at du accepterer abonnementet, for at gå videre.",
+  serviceRequest:
+    "Jeg anmoder om, at min bestilling leveres inden for fortrydelsesfristen på 14 dage. Jeg forstår, at fortrydelsesretten bortfalder, når tjenesten er fuldt leveret, og at jeg betaler for det leverede, hvis jeg fortryder inden da.",
   manageSubscription: "Se eller opsig abonnementet",
   subscriptionStatus: {
     pending: "Afventer betaling",

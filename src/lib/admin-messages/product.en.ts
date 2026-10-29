@@ -538,6 +538,7 @@ export const productEn = {
       alcohol_future_delivery: "Alcohol priced at sale but delivered after 30 days",
       periodicals: "Newspaper, periodical or magazine (not subscriptions)",
       digital_content: "Digital content delivered at once, with the customer's consent",
+      dated_service: "Accommodation, car rental, catering or leisure on a set date",
     },
     withdrawalHint: "Most products have no exclusion. Only choose one that clearly applies.",
     withdrawalDownloads: " Downloads are handled for you: shoppers agree at checkout that the right ends once the download is available.",

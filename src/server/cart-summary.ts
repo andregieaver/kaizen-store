@@ -8,6 +8,7 @@ import { NO_RULES } from "@/lib/checkout-rules";
 import { giftCardsPay } from "@/lib/gift-cards";
 import { venuePart } from "@/lib/pay-later";
 import { basketShipping, planPrice } from "@/lib/subscriptions";
+import { needsServiceRequest } from "@/lib/withdrawal";
 
 import { db } from "@/db/client";
 
@@ -62,6 +63,12 @@ export async function cartSummary(
   const ships = cart.lines.some((line) => line.delivery === "physical");
   // Downloads (D24) ask a tick that ends the right of withdrawal; a gift card (D300) is emailed as a code and asks none.
   const digital = cart.lines.some((line) => line.delivery === "digital" && line.giftCard === null);
+  // A booked service inside the 14 days (D407) asks the shopper's express request, as `placeOrder()` does.
+  const serviceRequest = needsServiceRequest(
+    cart.lines.map((line) => ({ delivery: line.delivery, startsAt: line.booking?.startsAt ?? null, withdrawalExclusion: line.withdrawalExclusion })),
+    new Date(),
+    cart.lines.find((line) => line.booking)?.booking?.timeZone ?? "Europe/Oslo",
+  );
   // The delivery the shopper chose at checkout (D135) is the basket's shipping rate instead of the market's flat rate;
   // a subscription pays the flat rate on each delivery (D25), so there it counts for nothing.
   const cartId = who.cartId !== undefined ? who.cartId : await readCartId(shop);
@@ -306,6 +313,7 @@ export async function cartSummary(
     subtotal,
     ships,
     digital,
+    serviceRequest,
     basket,
     shipping,
     /** The delivery chosen at checkout (D135), its order record, or null for the flat rate; `shippingAt()` prices another rate. */

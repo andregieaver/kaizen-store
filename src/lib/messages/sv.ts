@@ -690,6 +690,8 @@ export const sv: Messages = {
   euResponsiblePerson: "Ansvarig person i EU",
   noWithdrawal: "Den här varan är undantagen från ångerrätten.",
   sealedWithdrawal: "Ångerrätten upphör om förseglingen bryts efter leveransen.",
+  serviceWithdrawal:
+    "Du kan ångra dig inom 14 dagar från beställningen. För en tid inom de 14 dagarna begär du att vi börjar, och ångerrätten upphör när tjänsten har fullgjorts.",
   backToProducts: "Tillbaka till produkter",
   backTo: (name: string): string => `Tillbaka till ${name}`,
   bundleIncludes: (items: string): string => `Innehåller ${items}`,
@@ -977,6 +979,8 @@ export const sv: Messages = {
   planConflict: "Varukorgen har redan en prenumeration med en annan frekvens. Köp den först, eller välj samma frekvens.",
   problemPlans: "Prenumerationerna i varukorgen förnyas olika. Behåll en frekvens och försök igen.",
   problemSubscriptionConsent: "Kryssa i att du godkänner prenumerationen för att gå vidare.",
+  serviceRequest:
+    "Jag begär att min bokning utförs under ångerfristen på 14 dagar. Jag förstår att ångerrätten upphör när tjänsten har fullgjorts, och att jag betalar för det som har utförts om jag ångrar mig innan dess.",
   manageSubscription: "Se eller säg upp prenumerationen",
   subscriptionStatus: {
     pending: "Väntar på betalning",

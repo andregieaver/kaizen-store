@@ -693,6 +693,8 @@ export const nb: Messages = {
   euResponsiblePerson: "Ansvarlig person i EU",
   noWithdrawal: "Denne varen er unntatt fra angreretten.",
   sealedWithdrawal: "Angreretten faller bort hvis forseglingen brytes etter levering.",
+  serviceWithdrawal:
+    "Du kan angre innen 14 dager etter bestillingen. For en tid innenfor de 14 dagene ber du oss begynne, og angreretten faller bort når tjenesten er fullt levert.",
   backToProducts: "Tilbake til produkter",
   backTo: (name: string): string => `Tilbake til ${name}`,
   bundleIncludes: (items: string): string => `Inneholder ${items}`,
@@ -981,6 +983,8 @@ export const nb: Messages = {
   planConflict: "Handlekurven har allerede et abonnement med en annen frekvens. Kjøp det først, eller velg samme frekvens.",
   problemPlans: "Abonnementene i handlekurven fornyes ulikt. Behold én frekvens og prøv igjen.",
   problemSubscriptionConsent: "Kryss av for at du godtar abonnementet for å gå videre.",
+  serviceRequest:
+    "Jeg ber om at bestillingen min leveres innen angrefristen på 14 dager. Jeg forstår at angreretten faller bort når tjenesten er fullt levert, og at jeg betaler for det som er levert hvis jeg angrer før det.",
   manageSubscription: "Se eller si opp abonnementet",
   subscriptionStatus: {
     pending: "Venter på betaling",

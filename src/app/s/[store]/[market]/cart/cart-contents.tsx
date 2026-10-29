@@ -786,7 +786,7 @@ function creditsForm({ store, market, m, view }: Draw) {
 
 function checkoutAction({ store, market, m, view }: Draw) {
   const { summary, business, money, saved, addressChoices, companyNeeded, company, every, cart, vatWords, onTerms, cardsPayAll } = view;
-  const { checkout, blocked, atVenueOnly, digital, renewal, plan, tax } = summary;
+  const { checkout, blocked, atVenueOnly, digital, serviceRequest, renewal, plan, tax } = summary;
   const asksCompany = business || companyNeeded;
   // The EU VAT number (D157): offered under the company's fields when the cart could take the VAT off; the sentence under
   // it is what the server worked out for the number on the cart, and a basket with a booking or a subscription says why not.
@@ -919,6 +919,7 @@ function checkoutAction({ store, market, m, view }: Draw) {
           vat={vat}
           consents={{
             digital: digital ? m.digitalConsent : undefined,
+            service: serviceRequest ? m.serviceRequest : undefined,
             subscription:
               renewal !== null && plan
                 ? [

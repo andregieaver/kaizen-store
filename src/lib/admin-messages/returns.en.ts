@@ -83,6 +83,7 @@ export const returnsEn = {
       business_order: "Companies have no statutory right of withdrawal",
       period_over: "The period is over",
       gift_card_spent: "Gift card partly used",
+      service_performed: "The service was fully provided at the customer's request",
     },
     declined: "Declined",
     statusFilters: {
@@ -644,6 +645,7 @@ export const returnsEn = {
       business_order: "a company's order",
       period_over: "the 14 days had passed by the records",
       gift_card_spent: "part of the gift card was used",
+      service_performed: "the service was fully provided",
     },
     copied: "This order is history copied from another store, so nothing can be withdrawn or returned on it.",
     notPaid: "The order is not paid, so there is nothing to withdraw from yet.",

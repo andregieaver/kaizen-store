@@ -78,6 +78,7 @@ export const returnsNb: ReturnsMessages = {
       business_order: "Bedrifter har ingen lovfestet angrerett",
       period_over: "Fristen er ute",
       gift_card_spent: "Gavekortet er delvis brukt",
+      service_performed: "Tjenesten ble fullt levert etter kundens ønske",
     },
     declined: "Avslått",
     statusFilters: {
@@ -632,6 +633,7 @@ export const returnsNb: ReturnsMessages = {
       business_order: "en bedrifts bestilling",
       period_over: "de 14 dagene var gått etter registreringene",
       gift_card_spent: "en del av gavekortet ble brukt",
+      service_performed: "tjenesten var fullt levert",
     },
     copied: "Denne bestillingen er historikk kopiert fra en annen butikk, så ingenting kan angres eller returneres på den.",
     notPaid: "Bestillingen er ikke betalt, så det er ingenting å gå fra ennå.",

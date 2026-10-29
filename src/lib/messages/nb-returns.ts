@@ -107,6 +107,7 @@ export const nbReturns: ReturnsMessages = {
     business_order: "Ordren ble lagt inn for et firma, som ikke har lovbestemt angrerett.",
     period_over: "Etter våre opplysninger er de 14 dagene for å angre gått ut. Har du ikke fått opplysninger om angreretten, eller fikk du varene senere, kan fristen være lengre: skriv til butikken.",
     gift_card_spent: "Noe av dette gavekortet er brukt, så du kan ikke lenger angre kjøpet av det. Skriv til butikken hvis noe er feil.",
+    service_performed: "Tjenesten er fullt levert etter ønske fra deg, så angreretten er falt bort.",
   },
   sealedLine: "Angreretten gjelder bare så lenge forseglingen ikke er brutt.",
   nothingToSend: "Ingenting å sende tilbake",

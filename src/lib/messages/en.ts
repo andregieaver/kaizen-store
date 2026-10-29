@@ -710,6 +710,8 @@ export const en = {
   euResponsiblePerson: "Responsible person in the EU",
   noWithdrawal: "This item is excluded from the right of withdrawal.",
   sealedWithdrawal: "The right of withdrawal ends if the seal is broken after delivery.",
+  serviceWithdrawal:
+    "You can withdraw within 14 days of your order. For a time within those 14 days you ask us to begin, and the right ends once the service is fully provided.",
   backToProducts: "Back to products",
   backTo: (name: string): string => `Back to ${name}`,
   /** A bundle's components on an order or its page (D322): "Includes 2 × Mug, 1 × Tote". */
@@ -1002,6 +1004,8 @@ export const en = {
   planConflict: "Your cart already has a subscription on a different schedule. Buy that first, or choose the same schedule.",
   problemPlans: "The subscriptions in your cart renew on different schedules. Keep one schedule and try again.",
   problemSubscriptionConsent: "Tick the box to agree to the subscription before you continue.",
+  serviceRequest:
+    "I ask for my booking to be provided within the 14-day withdrawal period. I understand that I lose the right of withdrawal once it has been fully provided, and that I pay for what was provided if I withdraw before then.",
   manageSubscription: "See or cancel the subscription",
   subscriptionStatus: {
     pending: "Waiting for payment",

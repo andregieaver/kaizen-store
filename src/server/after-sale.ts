@@ -8,7 +8,7 @@ import { RETURN_STATUSES, isEnded } from "@/lib/return-status";
 import { afterSaleIsOpen, type AfterSale } from "@/lib/store-features";
 import { MAX_WINDOW_DAYS, lineEligibility, type WithdrawalOrder } from "@/lib/withdrawal";
 
-import { GIFT_CARD_LINE_FACTS, giftCardFactsOf } from "./return-facts";
+import { GIFT_CARD_LINE_FACTS, giftCardFactsOf, SERVICE_LINE_FACTS, serviceFactsOf } from "./return-facts";
 import { toSettings } from "./return-settings";
 
 /**
@@ -42,9 +42,9 @@ export async function afterSaleOf(storeId: string, now: Date = new Date()): Prom
     `),
     // Paid orders of the store's own (never copied ones) that are not past every window: each line with what returns and closures took.
     db().execute<Row>(sql`
-      select o.id as order_id, o.status, o.delivered_at, o.company_name, o.subscription_id, o.digital_consent_at,
+      select o.id as order_id, o.status, o.market_code, o.delivered_at, o.company_name, o.subscription_id, o.digital_consent_at, o.service_request_at,
         (select max(sh.created_at) from commerce.shipments sh where sh.store_id = o.store_id and sh.order_id = o.id and sh.undone_at is null) as last_shipped_at,
-        ol.id as line_id, ol.quantity, ol.delivery, ol.withdrawal_exclusion, ${GIFT_CARD_LINE_FACTS},
+        ol.id as line_id, ol.quantity, ol.delivery, ol.withdrawal_exclusion, ${GIFT_CARD_LINE_FACTS}, ${SERVICE_LINE_FACTS},
         commerce.returned_quantity(ol.id) + commerce.closed_quantity(ol.id) as taken
       from commerce.orders o
       join commerce.order_lines ol on ol.store_id = o.store_id and ol.order_id = o.id
@@ -67,6 +67,8 @@ export async function afterSaleOf(storeId: string, now: Date = new Date()): Prom
       lastShippedAt: row.last_shipped_at ? new Date(String(row.last_shipped_at)) : null,
       subscription: Boolean(row.subscription_id),
       digitalConsent: Boolean(row.digital_consent_at),
+      serviceRequest: Boolean(row.service_request_at),
+      country: String(row.market_code),
     };
     const eligibility = lineEligibility(
       {
@@ -76,6 +78,7 @@ export async function afterSaleOf(storeId: string, now: Date = new Date()): Prom
         withdrawalExclusion: String(row.withdrawal_exclusion),
         takenQuantity: Number(row.taken),
         giftCard: giftCardFactsOf(row),
+        service: serviceFactsOf(row),
       },
       order,
       settings,

@@ -2698,9 +2698,13 @@ function KindSection({ product, update, offered }: SectionProps & { offered: Rec
           ? kind === "stay" ? "accommodation" : "standard"
           : kind === "stay" && p.vatCategory === "standard" ? "accommodation" : p.vatCategory;
       const variants = withoutContentWhereNotGoods(kind, p.variants.map((v) => ({ ...v, delivery: delivery(v.delivery) })));
+      // A stay is accommodation on set dates, which the law exempts (D407); other bookings and goods keep the right, and only a booking may be a dated service.
+      const withdrawalExclusion =
+        kind === "stay" && p.withdrawalExclusion === "none" ? "dated_service" : !booked && p.withdrawalExclusion === "dated_service" ? "none" : p.withdrawalExclusion;
       return {
         ...p,
         kind,
+        withdrawalExclusion,
         appointment: isBooked(kind) ? (p.kind === kind && p.appointment ? p.appointment : defaultBooking(kind)) : null,
         vatCategory,
         delivery: bundle ? "physical" : delivery(p.delivery),

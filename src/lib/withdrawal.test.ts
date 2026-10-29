@@ -14,8 +14,11 @@ import {
   orderRight,
   refundDeadline,
   refundDue,
+  needsServiceRequest,
   remainingQuantity,
   sendBackDay,
+  serviceShare,
+  startsInPeriod,
   takenQuantity,
   withdrawalWindow,
   type ReturnSettings,
@@ -359,5 +362,68 @@ describe("a gift card line (D300)", () => {
     expect(lineEligibility(line(card(0)), order(), settings(), OSLO, "2026-10-02T12:00:00Z").refusal).toBe("gift_card_spent");
     expect(lineEligibility(line(card(3)), order(), settings(), OSLO, "2026-10-16T12:00:00Z").refusal).toBe("period_over");
     expect(lineEligibility(line(card(3)), order({ business: true }), settings(), OSLO, "2026-10-02T12:00:00Z").refusal).toBe("business_order");
+  });
+});
+
+describe("a booked service (D407)", () => {
+  // Ordered on 1 May; a massage on 5 May from 10 to 11 (Oslo summer time is UTC+2).
+  const booked = { startsAt: "2026-05-05T08:00:00Z", endsAt: "2026-05-05T09:00:00Z", status: "confirmed", orderedAt: "2026-05-01T10:00:00Z" };
+  const service = (over: Partial<WithdrawalLine> = {}): WithdrawalLine => line({ delivery: "service", quantity: 1, service: booked, ...over });
+  const at = (l: Partial<WithdrawalLine>, o: Partial<WithdrawalOrder>, when: string) =>
+    lineEligibility(service(l), order({ deliveredAt: null, status: "paid", ...o }), settings(), OSLO, when);
+
+  it("can be withdrawn from within 14 days of the order, before it starts", () => {
+    expect(at({}, { serviceRequest: true }, "2026-05-03T10:00:00Z")).toMatchObject({ right: "withdrawal", maxQuantity: 1 });
+    // Day 14 counts from the order, not from a delivery; day 15 is too late.
+    expect(at({ service: { ...booked, startsAt: "2026-06-01T08:00:00Z", endsAt: "2026-06-01T09:00:00Z" } }, {}, "2026-05-15T20:00:00Z").right).toBe("withdrawal");
+    expect(at({ service: { ...booked, startsAt: "2026-06-01T08:00:00Z", endsAt: "2026-06-01T09:00:00Z" } }, {}, "2026-05-16T08:00:00Z").refusal).toBe("period_over");
+  });
+
+  it("loses the right once fully provided at the customer's request, and keeps it without the request", () => {
+    expect(at({}, { serviceRequest: true }, "2026-05-05T10:00:00Z")).toMatchObject({ right: "none", refusal: "service_performed" });
+    expect(at({}, { serviceRequest: false }, "2026-05-05T10:00:00Z").right).toBe("withdrawal");
+    // Partly provided: still withdrawn from, paid in proportion.
+    expect(at({}, { serviceRequest: true }, "2026-05-05T08:30:00Z").right).toBe("withdrawal");
+  });
+
+  it("has no right where the owner marked it a dated service, and nothing left once cancelled", () => {
+    expect(at({ withdrawalExclusion: "dated_service" }, {}, "2026-05-03T10:00:00Z")).toMatchObject({ right: "none", refusal: "booking" });
+    expect(at({ service: { ...booked, status: "cancelled" } }, {}, "2026-05-03T10:00:00Z").refusal).toBe("already_returned");
+    expect(at({}, { business: true }, "2026-05-03T10:00:00Z").refusal).toBe("business_order");
+    // A line from before D407, without its booking's facts, stays with the booking tools.
+    expect(at({ service: null }, {}, "2026-05-03T10:00:00Z").refusal).toBe("booking");
+  });
+
+  it("asks the express request only for a time inside the 14 days that keeps the right", () => {
+    expect(startsInPeriod("2026-05-15T21:00:00Z", "2026-05-01T10:00:00Z", OSLO)).toBe(true); // 15 May 23:00 in Oslo: day 14
+    expect(startsInPeriod("2026-05-15T22:30:00Z", "2026-05-01T10:00:00Z", OSLO)).toBe(false); // 16 May in Oslo
+    const lines = [{ delivery: "service", startsAt: "2026-05-05T08:00:00Z", withdrawalExclusion: "none" }];
+    expect(needsServiceRequest(lines, "2026-05-01T10:00:00Z", OSLO)).toBe(true);
+    expect(needsServiceRequest([{ ...lines[0], withdrawalExclusion: "dated_service" }], "2026-05-01T10:00:00Z", OSLO)).toBe(false);
+    expect(needsServiceRequest([{ ...lines[0], startsAt: "2026-07-01T08:00:00Z" }], "2026-05-01T10:00:00Z", OSLO)).toBe(false);
+    expect(needsServiceRequest([{ delivery: "physical", startsAt: null, withdrawalExclusion: "none" }], "2026-05-01T10:00:00Z", OSLO)).toBe(false);
+  });
+
+  it("charges for the part provided only with the request, in proportion, rounded in the customer's favour", () => {
+    const span = { startsAt: "2026-05-05T08:00:00Z", endsAt: "2026-05-05T11:00:00Z" };
+    expect(serviceShare(1000, span, false, "2026-05-05T09:00:00Z")).toBe(0);
+    expect(serviceShare(1000, span, true, "2026-05-05T07:00:00Z")).toBe(0);
+    expect(serviceShare(1000, span, true, "2026-05-05T09:00:00Z")).toBe(333);
+    expect(serviceShare(1000, span, true, "2026-05-05T12:00:00Z")).toBe(1000);
+  });
+});
+
+describe("the last day moved off a weekend or holiday (D407 step 5)", () => {
+  // Received on Saturday 17 October 2026: day 14 is Saturday 31 October.
+  const received = { deliveredAt: "2026-10-17T10:00:00Z", lastShippedAt: null };
+
+  it("ends on the next working day in Sweden and Denmark, and on day 14 in Norway", () => {
+    expect(withdrawalWindow({ ...received, country: "SE" }, settings(), "Europe/Stockholm", "2026-11-02T10:00:00Z")).toMatchObject({ state: "statutory", statutoryEndDay: "2026-11-02" });
+    expect(withdrawalWindow({ ...received, country: "DK" }, settings(), "Europe/Copenhagen", "2026-11-03T10:00:00Z").state).toBe("closed");
+    expect(withdrawalWindow({ ...received, country: "NO" }, settings(), OSLO, "2026-11-02T10:00:00Z").state).toBe("closed");
+  });
+
+  it("never lets the store's own window end before the moved last day", () => {
+    expect(withdrawalWindow({ ...received, country: "SE" }, settings({ windowDays: 14 }), "Europe/Stockholm", "2026-11-01T10:00:00Z").voluntaryEndDay).toBe("2026-11-02");
   });
 });
