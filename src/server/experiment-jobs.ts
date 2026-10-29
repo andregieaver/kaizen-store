@@ -9,6 +9,7 @@ import { getExperiment, startExperiment, stopExperiment, unscheduleExperiment } 
 import { notifyGuardrailStop } from "./experiment-emails";
 import { experimentResults } from "./experiment-results";
 import { pruneExperimentData } from "./experiments";
+import { log } from "./log";
 import { getStore } from "./stores";
 
 type Row = Record<string, unknown>;
@@ -36,11 +37,11 @@ export async function runExperimentJobs(now = new Date()): Promise<{ started: nu
         if (result.ok) started += 1;
         else await unscheduleExperiment(null, storeId, id, `The scheduled start did not happen. ${result.problems.join(" ")}`.slice(0, 600));
       } catch (error) {
-        console.error("[experiments] scheduled start failed", id, error);
+        log("error", "experiments.scheduled_start_failed", { experimentId: id }, error);
       }
     }
   } catch (error) {
-    console.error("[experiments] scheduled starts failed", error);
+    log("error", "experiments.scheduled_starts_failed", {}, error);
   }
   try {
     const running = await db().execute<Row>(sql`
@@ -66,17 +67,17 @@ export async function runExperimentJobs(now = new Date()): Promise<{ started: nu
           await notifyGuardrailStop(store, test, results);
         }
       } catch (error) {
-        console.error("[experiments] check failed", id, error);
+        log("error", "experiments.check_failed", { experimentId: id }, error);
       }
     }
   } catch (error) {
-    console.error("[experiments] jobs failed", error);
+    log("error", "experiments.checks_failed", {}, error);
   }
   let pruned = 0;
   try {
     pruned = await pruneExperimentData();
   } catch (error) {
-    console.error("[experiments] prune failed", error);
+    log("error", "experiments.prune_failed", {}, error);
   }
   return { started, stopped, checked, pruned };
 }

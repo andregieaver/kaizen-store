@@ -5,6 +5,7 @@ import { sql } from "drizzle-orm";
 import { readDb } from "@/db/client";
 import { unitTestRow, type UnitTestInput, type UnitTestRow } from "@/lib/platform-unit-tests";
 
+import { log } from "./log";
 import { recommendationReport } from "./recommend-events";
 import { experimentResults, listExperiments } from "./search-experiment";
 
@@ -81,7 +82,7 @@ async function recommendationTests(onlyStore?: string): Promise<Measured[]> {
             secondary: { ...common, measure: "put a recommended product in the cart", controlRate: { hits: plain.adders, of: plain.visitors }, treatmentRate: { hits: ai.adders, of: ai.visitors } },
           };
         } catch (error) {
-          console.error("[experiments] the platform view could not read a store's recommendations", String(store.id), error);
+          log("error", "experiments.platform_recommendations_read_failed", { storeId: String(store.id) }, error);
           return null;
         }
       }),
@@ -104,14 +105,14 @@ async function measured(now: Date, id?: string): Promise<Measured[]> {
       const search = await searchTest(now);
       if (search) found.push(search);
     } catch (error) {
-      console.error("[experiments] the platform view could not read the search test", error);
+      log("error", "experiments.platform_search_test_read_failed", {}, error);
     }
   }
   if (!id || recommendationStore !== null) {
     try {
       found.push(...(await recommendationTests(recommendationStore ?? undefined)));
     } catch (error) {
-      console.error("[experiments] the platform view could not read the recommendations tests", error);
+      log("error", "experiments.platform_recommendations_tests_read_failed", {}, error);
     }
   }
   return found;

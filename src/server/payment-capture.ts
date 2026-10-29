@@ -17,6 +17,7 @@ import type { PaymentModeName } from "@/lib/stripe-account";
 
 import { audit } from "./auth";
 import { cancelUnpaidOrder, type PlacedOrder } from "./checkout";
+import { log } from "./log";
 import { readPaymentFacts } from "./payment-facts";
 import { uuidList } from "./sql-arrays";
 import { platformStripe } from "./stripe";
@@ -339,7 +340,7 @@ export async function runCaptureJobs(
       }
     }
   } catch (error) {
-    console.error("[capture] the job failed:", error instanceof Error ? error.message : error);
+    log("error", "capture.job_failed", {}, error);
   }
   return run;
 }

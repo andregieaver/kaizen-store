@@ -35,6 +35,7 @@ import { shownMeasureFromColumns } from "@/lib/unit-price-rules";
 import type { ShownMeasure } from "@/lib/unit-price";
 
 import { audit, type Membership } from "./auth";
+import { log } from "./log";
 import { sendOrderConfirmation, storeById, type EmailStore } from "./shopper-emails";
 import { linkOrderToCustomer } from "./customers";
 import { allocateStock, insertOrder, insertOrderLine, reserveStock, type StockHold } from "./order-insert";
@@ -1266,7 +1267,7 @@ export async function expireDrafts(now: Date = new Date(), options: { limit?: nu
       }
       run.expired += 1;
     } catch (error) {
-      console.error("[drafts] a draft could not be expired", String(row.id), error);
+      log("error", "drafts.expire_failed", { draftId: String(row.id) }, error);
     }
   }
   return run;

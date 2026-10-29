@@ -9,6 +9,7 @@ import { clipForLive, readLiveTurns, type LiveTurn } from "@/lib/speech-text";
 
 import { aiFor, type LiveConnection } from "./ai";
 import { recordLiveSeconds, recordUsage, type UsageContext } from "./ai-usage";
+import { log } from "./log";
 import { addMessage, runTurn, type Approval, type AssistantEvent, type Principal } from "./owner-assistant";
 
 type Row = Record<string, unknown>;
@@ -171,7 +172,8 @@ export async function startLiveSession(p: Principal, input: { sdp: string; conve
   if (!response) throw new LiveVoiceError("The live voice provider could not be reached.");
   if (!response.ok) {
     const detail = (await response.text().catch(() => "")).slice(0, 500);
-    console.error(`[live-voice] session ${response.status}: ${detail}`);
+    // The provider's answer is not logged: it may quote what was sent.
+    log("error", "live_voice.session_refused", { status: response.status, detailLength: detail.length });
     throw new LiveVoiceError(
       response.status === 429 ? "The live voice provider refused the call: its account is out of quota or busy." : `The call could not start (${response.status}).`,
     );

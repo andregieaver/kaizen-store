@@ -6,6 +6,7 @@ import { db } from "@/db/client";
 import type { DocumentKind } from "@/lib/document-token";
 
 import { sendPendingDocumentNotices } from "./invoice-notices";
+import { log } from "./log";
 import { reconcilePendingRefunds } from "./stripe-refunds";
 import { ensureSubscriptionEvents } from "./subscriptions";
 
@@ -33,7 +34,7 @@ export async function issueWaitingInvoices(storeId: string, limit = PER_STORE): 
     const [row] = await db().execute<Row>(sql`select commerce.issue_waiting_invoices(${storeId}::uuid, ${limit}) as issued`);
     return Number(row?.issued ?? 0);
   } catch (error) {
-    console.error("[invoices] waiting invoices could not be issued:", error instanceof Error ? error.message : error);
+    log("error", "invoices.waiting_issue_failed", {}, error);
     return 0;
   }
 }
@@ -44,7 +45,7 @@ export async function issueMissingCreditNotes(storeId: string): Promise<number> 
     const [row] = await db().execute<Row>(sql`select commerce.issue_missing_credit_notes(${storeId}::uuid) as issued`);
     return Number(row?.issued ?? 0);
   } catch (error) {
-    console.error("[invoices] missing credit notes could not be issued:", error instanceof Error ? error.message : error);
+    log("error", "invoices.credit_notes_issue_failed", {}, error);
     return 0;
   }
 }
@@ -125,7 +126,7 @@ export async function invoiceJobs(): Promise<InvoiceJobsResult> {
     }
     result.notices = await sendPendingDocumentNotices();
   } catch (error) {
-    console.error("[invoices] the job failed:", error instanceof Error ? error.message : error);
+    log("error", "invoices.job_failed", {}, error);
   }
   return result;
 }

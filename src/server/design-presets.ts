@@ -52,6 +52,7 @@ import { coreStylesRemoved, cssFate, layoutFate, layoutFingerprintSource, mergeS
 import { audit, type Account } from "./auth";
 import { catalogTag } from "./catalog";
 import { findFont, installFonts } from "./fonts";
+import { log } from "./log";
 import { copyStoredFile } from "./media";
 import { copyToLibrary, libraryFilesByUrl, type LibraryFile } from "./media-library";
 import { pageRulesProblem } from "./page-rules";
@@ -574,7 +575,7 @@ async function writeWorkspaceLook(
       `);
     });
   } catch (error) {
-    console.error("[design-presets] writing a workspace failed", error);
+    log("error", "design_presets.workspace_write_failed", {}, error);
     return refuse("The look could not be written into the theme. Nothing was changed; try again.");
   }
   return { ok: true, notes: placed.notes };
@@ -1203,7 +1204,7 @@ async function placeDesign(
   } catch (error) {
     if (error instanceof Refused || error instanceof InstallRefused) return refuse(error.message);
     if (isChargeRefusal(error)) return refuse(CHARGE_CHANGED);
-    console.error("[design-presets] applying failed", error);
+    log("error", "design_presets.apply_failed", {}, error);
     return refuse(live ? "The theme could not be applied. Nothing was changed; try again." : "The theme could not be added. Nothing was changed; try again.");
   }
   if (!live) {
@@ -1315,7 +1316,7 @@ export async function installPresetOnPlatform(
     });
   } catch (error) {
     if (error instanceof Refused) return refuse(error.message);
-    console.error("[design-presets] adding to Kaizena Flow failed", error);
+    log("error", "design_presets.platform_add_failed", {}, error);
     return refuse("The theme could not be added. Nothing was changed; try again.");
   }
   await audit(admin.id, null, "platform.theme_installed", { preset: presetId, ...(variation && { variation }), title, install: made.installId, pages: made.pageIds, media: ready.copies }, {
@@ -1752,7 +1753,7 @@ export async function updateThemeInstall(storeId: string, installId: string, acc
     });
   } catch (error) {
     if (error instanceof Refused) return refuse(error.message);
-    console.error("[design-presets] updating a theme failed", error);
+    log("error", "design_presets.update_failed", {}, error);
     return refuse("The theme could not be updated. Nothing was changed; try again.");
   }
   await audit(
@@ -1807,7 +1808,7 @@ export async function undoThemeUpdate(storeId: string, updateId: string, account
     return { ok: true, title };
   } catch (error) {
     if (error instanceof Refused) return refuse(error.message);
-    console.error("[design-presets] undoing a theme update failed", error);
+    log("error", "design_presets.update_undo_failed", {}, error);
     return refuse("The update could not be undone. Nothing was changed; try again.");
   }
 }
@@ -1874,7 +1875,7 @@ export async function runThemeUpdates(limit = 20, deps: ApplyDeps = {}): Promise
         stores.set(String(row.store_id), { id: String(row.store_id), slug: String(row.slug) });
       } else refused += 1;
     } catch (error) {
-      console.error("[design-presets] the theme update job failed for an install", error);
+      log("error", "design_presets.update_job_install_failed", {}, error);
       refused += 1;
     }
   }
@@ -2072,7 +2073,7 @@ export async function updatePlatformInstall(admin: Account | null, installId: st
     });
   } catch (error) {
     if (error instanceof Refused) return refuse(error.message);
-    console.error("[design-presets] updating a theme of Kaizena Flow's site failed", error);
+    log("error", "design_presets.platform_update_failed", {}, error);
     return refuse("The theme could not be updated. Nothing was changed; try again.");
   }
   await audit(
@@ -2121,7 +2122,7 @@ export async function undoPlatformThemeUpdate(admin: Account, updateId: string):
     return { ok: true, title };
   } catch (error) {
     if (error instanceof Refused) return refuse(error.message);
-    console.error("[design-presets] undoing an update of Kaizena Flow's site failed", error);
+    log("error", "design_presets.platform_update_undo_failed", {}, error);
     return refuse("The update could not be undone. Nothing was changed; try again.");
   }
 }
@@ -2220,7 +2221,7 @@ export async function runPlatformThemeUpdates(limit = 5, deps: ApplyDeps = {}): 
         if (row.live) live = true;
       } else refused += 1;
     } catch (error) {
-      console.error("[design-presets] the theme update job failed for Kaizena Flow's site", error);
+      log("error", "design_presets.platform_update_job_failed", {}, error);
       refused += 1;
     }
   }

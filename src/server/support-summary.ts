@@ -23,6 +23,7 @@ import {
 
 import { AiError, aiFor, completeText } from "./ai";
 import { audit } from "./auth";
+import { log } from "./log";
 import { deskSettings } from "./support";
 import type { Desk, StaffDesk } from "./support-desk";
 import { systemDesk } from "./support-desk";
@@ -134,7 +135,7 @@ export async function summarisePending(limit = 30): Promise<{ done: number; fail
       else if (outcome === "failed") out.failed++;
       else if (outcome === "skipped") out.skipped++;
     } catch (error) {
-      console.error(`[support] the summary of ${String(row.id)} failed`, error);
+      log("error", "support.summary_failed", { conversationId: String(row.id) }, error);
     }
   }
   return out;

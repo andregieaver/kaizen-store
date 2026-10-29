@@ -17,6 +17,7 @@ import { activeAccount, audit, type Account } from "./auth";
 import { sendEmail } from "./email";
 import { markDemoContent } from "./demo-content";
 import { applyDesignPreset, isOfferedDesign } from "./design-presets";
+import { log } from "./log";
 import { notifyReferralOpened, usableReferralCode } from "./referrals";
 
 type Row = Record<string, unknown>;
@@ -95,7 +96,7 @@ export async function sendAccessEmail(kind: AccessEmailKind, requestId: string, 
       idempotencyKey: kind === "confirm" && url ? `access-confirm:${requestId}:${url.slice(-12)}` : `access-${kind}:${requestId}`,
     });
   } catch (error) {
-    console.error("[platform] a request's email could not be sent", error);
+    log("error", "platform.access_email_failed", {}, error);
   }
 }
 
@@ -347,7 +348,7 @@ async function applyChosenDesign(
     const title = preset ? (kept && preset.variation_name ? `${String(preset.title)} · ${String(preset.variation_name)}` : String(preset.title)) : null;
     return { title, problem: result.ok ? null : result.problems.join(" ") };
   } catch (error) {
-    console.error("[platform] the theme could not be applied", error);
+    log("error", "platform.theme_apply_failed", {}, error);
     return { title: null, problem: "The theme could not be applied." };
   }
 }
@@ -357,7 +358,7 @@ async function applyChosenDesign(
  * throwing: a store left unmarked only lacks *Remove demo content*.
  */
 async function markNewStore(storeId: string): Promise<void> {
-  await markDemoContent(storeId).catch((error) => console.error("[platform] the demo content could not be marked", error));
+  await markDemoContent(storeId).catch((error) => log("error", "platform.demo_content_mark_failed", {}, error));
 }
 
 function approvalProblem(error: unknown, slug: string): string {
@@ -481,7 +482,7 @@ async function connectRequestDomain(requestId: string, storeId: string): Promise
     const linked = await linkDomain(account, String(row.domain), storeId);
     return linked.ok ? { name: String(row.domain), connected: linked.connected, problem: null } : { name: String(row.domain), connected: false, problem: linked.problems.join(" ") };
   } catch (error) {
-    console.error("[platform] the request's domain could not be connected", error);
+    log("error", "platform.domain_connect_failed", {}, error);
     return null;
   }
 }

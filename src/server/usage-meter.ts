@@ -5,6 +5,7 @@ import { sql, type SQL } from "drizzle-orm";
 import { db } from "@/db/client";
 import type { UsageMetric } from "@/lib/usage-metrics";
 
+import { log } from "./log";
 import { aiCostSql, domainsSql, emailsSql, productsSql, staffSql } from "./usage-sql";
 
 /**
@@ -72,7 +73,7 @@ export async function pruneUsageDaily(now: Date = new Date()): Promise<number> {
     const rows = await db().execute(sql`with d as (delete from commerce.store_usage_daily where day < ${cutoff}::date returning 1) select count(*)::int as n from d`);
     return Number(rows[0]?.n ?? 0);
   } catch (error) {
-    console.error("[usage] prune failed", error);
+    log("error", "usage.prune_failed", {}, error);
     return 0;
   }
 }

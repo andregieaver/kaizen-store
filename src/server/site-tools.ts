@@ -54,6 +54,7 @@ import { addNotice } from "./assistant-notices";
 import { ACTORS, actingAs, currentActor, type Actor } from "./actor";
 import { activeAccount, passMembership, type Account, type Membership } from "./auth";
 import { runningTestOf } from "./experiment-admin";
+import { log } from "./log";
 import { OwnerToolError } from "./owner-tool-error";
 import { buildDraft, fillPicture, planPage, sectionForPage, siteFacts, studioAbilities, type StudioOwner } from "./page-ai";
 import { libraryFilesByUrl } from "./media-library";
@@ -497,7 +498,7 @@ export async function runPageJobs(until: number, deps: SiteToolDeps = {}): Promi
     try {
       job = await claimJob();
     } catch (error) {
-      console.error("[page-jobs] no job could be taken:", error);
+      log("error", "page_jobs.claim_failed", {}, error);
       break;
     }
     if (!job) break;
@@ -516,14 +517,14 @@ export async function runPageJobs(until: number, deps: SiteToolDeps = {}): Promi
               : { status: "failed", problem: "The picture has no page." };
       });
     } catch (error) {
-      console.error("[page-jobs] a job failed:", error);
+      log("error", "page_jobs.job_failed", {}, error);
       outcome = { status: "retry", problem: "Something went wrong. It is tried again." };
     }
     try {
       await keep(job, outcome);
     } catch (error) {
       // The hold runs out by itself, and the job is taken again then.
-      console.error("[page-jobs] the outcome could not be kept:", error);
+      log("error", "page_jobs.outcome_keep_failed", {}, error);
       break;
     }
     if (outcome.status === "done") result.done += 1;

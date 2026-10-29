@@ -8,6 +8,7 @@ import { archiveBlock, autoArchiveCutoff, isAutoArchiveDays, UNARCHIVE_RETURN_NO
 import { ORDER_AUDIT_ACTIONS, ORDER_OPS_EVENTS } from "@/lib/order-ops-events";
 
 import { audit } from "./auth";
+import { log } from "./log";
 import { SYSTEM_ACTOR, writeOrderEvent, type OrderActor } from "./order-actor";
 import { uuidList } from "./sql-arrays";
 
@@ -149,7 +150,7 @@ export async function archiveFinishedOrders(now: Date = new Date(), options: { s
         await audit(null, storeId, ORDER_AUDIT_ACTIONS.bulkArchived, { count: archived, automatic: true, days });
       }
     } catch (error) {
-      console.error("[orders] automatic archiving failed for a store", storeId, error);
+      log("error", "orders.auto_archive_failed", { storeId }, error);
     }
   }
   return run;

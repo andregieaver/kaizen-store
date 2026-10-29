@@ -22,6 +22,7 @@ import { learnFromTurn, memoriesFor, type Memory } from "./assistant-memory";
 import type { Account, Membership, Role } from "./auth";
 import { actingAs, currentActor } from "./actor";
 import { askLife, lifeLink, lifeLinkOn, LifeLinkError } from "./kaizen-life-link";
+import { log } from "./log";
 import { platformGateNeeded, preflightPlatformTool, runManagerTool, runPlatformTool, type ManagerContext } from "./manager-tools";
 import { experimentApprovalSummary } from "./experiment-tools";
 import { broadcastApprovalSummary } from "./marketing-tools";
@@ -536,7 +537,7 @@ export async function runTurn(input: TurnInput): Promise<void> {
       ) recent order by created_at, id
     `),
     memoriesFor(account.id, store?.id ?? null, text, connection).catch((error) => {
-      console.error("[ai-manager] memories", error);
+      log("error", "ai_manager.memories_failed", {}, error);
       return [] as Memory[];
     }),
     !input.fromKaizenLife && lifeLinkOn() ? lifeLink(account.id).then((link) => link !== null) : Promise.resolve(false),
@@ -655,7 +656,7 @@ export async function runTurn(input: TurnInput): Promise<void> {
     }
   } catch (error) {
     const message = error instanceof AiError ? `The AI did not answer: ${error.message}` : "Something went wrong. Try again.";
-    if (!(error instanceof AiError)) console.error("[ai-manager]", error);
+    if (!(error instanceof AiError)) log("error", "ai_manager.turn_failed", {}, error);
     const saved = await addMessage(p, conversationId, "assistant", message, trail);
     emit({ type: "error", message });
     emit({ type: "done", message: saved });
@@ -669,7 +670,7 @@ export async function runTurn(input: TurnInput): Promise<void> {
   if (input.later && !input.fromKaizenLife && reply.trim()) {
     input.later(() =>
       learnFromTurn({ accountId: account.id, storeId: store?.id ?? null, connection, said: text, answered }).catch((error) =>
-        console.error("[ai-manager] learning", error),
+        log("error", "ai_manager.learning_failed", {}, error),
       ),
     );
   }
@@ -689,7 +690,7 @@ async function askKaizenLife(p: Principal, rawArgs: string): Promise<Record<stri
     return { kaizen_life_says: await askLife(p.account.id, question, p.store?.name ?? "Kaizena Flow") };
   } catch (error) {
     if (error instanceof LifeLinkError) return { error: error.message };
-    console.error("[ai-manager] ask_kaizen_life", error);
+    log("error", "ai_manager.ask_kaizen_life_failed", {}, error);
     return { error: "Kaizen Life did not answer." };
   }
 }
@@ -765,7 +766,7 @@ async function callTool(
         else await preflightPlatformTool(ctx, name, args);
       } catch (error) {
         if (error instanceof OwnerToolError) return { error: error.message };
-        console.error(`[ai-manager] ${name}`, error);
+        log("error", "ai_manager.tool_preflight_failed", { tool: name }, error);
         return { error: "The tool failed." };
       }
     }
@@ -783,7 +784,7 @@ async function callTool(
           return { result };
         } catch (error) {
           if (error instanceof OwnerToolError) return { error: error.message };
-          console.error(`[ai-manager] ${name}`, error);
+          log("error", "ai_manager.autopilot_tool_failed", { tool: name }, error);
           return { error: "The tool failed." };
         }
       }
@@ -807,7 +808,7 @@ async function callTool(
     });
   } catch (error) {
     if (error instanceof OwnerToolError) return { error: error.message };
-    console.error(`[ai-manager] ${name}`, error);
+    log("error", "ai_manager.tool_failed", { tool: name }, error);
     return { error: "The tool failed." };
   }
 }
@@ -1014,7 +1015,7 @@ export async function decideApproval(
     result = { done: answer?.done ?? "Done." };
   } catch (error) {
     result = { error: error instanceof OwnerToolError ? error.message : "It could not be done." };
-    if (!(error instanceof OwnerToolError)) console.error("[ai-manager] approval", error);
+    if (!(error instanceof OwnerToolError)) log("error", "ai_manager.approval_failed", {}, error);
   }
   const [row] = await db().execute<Row>(sql`
     update commerce.assistant_approvals set status = ${result.error ? "failed" : "done"}, result = ${JSON.stringify(result)}::jsonb
@@ -1030,7 +1031,7 @@ async function settleStepAfterApproval(stepId: string): Promise<void> {
   try {
     await settleStepApproval(stepId);
   } catch (error) {
-    console.error("[ai-manager] settling an autopilot step", error);
+    log("error", "ai_manager.autopilot_step_settle_failed", { stepId }, error);
   }
 }
 
@@ -1073,7 +1074,7 @@ export async function rateAnswer(
         said: String(asked?.content ?? ""),
         answered: String(row.content),
         feedback: { value, note: note?.slice(0, 500) || undefined },
-      }).catch((error) => console.error("[ai-manager] learning from a thumb", error));
+      }).catch((error) => log("error", "ai_manager.thumb_learning_failed", {}, error));
     });
   }
   return true;

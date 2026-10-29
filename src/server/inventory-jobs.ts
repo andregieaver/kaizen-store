@@ -48,6 +48,7 @@ import {
   type DataJob,
   type ItemInput,
 } from "./data-job-store";
+import { log } from "./log";
 import { NO_ACCESS, memberCan } from "./permissions";
 import { pgTextArray, pgUuidArray } from "./pg-arrays";
 import { refreshTag } from "./refresh";
@@ -305,7 +306,7 @@ export async function applyInventoryImport(member: Membership, jobId: string, ru
   try {
     await audit(member.account.id, member.store.id, "products.inventory_import_started", { job: job.id, rows: job.rowsTotal, toUpdate: dry.toUpdate, conflicts: dry.conflicts }, { area: "products", target: { type: "data_job", id: job.id } });
   } catch (error) {
-    console.error("[inventory-jobs] the start could not be written to the activity log", error);
+    log("error", "inventory_jobs.start_audit_failed", {}, error);
     return { ok: false, problem: "The activity log could not be written, so the import was not started. Try again." };
   }
   const files = Number((job.cursor as { files?: unknown }).files ?? 0);
@@ -561,7 +562,7 @@ async function writeRow(job: DataJob, p: Prepared, i: number): Promise<Judged> {
       return { ...first, action: decision.kind === "change" || first.action === "update" ? "update" : "unchanged", current: now };
     });
   } catch (error) {
-    console.error("[inventory-jobs] a row could not be saved", error);
+    log("error", "inventory_jobs.row_save_failed", {}, error);
     return { ...first, action: "skip", findings: [...first.findings, finding("stockfile.failed", { sku: row.sku })] };
   }
 }
@@ -602,7 +603,7 @@ export async function runInventoryApply(job: DataJob, deps: DataDeps, until: num
   const ended = await finishJob(job, { status: "done", counts: { ...counts, dry }, cursor: { ...cursor }, rowsDone: total, rowsTotal: total, phase: "apply", keepDays: 30 });
   if (!ended) return "paused";
   await audit(job.requestedBy, job.storeId, "products.inventory_imported", { job: job.id, rows: total, updated: counts.updated, unchanged: counts.unchanged, skipped: counts.skipped, failed: counts.failed }, { area: "products", target: { type: "data_job", id: job.id } }).catch((error) =>
-    console.error("[inventory-jobs] the end could not be written to the activity log", error),
+    log("error", "inventory_jobs.end_audit_failed", {}, error),
   );
   return "done";
 }

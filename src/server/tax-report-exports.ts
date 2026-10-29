@@ -10,6 +10,7 @@ import { reconciliationCsv, reconciliationFileName, returnCsv, returnFileName, d
 import type { VatReport } from "@/lib/tax-report";
 
 import { audit, type Membership } from "./auth";
+import { log } from "./log";
 import { memberCan } from "./permissions";
 import { reconciliation, type ReconciliationView } from "./tax-reconciliation";
 import { returnView, vatReport, type TaxRange } from "./tax-reports";
@@ -206,7 +207,7 @@ export async function exportVatReport(membership: Membership, range: TaxRange): 
   try {
     await logExport(membership, { report: "vat", scheme: null, periodKey: rangeKey(range.from, range.to), mode: null, rows, totals: vatTotals(report) });
   } catch (error) {
-    console.error("tax_report.export_log_failed", error instanceof Error ? error.message : error);
+    log("error", "tax_report.export_log_failed", { report: "vat" }, error);
     return FAILED;
   }
   return { ok: true, filename: vatFileName(membership.store.slug, range.from, range.to), csv, rows };
@@ -226,7 +227,7 @@ export async function exportReturnData(membership: Membership, scheme: ReturnSch
   try {
     await logExport(membership, { report: kind, scheme: registration === "none" ? null : registration, periodKey: period.key, mode, rows: made.rows, totals: returnTotals(view.data) });
   } catch (error) {
-    console.error("tax_report.export_log_failed", error instanceof Error ? error.message : error);
+    log("error", "tax_report.export_log_failed", { report: kind }, error);
     return FAILED;
   }
   return { ok: true, filename: returnFileName(membership.store.slug, view.data, detail), csv: made.csv, rows: made.rows };
@@ -241,7 +242,7 @@ export async function exportReconciliation(membership: Membership, range: TaxRan
   try {
     await logExport(membership, { report: "reconciliation", scheme: null, periodKey: rangeKey(range.from, range.to), mode: null, rows, totals: reconciliationTotals(view) });
   } catch (error) {
-    console.error("tax_report.export_log_failed", error instanceof Error ? error.message : error);
+    log("error", "tax_report.export_log_failed", { report: "reconciliation" }, error);
     return FAILED;
   }
   return { ok: true, filename: reconciliationFileName(membership.store.slug, range.from, range.to), csv, rows };

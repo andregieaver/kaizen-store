@@ -32,6 +32,7 @@ import { audit, type Account } from "./auth";
 import { auditChange } from "./audit";
 import { findFont, installFonts } from "./fonts";
 import { GlobalsRefused, globalsIn, lockSavedParts, spreadGlobals } from "./global-parts";
+import { log } from "./log";
 import { withPageAlts } from "./media-alts";
 import { pageRulesProblem, payPageProblem } from "./page-rules";
 import { keepVersion } from "./page-versions";
@@ -497,7 +498,7 @@ async function checkBeforeSave(
     }
     return { result: null, acknowledged: blockingIssues(issues) };
   } catch (error) {
-    console.error("[pages] the page checker failed; publishing goes on without it", error);
+    log("error", "pages.checker_failed", {}, error);
     return { result: null, acknowledged: [] };
   }
 }

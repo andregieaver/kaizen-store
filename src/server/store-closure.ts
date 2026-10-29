@@ -22,6 +22,7 @@ import { cancelPlan } from "./billing";
 import { closeSession, completeOrderPayment } from "./checkout";
 import { listStoreDomains, removeStoreDomain } from "./domains";
 import { sendEmail } from "./email";
+import { log } from "./log";
 import { refreshTag } from "./refresh";
 import { getCheckoutAccount } from "./settings";
 import { platformStripe } from "./stripe";
@@ -321,11 +322,7 @@ export async function cancelOpenCheckouts(
       });
     } catch (error) {
       failed++;
-      console.error(
-        "[store-closure] an open checkout could not be cancelled",
-        id,
-        error,
-      );
+      log("error", "store_closure.checkout_cancel_failed", { orderId: id }, error);
     }
   }
   return { cancelled, failed };
@@ -475,10 +472,6 @@ async function notifyOwners(
       });
     }
   } catch (error) {
-    console.error(
-      "[store-closure] the owners' email could not be sent",
-      state.id,
-      error,
-    );
+    log("error", "store_closure.owners_email_failed", { storeId: state.id }, error);
   }
 }

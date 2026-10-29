@@ -7,6 +7,7 @@ import { AI_FEATURES, NO_USAGE, type AiFeature, type AiKind, type AiSource, type
 
 import { currentActor } from "./actor";
 import { costMicrosSql, priceFor, unpricedSql } from "./ai-price-sql";
+import { log } from "./log";
 
 type Row = Record<string, unknown>;
 
@@ -62,7 +63,7 @@ export async function recordUsage(context: UsageContext, event: UsageEvent): Pro
       )
     `);
   } catch (error) {
-    console.error("[ai-usage] not recorded", error);
+    log("error", "ai_usage.record_failed", {}, error);
   }
 }
 
@@ -77,7 +78,7 @@ export async function recordLiveSeconds(accountId: string, storeId: string | nul
         and store_id is not distinct from ${storeId}::uuid
     `);
   } catch (error) {
-    console.error("[ai-usage] live seconds not recorded", error);
+    log("error", "ai_usage.live_seconds_record_failed", {}, error);
   }
 }
 

@@ -4,6 +4,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import { publicEnv } from "@/lib/env";
 import { supabaseKeyKind } from "@/lib/supabase-key";
+import { log } from "./log";
 
 /**
  * Supabase Auth's admin API, for the few things only the server may do for a person: take a second-step factor away from an
@@ -19,7 +20,7 @@ export function adminAuth(): AdminClient {
   const key = process.env.SUPABASE_SECRET_KEY?.trim();
   if (!key) return { ok: false, problem: "Recovery is not available on this server. Ask a platform admin to reset your two-step." };
   if (supabaseKeyKind(key) === "publishable") {
-    console.error("[two-step] SUPABASE_SECRET_KEY holds the publishable key; the admin API refuses it.");
+    log("error", "two_step.secret_key_is_publishable");
     return { ok: false, problem: "Recovery is not available on this server. Ask a platform admin to reset your two-step." };
   }
   let url: string;

@@ -6,6 +6,7 @@ import { db } from "@/db/client";
 import { AUDIT_RETENTION_MONTHS } from "@/lib/audit";
 
 import { audit } from "./auth";
+import { log } from "./log";
 
 type Row = Record<string, unknown>;
 
@@ -73,7 +74,7 @@ export async function runSecurityJobs(now: Date = new Date()): Promise<{ collabo
     try {
       return await job();
     } catch (error) {
-      console.error(`[security-jobs] ${name} failed`, error);
+      log("error", "security_jobs.job_failed", { job: name }, error);
       return 0;
     }
   };

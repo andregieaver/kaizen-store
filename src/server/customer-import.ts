@@ -33,6 +33,7 @@ import {
   type DataJob,
   type ItemInput,
 } from "./data-job-store";
+import { log } from "./log";
 import { NO_ACCESS, memberCan } from "./permissions";
 import { tagIn } from "./segments";
 
@@ -179,7 +180,7 @@ export async function applyCustomerImport(member: Membership, jobId: string, run
   try {
     await audit(member.account.id, member.store.id, "customer.import_started", { job: job.id, rows: job.rowsTotal, toCreate: dry.toCreate, toUpdate: dry.toUpdate }, { area: "customers", target: { type: "data_job", id: job.id } });
   } catch (error) {
-    console.error("[customer-import] the start could not be written to the activity log", error);
+    log("error", "customer_import.start_audit_failed", {}, error);
     return { ok: false, problem: "The activity log could not be written, so the import was not started. Try again." };
   }
   const files = Number((job.cursor as { files?: unknown }).files ?? 0);
@@ -368,7 +369,7 @@ async function writeRow(job: DataJob, p: Prepared, i: number): Promise<Judged> {
     });
   } catch (error) {
     if (error instanceof RowRefused) return { ...first, action: "skip", findings: [...first.findings, error.found] };
-    console.error("[customer-import] a row could not be saved", error);
+    log("error", "customer_import.row_save_failed", {}, error);
     return { ...first, action: "skip", findings: [...first.findings, finding("customerfile.failed")] };
   }
 }
@@ -405,7 +406,7 @@ export async function runCustomerApply(job: DataJob, deps: DataDeps, until: numb
   const ended = await finishJob(job, { status: "done", counts: { ...counts, dry }, cursor: { ...cursor }, rowsDone: total, rowsTotal: total, phase: "apply", keepDays: 30 });
   if (!ended) return "paused";
   await audit(job.requestedBy, job.storeId, "customer.imported", { job: job.id, rows: total, created: counts.created, updated: counts.updated, skipped: counts.skipped, failed: counts.failed }, { area: "customers", target: { type: "data_job", id: job.id } }).catch((error) =>
-    console.error("[customer-import] the end could not be written to the activity log", error),
+    log("error", "customer_import.end_audit_failed", {}, error),
   );
   return "done";
 }

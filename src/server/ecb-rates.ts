@@ -9,6 +9,7 @@ import type { RateChoice, RateLookup } from "@/lib/oss-return";
 
 import { audit, type Membership } from "./auth";
 import { latestRates, ratesNearDay, type EcbFetch } from "./ecb-fetch";
+import { log } from "./log";
 import { memberCan } from "./permissions";
 
 type Row = Record<string, unknown>;
@@ -82,7 +83,7 @@ export async function storeEcbRates(deps: { fetch?: EcbFetch } = {}): Promise<St
     }
     return { ok: true, inserted, differing, days: new Set(rates.map((r) => r.date)).size };
   } catch (error) {
-    console.error("ecb.store_failed", error instanceof Error ? error.message : error);
+    log("error", "ecb.store_failed", {}, error);
     return { ok: false, inserted: 0, differing: 0, days: 0 };
   }
 }

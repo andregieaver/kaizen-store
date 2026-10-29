@@ -8,6 +8,7 @@ import { publicEnv } from "@/lib/env";
 import { pictureIdOfFile, picturePaths } from "@/lib/review-pictures";
 import type { ReviewPictureType } from "@/lib/review-status";
 import { supabaseKeyKind } from "@/lib/supabase-key";
+import { log } from "./log";
 
 type Row = Record<string, unknown>;
 
@@ -43,7 +44,7 @@ export function reviewPictureStorage(): ReviewPictureStorage | null {
   return {
     async upload(path, bytes, contentType) {
       const { error } = await bucket.upload(path, bytes, { contentType, cacheControl: "0", upsert: false });
-      if (error) console.error("[reviews] a picture could not be stored:", error.message);
+      if (error) log("error", "reviews.picture_store_failed", {}, error);
       return !error;
     },
     async download(path) {
@@ -54,7 +55,7 @@ export function reviewPictureStorage(): ReviewPictureStorage | null {
     async remove(paths) {
       if (paths.length === 0) return true;
       const { error } = await bucket.remove(paths);
-      if (error) console.error("[reviews] pictures could not be removed:", error.message);
+      if (error) log("error", "reviews.pictures_remove_failed", {}, error);
       return !error;
     },
     async list(folder, limit, offset) {
@@ -80,7 +81,7 @@ export async function removePictureFiles(storeId: string, pictures: readonly Sto
   try {
     await storage.remove(filesOf(storeId, pictures));
   } catch (error) {
-    console.error("[reviews] pictures' files are left for the daily sweep", error);
+    log("error", "reviews.picture_files_left", {}, error);
   }
 }
 

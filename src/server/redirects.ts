@@ -13,6 +13,7 @@ import { redirectStatus, validateRedirect, type RedirectKind, type RedirectOrigi
 
 import { type Membership } from "./auth";
 import { currentActor } from "./actor";
+import { log } from "./log";
 import { NO_ACCESS, memberCan } from "./permissions";
 import { pgUuidArray } from "./pg-arrays";
 import { addressContextOf, indexFor, liveOf, manualCountOf, pathsOfIndex, refreshRedirects, type Executor } from "./redirect-live";
@@ -482,6 +483,6 @@ export async function countHit(storeId: string, redirectId: string, now: number 
     hitWritten.set(redirectId, now);
     await db().execute(sql`update commerce.redirects set hits = hits + 1, last_hit_at = now() where store_id = ${storeId}::uuid and id = ${redirectId}::uuid`);
   } catch (error) {
-    console.error("[redirects] a hit could not be counted", error instanceof Error ? error.message : error);
+    log("error", "redirects.hit_count_failed", {}, error);
   }
 }

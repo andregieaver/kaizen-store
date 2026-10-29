@@ -21,6 +21,7 @@ import { audit } from "./auth";
 import { SCHEME_RETENTION_YEARS } from "@/lib/invoice-retention";
 import { anonymiseDocuments } from "./invoice-retention";
 import { pruneDraftOrders } from "./draft-orders";
+import { log } from "./log";
 import { pruneRuleRuns } from "./order-rules";
 import { pruneTrackingEvents } from "./shipment-tracking";
 import { pruneStoreEvents } from "./staff-alerts";
@@ -465,7 +466,7 @@ export async function runRetention(now: Date = new Date(), deps: { steps?: Parti
   try {
     rules = await retentionRules();
   } catch (error) {
-    console.error("[retention] the rules could not be read", error);
+    log("error", "retention.rules_read_failed", {}, error);
   }
   const ctx: Ctx = { now, rules, storesList: () => (stores ??= loadStores()), filesLeft: run.filesLeft, batch: deps.batch ?? BATCH };
   const perStore = new Map<string, { documents: number; orders: number }>();
@@ -481,7 +482,7 @@ export async function runRetention(now: Date = new Date(), deps: { steps?: Parti
         }
       }
     } catch (error) {
-      console.error(`[retention] ${step} failed`, error);
+      log("error", "retention.step_failed", { step }, error);
       run.errors.push({ step, message: error instanceof Error ? error.message.slice(0, 300) : "failed" });
     }
   }
@@ -491,7 +492,7 @@ export async function runRetention(now: Date = new Date(), deps: { steps?: Parti
       if (n.documents + n.orders > 0) await audit(null, storeId, "privacy.retention_applied", { documents: n.documents, orders: n.orders }, { area: "customers" });
     }
   } catch (error) {
-    console.error("[retention] the run could not be written to the activity log", error);
+    log("error", "retention.audit_failed", {}, error);
   }
   return run;
 }

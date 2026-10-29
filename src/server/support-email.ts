@@ -20,6 +20,7 @@ import { EMAIL_EVERY_MINUTES, EMAILS_MAX, ONLINE_SECONDS } from "@/lib/support-r
 
 import type { Role } from "./auth";
 import { sendEmail, type SendOutcome } from "./email";
+import { log } from "./log";
 import { emailContext, emailFooter } from "./shopper-emails";
 import { newEmailToken } from "./support";
 import { systemDesk } from "./support-desk";
@@ -82,7 +83,7 @@ export async function sendSupportEmails(now: Date = new Date()): Promise<Support
       out.waiting += run.waiting;
       out.failed += run.failed;
     } catch (error) {
-      console.error("[support] the emails could not be read", error);
+      log("error", "support.emails_read_failed", {}, error);
     }
   }
   return out;
@@ -131,7 +132,7 @@ export async function sendReplyEmails(now: Date = new Date(), limit = 100): Prom
       else out.failed += 1;
     } catch (error) {
       out.failed += 1;
-      console.error(`[support] the answer email of ${String(row.id)} failed`, error);
+      log("error", "support.reply_email_failed", { conversationId: String(row.id) }, error);
     }
   }
   return out;
@@ -326,7 +327,7 @@ export async function sendWaitingAlerts(now: Date = new Date(), limit = 100): Pr
       `);
     } catch (error) {
       out.failed += 1;
-      console.error(`[support] the waiting alert of ${id} failed`, error);
+      log("error", "support.waiting_alert_failed", { conversationId: id }, error);
     }
   }
   return out;
@@ -415,7 +416,7 @@ export async function sendRequestDecisionEmail(conversationId: string, actionId:
       idempotencyKey: `support.request_done:${actionId}`,
     });
   } catch (error) {
-    console.error(`[support] the decision email of ${actionId} failed`, error);
+    log("error", "support.decision_email_failed", { actionId }, error);
     return null;
   }
 }

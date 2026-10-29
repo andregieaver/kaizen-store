@@ -9,6 +9,7 @@ import { monthOf } from "@/lib/usage-metrics";
 import { usageEmail } from "@/lib/usage-emails";
 
 import { sendEmail } from "./email";
+import { log } from "./log";
 import { storeUsageLines } from "./usage";
 
 /**
@@ -62,7 +63,7 @@ export async function sendUsageAlerts(now: Date = new Date()): Promise<{ stores:
       }
     }
   } catch (error) {
-    console.error("[usage] alerts failed", error);
+    log("error", "usage.alerts_failed", {}, error);
   }
   return result;
 }

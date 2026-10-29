@@ -14,6 +14,7 @@ import { parseStoreTheme } from "@/lib/theme";
 import { audit, type Account } from "./auth";
 import { addVariation } from "./design-variations";
 import { applyDesignPreset, copyStoreLookToDraft, createDesign, liveLookChanges, type ApplyDeps } from "./design-presets";
+import { log } from "./log";
 import { refreshTag } from "./refresh";
 import { STARTERS_TAG, getStarter, giveThemeContent, joinStarter, type StarterResult } from "./store-starters";
 import { storeTag } from "./stores";
@@ -151,7 +152,7 @@ export async function createDemoStore(
     if (error instanceof Refused) return refuse(error.message);
     const text = describe(error);
     if (text.includes("stores_slug_unique")) return refuse(`The address ${input.slug} is taken. Choose another.`);
-    console.error("[demo-stores] making a demo store failed", error);
+    log("error", "demo_stores.create_failed", {}, error);
     return refuse(starterRefusal(text) ?? "The demo store could not be made. Nothing was changed; try again.");
   }
   await audit(admin.id, made.storeId, "platform.demo_store_created", { starter: made.id, slug: input.slug, preset: input.look.id, variation: input.look.variation, content: input.contentId }, {

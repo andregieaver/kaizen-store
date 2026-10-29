@@ -192,7 +192,7 @@ export async function runBulk(storeId: string, actor: OrderActor, request: BulkR
           if (outcome === "sent" || outcome === "logged") emailed += 1;
         }
       } catch (error) {
-        console.error("[orders] bulk mark as sent failed for an order", id, error);
+        log("error", "orders.bulk_mark_sent_failed", { orderId: id }, error);
         refused.push(refusal(id, number, "failed"));
       }
     }
@@ -256,7 +256,7 @@ export async function runBulk(storeId: string, actor: OrderActor, request: BulkR
         applied += 1;
         if (done.email === "sent" || done.email === "logged") emailed += 1;
       } catch (error) {
-        console.error("[orders] bulk ready for pickup failed for an order", id, error);
+        log("error", "orders.bulk_ready_for_pickup_failed", { orderId: id }, error);
         refused.push(refusal(id, number, "failed"));
       }
     }
@@ -280,7 +280,7 @@ export async function runBulk(storeId: string, actor: OrderActor, request: BulkR
           else refused.push(refusal(id, done.number ?? number, done.reason));
         }
       } catch (error) {
-        console.error("[orders] bulk action failed for an order", action, id, error);
+        log("error", "orders.bulk_action_failed", { action, orderId: id }, error);
         refused.push(refusal(id, number, "failed"));
       }
     }

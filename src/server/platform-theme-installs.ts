@@ -6,6 +6,7 @@ import { db } from "@/db/client";
 import { cssProblem } from "@/lib/custom-css";
 
 import { audit, type Account } from "./auth";
+import { log } from "./log";
 import { checkPlatformTheme } from "./themes";
 
 /**
@@ -236,7 +237,7 @@ export async function switchPlatformInstall(admin: Account, installId: string): 
     });
   } catch (error) {
     if (error instanceof Refused) return refuse(error.message);
-    console.error("[platform-theme-installs] switching failed", error);
+    log("error", "platform_theme_installs.switch_failed", {}, error);
     return refuse("The theme could not be switched. Nothing was changed; try again.");
   }
   await audit(admin.id, null, "platform.theme_switched", { install: installId, title: done.title, from: done.fromId }, {

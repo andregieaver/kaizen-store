@@ -44,6 +44,7 @@ import { shownMeasureFromColumns } from "@/lib/unit-price-rules";
 import { audit } from "./auth";
 import { cashLimitInCurrency } from "./draft-orders";
 import { settleOrderSessions } from "./draft-sessions";
+import { log } from "./log";
 import { allocateStock, insertOrderLine } from "./order-insert";
 import { writeOrderEvent, type OrderActor } from "./order-actor";
 import { refundOrder } from "./order-admin";
@@ -1266,7 +1267,7 @@ export async function completeEditPayment(storeId: string, sessionId: string): P
     },
   );
   if (!refund.ok) {
-    console.error("[order-edits] a late payment for a change could not be refunded", { storeId, orderId, editId });
+    log("error", "order_edits.late_payment_refund_failed", { storeId, orderId, editId });
     return "failed";
   }
   const { sendRefunded } = await import("./shopper-emails");
@@ -1303,7 +1304,7 @@ export async function expireOrderEdits(now: Date = new Date(), options: { limit?
       else if (done.problem === "paid") run.paid += 1;
       else if (done.problem === "processing") run.waiting += 1;
     } catch (error) {
-      console.error("[order-edits] expiring a change failed", row.id, error instanceof Error ? error.message : error);
+      log("error", "order_edits.expire_failed", { editId: String(row.id) }, error);
     }
   }
   return run;

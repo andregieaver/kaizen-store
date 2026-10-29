@@ -11,6 +11,7 @@ import { actionAdminLang } from "./admin-request-lang";
 import { AiError, aiFor, speakText } from "./ai";
 import { sameSite } from "./chat-route";
 import { delegateLive, endLiveCall, LiveVoiceError, saveLiveTurns, startLiveSession } from "./live-voice";
+import { log } from "./log";
 import { runTurn, type AssistantEvent, type Principal } from "./owner-assistant";
 
 const turnInput = z.object({
@@ -74,7 +75,7 @@ export async function assistantTurn(request: Request, principal: Principal): Pro
           later: (task) => tasks.push(task),
         });
       } catch (error) {
-        console.error("[ai-manager] turn", error);
+        log("error", "ai_manager.route_turn_failed", {}, error);
         emit({ type: "error", message: w.failed });
       } finally {
         finished();
@@ -150,7 +151,7 @@ export async function liveDelegateResponse(request: Request, principal: Principa
     if (!result) return Response.json({ error: refusals(principal).unknownConversation }, { status: 404 });
     return Response.json(result, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
-    console.error("[live-voice] delegate", error);
+    log("error", "live_voice.delegate_failed", {}, error);
     return Response.json({ speak: "That didn't go through on my side. Tell them it failed and offer to try again.", navigate: [], approvals: [], failed: true });
   }
 }

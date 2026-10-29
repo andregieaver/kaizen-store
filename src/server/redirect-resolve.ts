@@ -16,6 +16,7 @@ import { localized } from "@/lib/store-localized";
 import { redirectsTag } from "@/lib/redirects";
 
 import { catalogTag } from "./catalog";
+import { log } from "./log";
 import { recordNotFound } from "./not-found";
 import { forgetRemembered, liveOf, remembered } from "./redirect-live";
 import { countHit } from "./redirects";
@@ -107,7 +108,7 @@ export async function resolveMiss(storeId: string, marketCode: string | null, pa
   if (hops.length === 0) return null;
   const first = hops[0];
   if (hops.length > REDIRECT_HOPS_MAX) {
-    console.error("[redirects] a chain longer than the hop limit is a miss:", storeId, path);
+    log("error", "redirects.chain_too_long", { storeId, hops: hops.length });
     return null;
   }
   // A hop reached by a manual target that is a LIVE address ends the chain before it: that address is served as itself.
@@ -123,7 +124,7 @@ export async function resolveMiss(storeId: string, marketCode: string | null, pa
     // A loop in the data (the last target leads back into the chain), or a chain cut at the limit, is a miss.
     const next = pathOfTarget(last.target);
     if (end === hops.length - 1 && hops.some((h) => h.source === next)) {
-      console.error("[redirects] a loop is a miss:", storeId, path);
+      log("error", "redirects.loop", { storeId });
       return null;
     }
     return { to: last.target, redirectId: first.id };
@@ -144,7 +145,7 @@ async function lookupCached(storeId: string, marketCode: string, path: string): 
       return { to: found.to };
     }
   } catch (error) {
-    console.error("[redirects] a lookup failed, so the address is a 404:", error instanceof Error ? error.message : error);
+    log("error", "redirects.lookup_failed", {}, error);
     return { to: null };
   }
   await recordNotFound(storeId, path, false);
@@ -177,7 +178,7 @@ export async function missOrRedirect(shop: { store: Pick<Store, "id" | "slug">; 
     try {
       to = (await lookupCached(shop.store.id, shop.market.code, normal)).to;
     } catch (error) {
-      console.error("[redirects] the lookup of a miss failed:", error instanceof Error ? error.message : error);
+      log("error", "redirects.miss_lookup_failed", {}, error);
     }
   }
   if (to !== null) permanentRedirect(locationIn(shop.store.slug, shop.market.slug, mergeQuery(to, query)));
@@ -334,7 +335,7 @@ async function legacyAnswerFor(facts: NonNullable<StoreFacts>, path: string, sea
       return { location: locationBy(facts, `${path}${search}`) };
     }
   } catch (error) {
-    console.error("[redirects] a lookup of an address with no country failed:", error instanceof Error ? error.message : error);
+    log("error", "redirects.marketless_lookup_failed", {}, error);
     return null;
   }
   return { miss: { storeId: facts.id, path } };

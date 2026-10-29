@@ -40,6 +40,7 @@ import { brandOf } from "./brand";
 import { campaignFacts, emailMarket, findProductFacts } from "./broadcast-facts";
 import { listTiers } from "./customer-tiers";
 import { BATCH_MAX, deliverBatch, emailSettings, sendEmail, type Delivery, type SendOutcome } from "./email";
+import { log } from "./log";
 import { emailPictureProblem, factsForEmail, marketingEmail, marketSlugFor, resolverFor, type MarketingEmail } from "./marketing-email";
 import { getSegment, segmentPeople } from "./segments";
 import { storeById, type EmailStore } from "./shopper-emails";
@@ -428,7 +429,7 @@ export async function runBroadcasts(options: { only?: string; deadline?: number;
     }
     result.finished = await finishDone(options.only ?? null);
   } catch (error) {
-    console.error("[broadcasts] run failed", error);
+    log("error", "broadcasts.run_failed", {}, error);
   }
   return result;
 }

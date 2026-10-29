@@ -11,6 +11,7 @@ import { carrierInfo, type CarrierContext, type CarrierId, type ShippingAddress 
 import { audit } from "./auth";
 import { adapterFor } from "./carriers";
 import { fetchBringLabel } from "./carriers/bring";
+import { log } from "./log";
 import type { OrderActor } from "./order-actor";
 import { writeOrderEvent } from "./order-actor";
 import { getExchangeLabelSettings, getReturnSettings } from "./return-settings";
@@ -358,7 +359,7 @@ export async function bookPendingLabels(now: Date = new Date(), options: { limit
       }
     } catch (error) {
       run.failed += 1;
-      console.error("[return-labels] a label could not be booked", String(row.id), error);
+      log("error", "return_labels.book_failed", { returnId: String(row.id) }, error);
     }
   }
   return run;

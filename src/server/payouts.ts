@@ -7,6 +7,7 @@ import { db } from "@/db/client";
 import { feeOfBalance, isPayoutStatus, lineKindOf, PAYOUT_LINES_MAX, PAYOUT_READ_DAYS, type PayoutLineKind } from "@/lib/payouts";
 import type { PaymentModeName } from "@/lib/stripe-account";
 
+import { log } from "./log";
 import { writeFee } from "./payment-facts";
 import { uuidList } from "./sql-arrays";
 import { platformStripe } from "./stripe";
@@ -160,7 +161,7 @@ export async function readPayoutLines(storeId: string, payoutId: string, deps: P
       }
     }
   } catch (error) {
-    console.error("[payouts] could not read a payout's lines:", error instanceof Error ? error.message : error);
+    log("error", "payouts.lines_read_failed", {}, error);
     return null;
   }
   await db().execute(sql`
@@ -225,7 +226,7 @@ export async function runPayoutJobs(options: PayoutDeps & { storeIds?: readonly 
       else run.lines += lines;
     }
   } catch (error) {
-    console.error("[payouts] the job failed:", error instanceof Error ? error.message : error);
+    log("error", "payouts.job_failed", {}, error);
   }
   return run;
 }

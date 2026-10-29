@@ -35,6 +35,7 @@ import { makePicture } from "./ai-pictures";
 import { activeAccount, audit, type Account } from "./auth";
 import { catalogTag } from "./catalog";
 import type { ApplyDeps } from "./design-presets";
+import { log } from "./log";
 import { rewriteAddresses } from "./media-compress";
 import { storePicture } from "./media-library";
 import { pagesTag, savePage } from "./pages";
@@ -256,7 +257,7 @@ export async function syncContentPacks(admin: Account, deps: PackDeps = {}): Pro
       await writePack(admin, row, pack, deps);
       (fresh ? result.made : result.updated).push(pack.title);
     } catch (error) {
-      console.error(`[content-packs] ${pack.key} could not be set up`, error);
+      log("error", "content_packs.setup_failed", { pack: pack.key }, error);
       result.problems.push(`${pack.title} could not be set up: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
@@ -765,7 +766,7 @@ export async function runPackPictures(
     try {
       claimed = await claimPack();
     } catch (error) {
-      console.error("[pack-pictures] no pack could be taken:", error);
+      log("error", "pack_pictures.claim_failed", {}, error);
       break;
     }
     if (!claimed) break;
@@ -776,7 +777,7 @@ export async function runPackPictures(
         ? await makeNextPackPicture(admin, claimed.key, deps)
         : { ok: false, problems: ["The admin who asked for these pictures is no longer one of Kaizena Flow's admins. Ask again."] };
     } catch (error) {
-      console.error("[pack-pictures] a picture could not be made:", error);
+      log("error", "pack_pictures.make_failed", {}, error);
       outcome = { ok: false, problems: ["The picture could not be made."] };
     }
     try {
@@ -810,7 +811,7 @@ export async function runPackPictures(
       }
     } catch (error) {
       // The hold runs out by itself, and the pack is taken again then.
-      console.error("[pack-pictures] the outcome could not be kept:", error);
+      log("error", "pack_pictures.outcome_keep_failed", {}, error);
       break;
     }
   }

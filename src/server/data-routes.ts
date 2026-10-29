@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import type { Membership } from "./auth";
 import { downloadPart, jobFor, requestCustomerExport, requestInventoryExport, requestOrderExport, requestProductExport, requestRedirectExport, tickJob, type ExportRequest } from "./data-jobs";
 import { isJobId } from "./data-job-store";
+import { log } from "./log";
 
 /**
  * What the export routes share (D165, `docs/wave-2-data.md` 5.2): the response of a POST from an export page, and the step an open job page asks for.
@@ -50,7 +51,7 @@ export async function exportResponse(req: Request, member: Membership, slug: str
   try {
     result = await request[page](member, fields);
   } catch (error) {
-    console.error("data_export.failed", page, error instanceof Error ? error.message : error);
+    log("error", "data_export.failed", { page }, error);
     return back({ problem: "failed" });
   }
   if (!result.ok) return result.code === "forbidden" ? new NextResponse("Not found", { status: 404 }) : back({ problem: result.code });

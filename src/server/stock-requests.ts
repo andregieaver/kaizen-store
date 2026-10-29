@@ -22,6 +22,7 @@ import { isRequestAddress } from "@/lib/stock-request-check";
 import { emailMarket, priceLines } from "./broadcast-facts";
 import { getProduct } from "./catalog";
 import { sendEmail, type SendOutcome } from "./email";
+import { log } from "./log";
 import { marketSlugFor } from "./marketing-email";
 import { OFFERED } from "./product-conditions";
 import { emailFooter, storeById, type EmailStore } from "./shopper-emails";
@@ -318,7 +319,7 @@ export async function runBackInStock(options: { only?: string; deadline?: number
       if (rows.length < 100) break;
     }
   } catch (error) {
-    console.error("back in stock: the run stopped", error);
+    log("error", "back_in_stock.run_failed", {}, error);
   }
   return result;
 }

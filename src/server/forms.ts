@@ -17,6 +17,7 @@ import { siteUrl } from "@/lib/site";
 import { sendEmail, type SendOutcome } from "./email";
 import { recordFormSent } from "./experiments";
 import { issueSignupCode } from "./discounts";
+import { log } from "./log";
 import { joinList } from "./marketing-subscribers";
 import { tagFromForm } from "./segments";
 import { storeById, type EmailStore } from "./shopper-emails";
@@ -275,7 +276,7 @@ async function keepOnList(storeId: string, blockId: string, email: string, paylo
     });
   } catch (error) {
     // The owner's email still goes (it carries the same consent), and the person is told it worked; the list misses them, which the log says.
-    console.error("forms: the subscriber list could not keep a sign-up", error instanceof Error ? error.message : error);
+    log("error", "forms.subscriber_keep_failed", {}, error);
   }
 }
 
@@ -315,7 +316,7 @@ async function welcomeSignup(found: FoundForm, email: string, lang: string, id: 
       secrets: [code],
     });
   } catch (error) {
-    console.error("forms: the welcome code or tags could not be given", error instanceof Error ? error.message : error);
+    log("error", "forms.welcome_failed", {}, error);
   }
 }
 

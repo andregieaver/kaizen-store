@@ -20,6 +20,7 @@ import { normalisePath } from "@/lib/redirect-path";
 
 import { type Membership } from "./auth";
 import { currentActor } from "./actor";
+import { log } from "./log";
 import { NO_ACCESS, memberCan } from "./permissions";
 import { pgTextArray } from "./pg-arrays";
 import { lockRedirects, createRedirect, type RedirectFailure, type SavedRedirect } from "./redirects";
@@ -70,7 +71,7 @@ export async function recordNotFound(storeId: string, path: string, crawler = fa
     await db().execute(sql`select commerce.record_not_found(${storeId}::uuid, ${normal}, ${crawler === true}, ${NOT_FOUND_DAY_CAP})`);
     return true;
   } catch (error) {
-    console.error("[not-found] a miss could not be recorded", error instanceof Error ? error.message : error);
+    log("error", "not_found.record_failed", {}, error);
     return false;
   }
 }
@@ -171,7 +172,7 @@ export async function reportOf(storeId: string, options: ReportOptions = {}): Pr
   `);
   const leading = rows.slice(0, SUGGESTED_ROWS).map((r) => String(r.path));
   const pool = await candidatesFor(storeId, leading).catch((error) => {
-    console.error("[not-found] the suggestions could not be read", error instanceof Error ? error.message : error);
+    log("error", "not_found.suggestions_read_failed", {}, error);
     return [] as Candidate[];
   });
   return {
@@ -233,7 +234,7 @@ export async function ignoreAddress(member: Membership, path: string): Promise<{
       return { ok: true as const };
     });
   } catch (error) {
-    console.error("[not-found] an address could not be hidden", error instanceof Error ? error.message : error);
+    log("error", "not_found.ignore_failed", {}, error);
     return refuse("The activity log could not be written, so nothing was changed. Try again.");
   }
 }
@@ -250,7 +251,7 @@ export async function restoreAddress(member: Membership, path: string): Promise<
       return { ok: true as const };
     });
   } catch (error) {
-    console.error("[not-found] an address could not be restored", error instanceof Error ? error.message : error);
+    log("error", "not_found.restore_failed", {}, error);
     return refuse("The activity log could not be written, so nothing was changed. Try again.");
   }
 }
@@ -284,7 +285,7 @@ export async function pruneNotFound(batch = 5_000): Promise<number> {
       if (rows.length < batch) break;
     }
   } catch (error) {
-    console.error("[not-found] the clean-up failed:", error instanceof Error ? error.message : error);
+    log("error", "not_found.cleanup_failed", {}, error);
   }
   return removed;
 }

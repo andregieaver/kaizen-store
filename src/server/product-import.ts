@@ -57,6 +57,7 @@ import {
 import { JobStopped } from "./data-export-run";
 import { fieldsTag } from "./custom-fields";
 import { refreshStoreEmbeddings } from "./embeddings";
+import { log } from "./log";
 import { storePicture as storeLibraryPicture } from "./media-library";
 import { NO_ACCESS, memberCan } from "./permissions";
 import { csvContextFor, getEditorContext, inBatches, libraryAddresses, loadStored, ownPictureTest, pgTextArray, pgUuidArray, publishContextFor, storeOf } from "./product-data";
@@ -221,7 +222,7 @@ export async function applyImport(member: Membership, jobId: string, run: (id: s
   try {
     await audit(member.account.id, member.store.id, "products.import_started", { job: job.id, format: job.format, file: job.inputName, products: job.rowsTotal, toCreate: dry.toCreate, toUpdate: dry.toUpdate }, { area: "products", target: { type: "data_job", id: job.id } });
   } catch (error) {
-    console.error("[import] the start could not be written to the activity log", error);
+    log("error", "product_import.start_audit_failed", {}, error);
     return { ok: false, problem: "The activity log could not be written, so the import was not started. Try again." };
   }
   const files = Number((job.cursor as { files?: unknown }).files ?? 0);
@@ -612,7 +613,7 @@ export async function runImportApply(job: DataJob, deps: DataDeps, until: number
   }
   const ended = await finishJob(job, { status: "done", counts: { ...counts, dry }, cursor: { ...cursor }, rowsDone: total, rowsTotal: total, phase: "apply", keepDays: 30 });
   if (!ended) return "paused";
-  await audit(job.requestedBy, job.storeId, "products.import_applied", { job: job.id, format: job.format, file: job.inputName, ...counts }, { area: "products", target: { type: "data_job", id: job.id } }).catch((error) => console.error("[import] the end could not be written to the activity log", error));
+  await audit(job.requestedBy, job.storeId, "products.import_applied", { job: job.id, format: job.format, file: job.inputName, ...counts }, { area: "products", target: { type: "data_job", id: job.id } }).catch((error) => log("error", "product_import.end_audit_failed", {}, error));
   return "done";
 }
 

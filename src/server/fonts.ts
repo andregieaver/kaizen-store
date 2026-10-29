@@ -12,6 +12,7 @@ import { siteFontsSchema, type SiteFonts } from "@/lib/fonts-schema";
 import rows from "@/lib/fonts/google-fonts.json";
 
 import { audit, type Account } from "./auth";
+import { log } from "./log";
 import { refreshStoreById } from "./stores";
 
 /**
@@ -129,7 +130,7 @@ export async function installFont(
     });
     return { ok: true };
   } catch (error) {
-    console.error(`[fonts] installing ${family} failed:`, error instanceof Error ? error.message : error);
+    log("error", "fonts.install_failed", { family }, error);
     return { ok: false, problem: `${family} could not be fetched from Google Fonts. Try again in a moment.` };
   }
 }

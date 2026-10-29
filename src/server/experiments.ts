@@ -20,6 +20,7 @@ import {
   type Goal,
 } from "@/lib/experiments";
 
+import { log } from "./log";
 import { withPageAlts } from "./media-alts";
 
 type Row = Record<string, unknown>;
@@ -275,7 +276,7 @@ export async function recordExposure(storeId: string, experimentId: string, vari
     `);
     return rows.length > 0;
   } catch (error) {
-    console.error("[experiments] exposure not recorded", error);
+    log("error", "experiments.exposure_record_failed", {}, error);
     return false;
   }
 }
@@ -298,7 +299,7 @@ export async function recordClick(storeId: string, experimentId: string, block: 
     `);
     return rows.length > 0;
   } catch (error) {
-    console.error("[experiments] click not recorded", error);
+    log("error", "experiments.click_record_failed", {}, error);
     return false;
   }
 }
@@ -323,7 +324,7 @@ export async function recordFormSent(storeId: string, block: string): Promise<vo
       on conflict do nothing
     `);
   } catch (error) {
-    console.error("[experiments] form not recorded", error);
+    log("error", "experiments.form_record_failed", {}, error);
   }
 }
 
@@ -350,7 +351,7 @@ export async function recordExperimentCart(storeId: string, cartId: string, goal
       on conflict do nothing
     `);
   } catch (error) {
-    console.error("[experiments] cart not recorded", error);
+    log("error", "experiments.cart_record_failed", {}, error);
   }
 }
 

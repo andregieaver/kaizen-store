@@ -12,6 +12,7 @@ import { detachThemeValues } from "@/lib/theme-detach";
 import type { ThemeElements } from "@/lib/theme-elements";
 
 import { audit } from "./auth";
+import { log } from "./log";
 import { lookChangeRefusal } from "./theme-installs";
 
 type Row = Record<string, unknown>;
@@ -136,7 +137,7 @@ export async function runDetach(storeId: string, accountId: string): Promise<Det
       return totals;
     });
   } catch (error) {
-    console.error("[theme-detach] the run failed", error);
+    log("error", "theme_detach.run_failed", {}, error);
     return { ok: false, problems: ["The pages could not be changed. Nothing was changed; try again."] };
   }
   if (done.pages === 0) return { ok: true, runId: null, ...done };
@@ -204,7 +205,7 @@ export async function undoDetach(storeId: string, runId: string, accountId: stri
     });
   } catch (error) {
     if (error instanceof UndoRefused) return { ok: false, problems: [error.message] };
-    console.error("[theme-detach] undo failed", error);
+    log("error", "theme_detach.undo_failed", {}, error);
     return { ok: false, problems: ["The run could not be undone. Nothing was changed; try again."] };
   }
   await audit(accountId, storeId, "store.theme_pages_detach_undone", { run: runId, restored: done.restored, changedSince: done.changedSince }, {

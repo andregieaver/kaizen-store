@@ -286,7 +286,7 @@ async function removeAllFactors(accountId: string, admin: AdminAuth): Promise<{ 
     }
     return { ok, removed };
   } catch (error) {
-    console.error("[two-step] factors could not be removed", error);
+    log("error", "two_step.factors_remove_failed", {}, error);
     return { ok: false, removed: 0 };
   }
 }

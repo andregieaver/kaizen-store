@@ -7,6 +7,7 @@ import { imageSize } from "@/lib/image-size";
 import { COMPRESS_WORTH, compressPlan, keepsOriginal } from "@/lib/media-compress";
 
 import { audit } from "./auth";
+import { log } from "./log";
 import { removeStoredFiles, startVideoUpload, storedVideo, uploadProductImage, type VideoUpload } from "./media";
 import { mediaUses, type MediaOwner } from "./media-library";
 
@@ -166,7 +167,7 @@ async function swap(owner: MediaOwner, accountId: string, file: Current, next: N
   })
     .catch((error: unknown) => {
       // A rule of the database refused a place's change (a product's, say): nothing moved, and the new files go.
-      console.error("[media] compressed file could not take the original's place:", error instanceof Error ? error.message : error);
+      log("error", "media.compressed_swap_failed", {}, error);
       return false;
     });
   if (!swapped) {

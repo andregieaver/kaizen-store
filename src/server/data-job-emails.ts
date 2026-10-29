@@ -8,6 +8,7 @@ import { siteUrl } from "@/lib/site";
 
 import { sendEmail } from "./email";
 import type { DataJob } from "./data-job-store";
+import { log } from "./log";
 
 type Row = Record<string, unknown>;
 
@@ -66,7 +67,7 @@ export async function notifyReady(job: Pick<DataJob, "id" | "storeId" | "kind" |
       idempotencyKey: `data_job.ready:${job.id}`,
     });
   } catch (error) {
-    console.error("[data-jobs] the ready email could not be sent", job.id, error);
+    log("error", "data_jobs.ready_email_failed", { jobId: job.id }, error);
     return null;
   }
 }

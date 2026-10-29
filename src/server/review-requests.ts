@@ -14,6 +14,7 @@ import { REQUEST_BATCH, REQUEST_LINK_DAYS, REQUEST_PRODUCTS_SHOWN, REQUESTS_KEEP
 import { PAID } from "./analytics-sql";
 import { sendEmail, type SendOutcome } from "./email";
 import { limitFor, usageNow } from "./limits";
+import { log } from "./log";
 import { marketingEmail } from "./marketing-email";
 import type { Reviewer } from "./reviews";
 import { storeById, type EmailStore } from "./shopper-emails";
@@ -201,7 +202,7 @@ export async function runReviewRequests(options: { only?: string; deadline?: num
       }
     }
   } catch (error) {
-    console.error("review requests: the run stopped", error);
+    log("error", "review_requests.run_failed", {}, error);
   }
   return result;
 }

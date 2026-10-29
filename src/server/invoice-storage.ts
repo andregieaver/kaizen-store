@@ -7,6 +7,7 @@ import { db } from "@/db/client";
 import type { DocumentKind } from "@/lib/document-token";
 import { publicEnv } from "@/lib/env";
 import { supabaseKeyKind } from "@/lib/supabase-key";
+import { log } from "./log";
 
 /**
  * Where the PDFs of invoices and credit notes are kept (D159, `docs/wave-1b-invoices.md` 3.2 and 4.9): the private `documents` bucket,
@@ -46,7 +47,7 @@ export function documentStorage(): DocumentStorage | null {
   return {
     async upload(path, bytes, contentType) {
       const { error } = await bucket.upload(path, bytes, { contentType, cacheControl: "0", upsert: false });
-      if (error) console.error("[documents] a PDF could not be stored:", error.message);
+      if (error) log("error", "documents.pdf_store_failed", {}, error);
       return !error;
     },
     async download(path) {
@@ -57,7 +58,7 @@ export function documentStorage(): DocumentStorage | null {
     async remove(paths) {
       if (paths.length === 0) return true;
       const { error } = await bucket.remove(paths);
-      if (error) console.error("[documents] PDFs could not be removed:", error.message);
+      if (error) log("error", "documents.pdf_remove_failed", {}, error);
       return !error;
     },
   };

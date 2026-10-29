@@ -21,6 +21,7 @@ import {
 } from "@/lib/store-copy";
 
 import { audit, type Account } from "./auth";
+import { log } from "./log";
 import { isSlugTaken, MAX_STORES_PER_OWNER } from "./platform";
 import { copyStoreMedia, tablesPointingAtOriginal, type MediaCopyDeps } from "./store-copy-media";
 
@@ -332,7 +333,7 @@ export async function startStoreCopy(
       return { copyId: String(row.id), newId: storeId };
     }));
   } catch (error) {
-    console.error("[store-copy] the copy could not be made:", error);
+    log("error", "store_copy.create_failed", {}, error);
     return problem(creationProblem(error, slug));
   }
 
@@ -624,7 +625,7 @@ export async function runStoreCopy(id: string, deps: StoreCopyDeps = {}): Promis
         await (deps.rebuild ?? rebuildDerived)(copy.newId);
         const pointing = await tablesPointingAtOriginal(copy.newId, copy.sourceId);
         if (pointing.length > 0) {
-          console.error("[store-copy] the copy still names files of the original in:", pointing.join(", "));
+          log("error", "store_copy.files_still_shared", { tables: pointing.join(", ") });
           throw new CopyStopped(
             "Some pictures could not be separated from the original store, so the copy was stopped rather than share its files. Try the copy again, and tell Kaizena Flow if it happens again.",
           );
@@ -639,7 +640,7 @@ export async function runStoreCopy(id: string, deps: StoreCopyDeps = {}): Promis
       await fail(copy, error.message);
       return "failed";
     }
-    console.error(`[store-copy] ${copy.id} stopped in ${copy.phase}:`, error);
+    log("error", "store_copy.copy_stopped", { copyId: copy.id, phase: copy.phase }, error);
     await db().execute(
       sql`update commerce.store_copies set claimed_until = null, updated_at = now() where id = ${copy.id}::uuid`,
     );
@@ -684,7 +685,7 @@ export async function runStoreCopies(deps: StoreCopyDeps = {}): Promise<{ ran: n
       failed: outcome === "failed" ? 1 : 0,
     };
   } catch (error) {
-    console.error("[store-copy] the job failed:", error);
+    log("error", "store_copy.job_failed", {}, error);
     return { ran: 0, done: 0, failed: 0 };
   }
 }

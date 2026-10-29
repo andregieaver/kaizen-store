@@ -24,6 +24,7 @@ import { marketPath } from "@/lib/paths";
 
 import { readCartId } from "./cart";
 import { getOpenCheckout } from "./checkout";
+import { log } from "./log";
 import { listPublishedPages, type PublishedPage } from "./pages";
 import { resolveShop } from "./shop";
 import type { Store } from "./stores";
@@ -97,7 +98,7 @@ export async function recordTermsForOrder(store: Pick<Store, "id" | "slug" | "le
       return rows.length > 0 ? { ok: true, recorded: true } : { ok: true, recorded: false, reason: "already" };
     });
   } catch (error) {
-    console.error("[terms] the acceptance could not be recorded", orderId, error);
+    log("error", "terms.acceptance_record_failed", { orderId }, error);
     return { ok: false, problem: "failed" };
   }
 }

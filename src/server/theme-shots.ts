@@ -32,6 +32,7 @@ import {
 } from "@/lib/theme-shots";
 
 import { audit, type Account } from "./auth";
+import { log } from "./log";
 import { removeStoredFiles, uploadBytes } from "./media";
 import { publishedContents } from "./store-starters";
 import { composeHighlights } from "./theme-highlights";
@@ -292,7 +293,7 @@ export async function takeThemeShot(shot: ClaimedShot, wanted: readonly WantedSh
   } catch (error) {
     if (stored.length > 0) await remove(deps)(stored).catch(() => false);
     const problem = shotProblem(error);
-    console.error(`[theme-shots] ${shot.kind} of ${shot.presetId} (${shot.variation ?? "own look"}), try ${shot.tries}:`, error);
+    log("error", "theme_shots.try_failed", { kind: shot.kind, presetId: shot.presetId, variation: shot.variation ?? null, tries: shot.tries }, error);
     // Tried again at once within a round; at a round's end it rests (D284) and is tried again by itself; after the last round it fails.
     const next = afterFailedTry(shot.tries);
     await db().execute(sql`
@@ -336,7 +337,7 @@ export async function runThemeShots(origin: string, deadline: number, deps: Shot
     taken++;
     if ((await takeThemeShot(shot, wanted, origin, deps)) === "done") done++;
   }
-  await pruneThemeShots(deps).catch((error) => console.error("[theme-shots] prune failed:", error));
+  await pruneThemeShots(deps).catch((error) => log("error", "theme_shots.prune_failed", {}, error));
   return { done, taken };
 }
 
@@ -417,5 +418,5 @@ export async function retryThemeShots(admin: Account, presetId: string): Promise
 
 /** Asks for pictures now (after a publish or a change of where a look is shown), so the admin sees them waiting; never fails its caller. */
 export async function askForThemeShots(): Promise<void> {
-  await queueThemeShots().catch((error) => console.error("[theme-shots] queue failed:", error));
+  await queueThemeShots().catch((error) => log("error", "theme_shots.queue_failed", {}, error));
 }

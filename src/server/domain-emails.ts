@@ -8,6 +8,7 @@ import { renderEmail } from "@/lib/email-layout";
 import { siteUrl } from "@/lib/site";
 
 import { sendEmail } from "./email";
+import { log } from "./log";
 
 type Row = Record<string, unknown>;
 
@@ -26,7 +27,7 @@ async function send(kind: DomainEmailKind, to: string, key: string, email: Retur
     const outcome = await sendEmail({ storeId, kind: DOMAIN_EMAIL_KINDS[kind], to, email: renderEmail(email), fromName: "Kaizena Flow", idempotencyKey: key });
     return outcome !== "duplicate" && outcome !== "suppressed";
   } catch (error) {
-    console.error("[domains] an email could not be sent", error);
+    log("error", "domains.email_failed", { kind }, error);
     return false;
   }
 }

@@ -21,6 +21,7 @@ import {
 import { activeAccount, audit, type Account } from "./auth";
 import { billingMode, billingTaxRates, getStoreBilling, planCurrencies } from "./billing";
 import { createStripeAccount, ensureTestAccount, getStripeAccounts } from "./connect";
+import { log } from "./log";
 import { platformStripe } from "./stripe";
 import { getStore } from "./stores";
 
@@ -359,7 +360,7 @@ export async function chargeDueThemePurchases(scope: { storeId?: string; limit?:
     try {
       row = await claimDue(scope.storeId);
     } catch (error) {
-      console.error("[theme-prices] claiming a purchase failed", error);
+      log("error", "theme_prices.claim_failed", {}, error);
       break;
     }
     if (!row) break;
@@ -369,14 +370,14 @@ export async function chargeDueThemePurchases(scope: { storeId?: string; limit?:
     } catch (error) {
       failed++;
       const problem = (error instanceof BillingProblem ? error.message : stripeWords(error)).slice(0, 500);
-      if (!(error instanceof BillingProblem) && !(error instanceof Stripe.errors.StripeError)) console.error("[theme-prices] invoicing failed", error);
+      if (!(error instanceof BillingProblem) && !(error instanceof Stripe.errors.StripeError)) log("error", "theme_prices.invoice_failed", {}, error);
       await db()
         .execute(sql`
           update commerce.theme_purchases set problem = ${problem}, claimed_until = null, updated_at = now(),
             next_try_at = now() + ${`${nextTryDelayMs(Number(row.tries))} milliseconds`}::interval
            where id = ${String(row.id)}::uuid and status = 'due'
         `)
-        .catch((recordError) => console.error("[theme-prices] recording a problem failed", recordError));
+        .catch((recordError) => log("error", "theme_prices.problem_record_failed", {}, recordError));
     }
   }
   return { invoiced, failed };

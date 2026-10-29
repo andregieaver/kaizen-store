@@ -9,6 +9,7 @@ import { siteUrl } from "@/lib/site";
 
 import { audit } from "./auth";
 import { sendEmail } from "./email";
+import { log } from "./log";
 
 /**
  * Busy times owners tell Kaizena Flow about (D314, `docs/capacity.md` step 4.1): written only here; the platform's admins are emailed 7
@@ -66,7 +67,7 @@ export async function prunePeaks(): Promise<number> {
     const rows = await db().execute(sql`with d as (delete from commerce.capacity_events where ends_at < now() - interval '12 months' returning 1) select count(*)::int as n from d`);
     return Number(rows[0]?.n ?? 0);
   } catch (error) {
-    console.error("[capacity] prune failed", error);
+    log("error", "capacity.prune_failed", {}, error);
     return 0;
   }
 }
@@ -105,7 +106,7 @@ export async function sendPeakNotices(now: Date = new Date()): Promise<number> {
       }
     }
   } catch (error) {
-    console.error("[capacity] notices failed", error);
+    log("error", "capacity.notices_failed", {}, error);
   }
   return sent;
 }

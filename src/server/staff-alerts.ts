@@ -826,7 +826,7 @@ export async function processStoreEvents(
   try {
     claimed = await claimEvents(now, options.limit ?? 100, options.storeIds ?? null);
   } catch (error) {
-    console.error("[staff-alerts] the store events could not be claimed", error);
+    log("error", "staff_alerts.events_claim_failed", {}, error);
     return out;
   }
   out.claimed = claimed.length;
@@ -948,7 +948,7 @@ export async function sendDueSummaries(
       await db().execute(sql`update commerce.staff_alert_settings set summary_last_period = ${due.key} where store_id = ${storeId}::uuid`);
       out.stores++;
     } catch (error) {
-      console.error("[staff-alerts] the summary could not be sent", storeId, error);
+      log("error", "staff_alerts.summary_failed", { storeId }, error);
     }
   }
   return out;

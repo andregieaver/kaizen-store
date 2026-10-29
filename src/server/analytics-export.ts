@@ -5,6 +5,7 @@ import { campaignRows } from "@/lib/analytics-campaigns";
 import { ANALYTICS_TABLES, lastDayOf, OWNER_ONLY_TABLES, tableFileName, tableFileRows, type AnalyticsTable, type ExportPeriod, type TableData } from "@/lib/analytics-export";
 import { COHORT_OFFSETS } from "@/lib/analytics-customers";
 import { financeStatement } from "@/lib/analytics-finance";
+import { log } from "./log";
 import { payoutsReport } from "./payouts-report";
 import { speedReport } from "./analytics-speed";
 import { paymentMethodsReport } from "./analytics-payments-data";
@@ -631,7 +632,7 @@ export async function exportAnalyticsTable(member: Membership, tableId: unknown,
       leftOutCurrencies: built.leftOut.currencies,
     });
   } catch (error) {
-    console.error("analytics.export_not_logged", error instanceof Error ? error.message : error);
+    log("error", "analytics.export_not_logged", {}, error);
     return { ok: false, reason: "failed", message: "The export could not be logged, so no file was made. Try again." };
   }
   return { ok: true, filename: tableFileName(built.table, period), csv, rows };

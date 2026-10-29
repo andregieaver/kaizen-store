@@ -6,6 +6,7 @@ import { db } from "@/db/client";
 import { cssProblem } from "@/lib/custom-css";
 
 import { audit } from "./auth";
+import { log } from "./log";
 import { CHARGE_CHANGED, isChargeRefusal, setThemeCharge } from "./theme-prices";
 import { checkStoreTheme } from "./themes";
 
@@ -230,7 +231,7 @@ export async function switchToInstall(
     });
   } catch (error) {
     if (error instanceof Refused) return refuse(error.message);
-    console.error("[theme-installs] switching failed", error);
+    log("error", "theme_installs.switch_failed", {}, error);
     return refuse(switchProblem(error));
   }
   await audit(accountId, storeId, "store.theme_switched", { install: installId, title: done.title, from: done.fromId }, {

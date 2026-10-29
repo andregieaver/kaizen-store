@@ -7,6 +7,7 @@ import { createClient } from "@supabase/supabase-js";
 import { publicEnv } from "@/lib/env";
 import { supabaseKeyKind } from "@/lib/supabase-key";
 import { MEDIA_BUCKETS, MODEL_MAX_BYTES, MODEL_MAX_MB, MODEL_TYPE } from "@/lib/product-media";
+import { log } from "./log";
 
 const BUCKET = "product-media";
 const MAX_BYTES = 4 * 1024 * 1024;
@@ -29,7 +30,7 @@ function secretKey(): { key: string } | { problem: string } {
   const key = process.env.SUPABASE_SECRET_KEY?.trim();
   if (!key) return { problem: "Uploads are not set up on this server." };
   if (supabaseKeyKind(key) === "publishable") {
-    console.error("[media] SUPABASE_SECRET_KEY holds the publishable key; Storage refuses its uploads.");
+    log("error", "media.secret_key_is_publishable");
     return {
       problem:
         "Uploads are set up with Supabase's publishable key. The platform needs the secret key (sb_secret_…) in SUPABASE_SECRET_KEY.",
@@ -84,7 +85,7 @@ export async function uploadProductImage(
     storage.upload(paths.thumbnail, thumbnail, options(thumbnail)),
   ]);
   if (big.error || small.error) {
-    console.error("[media] picture upload failed:", (big.error ?? small.error)?.message);
+    log("error", "media.picture_upload_failed", {}, big.error ?? small.error);
     return { ok: false, problem: "The picture could not be uploaded. Try again." };
   }
   return {
@@ -118,7 +119,7 @@ export async function removeStoredFiles(bucket: string, paths: string[]): Promis
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   }).storage.from(bucket);
   const { error } = await storage.remove(paths);
-  if (error) console.error("[media] files could not be removed:", error.message);
+  if (error) log("error", "media.files_remove_failed", {}, error);
   return !error;
 }
 
@@ -136,7 +137,7 @@ export async function copyStoredFile(bucket: string, from: string, to: string): 
   }).storage.from(bucket);
   const { error } = await storage.copy(from, to);
   if (error) {
-    console.error("[media] file could not be copied:", error.message);
+    log("error", "media.file_copy_failed", {}, error);
     return null;
   }
   return storage.getPublicUrl(to).data.publicUrl;
@@ -174,7 +175,7 @@ export async function startVideoUpload(folder: string, file: { type: string; siz
   const path = `${folder}/${randomUUID()}.${extension}`;
   const { data, error } = await storage.createSignedUploadUrl(path);
   if (error || !data) {
-    console.error("[media] video upload could not start:", error?.message);
+    log("error", "media.video_upload_start_failed", {}, error ?? undefined);
     return { ok: false, problem: "The upload could not be started. Try again." };
   }
   return { ok: true, path, token: data.token, bucket: VIDEOS_BUCKET, url: storage.getPublicUrl(path).data.publicUrl };
@@ -199,7 +200,7 @@ export async function startModelUpload(folder: string, file: { type: string; siz
   const path = `${folder}/${randomUUID()}.glb`;
   const { data, error } = await storage.createSignedUploadUrl(path);
   if (error || !data) {
-    console.error("[media] model upload could not start:", error?.message);
+    log("error", "media.model_upload_start_failed", {}, error ?? undefined);
     return { ok: false, problem: "The upload could not be started. Try again." };
   }
   return { ok: true, path, token: data.token, bucket: MEDIA_BUCKETS.model, url: storage.getPublicUrl(path).data.publicUrl };
@@ -239,7 +240,7 @@ export async function uploadBytes(
   }).storage.from(bucket);
   const { error } = await storage.upload(path, bytes, { contentType, cacheControl: "300", upsert: true });
   if (error) {
-    console.error("[media] upload failed:", error.message);
+    log("error", "media.upload_failed", {}, error);
     return { ok: false, problem: "The file could not be stored." };
   }
   return { ok: true, url: storage.getPublicUrl(path).data.publicUrl };
@@ -291,7 +292,7 @@ export async function startFieldFileUpload(storeId: string, file: { name: string
   const path = `${storeId}/${randomUUID()}-${base}.${extension}`;
   const { data, error } = await storage.createSignedUploadUrl(path);
   if (error || !data) {
-    console.error("[media] file upload could not start:", error?.message);
+    log("error", "media.field_file_upload_start_failed", {}, error ?? undefined);
     return { ok: false, problem: "The upload could not be started. Try again." };
   }
   return { ok: true, path, token: data.token, bucket: FIELD_FILES_BUCKET, url: storage.getPublicUrl(path).data.publicUrl, name: safeFileName(file.name) };
@@ -352,7 +353,7 @@ export async function startFileUpload(storeId: string, fileName: string): Promis
   const path = `${storeId}/${randomUUID()}/${safeFileName(fileName)}`;
   const { data, error } = await storage.createSignedUploadUrl(path);
   if (error || !data) {
-    console.error("[media] file upload could not start:", error?.message);
+    log("error", "media.file_upload_start_failed", {}, error ?? undefined);
     return { ok: false, problem: "The upload could not be started. Try again." };
   }
   return { ok: true, path, token: data.token, bucket: FILES_BUCKET };
@@ -407,7 +408,7 @@ export async function uploadAvatarFile(folder: string, file: File): Promise<Avat
   const path = `${folder}/${randomUUID()}.${extension}`;
   const { error } = await storage.upload(path, file, { contentType: file.type, cacheControl: "31536000", upsert: false });
   if (error) {
-    console.error("[media] profile picture upload failed:", error.message);
+    log("error", "media.avatar_upload_failed", {}, error);
     return { ok: false, reason: "failed" };
   }
   return { ok: true, path };
@@ -418,5 +419,5 @@ export async function removeAvatarFiles(paths: string[]): Promise<void> {
   const storage = paths.length > 0 ? avatarStorage() : null;
   if (!storage) return;
   const { error } = await storage.remove(paths);
-  if (error) console.error("[media] profile pictures could not be removed:", error.message);
+  if (error) log("error", "media.avatars_remove_failed", {}, error);
 }

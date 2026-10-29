@@ -46,6 +46,7 @@ import { reviewPictureUrl } from "@/lib/review-view";
 
 import { audit } from "./auth";
 import { getFieldData, listFieldGroups } from "./custom-fields";
+import { log } from "./log";
 import { buyerKeysOf } from "./reviews";
 import { commentsOf } from "./blog-comments";
 import { creatorExport } from "./creators";
@@ -1113,7 +1114,7 @@ export async function exportCustomerData(storeId: string, ref: SubjectRef, by: E
   try {
     requestId = await recordExport(subject, store.id, file.counts, by, now, requestId);
   } catch (error) {
-    console.error("[privacy] the export could not be logged", error);
+    log("error", "privacy.export_log_failed", {}, error);
   }
   return { ok: true, file, fileName: exportFileName(store.slug, now, by.channel), counts: file.counts, requestId };
 }

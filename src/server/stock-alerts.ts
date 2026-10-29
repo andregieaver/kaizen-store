@@ -15,6 +15,7 @@ import { ALERT_KEYS } from "@/lib/staff-alerts";
 import { lowStockKey, lowStockLines, type PendingCrossing } from "@/lib/stock-alerts";
 
 import { sendEmail, type SendOutcome } from "./email";
+import { log } from "./log";
 import { emailFooter, storeById } from "./shopper-emails";
 import { alertRecipients } from "./staff-alerts";
 
@@ -87,7 +88,7 @@ export async function sendLowStockNotices(deps: { send?: typeof sendEmail } = {}
   try {
     pending = await pendingCrossings();
   } catch (error) {
-    console.error("[stock-alerts] the crossings could not be read", error);
+    log("error", "stock_alerts.crossings_read_failed", {}, error);
     return out;
   }
   const byStore = new Map<string, Pending[]>();
@@ -143,7 +144,7 @@ export async function sendLowStockNotices(deps: { send?: typeof sendEmail } = {}
       out.crossings += crossings.length;
     } catch (error) {
       out.failed += 1;
-      console.error("[stock-alerts] the low-stock email could not be sent", storeId, error);
+      log("error", "stock_alerts.email_failed", { storeId }, error);
     }
   }
   return out;
@@ -176,7 +177,7 @@ export async function pruneInventoryMovements(now: Date = new Date(), batch = 50
       if (rows.length < batch) break;
     }
   } catch (error) {
-    console.error("[stock-alerts] the old movements could not be removed", error);
+    log("error", "stock_alerts.movements_prune_failed", {}, error);
   }
   return total;
 }

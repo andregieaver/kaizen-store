@@ -15,6 +15,7 @@ import { siteUrl } from "@/lib/site";
 import { sendEmail, type SendOutcome } from "./email";
 import type { ExperimentInfo } from "./experiment-admin";
 import type { ExperimentResults } from "./experiment-results";
+import { log } from "./log";
 import type { Store } from "./stores";
 
 type Row = Record<string, unknown>;
@@ -93,11 +94,7 @@ export async function notifyGuardrailStop(
     }
     return outcomes;
   } catch (error) {
-    console.error(
-      "[experiments] the guardrail email could not be sent",
-      test.id,
-      error,
-    );
+    log("error", "experiments.guardrail_email_failed", { experimentId: test.id }, error);
     return [];
   }
 }

@@ -9,6 +9,7 @@ import { attentionOrder, flagsOf, overviewOf, type Flag, type Overview } from "@
 
 import { getExperiment } from "./experiment-admin";
 import { experimentResults } from "./experiment-results";
+import { log } from "./log";
 import { getStore } from "./stores";
 
 type Row = Record<string, unknown>;
@@ -116,7 +117,7 @@ export async function platformExperiments(everything = false, now = new Date()):
           const r = await experimentResults(store, info, now);
           results.set(test.id, { verdict: r.verdict.kind, headline: r.verdict.headline, harmed: r.harmed, split: r.figures.map((f) => ({ key: f.key, visitors: f.visitors })) });
         } catch (error) {
-          console.error("[experiments] platform view could not read results", test.id, error);
+          log("error", "experiments.platform_results_read_failed", { experimentId: test.id }, error);
         }
       }),
     );

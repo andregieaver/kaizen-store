@@ -27,6 +27,7 @@ import { parseReplicaUrl } from "@/lib/replicate-url";
 import { slugify } from "@/lib/slug";
 
 import { aiFor, seeing, type AiConnection } from "./ai";
+import { log } from "./log";
 import { assess, analyse } from "./replicate-ai";
 import { audit, type Account } from "./auth";
 import { launchBrowser } from "./browser";
@@ -191,7 +192,7 @@ export async function tickReplication(owner: ReplicaOwner, id: string): Promise<
     if (error instanceof Stopped) await conclude(owner, (await getRow(id, owner.storeId)) ?? row, "aborted", null);
     else {
       const problem = error instanceof Failed ? error.message : "Something went wrong while copying the page.";
-      if (!(error instanceof Failed)) console.error("[replicate]", error);
+      if (!(error instanceof Failed)) log("error", "replicate.failed", {}, error);
       await writeLog(id, row.phase, "error", problem);
       await conclude(owner, (await getRow(id, owner.storeId)) ?? row, "failed", problem);
     }
@@ -223,7 +224,7 @@ async function startBrowser() {
   try {
     return await launchBrowser();
   } catch (error) {
-    console.error("[replicate] browser", error);
+    log("error", "replicate.browser_start_failed", {}, error);
     throw new Failed(`The browser that looks at pages could not be started on this server${browserReason(error)}`);
   }
 }
@@ -237,7 +238,7 @@ async function stepOpen(tick: Tick): Promise<void> {
     desktop = await looking(startBrowser, LOOK.desktopMs, (browser) => openOriginal(browser, row.url, "desktop", tick.signal));
   } catch (error) {
     if (error instanceof Failed) throw error;
-    if (!(error instanceof Error) || error.message !== "Stopped.") console.error("[replicate] desktop width", error);
+    if (!(error instanceof Error) || error.message !== "Stopped.") log("error", "replicate.desktop_look_failed", {}, error);
     throw new Failed(lookProblem(error));
   }
   stopIfAsked(tick);
@@ -258,7 +259,7 @@ async function stepOpen(tick: Tick): Promise<void> {
       if (error instanceof Error && error.message === "Stopped.") throw error;
       if (error instanceof Failed) throw error;
       phoneProblem = lookProblem(error);
-      console.error("[replicate] phone width", attempt, error);
+      log("error", "replicate.phone_look_failed", { attempt }, error);
       if (attempt === 1) await say("info", `Opening the page at a phone's width did not work (${phoneProblem}); trying once more.`);
     }
   }
@@ -573,7 +574,7 @@ async function stepRefine(tick: Tick): Promise<void> {
     desktop = await looking(startBrowser, LOOK.copyMs, (browser) => openCopy(browser, frameUrl, "desktop"));
   } catch (error) {
     if (error instanceof Failed || error instanceof Stopped) throw error;
-    console.error("[replicate] copy at computers' width", error);
+    log("error", "replicate.copy_look_failed", {}, error);
     if (await copyLookFailed(tick, work, error)) return;
     throw new Failed(lookProblem(error));
   }

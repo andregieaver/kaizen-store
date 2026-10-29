@@ -6,6 +6,7 @@ import { db } from "@/db/client";
 import { changesProblem, diffOf, type AuditChanges, type AuditKind, type AuditTarget } from "@/lib/audit";
 
 import { audit, type Membership } from "./auth";
+import { log } from "./log";
 
 /**
  * The writes of the activity log (wave 1, 1f, docs/wave-1-trust.md 2.10). `audit()` (in `auth.ts`, 224 callers) keeps its
@@ -47,7 +48,7 @@ export async function auditChange(
     const { changes, refused } = diffOf(kind, before, after);
     if (refused.length > 0) {
       if (strict()) throw new Error(`auditChange: a secret-like field changed (${refused.join(", ")}) and is never written`);
-      console.error("[audit] a secret-like field was left out of an entry", action, refused);
+      log("error", "audit.secret_field_left_out", { action, fields: refused.join(", ") });
     }
     if (Object.keys(changes).length === 0 && before !== null && after !== null) return;
     const problem = changesProblem(changes);
@@ -55,7 +56,7 @@ export async function auditChange(
     await audit(accountId, storeId, action, { ...(target.label ? { label: target.label } : {}), ...details }, { target: { type: target.type, id: target.id }, changes });
   } catch (error) {
     if (strict() && error instanceof Error && error.message.startsWith("auditChange:")) throw error;
-    console.error("[audit] an entry could not be written", action, error);
+    log("error", "audit.entry_write_failed", { action }, error);
   }
 }
 
@@ -87,7 +88,7 @@ export async function auditAccount(
       `);
     }
   } catch (error) {
-    console.error("[audit] an account entry could not be written", action, error);
+    log("error", "audit.account_entry_write_failed", { action }, error);
   }
 }
 

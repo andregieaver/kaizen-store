@@ -34,6 +34,7 @@ import {
   type ItemInput,
 } from "./data-job-store";
 import { JobStopped } from "./data-export-run";
+import { log } from "./log";
 import { NO_ACCESS, memberCan } from "./permissions";
 import { storeOf } from "./product-data";
 import { addressContextOf, indexWithOverlay, liveOf, manualCountOf, pathsOfIndex, refreshRedirects } from "./redirect-live";
@@ -161,7 +162,7 @@ export async function applyRedirectImport(member: Membership, jobId: string, run
   try {
     await audit(member.account.id, member.store.id, "redirects.import_started", { job: job.id, file: job.inputName, lines: job.rowsTotal, toCreate: dry.toCreate, toReplace: dry.toReplace }, { area: "website", target: { type: "data_job", id: job.id } });
   } catch (error) {
-    console.error("[redirect-import] the start could not be written to the activity log", error);
+    log("error", "redirect_import.start_audit_failed", {}, error);
     return { ok: false, problem: "The activity log could not be written, so the import was not started. Try again." };
   }
   const files = Number((job.cursor as { files?: unknown }).files ?? 0);
@@ -350,7 +351,7 @@ export async function runRedirectApply(job: DataJob, deps: DataDeps, until: numb
   const ended = await finishJob(job, { status: "done", counts: { ...counts, dry }, cursor: { ...cursor }, rowsDone: total, rowsTotal: total, phase: "apply", keepDays: 30 });
   if (!ended) return "paused";
   await audit(job.requestedBy, job.storeId, "redirects.import_applied", { job: job.id, file: job.inputName, created: counts.created, updated: counts.updated, unchanged: counts.unchanged, skipped: counts.skipped, failed: counts.failed }, { area: "website", target: { type: "data_job", id: job.id } }).catch((error) =>
-    console.error("[redirect-import] the end could not be written to the activity log", error),
+    log("error", "redirect_import.end_audit_failed", {}, error),
   );
   return "done";
 }

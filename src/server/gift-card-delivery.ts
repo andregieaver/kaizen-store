@@ -12,6 +12,7 @@ import { marketUrl } from "@/lib/paths";
 
 import { sendEmail, type SendOutcome } from "./email";
 import { newGiftCode } from "./gift-card-codes";
+import { log } from "./log";
 import { marketSlugFor } from "./marketing-email";
 import { notificationOn } from "./notifications";
 import { emailFooter, storeById, type EmailStore } from "./shopper-emails";
@@ -65,14 +66,14 @@ export async function deliverGiftCards(options: { orderId?: string; cardId?: str
       const store = stores.get(storeId);
       if (!store) continue;
       const outcome = await deliverOne(store, card).catch((error) => {
-        console.error("gift cards: a card was not delivered", error);
+        log("error", "gift_cards.delivery_failed", { storeId }, error);
         return "failed" as const;
       });
       if (outcome === "sent") run.sent += 1;
       else run.failed += 1;
     }
   } catch (error) {
-    console.error("gift cards: the delivery run stopped", error);
+    log("error", "gift_cards.delivery_run_failed", {}, error);
   }
   return run;
 }

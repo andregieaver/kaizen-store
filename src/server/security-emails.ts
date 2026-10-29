@@ -10,6 +10,7 @@ import { securityEmail, type SecurityEvent } from "@/lib/security-emails";
 import { siteUrl } from "@/lib/site";
 
 import { sendEmail, type SendOutcome } from "./email";
+import { log } from "./log";
 
 type Row = Record<string, unknown>;
 
@@ -58,7 +59,7 @@ export async function sendSecurityEmail(
       idempotencyKey: `security.${event}:${accountId}:${at.toISOString()}`,
     });
   } catch (error) {
-    console.error("[security] the email could not be sent", event, error);
+    log("error", "security.email_failed", { kind: event }, error);
     return null;
   }
 }

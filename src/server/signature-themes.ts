@@ -7,6 +7,7 @@ import { LAUNCH_THEMES } from "@/lib/launch-themes";
 
 import type { Account } from "./auth";
 import { applyDesignPreset, designTags, updateThemeInstall, type ApplyDeps } from "./design-presets";
+import { log } from "./log";
 import { refreshTag } from "./refresh";
 
 /**
@@ -66,7 +67,7 @@ export async function dressSignaturePacks(admin: Account, deps: ApplyDeps = {}):
       if (!done.ok) problems.push(`${theme.title} on its demo store: ${done.problems.join(" ")}`);
       for (const tag of designTags({ id: storeId, slug: String(row.slug) })) refreshTag(tag);
     } catch (error) {
-      console.error(`[signature-themes] ${theme.key} could not dress its demo store`, error);
+      log("error", "signature_themes.dress_failed", { theme: theme.key }, error);
       problems.push(`${theme.title} could not dress its demo store: ${error instanceof Error ? error.message : String(error)}`);
     }
   }

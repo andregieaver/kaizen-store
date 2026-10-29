@@ -33,6 +33,7 @@ import {
   type DataDeps,
   type DataJob,
 } from "./data-job-store";
+import { log } from "./log";
 import { countOrderExportRows, orderExportReader, parseOrderExportOptions, resolveOrderNumbers, type OrderExportOptions } from "./order-export";
 import { pgUuidArray } from "./pg-arrays";
 import { NO_ACCESS, memberCan } from "./permissions";
@@ -132,7 +133,7 @@ async function serveDirect(member: Membership, kind: ExportKind, fileBase: strin
   try {
     await audit(member.account.id, member.store.id, AUDIT_MADE[kind], { rows: built.rows, direct: true, ...details }, { area: AREA[kind] });
   } catch (error) {
-    console.error("[data-jobs] a direct export could not be logged", error);
+    log("error", "data_jobs.direct_export_audit_failed", {}, error);
     return refuse("not_logged", NOT_LOGGED);
   }
   return { ok: true, mode: "file", filename: `${fileBase}-${today()}.csv`, csv: built.csv, rows: built.rows, unknownNumbers };
@@ -317,7 +318,7 @@ export async function runJob(id: string, deps: DataDeps = {}): Promise<RunOutcom
       if (isExport(job.kind)) await removeExportFiles(job, deps);
       return "failed";
     }
-    console.error(`[data-jobs] ${job.id} (${job.kind}) stopped:`, error);
+    log("error", "data_jobs.job_stopped", { jobId: job.id, kind: job.kind }, error);
     await releaseJob(job, error instanceof StorageDown ? STORAGE_DOWN_PROBLEM : null);
     return "paused";
   }
@@ -364,7 +365,7 @@ export async function runDataJobs(deps: DataDeps = {}): Promise<{ ran: number; d
       if (outcome === "failed") totals.failed += 1;
     }
   } catch (error) {
-    console.error("[data-jobs] the job failed:", error);
+    log("error", "data_jobs.run_failed", {}, error);
   }
   return totals;
 }
@@ -385,7 +386,7 @@ export async function cancelJob(member: Membership, jobId: string, deps: DataDep
     const stock = job.kind === "inventory_import";
     const people = job.kind === "customer_import";
     const history = job.kind === "order_history_import";
-    await audit(member.account.id, member.store.id, redirects ? "redirects.import_cancelled" : stock ? "products.inventory_import_cancelled" : people ? "customer.import_cancelled" : history ? "order.history_import_cancelled" : "products.import_cancelled", { job: job.id, ...(redirects || stock || people || history ? {} : { format: job.format }), file: job.inputName, ...(typeof now.counts === "object" ? { written: Number((now.counts as { created?: number }).created ?? 0) + Number((now.counts as { updated?: number }).updated ?? 0) } : {}) }, { area: redirects ? "website" : people ? "customers" : history ? "orders" : "products", target: { type: "data_job", id: job.id } }).catch((error) => console.error("[import] the cancel could not be logged", error));
+    await audit(member.account.id, member.store.id, redirects ? "redirects.import_cancelled" : stock ? "products.inventory_import_cancelled" : people ? "customer.import_cancelled" : history ? "order.history_import_cancelled" : "products.import_cancelled", { job: job.id, ...(redirects || stock || people || history ? {} : { format: job.format }), file: job.inputName, ...(typeof now.counts === "object" ? { written: Number((now.counts as { created?: number }).created ?? 0) + Number((now.counts as { updated?: number }).updated ?? 0) } : {}) }, { area: redirects ? "website" : people ? "customers" : history ? "orders" : "products", target: { type: "data_job", id: job.id } }).catch((error) => log("error", "data_jobs.import_cancel_audit_failed", {}, error));
   } else {
     await removeExportFiles(now, deps);
   }
@@ -412,7 +413,7 @@ export async function downloadPart(member: Membership, jobId: string, part: numb
   try {
     await audit(member.account.id, member.store.id, AUDIT_DOWNLOADED[job.kind], { job: job.id, part, rows: file.rows }, { area: AREA[job.kind], target: { type: "data_job", id: job.id } });
   } catch (error) {
-    console.error("[data-jobs] a download could not be logged", error);
+    log("error", "data_jobs.download_audit_failed", {}, error);
     return { ok: false, problem: NOT_LOGGED };
   }
   const url = await storage.signedUrl(EXPORTS_BUCKET, file.path, file.name, DOWNLOAD_LINK_SECONDS);
@@ -488,7 +489,7 @@ export async function removePersonalExports(storeId: string, deps: DataDeps = {}
     }
     return taken;
   } catch (error) {
-    console.error("[data-jobs] personal exports could not be removed", error);
+    log("error", "data_jobs.personal_exports_remove_failed", {}, error);
     return 0;
   }
 }
@@ -521,7 +522,7 @@ async function sweepOrphanExports(storage: NonNullable<ReturnType<typeof storage
       }
     }
   } catch (error) {
-    console.error("[data-jobs] the sweep of the exports bucket failed:", error);
+    log("error", "data_jobs.exports_sweep_failed", {}, error);
   }
   return removed;
 }
@@ -586,7 +587,7 @@ export async function pruneDataJobs(deps: DataDeps = {}): Promise<{ filesRemoved
     `);
     out.batchesDeleted = batches.length;
   } catch (error) {
-    console.error("[data-jobs] the clean-up failed:", error);
+    log("error", "data_jobs.cleanup_failed", {}, error);
   }
   return out;
 }

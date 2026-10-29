@@ -15,6 +15,7 @@ import { audit } from "./auth";
 import { sendIssuedCard } from "./gift-card-delivery";
 import { newGiftCode } from "./gift-card-codes";
 import { storePaymentMode } from "./host-payments";
+import { log } from "./log";
 import { col, typedRows } from "./typed-rows";
 import type { Store } from "./stores";
 
@@ -413,7 +414,7 @@ export async function expireGiftCards(limit = 500): Promise<number> {
     }
     return n;
   } catch (error) {
-    console.error("gift cards: the expiry run stopped", error);
+    log("error", "gift_cards.expiry_run_failed", {}, error);
     return 0;
   }
 }

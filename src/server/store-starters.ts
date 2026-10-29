@@ -30,6 +30,7 @@ import { isPack, type ThemeContent } from "@/lib/theme-store";
 import { normaliseFeatures, type FeatureId } from "@/lib/store-features";
 
 import { audit, type Account } from "./auth";
+import { log } from "./log";
 import { setFeatures } from "./store-features";
 import { getStore, refreshStoreById, templateStoreSlug } from "./stores";
 import { askForThemeShots } from "./theme-shots";
@@ -315,7 +316,7 @@ export async function publishStarter(admin: Account, id: string): Promise<Starte
     });
   } catch (error) {
     if (error instanceof Refused) return { ok: false, problems: [error.message] };
-    console.error("[store-starters] publishing failed", error);
+    log("error", "store_starters.publish_failed", {}, error);
     return { ok: false, problems: [starterRefusal(describe(error)) ?? "The demo store could not be published. Nothing was changed; try again."] };
   }
   await audit(admin.id, done.storeId, "platform.starter_published", { starter: id, copy: done.copyId, copySlug: done.copySlug }, {
@@ -415,7 +416,7 @@ export async function giveThemeContent(admin: Account, presetId: string, sourceI
     });
   } catch (error) {
     if (error instanceof Refused) return { ok: false, problems: [error.message] };
-    console.error("[store-starters] giving a theme content failed", error);
+    log("error", "store_starters.theme_content_failed", {}, error);
     return { ok: false, problems: [starterRefusal(describe(error)) ?? "The content could not be copied. Nothing was changed; try again."] };
   }
   await audit(admin.id, made.storeId, "platform.design_preset_content", { preset: presetId, starter: made.id, from: sourceId }, {

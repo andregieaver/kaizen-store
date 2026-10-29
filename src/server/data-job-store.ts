@@ -11,6 +11,7 @@ import { isEnded, type Finding, type ItemOutcome, type JobKind, type JobPhase, t
 import { publicEnv } from "@/lib/env";
 import { supabaseKeyKind } from "@/lib/supabase-key";
 
+import { log } from "./log";
 import { pgTextArray } from "./pg-arrays";
 
 type Row = Record<string, unknown>;
@@ -338,7 +339,7 @@ export function dataStorage(): DataStorage | null {
     async signedUpload(path) {
       const { data, error } = await client.storage.from(IMPORTS_BUCKET).createSignedUploadUrl(path);
       if (error || !data) {
-        console.error("[data-jobs] an upload could not be started:", error?.message);
+        log("error", "data_jobs.upload_start_failed", {}, error ?? undefined);
         return null;
       }
       return { token: data.token };
@@ -346,7 +347,7 @@ export function dataStorage(): DataStorage | null {
     async upload(bucket, path, bytes, contentType) {
       if (!known(bucket)) return false;
       const { error } = await client.storage.from(bucket).upload(path, bytes, { contentType, cacheControl: "0", upsert: true });
-      if (error) console.error("[data-jobs] a file could not be stored:", error.message);
+      if (error) log("error", "data_jobs.file_store_failed", {}, error);
       return !error;
     },
     async download(bucket, path) {
@@ -359,7 +360,7 @@ export function dataStorage(): DataStorage | null {
       if (!known(bucket)) return false;
       if (paths.length === 0) return true;
       const { error } = await client.storage.from(bucket).remove(paths);
-      if (error) console.error("[data-jobs] files could not be removed:", error.message);
+      if (error) log("error", "data_jobs.files_remove_failed", {}, error);
       return !error;
     },
     async list(bucket, folder) {
@@ -368,7 +369,7 @@ export function dataStorage(): DataStorage | null {
       for (let offset = 0; offset < 100_000; offset += 1000) {
         const { data, error } = await client.storage.from(bucket).list(folder, { limit: 1000, offset, sortBy: { column: "name", order: "asc" } });
         if (error || !data) {
-          if (error) console.error("[data-jobs] files could not be listed:", error.message);
+          if (error) log("error", "data_jobs.files_list_failed", {}, error);
           return null;
         }
         out.push(...data.map((d) => ({ name: d.name, isFolder: d.id === null })));

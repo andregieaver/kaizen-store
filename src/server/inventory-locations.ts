@@ -8,6 +8,7 @@ import { LOCATIONS_MAX, deactivationWords, locationInput, moveInRank } from "@/l
 import { audit, type Membership } from "./auth";
 import { catalogTag } from "./catalog";
 import { locationImpact, type LocationImpact } from "./inventory";
+import { log } from "./log";
 import { NO_ACCESS, memberCan } from "./permissions";
 import { refreshTag } from "./refresh";
 
@@ -99,7 +100,7 @@ export async function saveLocation(member: Membership, raw: unknown, id: string 
     }).then(async (result) => {
       if (result.ok) {
         await audit(member.account.id, storeId, "products.location_saved", { added: id === null, country }, { area: "products", target: { type: "inventory_location", id: result.id } }).catch((error) =>
-          console.error("[inventory] the location could not be logged", error),
+          log("error", "inventory.location_save_audit_failed", {}, error),
         );
         refreshTag(catalogTag(storeId));
       }
@@ -135,7 +136,7 @@ export async function moveLocation(member: Membership, id: string, direction: "u
     return order;
   });
   if (!moved) return { ok: false, problem: "This location is not in this store." };
-  await audit(member.account.id, storeId, "products.location_saved", { moved: direction }, { area: "products", target: { type: "inventory_location", id } }).catch((error) => console.error("[inventory] the move could not be logged", error));
+  await audit(member.account.id, storeId, "products.location_saved", { moved: direction }, { area: "products", target: { type: "inventory_location", id } }).catch((error) => log("error", "inventory.location_move_audit_failed", {}, error));
   refreshTag(catalogTag(storeId));
   return { ok: true };
 }
@@ -181,7 +182,7 @@ export async function deactivateLocation(member: Membership, id: string, confirm
     throw error;
   }
   await audit(member.account.id, storeId, "products.location_deactivated", { units: impact.units, variants: impact.variants, owed: impact.owedUnits }, { area: "products", target: { type: "inventory_location", id } }).catch((error) =>
-    console.error("[inventory] the deactivation could not be logged", error),
+    log("error", "inventory.location_deactivate_audit_failed", {}, error),
   );
   refreshTag(catalogTag(storeId));
   return { ok: true, impact, notice: words.notice };
@@ -204,7 +205,7 @@ export async function reactivateLocation(member: Membership, id: string): Promis
   }
   const impact = (await locationImpact(db(), storeId, id)) ?? { units: 0, variants: 0, committedUnits: 0, owedUnits: 0 };
   await audit(member.account.id, storeId, "products.location_reactivated", { units: impact.units, variants: impact.variants }, { area: "products", target: { type: "inventory_location", id } }).catch((error) =>
-    console.error("[inventory] the reactivation could not be logged", error),
+    log("error", "inventory.location_reactivate_audit_failed", {}, error),
   );
   refreshTag(catalogTag(storeId));
   return { ok: true, impact };
@@ -233,7 +234,7 @@ export async function setFulfilsOnline(member: Membership, id: string, on: boole
   });
   if (!outcome.ok) return outcome;
   await audit(member.account.id, storeId, on ? "products.location_online_on" : "products.location_online_off", {}, { area: "products", target: { type: "inventory_location", id } }).catch(
-    (error) => console.error("[inventory] the change could not be logged", error),
+    (error) => log("error", "inventory.location_online_audit_failed", {}, error),
   );
   refreshTag(catalogTag(storeId));
   return outcome;

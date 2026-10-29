@@ -22,6 +22,7 @@ import { limitFor, usageNow } from "./limits";
 import { PAID } from "./analytics-sql";
 import { audit } from "./auth";
 import { sendEmail, type SendOutcome } from "./email";
+import { log } from "./log";
 import { emailPictureProblem, factsForEmail, marketingEmail } from "./marketing-email";
 import { storeById, type EmailStore } from "./shopper-emails";
 import { runBackInStock, type BackInStockResult } from "./stock-requests";
@@ -312,7 +313,7 @@ export async function runAutomations(options: { only?: string; deadline?: number
     }
     if (!late()) result.backInStock = await runBackInStock({ only: options.only, deadline: options.deadline });
   } catch (error) {
-    console.error("automations: the run stopped", error);
+    log("error", "automations.run_failed", {}, error);
   }
   return result;
 }

@@ -14,6 +14,7 @@ import { siteUrl } from "@/lib/site";
 
 import { noticeApproval } from "./assistant-notices";
 import { holderOf, type Account, type Membership } from "./auth";
+import { log } from "./log";
 import { keepForApproval, kaizenLifeConversation, runTurn, type AssistantEvent } from "./owner-assistant";
 import { gateNeeded, OwnerToolError, preflightOwnerTool, runOwnerTool } from "./owner-tools";
 import { getStore, type Store } from "./stores";
@@ -180,7 +181,7 @@ export async function callMcpTool(
       await preflightOwnerTool({ account: member.account, store: member.store, invalidate, holder: holderOf(member) }, name, rest);
     } catch (error) {
       if (error instanceof OwnerToolError) return text(error.message, true);
-      console.error(`[store-mcp] ${name}`, error);
+      log("error", "store_mcp.preflight_failed", { tool: name }, error);
       return text("The tool failed.", true);
     }
     const conversation = await kaizenLifeConversation(member);
@@ -204,7 +205,7 @@ export async function callMcpTool(
     return text(await runOwnerTool({ account: member.account, store: member.store, invalidate, holder: holderOf(member) }, name, rest));
   } catch (error) {
     if (error instanceof OwnerToolError) return text(error.message, true);
-    console.error(`[store-mcp] ${name}`, error);
+    log("error", "store_mcp.tool_failed", { tool: name }, error);
     return text("The tool failed.", true);
   }
 }

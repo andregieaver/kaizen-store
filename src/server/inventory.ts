@@ -21,6 +21,7 @@ import {
 import { setBased } from "./analytics-totals";
 import { audit, type Membership } from "./auth";
 import { catalogTag } from "./catalog";
+import { log } from "./log";
 import { NO_ACCESS, memberCan } from "./permissions";
 import { refreshTag } from "./refresh";
 import { withStockContext } from "./stock-context";
@@ -334,7 +335,7 @@ export async function adjustStock(member: Membership, raw: unknown, source: Stoc
       });
       results.push(result);
     } catch (error) {
-      console.error("[inventory] a row could not be saved", error);
+      log("error", "inventory.row_save_failed", {}, error);
       results.push({ ...base, outcome: "failed", before: null, after: null, problem: refusedWords.failed });
     }
   }
@@ -342,7 +343,7 @@ export async function adjustStock(member: Membership, raw: unknown, source: Stoc
   const written = count("written");
   if (written > 0) {
     await audit(member.account.id, storeId, "products.inventory_adjusted", { rows: written, reason, unchanged: count("unchanged"), conflicts: count("conflict"), source }, { area: "products" }).catch((error) =>
-      console.error("[inventory] the adjustment could not be logged", error),
+      log("error", "inventory.adjust_audit_failed", {}, error),
     );
     refreshTag(catalogTag(storeId));
   }
@@ -407,7 +408,7 @@ export async function setVariantPolicies(member: Membership, raw: unknown): Prom
   }
   if (changed > 0) {
     await audit(member.account.id, storeId, "products.stock_policy_changed", { variants: changed, change: change.kind, ...(change.kind === "continue" ? { days: change.backorderDays } : {}) }, { area: "products" }).catch((error) =>
-      console.error("[inventory] the policy change could not be logged", error),
+      log("error", "inventory.policy_audit_failed", {}, error),
     );
     refreshTag(catalogTag(storeId));
   }

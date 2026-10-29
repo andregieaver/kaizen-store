@@ -20,6 +20,7 @@ import {
 import { servicePeriod } from "@/lib/work-recurring-ui";
 
 import type { Membership } from "./auth";
+import { log } from "./log";
 import { workEvent } from "./work";
 import { refreshDraftInvoices } from "./work-draft-sync";
 import { problem, workGuard, zodProblems, type WorkResult } from "./work-errors";
@@ -602,7 +603,7 @@ async function issueDraft(
     reason = sent.reason;
   } catch (error) {
     reason = "error";
-    console.error("Recurring invoice email failed", { storeId, invoiceId, error });
+    log("error", "work_recurring.invoice_email_failed", { storeId, invoiceId }, error);
   }
   if (!emailed) {
     await workEvent(
@@ -702,7 +703,7 @@ export async function prepareDueRecurringWork(options: { now?: Date; storeId?: s
       order by s.id
     `);
   } catch (error) {
-    console.error("Recurring invoices: could not list the stores", error);
+    log("error", "work_recurring.stores_list_failed", {}, error);
     result.failed += 1;
     return result;
   }
@@ -712,7 +713,7 @@ export async function prepareDueRecurringWork(options: { now?: Date; storeId?: s
       result.stores += 1;
     } catch (error) {
       result.failed += 1;
-      console.error("Recurring invoices failed for a store", { storeId: String(store.id), error });
+      log("error", "work_recurring.store_failed", { storeId: String(store.id) }, error);
     }
   }
   return result;
@@ -763,7 +764,7 @@ async function prepareStore(storeId: string, today: Day, result: RecurringRun): 
       }
     } catch (error) {
       result.failed += 1;
-      console.error("Recurring invoice step failed", { storeId, templateId: job.templateId, period: job.period, error });
+      log("error", "work_recurring.step_failed", { storeId, templateId: job.templateId, period: job.period }, error);
     }
   }
 }

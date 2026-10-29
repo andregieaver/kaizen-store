@@ -48,6 +48,7 @@ import { recordTermsSnapshotsForOrder } from "./checkout-terms";
 import { linkOrderToCustomer } from "./customers";
 import { cashLimitInCurrency } from "./draft-orders";
 import { settleOrderSessions } from "./draft-sessions";
+import { log } from "./log";
 import { refundOrder, type RefundOutcome } from "./order-admin";
 import { staffActor, writeOrderEvent, type OrderActor } from "./order-actor";
 import { marketOfOrder } from "./order-edits";
@@ -1452,7 +1453,7 @@ export async function completeExchangePayment(storeId: string, sessionId: string
     },
   );
   if (!back.ok) {
-    console.error("[exchanges] a late payment for an exchange could not be refunded", { storeId, exchangeId });
+    log("error", "exchanges.late_payment_refund_failed", { storeId, exchangeId });
     return "failed";
   }
   const { sendRefunded } = await import("./shopper-emails");
@@ -1616,7 +1617,7 @@ export async function expireExchanges(now: Date = new Date(), options: { limit?:
       else run.failed += 1;
     } catch (error) {
       run.failed += 1;
-      console.error("[exchanges] an exchange could not be expired", id, error);
+      log("error", "exchanges.expire_failed", { exchangeId: id }, error);
     }
   }
   return run;

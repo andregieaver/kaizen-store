@@ -17,6 +17,7 @@ import { audit } from "./auth";
 import type { DataDeps } from "./data-job-store";
 import { removePersonalExports, type ExportScope } from "./data-jobs";
 import { sendEmail } from "./email";
+import { log } from "./log";
 import { removeAvatarFiles } from "./media";
 import { notifyOwners } from "./privacy-notices";
 import { privacyStore, resolveSubject, type PrivacyStore, type PrivacySubject, type SubjectRef } from "./privacy-subject";
@@ -520,7 +521,7 @@ export async function eraseSubject(
     await markStep(request.id, { external: "done", subscriptionsCancelled: external.subscriptions, cardsDetached: external.cards });
   } catch (error) {
     if (!(error instanceof ExternalFailure)) throw error;
-    console.error("[privacy] the outside world did not answer; nothing was changed", request.id, error.message);
+    log("error", "privacy.erasure_external_failed", { requestId: request.id }, error);
     await markStep(request.id, { external: "failed" });
     return { ok: false, problem: "stripe", message: STRIPE_DID_NOT_ANSWER, requestId: request.id };
   }
@@ -544,7 +545,7 @@ export async function eraseSubject(
     avatar = done.avatar;
     pictures = done.pictures;
   } catch (error) {
-    console.error("[privacy] the erasure failed in the database; the request stays open", request.id, error);
+    log("error", "privacy.erasure_database_failed", { requestId: request.id }, error);
     await markStep(request.id, { database: "failed" });
     return { ok: false, problem: "failed", message: "The erasure could not be finished. Nothing is lost: try again, or it is resumed tonight.", requestId: request.id };
   }
@@ -556,7 +557,7 @@ export async function eraseSubject(
     // And their comments (D341): the articles that showed them are drawn again.
     refreshTag(commentsTag(storeId));
   } catch (error) {
-    console.error("[privacy] the product pages' reviews could not be refreshed after an erasure", error);
+    log("error", "privacy.erasure_refresh_failed", {}, error);
   }
 
   // 3. Files after the commit: the picture. A failure is kept for the daily job.
@@ -567,7 +568,7 @@ export async function eraseSubject(
       await remover([toRemove]);
       await markStep(request.id, { files: "done", avatarPath: null });
     } catch (error) {
-      console.error("[privacy] a profile picture could not be removed; retried tonight", error);
+      log("error", "privacy.avatar_remove_failed", {}, error);
       await markStep(request.id, { files: "left" });
     }
   } else await markStep(request.id, { files: "done" });
@@ -624,7 +625,7 @@ export async function eraseSubject(
       },
       { area: "customers", target: { type: "customer", id: subject.customerId ?? request.id } },
     );
-    if (by.channel === "staff" && by.accountId) await notifyOwners(storeId, "erasure", by.accountId, request.id, now, by.adminUrl ?? null).catch((e) => console.error("[privacy] the owners' notice failed", e));
+    if (by.channel === "staff" && by.accountId) await notifyOwners(storeId, "erasure", by.accountId, request.id, now, by.adminUrl ?? null).catch((e) => log("error", "privacy.owners_notice_failed", { requestId: request.id }, e));
   }
   return { ok: true, outcome: "erased", requestId: request.id, summary: planned.summary, counts, confirmation };
 }
@@ -842,7 +843,7 @@ export async function resumeErasures(now: Date = new Date(), deps: Parameters<ty
       else failed++;
     } catch (error) {
       failed++;
-      console.error("[privacy] an erasure could not be resumed", String(r.id), error);
+      log("error", "privacy.erasure_resume_failed", { requestId: String(r.id) }, error);
     }
   }
   // A picture that would not go when the erasure was done is removed again (the request is answered; only the file is left).
@@ -857,7 +858,7 @@ export async function resumeErasures(now: Date = new Date(), deps: Parameters<ty
       await db().execute(sql`update commerce.privacy_requests set steps = steps || '{"files":"done","avatarPath":null}'::jsonb where id = ${String(row.id)}::uuid`);
       filesRetried++;
     } catch (error) {
-      console.error("[privacy] a profile picture could still not be removed", String(row.id), error);
+      log("error", "privacy.avatar_remove_retry_failed", { requestId: String(row.id) }, error);
     }
   }
   return { resumed, failed, filesRetried };
