@@ -73,6 +73,12 @@ jobs:
     if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # The files run one at a time against one database, so the suite is cut in shards, each with a database of its own
+    # (the whole suite passed 30 minutes on 29 October 2026, run 741).
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     services:
       postgres:
         image: pgvector/pgvector:pg17
@@ -100,7 +106,7 @@ jobs:
       - name: Create the database with the demo catalogue
         run: node scripts/db-setup.mjs --seed
       - name: Integration tests against the database
-        run: pnpm test:int
+        run: pnpm test:int --shard=${{ matrix.shard }}/3
 
   e2e:
     if: github.event_name != 'workflow_dispatch'
