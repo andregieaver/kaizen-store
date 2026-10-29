@@ -1013,6 +1013,14 @@ stand-in is the only fake, and only it is told it is one.
   address (never edited, personal data). A merge is only `mergeCustomers()` (plan read again under both rows' locks, refused before anything
   changes for `MERGE_REFUSALS`), so a new table that points at a customer gets a line there (move it, or a refusal) as well as in erasure. The
   customer import is a D165 job (`customer_import`, the owner's) that never sets a password or subscribes anyone and names a row by its number only.
+- **Creators (wave 11 unit G, D386, `src/lib/creators.ts`, `src/server/creators.ts`)**: a store's creator programme (`commerce.creator_settings`,
+  on while the shop is, `creator_program_on()`), creators (`commerce.creators`, a signed-in customer's application from `/account/creator`
+  with the consent's words kept), their payouts (`commerce.creator_payouts`) are written only by `src/server/creators.ts`; the commission is the
+  database's alone (`creator_order_paid()`, `creator_settle_refunds()`, `creator_order_cancelled()` by trigger) in the append-only
+  `commerce.creator_commissions`, per currency, never converted. A creator's code is the referral program's link, visit count and consented
+  cookie (`validAffiliateCode()`, `affiliate_count_visit()`, `affiliateSite().capture`), unique across both programmes, and `placeOrder()`
+  attributes it through `creator_attribute_order()`; a new way to pay, cancel or refund an order needs nothing more, and a new way to place an
+  order with a code in play calls it too. The creator's page never names a buyer.
 - **Moving in from another shop (wave 11 unit E, D384, `src/lib/product-csv-woocommerce.ts`, `src/lib/order-history.ts`, `src/server/order-history-import.ts`)**: WooCommerce's product export is read by `readWooCommerce()` into the product import's neutral rows, so it is planned and saved only as any product file is (D165); a product the import makes leaves a manual redirect from `oldProductAddress()` through `addRedirects()` in the starter's name read again (`ImportOptions.redirects`), so a new source shop's file is a reader, a format in `FileFormat` and the `data_jobs_format` check, and its old address there. Shopify's order export is the job kind `order_history_import` (the owner's), each order written only by `insertHistoryOrder()` in `order-insert.ts` as a copied order (`C-{name}`, `copied_from` a key of the store and the name), tied to a customer only by an email the store already has; nothing pays, emails, invoices or counts it, so a reader that skips copied orders needs nothing more.
 - **Sign in with Google (wave 10 unit L, D375, `src/lib/google-sign-in.ts`, `src/server/google-sign-in.ts`)**: customers sign in with Google
   only through Kaizena Flow's own client on the platform's host (`/api/auth/google/start`, `/callback`) and a one-time hand-over on the store's

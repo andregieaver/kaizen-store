@@ -259,6 +259,10 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     title: "Bonuspoeng",
     keywords: ["bonus", "bonusprogram", "lojalitet", "poeng", "belønning", "faste kunder", "kundeklubb", "opptjening"],
   },
+  "store:creators": {
+    title: "Skapere",
+    keywords: ["skaper", "skapere", "influenser", "influensere", "provisjon", "innholdsskaper", "ambassadør", "partnerprogram", "utbetaling", "rabattkode"],
+  },
   "store:affiliates": {
     title: "Vervekampanje",
     keywords: ["verving", "verv en venn", "vervelenke", "vennerabatt", "velkomstrabatt", "inviter venner", "tips en venn", "ambassadør"],

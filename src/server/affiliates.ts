@@ -79,17 +79,33 @@ export async function getAffiliateSettings(storeId: string): Promise<AffiliateSe
  * switches, D178), and how long its cookie lasts. Cached until the program's or the bonus program's settings or the store's features
  * change (both actions call `updateTag(affiliateTag(storeId))`, and `refreshFeatureTags()` refreshes it).
  */
-export async function affiliateSite(storeId: string): Promise<{ on: boolean; cookieDays: number; friendPercent: number }> {
+export async function affiliateSite(
+  storeId: string,
+): Promise<{ on: boolean; cookieDays: number; friendPercent: number; capture: boolean; captureDays: number }> {
   "use cache";
   cacheLife("hours");
   cacheTag(affiliateTag(storeId));
   const [row] = await readDb().execute<Row>(sql`
     select commerce.affiliate_program_on(${storeId}::uuid) as on, coalesce(a.cookie_days, 30) as cookie_days,
-           coalesce(a.friend_percent, 0) as friend_percent
+           coalesce(a.friend_percent, 0) as friend_percent,
+           commerce.creator_program_on(${storeId}::uuid) as creators_on, coalesce(cs.cookie_days, 30) as creator_days
     from (select 1) one
     left join commerce.affiliate_settings a on a.store_id = ${storeId}::uuid
+    left join commerce.creator_settings cs on cs.store_id = ${storeId}::uuid
   `);
-  return { on: Boolean(row?.on), cookieDays: Number(row?.cookie_days ?? 30), friendPercent: Number(row?.friend_percent ?? 0) };
+  const on = Boolean(row?.on);
+  const creators = Boolean(row?.creators_on);
+  const cookieDays = Number(row?.cookie_days ?? 30);
+  const creatorDays = Number(row?.creator_days ?? 30);
+  // A creator's link (D386) is kept as a referral link is, in the same cookie: it is captured while either programme works, for the
+  // longer of their times.
+  return {
+    on,
+    cookieDays,
+    friendPercent: Number(row?.friend_percent ?? 0),
+    capture: on || creators,
+    captureDays: Math.max(on ? cookieDays : 0, creators ? creatorDays : 0) || cookieDays,
+  };
 }
 
 /**
@@ -149,8 +165,11 @@ export async function ensureAffiliate(storeId: string, customerId: string): Prom
     // A code taken meanwhile by another customer, or the same customer twice at once, is tried again.
     await db().execute(sql`
       insert into commerce.affiliates (store_id, customer_id, code)
-      select ${storeId}::uuid, c.id, ${makeAffiliateCode()}
-      from commerce.customers c where c.store_id = ${storeId}::uuid and c.id = ${customerId}::uuid
+      select ${storeId}::uuid, c.id, x.code
+      from commerce.customers c, (select ${makeAffiliateCode()}::text as code) x
+      where c.store_id = ${storeId}::uuid and c.id = ${customerId}::uuid
+        -- A code is the store's once, a creator's included (D386).
+        and not exists (select 1 from commerce.creators cr where cr.store_id = c.store_id and cr.code = x.code)
       on conflict do nothing
     `);
   }
@@ -161,7 +180,10 @@ export async function ensureAffiliate(storeId: string, customerId: string): Prom
 // The code a visitor arrives with
 // ---------------------------------------------------------------------------
 
-/** Whether `code` is a live affiliate's of the store (the program on, the affiliate not blocked). */
+/**
+ * Whether `code` is a live affiliate's of the store (the program on, the affiliate not blocked), or an approved creator's while the
+ * creator programme works (D386): either is kept on the cart, and the order is attributed to whichever it is.
+ */
 export async function validAffiliateCode(runner: Runner, storeId: string, code: string | null | undefined): Promise<string | null> {
   const clean = normalizeAffiliateCode(code ?? null);
   if (!clean) return null;
@@ -169,6 +191,11 @@ export async function validAffiliateCode(runner: Runner, storeId: string, code: 
     select a.code from commerce.affiliates a
     where a.store_id = ${storeId}::uuid and a.code = ${clean} and a.blocked_at is null
       and commerce.affiliate_program_on(${storeId}::uuid)
+    union all
+    select c.code from commerce.creators c
+    where c.store_id = ${storeId}::uuid and c.code = ${clean} and c.status = 'approved'
+      and commerce.creator_program_on(${storeId}::uuid)
+    limit 1
   `);
   return row ? String(row.code) : null;
 }

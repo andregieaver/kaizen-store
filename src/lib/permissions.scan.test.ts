@@ -54,6 +54,8 @@ const OWNER_ONLY_EXTRA: Record<string, string> = {
   "src/app/admin/(gated)/[store]/customers/import/[jobId]/tick/route.ts": "the step of a customer import's job page: the owner's, like the import (D366)",
   "src/app/admin/(gated)/[store]/customers/import/[jobId]/problems/route.ts": "the problems of a customer import: the owner's, like the import (D366)",
   "src/app/admin/(gated)/[store]/segments/csv/route.ts": "a segment's people as a CSV hold shoppers' addresses: only the owner may download them (wave 11 unit A, D380), as with the customer file (D165)",
+  "src/app/admin/(gated)/[store]/creators/actions.ts": "the creator programme's commission, a creator's own rate and the payouts recorded are what the store owes in money: the owner's (wave 11 unit G, D386), as the referral program's settings are (D131); approving or stopping a creator is `marketing:write`, in the same file",
+  "src/app/admin/(gated)/[store]/creators/csv/route.ts": "the payouts to creators as a CSV are the store's money and creators' names: the owner's, as recording them is (D386)",
   "src/app/admin/(gated)/[store]/subscribers/export/route.ts": "the subscriber list holds shoppers' addresses and consent: only the owner may export it (wave 5, D295, 3.4)",
   "src/app/admin/(gated)/[store]/support/settings/actions.ts": "how long support transcripts are kept is the owner's alone (D216, docs/support.md 4.5); the rest of the settings are `support:write`, in the same action",
   "src/app/admin/(gated)/[store]/demo-actions.ts": "removing a new store's demo content archives products and deletes pages, categories and tags across areas in one press: the owner's (docs/theme-showcase-phase-1.md step 4b), on Home, which every member may open",

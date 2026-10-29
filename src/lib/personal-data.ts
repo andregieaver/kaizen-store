@@ -159,6 +159,9 @@ export const PERSONAL_DATA: PersonalEntry[] = [
   entry("affiliates", "shopper", via("customer", "customer_id"), ["customer_id", "code", "blocked_reason"], "referrals", "delete", "The referral code and its record are deleted with the account."),
   entry("affiliate_attributions", "shopper", via("customer", "affiliate_customer_id", "friend_customer_id"), ["affiliate_customer_id", "friend_customer_id"], "referrals", "anonymise", "The rows stay for the other person's reward; both customer ids are set to null (the foreign keys do it)."),
   entry("referral_visits", "pseudonymous", via("none"), ["code"], null, "none", PSEUDO),
+  entry("creators", "shopper", via("customer", "customer_id"), ["customer_id", "name", "channel_url"], "referrals", "anonymise", "A creator's application and record (D386): exported with the referrals; on erasure the name, channel and tie to the customer are cleared and the creator stops, and the row stays naming no one, because the store's books keep the commissions and payouts it is owed."),
+  entry("creator_attributions", "shopper", via("order", "order_id"), ["order_id"], null, "keep", "Which order a creator's code was on (D386): the order and the creator by id, no personal field. " + KEEP_ORDER),
+  entry("creator_commissions", "shopper", via("order", "order_id"), ["order_id"], null, "keep", "A creator's commission ledger (D386): amounts and the orders they came from, no personal field. " + KEEP_ORDER),
 
   // Company -------------------------------------------------------------------------------------------------------------------------
   entry("customer_companies", "business", via("customer", "id"), ["name"], "company", "keep", "The company is the business's data and stays with its other members; the preview warns when the person is its main account."),

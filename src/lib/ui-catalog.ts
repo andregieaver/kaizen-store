@@ -100,6 +100,8 @@ export const CHOOSING: Record<string, { template: string; prepare?: (args: unkno
  * added here, not left to the generator (`ui-catalog.test.ts` holds the list).
  */
 export const HAND_WRITTEN_ONLY: readonly string[] = [
+  // Creators (D386): the application's consent and the programme's rules state what the store keeps and what earns, for legal review.
+  "ui:creator.",
   // Support (D216, docs/support.md 8): how long a chat conversation is kept is for legal review, never machine-translated.
   "ui:chat.kept",
   // Step 5: the notices while support is on, the email card and the page an answer email opens.

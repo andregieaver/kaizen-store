@@ -238,6 +238,20 @@ export type ReferralSource = {
   /** Counts and amounts only: who a friend is, or who referred the person, is another person's data. */
   rewards: { count: number; rewardMinor: number; discountMinor: number; currency: string } | null;
   wasReferred: boolean;
+  /**
+   * The person as a creator (D386), when they applied: what they gave, the words they agreed to, and their money per currency. Orders
+   * by count only: who bought is another person's data.
+   */
+  creator?: {
+    status: string;
+    name: string;
+    channelUrl: string;
+    code: string | null;
+    consentText: string;
+    consentedAt: Ts;
+    orders: number;
+    balances: { currency: string; earnedMinor: number; reversedMinor: number; paidMinor: number }[];
+  } | null;
 };
 
 export type ConsentRow = { kind: string; source: string; at: Ts; detail: string | null };
@@ -706,6 +720,22 @@ const shapeReferrals = (r: ReferralSource): Json => ({
   affiliate: r.affiliate ? { code: r.affiliate.code, blocked: Boolean(r.affiliate.blocked), blockedReason: text(r.affiliate.blockedReason), createdAt: iso(r.affiliate.createdAt) } : null,
   rewards: r.rewards ? { count: int(r.rewards.count), reward: money(r.rewards.rewardMinor, r.rewards.currency), discount: money(r.rewards.discountMinor, r.rewards.currency) } : null,
   wasReferred: Boolean(r.wasReferred),
+  creator: r.creator
+    ? {
+        status: text(r.creator.status),
+        name: text(r.creator.name),
+        channelUrl: text(r.creator.channelUrl),
+        code: text(r.creator.code),
+        consentText: text(r.creator.consentText),
+        consentedAt: iso(r.creator.consentedAt),
+        orders: int(r.creator.orders),
+        balances: r.creator.balances.map((b) => ({
+          earned: money(b.earnedMinor, b.currency),
+          reversed: money(b.reversedMinor, b.currency),
+          paid: money(b.paidMinor, b.currency),
+        })),
+      }
+    : null,
 });
 
 /** How many source rows a section has (what `counts` reports): the top-level rows of the section, composite sections summed. */

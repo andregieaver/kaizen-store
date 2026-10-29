@@ -97,6 +97,8 @@ export const NAV_NB: Record<string, string> = {
   "Credits customers earn on what they pay and use as a price reduction.": "Kreditt kundene tjener på det de betaler, og bruker som prisavslag.",
   "Referral program": "Vervekampanje",
   "Customers who refer their friends, and what both get.": "Kunder som verver vennene sine, og hva begge får.",
+  Creators: "Skapere",
+  "People with a channel who sell your goods with a code of their own, and the commission they earn.": "Personer med en egen kanal som selger varene dine med en egen kode, og provisjonen de tjener.",
 
   // Store: Analytics
   Analytics: "Analyse",

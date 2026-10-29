@@ -32,6 +32,7 @@ import { commentsTag, eraseComments } from "./blog-comments";
 import { anonymiseConversations } from "./support";
 import { changeSubscription } from "./subscriptions";
 import { mollieProvider } from "./payment-providers/mollie";
+import { forgetCreator } from "./creators";
 
 type Row = Record<string, unknown>;
 
@@ -797,6 +798,9 @@ async function eraseRows(tx: Tx, s: PrivacySubject, store: PrivacyStore): Promis
     returning id
   `);
   counts.emailsBlanked = blanked.length;
+
+  // A creator (D386) is forgotten before the account goes: the name, channel and tie are cleared and the row stays for the store's books.
+  if (cid) await forgetCreator(tx, sid, cid);
 
   // The account (its field values go by the table's own trigger, the ledger and the referral code by the foreign keys: credits are forfeited).
   let avatar: string | null = null;

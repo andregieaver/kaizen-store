@@ -128,6 +128,7 @@ export const STORE_SECTIONS: StoreSection[] = [
           item("/cart-reminders", "Cart reminders", "Emails to people who left items in their cart.", { feature: "shop" }),
           item("/bonus", "Bonus credits", "Credits customers earn on what they pay and use as a price reduction.", { feature: "bonus" }),
           item("/affiliates", "Referral program", "Customers who refer their friends, and what both get.", { feature: "referrals" }),
+          item("/creators", "Creators", "People with a channel who sell your goods with a code of their own, and the commission they earn.", { feature: "shop" }),
         ],
       },
     ],

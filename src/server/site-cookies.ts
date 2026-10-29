@@ -101,7 +101,8 @@ export async function siteCookies(
   const referral = storeId === null ? await referralPublicSettings() : null;
   // A store with a referral program keeps the link a visitor opened, as marketing, once they allow it (D131).
   const site = storeId === null ? null : await affiliateSite(storeId);
-  const affiliate = site?.on ?? false;
+  // A creator's link (D386) is the same cookie, kept while either programme works.
+  const affiliate = site?.capture ?? false;
   // A store with recommendations on keeps what a visitor did in this tab, to suggest products (D139).
   const recommendations = storeId === null ? false : (await getRecommendSettings(storeId)).enabled;
   // A store with a running A/B test remembers a visitor's version, as statistics, once they allow it (D148): the banner asks for it.
@@ -112,7 +113,7 @@ export async function siteCookies(
   const touch = Boolean(facts?.visitCounting) && (toolCategories(tracking).includes("statistics") || experiments);
   declaredCookies(storeId === null ? "platform" : "store", tracking, { ...options, chat, modals, referrals: referral?.enabled ?? false, affiliate, recommendations, experiments, languages, touch })
     .map((cookie) => (cookie.referrals && referral ? { ...cookie, days: referral.cookieDays } : cookie))
-    .map((cookie) => (cookie.affiliate && site ? { ...cookie, days: site.cookieDays } : cookie))
+    .map((cookie) => (cookie.affiliate && site ? { ...cookie, days: site.captureDays } : cookie))
     .forEach(list);
 
   const { items, notes } = await siteFindings(storeId);

@@ -27,7 +27,7 @@ export const offersAccountAtCheckout = (store: { customerAccounts?: AccountsMode
  * `/account` is reached by a link sent after a sale (an order's pay, change, exchange, invoice, documents, review, newsletter, stock or
  * support link) and stays.
  */
-export const ACCOUNT_ONLY_SEGMENTS = ["", "sign-in", "addresses", "bonus", "catalogue", "company", "orders", "privacy", "referrals", "reviews"] as const;
+export const ACCOUNT_ONLY_SEGMENTS = ["", "sign-in", "addresses", "bonus", "catalogue", "company", "creator", "orders", "privacy", "referrals", "reviews"] as const;
 
 /** The store features that need customer accounts: none of them can be on while accounts are off, and accounts cannot be switched off while one is. */
 export const FEATURES_NEEDING_ACCOUNTS = ["subscriptions", "bonus", "referrals"] as const;

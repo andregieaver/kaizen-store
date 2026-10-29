@@ -24,8 +24,8 @@ export default async function Chooser({ params, searchParams }: PageProps<"/s/[s
     // long address is served then, where the short one would come back here.
     const target = marketPath(store.slug, store.markets[0].slug, "", null);
     // A friend's referral link (D131) keeps its code through the redirect, which needs the address: only while the store's
-    // program is on, so every other front door is still redirected as before.
-    if (!(await affiliateSite(store.id)).on) redirect(target);
+    // program (or the creator programme, D386) is on, so every other front door is still redirected as before.
+    if (!(await affiliateSite(store.id)).capture) redirect(target);
     return (
       <Suspense fallback={null}>
         <KeepReferral target={target} searchParams={searchParams} />

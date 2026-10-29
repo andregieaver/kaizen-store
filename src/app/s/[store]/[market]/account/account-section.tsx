@@ -22,6 +22,7 @@ import {
   listCustomerSubscriptions,
 } from "@/server/customers";
 import { affiliateSite } from "@/server/affiliates";
+import { creatorProgramOn } from "@/server/creators";
 import { shopperBonus } from "@/server/bonus";
 import { companyOf } from "@/server/companies";
 import { googleSignInOffered, googleStartUrl } from "@/server/google-sign-in";
@@ -60,7 +61,7 @@ async function Account({ store, market, query }: { store: Store; market: Market;
     );
   }
 
-  const [orders, subscriptions, lastAddress, mine, bonus, referrals, news, catalogue] = await Promise.all([
+  const [orders, subscriptions, lastAddress, mine, bonus, referrals, news, catalogue, creators] = await Promise.all([
     listCustomerOrders(store.id, customer.id),
     // Subscriptions (D178): the list is there while the feature is on; switching it off waits until none runs, and each one's own link
     // from its emails keeps working.
@@ -72,6 +73,8 @@ async function Account({ store, market, query }: { store: Store; market: Market;
     accountSubscription(store.id, customer.id),
     // Products an exclusive price list makes the customer's (D321 C.3).
     hasBuyerCatalogue(store.id, customer.id),
+    // The creator programme (D386): a card to apply or to one's own page while it works.
+    creatorProgramOn(store.id),
   ]);
   const date = (iso: string) => new Date(iso).toLocaleDateString(market.locale, { dateStyle: "medium" });
   const base = marketPath(store.slug, market.slug);
@@ -153,6 +156,18 @@ async function Account({ store, market, query }: { store: Store; market: Market;
 
       <BonusCard bonus={bonus} m={m} locale={market.locale} base={base} />
       <ReferralCard enabled={referrals.on} m={m} base={base} />
+      {creators && (
+        <Link
+          href={`${base}/account/creator`}
+          className="flex items-center justify-between gap-4 rounded-lg border border-border p-4 hover:bg-surface"
+        >
+          <span>
+            <span className="font-medium">{m.creator.title}</span>
+            <span className="block text-sm text-muted">{m.creator.card}</span>
+          </span>
+          <span aria-hidden="true">→</span>
+        </Link>
+      )}
 
       <section aria-labelledby="orders-heading" className="flex flex-col gap-3">
         <h2 id="orders-heading" className="text-xl font-heading">{a.orders}</h2>

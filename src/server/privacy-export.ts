@@ -48,6 +48,7 @@ import { audit } from "./auth";
 import { getFieldData, listFieldGroups } from "./custom-fields";
 import { buyerKeysOf } from "./reviews";
 import { commentsOf } from "./blog-comments";
+import { creatorExport } from "./creators";
 import { notifyOwners } from "./privacy-notices";
 import { privacyStore, resolveSubject, type PrivacySubject, type SubjectRef } from "./privacy-subject";
 
@@ -628,8 +629,8 @@ async function loadBonus(s: PrivacySubject): Promise<BonusSource> {
 }
 
 async function loadReferrals(s: PrivacySubject): Promise<ReferralSource> {
-  if (!s.customerId) return { affiliate: null, rewards: null, wasReferred: false };
-  const [affiliate, rewards, referred, settings] = await Promise.all([
+  if (!s.customerId) return { affiliate: null, rewards: null, wasReferred: false, creator: null };
+  const [affiliate, rewards, referred, settings, creator] = await Promise.all([
     db().execute<Row>(sql`
       select code, blocked_at is not null as blocked, blocked_reason, created_at from commerce.affiliates
       where store_id = ${s.storeId}::uuid and customer_id = ${s.customerId}::uuid
@@ -644,6 +645,7 @@ async function loadReferrals(s: PrivacySubject): Promise<ReferralSource> {
       from commerce.customers c where c.store_id = ${s.storeId}::uuid and c.id = ${s.customerId}::uuid
     `),
     db().execute<Row>(sql`select trim(currency) as currency from commerce.bonus_settings where store_id = ${s.storeId}::uuid`),
+    creatorExport(s.storeId, s.customerId),
   ]);
   const a = affiliate[0];
   const r = rewards[0];
@@ -651,6 +653,18 @@ async function loadReferrals(s: PrivacySubject): Promise<ReferralSource> {
     affiliate: a ? { code: strs(a.code), blocked: Boolean(a.blocked), blockedReason: str(a.blocked_reason), createdAt: iso(a.created_at) } : null,
     rewards: r && num(r.n) > 0 ? { count: num(r.n), rewardMinor: num(r.reward), discountMinor: num(r.discount), currency: strs(settings[0]?.currency ?? "").toUpperCase() || "EUR" } : null,
     wasReferred: Boolean(referred[0]?.referred),
+    creator: creator
+      ? {
+          status: creator.status,
+          name: creator.name,
+          channelUrl: creator.channelUrl,
+          code: creator.code,
+          consentText: creator.consentText,
+          consentedAt: creator.consentedAt,
+          orders: creator.orders.pending + creator.orders.earned + creator.orders.reversed + creator.orders.rejected,
+          balances: creator.balances.map((b) => ({ currency: b.currency, earnedMinor: b.earnedMinor, reversedMinor: b.reversedMinor, paidMinor: b.paidMinor })),
+        }
+      : null,
   };
 }
 

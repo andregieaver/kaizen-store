@@ -226,6 +226,10 @@ the installs and `look_versions`); a refused *Make live* leaves the set open so 
 
 ### G. Creators (D386)
 
+**Built (29 October 2026),** as designed below with four course changes (D386): the application is on My account's page (the signed-in
+customer's proven address is the email asked for), not a page part; the programme has its switch on its own page, not a store feature;
+commission per category, not per product; a refund that later fails leaves its reversal, as the referral program's does.
+
 **What is missing.** The store's referral program (D131) is customers referring friends. There is no creator application, commission in
 money, payout record or creator page.
 

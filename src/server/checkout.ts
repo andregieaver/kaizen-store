@@ -1096,6 +1096,11 @@ export async function placeOrder(
         select commerce.affiliate_attribute_order(${orderId}::uuid, ${cart.affiliate_code ? String(cart.affiliate_code) : null}, ${referralTotal})
       `);
     }
+    // A creator's code on the cart (D386): the order is theirs to earn on once paid, a guest's too; the database decides the rest
+    // (the programme on, the creator approved, not the creator's own order) and the commission follows the payment by trigger.
+    if (cart.affiliate_code) {
+      await tx.execute(sql`select commerce.creator_attribute_order(${orderId}::uuid, ${String(cart.affiliate_code)})`);
+    }
     // The cart now asks for what the order used, so a change to it (and only a change) asks checkout to start again.
     if (Number(cart.bonus_request_minor) > 0 || creditTotal > 0) {
       await tx.execute(sql`

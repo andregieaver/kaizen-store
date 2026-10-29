@@ -3991,6 +3991,20 @@
       "when": 1793239941331,
       "tag": "20261029021221_stock_document_line_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 570,
+      "version": "7",
+      "when": 1793241466675,
+      "tag": "20261029023746_creators",
+      "breakpoints": true
+    },
+    {
+      "idx": 571,
+      "version": "7",
+      "when": 1793241622010,
+      "tag": "20261029024021_creators_rules",
+      "breakpoints": true
     }
   ]
 }

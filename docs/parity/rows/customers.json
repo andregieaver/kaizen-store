@@ -1022,13 +1022,13 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "partial"
     },
-    "gap": "D131's store program is customers referring friends for a welcome discount and bonus credits, with no approval. Missing: a creator or affiliate application and approval, per-affiliate commission rates paid in money, a commission ledger with payouts, and a dashboard of clicks and sales for the creator.",
-    "bucket": "A",
-    "wave": 5,
+    "gap": "D131's store program is customers referring friends for a welcome discount and bonus credits. Since D386 a store also has a creator programme: a signed-in customer applies from My account (Creator programme: the name they are known by, a link to their channel and the consent, ticked, the account's proven email as the address), the owner or staff approve, decline or stop them at Marketing → Creators, and an approved creator gets a code and a link that ride the referral program's link and consented cookie. A paid order with the code earns a commission by trigger: the rate of each line of goods without VAT (the creator's own, else the highest of a product category's own, else the programme's), in the order's own currency, never on copied, host or exchange orders, a gift card, a service or the creator's own order; refunds take back their share and a cancellation all of it. The ledger (`creator_commissions`) is append-only per currency and never converted; the owner records the payouts they make (never more than owed in a currency, Kaizena Flow moves no money) and downloads them as CSV. The creator's page shows visits, orders by state and money per currency, never a buyer. What still differs from Shopify: no personalised gifts to creators, no tiered commissions, and payouts are recorded by the owner rather than paid through the platform.",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "A creator applies on a store page (name, email, channel link, consent) and the owner approves or declines; an approved creator gets a code and a link.",
       "A commission (a percentage of paid goods without VAT, optionally per product or category) accrues on paid orders, is reversed on refund and cancellation, and never accrues on copied or host orders (integration test, euro scenario).",
@@ -1042,20 +1042,36 @@
         "src/lib/affiliate-admin.ts",
         "src/components/admin/affiliate-overview.tsx",
         "src/app/admin/(gated)/[store]/affiliates/page.tsx",
-        "src/app/s/[store]/[market]/account/referrals/page.tsx"
+        "src/app/s/[store]/[market]/account/referrals/page.tsx",
+        "src/lib/creators.ts",
+        "src/server/creators.ts",
+        "src/components/admin/creators-admin.tsx",
+        "src/app/admin/(gated)/[store]/creators/page.tsx",
+        "src/app/s/[store]/[market]/account/creator/page.tsx",
+        "supabase/migrations/20261029024021_creators_rules.sql"
       ],
       "tests": [
         "src/lib/affiliates.test.ts",
         "src/server/affiliates.int.test.ts",
         "src/db/affiliates.test.ts",
-        "src/components/admin/affiliate-ui.test.ts"
+        "src/components/admin/affiliate-ui.test.ts",
+        "src/server/creators.int.test.ts",
+        "src/lib/creators.test.ts"
       ],
       "untested": false
     },
     "decisions": [
-      "D131"
+      "D131",
+      "D386"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-29",
+        "from": "partial",
+        "to": "full",
+        "why": "Read unit G (D386): the application from My account (applyAsCreator(), a proven email, the consent's words kept), approval with a code shared with the referral link (decideCreator(), validAffiliateCode(), affiliate_count_visit()), the commission by trigger (creator_order_paid(), creator_settle_refunds(), creator_order_cancelled()) in an append-only ledger per currency, payouts never above what is owed (creator_ledger_guard()) and their CSV, and the creator's page with no buyer, held by src/server/creators.int.test.ts (a euro case) and src/lib/creators.test.ts (run, passing). Every criterion holds; what still differs from Shopify is named in the gap."
+      }
+    ]
   },
   {
     "id": "customers.social-channels-facebook-instagram-tiktok-pinterest",

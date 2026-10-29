@@ -11211,6 +11211,152 @@ export const affiliateAttributions = commerce.table(
 );
 
 /**
+ * A store's creator programme (wave 11 unit G, D386, `src/server/creators.ts`, its only writer): off until the owner turns it on. A creator's
+ * commission is a share of what an order they brought paid for goods without VAT, in basis points: the creator's own rate, else the highest
+ * of the categories' rates (`category_bps`, a term id to basis points) that a line's product is in, else `commission_bps`. The link's code
+ * shares the affiliate cookie (`kaizen_aff_{storeId}`), which lasts `cookie_days` when the affiliate programme is off.
+ */
+export const creatorSettings = commerce.table(
+  "creator_settings",
+  {
+    storeId: uuid("store_id")
+      .primaryKey()
+      .references(() => stores.id),
+    enabled: boolean("enabled").notNull().default(false),
+    commissionBps: integer("commission_bps").notNull().default(1000),
+    categoryBps: jsonb("category_bps").notNull().default(sql`'{}'::jsonb`),
+    cookieDays: integer("cookie_days").notNull().default(30),
+    updatedAt: updatedAt(),
+    updatedBy: uuid("updated_by").references(() => accounts.id),
+  },
+  (t) => [
+    index("creator_settings_updated_by_idx").on(t.updatedBy),
+    check("creator_settings_commission", sql`${t.commissionBps} between 0 and 5000`),
+    check("creator_settings_categories", sql`jsonb_typeof(${t.categoryBps}) = 'object'`),
+    check("creator_settings_cookie", sql`${t.cookieDays} between 1 and 90`),
+  ],
+);
+
+/**
+ * A creator of a store (D386): a signed-in customer who applied from their account with the name they go by, the channel they publish on and
+ * the words they agreed to (`consent_text`, `consented_at`); the owner approves (a code is made, unique among the store's creators and
+ * affiliates), declines or stops them. What they earned stays when they are stopped. Personal data: erasure blanks the name and channel.
+ */
+export const creators = commerce.table(
+  "creators",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    /** The customer who applied; null once they were erased (D162), the ledger's row kept with no one in it. */
+    customerId: uuid("customer_id"),
+    name: text("name").notNull(),
+    channelUrl: text("channel_url").notNull(),
+    status: text("status").notNull().default("applied"),
+    code: text("code"),
+    /** The creator's own rate, in basis points; null takes the programme's. */
+    commissionBps: integer("commission_bps"),
+    consentText: text("consent_text").notNull(),
+    consentedAt: timestamp("consented_at", { withTimezone: true }).notNull(),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    decidedBy: uuid("decided_by").references(() => accounts.id),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("creators_store_id_key").on(t.storeId, t.id),
+    unique("creators_customer_key").on(t.storeId, t.customerId),
+    unique("creators_code_key").on(t.storeId, t.code),
+    foreignKey({ name: "creators_customer_fk", columns: [t.storeId, t.customerId], foreignColumns: [customers.storeId, customers.id] }),
+    index("creators_decided_by_idx").on(t.decidedBy),
+    check("creators_status", sql`${t.status} in ('applied', 'approved', 'declined', 'stopped')`),
+    check("creators_code", sql`${t.code} is null or ${t.code} ~ '^[a-z0-9]{6,16}$'`),
+    check("creators_approved_code", sql`${t.status} <> 'approved' or ${t.code} is not null`),
+    check("creators_commission", sql`${t.commissionBps} is null or ${t.commissionBps} between 0 and 5000`),
+    check("creators_name", sql`char_length(${t.name}) <= 80`),
+    check("creators_channel", sql`char_length(${t.channelUrl}) <= 300`),
+  ],
+);
+
+/**
+ * An order a creator's code was on (D386), one per order: `pending` until paid with a captured payment, `earned` once its commission is in
+ * the ledger, `reversed` once it is all taken back, `rejected` (`reject_reason`: `self`) when the creator bought for themselves.
+ */
+export const creatorAttributions = commerce.table(
+  "creator_attributions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    orderId: uuid("order_id").notNull(),
+    creatorId: uuid("creator_id").notNull(),
+    code: text("code").notNull(),
+    status: text("status").notNull().default("pending"),
+    rejectReason: text("reject_reason"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("creator_attributions_order_key").on(t.storeId, t.orderId),
+    foreignKey({ name: "creator_attributions_order_fk", columns: [t.storeId, t.orderId], foreignColumns: [orders.storeId, orders.id] }),
+    foreignKey({ name: "creator_attributions_creator_fk", columns: [t.storeId, t.creatorId], foreignColumns: [creators.storeId, creators.id] }),
+    index("creator_attributions_creator_idx").on(t.storeId, t.creatorId, t.createdAt),
+    check("creator_attributions_status", sql`${t.status} in ('pending', 'earned', 'reversed', 'rejected')`),
+  ],
+);
+
+/**
+ * A creator's commission ledger (D386): what they earned on an order and what a refund or cancellation took back, in the order's own
+ * currency and never converted; append-only, each entry once by its key, written only by the `creator_*` SQL functions.
+ */
+export const creatorCommissions = commerce.table(
+  "creator_commissions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    creatorId: uuid("creator_id").notNull(),
+    orderId: uuid("order_id"),
+    kind: text("kind").notNull(),
+    currency: char("currency", { length: 3 }).notNull(),
+    amountMinor: money("amount_minor"),
+    idempotencyKey: text("idempotency_key").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("creator_commissions_key").on(t.storeId, t.idempotencyKey),
+    foreignKey({ name: "creator_commissions_creator_fk", columns: [t.storeId, t.creatorId], foreignColumns: [creators.storeId, creators.id] }),
+    foreignKey({ name: "creator_commissions_order_fk", columns: [t.storeId, t.orderId], foreignColumns: [orders.storeId, orders.id] }),
+    index("creator_commissions_creator_idx").on(t.storeId, t.creatorId, t.createdAt),
+    index("creator_commissions_order_idx").on(t.storeId, t.orderId),
+    check("creator_commissions_kind", sql`${t.kind} in ('earned', 'reversed')`),
+    check("creator_commissions_amount", sql`${t.amountMinor} > 0`),
+  ],
+);
+
+/**
+ * A payout the owner recorded to a creator (D386): money moved outside Kaizena Flow, in one currency, on a day, with the owner's reference.
+ * Append-only; never more than the creator is owed in that currency.
+ */
+export const creatorPayouts = commerce.table(
+  "creator_payouts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    creatorId: uuid("creator_id").notNull(),
+    currency: char("currency", { length: 3 }).notNull(),
+    amountMinor: money("amount_minor"),
+    paidOn: date("paid_on").notNull(),
+    reference: text("reference").notNull().default(""),
+    recordedBy: uuid("recorded_by").references(() => accounts.id),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    foreignKey({ name: "creator_payouts_creator_fk", columns: [t.storeId, t.creatorId], foreignColumns: [creators.storeId, creators.id] }),
+    index("creator_payouts_creator_idx").on(t.storeId, t.creatorId, t.paidOn),
+    index("creator_payouts_recorded_by_idx").on(t.recordedBy),
+    check("creator_payouts_amount", sql`${t.amountMinor} > 0`),
+    check("creator_payouts_reference", sql`char_length(${t.reference}) <= 120`),
+  ],
+);
+
+/**
  * Visits to a referral link, counted by day and code, with nothing about the visitor (D131): `store_id` null is Kaizen's
  * own program. Only for the dashboards' "visits".
  */

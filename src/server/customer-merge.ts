@@ -54,6 +54,8 @@ async function planIn(tx: Tx, storeId: string, keep: string, remove: string): Pr
       (select count(*)::int from commerce.product_reviews where store_id = ${storeId}::uuid and customer_id = ${remove}::uuid) as reviews,
       (select count(*)::int from commerce.gift_cards where store_id = ${storeId}::uuid and customer_id = ${remove}::uuid) as gift_cards,
       (select (exists (select 1 from commerce.affiliates where store_id = ${storeId}::uuid and customer_id = ${remove}::uuid)
+           -- A creator (D386) applied as this customer: their record is not moved to another.
+           or exists (select 1 from commerce.creators where store_id = ${storeId}::uuid and customer_id = ${remove}::uuid)
            or exists (select 1 from commerce.affiliate_attributions where store_id = ${storeId}::uuid
                         and (friend_customer_id = ${remove}::uuid or affiliate_customer_id = ${remove}::uuid))
            or exists (select 1 from commerce.customers where store_id = ${storeId}::uuid

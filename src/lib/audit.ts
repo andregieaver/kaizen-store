@@ -103,6 +103,8 @@ const PREFIXES: Record<string, AuditArea> = {
   // The ad platforms' server connections (D303 I2): which platform and what it sends, never a token.
   "marketing.ad_connection_": "marketing",
   "marketing.feed_": "marketing",
+  // Creators (D386): the programme's settings, a decision, a creator's own rate and a payout recorded; ids and amounts, never a name.
+  "creator.": "marketing",
   "recommendations.": "marketing",
   "experiment.": "marketing",
   "search_test.": "marketing",
