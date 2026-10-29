@@ -453,6 +453,11 @@ export const nb: Messages = {
    * states (Directive 2011/83/EU Art. 6(1)(g) and 18), never a date and never "in stock". Hand-written; needs human legal review before real use.
    */
   // legal: needs review
+  preorder: {
+    page: (date: string) => `Forhåndsbestilling: forventes sendt fra ${date}`,
+    line: (n: number, date: string) => `${n} forhåndsbestilt: forventes sendt fra ${date}`,
+    order: (n: number, quantity: number, date: string) => `${n} av ${quantity} forhåndsbestilt: forventes sendt fra ${date}`,
+  },
   backorder: {
     page: (days: number) => `På restordre: forventes sendt innen ${days} ${days === 1 ? "dag" : "dager"}`,
     line: (n: number, days: number) => `${n} på restordre: forventes sendt innen ${days} ${days === 1 ? "dag" : "dager"}`,

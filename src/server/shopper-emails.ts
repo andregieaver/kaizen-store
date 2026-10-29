@@ -3,6 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
+import { releaseDate } from "@/lib/stock-words";
 import { formatBookingTime } from "@/lib/booking-slots";
 import { customsText, orderCustomsSentence } from "@/lib/customs-text";
 import { bookingWhen, isRange } from "@/lib/booking-text";
@@ -213,11 +214,15 @@ function orderLines(
   };
 }
 
-/** The lines of an order that are on backorder, each with its sentence (`m.backorder.order()`): the units of the line, the days stated when it was sold. */
+/** The lines of an order that are on backorder or pre-order (D396), each with its sentence (`m.backorder.order()`, `m.preorder.order()`): the units of the line, the days stated when it was sold. */
 function backorderText(order: OrderView, m: Messages): string {
   return order.lines
     .filter((line) => line.backorder)
-    .map((line) => `${line.title}: ${m.backorder.order(line.backorder!.units, line.quantity, line.backorder!.days)}`)
+    .map((line) =>
+      line.backorder!.until
+        ? `${line.title}: ${m.preorder.order(line.backorder!.units, line.quantity, releaseDate(line.backorder!.until, order.locale))}`
+        : `${line.title}: ${m.backorder.order(line.backorder!.units, line.quantity, line.backorder!.days)}`,
+    )
     .join("\n");
 }
 

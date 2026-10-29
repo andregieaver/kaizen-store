@@ -51,6 +51,7 @@ function base(): ProductInput {
         stock: 0,
         stockPolicy: "deny",
         backorderDays: null,
+        preorderUntil: null,
         lowStockThreshold: null,
         minQuantity: 1,
         maxQuantity: null,

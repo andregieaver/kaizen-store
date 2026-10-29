@@ -221,7 +221,7 @@ export async function getCart(
       (p.status = 'active' and v.active and ${bookable} and ${offeredTo(customerId)} and commerce.market_offered(c.store_id, c.market_code, ${market.currency})) as sellable,
       -- Under a producer responsibility scheme with no valid registration in this country today (D342), as placeOrder() reads it.
       commerce.line_unregistered(cl.store_id, c.market_code, v.id) as unregistered,
-      va.in_stock, va.raw_available, va.stock_policy, va.backorder_days, qr.min_quantity, qr.max_quantity, qr.quantity_step
+      va.in_stock, va.raw_available, va.stock_policy, va.backorder_days, va.preorder_until::text as preorder_until, qr.min_quantity, qr.max_quantity, qr.quantity_step
     from ${cartLinesFirst(storeId, cartId)}
     join commerce.carts c on c.store_id = cl.store_id and c.id = cl.cart_id
     join commerce.stores st on st.id = cl.store_id
@@ -290,7 +290,7 @@ export async function getCart(
       // Goods that are shipped have stock (and may keep selling past it, D172); a download never runs out, a booking is one place.
       const goods = String(row.delivery) === "physical" && !range;
       const stock: VariantStock | null = goods
-        ? stockOf({ in_stock: Number(row.in_stock ?? 0), raw_available: Number(row.raw_available ?? 0), stock_policy: String(row.stock_policy ?? "deny"), backorder_days: row.backorder_days === null || row.backorder_days === undefined ? null : Number(row.backorder_days) })
+        ? stockOf({ in_stock: Number(row.in_stock ?? 0), raw_available: Number(row.raw_available ?? 0), stock_policy: String(row.stock_policy ?? "deny"), backorder_days: row.backorder_days === null || row.backorder_days === undefined ? null : Number(row.backorder_days), preorder_until: row.preorder_until ? String(row.preorder_until) : null })
         : null;
       const rule = ruleForKind(row.kind, row);
       const most = lineMax(rule);
@@ -533,7 +533,7 @@ export async function sellableQuantity(
   if (sellingPlanId && !isNative(market)) return null;
   const customerId = (await getCustomer(storeId))?.id ?? null;
   const [row] = await tx.execute<Row>(sql`
-    select v.product_id, p.kind, v.rental_period, v.delivery, va.in_stock, va.stock_policy, va.backorder_days,
+    select v.product_id, p.kind, v.rental_period, v.delivery, va.in_stock, va.stock_policy, va.backorder_days, va.preorder_until::text as preorder_until,
       qr.min_quantity, qr.max_quantity, qr.quantity_step
     from commerce.product_variants v
     left join lateral commerce.quantity_rule(v.store_id, ${customerId}::uuid, v.id) qr on true
@@ -569,7 +569,7 @@ export async function sellableQuantity(
   if (!row) return null;
   const physical = String(row.delivery) === "physical";
   const stock = physical
-    ? stockOf({ in_stock: Number(row.in_stock ?? 0), raw_available: Number(row.in_stock ?? 0), stock_policy: String(row.stock_policy ?? "deny"), backorder_days: row.backorder_days === null || row.backorder_days === undefined ? null : Number(row.backorder_days) })
+    ? stockOf({ in_stock: Number(row.in_stock ?? 0), raw_available: Number(row.in_stock ?? 0), stock_policy: String(row.stock_policy ?? "deny"), backorder_days: row.backorder_days === null || row.backorder_days === undefined ? null : Number(row.backorder_days), preorder_until: row.preorder_until ? String(row.preorder_until) : null })
     : null;
   const rule = ruleForKind(row.kind, row);
   const most = lineMax(rule);

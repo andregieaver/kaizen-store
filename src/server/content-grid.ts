@@ -343,6 +343,7 @@ export function productItem(storeSlug: string, marketSlug: string, product: Grid
     image: product.image ? { url: product.image.url, alt: product.image.alt, ...(product.image.large ? { large: product.image.large, largeWidth: product.image.width } : {}) } : null,
     price: { view: product.price, from: product.priceVaries },
     audience: product.audience,
+    ...(product.preorderUntil ? { preorderUntil: product.preorderUntil } : {}),
   };
 }
 

@@ -39,6 +39,8 @@ export type OrderListItem = {
   items: number;
   /** Units sold on backorder that the store has not received (D172). */
   owed: number;
+  /** The earliest release date of its lines on pre-order still to send (D396), `YYYY-MM-DD`; null for none. */
+  preorderFrom: string | null;
   tags: Tag[];
   pay: PayCell;
   ship: ShipCell;

@@ -22,6 +22,11 @@ export type VariantStock = {
   backorderDays: number | null;
   /** `inStock > 0` or the policy is `continue`. */
   canBuy: boolean;
+  /**
+   * A pre-order's release date (`YYYY-MM-DD`, D396) while it is in the future, for a `continue` variant only: every unit is then a pre-order, said
+   * with this date; null otherwise.
+   */
+  preorderUntil: string | null;
 };
 
 /** What the view's columns arrive as (a driver may give bigint sums as strings). */
@@ -31,6 +36,7 @@ export type AvailabilityRow = {
   stock_policy: string;
   backorder_days: number | string | null;
   can_buy?: boolean;
+  preorder_until?: string | Date | null;
 };
 
 const whole = (v: number | string | bigint): number => Math.trunc(Number(v));
@@ -47,16 +53,28 @@ export function stockOf(row: AvailabilityRow): VariantStock {
     stockPolicy,
     backorderDays: stockPolicy === "continue" ? days : null,
     canBuy: inStock > 0 || stockPolicy === "continue",
+    preorderUntil: stockPolicy === "continue" ? dateOf(row.preorder_until) : null,
   };
 }
 
+/** A date column as `YYYY-MM-DD` (a driver gives a string or a Date at midnight UTC). */
+function dateOf(value: string | Date | null | undefined): string | null {
+  if (value === null || value === undefined) return null;
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value.toISOString().slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}/.test(value) ? value.slice(0, 10) : null;
+}
+
 /** A variant with no stock row (a download, a service): always available, never on backorder. */
-export const UNLIMITED: VariantStock = { inStock: Number.MAX_SAFE_INTEGER, rawAvailable: Number.MAX_SAFE_INTEGER, stockPolicy: "deny", backorderDays: null, canBuy: true };
+export const UNLIMITED: VariantStock = { inStock: Number.MAX_SAFE_INTEGER, rawAvailable: Number.MAX_SAFE_INTEGER, stockPolicy: "deny", backorderDays: null, canBuy: true, preorderUntil: null };
 
-/** `in_stock` is what the page says; `backorder` only for a `continue` variant with nothing in stock; `out_of_stock` otherwise. */
-export type Availability = "in_stock" | "backorder" | "out_of_stock";
+/**
+ * `preorder` for a variant before its release date (D396), whatever is on the shelf; `in_stock` is what the page says; `backorder` only for a
+ * `continue` variant with nothing in stock; `out_of_stock` otherwise.
+ */
+export type Availability = "in_stock" | "backorder" | "out_of_stock" | "preorder";
 
-export function availabilityOf(stock: Pick<VariantStock, "inStock" | "stockPolicy">): Availability {
+export function availabilityOf(stock: Pick<VariantStock, "inStock" | "stockPolicy"> & { preorderUntil?: string | null }): Availability {
+  if (stock.preorderUntil) return "preorder";
   if (stock.inStock > 0) return "in_stock";
   return stock.stockPolicy === "continue" ? "backorder" : "out_of_stock";
 }
@@ -66,8 +84,9 @@ export const SCHEMA_AVAILABILITY: Record<Availability, string> = {
   in_stock: "https://schema.org/InStock",
   backorder: "https://schema.org/BackOrder",
   out_of_stock: "https://schema.org/OutOfStock",
+  preorder: "https://schema.org/PreOrder",
 };
-export const schemaAvailability = (stock: Pick<VariantStock, "inStock" | "stockPolicy">): string => SCHEMA_AVAILABILITY[availabilityOf(stock)];
+export const schemaAvailability = (stock: Pick<VariantStock, "inStock" | "stockPolicy"> & { preorderUntil?: string | null }): string => SCHEMA_AVAILABILITY[availabilityOf(stock)];
 
 /**
  * The units of a quantity that are backordered: the part beyond what is in stock, only for a `continue` variant; 0 for `deny`
@@ -113,7 +132,15 @@ export function settleWithBackorder(wanted: number, stock: Pick<VariantStock, "i
  * A cart or order line's backorder as the shopper reads it: how many units and the days. Null for a line with none. The words
  * themselves are `m.backorder.line()` / `m.backorder.order()` (hand-written, flagged for review).
  */
-export function backorderNote(quantity: number, stock: Pick<VariantStock, "inStock" | "stockPolicy" | "backorderDays">): { units: number; days: number } | null {
+export function backorderNote(
+  quantity: number,
+  stock: Pick<VariantStock, "inStock" | "stockPolicy" | "backorderDays"> & { preorderUntil?: string | null },
+): { units: number; days: number; until?: string } | null {
+  // A pre-order (D396): every unit waits for the release date, whatever is on the shelf.
+  if (stock.preorderUntil && stock.stockPolicy === "continue" && stock.backorderDays !== null) {
+    const q = Math.floor(quantity);
+    return q > 0 ? { units: q, days: stock.backorderDays, until: stock.preorderUntil } : null;
+  }
   const units = backorderOf(quantity, stock);
   if (units === 0 || stock.backorderDays === null) return null;
   return { units, days: stock.backorderDays };

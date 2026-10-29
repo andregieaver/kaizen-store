@@ -22,7 +22,7 @@ export const isAgentChannel = (channel: FeedChannel): channel is AgentFeedChanne
 /** The file each channel is written as. */
 export const FEED_EXTENSION: Record<FeedChannel, "xml" | "csv"> = { google: "xml", meta: "csv", tiktok: "csv", pinterest: "csv", openai: "csv" };
 
-export type FeedAvailability = "in_stock" | "out_of_stock" | "backorder";
+export type FeedAvailability = "in_stock" | "out_of_stock" | "backorder" | "preorder";
 
 export type FeedItem = {
   /** The variant's SKU, else its id. */
@@ -40,6 +40,8 @@ export type FeedItem = {
   referenceMinor: number | null;
   currency: string;
   availability: FeedAvailability;
+  /** A pre-order's release date (`YYYY-MM-DD`, D396); null otherwise. */
+  availableFrom?: string | null;
   gtin: string | null;
   brand: string;
   /** The variant's content and the base the market compares per (D160), or null. */
@@ -127,7 +129,7 @@ export function cut(text: string, max: number): string {
 const xml = (text: string) =>
   text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
 
-const GOOGLE_AVAILABILITY: Record<FeedAvailability, string> = { in_stock: "in_stock", out_of_stock: "out_of_stock", backorder: "backorder" };
+const GOOGLE_AVAILABILITY: Record<FeedAvailability, string> = { in_stock: "in_stock", out_of_stock: "out_of_stock", backorder: "backorder", preorder: "preorder" };
 
 /** Google Merchant Center's RSS 2.0 feed with the `g:` namespace. */
 export function googleFeed(items: readonly FeedItem[], channel: { title: string; link: string }): string {
@@ -146,6 +148,8 @@ export function googleFeed(items: readonly FeedItem[], channel: { title: string;
       tag("image_link", item.images[0]),
       ...item.images.slice(1, 11).map((image) => tag("additional_image_link", image)),
       tag("availability", GOOGLE_AVAILABILITY[item.availability]),
+      // Google asks a pre-order's date (D396): the release date, at the start of that day in UTC.
+      item.availability === "preorder" && item.availableFrom ? tag("availability_date", `${item.availableFrom}T00:00:00Z`) : "",
       tag("price", price),
       tag("sale_price", sale),
       tag("brand", item.brand),
@@ -175,9 +179,9 @@ export function googleFeed(items: readonly FeedItem[], channel: { title: string;
 type CsvChannel = Exclude<FeedChannel, "google" | "openai">;
 
 const CSV_AVAILABILITY: Record<CsvChannel, Record<FeedAvailability, string>> = {
-  meta: { in_stock: "in stock", out_of_stock: "out of stock", backorder: "available for order" },
-  tiktok: { in_stock: "in stock", out_of_stock: "out of stock", backorder: "available for order" },
-  pinterest: { in_stock: "in stock", out_of_stock: "out of stock", backorder: "preorder" },
+  meta: { in_stock: "in stock", out_of_stock: "out of stock", backorder: "available for order", preorder: "preorder" },
+  tiktok: { in_stock: "in stock", out_of_stock: "out of stock", backorder: "available for order", preorder: "available for order" },
+  pinterest: { in_stock: "in stock", out_of_stock: "out of stock", backorder: "preorder", preorder: "preorder" },
 };
 
 /** The CSV columns of each catalogue, in its own names. */

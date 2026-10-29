@@ -342,7 +342,9 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                         )}
                         {line.backorder && (
                           <span className="block text-xs font-medium">
-                            {countWords(line.backorder.days, w.backordered, { units: line.backorder.units, qty: line.quantity })}
+                            {line.backorder.until
+                              ? fillWords(w.preordered, { units: line.backorder.units, qty: line.quantity, date: line.backorder.until })
+                              : countWords(line.backorder.days, w.backordered, { units: line.backorder.units, qty: line.quantity })}
                           </span>
                         )}
                         {line.components.length > 0 && <span className="block text-xs text-muted">{fillWords(w.includes, { items: componentsText(line.components) })}</span>}

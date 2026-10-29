@@ -196,6 +196,24 @@ describe("filters", () => {
     expect(sorted(await walk("ship=no_shipping"))).toEqual(ids(live.filter((s) => !s.copied && s.kind === "digital")));
   });
 
+  it("keeps a pre-order waiting for its release date out of To send and under Pre-orders waiting (D396)", async () => {
+    const target = live.find((s) => toSend(s) && s.kind === "to_send" && s.i % 10 !== 2)!;
+    await db().execute(sql`update commerce.order_lines set preorder_until = current_date + 30 where store_id = ${storeId}::uuid and order_id = ${target.id}::uuid`);
+    try {
+      expect(await walk("ship=preorder")).toEqual([target.id]);
+      // The row says from when, for the owner to list them by date.
+      const [row] = (await listOrdersPage(storeId, params("ship=preorder"), ctx, 50)).rows;
+      expect(row.preorderFrom).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(sorted(await walk("ship=to_send"))).toEqual(ids(live.filter((s) => toSend(s) && s.id !== target.id)));
+      // Once the date has come, it is to send again and no longer a pre-order waiting.
+      await db().execute(sql`update commerce.order_lines set preorder_until = current_date where store_id = ${storeId}::uuid and order_id = ${target.id}::uuid`);
+      expect(await walk("ship=preorder")).toEqual([]);
+      expect(sorted(await walk("ship=to_send"))).toEqual(ids(live.filter((s) => toSend(s))));
+    } finally {
+      await db().execute(sql`update commerce.order_lines set preorder_until = null where store_id = ${storeId}::uuid and order_id = ${target.id}::uuid`);
+    }
+  });
+
   it("filters by the order's own status", async () => {
     expect(sorted(await walk("status=fulfilled"))).toEqual(ids(live.filter((s) => !s.copied && s.status === "fulfilled")));
     // Cancelled orders that were paid; the ones never paid are unfinished checkouts.

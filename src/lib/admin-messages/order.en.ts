@@ -44,6 +44,7 @@ export const orderEn = {
     customPrice: "Custom price {price} (list price {list})",
     heldUntilPaid: "held until paid",
     notBooked: "not booked",
+    preordered: "Pre-order: {units} of {qty}, to ship from {date}",
     backordered: { one: "Backordered: {units} of {qty}, to ship within {n} day", many: "Backordered: {units} of {qty}, to ship within {n} days" },
     takenFrom: "Taken from {places}",
     includes: "Includes {items}",

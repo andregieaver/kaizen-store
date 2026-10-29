@@ -604,9 +604,16 @@ export async function runChat(
  * What the chat may say of one variant's stock, from the store's own read: whether it can be bought, and for a variant that keeps
  * selling at zero, that it is on backorder and the days the store states. The words never come from the model.
  */
-function stockFacts(stock: VariantStock | undefined): { available: boolean; availability: "in stock" | "on backorder" | "sold out"; backorderShipsWithinDays?: number } {
+function stockFacts(stock: VariantStock | undefined): {
+  available: boolean;
+  availability: "in stock" | "on backorder" | "on pre-order" | "sold out";
+  backorderShipsWithinDays?: number;
+  expectedToShipFrom?: string;
+} {
   if (!stock || stock === UNLIMITED) return { available: stock === UNLIMITED, availability: stock === UNLIMITED ? "in stock" : "sold out" };
   const kind = availabilityOf(stock);
+  // A pre-order (D396): bought now, sent from its release date, which the store states.
+  if (kind === "preorder" && stock.preorderUntil) return { available: true, availability: "on pre-order", expectedToShipFrom: stock.preorderUntil };
   if (kind === "in_stock") return { available: true, availability: "in stock" };
   if (kind === "backorder" && stock.backorderDays !== null) return { available: true, availability: "on backorder", backorderShipsWithinDays: stock.backorderDays };
   return { available: false, availability: "sold out" };

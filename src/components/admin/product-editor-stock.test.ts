@@ -104,6 +104,32 @@ describe("the product editor's stock rules (wave 3, D172)", () => {
     expect(html).toContain("This store has several stock locations");
   });
 
+  it("offers one field per active location under the variant, the total kept as their sum (D397)", () => {
+    const locations = [
+      { id: "11111111-1111-4111-8111-111111111111", name: "Oslo" },
+      { id: "22222222-2222-4222-8222-222222222222", name: "Bergen" },
+    ];
+    const stocked = product({
+      variants: [
+        {
+          ...product().variants[0],
+          stock: 7,
+          locationStock: [
+            { locationId: locations[0].id, onHand: 5, loaded: 5 },
+            { locationId: locations[1].id, onHand: 2, loaded: 2 },
+          ],
+        },
+      ],
+    });
+    const html = flat(render(stocked, contextWith({ activeLocations: 2, locations })));
+    expect(html).toContain("Stock at each location for");
+    expect(html).toContain("· Oslo 5 · Bergen 2");
+    expect(html).toMatch(/<input[^>]*aria-label="Stock for [^"]* at Oslo"[^>]*value="5"|<input[^>]*value="5"[^>]*aria-label="Stock for [^"]* at Oslo"/);
+    expect(html).toMatch(/aria-label="Stock for [^"]* at Bergen"/);
+    // A bundle's stock is its components', so it has none to place.
+    expect(flat(render(product({ ...stocked, kind: "bundle" } as never), contextWith({ activeLocations: 2, locations })))).not.toContain("Stock at each location for");
+  });
+
   it("asks for the delivery time of a variant that keeps selling, and says what it means when shipping and transport may pass 30 days", () => {
     const keeps = render(product({ variants: [shipped({ stockPolicy: "continue", backorderDays: 7 }) as never] }));
     expect(keeps).toContain("keeps selling, ships within 7 days");

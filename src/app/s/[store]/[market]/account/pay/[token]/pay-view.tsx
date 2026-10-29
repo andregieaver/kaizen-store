@@ -119,7 +119,7 @@ export function PayView({
                 {/* The price per kg, litre or metre of what was priced (D160). A custom item has none. */}
                 <LineUnitPrice shownMinor={line.unitPriceMinor} measure={line.measure} currency={order.currency} locale={market.locale} m={m} />
                 {/* Units on backorder and the days the store states (D172). */}
-                <BackorderOrderLine backorder={line.backorder} quantity={line.quantity} m={m} />
+                <BackorderOrderLine backorder={line.backorder} quantity={line.quantity} m={m} locale={market.locale} />
               </span>
               <span className="whitespace-nowrap">{money(line.unitPriceMinor * line.quantity)}</span>
             </li>

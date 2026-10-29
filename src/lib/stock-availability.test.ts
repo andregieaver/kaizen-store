@@ -23,6 +23,7 @@ describe("a row of the availability view", () => {
       stockPolicy: "deny",
       backorderDays: null,
       canBuy: true,
+      preorderUntil: null,
     });
     expect(stockOf({ in_stock: BigInt(0), raw_available: -3, stock_policy: "continue", backorder_days: "7" })).toEqual({
       inStock: 0,
@@ -30,6 +31,7 @@ describe("a row of the availability view", () => {
       stockPolicy: "continue",
       backorderDays: 7,
       canBuy: true,
+      preorderUntil: null,
     });
     // Anything but `continue` is `deny`, and a deny variant carries no days.
     expect(stockOf({ in_stock: 0, raw_available: 0, stock_policy: "whatever", backorder_days: 5 })).toMatchObject({ stockPolicy: "deny", backorderDays: null, canBuy: false });
@@ -56,7 +58,14 @@ describe("availability", () => {
     expect(schemaAvailability(deny(1))).toBe("https://schema.org/InStock");
     expect(schemaAvailability(keep(0))).toBe("https://schema.org/BackOrder");
     expect(schemaAvailability(deny(0))).toBe("https://schema.org/OutOfStock");
-    expect(Object.values(SCHEMA_AVAILABILITY)).toHaveLength(3);
+    expect(schemaAvailability({ ...keep(4), preorderUntil: "2099-06-01" })).toBe("https://schema.org/PreOrder");
+    expect(Object.values(SCHEMA_AVAILABILITY)).toHaveLength(4);
+  });
+
+  it("is a pre-order while a release date is set, even with units on the shelf (D396)", () => {
+    expect(availabilityOf({ ...keep(0), preorderUntil: "2099-06-01" })).toBe("preorder");
+    expect(availabilityOf({ ...keep(2), preorderUntil: "2099-06-01" })).toBe("preorder");
+    expect(availabilityOf({ ...keep(2), preorderUntil: null })).toBe("in_stock");
   });
 });
 

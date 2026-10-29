@@ -211,7 +211,7 @@ function itemsList(view: CheckoutView, market: Market) {
               m={m}
             />
             {/* What is on backorder (D172): the order's own figure, provisional until it is paid. */}
-            <BackorderLine backorder={line.backorder} m={m} />
+            <BackorderLine backorder={line.backorder} m={m} locale={market.locale} />
           </span>
           <span className="whitespace-nowrap">
             {line.gift ? (

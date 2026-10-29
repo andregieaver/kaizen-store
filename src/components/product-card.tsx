@@ -8,6 +8,7 @@ import { audienceClass } from "@/lib/b2b";
 import { noticesFor, type CampaignNotices } from "@/lib/campaign-notices";
 import type { Messages } from "@/lib/i18n";
 import { gridSizes } from "@/lib/picture-sizes";
+import { releaseDate } from "@/lib/stock-words";
 import type { Market } from "@/lib/markets";
 import type { ProductSummary } from "@/server/catalog";
 
@@ -76,6 +77,11 @@ export function ProductCard({
         )}
       </h2>
       <Price price={product.price} locale={market.locale} m={m} from={product.priceVaries} />
+      {product.preorderUntil && (
+        <p className="text-sm text-muted" data-preorder>
+          {m.preorder.page(releaseDate(product.preorderUntil, market.locale))}
+        </p>
+      )}
     </li>
   );
 }

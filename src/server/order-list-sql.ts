@@ -57,6 +57,11 @@ export const PHYSICAL_SQL = sql`exists (select 1 from commerce.order_lines l whe
 /** Paid, or a card held to be charged when it is sent (D289): what waits for staff to send or hand over. */
 const SENDABLE = sql`(o.status = 'paid' or (o.status = 'authorized' and o.capture_mode = 'when_sent'))`;
 const BACKORDERED = sql`exists (select 1 from commerce.order_lines l where l.store_id = o.store_id and l.order_id = o.id and l.backorder_quantity > 0 and commerce.line_to_send(l.id) > 0)`;
+/** A line on pre-order whose release date has not come (D396), with units still to send. */
+const PREORDER_WAITING = sql`exists (select 1 from commerce.order_lines l where l.store_id = o.store_id and l.order_id = o.id and l.preorder_until > current_date and commerce.line_to_send(l.id) > 0)`;
+/** A physical line with units to send now: not a pre-order waiting for its release date. */
+const READY_TO_SEND = sql`exists (select 1 from commerce.order_lines l where l.store_id = o.store_id and l.order_id = o.id and l.delivery = 'physical'
+  and (l.preorder_until is null or l.preorder_until <= current_date) and commerce.line_to_send(l.id) > 0)`;
 /** An unfinished checkout: waiting for payment, or cancelled and never paid. Never copied history. */
 const UNFINISHED = sql`(o.copied_from is null and (o.status = 'pending_payment' or (o.status = 'cancelled' and not ${WAS_PAID})))`;
 
@@ -116,8 +121,11 @@ function payCondition(filter: OrderListParams["pay"][number]): SQL {
 function shipCondition(filter: OrderListParams["ship"][number]): SQL {
   switch (filter) {
     // Parcels only (D237): an order collected at the store's place or taken out by its own driver is handed over, never sent.
+    // An order whose only units still to send are pre-orders before their release date (D396) waits under Pre-orders, not here.
     case "to_send":
-      return sql`(${SENDABLE} and ${PHYSICAL_SQL} and o.delivery_method = 'ship')`;
+      return sql`(${SENDABLE} and ${PHYSICAL_SQL} and o.delivery_method = 'ship' and (not ${PREORDER_WAITING} or ${READY_TO_SEND}))`;
+    case "preorder":
+      return sql`(${SENDABLE} and ${PREORDER_WAITING})`;
     // D237: paid pickup orders not collected yet (*To hand over*), and paid local deliveries not delivered yet (*Local deliveries*).
     case "pickup":
       return sql`(o.delivery_method = 'pickup' and ${SENDABLE})`;

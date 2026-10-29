@@ -243,7 +243,7 @@ export const policyWords = (policy: StockPolicy, days: number | null): string =>
 export const BACKORDER_LONG_HINT =
   "The 30 days run until the goods are delivered, not until they are shipped. If shipping and transport can take it past 30 days, the customer agrees to a longer time by ordering. Say it clearly.";
 
-export type PolicyInput = { stockPolicy: StockPolicy; backorderDays: number | null; lowStockThreshold?: number | null };
+export type PolicyInput = { stockPolicy: StockPolicy; backorderDays: number | null; lowStockThreshold?: number | null; preorderUntil?: string | null };
 
 /**
  * The same three rules the database holds for a variant (`product_variants` checks): goods only for `continue`, the days required
@@ -257,6 +257,8 @@ export function policyProblem(input: PolicyInput, delivery: "physical" | "digita
     if (days < BACKORDER_DAYS_MIN || days > BACKORDER_DAYS_MAX) return `The delivery time is ${BACKORDER_DAYS_MIN} to ${BACKORDER_DAYS_MAX} days.`;
   } else if (input.backorderDays !== null) {
     return "A delivery time belongs only to a variant that keeps selling at zero stock.";
+  } else if (input.preorderUntil) {
+    return "A pre-order's release date belongs only to a variant that keeps selling at zero stock.";
   }
   const level = input.lowStockThreshold ?? null;
   if (level !== null) {
@@ -270,6 +272,8 @@ export function policyProblem(input: PolicyInput, delivery: "physical" | "digita
 export const stockPolicyFields = {
   stockPolicy: z.enum(STOCK_POLICIES).default("deny"),
   backorderDays: z.number().int().min(BACKORDER_DAYS_MIN).max(BACKORDER_DAYS_MAX).nullable().default(null),
+  /** A pre-order's release date, `YYYY-MM-DD` (D396): only with `continue`; null for none. */
+  preorderUntil: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Write the release date as a date.").nullable().default(null),
   lowStockThreshold: z.number().int().min(0).max(THRESHOLD_MAX).nullable().default(null),
 };
 

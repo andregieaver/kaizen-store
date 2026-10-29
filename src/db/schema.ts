@@ -2782,6 +2782,11 @@ export const productVariants = commerce.table(
     stockPolicy: text("stock_policy").notNull().default("deny"),
     /** The days within which a backordered unit is expected to ship (1 to 90): required with `continue`, null otherwise. */
     backorderDays: integer("backorder_days"),
+    /**
+     * Pre-order (wave 12 unit B, D396): the release date of a variant that keeps selling (`continue`) before it exists; while it is in the future every
+     * unit sold is a pre-order, said with the date everywhere a shopper sees the variant and kept on the order line. Null: no pre-order.
+     */
+    preorderUntil: date("preorder_until", { mode: "string" }),
     /** The owner's warning level (0 to 1,000,000): on hand over the active locations at or below it is one email per crossing. Null: no warning. */
     lowStockThreshold: integer("low_stock_threshold"),
     /**
@@ -4641,6 +4646,8 @@ export const orderLines = commerce.table(
     backorderQuantity: integer("backorder_quantity").notNull().default(0),
     /** The delivery time stated for the backorder, in days, frozen from the variant when the order was placed. */
     backorderDays: integer("backorder_days"),
+    /** A pre-order's release date (D396), frozen from the variant when the order was placed while it was in the future; null otherwise. */
+    preorderUntil: date("preorder_until", { mode: "string" }),
     /**
      * A draft order's line (D173): the market's list price as shown when the line was added, kept for information only (the price charged is
      * `unit_price_minor`, a custom price is not a discount and no total reads this); null for every other line.

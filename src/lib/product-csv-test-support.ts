@@ -72,7 +72,7 @@ export function blank(ctx: ProductCsvContext): ProductInput {
     media: [],
     options: [],
     variants: [
-      { id: null, options: {}, sku: "", gtin: null, measure: null, prices: {}, cost: "", stock: 0, stockPolicy: "deny", backorderDays: null, lowStockThreshold: null, minQuantity: 1, maxQuantity: null, quantityStep: 1, active: true, weightGrams: null, hsCode: null, originCountry: null, delivery: "physical", rentalPeriod: "day", image: null },
+      { id: null, options: {}, sku: "", gtin: null, measure: null, prices: {}, cost: "", stock: 0, stockPolicy: "deny", backorderDays: null, preorderUntil: null, lowStockThreshold: null, minQuantity: 1, maxQuantity: null, quantityStep: 1, active: true, weightGrams: null, hsCode: null, originCountry: null, delivery: "physical", rentalPeriod: "day", image: null },
     ],
     delivery: "physical",
     files: [],

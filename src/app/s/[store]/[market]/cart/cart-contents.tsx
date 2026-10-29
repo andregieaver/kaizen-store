@@ -434,7 +434,7 @@ function linesList({ store, market, m, view }: Draw, drawer: boolean) {
               ruleWords(line.rule, m.quantityRule) && <p className="text-sm text-muted">{ruleWords(line.rule, m.quantityRule)}</p>
             )}
             {/* Units beyond the stock of a variant that keeps selling (D172): how many, and the days the store states. Not a problem, so not an alert. */}
-            <BackorderLine backorder={line.backorder} m={m} />
+            <BackorderLine backorder={line.backorder} m={m} locale={market.locale} />
 
             <div className="flex flex-wrap items-end gap-2">
               {/* An appointment is one place at one time (D65), a stay its nights (D67): nothing to count. */}

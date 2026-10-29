@@ -461,6 +461,15 @@ export const en = {
    * states (Directive 2011/83/EU Art. 6(1)(g) and 18), never a date and never "in stock". Hand-written; needs human legal review before real use.
    */
   // legal: needs review
+  /**
+   * Pre-orders (D396): a variant sold before its release date, said with the date wherever the shopper sees it (the delivery date the shopper is
+   * told before ordering, Directive 2011/83/EU Art. 6(1)(g)). Hand-written in nb, sv, da and en; needs human legal review before real use.
+   */
+  preorder: {
+    page: (date: string) => `Pre-order: expected to ship from ${date}`,
+    line: (n: number, date: string) => `${n} on pre-order: expected to ship from ${date}`,
+    order: (n: number, quantity: number, date: string) => `${n} of ${quantity} on pre-order: expected to ship from ${date}`,
+  },
   backorder: {
     page: (days: number) => `On backorder: expected to ship within ${days} ${days === 1 ? "day" : "days"}`,
     line: (n: number, days: number) => `${n} on backorder: expected to ship within ${days} ${days === 1 ? "day" : "days"}`,

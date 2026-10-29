@@ -980,7 +980,7 @@ async function VariantsWithStock({
               options: variant.options,
               image: variant.image ? { url: variant.image.thumbnailUrl, alt: "" } : null,
               // How many at a time (D323): said after the stock, as Add to cart puts in the minimum and then whole steps.
-              note: [digital ? m.instantDownload : stockNote(availability.get(variant.id), m), ruleWords(ruleOfVariant(variant), m.quantityRule)].filter(Boolean).join(" · "),
+              note: [digital ? m.instantDownload : stockNote(availability.get(variant.id), m, market.locale), ruleWords(ruleOfVariant(variant), m.quantityRule)].filter(Boolean).join(" · "),
               available: available(variant),
               capped: cappedNote(variant),
               priceIndex: priced.index(offered(variant)),
@@ -1118,6 +1118,8 @@ export async function ProductJsonLd({
         // A variant that keeps selling at zero is `BackOrder`, never `InStock` (D172); a download or a booking is always in stock.
         availability: (variantId) => {
           const stock = availability.get(variantId);
+          // Before its release date a variant is `PreOrder` (D396), whatever is on the shelf.
+          if (!bookable && stock?.preorderUntil) return "preorder";
           return bookable || (stock && stock.inStock > 0) ? "in_stock" : stock && canOffer(stock) ? "backorder" : "out_of_stock";
         },
         shipping,

@@ -164,7 +164,7 @@ export type OrderView = {
      * order waits for payment, settled once it is paid (only ever down for a live hold: an earlier checkout's claim is kept whatever the order of payment). Null for a line with none. The words are
      * `m.backorder.order()`; it never says "in stock" and never promises a date.
      */
-    backorder: { units: number; days: number } | null;
+    backorder: { units: number; days: number; until?: string } | null;
     /** The part of its total paid at the venue (D66). */
     venueMinor: number;
     /** An appointment's time (D65), who with, and where it stands, shown in the store's time zone. */
@@ -333,8 +333,10 @@ const toOrder = (row: Row, lines: Row[]): OrderView => ({
     custom: Boolean(line.custom),
     measure: snapshotMeasureFromColumns(line.measure_amount, line.measure_unit, line.measure_base),
     venueMinor: Number(line.venue_minor ?? 0),
-    backorder:
-      Number(line.backorder_quantity ?? 0) > 0 && line.backorder_days !== null && line.backorder_days !== undefined
+    backorder: line.preorder_until
+      ? // A pre-order (D396): every unit of the line waits for the release date kept on it.
+        { units: Number(line.quantity), days: Number(line.backorder_days ?? 0), until: String(line.preorder_until).slice(0, 10) }
+      : Number(line.backorder_quantity ?? 0) > 0 && line.backorder_days !== null && line.backorder_days !== undefined
         ? { units: Number(line.backorder_quantity), days: Number(line.backorder_days) }
         : null,
     booking: line.starts_at
@@ -385,7 +387,7 @@ export async function getOrder(storeId: string, orderId: string): Promise<OrderV
     `),
     db().execute<Row>(sql`
       select ol.id, ol.variant_id, ol.title, ol.sku, ol.quantity, ol.unit_price_minor, ol.total_minor, ol.delivery, ol.tax_rate, ol.tax_minor, ol.gift, ol.custom, ol.vat_relief_minor,
-        ol.measure_amount, ol.measure_unit, ol.measure_base, ol.backorder_quantity, ol.backorder_days,
+        ol.measure_amount, ol.measure_unit, ol.measure_base, ol.backorder_quantity, ol.backorder_days, ol.preorder_until::text as preorder_until,
         (select coalesce(m.thumbnail_url, m.url)
           from commerce.product_variants v
           join commerce.product_media m on m.product_id = v.product_id

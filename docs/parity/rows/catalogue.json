@@ -441,13 +441,13 @@
       "checkedOn": "2026-10-02"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": "missing"
+      "was": "partial"
     },
-    "gap": "Back in stock is built (D298, `src/server/stock-requests.ts`, `/api/stock-requests`, `src/components/back-in-stock.tsx`, `/account/stock/{token}`): a shopper asks on a sold-out variant, a typed address confirms by its link first and a verified customer waits at once, the answer never says whether an address was known, one email goes when `variant_availability` says it is back and the product is offered, and a request never subscribes anyone (held by `automations.int.test.ts` and `e2e/back-in-stock.spec.ts`). Selling at zero with stated days is row catalogue.sell-when-out-of-stock (D172). Missing: a pre-order mode (no release date, deposit or pay-later rule per variant; nothing says pre-order on cards, the product page, the cart or the order), no flag that keeps pre-order orders apart from shippable stock or lists them by expected date, and no `checkout-kinds.int.test.ts` scenario for one (verified: no such column, kind or route). Shopify itself offers pre-orders only through apps.",
-    "bucket": "A",
-    "wave": 3,
+    "gap": "Built (D396): a goods variant that keeps selling at zero may be on pre-order until a release date (`product_variants.preorder_until`, refused by the database without `stock_policy = 'continue'`, set in the product editor), paid in full at checkout (no deposit). While the date is in the future `variant_availability` gives it, so the card (`ProductCard`, content grids), the product page, structured data (`PreOrder`), feeds (`availability_date`), the chat, the cart, the checkout, the order and confirmation pages, My account and the confirmation email say so with the date (`m.preorder`, hand-written nb, sv, da, en, `HAND_WRITTEN_ONLY`), held by `e2e/preorder.spec.ts`. The order line keeps the date; *To send* leaves out an order whose only units to send wait for it, the Orders list filters them (`ship=preorder`, *Pre-orders waiting*) and badges each with its date (not sorted by it), held by `order-list.int.test.ts`; `cartSummary()` and `placeOrder()` agree in kroner and euro (`checkout-kinds.int.test.ts`). Back in stock is built (D298). Not built: a pre-order limit, a deposit (a second payment the order does not have), a product CSV column and an AI manager field for the date. Shopify itself offers pre-orders only through apps.",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "A variant can be a pre-order with a release date and optional deposit or pay-now rule; cards, product page, cart and the order say so (e2e).",
       "Pre-order orders are flagged, kept apart from shippable stock, and listed for the owner by expected date (integration test).",
@@ -459,17 +459,29 @@
         "src/server/stock-requests.ts",
         "src/server/automations.ts",
         "src/app/api/stock-requests/route.ts",
-        "src/components/back-in-stock.tsx"
+        "src/components/back-in-stock.tsx",
+        "src/lib/stock-availability.ts",
+        "src/lib/stock-words.ts",
+        "src/components/backorder-note.tsx",
+        "src/components/product-card.tsx",
+        "src/server/order-insert.ts",
+        "src/server/order-list-sql.ts",
+        "supabase/migrations/20261029154228_preorders_rules.sql"
       ],
       "tests": [
         "src/server/automations.int.test.ts",
-        "e2e/back-in-stock.spec.ts"
+        "e2e/back-in-stock.spec.ts",
+        "e2e/preorder.spec.ts",
+        "src/server/checkout-kinds.int.test.ts",
+        "src/server/order-list.int.test.ts",
+        "src/lib/stock-availability.test.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D172",
-      "D298"
+      "D298",
+      "D396"
     ],
     "history": [
       {
@@ -477,6 +489,12 @@
         "from": "missing",
         "to": "partial",
         "why": "Back in stock, the row's third criterion, is built (D298): src/server/stock-requests.ts (only writer of stock_requests), /api/stock-requests, src/components/back-in-stock.tsx and /account/stock/{token}, a typed address confirmed by its link first, one email when variant_availability says it is back; held by src/server/automations.int.test.ts and e2e/back-in-stock.spec.ts (integration tests run, passing). Pre-order mode itself is still absent (no column, kind or route), so Partial, not Full."
+      },
+      {
+        "on": "2026-10-29",
+        "from": "partial",
+        "to": "full",
+        "why": "Pre-order mode is built (D396): preorder_until on a variant that keeps selling, said with the date on cards, the product page, structured data, the cart and the order (e2e/preorder.spec.ts, run and passing), kept on the order line and kept out of To send with a Pre-orders waiting filter and a dated badge (order-list.int.test.ts), and two checkout-kinds scenarios in kroner and euro (run and passing). Paid in full: no deposit, which the criterion leaves optional."
       }
     ]
   },

@@ -61,6 +61,11 @@ not kept apart from what can be sent.
   pre-orders by date, and the shopper's withdrawal period counts from receipt as ever.
 - `cartSummary()` and `placeOrder()` treat it as goods; a scenario in `checkout-kinds.int.test.ts`, euro included.
 
+**As built (D396).** A pre-order is a variant that keeps selling at zero with a release date (`preorder_until`), so it reuses the backorder
+path end to end (the claim, `backorder_quantity`, restocks) and only the words, the dates and *To send* differ. Left for later: the limit
+(`preorder_limit`), a CSV column and the AI manager's field. Cards say it from the cached catalogue (the earliest date of the product's variants),
+so a card may say it for up to the cache's day past the date; the product page reads the stock per request. The line's date is kept as sold and is not frozen, so a later "move the release date" can change it on purpose.
+
 ### C. Stock per location in the product editor (D397)
 
 **What is missing.** With several locations, a variant's stock is edited only on the Inventory page or by file. The row's other gaps were
@@ -69,6 +74,10 @@ closed by D383 (transfers, nearest routing, locations kept out of online orders,
 **Design.** The product editor shows one stock field per active location when there is more than one, saved through `saveProduct()`'s
 stock path (`StockMode.loaded`, so a sale since the editor opened is not written back) with a movement per changed location; a test, and
 the row's gap re-read against its criteria.
+
+**As built (D397).** As designed, through the editor's own save (no `StockMode` is needed: each figure carries what was read beside it).
+A new variant opens where it was given stock. The total stays the sum of the locations' fields; the Inventory page and the file still edit
+the same levels.
 
 ### D. The storefront API's cart (D398)
 

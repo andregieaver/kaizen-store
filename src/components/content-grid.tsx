@@ -13,6 +13,7 @@ import { contentSides, frameStyle, gridImageShape, type ContentGridBlock, type S
 import { gridListStyle } from "@/lib/part-css";
 import { gridSizes } from "@/lib/picture-sizes";
 import { carouselAnywhere, valueAt } from "@/lib/responsive";
+import { releaseDate } from "@/lib/stock-words";
 
 import { Carousel } from "./carousel";
 import { Inline } from "./inline-text";
@@ -171,6 +172,7 @@ export function ContentGridView({
           {block.show.price && item.price && (
             <Price price={item.price.view} locale={data.locale} m={m} from={item.price.from} textRole="price" />
           )}
+          {block.show.price && item.preorderUntil && <p className="text-sm text-muted" data-preorder>{m.preorder.page(releaseDate(item.preorderUntil, data.locale))}</p>}
           {block.show.price && item.priceText && (
             // A custom item's price is the owner's own words (D155): plain text, no VAT label, no reference price, nothing to buy.
             <p className="font-medium" data-kz-text="price">

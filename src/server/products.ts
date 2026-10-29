@@ -88,6 +88,8 @@ export type EditorContext = {
    * to it; with several it is the total over them, read-only, and the editor sends the person to the Inventory page.
    */
   activeLocations: number;
+  /** The active locations by rank (D397), whose stock the editor shows one field each when there are several. */
+  locations: { id: string; name: string }[];
   /** The store's product categories and tags (D50). */
   terms: Term[];
   /**
@@ -116,7 +118,7 @@ export type EditorContext = {
 };
 
 export async function getEditorContext(store: Store): Promise<EditorContext> {
-  const [operators, [location], [counted], terms, rates, staff, places, hosts, layouts, vatCategories] = await Promise.all([
+  const [operators, [location], activeRows, terms, rates, staff, places, hosts, layouts, vatCategories] = await Promise.all([
     db().execute<Row>(sql`
       select id, name, postal_address, electronic_address, country
       from commerce.economic_operators where store_id = ${store.id}::uuid
@@ -127,7 +129,7 @@ export async function getEditorContext(store: Store): Promise<EditorContext> {
       where store_id = ${store.id}::uuid and active order by priority, created_at, id limit 1
     `),
     db().execute<Row>(sql`
-      select count(*)::int as n from commerce.inventory_locations where store_id = ${store.id}::uuid and active
+      select id, name from commerce.inventory_locations where store_id = ${store.id}::uuid and active order by priority, created_at, id
     `),
     listTerms({ storeId: store.id, contentType: "product" }),
     ratesNow(),
@@ -170,7 +172,8 @@ export async function getEditorContext(store: Store): Promise<EditorContext> {
       country: String(row.country),
     })),
     locationName: location ? String(location.name) : null,
-    activeLocations: Number(counted?.n ?? 0),
+    activeLocations: activeRows.length,
+    locations: activeRows.map((row) => ({ id: String(row.id), name: String(row.name) })),
     appointmentsOn: featureOn(store, "appointments"),
     staysOn: featureOn(store, "bookings"),
     giftCardsOn: featureOn(store, "gift_cards"),
@@ -224,6 +227,7 @@ export function emptyProduct(context: EditorContext): ProductInput {
         stock: 0,
         stockPolicy: "deny",
         backorderDays: null,
+        preorderUntil: null,
         lowStockThreshold: null,
         minQuantity: 1,
         maxQuantity: null,
@@ -383,7 +387,7 @@ export async function getProductForEdit(
   const category = parseVatCategory(product.vat_category);
   const kind = PRODUCT_KINDS.find((k) => k === product.kind) ?? "goods";
 
-  const [translations, media, schemes, variants, prices, files, plans, termRows, [appointment], resources, seasons, bundle, breaks] = await Promise.all([
+  const [translations, media, schemes, variants, prices, files, plans, termRows, [appointment], resources, seasons, bundle, breaks, levels] = await Promise.all([
     db().execute<Row>(sql`
       select locale, title, description, safety_information, seo_title, seo_description, excerpt
       from commerce.product_translations where product_id = ${productId}::uuid
@@ -398,7 +402,7 @@ export async function getProductForEdit(
     db().execute<Row>(sql`
       select v.id, v.sku, v.gtin, v.options, v.active, v.weight_grams, v.hs_code, v.origin_country, v.delivery, v.rental_period,
              v.image_url, v.image_thumbnail_url, v.cost_minor, v.measure_amount, v.measure_unit, v.measure_base,
-             v.stock_policy, v.backorder_days, v.low_stock_threshold, v.min_quantity, v.max_quantity, v.quantity_step,
+             v.stock_policy, v.backorder_days, v.preorder_until::text as preorder_until, v.low_stock_threshold, v.min_quantity, v.max_quantity, v.quantity_step,
              -- The stock the editor shows: the total over the active locations (with one, that location), never below zero.
              -- What is owed on a backorder belongs to the Inventory page; the editor leaves a negative level as it is.
              greatest(coalesce((
@@ -456,6 +460,16 @@ export async function getProductForEdit(
       where b.store_id = ${store.id}::uuid and b.product_id = ${productId}::uuid
       order by v.sku nulls first, b.from_quantity
     `),
+    // With several active locations (D397): each variant's level at each, floored at zero as the editor shows a level (what is owed on a
+    // backorder stays the Inventory page's).
+    context.locations.length > 1
+      ? db().execute<Row>(sql`
+          select l.variant_id, l.location_id, greatest(l.on_hand, 0)::int as on_hand
+          from commerce.inventory_levels l
+          join commerce.product_variants v on v.store_id = l.store_id and v.id = l.variant_id
+          where l.store_id = ${store.id}::uuid and v.product_id = ${productId}::uuid
+        `)
+      : Promise.resolve([] as Row[]),
   ]);
 
   const byLocale = new Map(translations.map((t) => [String(t.locale), t]));
@@ -531,8 +545,18 @@ export async function getProductForEdit(
       derivedIn: prices.filter((p) => String(p.variant_id) === String(v.id) && p.derived === true).map((p) => String(p.market_code)),
       cost: v.cost_minor === null ? "" : formatPriceInput(Number(v.cost_minor), context.mainCurrency),
       stock: Number(v.stock),
+      ...(context.locations.length > 1 && v.delivery === "physical" && kind !== "bundle"
+        ? {
+            locationStock: context.locations.map((loc) => {
+              const at = levels.find((l) => String(l.variant_id) === String(v.id) && String(l.location_id) === loc.id);
+              const onHand = at ? Number(at.on_hand) : 0;
+              return { locationId: loc.id, onHand, loaded: onHand };
+            }),
+          }
+        : {}),
       stockPolicy: v.stock_policy === "continue" ? ("continue" as const) : ("deny" as const),
       backorderDays: v.backorder_days === null ? null : Number(v.backorder_days),
+      preorderUntil: v.preorder_until ? String(v.preorder_until).slice(0, 10) : null,
       lowStockThreshold: v.low_stock_threshold === null ? null : Number(v.low_stock_threshold),
       minQuantity: Number(v.min_quantity ?? 1),
       maxQuantity: v.max_quantity === null || v.max_quantity === undefined ? null : Number(v.max_quantity),
@@ -1226,13 +1250,20 @@ export type StockMode = {
   jobId?: string | null;
 };
 
-type StockWrite = { id: string; isNew: boolean; typed: number; base: number | undefined };
+type StockWrite = {
+  id: string;
+  isNew: boolean;
+  typed: number;
+  base: number | undefined;
+  /** With several active locations (D397): each location's figure as typed beside what the editor read. */
+  at?: readonly { locationId: string; onHand: number; loaded: number }[];
+};
 
 /**
  * Writes the stock a save carries (wave 3, D172, `docs/wave-3-inventory.md` 5.2). The editor's number is ONE location's: with exactly one
- * active location it is that location's `on_hand`, with several it is the total, shown read-only, and an existing variant's levels are
- * never written from it (a stale number in a saved form cannot overwrite a location; the Inventory page changes them). A NEW variant's
- * first number is an `opening` movement at the default location. A negative level (what is owed on a backorder) is left as it is unless a
+ * active location it is that location's `on_hand`, with several it is the total, and an existing variant's levels are never written from it;
+ * with several, each location's own figure (`at`, D397) is written where the person changed it from what the editor read. A NEW variant's
+ * first number is an `opening` movement at the default location, or at each location it was given. A negative level (what is owed on a backorder) is left as it is unless a
  * different number is typed. Every write is a movement with its reason, source and the member (`withStockContext()`).
  */
 async function writeStock(tx: Tx, storeId: string, writes: readonly StockWrite[], locationId: string, mode?: StockMode, actorId: string | null = null): Promise<void> {
@@ -1242,8 +1273,21 @@ async function writeStock(tx: Tx, storeId: string, writes: readonly StockWrite[]
   const source = mode?.source ?? "editor";
   const context = { source, accountId: mode?.accountId ?? actorId, jobId: mode?.jobId ?? null } as const;
   const ordered = [...writes].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  // With several active locations the editor sends each one's figure (D397): only the store's active locations are written to.
+  const active = single
+    ? new Set<string>()
+    : new Set(
+        (await tx.execute<Row>(sql`select id from commerce.inventory_locations where store_id = ${storeId}::uuid and active`)).map((row) => String(row.id)),
+      );
+  const spread = (w: StockWrite) => (single ? [] : (w.at ?? []).filter((a) => active.has(a.locationId)));
+  // A new variant typed per location opens at each location it was given stock at; one without opens at the default location as before.
+  const openingAt = ordered
+    .filter((w) => w.isNew)
+    .flatMap((w) => spread(w).filter((a) => a.onHand > 0).map((a) => ({ id: w.id, location_id: a.locationId, on_hand: a.onHand })))
+    .sort((a, b) => (a.id === b.id ? (a.location_id < b.location_id ? -1 : 1) : a.id < b.id ? -1 : 1));
+  const openedAt = new Set(openingAt.map((o) => o.id));
   // A few statements whatever the number of variants (wave 6 unit B, D320): each kind of write is one statement over a list.
-  const opening = ordered.filter((w) => w.isNew).map((w) => ({ id: w.id, on_hand: w.typed }));
+  const opening = ordered.filter((w) => w.isNew && !openedAt.has(w.id)).map((w) => ({ id: w.id, on_hand: spread(w).length > 0 ? 0 : w.typed }));
   const existing = ordered.filter((w) => !w.isNew);
   const made = new Set<string>();
   await withStockContext(tx, { reason: "opening", ...context }, async () => {
@@ -1256,12 +1300,21 @@ async function writeStock(tx: Tx, storeId: string, writes: readonly StockWrite[]
         on conflict (variant_id, location_id) do nothing
       `);
     }
+    if (openingAt.length > 0) {
+      await tx.execute(sql`
+        insert into commerce.inventory_levels (store_id, variant_id, location_id, on_hand)
+        select ${storeId}::uuid, r.id, r.location_id, r.on_hand
+        from jsonb_to_recordset(${JSON.stringify(openingAt)}::jsonb) as r(id uuid, location_id uuid, on_hand integer)
+        order by r.id, r.location_id
+        on conflict (variant_id, location_id) do nothing
+      `);
+    }
     // A variant that has no level anywhere gets one at the default location (as it always did); nothing else is made or overwritten for it.
     if (existing.length > 0) {
       const rows = await tx.execute<Row>(sql`
         insert into commerce.inventory_levels (store_id, variant_id, location_id, on_hand)
         select ${storeId}::uuid, r.id, ${locationId}::uuid, r.on_hand
-        from jsonb_to_recordset(${JSON.stringify(existing.map((w) => ({ id: w.id, on_hand: w.typed })))}::jsonb) as r(id uuid, on_hand integer)
+        from jsonb_to_recordset(${JSON.stringify(existing.map((w) => ({ id: w.id, on_hand: spread(w).length > 0 ? 0 : w.typed })))}::jsonb) as r(id uuid, on_hand integer)
         where not exists (select 1 from commerce.inventory_levels l where l.store_id = ${storeId}::uuid and l.variant_id = r.id)
         order by r.id
         on conflict (variant_id, location_id) do nothing
@@ -1270,7 +1323,31 @@ async function writeStock(tx: Tx, storeId: string, writes: readonly StockWrite[]
       for (const row of rows) made.add(String(row.variant_id));
     }
   });
-  if (!single) return;
+  if (!single) {
+    // Several locations (D397): a figure the person changed is written to its location as typed; one left as the editor read it is left
+    // alone, so a sale paid since the editor opened stays paid. Levels are locked in (variant, location) order, as every writer locks them.
+    const changed = existing
+      .flatMap((w) => spread(w).filter((a) => a.onHand !== a.loaded).map((a) => ({ id: w.id, location_id: a.locationId, on_hand: a.onHand })))
+      .sort((a, b) => (a.id === b.id ? (a.location_id < b.location_id ? -1 : 1) : a.id < b.id ? -1 : 1));
+    if (changed.length === 0) return;
+    await tx.execute(sql`
+      select 1 from commerce.inventory_levels l
+      join jsonb_to_recordset(${JSON.stringify(changed)}::jsonb) as r(id uuid, location_id uuid, on_hand integer) on l.variant_id = r.id and l.location_id = r.location_id
+      where l.store_id = ${storeId}::uuid
+      order by l.variant_id, l.location_id
+      for update of l
+    `);
+    await withStockContext(tx, { reason: "correction", ...context }, () =>
+      tx.execute(sql`
+        insert into commerce.inventory_levels (store_id, variant_id, location_id, on_hand)
+        select ${storeId}::uuid, r.id, r.location_id, r.on_hand
+        from jsonb_to_recordset(${JSON.stringify(changed)}::jsonb) as r(id uuid, location_id uuid, on_hand integer)
+        order by r.id, r.location_id
+        on conflict (variant_id, location_id) do update set on_hand = excluded.on_hand, updated_at = now()
+      `),
+    );
+    return;
+  }
   // One active location: the number is that location's. The levels are read and locked in variant order, as every writer locks them.
   const rest = existing.filter((w) => !made.has(w.id));
   if (rest.length === 0) return;
@@ -1324,6 +1401,7 @@ type VariantColumns = {
   measure_base: string | null;
   stock_policy: string;
   backorder_days: number | null;
+  preorder_until: string | null;
   low_stock_threshold: number | null;
   min_quantity: number;
   max_quantity: number | null;
@@ -1334,7 +1412,7 @@ type VariantColumns = {
 const VARIANT_RECORD = sql.raw(`r(
   n integer, id uuid, sku text, gtin text, options jsonb, active boolean, delivery commerce.delivery, rental_period text, weight_grams integer,
   hs_code text, origin_country text, image_url text, image_thumbnail_url text, cost_minor bigint, measure_amount numeric,
-  measure_unit text, measure_base text, stock_policy text, backorder_days integer, low_stock_threshold integer,
+  measure_unit text, measure_base text, stock_policy text, backorder_days integer, preorder_until date, low_stock_threshold integer,
   min_quantity integer, max_quantity integer, quantity_step integer
 )`);
 
@@ -1395,6 +1473,8 @@ async function saveVariants(
       measure_base: content?.base ?? null,
       stock_policy: keeps ? "continue" : "deny",
       backorder_days: keeps ? variant.backorderDays : null,
+      // A pre-order's release date (D396): only with keeps selling; the database checks it again.
+      preorder_until: keeps ? (variant.preorderUntil ?? null) : null,
       low_stock_threshold: physical ? variant.lowStockThreshold : null,
       // How many at a time (D323): goods and bundles keep theirs (`productProblems()` checked it), any other kind one at a time.
       ...(ruled
@@ -1412,7 +1492,7 @@ async function saveVariants(
         weight_grams = r.weight_grams, hs_code = r.hs_code, origin_country = r.origin_country,
         image_url = r.image_url, image_thumbnail_url = r.image_thumbnail_url, cost_minor = r.cost_minor,
         measure_amount = r.measure_amount, measure_unit = r.measure_unit, measure_base = r.measure_base,
-        stock_policy = r.stock_policy, backorder_days = r.backorder_days, low_stock_threshold = r.low_stock_threshold,
+        stock_policy = r.stock_policy, backorder_days = r.backorder_days, preorder_until = r.preorder_until, low_stock_threshold = r.low_stock_threshold,
         min_quantity = r.min_quantity, max_quantity = r.max_quantity, quantity_step = r.quantity_step
       from jsonb_to_recordset(${JSON.stringify(kept)}::jsonb) as ${VARIANT_RECORD}
       where v.id = r.id and v.store_id = ${storeId}::uuid and v.product_id = ${productId}::uuid
@@ -1427,11 +1507,11 @@ async function saveVariants(
       insert into commerce.product_variants (
         store_id, product_id, sku, gtin, options, active, delivery, rental_period, weight_grams, hs_code, origin_country,
         image_url, image_thumbnail_url, cost_minor, measure_amount, measure_unit, measure_base,
-        stock_policy, backorder_days, low_stock_threshold, min_quantity, max_quantity, quantity_step
+        stock_policy, backorder_days, preorder_until, low_stock_threshold, min_quantity, max_quantity, quantity_step
       )
       select ${storeId}::uuid, ${productId}::uuid, r.sku, r.gtin, r.options, r.active, r.delivery, r.rental_period, r.weight_grams, r.hs_code,
              r.origin_country, r.image_url, r.image_thumbnail_url, r.cost_minor, r.measure_amount, r.measure_unit, r.measure_base,
-             r.stock_policy, r.backorder_days, null::integer, r.min_quantity, r.max_quantity, r.quantity_step
+             r.stock_policy, r.backorder_days, r.preorder_until, null::integer, r.min_quantity, r.max_quantity, r.quantity_step
       from jsonb_to_recordset(${JSON.stringify(fresh)}::jsonb) as ${VARIANT_RECORD}
       order by r.n
       returning id, sku
@@ -1478,7 +1558,7 @@ async function saveVariants(
     // A bundle holds no stock of its own (D322): its components do.
     if (variant.delivery !== "physical" || input.kind === "bundle") return [];
     const c = columns[index];
-    return [{ id: idOf(c), isNew: c.id === null, typed: variant.stock, base: c.id !== null ? stockMode?.loaded.get(c.id) : undefined }];
+    return [{ id: idOf(c), isNew: c.id === null, typed: variant.stock, base: c.id !== null ? stockMode?.loaded.get(c.id) : undefined, at: variant.locationStock }];
   });
   await writeStock(tx, storeId, stockWrites, locationId, stockMode, actorId);
 

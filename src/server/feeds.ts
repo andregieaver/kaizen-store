@@ -56,6 +56,7 @@ export async function storeFeed(store: Store, market: Market): Promise<StoreFeed
       const options = Object.values(variant.options).filter(Boolean);
       const own = stock.get(variant.id);
       const availability: FeedAvailability = variant.delivery === "physical" && own ? availabilityOf(own) : "in_stock";
+      const availableFrom = variant.delivery === "physical" && own ? own.preorderUntil : null;
       const shipped = variant.delivery === "physical";
       items.push({
         id: variant.sku || variant.id,
@@ -68,6 +69,7 @@ export async function storeFeed(store: Store, market: Market): Promise<StoreFeed
         referenceMinor: variant.price.referenceMinor,
         currency: variant.price.currency,
         availability,
+        availableFrom,
         gtin: variant.gtin,
         brand: product.manufacturer?.name ?? store.name,
         measure: variant.measure,

@@ -10,6 +10,7 @@ const stock = (over: Partial<VariantStock> = {}): VariantStock => ({
   stockPolicy: "deny",
   backorderDays: null,
   canBuy: false,
+  preorderUntil: null,
   ...over,
 });
 

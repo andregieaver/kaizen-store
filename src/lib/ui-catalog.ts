@@ -112,6 +112,7 @@ export const HAND_WRITTEN_ONLY: readonly string[] = [
   "ui:chat.emailCard.",
   "ui:chat.thread.",
   "ui:backorder.",
+  "ui:preorder.",
   // Wave 5 unit A (D295): the marketing consent words, the confirmation email and the pages its links open, until the legal review clears them.
   "ui:news.",
   // Wave 5 unit D (D298): the back-in-stock request, its confirmation and the email when stock is back.

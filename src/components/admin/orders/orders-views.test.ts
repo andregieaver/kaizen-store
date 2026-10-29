@@ -42,6 +42,7 @@ const item = (over: Partial<OrderListItem> = {}): OrderListItem => ({
   name: "Kari Nordmann",
   items: 2,
   owed: 0,
+  preorderFrom: null,
   tags: [{ key: "vip", label: "VIP" }],
   pay: "paid",
   ship: "to_send",
@@ -160,6 +161,11 @@ describe("the orders list", () => {
     expect(text).toContain("Copied");
     expect(text).toContain("Personal data erased");
     expect(text).toContain("Erased");
+  });
+
+  it("badges an order whose units wait for a release date with the date, in place of waiting for stock (D396)", () => {
+    const { text } = draw({ rows: [item({ owed: 2, preorderFrom: "2099-06-01" })] });
+    expect(text).toMatch(/Pre-order, ships from (June 1, 2099|1 June 2099)/);
   });
 
   it("hides the columns that are not chosen and keeps the order number first", () => {

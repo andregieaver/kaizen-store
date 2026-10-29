@@ -154,7 +154,7 @@ async function AccountOrder({ params }: { params: Props["params"] }) {
                   locale={market.locale}
                   m={m}
                 />
-                <BackorderOrderLine backorder={line.backorder} quantity={line.quantity} m={m} />
+                <BackorderOrderLine backorder={line.backorder} quantity={line.quantity} m={m} locale={market.locale} />
                 {reviewable.has(line.id) && (
                   <Link href={`${base}/account/reviews/${line.id}`} className="block text-sm underline underline-offset-2">
                     {m.reviews.write}

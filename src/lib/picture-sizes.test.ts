@@ -50,7 +50,7 @@ describe("the markup", () => {
   const card = (image: ProductSummary["image"]) =>
     renderToString(
       createElement(ProductCard, {
-        product: { id: "p1", handle: "lampe", title: "Lampe", audience: "all", image, priceVaries: false, price: priceView(4990, "NOK", null, WITH_VAT) },
+        product: { id: "p1", handle: "lampe", title: "Lampe", audience: "all", image, priceVaries: false, price: priceView(4990, "NOK", null, WITH_VAT), preorderUntil: null },
         href: "/s/demo/no/p/lampe",
         market,
         m: t("nb"),

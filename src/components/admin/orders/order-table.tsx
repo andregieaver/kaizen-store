@@ -14,6 +14,7 @@ import { BULK_MAX, BULK_PRINT_MAX } from "@/lib/order-limits";
 import type { OrderColumn } from "@/lib/order-list";
 import type { DeliveryCell, OrderListItem } from "@/lib/order-list-row";
 import { ORDER_STATUS_LABELS } from "@/lib/order-status";
+import { releaseDate } from "@/lib/stock-words";
 
 /** A row with the words the server already worked out (the date in the store's own time zone, the total in its currency), so the page draws the same on the server and in the browser. */
 export type OrderTableRow = OrderListItem & { placedText: string; totalText: string };
@@ -322,7 +323,7 @@ export function OrderTable({
           </thead>
           <tbody>
             {rows.map((row) => (
-              <OrderRow key={row.id} row={row} slug={slug} columns={columns} canWrite={canWrite} ticked={ticked.has(row.id) || allMatching} onToggle={() => toggle(row.id)} words={t} statusWords={statusWords} />
+              <OrderRow key={row.id} row={row} slug={slug} columns={columns} canWrite={canWrite} ticked={ticked.has(row.id) || allMatching} onToggle={() => toggle(row.id)} words={t} statusWords={statusWords} locale={locale} />
             ))}
           </tbody>
         </table>
@@ -340,6 +341,7 @@ function OrderRow({
   onToggle,
   words: t,
   statusWords,
+  locale,
 }: {
   row: OrderTableRow;
   slug: string;
@@ -349,6 +351,7 @@ function OrderRow({
   onToggle: () => void;
   words: OrdersMessages["table"];
   statusWords: Record<keyof typeof ORDER_STATUS_LABELS, string>;
+  locale: string;
 }) {
   const g = t.badges;
   const sources = t.sources;
@@ -372,7 +375,11 @@ function OrderRow({
         {row.gift && <span className={badge}>{g.gift}</span>}
         {row.source === "draft" && <span className={badge}>{row.draftNumber ? fillWords(g.staffMadeNumber, { number: row.draftNumber }) : g.staffMade}</span>}
         {row.source === "exchange" && <span className={badge}>{g.exchange}</span>}
-        {row.owed > 0 && <span className={badge}>{g.waiting}</span>}
+        {row.preorderFrom ? (
+          <span className={badge}>{fillWords(g.preorderFrom, { date: releaseDate(row.preorderFrom, locale) })}</span>
+        ) : (
+          row.owed > 0 && <span className={badge}>{g.waiting}</span>
+        )}
         {row.editPending && <span className={badge}>{g.editPending}</span>}
         {row.edited && <span className={badge}>{g.edited}</span>}
         {row.copied && <span className={badge}>{g.copied}</span>}

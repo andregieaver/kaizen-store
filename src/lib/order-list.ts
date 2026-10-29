@@ -32,7 +32,7 @@ export type PayFilter = (typeof PAY_FILTERS)[number];
  * `delivery_mismatch` (the priced postal code differs from the address); `to_send` holds parcels only.
  */
 /** D238: `held`, orders on a fulfilment hold (`orders.held_at`, *On hold*); a held order is still listed in *To send*, with its chip. */
-export const SHIP_FILTERS = ["to_send", "sent", "waiting", "no_shipping", "partly_sent", "edit_pending", "edit_refund_owed", "pickup", "local", "delivery_mismatch", "held"] as const;
+export const SHIP_FILTERS = ["to_send", "sent", "waiting", "no_shipping", "partly_sent", "edit_pending", "edit_refund_owed", "preorder", "pickup", "local", "delivery_mismatch", "held"] as const;
 export type ShipFilter = (typeof SHIP_FILTERS)[number];
 
 /** The order's own status (`orders.status`); an unfinished checkout is `pending_payment` and is the `unpaid` payment filter's, not a status. */

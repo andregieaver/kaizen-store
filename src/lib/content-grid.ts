@@ -25,6 +25,8 @@ export type GridItem = {
   price: { view: PriceView; from: boolean } | null;
   /** Products only (B2B): who it is for, when the store sells to both. */
   audience?: ProductAudience;
+  /** Products only (D396): the earliest release date of its variants on pre-order, shown under the price. */
+  preorderUntil?: string;
   /** Articles only (D57): when it was first published, shown on its tile. */
   date?: string;
   /** The custom fields the grid's tiles show under the title (D120), as label and words. */

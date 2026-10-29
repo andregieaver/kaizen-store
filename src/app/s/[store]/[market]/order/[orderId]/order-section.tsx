@@ -329,7 +329,7 @@ function linesList({ market, order, m, money }: OrderView) {
               m={m}
             />
             {/* Units on backorder and the days stated when it was sold (D172): never a date, never "in stock". */}
-            <BackorderOrderLine backorder={line.backorder} quantity={line.quantity} m={m} />
+            <BackorderOrderLine backorder={line.backorder} quantity={line.quantity} m={m} locale={market.locale} />
           </span>
           <span className="whitespace-nowrap">
             {line.gift ? (

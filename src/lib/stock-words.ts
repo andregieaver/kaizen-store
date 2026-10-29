@@ -20,9 +20,20 @@ export function canOffer(stock: VariantStock | undefined): boolean {
   return stock.stockPolicy === "continue" && stock.backorderDays !== null;
 }
 
+/** A pre-order's release date as a shopper reads it (D396): the date alone, long, in the page's language. */
+export function releaseDate(date: string, locale: string): string {
+  const at = new Date(`${date}T12:00:00Z`);
+  return Number.isNaN(at.getTime()) ? date : at.toLocaleDateString(locale, { dateStyle: "long", timeZone: "UTC" });
+}
+
 /** The line under a variant in the picker and the buy part. */
-export function stockNote(stock: VariantStock | undefined, m: Pick<Messages, "inStock" | "lowStock" | "outOfStock" | "backorder">): string {
+export function stockNote(
+  stock: VariantStock | undefined,
+  m: Pick<Messages, "inStock" | "lowStock" | "outOfStock" | "backorder" | "preorder">,
+  locale = "en-GB",
+): string {
   if (!stock || !canOffer(stock)) return m.outOfStock;
+  if (stock.preorderUntil) return m.preorder.page(releaseDate(stock.preorderUntil, locale));
   if (availabilityOf(stock) === "backorder") return m.backorder.page(stock.backorderDays as number);
   const level = stockLevel(stock.inStock);
   return level === "low" ? m.lowStock(stock.inStock) : m.inStock;

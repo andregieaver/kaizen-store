@@ -284,7 +284,7 @@ export async function insertOrderLine(tx: Db, storeId: string, orderId: string, 
       campaign_discount_minor, campaign_id, campaign_parts, gift, bonus_discount_minor, referral_discount_minor,
       unit_cost_minor, vat_relief_minor, measure_amount, measure_unit, measure_base, backorder_quantity, backorder_days,
       list_price_minor, custom, staff_discount_minor, order_edit_id,
-      gift_card_to, gift_card_to_name, gift_card_from, gift_card_message, gift_card_send_on, price_list_id
+      gift_card_to, gift_card_to_name, gift_card_from, gift_card_message, gift_card_send_on, price_list_id, preorder_until
     ) values (
       ${storeId}::uuid, ${orderId}::uuid, ${line.variantId}::uuid, ${line.sku},
       ${line.title}, ${line.quantity}, ${line.unitPriceMinor}, ${line.discountMinor}, ${line.memberDiscountMinor ?? 0},
@@ -301,7 +301,10 @@ export async function insertOrderLine(tx: Db, storeId: string, orderId: string, 
       ${line.backorderQuantity ?? 0}, ${line.backorderDays ?? null},
       ${line.listPriceMinor ?? null}, ${line.custom ?? false}, ${line.staffDiscountMinor ?? 0}, ${line.orderEditId ?? null}::uuid,
       ${line.giftCard?.to ?? null}, ${line.giftCard?.toName ?? null}, ${line.giftCard?.from ?? null}, ${line.giftCard?.message ?? null},
-      ${line.giftCard?.sendOn ?? null}::date, ${line.priceListId ?? null}::uuid
+      ${line.giftCard?.sendOn ?? null}::date, ${line.priceListId ?? null}::uuid,
+      -- A pre-order's release date (D396), frozen from the variant while it is in the future, so the order says it whatever the variant does later.
+      (select v.preorder_until from commerce.product_variants v
+        where v.store_id = ${storeId}::uuid and v.id = ${line.variantId}::uuid and v.stock_policy = 'continue' and v.preorder_until > current_date)
     )
     returning id
   `);

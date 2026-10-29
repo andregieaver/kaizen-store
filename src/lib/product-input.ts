@@ -3,7 +3,7 @@ import { z } from "zod";
 import { DEFAULT_CANCEL_HOURS, DEFAULT_DEPOSIT_PERCENT, PAYMENT_MODES } from "./pay-later";
 import { PRODUCT_AUDIENCES } from "./b2b";
 import { RENTAL_PERIODS } from "./booking-ranges";
-import { policyProblem, stockPolicyFields } from "./inventory";
+import { LOCATIONS_MAX, policyProblem, stockPolicyFields } from "./inventory";
 import { PRICE_BREAKS_MAX, priceBreakProblems } from "./price-breaks";
 import { MAX_ORDER_QUANTITY, ruleProblem } from "./quantity-rules";
 import { minorUnitDigits } from "./money";
@@ -328,6 +328,15 @@ export const productInput = z.object({
         cost: z.string().trim().max(20).default(""),
         stock: z.number().int().min(0, "Stock cannot be negative.").max(1_000_000),
         /**
+         * With several active locations (D397): the stock at each, as typed (`onHand`) beside what the editor read (`loaded`), so a level the
+         * person did not change is left as it is, whatever was sold since. Absent with one location, where `stock` is that location's.
+         */
+        locationStock: z
+          .array(z.object({ locationId: z.uuid(), onHand: z.number().int().min(0, "Stock cannot be negative.").max(1_000_000), loaded: z.number().int().min(0).max(1_000_000) }))
+          .max(LOCATIONS_MAX)
+          .refine((list) => new Set(list.map((l) => l.locationId)).size === list.length, { message: "A location is listed twice." })
+          .optional(),
+        /**
          * What happens at zero stock (wave 3, D172): `deny` stops selling, `continue` keeps selling on backorder with a stated delivery time
          * (`backorderDays`, 1 to 90, required with it). `lowStockThreshold` is the owner's warning level (goods only). `policyProblem()` holds the rules.
          */
@@ -574,7 +583,7 @@ export function productProblems(input: ProductInput, context: PublishContext): s
   // Backorder and the low-stock level (wave 3, D172): the same rules the database holds (`product_variants` checks).
   for (const variant of input.variants) {
     const problem = policyProblem(
-      { stockPolicy: variant.stockPolicy, backorderDays: variant.backorderDays, lowStockThreshold: variant.lowStockThreshold },
+      { stockPolicy: variant.stockPolicy, backorderDays: variant.backorderDays, lowStockThreshold: variant.lowStockThreshold, preorderUntil: variant.preorderUntil },
       variant.delivery,
     );
     if (problem) problems.push(`${variantLabel(variant.options)}: ${problem}`);

@@ -46,6 +46,11 @@ export type ProductSummary = {
   priceVaries: boolean;
   /** Who it is for (B2B); always `all` unless the store sells to both. */
   audience: ProductAudience;
+  /**
+   * The earliest release date of its variants on pre-order (D396), null for none. Read with the cached card, so it may stay up to the
+   * cache's day past the date; the card says the date with it, and the product page reads the stock per request.
+   */
+  preorderUntil: string | null;
 };
 
 export type EconomicOperator = {
@@ -153,6 +158,9 @@ const CHEAPEST_MEASURE = sql`
         (array_agg(v.measure_unit order by cp.amount_minor, v.sku))[1] as measure_unit,
         (array_agg(v.measure_base order by cp.amount_minor, v.sku))[1] as measure_base`;
 
+/** The earliest release date of the variants priced in the market that are on pre-order (D396), read in the same lateral as the price. */
+const EARLIEST_PREORDER = sql`min(v.preorder_until) filter (where v.stock_policy = 'continue' and v.preorder_until > current_date) as preorder_until`;
+
 /** A row's measure as the market shows it: the base follows the market's country, never its language or currency (D109). */
 const shownMeasure = (row: Row, market: Pick<Market, "code">): ShownMeasure | null =>
   shownMeasureFromColumns(row.measure_amount, row.measure_unit, row.measure_base, market.code);
@@ -181,7 +189,7 @@ export async function listProducts(storeId: string, market: Market): Promise<Pro
       pr.min_amount,
       pr.max_amount,
       pr.currency,
-      pr.prior_30d, pr.measure_amount, pr.measure_unit, pr.measure_base,
+      pr.prior_30d, pr.measure_amount, pr.measure_unit, pr.measure_base, pr.preorder_until::text as preorder_until,
       case when p.subscription_only then (
         select max(sp.discount_percent) from commerce.selling_plans sp where sp.product_id = p.id and sp.active
       ) end as subscriber_discount,
@@ -206,7 +214,8 @@ export async function listProducts(storeId: string, market: Market): Promise<Pro
         max(cp.amount_minor) as max_amount,
         min(cp.currency) as currency,
         (array_agg(cp.prior_30d_minor order by cp.amount_minor, v.sku))[1] as prior_30d,
-        ${CHEAPEST_MEASURE}
+        ${CHEAPEST_MEASURE},
+        ${EARLIEST_PREORDER}
       from commerce.current_prices cp
       join commerce.product_variants v on v.id = cp.variant_id
       where v.product_id = p.id and v.active and cp.market_code = ${marketCode}
@@ -231,6 +240,7 @@ export async function listProducts(storeId: string, market: Market): Promise<Pro
           : priceView(planPrice(shown(market, num(row.min_amount)), discount), market.currency, null, vat, shownMeasure(row, market)),
       priceVaries: discount !== null || num(row.min_amount) !== num(row.max_amount),
       audience: productAudience(row),
+      preorderUntil: row.preorder_until ? str(row.preorder_until) : null,
     };
   });
 }
@@ -418,7 +428,7 @@ export async function variantStockOf(
 ): Promise<Map<string, VariantStock>> {
   if (variantIds.length === 0) return new Map();
   const rows = await reader.execute<Row>(sql`
-    select va.variant_id, va.delivery, va.in_stock, va.raw_available, va.stock_policy, va.backorder_days, va.can_buy
+    select va.variant_id, va.delivery, va.in_stock, va.raw_available, va.stock_policy, va.backorder_days, va.can_buy, va.preorder_until::text as preorder_until
     from commerce.variant_availability va
     where va.store_id = ${storeId}::uuid and va.variant_id in (${sql.join(
       variantIds.map((id) => sql`${id}::uuid`),
@@ -435,6 +445,7 @@ export async function variantStockOf(
             stock_policy: str(r.stock_policy),
             backorder_days: r.backorder_days === null ? null : num(r.backorder_days),
             can_buy: Boolean(r.can_buy),
+            preorder_until: r.preorder_until === null || r.preorder_until === undefined ? null : str(r.preorder_until),
           })
         : UNLIMITED,
     ]),
@@ -504,7 +515,7 @@ export async function listGridProducts(
       pr.min_amount,
       pr.max_amount,
       pr.currency,
-      pr.prior_30d, pr.measure_amount, pr.measure_unit, pr.measure_base,
+      pr.prior_30d, pr.measure_amount, pr.measure_unit, pr.measure_base, pr.preorder_until::text as preorder_until,
       case when p.subscription_only then (
         select max(sp.discount_percent) from commerce.selling_plans sp where sp.product_id = p.id and sp.active
       ) end as subscriber_discount,
@@ -529,7 +540,8 @@ export async function listGridProducts(
         max(cp.amount_minor) as max_amount,
         min(cp.currency) as currency,
         (array_agg(cp.prior_30d_minor order by cp.amount_minor, v.sku))[1] as prior_30d,
-        ${CHEAPEST_MEASURE}
+        ${CHEAPEST_MEASURE},
+        ${EARLIEST_PREORDER}
       from commerce.current_prices cp
       join commerce.product_variants v on v.id = cp.variant_id
       where v.product_id = p.id and v.active and cp.market_code = ${marketCode}
@@ -559,6 +571,7 @@ export async function listGridProducts(
           : priceView(planPrice(shown(market, num(row.min_amount)), discount), market.currency, null, vat, shownMeasure(row, market)),
       priceVaries: discount !== null || num(row.min_amount) !== num(row.max_amount),
       audience: productAudience(row),
+      preorderUntil: row.preorder_until ? str(row.preorder_until) : null,
     };
   });
 }

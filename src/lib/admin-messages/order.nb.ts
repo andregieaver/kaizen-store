@@ -40,6 +40,7 @@ export const orderNb: OrderMessages = {
     customPrice: "Egen pris {price} (listepris {list})",
     heldUntilPaid: "holdt av til betalt",
     notBooked: "ikke booket",
+    preordered: "Forhåndsbestilt: {units} av {qty}, sendes fra {date}",
     backordered: { one: "På restordre: {units} av {qty}, sendes innen {n} dag", many: "På restordre: {units} av {qty}, sendes innen {n} dager" },
     takenFrom: "Tatt fra {places}",
     includes: "Inneholder {items}",

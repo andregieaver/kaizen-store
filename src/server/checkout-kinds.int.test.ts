@@ -459,7 +459,7 @@ type Scenario = {
   /** A carrier's service chosen at checkout (D135), instead of the flat rate: a pickup point, or home delivery. */
   delivery?: "pickup" | "home";
   /** A product that keeps selling past zero (wave 3, D172): its units beyond the stock are backordered, and the order says so without changing a price. */
-  backorder?: { sku: string; stock: number; quantity: number; days: number };
+  backorder?: { sku: string; stock: number; quantity: number; days: number; until?: string };
   /** A gift message on the cart (wave 3, D173): the store has gift messages on, the buyer ticked it and wrote the words; they reach the order and change no money. */
   gift?: { to: string; from: string; message: string };
   /** Gift cards on the cart (D300 F3), of these amounts in the currency shown: they pay part of it, and Stripe is asked only for the rest. */
@@ -484,8 +484,8 @@ async function issueCard(amountMinor: number, currency: string): Promise<string>
 }
 
 /** Puts a variant at a level and lets it keep selling past zero for `days`, as the owner's Inventory page does. */
-async function shortOf(sku: string, stock: number, days: number) {
-  await db().execute(sql`update commerce.product_variants set stock_policy = 'continue', backorder_days = ${days} where store_id = ${storeId}::uuid and id = ${variant[sku]}::uuid`);
+async function shortOf(sku: string, stock: number, days: number, until: string | null = null) {
+  await db().execute(sql`update commerce.product_variants set stock_policy = 'continue', backorder_days = ${days}, preorder_until = ${until}::date where store_id = ${storeId}::uuid and id = ${variant[sku]}::uuid`);
   await db().execute(sql`update commerce.inventory_levels set on_hand = ${stock} where store_id = ${storeId}::uuid and variant_id = ${variant[sku]}::uuid`);
 }
 
@@ -900,7 +900,30 @@ const backorderScenarios: Scenario[] = [
     backorder: { sku: "DEMO-MUG-WHITE", stock: 0, quantity: 2, days: 14 },
     bookings: 0,
   },
+  // Pre-orders (D396): every unit waits for the release date, said on the cart and the order, whatever is on the shelf; the money is the same.
+  {
+    name: "goods on pre-order, with shipping",
+    fill: async () => {
+      await shortOf("DEMO-MUG-WHITE", 0, 7, "2099-06-01");
+      await add("DEMO-MUG-WHITE", 2);
+    },
+    backorder: { sku: "DEMO-MUG-WHITE", stock: 0, quantity: 2, days: 7, until: "2099-06-01" },
+    bookings: 0,
+  },
+  {
+    name: "goods on pre-order with some on the shelf, shown in euro",
+    fill: async () => {
+      await shortOf("DEMO-MUG-WHITE", 1, 7, "2099-06-01");
+      await add("DEMO-MUG-WHITE", 3);
+    },
+    euro: true,
+    backorder: { sku: "DEMO-MUG-WHITE", stock: 1, quantity: 3, days: 7, until: "2099-06-01" },
+    bookings: 0,
+  },
 ];
+
+/** What a backorder scenario's line says: the units beyond the shelf, or for a pre-order every unit and its release date. */
+const expectedBackorder = (w: NonNullable<Scenario["backorder"]>) => (w.until ? { units: w.quantity, days: w.days, until: w.until } : { units: w.quantity - w.stock, days: w.days });
 
 /** A gift message (wave 3, D173): the words are the buyer's, reach the order, the confirmation and the slip, and change no amount, in kroner and in euro. */
 const giftScenarios: Scenario[] = [
@@ -1154,9 +1177,10 @@ describe("checkout for every kind of product", () => {
       expect(line.quantity).toBe(wanted.quantity);
       expect(line.unitPriceMinor).toBe(cartLine.unitPriceMinor!);
       expect(line.totalMinor).toBe(cartLine.unitPriceMinor! * wanted.quantity);
-      expect(line.backorder).toEqual({ units: wanted.quantity - wanted.stock, days: wanted.days });
-      // The cart does not call the line out of stock and does not cap it at the shelf.
+      expect(line.backorder).toEqual(expectedBackorder(wanted));
+      // The cart does not call the line out of stock and does not cap it at the shelf, and says a pre-order's date.
       expect(cartLine.status).toBe("ok");
+      if (wanted.until) expect(cartLine.backorder).toEqual({ units: wanted.quantity, days: wanted.days, until: wanted.until });
     }
     // The free products are lines of the order, at no cost, and they are what the cart showed.
     expect(order?.lines.filter((l) => l.gift).map((l) => [l.variantId, l.quantity, l.totalMinor])).toEqual(summary.gifts.map((g) => [g.variantId, g.quantity, 0]));
@@ -1206,9 +1230,9 @@ describe("checkout for every kind of product", () => {
       const wanted = scenario.backorder;
       const [level] = await db().execute<Row>(sql`select sum(on_hand)::int as on_hand from commerce.inventory_levels where store_id = ${storeId}::uuid and variant_id = ${variant[wanted.sku]}::uuid`);
       expect(Number(level.on_hand)).toBe(wanted.stock - wanted.quantity);
-      expect(paid?.lines.find((l) => l.sku === wanted.sku)?.backorder).toEqual({ units: wanted.quantity - wanted.stock, days: wanted.days });
+      expect(paid?.lines.find((l) => l.sku === wanted.sku)?.backorder).toEqual(expectedBackorder(wanted));
       // Put the shelf back for the scenarios after it.
-      await db().execute(sql`update commerce.product_variants set stock_policy = 'deny', backorder_days = null where store_id = ${storeId}::uuid and id = ${variant[wanted.sku]}::uuid`);
+      await db().execute(sql`update commerce.product_variants set stock_policy = 'deny', backorder_days = null, preorder_until = null where store_id = ${storeId}::uuid and id = ${variant[wanted.sku]}::uuid`);
       await db().execute(sql`update commerce.inventory_levels set on_hand = 500 where store_id = ${storeId}::uuid and variant_id = ${variant[wanted.sku]}::uuid`);
     }
     // Paid: the cards' holds are spent with the order.

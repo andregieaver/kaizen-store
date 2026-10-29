@@ -1038,6 +1038,7 @@ const emptyVariant = (options: Record<string, string>, delivery: Delivery): Vari
   stock: 0,
   stockPolicy: "deny",
   backorderDays: null,
+  preorderUntil: null,
   lowStockThreshold: null,
   minQuantity: 1,
   maxQuantity: null,
@@ -1358,6 +1359,7 @@ function VariantsSection({
                   showPeriod={product.kind === "rental"}
                   showStock={!allDigital}
                   stockHref={context.activeLocations > 1 ? `/admin/${storeSlug}/inventory?q=${encodeURIComponent(variant.sku)}` : null}
+                  locations={context.activeLocations > 1 && product.kind !== "bundle" ? (context.locations ?? []) : null}
                   content={product.kind === "goods" ? contentContext : null}
                   pictures={product.media}
                   upload={upload}
@@ -1614,6 +1616,7 @@ function VariantRow({
   showPeriod = false,
   showStock,
   stockHref,
+  locations = null,
   content,
   pictures,
   upload,
@@ -1644,6 +1647,8 @@ function VariantRow({
   showStock: boolean;
   /** With several active stock locations the number is the total and read-only (wave 3, D172): the link goes to the Inventory page for this SKU. */
   stockHref: string | null;
+  /** The active locations when there are several (D397): the variant's stock at each is typed in its details; null otherwise. */
+  locations?: readonly { id: string; name: string }[] | null;
   onChange: (change: Partial<VariantInput>) => void;
 }) {
   const w = useAdminText("product");
@@ -1757,6 +1762,7 @@ function VariantRow({
       </tr>
       <tr className="border-b border-line">
         <td colSpan={columns} className="pb-3">
+          {!digital && locations && locations.length > 1 && <LocationStock name={name} variant={variant} locations={locations} cell={cell} onChange={onChange} />}
           {!digital && (
             <details className="mb-2">
               <summary className="cursor-pointer text-xs text-muted">
@@ -1951,6 +1957,58 @@ function QuantityRules({
 }
 
 /**
+ * A variant's stock at each active location (D397), when the store has several: one field each, the total beside the variant kept as their sum.
+ * Each figure goes with what the editor read (`loaded`), so the save writes only the ones the person changed and a sale since stays paid.
+ */
+function LocationStock({
+  name,
+  variant,
+  locations,
+  cell,
+  onChange,
+}: {
+  name: string;
+  variant: VariantInput;
+  locations: readonly { id: string; name: string }[];
+  cell: string;
+  onChange: (change: Partial<VariantInput>) => void;
+}) {
+  const r = useAdminText("product").row;
+  const at = (id: string) => variant.locationStock?.find((a) => a.locationId === id);
+  const set = (id: string, value: number) => {
+    const list = locations.map((loc) => {
+      const was = at(loc.id);
+      return { locationId: loc.id, onHand: loc.id === id ? value : (was?.onHand ?? 0), loaded: was?.loaded ?? 0 };
+    });
+    onChange({ locationStock: list, stock: list.reduce((sum, a) => sum + a.onHand, 0) });
+  };
+  return (
+    <details className="mb-2" data-location-stock>
+      <summary className="cursor-pointer text-xs text-muted">
+        {fillWords(r.stockAtLocations, { name })}
+        {locations.map((loc) => ` · ${loc.name} ${at(loc.id)?.onHand ?? 0}`).join("")}
+      </summary>
+      <div className="mt-2 grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        {locations.map((loc) => (
+          <label key={loc.id} className="flex flex-col gap-1 text-xs font-medium">
+            {loc.name}
+            <input
+              type="number"
+              min={0}
+              inputMode="numeric"
+              value={at(loc.id)?.onHand ?? 0}
+              onChange={(e) => set(loc.id, Math.max(0, Math.floor(Number(e.target.value) || 0)))}
+              aria-label={fillWords(r.stockAtFor, { name, location: loc.name })}
+              className={cell}
+            />
+          </label>
+        ))}
+      </div>
+    </details>
+  );
+}
+
+/**
  * What happens when a variant is sold out and when to warn (wave 3, D172, `docs/wave-3-inventory.md` 2.2): keep selling it on backorder with a stated
  * delivery time, and the stock level at or below which the owners get an email. The days are required with the setting and shoppers see them on the
  * product page, in the cart and in the order; `policyProblem()` holds the same rules on the server and in the database.
@@ -1966,7 +2024,7 @@ function StockRules({ name, variant, cell, onChange }: { name: string; variant: 
           <input
             type="checkbox"
             checked={keeps}
-            onChange={(e) => onChange(e.target.checked ? { stockPolicy: "continue", backorderDays: variant.backorderDays ?? 7 } : { stockPolicy: "deny", backorderDays: null })}
+            onChange={(e) => onChange(e.target.checked ? { stockPolicy: "continue", backorderDays: variant.backorderDays ?? 7 } : { stockPolicy: "deny", backorderDays: null, preorderUntil: null })}
             className="mt-0.5 size-4"
           />
           <span>
@@ -1991,6 +2049,18 @@ function StockRules({ name, variant, cell, onChange }: { name: string; variant: 
               {fillWords(w.daysRange, { min: BACKORDER_DAYS_MIN, max: BACKORDER_DAYS_MAX })}
               {backorderMayPassAgreed(variant.backorderDays) ? ` ${w.longHint}` : ""}
             </span>
+          </label>
+        )}
+        {keeps && (
+          <label className="flex flex-col gap-1 font-medium">
+            {w.preorderUntil}
+            <input
+              type="date"
+              value={variant.preorderUntil ?? ""}
+              onChange={(e) => onChange({ preorderUntil: e.target.value === "" ? null : e.target.value })}
+              className={cell}
+            />
+            <span className="font-normal text-muted">{w.preorderHint}</span>
           </label>
         )}
         <label className="flex flex-col gap-1 font-medium">
