@@ -38,7 +38,7 @@ const cart = async (store: string, consent: boolean) =>
   );
 
 /** An order from a cart, paid with a captured payment unless said otherwise. */
-async function order(store: string, cartId: string, n: string, o: { paid?: boolean; testMode?: boolean } = {}): Promise<string> {
+async function order(store: string, cartId: string, n: string, o: { paid?: boolean; testMode?: boolean; account?: string } = {}): Promise<string> {
   const [row] = await db().execute<Row>(sql`
     insert into commerce.orders (store_id, number, market_code, currency, locale, cart_id, email, status, subtotal_minor, shipping_minor, discount_minor, tax_minor, total_minor,
       billing_address, shipping_address, copied_from)
@@ -53,8 +53,8 @@ async function order(store: string, cartId: string, n: string, o: { paid?: boole
   `);
   if (o.paid !== false) {
     await db().execute(sql`
-      insert into commerce.payments (store_id, order_id, provider, provider_reference, amount_minor, kaizen_fee_minor, currency, status, test_mode)
-      values (${store}::uuid, ${id}::uuid, 'stripe', ${`cs_${run}_${n}`}, 19900, 0, 'NOK', 'captured', ${o.testMode ?? false})
+      insert into commerce.payments (store_id, order_id, provider, provider_reference, provider_account, amount_minor, kaizen_fee_minor, currency, status, test_mode)
+      values (${store}::uuid, ${id}::uuid, ${o.testMode ? "venue" : "stripe"}, ${`cs_${run}_${n}`}, ${o.account ?? null}, 19900, 0, 'NOK', 'captured', ${o.testMode ?? false})
     `);
   }
   return id;
@@ -77,6 +77,7 @@ afterAll(async () => {
     await db().execute(sql`delete from commerce.ad_conversions where store_id = ${id}::uuid`);
     await db().execute(sql`delete from commerce.ad_connections where store_id = ${id}::uuid`);
   }
+  await db().execute(sql`delete from commerce.stripe_accounts where account_id = ${`acct_ads_${run}`}`);
   await closeDb();
 });
 
@@ -123,6 +124,13 @@ describe("ad conversions (D303 I2)", () => {
     expect(await conversions(plain)).toHaveLength(0);
     // Test mode: a checkout started, but no purchase.
     expect((await conversions(testMode)).map((r) => r.event)).toEqual(["begin_checkout", "begin_checkout"]);
+    // A Stripe payment's own flag is always false: its mode is its account's, a test account here (found in production, 29 October 2026).
+    await db().execute(sql`insert into commerce.stripe_accounts (store_id, mode, account_id, card_payments, requirements_due) values (${storeId}::uuid, 'test', ${`acct_ads_${run}`}, 'active', false)`);
+    const stripeCart = await cart(storeId, true);
+    await recordAdSignals(storeId, [stripeCart], true, { fbp: "fb.1.1760000000000.4" });
+    const onTestAccount = await order(storeId, stripeCart, "4", { account: `acct_ads_${run}` });
+    await queueAdConversions();
+    expect((await conversions(onTestAccount)).map((r) => r.event)).toEqual(["begin_checkout", "begin_checkout"]);
   });
 
   it("tries a failure again, then keeps it as failed with the platform's answer", async () => {

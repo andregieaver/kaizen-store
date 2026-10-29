@@ -11,6 +11,7 @@ import { storeSiteUrl } from "@/lib/paths";
 import { majorAmount } from "@/lib/shop-events";
 
 import { liveConnections } from "./ad-connections";
+import { testPayment } from "./payment-mode-sql";
 
 /**
  * Server-side conversion events (wave 5 unit I2, D303, `docs/wave-5-marketing.md` 12.3). A cart keeps the shopper's marketing consent and the
@@ -48,7 +49,7 @@ const ELIGIBLE = sql`(o.ad_consent_at is not null and o.source = 'checkout' and 
 
 /** A purchase: a captured payment that is not Stripe's test mode. */
 const PURCHASED = sql`(exists (select 1 from commerce.payments p where p.store_id = o.store_id and p.order_id = o.id and p.status = 'captured')
-  and not exists (select 1 from commerce.payments p where p.store_id = o.store_id and p.order_id = o.id and p.test_mode))`;
+  and not exists (select 1 from commerce.payments p where p.store_id = o.store_id and p.order_id = o.id and ${testPayment("p")}))`;
 
 /** Queues each eligible order's events for every connection that is on; a row once made is never made again. */
 export async function queueAdConversions(): Promise<number> {
