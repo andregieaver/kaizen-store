@@ -51,7 +51,8 @@ export function AdminMain({
   return (
     <div className={`mx-auto flex w-full flex-1 gap-10 ${pad} ${wide ? "" : "max-w-7xl"}`}>
       {sidebar}
-      <main id="admin-main" tabIndex={-1} className={`min-w-0 flex-1 ${y}`}>
+      {/* A page's sections (its header, cards, notes) are spaced here, so none touches another however the page groups them. */}
+      <main id="admin-main" tabIndex={-1} className={`flex min-w-0 flex-1 flex-col gap-8 ${y}`}>
         {children}
       </main>
     </div>

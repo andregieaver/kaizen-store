@@ -136,9 +136,9 @@
   --text-eyebrow--font-weight: 500;
   --radius-frame: 28px;
   --radius-card: 20px;
-  --radius-panel: 16px;
+  --radius-panel: 6px;
   --radius-pill: 9999px;
-  --radius-tile: 12px;
+  --radius-tile: 99px;
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
 }

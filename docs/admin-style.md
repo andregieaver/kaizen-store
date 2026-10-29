@@ -308,9 +308,9 @@ Numbers in rows and tiles are `tabular-nums`. Never 600 or 700.
 |---|---|---|
 | `--radius-frame` | 28 px | The app's outer block (when the window is larger than the content) |
 | `--radius-card` | 20 px | Cards and KPI tiles |
-| `--radius-panel` | 16 px | A panel inside a card (the insight), a highlighted row |
+| `--radius-panel` | 6 px | A panel inside a card (the insight), a highlighted row |
 | `--radius-pill` | 9999 px | Buttons, chips, the tab bar and its tabs, the account pill |
-| `--radius-tile` | 12 px | The rail's tiles and the logo |
+| `--radius-tile` | 99 px (round ends) | The rail's tiles and the logo |
 | `--control-h` | 44 px (header), 36 px (in a card), 32 px (dense) | Buttons, the tab bar, fields |
 | `--icon-btn` | 40 px | Round icon buttons |
 | `--gap` | 16 px | Between cards, both ways |
