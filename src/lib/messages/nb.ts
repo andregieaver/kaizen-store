@@ -1470,6 +1470,7 @@ export const nb: Messages = {
     tooFar: "Så langt fram tas det ikke imot bestillinger ennå.",
     free: "ledig",
     full: "opptatt",
+    past: "passert",
     clear: "Velg på nytt",
     times: (checkIn: string, checkOut: string, stay: boolean) =>
       stay ? `Innsjekk fra ${checkIn}, utsjekk innen ${checkOut}.` : `Hentes fra ${checkIn}, leveres innen ${checkOut}.`,

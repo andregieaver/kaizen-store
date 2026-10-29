@@ -31,6 +31,8 @@ export type RangePickerLabels = AddToCartLabels & {
   taken: string;
   free: string;
   full: string;
+  /** A day before today, which no one can choose (said apart from a booked one, for screen readers). */
+  past: string;
   clear: string;
   loading: string;
   option: string;
@@ -291,7 +293,7 @@ export function RangePicker({
                 aria-pressed={chosen}
                 disabled={loading || !selectable(d)}
                 onClick={() => choose(d.date)}
-                aria-label={`${d.label}, ${d.open ? labels.free : labels.full}`}
+                aria-label={`${d.label}, ${d.date < calendar.today ? labels.past : d.open ? labels.free : labels.full}`}
                 className={`min-h-11 min-w-0 rounded-md border text-sm tabular-nums disabled:opacity-30 aria-pressed:bg-accent aria-pressed:text-accent-foreground ${
                   inRange(d.date) && !chosen ? "border-accent bg-accent/20" : "border-border"
                 } ${d.open ? "" : "line-through"}`}

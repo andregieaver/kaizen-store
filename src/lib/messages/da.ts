@@ -1464,6 +1464,7 @@ export const da: Messages = {
     tooFar: "Så langt frem tages der ikke imod bookinger endnu.",
     free: "ledig",
     full: "optaget",
+    past: "passeret",
     clear: "Vælg igen",
     times: (checkIn: string, checkOut: string, stay: boolean) =>
       stay ? `Indtjekning fra ${checkIn}, udtjekning senest ${checkOut}.` : `Afhentes fra ${checkIn}, afleveres senest ${checkOut}.`,

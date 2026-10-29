@@ -1466,6 +1466,7 @@ export const sv: Messages = {
     tooFar: "Så långt fram tas inga bokningar emot ännu.",
     free: "ledig",
     full: "upptagen",
+    past: "passerat",
     clear: "Välj igen",
     times: (checkIn: string, checkOut: string, stay: boolean) =>
       stay ? `Incheckning från ${checkIn}, utcheckning senast ${checkOut}.` : `Hämtas från ${checkIn}, lämnas senast ${checkOut}.`,

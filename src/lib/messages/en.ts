@@ -1492,6 +1492,7 @@ export const en = {
     tooFar: "Bookings are not taken that far ahead yet.",
     free: "free",
     full: "taken",
+    past: "past",
     clear: "Start again",
     times: (checkIn: string, checkOut: string, stay: boolean) =>
       stay ? `Check-in from ${checkIn}, check-out by ${checkOut}.` : `Pick up from ${checkIn}, return by ${checkOut}.`,
