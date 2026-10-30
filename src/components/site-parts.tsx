@@ -24,7 +24,7 @@ import { CartLink, CartLinkShell } from "./cart-link";
 import { Icon } from "./icons";
 import { PageRowView } from "./page-article";
 import { MotionSupport } from "./motion-support";
-import { builtIn, Brand as KaizenBrand } from "./platform-layout";
+import { builtIn, Brand as KaizenBrand, legalPages } from "./platform-layout";
 import { PLATFORM_LANG_FACTS, pageLocaleOf, platformPath, type PlatformLang } from "@/lib/platform-lang";
 import { platformText } from "@/lib/platform-text";
 import { HidingHeader } from "./store-chrome";
@@ -223,10 +223,19 @@ function KaizenPart({ block, ctx }: { block: SiteBlock; ctx: Extract<SiteContext
       return <Business legal={legal} address={b.postalAddress} email={b.contactEmail} />;
     }
     case "cookies":
+      // Kaizena Flow's terms, privacy notice and data processing agreement go where the cookie link is, once published (D408):
+      // a theme's footer has no part of their own, and every page of a web service must reach them.
       return (
-        <Link href={platformPath(lang, "/cookies")} className="w-fit text-muted underline">
-          {m.cookies}
-        </Link>
+        <>
+          {legalPages(chrome, lang).map((page) => (
+            <Link key={page.slug} href={platformPath(lang, `/${page.slug}`)} className="w-fit text-muted underline">
+              {page.title}
+            </Link>
+          ))}
+          <Link href={platformPath(lang, "/cookies")} className="w-fit text-muted underline">
+            {m.cookies}
+          </Link>
+        </>
       );
     default:
       return null;

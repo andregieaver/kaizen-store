@@ -171,7 +171,7 @@ export function PlatformMenu({ chrome, lang = "en" }: Props) {
 }
 
 /** Kaizena Flow's published terms, privacy notice and data processing agreement, in that order, each titled in `lang`. */
-function legalPages(chrome: PlatformChrome, lang: PlatformLang): { slug: string; title: string }[] {
+export function legalPages(chrome: PlatformChrome, lang: PlatformLang): { slug: string; title: string }[] {
   const locale = pageLocaleOf(lang);
   const bySlug = new Map([...chrome.pages.values()].map((page) => [page.slug, page]));
   return PLATFORM_LEGAL_KINDS.flatMap((kind) => {
