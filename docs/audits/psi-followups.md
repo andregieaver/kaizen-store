@@ -93,7 +93,7 @@ maturity for the run-up to launch. Point IDs are the audit's.
       `refreshStoreById()` after its write; `refreshTag()` does nothing outside Next, so jobs and tests run them as they are). One stays
       listed in `store-writers.scan.test.ts`: `store-roles.ts`, which runs while a page renders (a tag cannot be refreshed there) and
       writes only `role_templates_offered`, which no cached read shows.
-- [ ] Dev-only advisories (Vitest's and drizzle-kit's local dev servers: vite, `@vitest/mocker`, esbuild) at the next Vitest upgrade.
+- [x] Dev-only advisories (Vitest's and drizzle-kit's local dev servers: vite, `@vitest/mocker`, esbuild) at the next Vitest upgrade. Done 30 October 2026: Vitest 5.0.5 (`@vitest/mocker` 5.0.5), vite held at 8.3.5 and drizzle-kit's loader at esbuild 0.25.12 by overrides in `pnpm-workspace.yaml`; `pnpm audit` (dev included) finds nothing, `db:check` and every test suite pass.
 
 ## Leave for the launch run-up
 

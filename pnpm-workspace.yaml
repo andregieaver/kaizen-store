@@ -6,3 +6,7 @@ overrides:
   source-map-js: ">=1.2.2"
   # @vercel/functions > @vercel/oidc > @vercel/cli-config pins zod 4.1.11 (reads local Vercel CLI config only); same major as ours.
   "@vercel/cli-config>zod": "4.6.7"
+  # drizzle-kit > @esbuild-kit/core-utils pins esbuild 0.18 (a dev server advisory; used here only to load drizzle.config.ts).
+  "@esbuild-kit/core-utils>esbuild": "0.25.12"
+  # vitest 5.0.5 accepts any vite 8; 8.3.0 to 8.3.2 carry dev server advisories (GHSA-9jrq-w75r-8gcw and others).
+  vite: "^8.3.5"
