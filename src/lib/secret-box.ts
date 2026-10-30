@@ -10,7 +10,7 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:
  * and `reencryptSecrets()` moves every secret to the new one. `v1.<iv>.<tag>.<ciphertext>` (no key id) is still read: with the
  * current key, then the previous.
  */
-const WRITE_VERSION: "v1" | "v2" = "v1";
+const WRITE_VERSION: "v1" | "v2" = "v2";
 
 export function parseKey(base64: string | undefined): Buffer | null {
   if (!base64) return null;

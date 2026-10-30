@@ -9,7 +9,7 @@ const key = randomBytes(32);
 describe("secret box", () => {
   it("round-trips a secret", () => {
     const stored = encryptSecret("sk_test_51abcdef4242", key);
-    expect(stored).toMatch(/^v1\./);
+    expect(stored).toMatch(/^v2\.[0-9a-f]{8}\./);
     expect(stored).not.toContain("sk_test");
     expect(decryptSecret(stored, key)).toBe("sk_test_51abcdef4242");
   });
@@ -26,9 +26,9 @@ describe("secret box", () => {
   it("refuses tampered ciphertext", () => {
     const stored = encryptSecret("secret", key);
     const parts = stored.split(".");
-    const flipped = Buffer.from(parts[3], "base64url");
+    const flipped = Buffer.from(parts[4], "base64url");
     flipped[0] ^= 1;
-    parts[3] = flipped.toString("base64url");
+    parts[4] = flipped.toString("base64url");
     expect(() => decryptSecret(parts.join("."), key)).toThrow();
   });
 
