@@ -18,7 +18,9 @@ process.env.SETTINGS_ENCRYPTION_KEY ??= Buffer.alloc(32, 7).toString("base64");
 
 // The shopper's own path in Safari's engine as well (PSI UX-12): in CI, or locally with E2E_WEBKIT and WebKit installed.
 const webkit = Boolean(process.env.CI || process.env.E2E_WEBKIT);
-const WEBKIT_SPECS = ["store-pages.spec.ts", "search.spec.ts", "cookies.spec.ts", "withdrawal.spec.ts"];
+const WEBKIT_SPECS = ["store-pages.spec.ts", "search.spec.ts", "cookies.spec.ts", "withdrawal.spec.ts", "cart.spec.ts", "account.spec.ts", "products-page.spec.ts"];
+// WebKit reaches the server through HTTPS (e2e/fixtures/https-proxy.mjs): it refuses the production build's `Secure` cookies over http.
+const httpsPort = Number(process.env.HTTPS_PROXY_PORT ?? 3443);
 
 export default defineConfig({
   testDir: "./e2e",
@@ -33,7 +35,9 @@ export default defineConfig({
   },
   projects: [
     { name: "chromium", testIgnore: "signed-in/**", use: chromium },
-    ...(webkit ? [{ name: "webkit", testMatch: WEBKIT_SPECS, use: devices["Desktop Safari"] }] : []),
+    ...(webkit
+      ? [{ name: "webkit", testMatch: WEBKIT_SPECS, use: { ...devices["Desktop Safari"], baseURL: `https://localhost:${httpsPort}`, ignoreHTTPSErrors: true } }]
+      : []),
     ...(signedIn
       ? [
           // Signs the test people in through the real form and keeps their browser states (e2e/signed-in/auth.setup.ts).
@@ -43,6 +47,16 @@ export default defineConfig({
       : []),
   ],
   webServer: [
+    ...(webkit
+      ? [
+          {
+            command: "node e2e/fixtures/https-proxy.mjs",
+            port: httpsPort,
+            reuseExistingServer: !process.env.CI,
+            env: { HTTPS_PROXY_PORT: String(httpsPort), PORT: String(port) },
+          },
+        ]
+      : []),
     ...(signedIn
       ? [
           {

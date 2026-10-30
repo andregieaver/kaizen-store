@@ -39,6 +39,8 @@ test("a shopper searches from the header, picks a suggestion, and finds results"
   await box.press("ArrowDown");
   await box.press("Enter");
   await expect(page).toHaveURL(new RegExp(`/s/${slug}/no/p/demo-keramikkopp$`));
+  // The product page has come, so the next address does not cut its loading short (WebKit says so where Chromium does not).
+  await expect(page.getByRole("heading", { level: 1, name: /Keramikkopp/ })).toBeVisible();
 
   // The whole search: a part of a compound word finds the mug.
   await page.goto(`/s/${slug}/no/search?q=kopp`);
