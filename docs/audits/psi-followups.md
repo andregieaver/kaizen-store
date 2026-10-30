@@ -55,7 +55,7 @@ maturity for the run-up to launch. Point IDs are the audit's.
       builds, pictures and page looks run as whoever asked, so the autopilot's monthly budget counts everything it causes; a call no price
       covers stops it while it has a limit; broadcasts are never automatic and emails to customers at most `customerEmailsPerWeek`
       (default 5) a week; AI answers by email are marked as the AI's; D334.
-- [ ] **AGT-14** Replay stored manager turns with thumbs as labels. Done (D391): the prompts are versioned (`promptVersions()`, kept with
+- [ ] **AGT-14** Replay stored manager turns with thumbs as labels. Labels since 30 October 2026: Platform → AI counts the owners' thumbs per AI manager prompt version (`managerRatingsByVersion()`, counts only, never a conversation's words), beside the eval runs, so a new version is compared with the last by the people who use it; replaying rated turns against a new prompt remains. Done (D391): the prompts are versioned (`promptVersions()`, kept with
       every AI manager and chat answer and eval run) and the evals run in CI against a recorded model (`agent-eval-replay.int.test.ts`
       replays `src/data/agent-eval-recording.json`, a run downloaded from Platform → AI; the gate is live once the first recording is kept).
 - [x] **AGT-04, AGT-11** The AI manager can start an A/B test at a time (`start_experiment` with `at`) and keep follow-ups

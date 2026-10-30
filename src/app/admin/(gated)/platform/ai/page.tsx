@@ -8,7 +8,7 @@ import { pictureLine } from "@/lib/ai-vision";
 import { EVAL_CASES, PASS_RATE } from "@/lib/query-eval";
 import { AGENT_EVAL_CASES, samePrompts, versionWords } from "@/lib/agent-eval";
 import { AgentEvalButton } from "@/components/admin/agent-eval-button";
-import { promptVersions, recentAgentEvalRuns } from "@/server/agent-eval";
+import { managerRatingsByVersion, promptVersions, recentAgentEvalRuns } from "@/server/agent-eval";
 import { recentDreamRuns } from "@/server/dream-factory";
 import { countStoresWithOwnAi, getAiSettings } from "@/server/ai";
 import { requirePlatformAdmin } from "@/server/auth";
@@ -41,7 +41,7 @@ export default async function PlatformAiPage() {
   const lang = adminLangOf(account.adminLocale);
   const w = adminText(lang, "platformTools").ai;
   const shared = adminText(lang, "settings").ai;
-  const [agentRuns, dreamRuns] = await Promise.all([recentAgentEvalRuns(), recentDreamRuns()]);
+  const [agentRuns, dreamRuns, ratings] = await Promise.all([recentAgentEvalRuns(), recentDreamRuns(), managerRatingsByVersion()]);
   const current = promptVersions();
   const [settings, ownCount, search] = await Promise.all([getAiSettings(null), countStoresWithOwnAi(), searchSettings()]);
   const status = settings
@@ -146,6 +146,23 @@ export default async function PlatformAiPage() {
                 <p className="mt-2 text-xs text-muted">{fillWords(shared.agentsRecordingHelp, { versions: versionWords(current) })}</p>
               </div>
             )}
+            {/* The owners' thumbs as labels, per prompt version (PSI AGT-14): counts only. */}
+            <div className="mt-3 text-sm">
+              <p className="text-muted">{shared.ratingsTitle}</p>
+              {ratings.length === 0 ? (
+                <p className="mt-1 text-ink-2">{shared.ratingsNone}</p>
+              ) : (
+                <ul className="mt-1 flex flex-col gap-0.5">
+                  {ratings.map((r) => (
+                    <li key={r.version} className="text-ink-2">
+                      {fillWords(shared.ratingsRow, { version: r.version, up: r.up, down: r.down, rated: r.up + r.down, share: `${Math.round((r.up * 100) / Math.max(1, r.up + r.down))} %` })}
+                      {r.version === current.manager && <span className="text-muted"> · {shared.ratingsNow}</span>}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <p className="mt-2 text-xs text-muted">{shared.ratingsHelp}</p>
+            </div>
           </div>
           <div className="mt-4 border-t border-line pt-4">
             <p className="mb-2 text-sm text-muted">{shared.imageText}</p>

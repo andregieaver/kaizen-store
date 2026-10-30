@@ -41,7 +41,7 @@ vi.mock("./ai", async (importOriginal) => {
 });
 
 const { closeDb, db } = await import("@/db/client");
-const { agentEvalRecording, promptVersions, recentAgentEvalRuns, replayAgentEval, runAgentEval } = await import("./agent-eval");
+const { agentEvalRecording, managerRatingsByVersion, promptVersions, recentAgentEvalRuns, replayAgentEval, runAgentEval } = await import("./agent-eval");
 const { recordingProblems } = await import("@/lib/agent-eval");
 
 const email = `eval-${Date.now().toString(36)}@example.com`;
@@ -97,5 +97,23 @@ describe("the agents' safety eval runner (PSI 2026-10-24, AST-09)", () => {
     const replayed = await replayAgentEval(tampered);
     const failure = replayed.failures.find((f) => f.id === "manager-asked-refund");
     expect(failure?.problems[0]).toMatch(/no_such_tool, which is no longer offered/);
+  });
+
+  it("counts the owners' thumbs on the AI manager's answers by the prompt version each was written under (AGT-14)", async () => {
+    const version = Date.now().toString(16).padStart(12, "0").slice(-12);
+    const [store] = await db().execute<{ id: string }>(sql`select id from commerce.stores where slug = 'demo'`);
+    const [account] = await db().execute<{ id: string }>(sql`select id from commerce.accounts where email = ${email}`);
+    const [conversation] = await db().execute<{ id: string }>(sql`
+      insert into commerce.assistant_conversations (store_id, account_id, title) values (${store.id}::uuid, ${account.id}::uuid, 'Rated') returning id`);
+    try {
+      for (const feedback of [1, 1, -1, null]) {
+        await db().execute(sql`
+          insert into commerce.assistant_messages (store_id, conversation_id, role, content, feedback, prompt_version)
+          values (${store.id}::uuid, ${conversation.id}::uuid, 'assistant', 'An answer.', ${feedback}, ${version})`);
+      }
+      expect((await managerRatingsByVersion()).find((r) => r.version === version)).toEqual({ version, up: 2, down: 1 });
+    } finally {
+      await db().execute(sql`delete from commerce.assistant_conversations where id = ${conversation.id}::uuid`);
+    }
   });
 });

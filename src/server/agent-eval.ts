@@ -207,6 +207,21 @@ const RUN_ROW = z.object({ id: col.uuid, model: col.text, provider: col.text, pa
 export type AgentEvalRunRow = { id: string; model: string; provider: string; passed: number; total: number; ranAt: string; prompts: Record<string, string> | null; recorded: boolean };
 
 /** The latest runs, newest first, for the AI page: with their prompt versions and whether a recording can be downloaded. */
+export type ManagerRating = { version: string; up: number; down: number };
+
+/**
+ * The owners' thumbs on the AI manager's answers, counted by the prompt version each answer was written under (PSI AGT-14): the labels a
+ * new prompt version is compared by. Counts only, never a conversation's words; the newest versions first.
+ */
+export async function managerRatingsByVersion(limit = 8): Promise<ManagerRating[]> {
+  return typedRows(
+    z.object({ version: z.string(), up: col.int, down: col.int }),
+    sql`select prompt_version as version, count(*) filter (where feedback = 1)::int as up, count(*) filter (where feedback = -1)::int as down
+        from commerce.assistant_messages where feedback is not null and prompt_version is not null
+        group by prompt_version order by max(created_at) desc limit ${limit}`,
+  );
+}
+
 export async function recentAgentEvalRuns(limit = 5): Promise<AgentEvalRunRow[]> {
   const rows = await typedRows(RUN_ROW, sql`
     select id, model, provider, passed, total, ran_at, prompt_versions as prompts, recording is not null as recorded
