@@ -137,7 +137,8 @@ jobs:
       - name: Create the database with the demo catalogue
         run: node scripts/db-setup.mjs --seed
       - run: pnpm build
-      - run: pnpm exec playwright install --with-deps chromium
+      # WebKit too: the shopper's pages also run in Safari's engine (playwright.config.ts, the webkit project; PSI UX-12).
+      - run: pnpm exec playwright install --with-deps chromium webkit
       - run: pnpm test:e2e
 
   # Stores on their own hosts (P7) and their own code (D61) exist only in a

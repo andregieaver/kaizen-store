@@ -16,6 +16,10 @@ const chromium = {
 // The key the server decrypts AI keys with; the chat test (e2e/chat.spec.ts) encrypts its store's with it.
 process.env.SETTINGS_ENCRYPTION_KEY ??= Buffer.alloc(32, 7).toString("base64");
 
+// The shopper's own path in Safari's engine as well (PSI UX-12): in CI, or locally with E2E_WEBKIT and WebKit installed.
+const webkit = Boolean(process.env.CI || process.env.E2E_WEBKIT);
+const WEBKIT_SPECS = ["store-pages.spec.ts", "search.spec.ts", "cookies.spec.ts", "withdrawal.spec.ts"];
+
 export default defineConfig({
   testDir: "./e2e",
   // The test database's stores start public (D339): the specs model open stores (e2e/global-setup.ts).
@@ -29,6 +33,7 @@ export default defineConfig({
   },
   projects: [
     { name: "chromium", testIgnore: "signed-in/**", use: chromium },
+    ...(webkit ? [{ name: "webkit", testMatch: WEBKIT_SPECS, use: devices["Desktop Safari"] }] : []),
     ...(signedIn
       ? [
           // Signs the test people in through the real form and keeps their browser states (e2e/signed-in/auth.setup.ts).
