@@ -4236,6 +4236,13 @@
       "when": 1793385214235,
       "tag": "20261030183334_status_check_duration",
       "breakpoints": true
+    },
+    {
+      "idx": 605,
+      "version": "7",
+      "when": 1793386024182,
+      "tag": "20261030184704_available_stock_per_line",
+      "breakpoints": true
     }
   ]
 }

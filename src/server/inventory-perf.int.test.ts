@@ -40,6 +40,9 @@ type Row = Record<string, unknown>;
  * (`linearBound()`): a planner with no statistics may well scan a table once, which stays linear, while a nested loop over the
  * catalogue reads it once per variant, thousands of times more. The reads behind a function (the Inventory page, the cart, placing an order) keep a wall-time backstop of ten
  * seconds: before D370 the failure took more than a minute.
+ *
+ * The stock of 200 variants failed it once more after the catalogue was analysed (CI run 780: 190,400 rows): `available_stock` grouped every
+ * store's active reservations and the planner could do so once per variant. The view now sums each level's own (D408).
  */
 const VARIANTS = 5_000;
 const BOUND_MS = 10_000;
