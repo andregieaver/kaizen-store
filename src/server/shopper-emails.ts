@@ -37,7 +37,7 @@ import { sendEmail, type OutgoingEmail, type SendOutcome } from "./email";
 import { documentBlocks, emailsCarryInvoice, recordDocumentDeliveries, type DocumentBlocks, type DocumentWant } from "./invoice-emails";
 import { firstNameOf, notificationOn, templatedSlots } from "./notifications";
 import { ensureUi } from "./ui-text";
-import { withdrawBlocks } from "./withdraw-link";
+import { withdrawalInfoBlocks, withdrawBlocks } from "./withdraw-link";
 import { getOrder, type OrderBooking, type OrderView } from "./orders";
 import { knowStoreAddress, type Store } from "./stores";
 import { getSubscriptionForOrder, type SubscriptionChange, type SubscriptionView } from "./subscriptions";
@@ -373,8 +373,8 @@ export async function sendOrderConfirmation(
     ...(url ? [{ type: "button" as const, text: text.seeOrder, url }] : []),
     // The store's terms the order was placed under (D158, D379): when and how they were shown, and each text as it was then.
     ...(await termsBlocks(storeId, order, store, market, m)),
-    // The right of withdrawal (D153): a consumer's order says so and links to the withdrawal function.
-    ...(await withdrawBlocks(storeId, store, market, order, text)),
+    // The right of withdrawal (D153), in the email itself (D407 step 4): the information, the model form, a consent given, and the function's link.
+    ...(await withdrawalInfoBlocks(storeId, store, market, order, text)),
     ...(subscription
       ? [
           { type: "divider" as const },

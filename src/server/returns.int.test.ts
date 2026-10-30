@@ -870,6 +870,10 @@ describe("the withdrawal link and the settings", () => {
       expect(String(mail.text), kind).toContain("Angre avtalen");
       expect(String(mail.html), kind).toContain(`/withdraw?order=${encodeURIComponent(order.number)}&amp;key=cs_${order.orderId}`);
     }
+    // The confirmation carries the information and the model form in the email itself, not only a link (D407 step 4, CJEU C-49/11).
+    const [confirmation] = await db().execute<Row>(sql`select text from commerce.email_messages where order_id = ${order.orderId}::uuid and kind = 'order.confirmation'`);
+    expect(String(confirmation.text)).toContain("Modellskjema for angrerett");
+    expect(String(confirmation.text)).toContain("Jeg/vi (*) melder herved at jeg/vi (*) går fra");
     // A company's order has no statutory right, so it carries no such link.
     const company = await paidOrder([["DEMO-TOTE", 1]]);
     await db().execute(sql`update commerce.orders set company_name = 'Acme AS' where id = ${company.orderId}::uuid`);

@@ -5,7 +5,9 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import type { EmailBlock } from "@/lib/email-layout";
 import type { EmailText } from "@/lib/email-text";
+import { t } from "@/lib/i18n";
 import { marketUrl } from "@/lib/paths";
+import { withdrawalInformation } from "@/lib/withdrawal-email";
 
 type Row = Record<string, unknown>;
 
@@ -55,4 +57,41 @@ export async function withdrawBlocks(
     { type: "paragraph", text: cost ? `${text.returns.withdrawLine} ${cost}` : text.returns.withdrawLine },
     { type: "button", text: text.returns.withdrawButton, url },
   ];
+}
+
+/**
+ * The order confirmation's withdrawal information in the email itself (D407 step 4, `withdrawalInformation()`): the right, how to use it,
+ * what follows, the model form, and the words of a consent the customer gave at checkout, then the way to the withdrawal function. A
+ * company's order carries none (no statutory right); an order with nothing that keeps the right carries only the consents it confirms.
+ */
+export async function withdrawalInfoBlocks(
+  storeId: string,
+  store: { slug: string; name: string; details: { legalName: string | null; postalAddress: string | null; contactEmail: string | null } },
+  market: { slug: string },
+  order: { id: string; number: string; company: unknown },
+  text: EmailText,
+): Promise<EmailBlock[]> {
+  if (order.company) return [];
+  const [facts] = await db().execute<Row>(sql`
+    select o.locale, o.return_cost_payer, o.digital_consent_at is not null as digital, o.service_request_at is not null as service,
+      exists (select 1 from commerce.order_lines l where l.store_id = o.store_id and l.order_id = o.id and l.delivery = 'physical'
+              and l.withdrawal_exclusion in ('none', 'sealed_hygiene', 'sealed_media')) as goods,
+      exists (select 1 from commerce.order_lines l where l.store_id = o.store_id and l.order_id = o.id and l.delivery = 'service'
+              and l.withdrawal_exclusion = 'none') as services
+    from commerce.orders o where o.store_id = ${storeId}::uuid and o.id = ${order.id}::uuid
+  `);
+  if (!facts) return [];
+  const locale = String(facts.locale);
+  const words = t(locale.split("-")[0]);
+  const blocks = withdrawalInformation({
+    locale,
+    seller: { name: store.details.legalName?.trim() || store.name, address: store.details.postalAddress?.trim() || null, email: store.details.contactEmail?.trim() || null },
+    goods: Boolean(facts.goods),
+    whoPays: facts.return_cost_payer === "shopper" || facts.return_cost_payer === "store" ? facts.return_cost_payer : null,
+    services: Boolean(facts.services),
+    consents: [...(facts.digital ? [words.digitalConsent] : []), ...(facts.service ? [words.serviceRequest] : [])],
+  });
+  if (blocks.length === 0) return [];
+  const withRight = Boolean(facts.goods) || Boolean(facts.services);
+  return withRight ? [...blocks, { type: "button", text: text.returns.withdrawButton, url: await withdrawUrl(storeId, store, market, order) }] : blocks;
 }

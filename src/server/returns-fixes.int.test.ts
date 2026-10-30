@@ -397,7 +397,7 @@ describe("a withdrawal is refunded in full, and its costs are the ones it was so
       expect((await r.previewRefund(storeId, c.returnId, 5_000))!.refund.returnShippingMinor).toBe(0);
       // And the order confirmation tells the shopper who pays, in words, when the order is placed.
       await sendOrderConfirmation(storeId, soldShopperPays.orderId);
-      expect(String((await mails(soldShopperPays.orderId, "order.confirmation"))[0].text)).toContain("Angrer du kjøpet, betaler du selv kostnaden ved å sende varene tilbake");
+      expect(String((await mails(soldShopperPays.orderId, "order.confirmation"))[0].text)).toContain("Du betaler de direkte kostnadene ved å returnere varene.");
     } finally {
       await saveReturnSettings(storeId, { ...before, whoPaysReturn: "shopper" }, null);
     }

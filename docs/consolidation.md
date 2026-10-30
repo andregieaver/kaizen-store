@@ -81,7 +81,7 @@ The prompts changed, so the recording CI replays is made from the next live run 
 
 Checked by reading the official sources (Lovdata, Riksdagen, Retsinformation, the EU's Cellar for EUR-Lex texts, the three tax
 authorities), in place of a lawyer by the owner's decision. The full record with every claim, section and address read is
-`docs/legal/check-2026-10-29.md`. The corrections are D407, built in this order (steps 1, 2, 3 and 5 built on 29 October; the express request is
+`docs/legal/check-2026-10-29.md`. The corrections are D407, built in this order (steps 1, 2, 3 and 5 built on 29 October, step 4 on 30 October; the express request is
 recorded, not required by the server: without it the customer keeps the whole right and owes nothing, as Art. 14(4)(a)(ii) says):
 
 | Step | Finding | Correction |
