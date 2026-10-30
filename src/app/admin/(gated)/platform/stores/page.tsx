@@ -4,7 +4,7 @@ import { connection } from "next/server";
 import { formatBps, priceLabel } from "@/lib/plans";
 import { listStoreBilling } from "@/server/billing";
 import { requirePlatformAdmin } from "@/server/auth";
-import { Card, Chip, List, ListRow, PageHeader, RowAmount, RowFact, RowLead } from "@/components/admin/ui";
+import { ButtonLink, Card, Chip, List, ListRow, PageHeader, RowAmount, RowFact, RowLead } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
@@ -26,6 +26,12 @@ export default async function PlatformStoresPage() {
       <PageHeader
         title={w.title}
         description={w.description}
+        actions={
+          // The Dream Factory (D409) builds a store in the platform admin's name, from Your stores.
+          <ButtonLink href="/admin/stores" size="header">
+            {w.dreamLink}
+          </ButtonLink>
+        }
       />
       <Card compact>
         <List label={w.title}>

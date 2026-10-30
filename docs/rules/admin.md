@@ -719,7 +719,9 @@ changing it; a rule changes here, and its line in CLAUDE.md when its gist change
   at *Just do it* for catalogue, website, design and setup only (a store being set up is not open); money, messages and `NEVER_AUTOMATIC`
   keep asking, and `open_store` is never a step's tool: opening is the owner's. A run whose owner is at the drills' test address is a test:
   it stays private, pays in test mode and ends ready to open. `/api/cron/dream-factory` moves runs on every minute, one AI turn a run a
-  minute. Started by *Build my store with AI* at self-serve sign-up (`access_requests.dream`) or on `/admin/{store}/dream-factory`; scored
+  minute. Started by *Build my store with AI* at self-serve sign-up (`access_requests.dream`), on Your stores (`startDreamStore()`: a new
+  store for an owner within their plan's stores or a platform admin, made as *Create a store* makes one, its run in their name; Platform →
+  Stores and Platform → AI link there) or on `/admin/{store}/dream-factory`; scored
   on Platform → AI (`scoreOf()`); the live drill `dream_factory` signs up through the real path with `DRILL_PROMPT`.
 ## The status page (wave 9 unit G, D360, `src/lib/status.ts`, `src/server/status.ts`)
 

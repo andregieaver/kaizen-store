@@ -215,6 +215,13 @@ export const homeEn = {
     roles: { owner: "owner", admin: "staff" },
     duplicate: "Duplicate",
     max: "You can own up to {max} stores. Contact Kaizena Flow for more. Creating or duplicating a store is switched off until then.",
+    dreamTitle: "Build a store with AI",
+    dreamDescription:
+      "Describe the store and the Dream Factory builds it while it is private: products with pictures and prices, the website, the legal pages and the setup, each step checked. You say yes to its plan, set up payments and open it yourself.",
+    dreamPrompt: "Your store in your own words",
+    dreamHint:
+      "What you sell, to whom and where, and your business's legal name, organisation number, address and the email customers may write to. 20 to 2,000 characters.",
+    dreamCreate: "Build my store",
     createTitle: "Create a store",
     createDescription:
       "Choose a theme: the store starts with its look and its demo store, with you as owner, ready to change. You then add your business details, set up payments and choose its plan.",

@@ -6,6 +6,7 @@ import { DesignCards } from "@/components/admin/design-cards";
 import { StoresList } from "@/components/admin/stores-list";
 import { listClosedStores, listStores, requireAccount } from "@/server/auth";
 import { fillWords } from "@/lib/admin-fill";
+import { PROMPT_MAX, PROMPT_MIN } from "@/lib/dream-factory";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { copyProgressPath } from "@/lib/store-copy-paths";
@@ -15,7 +16,7 @@ import { listStoreCopies } from "@/server/store-copy";
 import { designChoices } from "@/server/design-presets";
 import { Card, CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
-import { createStoreAction } from "./actions";
+import { createDreamStoreAction, createStoreAction } from "./actions";
 
 export const metadata: Metadata = { title: "Your stores" };
 
@@ -48,6 +49,35 @@ export default async function AllStoresPage() {
         </p>
       )}
 
+      {/* The Dream Factory (D409): the AI builds another store from a description, the main way to make one. */}
+      {canCreate && (
+        <Card title={w.dreamTitle} description={w.dreamDescription} className="flex max-w-3xl flex-col gap-3" compact>
+          <ActionForm action={createDreamStoreAction} className="flex flex-col gap-3">
+            <label className="flex flex-col gap-1 text-sm font-medium">
+              {w.name}
+              <input name="name" required maxLength={80} className={control} />
+            </label>
+            <label className="flex flex-col gap-1 text-sm font-medium">
+              {w.dreamPrompt}
+              <textarea
+                name="prompt"
+                required
+                minLength={PROMPT_MIN}
+                maxLength={PROMPT_MAX}
+                rows={5}
+                aria-describedby="dream-hint"
+                className="rounded-md border border-line bg-card p-3 font-normal"
+              />
+              <span id="dream-hint" className="font-normal text-muted">
+                {w.dreamHint}
+              </span>
+            </label>
+            <div>
+              <SubmitButton>{w.dreamCreate}</SubmitButton>
+            </div>
+          </ActionForm>
+        </Card>
+      )}
       {canCreate && (
         <Card title={w.createTitle} description={w.createDescription} className="flex max-w-3xl flex-col gap-3" compact>
           <ActionForm action={createStoreAction} className="flex flex-col gap-3">

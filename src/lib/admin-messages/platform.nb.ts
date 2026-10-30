@@ -544,6 +544,7 @@ export const platformNb: PlatformMessages = {
     title: "Butikker",
     description:
       "Abonnementet hver butikk har hos Kaizena Flow og gebyret per salg. Åpne en butikk for å starte, endre eller avslutte abonnementet, eller gi den et eget gebyr.",
+    dreamLink: "Bygg en butikk med KI",
     noOwner: "Ingen eier ennå",
     endsAtPeriodEnd: "avsluttes ved periodens slutt",
     testMode: "testmodus",

@@ -34,6 +34,7 @@ export const platformToolsNb: PlatformToolsMessages = {
     removeCode: "Kaizena Flows KI",
     remove: "Fjern Kaizena Flows leverandør",
     removeQuestion: "Fjerne Kaizena Flows KI-leverandør og nøkkelen? Butikker uten egen KI har da bare søk på ord.",
+    dreamStart: "Bygg en butikk med KI",
     dreamTitle: "Dream Factory-kjøringer",
     dreamText:
       "Hver kjøring fra en eiers beskrivelse til en butikk klar til å åpne, målt av kode: minutter til klar (uten eierens ventetid), eierens trykk og stegene som ble riktige første gang. Øvelsen Dream Factory starter en testkjøring gjennom selvbetjent registrering med en fast beskrivelse.",

@@ -35,15 +35,18 @@ import {
   type StepState,
 } from "@/lib/dream-factory";
 import { STARTER_ROLES } from "@/lib/legal-starters";
+import { featureOn } from "@/lib/store-features";
 
 import { actingAs } from "./actor";
 import { aiFor, completeText, type AiConnection } from "./ai";
-import { audit, passMembership, type Membership } from "./auth";
+import { audit, passMembership, type Account, type Membership } from "./auth";
 import { isDemoProduct } from "./demo-content";
 import { legalWrites, turnOnLegalAi } from "./legal-writer";
 import { log } from "./log";
 import { runTurn, type Principal, type TurnInput } from "./owner-assistant";
 import { memberCan } from "./permissions";
+import { setFeature } from "./store-features";
+import { createStoreForOwner } from "./platform";
 import { refreshTag } from "./refresh";
 import { getSetupProgress } from "./setup";
 import { checkupFindings } from "./store-checkup";
@@ -155,6 +158,26 @@ export async function startDreamRun(member: Pick<Membership, "account" | "store"
   await audit(member.account.id, member.store.id, "store.dream_started", { run: id, test }, { area: "website", target: { type: "store", id: member.store.id } });
   log("info", "dream_factory.started", { run: id, test });
   return { ok: true, id };
+}
+
+export type StartStoreResult = { ok: true; slug: string; run: StartResult } | { ok: false; problems: string[] };
+
+/**
+ * A new store built by the Dream Factory, from Your stores: an owner of another store (within their plan's stores) or a platform admin
+ * makes it as *Create a store* would, from the Standard store, and its run starts at once in their name. A description of the wrong length
+ * makes no store; a store whose run could not start is kept, and its Dream Factory page offers to start one.
+ */
+export async function startDreamStore(account: Account, input: { name: string; slug: string; prompt: string }): Promise<StartStoreResult> {
+  const prompt = input.prompt.trim();
+  if (prompt.length < PROMPT_MIN || prompt.length > PROMPT_MAX) {
+    return { ok: false, problems: [`Describe the store in ${PROMPT_MIN} to ${PROMPT_MAX} characters.`] };
+  }
+  const made = await createStoreForOwner(account, input.name, input.slug);
+  if (!made.ok) return made;
+  const member = await passMembership(made.slug, account.id);
+  const run = member ? await startDreamRun(member, prompt) : ({ ok: false, problem: "The new store has no owner." } as const);
+  if (!run.ok) log("warn", "dream_factory.store_run_not_started", { store: made.storeId });
+  return { ok: true, slug: made.slug, run };
 }
 
 /** The store's newest run, for its Dream Factory page. */
@@ -323,7 +346,9 @@ async function advanceRun(runId: string, deadline: number, deps: DreamDeps): Pro
       const usesTurn = stepOf(id).who === "ai" && id !== "brief" && run.steps[id].status !== "asking";
       if (usesTurn && (turns > 0 || deadline - Date.now() < TURN_MS)) continue;
       const before = run.steps[id];
-      const after = await runStep(id, { run, member, deps, deadline });
+      // The store as it is now: a step earlier in this minute may have set its country, its markets or its features.
+      const current = (await passMembership(store.slug, member.account.id)) ?? member;
+      const after = await runStep(id, { run, member: current, deps, deadline });
       if (usesTurn) turns++;
       if (after && (JSON.stringify(after.state) !== JSON.stringify(before) || after.brief || after.presses)) {
         run = { ...run, steps: { ...run.steps, [id]: after.state }, ...(after.brief && { brief: after.brief }), ...(after.conversationId && { conversationId: after.conversationId }) };
@@ -423,6 +448,12 @@ async function aiStep(id: AiStepId, ctx: Context): Promise<StepOutcome> {
   // The products are made one at a time (each with its picture, which takes a while), so a turn ends well within its time.
   const progress = id === "catalogue" ? await catalogueCheck(member.store, run.brief) : null;
   if (progress?.ok) return { state: done(state, progress.detail) };
+  // The owner's yes to the brief covers its countries: selling in more than one needs Several countries (D178), a switch the AI may not
+  // press on its own, so code presses it here.
+  if (id === "setup" && run.brief.countries.length > 1 && !featureOn(member.store, "countries")) {
+    const on = await setFeature(member as Membership, "countries", true);
+    if (!on.ok) return { state: failedTry(run, state, `Several countries could not be switched on: ${on.problems.join(" ")}`) };
+  }
   const message = id === "catalogue" && progress ? `${stepMessage(id, run.brief)}\n\nNow: ${progress.detail} Make the next product only, complete.` : stepMessage(id, run.brief);
   const principal: Principal = { account: member.account, store: member.store, role: member.role, kind: member.kind, permissions: member.permissions };
   const connection = deps.connection !== undefined ? deps.connection : await aiFor(run.storeId, { feature: "dream_factory", accountId: member.account.id });
@@ -467,8 +498,20 @@ async function checkAiStep(id: AiStepId, { run, member }: Context, state: StepSt
       return { ok: n >= 3, count: n, detail: `${n} research note(s) with a source.` };
     }
     case "setup": {
-      const progress = await getSetupProgress(await freshStore(member));
-      const missing = [!progress.details && "business details", !progress.countries && "countries", !progress.shipping && "a shipping price for every country"].filter(Boolean);
+      const fresh = await freshStore(member);
+      const progress = await getSetupProgress(fresh);
+      // Every country of the brief sold to, as the store now offers them (its features applied).
+      const selling = new Set(fresh.markets.map((m) => m.code.toUpperCase()));
+      const wanted = run.brief?.countries ?? [];
+      const unsold = wanted.filter((c) => !selling.has(c));
+      // A country the brief does not name (one the store was made with) would need prices of its own: the store sells to the brief's only.
+      const extra = wanted.length > 0 ? [...selling].filter((c) => !wanted.includes(c)) : [];
+      const countryProblems = [unsold.length > 0 && `${unsold.join(", ")} not sold to`, extra.length > 0 && `${extra.join(", ")} sold to but not in the brief`].filter(Boolean);
+      const missing = [
+        !progress.details && "business details",
+        (!progress.countries || countryProblems.length > 0) && `countries${countryProblems.length > 0 ? ` (${countryProblems.join("; ")})` : ""}`,
+        !progress.shipping && "a shipping price for every country",
+      ].filter(Boolean);
       return { ok: missing.length === 0, count: 3 - missing.length, detail: missing.length === 0 ? "Details, countries and shipping are set." : `Still missing: ${missing.join(", ")}.` };
     }
     case "brand": {
@@ -500,13 +543,14 @@ async function freshStore(member: Membership): Promise<Store> {
 
 /**
  * The products a store sells, counted by code: the store's own (not demo), active, each with a picture and a price in every country the
- * store sells to; and no demo product left on the site.
+ * store sells to (its markets as the store offers them, Several countries applied, as the product tools see them); and no demo product left
+ * on the site.
  */
 async function catalogueCheck(store: Store, brief: DreamBrief): Promise<Check> {
   const [row] = await typedRows(
     z.object({ ready: col.int, own: col.int, markets: col.int }),
     sql`
-      with markets as (select code from commerce.markets where store_id = ${store.id}::uuid and active),
+      with markets as (select unnest(${`{${store.markets.map((m) => m.code).join(",")}}`}::text[]) as code),
       own as (
         select p.id from commerce.products p
         where p.store_id = ${store.id}::uuid and p.status <> 'archived' and not ${isDemoProduct(sql`p`)}

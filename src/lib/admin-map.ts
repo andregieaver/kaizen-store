@@ -948,7 +948,7 @@ const PAGES: readonly AdminPage[] = [
   account("stores", "", "Control center", "Every store you run at a glance: what needs you first, the week's sales and orders, stock running out, and the latest orders.", {
     keywords: ["overview", "dashboard", "home", "all my stores", "bird's eye", "attention"],
   }),
-  account("stores.all", "/stores", "Stores", "Your stores, creating another and duplicating one, and the copies made lately."),
+  account("stores.all", "/stores", "Stores", "Your stores, having the AI build another (the Dream Factory, D409), creating another and duplicating one, and the copies made lately."),
   account("stores.copy", "/stores/copy/[store]", "Duplicate a store", "Make a new store from one you own: choose all, some or none of its pages, products and posts, and whether customers and order history come along. Settings always come, without secrets.", {
     needs: "owner",
     keywords: ["duplicate", "copy", "clone", "copy a store", "duplicate store", "new store from"],

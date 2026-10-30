@@ -7,6 +7,7 @@ import { suggestSlug } from "@/lib/slug";
 import { designLookChoice } from "@/lib/design-presets";
 import { requireAccount } from "@/server/auth";
 import { contentForLook } from "@/server/design-presets";
+import { startDreamStore } from "@/server/dream-factory";
 import { createStoreForOwner } from "@/server/platform";
 
 /**
@@ -23,4 +24,16 @@ export async function createStoreAction(_state: FormState, formData: FormData): 
   if (!result.ok) return { status: "error", messages: result.problems };
   if (result.design?.problem) redirect(`/admin/${result.slug}/settings/design?design=failed`);
   redirect(`/admin/${result.slug}/setup`);
+}
+
+/**
+ * An owner or a platform admin has the Dream Factory build another store (D409): the store is made from the Standard store and its run
+ * starts from their description; they then watch it on the store's Dream Factory page.
+ */
+export async function createDreamStoreAction(_state: FormState, formData: FormData): Promise<FormState> {
+  const account = await requireAccount();
+  const name = String(formData.get("name") ?? "").trim();
+  const result = await startDreamStore(account, { name, slug: suggestSlug(name), prompt: String(formData.get("prompt") ?? "") });
+  if (!result.ok) return { status: "error", messages: result.problems };
+  redirect(`/admin/${result.slug}/dream-factory`);
 }

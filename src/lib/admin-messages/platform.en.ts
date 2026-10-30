@@ -533,6 +533,7 @@ export const platformEn = {
     title: "Stores",
     description:
       "Each store's plan with Kaizena Flow and its fee per sale. Open a store to start, change or cancel its plan, or give it its own fee.",
+    dreamLink: "Build a store with AI",
     noOwner: "No owner yet",
     endsAtPeriodEnd: "ends at period end",
     testMode: "test mode",

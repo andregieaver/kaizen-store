@@ -7,8 +7,9 @@ import type { TurnInput } from "./owner-assistant";
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {}, refresh: () => {} }));
 
-const { passMembership } = await import("./auth");
-const { advanceDreamRuns, answerDreamBrief, confirmDreamBrief, latestDreamRun, startDreamRun, stopDreamRun } = await import("./dream-factory");
+const { activeAccount, passMembership } = await import("./auth");
+const { featureOn } = await import("@/lib/store-features");
+const { advanceDreamRuns, answerDreamBrief, confirmDreamBrief, latestDreamRun, startDreamRun, startDreamStore, stopDreamRun } = await import("./dream-factory");
 
 /** The Dream Factory's conductor (D409) against the database: the brief, the owner's presses, the lanes, the checks and a test run's end. */
 
@@ -26,12 +27,12 @@ async function newStore(name: string, email: string): Promise<{ id: string; slug
   return { id: String(store.id), slug, owner: String(owner.id) };
 }
 
-const briefJson = (business: Record<string, string>) =>
+const briefJson = (business: Record<string, string>, countries: string[] = ["NO"]) =>
   JSON.stringify({
     storeName: "Leire",
     sells: "Hand-thrown ceramic mugs and bowls",
     audience: "people who like slow mornings",
-    countries: ["NO"],
+    countries,
     languages: ["Norwegian"],
     currency: "NOK",
     products: 3,
@@ -46,14 +47,18 @@ async function minute(storeId: string, deps: Parameters<typeof advanceDreamRuns>
 
 let test: { id: string; slug: string; owner: string };
 let real: { id: string; slug: string; owner: string };
+let nordic: { id: string; slug: string; owner: string };
 
 beforeAll(async () => {
   test = await newStore("Dream test", `delivered+dream${run}@resend.dev`);
   real = await newStore("Dream real", `dream-${run}@example.com`);
-});
+  nordic = await newStore("Dream nordic", `delivered+nordic${run}@resend.dev`);
+  // Each store is a copy of the Standard store.
+}, 60_000);
 
 afterAll(async () => {
-  await db().execute(sql`delete from commerce.dream_runs where store_id in (${test.id}::uuid, ${real.id}::uuid)`);
+  await db().execute(sql`delete from commerce.dream_runs where store_id in (${test.id}::uuid, ${real.id}::uuid, ${nordic.id}::uuid)`);
+  await db().execute(sql`delete from commerce.dream_runs where store_id in (select id from commerce.stores where slug like ${`another-${run}%`})`);
   await closeDb();
 });
 
@@ -139,5 +144,44 @@ describe("the Dream Factory (D409)", () => {
     expect(["skipped", "waiting"]).toContain(latest.steps.legal.status);
     // A test run never asks for payments: it pays in test mode.
     expect(latest.steps.payments.status === "asking").toBe(false);
+  });
+
+  it("switches on Several countries for a brief that sells in more than one, the owner's yes covering it, and holds setup to the brief's countries", async () => {
+    const member = (await passMembership(nordic.slug, nordic.owner))!;
+    expect((await startDreamRun(member, "Ceramic mugs for Norway and Sweden. Leire Keramikk AS, Storgata 1, 0155 Oslo, hei@leire.no")).ok).toBe(true);
+    const business = { legalName: "Leire Keramikk AS", postalAddress: "Storgata 1, 0155 Oslo", contactEmail: "hei@leire.no", country: "NO" };
+    const deps = {
+      complete: async () => ({ text: briefJson(business, ["NO", "SE"]), region: null }),
+      connection,
+      // The research turn saves its notes; the setup turn sets nothing.
+      turn: async (input: TurnInput) => {
+        if (!input.autopilot?.tools.includes("save_research_note")) return;
+        for (let i = 0; i < 3; i++) {
+          await db().execute(sql`
+            insert into commerce.research_notes (store_id, topic, finding, sources) values (${nordic.id}::uuid, ${`Topic ${i}`}, 'Mugs sell at 300 kr.', ${`{https://example.com/${i}}`}::text[])
+          `);
+        }
+      },
+      draft: async () => ({ ok: false as const, problem: "No AI in tests." }),
+      legalOn: async () => ({ ok: false as const, problems: ["country"] }),
+    };
+    const setupRan = async () => (await latestDreamRun(nordic.id))!.steps.setup.detail !== undefined;
+    for (let i = 0; i < 6 && !(await setupRan()); i++) await minute(nordic.id, deps);
+    const latest = (await latestDreamRun(nordic.id))!;
+    expect(latest.steps.setup.detail).toBeDefined();
+    expect(featureOn((await passMembership(nordic.slug, nordic.owner))!.store, "countries")).toBe(true);
+    // The turn set nothing, so the check names what the brief still needs.
+    expect(latest.steps.setup.detail).toMatch(/^Still missing: /);
+  });
+
+  it("builds another store for an owner from Your stores, and makes none from a description too short", async () => {
+    const owner = (await activeAccount(real.owner))!;
+    const slug = `another-${run}`;
+    expect(await startDreamStore(owner, { name: "Another", slug, prompt: "Too short" })).toMatchObject({ ok: false });
+    expect(await db().execute(sql`select 1 from commerce.stores where slug = ${slug}`)).toHaveLength(0);
+    const made = await startDreamStore(owner, { name: "Another", slug, prompt: "Linen aprons for cafés in Norway, sewn in Bergen." });
+    expect(made).toMatchObject({ ok: true, slug, run: { ok: true } });
+    const [store] = await db().execute<Row>(sql`select id from commerce.stores where slug = ${slug}`);
+    expect(await latestDreamRun(String(store.id))).toMatchObject({ status: "running", test: false, ownerPresses: 1 });
   });
 });

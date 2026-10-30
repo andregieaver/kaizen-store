@@ -292,7 +292,7 @@ export function stepMessage(id: AiStepId, brief: DreamBrief): string {
       return [
         `Set up ${store} so it can open.`,
         `Business details, exactly as the owner gave them: legal name "${b.legalName}"${b.organisationNumber ? `, organisation number "${b.organisationNumber}"` : ""}, postal address "${b.postalAddress}", contact email "${b.contactEmail}", country ${b.country}.`,
-        `Countries to sell to: ${country(brief.countries)}. Languages: ${brief.languages.join(", ") || "the countries' own"}. Currency: ${brief.currency || "the main country's"}.`,
+        `Countries to sell to, exactly these and no other (set_countries): ${country(brief.countries)}. Languages: ${brief.languages.join(", ") || "the countries' own"}. Currency: ${brief.currency || "the main country's"}.`,
         "Then a flat shipping price for each country, sensible for these products, and check the tax readiness. End with setup_progress.",
       ].join(" ");
     }

@@ -164,7 +164,12 @@ export default async function PlatformAiPage() {
       {/* The Dream Factory's scorecard (D409): each run's measures, worked out by code. */}
       <section className={card}>
         <h2 className="text-title text-ink">{w.dreamTitle}</h2>
-        <p className="mt-1 text-sm text-muted">{w.dreamText}</p>
+        <p className="mt-1 text-sm text-muted">
+          {w.dreamText}{" "}
+          <Link href="/admin/stores" className="underline">
+            {w.dreamStart}
+          </Link>
+        </p>
         {dreamRuns.length === 0 ? (
           <p className="mt-3 text-sm text-muted">{w.dreamNone}</p>
         ) : (

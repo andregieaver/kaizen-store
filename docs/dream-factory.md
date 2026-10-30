@@ -1,7 +1,8 @@
 # Dream Factory: from one prompt to a live store
 
 Status: **built** (D409, 30 October 2026). An owner starts it by ticking *Build my store with AI* under "What will you sell?" at self-serve
-sign-up (on since 30 October 2026), or on the store's own Dream Factory page (`/admin/{store}/dream-factory`, where an owner of a store not
+sign-up (on since 30 October 2026); an owner of a store, or a platform admin, builds as many more as their plan allows from *Build a store
+with AI* on Your stores (`/admin/stores`, linked from Platform → Stores and Platform → AI); or on the store's own Dream Factory page (`/admin/{store}/dream-factory`, where an owner of a store not
 yet open lands from Home while a run is going; the setup wizard offers it). The AI follows the steps below, the owner watches them on that
 page and developers score every run on Platform → AI. Every step ends on a check made by **code against the store's data**, never on the
 model's word, so a run can be scored the same way every time.
@@ -36,7 +37,7 @@ may make: the law's (identity for payments), money (a plan, a domain) and the mo
 
 | # | Step | Lane | Needs | Who | Done when (checked by code) |
 |---|---|---|---|---|---|
-| 0 | **Prompt** | — | — | Owner | A description of 20 to 2,000 characters (sign-up's "What will you sell?" with *Build my store with AI* ticked, or the Dream Factory page) |
+| 0 | **Prompt** | — | — | Owner | A description of 20 to 2,000 characters (sign-up's "What will you sell?" with *Build my store with AI* ticked, *Build a store with AI* on Your stores, or the Dream Factory page) |
 | 1 | **Brief** | — | 0 | AI | What is sold, to whom, countries, languages, currency, price range, name, tone, products (3 to 12, default 6) and up to 3 pages; the business's legal name, address, email and country only where the owner wrote them, else asked (`briefQuestions()`) |
 | 1b | **Confirm the brief** | — | 1 | Owner | One press on the brief as shown; it also agrees to the legal pages being written |
 | 2 | **Research** | A | 1b | AI | At least 3 research notes made in the step, each with a source |

@@ -213,6 +213,13 @@ export const homeNb: HomeMessages = {
     roles: { owner: "eier", admin: "ansatt" },
     duplicate: "Lag en kopi",
     max: "Du kan eie opptil {max} butikker. Kontakt Kaizena Flow for flere. Det er ikke mulig å opprette eller kopiere en butikk før da.",
+    dreamTitle: "Bygg en butikk med KI",
+    dreamDescription:
+      "Beskriv butikken, så bygger Dream Factory den mens den er privat: produkter med bilder og priser, nettstedet, de juridiske sidene og oppsettet, og hvert steg kontrolleres. Du sier ja til planen, setter opp betaling og åpner den selv.",
+    dreamPrompt: "Butikken med dine egne ord",
+    dreamHint:
+      "Hva du selger, til hvem og hvor, og bedriftens juridiske navn, organisasjonsnummer, adresse og e-postadressen kundene kan skrive til. 20 til 2 000 tegn.",
+    dreamCreate: "Bygg butikken min",
     createTitle: "Opprett en butikk",
     createDescription:
       "Velg et tema: butikken starter med temaets utseende og demobutikk, med deg som eier, klar til å endres. Deretter legger du inn firmaopplysningene, setter opp betalinger og velger abonnement.",
