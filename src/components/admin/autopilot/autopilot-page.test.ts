@@ -15,12 +15,26 @@ import { AutopilotPage, type AutopilotTab } from "./autopilot-page";
 const html = (element: Parameters<typeof renderToString>[0]) =>
   renderToString(element).replace(/<!-- -->/g, "").replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, "&");
 const action = async () => ({ status: "ok" as const, messages: [] });
-const actions = { decide: action, answer: action, plan: action, dropGoal: action, settings: action };
+const actions = { decide: action, answer: action, plan: action, dropGoal: action, settings: action, cancelFollowUp: action };
 
-const empty: AutopilotOverview = { calls: [], questions: [], ownerOnly: [], plans: [], goals: [], reviews: [], events: [], settings: DEFAULT_AUTONOMY, costMicros: 1_250_000, unpricedCalls: 0, report: null };
+const empty: AutopilotOverview = { calls: [], questions: [], ownerOnly: [], plans: [], goals: [], reviews: [], events: [], settings: DEFAULT_AUTONOMY, costMicros: 1_250_000, unpricedCalls: 0, report: null, followUps: [] };
 
 const page = (overview: AutopilotOverview, tab: AutopilotTab = "decisions", lang: "en" | "nb" = "en") =>
   html(createElement(AutopilotPage, { overview, base: "/admin/demo/assistant/autopilot", assistantHref: "/admin/demo/assistant", siteName: "Demo", tab, lang, actions, links: { payments: "/admin/demo/settings/payments" } }));
+
+describe("follow-ups on the Autopilot page (PSI AGT-04)", () => {
+  it("lists what the AI manager will come back to, when in the store's time, each with Cancel, and counts it as waiting", () => {
+    const followUps = [{ id: "f1", task: "Check this week's orders", dueAt: "2026-11-02T07:00:00.000Z", repeat: "weekly" as const, timeZone: "Europe/Oslo" }];
+    const shown = page({ ...empty, followUps });
+    expect(shown).toContain("What the AI manager will come back to");
+    expect(shown).toContain("Check this week's orders");
+    expect(shown).toContain("08:00");
+    expect(shown).toContain("then every week");
+    expect(shown).toContain(">Cancel<");
+    expect(shown).not.toContain("Nothing waits for you");
+    expect(page({ ...empty, followUps }, "decisions", "nb")).toContain("Det KI-assistenten skal komme tilbake til");
+  });
+});
 
 const plan = {
   id: "11111111-1111-4111-8111-111111111111",

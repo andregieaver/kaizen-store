@@ -73,13 +73,35 @@ export async function listFollowUpsTool(ctx: ManagerContext) {
   return { follow_ups: rows.map((row) => ({ id: row.id, task: row.task, when: dueWords(new Date(row.due_at), row.repeat, timeZone) })) };
 }
 
-export async function cancelFollowUpTool(ctx: ManagerContext, { follow_up }: ManagerToolInput<"cancel_follow_up">) {
+/** A waiting follow-up as the Autopilot page lists it (PSI AGT-04): what, when it is next due, and whether it comes back. */
+export type WaitingFollowUp = { id: string; task: string; dueAt: string; repeat: (typeof FOLLOW_UP_REPEATS)[number]; timeZone: string };
+
+/** The person's follow-ups waiting here, soonest first: the Autopilot page lists them, each with Cancel, outside the chat (PSI AGT-04). */
+export async function waitingFollowUps(ctx: Pick<ManagerContext, "account" | "store">): Promise<WaitingFollowUp[]> {
+  const rows = await typedRows(
+    WAITING_ROW,
+    sql`
+      select id, task, due_at, repeat from commerce.assistant_follow_ups
+      where account_id = ${ctx.account.id}::uuid and ${inArea(ctx)} and status = 'waiting'
+      order by due_at limit ${FOLLOW_UPS_MAX}
+    `,
+  );
+  return rows.map((row) => ({ id: row.id, task: row.task, dueAt: row.due_at, repeat: row.repeat, timeZone: timeZoneOf(ctx) }));
+}
+
+/** Cancels one of the person's waiting follow-ups here; false when there is none such (done, cancelled, or not theirs). */
+export async function cancelFollowUp(ctx: Pick<ManagerContext, "account" | "store">, id: string): Promise<boolean> {
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return false;
   const rows = await db().execute(sql`
     update commerce.assistant_follow_ups set status = 'cancelled', claimed_until = null
-    where id = ${follow_up}::uuid and account_id = ${ctx.account.id}::uuid and ${inArea(ctx)} and status = 'waiting'
+    where id = ${id}::uuid and account_id = ${ctx.account.id}::uuid and ${inArea(ctx)} and status = 'waiting'
     returning 1
   `);
-  return rows.length > 0 ? { done: "Cancelled." } : fail("There is no such follow-up waiting.");
+  return rows.length > 0;
+}
+
+export async function cancelFollowUpTool(ctx: ManagerContext, { follow_up }: ManagerToolInput<"cancel_follow_up">) {
+  return (await cancelFollowUp(ctx, follow_up)) ? { done: "Cancelled." } : fail("There is no such follow-up waiting.");
 }
 
 export type AskOutcome = "ok" | "ask_limit" | "no_owner" | "not_found";

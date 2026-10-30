@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ActionForm, type FormState } from "@/components/admin/action-form";
 import { Button, ButtonLink, Card, Chip, List, ListRow, PageHeader, RowActions, RowFact, RowLead } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
-import type { AdminLang } from "@/lib/admin-lang";
+import { ADMIN_LANG_FACTS, type AdminLang } from "@/lib/admin-lang";
 import type { AssistantMessages } from "@/lib/admin-messages/assistant.en";
 import { adminText } from "@/lib/admin-text";
 import { formatUsd } from "@/lib/ai-cost";
@@ -20,7 +20,7 @@ import type { Plan, PlanStep } from "@/server/autopilot-plans";
 
 type Action = { (state: FormState, form: FormData): Promise<FormState> };
 
-export type AutopilotActions = { decide: Action; answer: Action; plan: Action; dropGoal: Action; settings: Action };
+export type AutopilotActions = { decide: Action; answer: Action; plan: Action; dropGoal: Action; settings: Action; cancelFollowUp: Action };
 
 export const AUTOPILOT_TABS = ["decisions", "plans", "goals", "settings"] as const;
 export type AutopilotTab = (typeof AUTOPILOT_TABS)[number];
@@ -66,7 +66,7 @@ export function AutopilotPage({
           {a.paused}
         </p>
       )}
-      {tab === "decisions" && <Decisions overview={overview} words={a} actions={actions} links={links} />}
+      {tab === "decisions" && <Decisions overview={overview} words={a} actions={actions} links={links} locale={ADMIN_LANG_FACTS[lang].locale} />}
       {tab === "decisions" && overview.report && <Report report={overview.report} words={a} />}
       {tab === "decisions" && overview.events && overview.events.length > 0 && <Events events={overview.events} words={a} />}
       {tab === "plans" && <Plans plans={overview.plans} words={a} action={actions.plan} assistantHref={assistantHref} />}
@@ -78,9 +78,9 @@ export function AutopilotPage({
 
 type Words = AssistantMessages["autopilot"];
 
-function Decisions({ overview, words: a, actions, links }: { overview: AutopilotOverview; words: Words; actions: AutopilotActions; links: { payments?: string; plan?: string } }) {
+function Decisions({ overview, words: a, actions, links, locale }: { overview: AutopilotOverview; words: Words; actions: AutopilotActions; links: { payments?: string; plan?: string }; locale: string }) {
   const d = a.decisions;
-  if (overview.calls.length + overview.questions.length + overview.ownerOnly.length === 0) {
+  if (overview.calls.length + overview.questions.length + overview.ownerOnly.length + overview.followUps.length === 0) {
     return <Card><p className="text-body text-muted">{d.empty}</p></Card>;
   }
   return (
@@ -153,6 +153,28 @@ function Decisions({ overview, words: a, actions, links }: { overview: Autopilot
                     </ButtonLink>
                   </RowActions>
                 )}
+              </ListRow>
+            ))}
+          </List>
+        </Card>
+      )}
+      {overview.followUps.length > 0 && (
+        <Card title={d.followUps} count={overview.followUps.length}>
+          <List label={d.followUps}>
+            {overview.followUps.map((f) => (
+              <ListRow key={f.id}>
+                <RowLead
+                  title={f.task}
+                  sub={`${new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short", timeZone: f.timeZone }).format(new Date(f.dueAt))}${f.repeat === "none" ? "" : `, ${d.repeat[f.repeat]}`}`}
+                />
+                <RowActions>
+                  <ActionForm action={actions.cancelFollowUp} successMessage={d.followUpCancelled}>
+                    <input type="hidden" name="followUp" value={f.id} />
+                    <Button type="submit" size="dense">
+                      {d.cancelFollowUp}
+                    </Button>
+                  </ActionForm>
+                </RowActions>
               </ListRow>
             ))}
           </List>

@@ -7,7 +7,7 @@ import { adminTexts } from "@/lib/admin-text";
 import { requirePlatformAdmin } from "@/server/auth";
 import { autopilotOverview } from "@/server/autopilot-overview";
 
-import { answerStepAction, changePlanAction, decideCallAction, dropGoalAction, saveSettingsAction } from "./actions";
+import { answerStepAction, cancelFollowUpAction, changePlanAction, decideCallAction, dropGoalAction, saveSettingsAction } from "./actions";
 
 export const metadata: Metadata = { title: "Autopilot" };
 
@@ -27,7 +27,7 @@ export default async function PlatformAutopilotPage({ searchParams }: PageProps<
         tab={(AUTOPILOT_TABS as readonly string[]).includes(String(tab)) ? (tab as AutopilotTab) : "decisions"}
         lang={lang}
         links={{}}
-        actions={{ decide: decideCallAction, answer: answerStepAction, plan: changePlanAction, dropGoal: dropGoalAction, settings: saveSettingsAction }}
+        actions={{ decide: decideCallAction, answer: answerStepAction, plan: changePlanAction, dropGoal: dropGoalAction, settings: saveSettingsAction, cancelFollowUp: cancelFollowUpAction }}
       />
     </AdminTextScope>
   );

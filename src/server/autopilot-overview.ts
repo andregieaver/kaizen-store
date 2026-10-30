@@ -13,6 +13,7 @@ import { latestReport } from "./autopilot-reports";
 import { latestEvents, type ReactedEvent } from "./autopilot-events";
 import { latestReviews, type GoalReview } from "./autopilot-reviews";
 import { autonomyFor, autopilotCostThisMonth } from "./autopilot-settings";
+import { waitingFollowUps, type WaitingFollowUp } from "./follow-ups";
 import { getSetupProgress } from "./setup";
 import type { Store } from "./stores";
 import { col, typedRows } from "./typed-rows";
@@ -47,6 +48,8 @@ export type AutopilotOverview = {
   unpricedCalls: number;
   /** The person's latest weekly report here. */
   report: Awaited<ReturnType<typeof latestReport>>;
+  /** What the person asked the AI manager to come back to, waiting (PSI AGT-04): listed with Cancel, not only in the chat. */
+  followUps: WaitingFollowUp[];
 };
 
 const CALL = z.object({
@@ -60,7 +63,7 @@ const CALL = z.object({
 
 export async function autopilotOverview(a: OverviewActor): Promise<AutopilotOverview> {
   const scope = a.store ? sql`ap.store_id = ${a.store.id}::uuid` : sql`ap.store_id is null`;
-  const [callRows, plansAll, goals, settings, cost, progress, report, reviews, events] = await Promise.all([
+  const [callRows, plansAll, goals, settings, cost, progress, report, reviews, events, followUps] = await Promise.all([
     typedRows(
       CALL,
       sql`
@@ -68,7 +71,7 @@ export async function autopilotOverview(a: OverviewActor): Promise<AutopilotOver
         from commerce.assistant_approvals ap
         left join commerce.assistant_plan_steps s on s.id = ap.plan_step_id
         left join commerce.assistant_plans p on p.id = s.plan_id
-        where ${scope} and ap.account_id = ${a.account.id}::uuid and ap.status = 'pending'
+        where ${scope} and ap.account_id = ${a.account.id}::uuid and ap.status = 'pending' and ap.expires_at > now()
         order by ap.created_at
         limit 50
       `,
@@ -81,6 +84,7 @@ export async function autopilotOverview(a: OverviewActor): Promise<AutopilotOver
     latestReport(a),
     latestReviews(a.store?.id ?? null),
     a.store ? latestEvents(a.store.id) : Promise.resolve(null),
+    waitingFollowUps(a),
   ]);
   const owner = !a.store || !a.holder || can(a.holder, "owner");
   const mine = plansAll.filter((p) => owner || p.accountId === a.account.id);
@@ -111,5 +115,6 @@ export async function autopilotOverview(a: OverviewActor): Promise<AutopilotOver
     costMicros: cost.micros,
     unpricedCalls: cost.unpriced,
     report,
+    followUps,
   };
 }

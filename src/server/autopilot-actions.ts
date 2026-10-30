@@ -6,6 +6,7 @@ import { AUTONOMY_AREAS, AUTONOMY_LEVELS, PLAN_STARTS, type AutonomyLevel, type 
 import { dropGoal } from "./autopilot-goals";
 import { answerQuestion, pausePlan, startPlanNow, stopPlan, type PlanActor } from "./autopilot-plans";
 import { saveAutonomy } from "./autopilot-settings";
+import { cancelFollowUp } from "./follow-ups";
 import { log } from "./log";
 import { decideApproval, holderOfPrincipal, type Principal } from "./owner-assistant";
 import { OwnerToolError } from "./owner-tool-error";
@@ -65,6 +66,11 @@ export function changePlan(p: Principal, form: FormData): Promise<FormState> {
 }
 
 /** Drop a goal (the page is the owner's, as goals are). */
+/** Cancel on a follow-up the page lists (PSI AGT-04): the person's own, waiting here; one already gone says so. */
+export function cancelFollowUpFrom(p: Principal, form: FormData): Promise<FormState> {
+  return guarded("cancel_follow_up", async () => ((await cancelFollowUp(p, text(form, "followUp"))) ? ok : refused("It is no longer waiting.")));
+}
+
 export function dropGoalFrom(p: Principal, form: FormData): Promise<FormState> {
   return guarded("drop_goal", async () => {
     await dropGoal(p, text(form, "goal"));

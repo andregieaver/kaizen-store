@@ -147,12 +147,15 @@ stay in the standing document's *What comes next*.
       rule screen show an ending in the wrong unit: both now use the stored digits (`minorUnitDigits()`). The deploy gate stays the owner's.
 - [ ] **REG-11 (10)** Sensitive-information mode and a minimum-age sentence.
 - [ ] **UX-08 (11)** Homer and Lisa written into `docs/admin-style.md`, applied to the product editor and support settings.
-- [ ] **AGT-03, AGT-04 (13)** Approval expiry, `cancel_page_build`, pending follow-ups with cancel.
+- [x] **AGT-03, AGT-04 (13)** Approval expiry, `cancel_page_build`, pending follow-ups with cancel.
       Approval expiry done 30 October 2026: `assistant_approvals.expires_at` (seven days after the ask; migration
       `assistant_approval_expiry`), the dispatcher's `assistantApprovals` job ends pending calls past it as `expired` (never run, an
       autopilot step waiting on them skipped as if declined), and a yes after the end is refused with the reason in the conversation.
       `cancel_page_build` done 30 October 2026: the AI manager stops a build by its id (`src/server/site-tools.ts`); one waiting is never
       built, one being built is ended and the runner, finding it so, deletes the unfinished draft (`keep()` writes only while the job waits).
+      Pending follow-ups done 30 October 2026: the Autopilot page's Decisions (a store's and Kaizena Flow's) lists what the AI manager will
+      come back to, when in the store's time and how often, each with Cancel (`waitingFollowUps()`, `cancelFollowUp()`); the chat's
+      `list_follow_ups` and `cancel_follow_up` use the same. MCP resuming the admin conversation (AGT-12, AGT-13) is not part of this.
 - [x] **DATA-06 (14)** `deletePage()` records a redirect and strips menu items. Done 30 October 2026: in one transaction the menus lose
       their links to the page (by address in a store's, by id in Kaizena Flow's; links under one move up), and a store's published page or
       article leaves a manual redirect from its address and every former one (`page_redirects`) to the front page or the blog; one already
