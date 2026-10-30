@@ -148,6 +148,9 @@ stay in the standing document's *What comes next*.
 - [ ] **REG-11 (10)** Sensitive-information mode and a minimum-age sentence.
 - [ ] **UX-08 (11)** Homer and Lisa written into `docs/admin-style.md`, applied to the product editor and support settings.
 - [ ] **AGT-03, AGT-04 (13)** Approval expiry, `cancel_page_build`, pending follow-ups with cancel.
+      Approval expiry done 30 October 2026: `assistant_approvals.expires_at` (seven days after the ask; migration
+      `assistant_approval_expiry`), the dispatcher's `assistantApprovals` job ends pending calls past it as `expired` (never run, an
+      autopilot step waiting on them skipped as if declined), and a yes after the end is refused with the reason in the conversation.
 - [x] **DATA-06 (14)** `deletePage()` records a redirect and strips menu items. Done 30 October 2026: in one transaction the menus lose
       their links to the page (by address in a store's, by id in Kaizena Flow's; links under one move up), and a store's published page or
       article leaves a manual redirect from its address and every former one (`page_redirects`) to the front page or the blog; one already

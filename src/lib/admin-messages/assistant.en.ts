@@ -139,6 +139,7 @@ export const assistantEn = {
     approve: "Approve",
     decline: "Decline",
     declined: "Declined.",
+    expired: "No answer in seven days, so it was not done. Ask again if you still want it.",
     failed: "Could not: {problem}",
     done: "Done.",
   },

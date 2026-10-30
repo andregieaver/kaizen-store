@@ -757,7 +757,7 @@ function ApprovalCard({ approval, onDecide }: { approval: Approval; onDecide: (a
         </div>
       ) : (
         <p className="text-sm text-muted">
-          {approval.status === "declined" ? a.declined : approval.status === "failed" ? fillWords(a.failed, { problem: approval.outcome ?? "" }) : (approval.outcome ?? a.done)}
+          {approval.status === "declined" ? a.declined : approval.status === "expired" ? a.expired : approval.status === "failed" ? fillWords(a.failed, { problem: approval.outcome ?? "" }) : (approval.outcome ?? a.done)}
         </p>
       )}
     </div>

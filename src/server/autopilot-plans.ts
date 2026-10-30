@@ -541,8 +541,10 @@ export async function settleStepApproval(stepId: string): Promise<void> {
     await failStep(stepId, `${failed.summary} ${why}`);
     return;
   }
-  if (calls.every((c) => c.status === "declined")) {
-    await skipStep(stepId, step.plan_id, `You declined: ${calls.map((c) => c.summary).join(" ")}`.slice(0, 450));
+  if (calls.every((c) => c.status === "declined" || c.status === "expired")) {
+    // A call nobody answered in seven days (PSI AGT-03) is left undone, as a declined one is.
+    const why = calls.every((c) => c.status === "expired") ? "No answer in seven days" : "You declined";
+    await skipStep(stepId, step.plan_id, `${why}: ${calls.map((c) => c.summary).join(" ")}`.slice(0, 450));
     return;
   }
   const store = step.store_slug ? await currentStore(step.store_slug) : null;

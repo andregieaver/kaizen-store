@@ -13,6 +13,7 @@ import { expireActions } from "@/server/support-actions";
 import { summarisePending } from "@/server/support-summary";
 import { cronAuthorised } from "@/server/cron-auth";
 import { reencryptSecrets } from "@/server/secret-rotation";
+import { expireAssistantApprovals } from "@/server/owner-assistant";
 import { runJobs, tracked } from "@/server/cron-runs";
 import { expireDrafts } from "@/server/draft-orders";
 import { expireApprovals } from "@/server/company-approvals";
@@ -164,6 +165,8 @@ async function dispatch() {
     status: () => runStatusChecks(),
     // A rotation of the settings key (PSI SEC-06): while a previous key is set, a batch of secrets written again under the current one.
     secretRotation: () => reencryptSecrets(),
+    // The AI manager's calls nobody answered in seven days (PSI AGT-03): ended, never run.
+    assistantApprovals: async () => (await expireAssistantApprovals()).length,
     // A VAT rate that begins or ends at a country's midnight (D379): the catalogue's cached labels refreshed then, not at the daily job's hour.
     vatLabels: () => refreshVatLabelsAtMidnight(),
   });

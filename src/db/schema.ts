@@ -9901,6 +9901,11 @@ export const assistantApprovals = commerce.table(
     result: jsonb("result"),
     createdAt: createdAt(),
     decidedAt: timestamp("decided_at", { withTimezone: true }),
+    /**
+     * When the yes stops being asked for (PSI AGT-03): seven days after the ask. A pending call past it is `expired` (the dispatcher's
+     * `expireApprovals()`) and can no longer be approved, so a week-old request is never run on a store that has moved on.
+     */
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull().default(sql`(now() + interval '7 days')`),
     /** The autopilot's step that kept this call (D309): its decision settles the step (`settleStepApproval()`). */
     planStepId: uuid("plan_step_id"),
   },
@@ -9912,7 +9917,8 @@ export const assistantApprovals = commerce.table(
     index("assistant_approvals_store_idx").on(t.storeId, t.status),
     index("assistant_approvals_account_idx").on(t.accountId),
     check("assistant_approvals_category", sql`${t.category} in ('send', 'public', 'spend', 'domain', 'access', 'plan')`),
-    check("assistant_approvals_status", sql`${t.status} in ('pending', 'done', 'declined', 'failed')`),
+    check("assistant_approvals_status", sql`${t.status} in ('pending', 'done', 'declined', 'failed', 'expired')`),
+    index("assistant_approvals_pending_expiry_idx").on(t.expiresAt).where(sql`${t.status} = 'pending'`),
   ],
 );
 

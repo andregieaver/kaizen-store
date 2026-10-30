@@ -337,6 +337,29 @@ describe("the owner assistant (D94)", () => {
     expect(still.status).toBe("archived");
   });
 
+  it("never runs a call asked for more than seven days ago: it ends, and a late yes is refused (PSI AGT-03)", async () => {
+    fakeModel(calls({ name: "archive_product", args: { product: productHandle, archived: false } }), says("Venter."));
+    const late = (await turn("Legg den tilbake", conversationId)).find((e) => e.type === "approval") as { approval: Approval };
+    fakeModel(calls({ name: "archive_product", args: { product: productHandle, archived: false } }), says("Venter."));
+    const stale = (await turn("Legg den tilbake nå", conversationId)).find((e) => e.type === "approval") as { approval: Approval };
+    await db().execute(sql`update commerce.assistant_approvals set expires_at = now() - interval '1 minute' where id in (${late.approval.id}::uuid, ${stale.approval.id}::uuid)`);
+
+    // Answered after its end: not run, ended, and the conversation says why.
+    expect(await assistant.decideApproval(member, late.approval.id, true, () => {})).toMatchObject({ status: "expired" });
+    const [still] = await db().execute<Row>(sql`select status from commerce.products where id = ${productId}::uuid`);
+    expect(still.status).toBe("archived");
+    expect((await assistant.getConversation(member, conversationId))!.messages.at(-1)).toMatchObject({ content: expect.stringContaining("No answer in seven days") });
+
+    // Never answered: the dispatcher's job ends it; one with time left is left waiting.
+    fakeModel(calls({ name: "archive_product", args: { product: productHandle, archived: false } }), says("Venter."));
+    const fresh = (await turn("Og nå?", conversationId)).find((e) => e.type === "approval") as { approval: Approval };
+    const ended = await assistant.expireAssistantApprovals();
+    expect(ended.map((row) => String(row.id))).toContain(stale.approval.id);
+    expect(ended.map((row) => String(row.id))).not.toContain(fresh.approval.id);
+    expect(await assistant.decideApproval(member, stale.approval.id, true, () => {})).toBeNull();
+    expect(await assistant.decideApproval(member, fresh.approval.id, false, () => {})).toMatchObject({ status: "declined" });
+  });
+
   it("is each owner's own, and says so when there is no text model", async () => {
     const other = { ...member, account: { ...member.account, id: "00000000-0000-4000-8000-000000000000" } };
     expect(await assistant.getConversation(other, conversationId)).toBeNull();

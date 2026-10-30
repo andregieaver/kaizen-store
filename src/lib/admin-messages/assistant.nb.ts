@@ -133,6 +133,7 @@ export const assistantNb: AssistantMessages = {
     approve: "Godkjenn",
     decline: "Avslå",
     declined: "Avslått.",
+    expired: "Ingen svar på sju dager, så det ble ikke gjort. Spør igjen om du fortsatt vil.",
     failed: "Kunne ikke: {problem}",
     done: "Ferdig.",
   },

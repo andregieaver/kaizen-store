@@ -4243,6 +4243,13 @@
       "when": 1793386024182,
       "tag": "20261030184704_available_stock_per_line",
       "breakpoints": true
+    },
+    {
+      "idx": 606,
+      "version": "7",
+      "when": 1793392815630,
+      "tag": "20261030204015_assistant_approval_expiry",
+      "breakpoints": true
     }
   ]
 }

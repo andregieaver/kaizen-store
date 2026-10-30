@@ -1,6 +1,6 @@
 import "server-only";
 
-import { sql } from "drizzle-orm";
+import { sql, type SQL } from "drizzle-orm";
 
 import { adminLangOf } from "@/lib/admin-lang";
 import { reportOfResult } from "@/lib/report-link";
@@ -150,7 +150,7 @@ export type Approval = {
   tool: string;
   summary: string;
   category: GateCategory;
-  status: "pending" | "done" | "declined" | "failed";
+  status: "pending" | "done" | "declined" | "failed" | "expired";
   outcome: string | null;
   createdAt: string;
 };
@@ -986,12 +986,18 @@ export async function decideApproval(
   { note = true }: { note?: boolean } = {},
 ): Promise<Approval | null> {
   if (!/^[0-9a-f-]{36}$/i.test(approvalId)) return null;
+  // A yes counts only before the call's end (PSI AGT-03): one asked for more than seven days ago is never run.
   const [claimed] = await db().execute<Row>(sql`
     update commerce.assistant_approvals set status = ${approve ? "done" : "declined"}, decided_at = now()
     where id = ${approvalId}::uuid and ${inScope(p)} and account_id = ${p.account.id}::uuid and status = 'pending'
+      and (expires_at > now() or ${!approve})
     returning *
   `);
-  if (!claimed) return null;
+  if (!claimed) {
+    const [ended] = await expireAssistantApprovals(sql`id = ${approvalId}::uuid and ${inScope(p)} and account_id = ${p.account.id}::uuid`);
+    if (ended && note) await addMessage(p, String(ended.conversation_id), "assistant", `${EXPIRED_NOTE}: ${ended.summary}`);
+    return ended ? toApproval(ended) : null;
+  }
   const conversationId = String(claimed.conversation_id);
   if (!approve) {
     if (note) await addMessage(p, conversationId, "assistant", `Declined: ${claimed.summary}`);
@@ -1025,6 +1031,22 @@ export async function decideApproval(
   if (note) await addMessage(p, conversationId, "assistant", result.done ?? `Could not: ${result.error}`, [{ name: String(claimed.tool), ok: !result.error }]);
   if (claimed.plan_step_id) await settleStepAfterApproval(String(claimed.plan_step_id));
   return toApproval(row);
+}
+
+const EXPIRED_NOTE = "No answer in seven days, so it was not done";
+
+/**
+ * Ends the pending calls past their end (PSI AGT-03): `expired`, never run, and an autopilot step that waited on them goes on as if
+ * declined. The dispatcher runs it every five minutes over every store; `decideApproval()` runs it for one call answered too late.
+ */
+export async function expireAssistantApprovals(where: SQL = sql`true`): Promise<Row[]> {
+  const ended = await db().execute<Row>(sql`
+    update commerce.assistant_approvals set status = 'expired', decided_at = now(), result = ${JSON.stringify({ error: EXPIRED_NOTE })}::jsonb
+    where status = 'pending' and expires_at <= now() and ${where}
+    returning *
+  `);
+  for (const stepId of new Set(ended.map((row) => row.plan_step_id).filter(Boolean).map(String))) await settleStepAfterApproval(stepId);
+  return [...ended];
 }
 
 /** A kept call of an autopilot step was answered: the step goes on (D309). Never throws: the person's answer stands whatever happens to it. */
