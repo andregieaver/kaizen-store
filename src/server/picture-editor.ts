@@ -80,7 +80,7 @@ export async function editLibraryPicture(
   }
   let shrunk: Awaited<ReturnType<typeof shrinkPicture>>;
   try {
-    shrunk = await shrinkPicture(edited);
+    shrunk = await shrinkPicture(edited, "edited");
   } catch {
     return { ok: false, problem: "The provider's picture could not be read." };
   }

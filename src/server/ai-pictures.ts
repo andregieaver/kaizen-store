@@ -21,12 +21,33 @@ const THUMBNAIL_WIDTH = 480;
 
 export type MadePicture = { url: string; thumbnailUrl: string; width: number; height: number };
 
-/** A model's picture as the pair the site keeps. */
-export async function shrinkPicture(bytes: Uint8Array): Promise<{ image: Buffer; thumbnail: Buffer; width: number; height: number }> {
+/**
+ * How a picture came to be, in the words of IPTC's digital source types: made by a model, or a picture a model changed. Written into the
+ * file's XMP so any reader can tell (AI Act Art. 50(2), `docs/ai-act.md`); a picture from elsewhere (a copied website's) gets none.
+ */
+export type AiSource = "made" | "edited";
+const SOURCE_TYPE: Record<AiSource, string> = {
+  made: "http://cv.iptc.org/newscodes/digitalsourcetype/trainedAlgorithmicMedia",
+  edited: "http://cv.iptc.org/newscodes/digitalsourcetype/compositeWithTrainedAlgorithmicMedia",
+};
+
+/** The XMP packet that says a picture is AI's (IPTC Photo Metadata, `Iptc4xmpExt:DigitalSourceType`). */
+export function aiSourceXmp(source: AiSource): string {
+  return (
+    '<x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">' +
+    '<rdf:Description rdf:about="" xmlns:Iptc4xmpExt="http://iptc.org/std/Iptc4xmpExt/2008-02-29/">' +
+    `<Iptc4xmpExt:DigitalSourceType>${SOURCE_TYPE[source]}</Iptc4xmpExt:DigitalSourceType>` +
+    "</rdf:Description></rdf:RDF></x:xmpmeta>"
+  );
+}
+
+/** A model's picture as the pair the site keeps; `ai` marks both files as made or changed by AI. */
+export async function shrinkPicture(bytes: Uint8Array, ai?: AiSource): Promise<{ image: Buffer; thumbnail: Buffer; width: number; height: number }> {
   const source = sharp(bytes, { failOn: "error" }).rotate();
+  const marked = (picture: sharp.Sharp) => (ai ? picture.withXmp(aiSourceXmp(ai)) : picture);
   const [image, thumbnail] = await Promise.all([
-    source.clone().resize({ width: WIDTH, withoutEnlargement: true }).webp({ quality: 82 }).toBuffer({ resolveWithObject: true }),
-    source.clone().resize({ width: THUMBNAIL_WIDTH, withoutEnlargement: true }).webp({ quality: 78 }).toBuffer(),
+    marked(source.clone().resize({ width: WIDTH, withoutEnlargement: true }).webp({ quality: 82 })).toBuffer({ resolveWithObject: true }),
+    marked(source.clone().resize({ width: THUMBNAIL_WIDTH, withoutEnlargement: true }).webp({ quality: 78 })).toBuffer(),
   ]);
   return { image: image.data, thumbnail, width: image.info.width, height: image.info.height };
 }
@@ -60,7 +81,7 @@ export async function makePicture(
   const { bytes } = await generateImage(connection, request.prompt, { shape: request.shape, ...(request.quality && { quality: request.quality }) });
   let shrunk: Awaited<ReturnType<typeof shrinkPicture>>;
   try {
-    shrunk = await shrinkPicture(bytes);
+    shrunk = await shrinkPicture(bytes, "made");
   } catch {
     throw new AiError("The provider's picture could not be read.");
   }

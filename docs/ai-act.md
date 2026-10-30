@@ -21,7 +21,7 @@ makers', not ours.
 | Conversation summaries (D216 step 7) | Staff | Minimal risk | Said to shoppers in the notice and the privacy starter while on. |
 | The AI manager and the autopilot (D94, D309) | Owners and staff | Minimal risk: not in Annex III (no employment, credit, essential-service or similar decision about a person) | Art. 4 (AI literacy) for Kaizena Flow's own people. Changes that matter wait for a person's yes (gated tools, approval expiry). |
 | Product texts, translations, alt texts, legal page drafts (D76, D311) | Shoppers read the result | Minimal risk; text not published "to inform the public on matters of public interest", and a person publishes it | Art. 50(4) does not reach it. Legal drafts carry their review notice. |
-| Pictures made or edited by AI (D283, D349) | Shoppers see them | Limited risk: synthetic images | **Open.** Art. 50(2) wants AI-generated images marked in a machine-readable way. Kaizena Flow keeps `media.made_by` and shows it to staff, but the WebP it stores is re-encoded, so no marking reaches the file. The grace period for systems on the market before 2 August 2026 ends **2 December 2026** (Art. 111(4) as amended): mark the files (C2PA or IPTC `trainedAlgorithmicMedia`) before then. |
+| Pictures made or edited by AI (D283, D349) | Shoppers see them | Limited risk: synthetic images | Art. 50(2): AI-generated images marked in a machine-readable way. Done 30 October 2026 for every picture made or changed from then on: both stored files carry IPTC's `DigitalSourceType` in their XMP (`trainedAlgorithmicMedia`, or `compositeWithTrainedAlgorithmicMedia` for an edited one; `shrinkPicture()`, `src/server/ai-pictures.ts`), and the site serves the files as stored. Staff also see `media.made_by`. Pictures made before that carry no marking (see below). |
 
 No use is a prohibited practice (Art. 5), and none is high-risk (Art. 6 and Annexes I and III), so the delayed high-risk dates
 (2 December 2027 and 2 August 2028 after the omnibus) do not bind Kaizena Flow today.
@@ -34,7 +34,8 @@ No use is a prohibited practice (Art. 5), and none is high-risk (Art. 6 and Anne
 
 ## Left to do
 
-1. Machine-readable marking of AI pictures (above), with a test that a made picture's file carries it.
+1. Pictures made by AI before 30 October 2026 carry no marking: mark them in place (the library knows them by `made_by`) before the
+   grace period ends on 2 December 2026, or confirm with the lawyer that outputs made before Art. 50 applied need none.
 2. A short AI-literacy note for Kaizena Flow's own staff (Art. 4).
 3. The lawyer's confirmation of this classification, with the DPIA.
 

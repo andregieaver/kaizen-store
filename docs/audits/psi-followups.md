@@ -139,8 +139,8 @@ stay in the standing document's *What comes next*.
 - [x] **REG-08 (privacy 5)** Tone and summaries in the store's privacy starter, and `docs/ai-act.md`. Done 30 October 2026: the starter's
       automated-decisions section says an AI reads the tone of support messages or summarises them, each only while it does (the chat
       notice's `aiUse` through `legalFacts()`, four languages); `docs/ai-act.md` classifies each use (provider and deployer, Art. 50, no
-      prohibited or high-risk use) and names one gap: AI pictures carry no machine-readable marking (Art. 50(2), grace until
-      2 December 2026).
+      prohibited or high-risk use). Its one gap, machine-readable marking of AI pictures (Art. 50(2)), closed the same day for new pictures:
+      IPTC `DigitalSourceType` in each file's XMP. Pictures made before then are listed as left in the note.
 - [x] **REG-03 (privacy 7)** A shopper's erasure reaches the AI manager's conversations. Done 30 October 2026: in the erasure's
       transaction, before their orders are anonymised, their email addresses, full names (two words or more) and phone numbers (any
       spacing) as the account and their orders hold them are blanked in the store's `assistant_messages` (`src/lib/erasure-traces.ts`,
