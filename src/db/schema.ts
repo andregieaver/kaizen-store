@@ -7434,6 +7434,31 @@ export const apiTokens = commerce.table(
 );
 
 /**
+ * An Admin API POST's answer under the client's `Idempotency-Key` (PSI DATA-03, `src/server/api-idempotency.ts`, its only writer): the
+ * same key with the same request gets the same answer again instead of doing it twice; with another request it is refused. `status` is
+ * null while the first request runs. Kept 24 hours (`pruneApiIdempotency()`); the answer can hold what the route returned of a customer.
+ */
+export const apiIdempotencyKeys = commerce.table(
+  "api_idempotency_keys",
+  {
+    tokenId: uuid("token_id")
+      .notNull()
+      .references(() => apiTokens.id, { onDelete: "cascade" }),
+    key: text("key").notNull(),
+    /** The route and the body, hashed: a key used again for anything else is refused. */
+    requestHash: text("request_hash").notNull(),
+    status: integer("status"),
+    body: jsonb("body"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.tokenId, t.key] }),
+    index("api_idempotency_keys_created_idx").on(t.createdAt),
+    check("api_idempotency_keys_key", sql`char_length(${t.key}) between 1 and 255`),
+  ],
+);
+
+/**
  * An endpoint of the owner's own (D354, `src/server/webhook-endpoints.ts`, its only writer): an HTTPS address that gets the topics chosen,
  * each delivery signed with the endpoint's secret (`Kaizena-Webhook-Signature`). The address and the secret are encrypted; the secret is
  * shown once. Switched off by Kaizena Flow after three days of failed deliveries (`disabled_reason = 'failing'`) and its owners told.

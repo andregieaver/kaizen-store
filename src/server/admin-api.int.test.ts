@@ -31,18 +31,24 @@ const SKU = "DEMO-MUG-WHITE";
 const FI_PRICE = 2_490;
 const fi = toMarket({ code: "FI", currency: "EUR", defaultLocale: "en-GB" });
 
-async function call(method: "GET" | "POST" | "PATCH" | "DELETE", path: string, token: string | null, body?: unknown): Promise<{ status: number; body: Answer }> {
+async function call(
+  method: "GET" | "POST" | "PATCH" | "DELETE",
+  path: string,
+  token: string | null,
+  body?: unknown,
+  extra: Record<string, string> = {},
+): Promise<{ status: number; body: Answer; headers: Headers }> {
   const handler = route[method];
   const url = new URL(`https://kaizenaflow.example/api/admin/v1/${path}`);
   const response = await handler(
     new Request(url, {
       method,
-      headers: token ? { authorization: `Bearer ${token}`, "content-type": "application/json" } : {},
+      headers: token ? { authorization: `Bearer ${token}`, "content-type": "application/json", ...extra } : {},
       ...(body !== undefined && { body: JSON.stringify(body) }),
     }),
     { params: Promise.resolve({ path: url.pathname.replace("/api/admin/v1/", "").split("/").filter(Boolean) }) } as never,
   );
-  return { status: response.status, body: (await response.json()) as Answer };
+  return { status: response.status, body: (await response.json()) as Answer, headers: response.headers };
 }
 
 beforeAll(async () => {
@@ -224,5 +230,27 @@ describe("checkout rules and questions (D399)", () => {
       "integration.api_checkout_rule_deleted",
       "integration.api_checkout_field_deleted",
     ]);
+  });
+});
+
+describe("a POST with an Idempotency-Key (PSI DATA-03)", () => {
+  it("is done once: the same request again gets the first answer, another request under the key is refused", async () => {
+    const sku = `IDEM-${Date.now()}`;
+    const input = { title: "Once mug", prices: { NO: "149" }, stock: 1, variants: [{ sku }] };
+    const key = { "idempotency-key": `create-${sku}` };
+    const first = await call("POST", "products", full, input, key);
+    expect(first.status).toBe(201);
+    const again = await call("POST", "products", full, input, key);
+    expect(again.status).toBe(201);
+    expect(again.headers.get("idempotent-replayed")).toBe("true");
+    expect(again.body.data.id).toBe(first.body.data.id);
+    const [made] = await db().execute<Row>(sql`
+      select count(*)::int as n from commerce.product_variants where store_id = ${store.storeId}::uuid and sku = ${sku}`);
+    expect(made.n).toBe(1);
+    const other = await call("POST", "products", full, { ...input, title: "Another" }, key);
+    expect(other.status).toBe(422);
+    expect(other.body.error.message).toContain("used for another request");
+    // Without a key, a POST is done each time it is sent, as before.
+    expect((await call("POST", "products", full, { ...input, variants: [{ sku: `${sku}-B` }] })).status).toBe(201);
   });
 });

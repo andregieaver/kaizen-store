@@ -48,6 +48,7 @@ import { chargeDueThemePurchases } from "@/server/theme-prices";
 import { PLATFORM_NAVIGATION_TAG } from "@/server/platform-navigation";
 import { payHostCommissions } from "@/server/host-payments";
 import { pruneSearchLog } from "@/server/search";
+import { pruneApiIdempotency } from "@/server/api-idempotency";
 import { sendDuePlanReminders } from "@/server/plan-reminders";
 import { sendDueBookingReminders } from "@/server/shopper-emails";
 import { sendLowStockNotices } from "@/server/stock-alerts";
@@ -104,6 +105,8 @@ async function dispatch() {
     calendars: () => syncDueFeeds(),
     commissions: () => payHostCommissions(),
     searches: () => pruneSearchLog(),
+    // Admin API answers kept for an Idempotency-Key (PSI DATA-03), 24 hours.
+    apiIdempotency: () => pruneApiIdempotency(),
     embeddings: () => refreshEmbeddings(),
     cache: () => pruneSearchCache(),
     knowledge: () => refreshKnowledge(),

@@ -136,6 +136,12 @@ maturity for the run-up to launch. Point IDs are the audit's.
 The code items of [the re-score's ranked list](psi-2026-10-30.md) (Ranked improvements across segments), in its order; the owner's items
 stay in the standing document's *What comes next*.
 
+- [x] **DATA-03 (data 2)** `Idempotency-Key` on Admin API POSTs, a Mollie 401 renewed once, Stripe's `apiVersion`. Done 30 October
+      2026: a POST with the header is done once per token and key, the same request getting the first answer again
+      (`Idempotent-Replayed: true`) and another request under the key refused, answers kept 24 hours (`commerce.api_idempotency_keys`,
+      migration `api_idempotency`, pruned by the dispatcher, in the register); a Mollie call answered 401 renews the token and asks once
+      more; Stripe clients and new webhook endpoints are pinned to `2026-08-26.dahlia` (`STRIPE_API_VERSION`). The "no events" alert was
+      done earlier (REL-02).
 - [x] **DATA-02 (data 5, critical)** `store-roles.ts`'s exception shown safe. Done 30 October 2026: `store-writers.scan.test.ts` now
       checks that every write it makes to `commerce.stores` sets only `role_templates_offered`, that it uses no cache, and that no other
       code names the column, so no cached read can hold a stale value of it.
