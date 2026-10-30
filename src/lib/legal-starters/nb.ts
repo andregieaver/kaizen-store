@@ -187,6 +187,8 @@ export const NB: StarterText = {
     "h.privacy.automated_decisions": "Automatiserte avgjørelser",
     "privacy.automated.1": "Vi tar ikke avgjørelser om deg som utelukkende bygger på automatisert behandling, og som har rettslige eller tilsvarende betydelige følger for deg.",
     "privacy.automated.chat": "Butikken har en chatassistent som bruker kunstig intelligens til å svare på spørsmål ut fra butikkens egen informasjon. Det du skriver til den, sendes til AI-leverandøren butikken bruker ({check}). Ikke skriv sensitive personopplysninger til den.",
+    "privacy.automated.tone": "Når du skriver til butikkens kundeservice, leser en KI tonen i meldingene dine, slik at en person kan komme inn tidligere hvis noe har gått galt. Den avgjør ingenting om deg på egen hånd, og vurderingen lagres ikke på kontoen din.",
+    "privacy.automated.summaries": "Når en samtale med butikkens kundeservice avsluttes, skriver en KI et kort sammendrag av den for butikkens ansatte. Sammendraget lagres med samtalen og slettes sammen med den.",
     "h.privacy.cookies_link": "Informasjonskapsler",
     "privacy.cookies.link": "Informasjonskapslene og tilsvarende verktøy butikken bruker, er oppført på [siden om informasjonskapsler]({href}).",
     "privacy.cookies.nolink": "Informasjonskapslene og tilsvarende verktøy butikken bruker, er oppført på butikkens side om informasjonskapsler.",

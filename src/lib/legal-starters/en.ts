@@ -191,6 +191,8 @@ export const EN: StarterText = {
     "h.privacy.automated_decisions": "Automated decisions",
     "privacy.automated.1": "We do not make decisions about you that are based only on automated processing and that have legal or similarly significant effects on you.",
     "privacy.automated.chat": "The store has a chat assistant that uses artificial intelligence to answer questions from the store's own information. What you write to it is sent to the AI provider the store uses ({check}). Do not write sensitive personal data to it.",
+    "privacy.automated.tone": "When you write to the store's customer service, an AI reads the tone of your messages so that a person can step in sooner when something has gone wrong. It decides nothing about you on its own, and the score is not kept with your account.",
+    "privacy.automated.summaries": "When a conversation with the store's customer service ends, an AI writes a short summary of it for the store's staff. The summary is kept with the conversation and deleted with it.",
     "h.privacy.cookies_link": "Cookies",
     "privacy.cookies.link": "The cookies and similar tools the store uses are listed on the [cookies page]({href}).",
     "privacy.cookies.nolink": "The cookies and similar tools the store uses are listed on its cookies page.",

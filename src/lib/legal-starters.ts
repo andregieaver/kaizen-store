@@ -204,7 +204,16 @@ function shapeOf(role: StarterRole, f: LegalFacts, h: Helpers): Shape[] {
         { topic: "consent_withdrawal", blocks: [p("privacy.consent.1")] },
         { topic: "complaint_authority", blocks: [p("privacy.complaint.1", { check: h.check("dataAuthority") })] },
         { topic: "obligation_to_provide", blocks: [p("privacy.obligation.1")] },
-        { topic: "automated_decisions", blocks: [p("privacy.automated.1"), ...(f.chatAgent ? [p("privacy.automated.chat", { check: h.add("aiProvider") })] : [])] },
+        {
+          topic: "automated_decisions",
+          blocks: [
+            p("privacy.automated.1"),
+            ...(f.chatAgent ? [p("privacy.automated.chat", { check: h.add("aiProvider") })] : []),
+            // What an AI does with support messages besides answering, said only while it is on (PSI REG-08).
+            ...(f.aiTone ? [p("privacy.automated.tone")] : []),
+            ...(f.aiSummaries ? [p("privacy.automated.summaries")] : []),
+          ],
+        },
         { topic: "cookies_link", blocks: [f.links.cookies ? p("privacy.cookies.link", { href: f.links.cookies }) : p("privacy.cookies.nolink")] },
       ];
     case "returns_policy":

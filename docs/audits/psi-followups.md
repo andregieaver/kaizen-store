@@ -136,6 +136,11 @@ maturity for the run-up to launch. Point IDs are the audit's.
 The code items of [the re-score's ranked list](psi-2026-10-30.md) (Ranked improvements across segments), in its order; the owner's items
 stay in the standing document's *What comes next*.
 
+- [x] **REG-08 (privacy 5)** Tone and summaries in the store's privacy starter, and `docs/ai-act.md`. Done 30 October 2026: the starter's
+      automated-decisions section says an AI reads the tone of support messages or summarises them, each only while it does (the chat
+      notice's `aiUse` through `legalFacts()`, four languages); `docs/ai-act.md` classifies each use (provider and deployer, Art. 50, no
+      prohibited or high-risk use) and names one gap: AI pictures carry no machine-readable marking (Art. 50(2), grace until
+      2 December 2026).
 - [x] **REG-03 (privacy 7)** A shopper's erasure reaches the AI manager's conversations. Done 30 October 2026: in the erasure's
       transaction, before their orders are anonymised, their email addresses, full names (two words or more) and phone numbers (any
       spacing) as the account and their orders hold them are blanked in the store's `assistant_messages` (`src/lib/erasure-traces.ts`,

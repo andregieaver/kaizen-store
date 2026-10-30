@@ -49,6 +49,10 @@ export type LegalFacts = {
   /** The names of the tracking tools the store has set up (they load only with consent). */
   trackingTools: string[];
   chatAgent: boolean;
+  /** An AI reads the tone of customers' messages to the support desk (D216 step 6), while support is on. */
+  aiTone: boolean;
+  /** An AI summarises customers' support conversations when they end (D216 step 7), while support is on. */
+  aiSummaries: boolean;
   audience: LegalAudience;
   /** Addresses on the site the texts link to, where the store has them; left out otherwise. */
   links: { withdraw?: string; cookies?: string };
@@ -91,6 +95,8 @@ export type LegalFactsInput = {
   carrierNames: string[];
   returnSettings: ReturnSettings | null;
   chatOn: boolean;
+  /** What an AI does with customers' support messages besides answering (PSI REG-08); neither when left out. */
+  supportAi?: { tone: boolean; summaries: boolean };
   links?: { withdraw?: string; cookies?: string };
   phone?: string | null;
 };
@@ -152,6 +158,8 @@ export function assembleLegalFacts(input: LegalFactsInput): LegalFacts {
     visitCounting: store.visitCounting,
     trackingTools: (Object.keys(TRACKING_TOOL_NAMES) as (keyof typeof TRACKING_TOOL_NAMES)[]).filter((k) => Boolean(store.tracking[k])).map((k) => TRACKING_TOOL_NAMES[k]),
     chatAgent: input.chatOn,
+    aiTone: input.supportAi?.tone ?? false,
+    aiSummaries: input.supportAi?.summaries ?? false,
     audience: store.audience,
     links: input.links ?? {},
   };

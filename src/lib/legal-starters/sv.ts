@@ -187,6 +187,8 @@ export const SV: StarterText = {
     "h.privacy.automated_decisions": "Automatiserade beslut",
     "privacy.automated.1": "Vi fattar inga beslut om dig som enbart grundar sig på automatiserad behandling och som har rättsliga följder eller liknande betydande verkningar för dig.",
     "privacy.automated.chat": "Butiken har en chattassistent som använder artificiell intelligens för att svara på frågor utifrån butikens egen information. Det du skriver till den skickas till den AI-leverantör som butiken använder ({check}). Skriv inte känsliga personuppgifter till den.",
+    "privacy.automated.tone": "När du skriver till butikens kundtjänst läser en AI tonen i dina meddelanden, så att en person kan kliva in tidigare om något har gått fel. Den fattar inga beslut om dig på egen hand, och bedömningen sparas inte på ditt konto.",
+    "privacy.automated.summaries": "När ett samtal med butikens kundtjänst avslutas skriver en AI en kort sammanfattning av det åt butikens personal. Sammanfattningen sparas med samtalet och raderas tillsammans med det.",
     "h.privacy.cookies_link": "Cookies",
     "privacy.cookies.link": "De cookies och liknande verktyg som butiken använder finns uppräknade på [sidan om cookies]({href}).",
     "privacy.cookies.nolink": "De cookies och liknande verktyg som butiken använder finns uppräknade på butikens sida om cookies.",

@@ -68,6 +68,8 @@ const FULL = assembleLegalFacts(input());
 /** Facts that between them take every branch the shapes have. */
 const VARIANTS: Record<string, LegalFacts> = {
   full: FULL,
+  // An AI reads the tone of support messages and summarises them (PSI REG-08).
+  supportAi: assembleLegalFacts(input({ supportAi: { tone: true, summaries: true } })),
   empty: assembleLegalFacts(
     input({
       store: { name: "", legalName: null, organisationNumber: null, contactEmail: null, postalAddress: null, country: null, audience: "consumers", visitCounting: false, modules: [], tracking: {} },
@@ -256,6 +258,18 @@ describe("what a starter holds", () => {
     expect(privacy(FULL)).toMatch(/without cookies/);
     const bare = privacy(VARIANTS.consumersStoreShopper);
     expect(bare).not.toMatch(/chat assistant|Google Analytics|without cookies/);
+  });
+
+  it("says an AI reads the tone of support messages or summarises them only while it does (PSI REG-08)", () => {
+    const privacy = (facts: LegalFacts, lang: "en" | "nb" = "en") => JSON.stringify(legalStarterSections("privacy", lang, facts));
+    expect(privacy(FULL)).not.toMatch(/tone of your messages|short summary/);
+    const tone = { ...FULL, aiTone: true };
+    expect(privacy(tone)).toContain("an AI reads the tone of your messages");
+    expect(privacy(tone)).not.toContain("short summary");
+    expect(privacy({ ...FULL, aiSummaries: true })).toContain("an AI writes a short summary");
+    expect(privacy({ ...FULL, aiTone: true, aiSummaries: true }, "nb")).toMatch(/leser en KI tonen.*skriver en KI et kort sammendrag/);
+    expect(assembleLegalFacts(input({ supportAi: { tone: true, summaries: false } }))).toMatchObject({ aiTone: true, aiSummaries: false });
+    expect(assembleLegalFacts(input())).toMatchObject({ aiTone: false, aiSummaries: false });
   });
 
   it("follows the store's return settings", () => {

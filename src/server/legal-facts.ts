@@ -101,6 +101,8 @@ export async function legalFacts(store: Store): Promise<LegalFacts> {
     carrierNames: carriers.filter((c) => c.complete).map((c) => carrierInfo(c.carrier)?.name ?? c.carrier),
     returnSettings,
     chatOn: chat !== null,
+    // What the chat's notice tells customers an AI does with their support messages (D391), said in the privacy starter too (PSI REG-08).
+    supportAi: chat?.aiUse ?? { tone: false, summaries: false },
     // Where the site's own pages are, in the store's main market: the withdrawal function (D153) and the cookies page.
     links: main ? { withdraw: marketPath(store.slug, main.slug, "/withdraw"), cookies: marketPath(store.slug, main.slug, "/cookies") } : {},
   });
