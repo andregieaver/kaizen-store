@@ -77,3 +77,12 @@ need none of them), React (70 KB) and the router (35 KB).
   background from its small copy; an embedded frame named.
 
 Scores move a few points between runs, and a page's own content (large pictures, many components) decides much of it.
+
+## First scripts per route (PSI PERF-11, 30 October 2026)
+
+Every route a visitor or a person signing in meets first has its own first-scripts budget in `e2e/performance.spec.ts`
+(`FIRST_SCRIPTS_BUDGETS`, raw bytes, about 5 % above the build measured). Measuring them found Kaizena Flow's sign-up and status pages
+and the admin's sign-in and forgot-password pages loading 2.0 to 2.1 MB: `ActionForm`'s submit button read one word through
+`useAdminText()`, whose English fallback holds every area of the admin's catalogue. A part shown outside the signed-in admin reads its
+words through `src/components/admin/admin-text-context.tsx` (`useCommonText()`, `useSignInText()`, and `AdminTextProvider`, which carries no
+catalogue); the pages now load 0.71 to 0.84 MB.

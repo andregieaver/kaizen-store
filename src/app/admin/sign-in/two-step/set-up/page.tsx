@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
-import { AdminTextProvider } from "@/components/admin/admin-text";
+import { AdminTextProvider } from "@/components/admin/admin-text-context";
 import { EnrolPanel } from "@/components/admin/two-step-panel";
 import { signInEn } from "@/lib/admin-messages/sign-in.en";
 import { fillWords } from "@/lib/admin-fill";

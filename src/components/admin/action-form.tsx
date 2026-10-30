@@ -10,7 +10,7 @@ import {
 } from "react";
 import { useFormStatus } from "react-dom";
 
-import { useAdminText } from "./admin-text";
+import { useCommonText } from "./admin-text-context";
 
 export type FormState = { status: "idle" | "ok" | "error"; messages: string[] };
 
@@ -91,7 +91,8 @@ export function SubmitButton({
 }) {
   const { pending: posting } = useFormStatus();
   const pending = useContext(PendingContext) || posting;
-  const { working } = useAdminText("common").form;
+  // From the context alone: `useAdminText()` would bring every area's English into a visitor's scripts (PERF-11).
+  const { working } = useCommonText().form;
   return (
     <button
       type="submit"

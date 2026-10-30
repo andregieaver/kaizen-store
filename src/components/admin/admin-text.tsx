@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, useTransition, type ReactNode } from "react";
+import { useContext, useEffect, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 
 import { ADMIN_LANG_FACTS, ADMIN_LANG_KEY, ADMIN_LANGS, type AdminLang } from "@/lib/admin-lang";
@@ -63,21 +63,19 @@ import { blogEn } from "@/lib/admin-messages/blog.en";
 import { schedulesEn } from "@/lib/admin-messages/schedules.en";
 import type { AdminArea, AdminAreaMessages } from "@/lib/admin-text";
 
+import { AdminTextContext } from "./admin-text-context";
+
 /**
  * The admin's words in the browser (D312 A0, `docs/platform-admin-i18n.md` 3.3): the signed-in layout hands its client parts the account's
  * language and the slices of the catalogue they read (`adminTexts()`), and a part asks `useAdminText(area)`. An area not handed down is
  * read in English, so a part converted before its layout still draws.
  */
 
-type Provided = { lang: AdminLang; texts: Partial<AdminAreaMessages> };
 
 const ENGLISH: AdminAreaMessages = { common: commonEn, domains: domainsEn, home: homeEn, customers: customersEn, privacy: privacyEn, marketing: marketingEn, discounts: discountsEn, loyalty: loyaltyEn, platform: platformEn, platformSite: platformSiteEn, platformTools: platformToolsEn, bookings: bookingsEn, support: supportEn, work: workEn, assistant: assistantEn, staffEmails: staffEmailsEn, analytics: analyticsEn, finance: financeEn, taxReports: taxReportsEn, reports: reportsEn, customReports: customReportsEn, settings: settingsEn, tax: taxEn, payments: paymentsEn, shipping: shippingEn, notifications: notificationsEn, legal: legalEn, staff: staffEn, billing: billingEn, capacity: capacityEn, builder: builderEn, blocks: blocksEn, website: websiteEn, design: designEn, redirects: redirectsEn, experiments: experimentsEn, products: productsEn, product: productEn, inventory: inventoryEn, giftCards: giftCardsEn, reviews: reviewsEn, fields: fieldsEn, content: contentEn, orders: ordersEn, order: orderEn, drafts: draftsEn, returns: returnsEn, invoices: invoicesEn, platformLegal: platformLegalEn, setup: setupEn, shell: shellEn, signIn: signInEn, blog: blogEn, schedules: schedulesEn };
 
-const AdminTextContext = createContext<Provided>({ lang: "en", texts: {} });
 
-export function AdminTextProvider({ lang, texts, children }: Provided & { children: ReactNode }) {
-  return <AdminTextContext.Provider value={{ lang, texts }}>{children}</AdminTextContext.Provider>;
-}
+export { AdminTextProvider } from "./admin-text-context";
 
 /**
  * More areas for the client parts under it (D312 A4): a page hands down the slices its own parts read (`adminTexts(lang, ["orders"])`),

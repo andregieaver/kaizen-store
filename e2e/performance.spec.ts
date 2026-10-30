@@ -30,6 +30,31 @@ test("the front page's first scripts stay within their budget, without zod or th
   expect(scripts.filter((script) => script.text.includes("CheckoutSdkContext")).map((s) => s.url)).toEqual([]);
 });
 
+/**
+ * Every other route a visitor or a person signing in meets first, each under its own first-scripts budget (PSI PERF-11), raw as above.
+ * Measured on the build of 30 October 2026, after the signed-out pages stopped loading the admin's whole English text through
+ * `ActionForm`, `PasswordField` and the sign-in panels (2.0 to 2.1 MB each before): the product page 993 KB, Kaizena Flow's front page
+ * 827 KB, sign-up 840 KB, status 837 KB, sign-in 714 KB, forgot password 713 KB. About 5 % of room; a change that passes one is a
+ * regression to look at, not a number to raise.
+ */
+const FIRST_SCRIPTS_BUDGETS: Record<string, number> = {
+  "/s/demo/no/p/demo-keramikkopp": 1_040_000,
+  "/": 870_000,
+  "/sign-up": 880_000,
+  "/status": 880_000,
+  "/admin/sign-in": 750_000,
+  "/admin/forgot-password": 750_000,
+};
+
+for (const [path, max] of Object.entries(FIRST_SCRIPTS_BUDGETS)) {
+  test(`${path}'s first scripts stay within their budget`, async ({ page }) => {
+    await page.goto(path);
+    const scripts = await firstScripts(page);
+    const total = scripts.reduce((sum, script) => sum + script.text.length, 0);
+    expect(total, `${path} first scripts: ${total} bytes`).toBeLessThan(max);
+  });
+}
+
 test("a page's scripts carry the texts its client components read, never a language's whole interface text (D212)", async ({ page }) => {
   // Each language's words for a store's summary, which only its whole module holds (the server's and the admin's).
   const summaries = { nb: "nettbutikk med levering i", sv: "webbutik med leverans i", da: "webshop med levering i", en: "online store delivering in" };

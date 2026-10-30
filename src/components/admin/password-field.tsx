@@ -2,7 +2,7 @@
 
 import { useId, useState, type ReactNode } from "react";
 
-import { useAdminText } from "./admin-text";
+import { useCommonText } from "./admin-text-context";
 
 /**
  * A labelled password input with a Show/Hide button, so a long password can
@@ -28,7 +28,7 @@ export function PasswordField({
 }) {
   const id = useId();
   const [shown, setShown] = useState(false);
-  const words = useAdminText("common").form;
+  const words = useCommonText().form;
   return (
     <div className="flex flex-col gap-1 text-sm">
       <div className="flex items-baseline justify-between gap-2">

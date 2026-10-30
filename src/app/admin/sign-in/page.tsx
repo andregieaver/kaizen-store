@@ -4,7 +4,7 @@ import { Suspense } from "react";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { PasswordField } from "@/components/admin/password-field";
-import { AdminTextProvider } from "@/components/admin/admin-text";
+import { AdminTextProvider } from "@/components/admin/admin-text-context";
 import { signInEn } from "@/lib/admin-messages/sign-in.en";
 import type { AdminLang } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";

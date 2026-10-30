@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
-import { AdminTextProvider } from "@/components/admin/admin-text";
+import { AdminTextProvider } from "@/components/admin/admin-text-context";
 import { FocusFrame } from "@/components/admin/ui";
 import { signInEn } from "@/lib/admin-messages/sign-in.en";
 import { adminText, adminTexts } from "@/lib/admin-text";

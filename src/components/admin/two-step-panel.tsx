@@ -6,9 +6,11 @@ import { useId, useState, useTransition } from "react";
 
 import { fillWords } from "@/lib/admin-fill";
 
-import { useAdminText } from "./admin-text";
+import { useSignInText } from "./admin-text-context";
 import { RecoveryCodesView } from "./recovery-codes-view";
 import { CARD_CLASS } from "@/components/admin/ui";
+
+
 
 /** What starting an enrolment gives back: the QR code (an SVG as a data address), the secret to type by hand and the factor to finish. */
 export type EnrolStarted = { ok: true; factorId: string; qrCode: string; secret: string; uri: string } | { ok: false; problem: string };
@@ -47,7 +49,7 @@ export function EnrolPanel({
   why?: string;
 }) {
   const id = useId();
-  const w = useAdminText("signIn").enrol;
+  const w = useSignInText().enrol;
   const [pending, run] = useTransition();
   const [started, setStarted] = useState<Extract<EnrolStarted, { ok: true }> | null>(null);
   const [codes, setCodes] = useState<string[] | null>(null);
@@ -174,7 +176,7 @@ export function ManageTwoStep({
   remove: () => Promise<{ ok: true } | { ok: false; problem: string }>;
 }) {
   const router = useRouter();
-  const w = useAdminText("signIn").manage;
+  const w = useSignInText().manage;
   const [pending, run] = useTransition();
   const [codes, setCodes] = useState<string[] | null>(null);
   const [problem, setProblem] = useState("");

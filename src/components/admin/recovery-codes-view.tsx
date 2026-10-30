@@ -6,7 +6,7 @@ import { fillWords } from "@/lib/admin-fill";
 import { formatCodes } from "@/lib/recovery-codes";
 import { CARD_CLASS } from "@/components/admin/ui";
 
-import { useAdminText } from "./admin-text";
+import { useSignInText } from "./admin-text-context";
 
 /**
  * A set of recovery codes, shown once (wave 1, 1f, `docs/wave-1-trust.md` 2.6): to copy, download or print, and the person must say they
@@ -28,7 +28,7 @@ export function RecoveryCodesView({
   onContinue: () => void;
 }) {
   const id = useId();
-  const w = useAdminText("signIn").codes;
+  const w = useSignInText().codes;
   const [saved, setSaved] = useState(false);
   const [note, setNote] = useState("");
   const text = formatCodes(codes, { account, madeOn }, w);
