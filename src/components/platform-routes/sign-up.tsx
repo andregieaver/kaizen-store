@@ -76,6 +76,16 @@ export async function SignUpRoute({ lang }: { lang: PlatformLang }) {
           </span>
           <textarea name="message" rows={3} maxLength={1000} className={`${control} py-2`} />
         </label>
+        {/* The Dream Factory (D409): only where the store is made at once, as it starts building when the store is made. */}
+        {selfServe && (
+          <label className="flex items-start gap-3 text-sm">
+            <input type="checkbox" name="dream" className="mt-1 size-4 shrink-0" />
+            <span className="flex flex-col gap-1">
+              <span className="font-medium">{w.selfServe.dream}</span>
+              <span className="text-muted">{w.selfServe.dreamHint}</span>
+            </span>
+          </label>
+        )}
         {/* Hidden from people and screen readers; a filled-in value marks a bot. */}
         <div aria-hidden="true" className="hidden">
           <label>

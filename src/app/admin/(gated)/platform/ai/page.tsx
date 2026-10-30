@@ -171,7 +171,7 @@ export default async function PlatformAiPage() {
           <ul className="mt-3 flex flex-col gap-1 text-sm">
             {dreamRuns.map((run) => (
               <li key={run.id} className={run.status === "failed" ? "text-danger-text" : "text-ink-2"}>
-                <span>
+                <Link href={`/admin/${run.storeSlug}/dream-factory`} className="underline">
                   {fillWords(w.dreamRun, {
                     date: run.createdAt.toISOString().slice(0, 16).replace("T", " "),
                     store: run.storeName,
@@ -181,7 +181,7 @@ export default async function PlatformAiPage() {
                     presses: run.score.ownerPresses,
                     first: run.score.firstTryPercent === null ? "–" : `${run.score.firstTryPercent} %`,
                   })}
-                </span>
+                </Link>
                 {run.test && <span className="text-muted"> · {w.dreamTest}</span>}
               </li>
             ))}

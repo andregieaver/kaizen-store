@@ -4,6 +4,7 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
   "store:overview": { title: "Hjem", keywords: ["hjem", "oversikt", "dashbord", "start", "sjekkliste", "forside"] },
   "store:setup": { title: "Oppsett", keywords: ["oppsett", "veiviser", "kom i gang", "lansering", "åpne butikken"] },
   "store:setup.step": { title: "Steg i oppsettet", keywords: ["oppsett", "steg", "veiviser", "kom i gang"] },
+  "store:dream-factory": { title: "Dream Factory", keywords: ["dream factory", "bygg butikken", "ki-butikk", "fra en beskrivelse", "automatisk oppsett", "lansering"] },
   "store:assistant": { title: "KI-assistent", keywords: ["ki-assistent", "assistent", "ki", "chat", "minne", "kunstig intelligens"] },
   "store:assistant.autopilot": { title: "Autopilot", keywords: ["autopilot", "planer", "mål", "beslutninger", "godkjenninger", "selvstendighet"] },
 
