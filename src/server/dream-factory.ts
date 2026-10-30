@@ -36,13 +36,14 @@ import {
   type RunStatus,
   type StepState,
 } from "@/lib/dream-factory";
-import { STARTER_ROLES } from "@/lib/legal-starters";
+import { STARTER_ROLES, type StarterRole } from "@/lib/legal-starters";
 import { featureOn } from "@/lib/store-features";
 
 import { actingAs } from "./actor";
 import { aiFor, completeText, type AiConnection } from "./ai";
 import { audit, passMembership, type Account, type Membership } from "./auth";
 import { isDemoProduct } from "./demo-content";
+import { createLegalStarter } from "./legal-starters";
 import { legalWrites, turnOnLegalAi } from "./legal-writer";
 import { log } from "./log";
 import { runTurn, type Principal, type TurnInput } from "./owner-assistant";
@@ -445,7 +446,7 @@ async function briefStep({ run, member, deps }: Context): Promise<StepOutcome> {
 
 /** One turn of the AI manager on the step, in the owner's name, then the step's check. */
 async function aiStep(id: AiStepId, ctx: Context): Promise<StepOutcome> {
-  const { run, member, deps } = ctx;
+  const { run, member } = ctx;
   const state = started(run.steps[id]);
   if (!run.brief) return { state: failedTry(run, state, "The run has no brief.") };
   // The products are made one at a time (each with its picture, which takes a while), so a turn ends well within its time.
@@ -654,8 +655,19 @@ async function frontFix(ctx: Context, state: StepState, pageId: string): Promise
  * The legal pages (D311): the AI writer turned on (the owner's yes to the brief agreed to it) and its writes awaited. Where it cannot write
  * (a business outside Norway, Sweden and Denmark), the step is skipped and says so; the owner writes or adds them on Legal pages.
  */
-async function legalStep({ run, member, deps }: Context): Promise<StepOutcome> {
+async function legalStep({ run, member, deps }: Context): Promise<StepOutcome | null> {
   const state = started(run.steps.legal);
+  // Waiting on the owner to check and publish the starters: passed once every kind of page the writer was asked for has a published page.
+  if (state.status === "asking") {
+    const wanted = Object.values(await legalWrites(member.store.id)).map((w) => w.role).filter((role) => (STARTER_ROLES as readonly string[]).includes(role));
+    const [row] = await typedRows(
+      z.object({ n: col.int }),
+      sql`select count(*)::int as n from commerce.page_roles r join commerce.pages p on p.id = r.page_id
+          where r.store_id = ${member.store.id}::uuid and p.published_at is not null and r.role = any(${`{${[...new Set(wanted)].join(",")}}`}::text[])`,
+    );
+    const have = row?.n ?? 0;
+    return wanted.length > 0 && have >= new Set(wanted).size ? { state: done(state, `The owner published the ${have} legal page(s).`) } : null;
+  }
   if (!state.detail?.startsWith("Writing")) {
     const on = await (deps.legalOn ?? turnOnLegalAi)(member, "auto");
     if (!on.ok) {
@@ -673,10 +685,15 @@ async function legalStep({ run, member, deps }: Context): Promise<StepOutcome> {
   }
   const failed = writes.filter((w) => w.status === "failed");
   const published = writes.filter((w) => w.status === "published");
-  if (failed.length > 0 || published.length === 0) {
-    return { state: failedTry(run, { ...state, detail: undefined }, `${published.length} legal page(s) published, ${failed.length} not written: ${failed.flatMap((w) => w.problems).join(" ").slice(0, 300)}`) };
-  }
-  return { state: done(state, `${published.length} legal page(s) written from official sources and published.`) };
+  if (failed.length === 0 && published.length > 0) return { state: done(state, `${published.length} legal page(s) written from official sources and published.`) };
+  // The writer's own checker refused what the model wrote (a quote not word for word, a number no quote holds): writing again with the same
+  // model rarely does better. The hand-written starters (D158) are made from the store's facts as drafts instead, for a person to check.
+  const roles = [...new Set(failed.map((w) => w.role))].filter((role): role is StarterRole => (STARTER_ROLES as readonly string[]).includes(role));
+  let made = 0;
+  for (const role of roles) if ((await createLegalStarter(member, role)).ok) made++;
+  const words = `${published.length} legal page(s) written by the AI and published; ${failed.length} failed the writer's check of the law's words, so ${made} starter page(s) from the store's facts are drafts on Legal pages`;
+  if (run.test) return { state: skipped(state, `${words}, for a person to check (a test run has none).`) };
+  return { state: asking({ ...state, detail: undefined }, `${words}: check them, fill in what they ask and publish them.`) };
 }
 
 /** Payments: Stripe's identity check is the owner's, by law. A test run pays in test mode and skips it. */

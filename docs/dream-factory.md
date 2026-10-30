@@ -44,8 +44,8 @@ may make: the law's (identity for payments), money (a plan, a domain) and the mo
 | 3 | **Setup** | A | 1b | AI | `getSetupProgress()`: business details, countries, and a shipping price for every country |
 | 4 | **Brand and look** | A | 1b | AI | A brand profile with a tagline or voice, and a theme in the library |
 | 5 | **Products** | B | 2, 3 | AI | The brief's number of the store's own products active, each with a picture and a price in every active country; no demo product on sale |
-| 6 | **Website** | B | 4 | Code | The draft's pages built and published, the first the front page (D351) |
-| 7 | **Legal pages** | B | 3 | Code | The writer's pages all settled, none failed, at least one published; skipped outside Norway, Sweden and Denmark |
+| 6 | **Website** | B | 4 | Code | The draft's pages built and published, the first the front page (D351); a front page the builder holds back for a blocking problem is fixed by the AI with the page tools until it is published |
+| 7 | **Legal pages** | B | 3 | Code | The writer's pages all settled, none failed, at least one published; skipped outside Norway, Sweden and Denmark. Pages that fail the writer's check become hand-written starters from the store's facts, as drafts the owner checks and publishes (a test run steps aside) |
 | 8 | **Payments** | C | 3 | Owner | Live card payments active; a test run skips it |
 | 9 | **Plan** | C | 1b | Owner | A plan or a running trial; a test run without one skips it |
 | 10 | **Rehearsal** | — | 5, 6, 7 | Code | The store's checkup without a blocking finding (setup, drafts, numbering, stock history) and every product still on sale everywhere |

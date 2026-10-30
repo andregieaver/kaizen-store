@@ -209,6 +209,27 @@ describe("the Dream Factory (D409)", () => {
     await stopDreamRun((await passMembership(real.slug, real.owner))!, latest.id);
   });
 
+  it("makes the hand-written starters as drafts when the writer's pages fail its check, and a test run steps aside", async () => {
+    const steps = { ...Object.fromEntries(["brief", "confirm", "research", "setup", "brand", "catalogue", "website"].map((id) => [id, { status: "done", tries: 1 }])) };
+    const legal = { status: "running", tries: 0, detail: "Writing 2 page(s)." };
+    await db().execute(sql`
+      insert into commerce.dream_runs (store_id, account_id, prompt, test, steps, brief)
+      select store_id, account_id, prompt, true, ${JSON.stringify({ ...steps, legal })}::jsonb, brief from commerce.dream_runs where store_id = ${real.id}::uuid and status = 'stopped' limit 1
+    `);
+    for (const role of ["terms", "privacy"]) {
+      await db().execute(sql`
+        insert into commerce.legal_ai_writes (store_id, account_id, role, status, problems) values (${real.id}::uuid, ${real.owner}::uuid, ${role}, 'failed', '["a quote is not word for word"]'::jsonb)
+      `);
+    }
+    const pagesBefore = await db().execute(sql`select 1 from commerce.pages where store_id = ${real.id}::uuid`);
+    await minute(real.id, { complete: async () => ({ text: "{}", region: null }), connection, turn: async () => {} });
+    const latest = (await latestDreamRun(real.id))!;
+    expect(latest.steps.legal.status).toBe("skipped");
+    expect(latest.steps.legal.detail).toContain("2 starter page(s) from the store's facts are drafts");
+    expect(await db().execute(sql`select 1 from commerce.pages where store_id = ${real.id}::uuid`)).toHaveLength(pagesBefore.length + 2);
+    await stopDreamRun((await passMembership(real.slug, real.owner))!, latest.id);
+  });
+
   it("builds another store for an owner from Your stores, and makes none from a description too short", async () => {
     const owner = (await activeAccount(real.owner))!;
     const slug = `another-${run}`;
