@@ -286,6 +286,7 @@ import {
 } from "./responsive-edit";
 import type { PartSharing, TemplateActions, TemplateItem, TemplateSource } from "@/lib/templates";
 import { templatePreviewPath } from "@/lib/template-paths";
+import { partFromRows, partRows } from "@/lib/saved-part-canvas";
 import { byName, categoryTree, type Term } from "@/lib/taxonomy";
 import type { GridStore } from "@/server/content-grid";
 import type { MenuPreview } from "@/server/menus";
@@ -573,8 +574,9 @@ export type ThemeTabContext = {
 };
 
 export function PageBuilder({
-  rows,
-  onRows,
+  rows: pageRows,
+  onRows: onPageRows,
+  onPartEditing,
   saved: parts,
   onSaved: setParts,
   css = [],
@@ -601,6 +603,8 @@ export function PageBuilder({
   themeTab = null,
   onThemeState,
 }: {
+  /** Told when a saved part goes onto the canvas to be edited and when the page comes back: the editor's undo is the page's, so it rests meanwhile. */
+  onPartEditing?: (editing: boolean) => void;
   /** Told whenever the Theme tab holds changes not saved yet, with how to save them: the editor's Save and Publish keep them too (D195). */
   onThemeState?: (state: { dirty: boolean; save: () => Promise<string[] | null> }) => void;
   /** The Theme tab beside Building blocks (D182): a store's theme for rows, headings, text, lists and buttons; null on Kaizen's own pages. */
@@ -654,6 +658,18 @@ export function PageBuilder({
 }) {
   const w = useAdminText("builder");
   const fw = w.frame;
+  // A saved part edited on the canvas (D46, D127): its content stands in for the page's rows, with every tool the page has, until it is
+  // saved or left; the page's own rows are untouched meanwhile.
+  const [partEdit, setPartEdit] = useState<{ part: SavedPart; rows: PageRow[]; dirty: boolean } | null>(null);
+  const [partProblem, setPartProblem] = useState<string | null>(null);
+  const [partSaving, startPartSave] = useTransition();
+  const rows = partEdit ? partEdit.rows : pageRows;
+  const onRows: Rows = partEdit
+    ? (update) => {
+        setPartEdit((now) => (now ? { ...now, rows: update(now.rows), dirty: true } : now));
+        setPartProblem(null);
+      }
+    : onPageRows;
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -668,6 +684,51 @@ export function PageBuilder({
   const [inline, setInline] = useState<{ blockId: string; point: { x: number; y: number } | null } | null>(null);
   /** A saved part by id. */
   const findPart = (id: string) => parts.find((p) => p.id === id);
+  /** Puts a saved part on the canvas to edit with every tool (D46, D127); the page comes back with Back or Save. */
+  const editOnCanvas = (part: SavedPart) => {
+    setDialog(null);
+    setInline(null);
+    setLastColumn(null);
+    setPartProblem(null);
+    setPartEdit({ part, rows: partRows(part), dirty: false });
+    onPartEditing?.(true);
+  };
+  const leavePartEdit = () => {
+    setDialog(null);
+    setInline(null);
+    setLastColumn(null);
+    setPartProblem(null);
+    setPartEdit(null);
+    onPartEditing?.(false);
+  };
+  const savePartEdit = () => {
+    if (!partEdit) return;
+    const { part } = partEdit;
+    const shaped = partFromRows(part, partEdit.rows);
+    if (!shaped.ok) {
+      setPartProblem(w.partCanvas.problems[shaped.problem]);
+      return;
+    }
+    startPartSave(async () => {
+      try {
+        const result = await grid.actions.updatePart(part.id, {
+          kind: part.kind,
+          content: shaped.content,
+          name: part.name,
+          global: part.kind === "page" ? false : part.global,
+          sharing: part.sharing,
+        });
+        if (!result.ok) {
+          setPartProblem(result.problems.join(" "));
+          return;
+        }
+        setParts(result.parts);
+        leavePartEdit();
+      } catch {
+        setPartProblem(w.partCanvas.failed);
+      }
+    });
+  };
   const [tab, setTab] = useState<Tab>("components");
   // Templates (D125): the lists the tab and its modal share, where the tab looks, and whether the modal is open.
   const controller = useTemplateLists(templates);
@@ -1187,6 +1248,16 @@ export function PageBuilder({
           {/* Its own scroll, with room at the sides for the rows' handles and tools, which reach past the canvas. */}
           <div className={`flex min-w-0 flex-col gap-3 lg:-mx-3 lg:px-3 lg:pb-6 ${STANDALONE}`}>
           {viewNote}
+          {partEdit && (
+            <PartCanvasBar
+              part={partEdit.part}
+              dirty={partEdit.dirty}
+              saving={partSaving}
+              problem={partProblem}
+              onSave={savePartEdit}
+              onBack={leavePartEdit}
+            />
+          )}
           {!translate && (
             <div className="flex flex-wrap items-start gap-3">
               <div className="min-w-0 flex-1">
@@ -1309,6 +1380,7 @@ export function PageBuilder({
             if (savedId) setTab("saved");
           }}
           onUse={(part) => placeSaved(part)}
+          onEditOnCanvas={editOnCanvas}
           upload={upload}
           startVideo={startVideo}
           grid={grid}
@@ -3320,6 +3392,7 @@ function Dialogs({
   parts,
   onParts,
   onUse,
+  onEditOnCanvas,
   upload,
   startVideo,
   grid,
@@ -3344,6 +3417,8 @@ function Dialogs({
   /** New saved parts from the server; `savedId` when one was just saved. */
   onParts: (parts: SavedPart[], savedId?: string) => void;
   onUse: (part: SavedPart) => void;
+  /** Puts a saved part on the canvas to edit with every tool (D46, D127). */
+  onEditOnCanvas: (part: SavedPart) => void;
   upload: Upload | null;
   startVideo: StartVideo | null;
 }) {
@@ -4243,6 +4318,7 @@ function Dialogs({
             onUse(savedPart);
             onClose();
           }}
+          onEditOnCanvas={() => onEditOnCanvas(savedPart)}
         />
       )}
 
@@ -4257,6 +4333,7 @@ function Dialogs({
             onUse(savedPart);
             onClose();
           }}
+          onEditOnCanvas={() => onEditOnCanvas(savedPart)}
           upload={upload}
         />
       )}
@@ -6673,6 +6750,50 @@ function SaveAsDialog({
   );
 }
 
+/** Over the canvas while a saved part is edited on it (D46, D127): whose content this is, and the way to save it or go back to the page. */
+function PartCanvasBar({
+  part,
+  dirty,
+  saving,
+  problem,
+  onSave,
+  onBack,
+}: {
+  part: SavedPart;
+  dirty: boolean;
+  saving: boolean;
+  problem: string | null;
+  onSave: () => void;
+  onBack: () => void;
+}) {
+  const w = useAdminText("builder");
+  const pw = w.partCanvas;
+  const kind = w.savedKinds[part.kind].one.toLowerCase();
+  return (
+    <div role="region" aria-label={fillWords(pw.save, { kind })} data-part-canvas="" className="flex flex-col gap-2 rounded-panel border border-insight-line bg-insight-soft p-3 text-sm text-ink">
+      <p>{fillWords(part.global && part.kind !== "page" ? pw.editingGlobal : pw.editing, { kind, name: part.name })}</p>
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={onSave}
+          disabled={saving || !dirty}
+          className="min-h-10 rounded-md bg-foreground px-4 text-sm font-medium text-background disabled:opacity-50"
+        >
+          {saving ? pw.saving : fillWords(pw.save, { kind })}
+        </button>
+        <button type="button" onClick={onBack} disabled={saving} className="min-h-10 rounded-md border border-border bg-card px-4 text-sm">
+          {dirty ? pw.discard : pw.back}
+        </button>
+      </div>
+      {problem && (
+        <p role="alert" className="text-danger-text">
+          {problem}
+        </p>
+      )}
+    </div>
+  );
+}
+
 /**
  * A saved part, opened from Saved: its name and content to change, and ways
  * to add it to the page or delete it. Changes reach pages that use it from
@@ -6684,6 +6805,7 @@ function SavedPartDialog({
   onClose,
   onParts,
   onUse,
+  onEditOnCanvas,
   upload,
 }: {
   actions: PageOwnerContext["actions"];
@@ -6691,6 +6813,8 @@ function SavedPartDialog({
   onClose: () => void;
   onParts: (parts: SavedPart[]) => void;
   onUse: () => void;
+  /** Its content on the canvas instead, with every component's settings (D46). */
+  onEditOnCanvas: () => void;
   upload: Upload | null;
 }) {
   const id = useId();
@@ -6759,6 +6883,15 @@ function SavedPartDialog({
           <>
             <button type="button" onClick={() => setConfirmDelete(true)} className="mr-auto min-h-10 px-2 text-sm text-red-700 underline dark:text-red-400">
               {w.tools.delete}
+            </button>
+            <button
+              type="button"
+              onClick={onEditOnCanvas}
+              disabled={dirty}
+              title={dirty ? sw.saveFirst : undefined}
+              className="min-h-10 rounded-md border border-border px-4 text-sm disabled:opacity-40"
+            >
+              {sw.editOnCanvas}
             </button>
             <button
               type="button"

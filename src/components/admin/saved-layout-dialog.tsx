@@ -5,10 +5,11 @@ import { useId, useState, useTransition } from "react";
 import { LAYOUT_TYPE_LABELS, layoutBlocks } from "@/lib/page-layout";
 import { SAVED_NAME_MAX, type SavedPart } from "@/lib/saved-parts";
 
+import { useAdminText } from "./admin-text";
 import { Modal } from "./modal";
 import type { PageOwnerContext } from "./page-context";
 
-/** A saved page layout (D127), opened from Saved: its name to change, and ways to use it or delete it. Its content is not edited here. */
+/** A saved page layout (D127), opened from Saved: its name to change, and ways to use it, edit its rows on the canvas or delete it. */
 export function SavedLayoutDialog({
   actions,
   part,
@@ -16,8 +17,11 @@ export function SavedLayoutDialog({
   onClose,
   onParts,
   onUse,
+  onEditOnCanvas,
 }: {
   actions: Pick<PageOwnerContext["actions"], "updatePart" | "deletePart">;
+  /** Its rows on the builder's canvas, to change with every tool and save back into it (D127). */
+  onEditOnCanvas: () => void;
   part: Extract<SavedPart, { kind: "page" }>;
   /** It is for the kind of page being edited, so it can be used here. */
   fits: boolean;
@@ -31,6 +35,7 @@ export function SavedLayoutDialog({
   const [problems, setProblems] = useState<string[]>([]);
   const [busy, start] = useTransition();
   const layout = part.content;
+  const editWords = useAdminText("builder").savedPart.editOnCanvas;
   const rows = layout.rows.length;
   const save = () =>
     start(async () => {
@@ -100,6 +105,14 @@ export function SavedLayoutDialog({
             </button>
             <button
               type="button"
+              onClick={onEditOnCanvas}
+              disabled={busy}
+              className="min-h-10 rounded-pill border border-edge px-4 text-sm disabled:opacity-40"
+            >
+              {editWords}
+            </button>
+            <button
+              type="button"
               onClick={onUse}
               disabled={!fits}
               className="min-h-10 rounded-pill border border-edge px-4 text-sm disabled:opacity-40"
@@ -136,8 +149,8 @@ export function SavedLayoutDialog({
         </div>
         <p className="text-sm text-muted">
           Made for {LAYOUT_TYPE_LABELS[layout.pageType].many}: {rows} {rows === 1 ? "row" : "rows"} and{" "}
-          {layoutBlocks(layout).length} blocks{layout.css ? ", with its own custom CSS" : ""}. Its content cannot be
-          edited here; save the page again as a template to make a new one.
+          {layoutBlocks(layout).length} blocks{layout.css ? ", with its own custom CSS" : ""}. Edit on the canvas to
+          change its rows with every tool, then save them back into it.
         </p>
         {!fits && (
           <p role="note" className="text-sm text-muted">

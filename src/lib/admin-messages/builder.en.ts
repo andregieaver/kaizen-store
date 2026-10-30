@@ -208,7 +208,7 @@ export const builderEn = {
     rows: { one: "{n} row", many: "{n} rows" },
     useLayout: "Use page layout {name}",
     use: "Use",
-    manageLayout: "{name}, saved page layout: open to rename, share or delete",
+    manageLayout: "{name}, saved page layout: open to rename, edit, share or delete",
     manage: "Manage",
     open: "{name}, saved {kind}: open to change or add",
     openGlobal: "{name}, saved global {kind}: open to change or add",
@@ -662,6 +662,23 @@ export const builderEn = {
     whereUsed: "{block}: change its settings where it is used.",
     remove: "Remove {what}",
     addText: "+ Rich text",
+    editOnCanvas: "Edit on the canvas",
+  },
+  /** A saved part edited on the builder's canvas (D46, D127): the bar over the canvas while it is there. */
+  partCanvas: {
+    editing: "Editing the saved {kind} “{name}” on the canvas. Changes here go into it, not into this page.",
+    editingGlobal: "Editing the saved {kind} “{name}” on the canvas. Saved, its changes show on every page that uses it.",
+    save: "Save the {kind}",
+    saving: "Saving …",
+    back: "Back to the page",
+    discard: "Discard changes",
+    saved: "Saved. Pages that add it from now on get it as it is now.",
+    problems: {
+      oneRow: "A saved row is one row: keep just one row on the canvas.",
+      oneColumn: "A saved column is one column: keep one row with one column on the canvas.",
+      oneBlock: "A saved component is one component: keep just it on the canvas.",
+    },
+    failed: "It could not be saved. Try again.",
   },
   /** Kaizena Flow's domain search component (D315). */
   domainSearch: {

@@ -184,6 +184,8 @@ export function PageEditor({
   }, [content]);
   // Undo and redo (D305): what the page was before each change; letters typed or a slider dragged close together are one step.
   const [history, setHistory] = useState<EditHistory<PageContent>>(emptyHistory);
+  // A saved part is on the canvas being edited (D46): undo and redo are the page's, so they rest until the page comes back.
+  const [partEditing, setPartEditing] = useState(false);
   const remember = (kind: string) => {
     const before = latest.current;
     setHistory((h) => record(h, before, kind, Date.now()));
@@ -432,7 +434,7 @@ export function PageEditor({
     }
     // Ctrl/Cmd + Z and Shift + Z (or Ctrl + Y) undo and redo the page, except in a field or a text, which undo their own typing.
     const which = historyKey(event);
-    if (!which || event.defaultPrevented) return;
+    if (!which || event.defaultPrevented || partEditing) return;
     const target = event.target instanceof HTMLElement ? event.target : null;
     if (target && (target.closest("input, textarea, select, [contenteditable]:not([contenteditable='false'])") || target.closest("dialog[open]"))) return;
     event.preventDefault();
@@ -534,6 +536,7 @@ export function PageEditor({
         lang={language.locale.split("-")[0]}
         rows={view.rows}
         onRows={changeRows}
+        onPartEditing={setPartEditing}
         translate={translating ? { name: language.name, mainName: main.name, source: content.rows } : null}
         viewNote={<ViewNote country={context.viewCountry} language={language.name} markets={content.markets} />}
         css={[textStyles.css, siteCss, content.css ?? ""]}
@@ -948,7 +951,7 @@ export function PageEditor({
             <button
               type="button"
               onClick={() => step("undo")}
-              disabled={history.past.length === 0}
+              disabled={history.past.length === 0 || partEditing}
               aria-label={ew.undo}
               title={ew.undoKey}
               className="flex size-11 items-center justify-center rounded-pill hover:bg-sunken disabled:opacity-40"
@@ -958,7 +961,7 @@ export function PageEditor({
             <button
               type="button"
               onClick={() => step("redo")}
-              disabled={history.future.length === 0}
+              disabled={history.future.length === 0 || partEditing}
               aria-label={ew.redo}
               title={ew.redoKey}
               className="flex size-11 items-center justify-center rounded-pill hover:bg-sunken disabled:opacity-40"

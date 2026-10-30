@@ -177,6 +177,11 @@ changing it; a rule changes here, and its line in CLAUDE.md when its gist change
   edits in `src/lib/page-rows.ts`. Rows, columns and components saved to
   use again (D46) are in `commerce.saved_parts` (`src/server/saved-parts.ts`,
   checked by `savedPartInput`); the page gets copies (`copyRow()` etc.).
+  A saved part, a page layout too, is edited on the builder's own canvas
+  (*Edit on the canvas*, `src/lib/saved-part-canvas.ts`): its content
+  stands in for the page's rows until it is saved back or left, the page's
+  undo resting meanwhile; a column or component sits alone in a holder row
+  that is never saved, and a row, column or component must stay one.
   A global one (D98, `src/lib/global-parts.ts`, `src/server/global-parts.ts`)
   is kept the same on every page using it: pages hold copies marked
   `global` (ids from `src/lib/part-ids.ts`, parts inside marked `local` are

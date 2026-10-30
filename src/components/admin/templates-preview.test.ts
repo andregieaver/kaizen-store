@@ -356,6 +356,7 @@ describe("a saved page layout's dialog", () => {
         onClose: () => {},
         onParts: () => {},
         onUse: () => {},
+        onEditOnCanvas: () => {},
       }),
     );
   function fakeActionsForParts() {
@@ -365,9 +366,10 @@ describe("a saved page layout's dialog", () => {
     };
   }
 
-  it("can rename, use and delete it, with no Global option", () => {
+  it("can rename, use, edit on the canvas and delete it, with no Global option", () => {
     const out = dialog(true);
     expect(out).toContain("Saved page layout");
+    expect(out).toContain("Edit on the canvas");
     expect(out).toContain('value="Landing page"');
     expect(out).toContain("Save name");
     expect(out).toContain("Use on this page");
