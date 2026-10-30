@@ -20,7 +20,11 @@ const READERS: Record<string, { count: number; reason: string }> = {
   "src/server/stripe-webhooks.ts": { count: 1, reason: "Stripe's events are recorded once under the provider `stripe` (`webhook_events`); a session's payment is found by `applyPaymentAnswer()` under the answer's own provider (D292)" },
   "src/server/subscriptions.ts": { count: 3, reason: "a subscription's payments and Kaizena Flow's webhook endpoint are Stripe's; a draft order is never a subscription" },
   "src/server/standing-orders.ts": { count: 2, reason: "a weekly delivery's saved card and pay link are Stripe's; a draft order is never a delivery" },
-  "src/server/status.ts": { count: 2, reason: "the status page asks Stripe about its own pending checkouts and counts its unprocessed events (D408); manual payments are not Stripe's" },
+  "src/server/status.ts": {
+    count: 5,
+    reason:
+      "the status page asks Stripe about its own pending checkouts, counts its unprocessed events (D408), reads Kaizena Flow's own endpoints, and counts Stripe's payments beside Stripe's events to hear silence (PSI REL-02); manual payments send no events",
+  },
   "src/server/no-show.ts": { count: 1, reason: "a no-show fee is charged to the card Stripe saved with a deposit; a booking is never a draft order" },
   "src/server/dac7.ts": { count: 2, reason: "a host's orders are paid through Stripe on the host's account (D71); a draft order has no host" },
   "src/server/host-payments.ts": { count: 3, reason: "a host's payments and commissions are Stripe's (D71); a draft order has no host" },
