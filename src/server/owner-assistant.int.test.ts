@@ -146,14 +146,14 @@ describe("the owner assistant (D94)", () => {
       count_segment: { rules: { match: "all", conditions: [] } },
     };
     // A draft A/B test (D148) is a write that needs no yes: its own test makes one. So are tagging and archiving orders and writing a draft order (D173): they need arguments, and
-    // `order-ops-tools.int.test.ts` runs each of them. Making a draft product and writing a draft's texts (D308) are too: `product-tools.int.test.ts` runs them. Building and changing a page's draft (D308) as well: `site-tools.int.test.ts` runs them.
+    // `order-ops-tools.int.test.ts` runs each of them. Making a draft product and writing a draft's texts (D308) are too: `product-tools.int.test.ts` runs them. Building and changing a page's draft (D308) as well, and stopping a build: `site-tools.int.test.ts` runs them.
     // Drafting a broadcast and tagging a customer (PSI AGT-01) too: `marketing-tools.int.test.ts` runs them; a support note and ending a conversation:
     // `support-manager-tools.int.test.ts`; logging time: `work-tools.int.test.ts` (Work's tools are refused here: the store has Work off).
     // Adding a theme to the library (D308): `design-tools.int.test.ts`; asking for a look at a page or the store (D310), which photographs it: `page-looks.int.test.ts`.
     // Searching the web and reading a page reach the network, and keeping a note or a comparison writes (D329): `research.int.test.ts`, with stand-ins.
     // Keeping the brand and designing a look write (D330): `brand.int.test.ts`. Writing an entry's draft (D326): `content-tools.int.test.ts`.
     // Saving a report (D346): `report-query.int.test.ts`. Saving a segment (D380): `segment-audiences.int.test.ts`.
-    const WRITES_WITHOUT_A_YES = new Set(["save_report", "save_segment", "create_transfer", "set_target", "set_brand", "design_look", "make_brand_marks", "search_web", "read_web_page", "save_research_note", "compare_options", "add_order_note", "draft_experiment", "tag_orders", "archive_orders", "create_draft_order", "create_product", "write_product_texts", "build_page", "edit_page", "draft_broadcast", "tag_customer", "add_support_note", "end_support_conversation", "log_time", "add_theme", "look_at_page", "look_at_store", "save_entry", "draft_store", "draft_header_footer", "draft_workflow"]);
+    const WRITES_WITHOUT_A_YES = new Set(["save_report", "save_segment", "create_transfer", "set_target", "set_brand", "design_look", "make_brand_marks", "search_web", "read_web_page", "save_research_note", "compare_options", "add_order_note", "draft_experiment", "tag_orders", "archive_orders", "create_draft_order", "create_product", "write_product_texts", "build_page", "cancel_page_build", "edit_page", "draft_broadcast", "tag_customer", "add_support_note", "end_support_conversation", "log_time", "add_theme", "look_at_page", "look_at_store", "save_entry", "draft_store", "draft_header_footer", "draft_workflow"]);
     for (const tool of OWNER_TOOLS.filter((t) => !("gate" in t) && !WRITES_WITHOUT_A_YES.has(t.name))) {
       const result = ownerTools.runOwnerTool(ctx, tool.name, args[tool.name] ?? {});
       if (tool.name === "get_order" || tool.name === "parcel_tracking") await expect(result).rejects.toThrow("No order 1 in this store.");

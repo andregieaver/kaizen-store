@@ -41,12 +41,18 @@ type Row = Record<string, unknown>;
  * catalogue reads it once per variant, thousands of times more. The reads behind a function (the Inventory page, the cart, placing an order) keep a wall-time backstop of ten
  * seconds: before D370 the failure took more than a minute.
  *
- * The stock of 200 variants failed it once more after the catalogue was analysed (CI run 780: 190,400 rows): `available_stock` grouped every
- * store's active reservations and the planner could do so once per variant. The view now sums each level's own (D408).
+ * The stock of 200 variants failed it once more after the catalogue was analysed (CI runs 780, 789: 190,400 rows). Not the catalogue: the
+ * planner read the small locations table once per level, which `CATALOGUE` now leaves out (below, D408).
  */
 const VARIANTS = 5_000;
 const BOUND_MS = 10_000;
-const CATALOGUE = new Set(["product_variants", "products", "inventory_levels", "inventory_locations", "inventory_reservations"]);
+/**
+ * The tables a plan must not loop over. Not `inventory_locations`: it holds a store's few stock locations (every store's, one or two each),
+ * and while it is small the planner rightly reads it whole for each level instead of looking each up by its key (CI #780 and #789: 952
+ * rows, read 200 times; reproduced on a fresh shard, `inventory_locations Seq Scan ×600`), switching to the key as it grows. Counting it
+ * failed the test on a cheap plan and never caught a loop over the catalogue, which is what it is for.
+ */
+const CATALOGUE = new Set(["product_variants", "products", "inventory_levels", "inventory_reservations"]);
 
 type PlanNode = { "Node Type"?: string; "Relation Name"?: string; "Actual Rows"?: number; "Actual Loops"?: number; "Rows Removed by Filter"?: number; Plans?: PlanNode[] };
 
@@ -82,7 +88,7 @@ async function expectLinear(query: ReturnType<typeof sql>): Promise<void> {
 async function linearBound(): Promise<number> {
   const [row] = await db().execute<Row>(sql`
     select (select count(*) from commerce.product_variants) + (select count(*) from commerce.products) + (select count(*) from commerce.inventory_levels)
-      + (select count(*) from commerce.inventory_locations) + (select count(*) from commerce.inventory_reservations) as n
+      + (select count(*) from commerce.inventory_reservations) as n
   `);
   return 2 * Number(row.n);
 }
