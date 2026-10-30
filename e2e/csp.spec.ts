@@ -55,7 +55,7 @@ const POLICY_PARTS = [
   "https://js.stripe.com",
 ];
 
-test("the cart, checkout and order send the policy, and the rest of the store does not", async ({ request }) => {
+test("the cart, checkout and order send the policy, and the rest of the store only who may frame it", async ({ request }) => {
   for (const path of [
     "/s/demo/no/cart",
     "/s/demo/no/checkout",
@@ -73,7 +73,8 @@ test("the cart, checkout and order send the policy, and the rest of the store do
   }
   for (const path of ["/s/demo/no", "/s/demo/no/products", "/s/demo/no/account", "/s/demo/no/withdraw", "/", "/s/demo/store-sitemap.xml"]) {
     const response = await request.get(path, { maxRedirects: 0 });
-    expect(response.headers()["content-security-policy"], path).toBeUndefined();
+    // Only who may frame the page (PSI SEC-07): no script or style rule.
+    expect(response.headers()["content-security-policy"], path).toMatch(/^frame-ancestors 'self'( [^;]+)?$/);
     // Every page reports what a stricter policy would block, and blocks nothing (D389).
     expect(response.headers()["content-security-policy-report-only"], path).toContain("report-uri /api/csp-report");
   }
