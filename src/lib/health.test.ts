@@ -22,8 +22,6 @@ describe("checkHealth", () => {
       fetch,
       env,
       countActiveMarkets: async () => 4,
-      databaseUrl:
-        "postgres://postgres.ref:secret@aws-1-eu-west-1.pooler.supabase.com:6543/postgres",
       region: "dub1",
       commit: "abc",
       uploadKey: "sb_publishable_wrong",
@@ -36,8 +34,6 @@ describe("checkHealth", () => {
       commit: "abc",
       supabase: "ok",
       database: "ok",
-      databaseConnection: "shared_pooler_transaction",
-      databaseHost: "aws-1-eu-west-1.pooler.supabase.com",
       databaseError: null,
       activeMarkets: 4,
       uploadKey: "publishable_key",
@@ -45,6 +41,8 @@ describe("checkHealth", () => {
       emailEvents: "not_set",
     });
     expect(JSON.stringify(report)).not.toContain("secret");
+    // The answer is public: it never names the database's host or how it is reached (PSI, docs/security.md section 6).
+    expect(JSON.stringify(report)).not.toContain("pooler");
     const [url, init] = fetch.mock.calls[0];
     expect(String(url)).toBe("https://example.supabase.co/auth/v1/health");
     expect(init.headers).toEqual({ apikey: "sb_publishable_test" });

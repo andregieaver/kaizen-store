@@ -67,6 +67,32 @@ async function pickOrder(storeId: string, extra: ReturnType<typeof sql>): Promis
   return rows[0] ?? null;
 }
 
+/**
+ * The database's own door (docs/security.md 2.1, PSI SEC-03), read from the production database itself: the roles Supabase's Data API signs in as
+ * have no use of `commerce`, no grant on a table in it and no default grant that a new table would inherit. Not the store's: the platform's.
+ */
+async function doorDrill(): Promise<DrillResult> {
+  const rows = await typedRows(
+    z.object({ role: col.text, usage: col.bool, tables: col.int, defaults: col.int }),
+    sql`
+      select r.rolname as role, has_schema_privilege(r.rolname, 'commerce', 'USAGE') as usage,
+        (select count(*)::int from information_schema.role_table_grants g where g.table_schema = 'commerce' and g.grantee = r.rolname) as tables,
+        (select count(*)::int from pg_default_acl d join pg_namespace n on n.oid = d.defaclnamespace, aclexplode(d.defaclacl) a
+          where n.nspname = 'commerce' and a.grantee = r.oid) as defaults
+      from pg_roles r where r.rolname in ('anon', 'authenticated')
+    `,
+  );
+  if (rows.length === 0) return { kind: "database_door", outcome: "skipped", detail: "This database has no Data API roles." };
+  const open = rows.filter((r) => r.usage || r.tables > 0 || r.defaults > 0);
+  return open.length === 0
+    ? { kind: "database_door", outcome: "passed", detail: `${rows.map((r) => r.role).join(" and ")}: no use of commerce, no table grant, no default grant.` }
+    : {
+        kind: "database_door",
+        outcome: "failed",
+        detail: open.map((r) => `${r.role}: ${[r.usage && "uses the schema", r.tables > 0 && `${r.tables} table grants`, r.defaults > 0 && `${r.defaults} default grants`].filter(Boolean).join(", ")}`).join("; "),
+      };
+}
+
 async function webhooksDrill(): Promise<DrillResult> {
   const origin = siteUrl();
   const rows = await typedRows(
@@ -216,6 +242,7 @@ async function runOne(storeId: string, kind: DrillKind, requestedBy: string | nu
   try {
     if (kind === "agent_eval") return await evalDrill(requestedBy);
     if (kind === "manager_pilot") return await pilotDrill(storeId, requestedBy);
+    if (kind === "database_door") return await doorDrill();
     if (kind === "webhooks") return await webhooksDrill();
     if (kind === "payment_facts") return await factsDrill(storeId);
     if (kind === "mark_sent") return await sentDrill(storeId);

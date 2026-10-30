@@ -12,13 +12,6 @@ export type HealthReport = {
   supabase: CheckResult;
   /** The direct database connection the store's server code uses. */
   database: CheckResult;
-  /** Which kind of connection string is configured (never the string itself). */
-  databaseConnection: DatabaseConnectionKind | null;
-  /**
-   * The host, shown only for Supabase's shared pooler, whose host names are
-   * public and regional. It carries no password or project id.
-   */
-  databaseHost: string | null;
   /** A short error code when the database check fails, e.g. `28P01`. */
   databaseError: string | null;
   activeMarkets: number | null;
@@ -79,7 +72,6 @@ export async function checkHealth(
     fetch?: Fetch;
     env?: () => PublicEnv;
     countActiveMarkets?: (() => Promise<number>) | null;
-    databaseUrl?: string;
     uploadKey?: string;
     emailEnv?: Record<string, string | undefined>;
     region?: string;
@@ -94,16 +86,12 @@ export async function checkHealth(
     checkDatabase(deps.countActiveMarkets ?? null),
   ]);
 
-  const databaseUrl = deps.databaseUrl ?? process.env.DATABASE_URL;
-
   return {
     status: supabase === "ok" && database.result === "ok" ? "ok" : "degraded",
     region,
     commit,
     supabase,
     database: database.result,
-    databaseConnection: databaseUrl ? describeDatabaseUrl(databaseUrl) : null,
-    databaseHost: databaseUrl ? sharedPoolerHost(databaseUrl) : null,
     databaseError: database.error,
     activeMarkets: database.activeMarkets,
     uploadKey: uploadKeyKind(deps.uploadKey ?? process.env.SUPABASE_SECRET_KEY),

@@ -41,6 +41,9 @@ export const BUDGETS = {
 
 export type BudgetEndpoint = keyof typeof BUDGETS;
 
+/** Endpoints a failed count refuses rather than allows (PSI SEC-10): guessing a password must not get easier while the database struggles. */
+export const FAIL_CLOSED: ReadonlySet<BudgetEndpoint> = new Set<BudgetEndpoint>(["unlock"]);
+
 /** The bucket names of an endpoint, for the store and a visitor. */
 export function budgetBuckets(endpoint: BudgetEndpoint, visitor: string): { store: string; visitor: string } {
   return { store: `budget:${endpoint}`, visitor: `budget:${endpoint}:${visitor}` };
@@ -58,7 +61,8 @@ export function budgetVisitor(headers: Headers): string {
 
 /**
  * Counts one ask and says whether it is within both budgets; `storeId` null is Kaizena Flow's own site (its counters, `store_id` null,
- * are one bucket as the table's key treats nulls as equal). Counting never blocks the answer when the database is busy: a failure allows.
+ * are one bucket as the table's key treats nulls as equal). Counting never blocks the answer when the database is busy: a failure allows,
+ * except for an endpoint in `FAIL_CLOSED`, where a guess is what the budget stops (a private store's password).
  */
 export async function takeBudget(storeId: string | null, endpoint: BudgetEndpoint, visitor: string): Promise<boolean> {
   const budget = BUDGETS[endpoint];
@@ -75,6 +79,6 @@ export async function takeBudget(storeId: string | null, endpoint: BudgetEndpoin
     return count(buckets.visitor) <= budget.visitor && count(buckets.store) <= budget.store;
   } catch (error) {
     log("warn", "budget.count_failed", { endpoint }, error);
-    return true;
+    return !FAIL_CLOSED.has(endpoint);
   }
 }

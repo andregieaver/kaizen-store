@@ -44,8 +44,9 @@ export async function signInLocked(email: string): Promise<boolean> {
     if (locked) log("warn", "admin_sign_in.locked", { tries: Number(row?.count ?? 0) });
     return locked;
   } catch (error) {
+    // Fails closed (PSI SEC-10): a password is never tried without its count. A sign-in link still works.
     log("error", "admin_sign_in.count_failed", {}, error);
-    return false;
+    return true;
   }
 }
 

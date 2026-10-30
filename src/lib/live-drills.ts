@@ -4,10 +4,11 @@
  */
 
 /** In the order a run takes them: the checks that read come first, the drills that change an order after, then the agents: the eval (no store's data) and the AI manager's pilot. */
-export const DRILL_KINDS = ["webhooks", "payment_facts", "mark_sent", "partial_refund", "full_refund", "agent_eval", "manager_pilot"] as const;
+export const DRILL_KINDS = ["database_door", "webhooks", "payment_facts", "mark_sent", "partial_refund", "full_refund", "agent_eval", "manager_pilot"] as const;
 export type DrillKind = (typeof DRILL_KINDS)[number];
 
 export const DRILL_WORDS: Record<DrillKind, string> = {
+  database_door: "The Data API's roles can reach nothing in the commerce schema: no use of it, no table, no default grant",
   webhooks: "Stripe's events reach Kaizena Flow at its own address and are processed",
   payment_facts: "Each paid test payment's method and risk are read from Stripe",
   mark_sent: "A paid order is marked sent with a tracking number",
