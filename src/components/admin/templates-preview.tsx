@@ -206,7 +206,9 @@ function DeviceSwitch({ device, onDevice }: { device: PreviewDevice; onDevice: (
 
 /**
  * The frame with the template's page: loading, loaded, or failed (an error event, or no answer in time), with a way to
- * try again. Sandboxed without scripts: it is a picture of the page, and it can run nothing.
+ * try again. The page streams its content behind a loading state and shows it with Next's own inline scripts, so the frame
+ * runs scripts; it never shares the admin's origin (no `allow-same-origin`), so nothing in it can read or act on the admin,
+ * and the page itself is inert (no clicks, no focus, no forms).
  */
 function PreviewFrame({ title, href, device }: { title: string; href: string; device: PreviewDevice }) {
   const [attempt, setAttempt] = useState(0);
@@ -225,7 +227,7 @@ function PreviewFrame({ title, href, device }: { title: string; href: string; de
           key={attempt}
           title={title}
           src={href}
-          sandbox="allow-same-origin"
+          sandbox="allow-scripts"
           onLoad={() => setStatus("ready")}
           onError={() => setStatus("failed")}
           style={{ width: deviceWidth(device) }}

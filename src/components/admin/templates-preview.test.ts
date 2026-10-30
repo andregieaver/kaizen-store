@@ -62,13 +62,15 @@ const preview = (over: Partial<ComponentProps<typeof TemplatePreviewDialog>> = {
   );
 
 describe("the preview dialog", () => {
-  it("is a native dialog, named, with the template's own page in a titled, sandboxed frame", () => {
+  it("is a native dialog, named, with the template's own page in a titled frame that runs scripts but never shares the admin's origin", () => {
     const out = preview();
     expect(out).toContain("<dialog");
     expect(out).toMatch(/aria-labelledby="[^"]+"/);
     expect(out).toContain("Preview: Landing page");
     expect(out).toContain('<iframe title="Preview of Landing page" src="/admin/preview/templates/l1"');
-    expect(out).toContain('sandbox="allow-same-origin"');
+    // The page shows its streamed content with Next's own scripts; without `allow-same-origin` it cannot reach the admin.
+    expect(out).toContain('sandbox="allow-scripts"');
+    expect(out).not.toContain("allow-same-origin");
   });
 
   it("says what the template is: its kind, who published it, what is in it and which pages it is for", () => {
