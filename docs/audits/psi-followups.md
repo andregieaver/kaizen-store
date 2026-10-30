@@ -107,7 +107,9 @@ maturity for the run-up to launch. Point IDs are the audit's.
       a shopper's erasure does not reach the AI manager's conversations. Done in code (D391): those conversations are kept 12 months after
       each message or the owner's own period, and the chat tells customers when their tone is read and conversations summarised, the
       support settings page telling the owner.
-- [ ] **REG-02** Legal review of the platform's terms, privacy notice and DPA; fill in the company name.
+- [ ] **REG-02** Legal review of the platform's terms, privacy notice and DPA; fill in the company name. Found 30 October 2026 (PSI re-score):
+      none of the three is published on production (`/privacy` has no text, `/terms` and `/data-processing-agreement` are 404); Platform →
+      Pages → *Write the legal pages* writes them from the business details.
 - [x] **REG-03, DATA-05** Owner and staff account erasure; a whole-store export. Built 28 October 2026 (D377): Your account → *Delete
       your account* (`eraseOwnAccount()` in `src/server/account-erasure.ts`: the account made anonymous in place, its memberships, the AI
       manager's conversations, memories, notices, skills and follow-ups, devices, recovery codes and staff emails gone, its applications

@@ -11,7 +11,7 @@ After wave 13 the owner paused feature waves (evaluation of 29 October). The pha
 6. Threat model and processor agreements.
 7. A shorter rulebook (CLAUDE.md). Done 30 October 2026: the Storefront and Admin rules (1,592 lines, 374 KB) moved verbatim to
    `docs/rules/storefront.md` and `docs/rules/admin.md`; CLAUDE.md keeps one line per rule and is 32 KB, from 382 KB.
-8. PSI re-scored.
+8. PSI re-scored. Done 30 October 2026: overall 73.9 → 76.1 at `890f81f5` (`docs/audits/psi-2026-10-30.md`); Reliability stays capped until item 1.
 
 The owner's principle: the system aims at full automation, so the AI (the agent building it, the AI manager or the platform's own jobs) should be able to
 run every live check itself; where it cannot, that is a gap to close.
