@@ -63,6 +63,8 @@ export type StepState = {
   startedAt?: string;
   finishedAt?: string;
   detail?: string;
+  /** What the step is working on, where it carries over minutes: the website's front page while the AI fixes it. */
+  ref?: string;
 };
 export type DreamSteps = Record<DreamStepId, StepState>;
 
@@ -72,6 +74,7 @@ const stepStateSchema = z.object({
   startedAt: z.string().optional(),
   finishedAt: z.string().optional(),
   detail: z.string().optional(),
+  ref: z.string().optional(),
 });
 
 /** Every step waiting: the state a run starts in. */
@@ -243,6 +246,20 @@ export function readBrief(answer: string, prompt: string): DreamBrief | null {
 // ---------------------------------------------------------------------------------------------------------------------------------
 
 export type AiStepId = "research" | "setup" | "brand" | "catalogue" | "goals";
+
+/**
+ * The website step's own AI turn: the draft's front page held back by a blocking problem of the builder (contrast, a picture without alt
+ * text, an empty link) is fixed by the AI with the page tools, whose publishing refuses while a blocking problem is left (D308), so the check
+ * stays the builder's.
+ */
+export const FRONT_FIX_TOOLS = ["get_page", "edit_page", "publish_page"] as const;
+
+export function frontFixMessage(page: { id: string; title: string }, issues: string): string {
+  return [
+    `The store's front page "${page.title}" (page ${page.id}) is still a draft: the builder found ${issues || "a problem to fix before it is published"}.`,
+    "Read it with get_page, fix exactly those problems with edit_page (keep its words and layout otherwise), then publish it with publish_page.",
+  ].join(" ");
+}
 
 /** The tools each AI step may use (the AI manager's own, D308); nothing else is offered in its turn. */
 export const STEP_TOOLS: Record<AiStepId, readonly string[]> = {

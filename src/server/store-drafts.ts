@@ -188,12 +188,15 @@ export async function openDraft(storeId: string): Promise<DraftView | null> {
   };
 }
 
-export type PublishDraftResult = { ok: true; published: number; notes: string[] } | { ok: false; problem: string };
+export type PublishDraftResult =
+  | { ok: true; published: number; notes: string[]; /** The draft's front page, when a blocking problem held it back. */ frontHeld: { id: string; title: string; issues: string[] } | null }
+  | { ok: false; problem: string };
 
 /**
  * The owner's one press (their yes for every part): each built page published by the builder's own save, the first made the front page,
  * the others added to the menu the header shows (or a menu of their own the header then shows), and the theme made live. A page that cannot be published (a blocking problem) is left as
- * a draft and named; the rest go on.
+ * a draft and named, with the builder's issues; the rest go on. Only the draft's own front page becomes the store's: when it is held back, the
+ * store's front page is unchanged (it is never another of the draft's pages).
  */
 export async function publishDraft(who: { account: Account; store: Store }, draftId: string, invalidate: (tag: string) => void): Promise<PublishDraftResult> {
   const view = await openDraft(who.store.id);
@@ -201,23 +204,29 @@ export async function publishDraft(who: { account: Account; store: Store }, draf
   if (!view.ready) return { ok: false, problem: "Some pages are still being built: publish when they are done." };
   const notes: string[] = [];
   const published: { id: string; slug: string; title: string }[] = [];
+  const frontId = view.pages.find((page) => page.pageId)?.pageId ?? null;
+  let frontHeld: { id: string; title: string; issues: string[] } | null = null;
   for (const page of view.pages) {
     if (!page.pageId) continue;
     const held = await getPageForEdit(who.store.id, page.pageId, "page");
     if (!held) continue;
     const saved = await savePage(who.account, who.store.id, page.pageId, held.draft, { publish: true, type: "page" });
     if (!saved.ok) {
-      notes.push(`"${held.draft.title}" stays a draft: ${saved.problems.join(" ")}`);
+      const issues = ("issues" in saved && saved.issues ? saved.issues : []).map((issue) => `${issue.where}: ${issue.message}`);
+      notes.push(`"${held.draft.title}" stays a draft: ${[...saved.problems, ...issues].join(" ")}`);
+      if (page.pageId === frontId) frontHeld = { id: page.pageId, title: held.draft.title, issues };
       continue;
     }
     published.push({ id: page.pageId, slug: held.draft.slug, title: held.draft.title });
   }
   if (published.length > 0) {
-    const front = await setFrontPage(who.account, who.store.id, published[0].id);
-    if (!front.ok) notes.push(`The front page is unchanged: ${front.problems.join(" ")}`);
+    if (published[0].id === frontId) {
+      const front = await setFrontPage(who.account, who.store.id, frontId);
+      if (!front.ok) notes.push(`The front page is unchanged: ${front.problems.join(" ")}`);
+    } else notes.push("The front page is unchanged, as the draft's own is still a draft.");
     const member = { account: who.account, store: who.store, role: "owner" as const };
     const locale = who.store.localization.locales[0] ?? "en";
-    const added = published.slice(1).map((page) => ({ label: { [locale]: page.title }, link: { kind: "page" as const, slug: page.slug }, depth: 0 }));
+    const added = published.filter((page) => page.id !== frontId).map((page) => ({ label: { [locale]: page.title }, link: { kind: "page" as const, slug: page.slug }, depth: 0 }));
     // The pages join the menu the header shows, after its own links; a store whose header shows none gets a menu of its own for them.
     const shown = who.store.headerMenuId ? who.store.menus.find((menu) => menu.id === who.store.headerMenuId) : undefined;
     if (added.length > 0 && shown) {
@@ -244,7 +253,7 @@ export async function publishDraft(who: { account: Account; store: Store }, draf
   await audit(who.account.id, who.store.id, "store.draft_published", { draft: draftId, pages: published.length, theme: Boolean(view.theme) });
   invalidate(pagesTag(who.store.id));
   invalidate(storeTag(who.store.slug));
-  return { ok: true, published: published.length, notes };
+  return { ok: true, published: published.length, notes, frontHeld };
 }
 
 /** Lets a draft go: its pages stay as drafts in Pages and its theme in the library, for the owner to use or delete. */

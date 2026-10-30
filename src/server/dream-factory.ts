@@ -10,7 +10,9 @@ import {
   DREAM_TRIES,
   PROMPT_MAX,
   PROMPT_MIN,
+  FRONT_FIX_TOOLS,
   STEP_TOOLS,
+  frontFixMessage,
   answeredBrief,
   briefPrompt,
   briefSchema,
@@ -44,6 +46,7 @@ import { isDemoProduct } from "./demo-content";
 import { legalWrites, turnOnLegalAi } from "./legal-writer";
 import { log } from "./log";
 import { runTurn, type Principal, type TurnInput } from "./owner-assistant";
+import { setFrontPage } from "./pages";
 import { memberCan } from "./permissions";
 import { setFeature } from "./store-features";
 import { createStoreForOwner } from "./platform";
@@ -51,7 +54,7 @@ import { refreshTag } from "./refresh";
 import { getSetupProgress } from "./setup";
 import { checkupFindings } from "./store-checkup";
 import { draftStore, openDraft, publishDraft } from "./store-drafts";
-import type { Store } from "./stores";
+import { storeTag, type Store } from "./stores";
 import { col, typedRow, typedRows } from "./typed-rows";
 
 /**
@@ -343,7 +346,7 @@ async function advanceRun(runId: string, deadline: number, deps: DreamDeps): Pro
     for (const id of due) {
       if (Date.now() >= deadline) break;
       // A turn of the AI manager takes up to two minutes: one a minute. The brief is one short answer, not a turn.
-      const usesTurn = stepOf(id).who === "ai" && id !== "brief" && run.steps[id].status !== "asking";
+      const usesTurn = (stepOf(id).who === "ai" && id !== "brief" && run.steps[id].status !== "asking") || (id === "website" && Boolean(run.steps.website.ref));
       if (usesTurn && (turns > 0 || deadline - Date.now() < TURN_MS)) continue;
       const before = run.steps[id];
       // The store as it is now: a step earlier in this minute may have set its country, its markets or its features.
@@ -455,13 +458,26 @@ async function aiStep(id: AiStepId, ctx: Context): Promise<StepOutcome> {
     if (!on.ok) return { state: failedTry(run, state, `Several countries could not be switched on: ${on.problems.join(" ")}`) };
   }
   const message = id === "catalogue" && progress ? `${stepMessage(id, run.brief)}\n\nNow: ${progress.detail} Make the next product only, complete.` : stepMessage(id, run.brief);
+  // Each product in a conversation of its own: in one long one the model took to answering "I created …" like its earlier turns, making none.
+  const seen = await managerTurn(ctx, STEP_TOOLS[id], message, id === "catalogue" ? null : run.conversationId);
+  const conversationId = id === "catalogue" ? undefined : (seen.conversationId ?? undefined);
+  if (seen.error) return { state: failedTry(run, state, seen.error.slice(0, 300)), conversationId };
+  const check = await checkAiStep(id, ctx, state);
+  if (check.ok) return { state: done(state, check.detail), conversationId };
+  // The products count up a turn at a time: a turn that added one is progress, not a failed try.
+  if (id === "catalogue" && progress && check.count > progress.count) return { state: { ...state, status: "waiting", detail: check.detail }, conversationId };
+  return { state: failedTry(run, state, check.detail), conversationId };
+}
+
+/** A turn of the AI manager in the owner's name, offered only the tools given, at the run's levels. */
+async function managerTurn({ run, member, deps }: Context, tools: readonly string[], message: string, conversationId: string | null) {
   const principal: Principal = { account: member.account, store: member.store, role: member.role, kind: member.kind, permissions: member.permissions };
   const connection = deps.connection !== undefined ? deps.connection : await aiFor(run.storeId, { feature: "dream_factory", accountId: member.account.id });
   const seen: { error: string | null; conversationId: string | null } = { error: null, conversationId: null };
   await actingAs("autopilot", () =>
     (deps.turn ?? runTurn)({
       member: principal,
-      conversationId: run.conversationId,
+      conversationId,
       message,
       emit: (event) => {
         if (event.type === "conversation") seen.conversationId = event.id;
@@ -470,17 +486,11 @@ async function aiStep(id: AiStepId, ctx: Context): Promise<StepOutcome> {
       invalidate: refreshTag,
       signal: AbortSignal.timeout(TURN_MS),
       scheduled: true,
-      autopilot: { tools: STEP_TOOLS[id], settings: autonomySettingsSchema.parse({ levels: RUN_LEVELS }), told: [] },
+      autopilot: { tools: [...tools], settings: autonomySettingsSchema.parse({ levels: RUN_LEVELS }), told: [] },
       connection,
     }),
   );
-  const conversationId = seen.conversationId ?? undefined;
-  if (seen.error) return { state: failedTry(run, state, seen.error.slice(0, 300)), conversationId };
-  const check = await checkAiStep(id, ctx, state);
-  if (check.ok) return { state: done(state, check.detail), conversationId };
-  // The products count up a turn at a time: a turn that added one is progress, not a failed try.
-  if (id === "catalogue" && progress && check.count > progress.count) return { state: { ...state, status: "waiting", detail: check.detail }, conversationId };
-  return { state: failedTry(run, state, check.detail), conversationId };
+  return seen;
 }
 
 type Check = { ok: boolean; detail: string; count: number };
@@ -580,10 +590,15 @@ async function catalogueCheck(store: Store, brief: DreamBrief): Promise<Check> {
 
 // Code's steps ------------------------------------------------------------------------------------------------------------------
 
-/** The website: the store's pages drafted from the brief (D351), built in the background, then published, the first made the front page. */
-async function websiteStep({ run, member, deps }: Context): Promise<StepOutcome> {
+/**
+ * The website: the store's pages drafted from the brief (D351), built in the background, then published, the first made the front page.
+ * A front page the builder holds back (a blocking problem) is fixed by the AI a turn a minute (`FRONT_FIX_TOOLS`) until it is published.
+ */
+async function websiteStep(ctx: Context): Promise<StepOutcome> {
+  const { run, member, deps } = ctx;
   const state = started(run.steps.website);
   if (!run.brief) return { state: failedTry(run, state, "The run has no brief.") };
+  if (state.ref) return frontFix(ctx, state, state.ref);
   const draft = await openDraft(member.store.id);
   if (!draft) {
     const made = await (deps.draft ?? draftStore)(
@@ -604,8 +619,35 @@ async function websiteStep({ run, member, deps }: Context): Promise<StepOutcome>
   }
   const published = await (deps.publish ?? publishDraft)({ account: member.account, store: member.store }, draft.id, refreshTag);
   if (!published.ok) return { state: failedTry(run, state, published.problem) };
+  if (published.frontHeld) {
+    const held = published.frontHeld;
+    return { state: { ...waitingOn(state, `The AI fixes the front page "${held.title}": ${held.issues.join(" ").slice(0, 300) || "a blocking problem"}.`), ref: held.id } };
+  }
   if (published.published === 0) return { state: failedTry(run, state, published.notes.join(" ") || "No page could be published.") };
   return { state: done(state, `Published ${published.published} page(s)${published.notes.length ? `: ${published.notes.join(" ")}` : ""}.`) };
+}
+
+/** One turn of the AI on the held front page; done once it is published and made the store's front page. */
+async function frontFix(ctx: Context, state: StepState, pageId: string): Promise<StepOutcome> {
+  const { run, member } = ctx;
+  const front = async () => {
+    const [row] = await typedRows(
+      z.object({ title: z.string().nullable(), published: col.bool }),
+      sql`select draft->>'title' as title, published_at is not null as published from commerce.pages where id = ${pageId}::uuid and store_id = ${member.store.id}::uuid`,
+    );
+    return row ?? null;
+  };
+  const before = await front();
+  if (!before) return { state: failedTry(run, { ...state, ref: undefined }, "The front page is gone.") };
+  if (!before.published) {
+    const seen = await managerTurn(ctx, FRONT_FIX_TOOLS, frontFixMessage({ id: pageId, title: before.title ?? "" }, state.detail ?? ""), null);
+    if (seen.error) return { state: failedTry(run, state, seen.error.slice(0, 300)) };
+    if (!(await front())?.published) return { state: failedTry(run, state, `The front page "${before.title}" is still a draft with a problem the builder holds it back for.`) };
+  }
+  const made = await setFrontPage(member.account, member.store.id, pageId);
+  if (!made.ok) return { state: failedTry(run, state, `The front page could not be set: ${made.problems.join(" ")}`) };
+  refreshTag(storeTag(member.store.slug));
+  return { state: done({ ...state, ref: undefined }, `The front page "${before.title}" was fixed by the AI and published, with the other pages.`) };
 }
 
 /**

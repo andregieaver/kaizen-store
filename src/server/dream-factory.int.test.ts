@@ -174,6 +174,41 @@ describe("the Dream Factory (D409)", () => {
     expect(latest.steps.setup.detail).toMatch(/^Still missing: /);
   });
 
+  it("has the AI fix a front page the builder held back, a turn a minute, and makes it the front page once published", async () => {
+    const [page] = await db().execute<Row>(sql`
+      insert into commerce.pages (store_id, type, slug, draft) values (${real.id}::uuid, 'page', ${`front-${run}`}, '{"title":"Velkommen"}'::jsonb) returning id
+    `);
+    const pageId = String(page.id);
+    const steps = { ...Object.fromEntries(["brief", "confirm", "research", "setup", "brand", "catalogue"].map((id) => [id, { status: "done", tries: 1 }])) };
+    const website = { status: "running", tries: 0, ref: pageId, detail: "The AI fixes the front page \"Velkommen\": Picture: no alt text." };
+    // The real store's earlier run was stopped: this one carries its brief, with the lanes before the website passed.
+    await db().execute(sql`
+      insert into commerce.dream_runs (store_id, account_id, prompt, test, steps, brief)
+      select store_id, account_id, prompt, true, ${JSON.stringify({ ...steps, website })}::jsonb, brief from commerce.dream_runs where store_id = ${real.id}::uuid and status = 'stopped' limit 1
+    `);
+    const turns: TurnInput[] = [];
+    const deps = {
+      complete: async () => ({ text: "{}", region: null }),
+      connection,
+      // The turn fixes the page and publishes it, as publish_page would once nothing blocks it.
+      turn: async (input: TurnInput) => {
+        turns.push(input);
+        await db().execute(sql`update commerce.pages set published = draft, published_at = now() where id = ${pageId}::uuid`);
+      },
+      legalOn: async () => ({ ok: false as const, problems: ["country"] }),
+    };
+    await minute(real.id, deps);
+    const latest = (await latestDreamRun(real.id))!;
+    expect(turns).toHaveLength(1);
+    expect(turns[0].autopilot?.tools).toEqual(["get_page", "edit_page", "publish_page"]);
+    expect(turns[0].message).toContain(pageId);
+    expect(latest.steps.website).toMatchObject({ status: "done" });
+    expect(latest.steps.website.ref).toBeUndefined();
+    const [store] = await db().execute<Row>(sql`select front_page_id from commerce.stores where id = ${real.id}::uuid`);
+    expect(String(store.front_page_id)).toBe(pageId);
+    await stopDreamRun((await passMembership(real.slug, real.owner))!, latest.id);
+  });
+
   it("builds another store for an owner from Your stores, and makes none from a description too short", async () => {
     const owner = (await activeAccount(real.owner))!;
     const slug = `another-${run}`;
