@@ -123,6 +123,16 @@ test("on the live site the CSS panel floats above the header and chat, moves and
   await expect(panel.locator("[data-css-editor] .cm-content")).toBeFocused();
   // Above the chat's window (z-index 90) and any header.
   expect(Number(await panel.evaluate((el) => getComputedStyle(el).zIndex))).toBeGreaterThan(90);
+  // And in no layer of the page's own (a page wrapped for the footer reveal is one, `z-10`), which would hold it under a sticky header.
+  const layers = await panel.evaluate((el) => {
+    const found: string[] = [];
+    for (let node = el.parentElement; node && node !== document.body; node = node.parentElement) {
+      const style = getComputedStyle(node);
+      if (style.zIndex !== "auto" || style.transform !== "none" || style.isolation === "isolate") found.push(node.className);
+    }
+    return found;
+  });
+  expect(layers).toEqual([]);
   const header = page.locator("header").first();
   if (await header.count()) {
     const z = await header.evaluate((el) => Number(getComputedStyle(el).zIndex) || 0);

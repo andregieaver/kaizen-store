@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
+import { createPortal } from "react-dom";
 import { createContext, useContext, useEffect, useId, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 
 import { CSS_MAX, cssProblem, siteCss } from "@/lib/custom-css";
@@ -235,7 +236,9 @@ export default function SiteCssEditor({ pageId, store, onClose, onNotice }: { pa
 
   const tabs = read?.site ? (["page", "site"] as const) : (["page"] as const);
   const names = { page: "This page", site: "Whole site" } as const;
-  return (
+  // In the body, not where the edit buttons are: a page wrapped for the footer reveal (`over-footer`, `z-10`) makes its own layer, and
+  // the panel inside it would fall under a sticky header whatever its own z-index.
+  return createPortal(
     <div
       ref={panel}
       role="dialog"
@@ -377,7 +380,8 @@ export default function SiteCssEditor({ pageId, store, onClose, onNotice }: { pa
           </div>
         </>
       )}
-    </div>
+    </div>,
+    document.body,
   );
 }
 
