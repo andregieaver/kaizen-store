@@ -1,6 +1,6 @@
 import "server-only";
 
-import sharp from "sharp";
+import sharp, { type Sharp } from "sharp";
 
 import { findClaims } from "@/lib/claims";
 
@@ -44,7 +44,7 @@ export function aiSourceXmp(source: AiSource): string {
 /** A model's picture as the pair the site keeps; `ai` marks both files as made or changed by AI. */
 export async function shrinkPicture(bytes: Uint8Array, ai?: AiSource): Promise<{ image: Buffer; thumbnail: Buffer; width: number; height: number }> {
   const source = sharp(bytes, { failOn: "error" }).rotate();
-  const marked = (picture: sharp.Sharp) => (ai ? picture.withXmp(aiSourceXmp(ai)) : picture);
+  const marked = (picture: Sharp) => (ai ? picture.withXmp(aiSourceXmp(ai)) : picture);
   const [image, thumbnail] = await Promise.all([
     marked(source.clone().resize({ width: WIDTH, withoutEnlargement: true }).webp({ quality: 82 })).toBuffer({ resolveWithObject: true }),
     marked(source.clone().resize({ width: THUMBNAIL_WIDTH, withoutEnlargement: true }).webp({ quality: 78 })).toBuffer(),
