@@ -138,6 +138,12 @@ stay in the standing document's *What comes next*.
       `RECOVERY_CODE_HASH_KEY` (`scripts/hash-keys.mjs`), `docs/runbooks/key-rotation.md`. The owner's part: set the two hash keys once.
 - [ ] **SEC-05, SEC-07 (4)** Enforced nonce CSP on `/admin`, then the storefront; `frame-ancestors` on storefront and platform pages; HSTS
       `includeSubDomains` once every subdomain is confirmed HTTPS.
+      `frame-ancestors` done 30 October 2026: every path sends `frame-ancestors 'self'` (and the theme store's host when it has one,
+      `baseRouteHeaders()`); the pay routes keep `'none'`. Not done, and why: Next's guide (`content-security-policy.md`) says a nonce needs
+      every page dynamically rendered and that partial prerendering, which `cacheComponents` gives the admin's shells, is incompatible
+      with it; the alternative it names, SRI hashes, is experimental. Enforcing it means giving up the admin's prerendered shells or
+      trying SRI on a preview first: a decision, not a quick fix. HSTS `includeSubDomains` waits for the owner to confirm every subdomain
+      of `kaizenaflow.com` serves HTTPS.
 - [ ] **AST-09, AST-01, AGT-14 (6)** An eval that measures the model: payloads the filter does not catch, several runs per model, a model
       save gated on a pass, the replay failing on a changed model or tool description.
 - [ ] **REL-09, REL-02, DATA-03 (7)** Event-arrival checks, the `webhooks` drill on a schedule, an outside probe.

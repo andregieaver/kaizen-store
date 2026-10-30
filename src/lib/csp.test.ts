@@ -126,6 +126,8 @@ describe("the headers every route gets (PSI 2026-10-24, SEC-07)", () => {
       { key: "X-Content-Type-Options", value: "nosniff" },
       { key: "Permissions-Policy", value: PERMISSIONS_POLICY },
       ...reportOnlyHeaders(),
+      // Who may frame the storefront and Kaizena Flow's pages (PSI SEC-07): only the site itself.
+      { key: "Content-Security-Policy", value: "frame-ancestors 'self'" },
     ]);
     expect(SITE_HEADERS.some((h) => h.key === "Referrer-Policy")).toBe(false);
   });

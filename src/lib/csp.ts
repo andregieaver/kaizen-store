@@ -111,9 +111,11 @@ export const SITE_HEADERS: HeaderEntry[] = [
 ];
 
 /**
- * The admin may be framed only by Kaizena Flow itself and, when the theme store has a host of its own, by that host: its pages show
- * a theme's look in frames of the admin's public preview (`designPreviewPath(…, embed)`). Only `frame-ancestors`, so the admin's
- * scripts and styles are as they were; anyone else framing an admin page to trick a click is refused.
+ * Who may frame a page: only Kaizena Flow itself (a store on its own domain, that domain) and, when the theme store has a host of its own,
+ * that host, whose pages show a theme's look in frames of the admin's public preview (`designPreviewPath(…, embed)`). Only
+ * `frame-ancestors`, so scripts and styles are as they were; anyone else framing a page to trick a click is refused. Sent on every path
+ * since PSI SEC-07 (30 October 2026): the storefront and Kaizena Flow's pages too, which nothing frames from elsewhere; the pay routes'
+ * own policy, later, says `'none'`.
  */
 export function adminFrameHeaders(themesOrigin: string | null): HeaderEntry[] {
   return [{ key: "Content-Security-Policy", value: `frame-ancestors 'self'${themesOrigin ? ` ${themesOrigin}` : ""}` }];
@@ -178,7 +180,7 @@ export function reportOnlyHeaders(env: CspEnv = {}): HeaderEntry[] {
 /** The entries `next.config.ts` returns before the pay routes', whose stricter set comes later and so wins where both match. */
 export function baseRouteHeaders(themesOrigin: string | null, env: CspEnv = {}): { source: string; headers: HeaderEntry[] }[] {
   return [
-    { source: "/:path*", headers: [...SITE_HEADERS, ...reportOnlyHeaders(env)] },
+    { source: "/:path*", headers: [...SITE_HEADERS, ...reportOnlyHeaders(env), ...adminFrameHeaders(themesOrigin)] },
     { source: "/admin/:path*", headers: adminFrameHeaders(themesOrigin) },
   ];
 }
