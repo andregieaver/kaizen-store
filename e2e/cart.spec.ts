@@ -71,10 +71,12 @@ test.describe("on a phone", () => {
     await expect(drawer).toBeHidden();
     await expect(page).toHaveURL("/s/demo/se/p/demo-notatbok");
 
-    // Opened by its address, the cart is its own page.
-    await page.goto("/s/demo/se/cart");
-    await expect(page.getByRole("heading", { level: 1, name: "Varukorg" })).toBeVisible();
-    await expect(page.getByRole("dialog", { name: "Varukorg" })).toHaveCount(0);
+    // Opened by its address, the cart is its own page: in a new tab with the same cart, as closing went back in history and WebKit may
+    // still be finishing that navigation when the next one starts (CI run 782).
+    const direct = await page.context().newPage();
+    await direct.goto("/s/demo/se/cart");
+    await expect(direct.getByRole("heading", { level: 1, name: "Varukorg" })).toBeVisible();
+    await expect(direct.getByRole("dialog", { name: "Varukorg" })).toHaveCount(0);
   });
 });
 
