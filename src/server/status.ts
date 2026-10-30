@@ -29,7 +29,9 @@ import {
   isStatusComponent,
   overallState,
   updateWords,
+  sloOf,
   uptimeBasisPoints,
+  type Slo,
   type DayBar,
   type DayCount,
   type IncidentImpact,
@@ -257,7 +259,7 @@ export type IncidentView = {
 };
 
 export type StatusOverview = {
-  components: { id: StatusComponent; state: "ok" | "degraded" | "unknown"; bars: DayBar[]; uptime: number | null; checkedAt: string | null }[];
+  components: { id: StatusComponent; state: "ok" | "degraded" | "unknown"; bars: DayBar[]; uptime: number | null; slo: Slo; checkedAt: string | null }[];
   overall: ReturnType<typeof overallState>;
   open: IncidentView[];
   recent: IncidentView[];
@@ -307,6 +309,7 @@ export async function readStatusOverview(now: Date = new Date()): Promise<Status
       state: currentState(last ? { ok: Boolean(last.ok) } : null),
       bars,
       uptime: uptimeBasisPoints(bars),
+      slo: sloOf(id, bars),
       checkedAt: last ? new Date(String(last.checked_at)).toISOString() : null,
     };
   });

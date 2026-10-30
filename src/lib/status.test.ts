@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { alertDue, currentState, eventsProblem, dayBars, dayState, lastDays, overallState, uptimeBasisPoints, uptimeText } from "./status";
+import { alertDue, currentState, eventsProblem, dayBars, dayState, lastDays, overallState, sloOf, uptimeBasisPoints, uptimeText } from "./status";
 
 describe("the status page's rules (D360)", () => {
   it("reads a day from its checks, a day with none as missing", () => {
@@ -52,5 +52,28 @@ describe("Stripe's events arriving (consolidation 8)", () => {
     expect(eventsProblem({ unprocessed: 0, unheard: 0 })).toBeNull();
     expect(eventsProblem({ unprocessed: 2, unheard: 0 })).toBe("events_unprocessed");
     expect(eventsProblem({ unprocessed: 2, unheard: 1 })).toBe("events_missing");
+  });
+});
+
+describe("service level objectives (REL-09)", () => {
+  const days = (failedPerDay: number[], total = 288) => failedPerDay.map((failed, i) => ({ day: `2026-10-${String(i + 1).padStart(2, "0")}`, ok: total - failed, total }));
+
+  it("holds each part to its objective over the last 30 days only", () => {
+    // 30 days of 288 checks: 99.9 % allows 8 failed checks (40 minutes).
+    const month = days(Array(30).fill(0));
+    expect(sloOf("website", month)).toEqual({ targetBps: 9_990, actualBps: 10_000, met: true, minutesLeft: 40 });
+    month[29] = { ...month[29], ok: 288 - 8 };
+    expect(sloOf("website", month)).toMatchObject({ met: true, minutesLeft: 0 });
+    month[29] = { ...month[29], ok: 288 - 9 };
+    expect(sloOf("website", month)).toMatchObject({ met: false, minutesLeft: -5 });
+    // A bad day older than 30 days no longer counts.
+    expect(sloOf("website", [...days([200]), ...days(Array(30).fill(0))])).toMatchObject({ met: true });
+  });
+
+  it("allows more for the parts that retry by themselves, and says nothing before a check ran", () => {
+    const month = days([...Array(29).fill(0), 40]);
+    expect(sloOf("website", month).met).toBe(false);
+    expect(sloOf("email", month)).toMatchObject({ targetBps: 9_950, met: true, minutesLeft: 3 * 5 });
+    expect(sloOf("jobs", [])).toEqual({ targetBps: 9_950, actualBps: null, met: null, minutesLeft: null });
   });
 });

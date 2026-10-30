@@ -120,6 +120,14 @@ async function StatusBody({ lang }: { lang: PlatformLang }) {
               <span>{component.uptime === null ? w.noUptime : fill(w.uptime, { uptime: uptimeText(component.uptime, locale) ?? "" })}</span>
               <span>{w.today}</span>
             </div>
+            {/* The part's objective over 30 days (REL-09), worked out from the same checks. */}
+            <p className="text-xs text-muted">
+              {fill(component.slo.met === null ? w.sloNone : component.slo.met ? w.sloMet : w.sloMissed, {
+                target: uptimeText(component.slo.targetBps, locale) ?? "",
+                actual: uptimeText(component.slo.actualBps, locale) ?? "",
+                minutes: new Intl.NumberFormat(locale).format(Math.max(0, component.slo.minutesLeft ?? 0)),
+              })}
+            </p>
           </li>
         ))}
       </ul>

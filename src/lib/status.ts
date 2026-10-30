@@ -55,6 +55,38 @@ export function uptimeBasisPoints(bars: readonly DayCount[]): number | null {
   return Math.floor((ok * 10_000) / total);
 }
 
+/** Minutes between two runs of the checks: a failed check stands for this long. */
+export const CHECK_MINUTES = 5;
+
+/** Days a service level objective is measured over (REL-09): the last 30, today included. */
+export const SLO_DAYS = 30;
+
+/**
+ * Each part's objective, the share of its checks that pass over `SLO_DAYS`, in hundredths of a percent: what shoppers and owners meet
+ * first is held to 99.9 % (about 43 minutes a month), email and background work, which retry by themselves, to 99.5 %.
+ */
+export const SLO_TARGETS: Record<StatusComponent, number> = { website: 9_990, sign_in: 9_990, payments: 9_990, email: 9_950, jobs: 9_950 };
+
+export type Slo = {
+  targetBps: number;
+  /** The share that passed over the days measured; null when no check ran. */
+  actualBps: number | null;
+  met: boolean | null;
+  /** Minutes of failed checks the objective still allows (negative once missed); null when no check ran. */
+  minutesLeft: number | null;
+};
+
+/** A part's objective against its last `SLO_DAYS` bars: met while the failed checks are within what the target allows. */
+export function sloOf(id: StatusComponent, bars: readonly DayCount[]): Slo {
+  const targetBps = SLO_TARGETS[id];
+  const recent = bars.slice(-SLO_DAYS);
+  const total = recent.reduce((n, b) => n + b.total, 0);
+  if (total === 0) return { targetBps, actualBps: null, met: null, minutesLeft: null };
+  const ok = recent.reduce((n, b) => n + b.ok, 0);
+  const allowed = Math.floor((total * (10_000 - targetBps)) / 10_000);
+  return { targetBps, actualBps: Math.floor((ok * 10_000) / total), met: total - ok <= allowed, minutesLeft: (allowed - (total - ok)) * CHECK_MINUTES };
+}
+
 /** The uptime as people read it (`99.95 %`), never rounded up to 100 while a check failed. */
 export function uptimeText(basisPoints: number | null, locale: string): string | null {
   if (basisPoints === null) return null;
