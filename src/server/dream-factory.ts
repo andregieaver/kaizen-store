@@ -52,7 +52,7 @@ import { memberCan } from "./permissions";
 import { setFeature } from "./store-features";
 import { createStoreForOwner } from "./platform";
 import { refreshTag } from "./refresh";
-import { getSetupProgress } from "./setup";
+import { archiveDemoProducts, getSetupProgress } from "./setup";
 import { checkupFindings } from "./store-checkup";
 import { draftStore, openDraft, publishDraft } from "./store-drafts";
 import { storeTag, type Store } from "./stores";
@@ -714,10 +714,13 @@ async function planStep({ run, member }: Context): Promise<StepOutcome | null> {
   return state.status === "asking" ? null : { state: asking(state, "Choose a plan on the Plan page.") };
 }
 
-/** The rehearsal: the store's own checkup without a blocking finding, and every product still on sale everywhere. */
+/** The rehearsal: the demo store's products archived, then the store's own checkup without a blocking finding, and every product still on sale everywhere. */
 async function rehearsalStep({ run, member }: Context): Promise<StepOutcome> {
   const state = started(run.steps.rehearsal);
   if (!run.brief) return { state: failedTry(run, state, "The run has no brief.") };
+  // The store's own products have replaced the demo store's (the owner's yes to the brief covers it): what is left of the demo, drafts
+  // included, is archived as the setup wizard's one press does, so the checkup counts only the store's own.
+  await archiveDemoProducts({ ...member, store: await freshStore(member) });
   const store = await freshStore(member);
   const [findings, catalogue] = await Promise.all([checkupFindings(store, member.account.id), catalogueCheck(store, run.brief)]);
   const blocking = findings.filter((f) => BLOCKING_CHECKUP.has(f.key));

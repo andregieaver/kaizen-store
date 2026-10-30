@@ -230,6 +230,25 @@ describe("the Dream Factory (D409)", () => {
     await stopDreamRun((await passMembership(real.slug, real.owner))!, latest.id);
   });
 
+  it("archives what is left of the demo store before the rehearsal's checkup", async () => {
+    const { isDemoProduct } = await import("./demo-content");
+    const demo = sql`select count(*)::int as n from commerce.products p where p.store_id = ${real.id}::uuid and p.status <> 'archived' and ${isDemoProduct(sql`p`)}`;
+    // A demo product left as a draft, as the Standard store's gift card is.
+    await db().execute(sql`insert into commerce.products (store_id, handle, tax_code, status) values (${real.id}::uuid, ${`demo-left-${run}`}, 'txcd_99999999', 'draft')`);
+    expect(Number((await db().execute<Row>(demo))[0].n)).toBeGreaterThan(0);
+    const steps = Object.fromEntries(["brief", "confirm", "research", "setup", "brand", "catalogue", "website", "legal", "payments", "plan"].map((id) => [id, { status: "done", tries: 1 }]));
+    await db().execute(sql`
+      insert into commerce.dream_runs (store_id, account_id, prompt, test, steps, brief)
+      select store_id, account_id, prompt, true, ${JSON.stringify(steps)}::jsonb, brief from commerce.dream_runs where store_id = ${real.id}::uuid and status = 'stopped' limit 1
+    `);
+    await minute(real.id, { complete: async () => ({ text: "{}", region: null }), connection, turn: async () => {} });
+    expect(Number((await db().execute<Row>(demo))[0].n)).toBe(0);
+    const latest = (await latestDreamRun(real.id))!;
+    // The store has none of its own products, so the rehearsal still fails, on that alone.
+    expect(latest.steps.rehearsal.detail).toMatch(/of \d+ products are on sale/);
+    await stopDreamRun((await passMembership(real.slug, real.owner))!, latest.id);
+  });
+
   it("builds another store for an owner from Your stores, and makes none from a description too short", async () => {
     const owner = (await activeAccount(real.owner))!;
     const slug = `another-${run}`;
