@@ -136,6 +136,12 @@ maturity for the run-up to launch. Point IDs are the audit's.
 The code items of [the re-score's ranked list](psi-2026-10-30.md) (Ranked improvements across segments), in its order; the owner's items
 stay in the standing document's *What comes next*.
 
+- [ ] **REG-12 (privacy 6)** The legal check's remaining lines, a no-show disclosure and a DSA note with a report button. Wording done
+      30 October 2026 (`docs/legal/check-2026-10-29.md`): the Swedish dated-service exception in the law's own words (servering, catering,
+      kultur- och idrottsevenemang); SV, DA and EN complaints as the statutes put them (reasonable time, two months always in time, with
+      konsumentköplagen 5:2 and 4:14 and købeloven §§ 81 and 83), never "as soon as you notice"; return costs limited to withdrawals and
+      voluntary returns in all four; "Angrer du?" and the last-parcel rule in the withdrawal line of the emails. Left: the no-show
+      disclosure and the DSA note with a report button.
 - [x] **REG-08 (privacy 5)** Tone and summaries in the store's privacy starter, and `docs/ai-act.md`. Done 30 October 2026: the starter's
       automated-decisions section says an AI reads the tone of support messages or summarises them, each only while it does (the chat
       notice's `aiUse` through `legalFacts()`, four languages); `docs/ai-act.md` classifies each use (provider and deployer, Art. 50, no

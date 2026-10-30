@@ -40,7 +40,7 @@ const text = {
     },
     /** Angrerett og retur (D153): bekreftelsen på en angring, e-postene om returen og påminnelsen til butikken. Juridisk ordlyd: må kontrolleres av et menneske før bruk. */
     returns: {
-      withdrawLine: "Angret du? Du har rett til å angre kjøpet innen 14 dager etter at du fikk varene.",
+      withdrawLine: "Angrer du? Du har rett til å angre kjøpet innen 14 dager etter at du fikk varene, eller den siste av dem hvis de kom hver for seg.",
       costShopper: "Angrer du kjøpet, betaler du selv kostnaden ved å sende varene tilbake.",
       costStore: "Angrer du kjøpet, betaler butikken kostnaden ved å sende varene tilbake.",
       withdrawButton: "Angre avtalen",
@@ -339,7 +339,7 @@ const text = {
     },
     /** Ångerrätt och retur (D153): bekräftelsen på en ångran, mejlen om returen och påminnelsen till butiken. Juridisk formulering: måste granskas av en människa före bruk. */
     returns: {
-      withdrawLine: "Ångrat dig? Du har rätt att ångra köpet inom 14 dagar efter att du fick varorna.",
+      withdrawLine: "Ångrar du dig? Du har rätt att ångra köpet inom 14 dagar efter att du fick varorna, eller den sista av dem om de kom var för sig.",
       costShopper: "Ångrar du köpet står du själv för kostnaden för att skicka tillbaka varorna.",
       costStore: "Ångrar du köpet står butiken för kostnaden för att skicka tillbaka varorna.",
       withdrawButton: "Ångra avtalet",
@@ -638,7 +638,7 @@ const text = {
     },
     /** Fortrydelsesret og retur (D153): bekræftelsen på en fortrydelse, e-mails om returen og påmindelsen til butikken. Juridisk ordlyd: skal gennemgås af et menneske før brug. */
     returns: {
-      withdrawLine: "Fortrudt? Du har ret til at fortryde købet inden for 14 dage efter, at du har fået varerne.",
+      withdrawLine: "Fortryder du? Du har ret til at fortryde købet inden for 14 dage efter, at du har fået varerne, eller den sidste af dem, hvis de kom hver for sig.",
       costShopper: "Fortryder du købet, betaler du selv for at sende varerne tilbage.",
       costStore: "Fortryder du købet, betaler butikken for at sende varerne tilbage.",
       withdrawButton: "Fortryd aftalen",
@@ -937,7 +937,7 @@ const text = {
     },
     /** Withdrawal and returns (D153): the acknowledgement of a withdrawal, the return's emails and the staff reminder. Legal wording: needs human review before real use. */
     returns: {
-      withdrawLine: "Changed your mind? You have a right to withdraw from the purchase within 14 days of receiving the goods.",
+      withdrawLine: "Changed your mind? You have a right to withdraw from the purchase within 14 days of receiving the goods, or the last of them if they came separately.",
       costShopper: "If you withdraw from the purchase, you pay the cost of sending the goods back.",
       costStore: "If you withdraw from the purchase, the store pays the cost of sending the goods back.",
       withdrawButton: "Withdraw from the contract",

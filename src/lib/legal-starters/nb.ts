@@ -118,7 +118,7 @@ export const NB: StarterText = {
     "terms.withdrawal.nolink": "Les informasjonen om angrerett på dette nettstedet for å se hvordan du bruker retten.",
     "h.terms.returns_link": "Retur",
     "terms.returns.1": "Du kan returnere varer innen {days} dager etter at du har mottatt dem. Se returpolitikken for hvordan.",
-    "terms.returns.shopper": "Når du returnerer varer, betaler du de direkte kostnadene ved å sende dem tilbake, med mindre vi sier noe annet.",
+    "terms.returns.shopper": "Når du returnerer varer fordi du angrer kjøpet, eller i en frivillig retur, betaler du de direkte kostnadene ved å sende dem tilbake, med mindre vi sier noe annet.",
     "terms.returns.store": "Vi betaler kostnaden ved å sende returnerte varer tilbake til oss.",
     "h.terms.conformity": "Mangler ved varen",
     "terms.conformity.1": "Varene skal være som avtalt. Dersom det foreligger en mangel og dette ikke skyldes deg eller forhold på din side, kan du holde kjøpesummen tilbake, velge mellom retting og omlevering, kreve prisavslag, kreve heving og kreve erstatning (forbrukerkjøpsloven § 26). Rettighetene kommer i tillegg til det vi selv tilbyr.",
