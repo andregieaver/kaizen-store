@@ -523,6 +523,11 @@ export const accessRequests = commerce.table(
     confirmHash: text("confirm_hash"),
     confirmExpiresAt: timestamp("confirm_expires_at", { withTimezone: true }),
     confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+    /**
+     * The Dream Factory (D409): the person ticked *Build my store with AI*, so the store's run starts from `message` (what they will sell) when
+     * the store is made.
+     */
+    dream: boolean("dream").notNull().default(false),
     createdAt: createdAt(),
   },
   (t) => [
@@ -16037,5 +16042,44 @@ export const liveDrills = commerce.table(
     check("live_drills_kinds", sql`cardinality(${t.kinds}) between 1 and 10`),
     index("live_drills_store_idx").on(t.storeId, t.requestedAt),
     index("live_drills_requested_by_idx").on(t.requestedBy),
+  ],
+);
+
+/**
+ * The Dream Factory (D409, `docs/dream-factory.md`): one run from an owner's description to a store ready to open. Its steps and their needs
+ * are code (`DREAM_STEPS` in `src/lib/dream-factory.ts`); `steps` keeps each one's state (status, tries, times, what its check found) and is
+ * written only by `src/server/dream-factory.ts`. One run in progress a store. A test run (`test`, an owner at the drills' test address) stays
+ * private and ends ready to open. `claimed_until` lets one cron run work on it at a time.
+ */
+export const dreamRuns = commerce.table(
+  "dream_runs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id, { onDelete: "cascade" }),
+    accountId: uuid("account_id").references(() => accounts.id, { onDelete: "set null" }),
+    prompt: text("prompt").notNull(),
+    test: boolean("test").notNull().default(false),
+    status: text("status").notNull().default("running"),
+    brief: jsonb("brief"),
+    steps: jsonb("steps").notNull().default({}),
+    conversationId: uuid("conversation_id").references(() => assistantConversations.id, { onDelete: "set null" }),
+    ownerPresses: integer("owner_presses").notNull().default(1),
+    claimedUntil: timestamp("claimed_until", { withTimezone: true }),
+    createdAt: createdAt(),
+    readyAt: timestamp("ready_at", { withTimezone: true }),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("dream_runs_store_idx").on(t.storeId, t.createdAt),
+    index("dream_runs_account_idx").on(t.accountId),
+    index("dream_runs_conversation_idx").on(t.conversationId),
+    index("dream_runs_due_idx").on(t.claimedUntil).where(sql`${t.finishedAt} is null`),
+    uniqueIndex("dream_runs_one_open").on(t.storeId).where(sql`${t.finishedAt} is null and ${t.status} <> 'stopped'`),
+    check("dream_runs_status", sql`${t.status} in ('running', 'asking', 'ready', 'open', 'failed', 'stopped')`),
+    check("dream_runs_prompt", sql`length(${t.prompt}) between 20 and 2000`),
+    check("dream_runs_presses", sql`${t.ownerPresses} between 0 and 100`),
   ],
 );

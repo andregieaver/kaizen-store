@@ -19,6 +19,7 @@ import { markDemoContent } from "./demo-content";
 import { applyDesignPreset, isOfferedDesign } from "./design-presets";
 import { log } from "./log";
 import { notifyReferralOpened, usableReferralCode } from "./referrals";
+import { PROMPT_MIN } from "@/lib/dream-factory";
 
 type Row = Record<string, unknown>;
 
@@ -39,6 +40,8 @@ export type AccessRequestInput = {
   lang?: PlatformLang;
   /** A domain the requester holds here, to connect to the store on approval (D317 decision 3). */
   domain?: string | null;
+  /** The Dream Factory (D409): build the store with AI from `message` when it is made; kept only with a description long enough to build from. */
+  dream?: boolean;
 };
 
 /** The preset key when the design profile's published version has a preset of that key, else null (SQL, beside the profile's id). */
@@ -64,12 +67,13 @@ export async function createAccessRequest(
 ): Promise<void> {
   const referralCode = await usableReferralCode(input.referralCode);
   const [made] = await db().execute<Row>(sql`
-    insert into commerce.access_requests (email, name, store_name, message, referral_code, starter_id, design_preset_id, design_variation, locale, domain)
+    insert into commerce.access_requests (email, name, store_name, message, referral_code, starter_id, design_preset_id, design_variation, locale, domain, dream)
     values (${input.email}, ${input.name}, ${input.storeName}, ${input.message}, ${referralCode},
       (select st.id from commerce.store_starters st where st.id = ${input.starterId ?? null}::uuid and st.published and st.kind = 'content'),
       (select d.id from commerce.design_presets d where d.id = ${input.designPresetId ?? null}::uuid and d.published),
       ${publishedVariation(input.designPresetId, input.designVariation)}, ${requestLocale(input.lang ?? "en")},
-      ${input.domain && /^[a-z0-9.-]{3,253}$/.test(input.domain) ? input.domain : null})
+      ${input.domain && /^[a-z0-9.-]{3,253}$/.test(input.domain) ? input.domain : null},
+      ${Boolean(input.dream) && input.message.trim().length >= PROMPT_MIN})
     on conflict ((lower(email))) where status = 'pending' do nothing
     returning id
   `);

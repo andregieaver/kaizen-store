@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/client";
+import { DRILL_PROMPT } from "@/lib/dream-factory";
 import { DRILL_EMAIL_DOMAIN, DRILL_WORDS, drillPlan, PILOT_TASKS, pilotProblems, publishOutcome, type DrillKind, type DrillResult, type PilotProduct, type PilotTurn } from "@/lib/live-drills";
 import { siteUrl } from "@/lib/site";
 
@@ -20,6 +21,7 @@ import { writePlatformLegalPages } from "./platform-legal";
 import { testPayment } from "./payment-mode-sql";
 import { setArchived } from "./products";
 import { refreshTag } from "./refresh";
+import { confirmSelfSignup, selfServeOn, startSelfSignup } from "./self-signup";
 import { connectWebhookUrl, type WebhookKind } from "./stripe";
 import { col, typedRows } from "./typed-rows";
 import type { PaymentModeName } from "@/lib/stripe-account";
@@ -260,11 +262,39 @@ async function legalPagesDrill(requestedBy: string | null): Promise<DrillResult>
   };
 }
 
+/**
+ * The Dream Factory's drill (D409): a sign-up through the real self-serve path, at a new address at the test domain, with the fixed prompt
+ * and *Build my store with AI* ticked; the link's token is taken as the email would bring it, and the press makes the store and starts its
+ * run. The run then goes on by the minute; Platform → AI scores it. Refused while self-serve sign-up is off.
+ */
+async function dreamDrill(): Promise<DrillResult> {
+  if (!(await selfServeOn())) return { kind: "dream_factory", outcome: "skipped", detail: "Self-serve sign-up is off (Platform → Access requests)." };
+  const stamp = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "");
+  const email = `delivered+dream${stamp}${DRILL_EMAIL_DOMAIN}`;
+  let token: string | null = null;
+  await startSelfSignup(
+    { name: "Dream Factory drill", email, storeName: `Dream drill ${stamp}`, message: DRILL_PROMPT, dream: true, lang: "en" },
+    null,
+    { onToken: (t) => (token = t) },
+  );
+  if (!token) return { kind: "dream_factory", outcome: "failed", detail: "The sign-up gave no confirmation link (counted out, or the request was not kept)." };
+  const confirmed = await confirmSelfSignup(token);
+  if (!confirmed.ok) return { kind: "dream_factory", outcome: "failed", detail: `The confirmation did not make the store: ${confirmed.problem}.` };
+  const [run] = await typedRows(
+    z.object({ id: col.uuid, slug: col.text }),
+    sql`select r.id, s.slug from commerce.dream_runs r join commerce.stores s on s.id = r.store_id join commerce.accounts a on a.id = r.account_id
+        where lower(a.email) = lower(${email}) order by r.created_at desc limit 1`,
+  );
+  if (!run) return { kind: "dream_factory", outcome: "failed", detail: `The store ${confirmed.storeName} was made, but its Dream Factory run did not start.` };
+  return { kind: "dream_factory", outcome: "passed", detail: `Store ${run.slug} made through sign-up and its run ${run.id} started; Platform → AI follows its score.` };
+}
+
 async function runOne(storeId: string, kind: DrillKind, requestedBy: string | null): Promise<DrillResult> {
   try {
     if (kind === "agent_eval") return await evalDrill(requestedBy);
     if (kind === "manager_pilot") return await pilotDrill(storeId, requestedBy);
     if (kind === "platform_legal_pages") return await legalPagesDrill(requestedBy);
+    if (kind === "dream_factory") return await dreamDrill();
     if (kind === "database_door") return await doorDrill();
     if (kind === "webhooks") return await webhooksDrill();
     if (kind === "payment_facts") return await factsDrill(storeId);

@@ -23,6 +23,7 @@ const KEPT_PRICES: Record<string, string> = {
   "src/server/owner-tools.ts": "`get_product` tells the AI manager every price, beside where the product is not sold",
   "src/server/admin-api.ts": "the Admin API's products (D355) carry every price the admin keeps, as the product editor shows them",
   "src/server/live-drills.ts": "the AI manager's pilot (consolidation 5) checks the price a draft product was given, as the product editor keeps it",
+  "src/server/dream-factory.ts": "the Dream Factory (D409) checks every product has a price in every country it sells to, as the product editor keeps them",
 };
 
 function sources(dir: string, out: string[] = []): string[] {

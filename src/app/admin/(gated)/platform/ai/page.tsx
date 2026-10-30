@@ -9,6 +9,7 @@ import { EVAL_CASES, PASS_RATE } from "@/lib/query-eval";
 import { AGENT_EVAL_CASES, samePrompts, versionWords } from "@/lib/agent-eval";
 import { AgentEvalButton } from "@/components/admin/agent-eval-button";
 import { promptVersions, recentAgentEvalRuns } from "@/server/agent-eval";
+import { recentDreamRuns } from "@/server/dream-factory";
 import { countStoresWithOwnAi, getAiSettings } from "@/server/ai";
 import { requirePlatformAdmin } from "@/server/auth";
 import { searchSettings } from "@/server/web-search-settings";
@@ -40,7 +41,7 @@ export default async function PlatformAiPage() {
   const lang = adminLangOf(account.adminLocale);
   const w = adminText(lang, "platformTools").ai;
   const shared = adminText(lang, "settings").ai;
-  const agentRuns = await recentAgentEvalRuns();
+  const [agentRuns, dreamRuns] = await Promise.all([recentAgentEvalRuns(), recentDreamRuns()]);
   const current = promptVersions();
   const [settings, ownCount, search] = await Promise.all([getAiSettings(null), countStoresWithOwnAi(), searchSettings()]);
   const status = settings
@@ -160,6 +161,33 @@ export default async function PlatformAiPage() {
           </div>
         </section>
       )}
+      {/* The Dream Factory's scorecard (D409): each run's measures, worked out by code. */}
+      <section className={card}>
+        <h2 className="text-title text-ink">{w.dreamTitle}</h2>
+        <p className="mt-1 text-sm text-muted">{w.dreamText}</p>
+        {dreamRuns.length === 0 ? (
+          <p className="mt-3 text-sm text-muted">{w.dreamNone}</p>
+        ) : (
+          <ul className="mt-3 flex flex-col gap-1 text-sm">
+            {dreamRuns.map((run) => (
+              <li key={run.id} className={run.status === "failed" ? "text-danger-text" : "text-ink-2"}>
+                <Link href={`/admin/${run.storeSlug}/dream-factory`} className="underline">
+                  {fillWords(w.dreamRun, {
+                    date: run.createdAt.toISOString().slice(0, 16).replace("T", " "),
+                    store: run.storeName,
+                    status: run.status,
+                    done: run.score.done,
+                    minutes: run.score.minutesToReady ?? "–",
+                    presses: run.score.ownerPresses,
+                    first: run.score.firstTryPercent === null ? "–" : `${run.score.firstTryPercent} %`,
+                  })}
+                </Link>
+                {run.test && <span className="text-muted"> · {w.dreamTest}</span>}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
     </AdminTextScope>
   );

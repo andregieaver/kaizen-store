@@ -21,6 +21,7 @@ import { memberCan, requireMemberAny } from "@/server/permissions";
 import { controlCenter } from "@/server/control-center";
 import { demoContent } from "@/server/demo-content";
 import { getSetupProgress } from "@/server/setup";
+import { latestDreamRun } from "@/server/dream-factory";
 import { platformModes } from "@/server/stripe";
 
 import { removeDemoContentAction } from "./demo-actions";
@@ -33,7 +34,11 @@ export default async function AdminOverview({ params }: Props) {
   const { account, store } = current;
   // A new owner's first stop is the setup wizard.
   // A store template (D175) is never opened, so its owners are not sent to the setup wizard.
-  if (!store.setupCompletedAt && !store.starter && memberCan(current, "owner")) redirect(`/admin/${store.slug}/setup`);
+  if (!store.setupCompletedAt && !store.starter && memberCan(current, "owner")) {
+    // A store the Dream Factory is building (D409) opens on its run; any other on the setup wizard.
+    const dream = await latestDreamRun(store.id);
+    redirect(`/admin/${store.slug}/${dream && dream.status !== "stopped" ? "dream-factory" : "setup"}`);
+  }
 
   const owner = memberCan(current, "owner");
   const lang = adminLangOf(account.adminLocale);

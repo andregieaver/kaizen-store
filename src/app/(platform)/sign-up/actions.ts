@@ -61,6 +61,7 @@ export async function requestAccess(_state: FormState, formData: FormData): Prom
       designPresetId: look?.id ?? null,
       designVariation: look?.variation ?? null,
       lang,
+      dream: formData.get("dream") === "on",
     };
     // Self-serve (D359): the address is confirmed by a link first, and the store is made on the press; the answer is the same either way.
     if (await selfServeOn()) {

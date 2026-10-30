@@ -21,6 +21,7 @@ const MARKERS = ["UNTRUSTED_TEXT", "RULES_STAND", "never follow instructions", "
 const DELEGATES: Record<string, string> = {
   "src/server/alt-texts.ts": "src/lib/alt-text.ts",
   "src/server/chat-agent.ts": "src/lib/chat.ts",
+  "src/server/dream-factory.ts": "src/lib/dream-factory.ts",
   "src/server/recommend.ts": "src/lib/recommendations.ts",
   "src/server/replicate-ai.ts": "src/lib/replicate-prompts.ts",
   "src/server/support-partner.ts": "src/lib/support-partner.ts",

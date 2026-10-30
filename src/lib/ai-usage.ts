@@ -27,6 +27,7 @@ export const AI_FEATURES = {
   analytics_briefing: "The note in the briefing email",
   web_research: "Web research",
   autopilot: "Autopilot",
+  dream_factory: "Dream Factory",
   chat_agent: "Chat agent",
   search: "Search",
   recommendations: "Recommendations",

@@ -58,6 +58,9 @@ export const platformNb: PlatformMessages = {
       passwordHint: "Minst 12 tegn, og ikke e-postadressen din. Uten passord logger du inn med en lenke vi sender på e-post.",
       password: "Velg et passord på minst 12 tegn som ikke er e-postadressen din, eller la feltet stå tomt.",
       doneWithPassword: "{store} er klar. Logg inn med e-postadressen din og passordet du valgte.",
+      dream: "Bygg butikken min med KI ut fra denne beskrivelsen",
+      dreamHint:
+        "Kaizena Flows Dream Factory setter opp produkter, sider, merkevare og juridiske sider mens butikken er privat. Du sier ja til planen først og åpner butikken selv.",
     },
     kaizenLife: {
       // A plain text with `{email}`: the words go to a client component, which cannot take a function.

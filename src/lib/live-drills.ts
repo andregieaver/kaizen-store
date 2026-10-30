@@ -5,9 +5,21 @@
 
 /**
  * In the order a run takes them: the checks that read come first, the drills that change an order after, then the agents: the eval (no store's data) and the AI
- * manager's pilot. Last, a platform admin's task that is not a store's (D406, consolidation 8): Kaizena Flow's own legal pages written and published.
+ * manager's pilot. Then a platform admin's task that is not a store's (D406, consolidation 8): Kaizena Flow's own legal pages written and published;
+ * and the Dream Factory's drill (D409): a new store signed up for at the test address with the fixed prompt, whose run the scorecard follows.
  */
-export const DRILL_KINDS = ["database_door", "webhooks", "payment_facts", "mark_sent", "partial_refund", "full_refund", "agent_eval", "manager_pilot", "platform_legal_pages"] as const;
+export const DRILL_KINDS = [
+  "database_door",
+  "webhooks",
+  "payment_facts",
+  "mark_sent",
+  "partial_refund",
+  "full_refund",
+  "agent_eval",
+  "manager_pilot",
+  "platform_legal_pages",
+  "dream_factory",
+] as const;
 export type DrillKind = (typeof DRILL_KINDS)[number];
 
 export const DRILL_WORDS: Record<DrillKind, string> = {
@@ -20,6 +32,7 @@ export const DRILL_WORDS: Record<DrillKind, string> = {
   agent_eval: "The agents' safety eval runs on the platform's own model and its recording is kept for CI",
   manager_pilot: "The AI manager does an owner's tasks in the store (a draft product, its price, a question, publishing never without a yes), each checked by code",
   platform_legal_pages: "Kaizena Flow's terms, privacy notice and data processing agreement are written from its business details and published; one already written is kept",
+  dream_factory: "A store is signed up for through self-serve sign-up at the test address with the Dream Factory's fixed prompt, and its run starts; Platform → AI scores it",
 };
 
 /** The pilot's tasks (consolidation 5): what the owner says, in order, in one conversation. `{name}` is the run's own product. */

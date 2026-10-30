@@ -708,6 +708,19 @@ changing it; a rule changes here, and its line in CLAUDE.md when its gist change
   the link), through `approveAccessRequest(null, …)`, and starts `store_billing.trial_ends_at`, which `choosePlan()` passes to Stripe as
   `trial_end` (`trialEndFor()`). A new way to make a store without an admin goes through the same path and audits `store.self_signup`.
 
+
+## The Dream Factory (D409, `docs/dream-factory.md`, `src/lib/dream-factory.ts`, `src/server/dream-factory.ts`)
+
+- **The Dream Factory (D409, `docs/dream-factory.md`, `src/lib/dream-factory.ts`, `src/server/dream-factory.ts`)**: a run from an owner's
+  description to a store ready to open, in `commerce.dream_runs` (one in progress a store) written only by `src/server/dream-factory.ts`. The
+  steps, their needs and lanes are `DREAM_STEPS`; a new step goes there with its check in the conductor, and every step ends on a check of
+  the store's rows, never the model's word. The brief keeps business details only where the owner's words hold them (`ownBusiness()`): a run
+  never sets a company name, number, address or email the owner did not write. The AI's steps are AI manager turns limited to `STEP_TOOLS`
+  at *Just do it* for catalogue, website, design and setup only (a store being set up is not open); money, messages and `NEVER_AUTOMATIC`
+  keep asking, and `open_store` is never a step's tool: opening is the owner's. A run whose owner is at the drills' test address is a test:
+  it stays private, pays in test mode and ends ready to open. `/api/cron/dream-factory` moves runs on every minute, one AI turn a run a
+  minute. Started by *Build my store with AI* at self-serve sign-up (`access_requests.dream`) or on `/admin/{store}/dream-factory`; scored
+  on Platform → AI (`scoreOf()`); the live drill `dream_factory` signs up through the real path with `DRILL_PROMPT`.
 ## The status page (wave 9 unit G, D360, `src/lib/status.ts`, `src/server/status.ts`)
 
 - **The status page (wave 9 unit G, D360, `src/lib/status.ts`, `src/server/status.ts`)**: `/status` and `/no/status` read only

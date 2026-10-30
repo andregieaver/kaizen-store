@@ -342,7 +342,7 @@ export function sectionOf(path: string): StoreSection | undefined {
 }
 
 /** Pages with no section: Home, the setup steps and the AI manager. */
-export const HOME_PATHS = ["/setup", "/assistant"];
+export const HOME_PATHS = ["/setup", "/assistant", "/dream-factory"];
 
 /** Where the cards of a page of cards or the sidebar link to. */
 export const storeLink = (base: string, item: Pick<StoreItem, "path" | "exact">) => ({ href: `${base}${item.path}`, ...(item.exact && { exact: true as const }) });

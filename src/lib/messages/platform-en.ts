@@ -59,6 +59,10 @@ export const platformEn = {
       passwordHint: "At least 12 characters, not your email address. Without one, you sign in with a link we email you.",
       password: "Choose a password of at least 12 characters that is not your email address, or leave it empty.",
       doneWithPassword: "{store} is ready. Sign in with your email address and the password you chose.",
+      /** The Dream Factory (D409): the store built by AI from what they will sell. */
+      dream: "Build my store with AI from this description",
+      dreamHint:
+        "Kaizena Flow's Dream Factory sets up your products, pages, brand and legal pages while the store is private. You say yes to its plan first and open the store yourself.",
     },
     kaizenLife: {
       // A plain text with `{email}`: the words go to a client component, which cannot take a function.

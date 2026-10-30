@@ -13,7 +13,8 @@ import { parseKey } from "@/lib/secret-box";
 import { siteUrl } from "@/lib/site";
 import { suggestSlug } from "@/lib/slug";
 
-import { audit, type Account } from "./auth";
+import { audit, passMembership, type Account } from "./auth";
+import { startDreamRun } from "./dream-factory";
 import { log } from "./log";
 import { adminAuth } from "./supabase-admin";
 import { approveAccessRequest, createAccessRequest, isSlugTaken, sendAccessEmail, type AccessRequestInput } from "./platform";
@@ -109,7 +110,12 @@ export const confirmPath = (lang: PlatformLang, token: string) => platformPath(l
  * A sign-up while the switch is on: within the limits, the request is kept (`createAccessRequest()`, merged with one pending for the
  * address) and marked self-serve with a new link, emailed to the address. Never says which happened.
  */
-export async function startSelfSignup(input: AccessRequestInput, network: string | null): Promise<void> {
+export async function startSelfSignup(
+  input: AccessRequestInput,
+  network: string | null,
+  /** The Dream Factory's drill (D409) is handed the link's token, as the email would hand it to a person; nothing else is. */
+  options: { onToken?: (token: string) => void } = {},
+): Promise<void> {
   if (!(await takeSignupSlot(input.email, network))) {
     log("warn", "self_signup.limited", {});
     return;
@@ -123,6 +129,7 @@ export async function startSelfSignup(input: AccessRequestInput, network: string
     returning id, locale
   `);
   if (!row) return;
+  options.onToken?.(token);
   await sendAccessEmail("confirm", String(row.id), `${siteUrl()}${confirmPath(requestLang(row.locale as string | null), token)}`);
   log("info", "self_signup.started", { requestId: String(row.id) });
 }
@@ -196,7 +203,7 @@ export async function confirmSelfSignup(
   const [claimed] = await db().execute<Row>(sql`
     update commerce.access_requests set confirmed_at = now(), confirm_hash = null
      where confirm_hash = ${hashOf(token)} and status = 'pending' and self_serve and confirm_expires_at > now()
-    returning id, store_name, locale
+    returning id, store_name, locale, message, dream
   `);
   if (!claimed) return { ok: false, problem: "unknown" };
   const requestId = String(claimed.id);
@@ -219,10 +226,23 @@ export async function confirmSelfSignup(
     // The password is set after the store is made: a failure leaves the owner the emailed link, and never undoes the store.
     const passwordSet = password ? await (options.setPassword ?? setOwnerPasswordWithSupabase)(made.email, password) : false;
     if (password && !passwordSet) log("warn", "self_signup.password_not_set", { requestId });
+    // The Dream Factory (D409): the store is built from what they said they will sell. A run that cannot start never undoes the store.
+    if (claimed.dream === true && owner) await startDreamFromSignup(slug, String(owner.id), String(claimed.message ?? ""), requestId);
     return { ok: true, storeName, password: passwordSet };
   } catch (error) {
     log("error", "self_signup.store_failed", { requestId }, error);
     return { ok: false, problem: "failed" };
+  }
+}
+
+/** Starts the store's Dream Factory run in its new owner's name; logged, never thrown. */
+async function startDreamFromSignup(slug: string, ownerId: string, prompt: string, requestId: string): Promise<void> {
+  try {
+    const member = await passMembership(slug, ownerId);
+    const started = member ? await startDreamRun(member, prompt) : { ok: false as const, problem: "no owner" };
+    if (!started.ok) log("warn", "self_signup.dream_not_started", { requestId });
+  } catch (error) {
+    log("error", "self_signup.dream_failed", { requestId }, error);
   }
 }
 
