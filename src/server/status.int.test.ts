@@ -18,7 +18,7 @@ type Row = Record<string, unknown>;
 const run = Date.now().toString(36);
 let admin: { id: string; email: string; name: string; platformAdmin: boolean };
 
-const probes = (answers: Partial<Record<string, { ok: boolean; reason: string | null } | null>>): Parameters<typeof status.runStatusChecks>[0] =>
+const probes = (answers: Partial<Record<string, { ok: boolean; reason: string | null; ms?: number | null } | null>>): Parameters<typeof status.runStatusChecks>[0] =>
   Object.fromEntries(["website", "sign_in", "payments", "email", "jobs"].map((c) => [c, async () => (c in answers ? answers[c] : null)])) as never;
 
 const emailsTo = async (to: string, kind: string) =>
@@ -38,6 +38,17 @@ afterAll(async () => {
 });
 
 describe("the status page (D360)", () => {
+  it("keeps how long the admin's sign-in page took from Dublin, and its median and slowest twentieth (PSI PERF-02)", async () => {
+    await db().execute(sql`delete from commerce.status_checks`);
+    await status.runStatusChecks(probes({ website: { ok: true, reason: null, ms: 120 } }));
+    await status.runStatusChecks(probes({ website: { ok: true, reason: null, ms: 300 } }));
+    await status.runStatusChecks(probes({ website: { ok: true, reason: null, ms: null } }));
+    const kept = await db().execute<Row>(sql`select duration_ms from commerce.status_checks where component = 'website' order by duration_ms nulls last`);
+    expect(kept.map((r) => r.duration_ms)).toEqual([120, 300, null]);
+    expect(await status.adminFromDublin()).toEqual({ checks: 2, p50: 210, p95: 291 });
+    await db().execute(sql`delete from commerce.status_checks`);
+  });
+
   it("keeps a check per component measured and none for one not measured", async () => {
     const done = await status.runStatusChecks(probes({ website: { ok: true, reason: null }, jobs: { ok: true, reason: null } }));
     expect(done).toEqual({ measured: 2, failed: 0, alerts: 0 });

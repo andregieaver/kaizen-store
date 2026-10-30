@@ -104,6 +104,11 @@ export const capacityEn = {
     needReason: "Say why, in a few words.",
     needLimit: "Choose a limit.",
   },
+  dublin: {
+    title: "The admin from Dublin",
+    text: "The admin's sign-in page fetched every five minutes from where Kaizena Flow's functions run (Dublin), to its last byte, over the last 7 days: median {p50} ms, slowest 5 % {p95} ms, from {checks} checks.",
+    none: "The admin's sign-in page is fetched every five minutes from where Kaizena Flow's functions run (Dublin); no timing has been kept yet.",
+  },
   speed: {
     title: "Speed of Kaizena Flow's own pages and the admin",
     description:

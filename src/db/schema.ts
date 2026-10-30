@@ -15843,9 +15843,15 @@ export const statusChecks = commerce.table(
     component: text("component").notNull(),
     ok: boolean("ok").notNull(),
     reason: text("reason"),
+    /**
+     * How long the probe's own request took, where it times one (PSI PERF-02): the website's is the admin's sign-in page fetched from
+     * the functions' region (Dublin), to its last byte. Null where nothing was timed.
+     */
+    durationMs: integer("duration_ms"),
     checkedAt: timestamp("checked_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
+    check("status_checks_duration", sql`${t.durationMs} is null or ${t.durationMs} between 0 and 600000`),
     check("status_checks_component", sql`${t.component} in ('website', 'sign_in', 'payments', 'email', 'jobs')`),
     check("status_checks_reason", sql`${t.reason} is null or ${t.reason} ~ '^[a-z0-9_]{1,40}$'`),
     index("status_checks_component_idx").on(t.component, t.checkedAt),

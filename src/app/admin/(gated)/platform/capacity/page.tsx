@@ -14,6 +14,7 @@ import { upcomingPeaks } from "@/server/capacity-events";
 import { databaseGlance, drainConnected, platformUsage } from "@/server/usage";
 import { cronJobRows } from "@/server/cron-runs";
 import { ownSpeedReport } from "@/server/own-speed";
+import { adminFromDublin } from "@/server/status";
 import { cronHealth } from "@/lib/cron-health";
 
 export const metadata: Metadata = { title: "Usage and limits" };
@@ -32,7 +33,7 @@ export default async function PlatformCapacityPage({ searchParams }: PageProps<"
   const lang = adminLangOf(admin.adminLocale);
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const w = adminText(lang, "capacity");
-  const [rows, glance, drain, peaks, jobs, platformSpeed, adminSpeed] = await Promise.all([
+  const [rows, glance, drain, peaks, jobs, platformSpeed, adminSpeed, dublin] = await Promise.all([
     platformUsage(month),
     databaseGlance(),
     drainConnected(),
@@ -40,6 +41,7 @@ export default async function PlatformCapacityPage({ searchParams }: PageProps<"
     cronJobRows(),
     ownSpeedReport("platform"),
     ownSpeedReport("admin"),
+    adminFromDublin(),
   ]);
   const now = new Date();
   const ordered = sort ? [...rows].sort((a, b) => (b.values[sort] ?? 0) - (a.values[sort] ?? 0)) : rows;
@@ -108,6 +110,14 @@ export default async function PlatformCapacityPage({ searchParams }: PageProps<"
           speed={adminText(lang, "analytics").speed}
         />
       </div>
+      {/* The admin timed from Dublin by the status checks (PSI PERF-02). */}
+      <Card title={w.dublin.title} compact>
+        <p className="text-body text-ink-2">
+          {dublin.checks === 0 || dublin.p50 === null
+            ? w.dublin.none
+            : fillWords(w.dublin.text, { p50: dublin.p50, p95: dublin.p95 ?? dublin.p50, checks: dublin.checks })}
+        </p>
+      </Card>
       {peaks.length > 0 && (
         <Card title={w.peaks.upcoming} compact>
           <ul className="grid gap-2 text-body">

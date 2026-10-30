@@ -100,6 +100,11 @@ export const capacityNb: CapacityMessages = {
     needReason: "Si hvorfor, med noen få ord.",
     needLimit: "Velg en grense.",
   },
+  dublin: {
+    title: "Adminsidene fra Dublin",
+    text: "Innloggingssiden til adminsidene hentet hvert femte minutt fra der Kaizena Flows funksjoner kjører (Dublin), til siste byte, de siste 7 dagene: median {p50} ms, de tregeste 5 % {p95} ms, fra {checks} målinger.",
+    none: "Innloggingssiden til adminsidene hentes hvert femte minutt fra der Kaizena Flows funksjoner kjører (Dublin); ingen tid er lagret ennå.",
+  },
   speed: {
     title: "Hastigheten til Kaizena Flows egne sider og adminpanelet",
     description:

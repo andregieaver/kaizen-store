@@ -64,11 +64,23 @@ const CONFIRM_HOURS = 24;
 const EMAIL_MIN_SAMPLE = 5;
 
 /** A probe's answer, or null when there is nothing to measure (not set up). */
-export type Probe = { ok: boolean; reason: string | null } | null;
+export type Probe = { ok: boolean; reason: string | null; ms?: number | null } | null;
 export type Probes = Record<StatusComponent, () => Promise<Probe>>;
 
 const within = <T,>(work: Promise<T>, ms = PROBE_MS): Promise<T> =>
   Promise.race([work, new Promise<T>((_, reject) => setTimeout(() => reject(new Error("timeout")), ms))]);
+
+/** The admin's sign-in page fetched from here, to its last byte, in milliseconds; null when it did not answer 200 within the probe's time. */
+async function adminPageMs(): Promise<number | null> {
+  const started = performance.now();
+  try {
+    const response = await fetch(new URL("/admin/sign-in", siteUrl()), { signal: AbortSignal.timeout(PROBE_MS), cache: "no-store" });
+    await response.arrayBuffer();
+    return response.ok ? Math.round(performance.now() - started) : null;
+  } catch {
+    return null;
+  }
+}
 
 const failed = (error: unknown): Probe => ({ ok: false, reason: error instanceof Error && error.message === "timeout" ? "timeout" : "error" });
 
@@ -78,10 +90,11 @@ export const PROBES: Probes = {
     if (!process.env.DATABASE_URL) return null;
     try {
       await within(countActiveMarkets());
-      return { ok: true, reason: null };
     } catch (error) {
       return failed(error);
     }
+    // The admin's first page from where the functions run (Dublin, PSI PERF-02): timed, never a reason to call the website down.
+    return { ok: true, reason: null, ms: await adminPageMs() };
   },
   async sign_in() {
     let env;
@@ -175,14 +188,14 @@ export async function runStatusChecks(probes: Probes = PROBES): Promise<{ measur
         return [component, await probes[component]()] as const;
       } catch (error) {
         log("error", "status.probe_failed", { component }, error);
-        return [component, { ok: false, reason: "error" }] as const;
+        return [component, { ok: false, reason: "error" } as Probe] as const;
       }
     }),
   );
   for (const [component, probe] of answers) {
     if (!probe) continue;
     try {
-      await db().execute(sql`insert into commerce.status_checks (component, ok, reason) values (${component}, ${probe.ok}, ${probe.reason})`);
+      await db().execute(sql`insert into commerce.status_checks (component, ok, reason, duration_ms) values (${component}, ${probe.ok}, ${probe.reason}, ${probe.ms ?? null})`);
       measured++;
       if (!probe.ok) {
         failedCount++;
@@ -265,6 +278,18 @@ export type StatusOverview = {
   recent: IncidentView[];
   at: string;
 };
+
+/** The admin's sign-in page from Dublin over the last `days` days (PSI PERF-02): the median and the slowest 5 %, from the website checks. */
+export async function adminFromDublin(days = 7): Promise<{ checks: number; p50: number | null; p95: number | null }> {
+  const [row] = await typedRows(
+    z.object({ checks: col.int, p50: z.number().nullable(), p95: z.number().nullable() }),
+    sql`select count(*)::int as checks,
+          round(percentile_cont(0.5) within group (order by duration_ms))::float8 as p50,
+          round(percentile_cont(0.95) within group (order by duration_ms))::float8 as p95
+        from commerce.status_checks where component = 'website' and duration_ms is not null and checked_at > now() - make_interval(days => ${days})`,
+  );
+  return row ?? { checks: 0, p50: null, p95: null };
+}
 
 /** Incidents ongoing or started within `days` days, newest first, with their updates (newest first). */
 export async function listIncidents(days = 14): Promise<IncidentView[]> {

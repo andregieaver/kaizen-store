@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."status_checks" ADD COLUMN "duration_ms" integer;--> statement-breakpoint
+ALTER TABLE "commerce"."status_checks" ADD CONSTRAINT "status_checks_duration" CHECK ("commerce"."status_checks"."duration_ms" is null or "commerce"."status_checks"."duration_ms" between 0 and 600000);
