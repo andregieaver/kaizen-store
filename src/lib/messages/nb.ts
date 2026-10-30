@@ -813,6 +813,7 @@ export const nb: Messages = {
   restartCheckout: "Fortsett til betaling",
   backToCart: "Tilbake til handlekurven",
   heldFor: (minutes: number) => `Varene holdes av til deg i ${minutes} minutter.`,
+  holdEnding: "Under fem minutter igjen til å betale. Etter det holdes varene ikke lenger av, og du må begynne på nytt.",
   securePayment: "Kortopplysninger går rett til Stripe og lagres ikke i butikken.",
   problemConsent: "Kryss av for samtykket til nedlastingen for å gå videre.",
   problemCompany: "Fyll inn firmanavn og organisasjonsnummer for å gå videre.",

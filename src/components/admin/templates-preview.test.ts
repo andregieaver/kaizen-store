@@ -474,7 +474,7 @@ describe("the builder with page layouts", () => {
     expect(out).toContain('aria-label="Sharing of Landing page"');
     // A layout is not dragged like a row.
     expect(out).not.toContain("saved page layout: open to change or add");
-    expect(out).toContain("saved page layout: open to rename, share or delete");
+    expect(out).toContain("saved page layout: open to rename, edit, share or delete");
   });
 
   it("shows saved page layouts on Kaizena Flow's builder too, without any sharing", () => {

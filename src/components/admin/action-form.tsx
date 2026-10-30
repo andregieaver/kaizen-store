@@ -5,14 +5,20 @@ import {
   startTransition,
   useActionState,
   useContext,
+  useEffect,
+  useId,
+  useRef,
   type FormEvent,
   type ReactNode,
 } from "react";
 import { useFormStatus } from "react-dom";
 
+import { problemId } from "@/lib/form-problems";
+
 import { useCommonText } from "./admin-text-context";
 
-export type FormState = { status: "idle" | "ok" | "error"; messages: string[] };
+/** `fields` ties a problem to the field it is about, by the field's name (`formProblems()`, PSI ACC-05). */
+export type FormState = { status: "idle" | "ok" | "error"; messages: string[]; fields?: Record<string, string> };
 
 export const idle: FormState = { status: "idle", messages: [] };
 
@@ -24,6 +30,8 @@ const PendingContext = createContext(false);
  * With JavaScript, the action is called from a transition rather than by the
  * form itself, so React does not clear the fields afterwards: a form that
  * fails validation keeps what was typed. Without JavaScript it still posts.
+ * A refusal that names its fields (`fields`) marks each one `aria-invalid`,
+ * describes it by its message in the list and moves the focus to the first.
  */
 export function ActionForm({
   id,
@@ -42,6 +50,35 @@ export function ActionForm({
   replaceOnSuccess?: boolean;
 }) {
   const [state, formAction, pending] = useActionState(action, idle);
+  const formRef = useRef<HTMLFormElement>(null);
+  const ownId = useId();
+  const formKey = id ?? ownId.replace(/[^A-Za-z0-9_-]/g, "");
+  const fields = state.status === "error" ? (state.fields ?? {}) : {};
+  const fieldOf = (message: string) => Object.entries(fields).find(([, text]) => text === message)?.[0];
+  // The fields the last refusal named: marked, described by their message, the first focused; marks from before are taken away.
+  const marked = useRef<Element[]>([]);
+  useEffect(() => {
+    const form = formRef.current;
+    if (!form) return;
+    for (const element of marked.current) {
+      element.removeAttribute("aria-invalid");
+      element.removeAttribute("aria-describedby");
+    }
+    const now: Element[] = [];
+    const named = state.status === "error" ? (state.fields ?? {}) : {};
+    for (const [name, message] of Object.entries(named)) {
+      // Fields with the same message share its one line in the list: the first field's name gives it its id.
+      const owner = Object.entries(named).find(([, text]) => text === message)?.[0] ?? name;
+      for (const element of form.querySelectorAll(`[name="${CSS.escape(name)}"]`)) {
+        if (element.getAttribute("type") === "hidden") continue;
+        element.setAttribute("aria-invalid", "true");
+        element.setAttribute("aria-describedby", problemId(formKey, owner));
+        now.push(element);
+      }
+    }
+    marked.current = now;
+    (now[0] as HTMLElement | undefined)?.focus();
+  }, [state, formKey]);
   if (replaceOnSuccess && state.status === "ok") {
     return (
       <p role="status" className="rounded-panel border border-line bg-card p-4">
@@ -56,15 +93,20 @@ export function ActionForm({
     startTransition(() => formAction(data));
   };
   return (
-    <form id={id} action={formAction} onSubmit={submit} className={className} aria-busy={pending}>
+    <form ref={formRef} id={id} action={formAction} onSubmit={submit} className={className} aria-busy={pending}>
       <PendingContext.Provider value={pending}>{children}</PendingContext.Provider>
       <div role="status" aria-live="polite" className="text-sm">
         {state.status === "ok" && <p>{state.messages[0] ?? successMessage}</p>}
         {state.status === "error" && (
           <ul className="list-disc pl-5 text-danger-text">
-            {state.messages.map((message) => (
-              <li key={message}>{message}</li>
-            ))}
+            {state.messages.map((message) => {
+              const field = fieldOf(message);
+              return (
+                <li key={message} id={field ? problemId(formKey, field) : undefined}>
+                  {message}
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>

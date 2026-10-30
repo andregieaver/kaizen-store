@@ -4,6 +4,7 @@ import { cookies, headers } from "next/headers";
 import { z } from "zod";
 
 import type { FormState } from "@/components/admin/action-form";
+import { formProblems } from "@/lib/form-problems";
 import { REFERRAL_COOKIE, referralCodeFor } from "@/lib/referrals";
 import { designLookChoice } from "@/lib/design-presets";
 import { contentForLook } from "@/server/design-presets";
@@ -44,9 +45,7 @@ export async function requestAccess(_state: FormState, formData: FormData): Prom
     storeName: formData.get("storeName") ?? "",
     message: formData.get("message") ?? "",
   });
-  if (!parsed.success) {
-    return { status: "error", messages: parsed.error.issues.map((issue) => issue.message) };
-  }
+  if (!parsed.success) return formProblems(parsed.error.issues);
   // A referral (D131): the code the link put in the form, else the cookie, which only exists when the visitor allowed it.
   // An unknown or blocked code is dropped inside, so nothing here tells the visitor whether it was good.
   const referralCode = referralCodeFor(String(formData.get("ref") ?? ""), (await cookies()).get(REFERRAL_COOKIE)?.value);

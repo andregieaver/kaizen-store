@@ -3,6 +3,7 @@
 import { refresh } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
+import { formProblems } from "@/lib/form-problems";
 import { featureOffText, featureOn } from "@/lib/store-features";
 import { checkOwnerRole } from "@/server/permissions";
 import { saveSchedule, scheduleInput } from "@/server/standing-orders";
@@ -22,7 +23,7 @@ export async function saveScheduleAction(storeSlug: string, scheduleId: string |
     cutoffTime: form.get("cutoffTime"),
     active: form.get("active") === "on",
   });
-  if (!parsed.success) return { status: "error", messages: [...new Set(parsed.error.issues.map((issue) => issue.message))] };
+  if (!parsed.success) return formProblems(parsed.error.issues);
   const result = await saveSchedule(member, parsed.data);
   if (!result.ok) return { status: "error", messages: result.problems };
   refresh();

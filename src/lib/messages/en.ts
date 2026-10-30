@@ -829,6 +829,7 @@ export const en = {
   restartCheckout: "Continue to payment",
   backToCart: "Back to cart",
   heldFor: (minutes: number) => `Your items are held for you for ${minutes} minutes.`,
+  holdEnding: "Less than five minutes left to pay. After that the items are no longer held for you and you start again.",
   securePayment: "Card details go straight to Stripe and are not stored by the store.",
   problemConsent: "Tick the box to agree to the download before you continue.",
   problemCompany: "Fill in the company name and organisation number to continue.",

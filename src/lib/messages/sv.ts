@@ -807,6 +807,7 @@ export const sv: Messages = {
   restartCheckout: "Fortsätt till betalning",
   backToCart: "Tillbaka till varukorgen",
   heldFor: (minutes: number) => `Varorna reserveras för dig i ${minutes} minuter.`,
+  holdEnding: "Mindre än fem minuter kvar att betala. Sedan är varorna inte längre reserverade och du får börja om.",
   securePayment: "Kortuppgifter går direkt till Stripe och sparas inte i butiken.",
   problemConsent: "Kryssa i samtycket till nedladdningen för att gå vidare.",
   problemCompany: "Fyll i företagsnamn och organisationsnummer för att gå vidare.",

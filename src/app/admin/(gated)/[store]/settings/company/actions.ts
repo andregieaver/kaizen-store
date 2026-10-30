@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import type { FormState } from "@/components/admin/action-form";
+import { formProblems } from "@/lib/form-problems";
 import { countWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
@@ -36,7 +37,7 @@ export async function saveBusinessAction(storeSlug: string, _state: FormState, f
   const member = await checkOwnerRole(storeSlug);
   if (!member) return problems([(await before()).company.onlyOwnerBusiness]);
   const parsed = storeDetailsInput.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return problems([...new Set(parsed.error.issues.map((issue) => issue.message))]);
+  if (!parsed.success) return formProblems(parsed.error.issues);
   await saveStoreDetails(member, parsed.data);
   // The name and details show in the storefront's header and footer, and in the sitemap.
   updateTag(storeTag(member.store.slug));
@@ -52,7 +53,7 @@ export async function saveAudienceAction(storeSlug: string, _state: FormState, f
     audience: formData.get("audience"),
     businessPopup: formData.get("businessPopup") === "on",
   });
-  if (!parsed.success) return problems([...new Set(parsed.error.issues.map((issue) => issue.message))]);
+  if (!parsed.success) return formProblems(parsed.error.issues);
   const saved = await saveStoreAudience(member, parsed.data);
   if (!saved.ok) return problems([saved.problem]);
   updateTag(storeTag(member.store.slug));

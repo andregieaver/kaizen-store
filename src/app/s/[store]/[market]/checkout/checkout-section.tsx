@@ -9,6 +9,7 @@ import { CheckoutForm } from "@/components/lazy/shop";
 import { CheckoutTerms as CheckoutTermsView } from "@/components/checkout-terms";
 import { GiftCardForm } from "@/components/gift-card-form";
 import { GiftNote } from "@/components/gift-note";
+import { HoldClock } from "@/components/hold-clock";
 import { BackorderLine } from "@/components/backorder-note";
 import { LineThumbnail } from "@/components/line-thumbnail";
 import { LogoPicture } from "@/components/logo-picture";
@@ -553,7 +554,7 @@ async function paymentForm(store: Store, market: Market, view: CheckoutView, dra
         </div>
       ) : (
         <>
-          <p className="text-sm text-muted">{m.heldFor(CHECKOUT_MINUTES)}</p>
+          <HoldClock secondsLeft={open.secondsLeft} held={m.heldFor(CHECKOUT_MINUTES)} ending={m.holdEnding} />
           <CheckoutForm
             look={checkoutAppearanceFor(theme, bodyFont ? fontStack(bodyFont.family, bodyFont.category) : null)}
             publishableKey={publishableKey}

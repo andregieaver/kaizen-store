@@ -5,6 +5,7 @@ import { updateTag } from "next/cache";
 import { after } from "next/server";
 
 import type { FormState } from "@/components/admin/action-form";
+import { formProblems } from "@/lib/form-problems";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { actionAdminLang } from "@/server/admin-request-lang";
@@ -75,9 +76,7 @@ export async function saveDetailsAction(
   const owner = await asOwner(storeSlug);
   if (!("store" in owner)) return owner;
   const parsed = storeDetailsInput.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) {
-    return { status: "error", messages: parsed.error.issues.map((issue) => issue.message) };
-  }
+  if (!parsed.success) return formProblems(parsed.error.issues);
   await saveStoreDetails(owner, parsed.data);
   refreshStore(owner);
   nextStep(storeSlug, "details", owner.store);

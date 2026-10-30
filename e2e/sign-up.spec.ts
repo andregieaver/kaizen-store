@@ -23,6 +23,27 @@ test("anyone can ask for a store, and the form does not reveal repeat requests",
   }
 });
 
+test("a refused field is marked, described by its problem and focused (PSI ACC-05)", async ({ page }) => {
+  await page.goto("/sign-up");
+  await page.getByLabel("Your name").fill("Kari Nordmann");
+  await page.getByLabel("Email").fill(`owner-${Date.now()}@example.com`);
+  // Spaces pass the browser's own check; the server's trims them away.
+  await page.getByLabel("Store name").fill("   ");
+  await page.getByLabel(/What will you sell/).fill("Keramikk");
+  await page.getByRole("button", { name: "Request a store" }).click();
+  const storeName = page.getByLabel("Store name");
+  await expect(storeName).toHaveAttribute("aria-invalid", "true");
+  await expect(storeName).toBeFocused();
+  const described = await storeName.getAttribute("aria-describedby");
+  expect(described).toBeTruthy();
+  await expect(page.locator(`[id="${described}"]`)).toBeVisible();
+  await expect(page.getByLabel("Email")).not.toHaveAttribute("aria-invalid", "true");
+
+  await storeName.fill("Karis Kopper");
+  await page.getByRole("button", { name: "Request a store" }).click();
+  await expect(page.getByRole("status")).toContainText("We have your request.");
+});
+
 test("the home page leads to sign-up", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("main").getByRole("link", { name: "Start your store" }).click();

@@ -136,6 +136,13 @@ maturity for the run-up to launch. Point IDs are the audit's.
 The code items of [the re-score's ranked list](psi-2026-10-30.md) (Ranked improvements across segments), in its order; the owner's items
 stay in the standing document's *What comes next*.
 
+- [x] **ACC-05 (accessibility 2)** Field-level errors in `ActionForm` and a warning before the checkout hold ends. Done 30 October
+      2026: an action that refuses with `formProblems(issues)` (`src/lib/form-problems.ts`) names each field's problem, and `ActionForm`
+      marks those fields `aria-invalid`, describes each by its line in the list (`aria-describedby`) and moves the focus to the first,
+      taking the marks away on the next answer (sign-up, setup's and the company page's business details, who the store sells to,
+      delivery days; `e2e/sign-up.spec.ts`). The checkout's *held for 30 minutes* line becomes an alert five minutes before the hold ends
+      and the page is drawn again at the end, offering to start over (`HoldClock`, `OpenCheckout.secondsLeft`); Stripe's session cannot be
+      made longer, so starting over is the way to more time. Other forms move to `formProblems()` when touched.
 - [x] **DATA-03 (data 2)** `Idempotency-Key` on Admin API POSTs, a Mollie 401 renewed once, Stripe's `apiVersion`. Done 30 October
       2026: a POST with the header is done once per token and key, the same request getting the first answer again
       (`Idempotent-Replayed: true`) and another request under the key refused, answers kept 24 hours (`commerce.api_idempotency_keys`,

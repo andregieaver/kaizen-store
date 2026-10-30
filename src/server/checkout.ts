@@ -1563,6 +1563,8 @@ export type OpenCheckout = {
   mode: PaymentModeName;
   /** Stripe has closed the session: the shopper starts again. */
   expired: boolean;
+  /** Seconds left of the hold (`CHECKOUT_MINUTES`), for the page's warning before it ends (PSI ACC-05). */
+  secondsLeft: number;
   /** The cart was changed after the order was placed: the shopper starts again. */
   changed: boolean;
   /** The order has something to ship, so the form asks for an address. */
@@ -1585,6 +1587,7 @@ export async function getOpenCheckout(storeId: string, cartId: string): Promise<
   const [row] = await db().execute<Row>(sql`
     select o.id, pay.provider_reference, pay.provider_account, pay.client_secret, a.mode,
       o.placed_at < now() - make_interval(mins => ${CHECKOUT_MINUTES}) as expired,
+      greatest(0, floor(extract(epoch from o.placed_at + make_interval(mins => ${CHECKOUT_MINUTES}) - now())))::int as seconds_left,
       (select coalesce(jsonb_agg(jsonb_build_array(cl.variant_id, cl.selling_plan_id, cl.quantity, cl.starts_at)
                                  order by cl.variant_id, cl.selling_plan_id, cl.starts_at), '[]'::jsonb)
          from commerce.cart_lines cl where cl.store_id = o.store_id and cl.cart_id = o.cart_id)
@@ -1655,6 +1658,7 @@ export async function getOpenCheckout(storeId: string, cartId: string): Promise<
         accountId: String(row.provider_account),
         mode: row.mode as PaymentModeName,
         expired: Boolean(row.expired),
+        secondsLeft: Number(row.seconds_left),
         changed: Boolean(row.changed),
         ships: Boolean(row.ships),
         digital: Boolean(row.digital),

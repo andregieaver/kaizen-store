@@ -807,6 +807,7 @@ export const da: Messages = {
   restartCheckout: "Fortsæt til betaling",
   backToCart: "Tilbage til kurven",
   heldFor: (minutes: number) => `Varerne er reserveret til dig i ${minutes} minutter.`,
+  holdEnding: "Under fem minutter tilbage til at betale. Derefter er varerne ikke længere reserveret, og du skal starte forfra.",
   securePayment: "Kortoplysninger går direkte til Stripe og gemmes ikke i butikken.",
   problemConsent: "Sæt kryds ved samtykket til downloaden for at gå videre.",
   problemCompany: "Udfyld firmanavn og CVR-nummer for at gå videre.",
