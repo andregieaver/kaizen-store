@@ -107,13 +107,35 @@ export function alertDue(newestFirst: readonly boolean[]): boolean {
 
 /**
  * Whether Stripe's events are reaching Kaizena Flow, beside whether Stripe answers (consolidation 8): the webhooks drill once found 13 days
- * without an event while the status page said Payments was up. Fails on an event received but not processed after half an hour, or on a
- * checkout Stripe says is complete that is still pending here after a quarter of an hour (its event never came). Null: nothing wrong.
+ * without an event while the status page said Payments was up. Fails, most telling first, on an endpoint Stripe sends to that is not at
+ * this site (the webhooks drill's check, PSI REL-09), on a checkout Stripe says is complete that is still pending here after a quarter of an
+ * hour (its event never came), on payments taken in the last hours with no Stripe event heard at all (`silent`, PSI REL-02), or on an event
+ * received but not processed after half an hour. Null: nothing wrong.
  */
-export function eventsProblem({ unprocessed, unheard }: { unprocessed: number; unheard: number }): "events_unprocessed" | "events_missing" | null {
+export function eventsProblem({
+  unprocessed,
+  unheard,
+  endpointsElsewhere = 0,
+  silent = false,
+}: {
+  unprocessed: number;
+  unheard: number;
+  endpointsElsewhere?: number;
+  silent?: boolean;
+}): "endpoints_elsewhere" | "events_missing" | "events_silent" | "events_unprocessed" | null {
+  if (endpointsElsewhere > 0) return "endpoints_elsewhere";
   if (unheard > 0) return "events_missing";
+  if (silent) return "events_silent";
   if (unprocessed > 0) return "events_unprocessed";
   return null;
+}
+
+/** Payments taken in the window, at least this many, with no Stripe event heard in it, is silence (`eventsProblem`). */
+export const SILENT_AFTER_PAYMENTS = 2;
+
+/** Whether Stripe has gone quiet: enough payments taken in the window and not one event received in it. */
+export function stripeSilent({ payments, events }: { payments: number; events: number }): boolean {
+  return payments >= SILENT_AFTER_PAYMENTS && events === 0;
 }
 
 /** A component's state now: its newest check, or not measured. */

@@ -23,6 +23,7 @@ import {
   STATUS_DAYS,
   alertDue,
   eventsProblem,
+  stripeSilent,
   currentState,
   dayBars,
   incidentWords,
@@ -43,7 +44,7 @@ import { audit, type Account } from "./auth";
 import { cronJobRows } from "./cron-runs";
 import { sendEmail } from "./email";
 import { log } from "./log";
-import { platformStripe } from "./stripe";
+import { connectWebhookUrl, platformStripe, type WebhookKind } from "./stripe";
 import { col, typedRows } from "./typed-rows";
 import type { PaymentModeName } from "@/lib/stripe-account";
 
@@ -118,7 +119,12 @@ export const PROBES: Probes = {
     if (!stripe) return null;
     try {
       await within(stripe.balance.retrieve());
-      const reason = eventsProblem({ unprocessed: await unprocessedStripeEvents(), unheard: await within(unheardCheckouts()) });
+      const reason = eventsProblem({
+        unprocessed: await unprocessedStripeEvents(),
+        unheard: await within(unheardCheckouts()),
+        endpointsElsewhere: await stripeEndpointsElsewhere(),
+        silent: stripeSilent(await stripeTraffic()),
+      });
       return { ok: reason === null, reason };
     } catch (error) {
       return failed(error);
@@ -149,6 +155,34 @@ async function unprocessedStripeEvents(): Promise<number> {
     sql`select count(*)::int as n from commerce.webhook_events where provider = 'stripe' and processed_at is null and received_at < now() - interval '30 minutes'`,
   );
   return row?.n ?? 0;
+}
+
+/**
+ * Stripe endpoints that send somewhere other than this site (the webhooks drill's check, run with every probe, PSI REL-09). The dispatcher
+ * moves them back (`keepStripeWebhooksCurrent()`); one still elsewhere means the move failed. Not counted where the site is not public.
+ */
+async function stripeEndpointsElsewhere(): Promise<number> {
+  const origin = siteUrl();
+  if (!origin.startsWith("https://") || origin.endsWith(".vercel.app")) return 0;
+  const rows = await typedRows(
+    z.object({ mode: col.text, kind: col.text, url: col.text }),
+    sql`select mode, kind, url from commerce.platform_webhooks where provider = 'stripe'`,
+  );
+  return rows.filter((r) => r.url !== connectWebhookUrl(origin, r.mode as PaymentModeName, r.kind as WebhookKind)).length;
+}
+
+/** Payments Stripe took in the last six hours and the Stripe events received in them: payments with no event at all is silence (PSI REL-02). */
+async function stripeTraffic(): Promise<{ payments: number; events: number }> {
+  const [row] = await typedRows(
+    z.object({ payments: col.int, events: col.int }),
+    sql`
+      select
+        (select count(*)::int from commerce.payments
+          where provider = 'stripe' and status in ('authorized', 'captured') and created_at > now() - interval '6 hours') as payments,
+        (select count(*)::int from commerce.webhook_events where provider = 'stripe' and received_at > now() - interval '6 hours') as events
+    `,
+  );
+  return row ?? { payments: 0, events: 0 };
 }
 
 /**

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { alertDue, currentState, eventsProblem, dayBars, dayState, lastDays, overallState, sloOf, uptimeBasisPoints, uptimeText } from "./status";
+import { alertDue, currentState, eventsProblem, stripeSilent, dayBars, dayState, lastDays, overallState, sloOf, uptimeBasisPoints, uptimeText } from "./status";
 
 describe("the status page's rules (D360)", () => {
   it("reads a day from its checks, a day with none as missing", () => {
@@ -52,6 +52,14 @@ describe("Stripe's events arriving (consolidation 8)", () => {
     expect(eventsProblem({ unprocessed: 0, unheard: 0 })).toBeNull();
     expect(eventsProblem({ unprocessed: 2, unheard: 0 })).toBe("events_unprocessed");
     expect(eventsProblem({ unprocessed: 2, unheard: 1 })).toBe("events_missing");
+    expect(eventsProblem({ unprocessed: 2, unheard: 0, silent: true })).toBe("events_silent");
+    expect(eventsProblem({ unprocessed: 0, unheard: 1, silent: true, endpointsElsewhere: 1 })).toBe("endpoints_elsewhere");
+  });
+
+  it("calls Stripe silent after two payments in the window with no event heard, and not before (PSI REL-02)", () => {
+    expect(stripeSilent({ payments: 1, events: 0 })).toBe(false);
+    expect(stripeSilent({ payments: 2, events: 0 })).toBe(true);
+    expect(stripeSilent({ payments: 9, events: 1 })).toBe(false);
   });
 });
 

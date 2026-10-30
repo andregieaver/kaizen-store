@@ -147,6 +147,11 @@ stay in the standing document's *What comes next*.
 - [ ] **AST-09, AST-01, AGT-14 (6)** An eval that measures the model: payloads the filter does not catch, several runs per model, a model
       save gated on a pass, the replay failing on a changed model or tool description.
 - [ ] **REL-09, REL-02, DATA-03 (7)** Event-arrival checks, the `webhooks` drill on a schedule, an outside probe.
+      Code's part done 30 October 2026: the status page's Payments probe, every five minutes, now also fails on a Stripe endpoint that
+      sends somewhere other than this site (the `webhooks` drill's check, so it runs on the probe's schedule) and on silence: two or
+      more payments taken in six hours with no Stripe event received in them (`stripeSilent()`, `src/lib/status.ts`). Two failed checks
+      email the platform admins, as before. Left, the owner's: an outside probe (an EU uptime monitor on `/api/health` and `/status`),
+      since the status page is checked from inside its own functions.
 - [x] **CODE-03 (8)** The HUF money test that fails outside CI. Done 30 October 2026: it was the runtime, not the test. ICU 77 (Node
       22.22) shows HUF with two decimals where CI's showed none, so a price looked different by server; `formatMoney()` fixes whole forints
       (`DISPLAY_DIGITS`). The same data made DAC7's `decimalAmount()` print HUF's hundredths as forints on the older runtime, and the price
