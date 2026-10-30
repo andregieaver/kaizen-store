@@ -62,9 +62,9 @@ const setRate = (country: string, category: string, rate: number, from: string, 
   ]);
 
 describe("categories", () => {
-  it("has the built-in three, the six reduced-rate categories and gift cards' voucher (D300), all active", async () => {
+  it("has the built-in three, the seven reduced-rate categories (newspapers apart, D407) and gift cards' voucher (D300), all active", async () => {
     const found = await rows<{ code: string; built_in: boolean; active: boolean }>("select code, built_in, active from commerce.vat_categories order by sort");
-    expect(found.map((c) => c.code)).toEqual(["standard", "accommodation", "food", "books", "periodicals", "medicines", "culture_events", "children_goods", "voucher", "exempt"]);
+    expect(found.map((c) => c.code)).toEqual(["standard", "accommodation", "food", "books", "newspapers", "periodicals", "medicines", "culture_events", "children_goods", "voucher", "exempt"]);
     expect(found.filter((c) => c.built_in).map((c) => c.code).sort()).toEqual(["accommodation", "exempt", "standard"]);
     expect(found.every((c) => c.active)).toBe(true);
   });

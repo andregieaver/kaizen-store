@@ -13,6 +13,7 @@ import { passMembership } from "./auth";
 import { log } from "./log";
 import { markSent, refundOrder, getOrderAdmin } from "./order-admin";
 import { decideApproval, runTurn, type Principal } from "./owner-assistant";
+import { memberCan } from "./permissions";
 import { readMissingPaymentFacts } from "./payment-facts";
 import { testPayment } from "./payment-mode-sql";
 import { setArchived } from "./products";
@@ -199,7 +200,7 @@ async function pilotDrill(storeId: string, requestedBy: string | null): Promise<
   if (!requestedBy) return { kind: "manager_pilot", outcome: "skipped", detail: "The pilot runs in an owner's name, and none asked for it." };
   const [store] = await typedRows(z.object({ slug: col.text }), sql`select slug from commerce.stores where id = ${storeId}::uuid`);
   const member = store ? await passMembership(store.slug, requestedBy) : null;
-  if (!member || member.role !== "owner") return { kind: "manager_pilot", outcome: "skipped", detail: "The one who asked is not an owner of this store." };
+  if (!member || !memberCan(member, "owner")) return { kind: "manager_pilot", outcome: "skipped", detail: "The one who asked is not an owner of this store." };
   const principal: Principal = { account: member.account, store: member.store, role: member.role, kind: member.kind, permissions: member.permissions };
   const name = `Pilot drill mug ${new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "")}`;
   let conversationId: string | null = null;
