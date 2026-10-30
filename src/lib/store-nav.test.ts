@@ -11,7 +11,7 @@ const ROOT = "src/app/admin/(gated)/[store]";
 const ALL = { features: [...FEATURE_IDS] };
 const NONE = { features: ["shop"] };
 /** Folders that are not a section's page: the layout's own, and routes with no page of their own. */
-const SKIPPED = new Set(["setup", "assistant", "dream-factory"]);
+const SKIPPED = new Set(["setup", "assistant"]);
 
 const items = STORE_SECTIONS.flatMap((s) => s.groups.flatMap((g) => g.items));
 

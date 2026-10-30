@@ -82,14 +82,6 @@ export default async function SetupStepPage({ params }: Props) {
           intro={w.features.intro}
         >
           <FeaturesStep member={member} answered={progress.features} w={w} />
-          {/* Or let the AI build the whole store (D409): the Dream Factory, for the store's owners. */}
-          {memberCan(member, "owner") && (
-            <p className="mt-8 text-body">
-              <Link href={`/admin/${member.store.slug}/dream-factory`} className="underline">
-                {adminText(adminLangOf(member.account.adminLocale), "home").dream.offer}
-              </Link>
-            </p>
-          )}
           {/* Or let the AI draft the pages from a few sentences (D351): nothing is on the site until the owner publishes. */}
           <div className="mt-8">
             <AdminTextScope texts={adminTexts(adminLangOf(member.account.adminLocale), ["home"])}>

@@ -91,6 +91,10 @@ and set `DEPLOY_VIA_CI` to anything but `true`.
   or functions; record the result in `docs/decisions.md` as before.
 - If a migration fails, the job is red, nothing from that file is applied and later files wait; fix it
   with a new file (or, when it never ran, edit it: only a file that is not in the ledger may change).
+- Never change an AI prompt in the same push as a migration. The agents' eval replay (D391) fails until the eval is recorded
+  again with the new prompt, and that recording can only be made on production running it; a push with a migration deploys only
+  after the checks pass, so the two would wait on each other. Push the migration first, then the prompt change (a new admin page
+  is one: the AI manager's prompt lists the admin map), then record the eval on Platform → AI and commit its recording (D409).
 
 ### Until `AUTO_MIGRATE` is on
 
