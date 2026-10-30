@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 
 import { describe, expect, it } from "vitest";
 
-import { decryptSecret, encryptSecret, parseKey, secretHint } from "./secret-box";
+import { decryptSecret, encryptSecret, keptUnder, keyId, parseKey, previousKeys, secretHint } from "./secret-box";
 
 const key = randomBytes(32);
 
@@ -30,6 +30,45 @@ describe("secret box", () => {
     flipped[0] ^= 1;
     parts[3] = flipped.toString("base64url");
     expect(() => decryptSecret(parts.join("."), key)).toThrow();
+  });
+
+  it("names the key in v2, reads it with the key it names, and refuses one it does not have (PSI SEC-06)", () => {
+    const old = randomBytes(32);
+    const stored = encryptSecret("sk_live_51abc9999", key, "v2");
+    expect(stored.split(".")).toHaveLength(5);
+    expect(stored.startsWith(`v2.${keyId(key)}.`)).toBe(true);
+    expect(keyId(key)).toMatch(/^[0-9a-f]{8}$/);
+    expect(stored).not.toContain(key.toString("base64url"));
+    expect(decryptSecret(stored, key, [])).toBe("sk_live_51abc9999");
+    // During a rotation the old key is the previous one: a secret it kept is read by its name, whichever key is current.
+    const kept = encryptSecret("whsec_old1234", old, "v2");
+    expect(decryptSecret(kept, key, [old])).toBe("whsec_old1234");
+    expect(() => decryptSecret(kept, key, [])).toThrow("a key this server does not have");
+    expect(keptUnder(stored, key)).toBe(true);
+    expect(keptUnder(kept, key)).toBe(false);
+  });
+
+  it("reads a v1 secret with the current key, then the previous one", () => {
+    const old = randomBytes(32);
+    const kept = encryptSecret("rk_live_old", old, "v1");
+    expect(decryptSecret(kept, key, [old])).toBe("rk_live_old");
+    expect(() => decryptSecret(kept, key, [])).toThrow();
+    expect(keptUnder(kept, old)).toBe(false);
+  });
+
+  it("refuses a v2 secret whose ciphertext was changed", () => {
+    const parts = encryptSecret("secret", key, "v2").split(".");
+    const flipped = Buffer.from(parts[4], "base64url");
+    flipped[0] ^= 1;
+    parts[4] = flipped.toString("base64url");
+    expect(() => decryptSecret(parts.join("."), key, [])).toThrow();
+  });
+
+  it("takes the previous key from its own setting, ignoring one that is not 32 bytes", () => {
+    expect(previousKeys(undefined)).toEqual([]);
+    expect(previousKeys(randomBytes(16).toString("base64"))).toEqual([]);
+    const old = randomBytes(32);
+    expect(previousKeys(old.toString("base64"))).toEqual([old]);
   });
 
   it("accepts only 32-byte keys", () => {

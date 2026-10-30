@@ -127,3 +127,23 @@ maturity for the run-up to launch. Point IDs are the audit's.
 - [x] **SEC (advisor)** `public.rls_auto_enable()`: EXECUTE revoked from PUBLIC, `anon` and `authenticated` (migration
       `revoke_rls_auto_enable`; the event trigger still fires, tested).
 - [ ] **ACC-09, UX-12** A recorded manual screen-reader pass of checkout, the builder and the inbox; WebKit in the storefront e2e. WebKit since 30 October 2026: CI's e2e job runs the store's pages, search, the cookie notice, withdrawal, the cart, the shopper's account and the All products page in Safari's engine too (`webkit` project, `WEBKIT_SPECS` in `playwright.config.ts`, 32 tests), through HTTPS (`e2e/fixtures/https-proxy.mjs`, a certificate made for the run): a production build sets its cookies `Secure`, which WebKit refuses on `http://localhost`. The screen-reader pass remains a person's.
+
+## From the re-score of 2026-10-30
+
+The code items of [the re-score's ranked list](psi-2026-10-30.md) (Ranked improvements across segments), in its order; the owner's items
+stay in the standing document's *What comes next*.
+
+- [x] **SEC-06 (3)** Secret-box key id, a rotation runbook, a gift-card hash key of its own. Done 30 October 2026 (D410): `v2.<kid>.…`,
+      `SETTINGS_ENCRYPTION_KEY_PREVIOUS` read during a rotation, `reencryptSecrets()` in the dispatcher, `GIFT_CARD_HASH_KEY` and
+      `RECOVERY_CODE_HASH_KEY` (`scripts/hash-keys.mjs`), `docs/runbooks/key-rotation.md`. The owner's part: set the two hash keys once.
+- [ ] **SEC-05, SEC-07 (4)** Enforced nonce CSP on `/admin`, then the storefront; `frame-ancestors` on storefront and platform pages; HSTS
+      `includeSubDomains` once every subdomain is confirmed HTTPS.
+- [ ] **AST-09, AST-01, AGT-14 (6)** An eval that measures the model: payloads the filter does not catch, several runs per model, a model
+      save gated on a pass, the replay failing on a changed model or tool description.
+- [ ] **REL-09, REL-02, DATA-03 (7)** Event-arrival checks, the `webhooks` drill on a schedule, an outside probe.
+- [ ] **CODE-03 (8)** The HUF money test that fails outside CI.
+- [ ] **REG-11 (10)** Sensitive-information mode and a minimum-age sentence.
+- [ ] **UX-08 (11)** Homer and Lisa written into `docs/admin-style.md`, applied to the product editor and support settings.
+- [ ] **AGT-03, AGT-04 (13)** Approval expiry, `cancel_page_build`, pending follow-ups with cancel.
+- [ ] **DATA-06 (14)** `deletePage()` records a redirect and strips menu items.
+- [ ] **CODE-05, CODE-02 (15)** README as onboarding; lint warnings ratcheted to 0.

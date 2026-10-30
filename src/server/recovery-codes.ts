@@ -17,8 +17,14 @@ type Row = Record<string, unknown>;
  * `update … where used_at is null returning` that two requests cannot both win. A new set revokes the old.
  */
 
-/** The key the codes are hashed under, derived from the settings key; null where the server has none (codes cannot then be made or checked). */
+/**
+ * The key the codes are hashed under: `RECOVERY_CODE_HASH_KEY`, which never changes with the settings key (PSI SEC-06), or where it is not
+ * set the key derived from the settings key (`scripts/hash-keys.mjs` prints it, to be set before a rotation); null where the server has
+ * neither (codes cannot then be made or checked).
+ */
 function hashKey(): Buffer | null {
+  const own = parseKey(process.env.RECOVERY_CODE_HASH_KEY);
+  if (own) return own;
   const base = parseKey(process.env.SETTINGS_ENCRYPTION_KEY);
   return base ? createHmac("sha256", base).update("kaizen.recovery-codes.v1").digest() : null;
 }

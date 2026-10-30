@@ -12,6 +12,7 @@ import { endIdleConversations } from "@/server/support";
 import { expireActions } from "@/server/support-actions";
 import { summarisePending } from "@/server/support-summary";
 import { cronAuthorised } from "@/server/cron-auth";
+import { reencryptSecrets } from "@/server/secret-rotation";
 import { runJobs, tracked } from "@/server/cron-runs";
 import { expireDrafts } from "@/server/draft-orders";
 import { expireApprovals } from "@/server/company-approvals";
@@ -161,6 +162,8 @@ async function dispatch() {
     schedules: () => runSchedules(),
     // The status page's checks (D360): each part measured, admins emailed once when one fails twice in a row.
     status: () => runStatusChecks(),
+    // A rotation of the settings key (PSI SEC-06): while a previous key is set, a batch of secrets written again under the current one.
+    secretRotation: () => reencryptSecrets(),
     // A VAT rate that begins or ends at a country's midnight (D379): the catalogue's cached labels refreshed then, not at the daily job's hour.
     vatLabels: () => refreshVatLabelsAtMidnight(),
   });

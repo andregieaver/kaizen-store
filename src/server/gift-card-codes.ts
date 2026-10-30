@@ -7,11 +7,15 @@ import { parseKey } from "@/lib/secret-box";
 
 /**
  * Gift card codes on the server (D300): a code is made here, shown once (the email, or staff who issue a card by hand) and kept only as its
- * HMAC, with a key made from `SETTINGS_ENCRYPTION_KEY` for this use alone, so a database read never gives a code that can be spent. Without
- * the key there are no gift cards to make or to find.
+ * HMAC, so a database read never gives a code that can be spent. The key is `GIFT_CARD_HASH_KEY`, which never changes with the settings key
+ * (PSI SEC-06: the codes are not kept, so a changed key would lose every card); where it is not set, the key made from
+ * `SETTINGS_ENCRYPTION_KEY` for this use alone, which `scripts/hash-keys.mjs` prints so it can be set as `GIFT_CARD_HASH_KEY` before a
+ * rotation (`docs/runbooks/key-rotation.md`). Without a key there are no gift cards to make or to find.
  */
 
 const giftKey = (): Buffer | null => {
+  const own = parseKey(process.env.GIFT_CARD_HASH_KEY);
+  if (own) return own;
   const secret = parseKey(process.env.SETTINGS_ENCRYPTION_KEY);
   return secret ? createHmac("sha256", secret).update("kaizen:gift-card-code").digest() : null;
 };

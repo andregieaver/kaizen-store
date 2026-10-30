@@ -78,21 +78,18 @@ still works. Every secret is listed in `docs/security.md` section 4.
 | An AI or search provider key (Kaizena Flow's) | the provider's console | Platform → AI (`/admin/platform/ai`), kept encrypted in `ai_providers`, `search_settings` | no AI until saved again; check `ai_usage` for spend after the leak |
 | A store's own keys (carrier, AI, Mollie, ad tokens, webhook endpoint, custom app) | the store's owner | the store's own settings pages | it is the store's secret: tell the owner (section 7) |
 
-**`SETTINGS_ENCRYPTION_KEY` is different: there is no rotation yet.** It decrypts every secret in the database
-(`src/lib/secret-box.ts`, no key id) and is the root of the derived keys for recovery codes, gift card codes, sign-in counters,
-edit passes, private-store passes and visit hashes (`docs/security.md` section 4). Changing the variable alone would make every
-stored secret unreadable, end every gift card's code for good (`src/server/gift-card-codes.ts` keeps only an HMAC under it, never the
-code) and void every recovery code. If it leaked:
+**`SETTINGS_ENCRYPTION_KEY` decrypts every secret in the database** and is the root of the keys made from it for sign-in counters,
+edit passes, private-store passes and visit hashes (`docs/security.md` section 4). If it leaked:
 
 1. Treat every encrypted secret as leaked too: rotate each at its source and tell the stores whose own secrets they are. They are
    in `platform_webhooks` (Stripe webhook secrets), `payment_credentials` (stores' old Stripe keys), `mollie_connections`,
    `kaizen_life_links`, `shipping_carriers`, `ai_providers`, `search_settings`, `google_places`, `ad_connections`, `feed_settings`,
    `store_integrations` (Zapier, Make, Slack addresses), `webhook_endpoints`, `custom_apps` and `domain_purchases` (transfer codes):
    every caller of `encryptSecret()` in `src/server/`.
-2. Changing the key itself needs code that does not exist: a script that decrypts with the old key and encrypts with the new in one
-   transaction for each table, and a decision about gift cards (re-key their hashes cannot be done without the codes; the cards would
-   need new codes sent to their holders). Until that exists, the lead decides between rotating every secret at its source and keeping
-   the key, or a planned change of the key with an engineer. PSI SEC-06 asks for the key id and a rotation procedure.
+2. Change the key by `docs/runbooks/key-rotation.md` (D410): the old key read during the move, every secret written again under the new
+   one by the dispatcher, then the old key removed. Gift card and recovery codes keep working only if `GIFT_CARD_HASH_KEY` and
+   `RECOVERY_CODE_HASH_KEY` were set first (the runbook's first step; if they were not, set them from the **old** key before step 2 of
+   the rotation, with `scripts/hash-keys.mjs`).
 
 ### 4.2 An admin account taken over
 
