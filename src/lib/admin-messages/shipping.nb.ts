@@ -582,7 +582,7 @@ export const shippingNb: ShippingMessages = {
     priceKinds: { free: "Gratis", percent: "En prosent mer eller mindre", amount: "Et beløp mer eller mindre" },
     priceHint: "Et negativt tall senker prisen. En levering koster aldri mindre enn ingenting, og en som er gratis over en kurvverdi, forblir gratis.",
     fields: "Spørsmål i kassen",
-    fieldsHint: "Stilles over kasseknappen. Svarene står på bestillingen og i eksporten av den.",
+    fieldsHint: "Stilles over kasseknappen. Svarene står på bestillingen og i eksporten av den. Spør bare om det bestillingen trenger, og ikke om helse, tro eller andre sensitive forhold med mindre salget ikke kan gjøres uten: det er særlige kategorier personopplysninger, med strengere regler (personvernforordningen artikkel 9).",
     newField: "Legg til et spørsmål",
     noFields: "Ingen spørsmål. Kassen spør bare om det den trenger.",
     question: "Spørsmål",

@@ -104,6 +104,7 @@ export const SV: StarterText = {
     "terms.order.1": "När du trycker på knappen för att beställa lägger du en bindande beställning och förbinder dig att betala.",
     "terms.order.2": "Vi bekräftar din beställning med e-post. {check}",
     "terms.order.3": "Den version av de här villkoren som gällde när du beställde sparas tillsammans med din beställning, så att vi kan visa den för dig senare.",
+    "terms.order.age": "För att beställa måste du vara 18 år eller äldre. Är du yngre kan du be en förälder eller vårdnadshavare att beställa åt dig.",
     "h.terms.payment": "Betalning",
     "terms.payment.1": "Betalningen går via vår betaltjänstleverantör Stripe, som hanterar dina kortuppgifter eller andra betalningsuppgifter. Vi ser aldrig hela ditt kortnummer. De betalningssätt som erbjuds visas i kassan.",
     "h.terms.delivery": "Leverans",

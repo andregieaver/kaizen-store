@@ -1,0 +1,1 @@
+ALTER TABLE "commerce"."support_settings" ADD COLUMN "sensitive" boolean DEFAULT false NOT NULL;

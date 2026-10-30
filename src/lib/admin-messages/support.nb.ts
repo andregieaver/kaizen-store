@@ -427,6 +427,11 @@ export const supportNb: SupportMessages = {
     },
     toneHandoff:
       "Med KI-en først: gi en samtale fra KI-en til teamet ditt når tonen når",
+    sensitiveTitle: "Sensitive opplysninger",
+    sensitive: {
+      title: "Denne butikken håndterer helseopplysninger eller andre sensitive opplysninger.",
+      text: "Når dette er på, leser ingen KI tonen i det kundene skriver eller lager sammendrag av samtalene, og det er folk, ikke KI-en, som svarer på e-postene deres, og samtalene lagres i høyst 30 dager. Spør ikke om noe i kassen du ikke trenger, og aldri om helse med mindre salget krever det.",
+    },
     summariesTitle: "Sammendrag",
     summaries: {
       title:

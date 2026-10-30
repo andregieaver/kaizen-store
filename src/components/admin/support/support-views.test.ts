@@ -211,6 +211,7 @@ describe("the desk's settings (step 5)", () => {
     toneAlert: -40,
     toneHandoff: -60,
     summariesOn: true,
+    sensitive: false,
     partner: true,
     aiActions: null,
     formMessages: "inbox_and_email" as const,

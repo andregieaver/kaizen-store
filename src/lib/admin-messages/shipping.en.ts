@@ -601,7 +601,7 @@ export const shippingEn = {
     priceKinds: { free: "Free", percent: "A percentage more or less", amount: "An amount more or less" },
     priceHint: "A negative number lowers the price. A delivery never costs less than nothing, and one free above a basket value stays free.",
     fields: "Questions at checkout",
-    fieldsHint: "Asked above the checkout button. The answers are on the order and in its export.",
+    fieldsHint: "Asked above the checkout button. The answers are on the order and in its export. Ask only what the order needs, and nothing about health, beliefs or other sensitive matters unless the sale cannot be made without it: those are special categories of personal data, with stricter rules (GDPR article 9).",
     newField: "Add a question",
     noFields: "No questions. Checkout asks only what it needs.",
     question: "Question",

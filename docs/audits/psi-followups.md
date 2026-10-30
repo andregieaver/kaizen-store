@@ -151,7 +151,13 @@ stay in the standing document's *What comes next*.
       22.22) shows HUF with two decimals where CI's showed none, so a price looked different by server; `formatMoney()` fixes whole forints
       (`DISPLAY_DIGITS`). The same data made DAC7's `decimalAmount()` print HUF's hundredths as forints on the older runtime, and the price
       rule screen show an ending in the wrong unit: both now use the stored digits (`minorUnitDigits()`). The deploy gate stays the owner's.
-- [ ] **REG-11 (10)** Sensitive-information mode and a minimum-age sentence.
+- [x] **REG-11 (10)** Sensitive-information mode and a minimum-age sentence.
+      Done 30 October 2026. Support settings have *This store handles health or other sensitive information* (`support_settings.sensitive`,
+      migration `support_sensitive`; the owner's alone to change). While it is on, no AI reads tone or writes summaries (both forced off,
+      whatever was saved), every email goes to people (a new one and one the AI held before are handed over, never answered by the AI), and
+      transcripts are kept 30 days at most (`TRANSCRIPT_DAYS_SENSITIVE`). The checkout questions' hint says to ask nothing about health or
+      beliefs unless the sale needs it (GDPR art. 9). The terms starter says ordering takes 18 or older, in EN, NB, SV and DA. The live chat
+      on the site still uses the AI when the desk puts it first: the setting's text says only what it does.
 - [ ] **UX-08 (11)** Homer and Lisa written into `docs/admin-style.md`, applied to the product editor and support settings.
 - [x] **AGT-03, AGT-04 (13)** Approval expiry, `cancel_page_build`, pending follow-ups with cancel.
       Approval expiry done 30 October 2026: `assistant_approvals.expires_at` (seven days after the ask; migration

@@ -13484,6 +13484,11 @@ export const supportSettings = commerce.table(
     partner: boolean("partner").notNull().default(true),
     toneOn: boolean("tone_on").notNull().default(true),
     summariesOn: boolean("summaries_on").notNull().default(true),
+    /**
+     * The store handles health or other sensitive information (PSI REG-11, GDPR art. 9): no AI reads its customers' tone or summarises
+     * their conversations, and people, never the AI, answer their emails. The owner's alone to change.
+     */
+    sensitive: boolean("sensitive").notNull().default(false),
     toneAlert: smallint("tone_alert").default(-40),
     toneHandoff: smallint("tone_handoff").default(-60),
     notifyAfterMinutes: smallint("notify_after_minutes").notNull().default(5),

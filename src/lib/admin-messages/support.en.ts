@@ -392,6 +392,11 @@ export const supportEn = {
     },
     toneHandoff:
       "With the AI first, hand a conversation from the AI to your team when its tone reaches",
+    sensitiveTitle: "Sensitive information",
+    sensitive: {
+      title: "This store handles health or other sensitive information.",
+      text: "While this is on, no AI reads customers' tone or summarises their conversations, people, not the AI, answer their emails, and transcripts are kept 30 days at most. Ask nothing at checkout you do not need, and never about health unless the sale needs it.",
+    },
     summariesTitle: "Summaries",
     summaries: {
       title: "Summarise ended conversations, and brief whoever takes one over.",

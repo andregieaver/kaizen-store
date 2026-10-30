@@ -148,7 +148,7 @@ function shapeOf(role: StarterRole, f: LegalFacts, h: Helpers): Shape[] {
         { topic: "seller", blocks: [p("terms.seller.1", { store, name, org }), vat, p("terms.seller.2", { address, email, phone })] },
         { topic: "products_prices", blocks: [p("terms.products.1"), p("terms.products.2", { currencies: f.markets.length > 0 ? h.list([...new Set(f.markets.map((m) => m.currency))]) : h.add("currency") })] },
         { topic: "vat_shipping_costs", blocks: [p("terms.costs.1"), rates.length > 0 ? ul(...rates) : p("terms.costs.none", { check: h.add("shippingPrice") })] },
-        { topic: "order_contract", blocks: [p("terms.order.1"), p("terms.order.2", { check: h.check("contractFormation") }), p("terms.order.3")] },
+        { topic: "order_contract", blocks: [p("terms.order.1"), p("terms.order.2", { check: h.check("contractFormation") }), p("terms.order.3"), p("terms.order.age")] },
         { topic: "payment", blocks: [p("terms.payment.1")] },
         { topic: "delivery", blocks: [p("terms.delivery.1", { markets: marketNames }), p("terms.delivery.2", { check: h.add("deliveryTime") }), carriers] },
         {

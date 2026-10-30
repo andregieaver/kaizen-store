@@ -4250,6 +4250,13 @@
       "when": 1793392815630,
       "tag": "20261030204015_assistant_approval_expiry",
       "breakpoints": true
+    },
+    {
+      "idx": 607,
+      "version": "7",
+      "when": 1793395255344,
+      "tag": "20261030212055_support_sensitive",
+      "breakpoints": true
     }
   ]
 }

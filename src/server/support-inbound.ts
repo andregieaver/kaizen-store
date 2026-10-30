@@ -331,12 +331,18 @@ async function newConversation(
 /**
  * The AI's answer while it has the conversation (the AI first): counted under the sender's address before any model is asked; past
  * a limit, without an agent or a model, or when it fails, the conversation goes to a person, as on the site; a hand-over the AI asks
- * for is kept with its words. With people only, nothing: the message waits in the queue.
+ * for is kept with its words. With people only, or a store that handles sensitive information (PSI REG-11), nothing: the message waits
+ * in the queue for a person.
  */
 async function answer(desk: Desk, settings: DeskSettings, site: ChatSite, conversationId: string, from: string, deps: InboundDeps): Promise<void> {
   if (settings.mode !== "ai_first") return;
   const [current] = await db().execute<Row>(sql`select status, handler from commerce.support_conversations where id = ${conversationId}::uuid`);
   if (current?.status !== "open" || current.handler !== "ai") return;
+  // A store that handles sensitive information gives every email to a person (PSI REG-11): a new one, and one the AI held before.
+  if (settings.sensitive) {
+    await handOver(desk, conversationId, "system", "no_ai");
+    return;
+  }
   const context = await chatContext(placeOf(site));
   if (context instanceof Response || !context.agent) {
     await handOver(desk, conversationId, "system", "no_ai");

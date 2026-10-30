@@ -91,6 +91,8 @@ export const TRANSCRIPT_DAYS = [30, 60, 90] as const;
 export const TRANSCRIPT_DAYS_DEFAULT = 90;
 /** A desk whose support is off keeps a transcript this long after the conversation ends (S2). */
 export const TRANSCRIPT_DAYS_OFF = 1;
+/** A desk whose store handles sensitive information (PSI REG-11) keeps a transcript no longer than this, whatever it chose. */
+export const TRANSCRIPT_DAYS_SENSITIVE = 30;
 /** Anonymised conversations (counts and closed fields only) are deleted after this long. */
 export const RECORD_MONTHS = 24;
 export const MAX_CHATS = { min: 1, max: 20, default: 5 } as const;

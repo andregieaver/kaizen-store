@@ -51,6 +51,7 @@ export const deskSettingsInput = z.object({
   agentNaming: z.enum(["first_name", "desk"], "Choose how your people are named to customers."),
   toneOn: z.literal(["on", "off"]).default("off").transform((value) => value === "on"),
   summariesOn: z.literal(["on", "off"]).default("off").transform((value) => value === "on"),
+  sensitive: z.literal(["on", "off"]).default("off").transform((value) => value === "on"),
   partner: z.literal(["on", "off"]).default("off").transform((value) => value === "on"),
   toneAlert: toneLine("tone alert"),
   toneHandoff: toneLine("hand-over"),

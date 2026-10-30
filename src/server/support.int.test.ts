@@ -271,6 +271,27 @@ describe("ending, retention, export and erasure (C16)", () => {
     expect(await conversationRow(id)).toBeUndefined();
   });
 
+  it("keeps a transcript no longer than 30 days while the store handles sensitive information (PSI REG-11)", async () => {
+    fakeModel(["Hei!"]);
+    const first = ok(await turn("Hei"));
+    const id = first.conversation!.id;
+    await route.visitorEnd({ store: slug, market: "no" }, { id, token: first.conversation!.token! }, 0);
+    await db().execute(sql`update commerce.support_conversations set ended_at = now() - interval '31 days' where id = ${id}::uuid`);
+    const [before] = await db().execute<Row>(sql`select mode, transcript_days from commerce.support_settings where store_id = ${storeId}::uuid`);
+    const due = () => support.transcriptsDue(new Date(), new Date(0), 10_000);
+    try {
+      await db().execute(sql`update commerce.support_settings set mode = 'people', transcript_days = 90 where store_id = ${storeId}::uuid`);
+      expect(await due()).not.toContain(id);
+      await db().execute(sql`update commerce.support_settings set sensitive = true where store_id = ${storeId}::uuid`);
+      expect(await due()).toContain(id);
+    } finally {
+      await db().execute(sql`
+        update commerce.support_settings set mode = ${String(before.mode)}, transcript_days = ${Number(before.transcript_days)}, sensitive = false
+        where store_id = ${storeId}::uuid
+      `);
+    }
+  });
+
   it("puts a customer's conversations in their export (never notes) and anonymises them on erasure", async () => {
     const [customer] = await db().execute<Row>(sql`insert into commerce.customers (store_id, email, name) values (${storeId}::uuid, ${`kari-${run}@example.com`}, 'Kari') returning id`);
     const customerId = String(customer.id);
@@ -760,6 +781,17 @@ describe("asking for a person, and the two modes (step 5: C7, C8, C20)", () => {
     // Without the owner's field, a member's save keeps what the desk has.
     expect(await saveDeskSettings(d.kari, { ...form, transcriptDays: undefined, emailFollowup: undefined }, { owner: false })).toEqual({ ok: true, ended: 0 });
     expect(await support.deskSettings(systemDesk(d.id))).toMatchObject({ transcriptDays: 30, emailFollowup: false });
+
+    // Sensitive information (PSI REG-11): the owner's alone, and while it is on, tone and summaries stay off whatever the form says.
+    const sensitive = { ...form, sensitive: "on", toneOn: "on", summariesOn: "on" };
+    expect(await saveDeskSettings(d.kari, sensitive, { owner: false })).toEqual({ ok: false, problems: ["Only the store's owner can say whether the store handles sensitive information."] });
+    expect(await saveDeskSettings(d.kari, sensitive, { owner: true })).toMatchObject({ ok: true });
+    expect(await support.deskSettings(systemDesk(d.id))).toMatchObject({ sensitive: true, toneOn: false, summariesOn: false });
+    const [kept] = await db().execute<Row>(sql`select tone_on, summaries_on, sensitive from commerce.support_settings where store_id = ${d.id}::uuid`);
+    expect(kept).toEqual({ tone_on: false, summaries_on: false, sensitive: true });
+    // A member's save, which cannot send the owner's box, keeps it on.
+    expect(await saveDeskSettings(d.kari, { ...form, sensitive: "on" }, { owner: false })).toMatchObject({ ok: true });
+    expect(await support.deskSettings(systemDesk(d.id))).toMatchObject({ sensitive: true });
   });
 });
 

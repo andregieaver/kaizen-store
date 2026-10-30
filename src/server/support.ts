@@ -22,6 +22,7 @@ import {
   RATING_COMMENT_MAX,
   TRANSCRIPT_DAYS_DEFAULT,
   TRANSCRIPT_DAYS_OFF,
+  TRANSCRIPT_DAYS_SENSITIVE,
   type ConversationStatus,
   type FormMessages,
   type Handler,
@@ -104,6 +105,8 @@ export type DeskSettings = {
   toneHandoff: number | null;
   /** Ended conversations are summarised by the AI (2.7, step 7). */
   summariesOn: boolean;
+  /** The store handles health or other sensitive information (PSI REG-11): tone and summaries stay off, and people answer emails. */
+  sensitive: boolean;
   /** The silent partner may help this desk's people (2.5, step 8). */
   partner: boolean;
   /** The customer actions the AI may propose (4.4, step 10); null: all of them. The owner's alone to change. */
@@ -132,10 +135,11 @@ export function settingsOf(row: Row): DeskSettings {
     agentNaming: row.agent_naming === "desk" ? "desk" : "first_name",
     hours: row.hours ? parseOpeningHours(row.hours) : null,
     notifyAfterMinutes: Number(row.notify_after_minutes ?? NOTIFY_AFTER_MINUTES.default),
-    toneOn: row.tone_on === undefined ? true : Boolean(row.tone_on),
+    toneOn: row.sensitive !== true && (row.tone_on === undefined ? true : Boolean(row.tone_on)),
     toneAlert: row.tone_alert === null || row.tone_alert === undefined ? null : Number(row.tone_alert),
     toneHandoff: row.tone_handoff === null || row.tone_handoff === undefined ? null : Number(row.tone_handoff),
-    summariesOn: row.summaries_on === undefined ? true : Boolean(row.summaries_on),
+    summariesOn: row.sensitive !== true && (row.summaries_on === undefined ? true : Boolean(row.summaries_on)),
+    sensitive: row.sensitive === true,
     partner: row.partner === undefined ? true : Boolean(row.partner),
     aiActions: Array.isArray(row.ai_actions) ? (row.ai_actions as string[]).filter(isCustomerAction) : null,
     formMessages: (FORM_MESSAGES as readonly string[]).includes(String(row.form_messages)) ? (String(row.form_messages) as FormMessages) : "inbox_and_email",
@@ -338,6 +342,7 @@ async function assertOnDesk(desk: Desk, conversationId: string): Promise<void> {
 function visitorData(data: unknown): { data?: VisitorMessageData } {
   if (!data || typeof data !== "object") return {};
   const { prompt: _version, ...rest } = data as VisitorMessageData & { prompt?: string };
+  void _version;
   return Object.keys(rest).length > 0 ? { data: rest } : {};
 }
 
@@ -520,7 +525,7 @@ export async function anonymiseConversations(executor: Executor, ids: string[]):
 
 /**
  * Conversations whose transcript has passed its period, oldest first: the desk's own (support off: one day; else its 30, 60 or 90
- * days) or the retention rule's (`support_transcripts`), whichever ends first.
+ * days, at most 30 while the store handles sensitive information) or the retention rule's (`support_transcripts`), whichever ends first.
  */
 export async function transcriptsDue(now: Date, ruleCutoff: Date, limit: number): Promise<string[]> {
   const rows = await db().execute<Row>(sql`
@@ -529,7 +534,9 @@ export async function transcriptsDue(now: Date, ruleCutoff: Date, limit: number)
     where c.status = 'ended' and c.anonymised_at is null
       and (c.ended_at < ${ruleCutoff.toISOString()}::timestamptz
         or c.ended_at < ${now.toISOString()}::timestamptz - make_interval(days =>
-          case when coalesce(s.mode, 'off') = 'off' then ${TRANSCRIPT_DAYS_OFF}::int else coalesce(s.transcript_days, ${TRANSCRIPT_DAYS_DEFAULT}::int) end))
+          case when coalesce(s.mode, 'off') = 'off' then ${TRANSCRIPT_DAYS_OFF}::int
+               when s.sensitive then least(s.transcript_days, ${TRANSCRIPT_DAYS_SENSITIVE}::int)
+               else coalesce(s.transcript_days, ${TRANSCRIPT_DAYS_DEFAULT}::int) end))
     order by c.ended_at limit ${limit}
   `);
   return rows.map((r) => String(r.id));

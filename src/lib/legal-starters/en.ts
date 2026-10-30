@@ -107,6 +107,7 @@ export const EN: StarterText = {
     "terms.order.1": "When you press the button to order you place a binding order and agree to pay.",
     "terms.order.2": "We confirm your order by email. {check}",
     "terms.order.3": "The version of these terms that applied when you ordered is stored with your order, so that we can show it to you later.",
+    "terms.order.age": "To order you must be 18 or older. If you are younger, ask a parent or guardian to order for you.",
     "h.terms.payment": "Payment",
     "terms.payment.1": "Payment is made through our payment provider, Stripe, which handles your card or other payment details. We never see your full card number. The payment methods on offer are shown at checkout.",
     "h.terms.delivery": "Delivery",

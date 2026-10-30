@@ -229,6 +229,25 @@ describe("email into the desk", () => {
     expect(await conversation(row.conversation_id)).toMatchObject({ handler: "queue", handoff_reason: "no_ai" });
   });
 
+  it("gives a store that handles sensitive information's emails to people, never the AI, and hands over one the AI held (PSI REG-11)", async () => {
+    await setMode("ai_first");
+    background.aiStores.add(store.id);
+    await db().execute(sql`insert into commerce.chat_agents (store_id, enabled, name) values (${store.id}::uuid, true, 'Ingrid') on conflict do nothing`);
+    const held = await receive(deskAddress, "eva@example.com", { subject: "Before" });
+    expect(await conversation(held.row.conversation_id)).toMatchObject({ handler: "ai" });
+    const asked = turns.length;
+
+    await db().execute(sql`update commerce.support_settings set sensitive = true where store_id = ${store.id}::uuid`);
+    const fresh = await receive(deskAddress, "olav@example.com", { subject: "Health" });
+    expect(await conversation(fresh.row.conversation_id)).toMatchObject({ handler: "queue", handoff_reason: "no_ai" });
+    // The one the AI held before goes to a person at its next email.
+    const heldReply = `reply-${String((await conversation(held.row.conversation_id)).reply_key)}@${DOMAIN}`;
+    await receive(heldReply, "eva@example.com", { subject: "Re: Before", text: "Any news?" });
+    expect(await conversation(held.row.conversation_id)).toMatchObject({ handler: "queue", handoff_reason: "no_ai" });
+    expect(turns).toHaveLength(asked);
+    await db().execute(sql`update commerce.support_settings set sensitive = false where store_id = ${store.id}::uuid`);
+  });
+
   it("takes nothing while support is off", async () => {
     await setMode("off");
     expect((await receive(deskAddress, "kari@example.com")).row).toMatchObject({ status: "refused", reason: "desk_off" });

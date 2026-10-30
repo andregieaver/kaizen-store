@@ -104,6 +104,7 @@ export const DA: StarterText = {
     "terms.order.1": "Når du trykker på knappen for at bestille, afgiver du en bindende bestilling og forpligter dig til at betale.",
     "terms.order.2": "Vi bekræfter din bestilling på e-mail. {check}",
     "terms.order.3": "Den version af disse betingelser, der gjaldt, da du bestilte, gemmes sammen med din bestilling, så vi kan vise den til dig senere.",
+    "terms.order.age": "For at bestille skal du være fyldt 18 år. Er du yngre, kan du bede en forælder eller værge om at bestille for dig.",
     "h.terms.payment": "Betaling",
     "terms.payment.1": "Betalingen går gennem vores betalingsleverandør, Stripe, som håndterer dine kortoplysninger eller andre betalingsoplysninger. Vi ser aldrig dit fulde kortnummer. De betalingsmåder, der tilbydes, vises i kassen.",
     "h.terms.delivery": "Levering",

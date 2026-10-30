@@ -57,6 +57,11 @@ export async function saveDeskSettings(staff: StaffDesk, raw: unknown, may: { ow
   const aiActions = chosen === null ? current.aiActions : chosen.length === CUSTOMER_ACTION_KINDS.length ? null : chosen;
   const aiActionsChanged = JSON.stringify(aiActions) !== JSON.stringify(current.aiActions);
   if (aiActionsChanged && !may.owner) return { ok: false, problems: ["Only the store's owner can change what the AI may do for customers."] };
+  // Sensitive information (PSI REG-11) is the owner's call; while it is on, tone and summaries stay off whatever the form says.
+  const sensitive = staff.desk.storeId ? input.sensitive : false;
+  if (sensitive !== current.sensitive && !may.owner) return { ok: false, problems: ["Only the store's owner can say whether the store handles sensitive information."] };
+  const toneOn = input.toneOn && !sensitive;
+  const summariesOn = input.summariesOn && !sensitive;
 
   const storeId = staff.desk.storeId;
   const desk = storeId ? sql`store_id = ${storeId}::uuid` : sql`store_id is null`;
@@ -65,7 +70,7 @@ export async function saveDeskSettings(staff: StaffDesk, raw: unknown, may: { ow
       update commerce.support_settings set
         mode = ${input.mode}, email_followup = ${input.emailFollowup}, hours = ${input.hours ? JSON.stringify(input.hours) : null}::jsonb,
         end_after_minutes = ${input.endAfterMinutes}, notify_after_minutes = ${input.notifyAfterMinutes}, agent_naming = ${input.agentNaming},
-        tone_on = ${input.toneOn}, tone_alert = ${input.toneAlert}, tone_handoff = ${input.toneHandoff}, summaries_on = ${input.summariesOn}, partner = ${input.partner},
+        tone_on = ${toneOn}, tone_alert = ${input.toneAlert}, tone_handoff = ${input.toneHandoff}, summaries_on = ${summariesOn}, sensitive = ${sensitive}, partner = ${input.partner},
         transcript_days = ${transcriptDays}, ai_actions = ${aiActions === null ? null : sql`${`{${aiActions.join(",")}}`}::text[]`}, form_messages = ${formMessages}, updated_at = now(), updated_by = ${staff.account.id}::uuid
       where ${desk}
     `);
@@ -85,8 +90,9 @@ export async function saveDeskSettings(staff: StaffDesk, raw: unknown, may: { ow
       ["end_after_minutes", current.endAfterMinutes, input.endAfterMinutes],
       ["notify_after_minutes", current.notifyAfterMinutes, input.notifyAfterMinutes],
       ["agent_naming", current.agentNaming, input.agentNaming],
-      ["tone_on", current.toneOn, input.toneOn],
-      ["summaries_on", current.summariesOn, input.summariesOn],
+      ["tone_on", current.toneOn, toneOn],
+      ["summaries_on", current.summariesOn, summariesOn],
+      ["sensitive", current.sensitive, sensitive],
       ["partner", current.partner, input.partner],
       ["tone_alert", current.toneAlert, input.toneAlert],
       ["tone_handoff", current.toneHandoff, input.toneHandoff],
