@@ -168,6 +168,25 @@ export async function deriveForProducts(runner: Runner, storeId: string, scope: 
   return { written, ended };
 }
 
+/**
+ * Puts the given products' prices in ruled markets back under the rule, as emptying the editor's field does: a price typed by hand there is
+ * marked the rule's and worked out again from the base (through `commerce.set_price`, so the 30-day reference stays genuine). For the Dream
+ * Factory (D409), whose products are priced in the home country only and whose other countries are the rules'.
+ */
+export async function backToRule(storeId: string, productIds: readonly string[]): Promise<{ written: number; ended: number }> {
+  const markets = (await marketPriceRules(storeId)).map((r) => r.market);
+  if (markets.length === 0 || productIds.length === 0) return { written: 0, ended: 0 };
+  return db().transaction(async (tx) => {
+    await tx.execute(sql`
+      update commerce.prices p set derived = true
+      from commerce.product_variants v
+      where v.id = p.variant_id and v.store_id = ${storeId}::uuid and v.product_id = any(${`{${productIds.join(",")}}`}::uuid[])
+        and p.market_code = any(${`{${markets.join(",")}}`}::text[]) and p.valid_to is null and not p.derived
+    `);
+    return deriveForProducts(tx, storeId, { productIds });
+  });
+}
+
 export type { RulePreview };
 
 /** What a rule as typed would make of five of the store's products' prices, before it is saved. */

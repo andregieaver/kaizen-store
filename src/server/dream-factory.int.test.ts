@@ -249,6 +249,34 @@ describe("the Dream Factory (D409)", () => {
     await stopDreamRun((await passMembership(real.slug, real.owner))!, latest.id);
   });
 
+  it("tells a products turn to price in the home country only where the store's rules work out the others", async () => {
+    const member = (await passMembership(nordic.slug, nordic.owner))!;
+    const { setMarkets } = await import("./setup");
+    const { saveMarketPriceRule } = await import("./market-prices");
+    expect(await setMarkets(member, ["NO", "SE"])).toMatchObject({ ok: true });
+    for (const [currency, rate] of [["NOK", 11.7], ["SEK", 11.0]] as const) {
+      await db().execute(sql`
+        insert into commerce.store_currencies (store_id, currency, rate, round_to, position) values (${nordic.id}::uuid, ${currency}, ${rate}, 1, 0)
+        on conflict (store_id, currency) do update set rate = excluded.rate
+      `);
+    }
+    const store = (await passMembership(nordic.slug, nordic.owner))!.store;
+    expect(await saveMarketPriceRule(store, nordic.owner, { market: "SE", base: "NO", percentBps: 0, basis: "net", roundToMinor: 100, endingMinor: null })).toMatchObject({ ok: true });
+    await db().execute(sql`update commerce.dream_runs set status = 'stopped', finished_at = now() where store_id = ${nordic.id}::uuid and finished_at is null`);
+    const steps = Object.fromEntries(["brief", "confirm", "research", "setup", "brand", "website", "legal", "payments", "plan"].map((id) => [id, { status: "done", tries: 1 }]));
+    await db().execute(sql`
+      insert into commerce.dream_runs (store_id, account_id, prompt, test, steps, brief)
+      select store_id, account_id, prompt, true, ${JSON.stringify(steps)}::jsonb, brief from commerce.dream_runs where store_id = ${nordic.id}::uuid order by created_at desc limit 1
+    `);
+    const turns: TurnInput[] = [];
+    await minute(nordic.id, { complete: async () => ({ text: "{}", region: null }), connection, turn: async (input: TurnInput) => void turns.push(input) });
+    expect(turns).toHaveLength(1);
+    expect(turns[0].autopilot?.tools).toContain("create_product");
+    expect(turns[0].message).toContain("give the price in NO (NOK) only. SE are worked out by the store's price rules");
+    // Each product in a conversation of its own.
+    expect(turns[0].conversationId).toBeNull();
+  });
+
   it("builds another store for an owner from Your stores, and makes none from a description too short", async () => {
     const owner = (await activeAccount(real.owner))!;
     const slug = `another-${run}`;

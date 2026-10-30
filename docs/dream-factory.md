@@ -43,7 +43,7 @@ may make: the law's (identity for payments), money (a plan, a domain) and the mo
 | 2 | **Research** | A | 1b | AI | At least 3 research notes made in the step, each with a source |
 | 3 | **Setup** | A | 1b | AI | `getSetupProgress()`: business details, countries, and a shipping price for every country |
 | 4 | **Brand and look** | A | 1b | AI | A brand profile with a tagline or voice, and a theme in the library |
-| 5 | **Products** | B | 2, 3 | AI | The brief's number of the store's own products active, each with a picture and a price in every active country; no demo product on sale |
+| 5 | **Products** | B | 2, 3 | AI | The brief's number of the store's own products active, each with a picture and a price in every active country; no demo product on sale. The AI prices in the home country only; the other countries' prices are worked out by code (D335's rules at the ECB's rates, set when setup passes) |
 | 6 | **Website** | B | 4 | Code | The draft's pages built and published, the first the front page (D351); a front page the builder holds back for a blocking problem is fixed by the AI with the page tools until it is published |
 | 7 | **Legal pages** | B | 3 | Code | The writer's pages all settled, none failed, at least one published; skipped outside Norway, Sweden and Denmark. Pages that fail the writer's check become hand-written starters from the store's facts, as drafts the owner checks and publishes (a test run steps aside) |
 | 8 | **Payments** | C | 3 | Owner | Live card payments active; a test run skips it |

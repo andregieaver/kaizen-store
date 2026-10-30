@@ -48,7 +48,10 @@ import { legalWrites, turnOnLegalAi } from "./legal-writer";
 import { log } from "./log";
 import { runTurn, type Principal, type TurnInput } from "./owner-assistant";
 import { setFrontPage } from "./pages";
+import { saveCurrencies } from "./localization";
+import { backToRule, marketPriceRules, rateProblem, saveMarketPriceRule } from "./market-prices";
 import { memberCan } from "./permissions";
+import type { SaveResult } from "./settings";
 import { setFeature } from "./store-features";
 import { createStoreForOwner } from "./platform";
 import { refreshTag } from "./refresh";
@@ -293,6 +296,8 @@ export type DreamDeps = {
   draft?: typeof draftStore;
   publish?: typeof publishDraft;
   legalOn?: typeof turnOnLegalAi;
+  /** The store's currencies saved at the ECB's rates (`saveCurrencies()`); tests stand in for the ECB. */
+  currencies?: (member: Membership) => Promise<SaveResult>;
 };
 
 /**
@@ -458,16 +463,58 @@ async function aiStep(id: AiStepId, ctx: Context): Promise<StepOutcome> {
     const on = await setFeature(member as Membership, "countries", true);
     if (!on.ok) return { state: failedTry(run, state, `Several countries could not be switched on: ${on.problems.join(" ")}`) };
   }
-  const message = id === "catalogue" && progress ? `${stepMessage(id, run.brief)}\n\nNow: ${progress.detail} Make the next product only, complete.` : stepMessage(id, run.brief);
+  const home = member.store.markets[0];
+  // Other countries' prices are the store's rules' (set when setup passed): the model prices in the home country only, code converts.
+  const ruled = id === "catalogue" ? (await marketPriceRules(member.store.id)).map((r) => r.market) : [];
+  const pricing = ruled.length > 0 && home ? `\nPrices: give the price in ${home.code} (${home.currency}) only. ${ruled.join(", ")} are worked out by the store's price rules from it at the exchange rate: leave them out.` : "";
+  const message =
+    id === "catalogue" && progress ? `${stepMessage(id, run.brief)}${pricing}\n\nNow: ${progress.detail} Make the next product only, complete.` : stepMessage(id, run.brief);
   // Each product in a conversation of its own: in one long one the model took to answering "I created …" like its earlier turns, making none.
   const seen = await managerTurn(ctx, STEP_TOOLS[id], message, id === "catalogue" ? null : run.conversationId);
   const conversationId = id === "catalogue" ? undefined : (seen.conversationId ?? undefined);
   if (seen.error) return { state: failedTry(run, state, seen.error.slice(0, 300)), conversationId };
+  // A price typed for a ruled country anyway goes back to the rule, as emptying the editor's field does: the arithmetic is code's.
+  if (id === "catalogue" && ruled.length > 0) await backToRule(member.store.id, await ownProductIds(member.store.id));
   const check = await checkAiStep(id, ctx, state);
+  if (check.ok && id === "setup") {
+    const priced = await priceOtherCountries(ctx);
+    if (!priced.ok) return { state: failedTry(run, state, priced.problem), conversationId };
+    return { state: done(state, `${check.detail}${priced.detail ? ` ${priced.detail}` : ""}`), conversationId };
+  }
   if (check.ok) return { state: done(state, check.detail), conversationId };
   // The products count up a turn at a time: a turn that added one is progress, not a failed try.
   if (id === "catalogue" && progress && check.count > progress.count) return { state: { ...state, status: "waiting", detail: check.detail }, conversationId };
   return { state: failedTry(run, state, check.detail), conversationId };
+}
+
+/** The store's own products not archived (demo products aside), for putting their prices back under the rules. */
+async function ownProductIds(storeId: string): Promise<string[]> {
+  const rows = await typedRows(
+    z.object({ id: col.uuid }),
+    sql`select p.id from commerce.products p where p.store_id = ${storeId}::uuid and p.status <> 'archived' and not ${isDemoProduct(sql`p`)}`,
+  );
+  return rows.map((r) => r.id);
+}
+
+/**
+ * Every country but the home one priced from it (D335's rules: the price before VAT carried over at the exchange rate, rounded to whole
+ * units), so no price in another currency is the model's guess. The store's currencies get the ECB's rates first when a rule lacks one.
+ */
+async function priceOtherCountries({ member, deps }: Context): Promise<{ ok: true; detail: string } | { ok: false; problem: string }> {
+  const fresh = { ...member, store: await freshStore(member) };
+  const [home, ...others] = fresh.store.markets;
+  if (!home || others.length === 0) return { ok: true, detail: "" };
+  const rules = others.map((m) => ({ market: m.code, base: home.code, percentBps: 0, basis: "net" as const, roundToMinor: 100, endingMinor: null }));
+  const lacking = (await Promise.all(rules.map((rule) => rateProblem(fresh.store.id, rule)))).some(Boolean);
+  if (lacking) {
+    const saved = await (deps.currencies ?? ((m: Membership) => saveCurrencies(m, [], true)))(fresh);
+    if (!saved.ok) return { ok: false, problem: `The exchange rates could not be set: ${saved.problems.join(" ")}` };
+  }
+  for (const rule of rules) {
+    const result = await saveMarketPriceRule(fresh.store, member.account.id, rule);
+    if (!result.ok) return { ok: false, problem: `${rule.market}'s prices could not be worked out from ${home.code}: ${result.problem}` };
+  }
+  return { ok: true, detail: `${others.map((m) => m.code).join(", ")} priced from ${home.code} at the ECB's exchange rate.` };
 }
 
 /** A turn of the AI manager in the owner's name, offered only the tools given, at the run's levels. */

@@ -13,7 +13,7 @@ vi.mock("next/headers", () => ({ cookies: async () => ({ get: () => undefined, s
 
 const { getEditorContext, getProductForEdit, saveProduct } = await import("./products");
 const { getStore } = await import("./stores");
-const { deriveForProducts, marketPriceRules, removeMarketPriceRule, saveMarketPriceRule } = await import("./market-prices");
+const { backToRule, deriveForProducts, marketPriceRules, removeMarketPriceRule, saveMarketPriceRule } = await import("./market-prices");
 const { preflightOwnerTool, runOwnerTool } = await import("./owner-tools");
 
 type Row = Record<string, unknown>;
@@ -107,6 +107,25 @@ describe("a country's prices worked out from another's", () => {
     // 300 × 1.10 = 330 → 339.
     await savePrices(products[0].id, {}, { [b]: "" });
     expect((await pricesIn("SE", products[0].id))[b]).toEqual({ amount: 33_900, derived: true });
+  });
+
+  it("puts a price typed by hand back under the rule for the products given, as the Dream Factory does (D409), and leaves the others", async () => {
+    const [a, b] = products[0].skus;
+    const [c] = products[1].skus;
+    await savePrices(products[0].id, {}, { [b]: "149,00" });
+    await savePrices(products[1].id, { [c]: "100,00" });
+    const store = await storeOf(fx);
+    const editor = await getEditorContext(store);
+    const second = (await getProductForEdit(store, editor, products[1].id))!;
+    second.variants = second.variants.map((v) => (v.sku === c ? { ...v, prices: { ...v.prices, SE: "99,00" } } : v));
+    expect(await saveProduct(store, editor, products[1].id, second)).toMatchObject({ ok: true });
+    expect((await pricesIn("SE", products[1].id))[c]).toEqual({ amount: 9_900, derived: false });
+
+    await backToRule(fx.storeId, [products[0].id]);
+    // 300 × 1.10 = 330 → 339; the other product's typed price stays.
+    expect(await pricesIn("SE", products[0].id)).toMatchObject({ [a]: { derived: true }, [b]: { amount: 33_900, derived: true } });
+    expect((await pricesIn("SE", products[1].id))[c]).toEqual({ amount: 9_900, derived: false });
+    await savePrices(products[1].id, {}, { [c]: "" });
   });
 
   it("is never chained: a country with a rule is no base, and a base has no rule of its own", async () => {
