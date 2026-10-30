@@ -82,6 +82,7 @@ test("an owner records the store's VAT registration, is refused a number that is
       select p.id from commerce.products p join commerce.stores s on s.id = p.store_id
        where s.slug = ${STORE} and p.kind = 'goods' and p.status = 'active' and p.vat_category = 'standard' order by p.handle limit 1`;
     await page.goto(`/admin/${STORE}/products/${product.id}`);
+    await page.locator("[data-advanced] > summary").click();
     await page.getByLabel("VAT category").selectOption("books");
     await page.getByRole("button", { name: "Save", exact: true }).first().click();
     await expect(page.getByText(/^Saved\./).first()).toBeVisible();

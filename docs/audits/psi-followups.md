@@ -158,7 +158,11 @@ stay in the standing document's *What comes next*.
       transcripts are kept 30 days at most (`TRANSCRIPT_DAYS_SENSITIVE`). The checkout questions' hint says to ask nothing about health or
       beliefs unless the sale needs it (GDPR art. 9). The terms starter says ordering takes 18 or older, in EN, NB, SV and DA. The live chat
       on the site still uses the AI when the desk puts it first: the setting's text says only what it does.
-- [ ] **UX-08 (11)** Homer and Lisa written into `docs/admin-style.md`, applied to the product editor and support settings.
+- [x] **UX-08 (11)** Homer and Lisa written into `docs/admin-style.md`, applied to the product editor and support settings.
+      Done 30 October 2026 (the code's part): `docs/admin-style.md` 2.1 sets the rules (Homer's view the default, one *Advanced* fold
+      per screen that only hides, opened by a failed save). The product editor folds the standard category, who buys it, price by
+      quantity, subscriptions, safety, tax and returns; the support settings fold everything but who answers, when nobody is there and
+      the opening hours. The five-person usability session is the owner's.
 - [x] **AGT-03, AGT-04 (13)** Approval expiry, `cancel_page_build`, pending follow-ups with cancel.
       Approval expiry done 30 October 2026: `assistant_approvals.expires_at` (seven days after the ask; migration
       `assistant_approval_expiry`), the dispatcher's `assistantApprovals` job ends pending calls past it as `expired` (never run, an

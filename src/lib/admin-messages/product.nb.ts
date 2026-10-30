@@ -20,6 +20,10 @@ export const productNb: ProductMessages = {
     seeRedirects: "Se videresendingene",
     pleaseFix: "Ingenting er lagret ennå. Rett opp dette:",
   },
+  advanced: {
+    title: "Avansert",
+    text: "Standardkategori, hvem som kjøper, pris etter antall, abonnement, produktsikkerhet, avgift, retur og hvor den selges.",
+  },
   terms: {
     title: "Kategorier og stikkord",
     intro: "Kundene finner produktet gjennom kategoriene og stikkordene, i menyer og i innholdsrutenett.",

@@ -156,6 +156,8 @@ export function ProductEditor(props: Props) {
   // A variant's fields are drawn only while its section is open: a product of thousands of variants keeps thousands of closed sections (D320).
   const [openFields, setOpenFields] = useState<ReadonlySet<string>>(() => new Set());
   const [result, setResult] = useState<SaveState>({ status: "idle" });
+  // Lisa's settings, one step away (docs/admin-style.md 2.1); a save that fails opens them, so a problem there is in sight.
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [saving, startSaving] = useTransition();
   const [handleTouched, setHandleTouched] = useState(props.productId !== null);
   const summaryRef = useRef<HTMLDivElement>(null);
@@ -247,6 +249,7 @@ export function ProductEditor(props: Props) {
           router.replace(`/admin/${storeSlug}/products/${outcome.productId}`);
         }
       } else {
+        setAdvancedOpen(true);
         requestAnimationFrame(() => summaryRef.current?.focus());
       }
     });
@@ -381,17 +384,6 @@ export function ProductEditor(props: Props) {
           </label>
         )}
       </section>
-      <ProductCategoryCard
-        category={product.standardCategory ?? null}
-        attributes={product.standardAttributes ?? {}}
-        onChange={(standardCategory, standardAttributes) => update((p) => ({ ...p, standardCategory, standardAttributes }))}
-        search={taxonomyActions.search}
-        details={taxonomyActions.details}
-        suggest={() => {
-          const own = product.translations.find((t) => t.locale === context.primaryLocale) ?? product.translations[0];
-          return suggestCategoryAction(storeSlug, productId, { title: own?.title ?? "", description: own?.description ?? "" });
-        }}
-      />
       <EntityFields
         groups={fieldGroups}
         data={fieldData}
@@ -463,7 +455,6 @@ export function ProductEditor(props: Props) {
           })}
         </section>
       )}
-      {context.audience === "both" && <AudienceSection product={product} update={update} />}
       {/* The kinds a store's features offer (D178), and the product's own kind as it was loaded, which it keeps while its feature is off. */}
       {/* A bundle (D322) is chosen when a product is made and stays one: a saved product is offered no move into or out of it. */}
       {(productId === null || context.appointmentsOn || context.staysOn || context.giftCardsOn || product.kind !== "goods" || props.initial.kind !== "goods") && (
@@ -502,31 +493,58 @@ export function ProductEditor(props: Props) {
           upload={uploads ? (file) => uploadPicture(storeSlug, file, w.media.unreadable) : null}
         />
       )}
-      {(product.kind === "goods" || product.kind === "bundle") && <PriceBreaksSection product={product} update={update} context={context} />}
       {product.kind !== "bundle" && product.variants.some((v) => v.delivery === "digital") && (
         <DigitalSection storeSlug={storeSlug} product={product} update={update} uploads={uploads} />
       )}
-      {!isBooked(product.kind) && (
-        <>
-          {/* Purchase options while Subscriptions is on (D178); off, they are kept as they are and not offered to shoppers. */}
-          {product.kind === "bundle" ? null : context.subscriptionsOn ? (
-            <SubscriptionSection product={product} update={update} markets={context.markets} netPrices={context.audience === "businesses"} />
-          ) : (
-            product.plans.length > 0 && (
-              <p className="text-sm text-muted">{countWords(product.plans.length, w.subscriptionsOff)}</p>
-            )
+      {/* Homer's product is above: words, pictures, kind, price and stock. Lisa's depth is in this fold, one step away (docs/admin-style.md
+          2.1). It only hides: every field in it is the product's state and is saved with it, open or not. */}
+      <details
+        data-advanced=""
+        open={advancedOpen}
+        onToggle={(e) => setAdvancedOpen(e.currentTarget.open)}
+        className="rounded-panel bg-sunken p-4"
+      >
+        <summary className="cursor-pointer">
+          <span className="text-title text-ink">{w.advanced.title}</span>
+          <span className="mt-1 block text-sm text-muted">{w.advanced.text}</span>
+        </summary>
+        <div className="mt-4 flex flex-col gap-6">
+          <ProductCategoryCard
+            category={product.standardCategory ?? null}
+            attributes={product.standardAttributes ?? {}}
+            onChange={(standardCategory, standardAttributes) => update((p) => ({ ...p, standardCategory, standardAttributes }))}
+            search={taxonomyActions.search}
+            details={taxonomyActions.details}
+            suggest={() => {
+              const own = product.translations.find((t) => t.locale === context.primaryLocale) ?? product.translations[0];
+              return suggestCategoryAction(storeSlug, productId, { title: own?.title ?? "", description: own?.description ?? "" });
+            }}
+          />
+          {context.audience === "both" && <AudienceSection product={product} update={update} />}
+          {(product.kind === "goods" || product.kind === "bundle") && <PriceBreaksSection product={product} update={update} context={context} />}
+          {!isBooked(product.kind) && (
+            <>
+              {/* Purchase options while Subscriptions is on (D178); off, they are kept as they are and not offered to shoppers. */}
+              {product.kind === "bundle" ? null : context.subscriptionsOn ? (
+                <SubscriptionSection product={product} update={update} markets={context.markets} netPrices={context.audience === "businesses"} />
+              ) : (
+                product.plans.length > 0 && (
+                  <p className="text-sm text-muted">{countWords(product.plans.length, w.subscriptionsOff)}</p>
+                )
+              )}
+              <SafetySection product={product} update={update} operators={context.operators} countries={props.countries} />
+            </>
           )}
-          <SafetySection product={product} update={update} operators={context.operators} countries={props.countries} />
-        </>
-      )}
-      <LegalSection
-        product={product}
-        update={update}
-        markets={context.markets}
-        vatCategories={context.vatCategories}
-        terms={context.terms}
-        primaryLocale={context.primaryLocale}
-      />
+          <LegalSection
+            product={product}
+            update={update}
+            markets={context.markets}
+            vatCategories={context.vatCategories}
+            terms={context.terms}
+            primaryLocale={context.primaryLocale}
+          />
+        </div>
+      </details>
 
       <div className="flex justify-end">
         <button

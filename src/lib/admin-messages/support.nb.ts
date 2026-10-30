@@ -383,6 +383,10 @@ export const supportNb: SupportMessages = {
       after:
         "minutter (alle som kan svare og ikke er tilgjengelige, én gang hver gang en samtale venter).",
     },
+    advanced: {
+      title: "Avansert",
+      text: "Hva KI-en kan gjøre, den stille partneren, sensitive opplysninger, tone, sammendrag, og når samtaler avsluttes og hvor lenge de lagres.",
+    },
     hoursTitle: "Åpningstider",
     hoursText:
       "Utenfor disse tidene får kundene beskjed om at ingen kan svare nå (og kan legge igjen e-posten sin). Uten åpningstider kan noen svare når en av folkene dine er tilgjengelig. I tidssonen til {desk}.",

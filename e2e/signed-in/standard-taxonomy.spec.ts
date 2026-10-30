@@ -62,6 +62,8 @@ test.afterAll(async () => {
 
 test("finds a category by what the product is, ticks a colour, and saves them with the product", async ({ page }) => {
   await page.goto(`/admin/${E2E_STORE}/products/${product.id}`);
+  // The standard category is Lisa's, one step away under Advanced.
+  await page.locator("[data-advanced] > summary").click();
   const card = page.getByRole("region", { name: "Product category", exact: true });
   await card.getByRole("searchbox", { name: "What is it?" }).fill("activewear");
   await card.getByRole("button", { name: /^Activewear/ }).first().click();
@@ -82,6 +84,7 @@ test("finds a category by what the product is, ticks a colour, and saves them wi
   }
   // Read again, the card names it.
   await page.reload();
+  await page.locator("[data-advanced] > summary").click();
   await expect(page.getByTestId("standard-category")).toHaveText("Apparel & Accessories > Clothing > Activewear");
 });
 

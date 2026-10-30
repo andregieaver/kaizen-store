@@ -178,6 +178,35 @@ Inside the risk card, a full-width black button ("Tighten their workflow") is th
 9. **Roles, not values.** No component names a colour, a radius or a region's width. It names a role, and the scheme and the
    layout give the values.
 
+### 2.1 Two people: Homer and Lisa
+
+Every screen serves two people (`CLAUDE.md`, Conventions; PSI UX-08). **Homer** acts on the first look (System 1): he wants the
+obvious button and sensible defaults chosen for him, and reads nothing first. **Lisa** reasons (System 2): she wants every
+setting, per screen size, her own CSS, versions, what changes and undo. A screen is drawn for Homer and keeps Lisa's depth one
+deliberate step away.
+
+The rules:
+
+1. **Homer's view is the default.** It holds the screen's one main action and the few fields most people change: on the product
+   editor its words, pictures, kind, price and stock; on the support settings who answers, what happens when nobody is there and
+   the opening hours.
+2. **Words for what he gets, not settings.** A choice says its outcome ("The AI first, then your team"), not its mechanism.
+3. **Defaults decide for him.** Everything folded away has a default that is right for most stores, so Homer can save without
+   opening it.
+4. **Lisa's depth is one step away, never two.** It sits in one fold per screen, a `<details data-advanced>` named *Advanced*
+   (or *Customise* where it changes a look), whose summary lists in words what is inside. Nothing in the fold is a second fold
+   of the same kind.
+5. **The fold only hides.** Every field in it is sent and saved, open or not; closing it never resets a value.
+6. **A problem opens it.** A save that fails opens the fold, so a field named in the error is in sight. A setting with legal
+   weight that the store has turned on (sensitive information on the support desk) opens it too.
+7. **What Homer must know is not folded.** A notice that something is on and affects customers (an AI reading their messages)
+   stays above the fold, even when the setting that turns it off is inside.
+
+Built so far: the product editor (the standard category, who buys it, price by quantity, subscriptions, product safety, tax,
+returns and where it is sold) and the support settings (what the AI may do, the silent partner, sensitive information, tone,
+summaries and how conversations end and are kept). Other screens move over when they are touched. A five-person usability session
+on both is the owner's to run; its findings go in this section.
+
 ---
 
 ## 3. Tokens: three layers

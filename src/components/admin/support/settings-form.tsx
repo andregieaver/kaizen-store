@@ -89,12 +89,18 @@ export function SupportSettingsForm({
   // What an AI does with customers' messages besides answering, as saved (D391): the owner reads that it is on and that customers are told.
   const aiOn = [
     ...(settings.mode !== "off" && settings.toneOn ? [w.aiOnTone] : []),
-    ...(settings.mode !== "off" && settings.summariesOn ? [w.aiOnSummaries] : []),
+    ...(settings.mode !== "off" && settings.summariesOn
+      ? [w.aiOnSummaries]
+      : []),
   ];
   const body = (
     <fieldset disabled={disabled} className="flex flex-col gap-8">
       {aiOn.length > 0 && (
-        <p role="note" data-ai-use="" className="rounded-panel border border-insight-line bg-insight-soft p-3 text-sm text-ink">
+        <p
+          role="note"
+          data-ai-use=""
+          className="rounded-panel border border-insight-line bg-insight-soft p-3 text-sm text-ink"
+        >
           {fillWords(w.aiOn, { what: aiOn.join(w.aiOnAnd) })}
         </p>
       )}
@@ -186,175 +192,197 @@ export function SupportSettingsForm({
         <HoursEditor name="hours" initial={settings.hours} optional />
       </section>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-title text-ink">{w.aiActionsTitle}</h2>
-        <p className="text-sm text-muted">
-          {w.aiActionsText}
-          {owner ? "" : ` ${w.ownerOnly}`}
-        </p>
-        {owner && <input type="hidden" name="aiActionsShown" value="1" />}
-        <div className="grid gap-1 text-sm sm:grid-cols-2">
-          {CUSTOMER_ACTION_KINDS.map((kind) => (
-            <label key={kind} className="flex items-center gap-2">
+      {/* Homer's settings above, Lisa's in the fold (docs/admin-style.md 2.1): its fields are sent and saved whether it is open or not. */}
+      <details
+        data-advanced=""
+        open={settings.sensitive}
+        className="group flex flex-col gap-8 rounded-panel bg-sunken p-4"
+      >
+        <summary className="cursor-pointer text-title text-ink">
+          {w.advanced.title}
+          <span className="block text-sm text-muted">{w.advanced.text}</span>
+        </summary>
+        <div className="mt-6 flex flex-col gap-8">
+          <section className="flex flex-col gap-3">
+            <h2 className="text-title text-ink">{w.aiActionsTitle}</h2>
+            <p className="text-sm text-muted">
+              {w.aiActionsText}
+              {owner ? "" : ` ${w.ownerOnly}`}
+            </p>
+            {owner && <input type="hidden" name="aiActionsShown" value="1" />}
+            <div className="grid gap-1 text-sm sm:grid-cols-2">
+              {CUSTOMER_ACTION_KINDS.map((kind) => (
+                <label key={kind} className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    name={`aiAction.${kind}`}
+                    defaultChecked={
+                      settings.aiActions === null ||
+                      settings.aiActions.includes(kind)
+                    }
+                    disabled={!owner}
+                    className="size-4"
+                  />
+                  {kindWords[kind] ?? ACTION_KIND_WORDS[kind]}
+                </label>
+              ))}
+            </div>
+          </section>
+
+          <section className="flex flex-col gap-3">
+            <h2 className="text-title text-ink">{w.partnerTitle}</h2>
+            <label className="flex items-start gap-2 text-sm">
               <input
                 type="checkbox"
-                name={`aiAction.${kind}`}
-                defaultChecked={
-                  settings.aiActions === null ||
-                  settings.aiActions.includes(kind)
-                }
-                disabled={!owner}
-                className="size-4"
+                name="partner"
+                defaultChecked={settings.partner}
+                className="mt-0.5 size-4"
               />
-              {kindWords[kind] ?? ACTION_KIND_WORDS[kind]}
+              <span>
+                <span className="font-medium">{w.partner.title}</span>{" "}
+                {fillWords(w.partner.text, { none: needsModel })}
+              </span>
             </label>
-          ))}
+          </section>
+
+          <section className="flex flex-col gap-3">
+            <h2 className="text-title text-ink">{w.sensitiveTitle}</h2>
+            <label className="flex items-start gap-2 text-sm">
+              <input
+                type="checkbox"
+                name="sensitive"
+                defaultChecked={settings.sensitive}
+                disabled={!owner}
+                className="mt-0.5 size-4"
+              />
+              <span>
+                <span className="font-medium">{w.sensitive.title}</span>{" "}
+                {w.sensitive.text}
+                {owner ? "" : ` ${w.ownerOnly}`}
+              </span>
+            </label>
+            {/* A box an owner may not change is not sent; its saved value goes with the form so the save keeps it. */}
+            {!owner && settings.sensitive && (
+              <input type="hidden" name="sensitive" value="on" />
+            )}
+          </section>
+
+          <section className="flex flex-col gap-3">
+            <h2 className="text-title text-ink">{w.toneTitle}</h2>
+            <label className="flex items-start gap-2 text-sm">
+              <input
+                type="checkbox"
+                name="toneOn"
+                defaultChecked={settings.toneOn}
+                className="mt-0.5 size-4"
+              />
+              <span>
+                <span className="font-medium">{w.tone.title}</span>{" "}
+                {fillWords(w.tone.text, { none: needsModel })}{" "}
+                <span className="text-muted">{w.tone.toldInChat}</span>
+              </span>
+            </label>
+            <label className="flex flex-wrap items-center gap-2 text-sm">
+              {w.toneAlert.before}
+              <ToneLine name="toneAlert" value={settings.toneAlert} />
+              {w.toneAlert.after}
+            </label>
+            <label className="flex flex-wrap items-center gap-2 text-sm">
+              {w.toneHandoff}
+              <ToneLine name="toneHandoff" value={settings.toneHandoff} />
+            </label>
+          </section>
+
+          <section className="flex flex-col gap-3">
+            <h2 className="text-title text-ink">{w.summariesTitle}</h2>
+            <label className="flex items-start gap-2 text-sm">
+              <input
+                type="checkbox"
+                name="summariesOn"
+                defaultChecked={settings.summariesOn}
+                className="mt-0.5 size-4"
+              />
+              <span>
+                <span className="font-medium">{w.summaries.title}</span>{" "}
+                {fillWords(w.summaries.text, { none: needsModel })}{" "}
+                <span className="text-muted">{w.summaries.toldInChat}</span>
+              </span>
+            </label>
+          </section>
+
+          <section className="flex flex-col gap-3">
+            <h2 className="text-title text-ink">{w.conversationsTitle}</h2>
+            <label className="flex flex-wrap items-center gap-2 text-sm">
+              {w.endAfter.before}
+              <input
+                type="number"
+                name="endAfterMinutes"
+                min={END_AFTER_MINUTES.min}
+                max={END_AFTER_MINUTES.max}
+                defaultValue={settings.endAfterMinutes}
+                className={`${field} w-20`}
+              />
+              {w.endAfter.after}
+            </label>
+            <fieldset className="flex flex-col gap-1 text-sm">
+              <legend className="mb-1 font-medium">{w.namingTitle}</legend>
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="agentNaming"
+                  value="first_name"
+                  defaultChecked={settings.agentNaming === "first_name"}
+                  className="size-4"
+                />
+                {w.namingFirst}
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="agentNaming"
+                  value="desk"
+                  defaultChecked={settings.agentNaming === "desk"}
+                  className="size-4"
+                />
+                {fillWords(w.namingDesk, { desk: deskName })}
+              </label>
+            </fieldset>
+            <label className="flex flex-wrap items-center gap-2 text-sm">
+              {w.keep.before}
+              <select
+                name="transcriptDays"
+                defaultValue={settings.transcriptDays}
+                disabled={!owner}
+                className={field}
+              >
+                {TRANSCRIPT_DAYS.map((days) => (
+                  <option key={days} value={days}>
+                    {fillWords(w.keep.days, { n: days })}
+                  </option>
+                ))}
+              </select>
+              {owner ? w.keep.after : w.keep.afterNotOwner}
+            </label>
+            {formChoice && (
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="font-medium">{w.forms.title}</span>
+                <select
+                  name="formMessages"
+                  defaultValue={settings.formMessages}
+                  className={field}
+                >
+                  {FORM_MESSAGES.map((choice) => (
+                    <option key={choice} value={choice}>
+                      {w.forms.choices[choice]}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-muted">{w.forms.note}</span>
+              </label>
+            )}
+          </section>
         </div>
-      </section>
-
-      <section className="flex flex-col gap-3">
-        <h2 className="text-title text-ink">{w.partnerTitle}</h2>
-        <label className="flex items-start gap-2 text-sm">
-          <input
-            type="checkbox"
-            name="partner"
-            defaultChecked={settings.partner}
-            className="mt-0.5 size-4"
-          />
-          <span>
-            <span className="font-medium">{w.partner.title}</span>{" "}
-            {fillWords(w.partner.text, { none: needsModel })}
-          </span>
-        </label>
-      </section>
-
-      <section className="flex flex-col gap-3">
-        <h2 className="text-title text-ink">{w.sensitiveTitle}</h2>
-        <label className="flex items-start gap-2 text-sm">
-          <input type="checkbox" name="sensitive" defaultChecked={settings.sensitive} disabled={!owner} className="mt-0.5 size-4" />
-          <span>
-            <span className="font-medium">{w.sensitive.title}</span> {w.sensitive.text}
-            {owner ? "" : ` ${w.ownerOnly}`}
-          </span>
-        </label>
-        {/* A box an owner may not change is not sent; its saved value goes with the form so the save keeps it. */}
-        {!owner && settings.sensitive && <input type="hidden" name="sensitive" value="on" />}
-      </section>
-
-      <section className="flex flex-col gap-3">
-        <h2 className="text-title text-ink">{w.toneTitle}</h2>
-        <label className="flex items-start gap-2 text-sm">
-          <input
-            type="checkbox"
-            name="toneOn"
-            defaultChecked={settings.toneOn}
-            className="mt-0.5 size-4"
-          />
-          <span>
-            <span className="font-medium">{w.tone.title}</span>{" "}
-            {fillWords(w.tone.text, { none: needsModel })}{" "}
-            <span className="text-muted">{w.tone.toldInChat}</span>
-          </span>
-        </label>
-        <label className="flex flex-wrap items-center gap-2 text-sm">
-          {w.toneAlert.before}
-          <ToneLine name="toneAlert" value={settings.toneAlert} />
-          {w.toneAlert.after}
-        </label>
-        <label className="flex flex-wrap items-center gap-2 text-sm">
-          {w.toneHandoff}
-          <ToneLine name="toneHandoff" value={settings.toneHandoff} />
-        </label>
-      </section>
-
-      <section className="flex flex-col gap-3">
-        <h2 className="text-title text-ink">{w.summariesTitle}</h2>
-        <label className="flex items-start gap-2 text-sm">
-          <input
-            type="checkbox"
-            name="summariesOn"
-            defaultChecked={settings.summariesOn}
-            className="mt-0.5 size-4"
-          />
-          <span>
-            <span className="font-medium">{w.summaries.title}</span>{" "}
-            {fillWords(w.summaries.text, { none: needsModel })}{" "}
-            <span className="text-muted">{w.summaries.toldInChat}</span>
-          </span>
-        </label>
-      </section>
-
-      <section className="flex flex-col gap-3">
-        <h2 className="text-title text-ink">{w.conversationsTitle}</h2>
-        <label className="flex flex-wrap items-center gap-2 text-sm">
-          {w.endAfter.before}
-          <input
-            type="number"
-            name="endAfterMinutes"
-            min={END_AFTER_MINUTES.min}
-            max={END_AFTER_MINUTES.max}
-            defaultValue={settings.endAfterMinutes}
-            className={`${field} w-20`}
-          />
-          {w.endAfter.after}
-        </label>
-        <fieldset className="flex flex-col gap-1 text-sm">
-          <legend className="mb-1 font-medium">{w.namingTitle}</legend>
-          <label className="flex items-center gap-2">
-            <input
-              type="radio"
-              name="agentNaming"
-              value="first_name"
-              defaultChecked={settings.agentNaming === "first_name"}
-              className="size-4"
-            />
-            {w.namingFirst}
-          </label>
-          <label className="flex items-center gap-2">
-            <input
-              type="radio"
-              name="agentNaming"
-              value="desk"
-              defaultChecked={settings.agentNaming === "desk"}
-              className="size-4"
-            />
-            {fillWords(w.namingDesk, { desk: deskName })}
-          </label>
-        </fieldset>
-        <label className="flex flex-wrap items-center gap-2 text-sm">
-          {w.keep.before}
-          <select
-            name="transcriptDays"
-            defaultValue={settings.transcriptDays}
-            disabled={!owner}
-            className={field}
-          >
-            {TRANSCRIPT_DAYS.map((days) => (
-              <option key={days} value={days}>
-                {fillWords(w.keep.days, { n: days })}
-              </option>
-            ))}
-          </select>
-          {owner ? w.keep.after : w.keep.afterNotOwner}
-        </label>
-        {formChoice && (
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="font-medium">{w.forms.title}</span>
-            <select
-              name="formMessages"
-              defaultValue={settings.formMessages}
-              className={field}
-            >
-              {FORM_MESSAGES.map((choice) => (
-                <option key={choice} value={choice}>
-                  {w.forms.choices[choice]}
-                </option>
-              ))}
-            </select>
-            <span className="text-muted">{w.forms.note}</span>
-          </label>
-        )}
-      </section>
+      </details>
 
       {!disabled && (
         <div>

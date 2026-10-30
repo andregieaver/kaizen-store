@@ -362,6 +362,10 @@ export const supportEn = {
       after:
         "minutes (everyone who may answer and is not online, once each time a conversation waits).",
     },
+    advanced: {
+      title: "Advanced",
+      text: "What the AI may do, the silent partner, sensitive information, tone, summaries, and how conversations end and are kept.",
+    },
     hoursTitle: "Opening hours",
     hoursText:
       "Outside these hours customers are told nobody can answer now (and may leave their email). Without hours, someone can answer whenever one of your people is online. In {desk}'s time zone.",

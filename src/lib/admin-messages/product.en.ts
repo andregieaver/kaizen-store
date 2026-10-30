@@ -21,6 +21,10 @@ export const productEn = {
     seeRedirects: "See the redirects",
     pleaseFix: "Nothing was saved yet. Please fix:",
   },
+  advanced: {
+    title: "Advanced",
+    text: "The standard category, who buys it, prices by quantity, subscriptions, product safety, tax, returns and where it is sold.",
+  },
   terms: {
     title: "Categories and tags",
     intro: "Shoppers find the product through its categories and tags, in menus and in content grids.",

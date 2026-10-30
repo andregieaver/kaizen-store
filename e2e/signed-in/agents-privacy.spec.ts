@@ -61,5 +61,7 @@ test("the support settings say which AI uses of customers' messages are on and t
   const note = page.locator("[data-ai-use]");
   await expect(note).toContainText("tone of customers' messages read by AI and AI summaries");
   await expect(note).toContainText("Customers are told so in the chat's notice");
+  // Tone and summaries are Lisa's settings, one step away under Advanced.
+  await page.locator("[data-advanced] > summary").click();
   await expect(page.getByText("the chat's notice tells customers that an AI reads the tone of their messages")).toBeVisible();
 });
