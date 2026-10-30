@@ -45,6 +45,7 @@ import { linksToRemoved } from "@/lib/demo-content";
 import { withoutItems } from "@/lib/menu-structure";
 import { normalisePath } from "@/lib/redirect-path";
 import { refreshRedirects } from "./redirect-live";
+import { redirectDeletedPage } from "./redirects";
 
 /**
  * Pages built in the page builder (D42), Kaizen's own (`owner` null, served
@@ -568,21 +569,8 @@ export async function deletePage(account: Account, owner: PageOwner, id: string,
       const at = (one: string) => (type === "article" ? `/blog/${one}` : `/${one}`);
       const target = type === "article" ? "/blog" : "/";
       const sources = [slug, ...formerly.map((f) => String(f.slug))].map((one) => normalisePath(at(one)));
-      for (const source of new Set(sources.filter((one): one is string => one !== null && one !== "/" && one !== target))) {
-        // Each in a savepoint: a redirect the database refuses (one closing a loop through an owner's own) leaves the deletion standing.
-        try {
-          const made = await tx.transaction((point) =>
-            point.execute<Row>(sql`
-              insert into commerce.redirects (store_id, kind, source, target, origin, created_by)
-              values (${owner}::uuid, 'manual', ${source}, ${target}, 'editor', ${account.id}::uuid)
-              on conflict do nothing returning source
-            `),
-          );
-          if (made.length > 0) redirected.push(source);
-        } catch (error) {
-          log("warn", "pages.delete_redirect_refused", { page: id }, error);
-        }
-      }
+      const usable = [...new Set(sources.filter((one): one is string => one !== null && one !== "/" && one !== target))];
+      redirected.push(...(await redirectDeletedPage(tx, owner, account.id, usable, target)));
     }
     return { slug, title: row.title, redirected };
   });

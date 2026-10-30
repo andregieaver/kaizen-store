@@ -515,6 +515,7 @@ export const TOOL_WORDS: Record<string, string> = {
   get_page: "Reading the page",
   list_page_builds: "Looking at the pages being built",
   build_page: "Starting the page",
+  cancel_page_build: "Stopping the page",
   edit_page: "Changing the page",
   publish_page: "Preparing to publish",
   set_page_place: "Preparing the change",

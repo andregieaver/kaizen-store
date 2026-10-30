@@ -187,6 +187,37 @@ export async function addRedirects(
   }
 }
 
+/**
+ * The redirects a deleted page leaves (PSI DATA-06, `deletePage()`), in its transaction: from each address it had, already in the normal
+ * form, to `target`, as a manual redirect made in the editor. One from an address already redirected is kept; one the database refuses (a
+ * loop through an owner's own) is skipped in a savepoint and logged, so the deletion stands. Returns the addresses redirected; the caller
+ * refreshes `refreshRedirects()` after its transaction.
+ */
+export async function redirectDeletedPage(
+  tx: { transaction: <T>(work: (point: Executor) => Promise<T>) => Promise<T> } & Executor,
+  storeId: string,
+  accountId: string,
+  sources: readonly string[],
+  target: string,
+): Promise<string[]> {
+  const made: string[] = [];
+  for (const source of sources) {
+    try {
+      const rows = await tx.transaction((point) =>
+        point.execute<Row>(sql`
+          insert into commerce.redirects (store_id, kind, source, target, origin, created_by)
+          values (${storeId}::uuid, 'manual', ${source}, ${target}, 'editor', ${accountId}::uuid)
+          on conflict do nothing returning source
+        `),
+      );
+      if (rows.length > 0) made.push(source);
+    } catch (error) {
+      log("warn", "redirects.deleted_page_refused", { storeId }, error);
+    }
+  }
+  return made;
+}
+
 async function idOfSource(run: Executor, storeId: string, source: string): Promise<string> {
   const [row] = await run.execute<Row>(sql`select id from commerce.redirects where store_id = ${storeId}::uuid and source = ${source}`);
   return String(row.id);

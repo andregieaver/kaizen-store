@@ -174,6 +174,51 @@ describe("build_page", () => {
   }, 60_000);
 });
 
+describe("cancel_page_build (PSI AGT-03)", () => {
+  // The brief the fake studio knows (the first build's), so a run gets as far as building.
+  const job = async (title: string) => {
+    const brief = { title, purpose: "Tell companies we cater lunches", key_points: ["Lunch for 10 to 200 people"], facts: [fake.FACT], pictures: false };
+    const [row] = await db().execute<Row>(sql`
+      insert into commerce.page_ai_jobs (store_id, kind, asked_by, input)
+      values (${store.storeId}::uuid, 'build', ${store.member.account.id}::uuid, ${JSON.stringify(brief)}::jsonb)
+      returning id
+    `);
+    return String(row.id);
+  };
+  const state = async (id: string) => (await db().execute<Row>(sql`select status, problem from commerce.page_ai_jobs where id = ${id}::uuid`))[0];
+
+  it("stops a build still waiting, so it is never built; says so for one already stopped, built, or not this site's", async () => {
+    const id = await job("Stopped before");
+    expect((await run("cancel_page_build", { build: id })).done).toBe(`"Stopped before" will not be built.`);
+    expect(await state(id)).toMatchObject({ status: "failed", problem: "Stopped on request." });
+    await drain();
+    expect(await count(sql`select count(*)::int as n from commerce.pages where store_id = ${store.storeId}::uuid and draft ->> 'title' = 'Stopped before'`)).toBe(0);
+    expect(await refusal(run("cancel_page_build", { build: id }))).toContain("already stopped");
+    const [built] = await db().execute<Row>(sql`select id from commerce.page_ai_jobs where store_id = ${store.storeId}::uuid and kind = 'build' and status = 'done' and page_id is not null limit 1`);
+    expect(await refusal(run("cancel_page_build", { build: String(built.id) }))).toContain("already built");
+    expect(await refusal(run("cancel_page_build", { build: id }, other))).toContain("No page build of this site");
+  });
+
+  it("stops a build while it is being built, and deletes the draft that run made", async () => {
+    const id = await job("Stopped during");
+    let made = "";
+    await siteTools.runPageJobs(Date.now() + 20_000, {
+      // The page studio builds the draft, and the owner stops it before the run keeps it.
+      build: async () => {
+        const answer = await run("cancel_page_build", { build: id });
+        expect(answer.done).toContain("was being built");
+        const saved = await savePage(store.member.account, store.storeId, null, { ...newPageContent(), title: "Stopped during", slug: "stopped-during" }, { publish: false, type: "page", fonts: async () => ({ ok: true }) });
+        if (!saved.ok) throw new Error(saved.problems.join(" "));
+        made = saved.id;
+        return { ok: true, pageId: saved.id, notes: [], pictures: [] };
+      },
+    });
+    expect(made).not.toBe("");
+    expect(await state(id)).toMatchObject({ status: "failed", problem: "Stopped on request." });
+    expect(await count(sql`select count(*)::int as n from commerce.pages where id = ${made}::uuid`)).toBe(0);
+  }, 60_000);
+});
+
 describe("get_page and edit_page", () => {
   it("reads the page by its address, with its texts by key and rows by id", async () => {
     const page = await run("get_page", { page: "catering" });

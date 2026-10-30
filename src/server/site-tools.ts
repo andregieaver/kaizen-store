@@ -93,6 +93,8 @@ export type SiteToolDeps = {
 
 /** At most this many pages are waiting to be built for one site at a time. */
 export const BUILDS_WAITING_MAX = 3;
+/** What a build stopped by `cancel_page_build` says it came to. */
+const STOPPED = "Stopped on request.";
 /** At most this many new sections are written in one change, each one call to the site's AI. */
 export const SECTIONS_PER_EDIT = 3;
 /** How long a run holds a job: a build plans and writes (up to a few minutes), a picture takes the picture model up to 150 s. */
@@ -247,6 +249,29 @@ export async function buildPageTool(ctx: SiteToolContext, args: BuildPageArgs, d
     title: args.title,
     done: `"${args.title}" is being built as a draft, in a minute or two${args.pictures ? ", and its pictures follow one at a time" : ""}. Nothing is on the site until it is published. list_page_builds says how far it is; get_page reads it once built.`,
   };
+}
+
+/**
+ * `cancel_page_build` (PSI AGT-03): a build the owner no longer wants, stopped. One waiting is ended (`failed`, "Stopped on request") and
+ * never claimed; one being built that moment is ended the same way, and the run building it finds it so when it is done and deletes the
+ * draft it made (`keep()`), so nothing of it is left. One already built is not undone, nor one that already failed.
+ */
+export async function cancelPageBuildTool(ctx: SiteToolContext, { build }: { build: string }) {
+  const [stopped] = await db().execute<Row>(sql`
+    update commerce.page_ai_jobs set status = 'failed', problem = ${STOPPED}, updated_at = now()
+    where id = ${build}::uuid and kind = 'build' and status = 'waiting' and store_id is not distinct from ${ownerOf(ctx)}::uuid
+    returning input ->> 'title' as title, claimed_until is not null and claimed_until > now() as running
+  `);
+  if (stopped) {
+    const title = String(stopped.title ?? "The page");
+    return { stopped: build, done: stopped.running ? `"${title}" was being built: it is stopped, and its unfinished draft is deleted when that run ends.` : `"${title}" will not be built.` };
+  }
+  const [job] = await db().execute<Row>(sql`
+    select status, page_id from commerce.page_ai_jobs where id = ${build}::uuid and kind = 'build' and store_id is not distinct from ${ownerOf(ctx)}::uuid
+  `);
+  if (!job) return fail("No page build of this site has that id: list_page_builds lists them.");
+  if (job.status === "done" && job.page_id) return fail("It is already built: its draft stays in Pages, to delete there if it is not wanted.");
+  return fail("It had already stopped: list_page_builds says why.");
 }
 
 // Changing --------------------------------------------------------------------------------
@@ -457,16 +482,28 @@ async function doPicture(owner: StudioOwner, pageId: string, raw: unknown, deps:
   return { status: "retry", problem: filled.problem };
 }
 
-/** The job's outcome kept: a build's page and its pictures' jobs in one statement with it, a try that failed waiting for the next run. */
+/**
+ * The job's outcome kept: a build's page and its pictures' jobs in one statement with it, a try that failed waiting for the next run. Only
+ * while the job still waits: one stopped by `cancel_page_build` while it ran keeps its stop, and the draft this run made for it is deleted
+ * (never published; nothing else has it yet).
+ */
 async function keep(job: ClaimedJob, outcome: Outcome): Promise<void> {
   if (outcome.status === "done") {
     await db().transaction(async (tx) => {
-      await tx.execute(sql`
+      const kept = await tx.execute<Row>(sql`
         update commerce.page_ai_jobs
         set status = 'done', problem = null, claimed_until = null, updated_at = now(), page_id = coalesce(${outcome.pageId ?? null}::uuid, page_id),
           result = ${outcome.result === undefined ? null : JSON.stringify(outcome.result)}::jsonb
-        where id = ${job.id}::uuid
+        where id = ${job.id}::uuid and status = 'waiting'
+        returning id
       `);
+      if (kept.length === 0) {
+        if (job.kind === "build" && outcome.pageId) {
+          await tx.execute(sql`delete from commerce.pages where id = ${outcome.pageId}::uuid and published_at is null and store_id is not distinct from ${job.storeId}::uuid`);
+        }
+        await tx.execute(sql`update commerce.page_ai_jobs set claimed_until = null where id = ${job.id}::uuid`);
+        return;
+      }
       for (const picture of outcome.pictures ?? []) {
         await tx.execute(sql`
           insert into commerce.page_ai_jobs (store_id, kind, page_id, asked_by, input, acted_by)
@@ -483,7 +520,7 @@ async function keep(job: ClaimedJob, outcome: Outcome): Promise<void> {
     update commerce.page_ai_jobs
     set status = ${status}, problem = ${outcome.problem.slice(0, 500)}, updated_at = now(),
       claimed_until = case when ${status} = 'waiting' then now() + interval '2 minutes' else null end
-    where id = ${job.id}::uuid
+    where id = ${job.id}::uuid and status = 'waiting'
   `);
 }
 

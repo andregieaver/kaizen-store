@@ -107,6 +107,7 @@ export const editPageInput = z.object({
 export const publishPageInput = z.object({ page: pageRef, type: pageType });
 
 export const pageBuildsInput = z.object({ limit: z.number().int().min(1).max(20).default(5).describe("How many at most (1–20).") });
+export const cancelPageBuildInput = z.object({ build: z.uuid().describe("The build's id, from build_page or list_page_builds.") });
 
 export type PageJobStatusName = (typeof PAGE_JOB_STATUSES)[number];
 

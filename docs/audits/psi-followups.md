@@ -151,6 +151,8 @@ stay in the standing document's *What comes next*.
       Approval expiry done 30 October 2026: `assistant_approvals.expires_at` (seven days after the ask; migration
       `assistant_approval_expiry`), the dispatcher's `assistantApprovals` job ends pending calls past it as `expired` (never run, an
       autopilot step waiting on them skipped as if declined), and a yes after the end is refused with the reason in the conversation.
+      `cancel_page_build` done 30 October 2026: the AI manager stops a build by its id (`src/server/site-tools.ts`); one waiting is never
+      built, one being built is ended and the runner, finding it so, deletes the unfinished draft (`keep()` writes only while the job waits).
 - [x] **DATA-06 (14)** `deletePage()` records a redirect and strips menu items. Done 30 October 2026: in one transaction the menus lose
       their links to the page (by address in a store's, by id in Kaizena Flow's; links under one move up), and a store's published page or
       article leaves a manual redirect from its address and every former one (`page_redirects`) to the front page or the blog; one already

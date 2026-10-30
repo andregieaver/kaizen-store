@@ -47,6 +47,7 @@ import {
   getMenusInput,
   getPageInput,
   pageBuildsInput,
+  cancelPageBuildInput,
   placeName,
   publishPageInput,
   publishSummary,
@@ -202,6 +203,11 @@ export const SITE_TOOLS = [
     "build_page",
     "Builds a new page as a DRAFT with the page studio, from a brief: it plans the sections from the builder's designs, writes each in the site's language, checks every word with the claims filter and saves the draft; pictures are made one at a time after, by the site's picture model. It runs after your answer and takes a minute or two: say so, and use list_page_builds to see when it is done. Give only facts the owner gave you (what they offer, how they work, opening hours, a video's address): the page states nothing else but the site's own, never a price. When list_page_builds says it is done, look at it with look_at_page and fix what it finds with edit_page; publish it with publish_page once the owner has seen it.",
     buildPageInput,
+  ),
+  tool(
+    "cancel_page_build",
+    "Stops a page build_page started, by its id from list_page_builds, when the owner no longer wants it: one still waiting is not built, and one being built that moment is stopped and its unfinished draft deleted, so nothing of it is left. One already built is not undone: say its draft stays in Pages, to delete there or with the owner.",
+    cancelPageBuildInput,
   ),
   tool(
     "edit_page",

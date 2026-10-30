@@ -239,6 +239,7 @@ import {
   getMenusTool,
   getPageTool,
   listPageBuildsTool,
+  cancelPageBuildTool,
   menuGateNeeded,
   preflightHeaderFooter,
   preflightPagePlace,
@@ -2231,6 +2232,7 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   get_page: (ctx: OwnerToolContext, input: OwnerToolInput<"get_page">) => getPageTool(ctx, input),
   list_page_builds: (ctx: OwnerToolContext, input: OwnerToolInput<"list_page_builds">) => listPageBuildsTool(ctx, input),
   build_page: (ctx: OwnerToolContext, input: OwnerToolInput<"build_page">) => buildPageTool(ctx, input),
+  cancel_page_build: (ctx: OwnerToolContext, input: OwnerToolInput<"cancel_page_build">) => cancelPageBuildTool(ctx, input),
   edit_page: (ctx: OwnerToolContext, input: OwnerToolInput<"edit_page">) => editPageTool(ctx, input),
   publish_page: (ctx: OwnerToolContext, input: OwnerToolInput<"publish_page">) => publishPageTool(ctx, input),
   set_page_place: (ctx: OwnerToolContext, input: OwnerToolInput<"set_page_place">) => setPagePlaceTool(ctx, input),
@@ -2507,7 +2509,7 @@ export async function runOwnerTool(ctx: OwnerToolContext, name: string, raw: unk
 }
 
 /** Tools that change the store without a gate, written down all the same: a note on an order, products made or written for, pages built or changed (D308). */
-const AUDITED_UNGATED = new Set(["draft_workflow", "add_order_note", "create_product", "write_product_texts", "build_page", "edit_page", "draft_header_footer", "add_support_note", "end_support_conversation", "log_time"]);
+const AUDITED_UNGATED = new Set(["draft_workflow", "add_order_note", "create_product", "write_product_texts", "build_page", "cancel_page_build", "edit_page", "draft_header_footer", "add_support_note", "end_support_conversation", "log_time"]);
 const PRODUCT_TOOLS = new Set(["create_product", "update_product", "set_prices", "set_product_status", "write_product_texts", "update_category"]);
 const PAGE_TOOLS = new Set(["build_page", "edit_page", "publish_page", "set_page_place", "save_menu", "set_header_footer", "draft_header_footer", "use_header_footer"]);
 
