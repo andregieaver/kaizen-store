@@ -30,6 +30,8 @@ export async function closeStoreAction(storeSlug: string, _state: FormState, for
 
 /** Reopening is the owner's for thirty days after closing (the platform's later). */
 export async function reopenStoreAction(storeSlug: string, _state: FormState, _form: FormData): Promise<FormState> {
+  void _state;
+  void _form;
   const member = await checkOwnerRole(storeSlug);
   if (!member) return { status: "error", messages: [NO_ACCESS] };
   const result = await reopenStore(member.account, member.store.id, { by: "owner" });

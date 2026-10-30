@@ -147,7 +147,7 @@ export async function savePaymentMethodsAction(
  * *Check again* on the wallets card (D373): every address the store's shoppers pay on is registered on its Stripe account in the mode it takes
  * payments in, and Stripe's record of each is read back. Owners only, as the rest of the Payments page's changes.
  */
-export async function checkWalletsAction(storeSlug: string, mode: PaymentModeName, _state: FormState, _form: FormData): Promise<FormState> {
+export async function checkWalletsAction(storeSlug: string, mode: PaymentModeName): Promise<FormState> {
   const owner = await asOwner(storeSlug);
   if (!("store" in owner)) return inPayments(owner);
   if (!PAYMENT_MODES.includes(mode)) return inPayments({ status: "error", messages: [] });

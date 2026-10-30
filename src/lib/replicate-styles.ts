@@ -155,10 +155,6 @@ const bodyOf = (decl: Decl, part = false): string =>
   Object.entries(decl)
     .map(([property, value]) => `${property}:${value}${part && property.startsWith("padding-") ? "!important" : ""}`)
     .join(";");
-const rule = (selector: string, decl: Decl, part = false): string => {
-  const body = bodyOf(decl, part);
-  return body === "" ? "" : `${selector}{${body}}`;
-};
 
 /**
  * Rules with the same declarations are one rule with a list of selectors (a page's product cards say the same thing 24 times: on lampan.no

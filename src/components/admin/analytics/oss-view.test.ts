@@ -15,7 +15,6 @@ import { OssView, type OssViewProps } from "./oss-view";
 
 const html = (element: Parameters<typeof renderToString>[0]) => renderToString(element).replace(/<!-- -->/g, "").replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/&gt;/g, ">").replace(/&lt;/g, "<").replace(/&amp;/g, "&");
 
-const seller = { country: "SE", ossMemberState: "SE" };
 const rates: Record<string, string> = { "DKK|2026-09-30": "7.4755" };
 const rateFor: RateLookup = (currency, day) => (rates[`${currency}|${day}`] ? { rate: rates[`${currency}|${day}`], date: day, source: "ecb", reason: null } : null);
 

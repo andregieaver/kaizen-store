@@ -81,7 +81,7 @@ export function ReminderEditor({
   const [testing, startTesting] = useTransition();
 
   const language = languages.find((l) => l.locale === locale) ?? languages[0];
-  const text = content[locale] ?? { subject: "", heading: "", body: "", button: "" };
+  const text = useMemo(() => content[locale] ?? { subject: "", heading: "", body: "", button: "" }, [content, locale]);
   const setText = (key: keyof ReminderText, value: string) =>
     setContent((current) => ({ ...current, [locale]: { ...text, [key]: value } }));
   const code = discounts.find((d) => d.id === discountCodeId)?.code ?? null;

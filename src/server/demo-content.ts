@@ -121,7 +121,7 @@ const countOf = (items: readonly DemoItem[]): DemoCounts => ({
 export async function demoContent(storeId: string, locale: string): Promise<DemoContent | null> {
   const all = await markedItems(storeId, locale);
   if (all.length === 0) return null;
-  const strip = ({ changed: _, ...item }: DemoItem & { changed: boolean }): DemoItem => item;
+  const strip = ({ kind, id, title, noun }: DemoItem & { changed: boolean }): DemoItem => ({ kind, id, title, noun });
   const items = all.filter((i) => !i.changed).map(strip);
   return { counts: countOf(items), items, changed: all.filter((i) => i.changed).map(strip) };
 }

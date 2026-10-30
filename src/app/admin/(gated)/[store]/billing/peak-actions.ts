@@ -20,7 +20,7 @@ export async function addPeakAction(storeSlug: string, _state: FormState, form: 
   return { status: "ok", messages: [w.peaks.added] };
 }
 
-export async function removePeakAction(storeSlug: string, id: string, _state: FormState): Promise<FormState> {
+export async function removePeakAction(storeSlug: string, id: string): Promise<FormState> {
   const { account, store } = await requireOwnerRole(storeSlug);
   await removePeak(account.id, store.id, id);
   refresh();

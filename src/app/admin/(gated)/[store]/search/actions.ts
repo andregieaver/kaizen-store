@@ -41,7 +41,7 @@ export async function saveSynonymAction(storeSlug: string, _state: FormState, fo
 }
 
 /** Takes a group away. */
-export async function deleteSynonymAction(storeSlug: string, id: string, _state: FormState): Promise<FormState> {
+export async function deleteSynonymAction(storeSlug: string, id: string): Promise<FormState> {
   const member = await checkPermission(storeSlug, "settings:write");
   if (!member) return { status: "error", messages: [NO_ACCESS] };
   const w = adminText(adminLangOf(member.account.adminLocale), "bookings").search.synonyms;
@@ -74,7 +74,7 @@ export async function saveRuleAction(storeSlug: string, _state: FormState, formD
 }
 
 /** Takes a rule away. */
-export async function deleteRuleAction(storeSlug: string, id: string, _state: FormState): Promise<FormState> {
+export async function deleteRuleAction(storeSlug: string, id: string): Promise<FormState> {
   const member = await checkPermission(storeSlug, "settings:write");
   if (!member) return { status: "error", messages: [NO_ACCESS] };
   const w = adminText(adminLangOf(member.account.adminLocale), "bookings").search.rules;

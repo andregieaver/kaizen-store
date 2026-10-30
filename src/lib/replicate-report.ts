@@ -327,7 +327,6 @@ export function findingsOf(f: ReportFacts, census: Census, rows: ReportRow[]): R
   const out: ReportFinding[] = [];
   const add = (finding: ReportFinding) => out.push(finding);
   const droppedOf = (...kinds: Dropped["kind"][]) => f.dropped.filter((d) => kinds.includes(d.kind));
-  const unused = BUILDER_BLOCKS.filter((b) => !CONVERTER_BLOCKS.includes(b));
 
   if (f.mobile === null) {
     const said = f.log.filter((l) => /phone/i.test(l.text) && (l.level === "warn" || l.level === "error")).map((l) => l.text);

@@ -30,6 +30,7 @@ const base = (storeSlug: string, marketSlug: string) => marketPath(storeSlug, ma
 
 /** Step 1: a six-digit code to the signed-in account's own address. Says the same however often it is asked, until the limit. */
 export async function requestStepUpCodeAction(storeSlug: string, marketSlug: string, _previous: PrivacyFormState): Promise<PrivacyFormState> {
+  void _previous;
   const found = await signedIn(storeSlug, marketSlug);
   if (!found) redirect(base(storeSlug, marketSlug));
   const started = await startFreshSignIn(found.shop.store.id, found.customer.id);
@@ -69,6 +70,7 @@ export async function confirmStepUpAction(
  * the address. A stale session goes back to the step-up; when Stripe did not answer nothing was changed and the button is still there.
  */
 export async function deleteAccountAction(storeSlug: string, marketSlug: string, _previous: PrivacyFormState): Promise<PrivacyFormState> {
+  void _previous;
   const found = await signedIn(storeSlug, marketSlug);
   if (!found) redirect(base(storeSlug, marketSlug));
   const { shop, text } = found;

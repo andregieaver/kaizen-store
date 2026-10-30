@@ -120,7 +120,6 @@ export const FEED_LIMITS: Record<FeedChannel, { title: number; description: numb
 
 /** A text cut to a length at most, by code points, and stripped of control characters. */
 export function cut(text: string, max: number): string {
-  // eslint-disable-next-line no-control-regex
   const clean = text.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, "").trim();
   const chars = [...clean];
   return chars.length <= max ? clean : chars.slice(0, max - 1).join("").trimEnd() + "…";

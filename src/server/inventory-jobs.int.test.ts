@@ -21,7 +21,7 @@ vi.mock("@/lib/data-limits", async (importOriginal) => {
 
 const jobs = await import("./data-jobs");
 const support = await import("./inventory-test-support");
-const { addLocation, clearLevels, ledgerIsWhole, levelsOf, mainLocation, movementsOf, newStore, pay, place, setLevel, variantId } = support;
+const { addLocation, clearLevels, ledgerIsWhole, levelsOf, mainLocation, movementsOf, newStore, pay, place, setLevel } = support;
 
 type Row = Record<string, unknown>;
 let store: Awaited<ReturnType<typeof newStore>>;

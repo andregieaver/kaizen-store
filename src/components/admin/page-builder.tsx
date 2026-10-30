@@ -119,7 +119,6 @@ import {
   BORDER_MAX,
   BORDER_STYLES,
   BUTTON_LABEL_MAX,
-  FONT_WEIGHTS,
   GRID_COLUMNS_MAX,
   GRID_CONTENT,
   GRID_ELEMENTS,
@@ -128,9 +127,7 @@ import {
   GRID_SORTS,
   PRICE_SORTS,
   PRODUCT_SORTS,
-  HEADING_DEFAULT_SIZE,
   HEADING_MAX,
-  HEADING_SIZES,
   HTML_ID_MAX,
   IMAGE_SHAPES,
   RADIUS_MAX,
@@ -164,10 +161,8 @@ import {
   type BlockType,
   type BorderStyle,
   type ButtonBlock,
-  type FontWeight,
   type HeadingBlock,
   type HeadingLevel,
-  type HeadingSize,
   type RichTextBlock,
   type Shadow,
   type ColumnLink,
@@ -7521,8 +7516,6 @@ function SiteStandIn({ block }: { block: SiteBlock }) {
 // ---------------------------------------------------------------------------
 
 const PRODUCT_PART_KEYS = Object.keys(PRODUCT_PARTS) as ProductPart[];
-/** Parts whose text lines up left, centred or right. */
-const ALIGNED_PARTS: readonly ProductPart[] = ["back", "title", "price", "host", "description", "withdrawal", "safety"];
 /** The parts with a heading of their own (their usual words are the shopper's language's, `productPart.headings`). */
 const PART_HEADINGS: Partial<Record<ProductPart, true>> = { description: true, safety: true, related: true, reviews: true };
 

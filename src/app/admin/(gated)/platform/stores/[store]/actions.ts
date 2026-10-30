@@ -45,6 +45,8 @@ export async function closeStoreForPlatformAction(storeId: string, _state: FormS
 
 /** Reopens a suspended or closed store, whenever (D171). */
 export async function reopenStoreForPlatformAction(storeId: string, _state: FormState, _form: FormData): Promise<FormState> {
+  void _state;
+  void _form;
   const admin = await requirePlatformAdmin();
   if (!z.uuid().safeParse(storeId).success) return unknown;
   return answer(await reopenStore(admin, storeId, { by: "platform" }), "The store is open again and its owners are told.");

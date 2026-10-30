@@ -185,7 +185,6 @@ export function ColumnDividers({
     for (const kid of columns()) observer.observe(kid);
     return () => observer.disconnect();
     // The columns are the grid's children; they are measured again when their number or shares change.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [count, signature]);
 
   const marker = <span ref={anchor} className="hidden" aria-hidden />;

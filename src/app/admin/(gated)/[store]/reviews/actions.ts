@@ -31,7 +31,7 @@ const done = (storeId: string, w: Words, outcome: Decided, message: string): For
 };
 
 /** Publishes a review (D301 9.4, `products:write`, the Products section's). */
-export async function publishReviewAction(storeSlug: string, reviewId: string, _state: FormState): Promise<FormState> {
+export async function publishReviewAction(storeSlug: string, reviewId: string): Promise<FormState> {
   const member = await requirePermission(storeSlug, "products:write");
   const w = wordsOf(member);
   if (!z.uuid().safeParse(reviewId).success) return { status: "error", messages: [w.unknown] };
@@ -47,7 +47,7 @@ export async function hideReviewAction(storeSlug: string, reviewId: string, _sta
 }
 
 /** Hides one picture of a review, or shows it again (G4); the review stays as it is. */
-export async function pictureHiddenAction(storeSlug: string, pictureId: string, hidden: boolean, _state: FormState): Promise<FormState> {
+export async function pictureHiddenAction(storeSlug: string, pictureId: string, hidden: boolean): Promise<FormState> {
   const member = await requirePermission(storeSlug, "products:write");
   const w = wordsOf(member);
   if (!z.uuid().safeParse(pictureId).success) return { status: "error", messages: [w.unknown] };

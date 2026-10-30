@@ -200,6 +200,7 @@ describe("updating an installed theme (D245)", () => {
     expect((await one(sql`select notes from commerce.design_preset_versions where preset_id = ${made.id}::uuid and number = 1`)).notes).toBe("First light.");
     // A version without Hero is refused, and no version is added.
     const { hero: _hero, ...withoutHero } = withHero.sectionStyles ?? {};
+    void _hero;
     expect(await saveStoreTheme(admin, workspace.id, { base: "minimal", savedId: null, settings: { ...withHero, sectionStyles: withoutHero } })).toMatchObject({ ok: true });
     const refused = await designs.publishDesign(admin, made.id, null);
     expect(refused.ok).toBe(false);

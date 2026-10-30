@@ -106,7 +106,7 @@ export async function deactivateGiftCardAction(storeSlug: string, cardId: string
 }
 
 /** Tries again to deliver a bought card whose day has come and whose email did not go (`products:write`). */
-export async function sendGiftCardAgainAction(storeSlug: string, cardId: string, _state: FormState): Promise<FormState> {
+export async function sendGiftCardAgainAction(storeSlug: string, cardId: string): Promise<FormState> {
   const w = wordsOf(await requirePermission(storeSlug, "products:write"));
   if (!z.uuid().safeParse(cardId).success) return { status: "error", messages: [w.unknown] };
   const run = await deliverGiftCards({ cardId });
@@ -118,7 +118,7 @@ export async function sendGiftCardAgainAction(storeSlug: string, cardId: string,
 export type NewCodeState = { status: "idle" } | { status: "error"; message: string } | { status: "ok"; code: string; emailed: "sent" | "failed" | "not_asked" };
 
 /** Sends a delivered card a new code, the old one stopping at once (`products:write`, D381); the code is answered once and never kept. */
-export async function newGiftCardCodeAction(storeSlug: string, cardId: string, _state: NewCodeState): Promise<NewCodeState> {
+export async function newGiftCardCodeAction(storeSlug: string, cardId: string): Promise<NewCodeState> {
   const member = await requirePermission(storeSlug, "products:write");
   const w = wordsOf(member);
   if (!z.uuid().safeParse(cardId).success) return { status: "error", message: w.unknown };

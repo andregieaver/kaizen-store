@@ -47,7 +47,14 @@ function rowsOfParts(rows: PageRow[]): Map<string, string> {
 /** A part's own settings, without what it holds and without its words, to tell a change of settings from one of words or contents. */
 function ownSettings(part: PageRow | PageColumn | PageBlock): string {
   const { columns: _c, blocks: _b, ...rest } = part as Record<string, unknown>;
-  const items = Array.isArray(rest.items) ? (rest.items as Record<string, unknown>[]).map(({ blocks: _x, ...item }) => item) : rest.items;
+  void _c;
+  void _b;
+  const items = Array.isArray(rest.items)
+    ? (rest.items as Record<string, unknown>[]).map(({ blocks: _x, ...item }) => {
+        void _x;
+        return item;
+      })
+    : rest.items;
   return JSON.stringify({ ...rest, ...(items !== undefined && { items }) });
 }
 

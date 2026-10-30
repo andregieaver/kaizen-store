@@ -35,7 +35,7 @@ export async function setLimitOverrideAction(storeId: string, ownerId: string | 
   return { status: "ok", messages: [w.overrides.saved] };
 }
 
-export async function removeLimitOverrideAction(storeId: string, id: string, _state: FormState): Promise<FormState> {
+export async function removeLimitOverrideAction(storeId: string, id: string): Promise<FormState> {
   const admin = await requirePlatformAdmin();
   const w = adminText(adminLangOf(admin.adminLocale), "capacity");
   await removeLimitOverride(admin, storeId, id);

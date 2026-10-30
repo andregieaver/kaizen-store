@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { DEFAULT_BREAKPOINTS, type Size } from "./breakpoints";
+import { DEFAULT_BREAKPOINTS } from "./breakpoints";
 import { pageBlockSchema, pageBlockUnion, pageFonts, pageInput, newPageContent, type PageBlock, type PageRow, type TextAlign, type TextAlignments } from "./page-content";
 import { blockStyle, partCss, rowStyle } from "./part-css";
 import { partStyleAt, WIDTHS } from "./part-css.testing";
@@ -15,7 +15,6 @@ import { boxFamilies, clearTypographyAt, HEADING_PRESETS, TEXT_FIELDS, textRoles
  */
 
 const TEST_WIDTHS = Object.values(WIDTHS);
-const SIZE_OF_WIDTH = (width: number): Size => (width < 768 ? "sm" : width < 1024 ? "md" : width < 1280 ? "lg" : "xl");
 const rowOf = (blocks: PageBlock[]): PageRow => ({ id: "r", type: "row", layout: "1", columns: [{ id: "c", blocks }] });
 const css = (block: PageBlock) => partCss([rowOf([block])], "site", DEFAULT_BREAKPOINTS);
 const cls = (block: PageBlock) => blockStyle(block, "site").className;

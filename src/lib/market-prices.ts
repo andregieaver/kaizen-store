@@ -37,7 +37,6 @@ export type DeriveFacts = {
   rates: Rates;
 };
 
-const RATE_SCALE = BigInt(100_000_000);
 const BP = BigInt(10_000);
 
 /** A rate (units per euro) as an integer of 1e8ths; null when the store has none for the currency. */

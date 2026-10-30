@@ -276,7 +276,7 @@ export async function giveThemeContentAction(presetId: string, _state: FormState
 }
 
 /** Publishes a theme's own content now (D275, `publishStarter()`): its frozen copy is what the preview, photographs and new stores read. */
-export async function publishThemeContentAction(presetId: string, _state: FormState): Promise<FormState> {
+export async function publishThemeContentAction(presetId: string): Promise<FormState> {
   const admin = await requirePlatformAdmin();
   const content = await themeContentOf(presetId);
   if (!content) return { status: "error", messages: [(await platformActionWords()).noContent] };
@@ -299,7 +299,7 @@ export async function openThemeContentAction(presetId: string): Promise<FormStat
 }
 
 /** *Try again* on a theme's photographs that could not be made (`docs/theme-showcase-phase-2.md` step 1): the job takes them again. */
-export async function retryThemeShotsAction(presetId: string, _state: FormState): Promise<FormState> {
+export async function retryThemeShotsAction(presetId: string): Promise<FormState> {
   const admin = await requirePlatformAdmin();
   const count = await retryThemeShots(admin, presetId);
   refresh();

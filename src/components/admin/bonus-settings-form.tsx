@@ -274,7 +274,7 @@ export function BonusSettingsView({
             {w.levelsHint}
           </p>
           {values.levels.length > 0 && (
-            <ul id="bonus-levels" tabIndex={-1} className="flex flex-col gap-3" aria-invalid={errors.levels ? true : undefined}>
+            <ul id="bonus-levels" tabIndex={-1} className="flex flex-col gap-3" aria-describedby={errors.levels ? "bonus-levels-error" : undefined}>
               {values.levels.map((level, i) => (
                 <li key={i} className="flex flex-wrap items-end gap-2 text-sm">
                   <label className="flex flex-col gap-1">
@@ -322,7 +322,7 @@ export function BonusSettingsView({
               ))}
             </ul>
           )}
-          {errors.levels && <p className={errorText}>{errors.levels}</p>}
+          {errors.levels && <p id="bonus-levels-error" className={errorText}>{errors.levels}</p>}
           {values.levels.length < 4 && (
             <div>
               <button

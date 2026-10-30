@@ -885,6 +885,7 @@ export async function keepForApproval(
     const parsed = OWNER_TOOLS_BY_NAME.change_order.input.safeParse(args);
     const details = parsed.success ? await orderChangeApprovalDetails({ account: ctx.account, store }, parsed.data as OrderChangeInput) : null;
     const { approved_base: _ignored, ...rest } = args;
+    void _ignored;
     summary = details?.summary ?? summary;
     args = details ? { ...rest, approved_base: details.base } : rest;
   }
@@ -897,6 +898,7 @@ export async function keepForApproval(
   if (tool === "start_autopilot_plan" || tool === "resume_autopilot_plan") {
     const details = await planApprovalDetails({ account: ctx.account, store }, tool, String(args.plan ?? ""));
     const { approved_version: _ignored, ...rest } = args;
+    void _ignored;
     summary = details?.summary ?? summary;
     args = details ? { ...rest, approved_version: details.version } : rest;
   }

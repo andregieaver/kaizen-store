@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "node scripts/next-build.mjs",
     "start": "next start",
-    "lint": "eslint",
+    "lint": "eslint --max-warnings 0",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "test:e2e": "playwright test",

@@ -2,8 +2,7 @@ import { sql } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
-import { conversionFor, localizationOf } from "@/lib/localization";
-import { showMarket, toMarket, type Market } from "@/lib/markets";
+import { toMarket, type Market } from "@/lib/markets";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {}, refresh: () => {} }));
@@ -69,11 +68,7 @@ const w = await import("./withdrawals");
 const r = await import("./returns");
 const { staffActor } = await import("./order-actor");
 const { markSent, refundOrder, getOrderAdmin } = await import("./order-admin");
-const { getCart } = await import("./cart");
-const { cartSummary } = await import("./cart-summary");
-const { orderNumberAudit } = await import("./order-numbers");
 const { getStore } = await import("./stores");
-const { applySession } = await import("./stripe-webhooks");
 
 type Row = Record<string, unknown>;
 type TestStore = Awaited<ReturnType<typeof support.newStore>>;
@@ -87,10 +82,6 @@ type TestStore = Awaited<ReturnType<typeof support.newStore>>;
  */
 
 const no = toMarket({ code: "NO", currency: "NOK", defaultLocale: "nb-NO" });
-const noInEuro = showMarket({ code: "NO", currency: "NOK", defaultLocale: "nb-NO" }, {
-  currency: "EUR",
-  conversion: conversionFor(localizationOf([], [{ currency: "NOK", rate: 11.5, roundTo: 1 }, { currency: "EUR", rate: 1, roundTo: 1 }], [no]), "NOK", "EUR")!,
-});
 
 afterAll(async () => {
   vi.unstubAllGlobals();
@@ -159,18 +150,6 @@ async function withdrawal(store: TestStore, order: Original): Promise<string> {
   return returnId;
 }
 
-/** A voluntary return of one line, approved by the store and on its way. */
-async function voluntary(store: TestStore, order: Original): Promise<string> {
-  const [ret] = await db().execute<Row>(sql`
-    insert into commerce.returns (store_id, order_id, kind, status) values (${store.storeId}::uuid, ${order.orderId}::uuid, 'return', 'approved') returning id
-  `);
-  await db().execute(sql`
-    insert into commerce.return_lines (store_id, return_id, order_line_id, quantity, decision) values (${store.storeId}::uuid, ${String(ret.id)}::uuid, ${order.lines[0].id}::uuid, 1, 'accept')
-  `);
-  expect(await r.markInTransit(store.storeId, { returnId: String(ret.id) }, null)).toMatchObject({ ok: true });
-  return String(ret.id);
-}
-
 const address = { name: "Kari Nordmann", street: "Storgata 1", postalCode: "0155", city: "Oslo", country: "NO" };
 async function builder(store: TestStore, lines: [string, number, number?][], shipping: { kind: "free" } | { kind: "standard" } | { kind: "set"; amountMinor: number } = { kind: "free" }, market: Market = no) {
   const out = [];
@@ -183,16 +162,6 @@ async function builder(store: TestStore, lines: [string, number, number?][], shi
     out.push({ variantId: String(row.id), quantity, unitPriceMinor: price ?? list ?? 0 });
   }
   return { lines: out, shipping, deliveryAddress: address };
-}
-
-/** The list price of a SKU as the view shows it (`shown()` of the market's price). */
-async function listIn(store: TestStore, sku: string, market: Market) {
-  const [row] = await db().execute<Row>(sql`
-    select cp.amount_minor from commerce.product_variants v join commerce.current_prices cp on cp.variant_id = v.id and cp.market_code = 'NO'
-    where v.store_id = ${store.storeId}::uuid and v.sku = ${sku}
-  `);
-  const { shown } = await import("@/lib/markets");
-  return shown(market, Number(row.amount_minor));
 }
 
 const tokenOf = (link: string) => link.split("/").at(-1)!;

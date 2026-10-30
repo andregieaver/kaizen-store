@@ -28,7 +28,7 @@ async function newStore(name: string): Promise<string> {
   return String(store.id);
 }
 
-const cart = async (store: string, consent: boolean) =>
+const cart = async (store: string) =>
   String(
     (
       await db().execute<Row>(sql`
@@ -90,10 +90,10 @@ describe("ad conversions (D303 I2)", () => {
   });
 
   it("sends a consented order's purchase once per platform with the same event id, and hashes only at the enhanced level", async () => {
-    const consented = await cart(storeId, true);
+    const consented = await cart(storeId);
     expect(await recordAdSignals(storeId, [consented], true, { fbp: "fb.1.1760000000000.1", ttclid: "E.C.P.abcdefghij", email: "x@y.z" })).toBe(1);
     // Another store's cart cannot be written through this store.
-    const theirs = await cart(otherId, true);
+    const theirs = await cart(otherId);
     expect(await recordAdSignals(storeId, [theirs], true, { fbp: "fb.1.1760000000000.2" })).toBe(0);
     const id = await order(storeId, consented, "1");
     await queueAdConversions();
@@ -116,8 +116,8 @@ describe("ad conversions (D303 I2)", () => {
 
   // A copied order (D129) is out by the same condition (`copied_from is null`); the database lets no test make one by hand.
   it("sends nothing for an order without consent, and no purchase for one paid in test mode", async () => {
-    const plain = await order(storeId, await cart(storeId, false), "2");
-    const testCart = await cart(storeId, true);
+    const plain = await order(storeId, await cart(storeId), "2");
+    const testCart = await cart(storeId);
     await recordAdSignals(storeId, [testCart], true, { fbp: "fb.1.1760000000000.3" });
     const testMode = await order(storeId, testCart, "3", { testMode: true });
     await queueAdConversions();
@@ -126,7 +126,7 @@ describe("ad conversions (D303 I2)", () => {
     expect((await conversions(testMode)).map((r) => r.event)).toEqual(["begin_checkout", "begin_checkout"]);
     // A Stripe payment's own flag is always false: its mode is its account's, a test account here (found in production, 29 October 2026).
     await db().execute(sql`insert into commerce.stripe_accounts (store_id, mode, account_id, card_payments, requirements_due) values (${storeId}::uuid, 'test', ${`acct_ads${run}`}, 'active', false)`);
-    const stripeCart = await cart(storeId, true);
+    const stripeCart = await cart(storeId);
     await recordAdSignals(storeId, [stripeCart], true, { fbp: "fb.1.1760000000000.4" });
     const onTestAccount = await order(storeId, stripeCart, "4", { account: `acct_ads${run}` });
     await queueAdConversions();
@@ -134,7 +134,7 @@ describe("ad conversions (D303 I2)", () => {
   });
 
   it("tries a failure again, then keeps it as failed with the platform's answer", async () => {
-    const c = await cart(storeId, true);
+    const c = await cart(storeId);
     await recordAdSignals(storeId, [c], true, { fbp: "fb.1.1760000000000.5" });
     const id = await order(storeId, c, "5", { paid: false });
     await db().execute(sql`delete from commerce.ad_connections where store_id = ${storeId}::uuid and platform = 'tiktok'`);
@@ -147,7 +147,7 @@ describe("ad conversions (D303 I2)", () => {
   });
 
   it("clears the ids when the shopper withdraws marketing", async () => {
-    const c = await cart(storeId, true);
+    const c = await cart(storeId);
     await recordAdSignals(storeId, [c], true, { fbp: "fb.1.1760000000000.6" });
     await recordAdSignals(storeId, [c], false, {});
     const [row] = await db().execute<Row>(sql`select ad_consent_at, ad_signals from commerce.carts where id = ${c}::uuid`);

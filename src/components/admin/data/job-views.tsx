@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 import { progressPercent, STATUS_WORDS, type JobKind, type JobPhase, type JobStatus } from "@/lib/data-job";
 import { doneOfTotal, expiryWords, formatBytes, KIND_TITLES, momentText, wholeNumber, workingWords } from "@/lib/data-admin";
 

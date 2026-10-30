@@ -2,10 +2,8 @@ import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
-import { vatIncluded } from "@/lib/checkout";
 import { localizationOf, conversionFor } from "@/lib/localization";
 import { showMarket, toMarket, type Market } from "@/lib/markets";
-import { VIES_LIMIT_PER_CART_PER_HOUR, VIES_LIMIT_PER_STORE_PER_HOUR } from "@/lib/vies";
 
 import type { Membership } from "./auth";
 import type { Store } from "./stores";
@@ -70,16 +68,13 @@ vi.mock("./stripe", () => ({
 }));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {} }));
 
-const { changeLine, getCart, readCartId, setCartCompany, setCartVatNumber } = await import("./cart");
+const { changeLine, getCart, setCartVatNumber } = await import("./cart");
 const { cartSummary } = await import("./cart-summary");
-const { getOpenCheckout, placeOrder, startCheckout, cancelUnpaidOrder } = await import("./checkout");
-const { getOrder, getOrderTreatment, getShopperOrder } = await import("./orders");
+const { getOpenCheckout, startCheckout } = await import("./checkout");
+const { getOrder } = await import("./orders");
 const { saveCampaign } = await import("./campaigns");
 const { saveDiscount, setCartCode } = await import("./discounts");
-const { preRegisterCustomer, startSession } = await import("./customers");
-const { checkOwnVatNumber, getTaxProfile, saveTaxProfile } = await import("./tax-profile");
-const { checkCartVatNumber, pruneVatChecks, setCartVat } = await import("./vat-checks");
-const { cancelOrder, refundOrder } = await import("./order-admin");
+const { checkOwnVatNumber, saveTaxProfile } = await import("./tax-profile");
 
 // ---------------------------------------------------------------------------
 // A faked VIES: the answer by number, every request recorded
@@ -112,10 +107,6 @@ const origin = "http://localhost:3000";
 const SELLER = "SE556677889901";
 const DE_NUMBER = "DE123456789";
 const DK_NUMBER = "DK12345678";
-const CZ_NUMBER = "CZ12345678";
-/** A German number nobody has used in this store yet: the 24 hour cache is per number, and the database is shared between runs. */
-let sequence = 0;
-const fresh = () => `DE${String(Date.now() % 1_000_000).padStart(6, "0")}${String(++sequence).padStart(3, "0")}`;
 
 const defs = {
   NO: { code: "NO", currency: "NOK", defaultLocale: "nb-NO" },
@@ -127,8 +118,6 @@ const defs = {
 const se = toMarket(defs.SE);
 const de = toMarket(defs.DE);
 const dk = toMarket(defs.DK);
-const cz = toMarket(defs.CZ);
-const no = toMarket(defs.NO);
 /** Denmark shown in euro (D109): 1 EUR = 7.5 DKK. */
 const dkInEuro = showMarket(defs.DK, {
   currency: "EUR",
@@ -195,9 +184,6 @@ const dbSums = async (orderId: string) => {
   `);
   return Object.fromEntries(Object.entries(row).map(([k, v]) => [k, Number(v)])) as Record<string, number>;
 };
-
-const checksFor = (number: string) =>
-  db().execute<Row>(sql`select * from commerce.vat_checks where store_id = ${storeId}::uuid and number = ${number} order by requested_at`);
 
 beforeAll(async () => {
   vi.stubGlobal("fetch", viesFetch);

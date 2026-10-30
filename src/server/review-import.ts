@@ -4,7 +4,7 @@ import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import { writeCsv, type Cell } from "@/lib/csv";
-import { importKey, readReviewFile, type ImportOutcome, type RowProblem } from "@/lib/review-import";
+import { importKey, readReviewFile, type ImportOutcome } from "@/lib/review-import";
 
 export type { ImportOutcome };
 

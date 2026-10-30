@@ -5,6 +5,7 @@
  * store and sends the shopper there, where the checkout, shipping, discounts and payment happen. Prices, stock and words always come from
  * Kaizena Flow (through this site's REST route); nothing is worked out here but sums of what Kaizena Flow said.
  */
+/* eslint @typescript-eslint/no-unused-vars: ["warn", { "caughtErrors": "none" }] -- plain ES5 for every browser, so a catch keeps its binding */
 ( function () {
 	'use strict';
 

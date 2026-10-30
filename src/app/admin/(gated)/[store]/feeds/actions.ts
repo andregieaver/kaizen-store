@@ -26,20 +26,20 @@ async function act(storeSlug: string, kind: "on" | "off" | "renew"): Promise<For
   return { status: "ok", messages: [kind === "renew" ? w.renewed : w.on] };
 }
 
-export async function feedsOnAction(storeSlug: string, _state: FormState, _form: FormData): Promise<FormState> {
+export async function feedsOnAction(storeSlug: string): Promise<FormState> {
   return act(storeSlug, "on");
 }
 
-export async function feedsOffAction(storeSlug: string, _state: FormState, _form: FormData): Promise<FormState> {
+export async function feedsOffAction(storeSlug: string): Promise<FormState> {
   return act(storeSlug, "off");
 }
 
-export async function feedsRenewAction(storeSlug: string, _state: FormState, _form: FormData): Promise<FormState> {
+export async function feedsRenewAction(storeSlug: string): Promise<FormState> {
   return act(storeSlug, "renew");
 }
 
 /** The *Shopping agents* switch (D353): the store's UCP profile and MCP endpoint. */
-export async function shoppingAgentsAction(storeSlug: string, on: boolean, _state: FormState, _form: FormData): Promise<FormState> {
+export async function shoppingAgentsAction(storeSlug: string, on: boolean): Promise<FormState> {
   const member = await checkPermission(storeSlug, "marketing:write");
   if (!member) return { status: "error", messages: [NO_ACCESS] };
   const w = adminText(adminLangOf(member.account.adminLocale), "marketing").feeds.agents;
@@ -49,7 +49,7 @@ export async function shoppingAgentsAction(storeSlug: string, on: boolean, _stat
 }
 
 /** ChatGPT's product feed (D353), off by default; switching it on turns the feeds on too. */
-export async function chatgptFeedAction(storeSlug: string, on: boolean, _state: FormState, _form: FormData): Promise<FormState> {
+export async function chatgptFeedAction(storeSlug: string, on: boolean): Promise<FormState> {
   const member = await checkPermission(storeSlug, "marketing:write");
   if (!member) return { status: "error", messages: [NO_ACCESS] };
   const words = adminText(adminLangOf(member.account.adminLocale), "marketing").feeds;

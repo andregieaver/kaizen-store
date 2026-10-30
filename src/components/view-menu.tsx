@@ -60,6 +60,7 @@ export function ViewMenu({
         event.preventDefault();
         const to = `${hrefFor(item.base)}${window.location.search}${window.location.hash}`;
         // A language on a domain of its own (D313) is another site: a full page load.
+        // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- `to` is an absolute URL on another domain here, never an internal page
         if (/^https?:\/\//.test(item.base)) window.location.assign(to);
         else router.push(to);
       }}

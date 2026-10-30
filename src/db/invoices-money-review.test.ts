@@ -122,7 +122,7 @@ describe("random orders and refunds keep the invariants", () => {
       if (spec.shipping && rnd() < 0.3) spec.shippingDiscount = Math.floor(rnd() * spec.shipping);
       if (rc) { spec.vatKind = "reverse_charge"; spec.company = { name: "B AS", vatNumber: "SE123456789001" }; }
       let o;
-      try { o = await placeOrder(db, shop, spec); } catch (e) { continue; }
+      try { o = await placeOrder(db, shop, spec); } catch { continue; }
       if (o.total <= 0) continue;
       counted += 1;
       const inv = await invoiceOf(db, o.id);
