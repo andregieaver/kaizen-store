@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
+import { unframe } from "@/lib/prompt-safety";
 
 type Row = Record<string, unknown>;
 
@@ -67,7 +68,7 @@ function model(steps: Record<string, unknown>[]) {
       for (const message of body.messages) {
         if (message.role !== "tool" || seen.has(String(message.tool_call_id))) continue;
         seen.add(String(message.tool_call_id));
-        results.push(String(message.content));
+        results.push(unframe(String(message.content)));
       }
       return Response.json({ choices: [{ message: steps.shift() ?? { content: "OK." } }], usage: { prompt_tokens: 1, completion_tokens: 1 } });
     }),
