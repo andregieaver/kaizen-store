@@ -41,6 +41,10 @@ import { scopedTermIds } from "./taxonomy";
 import { getStore, refreshStoreById } from "./stores";
 import { keepOwnRuleIds } from "./visibility";
 import { ownMarkets } from "@/lib/page-markets";
+import { linksToRemoved } from "@/lib/demo-content";
+import { withoutItems } from "@/lib/menu-structure";
+import { normalisePath } from "@/lib/redirect-path";
+import { refreshRedirects } from "./redirect-live";
 
 /**
  * Pages built in the page builder (D42), Kaizen's own (`owner` null, served
@@ -526,14 +530,69 @@ export async function unpublishPage(account: Account, owner: PageOwner, id: stri
 }
 
 /** Deletes a page for good, with its redirects. Menu links to it disappear from the site. */
+/**
+ * Deletes a page or an article, and what pointed at it with it (PSI DATA-06), in one transaction: the menus lose their links to it (the
+ * links under one moving up in its place, `withoutItems()`), and a store's published page leaves a redirect from its address, and from
+ * each address it had before (`page_redirects`, which go with it), to the store's front page, or an article to the blog, so a link from
+ * outside or a search result never ends on a 404. A redirect from the address already there is kept; the owner can point one elsewhere in
+ * Website → Redirects. Kaizena Flow's own pages have no redirects (`commerce.redirects` is a store's); their menus lose the links the same
+ * way, and the caller refreshes Kaizena Flow's navigation.
+ */
 export async function deletePage(account: Account, owner: PageOwner, id: string, type: PageType = "page"): Promise<boolean> {
-  const rows = await db().execute<Row>(sql`
-    delete from commerce.pages where id = ${id}::uuid and ${ownedBy(owner, type)} returning slug, draft ->> 'title' as title
-  `);
-  if (rows.length > 0) {
-    await audit(account.id, owner, `${auditPrefix(owner)}.${type}_deleted`, { page: id, slug: rows[0].slug, title: rows[0].title, label: rows[0].title }, { target: { type: type === "article" ? "article" : "page", id } });
+  const out = await db().transaction(async (tx) => {
+    const formerly = await tx.execute<Row>(sql`select slug from commerce.page_redirects where page_id = ${id}::uuid`);
+    const rows = await tx.execute<Row>(sql`
+      delete from commerce.pages where id = ${id}::uuid and ${ownedBy(owner, type)}
+      returning slug, draft ->> 'title' as title, published_at is not null as live
+    `);
+    const [row] = rows;
+    if (!row) return null;
+    const slug = String(row.slug);
+    const gone = { products: [], categories: [], tags: [], blogCategories: [], pages: type === "page" ? [slug] : [], articles: type === "article" ? [slug] : [] };
+    const menus = await tx.execute<Row>(sql`select id, items from commerce.menus where store_id is not distinct from ${owner}::uuid for update`);
+    for (const menu of menus) {
+      const items = Array.isArray(menu.items) ? (menu.items as { depth: number; link?: unknown }[]) : [];
+      const left = withoutItems(
+        items.map((item) => ({ ...item, depth: Number.isInteger(item.depth) ? item.depth : 0 })),
+        // A store's menus link a page by its address; Kaizena Flow's by its id.
+        (item) => linksToRemoved(item.link, gone) || (item.link as { pageId?: unknown } | undefined)?.pageId === id,
+      );
+      if (left.length !== items.length) {
+        await tx.execute(sql`
+          update commerce.menus set items = ${JSON.stringify(left)}::jsonb, updated_at = now(), updated_by = ${account.id}::uuid where id = ${String(menu.id)}::uuid
+        `);
+      }
+    }
+    const redirected: string[] = [];
+    if (owner !== null && row.live === true && (type === "page" || type === "article")) {
+      const at = (one: string) => (type === "article" ? `/blog/${one}` : `/${one}`);
+      const target = type === "article" ? "/blog" : "/";
+      const sources = [slug, ...formerly.map((f) => String(f.slug))].map((one) => normalisePath(at(one)));
+      for (const source of new Set(sources.filter((one): one is string => one !== null && one !== "/" && one !== target))) {
+        // Each in a savepoint: a redirect the database refuses (one closing a loop through an owner's own) leaves the deletion standing.
+        try {
+          const made = await tx.transaction((point) =>
+            point.execute<Row>(sql`
+              insert into commerce.redirects (store_id, kind, source, target, origin, created_by)
+              values (${owner}::uuid, 'manual', ${source}, ${target}, 'editor', ${account.id}::uuid)
+              on conflict do nothing returning source
+            `),
+          );
+          if (made.length > 0) redirected.push(source);
+        } catch (error) {
+          log("warn", "pages.delete_redirect_refused", { page: id }, error);
+        }
+      }
+    }
+    return { slug, title: row.title, redirected };
+  });
+  if (!out) return false;
+  await audit(account.id, owner, `${auditPrefix(owner)}.${type}_deleted`, { page: id, slug: out.slug, title: out.title, label: out.title, redirected: out.redirected.length }, { target: { type: type === "article" ? "article" : "page", id } });
+  if (owner !== null) {
+    if (out.redirected.length > 0) refreshRedirects(owner);
+    await refreshStoreById(owner);
   }
-  return rows.length > 0;
+  return true;
 }
 
 /**

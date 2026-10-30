@@ -87,6 +87,8 @@ export async function deletePageAction(type: PageType, id: string): Promise<{ pr
   if (!isType(type) || !isId(id)) return { problems: [(await platformActionWords()).unknownPage] };
   await deletePage(admin, null, id, type);
   updateTag(PAGES_TAG);
+  // Its links went from Kaizena Flow's menus with it (PSI DATA-06).
+  updateTag(PLATFORM_NAVIGATION_TAG);
   redirect(`${listOf(type)}?deleted=1`);
 }
 

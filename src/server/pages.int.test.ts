@@ -366,6 +366,37 @@ describe("a store's front page and menu links (D54)", () => {
     expect((await (await stores).getStore(`front-${run}`))?.frontPageId).toBeNull();
   });
 
+  it("leaves a redirect from every address a deleted published page had, and takes its links out of the menus (PSI DATA-06)", async () => {
+    const page = await saved(await pages.savePage(admin, storeId, null, content(`gone-old-${run}`), { publish: true }));
+    // A new address for the published page keeps the old one as a page redirect (D42), which goes with the page.
+    await saved(await pages.savePage(admin, storeId, page, content(`gone-${run}`), { publish: true }));
+    const draft = await saved(await pages.savePage(admin, storeId, null, content(`gone-draft-${run}`), { publish: false }));
+    const items = [
+      { label: { "nb-NO": "Borte" }, link: { kind: "page", slug: `gone-${run}` }, depth: 0 },
+      { label: { "nb-NO": "Under" }, link: { kind: "url", url: "https://example.com" }, depth: 1 },
+      { label: { "nb-NO": "Hjem" }, link: { kind: "home" }, depth: 0 },
+    ];
+    const [menu] = await db().execute<Row>(sql`insert into commerce.menus (store_id, name, items) values (${storeId}::uuid, ${`Gone ${run}`}, ${JSON.stringify(items)}::jsonb) returning id`);
+
+    expect(await pages.deletePage(admin, storeId, page)).toBe(true);
+    const redirects = await db().execute<Row>(sql`select source, target, kind from commerce.redirects where store_id = ${storeId}::uuid and source like ${`/gone%${run}`} order by source`);
+    expect(redirects).toEqual([
+      { source: `/gone-${run}`, target: "/", kind: "manual" },
+      { source: `/gone-old-${run}`, target: "/", kind: "manual" },
+    ]);
+    const [kept] = await db().execute<Row>(sql`select items from commerce.menus where id = ${String(menu.id)}::uuid`);
+    expect((kept.items as { label: Record<string, string>; depth: number }[]).map((item) => [item.label["nb-NO"], item.depth])).toEqual([
+      ["Under", 0],
+      ["Hjem", 0],
+    ]);
+
+    // A draft never had an address: it leaves no redirect.
+    expect(await pages.deletePage(admin, storeId, draft)).toBe(true);
+    expect(await db().execute<Row>(sql`select 1 from commerce.redirects where store_id = ${storeId}::uuid and source = ${`/gone-draft-${run}`}`)).toHaveLength(0);
+    await db().execute(sql`delete from commerce.redirects where store_id = ${storeId}::uuid`);
+    await db().execute(sql`delete from commerce.menus where id = ${String(menu.id)}::uuid`);
+  });
+
   it("makes a published page of the store's own its All products page, never the front page too (D83)", async () => {
     const draft = await saved(await pages.savePage(admin, storeId, null, content(`all-draft-${run}`), { publish: false }));
     const theirs = await saved(await pages.savePage(admin, otherId, null, content(`all-theirs-${run}`), { publish: true }));
