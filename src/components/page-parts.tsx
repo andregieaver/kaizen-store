@@ -240,7 +240,8 @@ function GradientLayer({
           ...(fixed && { containerType: "normal" }),
         }}
       >
-        <div data-fx-layer="" {...fx.attrs} className={fixed ? "fixed inset-0" : undefined} style={{ ...fx.style, ...(fixed && { containerType: "size" }) }}>
+        {/* A fixed layer's box is the screen, so the frame's clip does not hold its wider gradient in the page's width: it clips itself (PSI 2026-10-30, the page panned sideways on phones). */}
+        <div data-fx-layer="" {...fx.attrs} className={fixed ? "fixed inset-0 overflow-hidden" : undefined} style={{ ...fx.style, ...(fixed && { containerType: "size" }) }}>
           <div data-fx-grad={gradient.style}>
             {gradient.style === "aurora" && (
               <>

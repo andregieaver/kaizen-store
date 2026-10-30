@@ -72,6 +72,8 @@ describe("a fixed background", () => {
     const fixed = html(gradient, true);
     expect(fixed).toContain("fixed inset-0");
     expect(fixed).toContain("container-type:normal");
+    // Its box is the screen, so it clips its own wider gradient: otherwise a phone could pan the page sideways (PSI 2026-10-30).
+    expect(fixed).toContain("fixed inset-0 overflow-hidden");
     expect(html(gradient, false)).not.toContain("clip-path");
   });
 });
