@@ -161,7 +161,7 @@ export const builderNb: BuilderMessages = {
     buildingBlocks: "Byggeklosser",
     theme: "Tema",
     tabs: { components: "Komponenter", rows: "Rader", saved: "Lagret", templates: "Maler", checks: "Kontroller" },
-    componentsHint: "Dra en komponent inn i en kolonne, eller trykk på den for å legge den til i kolonnen du sist arbeidet i.",
+    componentsHint: "Dra en komponent inn i en kolonne. Med tastaturet legger Enter den til i kolonnen du sist arbeidet i.",
     theProduct: "Produktet",
     aroundIt: "Rundt det",
     theSite: "Nettstedet",
@@ -172,7 +172,7 @@ export const builderNb: BuilderMessages = {
     themeStoreParts: "Hver tegner temaet som sidens adresse nevner, og ingenting for et tema den ikke har noe for.",
     themeStoreList: "Alle publiserte temaer, med filtrene sine.",
     rowsHint:
-      "Dra en rad inn på siden, eller trykk på den for å legge den til nederst. Hver rad har kolonnene sine side om side; på telefoner legges de under hverandre. En rad kan ha flere linjer med kolonner.",
+      "Dra en rad inn på siden; med tastaturet legger Enter den til nederst. Hver rad har kolonnene sine side om side; på telefoner legges de under hverandre. En rad kan ha flere linjer med kolonner.",
     column: "Kolonne",
     columnHint:
       "Dra en kolonne inn i en rad, blant kolonnene, eller under dem på en egen linje. Kolonnene på linjen deler da bredden likt igjen. Trykker du på den, legges den til ved siden av kolonnen du sist pekte på.",
@@ -199,7 +199,7 @@ export const builderNb: BuilderMessages = {
   },
   canvas: {
     content: "Innhold",
-    empty: "Siden er tom. Dra en rad hit fra Rader, eller trykk på en for å legge den til.",
+    empty: "Siden er tom. Dra en rad hit fra Rader.",
     dropLast: "Slipp her for å legge den sist, i en egen rad.",
     startFromLayout: "Start fra et sideoppsett",
     newLine: "Ny linje",

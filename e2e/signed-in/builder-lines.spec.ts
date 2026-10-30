@@ -9,7 +9,7 @@ import { ADMIN, E2E_STORE, OWNER } from "./accounts";
 
 async function dragOntoNewLine(page: Page) {
   await page.getByRole("tab", { name: "Rows" }).click();
-  await page.getByRole("button", { name: "Add 2 columns" }).click();
+  await page.getByRole("button", { name: "Add 2 columns" }).press("Enter");
   const row = page.locator('[data-builder-item="row"]').last();
   await expect(row.locator('[data-builder-item="column"]')).toHaveCount(2);
   await expect(row.locator("[data-builder-line]")).toHaveCount(0);
@@ -64,12 +64,12 @@ test.describe("nested columns (D294)", () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto(`/admin/${E2E_STORE}/pages/new`);
     await page.getByRole("tab", { name: "Rows" }).click();
-    await page.getByRole("button", { name: "Add 2 columns" }).click();
+    await page.getByRole("button", { name: "Add 2 columns" }).press("Enter");
     const row = page.locator('[data-builder-item="row"]').last();
     // Pressed in its first column, the Columns component goes there.
     await row.locator('[data-builder-item="column"]').first().click({ position: { x: 6, y: 6 } });
     await page.getByRole("tab", { name: "Components" }).click();
-    await page.getByRole("button", { name: "Add columns" }).click();
+    await page.getByRole("button", { name: "Add columns" }).press("Enter");
     // Its settings open: done with them.
     await page.getByRole("button", { name: "Done" }).click();
     const nested = row.locator('[data-builder-item="block"] [data-builder-holder]');
@@ -120,7 +120,7 @@ test.describe("nested columns (D294)", () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto(`/admin/${E2E_STORE}/pages/new`);
     await page.getByRole("tab", { name: "Rows" }).click();
-    await page.getByRole("button", { name: "Add 2 columns" }).click();
+    await page.getByRole("button", { name: "Add 2 columns" }).press("Enter");
     return page.locator('[data-builder-item="row"]').last();
   }
 

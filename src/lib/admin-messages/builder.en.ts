@@ -177,7 +177,7 @@ export const builderEn = {
     buildingBlocks: "Building blocks",
     theme: "Theme",
     tabs: { components: "Components", rows: "Rows", saved: "Saved", templates: "Templates", checks: "Checks" },
-    componentsHint: "Drag a component into a column, or press it to add it to the column you last worked in.",
+    componentsHint: "Drag a component into a column. With the keyboard, Enter adds it to the column you last worked in.",
     theProduct: "The product",
     aroundIt: "Around it",
     theSite: "The site",
@@ -188,7 +188,7 @@ export const builderEn = {
     themeStoreParts: "Each draws the theme the page's address names, and nothing for a theme it has nothing for.",
     themeStoreList: "Every published theme, with its filters.",
     rowsHint:
-      "Drag a row onto the page, or press it to add it at the end. Each row holds its columns side by side; on phones they stack. A row can have several lines of columns.",
+      "Drag a row onto the page; with the keyboard, Enter adds it at the end. Each row holds its columns side by side; on phones they stack. A row can have several lines of columns.",
     column: "Column",
     columnHint:
       "Drag a column into a row, in among its columns, or under them on a line of its own. The columns of the line then share its width evenly again. Pressed, it is added beside the column you last pointed at.",
@@ -218,7 +218,7 @@ export const builderEn = {
   /** The canvas: the page as drawn, its empty states and the strips shown while dragging. */
   canvas: {
     content: "Content",
-    empty: "The page is empty. Drag a row here from Rows, or press one to add it.",
+    empty: "The page is empty. Drag a row here from Rows.",
     dropLast: "Drop here to put it last, in a row of its own.",
     startFromLayout: "Start from a page layout",
     newLine: "New line",

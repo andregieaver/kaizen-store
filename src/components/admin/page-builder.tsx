@@ -1768,7 +1768,11 @@ function PaletteTile({
       ref={setNodeRef}
       type="button"
       onPointerDown={listeners?.onPointerDown as PointerEventHandler<HTMLButtonElement> | undefined}
-      onClick={onAdd}
+      // Only a drag puts it on the page for a pointer: a click on the sidebar adds nothing. Enter or Space (a click with no
+      // pointer, `detail` 0) still adds it where the selection is, so the palette works without a mouse.
+      onClick={(event) => {
+        if (event.detail === 0) onAdd();
+      }}
       disabled={disabled}
       aria-label={fillWords(sw.add, { label: label.toLowerCase() })}
       className={`touch-none text-left disabled:opacity-40 ${isDragging ? "opacity-40" : ""}`}
