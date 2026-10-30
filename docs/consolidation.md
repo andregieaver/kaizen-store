@@ -9,7 +9,8 @@ After wave 13 the owner paused feature waves (evaluation of 29 October). The pha
    lawyer and an accountant, by the owner's decision.
 5. Pilot runs: the AI running a store end to end in test mode.
 6. Threat model and processor agreements.
-7. A shorter rulebook (CLAUDE.md).
+7. A shorter rulebook (CLAUDE.md). Done 30 October 2026: the Storefront and Admin rules (1,592 lines, 374 KB) moved verbatim to
+   `docs/rules/storefront.md` and `docs/rules/admin.md`; CLAUDE.md keeps one line per rule and is 32 KB, from 382 KB.
 8. PSI re-scored.
 
 The owner's principle: the system aims at full automation, so the AI (the agent building it, the AI manager or the platform's own jobs) should be able to
