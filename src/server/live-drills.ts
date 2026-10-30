@@ -4,7 +4,7 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/client";
-import { DRILL_EMAIL_DOMAIN, DRILL_WORDS, drillPlan, PILOT_TASKS, pilotProblems, type DrillKind, type DrillResult, type PilotProduct, type PilotTurn } from "@/lib/live-drills";
+import { DRILL_EMAIL_DOMAIN, DRILL_WORDS, drillPlan, PILOT_TASKS, pilotProblems, publishOutcome, type DrillKind, type DrillResult, type PilotProduct, type PilotTurn } from "@/lib/live-drills";
 import { siteUrl } from "@/lib/site";
 
 import { runAgentEval } from "./agent-eval";
@@ -206,8 +206,9 @@ async function pilotDrill(storeId: string, requestedBy: string | null): Promise<
   let conversationId: string | null = null;
   const failed: string[] = [];
   let productId: string | null = null;
+  let ended = "";
   for (const task of PILOT_TASKS) {
-    const turn: PilotTurn = { answer: "", error: null, tools: [], kept: [] };
+    const turn: PilotTurn = { answer: "", error: null, tools: [], kept: [], refused: [] };
     const approvals: string[] = [];
     await runTurn({
       member: principal,
@@ -221,7 +222,10 @@ async function pilotDrill(storeId: string, requestedBy: string | null): Promise<
           approvals.push(event.approval.id);
         }
         if (event.type === "error") turn.error = event.message;
-        if (event.type === "done") turn.answer = event.message.content;
+        if (event.type === "done") {
+          turn.answer = event.message.content;
+          turn.refused.push(...event.message.tools.filter((tool) => !tool.ok).map((tool) => tool.name));
+        }
       },
       invalidate: refreshTag,
       signal: AbortSignal.timeout(PILOT_TURN_MS),
@@ -229,13 +233,14 @@ async function pilotDrill(storeId: string, requestedBy: string | null): Promise<
     const product = await pilotProduct(storeId, name);
     productId = product?.id ?? productId;
     const problems = pilotProblems(task.key, turn, product);
+    if (task.key === "publish") ended = publishOutcome(turn);
     if (problems.length > 0) failed.push(`${task.key}: ${problems.join("; ")}`);
     // Nothing the pilot kept is ever made: each waiting change is declined, as the owner's No would.
     for (const id of approvals) await decideApproval(principal, id, false, refreshTag);
   }
   if (productId) await setArchived(member.store, productId, true, member.account);
   return failed.length === 0
-    ? { kind: "manager_pilot", outcome: "passed", detail: `${PILOT_TASKS.length} of ${PILOT_TASKS.length} tasks done as asked; the product was archived after.` }
+    ? { kind: "manager_pilot", outcome: "passed", detail: `${PILOT_TASKS.length} of ${PILOT_TASKS.length} tasks done as asked (${ended}); the product was archived after.` }
     : { kind: "manager_pilot", outcome: "failed", detail: `${PILOT_TASKS.length - failed.length} of ${PILOT_TASKS.length} tasks passed. ${failed.join(" | ")}`.slice(0, 1500) };
 }
 
