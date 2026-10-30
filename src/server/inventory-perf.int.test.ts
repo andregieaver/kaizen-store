@@ -107,6 +107,9 @@ beforeAll(async () => {
       from (select * from commerce.inventory_levels where store_id = ${sid}::uuid order by variant_id limit 1000) l cross join generate_series(1, 3) n
     `);
   });
+  // Statistics for the rows just loaded, as autovacuum keeps them in production: without them the plan depended on whether autovacuum had
+  // come by yet, and a nested loop over stale counts read the levels once per variant (CI #762).
+  await db().execute(sql`analyze commerce.products, commerce.product_variants, commerce.inventory_levels, commerce.inventory_locations, commerce.inventory_reservations`);
   const rows = await db().execute<Row>(sql`select id from commerce.product_variants where store_id = ${sid}::uuid and sku like 'PERF-%' order by sku limit 200`);
   ids = rows.map((r) => String(r.id));
   // 20 variants a shopper can buy: priced, in stock somewhere, in the kinds checkout draws (a few that keep selling).

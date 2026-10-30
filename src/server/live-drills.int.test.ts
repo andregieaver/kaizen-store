@@ -91,4 +91,19 @@ describe("live drills (D406)", () => {
     expect(await shipments(shopper)).toBe(0);
     expect(await shipments(unknownAccount)).toBe(0);
   });
+
+  it("writes Kaizena Flow's legal pages only for a platform admin who asked", async () => {
+    const [person] = await db().execute<Row>(sql`insert into commerce.accounts (email, name) values (${`drill-staff-${run}@example.com`}, 'Staff') returning id`);
+    for (const requester of [null, String(person.id)]) {
+      const asked = await requestDrills(storeId, ["platform_legal_pages"], requester);
+      if (!asked.ok) throw new Error(asked.problem);
+      for (let i = 0; i < 5; i++) {
+        await runLiveDrills();
+        const [row] = await db().execute<Row>(sql`select status from commerce.live_drills where id = ${asked.id}::uuid`);
+        if (row.status === "done") break;
+      }
+      const [done] = await db().execute<Row>(sql`select results from commerce.live_drills where id = ${asked.id}::uuid`);
+      expect(done.results).toEqual([expect.objectContaining({ kind: "platform_legal_pages", outcome: "skipped" })]);
+    }
+  });
 });

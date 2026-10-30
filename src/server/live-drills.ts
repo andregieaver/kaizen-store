@@ -9,12 +9,14 @@ import { siteUrl } from "@/lib/site";
 
 import { runAgentEval } from "./agent-eval";
 import { ownConnection } from "./ai";
-import { passMembership } from "./auth";
+import { activeAccount, passMembership } from "./auth";
 import { log } from "./log";
 import { markSent, refundOrder, getOrderAdmin } from "./order-admin";
 import { decideApproval, runTurn, type Principal } from "./owner-assistant";
+import { PAGES_TAG } from "./pages";
 import { memberCan } from "./permissions";
 import { readMissingPaymentFacts } from "./payment-facts";
+import { writePlatformLegalPages } from "./platform-legal";
 import { testPayment } from "./payment-mode-sql";
 import { setArchived } from "./products";
 import { refreshTag } from "./refresh";
@@ -244,10 +246,25 @@ async function pilotDrill(storeId: string, requestedBy: string | null): Promise<
     : { kind: "manager_pilot", outcome: "failed", detail: `${PILOT_TASKS.length - failed.length} of ${PILOT_TASKS.length} tasks passed. ${failed.join(" | ")}`.slice(0, 1500) };
 }
 
+/** Kaizena Flow's legal pages, as Platform → Pages → *Write the legal pages* writes them, in the name of the platform admin who asked. */
+async function legalPagesDrill(requestedBy: string | null): Promise<DrillResult> {
+  const admin = requestedBy ? await activeAccount(requestedBy) : null;
+  if (!admin?.platformAdmin) return { kind: "platform_legal_pages", outcome: "skipped", detail: "Only a platform admin can ask for Kaizena Flow's legal pages." };
+  const outcomes = await writePlatformLegalPages(admin);
+  if (outcomes.some((o) => o.outcome === "made" || o.outcome === "written")) refreshTag(PAGES_TAG);
+  const failed = outcomes.filter((o) => o.outcome === "failed");
+  return {
+    kind: "platform_legal_pages",
+    outcome: failed.length > 0 ? "failed" : "passed",
+    detail: `${outcomes.map((o) => `${o.kind} ${o.outcome}`).join(", ")}.${failed.length ? ` ${failed.flatMap((o) => o.problems ?? []).join(" ")}` : ""}`.slice(0, 1500),
+  };
+}
+
 async function runOne(storeId: string, kind: DrillKind, requestedBy: string | null): Promise<DrillResult> {
   try {
     if (kind === "agent_eval") return await evalDrill(requestedBy);
     if (kind === "manager_pilot") return await pilotDrill(storeId, requestedBy);
+    if (kind === "platform_legal_pages") return await legalPagesDrill(requestedBy);
     if (kind === "database_door") return await doorDrill();
     if (kind === "webhooks") return await webhooksDrill();
     if (kind === "payment_facts") return await factsDrill(storeId);

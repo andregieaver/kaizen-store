@@ -3,6 +3,7 @@ import "server-only";
 import { createHash, randomBytes } from "node:crypto";
 
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 import { cacheLife, cacheTag, updateTag } from "next/cache";
 
 import { db } from "@/db/client";
@@ -21,6 +22,7 @@ import {
   STATUS_COMPONENTS,
   STATUS_DAYS,
   alertDue,
+  eventsProblem,
   currentState,
   dayBars,
   incidentWords,
@@ -40,6 +42,8 @@ import { cronJobRows } from "./cron-runs";
 import { sendEmail } from "./email";
 import { log } from "./log";
 import { platformStripe } from "./stripe";
+import { col, typedRows } from "./typed-rows";
+import type { PaymentModeName } from "@/lib/stripe-account";
 
 type Row = Record<string, unknown>;
 
@@ -99,7 +103,8 @@ export const PROBES: Probes = {
     if (!stripe) return null;
     try {
       await within(stripe.balance.retrieve());
-      return { ok: true, reason: null };
+      const reason = eventsProblem({ unprocessed: await unprocessedStripeEvents(), unheard: await within(unheardCheckouts()) });
+      return { ok: reason === null, reason };
     } catch (error) {
       return failed(error);
     }
@@ -121,6 +126,41 @@ export const PROBES: Probes = {
     return { ok: true, reason: null };
   },
 };
+
+/** Stripe events received more than half an hour ago and still not processed. */
+async function unprocessedStripeEvents(): Promise<number> {
+  const [row] = await typedRows(
+    z.object({ n: col.int }),
+    sql`select count(*)::int as n from commerce.webhook_events where provider = 'stripe' and processed_at is null and received_at < now() - interval '30 minutes'`,
+  );
+  return row?.n ?? 0;
+}
+
+/**
+ * Of the newest Stripe checkouts still pending here after a quarter of an hour (up to three, the last day's), how many Stripe says are
+ * complete and paid: each one's `checkout.session.completed` never arrived or was never applied. One read of Stripe per checkout, on its own account.
+ */
+async function unheardCheckouts(): Promise<number> {
+  const pending = await typedRows(
+    z.object({ reference: col.text, account: col.text, mode: col.text }),
+    sql`
+      select p.provider_reference as reference, p.provider_account as account, a.mode::text as mode
+      from commerce.payments p join commerce.stripe_accounts a on a.account_id = p.provider_account
+      where p.provider = 'stripe' and p.status = 'pending' and left(p.provider_reference, 3) = 'cs_'
+        and p.created_at between now() - interval '1 day' and now() - interval '15 minutes'
+      order by p.created_at desc limit 3
+    `,
+  );
+  let unheard = 0;
+  for (const payment of pending) {
+    const stripe = platformStripe(payment.mode as PaymentModeName);
+    if (!stripe) continue;
+    // A checkout Stripe cannot find is not a sign of lost events; one finished but not yet paid (a bank transfer) waits for its money.
+    const session = await stripe.checkout.sessions.retrieve(payment.reference, {}, { stripeAccount: payment.account }).catch(() => null);
+    if (session?.status === "complete" && session.payment_status !== "unpaid") unheard++;
+  }
+  return unheard;
+}
 
 /** Runs every probe, keeps what was measured, emails platform admins when a component has just failed twice, and prunes. Never throws. */
 export async function runStatusChecks(probes: Probes = PROBES): Promise<{ measured: number; failed: number; alerts: number }> {

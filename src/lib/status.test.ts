@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { alertDue, currentState, dayBars, dayState, lastDays, overallState, uptimeBasisPoints, uptimeText } from "./status";
+import { alertDue, currentState, eventsProblem, dayBars, dayState, lastDays, overallState, uptimeBasisPoints, uptimeText } from "./status";
 
 describe("the status page's rules (D360)", () => {
   it("reads a day from its checks, a day with none as missing", () => {
@@ -44,5 +44,13 @@ describe("the status page's rules (D360)", () => {
     expect(overallState(["ok", "degraded"], [])).toBe("degraded");
     expect(overallState(["ok"], [{ impact: "maintenance" }])).toBe("maintenance");
     expect(overallState(["ok"], [{ impact: "major" }, { impact: "minor" }])).toBe("major");
+  });
+});
+
+describe("Stripe's events arriving (consolidation 8)", () => {
+  it("fails on a paid checkout never heard of, then on events left unprocessed", () => {
+    expect(eventsProblem({ unprocessed: 0, unheard: 0 })).toBeNull();
+    expect(eventsProblem({ unprocessed: 2, unheard: 0 })).toBe("events_unprocessed");
+    expect(eventsProblem({ unprocessed: 2, unheard: 1 })).toBe("events_missing");
   });
 });

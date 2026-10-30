@@ -73,6 +73,17 @@ export function alertDue(newestFirst: readonly boolean[]): boolean {
   return newestFirst.length === ALERT_AFTER || newestFirst[ALERT_AFTER] === true;
 }
 
+/**
+ * Whether Stripe's events are reaching Kaizena Flow, beside whether Stripe answers (consolidation 8): the webhooks drill once found 13 days
+ * without an event while the status page said Payments was up. Fails on an event received but not processed after half an hour, or on a
+ * checkout Stripe says is complete that is still pending here after a quarter of an hour (its event never came). Null: nothing wrong.
+ */
+export function eventsProblem({ unprocessed, unheard }: { unprocessed: number; unheard: number }): "events_unprocessed" | "events_missing" | null {
+  if (unheard > 0) return "events_missing";
+  if (unprocessed > 0) return "events_unprocessed";
+  return null;
+}
+
 /** A component's state now: its newest check, or not measured. */
 export function currentState(newest: { ok: boolean } | null): "ok" | "degraded" | "unknown" {
   return newest === null ? "unknown" : newest.ok ? "ok" : "degraded";
