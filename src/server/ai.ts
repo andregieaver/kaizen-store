@@ -15,6 +15,7 @@ import {
 } from "@/lib/ai-provider";
 import { estimateTokens, readTokens, type AiKind, type AiFeature, type UsageAmounts } from "@/lib/ai-usage";
 import { cosineSimilarity } from "@/lib/vectors";
+import { toolData } from "@/lib/prompt-safety";
 import { decryptSecret, encryptSecret } from "@/lib/secret-box";
 
 import { limitFor, usageNow } from "./limits";
@@ -623,7 +624,7 @@ async function chatWithToolsOnce(
     "/chat/completions",
     {
       model: connection.textModel,
-      messages,
+      messages: messages.map((m) => (m.role === "tool" ? { ...m, content: toolData(m.content) } : m)),
       tools: tools.map((tool) => ({ type: "function", function: tool })),
       tool_choice: "auto",
       ...(connection.provider === "openai" || connection.provider === "openai_eu" ? { max_completion_tokens: limit } : { max_tokens: limit }),

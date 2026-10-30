@@ -1081,7 +1081,7 @@ export const OWNER_TOOLS = [
     z.object({
       order: orderRef,
       amount: z.string().trim().max(30).optional().describe("How much to refund, as the owner writes it (such as 199 or 199,50); the whole refundable amount if left out."),
-      reason: z.string().trim().min(1).max(500).describe("Why, for the order's history."),
+      reason: z.string().trim().min(1).max(500).default("Asked for by the owner.").describe("Why, for the order's history; leave it out when the owner gave no reason."),
       restock: z.boolean().default(true).describe("Put the order's items back in stock."),
       notify: z.boolean().default(true).describe("Email the customer about the refund."),
     }),
@@ -1805,7 +1805,9 @@ export const OWNER_TOOLS_BY_NAME: Record<string, OwnerTool> = Object.fromEntries
 export function toolDefinition(t: OwnerTool): { name: string; description: string; parameters: Record<string, unknown> } {
   const schema = z.toJSONSchema(t.input, { io: "input" }) as Record<string, unknown>;
   delete schema.$schema;
-  return { name: t.name, description: t.description, parameters: schema };
+  // A gated call only asks: said on the tool itself, as a model reads a tool's words more closely than the rules (consolidation 3).
+  const description = t.gate ? `${t.description} Calling it changes nothing yet: it asks the owner, who answers with a button. So call it as soon as they ask for this; never ask them to confirm in words first.` : t.description;
+  return { name: t.name, description, parameters: schema };
 }
 
 /** The arguments the model gave, checked; the first problem in words otherwise. */
