@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+import { parseStoreTheme } from "../../src/lib/theme";
+import { themeFontFamilies } from "../../src/lib/theme-elements";
 import { testDb } from "../db";
 import { OWNER } from "./accounts";
 
@@ -37,6 +39,11 @@ test.beforeAll(async () => {
     await sql`update commerce.stores set setup_completed_at = coalesce(setup_completed_at, now()) where slug = ${STORE}`;
     const [store] = await sql`select id, theme from commerce.stores where slug = ${STORE}`;
     themeBefore = store.theme;
+    // Saving installs the theme's fonts: they are on the platform already, so nothing is fetched from Google in a test (CI run 784 timed
+    // out here when Google Fonts did not answer).
+    for (const family of themeFontFamilies(parseStoreTheme(store.theme).settings)) {
+      await sql`insert into commerce.fonts (family, slug, category, css, bytes) values (${family}, ${family.toLowerCase().replace(/\s+/g, "-")}, 'sans-serif', '/* e2e: no files */', 0) on conflict (family) do nothing`;
+    }
     // Each attempt starts with the theme's own checkout: a save from an attempt that timed out may still land after it, and a retry that
     // found its colours already saved would have nothing to save.
     await sql`update commerce.stores set theme = theme #- '{settings,checkout}' where id = ${store.id}`;

@@ -7,7 +7,8 @@ vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTa
 const { closeDb, db } = await import("@/db/client");
 const { makeAccount, makeStore } = await import("./trust-fixtures");
 const { designLookInput } = await import("@/lib/brand-design");
-const { parseStoreTheme, themeWarnings } = await import("@/lib/theme");
+const { THEME_TEMPLATE_KEYS, parseStoreTheme, templateSettings, themeWarnings } = await import("@/lib/theme");
+const { themeFontFamilies } = await import("@/lib/theme-elements");
 const { getBrandTool, setBrandTool, designLookTool } = await import("./brand-tools");
 const { listInstalls, switchToInstall } = await import("./theme-installs");
 
@@ -26,6 +27,14 @@ const ctx = () => ({ ...scope(), invalidate: () => {} });
 const storeTheme = async () => (await db().execute<Row>(sql`select theme from commerce.stores where id = ${store.id}::uuid`))[0].theme;
 
 beforeAll(async () => {
+  // The templates' fonts are on Kaizen already: switching to a look installs its fonts, and nothing is fetched from Google in a test
+  // (CI run 784 failed when Google Fonts did not answer for Playfair Display). Each with a stylesheet, as `installFont` leaves it.
+  for (const family of new Set(THEME_TEMPLATE_KEYS.flatMap((key) => themeFontFamilies(templateSettings(key))))) {
+    await db().execute(sql`
+      insert into commerce.fonts (family, slug, category, css, bytes) values (${family}, ${family.toLowerCase().replace(/\s+/g, "-")}, 'serif', '/* test: no files */', 0)
+      on conflict (family) do nothing
+    `);
+  }
   store = await makeStore("brand");
   admin = await makeAccount("brand-admin", { platformAdmin: true });
 });
