@@ -4,15 +4,19 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/client";
-import { DRILL_EMAIL_DOMAIN, DRILL_WORDS, drillPlan, type DrillKind, type DrillResult } from "@/lib/live-drills";
+import { DRILL_EMAIL_DOMAIN, DRILL_WORDS, drillPlan, PILOT_TASKS, pilotProblems, type DrillKind, type DrillResult, type PilotProduct, type PilotTurn } from "@/lib/live-drills";
 import { siteUrl } from "@/lib/site";
 
 import { runAgentEval } from "./agent-eval";
 import { ownConnection } from "./ai";
+import { passMembership } from "./auth";
 import { log } from "./log";
 import { markSent, refundOrder, getOrderAdmin } from "./order-admin";
+import { decideApproval, runTurn, type Principal } from "./owner-assistant";
 import { readMissingPaymentFacts } from "./payment-facts";
 import { testPayment } from "./payment-mode-sql";
+import { setArchived } from "./products";
+import { refreshTag } from "./refresh";
 import { connectWebhookUrl, type WebhookKind } from "./stripe";
 import { col, typedRows } from "./typed-rows";
 import type { PaymentModeName } from "@/lib/stripe-account";
@@ -142,9 +146,76 @@ async function evalDrill(requestedBy: string | null): Promise<DrillResult> {
   };
 }
 
+const PILOT_TURN_MS = 60_000;
+
+/** The run's product as the database has it: its status and its current prices in minor units (the admin's own read, every price). */
+async function pilotProduct(storeId: string, name: string): Promise<(PilotProduct & { id: string }) | null> {
+  const rows = await typedRows(
+    z.object({ id: col.uuid, status: col.text, prices: z.array(z.coerce.number()) }),
+    sql`
+      select p.id, p.status,
+        coalesce((select array_agg(k.amount_minor::int) from commerce.kept_prices k join commerce.product_variants v on v.id = k.variant_id
+          where k.store_id = p.store_id and v.product_id = p.id), '{}') as prices
+      from commerce.products p
+      where p.store_id = ${storeId}::uuid and exists (select 1 from commerce.product_translations t where t.product_id = p.id and t.title = ${name})
+      order by p.created_at desc limit 1
+    `,
+  );
+  return rows[0] ?? null;
+}
+
+/**
+ * The AI manager's pilot (consolidation 5): the requesting owner's tasks of `PILOT_TASKS`, each a real turn of the AI manager in one conversation of
+ * theirs (in their name, with their role read again as a follow-up's is), each checked by code from the turn and the database (`pilotProblems()`).
+ * Publishing is kept for a yes and declined here; the run's product is archived at the end, so the store keeps nothing on its site.
+ */
+async function pilotDrill(storeId: string, requestedBy: string | null): Promise<DrillResult> {
+  if (!requestedBy) return { kind: "manager_pilot", outcome: "skipped", detail: "The pilot runs in an owner's name, and none asked for it." };
+  const [store] = await typedRows(z.object({ slug: col.text }), sql`select slug from commerce.stores where id = ${storeId}::uuid`);
+  const member = store ? await passMembership(store.slug, requestedBy) : null;
+  if (!member || member.role !== "owner") return { kind: "manager_pilot", outcome: "skipped", detail: "The one who asked is not an owner of this store." };
+  const principal: Principal = { account: member.account, store: member.store, role: member.role, kind: member.kind, permissions: member.permissions };
+  const name = `Pilot drill mug ${new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "")}`;
+  let conversationId: string | null = null;
+  const failed: string[] = [];
+  let productId: string | null = null;
+  for (const task of PILOT_TASKS) {
+    const turn: PilotTurn = { answer: "", error: null, tools: [], kept: [] };
+    const approvals: string[] = [];
+    await runTurn({
+      member: principal,
+      conversationId,
+      message: task.says.replace("{name}", name),
+      emit: (event) => {
+        if (event.type === "conversation") conversationId = event.id;
+        if (event.type === "round") turn.tools.push(...event.tools);
+        if (event.type === "approval") {
+          turn.kept.push(event.approval.tool);
+          approvals.push(event.approval.id);
+        }
+        if (event.type === "error") turn.error = event.message;
+        if (event.type === "done") turn.answer = event.message.content;
+      },
+      invalidate: refreshTag,
+      signal: AbortSignal.timeout(PILOT_TURN_MS),
+    });
+    const product = await pilotProduct(storeId, name);
+    productId = product?.id ?? productId;
+    const problems = pilotProblems(task.key, turn, product);
+    if (problems.length > 0) failed.push(`${task.key}: ${problems.join("; ")}`);
+    // Nothing the pilot kept is ever made: each waiting change is declined, as the owner's No would.
+    for (const id of approvals) await decideApproval(principal, id, false, refreshTag);
+  }
+  if (productId) await setArchived(member.store, productId, true, member.account);
+  return failed.length === 0
+    ? { kind: "manager_pilot", outcome: "passed", detail: `${PILOT_TASKS.length} of ${PILOT_TASKS.length} tasks done as asked; the product was archived after.` }
+    : { kind: "manager_pilot", outcome: "failed", detail: `${PILOT_TASKS.length - failed.length} of ${PILOT_TASKS.length} tasks passed. ${failed.join(" | ")}`.slice(0, 1500) };
+}
+
 async function runOne(storeId: string, kind: DrillKind, requestedBy: string | null): Promise<DrillResult> {
   try {
     if (kind === "agent_eval") return await evalDrill(requestedBy);
+    if (kind === "manager_pilot") return await pilotDrill(storeId, requestedBy);
     if (kind === "webhooks") return await webhooksDrill();
     if (kind === "payment_facts") return await factsDrill(storeId);
     if (kind === "mark_sent") return await sentDrill(storeId);
