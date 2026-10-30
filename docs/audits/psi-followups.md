@@ -136,6 +136,9 @@ maturity for the run-up to launch. Point IDs are the audit's.
 The code items of [the re-score's ranked list](psi-2026-10-30.md) (Ranked improvements across segments), in its order; the owner's items
 stay in the standing document's *What comes next*.
 
+- [x] **DATA-02 (data 5, critical)** `store-roles.ts`'s exception shown safe. Done 30 October 2026: `store-writers.scan.test.ts` now
+      checks that every write it makes to `commerce.stores` sets only `role_templates_offered`, that it uses no cache, and that no other
+      code names the column, so no cached read can hold a stale value of it.
 - [ ] **REG-12 (privacy 6)** The legal check's remaining lines, a no-show disclosure and a DSA note with a report button. Wording done
       30 October 2026 (`docs/legal/check-2026-10-29.md`): the Swedish dated-service exception in the law's own words (servering, catering,
       kultur- och idrottsevenemang); SV, DA and EN complaints as the statutes put them (reasonable time, two months always in time, with

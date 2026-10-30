@@ -49,6 +49,21 @@ describe("writers of commerce.stores refresh the store's cache", () => {
     expect(REFRESHES.test(read(path)), `${path} writes commerce.stores without refreshing storeTag(slug)`).toBe(true);
   });
 
+  it("lets store-roles.ts skip the refresh only because nothing cached reads what it writes (PSI DATA-02)", () => {
+    const path = "src/server/store-roles.ts";
+    const source = read(path);
+    // Every write it makes to commerce.stores sets role_templates_offered and nothing else.
+    const sets = [...source.matchAll(/update\s+commerce\.stores\s+set\s+([\s\S]*?)\bwhere\b/gi)].map((m) => m[1]);
+    expect(sets.length).toBeGreaterThan(0);
+    for (const set of sets) expect([...set.matchAll(/(^|,)\s*([a-z_]+)\s*=/g)].map((m) => m[2])).toEqual(["role_templates_offered"]);
+    // It reads the column itself, uncached, and is the only code that names it (the schema aside).
+    expect(source).not.toMatch(/["']use cache["']/);
+    const naming = ["src/server", "src/app", "src/lib", "src/components"]
+      .flatMap(sources)
+      .filter((file) => /role_templates_offered|roleTemplatesOffered/.test(read(file)));
+    expect(naming).toEqual([path]);
+  });
+
   it("lists only writers that still rely on their callers", () => {
     for (const path of REFRESHED_BY_CALLERS) {
       expect(writers, `${path} no longer writes commerce.stores: take it off the list`).toContain(path);
