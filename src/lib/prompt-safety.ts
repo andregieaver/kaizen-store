@@ -14,7 +14,25 @@ export const UNTRUSTED_TEXT =
  * conversation's own. A marker inside the result is taken out, so the data cannot close its own frame.
  */
 export function toolData(content: string): string {
-  return `[tool data]\n${content.replace(/\[(end of )?tool data\]/gi, "")}\n[end of tool data]`;
+  return `[tool data]\n${withoutInstructions(content).replace(/\[(end of )?tool data\]/gi, "")}\n[end of tool data]`;
+}
+
+/** What stands where text addressed to an AI was taken out, so the model can say the data held instructions without reading them. */
+export const INSTRUCTION_REMOVED = "[an instruction to an AI was removed here]";
+
+/**
+ * Text addressed to an AI, taken out of a tool's result before a model reads it (consolidation 3): the live eval showed the platform's
+ * model repeating what such text asked even when told not to, so the words never reach it. Taken out: an HTML comment, and from a line that
+ * names its reader (`Assistant:`, `AI:`, `AI manager:`, `Chatbot:`, `System prompt:`, `Note to the AI …:`, `Important for the assistant:`) to the end of its
+ * value, which in a tool's JSON is the next unescaped quote. Words that only mention AI are left alone. Pure.
+ */
+export function withoutInstructions(text: string): string {
+  return text
+    .replace(/<!--[\s\S]*?-->/g, INSTRUCTION_REMOVED)
+    .replace(
+      /(?:\b(?:note|message|important|instructions?)\s+(?:to|for)\s+(?:the\s+)?(?:ai|assistant|chatbot|model|bot)(?:\s+manager)?|\b(?:ai(?:\s+manager)?|assistant|chatbot|system\s+prompt))\s*:(?:[^"\\]|\\.)*/gi,
+      INSTRUCTION_REMOVED,
+    );
 }
 
 /** A tool's result as it was before `toolData()` framed it (tests read what a model was sent); a text without the frame is given back as it is. */
