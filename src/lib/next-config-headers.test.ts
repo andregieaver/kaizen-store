@@ -43,11 +43,11 @@ describe("next.config headers (wave 1, 1e)", async () => {
     expect(headersFor("/s/x/no/checkout")["Content-Security-Policy"]).toContain("script-src");
   });
 
-  it("lets only Kaizena Flow (and the theme store's host) frame the admin, and leaves other pages' framing as it was", () => {
-    for (const path of ["/admin", "/admin/x/orders", "/admin/account/themes/abc/preview"]) {
+  it("lets only Kaizena Flow (and the theme store's host) frame any page, and nothing frame the pay routes (PSI SEC-07)", () => {
+    for (const path of ["/admin", "/admin/x/orders", "/admin/account/themes/abc/preview", "/", "/s/x/no", "/api/chat"]) {
       expect(headersFor(path)["Content-Security-Policy"], path).toMatch(/^frame-ancestors 'self'/);
     }
-    for (const path of ["/", "/s/x/no", "/api/chat"]) expect(headersFor(path)["Content-Security-Policy"], path).toBeUndefined();
+    expect(headersFor("/s/x/no/checkout")["Content-Security-Policy"]).toContain("frame-ancestors 'none'");
   });
 
   it("keeps the other keys of the configuration", async () => {
