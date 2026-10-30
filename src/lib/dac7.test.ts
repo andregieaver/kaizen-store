@@ -54,6 +54,8 @@ describe("DAC7 details (D71)", () => {
     expect(decimalAmount(123450, "NOK")).toBe("1234.50");
     expect(decimalAmount(-5, "EUR")).toBe("-0.05");
     expect(decimalAmount(1500, "ISK")).toBe("1500");
+    // HUF is kept in hundredths whatever the runtime shows (PSI CODE-03): 12 500 forints.
+    expect(decimalAmount(1250000, "HUF")).toBe("12500.00");
   });
 
   it("writes CSV a spreadsheet reads safely", () => {

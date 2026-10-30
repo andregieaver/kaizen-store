@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { zonedDate } from "./booking-slots";
+import { isCurrency, minorUnitDigits } from "./money";
 
 /**
  * DAC7 (Council Directive (EU) 2021/514, D71): a platform that lets people
@@ -85,9 +86,14 @@ export function quarterOf(at: string | number, timeZone: string): 1 | 2 | 3 | 4 
   return (Math.floor((month - 1) / 3) + 1) as 1 | 2 | 3 | 4;
 }
 
-/** An amount in minor units as a plain decimal (1234.50), with the currency's own number of decimals. */
+/**
+ * An amount in minor units as a plain decimal (1234.50), with the currency's own number of decimals: the stored ones (`minorUnitDigits`),
+ * so HUF counted in hundredths reads 12500.00 and not its hundredths as forints; a currency stores do not offer, by the runtime's data.
+ */
 export function decimalAmount(minor: number, currency: string): string {
-  const digits = new Intl.NumberFormat("en", { style: "currency", currency }).resolvedOptions().maximumFractionDigits ?? 2;
+  const digits = isCurrency(currency)
+    ? minorUnitDigits(currency)
+    : (new Intl.NumberFormat("en", { style: "currency", currency }).resolvedOptions().maximumFractionDigits ?? 2);
   const sign = minor < 0 ? "-" : "";
   const abs = Math.abs(minor);
   if (digits === 0) return `${sign}${abs}`;

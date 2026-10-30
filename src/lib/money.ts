@@ -35,8 +35,15 @@ export function minorUnitDigits(currency: string): number {
 }
 
 /**
+ * Decimals shown where they differ from the stored ones: whole forints, though HUF is counted in hundredths. Fixed here because the
+ * runtime's own data changed (ICU 77, as in Node 22.22, shows HUF with two decimals where older ICU showed none), and a price must look
+ * the same on every server (PSI CODE-03).
+ */
+const DISPLAY_DIGITS: Record<string, number> = { HUF: 0 };
+
+/**
  * Formats an amount in minor units for a locale, e.g. 1999 EUR → "19,99 €".
- * Decimals follow local convention, so HUF shows whole forints.
+ * HUF shows whole forints (`DISPLAY_DIGITS`); every other currency its own decimals.
  */
 export function formatMoney(
   amountMinor: number,
@@ -48,9 +55,12 @@ export function formatMoney(
       `Amount must be a whole number of minor units: ${amountMinor}`,
     );
   }
-  return new Intl.NumberFormat(locale, { style: "currency", currency }).format(
-    amountMinor / 10 ** minorUnitDigits(currency),
-  );
+  const shown = DISPLAY_DIGITS[currency];
+  return new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency,
+    ...(shown === undefined ? {} : { minimumFractionDigits: shown, maximumFractionDigits: shown }),
+  }).format(amountMinor / 10 ** minorUnitDigits(currency));
 }
 
 /** The currencies a store can offer (D109). */

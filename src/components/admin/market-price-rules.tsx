@@ -8,7 +8,7 @@ import { fillWords } from "@/lib/admin-fill";
 import { parsePercentBp } from "@/lib/bulk-edit";
 import { ROUND_STEPS, stepMinor } from "@/lib/currency";
 import type { MarketPriceRule, PriceBasis, PriceRuleActions, RulePreview } from "@/lib/market-prices";
-import { formatMoney } from "@/lib/money";
+import { formatMoney, minorUnitDigits } from "@/lib/money";
 import { parsePrice } from "@/lib/product-input";
 
 /**
@@ -211,7 +211,5 @@ function RuleRow({ market, markets, rules, locale, editable, preview, save, remo
   );
 }
 
-/** The currency's decimals, for showing a stored ending in major units. */
-function fractionDigits(currency: string): number {
-  return new Intl.NumberFormat("en", { style: "currency", currency }).resolvedOptions().maximumFractionDigits ?? 2;
-}
+/** The currency's stored decimals, for showing a stored ending (minor units) in major units. */
+const fractionDigits = (currency: string): number => minorUnitDigits(currency);

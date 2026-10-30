@@ -141,7 +141,10 @@ stay in the standing document's *What comes next*.
 - [ ] **AST-09, AST-01, AGT-14 (6)** An eval that measures the model: payloads the filter does not catch, several runs per model, a model
       save gated on a pass, the replay failing on a changed model or tool description.
 - [ ] **REL-09, REL-02, DATA-03 (7)** Event-arrival checks, the `webhooks` drill on a schedule, an outside probe.
-- [ ] **CODE-03 (8)** The HUF money test that fails outside CI.
+- [x] **CODE-03 (8)** The HUF money test that fails outside CI. Done 30 October 2026: it was the runtime, not the test. ICU 77 (Node
+      22.22) shows HUF with two decimals where CI's showed none, so a price looked different by server; `formatMoney()` fixes whole forints
+      (`DISPLAY_DIGITS`). The same data made DAC7's `decimalAmount()` print HUF's hundredths as forints on the older runtime, and the price
+      rule screen show an ending in the wrong unit: both now use the stored digits (`minorUnitDigits()`). The deploy gate stays the owner's.
 - [ ] **REG-11 (10)** Sensitive-information mode and a minimum-age sentence.
 - [ ] **UX-08 (11)** Homer and Lisa written into `docs/admin-style.md`, applied to the product editor and support settings.
 - [ ] **AGT-03, AGT-04 (13)** Approval expiry, `cancel_page_build`, pending follow-ups with cancel.
