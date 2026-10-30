@@ -6,9 +6,12 @@ maturity for the run-up to launch. Point IDs are the audit's.
 
 ## Decided
 
-- **Deploys stay ungated by CI.** `next build` on Vercel already runs the full TypeScript check and fails on any error (Next's
-  `typescript.ignoreBuildErrors` is off), so a type error never replaces the live deployment; a typecheck gate in CI would add minutes
-  and no protection. Revisit at launch: wait for the `static` job (REL-03, CODE-07).
+- **Deploys stay ungated by CI.** Decided 24 October 2026 on the ground that `next build` on Vercel ran the full TypeScript check, so a
+  type error never replaced the live deployment. **That ground is gone since D378 (28 October 2026)**: to fit Vercel's 8 GB the build there
+  skips the type check, and a push without a migration deploys at once. So today a type error can reach production, with CI's `static`
+  job red beside it within about five minutes; a push with a migration still waits for every check. The choice is the owner's: gate
+  direct deploys on `static` (a deploy then waits about five minutes) or keep them ungated and accept that window (REL-03, CODE-07).
+  Corrected 30 October 2026 (PSI re-score item 8).
 
 ## Done (2026-10-24)
 
