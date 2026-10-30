@@ -398,6 +398,19 @@ describe("erasing again, and erasing across stores", () => {
     expect(row).toMatchObject({ status: "done", outcome: "no_data", subject_email: null });
   }, 120_000);
 
+  it("blanks the person's email, full name and phone in the store's AI manager conversations, and nobody else's (PSI REG-03)", async () => {
+    const subject = await buildSubject(store, "assistant");
+    await db().execute(sql`update commerce.customers set name = 'Signe Strand', phone = '+47 412 34 567' where id = ${subject.customerId}::uuid`);
+    const [conversation] = await db().execute<Row>(sql`
+      insert into commerce.assistant_conversations (store_id, account_id, title) values (${store.storeId}::uuid, ${store.ownerId}::uuid, 'Orders') returning id`);
+    const said = `Signe  Strand (${subject.email.toUpperCase()}, 412 34 567) asked about order 1001. Ola Hansen (ola@example.com) too.`;
+    const [message] = await db().execute<Row>(sql`
+      insert into commerce.assistant_messages (store_id, conversation_id, role, content) values (${store.storeId}::uuid, ${String(conversation.id)}::uuid, 'assistant', ${said}) returning id`);
+    expect(await eraseSubject(store.storeId, { customerId: subject.customerId }, { channel: "staff", accountId: store.ownerId })).toMatchObject({ ok: true, outcome: "erased" });
+    const [after] = await db().execute<Row>(sql`select content from commerce.assistant_messages where id = ${String(message.id)}::uuid`);
+    expect(after.content).toBe("[erased] ([erased], [erased]) asked about order 1001. Ola Hansen (ola@example.com) too.");
+  }, 120_000);
+
   it("never touches another store's customer, orders, subscriptions or emails, even for the same email", async () => {
     const mine = await buildSubject(store, "tenant", { sentinel: "MINE-1g" });
     const theirs = await buildSubject(foreign, "tenant", { email: mine.email, sentinel: "THEIRS-1g" });

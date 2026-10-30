@@ -268,7 +268,7 @@ Likelihood and severity are proposals for the owner to confirm.
 | R3 | The model states something false about an order, a price or a right | 4.1, 4.5 | possible | medium | facts only from tools; claims filter; withdrawals only to the withdrawal page | none beyond the model's errors in wording |
 | R4 | Customers are scored and summarised without being told | 4.2, 4.3 | lower since D391 | low to medium | score never shown, never decides more than the queue; can be turned off per desk; the chat's notice says so while each is on (D391, `m.chat.aiUse`), and the support settings page tells the owner | the store privacy starter does not say it yet; the chat's words need legal review; on by default |
 | R5 | Sensitive data (health, in a clinic or care store) in messages, searches or checkout answers goes to the model | 4.1 to 4.5, 4.9 | possible in some stores | high for those people | the starter tells shoppers not to write sensitive data to the chat | no store setting that turns AI summaries, tone or AI email answers off for sensitive trades (REG-11) |
-| R6 | Customer data copied into the AI manager's conversations outlives the customer's erasure and has no retention | 4.5 | likely | medium | erased orders show no person to the model; messages deleted 12 months after they were written, or the owner's own period (D391, `runRetention()`: `assistant_conversations`) | a shopper's erasure does not reach `assistant_messages` before that |
+| R6 | Customer data copied into the AI manager's conversations outlives the customer's erasure and has no retention | 4.5 | likely | medium | erased orders show no person to the model; messages deleted 12 months after they were written, or the owner's own period (D391, `runRetention()`: `assistant_conversations`) | none since 30 October 2026: a shopper's erasure blanks their email, full name and phone in `assistant_messages` (`src/lib/erasure-traces.ts`, PSI REG-03) |
 | R7 | A store's own provider or an owner's custom app receives data outside Kaizena Flow's contracts | 4.1, 4.5 | possible | medium | the store's choice, said on the page; https and `safeFetch()` | relies on the store's own agreements |
 | R8 | Search caches and recommendation storage hold shoppers' words longer or more widely than the register says | 4.9 | possible | low | 30-day prune; random tab id | `search_cache` not in the register; `kaizen_rec` classed necessary |
 | R9 | A person in an uploaded picture is described or sent to a model | 4.7 | possible | low | alt text only from the store's own library; no faces asked for in made pictures | none |
@@ -282,8 +282,10 @@ None of these is a decision. For the owner, with a lawyer:
 2. **Tell customers** about tone scoring and AI summaries in the chat and in the store privacy starter, in all four languages (R4);
    consider whether tone should start off rather than on.
 3. **A retention period for `assistant_messages`**, and erasure of a customer's data from it, or stop the manager's tools from
-   returning contact details where a name or a key would do (R6). Owner and staff account erasure (REG-03).
-4. **A "sensitive information" switch** for stores (no tone, summaries or AI email answers; shorter retention) (R5, REG-11).
+   returning contact details where a name or a key would do (R6). Owner and staff account erasure (REG-03). Done: the retention (D391),
+   owner and staff erasure (D377) and, since 30 October 2026, a shopper's erasure blanking their email, full name and phone in it.
+4. **A "sensitive information" switch** for stores (no tone, summaries or AI email answers; shorter retention) (R5, REG-11). Done
+   30 October 2026 (support settings, the owner's alone).
 5. Put `search_cache` in the register, and have the lawyer read `kaizen_rec`'s category (R8).
 6. Run the agent safety eval in CI (R2).
 7. Write `docs/ai-act.md`: each feature's AI Act classification and its Article 50 measure (REG-08).

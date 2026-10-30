@@ -136,6 +136,10 @@ maturity for the run-up to launch. Point IDs are the audit's.
 The code items of [the re-score's ranked list](psi-2026-10-30.md) (Ranked improvements across segments), in its order; the owner's items
 stay in the standing document's *What comes next*.
 
+- [x] **REG-03 (privacy 7)** A shopper's erasure reaches the AI manager's conversations. Done 30 October 2026: in the erasure's
+      transaction, before their orders are anonymised, their email addresses, full names (two words or more) and phone numbers (any
+      spacing) as the account and their orders hold them are blanked in the store's `assistant_messages` (`src/lib/erasure-traces.ts`,
+      `blankAssistantTraces()`; `privacy-erasure.int.test.ts`). A first name alone is left, being too common to blank everywhere.
 - [x] **SEC-06 (3)** Secret-box key id, a rotation runbook, a gift-card hash key of its own. Done 30 October 2026 (D410): `v2.<kid>.…`,
       `SETTINGS_ENCRYPTION_KEY_PREVIOUS` read during a rotation, `reencryptSecrets()` in the dispatcher, `GIFT_CARD_HASH_KEY` and
       `RECOVERY_CODE_HASH_KEY` (`scripts/hash-keys.mjs`), `docs/runbooks/key-rotation.md`. The owner's part: set the two hash keys once.

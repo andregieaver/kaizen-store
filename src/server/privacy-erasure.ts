@@ -8,6 +8,7 @@ import { db } from "@/db/client";
 import { renderEmail } from "@/lib/email-layout";
 import { buildPlan, isEmptyPlan, summarisePlan, type ErasurePlan, type MoneyByCurrency, type PlanOrder, type PlanSummary, type PlanWarningKind } from "@/lib/erasure-plan";
 import { EVIDENCE_EMAIL_KINDS } from "@/lib/personal-data";
+import { ERASED, tracePatterns } from "@/lib/erasure-traces";
 import { erasedEmailKey } from "@/lib/privacy-request";
 import { erasureConfirmationEmail, privacyLanguage } from "@/lib/privacy-text";
 import { reviewsTag } from "@/lib/reviews";
@@ -632,6 +633,42 @@ export async function eraseSubject(
 
 type Tx = Parameters<Parameters<ReturnType<typeof db>["transaction"]>[0]>[0];
 
+/**
+ * The person's email addresses, full names and phone numbers, as the account and their orders hold them, blanked in the store's AI manager
+ * messages (`tracePatterns()`). Only the messages that hold one are written.
+ */
+async function blankAssistantTraces(tx: Tx, s: PrivacySubject): Promise<number> {
+  const orderIds = uuidList(s.orderIds);
+  const [found] = await tx.execute<Row>(sql`
+    select
+      array_remove(array_agg(distinct e), null) as emails,
+      array_remove(array_agg(distinct n), null) as names,
+      array_remove(array_agg(distinct p), null) as phones
+    from (
+      select c.email as e, c.name as n, c.phone as p from commerce.customers c
+       where c.store_id = ${s.storeId}::uuid and c.id = ${s.customerId}::uuid
+      union all
+      select o.email, o.shipping_address ->> 'name', o.shipping_address ->> 'phone' from commerce.orders o
+       where o.store_id = ${s.storeId}::uuid and o.id = any(${orderIds})
+      union all
+      select null, o.billing_address ->> 'name', o.billing_address ->> 'phone' from commerce.orders o
+       where o.store_id = ${s.storeId}::uuid and o.id = any(${orderIds})
+    ) person
+  `);
+  const list = (value: unknown) => (Array.isArray(value) ? value.map(String) : []);
+  const patterns = tracePatterns({ emails: [...list(found?.emails), ...s.addresses, s.email], names: list(found?.names), phones: list(found?.phones) });
+  let blanked = 0;
+  for (const pattern of patterns) {
+    const rows = await tx.execute<Row>(sql`
+      update commerce.assistant_messages set content = regexp_replace(content, ${pattern}, ${ERASED}, 'gi')
+      where store_id = ${s.storeId}::uuid and content ~* ${pattern} returning id
+    `);
+    blanked += rows.length;
+  }
+  if (blanked > 0) log("info", "privacy.assistant_traces_blanked", { messages: blanked });
+  return blanked;
+}
+
 /** The subject's rows, all of it or none: the bodies of 2.4 step 3. */
 async function eraseRows(tx: Tx, s: PrivacySubject, store: PrivacyStore): Promise<{ counts: EraseCounts; avatar: string | null; pictures: StoredPicture[] }> {
   const sid = s.storeId;
@@ -640,6 +677,10 @@ async function eraseRows(tx: Tx, s: PrivacySubject, store: PrivacyStore): Promis
   const orderIds = uuidList(s.orderIds);
   const subIds = uuidList(s.subscriptionIds);
   const counts: EraseCounts = { ordersAnonymised: 0, ordersRestricted: 0, ordersCancelled: 0, subscriptions: 0, emailsBlanked: 0, accountDeleted: false };
+
+  // What the AI manager's tools may have copied of the person into the store's conversations (PSI REG-03, `docs/dpia-ai.md` R6): read before
+  // their orders are anonymised, blanked in the same transaction.
+  await blankAssistantTraces(tx, s);
 
   // An order still waiting for payment is not a sale: it is cancelled first (its stock goes back, its payment is marked cancelled, a subscription that
   // never started is expired), so a payment that somehow arrives later finds a cancelled order, which `complete_order_payment()` still completes
