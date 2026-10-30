@@ -27,6 +27,7 @@ const mollie = vi.hoisted(() => {
   const payments = new Map<string, Record<string, unknown>>();
   const refunds = new Map<string, Record<string, unknown>[]>();
   const chargebacks = new Map<string, Record<string, unknown>[]>();
+  const refused = new Set<string>();
   let n = 0;
   // Ids unique to this run, as Mollie's are: a database used before never holds the same ones.
   const run = Math.random().toString(36).slice(2, 8);
@@ -38,6 +39,8 @@ const mollie = vi.hoisted(() => {
     const raw = typeof init?.body === "string" ? init.body : init?.body ? String(init.body) : "";
     const body = raw && headers["Content-Type"] === "application/json" ? (JSON.parse(raw) as Record<string, unknown>) : raw ? Object.fromEntries(new URLSearchParams(raw)) : null;
     calls.push({ method, path: url.pathname + url.search, body, headers });
+    // A token Mollie no longer takes (revoked before its time).
+    if (url.pathname !== "/oauth2/tokens" && refused.has(String(headers.Authorization).replace(/^Bearer /, ""))) return json({ detail: "Unauthorized request" }, 401);
     if (url.pathname === "/oauth2/tokens") {
       return json({ access_token: `access_${++n}`, refresh_token: "refresh_fixture", expires_in: 3600, token_type: "bearer", scope: "payments.read payments.write refunds.read refunds.write" });
     }
@@ -74,7 +77,7 @@ const mollie = vi.hoisted(() => {
     }
     return json({ detail: `Unknown ${method} ${path}` }, 404);
   };
-  return { calls, payments, refunds, chargebacks, fetch };
+  return { calls, payments, refunds, chargebacks, refused, fetch };
 });
 
 const fx = await import("./invoice-test-fixture");
@@ -160,6 +163,23 @@ describe("connecting Mollie", () => {
     const made = mollie.calls.slice(before);
     expect(made[0]).toMatchObject({ method: "POST", path: "/oauth2/tokens", body: { grant_type: "refresh_token", refresh_token: "refresh_fixture" } });
     expect(made.slice(1).every((c) => c.headers.Authorization !== "Bearer access_old")).toBe(true);
+  });
+});
+
+describe("a token Mollie refuses before its time (PSI DATA-03)", () => {
+  it("makes a new one from the refresh token and asks once more, and the shopper never sees the refusal", async () => {
+    const own = await mollieStore("mo-401");
+    const key = parseKey(process.env.SETTINGS_ENCRYPTION_KEY)!;
+    await db().execute(sql`update commerce.mollie_connections set access_token = ${encryptSecret("access_revoked", key)}, access_expires_at = now() + interval '1 hour' where store_id = ${own.storeId}::uuid`);
+    mollie.refused.add("access_revoked");
+    const before = mollie.calls.length;
+    const { result } = await checkout(own);
+    expect(result).toMatchObject({ ok: true });
+    const made = mollie.calls.slice(before);
+    const refusedAt = made.findIndex((c) => c.headers.Authorization === "Bearer access_revoked");
+    expect(refusedAt).toBeGreaterThanOrEqual(0);
+    expect(made[refusedAt + 1]).toMatchObject({ method: "POST", path: "/oauth2/tokens", body: { grant_type: "refresh_token" } });
+    expect(made.slice(refusedAt + 1).some((c) => c.headers.Authorization === "Bearer access_revoked")).toBe(false);
   });
 });
 

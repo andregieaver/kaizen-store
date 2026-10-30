@@ -195,7 +195,7 @@ export async function mollieConnection(storeId: string): Promise<MollieConnectio
 }
 
 /** An access token for the store's Mollie account: the one kept while it lasts, else a new one made from the refresh token. Null: not connected. */
-async function accessToken(storeId: string): Promise<{ token: string; profileId: string } | null> {
+async function accessToken(storeId: string, refused = false): Promise<{ token: string; profileId: string } | null> {
   const app = mollieApp();
   if (!app) return null;
   const [row] = await db().execute<Row>(sql`
@@ -204,7 +204,8 @@ async function accessToken(storeId: string): Promise<{ token: string; profileId:
   `);
   if (!row) return null;
   const profileId = String(row.profile_id);
-  if (row.fresh && row.access_token) {
+  // A token Mollie just refused (`refused`) is not used again, however fresh its time says it is.
+  if (row.fresh && row.access_token && !refused) {
     try {
       return { token: decryptSecret(String(row.access_token), app.key), profileId };
     } catch {
@@ -238,11 +239,22 @@ export async function mollieCall<T>(
   const test = mode === "test";
   // Mollie takes `testmode` in the body of a write or a cancel, and in the query of a read.
   const write = method !== "GET";
-  return call<T>(access.token, method, path, {
-    ...options,
-    ...(write && test ? { body: { ...(options.body ?? {}), testmode: true } } : {}),
-    ...(!write && test ? { query: { ...(options.query ?? {}), testmode: "true" } } : {}),
-  });
+  const send = (token: string) =>
+    call<T>(token, method, path, {
+      ...options,
+      ...(write && test ? { body: { ...(options.body ?? {}), testmode: true } } : {}),
+      ...(!write && test ? { query: { ...(options.query ?? {}), testmode: "true" } } : {}),
+    });
+  try {
+    return await send(access.token);
+  } catch (error) {
+    // Mollie refused the token before its time was up (revoked, or ended early): a new one from the refresh token, and the call once more
+    // (PSI DATA-03). A 401 changed nothing at Mollie, so asking again is safe; a second refusal is the store's to reconnect.
+    if (!(error instanceof MollieError) || error.status !== 401) throw error;
+    const renewed = await accessToken(storeId, true);
+    if (!renewed) throw error;
+    return send(renewed.token);
+  }
 }
 
 /** The website profile a store's payments are made on. */

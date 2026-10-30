@@ -5,7 +5,14 @@ import Stripe from "stripe";
 import { PAYOUT_EVENTS } from "@/lib/payouts";
 import { PAYMENT_MODES, platformKey, type PaymentModeName } from "@/lib/stripe-account";
 
+/**
+ * The Stripe API version every call and every webhook endpoint Kaizena Flow makes is pinned to (PSI DATA-03): the one this SDK's types
+ * describe, so an upgrade of the SDK is a change made on purpose here, never a silent one in what Stripe answers or sends.
+ */
+export const STRIPE_API_VERSION = "2026-08-26.dahlia" as const;
+
 const OPTIONS: Stripe.StripeConfig = {
+  apiVersion: STRIPE_API_VERSION,
   maxNetworkRetries: 2,
   timeout: 15_000,
   appInfo: { name: "Kaizena Flow" },
@@ -140,11 +147,13 @@ export async function createPlatformWebhooks(
     const snapshot = await stripe.webhookEndpoints.create({
       url: snapshotUrl,
       connect: true,
+      api_version: STRIPE_API_VERSION,
       enabled_events: WEBHOOK_EVENTS,
       description: "Kaizena Flow: payments in stores' accounts",
     });
     const billing = await stripe.webhookEndpoints.create({
       url: billingUrl,
+      api_version: STRIPE_API_VERSION,
       enabled_events: BILLING_EVENTS,
       description: "Kaizena Flow: stores' plans",
     });
