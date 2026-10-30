@@ -26,7 +26,7 @@ import { AiError, chatWithTools, completeText, type AiConnection, type ToolChatM
 import type { Account } from "./auth";
 import { log } from "./log";
 import { fixedManagerPrompt, managerPromptVersion } from "./owner-assistant";
-import { chatPromptVersion, fixedChatPrompt, fixedLegalMessages, legalPromptVersion, type PromptVersions } from "./prompt-versions";
+import { chatPromptVersion, fixedChatPrompt, fixedLegalMessages, legalPromptVersion, promptHash, type PromptVersions } from "./prompt-versions";
 import { col, typedRow, typedRows } from "./typed-rows";
 
 /**
@@ -40,6 +40,15 @@ import { col, typedRow, typedRows } from "./typed-rows";
 /** Each agent's prompt version (D391): what every eval run and recording is of. */
 export function promptVersions(): PromptVersions {
   return { chat: chatPromptVersion(), manager: managerPromptVersion(), legal: legalPromptVersion() };
+}
+
+/**
+ * The tools' version (PSI AGT-14): a hash of every tool the agents may be offered (the AI manager's, its own and the shop chat's), each
+ * name, description and parameters, so a recording made before a tool's words changed is not replayed as if the model had read them.
+ */
+export function toolsVersion(): string {
+  const all: ToolDefinition[] = [...OWNER_TOOLS, ...MANAGER_TOOLS].map(toolDefinition).concat(storeTools(true));
+  return promptHash(JSON.stringify(all.map((t) => [t.name, t.description, t.parameters]).sort((a, b) => String(a[0]).localeCompare(String(b[0])))));
 }
 
 /** The tools that change something: the gated owner tools. */
@@ -183,6 +192,7 @@ export async function runAgentEval(connection: AiConnection, account: Pick<Accou
     provider: connection.provider,
     recordedAt: new Date().toISOString(),
     prompts,
+    tools: toolsVersion(),
     cases: AGENT_EVAL_CASES.map((c) => ({ id: c.id, agent: c.agent, replies: recorded.get(c.id) ?? [] })),
   };
   try {

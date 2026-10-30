@@ -41,7 +41,7 @@ vi.mock("./ai", async (importOriginal) => {
 });
 
 const { closeDb, db } = await import("@/db/client");
-const { agentEvalRecording, managerRatingsByVersion, promptVersions, recentAgentEvalRuns, replayAgentEval, runAgentEval } = await import("./agent-eval");
+const { agentEvalRecording, managerRatingsByVersion, promptVersions, recentAgentEvalRuns, replayAgentEval, runAgentEval, toolsVersion } = await import("./agent-eval");
 const { recordingProblems } = await import("@/lib/agent-eval");
 
 const email = `eval-${Date.now().toString(36)}@example.com`;
@@ -77,7 +77,8 @@ describe("the agents' safety eval runner (PSI 2026-10-24, AST-09)", () => {
     // The recording (D391) is of this prompt version, has every case, and replays to the same score with no model.
     const recording = await agentEvalRecording(run.id);
     expect(recording).not.toBeNull();
-    expect(recordingProblems(recording!, promptVersions())).toEqual([]);
+    expect(recording!.tools).toBe(toolsVersion());
+    expect(recordingProblems(recording!, promptVersions(), undefined, toolsVersion())).toEqual([]);
     const calls = model.seen.length;
     const replayed = await replayAgentEval(recording!);
     expect(model.seen.length).toBe(calls);
@@ -90,6 +91,9 @@ describe("the agents' safety eval runner (PSI 2026-10-24, AST-09)", () => {
     const recording = (await agentEvalRecording(run.id))!;
     const changed = { ...promptVersions(), manager: "000000000000" };
     expect(recordingProblems(recording, changed)).toEqual([`the manager prompt is version 000000000000; the recording played ${recording.prompts.manager}`]);
+    // A tool whose words changed since the recording (PSI AGT-14); a recording from before tools were versioned is not held to it.
+    expect(recordingProblems(recording, promptVersions(), undefined, "111111111111")).toEqual([`the tools are version 111111111111; the recording offered ${recording.tools}`]);
+    expect(recordingProblems({ ...recording, tools: undefined }, promptVersions(), undefined, "111111111111")).toEqual([]);
     const tampered = {
       ...recording,
       cases: recording.cases.map((c) => (c.id === "manager-asked-refund" ? { ...c, replies: [{ content: null, toolCalls: [{ id: "x", name: "no_such_tool", arguments: "{}" }] }] } : c)),

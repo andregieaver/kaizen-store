@@ -263,17 +263,27 @@ export type EvalRecording = {
   provider: string;
   recordedAt: string;
   prompts: Record<AgentKind, string>;
+  /** The tools' version when recorded (`toolsVersion()`): every tool's name, description and parameters. Recordings before 30 October 2026 have none. */
+  tools?: string;
   cases: RecordedCase[];
 };
 
 /**
- * Why a recording cannot stand for the code as it is: a prompt it was not made with, a case it does not have, a case it has that is gone.
- * Empty when it can be replayed.
+ * Why a recording cannot stand for the code as it is: a prompt it was not made with, tools whose descriptions or parameters changed since
+ * (PSI AGT-14: the model chose among other words), a case it does not have, a case it has that is gone. Empty when it can be replayed.
  */
-export function recordingProblems(recording: EvalRecording, current: Record<AgentKind, string>, cases: readonly AgentEvalCase[] = AGENT_EVAL_CASES): string[] {
+export function recordingProblems(
+  recording: EvalRecording,
+  current: Record<AgentKind, string>,
+  cases: readonly AgentEvalCase[] = AGENT_EVAL_CASES,
+  tools?: string,
+): string[] {
   const problems: string[] = [];
   for (const agent of Object.keys(current) as AgentKind[]) {
     if (recording.prompts[agent] !== current[agent]) problems.push(`the ${agent} prompt is version ${current[agent]}; the recording played ${recording.prompts[agent] ?? "none"}`);
+  }
+  if (tools !== undefined && recording.tools !== undefined && recording.tools !== tools) {
+    problems.push(`the tools are version ${tools}; the recording offered ${recording.tools}`);
   }
   const recorded = new Set(recording.cases.map((c) => c.id));
   for (const testCase of cases) if (!recorded.has(testCase.id)) problems.push(`the case ${testCase.id} was not recorded`);

@@ -15,7 +15,7 @@ vi.mock("./ai", async (importOriginal) => {
 });
 
 const { recordingProblems } = await import("@/lib/agent-eval");
-const { promptVersions, replayAgentEval } = await import("./agent-eval");
+const { promptVersions, replayAgentEval, toolsVersion } = await import("./agent-eval");
 
 /**
  * The agents' safety eval in CI (wave 11 unit L, D391, PSI AGT-14): the run recorded from the real model on Platform → AI, kept in the
@@ -33,7 +33,7 @@ describe("the agents' eval, replayed from its recording (D391)", () => {
   }
 
   it("was recorded with the prompts as they are and every case", () => {
-    expect(recordingProblems(recording, promptVersions()), "Record the eval again on Platform → AI and keep its recording as src/data/agent-eval-recording.json").toEqual([]);
+    expect(recordingProblems(recording, promptVersions(), undefined, toolsVersion()), "Record the eval again on Platform → AI and keep its recording as src/data/agent-eval-recording.json").toEqual([]);
   });
 
   it("passes every case, as the recorded model answered", async () => {

@@ -149,6 +149,10 @@ stay in the standing document's *What comes next*.
       of `kaizenaflow.com` serves HTTPS.
 - [ ] **AST-09, AST-01, AGT-14 (6)** An eval that measures the model: payloads the filter does not catch, several runs per model, a model
       save gated on a pass, the replay failing on a changed model or tool description.
+      Tool descriptions done 30 October 2026: every recording carries `toolsVersion()` (a hash of each tool's name, description and
+      parameters, `src/server/agent-eval.ts`), and CI's replay fails when the tools changed since it was recorded. The recording in the
+      repository predates it and is not held to it; the next run on Platform → AI carries it. Left: new payloads, several runs per
+      model and the gate on a model save, which need live runs.
 - [ ] **REL-09, REL-02, DATA-03 (7)** Event-arrival checks, the `webhooks` drill on a schedule, an outside probe.
       Code's part done 30 October 2026: the status page's Payments probe, every five minutes, now also fails on a Stripe endpoint that
       sends somewhere other than this site (the `webhooks` drill's check, so it runs on the probe's schedule) and on silence: two or
