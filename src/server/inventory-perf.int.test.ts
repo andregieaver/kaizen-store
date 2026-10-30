@@ -48,16 +48,34 @@ const VARIANTS = 5_000;
 const BOUND_MS = 10_000;
 const CATALOGUE = new Set(["product_variants", "products", "inventory_levels", "inventory_locations", "inventory_reservations"]);
 
-type PlanNode = { "Relation Name"?: string; "Actual Rows"?: number; "Actual Loops"?: number; "Rows Removed by Filter"?: number; Plans?: PlanNode[] };
+type PlanNode = { "Node Type"?: string; "Relation Name"?: string; "Actual Rows"?: number; "Actual Loops"?: number; "Rows Removed by Filter"?: number; Plans?: PlanNode[] };
+
+/** What a plan's scans of the catalogue's tables read: the total, and each scan (table, kind, loops, rows) to say which when it is too many. */
+type Reads = { total: number; scans: string[] };
 
 /** The rows a query's scans of the catalogue's tables read, from its executed plan; the query runs and its result is thrown away. */
-async function rowsRead(query: ReturnType<typeof sql>): Promise<number> {
+async function rowsRead(query: ReturnType<typeof sql>): Promise<Reads> {
   const [row] = await db().execute<Row>(sql`explain (analyze, format json) ${query}`);
   const plan = (Object.values(row)[0] as { Plan: PlanNode }[])[0].Plan;
-  const walk = (node: PlanNode): number =>
-    (node["Relation Name"] && CATALOGUE.has(node["Relation Name"]) ? ((node["Actual Rows"] ?? 0) + (node["Rows Removed by Filter"] ?? 0)) * (node["Actual Loops"] ?? 1) : 0) +
-    (node.Plans ?? []).reduce((sum, child) => sum + walk(child), 0);
-  return walk(plan);
+  const scans: string[] = [];
+  const walk = (node: PlanNode): number => {
+    let own = 0;
+    if (node["Relation Name"] && CATALOGUE.has(node["Relation Name"])) {
+      const loops = node["Actual Loops"] ?? 1;
+      own = ((node["Actual Rows"] ?? 0) + (node["Rows Removed by Filter"] ?? 0)) * loops;
+      scans.push(`${node["Relation Name"]} ${node["Node Type"]} ×${loops}: ${own}`);
+    }
+    return own + (node.Plans ?? []).reduce((sum, child) => sum + walk(child), 0);
+  };
+  const total = walk(plan);
+  return { total, scans };
+}
+
+/** A plan's reads held to the linear bound, naming each scan when they are over it (CI #780, #789: which table the planner looped over). */
+async function expectLinear(query: ReturnType<typeof sql>): Promise<void> {
+  const read = await rowsRead(query);
+  const bound = await linearBound();
+  expect(read.total, `read ${read.total} rows, bound ${bound}: ${read.scans.join("; ")}`).toBeLessThan(bound);
 }
 
 /** Twice every row of the catalogue's tables, every store's: what a plan that is linear in the catalogue stays under. */
@@ -158,18 +176,16 @@ describe("the stock reads and checkout stay fast on a large catalogue", () => {
     expect(ms).toBeLessThan(BOUND_MS);
     // The same read by its plan: linear in the catalogue, never the catalogue once per variant.
     const list = sql.join(ids.map((id) => sql`${id}::uuid`), sql`, `);
-    const read = await rowsRead(sql`select * from commerce.variant_availability va where va.store_id = ${store.storeId}::uuid and va.variant_id in (${list})`);
-    expect(read).toBeLessThan(await linearBound());
+    await expectLinear(sql`select * from commerce.variant_availability va where va.store_id = ${store.storeId}::uuid and va.variant_id in (${list})`);
   });
 
   it("the level rows a 20-line order locks, by their plan", async () => {
     const variants = await db().execute<Row>(sql`select id from commerce.product_variants where store_id = ${store.storeId}::uuid and sku = any(${`{${ordered.join(",")}}`}::text[])`);
     const list = sql.join(variants.map((v) => sql`${String(v.id)}::uuid`), sql`, `);
-    const read = await rowsRead(sql`
+    await expectLinear(sql`
       select l.variant_id, l.location_id, l.on_hand from commerce.inventory_levels l
       where l.store_id = ${store.storeId}::uuid and l.variant_id in (${list}) order by l.variant_id, l.location_id
     `);
-    expect(read).toBeLessThan(await linearBound());
   });
 
   it("a 20-line cart, as the cart page reads it", { timeout: 60_000 }, async () => {
