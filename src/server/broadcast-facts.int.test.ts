@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { closeDb, db } from "@/db/client";
 import type { BroadcastContent } from "@/lib/broadcasts";
 import { formatMoney } from "@/lib/money";
+import { unframe } from "@/lib/prompt-safety";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {}, refresh: () => {} }));
@@ -148,7 +149,7 @@ describe("the writer's tools", () => {
           ],
         };
       }
-      const handed = messages.filter((m) => m.role === "tool").map((m) => m.content ?? "");
+      const handed = messages.filter((m) => m.role === "tool").map((m) => unframe(m.content ?? ""));
       expect(handed.join(" ")).toContain(productId);
       expect(handed.join(" ")).toContain(campaignId);
       return {

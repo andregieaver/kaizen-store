@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
+import { unframe } from "@/lib/prompt-safety";
 
 type Row = Record<string, unknown>;
 
@@ -179,7 +180,7 @@ describe("the agent", () => {
     // Two offers at most on a card, never a gift, never the group's.
     const card = reply.products.find((p) => p.handle === "demo-bordlampe")!;
     expect(card.offers).toEqual(["20 % rabatt", "3 for 2"]);
-    const results = (sent[1].messages as Row[]).filter((message) => message.role === "tool").map((message) => String(message.content));
+    const results = (sent[1].messages as Row[]).filter((message) => message.role === "tool").map((message) => unframe(String(message.content)));
     expect(results[0]).toContain("Høstsalg: 20 % rabatt");
     // The page of one product tells the gift too, and that it needs a sign-in; and no one hears of the group's.
     expect(results[1]).toContain("Lamper tre for to: 3 for 2");
@@ -196,7 +197,7 @@ describe("the agent", () => {
       const sent = fakeModel([{ content: null, tool_calls: [call("1", "get_product", { handle })] }, { content: "Se her." }]);
       await chat.runChat({ kind: "store", store, market }, agent, { market: market.slug, path: `/s/${slug}/no`, messages: [{ role: "user", content: "Har dere den?" }], signals: { views: [], searches: [] } }, connection);
       const result = (sent[1].messages as Row[]).find((message) => message.role === "tool");
-      return (JSON.parse(String(result!.content)) as { variants: Row[] }).variants;
+      return (JSON.parse(unframe(String(result!.content))) as { variants: Row[] }).variants;
     };
     const setStock = (sku: string, onHand: number) =>
       db().execute(sql`update commerce.inventory_levels set on_hand = ${onHand} where variant_id = (select id from commerce.product_variants where store_id = ${storeId}::uuid and sku = ${sku})`);
@@ -223,7 +224,7 @@ describe("the agent", () => {
       const sent = fakeModel([{ content: null, tool_calls: [call("1", "store_info", {})] }, { content: "Se siden for å angre kjøpet." }]);
       await chat.runChat({ kind: "store", store: forStore, market }, agent, { market: market.slug, path: `/s/${slug}/no`, messages: [{ role: "user", content: "Kan jeg returnere?" }], signals: { views: [], searches: [] } }, connection);
       const result = (sent[1].messages as Row[]).find((message) => message.role === "tool");
-      return JSON.parse(String(result!.content)) as { returns: Record<string, unknown> };
+      return JSON.parse(unframe(String(result!.content))) as { returns: Record<string, unknown> };
     };
     expect((await info(store)).returns).toEqual({
       legalRightToWithdrawDays: 14,
@@ -254,7 +255,7 @@ describe("the agent", () => {
       const sent = fakeModel([{ content: null, tool_calls: [call("1", "store_info", {})] }, { content: "Du kan hente i butikken." }]);
       await chat.runChat({ kind: "store", store, market }, agent, { market: market.slug, path: `/s/${slug}/no`, messages: [{ role: "user", content: "Kan jeg hente selv?" }], signals: { views: [], searches: [] } }, connection);
       const result = (sent[1].messages as Row[]).find((message) => message.role === "tool");
-      return JSON.parse(String(result!.content)) as Record<string, unknown>;
+      return JSON.parse(unframe(String(result!.content))) as Record<string, unknown>;
     };
     expect(await info()).not.toHaveProperty("collectInStore");
     const [place] = await db().execute<Row>(sql`
@@ -298,7 +299,7 @@ describe("the agent", () => {
     try {
       asked = ask([{ content: null, tool_calls: [call("1", "recommend_products", {})] }, { content: "Disse passer godt til lampen." }]);
       const reply = await asked.reply;
-      const result = JSON.parse(String((asked.sent[1].messages as Row[]).filter((m) => m.role === "tool")[0].content)) as { products: { handle: string; relation: string }[]; note: string };
+      const result = JSON.parse(unframe(String((asked.sent[1].messages as Row[]).filter((m) => m.role === "tool")[0].content))) as { products: { handle: string; relation: string }[]; note: string };
       expect(result.products.length).toBeGreaterThan(0);
       expect(result.products.map((p) => p.handle)).not.toContain("demo-bordlampe");
       expect(result.note).toContain("Do not add other products");
@@ -322,7 +323,7 @@ describe("the agent", () => {
       connection,
     );
     expect(reply.actions).toEqual([]);
-    const results = (sent[1].messages as Row[]).filter((message) => message.role === "tool").map((message) => String(message.content));
+    const results = (sent[1].messages as Row[]).filter((message) => message.role === "tool").map((message) => unframe(String(message.content)));
     expect(results[0]).toContain("No product");
     expect(results[1]).toContain("cannot open");
   });

@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import { afterAll, describe, expect, it, vi } from "vitest";
+import { unframe } from "@/lib/prompt-safety";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {}, refresh: () => {} }));
@@ -13,7 +14,7 @@ vi.mock("./ai", async (importOriginal) => {
     ...real,
     chatWithTools: async (_connection: unknown, messages: { role: string; content: string | null }[], tools: { name: string }[]) => {
       const said = messages.find((m) => m.role === "user")?.content ?? "";
-      const results = messages.filter((m) => m.role === "tool").map((m) => String(m.content));
+      const results = messages.filter((m) => m.role === "tool").map((m) => unframe(String(m.content)));
       model.seen.push({ tools: tools.map((t) => t.name), toolResults: results });
       const call = (name: string, args = "{}") => ({ content: null, toolCalls: [{ id: `c${model.seen.length}`, type: "function", function: { name, arguments: args } }] });
       // The asked-for refund: look the order up, ask for the refund (kept for approval), then answer.

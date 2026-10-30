@@ -8,6 +8,7 @@ import { toolDefinition } from "@/lib/owner-tools";
 import type { AiConnection } from "./ai";
 import type { Account, Membership } from "./auth";
 import type { AssistantEvent, Principal } from "./owner-assistant";
+import { unframe } from "@/lib/prompt-safety";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {} }));
@@ -132,7 +133,7 @@ describe("the AI manager (D103)", () => {
     );
     const { events } = await turn(member, "Open the order");
     expect(events.some((e) => e.type === "navigate")).toBe(false);
-    const results = requests[1].messages.filter((m) => m.role === "tool").map((m) => String(m.content));
+    const results = requests[1].messages.filter((m) => m.role === "tool").map((m) => unframe(String(m.content)));
     expect(results[0]).toContain("needs orderId");
     expect(results[1]).toContain('There is no page \\"no-such-page\\"');
   });

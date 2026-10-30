@@ -8,6 +8,7 @@ import { approvalSummary, OWNER_TOOLS, toolDefinition } from "@/lib/owner-tools"
 import type { AiConnection } from "./ai";
 import type { Membership } from "./auth";
 import type { Approval, AssistantEvent } from "./owner-assistant";
+import { unframe } from "@/lib/prompt-safety";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {} }));
@@ -270,7 +271,7 @@ describe("the owner assistant (D94)", () => {
       message: { role: "assistant", content: "Kaffe er åpen og har ingen salg denne uken.", tools: [{ name: "store_overview", ok: true }, { name: "sales_summary", ok: true }] },
     });
     // The tools answered from the store: its name, and no sales.
-    const toolAnswers = requests[1].messages.filter((m) => m.role === "tool").map((m) => m.content ?? "");
+    const toolAnswers = requests[1].messages.filter((m) => m.role === "tool").map((m) => unframe(m.content ?? ""));
     expect(toolAnswers[0]).toContain('"name":"Kaffe"');
     expect(toolAnswers[1]).toContain("No paid orders in this period.");
     expect(requests[0].messages[0].content).toContain("Never add up");

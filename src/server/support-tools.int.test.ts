@@ -3,6 +3,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest
 
 import { closeDb, db } from "@/db/client";
 import { formatMoney } from "@/lib/money";
+import { unframe } from "@/lib/prompt-safety";
 
 type Row = Record<string, unknown>;
 
@@ -191,7 +192,7 @@ describe("the AI's turn with the tools", () => {
       "fetch",
       vi.fn(async (_url: string, init: RequestInit) => {
         const body = JSON.parse(String(init.body)) as { messages: { role: string; content: unknown }[] };
-        for (const message of body.messages) if (message.role === "tool") results.push(String(message.content));
+        for (const message of body.messages) if (message.role === "tool") results.push(unframe(String(message.content)));
         return Response.json({ choices: [{ message: steps.shift() ?? { content: "OK." } }], usage: { prompt_tokens: 1, completion_tokens: 1 } });
       }),
     );
