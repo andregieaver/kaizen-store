@@ -242,7 +242,7 @@ export async function saveDiscount(
     if (Number(row.n) !== tierIds.length) problems.push("A chosen customer group no longer exists.");
   }
   // Named customers are typed by their email and kept by id; an email the store does not know is said, never guessed.
-  const emails = [...new Set(d.customerEmails.split(/[\s,;]+/).map((e) => e.trim().toLowerCase()).filter(Boolean))];
+  const emails = [...new Set(d.customerEmails.split(/[\s,;]+/).map(normaliseEmail).filter(Boolean))];
   let customerIds: string[] = [];
   if (emails.length > 100) problems.push("Name at most 100 customers.");
   else if (emails.length > 0) {

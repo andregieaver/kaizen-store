@@ -4,6 +4,7 @@ import type { Messages } from "./i18n";
 type FormTexts = Pick<Messages, "form">;
 import type { EmailFormBlock, FormField, FormFieldKind, NewsletterBlock } from "./page-content";
 import type { FormRequest } from "./forms-schema";
+import { normaliseEmail } from "./email-address";
 
 /**
  * Forms on pages (D93): an email form and a newsletter sign-up. What a
@@ -142,7 +143,7 @@ export function checkSignup(
 ): CheckedSignup {
   const errors: FormErrors = {};
   const raw = values[NEWSLETTER_KEYS.email];
-  const email = typeof raw === "string" ? line(raw).toLowerCase() : "";
+  const email = typeof raw === "string" ? normaliseEmail(line(raw)) : "";
   if (email === "") errors[NEWSLETTER_KEYS.email] = visitor.form.required;
   else if (!isEmail(email)) errors[NEWSLETTER_KEYS.email] = visitor.form.invalidEmail;
   const rawName = values[NEWSLETTER_KEYS.name];

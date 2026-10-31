@@ -34,6 +34,7 @@ import { log } from "./log";
 import { refreshTagNow } from "./refresh";
 import { resolveShop } from "./shop";
 import { col, typedRow, typedRows, type Executor } from "./typed-rows";
+import { normaliseEmail } from "@/lib/email-address";
 
 /**
  * Visitors' comments on a store's articles (wave 7 unit G, D341, decision 3): the only writer of `commerce.blog_comments`. A comment is
@@ -254,7 +255,7 @@ export type CommentExportRow = { article: string; name: string; email: string | 
 
 /** A person's comments in a store, by their proven addresses (`resolveSubject()`), for the export's `comments` section. */
 export async function commentsOf(storeId: string, emails: readonly string[]): Promise<CommentExportRow[]> {
-  const lower = [...new Set(emails.map((e) => e.trim().toLowerCase()).filter(Boolean))];
+  const lower = [...new Set(emails.map(normaliseEmail).filter(Boolean))];
   if (lower.length === 0) return [];
   const rows = await typedRows(
     z.object({ article: col.textOrNull, slug: col.text, name: col.text, email: col.textOrNull, body: col.text, status: z.enum(["pending", "approved", "rejected", "spam"]), created_at: col.timestamp }),
@@ -270,7 +271,7 @@ export async function commentsOf(storeId: string, emails: readonly string[]): Pr
 
 /** How many comments a person's addresses wrote in a store (the erasure's preview). */
 export async function countCommentsOf(executor: Executor, storeId: string, emails: readonly string[]): Promise<number> {
-  const lower = [...new Set(emails.map((e) => e.trim().toLowerCase()).filter(Boolean))];
+  const lower = [...new Set(emails.map(normaliseEmail).filter(Boolean))];
   if (lower.length === 0) return 0;
   const row = await typedRow(z.object({ n: col.int }), sql`
     select count(*)::int as n from commerce.blog_comments
@@ -281,7 +282,7 @@ export async function countCommentsOf(executor: Executor, storeId: string, email
 
 /** Deletes a person's comments in a store (erasure): their words and name go; returns how many. */
 export async function eraseComments(tx: Pick<Db, "execute">, storeId: string, emails: readonly string[]): Promise<number> {
-  const lower = [...new Set(emails.map((e) => e.trim().toLowerCase()).filter(Boolean))];
+  const lower = [...new Set(emails.map(normaliseEmail).filter(Boolean))];
   if (lower.length === 0) return 0;
   const rows = await tx.execute(sql`
     delete from commerce.blog_comments

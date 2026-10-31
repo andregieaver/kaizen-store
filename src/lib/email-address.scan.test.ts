@@ -15,10 +15,10 @@ function sources(dir: string): string[] {
 }
 
 /**
- * An address is trimmed and lower-cased in one place (PSI DATA-04): `normaliseEmail()`. Lower-casing a value named like an email by hand
- * elsewhere fails here; the password check, which reads the address's local part to refuse a password made of it, is the one exception.
+ * An address is trimmed and lower-cased in one place (PSI DATA-04): `normaliseEmail()`. Lower-casing a value named like an email (or `e`,
+ * as an address is called in a short helper), with or without `?? ""`, by hand elsewhere fails here; the password check, which reads the address's local part to refuse a password made of it, is the one exception.
  */
-const HAND = /[eE]mail\w*\)?\??\.(?:trim\(\)\.)?toLowerCase\(\)/;
+const HAND = /(?:[eE]mail\w*(?: \?\? "")?\)?\??|\be(?: \?\? "")?\)?)\.(?:trim\(\)\.)?toLowerCase\(\)/;
 const EXCEPT = new Set(["src/lib/email-address.ts", "src/lib/password.ts"]);
 
 describe("one way to normalise an email address (PSI DATA-04)", () => {

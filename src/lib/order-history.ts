@@ -10,6 +10,7 @@
  * device. A customer is named only by the email on the order, which the import ties only to a customer the store already has.
  */
 import { parsePrice } from "./product-input";
+import { normaliseEmail } from "./email-address";
 
 export const HISTORY_ORDERS_MAX = 20_000;
 export const HISTORY_LINES_MAX = 200;
@@ -123,7 +124,7 @@ export function readShopifyOrders(raw: readonly (readonly string[])[]): { orders
       const currency = (cells.currency ?? "").trim().toUpperCase();
       const placed = new Date((cells["created at"] ?? "").trim());
       current = { ...emptyOrder(name, r + 1), broken: false };
-      current.email = (cells.email ?? "").trim().toLowerCase();
+      current.email = normaliseEmail(cells.email ?? "");
       if (!current.email) fail("no_email");
       if (!/^[A-Z]{3}$/.test(currency)) {
         fail("currency");

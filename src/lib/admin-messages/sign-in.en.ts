@@ -56,9 +56,9 @@ export const signInEn = {
     invalidEmail: "Enter a valid email address.",
     noPassword: "Enter your password.",
     tooManyAttempts: "Too many attempts. Wait a few minutes and try again, or use a sign-in link.",
-    couldNotSignIn: "Could not sign in just now. Try again shortly.",
+    couldNotSignIn: "Could not sign in just now. Try again in a moment.",
     tooManyEmails: "Too many emails. Wait a minute and try again.",
-    emailFailed: "The email could not be sent. Try again shortly.",
+    emailFailed: "The email could not be sent. Try again in a moment.",
   },
   twoStep: {
     uncheckedTitle: "We could not check your sign-in",

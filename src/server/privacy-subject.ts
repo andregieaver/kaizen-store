@@ -6,6 +6,7 @@ import { db } from "@/db/client";
 
 import { findCustomer } from "./customer-admin";
 import { textList, uuidList } from "./sql-arrays";
+import { normaliseEmail } from "@/lib/email-address";
 
 type Row = Record<string, unknown>;
 
@@ -41,7 +42,7 @@ export type PrivacySubject = {
 export type SubjectRef = { customerId?: string | null; email?: string | null };
 
 const clean = (email: string | null | undefined): string | null => {
-  const e = (email ?? "").trim().toLowerCase();
+  const e = normaliseEmail(email ?? "");
   return e === "" || e === "[removed]" ? null : e;
 };
 

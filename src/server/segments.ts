@@ -59,7 +59,7 @@ export async function segmentPeople(
   options: { emails?: readonly string[]; rfm?: boolean } = {},
 ): Promise<People> {
   const id = store.id;
-  const only = options.emails ? JSON.stringify([...new Set(options.emails.map((e) => e.trim().toLowerCase()))]) : null;
+  const only = options.emails ? JSON.stringify([...new Set(options.emails.map(normaliseEmail))]) : null;
   const rows = await db().execute<Row>(sql`
     with ord as (
       select lower(coalesce(c.email, o.email)) as email, o.placed_at, trim(o.currency) as currency, o.market_code,

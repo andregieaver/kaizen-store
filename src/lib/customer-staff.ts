@@ -5,6 +5,8 @@
  * schema reads `CUSTOMER_NOTE_MAX` from here.
  */
 
+import { normaliseEmail } from "./email-address";
+
 /** The longest note staff can write on a customer, in characters (Shopify keeps 5,000 on a merge). */
 export const CUSTOMER_NOTE_MAX = 5000;
 /** The longest name kept. */
@@ -18,7 +20,7 @@ const EMAIL = /^(?:[A-Za-z0-9_'+\-]+\.)*[A-Za-z0-9_'+\-]*[A-Za-z0-9_+-]@(?:[A-Za
 
 /** An email address as a store keeps it: trimmed, lower case; null when it is not one. */
 export function cleanEmail(raw: unknown): string | null {
-  const email = typeof raw === "string" ? raw.trim().toLowerCase() : "";
+  const email = typeof raw === "string" ? normaliseEmail(raw) : "";
   return email.length >= 3 && email.length <= 254 && EMAIL.test(email) ? email : null;
 }
 

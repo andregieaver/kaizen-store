@@ -11,6 +11,7 @@ import type { ReviewInput } from "@/lib/reviews";
 
 import { PAID } from "./analytics-sql";
 import { removePictureFiles, reviewPictureStorage, type ReviewPictureStorage, type StoredPicture } from "./review-picture-store";
+import { normaliseEmail } from "@/lib/email-address";
 
 type Row = Record<string, unknown>;
 
@@ -38,7 +39,7 @@ end`;
 
 /** The buyer keys a person's reviews carry (D301 9.1): their account's, and for G3's guests each of their proven addresses' hash. */
 export function buyerKeysOf(customerId: string | null, emails: readonly string[]): string[] {
-  const keys = emails.map((e) => `e:${createHash("sha256").update(e.trim().toLowerCase()).digest("hex")}`);
+  const keys = emails.map((e) => `e:${createHash("sha256").update(normaliseEmail(e)).digest("hex")}`);
   return customerId ? [`c:${customerId}`, ...keys] : keys;
 }
 

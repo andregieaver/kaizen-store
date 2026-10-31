@@ -34,6 +34,7 @@ import { audit } from "./auth";
 import { sendEmail } from "./email";
 import { isUniqueViolation, planErasure } from "./privacy-erasure";
 import { privacyStore, resolveSubject, type PrivacyStore } from "./privacy-subject";
+import { normaliseEmail } from "@/lib/email-address";
 
 type Row = Record<string, unknown>;
 
@@ -128,7 +129,7 @@ export async function getRequest(storeId: string, id: string, now: Date = new Da
 
 /** The open request for a person, by account and/or email (the customer page shows it, and a download or erasure answers it). */
 export async function requestFor(storeId: string, ref: { customerId?: string | null; email?: string | null }, now: Date = new Date()): Promise<RequestView | null> {
-  const email = (ref.email ?? "").trim().toLowerCase() || null;
+  const email = normaliseEmail(ref.email ?? "") || null;
   const [row] = await db().execute<Row>(sql`
     select ${COLUMNS} from commerce.privacy_requests
     where store_id = ${storeId}::uuid and status = 'open'

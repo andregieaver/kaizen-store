@@ -309,7 +309,7 @@ export async function findPlatformDiscount(
     await syncOne(mode, discount);
     promotionCode = await synced(mode, "promotion_code", discount.id);
   }
-  if (!promotionCode) return { ok: false, problem: "That discount code cannot be used right now. Try again shortly." };
+  if (!promotionCode) return { ok: false, problem: "That discount code cannot be used right now. Try again in a moment." };
   return { ok: true, discount, promotionCode };
 }
 

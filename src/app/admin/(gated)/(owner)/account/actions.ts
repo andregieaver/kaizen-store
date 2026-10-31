@@ -41,7 +41,7 @@ export async function setPasswordAction(_state: FormState, formData: FormData): 
             ? "For your security, sign in again with an email link, then set your password."
             : error.status === 429
               ? "Too many attempts. Wait a few minutes and try again."
-              : "The password could not be saved. Try again shortly.";
+              : "The password could not be saved. Try again in a moment.";
     return { status: "error", messages: [message] };
   }
   await audit(account.id, null, "account.password_set");

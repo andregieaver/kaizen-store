@@ -607,7 +607,7 @@ async function prepare(
     await syncPlans(mode);
     stripePrice = await syncedId(mode, "price", priceId);
   }
-  if (!stripePrice) return { ok: false, problems: ["The plan is not in Stripe yet. Try again shortly."] };
+  if (!stripePrice) return { ok: false, problems: ["The plan is not in Stripe yet. Try again in a moment."] };
 
   const created = await createStripeAccount({ account: actor, store }, mode, storeOrigin(store.slug) ?? `${origin}${storeBase(store.slug)}`);
   if (!created.ok) return created;
