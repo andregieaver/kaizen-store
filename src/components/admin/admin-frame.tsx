@@ -12,6 +12,7 @@ import { AdminMain } from "./admin-main";
 import { ByPath } from "./by-path";
 import { AdminRail } from "./admin-rail";
 import { ShortcutSheet } from "./shortcut-sheet";
+import { AdminTooltips } from "./tooltips";
 import { AreaLinks, AreaMenu, AreaSidebar, StoreSidebar, StoreTabs, type NavArea, type NavGroup, type NavItem } from "./store-admin-nav";
 
 /**
@@ -89,7 +90,12 @@ export function AdminFrame({
 }) {
   const w = adminText(lang, "shell").frame;
   // `?` lists the admin's keyboard shortcuts on every page (PSI UX-07).
-  const sheet = <ShortcutSheet words={adminText(lang, "shell").shortcuts} />;
+  const sheet = (
+    <>
+      <ShortcutSheet words={adminText(lang, "shell").shortcuts} />
+      <AdminTooltips />
+    </>
+  );
   const tabs = navItemsIn(lang, tabsGiven);
   const groups = navAreasIn(lang, [{ groups: groupsGiven }])[0].groups;
   const areas = areasGiven && navAreasIn(lang, areasGiven);

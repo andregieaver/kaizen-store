@@ -314,3 +314,9 @@ The re-score ([psi-2026-10-31.md](psi-2026-10-31.md)) put the overall at 78.3 (8
       and the law, and who decides it (`src/lib/personal-purposes.ts`); every entry of `PERSONAL_DATA` names one, and
       `processingRecord()` draws the Art. 30 record from the register (`personal-purposes.test.ts`). The bases are proposals for the
       lawyer (`docs/wave-1g-gdpr.md` 3.6 and 8.11). Left: showing the record on Platform → Privacy, and feeding the store's privacy starter.
+- [x] **UX-10** Hints shown to the keyboard, not only on hover. Done 31 October 2026: `AdminTooltips` (`src/components/admin/tooltips.tsx`,
+      placement pure in `src/lib/tooltip.ts`), mounted once in `AdminFrame`, shows every admin `title` as a styled tip on hover (after
+      350 ms) and at once on keyboard focus, hides it on Escape, a press, scroll or leaving, and keeps it while the pointer is over it
+      (WCAG 2.2 1.4.13). The title is moved out while the tip shows so the browser's own does not show too; an element named only by its
+      title keeps that name as an `aria-label` meanwhile, one with a name of its own is described by the tip. Iframes keep their titles.
+      `tooltips.spec.ts` (signed in) and `tooltip.test.ts`. One mechanism instead of rewriting the ~140 hints one by one.
