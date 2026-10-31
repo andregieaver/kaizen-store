@@ -129,8 +129,9 @@ export async function submitContentReport(input: ReportInput, lang: PlatformLang
   if (!row) throw new Error("content report not kept");
   log("info", "content_report.received", { reportId: row.id, category: input.category, store: storeId !== null });
 
-  // Art. 16(4): a receipt, without undue delay, when the sender gave an address.
-  if (email) {
+  // Art. 16(4): a receipt, without undue delay, when the sender gave an address; at most RECEIPTS_A_DAY to one address, so the form
+  // cannot be used to send Kaizena Flow's mail to someone again and again (the notice itself is kept either way).
+  if (email && (await receiptsToday(email)) <= RECEIPTS_A_DAY) {
     const w = platformText(lang).report.emails;
     const message = renderEmail({
       subject: w.receivedSubject,
@@ -166,6 +167,18 @@ export async function submitContentReport(input: ReportInput, lang: PlatformLang
     await sendEmail({ storeId: null, kind: "platform.content_report_new", to: admin.email, email: alert, fromName: "Kaizena Flow", idempotencyKey: `content-report-new:${row.id}:${admin.id}` });
   }
   return row.id;
+}
+
+/** How many receipts one address may get in a day. */
+export const RECEIPTS_A_DAY = 3;
+
+/** The notices given with this address in the last day, the one just kept included. */
+async function receiptsToday(email: string): Promise<number> {
+  const row = await typedRow(
+    z.object({ n: col.int }),
+    sql`select count(*)::int as n from commerce.content_reports where reporter_email = ${email} and created_at > now() - interval '1 day'`,
+  );
+  return row?.n ?? 0;
 }
 
 /** Every notice, those waiting first (the ones the AI read as urgent first, then oldest first), then the decided ones (newest first). */

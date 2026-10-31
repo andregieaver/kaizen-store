@@ -323,6 +323,7 @@ export const platformEn = {
     send: "Send the notice",
     received: "Thank you. We have your notice and will decide it as soon as we can. If you gave your email, a receipt is on its way.",
     failed: "The notice could not be sent. Try again in a moment.",
+    busy: "Many notices were sent from here in the last hour. Try again in an hour.",
     problems: {
       url: "Give the full web address, starting with https://.",
       category: "Choose what kind of problem it is.",

@@ -1,5 +1,6 @@
 "use server";
 
+import { headers } from "next/headers";
 import { after } from "next/server";
 
 import type { FormState } from "@/components/admin/action-form";
@@ -10,6 +11,7 @@ import { platformText } from "@/lib/platform-text";
 import { log } from "@/server/log";
 import { triageContentReport } from "@/server/content-moderation";
 import { submitContentReport } from "@/server/content-reports";
+import { budgetVisitor, takeBudget } from "@/server/request-budget";
 
 /** The language the form was sent in: its `locale` field, English for anything else. */
 const langOfForm = (formData: FormData): PlatformLang => langOfLocale(String(formData.get("locale") ?? "")) ?? "en";
@@ -29,6 +31,8 @@ export async function sendContentReport(_state: FormState, formData: FormData): 
     goodFaith: formData.get("goodFaith") === "on",
   });
   if (!parsed.success) return formProblems(parsed.error.issues);
+  // Each notice sends email and an AI reading: a few an hour from one visitor, and a ceiling for the whole site (PSI SEC-10).
+  if (!(await takeBudget(null, "report", budgetVisitor(await headers())))) return { status: "error", messages: [w.busy] };
   try {
     const id = await submitContentReport(parsed.data, lang);
     // The AI's reading (D411 part 2), after the answer so the form stays quick; the dispatcher reads any it missed.

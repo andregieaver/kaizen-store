@@ -11,7 +11,8 @@ const reports = await import("./content-reports");
 /**
  * Notices of illegal content (DSA art. 16, D411) against a real database: kept with the store the address names, a receipt to the
  * sender and an alert to the platform admins, decided once with a reason, the sender told and the store's owners given the statement
- * of reasons only when something was restricted, and the sender forgotten 12 months after the decision.
+ * of reasons only when something was restricted, the sender forgotten 12 months after the decision, and no more than three receipts a
+ * day to one address.
  */
 
 type Row = Record<string, unknown>;
@@ -61,6 +62,15 @@ describe("notices of illegal content (DSA art. 16, D411)", () => {
     expect(receipts[0]).toContain(id);
     expect(await emailsTo(admin.email, "platform.content_report_new")).toHaveLength(1);
     expect((await reports.listContentReports()).find((r) => r.id === id)).toMatchObject({ status: "received", store: { slug: store.slug } });
+  });
+
+  it("sends one address at most three receipts a day, keeping every notice (PSI SEC-10)", async () => {
+    const to = `flood-${run}@example.com`;
+    const ids: string[] = [];
+    for (let i = 0; i < reports.RECEIPTS_A_DAY + 2; i++) ids.push(await reports.submitContentReport(notice({ email: to }), "en"));
+    const [kept] = await db().execute<Row>(sql`select count(*)::int as n from commerce.content_reports where reporter_email = ${to}`);
+    expect(kept.n).toBe(reports.RECEIPTS_A_DAY + 2);
+    expect(await emailsTo(to, "platform.content_report_received")).toHaveLength(reports.RECEIPTS_A_DAY);
   });
 
   it("takes a notice about children without a sender, and finds no store for an address outside Kaizena Flow", async () => {

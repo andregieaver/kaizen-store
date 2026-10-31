@@ -319,6 +319,7 @@ export const platformNb: PlatformMessages = {
     send: "Send meldingen",
     received: "Takk. Vi har fått meldingen din og avgjør den så snart vi kan. Har du oppgitt e-post, får du en kvittering.",
     failed: "Meldingen kunne ikke sendes. Prøv igjen om litt.",
+    busy: "Mange meldinger er sendt herfra den siste timen. Prøv igjen om en time.",
     problems: {
       url: "Skriv hele nettadressen, med https:// først.",
       category: "Velg hva slags problem det er.",

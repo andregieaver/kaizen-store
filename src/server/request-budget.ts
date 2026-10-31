@@ -37,12 +37,17 @@ export const BUDGETS = {
   ab: { window: "minute", visitor: 60, store: 6000 },
   // The site-wide Report-Only policy's reports (D389 SEC-05), counted under no store: the whole platform shares the ceiling.
   csp: { window: "minute", visitor: 20, store: 2000 },
+  // Notices of illegal content on Kaizena Flow's form (DSA art. 16, D411): each sends email and an AI reading, so a few an hour.
+  report: { window: "hour", visitor: 5, store: 30 },
 } as const satisfies Record<string, { window: BudgetWindow; visitor: number; store: number }>;
 
 export type BudgetEndpoint = keyof typeof BUDGETS;
 
-/** Endpoints a failed count refuses rather than allows (PSI SEC-10): guessing a password must not get easier while the database struggles. */
-export const FAIL_CLOSED: ReadonlySet<BudgetEndpoint> = new Set<BudgetEndpoint>(["unlock"]);
+/**
+ * Endpoints a failed count refuses rather than allows (PSI SEC-10): guessing a password must not get easier while the database struggles,
+ * nor the notice form become a way to send mail from Kaizena Flow's address.
+ */
+export const FAIL_CLOSED: ReadonlySet<BudgetEndpoint> = new Set<BudgetEndpoint>(["unlock", "report"]);
 
 /** The bucket names of an endpoint, for the store and a visitor. */
 export function budgetBuckets(endpoint: BudgetEndpoint, visitor: string): { store: string; visitor: string } {
