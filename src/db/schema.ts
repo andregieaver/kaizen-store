@@ -1651,6 +1651,8 @@ export const platformSettings = commerce.table(
     domainsPublic: boolean("domains_public").notNull().default(false),
     /** Self-serve sign-up (D359): `/sign-up` makes the account and a store once the address is confirmed; off, a request waits for approval. */
     selfServeSignup: boolean("self_serve_signup").notNull().default(false),
+    /** Kaizena Flow's own AI check of new and changed listings (D411 part 2): on unless a platform admin turns it off, since it costs model calls. */
+    contentScreening: boolean("content_screening").notNull().default(true),
     /** Search and sharing for Kaizen's own pages (`StoreSeo` in lib/seo, locale `en`). */
     seo: jsonb("seo").notNull().default({}),
     /**
@@ -16152,11 +16154,21 @@ export const contentReports = commerce.table(
     /** An AI read the notice or drafted the decision (part 2): the emails then say automated means were used (art. 16(6)). */
     aiUsed: boolean("ai_used").notNull().default(false),
     aiNote: text("ai_note"),
+    /**
+     * Where it came from (D411 part 2): `notice`, someone's report through `/report`; `screening`, Kaizena Flow's own voluntary check of a
+     * listing (art. 7), which has no sender and sends no receipt.
+     */
+    source: text("source").notNull().default("notice"),
+    /** The listing a screening flagged; null for a notice. */
+    productId: uuid("product_id").references(() => products.id, { onDelete: "set null" }),
+    /** The AI's reading (`AiReading` in lib/content-reports): category, urgency, whether manifestly illegal, summary, draft reason. */
+    aiReading: jsonb("ai_reading"),
     createdAt: createdAt(),
   },
   (t) => [
     index("content_reports_status_idx").on(t.status, t.createdAt),
     index("content_reports_store_idx").on(t.storeId),
+    index("content_reports_product_idx").on(t.productId),
     check(
       "content_reports_category",
       sql`${t.category} in ('unsafe_product', 'counterfeit_ip', 'illegal_goods', 'consumer_fraud', 'hate_violence', 'privacy', 'minors', 'other')`,
@@ -16166,7 +16178,31 @@ export const contentReports = commerce.table(
     check("content_reports_url", sql`${t.url} ~ '^https?://' and char_length(${t.url}) <= 2000`),
     check("content_reports_good_faith", sql`${t.goodFaith}`),
     // A sender names themselves, except for offences against children (art. 16(2)(c)); after a decision the retention rule may blank them.
-    check("content_reports_sender", sql`${t.category} = 'minors' or ${t.status} <> 'received' or (${t.reporterName} is not null and ${t.reporterEmail} is not null)`),
+    check(
+      "content_reports_sender",
+      sql`${t.source} = 'screening' or ${t.category} = 'minors' or ${t.status} <> 'received' or (${t.reporterName} is not null and ${t.reporterEmail} is not null)`,
+    ),
+    check("content_reports_source", sql`${t.source} in ('notice', 'screening')`),
     check("content_reports_decided", sql`(${t.status} = 'received') = (${t.decidedAt} is null)`),
   ],
+);
+
+/**
+ * The listings Kaizena Flow's own check has read (D411 part 2, DSA art. 7: voluntary, never a general monitoring duty, art. 8): one row
+ * per product with the hash of the words it read, so a product is read again only when its words change, never on a price or stock change.
+ */
+export const contentScreened = commerce.table(
+  "content_screened",
+  {
+    productId: uuid("product_id")
+      .primaryKey()
+      .references(() => products.id, { onDelete: "cascade" }),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id, { onDelete: "cascade" }),
+    contentHash: text("content_hash").notNull(),
+    flagged: boolean("flagged").notNull().default(false),
+    screenedAt: timestamp("screened_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("content_screened_store_idx").on(t.storeId)],
 );

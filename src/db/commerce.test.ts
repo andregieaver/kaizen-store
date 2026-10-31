@@ -7201,4 +7201,19 @@ describe("notices of illegal content (DSA art. 16, D411)", () => {
     await db.query("update commerce.content_reports set reporter_name = null, reporter_email = null where id = $1", [id]);
     await expect(db.query("update commerce.content_reports set status = 'done' where id = $1", [id])).rejects.toThrow(/content_reports_status/);
   });
+
+  it("takes Kaizena Flow's own screening flag without a sender, and nothing but a notice or a screening (part 2)", async () => {
+    const screening = (source: string) =>
+      db.query(
+        "insert into commerce.content_reports (url, category, explanation, good_faith, source) values ('https://kaizenaflow.com/s/demo/no/p/x', 'illegal_goods', 'Looks like a weapon.', true, $1)",
+        [source],
+      );
+    await expect(screening("screening")).resolves.toBeDefined();
+    await expect(screening("notice")).rejects.toThrow(/content_reports_sender/);
+    await expect(
+      db.query(
+        "insert into commerce.content_reports (url, category, explanation, reporter_name, reporter_email, good_faith, source) values ('https://kaizenaflow.com/s/demo/no/p/x', 'other', 'x', 'Kari', 'kari@example.com', true, 'robot')",
+      ),
+    ).rejects.toThrow(/content_reports_source/);
+  });
 });

@@ -41,6 +41,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   email_templates: { group: "emails", note: "The owner's own wording of the customer emails (D238), copied only when Email texts is ticked in the copy wizard (commerce.copy_email_templates()); clone_store() copies none." },
   staff_alert_settings: settings("The staff summary's choice and the contact address's alerts (D238); copied without its recipients, so the copy's own owners get the default alerts."),
   content_reports: never("Notices of illegal content about the original (DSA, D411) are Kaizena Flow's record of the original's content: a copy has none."),
+  content_screened: never("Kaizena Flow's own check of the original's listings (D411 part 2): a copy's listings are read afresh."),
   market_price_rules: never("Prices worked out from another country (D335): a copy keeps every price as it was, set by hand, and its owner sets rules again."),
   analytics_alert_sends: never("Which analytics alerts were emailed on which day (D348) is the original's history: a copy's own alerts are its own."),
   staff_alert_recipients: never("The staff chosen for alerts are the original's people (D238): a copy starts with the defaults, its own owners."),
