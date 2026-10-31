@@ -347,6 +347,53 @@ async function queuePictures(ctx: SiteToolContext, pageId: string, jobs: readonl
   return jobs.length;
 }
 
+// The page studio's pictures ----------------------------------------------------------------
+
+/** A picture of a page the studio built, as the studio shows it: waiting its turn, being made, made (with its address), or not made. */
+export type StudioPictureState = { key: string; status: "waiting" | "making" | "done" | "failed"; url?: string; problem?: string };
+
+/**
+ * The page studio's pictures (D92, PSI PERF-07) made in the background as the AI manager's are: each a `picture` job of
+ * `commerce.page_ai_jobs` in the name of the person who built the page, started after the answer and taken up by the every-minute job, so
+ * the owner may leave the studio while they are made. Only where the background job works: Kaizena Flow's own site, or a store open for
+ * real (`commerce.store_is_active()`); elsewhere (a demo store, a store template) false, and the studio makes them itself, one by one.
+ */
+export async function queueStudioPictures(owner: StudioOwner, pageId: string, jobs: readonly PictureJob[], deps: SiteToolDeps = {}): Promise<boolean> {
+  if (jobs.length === 0) return false;
+  if (owner.storeId !== null) {
+    const [row] = await db().execute<Row>(sql`select commerce.store_is_active(${owner.storeId}::uuid) as active`);
+    if (row?.active !== true) return false;
+  }
+  await db().transaction(async (tx) => {
+    for (const job of jobs) {
+      await tx.execute(sql`
+        insert into commerce.page_ai_jobs (store_id, kind, page_id, asked_by, input, acted_by)
+        values (${owner.storeId}::uuid, 'picture', ${pageId}::uuid, ${owner.account.id}::uuid, ${JSON.stringify(job)}::jsonb, ${currentActor()})
+      `);
+    }
+  });
+  schedule(deps, () => runPageJobs(Date.now() + 60_000, deps));
+  return true;
+}
+
+/** How the studio's pictures of a page are coming along, by their keys: the site's own page only, oldest job first. */
+export async function studioPictureStates(owner: Pick<StudioOwner, "storeId">, pageId: string): Promise<StudioPictureState[]> {
+  const rows = await db().execute<Row>(sql`
+    select j.input ->> 'key' as key, j.status, j.problem, j.result ->> 'url' as url, (j.claimed_until is not null and j.claimed_until > now()) as held
+    from commerce.page_ai_jobs j join commerce.pages p on p.id = j.page_id
+    where j.kind = 'picture' and j.page_id = ${pageId}::uuid
+      and j.store_id is not distinct from ${owner.storeId}::uuid and p.store_id is not distinct from ${owner.storeId}::uuid
+    order by j.created_at, j.id
+  `);
+  return rows.map((row) => {
+    const key = String(row.key ?? "");
+    const status = String(row.status);
+    if (status === "done") return { key, status: "done", url: row.url ? String(row.url) : undefined };
+    if (status === "waiting") return { key, status: row.held === true ? "making" : "waiting" };
+    return { key, status: "failed", problem: row.problem ? String(row.problem) : undefined };
+  });
+}
+
 // Publishing ------------------------------------------------------------------------------
 
 /** What a publish would refuse, checked before it is kept for the owner's yes (D308): a page that is gone, in a running test, or with blocking issues. */
@@ -477,7 +524,8 @@ async function doBuild(owner: StudioOwner, raw: unknown, deps: SiteToolDeps): Pr
 
 async function doPicture(owner: StudioOwner, pageId: string, raw: unknown, deps: SiteToolDeps): Promise<Outcome> {
   const filled = await (deps.fill ?? fillPicture)(owner, pageId, raw);
-  if (filled.ok) return { status: "done" };
+  // The picture's address is kept with the job, for the page studio to show it as it comes in.
+  if (filled.ok) return { status: "done", result: { url: filled.url } };
   if ("outcome" in filled && filled.outcome) return { status: filled.outcome === "gone" ? "gone" : "failed", problem: filled.problem };
   return { status: "retry", problem: filled.problem };
 }

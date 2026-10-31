@@ -7,6 +7,7 @@ import {
   platformStudioBuildAction,
   platformStudioHearAction,
   platformStudioPictureAction,
+  platformStudioPicturesAction,
   platformStudioPlanAction,
   platformStudioSpeakAction,
   platformStudioTalkAction,
@@ -27,6 +28,7 @@ export default async function PlatformPageStudio() {
         plan: platformStudioPlanAction,
         build: platformStudioBuildAction,
         picture: platformStudioPictureAction,
+        pictures: platformStudioPicturesAction,
         hear: abilities.hear ? platformStudioHearAction : null,
         speak: abilities.speak ? platformStudioSpeakAction : null,
       }}

@@ -13,6 +13,7 @@ import {
   storeStudioBuildAction,
   storeStudioHearAction,
   storeStudioPictureAction,
+  storeStudioPicturesAction,
   storeStudioPlanAction,
   storeStudioSpeakAction,
   storeStudioTalkAction,
@@ -37,6 +38,7 @@ export default async function StorePageStudio({ params }: PageProps<"/admin/[sto
         plan: bind(storeStudioPlanAction),
         build: bind(storeStudioBuildAction),
         picture: bind(storeStudioPictureAction),
+        pictures: bind(storeStudioPicturesAction),
         hear: abilities.hear ? bind(storeStudioHearAction) : null,
         speak: abilities.speak ? bind(storeStudioSpeakAction) : null,
       }}

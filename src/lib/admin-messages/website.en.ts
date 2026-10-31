@@ -589,6 +589,7 @@ export const websiteEn = {
     planning: "Planning the page … (up to a minute or two)",
     hereIsPlan: "Here is my plan: {n} sections. Look it over on the right. Ask me for any changes, or build the page.",
     writing: "Writing the page … (about a minute)",
+    picturesInBackground: "Its pictures are being made and go into the draft by themselves, one at a time: you can leave this page meanwhile.",
     makingPicture: "Making picture {n} of {of} …",
     ready: "The page is ready as a draft. Open it in the page builder to look it over, change anything and publish it.",
     noMicrophone: "The browser did not let the page use the microphone.",

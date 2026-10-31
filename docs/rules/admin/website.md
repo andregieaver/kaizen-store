@@ -121,8 +121,13 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   The AI page studio (D92, Pages → Create with AI, `src/lib/page-ai.ts`,
   `src/server/page-ai.ts`, `PageStudio`) interviews, plans sections from
   `PATTERNS`, writes each section's words and builds the rows with
-  `buildPage()`, saving a draft; pictures come after, one per request,
-  from the picture model named in the AI settings (`generateImage()`,
+  `buildPage()`, saving a draft; pictures come after, as `picture` jobs
+  of `commerce.page_ai_jobs` in the builder's name (`queueStudioPictures()`,
+  run by `runPageJobs()` after the answer and every minute, PSI PERF-07;
+  the studio only asks how they come along, `studioPictureStates()`, so the
+  owner may leave), or one per request where that job does not work (a demo
+  store or template, `store_is_active()` false), never a page waiting on a
+  loop of its own; each from the picture model named in the AI settings (`generateImage()`,
   `ai_providers.image_model`, never a model in code; `makePicture()` keeps
   them in the media library). A new design goes in `PATTERNS` and
   `sectionRows()`; the model only chooses designs and fills words, links

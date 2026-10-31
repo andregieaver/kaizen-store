@@ -580,6 +580,7 @@ export const websiteNb: WebsiteMessages = {
     planning: "Planlegger siden … (opptil et par minutter)",
     hereIsPlan: "Her er planen min: {n} seksjoner. Se over den til høyre. Be meg om endringer, eller bygg siden.",
     writing: "Skriver siden … (omtrent et minutt)",
+    picturesInBackground: "Bildene lages og settes inn i utkastet av seg selv, ett om gangen: du kan forlate denne siden så lenge.",
     makingPicture: "Lager bilde {n} av {of} …",
     ready: "Siden er klar som et utkast. Åpne den i sidebyggeren for å se over den, endre det du vil og publisere den.",
     noMicrophone: "Nettleseren lot ikke siden bruke mikrofonen.",

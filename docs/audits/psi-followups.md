@@ -333,6 +333,11 @@ The re-score ([psi-2026-10-31.md](psi-2026-10-31.md)) put the overall at 78.3 (8
       everywhere-memories (`blankAssistantTraces()`, `privacy-erasure.int.test.ts`); and `NEVER_KEPT` (`src/server/assistant-memory.ts`),
       used by what is learned and by the `remember` tool alike, refuses email addresses, passwords, phone numbers, runs of eight digits or
       more, Nordic identity numbers and IBANs (`assistant-memory.test.ts`).
+- [x] **PERF-07** The page studio's pictures as background jobs, done 31 October 2026: the studio's build queues each picture as a
+      `picture` job of `commerce.page_ai_jobs` in the builder's name (`queueStudioPictures()` in `src/server/site-tools.ts`), run by the
+      AI manager's `runPageJobs()` after the answer and by the every-minute job; the studio asks every few seconds how they come along
+      (`studioPictureStates()`, the made picture's address kept on its job) and the owner may leave meanwhile. A demo store or template,
+      which the job never takes up, still has the studio ask for each in turn. `site-tools.int.test.ts` covers both.
 - [ ] **PERF-08** The shopper chat's speed. Read-only tool calls in parallel done 31 October 2026: a round's calls of the site's own tools
       (search, a product, the store's facts, where to go) start together, the hand-off and the support desk's tools (which may write) still
       one by one, and the answers keep the calls' order (`runChat()` in `src/server/chat-agent.ts`). Left: streaming the reply.

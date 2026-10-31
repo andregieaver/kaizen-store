@@ -4,6 +4,7 @@ import type { PageBrief, PagePlan, PictureJob, StudioMessage } from "@/lib/page-
 import { requirePlatformAdmin } from "@/server/auth";
 import { buildDraft, fillPicture, hearOwner, interviewTurn, planPage, speakToOwner, type StudioOwner } from "@/server/page-ai";
 import { isPageId, readRecording, readStudioInput, readStudioPlan, unreadable } from "@/server/page-studio-input";
+import { queueStudioPictures, studioPictureStates } from "@/server/site-tools";
 
 /** Kaizen's AI page studio (D92), for platform admins; pages are saved as drafts only. */
 
@@ -32,7 +33,18 @@ export async function platformStudioBuildAction(history: StudioMessage[], brief:
   const owner = await studioOwner();
   const input = readStudioInput(history, brief);
   const checked = readStudioPlan(plan);
-  return input && checked ? buildDraft(owner, input.history, input.brief, checked) : unreadable;
+  if (!input || !checked) return unreadable;
+  const built = await buildDraft(owner, input.history, input.brief, checked);
+  if (!built.ok) return built;
+  // The pictures are made in the background where the every-minute job works (PSI PERF-07); elsewhere the studio asks for each.
+  return { ...built, background: await queueStudioPictures(owner, built.pageId, built.pictures) };
+}
+
+/** How the pictures the background makes for a page the studio built are coming along. */
+export async function platformStudioPicturesAction(pageId: string) {
+  const owner = await studioOwner();
+  if (!isPageId(pageId)) return unreadable;
+  return { ok: true as const, pictures: await studioPictureStates(owner, pageId) };
 }
 
 export async function platformStudioPictureAction(pageId: string, job: PictureJob) {

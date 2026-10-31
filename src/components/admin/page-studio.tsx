@@ -24,14 +24,27 @@ import { useAdminText } from "./admin-text";
 export type StudioActions = {
   talk: (history: StudioMessage[], brief: PageBrief) => Promise<StudioResult<{ reply: InterviewReply }>>;
   plan: (history: StudioMessage[], brief: PageBrief, change: { plan: PagePlan; request: string } | null) => Promise<StudioResult<{ plan: PagePlan; notes: string[] }>>;
-  build: (history: StudioMessage[], brief: PageBrief, plan: PagePlan) => Promise<StudioResult<{ pageId: string; pictures: PictureJob[]; notes: string[] }>>;
+  /** `background`: the pictures are made by the background job (PSI PERF-07), and `pictures` says how they come along. */
+  build: (
+    history: StudioMessage[],
+    brief: PageBrief,
+    plan: PagePlan,
+  ) => Promise<StudioResult<{ pageId: string; pictures: PictureJob[]; notes: string[]; background: boolean }>>;
+  /** One picture made in this request, where the background job does not work (a demo store). */
   picture: (pageId: string, job: PictureJob) => Promise<StudioResult<{ url: string }>>;
+  pictures: (pageId: string) => Promise<StudioResult<{ pictures: StudioPictureState[] }>>;
   hear: ((audio: FormData) => Promise<StudioResult<{ text: string }>>) | null;
   speak: ((text: string) => Promise<StudioResult<{ audio: string }>>) | null;
 };
 
 type Phase = "talk" | "planned" | "building" | "built";
 type PictureState = { job: PictureJob; status: "waiting" | "making" | "done" | "failed"; url?: string; problem?: string };
+/** A background picture's state as the server reads it (`studioPictureStates()`). */
+export type StudioPictureState = { key: string; status: PictureState["status"]; url?: string; problem?: string };
+
+/** How often the studio asks how the background's pictures come along, and for how long at most. */
+const POLL_MS = 4000;
+const POLL_FOR_MS = 20 * 60_000;
 
 
 const button = "inline-flex min-h-10 items-center justify-center rounded-md px-4 text-sm font-medium disabled:opacity-50";
@@ -48,9 +61,11 @@ function recorderType(): string | undefined {
 /**
  * The AI page studio (D92): the owner talks or types to the site's AI,
  * which interviews them into a brief (shown as it grows), plans the page
- * as sections (shown to change by asking, or build), then writes it,
- * saves it as a draft and makes its pictures one by one, with a link to
- * open it in the page builder. The conversation lives only in this tab.
+ * as sections (shown to change by asking, or build), then writes it and
+ * saves it as a draft, with a link to open it in the page builder. Its
+ * pictures are made by the background job (PSI PERF-07), shown here as
+ * they come; on a demo store, which that job leaves alone, the studio asks
+ * for them one by one. The conversation lives only in this tab.
  */
 export function PageStudio({
   actions,
@@ -79,6 +94,7 @@ export function PageStudio({
   const [phase, setPhase] = useState<Phase>("talk");
   const [pageId, setPageId] = useState<string | null>(null);
   const [pictures, setPictures] = useState<PictureState[]>([]);
+  const [background, setBackground] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [recording, setRecording] = useState(false);
@@ -181,6 +197,16 @@ export function PageStudio({
       setNotes(built.notes);
       const states: PictureState[] = built.pictures.map((job) => ({ job, status: "waiting" }));
       setPictures(states);
+      if (built.background) {
+        // Made by the background job, into the draft: the owner may leave, and the pictures show here as they come (the effect below).
+        setBackground(true);
+        setWorking(null);
+        setPhase("built");
+        const reply = states.length > 0 ? `${w.ready} ${w.picturesInBackground}` : w.ready;
+        setMessages((list) => [...list, { role: "assistant", content: reply }]);
+        void say(reply);
+        return;
+      }
       // Pictures one at a time: each takes a while, and the draft is already saved.
       for (let index = 0; index < states.length; index++) {
         setWorking(fillWords(w.makingPicture, { n: index + 1, of: states.length }));
@@ -197,6 +223,35 @@ export function PageStudio({
       void say(reply);
     })();
   }
+
+  // The background's pictures, asked after every few seconds while one is still to come (and the tab is open), up to 20 minutes.
+  const pictureActions = actions.pictures;
+  const stillComing = background && pageId !== null && pictures.some((p) => p.status === "waiting" || p.status === "making");
+  useEffect(() => {
+    if (!stillComing || !pageId) return;
+    const stopAt = Date.now() + POLL_FOR_MS;
+    let stopped = false;
+    let timer: number | undefined;
+    const ask = async () => {
+      const read = await pictureActions(pageId).catch(() => null);
+      if (stopped) return;
+      if (read?.ok) {
+        const byKey = new Map(read.pictures.map((p) => [p.key, p]));
+        setPictures((list) =>
+          list.map((p) => {
+            const now = byKey.get(p.job.key);
+            return now ? { ...p, status: now.status, url: now.url, problem: now.problem ?? (now.status === "failed" ? w.notMade : undefined) } : p;
+          }),
+        );
+      }
+      if (Date.now() < stopAt) timer = window.setTimeout(ask, POLL_MS);
+    };
+    timer = window.setTimeout(ask, POLL_MS);
+    return () => {
+      stopped = true;
+      window.clearTimeout(timer);
+    };
+  }, [stillComing, pageId, pictureActions, w.notMade]);
 
   /** Push to talk: the first press starts recording, the second sends it to be written down, then as a message. */
   async function talk() {
@@ -254,6 +309,7 @@ export function PageStudio({
     setPhase("talk");
     setPageId(null);
     setPictures([]);
+    setBackground(false);
     setProblem(null);
   }
 
@@ -450,7 +506,7 @@ export function PageStudio({
         {pageId && (
           <div className={`${card} flex flex-col gap-3`}>
             <p className="text-sm">
-              {phase === "built" ? w.done : w.savedMaking}
+              {phase === "built" ? (stillComing ? `${w.done} ${w.picturesInBackground}` : w.done) : w.savedMaking}
             </p>
             {pictures.length > 0 && (
               <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">

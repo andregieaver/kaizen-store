@@ -4,6 +4,7 @@ import type { PageBrief, PagePlan, PictureJob, StudioMessage } from "@/lib/page-
 import { requirePermission } from "@/server/permissions";
 import { buildDraft, fillPicture, hearOwner, interviewTurn, planPage, speakToOwner, type StudioOwner } from "@/server/page-ai";
 import { isPageId, readRecording, readStudioInput, readStudioPlan, unreadable } from "@/server/page-studio-input";
+import { queueStudioPictures, studioPictureStates } from "@/server/site-tools";
 
 /**
  * A store's AI page studio (D92): each step bound to the store's slug, for
@@ -40,7 +41,18 @@ export async function storeStudioBuildAction(storeSlug: string, history: StudioM
   const owner = await studioOwner(storeSlug);
   const input = readStudioInput(history, brief);
   const checked = readStudioPlan(plan);
-  return input && checked ? buildDraft(owner, input.history, input.brief, checked) : unreadable;
+  if (!input || !checked) return unreadable;
+  const built = await buildDraft(owner, input.history, input.brief, checked);
+  if (!built.ok) return built;
+  // The pictures are made in the background where the every-minute job works (PSI PERF-07); elsewhere the studio asks for each.
+  return { ...built, background: await queueStudioPictures(owner, built.pageId, built.pictures) };
+}
+
+/** How the pictures the background makes for a page the studio built are coming along. */
+export async function storeStudioPicturesAction(storeSlug: string, pageId: string) {
+  const owner = await studioOwner(storeSlug);
+  if (!isPageId(pageId)) return unreadable;
+  return { ok: true as const, pictures: await studioPictureStates(owner, pageId) };
 }
 
 export async function storeStudioPictureAction(storeSlug: string, pageId: string, job: PictureJob) {

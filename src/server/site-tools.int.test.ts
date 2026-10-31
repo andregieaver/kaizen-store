@@ -72,6 +72,8 @@ const ownerTools = await import("./owner-tools");
 const siteTools = await import("./site-tools");
 const managerTools = await import("./manager-tools");
 const { getPageForEdit, savePage } = await import("./pages");
+const pageAi = await import("./page-ai");
+const { EMPTY_BRIEF } = await import("@/lib/page-ai");
 const { newStore } = await import("./inventory-test-support");
 const { findClaims } = await import("@/lib/claims");
 const { pageInput, newPageContent, pageBlocks } = await import("@/lib/page-content");
@@ -383,6 +385,48 @@ describe("set_page_place, save_menu and set_header_footer", () => {
     const staff = { ...ctxOf(store), holder: { role: "admin" as const, permissions: ["website:read", "website:write"] } };
     expect(await refusal(ownerTools.preflightOwnerTool(staff, "set_page_place", { place: "terms", page: "our-kitchen" }))).toContain("Only the store's owner");
   });
+});
+
+describe("the page studio's pictures in the background (PSI PERF-07)", () => {
+  const ownerOf = (s: typeof store) => ({ storeId: s.storeId, storeSlug: s.slug, account: s.member.account });
+  const history = [{ role: "user" as const, content: `A page about our catering. ${fake.FACT}.` }];
+  const brief = { ...EMPTY_BRIEF, title: "Catering", purpose: "Tell companies we cater lunches" };
+
+  async function studioBuild(s: typeof store) {
+    const planned = await pageAi.planPage(ownerOf(s), history, brief);
+    if (!planned.ok) throw new Error(planned.problem);
+    const built = await pageAi.buildDraft(ownerOf(s), history, brief, planned.plan);
+    if (!built.ok) throw new Error(built.problem);
+    return built;
+  }
+
+  it("queues a built page's pictures for the background, says how they come along, and they go into its draft", async () => {
+    const built = await studioBuild(store);
+    expect(built.pictures.length).toBe(1);
+    const scheduled: (() => Promise<unknown>)[] = [];
+    expect(await siteTools.queueStudioPictures(ownerOf(store), built.pageId, built.pictures, { schedule: (work) => void scheduled.push(work) })).toBe(true);
+    // Started after the answer, never in the request itself.
+    expect(scheduled.length).toBe(1);
+    expect(await siteTools.studioPictureStates(ownerOf(store), built.pageId)).toEqual([{ key: built.pictures[0].key, status: "waiting" }]);
+    // Another store reads none of them.
+    expect(await siteTools.studioPictureStates(ownerOf(other), built.pageId)).toEqual([]);
+
+    await drain();
+    const [state] = await siteTools.studioPictureStates(ownerOf(store), built.pageId);
+    expect(state).toMatchObject({ key: built.pictures[0].key, status: "done", url: expect.stringMatching(/^https:\/\/media\.example\/made-/) });
+    const page = await getPageForEdit(store.storeId, built.pageId, "page");
+    expect(JSON.stringify(page!.draft)).toContain(state.url);
+    const [job] = await db().execute<Row>(sql`select asked_by from commerce.page_ai_jobs where page_id = ${built.pageId}::uuid and kind = 'picture'`);
+    expect(String(job.asked_by)).toBe(store.member.account.id);
+  }, 60_000);
+
+  it("leaves a demo store's pictures to the studio itself, which the background job never takes up", async () => {
+    const demo = await newStore("sitetools-demo");
+    await db().execute(sql`update commerce.stores set starter = true where id = ${demo.storeId}::uuid`);
+    const built = await studioBuild(demo);
+    expect(await siteTools.queueStudioPictures(ownerOf(demo), built.pageId, built.pictures, { schedule: () => undefined })).toBe(false);
+    expect(await count(sql`select count(*)::int as n from commerce.page_ai_jobs where page_id = ${built.pageId}::uuid`)).toBe(0);
+  }, 60_000);
 });
 
 describe("Kaizena Flow's own site", () => {
