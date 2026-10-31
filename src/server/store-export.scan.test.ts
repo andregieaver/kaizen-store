@@ -9,7 +9,7 @@ vi.mock("server-only", () => ({}));
 const { STORE_EXPORT_TABLES } = await import("./store-export");
 
 /** Every `commerce` table with a `store_id`: what the store owns. */
-const storeTables = Object.values(schema)
+const storeTables = (Object.values(schema) as unknown[])
   .filter((value): value is PgTable => value instanceof PgTable)
   .map((table) => getTableConfig(table))
   .filter((config) => config.schema === "commerce" && config.columns.some((column) => column.name === "store_id"))
