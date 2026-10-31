@@ -468,8 +468,8 @@ Every register entry names a **purpose** (`purpose`, from `PURPOSE_OF` in `src/l
 GDPR Art. 6(1) basis with the reason for it, the law where it is an obligation, and who decides the purpose (the store, for shoppers' data
 that Kaizena Flow processes for it; Kaizena Flow, for owners', staff's, hosts' and applicants' data). `processingRecord()` draws the record
 of processing (Art. 30(1)(b) to (f)) from the register: one row per purpose with its basis, the subjects, the tables and the retention rules
-that end them. Consent is the basis only for marketing; five bases are marked `review` (business customers, contributions, analytics,
-integrations, and where analytics needs a cookie consent first). `personal-purposes.test.ts` holds every entry to a purpose, every purpose
+that end them. Consent is the basis only for marketing; four bases are marked `review` (business customers, contributions, analytics,
+which becomes consent where the store's cookie notice asks for it first, and integrations). `personal-purposes.test.ts` holds every entry to a purpose, every purpose
 to an entry, shoppers' data to the store's purposes and staff's to the platform's. The bases are proposals for the lawyer (section 8,
 item 11), not legal advice.
 
@@ -651,7 +651,7 @@ puts a free-text field inside a statutory sentence. Reviewed by a lawyer in each
 8. The statement that the **email opt-out is kept** after erasure and the wording of its reason.
 9. Whether `customers:write` (not owner-only) may erase.
 10. The staff-facing English pages (preview wording, the request log) are not consumer texts but state the law (the one-month clock, the extension limit): a lawyer should read the clock sentences.
-11. The **purposes and legal bases** of the register (`src/lib/personal-purposes.ts`, section 3.6), the five marked `review` first.
+11. The **purposes and legal bases** of the register (`src/lib/personal-purposes.ts`, section 3.6), the four marked `review` first.
 
 ---
 
