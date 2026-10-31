@@ -287,4 +287,19 @@ describe("the Dream Factory (D409)", () => {
     const [store] = await db().execute<Row>(sql`select id from commerce.stores where slug = ${slug}`);
     expect(await latestDreamRun(String(store.id))).toMatchObject({ status: "running", test: false, ownerPresses: 1 });
   });
+  it("starts no run on a store already open, and stops a run whose store is opened by hand before its last step", async () => {
+    const opened = (at: "now" | "never") =>
+      db().execute(at === "now" ? sql`update commerce.stores set setup_completed_at = now() where id = ${real.id}::uuid` : sql`update commerce.stores set setup_completed_at = null where id = ${real.id}::uuid`);
+    const prompt = "Hand-thrown ceramic mugs for Norway, from my small workshop.";
+    await opened("now");
+    expect(await startDreamRun((await passMembership(real.slug, real.owner))!, prompt)).toMatchObject({ ok: false, problem: expect.stringContaining("already open") });
+    await opened("never");
+    expect((await startDreamRun((await passMembership(real.slug, real.owner))!, prompt)).ok).toBe(true);
+    await opened("now");
+    const complete = vi.fn(async () => ({ text: briefJson({ legalName: "Leire Keramikk AS", postalAddress: "Storgata 1, 0155 Oslo", contactEmail: "hei@leire.no", country: "NO" }), region: null }));
+    await minute(real.id, { complete, connection, turn: async () => {} });
+    const latest = (await latestDreamRun(real.id))!;
+    expect(latest.status).toBe("stopped");
+    expect(latest.steps.brief.status).toBe("waiting");
+  });
 });

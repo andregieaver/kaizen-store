@@ -15,7 +15,8 @@ model's word, so a run can be scored the same way every time.
   background work or the owner are looked at again, then the ones whose needs have passed are started, at most one AI turn a run a minute.
 - **The AI's steps** (research, setup, brand and look, products, first goals) are turns of the AI manager in the owner's name, limited to the
   step's own tools (`STEP_TOOLS`), at *Just do it* for catalogue, website, design and setup (nothing reaches the public before the store
-  opens; money and messages still ask). Products are made one a turn, each with a picture the store's picture model makes (`create_product`'s
+  opens; money and messages still ask). So a run starts only on a store not yet open, and a run whose store is opened by hand before its
+  last step stops, the store's own levels taking over (PSI re-score of 31 October). Products are made one a turn, each with a picture the store's picture model makes (`create_product`'s
   picture `make`), until the brief's number are on sale.
 - **Code's steps:** the brief (one answer of the model, its business details kept only where the owner wrote them, `ownBusiness()`), the
   website (D351's draft from the brief, built in the background, then published), the legal pages (D311's writer turned on and awaited;

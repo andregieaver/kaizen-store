@@ -144,11 +144,14 @@ function toRun(row: z.output<typeof runRow>): DreamRun {
 export type StartResult = { ok: true; id: string } | { ok: false; problem: string };
 
 /**
- * Starts a run for a store from its owner's description: refused for anyone but an owner, a description of the wrong length, or while
- * another run of the store is going. The description is the owner's first press. A run whose owner is at the drills' test address is a test.
+ * Starts a run for a store from its owner's description: refused for anyone but an owner, a store already open, a description of the
+ * wrong length, or while another run of the store is going. The description is the owner's first press. A run whose owner is at the drills' test address is a test.
  */
 export async function startDreamRun(member: Pick<Membership, "account" | "store" | "role" | "permissions" | "kind">, prompt: string): Promise<StartResult> {
   if (!memberCan(member, "owner")) return { ok: false, problem: "Only an owner of the store can start the Dream Factory." };
+  // The run's AI works at its own levels, which act without asking, on the promise that nothing reaches the public before opening.
+  const [opened] = await typedRows(z.object({ open: col.bool }), sql`select setup_completed_at is not null as open from commerce.stores where id = ${member.store.id}::uuid`);
+  if (opened?.open) return { ok: false, problem: "This store is already open: the Dream Factory builds stores before they open. Ask the AI manager for changes instead." };
   const text = prompt.trim();
   if (text.length < PROMPT_MIN || text.length > PROMPT_MAX) {
     return { ok: false, problem: `Describe the store in ${PROMPT_MIN} to ${PROMPT_MAX} characters.` };
@@ -342,6 +345,13 @@ async function advanceRun(runId: string, deadline: number, deps: DreamDeps): Pro
   if (!member || !memberCan(member, "owner")) {
     await db().execute(sql`update commerce.dream_runs set status = 'failed', finished_at = now(), updated_at = now() where id = ${run.id}::uuid`);
     log("warn", "dream_factory.no_owner", { run: run.id });
+    return 0;
+  }
+  // Opened by hand before the run reached its last step: the run's levels act without asking, so it stops, and the store's own levels
+  // (the AI manager and autopilot) take over from here.
+  if (!run.test && member.store.setupCompletedAt && run.steps.open.status !== "asking" && run.steps.open.status !== "done") {
+    await db().execute(sql`update commerce.dream_runs set status = 'stopped', finished_at = now(), updated_at = now() where id = ${run.id}::uuid`);
+    log("info", "dream_factory.stopped_opened", { run: run.id });
     return 0;
   }
   let moved = 0;
