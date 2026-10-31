@@ -22,7 +22,7 @@ makers', not ours.
 | The AI manager and the autopilot (D94, D309) | Owners and staff | Minimal risk: not in Annex III (no employment, credit, essential-service or similar decision about a person) | Art. 4 (AI literacy) for Kaizena Flow's own people. Changes that matter wait for a person's yes (gated tools, approval expiry). |
 | Product texts, translations, alt texts, legal page drafts (D76, D311) | Shoppers read the result | Minimal risk; text not published "to inform the public on matters of public interest", and a person publishes it | Art. 50(4) does not reach it. Legal drafts carry their review notice. |
 | Sorting notices of illegal content and checking listings (D411 part 2, `docs/dsa.md`) | Platform admins; senders and stores read decisions | Minimal risk: an aid to a person who decides, not in Annex III; not a decision about a natural person's access to a service | None beyond Art. 4. The DSA asks the emails to say automated means were used (its arts. 16(6) and 17(3)(c)): they do, whenever `ai_used`. |
-| Pictures made or edited by AI (D283, D349) | Shoppers see them | Limited risk: synthetic images | Art. 50(2): AI-generated images marked in a machine-readable way. Done 30 October 2026 for every picture made or changed from then on: both stored files carry IPTC's `DigitalSourceType` in their XMP (`trainedAlgorithmicMedia`, or `compositeWithTrainedAlgorithmicMedia` for an edited one; `shrinkPicture()`, `src/server/ai-pictures.ts`), and the site serves the files as stored. Staff also see `media.made_by`. Pictures made before that carry no marking (see below). |
+| Pictures made or edited by AI (D283, D349) | Shoppers see them | Limited risk: synthetic images | Art. 50(2): AI-generated images marked in a machine-readable way. Done 30 October 2026 for every picture made or changed from then on: both stored files carry IPTC's `DigitalSourceType` in their XMP (`trainedAlgorithmicMedia`, or `compositeWithTrainedAlgorithmicMedia` for an edited one; `shrinkPicture()`, `src/server/ai-pictures.ts`), and the site serves the files as stored. Staff also see `media.made_by`. Pictures made before that are marked by the `aiPictureMarks` job (see below). |
 
 No use is a prohibited practice (Art. 5), and none is high-risk (Art. 6 and Annexes I and III), so the delayed high-risk dates
 (2 December 2027 and 2 August 2028 after the omnibus) do not bind Kaizena Flow today.
@@ -35,8 +35,13 @@ No use is a prohibited practice (Art. 5), and none is high-risk (Art. 6 and Anne
 
 ## Left to do
 
-1. Pictures made by AI before 30 October 2026 carry no marking: mark them in place (the library knows them by `made_by`) before the
-   grace period ends on 2 December 2026, or confirm with the lawyer that outputs made before Art. 50 applied need none.
+1. ~~Pictures made by AI before 30 October 2026 carry no marking.~~ Done 31 October 2026: the five-minute dispatcher's `aiPictureMarks`
+   job (`src/server/ai-picture-marks.ts`) gives each of them, ten a run, the same `DigitalSourceType` XMP in both files, written into the
+   WebP container without re-encoding (`withWebpXmp()`, `src/lib/webp-xmp.ts`: the picture's bytes are untouched, the tests compare every
+   pixel) and back at its own path, so no page's address changes; `media.ai_marked_at` records it (migration `media_ai_marked`), and new
+   pictures are recorded as marked when they are made. Production held 190 such pictures (all `ai_made`, 17 to 30 October), about 95
+   minutes of runs. Storage's CDN refreshes an overwritten file within about a minute (Supabase Smart CDN, Pro plan and above); a browser
+   that cached the old copy keeps it until its cache ends, which can be a year for library pictures.
 2. A short AI-literacy note for Kaizena Flow's own staff (Art. 4).
 3. The lawyer's confirmation of this classification, with the DPIA.
 

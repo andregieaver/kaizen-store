@@ -191,6 +191,9 @@ stay in the standing document's *What comes next*.
       `src/lib/store-export-scope.ts`: a secret, the catalogue's CSV files, a record or job state, people, files), or is on
       `STORE_EXPORT_UNDECIDED`, which only shrinks (62 tables, mostly settings that belong in the file). `store-export.scan.test.ts` fails
       on a new table in none of these and on a secret in the file. Left: deciding the 62, starting with the settings.
+- [x] **AI Act Art. 50(2) backfill** AI pictures made before 30 October 2026 marked. Done 31 October 2026: the `aiPictureMarks` dispatcher
+      job writes IPTC's `DigitalSourceType` XMP into each one's two WebP files without re-encoding them (`src/lib/webp-xmp.ts`), in place,
+      ten a run, recorded in `media.ai_marked_at` (migration `media_ai_marked`); `docs/ai-act.md` item 1.
 - [x] **DATA-03 (data 2)** `Idempotency-Key` on Admin API POSTs, a Mollie 401 renewed once, Stripe's `apiVersion`. Done 30 October
       2026: a POST with the header is done once per token and key, the same request getting the first answer again
       (`Idempotent-Replayed: true`) and another request under the key refused, answers kept 24 hours (`commerce.api_idempotency_keys`,

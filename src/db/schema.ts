@@ -8183,6 +8183,11 @@ export const media = commerce.table(
     compressedAt: timestamp("compressed_at", { withTimezone: true }),
     /** Who made the file (D349): `person` (an upload), `ai_made` (by the site's picture model from a description) or `ai_edited` (a library picture changed by its edit model). */
     madeBy: text("made_by").notNull().default("person"),
+    /**
+     * When an AI's picture was known to carry IPTC's digital source type in its file's XMP (AI Act Art. 50(2), `docs/ai-act.md`): set when
+     * it is made or edited (`shrinkPicture()` marks it), and by the `aiPictureMarks` job for the ones made before that. Null for a person's.
+     */
+    aiMarkedAt: timestamp("ai_marked_at", { withTimezone: true }),
     /** The library picture an `ai_edited` one was made from; the original is never overwritten. */
     editedFrom: uuid("edited_from").references((): AnyPgColumn => media.id, { onDelete: "set null" }),
     createdAt: createdAt(),

@@ -1,6 +1,7 @@
 import { revalidateTag } from "next/cache";
 import { connection } from "next/server";
 
+import { markAiPictures } from "@/server/ai-picture-marks";
 import { refreshAltTexts } from "@/server/alt-texts";
 import { runAffiliateJobs } from "@/server/affiliate-emails";
 import { runBonusJobs } from "@/server/bonus";
@@ -113,6 +114,8 @@ async function dispatch() {
     contentReports: () => pruneContentReports(),
     // An AI reads the notices still waiting and checks new and changed listings (D411 part 2); a person decides every one.
     contentModeration: () => runContentModeration(),
+    // AI pictures made before their files were marked get IPTC's digital source type in their XMP (AI Act Art. 50(2)), ten a run.
+    aiPictureMarks: () => markAiPictures(),
     embeddings: () => refreshEmbeddings(),
     cache: () => pruneSearchCache(),
     knowledge: () => refreshKnowledge(),

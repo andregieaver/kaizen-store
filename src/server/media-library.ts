@@ -121,7 +121,7 @@ export async function storePicture(
   owner: { storeId: string | null; accountId: string },
   image: File,
   thumbnail: File,
-  details: { fileName: string; alt?: string; compressed?: boolean; madeBy?: MediaMadeBy; editedFrom?: string | null },
+  details: { fileName: string; alt?: string; compressed?: boolean; madeBy?: MediaMadeBy; editedFrom?: string | null; aiMarked?: boolean },
 ): Promise<UploadResult & { id?: string }> {
   const uploaded = await uploadProductImage(owner.storeId ?? "platform", image, thumbnail);
   if (!uploaded.ok || !("stored" in uploaded)) return uploaded;
@@ -130,13 +130,15 @@ export async function storePicture(
   const [row] = await db().execute<Row>(sql`
     insert into commerce.media (
       store_id, kind, url, thumbnail_url, bucket, path, thumbnail_path, file_name, content_type, size_bytes, width, height, created_by,
-      alt, alt_source, alt_written_at, compressed_at, made_by, edited_from
+      alt, alt_source, alt_written_at, compressed_at, made_by, edited_from, ai_marked_at
     ) values (
       ${owner.storeId}::uuid, 'image', ${uploaded.url}, ${uploaded.thumbnailUrl}, ${uploaded.stored.bucket}, ${uploaded.stored.path},
       ${uploaded.stored.thumbnailPath}, ${cleanName(details.fileName, "picture")},
       ${image.type}, ${image.size}, ${size?.width ?? null}, ${size?.height ?? null}, ${owner.accountId}::uuid,
       ${alt ?? ""}, ${alt ? "ai" : null}, ${alt ? sql`now()` : null}, ${details.compressed ? sql`now()` : null},
-      ${details.madeBy ?? "person"}, ${details.madeBy === "ai_edited" ? (details.editedFrom ?? null) : null}::uuid
+      ${details.madeBy ?? "person"}, ${details.madeBy === "ai_edited" ? (details.editedFrom ?? null) : null}::uuid,
+      -- An AI's picture whose files shrinkPicture() marked (AI Act Art. 50(2)): the aiPictureMarks job leaves it alone.
+      ${details.aiMarked && details.madeBy && details.madeBy !== "person" ? sql`now()` : null}
     )
     on conflict (url) do nothing
     returning id

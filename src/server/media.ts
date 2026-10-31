@@ -110,6 +110,23 @@ export async function downloadStoredFile(bucket: string, path: string): Promise<
   return bytes.byteLength > 0 && bytes.byteLength <= 20 * 1024 * 1024 ? bytes : null;
 }
 
+/**
+ * Writes a library picture's file again at its own path (AI Act Art. 50(2): an older AI picture given its XMP marking), so no page's address
+ * changes. Storage's CDN refreshes an overwritten file within about a minute; a browser that kept the old copy keeps it until its cache ends.
+ * False when Storage refused.
+ */
+export async function overwriteStoredFile(bucket: string, path: string, bytes: Uint8Array, contentType: string): Promise<boolean> {
+  if (bucket !== BUCKET) return false;
+  const secret = secretKey();
+  if ("problem" in secret) return false;
+  const storage = createClient(publicEnv().NEXT_PUBLIC_SUPABASE_URL, secret.key, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  }).storage.from(bucket);
+  const { error } = await storage.upload(path, bytes, { contentType, cacheControl: "31536000", upsert: true });
+  if (error) log("error", "media.file_overwrite_failed", {}, error);
+  return !error;
+}
+
 /** Removes a library item's files from their public bucket (D88); false if Storage refused. */
 export async function removeStoredFiles(bucket: string, paths: string[]): Promise<boolean> {
   if (![BUCKET, VIDEOS_BUCKET].includes(bucket) || paths.length === 0) return false;

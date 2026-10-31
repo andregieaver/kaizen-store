@@ -92,7 +92,7 @@ export async function makePicture(
     owner,
     new File([new Uint8Array(shrunk.image)], name, { type: "image/webp" }),
     new File([new Uint8Array(shrunk.thumbnail)], name.replace(/\.webp$/, "-480.webp"), { type: "image/webp" }),
-    { fileName: name, alt, madeBy: "ai_made" },
+    { fileName: name, alt, madeBy: "ai_made", aiMarked: true },
   );
   if (!stored.ok) return { ok: false, problem: stored.problem };
   return { ok: true, picture: { url: stored.url, thumbnailUrl: stored.thumbnailUrl, width: shrunk.width, height: shrunk.height } };
