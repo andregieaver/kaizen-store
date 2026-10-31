@@ -140,6 +140,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - The AI manager's team and plan tools (PSI AGT-01, D318, `src/server/staff-tools.ts`, `src/server/billing-tools.ts`)
 - The AI manager's order changes and exchanges (PSI AGT-01, D318, `src/server/order-change-tools.ts`, `src/server/exchange-tools.ts`)
 - The AI manager's Work tools (PSI AGT-01, D318, `src/server/work-tools.ts`)
+- The AI manager's tools for the newer screens (PSI AGT-01, `src/server/screen-tools.ts`)
 - The AI manager's follow-ups (PSI AGT-04, D318, `src/lib/follow-ups.ts`, `src/server/follow-ups.ts`, `src/server/follow-up-runner.ts`)
 - The AI manager's notices and saved skills (wave 8 unit F, D350)
 - AI in the builder and a store from one description (wave 8 unit G, D351)

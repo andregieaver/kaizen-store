@@ -75,6 +75,11 @@ maturity for the run-up to launch. Point IDs are the audit's.
 - [x] **AGT-01 (orders)** `preview_order_change`, `change_order` (gate `spend`), `preview_exchange`, `propose_exchange` (gate `send`),
       `process_exchange` (gate `spend`); D318.
 - [x] **AGT-01 (Work)** `work_overview`, `list_work_clients`, `list_work_assignments`, `log_time`, `issue_work_invoice` (gate `send`); D318.
+- [x] **AGT-01 (screens of 30–31 Oct, part 1)** `receive_purchase_order` (gate `public`: by reference or supplier, in parts or the
+      rest), `schedule_report` (gate `send`) and `list_report_schedules`, `set_customer_group` (gate `spend`, never automatic) and
+      `list_customer_groups`, and the reads `owed_to_customers`, `list_creators`, `booking_resources`; `src/server/screen-tools.ts`.
+- [ ] **AGT-01 (screens of 30–31 Oct, part 2)** Still without tools: store credit and loyalty changes, price-list edits, a creator's
+      approval, rate and payout, booking hours.
 - [x] **AGT-01 (reviews)** No tool, on purpose: review moderation stays on the Reviews page, since a review's words are never sent to a
       model (D301), so the agent could not judge one.
 - [x] **ACC-01** Axe on the `signed-in` Playwright project: `e2e/signed-in/a11y.spec.ts`, ten owner pages and four platform pages, no

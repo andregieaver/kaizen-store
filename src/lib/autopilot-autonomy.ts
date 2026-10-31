@@ -24,6 +24,8 @@ export const TOOL_AREAS: Readonly<Record<string, AutonomyArea>> = {
   archive_product: "catalogue",
   set_stock: "catalogue",
   set_backorder: "catalogue",
+  // Goods that arrived (AGT-01): the stock the order says, as set_stock.
+  receive_purchase_order: "catalogue",
   create_field_group: "catalogue",
   set_fields: "catalogue",
   // Website
@@ -80,6 +82,8 @@ export const TOOL_AREAS: Readonly<Record<string, AutonomyArea>> = {
   propose_exchange: "messages",
   reply_to_support: "messages",
   post_to_slack: "messages",
+  // A report emailed to the store's own people on a schedule (AGT-01).
+  schedule_report: "messages",
   // Money
   block_affiliate: "money",
 };
@@ -113,6 +117,8 @@ export const NEVER_AUTOMATIC: ReadonlySet<string> = new Set([
   "change_order",
   "process_exchange",
   "adjust_customer_credits",
+  // A customer's group decides the prices and terms they get (AGT-01): a person always says yes.
+  "set_customer_group",
   "issue_gift_card",
   "change_plan",
   "end_plan",

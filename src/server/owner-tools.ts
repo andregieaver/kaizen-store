@@ -206,6 +206,17 @@ import { campaignStatus, describeCampaign } from "@/lib/campaigns";
 import { listDiscounts, saveDiscount } from "./discounts";
 import { getInvoiceSettings, invoiceReadiness, seriesStates } from "./invoice-settings";
 import { invoiceCounts, listCreditNotes, listInvoices, waitingCreditNotes, waitingInvoices } from "./invoices";
+import {
+  bookingResourcesTool,
+  listCreatorsTool,
+  listCustomerGroupsTool,
+  listReportSchedulesTool,
+  owedToCustomersTool,
+  preflightScreenTool,
+  receivePurchaseOrderTool,
+  scheduleReportTool,
+  setCustomerGroupTool,
+} from "./screen-tools";
 import { createTransferTool, listPurchaseOrdersTool, listTransfersTool, preflightStockTool, setBackorderTool, setStockTool, stockHistoryTool, stockLevelsTool } from "./stock-tools";
 import { pickupOrdersTool, shippingOverviewTool } from "./shipping-tools";
 import { notificationSettingsTool, orderRulesTool, parcelTrackingTool } from "./notification-tools";
@@ -2093,6 +2104,13 @@ export async function preflightOwnerTool(ctx: OwnerToolContext, name: string, ra
     if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
     return preflightStockTool(ctx, name, input.input as Record<string, unknown>);
   }
+  // A purchase order that cannot be received, a report or a customer that is not there, is refused now, never kept for a yes (AGT-01).
+  if (name === "receive_purchase_order" || name === "schedule_report" || name === "set_customer_group") {
+    const tool = OWNER_TOOLS_BY_NAME[name];
+    const input = readToolInput(tool, raw);
+    if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
+    return preflightScreenTool(ctx, name, input.input as Record<string, unknown>);
+  }
   // A draft that could not be sent (not open, a problem that blocks it, payments off, a closed store) is refused now, never kept for a yes (D173).
   if (name === "send_draft_order") {
     const tool = OWNER_TOOLS_BY_NAME[name];
@@ -2468,6 +2486,14 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   stock_history: stockHistoryTool,
   list_transfers: listTransfersTool,
   list_purchase_orders: listPurchaseOrdersTool,
+  receive_purchase_order: receivePurchaseOrderTool,
+  owed_to_customers: owedToCustomersTool,
+  list_report_schedules: listReportSchedulesTool,
+  schedule_report: scheduleReportTool,
+  list_customer_groups: listCustomerGroupsTool,
+  set_customer_group: setCustomerGroupTool,
+  list_creators: listCreatorsTool,
+  booking_resources: bookingResourcesTool,
   create_transfer: createTransferTool,
   ai_usage: aiUsageTool,
   post_to_slack: postToSlackTool,

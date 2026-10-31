@@ -451,6 +451,66 @@ export const OWNER_TOOLS = [
     z.object({ open_only: z.boolean().default(false).describe("Only drafts and orders not yet received in full."), limit: limit(50, 20) }),
   ),
   tool(
+    "receive_purchase_order",
+    "Counts a purchase order's delivery in (D383), as its page does: the stock goes up at the order's location and each variant's cost is kept from the order. Name the order by its supplier reference, or by its supplier when the store has one open order from them (list_purchase_orders lists them). Without `lines` everything still to come is counted in; with them, only those SKUs and units. An order that is a draft, received or cancelled is refused now. Needs the owner's approval.",
+    z.object({
+      order: z.string().trim().min(1).max(120).describe("The order's supplier reference, or the supplier's name."),
+      lines: z
+        .array(z.object({ sku: z.string().trim().min(1).max(64), quantity: z.number().int().min(0).max(1_000_000) }))
+        .max(200)
+        .optional()
+        .describe("Only these SKUs and units arrived; leave out to count in everything still to come."),
+    }),
+    "public",
+  ),
+  tool(
+    "owed_to_customers",
+    "What the store owes its customers now (D381), as Analytics, Finance shows it: unused bonus credits and the balance on live gift cards, each in its own currency (with the main currency beside it where they differ), and this month's movements (granted, used, returned, taken back, expired, changed). Every figure is the ledgers' own: repeat it, never add across currencies. Read-only.",
+    z.object({}),
+  ),
+  tool(
+    "list_report_schedules",
+    "The saved reports emailed on a schedule (D395): each report, how often (daily, weekly on a day, monthly on a date), the hour on the store's clock, who gets it (the store's own people, by name), whether it is on, and when it last went. Read-only: schedule_report adds one.",
+    z.object({}),
+  ),
+  tool(
+    "schedule_report",
+    "Emails one of the store's saved reports on a schedule (D395), as the report's page does: daily, weekly on a weekday (1 Monday to 7 Sunday) or monthly on a date, at an hour on the store's clock, to people of the store by their email (leave out for the person asking). Only the store's own people can get it; a report the store has not saved is refused (run_report and save_report make one). Needs the owner's approval.",
+    z.object({
+      report: z.string().trim().min(1).max(120).describe("The saved report's title."),
+      frequency: z.enum(["daily", "weekly", "monthly"]),
+      weekday: z.number().int().min(1).max(7).optional().describe("For weekly: 1 Monday to 7 Sunday."),
+      month_day: z.number().int().min(1).max(28).optional().describe("For monthly: the date, 1 to 28."),
+      hour: z.number().int().min(0).max(23).default(7).describe("The hour on the store's clock, 0 to 23."),
+      recipients: z.array(z.string().trim().max(254)).max(20).optional().describe("Emails of the store's own people; leave out for the person asking."),
+    }),
+    "send",
+  ),
+  tool(
+    "list_customer_groups",
+    "The store's customer groups (D108): each group's name, its discount in percent off, whether it is on, and how many customers and companies are in it. Read-only: set_customer_group puts a customer in one.",
+    z.object({}),
+  ),
+  tool(
+    "set_customer_group",
+    "Puts one customer in a customer group, or takes them out (D108), as the customer's page does: they get the group's discount from their next order. The customer by their email, the group by its name (list_customer_groups), or `group: null` to take them out. Needs the owner's approval.",
+    z.object({
+      customer: z.string().trim().min(3).max(254).describe("The customer's email."),
+      group: z.string().trim().min(1).max(120).nullable().describe("The group's name, or null to take the customer out of their group."),
+    }),
+    "spend",
+  ),
+  tool(
+    "list_creators",
+    "The store's creators (D386), newest first: each one's name, status (applied, approved, declined, stopped), their code, commission, orders and visits through them, and what they have earned, in each currency. Their email is never given. Read-only: a creator is approved, paid and stopped on the Creators page.",
+    z.object({ status: z.enum(["all", "applied", "approved", "declined", "stopped"]).default("all"), limit: limit(100, 30) }),
+  ),
+  tool(
+    "booking_resources",
+    "The people, rooms and things that can be booked (D65), as the bookings pages list them: each one's name, kind, whether it takes bookings now, its weekly hours, how many at once, the services it does and the bookings still to come. Read-only: hours are changed on the resource's page.",
+    z.object({ kind: z.enum(["staff", "unit", "item", "all"]).default("all").describe("staff (people), unit (rooms, places to stay), item (things to rent), or all.") }),
+  ),
+  tool(
     "stock_history",
     "The history of one variant's stock (D172): every change of a figure, newest first, with when, the location, how much it changed by, the new figure, the reason (counted, received, damaged, sale, put back after an order ...) and who or what made it (a staff member, an order, a return, the AI manager). Kept 24 months. Read-only; each line is the store's own record, so repeat it as it is. Give the variant's SKU (from stock_levels or get_product).",
     z.object({
@@ -2055,6 +2115,24 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
       return `Email ${text("to")}: "${text("subject")}"\n\n${text("message")}`;
     case "resend_order_email":
       return `Send the ${input.which === "shipped" ? "shipping notice" : "order confirmation"} for order ${text("order")} to its customer again.`;
+    case "receive_purchase_order": {
+      const lines = Array.isArray(input.lines) ? (input.lines as { sku?: unknown; quantity?: unknown }[]) : null;
+      return lines && lines.length > 0
+        ? `Count in the delivery of purchase order ${text("order")}: ${lines.map((l) => `${String(l.quantity)} × ${String(l.sku)}`).join(", ")}. The stock goes up at its location and each cost is kept from the order.`
+        : `Count in everything still to come on purchase order ${text("order")}. The stock goes up at its location and each cost is kept from the order.`;
+    }
+    case "schedule_report": {
+      const when =
+        input.frequency === "weekly"
+          ? `every week on ${["", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"][Number(input.weekday)] ?? "a day not given"}`
+          : input.frequency === "monthly"
+            ? `every month on day ${text("month_day") || "?"}`
+            : "every day";
+      const to = Array.isArray(input.recipients) && input.recipients.length > 0 ? (input.recipients as unknown[]).map(String).join(", ") : "you";
+      return `Email the report "${text("report")}" ${when} at ${String(input.hour ?? 7).padStart(2, "0")}:00 to ${to}.`;
+    }
+    case "set_customer_group":
+      return input.group === null ? `Take ${text("customer")} out of their customer group.` : `Put ${text("customer")} in the customer group "${text("group")}": they get its discount from their next order.`;
     case "set_stock":
       return setStockSummary({ sku: text("sku"), quantity: Number(input.quantity), location: input.location ? text("location") : null, reason: input.reason ? text("reason") : null, note: input.note ? text("note") : null });
     case "set_backorder":

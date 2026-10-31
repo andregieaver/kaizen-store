@@ -199,6 +199,15 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   stock_history: "products:read",
   list_transfers: "products:read",
   list_purchase_orders: "products:read",
+  // The screens' own tools (AGT-01): each asks what its admin page and action ask.
+  receive_purchase_order: "products:write",
+  owed_to_customers: "analytics:read",
+  list_report_schedules: "analytics:read",
+  schedule_report: "analytics:write",
+  list_customer_groups: "customers:read",
+  set_customer_group: "customers:write",
+  list_creators: "marketing:read",
+  booking_resources: "bookings:read",
   create_transfer: "products:write",
   // The redirects and the 404 report are the Website section's (D168): read like its pages, added with the right to change the website.
   redirect_overview: "website:read",
