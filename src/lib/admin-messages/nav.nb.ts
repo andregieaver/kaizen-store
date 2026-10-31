@@ -363,6 +363,8 @@ export const NAV_NB: Record<string, string> = {
   "AI manager notices": "Varsler fra KI-assistenten",
   "Usage and limits": "Bruk og grenser",
   "Status page": "Statusside",
+  "Illegal content notices": "Meldinger om ulovlig innhold",
+  "Notices people sent about illegal content on stores, each decided with its reason (DSA).": "Meldinger folk har sendt om ulovlig innhold i butikker, hver avgjort med begrunnelse (DSA).",
   "The public status page: each part's checks every five minutes, incidents to post and update, and their subscribers.": "Den offentlige statussiden: sjekkene av hver del hvert femte minutt, hendelser å legge ut og oppdatere, og abonnentene.",
   "Your domains": "Domenene dine",
   "Every domain you hold, which store uses it, renewal, DNS and moving it.": "Alle domenene du har, hvilken butikk som bruker dem, fornyelse, DNS og flytting.",

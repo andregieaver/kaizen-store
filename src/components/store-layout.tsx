@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { ReportContentLink } from "@/components/report-content-link";
 import { accountsShown } from "@/lib/customer-accounts";
 import { t, type Messages } from "@/lib/i18n";
 import { currencyChoices, currencyName, languageChoices, languageName } from "@/lib/localization";
@@ -453,6 +454,8 @@ export function StoreFooter({
           <Link href={marketPath(store.slug, market.slug, "/cookies")} className="w-fit text-muted underline">
             {m.cookies}
           </Link>
+          {/* Notices of illegal content go to Kaizena Flow, which hosts the store (DSA art. 16, D411). */}
+          <ReportContentLink lang={market.lang} absolute />
           {/* The withdrawal function, always reachable (D153); in a website (D178 step 5) while an order can still be withdrawn from or returned. */}
           {withdrawal && <WithdrawalLink store={store} market={market} />}
           {/* The store's terms, privacy statement and the like, once the owner has published them (wave 1, 1e). */}

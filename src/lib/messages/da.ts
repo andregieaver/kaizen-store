@@ -743,6 +743,8 @@ export const da: Messages = {
   noArticles: "Ingen artikler endnu.",
   allArticles: "Alle artikler",
   cookies: "Cookies",
+  /** The footer's link to Kaizena Flow's form for notices of illegal content (DSA art. 16, D411). */
+  reportContent: "Anmeld ulovligt indhold",
   cookieSettings: "Cookie-indstillinger",
   consentTitle: "Vi bruger cookies",
   consentText: (optional: string) =>

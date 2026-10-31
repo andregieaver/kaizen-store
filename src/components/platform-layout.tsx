@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { ReportContentLink } from "@/components/report-content-link";
 import { t } from "@/lib/i18n";
 import { menuTree, platformMenuLink, type MenuNode, type PlatformMenuEntry } from "@/lib/navigation";
 import { PLATFORM_LANG_FACTS, pageLocaleOf, platformPath, type PlatformLang } from "@/lib/platform-lang";
@@ -205,6 +206,8 @@ export function PlatformFooter({ chrome, lang = "en" }: Props) {
           <Link href={platformPath(lang, "/cookies")} className="w-fit text-muted underline">
             {m.cookies}
           </Link>
+          {/* Notices of illegal content on a store (DSA art. 16, D411). */}
+          <ReportContentLink lang={PLATFORM_LANG_FACTS[lang].messages} />
           {/* Kaizena Flow's own legal pages (D312 P5), once published, by their titles in the page's language. */}
           {legalPages(chrome, lang).map((page) => (
             <Link key={page.slug} href={platformPath(lang, `/${page.slug}`)} className="w-fit text-muted underline">

@@ -152,12 +152,18 @@ stay in the standing document's *What comes next*.
 - [x] **DATA-02 (data 5, critical)** `store-roles.ts`'s exception shown safe. Done 30 October 2026: `store-writers.scan.test.ts` now
       checks that every write it makes to `commerce.stores` sets only `role_templates_offered`, that it uses no cache, and that no other
       code names the column, so no cached read can hold a stale value of it.
-- [ ] **REG-12 (privacy 6)** The legal check's remaining lines, a no-show disclosure and a DSA note with a report button. Wording done
+- [x] **REG-12 (privacy 6)** The legal check's remaining lines, a no-show disclosure and a DSA note with a report button. Wording done
       30 October 2026 (`docs/legal/check-2026-10-29.md`): the Swedish dated-service exception in the law's own words (servering, catering,
       kultur- och idrottsevenemang); SV, DA and EN complaints as the statutes put them (reasonable time, two months always in time, with
       konsumentköplagen 5:2 and 4:14 and købeloven §§ 81 and 83), never "as soon as you notice"; return costs limited to withdrawals and
-      voluntary returns in all four; "Angrer du?" and the last-parcel rule in the withdrawal line of the emails. Left: the no-show
-      disclosure and the DSA note with a report button.
+      voluntary returns in all four; "Angrer du?" and the last-parcel rule in the withdrawal line of the emails. No-show done 30 October
+      2026: an appointment with a deposit and a no-show fee says so on its product page, with the share of the price, and the terms starter
+      has the sentence while such an appointment is active (four languages). DSA done 31 October 2026 (D411, `docs/dsa.md`): *Report
+      illegal content* in every store's footer and Kaizena Flow's own leads to `/report` (art. 16(2)'s contents, a sender may stay unnamed
+      only for offences against children), a receipt and an alert to the platform admins, a person's decision with its reason at
+      `/admin/platform/reports`, the decision and redress to the sender, the statement of reasons to the store when content is restricted
+      (art. 17), the sender forgotten 12 months after. Left, the owner's: the lawyer on art. 19 (micro or small enterprise), points of
+      contact (arts. 11, 12) and moderation in the terms (art. 14). AI reading each notice first is part 2.
 - [x] **REG-08 (privacy 5)** Tone and summaries in the store's privacy starter, and `docs/ai-act.md`. Done 30 October 2026: the starter's
       automated-decisions section says an AI reads the tone of support messages or summarises them, each only while it does (the chat
       notice's `aiUse` through `legalFacts()`, four languages); `docs/ai-act.md` classifies each use (provider and deployer, Art. 50, no

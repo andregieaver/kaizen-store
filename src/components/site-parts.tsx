@@ -18,6 +18,7 @@ import type { PlatformChrome } from "@/server/platform-navigation";
 import type { SiteLayout } from "@/server/site-layouts";
 import type { Store } from "@/server/stores";
 
+import { ReportContentLink } from "./report-content-link";
 import { BuyerSwitch } from "./buyer";
 import { StoreColorSwitch } from "./store-color-switch";
 import { CartLink, CartLinkShell } from "./cart-link";
@@ -182,9 +183,13 @@ function StorePart({ block, ctx }: { block: SiteBlock; ctx: Extract<SiteContext,
     case "cookies":
       // What the store stores in the browser, and the choice about it (D58).
       return (
-        <Link href={marketPath(store.slug, market.slug, "/cookies")} className="w-fit text-muted underline">
-          {m.cookies}
-        </Link>
+        <>
+          <Link href={marketPath(store.slug, market.slug, "/cookies")} className="w-fit text-muted underline">
+            {m.cookies}
+          </Link>
+          {/* Notices of illegal content go to Kaizena Flow, which hosts the store (DSA art. 16, D411). */}
+          <ReportContentLink lang={market.lang} absolute />
+        </>
       );
     case "withdrawal":
       // The withdrawal function, always reachable (D153).
@@ -235,6 +240,7 @@ function KaizenPart({ block, ctx }: { block: SiteBlock; ctx: Extract<SiteContext
           <Link href={platformPath(lang, "/cookies")} className="w-fit text-muted underline">
             {m.cookies}
           </Link>
+          <ReportContentLink lang={PLATFORM_LANG_FACTS[lang].messages} />
         </>
       );
     default:

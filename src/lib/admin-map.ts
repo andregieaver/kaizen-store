@@ -1160,6 +1160,10 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["status", "incident", "outage", "uptime", "downtime", "maintenance"],
     tasks: ["Post an incident", "Update or resolve an incident", "See the latest checks"],
   }),
+  platform("reports", "/reports", "Illegal content notices", "Platform", "Notices people sent about illegal content on stores, each decided with its reason; the sender is told, and the store when something is restricted (DSA).", {
+    keywords: ["DSA", "illegal", "notice", "takedown", "report", "abuse", "counterfeit", "moderation"],
+    tasks: ["Decide a notice of illegal content", "See decided notices"],
+  }),
   platform("capacity", "/capacity", "Usage and limits", "Platform", "What every store used this month against its limits (storage, products, staff, domains, visits, emails and AI), the database at a glance, and a CSV.", {
     keywords: ["usage", "limits", "quota", "storage", "bandwidth", "traffic", "capacity", "load", "database"],
     tasks: ["See every store's usage this month", "Find the stores closest to their limits", "Download the month as CSV"],

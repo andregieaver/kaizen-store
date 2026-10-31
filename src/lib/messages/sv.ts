@@ -743,6 +743,8 @@ export const sv: Messages = {
   noArticles: "Inga artiklar ännu.",
   allArticles: "Alla artiklar",
   cookies: "Kakor",
+  /** The footer's link to Kaizena Flow's form for notices of illegal content (DSA art. 16, D411). */
+  reportContent: "Anmäl olagligt innehåll",
   cookieSettings: "Inställningar för kakor",
   consentTitle: "Vi använder kakor",
   consentText: (optional: string) =>

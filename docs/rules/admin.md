@@ -714,6 +714,15 @@ changing it; a rule changes here, and its line in CLAUDE.md when its gist change
   `trial_end` (`trialEndFor()`). A new way to make a store without an admin goes through the same path and audits `store.self_signup`.
 
 
+## Notices of illegal content (D411, `docs/dsa.md`, `src/lib/content-reports.ts`, `src/server/content-reports.ts`)
+
+- **Notices of illegal content (D411, `docs/dsa.md`, `src/lib/content-reports.ts`, `src/server/content-reports.ts`)**: the DSA's notice
+  mechanism for content on stores. The public form is `/report` (`ReportRoute`), linked from every footer by `ReportContentLink`; a new
+  footer keeps it. `commerce.content_reports` is written only by `src/server/content-reports.ts`; a platform admin decides each notice at
+  `/admin/platform/reports` with a reason, and the sender is told (art. 16(5)); the store's owners get the statement of reasons when content
+  was restricted (art. 17), never the sender's name. An AI may read and draft (part 2) but never decides; when it took part `ai_used` is set
+  and the emails say so.
+
 ## The Dream Factory (D409, `docs/dream-factory.md`, `src/lib/dream-factory.ts`, `src/server/dream-factory.ts`)
 
 - **The Dream Factory (D409, `docs/dream-factory.md`, `src/lib/dream-factory.ts`, `src/server/dream-factory.ts`)**: a run from an owner's

@@ -84,6 +84,7 @@ export const RESERVED_PAGE_SLUGS: readonly string[] = [
   "nn",
   "no",
   "platform",
+  "report",
   "robots",
   "s",
   "setup",

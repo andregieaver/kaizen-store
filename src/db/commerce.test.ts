@@ -7167,3 +7167,38 @@ describe("private mode (wave 7 unit E, D339)", () => {
     expect(kept).toEqual({ [open]: false, [demo]: false, [setup]: true });
   });
 });
+
+describe("notices of illegal content (DSA art. 16, D411)", () => {
+  const insert = (values: { category?: string; url?: string; name?: string | null; email?: string | null; goodFaith?: boolean; explanation?: string }) =>
+    db.query(
+      "insert into commerce.content_reports (url, category, explanation, reporter_name, reporter_email, good_faith) values ($1, $2, $3, $4, $5, $6) returning id",
+      [
+        values.url ?? "https://kaizenaflow.com/s/demo/no/p/demo-handlenett",
+        values.category ?? "counterfeit_ip",
+        values.explanation ?? "A copy of a protected design.",
+        values.name === undefined ? "Kari Nordmann" : values.name,
+        values.email === undefined ? "kari@example.com" : values.email,
+        values.goodFaith ?? true,
+      ],
+    );
+
+  it("takes a notice with its reasons, place, sender and good-faith statement, and refuses one without them", async () => {
+    await expect(insert({})).resolves.toBeDefined();
+    await expect(insert({ category: "spam" })).rejects.toThrow(/content_reports_category/);
+    await expect(insert({ url: "javascript:alert(1)" })).rejects.toThrow(/content_reports_url/);
+    await expect(insert({ goodFaith: false })).rejects.toThrow(/content_reports_good_faith/);
+    await expect(insert({ explanation: "" })).rejects.toThrow(/content_reports_explanation/);
+    await expect(insert({ name: null })).rejects.toThrow(/content_reports_sender/);
+    // Offences against children: the sender may stay unnamed (art. 16(2)(c)).
+    await expect(insert({ category: "minors", name: null, email: null })).resolves.toBeDefined();
+  });
+
+  it("has a decision exactly when it is no longer received, and lets the sender go after one", async () => {
+    const { rows } = await insert({});
+    const id = (rows[0] as { id: string }).id;
+    await expect(db.query("update commerce.content_reports set status = 'actioned' where id = $1", [id])).rejects.toThrow(/content_reports_decided/);
+    await db.query("update commerce.content_reports set status = 'no_action', decided_at = now(), decision = 'Lawful.' where id = $1", [id]);
+    await db.query("update commerce.content_reports set reporter_name = null, reporter_email = null where id = $1", [id]);
+    await expect(db.query("update commerce.content_reports set status = 'done' where id = $1", [id])).rejects.toThrow(/content_reports_status/);
+  });
+});

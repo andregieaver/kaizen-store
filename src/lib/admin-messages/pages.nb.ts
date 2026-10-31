@@ -796,6 +796,7 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
   "platform:email": { title: "E-post", keywords: ["e-post", "sendt e-post", "melding"] },
   "platform:ai": { title: "KI", keywords: ["ki", "kunstig intelligens", "modell", "leverandør"] },
   "platform:plan-limits": { title: "Grenser", keywords: ["grenser", "kvote", "lagring", "båndbredde", "trafikk", "standardgrenser"] },
+  "platform:reports": { title: "Meldinger om ulovlig innhold", keywords: ["dsa", "ulovlig", "melding", "fjerning", "anmeldelse", "misbruk", "forfalskning", "moderering"] },
   "platform:status": { title: "Statusside", keywords: ["status", "hendelse", "nedetid", "oppetid", "driftsavbrudd", "vedlikehold"] },
   "platform:capacity": {
     title: "Bruk og grenser",

@@ -747,6 +747,8 @@ export const nb: Messages = {
   noArticles: "Ingen artikler ennå.",
   allArticles: "Alle artikler",
   cookies: "Informasjonskapsler",
+  /** The footer's link to Kaizena Flow's form for notices of illegal content (DSA art. 16, D411). */
+  reportContent: "Meld fra om ulovlig innhold",
   cookieSettings: "Innstillinger for informasjonskapsler",
   consentTitle: "Vi bruker informasjonskapsler",
   consentText: (optional: string) =>

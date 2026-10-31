@@ -231,6 +231,7 @@ export const PERSONAL_DATA: PersonalEntry[] = [
   entry("accounts", "staff", via("none"), ["email", "name"], null, "anonymise", OWN + " The account's own erasure (D377, `eraseOwnAccount()`) keeps the row (many tables name it as who acted) and makes it anonymous: an address that is none, no name or picture, no sign-in, switched off."),
   entry("push_subscriptions", "staff", via("none"), ["device", "endpoint"], null, "delete", "A staff member's device that gets a store's new-order notifications (D361): its push address and a name; removed by the person, when the push service says it is gone, and when the person no longer reads the store's orders. " + OWN),
   entry("status_subscribers", "owner", via("none"), ["email"], null, "none", "People who asked for emails about Kaizena Flow's incidents (D360): an address and a language. Leaving (the link in every email) deletes the row, and one never confirmed goes after a week. " + OWN),
+  entry("content_reports", "owner", via("none"), ["reporter_name", "reporter_email", "explanation"], null, "anonymise", "Notices of illegal content on a store (DSA art. 16, D411): the sender's name, address and reasons, kept so the notice can be decided and answered. The name and address are blanked 12 months after the decision by the dispatcher (pruneContentReports()); the notice and its decision stay as the record of how it was handled. " + OWN),
   entry("access_requests", "owner", via("none"), ["email", "name", "message"], null, "anonymise", "People who applied to open a store: the platform's applicants. " + OWN + " The account's own erasure (D377, `eraseOwnAccount()`) empties the applicant's email, name and message."),
   entry("abandoned_plan_checkouts", "owner", via("none"), ["email"], null, "none", "A store owner's unfinished plan checkout. " + OWN),
   entry("accessibility_settings", "owner", via("none"), ["contact_email"], null, "none", "The store's own contact for its accessibility statement. " + OWN),
@@ -529,6 +530,12 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   "domain.renewal_unpaid": "staff",
   "domain.renewal_stopping": "staff",
   "platform.access_received": "staff",
+  // Notices of illegal content (DSA, D411): the sender's receipt and decision go to a member of the public; the alert and the statement of
+  // reasons go to Kaizena Flow's admins and the store's owners.
+  "platform.content_report_received": "shopper",
+  "platform.content_report_decided": "shopper",
+  "platform.content_report_new": "staff",
+  "platform.content_report_restricted": "staff",
   "platform.access_approved": "staff",
   "platform.access_declined": "staff",
   "platform.access_confirm": "staff",

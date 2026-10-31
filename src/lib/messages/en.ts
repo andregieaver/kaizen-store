@@ -765,6 +765,8 @@ export const en = {
   noArticles: "No articles yet.",
   allArticles: "All articles",
   cookies: "Cookies",
+  /** The footer's link to Kaizena Flow's form for notices of illegal content (DSA art. 16, D411). */
+  reportContent: "Report illegal content",
   cookieSettings: "Cookie settings",
   consentTitle: "We use cookies",
   consentText: (optional: string) =>

@@ -16125,3 +16125,48 @@ export const dreamRuns = commerce.table(
     check("dream_runs_presses", sql`${t.ownerPresses} between 0 and 100`),
   ],
 );
+
+/**
+ * A notice of illegal content on a store (DSA art. 16, D411, `docs/dsa.md`, `src/server/content-reports.ts`, its only writer): what and where,
+ * why the sender thinks it is illegal, who sent it (not needed for offences against children) and their good-faith statement. A platform
+ * admin decides it, with a reason; the sender is told, and the store too when something was restricted (art. 17). The sender's name and
+ * address are blanked 12 months after the decision (`pruneContentReports()`).
+ */
+export const contentReports = commerce.table(
+  "content_reports",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "set null" }),
+    url: text("url").notNull(),
+    category: text("category").notNull(),
+    explanation: text("explanation").notNull(),
+    reporterName: text("reporter_name"),
+    reporterEmail: text("reporter_email"),
+    goodFaith: boolean("good_faith").notNull(),
+    lang: text("lang").notNull().default("en"),
+    status: text("status").notNull().default("received"),
+    decision: text("decision"),
+    actionTaken: text("action_taken"),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    decidedBy: uuid("decided_by").references(() => accounts.id, { onDelete: "set null" }),
+    /** An AI read the notice or drafted the decision (part 2): the emails then say automated means were used (art. 16(6)). */
+    aiUsed: boolean("ai_used").notNull().default(false),
+    aiNote: text("ai_note"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("content_reports_status_idx").on(t.status, t.createdAt),
+    index("content_reports_store_idx").on(t.storeId),
+    check(
+      "content_reports_category",
+      sql`${t.category} in ('unsafe_product', 'counterfeit_ip', 'illegal_goods', 'consumer_fraud', 'hate_violence', 'privacy', 'minors', 'other')`,
+    ),
+    check("content_reports_status", sql`${t.status} in ('received', 'actioned', 'no_action')`),
+    check("content_reports_explanation", sql`char_length(${t.explanation}) between 1 and 5000`),
+    check("content_reports_url", sql`${t.url} ~ '^https?://' and char_length(${t.url}) <= 2000`),
+    check("content_reports_good_faith", sql`${t.goodFaith}`),
+    // A sender names themselves, except for offences against children (art. 16(2)(c)); after a decision the retention rule may blank them.
+    check("content_reports_sender", sql`${t.category} = 'minors' or ${t.status} <> 'received' or (${t.reporterName} is not null and ${t.reporterEmail} is not null)`),
+    check("content_reports_decided", sql`(${t.status} = 'received') = (${t.decidedAt} is null)`),
+  ],
+);
