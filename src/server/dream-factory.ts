@@ -305,10 +305,11 @@ export type DreamDeps = {
 
 /**
  * The minute's work: the runs due, one at a time, while there is time. Never throws: a run that breaks is logged and the others go on.
- * Returns how many steps moved.
+ * Returns how many steps moved and how many runs threw, so the cron can keep the minute as failed.
  */
-export async function advanceDreamRuns({ deadline, deps = {} }: { deadline: number; deps?: DreamDeps }): Promise<number> {
+export async function advanceDreamRuns({ deadline, deps = {} }: { deadline: number; deps?: DreamDeps }): Promise<{ moved: number; failed: number }> {
   let moved = 0;
+  let failed = 0;
   while (Date.now() < deadline) {
     const [claimed] = await db().execute<Row>(sql`
       update commerce.dream_runs set claimed_until = now() + make_interval(mins => ${CLAIM_MINUTES})
@@ -324,13 +325,14 @@ export async function advanceDreamRuns({ deadline, deps = {} }: { deadline: numb
     try {
       moved += await advanceRun(runId, deadline, deps);
     } catch (error) {
+      failed++;
       log("error", "dream_factory.run_failed", { run: runId }, error);
     } finally {
       // Due again in a minute: the next run of the cron takes it.
       await db().execute(sql`update commerce.dream_runs set claimed_until = now() + interval '50 seconds' where id = ${runId}::uuid`);
     }
   }
-  return moved;
+  return { moved, failed };
 }
 
 type Context = { run: DreamRun; member: Membership; deps: DreamDeps; deadline: number };

@@ -1,7 +1,7 @@
 import { after, connection } from "next/server";
 
 import { cronAuthorised } from "@/server/cron-auth";
-import { trackedRoute } from "@/server/cron-runs";
+import { tracked, trackedRoute } from "@/server/cron-runs";
 import { advanceDreamRuns } from "@/server/dream-factory";
 
 /** A step may be a turn of the AI manager, which takes two minutes at most. */
@@ -18,8 +18,14 @@ async function run(request: Request) {
   await connection();
   if (!(await cronAuthorised(request))) return new Response("Unauthorized", { status: 401 });
   const deadline = Date.now() + RUN_MS;
+  // The work runs after the answer, so the route's own record says only that it answered: the work is kept as a job of its own, and a
+  // minute whose runs threw shows as failing on the platform home.
   after(async () => {
-    await advanceDreamRuns({ deadline });
+    await tracked("dream-factory.advance", 60, async () => {
+      // One run's fault never stops the others (each is logged); the minute is kept as failed when any run threw.
+      const { failed } = await advanceDreamRuns({ deadline });
+      if (failed > 0) throw new Error(`${failed} Dream Factory run(s) failed this minute.`);
+    });
   });
   return Response.json({ started: true }, { headers: { "Cache-Control": "no-store" } });
 }
