@@ -20,7 +20,7 @@ export function AdminTooltips() {
     const tip = document.createElement("div");
     tip.id = TIP_ID;
     tip.setAttribute("role", "tooltip");
-    tip.className = "pointer-events-auto fixed z-[1000] max-w-72 rounded-md bg-foreground px-2 py-1 text-xs leading-snug text-background shadow-md";
+    tip.className = "pointer-events-auto fixed z-[1000] max-w-72 rounded-md bg-inverse px-2 py-1 text-xs leading-snug text-inverse-ink shadow-md";
     tip.hidden = true;
     document.body.append(tip);
 
@@ -42,8 +42,8 @@ export function AdminTooltips() {
       }
     };
 
-    const hide = () => {
-      window.clearTimeout(showTimer);
+    /** Hides the tip that shows, leaving a tip waiting to show for another element alone. */
+    const hideShown = () => {
       window.clearTimeout(hideTimer);
       if (!current) return;
       restore(current);
@@ -51,10 +51,16 @@ export function AdminTooltips() {
       tip.hidden = true;
     };
 
+    /** Hides the tip and cancels one waiting to show (Escape, a press, a scroll, leaving the field). */
+    const hide = () => {
+      window.clearTimeout(showTimer);
+      hideShown();
+    };
+
     const show = (el: HTMLElement) => {
       const text = tipText(el.getAttribute("title"));
       if (!text || !el.isConnected) return;
-      hide();
+      hideShown();
       current = el;
       el.dataset.kzTitle = el.getAttribute("title") ?? "";
       el.removeAttribute("title");
@@ -93,11 +99,13 @@ export function AdminTooltips() {
     };
 
     const onOut = (event: PointerEvent) => {
+      // Leaving an element cancels its waiting tip; pointing at the next one (the pointerover that follows) starts its own.
       window.clearTimeout(showTimer);
       const to = event.relatedTarget;
-      if (to instanceof Node && (tip.contains(to) || current?.contains(to))) return;
-      // A moment to cross the gap to the tip, which keeps it.
-      hideTimer = window.setTimeout(hide, 120);
+      if (!current || (to instanceof Node && (tip.contains(to) || current.contains(to)))) return;
+      // A moment to cross the gap to the tip, which keeps it. Only the tip that shows goes, never one now waiting for the next element.
+      window.clearTimeout(hideTimer);
+      hideTimer = window.setTimeout(hideShown, 120);
     };
 
     const onFocus = (event: FocusEvent) => {

@@ -11,6 +11,9 @@ test.use({ storageState: OWNER.state });
 test("a title shows as a tip on hover and on keyboard focus, and Escape hides it", async ({ page }) => {
   await page.goto(`/admin/${E2E_STORE}`);
   await expect(page.locator("main").first()).toBeVisible();
+  // The tips' listeners come with the admin's scripts: until their element is there, a hover is not heard, and a probe put in before the
+  // page is hydrated may be dropped by it.
+  await expect(page.locator("#kz-admin-tip")).toBeAttached();
   // A plain icon button whose title is its only name, as many in the admin are.
   await page.evaluate(() => {
     const button = document.createElement("button");
@@ -25,6 +28,8 @@ test("a title shows as a tip on hover and on keyboard focus, and Escape hides it
   const tip = page.getByRole("tooltip");
 
   await expect(async () => {
+    // A pointer already resting on the probe sends no new event: leave and come back each try.
+    await page.mouse.move(0, 0);
     await probe.hover();
     await expect(tip).toHaveText("Remove this row", { timeout: 1_000 });
   }).toPass({ timeout: 10_000 });
