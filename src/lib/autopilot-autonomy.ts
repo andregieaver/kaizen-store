@@ -26,6 +26,8 @@ export const TOOL_AREAS: Readonly<Record<string, AutonomyArea>> = {
   set_backorder: "catalogue",
   // Goods that arrived (AGT-01): the stock the order says, as set_stock.
   receive_purchase_order: "catalogue",
+  // A price list's fixed prices (AGT-01), as set_prices.
+  set_price_list_prices: "catalogue",
   create_field_group: "catalogue",
   set_fields: "catalogue",
   // Website
@@ -119,6 +121,10 @@ export const NEVER_AUTOMATIC: ReadonlySet<string> = new Set([
   "adjust_customer_credits",
   // A customer's group decides the prices and terms they get (AGT-01): a person always says yes.
   "set_customer_group",
+  // A creator is a person judged by a person, and what they are paid is money (AGT-01).
+  "decide_creator",
+  "set_creator_rate",
+  "record_creator_payout",
   "issue_gift_card",
   "change_plan",
   "end_plan",

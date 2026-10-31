@@ -207,15 +207,20 @@ import { listDiscounts, saveDiscount } from "./discounts";
 import { getInvoiceSettings, invoiceReadiness, seriesStates } from "./invoice-settings";
 import { invoiceCounts, listCreditNotes, listInvoices, waitingCreditNotes, waitingInvoices } from "./invoices";
 import {
+  SCREEN_CHECKED,
   bookingResourcesTool,
+  decideCreatorTool,
   listCreatorsTool,
   listCustomerGroupsTool,
   listReportSchedulesTool,
   owedToCustomersTool,
   preflightScreenTool,
   receivePurchaseOrderTool,
+  recordCreatorPayoutTool,
   scheduleReportTool,
+  setCreatorRateTool,
   setCustomerGroupTool,
+  setPriceListPricesTool,
 } from "./screen-tools";
 import { createTransferTool, listPurchaseOrdersTool, listTransfersTool, preflightStockTool, setBackorderTool, setStockTool, stockHistoryTool, stockLevelsTool } from "./stock-tools";
 import { pickupOrdersTool, shippingOverviewTool } from "./shipping-tools";
@@ -2104,12 +2109,12 @@ export async function preflightOwnerTool(ctx: OwnerToolContext, name: string, ra
     if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
     return preflightStockTool(ctx, name, input.input as Record<string, unknown>);
   }
-  // A purchase order that cannot be received, a report or a customer that is not there, is refused now, never kept for a yes (AGT-01).
-  if (name === "receive_purchase_order" || name === "schedule_report" || name === "set_customer_group") {
+  // A purchase order that cannot be received, a report, customer, creator, list or SKU that is not there, is refused now, never kept for a yes (AGT-01).
+  if ((SCREEN_CHECKED as readonly string[]).includes(name)) {
     const tool = OWNER_TOOLS_BY_NAME[name];
     const input = readToolInput(tool, raw);
     if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
-    return preflightScreenTool(ctx, name, input.input as Record<string, unknown>);
+    return preflightScreenTool(ctx, name as (typeof SCREEN_CHECKED)[number], input.input as Record<string, unknown>);
   }
   // A draft that could not be sent (not open, a problem that blocks it, payments off, a closed store) is refused now, never kept for a yes (D173).
   if (name === "send_draft_order") {
@@ -2494,6 +2499,10 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   set_customer_group: setCustomerGroupTool,
   list_creators: listCreatorsTool,
   booking_resources: bookingResourcesTool,
+  decide_creator: decideCreatorTool,
+  set_creator_rate: setCreatorRateTool,
+  record_creator_payout: recordCreatorPayoutTool,
+  set_price_list_prices: setPriceListPricesTool,
   create_transfer: createTransferTool,
   ai_usage: aiUsageTool,
   post_to_slack: postToSlackTool,

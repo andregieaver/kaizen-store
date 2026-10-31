@@ -15,6 +15,8 @@ const orders = await import("./purchase-orders");
 const { saveTier } = await import("./customer-tiers");
 const { saveReport } = await import("./saved-reports");
 const { listReportSchedules } = await import("./report-schedules");
+const creators = await import("./creators");
+const { listPrices, savePriceList } = await import("./price-lists");
 const { addLocation, clearLevels, levelsOf, newStore } = await import("./inventory-test-support");
 
 type Row = Record<string, unknown>;
@@ -137,12 +139,71 @@ describe("list_customer_groups and set_customer_group", () => {
   });
 });
 
+describe("decide_creator, set_creator_rate and record_creator_payout", () => {
+  it("approves an application by the creator's name, sets their own rate, and refuses a payout above what they are owed", async () => {
+    expect((await creators.saveCreatorSettings(store.member.account, store.storeId, { enabled: true, commissionBps: 1000, categoryBps: {}, cookieDays: 30 })).ok).toBe(true);
+    const [person] = await db().execute<Row>(sql`
+      insert into commerce.customers (store_id, email, name, email_verified_at) values (${store.storeId}::uuid, ${`mia-${Date.now().toString(36)}@example.com`}, 'Mia', now())
+      returning id`);
+    expect(await creators.applyAsCreator(store.storeId, String(person.id), { name: "Mia Makes", channelUrl: "https://video.example/@mia", consent: true }, "I agree")).toEqual({ ok: true });
+
+    expect(await refusal(preflight("decide_creator", { creator: "Nobody", decision: "approve" }))).toContain('no creator "Nobody"');
+    expect(await refusal(preflight("decide_creator", { creator: "Mia Makes", decision: "stop" }))).toBe("Only an approved creator is stopped; Mia Makes is applied.");
+    expect((await run("decide_creator", { creator: "mia makes", decision: "approve" })).done).toBe("Mia Makes is approved: their link earns commission from now.");
+    const [mia] = await creators.listCreators(store.storeId);
+    expect(mia).toMatchObject({ status: "approved", code: expect.any(String) });
+    expect(await refusal(preflight("decide_creator", { creator: mia.code, decision: "approve" }))).toBe("Mia Makes is approved already.");
+
+    expect((await run("set_creator_rate", { creator: mia.code, percent: 12.5 })).done).toBe("Mia Makes earns 12.5 % from now.");
+    expect((await creators.listCreators(store.storeId))[0].commissionBps).toBe(1250);
+    expect((await run("set_creator_rate", { creator: "Mia Makes", percent: null })).done).toBe("Mia Makes earns the programme's commission again.");
+
+    // Nothing is owed yet: a payout is refused before the yes, and by the database if it got that far.
+    expect(await refusal(preflight("record_creator_payout", { creator: "Mia Makes", amount: "100", currency: "nok", paid_on: "2026-10-31" }))).toContain("is owed");
+    expect(await refusal(preflight("record_creator_payout", { creator: "Mia Makes", amount: "lots", currency: "NOK", paid_on: "2026-10-31" }))).toBe('"lots" could not be read as an amount in NOK.');
+
+    expect((await run("decide_creator", { creator: "Mia Makes", decision: "stop" })).done).toBe("Mia Makes is stopped: their code earns nothing new.");
+  });
+
+  it("keeps the creator's rate and payouts for the owner, and never lets the autopilot decide one", () => {
+    expect(OWNER_TOOLS_BY_NAME.decide_creator.gate).toBe("spend");
+    expect(OWNER_TOOLS_BY_NAME.record_creator_payout.gate).toBe("spend");
+  });
+});
+
+describe("set_price_list_prices", () => {
+  it("sets and takes away a list's fixed prices by SKU, checking every row before anything is kept", async () => {
+    const made = await savePriceList(store.member, null, { name: "Forhandler", percent: null, active: true });
+    if (!made.ok) throw new Error("the list was not made");
+    const [{ id: listId }] = await db().execute<{ id: string }>(sql`select id::text from commerce.price_lists where store_id = ${store.storeId}::uuid and name = 'Forhandler'`);
+
+    expect(await refusal(preflight("set_price_list_prices", { list: "Engros", prices: [{ sku: SKU, currency: "NOK", amount: "199" }] }))).toContain('no price list "Engros"');
+    expect(await refusal(preflight("set_price_list_prices", { list: "Forhandler", prices: [{ sku: "NO-SUCH", currency: "NOK", amount: "199" }] }))).toBe("The store has no variant with the SKU NO-SUCH.");
+    expect(await refusal(preflight("set_price_list_prices", { list: "Forhandler", prices: [{ sku: SKU, currency: "JPY", amount: "199" }] }))).toContain("JPY is not a currency of the store's markets");
+    expect(await refusal(preflight("set_price_list_prices", { list: "Forhandler", prices: [{ sku: SKU, currency: "NOK", amount: "cheap" }] }))).toBe('"cheap" could not be read as a price in NOK.');
+
+    const set = await run("set_price_list_prices", { list: "forhandler", prices: [{ sku: SKU.toLowerCase(), currency: "nok", amount: "199,00" }] });
+    expect(set.done).toBe('The price list "Forhandler" has 1 fixed price set.');
+    const fixed = async () => (await listPrices(store.storeId, listId, "en-GB")).filter((p) => p.sku === SKU && p.currency === "NOK" && p.amount !== "");
+    expect((await fixed()).length).toBe(1);
+
+    expect((await run("set_price_list_prices", { list: "Forhandler", prices: [{ sku: SKU, currency: "NOK", amount: null }] })).done).toBe(
+      'The price list "Forhandler" has 0 fixed prices set and 1 taken away.',
+    );
+    expect((await fixed()).length).toBe(0);
+  });
+});
+
 describe("the reads", () => {
-  it("say plainly when there is nothing, and what can be booked waits for the store's bookings to be on", async () => {
+  it("say what there is, or plainly that there is nothing, and what can be booked waits for the store's bookings to be on", async () => {
     const owed = await run("owed_to_customers");
     expect(owed.pages.finance).toBe(`/admin/${store.slug}/analytics/finance`);
     expect(Array.isArray(owed.owed)).toBe(true);
-    expect((await run("list_creators")).note).toBe("No creators match.");
+    // The creator the case above stopped, by name and code, never their email.
+    const listed = await run("list_creators", { status: "stopped" });
+    expect(listed.creators).toEqual([expect.objectContaining({ name: "Mia Makes", status: "stopped", code: expect.any(String) })]);
+    expect(JSON.stringify(listed)).not.toContain("@example.com");
+    expect((await run("list_creators", { status: "applied" })).note).toBe("No creators match.");
     // What can be booked is for a store with Appointments or Stays and rentals on, as its pages are.
     expect(await refusal(run("booking_resources"))).toContain("Appointments or Stays and rentals is switched off");
   });

@@ -53,6 +53,7 @@ export const TOOL_FEATURES: Partial<Record<OwnerToolName, FeatureRequirement>> =
   receive_purchase_order: "shop",
   list_customer_groups: "shop",
   set_customer_group: "shop",
+  set_price_list_prices: "shop",
   create_transfer: "shop",
   list_discounts: "shop",
   list_campaigns: "shop",

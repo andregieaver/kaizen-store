@@ -7,13 +7,15 @@ import { presetPeriod, todayIn } from "@/lib/analytics-period";
 import { normaliseEmail } from "@/lib/email-address";
 import { formatMoney } from "@/lib/money";
 import { weekSummary } from "@/lib/opening-hours";
+import { parsePrice } from "@/lib/product-input";
 import type { OwnerToolInput } from "@/lib/owner-tools";
 
 import type { Membership } from "./auth";
 import { RESOURCE_KINDS, listResources } from "./bookings";
-import { listCreators } from "./creators";
+import { decideCreator, listCreators, recordCreatorPayout, setCreatorRate } from "./creators";
 import { listTiers, setCustomerTier } from "./customer-tiers";
 import { liabilityRows } from "./liabilities";
+import { listCurrencies, listPriceLists, setPrices } from "./price-lists";
 import { OwnerToolError } from "./owner-tool-error";
 import { getPurchaseOrder, listPurchaseOrders, receivePurchaseOrder } from "./purchase-orders";
 import { listReportSchedules, reportRecipients, saveReportSchedule } from "./report-schedules";
@@ -223,12 +225,122 @@ export async function bookingResourcesTool(ctx: Ctx, { kind }: OwnerToolInput<"b
 }
 
 // ---------------------------------------------------------------------------
+// A creator's decision, rate and payout (D386)
+// ---------------------------------------------------------------------------
+
+const CREATOR_WORDS: Record<string, string> = {
+  owner_only: "Only the store's owner can do that.",
+  no_access: "You are not a member of this store.",
+  not_found: "That creator is gone.",
+  status: "That change does not fit where the creator is: an application is approved or declined, an approved creator stopped, and a declined or stopped one approved again.",
+  payout_over: "That is more than the creator is owed in that currency.",
+  code: "No free code could be made for the creator just now; try again.",
+  invalid: "The values could not be read.",
+};
+
+/** The creator a name means: by their code, else by their name; two creators of one name are named by their code. */
+async function creatorTarget(ctx: Ctx, name: string) {
+  const all = await listCreators(ctx.store.id);
+  const byCode = all.filter((c) => c.code && same(c.code, name));
+  const found = byCode.length > 0 ? byCode : all.filter((c) => same(c.name, name));
+  if (found.length === 0) return fail(`The store has no creator "${name}". list_creators lists them by name and code.`);
+  if (found.length > 1) return fail(`More than one creator is called "${name}": name them by their code.`);
+  return found[0];
+}
+
+function creatorPayout(input: OwnerToolInput<"record_creator_payout">) {
+  const currency = input.currency.toUpperCase();
+  const amountMinor = parsePrice(input.amount, currency);
+  if (amountMinor === null || amountMinor <= 0) return fail(`"${input.amount}" could not be read as an amount in ${currency}.`);
+  return { currency, amountMinor, paidOn: input.paid_on, reference: input.reference };
+}
+
+async function creatorChecked(ctx: Ctx, name: "decide_creator" | "set_creator_rate" | "record_creator_payout", input: Record<string, unknown>) {
+  const creator = await creatorTarget(ctx, String(input.creator ?? ""));
+  if (name === "decide_creator") {
+    const decision = input.decision;
+    if (decision === "approve" && creator.status === "approved") return fail(`${creator.name} is approved already.`);
+    if (decision === "decline" && creator.status !== "applied") return fail(`Only an application is declined; ${creator.name} is ${creator.status}.`);
+    if (decision === "stop" && creator.status !== "approved") return fail(`Only an approved creator is stopped; ${creator.name} is ${creator.status}.`);
+  } else if (name === "record_creator_payout") {
+    const payout = creatorPayout(input as OwnerToolInput<"record_creator_payout">);
+    const owed = creator.balances.find((b) => b.currency === payout.currency)?.owedMinor ?? 0;
+    if (payout.amountMinor > owed) return fail(`${creator.name} is owed ${money(owed, payout.currency)}, less than ${money(payout.amountMinor, payout.currency)}.`);
+  }
+  return creator;
+}
+
+export async function decideCreatorTool(ctx: Ctx, input: OwnerToolInput<"decide_creator">) {
+  const creator = await creatorChecked(ctx, "decide_creator", input);
+  const done = await decideCreator(ctx.account, ctx.store.id, creator.id, input.decision);
+  if (!done.ok) return fail(CREATOR_WORDS[done.problem] ?? CREATOR_WORDS.invalid);
+  const words = { approve: "is approved: their link earns commission from now", decline: "is declined", stop: "is stopped: their code earns nothing new" } as const;
+  return { done: `${creator.name} ${words[input.decision]}.`, pages: { creators: adminLink(ctx.store, "/creators") } };
+}
+
+export async function setCreatorRateTool(ctx: Ctx, input: OwnerToolInput<"set_creator_rate">) {
+  const creator = await creatorTarget(ctx, input.creator);
+  const bps = input.percent === null ? null : Math.round(input.percent * 100);
+  const done = await setCreatorRate(ctx.account, ctx.store.id, creator.id, bps);
+  if (!done.ok) return fail(CREATOR_WORDS[done.problem] ?? CREATOR_WORDS.invalid);
+  return { done: bps === null ? `${creator.name} earns the programme's commission again.` : `${creator.name} earns ${bps / 100} % from now.` };
+}
+
+export async function recordCreatorPayoutTool(ctx: Ctx, input: OwnerToolInput<"record_creator_payout">) {
+  const creator = await creatorChecked(ctx, "record_creator_payout", input);
+  const payout = creatorPayout(input);
+  const done = await recordCreatorPayout(ctx.account, ctx.store.id, creator.id, payout);
+  if (!done.ok) return fail(CREATOR_WORDS[done.problem] ?? CREATOR_WORDS.invalid);
+  return { done: `Recorded ${money(payout.amountMinor, payout.currency)} paid to ${creator.name} on ${payout.paidOn}.`, pages: { creators: adminLink(ctx.store, "/creators") } };
+}
+
+// ---------------------------------------------------------------------------
+// A price list's fixed prices (D321)
+// ---------------------------------------------------------------------------
+
+/** The list by its name and each row's variant by its SKU and currency among the markets', every row checked before anything is kept. */
+async function priceRows(ctx: Ctx, input: OwnerToolInput<"set_price_list_prices">) {
+  const lists = (await listPriceLists(ctx.store.id)).filter((l) => same(l.name, input.list));
+  if (lists.length !== 1) return fail(lists.length === 0 ? `The store has no price list "${input.list}". list_price_lists lists them.` : `More than one price list is called "${input.list}".`);
+  const skus = [...new Set(input.prices.map((p) => p.sku.toLowerCase()))];
+  const variants = await db().execute<Row>(sql`
+    select id, sku from commerce.product_variants where store_id = ${ctx.store.id}::uuid and lower(sku) in (${sql.join(skus.map((k) => sql`${k}`), sql`, `)})
+  `);
+  const idOf = new Map(variants.map((v) => [String(v.sku).toLowerCase(), String(v.id)]));
+  const currencies = new Set(await listCurrencies(ctx.store.id));
+  const rows = input.prices.map((p) => {
+    const variantId = idOf.get(p.sku.toLowerCase()) ?? fail(`The store has no variant with the SKU ${p.sku}.`);
+    const currency = p.currency.toUpperCase();
+    if (!currencies.has(currency)) return fail(`${currency} is not a currency of the store's markets (${[...currencies].join(", ")}).`);
+    if (p.amount !== null && parsePrice(p.amount, currency) === null) return fail(`"${p.amount}" could not be read as a price in ${currency}.`);
+    return { variantId, currency, amount: p.amount ?? "" };
+  });
+  return { list: lists[0], rows };
+}
+
+export async function setPriceListPricesTool(ctx: Ctx, input: OwnerToolInput<"set_price_list_prices">) {
+  const { list, rows } = await priceRows(ctx, input);
+  const saved = await setPrices(memberOf(ctx), list.id, rows);
+  if (!saved.ok) return fail(saved.problems.join(" "));
+  const removed = rows.filter((r) => r.amount === "").length;
+  return {
+    done: `The price list "${list.name}" has ${rows.length - removed} fixed ${rows.length - removed === 1 ? "price" : "prices"} set${removed ? ` and ${removed} taken away` : ""}.`,
+    pages: { price_list: adminLink(ctx.store, `/price-lists/${list.id}`) },
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Checked before the owner's yes is asked
 // ---------------------------------------------------------------------------
 
 /** A change that could not be made is refused now, never kept for a yes: the same resolution the tool makes, without writing. */
-export async function preflightScreenTool(ctx: Ctx, name: "receive_purchase_order" | "schedule_report" | "set_customer_group", input: Record<string, unknown>): Promise<void> {
+export const SCREEN_CHECKED = ["receive_purchase_order", "schedule_report", "set_customer_group", "decide_creator", "set_creator_rate", "record_creator_payout", "set_price_list_prices"] as const;
+export type ScreenChecked = (typeof SCREEN_CHECKED)[number];
+
+export async function preflightScreenTool(ctx: Ctx, name: ScreenChecked, input: Record<string, unknown>): Promise<void> {
   if (name === "receive_purchase_order") await orderToReceive(ctx, input as OwnerToolInput<"receive_purchase_order">);
   else if (name === "schedule_report") await scheduleTarget(ctx, input as OwnerToolInput<"schedule_report">);
-  else await groupTarget(ctx, input as OwnerToolInput<"set_customer_group">);
+  else if (name === "set_customer_group") await groupTarget(ctx, input as OwnerToolInput<"set_customer_group">);
+  else if (name === "set_price_list_prices") await priceRows(ctx, input as OwnerToolInput<"set_price_list_prices">);
+  else await creatorChecked(ctx, name, input);
 }

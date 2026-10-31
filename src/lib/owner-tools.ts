@@ -511,6 +511,54 @@ export const OWNER_TOOLS = [
     z.object({ kind: z.enum(["staff", "unit", "item", "all"]).default("all").describe("staff (people), unit (rooms, places to stay), item (things to rent), or all.") }),
   ),
   tool(
+    "decide_creator",
+    "Approves, declines or stops a creator (D386), as the Creators page does. Approving gives them their code the first time, and their link starts earning commission; a stopped creator's code earns nothing new, and what was earned stays owed. Name the creator by their code or their name (list_creators). Needs the owner's approval.",
+    z.object({
+      creator: z.string().trim().min(1).max(120).describe("The creator's code, or their name."),
+      decision: z.enum(["approve", "decline", "stop"]),
+    }),
+    "spend",
+  ),
+  tool(
+    "set_creator_rate",
+    "Sets one creator's own commission in percent (D386), or `percent: null` to give them the programme's rate again. The owner's only, as on the Creators page. Needs the owner's approval.",
+    z.object({
+      creator: z.string().trim().min(1).max(120).describe("The creator's code, or their name."),
+      percent: z.number().min(0).max(50).nullable().describe("Percent of what their buyers pay for goods, with at most two decimals; null for the programme's rate."),
+    }),
+    "spend",
+  ),
+  tool(
+    "record_creator_payout",
+    "Records a payout the owner made to a creator outside Kaizena Flow (D386): it moves no money, only keeps what was paid, in a currency the creator is owed in and never more than is owed there. The owner's only. The amount as the owner writes it (\"1 250,00\"). Needs the owner's approval.",
+    z.object({
+      creator: z.string().trim().min(1).max(120).describe("The creator's code, or their name."),
+      amount: z.string().trim().min(1).max(20).describe("What was paid, as written: 1250 or 1 250,00."),
+      currency: z.string().trim().regex(/^[A-Za-z]{3}$/).describe("The ISO currency it was paid in, such as NOK."),
+      paid_on: z.iso.date().describe("The date it was paid, YYYY-MM-DD."),
+      reference: z.string().trim().max(120).default("").describe("The bank's or the owner's reference; never a person's account number."),
+    }),
+    "spend",
+  ),
+  tool(
+    "set_price_list_prices",
+    "Sets fixed prices on one of the store's price lists (D321), as the list's page does: each row a variant by its SKU, a currency of the store's markets and the amount as the owner writes it, or `amount: null` to take that fixed price away (the list's percentage then applies). Only the buyers the list is for see them. The list by its name (list_price_lists). Needs the owner's approval.",
+    z.object({
+      list: z.string().trim().min(1).max(120).describe("The price list's name."),
+      prices: z
+        .array(
+          z.object({
+            sku: z.string().trim().min(1).max(64),
+            currency: z.string().trim().regex(/^[A-Za-z]{3}$/),
+            amount: z.string().trim().min(1).max(20).nullable().describe("The price including VAT as written (249 or 249,00), or null to remove it."),
+          }),
+        )
+        .min(1)
+        .max(200),
+    }),
+    "public",
+  ),
+  tool(
     "stock_history",
     "The history of one variant's stock (D172): every change of a figure, newest first, with when, the location, how much it changed by, the new figure, the reason (counted, received, damaged, sale, put back after an order ...) and who or what made it (a staff member, an order, a return, the AI manager). Kept 24 months. Read-only; each line is the store's own record, so repeat it as it is. Give the variant's SKU (from stock_levels or get_product).",
     z.object({
@@ -2130,6 +2178,21 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
             : "every day";
       const to = Array.isArray(input.recipients) && input.recipients.length > 0 ? (input.recipients as unknown[]).map(String).join(", ") : "you";
       return `Email the report "${text("report")}" ${when} at ${String(input.hour ?? 7).padStart(2, "0")}:00 to ${to}.`;
+    }
+    case "decide_creator":
+      return input.decision === "approve"
+        ? `Approve the creator ${text("creator")}: their link starts earning commission.`
+        : input.decision === "decline"
+          ? `Decline the creator ${text("creator")}.`
+          : `Stop the creator ${text("creator")}: their code earns nothing new; what they earned stays owed.`;
+    case "set_creator_rate":
+      return input.percent === null ? `Give the creator ${text("creator")} the programme's commission again.` : `Set the creator ${text("creator")}'s commission to ${String(input.percent)} %.`;
+    case "record_creator_payout":
+      return `Record that ${text("amount")} ${text("currency").toUpperCase()} was paid to the creator ${text("creator")} on ${text("paid_on")}. No money moves.`;
+    case "set_price_list_prices": {
+      const rows = Array.isArray(input.prices) ? (input.prices as { sku?: unknown; currency?: unknown; amount?: unknown }[]) : [];
+      const shown = rows.slice(0, 8).map((r) => (r.amount === null ? `${String(r.sku)}: no fixed price in ${String(r.currency).toUpperCase()}` : `${String(r.sku)}: ${String(r.amount)} ${String(r.currency).toUpperCase()}`));
+      return `On the price list "${text("list")}": ${shown.join("; ")}${rows.length > 8 ? `, and ${rows.length - 8} more` : ""}.`;
     }
     case "set_customer_group":
       return input.group === null ? `Take ${text("customer")} out of their customer group.` : `Put ${text("customer")} in the customer group "${text("group")}": they get its discount from their next order.`;

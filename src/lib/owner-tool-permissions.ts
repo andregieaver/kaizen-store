@@ -208,6 +208,11 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   set_customer_group: "customers:write",
   list_creators: "marketing:read",
   booking_resources: "bookings:read",
+  decide_creator: "marketing:write",
+  // A creator's own rate and their payouts are the owner's, as on the Creators page.
+  set_creator_rate: "owner",
+  record_creator_payout: "owner",
+  set_price_list_prices: "customers:write",
   create_transfer: "products:write",
   // The redirects and the 404 report are the Website section's (D168): read like its pages, added with the right to change the website.
   redirect_overview: "website:read",
