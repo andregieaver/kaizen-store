@@ -285,6 +285,21 @@ const LEARN_SYSTEM = [
 type Learned = { kind: MemoryKind; content: string; everywhere: boolean; importance: number };
 
 /** The model's notes, read defensively: only well-formed ones pass. */
+/**
+ * What a memory never holds (PSI AGT-07): an email address, a password, a phone number (with a country code, or eight digits in pairs or in a
+ * row), a run of eight digits or more (card, account and order numbers), a national identity number as written in the Nordics (six digits,
+ * then four or five) and an IBAN. A memory is about how the person works, never about a customer or their money.
+ */
+export const NEVER_KEPT: readonly RegExp[] = [
+  /@/,
+  /password|passord|lösenord|adgangskode/i,
+  /\+\d{1,3}[\s-]?\d(?:[\s-]?\d){5,}/,
+  /\b\d{2}\s\d{2}\s\d{2}\s\d{2}\b/,
+  /\d{8,}/,
+  /\b\d{6}[-\s]?\d{4,5}\b/,
+  /\b[A-Z]{2}\d{2}(?:\s?[A-Z0-9]){11,30}\b/,
+];
+
 export function readLearned(text: string): Learned[] {
   const json = /\{[\s\S]*\}/.exec(text)?.[0];
   if (!json) return [];
@@ -302,8 +317,8 @@ export function readLearned(text: string): Learned[] {
       const content = typeof item?.content === "string" ? item.content.replace(/\s+/g, " ").trim() : "";
       const kind = MEMORY_KINDS.includes(item?.kind as MemoryKind) ? (item.kind as MemoryKind) : "preference";
       if (content.length < 3 || content.length > 300) return [];
-      // No addresses, card numbers or emails: those are never kept.
-      if (/@|\b\d{12,}\b|password|passord/i.test(content)) return [];
+      // No one's contact details or numbers that name them or their money: never kept (PSI AGT-07).
+      if (NEVER_KEPT.some((pattern) => pattern.test(content))) return [];
       const importance = Number.isFinite(Number(item.importance)) ? Math.min(9, Math.max(1, Math.round(Number(item.importance)))) : 5;
       return [{ kind, content, everywhere: item.everywhere === true, importance }];
     });

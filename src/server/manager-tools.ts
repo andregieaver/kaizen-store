@@ -29,7 +29,7 @@ import type { AiConnection } from "./ai";
 import { platformSupportOverviewTool } from "./support-manager-tools";
 import { countStoresWithOwnAi } from "./ai";
 import { usageRows } from "./ai-usage";
-import { keepMemory, memoriesFor, deleteMemory } from "./assistant-memory";
+import { NEVER_KEPT, keepMemory, memoriesFor, deleteMemory } from "./assistant-memory";
 import { audit, type Account } from "./auth";
 import { getStoreBilling, listPlans, listStoreBilling } from "./billing";
 import { listEmails } from "./email";
@@ -176,7 +176,7 @@ async function deleteSkillTool(ctx: ManagerContext, { skill }: ManagerToolInput<
 // Memory ----------------------------------------------------------------------------------
 
 async function rememberTool(ctx: ManagerContext, { content, kind, everywhere }: ManagerToolInput<"remember">) {
-  if (/\b\d{12,}\b|password|passord/i.test(content)) return fail("That looks like a secret or a card number: it is not kept.");
+  if (NEVER_KEPT.some((pattern) => pattern.test(content))) return fail("That looks like contact details, a secret or a number that names someone: it is not kept.");
   const kept = await keepMemory({
     accountId: ctx.account.id,
     storeId: everywhere || !ctx.store ? null : ctx.store.id,

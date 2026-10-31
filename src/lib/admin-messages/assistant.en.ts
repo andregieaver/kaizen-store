@@ -163,6 +163,7 @@ export const assistantEn = {
     forget: "Forget",
     forgetOne: "Forget \"{memory}\"",
     forgetAll: "Forget everything",
+    download: "Download as a file",
   },
   errors: {
     storeClosed: "The assistant is off while the store is not open.",

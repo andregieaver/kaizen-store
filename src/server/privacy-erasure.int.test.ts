@@ -411,6 +411,21 @@ describe("erasing again, and erasing across stores", () => {
     expect(after.content).toBe("[erased] ([erased], [erased]) asked about order 1001. Ola Hansen (ola@example.com) too.");
   }, 120_000);
 
+  it("deletes the AI manager's memories that name the person, the store's and its staff's own, and keeps the rest (PSI AGT-07)", async () => {
+    const subject = await buildSubject(store, "memory");
+    await db().execute(sql`update commerce.customers set name = 'Mona Lysne' where id = ${subject.customerId}::uuid`);
+    const keep = async (storeId: string | null, content: string) =>
+      String((await db().execute<Row>(sql`
+        insert into commerce.assistant_memories (account_id, store_id, kind, content, importance, source)
+        values (${store.ownerId}::uuid, ${storeId}::uuid, 'fact', ${content}, 5, 'learned') returning id`))[0].id);
+    const here = await keep(store.storeId, "Mona Lysne is a loyal customer who likes blue mugs");
+    const everywhere = await keep(null, "Always greet Mona  Lysne by name");
+    const unrelated = await keep(store.storeId, "Ships on Tuesdays");
+    expect(await eraseSubject(store.storeId, { customerId: subject.customerId }, { channel: "staff", accountId: store.ownerId })).toMatchObject({ ok: true, outcome: "erased" });
+    const left = await db().execute<Row>(sql`select id from commerce.assistant_memories where id = any(${`{${here},${everywhere},${unrelated}}`}::uuid[])`);
+    expect(left.map((r) => String(r.id))).toEqual([unrelated]);
+  }, 120_000);
+
   it("never touches another store's customer, orders, subscriptions or emails, even for the same email", async () => {
     const mine = await buildSubject(store, "tenant", { sentinel: "MINE-1g" });
     const theirs = await buildSubject(foreign, "tenant", { email: mine.email, sentinel: "THEIRS-1g" });

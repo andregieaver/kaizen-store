@@ -635,7 +635,7 @@ type Tx = Parameters<Parameters<ReturnType<typeof db>["transaction"]>[0]>[0];
 
 /**
  * The person's email addresses, full names and phone numbers, as the account and their orders hold them, blanked in the store's AI manager
- * messages (`tracePatterns()`). Only the messages that hold one are written.
+ * messages (`tracePatterns()`), and the AI manager's memories that hold one deleted. Only the rows that hold one are written.
  */
 async function blankAssistantTraces(tx: Tx, s: PrivacySubject): Promise<number> {
   const orderIds = uuidList(s.orderIds);
@@ -665,8 +665,22 @@ async function blankAssistantTraces(tx: Tx, s: PrivacySubject): Promise<number> 
     `);
     blanked += rows.length;
   }
-  if (blanked > 0) log("info", "privacy.assistant_traces_blanked", { messages: blanked });
-  return blanked;
+  // A memory that names the person is deleted, not blanked (PSI AGT-07): with the name gone it says nothing, and its embedding still
+  // holds it. The store's own memories, and the store's staff's memories kept for everywhere.
+  let memories = 0;
+  for (const pattern of patterns) {
+    const rows = await tx.execute<Row>(sql`
+      delete from commerce.assistant_memories m
+      where m.content ~* ${pattern}
+        and (m.store_id = ${s.storeId}::uuid
+          -- Every member, expires_at or not: an ended collaborator's memories of the person go too.
+          or (m.store_id is null and m.account_id in (select sm.account_id from commerce.store_members sm where sm.store_id = ${s.storeId}::uuid)))
+      returning m.id
+    `);
+    memories += rows.length;
+  }
+  if (blanked > 0 || memories > 0) log("info", "privacy.assistant_traces_blanked", { messages: blanked, memories });
+  return blanked + memories;
 }
 
 /** The subject's rows, all of it or none: the bodies of 2.4 step 3. */

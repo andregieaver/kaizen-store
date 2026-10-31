@@ -157,6 +157,7 @@ export const assistantNb: AssistantMessages = {
     forget: "Glem",
     forgetOne: "Glem «{memory}»",
     forgetAll: "Glem alt",
+    download: "Last ned som fil",
   },
   errors: {
     storeClosed: "Assistenten er av mens butikken ikke er åpen.",

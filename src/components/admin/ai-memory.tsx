@@ -41,6 +41,29 @@ export function AiMemory({ memories: initial, learning: initialLearning, actions
     setMemories((current) => current.filter((m) => m.id !== memory.id));
   }
 
+  /** The person's memories as a file of their own (GDPR Art. 15 and 20): what it knows, where, how it came, and when it was last used. */
+  function download() {
+    const file = {
+      exportedAt: new Date().toISOString(),
+      memories: memories.map((m) => ({
+        kind: m.kind,
+        content: m.content,
+        about: m.storeName ?? null,
+        source: m.source,
+        importance: m.importance,
+        uses: m.uses,
+        lastUsedAt: m.lastUsedAt,
+        updatedAt: m.updatedAt,
+      })),
+    };
+    const url = URL.createObjectURL(new Blob([JSON.stringify(file, null, 2)], { type: "application/json" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `ai-manager-memory-${file.exportedAt.slice(0, 10)}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   async function removeAll() {
     if (!window.confirm(w.confirmAll)) return;
     await actions.removeAll();
@@ -137,9 +160,14 @@ export function AiMemory({ memories: initial, learning: initialLearning, actions
         ))
       )}
       {memories.length > 0 && (
-        <button type="button" className="self-start text-sm text-danger-text underline" onClick={() => void removeAll()}>
-          {w.forgetAll}
-        </button>
+        <div className="flex flex-wrap gap-4">
+          <button type="button" className="text-sm underline" onClick={download}>
+            {w.download}
+          </button>
+          <button type="button" className="text-sm text-danger-text underline" onClick={() => void removeAll()}>
+            {w.forgetAll}
+          </button>
+        </div>
       )}
     </section>
   );

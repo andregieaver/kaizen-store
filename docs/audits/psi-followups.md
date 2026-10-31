@@ -323,3 +323,8 @@ The re-score ([psi-2026-10-31.md](psi-2026-10-31.md)) put the overall at 78.3 (8
       (WCAG 2.2 1.4.13). The title is moved out while the tip shows so the browser's own does not show too; an element named only by its
       title keeps that name as an `aria-label` meanwhile, one with a name of its own is described by the tip. Iframes keep their titles.
       `tooltips.spec.ts` (signed in) and `tooltip.test.ts`. One mechanism instead of rewriting the ~140 hints one by one.
+- [x] **AGT-07** The AI manager's memory: export, erasure, stricter keeping. Done 31 October 2026: the memory page downloads the
+      person's memories as a JSON file (`AiMemory`); a shopper's erasure deletes the memories that name them, the store's and its staff's
+      everywhere-memories (`blankAssistantTraces()`, `privacy-erasure.int.test.ts`); and `NEVER_KEPT` (`src/server/assistant-memory.ts`),
+      used by what is learned and by the `remember` tool alike, refuses email addresses, passwords, phone numbers, runs of eight digits or
+      more, Nordic identity numbers and IBANs (`assistant-memory.test.ts`).
