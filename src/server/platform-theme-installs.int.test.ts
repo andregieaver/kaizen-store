@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
+import { fontSlug } from "@/lib/fonts";
 
 import type { Account } from "./auth";
 
@@ -115,7 +116,15 @@ describe("Kaizena Flow's theme library", () => {
     expect(changes?.changes.fontsAdded).toEqual(expect.arrayContaining(["Playfair Display", "Lora"]));
     expect(changes?.changes.layouts.map((layout) => layout.kind)).not.toContain("productLayout");
 
-    // Customising writes the install only, fonts into its own fonts as Kaizena Flow keeps them.
+    // Customising writes the install only, fonts into its own fonts as Kaizena Flow keeps them. The two fonts are taken as installed, so
+    // the test does not depend on Google Fonts answering (it failed twice in CI on a download, runs 810 and 821).
+    for (const family of ["Archivo", "Inter"]) {
+      await db().execute(sql`
+        insert into commerce.fonts (family, slug, category, css, bytes)
+        values (${family}, ${fontSlug(family)}, 'sans-serif', ${`/* test */ .f { font-family: "${family}"; }`}, 0)
+        on conflict (family) do nothing
+      `);
+    }
     const theme = { ...preview.theme, settings: { ...preview.theme.settings, fonts: { heading: "Archivo", body: "Inter" } } };
     const saved = await installs.savePlatformInstallLook(admin, added.installId, { theme });
     if (!saved.ok) throw new Error(saved.problems.join(" "));
