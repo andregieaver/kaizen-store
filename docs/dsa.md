@@ -6,12 +6,12 @@ How Kaizena Flow meets the Digital Services Act (Regulation (EU) 2022/2065) for 
 ## Roles
 
 Kaizena Flow stores what its stores' owners publish (products, pages, pictures, reviews) and shows it to the public at their request. That
-makes it a **hosting service** (art. 3(g)(iii)), and most likely an **online platform** (art. 3(i): a hosting service that "stores and
+makes it a **hosting service** (art. 3(g)(iii); this citation was not re-read against the Official Journal, as EUR-Lex did not answer when it was checked on 31 October 2026), and most likely an **online platform** (art. 3(i): a hosting service that "stores and
 disseminates information to the public" at a recipient's request). The stores are the recipients of the service. Kaizena Flow does not
 choose or check what a store sells before it is published, and the DSA does not ask it to: there is no general obligation to monitor
 (art. 8), and checks Kaizena Flow chooses to make, in good faith and diligently, do not cost it the liability exemption (art. 7).
 
-**For the lawyer:** art. 19(1) excludes providers that qualify as micro or small enterprises (Recommendation 2003/361/EC) from the
+**For the lawyer:** art. 19(1) (its wording checked on EUR-Lex) excludes providers that qualify as micro or small enterprises (Recommendation 2003/361/EC) from the
 online-platform section (arts. 20 to 28, except art. 24(3)). Whether Kaizena Flow qualifies decides whether the internal complaint system of
 art. 20 and the out-of-court settlement of art. 21 bind it now. The hosting duties below (arts. 16 and 17) apply whatever its size.
 
