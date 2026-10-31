@@ -74,6 +74,7 @@ import { compareOptionsTool, listResearchNotesTool, readWebPageTool, saveResearc
 import { getBrandTool, makeBrandMarksTool, setBrandTool } from "./brand-tools";
 import { getStore, type Store } from "./stores";
 import { platformModes } from "./stripe";
+import { sameEmail } from "@/lib/email-address";
 
 type Row = Record<string, unknown>;
 
@@ -347,7 +348,7 @@ async function listRequests(_ctx: ManagerContext, { status }: PlatformToolInput<
 
 async function findRequest(ref: string) {
   const rows = await listAccessRequests();
-  const found = rows.find((r) => r.id === ref || r.email.toLowerCase() === ref.toLowerCase());
+  const found = rows.find((r) => r.id === ref || sameEmail(r.email, ref));
   if (!found) return fail(`No access request "${ref}". Use list_access_requests.`);
   if (found.status !== "pending") return fail(`${found.email}'s request is already ${found.status}.`);
   return found;

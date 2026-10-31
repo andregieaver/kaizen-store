@@ -7,6 +7,7 @@ import { matches, segmentRulesSchema } from "@/lib/segments";
 
 import { segmentPeople } from "./segments";
 import { currentStore } from "./stores";
+import { normaliseEmail } from "@/lib/email-address";
 
 type Row = Record<string, unknown>;
 type Runner = Pick<ReturnType<typeof db>, "execute">;
@@ -30,7 +31,7 @@ export async function segmentsOfBuyer(
     select c.email, s.slug from commerce.customers c join commerce.stores s on s.id = c.store_id
     where c.store_id = ${storeId}::uuid and c.id = ${customerId}::uuid
   `);
-  const email = customer?.email ? String(customer.email).trim().toLowerCase() : "";
+  const email = customer?.email ? normaliseEmail(String(customer.email)) : "";
   if (!email) return held;
   // The store as it is now, past the page cache: this is asked while an order is placed.
   const store = await currentStore(String(customer.slug));

@@ -8,6 +8,7 @@ import { memberCan } from "./permissions";
 import { disableStaff, inviteStaff, listStaff, type StaffMember } from "./settings";
 import { assignRole, ensureStoreRoles, inviteCollaborator, listStoreRoles, type RoleChoice } from "./store-roles";
 import type { Store } from "./stores";
+import { normaliseEmail, sameEmail } from "@/lib/email-address";
 
 /**
  * The AI manager's team tools (PSI AGT-01; wave 1 1f, `docs/wave-1-trust.md` 2.7): who works in the store, and inviting, changing a role
@@ -50,8 +51,8 @@ async function roleChoice(store: Store, named: string): Promise<{ choice: RoleCh
 
 /** An active member by email (any case), or a refusal. */
 async function activeMember(store: Store, email: string): Promise<StaffMember> {
-  const wanted = email.trim().toLowerCase();
-  const found = (await listStaff(store.id)).find((m) => !m.disabled && m.email.toLowerCase() === wanted);
+  const wanted = normaliseEmail(email);
+  const found = (await listStaff(store.id)).find((m) => !m.disabled && normaliseEmail(m.email) === wanted);
   return found ?? fail(`${email} does not work in this store. Look with list_staff.`);
 }
 
@@ -86,7 +87,7 @@ export async function preflightInviteStaff(ctx: Ctx, input: InviteInput): Promis
   await ownerMember(ctx);
   const { choice } = await roleChoice(ctx.store, input.role);
   if (input.collaborator_days !== undefined && choice.kind === "owner") fail("A collaborator cannot be an owner.");
-  const already = (await listStaff(ctx.store.id)).find((m) => !m.disabled && m.email.toLowerCase() === input.email.trim().toLowerCase());
+  const already = (await listStaff(ctx.store.id)).find((m) => !m.disabled && sameEmail(m.email, input.email));
   if (already) fail(`${input.email} already works in the store (${roleWords(already)}): change their role instead.`);
 }
 

@@ -27,6 +27,7 @@ import { refreshTag } from "./refresh";
 import type { SaveResult } from "./settings";
 import { emailFooter, storeById } from "./shopper-emails";
 import { storeTag } from "./stores";
+import { normaliseEmail } from "@/lib/email-address";
 
 type Row = Record<string, unknown>;
 
@@ -46,7 +47,7 @@ const KEEP_DAYS = 60;
 /** At most this many reminders per run, so a run stays well inside a minute. */
 const BATCH = 50;
 
-const normal = (email: string) => email.trim().toLowerCase();
+const normal = normaliseEmail;
 
 // ---------------------------------------------------------------------------
 // Settings

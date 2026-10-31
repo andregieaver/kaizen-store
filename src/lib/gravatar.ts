@@ -1,4 +1,5 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
+import { normaliseEmail } from "./email-address";
 
 /**
  * Gravatar (D97). Browsers never ask Gravatar themselves, which would tell it
@@ -8,7 +9,7 @@ import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 
 /** Gravatar's key for an email: SHA-256 of the trimmed, lower-case address. */
 export function gravatarHash(email: string): string {
-  return createHash("sha256").update(email.trim().toLowerCase()).digest("hex");
+  return createHash("sha256").update(normaliseEmail(email)).digest("hex");
 }
 
 export const isGravatarHash = (value: string): boolean => /^[0-9a-f]{64}$/.test(value);

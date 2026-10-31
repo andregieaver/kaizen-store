@@ -26,6 +26,7 @@ import { log } from "./log";
 import { marketSlugFor } from "./marketing-email";
 import { OFFERED } from "./product-conditions";
 import { emailFooter, storeById, type EmailStore } from "./shopper-emails";
+import { normaliseEmail } from "@/lib/email-address";
 
 type Row = Record<string, unknown>;
 
@@ -86,7 +87,7 @@ export async function backInStockOn(storeId: string): Promise<boolean> {
 
 /** A shopper's request (6.4). Never says whether the address was known. */
 export async function requestStock(ask: StockAsk): Promise<StockAnswer> {
-  const email = ask.email.trim().toLowerCase();
+  const email = normaliseEmail(ask.email);
   if (!isRequestAddress(email)) return "invalid";
   const variant = await askable(ask.storeId, ask.variantId);
   if (!variant) return "unavailable";

@@ -28,6 +28,7 @@ import { cancelEditsForWithdrawal, closeEditSessionsAfterWithdrawal } from "./or
 import { NOTHING_SENT_SQL } from "./return-sql";
 import { log } from "./log";
 import { sendBookingStaffChange } from "./shopper-emails";
+import { normaliseEmail } from "@/lib/email-address";
 
 type Row = Record<string, unknown>;
 
@@ -88,7 +89,7 @@ const attemptKey = (storeId: string, kind: "email" | "order", value: string) =>
 function attemptKeys(storeId: string, who: { orderNumber: string; email: string }): { kind: "email" | "order"; hash: string }[] {
   const keys: { kind: "email" | "order"; hash: string }[] = [];
   const number = normalNumber(who.orderNumber);
-  const email = who.email.trim().toLowerCase();
+  const email = normaliseEmail(who.email);
   if (number) keys.push({ kind: "order", hash: attemptKey(storeId, "order", number) });
   if (email) keys.push({ kind: "email", hash: attemptKey(storeId, "email", email) });
   return keys;
@@ -142,7 +143,7 @@ export type Proof = "email" | "key" | "customer";
  */
 export async function matchOrder(storeId: string, who: ShopperWho): Promise<{ id: string; proof: Proof } | null> {
   const number = normalNumber(who.orderNumber);
-  const email = who.email.trim().toLowerCase();
+  const email = normaliseEmail(who.email);
   const key = who.orderKey?.trim() || null;
   const customerId = who.customerId ?? null;
   if (!number) return null;

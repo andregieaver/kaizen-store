@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { sameEmail } from "./email-address";
 
 /**
  * Privacy requests and their clock (wave 1, 1g, D162, `docs/wave-1g-gdpr.md` 2.3 and 4), pure: a request to see or erase a person's data,
@@ -143,7 +144,7 @@ export type RefuseInput = z.infer<typeof refuseInput>;
 /** The confirmation a staff erasure asks for: the subject's own email typed again, or the word ERASE for a subject with none. */
 export function erasureConfirmed(typed: string, subjectEmail: string | null): boolean {
   const value = typed.trim();
-  if (subjectEmail) return value.toLowerCase() === subjectEmail.trim().toLowerCase();
+  if (subjectEmail) return sameEmail(value, subjectEmail);
   return value === "ERASE";
 }
 

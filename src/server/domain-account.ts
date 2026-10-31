@@ -11,6 +11,7 @@ import { connectOwnedDomain } from "./domains";
 import { serveHolding } from "./holding";
 import { take as takeSlot } from "./domain-search";
 import { checkLimit } from "./limits";
+import { normaliseEmail } from "@/lib/email-address";
 
 type Row = Record<string, unknown>;
 type Result<T = object> = ({ ok: true } & T) | { ok: false; problems: string[] };
@@ -166,7 +167,7 @@ export async function startDomainAccount(email: string, visitor: string, deps: {
   const take = deps.take ?? ((bucket: string) => takeSlot(null, bucket));
   if ((await take(`domains:start:${visitor}`)) > DOMAIN_STARTS_PER_VISITOR_PER_HOUR) return false;
   if ((await take("domains:start:all")) > DOMAIN_STARTS_PER_HOUR) return false;
-  const address = email.trim().toLowerCase();
+  const address = normaliseEmail(email);
   await db().execute(sql`
     insert into commerce.accounts (email, origin)
     select ${address}, 'domain' where not exists (select 1 from commerce.accounts where lower(email) = ${address})

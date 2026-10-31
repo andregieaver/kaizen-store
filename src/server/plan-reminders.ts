@@ -24,6 +24,7 @@ import { siteUrl } from "@/lib/site";
 import { audit, type Account } from "./auth";
 import { sendEmail, type SendOutcome } from "./email";
 import type { SaveResult } from "./settings";
+import { normaliseEmail } from "@/lib/email-address";
 
 type Row = Record<string, unknown>;
 
@@ -164,7 +165,7 @@ export async function capturePlanCheckout(owner: Account, storeId: string, price
   if (!price) return false;
   await db().execute(sql`
     insert into commerce.abandoned_plan_checkouts (store_id, account_id, email, price_id, plan_name, amount_minor, currency, interval, token)
-    values (${storeId}::uuid, ${owner.id}::uuid, ${owner.email.trim().toLowerCase()}, ${priceId}::uuid, ${String(price.plan_name)},
+    values (${storeId}::uuid, ${owner.id}::uuid, ${normaliseEmail(owner.email)}, ${priceId}::uuid, ${String(price.plan_name)},
             ${Number(price.amount_minor)}, ${String(price.currency)}, ${String(price.interval)}, ${randomBytes(24).toString("base64url")})
     on conflict (store_id) do update set
       account_id = excluded.account_id, email = excluded.email, price_id = excluded.price_id, plan_name = excluded.plan_name,

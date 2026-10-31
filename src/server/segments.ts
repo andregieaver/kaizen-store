@@ -25,6 +25,7 @@ import { audit } from "./auth";
 import { rfmGroups } from "./analytics-customers-data";
 import { NOT_EDIT_REFUND, PAID } from "./analytics-sql";
 import type { Store } from "./stores";
+import { normaliseEmail } from "@/lib/email-address";
 
 type Row = Record<string, unknown>;
 
@@ -309,7 +310,7 @@ export async function deleteSegment(storeId: string, accountId: string, id: stri
 // Customer tags
 // ---------------------------------------------------------------------------
 
-const normal = (email: string) => email.trim().toLowerCase();
+const normal = normaliseEmail;
 
 /** A person's tags, by their address. */
 export async function tagsOf(storeId: string, email: string): Promise<Tag[]> {

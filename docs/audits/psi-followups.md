@@ -176,6 +176,10 @@ stay in the standing document's *What comes next*.
 - [x] **UX-06 (usability)** Recent items in the launcher. Done 31 October 2026: the AI manager's panel (⌘K) starts with the five admin
       pages opened last in that store or level, the one on screen left out, kept in the person's own browser only
       (`src/lib/recent-pages.ts`; `e2e/signed-in/recent-pages.spec.ts`).
+- [x] **DATA-04 (data)** One `normaliseEmail()`. Done 31 October 2026: `src/lib/email-address.ts` (`normaliseEmail()`, `sameEmail()`:
+      trimmed and lower case, the rule every address-keyed table already used, so nothing changes in behaviour) replaces the 34 ad-hoc
+      `email….toLowerCase()` sites and five local copies; `email-address.scan.test.ts` fails on a new one (the password check, which reads
+      the local part, is the one exception).
 - [x] **DATA-03 (data 2)** `Idempotency-Key` on Admin API POSTs, a Mollie 401 renewed once, Stripe's `apiVersion`. Done 30 October
       2026: a POST with the header is done once per token and key, the same request getting the first answer again
       (`Idempotent-Replayed: true`) and another request under the key refused, answers kept 24 hours (`commerce.api_idempotency_keys`,

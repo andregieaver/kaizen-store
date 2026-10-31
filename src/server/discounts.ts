@@ -39,6 +39,7 @@ import { customerTierIds } from "./customer-tiers";
 import { getCustomer } from "./customers";
 import { segmentsOfBuyer } from "./segment-membership";
 import type { SaveResult } from "./settings";
+import { normaliseEmail } from "@/lib/email-address";
 
 type Row = Record<string, unknown>;
 type Runner = Pick<ReturnType<typeof db>, "execute">;
@@ -805,7 +806,7 @@ export async function signupCodeChoices(storeId: string): Promise<{ id: string; 
  * never past `CODE_ITEMS_MAX`. The code's text is returned for its email and kept nowhere but the code list.
  */
 export async function issueSignupCode(storeId: string, discountId: string, email: string, formId: string): Promise<string | null> {
-  const address = email.trim().toLowerCase();
+  const address = normaliseEmail(email);
   const discount = await getDiscount(storeId, discountId);
   if (!discount || !discount.uniqueCodes || !discount.active) return null;
   const now = Date.now();

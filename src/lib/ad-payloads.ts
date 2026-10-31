@@ -46,7 +46,7 @@ const META_NAMES: Record<AdEvent, string> = { begin_checkout: "InitiateCheckout"
 const TIKTOK_NAMES: Record<AdEvent, string> = { begin_checkout: "InitiateCheckout", purchase: "CompletePayment" };
 
 /** An email as the platforms want it before hashing: trimmed and lower case. */
-export const normaliseEmail = (email: string) => email.trim().toLowerCase();
+export { normaliseEmail } from "./email-address";
 
 /** A phone as the platforms want it before hashing: digits only, with its country code (a leading `+` or `00` dropped). */
 export function normalisePhone(phone: string): string | null {

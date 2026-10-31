@@ -8,6 +8,7 @@ import { adminText } from "@/lib/admin-text";
 import { createClient } from "@/lib/supabase/server";
 import { eraseOwnAccount } from "@/server/account-erasure";
 import { requireAccount, signedInRecently } from "@/server/auth";
+import { sameEmail } from "@/lib/email-address";
 
 const HERE = "/admin/account/delete";
 
@@ -19,7 +20,7 @@ export async function eraseAccountAction(_state: FormState, form: FormData): Pro
   const account = await requireAccount();
   const w = adminText(adminLangOf(account.adminLocale), "bookings").account.erase;
   if (!(await signedInRecently())) return { status: "error", messages: [w.signInAgainFirst] };
-  if (String(form.get("email") ?? "").trim().toLowerCase() !== account.email.trim().toLowerCase()) return { status: "error", messages: [w.wrongEmail] };
+  if (!sameEmail(String(form.get("email") ?? ""), account.email)) return { status: "error", messages: [w.wrongEmail] };
   const done = await eraseOwnAccount(account);
   if (!done.ok) return { status: "error", messages: [done.refusal === "last_owner" && done.stores ? `${w.refusals.last_owner} ${done.stores.join(", ")}` : w.refusals[done.refusal]] };
   try {

@@ -25,6 +25,7 @@ import { marketUrl } from "@/lib/paths";
 import { audit } from "./auth";
 import { sendEmail, type SendOutcome } from "./email";
 import { emailFooter, storeById } from "./shopper-emails";
+import { normaliseEmail } from "@/lib/email-address";
 
 type Row = Record<string, unknown>;
 
@@ -34,7 +35,7 @@ type Row = Record<string, unknown>;
  * a signed-in customer with a verified email subscribes at once. Leaving is one press and always works. Staff never subscribe anyone.
  */
 
-const normal = (email: string) => email.trim().toLowerCase();
+const normal = normaliseEmail;
 const hash = (token: string) => createHash("sha256").update(token).digest("hex");
 const newToken = () => randomBytes(32).toString("base64url");
 

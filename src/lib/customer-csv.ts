@@ -13,6 +13,7 @@ import { addressableFieldsOf, fieldCell } from "./field-csv-cells";
 import type { Cell } from "./csv";
 import type { FieldDef } from "./custom-fields";
 import { consentColumn, type SubscriberStatus } from "./marketing-consent";
+import { normaliseEmail } from "./email-address";
 
 export type CustomerRecord = {
   /** The customer's id; null for a guest (a paid order and no account). */
@@ -96,7 +97,7 @@ export const customerFileRows = (customers: readonly CustomerRecord[], fields: r
 export function onePerEmail<T extends { email: string }>(customers: readonly T[]): T[] {
   const seen = new Set<string>();
   return customers.filter((c) => {
-    const key = c.email.trim().toLowerCase();
+    const key = normaliseEmail(c.email);
     if (seen.has(key)) return false;
     seen.add(key);
     return true;

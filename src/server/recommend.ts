@@ -30,6 +30,7 @@ import { meaningMatches, rankedSearch } from "./search";
 import type { Store } from "./stores";
 import { currentTerms, termsTag } from "./taxonomy";
 import { savedProductIds } from "./wishlists";
+import { normaliseEmail } from "@/lib/email-address";
 
 type Row = Record<string, unknown>;
 
@@ -286,7 +287,7 @@ export async function purchasedProductIds(
 ): Promise<Set<string>> {
   const matches: SQL[] = [];
   if (who.customerId) matches.push(sql`o.customer_id = ${who.customerId}::uuid`);
-  if (who.email) matches.push(sql`lower(o.email) = ${who.email.toLowerCase()}`);
+  if (who.email) matches.push(sql`lower(o.email) = ${normaliseEmail(who.email)}`);
   if (who.cartIds.length > 0) matches.push(sql`o.cart_id = any(${uuidArray(who.cartIds)})`);
   if (matches.length === 0) return new Set();
   const rows = await db().execute<Row>(sql`

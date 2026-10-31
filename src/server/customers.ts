@@ -15,6 +15,7 @@ import { chooseBusinessBuyer } from "./b2b";
 import { saveDefaultAddress } from "./customer-addresses";
 import type { Address } from "./orders";
 import { eraseSubject } from "./privacy-erasure";
+import { normaliseEmail } from "@/lib/email-address";
 
 type Row = Record<string, unknown>;
 
@@ -58,7 +59,7 @@ export async function checkPassword(password: string, stored: string): Promise<b
 }
 
 export const sha256 = (value: string) => createHash("sha256").update(value).digest("hex");
-export const normalEmail = (email: string) => email.trim().toLowerCase();
+export const normalEmail = normaliseEmail;
 
 // ---------------------------------------------------------------------------
 // Codes

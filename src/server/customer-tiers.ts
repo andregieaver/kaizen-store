@@ -12,6 +12,7 @@ import { memberDiscount, tierInput, type MemberDiscount, type TierInput } from "
 import { audit, type Membership } from "./auth";
 import { preRegisterCustomer } from "./customers";
 import type { SaveResult } from "./settings";
+import { normaliseEmail } from "@/lib/email-address";
 
 type Row = Record<string, unknown>;
 
@@ -151,7 +152,7 @@ export async function setCustomerTier({ account, store }: Membership, customerId
  */
 export async function addToTierByEmail(member: Membership, tierId: string, email: string): Promise<SaveResult> {
   const words = staffWords(member.account);
-  const address = email.trim().toLowerCase();
+  const address = normaliseEmail(email);
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address) || address.length > 254) return { ok: false, problems: [words.notAnEmail] };
   if (!(await getTier(member.store.id, tierId))) return { ok: false, problems: [words.groupGone] };
   const customerId = await preRegisterCustomer(member.store.id, address);

@@ -47,6 +47,7 @@ import { log } from "./log";
 import { connectWebhookUrl, platformStripe, type WebhookKind } from "./stripe";
 import { col, typedRows } from "./typed-rows";
 import type { PaymentModeName } from "@/lib/stripe-account";
+import { normaliseEmail } from "@/lib/email-address";
 
 type Row = Record<string, unknown>;
 
@@ -554,7 +555,7 @@ const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
  * answer is the same either way, and an address asks at most three times a day (counted under a hash).
  */
 export async function subscribeToStatus(email: string, lang: PlatformLang): Promise<{ ok: boolean }> {
-  const address = email.trim().toLowerCase();
+  const address = normaliseEmail(email);
   if (!EMAIL_SHAPE.test(address) || address.length > 254) return { ok: false };
   const bucket = `status:${createHash("sha256").update(`kaizen:status|${address}`).digest("hex").slice(0, 32)}`;
   const [count] = await db().execute<Row>(sql`

@@ -13,6 +13,7 @@ import { log } from "./log";
 import { getOpenStore } from "./stores";
 import { addMessage, deskSettings } from "./support";
 import { systemDesk } from "./support-desk";
+import { normaliseEmail } from "@/lib/email-address";
 
 type Row = Record<string, unknown>;
 
@@ -84,7 +85,7 @@ export async function formToInbox(
     if (!market) return { kept: false };
     const { parts, cut } = formMessageParts(answers);
     if (parts.length === 0) return { kept: false };
-    const email = contact.email && contact.email.length <= CONTACT_MAX ? contact.email.toLowerCase() : null;
+    const email = contact.email && contact.email.length <= CONTACT_MAX ? normaliseEmail(contact.email) : null;
     const name = contact.name?.replace(/\s+/g, " ").trim().slice(0, NAME_MAX) || null;
     const [created] = await db().execute<Row>(sql`
       insert into commerce.support_conversations (store_id, source, handler, market, locale, contact_email, contact_name, reply_key, email_subject, page_path)

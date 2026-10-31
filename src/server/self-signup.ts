@@ -18,6 +18,7 @@ import { startDreamRun } from "./dream-factory";
 import { log } from "./log";
 import { adminAuth } from "./supabase-admin";
 import { approveAccessRequest, createAccessRequest, isSlugTaken, sendAccessEmail, type AccessRequestInput } from "./platform";
+import { sameEmail } from "@/lib/email-address";
 
 type Row = Record<string, unknown>;
 
@@ -169,7 +170,7 @@ export const setOwnerPasswordWithSupabase: SetOwnerPassword = async (email, pass
     for (let page = 1; page <= 20; page++) {
       const listed = await client.admin.listUsers({ page, perPage: 200 });
       if (listed.error) return false;
-      const user = listed.data.users.find((u) => u.email?.toLowerCase() === email.toLowerCase());
+      const user = listed.data.users.find((u) => sameEmail(u.email ?? "", email));
       if (user) return !(await client.admin.updateUserById(user.id, { password })).error;
       if (listed.data.users.length < 200) return false;
     }

@@ -9,6 +9,7 @@ import { log } from "./log";
 import { removeAvatarFiles } from "./media";
 import { forgetAlertRecipientIn } from "./staff-alerts";
 import { adminAuth } from "./supabase-admin";
+import { normaliseEmail } from "@/lib/email-address";
 
 type Row = Record<string, unknown>;
 
@@ -85,7 +86,7 @@ export async function eraseOwnAccount(account: Pick<Account, "id">, deps: { dele
     if (!locked) return { plan: { ok: false, refusal: "not_found" } as ErasePlan, authUserId: null, avatar: null };
     const plan = await planIn(tx, account.id);
     if (!plan.ok) return { plan, authUserId: null, avatar: null };
-    const email = String(locked.email).toLowerCase();
+    const email = normaliseEmail(String(locked.email));
     const id = account.id;
     // What is only theirs.
     await tx.execute(sql`delete from commerce.store_members where account_id = ${id}::uuid`);

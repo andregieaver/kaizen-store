@@ -8,6 +8,7 @@ import { z } from "zod";
 
 import { DRILL_EMAIL_DOMAIN } from "./live-drills";
 import { RULES_STAND } from "./prompt-safety";
+import { normaliseEmail } from "./email-address";
 
 export const DREAM_STEP_IDS = [
   "brief",
@@ -336,7 +337,7 @@ export function stepMessage(id: AiStepId, brief: DreamBrief): string {
 // ---------------------------------------------------------------------------------------------------------------------------------
 
 /** A run whose owner is at the drills' test address: it stays private, its owner steps are pressed by the drill, and it never opens. */
-export const isTestOwner = (email: string): boolean => email.trim().toLowerCase().endsWith(DRILL_EMAIL_DOMAIN);
+export const isTestOwner = (email: string): boolean => normaliseEmail(email).endsWith(DRILL_EMAIL_DOMAIN);
 
 /** The developers' fixed prompt (D409): the same words every drill, so runs compare. The business is a test one, said to be. */
 export const DRILL_PROMPT = [

@@ -1,4 +1,5 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
+import { normaliseEmail } from "./email-address";
 
 /**
  * Customers' *Sign in with Google* (wave 10 unit L, D375), the pure parts. The flow runs on Kaizena Flow's own host, because Google lets one
@@ -114,5 +115,5 @@ export function checkIdToken(claims: Record<string, unknown> | null, o: { client
   if (claims.nonce !== o.nonce) return null;
   if (claims.email_verified !== true && claims.email_verified !== "true") return null;
   if (typeof claims.email !== "string" || claims.email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(claims.email)) return null;
-  return claims.email.trim().toLowerCase();
+  return normaliseEmail(claims.email);
 }

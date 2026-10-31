@@ -12,6 +12,7 @@ import { audit, type Membership } from "./auth";
 import { addressCount, moveAddresses } from "./customer-addresses";
 import { memberCan } from "./permissions";
 import { moveTags, tagsTogether } from "./segments";
+import { normaliseEmail } from "@/lib/email-address";
 
 type Row = Record<string, unknown>;
 type Tx = Parameters<Parameters<ReturnType<typeof db>["transaction"]>[0]>[0];
@@ -99,7 +100,7 @@ async function planIn(tx: Tx, storeId: string, keep: string, remove: string): Pr
 /** The account a staff member names by email in the merge form, if it is another customer of the store. */
 export async function customerIdByEmail(storeId: string, email: string): Promise<string | null> {
   const [row] = await db().execute<Row>(sql`
-    select id from commerce.customers where store_id = ${storeId}::uuid and lower(email) = ${email.trim().toLowerCase()}
+    select id from commerce.customers where store_id = ${storeId}::uuid and lower(email) = ${normaliseEmail(email)}
   `);
   return row ? String(row.id) : null;
 }

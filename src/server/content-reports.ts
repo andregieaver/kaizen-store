@@ -23,6 +23,7 @@ import { audit, type Account } from "./auth";
 import { sendEmail } from "./email";
 import { log } from "./log";
 import { col, typedRow, typedRows } from "./typed-rows";
+import { normaliseEmail } from "@/lib/email-address";
 
 /**
  * Notices of illegal content on a store (DSA art. 16, D411, `docs/dsa.md`): taken from the public form at `/report`, answered with a
@@ -116,7 +117,7 @@ export async function storeOfUrl(url: string): Promise<string | null> {
 export async function submitContentReport(input: ReportInput, lang: PlatformLang): Promise<string> {
   const storeId = await storeOfUrl(input.url);
   const name = input.name === "" ? null : input.name;
-  const email = input.email === "" ? null : input.email.toLowerCase();
+  const email = input.email === "" ? null : normaliseEmail(input.email);
   const row = await typedRow(
     z.object({ id: col.uuid }),
     sql`

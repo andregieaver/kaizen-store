@@ -20,6 +20,7 @@ import { saveDefaultAddressIn } from "./customer-addresses";
 import { findCustomer } from "./customer-admin";
 import { memberCan } from "./permissions";
 import { moveTags, tagsTogether } from "./segments";
+import { normaliseEmail } from "@/lib/email-address";
 
 type Row = Record<string, unknown>;
 type Tx = Parameters<Parameters<ReturnType<typeof db>["transaction"]>[0]>[0];
@@ -49,7 +50,7 @@ class Refused extends Error {
   }
 }
 
-const normal = (email: string) => email.trim().toLowerCase();
+const normal = normaliseEmail;
 
 /** What the activity log compares before and after: the values never reach it (kind `customer` allows only `emailConfirmed`). */
 async function snapshot(tx: Tx, storeId: string, customerId: string): Promise<Record<string, unknown> | null> {

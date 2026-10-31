@@ -8,6 +8,7 @@ import { db } from "@/db/client";
 import { parseKey } from "@/lib/secret-box";
 
 import { log } from "./log";
+import { normaliseEmail } from "@/lib/email-address";
 
 /**
  * The admin's own limit on password sign-in per email (PSI SEC-02), beside Supabase Auth's rate limits and its leaked-password check:
@@ -23,7 +24,7 @@ export const SIGN_IN_WINDOW_MINUTES = 15;
 
 /** The bucket of an address: an HMAC with a key made from the settings key for this use alone, else (tests, a build) a plain hash. */
 export function signInBucket(email: string, env: string | undefined = process.env.SETTINGS_ENCRYPTION_KEY): string {
-  const address = email.trim().toLowerCase();
+  const address = normaliseEmail(email);
   const key = parseKey(env);
   const digest = key
     ? createHmac("sha256", createHmac("sha256", key).update("kaizen:admin-sign-in").digest()).update(address).digest("hex")
