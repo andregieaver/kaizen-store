@@ -11,6 +11,7 @@ import { adminText } from "@/lib/admin-text";
 import { AdminMain } from "./admin-main";
 import { ByPath } from "./by-path";
 import { AdminRail } from "./admin-rail";
+import { ShortcutSheet } from "./shortcut-sheet";
 import { AreaLinks, AreaMenu, AreaSidebar, StoreSidebar, StoreTabs, type NavArea, type NavGroup, type NavItem } from "./store-admin-nav";
 
 /**
@@ -87,6 +88,8 @@ export function AdminFrame({
   children: ReactNode;
 }) {
   const w = adminText(lang, "shell").frame;
+  // `?` lists the admin's keyboard shortcuts on every page (PSI UX-07).
+  const sheet = <ShortcutSheet words={adminText(lang, "shell").shortcuts} />;
   const tabs = navItemsIn(lang, tabsGiven);
   const groups = navAreasIn(lang, [{ groups: groupsGiven }])[0].groups;
   const areas = areasGiven && navAreasIn(lang, areasGiven);
@@ -167,6 +170,7 @@ export function AdminFrame({
     return (
       <>
         {skip}
+        {sheet}
         {before}
         <div data-admin-layout="rail" className="flex min-h-dvh w-full flex-1">
           {focused(<AdminRail items={tabs} home={home ?? { href: "/admin", label: "Kaizena Flow" }} label={tabsLabel} collapseOn={workspace} />, null)}
@@ -200,6 +204,7 @@ export function AdminFrame({
   return (
     <>
       {skip}
+      {sheet}
       {before}
       <HidingHeader>
         <header className="border-b border-line bg-card">

@@ -169,6 +169,10 @@ stay in the standing document's *What comes next*.
 - [x] **UX-02 (usability)** One way of saying try again. Done 31 October 2026: the English texts say "Try again." or "Try again in a
       moment.", never "Please try again" or "try again shortly" (eight texts changed, the cart's generic failure now word for word the
       delivery list's); `src/lib/messages/retry-wording.test.ts` holds it. Norwegian, Swedish and Danish already said it one way.
+- [x] **UX-07 (usability)** A `?` shortcut sheet. Done 31 October 2026: `?` on any admin page (outside a field) opens *Keyboard
+      shortcuts*, listing what the admin binds (the AI manager, the page builder's save, undo, redo, find and replace and screen sizes,
+      sending a message) with the keys as the computer has them (`src/lib/shortcut-sheet.ts`, `ShortcutSheet` in `AdminFrame`, English
+      and Norwegian; `e2e/signed-in/shortcut-sheet.spec.ts`). A new shortcut is added to `SHORTCUTS` so the list stays true.
 - [x] **DATA-03 (data 2)** `Idempotency-Key` on Admin API POSTs, a Mollie 401 renewed once, Stripe's `apiVersion`. Done 30 October
       2026: a POST with the header is done once per token and key, the same request getting the first answer again
       (`Idempotent-Replayed: true`) and another request under the key refused, answers kept 24 hours (`commerce.api_idempotency_keys`,
