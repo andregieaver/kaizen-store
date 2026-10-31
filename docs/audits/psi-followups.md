@@ -310,3 +310,7 @@ The re-score ([psi-2026-10-31.md](psi-2026-10-31.md)) put the overall at 78.3 (8
       the Dream Factory brief.
 - [ ] **REG-02** The platform's notice and terms name the AI reading DSA notices and screening listings; sign-up links and records them.
 - [ ] **PERF-01** The admin's real p75 from signed-in routes.
+- [x] **REG-01** Purpose and basis per register entry. Done 31 October 2026: 18 purposes, each with its Art. 6(1) basis, the reason
+      and the law, and who decides it (`src/lib/personal-purposes.ts`); every entry of `PERSONAL_DATA` names one, and
+      `processingRecord()` draws the Art. 30 record from the register (`personal-purposes.test.ts`). The bases are proposals for the
+      lawyer (`docs/wave-1g-gdpr.md` 3.6 and 8.11). Left: showing the record on Platform → Privacy, and feeding the store's privacy starter.

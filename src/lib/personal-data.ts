@@ -1,4 +1,5 @@
 import type { RetentionKind } from "./retention";
+import { PURPOSE_OF, type PurposeKey } from "./personal-purposes";
 
 /**
  * The register of personal data (wave 1, 1g, D162, `docs/wave-1g-gdpr.md` 3.5): every table that can hold a person's data names how it
@@ -59,6 +60,8 @@ export type PersonalEntry = {
   until?: RetentionKind;
   /** One sentence: why, for the preview and the shopper's page. */
   reason: string;
+  /** What it is processed for, which names the legal basis (`PURPOSES`, `src/lib/personal-purposes.ts`; PSI REG-01). */
+  purpose: PurposeKey;
 };
 
 const via = (v: LinkVia, ...columns: string[]) => ({ via: v, columns });
@@ -74,7 +77,7 @@ const entry = (
   erasure: ErasureAction,
   reason: string,
   extra: Extra = {},
-): PersonalEntry => ({ table, subject, link, personal, export: exportSection, erasure, reason, ...extra });
+): PersonalEntry => ({ table, subject, link, personal, export: exportSection, erasure, reason, purpose: PURPOSE_OF[table], ...extra });
 
 const LAW = "Kept because bookkeeping law requires it until the retention period ends, then the personal fields are replaced by a marker; used for nothing else.";
 const OWN = "Not a shopper's data: this is the store's own, a host's, a staff member's or the platform's, which is a different subject (docs/wave-1g-gdpr.md section 7).";

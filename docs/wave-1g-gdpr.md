@@ -462,6 +462,17 @@ Run on the schema at the date of this spec (192 tables in `commerce`) the detect
 5. `EMAIL_KINDS`: a source scan of the `kind:` passed to `sendEmail()` (like `permissions.scan.test.ts`) fails for a kind that is not classified; `evidence` kinds are exactly `return.acknowledgement`.
 6. **Restricted orders are not matched to a person** (`restricted-orders.scan.test.ts`): every `src/server` module that matches orders by `lower(o.email)`, `lower(email)` on orders, or `customer_id` must contain `restricted_at` in that query or appear in an allow-list with a reason. First allow-list: `withdrawals.ts` (the contract right, 2.7); `return-facts.ts`, `checkout.ts` (the buyer's own order at placement); the server agent walks `customers.ts`, `customer-admin.ts`, `cart-reminders.ts`, `recommend.ts`, `analytics-customers-data.ts`, `analytics-totals.ts`, `analytics-refunds-data.ts`, `owner-insights.ts`, `owner-tools.ts`, `manager-tools.ts`, `bonus-emails.ts`, `affiliate-emails.ts`, `companies.ts`, `campaigns.ts`, `discounts.ts`, `standing-orders.ts` (the files the grep of this spec found), and adds the guard or the allow-list entry.
 
+### 3.6 Purposes and legal bases (PSI REG-01, added 31 October 2026)
+
+Every register entry names a **purpose** (`purpose`, from `PURPOSE_OF` in `src/lib/personal-purposes.ts`), and each of the 18 purposes one
+GDPR Art. 6(1) basis with the reason for it, the law where it is an obligation, and who decides the purpose (the store, for shoppers' data
+that Kaizena Flow processes for it; Kaizena Flow, for owners', staff's, hosts' and applicants' data). `processingRecord()` draws the record
+of processing (Art. 30(1)(b) to (f)) from the register: one row per purpose with its basis, the subjects, the tables and the retention rules
+that end them. Consent is the basis only for marketing; five bases are marked `review` (business customers, contributions, analytics,
+integrations, and where analytics needs a cookie consent first). `personal-purposes.test.ts` holds every entry to a purpose, every purpose
+to an entry, shoppers' data to the store's purposes and staff's to the platform's. The bases are proposals for the lawyer (section 8,
+item 11), not legal advice.
+
 ---
 
 ## 4. Rules and law (exactly)
@@ -640,6 +651,7 @@ puts a free-text field inside a statutory sentence. Reviewed by a lawyer in each
 8. The statement that the **email opt-out is kept** after erasure and the wording of its reason.
 9. Whether `customers:write` (not owner-only) may erase.
 10. The staff-facing English pages (preview wording, the request log) are not consumer texts but state the law (the one-month clock, the extension limit): a lawyer should read the clock sentences.
+11. The **purposes and legal bases** of the register (`src/lib/personal-purposes.ts`, section 3.6), the five marked `review` first.
 
 ---
 
