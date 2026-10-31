@@ -184,7 +184,7 @@ function StorePart({ block, ctx }: { block: SiteBlock; ctx: Extract<SiteContext,
       // What the store stores in the browser, and the choice about it (D58).
       return (
         <>
-          <Link href={marketPath(store.slug, market.slug, "/cookies")} className="w-fit text-muted underline">
+          <Link href={marketPath(store.slug, market.slug, "/cookies")} className="inline-flex min-h-6 w-fit items-center text-muted underline">
             {m.cookies}
           </Link>
           {/* Notices of illegal content go to Kaizena Flow, which hosts the store (DSA art. 16, D411). */}
@@ -233,11 +233,11 @@ function KaizenPart({ block, ctx }: { block: SiteBlock; ctx: Extract<SiteContext
       return (
         <>
           {legalPages(chrome, lang).map((page) => (
-            <Link key={page.slug} href={platformPath(lang, `/${page.slug}`)} className="w-fit text-muted underline">
+            <Link key={page.slug} href={platformPath(lang, `/${page.slug}`)} className="inline-flex min-h-6 w-fit items-center text-muted underline">
               {page.title}
             </Link>
           ))}
-          <Link href={platformPath(lang, "/cookies")} className="w-fit text-muted underline">
+          <Link href={platformPath(lang, "/cookies")} className="inline-flex min-h-6 w-fit items-center text-muted underline">
             {m.cookies}
           </Link>
           <ReportContentLink lang={PLATFORM_LANG_FACTS[lang].messages} />
@@ -255,7 +255,7 @@ function Business({ legal, address, email }: { legal: string; address: string | 
       <span>{legal}</span>
       {address && <span>{address.replace(/\s*\n\s*/g, ", ")}</span>}
       {email && (
-        <a href={`mailto:${email}`} className="w-fit underline">
+        <a href={`mailto:${email}`} className="inline-flex min-h-6 w-fit items-center underline">
           {email}
         </a>
       )}

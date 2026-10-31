@@ -44,6 +44,8 @@ export function SocialLinksView({ block }: { block: SocialLinksBlock }) {
         const className = [
           "inline-flex items-center justify-center gap-2 transition hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2",
           look !== "plain" && `${BOX[size]} ${SHAPE[shape]} ${named ? "px-3" : ""}`,
+          // A bare logo is still a 24 px target at least (WCAG 2.5.8, PSI ACC-07).
+          look === "plain" && "min-h-6 min-w-6",
           look === "outline" && "border-2 border-current",
           filledPlain && (themed ? "bg-accent text-accent-foreground" : "bg-foreground text-background"),
           look !== "filled" && themed && "text-accent",

@@ -143,6 +143,12 @@ stay in the standing document's *What comes next*.
       delivery days; `e2e/sign-up.spec.ts`). The checkout's *held for 30 minutes* line becomes an alert five minutes before the hold ends
       and the page is drawn again at the end, offering to start over (`HoldClock`, `OpenCheckout.secondsLeft`); Stripe's session cannot be
       made longer, so starting over is the way to more time. Other forms move to `formProblems()` when touched.
+- [x] **ACC-07 (accessibility 6)** No sideways panning on phones; 24 px targets in footers. The header's effect layer was clipped on
+      30 October 2026 (`087e79cb`: a fixed gradient layer clips itself; `/`, `/sign-up`, `/status` and `/themes` measured 390 wide at
+      390 px on production on 31 October). Footer targets done 31 October 2026: the footers' own links (contact email, cookies, the
+      withdrawal function, legal pages, *Report illegal content*) are 24 px tall at least, and a bare social logo is a 24 by 24 target
+      (WCAG 2.2 SC 2.5.8; `e2e/target-size.spec.ts` measures every footer link and button on Kaizena Flow's site and a store at 390 px,
+      failing on the code before).
 - [x] **DATA-03 (data 2)** `Idempotency-Key` on Admin API POSTs, a Mollie 401 renewed once, Stripe's `apiVersion`. Done 30 October
       2026: a POST with the header is done once per token and key, the same request getting the first answer again
       (`Idempotent-Replayed: true`) and another request under the key refused, answers kept 24 hours (`commerce.api_idempotency_keys`,

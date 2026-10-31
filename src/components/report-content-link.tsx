@@ -11,7 +11,7 @@ export function ReportContentLink({ lang, absolute = false }: { lang: string; ab
   const platformLang: PlatformLang = lang === "nb" ? "nb" : "en";
   const path = platformPath(platformLang, "/report");
   return (
-    <a href={absolute ? `${siteUrl()}${path}` : path} className="w-fit text-muted underline">
+    <a href={absolute ? `${siteUrl()}${path}` : path} className="inline-flex min-h-6 w-fit items-center text-muted underline">
       {t(lang).reportContent}
     </a>
   );

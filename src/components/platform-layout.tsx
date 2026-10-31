@@ -197,20 +197,20 @@ export function PlatformFooter({ chrome, lang = "en" }: Props) {
             <span>{legal}</span>
             {b.postalAddress && <span>{b.postalAddress.replace(/\s*\n\s*/g, ", ")}</span>}
             {b.contactEmail && (
-              <a href={`mailto:${b.contactEmail}`} className="w-fit underline">
+              <a href={`mailto:${b.contactEmail}`} className="inline-flex min-h-6 w-fit items-center underline">
                 {b.contactEmail}
               </a>
             )}
           </address>
           {/* What the site stores in the browser, and the choice about it (D58). */}
-          <Link href={platformPath(lang, "/cookies")} className="w-fit text-muted underline">
+          <Link href={platformPath(lang, "/cookies")} className="inline-flex min-h-6 w-fit items-center text-muted underline">
             {m.cookies}
           </Link>
           {/* Notices of illegal content on a store (DSA art. 16, D411). */}
           <ReportContentLink lang={PLATFORM_LANG_FACTS[lang].messages} />
           {/* Kaizena Flow's own legal pages (D312 P5), once published, by their titles in the page's language. */}
           {legalPages(chrome, lang).map((page) => (
-            <Link key={page.slug} href={platformPath(lang, `/${page.slug}`)} className="w-fit text-muted underline">
+            <Link key={page.slug} href={platformPath(lang, `/${page.slug}`)} className="inline-flex min-h-6 w-fit items-center text-muted underline">
               {page.title}
             </Link>
           ))}

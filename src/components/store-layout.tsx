@@ -396,7 +396,7 @@ export function StoreMenu({ store, market }: Props) {
  */
 export function WithdrawalLink({ store, market }: Props) {
   return (
-    <Link href={marketPath(store.slug, market.slug, "/withdraw")} className="w-fit text-muted underline">
+    <Link href={marketPath(store.slug, market.slug, "/withdraw")} className="inline-flex min-h-6 w-fit items-center text-muted underline">
       {t(market.lang).returns.footerLink}
     </Link>
   );
@@ -445,13 +445,13 @@ export function StoreFooter({
             <span>{legal}</span>
             {details.postalAddress && <span>{details.postalAddress.replace(/\s*\n\s*/g, ", ")}</span>}
             {details.contactEmail && (
-              <a href={`mailto:${details.contactEmail}`} className="w-fit underline">
+              <a href={`mailto:${details.contactEmail}`} className="inline-flex min-h-6 w-fit items-center underline">
                 {details.contactEmail}
               </a>
             )}
           </address>
           {/* What the store stores in the browser, and the choice about it (D58). */}
-          <Link href={marketPath(store.slug, market.slug, "/cookies")} className="w-fit text-muted underline">
+          <Link href={marketPath(store.slug, market.slug, "/cookies")} className="inline-flex min-h-6 w-fit items-center text-muted underline">
             {m.cookies}
           </Link>
           {/* Notices of illegal content go to Kaizena Flow, which hosts the store (DSA art. 16, D411). */}
