@@ -154,6 +154,11 @@ stay in the standing document's *What comes next*.
       says the newest answer once it is finished, and the answers already there when a conversation opens count as said
       (`src/lib/answer-announce.ts`). A theme's own page counts its stage's heading as the page's main heading, so the hidden title
       heading is no longer added beside it (`mainHeadingIn()`, `page-article.tsx`).
+- [x] **ACC-02 (accessibility 5, critical)** Focus after the buyer dialog; an e2e case for `KeepFocusEverywhere`. Done 31 October 2026:
+      closing the first-visit *Private or business?* question (a choice or Escape) puts the focus on the page's main heading, or its
+      main region, instead of the page's body, where the next Tab went to the chat button at the end (`buyer.tsx`; `e2e/b2b.spec.ts`,
+      failing on the code before). The cart's discount-code button, which has no focus handling of its own, is shown to keep the focus
+      after it sent (`e2e/discounts.spec.ts`).
 - [x] **DATA-03 (data 2)** `Idempotency-Key` on Admin API POSTs, a Mollie 401 renewed once, Stripe's `apiVersion`. Done 30 October
       2026: a POST with the header is done once per token and key, the same request getting the first answer again
       (`Idempotent-Replayed: true`) and another request under the key refused, answers kept 24 hours (`commerce.api_idempotency_keys`,

@@ -28,6 +28,8 @@ test("a discount code comes off the cart, says why when it cannot or cannot besi
   await summary.getByLabel("Rabattkode").fill("finnes-ikke");
   await summary.getByRole("button", { name: "Bruk" }).click();
   await expect(summary.getByRole("alert")).toHaveText("Vi finner ingen slik kode.");
+  // The button was disabled while it sent; the focus comes back to it, not to the page (KeepFocusEverywhere, PSI ACC-02).
+  await expect(summary.getByRole("button", { name: "Bruk" })).toBeFocused();
   await summary.getByRole("button", { name: /Fjern/ }).click();
 
   // 199,00 is below the code's 300,00 minimum.

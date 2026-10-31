@@ -30,6 +30,20 @@ async function storeFor(audience: "both" | "businesses"): Promise<string> {
 
 const store = (slug: string, path = "") => `/s/${slug}/no${path}`;
 
+test("closing the first-visit question puts the focus at the start of the page, not at its end (PSI ACC-02)", async ({ page }) => {
+  const slug = await storeFor("both");
+  await page.goto(store(slug));
+  const question = page.getByRole("dialog", { name: "Handler du privat eller for en bedrift?" });
+  await expect(question).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(question).toBeHidden();
+  const inMain = () => page.evaluate(() => Boolean(document.activeElement?.closest("main")));
+  expect(await inMain()).toBe(true);
+  // The next Tab goes on from there, into the page, never to the chat button at its end.
+  await page.keyboard.press("Tab");
+  expect(await inMain()).toBe(true);
+});
+
 test("a store selling to both asks, and shows each kind of shopper their prices and products", async ({ page }) => {
   const slug = await storeFor("both");
   await page.goto(store(slug));

@@ -57,6 +57,18 @@ export function BuyerSwitch({ storeId, labels }: { storeId: string; labels: Labe
   );
 }
 
+/**
+ * Where the focus goes when the first-visit question closes (PSI ACC-02): it opened with the page, so there is nothing to go back to and
+ * the browser would leave it on the page's body (the next Tab went to the chat button at the end). The page's main heading takes it, or
+ * the main region where there is none, without scrolling.
+ */
+function focusPageStart() {
+  const target = document.querySelector<HTMLElement>("main h1") ?? document.querySelector<HTMLElement>("main");
+  if (!target) return;
+  if (!target.hasAttribute("tabindex")) target.setAttribute("tabindex", "-1");
+  target.focus({ preventScroll: true });
+}
+
 /** The first-visit question, when the store asks it: until the shopper has chosen. */
 export function BuyerQuestion({
   storeId,
@@ -79,6 +91,7 @@ export function BuyerQuestion({
     <dialog
       ref={dialog}
       aria-labelledby="buyer-question"
+      onClose={focusPageStart}
       // Closing without choosing (Escape) leaves the shopper private until they choose.
       className="m-auto w-[min(28rem,calc(100%-2rem))] rounded-lg bg-background p-6 text-foreground shadow-xl backdrop:bg-black/40"
     >
