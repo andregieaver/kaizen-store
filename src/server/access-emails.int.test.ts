@@ -62,3 +62,21 @@ describe("a request's emails in its own language (D312 P6)", () => {
     ]);
   });
 });
+
+describe("the terms a requester accepts (PSI REG-02)", () => {
+  it("records when the form's sender accepted the terms and which published version, and nothing for a request made another way", async () => {
+    const fromForm = `terms-${run}@example.com`;
+    const other = `noterms-${run}@example.com`;
+    await createAccessRequest({ name: "Tove", email: fromForm, storeName: "Toves Te", message: "", termsAccepted: true }, { quiet: true });
+    await createAccessRequest({ name: "Ola", email: other, storeName: "Olas Ost", message: "" }, { quiet: true });
+    const [expected] = await db().execute<Row>(sql`
+      select to_char(coalesce(published_at, updated_at) at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as v from commerce.pages
+      where store_id is null and type = 'page' and slug = 'terms' and published is not null`);
+    const [a] = await db().execute<Row>(sql`select terms_accepted_at, terms_version from commerce.access_requests where email = ${fromForm}`);
+    const [b] = await db().execute<Row>(sql`select terms_accepted_at, terms_version from commerce.access_requests where email = ${other}`);
+    expect(a.terms_accepted_at).not.toBeNull();
+    expect(a.terms_version ?? null).toBe(expected?.v ?? null);
+    expect(b).toMatchObject({ terms_accepted_at: null, terms_version: null });
+  });
+});
+

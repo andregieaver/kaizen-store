@@ -61,6 +61,8 @@ export async function requestAccess(_state: FormState, formData: FormData): Prom
       designVariation: look?.variation ?? null,
       lang,
       dream: formData.get("dream") === "on",
+      // The form is sent under the sentence that links the terms and the privacy notice (PSI REG-02).
+      termsAccepted: true,
     };
     // Self-serve (D359): the address is confirmed by a link first, and the store is made on the press; the answer is the same either way.
     if (await selfServeOn()) {

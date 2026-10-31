@@ -11,7 +11,8 @@ import { requestAccess } from "@/app/(platform)/sign-up/actions";
 import { KaizenLifePrefill } from "@/app/(platform)/sign-up/kaizen-life-prefill";
 import { ReferralKeeper } from "@/app/(platform)/sign-up/referral-keeper";
 import { ThemeFromAddress } from "@/app/(platform)/sign-up/theme-from-address";
-import { PLATFORM_LANG_FACTS, type PlatformLang } from "@/lib/platform-lang";
+import { PLATFORM_LANG_FACTS, platformPath, type PlatformLang } from "@/lib/platform-lang";
+import { PLATFORM_LEGAL_SLUGS } from "@/lib/platform-legal-slugs";
 import { platformText } from "@/lib/platform-text";
 import { languageMeta } from "@/server/platform-lang-meta";
 
@@ -93,8 +94,24 @@ export async function SignUpRoute({ lang }: { lang: PlatformLang }) {
             <input name="website" tabIndex={-1} autoComplete="off" />
           </label>
         </div>
-        <div>
+        <div className="flex flex-col gap-2">
           <SubmitButton>{selfServe ? w.selfServe.submit : w.submit}</SubmitButton>
+          {/* What sending the form agrees to (PSI REG-02): the terms and the privacy notice, linked; the request records the terms' version. */}
+          <p className="text-sm text-muted">
+            {acceptanceParts(w.acceptance, selfServe ? w.selfServe.submit : w.submit).map((part, i) =>
+              part === "{terms}" ? (
+                <Link key={i} href={platformPath(lang, `/${PLATFORM_LEGAL_SLUGS.terms}`)} className="underline">
+                  {w.termsLink}
+                </Link>
+              ) : part === "{privacy}" ? (
+                <Link key={i} href={platformPath(lang, `/${PLATFORM_LEGAL_SLUGS.privacy}`)} className="underline">
+                  {w.privacyLink}
+                </Link>
+              ) : (
+                <span key={i}>{part}</span>
+              ),
+            )}
+          </p>
         </div>
       </ActionForm>
       <p className="text-sm text-muted">
@@ -105,4 +122,9 @@ export async function SignUpRoute({ lang }: { lang: PlatformLang }) {
       </p>
     </main>
   );
+}
+
+/** The acceptance sentence in pieces, the button's words put in and the two links left as `{terms}` and `{privacy}`. */
+function acceptanceParts(sentence: string, button: string): string[] {
+  return sentence.replace("{button}", button).split(/(\{terms\}|\{privacy\})/).filter((part) => part !== "");
 }

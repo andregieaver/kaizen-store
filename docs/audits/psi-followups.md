@@ -312,6 +312,9 @@ The re-score ([psi-2026-10-31.md](psi-2026-10-31.md)) put the overall at 78.3 (8
 - [ ] **AST-09, AGT-14** Record the eval again on Platform → AI so the replay's tool check is in force; add cases for DSA notices and
       the Dream Factory brief.
 - [ ] **REG-02** The platform's notice and terms name the AI reading DSA notices and screening listings; sign-up links and records them.
+      Sign-up's part done 31 October 2026: a sentence under the button links the terms and the privacy notice (en, nb), and a request sent
+      from the form keeps `terms_accepted_at` and `terms_version` (the published terms page's time of publishing; migration
+      `access_requests_terms`, `access-emails.int.test.ts`). Left: the owner's review of the notice and terms text for the DSA's AI.
 - [ ] **PERF-01** The admin's real p75 from signed-in routes.
 - [x] **REG-01** Purpose and basis per register entry. Done 31 October 2026: 18 purposes, each with its Art. 6(1) basis, the reason
       and the law, and who decides it (`src/lib/personal-purposes.ts`); every entry of `PERSONAL_DATA` names one, and

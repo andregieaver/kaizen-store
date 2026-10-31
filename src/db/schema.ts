@@ -528,6 +528,12 @@ export const accessRequests = commerce.table(
      * the store is made.
      */
     dream: boolean("dream").notNull().default(false),
+    /**
+     * When the person accepted Kaizena Flow's terms of service, by sending the sign-up form under the sentence that links them and the
+     * privacy notice (PSI REG-02), and which version: the published terms page's time of publishing then. Null: a request made another way.
+     */
+    termsAcceptedAt: timestamp("terms_accepted_at", { withTimezone: true }),
+    termsVersion: text("terms_version"),
     createdAt: createdAt(),
   },
   (t) => [
