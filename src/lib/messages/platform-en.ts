@@ -36,7 +36,7 @@ export const platformEn = {
     haveAccount: "Already have an account?",
     signIn: "Sign in",
     received: "Thanks! We have your request. When your store is ready you will get an email with a link to sign in.",
-    failed: "Your request could not be saved. Please try again.",
+    failed: "Your request could not be saved. Try again.",
     errors: {
       name: "Enter your name.",
       email: "Enter a valid email address.",
@@ -389,7 +389,7 @@ export const platformEn = {
     email: "Email",
     subscribe: "Subscribe",
     subscribed: "Check your email: we have sent you a link to confirm.",
-    failed: "We could not save that. Please try again.",
+    failed: "We could not save that. Try again.",
     invalidEmail: "Enter a valid email address.",
     feed: "Atom feed",
     confirmTitle: "Confirm your subscription",

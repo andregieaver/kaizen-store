@@ -166,6 +166,9 @@ stay in the standing document's *What comes next*.
       inside such a part is measured. Its first run found the pricing page's plan names at 1.05:1 in dark mode (the plans block gave them
       #171717 in both modes); migration `pricing_dark_names` takes that colour away so they follow the cards' text. Left from ACC-09: the
       dated screen-reader pass, the enforcement bodies and a named owner (the owner's).
+- [x] **UX-02 (usability)** One way of saying try again. Done 31 October 2026: the English texts say "Try again." or "Try again in a
+      moment.", never "Please try again" or "try again shortly" (eight texts changed, the cart's generic failure now word for word the
+      delivery list's); `src/lib/messages/retry-wording.test.ts` holds it. Norwegian, Swedish and Danish already said it one way.
 - [x] **DATA-03 (data 2)** `Idempotency-Key` on Admin API POSTs, a Mollie 401 renewed once, Stripe's `apiVersion`. Done 30 October
       2026: a POST with the header is done once per token and key, the same request getting the first answer again
       (`Idempotent-Replayed: true`) and another request under the key refused, answers kept 24 hours (`commerce.api_idempotency_keys`,
