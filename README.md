@@ -10,7 +10,7 @@ The code still says `kaizen` (packages, cookies, the database schema's functions
 ## Start here
 
 1. Read [`CLAUDE.md`](CLAUDE.md): the workflow, the stack, the commands and one line per rule. Each line points at the full
-   rule in [`docs/rules/storefront.md`](docs/rules/storefront.md) or [`docs/rules/admin.md`](docs/rules/admin.md): read the
+   rule in [`docs/rules/storefront.md`](docs/rules/storefront.md) or [`docs/rules/admin/`](docs/rules/admin/README.md): read the
    rule before changing that part.
 2. Skim [`docs/plan.md`](docs/plan.md) (why it is built this way) and [`docs/platform.md`](docs/platform.md) (stores,
    members, plans: how one deployment serves many stores).

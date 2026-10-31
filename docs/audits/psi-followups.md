@@ -290,7 +290,10 @@ stay in the standing document's *What comes next*.
       README done 30 October 2026: one page under the right name (where to start, running it locally, the checks, how a push
       reaches production, where things are, the rules a first change trips on, the runbooks); the platform's one-time setup moved
       to `docs/runbooks/platform-setup.md`. Lint warnings 98 → 0 the same day, and `pnpm lint` now fails on any warning
-      (`--max-warnings 0`). Left: `docs/rules/admin.md` split by area.
+      (`--max-warnings 0`). `docs/rules/admin.md` (350 KB, 197 rules) split by area into `docs/rules/admin/` on 31 October 2026,
+      each rule verbatim under its heading (platform, AI, commerce, marketing, website, integrations; a README says which), and
+      `src/lib/rules-index.test.ts` holds every rule line in CLAUDE.md to exactly one heading, and every heading to a line, for the
+      storefront's rules too.
 
 ## From the re-score of 2026-10-31
 

@@ -117,7 +117,7 @@ Each rule is in full in `docs/rules/storefront.md` under the same words; read it
 
 ## Admin
 
-Each rule is in full in `docs/rules/admin.md` under the same words (the admin, and the features and integrations built through it); read it before changing that part.
+Each rule is in full under the same words in one file of `docs/rules/admin/` by area (`README.md` there says which: the admin's frame and the platform, AI, commerce, marketing, the website, integrations); read it before changing that part.
 
 - The admin's three levels (D107, `docs/admin-navigation.md`)
 - The admin's look (D149, D217–D232, `src/app/admin/admin.css`, `docs/admin-style.md`)
