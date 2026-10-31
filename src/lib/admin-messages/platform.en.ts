@@ -369,6 +369,22 @@ export const platformEn = {
       reason: "Give the reason in at least 10 characters.",
       action: "Say what you restricted.",
     },
+    ai: {
+      heading: "The AI's reading",
+      note: "An AI sorted this and drafted a reason. Check it: you decide.",
+      urgency: { low: "Low urgency", normal: "Normal urgency", high: "Urgent" },
+      manifest: "Looks illegal on its face",
+      useDraft: "Use the draft",
+      notRead: "Not read by the AI yet.",
+    },
+    fromCheck: "Kaizena Flow's own check",
+    screening: {
+      title: "AI check of listings",
+      description: "An AI reads new and changed listings for clear signs of illegal products and puts what it finds here for you to decide. It never hides anything. It costs a model call per listing.",
+      label: "Check new and changed listings",
+      save: "Save",
+      saved: "Saved.",
+    },
   },
   /** The status page's admin (D360). */
   status: {

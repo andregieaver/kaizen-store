@@ -50,6 +50,7 @@ import { payHostCommissions } from "@/server/host-payments";
 import { pruneSearchLog } from "@/server/search";
 import { pruneApiIdempotency } from "@/server/api-idempotency";
 import { pruneContentReports } from "@/server/content-reports";
+import { runContentModeration } from "@/server/content-moderation";
 import { sendDuePlanReminders } from "@/server/plan-reminders";
 import { sendDueBookingReminders } from "@/server/shopper-emails";
 import { sendLowStockNotices } from "@/server/stock-alerts";
@@ -110,6 +111,8 @@ async function dispatch() {
     apiIdempotency: () => pruneApiIdempotency(),
     // The sender of a notice of illegal content (DSA, D411) is forgotten 12 months after its decision.
     contentReports: () => pruneContentReports(),
+    // An AI reads the notices still waiting and checks new and changed listings (D411 part 2); a person decides every one.
+    contentModeration: () => runContentModeration(),
     embeddings: () => refreshEmbeddings(),
     cache: () => pruneSearchCache(),
     knowledge: () => refreshKnowledge(),

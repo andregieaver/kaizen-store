@@ -8,9 +8,11 @@ import { fillWords } from "@/lib/admin-fill";
 import { adminText } from "@/lib/admin-text";
 import type { PlatformMessages } from "@/lib/admin-messages/platform.en";
 import { requirePlatformAdmin } from "@/server/auth";
+import { screeningOn } from "@/server/content-moderation";
 import { listContentReports, type ContentReport } from "@/server/content-reports";
 
-import { decideReportAction } from "./actions";
+import { decideReportAction, saveScreeningAction } from "./actions";
+import { UseDraft } from "./use-draft";
 
 export const metadata: Metadata = { title: "Illegal content notices" };
 
@@ -24,7 +26,7 @@ export default async function PlatformReportsPage() {
   await connection();
   const admin = await requirePlatformAdmin();
   const w = adminText(adminLangOf(admin.adminLocale), "platform").reports;
-  const reports = await listContentReports();
+  const [reports, screening] = await Promise.all([listContentReports(), screeningOn()]);
   const waiting = reports.filter((r) => r.status === "received");
   const decided = reports.filter((r) => r.status !== "received");
   return (
@@ -38,7 +40,8 @@ export default async function PlatformReportsPage() {
             {waiting.map((report) => (
               <li key={report.id} className="flex flex-col gap-3 border-b border-line pb-6 last:border-b-0 last:pb-0">
                 <Facts report={report} w={w} />
-                <ActionForm action={decideReportAction.bind(null, report.id)} className="flex flex-col gap-3" replaceOnSuccess>
+                <Reading report={report} w={w} />
+                <ActionForm id={`decide-${report.id}`} action={decideReportAction.bind(null, report.id)} className="flex flex-col gap-3" replaceOnSuccess>
                   <fieldset className="flex flex-wrap gap-4 text-sm">
                     <legend className="mb-1">{w.outcome}</legend>
                     <label className="flex items-center gap-2">
@@ -68,6 +71,18 @@ export default async function PlatformReportsPage() {
             ))}
           </ul>
         )}
+      </Card>
+      <Card title={w.screening.title}>
+        <ActionForm action={saveScreeningAction} className="flex flex-col gap-3" successMessage={w.screening.saved}>
+          <p className="text-sm text-muted">{w.screening.description}</p>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="on" defaultChecked={screening} />
+            {w.screening.label}
+          </label>
+          <div>
+            <SubmitButton>{w.screening.save}</SubmitButton>
+          </div>
+        </ActionForm>
       </Card>
       <Card title={w.decided}>
         {decided.length === 0 ? (
@@ -103,6 +118,7 @@ function Facts({ report, w }: { report: ContentReport; w: Words }) {
     <div className="flex flex-col gap-2 text-sm">
       <p className="flex flex-wrap items-center gap-2">
         <Chip signal="neutral">{w.categories[report.category]}</Chip>
+        {report.source === "screening" && <Chip signal="neutral">{w.fromCheck}</Chip>}
         <span className="text-muted">{fillWords(w.received, { at: when(report.createdAt) })}</span>
       </p>
       <a href={report.url} target="_blank" rel="noopener noreferrer nofollow" className="w-fit break-all underline">
@@ -116,5 +132,25 @@ function Facts({ report, w }: { report: ContentReport; w: Words }) {
         {w.sender}: {sender}
       </p>
     </div>
+  );
+}
+
+/** The AI's reading of a waiting notice, labelled as the AI's and shown as text; the draft goes into the reason only when asked. */
+function Reading({ report, w }: { report: ContentReport; w: Words }) {
+  const reading = report.aiReading;
+  if (!reading) return <p className="text-sm text-muted">{w.ai.notRead}</p>;
+  return (
+    <section aria-label={w.ai.heading} className="flex flex-col gap-2 rounded-panel border border-line bg-sunken p-3 text-sm">
+      <p className="flex flex-wrap items-center gap-2">
+        <span className="text-body-strong text-ink">{w.ai.heading}</span>
+        <Chip signal={reading.urgency === "high" ? "danger" : "neutral"}>{w.ai.urgency[reading.urgency]}</Chip>
+        <Chip signal="neutral">{w.categories[reading.category]}</Chip>
+        {reading.manifest && <Chip signal="danger">{w.ai.manifest}</Chip>}
+      </p>
+      <p className="whitespace-pre-line">{reading.summary}</p>
+      <p className="whitespace-pre-line text-muted">{reading.draftReason}</p>
+      <p className="text-muted">{w.ai.note}</p>
+      <UseDraft formId={`decide-${report.id}`} draft={reading.draftReason} label={w.ai.useDraft} />
+    </section>
   );
 }

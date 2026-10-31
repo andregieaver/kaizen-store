@@ -1,11 +1,14 @@
 "use server";
 
+import { after } from "next/server";
+
 import type { FormState } from "@/components/admin/action-form";
 import { reportInput } from "@/lib/content-reports";
 import { formProblems } from "@/lib/form-problems";
 import { langOfLocale, type PlatformLang } from "@/lib/platform-lang";
 import { platformText } from "@/lib/platform-text";
 import { log } from "@/server/log";
+import { triageContentReport } from "@/server/content-moderation";
 import { submitContentReport } from "@/server/content-reports";
 
 /** The language the form was sent in: its `locale` field, English for anything else. */
@@ -27,7 +30,15 @@ export async function sendContentReport(_state: FormState, formData: FormData): 
   });
   if (!parsed.success) return formProblems(parsed.error.issues);
   try {
-    await submitContentReport(parsed.data, lang);
+    const id = await submitContentReport(parsed.data, lang);
+    // The AI's reading (D411 part 2), after the answer so the form stays quick; the dispatcher reads any it missed.
+    after(async () => {
+      try {
+        await triageContentReport(id);
+      } catch (error) {
+        log("error", "content_moderation.after_failed", { reportId: id }, error);
+      }
+    });
   } catch (error) {
     log("error", "content_report.failed", {}, error);
     return { status: "error", messages: [w.failed] };

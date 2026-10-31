@@ -376,6 +376,22 @@ export const platformNb: PlatformMessages = {
       reason: "Skriv begrunnelsen med minst 10 tegn.",
       action: "Si hva du begrenset.",
     },
+    ai: {
+      heading: "KI-ens lesning",
+      note: "En KI sorterte dette og foreslo en begrunnelse. Sjekk den: det er du som avgjør.",
+      urgency: { low: "Lite haster", normal: "Vanlig", high: "Haster" },
+      manifest: "Ser ulovlig ut ved første øyekast",
+      useDraft: "Bruk forslaget",
+      notRead: "Ikke lest av KI-en ennå.",
+    },
+    fromCheck: "Kaizena Flows egen sjekk",
+    screening: {
+      title: "KI-sjekk av produkter",
+      description: "En KI leser nye og endrede produkter etter tydelige tegn på ulovlige varer og legger det den finner her, så du kan avgjøre. Den skjuler aldri noe. Hvert produkt koster et kall til modellen.",
+      label: "Sjekk nye og endrede produkter",
+      save: "Lagre",
+      saved: "Lagret.",
+    },
   },
   status: {
     title: "Statusside",

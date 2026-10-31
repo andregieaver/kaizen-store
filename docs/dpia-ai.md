@@ -257,7 +257,22 @@ question for the lawyer. **Retention**: searches 90 days (`search_queries`); the
 (vectors, filters and re-rankings under an MD5 key, `src/server/search-cache.ts`), which is **in neither `PERSONAL_DATA` nor
 `NOT_PERSONAL`** (checked by search; filters may keep words the shopper typed, `cleanFilters()`).
 
-## 5. Risks
+### 4.10 Notices of illegal content, and Kaizena Flow's own check of listings
+
+**Purpose.** Sort notices sent under the DSA and draft a reason for the platform admin who decides each one; check new and changed
+listings for clear signs of illegal products (D411 part 2, `docs/dsa.md`, `src/server/content-moderation.ts`). Kaizena Flow is the
+controller: it runs its own hosting duties.
+
+**What reaches the model.** For a notice: its category, the address and the sender's explanation, and, when the address is a listing
+Kaizena Flow hosts, the listing's title, description and safety text. For the check: a listing's words only. **Kept out**: the sender's
+name and email never reach the model; no customer data. The explanation may still name or describe a person (the store's owner, the
+sender themselves); the model's reading (`ai_reading`, `ai_note`) summarises it and is kept with the notice.
+
+**Personal data.** A sender's own words, and what they say of others. **Basis candidates**: Art. 6(1)(c) (the DSA's notice duties) for
+handling the notice; Art. 6(1)(f) for the voluntary check. **Retention**: as the notice (`PERSONAL_DATA` entry `content_reports`: the
+sender's name and address blanked 12 months after the decision; the summary names no sender). **Risk measures**: the prompts carry
+`UNTRUSTED_TEXT`; only the checked shape of the answer is kept (`parseReading()`); a person decides every notice and flag; the emails
+say an AI helped.
 
 Likelihood and severity are proposals for the owner to confirm.
 

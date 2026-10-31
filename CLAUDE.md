@@ -208,7 +208,7 @@ Each rule is in full in `docs/rules/admin.md` under the same words (the admin, a
 - Versions compared and staging (wave 9 unit E, D358, `src/lib/version-compare.ts`, `src/server/site-staging.ts`)
 - Self-serve sign-up (wave 9 unit F, D359, `src/server/self-signup.ts`)
 - The Dream Factory (D409, `docs/dream-factory.md`, `src/lib/dream-factory.ts`, `src/server/dream-factory.ts`)
-- Notices of illegal content (D411, `docs/dsa.md`, `src/lib/content-reports.ts`, `src/server/content-reports.ts`)
+- Notices of illegal content (D411, `docs/dsa.md`, `src/lib/content-reports.ts`, `src/server/content-reports.ts`, `src/server/content-moderation.ts`)
 - The status page (wave 9 unit G, D360, `src/lib/status.ts`, `src/server/status.ts`)
 - The installable admin and push (wave 9 unit H, D361, `src/lib/admin-sw.ts`, `src/lib/push.ts`, `src/server/push.ts`)
 - The storefront API (wave 9 unit I, D362, `src/lib/storefront-api.ts`, `src/server/storefront-api.ts`, `src/server/storefront-route.ts`)

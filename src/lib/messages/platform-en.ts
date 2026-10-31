@@ -342,7 +342,7 @@ export const platformEn = {
       decidedNoAction: "We looked at the content and did not restrict it.",
       actionLabel: "What we did",
       reasonLabel: "Why",
-      automatedUsed: "Automated means helped read your notice; a person at Kaizena Flow took the decision.",
+      automatedUsed: "Automated means were used: an AI helped sort and read your notice and drafted a reason. A person at Kaizena Flow checked it and took the decision.",
       automatedNone: "No automated means were used; a person at Kaizena Flow took the decision.",
       redress:
         "If you disagree, reply to this email and we will look at it again. You may also complain to the Digital Services Coordinator of your country, or go to court.",

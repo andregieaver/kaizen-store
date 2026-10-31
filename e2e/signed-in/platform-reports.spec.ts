@@ -33,3 +33,28 @@ test("a platform admin decides a notice of illegal content with its reason", asy
   await expect(decided).toContainText("No action");
   await expect(decided).toContainText("The offer is a genuine discount, not misleading.");
 });
+
+test("the AI's reading shows beside a notice as the AI's, and its draft fills the reason only when asked (part 2)", async ({ page }) => {
+  const marker = `E2E read notice ${Date.now()}`;
+  const draft = "The listing sells a weapon part without the licence the law asks for.";
+  const reading = { category: "illegal_goods", urgency: "high", manifest: true, summary: "A listing appears to sell a weapon part.", draftReason: draft };
+  const sql = testDb();
+  try {
+    await sql`
+      insert into commerce.content_reports (url, category, explanation, reporter_name, reporter_email, good_faith, ai_used, ai_note, ai_reading)
+      values ('https://example.com/p/e2e-read', 'other', ${marker}, 'Kari Nordmann', 'kari-e2e@example.com', true, true, ${reading.summary}, ${sql.json(reading)})`;
+  } finally {
+    await sql.end();
+  }
+
+  await page.goto("/admin/platform/reports");
+  const notice = page.getByRole("listitem").filter({ hasText: marker });
+  const ai = notice.getByRole("region", { name: "The AI's reading" });
+  await expect(ai).toContainText("Urgent");
+  await expect(ai).toContainText("Looks illegal on its face");
+  await expect(ai).toContainText("you decide");
+  await expect(notice.getByLabel("Reason")).toHaveValue("");
+  await ai.getByRole("button", { name: "Use the draft" }).click();
+  await expect(notice.getByLabel("Reason")).toHaveValue(draft);
+  await expect(page.getByRole("checkbox", { name: "Check new and changed listings" })).toBeVisible();
+});

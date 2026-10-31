@@ -338,7 +338,7 @@ export const platformNb: PlatformMessages = {
       decidedNoAction: "Vi så på innholdet og begrenset det ikke.",
       actionLabel: "Hva vi gjorde",
       reasonLabel: "Begrunnelse",
-      automatedUsed: "Automatiserte verktøy hjalp med å lese meldingen; en person hos Kaizena Flow tok avgjørelsen.",
+      automatedUsed: "Automatiserte verktøy ble brukt: en KI hjalp med å sortere og lese meldingen og foreslo en begrunnelse. En person hos Kaizena Flow sjekket den og tok avgjørelsen.",
       automatedNone: "Ingen automatiserte verktøy ble brukt; en person hos Kaizena Flow tok avgjørelsen.",
       redress:
         "Er du uenig, svar på denne e-posten, så ser vi på det igjen. Du kan også klage til koordinatoren for digitale tjenester i landet ditt, eller gå til domstolene.",

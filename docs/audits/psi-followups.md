@@ -163,7 +163,8 @@ stay in the standing document's *What comes next*.
       only for offences against children), a receipt and an alert to the platform admins, a person's decision with its reason at
       `/admin/platform/reports`, the decision and redress to the sender, the statement of reasons to the store when content is restricted
       (art. 17), the sender forgotten 12 months after. Left, the owner's: the lawyer on art. 19 (micro or small enterprise), points of
-      contact (arts. 11, 12) and moderation in the terms (art. 14). AI reading each notice first is part 2.
+      contact (arts. 11, 12) and moderation in the terms (art. 14). Part 2 done the same day: an AI reads each notice first and drafts, and
+      checks new and changed listings (art. 7), filing flags in the same queue; a person decides every one (`docs/dsa.md` Part 2).
 - [x] **REG-08 (privacy 5)** Tone and summaries in the store's privacy starter, and `docs/ai-act.md`. Done 30 October 2026: the starter's
       automated-decisions section says an AI reads the tone of support messages or summarises them, each only while it does (the chat
       notice's `aiUse` through `legalFacts()`, four languages); `docs/ai-act.md` classifies each use (provider and deployer, Art. 50, no

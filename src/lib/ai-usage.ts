@@ -53,6 +53,7 @@ export const AI_FEATURES = {
   marketing_email: "Marketing emails",
   support_tone: "Support tone",
   support_summary: "Support summaries",
+  content_moderation: "Notices of illegal content",
   support_partner: "Support partner",
   ai_test: "Settings tests",
   other: "Other",

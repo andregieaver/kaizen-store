@@ -30,12 +30,21 @@ art. 20 and the out-of-court settlement of art. 21 bind it now. The hosting duti
 Restricting the content itself is done by the admin where it lives (hiding the product, removing the picture, closing the store); the
 notice records what was done and why.
 
-## Part 2: AI reads first, a person decides
+## Part 2: AI reads first, a person decides (built 31 October 2026)
 
-An AI will read each notice when it arrives: sort it, say how urgent it looks, and draft a decision and its reason for the admin, who
-confirms or changes it. It may also check new and changed listings for clear signs of illegal goods (art. 7) and put what it finds in the
-same queue. Nothing is restricted by the AI alone. When it took part, `ai_used` is set and both emails say automated means were used
-(arts. 16(6) and 17(3)(c)). A notice's words come from strangers, so the prompt treats them as untrusted text (`src/lib/prompt-safety.ts`).
+| What the AI does | Where | The articles |
+|---|---|---|
+| Reads each notice right after it is sent (and the dispatcher's `contentModeration` job reads any it missed), beside the listing's own words when the address is a listing Kaizena Flow hosts (read from the database, never fetched from the web). It writes a reading: a suggested category, urgency (low, normal, high), whether the content looks illegal to a layperson without analysis (recital 63), a two-sentence summary and a draft reason. | `triageContentReport()`, `src/server/content-moderation.ts`; prompts and checks `src/lib/content-moderation.ts`; `content_reports.ai_reading` | art. 16(6): timely and diligent |
+| An urgent reading emails the platform admins again (`platform.content_report_urgent`), and urgent notices are listed first. | `alertUrgent()`, `listContentReports()` | art. 16(6) |
+| Shows its reading beside the notice, labelled as the AI's, as text; *Use the draft* puts the draft in the reason field, which the admin edits. | `/admin/platform/reports` | art. 16(6): objective, non-arbitrary |
+| Checks new and changed active listings of live stores (ten each five minutes at most, each wording once, `content_screened`) for clear signs of illegal products, and files a flag (source `screening`, no sender, no receipt) in the same queue. A platform admin can turn it off on the same page; owners cannot. | `screenListings()`; `platform_settings.content_screening` | art. 7 (voluntary, in good faith); art. 8 (no general monitoring duty: the check is a choice, not a duty) |
+
+What it never does: decide, restrict, hide or email a store or a sender on its own. A person presses Decide on every notice and flag. When the
+AI took part, `ai_used` is set and the decision emails say an AI helped sort and draft and a person decided (arts. 16(6) and 17(3)(c)); a
+restriction after a flag tells the store it followed Kaizena Flow's own check, made by an AI. A notice's and a listing's words come from
+strangers: the prompts carry `UNTRUSTED_TEXT`, the model's answer is kept only in its checked shape (`parseReading()`), and nothing it says is
+drawn as HTML. Without a model, nothing changes: notices wait for a person as before. The model is Kaizena Flow's own (`aiFor(null)`,
+feature `content_moderation`), so its cost is Kaizena Flow's.
 
 ## Left for the owner
 

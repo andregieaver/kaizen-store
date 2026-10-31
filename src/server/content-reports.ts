@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/client";
+import { storedReading, type AiReading } from "@/lib/content-moderation";
 import {
   REPORT_CATEGORIES,
   REPORT_SENDER_MONTHS,
@@ -27,7 +28,8 @@ import { col, typedRow, typedRows } from "./typed-rows";
  * Notices of illegal content on a store (DSA art. 16, D411, `docs/dsa.md`): taken from the public form at `/report`, answered with a
  * receipt (art. 16(4)), put before Kaizena Flow's platform admins, decided by one of them with a reason, and the decision told to the
  * sender with the ways to have it reviewed (art. 16(5)) and, when something was restricted, to the store with its reasons (art. 17).
- * Nothing here decides by itself; part 2 adds an AI's reading, and the emails then say automated means were used (`ai_used`).
+ * Nothing here decides by itself: an AI's reading (part 2, `src/server/content-moderation.ts`) sorts and drafts, a person decides, and
+ * the emails then say automated means helped (`ai_used`).
  */
 
 export type ContentReport = {
@@ -44,6 +46,10 @@ export type ContentReport = {
   decidedAt: string | null;
   createdAt: string;
   store: { id: string; slug: string; name: string } | null;
+  /** `notice` from `/report`, or `screening`, Kaizena Flow's own check of a listing (part 2). */
+  source: "notice" | "screening";
+  /** The AI's reading, shown beside the notice as the AI's; null until it read it, or without a model. */
+  aiReading: AiReading | null;
 };
 
 const REPORT = z.object({
@@ -58,6 +64,8 @@ const REPORT = z.object({
   decision: col.textOrNull,
   action_taken: col.textOrNull,
   ai_used: col.bool,
+  source: z.enum(["notice", "screening"]),
+  ai_reading: z.unknown(),
   decided_at: col.timestampOrNull,
   created_at: col.timestamp,
   store_id: col.uuid.nullable(),
@@ -81,11 +89,13 @@ const toReport = (row: z.output<typeof REPORT>): ContentReport => ({
   decidedAt: row.decided_at,
   createdAt: row.created_at,
   store: row.store_id && row.store_slug ? { id: row.store_id, slug: row.store_slug, name: row.store_name ?? row.store_slug } : null,
+  source: row.source,
+  aiReading: storedReading(row.ai_reading),
 });
 
 const SELECT = sql`
   select r.id, r.url, r.category, r.explanation, r.reporter_name, r.reporter_email, r.lang, r.status, r.decision, r.action_taken,
-    r.ai_used, r.decided_at, r.created_at, r.store_id, s.slug as store_slug, s.name as store_name
+    r.ai_used, r.source, r.ai_reading, r.decided_at, r.created_at, r.store_id, s.slug as store_slug, s.name as store_name
   from commerce.content_reports r left join commerce.stores s on s.id = r.store_id
 `;
 
@@ -157,11 +167,12 @@ export async function submitContentReport(input: ReportInput, lang: PlatformLang
   return row.id;
 }
 
-/** Every notice, those waiting first (oldest first), then the decided ones (newest first). */
+/** Every notice, those waiting first (the ones the AI read as urgent first, then oldest first), then the decided ones (newest first). */
 export async function listContentReports(limit = 200): Promise<ContentReport[]> {
   const rows = await typedRows(
     REPORT,
-    sql`${SELECT} order by (r.status = 'received') desc, case when r.status = 'received' then r.created_at end asc, r.decided_at desc nulls last limit ${limit}`,
+    sql`${SELECT} order by (r.status = 'received') desc, (r.status = 'received' and r.ai_reading ->> 'urgency' = 'high') desc,
+      case when r.status = 'received' then r.created_at end asc, r.decided_at desc nulls last limit ${limit}`,
   );
   return rows.map(toReport);
 }
@@ -189,7 +200,7 @@ export async function decideContentReport(admin: Account, id: string, input: Dec
         returning *
       )
       select r.id, r.url, r.category, r.explanation, r.reporter_name, r.reporter_email, r.lang, r.status, r.decision, r.action_taken,
-        r.ai_used, r.decided_at, r.created_at, r.store_id, s.slug as store_slug, s.name as store_name
+        r.ai_used, r.source, r.ai_reading, r.decided_at, r.created_at, r.store_id, s.slug as store_slug, s.name as store_name
       from done r left join commerce.stores s on s.id = r.store_id
     `,
   );
@@ -242,8 +253,18 @@ export async function decideContentReport(admin: Account, id: string, input: Dec
         { type: "paragraph", text: `What: ${actionTaken}` },
         { type: "paragraph", text: `Where: ${report.url}` },
         { type: "paragraph", text: `Why: ${decision}` },
-        { type: "paragraph", text: `Ground: the content was reported as ${report.category.replaceAll("_", " ")} and found incompatible with the law or with Kaizena Flow's terms. The decision followed a notice from a third party.` },
-        { type: "paragraph", text: updated.ai_used ? "Automated means helped read the notice; a person at Kaizena Flow took the decision." : "No automated means were used; a person at Kaizena Flow took the decision." },
+        {
+          type: "paragraph",
+          text: `Ground: the content was reported as ${report.category.replaceAll("_", " ")} and found incompatible with the law or with Kaizena Flow's terms. ${
+            report.source === "screening" ? "The decision followed Kaizena Flow's own check of the listing, which an AI made." : "The decision followed a notice from a third party."
+          }`,
+        },
+        {
+          type: "paragraph",
+          text: updated.ai_used
+            ? "Automated means were used: an AI helped sort and read it and drafted a reason. A person at Kaizena Flow checked it and took the decision."
+            : "No automated means were used; a person at Kaizena Flow took the decision.",
+        },
         {
           type: "paragraph",
           text: "If you disagree, reply to this email or write to Kaizena Flow's support: we will look at it again. You may also turn to an out-of-court dispute settlement body certified under the Digital Services Act, or to the courts.",
