@@ -315,7 +315,9 @@ The re-score ([psi-2026-10-31.md](psi-2026-10-31.md)) put the overall at 78.3 (8
       Sign-up's part done 31 October 2026: a sentence under the button links the terms and the privacy notice (en, nb), and a request sent
       from the form keeps `terms_accepted_at` and `terms_version` (the published terms page's time of publishing; migration
       `access_requests_terms`, `access-emails.int.test.ts`). Left: the owner's review of the notice and terms text for the DSA's AI.
-- [ ] **PERF-01** The admin's real p75 from signed-in routes.
+- [x] **PERF-01** The admin's real p75 from signed-in routes. Done 31 October 2026 (`docs/performance.md`, *The admin as people use
+      it*): from the admin's own speed beacon, 52 signed-in loads: LCP 3.93 s, INP 136 ms, CLS 0.026, TTFB 321 ms at p75; LCP is the one
+      over Google's "good", and the editors and settings screens are where. Left: a first-scripts budget for the editors.
 - [x] **REG-01** Purpose and basis per register entry. Done 31 October 2026: 18 purposes, each with its Art. 6(1) basis, the reason
       and the law, and who decides it (`src/lib/personal-purposes.ts`); every entry of `PERSONAL_DATA` names one, and
       `processingRecord()` draws the Art. 30 record from the register (`personal-purposes.test.ts`). The bases are proposals for the
