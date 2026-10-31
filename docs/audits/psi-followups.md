@@ -173,6 +173,9 @@ stay in the standing document's *What comes next*.
       shortcuts*, listing what the admin binds (the AI manager, the page builder's save, undo, redo, find and replace and screen sizes,
       sending a message) with the keys as the computer has them (`src/lib/shortcut-sheet.ts`, `ShortcutSheet` in `AdminFrame`, English
       and Norwegian; `e2e/signed-in/shortcut-sheet.spec.ts`). A new shortcut is added to `SHORTCUTS` so the list stays true.
+- [x] **UX-06 (usability)** Recent items in the launcher. Done 31 October 2026: the AI manager's panel (⌘K) starts with the five admin
+      pages opened last in that store or level, the one on screen left out, kept in the person's own browser only
+      (`src/lib/recent-pages.ts`; `e2e/signed-in/recent-pages.spec.ts`).
 - [x] **DATA-03 (data 2)** `Idempotency-Key` on Admin API POSTs, a Mollie 401 renewed once, Stripe's `apiVersion`. Done 30 October
       2026: a POST with the header is done once per token and key, the same request getting the first answer again
       (`Idempotent-Replayed: true`) and another request under the key refused, answers kept 24 hours (`commerce.api_idempotency_keys`,

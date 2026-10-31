@@ -1,10 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { focusAiComposer } from "@/lib/ai-composer";
+import { pageName, parseRecent, rememberPage } from "@/lib/recent-pages";
 import type { ConversationSummary } from "@/server/owner-assistant";
 
 import { AiManagerChat, MicIcon, type Abilities, type AiManagerActions } from "./ai-manager";
@@ -58,6 +60,20 @@ export function AiManagerLauncher({
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const onItsPage = pathname === base;
+  // The pages opened last in this level (PSI UX-06), kept in this browser only: offered at the top of the panel.
+  const recentKey = `kz-recent:${base}`;
+  useEffect(() => {
+    // The title follows the page a moment after the address does.
+    const timer = window.setTimeout(() => {
+      try {
+        const kept = parseRecent(window.localStorage.getItem(recentKey));
+        window.localStorage.setItem(recentKey, JSON.stringify(rememberPage(kept, { path: pathname, title: pageName(document.title) })));
+      } catch {
+        // No storage (a private window, blocked site data): nothing is kept.
+      }
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [pathname, recentKey]);
   // What it finished or waits on while the person was away (D350): this place's notices, counted on the button and listed in the panel.
   const place = base.split("/")[2] ?? "platform";
   const [unread, recount] = useNoticeCount(place);
@@ -179,6 +195,7 @@ export function AiManagerLauncher({
           </div>
         )}
         <div className={showNotices ? "hidden" : "flex min-h-0 flex-1 flex-col"}>
+        <RecentPages storageKey={recentKey} current={pathname} label={w.launcher.recent} onOpen={closeOnPhones} />
         {ready ? (
           <AiManagerChat
             area={area}
@@ -239,5 +256,26 @@ export function AiManagerLauncher({
       {/* Only open after a click, so only in the browser: drawn over the page from the body. */}
       {panel ? createPortal(panel, document.body) : null}
     </>
+  );
+}
+
+/** The pages opened last, the one on screen left out: read from this browser when the panel is drawn (only ever after a click). */
+function RecentPages({ storageKey, current, label, onOpen }: { storageKey: string; current: string; label: string; onOpen: () => void }) {
+  let pages: { path: string; title: string }[] = [];
+  try {
+    pages = parseRecent(window.localStorage.getItem(storageKey)).filter((page) => page.path !== current);
+  } catch {
+    pages = [];
+  }
+  if (pages.length === 0) return null;
+  return (
+    <nav aria-label={label} className="flex flex-wrap items-center gap-1.5 border-b border-line px-4 py-2 text-sm">
+      <span className="text-muted">{label}:</span>
+      {pages.map((page) => (
+        <Link key={page.path} href={page.path} onClick={onOpen} className="inline-flex min-h-8 items-center rounded-pill px-2.5 hover:bg-sunken">
+          {page.title}
+        </Link>
+      ))}
+    </nav>
   );
 }

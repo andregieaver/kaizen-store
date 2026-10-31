@@ -62,6 +62,7 @@ export const assistantEn = {
     cancel: "Cancel",
   },
   launcher: {
+    recent: "Recent pages",
     close: "Close the AI manager",
     loading: "Loading …",
     title: "AI manager (⌘K / Ctrl+K)",

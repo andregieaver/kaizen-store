@@ -57,6 +57,7 @@ export const assistantNb: AssistantMessages = {
     cancel: "Avbryt",
   },
   launcher: {
+    recent: "Sist åpnet",
     close: "Lukk KI-assistenten",
     loading: "Laster …",
     title: "KI-assistent (⌘K / Ctrl+K)",
