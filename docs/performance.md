@@ -86,3 +86,23 @@ and the admin's sign-in and forgot-password pages loading 2.0 to 2.1 MB: `Action
 `useAdminText()`, whose English fallback holds every area of the admin's catalogue. A part shown outside the signed-in admin reads its
 words through `src/components/admin/admin-text-context.tsx` (`useCommonText()`, `useSignInText()`, and `AdminTextProvider`, which carries no
 catalogue); the pages now load 0.71 to 0.84 MB.
+
+## The admin as people use it (PSI PERF-01, 31 October 2026)
+
+The status page's Dublin check times `/admin/sign-in`, which Vercel's edge serves from its cache, so it says nothing about the signed-in
+admin. What does is the speed beacon in the admin itself (`commerce.own_speed_samples`, site `admin`, `src/server/own-speed.ts`; Platform →
+Usage and limits shows it): real page loads of signed-in people, no robots, nobody with Global Privacy Control or Do Not Track. Read from
+production on 31 October 2026, the 30 days then held 52 loads (29 and 30 October, so a first look, not a settled figure):
+
+| Admin, p75 | Loads | LCP | INP | CLS | TTFB |
+|---|---:|---:|---:|---:|---:|
+| All | 52 | 3.93 s | 136 ms | 0.026 | 321 ms |
+| Computer | 42 | 3.95 s | 172 ms | 0.026 | 327 ms |
+| Phone | 10 | 2.99 s | 104 ms | 0 | 156 ms |
+
+By the page's kind (`ownSpeedKind()`): an editor (a product, page or article: `product`) 3.90 s LCP at 499 ms TTFB over 25 loads, the
+other screens (`page`) 4.18 s at 133 ms over 21, the store's home 2.50 s over 4. INP and CLS are within Google's "good" (200 ms, 0.1); LCP
+is not (2.5 s), and with the server answering in 0.1 to 0.5 s the rest is the browser's: the editors' and settings' client scripts, which
+the first-scripts budgets above do not yet cover for signed-in routes. Kaizena Flow's own site for comparison: 80 loads, LCP 2.06 s, INP
+72 ms, CLS 0.001, TTFB 113 ms. The next step is a first-scripts budget for the product editor and the page builder, and this table read
+again once a month of loads is in.
