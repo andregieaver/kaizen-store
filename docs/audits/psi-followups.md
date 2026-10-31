@@ -190,7 +190,14 @@ stay in the standing document's *What comes next*.
       they leave through the customer and order files or the privacy export), is left out for a named reason (`STORE_EXPORT_LEFT_OUT`,
       `src/lib/store-export-scope.ts`: a secret, the catalogue's CSV files, a record or job state, people, files), or is on
       `STORE_EXPORT_UNDECIDED`, which only shrinks (62 tables, mostly settings that belong in the file). `store-export.scan.test.ts` fails
-      on a new table in none of these and on a secret in the file. Left: deciding the 62, starting with the settings.
+      on a new table in none of these and on a secret in the file. The 62 decided the same day, and the undecided list removed: 45 settings
+      and site tables joined the file (shipping and customs, prices per country, payment methods, order rules and workflows, automations,
+      bonus, affiliates and creators, price lists, recommendations, analytics targets and saved reports, alerts, support, the autopilot,
+      Work's settings, cookie notes, the chat agent and its documents, A/B tests, store themes), 17 left out with their reason (three
+      connections with keys, records and scheduled jobs, the people in them, a starter's gallery listing as the platform's). A report's
+      recipients, any `account_id` and the support inbox's channel and email-address keys are stripped from every row; the scan test now
+      fails on a kept column naming an account, a customer or an email address, or ending `_key`, and the integration test plants the
+      inbox's keys as canaries.
 - [x] **AI Act Art. 50(2) backfill** AI pictures made before 30 October 2026 marked. Done 31 October 2026: the `aiPictureMarks` dispatcher
       job writes IPTC's `DigitalSourceType` XMP into each one's two WebP files without re-encoding them (`src/lib/webp-xmp.ts`), in place,
       ten a run, recorded in `media.ai_marked_at` (migration `media_ai_marked`); `docs/ai-act.md` item 1.

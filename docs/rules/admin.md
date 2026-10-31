@@ -833,7 +833,8 @@ changing it; a rule changes here, and its line in CLAUDE.md when its gist change
   and it is refused for a platform admin, a store's last current owner, a host or a domain's holder; a new table of an account's own data
   (keyed by `account_id`) gets a line there and a register entry. The whole store as one file is only `storeExport()`
   (`src/server/store-export.ts`): a new store-owned table of site or settings goes in `STORE_EXPORT_TABLES`, and a secret column is named so
-  `SECRET_COLUMN` leaves it out.
+  `SECRET_COLUMN` leaves it out (a column naming a person, `PERSON_COLUMN`); any other store table is left out with its reason in
+  `STORE_EXPORT_LEFT_OUT` (`src/lib/store-export-scope.ts`), and `store-export.scan.test.ts` fails on a table in neither.
 
 ## Ad tags and shop events (wave 5 unit I1, D303, `docs/wave-5-marketing.md` 12, `src/lib/shop-events.ts`)
 

@@ -12,8 +12,10 @@ type Row = Record<string, unknown>;
 /**
  * The whole store as one file to take away (wave 10 unit P, D377; PSI DATA-05): its website (pages and articles with their drafts, menus,
  * categories and tags, blogs, content types and entries, saved parts, page places and redirects), its look (the live theme, every installed
- * theme's look and the site's CSS) and its settings (the store's own row, countries, currencies, tax profile, shipping, returns, orders,
- * checkout rules, notifications and email texts, discounts and campaigns, customer groups, segments and search merchandising), as JSON.
+ * theme's look and the site's CSS, cookie notes, the chat agent and its documents, A/B tests) and its settings (the store's own row, countries,
+ * currencies, tax profile, shipping and customs, prices per country, payment methods, returns, orders, order rules and workflows, checkout
+ * rules, notifications and email texts, automations, discounts and campaigns, bonus, affiliates and creators, price lists, customer groups,
+ * segments, search merchandising, recommendations, analytics targets and saved reports, alerts, support, the autopilot and Work), as JSON.
  * Products, inventory, orders and customers have their own CSV files (D165), which the page links; this file holds no person's data beyond
  * what the store wrote into its own pages and settings. Nothing that opens a door goes in it: every column named like a secret, token,
  * hash, password, key or encrypted value is left out (`SECRET_COLUMN`), and a discount code's named customers too. The owner's (as the
@@ -35,7 +37,14 @@ export const STORE_EXPORT_TABLES = [
   "text_styles",
   "field_groups",
   "redirects",
+  "not_found_ignored",
+  "cookie_notes",
+  "chat_agents",
+  "knowledge_documents",
+  "experiments",
+  "experiment_variants",
   "store_theme_installs",
+  "store_themes",
   "markets",
   "store_currencies",
   "store_tax_profile",
@@ -58,13 +67,51 @@ export const STORE_EXPORT_TABLES = [
   "segments",
   "search_synonyms",
   "search_rules",
+  "shipping_settings",
+  "shipping_profiles",
+  "delivery_schedules",
+  "customs_settings",
+  "producer_registrations",
+  "market_price_rules",
+  "tax_rate_overrides",
+  "payment_methods",
+  "invoice_settings",
+  "gift_card_settings",
+  "review_settings",
+  "order_rules",
+  "order_views",
+  "workflows",
+  "automations",
+  "cart_reminder_steps",
+  "broadcast_templates",
+  "bonus_settings",
+  "bonus_rewards",
+  "affiliate_settings",
+  "creator_settings",
+  "price_lists",
+  "price_list_products",
+  "price_list_prices",
+  "price_list_breaks",
+  "price_list_quantity_rules",
+  "price_list_assignments",
+  "recommendation_settings",
+  "recommendation_rules",
+  "analytics_settings",
+  "analytics_targets",
+  "saved_reports",
+  "report_schedules",
+  "staff_alert_settings",
+  "support_settings",
+  "support_replies",
+  "autopilot_settings",
+  "work_settings",
 ] as const;
 
-/** A column that could open a door, never written to the file. */
-export const SECRET_COLUMN = /(secret|token|_hash$|^hash$|password|encrypt|credential|signing|api_key|private_key|webhook)/i;
+/** A column that could open a door, never written to the file (the support inbox's channel and email-address keys among them). */
+export const SECRET_COLUMN = /(secret|token|_hash$|^hash$|password|encrypt|credential|signing|api_key|private_key|webhook|^channel_key$|^email_key$)/i;
 
-/** Columns that name a person (who made or changed a row, a code's named customers), left out whatever the table. */
-const PERSON_COLUMN = /(_by$|^customer_ids$)/;
+/** Columns that name a person (who made or changed a row, a code's named customers, a report's recipients), left out whatever the table. */
+export const PERSON_COLUMN = /(_by$|^customer_ids$|^recipients$|(^|_)account_id$)/;
 
 /** A row as it goes into the file: without its store id, its secrets or the people it names. */
 export function exportable(row: Record<string, unknown>): Record<string, unknown> {

@@ -3,37 +3,43 @@ import { describe, expect, it, vi } from "vitest";
 
 import * as schema from "@/db/schema";
 import { PERSONAL_DATA } from "@/lib/personal-data";
-import { STORE_EXPORT_LEFT_OUT, STORE_EXPORT_UNDECIDED } from "@/lib/store-export-scope";
+import { STORE_EXPORT_LEFT_OUT } from "@/lib/store-export-scope";
 
 vi.mock("server-only", () => ({}));
-const { STORE_EXPORT_TABLES } = await import("./store-export");
+const { STORE_EXPORT_TABLES, exportable } = await import("./store-export");
 
 /** Every `commerce` table with a `store_id`: what the store owns. */
-const storeTables = (Object.values(schema) as unknown[])
+const storeTableConfigs = (Object.values(schema) as unknown[])
   .filter((value): value is PgTable => value instanceof PgTable)
   .map((table) => getTableConfig(table))
-  .filter((config) => config.schema === "commerce" && config.columns.some((column) => column.name === "store_id"))
-  .map((config) => config.name);
+  .filter((config) => config.schema === "commerce" && config.columns.some((column) => column.name === "store_id"));
+const storeTables = storeTableConfigs.map((config) => config.name);
 
 const personal = new Set(PERSONAL_DATA.filter((entry) => entry.subject !== "none").map((entry) => entry.table));
 const exported = new Set<string>(STORE_EXPORT_TABLES);
 
 describe("what the whole-store file holds, table by table (PSI DATA-05)", () => {
-  it("has every store table decided: in the file, people's data, left out for a reason, or on the shrinking undecided list", () => {
-    const decided = (table: string) =>
-      exported.has(table) || personal.has(table) || table in STORE_EXPORT_LEFT_OUT || STORE_EXPORT_UNDECIDED.includes(table);
+  it("has every store table decided: in the file, people's data, or left out for a reason", () => {
+    const decided = (table: string) => exported.has(table) || personal.has(table) || table in STORE_EXPORT_LEFT_OUT;
     expect(storeTables.filter((table) => !decided(table))).toEqual([]);
   });
 
-  it("keeps the undecided list true: no table on it that is decided or gone", () => {
+  it("keeps the left-out list true: no table on it that is gone or in the file", () => {
     const owned = new Set(storeTables);
-    const stale = STORE_EXPORT_UNDECIDED.filter((table) => !owned.has(table) || exported.has(table) || table in STORE_EXPORT_LEFT_OUT || personal.has(table));
-    expect(stale).toEqual([]);
-    const leftStale = Object.keys(STORE_EXPORT_LEFT_OUT).filter((table) => !owned.has(table) || exported.has(table));
-    expect(leftStale).toEqual([]);
+    expect(Object.keys(STORE_EXPORT_LEFT_OUT).filter((table) => !owned.has(table) || exported.has(table))).toEqual([]);
+    expect(STORE_EXPORT_TABLES.filter((table) => !owned.has(table))).toEqual([]);
   });
 
   it("never exports a table that holds a secret", () => {
     expect([...exported].filter((table) => STORE_EXPORT_LEFT_OUT[table] === "secret")).toEqual([]);
+  });
+
+  it("keeps no column of an exported table that names an account, a customer or an email address, or opens a door", () => {
+    const kept = storeTableConfigs
+      .filter((config) => exported.has(config.name))
+      .flatMap((config) => config.columns.map((column) => `${config.name}.${column.name}`))
+      .filter((name) => Object.keys(exportable({ [name.split(".")[1]]: 1 })).length > 0);
+    const risky = /\.((\w+_)?(account|customer|member)_id|(\w+_)?email(_address)?|\w*_key|\w*_ip|ip_address|user_agent)$/;
+    expect(kept.filter((name) => risky.test(name))).toEqual([]);
   });
 });
