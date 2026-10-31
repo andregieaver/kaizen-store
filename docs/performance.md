@@ -124,4 +124,12 @@ runs). Raw, before compression:
 Measuring found the page lists loading the whole builder (4.71 MB, the builder's own figure): a route loads every client component its
 server modules import, drawn or not, and the lists and the editor shared one `views.tsx`. The editors now live in `editor-views.tsx` (a
 store's and Kaizena Flow's), and every list of pages, articles, headers, footers and product layouts dropped 1.13 MB. What is left is the
-3.0 MB every screen shares, the admin's layout and what it imports (not yet broken down): the next thing to look into, the same way.
+3.0 MB every screen shares. Broken down the same day from the build's client manifest (`page_client-reference-manifest.js`): the
+signed-in layout's largest chunk is 1.17 MB, and it holds the admin's whole English catalogue, every area's words (1.37 MB of source in 54
+files), because `useAdminText()` reads English for an area a page did not hand down and `admin-text.tsx` imports every area for that.
+Fetching each area's English only when first asked took every screen down by about 1.0 MB (home 3.02 to 2.04 MB, the builder 4.70 to
+3.78 MB), but was backed out before it shipped: a part waiting for its area's words is not interactive yet when the page has loaded, and the
+signed-in end-to-end tests caught the content type editor's Save, pressed that early, submitting its form without its script (to the
+address without `?preset`, so the type was not made). The way there is for every page to hand down the areas its parts read, so the
+fallback is never needed and can then go; `admin-catalogues.scan.test.ts` meanwhile keeps any new client module from importing a whole
+catalogue.
