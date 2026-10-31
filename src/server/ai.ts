@@ -684,7 +684,8 @@ async function streamWithToolsOnce(
       headers: { authorization: `Bearer ${connection.apiKey}`, "content-type": "application/json" },
       body: JSON.stringify({
         model: connection.textModel,
-        messages,
+        // Tool answers framed as data, as `chatWithTools()` sends them (and as the agents' safety eval tests them).
+        messages: messages.map((m) => (m.role === "tool" ? { ...m, content: toolData(m.content) } : m)),
         ...(tools.length > 0 && { tools: tools.map((tool) => ({ type: "function", function: tool })), tool_choice: "auto" }),
         stream: true,
         ...(STREAM_USAGE.has(connection.provider) && { stream_options: { include_usage: true } }),
