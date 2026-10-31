@@ -126,7 +126,7 @@ test.describe("nested columns (D294)", () => {
 
   test("a row's layout dragged into a column nests its columns there", async ({ page }) => {
     const row = await twoColumns(page);
-    await dropOnNest(page, page.getByRole("button", { name: "Add 3 columns" }), row, 0);
+    await dropOnNest(page, page.locator("[data-palette-tile]").filter({ hasText: /^3 columns$/ }), row, 0);
     const nested = row.locator('[data-builder-item="block"] [data-builder-holder]');
     await expect(nested).toHaveCount(1);
     await expect(nested.locator('[data-builder-item="column"]')).toHaveCount(3);
@@ -134,7 +134,7 @@ test.describe("nested columns (D294)", () => {
 
   test("the Column tile dragged into a column nests one column there", async ({ page }) => {
     const row = await twoColumns(page);
-    await dropOnNest(page, page.getByRole("button", { name: "Add column", exact: true }), row, 1);
+    await dropOnNest(page, page.locator("[data-palette-tile]").filter({ hasText: /^Column$/ }), row, 1);
     const nested = row.locator('[data-builder-item="column"]').nth(1).locator("[data-builder-holder]");
     await expect(nested.locator('[data-builder-item="column"]')).toHaveCount(1);
   });
@@ -153,7 +153,7 @@ test.describe("nested columns (D294)", () => {
   test("the Columns component dragged from the sidebar into a column nests two columns", async ({ page }) => {
     const row = await twoColumns(page);
     await page.getByRole("tab", { name: "Components" }).click();
-    const tile = page.getByRole("button", { name: "Add columns", exact: true });
+    const tile = page.locator("[data-palette-tile]").filter({ hasText: /^Columns$/ });
     await tile.scrollIntoViewIfNeeded();
     const box = (await tile.boundingBox())!;
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);

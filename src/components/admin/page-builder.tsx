@@ -1815,8 +1815,8 @@ function Sidebar({
 }
 
 /**
- * A tile to drag onto the page. Only the pointer drags it: the keyboard
- * presses it like any button, which adds it.
+ * A tile to drag onto the page, with its own small Add button. A click on the tile adds nothing (only a drag does); the Add button in its
+ * corner adds it where the selection is, for anyone who cannot or would rather not drag (WCAG 2.2 2.5.7) and from the keyboard.
  */
 function PaletteTile({
   id,
@@ -1836,21 +1836,27 @@ function PaletteTile({
   const { setNodeRef, listeners, isDragging } = useDraggable({ id, data, disabled });
   const sw = useAdminText("builder").saved;
   return (
-    <button
-      ref={setNodeRef}
-      type="button"
-      onPointerDown={listeners?.onPointerDown as PointerEventHandler<HTMLButtonElement> | undefined}
-      // Only a drag puts it on the page for a pointer: a click on the sidebar adds nothing. Enter or Space (a click with no
-      // pointer, `detail` 0) still adds it where the selection is, so the palette works without a mouse.
-      onClick={(event) => {
-        if (event.detail === 0) onAdd();
-      }}
-      disabled={disabled}
-      aria-label={fillWords(sw.add, { label: label.toLowerCase() })}
-      className={`touch-none text-left disabled:opacity-40 ${isDragging ? "opacity-40" : ""}`}
-    >
-      <Tile label={label} preview={preview} />
-    </button>
+    <div className={`relative ${disabled ? "opacity-40" : ""} ${isDragging ? "opacity-40" : ""}`}>
+      {/* The tile itself is for the pointer to drag: the Add button beside it is what assistive technology and the keyboard use. */}
+      <div
+        ref={setNodeRef}
+        aria-hidden
+        data-palette-tile
+        onPointerDown={disabled ? undefined : (listeners?.onPointerDown as PointerEventHandler<HTMLDivElement> | undefined)}
+        className="touch-none text-left"
+      >
+        <Tile label={label} preview={preview} />
+      </div>
+      <button
+        type="button"
+        onClick={onAdd}
+        disabled={disabled}
+        aria-label={fillWords(sw.add, { label: label.toLowerCase() })}
+        className="absolute top-0.5 right-0.5 flex h-6 w-6 items-center justify-center rounded-full border border-border bg-background text-sm leading-none text-muted shadow-sm hover:text-foreground focus-visible:text-foreground"
+      >
+        <span aria-hidden>+</span>
+      </button>
+    </div>
   );
 }
 
