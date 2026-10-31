@@ -6,7 +6,7 @@ import { sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 
 import { db, readDb } from "@/db/client";
-import { cleanReply, kaizenTools, returnFacts, SHOP_DESTINATIONS, SHOP_TOOLS, storeTools, systemPrompt, type ChatAction, type ChatProduct, type ChatReply } from "@/lib/chat";
+import { cleanReply, kaizenTools, returnFacts, SHOP_DESTINATIONS, SHOP_TOOLS, shownSoFar, storeTools, systemPrompt, type ChatAction, type ChatProduct, type ChatReply } from "@/lib/chat";
 import { brandVoiceGuide } from "@/lib/brand";
 import { chatAgentInput, navigateArgs, type ChatRequest } from "@/lib/chat-schema";
 import { cleanAvatarStyle, type AvatarStyle } from "@/lib/chat-avatar";
@@ -24,7 +24,7 @@ import { CHIPS_MAX, type SupportCard, type SupportChip } from "@/lib/support-vis
 import { TRANSCRIPT_DAYS_OFF, type SupportMode } from "@/lib/support-rules";
 import { z } from "zod";
 
-import { AI_TAG, AiError, aiFor, canSpeak, chatWithTools, type AiConnection, type ToolChatMessage, type ToolDefinition } from "./ai";
+import { AI_TAG, AiError, aiFor, canSpeak, chatWithTools, streamWithTools, type AiConnection, type ToolChatMessage, type ToolDefinition } from "./ai";
 import { audit, type Account } from "./auth";
 import { brandOf } from "./brand";
 import { campaignNotices } from "./campaign-notices";
@@ -503,7 +503,17 @@ export async function runChat(
   agent: ChatAgent,
   request: ChatRequest,
   connection: AiConnection,
-  options: { handoff?: boolean; support?: SupportToolSet; admin?: boolean; email?: boolean } = {},
+  options: {
+    handoff?: boolean;
+    support?: SupportToolSet;
+    admin?: boolean;
+    email?: boolean;
+    /**
+     * The answer as it is written (PSI PERF-08): its finished sentences so far, cleaned (`shownSoFar()`), each time they grow; empty
+     * again when the model turns to tools after all. The reply returned is the whole answer, cleaned, as without it.
+     */
+    onText?: (shown: string) => void;
+  } = {},
 ): Promise<ChatReply> {
   const lang = site.kind === "store" ? site.market.lang : "en";
   const m = t(lang);
@@ -547,7 +557,8 @@ export async function runChat(
   const products = new Map<string, ChatProduct>();
   for (let round = 0; round <= ROUNDS; round++) {
     // The last round has no tools, so the model answers with what it has.
-    const step = await chatWithTools(connection, messages, round < ROUNDS ? tools : [], { maxTokens: 600 });
+    const roundTools = round < ROUNDS ? tools : [];
+    const step = options.onText ? await streamRound(connection, messages, roundTools, options.onText) : await chatWithTools(connection, messages, roundTools, { maxTokens: 600 });
     if (step.toolCalls.length === 0 || round === ROUNDS) {
       const reply = cleanReply(step.content ?? "", m.chat.sorry);
       return { reply, actions: action ? [action] : [], products: [...products.values()].slice(0, 6), ...extras() };
@@ -609,6 +620,37 @@ export async function runChat(
     for (const call of step.toolCalls.slice(4)) messages.push({ role: "tool", tool_call_id: call.id, content: json({ error: "Too many tools at once." }) });
   }
   return { reply: m.chat.sorry, actions: [], products: [], ...extras() };
+}
+
+/**
+ * One round streamed: the finished sentences go to `onText` as they grow, and the whole answer when it is done; a round that ends in
+ * tools takes back what it showed.
+ */
+async function streamRound(connection: AiConnection, messages: ToolChatMessage[], tools: ToolDefinition[], onText: (shown: string) => void) {
+  let raw = "";
+  let shown = "";
+  const step = await streamWithTools(
+    connection,
+    messages,
+    tools,
+    (delta) => {
+      raw += delta;
+      const next = shownSoFar(raw);
+      if (next !== shown) {
+        shown = next;
+        onText(shown);
+      }
+    },
+    { maxTokens: 600 },
+  );
+  if (step.toolCalls.length > 0) {
+    if (shown) onText("");
+  } else {
+    // The last sentence, which no space follows: the answer whole, as the reply keeps it.
+    const whole = cleanReply(raw, "");
+    if (whole && whole !== shown) onText(whole);
+  }
+  return step;
 }
 
 /**

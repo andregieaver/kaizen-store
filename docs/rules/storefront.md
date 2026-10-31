@@ -367,6 +367,13 @@ changing it; a rule changes here, and its line in CLAUDE.md when its gist change
   from Kaizen's own data, never the model's. `navigate` only opens the
   site's existing pages, built with `marketPath()`. Answers pass
   `cleanReply()`; products are cards drawn by the widget with `VatAmount`.
+  The widget's answer streams (PSI PERF-08: `/api/chat` in lines of JSON when
+  asked for `application/x-ndjson`, `runChat()`'s `onText` through
+  `streamWithTools()`), but only finished sentences, each cleaned as the
+  whole is (`shownSoFar()`), so text the claims filter drops is never shown
+  even for a moment; anything else that shows an answer as it is written
+  goes through `shownSoFar()` too, never the model's raw words. The kept
+  message is the whole answer, and the screen reader hears only that.
   The picture's frame (D233: fill, border, shadow; `chat_agents.avatar_style`) is read only
   through `cleanAvatarStyle()` and drawn only by `avatarFrameStyle()` (`src/lib/chat-avatar.ts`, no zod).
   Knowledge is `knowledge_chunks` (SQL only, like `product_embeddings`):

@@ -54,6 +54,7 @@ test("a store's chat agent answers, shows products and opens the page for the vi
     const at = "2026-10-13T12:00:00.000Z";
 
     const sent: Record<string, unknown>[] = [];
+    const accepts: string[] = [];
     const lamp = {
       handle: "demo-bordlampe",
       title: "Demo: Bordlampe",
@@ -66,6 +67,16 @@ test("a store's chat agent answers, shows products and opens the page for the vi
       const body = route.request().postDataJSON() as Record<string, unknown>;
       sent.push(body);
       const first = sent.length === 1;
+      accepts.push(route.request().headers().accept ?? "");
+      if (!first) {
+        // The second answer streams (PSI PERF-08): the text so far in lines, then the answer the plain request would have had.
+        const answer = { conversation: { id: ref.id, channel: "sc:abc" }, state, messages: [{ seq: 3, author: "customer", body: body.message, at }, { seq: 4, author: "ai", body: "Bare hyggelig!", at }] };
+        await route.fulfill({
+          contentType: "application/x-ndjson",
+          body: [{ text: "Bare" }, { text: "Bare hyggelig!" }, { status: 200, body: answer }].map((line) => JSON.stringify(line)).join("\n") + "\n",
+        });
+        return;
+      }
       await route.fulfill({
         json: first
           ? {
@@ -134,6 +145,9 @@ test("a store's chat agent answers, shows products and opens the page for the vi
     await expect(chat.getByText("Bare hyggelig!")).toBeVisible();
     expect(sent[1]).toMatchObject({ conversation: ref, after: 2, message: "Takk!" });
     expect(sent[1]).not.toHaveProperty("messages");
+    // The widget asks for the answer in lines, and takes a whole answer too (the first).
+    expect(accepts.every((accept) => accept.includes("application/x-ndjson"))).toBe(true);
+    await expect(chat.getByText("Bare hyggelig!")).toHaveCount(1);
 
     // A new conversation forgets it.
     await chat.getByRole("button", { name: "Ny samtale" }).click();

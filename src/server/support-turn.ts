@@ -40,8 +40,9 @@ export async function runSupportTurn(
   customer: SupportCustomer = null,
   /** An account asking Kaizen from the admin (step 11): Kaizen's tools for their stores and the admin's pages. */
   admin: { requester: Account } | null = null,
-  /** A conversation by email (D332): the AI is told so and has no tools that need a signed-in customer or a button. */
-  channel: { email?: boolean } = {},
+  /** A conversation by email (D332): the AI is told so and has no tools that need a signed-in customer or a button. `onText`: the
+   * answer's finished sentences as they are written, for the chat to show (PSI PERF-08); the message is kept whole, as without it. */
+  channel: { email?: boolean; onText?: (shown: string) => void } = {},
 ): Promise<SupportTurn> {
   const m = t(context.lang);
   if (!context.agent || !context.connection) return { reply: null, error: m.chat.sorry };
@@ -65,7 +66,7 @@ export async function runSupportTurn(
         : admin
           ? kaizenToolsFor(admin.requester, await aboutStoreOf(conversationId))
           : null;
-    reply = await runChat(context.site, context.agent, request, context.connection, { handoff: context.settings.mode === "ai_first", ...(support ? { support } : {}), admin: admin !== null, email: channel.email });
+    reply = await runChat(context.site, context.agent, request, context.connection, { handoff: context.settings.mode === "ai_first", ...(support ? { support } : {}), admin: admin !== null, email: channel.email, ...(channel.onText ? { onText: channel.onText } : {}) });
   } catch (error) {
     console.warn(`[support] ${context.storeId ?? "Kaizena Flow"}: ${error instanceof Error ? error.message : String(error)}`);
     if (error instanceof AiError) return { reply: null, error: m.chat.sorry };

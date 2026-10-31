@@ -154,6 +154,43 @@ function recorderType(): string | undefined {
   return types.find((type) => typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(type));
 }
 
+/** The answer a chat that streams asks for (PSI PERF-08, `/api/chat`): lines of JSON, the text so far and then the status and body. */
+const STREAM_TYPE = "application/x-ndjson";
+
+/**
+ * The status and body of the chat's answer: read line by line when it streams, each `{"text"}` handed to `onText` as it comes; read
+ * whole otherwise (a refusal before the turn, or a server that does not stream).
+ */
+async function answerOf(response: Response, onText: (text: string) => void): Promise<{ status: number; body: unknown }> {
+  if (!response.body || !(response.headers.get("content-type") ?? "").includes(STREAM_TYPE)) {
+    return { status: response.status, body: (await response.json().catch(() => ({}))) as unknown };
+  }
+  const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+  let buffer = "";
+  let last: { status: number; body: unknown } = { status: 500, body: {} };
+  const take = (line: string) => {
+    if (!line.trim()) return;
+    let value: { text?: unknown; status?: unknown; body?: unknown };
+    try {
+      value = JSON.parse(line) as typeof value;
+    } catch {
+      return;
+    }
+    if (typeof value.text === "string") onText(value.text);
+    else if (typeof value.status === "number") last = { status: value.status, body: value.body ?? {} };
+  };
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += value;
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+    lines.forEach(take);
+  }
+  take(buffer);
+  return last;
+}
+
 /**
  * The site's chat agent (D81): a button in the corner that opens a
  * conversation with the AI assistant, typed or spoken. It opens the pages
@@ -168,6 +205,8 @@ export function ChatWidget({ site, signInHref, locale, agent, deskName, privacyH
   const [open, setOpen] = useState(false);
   const [stored, setStored] = useState<StoredConversation>(() => readStored(null, key));
   const [pending, setPending] = useState<string | null>(null);
+  /** The AI's answer while it is written (PSI PERF-08): its finished sentences, cleaned by the server; the kept message replaces it. */
+  const [streaming, setStreaming] = useState("");
   const [notices, setNotices] = useState<Notice[]>([]);
   const [draft, setDraft] = useState("");
   const [waiting, setWaiting] = useState(false);
@@ -266,7 +305,7 @@ export function ChatWidget({ site, signInHref, locale, agent, deskName, privacyH
 
   useEffect(() => {
     listRef.current?.lastElementChild?.scrollIntoView({ block: "end" });
-  }, [messages, notices, pending, waiting, open]);
+  }, [messages, notices, pending, waiting, open, streaming]);
   // Focus moves into the chat as it opens, and back to its button as it closes.
   useEffect(() => {
     if (open) inputRef.current?.focus();
@@ -334,12 +373,12 @@ export function ChatWidget({ site, signInHref, locale, agent, deskName, privacyH
     try {
       const response = await fetch("/api/chat", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", accept: `${STREAM_TYPE}, application/json` },
         body: JSON.stringify({ ...turn(), message: content }),
       });
-      const body = (await response.json().catch(() => ({}))) as unknown;
-      if (!response.ok || !isReply(body)) {
-        refused(response.status, (body as { error?: string }).error);
+      const { status, body } = await answerOf(response, setStreaming);
+      if (status < 200 || status > 299 || !isReply(body)) {
+        refused(status, (body as { error?: string }).error);
         setDraft((current) => current || content);
       } else received(body, ref);
     } catch {
@@ -347,6 +386,7 @@ export function ChatWidget({ site, signInHref, locale, agent, deskName, privacyH
       setDraft((current) => current || content);
     } finally {
       setPending(null);
+      setStreaming("");
       setWaiting(false);
     }
   }
@@ -699,12 +739,22 @@ export function ChatWidget({ site, signInHref, locale, agent, deskName, privacyH
                 <span>{labels.thinking}</span>
               </li>
             )}
-            {(waiting || recording) && (
-              <li className="flex items-end gap-2 text-sm text-muted">
-                {avatar("size-7")}
-                <span>{recording ? labels.listening : labels.thinking}</span>
-              </li>
-            )}
+            {(waiting || recording) &&
+              (streaming && !recording ? (
+                <li className="flex items-end gap-2">
+                  {avatar("size-7")}
+                  {/* Read out once kept, as one message: the words as they come are for the eye only. */}
+                  <p aria-hidden="true" className="max-w-[85%] rounded-2xl rounded-bl-sm bg-surface px-3 py-2 whitespace-pre-line">
+                    {streaming}
+                  </p>
+                  <span className="sr-only">{labels.thinking}</span>
+                </li>
+              ) : (
+                <li className="flex items-end gap-2 text-sm text-muted">
+                  {avatar("size-7")}
+                  <span>{recording ? labels.listening : labels.thinking}</span>
+                </li>
+              ))}
           </ol>
 
           <form

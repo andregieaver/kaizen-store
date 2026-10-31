@@ -338,6 +338,13 @@ The re-score ([psi-2026-10-31.md](psi-2026-10-31.md)) put the overall at 78.3 (8
       AI manager's `runPageJobs()` after the answer and by the every-minute job; the studio asks every few seconds how they come along
       (`studioPictureStates()`, the made picture's address kept on its job) and the owner may leave meanwhile. A demo store or template,
       which the job never takes up, still has the studio ask for each in turn. `site-tools.int.test.ts` covers both.
-- [ ] **PERF-08** The shopper chat's speed. Read-only tool calls in parallel done 31 October 2026: a round's calls of the site's own tools
+- [x] **PERF-08** The shopper chat's speed, done 31 October 2026. Read-only tool calls in parallel: a round's calls of the site's own tools
       (search, a product, the store's facts, where to go) start together, the hand-off and the support desk's tools (which may write) still
-      one by one, and the answers keep the calls' order (`runChat()` in `src/server/chat-agent.ts`). Left: streaming the reply.
+      one by one, and the answers keep the calls' order (`runChat()` in `src/server/chat-agent.ts`). The reply streams: the widget asks
+      `/api/chat` for lines of JSON, and `runChat()` (given `onText`) streams each round through `streamWithTools()`, showing only
+      finished sentences cleaned as the whole answer is (`shownSoFar()` in `src/lib/chat.ts`), so a sentence the claims filter drops is never
+      shown; words before a tool call are taken back; the kept message is the whole answer, as before. Covered by `chat.test.ts`,
+      `chat.int.test.ts` and `e2e/chat.spec.ts`.
+- [x] **AGT (tool data, found with PERF-08)** The AI manager's live turns go through `streamWithTools()`, which sent tool answers unframed
+      and with text addressed to an AI left in, while the safety eval runs `chatWithTools()`, which frames them (`toolData()`). Both now
+      frame them alike (31 October 2026, `ai.int.test.ts`), so the eval tests what runs live.

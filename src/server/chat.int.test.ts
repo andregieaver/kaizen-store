@@ -328,6 +328,46 @@ describe("the agent", () => {
     expect(results[1]).toContain("cannot open");
   });
 
+  it("streams the answer's finished sentences, never one the claims filter drops, and keeps the same reply (PSI PERF-08)", async () => {
+    const market = store.markets.find((m) => m.code === "NO")!;
+    // A streamed provider: each step's text in pieces of a few characters, then its tool calls.
+    const steps: Row[] = [
+      { content: "Jeg ser etter. ", tool_calls: [call("1", "search_products", { query: "bordlampe" })] },
+      { content: "Her er bordlampen. Den er klimanøytral. Den er laget av eik." },
+    ];
+    const sent: Row[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string, init: RequestInit) => {
+        if (!String(url).endsWith("/chat/completions")) return new Response("{}", { status: 404 });
+        const body = JSON.parse(String(init.body)) as Row;
+        sent.push(body);
+        const step = steps.shift() ?? { content: "…" };
+        const text = String(step.content ?? "");
+        const chunks = [...Array(Math.ceil(text.length / 4)).keys()].map((i) => ({ choices: [{ delta: { content: text.slice(i * 4, i * 4 + 4) } }] }));
+        ((step.tool_calls ?? []) as Row[]).forEach((c, index) => chunks.push({ choices: [{ delta: { tool_calls: [{ index, ...c }] } }] } as never));
+        const sse = chunks.map((chunk) => `data: ${JSON.stringify(chunk)}\n\n`).join("") + "data: [DONE]\n\n";
+        return new Response(sse, { headers: { "content-type": "text/event-stream" } });
+      }),
+    );
+    const shown: string[] = [];
+    const reply = await chat.runChat(
+      { kind: "store", store, market },
+      { storeId, enabled: true, name: "Ingrid", occupation: "", avatar: null, avatarStyle: null, greeting: {}, instructions: "", voice: false, dailyLimit: 500 },
+      { market: market.slug, messages: [{ role: "user", content: "Har dere lamper?" }], signals: { views: [], searches: [] } },
+      connection,
+      { onText: (text) => shown.push(text) },
+    );
+    expect(sent.every((body) => body.stream === true)).toBe(true);
+    expect(reply.reply).toBe("Her er bordlampen. Den er laget av eik.");
+    expect(reply.products.map((p) => p.handle)).toContain("demo-bordlampe");
+    // The words before the tool were shown, then taken back; the answer grew sentence by sentence, the claim never among them.
+    expect(shown).toEqual(["Jeg ser etter.", "", "Her er bordlampen.", "Her er bordlampen. Den er laget av eik."]);
+    // The tool's answer reached the model framed as data, as in a whole answer.
+    const result = (sent[1].messages as Row[]).find((message) => message.role === "tool")!;
+    expect(String(result.content)).toMatch(/^\[tool data\]/);
+  });
+
   it("answers after a few rounds of tools however many the model asks for", async () => {
     const market = store.markets[0];
     const loop = Array.from({ length: 10 }, (_, i) => ({ content: null, tool_calls: [call(String(i), "store_info", {})] }));

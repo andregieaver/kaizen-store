@@ -264,3 +264,22 @@ export function cleanReply(raw: string, fallback: string): string {
   const text = kept.join("").replace(/\s+([.!?])/g, "$1").trim();
   return text || fallback;
 }
+
+/** Where a sentence of the model's text ends: its stop (with a closing quote, bracket or mark) before a space, or a line's end. */
+const SENTENCE_END = /[.!?]+[)"'\u201d\u2019*_`]*(?=\s)|\n/g;
+
+/**
+ * What may be shown of an answer while it is still being written (PSI PERF-08): only its finished sentences, cleaned as `cleanReply()`
+ * cleans the whole, so a sentence the claims filter drops is never shown, not even for a moment, and a link is never shown half
+ * written. Empty until a sentence is finished. The answer once written is `cleanReply()`'s, which this leads up to.
+ */
+export function shownSoFar(raw: string): string {
+  let cut = 0;
+  for (const match of raw.matchAll(SENTENCE_END)) cut = match.index + match[0].length;
+  if (cut === 0) return "";
+  const done = raw.slice(0, cut);
+  // A Markdown link not yet closed waits, with the sentence it is in.
+  const open = done.lastIndexOf("[");
+  if (open > done.lastIndexOf("]") || /\]\([^)]*$/.test(done)) return shownSoFar(raw.slice(0, Math.max(0, open)));
+  return cleanReply(done, "");
+}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { cleanReply, HISTORY_MAX, kaizenTools, returnFacts, storeTools, systemPrompt } from "./chat";
+import { cleanReply, HISTORY_MAX, kaizenTools, returnFacts, shownSoFar, storeTools, systemPrompt } from "./chat";
 import { chatAgentInput, chatRequest } from "./chat-schema";
 
 const agent = { enabled: true, name: "Ingrid", occupation: "Customer service", avatar: null, greeting: {}, instructions: "", voice: false, dailyLimit: 500 };
@@ -109,5 +109,38 @@ describe("returnFacts", () => {
 
   it("is told to the model with the store's other facts", () => {
     expect(storeTools().find((tool) => tool.name === "store_info")!.description).toMatch(/return policy/);
+  });
+});
+
+describe("shownSoFar (PSI PERF-08)", () => {
+  /** Every point the answer could be cut at while it is written, as the stream hands it over. */
+  const prefixes = (text: string) => Array.from({ length: text.length + 1 }, (_, n) => text.slice(0, n));
+
+  it("shows only finished sentences, cleaned as the whole answer is", () => {
+    expect(shownSoFar("Hello there")).toBe("");
+    expect(shownSoFar("Hello there. We have")).toBe("Hello there.");
+    expect(shownSoFar("**Lunch** is ready! Want")).toBe("Lunch is ready!");
+    expect(shownSoFar("First line\nSecond")).toBe("First line");
+  });
+
+  it("never shows a sentence the claims filter drops, at any point of the answer", () => {
+    const raw = "We have the shoes in black. Only 2 left, buy now! They are made in Portugal. ";
+    const whole = cleanReply(raw, "sorry");
+    expect(whole).not.toContain("left");
+    for (const prefix of prefixes(raw)) {
+      const shown = shownSoFar(prefix);
+      expect(shown).not.toContain("left");
+      expect(whole.startsWith(shown)).toBe(true);
+    }
+    expect(shownSoFar(raw)).toBe(whole);
+  });
+
+  it("never shows a link or an address half written", () => {
+    const raw = "See them. [The shoes](https://shop.example/shoes) are here. Ask me more. ";
+    for (const prefix of prefixes(raw)) {
+      const shown = shownSoFar(prefix);
+      expect(shown).not.toMatch(/\[|\]|\(|https?:/);
+      expect(cleanReply(raw, "").startsWith(shown)).toBe(true);
+    }
   });
 });

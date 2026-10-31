@@ -143,7 +143,13 @@ export async function handOver(desk: Desk, conversationId: string, by: "ai" | "s
  * failing AI loses nothing. The AI answers only while it has the conversation; with the AI first, a conversation goes to a person
  * when the AI asks for one, fails, is not set up or reached its daily limit (`limited`). The answer is every message after `after`.
  */
-export async function visitorTurn(context: ChatContext, input: Omit<TurnInput, "message">, words: string, options: { limited?: boolean } = {}): Promise<VisitorReply | Response> {
+export async function visitorTurn(
+  context: ChatContext,
+  input: Omit<TurnInput, "message">,
+  words: string,
+  /** `onText`: the AI's answer as it is written (finished sentences, cleaned), for a chat that streams (PSI PERF-08). */
+  options: { limited?: boolean; onText?: (shown: string) => void } = {},
+): Promise<VisitorReply | Response> {
   const m = t(context.lang);
   const desk = visitorDesk(context.site);
   const settings = context.settings;
@@ -198,7 +204,7 @@ export async function visitorTurn(context: ChatContext, input: Omit<TurnInput, "
     if (settings.mode === "ai_first" && (!context.agent || options.limited)) {
       await handOver(desk, conversation.id, "system", context.agent ? "limit" : "no_ai");
     } else {
-      const turn = await runSupportTurn(desk, context, conversation.id, { path: input.path, signals: input.signals }, customer);
+      const turn = await runSupportTurn(desk, context, conversation.id, { path: input.path, signals: input.signals }, customer, null, options.onText ? { onText: options.onText } : {});
       if (turn.error && settings.mode === "ai_first") await handOver(desk, conversation.id, "system", "no_ai");
       else if (turn.error) error = turn.error;
       else if (turn.handoff && settings.mode === "ai_first") await handOver(desk, conversation.id, "ai", "ai", turn.handoff);
