@@ -35,6 +35,7 @@ export const RETENTION_KINDS = [
   "support_records",
   "blog_comments",
   "assistant_conversations",
+  "access_requests",
 ] as const;
 export type RetentionKind = (typeof RETENTION_KINDS)[number];
 
@@ -194,6 +195,7 @@ export const RETENTION_SEED: readonly RetentionRuleRow[] = [
   // Blog comments (wave 7 unit G, D341): a comment staff rejected or the check marked as spam is deleted 30 days after it was posted.
   seed({ kind: "blog_comments", country: null, periodValue: 30, periodUnit: "days", countsFrom: "event", source: POLICY, basis: "policy", enforcedBy: "runRetention: blog_comments", note: "Rejected and spam comments only; an approved one stays with its article, a waiting one until staff decide. REFUSED_COMMENT_DAYS, a test holds them equal.", checkedOn: "2026-10-27" }),
   seed({ kind: "assistant_conversations", country: null, periodValue: 12, periodUnit: "months", countsFrom: "event", source: POLICY, basis: "policy", enforcedBy: "runRetention: assistant_conversations", note: "Counts from the conversation's last message. A store's owner may keep its conversations for fewer or more months (stores.assistant_keep_months, 1 to 60); Kaizena Flow's own follow this period. ASSISTANT_KEEP_MONTHS, a test holds them equal.", checkedOn: "2026-10-29" }),
+  seed({ kind: "access_requests", country: null, periodValue: 12, periodUnit: "months", countsFrom: "event", source: POLICY, basis: "policy", enforcedBy: "runRetention: access_requests", note: "Applications to open a store, once decided (approved or declined): the name, the email address and the message are blanked 12 months after the decision; the row stays as the record that it was decided. One still waiting is kept. An approved applicant has their own account by then.", checkedOn: "2026-10-31" }),
 ];
 
 /** What an empty rules table means: the safe side, never "keep nothing" and never "delete everything". */

@@ -180,6 +180,11 @@ stay in the standing document's *What comes next*.
       trimmed and lower case, the rule every address-keyed table already used, so nothing changes in behaviour) replaces the 34 ad-hoc
       `email….toLowerCase()` sites and five local copies; `email-address.scan.test.ts` fails on a new one (the password check, which reads
       the local part, is the one exception).
+- [x] **REG-05 (privacy)** A rule for decided applications. Done 31 October 2026: retention rule `access_requests` (12 months from the
+      decision, policy under Art. 5(1)(e); migration `access_requests_rule`, the seed in `src/lib/retention.ts`), enforced by
+      `runRetention`'s new `access_requests` step: a decided application's name, address and message are blanked as the account's own
+      erasure blanks them, the row kept as the record of the decision, a waiting one untouched (`access-request-retention.int.test.ts`).
+      Left: moving the code-constant pruners (unconfirmed sign-ups, notices of illegal content) into `retention_rules`.
 - [x] **DATA-03 (data 2)** `Idempotency-Key` on Admin API POSTs, a Mollie 401 renewed once, Stripe's `apiVersion`. Done 30 October
       2026: a POST with the header is done once per token and key, the same request getting the first answer again
       (`Idempotent-Replayed: true`) and another request under the key refused, answers kept 24 hours (`commerce.api_idempotency_keys`,

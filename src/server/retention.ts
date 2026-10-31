@@ -132,6 +132,7 @@ export const RETENTION_STEPS = [
   "blog_comments",
   "unconfirmed_signups",
   "assistant_conversations",
+  "access_requests",
 ] as const;
 export type RetentionStep = (typeof RETENTION_STEPS)[number];
 
@@ -434,6 +435,24 @@ const STEPS: Record<RetentionStep, StepFn> = {
       if (n < ctx.batch) break;
     }
     return { count };
+  },
+
+  // Applications to open a store, once decided (PSI REG-05): the applicant's name, address and message after the rule's period from the
+  // decision, as the account's own erasure blanks them; the row stays as the record of the decision, and a waiting one is never touched.
+  async access_requests(ctx) {
+    const cutoff = cutoffInstant(await period(ctx, "access_requests"), ctx.now).toISOString();
+    return {
+      count: await batched(ctx.batch, () =>
+        db().execute(sql`
+          update commerce.access_requests set email = 'erased-' || id || '@erased.invalid', name = '', message = ''
+          where id in (
+            select id from commerce.access_requests
+            where status <> 'pending' and decided_at < ${cutoff}::timestamptz and email not like 'erased-%@erased.invalid'
+            order by decided_at, id limit ${ctx.batch})
+          returning id
+        `),
+      ),
+    };
   },
 };
 

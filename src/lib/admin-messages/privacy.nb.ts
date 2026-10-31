@@ -327,6 +327,7 @@ export const privacyNb: PrivacyMessages = {
       support_records: "Anonymiserte kundeserviceoppføringer",
       blog_comments: "Avviste bloggkommentarer og søppelpost",
       assistant_conversations: "Samtaler med KI-assistenten",
+      access_requests: "Søknader om å åpne en butikk",
     },
     bases: {
       read: "Lest i kilden",
