@@ -36,6 +36,8 @@ export const RETENTION_KINDS = [
   "blog_comments",
   "assistant_conversations",
   "access_requests",
+  "unconfirmed_signups",
+  "content_report_senders",
 ] as const;
 export type RetentionKind = (typeof RETENTION_KINDS)[number];
 
@@ -195,6 +197,8 @@ export const RETENTION_SEED: readonly RetentionRuleRow[] = [
   // Blog comments (wave 7 unit G, D341): a comment staff rejected or the check marked as spam is deleted 30 days after it was posted.
   seed({ kind: "blog_comments", country: null, periodValue: 30, periodUnit: "days", countsFrom: "event", source: POLICY, basis: "policy", enforcedBy: "runRetention: blog_comments", note: "Rejected and spam comments only; an approved one stays with its article, a waiting one until staff decide. REFUSED_COMMENT_DAYS, a test holds them equal.", checkedOn: "2026-10-27" }),
   seed({ kind: "assistant_conversations", country: null, periodValue: 12, periodUnit: "months", countsFrom: "event", source: POLICY, basis: "policy", enforcedBy: "runRetention: assistant_conversations", note: "Counts from the conversation's last message. A store's owner may keep its conversations for fewer or more months (stores.assistant_keep_months, 1 to 60); Kaizena Flow's own follow this period. ASSISTANT_KEEP_MONTHS, a test holds them equal.", checkedOn: "2026-10-29" }),
+  seed({ kind: "unconfirmed_signups", country: null, periodValue: 7, periodUnit: "days", countsFrom: "event", source: POLICY, basis: "policy", enforcedBy: "runRetention: unconfirmed_signups", note: "Self-serve sign-ups whose address was never confirmed: the request (a name, an address, a description) is deleted this long after its confirmation link ended. UNCONFIRMED_KEPT_DAYS, a test holds them equal.", checkedOn: "2026-10-31" }),
+  seed({ kind: "content_report_senders", country: null, periodValue: 12, periodUnit: "months", countsFrom: "event", source: POLICY, basis: "policy", enforcedBy: "runRetention: content_report_senders", note: "Notices of illegal content (DSA art. 16): the sender's name and address are blanked this long after the decision, long enough to answer a complaint about it (art. 20 allows six months); the notice and its decision stay as the record. REPORT_SENDER_MONTHS, a test holds them equal.", checkedOn: "2026-10-31" }),
   seed({ kind: "access_requests", country: null, periodValue: 12, periodUnit: "months", countsFrom: "event", source: POLICY, basis: "policy", enforcedBy: "runRetention: access_requests", note: "Applications to open a store, once decided (approved or declined): the name, the email address and the message are blanked 12 months after the decision; the row stays as the record that it was decided. One still waiting is kept. An approved applicant has their own account by then.", checkedOn: "2026-10-31" }),
 ];
 

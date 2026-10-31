@@ -247,12 +247,12 @@ async function startDreamFromSignup(slug: string, ownerId: string, prompt: strin
   }
 }
 
-/** Self-serve requests never confirmed, deleted `UNCONFIRMED_KEPT_DAYS` after their link ended (the daily retention). */
-export async function pruneUnconfirmedSignups(): Promise<number> {
+/** Self-serve requests never confirmed, deleted `days` (the retention rule's, `UNCONFIRMED_KEPT_DAYS` its seed) after their link ended. */
+export async function pruneUnconfirmedSignups(days: number = UNCONFIRMED_KEPT_DAYS): Promise<number> {
   const gone = await db().execute<Row>(sql`
     delete from commerce.access_requests
      where status = 'pending' and self_serve and confirmed_at is null
-       and confirm_expires_at < now() - make_interval(days => ${UNCONFIRMED_KEPT_DAYS})
+       and confirm_expires_at < now() - make_interval(days => ${days})
     returning id
   `);
   return gone.length;

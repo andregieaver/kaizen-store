@@ -50,7 +50,6 @@ import { PLATFORM_NAVIGATION_TAG } from "@/server/platform-navigation";
 import { payHostCommissions } from "@/server/host-payments";
 import { pruneSearchLog } from "@/server/search";
 import { pruneApiIdempotency } from "@/server/api-idempotency";
-import { pruneContentReports } from "@/server/content-reports";
 import { runContentModeration } from "@/server/content-moderation";
 import { sendDuePlanReminders } from "@/server/plan-reminders";
 import { sendDueBookingReminders } from "@/server/shopper-emails";
@@ -110,8 +109,6 @@ async function dispatch() {
     searches: () => pruneSearchLog(),
     // Admin API answers kept for an Idempotency-Key (PSI DATA-03), 24 hours.
     apiIdempotency: () => pruneApiIdempotency(),
-    // The sender of a notice of illegal content (DSA, D411) is forgotten 12 months after its decision.
-    contentReports: () => pruneContentReports(),
     // An AI reads the notices still waiting and checks new and changed listings (D411 part 2); a person decides every one.
     contentModeration: () => runContentModeration(),
     // AI pictures made before their files were marked get IPTC's digital source type in their XMP (AI Act Art. 50(2)), ten a run.

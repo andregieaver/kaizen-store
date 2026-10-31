@@ -295,6 +295,8 @@ export const privacyEn = {
       blog_comments: "Refused and spam blog comments",
       assistant_conversations: "AI manager conversations",
       access_requests: "Applications to open a store",
+      unconfirmed_signups: "Sign-ups never confirmed",
+      content_report_senders: "Senders of notices of illegal content",
     },
     bases: {
       read: "Read at the source",

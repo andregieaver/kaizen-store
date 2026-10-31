@@ -7,6 +7,7 @@ import { FAILING_AFTER, type CronJobRow } from "@/lib/cron-health";
 
 import { cronAuthorised } from "./cron-auth";
 import { log } from "./log";
+import { textList } from "./sql-arrays";
 
 type Row = Record<string, unknown>;
 
@@ -73,12 +74,26 @@ export async function tracked<T>(job: string, everySeconds: number, run: () => P
 export const kebab = (name: string) => name.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
 
 /** Runs a dispatcher's jobs side by side, each tracked as `{prefix}.{name}` in kebab case; each answer is the job's, or null when it threw. */
+/**
+ * Jobs that no longer run (their work moved elsewhere): their rows are deleted on each dispatcher run, so a retired job never reads as late
+ * on the platform home or `/status`. Add a job's full name here when it is taken out of a `runJobs()` list.
+ */
+export const RETIRED_JOBS: readonly string[] = [
+  // The DSA notices' senders are forgotten by the retention rule `content_report_senders` (runRetention) since 31 October 2026.
+  "dispatcher.content-reports",
+];
+
 export async function runJobs<J extends Record<string, () => Promise<unknown>>>(
   prefix: string,
   everySeconds: number,
   jobs: J,
 ): Promise<{ [K in keyof J]: Awaited<ReturnType<J[K]>> | null }> {
   const names = Object.keys(jobs) as (keyof J & string)[];
+  if (RETIRED_JOBS.length > 0) {
+    await db()
+      .execute(sql`delete from commerce.cron_jobs where job = any(${textList(RETIRED_JOBS)})`)
+      .catch((error: unknown) => log("warn", "cron.retire_failed", {}, error));
+  }
   const results = await Promise.all(names.map((name) => tracked(`${prefix}.${kebab(name)}`, everySeconds, jobs[name])));
   return Object.fromEntries(names.map((name, i) => [name, results[i]])) as { [K in keyof J]: Awaited<ReturnType<J[K]>> | null };
 }

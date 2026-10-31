@@ -184,7 +184,9 @@ stay in the standing document's *What comes next*.
       decision, policy under Art. 5(1)(e); migration `access_requests_rule`, the seed in `src/lib/retention.ts`), enforced by
       `runRetention`'s new `access_requests` step: a decided application's name, address and message are blanked as the account's own
       erasure blanks them, the row kept as the record of the decision, a waiting one untouched (`access-request-retention.int.test.ts`).
-      Left: moving the code-constant pruners (unconfirmed sign-ups, notices of illegal content) into `retention_rules`.
+      The two code-constant pruners moved into `retention_rules` the same day (migration `retention_more_rules`): `unconfirmed_signups`
+      (7 days after the link ended) and `content_report_senders` (12 months after the decision), each a `runRetention` step reading its
+      rule; the dispatcher's old `content-reports` job is retired (`RETIRED_JOBS`, its row deleted so it never reads as late).
 - [x] **DATA-05 (data)** A test that makes every store table choose whether it is exported. Done 31 October 2026: each `commerce`
       table with a `store_id` (335) is in the whole-store file (`STORE_EXPORT_TABLES`), holds people's data (the personal-data register:
       they leave through the customer and order files or the privacy export), is left out for a named reason (`STORE_EXPORT_LEFT_OUT`,

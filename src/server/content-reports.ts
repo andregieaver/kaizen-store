@@ -293,11 +293,15 @@ export async function decideContentReport(admin: Account, id: string, input: Dec
   return { ok: true };
 }
 
-/** Blanks the sender's name and address on notices decided more than `REPORT_SENDER_MONTHS` ago. Returns how many. */
-export async function pruneContentReports(now: Date = new Date()): Promise<number> {
+/**
+ * Blanks the sender's name and address on notices decided before `cutoff` (the retention rule `content_report_senders`, run by
+ * `runRetention`; by default `REPORT_SENDER_MONTHS` before now). Returns how many.
+ */
+export async function pruneContentReports(now: Date = new Date(), cutoff?: Date): Promise<number> {
+  const before = cutoff ?? new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - REPORT_SENDER_MONTHS, now.getUTCDate(), now.getUTCHours(), now.getUTCMinutes()));
   const rows = await db().execute(sql`
     update commerce.content_reports set reporter_name = null, reporter_email = null
-    where decided_at < ${now.toISOString()}::timestamptz - make_interval(months => ${REPORT_SENDER_MONTHS})
+    where decided_at < ${before.toISOString()}::timestamptz
       and (reporter_name is not null or reporter_email is not null)
     returning id
   `);

@@ -30,6 +30,7 @@ import { pruneInventoryMovements } from "./stock-alerts";
 import { anonymiseConversations, deleteOldRecords, transcriptsDue } from "./support";
 import { textList } from "./sql-arrays";
 import { pruneRefusedComments } from "./blog-comments";
+import { pruneContentReports } from "./content-reports";
 import { pruneUnconfirmedSignups } from "./self-signup";
 
 type Row = Record<string, unknown>;
@@ -133,6 +134,7 @@ export const RETENTION_STEPS = [
   "unconfirmed_signups",
   "assistant_conversations",
   "access_requests",
+  "content_report_senders",
 ] as const;
 export type RetentionStep = (typeof RETENTION_STEPS)[number];
 
@@ -419,8 +421,15 @@ const STEPS: Record<RetentionStep, StepFn> = {
   },
 
   // Self-serve sign-ups never confirmed (wave 9 unit F, D359): the request (a name, an address) goes a week after its link ended.
-  async unconfirmed_signups() {
-    return { count: await pruneUnconfirmedSignups() };
+  async unconfirmed_signups(ctx) {
+    const rule = await period(ctx, "unconfirmed_signups");
+    return { count: await pruneUnconfirmedSignups(rule.periodUnit === "days" ? rule.periodValue : rule.periodValue * 30) };
+  },
+
+  // Notices of illegal content (DSA art. 16, D411): the sender's name and address after the rule's period from the decision; the notice
+  // and its decision stay as the record of how it was handled.
+  async content_report_senders(ctx) {
+    return { count: await pruneContentReports(ctx.now, cutoffInstant(await period(ctx, "content_report_senders"), ctx.now)) };
   },
 
   // The AI manager's conversations (wave 11 unit L, D391): messages and decided approvals after the store's own period or the rule's, then

@@ -92,5 +92,5 @@ export function reportHost(value: string): string | null {
 export const REPORT_OUTCOMES = ["actioned", "no_action"] as const;
 export type ReportOutcome = (typeof REPORT_OUTCOMES)[number];
 
-/** Months a decided notice keeps its sender's name and address (`pruneContentReports()`). */
+/** Months a decided notice keeps its sender's name and address: the seed of the retention rule `content_report_senders`. */
 export const REPORT_SENDER_MONTHS = 12;

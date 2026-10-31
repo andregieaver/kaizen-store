@@ -4,6 +4,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { AUDIT_RETENTION_MONTHS } from "./audit";
+import { REPORT_SENDER_MONTHS } from "./content-reports";
 import { RETENTION_MONTHS } from "./visit-record";
 import { EVENT_DAYS } from "./recommendations";
 import { RECORD_MONTHS, TRANSCRIPT_DAYS, TRANSCRIPT_DAYS_DEFAULT } from "./support-rules";
@@ -85,6 +86,9 @@ describe("the seed of the retention schedule", () => {
     expect(rule("support_transcripts").periodValue).toBe(Math.max(...TRANSCRIPT_DAYS));
     expect(rule("support_transcripts").periodValue).toBe(TRANSCRIPT_DAYS_DEFAULT);
     expect([rule("support_records").periodValue, rule("support_records").periodUnit]).toEqual([RECORD_MONTHS, "months"]);
+    // The two pruners that ran on constants (PSI REG-05): their constants are now the rules' seeds.
+    expect([rule("unconfirmed_signups").periodValue, rule("unconfirmed_signups").periodUnit]).toEqual([constantIn("src/server/self-signup.ts", "UNCONFIRMED_KEPT_DAYS"), "days"]);
+    expect([rule("content_report_senders").periodValue, rule("content_report_senders").periodUnit]).toEqual([REPORT_SENDER_MONTHS, "months"]);
   });
 });
 
