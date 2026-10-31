@@ -4,6 +4,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 
 import type { FormState } from "@/components/admin/action-form";
 import { closeDb, db } from "@/db/client";
+import { presetPeriod, rangeLabel, todayIn } from "@/lib/analytics-period";
 
 import { addMember, auditRows, fakeAuthState, fakeSupabase, linkAuthUser, makeAccount } from "./trust-fixtures";
 
@@ -144,9 +145,12 @@ describe("the page", () => {
   });
 
   it("opens the VAT view on the last month when the address names no period", async () => {
+    // The last month on the store's own clock: the test's September orders lie in it only while it is October there.
+    const [{ zone }] = await db().execute<{ zone: string }>(sql`select time_zone as zone from commerce.stores where id = ${own.storeId}::uuid`);
+    const last = presetPeriod("last_month", todayIn(new Date(), zone));
     const out = await open(own.slug);
-    expect(out).toContain("1 Sep – 30 Sep 2026");
-    expect(out).toContain("Made from 2 invoices and 0 credit notes.");
+    expect(out).toContain(rangeLabel(last.from, last.to));
+    expect(out).toContain('name="kind" value="vat"');
   });
 
   it("says IOSS is off, with the reason and the settings, for a store with no number and no marked sale, and offers no file", async () => {
