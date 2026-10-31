@@ -108,7 +108,10 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   as a read-only library (`library`). Articles (D57) are pages of type
   `article` at `/blog/{slug}`, edited under Blog with the same editor: the
   page functions, actions and `PageOwnerContext` take the type (a page
-  unless said); the routes share views in each `pages/views.tsx`. On the
+  unless said); the routes share views in each `pages/views.tsx` (the lists and
+  categories) and `pages/editor-views.tsx` (new, edit, preview), kept apart
+  so a list never imports `PageEditor` (a route loads every client component
+  its modules import: the builder's 1.7 MB, PSI PERF-01). On the
   site, `ArticleView` draws an article's header over its rows, with
   `articleJsonLd()`; `/blog` lists (Kaizen's in `(platform)/term-listing.tsx`,
   a store's in `blog/blog-listing.tsx`) are content grids of articles. New block kinds go in `PageBlock`, `pageInput`,

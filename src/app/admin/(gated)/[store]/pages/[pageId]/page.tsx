@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { StoreEditPageView } from "../views";
+import { StoreEditPageView } from "../editor-views";
 
 export const metadata: Metadata = { title: "Edit page" };
 

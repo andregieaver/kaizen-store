@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { EditPageView } from "../../pages/views";
+import { EditPageView } from "../../pages/editor-views";
 
 export const metadata: Metadata = { title: "Edit footer" };
 

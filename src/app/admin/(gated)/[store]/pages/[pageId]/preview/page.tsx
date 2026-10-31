@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { StorePreviewPageView } from "../../views";
+import { StorePreviewPageView } from "../../editor-views";
 
 export const metadata: Metadata = { title: "Preview", robots: { index: false, follow: false } };
 

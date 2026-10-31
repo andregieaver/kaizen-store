@@ -106,3 +106,22 @@ is not (2.5 s), and with the server answering in 0.1 to 0.5 s the rest is the br
 the first-scripts budgets above do not yet cover for signed-in routes. Kaizena Flow's own site for comparison: 80 loads, LCP 2.06 s, INP
 72 ms, CLS 0.001, TTFB 113 ms. The next step is a first-scripts budget for the product editor and the page builder, and this table read
 again once a month of loads is in.
+
+**First scripts, signed in (31 October 2026).** `e2e/signed-in/admin-scripts.spec.ts` holds seven screens to budgets, counted from the
+HTML the server sends (what a page has loaded by the time it is looked at grows with what it does after, and moved by 1.7 MB between two
+runs). Raw, before compression:
+
+| Screen | First scripts | Budget |
+|---|---:|---:|
+| The store's home | 3.02 MB | 3.15 MB |
+| Products | 3.02 MB | 3.15 MB |
+| A new product (the editor) | 3.71 MB | 3.87 MB |
+| Orders | 3.02 MB | 3.15 MB |
+| Pages (the list) | 3.59 MB | 3.74 MB |
+| A page in the builder | 4.70 MB | 4.90 MB |
+| Settings | 3.00 MB | 3.13 MB |
+
+Measuring found the page lists loading the whole builder (4.71 MB, the builder's own figure): a route loads every client component its
+server modules import, drawn or not, and the lists and the editor shared one `views.tsx`. The editors now live in `editor-views.tsx` (a
+store's and Kaizena Flow's), and every list of pages, articles, headers, footers and product layouts dropped 1.13 MB. What is left is the
+3.0 MB every screen shares, the admin's layout and what it imports (not yet broken down): the next thing to look into, the same way.

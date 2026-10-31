@@ -41,7 +41,7 @@ export const DELEGATED_GUARDS: Record<string, string> = {
   /** The page builder's lists and editors, for every kind of page: each calls `requirePageTypeAccess()` with the kind it was given. */
   StorePagesListView: "src/app/admin/(gated)/[store]/pages/views.tsx",
   StorePageTermsView: "src/app/admin/(gated)/[store]/pages/views.tsx",
-  StoreNewPageView: "src/app/admin/(gated)/[store]/pages/views.tsx",
-  StoreEditPageView: "src/app/admin/(gated)/[store]/pages/views.tsx",
-  StorePreviewPageView: "src/app/admin/(gated)/[store]/pages/views.tsx",
+  StoreNewPageView: "src/app/admin/(gated)/[store]/pages/editor-views.tsx",
+  StoreEditPageView: "src/app/admin/(gated)/[store]/pages/editor-views.tsx",
+  StorePreviewPageView: "src/app/admin/(gated)/[store]/pages/editor-views.tsx",
 };

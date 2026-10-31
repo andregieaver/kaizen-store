@@ -824,6 +824,10 @@ export const builderNb: BuilderMessages = {
     },
     publishedAt: "Publisert på {address}.",
     publishedShort: "Publisert.",
+    testing: "Test:",
+    lookAtOriginal: "Se originalen",
+    backToTest: "Tilbake til testen",
+    backToEditing: "Tilbake til redigering",
     draftSaved: "Utkastet er lagret.",
     unpublished: {
       layout: "Tatt av nettstedet. Oppsettet er et utkast igjen.",

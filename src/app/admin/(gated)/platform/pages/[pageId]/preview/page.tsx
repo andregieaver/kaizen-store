@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { PreviewPageView } from "../../views";
+import { PreviewPageView } from "../../editor-views";
 
 export const metadata: Metadata = { title: "Preview", robots: { index: false, follow: false } };
 

@@ -874,6 +874,10 @@ export const builderEn = {
     },
     publishedAt: "Published at {address}.",
     publishedShort: "Published.",
+    testing: "Testing:",
+    lookAtOriginal: "Look at the original",
+    backToTest: "Back to the test",
+    backToEditing: "Back to editing",
     draftSaved: "Draft saved.",
     unpublished: {
       layout: "Taken off the site. The layout is a draft again.",
