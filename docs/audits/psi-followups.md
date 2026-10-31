@@ -289,3 +289,22 @@ stay in the standing document's *What comes next*.
       reaches production, where things are, the rules a first change trips on, the runbooks); the platform's one-time setup moved
       to `docs/runbooks/platform-setup.md`. Lint warnings 98 → 0 the same day, and `pnpm lint` now fails on any warning
       (`--max-warnings 0`). Left: `docs/rules/admin.md` split by area.
+
+## From the re-score of 2026-10-31
+
+The re-score ([psi-2026-10-31.md](psi-2026-10-31.md)) put the overall at 78.3 (80.4 with the restore drill). Done the same day:
+
+- [x] **SEC-10** The DSA notice form's budget (`report`: 5 an hour a visitor, 30 for the site, failing closed) and at most three
+      receipts a day to one address (`RECEIPTS_A_DAY`, `content-reports.int.test.ts`).
+- [x] **AGT-06, AST-03** The Dream Factory starts only on a store not yet open, and stops when the store is opened by hand before its
+      last step (`dream-factory.int.test.ts`).
+- [x] **REL-06** The Dream Factory's minute kept as job `dream-factory.advance`, failing when a run threw.
+- [x] **ACC-07** A 24 px *Add* button on each palette tile (WCAG 2.2 2.5.7); a click on the tile still adds nothing
+      (`builder-palette.spec.ts`).
+- [x] **DATA-04, UX-02** Ten more addresses through `normaliseEmail()` and the scan widened; no "Try again shortly." left, the wording
+      test reading the admin's texts, `src/server` and `src/app`.
+- [x] **DATA-05** The 62 undecided store tables decided (45 in the file, 17 left out with a reason).
+- [ ] **AST-09, AGT-14** Record the eval again on Platform → AI so the replay's tool check is in force; add cases for DSA notices and
+      the Dream Factory brief.
+- [ ] **REG-02** The platform's notice and terms name the AI reading DSA notices and screening listings; sign-up links and records them.
+- [ ] **PERF-01** The admin's real p75 from signed-in routes.
