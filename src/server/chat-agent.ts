@@ -553,13 +553,31 @@ export async function runChat(
       return { reply, actions: action ? [action] : [], products: [...products.values()].slice(0, 6), ...extras() };
     }
     messages.push({ role: "assistant", content: step.content, tool_calls: step.toolCalls });
-    for (const call of step.toolCalls.slice(0, 4)) {
+    const asked = step.toolCalls.slice(0, 4).map((call) => {
       let args: Record<string, unknown> = {};
       try {
         args = JSON.parse(call.function.arguments || "{}") as Record<string, unknown>;
       } catch {
         // Unreadable arguments: the tool says what it needs.
       }
+      return { call, args };
+    });
+    // The site's own tools only read (search, a product, the store's facts, where to go), so the round's calls of them start together
+    // (PSI PERF-08); the hand-off and the support desk's tools, which may write, go one by one below, and the answers keep the calls' order.
+    const siteAnswers = new Map<string, Promise<ToolOutcome>>();
+    for (const { call, args } of asked) {
+      const name = call.function.name;
+      if ((options.handoff && name === HANDOFF.name) || (options.support && supportNames.has(name))) continue;
+      const answer = (site.kind === "store" ? storeTool(site, name, args, request) : kaizenTool(name, args)).catch((error: unknown): ToolOutcome => {
+        if (error instanceof AiError) throw error;
+        console.warn(`[chat] tool ${name} failed: ${error instanceof Error ? error.message : String(error)}`);
+        return { result: json({ error: "That did not work just now." }) };
+      });
+      // Marked as handled at once: a support tool's error below must not leave a rejected answer unseen.
+      answer.catch(() => {});
+      siteAnswers.set(call.id, answer);
+    }
+    for (const { call, args } of asked) {
       if (options.handoff && call.function.name === HANDOFF.name) {
         const parsed = HANDOFF.input.safeParse(args);
         handoff = parsed.success ? (parsed.data as { reason: string }).reason : "The customer asked for a person.";
@@ -582,14 +600,7 @@ export async function runChat(
         messages.push({ role: "tool", tool_call_id: call.id, content: answer.result.slice(0, 6000) });
         continue;
       }
-      let outcome: ToolOutcome;
-      try {
-        outcome = site.kind === "store" ? await storeTool(site, call.function.name, args, request) : await kaizenTool(call.function.name, args);
-      } catch (error) {
-        if (error instanceof AiError) throw error;
-        console.warn(`[chat] tool ${call.function.name} failed: ${error instanceof Error ? error.message : String(error)}`);
-        outcome = { result: json({ error: "That did not work just now." }) };
-      }
+      const outcome = await siteAnswers.get(call.id)!;
       if (outcome.action) action = outcome.action;
       for (const product of outcome.products ?? []) products.set(product.handle, product);
       messages.push({ role: "tool", tool_call_id: call.id, content: outcome.result });

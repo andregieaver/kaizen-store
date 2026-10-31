@@ -333,3 +333,6 @@ The re-score ([psi-2026-10-31.md](psi-2026-10-31.md)) put the overall at 78.3 (8
       everywhere-memories (`blankAssistantTraces()`, `privacy-erasure.int.test.ts`); and `NEVER_KEPT` (`src/server/assistant-memory.ts`),
       used by what is learned and by the `remember` tool alike, refuses email addresses, passwords, phone numbers, runs of eight digits or
       more, Nordic identity numbers and IBANs (`assistant-memory.test.ts`).
+- [ ] **PERF-08** The shopper chat's speed. Read-only tool calls in parallel done 31 October 2026: a round's calls of the site's own tools
+      (search, a product, the store's facts, where to go) start together, the hand-off and the support desk's tools (which may write) still
+      one by one, and the answers keep the calls' order (`runChat()` in `src/server/chat-agent.ts`). Left: streaming the reply.
