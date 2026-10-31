@@ -25,6 +25,7 @@ import {
   writePlatformAltTextsAction,
 } from "./actions";
 import { platformSiteWords } from "@/server/platform-site-words";
+import { AdminAreas } from "@/components/admin/admin-areas";
 
 export const metadata: Metadata = { title: "Media library" };
 
@@ -35,6 +36,7 @@ export default async function PlatformMediaPage({ searchParams }: PageProps<"/ad
   await requirePlatformAdmin();
   const { w } = await platformSiteWords();
   return (
+    <AdminAreas areas={["website"]}>
     <>
       <PageHeader
         title={w.misc.media.title}
@@ -45,6 +47,7 @@ export default async function PlatformMediaPage({ searchParams }: PageProps<"/ad
         <Library searchParams={searchParams} />
       </Suspense>
     </>
+    </AdminAreas>
   );
 }
 

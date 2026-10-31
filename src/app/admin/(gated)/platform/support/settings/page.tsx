@@ -27,7 +27,7 @@ export default async function KaizenSupportSettingsPage() {
   // Made after the desk's row (settingsForEdit() makes it on a desk's first look).
   const [emailAddress, keyRefused] = await Promise.all([deskEmailAddress(staff.desk), deskEmailsKeyRefused(staff.desk)]);
   return (
-    <AdminTextScope texts={adminTexts(lang, ["support"])}>
+    <AdminTextScope texts={adminTexts(lang, ["support", "settings"])}>
       <div className="flex flex-col gap-6">
         <PageHeader
           title={t.pages.platformSettings.title}

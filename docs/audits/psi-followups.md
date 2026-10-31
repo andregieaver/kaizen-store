@@ -322,7 +322,10 @@ The re-score ([psi-2026-10-31.md](psi-2026-10-31.md)) put the overall at 78.3 (8
       `editor-views.tsx` (lists 1.13 MB lighter). The 3.0 MB every admin screen shares is mostly the admin's whole English catalogue
       (about 1 MB), imported by `admin-text.tsx` for `useAdminText()`'s fallback (`docs/performance.md`). Left: every page handing down the
       areas its parts read, then the fallback goes (fetching it per area instead was tried and backed out: an early press reached a form
-      not yet interactive). `admin-catalogues.scan.test.ts` keeps new client modules from importing a whole catalogue meanwhile.
+      not yet interactive). `admin-catalogues.scan.test.ts` keeps new client modules from importing a whole catalogue meanwhile. A crawl
+      of 270 screens on a build logging each fallback found 14 that read an area they were not handed (and showed it in English to a
+      Norwegian account), and a content type's settings and entry editor two more; each now hands it down (`AdminAreas`), and a second
+      crawl found none. Left: the pages with an id the crawl could not reach, and why an early Save failed with the per-area fallback.
 - [x] **REG-01** Purpose and basis per register entry. Done 31 October 2026: 18 purposes, each with its Art. 6(1) basis, the reason
       and the law, and who decides it (`src/lib/personal-purposes.ts`); every entry of `PERSONAL_DATA` names one, and
       `processingRecord()` draws the Art. 30 record from the register (`personal-purposes.test.ts`). The bases are proposals for the

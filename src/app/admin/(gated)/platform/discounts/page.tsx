@@ -17,6 +17,7 @@ import { ButtonLink, Card, Chip, List, ListRow, PageHeader, RowActions, RowFact,
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
+import { AdminAreas } from "@/components/admin/admin-areas";
 
 export const metadata: Metadata = { title: "Discounts" };
 
@@ -36,6 +37,7 @@ export default async function PlatformDiscountsPage() {
   const modes = platformModes();
 
   return (
+    <AdminAreas areas={["discounts"]}>
     <>
       <PageHeader
         title={w.title}
@@ -87,5 +89,6 @@ export default async function PlatformDiscountsPage() {
         </ActionForm>
       </Card>
     </>
+    </AdminAreas>
   );
 }

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { PageStudioView } from "@/components/admin/page-studio-view";
 import { studioAbilities } from "@/server/page-ai";
+import { AdminAreas } from "@/components/admin/admin-areas";
 
 import {
   platformStudioBuildAction,
@@ -22,6 +23,7 @@ export const maxDuration = 300;
 export default async function PlatformPageStudio() {
   const abilities = await studioAbilities(null);
   return (
+    <AdminAreas areas={["website"]}>
     <PageStudioView
       actions={{
         talk: platformStudioTalkAction,
@@ -37,5 +39,6 @@ export default async function PlatformPageStudio() {
       pagesHref="/admin/platform/pages"
       settingsHref="/admin/platform/ai"
     />
+    </AdminAreas>
   );
 }

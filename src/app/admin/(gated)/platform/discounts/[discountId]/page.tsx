@@ -14,6 +14,7 @@ import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 import { countWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
+import { AdminAreas } from "@/components/admin/admin-areas";
 
 export const metadata: Metadata = { title: "Discount code" };
 
@@ -29,6 +30,7 @@ export default async function PlatformDiscountPage({ params }: PageProps<"/admin
   if (!discount) notFound();
 
   return (
+    <AdminAreas areas={["discounts"]}>
     <div className="flex flex-col gap-6">
       <PageHeader
         back={{ href: "/admin/platform/discounts", label: w.back }}
@@ -47,5 +49,6 @@ export default async function PlatformDiscountPage({ params }: PageProps<"/admin
         question={deleteQuestion(discount.code, discount.stores, w)}
       />
     </div>
+    </AdminAreas>
   );
 }

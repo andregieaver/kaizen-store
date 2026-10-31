@@ -132,4 +132,12 @@ Fetching each area's English only when first asked took every screen down by abo
 signed-in end-to-end tests caught the content type editor's Save, pressed that early, submitting its form without its script (to the
 address without `?preset`, so the type was not made). The way there is for every page to hand down the areas its parts read, so the
 fallback is never needed and can then go; `admin-catalogues.scan.test.ts` meanwhile keeps any new client module from importing a whole
-catalogue.
+catalogue. A crawl of 270 admin screens (every static route as an owner and as a platform admin, and the first item of the lists whose links it
+could follow), on a build that logged each fallback, found 14 screens reading an area they were not handed, each also drawing those parts
+in English for a Norwegian account: the store's page and article categories (`products`), article authors, the chat agent and Kaizena
+Flow's menus, navigation, media, chat and page studio (`website`), both support settings (`settings`), Kaizena Flow's Google reviews
+(`notifications`), discounts and a discount (`discounts`) and fonts (`design`); visiting a content type's pages by hand found two more,
+its settings and its entry editor (`builder`). Each now hands its area down (`AdminAreas`, `src/components/admin/admin-areas.tsx`, or its
+own `AdminTextScope`), and the crawl found none left. Pages with an id the crawl could not reach from a list are not yet covered, and why
+the content type editor's early Save failed with the per-area fallback is not explained by these (the editor itself reads nothing it is
+not handed), so the fallback stays whole for now.

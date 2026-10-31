@@ -12,6 +12,7 @@ import { PageHeader } from "@/components/admin/ui";
 import { uploadPlatformImageAction } from "../actions";
 import { savePlatformNavigationAction } from "./actions";
 import { platformSiteWords } from "@/server/platform-site-words";
+import { AdminAreas } from "@/components/admin/admin-areas";
 
 export const metadata: Metadata = { title: "Header and footer" };
 
@@ -26,6 +27,7 @@ export default async function PlatformNavigationPage() {
     listPlatformMenus(),
   ]);
   return (
+    <AdminAreas areas={["website"]}>
     <>
       <PageHeader
         title={n.title}
@@ -58,5 +60,6 @@ export default async function PlatformNavigationPage() {
         previewHref="/"
       />
     </>
+    </AdminAreas>
   );
 }

@@ -76,7 +76,8 @@ per-language page texts (D55, `mapTexts()`, `localizePage()`), and `formatMoney(
 - **Catalogue:** `src/lib/admin-messages/{area}.{lang}.ts`, one pair per area (common, nav, orders, products, customers, marketing, website,
   settings, analytics, support, work, billing, platform), English the type, so a key missing in Norwegian fails the typecheck. Server
   components read `adminText(lang, area)`; client components get their area's slice from the layout through `AdminTextProvider` and
-  `useAdminText(area)`.
+  `useAdminText(area)`. A page that draws another area's parts hands that area down too (`AdminTextScope`, or `AdminAreas` where the page
+  has no language at hand): an area not handed down is drawn in English whatever the account's language.
 - **Plural and choice:** the ICU subset of `src/lib/icu-lite.ts` (`{count, plural, one {…} other {…}}`), never string joins; dates, numbers
   and money with the account's locale (`formatMoney(…, "nb-NO")`, `Intl.DateTimeFormat`).
 - **Messages from the server:** a saver's refusal becomes a key with values (`problem("shipping.notSold", { country })`), turned into words

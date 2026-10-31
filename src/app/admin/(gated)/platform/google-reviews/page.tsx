@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/admin/ui";
 
 import { choosePlatformPlaceAction, findPlatformPlacesAction, removePlatformGoogleAction, savePlatformGoogleKeyAction } from "./actions";
 import { platformSiteWords } from "@/server/platform-site-words";
+import { AdminAreas } from "@/components/admin/admin-areas";
 
 export const metadata: Metadata = { title: "Google reviews" };
 
@@ -14,6 +15,7 @@ export default async function PlatformGoogleReviewsPage() {
   const { w } = await platformSiteWords();
   const settings = await getGoogleSettings(null);
   return (
+    <AdminAreas areas={["notifications"]}>
     <div className="flex flex-col gap-6">
       <PageHeader
         title={w.misc.googleReviews.title}
@@ -30,5 +32,6 @@ export default async function PlatformGoogleReviewsPage() {
         }}
       />
     </div>
+    </AdminAreas>
   );
 }

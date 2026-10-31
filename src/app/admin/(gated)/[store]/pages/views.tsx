@@ -222,10 +222,12 @@ export async function StorePageTermsView({ type, params }: { type: PageType; par
   // Product layouts are part of the online shop (D178 step 5): hidden while it is off.
   const shopOff = type === "product_layout" ? requireFeature(gated, "shop") : null;
   if (shopOff) return shopOff;
-  const { store } = gated;
+  const { store, account } = gated;
   const copy = PAGE_TYPE_COPY[type];
   const [terms, fields] = await Promise.all([listTerms({ storeId: store.id, contentType: termContentOf(type) }), termFieldsSetup(store)]);
   return (
+    // The categories manager's words are the products' (it is the same manager as theirs).
+    <AdminTextScope texts={adminTexts(adminLangOf(account.adminLocale), ["products"])}>
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
         <Link href={storePagesBase(store, type)} className="w-fit text-sm underline">
@@ -247,6 +249,7 @@ export async function StorePageTermsView({ type, params }: { type: PageType; par
         }}
       />
     </div>
+    </AdminTextScope>
   );
 }
 

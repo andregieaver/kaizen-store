@@ -20,6 +20,7 @@ import { uploadPlatformImageAction } from "../actions";
 import { deletePlatformMenuAction, savePlatformMenuAction } from "./actions";
 import { platformSiteWords } from "@/server/platform-site-words";
 import { adminText } from "@/lib/admin-text";
+import { AdminAreas } from "@/components/admin/admin-areas";
 
 export const metadata: Metadata = { title: "Menus" };
 
@@ -30,6 +31,7 @@ export default async function PlatformMenusPage({ searchParams }: PageProps<"/ad
   await requirePlatformAdmin();
   const { w } = await platformSiteWords();
   return (
+    <AdminAreas areas={["website"]}>
     <>
       <PageHeader
         title={w.misc.menus.title}
@@ -40,6 +42,7 @@ export default async function PlatformMenusPage({ searchParams }: PageProps<"/ad
         <Menus searchParams={searchParams} />
       </Suspense>
     </>
+    </AdminAreas>
   );
 }
 

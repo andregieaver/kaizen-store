@@ -4,6 +4,7 @@ import { ChatAgentView } from "@/components/admin/chat-agent-view";
 import { requirePlatformAdmin } from "@/server/auth";
 import { uploadsEnabled } from "@/server/media";
 import { adminLangOf } from "@/lib/admin-lang";
+import { AdminAreas } from "@/components/admin/admin-areas";
 
 import { uploadPlatformImageAction } from "../actions";
 import { addPlatformDocumentAction, deletePlatformDocumentAction, savePlatformChatAgentAction } from "./actions";
@@ -14,6 +15,7 @@ export const metadata: Metadata = { title: "Chat agent" };
 export default async function PlatformChatPage() {
   const account = await requirePlatformAdmin();
   return (
+    <AdminAreas areas={["website"]}>
     <ChatAgentView
       storeId={null}
       siteName="Kaizena Flow"
@@ -25,5 +27,6 @@ export default async function PlatformChatPage() {
       deleteDocument={deletePlatformDocumentAction}
       lang={adminLangOf(account.adminLocale)}
     />
+    </AdminAreas>
   );
 }

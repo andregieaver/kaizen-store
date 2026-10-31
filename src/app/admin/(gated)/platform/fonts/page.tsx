@@ -8,6 +8,7 @@ import { Card, PageHeader } from "@/components/admin/ui";
 
 import { installPlatformFontAction, savePlatformFontsAction } from "./actions";
 import { platformSiteWords } from "@/server/platform-site-words";
+import { AdminAreas } from "@/components/admin/admin-areas";
 
 export const metadata: Metadata = { title: "Fonts" };
 
@@ -18,6 +19,7 @@ export default async function PlatformFontsPage() {
   const { w } = await platformSiteWords();
   const chrome = await getPlatformChrome();
   return (
+    <AdminAreas areas={["design"]}>
     <>
       <PageHeader
         title={w.misc.fonts.title}
@@ -27,5 +29,6 @@ export default async function PlatformFontsPage() {
         <SiteFontsForm fonts={chrome.fonts} action={savePlatformFontsAction} install={installPlatformFontAction} />
       </Card>
     </>
+    </AdminAreas>
   );
 }

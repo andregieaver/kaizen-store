@@ -4,6 +4,7 @@ import { ChatAgentView } from "@/components/admin/chat-agent-view";
 import { requirePermission } from "@/server/permissions";
 import { adminLangOf } from "@/lib/admin-lang";
 import { uploadsEnabled } from "@/server/media";
+import { AdminAreas } from "@/components/admin/admin-areas";
 
 import { addDocumentAction, deleteDocumentAction, saveChatAgentAction, uploadChatAvatarAction } from "./actions";
 
@@ -14,6 +15,7 @@ export default async function StoreChatPage({ params }: PageProps<"/admin/[store
   const { store: slug } = await params;
   const { store, account } = await requirePermission(slug, "support:read");
   return (
+    <AdminAreas areas={["website"]}>
     <ChatAgentView
       storeId={store.id}
       siteName={store.name}
@@ -25,5 +27,6 @@ export default async function StoreChatPage({ params }: PageProps<"/admin/[store
       deleteDocument={deleteDocumentAction.bind(null, store.slug)}
       lang={adminLangOf(account.adminLocale)}
     />
+    </AdminAreas>
   );
 }
