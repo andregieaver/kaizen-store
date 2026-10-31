@@ -185,6 +185,12 @@ stay in the standing document's *What comes next*.
       `runRetention`'s new `access_requests` step: a decided application's name, address and message are blanked as the account's own
       erasure blanks them, the row kept as the record of the decision, a waiting one untouched (`access-request-retention.int.test.ts`).
       Left: moving the code-constant pruners (unconfirmed sign-ups, notices of illegal content) into `retention_rules`.
+- [x] **DATA-05 (data)** A test that makes every store table choose whether it is exported. Done 31 October 2026: each `commerce`
+      table with a `store_id` (335) is in the whole-store file (`STORE_EXPORT_TABLES`), holds people's data (the personal-data register:
+      they leave through the customer and order files or the privacy export), is left out for a named reason (`STORE_EXPORT_LEFT_OUT`,
+      `src/lib/store-export-scope.ts`: a secret, the catalogue's CSV files, a record or job state, people, files), or is on
+      `STORE_EXPORT_UNDECIDED`, which only shrinks (62 tables, mostly settings that belong in the file). `store-export.scan.test.ts` fails
+      on a new table in none of these and on a secret in the file. Left: deciding the 62, starting with the settings.
 - [x] **DATA-03 (data 2)** `Idempotency-Key` on Admin API POSTs, a Mollie 401 renewed once, Stripe's `apiVersion`. Done 30 October
       2026: a POST with the header is done once per token and key, the same request getting the first answer again
       (`Idempotent-Replayed: true`) and another request under the key refused, answers kept 24 hours (`commerce.api_idempotency_keys`,
