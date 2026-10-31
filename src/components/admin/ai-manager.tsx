@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, type ReactNode, type RefObject } from "react";
 
 import { AI_COMPOSER_ATTRIBUTE } from "@/lib/ai-composer";
+import { alreadySaid, answerToAnnounce } from "@/lib/answer-announce";
 import { matchPath } from "@/lib/admin-map";
 import { TOOL_WORDS } from "@/lib/manager-tools";
 import { fillWords } from "@/lib/admin-fill";
@@ -127,6 +128,11 @@ export function AiManagerChat({
   const abortRef = useRef<AbortController | null>(null);
   const busyRef = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  // A screen reader hears an answer once it is finished, not each streamed word (PSI ACC-08); one open already counts as heard.
+  const [announced, setAnnounced] = useState<{ id: string | null; text: string }>(() => ({ id: alreadySaid(conversation?.messages ?? []), text: "" }));
+  // Set while drawing, as React advises for state that follows other state: the next drawing finds it said and stops.
+  const toAnnounce = answerToAnnounce(messages, announced.id, Boolean(streaming));
+  if (toAnnounce) setAnnounced(toAnnounce);
   const sendRef = useRef<(text: string) => void>(() => undefined);
   const panel = variant === "panel";
   const canTalk = abilities.hear && abilities.speak && actions.hear !== null;
@@ -420,7 +426,7 @@ export function AiManagerChat({
           {history}
         </nav>
       ) : (
-        <div ref={scrollRef} className={`flex flex-1 flex-col gap-3 ${panel ? "overflow-y-auto p-4" : ""}`} aria-live="polite">
+        <div ref={scrollRef} className={`flex flex-1 flex-col gap-3 ${panel ? "overflow-y-auto p-4" : ""}`}>
           {thread.length === 0 && !busy && (
             <div className="flex flex-col gap-3 rounded-panel border border-line p-4">
               <p className="text-sm">
@@ -437,6 +443,9 @@ export function AiManagerChat({
               </div>
             </div>
           )}
+          <p className="sr-only" aria-live="polite" aria-atomic="true">
+            {announced.text}
+          </p>
           {thread}
           {streaming && <Bubble message={{ id: "streaming", role: "assistant", content: streaming, tools: [], feedback: null, createdAt: "" }} />}
           {/* The call as it is said; kept in the conversation when it ends. */}

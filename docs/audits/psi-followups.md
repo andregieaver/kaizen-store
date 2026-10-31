@@ -149,6 +149,11 @@ stay in the standing document's *What comes next*.
       withdrawal function, legal pages, *Report illegal content*) are 24 px tall at least, and a bare social logo is a 24 by 24 target
       (WCAG 2.2 SC 2.5.8; `e2e/target-size.spec.ts` measures every footer link and button on Kaizena Flow's site and a store at 390 px,
       failing on the code before).
+- [x] **ACC-08, ACC-03 (accessibility 4)** A live region for finished answers only; one main heading on a theme's page. Done
+      31 October 2026: the AI manager's transcript is no longer `aria-live` (every streamed word was read out); a hidden polite region
+      says the newest answer once it is finished, and the answers already there when a conversation opens count as said
+      (`src/lib/answer-announce.ts`). A theme's own page counts its stage's heading as the page's main heading, so the hidden title
+      heading is no longer added beside it (`mainHeadingIn()`, `page-article.tsx`).
 - [x] **DATA-03 (data 2)** `Idempotency-Key` on Admin API POSTs, a Mollie 401 renewed once, Stripe's `apiVersion`. Done 30 October
       2026: a POST with the header is done once per token and key, the same request getting the first answer again
       (`Idempotent-Replayed: true`) and another request under the key refused, answers kept 24 hours (`commerce.api_idempotency_keys`,

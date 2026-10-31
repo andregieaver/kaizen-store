@@ -39,6 +39,27 @@ import { SearchSection } from "./search-section";
 import { VisiblePart } from "./visible-part";
 
 /**
+ * Whether the page's rows hold its main heading (D49): a heading component at level 1, a product's title (D79), or a theme's stage on
+ * the theme's own page (D285), which names the theme in its heading (PSI ACC-03: the page had two). A heading in a part some visitors do
+ * not see (D179 phase 4) does not count, and a modal's headings are its own (D121).
+ */
+export function mainHeadingIn(rows: readonly PageRow[], themeSlug?: string | null): boolean {
+  return flowRows(rows).some((row) =>
+    seenByAll(row) &&
+    row.columns.some((c) =>
+      seenByAll(c) &&
+      c.blocks.some(
+        (b) =>
+          seenByAll(b) &&
+          ((b.type === "heading" && b.level === 1 && blockShowsUnbound(b)) ||
+            (b.type === "product" && b.part === "title") ||
+            (b.type === "themeStore" && b.part === "stage" && Boolean(themeSlug))),
+      ),
+    ),
+  );
+}
+
+/**
  * A page's rows (D42, D43): on the site, and in the admin's preview of a
  * draft. Only the rows show (D45); the title is the page's heading for
  * screen readers and search engines unless a heading component is the main
@@ -72,16 +93,8 @@ export function PageArticle({
   // A preview draws what the blocks hold; a block still bound to a field is drawn only if it keeps its own content (D118).
   const content = inAdmin ? withoutBindings(given) : given;
   const rows = content.rows.filter((row) => rowShows(row) && !themeRowLeftOut(row, place));
-  // A heading component at level 1, or a product's title (D79), is the page's main heading (D49); else the title is, for screen readers.
-  // (A modal's headings are its own: it is not in the page's flow, D121.)
-  // A heading in a part some visitors do not see (D179 phase 4) does not count: the title stays for them.
-  const hasMainHeading = flowRows(rows).some((row) =>
-    seenByAll(row) &&
-    row.columns.some((c) =>
-      seenByAll(c) &&
-      c.blocks.some((b) => seenByAll(b) && ((b.type === "heading" && b.level === 1 && blockShowsUnbound(b)) || (b.type === "product" && b.part === "title"))),
-    ),
-  );
+  // Without a main heading in the rows (`mainHeadingIn()`), the title is the page's, for screen readers.
+  const hasMainHeading = mainHeadingIn(rows, place.themeSlug);
   // Motion (D128): the first flow row is drawn without waiting for scripts; the runtime is loaded only if something needs it.
   const first = flowRows(rows)[0];
   const motion = motionNeeds(rows);

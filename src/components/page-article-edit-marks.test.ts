@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { newPageContent, type PageBlock, type PageContent, type PageRow } from "@/lib/page-content";
 
-import { ModalRow, PageArticle } from "./page-article";
+import { mainHeadingIn, ModalRow, PageArticle } from "./page-article";
 
 // Drawn without a site's theme: what is tested here is the page's own (D182 lays a theme under it on the site).
 const NO_THEME = { elements: undefined, sections: undefined };
@@ -107,6 +107,14 @@ describe("a page with the theme store's parts (D285)", () => {
     expect(html).toContain("kz-r-mixed");
     expect(html).toContain("kz-t2");
     expect(html).not.toContain("kz-p-pic");
+  });
+
+  it("takes the stage's heading as the page's one main heading on a theme's page (PSI ACC-03)", () => {
+    const rows = page(row("r-stage", [part("p-stage", "stage")]), row("r-words", [para("t1", "Our own words")])).rows;
+    expect(mainHeadingIn(rows, "calm")).toBe(true);
+    // Without a theme the stage draws nothing, so the title stays the page's heading for screen readers.
+    expect(mainHeadingIn(rows, null)).toBe(false);
+    expect(mainHeadingIn(page(row("r-high", [part("p-high", "highlights")])).rows, "calm")).toBe(false);
   });
 
   it("leaves out a theme's parts on a page that is no theme's page", () => {
