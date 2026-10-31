@@ -7,7 +7,7 @@ import { Inbox } from "@/components/admin/support/inbox";
 import type { SupportDeskContext } from "@/components/admin/support/desk-context";
 import { presence } from "@/server/support";
 import { kaizenDesk } from "@/server/support-desk";
-import { inboxFeed } from "@/server/support-inbox";
+import { openingInbox } from "@/server/support-inbox";
 
 import {
   kaizenSupportActAction,
@@ -24,8 +24,8 @@ export const metadata: Metadata = { title: "Support inbox" };
  */
 export default async function PlatformSupportPage() {
   const desk = await kaizenDesk();
-  const [initial, mine] = await Promise.all([
-    inboxFeed([desk], { tab: "waiting" }),
+  const [{ feed: initial, tab: initialTab }, mine] = await Promise.all([
+    openingInbox([desk]),
     presence(desk.desk, desk.account.id),
   ]);
   const context: SupportDeskContext = {
@@ -47,7 +47,7 @@ export default async function PlatformSupportPage() {
     <AdminTextScope
       texts={adminTexts(adminLangOf(desk.account.adminLocale), ["support"])}
     >
-      <Inbox context={context} initial={initial} initialTab="waiting" />
+      <Inbox context={context} initial={initial} initialTab={initialTab} />
     </AdminTextScope>
   );
 }

@@ -266,7 +266,12 @@ One set of components serves all three levels (5.4).
   every customer message. Buttons: **Take over** (from the AI or the queue), **Hand back to the AI** (mode `ai_first`),
   **Transfer** (to an online agent of the desk, or back to the queue), **Ask to sign in** (sends the sign-in card), **End**. The
   composer writes a reply or a note; saved replies open with `/` (step 13); **Use the partner's draft** fills it from the
-  partner (2.5); Ctrl/Cmd+Enter sends.
+  partner (2.5); Ctrl/Cmd+Enter sends. Wherever Take over is offered (the AI or the queue has the conversation), the composer is
+  the reply box and says that sending takes the conversation over: Send claims it, then sends the reply (31 October 2026; before,
+  only a note could be written until Take over was pressed, so an answer typed there never reached the customer). A note is the
+  other choice beside it; someone else's conversation offers a note only.
+- **Opening**: the inbox opens on *Waiting* while someone waits for a person, else on *All open* (`openingInbox()`), so a desk
+  whose AI answers first shows the conversations it is having.
 - **Right column**, two tabs:
   - **Partner** (when the partner is on, 2.5; the default tab then).
   - **Context**: who (name, email, signed in or not, *Email not verified*), language, the page they are on, the store (owner

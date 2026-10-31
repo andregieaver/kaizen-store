@@ -239,6 +239,7 @@ export const supportEn = {
     backToMine: "Back to my words",
     sendKeys: "Ctrl or ⌘ and Enter sends",
     translateTo: "Translate to {language}",
+    sendTakesOver: "Sending takes the conversation over, so the customer has you from then on.",
     addNote: "Add note",
     send: "Send",
   },

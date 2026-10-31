@@ -260,6 +260,7 @@ export const supportNb: SupportMessages = {
     backToMine: "Tilbake til mine ord",
     sendKeys: "Ctrl eller ⌘ og Enter sender",
     translateTo: "Oversett til {language}",
+    sendTakesOver: "Når du sender, tar du over samtalen, og kunden har deg derfra.",
     addNote: "Legg til notat",
     send: "Send",
   },

@@ -140,7 +140,11 @@ export function ConversationActions({
   const [active, setActive] = useState(0);
   const loadingReplies = useRef(false);
   const textarea = useRef<HTMLTextAreaElement>(null);
-  const writingNote = asNote || !acts.reply;
+  // Wherever the person could take the conversation over, the box answers the customer (sending takes it over first); a note is a
+  // deliberate choice. Before, only a note could be written until Take over was pressed, and an answer typed there never left.
+  const answerable = acts.reply || acts.claim;
+  const takesOver = answerable && !acts.reply;
+  const writingNote = asNote || !answerable;
   const translated = original !== null && !writingNote;
   const matches =
     slash && replies
@@ -226,9 +230,20 @@ export function ConversationActions({
     }
   }
 
-  function send() {
+  async function send() {
     const body = draft.trim();
     if (!body || busy) return;
+    if (!writingNote && takesOver) {
+      // Taken over first, so the reply is the person's own: the customer sees them join, then their words.
+      setBusy(true);
+      setProblem(null);
+      const claimed = await act({ kind: "claim" }).catch(() => null);
+      setBusy(false);
+      if (!claimed?.ok) {
+        setProblem(claimed && !claimed.ok ? claimed.problem : w.failed);
+        return;
+      }
+    }
     void run(
       writingNote
         ? { kind: "note", body }
@@ -359,15 +374,15 @@ export function ConversationActions({
           }
         />
       )}
-      {(acts.reply || acts.note) && (
+      {(answerable || acts.note) && (
         <form
           onSubmit={(event) => {
             event.preventDefault();
-            send();
+            void send();
           }}
           className="flex flex-col gap-2"
         >
-          {acts.reply && (
+          {answerable && (
             <div
               role="radiogroup"
               aria-label={w.write}
@@ -437,7 +452,7 @@ export function ConversationActions({
               }
               if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
                 event.preventDefault();
-                send();
+                void send();
               }
             }}
             rows={3}
@@ -533,6 +548,7 @@ export function ConversationActions({
                 </button>
               )}
             </span>
+            {!writingNote && takesOver && <span className="text-xs text-muted">{w.sendTakesOver}</span>}
             <button
               type="submit"
               disabled={busy || !draft.trim()}

@@ -8,7 +8,7 @@ import type { SupportDeskContext } from "@/components/admin/support/desk-context
 import { requirePermission } from "@/server/permissions";
 import { presence } from "@/server/support";
 import { memberDesk } from "@/server/support-desk";
-import { inboxFeed } from "@/server/support-inbox";
+import { openingInbox } from "@/server/support-inbox";
 
 import {
   supportActAction,
@@ -33,8 +33,8 @@ export default async function SupportInboxPage({
     typeof c === "string" && /^[0-9a-f-]{36}$/i.test(c) ? c : null;
   const member = await requirePermission(slug, "support:read");
   const staff = memberDesk(member);
-  const [initial, mine] = await Promise.all([
-    inboxFeed([staff], { tab: "waiting" }),
+  const [{ feed: initial, tab: initialTab }, mine] = await Promise.all([
+    openingInbox([staff]),
     presence(staff.desk, staff.account.id),
   ]);
   const context: SupportDeskContext = {
@@ -61,7 +61,7 @@ export default async function SupportInboxPage({
       <Inbox
         context={context}
         initial={initial}
-        initialTab="waiting"
+        initialTab={initialTab}
         initialOpen={initialOpen}
       />
     </AdminTextScope>

@@ -9,7 +9,7 @@ import type { SupportDeskContext } from "@/components/admin/support/desk-context
 import { requireAccount } from "@/server/auth";
 import { presence } from "@/server/support";
 import { ownerDesks } from "@/server/support-desk";
-import { inboxFeed } from "@/server/support-inbox";
+import { openingInbox } from "@/server/support-inbox";
 
 import {
   ownerSupportActAction,
@@ -29,8 +29,8 @@ export default async function OwnerSupportPage() {
   const desks = await ownerDesks(account);
   if (desks.length === 0) notFound();
   const writable = desks.filter((d) => d.canWrite);
-  const [initial, mine] = await Promise.all([
-    inboxFeed(desks, { tab: "waiting" }),
+  const [{ feed: initial, tab: initialTab }, mine] = await Promise.all([
+    openingInbox(desks),
     writable.length > 0
       ? presence(writable[0].desk, account.id)
       : Promise.resolve(null),
@@ -59,7 +59,7 @@ export default async function OwnerSupportPage() {
     <AdminTextScope
       texts={adminTexts(adminLangOf(account.adminLocale), ["support"])}
     >
-      <Inbox context={context} initial={initial} initialTab="waiting" />
+      <Inbox context={context} initial={initial} initialTab={initialTab} />
     </AdminTextScope>
   );
 }

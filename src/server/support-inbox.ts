@@ -61,6 +61,16 @@ export async function inboxFeed(desks: StaffDesk[], query: ReturnType<typeof inb
   return { rows, waiting, mineUnread, lastToneAlert: toneAlert, channels };
 }
 
+/**
+ * What the inbox opens on: Waiting while someone waits for a person, else All open, so a desk whose AI answers first shows the
+ * conversations it is having rather than "Nobody is waiting" with them a tab away.
+ */
+export async function openingInbox(desks: StaffDesk[]): Promise<{ feed: InboxFeed; tab: "waiting" | "open" }> {
+  const waiting = await inboxFeed(desks, { tab: "waiting" });
+  if (waiting.waiting > 0) return { feed: waiting, tab: "waiting" };
+  return { feed: await inboxFeed(desks, { tab: "open" }), tab: "open" };
+}
+
 /** A conversation as the inbox draws it: the conversation, who is looking (to know whether it is theirs), what they may do and to whom it can be handed. */
 export type ConversationFeed = StaffConversation & {
   me: string;

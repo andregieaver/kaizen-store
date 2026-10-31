@@ -190,10 +190,17 @@ describe("what a person may do with a conversation (step 4)", () => {
     expect(out).toContain("Ask to sign in");
     expect(out).toContain("Reply to the customer");
     expect(out).toContain("Internal note");
+    // With the AI (or waiting): the box answers the customer, and says sending takes the conversation over; a note is one step away.
     const watching = html(h(ConversationActions, { conversation: { ...feed, handler: "ai", assignee: null }, act: async () => ({ ok: true as const }), onDone: () => {} }));
     expect(watching).toContain("Take over");
-    expect(watching).toContain("Internal note (only your team sees it)");
-    expect(watching).not.toContain("Reply to the customer");
+    expect(watching).toContain("Reply to the customer");
+    expect(watching).toContain("Sending takes the conversation over");
+    expect(watching).toContain("Internal note");
+    // Someone else's: only a note, never an answer over their head.
+    const theirs = html(h(ConversationActions, { conversation: { ...feed, handler: "human", assignee: { id: "ola", name: "Ola" } }, act: async () => ({ ok: true as const }), onDone: () => {} }));
+    expect(theirs).not.toContain("Take over");
+    expect(theirs).not.toContain("Reply to the customer");
+    expect(theirs).toContain("Internal note (only your team sees it)");
   });
 });
 
