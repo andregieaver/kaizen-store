@@ -132,6 +132,7 @@ export const DA: StarterText = {
     "terms.privacy.1": "Hvordan vi behandler dine personoplysninger, er beskrevet i vores privatlivspolitik.",
     "h.terms.bookings_subscriptions": "Bookinger og abonnementskasser",
     "terms.bookings.1": "Aftaler, ophold og udlejning bestilles til et bestemt tidspunkt. Du kan aflyse eller flytte en booking frem til den frist, der vises, når du booker.",
+    "terms.bookings.noShow": "Hvis du ikke møder op til en tid, hvor du betalte depositum, kan butikken trække et gebyr for udeblivelse på det kort, du betalte depositummet med: den andel af prisen, der vises, når du booker, fratrukket depositummet. Det trækkes aldrig, uden at butikken beslutter det.",
     "terms.bookings.2": "En abonnementskasse leveres på de viste dage og fortsætter, til du stopper den. Du kan ændre, sætte på pause eller afslutte den frem til den frist, der vises før hver levering.",
     "h.terms.businesses": "Køb fra virksomheder",
     "terms.business.1": "Disse betingelser gælder også, når en virksomhed køber hos os. Virksomheder ser priser uden moms, men moms lægges til bestillingen, hvor den gælder.",

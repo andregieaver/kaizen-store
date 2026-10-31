@@ -43,6 +43,8 @@ export type LegalFacts = {
     b2bReturns: boolean;
   };
   bookingsOn: boolean;
+  /** An appointment the store sells may cost a no-show fee, charged to the card the deposit was paid with (D66; PSI REG-12). */
+  noShowFee: boolean;
   deliveriesOn: boolean;
   /** Cookieless visit counting is on. */
   visitCounting: boolean;
@@ -97,6 +99,8 @@ export type LegalFactsInput = {
   chatOn: boolean;
   /** What an AI does with customers' support messages besides answering (PSI REG-08); neither when left out. */
   supportAi?: { tone: boolean; summaries: boolean };
+  /** An active appointment takes a deposit and has a no-show fee; none when left out. */
+  noShowFee?: boolean;
   links?: { withdraw?: string; cookies?: string };
   phone?: string | null;
 };
@@ -154,6 +158,7 @@ export function assembleLegalFacts(input: LegalFactsInput): LegalFacts {
       b2bReturns: settings?.b2bReturns ?? false,
     },
     bookingsOn: store.modules.includes("bookings"),
+    noShowFee: store.modules.includes("bookings") && (input.noShowFee ?? false),
     deliveriesOn: store.modules.includes("deliveries"),
     visitCounting: store.visitCounting,
     trackingTools: (Object.keys(TRACKING_TOOL_NAMES) as (keyof typeof TRACKING_TOOL_NAMES)[]).filter((k) => Boolean(store.tracking[k])).map((k) => TRACKING_TOOL_NAMES[k]),

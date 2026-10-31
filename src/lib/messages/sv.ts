@@ -1400,6 +1400,7 @@ export const sv: Messages = {
     payDeposit: (percent: number) => `Handpenning ${percent} % vid bokning, resten på plats.`,
     payVenue: "Betalas på plats.",
     freeCancel: (hours: number) => (hours === 0 ? "Avboka eller ändra gratis fram till att tiden börjar." : `Avboka eller ändra gratis fram till ${hours} timmar innan.`),
+    noShowFee: (percent: number) => `Kommer du inte kan upp till ${percent} % av priset, minus handpenningen, dras från kortet du betalade med.`,
     dueNow: "Betalas nu",
     atVenue: "Betalas på plats",
     deposit: "handpenning",

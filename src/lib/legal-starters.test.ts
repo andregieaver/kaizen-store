@@ -70,6 +70,8 @@ const VARIANTS: Record<string, LegalFacts> = {
   full: FULL,
   // An AI reads the tone of support messages and summarises them (PSI REG-08).
   supportAi: assembleLegalFacts(input({ supportAi: { tone: true, summaries: true } })),
+  // An appointment with a deposit and a no-show fee (PSI REG-12).
+  noShow: assembleLegalFacts(input({ noShowFee: true })),
   empty: assembleLegalFacts(
     input({
       store: { name: "", legalName: null, organisationNumber: null, contactEmail: null, postalAddress: null, country: null, audience: "consumers", visitCounting: false, modules: [], tracking: {} },
@@ -270,6 +272,16 @@ describe("what a starter holds", () => {
     expect(privacy({ ...FULL, aiTone: true, aiSummaries: true }, "nb")).toMatch(/leser en KI tonen.*skriver en KI et kort sammendrag/);
     expect(assembleLegalFacts(input({ supportAi: { tone: true, summaries: false } }))).toMatchObject({ aiTone: true, aiSummaries: false });
     expect(assembleLegalFacts(input())).toMatchObject({ aiTone: false, aiSummaries: false });
+  });
+
+  it("says a no-show can cost a fee only where an appointment takes a deposit and has one (PSI REG-12)", () => {
+    const terms = (facts: LegalFacts, lang: "en" | "sv" = "en") => JSON.stringify(legalStarterSections("terms", lang, facts));
+    expect(terms(FULL)).not.toContain("no-show fee");
+    expect(terms(VARIANTS.noShow)).toContain("the store may charge a no-show fee to the card you paid the deposit with");
+    expect(terms(VARIANTS.noShow, "sv")).toContain("avgift för uteblivet besök");
+    // Without bookings on, the fee is never said, whatever the server found.
+    const off = assembleLegalFacts(input({ noShowFee: true, store: { ...input().store, modules: ["deliveries"] } }));
+    expect(off.noShowFee).toBe(false);
   });
 
   it("follows the store's return settings", () => {

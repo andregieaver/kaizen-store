@@ -1404,6 +1404,7 @@ export const nb: Messages = {
     payDeposit: (percent: number) => `Depositum ${percent} % ved bestilling, resten på stedet.`,
     payVenue: "Betales på stedet.",
     freeCancel: (hours: number) => (hours === 0 ? "Gratis avbestilling eller endring frem til timen starter." : `Gratis avbestilling eller endring til ${hours} timer før.`),
+    noShowFee: (percent: number) => `Møter du ikke, kan inntil ${percent} % av prisen, minus depositumet, belastes kortet du betalte med.`,
     dueNow: "Betales nå",
     atVenue: "Betales på stedet",
     deposit: "depositum",

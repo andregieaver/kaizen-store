@@ -132,6 +132,7 @@ export const NB: StarterText = {
     "terms.privacy.1": "Hvordan vi behandler personopplysningene dine, er beskrevet i personvernerklæringen vår.",
     "h.terms.bookings_subscriptions": "Bookinger og abonnementsbokser",
     "terms.bookings.1": "Avtaler, opphold og utleie bestilles for et bestemt tidspunkt. Du kan avbestille eller flytte en booking frem til fristen som vises når du bestiller.",
+    "terms.bookings.noShow": "Hvis du ikke møter til en time der du betalte depositum, kan butikken belaste et gebyr for uteblivelse på kortet du betalte depositumet med: den andelen av prisen som vises når du bestiller, minus depositumet. Det belastes aldri uten at butikken bestemmer det.",
     "terms.bookings.2": "En abonnementsboks leveres på dagene som vises, og fortsetter til du stopper den. Du kan endre, sette på pause eller avslutte den frem til fristen som vises før hver levering.",
     "h.terms.businesses": "Kjøp fra bedrifter",
     "terms.business.1": "Disse vilkårene gjelder også når en bedrift kjøper av oss. Bedrifter ser priser uten merverdiavgift, men merverdiavgift legges til bestillingen der den gjelder.",

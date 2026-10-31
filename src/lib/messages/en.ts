@@ -1426,6 +1426,7 @@ export const en = {
     payDeposit: (percent: number) => `A ${percent} % deposit when you book, the rest on site.`,
     payVenue: "Paid on site.",
     freeCancel: (hours: number) => (hours === 0 ? "Cancel or change for free until it starts." : `Cancel or change for free until ${hours} hours before.`),
+    noShowFee: (percent: number) => `If you do not come, up to ${percent} % of the price, less the deposit, may be charged to the card you paid with.`,
     dueNow: "To pay now",
     atVenue: "To pay on site",
     deposit: "deposit",

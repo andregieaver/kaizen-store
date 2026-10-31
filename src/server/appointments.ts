@@ -41,6 +41,8 @@ export type AppointmentOffer = {
   /** How it is paid, and until how many hours before shoppers may cancel or move it (D66). */
   payment: AppointmentPayment;
   cancelHours: number;
+  /** The share of the price a no-show may cost, less the deposit; charged only with a deposit (D66), said before booking (PSI REG-12). */
+  noShowPercent: number;
 };
 
 type LoadedOffer = AppointmentOffer & { resources: Omit<SlotResource, "busy">[] };
@@ -48,7 +50,7 @@ type LoadedOffer = AppointmentOffer & { resources: Omit<SlotResource, "busy">[] 
 async function loadOffer(q: Queryable, storeId: string, productId: string): Promise<LoadedOffer | null> {
   const [row] = await q.execute<Row>(sql`
     select a.duration_minutes, a.buffer_before_minutes, a.buffer_after_minutes, a.step_minutes,
-      a.min_notice_minutes, a.max_days_ahead, s.time_zone, a.payment, a.deposit_percent, a.cancel_hours,
+      a.min_notice_minutes, a.max_days_ahead, s.time_zone, a.payment, a.deposit_percent, a.cancel_hours, a.no_show_percent,
       l.name as place_name, l.street, l.postal_code, l.city
     from commerce.appointment_settings a
     join commerce.products p on p.store_id = a.store_id and p.id = a.product_id and p.kind = 'appointment' and p.status = 'active'
@@ -79,6 +81,7 @@ async function loadOffer(q: Queryable, storeId: string, productId: string): Prom
     staff: resources.map((r) => ({ id: String(r.id), name: String(r.name) })),
     payment: { mode: parsePaymentMode(row.payment), depositPercent: Number(row.deposit_percent) },
     cancelHours: Number(row.cancel_hours),
+    noShowPercent: Number(row.no_show_percent ?? 0),
     place: row.street
       ? {
           name: String(row.place_name ?? ""),

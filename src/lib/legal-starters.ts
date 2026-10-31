@@ -162,7 +162,7 @@ function shapeOf(role: StarterRole, f: LegalFacts, h: Helpers): Shape[] {
         { topic: "disputes", blocks: [p("terms.disputes.1", { check: h.check("complaintBody") })] },
         { topic: "privacy_link", blocks: [p("terms.privacy.1")] },
         ...(f.bookingsOn || f.deliveriesOn
-          ? [{ topic: "bookings_subscriptions", blocks: [...(f.bookingsOn ? [p("terms.bookings.1")] : []), ...(f.deliveriesOn ? [p("terms.bookings.2")] : [])] }]
+          ? [{ topic: "bookings_subscriptions", blocks: [...(f.bookingsOn ? [p("terms.bookings.1")] : []), ...(f.noShowFee ? [p("terms.bookings.noShow")] : []), ...(f.deliveriesOn ? [p("terms.bookings.2")] : [])] }]
           : []),
         ...(businesses ? [{ topic: "businesses", blocks: [p("terms.business.1"), p(f.returns.b2bReturns ? "terms.business.returns" : "terms.business.noreturns")] }] : []),
         { topic: "law_and_changes", blocks: [p("terms.law.1", { country: countryName }), p("terms.law.2", { check: h.check("legalReferences") }), p("terms.law.3")] },

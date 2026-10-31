@@ -618,6 +618,7 @@ async function AppointmentBooking({
               offer.payment.mode === "deposit" && m.booking.payDeposit(offer.payment.depositPercent),
               offer.payment.mode === "venue" && m.booking.payVenue,
               m.booking.freeCancel(offer.cancelHours),
+              offer.payment.mode === "deposit" && offer.noShowPercent > 0 && m.booking.noShowFee(offer.noShowPercent),
             ]
               .filter(Boolean)
               .join(" ")}

@@ -132,6 +132,7 @@ export const SV: StarterText = {
     "terms.privacy.1": "Hur vi behandlar dina personuppgifter beskrivs i vår integritetspolicy.",
     "h.terms.bookings_subscriptions": "Bokningar och prenumerationslådor",
     "terms.bookings.1": "Besök, boenden och uthyrning bokas för en bestämd tid. Du kan avboka eller flytta en bokning fram till den tidsgräns som visas när du bokar.",
+    "terms.bookings.noShow": "Om du inte kommer till en tid där du betalade handpenning kan butiken dra en avgift för uteblivet besök från kortet du betalade handpenningen med: den andel av priset som visas när du bokar, minus handpenningen. Den dras aldrig utan att butiken beslutar det.",
     "terms.bookings.2": "En prenumerationslåda levereras de dagar som visas och fortsätter tills du stoppar den. Du kan ändra, pausa eller avsluta den fram till den sista dag som visas före varje leverans.",
     "h.terms.businesses": "Köp av företag",
     "terms.business.1": "De här villkoren gäller också när ett företag köper av oss. Företag ser priser utan moms, men moms läggs till på beställningen där den gäller.",

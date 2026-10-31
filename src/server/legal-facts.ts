@@ -33,7 +33,7 @@ export async function taxFactsOf(storeId: string): Promise<{ vatNumber: string |
  * null there and becomes a visible `[[Add: …]]` placeholder in the text, never an invented sentence.
  */
 export async function legalFacts(store: Store): Promise<LegalFacts> {
-  const [rates, methodMarkets, pickups, areas, carriers, returnSettings, tax, chat] = await Promise.all([
+  const [rates, methodMarkets, pickups, areas, carriers, returnSettings, tax, chat, noShow] = await Promise.all([
     db().execute<Row>(sql`
       select market_code, currency, amount_minor, free_over_minor from commerce.shipping_rates where store_id = ${store.id}::uuid
     `),
@@ -52,6 +52,13 @@ export async function legalFacts(store: Store): Promise<LegalFacts> {
     getReturnSettings(store.id),
     taxFactsOf(store.id),
     chatWidgetFor(store.id),
+    // An active appointment with a deposit and a no-show fee (D66): the terms then say a no-show can cost it (PSI REG-12).
+    db().execute<Row>(sql`
+      select 1 from commerce.appointment_settings a
+      join commerce.products p on p.store_id = a.store_id and p.id = a.product_id and p.status = 'active'
+      where a.store_id = ${store.id}::uuid and a.payment = 'deposit' and a.no_show_percent > 0
+      limit 1
+    `),
   ]);
   const main = store.markets[0];
   const offered = new Set(store.markets.map((m) => m.code.toUpperCase()));
@@ -103,6 +110,7 @@ export async function legalFacts(store: Store): Promise<LegalFacts> {
     chatOn: chat !== null,
     // What the chat's notice tells customers an AI does with their support messages (D391), said in the privacy starter too (PSI REG-08).
     supportAi: chat?.aiUse ?? { tone: false, summaries: false },
+    noShowFee: noShow.length > 0,
     // Where the site's own pages are, in the store's main market: the withdrawal function (D153) and the cookies page.
     links: main ? { withdraw: marketPath(store.slug, main.slug, "/withdraw"), cookies: marketPath(store.slug, main.slug, "/cookies") } : {},
   });

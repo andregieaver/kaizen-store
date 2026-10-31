@@ -135,6 +135,7 @@ export const EN: StarterText = {
     "terms.privacy.1": "How we handle your personal data is described in our privacy statement.",
     "h.terms.bookings_subscriptions": "Bookings and subscription boxes",
     "terms.bookings.1": "Appointments, stays and rentals are booked for a set time. You can cancel or move a booking until the time limit shown when you book.",
+    "terms.bookings.noShow": "If you do not come to an appointment that took a deposit, the store may charge a no-show fee to the card you paid the deposit with: the share of the price shown when you book, less the deposit. It is never charged without the store deciding to.",
     "terms.bookings.2": "A subscription box is delivered on the days shown and continues until you stop it. You can change, pause or end it until the cutoff shown before each delivery.",
     "h.terms.businesses": "Purchases by businesses",
     "terms.business.1": "These terms also apply when a business buys from us. Businesses see prices without VAT, but VAT is added to the order where it applies.",
