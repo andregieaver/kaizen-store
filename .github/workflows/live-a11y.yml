@@ -1,0 +1,27 @@
+# The published site scanned with axe each day, in light and dark mode (PSI 2026-10-30 ACC-01, ACC-09; playwright.live.config.ts).
+# It reads public pages only: no secrets, no database. A failure is a finding to fix, shown on the Actions page and emailed to whoever
+# watches the repository's workflow runs.
+name: Live accessibility
+
+on:
+  schedule:
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm exec playwright test -c playwright.live.config.ts
