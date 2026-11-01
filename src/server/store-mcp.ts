@@ -249,8 +249,7 @@ async function askStoreAssistant(member: Membership, question: string, invalidat
   if (!done) return text(failed?.type === "error" ? failed.message : "The store's assistant did not answer.", true);
   return text({
     answer: done.message.content,
-    conversation: admin ? "the owner's conversation in the admin" : "Kaizen Life's conversation",
-    ...(admin && { where: `${siteUrl()}/admin/${member.store.slug}/assistant?c=${conversationId}` }),
+    ...(admin && { conversation: "the owner's conversation in the admin", where: `${siteUrl()}/admin/${member.store.slug}/assistant?c=${conversationId}` }),
     ...(approvals.length > 0 && {
       waiting_for_approval: approvals,
       where: `${siteUrl()}/admin/${member.store.slug}/assistant?c=${conversationId}`,
