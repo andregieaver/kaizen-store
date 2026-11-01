@@ -188,6 +188,7 @@ export type OrderPaymentView = {
 
 export type OrderDisputeView = {
   id: string;
+  provider: string;
   reference: string;
   amountMinor: number;
   currency: string;
@@ -199,6 +200,8 @@ export type OrderDisputeView = {
   testMode: boolean;
   openedAt: string;
   closedAt: string | null;
+  /** When evidence was sent from Kaizena Flow (D417), or null. */
+  evidenceSentAt: string | null;
 };
 
 /** An order's payments with what they were, and its disputes (D288), for the order page. */
@@ -210,8 +213,11 @@ export async function orderPaymentFacts(storeId: string, orderId: string): Promi
        order by created_at
     `),
     db().execute<Row>(sql`
-      select id, provider_reference, amount_minor, currency, reason, status, evidence_due_by, outcome, fee_minor, test_mode, opened_at, closed_at
-        from commerce.payment_disputes where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid order by opened_at
+      select d.id, d.provider, d.provider_reference, d.amount_minor, d.currency, d.reason, d.status, d.evidence_due_by, d.outcome, d.fee_minor, d.test_mode,
+        d.opened_at, d.closed_at, e.submitted_at as evidence_sent_at
+        from commerce.payment_disputes d
+        left join commerce.dispute_evidence e on e.store_id = d.store_id and e.dispute_id = d.id
+       where d.store_id = ${storeId}::uuid and d.order_id = ${orderId}::uuid order by d.opened_at
     `),
   ]);
   const iso = (v: unknown) => (v ? new Date(String(v)).toISOString() : null);
@@ -243,6 +249,8 @@ export async function orderPaymentFacts(storeId: string, orderId: string): Promi
       testMode: Boolean(d.test_mode),
       openedAt: iso(d.opened_at)!,
       closedAt: iso(d.closed_at),
+      provider: String(d.provider),
+      evidenceSentAt: iso(d.evidence_sent_at),
     })),
   };
 }

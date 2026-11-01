@@ -265,6 +265,15 @@ export const staffEmailsEn = {
     stepsWeek: "Steps done this week",
     legal: "Legal pages by the AI: {published} published, {drafted} drafts, {failed} not written.",
     note: "What it sees",
+    monthlySubject: "What the AI did{where} in {month}",
+    monthlyPreview: "The changes it made and what they moved.",
+    monthlyHeading: "What the AI did in {month}",
+    monthActions: "Changes it made",
+    monthMeasured: "Measured two weeks on",
+    monthProducts: "Sales of the products it changed, before → after",
+    monthLift: "Beyond the store's own trend (an estimate)",
+    monthAboveBelow: "{above} sold more than the store's trend, {below} less.",
+    monthCaution: "Each change is compared before and after with the store's own sales beside it; that is not proof that the change caused it.",
   },
   /** A follow-up the AI manager was asked for has run (PSI AGT-04): never the answer's words, only where to read it. */
   followUp: {

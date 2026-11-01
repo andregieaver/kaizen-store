@@ -137,6 +137,14 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   dispatcher's `autopilotBudgets`, `budgetLevel()`, emails `autopilot.budget_near` and `autopilot.budget_reached`); the plan's AI limit has its own
   warning (`sendUsageAlerts()`).
 
+## What the autopilot's changes moved (D418, `src/lib/autopilot-effects.ts`, `src/server/autopilot-effects.ts`)
+
+- **What the autopilot's changes moved (D418, `src/lib/autopilot-effects.ts`, `src/server/autopilot-effects.ts`)**: `commerce.autopilot_effects` is
+  written only by `measureAutopilotEffects()`, once per autopilot change and only after its 14 days after have passed; every figure on the Results tab,
+  in the monthly email and in a review's message is worked out by code (`effectsMonth()`, `liftMinor()`, `effectLines()`), never by a model, and every
+  text that shows one says it is a comparison of before and after, not proof. A new tool whose change is to one product goes in
+  `PRODUCT_EFFECT_TOOLS` with the argument that names it; store changes are never summed into money.
+
 ## Web research (D329, `docs/ai-autopilot.md` 13, `src/lib/web-search.ts`, `src/lib/web-page-text.ts`, `src/lib/research.ts`, `src/server/research.ts`)
 
 - **Web research (D329, `docs/ai-autopilot.md` 13, `src/lib/web-search.ts`, `src/lib/web-page-text.ts`, `src/lib/research.ts`, `src/server/research.ts`)**: searches go only through `searchWeb()` to a `SEARCH_APIS` service at its one host (`searchHostOk()`), with the platform's key from `searchConnection()` (`commerce.search_settings`, written only by `src/server/web-search-settings.ts`), each recorded as `ai_usage` of kind `search` and priced only by `per_thousand_searches`; pages are read only through `readWebPage()` (`safeFetch()`, never a plain `fetch` of an address a model chose); a note cites only addresses in `research_sources` from the last 30 days; a comparison's totals are only `compareOptions()`. A new search service is an entry of `SEARCH_APIS` (request and reader), the `search_settings_provider` check widened, and its host in `SEARCH_HOSTS`.

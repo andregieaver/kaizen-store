@@ -1104,3 +1104,33 @@ minutes becomes one event, answered once with a note, and a conversation answere
 guardrail becomes an event whose `apply_winner` is kept for a yes at *Ask me first* and runs at *Just do it*; an alert becomes an event
 whose plan waits as a review's does; another store's events are never touched; the daily limit holds.
 
+
+## 16. What its changes moved (D418)
+
+The owner asked to see what the autopilot does for the money: each change measured on the figure it was meant to move, and once a month what the AI
+did and what it earned. Built so:
+
+- **What is measured.** Every change the autopilot made itself: an audit entry with `acted_by = 'autopilot'` and action `store.assistant.{tool}`
+  (7.6). A person's change, or the AI manager's in a person's name, is never counted.
+- **On what.** A change to one product (`create_product`, `update_product`, `set_prices`, `set_product_status`, `write_product_texts`;
+  `PRODUCT_EFFECT_TOOLS`) on that product's sales, the product found by the reference the change gave (its id, handle or title, exactly one match);
+  anything else (pages, campaigns, emails, design, settings) on the store's sales. Sales are what the goods sold for without VAT: order lines of
+  paid orders (`PAID`, by `sold_at`), gift cards left out, before refunds, converted into the main currency at the store's rates.
+- **When.** Over the 14 store days before the change's day and the 14 after; the day itself is in neither, as it holds both. A change is measured
+  once, on the first hourly run after its 14 days after have passed (`measureAutopilotEffects()`, the dispatcher's `autopilotEffects`, at most 40 a
+  run), into `commerce.autopilot_effects`; a currency without a rate leaves it for a later run, until 90 days have passed.
+- **Against what.** Beside every figure, the store's own over the same days. A product change is read against the store's trend: what the product
+  would have sold had it moved as the store did (`expectedAfter()`: before × store after ÷ store before) and the difference (`liftMinor()`, an
+  estimate). A store change is its own comparison; store changes are counted, never summed into money, as two in one fortnight would claim the same
+  sales.
+- **Where it shows.** The Autopilot page's *Results* tab (a store's; Kaizena Flow's site has no sales): this month so far and last month (changes
+  made, measured, what the products changed sold before and after, beyond the store's trend, how many above and below), then each change measured.
+  On the first of a month at 08:00 in the store's time, the people whose plans ran get *What the AI did in {month}* (`autopilot_reports.kind =
+  'monthly'`), only when there was a change or a measurement. Each goal review (12) is told the store's latest eight measured changes as lines
+  written by code (`effectLines()`), so the next plan builds on what worked.
+- **What it never says.** That a change caused a rise or a fall: every text calls it a comparison of before and after. No model writes a figure;
+  the model reads the lines as data.
+
+Tests: `src/lib/autopilot-effects.test.ts` (target, windows, trend, month, review lines), `src/lib/autopilot-report.test.ts` (the monthly email),
+`src/components/admin/autopilot/autopilot-page.test.ts` (the Results tab), `src/server/autopilot-effects.int.test.ts` (a product change and a page
+change measured on a real database with the store beside them, once, never a person's or a young one, the month's summary).

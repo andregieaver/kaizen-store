@@ -271,5 +271,6 @@ export function disputeEventText(type: string, data: Record<string, unknown>, mo
   const sum = Number.isFinite(amount) && amount > 0 ? ` ${money(amount)}` : "";
   if (type === "dispute.opened") return `Disputed${sum} with the bank: ${disputeReasonWords(typeof data.reason === "string" ? data.reason : null).toLowerCase()}`;
   if (type === "dispute.closed") return data.outcome === "lost" ? `Dispute lost:${sum} taken back by the bank` : `Dispute closed in the store's favour${sum ? `:${sum} kept` : ""}`;
+  if (type === "dispute.evidence_sent") return "Evidence for the dispute sent to Stripe";
   return null;
 }

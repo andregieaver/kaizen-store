@@ -3,10 +3,13 @@ import "server-only";
 import { sql } from "drizzle-orm";
 import { z } from "zod";
 
+import { todayIn } from "@/lib/analytics-period";
 import type { AutonomySettings } from "@/lib/autopilot-autonomy";
+import { previousMonth, type EffectsMonth } from "@/lib/autopilot-effects";
 import { can, type PermissionHolder } from "@/lib/permissions";
 
 import type { Account } from "./auth";
+import { effectsOfMonth, recentEffects, type MeasuredEffect } from "./autopilot-effects";
 import { goalsWithProgress, type GoalWithProgress } from "./autopilot-goals";
 import { listPlans, loadSteps, type Plan, type PlanStep, type StepQuestion } from "./autopilot-plans";
 import { latestReport } from "./autopilot-reports";
@@ -50,6 +53,8 @@ export type AutopilotOverview = {
   report: Awaited<ReturnType<typeof latestReport>>;
   /** What the person asked the AI manager to come back to, waiting (PSI AGT-04): listed with Cancel, not only in the chat. */
   followUps: WaitingFollowUp[];
+  /** What the autopilot's changes moved (D418): this month and last, and the latest changes measured; a store's only. */
+  effects: { thisMonth: EffectsMonth; lastMonth: EffectsMonth; recent: MeasuredEffect[]; locale: string } | null;
 };
 
 const CALL = z.object({
@@ -63,7 +68,7 @@ const CALL = z.object({
 
 export async function autopilotOverview(a: OverviewActor): Promise<AutopilotOverview> {
   const scope = a.store ? sql`ap.store_id = ${a.store.id}::uuid` : sql`ap.store_id is null`;
-  const [callRows, plansAll, goals, settings, cost, progress, report, reviews, events, followUps] = await Promise.all([
+  const [callRows, plansAll, goals, settings, cost, progress, report, reviews, events, followUps, effects] = await Promise.all([
     typedRows(
       CALL,
       sql`
@@ -85,6 +90,7 @@ export async function autopilotOverview(a: OverviewActor): Promise<AutopilotOver
     latestReviews(a.store?.id ?? null),
     a.store ? latestEvents(a.store.id) : Promise.resolve(null),
     waitingFollowUps(a),
+    a.store ? effectsFor(a.store) : Promise.resolve(null),
   ]);
   const owner = !a.store || !a.holder || can(a.holder, "owner");
   const mine = plansAll.filter((p) => owner || p.accountId === a.account.id);
@@ -116,5 +122,12 @@ export async function autopilotOverview(a: OverviewActor): Promise<AutopilotOver
     unpricedCalls: cost.unpriced,
     report,
     followUps,
+    effects,
   };
+}
+
+async function effectsFor(store: Store): Promise<NonNullable<AutopilotOverview["effects"]>> {
+  const month = todayIn(new Date(), store.timeZone).slice(0, 7);
+  const [thisMonth, lastMonth, recent] = await Promise.all([effectsOfMonth(store, month), effectsOfMonth(store, previousMonth(month)), recentEffects(store.id, 20)]);
+  return { thisMonth: thisMonth.summary, lastMonth: lastMonth.summary, recent, locale: store.markets[0]?.locale ?? "en-GB" };
 }

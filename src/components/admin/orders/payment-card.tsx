@@ -28,6 +28,8 @@ export type PaymentCardPayment = {
 
 export type PaymentCardDispute = {
   id: string;
+  /** `stripe` or `mollie`: Stripe's disputes are answered from Kaizena Flow (D417). */
+  provider?: string;
   reference: string;
   amountMinor: number;
   currency: string;
@@ -37,20 +39,24 @@ export type PaymentCardDispute = {
   outcome: "won" | "lost" | null;
   feeMinor: number | null;
   testMode: boolean;
+  evidenceSentAt?: string | null;
 };
 
 /**
  * The order's payment on its page (wave 4 unit A, D288, `docs/wave-4-payments.md` 3): how it was paid as Stripe said (*Unknown* until read), Stripe's
- * risk outcome when it is elevated or highest, and each dispute with its reason, status, deadline in the store's time zone and the link to the store's
- * Stripe Dashboard, where evidence is sent. Nothing is guessed.
+ * risk outcome when it is elevated or highest, and each dispute with its reason, status, deadline in the store's time zone, the link to the store's
+ * Stripe Dashboard, and for a Stripe dispute that asks for an answer the chargeback assistant (D417), or when its evidence was sent. Nothing is guessed.
  */
 export function PaymentCard({
   payments,
   disputes,
   money,
   due,
+  evidenceHref,
   words: w = orderEn.payment,
 }: {
+  /** The chargeback assistant's page for a dispute (D417); left out, no link is drawn. */
+  evidenceHref?: (disputeId: string) => string;
   /** The `order` catalogue's `payment` words in the account's language (D312 A4). */
   words?: OrderMessages["payment"];
   payments: readonly PaymentCardPayment[];
@@ -110,7 +116,16 @@ export function PaymentCard({
               </div>
             )}
           </dl>
-          {!d.outcome && <p className="text-xs text-muted">{w.evidenceNote}</p>}
+          {d.evidenceSentAt ? (
+            <p className="text-xs text-muted">{fillWords(w.evidenceSent, { when: due(d.evidenceSentAt) })}</p>
+          ) : (
+            !d.outcome && <p className="text-xs text-muted">{w.evidenceNote}</p>
+          )}
+          {evidenceHref && (d.provider ?? "stripe") === "stripe" && !d.outcome && !d.evidenceSentAt && disputeNeedsResponse(d.status) && (
+            <a href={evidenceHref(d.id)} className="mt-1 inline-flex min-h-10 items-center self-start rounded-pill bg-brand px-4 font-medium text-brand-ink">
+              {w.prepareEvidence}
+            </a>
+          )}
           <a href={disputeDashboardUrl(d.reference, d.testMode)} target="_blank" rel="noreferrer" className="mt-1 inline-flex min-h-10 items-center self-start rounded-pill border border-edge px-4">
             {w.openInStripe}
           </a>

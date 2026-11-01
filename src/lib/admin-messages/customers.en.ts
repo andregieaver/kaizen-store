@@ -17,6 +17,7 @@ export const customersEn = {
     orders: { one: "{n} order", many: "{n} orders" },
     subscriptions: { one: "{n} active subscription", many: "{n} active subscriptions" },
     spent: "{amount} spent",
+    returnsOften: "Returns often: {returned} of {orders} orders in the last year",
   },
   list: {
     title: "Customers",

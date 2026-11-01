@@ -62,3 +62,33 @@ describe("the weekly report", () => {
     expect(checkedNote("")).toBeNull();
   });
 });
+
+describe("the monthly report (D418)", () => {
+  const monthly: ReportFacts = {
+    kind: "monthly",
+    store: "Demo",
+    stepsDone: [],
+    stepsDoneCount: 0,
+    waiting: 0,
+    effects: { month: "October 2026", actions: 9, measured: 4, products: 3, before: "kr 3 000,00", after: "kr 3 900,00", lift: "+kr 200,00", above: 2, below: 1 },
+  };
+
+  it("says what the AI changed and what the products it changed sold, with the caution that it is no proof", () => {
+    const en = text(monthly);
+    expect(en).toContain("What the AI did in Demo in October 2026");
+    expect(en).toContain('"label":"Changes it made","value":"9"');
+    expect(en).toContain('"label":"Measured two weeks on","value":"4"');
+    expect(en).toContain("kr 3 000,00 → kr 3 900,00");
+    expect(en).toContain('"label":"Beyond the store\'s own trend (an estimate)","value":"+kr 200,00"');
+    expect(en).toContain("2 sold more than the store's trend, 1 less.");
+    expect(en).toContain("that is not proof that the change caused it");
+    expect(text(monthly, null, true)).toContain("Det KI gjorde i Demo i October 2026");
+  });
+
+  it("leaves out what was not measured", () => {
+    const bare = text({ ...monthly, effects: { ...monthly.effects!, measured: 0, products: 0, before: null, after: null, lift: null, above: 0, below: 0 } });
+    expect(bare).not.toContain("Sales of the products");
+    expect(bare).not.toContain("Beyond the store");
+    expect(bare).not.toContain("sold more than");
+  });
+});

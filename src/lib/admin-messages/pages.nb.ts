@@ -44,6 +44,10 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     title: "Vilkår slik de ble vist",
     keywords: ["vilkår", "godtatte vilkår", "salgsbetingelser", "personvernerklæring", "hva kunden godtok"],
   },
+  "store:order.dispute": {
+    title: "Svar på tilbakeføringen",
+    keywords: ["tilbakeføring", "chargeback", "bevis", "bank", "svindelkrav", "dispute"],
+  },
   "store:returns": {
     title: "Returer",
     keywords: ["returer", "retur", "angrerett", "angrefrist", "sende tilbake", "returforespørsel", "tilbakebetaling"],

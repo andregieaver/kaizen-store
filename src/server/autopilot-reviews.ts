@@ -17,11 +17,14 @@ import {
   startDecision,
   type ReviewPlan,
 } from "@/lib/autopilot-reviews";
+import { effectLines } from "@/lib/autopilot-effects";
+import { formatMoney } from "@/lib/money";
 import { can } from "@/lib/permissions";
 
 import { noticeApproval } from "./assistant-notices";
 import { actingAs } from "./actor";
 import { aiFor, type AiConnection } from "./ai";
+import { recentEffects } from "./autopilot-effects";
 import { goalsWithProgress } from "./autopilot-goals";
 import { loadSteps, startPlanByAutopilot, stopPlanIn, type PlanActor } from "./autopilot-plans";
 import { principalOf } from "./autopilot-runner";
@@ -207,7 +210,9 @@ async function reviewGoal(reviewId: string, due: Due, deps: ReviewDeps): Promise
     z.object({ outcome: col.textOrNull }),
     sql`select outcome from commerce.autopilot_reviews where goal_id = ${goal.id}::uuid and id <> ${reviewId}::uuid and status <> 'running' order by created_at desc limit 1`,
   );
-  const message = reviewMessage(goal, goal.progress, await plansOfGoal(goal.id), last?.outcome ?? null);
+  // What the autopilot's latest changes here moved (D418), so the next plan builds on what worked.
+  const effects = p.store ? effectLines(await recentEffects(p.store.id, 8), (minor, currency) => formatMoney(minor, currency, "en-GB")) : [];
+  const message = reviewMessage(goal, goal.progress, await plansOfGoal(goal.id), last?.outcome ?? null, effects);
   const startedAt = await typedRow(z.object({ at: col.timestamp }), sql`select now() as at`);
 
   const connection = deps.connection !== undefined ? deps.connection : await aiFor(due.store_id, { feature: "autopilot", accountId: p.account.id });

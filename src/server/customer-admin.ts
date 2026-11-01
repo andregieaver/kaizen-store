@@ -5,6 +5,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import type { SubscriptionStatus } from "@/lib/subscriptions";
 
+import { customerReturns, type CustomerReturns } from "./dispute-evidence";
 import type { Address, OrderStatus } from "./orders";
 
 type Row = Record<string, unknown>;
@@ -72,13 +73,15 @@ export type CustomerSummary = CustomerRef & {
   orders: number;
   liveSubscriptions: number;
   spentMinor: Record<string, number>;
+  /** Their last year's orders and how many had a return or a refund (D417): the bar says when they return often. */
+  returns: CustomerReturns;
 };
 
 /** For the bar on order and subscription pages: who, and how much they have bought. */
 export async function customerSummary(storeId: string, id: string): Promise<CustomerSummary | null> {
   const ref = await findCustomer(storeId, id);
   if (!ref) return null;
-  const [row] = await db().execute<Row>(sql`
+  const [[row], returns] = await Promise.all([db().execute<Row>(sql`
     select
       (select c.name from commerce.customers c where c.id = ${ref.customerId}::uuid) as account_name,
       (select c.avatar_path from commerce.customers c where c.id = ${ref.customerId}::uuid) as avatar_path,
@@ -97,7 +100,7 @@ export async function customerSummary(storeId: string, id: string): Promise<Cust
         where o.store_id = ${storeId}::uuid and (lower(o.email) = ${ref.email} or o.customer_id = ${ref.customerId}::uuid)
           and o.copied_from is null and o.status in ('paid', 'fulfilled', 'closed') and o.restricted_at is null and o.anonymised_at is null
         group by o.currency) t) as spent
-  `);
+  `), customerReturns(storeId, ref)]);
   return {
     ...ref,
     name: String(row.account_name || row.order_name || ""),
@@ -106,6 +109,7 @@ export async function customerSummary(storeId: string, id: string): Promise<Cust
     orders: Number(row.orders),
     liveSubscriptions: Number(row.live),
     spentMinor: (row.spent ?? {}) as Record<string, number>,
+    returns,
   };
 }
 

@@ -121,6 +121,8 @@ export type OrderRow = {
   terms: { mode: string; acceptedAt: Ts; locale: string | null } | null;
   /** Bought on payment terms for the buyer's company (D293): the terms, the day it was due, the reminders' days and when it was paid. */
   paymentTerms?: { terms: string; dueOn: string; reminderSentAt: Ts; overdueSentAt: Ts; paidAt: Ts } | null;
+  /** Evidence the store prepared for a dispute on the order (D417), and when it was sent to Stripe; only on an order that has some. */
+  disputeEvidence?: { sentAt: Ts; fields: Record<string, string> }[];
   events: { type: string; createdAt: Ts; reason: string | null; note: string | null }[];
 };
 

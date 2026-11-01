@@ -85,8 +85,11 @@ export type ReviewPlan = {
   steps: { title: string; status: string; done?: string; problem?: string }[];
 };
 
-/** The review turn's message: the goal, its progress (written by code), its last plans and the last review, as data. */
-export function reviewMessage(goal: ReviewGoal, progress: readonly ReviewProgress[], plans: readonly ReviewPlan[], lastOutcome: string | null): string {
+/**
+ * The review turn's message: the goal, its progress (written by code), its last plans, the last review and, for a store, what its latest changes
+ * measured two weeks on moved (D418, `effectLines()`, written by code), as data.
+ */
+export function reviewMessage(goal: ReviewGoal, progress: readonly ReviewProgress[], plans: readonly ReviewPlan[], lastOutcome: string | null, effects: readonly string[] = []): string {
   const targets = progress.map((t) => `- ${t.target}: ${t.met === null ? `not measured${t.missing ? ` (${t.missing})` : ""}` : `${t.now}${t.met ? " (met)" : ""}`}`);
   const planLines = plans.slice(0, REVIEW_PLANS_SHOWN).flatMap((plan) => [
     `- "${plan.title}": ${plan.status}${plan.finishedAt ? ` (${plan.finishedAt.slice(0, 10)})` : ""}`,
@@ -102,6 +105,9 @@ export function reviewMessage(goal: ReviewGoal, progress: readonly ReviewProgres
     "",
     ...(planLines.length ? ["The latest plans for this goal:", ...planLines] : ["No plan has been made for this goal yet."]),
     ...(lastOutcome ? ["", `Your last review said: ${lastOutcome}`] : []),
+    ...(effects.length
+      ? ["", "What the autopilot's latest changes in this store moved, measured two weeks on (a comparison of before and after, not proof of cause):", ...effects]
+      : []),
     "",
     `Look with your tools at what matters most for this goal now, then make the one plan that moves it forward most with make_autopilot_plan (goal ${goal.id}), or say in one sentence why nothing should be done now.`,
   ].join("\n");

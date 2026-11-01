@@ -24,6 +24,7 @@ import { runDataJobs } from "@/server/data-jobs";
 import { refreshEmbeddings } from "@/server/embeddings";
 import { runExperimentJobs } from "@/server/experiment-jobs";
 import { runFollowUps } from "@/server/follow-up-runner";
+import { measureAutopilotEffects } from "@/server/autopilot-effects";
 import { sendAutopilotReports } from "@/server/autopilot-reports";
 import { sendScheduledReports } from "@/server/report-schedules";
 import { invoiceJobs } from "@/server/invoice-issue";
@@ -160,6 +161,8 @@ async function dispatch() {
     followUps: () => runFollowUps(),
     // The autopilot's daily digests and weekly reports (D309), to the people whose plans ran lately.
     autopilotReports: () => sendAutopilotReports(),
+    // What the autopilot's changes moved (D418): once an hour, a few changes made two weeks or more ago measured on the figure each was meant to move.
+    autopilotEffects: () => measureAutopilotEffects(),
     // The autopilot's own AI budget (PSI AST-07): owners told once a month when it nears 80 % and again when it is spent.
     autopilotBudgets: () => sendAutopilotBudgetAlerts(),
     // Saved reports emailed on their schedules (D395), each once a store day.

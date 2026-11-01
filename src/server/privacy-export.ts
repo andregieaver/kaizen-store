@@ -166,7 +166,7 @@ async function loadOrders(s: PrivacySubject): Promise<OrderRow[]> {
   if (s.orderIds.length === 0) return [];
   const ids = uuidList(s.orderIds);
   const store = s.storeId;
-  const [orders, lines, payments, refunds, shipments, downloads, terms, events, bookings, tags, parcelLines, changes, tracking, onTerms] = await Promise.all([
+  const [orders, lines, payments, refunds, shipments, downloads, terms, events, bookings, tags, parcelLines, changes, tracking, onTerms, evidence] = await Promise.all([
     db().execute<Row>(sql`
       select o.id, o.number, o.placed_at, o.status, trim(o.currency) as currency, o.subtotal_minor, o.shipping_minor, o.discount_minor,
         o.member_discount_minor, o.campaign_discount_minor, o.credit_minor, o.referral_discount_minor, o.vat_relief_minor, o.tax_minor, o.total_minor,
@@ -228,6 +228,12 @@ async function loadOrders(s: PrivacySubject): Promise<OrderRow[]> {
       select order_id, terms, due_on::text as due_on, reminder_sent_at, overdue_sent_at, paid_at from commerce.order_payment_terms
       where store_id = ${store}::uuid and order_id = any(${ids})
     `),
+    // D417: the evidence prepared for a dispute on the order (emptied when the order is anonymised).
+    db().execute<Row>(sql`
+      select d.order_id, e.fields, e.submitted_at from commerce.dispute_evidence e
+      join commerce.payment_disputes d on d.store_id = e.store_id and d.id = e.dispute_id
+      where e.store_id = ${store}::uuid and d.order_id = any(${ids}) and e.fields <> '{}'::jsonb order by e.created_at
+    `),
   ]);
   const group = <T extends Row>(rows: T[], key: string) => {
     const map = new Map<string, T[]>();
@@ -249,6 +255,7 @@ async function loadOrders(s: PrivacySubject): Promise<OrderRow[]> {
     tags: group(tags, "order_id"),
     parcelLines: group(parcelLines, "shipment_id"),
     changes: group(changes, "order_id"),
+    evidence: group(evidence, "order_id"),
   };
   const termsOf = new Map(terms.map((x) => [strs(x.order_id), x]));
   const paymentTermsOf = new Map(onTerms.map((x) => [strs(x.order_id), x]));
@@ -331,6 +338,14 @@ async function loadOrders(s: PrivacySubject): Promise<OrderRow[]> {
       downloads: (byOrder.downloads.get(id) ?? []).map((d) => ({ fileName: str(d.file_name), downloads: num(d.downloads) })),
       terms: term ? { mode: strs(term.mode), acceptedAt: iso(term.accepted_at), locale: str(term.locale) } : null,
       ...(paymentTermsOf.has(id) ? { paymentTerms: paymentTermsOfRow(paymentTermsOf.get(id)!) } : {}),
+      ...(byOrder.evidence.has(id)
+        ? {
+            disputeEvidence: byOrder.evidence.get(id)!.map((e) => ({
+              sentAt: iso(e.submitted_at),
+              fields: Object.fromEntries(Object.entries((e.fields ?? {}) as Record<string, unknown>).filter(([, v]) => typeof v === "string" && v !== "")) as Record<string, string>,
+            })),
+          }
+        : {}),
       events: (byOrder.events.get(id) ?? []).map((e) => ({ type: strs(e.type), createdAt: iso(e.created_at), reason: str(e.reason), note: str(e.note) })),
     };
   });

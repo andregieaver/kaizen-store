@@ -178,6 +178,11 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["terms accepted", "terms snapshot", "privacy statement", "what the customer agreed to"],
     feature: "shop",
   }),
+  store("order.dispute", "/orders/[orderId]/dispute/[disputeId]", "Answer the dispute", "Main", "The chargeback assistant (D417): a Stripe dispute's evidence drafted from the order (who bought, where it went, how it was delivered, the terms accepted, refunds and the customer's messages), for you to read, change and send to Stripe with a tick that it is true.", {
+    tasks: ["Read and change the drafted evidence", "Save a draft", "Send the evidence to Stripe"],
+    keywords: ["chargeback", "dispute", "evidence", "bank", "fraud claim", "tilbakeføring"],
+    feature: "shop",
+  }),
   store("returns", "/returns", "Returns", "Main", "Customers' withdrawals from a purchase (the legal right to change their mind) and return requests inside the store's own window: a queue with what is overdue, to approve, to receive and to refund.", {
     tasks: ["See what is past its refund deadline (?overdue=1)", "See return requests to answer (?status=requested)", "Search by return, order, name or email (?q=)", "Open a return and work it to a refund"],
     keywords: ["return", "withdrawal", "withdraw", "right of withdrawal", "angrerett", "refund deadline", "send back", "14 days", "return request", "RMA"],

@@ -802,6 +802,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
             disputes={paymentFacts.disputes}
             money={(minor, currency) => formatMoney(minor, currency, locale)}
             due={(iso) => dueWords(new Date(iso), store.timeZone)}
+            evidenceHref={(disputeId) => `/admin/${store.slug}/orders/${order.id}/dispute/${disputeId}`}
             words={words.payment}
           />
           <TagsCard tags={order.tags} suggestions={tagChoices.map((t) => t.label)} canWrite={canWrite} change={changeTagsAction.bind(null, store.slug, order.id)} />

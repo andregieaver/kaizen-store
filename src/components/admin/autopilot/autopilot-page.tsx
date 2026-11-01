@@ -12,6 +12,8 @@ import { FINISHED_STEPS } from "@/lib/autopilot-plans";
 import type { AutopilotOverview } from "@/server/autopilot-overview";
 import type { Plan, PlanStep } from "@/server/autopilot-plans";
 
+import { AutopilotResults } from "./autopilot-results";
+
 /**
  * The Autopilot page (D309, `docs/ai-autopilot.md` 7.5), a store's and Kaizena Flow's: Decisions first (what waits on the owner, each with its
  * buttons), then Plans, Goals and Settings, one deliberate step away. Words from the `assistant` catalogue's `autopilot`; the plans' own
@@ -22,7 +24,7 @@ type Action = { (state: FormState, form: FormData): Promise<FormState> };
 
 export type AutopilotActions = { decide: Action; answer: Action; plan: Action; dropGoal: Action; settings: Action; cancelFollowUp: Action };
 
-export const AUTOPILOT_TABS = ["decisions", "plans", "goals", "settings"] as const;
+export const AUTOPILOT_TABS = ["decisions", "plans", "goals", "results", "settings"] as const;
 export type AutopilotTab = (typeof AUTOPILOT_TABS)[number];
 
 export function AutopilotPage({
@@ -54,7 +56,7 @@ export function AutopilotPage({
     <div className="flex flex-col gap-4">
       <PageHeader back={{ href: assistantHref, label: w.name }} title={a.title} description={fillWords(a.description, { site: siteName })} />
       <nav aria-label={a.title} className="flex flex-wrap gap-1">
-        {AUTOPILOT_TABS.map((t) => (
+        {AUTOPILOT_TABS.filter((t) => t !== "results" || overview.effects).map((t) => (
           <Link key={t} href={t === "decisions" ? base : `${base}?tab=${t}`} className={tabClass(tab === t)} aria-current={tab === t ? "page" : undefined}>
             {a.tabs[t]}
             {t === "decisions" && waiting > 0 ? ` (${waiting})` : ""}
@@ -71,6 +73,7 @@ export function AutopilotPage({
       {tab === "decisions" && overview.events && overview.events.length > 0 && <Events events={overview.events} words={a} />}
       {tab === "plans" && <Plans plans={overview.plans} words={a} action={actions.plan} assistantHref={assistantHref} />}
       {tab === "goals" && <Goals goals={overview.goals} reviews={overview.reviews} words={a} action={actions.dropGoal} />}
+      {tab === "results" && overview.effects && <AutopilotResults effects={overview.effects} words={a} />}
       {tab === "settings" && <Settings overview={overview} words={a} action={actions.settings} />}
     </div>
   );

@@ -106,6 +106,36 @@ describe("a dispute", () => {
 
   it("is never copied with a store", () => {
     expect(COPY_RULES.payment_disputes.group).toBe("never");
+    expect(COPY_RULES.dispute_evidence.group).toBe("never");
+  });
+});
+
+describe("the evidence for a dispute (D417)", () => {
+  const evidence = (dispute: string, fields: unknown = { customer_name: "Kari" }) =>
+    db.query("insert into commerce.dispute_evidence (dispute_id, store_id, fields) values ($1, $2, $3)", [dispute, store, fields]);
+
+  it("is one draft per dispute of the store, an object of fields", async () => {
+    const a = await paidOrder();
+    const id = ((await dispute(a.order.id, a.payment)).rows[0] as { id: string }).id;
+    await expect(evidence(id, [])).rejects.toThrow(/dispute_evidence_fields/);
+    await evidence(id);
+    await expect(evidence(id)).rejects.toThrow(/dispute_evidence_pkey/);
+    const other = await createInvoiceStore(db, "pf-ev-other");
+    await expect(db.query("insert into commerce.dispute_evidence (dispute_id, store_id, fields) values ($1, $2, '{}')", [id, other])).rejects.toThrow(/dispute_evidence_dispute_fk|dispute_evidence_pkey/);
+  });
+
+  it("keeps evidence sent to Stripe as it was sent: it can be given back unsent, emptied, but not changed", async () => {
+    const a = await paidOrder();
+    const id = ((await dispute(a.order.id, a.payment)).rows[0] as { id: string }).id;
+    await evidence(id);
+    await rejects("update commerce.dispute_evidence set submitted_by = (select id from commerce.accounts limit 1) where dispute_id = $1", [id], /dispute_evidence_submitted/);
+    await db.query("update commerce.dispute_evidence set submitted_at = now() where dispute_id = $1", [id]);
+    await rejects(`update commerce.dispute_evidence set fields = '{"customer_name":"Ola"}' where dispute_id = $1`, [id], /dispute_evidence.sent/);
+    // Stripe refused: the claim is given back with the fields as they were.
+    await db.query("update commerce.dispute_evidence set submitted_at = null where dispute_id = $1", [id]);
+    await db.query(`update commerce.dispute_evidence set fields = '{"customer_name":"Ola"}', submitted_at = now() where dispute_id = $1`, [id]);
+    await db.query("update commerce.dispute_evidence set fields = '{}' where dispute_id = $1", [id]);
+    expect(await scalar("select fields from commerce.dispute_evidence where dispute_id = $1", [id])).toEqual({});
   });
 });
 

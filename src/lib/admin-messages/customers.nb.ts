@@ -13,6 +13,7 @@ export const customersNb: CustomersMessages = {
     orders: { one: "{n} ordre", many: "{n} ordrer" },
     subscriptions: { one: "{n} aktivt abonnement", many: "{n} aktive abonnementer" },
     spent: "{amount} handlet for",
+    returnsOften: "Returnerer ofte: {returned} av {orders} bestillinger det siste året",
   },
   list: {
     title: "Kunder",

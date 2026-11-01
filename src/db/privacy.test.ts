@@ -469,6 +469,19 @@ describe("anonymising and restricting orders", () => {
     await rejects("update commerce.orders set anonymised_at = now() where id = $1", [(await sale(shops.SE, YEAR - 1)).id], /orders_anonymised/);
   });
 
+  it("empties the evidence prepared for a dispute (D417) when its order is anonymised, keeping the record that it was sent", async () => {
+    const o = await sale(shops.NO, YEAR - 7);
+    const payment = await scalar<string>("select id from commerce.payments where order_id = $1", [o.id]);
+    const dispute = await scalar<string>(
+      `insert into commerce.payment_disputes (store_id, order_id, payment_id, provider, provider_reference, amount_minor, currency, reason, status, opened_at)
+       select store_id, order_id, id, 'stripe', 'dp_gdpr_1', amount_minor, currency, 'fraudulent', 'under_review', now() from commerce.payments where id = $1 returning id`,
+      [payment],
+    );
+    await db.query("insert into commerce.dispute_evidence (dispute_id, store_id, fields, submitted_at) values ($1, $2, $3, now())", [dispute, shops.NO, { customer_name: "Kari Nordmann", customer_email_address: "kari@example.com" }]);
+    expect(await erase(shops.NO, o.id)).toBe("anonymised");
+    expect(await one("select fields, submitted_at is not null as sent from commerce.dispute_evidence where dispute_id = $1", [dispute])).toEqual({ fields: {}, sent: true });
+  });
+
   it("removes the free text staff typed (a refund's reason, an event's reason or note) with the order, and still refuses every other change to an event", async () => {
     const o = await sale(shops.NO, YEAR - 9, { email: "kari@example.com" });
     const refundId = await refund(db, o.id, 500);

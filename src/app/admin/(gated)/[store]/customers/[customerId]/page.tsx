@@ -21,6 +21,7 @@ import { exportProblemOf } from "@/lib/privacy-admin";
 import { ORDER_STATUS_SIGNAL } from "@/lib/order-status";
 import { featureOn } from "@/lib/store-features";
 import { customerAffiliate } from "@/server/affiliates";
+import { customerReturns } from "@/server/dispute-evidence";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { avatarFor } from "@/server/avatars";
 import { getBonusSettings, customerBonus } from "@/server/bonus";
@@ -64,7 +65,7 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
   if (!ref) notFound();
   // An order's or subscription's id finds its customer; the page lives at the customer's own address.
   if (ref.key !== customerId) redirect(`/admin/${store.slug}/customers/${ref.key}`);
-  const [customer, emails, groups, privacy, tags, notes, formValues] = await Promise.all([
+  const [customer, emails, groups, privacy, tags, notes, formValues, returns] = await Promise.all([
     getCustomerDetail(store.id, ref),
     listEmails({ storeId: store.id, to: ref.email, limit: 20 }),
     listTiers(store.id),
@@ -74,6 +75,8 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
     // Staff's own notes on the person and the details as the edit form starts (wave 10 unit C, D366).
     notesOf(store.id, ref.email, member.account.id),
     ref.customerId ? staffFormValues(store.id, ref.customerId) : Promise.resolve(null),
+    // Whether they return a lot (D417): a chip under the name, the same as on their orders.
+    customerReturns(store.id, ref),
   ]);
   const mayTag = memberCan(member, "customers:write");
   if (!customer) notFound();
@@ -121,6 +124,14 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
           ) : undefined
         }
       />
+
+      {returns.often && (
+        <p>
+          <Chip signal="warning" dot>
+            {fillWords(all.bar.returnsOften, { returned: returns.returned, orders: returns.orders })}
+          </Chip>
+        </p>
+      )}
 
       {merged && <p role="status" className={`p-4 text-sm ${CARD_CLASS}`}>{all.staff.merge.merged}</p>}
 

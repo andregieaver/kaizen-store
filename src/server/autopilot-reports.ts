@@ -7,6 +7,7 @@ import { db } from "@/db/client";
 import { adminLangOf, ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { addDays, customPeriod, startOfWeek, todayIn } from "@/lib/analytics-period";
+import { previousMonth, signedMoney } from "@/lib/autopilot-effects";
 import { autopilotEmail, checkedNote, digestWorthSending, reportFactsSchema, STEPS_LISTED, type ReportFacts } from "@/lib/autopilot-report";
 import { renderEmail } from "@/lib/email-layout";
 import { mainCurrency } from "@/lib/markets";
@@ -18,6 +19,7 @@ import { addNotice } from "./assistant-notices";
 import { aiFor, AiError, completeText, type AiConnection } from "./ai";
 import { periodTotals } from "./analytics-totals";
 import { activeAccount, passMembership, type Account } from "./auth";
+import { effectsOfMonth } from "./autopilot-effects";
 import { goalsWithProgress } from "./autopilot-goals";
 import { aiBudgetSpent, autonomyFor } from "./autopilot-settings";
 import { sendEmail, type OutgoingEmail, type SendOutcome } from "./email";
@@ -44,13 +46,13 @@ export type ReportDeps = {
   connection?: AiConnection | null;
 };
 
-export type ReportRun = { daily: number; weekly: number };
+export type ReportRun = { daily: number; weekly: number; monthly: number };
 
 const RECIPIENT = z.object({ store_id: col.uuid.nullable(), account_id: col.uuid, slug: col.textOrNull, time_zone: col.textOrNull });
 
 export async function sendAutopilotReports(deps: ReportDeps = {}): Promise<ReportRun> {
   const now = deps.now ?? new Date();
-  const run: ReportRun = { daily: 0, weekly: 0 };
+  const run: ReportRun = { daily: 0, weekly: 0, monthly: 0 };
   const recipients = await typedRows(
     RECIPIENT,
     sql`
@@ -62,7 +64,7 @@ export async function sendAutopilotReports(deps: ReportDeps = {}): Promise<Repor
     `,
   );
   for (const r of recipients) {
-    if (run.daily + run.weekly >= PER_RUN) break;
+    if (run.daily + run.weekly + run.monthly >= PER_RUN) break;
     try {
       const who = await recipientOf(r);
       if (!who) continue;
@@ -75,6 +77,11 @@ export async function sendAutopilotReports(deps: ReportDeps = {}): Promise<Repor
       }
       if (hour >= DIGEST_HOUR) {
         if (await sendOne(who, "daily", today, now, deps)) run.daily++;
+      }
+      // What the AI did last month (D418): a store's, from the first of the month at the weekly report's hour, within its first week.
+      const dayOfMonth = Number(today.slice(8));
+      if (who.store && dayOfMonth <= 7 && (hour >= WEEKLY_HOUR || dayOfMonth !== 1)) {
+        if (await sendOne(who, "monthly", `${previousMonth(today.slice(0, 7))}-01`, now, deps)) run.monthly++;
       }
     } catch (error) {
       log("error", "autopilot.report_failed", { store: r.store_id, account: r.account_id }, error);
@@ -152,6 +159,26 @@ async function figures(store: Store, today: string): Promise<Pick<ReportFacts, "
   return { sales: { now: net(now), before: net(before) }, orders: { now: count(now), before: count(before) } };
 }
 
+/** The month's changes and what the measured ones moved (D418), money written by code in the store's main currency. */
+async function monthFacts(store: Store, month: string, lang: ReturnType<typeof adminLangOf>): Promise<NonNullable<ReportFacts["effects"]>> {
+  const { summary } = await effectsOfMonth(store, month);
+  const locale = store.markets[0]?.locale ?? "en-GB";
+  const money = (minor: number) => formatMoney(minor, summary.currency, locale);
+  const [y, m] = month.split("-").map(Number);
+  const name = new Intl.DateTimeFormat(ADMIN_LANG_FACTS[lang].locale, { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(Date.UTC(y, m - 1, 15)));
+  return {
+    month: name,
+    actions: summary.actions,
+    measured: summary.measured,
+    products: summary.products,
+    before: summary.products > 0 ? money(summary.beforeMinor) : null,
+    after: summary.products > 0 ? money(summary.afterMinor) : null,
+    lift: summary.liftMinor === null ? null : signedMoney(summary.liftMinor, money),
+    above: summary.above,
+    below: summary.below,
+  };
+}
+
 /** A few sentences on concerns and next steps, from the facts only; null without a model, past the budget, or when they fail the checks. */
 async function noteFor(who: Recipient, facts: ReportFacts, deps: ReportDeps): Promise<string | null> {
   const storeId = who.store?.id ?? null;
@@ -184,16 +211,23 @@ async function noteFor(who: Recipient, facts: ReportFacts, deps: ReportDeps): Pr
 }
 
 /** One digest or report: facts gathered, the period claimed, the email sent. True when one went. */
-async function sendOne(who: Recipient, kind: "daily" | "weekly", periodStart: string, now: Date, deps: ReportDeps): Promise<boolean> {
+async function sendOne(who: Recipient, kind: "daily" | "weekly" | "monthly", periodStart: string, now: Date, deps: ReportDeps): Promise<boolean> {
   const storeId = who.store?.id ?? null;
   const exists = await typedRow(
     z.object({ id: col.uuid }),
     sql`select id from commerce.autopilot_reports where ${scopeOf(who.store)} and account_id = ${who.account.id}::uuid and kind = ${kind} and period_start = ${periodStart}::date`,
   );
   if (exists) return false;
-  const work = await workFacts(who, kind === "daily" ? 1 : 7);
+  const work = await workFacts(who, kind === "daily" ? 1 : kind === "weekly" ? 7 : 31);
   if (kind === "daily" && !digestWorthSending(work)) return false;
   const facts: ReportFacts = { kind, store: who.store?.name ?? null, ...work };
+  if (kind === "monthly") {
+    if (!who.store) return false;
+    const effects = await monthFacts(who.store, periodStart.slice(0, 7), adminLangOf(who.account.adminLocale ?? null));
+    // Nothing done and nothing measured: no email.
+    if (effects.actions === 0 && effects.measured === 0) return false;
+    facts.effects = effects;
+  }
   if (kind === "weekly") {
     if (who.store) Object.assign(facts, await figures(who.store, todayIn(now, who.store.timeZone)));
     const goals = await goalsWithProgress(who, { now });
@@ -217,7 +251,7 @@ async function sendOne(who: Recipient, kind: "daily" | "weekly", periodStart: st
   try {
     await (deps.send ?? sendEmail)({
       storeId,
-      kind: kind === "daily" ? "autopilot.digest" : "autopilot.weekly",
+      kind: kind === "daily" ? "autopilot.digest" : kind === "weekly" ? "autopilot.weekly" : "autopilot.monthly",
       to: who.account.email,
       email: renderEmail(autopilotEmail(facts, url, note, adminText(lang, "staffEmails"), lang)),
       fromName: "Kaizena Flow",

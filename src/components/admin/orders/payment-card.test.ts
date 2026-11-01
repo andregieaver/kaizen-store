@@ -61,6 +61,22 @@ describe("the order's Payment card (D288)", () => {
     expect(lost).not.toContain("Evidence due");
   });
 
+  it("offers the chargeback assistant for a Stripe dispute that asks for an answer, and says when evidence was sent (D417)", () => {
+    const href = (id: string) => `/admin/s/orders/o1/dispute/${id}`;
+    const open = renderToString(h(PaymentCard, { payments: [payment()], disputes: [dispute()], money, due: () => "Thu 29 Oct", evidenceHref: href }));
+    expect(open).toContain('href="/admin/s/orders/o1/dispute/d1"');
+    expect(text(open)).toContain("Prepare the evidence");
+    expect(text(open)).toContain("Without evidence the dispute is lost.");
+    const sent = text(renderToString(h(PaymentCard, { payments: [], disputes: [dispute({ evidenceSentAt: "2026-10-20T10:00:00.000Z" })], money, due: () => "Tue 20 Oct", evidenceHref: href })));
+    expect(sent).toContain("Evidence sent Tue 20 Oct");
+    expect(sent).not.toContain("Prepare the evidence");
+    // Not for a dispute under review, a closed one or a Mollie chargeback, and not without the page's address.
+    for (const d of [dispute({ status: "under_review" }), dispute({ status: "lost", outcome: "lost" }), dispute({ provider: "mollie" })]) {
+      expect(text(renderToString(h(PaymentCard, { payments: [], disputes: [d], money, due: () => "", evidenceHref: href })))).not.toContain("Prepare the evidence");
+    }
+    expect(text(renderToString(h(PaymentCard, { payments: [], disputes: [dispute()], money, due: () => "" })))).not.toContain("Prepare the evidence");
+  });
+
   it("draws nothing for an order with no payment", () => {
     expect(renderToString(h(PaymentCard, { payments: [], disputes: [], money, due: () => "" }))).toBe("");
   });

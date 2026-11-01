@@ -187,6 +187,8 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - Live and revenue after a search (wave 8 unit C, D347, `docs/analytics.md` Live)
 - Targets, alert emails and the briefing (wave 8 unit D, D348, `docs/analytics.md` Alerts, targets, forecast)
 - Profit per order and the briefing's one-press actions (D415, D416, `src/lib/order-profit.ts`, `src/lib/briefing-actions.ts`)
+- The chargeback assistant and customers who return a lot (D417, `src/lib/dispute-evidence.ts`, `src/server/dispute-evidence.ts`)
+- What the autopilot's changes moved (D418, `src/lib/autopilot-effects.ts`, `src/server/autopilot-effects.ts`)
 - Campaigns and first visits (wave 5 unit I3, D303, `docs/wave-5-marketing.md` 12.4)
 - Payouts and real fees (wave 4 unit C, D290, `docs/wave-4-payments.md` 5, `src/lib/payouts.ts`, `src/server/payouts.ts`,…
 - Payment methods per country (wave 4 unit D, D291, `docs/wave-4-payments.md` 6, `src/lib/payment-methods.ts`, `src/server/payment-methods.ts`)

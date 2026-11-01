@@ -95,6 +95,7 @@ export const PERSONAL_DATA: PersonalEntry[] = [
   entry("payments", "shopper", via("order", "order_id"), ["order_id"], "orders", "keep", "A payment's amount and status; no personal field (the card is held by Stripe, not by the store). " + KEEP_ORDER),
   entry("payout_lines", "shopper", via("order", "order_id"), ["order_id"], "orders", "keep", "What a Stripe payout settled (D290): amounts, Stripe's type and ids, tied to the payment, refund or dispute and its order; no personal field. " + KEEP_ORDER),
   entry("payment_disputes", "shopper", via("order", "order_id"), ["order_id"], "orders", "keep", "A dispute on a payment as Stripe reported it (D288): amount, Stripe's reason code, status and dates; no personal field. " + KEEP_ORDER),
+  entry("dispute_evidence", "shopper", via("none"), ["fields"], "orders", "anonymise", "The evidence for a dispute (D417), drafted from the order and changed by staff: the buyer's name, email and addresses, the parcels and the buyer's own messages to the store, kept so the store can answer the bank and show what it sent. Linked through its dispute to the order; exported with the order, and emptied by a trigger when the order is anonymised (the row stays as the record that evidence was sent, and when)."),
   entry("refunds", "shopper", via("order", "payment_id"), ["reason"], "orders", "keep", "Amount and status are kept; the reason is text staff typed (it can hold a name), so it is exported and replaced by a marker when the order is anonymised. " + KEEP_ORDER),
   entry("shipments", "shopper", via("order", "order_id"), ["tracking_number", "tracking_url", "label_url", "undo_reason"], "orders", "keep", "A parcel's carrier and tracking number, linked to a person only through the order. " + "Kept with it. The reason staff gave for undoing a parcel (D174 follow-up) is their own text (it can hold a name): exported with the parcel and replaced by a marker when the order is anonymised."),
   entry("shipment_tracking", "shopper", via("order", "order_id"), ["events"], "orders", "anonymise", "A parcel's carrier events (D238): times, codes and the carrier's own descriptions and places, which can name who signed for it. Exported with the parcel, cleared when the order is anonymised (commerce.anonymise_order(), an update) and 90 days after the parcel stopped being followed."),
@@ -522,6 +523,7 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   /** The autopilot's daily digest and weekly report (D309): counts, the plans' step titles and the store's figures, never a customer. */
   "autopilot.digest": "staff",
   "autopilot.weekly": "staff",
+  "autopilot.monthly": "staff",
   /** The autopilot's own AI budget near (80 %) or spent (PSI AST-07): the store's name and the dollar figures, never a customer. */
   "autopilot.budget_near": "staff",
   "autopilot.budget_reached": "staff",

@@ -5,7 +5,7 @@ import { countWords, fillWords } from "@/lib/admin-fill";
 import { customersEn, type CustomersMessages } from "@/lib/admin-messages/customers.en";
 import { formatMoney } from "@/lib/money";
 import { avatarFor } from "@/server/avatars";
-import { CARD_CLASS } from "@/components/admin/ui";
+import { CARD_CLASS, Chip } from "@/components/admin/ui";
 
 export type CustomerBarData = {
   /** Where the customer's page is. */
@@ -19,6 +19,8 @@ export type CustomerBarData = {
   facts: string[];
   /** Shown instead of the account's standing, e.g. a store owner's role. */
   badge?: string;
+  /** A warning about the customer, e.g. that they return often (D417). */
+  flag?: string;
 };
 
 /** The account's standing, in a word or two. */
@@ -56,6 +58,13 @@ export function CustomerBar({ customer, words = customersEn }: { customer: Custo
           {customer.name && `${customer.email} · `}
           {customer.facts.join(" · ")}
         </p>
+        {customer.flag && (
+          <p className="mt-1">
+            <Chip signal="warning" dot>
+              {customer.flag}
+            </Chip>
+          </p>
+        )}
       </div>
       <Link
         href={customer.href}
@@ -79,6 +88,7 @@ export function storeCustomerBar(
     orders: number;
     liveSubscriptions: number;
     spentMinor: Record<string, number>;
+    returns?: { orders: number; returned: number; often: boolean };
   },
   locale: string,
   words: CustomersMessages["bar"] = customersEn.bar,
@@ -95,5 +105,6 @@ export function storeCustomerBar(
       ...(customer.liveSubscriptions > 0 ? [countWords(customer.liveSubscriptions, words.subscriptions)] : []),
       ...(spent ? [fillWords(words.spent, { amount: spent })] : []),
     ],
+    ...(customer.returns?.often ? { flag: fillWords(words.returnsOften, { returned: customer.returns.returned, orders: customer.returns.orders }) } : {}),
   };
 }

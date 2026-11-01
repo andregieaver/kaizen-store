@@ -1634,6 +1634,8 @@ export const auditLog = commerce.table(
   (t) => [
     check("audit_log_acted_by", sql`${t.actedBy} in ('person', 'ai_manager', 'autopilot')`),
     index("audit_log_store_idx").on(t.storeId, t.createdAt),
+    // The autopilot's own changes, measured two weeks on (D418, `src/server/autopilot-effects.ts`).
+    index("audit_log_autopilot_idx").on(t.createdAt).where(sql`${t.actedBy} = 'autopilot'`),
     index("audit_log_account_idx").on(t.accountId),
     index("audit_log_store_area_idx").on(t.storeId, t.area, sql`${t.id} desc`),
     index("audit_log_store_account_idx").on(t.storeId, t.accountId, sql`${t.id} desc`),
@@ -5347,6 +5349,32 @@ export const paymentDisputes = commerce.table(
     check("payment_disputes_closed", sql`(${t.closedAt} is null) = (${t.outcome} is null)`),
     check("payment_disputes_money", sql`(${t.fundsWithdrawnMinor} is null or ${t.fundsWithdrawnMinor} >= 0) and (${t.feeMinor} is null or ${t.feeMinor} >= 0)`),
     check("payment_disputes_reason", sql`${t.reason} is null or char_length(${t.reason}) <= 80`),
+  ],
+);
+
+/**
+ * The chargeback assistant (D417): the evidence the owner prepared for a Stripe dispute, drafted from the order's records and changed by them
+ * (`fields`: Stripe's text fields, read only through `evidenceInput`), and when it was sent to Stripe and by whom. Written only by
+ * `src/server/dispute-evidence.ts`; sent once (Stripe takes one submission).
+ */
+export const disputeEvidence = commerce.table(
+  "dispute_evidence",
+  {
+    disputeId: uuid("dispute_id").primaryKey(),
+    storeId: storeId(),
+    fields: jsonb("fields").notNull(),
+    savedBy: uuid("saved_by").references(() => accounts.id, { onDelete: "set null" }),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }),
+    submittedBy: uuid("submitted_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t): PgTableExtraConfigValue[] => [
+    foreignKey({ name: "dispute_evidence_dispute_fk", columns: [t.storeId, t.disputeId], foreignColumns: [paymentDisputes.storeId, paymentDisputes.id] }).onDelete("cascade"),
+    index("dispute_evidence_saved_by_idx").on(t.savedBy),
+    index("dispute_evidence_submitted_by_idx").on(t.submittedBy),
+    check("dispute_evidence_fields", sql`jsonb_typeof(${t.fields}) = 'object'`),
+    check("dispute_evidence_submitted", sql`${t.submittedBy} is null or ${t.submittedAt} is not null`),
   ],
 );
 
@@ -15294,6 +15322,43 @@ export const assistantPlanSteps = commerce.table(
   ],
 );
 
+/**
+ * What followed a change the autopilot made (D418): one row per change it made itself (an `audit_log` entry `store.assistant.{tool}` acted
+ * by `autopilot`), measured once `EFFECT_DAYS` have passed: the figure the change was meant to move, the same number of days before and after
+ * it (a product's net sales without VAT and units for a product's change, else the store's), and the store's net sales over the same days
+ * beside it, so a change is read against how the store went anyway. What followed, never proof of cause. Written only by
+ * `src/server/autopilot-effects.ts`; amounts in the store's main currency.
+ */
+export const autopilotEffects = commerce.table(
+  "autopilot_effects",
+  {
+    auditId: bigint("audit_id", { mode: "number" }).primaryKey(),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id, { onDelete: "cascade" }),
+    tool: text("tool").notNull(),
+    targetKind: text("target_kind").notNull(),
+    productId: uuid("product_id"),
+    /** The product's title when it was measured, for the report: a product deleted since keeps its words. */
+    targetLabel: text("target_label").notNull().default(""),
+    actedAt: timestamp("acted_at", { withTimezone: true }).notNull(),
+    days: smallint("days").notNull(),
+    currency: char("currency", { length: 3 }).notNull(),
+    beforeMinor: bigint("before_minor", { mode: "number" }).notNull(),
+    afterMinor: bigint("after_minor", { mode: "number" }).notNull(),
+    beforeUnits: integer("before_units"),
+    afterUnits: integer("after_units"),
+    storeBeforeMinor: bigint("store_before_minor", { mode: "number" }).notNull(),
+    storeAfterMinor: bigint("store_after_minor", { mode: "number" }).notNull(),
+    measuredAt: timestamp("measured_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("autopilot_effects_store_idx").on(t.storeId, t.actedAt),
+    check("autopilot_effects_target", sql`${t.targetKind} in ('product', 'store') and (${t.targetKind} = 'store') = (${t.productId} is null)`),
+    check("autopilot_effects_days", sql`${t.days} between 1 and 90`),
+  ],
+);
+
 /** The owner's autonomy levels and budgets for the autopilot (D309, `docs/ai-autopilot.md` 7.4): one row per store, one for the platform. */
 export const autopilotSettings = commerce.table(
   "autopilot_settings",
@@ -15531,7 +15596,7 @@ export const autopilotReports = commerce.table(
   (t) => [
     unique("autopilot_reports_period_key").on(t.storeId, t.accountId, t.kind, t.periodStart).nullsNotDistinct(),
     index("autopilot_reports_account_idx").on(t.accountId, t.createdAt),
-    check("autopilot_reports_kind", sql`${t.kind} in ('daily', 'weekly')`),
+    check("autopilot_reports_kind", sql`${t.kind} in ('daily', 'weekly', 'monthly')`),
     check("autopilot_reports_note", sql`${t.note} is null or length(${t.note}) <= 1500`),
   ],
 );

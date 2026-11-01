@@ -104,6 +104,7 @@ export const STORE_EXPORT_TABLES = [
   "support_settings",
   "support_replies",
   "autopilot_settings",
+  "autopilot_effects",
   "work_settings",
 ] as const;
 

@@ -17,7 +17,7 @@ const html = (element: Parameters<typeof renderToString>[0]) =>
 const action = async () => ({ status: "ok" as const, messages: [] });
 const actions = { decide: action, answer: action, plan: action, dropGoal: action, settings: action, cancelFollowUp: action };
 
-const empty: AutopilotOverview = { calls: [], questions: [], ownerOnly: [], plans: [], goals: [], reviews: [], events: [], settings: DEFAULT_AUTONOMY, costMicros: 1_250_000, unpricedCalls: 0, report: null, followUps: [] };
+const empty: AutopilotOverview = { calls: [], questions: [], ownerOnly: [], plans: [], goals: [], reviews: [], events: [], settings: DEFAULT_AUTONOMY, costMicros: 1_250_000, unpricedCalls: 0, report: null, followUps: [], effects: null };
 
 const page = (overview: AutopilotOverview, tab: AutopilotTab = "decisions", lang: "en" | "nb" = "en") =>
   html(createElement(AutopilotPage, { overview, base: "/admin/demo/assistant/autopilot", assistantHref: "/admin/demo/assistant", siteName: "Demo", tab, lang, actions, links: { payments: "/admin/demo/settings/payments" } }));
@@ -164,3 +164,33 @@ describe("What the autopilot reacted to (D331)", () => {
   });
 });
 
+
+describe("Results on the Autopilot page (D418)", () => {
+  const month = (over: Record<string, unknown> = {}) => ({ month: "2026-11", actions: 5, measured: 2, products: 1, beforeMinor: 100_000, afterMinor: 150_000, liftMinor: 40_000, above: 1, below: 0, currency: "NOK", ...over });
+  const effects = {
+    thisMonth: month(),
+    lastMonth: month({ month: "2026-10", actions: 0, measured: 0, products: 0, beforeMinor: 0, afterMinor: 0, liftMinor: null, above: 0, below: 0 }),
+    recent: [
+      { auditId: 7, tool: "set_prices", targetKind: "product" as const, targetLabel: "Blue mug", actedAt: "2026-10-10T09:00:00.000Z", currency: "NOK", beforeMinor: 100_000, afterMinor: 150_000, beforeUnits: 10, afterUnits: 14, storeBeforeMinor: 1_000_000, storeAfterMinor: 1_100_000 },
+      { auditId: 8, tool: "build_page", targetKind: "store" as const, targetLabel: "", actedAt: "2026-10-11T09:00:00.000Z", currency: "NOK", beforeMinor: 1_000_000, afterMinor: 1_100_000, beforeUnits: null, afterUnits: null, storeBeforeMinor: 1_000_000, storeAfterMinor: 1_100_000 },
+    ],
+    locale: "nb-NO",
+  };
+
+  it("is a tab for a store, never for Kaizena Flow's site, with the month's figures, each change and the caution", () => {
+    expect(page(empty)).not.toContain("?tab=results");
+    expect(page({ ...empty, effects })).toContain("?tab=results");
+    const shown = page({ ...empty, effects }, "results");
+    expect(shown).toContain("What the AI did");
+    expect(shown).toContain("not proof that the change caused it");
+    expect(shown).toContain("This month so far");
+    expect(shown).toContain("Set prices");
+    expect(shown).toContain("Product: Blue mug");
+    expect(shown).toContain("Beyond the store's own trend");
+    expect(shown).toContain("1 sold more than the store's trend, 0 less");
+    expect(shown).toContain("Build page");
+    expect(shown).toContain("The store");
+    expect(page({ ...empty, effects: { ...effects, recent: [] } }, "results")).toContain("Nothing measured yet");
+    expect(page({ ...empty, effects }, "results", "nb")).toContain("Det KI gjorde");
+  });
+});
