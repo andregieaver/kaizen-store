@@ -270,6 +270,15 @@ describe("AI providers (D73)", () => {
     await ai.saveAiSettings(accountId, storeId, form({ provider: "openai", apiKey: "sk-store-3333", textModel: "gpt-5-mini", imageModel: "picture-model-1", minSimilarity: "0.5", enabled: true }));
     let connection = (await ai.ownConnection(storeId))!;
     expect(connection.image).toMatchObject({ provider: "openai", apiUrl: "https://api.openai.com/v1", apiKey: "sk-store-3333", model: "picture-model-1", quality: null });
+    // A picture model that does not edit pictures, and no edit model chosen: nothing edits them.
+    expect(connection.image?.editModel).toBeNull();
+    // A gpt-image model at OpenAI edits them too when no edit model is chosen (D413), so Remove background needs no second setting.
+    await ai.saveAiSettings(accountId, storeId, form({ provider: "openai", apiKey: "", textModel: "gpt-5-mini", imageModel: "gpt-image-1.5", minSimilarity: "0.5", enabled: true }));
+    expect((await ai.ownConnection(storeId))!.image).toMatchObject({ model: "gpt-image-1.5", editModel: "gpt-image-1.5" });
+    await ai.saveAiSettings(accountId, storeId, form({ provider: "openai", apiKey: "", textModel: "gpt-5-mini", imageModel: "gpt-image-1.5", imageEditModel: "chosen-editor", minSimilarity: "0.5", enabled: true }));
+    expect((await ai.ownConnection(storeId))!.image).toMatchObject({ editModel: "chosen-editor" });
+    await ai.saveAiSettings(accountId, storeId, form({ provider: "openai", apiKey: "", textModel: "gpt-5-mini", imageModel: "picture-model-1", minSimilarity: "0.5", enabled: true }));
+    connection = (await ai.ownConnection(storeId))!;
 
     const pixel = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
     const calls: { url: string; body: Row }[] = [];

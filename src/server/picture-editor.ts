@@ -85,7 +85,8 @@ export async function editLibraryPicture(
   }
   let edited: Uint8Array;
   try {
-    edited = (await (deps.edit ?? editImage)(connection, { bytes: png, contentType: "image/png" }, editPrompt(action, brief))).bytes;
+    // A background taken away is asked for see-through (D413), where the model can be.
+    edited = (await (deps.edit ?? editImage)(connection, { bytes: png, contentType: "image/png" }, editPrompt(action, brief), { transparent: action === "remove_background" })).bytes;
   } catch (error) {
     if (!(error instanceof AiError)) throw error;
     return { ok: false, problem: `The picture could not be edited: ${error.message}` };

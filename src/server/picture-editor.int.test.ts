@@ -136,11 +136,13 @@ describe("editing a library picture with AI (D349)", () => {
 
   it("takes a picture field's background away by the picture's address (D413), and only a picture this site's library holds", async () => {
     const asked: string[] = [];
+    const transparent: boolean[] = [];
     const deps = {
       connection: connection("edit-model"),
       read: async () => png("#ffffff", 800),
-      edit: async (_connection: unknown, _picture: unknown, prompt: string) => {
+      edit: async (_connection: unknown, _picture: unknown, prompt: string, options?: { transparent?: boolean }) => {
         asked.push(prompt);
+        transparent.push(Boolean(options?.transparent));
         return { bytes: await png("#336699", 512) };
       },
     };
@@ -148,6 +150,7 @@ describe("editing a library picture with AI (D349)", () => {
     const result = await editor.editLibraryPicture(owner(), { url, action: "remove_background" }, deps as never);
     expect(result).toMatchObject({ ok: true, picture: { alt: "A white mug on a table" } });
     expect(asked).toEqual([expect.stringContaining("Remove the background entirely")]);
+    expect(transparent).toEqual([true]);
     if (result.ok) {
       const [edited] = await db().execute<Row>(sql`select made_by, edited_from from commerce.media where id = ${result.picture.id}::uuid`);
       expect(edited).toEqual({ made_by: "ai_edited", edited_from: original });
@@ -187,19 +190,27 @@ describe("editing a library picture with AI (D349)", () => {
 
   it("asks the provider's /images/edits with the edit model and reads its picture", async () => {
     const answer = Buffer.from(await png("#123456")).toString("base64");
-    const calls: { url: string; model: unknown; image: boolean }[] = [];
+    const calls: { url: string; model: unknown; image: boolean; background: unknown; format: unknown }[] = [];
     vi.stubGlobal(
       "fetch",
       vi.fn(async (url: string, init: RequestInit) => {
         const form = init.body as FormData;
-        calls.push({ url, model: form.get("model"), image: form.get("image") instanceof Blob });
+        calls.push({ url, model: form.get("model"), image: form.get("image") instanceof Blob, background: form.get("background"), format: form.get("output_format") });
         return Response.json({ data: [{ b64_json: answer }] });
       }),
     );
     try {
       const edited = await ai.editImage(connection("edit-model"), { bytes: await png("#ffffff"), contentType: "image/png" }, "Remove the background.");
       expect(edited.bytes.byteLength).toBeGreaterThan(0);
-      expect(calls).toEqual([{ url: "https://ai.example.com/v1/images/edits", model: "edit-model", image: true }]);
+      expect(calls).toEqual([{ url: "https://ai.example.com/v1/images/edits", model: "edit-model", image: true, background: null, format: null }]);
+      // A background taken away by a gpt-image model is asked for see-through, as a PNG (D413); another model is sent only the common fields.
+      calls.length = 0;
+      await ai.editImage(connection("gpt-image-1.5"), { bytes: await png("#ffffff"), contentType: "image/png" }, "Remove the background.", { transparent: true });
+      await ai.editImage(connection("edit-model"), { bytes: await png("#ffffff"), contentType: "image/png" }, "Remove the background.", { transparent: true });
+      expect(calls.map((c) => [c.model, c.background, c.format])).toEqual([
+        ["gpt-image-1.5", "transparent", "png"],
+        ["edit-model", null, null],
+      ]);
       await expect(ai.editImage(connection(null), { bytes: await png("#ffffff"), contentType: "image/png" }, "x")).rejects.toThrow(/No model that edits/);
     } finally {
       vi.unstubAllGlobals();

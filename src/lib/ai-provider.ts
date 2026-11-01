@@ -187,6 +187,18 @@ export function checkBaseUrl(input: string): CheckedUrl {
 }
 
 /** The address requests go to. */
+/** OpenAI's gpt-image models make pictures and also edit them (`/images/edits`), and can leave a background transparent. */
+export const isGptImage = (model: string | null | undefined): boolean => Boolean(model && /^gpt-image/i.test(model.trim()));
+
+/**
+ * The model a site's pictures are edited with (D349, D413): the one chosen as *Model that edits pictures*, else the picture model where that one
+ * edits too (OpenAI's gpt-image models at OpenAI), so a site that makes pictures with one can also take a background away without a second setting.
+ */
+export function pictureEditModel(provider: AiProviderId, imageModel: string | null, editModel: string | null): string | null {
+  if (editModel) return editModel;
+  return (provider === "openai" || provider === "openai_eu") && isGptImage(imageModel) ? imageModel : null;
+}
+
 export function apiBaseUrl(provider: AiProviderId, customUrl: string | null): string | null {
   return provider === "custom" ? customUrl : providerInfo(provider).baseUrl;
 }

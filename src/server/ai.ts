@@ -8,7 +8,9 @@ import {
   apiBaseUrl,
   checkBaseUrl,
   embeddingSpace,
+  isGptImage,
   keyHint,
+  pictureEditModel,
   providerInfo,
   type AiProviderId,
   type ImageQuality,
@@ -183,7 +185,8 @@ function liveConnection(row: Row, settings: AiSettings, own: { apiUrl: string; a
 function imageConnection(row: Row, settings: AiSettings, own: { apiUrl: string; apiKey: string }, key: Buffer): ImageConnection | null {
   if (!settings.imageModel) return null;
   const quality = settings.imageQuality;
-  const editModel = settings.imageEditModel;
+  // The edit model chosen, else the picture model where it edits too (`pictureEditModel()`).
+  const editModel = pictureEditModel(settings.imageProvider ?? settings.provider, settings.imageModel, settings.imageEditModel);
   if (!settings.imageProvider) return { provider: settings.provider, ...own, model: settings.imageModel, quality, editModel };
   const apiUrl = apiBaseUrl(settings.imageProvider, settings.imageBaseUrl);
   if (!apiUrl || !row.image_api_key_encrypted) return null;
@@ -875,15 +878,27 @@ async function generateImageOnce(image: ImageConnection, prompt: string, options
  * description of the change): the new picture's bytes. The picture given is always the site's own file, read from Storage by the caller, never an
  * address. Metered like a made picture (`per_image`), under the connection's feature (`picture_edit`).
  */
-export async function editImage(connection: AiConnection, picture: { bytes: Uint8Array; contentType: string }, prompt: string, timeoutMs = 150_000): Promise<{ bytes: Uint8Array }> {
+export async function editImage(
+  connection: AiConnection,
+  picture: { bytes: Uint8Array; contentType: string },
+  prompt: string,
+  options: { transparent?: boolean; timeoutMs?: number } = {},
+): Promise<{ bytes: Uint8Array }> {
   const image = connection.image;
   if (!image?.editModel) throw new AiError("No model that edits pictures is set.");
   const model = image.editModel;
+  const timeoutMs = options.timeoutMs ?? 150_000;
   return metered(connection, { kind: "image", provider: image.provider, model }, async () => {
     const form = new FormData();
     form.set("model", model);
     form.set("prompt", prompt.slice(0, 4000));
     form.set("n", "1");
+    // A background taken away is see-through only when asked for so (D413): OpenAI's gpt-image models take it as a setting, as a PNG;
+    // the words in the prompt alone give a white background. Other models are sent only what every edit endpoint takes.
+    if (options.transparent && isGptImage(model)) {
+      form.set("background", "transparent");
+      form.set("output_format", "png");
+    }
     const extension = picture.contentType.split("/")[1] ?? "png";
     form.set("image", new Blob([new Uint8Array(picture.bytes)], { type: picture.contentType }), `picture.${extension}`);
     const response = await send({ ...connection, apiUrl: image.apiUrl, apiKey: image.apiKey }, "/images/edits", form, timeoutMs);

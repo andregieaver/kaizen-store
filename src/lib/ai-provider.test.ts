@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { aiFormValues, aiProviderInput, apiBaseUrl, checkBaseUrl, embeddingSpace, keyHint } from "./ai-provider";
+import { aiFormValues, aiProviderInput, apiBaseUrl, checkBaseUrl, embeddingSpace, keyHint, isGptImage, pictureEditModel } from "./ai-provider";
 import { cosineSimilarity } from "./vectors";
 
 const valid = {
@@ -83,5 +83,18 @@ describe("AI providers (D73)", () => {
     expect(cosineSimilarity([1, 2], [-1, -2])).toBeCloseTo(-1);
     expect(cosineSimilarity([1, 2], [1])).toBe(0);
     expect(cosineSimilarity([0, 0], [1, 1])).toBe(0);
+  });
+});
+
+describe("the model a site's pictures are edited with (D349, D413)", () => {
+  it("is the one chosen, else a gpt-image picture model at OpenAI, which edits too, else none", () => {
+    expect(pictureEditModel("openai", "gpt-image-1.5", "my-edit-model")).toBe("my-edit-model");
+    expect(pictureEditModel("openai", "gpt-image-1.5", null)).toBe("gpt-image-1.5");
+    expect(pictureEditModel("openai_eu", "gpt-image-1", null)).toBe("gpt-image-1");
+    expect(pictureEditModel("openai", "dall-e-3", null)).toBeNull();
+    expect(pictureEditModel("custom", "gpt-image-1.5", null)).toBeNull();
+    expect(pictureEditModel("openai", null, null)).toBeNull();
+    expect(isGptImage(" GPT-Image-2 ")).toBe(true);
+    expect(isGptImage("flux-pro")).toBe(false);
   });
 });

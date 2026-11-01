@@ -706,7 +706,7 @@ export const settingsEn = {
       pictureModel: "Picture model",
       pictureEditModel: "Model that edits pictures",
       pictureEditModelHint:
-        "For Edit with AI in the media library: the picture itself is sent to this provider with what to change (/images/edits), so pick one whose terms on data you accept. Empty: pictures are not edited.",
+        "For Edit with AI in the media library: the picture itself is sent to this provider with what to change (/images/edits), so pick one whose terms on data you accept. Empty: the picture model edits them where it can (OpenAI's gpt-image models), else pictures are not edited.",
       newestFirst: "Newest first where Kaizena Flow knows them; type any other.",
       picturesAddress: "Pictures API address",
       picturesAddressHint: "An OpenAI-compatible API: Kaizena Flow adds /images/generations to this address.",
