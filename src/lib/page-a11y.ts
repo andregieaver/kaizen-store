@@ -6,8 +6,11 @@
  * tab with a link to each block, and `savePage()` runs it again on the server, so what publishing with a blocking issue
  * asks for cannot be skipped by skipping the dialog.
  *
- * It reads only the page's own content. It cannot know the final colour behind text laid over a picture, a video or a
- * gradient (those are not checked, and the tab says so), nor a background that is see-through. Text that is see-through
+ * It reads only the page's own content. Text over a gradient is held to each of its colours (a moving gradient puts any of
+ * them behind it), under its overlay (PSI ACC-04). Text over a picture or a video cannot be measured, as the picture's colours
+ * are not known here: it is held to the darkest and the lightest the picture could be under its overlay, and where it does not
+ * read on both it is a warning (`text_on_picture`), never blocking: a strong enough overlay is the only sure way. A background
+ * that is see-through is not checked. Text that is see-through
  * (D180: a colour with an opacity) is blended over its background first (`blend()`), at every screen size where the text's
  * colour or the background differs (`valueAt()`, `colourAt()`); a block's text with no colour of its own takes its column's,
  * else its row's, as the browser passes it down. A passing check does not make a page accessible: it finds some of the
@@ -38,6 +41,7 @@ export const PAGE_ISSUE_RULES = [
   "pay_page_block",
   "footer_legal",
   "frame_title",
+  "text_on_picture",
 ] as const;
 export type PageIssueRule = (typeof PAGE_ISSUE_RULES)[number];
 export type IssueSeverity = "blocking" | "warning";
@@ -56,6 +60,7 @@ export const RULE_SEVERITY: Record<PageIssueRule, IssueSeverity> = {
   pay_page_block: "blocking",
   footer_legal: "warning",
   frame_title: "warning",
+  text_on_picture: "warning",
 };
 
 /** What the owner is told each rule found, in a few words (the title of a group in the tab). */
@@ -72,6 +77,7 @@ export const RULE_TITLE: Record<PageIssueRule, string> = {
   pay_page_block: "Not allowed on the checkout page",
   footer_legal: "Footer missing what the law asks",
   frame_title: "Embedded content with no title",
+  text_on_picture: "Text over a picture that may be hard to read",
 };
 
 export type PageIssue = {
@@ -247,13 +253,36 @@ function richFacts(doc: RichTextDoc | undefined): RichFacts {
 /** A text's colour and how solid it is (0–100, solid unless set). */
 type Ink = { color: string; opacity?: number };
 
-/** What is behind a block's text at a size, as far as is known: the column's solid colour, else the row's. */
-function behindAt(row: PageRow, column: PageColumn, size: Size): { color: string | null; unknown: boolean } {
+/**
+ * The colours that can be behind text on a background that is not one colour (PSI ACC-04): each of a solid gradient's colours, and
+ * a picture's or video's darkest and lightest (black and white), each under the overlay where there is one. `picture` where the
+ * colours are a guess at the extremes rather than the background's own. Null where it cannot be told (a see-through gradient).
+ */
+function layered(background: { type: string; colors?: string[]; opacity?: number; overlay?: { color: string; opacity: number } | null }): { colours: string[]; picture: boolean } | null {
+  const overlay = background.overlay && hex6(background.overlay.color) ? { color: hex6(background.overlay.color) as string, opacity: background.overlay.opacity } : null;
+  const under = (colour: string) => (overlay ? blend(overlay.color, overlay.opacity, colour) : colour);
+  if (background.type === "gradient") {
+    if (background.opacity !== undefined && background.opacity < 100) return null;
+    const stops = (background.colors ?? []).map(hex6);
+    if (stops.length === 0 || stops.some((stop) => stop === null)) return null;
+    return { colours: [...new Set((stops as string[]).map(under))], picture: false };
+  }
+  if (background.type === "image" || background.type === "video") return { colours: [...new Set(["#000000", "#ffffff"].map(under))], picture: true };
+  return null;
+}
+
+/**
+ * What is behind a block's text at a size, as far as is known: the column's solid colour, else the row's; for a gradient, a picture
+ * or a video, the colours it can show (`layered()`).
+ */
+function behindAt(row: PageRow, column: PageColumn, size: Size): { color: string | null; unknown: boolean; layers?: { colours: string[]; picture: boolean } } {
   for (const part of [column, row] as const) {
     const background = valueAt(part, "background", size);
     if (!background) continue;
     const own = solid(background as { type: string; color?: string; opacity?: number });
-    return own ? { color: own, unknown: false } : { color: null, unknown: true };
+    if (own) return { color: own, unknown: false };
+    const layers = layered(background as Parameters<typeof layered>[0]);
+    return layers ? { color: null, unknown: true, layers } : { color: null, unknown: true };
   }
   return { color: null, unknown: false };
 }
@@ -331,15 +360,27 @@ export function pageIssues(
          * some fail.
          */
         let contrastAdded = false;
-        const textOver = (label: string, at: (size: Size) => { ink: Ink | null; over: string | null; unknown: boolean }, themeText = true) => {
+        type Behind = { ink: Ink | null; over: string | null; unknown: boolean; layers?: { colours: string[]; picture: boolean } };
+        const textOver = (label: string, at: (size: Size) => Behind, themeText = true) => {
           if (contrastAdded) return;
-          let first: { ratio: number; set: string | null } | null = null;
+          let first: { ratio: number; set: string | null; layer: "gradient" | "picture" | null; bg: string } | null = null;
           const failing: Size[] = [];
           for (const size of SIZES) {
-            const { ink, over, unknown } = at(size);
-            if (unknown) continue;
+            const { ink, over, unknown, layers } = at(size);
             const pairs: { text: string; bg: string; set: string | null }[] = [];
-            if (ink && over) pairs.push({ text: blend(ink.color, ink.opacity, over), bg: over, set: null });
+            if (layers) {
+              // Over a gradient or a picture: the text against each colour that can be behind it, its own colour else the theme's.
+              for (const bg of layers.colours) {
+                if (ink) pairs.push({ text: blend(ink.color, ink.opacity, bg), bg, set: null });
+                else if (context.theme && themeText) {
+                  for (const set of context.theme.sets) {
+                    const text = hex6(set.text);
+                    if (text) pairs.push({ text, bg, set: set.name });
+                  }
+                }
+              }
+            } else if (unknown) continue;
+            else if (ink && over) pairs.push({ text: blend(ink.color, ink.opacity, over), bg: over, set: null });
             else if (context.theme && (ink || over) && (ink || themeText)) {
               for (const set of context.theme.sets) {
                 const bg = over ?? hex6(set.background);
@@ -347,7 +388,8 @@ export function pageIssues(
                 if (text && bg) pairs.push({ text, bg, set: set.name });
               }
             }
-            const bad = pairs.map((pair) => ({ ratio: contrastRatio(pair.text, pair.bg), set: pair.set })).find((pair) => pair.ratio < MIN_CONTRAST);
+            const layer: "picture" | "gradient" | null = layers ? (layers.picture ? "picture" : "gradient") : null;
+            const bad = pairs.map((pair) => ({ ratio: contrastRatio(pair.text, pair.bg), set: pair.set, layer, bg: pair.bg })).find((pair) => pair.ratio < MIN_CONTRAST);
             if (!bad) continue;
             failing.push(size);
             first ??= bad;
@@ -355,7 +397,19 @@ export function pageIssues(
           if (!first) return;
           contrastAdded = true;
           const sizes = failing.length < SIZES.length ? ` at ${failing.map((size) => SIZE_LABELS[size]).join(", ")}` : "";
-          add("contrast", place, where, `${label} is hard to read on its background (${first.ratio.toFixed(1)}:1; aim for ${MIN_CONTRAST}:1)${first.set ? ` in the ${first.set} colours` : ""}${sizes}.`);
+          const colours = first.set ? ` in the ${first.set} colours` : "";
+          if (first.layer === "picture") {
+            add(
+              "text_on_picture",
+              place,
+              where,
+              `${label} is over a picture, which can make it hard to read (as low as ${first.ratio.toFixed(1)}:1 where the picture is at its darkest or lightest; aim for ${MIN_CONTRAST}:1)${colours}${sizes}. A colour over the picture, strong enough, makes sure it reads: set one under the background's Overlay, or check by eye.`,
+            );
+          } else if (first.layer === "gradient") {
+            add("contrast", place, where, `${label} is hard to read on its gradient where it is ${first.bg} (${first.ratio.toFixed(1)}:1; aim for ${MIN_CONTRAST}:1)${colours}${sizes}.`);
+          } else {
+            add("contrast", place, where, `${label} is hard to read on its background (${first.ratio.toFixed(1)}:1; aim for ${MIN_CONTRAST}:1)${colours}${sizes}.`);
+          }
         };
         /** A block's own kind of text over its column's or row's background, its colour else the one around it. */
         const ownText = (label: string, def: Pick<RoleDef, "role" | "colourFrom">, inherits: boolean, themeText: boolean) =>
@@ -366,7 +420,7 @@ export function pageIssues(
           );
         const behindOf = (size: Size) => {
           const back = behindAt(row, column, size);
-          return { over: back.color, unknown: back.unknown };
+          return { over: back.color, unknown: back.unknown, ...(back.layers && { layers: back.layers }) };
         };
         /** Words coloured in rich text (D180), each colour over the block's background. */
         const marked = (facts: RichFacts) => {

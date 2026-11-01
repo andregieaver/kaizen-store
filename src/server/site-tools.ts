@@ -58,6 +58,7 @@ import { log } from "./log";
 import { OwnerToolError } from "./owner-tool-error";
 import { buildDraft, fillPicture, planPage, sectionForPage, siteFacts, studioAbilities, type StudioOwner } from "./page-ai";
 import { libraryFilesByUrl } from "./media-library";
+import { stopPageBuild } from "./page-jobs";
 import { listPlatformMenus, listStoreMenus, menuUses, savePlatformMenu, saveStoreMenu } from "./menus";
 import { saveNavigation } from "./navigation";
 import { getPageForEdit, pagesTag, savePage, setFrontPage, setPageRole, setProductsPage } from "./pages";
@@ -93,8 +94,6 @@ export type SiteToolDeps = {
 
 /** At most this many pages are waiting to be built for one site at a time. */
 export const BUILDS_WAITING_MAX = 3;
-/** What a build stopped by `cancel_page_build` says it came to. */
-const STOPPED = "Stopped on request.";
 /** At most this many new sections are written in one change, each one call to the site's AI. */
 export const SECTIONS_PER_EDIT = 3;
 /** How long a run holds a job: a build plans and writes (up to a few minutes), a picture takes the picture model up to 150 s. */
@@ -257,20 +256,13 @@ export async function buildPageTool(ctx: SiteToolContext, args: BuildPageArgs, d
  * draft it made (`keep()`), so nothing of it is left. One already built is not undone, nor one that already failed.
  */
 export async function cancelPageBuildTool(ctx: SiteToolContext, { build }: { build: string }) {
-  const [stopped] = await db().execute<Row>(sql`
-    update commerce.page_ai_jobs set status = 'failed', problem = ${STOPPED}, updated_at = now()
-    where id = ${build}::uuid and kind = 'build' and status = 'waiting' and store_id is not distinct from ${ownerOf(ctx)}::uuid
-    returning input ->> 'title' as title, claimed_until is not null and claimed_until > now() as running
-  `);
-  if (stopped) {
-    const title = String(stopped.title ?? "The page");
+  const stopped = await stopPageBuild(ownerOf(ctx), build);
+  if (stopped.outcome === "stopped") {
+    const title = stopped.title || "The page";
     return { stopped: build, done: stopped.running ? `"${title}" was being built: it is stopped, and its unfinished draft is deleted when that run ends.` : `"${title}" will not be built.` };
   }
-  const [job] = await db().execute<Row>(sql`
-    select status, page_id from commerce.page_ai_jobs where id = ${build}::uuid and kind = 'build' and store_id is not distinct from ${ownerOf(ctx)}::uuid
-  `);
-  if (!job) return fail("No page build of this site has that id: list_page_builds lists them.");
-  if (job.status === "done" && job.page_id) return fail("It is already built: its draft stays in Pages, to delete there if it is not wanted.");
+  if (stopped.outcome === "unknown") return fail("No page build of this site has that id: list_page_builds lists them.");
+  if (stopped.outcome === "built") return fail("It is already built: its draft stays in Pages, to delete there if it is not wanted.");
   return fail("It had already stopped: list_page_builds says why.");
 }
 

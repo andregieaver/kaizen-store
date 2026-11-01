@@ -3,6 +3,7 @@ import { connection } from "next/server";
 
 import { PAGE_TYPE_COPY } from "@/components/admin/page-type-copy";
 import { PagePlaceForm } from "@/components/admin/page-place-form";
+import { PageJobsPanel } from "@/components/admin/page-jobs-panel";
 import { PagesTable } from "@/components/admin/pages-table";
 import { TermsManager } from "@/components/admin/terms";
 import { SiteLayoutChoice, SiteLayoutsTable } from "@/components/admin/site-layouts";
@@ -10,6 +11,7 @@ import { LAYOUT_TYPES, termContentOf, type PageType } from "@/lib/page-content";
 import { isThemeStoreRole, PLATFORM_ROLE_COPY, SPECIAL_ROLES, type PlatformRole } from "@/lib/platform-roles";
 import { requirePlatformAdmin } from "@/server/auth";
 import { listPages } from "@/server/pages";
+import { runningPageJobs } from "@/server/page-jobs";
 import { getPlatformPageRoles } from "@/server/platform-roles";
 import { siteLayoutChoice } from "@/server/site-layouts";
 import { listTerms } from "@/server/taxonomy";
@@ -27,6 +29,7 @@ import {
   createPlatformRolePageAction,
   setPlatformPageRoleAction,
   deletePageTermAction,
+  stopPlatformPageJobAction,
   updatePageTermAction,
 } from "./actions";
 import { duplicatePageAction } from "./duplicate-action";
@@ -88,6 +91,11 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
         <p role="status" className="rounded-panel border border-line bg-card p-4 text-sm">
           {tw.deleted}
         </p>
+      )}
+
+      {/* The AI's page work on Kaizena Flow's own site still going (PSI UX-01), with a Stop. */}
+      {(type === "page" || type === "article") && (
+        <PageJobsPanel jobs={await runningPageJobs(null)} pagesBase="/admin/platform/pages" articlesBase="/admin/platform/articles" stop={stopPlatformPageJobAction} />
       )}
 
       {pages.length === 0 ? (

@@ -423,3 +423,23 @@ The re-score ([psi-2026-10-31.md](psi-2026-10-31.md)) put the overall at 78.3 (8
       (`toolData()` in `triagePrompt()` and `screeningPrompt()`, `content-moderation.test.ts`). Left: triage and screening cases in the
       agents' eval and their prompts in `prompt-versions.ts`, which need a new live run on Platform → AI and its recording committed (CI's
       replay fails on a new case or prompt until then), so they go with the next recording.
+- [x] **UX-05** "What changes" on price approvals. Done 1 November 2026: an approval of `set_prices`, or of `update_product` with
+      prices, says each price before → after from the variants' prices now (`productApprovalSummary()` given them by
+      `productApprovalWords()`): "199,00 → 249 NOK in NO", "(not priced there now)", "(now different by variant)", "no price in SE (now
+      229,00)" (`product-tools.test.ts`, `product-tools.int.test.ts`).
+- [x] **UX-01, UX-03** The AI's page work on the Pages and Articles lists. Done 1 November 2026: *Being made by AI* lists each build
+      waiting or being built and each page whose pictures are still being made with a bar of how many are done, reads itself again every
+      ten seconds while anything is going, and has a Stop for each for who may change the site (`PageJobsPanel`, `src/server/page-jobs.ts`:
+      `runningPageJobs()`, `stopPageBuild()`, used by `cancel_page_build` too, and `stopPagePictures()`), on a store's lists and Kaizena
+      Flow's own; English and Norwegian (`site-tools.int.test.ts`, `page-jobs-panel.test.ts`).
+- [x] **ACC-04** Text over a gradient or a picture in the page check. Done 1 November 2026: text over a solid gradient is held to each
+      of its colours under its overlay (a moving gradient puts any of them behind it; blocking, as any contrast issue); text over a
+      picture or a video to the darkest and lightest the picture could be under its overlay, a warning (`text_on_picture`) that names the
+      overlay as the sure way, since a picture's colours are not known here (`page-a11y.test.ts`). A see-through gradient is still not
+      checked.
+- [x] **CODE-06** `page-builder.tsx` split, with no change in behaviour: its settings fields into `page-builder-fields.tsx` (about
+      2,000 lines) and its icons into `page-builder-icons.tsx`; the builder goes from 8,681 lines to about 6,030. `product-editor.tsx`
+      remains.
+- [ ] **REG-11 (C2PA)** Content Credentials on AI pictures need a signing certificate from a trust-list issuer, which only the owner can
+      buy and hold; the pictures already carry the IPTC `trainedAlgorithmicMedia` mark and `made_by` in the library (D349). Left to the
+      owner.

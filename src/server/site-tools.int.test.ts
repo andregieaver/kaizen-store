@@ -221,6 +221,40 @@ describe("cancel_page_build (PSI AGT-03)", () => {
   }, 60_000);
 });
 
+describe("the AI's page work on the Pages list (PSI UX-01)", () => {
+  it("lists builds waiting and pages with pictures still being made, and stops each from there in the person's words", async () => {
+    const { runningPageJobs, stopPageJob } = await import("./page-jobs");
+    const { websiteEn } = await import("@/lib/admin-messages/website.en");
+    const w = websiteEn.pageJobs;
+    const [build] = await db().execute<Row>(sql`
+      insert into commerce.page_ai_jobs (store_id, kind, asked_by, input, claimed_until)
+      values (${store.storeId}::uuid, 'build', ${store.member.account.id}::uuid, ${JSON.stringify({ title: "Listed build" })}::jsonb, now() - interval '1 minute')
+      returning id
+    `);
+    for (const status of ["done", "waiting", "waiting", "failed"]) {
+      await db().execute(sql`
+        insert into commerce.page_ai_jobs (store_id, kind, page_id, asked_by, input, status)
+        values (${store.storeId}::uuid, 'picture', ${builtId}::uuid, ${store.member.account.id}::uuid, '{}'::jsonb, ${status})
+      `);
+    }
+    const jobs = await runningPageJobs(store.storeId);
+    expect(jobs).toContainEqual(expect.objectContaining({ kind: "build", id: String(build.id), title: "Listed build", running: false }));
+    const pictures = jobs.find((job) => job.kind === "pictures" && job.pageId === builtId);
+    expect(pictures).toMatchObject({ kind: "pictures", title: "Catering", type: "page", waiting: 2, notMade: 1 });
+    // Another site sees none of it, and cannot stop it.
+    expect((await runningPageJobs(other.storeId)).some((job) => (job.kind === "build" ? job.id === String(build.id) : job.pageId === builtId))).toBe(false);
+    expect(await stopPageJob(other.storeId, "build", String(build.id), w)).toEqual({ status: "error", messages: [w.ended] });
+    expect(await stopPageJob(other.storeId, "pictures", builtId, w)).toEqual({ status: "ok", messages: [w.picturesDone] });
+
+    expect(await stopPageJob(store.storeId, "build", String(build.id), w)).toEqual({ status: "ok", messages: ["“Listed build” will not be built."] });
+    expect(await stopPageJob(store.storeId, "build", String(build.id), w)).toEqual({ status: "error", messages: [w.ended] });
+    expect(await stopPageJob(store.storeId, "pictures", builtId, w)).toMatchObject({ status: "ok", messages: [expect.stringMatching(/^2 pictures will not be made\./)] });
+    expect(await stopPageJob(store.storeId, "something", "not-an-id", w)).toEqual({ status: "error", messages: [w.ended] });
+    const after = await runningPageJobs(store.storeId);
+    expect(after.some((job) => (job.kind === "build" ? job.id === String(build.id) : job.pageId === builtId))).toBe(false);
+  });
+});
+
 describe("get_page and edit_page", () => {
   it("reads the page by its address, with its texts by key and rows by id", async () => {
     const page = await run("get_page", { page: "catering" });

@@ -789,13 +789,38 @@ const cut = (text: string, max = 80) => (text.length > max ? `${text.slice(0, ma
  * What a gated product call will do, in words made from its arguments and the product's own title and currencies (never the model's own
  * words about it), shown on the approval the owner says yes or no to.
  */
-export function productApprovalSummary(name: string, input: Record<string, unknown>, title: string, markets: ToolStore["markets"]): string {
+export function productApprovalSummary(
+  name: string,
+  input: Record<string, unknown>,
+  title: string,
+  markets: ToolStore["markets"],
+  /** The variants' prices as they are now, by SKU and market (the editor's view), so each price reads before → after (PSI UX-05). */
+  current: readonly { sku: string; prices: Record<string, string> }[] = [],
+): string {
   const named = `"${cut(title, 100)}"`;
-  const priceWords = (prices: unknown) =>
+  /** What a market's price is now for the variants a change names (every variant without a SKU): one price, several, or none. */
+  const now = (sku: string | undefined, code: string): string | null | "several" | { some: string } => {
+    const variants = current.filter((v) => !sku || v.sku === sku);
+    const given = variants.map((v) => v.prices[code]?.trim() ?? "");
+    const prices = [...new Set(given.filter(Boolean))];
+    if (prices.length === 0) return null;
+    if (prices.length > 1) return "several";
+    // One price, but not every variant has it there yet.
+    return given.some((p) => !p) ? { some: prices[0] } : prices[0];
+  };
+  const priceWords = (prices: unknown, sku?: string) =>
     Object.entries((prices as Record<string, string>) ?? {})
       .map(([key, price]) => {
         const market = findMarket(key, markets);
-        return price === "" ? `no price in ${market?.code ?? key}` : `${price} ${market?.currency ?? ""} in ${market?.code ?? key}`.replace("  ", " ");
+        const code = market?.code ?? key;
+        const was = current.length > 0 ? now(sku, code) : undefined;
+        if (price === "") return typeof was === "string" && was !== "several" ? `no price in ${code} (now ${was})` : `no price in ${code}`;
+        const after = `${price} ${market?.currency ?? ""}`.trim();
+        if (was === undefined) return `${after} in ${code}`;
+        if (was === null) return `${after} in ${code} (not priced there now)`;
+        if (was === "several") return `${after} in ${code} (now different by variant)`;
+        if (typeof was === "object") return `${after} in ${code} (now ${was.some} for some variants)`;
+        return `${was} → ${after} in ${code}`;
       })
       .join(", ");
   if (name === "set_product_status") {
@@ -803,7 +828,7 @@ export function productApprovalSummary(name: string, input: Record<string, unkno
   }
   if (name === "set_prices") {
     const changes = (input.changes as { sku?: string; prices?: unknown }[]) ?? [];
-    return `Change the prices of the live product ${named}: ${changes.map((c) => `${c.sku ?? "every variant"} ${priceWords(c.prices)}`).join("; ")}.`;
+    return `Change the prices of the live product ${named}: ${changes.map((c) => `${c.sku ?? "every variant"} ${priceWords(c.prices, c.sku)}`).join("; ")}.`;
   }
   if (name === "update_product") {
     const parts: string[] = [];
@@ -822,7 +847,7 @@ export function productApprovalSummary(name: string, input: Record<string, unkno
       if (Array.isArray(input[key])) parts.push(`${FIELD_WORDS[key]} to ${(input[key] as string[]).join(", ") || "none"}`);
     }
     for (const v of (input.variants as { sku: string; prices?: unknown; active?: boolean }[] | undefined) ?? []) {
-      const bits = [v.prices && Object.keys(v.prices as object).length > 0 ? priceWords(v.prices) : "", v.active === false ? "switched off" : ""].filter(Boolean);
+      const bits = [v.prices && Object.keys(v.prices as object).length > 0 ? priceWords(v.prices, v.sku) : "", v.active === false ? "switched off" : ""].filter(Boolean);
       parts.push(`${v.sku}${bits.length ? `: ${bits.join(", ")}` : ""}`);
     }
     return `Change the live product ${named}: ${parts.join("; ") || "no change"}.`;

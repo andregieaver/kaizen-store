@@ -1,6 +1,6 @@
 "use server";
 
-import { updateTag } from "next/cache";
+import { refresh, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { sql } from "drizzle-orm";
 import { z } from "zod";
@@ -23,6 +23,7 @@ import { fieldsTag, pageFacts, saveFieldData } from "@/server/custom-fields";
 import { itemLinkTargets, type ItemLinkTargets } from "@/server/link-targets";
 import { recommendedGridData } from "@/server/recommend-grid";
 import { translatePageTexts } from "@/server/page-translate";
+import { stopPageJob } from "@/server/page-jobs";
 import { deletePage, getPageForEdit, listPages, pagesTag, savePage, setFrontPage, setPageRole, setProductsPage, unpublishPage } from "@/server/pages";
 import { isDualKind, type DualChoice } from "@/lib/dual-page";
 import { requirementMet } from "@/lib/store-features";
@@ -405,4 +406,13 @@ export async function storeDualChoicesAction(storeSlug: string, kind: unknown): 
   // Product layouts are part of the online shop (D178 step 5).
   if (!member || (kind === "product_layout" && !requirementMet(member.store, "shop"))) return [];
   return (await listPages(member.store.id, kind)).map((page) => ({ id: page.id, title: page.title }));
+}
+
+/** A page build or a page's pictures stopped from the Pages list (PSI UX-01), as `cancel_page_build` stops a build. */
+export async function stopPageJobAction(storeSlug: string, kind: string, id: string): Promise<FormState> {
+  const member = await checkPermission(storeSlug, "website:write");
+  if (!member) return { status: "error", messages: [NO_ACCESS] };
+  const answer = await stopPageJob(member.store.id, kind, id, adminText(await actionAdminLang(), "website").pageJobs);
+  refresh();
+  return answer;
 }

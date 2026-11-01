@@ -5,12 +5,13 @@ import { fillWords } from "@/lib/admin-fill";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { adminText } from "@/lib/admin-text";
 
-import { updateTag } from "next/cache";
+import { refresh, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { requirePlatformAdmin } from "@/server/auth";
 import type { PageSaveState } from "@/components/admin/page-context";
+import { stopPageJob } from "@/server/page-jobs";
 import { deletePage, getPageForEdit, listPages, PAGES_TAG, savePage, unpublishPage } from "@/server/pages";
 import type { DualChoice } from "@/lib/dual-page";
 import { chooseSiteLayout, type SiteLayoutType } from "@/server/site-layouts";
@@ -329,4 +330,12 @@ export async function platformDualChoicesAction(kind: unknown): Promise<DualChoi
   if (kind !== "page" && kind !== "article" && kind !== "header" && kind !== "footer") return [];
   const theirs = new Set(kind === "page" ? (await themeStorePageStates()).flatMap((state) => (state.page ? [state.page.id] : [])) : []);
   return (await listPages(null, kind)).filter((page) => !theirs.has(page.id)).map((page) => ({ id: page.id, title: page.title }));
+}
+
+/** A page build or a page's pictures on Kaizena Flow's own site stopped from the Pages list (PSI UX-01), as `cancel_page_build` stops one. */
+export async function stopPlatformPageJobAction(kind: string, id: string): Promise<FormState> {
+  await requirePlatformAdmin();
+  const answer = await stopPageJob(null, kind, id, adminText(await actionAdminLang(), "website").pageJobs);
+  refresh();
+  return answer;
 }

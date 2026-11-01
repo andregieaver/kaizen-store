@@ -200,7 +200,8 @@ describe("update_product, set_prices and set_product_status", () => {
     expect(await ownerTools.gateNeeded(store.member.store, "set_prices", { product: id })).toBe(true);
     expect(await ownerTools.gateNeeded(store.member.store, "update_product", { product: "merino scarf" })).toBe(true);
     expect(await productTools.productApprovalWords(store.member.store, "set_prices", { product: id, changes: [{ prices: { NO: "429" } }] })).toBe(
-      'Change the prices of the live product "Merino scarf": every variant 429 NOK in NO.',
+      // Before → after, from the price the editor shows now (PSI UX-05).
+      'Change the prices of the live product "Merino scarf": every variant 399,00 → 429 NOK in NO.',
     );
     // Checked before it is kept: a price the editor would refuse is never waiting for a yes.
     expect(await refusal(preflight("set_prices", { product: id, changes: [{ prices: { NO: "abc" } }] }))).toContain("is not a price in NOK");

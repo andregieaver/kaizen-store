@@ -512,12 +512,22 @@ export async function priceChangePercent(store: Store, account: Account, input: 
   }
 }
 
-/** A gated product call in words from its arguments and the product's own title and currencies, for the approval. */
+/**
+ * A gated product call in words from its arguments and the product's own title and currencies, for the approval; a price reads before →
+ * after from the product's prices as the editor shows them now (PSI UX-05).
+ */
 export async function productApprovalWords(store: Store, tool: string, args: Record<string, unknown>): Promise<string | null> {
   if (typeof args.product !== "string") return null;
   try {
     const found = await findProduct(store, args.product);
-    return productApprovalSummary(tool, args, found.title, store.markets.map((m) => ({ code: m.code, currency: m.currency, name: m.name })));
+    const markets = store.markets.map((m) => ({ code: m.code, currency: m.currency, name: m.name }));
+    let current: { sku: string; prices: Record<string, string> }[] = [];
+    if (tool === "set_prices" || tool === "update_product") {
+      const editor = await getEditorContext(store);
+      const stored = await getProductForEdit(store, editor, found.id).catch(() => null);
+      current = (stored?.variants ?? []).map((v) => ({ sku: v.sku, prices: (v.prices ?? {}) as Record<string, string> }));
+    }
+    return productApprovalSummary(tool, args, found.title, markets, current);
   } catch {
     return null;
   }

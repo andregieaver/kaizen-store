@@ -442,6 +442,26 @@ export const websiteEn = {
     postalAddress: "Address",
     contactEmail: "Contact email",
   },
+  /** The AI's page work still going, on the Pages and Articles lists (PSI UX-01, `PageJobsPanel`). */
+  pageJobs: {
+    title: "Being made by AI",
+    intro: "Pages the AI manager is building and pictures it is still making, one at a time. Each page is a draft: nothing is on the site until you publish it.",
+    waiting: "Waiting its turn",
+    building: "Being built now",
+    pictures: "{made} of {total} pictures made",
+    notMade: { one: "one could not be made", many: "{n} could not be made" },
+    untitled: "Untitled page",
+    open: "Open",
+    stop: "Stop",
+    stopPictures: "Stop the pictures",
+    stopping: "Stopping…",
+    stopped: "“{title}” will not be built.",
+    stoppedRunning: "“{title}” is stopped. The draft it had started is deleted when that run ends.",
+    built: "It was already built: its draft is in the list.",
+    ended: "It had already stopped.",
+    picturesStopped: { one: "One picture will not be made. A picture being made that moment may still arrive.", many: "{n} pictures will not be made. A picture being made that moment may still arrive." },
+    picturesDone: "Its pictures were already done.",
+  },
   /** What the pages' actions answer (D42 to D57, D112, D126, D261). */
   pageActions: {
     unknownPage: "Unknown page.",

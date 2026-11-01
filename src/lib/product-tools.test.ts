@@ -345,4 +345,21 @@ describe("productApprovalSummary", () => {
       'Change the live product "Blue mug": the title to "Big mug"; the web address to /p/big-mug (the old one is redirected); the tags to gift.',
     );
   });
+
+  it("says each price before → after from the variants' prices now (PSI UX-05)", () => {
+    const now: { sku: string; prices: Record<string, string> }[] = [
+      { sku: "MUG", prices: { NO: "199,00", SE: "229,00" } },
+      { sku: "MUG-L", prices: { NO: "249,00" } },
+    ];
+    expect(productApprovalSummary("set_prices", { changes: [{ sku: "MUG", prices: { NO: "249", SE: "" } }] }, "Blue mug", STORE.markets, now)).toBe(
+      'Change the prices of the live product "Blue mug": MUG 199,00 → 249 NOK in NO, no price in SE (now 229,00).',
+    );
+    // Every variant at once: one price now, several, or none there yet.
+    expect(productApprovalSummary("set_prices", { changes: [{ prices: { NO: "299", SE: "300" } }] }, "Blue mug", STORE.markets, now)).toBe(
+      'Change the prices of the live product "Blue mug": every variant 299 NOK in NO (now different by variant), 300 SEK in SE (now 229,00 for some variants).',
+    );
+    expect(productApprovalSummary("update_product", { variants: [{ sku: "MUG-L", prices: { SE: "279" } }] }, "Blue mug", STORE.markets, now)).toBe(
+      'Change the live product "Blue mug": MUG-L: 279 SEK in SE (not priced there now).',
+    );
+  });
 });

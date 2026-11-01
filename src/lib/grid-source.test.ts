@@ -97,8 +97,8 @@ describe("what each source means", () => {
 
 /** The decision for each module that reads `source.type`, made when custom items were added (D155). */
 const READERS: Record<string, string> = {
-  "src/components/admin/page-builder.tsx":
-    "the builder: the source choice, custom items' editor and Copy current items; terms, order, limit, filters, recommendations and tile fields are hidden for custom; the theme's cards and filters are products'",
+  "src/components/admin/page-builder-fields.tsx":
+    "the builder's grid fields: the source choice, custom items' editor and Copy current items; terms, order, limit, filters, recommendations and tile fields are hidden for custom; the theme's cards and filters are products'",
   "src/components/admin/custom-items-editor.tsx": "the custom items' own editor and Copy current items, which turns a looked-up source into custom items",
   "src/lib/custom-grid.ts": "sourceChoice(): what changes in a grid when the owner chooses another source (custom items are kept in the editor until the page is saved)",
   "src/lib/experiment-parts.ts": "names a custom grid in an A/B test by its first titles; the other sources by the page's own words (none)",
@@ -142,7 +142,7 @@ describe("the readers that only ask what a source means", () => {
     }
     // The page's image shape and the builder's "is it products" and "is it custom" questions too.
     expect(read("src/lib/page-content.ts")).toContain("sourceTraits(block.source).products");
-    expect(read("src/components/admin/page-builder.tsx")).toContain("const custom = !traits.lookedUp;");
+    expect(read("src/components/admin/page-builder-fields.tsx")).toContain("const custom = !traits.lookedUp;");
   });
 
   it("answers every source in gridData(), ending in an exhaustive check", () => {

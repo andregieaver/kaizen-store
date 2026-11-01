@@ -5,6 +5,7 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { DemoHomePages } from "@/components/admin/demo-home-pages";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { PAGE_TYPE_COPY } from "@/components/admin/page-type-copy";
+import { PageJobsPanel } from "@/components/admin/page-jobs-panel";
 import { PagesTable } from "@/components/admin/pages-table";
 import { TermsManager } from "@/components/admin/terms";
 import { SiteLayoutChoice, SiteLayoutsTable } from "@/components/admin/site-layouts";
@@ -18,6 +19,7 @@ import type { Term } from "@/lib/taxonomy";
 import { latestHomeTake, homePageOffers } from "@/server/home-takes";
 import { memberCan, requirePageTypeAccess } from "@/server/permissions";
 import { listPages, type PageSummary } from "@/server/pages";
+import { runningPageJobs } from "@/server/page-jobs";
 import { scheduleChips } from "@/server/page-schedules";
 import { isScheduledType } from "@/lib/page-schedules";
 import { layoutUses, type LayoutUse } from "@/server/product-layouts";
@@ -34,6 +36,7 @@ import {
   setFrontPageAction,
   setPageRoleAction,
   setProductsPageAction,
+  stopPageJobAction,
   updateStorePageTermAction,
 } from "./actions";
 import { termFieldsSetup } from "../fields/data";
@@ -122,6 +125,15 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
         <p role="status" className="rounded-panel border border-line bg-card p-4 text-sm">
           The {copy.one} was deleted.
         </p>
+      )}
+      {/* The AI's page work still going (PSI UX-01): builds and pictures, with a Stop for who may change the site. */}
+      {(type === "page" || type === "article") && (
+        <PageJobsPanel
+          jobs={await runningPageJobs(store.id)}
+          pagesBase={storePagesBase(store, "page")}
+          articlesBase={storePagesBase(store, "article")}
+          stop={memberCan(gated, "website:write") ? stopPageJobAction.bind(null, store.slug) : undefined}
+        />
       )}
       {pages.length === 0 ? (
         <p className={`p-5 text-sm text-muted ${CARD_CLASS}`}>

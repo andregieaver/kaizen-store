@@ -45,7 +45,7 @@ describe("the rules", () => {
     }
     const blocking = PAGE_ISSUE_RULES.filter((r) => RULE_SEVERITY[r] === "blocking");
     expect(blocking.sort()).toEqual(["contrast", "empty_link", "heading_empty", "image_alt", "legal_notice", "pay_page_block", "placeholder"].sort());
-    expect(PAGE_ISSUE_RULES.filter((r) => RULE_SEVERITY[r] === "warning").sort()).toEqual(["alt_long", "footer_legal", "frame_title", "heading_order", "link_text_generic"]);
+    expect(PAGE_ISSUE_RULES.filter((r) => RULE_SEVERITY[r] === "warning").sort()).toEqual(["alt_long", "footer_legal", "frame_title", "heading_order", "link_text_generic", "text_on_picture"]);
   });
 });
 
@@ -175,16 +175,45 @@ describe("contrast", () => {
     expect(pageIssues(page(row([col([inner], { background: { type: "color", color: "#000000" } })], { background: { type: "color", color: "#ffffff" } })))).toEqual([]);
   });
 
-  it("does not check what it cannot know: pictures, gradients, videos, see-through colours", () => {
+  it("does not check what it cannot know: a see-through colour or gradient", () => {
     const grey = () => heading(2, "Grey", ink("#aaaaaa"));
     for (const background of [
-      { type: "image", image: { url: "u", width: 1, height: 1 }, overlay: null },
-      { type: "gradient", style: "shift", colors: ["#fff", "#eee"] },
       { type: "color", color: "#ffffff", opacity: 50 },
+      { type: "gradient", style: "shift", colors: ["#fff", "#eee"], opacity: 60 },
     ] as const) {
       expect(pageIssues(page(row([col([grey()])], { background: background as never })))).toEqual([]);
     }
-    expect(pageIssues(page(row([col([grey()])], { background: { type: "video", video: { url: "v" }, poster: null, overlay: null } })))).toEqual([]);
+  });
+
+  it("holds text over a gradient to each of its colours, under its overlay (PSI ACC-04)", () => {
+    const white = () => heading(2, "White", ink("#ffffff"));
+    const gradient = (colors: string[], overlay?: { color: string; opacity: number }) => ({ type: "gradient", style: "shift", colors, ...(overlay && { overlay }) }) as never;
+    // Dark blue to light yellow: the white heading is lost where the gradient is yellow.
+    const issues = pageIssues(page(row([col([white()])], { background: gradient(["#1e3a8a", "#fde68a"]) })));
+    expect(issues.map((i) => [i.rule, i.severity])).toEqual([["contrast", "blocking"]]);
+    expect(issues[0].message).toMatch(/on its gradient where it is #fde68a \(1\.\d:1; aim for 4\.5:1\)/);
+    expect(pageIssues(page(row([col([white()])], { background: gradient(["#1e3a8a", "#312e81"]) })))).toEqual([]);
+    // A strong dark overlay makes the whole gradient dark enough.
+    expect(pageIssues(page(row([col([white()])], { background: gradient(["#1e3a8a", "#fde68a"], { color: "#000000", opacity: 70 }) })))).toEqual([]);
+    // The column's gradient is behind its text, not the row's colour.
+    expect(rules(pageIssues(page(row([col([white()], { background: gradient(["#ffffff", "#eeeeee"]) })], { background: { type: "color", color: "#000000" } }))))).toEqual(["contrast"]);
+  });
+
+  it("warns, never blocks, on text over a picture or a video unless its overlay makes sure it reads at the picture's darkest and lightest", () => {
+    const white = () => heading(2, "White", ink("#ffffff"));
+    const picture = (overlay: { color: string; opacity: number } | null) => ({ type: "image", image: { url: "u", width: 1, height: 1 }, overlay }) as never;
+    const bare = pageIssues(page(row([col([white()])], { background: picture(null) })));
+    expect(bare.map((i) => [i.rule, i.severity])).toEqual([["text_on_picture", "warning"]]);
+    expect(bare[0].message).toMatch(/over a picture.*1\.0:1.*Overlay/);
+    // A black overlay at 40 % leaves a light picture too light behind white text; at 60 % it reads either way.
+    expect(rules(pageIssues(page(row([col([white()])], { background: picture({ color: "#000000", opacity: 40 }) }))))).toEqual(["text_on_picture"]);
+    expect(pageIssues(page(row([col([white()])], { background: picture({ color: "#000000", opacity: 60 }) })))).toEqual([]);
+    expect(rules(pageIssues(page(row([col([white()])], { background: { type: "video", video: { url: "v" }, poster: null, overlay: null } as never }))))).toEqual(["text_on_picture"]);
+    // Text with no colour of its own takes the theme's, in each colour set.
+    const plain = heading(2, "Plain");
+    const sets = { theme: { sets: [{ name: "light", text: "#111111", background: "#ffffff" }] } };
+    expect(pageIssues(page(row([col([plain])], { background: picture({ color: "#ffffff", opacity: 80 }) })), sets)).toEqual([]);
+    expect(rules(pageIssues(page(row([col([plain])], { background: picture(null) })), sets))).toEqual(["text_on_picture"]);
   });
 
   it("holds a solid colour with opacity 100, and short hex colours, to the same rule", () => {
