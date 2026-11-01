@@ -42,8 +42,11 @@ type Row = Record<string, unknown>;
 
 /** Captured checkouts older than this get no more reminders. */
 const REMIND_DAYS = 30;
-/** Emails and carts are erased this long after capture, bought or not. */
-const KEEP_DAYS = 60;
+/**
+ * Emails and carts are erased this long after capture, bought or not: the retention rule `abandoned_checkouts` (30 days), held equal by
+ * `retention.test.ts`. No reminder goes out after `REMIND_DAYS`, so nothing needs the address longer.
+ */
+const KEEP_DAYS = 30;
 /** At most this many reminders per run, so a run stays well inside a minute. */
 const BATCH = 50;
 

@@ -79,6 +79,8 @@ describe("the seed of the retention schedule", () => {
     expect(rule("recommendation_events").periodValue).toBe(EVENT_DAYS);
     expect(rule("ai_usage").periodValue).toBe(constantIn("src/server/ai-usage.ts", "USAGE_KEEP_DAYS"));
     expect(rule("integration_deliveries").periodValue).toBe(constantIn("src/server/integrations.ts", "KEEP_DAYS"));
+    expect(rule("abandoned_checkouts").periodValue).toBe(constantIn("src/server/cart-reminders.ts", "KEEP_DAYS"));
+    expect(constantIn("src/server/cart-reminders.ts", "KEEP_DAYS")).toBeGreaterThanOrEqual(constantIn("src/server/cart-reminders.ts", "REMIND_DAYS"));
     expect(rule("form_submissions").periodValue).toBe(30);
     expect(read("src/server/forms.ts")).toContain("interval '30 days'");
     expect(rule("consents").periodValue).toBe(12);
