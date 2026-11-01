@@ -1169,7 +1169,7 @@ export const builderEn = {
     showLabel: "Show the {where} on the page: {title}",
     show: "Show it",
     limits:
-      "Pictures behind text are not checked. A check like this finds only part of the problems: it does not replace looking at the page with a keyboard and a screen reader.",
+      "Text over a picture is checked against the picture's darkest and lightest under its overlay, as the picture's own colours are not known. A check like this finds only part of the problems: it does not replace looking at the page with a keyboard and a screen reader.",
     hasProblems: { one: "This page has a problem to look at", many: "This page has {n} problems to look at" },
     fixOrPublish: {
       one: "Fix it first, or publish anyway. Publishing anyway is written down in the activity log.",

@@ -443,3 +443,26 @@ The re-score ([psi-2026-10-31.md](psi-2026-10-31.md)) put the overall at 78.3 (8
 - [ ] **REG-11 (C2PA)** Content Credentials on AI pictures need a signing certificate from a trust-list issuer, which only the owner can
       buy and hold; the pictures already carry the IPTC `trainedAlgorithmicMedia` mark and `made_by` in the library (D349). Left to the
       owner.
+
+## From the re-score of 2026-11-01
+
+The re-score ([psi-2026-11-01.md](psi-2026-11-01.md)) put the overall at 80.0 (82.2 with the restore drill). Done the same day:
+
+- [x] **REG-05** Cart reminders erase a shopper's email and cart after 30 days, as the retention rule says (they kept them 60);
+      `retention.test.ts` holds the constant to the rule (`bcbb5485`).
+- [x] **AST-08, REG-11** On a store that handles sensitive information, *Translate* in the inbox is not offered and
+      `translateMessage()` refuses before any model is asked (`support-helpers.int.test.ts`).
+- [x] **AST-07** The platform-wide AI pause stops the legal writer's upkeep, and a write pressed by a person is kept as a draft while the
+      pause is on (`ai-pause.int.test.ts`).
+- [x] **SEC-02, SEC-11** A visitor's wrong admin passwords write at most 20 audit rows an hour (budget `sign_in_audit`, 600 for the
+      platform); the tries are still counted per address beyond it. Stop on the Pages list is audited (`page.ai_build_stopped`,
+      `page.ai_pictures_stopped`).
+- [x] **ACC-04, ACC-02** The Checks panel says how text over a picture is checked; the platform's starter hero and the page studio's hero
+      pictures take a 60 % overlay, so they pass their own check; the Before and after slider's focus ring reads on any picture.
+- [ ] **REG-02** The platform's privacy notice, terms and `/report` say that an AI reads notices first and screens listings (owner and
+      lawyer).
+- [ ] **SEC-10** `/report`'s site-wide ceiling: keep notices past it without the receipt and the AI reading, or not (owner's choice).
+- [ ] **REL-06** The seven cron routes that work after answering, recorded in the job ledger as the Dream Factory's is.
+- [ ] **SEC-08, CODE-01** The six red Dependabot pull requests (TypeScript 6 and opentype.js 2 break the build).
+- [ ] **PERF-01** The admin's p75 LCP (3.93 s): cut the shared scripts, the English fallback first.
+- [ ] **AST-09, AGT-14** Record the eval again with DSA and Dream Factory cases, its recording carrying `tools`.

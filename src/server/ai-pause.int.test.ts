@@ -12,6 +12,7 @@ const { runAutopilot } = await import("./autopilot-runner");
 const { runEvents } = await import("./autopilot-events");
 const { runGoalReviews } = await import("./autopilot-reviews");
 const { runFollowUps } = await import("./follow-up-runner");
+const { runLegalUpkeep } = await import("./legal-writer");
 const { advanceDreamRuns } = await import("./dream-factory");
 
 type Row = Record<string, unknown>;
@@ -61,6 +62,8 @@ describe("pausing every AI that acts on its own", () => {
     expect(await runEvents({ turn: never } as never)).toEqual({ found: 0, done: 0, planned: 0, started: 0, skipped: 0, failed: 0 });
     expect(await runGoalReviews({ turn: never } as never)).toEqual({ planned: 0, started: 0, nothing: 0, skipped: 0, failed: 0 });
     expect(await runFollowUps({ turn: never } as never)).toEqual({ answered: 0, retried: 0, failed: 0, cancelled: 0, waiting: 0 });
+    // The legal writer's upkeep too: a page no person asked for waits (and one a person asks for is written as a draft, never published).
+    expect(await runLegalUpkeep()).toEqual({ stores: 0, queued: 0 });
 
     await db().execute(sql`update commerce.dream_runs set status = 'stopped', finished_at = now() where id = ${String(run.id)}::uuid`);
   });

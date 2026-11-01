@@ -1116,7 +1116,7 @@ export const builderNb: BuilderMessages = {
     showLabel: "Vis {where} på siden: {title}",
     show: "Vis",
     limits:
-      "Bilder bak tekst blir ikke kontrollert. En kontroll som denne finner bare en del av problemene: den erstatter ikke å gå gjennom siden med tastatur og skjermleser.",
+      "Tekst over et bilde kontrolleres mot bildets mørkeste og lyseste under fargelaget, siden bildets egne farger ikke er kjent. En kontroll som denne finner bare en del av problemene: den erstatter ikke å gå gjennom siden med tastatur og skjermleser.",
     hasProblems: { one: "Denne siden har et problem å se på", many: "Denne siden har {n} problemer å se på" },
     fixOrPublish: {
       one: "Rett det først, eller publiser likevel. Å publisere likevel blir skrevet ned i aktivitetsloggen.",

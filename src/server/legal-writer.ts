@@ -45,6 +45,7 @@ import { legalFacts } from "./legal-facts";
 import { currentLegalTexts, readSourceKeys } from "./legal-sources";
 import { draftContent, setLegalRole, type DraftBuilder } from "./legal-starters";
 import { log } from "./log";
+import { aiAutonomyPaused, skipWhilePaused } from "./ai-pause";
 import { ownerLanguages, pagesTag, savePage } from "./pages";
 import { memberCan, NO_ACCESS } from "./permissions";
 import { refreshTag } from "./refresh";
@@ -443,8 +444,11 @@ async function savePageOf(member: Membership, write: WriteRow, results: Record<s
   const inTest = current ? await runningTestOf(member.store.id, current.id) : null;
   const intoCurrent = current !== null && !inTest && (write.overwrite || (await untouchedAiPage(member.store.id, current)));
   const kept = current !== null && !intoCurrent;
-  const wantsPublish = settings.enabled && settings.publish === "auto" && missing.length === 0 && !kept;
+  // Publishing on its own is AI acting alone: while the platform has paused that (PSI AST-07), the page is written as a draft.
+  const paused = settings.enabled && settings.publish === "auto" && (await aiAutonomyPaused());
+  const wantsPublish = settings.enabled && settings.publish === "auto" && missing.length === 0 && !kept && !paused;
   const problems = [...skippedProblems];
+  if (paused) problems.push("Not published: Kaizena Flow has paused AI that acts on its own, so the page waits as a draft for a person to publish.");
   if (missing.length > 0 && settings.enabled && settings.publish === "auto") problems.push(`Not published: the page needs details the store has not given (${missing.join(", ")}).`);
   if (inTest) problems.push("The page chosen for it is in a running A/B test, so the AI made a draft beside it.");
   else if (kept) problems.push("The page chosen for it was written or changed by a person, so the AI left it alone and made a draft beside it.");
@@ -646,6 +650,8 @@ const dueStore = z.object({ store_id: z.string(), slug: z.string(), turned_on_by
 
 /** The five-minute dispatcher's upkeep: a few stores with it on whose last comparison is older than `UPKEEP_EVERY_HOURS`. */
 export async function runLegalUpkeep(deps: { texts?: SourceText[] } = {}): Promise<{ stores: number; queued: number }> {
+  // Upkeep is AI no person started: it waits while a platform admin has paused AI that acts on its own (PSI AST-07).
+  if (await skipWhilePaused("legal_upkeep")) return { stores: 0, queued: 0 };
   const due = await typedRows(
     dueStore,
     sql`

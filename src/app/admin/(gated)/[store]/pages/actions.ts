@@ -412,7 +412,7 @@ export async function storeDualChoicesAction(storeSlug: string, kind: unknown): 
 export async function stopPageJobAction(storeSlug: string, kind: string, id: string): Promise<FormState> {
   const member = await checkPermission(storeSlug, "website:write");
   if (!member) return { status: "error", messages: [NO_ACCESS] };
-  const answer = await stopPageJob(member.store.id, kind, id, adminText(await actionAdminLang(), "website").pageJobs);
+  const answer = await stopPageJob(member.store.id, member.account.id, kind, id, adminText(await actionAdminLang(), "website").pageJobs);
   refresh();
   return answer;
 }

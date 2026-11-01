@@ -7,6 +7,7 @@ import { MESSAGE_MAX } from "@/lib/support-rules";
 import { cleanTranslation, languageName, translateInput, translatePrompt } from "@/lib/support-translate";
 
 import { AiError, aiFor, completeText } from "./ai";
+import { deskSettings } from "./support";
 import type { StaffDesk } from "./support-desk";
 
 type Row = Record<string, unknown>;
@@ -57,6 +58,8 @@ export async function translateMessage(staff: StaffDesk, conversationId: string,
   if (!conversation) return { ok: false, problem: "This conversation is gone." };
   // A form's message is read by people only (D382): its words are never sent to a model.
   if (conversation.form) return { ok: false, problem: "Messages sent through the contact form are not translated by AI." };
+  // A store that handles sensitive information (PSI REG-11, AST-08): no AI reads what customers write, so their messages are not translated.
+  if ((await deskSettings(staff.desk))?.sensitive) return { ok: false, problem: "This store handles sensitive information, so customers' messages are not translated by AI." };
   const [message] = await db().execute<Row>(sql`
     select body from commerce.support_messages where conversation_id = ${conversationId}::uuid and seq = ${seq} and author = 'customer'
   `);

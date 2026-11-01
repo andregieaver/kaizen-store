@@ -8,6 +8,7 @@ import { db } from "@/db/client";
 import { parseKey } from "@/lib/secret-box";
 
 import { log } from "./log";
+import { takeBudget } from "./request-budget";
 
 /**
  * A wrong password or a pause kept in the audit log (PSI SEC-02, SEC-11) under the address's keyed hash, never the address or an
@@ -75,10 +76,14 @@ export async function signInLocked(email: string): Promise<boolean> {
   }
 }
 
-/** Counts a wrong try for the address, and logs it (D389, SEC-11) without the address: a security log line names no one. */
-export async function countFailedSignIn(email: string): Promise<void> {
+/**
+ * Counts a wrong try for the address, and logs it (D389, SEC-11) without the address: a security log line names no one. The audit entry
+ * is kept only within the visitor's budget (`sign_in_audit`), so one visitor trying many addresses cannot fill the audit log, which keeps
+ * entries 24 months; `visitor` is `budgetVisitor()`'s daily hash, left out by callers outside a request.
+ */
+export async function countFailedSignIn(email: string, visitor?: string): Promise<void> {
   log("warn", "admin_sign_in.failed", { via: "password" });
-  await auditSignIn("account.sign_in_failed", email, { via: "password" });
+  if (visitor === undefined || (await takeBudget(null, "sign_in_audit", visitor))) await auditSignIn("account.sign_in_failed", email, { via: "password" });
   try {
     await db().execute(sql`
       insert into commerce.chat_usage (store_id, bucket, "window", count) values (null, ${signInBucket(email)}, ${windowStart}, 1)

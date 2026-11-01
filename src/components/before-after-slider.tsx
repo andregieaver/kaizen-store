@@ -63,7 +63,7 @@ export function BeforeAfterSlider({
       />
       <span
         aria-hidden
-        className="pointer-events-none absolute inset-y-0 w-0.5 -translate-x-1/2 bg-white shadow-[0_0_4px_rgb(0_0_0/0.5)] peer-focus-visible:*:outline-2 peer-focus-visible:*:outline-offset-2 peer-focus-visible:*:outline-ink"
+        className="pointer-events-none absolute inset-y-0 w-0.5 -translate-x-1/2 bg-white shadow-[0_0_4px_rgb(0_0_0/0.5)] peer-focus-visible:*:outline-2 peer-focus-visible:*:outline-offset-0 peer-focus-visible:*:outline-black peer-focus-visible:*:shadow-[0_0_0_4px_white]"
         style={{ left: `${at}%` }}
       >
         <span className="absolute top-1/2 left-1/2 flex size-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white text-black shadow-md">

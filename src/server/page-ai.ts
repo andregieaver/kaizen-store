@@ -431,7 +431,7 @@ function placePicture(content: PageContent, job: z.infer<typeof pictureJobInput>
     if (job.target.kind === "row") {
       if (row.id !== job.target.rowId || row.background) return row;
       placed = true;
-      return { ...row, background: { type: "image" as const, image: picture, overlay: { color: "#000000", opacity: 45 } } };
+      return { ...row, background: { type: "image" as const, image: picture, overlay: { color: "#000000", opacity: 60 } } }; // 60 %: white words read at 4.5:1 over any picture (PSI ACC-04).
     }
     const blockId = job.target.blockId;
     return {

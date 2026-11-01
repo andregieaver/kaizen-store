@@ -243,13 +243,16 @@ describe("the AI's page work on the Pages list (PSI UX-01)", () => {
     expect(pictures).toMatchObject({ kind: "pictures", title: "Catering", type: "page", waiting: 2, notMade: 1 });
     // Another site sees none of it, and cannot stop it.
     expect((await runningPageJobs(other.storeId)).some((job) => (job.kind === "build" ? job.id === String(build.id) : job.pageId === builtId))).toBe(false);
-    expect(await stopPageJob(other.storeId, "build", String(build.id), w)).toEqual({ status: "error", messages: [w.ended] });
-    expect(await stopPageJob(other.storeId, "pictures", builtId, w)).toEqual({ status: "ok", messages: [w.picturesDone] });
+    expect(await stopPageJob(other.storeId, other.member.account.id, "build", String(build.id), w)).toEqual({ status: "error", messages: [w.ended] });
+    expect(await stopPageJob(other.storeId, other.member.account.id, "pictures", builtId, w)).toEqual({ status: "ok", messages: [w.picturesDone] });
 
-    expect(await stopPageJob(store.storeId, "build", String(build.id), w)).toEqual({ status: "ok", messages: ["“Listed build” will not be built."] });
-    expect(await stopPageJob(store.storeId, "build", String(build.id), w)).toEqual({ status: "error", messages: [w.ended] });
-    expect(await stopPageJob(store.storeId, "pictures", builtId, w)).toMatchObject({ status: "ok", messages: [expect.stringMatching(/^2 pictures will not be made\./)] });
-    expect(await stopPageJob(store.storeId, "something", "not-an-id", w)).toEqual({ status: "error", messages: [w.ended] });
+    expect(await stopPageJob(store.storeId, store.member.account.id, "build", String(build.id), w)).toEqual({ status: "ok", messages: ["“Listed build” will not be built."] });
+    expect(await stopPageJob(store.storeId, store.member.account.id, "build", String(build.id), w)).toEqual({ status: "error", messages: [w.ended] });
+    expect(await stopPageJob(store.storeId, store.member.account.id, "pictures", builtId, w)).toMatchObject({ status: "ok", messages: [expect.stringMatching(/^2 pictures will not be made\./)] });
+    expect(await stopPageJob(store.storeId, store.member.account.id, "something", "not-an-id", w)).toEqual({ status: "error", messages: [w.ended] });
+    // Kept in the audit log in the person's name, as cancel_page_build is.
+    expect(await count(sql`select count(*)::int as n from commerce.audit_log where store_id = ${store.storeId}::uuid and action = 'page.ai_build_stopped' and target_id = ${String(build.id)}`)).toBe(1);
+    expect(await count(sql`select count(*)::int as n from commerce.audit_log where store_id = ${store.storeId}::uuid and action = 'page.ai_pictures_stopped' and target_id = ${builtId}`)).toBe(1);
     const after = await runningPageJobs(store.storeId);
     expect(after.some((job) => (job.kind === "build" ? job.id === String(build.id) : job.pageId === builtId))).toBe(false);
   });

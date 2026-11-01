@@ -39,7 +39,8 @@ export function packHomePage(pack: ContentPack, pictures: { hero: PackPicture | 
       background: {
         type: "image",
         image: { url: pictures.hero.url, width: pictures.hero.width, height: pictures.hero.height },
-        overlay: { color: "#000000", opacity: 40 },
+        // 60 %: white words read at 4.5:1 over the lightest picture, so the page check finds nothing (PSI ACC-04, `text_on_picture`).
+        overlay: { color: "#000000", opacity: 60 },
       },
     }),
     columns: [

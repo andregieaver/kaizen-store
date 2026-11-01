@@ -334,8 +334,8 @@ export async function platformDualChoicesAction(kind: unknown): Promise<DualChoi
 
 /** A page build or a page's pictures on Kaizena Flow's own site stopped from the Pages list (PSI UX-01), as `cancel_page_build` stops one. */
 export async function stopPlatformPageJobAction(kind: string, id: string): Promise<FormState> {
-  await requirePlatformAdmin();
-  const answer = await stopPageJob(null, kind, id, adminText(await actionAdminLang(), "website").pageJobs);
+  const admin = await requirePlatformAdmin();
+  const answer = await stopPageJob(null, admin.id, kind, id, adminText(await actionAdminLang(), "website").pageJobs);
   refresh();
   return answer;
 }

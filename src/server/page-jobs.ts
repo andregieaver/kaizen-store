@@ -7,6 +7,7 @@ import type { FormState } from "@/components/admin/action-form";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import type { WebsiteMessages } from "@/lib/admin-messages/website.en";
 
+import { audit } from "./auth";
 import { col, typedRow, typedRows } from "./typed-rows";
 
 /**
@@ -118,17 +119,20 @@ export async function stopPagePictures(storeId: string | null, pageId: string): 
 }
 
 /**
- * A build or a page's pictures stopped from the Pages list, answered in the person's words (`PageJobsPanel`). `kind` and `id` come from the
- * browser: anything else than a build or pictures, or not this site's, is answered as already stopped.
+ * A build or a page's pictures stopped from the Pages list, answered in the person's words (`PageJobsPanel`), and kept in the audit log
+ * as `page.ai_build_stopped` or `page.ai_pictures_stopped` in the person's name, as the AI manager's `cancel_page_build` is. `kind` and
+ * `id` come from the browser: anything else than a build or pictures, or not this site's, is answered as already stopped.
  */
-export async function stopPageJob(storeId: string | null, kind: string, id: string, w: PageJobWords): Promise<FormState> {
+export async function stopPageJob(storeId: string | null, actor: string, kind: string, id: string, w: PageJobWords): Promise<FormState> {
   if (kind === "pictures") {
     const stopped = await stopPagePictures(storeId, id);
+    if (stopped > 0) await audit(actor, storeId, "page.ai_pictures_stopped", { stopped }, { target: { type: "page", id } });
     return { status: "ok", messages: [stopped > 0 ? countWords(stopped, w.picturesStopped) : w.picturesDone] };
   }
   if (kind !== "build") return { status: "error", messages: [w.ended] };
   const result = await stopPageBuild(storeId, id);
   if (result.outcome === "stopped") {
+    await audit(actor, storeId, "page.ai_build_stopped", { running: result.running }, { target: { type: "page_build", id } });
     return { status: "ok", messages: [fillWords(result.running ? w.stoppedRunning : w.stopped, { title: result.title || w.untitled })] };
   }
   return { status: "error", messages: [result.outcome === "built" ? w.built : w.ended] };

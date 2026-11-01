@@ -111,7 +111,8 @@ export async function conversationFeed(desk: StaffDesk, id: string, after: numbe
     agents: agents.filter((a) => a.id !== desk.account.id),
     partner: { available: !form && desk.canWrite && mode !== "off" && Boolean(settings?.partner) && Boolean(connection?.textModel), mine: mine.partner },
     channel,
-    translate: !form && desk.canWrite && Boolean(connection?.textModel),
+    // A store that handles sensitive information (PSI REG-11, AST-08): no AI reads what customers write, translation included.
+    translate: !form && !settings?.sensitive && desk.canWrite && Boolean(connection?.textModel),
   };
 }
 

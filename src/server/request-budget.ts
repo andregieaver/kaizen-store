@@ -39,6 +39,9 @@ export const BUDGETS = {
   csp: { window: "minute", visitor: 20, store: 2000 },
   // Notices of illegal content on Kaizena Flow's form (DSA art. 16, D411): each sends email and an AI reading, so a few an hour.
   report: { window: "hour", visitor: 5, store: 30 },
+  // Wrong admin passwords kept in the audit log (PSI SEC-02, SEC-11), which keeps entries 24 months: one visitor trying many addresses
+  // writes at most this many an hour, the whole platform ten times more. The tries are still counted per address beyond it.
+  sign_in_audit: { window: "hour", visitor: 20, store: 600 },
 } as const satisfies Record<string, { window: BudgetWindow; visitor: number; store: number }>;
 
 export type BudgetEndpoint = keyof typeof BUDGETS;

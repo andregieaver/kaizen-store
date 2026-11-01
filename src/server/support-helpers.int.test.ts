@@ -142,6 +142,18 @@ describe("translation for agents", () => {
     expect(await agentAct(other, c.id, { kind: "translate", seq: c.seq })).toMatchObject({ ok: false });
   });
 
+  it("sends no customer's words to the AI while the store handles sensitive information (PSI REG-11, AST-08)", async () => {
+    const c = await conversation();
+    const asked = model(["Where is my parcel?"]);
+    await db().execute(sql`insert into commerce.support_settings (store_id, sensitive) values (${storeId}::uuid, true) on conflict (store_id) do update set sensitive = true`);
+    try {
+      expect(await agentAct(owner, c.id, { kind: "translate", seq: c.seq })).toMatchObject({ ok: false, problem: expect.stringContaining("sensitive information") });
+      expect(asked).toHaveLength(0);
+    } finally {
+      await db().execute(sql`update commerce.support_settings set sensitive = false where store_id = ${storeId}::uuid`);
+    }
+  });
+
   it("never sends a translated reply until the person sends it, and then marks it Translated by AI", async () => {
     const c = await conversation();
     const asked = model(["Pakken din er på vei."]);
