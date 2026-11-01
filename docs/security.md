@@ -27,6 +27,7 @@ to do when something here fails), `docs/runbooks/restore.md` (backups), `docs/re
 
 ```
  Visitor / shopper ──(storefront, chat, forms, APIs a store opens)──┐
+ Anyone ──(/report: a notice of illegal content, no sign-in)─────────┤
  Shopping agent, headless front end, WordPress site ──(tokens)──────┤
  Store staff by role ─┐                                             │
  Store owner ─────────┼──(admin, AI manager, Admin API)──────────── Kaizena Flow (Vercel dub1) ──── Supabase (commerce schema)
@@ -76,7 +77,7 @@ Attacker: anyone on the internet, including a shopper of the store.
 | Routes acting for a signed-in person or a visitor refuse another site's request | `sameSite()` (`src/lib/same-site.ts`) on the chat, forms, blog comments, speed, private-store and editor routes | the routes' int tests; **no scan** lists which routes must call it |
 | Shopper sign-in codes: five tries a code, a lockout; a session is *fresh* only after a proof, and export or deletion needs a fresh one | `src/server/customers.ts` | `src/server/session-freshness.scan.test.ts`, `src/server/customers.int.test.ts` |
 | A shopper's own data only: a support conversation found only by its token's hash on its own site; an order in support only among the signed-in customer's own | `visitorConversation()` (`src/server/support.ts`), `src/server/support-tools.ts` | `src/server/support.int.test.ts`, `support-tools.int.test.ts` |
-| Budgets on costly public endpoints: search suggestions, feeds, private-store passwords, the shopping agents' endpoint, the Admin and storefront APIs | `takeBudget()` (`src/server/request-budget.ts`) | `src/server/request-budget.int.test.ts` |
+| Budgets on costly public endpoints: search suggestions, feeds, private-store passwords, the shopping agents' endpoint, the Admin and storefront APIs, the notice form (`report`, section 2.10) | `takeBudget()` (`src/server/request-budget.ts`) | `src/server/request-budget.int.test.ts` |
 | Chat turns counted before any model call | `takeTurn()` (`src/server/chat-route.ts`) | `src/server/chat.int.test.ts` |
 | A private store's pass is HMAC-signed with a derived key, compared in constant time, bound to the store's own host | `src/lib/unlock-pass.ts`, `src/server/private-mode.ts` (`lockedOut()`) | `src/lib/unlock-pass.test.ts`, `src/server/private-mode.int.test.ts`, `e2e/private-mode.spec.ts` |
 | Everything a visitor or a person points the server at is fetched through the address guard: public addresses only, the checked address connected to, each redirect checked, size and time limited | `safeFetch()` and `hostProblem()` (`src/server/replicate-fetch.ts`), `parseReplicaUrl()`/`isBlockedAddress()` (`src/lib/replicate-url.ts`) | `src/server/replicate-fetch.test.ts`, `src/lib/replicate-url.test.ts` |
@@ -172,6 +173,62 @@ Attacker: anyone posting to a webhook address.
 | AI providers | Kaizena Flow's key or the store's own, encrypted in `ai_providers` | `aiFor()` (`src/server/ai.ts`); every call metered (`metered()`); a store's own provider only at a public https address | `src/server/ai.int.test.ts`, `ai-usage.int.test.ts` |
 | Web push (D361) | VAPID keys in the environment | only to a push service's host (`isPushEndpoint()`, `src/lib/push.ts`), no customer data in a push | `src/lib/push.test.ts` |
 
+### 2.10 Notices of illegal content (`/report`, D411)
+
+Attacker: anyone, with no account: a sender who floods the form, uses its receipt to mail a stranger, writes instructions for the AI
+that reads notices, or reports a competitor's listing to have it taken down; and a listing's own words, which the AI screening reads.
+
+| Control | Where | Held by |
+|---|---|---|
+| The form is budgeted per visitor (5 an hour) and for the site (30 an hour), failing closed, and sends at most three receipts a day to one address | `takeBudget(null, "report", …)` (`src/app/(platform)/report/actions.ts`), `FAIL_CLOSED`, `RECEIPTS_A_DAY` (`src/server/content-reports.ts`) | `src/server/content-reports.int.test.ts`, `budget-fail-closed.test.ts` |
+| What a notice holds is checked by its schema and the table's checks (address, reasons, good-faith statement); the address must be one Kaizena Flow hosts to be matched to a listing, and is never fetched | `reportInput()` (`src/lib/content-reports.ts`), `commerce.content_reports` | `src/lib/content-reports.test.ts`, `content-reports.int.test.ts` |
+| The AI reads a notice and a listing as data: `UNTRUSTED_TEXT` in its prompts, its answer kept only in its checked shape, drawn as text | `src/lib/content-moderation.ts` (`parseReading()`), `src/server/content-moderation.ts` | `src/lib/content-moderation.test.ts`, `prompt-safety.scan.test.ts` |
+| The AI never decides: a platform admin presses Decide with a reason on every notice and flag; restricting is done by hand where the content lives; each decision is in the audit log | `/admin/platform/reports`, `decideContentReport()` | `content-reports.int.test.ts` |
+| The sender is never named to the store; their name and address are blanked 12 months after the decision | `platform.content_report_restricted`, retention rule `content_report_senders` | `content-reports.int.test.ts`, `src/lib/retention.test.ts` |
+
+### 2.11 Every area of `/api`, and what stands at its door
+
+Each top-level folder of `src/app/api` is named here with the check a request meets first; `src/lib/security-routes.scan.test.ts` fails
+a new folder that is not (PSI SEC-01). Pages and server actions are held by the boundaries above (the admin's by its gate and roles,
+2.4 and 2.5; the notice form by 2.10).
+
+| Route | Who calls it | First check |
+|---|---|---|
+| `/api/ab` | a visitor's browser (A/B test assignment, D148) | `sameSite()`, budget `ab` |
+| `/api/admin` | an owner's tools (the Admin API, D355) | a scoped token (`apiCaller()`), budget, idempotency keys (2.9) |
+| `/api/ads` | a visitor's browser (ad click ids, D303) | `sameSite()` |
+| `/api/auth` | a shopper signing in with Google (D375) | `sameSite()`, Google's signed answer and a state cookie |
+| `/api/blog` | a visitor commenting (D341) | `sameSite()`; a comment has a status (pending, approved, rejected, spam) the owner moderates |
+| `/api/calendar` | another calendar reading a room's or item's bookings (D67) | the feed's secret token (`calendarForToken()`) |
+| `/api/chat` | a visitor's chat and support (D81, D216) | `sameSite()`, turns counted before any model call (2.6) |
+| `/api/consent` | a visitor's cookie choice (D58) | budget `consent` |
+| `/api/cron` | Supabase's scheduler and Vercel Cron | `cronAuthorised()` (the cron secret), each run kept (`trackedRoute()`) |
+| `/api/csp-report` | browsers reporting the Report-Only policy (D389) | budget, counted as log lines only |
+| `/api/domains` | a visitor or owner searching domain names (D315) | a limit per store and per visitor's hashed address (`domain-search.ts`) |
+| `/api/feeds` | ad platforms reading product feeds (D302) | the feed's token, compared by hash; budget |
+| `/api/fonts` | browsers loading fonts (D59) | public reads of the platform's own font files, nothing written |
+| `/api/forms` | a visitor sending a form (D93) | `sameSite()`, the visitor's own key |
+| `/api/gravatar` | the admin's pictures (D97) | only hashes Kaizena Flow signed (HMAC); fetched from Gravatar's fixed host |
+| `/api/health` | the deploy check and monitors | public; names no host or connection mode |
+| `/api/integrations` | an owner connecting Slack or Mollie (D101, D292) | a signed-in account with the owner's role (`requireAccount()`, `checkOwnerRole()`) |
+| `/api/marketing` | a press on a broadcast's link (D297) | the target looked up in the broadcast's own content (no open redirect); nothing of the person kept |
+| `/api/mcp` | an owner's MCP client (the store's MCP server) | a bearer token, the member's own permissions (2.7) |
+| `/api/mollie` | Mollie's webhook | the payment re-fetched from Mollie, never the body believed (2.8) |
+| `/api/platform` | the admin's live-site editing (edit pass, page CSS) | a signed-in account and its assurance (`getAccount()`, `getAssurance()`) |
+| `/api/private` | a visitor unlocking a private store (D339) | `sameSite()`, budget `unlock` failing closed |
+| `/api/recommendations` | a visitor's browser (D139) | `sameSite()`, a request budget, a private store's lock |
+| `/api/resend` | Resend's events and inbound mail | Svix signature (2.8) |
+| `/api/reviews` | visitors reading more reviews and their pictures (D301) | the reviews feature on and the store open; a picture only of a published review, not hidden |
+| `/api/shop` | a shopper back from Google sign-in (D375) | the sign-in's own state |
+| `/api/stock-requests` | a visitor asking to hear when an item is back (D298) | `sameSite()`; a confirmation email before anything is sent |
+| `/api/storefront` | a headless front end (the storefront API, D362) | a storefront token of the store (`asStorefront()`), budget per token (2.9) |
+| `/api/stripe` | Stripe's webhooks | `constructEvent()` signature (2.8) |
+| `/api/ucp` | shopping agents (D353) | budget; read-only tools, a cart handed to the store's own checkout (2.9) |
+| `/api/unsubscribe` | a person leaving a list | the email's own token |
+| `/api/usage` | Vercel's usage drain | the drain's secret, compared in constant time (2.8) |
+| `/api/visit` | a visitor's browser (counted visits, speed, D152, D336) | `sameSite()`; counts only, no person |
+| `/api/wordpress` | the WordPress plugin (D169) | the plugin's token for its store (`asPlugin()`, 2.9) |
+
 ## 3. Data that leaves for good
 
 Some things, once out, cannot be called back: a broadcast sent, a webhook delivered, an Admin API read, a CSV downloaded, a prompt
@@ -211,28 +268,29 @@ as they are (`storefront_tokens.token`).
 | Supabase logs (Auth, Postgres, API) | sign-ins, failed queries, Data API calls | Supabase's plan; **not recorded here** |
 | The usage drain | counts per store and day only | it cannot say who or what |
 
-Not logged today: individual failed password sign-ins in the audit log (only the lock, as a `log()` line `admin_sign_in.locked`), and
-permission denials (`src/server/permissions.ts` writes nothing). PSI SEC-11.
+Since 1 November 2026 (PSI SEC-11) the audit log also holds failed password sign-ins (`account.sign_in_failed`) and pauses
+(`account.sign_in_locked`) under the address's keyed hash, never the address or an account, and a member refused a permission
+(`staff.permission_refused`, at most one per member and keys every ten minutes) in the store's activity log.
 
 ## 6. Known gaps, and what would close each
 
-From the audit (24 October) and its re-score (28 October), checked again in the code at `a1e5f117`.
+From the audit (24 October) and its re-scores (28 and 31 October); refreshed 1 November 2026.
 
 | Gap | Risk | What would close it |
 |---|---|---|
 | ~~No key id and no rotation for `SETTINGS_ENCRYPTION_KEY` (SEC-06)~~ Closed 30 October 2026 (D410): secrets name their key (`v2.<kid>.…`), the server reads with the current and `SETTINGS_ENCRYPTION_KEY_PREVIOUS`, the dispatcher moves every secret to the current key (`reencryptSecrets()`), gift card and recovery code hashes take keys of their own (`GIFT_CARD_HASH_KEY`, `RECOVERY_CODE_HASH_KEY`), and `docs/runbooks/key-rotation.md` is the procedure. Still the owner's: setting the two hash keys once (step one of the runbook) | — | the runbook's first step |
-| **Script CSP only on the pay routes**, with `'unsafe-inline'` (SEC-05); the admin sends only `frame-ancestors`; the storefront and Kaizena Flow's pages send none | an injected script runs anywhere else | A nonce-based CSP, Report-Only first, on `/admin`, then the storefront |
-| No `Permissions-Policy`; HSTS is Vercel's default without `includeSubDomains`; storefront and platform pages may be framed (SEC-07) | clickjacking of storefront pages | the headers in `baseRouteHeaders()` (`src/lib/csp.ts`) |
-| `requireToolPermission()` treats a missing `holder` as an owner (`src/server/owner-tools.ts`) (SEC-03) | a new caller that forgets the holder runs with the owner's rights | make `holder` required in `OwnerToolContext` |
-| ~~No check that `commerce` keeps no grants to the API roles (SEC-03)~~ Closed 30 October 2026: the live drill `database_door` (D406, `src/server/live-drills.ts`) reads, on the production database, that `anon` and `authenticated` have no use of `commerce`, no table grant and no default grant; it passed on its first run. Without schema use, an exposed schema serves nothing | — | run it after any change in the Supabase dashboard |
+| **Script CSP enforced only on the pay routes**, with `'unsafe-inline'` (SEC-05); every other page sends `frame-ancestors` enforced and a site-wide script policy as Report-Only (D389) | an injected script runs anywhere else | the owner's decision (`docs/audits/psi-followups.md`, SEC-05): SRI cannot cover Next.js's per-request inline scripts, so enforcing it on `/admin` means a dynamic admin with a nonce |
+| ~~No `Permissions-Policy`; storefront and platform pages may be framed (SEC-07)~~ Closed 30 October 2026: `Permissions-Policy` on every response (`SITE_HEADERS`) and `frame-ancestors 'self'` on every path (`adminFrameHeaders()`, `src/lib/csp.ts`). Still open: HSTS is Vercel's default without `includeSubDomains` | a subdomain reached over plain HTTP | the owner confirms every subdomain serves HTTPS, then the header |
+| ~~`requireToolPermission()` treats a missing `holder` as an owner (SEC-03)~~ Closed 1 November 2026: `holder` is required and `heldBy()` refuses a context without a role (`owner-tool-permissions.int.test.ts`) | — | — |
+| ~~No check that `commerce` keeps no grants to the API roles (SEC-03)~~ Closed 30 October 2026: the live drill `database_door` (D406, `src/server/live-drills.ts`) reads, on the production database, that `anon` and `authenticated` have no use of `commerce`, no table grant and no default grant; it passed on its first run. Without schema use, an exposed schema serves nothing. Since 1 November 2026 it runs daily as the job `daily.database-door`, failing on the platform home while the door is open | — | — |
 | ~~`takeBudget()` and the sign-in limit fail open on a database error (SEC-10)~~ Closed 30 October 2026: the private store's password (`unlock`, `FAIL_CLOSED` in `src/server/request-budget.ts`) and the admin's password sign-in (`signInLocked()`) refuse when the count fails (`budget-fail-closed.test.ts`); other budgets still allow, as an answer matters more there | — | — |
-| Failed sign-ins and permission denials not in the audit log (SEC-11) | an attack is hard to see afterwards | log `account.sign_in_failed` under the hashed key, and denials |
-| 86 `sql.raw` sites, all checked by hand, none held by a test (SEC-04) | a new one built from input | a scan test listing them |
+| ~~Failed sign-ins and permission denials not in the audit log (SEC-11)~~ Closed 1 November 2026 (section 5) | — | — |
+| ~~`sql.raw` sites checked by hand, none held by a test (SEC-04)~~ Closed 1 November 2026: `src/lib/sql-raw.scan.test.ts` lists the 99 uses in 37 files with where each one's text comes from; a new one fails | — | — |
 | ~~The agent safety eval's recording is not in the repository (SEC-12)~~ Closed 30 October 2026: the live run passed 14 of 14 on the platform's model once tool results were framed as data and text addressed to an AI was taken out of them (`toolData()`, `withoutInstructions()`); its recording is `src/data/agent-eval-recording.json`, replayed by CI | — | a new live run with every prompt change |
 | ~~`/api/health` names the database host and connection mode to anyone~~ Closed 30 October 2026: the public answer carries neither (`src/lib/health.ts`, its test) | — | — |
 | No list of who holds production access, or their two-step (SEC-09); PITR off, Storage not backed up (`docs/runbooks/restore.md`) | an unknown person can reach everything; files lost for good | the list, and the daily bucket copy |
 | A platform account can be disabled only by SQL (`accounts.disabled_at`; no screen sets it) | slower containment | a platform action that disables an account and signs it out |
-| The `audit` job in CI reports and never blocks; no Dependabot (SEC-08) | a vulnerable dependency ships | Dependabot, and the job in a deploy's `needs` |
+| ~~The `audit` job in CI reports and never blocks; no Dependabot (SEC-08)~~ Closed 1 November 2026: the job is in `release`'s `needs` (a push with a migration waits for it; one without still deploys at once, D5) and `.github/dependabot.yml` proposes updates weekly | — | — |
 | No passkeys | phishing of a password and TOTP | WebAuthn for platform admins first |
 | The platform's AI is direct OpenAI in the US, and OpenAI's DPA was not verified (PSI REG-06). Updated 30 October 2026: `docs/residency-register.md` matches the code and production; Supabase's, Vercel's and Resend's DPAs bind by their terms (each page read); Brave Search, Resend's inbound mail, Google and the stores' own connections are listed | personal data processed in the US without a verified agreement | the owner makes an EU-residency OpenAI project and sets its key at Platform → AI, and confirms OpenAI's DPA in its dashboard |
 | A reader that asked `payments.test_mode` for a Stripe payment's mode (always false: its mode is its account's) sent test purchases to ad platforms as real (fixed 29 October, `testPayment()`); closing a store and switching off selling abroad still count test orders as obligations, on the safe side | test data treated as real money | a new reader goes through `testPayment()` (`src/server/payment-mode-sql.ts`); a scan test for the pattern is still to write |

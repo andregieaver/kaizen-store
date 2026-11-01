@@ -8,6 +8,27 @@ import { db } from "@/db/client";
 import { parseKey } from "@/lib/secret-box";
 
 import { log } from "./log";
+
+/**
+ * A wrong password or a pause kept in the audit log (PSI SEC-02, SEC-11) under the address's keyed hash, never the address or an
+ * account (that would say which addresses have one): the platform's log shows the tries, and the same key ties them together. At most
+ * one pause entry a window per key. Writing it never stops a sign-in.
+ */
+async function auditSignIn(action: "account.sign_in_failed" | "account.sign_in_locked", email: string, details: Record<string, unknown>): Promise<void> {
+  const key = signInBucket(email).slice("signin:".length);
+  try {
+    await db().execute(sql`
+      insert into commerce.audit_log (account_id, store_id, action, details, area)
+      select null, null, ${action}, ${JSON.stringify({ key, ...details })}::jsonb, 'account'
+      where ${action} = 'account.sign_in_failed' or not exists (
+        select 1 from commerce.audit_log where store_id is null and action = ${action} and details->>'key' = ${key}
+          and created_at > now() - make_interval(mins => ${SIGN_IN_WINDOW_MINUTES})
+      )
+    `);
+  } catch (error) {
+    log("error", "admin_sign_in.audit_failed", {}, error);
+  }
+}
 import { normaliseEmail } from "@/lib/email-address";
 
 /**
@@ -42,7 +63,10 @@ export async function signInLocked(email: string): Promise<boolean> {
       select count from commerce.chat_usage where store_id is null and bucket = ${signInBucket(email)} and "window" = ${windowStart}
     `);
     const locked = Number(row?.count ?? 0) >= SIGN_IN_TRIES;
-    if (locked) log("warn", "admin_sign_in.locked", { tries: Number(row?.count ?? 0) });
+    if (locked) {
+      log("warn", "admin_sign_in.locked", { tries: Number(row?.count ?? 0) });
+      await auditSignIn("account.sign_in_locked", email, { tries: Number(row?.count ?? 0) });
+    }
     return locked;
   } catch (error) {
     // Fails closed (PSI SEC-10): a password is never tried without its count. A sign-in link still works.
@@ -54,6 +78,7 @@ export async function signInLocked(email: string): Promise<boolean> {
 /** Counts a wrong try for the address, and logs it (D389, SEC-11) without the address: a security log line names no one. */
 export async function countFailedSignIn(email: string): Promise<void> {
   log("warn", "admin_sign_in.failed", { via: "password" });
+  await auditSignIn("account.sign_in_failed", email, { via: "password" });
   try {
     await db().execute(sql`
       insert into commerce.chat_usage (store_id, bucket, "window", count) values (null, ${signInBucket(email)}, ${windowStart}, 1)

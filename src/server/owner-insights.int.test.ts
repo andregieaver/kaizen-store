@@ -23,7 +23,7 @@ const run = Date.now().toString(36);
 let member: Membership;
 let storeId: string;
 let variant: { id: string; sku: string; productId: string };
-const ctx = () => ({ account: member.account, store: member.store, invalidate: () => {} });
+const ctx = () => ({ account: member.account, store: member.store, holder: { role: "owner" as const }, invalidate: () => {} });
 
 const connection = {
   provider: "openai",

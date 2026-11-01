@@ -10,3 +10,6 @@ overrides:
   "@esbuild-kit/core-utils>esbuild": "0.25.12"
   # vitest 5.0.5 accepts any vite 8; 8.3.0 to 8.3.2 carry dev server advisories (GHSA-9jrq-w75r-8gcw and others).
   vite: "^8.3.5"
+  # eslint and typescript-estree hold minimatch 3 and 10, both under GHSA-g3hv-75wg-m249 (fixed only in 11.0.1); the lint runs on 11
+  # (checked 1 November 2026: `pnpm lint` passes, still reports a warning and still honours its ignores). Dev only: lint globs.
+  minimatch: "^11.0.3"

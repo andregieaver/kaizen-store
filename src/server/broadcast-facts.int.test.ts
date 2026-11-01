@@ -55,7 +55,7 @@ beforeAll(async () => {
   handle = String(product.handle);
   const variants = await db().execute<Row>(sql`select id from commerce.product_variants where product_id = ${productId}::uuid and active`);
   for (const v of variants) await db().execute(sql`select commerce.set_price(${String(v.id)}::uuid, 'FI', ${FI_PRICE}, now())`);
-  const ctx = { account: store.member.account, store: store.member.store, invalidate: () => {} };
+  const ctx = { account: store.member.account, store: store.member.store, holder: { role: "owner" as const }, invalidate: () => {} };
   const made = (await ownerTools.runOwnerTool(ctx, "create_campaign", { name: "Autumn days", kind: "percent", percent: 15, ends_on: "2099-01-31" })) as Answer;
   expect(made.done).toEqual(expect.any(String));
   const [campaign] = await db().execute<Row>(sql`select id from commerce.campaigns where store_id = ${store.storeId}::uuid and name = 'Autumn days'`);

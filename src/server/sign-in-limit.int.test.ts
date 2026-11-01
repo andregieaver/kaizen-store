@@ -34,6 +34,22 @@ describe("the admin's sign-in limit", () => {
     expect(await limit.signInLocked(email)).toBe(false);
   });
 
+  it("keeps each wrong try in the platform's audit log under the address's key, and one pause entry a window (PSI SEC-02)", async () => {
+    const address = `audit-${Date.now().toString(36)}@example.com`;
+    const key = limit.signInBucket(address).slice("signin:".length);
+    const count = async (action: string) =>
+      Number((await db().execute<{ n: number }>(sql`select count(*)::int as n from commerce.audit_log where action = ${action} and details->>'key' = ${key}`))[0].n);
+    for (let i = 0; i < limit.SIGN_IN_TRIES; i++) await limit.countFailedSignIn(address);
+    expect(await count("account.sign_in_failed")).toBe(limit.SIGN_IN_TRIES);
+    expect(await limit.signInLocked(address)).toBe(true);
+    expect(await limit.signInLocked(address)).toBe(true);
+    expect(await count("account.sign_in_locked")).toBe(1);
+    const rows = await db().execute<{ account_id: string | null; store_id: string | null; details: unknown }>(sql`
+      select account_id, store_id, details from commerce.audit_log where details->>'key' = ${key}`);
+    expect(rows.every((r) => r.account_id === null && r.store_id === null && !JSON.stringify(r.details).includes("@"))).toBe(true);
+    await db().execute(sql`delete from commerce.chat_usage where store_id is null and bucket = ${limit.signInBucket(address)}`);
+  });
+
   it("keys an address by a hash made with the settings key when there is one", () => {
     const key = Buffer.alloc(32, 7).toString("base64");
     expect(limit.signInBucket("Kari@Example.com", key)).toBe(limit.signInBucket(" kari@example.com", key));

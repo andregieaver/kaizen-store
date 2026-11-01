@@ -52,8 +52,9 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
 
-  # Known advisories in what production runs (PSI 2026-10-24, SEC-08). A job of its own and in no job's `needs`, so a new
-  # advisory shows red here and never holds back a deploy or a migration. Dev-only tools are left to the follow-up list.
+  # Known advisories in what production runs (PSI 2026-10-24, SEC-08). In `release`'s `needs` (PSI 2026-10-31): a high advisory
+  # holds back a migration and the deploy that follows it; a push without a migration still deploys at once and shows it red here.
+  # Dependabot (`.github/dependabot.yml`) proposes the updates.
   audit:
     if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
@@ -277,7 +278,8 @@ jobs:
       && needs.pending.outputs.pending != 'false'
       && (needs.pending.result == 'success' || needs.pending.result == 'skipped')
       && needs.static.result == 'success' && needs.integration.result == 'success' && needs.e2e.result == 'success'
-    needs: [pending, static, integration, e2e]
+      && needs.audit.result == 'success'
+    needs: [pending, static, integration, e2e, audit]
     runs-on: ubuntu-latest
     timeout-minutes: 45
     environment: production

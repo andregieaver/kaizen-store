@@ -22,7 +22,7 @@ type Row = Record<string, unknown>;
  * make is refused now and never kept for a yes, the model is offered only the tools and pages the role can use, and an owner is held to nothing.
  */
 
-let ctxFor: (holder?: PermissionHolder) => Parameters<typeof ownerTools.runOwnerTool>[0];
+let ctxFor: (holder: PermissionHolder) => Parameters<typeof ownerTools.runOwnerTool>[0];
 let storeId: string;
 let productHandle: string;
 
@@ -72,10 +72,16 @@ describe("runOwnerTool for a role", () => {
     expect(await refusal(ownerTools.runOwnerTool(ctxFor(admin), "store_overview", {}))).toBe("I can't do that for you: only an owner can.");
   });
 
-  it("lets the owner use everything, and a run with no member given is an owner's (the assistant's own, before roles)", async () => {
+  it("lets the owner use everything", async () => {
     expect(await ownerTools.runOwnerTool(ctxFor(owner), "store_overview", {})).toBeTruthy();
-    expect(await ownerTools.runOwnerTool(ctxFor(undefined), "store_overview", {})).toBeTruthy();
     expect(await ownerTools.runOwnerTool(ctxFor(admin), "list_orders", {})).toBeTruthy();
+  });
+
+  it("never runs as an owner by default: a run with no holder, or one with no role, is refused before any handler (PSI SEC-03)", async () => {
+    const none = { ...ctxFor(owner), holder: undefined } as unknown as Parameters<typeof ownerTools.runOwnerTool>[0];
+    expect(await refusal(ownerTools.runOwnerTool(none, "store_overview", {}))).toBe("There is no role to hold this tool to.");
+    expect(await refusal(ownerTools.preflightOwnerTool(none, "archive_product", { product: productHandle }))).toBe("There is no role to hold this tool to.");
+    expect(await refusal(ownerTools.runOwnerTool(ctxFor({} as PermissionHolder), "list_orders", {}))).toBe("There is no role to hold this tool to.");
   });
 
   it("answers a tool that is none the same way for everyone", async () => {

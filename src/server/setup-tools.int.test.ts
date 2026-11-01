@@ -35,6 +35,7 @@ async function contextOf(storeId: string, slug: string, accountId: string, tags:
   return {
     account: { id: String(account.id), email: String(account.email), name: account.name ? String(account.name) : null, platformAdmin: false } as never,
     store,
+    holder: { role: "owner" as const },
     invalidate: (tag: string) => void tags.push(tag),
     storeId,
   };

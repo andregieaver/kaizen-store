@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { REPORT_CATEGORIES, type ReportCategory } from "./content-reports";
-import { UNTRUSTED_TEXT } from "./prompt-safety";
+import { toolData, UNTRUSTED_TEXT } from "./prompt-safety";
 
 /**
  * An AI's reading of content reported or found on a store (DSA, D411 part 2, `docs/dsa.md`). Pure: the prompts, what the model is sent
@@ -55,20 +55,22 @@ export const plainText = (html: string) => html.replace(/<[^>]*>/g, " ").replace
 
 export type Listing = { title: string; description: string; safety: string };
 
-/** What the model is sent about a notice. */
+/**
+ * What the model is sent about a notice. A stranger's words (the sender's address and explanation, the listing's texts) come between the
+ * shared data markers, with text addressed to an AI taken out first (`toolData()`, PSI SEC-12), as every agent's tool results do.
+ */
 export function triagePrompt(notice: { category: string; explanation: string; url: string }, listing: Listing | null): string {
   return [
     `Notice category chosen by the sender: ${notice.category}`,
-    `Address named: ${clip(notice.url, 500)}`,
-    `The sender's explanation:\n${clip(notice.explanation)}`,
-    listing ? `The listing at that address:\n${listingText(listing)}` : "The address is not a listing Kaizena Flow can read.",
+    `The notice:\n${toolData(`Address named: ${clip(notice.url, 500)}\nThe sender's explanation:\n${clip(notice.explanation)}`)}`,
+    listing ? `The listing at that address:\n${toolData(listingText(listing))}` : "The address is not a listing Kaizena Flow can read.",
     "Sort this notice.",
   ].join("\n\n");
 }
 
-/** What the model is sent about a listing in the platform's own check. */
+/** What the model is sent about a listing in the platform's own check, its words between the data markers as in `triagePrompt()`. */
 export function screeningPrompt(listing: Listing): string {
-  return `The listing:\n${listingText(listing)}\n\nCheck this listing.`;
+  return `The listing:\n${toolData(listingText(listing))}\n\nCheck this listing.`;
 }
 
 function listingText(listing: Listing): string {

@@ -284,7 +284,7 @@ describe("unit D2 (D383)", () => {
 
   it("lets the AI manager make a draft transfer by the locations' names, which moves nothing", async () => {
     await setLevel(store.storeId, SKU2, oslo, 4);
-    const ctx = { account: store.member.account, store: store.member.store, invalidate: () => {} };
+    const ctx = { account: store.member.account, store: store.member.store, holder: { role: "owner" as const }, invalidate: () => {} };
     const made = (await runOwnerTool(ctx, "create_transfer", { from: "lager oslo", to: "Bergen", lines: [{ sku: SKU2, quantity: 2 }] })) as { pages: { transfer: string } };
     expect(made).toMatchObject({ made: "a draft transfer", from: "Lager Oslo", to: "Bergen", units: 2 });
     const id = made.pages.transfer.split("/").at(-1)!;

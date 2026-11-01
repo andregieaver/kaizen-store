@@ -61,7 +61,7 @@ afterAll(async () => {
   await closeDb();
 });
 
-const insights = () => ownerTools.runOwnerTool({ account: member.account, store: member.store, invalidate: () => {} }, "customer_insights", { days: 90 }) as Promise<Answer>;
+const insights = () => ownerTools.runOwnerTool({ account: member.account, store: member.store, holder: { role: "owner" as const }, invalidate: () => {} }, "customer_insights", { days: 90 }) as Promise<Answer>;
 
 describe("customer_insights after an erasure (D162)", () => {
   it("counts Ane twice, Cy once, and the average of the three sales", async () => {

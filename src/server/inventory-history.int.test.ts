@@ -126,7 +126,7 @@ describe("every change of a level is a movement that says why, by whom and for w
   });
 
   it("the AI manager's set_stock: source ai_manager, for the account that asked", async () => {
-    await ownerTools.runOwnerTool({ account: store.member.account, store: store.member.store, invalidate: () => {} }, "set_stock", { sku: "DEMO-MUG-BLACK", quantity: 20 });
+    await ownerTools.runOwnerTool({ account: store.member.account, store: store.member.store, holder: { role: "owner" as const }, invalidate: () => {} }, "set_stock", { sku: "DEMO-MUG-BLACK", quantity: 20 });
     expect(await last("DEMO-MUG-BLACK")).toMatchObject({ after: 20, reason: "correction", source: "ai_manager", actor: store.accountId });
   });
 

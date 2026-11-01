@@ -88,7 +88,7 @@ let store: Awaited<ReturnType<typeof newStore>>;
 let other: Awaited<ReturnType<typeof newStore>>;
 const tags: string[] = [];
 
-const ctxOf = (s: typeof store) => ({ account: s.member.account, store: s.member.store, invalidate: (tag: string) => void tags.push(tag) });
+const ctxOf = (s: typeof store) => ({ account: s.member.account, store: s.member.store, holder: { role: "owner" as const }, invalidate: (tag: string) => void tags.push(tag) });
 const run = (name: string, input: unknown, s = store) => ownerTools.runOwnerTool(ctxOf(s), name, input) as Promise<Answer>;
 const refusal = async (promise: Promise<unknown>) => {
   try {
@@ -432,7 +432,7 @@ describe("the page studio's pictures in the background (PSI PERF-07)", () => {
 describe("Kaizena Flow's own site", () => {
   let admin: { id: string; email: string; name: string | null; platformAdmin: boolean };
   let before: Row;
-  const platform = (account = admin) => ({ account, store: null, flags: {}, connection: null, navigate: () => {}, invalidate: (tag: string) => void tags.push(tag) }) as never;
+  const platform = (account = admin) => ({ account, store: null, flags: {}, connection: null, navigate: () => {}, holder: { role: "owner" as const }, invalidate: (tag: string) => void tags.push(tag) }) as never;
   const runPlatform = (name: string, input: unknown, account = admin) => managerTools.runPlatformTool(platform(account), name, input) as Promise<Answer>;
 
   beforeAll(async () => {

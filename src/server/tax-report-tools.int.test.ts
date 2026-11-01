@@ -42,7 +42,7 @@ let ioss: Fixture;
 
 const run = async (f: Fixture, name: string, input: unknown = {}, holder?: { role: "owner" | "admin"; permissions?: string[] | null }): Promise<Json> => {
   const m = await fx.ownerOf(f);
-  return (await ownerTools.runOwnerTool({ account: m.account, store: m.store, invalidate: () => {}, holder }, name, input)) as Json;
+  return (await ownerTools.runOwnerTool({ account: m.account, store: m.store, invalidate: () => {}, holder: holder ?? { role: "owner" as const } }, name, input)) as Json;
 };
 const storeOf = async (f: Fixture) => (await fx.ownerOf(f)).store;
 

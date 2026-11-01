@@ -36,7 +36,7 @@ let other: Membership;
 let serial = 0;
 const tags: string[] = [];
 const nok = (minor: number) => formatMoney(minor, "NOK", member.store.markets[0]?.locale ?? "en");
-const ctx = (m: Membership = member) => ({ account: m.account, store: m.store, invalidate: (tag: string) => void tags.push(tag) });
+const ctx = (m: Membership = member) => ({ account: m.account, store: m.store, holder: { role: "owner" as const }, invalidate: (tag: string) => void tags.push(tag) });
 
 const connection = {
   provider: "openai",

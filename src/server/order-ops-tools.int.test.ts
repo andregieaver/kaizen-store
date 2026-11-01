@@ -73,7 +73,7 @@ async function paymentsStore(label: string): Promise<TestStore> {
 
 async function ctxOf(store: TestStore, holder?: PermissionHolder) {
   const full = (await getStore(store.slug))!;
-  return { account: store.member.account, store: full, invalidate: () => {}, holder };
+  return { account: store.member.account, store: full, invalidate: () => {}, holder: holder ?? { role: "owner" as const } };
 }
 
 /** What a tool answers: JSON the model repeats, read here by its keys. */
@@ -385,7 +385,7 @@ describe("send_draft_order", () => {
       insert into commerce.assistant_conversations (store_id, account_id, title) values (${store.storeId}::uuid, ${store.accountId}::uuid, 'drafts') returning id
     `);
     const full = (await getStore(store.slug))!;
-    const ctx = { account: store.member.account, store: full, invalidate: () => {} };
+    const ctx = { account: store.member.account, store: full, holder: { role: "owner" as const }, invalidate: () => {} };
     const shown = (await getDraft(store.storeId, id))!;
     // A version the model passed itself is replaced by the one the owner is shown.
     const approval = await assistant.keepForApproval(ctx, String(conversation.id), "send_draft_order", "send", { draft: number, approved_version: 999 });
@@ -404,13 +404,13 @@ describe("send_draft_order", () => {
       lines: shown.lines.map((l) => ({ id: l.id, kind: "goods", variantId: l.variantId, quantity: l.quantity + 10 })),
     });
     if (!changed.ok) throw new Error(changed.problem);
-    const decided = await assistant.decideApproval({ account: store.member.account, store: full }, approval.id, true, () => {}, { note: false });
+    const decided = await assistant.decideApproval({ account: store.member.account, store: full, role: "owner" as const }, approval.id, true, () => {}, { note: false });
     expect(decided?.outcome ?? "").toMatch(/changed after the owner was asked/);
     expect((await getDraft(store.storeId, id))!.status).toBe("open");
     expect((await db().execute<Row>(sql`select 1 from commerce.orders where store_id = ${store.storeId}::uuid`)).length).toBe(0);
     // Asked again about the changed draft, the yes sends what was shown.
     const again = await assistant.keepForApproval(ctx, String(conversation.id), "send_draft_order", "send", { draft: number });
-    const sent = await assistant.decideApproval({ account: store.member.account, store: full }, again.id, true, () => {}, { note: false });
+    const sent = await assistant.decideApproval({ account: store.member.account, store: full, role: "owner" as const }, again.id, true, () => {}, { note: false });
     expect(sent?.outcome ?? "").toMatch(/was sent: order/);
     expect((await getDraft(store.storeId, id))!.status).toBe("sent");
   });

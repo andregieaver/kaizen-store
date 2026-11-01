@@ -48,8 +48,8 @@ const fail = (message: string): never => {
 
 const inScope = (store: Store | null, column = sql`store_id`) => (store ? sql`${column} = ${store.id}::uuid` : sql`${column} is null`);
 const storeIdOf = (store: Store | null) => (store ? sql`${store.id}::uuid` : sql`null`);
-/** An owner of the store, or anyone on the platform's (whose AI manager only platform admins reach). */
-const isOwner = (a: PlanActor) => !a.store || !a.holder || can(a.holder, "owner");
+/** An owner of the store, or anyone on the platform's (whose AI manager only platform admins reach). A store's actor with no role is not one. */
+const isOwner = (a: PlanActor) => !a.store || (a.holder ? can(a.holder, "owner") : false);
 
 const PLAN_ROW = z.object({
   id: col.uuid,

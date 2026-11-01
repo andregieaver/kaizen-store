@@ -147,7 +147,7 @@ describe("a store's choice per country", () => {
 
 describe("the AI manager's customs_duties", () => {
   it("says who pays, each product's HS code and an estimate, from the cart's own decision", async () => {
-    const c = { ...(await ownerOf(fx)), invalidate: () => {} };
+    const c = { ...(await ownerOf(fx)), holder: { role: "owner" as const }, invalidate: () => {} };
     // The EU's thresholds are in euro: a krona amount is compared through the store's rates (or the ECB's, which the daily job keeps).
     await db().execute(sql`insert into commerce.store_currencies (store_id, currency, rate, round_to, position) values (${fx.storeId}::uuid, 'SEK', 11.5, 1, 2) on conflict do nothing`);
     const answer = (await runOwnerTool(c, "customs_duties", { country: "SE", products: ["demo-notatbok", "demo-keramikkopp"] })) as {

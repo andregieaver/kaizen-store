@@ -324,6 +324,17 @@ export async function settleDreamDrills(): Promise<number> {
   return settled;
 }
 
+/**
+ * The door drill on the daily schedule (PSI SEC-03), not only on request: a door found open throws, so `commerce.cron_jobs` keeps the job
+ * failing with what is open (role names and counts, nothing else) and the platform home and Usage and limits say so until it is closed.
+ */
+export async function checkDatabaseDoor(): Promise<"passed" | "skipped"> {
+  const result = await doorDrill();
+  log(result.outcome === "failed" ? "error" : "info", "live_drill.database_door", { outcome: result.outcome });
+  if (result.outcome === "failed") throw new Error(`The Data API's roles can reach the commerce schema: ${result.detail}`);
+  return result.outcome === "passed" ? "passed" : "skipped";
+}
+
 async function runOne(storeId: string, kind: DrillKind, requestedBy: string | null): Promise<DrillResult> {
   try {
     if (kind === "agent_eval") return await evalDrill(requestedBy);

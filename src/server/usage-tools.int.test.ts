@@ -34,7 +34,7 @@ afterAll(async () => {
 describe("usage_and_limits (owner)", () => {
   it("gives the Billing page's lines in words, with the limit and where it comes from", async () => {
     const shop = (await getStore(store.slug))!;
-    const answer = (await owner.runOwnerTool({ account: store.account, store: shop, invalidate: () => {} }, "usage_and_limits", {})) as Answer;
+    const answer = (await owner.runOwnerTool({ account: store.account, store: shop, holder: { role: "owner" as const }, invalidate: () => {} }, "usage_and_limits", {})) as Answer;
     const products = answer.lines.find((l: Answer) => l.what === "Products");
     expect(products).toMatchObject({ limit: "1", from: "set by Kaizena Flow for this store" });
     expect(answer.lines.find((l: Answer) => l.what === "Visits")).toMatchObject({ used: "not measured yet", note: "only warns: the shop stays open" });
@@ -50,7 +50,7 @@ describe("usage_and_limits (owner)", () => {
 describe("store_usage (platform)", () => {
   it("gives one store's lines to a platform admin and nothing to anyone else", async () => {
     const admin = await makeAccount("usage-admin", { platformAdmin: true });
-    const ctx = { account: admin, store: null, flags: {}, connection: null, navigate: () => {}, invalidate: () => {} };
+    const ctx = { account: admin, store: null, flags: {}, connection: null, navigate: () => {}, holder: { role: "owner" as const }, invalidate: () => {} };
     const answer = (await manager.runPlatformTool(ctx, "store_usage", { store: store.slug })) as Answer;
     expect(answer.store).toBeTruthy();
     expect(answer.lines.some((l: Answer) => l.what === "Storage")).toBe(true);

@@ -395,3 +395,31 @@ The re-score ([psi-2026-10-31.md](psi-2026-10-31.md)) put the overall at 78.3 (8
 - [x] **AGT (tool data, found with PERF-08)** The AI manager's live turns go through `streamWithTools()`, which sent tool answers unframed
       and with text addressed to an AI left in, while the safety eval runs `chatWithTools()`, which frames them (`toolData()`). Both now
       frame them alike (31 October 2026, `ai.int.test.ts`), so the eval tests what runs live.
+- [x] **SEC-08** Dependency updates and the audit holding a release. Done 1 November 2026: `.github/dependabot.yml` proposes npm and
+      GitHub Actions updates weekly (Monday 05:00 Oslo, minor and patch grouped, security updates as soon as published); CI's `audit` job
+      (`pnpm audit --prod --audit-level high`) is in `release`'s `needs`, so a high advisory holds back a migration and its deploy; the
+      `minimatch` override (`^11.0.3`, GHSA-g3hv-75wg-m249 in eslint's tree, dev only) is in `pnpm-workspace.yaml`.
+- [x] **SEC-02, SEC-11** Failed sign-ins and permission refusals in `audit_log`. Done 1 November 2026: a wrong password is
+      `account.sign_in_failed` and a pause `account.sign_in_locked` (at most one a window per address), both under the address's keyed
+      hash, never the address or an account (`sign-in-limit.int.test.ts`); a member refused a permission is `staff.permission_refused`
+      in the store's activity log with the keys, at most one per member and keys every ten minutes (`REFUSAL_EVERY_MINUTES`,
+      `permissions.int.test.ts`). Labels in English and Norwegian. Passkeys for platform admins remain.
+- [x] **SEC-03** A required `holder` and `database_door` on a schedule. Done 1 November 2026: `OwnerToolContext.holder` is required and
+      `heldBy()` refuses a context without a role ("There is no role to hold this tool to.") before any handler, where a missing holder
+      used to run as an owner; the assistant, the autopilot, approvals and the support partner pass the member's own; a plan's actor
+      without a role is no longer an owner (`isOwner()` in `autopilot-plans.ts`). Tests in `owner-tool-permissions.int.test.ts`. The
+      drill `database_door` runs daily as the job `daily.database-door` in the daily cron (`checkDatabaseDoor()`): it fails while
+      `anon` or `authenticated` can reach `commerce`, so the platform home and Usage and limits say so (`live-drills.int.test.ts`).
+- [x] **SEC-04** A `sql.raw` allowlist. Done 1 November 2026: `src/lib/sql-raw.scan.test.ts` lists each file's uses (37 files, 99 uses),
+      each with where its text comes from (the code's own lists, names, aliases and numbers, or an enum or integer the tool's schema
+      held); a new use fails until it is bound or listed with its source.
+- [x] **SEC-01** The threat model refreshed. Done 1 November 2026 (`docs/security.md`): section 2.10 draws `/report` and the AI that
+      reads notices and screens listings; section 2.11 names each of the 34 areas of `/api` with the check a request meets first, and
+      `src/lib/security-routes.scan.test.ts` fails a new area not named there; section 6 strikes what is closed (Permissions-Policy,
+      framing, the holder, the audit log's sign-ins and refusals, `sql.raw`, Dependabot) and names what is open (the enforced script
+      policy, HSTS `includeSubDomains`).
+- [ ] **SEC-12** The moderation prompts framed, in the eval and in the versions. Framing done 1 November 2026: the notice's address and
+      explanation and a listing's texts reach the model between the shared data markers with text addressed to an AI taken out
+      (`toolData()` in `triagePrompt()` and `screeningPrompt()`, `content-moderation.test.ts`). Left: triage and screening cases in the
+      agents' eval and their prompts in `prompt-versions.ts`, which need a new live run on Platform → AI and its recording committed (CI's
+      replay fails on a new case or prompt until then), so they go with the next recording.

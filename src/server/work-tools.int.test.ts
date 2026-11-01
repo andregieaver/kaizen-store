@@ -21,7 +21,7 @@ type Row = Record<string, unknown>;
  */
 
 let w: WorkTestStore;
-const ctx = async () => ({ account: w.owner.account, store: (await getStore(w.owner.store.slug))!, invalidate: () => {} });
+const ctx = async () => ({ account: w.owner.account, store: (await getStore(w.owner.store.slug))!, holder: { role: "owner" as const }, invalidate: () => {} });
 const run = async (name: string, args: unknown) => ownerTools.runOwnerTool(await ctx(), name, args);
 
 beforeAll(async () => {

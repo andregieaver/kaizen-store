@@ -43,12 +43,12 @@ beforeAll(async () => {
   const made = await makeStore("uptool");
   storeId = made.id;
   const store = (await stores.getStore(made.slug))!;
-  ctx = { account: made.account, store, invalidate: () => {} };
+  ctx = { account: made.account, store, holder: { role: "owner" as const }, invalidate: () => {} };
   ctxFor = (holder) => ({ ...ctx, holder });
 
   const other = await makeStore("uptool-other");
   emptyId = other.id;
-  emptyCtx = { account: other.account, store: (await stores.getStore(other.slug))!, invalidate: () => {} };
+  emptyCtx = { account: other.account, store: (await stores.getStore(other.slug))!, holder: { role: "owner" as const }, invalidate: () => {} };
 
   mug = await productOf("demo-keramikkopp");
   flagged = await productOf("demo-notatbok");

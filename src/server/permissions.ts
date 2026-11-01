@@ -1,6 +1,9 @@
 import "server-only";
 
+import { sql } from "drizzle-orm";
 import { notFound } from "next/navigation";
+
+import { db } from "@/db/client";
 
 import { can, pageTypeKey, type Access, type PermissionKey } from "@/lib/permissions";
 import { allowedWhenNotOpen } from "@/lib/store-closure";
@@ -42,41 +45,62 @@ export const memberCan = (member: Pick<Membership, "role" | "kind" | "permission
 export const mayFindDraftCustomers = (member: Pick<Membership, "role" | "kind" | "permissions"> & { store?: { status?: string } }): boolean =>
   memberCan(member, "orders:write") && memberCan(member, "customers:read");
 
-/** A member refused a key (D389, SEC-11): one log line with the account, the store and the keys, never a name or an address. */
-function logRefusal(member: Membership, keys: readonly PermissionKey[]): void {
-  log("warn", "auth.permission_refused", { accountId: member.account.id, storeId: member.store.id, keys: keys.join(",") });
+/**
+ * A member refused a key (D389, SEC-11): one log line with the account, the store and the keys, never a name or an address, and an entry in
+ * the store's activity log (PSI SEC-11, `staff.permission_refused`), at most one per member and keys every `REFUSAL_EVERY_MINUTES`, so a
+ * page opened again and again is one entry. Writing it never stops the answer.
+ */
+async function logRefusal(member: Membership, keys: readonly PermissionKey[]): Promise<void> {
+  const asked = keys.join(",");
+  log("warn", "auth.permission_refused", { accountId: member.account.id, storeId: member.store.id, keys: asked });
+  try {
+    await db().execute(sql`
+      insert into commerce.audit_log (account_id, store_id, action, details, area, target_type, target_id)
+      select ${member.account.id}::uuid, ${member.store.id}::uuid, 'staff.permission_refused', ${JSON.stringify({ keys: asked })}::jsonb, 'staff', 'account', ${member.account.id}
+      where not exists (
+        select 1 from commerce.audit_log
+        where store_id = ${member.store.id}::uuid and account_id = ${member.account.id}::uuid and action = 'staff.permission_refused'
+          and details->>'keys' = ${asked} and created_at > now() - make_interval(mins => ${REFUSAL_EVERY_MINUTES})
+      )
+    `);
+  } catch (error) {
+    log("error", "auth.refusal_audit_failed", { storeId: member.store.id }, error);
+  }
 }
 
-function refused(member: Membership, keys: readonly PermissionKey[]): never {
-  logRefusal(member, keys);
+/** The least time between two activity-log entries for one member refused the same keys. */
+export const REFUSAL_EVERY_MINUTES = 10;
+
+async function refused(member: Membership, keys: readonly PermissionKey[]): Promise<never> {
+  await logRefusal(member, keys);
   notFound();
 }
 
 /** For a page or a route handler: the membership when the member holds the key, else a redirect to sign in or the second step, or a 404. */
 export async function requirePermission(storeSlug: string, key: PermissionKey): Promise<Membership> {
   const member = await requireMember(storeSlug);
-  if (!memberCan(member, key)) refused(member, [key]);
+  if (!memberCan(member, key)) await refused(member, [key]);
   return member;
 }
 
 /** For an action: the membership when the member holds the key, else null (not a member, held at their second step, or lacking the key). */
 export async function checkPermission(storeSlug: string, key: PermissionKey): Promise<Membership | null> {
   const member = await getMembership(storeSlug);
-  if (member && !memberCan(member, key)) logRefusal(member, [key]);
+  if (member && !memberCan(member, key)) await logRefusal(member, [key]);
   return member && memberCan(member, key) ? member : null;
 }
 
 /** For a page or a route handler that any of several keys opens (the page builder's side actions): the first the member holds, else a 404. */
 export async function requireAnyPermission(storeSlug: string, keys: readonly PermissionKey[]): Promise<Membership> {
   const member = await requireMember(storeSlug);
-  if (!keys.some((key) => memberCan(member, key))) refused(member, keys);
+  if (!keys.some((key) => memberCan(member, key))) await refused(member, keys);
   return member;
 }
 
 /** For an action that any of several keys opens: the membership, or null. */
 export async function checkAnyPermission(storeSlug: string, keys: readonly PermissionKey[]): Promise<Membership | null> {
   const member = await getMembership(storeSlug);
-  if (member && !keys.some((key) => memberCan(member, key))) logRefusal(member, keys);
+  if (member && !keys.some((key) => memberCan(member, key))) await logRefusal(member, keys);
   return member && keys.some((key) => memberCan(member, key)) ? member : null;
 }
 

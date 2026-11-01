@@ -381,7 +381,7 @@ describe("the AI manager's report tools (D346)", () => {
     const [owner] = await db().execute<Row>(sql`select account_id from commerce.store_members where store_id = ${store.id}::uuid limit 1`);
     // The tools are offered while the online shop is on (TOOL_FEATURES); the test's store is a bare cast, so it is said here.
     const shop = { ...store, features: ["shop"] } as unknown as Store;
-    const ctx = { account: { id: String(owner.account_id), email: "owner@example.com", name: "Owner", platformAdmin: false } as never, store: shop, invalidate: () => {} };
+    const ctx = { account: { id: String(owner.account_id), email: "owner@example.com", name: "Owner", platformAdmin: false } as never, store: shop, holder: { role: "owner" as const }, invalidate: () => {} };
     const out = (await runOwnerTool(ctx, "run_report", { metrics: ["net_sales", "units"], dimensions: ["product"], period: SEPT })) as Answer;
     const direct = await report({ metrics: ["net_sales", "units"], dimensions: ["product"], period: { preset: "custom", from: "2026-09-01", to: "2026-09-07", compare: "none" } });
     expect(out.report).toMatch(/^Revenue and units sold by product/);

@@ -34,7 +34,7 @@ import { issueWorkInvoiceSummary } from "./work-tools";
 import { draftApprovalDetails } from "./order-ops-tools";
 import { featureApprovalDetails } from "./feature-tools";
 import { setFeatureInput } from "@/lib/feature-tools";
-import { gateNeeded, OwnerToolError, preflightOwnerTool, runOwnerTool } from "./owner-tools";
+import { gateNeeded, heldBy, OwnerToolError, preflightOwnerTool, runOwnerTool } from "./owner-tools";
 import { offeredTools } from "./offered-tools";
 import { appToolsFor, callAppTool, type OfferedAppTool } from "./custom-apps";
 import { isAppToolName } from "@/lib/custom-apps";
@@ -763,7 +763,7 @@ async function callTool(
       }
     } else {
       try {
-        if (ctx.store) await preflightOwnerTool({ account: ctx.account, store: ctx.store, invalidate: ctx.invalidate, holder: ctx.holder }, name, args);
+        if (ctx.store) await preflightOwnerTool({ account: ctx.account, store: ctx.store, invalidate: ctx.invalidate, holder: heldBy(ctx.holder) }, name, args);
         else await preflightPlatformTool(ctx, name, args);
       } catch (error) {
         if (error instanceof OwnerToolError) return { error: error.message };
@@ -778,7 +778,7 @@ async function callTool(
         try {
           const result = await actingAs("autopilot", async () =>
             ctx.store
-              ? runOwnerTool({ account: ctx.account, store: ctx.store, invalidate: ctx.invalidate, holder: ctx.holder }, name, args)
+              ? runOwnerTool({ account: ctx.account, store: ctx.store, invalidate: ctx.invalidate, holder: heldBy(ctx.holder) }, name, args)
               : runPlatformTool(ctx, name, args),
           );
           if (decision.tell) ctx.autopilot.told.push(approvalSummary(name, input.input as Record<string, unknown>));
@@ -804,7 +804,7 @@ async function callTool(
     // The AI made the change, in the person's name: the audit log says so (D309); inside the autopilot's turns it already says autopilot.
     return await actingAs(aiActor(), async () => {
       if (manager) return { result: await runManagerTool(ctx, name, args) };
-      if (ctx.store) return { result: await runOwnerTool({ account: ctx.account, store: ctx.store, invalidate: ctx.invalidate, holder: ctx.holder }, name, args) };
+      if (ctx.store) return { result: await runOwnerTool({ account: ctx.account, store: ctx.store, invalidate: ctx.invalidate, holder: heldBy(ctx.holder) }, name, args) };
       return { result: await runPlatformTool(ctx, name, args) };
     });
   } catch (error) {
@@ -1018,7 +1018,7 @@ export async function decideApproval(
         : tool === "start_autopilot_plan" || tool === "resume_autopilot_plan"
         ? await startPlanNow({ account: p.account, store: p.store, holder: holderOfPrincipal(p) }, tool, claimed.args as Record<string, unknown>)
         : p.store
-        ? await runOwnerTool({ account: p.account, store: p.store, invalidate, holder: holderOfPrincipal(p) }, tool, claimed.args)
+        ? await runOwnerTool({ account: p.account, store: p.store, invalidate, holder: heldBy(holderOfPrincipal(p)) }, tool, claimed.args)
         : await runPlatformTool({ account: p.account, store: null, flags: {}, connection: null, navigate: () => {}, invalidate }, tool, claimed.args)
     ) as { done?: string });
     result = { done: answer?.done ?? "Done." };

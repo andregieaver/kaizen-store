@@ -289,10 +289,10 @@ export type OwnerToolContext = {
   /** Refreshes a cache tag: `updateTag` in a server action, `revalidateTag` in a route. */
   invalidate: (tag: string) => void;
   /**
-   * Who the tools work for, for the permission each tool needs (`src/lib/owner-tool-permissions.ts`). The assistant and the store's MCP server
-   * pass the member's own; a run with none is an owner's (the assistant is the owner's alone in this wave), which is what tests and internal runs are.
+   * Who the tools work for, for the permission each tool needs (`src/lib/owner-tool-permissions.ts`): always given (PSI SEC follow-up). The
+   * assistant, the autopilot and the store's MCP server pass the member's own (`heldBy()`); nothing runs as an owner by default.
    */
-  holder?: PermissionHolder;
+  holder: PermissionHolder;
 };
 
 /**
@@ -340,9 +340,18 @@ async function usageAndLimitsTool(ctx: OwnerToolContext) {
   };
 }
 
+/**
+ * The holder a store's tools run for, never assumed: a store's principal always comes from a membership, which has a role, so a caller with
+ * none is refused rather than run as an owner.
+ */
+export function heldBy(holder: PermissionHolder | null | undefined): PermissionHolder {
+  if (!holder?.role) throw new OwnerToolError("There is no role to hold this tool to.");
+  return holder;
+}
+
 /** Refuses, in the assistant's words, a tool the member's role does not hold the permission for. */
 function requireToolPermission(ctx: OwnerToolContext, name: string): void {
-  if (!mayUseTool(ctx.holder ?? { role: "owner" }, name)) fail(toolRefusal(name));
+  if (!mayUseTool(heldBy(ctx.holder), name)) fail(toolRefusal(name));
   // A tool of a feature that is off is refused (D178), whoever asks: the assistant does not offer it, the store's MCP server lists it for every store.
   if (!toolOffered(ctx.store, name)) fail(toolFeatureRefusal(name));
 }

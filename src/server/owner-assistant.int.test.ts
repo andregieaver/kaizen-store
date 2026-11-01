@@ -102,7 +102,7 @@ describe("the owner assistant (D94)", () => {
 
   it("runs every tool that reads against the store's own data", async () => {
     // Every feature on (D178), so the tools behind one are offered; with the shop alone they are refused.
-    const ctx = { account: member.account, store: { ...member.store, features: [...FEATURE_IDS] }, invalidate: () => {} };
+    const ctx = { account: member.account, store: { ...member.store, features: [...FEATURE_IDS] }, holder: { role: "owner" as const }, invalidate: () => {} };
     await expect(ownerTools.runOwnerTool({ ...ctx, store: { ...member.store, features: ["shop" as const] } }, "get_bonus_program", {})).rejects.toThrow(
       "Bonus program is switched off in this store.",
     );
@@ -169,7 +169,7 @@ describe("the owner assistant (D94)", () => {
 
   it("sets up, reads and switches off campaigns, kept for approval like the rest that goes public", async () => {
     const tags: string[] = [];
-    const ctx = { account: member.account, store: member.store, invalidate: (tag: string) => void tags.push(tag) };
+    const ctx = { account: member.account, store: member.store, holder: { role: "owner" as const }, invalidate: (tag: string) => void tags.push(tag) };
     expect(OWNER_TOOLS.find((t) => t.name === "create_campaign")).toMatchObject({ gate: "public" });
     expect(OWNER_TOOLS.find((t) => t.name === "set_campaign_active")).toMatchObject({ gate: "public" });
     expect(approvalSummary("create_campaign", { name: "Kaffe 3 for 2", kind: "multi_buy", buy_quantity: 3, pay_quantity: 2, categories: ["Hjem"], ends_on: "2026-11-30", usage_limit: 100 })).toBe(
@@ -206,7 +206,7 @@ describe("the owner assistant (D94)", () => {
 
   it("manages the store's recommendations by chat: kept for approval, checked before they are kept, and read back worked out by the store (D140)", async () => {
     const tags: string[] = [];
-    const ctx = { account: member.account, store: member.store, invalidate: (tag: string) => void tags.push(tag) };
+    const ctx = { account: member.account, store: member.store, holder: { role: "owner" as const }, invalidate: (tag: string) => void tags.push(tag) };
     for (const name of ["set_recommendations", "add_recommendation_rule", "remove_recommendation_rule"]) expect(OWNER_TOOLS.find((t) => t.name === name)).toMatchObject({ gate: "public" });
     for (const name of ["get_recommendations", "check_recommendations"]) expect(OWNER_TOOLS.find((t) => t.name === name)?.gate).toBeUndefined();
     expect(approvalSummary("set_recommendations", { enabled: true, ai: false, upsell_ceiling_percent: 30, holdout_percent: 20, monthly_token_cap_thousands: null })).toBe(

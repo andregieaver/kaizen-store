@@ -174,7 +174,7 @@ describe("a country's prices worked out from another's", () => {
 
 describe("the AI manager's price rules", () => {
   it("reads each country's rule, refuses before a yes what the page refuses, and saves through the page's writer", async () => {
-    const c = { ...(await ownerOf(fx)), invalidate: () => {} };
+    const c = { ...(await ownerOf(fx)), holder: { role: "owner" as const }, invalidate: () => {} };
     await expect(preflightOwnerTool(c, "set_market_price_rule", { country: "SE", from: "SE" })).rejects.toThrow(/itself/);
     await expect(preflightOwnerTool(c, "set_market_price_rule", { country: "SE", from: null })).rejects.toThrow(/by hand/);
     await expect(preflightOwnerTool(c, "set_market_price_rule", { country: "SE", from: "NO", percent: 5, round_to: 10, ending: 9 })).resolves.toBeUndefined();

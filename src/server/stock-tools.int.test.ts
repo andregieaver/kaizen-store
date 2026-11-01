@@ -29,7 +29,7 @@ let other: Awaited<ReturnType<typeof newStore>>;
 let oslo: string;
 let bergen: string;
 
-const ctxOf = (s: typeof store, holder?: { role: "owner" | "admin"; permissions?: string[] | null }) => ({ account: s.member.account, store: s.member.store, invalidate: () => {}, ...(holder ? { holder } : {}) });
+const ctxOf = (s: typeof store, holder?: { role: "owner" | "admin"; permissions?: string[] | null }) => ({ account: s.member.account, store: s.member.store, invalidate: () => {}, holder: holder ?? { role: "owner" as const } });
 const run = (name: string, input: unknown = {}, s = store) => ownerTools.runOwnerTool(ctxOf(s), name, input) as Promise<Answer>;
 const preflight = (name: string, input: unknown, s = store) => ownerTools.preflightOwnerTool(ctxOf(s), name, input);
 const refusal = async (promise: Promise<unknown>) => {

@@ -1,0 +1,27 @@
+# Dependency updates proposed as pull requests (PSI SEC-08, 1 November 2026). The workflow commits to `main` directly (CLAUDE.md), so
+# these are proposals only: a person (or an agent asked to) reads each one, runs the checks and lands it on `main`. Grouped and
+# weekly, so the queue stays short; security updates come as soon as an advisory is published (they need no schedule).
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "05:00"
+      timezone: Europe/Oslo
+    open-pull-requests-limit: 5
+    groups:
+      # Minor and patch releases together; a major one stands alone, since it can break the build.
+      minor-and-patch:
+        update-types: [minor, patch]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "05:00"
+      timezone: Europe/Oslo
+    groups:
+      actions:
+        patterns: ["*"]

@@ -217,7 +217,7 @@ describe("the store's own fields", () => {
   });
 
   it("are asked for by the AI manager, without an item", async () => {
-    const ctx = { account: member.account, store, invalidate: () => {} };
+    const ctx = { account: member.account, store, holder: { role: "owner" as const }, invalidate: () => {} };
     const read = (await ownerTools.runOwnerTool(ctx, "get_fields", { entity: "store" })) as {
       groups: { group: string; fields: { name: string; value: unknown }[] }[];
     };
@@ -311,7 +311,7 @@ describe("a customer's fields are for staff only", () => {
   });
 
   it("are not offered to the AI manager", async () => {
-    const ctx = { account: member.account, store, invalidate: () => {} };
+    const ctx = { account: member.account, store, holder: { role: "owner" as const }, invalidate: () => {} };
     const listed = (await ownerTools.runOwnerTool(ctx, "list_field_groups", {})) as { groups: { slug: string }[] };
     expect(listed.groups.map((g) => g.slug)).not.toContain("customer-notes");
     // And the tool cannot be pointed at a customer.

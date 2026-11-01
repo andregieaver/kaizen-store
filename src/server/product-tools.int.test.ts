@@ -33,7 +33,7 @@ let store: Awaited<ReturnType<typeof newStore>>;
 let other: Awaited<ReturnType<typeof newStore>>;
 const tags: string[] = [];
 
-const ctxOf = (s: typeof store) => ({ account: s.member.account, store: s.member.store, invalidate: (tag: string) => void tags.push(tag) });
+const ctxOf = (s: typeof store) => ({ account: s.member.account, store: s.member.store, holder: { role: "owner" as const }, invalidate: (tag: string) => void tags.push(tag) });
 const run = (name: string, input: unknown, s = store) => ownerTools.runOwnerTool(ctxOf(s), name, input) as Promise<Answer>;
 const preflight = (name: string, input: unknown, s = store) => ownerTools.preflightOwnerTool(ctxOf(s), name, input);
 const refusal = async (promise: Promise<unknown>) => {

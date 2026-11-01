@@ -124,6 +124,23 @@ describe("a member with a role", () => {
     expect(await p.requireMemberAny(store.slug)).toBeTruthy();
   });
 
+  it("leaves each refusal in the store's activity log, one entry per keys while it is asked again within minutes (PSI SEC-11)", async () => {
+    signInAs(clerkSub);
+    const [{ id: clerk }] = await db().execute<Row>(sql`select account_id as id from commerce.store_members where store_id = ${store.id}::uuid and role_id is not null limit 1`);
+    const entries = async (keys: string) =>
+      Number((await db().execute<Row>(sql`
+        select count(*)::int as n from commerce.audit_log where store_id = ${store.id}::uuid and account_id = ${String(clerk)}::uuid
+          and action = 'staff.permission_refused' and details->>'keys' = ${keys}`))[0].n);
+    const before = await entries("billing:write");
+    expect(await p.checkPermission(store.slug, "billing:write")).toBeNull();
+    expect(await p.checkPermission(store.slug, "billing:write")).toBeNull();
+    expect(await entries("billing:write")).toBe(before === 0 ? 1 : before);
+    const [entry] = await db().execute<Row>(sql`
+      select area, target_type, details from commerce.audit_log where store_id = ${store.id}::uuid and action = 'staff.permission_refused' order by id desc limit 1`);
+    expect(entry).toMatchObject({ area: "staff", target_type: "account" });
+    expect(JSON.stringify(entry.details)).not.toContain("@");
+  });
+
   it("takes the role's keys as they are now: a change to the role reaches the member at once", async () => {
     signInAs(clerkSub);
     const [orders] = await db().execute<Row>(sql`select id from commerce.store_roles where store_id = ${store.id}::uuid and template = 'orders'`);

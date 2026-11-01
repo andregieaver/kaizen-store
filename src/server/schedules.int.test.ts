@@ -224,7 +224,7 @@ describe("a theme made live at a time and put back at another", () => {
 
 describe("the AI manager's schedules", () => {
   it("lists what is scheduled and refuses before a yes what the editor refuses", async () => {
-    const c = { ...(await ownerOf(fx)), invalidate: () => {} };
+    const c = { ...(await ownerOf(fx)), holder: { role: "owner" as const }, invalidate: () => {} };
     const id = await saved(fx, content("ai-later", "AI later"), false);
     await expect(preflightOwnerTool(c, "schedule_site_change", { kind: "page", target: id, at: "2020-01-01 09:00" })).rejects.toThrow(/minutes from now/);
     const when = new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10);

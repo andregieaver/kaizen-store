@@ -30,7 +30,7 @@ let orders: Awaited<ReturnType<typeof fx.paidOrder>>[] = [];
 
 const ctxOf = async (f: typeof store) => {
   const m = await fx.ownerOf(f);
-  return { account: m.account, store: m.store, invalidate: () => {} };
+  return { account: m.account, store: m.store, holder: { role: "owner" as const }, invalidate: () => {} };
 };
 const run = async (f: typeof store, name: string, input: unknown = {}) => (await ownerTools.runOwnerTool(await ctxOf(f), name, input)) as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 

@@ -21,7 +21,7 @@ const ownerTools = await import("./owner-tools");
 let busy: Store;
 let quiet: Store;
 const audits: string[] = [];
-const ctx = (store: Store) => ({ account: { id: "00000000-0000-4000-8000-000000000001", email: "owner@example.com", name: "Owner", platformAdmin: false } as Account, store, invalidate: (tag: string) => void audits.push(tag) });
+const ctx = (store: Store) => ({ account: { id: "00000000-0000-4000-8000-000000000001", email: "owner@example.com", name: "Owner", platformAdmin: false } as Account, store, holder: { role: "owner" as const }, invalidate: (tag: string) => void audits.push(tag) });
 // The answers are read as the model reads them: loose JSON.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Answer = Record<string, any>;

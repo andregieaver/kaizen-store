@@ -88,7 +88,7 @@ type Answer = Record<string, any>;
 
 let store: Awaited<ReturnType<typeof newStore>>;
 const tags: string[] = [];
-const ctx = () => ({ account: store.member.account, store: store.member.store, invalidate: (tag: string) => void tags.push(tag) });
+const ctx = () => ({ account: store.member.account, store: store.member.store, holder: { role: "owner" as const }, invalidate: (tag: string) => void tags.push(tag) });
 const who = () => ({ account: store.member.account, store: store.member.store });
 const count = async (query: ReturnType<typeof sql>) => Number((await db().execute<Row>(query))[0].n);
 

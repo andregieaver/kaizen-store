@@ -276,7 +276,7 @@ describe("scheduled articles", () => {
 
 describe("the AI manager's blogs", () => {
   it("reads the blogs and the comments waiting without a visitor's words, and refuses before a yes what the pages refuse", async () => {
-    const c = { ...(await ownerOf(fx)), invalidate: () => {} };
+    const c = { ...(await ownerOf(fx)), holder: { role: "owner" as const }, invalidate: () => {} };
     const [first] = await db().execute<Row>(sql`select id from commerce.pages where store_id = ${fx.storeId}::uuid and type = 'article' and published_at is not null limit 1`);
     await post(fx, String(first.id), { body: "Waiting for the owner to read." });
     const blogs = (await runOwnerTool(c, "list_blogs", {})) as { blogs: { address: string; feed: string }[]; comments_waiting: number };

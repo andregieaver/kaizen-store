@@ -36,7 +36,7 @@ let store: Awaited<ReturnType<typeof newStore>>;
 let bergen: string;
 const SKU = "DEMO-TOTE";
 
-const ctxOf = (s: typeof store) => ({ account: s.member.account, store: s.member.store, invalidate: () => {} });
+const ctxOf = (s: typeof store) => ({ account: s.member.account, store: s.member.store, holder: { role: "owner" as const }, invalidate: () => {} });
 const run = (name: string, input: unknown = {}, s = store) => ownerTools.runOwnerTool(ctxOf(s), name, input) as Promise<Answer>;
 const preflight = (name: string, input: unknown, s = store) => ownerTools.preflightOwnerTool(ctxOf(s), name, input);
 const refusal = async (promise: Promise<unknown>) => {
@@ -226,7 +226,7 @@ describe("set_price_list_buyers", () => {
 describe("set_working_hours", () => {
   it("changes only the days given for a member of staff, keeps the rest, and refuses a day that ends before it starts", async () => {
     const booked = await withFeatures("appointments");
-    const ctx = { account: booked.member.account, store: booked.member.store, invalidate: () => {} };
+    const ctx = { account: booked.member.account, store: booked.member.store, holder: { role: "owner" as const }, invalidate: () => {} };
     const saved = await saveResource(booked.member, null, { name: "Ingrid", email: "", capacity: 1, active: true, hours: JSON.stringify({ week: { mon: { open: "09:00", close: "17:00" }, tue: { open: "09:00", close: "17:00" }, wed: null, thu: null, fri: null, sat: null, sun: null }, exceptions: [] }) }, "staff");
     if (!saved.ok) throw new Error(saved.problems.join());
 
@@ -246,7 +246,7 @@ describe("set_working_hours", () => {
 describe("list_loyalty_rewards and switch_loyalty_reward", () => {
   it("lists the rewards with their cost in credits, and switches one off and on by name", async () => {
     const loyal = await withFeatures("bonus");
-    const ctx = { account: loyal.member.account, store: loyal.member.store, invalidate: () => {} };
+    const ctx = { account: loyal.member.account, store: loyal.member.store, holder: { role: "owner" as const }, invalidate: () => {} };
     const made = await saveReward(loyal.member, null, { name: "Free shipping", costMinor: 5_000, kind: "free_shipping" });
     if (!made.ok) throw new Error(made.problems.join());
 
@@ -264,7 +264,7 @@ describe("list_loyalty_rewards and switch_loyalty_reward", () => {
 describe("save_loyalty_reward and loyalty levels", () => {
   it("makes a reward by its name, changes what is given, refuses what cannot be made, and sets levels on the program", async () => {
     const loyal = await withFeatures("bonus");
-    const ctx = { account: loyal.member.account, store: loyal.member.store, invalidate: () => {} };
+    const ctx = { account: loyal.member.account, store: loyal.member.store, holder: { role: "owner" as const }, invalidate: () => {} };
     expect(await refusal(ownerTools.preflightOwnerTool(ctx, "save_loyalty_reward", { reward: "Kaffe" }))).toContain("say what it costs and what it gives");
     expect(await refusal(ownerTools.preflightOwnerTool(ctx, "save_loyalty_reward", { reward: "Kaffe", costs: "100", gives: "amount", amounts: { JP: "50" } }))).toContain("JP is not a country the store sells in");
     expect(await refusal(ownerTools.preflightOwnerTool(ctx, "save_loyalty_reward", { reward: "Kaffe", costs: "free", gives: "free_shipping" }))).toContain('"free" is not a cost in credits');

@@ -54,7 +54,7 @@ async function paidUnsent(storeId: string): Promise<void> {
   `);
 }
 
-const ctx = (account: Account, store: Awaited<ReturnType<typeof membershipOf>>["store"]) => ({ account, store, invalidate: () => {} });
+const ctx = (account: Account, store: Awaited<ReturnType<typeof membershipOf>>["store"]) => ({ account, store, holder: { role: "owner" as const }, invalidate: () => {} });
 
 afterAll(async () => {
   await closeDb();

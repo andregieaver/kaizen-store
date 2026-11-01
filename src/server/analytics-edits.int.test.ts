@@ -84,7 +84,7 @@ const accountOf = async (fx: Fx): Promise<Account> => {
   return { id: String(row.id), email: String(row.email), name: "Owner", platformAdmin: false } as Account;
 };
 const run = async (fx: Fx, name: string, input: unknown = {}) =>
-  (await ownerTools.runOwnerTool({ account: await accountOf(fx), store: await storeOf(fx), invalidate: () => {} }, name, input)) as Answer;
+  (await ownerTools.runOwnerTool({ account: await accountOf(fx), store: await storeOf(fx), holder: { role: "owner" as const }, invalidate: () => {} }, name, input)) as Answer;
 /** Moves an order's placing day back: the figures date an order by `placed_at` (not guarded once paid; the documents keep their own dates). */
 // Back by calendar days on the store's clock, so it lands on `dayOf(daysAgo)` also across a change of the clocks (24-hour days did not: on
 // 25 October 2026, in the last hour of the Oslo day, 40 × 24 hours back was the next calendar day there).

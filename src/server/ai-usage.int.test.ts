@@ -182,18 +182,18 @@ describe("AI usage (D106)", () => {
     const stores2 = await import("./stores");
     const store = (await stores2.getStore(two.slug))!;
     const account = { id: two.owner, email: `usage-duo-${run}@example.com`, name: "Duo", platformAdmin: false };
-    const own = (await tools.runOwnerTool({ account, store, invalidate: () => {} }, "ai_usage", { days: 30 })) as Answer;
+    const own = (await tools.runOwnerTool({ account, store, holder: { role: "owner" as const }, invalidate: () => {} }, "ai_usage", { days: 30 })) as Answer;
     expect(own.covers).toBe("duo");
     expect(own.total).toMatchObject({ requests: 2, failed: 1 });
     expect(own.on_kaizens_key).toEqual({ requests: 0, tokens: 0, estimated_cost_usd: 0 });
     expect(own.by_provider_and_model.map((m: { model: string }) => m.model).sort()).toEqual(["text-a", "text-b"]);
     // Not another owner's store.
     const other = { ...account, id: one.owner };
-    const theirs = (await tools.runOwnerTool({ account: other, store, invalidate: () => {} }, "ai_usage", { days: 30 })) as Answer;
+    const theirs = (await tools.runOwnerTool({ account: other, store, holder: { role: "owner" as const }, invalidate: () => {} }, "ai_usage", { days: 30 })) as Answer;
     expect(theirs.total.requests).toBe(0);
 
     const admin = { ...account, platformAdmin: true };
-    const ctx = { account: admin, store: null, flags: {}, connection: null, navigate: () => {}, invalidate: () => {} };
+    const ctx = { account: admin, store: null, flags: {}, connection: null, navigate: () => {}, holder: { role: "owner" as const }, invalidate: () => {} };
     const all = (await manager.runPlatformTool(ctx, "platform_ai_usage", { days: 30, store: one.slug })) as Answer;
     expect(all.total.requests).toBe(7);
     expect(all.by_store_owner_account).toEqual([expect.objectContaining({ email: `usage-uno-${run}@example.com` })]);

@@ -20,7 +20,7 @@ type Row = Record<string, unknown>;
  */
 
 let store: Awaited<ReturnType<typeof makeStore>>;
-const ctx = async () => ({ account: store.account, store: (await getStore(store.slug))!, invalidate: () => {} });
+const ctx = async () => ({ account: store.account, store: (await getStore(store.slug))!, holder: { role: "owner" as const }, invalidate: () => {} });
 const run = async (name: string, args: unknown) => ownerTools.runOwnerTool(await ctx(), name, args);
 const member = async (email: string) =>
   (await db().execute<Row>(sql`
@@ -66,7 +66,7 @@ describe("the team tools", () => {
   it("refuses anyone but an owner, even when the call was approved", async () => {
     const admin = await makeAccount("Admin");
     await addMember(store.id, admin.id, "admin");
-    const c = { account: admin, store: (await getStore(store.slug))!, invalidate: () => {} };
+    const c = { account: admin, store: (await getStore(store.slug))!, holder: { role: "owner" as const }, invalidate: () => {} };
     // The admin's holder lacks the owner key: the tool is refused before it runs; with the owner's holder it still asks the membership again.
     await expect(ownerTools.runOwnerTool({ ...c, holder: { role: "admin" } }, "invite_staff", { email: "x@example.com", role: "admin" })).rejects.toThrow(ownerTools.OwnerToolError);
     await expect(ownerTools.runOwnerTool(c, "invite_staff", { email: "x@example.com", role: "admin" })).rejects.toThrow(/Only an owner/);

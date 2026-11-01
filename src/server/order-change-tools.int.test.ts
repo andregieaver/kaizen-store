@@ -41,7 +41,7 @@ type Row = Record<string, unknown>;
  */
 
 let store: Awaited<ReturnType<typeof fxStore>>;
-const ctx = async () => ({ account: { id: store.accountId, email: `${store.slug}@example.com`, name: "T", platformAdmin: false }, store: (await getStore(store.slug))!, invalidate: () => {} });
+const ctx = async () => ({ account: { id: store.accountId, email: `${store.slug}@example.com`, name: "T", platformAdmin: false }, store: (await getStore(store.slug))!, holder: { role: "owner" as const }, invalidate: () => {} });
 const run = async (name: string, args: unknown) => ownerTools.runOwnerTool(await ctx(), name, args);
 const lines = async (orderId: string) =>
   (await db().execute<Row>(sql`select sku, quantity from commerce.order_lines where order_id = ${orderId}::uuid order by sku`)).map((l) => [String(l.sku), Number(l.quantity)]);

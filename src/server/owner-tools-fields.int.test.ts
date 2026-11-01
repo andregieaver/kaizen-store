@@ -37,7 +37,7 @@ let productId: string;
 let productHandle: string;
 let pageId: string;
 const tags: string[] = [];
-const ctx = () => ({ account: member.account, store: member.store, invalidate: (tag: string) => void tags.push(tag) });
+const ctx = () => ({ account: member.account, store: member.store, holder: { role: "owner" as const }, invalidate: (tag: string) => void tags.push(tag) });
 
 const connection = {
   provider: "openai",

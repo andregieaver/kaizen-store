@@ -40,7 +40,7 @@ let member: Membership;
 let other: Membership;
 const ids: Record<string, string> = {};
 let foreign = "";
-const ctx = (m: Membership = member) => ({ account: m.account, store: m.store, invalidate: () => {} });
+const ctx = (m: Membership = member) => ({ account: m.account, store: m.store, holder: { role: "owner" as const }, invalidate: () => {} });
 const call = <T>(name: string, args: unknown, m: Membership = member) => ownerTools.runOwnerTool(ctx(m), name as never, args) as Promise<T>;
 
 async function makeMember(name: string): Promise<Membership> {

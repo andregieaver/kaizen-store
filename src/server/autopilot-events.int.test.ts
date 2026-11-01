@@ -38,7 +38,7 @@ const fakeTurn = async (input: TurnInput) => {
   const kind = input.autopilot?.event;
   if (kind === "support_waiting") {
     const conversation = /conversation ([0-9a-f-]{36})/.exec(input.message)?.[1] ?? "";
-    await ownerTools.runOwnerTool({ account: owner.account, store: (await getStore(store.slug))!, invalidate: () => {} }, "add_support_note", {
+    await ownerTools.runOwnerTool({ account: owner.account, store: (await getStore(store.slug))!, holder: { role: "owner" as const }, invalidate: () => {} }, "add_support_note", {
       conversation,
       note: "The customer asks where the parcel is; it was sent yesterday. Reply: it is on its way.",
     });

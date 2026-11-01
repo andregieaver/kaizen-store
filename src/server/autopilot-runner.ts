@@ -19,7 +19,7 @@ import { aiBudgetProblem, autonomyFor } from "./autopilot-settings";
 import { log } from "./log";
 import { platformGateNeeded, preflightPlatformTool, runPlatformTool } from "./manager-tools";
 import { holderOfPrincipal, keepForApproval, runTurn, type Principal, type TurnInput } from "./owner-assistant";
-import { gateNeeded, OwnerToolError, preflightOwnerTool, runOwnerTool } from "./owner-tools";
+import { gateNeeded, heldBy, OwnerToolError, preflightOwnerTool, runOwnerTool } from "./owner-tools";
 import { refreshTag } from "./refresh";
 import { col, typedRow, typedRows } from "./typed-rows";
 import { skipWhilePaused } from "./ai-pause";
@@ -232,8 +232,7 @@ async function runToolStep(plan: PlanFacts, p: Principal, step: PlanStep, settin
   if (!tool || MANAGER_TOOLS_BY_NAME[name]) return (await failStep(step.id, `There is no tool ${name} here.`)) === "asking" ? "asking" : "retried";
   const read = readToolInput(tool, args);
   if (!read.ok) return (await failStep(step.id, `The arguments could not be read: ${read.problem}`)) === "asking" ? "asking" : "retried";
-  const holder = holderOfPrincipal(p);
-  const ownerCtx = p.store ? { account: p.account, store: p.store, invalidate: refreshTag, holder } : null;
+  const ownerCtx = p.store ? { account: p.account, store: p.store, invalidate: refreshTag, holder: heldBy(holderOfPrincipal(p)) } : null;
   const managerCtx = { account: p.account, store: null, flags: {}, connection: null, navigate: () => {}, invalidate: refreshTag };
   const told: string[] = [];
   try {

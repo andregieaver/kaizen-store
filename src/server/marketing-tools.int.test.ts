@@ -36,7 +36,7 @@ const { broadcastApprovalSummary } = await import("./marketing-tools");
  */
 
 let store: Awaited<ReturnType<typeof makeStore>>;
-const ctx = async () => ({ account: store.account, store: (await getStore(store.slug))!, invalidate: () => {} });
+const ctx = async () => ({ account: store.account, store: (await getStore(store.slug))!, holder: { role: "owner" as const }, invalidate: () => {} });
 const run = async (name: string, args: unknown) => ownerTools.runOwnerTool(await ctx(), name, args);
 
 beforeAll(async () => {

@@ -5,7 +5,7 @@ import { closeDb, db } from "@/db/client";
 
 vi.mock("server-only", () => ({}));
 
-const { requestDrills, runLiveDrills, settleDreamDrills } = await import("./live-drills");
+const { checkDatabaseDoor, requestDrills, runLiveDrills, settleDreamDrills } = await import("./live-drills");
 
 /** Live drills (D406): only a test-mode store, only orders paid on a test account to Resend's test domain. */
 
@@ -134,5 +134,21 @@ describe("live drills (D406)", () => {
     // Settled once: a second pass changes nothing.
     await settleDreamDrills();
     expect(await outcomes()).toEqual(["passed", "failed"]);
+  });
+});
+
+describe("the database's door on the daily schedule (PSI SEC-03)", () => {
+  it("passes while the Data API's role has nothing in commerce, and throws, naming only the role and counts, once it has", async () => {
+    const [had] = await db().execute<Row>(sql`select exists (select 1 from pg_roles where rolname = 'anon') as had`);
+    if (!had.had) await db().execute(sql.raw("create role anon nologin"));
+    try {
+      await db().execute(sql.raw("revoke usage on schema commerce from anon"));
+      expect(await checkDatabaseDoor()).toBe("passed");
+      await db().execute(sql.raw("grant usage on schema commerce to anon"));
+      await expect(checkDatabaseDoor()).rejects.toThrow("The Data API's roles can reach the commerce schema: anon: uses the schema");
+    } finally {
+      await db().execute(sql.raw("revoke usage on schema commerce from anon"));
+      if (!had.had) await db().execute(sql.raw("drop role anon"));
+    }
   });
 });

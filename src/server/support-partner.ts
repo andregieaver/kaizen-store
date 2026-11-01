@@ -13,7 +13,7 @@ import { AI_HISTORY, MESSAGE_MAX, PARTNER_QUESTION_MAX, PARTNER_ROUNDS } from "@
 import { AiError, aiFor, chatWithTools, type ToolChatMessage, type ToolDefinition } from "./ai";
 import { siteFactsTool, type ChatSite } from "./chat-agent";
 import { OwnerToolError } from "./owner-tool-error";
-import { runOwnerTool } from "./owner-tools";
+import { heldBy, runOwnerTool } from "./owner-tools";
 import { getStore } from "./stores";
 import { addMessage, deskSettings, presence, SupportError } from "./support";
 import type { StaffDesk } from "./support-desk";
@@ -268,7 +268,7 @@ async function runTool(
       default: {
         // Only the AI manager's read-only tools this agent's role may use: never a gated or writing tool (`PARTNER_OWNER_TOOLS`).
         if (!store || !allowed.includes(name) || !OWNER_TOOLS_BY_NAME[name]) return { error: "That tool is not yours to use here." };
-        const result = await runOwnerTool({ account: staff.account, store, invalidate: () => {}, holder: staff.holder ?? undefined }, name, args);
+        const result = await runOwnerTool({ account: staff.account, store, invalidate: () => {}, holder: heldBy(staff.holder) }, name, args);
         return { result };
       }
     }

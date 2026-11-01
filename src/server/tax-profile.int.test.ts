@@ -274,7 +274,7 @@ describe("copying a store", () => {
 });
 
 describe("the AI manager reads the tax profile, and cannot change it", () => {
-  const run = (name: string) => ownerTools.runOwnerTool({ account: owner.account, store: owner.store, invalidate: () => {} }, name, {}) as Promise<Record<string, unknown>>;
+  const run = (name: string) => ownerTools.runOwnerTool({ account: owner.account, store: owner.store, holder: { role: "owner" as const }, invalidate: () => {} }, name, {}) as Promise<Record<string, unknown>>;
 
   it("answers from the saved profile and says what each VAT feature needs", async () => {
     await saveTaxProfile(owner, swedish);
@@ -292,7 +292,7 @@ describe("the AI manager reads the tax profile, and cannot change it", () => {
     expect(readiness.features.find((f) => f.feature === "reverse_charge")).toMatchObject({ on: true, needs: [] });
     expect(readiness.features.find((f) => f.feature === "ioss")).toMatchObject({ on: false });
     // Without Sell to businesses (D178), reverse charge is not one of the store's VAT features.
-    const consumersOnly = (await ownerTools.runOwnerTool({ account: owner.account, store: { ...owner.store, features: ["shop"] }, invalidate: () => {} }, "tax_readiness", {})) as {
+    const consumersOnly = (await ownerTools.runOwnerTool({ account: owner.account, store: { ...owner.store, features: ["shop"] }, holder: { role: "owner" as const }, invalidate: () => {} }, "tax_readiness", {})) as {
       features: { feature: string }[];
     };
     expect(consumersOnly.features.map((f) => f.feature)).not.toContain("reverse_charge");

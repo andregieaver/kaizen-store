@@ -185,7 +185,7 @@ describe("the writer", () => {
 
 describe("the AI manager's producer registrations", () => {
   it("reads what is registered and missing, refuses before a yes what the page refuses, and saves through the page's writer", async () => {
-    const c = { ...(await ownerOf(fx)), invalidate: () => {} };
+    const c = { ...(await ownerOf(fx)), holder: { role: "owner" as const }, invalidate: () => {} };
     const read = (await runOwnerTool(c, "producer_registrations", {})) as {
       not_sold: { scheme: string; country: string }[];
       demo_only: unknown[];

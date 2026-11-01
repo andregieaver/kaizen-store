@@ -70,7 +70,7 @@ const keepInLibrary = async (owner: { storeId: string | null }, image: File, thu
   return { ok: true as const, url, thumbnailUrl: `${url}?small` };
 };
 
-const ctx = () => ({ account: store.member.account, store: store.member.store, invalidate: () => {} });
+const ctx = () => ({ account: store.member.account, store: store.member.store, holder: { role: "owner" as const }, invalidate: () => {} });
 const scope = () => ({ account: { id: store.accountId }, store: store.member.store });
 const refusal = async (promise: Promise<unknown>) => {
   try {
