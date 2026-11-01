@@ -308,7 +308,7 @@ stay in the standing document's *What comes next*.
       their links to the page (by address in a store's, by id in Kaizena Flow's; links under one move up), and a store's published page or
       article leaves a manual redirect from its address and every former one (`page_redirects`) to the front page or the blog; one already
       there is kept, one the database refuses is logged and skipped (a savepoint), and the owner retargets them in Website → Redirects.
-- [ ] **CODE-05, CODE-02 (15)** README as onboarding; lint warnings ratcheted to 0.
+- [x] **CODE-05, CODE-02 (15)** README as onboarding; lint warnings ratcheted to 0.
       README done 30 October 2026: one page under the right name (where to start, running it locally, the checks, how a push
       reaches production, where things are, the rules a first change trips on, the runbooks); the platform's one-time setup moved
       to `docs/runbooks/platform-setup.md`. Lint warnings 98 → 0 the same day, and `pnpm lint` now fails on any warning
