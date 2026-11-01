@@ -350,20 +350,21 @@ export const platformNb: PlatformMessages = {
   },
   status: {
     title: "Status",
-    description: "Om Kaizena Flows butikker, innlogging, betaling, e-post og arbeid i bakgrunnen kjører, sjekket hvert femte minutt.",
+    description: "Om Kaizena Flows butikker, innlogging, betaling, e-post, arbeid i bakgrunnen og KI kjører, sjekket hvert femte minutt (KI-en én gang om dagen).",
     overall: {
       ok: "Alt kjører.",
       degraded: "Noen deler virker ikke som de skal.",
       major: "Et stort problem rammer Kaizena Flow.",
       maintenance: "Vedlikehold pågår.",
     },
-    components: { website: "Butikker og nettsider", sign_in: "Innlogging", payments: "Betaling", email: "E-post", jobs: "Arbeid i bakgrunnen" },
+    components: { website: "Butikker og nettsider", sign_in: "Innlogging", payments: "Betaling", email: "E-post", jobs: "Arbeid i bakgrunnen", ai: "KI" },
     hints: {
       website: "Nettbutikkene, Kaizena Flows egen nettside og administrasjonen, og databasen bak dem.",
       sign_in: "Innlogging i administrasjonen og på kundekontoer i butikkene.",
       payments: "Kontakt med betalingstjenesten som tar imot kortbetaling.",
       email: "Ordre-, innloggings- og andre e-poster som sendes fra Kaizena Flow.",
       jobs: "Påminnelser, tidsplaner, importer og annet arbeid som gjøres i bakgrunnen.",
+      ai: "KI-en som skriver, svarer kunder og hjelper eiere: Kaizena Flows egen modell svarer på en test én gang om dagen.",
     },
     states: { ok: "Kjører", degraded: "Virker ikke som det skal", unknown: "Ikke målt" },
     uptime: "{uptime} av sjekkene gikk bra de siste 90 dagene",

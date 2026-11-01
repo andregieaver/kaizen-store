@@ -321,6 +321,8 @@ The re-score ([psi-2026-10-31.md](psi-2026-10-31.md)) put the overall at 78.3 (8
 - [x] **DATA-04, UX-02** Ten more addresses through `normaliseEmail()` and the scan widened; no "Try again shortly." left, the wording
       test reading the admin's texts, `src/server` and `src/app`.
 - [x] **DATA-05** The 62 undecided store tables decided (45 in the file, 17 left out with a reason).
+- [x] **AST-10** An AI part on `/status`: the platform's own model answering `testAi()` once a day, an hour after a failure
+      (`aiCheckDue()`), objective 95 %, alerting platform admins after two failed checks as every part does (1 November 2026).
 - [ ] **AST-09, AGT-14** Record the eval again on Platform → AI so the replay's tool check is in force; add cases for DSA notices and
       the Dream Factory brief.
 - [ ] **REG-02** The platform's notice and terms name the AI reading DSA notices and screening listings; sign-up links and records them.

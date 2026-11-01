@@ -355,20 +355,21 @@ export const platformEn = {
   /** The status page (D360): components, bars, incidents and subscribing. */
   status: {
     title: "Status",
-    description: "Whether Kaizena Flow's stores, sign-in, payments, email and background work are running, checked every five minutes.",
+    description: "Whether Kaizena Flow's stores, sign-in, payments, email, background work and AI are running, checked every five minutes (the AI once a day).",
     overall: {
       ok: "Everything is running.",
       degraded: "Some parts are not working as they should.",
       major: "A major problem is affecting Kaizena Flow.",
       maintenance: "Maintenance is under way.",
     },
-    components: { website: "Stores and websites", sign_in: "Sign-in", payments: "Payments", email: "Email", jobs: "Background work" },
+    components: { website: "Stores and websites", sign_in: "Sign-in", payments: "Payments", email: "Email", jobs: "Background work", ai: "AI" },
     hints: {
       website: "Storefronts, Kaizena Flow's own site and the admin, and the database behind them.",
       sign_in: "Signing in to the admin and to store accounts.",
       payments: "Reaching the payment service that takes card payments.",
       email: "Order, sign-in and other emails leaving Kaizena Flow.",
       jobs: "Reminders, schedules, imports and other work done in the background.",
+      ai: "The AI that writes, answers shoppers and helps owners: Kaizena Flow's own model answering a test once a day.",
     },
     states: { ok: "Running", degraded: "Not working as it should", unknown: "Not measured" },
     uptime: "{uptime} of checks passed in 90 days",

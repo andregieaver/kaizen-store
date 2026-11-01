@@ -15901,7 +15901,7 @@ export const statusChecks = commerce.table(
   },
   (t) => [
     check("status_checks_duration", sql`${t.durationMs} is null or ${t.durationMs} between 0 and 600000`),
-    check("status_checks_component", sql`${t.component} in ('website', 'sign_in', 'payments', 'email', 'jobs')`),
+    check("status_checks_component", sql`${t.component} in ('website', 'sign_in', 'payments', 'email', 'jobs', 'ai')`),
     check("status_checks_reason", sql`${t.reason} is null or ${t.reason} ~ '^[a-z0-9_]{1,40}$'`),
     index("status_checks_component_idx").on(t.component, t.checkedAt),
   ],

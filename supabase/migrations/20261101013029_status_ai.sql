@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."status_checks" DROP CONSTRAINT "status_checks_component";--> statement-breakpoint
+ALTER TABLE "commerce"."status_checks" ADD CONSTRAINT "status_checks_component" CHECK ("commerce"."status_checks"."component" in ('website', 'sign_in', 'payments', 'email', 'jobs', 'ai'));

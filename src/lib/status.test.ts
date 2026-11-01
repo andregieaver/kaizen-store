@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { alertDue, currentState, eventsProblem, stripeSilent, dayBars, dayState, lastDays, overallState, sloOf, uptimeBasisPoints, uptimeText } from "./status";
+import { aiCheckDue, alertDue, currentState, eventsProblem, stripeSilent, dayBars, dayState, lastDays, overallState, sloOf, uptimeBasisPoints, uptimeText } from "./status";
 
 describe("the status page's rules (D360)", () => {
   it("reads a day from its checks, a day with none as missing", () => {
@@ -83,5 +83,25 @@ describe("service level objectives (REL-09)", () => {
     expect(sloOf("website", month).met).toBe(false);
     expect(sloOf("email", month)).toMatchObject({ targetBps: 9_950, met: true, minutesLeft: 3 * 5 });
     expect(sloOf("jobs", [])).toEqual({ targetBps: 9_950, actualBps: null, met: null, minutesLeft: null });
+  });
+});
+
+describe("the AI part (PSI AST-10)", () => {
+  const at = (iso: string) => new Date(iso);
+  it("is asked once a day after a passed check, an hour after a failed one, and at once when never asked", () => {
+    const now = at("2026-11-01T12:00:00Z");
+    expect(aiCheckDue(null, now)).toBe(true);
+    expect(aiCheckDue({ ok: true, checkedAt: at("2026-10-31T13:00:00Z") }, now)).toBe(false);
+    expect(aiCheckDue({ ok: true, checkedAt: at("2026-10-31T12:00:00Z") }, now)).toBe(true);
+    expect(aiCheckDue({ ok: false, checkedAt: at("2026-11-01T11:30:00Z") }, now)).toBe(false);
+    expect(aiCheckDue({ ok: false, checkedAt: at("2026-11-01T11:00:00Z") }, now)).toBe(true);
+  });
+
+  it("is held to 95 % of its daily checks, a failed one standing for the hour until it is asked again", () => {
+    const month = Array.from({ length: 30 }, (_, i) => ({ day: `2026-10-${String(i + 1).padStart(2, "0")}`, ok: 1, total: 1 }));
+    // 30 checks at 95 % allow one failed.
+    expect(sloOf("ai", month)).toEqual({ targetBps: 9_500, actualBps: 10_000, met: true, minutesLeft: 60 });
+    month[29] = { ...month[29], ok: 1, total: 2 };
+    expect(sloOf("ai", month)).toMatchObject({ met: true, minutesLeft: 0 });
   });
 });

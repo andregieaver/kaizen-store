@@ -21,6 +21,7 @@ import {
   INCIDENT_STATUSES,
   STATUS_COMPONENTS,
   STATUS_DAYS,
+  aiCheckDue,
   alertDue,
   eventsProblem,
   stripeSilent,
@@ -40,6 +41,7 @@ import {
   type StatusComponent,
 } from "@/lib/status";
 
+import { ownConnection, testAi } from "./ai";
 import { audit, type Account } from "./auth";
 import { cronJobRows } from "./cron-runs";
 import { sendEmail } from "./email";
@@ -61,6 +63,8 @@ type Row = Record<string, unknown>;
 
 export const STATUS_TAG = "status";
 const PROBE_MS = 5000;
+/** A model answers slower than a health check: the AI part waits this long. */
+const AI_PROBE_MS = 30_000;
 const CONFIRM_HOURS = 24;
 /** Of emails tried in the last hour, at least this many must have gone before a failure rate is judged. */
 const EMAIL_MIN_SAMPLE = 5;
@@ -86,7 +90,7 @@ async function adminPageMs(): Promise<number | null> {
 
 const failed = (error: unknown): Probe => ({ ok: false, reason: error instanceof Error && error.message === "timeout" ? "timeout" : "error" });
 
-/** The probes as built: the database read behind every page, Supabase's auth, Stripe, the email log and the job ledger. */
+/** The probes as built: the database read behind every page, Supabase's auth, Stripe, the email log, the job ledger and the platform's model. */
 export const PROBES: Probes = {
   async website() {
     if (!process.env.DATABASE_URL) return null;
@@ -140,6 +144,24 @@ export const PROBES: Probes = {
     const tried = Number(row?.tried ?? 0);
     if (tried < EMAIL_MIN_SAMPLE) return { ok: true, reason: null };
     return Number(row?.failed ?? 0) * 5 > tried ? { ok: false, reason: "failures" } : { ok: true, reason: null };
+  },
+  async ai() {
+    // The platform's own model answering a one-word request (PSI AST-10): `testAi()`, as Platform → AI's *Test* does, once a day.
+    if (!process.env.DATABASE_URL) return null;
+    const connection = await ownConnection(null);
+    if (!connection?.textModel) return null;
+    const [last] = await typedRows(
+      z.object({ ok: col.bool, checked_at: col.timestamp }),
+      sql`select ok, checked_at from commerce.status_checks where component = 'ai' order by checked_at desc limit 1`,
+    );
+    if (!aiCheckDue(last ? { ok: last.ok, checkedAt: new Date(last.checked_at) } : null, new Date())) return null;
+    const started = performance.now();
+    try {
+      const test = await within(testAi({ ...connection, embeddingModel: null }), AI_PROBE_MS);
+      return test.text?.ok ? { ok: true, reason: null, ms: Math.round(performance.now() - started) } : { ok: false, reason: "no_answer" };
+    } catch (error) {
+      return failed(error);
+    }
   },
   async jobs() {
     const look = jobsNeedingLook(await cronJobRows());

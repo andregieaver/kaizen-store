@@ -164,7 +164,9 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   `statusOverview()` (cached under `STATUS_TAG`); checks are written only by `runStatusChecks()` (the five-minute dispatcher), one row per part
   of `STATUS_COMPONENTS` its probe could measure (a probe with nothing to measure returns null: *Not measured*, never up), incidents and
   updates only by `postIncident()`/`updateIncident()`, subscribers only by that module. A new part is an id in `STATUS_COMPONENTS` (and the
-  tables' checks), a probe in `PROBES` and its words in the `status` catalogue of both platform languages; a missing check is never drawn as passed.
+  tables' checks), a probe in `PROBES` and its words in the `status` catalogue of both platform languages; a missing check is never drawn as passed. The `ai` part (PSI AST-10)
+  is `testAi()` on the platform's own text model, asked once a day and an hour after a failed check (`aiCheckDue()`), never every five
+  minutes: each check is a paid call. A failed one stands for `AI_RETRY_MINUTES` in its objective (95 %).
 
 ## The installable admin and push (wave 9 unit H, D361, `src/lib/admin-sw.ts`, `src/lib/push.ts`, `src/server/push.ts`)
 

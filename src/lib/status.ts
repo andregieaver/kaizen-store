@@ -4,7 +4,7 @@
  * not run is missing, never counted as up.
  */
 
-export const STATUS_COMPONENTS = ["website", "sign_in", "payments", "email", "jobs"] as const;
+export const STATUS_COMPONENTS = ["website", "sign_in", "payments", "email", "jobs", "ai"] as const;
 export type StatusComponent = (typeof STATUS_COMPONENTS)[number];
 
 export const INCIDENT_IMPACTS = ["minor", "major", "maintenance"] as const;
@@ -58,14 +58,30 @@ export function uptimeBasisPoints(bars: readonly DayCount[]): number | null {
 /** Minutes between two runs of the checks: a failed check stands for this long. */
 export const CHECK_MINUTES = 5;
 
+/**
+ * The AI part (PSI AST-10) is not asked every five minutes, since each check is a paid call to the platform's model: once a day, and an hour
+ * after a failed check, so a failed one stands for an hour.
+ */
+export const AI_CHECK_HOURS = 24;
+export const AI_RETRY_MINUTES = 60;
+const FAILED_CHECK_MINUTES: Record<StatusComponent, number> = { website: CHECK_MINUTES, sign_in: CHECK_MINUTES, payments: CHECK_MINUTES, email: CHECK_MINUTES, jobs: CHECK_MINUTES, ai: AI_RETRY_MINUTES };
+
+/** Whether the AI part is checked now, from its newest check (null: none yet): a day after a passed one, an hour after a failed one. Pure. */
+export function aiCheckDue(last: { ok: boolean; checkedAt: Date } | null, now: Date): boolean {
+  if (!last) return true;
+  const minutes = (now.getTime() - last.checkedAt.getTime()) / 60_000;
+  return minutes >= (last.ok ? AI_CHECK_HOURS * 60 : AI_RETRY_MINUTES);
+}
+
 /** Days a service level objective is measured over (REL-09): the last 30, today included. */
 export const SLO_DAYS = 30;
 
 /**
  * Each part's objective, the share of its checks that pass over `SLO_DAYS`, in hundredths of a percent: what shoppers and owners meet
- * first is held to 99.9 % (about 43 minutes a month), email and background work, which retry by themselves, to 99.5 %.
+ * first is held to 99.9 % (about 43 minutes a month), email and background work, which retry by themselves, to 99.5 %, and the AI, checked
+ * once a day by one call to the platform's model, to 95 %.
  */
-export const SLO_TARGETS: Record<StatusComponent, number> = { website: 9_990, sign_in: 9_990, payments: 9_990, email: 9_950, jobs: 9_950 };
+export const SLO_TARGETS: Record<StatusComponent, number> = { website: 9_990, sign_in: 9_990, payments: 9_990, email: 9_950, jobs: 9_950, ai: 9_500 };
 
 export type Slo = {
   targetBps: number;
@@ -84,7 +100,7 @@ export function sloOf(id: StatusComponent, bars: readonly DayCount[]): Slo {
   if (total === 0) return { targetBps, actualBps: null, met: null, minutesLeft: null };
   const ok = recent.reduce((n, b) => n + b.ok, 0);
   const allowed = Math.floor((total * (10_000 - targetBps)) / 10_000);
-  return { targetBps, actualBps: Math.floor((ok * 10_000) / total), met: total - ok <= allowed, minutesLeft: (allowed - (total - ok)) * CHECK_MINUTES };
+  return { targetBps, actualBps: Math.floor((ok * 10_000) / total), met: total - ok <= allowed, minutesLeft: (allowed - (total - ok)) * FAILED_CHECK_MINUTES[id] };
 }
 
 /** The uptime as people read it (`99.95 %`), never rounded up to 100 while a check failed. */
