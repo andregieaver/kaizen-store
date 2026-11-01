@@ -53,7 +53,7 @@ const accountOf = async (fx: Fx): Promise<Account> => {
   return { id: String(row.id), email: String(row.email), name: "Owner", platformAdmin: false } as Account;
 };
 const run = async (fx: Fx, name: string, input: unknown = {}, holder?: { role: "owner" | "admin"; permissions?: string[] | null }) =>
-  (await ownerTools.runOwnerTool({ account: await accountOf(fx), store: (await getStore(fx.slug))!, invalidate: () => {}, ...(holder ? { holder } : {}) } as never, name, input)) as Answer;
+  (await ownerTools.runOwnerTool({ account: await accountOf(fx), store: (await getStore(fx.slug))!, invalidate: () => {}, holder: holder ?? { role: "owner" } } as never, name, input)) as Answer;
 const nb = (minor: number, currency: string) => formatMoney(minor, currency, "nb-NO");
 
 async function saved<T extends { ok: boolean }>(result: Promise<T>): Promise<T & { ok: true; id: string }> {

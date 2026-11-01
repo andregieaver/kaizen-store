@@ -271,7 +271,7 @@ describe("the Returns section's exchanges (docs/analytics.md, Exchanged return)"
 });
 
 describe("the AI manager reads exchanges and does none (2.6)", () => {
-  const ctx = () => ({ account: { id: shop.accountId, email: shop.accountEmail, name: "Owner", platformAdmin: false }, store, invalidate: () => {} });
+  const ctx = () => ({ account: { id: shop.accountId, email: shop.accountEmail, name: "Owner", platformAdmin: false }, store, holder: { role: "owner" as const }, invalidate: () => {} });
 
   it("explain_return says the exchange's state and amounts as the store worked them out, and the label", async () => {
     const [nok] = exchanged;
