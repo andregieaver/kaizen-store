@@ -4,15 +4,20 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/client";
-import { autonomySettingsSchema, CUSTOMER_EMAIL_TOOLS, readAutonomy, type AutonomySettings } from "@/lib/autopilot-autonomy";
+import { autonomySettingsSchema, budgetLevel, CUSTOMER_EMAIL_TOOLS, readAutonomy, type AutonomySettings } from "@/lib/autopilot-autonomy";
+import { renderEmail } from "@/lib/email-layout";
+import { siteUrl } from "@/lib/site";
+import { autopilotBudgetEmail } from "@/lib/usage-emails";
 import { can, type PermissionHolder } from "@/lib/permissions";
 
 import { costMicrosSql, priceFor, unpricedSql } from "./ai-price-sql";
 import { audit, type Account } from "./auth";
 import { auditArea } from "./autopilot-goals";
+import { sendEmail } from "./email";
+import { log } from "./log";
 import { OwnerToolError } from "./owner-tool-error";
 import type { Store } from "./stores";
-import { col, typedRow } from "./typed-rows";
+import { col, typedRow, typedRows } from "./typed-rows";
 
 /**
  * The owner's autonomy levels and budgets for the autopilot (D309, `docs/ai-autopilot.md` 7.4), the only writer of
@@ -83,6 +88,56 @@ export async function aiBudgetProblem(storeId: string | null, settings: Autonomy
     return "The autopilot's AI budget for this month is spent: raise it under Autopilot, Settings, or wait for next month.";
   }
   return null;
+}
+
+/**
+ * Tells each store's owners once a month when the autopilot's AI spend nears its budget (80 %) and again when it is spent (PSI AST-07), from
+ * the five-minute dispatcher: one email per store, month, level and owner, by the email's idempotency key (no table). Only stores with a
+ * budget of their own and the autopilot not paused. Never throws. Returns the emails sent.
+ */
+export async function sendAutopilotBudgetAlerts(now: Date = new Date()): Promise<number> {
+  let sent = 0;
+  try {
+    const stores = await typedRows(
+      z.object({ id: col.uuid, slug: col.text, name: col.text, budget: z.coerce.number() }),
+      sql`
+        select s.id, s.slug, s.name, (a.budgets ->> 'aiMonthlyUsd')::numeric as budget
+        from commerce.autopilot_settings a join commerce.stores s on s.id = a.store_id
+        where not a.paused and a.budgets ->> 'aiMonthlyUsd' is not null and commerce.store_is_active(s.id)
+      `,
+    );
+    const month = now.toISOString().slice(0, 7);
+    for (const store of stores) {
+      const { micros } = await autopilotCostThisMonth(store.id);
+      const level = budgetLevel(micros, store.budget);
+      if (level === "ok") continue;
+      const owners = await typedRows(
+        z.object({ id: col.uuid, email: col.text }),
+        sql`
+          select distinct on (a.id) a.id, a.email from commerce.store_members m
+          join commerce.accounts a on a.id = m.account_id and a.disabled_at is null
+          where m.store_id = ${store.id}::uuid and m.role = 'owner' and m.disabled_at is null and a.email <> ''
+        `,
+      );
+      const email = renderEmail(
+        autopilotBudgetEmail({ storeName: store.name, level, spentUsd: micros / 1_000_000, budgetUsd: store.budget, url: `${siteUrl()}/admin/${store.slug}/assistant/autopilot?tab=settings` }),
+      );
+      for (const owner of owners) {
+        const outcome = await sendEmail({
+          storeId: store.id,
+          kind: level === "reached" ? "autopilot.budget_reached" : "autopilot.budget_near",
+          to: owner.email,
+          email,
+          fromName: "Kaizena Flow",
+          idempotencyKey: `autopilot-budget:${store.id}:${month}:${level}:${owner.id}`,
+        });
+        if (outcome === "sent" || outcome === "logged") sent++;
+      }
+    }
+  } catch (error) {
+    log("error", "autopilot.budget_alerts_failed", {}, error);
+  }
+  return sent;
 }
 
 /** Whether the month's budget stops the autopilot (`aiBudgetProblem()`). */

@@ -7,6 +7,15 @@ import type { Widen } from "./common.en";
  */
 export const platformToolsEn = {
   ai: {
+    pause: {
+      title: "AI acting on its own",
+      running: "Running: the autopilots, their reactions and reviews, the AI manager's follow-ups and Dream Factory runs act as each store set them.",
+      paused: "Paused: nothing the AI would do without a person happens until you start it again. People still use the AI themselves.",
+      pauseButton: "Pause all of it",
+      resumeButton: "Start it again",
+      pausedDone: "Paused. Every AI that acts on its own waits from its next run.",
+      resumedDone: "Started again. Each goes on where it was.",
+    },
     webSearch: "Web search",
     webSearchText: "Lets the AI manager and the autopilot search the web and read pages for research. Each search is recorded as AI usage on Kaizena Flow's key, counted in the stores' AI limits and priced at the search price on Prices (provider {provider}, model web-search).",
     webSearchService: "Service",

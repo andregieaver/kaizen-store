@@ -10,6 +10,7 @@ import type { AgentEvalOutcome } from "@/components/admin/agent-eval-button";
 import { runAgentEval } from "@/server/agent-eval";
 import { testPicture } from "@/server/ai-pictures";
 import { checkVisionFor } from "@/server/ai-vision";
+import { setAiAutonomyPaused } from "@/server/ai-pause";
 import { requirePlatformAdmin } from "@/server/auth";
 import { runUnderstandingEval } from "@/server/query-understanding";
 import { adminLangOf } from "@/lib/admin-lang";
@@ -17,6 +18,16 @@ import { adminText } from "@/lib/admin-text";
 import type { Account } from "@/server/auth";
 import { OwnerToolError } from "@/server/owner-tool-error";
 import { saveSearchSettings } from "@/server/web-search-settings";
+
+/** Pauses or starts again every AI that acts on its own, platform-wide (PSI AST-07); a platform admin's alone, audited. */
+export async function setAiPauseAction(_state: FormState, formData: FormData): Promise<FormState> {
+  const account = await requirePlatformAdmin();
+  const w = adminText(adminLangOf(account.adminLocale), "platformTools").ai.pause;
+  const paused = formData.get("paused") === "on";
+  await setAiAutonomyPaused(account, paused);
+  refresh();
+  return { status: "ok", messages: [paused ? w.pausedDone : w.resumedDone] };
+}
 
 /** Kaizena Flow's web search service for the AI's research (D329). */
 export async function saveWebSearchAction(_state: FormState, formData: FormData): Promise<FormState> {

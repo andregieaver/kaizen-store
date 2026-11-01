@@ -6,6 +6,15 @@ import type { PlatformToolsMessages } from "./platform-tools.en";
  */
 export const platformToolsNb: PlatformToolsMessages = {
   ai: {
+    pause: {
+      title: "KI som handler på egen hånd",
+      running: "Kjører: autopilotene, reaksjonene og gjennomgangene deres, KI-sjefens oppfølginger og Dream Factory-kjøringer handler slik hver butikk har satt dem.",
+      paused: "Satt på pause: ingenting KI-en ville gjort uten en person skjer før du starter den igjen. Folk bruker fortsatt KI-en selv.",
+      pauseButton: "Sett alt på pause",
+      resumeButton: "Start igjen",
+      pausedDone: "Satt på pause. All KI som handler på egen hånd venter fra neste kjøring.",
+      resumedDone: "Startet igjen. Hver fortsetter der den var.",
+    },
     webSearch: "Nettsøk",
     webSearchText: "Lar KI-assistenten og autopiloten søke på nettet og lese sider når de undersøker noe. Hvert søk registreres som KI-bruk på Kaizena Flows nøkkel, telles i butikkenes KI-grenser og prises etter søkeprisen under Priser (leverandør {provider}, modell web-search).",
     webSearchService: "Tjeneste",

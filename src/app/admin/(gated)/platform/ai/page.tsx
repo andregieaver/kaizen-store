@@ -11,6 +11,7 @@ import { AgentEvalButton } from "@/components/admin/agent-eval-button";
 import { managerRatingsByVersion, promptVersions, recentAgentEvalRuns } from "@/server/agent-eval";
 import { recentDreamRuns } from "@/server/dream-factory";
 import { countStoresWithOwnAi, getAiSettings } from "@/server/ai";
+import { aiAutonomyPaused } from "@/server/ai-pause";
 import { requirePlatformAdmin } from "@/server/auth";
 import { searchSettings } from "@/server/web-search-settings";
 import { SEARCH_API_IDS, SEARCH_APIS } from "@/lib/web-search";
@@ -22,7 +23,7 @@ import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 
-import { checkPlatformVisionAction, evalPlatformAiAction, evalPlatformAgentsAction, removePlatformAiAction, savePlatformAiAction, saveWebSearchAction, testPlatformAiAction, testPlatformImageAction } from "./actions";
+import { checkPlatformVisionAction, evalPlatformAiAction, setAiPauseAction, evalPlatformAgentsAction, removePlatformAiAction, savePlatformAiAction, saveWebSearchAction, testPlatformAiAction, testPlatformImageAction } from "./actions";
 
 /** The evals run in this page's actions and take up to a few minutes (PSI 2026-10-24, AST-09). */
 export const maxDuration = 300;
@@ -43,7 +44,7 @@ export default async function PlatformAiPage() {
   const shared = adminText(lang, "settings").ai;
   const [agentRuns, dreamRuns, ratings] = await Promise.all([recentAgentEvalRuns(), recentDreamRuns(), managerRatingsByVersion()]);
   const current = promptVersions();
-  const [settings, ownCount, search] = await Promise.all([getAiSettings(null), countStoresWithOwnAi(), searchSettings()]);
+  const [settings, ownCount, search, paused] = await Promise.all([getAiSettings(null), countStoresWithOwnAi(), searchSettings(), aiAutonomyPaused()]);
   const status = settings
     ? `${settings.enabled ? w.on : w.off} · ${providerInfo(settings.provider).name}` +
       [settings.embeddingModel, settings.textModel].filter(Boolean).map((model) => ` · ${model}`).join("")
@@ -62,6 +63,15 @@ export default async function PlatformAiPage() {
           {w.usageEnd}
         </p>
       </div>
+
+      <section aria-labelledby="ai-pause" className={card}>
+        <h2 id="ai-pause" className="mb-1 text-title text-ink">{w.pause.title}</h2>
+        <p className="mb-4 text-sm text-muted">{paused ? w.pause.paused : w.pause.running}</p>
+        <ActionForm action={setAiPauseAction}>
+          <input type="hidden" name="paused" value={paused ? "off" : "on"} />
+          <Button type="submit" kind={paused ? "main" : "secondary"}>{paused ? w.pause.resumeButton : w.pause.pauseButton}</Button>
+        </ActionForm>
+      </section>
 
       <section aria-labelledby="provider" className={card}>
         <h2 id="provider" className="mb-1 text-title text-ink">{w.provider}</h2>

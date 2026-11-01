@@ -522,6 +522,9 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   /** The autopilot's daily digest and weekly report (D309): counts, the plans' step titles and the store's figures, never a customer. */
   "autopilot.digest": "staff",
   "autopilot.weekly": "staff",
+  /** The autopilot's own AI budget near (80 %) or spent (PSI AST-07): the store's name and the dollar figures, never a customer. */
+  "autopilot.budget_near": "staff",
+  "autopilot.budget_reached": "staff",
   "store.status": "staff",
   // Usage and limits (D314): to a store's owners when it nears or reaches a limit; to platform admins before a very busy time.
   "usage.near": "staff",

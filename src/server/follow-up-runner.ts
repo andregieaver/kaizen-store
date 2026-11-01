@@ -19,6 +19,7 @@ import { log } from "./log";
 import { runTurn, type Principal, type TurnInput } from "./owner-assistant";
 import { refreshTag } from "./refresh";
 import { col, typedRow, typedRows } from "./typed-rows";
+import { skipWhilePaused } from "./ai-pause";
 
 /**
  * Gives the AI manager's follow-ups back to it when they are due (PSI AGT-04, AGT-11), from the five-minute dispatcher: a few at a time,
@@ -63,6 +64,8 @@ export type FollowUpRun = { answered: number; retried: number; failed: number; c
 export async function runFollowUps(deps: FollowUpDeps = {}): Promise<FollowUpRun> {
   const now = deps.now ?? (() => new Date());
   const result: FollowUpRun = { answered: 0, retried: 0, failed: 0, cancelled: 0, waiting: 0 };
+  // Every AI that acts on its own waits while a platform admin has paused them (PSI AST-07).
+  if (await skipWhilePaused("follow_ups")) return result;
   const due = await typedRows(
     DUE_ROW,
     sql`

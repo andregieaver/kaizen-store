@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   autonomyDecision,
+  budgetLevel,
   DEFAULT_AUTONOMY,
   discountDepth,
   largestPriceChange,
@@ -100,5 +101,17 @@ describe("the facts behind the budgets", () => {
     expect(largestPriceChange(current, [{ sku: "MUG", prices: { se: "" } }], currency, parsePrice)).toBe(100);
     expect(largestPriceChange(current, [{ sku: "CUP", prices: { no: "1" } }], currency, parsePrice)).toBeNull();
     expect(largestPriceChange(current, [{ sku: "MUG", prices: { dk: "1" } }], currency, parsePrice)).toBeNull();
+  });
+});
+
+describe("the autopilot's AI budget, near and spent (PSI AST-07)", () => {
+  it("is near from 80 % of the budget and spent at it; no budget is never near", () => {
+    expect(budgetLevel(7_990_000, 10)).toBe("ok");
+    expect(budgetLevel(8_000_000, 10)).toBe("near");
+    expect(budgetLevel(9_999_999, 10)).toBe("near");
+    expect(budgetLevel(10_000_000, 10)).toBe("reached");
+    expect(budgetLevel(50_000_000, null)).toBe("ok");
+    expect(budgetLevel(1, 0)).toBe("reached");
+    expect(budgetLevel(0, 0)).toBe("ok");
   });
 });

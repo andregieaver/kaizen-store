@@ -1,0 +1,1 @@
+ALTER TABLE "commerce"."platform_settings" ADD COLUMN "ai_autonomy_paused" boolean DEFAULT false NOT NULL;

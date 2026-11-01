@@ -306,3 +306,14 @@ export const AREA_WORDS: Record<AutonomyArea, string> = {
 };
 
 export const LEVEL_WORDS: Record<AutonomyLevel, string> = { ask: "Ask me first", tell: "Do it and tell me", auto: "Just do it" };
+
+/** The share of the autopilot's monthly AI budget at which its owners are told it is close (PSI AST-07). */
+export const BUDGET_NEAR_SHARE = 0.8;
+
+/** Where the month's AI spend stands against a budget in US dollars (null: none, so never near). Pure. */
+export function budgetLevel(micros: number, budgetUsd: number | null): "ok" | "near" | "reached" {
+  if (budgetUsd === null || budgetUsd <= 0) return budgetUsd === 0 && micros > 0 ? "reached" : "ok";
+  const budget = budgetUsd * 1_000_000;
+  if (micros >= budget) return "reached";
+  return micros >= budget * BUDGET_NEAR_SHARE ? "near" : "ok";
+}

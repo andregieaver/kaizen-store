@@ -60,6 +60,7 @@ import { checkupFindings } from "./store-checkup";
 import { draftStore, openDraft, publishDraft } from "./store-drafts";
 import { storeTag, type Store } from "./stores";
 import { col, typedRow, typedRows } from "./typed-rows";
+import { skipWhilePaused } from "./ai-pause";
 
 /**
  * The Dream Factory's conductor (D409, `docs/dream-factory.md`): a run from an owner's description to a store ready to open. Every minute
@@ -310,6 +311,8 @@ export type DreamDeps = {
 export async function advanceDreamRuns({ deadline, deps = {} }: { deadline: number; deps?: DreamDeps }): Promise<{ moved: number; failed: number }> {
   let moved = 0;
   let failed = 0;
+  // Every AI that acts on its own waits while a platform admin has paused them (PSI AST-07).
+  if (await skipWhilePaused("dream_factory")) return { moved, failed };
   while (Date.now() < deadline) {
     const [claimed] = await db().execute<Row>(sql`
       update commerce.dream_runs set claimed_until = now() + make_interval(mins => ${CLAIM_MINUTES})

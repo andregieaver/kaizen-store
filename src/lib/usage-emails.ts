@@ -44,3 +44,33 @@ export function usageEmail(facts: UsageEmailFacts): EmailContent {
     ],
   };
 }
+
+export type AutopilotBudgetFacts = { storeName: string; level: "near" | "reached"; spentUsd: number; budgetUsd: number; url: string };
+
+/**
+ * The email a store's owners get when the autopilot's own AI budget for the month nears (80 %) or is spent (PSI AST-07). Pure, English as
+ * the plan's emails are; the figures are worked out by the caller.
+ */
+export function autopilotBudgetEmail(facts: AutopilotBudgetFacts): EmailContent {
+  const usd = (n: number) => `$${n.toFixed(2)}`;
+  const subject = facts.level === "reached" ? `The autopilot of ${facts.storeName} has spent its AI budget` : `The autopilot of ${facts.storeName} is close to its AI budget`;
+  const figures = `${usd(facts.spentUsd)} of ${usd(facts.budgetUsd)} this month`;
+  return {
+    subject,
+    preview: figures,
+    lang: "en",
+    footer: [facts.storeName, ...FOOTER],
+    blocks: [
+      { type: "heading", text: subject },
+      { type: "paragraph", text: `The AI calls it made on its own: ${figures}.` },
+      {
+        type: "paragraph",
+        text:
+          facts.level === "reached"
+            ? "It stops until next month, or until you raise the budget. Nothing else waits: you and your team still use the AI yourselves."
+            : "Nothing has stopped. When the budget is spent, the autopilot waits until next month or until you raise it.",
+      },
+      { type: "button", text: "Open the autopilot's settings", url: facts.url },
+    ],
+  };
+}

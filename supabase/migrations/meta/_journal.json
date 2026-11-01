@@ -4320,6 +4320,13 @@
       "when": 1793496629351,
       "tag": "20261101013029_status_ai",
       "breakpoints": true
+    },
+    {
+      "idx": 617,
+      "version": "7",
+      "when": 1793497544831,
+      "tag": "20261101014544_ai_autonomy_pause",
+      "breakpoints": true
     }
   ]
 }

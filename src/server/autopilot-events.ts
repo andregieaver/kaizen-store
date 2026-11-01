@@ -35,6 +35,7 @@ import { holderOfPrincipal, keepForApproval, runTurn, type Principal, type TurnI
 import { refreshTag } from "./refresh";
 import { getStore } from "./stores";
 import { col, typedRow, typedRows } from "./typed-rows";
+import { skipWhilePaused } from "./ai-pause";
 
 /**
  * The autopilot reacts to what happens (D331, `docs/ai-autopilot.md` 15), the only writer of `commerce.autopilot_events` and
@@ -172,6 +173,8 @@ type Pending = z.output<typeof PENDING>;
 /** Finds new events, then answers a few: at most one per store a run, within the store's events a day. */
 export async function runEvents(deps: EventDeps = {}): Promise<EventRun> {
   const result: EventRun = { found: 0, done: 0, planned: 0, started: 0, skipped: 0, failed: 0 };
+  // Every AI that acts on its own waits while a platform admin has paused them (PSI AST-07).
+  if (await skipWhilePaused("events")) return result;
   const now = deps.now ?? new Date();
   result.found = await detectEvents(deps);
   // A run that died with an event in hand: it failed. An event nobody got to in time is no longer worth a turn.

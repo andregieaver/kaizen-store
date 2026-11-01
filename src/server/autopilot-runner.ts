@@ -22,6 +22,7 @@ import { holderOfPrincipal, keepForApproval, runTurn, type Principal, type TurnI
 import { gateNeeded, OwnerToolError, preflightOwnerTool, runOwnerTool } from "./owner-tools";
 import { refreshTag } from "./refresh";
 import { col, typedRow, typedRows } from "./typed-rows";
+import { skipWhilePaused } from "./ai-pause";
 
 /**
  * The autopilot's loop (D309, `docs/ai-autopilot.md` 7.3): from `/api/cron/autopilot` every minute, a few steps at a time and at most one per
@@ -53,6 +54,8 @@ const CANDIDATE = z.object({ store_key: col.text, store_id: col.uuid.nullable() 
 
 export async function runAutopilot(deps: AutopilotDeps = {}): Promise<AutopilotRun> {
   const result: AutopilotRun = { done: 0, waiting: 0, asking: 0, retried: 0, paused: 0 };
+  // Every AI that acts on its own waits while a platform admin has paused them (PSI AST-07).
+  if (await skipWhilePaused("autopilot")) return result;
   // A run that died with a step in hand: the step goes back to be tried again (a try counted).
   await db().execute(sql`
     update commerce.assistant_plan_steps set status = 'pending', tries = tries + 1, claimed_until = null, not_before = now()

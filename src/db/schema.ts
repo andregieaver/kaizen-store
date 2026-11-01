@@ -1659,6 +1659,8 @@ export const platformSettings = commerce.table(
     selfServeSignup: boolean("self_serve_signup").notNull().default(false),
     /** Kaizena Flow's own AI check of new and changed listings (D411 part 2): on unless a platform admin turns it off, since it costs model calls. */
     contentScreening: boolean("content_screening").notNull().default(true),
+    /** Every AI that acts on its own (autopilot steps, reactions, reviews, follow-ups, Dream Factory runs) paused at once (PSI AST-07). */
+    aiAutonomyPaused: boolean("ai_autonomy_paused").notNull().default(false),
     /** Search and sharing for Kaizen's own pages (`StoreSeo` in lib/seo, locale `en`). */
     seo: jsonb("seo").notNull().default({}),
     /**

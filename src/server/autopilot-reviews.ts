@@ -30,6 +30,7 @@ import { log } from "./log";
 import { holderOfPrincipal, keepForApproval, runTurn, type Principal, type TurnInput } from "./owner-assistant";
 import { refreshTag } from "./refresh";
 import { col, typedRow, typedRows } from "./typed-rows";
+import { skipWhilePaused } from "./ai-pause";
 
 /**
  * The autopilot keeps going (D328, `docs/ai-autopilot.md` 12), the only writer of `commerce.autopilot_reviews`: from
@@ -106,6 +107,8 @@ export async function dueReviews(): Promise<Due[]> {
 
 export async function runGoalReviews(deps: ReviewDeps = {}): Promise<ReviewRun> {
   const result: ReviewRun = { planned: 0, started: 0, nothing: 0, skipped: 0, failed: 0 };
+  // Every AI that acts on its own waits while a platform admin has paused them (PSI AST-07).
+  if (await skipWhilePaused("reviews")) return result;
   // A run that died with a review in hand: it failed, and is tried again later.
   await db().execute(sql`
     update commerce.autopilot_reviews set status = 'failed', outcome = 'The review did not finish.', finished_at = now(), claimed_until = null

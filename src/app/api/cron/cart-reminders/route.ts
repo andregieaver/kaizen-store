@@ -59,6 +59,7 @@ import { sendAnalyticsAlertEmails, sendDueSummaries } from "@/server/staff-alert
 import { prepareDueDeliveries } from "@/server/standing-orders";
 import { runStoreCopies } from "@/server/store-copy";
 import { prepareDueRecurringWork } from "@/server/work-recurring";
+import { sendAutopilotBudgetAlerts } from "@/server/autopilot-settings";
 
 /** Room for the slower jobs (a store copy, the embeddings) before Vercel stops the run (PSI 2026-10-24, REL-06). */
 export const maxDuration = 300;
@@ -159,6 +160,8 @@ async function dispatch() {
     followUps: () => runFollowUps(),
     // The autopilot's daily digests and weekly reports (D309), to the people whose plans ran lately.
     autopilotReports: () => sendAutopilotReports(),
+    // The autopilot's own AI budget (PSI AST-07): owners told once a month when it nears 80 % and again when it is spent.
+    autopilotBudgets: () => sendAutopilotBudgetAlerts(),
     // Saved reports emailed on their schedules (D395), each once a store day.
     reportEmails: () => sendScheduledReports(),
     // The official legal texts the AI's legal pages rest on (D311): a few due reads, each source a week after its last good read.
