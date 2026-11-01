@@ -55,7 +55,9 @@ function filled(type: PageBlock["type"]): PageBlock {
     case "table":
       return { ...block, caption: "C", rows: [["A", "B"], ["1", "2"]] } as PageBlock;
     case "iconList":
-      return { ...block, items: [{ id: "l1", icon: "check", text: "L", href: "" }] } as PageBlock;
+      return { ...block, items: [{ id: "l1", icon: "check", text: "L", href: "", description: "D" }] } as PageBlock;
+    case "timeline":
+      return { ...block, items: [{ id: "l1", date: "1998", title: "T", text: "X" }] } as PageBlock;
     case "emailForm":
       return { ...block, consent: "C", fields: [{ id: "f1", kind: "select", label: "L", placeholder: "H", options: ["A", "B"] }] } as PageBlock;
     case "product":

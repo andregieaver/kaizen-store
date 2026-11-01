@@ -36,6 +36,7 @@ import { SHAPES, buttonLook } from "./button-look";
 import { BeforeAfterSlider, EmbeddedVideo, HtmlFrame, TabsView, UploadedVideo } from "./lazy/blocks";
 import { blockBox } from "./page-parts";
 import { IconListView } from "./icon-list-view";
+import { TimelineView } from "./timeline-view";
 import { TableView } from "./table-view";
 import { BrandsView } from "./brands-view";
 import { GalleryView } from "./gallery-view";
@@ -121,6 +122,8 @@ export function PageBlockView({
       return <SocialLinksView block={block} />;
     case "iconList":
       return <IconListView block={block} />;
+    case "timeline":
+      return <TimelineView block={block} />;
     case "table":
       return <TableView block={block} />;
     case "brands":

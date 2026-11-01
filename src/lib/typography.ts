@@ -373,6 +373,11 @@ export function textRoles(part: TypedPart): RoleDef[] {
       return [TEXT, role("quote", "Quotes", "& blockquote"), role("name", "Names", marked("name")), role("meta", "Titles and places", marked("meta"))];
     case "brands":
       return [TEXT, role("name", "Names", marked("name"))];
+    case "iconList":
+      // A line's words are the text; a description under them its own (D414).
+      return [TEXT, role("body", "Descriptions", marked("body"))];
+    case "timeline":
+      return [TEXT, role("meta", "Dates", marked("meta")), role("title", "Titles", marked("title")), role("body", "Texts", marked("body"))];
     case "gallery":
       return [TEXT, role("caption", "Captions", marked("caption"))];
     case "socialLinks":
@@ -468,7 +473,8 @@ export const TEXT_FIELDS: Record<string, Record<string, TextRole>> = {
   tabs: { "*.title": "title", "*.body": "body" },
   faq: { "*.title": "title", "*.body": "body" },
   testimonials: { "*.quote": "quote", "*.role": "meta", "*.name": "name" },
-  iconList: { "*.text": "text" },
+  iconList: { "*.text": "text", "*.description": "body" },
+  timeline: { "*.date": "meta", "*.title": "title", "*.text": "body" },
   brands: { "*.name": "name" },
   gallery: { "*.caption": "caption" },
   table: { caption: "text", "r*": "text", "s*": "text" },

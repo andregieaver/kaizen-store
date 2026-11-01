@@ -12,8 +12,10 @@ const JUSTIFY = { left: "justify-start", center: "justify-center", right: "justi
 export function IconListView({ block }: { block: IconListBlock }) {
   const size = ICON[block.iconSize ?? "md"];
   const row = block.layout === "row";
-  // Lines side by side, or icons taller than the text, sit on the middle; long lines under one another start with their first line.
-  const align = row || block.iconSize === "lg" ? "items-center" : "items-start";
+  // Lines side by side, or icons taller than the text, sit on the middle; long lines under one another start with their first line, and
+  // so does a line with a description under it (D414), its icon beside its words.
+  const described = block.items.some((item) => item.description?.trim());
+  const align = (row || block.iconSize === "lg") && !described ? "items-center" : "items-start";
   return (
     <ul
       className={row ? `flex flex-wrap items-center ${JUSTIFY[block.position ?? "left"]}` : "flex flex-col"}
@@ -28,8 +30,15 @@ export function IconListView({ block }: { block: IconListBlock }) {
               {...(block.iconColor && { style: { color: block.iconColor } })}
               {...(block.iconGradient && { gradient: block.iconGradient })}
             />
-            <span>
-              <Inline text={item.text} links={!item.href} />
+            <span className="flex flex-col gap-0.5">
+              <span>
+                <Inline text={item.text} links={!item.href} />
+              </span>
+              {item.description?.trim() && (
+                <span data-kz-text="body" className="text-[0.875em] text-muted [overflow-wrap:anywhere]">
+                  {item.description}
+                </span>
+              )}
             </span>
           </>
         );

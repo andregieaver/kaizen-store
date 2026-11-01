@@ -575,7 +575,9 @@ function blockWords(block: PageBlock): string[] {
     case "tabs":
       return block.items.flatMap((item) => [item.title, richFacts(item.body).text]);
     case "iconList":
-      return block.items.map((item) => item.text);
+      return block.items.flatMap((item) => [item.text, item.description ?? ""]);
+    case "timeline":
+      return block.items.flatMap((item) => [item.date, item.title, item.text]);
     case "table":
       return [block.caption ?? "", ...block.rows.flat().map((cell) => withoutIcons(cell, true)), ...(block.sections ?? []).filter((s): s is string => Boolean(s))];
     case "gallery":

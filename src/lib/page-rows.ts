@@ -84,6 +84,9 @@ export function newBlock(type: BlockType, id: NewId, part: ProductPart | SitePar
       return { id: id(), type, html: "", title: "" };
     case "table":
       return { id: id(), type, header: true, mobile: "stack", rows: [["", "", ""], ["", "", ""], ["", "", ""]] };
+    case "timeline":
+      // Three events to write in, as a story starts, goes on and gets here (D414).
+      return { id: id(), type, items: [0, 1, 2].map(() => ({ id: id(), date: "", title: "", text: "" })) };
     case "iconList":
       return {
         id: id(),

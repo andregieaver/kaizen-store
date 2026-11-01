@@ -159,8 +159,26 @@ export function mapBlockTexts(b: PageBlock, visit: Visit): PageBlock {
     case "brands":
       // A brand's name is its own in every language; only the logos' alternative texts could differ, and they are the names.
       return b;
+    case "timeline":
+      return {
+        ...b,
+        items: b.items.map((item, index) => ({
+          ...item,
+          date: str(`${item.id}.date`, item.date, 60, `Event ${index + 1}: date`),
+          title: str(`${item.id}.title`, item.title, 200, `Event ${index + 1}: title`),
+          text: str(`${item.id}.text`, item.text, 1000, `Event ${index + 1}: text`),
+        })),
+      };
     case "iconList":
-      return { ...b, items: b.items.map((item, index) => ({ ...item, text: str(`${item.id}.text`, item.text, 300, `Line ${index + 1}`) })) };
+      // A line's description is translated only where it is written (D414).
+      return {
+        ...b,
+        items: b.items.map((item, index) => ({
+          ...item,
+          text: str(`${item.id}.text`, item.text, 300, `Line ${index + 1}`),
+          ...(item.description ? { description: str(`${item.id}.description`, item.description, 500, `Line ${index + 1}: description`) } : {}),
+        })),
+      };
     case "html":
       // The HTML itself is code, the same in every language; its title names the frame.
       return { ...b, title: str("title", b.title, 200, "HTML title") };

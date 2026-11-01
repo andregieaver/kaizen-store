@@ -1568,11 +1568,13 @@ export type SocialLinksBlock = PartBase & {
 export const socialLinkShows = (link: SocialLink) => socialHref(link.network, link.href) !== null;
 
 export const ICON_LIST_TEXT_MAX = 300;
+/** A line's description, under its words. */
+export const ICON_LIST_DESCRIPTION_MAX = 500;
 export const ICON_LIST_LAYOUTS = { column: "One under another", row: "Side by side" } as const;
 export type IconListLayout = keyof typeof ICON_LIST_LAYOUTS;
 
-/** One line of an icon list: its icon, its words, and where it links if anywhere. */
-export type IconListItem = { id: string; icon: IconName; text: string; href: string };
+/** One line of an icon list: its icon, its words, a description under them if written, and where it links if anywhere. */
+export type IconListItem = { id: string; icon: IconName; text: string; href: string; description?: string };
 
 /**
  * An icon list (D91): lines of text, each after an icon (the theme's
@@ -1597,6 +1599,31 @@ export type IconListBlock = PartBase & {
 
 /** A line that shows: it has words. */
 export const iconItemShows = (item: IconListItem) => item.text.trim() !== "";
+
+export const TIMELINE_DATE_MAX = 60;
+export const TIMELINE_TITLE_MAX = 200;
+export const TIMELINE_TEXT_MAX = 1000;
+export const TIMELINE_LAYOUTS = { side: "Along one side", alternate: "Alternating sides" } as const;
+export type TimelineLayout = keyof typeof TIMELINE_LAYOUTS;
+
+/** One event on a timeline (D414): when, as the owner writes it ("1998", "Spring 2024"), what happened, a few words more, and an icon if chosen. */
+export type TimelineItem = { id: string; date: string; title: string; text: string; icon?: IconName };
+
+/**
+ * A timeline (D414): events over time, in the order written, along a line with a dot (or the event's icon) at each. Along one side, or
+ * alternating sides on wide screens (one side on a phone). An ordered list, so a screen reader hears how many and which comes where. The line
+ * and dots are the theme's accent unless a colour is chosen.
+ */
+export type TimelineBlock = PartBase & {
+  id: string;
+  type: "timeline";
+  items: TimelineItem[];
+  layout?: TimelineLayout;
+  markerColor?: string;
+};
+
+/** An event that shows: it has a title or words. */
+export const timelineItemShows = (item: TimelineItem) => item.title.trim() !== "" || item.text.trim() !== "";
 
 export const TABLE_ROWS_MAX = 60;
 export const TABLE_COLUMNS_MAX = 12;
@@ -1909,6 +1936,7 @@ export type PageBlock =
   | TestimonialsBlock
   | SocialLinksBlock
   | IconListBlock
+  | TimelineBlock
   | TableBlock
   | BrandsBlock
   | GalleryBlock
@@ -2121,6 +2149,8 @@ export function blockOwnContent(block: PageBlock): boolean {
       return block.links.some(socialLinkShows);
     case "iconList":
       return block.items.some(iconItemShows);
+    case "timeline":
+      return block.items.some(timelineItemShows);
     case "table":
       return tableShows(block);
     case "brands":
@@ -2163,10 +2193,15 @@ export function blockText(block: PageBlock): string {
       return childBlocks(block).map(blockText).filter(Boolean).join(" ");
     case "video":
       return block.title;
+    case "timeline":
+      return block.items
+        .filter(timelineItemShows)
+        .map((item) => [item.date, item.title, item.text].map((t) => t.trim()).filter(Boolean).join(" "))
+        .join(" ");
     case "iconList":
       return block.items
         .filter(iconItemShows)
-        .map((item) => inlinePlain(item.text))
+        .map((item) => [inlinePlain(item.text), item.description?.trim()].filter(Boolean).join(" "))
         .join(" ");
     case "brands":
       return block.items.map((item) => item.name.trim()).filter(Boolean).join(" ");
@@ -3336,6 +3371,12 @@ const iconListBlock = z.object({
         id: itemId,
         icon: z.enum(Object.keys(ICONS) as [IconName, ...IconName[]], "Choose an icon for each line."),
         text: z.string().trim().max(ICON_LIST_TEXT_MAX, `Keep a line under ${ICON_LIST_TEXT_MAX} characters.`),
+        description: z
+          .string()
+          .trim()
+          .max(ICON_LIST_DESCRIPTION_MAX, `Keep a line's description under ${ICON_LIST_DESCRIPTION_MAX} characters.`)
+          .optional()
+          .transform((value) => value || undefined),
         href: z
           .string()
           .trim()
@@ -3351,6 +3392,26 @@ const iconListBlock = z.object({
   iconSize: z.enum(Object.keys(BUTTON_SIZES) as [ButtonSize, ...ButtonSize[]]).optional(),
   gap: z.number().int().min(0).max(SOCIAL_GAP_MAX).optional(),
   position: z.enum(Object.keys(SEPARATOR_POSITIONS) as [SeparatorPosition, ...SeparatorPosition[]]).optional(),
+  ...partBase,
+});
+
+const timelineBlock = z.object({
+  id: itemId,
+  type: z.literal("timeline"),
+  items: z
+    .array(
+      z.object({
+        id: itemId,
+        date: z.string().trim().max(TIMELINE_DATE_MAX, `Keep an event's date under ${TIMELINE_DATE_MAX} characters.`).default(""),
+        title: z.string().trim().max(TIMELINE_TITLE_MAX, `Keep an event's title under ${TIMELINE_TITLE_MAX} characters.`).default(""),
+        text: z.string().trim().max(TIMELINE_TEXT_MAX, `Keep an event's text under ${TIMELINE_TEXT_MAX} characters.`).default(""),
+        icon: z.enum(Object.keys(ICONS) as [IconName, ...IconName[]]).optional(),
+      }),
+    )
+    .max(ITEMS_MAX, `A component holds at most ${ITEMS_MAX} items.`)
+    .refine((items) => new Set(items.map((item) => item.id)).size === items.length, "Two items have the same id. Reload the page and try again."),
+  layout: z.enum(Object.keys(TIMELINE_LAYOUTS) as [TimelineLayout, ...TimelineLayout[]]).optional(),
+  markerColor: color.optional(),
   ...partBase,
 });
 
@@ -3566,6 +3627,7 @@ const BLOCK_KINDS = [
   testimonialsBlock,
   socialLinksBlock,
   iconListBlock,
+  timelineBlock,
   tableBlock,
   brandsBlock,
   galleryBlock,

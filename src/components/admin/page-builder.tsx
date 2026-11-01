@@ -475,7 +475,7 @@ function slotOnRow(row: PageRow, move: Move): { slot: ColumnSlot; anchor: { id: 
 }
 
 /** The palette's components, in order. */
-const BLOCK_TYPES = ["richText", "heading", "image", "beforeAfter", "video", "button", "dualButton", "columns", "tabs", "accordion", "faq", "testimonials", "iconList", "table", "brands", "gallery", "socialLinks", "emailForm", "newsletter", "contentGrid", "menu", "separator", "html"] as const satisfies readonly BlockType[];
+const BLOCK_TYPES = ["richText", "heading", "image", "beforeAfter", "video", "button", "dualButton", "columns", "tabs", "accordion", "faq", "testimonials", "iconList", "timeline", "table", "brands", "gallery", "socialLinks", "emailForm", "newsletter", "contentGrid", "menu", "separator", "html"] as const satisfies readonly BlockType[];
 
 const rowHasText = (row: PageRow) => row.columns.some(columnHasText);
 const columnHasText = (column: PageColumn) => column.blocks.some(blockHasText);
@@ -2474,6 +2474,8 @@ function BlockIcon({ type }: { type: BlockType }) {
       return <ImageIcon />;
     case "beforeAfter":
       return <BeforeAfterIcon />;
+    case "timeline":
+      return <TimelineIcon />;
     case "heading":
       return <LetterIcon letter="H" bold />;
     case "button":
@@ -2587,6 +2589,21 @@ function SocialIcon() {
       <span className="size-2.5 rounded-full bg-current" />
       <span className="size-2.5 rounded-full bg-current" />
       <span className="size-2.5 rounded-full bg-current" />
+    </span>
+  );
+}
+
+/** A line with three events along it. */
+function TimelineIcon() {
+  return (
+    <span aria-hidden className="flex h-9 items-center justify-center rounded-sm bg-foreground/75 text-background">
+      <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round">
+        <path d="M6 3v18" />
+        <circle cx="6" cy="6" r="2" fill="currentColor" />
+        <circle cx="6" cy="12" r="2" fill="currentColor" />
+        <circle cx="6" cy="18" r="2" fill="currentColor" />
+        <path d="M11 6h9M11 12h7M11 18h9" />
+      </svg>
     </span>
   );
 }

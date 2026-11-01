@@ -149,6 +149,13 @@ import {
   type TabsBlock,
   type VideoBlock,
   BEFORE_AFTER_LABEL_MAX,
+  ICON_LIST_DESCRIPTION_MAX,
+  TIMELINE_DATE_MAX,
+  TIMELINE_LAYOUTS,
+  TIMELINE_TEXT_MAX,
+  TIMELINE_TITLE_MAX,
+  type TimelineBlock,
+  type TimelineItem,
   BEFORE_AFTER_START,
   IMAGE_SHAPES,
   type BeforeAfterBlock,
@@ -210,6 +217,12 @@ type Editors = { [K in BlockType]?: BlockEditor<Extract<PageBlock, { type: K }>>
 /** The components edited through the generic dialog. */
 export const BLOCK_EDITORS: Editors = {
   columns: { title: "Columns", General: ColumnsFields },
+  timeline: {
+    title: "Timeline",
+    font: { label: "Font", fallback: "The site's body font" },
+    General: TimelineFields,
+    Style: TimelineStyleFields,
+  },
   beforeAfter: {
     title: "Before and after",
     font: { label: "Font", fallback: "The site's body font" },
@@ -2109,6 +2122,14 @@ function IconListFields({ block, onChange }: BlockEditorProps<IconListBlock>) {
             <>
               <TextField label={w.words} markup value={item.text} max={ICON_LIST_TEXT_MAX} placeholder={w.wordsPlaceholder} onChange={(text) => change({ text })} />
               <TextField
+                label={w.description}
+                multiline
+                value={item.description ?? ""}
+                max={ICON_LIST_DESCRIPTION_MAX}
+                placeholder={w.descriptionPlaceholder}
+                onChange={(description) => change({ description: description.trim() ? description : undefined })}
+              />
+              <TextField
                 label={w.links}
                 value={item.href}
                 max={2000}
@@ -3373,6 +3394,56 @@ function BeforeAfterStyleFields({ block, onChange }: BlockEditorProps<BeforeAfte
     <>
       <Choices legend={fw.shape} hint={fw.shapeHint} options={options} value={block.shape ?? "original"} onChange={(shape) => onChange({ shape: shape === "original" ? undefined : shape })} />
       <ImageSizeFields block={block} onChange={(patch) => onChange(patch as Partial<BeforeAfterBlock>)} />
+    </>
+  );
+}
+
+/**
+ * A timeline's events (D414), in the order they are shown: each its date as the owner writes it, its title, a few words and an icon if chosen
+ * (else a dot). An event with neither title nor words is left out on the site.
+ */
+function TimelineFields({ block, onChange }: BlockEditorProps<TimelineBlock>) {
+  const w = useAdminText("blocks").timeline;
+  return (
+    <>
+      <ItemsEditor<TimelineItem>
+        label={w.events}
+        items={block.items}
+        max={ITEMS_MAX}
+        addLabel={w.add}
+        nameOf={(item, index) => [item.date.trim(), item.title.trim()].filter(Boolean).join(" · ") || fillWords(w.unnamed, { n: index + 1 })}
+        duplicate={(item) => ({ ...item, id: newItemId() })}
+        newItem={() => ({ id: newItemId(), date: "", title: "", text: "", ...(block.items.at(-1)?.icon ? { icon: block.items.at(-1)?.icon } : {}) })}
+        onChange={(items) => onChange({ items })}
+      >
+        {(item, change) => (
+          <>
+            <TextField label={w.date} value={item.date} max={TIMELINE_DATE_MAX} placeholder={w.datePlaceholder} onChange={(date) => change({ date })} />
+            <TextField label={w.eventTitle} value={item.title} max={TIMELINE_TITLE_MAX} placeholder={w.titlePlaceholder} onChange={(title) => change({ title })} />
+            <TextField label={w.text} multiline value={item.text} max={TIMELINE_TEXT_MAX} placeholder={w.textPlaceholder} onChange={(text) => change({ text })} />
+            <Check label={w.useIcon} checked={Boolean(item.icon)} onChange={(on) => change({ icon: on ? (item.icon ?? "calendar") : undefined })} />
+            {item.icon && <IconPicker value={item.icon} onChange={(icon) => change({ icon })} />}
+          </>
+        )}
+      </ItemsEditor>
+      <p className="text-xs text-muted">{w.leftOut}</p>
+    </>
+  );
+}
+
+/** A timeline's look (D414): along one side or alternating sides on wide screens, and the colour of its line and dots. */
+function TimelineStyleFields({ block, onChange }: BlockEditorProps<TimelineBlock>) {
+  const w = useAdminText("blocks").timeline;
+  return (
+    <>
+      <Choices
+        legend={w.layout}
+        hint={w.layoutHint}
+        options={optionsOf(TIMELINE_LAYOUTS, w.layouts)}
+        value={block.layout ?? "side"}
+        onChange={(layout) => onChange({ layout: layout === "side" ? undefined : layout })}
+      />
+      <OptionalColor label={w.colour} hint={w.colourHint} value={block.markerColor} fallback="#2563eb" onChange={(markerColor) => onChange({ markerColor })} />
     </>
   );
 }
