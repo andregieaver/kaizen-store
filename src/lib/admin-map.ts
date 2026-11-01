@@ -1194,6 +1194,10 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["gdpr", "retention", "keep data", "how long", "bookkeeping", "regnskap", "storage limitation", "anonymise", "register of personal data", "accountant review"],
     tasks: ["Mark a retention period as reviewed", "Change how long a kind of data is kept", "See what the daily job removed", "See which periods nobody has reviewed"],
   }),
+  platform("processing", "/processing", "Record of processing", "Platform", "What Kaizena Flow does with personal data, purpose by purpose, as GDPR Art. 30 asks: each purpose's lawful basis and why, who decides it (the store or Kaizena Flow), whose data it is, how long it is kept and which tables hold it, drawn from the register of personal data; the bases a lawyer should look at first are marked.", {
+    keywords: ["gdpr", "article 30", "art. 30", "record of processing", "ropa", "behandlingsprotokoll", "lawful basis", "purpose", "controller", "processor"],
+    tasks: ["See the record of processing", "See the lawful basis of each purpose", "See which purposes need a lawyer's review"],
+  }),
   platform("vat", "/vat", "VAT", "Platform", "VAT for every store: the categories owners choose from, each country's rate per category with its history, source and verification, the rates nobody has verified yet, the coverage by country and how shipping is taxed.", {
     keywords: ["tax", "rates", "reduced rate", "mva", "moms", "category", "shipping vat", "verify", "oss", "ioss"],
     tasks: ["Set a country's rate for a category", "Mark a rate verified", "Add a VAT category", "Set how shipping is taxed in a country"],

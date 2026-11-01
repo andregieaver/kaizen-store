@@ -817,6 +817,10 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     title: "Lagringstid",
     keywords: ["oppbevaring", "oppbevaringsplikt", "hvor lenge", "regnskap", "lagringsbegrensning", "anonymisere", "personopplysninger", "gdpr"],
   },
+  "platform:processing": {
+    title: "Behandlingsprotokoll",
+    keywords: ["behandlingsprotokoll", "artikkel 30", "behandlingsgrunnlag", "formål", "behandlingsansvarlig", "databehandler", "personopplysninger", "gdpr"],
+  },
   "platform:vat": {
     title: "Merverdiavgift",
     keywords: ["merverdiavgift", "mva", "satser", "redusert sats", "kategori", "mva på frakt", "oss", "ioss"],

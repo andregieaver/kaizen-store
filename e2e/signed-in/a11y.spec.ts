@@ -22,7 +22,7 @@ const OWNER_PAGES = [
   "/admin/account",
 ];
 
-const PLATFORM_PAGES = ["/admin/platform", "/admin/platform/stores", "/admin/platform/themes", "/admin/platform/ai"];
+const PLATFORM_PAGES = ["/admin/platform", "/admin/platform/stores", "/admin/platform/themes", "/admin/platform/ai", "/admin/platform/processing"];
 
 test.describe("the owner's admin", () => {
   test.use({ storageState: OWNER.state });

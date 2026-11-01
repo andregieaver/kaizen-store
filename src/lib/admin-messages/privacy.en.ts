@@ -264,6 +264,22 @@ export const privacyEn = {
     refusedNotEmailed: "The request is refused, but the person could not be emailed. Tell them yourself, with the reasons and their right to complain.",
     closedNoData: "Closed as no data held. Tell the person.",
   },
+  record: {
+    title: "Record of processing",
+    description:
+      "What Kaizena Flow does with personal data, purpose by purpose, as GDPR Art. 30 asks it to keep: the lawful basis and why, who decides the purpose, whose data it is, where it is kept and for how long. Drawn from the register of personal data, so it never falls behind the code. The bases are proposals for the lawyer to confirm; a row marked for review is a judgement, not a clear case. This is not legal advice.",
+    purpose: "Purpose",
+    basis: "Lawful basis",
+    controller: "Who decides",
+    subjects: "Whose data",
+    kept: "Where it is kept",
+    retention: "How long",
+    review: "For the lawyer to look at first",
+    controllers: { store: "The store (Kaizena Flow processes for it)", platform: "Kaizena Flow" },
+    subjectNames: { shopper: "Shoppers", staff: "Store staff", host: "Hosts", owner: "Store owners", business: "Business contacts", pseudonymous: "Visitors, without a name", none: "No one" },
+    untilPurpose: "As long as the purpose needs it",
+    tables: "{n} tables",
+  },
   retention: {
     title: "Data retention",
     description:

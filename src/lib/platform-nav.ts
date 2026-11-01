@@ -54,6 +54,7 @@ export const SETTINGS_ITEMS: SectionItem[] = [
   item("/vat", "VAT", "VAT categories and rates per country with history, the rates nobody has verified yet, and how shipping is taxed."),
   item("/duty-rates", "Duty rates", "The duty rates and thresholds per country that stores' customs estimates are worked out from, each with its source and whether a person verified it."),
   item("/retention", "Data retention", "How long each kind of personal data is kept, where each period comes from, and what the daily job removed."),
+  item("/processing", "Record of processing", "What Kaizena Flow does with personal data, purpose by purpose (GDPR Art. 30), drawn from the register."),
   item("/google-reviews", "Google reviews", "Kaizena Flow's own Google reviews for testimonials."),
   item("/stripe", "Stripe", "Kaizena Flow's Stripe webhooks per mode, the default fee per sale and the checkout's look."),
   item("/ai", "AI", "Kaizena Flow's default AI provider and models.", true),

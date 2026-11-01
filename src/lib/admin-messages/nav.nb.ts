@@ -351,6 +351,9 @@ export const NAV_NB: Record<string, string> = {
   "VAT categories and rates per country with history, the rates nobody has verified yet, and how shipping is taxed.":
     "Kategorier og satser for merverdiavgift per land med historikk, satsene ingen har bekreftet ennå, og hvordan frakt avgiftsberegnes.",
   "Data retention": "Lagringstid",
+  "Record of processing": "Behandlingsprotokoll",
+  "What Kaizena Flow does with personal data, purpose by purpose (GDPR Art. 30), drawn from the register.":
+    "Hva Kaizena Flow gjør med personopplysninger, formål for formål (GDPR art. 30), laget fra registeret.",
   "How long each kind of personal data is kept, where each period comes from, and what the daily job removed.":
     "Hvor lenge hver type personopplysninger lagres, hvor hver periode kommer fra, og hva den daglige jobben har fjernet.",
   "Google reviews": "Google-omtaler",

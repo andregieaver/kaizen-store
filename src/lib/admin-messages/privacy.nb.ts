@@ -297,6 +297,22 @@ export const privacyNb: PrivacyMessages = {
     refusedNotEmailed: "Forespørselen er avslått, men personen kunne ikke få e-post. Gi dem beskjed selv, med begrunnelsen og retten til å klage.",
     closedNoData: "Lukket som ingen opplysninger. Gi personen beskjed.",
   },
+  record: {
+    title: "Behandlingsprotokoll",
+    description:
+      "Hva Kaizena Flow gjør med personopplysninger, formål for formål, slik GDPR art. 30 krever: behandlingsgrunnlaget og hvorfor, hvem som bestemmer formålet, hvem opplysningene gjelder, hvor de lagres og hvor lenge. Laget fra registeret over personopplysninger, så den aldri henger etter koden. Grunnlagene er forslag som advokaten skal bekrefte; en rad merket for gjennomgang er en vurdering, ikke en klar sak. Dette er ikke juridisk rådgivning.",
+    purpose: "Formål",
+    basis: "Behandlingsgrunnlag",
+    controller: "Hvem bestemmer",
+    subjects: "Hvem opplysningene gjelder",
+    kept: "Hvor de lagres",
+    retention: "Hvor lenge",
+    review: "Advokaten bør se på denne først",
+    controllers: { store: "Butikken (Kaizena Flow behandler for den)", platform: "Kaizena Flow" },
+    subjectNames: { shopper: "Kunder", staff: "Butikkens ansatte", host: "Verter", owner: "Butikkeiere", business: "Kontakter i bedrifter", pseudonymous: "Besøkende, uten navn", none: "Ingen" },
+    untilPurpose: "Så lenge formålet krever det",
+    tables: "{n} tabeller",
+  },
   retention: {
     title: "Oppbevaring av opplysninger",
     description:
