@@ -324,7 +324,9 @@ The re-score ([psi-2026-10-31.md](psi-2026-10-31.md)) put the overall at 78.3 (8
 - [x] **AST-08 (sensitive mode)** A store that handles sensitive information is worked as people only by the database
       (`commerce.support_mode()`): the site chat and emails go to people, the silent partner is off, the AI manager reads no conversation's
       words, and a conversation the AI held before is handed to a person (`support_transition()` allows the hand-over on a people-only
-      desk). Left from item 6: the platform's AI on `openai_eu` or a zero-retention provider (the owner's), a two-store isolation test.
+      desk). A two-store test of the shopper chat (`chat-isolation.int.test.ts`): each store's `search_content`, `store_info`,
+      product search and `get_product` find only its own products and knowledge. Left from item 6: the platform's AI on `openai_eu` or a
+      zero-retention provider (the owner's).
 - [x] **AST-07** A platform-wide pause of every AI that acts on its own (Platform → AI, audited; the five runners return while it is on)
       and the autopilot's own AI budget emailed to owners at 80 % and when spent, once a month each (1 November 2026). The plan's AI limit
       already warned at 80 % (`sendUsageAlerts()`).
