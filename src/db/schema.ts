@@ -5475,6 +5475,14 @@ export const shipments = commerce.table(
     carrierId: text("carrier_id"),
     consignmentNumber: text("consignment_number"),
     labelUrl: text("label_url"),
+    /**
+     * What the label cost the store (profit per order, D415): without VAT, in the order's currency (converted once at the store's rates when the
+     * carrier priced it in another), asked from the carrier's own prices for the service booked right after the booking (`recordLabelCost()`); null
+     * when not known, and then profit takes the store's estimate per parcel. `label_cost_carrier` keeps the carrier's own figure: `{ amountMinor,
+     * currency, vatIncluded }`.
+     */
+    labelCostMinor: bigint("label_cost_minor", { mode: "number" }),
+    labelCostCarrier: jsonb("label_cost_carrier"),
     createdBy: uuid("created_by").references(() => accounts.id),
     /**
      * Recorded before parcels named their lines (wave 3 run 3, D174): counts as every physical unit of the order sent. The rules migration set it for every row that
@@ -5511,6 +5519,7 @@ export const shipments = commerce.table(
     check("shipments_label_url", sql`${t.labelUrl} is null or ${t.labelUrl} ~ '^https://'`),
     check("shipments_undo_reason", sql`${t.undoReason} is null or (${t.undoneAt} is not null and char_length(${t.undoReason}) <= 200)`),
     check("shipments_undone_by", sql`${t.undoneBy} is null or ${t.undoneAt} is not null`),
+    check("shipments_label_cost", sql`${t.labelCostMinor} is null or (${t.labelCostMinor} >= 0 and ${t.method} = 'parcel')`),
   ],
 );
 

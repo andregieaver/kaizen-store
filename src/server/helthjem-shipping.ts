@@ -8,7 +8,7 @@ import { parcelInput, toParty, type ParcelInput } from "./bring-shipping";
 import { adapterFor } from "./carriers";
 import type { ParcelLine } from "@/lib/fulfilment";
 
-import { BOOKING_BUSY, bookingPrecheck, oneBookingAtATime, parcelReference } from "./carrier-booking";
+import { BOOKING_BUSY, bookedServicePrice, bookingPrecheck, oneBookingAtATime, parcelReference, recordLabelCost } from "./carrier-booking";
 import { markSent, sendRefusalText, type Shipment } from "./order-admin";
 import { getOrder } from "./orders";
 import { carrierContext } from "./shipping-carriers";
@@ -98,6 +98,8 @@ async function bookUnderLock(
     );
     // The booking exists at Helthjem even if the order could not be marked: say so rather than hide it.
     if (!sent.ok) return { ok: false, problem: `Helthjem booked the shipment (${booked.trackingNumber}) but the order could not be marked as sent. ${sendRefusalText(sent.reason)}` };
+    // What the label cost, from the prices kept for Helthjem's services (D415).
+    await recordLabelCost(storeId, sent.shipment.id, from.country, await bookedServicePrice("helthjem", context, { serviceId: chosen.serviceId, from, to, parcels: [input.parcel] }));
     return { ok: true, test: false, shipment: sent.shipment };
   } catch (error) {
     return { ok: false, problem: error instanceof Error ? error.message : "Helthjem did not answer." };

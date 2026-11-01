@@ -145,6 +145,19 @@ describe("parcels name their lines (3.3 point 1)", () => {
     await rejects("delete from commerce.shipment_lines where shipment_id = $1", [shipment], /shipment_line\.append_only/);
   });
 
+  it("keeps what a parcel's label cost once, from nothing, and never changes it (D415)", async () => {
+    const o = await paid();
+    const shipment = await ship(o.id, [[o.lineIds[0], 1]]);
+    await db.query(`update commerce.shipments set label_cost_minor = 7400, label_cost_carrier = '{"amountMinor":9250,"currency":"NOK","vatIncluded":true}' where id = $1`, [shipment]);
+    const { rows } = await db.query<{ label_cost_minor: number }>("select label_cost_minor from commerce.shipments where id = $1", [shipment]);
+    expect(Number(rows[0].label_cost_minor)).toBe(7400);
+    await rejects("update commerce.shipments set label_cost_minor = 100 where id = $1", [shipment], /shipment\.label_cost/);
+    await rejects("update commerce.shipments set label_cost_minor = null, label_cost_carrier = null where id = $1", [shipment], /shipment\.label_cost/);
+    // The rest of the parcel stays a record, and a handover never has a label's cost.
+    await rejects("update commerce.shipments set tracking_number = 'X' where id = $1", [shipment], /shipment\.frozen/);
+    await rejects("update commerce.shipments set label_cost_minor = -1 where id = $1", [await ship(o.id, [[o.lineIds[0], 1]])], /shipments_label_cost|check/);
+  });
+
   it("serialises two parcels of one line, so together they never exceed it", async () => {
     const o = await paid();
     const a = o.lineIds[0];

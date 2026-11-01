@@ -5,8 +5,13 @@ import { z } from "zod";
 
 import { db } from "@/db/client";
 import { shipmentProblemText, type ParcelLine } from "@/lib/fulfilment";
+import { labelCostIn } from "@/lib/return-label";
+import type { BookingRequest, CarrierContext, CarrierId } from "@/lib/shipping-carriers";
 
+import { adapterFor } from "./carriers";
 import { orderFulfilment, parcelPrecheck } from "./fulfilment";
+import { log } from "./log";
+import { storeById } from "./shopper-emails";
 import { col, typedRow } from "./typed-rows";
 
 type Row = Record<string, unknown>;
@@ -61,4 +66,53 @@ export async function bookingPrecheck(storeId: string, orderId: string, lines?: 
     if (found.basis !== seen) return shipmentProblemText("changed");
   }
   return parcelPrecheck(storeId, orderId, lines);
+}
+
+/** A carrier's price for a service, as it gave it. */
+export type CarrierPrice = { amountMinor: number; currency: string; vatIncluded: boolean };
+
+/**
+ * The price of the service just booked, from the carrier's own prices for the same parcel (profit per order, D415): what Bring and Helthjem give
+ * through their rates; null when the carrier has no prices, does not answer, or does not list the service. Never throws: a booking is never
+ * undone or refused for want of its price.
+ */
+export async function bookedServicePrice(carrier: CarrierId, context: CarrierContext, request: Pick<BookingRequest, "serviceId" | "from" | "to" | "parcels">): Promise<CarrierPrice | null> {
+  const adapter = adapterFor(carrier);
+  if (!adapter?.rates) return null;
+  try {
+    const options = await adapter.rates(context, { from: request.from, to: request.to, parcels: request.parcels, currency: "NOK", products: [request.serviceId] });
+    const found = options.find((o) => o.serviceId === request.serviceId);
+    return found ? { amountMinor: found.priceMinor, currency: found.currency, vatIncluded: Boolean(found.includesVat) } : null;
+  } catch (error) {
+    log("warn", "carrier.label_price_failed", { carrier }, error);
+    return null;
+  }
+}
+
+/**
+ * Keeps what a booked label cost on its parcel (D415): without VAT (a price with VAT has the sender country's standard rate taken off, as the
+ * store deducts it), in the order's currency at the store's rates; the carrier's own figure beside it. Nothing is kept when the price is not known
+ * or its currency has no rate, and then profit takes the store's estimate. Never throws.
+ */
+export async function recordLabelCost(storeId: string, shipmentId: string, fromCountry: string, price: CarrierPrice | null): Promise<void> {
+  if (!price || !Number.isSafeInteger(price.amountMinor) || price.amountMinor < 0) return;
+  try {
+    const row = await typedRow(
+      z.object({ currency: col.currency, rate: col.decimal }),
+      sql`select o.currency, commerce.vat_rate(${fromCountry.toUpperCase()}, 'standard') as rate
+        from commerce.shipments sh join commerce.orders o on o.store_id = sh.store_id and o.id = sh.order_id
+        where sh.store_id = ${storeId}::uuid and sh.id = ${shipmentId}::uuid`,
+    );
+    const store = row ? await storeById(storeId) : null;
+    if (!row || !store) return;
+    const net = price.vatIncluded ? Math.round(price.amountMinor / (1 + row.rate)) : price.amountMinor;
+    const cost = labelCostIn({ amountMinor: net, currency: price.currency }, row.currency, store.localization.rates);
+    if (cost === null) return;
+    await db().execute(sql`
+      update commerce.shipments set label_cost_minor = ${cost}, label_cost_carrier = ${JSON.stringify(price)}::jsonb
+      where store_id = ${storeId}::uuid and id = ${shipmentId}::uuid and method = 'parcel'
+    `);
+  } catch (error) {
+    log("warn", "carrier.label_cost_failed", {}, error);
+  }
 }

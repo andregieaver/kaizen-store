@@ -27,6 +27,16 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   (`src/server/store-checkup.ts`), so a new finding is a key in `CHECKUP_KEYS` with its words in the `staffEmails` catalogues. An alert is handed
   to the AI manager only by `askAboutAlert()`'s words through `ASK_AI_MANAGER_EVENT`.
 
+
+## Profit per order and the briefing's one-press actions (D415, D416, `src/lib/order-profit.ts`, `src/lib/briefing-actions.ts`)
+
+- **Profit per order and the briefing's one-press actions (D415, D416, `src/lib/order-profit.ts`, `src/lib/briefing-actions.ts`)**: an order's profit is
+  only `orderProfit()` (pure, `src/lib/order-profit.ts`) over what `orderProfitFor()`/`periodOrderProfits()` read (`src/server/order-profit.ts`), by the
+  Finance page's definitions for one order; a goods line without a cost makes it unknown, never a figure that leaves the cost out. A booked label's cost
+  is written only by `recordLabelCost()`, once (the database's `shipments_guard()`), without VAT in the order's currency. The briefing's findings take
+  their action only from `alertAction()`/`checkupAction()` (`src/lib/briefing-actions.ts`), and every action is a link to a page that prepares the work
+  (`reorderDraft()` fills the purchase order form, the thank-you broadcast, the AI manager's box through `?ask=` and `AskOnArrival`): never a link that
+  does something by being opened. A new alert with an obvious next step gets its action there.
 ## Campaigns and first visits (wave 5 unit I3, D303, `docs/wave-5-marketing.md` 12.4)
 
 - **Campaigns and first visits (wave 5 unit I3, D303, `docs/wave-5-marketing.md` 12.4)**: a campaign's figures are only `campaignReport()` (`src/server/analytics-traffic-data.ts`) through `campaignRows()` (`src/lib/analytics-campaigns.ts`), last visit or `model=first`. A first visit is kept only with statistics consent: `TouchKeeper` and `kaizen_touch_{store}` (`src/lib/first-touch.ts`), written onto the day's visit only by `recordTouch()` (`/api/visit/touch`, once per visit); never add a cookie to the visit beacon. Imported spend goes only through `importSpend()`, never replacing an entry.

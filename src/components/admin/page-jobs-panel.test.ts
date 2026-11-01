@@ -43,7 +43,7 @@ describe("the AI's page work on the Pages list", () => {
     expect(html(panel({ stop: undefined }))).not.toContain(">Stop");
     expect(html(panel({ jobs: [] }))).toBe("");
     const nb = html(createElement(AdminTextScope, { texts: adminTexts("nb", ["website"]) } as Parameters<typeof AdminTextScope>[0], panel()));
-    expect(nb).toContain("Lages av AI");
+    expect(nb).toContain("Lages av KI");
     expect(nb).toContain("Bygges nå");
     expect(nb).toContain("2 av 5 bilder laget · ett kunne ikke lages");
   });

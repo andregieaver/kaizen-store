@@ -12,7 +12,7 @@ import { adapterFor } from "./carriers";
 import { fetchBringLabel } from "./carriers/bring";
 import type { ParcelLine } from "@/lib/fulfilment";
 
-import { BOOKING_BUSY, bookingPrecheck, oneBookingAtATime, parcelReference } from "./carrier-booking";
+import { BOOKING_BUSY, bookedServicePrice, bookingPrecheck, oneBookingAtATime, parcelReference, recordLabelCost } from "./carrier-booking";
 import { markSent, sendRefusalText, type Shipment } from "./order-admin";
 import { getOrder, type Address, type OrderView } from "./orders";
 import { bookingCustomsFor } from "./customs";
@@ -175,6 +175,8 @@ async function bookUnderLock(
     );
     // The booking exists at Bring even if the order could not be marked: say so rather than hide it.
     if (!sent.ok) return { ok: false, problem: `Bring booked the shipment (${booked.trackingNumber}) but the order could not be marked as sent. ${sendRefusalText(sent.reason)}` };
+    // What the label cost, from Bring's price for the same parcel (D415).
+    await recordLabelCost(storeId, sent.shipment.id, from.country, await bookedServicePrice("bring", found.context, { serviceId: input.serviceId, from, to: found.to, parcels: [input.parcel] }));
     return { ok: true, test: false, shipment: sent.shipment };
   } catch (error) {
     return { ok: false, problem: error instanceof Error ? error.message : "Bring did not answer." };

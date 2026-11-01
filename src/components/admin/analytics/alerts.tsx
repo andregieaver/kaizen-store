@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { alertAction } from "@/lib/briefing-actions";
 import { fillWords } from "@/lib/admin-fill";
 import { askAboutAlert } from "@/lib/alert-ask";
 import type { Alert, AlertSeverity } from "@/lib/analytics-alerts";
@@ -38,6 +39,15 @@ export function AlertList({ alerts, base }: { alerts: readonly Alert[]; base: st
           <Link href={alertHref(base, a)} className={linkClass}>
             {a.action || w.open}
           </Link>
+          {/* The one-press action (D416): a page with the reorder or the campaign prepared, never done from here. */}
+          {(() => {
+            const act = alertAction(a);
+            return act.kind === "reorder" || act.kind === "campaign" ? (
+              <Link href={`${base}${act.href}`} className={linkClass} data-alert-action={act.kind}>
+                {w.actions[act.kind]}
+              </Link>
+            ) : null;
+          })()}
           <AskAboutAlert message={askAboutAlert(a, w)} label={w.ask} srLabel={fillWords(w.askFor, { text: a.text })} />
           {a.evidence.length > 0 ? (
             <details className="basis-full text-xs text-muted">

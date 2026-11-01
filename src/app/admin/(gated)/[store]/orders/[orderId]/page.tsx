@@ -48,9 +48,11 @@ import { fulfilmentEventText } from "@/lib/fulfilment-events-text";
 import { opsEventText } from "@/lib/order-ops-events-text";
 import { disputeEventText, dueWords } from "@/lib/payment-facts";
 import { PaymentCard } from "@/components/admin/orders/payment-card";
+import { ProfitCard } from "@/components/admin/orders/profit-card";
 import { CaptureCard } from "@/components/admin/orders/capture-card";
 import { captureEventText } from "@/lib/capture";
 import { orderPaymentFacts } from "@/server/payment-disputes";
+import { orderProfitFor } from "@/server/order-profit";
 import { orderCapture } from "@/server/payment-capture";
 import { captureOrderAction, releaseCardAction } from "../capture-actions";
 import { isReturnEvent, eventSentence } from "@/lib/return-admin";
@@ -167,6 +169,8 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
     // A card held to be charged later (D289): what is held and until when.
     orderCapture(store.id, orderId),
   ]);
+  // What the order left the store (D415), for who may see the store's figures: it shows cost prices and fees.
+  const profit = memberCan(member, "analytics:read") ? await orderProfitFor(store, orderId) : null;
   const notificationsHref = `/admin/${store.slug}/settings/notifications`;
   // The *Notify the customer* box follows the email's switch (2.2): off, it is drawn off with a link there, and the sender ignores a `notify` anyway.
   const notifyOff = (id: string) => (notifyStates[id] === false ? `${notificationsHref}/${notificationPath(id)}` : null);
@@ -783,6 +787,16 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
         </div>
 
         <div className="flex flex-col gap-6">
+          {profit && (
+            <ProfitCard
+              profit={profit}
+              money={(minor) => formatMoney(minor, profit.currency, locale)}
+              percent={(share) => new Intl.NumberFormat(locale, { style: "percent", maximumFractionDigits: 0 }).format(share)}
+              words={words.profit}
+              costsHref={`/admin/${store.slug}/products`}
+              settingsHref={`/admin/${store.slug}/analytics/settings`}
+            />
+          )}
           <PaymentCard
             payments={paymentFacts.payments}
             disputes={paymentFacts.disputes}

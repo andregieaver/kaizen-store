@@ -6,6 +6,7 @@ import { z } from "zod";
 import { db } from "@/db/client";
 import { convertMinor } from "@/lib/currency";
 import { mainCurrency } from "@/lib/markets";
+import { formatPriceInput } from "@/lib/product-input";
 import {
   allIn,
   documentState,
@@ -20,8 +21,10 @@ import {
 import { audit, type Membership } from "./auth";
 import { catalogTag } from "./catalog";
 import { log } from "./log";
+import { restockSuggestions } from "./owner-insights";
 import { NO_ACCESS, memberCan } from "./permissions";
 import { refreshTag } from "./refresh";
+import type { Store } from "./stores";
 import { withStockContext } from "./stock-context";
 import { variantsBySku, type DocumentResult } from "./stock-transfers";
 import { col, typedRow, typedRows, type Executor } from "./typed-rows";
@@ -289,4 +292,48 @@ export async function costHistory(storeId: string, variantId: string, limit = 20
       order by id desc limit ${Math.min(limit, 100)}
     `,
   );
+}
+
+/** A purchase order prepared from what is running out (D416), for the form to show filled in: nothing is saved until the person presses Create. */
+export type ReorderDraft = { supplier: string; currency: string; lines: { sku: string; quantity: string; unitCost: string; product: string; lastsDays: number | null }[] };
+
+/**
+ * *Prepare reorder* (the briefing's one-press action, D416): the variants the store checkup's reorder rule names (30 days' paid sales, 30 days
+ * to cover, 7 days' delivery: `restockSuggestions()`), most urgent first, each with the suggested units and its cost price in the store's main
+ * currency, and the supplier of the store's latest purchase order with one of them, else of its latest at all (empty when it has none, and the
+ * form asks). Variants without a SKU cannot be ordered here and are left out.
+ */
+export async function reorderDraft(store: Store): Promise<ReorderDraft> {
+  const currency = mainCurrency(store);
+  const suggested = (await restockSuggestions({ store }, { days: 30, cover_days: 30, lead_days: 7 })).to_reorder.filter((v) => v.sku.trim() !== "");
+  const skus = suggested.map((v) => v.sku.trim().toLowerCase());
+  if (skus.length === 0) return { supplier: "", currency, lines: [] };
+  const skuList = sql.join(skus.map((sku) => sql`${sku}`), sql`, `);
+  const [costs, last] = await Promise.all([
+    typedRows(
+      z.object({ sku: col.text, cost: col.minorOrNull }),
+      sql`select lower(v.sku) as sku, v.cost_minor as cost from commerce.product_variants v where v.store_id = ${store.id}::uuid and lower(v.sku) in (${skuList})`,
+    ),
+    typedRow(
+      z.object({ supplier: col.text }),
+      sql`
+        select p.supplier from commerce.purchase_orders p
+        where p.store_id = ${store.id}::uuid and p.status <> 'cancelled'
+        order by exists (
+          select 1 from commerce.purchase_order_lines l join commerce.product_variants v on v.store_id = l.store_id and v.id = l.variant_id
+          where l.store_id = p.store_id and l.purchase_order_id = p.id and lower(v.sku) in (${skuList})
+        ) desc, p.created_at desc
+        limit 1
+      `,
+    ),
+  ]);
+  const costOf = new Map(costs.map((c) => [c.sku, c.cost]));
+  return {
+    supplier: last?.supplier ?? "",
+    currency,
+    lines: suggested.slice(0, 40).map((v) => {
+      const cost = costOf.get(v.sku.trim().toLowerCase()) ?? null;
+      return { sku: v.sku, quantity: String(v.suggested_order), unitCost: cost === null ? "" : formatPriceInput(cost, currency), product: v.product, lastsDays: v.lasts_days };
+    }),
+  };
 }

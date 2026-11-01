@@ -557,6 +557,36 @@ targets running (`runningTargets()`), and an optional note a model writes from t
 `checkedNote()` (no digit, no claim). Every item links to the admin page that acts on it. A **quiet period**, with no paid order
 and no alert, sends nothing and is marked done (`quietPeriod()`); before D348 it sent *No orders yesterday*.
 
+Since D415 the briefing has **Profit before fixed costs, excl. VAT**: the Finance page's contribution profit for the period
+(`financeStatement()` on the same totals, so cost of goods, fees, sending and marketing are taken off), marked *(estimated)* when it
+rests on estimates, and left out while too few sales have a cost price for it. Since D416 each finding carries its **one-press action**
+(`alertAction()`, `checkupAction()` in `src/lib/briefing-actions.ts`): stock running out (`stockout`, the checkup's `restock` and
+`stock_low`) opens *Prepare reorder* (Purchase orders with `?reorder=1`, the form filled in from `reorderDraft()`), customers coming back
+(`returning-high`) opens *Create campaign* (a broadcast from the thank-you template), a change in the figures (conversion, a weekday's
+revenue, refunds, CAC, checkout abandonment, discounts creeping, a target behind) opens *Ask the AI manager* (the home page with
+`?ask={alert}`, which opens the AI manager with `askAboutAlert()`'s words, unsent); the rest keep their page. A link only opens a page:
+nothing is made, saved or sent until the person presses the page's own button, as a mail program may follow links by itself.
+
+## Profit per order (D415, `src/lib/order-profit.ts`, `src/server/order-profit.ts`)
+
+One paid order's profit, by the definitions above for one order, in the order's own currency (the store's estimates, written in the main
+currency, converted at the store's rates; with no rate the profit is not known and says why):
+
+| Line | Definition |
+|---|---|
+| **Sales without VAT** | `total_minor − tax_minor`, gift card lines left out (they are no sale). |
+| **Refunded** | Succeeded refunds of the order's payments, the settlements of an order change left out (`NOT_EDIT_REFUND`), shared by the order's revenue as on the Finance page (`refund × revenue / total`). |
+| **Cost of the goods** | `unit_cost_minor × quantity` as frozen on each line at the sale. **A goods or custom line without a cost makes the profit unknown**: the order page names how many lines and links to the products, rather than show a figure that leaves them out. |
+| **Payment fee** | Stripe's own fee when every captured Stripe payment of the order has one (D290), converted when it is in another currency; else *estimated*: `payment_fee_bps` of the total less what gift cards paid, plus the fixed fee. |
+| **Kaizena Flow's fee** | Σ `payments.kaizen_fee_minor` of the captured payments. |
+| **Sending** | Each parcel (not a handover, not undone) at its own label's cost where it was kept (`shipments.label_cost_minor`: without VAT, in the order's currency, written once by `recordLabelCost()` right after a Bring, Porterbuddy or Helthjem booking from the carrier's own price for the service booked); a parcel without one, or an order with something to send and no parcel yet, at the store's estimate per parcel (*estimated*). |
+| **Lost dispute** | A lost dispute's amount scaled to without VAT, plus its fee in a currency the store converts. |
+
+Profit is the sum; the margin is profit over sales less refunds. **Before ads and fixed costs**, which belong to no one order. The order page
+shows it to members who may read analytics (it shows cost prices and fees); the Finance page lists the period's orders (by the day they were
+sold, at most 5,000) with their average in the main currency, how many lost money and how many wait on cost prices, and the ten least
+profitable, each a link to its order.
+
 ## Not tracked (said on the pages)
 
 Refunds the payment provider cannot match to a payment here; returns made without Kaizen's withdrawal function or return request; subscription expansion, contraction and

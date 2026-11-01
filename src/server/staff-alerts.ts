@@ -1,5 +1,6 @@
 import "server-only";
 
+import { alertAction, checkupAction, type BriefingAction } from "@/lib/briefing-actions";
 import { sql } from "drizzle-orm";
 import { z } from "zod";
 
@@ -470,14 +471,20 @@ export function summaryEmail(store: EmailStore, kind: "daily" | "weekly", f: Sta
     { label: w.paidOrders, value: beside(String(f.orders), parts && f.before ? String(f.before.orders) : null) },
     { label: w.netSales, value: beside(money(f.netSalesMinor), parts && f.before ? money(f.before.netSalesMinor) : null), strong: true },
     { label: w.refunds, value: money(f.refundsMinor) },
+    // What was left after costs (D415), the Finance page's contribution profit; only where enough sales have a cost price to say.
+    ...(parts && f.profitMinor !== undefined && f.profitMinor !== null
+      ? [{ label: w.profit, value: f.profitEstimated ? fillWords(w.profitEstimated, { amount: money(f.profitMinor) }) : money(f.profitMinor) }]
+      : []),
     { label: w.returnsRequested, value: String(f.returnsRequested) },
   ];
+  const actionRow = (label: string, action: BriefingAction) => ({ label, value: action.kind === "open" ? w.open : w.actions[action.kind], url: adminUrl(store.slug, action.href) });
   const briefing: EmailBlock[] = parts
     ? [
         ...(parts.alerts.length > 0
           ? [
               { type: "paragraph" as const, text: w.found },
-              { type: "lines" as const, rows: parts.alerts.map((a) => ({ label: a.text, value: w.open, url: adminUrl(store.slug, a.href.startsWith("/") ? a.href : `/${a.href}`) })) },
+              // Each with its one-press action (D416): a page that prepares the work, never the work itself.
+              { type: "lines" as const, rows: parts.alerts.map((a) => actionRow(a.text, alertAction(a))) },
             ]
           : []),
         ...(parts.checkup.length > 0
@@ -485,7 +492,7 @@ export function summaryEmail(store: EmailStore, kind: "daily" | "weekly", f: Sta
               { type: "paragraph" as const, text: w.checkup },
               {
                 type: "lines" as const,
-                rows: parts.checkup.map((c) => ({ label: countWords(c.count, w.checkupWords[c.key], { n: c.count }), value: w.open, url: adminUrl(store.slug, c.page) })),
+                rows: parts.checkup.map((c) => actionRow(countWords(c.count, w.checkupWords[c.key], { n: c.count }), checkupAction(c))),
               },
             ]
           : []),

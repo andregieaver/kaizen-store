@@ -13,7 +13,7 @@ import { adapterFor } from "./carriers";
 import { senderOf } from "./carriers/porterbuddy";
 import type { ParcelLine } from "@/lib/fulfilment";
 
-import { BOOKING_BUSY, bookingPrecheck, oneBookingAtATime, parcelReference } from "./carrier-booking";
+import { BOOKING_BUSY, bookingPrecheck, oneBookingAtATime, parcelReference, recordLabelCost } from "./carrier-booking";
 import { markSent, sendRefusalText, type Shipment } from "./order-admin";
 import { getOrder } from "./orders";
 import { carrierContext } from "./shipping-carriers";
@@ -92,7 +92,8 @@ async function bookUnderLock(
         timeZone: String(store?.time_zone ?? "Europe/Oslo"),
       }),
     });
-    const window = offered.find((o) => o.serviceId === chosen.serviceId && o.window && Date.parse(o.window.start) === wanted.start && Date.parse(o.window.end) === wanted.end)?.window;
+    const offer = offered.find((o) => o.serviceId === chosen.serviceId && o.window && Date.parse(o.window.start) === wanted.start && Date.parse(o.window.end) === wanted.end);
+    const window = offer?.window;
     if (!window) {
       return { ok: false, problem: "Porterbuddy no longer offers the delivery window the customer chose. Nothing was booked: ask the customer for another time." };
     }
@@ -118,6 +119,8 @@ async function bookUnderLock(
     );
     // The booking exists at Porterbuddy even if the order could not be marked: say so rather than hide it.
     if (!sent.ok) return { ok: false, problem: `Porterbuddy booked the delivery (${booked.trackingNumber}) but the order could not be marked as sent. ${sendRefusalText(sent.reason)}` };
+    // What the delivery cost: Porterbuddy's price for the window booked, asked just before (D415).
+    if (offer) await recordLabelCost(storeId, sent.shipment.id, from.country, { amountMinor: offer.priceMinor, currency: offer.currency, vatIncluded: Boolean(offer.includesVat) });
     return { ok: true, test: false, shipment: sent.shipment };
   } catch (error) {
     return { ok: false, problem: error instanceof Error ? error.message : "Porterbuddy did not answer." };

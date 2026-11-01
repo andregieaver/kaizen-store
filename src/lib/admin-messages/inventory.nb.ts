@@ -35,6 +35,13 @@ export const inventoryNb: InventoryMessages = {
     purchaseOrders: {
       title: "Innkjøpsordrer",
       intro: "Det du kjøper fra leverandørene dine. Tell inn enhetene når de kommer: lageret går opp, og hver variants kostpris følger det du betalte.",
+      /** The prepared reorder (D416, *Prepare reorder* from the briefing). */
+      reorder: {
+        title: "Et innkjøp, forberedt for deg",
+        intro: "Det som selger og det som er igjen, sier at disse blir lave innen 37 dager (30 dager å dekke og 7 for levering). Sjekk antall, kostpris og leverandør, og trykk Opprett: det lagres som utkast, og ingenting sendes til noen.",
+        none: "Ingenting trenger påfyll i takten fra de siste 30 dagene.",
+        noCost: { one: "Én linje mangler kostpris: skriv hva én enhet koster.", many: "{n} linjer mangler kostpris: skriv hva én enhet koster." },
+      },
     },
     purchaseOrder: { title: "Innkjøpsordre", back: "Innkjøpsordrer" },
     job: { title: "Lagerimport", intro: "Sjekk filen først. Ingenting endres i lageret ditt før du trykker Importer.", back: "Importer lager" },

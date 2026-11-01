@@ -86,6 +86,10 @@ export const staffEmailsEn = {
       paidOrders: "Paid orders",
       netSales: "Net sales, excl. VAT",
       refunds: "Refunds, excl. VAT",
+      profit: "Profit before fixed costs, excl. VAT",
+      profitEstimated: "{amount} (estimated)",
+      /** The one-press actions of the briefing's findings (D416): each opens a page that prepares the work; nothing happens from the email itself. */
+      actions: { reorder: "Prepare reorder", campaign: "Create campaign", ask: "Ask the AI manager" },
       returnsRequested: "Returns requested",
       openReturns: "Open returns",
       toSend: "Orders to send",

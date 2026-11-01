@@ -45,6 +45,13 @@ export const inventoryEn = {
     purchaseOrders: {
       title: "Purchase orders",
       intro: "What you buy from your suppliers. Count the units in when they arrive: the stock goes up, and each variant's cost follows what you paid.",
+      /** The prepared reorder (D416, *Prepare reorder* from the briefing). */
+      reorder: {
+        title: "A reorder, prepared for you",
+        intro: "What sells and what is left says these will run low within 37 days (30 days to cover and 7 for delivery). Check the units, the cost and the supplier, then press Create: it is saved as a draft and nothing is sent to anyone.",
+        none: "Nothing needs reordering at the pace of the last 30 days.",
+        noCost: { one: "One line has no cost price yet: write what one unit costs.", many: "{n} lines have no cost price yet: write what one unit costs." },
+      },
     },
     purchaseOrder: { title: "Purchase order", back: "Purchase orders" },
     job: { title: "Stock import", intro: "Check the file first. Nothing is changed in your stock until you press Import.", back: "Import stock" },

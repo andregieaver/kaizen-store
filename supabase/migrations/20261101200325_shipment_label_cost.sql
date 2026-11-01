@@ -1,0 +1,3 @@
+ALTER TABLE "commerce"."shipments" ADD COLUMN "label_cost_minor" bigint;--> statement-breakpoint
+ALTER TABLE "commerce"."shipments" ADD COLUMN "label_cost_carrier" jsonb;--> statement-breakpoint
+ALTER TABLE "commerce"."shipments" ADD CONSTRAINT "shipments_label_cost" CHECK ("commerce"."shipments"."label_cost_minor" is null or ("commerce"."shipments"."label_cost_minor" >= 0 and "commerce"."shipments"."method" = 'parcel'));

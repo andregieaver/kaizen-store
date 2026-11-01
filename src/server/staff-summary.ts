@@ -6,6 +6,9 @@ import { db } from "@/db/client";
 import { addDays, customPeriod, daysBetween } from "@/lib/analytics-period";
 import { mainCurrency } from "@/lib/markets";
 
+import { financeStatement } from "@/lib/analytics-finance";
+
+import { getAnalyticsSettings } from "./analytics-settings";
 import { periodTotals } from "./analytics-totals";
 import { PHYSICAL_SQL } from "./order-list-sql";
 import type { Store } from "./stores";
@@ -37,6 +40,12 @@ export type StaffSummaryFigures = {
   lowStock: number;
   /** Null while the store's support desk is off. */
   supportWaiting: number | null;
+  /**
+   * Contribution profit without VAT (D415): the Finance page's figure for the period (cost of goods, fees, sending and marketing taken off), before
+   * fixed costs; null while too few sales have a cost price for it, and `profitEstimated` when it rests on estimates.
+   */
+  profitMinor?: number | null;
+  profitEstimated?: boolean;
   /** The period before, as long (D348's briefing sets the two side by side); null when a currency of either had no rate. */
   before?: { orders: number; netSalesMinor: number } | null;
 };
@@ -45,8 +54,9 @@ export type StaffSummaryFigures = {
 export async function staffSummaryFigures(store: Store, period: { from: string; to: string }): Promise<StaffSummaryFigures> {
   const p = customPeriod(period.from, period.to);
   const length = daysBetween(period.from, addDays(period.to, 1));
+  const settings = await getAnalyticsSettings(store.id);
   const [totals, previous, [counts]] = await Promise.all([
-    periodTotals(store, p),
+    periodTotals(store, p, settings),
     periodTotals(store, customPeriod(addDays(period.from, -length), addDays(period.from, -1))),
     db().execute<Row>(sql`
       select
@@ -65,6 +75,7 @@ export async function staffSummaryFigures(store: Store, period: { from: string; 
     `),
   ]);
   const deskOn = counts?.desk_mode && counts.desk_mode !== "off";
+  const contribution = financeStatement(totals.totals, settings, length).lines.find((l) => l.key === "contributionProfit");
   return {
     from: period.from,
     to: period.to,
@@ -79,6 +90,8 @@ export async function staffSummaryFigures(store: Store, period: { from: string; 
     toSend: Number(counts?.to_send ?? 0),
     lowStock: Number(counts?.low_stock ?? 0),
     supportWaiting: deskOn ? Number(counts?.support_waiting ?? 0) : null,
+    profitMinor: totals.totals.orders > 0 ? (contribution?.amountMinor ?? null) : null,
+    profitEstimated: contribution?.estimated ?? false,
     before:
       totals.unconverted > 0 || previous.unconverted > 0
         ? null

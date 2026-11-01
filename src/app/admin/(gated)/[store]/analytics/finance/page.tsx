@@ -6,6 +6,7 @@ import { ExportScope } from "@/components/admin/analytics/export-scope";
 import { FinanceView, type FinancePeriodData } from "@/components/admin/analytics/finance-view";
 import { GiftCardsView } from "@/components/admin/analytics/gift-cards-view";
 import { LiabilitiesView } from "@/components/admin/analytics/liabilities-view";
+import { OrderProfitsView } from "@/components/admin/analytics/order-profits-view";
 import { PaymentsView } from "@/components/admin/analytics/payments-view";
 import { TermsOwedView } from "@/components/admin/analytics/terms-owed-view";
 import { AdminTextScope } from "@/components/admin/admin-text";
@@ -21,6 +22,7 @@ import { periodTotals, seriesByBucket } from "@/server/analytics-totals";
 import { giftCardLiability } from "@/server/gift-cards-admin";
 import { liabilityRows } from "@/server/liabilities";
 import { termsOwedReport } from "@/server/payment-terms";
+import { PROFIT_ORDERS_MAX, periodOrderProfits, profitSummary } from "@/server/order-profit";
 
 export const metadata: Metadata = { title: "Finance" };
 
@@ -47,7 +49,7 @@ export default async function AnalyticsFinancePage({ params, searchParams }: Pag
   const against = compare.previous ?? compare.lastYear;
   const bucket = bucketFor(period);
 
-  const [current, comparison, series, comparisonSeries, setup, payments, owed, giftCards, liabilities] = await Promise.all([
+  const [current, comparison, series, comparisonSeries, setup, payments, owed, giftCards, liabilities, orderProfits] = await Promise.all([
     periodData(ctx, period),
     against ? periodData(ctx, against) : Promise.resolve(null),
     seriesByBucket(store, period, bucket, settings),
@@ -62,6 +64,8 @@ export default async function AnalyticsFinancePage({ params, searchParams }: Pag
     giftCardLiability(store, period),
     // What the store owes customers as bonus credit and gift cards (D381): each ledger's roll-forward and what is held now.
     liabilityRows(store, period),
+    // What each order left the store (D415).
+    periodOrderProfits(store, period),
   ]);
 
   return (
@@ -80,6 +84,16 @@ export default async function AnalyticsFinancePage({ params, searchParams }: Pag
           series={series}
           comparisonSeries={comparisonSeries}
           setup={setup}
+          words={words}
+        />
+        <OrderProfitsView
+          base={ctx.base}
+          locale={locale}
+          period={period.label}
+          rows={orderProfits.rows}
+          summary={profitSummary(store, orderProfits.rows)}
+          capped={orderProfits.capped}
+          cappedAt={PROFIT_ORDERS_MAX}
           words={words}
         />
         <PaymentsView currency={mainCurrency(store)} locale={locale} report={payments} words={words} />

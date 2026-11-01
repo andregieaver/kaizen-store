@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { askedAlert } from "@/lib/briefing-actions";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
@@ -29,7 +30,7 @@ import { dismissBriefingAction, turnOnBriefingAction } from "./settings/notifica
 
 type Props = PageProps<"/admin/[store]">;
 
-export default async function AdminOverview({ params }: Props) {
+export default async function AdminOverview({ params, searchParams }: Props) {
   const current = await requireMemberAny((await params).store);
   const { account, store } = current;
   // A new owner's first stop is the setup wizard.
@@ -126,7 +127,7 @@ export default async function AdminOverview({ params }: Props) {
       {/* What Analytics found: its own reports are read after the page is shown, and a failure leaves it out. */}
       {store.setupCompletedAt && selling && memberCan(current, "analytics:read") && (
         <Suspense fallback={<HomeAnalyticsAlertsFallback />}>
-          <HomeAnalyticsAlerts store={store} base={base} now={now} lang={lang} />
+          <HomeAnalyticsAlerts store={store} base={base} now={now} lang={lang} ask={askedAlert((await searchParams).ask)} />
         </Suspense>
       )}
       {/* The briefing by email, offered once to an owner (D348): read after the page is shown. */}

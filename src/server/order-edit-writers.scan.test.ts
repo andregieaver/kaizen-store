@@ -61,7 +61,11 @@ describe("who writes a paid order's lines and money, and parcels", () => {
     expect(admin.slice(start, end)).toMatch(/commerce\.undo_shipment\s*\(/);
     expect(admin.slice(0, start) + admin.slice(end)).not.toMatch(/commerce\.undo_shipment\s*\(/);
     const writers = files.filter((f) => /(update|delete\s+from)\s+commerce\.shipments\b/i.test(code(f))).map((f) => path.relative(ROOT, f));
-    expect(writers).toEqual([]);
+    // One exception (D415): `recordLabelCost()` writes what a booked label cost, once, and nothing else (the database's guard allows only that).
+    expect(writers).toEqual(["src/server/carrier-booking.ts"]);
+    const booking = code(path.join(ROOT, "src/server/carrier-booking.ts"));
+    expect(booking.match(/update\s+commerce\.shipments\b/gi)).toHaveLength(1);
+    expect(booking).toMatch(/update\s+commerce\.shipments\s+set\s+label_cost_minor\s*=\s*\$\{cost\},\s*label_cost_carrier\s*=/);
   });
 
   it("writes order_edits and order_edit_lines only in order-edits.ts", () => {

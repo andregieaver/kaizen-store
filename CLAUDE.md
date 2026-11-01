@@ -186,6 +186,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - Authorise now, capture later (wave 4 unit B, D289, `docs/wave-4-payments.md` 4, `src/lib/capture.ts`, `src/server/payment-capture.ts`)
 - Live and revenue after a search (wave 8 unit C, D347, `docs/analytics.md` Live)
 - Targets, alert emails and the briefing (wave 8 unit D, D348, `docs/analytics.md` Alerts, targets, forecast)
+- Profit per order and the briefing's one-press actions (D415, D416, `src/lib/order-profit.ts`, `src/lib/briefing-actions.ts`)
 - Campaigns and first visits (wave 5 unit I3, D303, `docs/wave-5-marketing.md` 12.4)
 - Payouts and real fees (wave 4 unit C, D290, `docs/wave-4-payments.md` 5, `src/lib/payouts.ts`, `src/server/payouts.ts`,…
 - Payment methods per country (wave 4 unit D, D291, `docs/wave-4-payments.md` 6, `src/lib/payment-methods.ts`, `src/server/payment-methods.ts`)

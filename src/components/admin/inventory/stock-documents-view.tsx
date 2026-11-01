@@ -50,7 +50,7 @@ function Status({ message }: { message: { tone: "ok" | "problem"; text: string }
   );
 }
 
-type Line = { sku: string; quantity: string; unitCost: string };
+export type Line = { sku: string; quantity: string; unitCost: string };
 const blankLine = (): Line => ({ sku: "", quantity: "1", unitCost: "" });
 
 /** The form that makes a draft: where from and to (a transfer) or the supplier and where it arrives (an order), and its lines. */
@@ -61,6 +61,7 @@ export function NewStockDocument({
   mainCurrency = "EUR",
   documentBase,
   create,
+  initial,
 }: {
   kind: Kind;
   places: Place[];
@@ -69,18 +70,20 @@ export function NewStockDocument({
   /** Where a saved draft opens: this address and its id (a plain string, as everything a server page hands a client part). */
   documentBase: string;
   create: (raw: unknown) => Promise<Result>;
+  /** A purchase order prepared from what is running out (D416, *Prepare reorder*): filled in, saved only when the person presses Create. */
+  initial?: { supplier: string; lines: Line[] };
 }) {
   const w = useAdminText("inventory").documents;
   const router = useRouter();
   const { pending, message, run } = useRunner();
   const [origin, setOrigin] = useState(places[0]?.id ?? "");
   const [destination, setDestination] = useState(places[1]?.id ?? places[0]?.id ?? "");
-  const [supplier, setSupplier] = useState("");
+  const [supplier, setSupplier] = useState(initial?.supplier ?? "");
   const [reference, setReference] = useState("");
   const [currency, setCurrency] = useState(mainCurrency);
   const [expectedOn, setExpectedOn] = useState("");
   const [note, setNote] = useState("");
-  const [lines, setLines] = useState<Line[]>([blankLine()]);
+  const [lines, setLines] = useState<Line[]>(initial && initial.lines.length > 0 ? initial.lines : [blankLine()]);
   const id = (part: string) => `${kind}-${part}`;
   const setLine = (i: number, patch: Partial<Line>) => setLines(lines.map((l, n) => (n === i ? { ...l, ...patch } : l)));
   const filled = lines.filter((l) => l.sku.trim() !== "");

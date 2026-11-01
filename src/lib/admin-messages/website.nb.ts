@@ -440,8 +440,8 @@ export const websiteNb: WebsiteMessages = {
   },
   /** The AI's page work still going, on the Pages and Articles lists (PSI UX-01, `PageJobsPanel`). */
   pageJobs: {
-    title: "Lages av AI",
-    intro: "Sider AI-sjefen bygger og bilder den fortsatt lager, ett om gangen. Hver side er et utkast: ingenting er på nettstedet før du publiserer det.",
+    title: "Lages av KI",
+    intro: "Sider KI-assistenten bygger og bilder den fortsatt lager, ett om gangen. Hver side er et utkast: ingenting er på nettstedet før du publiserer det.",
     waiting: "Venter på tur",
     building: "Bygges nå",
     pictures: "{made} av {total} bilder laget",

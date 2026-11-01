@@ -83,6 +83,10 @@ export const staffEmailsNb: StaffEmailsMessages = {
       paidOrders: "Betalte bestillinger",
       netSales: "Nettosalg, ekskl. mva.",
       refunds: "Refusjoner, ekskl. mva.",
+      profit: "Fortjeneste før faste kostnader, ekskl. mva.",
+      profitEstimated: "{amount} (anslått)",
+      /** The one-press actions of the briefing's findings (D416): each opens a page that prepares the work; nothing happens from the email itself. */
+      actions: { reorder: "Forbered innkjøp", campaign: "Lag en kampanje", ask: "Spør KI-assistenten" },
       returnsRequested: "Meldte returer",
       openReturns: "Åpne returer",
       toSend: "Bestillinger som skal sendes",

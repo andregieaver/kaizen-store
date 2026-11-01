@@ -349,6 +349,8 @@ export const analyticsNb: AnalyticsMessages = {
   alerts: {
     ask: "Spør KI-assistenten",
     askFor: " om: {text}",
+    /** One-press actions beside an alert (D416): each opens a page with the work prepared. */
+    actions: { reorder: "Forbered innkjøp", campaign: "Lag en kampanje" },
     askMessage: "Analysene fant dette i dag: \u201c{text}\u201d {figures}Hva foreslår du at jeg gjør med det? Foreslå et neste steg, og hold av alle endringer til jeg sier ja.",
     askFigures: "Tallene: {list}. ",
     severity: { urgent: "Haster", warning: "Bør sees på", info: "Greit å vite", good: "Gode nyheter" },

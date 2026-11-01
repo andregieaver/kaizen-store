@@ -357,6 +357,8 @@ export const analyticsEn = {
     severity: { urgent: "Urgent", warning: "Needs a look", info: "Good to know", good: "Good news" },
     ask: "Ask the AI manager",
     askFor: " about: {text}",
+    /** One-press actions beside an alert (D416): each opens a page with the work prepared. */
+    actions: { reorder: "Prepare reorder", campaign: "Create campaign" },
     askMessage: "Analytics found this today: \u201c{text}\u201d {figures}What would you suggest I do about it? Propose a next step, and keep any change for my yes.",
     askFigures: "The figures: {list}. ",
     open: "Open",

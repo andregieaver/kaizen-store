@@ -78,14 +78,37 @@ describe("the briefing (D348)", () => {
     });
     expect(email.subject).toBe("Shop: your weekly briefing for 2026-10-19 to 2026-10-25");
     expect(email.text).toContain("Paid orders: 12 (before: 9)");
-    expect(email.text).toContain("Refunds of Wool sweater are three times the usual.: Open (http");
-    expect(email.text).toContain("/admin/shop/analytics/products?sort=refunds");
+    // A change in the figures is handed to the AI manager (D416): the home page opens it with the alert's words.
+    expect(email.text).toContain("Refunds of Wool sweater are three times the usual.: Ask the AI manager (http");
+    expect(email.text).toContain("/admin/shop?ask=refund-rate");
     expect(email.text).toContain("2 paid orders have waited more than two days to be sent.: Open");
     expect(email.text).toContain("/admin/shop/orders?show=to-send");
     expect(email.text).toContain("Orders, Q4 2026: 120 of 300");
     expect(email.text).toContain("Refunds of one product stand out.");
     // The checkup's English words for the model are never in the email.
     expect(email.text).not.toContain("paid order(s)");
+  });
+
+  it("gives each finding its one-press action, and the period's profit beside the sales (D415, D416)", () => {
+    const stockout: Alert = { ...alert, id: "stockout", text: "Wool sweater runs out in 5 days.", href: "/analytics/inventory" };
+    const coming: Alert = { ...alert, id: "returning-high", severity: "good", text: "Returning customers spent the most in 12 months.", href: "/analytics/customers" };
+    const email = summaryEmail(store, "weekly", { ...figures, profitMinor: 123_400, profitEstimated: true }, "en", {
+      alerts: [stockout, coming],
+      checkup: [{ key: "restock", count: 3, what: "", page: "/inventory" }],
+      targets: [],
+      note: null,
+    });
+    expect(email.text).toContain("Wool sweater runs out in 5 days.: Prepare reorder (http");
+    expect(email.text).toContain("/admin/shop/inventory/purchase-orders?reorder=1");
+    expect(email.text).toContain("Returning customers spent the most in 12 months.: Create campaign (http");
+    expect(email.text).toContain("/admin/shop/broadcasts/new?from=thanks");
+    expect(email.text).toMatch(/: Prepare reorder \(http[^)]*\/inventory\/purchase-orders\?reorder=1\)/);
+    expect(email.text).toMatch(/Profit before fixed costs, excl\. VAT: .*1[\s\u00a0.,]?234.*\(estimated\)/);
+    // No profit line while too few sales have a cost price.
+    expect(summaryEmail(store, "weekly", { ...figures, profitMinor: null }, "en", { alerts: [], checkup: [], targets: [], note: null }).text).not.toContain("Profit before fixed costs");
+    // Norwegian words for the actions.
+    const nb = summaryEmail(store, "weekly", figures, "nb", { alerts: [stockout], checkup: [], targets: [], note: null });
+    expect(nb.text).toContain("Forbered innkjøp");
   });
 
   it("stays the summary it was when given no briefing", () => {

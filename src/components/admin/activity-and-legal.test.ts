@@ -253,7 +253,7 @@ describe("the page checker's panel", () => {
   });
 
   it("says what it cannot see", () => {
-    expect(html(createElement(PageIssuesPanel, { issues: [] }))).toContain("Pictures behind text are not checked.");
+    expect(html(createElement(PageIssuesPanel, { issues: [] }))).toContain("Text over a picture is checked against the picture's darkest and lightest under its overlay");
   });
 
   it("asks before publishing with a blocking problem, and says it is written down", () => {

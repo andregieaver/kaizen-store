@@ -224,6 +224,7 @@ export const ANALYTICS_TABLE_IDS: readonly string[] = REGISTRY.map((t) => t.id);
  */
 export const NOT_EXPORTED: Readonly<Record<string, string>> = Object.freeze({
   "live.countries": "Live figures are now, read again every 10 seconds, and kept nowhere: there is no period for a file (D347).",
+  "finance.lowest_orders": "The ten least profitable orders, each a link to its order (D415); every order's figures are in the orders file.",
   "payout-lines": "One payout's lines are on its own page, for one payout, not a period; the period's payouts are in the payouts file and every line is in Stripe's payout report (D290).",
   "tax.vat": "VAT report: it has its own CSV, its log and its drift check (D161).",
   "tax.vat_chart": "The data behind the VAT chart is in the VAT file (D161).",

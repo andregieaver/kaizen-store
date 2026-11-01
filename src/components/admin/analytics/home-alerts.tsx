@@ -7,7 +7,10 @@ import { analyticsWords } from "@/lib/analytics-words";
 import { alertsForStore } from "@/server/analytics-insights";
 import type { Store } from "@/server/stores";
 
+import { askAboutAlert } from "@/lib/alert-ask";
+
 import { AlertList } from "./alerts";
+import { AskOnArrival } from "./ask-on-arrival";
 
 /** How many alerts the store's home page shows; the rest are one click away on the Analytics overview. */
 export const HOME_ALERTS = 3;
@@ -17,17 +20,21 @@ export const HOME_ALERTS = 3;
  * `<Suspense>`, so the page does not wait for the reports behind it, and it never throws: with nothing to say (or a report that could
  * not be read) it draws nothing at all.
  */
-export async function HomeAnalyticsAlerts({ store, base, now, lang = "en" }: { store: Store; base: string; now: Date; lang?: AdminLang }) {
+export async function HomeAnalyticsAlerts({ store, base, now, lang = "en", ask = null }: { store: Store; base: string; now: Date; lang?: AdminLang; ask?: string | null }) {
   // The alerts' words and figures in the member's language (D312 A9), as on the Analytics overview.
   setAnalyticsLang(lang);
-  let alerts;
+  let all;
   try {
-    alerts = (await alertsForStore(store, now)).slice(0, HOME_ALERTS);
+    all = await alertsForStore(store, now);
   } catch {
     return null;
   }
-  if (alerts.length === 0) return null;
+  const alerts = all.slice(0, HOME_ALERTS);
   const w = analyticsWords().alerts;
+  // The briefing's *Ask the AI manager* (D416): the alert asked about, if it still stands, opens the AI manager with its words.
+  const asked = ask ? all.find((a) => a.id === ask) : undefined;
+  const arrival = asked ? <AskOnArrival message={askAboutAlert(asked, w)} /> : null;
+  if (alerts.length === 0) return arrival;
   return (
     <Section
       id="analytics-alerts-heading"
@@ -39,6 +46,7 @@ export async function HomeAnalyticsAlerts({ store, base, now, lang = "en" }: { s
       }
     >
       <AlertList alerts={alerts} base={base} />
+      {arrival}
     </Section>
   );
 }

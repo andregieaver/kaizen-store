@@ -4341,6 +4341,20 @@
       "when": 1793505258163,
       "tag": "20261101035418_assistant_stop",
       "breakpoints": true
+    },
+    {
+      "idx": 620,
+      "version": "7",
+      "when": 1793563405919,
+      "tag": "20261101200325_shipment_label_cost",
+      "breakpoints": true
+    },
+    {
+      "idx": 621,
+      "version": "7",
+      "when": 1793564196047,
+      "tag": "20261101201636_shipment_label_cost_rules",
+      "breakpoints": true
     }
   ]
 }
