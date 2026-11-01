@@ -138,7 +138,8 @@ describe("explain_import_problems", () => {
 
   it("names products by their handle and never quotes a cell of the file", async () => {
     const out = await run(owner, "explain_import_problems", { job_id: importId });
-    const text = JSON.stringify(out);
+    // Ids taken out first: a random id can hold "abc" too (CI #864), and an id is never a cell of the file.
+    const text = JSON.stringify(out).replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, "<id>");
     expect(text).not.toContain("not a price");
     expect(text).not.toContain("abc");
     expect(text).not.toMatch(/products\.csv|imports\//);
