@@ -321,6 +321,10 @@ The re-score ([psi-2026-10-31.md](psi-2026-10-31.md)) put the overall at 78.3 (8
 - [x] **DATA-04, UX-02** Ten more addresses through `normaliseEmail()` and the scan widened; no "Try again shortly." left, the wording
       test reading the admin's texts, `src/server` and `src/app`.
 - [x] **DATA-05** The 62 undecided store tables decided (45 in the file, 17 left out with a reason).
+- [x] **AST-08 (sensitive mode)** A store that handles sensitive information is worked as people only by the database
+      (`commerce.support_mode()`): the site chat and emails go to people, the silent partner is off, the AI manager reads no conversation's
+      words, and a conversation the AI held before is handed to a person (`support_transition()` allows the hand-over on a people-only
+      desk). Left from item 6: the platform's AI on `openai_eu` or a zero-retention provider (the owner's), a two-store isolation test.
 - [x] **AST-07** A platform-wide pause of every AI that acts on its own (Platform → AI, audited; the five runners return while it is on)
       and the autopilot's own AI budget emailed to owners at 80 % and when spent, once a month each (1 November 2026). The plan's AI limit
       already warned at 80 % (`sendUsageAlerts()`).

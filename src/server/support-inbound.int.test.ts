@@ -239,7 +239,8 @@ describe("email into the desk", () => {
 
     await db().execute(sql`update commerce.support_settings set sensitive = true where store_id = ${store.id}::uuid`);
     const fresh = await receive(deskAddress, "olav@example.com", { subject: "Health" });
-    expect(await conversation(fresh.row.conversation_id)).toMatchObject({ handler: "queue", handoff_reason: "no_ai" });
+    // A new one starts with a person (PSI AST-08: the database works a sensitive desk as people only).
+    expect(await conversation(fresh.row.conversation_id)).toMatchObject({ handler: "queue" });
     // The one the AI held before goes to a person at its next email.
     const heldReply = `reply-${String((await conversation(held.row.conversation_id)).reply_key)}@${DOMAIN}`;
     await receive(heldReply, "eva@example.com", { subject: "Re: Before", text: "Any news?" });

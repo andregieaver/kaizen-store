@@ -300,7 +300,9 @@ None of these is a decision. For the owner, with a lawyer:
    returning contact details where a name or a key would do (R6). Owner and staff account erasure (REG-03). Done: the retention (D391),
    owner and staff erasure (D377) and, since 30 October 2026, a shopper's erasure blanking their email, full name and phone in it.
 4. **A "sensitive information" switch** for stores (no tone, summaries or AI email answers; shorter retention) (R5, REG-11). Done
-   30 October 2026 (support settings, the owner's alone).
+   30 October 2026 (support settings, the owner's alone). Widened 1 November 2026 (PSI AST-08): while it is on no AI reads what customers
+   write; the database works the desk as people only (`commerce.support_mode()`), so the site chat and emails go to people, the silent
+   partner is off and the AI manager's `get_support_conversation` gives no words.
 5. Put `search_cache` in the register, and have the lawyer read `kaizen_rec`'s category (R8).
 6. Run the agent safety eval in CI (R2).
 7. Write `docs/ai-act.md`: each feature's AI Act classification and its Article 50 measure (REG-08).

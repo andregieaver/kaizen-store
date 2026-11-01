@@ -105,7 +105,10 @@ export type DeskSettings = {
   toneHandoff: number | null;
   /** Ended conversations are summarised by the AI (2.7, step 7). */
   summariesOn: boolean;
-  /** The store handles health or other sensitive information (PSI REG-11): tone and summaries stay off, and people answer emails. */
+  /**
+   * The store handles health or other sensitive information (PSI REG-11, AST-08): no AI reads its customers' conversations. Tone, summaries and
+   * the silent partner stay off, people answer emails and the site chat (`chatContext()`), and the AI manager reads no conversation's words.
+   */
   sensitive: boolean;
   /** The silent partner may help this desk's people (2.5, step 8). */
   partner: boolean;
@@ -140,7 +143,8 @@ export function settingsOf(row: Row): DeskSettings {
     toneHandoff: row.tone_handoff === null || row.tone_handoff === undefined ? null : Number(row.tone_handoff),
     summariesOn: row.sensitive !== true && (row.summaries_on === undefined ? true : Boolean(row.summaries_on)),
     sensitive: row.sensitive === true,
-    partner: row.partner === undefined ? true : Boolean(row.partner),
+    // A store that handles sensitive information (PSI AST-08): no AI reads its conversations, the silent partner included.
+    partner: row.sensitive !== true && (row.partner === undefined ? true : Boolean(row.partner)),
     aiActions: Array.isArray(row.ai_actions) ? (row.ai_actions as string[]).filter(isCustomerAction) : null,
     formMessages: (FORM_MESSAGES as readonly string[]).includes(String(row.form_messages)) ? (String(row.form_messages) as FormMessages) : "inbox_and_email",
   };

@@ -51,8 +51,10 @@ export async function chatPlace(raw: unknown): Promise<ChatPlace | Response> {
 
 /** The site's desk, and its agent and AI while the AI answers there (see `ChatContext`), else the response to give. */
 export async function chatContext(place: ChatPlace): Promise<ChatContext | Response> {
-  const [agent, connection, settings] = await Promise.all([getChatAgent(place.storeId), aiFor(place.storeId, { feature: "chat_agent" }), ensureDesk(visitorDesk(place.site))]);
-  const ai = agent !== null && Boolean(connection?.textModel) && settings.mode !== "people" && (settings.mode === "ai_first" || agent.enabled);
+  const [agent, connection, desk] = await Promise.all([getChatAgent(place.storeId), aiFor(place.storeId, { feature: "chat_agent" }), ensureDesk(visitorDesk(place.site))]);
+  // A store that handles sensitive information (PSI AST-08): people answer its chat, so no AI reads what a visitor writes.
+  const settings = desk.sensitive && desk.mode !== "off" ? { ...desk, mode: "people" as const } : desk;
+  const ai = !desk.sensitive && agent !== null && Boolean(connection?.textModel) && settings.mode !== "people" && (settings.mode === "ai_first" || agent.enabled);
   if (settings.mode === "off" && !ai) return fail(404, t(place.lang).chat.closed);
   return { ...place, settings, agent: ai ? agent : null, connection: ai ? connection : null };
 }

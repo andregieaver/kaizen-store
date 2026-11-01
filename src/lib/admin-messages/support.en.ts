@@ -400,7 +400,7 @@ export const supportEn = {
     sensitiveTitle: "Sensitive information",
     sensitive: {
       title: "This store handles health or other sensitive information.",
-      text: "While this is on, no AI reads customers' tone or summarises their conversations, people, not the AI, answer their emails, and transcripts are kept 30 days at most. Ask nothing at checkout you do not need, and never about health unless the sale needs it.",
+      text: "While this is on, no AI reads what customers write: people, not the AI, answer the chat and emails, there is no silent partner, the AI manager does not read conversations, nothing reads their tone or summarises them, and transcripts are kept 30 days at most. Ask nothing at checkout you do not need, and never about health unless the sale needs it.",
     },
     summariesTitle: "Summaries",
     summaries: {

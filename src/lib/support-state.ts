@@ -78,7 +78,7 @@ export function nextState(
     case "handoff": {
       if (!isOpen) return refuse("support_ended");
       if (mode === "off") return refuse("support_off");
-      if (mode !== "ai_first") return refuse("support_no_ai");
+      // On a people-only desk (or a sensitive store's, PSI AST-08) a conversation the AI held before the desk changed still goes to a person.
       if (state.handler !== "ai") return refuse("support_bad_event");
       if (actor.kind === "agent") return refuse("support_bad_event");
       return { ok: true, state: open("queue"), lines: ["queued"] };

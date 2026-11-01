@@ -20,11 +20,12 @@ describe("a support conversation's life (D216, 4.2)", () => {
     expect(startingHandler("people")).toBe("queue");
   });
 
-  it("hands over from the AI to the queue, only with the AI first", () => {
+  it("hands over from the AI to the queue, with the AI first, and on a people-only desk a conversation the AI held before it changed", () => {
     for (const who of [customer, ai, system]) {
       expect(nextState(withAi, "handoff", who, "ai_first")).toEqual({ ok: true, state: waiting, lines: ["queued"] });
     }
-    expect(nextState(withAi, "handoff", customer, "people")).toEqual({ ok: false, refusal: "support_no_ai" });
+    // A sensitive store's desk works as people only (PSI AST-08): what the AI held before still goes to a person.
+    expect(nextState(withAi, "handoff", system, "people")).toEqual({ ok: true, state: waiting, lines: ["queued"] });
     expect(nextState(withAi, "handoff", customer, "off")).toEqual({ ok: false, refusal: "support_off" });
     expect(nextState(waiting, "handoff", customer, "ai_first")).toEqual({ ok: false, refusal: "support_bad_event" });
   });

@@ -177,6 +177,16 @@ function whoAnswers(c: StaffConversation, me: string): string {
 /** `get_support_conversation`: the words, roles marked, notes marked, the partner's help left out; no email address or phone. */
 export async function getSupportConversationTool(ctx: AnswerCtx, { conversation }: { conversation: string }) {
   const c = await conversationOf(ctx, conversation);
+  // A store that handles sensitive information (PSI AST-08): its conversations are read by people only, never by a model.
+  if ((await deskSettings(managerDesk(ctx.store.id)))?.sensitive)
+    return {
+      status: whoAnswers(c, ctx.account.id),
+      customer: { signed_in: c.signedIn, language: c.locale },
+      started: c.startedAt.slice(0, 16).replace("T", " "),
+      transcript: null,
+      link: inboxLink(ctx.store, c.id),
+      note: "This store handles sensitive information, so the AI does not read its customers' conversations. Tell the person to open it in the inbox.",
+    };
   // A message sent through the store's contact form is read by people only (D382): its words never reach a model.
   if (c.source === "form")
     return {

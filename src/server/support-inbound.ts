@@ -321,7 +321,7 @@ async function newConversation(
   const place = placeOf(site);
   const [row] = await db().execute<Row>(sql`
     insert into commerce.support_conversations (store_id, source, handler, market, locale, contact_email, contact_name, reply_key, email_subject, email_message_id)
-    values (${desk.storeId}::uuid, 'email', ${settings.mode === "people" ? "queue" : "ai"}, ${place.market}, ${place.locale.slice(0, 16)},
+    values (${desk.storeId}::uuid, 'email', ${settings.mode === "people" || settings.sensitive ? "queue" : "ai"}, ${place.market}, ${place.locale.slice(0, 16)},
       ${email.from}, ${email.name}, ${newKey()}, ${email.subject}, ${email.messageId})
     returning id
   `);

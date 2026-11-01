@@ -392,7 +392,9 @@ changing it; a rule changes here, and its line in CLAUDE.md when its gist change
 - **Support (D216, `docs/support.md`, built in steps; §11 says what each step
   found)**: a desk is a store's or Kaizen's (`store_id` null) with a `mode`
   (`off`, `ai_first`, `people`; made with `off` on its first conversation by
-  `ensureDesk()`). Messages are written only by `commerce.support_add_message()`
+  `ensureDesk()`); a store that handles sensitive information is worked as
+  `people` whatever its mode, unless it is `off` (`commerce.support_mode()`,
+  `chatContext()`, PSI AST-08), so no AI reads what its customers write. Messages are written only by `commerce.support_add_message()`
   and a conversation's state only by `commerce.support_transition()` (the
   database's copy of `nextState()` in `src/lib/support-state.ts`; triggers refuse
   any other writer), through `addMessage()`/`transition()` in

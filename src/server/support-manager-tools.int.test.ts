@@ -62,6 +62,19 @@ describe("the support tools", () => {
     await expect(run("get_support_conversation", { conversation: "00000000-0000-4000-8000-000000000000" })).rejects.toThrow(/no such conversation/);
   });
 
+  it("reads no conversation's words while the store handles sensitive information (PSI AST-08)", async () => {
+    const id = await conversation("Jeg lurer på om dette passer med medisinen min.");
+    await db().execute(sql`update commerce.support_settings set sensitive = true where store_id = ${store.id}::uuid`);
+    try {
+      const read = (await run("get_support_conversation", { conversation: id })) as { transcript: string | null; note: string };
+      expect(read.transcript).toBeNull();
+      expect(read.note).toContain("handles sensitive information");
+      expect(JSON.stringify(read)).not.toContain("medisinen");
+    } finally {
+      await db().execute(sql`update commerce.support_settings set sensitive = false where store_id = ${store.id}::uuid`);
+    }
+  });
+
   it("writes a note only staff see, and replies in the person's name after taking the conversation over", async () => {
     const id = await conversation("Kan jeg bytte størrelse?");
     expect(await run("add_support_note", { conversation: id, note: "Size M is in stock." })).toMatchObject({ done: expect.stringContaining("only staff") });

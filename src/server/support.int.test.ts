@@ -565,6 +565,18 @@ describe("asking for a person, and the two modes (step 5: C7, C8, C20)", () => {
     expect(((await chatContext(place)) as Response).status).toBe(404);
   });
 
+  it("hands a sensitive store's chat to people, so no AI reads what a visitor writes (PSI AST-08)", async () => {
+    const d = await desk("sensitive-chat", "ai_first");
+    const { chatContext } = await import("./chat-route");
+    const place = { site: d.ctx.site, storeId: d.id, lang: d.ctx.lang, locale: d.ctx.locale, market: d.ctx.market };
+    expect(await chatContext(place)).toMatchObject({ settings: { mode: "ai_first" } });
+    await db().execute(sql`update commerce.support_settings set sensitive = true where store_id = ${d.id}::uuid`);
+    expect(await chatContext(place)).toMatchObject({ agent: null, connection: null, settings: { mode: "people", sensitive: true } });
+    // A conversation opened from it waits for a person.
+    const first = await say({ ...d.ctx, settings: { ...d.ctx.settings, mode: "people", sensitive: true } }, "Jeg har spørsmål om medisinen min.");
+    expect(first.state).toMatchObject({ handler: "queue", mode: "people" });
+  });
+
   it("with the AI first but no AI, or an AI that fails, moves the conversation to the queue (C8)", async () => {
     const none = await desk("no-model", "ai_first");
     const first = await say(none.ctx, "Hello?");
@@ -786,7 +798,7 @@ describe("asking for a person, and the two modes (step 5: C7, C8, C20)", () => {
     const sensitive = { ...form, sensitive: "on", toneOn: "on", summariesOn: "on" };
     expect(await saveDeskSettings(d.kari, sensitive, { owner: false })).toEqual({ ok: false, problems: ["Only the store's owner can say whether the store handles sensitive information."] });
     expect(await saveDeskSettings(d.kari, sensitive, { owner: true })).toMatchObject({ ok: true });
-    expect(await support.deskSettings(systemDesk(d.id))).toMatchObject({ sensitive: true, toneOn: false, summariesOn: false });
+    expect(await support.deskSettings(systemDesk(d.id))).toMatchObject({ sensitive: true, toneOn: false, summariesOn: false, partner: false });
     const [kept] = await db().execute<Row>(sql`select tone_on, summaries_on, sensitive from commerce.support_settings where store_id = ${d.id}::uuid`);
     expect(kept).toEqual({ tone_on: false, summaries_on: false, sensitive: true });
     // A member's save, which cannot send the owner's box, keeps it on.

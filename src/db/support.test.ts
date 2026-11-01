@@ -152,6 +152,27 @@ describe("support in the database (D216)", () => {
     ).toBe("support_bad_event");
   });
 
+  it("works a sensitive store's desk as people only (PSI AST-08): conversations start in the queue and the AI's words are refused", async () => {
+    await setMode("ai_first");
+    await db.query("update commerce.support_settings set sensitive = true where store_id = $1", [store]);
+    try {
+      expect(await one<{ mode: string }>("select commerce.support_mode($1) as mode", [store])).toEqual({ mode: "people" });
+      expect(
+        await refusal(db.query("insert into commerce.support_conversations (store_id, source, handler, token_hash, locale) values ($1, 'site', 'ai', 'sensitive-1', 'en')", [store])),
+      ).toBe("support_bad_event");
+      const { id } = await one<{ id: string }>(
+        "insert into commerce.support_conversations (store_id, source, handler, token_hash, locale) values ($1, 'site', 'queue', 'sensitive-2', 'en') returning id",
+        [store],
+      );
+      expect(await stateOf(id)).toMatchObject({ status: "open", handler: "queue" });
+      // Support off stays off.
+      await setMode("off");
+      expect(await one<{ mode: string }>("select commerce.support_mode($1) as mode", [store])).toEqual({ mode: "off" });
+    } finally {
+      await db.query("update commerce.support_settings set sensitive = false where store_id = $1", [store]);
+    }
+  });
+
   it("keeps a contact form's message with people (D382): queued on any desk that is on, never on one that is off, never given to the AI, no summary", async () => {
     const form = async () =>
       (await one<{ id: string }>("insert into commerce.support_conversations (store_id, source, handler, locale) values ($1, 'form', 'queue', 'en') returning id", [store])).id;
