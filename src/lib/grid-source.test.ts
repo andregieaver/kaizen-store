@@ -106,7 +106,7 @@ const READERS: Record<string, string> = {
   "src/lib/page-content.ts": "ownProducts() leaves custom as it is; gridImageShape() draws custom items as pages are (never the theme's product cards); the schema's rules for custom",
   "src/lib/page-translation.ts": "only a custom grid's items are texts to translate (items left over from another source are not shown)",
   "src/server/content-grid.ts": "gridData() is an exhaustive switch: custom is answered from the block (no query); pages, articles and products are looked up",
-  "src/server/page-rules.ts": "the owner rules are about products' store and market: custom has none",
+  "src/lib/page-rules.ts": "the owner rules are about products' store and market: custom has none",
   "src/server/recommend-grid.ts": "recommendations are products' only: a custom grid never recommends",
 };
 

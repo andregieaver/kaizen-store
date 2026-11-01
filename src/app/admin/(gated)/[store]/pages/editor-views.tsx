@@ -5,13 +5,16 @@ import { z } from "zod";
 import { requireFeature } from "@/components/admin/feature-off";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { PageEditor } from "@/components/admin/page-editor";
+import { DualPageEditor, type DualDoc } from "@/components/admin/dual-page-editor";
+import { parseDualWith, type DualKind } from "@/lib/dual-page";
+import type { AdminLang } from "@/lib/admin-lang";
 import { PAGE_TYPE_COPY } from "@/components/admin/page-type-copy";
 import { adminLangOf } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { LAYOUT_TYPES, termContentOf, type PageType } from "@/lib/page-content";
 import { typeOfLayout } from "@/server/content-types";
-import { requirePageTypeAccess } from "@/server/permissions";
+import { checkPageTypeAccess, requirePageTypeAccess } from "@/server/permissions";
 import { testOfVersionPage } from "@/server/experiment-admin";
 import { getPageForEdit } from "@/server/pages";
 import { listSavedParts } from "@/server/saved-parts";
@@ -35,30 +38,75 @@ type StoreParams = Promise<{ store: string }>;
 type PageParams = Promise<{ store: string; pageId: string }>;
 type Query = Promise<Record<string, string | string[] | undefined>>;
 
-/** A new page, article or layout in the editor. */
-export async function StoreNewPageView({ type, params }: { type: PageType; params: StoreParams }) {
+/**
+ * The second document of a dual page (D412), as the address asks for it (`?with=`), loaded as its own editor would load it: null where
+ * the address asks for none, "refused" where it names nothing this person may open (or the first document itself).
+ */
+async function storeSecondDoc(storeSlug: string, first: { id: string | null }, value: string | string[] | undefined, lang: AdminLang): Promise<DualDoc | "refused" | null> {
+  if (value === undefined) return null;
+  const doc = parseDualWith(value);
+  // A saved template beside a page is a later step of D412.
+  if (!doc || doc.kind === "template" || (doc.id !== null && doc.id === first.id)) return "refused";
+  const member = await checkPageTypeAccess(storeSlug, doc.kind, "read");
+  if (!member || (doc.kind === "product_layout" && requireFeature(member, "shop"))) return "refused";
+  const { store, account } = member;
+  const page = doc.id === null ? null : await getPageForEdit(store.id, doc.id, doc.kind);
+  if (doc.id !== null && !page) return "refused";
+  const entryType = doc.kind === "entry_layout" && page ? await typeOfLayout(store.id, page.id) : null;
+  const [savedParts, terms, gridTerms, context, fieldData] = await Promise.all([
+    listSavedParts(store.id),
+    listTerms({ storeId: store.id, contentType: termContentOf(doc.kind) }),
+    bothTerms(store.id),
+    storePageContext(store, doc.kind, account.name ?? "", null, entryType),
+    page && (doc.kind === "page" || doc.kind === "article") ? getFieldData(store.id, doc.kind, page.id) : undefined,
+  ]);
+  return {
+    doc,
+    kindName: adminText(lang, "builder").dual.kinds[doc.kind],
+    props: {
+      page,
+      savedParts,
+      terms,
+      gridTerms,
+      fieldData,
+      fieldRoles: page ? Object.entries(store.pageRoles).filter(([, id]) => id === page.id).map(([role]) => role) : [],
+      context,
+    },
+  };
+}
+
+/** A new page, article or layout in the editor; with `?with=`, beside a second document (D412). */
+export async function StoreNewPageView({ type, params, searchParams }: { type: PageType; params: StoreParams; searchParams?: Query }) {
   const gated = await requirePageTypeAccess((await params).store, type, "read");
   // Product layouts are part of the online shop (D178 step 5): hidden while it is off.
   const shopOff = type === "product_layout" ? requireFeature(gated, "shop") : null;
   if (shopOff) return shopOff;
   const { store, account } = gated;
-  const [saved, terms, gridTerms] = await Promise.all([
+  const lang = adminLangOf(account.adminLocale);
+  const [saved, terms, gridTerms, query] = await Promise.all([
     listSavedParts(store.id),
     listTerms({ storeId: store.id, contentType: termContentOf(type) }),
     bothTerms(store.id),
+    searchParams,
   ]);
+  const context = await storePageContext(store, type, account.name ?? "");
+  const second = type === "variant" ? null : await storeSecondDoc(store.slug, { id: null }, query?.with, lang);
+  const props = { page: null, savedParts: saved, terms, gridTerms, fieldRoles: [], context };
   return (
-    <AdminTextScope texts={adminTexts(adminLangOf(account.adminLocale), EDITOR_AREAS)}>
+    <AdminTextScope texts={adminTexts(lang, EDITOR_AREAS)}>
       {/* Only for screen readers: the title is in the editor, and the list is in the menu. */}
       <h1 className="sr-only">New {PAGE_TYPE_COPY[type].one}</h1>
-      <PageEditor
-        page={null}
-        savedParts={saved}
-        terms={terms}
-        gridTerms={gridTerms}
-        fieldRoles={[]}
-        context={await storePageContext(store, type, account.name ?? "")}
-      />
+      {second && second !== "refused" ? (
+        <DualPageEditor
+          left={{ doc: { kind: type as DualKind, id: null }, kindName: adminText(lang, "builder").dual.kinds[type as DualKind], props }}
+          right={second}
+          leftBase={storePagesBase(store, type)}
+          closeHref={`${storePagesBase(store, type)}/new`}
+          site={{ css: context.siteCss, name: adminText(lang, "builder").editor.yourStore, save: context.actions.saveSiteCss, versions: context.actions.cssVersions }}
+        />
+      ) : (
+        <PageEditor {...props} notice={second === "refused" ? adminText(lang, "builder").dual.notOpened : null} />
+      )}
     </AdminTextScope>
   );
 }
@@ -71,7 +119,7 @@ export async function StoreEditPageView({ type, params, searchParams }: { type: 
   const shopOff = type === "product_layout" ? requireFeature(gated, "shop") : null;
   if (shopOff) return shopOff;
   const { store, account } = gated;
-  const [found, { saved: justSaved, staging: stagingMode }, saved, terms, gridTerms] = await Promise.all([
+  const [found, { saved: justSaved, staging: stagingMode, with: withDoc }, saved, terms, gridTerms] = await Promise.all([
     z.uuid().safeParse(pageId).success ? getPageForEdit(store.id, pageId, type) : null,
     searchParams,
     listSavedParts(store.id),
@@ -95,6 +143,7 @@ export async function StoreEditPageView({ type, params, searchParams }: { type: 
         ...ownContext,
         schedule: null,
         share: null,
+        dualPages: null,
         draftOnly: { preview: `${storePagesBase(store, type)}/${page.id}/preview?staging=1`, note: sw.stagedCopyNote },
         actions: { ...ownContext.actions, save: saveStagedPageAction.bind(null, store.slug, type) },
       }
@@ -103,6 +152,35 @@ export async function StoreEditPageView({ type, params, searchParams }: { type: 
   const fieldData = type === "page" || type === "article" ? await getFieldData(store.id, type, page.id) : undefined;
   const lang = adminLangOf(account.adminLocale);
   const ew = adminText(lang, "builder").editor;
+  const notice =
+    justSaved === "draft"
+      ? ew.draftSaved
+      : justSaved === "published"
+        ? LAYOUT_TYPES.includes(type)
+          ? ew.publishedShort
+          : fillWords(ew.publishedAt, { address: `${context.siteBase}/${page.slug}` })
+        : null;
+  const fieldRoles = Object.entries(store.pageRoles).filter(([, id]) => id === page.id).map(([role]) => role);
+  // A second document beside this one (D412): never for the staging set's copy or an A/B test's version, which have screens of their own.
+  const second = staged || type === "variant" ? null : await storeSecondDoc(store.slug, { id: page.id }, withDoc, lang);
+  if (second && second !== "refused") {
+    return (
+      <AdminTextScope texts={adminTexts(lang, EDITOR_AREAS)}>
+        <h1 className="sr-only">Edit {page.draft.title || `Untitled ${PAGE_TYPE_COPY[type].one}`}</h1>
+        <DualPageEditor
+          left={{
+            doc: { kind: type as DualKind, id: page.id },
+            kindName: adminText(lang, "builder").dual.kinds[type as DualKind],
+            props: { page, notice, savedParts: saved, terms, gridTerms, fieldData, fieldRoles, context },
+          }}
+          right={second}
+          leftBase={storePagesBase(store, type)}
+          closeHref={`${storePagesBase(store, type)}/${page.id}`}
+          site={{ css: context.siteCss, name: ew.yourStore, save: context.actions.saveSiteCss, versions: context.actions.cssVersions }}
+        />
+      </AdminTextScope>
+    );
+  }
   return (
     <AdminTextScope texts={adminTexts(lang, EDITOR_AREAS)}>
       <h1 className="sr-only">Edit {page.draft.title || `Untitled ${PAGE_TYPE_COPY[type].one}`}</h1>
@@ -134,20 +212,12 @@ export async function StoreEditPageView({ type, params, searchParams }: { type: 
       <PageEditor
         key={page.id}
         page={page}
-        notice={
-          justSaved === "draft"
-            ? ew.draftSaved
-            : justSaved === "published"
-              ? LAYOUT_TYPES.includes(type)
-                ? ew.publishedShort
-                : fillWords(ew.publishedAt, { address: `${context.siteBase}/${page.slug}` })
-              : null
-        }
+        notice={second === "refused" ? adminText(lang, "builder").dual.notOpened : notice}
         savedParts={saved}
         terms={terms}
         gridTerms={gridTerms}
         fieldData={fieldData}
-        fieldRoles={Object.entries(store.pageRoles).filter(([, id]) => id === page.id).map(([role]) => role)}
+        fieldRoles={fieldRoles}
         context={context}
       />
     </AdminTextScope>

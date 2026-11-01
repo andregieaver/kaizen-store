@@ -208,9 +208,14 @@ export const RAIL_GAP = "1.5rem";
  * dragged to, or at its usual share (the canvas has twice an open sidebar's); the canvas takes the rest; between them the room
  * where their edges are dragged.
  */
+const railSide = ({ folded, width }: { folded: boolean; width: number | null }) => (folded ? "2.75rem" : width !== null ? `${width}px` : "minmax(0,1fr)");
 export function railTemplate(left: { folded: boolean; width: number | null }, right: { folded: boolean; width: number | null }): string {
-  const side = ({ folded, width }: { folded: boolean; width: number | null }) => (folded ? "2.75rem" : width !== null ? `${width}px` : "minmax(0,1fr)");
-  return `${side(left)} ${RAIL_GAP} minmax(0,2fr) ${RAIL_GAP} ${side(right)}`;
+  return `${railSide(left)} ${RAIL_GAP} minmax(0,2fr) ${RAIL_GAP} ${railSide(right)}`;
+}
+
+/** A dual page's columns (D412): the sidebars as on one page, and two canvases of the same width between them. */
+export function dualRailTemplate(left: { folded: boolean; width: number | null }, right: { folded: boolean; width: number | null }): string {
+  return `${railSide(left)} ${RAIL_GAP} minmax(0,2fr) ${RAIL_GAP} minmax(0,2fr) ${RAIL_GAP} ${railSide(right)}`;
 }
 
 /** The width a sidebar is dragged to: within its limits, and leaving the canvas its room. */

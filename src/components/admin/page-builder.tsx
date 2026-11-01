@@ -53,6 +53,8 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { createPortal } from "react-dom";
+import { copyAcross, dropProblem, findDualPart, type DualPart, type DualSide } from "@/lib/dual-page";
 import {
   Fragment,
   createContext,
@@ -89,7 +91,7 @@ import { MenuGlide } from "@/components/menu-glide";
 import { MenuHoverFields } from "./menu-hover-fields";
 import { PixelRange } from "./pixel-range";
 import { ModalFields, ModalPicker } from "./modal-fields";
-import { FoldButton, Rail, RailHeader, RailResizer, RailTabsHeader, railTemplate, useFolded, useRailWidth, type RailSide } from "./builder-rails";
+import { dualRailTemplate, FoldButton, Rail, RailHeader, RailResizer, RailTabsHeader, railTemplate, useFolded, useRailWidth, type RailSide } from "./builder-rails";
 import { TemplatesModal } from "./templates-modal";
 import { SharingBadge, SharingChoice, SharingSelect } from "./templates-sharing";
 import { TemplatesTab } from "./templates-tab";
@@ -176,7 +178,9 @@ import {
   type PageBlock,
   type PageColumn,
   type ImageBlock,
+  type PageContent,
   type PageRow,
+  type PageTranslation,
   type RowLayout,
   type Sides,
   type Spacing,
@@ -573,6 +577,201 @@ export type ThemeTabContext = {
   save: (payload: string) => Promise<{ ok: true; theme: StoreTheme } | { ok: false; problems: string[] }>;
 };
 
+// ---------------------------------------------------------------------------
+// Dual page (D412, `docs/dual-page.md`): two builders, one drag and drop
+// ---------------------------------------------------------------------------
+
+/** Two canvases share one drag and drop (D412): each one's ids start with its side; a page alone has none, as before. */
+const DndPrefix = createContext("");
+const SIDE_PREFIX: Record<DualSide, string> = { left: "L|", right: "R|" };
+const DUAL_SIDES: readonly DualSide[] = ["left", "right"];
+/** The side a drag id is on; the sidebar's tiles and saved parts have none (they are the active page's). */
+const sideOfId = (id: string | number): DualSide | null => {
+  const key = String(id);
+  return key.startsWith("L|") ? "left" : key.startsWith("R|") ? "right" : null;
+};
+const withoutSide = (id: string | number) => String(id).replace(/^[LR]\|/, "");
+/** A row, column or component on a page (not a sidebar's tile or a saved part). */
+const onPage = (data: DragData): data is Extract<DragData, { kind: "row" | "column" | "block" }> =>
+  data.kind === "row" || data.kind === "column" || data.kind === "block";
+/** What a part of the other page is to this page while it is dragged: a part from outside, placed as a saved part is (with a copy). */
+const FOREIGN = "dual-foreign";
+const asSeenFrom = (data: DragData, fromSide: DualSide, side: DualSide): DragData =>
+  side === fromSide || !onPage(data) ? data : { kind: "saved", partId: FOREIGN, part: data.kind };
+
+/** A row, column or component from the other page, with the page as written (main language), which its translations are read from. */
+type Foreign = { part: DualPart; source: Pick<PageContent, "rows" | "translations"> };
+
+/** What a builder in a dual page answers its frame. */
+type DualHandlers = {
+  move: (move: Move, from: DragData) => void;
+  clear: () => void;
+  end: (end: DragEndEvent, from: DragData, fromSide: DualSide, foreign: Foreign | null) => void;
+  /** The part dragged from this page, as it stands; null while it cannot be copied (shown in another language). */
+  give: (from: DragData) => Foreign | null;
+  /** Said on this page's canvas for a while: a copy made, or why not. */
+  note: (text: string) => void;
+  announce: (id: string) => string;
+};
+
+type DualHub = {
+  panelId: string;
+  active: DualSide;
+  slots: { left: HTMLElement | null; right: HTMLElement | null; canvas: Record<DualSide, HTMLElement | null> };
+  dragging: { data: DragData; side: DualSide } | null;
+  register: (side: DualSide, handlers: RefObject<DualHandlers | null>) => () => void;
+  /** The sidebar's tab, one for both pages (null until one is chosen). */
+  tab: Tab | null;
+  onTab: (tab: Tab) => void;
+  /** The screen size both canvases show (D179); null is as wide as they are. */
+  size: Size | null;
+  onSize: (size: Size | null) => void;
+};
+const DualHubContext = createContext<DualHub | null>(null);
+
+/** What a builder needs to be one of two (D412). */
+export type DualBuilder = {
+  side: DualSide;
+  active: boolean;
+  onActivate: () => void;
+  /** Over its canvas: which document it is, and Close for the second. */
+  header: ReactNode;
+  /** The page as written in its main language (rows and translations), which a copy to the other page reads. */
+  source: () => Pick<PageContent, "rows" | "translations">;
+  /** A copy from the other page put on this one: where it goes and its texts' translations, as one change. */
+  onCopy: (update: (rows: PageRow[]) => PageRow[], translations: Record<string, PageTranslation>) => void;
+  /** Whose page and what kind, for what it may hold (`dropProblem()`, as a save asks). */
+  owner: string | null;
+  kind: PageType;
+  variantOf: PageType | null;
+};
+
+/**
+ * The frame of a dual page (D412): one drag and drop for two builders, and the places each draws into (its canvas; the sidebars, while
+ * it is the active page). A drop is handled by the builder of the page it lands on; a row, column or component from the other page is
+ * handed over by that page's builder and copied.
+ */
+export function DualFrame({ active, toolbar, children }: { active: DualSide; toolbar: ReactNode; children: ReactNode }) {
+  const w = useAdminText("builder");
+  const fw = w.frame;
+  const panelId = useId();
+  const [left, setLeft] = useState<HTMLElement | null>(null);
+  const [right, setRight] = useState<HTMLElement | null>(null);
+  const [canvasLeft, setCanvasLeft] = useState<HTMLElement | null>(null);
+  const [canvasRight, setCanvasRight] = useState<HTMLElement | null>(null);
+  const handlers = useRef<Partial<Record<DualSide, RefObject<DualHandlers | null>>>>({});
+  const [dragging, setDragging] = useState<DualHub["dragging"]>(null);
+  const [tab, setTab] = useState<Tab | null>(null);
+  const [size, setSize] = useState<Size | null>(null);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+  const gridRef = useRef<HTMLDivElement>(null);
+  useStandaloneColumns(gridRef);
+  const [leftFolded] = useFolded("left");
+  const [rightFolded] = useFolded("right");
+  const [leftWidth, setLeftWidth] = useRailWidth("left");
+  const [rightWidth, setRightWidth] = useRailWidth("right");
+  const call = (side: DualSide | null) => (side ? (handlers.current[side]?.current ?? null) : null);
+  const register = useCallback((side: DualSide, ref: RefObject<DualHandlers | null>) => {
+    handlers.current[side] = ref;
+    return () => {
+      if (handlers.current[side] === ref) delete handlers.current[side];
+    };
+  }, []);
+  const hub = useMemo<DualHub>(
+    () => ({
+      panelId,
+      active,
+      slots: { left, right, canvas: { left: canvasLeft, right: canvasRight } },
+      dragging,
+      register,
+      tab,
+      onTab: setTab,
+      size,
+      onSize: setSize,
+    }),
+    [panelId, active, left, right, canvasLeft, canvasRight, dragging, register, tab, size],
+  );
+  const announce = (id: string | number) => call(sideOfId(id) ?? active)?.announce(String(id)) ?? fw.announcePage;
+  const clear = () => {
+    for (const side of DUAL_SIDES) call(side)?.clear();
+  };
+  return (
+    <DualHubContext value={hub}>
+      <DndContext
+        id="dual-page"
+        sensors={sensors}
+        collisionDetection={collision}
+        measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
+        onDragStart={({ active: picked }) => {
+          const data = dataOf(picked);
+          if (data) setDragging({ data, side: sideOfId(picked.id) ?? active });
+        }}
+        onDragMove={(move) => {
+          if (!dragging) return;
+          const to = move.over ? sideOfId(move.over.id) : null;
+          for (const side of DUAL_SIDES) {
+            if (side === to) call(side)?.move(move, asSeenFrom(dragging.data, dragging.side, side));
+            else call(side)?.clear();
+          }
+        }}
+        onDragEnd={(end) => {
+          const held = dragging;
+          setDragging(null);
+          clear();
+          const to = end.over ? sideOfId(end.over.id) : null;
+          const target = call(to);
+          if (!held || !to || !target) return;
+          if (to === held.side || !onPage(held.data)) {
+            target.end(end, held.data, held.side, null);
+            return;
+          }
+          const given = call(held.side)?.give(held.data) ?? null;
+          if (!given) {
+            target.note(w.dual.translating);
+            return;
+          }
+          target.end(end, asSeenFrom(held.data, held.side, to), held.side, given);
+        }}
+        onDragCancel={() => {
+          setDragging(null);
+          clear();
+        }}
+        accessibility={{
+          announcements: {
+            onDragStart: ({ active: picked }) => fillWords(fw.pickedUp, { what: announce(picked.id) }),
+            onDragOver: ({ over }) => (over ? fillWords(fw.over, { what: announce(over.id) }) : undefined),
+            onDragEnd: ({ over }) => (over ? fillWords(fw.droppedAt, { what: announce(over.id) }) : fw.dropped),
+            onDragCancel: () => fw.cancelled,
+          },
+          screenReaderInstructions: { draggable: fw.instructions },
+        }}
+      >
+        {toolbar}
+        <div
+          ref={gridRef}
+          role="group"
+          aria-label={w.dual.frame}
+          data-dual-page=""
+          className="grid items-start gap-6 lg:h-(--builder-h) lg:grid-cols-(--builder-cols) lg:items-stretch lg:gap-x-0"
+          style={{ "--builder-cols": dualRailTemplate({ folded: leftFolded, width: leftWidth }, { folded: rightFolded, width: rightWidth }) } as CSSProperties}
+        >
+          <div ref={setLeft} className="contents" />
+          <RailResizer side="left" label={fw.leftLabel} folded={leftFolded} width={leftWidth} onWidth={setLeftWidth} measure={() => measureRails(gridRef.current, panelId, "left")} />
+          <div ref={setCanvasLeft} className="contents" data-dual-canvas="left" />
+          <div aria-hidden className="hidden lg:block" />
+          <div ref={setCanvasRight} className="contents" data-dual-canvas="right" />
+          <RailResizer side="right" label={fw.rightLabel} folded={rightFolded} width={rightWidth} onWidth={setRightWidth} measure={() => measureRails(gridRef.current, panelId, "right")} />
+          <div ref={setRight} className="contents" />
+        </div>
+        {children}
+      </DndContext>
+    </DualHubContext>
+  );
+}
+
 export function PageBuilder({
   rows: pageRows,
   onRows: onPageRows,
@@ -602,7 +801,10 @@ export function PageBuilder({
   checks = null,
   themeTab = null,
   onThemeState,
+  dual = null,
 }: {
+  /** One of the two documents of a dual page (D412), inside its `DualFrame`; null on a page alone. */
+  dual?: DualBuilder | null;
   /** Told when a saved part goes onto the canvas to be edited and when the page comes back: the editor's undo is the page's, so it rests meanwhile. */
   onPartEditing?: (editing: boolean) => void;
   /** Told whenever the Theme tab holds changes not saved yet, with how to save them: the editor's Save and Publish keep them too (D195). */
@@ -658,6 +860,10 @@ export function PageBuilder({
 }) {
   const w = useAdminText("builder");
   const fw = w.frame;
+  // One of two (D412): the frame's drag and drop, sidebars and screen size are shared; a page alone has its own.
+  const hub = useContext(DualHubContext);
+  const dualOn = dual && hub ? dual : null;
+  const prefix = dualOn ? SIDE_PREFIX[dualOn.side] : "";
   // A saved part edited on the canvas (D46, D127): its content stands in for the page's rows, with every tool the page has, until it is
   // saved or left; the page's own rows are untouched meanwhile.
   const [partEdit, setPartEdit] = useState<{ part: SavedPart; rows: PageRow[]; dirty: boolean } | null>(null);
@@ -674,7 +880,16 @@ export function PageBuilder({
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
-  const [dragging, setDragging] = useState<DragData | null>(null);
+  const [ownDragging, setDragging] = useState<DragData | null>(null);
+  // In a dual page what is held is the frame's, seen from this page: a part of the other page is one from outside.
+  const dragging = dualOn ? (hub?.dragging ? asSeenFrom(hub.dragging.data, hub.dragging.side, dualOn.side) : null) : ownDragging;
+  /** A copy made from the other page, or why not (D412), said on this canvas for a while. */
+  const [dualNote, setDualNote] = useState<string | null>(null);
+  useEffect(() => {
+    if (!dualNote) return;
+    const timer = setTimeout(() => setDualNote(null), 6000);
+    return () => clearTimeout(timer);
+  }, [dualNote]);
   /** Where a dragged row, component or block would land, to show it. */
   const [target, setTarget] = useState<{ id: string; after: boolean } | null>(null);
   /** The column last worked in, where pressing a component adds it. */
@@ -729,7 +944,13 @@ export function PageBuilder({
       }
     });
   };
-  const [tab, setTab] = useState<Tab>("components");
+  const [ownTab, setOwnTab] = useState<Tab>("components");
+  // A dual page's sidebar is one for both pages (D412): its tab stays as it was when the other page is clicked.
+  const tab = dualOn && hub?.tab ? hub.tab : ownTab;
+  const setTab = (next: Tab) => {
+    setOwnTab(next);
+    hub?.onTab(next);
+  };
   // Templates (D125): the lists the tab and its modal share, where the tab looks, and whether the modal is open.
   const controller = useTemplateLists(templates);
   const [source, setSource] = useState<TemplateSource>("marketplace");
@@ -785,15 +1006,32 @@ export function PageBuilder({
   // The parts some visitors do not see (D179 phase 4), for the legend over the canvas.
   const displayed = useMemo(() => displayedParts(rows, w), [rows, w]);
   const toggleResponsive = responsive.toggle;
+  // Both canvases of a dual page show one screen size (D412): the active page says it, the other follows.
+  const shownSize = responsive.view?.size ?? null;
+  const tellSize = useEffectEvent((size: Size | null) => {
+    if (dualOn?.active) hub?.onSize(size);
+  });
+  useEffect(() => {
+    tellSize(shownSize);
+  }, [shownSize, dualOn?.active]);
+  const followSize = useEffectEvent((size: Size | null) => {
+    if (!dualOn || dualOn.active || size === shownSize) return;
+    if (size) responsive.choose(size);
+    else responsive.exit();
+  });
+  useEffect(() => {
+    followSize(hub?.size ?? null);
+  }, [hub?.size]);
+  const shortcutsHere = !dualOn || dualOn.active;
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (!isResponsiveShortcut(event) || typingIn(event.target)) return;
+      if (!shortcutsHere || !isResponsiveShortcut(event) || typingIn(event.target)) return;
       event.preventDefault();
       toggleResponsive();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [toggleResponsive]);
+  }, [toggleResponsive, shortcutsHere]);
   const motionSign = motionSignature(rows);
   useCanvasMotion(canvasRef, motionOn, motionSign, motionRun);
   // Motion the AI manager just added is shown at once (D128).
@@ -850,7 +1088,10 @@ export function PageBuilder({
       nestIn?: { columnId: string; index: number };
     } = {},
     foreign = false,
+    /** A copy made already (a part of the other page of a dual page, D412), placed as it is, and how the page takes it. */
+    ready: { apply: Rows } | null = null,
   ) => {
+    const apply = ready?.apply ?? onRows;
     // A page layout (D127) is placed as a whole, by asking how (`applyLayout`), never as a row, column or component.
     if (saved.kind === "page") {
       setLayoutUse({ name: saved.name, layout: saved.content, foreign });
@@ -860,13 +1101,13 @@ export function PageBuilder({
     const global = foreign ? null : globalOf(part);
     // A saved part's custom ids come along unless the page already uses them (D48).
     const copy = <T extends PageRow | PageColumn | PageBlock>(content: T, copier: (c: T) => T): T =>
-      global ? (newUse(global, newId()) as T) : copier(foreign ? withoutUses(part.kind, content) : content);
+      ready ? content : global ? (newUse(global, newId()) as T) : copier(foreign ? withoutUses(part.kind, content) : content);
     if (part.kind === "row") {
       const row = copy(part.content, (c) => copyRow(c, newId, htmlIds(rows)));
-      if (!rowsFull) onRows((current) => insertRow(current, row, place.index ?? current.length));
+      if (!rowsFull) apply((current) => insertRow(current, row, place.index ?? current.length));
     } else if (part.kind === "column") {
       const column = copy(part.content, (c) => copyColumn(c, newId, htmlIds(rows)));
-      onRows((current) => {
+      apply((current) => {
         // Nested (D294): never a column that holds a Columns component of its own, which would nest two levels.
         if (place.nestIn) {
           if (column.blocks.some((b) => b.type === "columns")) return current;
@@ -879,7 +1120,7 @@ export function PageBuilder({
     } else if (!blocksFull) {
       const block = copy(part.content, (c) => copyBlock(c, newId, htmlIds(rows)));
       const columnId = place.columnId === undefined ? lastColumn : place.columnId;
-      onRows((current) => {
+      apply((current) => {
         if (columnId && current.some((r) => r.columns.some((c) => c.id === columnId))) {
           return insertBlock(current, columnId, block, place.blockIndex ?? Number.MAX_SAFE_INTEGER);
         }
@@ -915,10 +1156,10 @@ export function PageBuilder({
   };
   const blankPage = isBlankPage(rows);
 
-  const onDragMove = (move: DragMoveEvent) => {
+  const onDragMove = (move: DragMoveEvent | Move, held?: DragData) => {
     const { active, over } = move;
     const data = dataOf(over);
-    const from = dataOf(active);
+    const from = held ?? dataOf(active);
     // A column shows where it lands beside another line's columns; in its own line they make room.
     const next = !over
       ? null
@@ -947,7 +1188,7 @@ export function PageBuilder({
       // Before it or right after it is where it already is.
       if (found.slot.index === at || found.slot.index === at + 1) return null;
     }
-    return { id: `column:${found.anchor.id}`, after: found.anchor.after };
+    return { id: `${prefix}column:${found.anchor.id}`, after: found.anchor.after };
   };
 
   /** Where a new row goes for a drop on a row (before it, or after when the pointer is in its lower half) or below the last. */
@@ -989,14 +1230,53 @@ export function PageBuilder({
     return { rowId: row.id, line: place.line, index: sameLine ? place.index : place.index + (below(end, over, "x") ? 1 : 0) };
   };
 
-  const onDragEnd = (end: DragEndEvent) => {
+  const onDragEnd = (end: DragEndEvent, held?: DragData, fromSide?: DualSide, foreign: Foreign | null = null) => {
     const { active, over } = end;
     setDragging(null);
     setTarget(null);
-    const from = dataOf(active);
+    const from = held ?? dataOf(active);
     const to = dataOf(over);
     if (!from || !to || !over) return;
     const after = below(end, over);
+    // From the other page of a dual page (D412): only what this kind of page may hold, and a part of that page is copied, never moved.
+    const across = dualOn !== null && fromSide !== undefined && fromSide !== dualOn.side;
+    let readyCopy: { part: SavedPart; apply: Rows } | null = null;
+    if (across) {
+      if (translate) {
+        setDualNote(w.dual.translating);
+        return;
+      }
+      // What lands: the other page's part, a new component from the sidebar, or a saved part (a layout or a new row is always plain).
+      const saved = from.kind === "saved" && !foreign ? findPart(from.partId) : undefined;
+      const arriving: DualPart | null = foreign
+        ? foreign.part
+        : from.kind === "palette-block"
+          ? { kind: "block", content: newBlock(from.type, newId, from.part) }
+          : saved && saved.kind !== "page"
+            ? ({ kind: saved.kind, content: saved.content } as DualPart)
+            : null;
+      const problem = arriving ? dropProblem(dualOn.owner, dualOn.kind, arriving, dualOn.variantOf) : null;
+      if (problem) {
+        setDualNote(fillWords(w.dual.notCopied, { reason: problem }));
+        return;
+      }
+      // What lands here is worked on here next: this page's sidebar and settings come up.
+      dualOn.onActivate();
+      if (foreign) {
+        const made = copyAcross(foreign.part, foreign.source, rows, newId);
+        readyCopy = {
+          part: { id: FOREIGN, name: "", updatedAt: "", global: false, translations: {}, uses: 0, sharing: "private", ...made.part } as SavedPart,
+          // On a saved part being edited on the canvas there are no translations to keep (D46).
+          apply: partEdit ? onRows : (update) => dualOn.onCopy(update, made.translations),
+        };
+      }
+    }
+    /** A saved part by id, or the copy from the other page. */
+    const partFor = (id: string) => (readyCopy && id === FOREIGN ? readyCopy.part : findPart(id));
+    const placePart = (part: SavedPart, at: Parameters<typeof placeSaved>[1] = {}) => {
+      placeSaved(part, at, false, readyCopy && part === readyCopy.part ? { apply: readyCopy.apply } : null);
+      if (readyCopy && part === readyCopy.part) setDualNote(w.dual.copied);
+    };
 
     // Nested in a column (D294): a new Columns component there, holding the column moved, a new one or the layout's columns.
     if (to.kind === "nest") {
@@ -1006,33 +1286,33 @@ export function PageBuilder({
       else if (from.kind === "palette-row") onRows((current) => insertBlock(current, to.columnId, newColumnsBlock(from.layout, newId), index));
       else if (from.kind === "palette-column") onRows((current) => insertBlock(current, to.columnId, newColumnsBlock("1", newId), index));
       else if (from.kind === "saved") {
-        const part = findPart(from.partId);
-        if (part?.kind === "column") placeSaved(part, { nestIn: { columnId: to.columnId, index } });
+        const part = partFor(from.partId);
+        if (part?.kind === "column") placePart(part, { nestIn: { columnId: to.columnId, index } });
       }
       setLastColumn(to.columnId);
       return;
     }
 
     if (from.kind === "saved") {
-      const part = findPart(from.partId);
+      const part = partFor(from.partId);
       if (!part || part.kind === "page") return;
       if (part.kind === "row") {
         const index =
           to.kind === "canvas-end" ? rows.length : to.kind === "row" ? rows.findIndex((r) => r.id === to.rowId) : -1;
-        if (index >= 0) placeSaved(part, { index: to.kind === "row" && after ? index + 1 : index });
+        if (index >= 0) placePart(part, { index: to.kind === "row" && after ? index + 1 : index });
       } else if (part.kind === "column") {
-        if (to.kind === "canvas-end") placeSaved(part);
+        if (to.kind === "canvas-end") placePart(part);
         else {
           const spot = columnSpotFor(to, end, over, null);
-          if (spot) placeSaved(part, { spot });
+          if (spot) placePart(part, { spot });
         }
       } else if (to.kind === "column" || to.kind === "block") {
-        const place = to.kind === "block" ? findBlock(rows, to.blockId) : null;
-        placeSaved(part, { columnId: to.columnId, blockIndex: place ? place.index + (after ? 1 : 0) : undefined });
+        const at = to.kind === "block" ? findBlock(rows, to.blockId) : null;
+        placePart(part, { columnId: to.columnId, blockIndex: at ? at.index + (after ? 1 : 0) : undefined });
         setLastColumn(to.columnId);
       } else if (to.kind === "row" || to.kind === "canvas-end") {
         // Outside any column: a row of its own for it.
-        placeSaved(part, { columnId: null, blockRow: dropRow(to, after) });
+        placePart(part, { columnId: null, blockRow: dropRow(to, after) });
       }
       return;
     }
@@ -1097,7 +1377,8 @@ export function PageBuilder({
   };
 
   const announce = (id: string | number) => {
-    const key = String(id);
+    // In a dual page each canvas's ids carry its side (D412).
+    const key = withoutSide(id);
     const row = rows.findIndex((r) => r.id === key);
     if (row >= 0) return fillWords(fw.announceRow, { n: row + 1 });
     if (key === "palette:column") return fw.announceNewColumn;
@@ -1140,59 +1421,53 @@ export function PageBuilder({
     onTest: translate === null ? onTestPart : undefined,
   };
 
+  // In a dual page (D412) the frame asks this builder about drags over its canvas and the parts taken from it, always of the page as it is now.
+  const dualMove = useEffectEvent((move: Move, from: DragData) => onDragMove(move, from));
+  const dualClear = useEffectEvent(() => setTarget(null));
+  const dualEnd = useEffectEvent((end: DragEndEvent, from: DragData, fromSide: DualSide, foreign: Foreign | null) => onDragEnd(end, from, fromSide, foreign));
+  const dualGive = useEffectEvent((from: DragData): Foreign | null => {
+    if (translate || !onPage(from) || !dualOn) return null;
+    const part = findDualPart(rows, from.kind, from.kind === "row" ? from.rowId : from.kind === "column" ? from.columnId : from.blockId);
+    return part ? { part, source: dualOn.source() } : null;
+  });
+  const dualSay = useEffectEvent((text: string) => setDualNote(text));
+  const dualAnnounce = useEffectEvent((id: string) => announce(id));
+  const dualSide = dualOn?.side ?? null;
+  const register = hub?.register;
+  useEffect(() => {
+    if (!register || !dualSide) return;
+    return register(dualSide, {
+      current: {
+        move: (move, from) => dualMove(move, from),
+        clear: () => dualClear(),
+        end: (end, from, fromSide, foreign) => dualEnd(end, from, fromSide, foreign),
+        give: (from) => dualGive(from),
+        note: (text) => dualSay(text),
+        announce: (id) => dualAnnounce(id),
+      },
+    });
+  }, [register, dualSide]);
+
   // What a block that takes its content from a custom field (D118) can take: the product's in a layout, the page's or article's
   // on a store's page; a header or footer has only the store's own (D120); none on Kaizen's own pages.
   const bindEntities: readonly FieldEntity[] | null =
     fieldGroups === null || grid.owner === null ? null : siteParts ? ["store"] : productParts ? ["product"] : ["page", "article"];
 
-  return (
-    <SizeEditContext value={sizeEdit}>
-    <FieldGroupsContext value={fieldGroups}>
-    <BindEntitiesContext value={bindEntities}>
-    <ThemeRowWidths value={themeRowWidths}>
-    <ThemeSections value={themeValue?.sections}>
-      <DndContext
-        id="page-builder"
-        sensors={sensors}
-        collisionDetection={collision}
-        // Measured as the drag goes, not once at its start: the strips shown while dragging (a new line, nesting) move what is below them.
-        measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
-        onDragStart={({ active }) => setDragging(dataOf(active))}
-        onDragMove={onDragMove}
-        onDragEnd={onDragEnd}
-        onDragCancel={() => {
-          setDragging(null);
-          setTarget(null);
-        }}
-        accessibility={{
-          announcements: {
-            onDragStart: ({ active }) => fillWords(fw.pickedUp, { what: announce(active.id) }),
-            onDragOver: ({ over }) => (over ? fillWords(fw.over, { what: announce(over.id) }) : undefined),
-            onDragEnd: ({ over }) => (over ? fillWords(fw.droppedAt, { what: announce(over.id) }) : fw.dropped),
-            onDragCancel: () => fw.cancelled,
-          },
-          screenReaderInstructions: {
-            draggable: fw.instructions,
-          },
-        }}
-      >
-        {/* On a computer the three columns each scroll on their own, between the admin's header and the editor's bar (`useStandaloneColumns`). */}
-        <div
-          ref={columnsRef}
-          className="grid items-start gap-6 lg:h-(--builder-h) lg:grid-cols-(--builder-cols) lg:items-stretch lg:gap-x-0"
-          style={{ "--builder-cols": railTemplate({ folded: leftFolded, width: leftWidth }, { folded: rightFolded, width: rightWidth }) } as CSSProperties}
-        >
-          {leftFolded && <Rail side="left" label={fw.leftLabel} controls={`${panelId}-left`} onOpen={() => setLeftFolded(false)} />}
+  // The sidebars' ids: a dual page's frame measures its own (D412).
+  const ids = dualOn && hub ? hub.panelId : panelId;
+  const leftPanel = (
+        <>
+          {leftFolded && <Rail side="left" label={fw.leftLabel} controls={`${ids}-left`} onOpen={() => setLeftFolded(false)} />}
           {translate ? (
             <TranslateNote
               translate={translate}
-              id={`${panelId}-left`}
+              id={`${ids}-left`}
               hidden={leftFolded}
-              header={<FoldButton side="left" label={fw.leftLabel} controls={`${panelId}-left`} onFold={() => setLeftFolded(true)} />}
+              header={<FoldButton side="left" label={fw.leftLabel} controls={`${ids}-left`} onFold={() => setLeftFolded(true)} />}
             />
           ) : (
           <Sidebar
-            id={`${panelId}-left`}
+            id={`${ids}-left`}
             hidden={leftFolded}
             onFold={() => setLeftFolded(true)}
             tab={tab}
@@ -1236,17 +1511,24 @@ export function PageBuilder({
             blocksFull={blocksFull}
           />
           )}
-          <RailResizer
-            side="left"
-            label={fw.leftLabel}
-            folded={leftFolded}
-            width={leftWidth}
-            onWidth={setLeftWidth}
-            measure={() => measureRails(columnsRef.current, panelId, "left")}
-          />
-
-          {/* Its own scroll, with room at the sides for the rows' handles and tools, which reach past the canvas. */}
-          <div className={`flex min-w-0 flex-col gap-3 lg:-mx-3 lg:px-3 lg:pb-6 ${STANDALONE}`}>
+        </>
+  );
+  // Its own scroll, with room at the sides for the rows' handles and tools, which reach past the canvas.
+  const canvasColumn = (
+          <div
+            className={`flex min-w-0 flex-col gap-3 lg:-mx-3 lg:px-3 lg:pb-6 ${STANDALONE} ${dualOn ? `rounded-panel lg:pt-2 ${dualOn.active ? "outline-2 outline-brand" : "outline-1 outline-line"}` : ""}`}
+            data-dual-side={dualOn?.side}
+            data-dual-active={dualOn?.active ? "" : undefined}
+            // In a dual page (D412) a press or focus anywhere on this canvas makes it the page the sidebars and the bar act on.
+            onPointerDownCapture={dualOn && !dualOn.active ? dualOn.onActivate : undefined}
+            onFocusCapture={dualOn && !dualOn.active ? dualOn.onActivate : undefined}
+          >
+          {dualOn?.header}
+          {dualOn && (
+            <p role="status" className={dualNote ? "rounded-md bg-insight-soft px-3 py-2 text-sm text-insight-text" : "sr-only"}>
+              {dualNote}
+            </p>
+          )}
           {viewNote}
           {partEdit && (
             <PartCanvasBar
@@ -1321,7 +1603,44 @@ export function PageBuilder({
             />
           </div>
           </div>
-
+  );
+  const rightPanel = (
+        <>
+          {rightFolded && (
+            <Rail side="right" label={fw.rightLabel} controls={`${ids}-right`} onOpen={() => setRightFolded(false)} className="order-first lg:order-none" />
+          )}
+          {/* On phones the title and settings come first. */}
+          <div id={`${ids}-right`} hidden={rightFolded} className={`order-first flex min-w-0 flex-col gap-6 lg:order-none lg:pb-6 ${STANDALONE}`}>
+            <RailHeader side="right" label={fw.rightLabel} controls={`${ids}-right`} onFold={() => setRightFolded(true)} />
+            {aside}
+          </div>
+        </>
+  );
+  // A dual page (D412): this builder's canvas in its half of the frame, its sidebars there only while it is the active page.
+  const canvasSlot = dualOn && hub ? hub.slots.canvas[dualOn.side] : null;
+  const layout =
+    dualOn && hub ? (
+      <>
+        {dualOn.active && hub.slots.left && createPortal(leftPanel, hub.slots.left)}
+        {canvasSlot && createPortal(canvasColumn, canvasSlot)}
+        {dualOn.active && hub.slots.right && createPortal(rightPanel, hub.slots.right)}
+      </>
+    ) : (
+        <div
+          ref={columnsRef}
+          className="grid items-start gap-6 lg:h-(--builder-h) lg:grid-cols-(--builder-cols) lg:items-stretch lg:gap-x-0"
+          style={{ "--builder-cols": railTemplate({ folded: leftFolded, width: leftWidth }, { folded: rightFolded, width: rightWidth }) } as CSSProperties}
+        >
+          {leftPanel}
+          <RailResizer
+            side="left"
+            label={fw.leftLabel}
+            folded={leftFolded}
+            width={leftWidth}
+            onWidth={setLeftWidth}
+            measure={() => measureRails(columnsRef.current, panelId, "left")}
+          />
+          {canvasColumn}
           <RailResizer
             side="right"
             label={fw.rightLabel}
@@ -1330,16 +1649,13 @@ export function PageBuilder({
             onWidth={setRightWidth}
             measure={() => measureRails(columnsRef.current, panelId, "right")}
           />
-          {rightFolded && (
-            <Rail side="right" label={fw.rightLabel} controls={`${panelId}-right`} onOpen={() => setRightFolded(false)} className="order-first lg:order-none" />
-          )}
-          {/* On phones the title and settings come first. */}
-          <div id={`${panelId}-right`} hidden={rightFolded} className={`order-first flex min-w-0 flex-col gap-6 lg:order-none lg:pb-6 ${STANDALONE}`}>
-            <RailHeader side="right" label={fw.rightLabel} controls={`${panelId}-right`} onFold={() => setRightFolded(true)} />
-            {aside}
-          </div>
+          {rightPanel}
         </div>
-
+    );
+  const rest = (
+      <>
+        {/* In a dual page the page a drag starts on draws what is held (D412). */}
+        {(!dualOn || hub?.dragging?.side === dualOn.side) && (
         <DragOverlay dropAnimation={null}>
           {dragging?.kind === "palette-row" ? (
             <Tile label={w.layouts[dragging.layout]} preview={<LayoutPreview layout={dragging.layout} />} lifted />
@@ -1367,6 +1683,7 @@ export function PageBuilder({
             <ColumnPreview column={rows.flatMap((r) => r.columns).find((c) => c.id === dragging.columnId) ?? null} />
           ) : null}
         </DragOverlay>
+        )}
 
         <Dialogs
           dialog={dialog}
@@ -1430,7 +1747,50 @@ export function PageBuilder({
           onApply={applyLayout}
           onClose={() => setLayoutUse(null)}
         />
+      </>
+  );
+
+  return (
+    <SizeEditContext value={sizeEdit}>
+    <FieldGroupsContext value={fieldGroups}>
+    <BindEntitiesContext value={bindEntities}>
+    <ThemeRowWidths value={themeRowWidths}>
+    <ThemeSections value={themeValue?.sections}>
+      {dualOn ? (
+        <DndPrefix value={prefix}>
+          {layout}
+          {rest}
+        </DndPrefix>
+      ) : (
+      <DndContext
+        id="page-builder"
+        sensors={sensors}
+        collisionDetection={collision}
+        // Measured as the drag goes, not once at its start: the strips shown while dragging (a new line, nesting) move what is below them.
+        measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
+        onDragStart={({ active }) => setDragging(dataOf(active))}
+        onDragMove={onDragMove}
+        onDragEnd={onDragEnd}
+        onDragCancel={() => {
+          setDragging(null);
+          setTarget(null);
+        }}
+        accessibility={{
+          announcements: {
+            onDragStart: ({ active }) => fillWords(fw.pickedUp, { what: announce(active.id) }),
+            onDragOver: ({ over }) => (over ? fillWords(fw.over, { what: announce(over.id) }) : undefined),
+            onDragEnd: ({ over }) => (over ? fillWords(fw.droppedAt, { what: announce(over.id) }) : fw.dropped),
+            onDragCancel: () => fw.cancelled,
+          },
+          screenReaderInstructions: {
+            draggable: fw.instructions,
+          },
+        }}
+      >
+        {layout}
+        {rest}
       </DndContext>
+      )}
     </ThemeSections>
     </ThemeRowWidths>
     </BindEntitiesContext>
@@ -2405,9 +2765,12 @@ function Canvas({
   blank: boolean;
 }) {
   const w = useAdminText("builder");
+  // Two canvases share one drag and drop in a dual page (D412): each one's ids carry its side.
+  const p = useContext(DndPrefix);
+  const headingId = `${p}content-heading`;
   const section = (
     <section
-      aria-labelledby="content-heading"
+      aria-labelledby={headingId}
       data-builder-dragging={dragging ? "" : undefined}
       data-builder-size={view?.size}
       // Links in the text are for visitors; in the editor they do nothing.
@@ -2418,7 +2781,7 @@ function Canvas({
       // At a size the page is that wide and the section that much zoomed, so the part rules' container queries see that width.
       style={view ? { zoom: view.zoom / 100, minHeight: view.height } : undefined}
     >
-      <h2 id="content-heading" className="sr-only">
+      <h2 id={headingId} className="sr-only">
         {w.canvas.content}
       </h2>
       {/* The page's container (D179): the part rules' sizes are its width. */}
@@ -2426,7 +2789,7 @@ function Canvas({
         className={`${PAGE_CONTAINER} flex flex-col gap-8`}
         style={{ containerType: "inline-size", containerName: PAGE_CONTAINER, ...(view && { width: view.width }) }}
       >
-        <SortableContext items={rows.map((r) => r.id)} strategy={verticalListSortingStrategy}>
+        <SortableContext items={rows.map((r) => p + r.id)} strategy={verticalListSortingStrategy}>
           <ol className="flex flex-col gap-8">
             {rows.map((row, index) => (
               <RowItem
@@ -2435,7 +2798,7 @@ function Canvas({
                 name={fillWords(w.tools.row, { n: index + 1 })}
                 first={index === 0}
                 meets={meetsAbove(rows[index - 1], row)}
-                line={target?.id === row.id && dragging?.kind !== "row" ? (target.after ? "after" : "before") : null}
+                line={target?.id === p + row.id && dragging?.kind !== "row" ? (target.after ? "after" : "before") : null}
                 dragging={dragging}
                 target={target}
                 actions={actions}
@@ -2534,7 +2897,7 @@ function CanvasEnd({
   active: boolean;
   onStartFromLayout: (() => void) | null;
 }) {
-  const { setNodeRef, isOver } = useDroppable({ id: "canvas-end", data: { kind: "canvas-end" } satisfies DragData });
+  const { setNodeRef, isOver } = useDroppable({ id: `${useContext(DndPrefix)}canvas-end`, data: { kind: "canvas-end" } satisfies DragData });
   const cw = useAdminText("builder").canvas;
   if (!empty && !active) return <div ref={setNodeRef} className="-mt-8" />;
   return (
@@ -2725,7 +3088,7 @@ function RowItem({
   actions: Actions;
 }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
-    id: row.id,
+    id: useContext(DndPrefix) + row.id,
     data: { kind: "row", rowId: row.id } satisfies DragData,
     disabled: actions.translating,
   });
@@ -2848,12 +3211,13 @@ function ColumnLinesView({
   const dragColumn = movesColumn(dragging);
   const gapPx = valueAt(holder, "gap", size) ?? 32;
   const tw = useAdminText("builder").tools;
+  const p = useContext(DndPrefix);
   return (
     <div className={`relative ${grid.className}`} style={grid.style}>
       {lines.map((line, l) => {
         const offset = lines.slice(0, l).reduce((n, earlier) => n + earlier.columns.length, 0);
         const content = (
-          <SortableContext items={line.columns.map((c) => `column:${c.id}`)} strategy={horizontalListSortingStrategy}>
+          <SortableContext items={line.columns.map((c) => `${p}column:${c.id}`)} strategy={horizontalListSortingStrategy}>
             {line.columns.map((column, i) => (
               <ColumnItem
                 key={column.id}
@@ -2901,7 +3265,7 @@ function ColumnLinesView({
  * only while a column is dragged, over the room around the lines (never taking any), and shows where it would put the column.
  */
 function NewLineZone({ rowId, at, place, height }: { rowId: string; at: number; place: "before" | "after"; height: number }) {
-  const { setNodeRef, isOver } = useDroppable({ id: `line:${rowId}:${at}`, data: { kind: "line", rowId, at } satisfies DragData });
+  const { setNodeRef, isOver } = useDroppable({ id: `${useContext(DndPrefix)}line:${rowId}:${at}`, data: { kind: "line", rowId, at } satisfies DragData });
   const cw = useAdminText("builder").canvas;
   return (
     <div
@@ -2951,8 +3315,9 @@ function ColumnItem({
   const count = row.columns.length;
   const box = columnBox(column, row, "canvas");
   const fx = canvasFx(actions.motionPreview, column.motion, "column", { index, parentStagger: row.motion?.enter?.stagger, parentEnter: row.motion?.enter });
+  const p = useContext(DndPrefix);
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging, isOver } = useSortable({
-    id: `column:${column.id}`,
+    id: `${p}column:${column.id}`,
     data: { kind: "column", columnId: column.id, rowId, line: lineIndex, holdsColumns: column.blocks.some((b) => b.type === "columns") } satisfies DragData,
     disabled: actions.translating,
   });
@@ -2962,10 +3327,10 @@ function ColumnItem({
   const remove = () => actions.onRows((rows) => removeColumn(rows, column.id));
   const w = useAdminText("builder");
   const tw = w.tools;
-  const columnLine = target?.id === `column:${column.id}` ? (target.after ? "after" : "before") : null;
+  const columnLine = target?.id === `${p}column:${column.id}` ? (target.after ? "after" : "before") : null;
   // A block from its own column shows its new place by moving; anything else by a line.
   const line = (blockId: string) =>
-    target?.id === blockId && !(dragging?.kind === "block" && dragging.columnId === column.id)
+    target?.id === p + blockId && !(dragging?.kind === "block" && dragging.columnId === column.id)
       ? target.after
         ? "after"
         : "before"
@@ -3038,7 +3403,7 @@ function ColumnItem({
         </span>
       )}
       {nestHere && column.blocks.length > 0 && <NestZone columnId={column.id} at="start" />}
-      <SortableContext items={column.blocks.map((b) => b.id)} strategy={verticalListSortingStrategy}>
+      <SortableContext items={column.blocks.map((b) => p + b.id)} strategy={verticalListSortingStrategy}>
         {column.blocks.map((block, index) => (
           <BlockItem
             key={block.id}
@@ -3084,7 +3449,7 @@ function ColumnItem({
  * column or a row's layout are dragged. Dropped there, they go into a new Columns component at that place.
  */
 function NestZone({ columnId, at }: { columnId: string; at: "start" | "end" }) {
-  const { setNodeRef, isOver } = useDroppable({ id: `nest:${columnId}:${at}`, data: { kind: "nest", columnId, at } satisfies DragData });
+  const { setNodeRef, isOver } = useDroppable({ id: `${useContext(DndPrefix)}nest:${columnId}:${at}`, data: { kind: "nest", columnId, at } satisfies DragData });
   const cw = useAdminText("builder").canvas;
   return (
     <div
@@ -3126,7 +3491,7 @@ function BlockItem({
   actions: Actions;
 }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
-    id: block.id,
+    id: useContext(DndPrefix) + block.id,
     data: { kind: "block", blockId: block.id, columnId } satisfies DragData,
     disabled: actions.translating,
   });

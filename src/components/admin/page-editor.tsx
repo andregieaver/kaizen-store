@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useEffectEvent, useId, useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useEffectEvent, useId, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
 
 import { applicableGroups, EntityFields } from "@/components/admin/entity-fields";
 import { fieldFileUploader } from "@/components/admin/field-file-upload";
@@ -36,7 +36,10 @@ import { knownClassNames } from "@/lib/css-completions";
 import { layoutOf } from "@/lib/page-layout";
 import { blockingIssues, issueId, pageIssues, type PageIssue } from "@/lib/page-a11y";
 import { applyMotionPlan, type MotionPlan } from "@/lib/motion-plan";
-import { History, Redo2, Replace, Sparkles, Undo2, WandSparkles } from "lucide-react";
+import { History, Redo2, Replace, Sparkles, Undo2, WandSparkles, X } from "lucide-react";
+import { formatDualWith, withCopiedTranslations, type DualSide, type DualWith } from "@/lib/dual-page";
+import { DualCreateDialog, DualOpenDialog } from "./dual-page-dialogs";
+import { PAGE_TYPE_COPY } from "./page-type-copy";
 import { emptyHistory, historyKey, record, redo as redoStep, undo as undoStep, type History as EditHistory } from "@/lib/edit-history";
 import type { PageVersionItem } from "@/lib/page-versions";
 
@@ -77,7 +80,7 @@ import { ColourSwatches } from "./colour-field";
 import { LibraryButton, MediaPickerProvider } from "./media-picker";
 import { PictureMakerProvider } from "./picture-maker";
 import { SignupCodesContext } from "./block-fields";
-import { ColorField, newId, PageBuilder } from "./page-builder";
+import { ColorField, newId, PageBuilder, type DualBuilder } from "./page-builder";
 import { PageIssuesPanel, PublishWithIssuesDialog } from "./page-issues-panel";
 import { FindReplaceDialog } from "./find-replace-dialog";
 import { PageVersionsDialog } from "./page-versions-dialog";
@@ -104,6 +107,51 @@ function startingRows(type: PageType, owner: string | null, menus: StandardMenus
   return [row];
 }
 
+/** How a dual page's frame (D412) reaches one of its editors: its save, what Publish both asks first, and its CSS. */
+export type DualEditorHandle = {
+  save: (publish: boolean, acknowledged?: string[]) => Promise<DualSaveOutcome>;
+  /** The page checker's blocking problems (wave 1, 1e) Publish asks about first. */
+  blocking: () => PageIssue[];
+  setCss: (css: string) => void;
+  /** The owner's saved parts as changed on the other page (D98): this page's sidebar and uses follow. */
+  takeParts: (parts: SavedPart[]) => void;
+};
+/** A save asked by the frame: done, refused with its problems, or waiting on the checker's question. */
+export type DualSaveOutcome = { ok: true } | { ok: false; problems: string[]; issues?: PageIssue[] };
+/** What the frame shows of an editor's page. */
+export type DualEditorState = { name: string; dirty: boolean; css: string; noun: string; classNames: readonly string[] };
+
+/** What an editor needs to be one of the two of a dual page (D412), from its `DualPageEditor`. */
+export type EditorDual = {
+  side: DualSide;
+  active: boolean;
+  onActivate: () => void;
+  /** Closes this page (the second one); null where it cannot be closed. */
+  onClose: (() => void) | null;
+  /** Save both and Publish both, drawn in the active editor's bar in place of its own Save and Publish. */
+  barStart: ReactNode;
+  /** Ctrl or Cmd + S: both are saved. */
+  saveBoth: () => void;
+  /** Custom CSS opens the frame's one panel, on this page. */
+  openCss: () => void;
+  /** The site's CSS as written in the frame's panel, drawn on both canvases. */
+  siteCss: string;
+  register: (side: DualSide, handle: DualEditorHandle) => () => void;
+  onState: (side: DualSide, state: DualEditorState) => void;
+  /** The first save of a new page: its id, for the address. */
+  onCreated: (side: DualSide, id: string) => void;
+  /** The owner's saved parts changed on this page: the frame hands them to the other. */
+  onParts: (side: DualSide, parts: SavedPart[]) => void;
+  /** The kind of document, as the frame names it. */
+  kindName: string;
+  /** Opens another document as the second one, in place of the one there (asking first about changes not saved). */
+  openSecond: (doc: DualWith) => void;
+  /** Whether either page has changes not saved, which leaving for a new page asks about. */
+  dirtyAny: boolean;
+  /** The ids of both documents (null while new), never offered by Open beside. */
+  ids: readonly (string | null)[];
+};
+
 /**
  * A page (D42), Kaizen's or a store's (D53), held whole in the browser:
  * title, address, picture, search texts, who may read it, and its content:
@@ -120,7 +168,10 @@ export function PageEditor({
   fieldData: initialFieldData = EMPTY_DATA,
   fieldRoles = [],
   context,
+  dual = null,
 }: {
+  /** One of the two documents of a dual page (D412); null on a page alone. */
+  dual?: EditorDual | null;
   page: EditablePage | null;
   /** Said when the editor opens, such as "Draft saved." after a new page's first save. */
   notice?: string | null;
@@ -217,9 +268,14 @@ export function PageEditor({
   const [coolOpen, setCoolOpen] = useState(false);
   // *Change with AI* (D351): a described change to the page, held as one change the person can undo.
   const [changeOpen, setChangeOpen] = useState(false);
+  // Dual page (D412): *Open beside* and *Create new*.
+  const [besideOpen, setBesideOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
   const [coolUndo, setCoolUndo] = useState<{ before: PageRow[]; after: PageRow[] } | null>(null);
   const [motionRequest, setMotionRequest] = useState(0);
-  const [siteCss, setSiteCss] = useState(context.siteCss);
+  const [ownSiteCss, setSiteCss] = useState(context.siteCss);
+  // A dual page's site CSS is the frame's (D412): one site, one panel.
+  const siteCss = dual ? dual.siteCss : ownSiteCss;
   // The site's text styles (D393) as this editor holds them, and the colours a new one starts from (the theme's accent and text).
   const textStyles = useTextStylesState(context.textStyles);
   const styleStarter = {
@@ -366,13 +422,15 @@ export function PageEditor({
   }, [content, context.check, checkout, shape, context.owner, context.siteCss, textStyles.css]);
 
   // Saves the page (as a draft, or published); true when it was saved. *Schedule* (D341) saves a changed draft first through it.
-  const save = async (publish: boolean, acknowledged?: string[]): Promise<boolean> => {
+  const save = async (publish: boolean, acknowledged?: string[]): Promise<boolean> => (await saveNow(publish, acknowledged)).ok;
+  // The save itself, with why it was not: a dual page's frame (D412) asks the checker's question for both pages at once.
+  const saveNow = async (publish: boolean, acknowledged?: string[]): Promise<DualSaveOutcome> => {
       setProblems([]);
       if (theme.current.dirty) {
         const failed = await theme.current.save().catch(() => [w.theme.couldNotSave]);
         if (failed) {
           setProblems(failed);
-          return false;
+          return { ok: false, problems: failed };
         }
       }
       const sent = content;
@@ -382,9 +440,12 @@ export function PageEditor({
       const outcome: PageSaveState = await actions.save(saved?.id ?? null, JSON.stringify({ ...sent, globalEdits, fields }), publish, acknowledged);
       if (outcome.status === "error") {
         // The server holds the same question as the dialog: something it found that this editor did not is asked about now.
-        if (outcome.code === "needs_confirmation" && outcome.issues && outcome.issues.length > 0) setAsking(outcome.issues);
-        else setProblems(outcome.problems);
-        return false;
+        if (outcome.code === "needs_confirmation" && outcome.issues && outcome.issues.length > 0) {
+          if (!dual) setAsking(outcome.issues);
+          return { ok: false, problems: [], issues: outcome.issues };
+        }
+        setProblems(outcome.problems);
+        return { ok: false, problems: outcome.problems };
       }
       if (globalEdits.length > 0) {
         const now = new Map(known.current);
@@ -403,9 +464,12 @@ export function PageEditor({
       const blogAddress = context.blog?.blogs.find((b) => b.id === sent.blogId && !b.main)?.address;
       const base = blogAddress ? siteBase.replace(/\/blog$/, blogAddress) : siteBase;
       setMessage(publish ? fillWords(ew.publishedAt, { address: context.place ? context.place.address : `${base}/${outcome.page.slug}` }) : ew.draftSaved);
-      // A new page moves to its own address; the editor there says what happened.
-      if (!saved) router.replace(`${adminBase}/${outcome.page.id}?saved=${publish ? "published" : "draft"}`);
-      return true;
+      // A new page moves to its own address; the editor there says what happened. In a dual page the frame writes the address (D412).
+      if (!saved) {
+        if (dual) dual.onCreated(dual.side, outcome.page.id);
+        else router.replace(`${adminBase}/${outcome.page.id}?saved=${publish ? "published" : "draft"}`);
+      }
+      return { ok: true };
   };
   const submit = (publish: boolean, acknowledged?: string[]) =>
     startBusy(async () => {
@@ -421,9 +485,12 @@ export function PageEditor({
 
   // Ctrl/Cmd + S saves the draft.
   const onKey = useEffectEvent((event: KeyboardEvent) => {
+    // In a dual page only the active page's editor answers the keys (D412); saving saves both.
+    if (dual && !dual.active) return;
     if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
       event.preventDefault();
-      if (!busy) submit(false);
+      if (dual) dual.saveBoth();
+      else if (!busy) submit(false);
       return;
     }
     // Ctrl/Cmd + Shift + H opens find and replace.
@@ -482,7 +549,9 @@ export function PageEditor({
 
   // The owner's saved parts changed (one saved, changed or deleted): a global changed or deleted under Saved (the server
   // has changed the pages using it) reaches this page's uses of it at once.
-  const updateParts = (next: SavedPart[]) => {
+  const updateParts = (next: SavedPart[], tell = true) => {
+    // The other page of a dual page uses the same saved parts (D412).
+    if (tell && dual) dual.onParts(dual.side, next);
     const before = new Map(parts.map((p) => [p.id, p]));
     const globals = globalsOf(next);
     const changed = new Map([...globals].filter(([id]) => before.get(id)?.global && before.get(id)?.updatedAt !== next.find((p) => p.id === id)?.updatedAt));
@@ -507,6 +576,84 @@ export function PageEditor({
 
   const state: PageState | null = saved ? (dirty && saved.published ? "changed" : saved.state) : null;
 
+  // One of the two of a dual page (D412): the frame saves through this editor, asks its checker first, and shows its name and CSS.
+  const dw = w.dual;
+  const pageName = content.title.trim() || `${dual?.kindName ?? ""} (${dw.untitled.toLowerCase()})`;
+  const dualSave = useEffectEvent((publish: boolean, acknowledged?: string[]) => saveNow(publish, acknowledged));
+  const dualBlocking = useEffectEvent(() => (issues ? blockingIssues(issues).filter((i) => i.rule !== "pay_page_block") : []));
+  const dualCss = useEffectEvent((css: string) => changeCss(css));
+  // Saved parts changed on the other page reach this one's sidebar and uses (D98).
+  const takeParts = useEffectEvent((next: SavedPart[]) => updateParts(next, false));
+  const dualRegister = dual?.register;
+  const dualOnState = dual?.onState;
+  const dualSide = dual?.side ?? null;
+  useEffect(() => {
+    if (!dualRegister || !dualSide) return;
+    return dualRegister(dualSide, {
+      save: (publish, acknowledged) => dualSave(publish, acknowledged),
+      blocking: () => dualBlocking(),
+      setCss: (css) => dualCss(css),
+      takeParts: (next) => takeParts(next),
+    });
+  }, [dualRegister, dualSide]);
+  useEffect(() => {
+    if (dualOnState && dualSide) dualOnState(dualSide, { name: pageName, dirty: dirty || themeDirty, css: content.css ?? "", noun, classNames: cssClassNames });
+  }, [dualOnState, dualSide, pageName, dirty, themeDirty, content.css, noun, cssClassNames]);
+  const builderDual: DualBuilder | null = dual
+    ? {
+        side: dual.side,
+        active: dual.active,
+        onActivate: dual.onActivate,
+        header: (
+          <div className="flex items-start justify-between gap-2 px-1" data-dual-header="">
+            <div className="min-w-0">
+              <p className="text-xs text-muted">
+                {dual.kindName} · {dual.active ? dw.editing : dw.pointToEdit}
+              </p>
+              <p className="truncate font-medium text-ink">{pageName}</p>
+            </div>
+            {dual.onClose && (
+              <button
+                type="button"
+                onClick={dual.onClose}
+                aria-label={dw.close}
+                title={dw.close}
+                className="flex size-9 shrink-0 items-center justify-center rounded-pill text-muted hover:bg-sunken hover:text-ink"
+              >
+                <X aria-hidden className="size-5" />
+              </button>
+            )}
+          </div>
+        ),
+        source: () => ({ rows: latest.current.rows, translations: latest.current.translations }),
+        onCopy: (update, translations) =>
+          edit((current) => ({ ...current, rows: update(current.rows), translations: withCopiedTranslations(current.translations, translations) }), "copy"),
+        owner: context.owner,
+        kind: context.type,
+        variantOf: context.variantOf ?? null,
+      }
+    : null;
+
+  // Leaving for another editor asks first about changes not saved: nothing here is kept on the way.
+  const mayLeave = () => !(dual ? dual.dirtyAny : dirty || themeDirty) || window.confirm(dw.leaveUnsaved);
+  const openBeside = (doc: DualWith) => {
+    setBesideOpen(false);
+    setCreateOpen(false);
+    if (dual) {
+      dual.openSecond(doc);
+      return;
+    }
+    if (!mayLeave()) return;
+    setDirty(false);
+    router.push(`${adminBase}/${saved?.id ?? "new"}?with=${encodeURIComponent(formatDualWith(doc))}`);
+  };
+  const createAlone = (kind: DualWith["kind"]) => {
+    setCreateOpen(false);
+    if (kind === "template" || !context.dualPages || !mayLeave()) return;
+    setDirty(false);
+    router.push(`${context.dualPages.root}/${PAGE_TYPE_COPY[kind].segment}/new`);
+  };
+
   return (
     // The site's text styles (D393): the Style menu's library, drawn on the canvas as it changes.
     <TextStylesProvider value={context.textStyles} state={textStyles} starter={styleStarter}>
@@ -529,8 +676,9 @@ export function PageEditor({
       }
     >
     {/* Full width (see `AdminMain`): a left sidebar, the content and a right sidebar, a quarter, a half and a quarter. */}
-    <div className={`flex flex-col gap-6 pb-28 ${problems.length > 0 ? "" : "lg:pb-0"}`}>
+    <div className={dual ? "flex flex-col gap-3" : `flex flex-col gap-6 pb-28 ${problems.length > 0 ? "" : "lg:pb-0"}`}>
       <PageBuilder
+        dual={builderDual}
         // A new language starts with its dialogs closed.
         key={locale}
         lang={language.locale.split("-")[0]}
@@ -846,7 +994,7 @@ export function PageEditor({
 
       {problems.length > 0 && (
         <div role="alert" className="rounded-lg border border-danger-text p-4 text-sm">
-          <p className="font-medium">{ew.notSavedFix}</p>
+          <p className="font-medium">{dual ? `${pageName}: ` : ""}{ew.notSavedFix}</p>
           <ul className="mt-2 list-disc pl-5">
             {problems.map((problem) => (
               <li key={problem}>{problem}</li>
@@ -869,6 +1017,7 @@ export function PageEditor({
         }}
       />
 
+      {!dual && (
       <CssPanel
         open={cssOpen}
         onClose={() => setCssOpen(false)}
@@ -882,8 +1031,29 @@ export function PageEditor({
         versions={actions.cssVersions}
         classNames={cssClassNames}
       />
+      )}
 
       <FindReplaceDialog open={findOpen} onClose={() => setFindOpen(false)} content={view} onReplace={replaceWords} />
+
+      {context.dualPages && (
+        <>
+          <DualOpenDialog
+            open={besideOpen}
+            onClose={() => setBesideOpen(false)}
+            kinds={context.dualPages.kinds}
+            choices={context.dualPages.choices}
+            current={dual ? dual.ids : [saved?.id ?? null]}
+            onOpen={openBeside}
+          />
+          <DualCreateDialog
+            open={createOpen}
+            onClose={() => setCreateOpen(false)}
+            kinds={context.dualPages.create}
+            onSideBySide={(kind) => openBeside({ kind, id: null })}
+            onItsOwn={createAlone}
+          />
+        </>
+      )}
 
       {saved && actions.versions && (
         <PageVersionsDialog
@@ -909,9 +1079,19 @@ export function PageEditor({
         />
       )}
 
+      {/* A dual page shows the active page's bar only, with Save both and Publish both (D412). */}
+      {(!dual || dual.active) && (
       <div data-editor-bar="" className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-card/95 backdrop-blur">
         <div className="flex flex-wrap items-center gap-2 px-4 py-3">
-          {context.draftOnly ? (
+          {dual ? (
+            <>
+              {dual.barStart}
+              {context.schedule && saved && (context.type === "page" || context.type === "article" || context.type === "header" || context.type === "footer") && (
+                <ScheduleButton pageId={saved.id} noun={context.type} schedule={context.schedule} dirty={dirty} saveDraft={() => save(false)} />
+              )}
+              {context.share && saved && (context.type === "page" || context.type === "article") && <ShareButton id={saved.id} noun={context.type} actions={context.share} />}
+            </>
+          ) : context.draftOnly ? (
             // A design profile's workspace (D177): every save is the profile's draft, published with the profile from its own page.
             <button
               type="button"
@@ -1032,8 +1212,8 @@ export function PageEditor({
           />
           <button
             type="button"
-            onClick={() => setCssOpen((open) => !open)}
-            aria-expanded={cssOpen}
+            onClick={() => (dual ? dual.openCss() : setCssOpen((open) => !open))}
+            aria-expanded={dual ? undefined : cssOpen}
             aria-controls="css-panel"
             className="flex min-h-11 items-center gap-2 rounded-pill border border-edge px-4 text-sm font-medium hover:bg-sunken"
           >
@@ -1050,6 +1230,16 @@ export function PageEditor({
             </div>
           ) : (
           <div className="ml-auto flex flex-wrap items-center gap-3 text-sm">
+            {context.dualPages && (
+              <>
+                <button type="button" onClick={() => setBesideOpen(true)} aria-haspopup="dialog" className="underline" data-dual-open-beside="">
+                  {dw.openBeside}
+                </button>
+                <button type="button" onClick={() => setCreateOpen(true)} aria-haspopup="dialog" className="underline" data-dual-create="">
+                  {dw.createNew}
+                </button>
+              </>
+            )}
             {saved && (
               <a href={`${adminBase}/${saved.id}/preview`} target="_blank" rel="noopener" className="underline">
                 {ew.previewDraft}{dirty ? ` ${ew.lastSaved}` : ""}
@@ -1120,6 +1310,7 @@ export function PageEditor({
           )}
         </div>
       </div>
+      )}
     </div>
     </ColourLibraryProvider>
     </SignupCodesContext>

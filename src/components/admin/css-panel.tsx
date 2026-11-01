@@ -67,7 +67,10 @@ export function CssPanel({
   saveSiteCss,
   versions,
   classNames = [],
+  pageSide = null,
 }: {
+  /** A dual page (D412): which of the two pages *This page* edits, and the switch between them; null on a page alone. */
+  pageSide?: { value: "left" | "right"; onChange: (side: "left" | "right") => void; label: string; left: string; right: string } | null;
   open: boolean;
   onClose: () => void;
   /** What is being edited: page, article, header, footer or layout. */
@@ -180,6 +183,22 @@ export function CssPanel({
         ))}
       </div>
       <div id={`${id}-panel`} role="tabpanel" aria-labelledby={`${id}-tab-${tab}`} className="flex min-h-0 flex-1 flex-col gap-3 p-4">
+        {tab === "page" && pageSide && (
+          <div role="radiogroup" aria-label={pageSide.label} className="flex w-fit gap-1 rounded-pill border border-line p-0.5" data-css-page-side="">
+            {(["left", "right"] as const).map((side) => (
+              <button
+                key={side}
+                type="button"
+                role="radio"
+                aria-checked={pageSide.value === side}
+                onClick={() => pageSide.onChange(side)}
+                className="min-h-8 rounded-pill px-3 text-sm aria-checked:bg-brand aria-checked:text-brand-ink"
+              >
+                {side === "left" ? pageSide.left : pageSide.right}
+              </button>
+            ))}
+          </div>
+        )}
         <p className="text-xs text-muted">
           {tab === "page"
             ? byNoun(w.pageHint, noun)
@@ -191,7 +210,7 @@ export function CssPanel({
         <PlainField.Provider
           value={
             <textarea
-              key={tab}
+              key={`${tab}-${pageSide?.value ?? ""}`}
               id={`${id}-css`}
               value={value}
               onChange={(event) => {
@@ -210,7 +229,7 @@ export function CssPanel({
           }
         >
           <CodeEditor
-            key={tab}
+            key={`${tab}-${pageSide?.value ?? ""}`}
             id={`${id}-css`}
             value={value}
             onChange={(css: string) => {

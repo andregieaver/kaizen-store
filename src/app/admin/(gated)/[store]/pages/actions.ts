@@ -23,7 +23,9 @@ import { fieldsTag, pageFacts, saveFieldData } from "@/server/custom-fields";
 import { itemLinkTargets, type ItemLinkTargets } from "@/server/link-targets";
 import { recommendedGridData } from "@/server/recommend-grid";
 import { translatePageTexts } from "@/server/page-translate";
-import { deletePage, getPageForEdit, pagesTag, savePage, setFrontPage, setPageRole, setProductsPage, unpublishPage } from "@/server/pages";
+import { deletePage, getPageForEdit, listPages, pagesTag, savePage, setFrontPage, setPageRole, setProductsPage, unpublishPage } from "@/server/pages";
+import { isDualKind, type DualChoice } from "@/lib/dual-page";
+import { requirementMet } from "@/lib/store-features";
 import { createRolePage } from "@/server/page-roles";
 import { runningTestOf, testOfVersionPage } from "@/server/experiment-admin";
 import { isPageRole } from "@/lib/page-roles";
@@ -394,4 +396,13 @@ export async function translateStorePageAction(storeSlug: string, request: unkno
   } catch (error) {
     return { ok: false, problem: error instanceof AiError ? (await said()).aiFailedWith.replace("{problem}", error.message) : (await said()).aiFailed };
   }
+}
+
+/** The store's documents of a kind that this person may open beside another in the builder (D412). */
+export async function storeDualChoicesAction(storeSlug: string, kind: unknown): Promise<DualChoice[]> {
+  if (!isDualKind(kind)) return [];
+  const member = await checkPageTypeAccess(storeSlug, kind, "read");
+  // Product layouts are part of the online shop (D178 step 5).
+  if (!member || (kind === "product_layout" && !requirementMet(member.store, "shop"))) return [];
+  return (await listPages(member.store.id, kind)).map((page) => ({ id: page.id, title: page.title }));
 }

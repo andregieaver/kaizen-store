@@ -49,7 +49,10 @@ import {
   applyTemplateAction,
   placeStoreThemeSectionAction,
   storeThemeSectionsAction,
+  storeDualChoicesAction,
 } from "./actions";
+import { CREATE_KINDS, DUAL_KINDS } from "@/lib/dual-page";
+import { requirementMet } from "@/lib/store-features";
 import { duplicateStorePageAction } from "./duplicate-action";
 import { deleteStoreTextStyleAction, saveStoreTextStyleAction } from "./text-style-actions";
 import { listTextStyles } from "@/server/text-styles";
@@ -126,6 +129,16 @@ export async function storePageContext(
         ? { list: typed(listPageLinksAction), make: typed(makePageLinkAction), revoke: typed(revokePageLinkAction) }
         : null,
     adminBase: storePagesBase(store, type),
+    // A second document beside this one (D412): the store's kinds (product layouts while the shop is on), never for an A/B test's version.
+    dualPages:
+      type === "variant"
+        ? null
+        : {
+            root: `/admin/${store.slug}`,
+            kinds: DUAL_KINDS.filter((kind) => kind !== "product_layout" || requirementMet(store, "shop")),
+            create: CREATE_KINDS.store.filter((kind) => kind !== "product_layout" || requirementMet(store, "shop")),
+            choices: storeDualChoicesAction.bind(null, store.slug),
+          },
     // A full address once the store has its own host (P7), and origin then empty.
     siteBase: storeHref(store.slug, market ? marketPath(store.slug, market.slug) : storeBase(store.slug)) + PAGE_TYPE_COPY[type].sitePrefix,
     origin: storeOrigin(store.slug) ? "" : siteUrl(),

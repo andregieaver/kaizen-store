@@ -44,7 +44,9 @@ import {
   unpublishPageAction,
   updateSavedPartAction,
   translatePlatformPageAction,
+  platformDualChoicesAction,
 } from "./actions";
+import { CREATE_KINDS } from "@/lib/dual-page";
 import { duplicatePageAction } from "./duplicate-action";
 import { platformCssVersionAction, platformCssVersionsAction, platformPageVersionAction, platformPageVersionsAction } from "./version-actions";
 import { planChoices } from "@/lib/plan-offer";
@@ -63,6 +65,8 @@ export async function platformPageContext(type: PageType = "page", author = ""):
     type,
     defaultAuthor: author,
     adminBase: `/admin/platform/${copy.segment}`,
+    // A second document beside this one (D412): Kaizena Flow's pages, articles, header and footer.
+    dualPages: type === "variant" ? null : { root: "/admin/platform", kinds: CREATE_KINDS.kaizen, create: CREATE_KINDS.kaizen, choices: platformDualChoicesAction },
     siteBase: copy.sitePrefix,
     origin: siteUrl(),
     // English and then the site's other languages (D312 P4): the builder's translate mode writes their texts over the page.

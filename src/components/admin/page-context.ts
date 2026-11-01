@@ -1,3 +1,4 @@
+import type { DualChoice, DualKind } from "@/lib/dual-page";
 import type { CssVersionActions } from "@/lib/css-versions";
 import type { PageVersionItem } from "@/lib/page-versions";
 import type { PreviewLinkAnswer, PreviewLinkItem } from "@/lib/preview-links";
@@ -213,6 +214,12 @@ export type PageOwnerContext = {
    * published. Absent everywhere else.
    */
   draftOnly?: { preview: string; note: string };
+  /**
+   * Dual page (D412): where the site's editors are (`/admin/{store}` or `/admin/platform`), the kinds that can be opened beside this one
+   * and created, and the documents of a kind to choose from. Absent where a second page is not offered (the staging set's copy, an A/B
+   * test's version, a design profile's workspace, the theme store's pages).
+   */
+  dualPages?: { root: string; kinds: readonly DualKind[]; create: readonly DualKind[]; choices: (kind: DualKind) => Promise<DualChoice[]> } | null;
   /**
    * A page drawn at a place of its own rather than at its address (the theme store's pages, D285, edited from Themes): no Duplicate and no
    * Save as template, which would make a page of another kind, no address or categories of its own (it is shown at `address`), and *View*

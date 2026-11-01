@@ -272,6 +272,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - Nested columns (D294, `ColumnsBlock` in `src/lib/page-content.ts`)
 - Editing words where they are (D191, D192, D193)
 - Undo, redo and versions (D305), CSS on the live site (D306)
+- Dual page (D412, `docs/dual-page.md`, `src/lib/dual-page.ts`, `DualPageEditor`, `DualFrame`)
 - Find and replace (D307)
 - Table component (D194, `src/components/table-view.tsx`, `src/lib/table-edit.ts`)
 - Brands (D204, `src/components/brands-view.tsx`, `src/components/brands-carousel.tsx`, `src/lib/brands.ts`)

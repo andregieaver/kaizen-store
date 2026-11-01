@@ -11,9 +11,10 @@ import { z } from "zod";
 
 import { requirePlatformAdmin } from "@/server/auth";
 import type { PageSaveState } from "@/components/admin/page-context";
-import { deletePage, getPageForEdit, PAGES_TAG, savePage, unpublishPage } from "@/server/pages";
+import { deletePage, getPageForEdit, listPages, PAGES_TAG, savePage, unpublishPage } from "@/server/pages";
+import type { DualChoice } from "@/lib/dual-page";
 import { chooseSiteLayout, type SiteLayoutType } from "@/server/site-layouts";
-import { createPlatformRolePage, createThemeStorePage, setPlatformPageRole, themeStoreRoleOf } from "@/server/platform-roles";
+import { createPlatformRolePage, createThemeStorePage, setPlatformPageRole, themeStorePageStates, themeStoreRoleOf } from "@/server/platform-roles";
 import { isSpecialRole, isThemeStoreRole } from "@/lib/platform-roles";
 import { THEMES_ADMIN, themeStorePageHref } from "@/lib/theme-admin-paths";
 import type { FormState } from "@/components/admin/action-form";
@@ -320,4 +321,12 @@ export async function translatePlatformPageAction(request: unknown): Promise<Tra
   } catch (error) {
     return { ok: false, problem: error instanceof AiError ? fillWords((await platformActionWords()).translateFailed, { message: error.message }) : (await platformActionWords()).translateRetry };
   }
+}
+
+/** Kaizena Flow's own documents of a kind to open beside another in the builder (D412); the theme store's pages are edited under Themes. */
+export async function platformDualChoicesAction(kind: unknown): Promise<DualChoice[]> {
+  await requirePlatformAdmin();
+  if (kind !== "page" && kind !== "article" && kind !== "header" && kind !== "footer") return [];
+  const theirs = new Set(kind === "page" ? (await themeStorePageStates()).flatMap((state) => (state.page ? [state.page.id] : [])) : []);
+  return (await listPages(null, kind)).filter((page) => !theirs.has(page.id)).map((page) => ({ id: page.id, title: page.title }));
 }

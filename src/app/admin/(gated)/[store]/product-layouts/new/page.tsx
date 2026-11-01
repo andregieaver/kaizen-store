@@ -4,6 +4,6 @@ import { StoreNewPageView } from "../../pages/editor-views";
 
 export const metadata: Metadata = { title: "New product layout" };
 
-export default function Page({ params }: PageProps<"/admin/[store]/product-layouts/new">) {
-  return <StoreNewPageView type="product_layout" params={params} />;
+export default function Page({ params, searchParams }: PageProps<"/admin/[store]/product-layouts/new">) {
+  return <StoreNewPageView type="product_layout" params={params} searchParams={searchParams} />;
 }
