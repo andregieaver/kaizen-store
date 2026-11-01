@@ -4334,6 +4334,13 @@
       "when": 1793500645691,
       "tag": "20261101023725_support_sensitive_people",
       "breakpoints": true
+    },
+    {
+      "idx": 619,
+      "version": "7",
+      "when": 1793505258163,
+      "tag": "20261101035418_assistant_stop",
+      "breakpoints": true
     }
   ]
 }

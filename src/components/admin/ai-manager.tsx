@@ -288,6 +288,17 @@ export function AiManagerChat({
   }
   sendRef.current = (text) => void send(text);
 
+  /**
+   * Stop, pressed on purpose (PSI AGT-03): the turn is told to stop on the server, then the answer stops streaming here. Leaving the page
+   * or losing the connection stops nothing: the turn finishes and shows when the conversation is opened again.
+   */
+  function stopTurn() {
+    if (conversationId) {
+      void fetch(`${base}/turn/stop`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ conversationId }) }).catch(() => {});
+    }
+    abortRef.current?.abort();
+  }
+
   function handle(event: AssistantEvent) {
     switch (event.type) {
       case "conversation":
@@ -527,7 +538,7 @@ export function AiManagerChat({
         />
         <div className="flex flex-wrap items-center gap-2">
           {busy ? (
-            <button type="button" className={secondary} onClick={() => abortRef.current?.abort()}>
+            <button type="button" className={secondary} onClick={stopTurn}>
               {w.stop}
             </button>
           ) : (

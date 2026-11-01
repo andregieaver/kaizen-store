@@ -173,6 +173,10 @@ test("the AI manager answers only a signed-in owner or platform admin (D94, D103
   expect(turn.status()).toBe(404);
   const platform = await request.post("/admin/platform/assistant/turn", { data: { conversationId: null, message: "Hei" } });
   expect(platform.status()).toBe(404);
+  // Stop, pressed on purpose (PSI AGT-03), too.
+  const conversation = { conversationId: "00000000-0000-4000-8000-000000000000" };
+  expect((await request.post("/admin/demo/assistant/turn/stop", { data: conversation })).status()).toBe(404);
+  expect((await request.post("/admin/platform/assistant/turn/stop", { data: conversation })).status()).toBe(404);
   // Voice mode's speech (D104) too.
   expect((await request.post("/admin/demo/assistant/speak", { data: { text: "Hei" } })).status()).toBe(404);
   expect((await request.post("/admin/platform/assistant/speak", { data: { text: "Hei" } })).status()).toBe(404);

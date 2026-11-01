@@ -1,0 +1,1 @@
+ALTER TABLE "commerce"."assistant_conversations" ADD COLUMN "stop_requested_at" timestamp with time zone;

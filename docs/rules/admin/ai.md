@@ -56,6 +56,12 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   `/admin/account/usage` (`UsageReport`); sums are worked out in
   `src/lib/ai-usage.ts`. Cost (D145, `src/lib/ai-cost.ts`, `src/server/ai-prices.ts`, `commerce.ai_model_prices`, `/admin/platform/ai/prices`): prices per model are data the platform's admin keeps, a call is priced by the price in force when it was made (`priceFor`, `costMicrosSql`, `unpricedSql` in `src/server/ai-price-sql.ts`, the one place SQL reads a price; `matchPrice()` and `callCost()` in code). D146: pictures, speech and live calls are priced too (`per_image`, `per_audio_minute`, `per_million_characters`, null = no price); a new kind of use gets its own unit price there, never a new SQL copy. Any new page that shows tokens or other usage shows `costWords()` beside it, and a model with no price shows as such ("No price", a "+" on totals), never as free. Never a price in code.
 
+- **A turn and its page (PSI AGT-03, AGT-13)**: `assistantTurn()` runs the turn under `after()` with its own abort controller, so a page
+  that closes or loses its connection does not stop it: it finishes, is kept, and shows when the conversation is opened again. Stop is
+  pressed on purpose: the widget posts `turn/stop` (`assistantStop()`, `requestStop()`, the person's own `admin` conversation), and the route,
+  which reads `stop_requested_at` every `STOP_POLL_MS`, aborts the turn at its next check. Kaizen Life's `ask_store_assistant` takes
+  `continue_admin_conversation` to go on in the owner's admin conversation of the last 24 hours (`recentAdminConversation()`), else its own.
+
 ## The AI manager's marketing tools (PSI AGT-01, D318, `src/server/marketing-tools.ts`)
 
 - **The AI manager's marketing tools (PSI AGT-01, D318, `src/server/marketing-tools.ts`)**: broadcasts, segments, customer tags and email automations, only through the screens' functions (`suggestBroadcast()` then `saveBroadcast()` as a draft; `startBroadcast()`/`scheduleBroadcast()` behind the `send` gate, checked by `preflightSendBroadcast()` and described by `broadcastApprovalSummary()`; `addTag()`/`removeTag()`; `switchAutomation()` behind the `send` gate; `issue_gift_card` through `issueGiftCard()` behind the `spend` gate, always emailed, its code never in an answer). Answers carry counts, never who is on a list. Review moderation has no tool: a review's words never reach a model.

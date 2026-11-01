@@ -11,6 +11,7 @@ import { actionAdminLang } from "./admin-request-lang";
 import { AiError, aiFor, speakText } from "./ai";
 import { sameSite } from "./chat-route";
 import { delegateLive, endLiveCall, LiveVoiceError, saveLiveTurns, startLiveSession } from "./live-voice";
+import { requestStop, STOP_POLL_MS, stopRequestedSince } from "./assistant-stop";
 import { log } from "./log";
 import { runTurn, type AssistantEvent, type Principal } from "./owner-assistant";
 
@@ -45,49 +46,88 @@ export async function assistantTurn(request: Request, principal: Principal): Pro
 
   // Learning runs after the answer: registered now, while the request is in scope.
   const tasks: (() => Promise<unknown>)[] = [];
-  let finished: () => void = () => {};
-  const answered = new Promise<void>((resolve) => (finished = resolve));
-  after(async () => {
-    await answered;
-    for (const task of tasks) await task();
-  });
-
   const encoder = new TextEncoder();
+  let output: ReadableStreamDefaultController<Uint8Array> | null = null;
   const stream = new ReadableStream<Uint8Array>({
-    async start(controller) {
-      const emit = (event: AssistantEvent) => {
-        try {
-          controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
-        } catch {
-          // The person has gone; the turn still finishes and is kept.
-        }
-      };
-      try {
-        await runTurn({
-          member: principal,
-          conversationId: input.data.conversationId,
-          message: input.data.message,
-          emit,
-          invalidate: (tag) => revalidateTag(tag, "max"),
-          signal: request.signal,
-          path: input.data.path,
-          voice: input.data.voice === true,
-          later: (task) => tasks.push(task),
-        });
-      } catch (error) {
-        log("error", "ai_manager.route_turn_failed", {}, error);
-        emit({ type: "error", message: w.failed });
-      } finally {
-        finished();
-        try {
-          controller.close();
-        } catch {
-          // Already closed.
-        }
-      }
+    start(controller) {
+      output = controller;
     },
   });
+  const close = () => {
+    try {
+      output?.close();
+    } catch {
+      // Already closed, or the person has gone.
+    }
+  };
+
+  // The turn is the request's own work, not the page's (PSI AGT-03): a page closed or a connection lost no longer stops it. It finishes
+  // and is kept under `after()`, and shows when the conversation is opened again. Stop, pressed on purpose, marks the conversation; the
+  // turn is stopped at its next check of the mark.
+  const stop = new AbortController();
+  const startedAt = new Date();
+  let conversationId = input.data.conversationId;
+  let polling: ReturnType<typeof setInterval> | null = null;
+  const watch = () => {
+    if (polling || !conversationId) return;
+    const id = conversationId;
+    polling = setInterval(() => {
+      stopRequestedSince(id, startedAt)
+        .then((stopped) => {
+          if (stopped) stop.abort();
+        })
+        .catch(() => {});
+    }, STOP_POLL_MS);
+  };
+  watch();
+  const emit = (event: AssistantEvent) => {
+    if (event.type === "conversation") {
+      conversationId = event.id;
+      watch();
+    }
+    try {
+      output?.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
+    } catch {
+      // The person has gone; the turn still finishes and is kept.
+    }
+  };
+  const turn = (async () => {
+    try {
+      await runTurn({
+        member: principal,
+        conversationId: input.data.conversationId,
+        message: input.data.message,
+        emit,
+        invalidate: (tag) => revalidateTag(tag, "max"),
+        signal: stop.signal,
+        path: input.data.path,
+        voice: input.data.voice === true,
+        later: (task) => tasks.push(task),
+      });
+    } catch (error) {
+      log("error", "ai_manager.route_turn_failed", {}, error);
+      emit({ type: "error", message: w.failed });
+    } finally {
+      if (polling) clearInterval(polling);
+      close();
+    }
+  })();
+  after(async () => {
+    await turn;
+    for (const task of tasks) await task();
+  });
   return new Response(stream, { headers: { "Content-Type": "application/x-ndjson; charset=utf-8", "Cache-Control": "no-store" } });
+}
+
+const stopInput = z.object({ conversationId: z.uuid() });
+
+/** Stop, pressed on purpose (PSI AGT-03): the person's running turn in this conversation stops at its next check. */
+export async function assistantStop(request: Request, principal: Principal): Promise<Response> {
+  if (!sameSite(request)) return new Response("Forbidden", { status: 403 });
+  const input = stopInput.safeParse(await request.json().catch(() => null));
+  if (!input.success) return Response.json({ error: refusals(principal).unreadable }, { status: 400 });
+  const marked = await requestStop(principal, input.data.conversationId);
+  return marked ? new Response(null, { status: 204 }) : new Response("Not found", { status: 404 });
 }
 
 const speechInput = z.object({ text: z.string().trim().min(1).max(600) });

@@ -120,7 +120,15 @@ export const MCP_TOOLS: McpToolInfo[] = [
       "Asks the store's own assistant, in Kaizena Flow, a question or for something to be done, in words; it answers from the store's data with its tools. Changes it prepares wait for the owner's approval in Kaizena Flow's admin.",
     inputSchema: {
       type: "object",
-      properties: { store: STORE_ARG, question: { type: "string", maxLength: 4000 } },
+      properties: {
+        store: STORE_ARG,
+        question: { type: "string", maxLength: 4000 },
+        continue_admin_conversation: {
+          type: "boolean",
+          description:
+            "True to go on in the conversation the owner last had with the store's assistant in Kaizena Flow's admin (within the last 24 hours), so it knows what was said there; otherwise, and when there is none, Kaizen Life's own conversation with it.",
+        },
+      },
       required: ["store", "question"],
       additionalProperties: false,
     },
@@ -151,7 +159,21 @@ async function memberFor(caller: McpCaller, slug: unknown): Promise<Membership |
   return store ? { account: caller.account, store, role: "owner" } : null;
 }
 
-const askInput = z.object({ store: z.string(), question: z.string().trim().min(1).max(4000) });
+const askInput = z.object({ store: z.string(), question: z.string().trim().min(1).max(4000), continue_admin_conversation: z.boolean().optional() });
+
+/** How recent the owner's admin conversation must be for Kaizen Life to go on in it (PSI AGT-13). */
+const RESUME_HOURS = 24;
+
+/** The owner's latest conversation with the store's assistant in the admin, if it is recent enough to go on in; else null. */
+export async function recentAdminConversation({ store, account }: Membership): Promise<string | null> {
+  const [row] = await db().execute<Row>(sql`
+    select id from commerce.assistant_conversations
+    where store_id = ${store.id}::uuid and account_id = ${account.id}::uuid and source = 'admin'
+      and updated_at > now() - make_interval(hours => ${RESUME_HOURS})
+    order by updated_at desc limit 1
+  `);
+  return row ? String(row.id) : null;
+}
 
 /** One tool call from Kaizen Life, for its owner: answered, refused or kept for approval. */
 export async function callMcpTool(
@@ -167,7 +189,7 @@ export async function callMcpTool(
   if (name === "ask_store_assistant") {
     const input = askInput.safeParse(args);
     if (!input.success) return text("Ask a question in words.", true);
-    return askStoreAssistant(member, input.data.question, invalidate);
+    return askStoreAssistant(member, input.data.question, invalidate, input.data.continue_admin_conversation === true);
   }
 
   const tool = OWNER_TOOLS_BY_NAME[name];
@@ -215,8 +237,10 @@ export async function callMcpTool(
  * Kaizen Life conversation, answered with the store's tools but none of
  * Kaizen Life's, so the two never ask each other in a loop.
  */
-async function askStoreAssistant(member: Membership, question: string, invalidate: (tag: string) => void): Promise<McpToolResult> {
-  const conversationId = await kaizenLifeConversation(member);
+async function askStoreAssistant(member: Membership, question: string, invalidate: (tag: string) => void, resume = false): Promise<McpToolResult> {
+  // Going on in the owner's admin conversation (PSI AGT-13): the same assistant, the same history, its answer shown there too.
+  const admin = resume ? await recentAdminConversation(member) : null;
+  const conversationId = admin ?? (await kaizenLifeConversation(member));
   const events: AssistantEvent[] = [];
   await runTurn({ member, conversationId, message: question, emit: (e) => events.push(e), invalidate, fromKaizenLife: true });
   const done = events.find((e) => e.type === "done");
@@ -225,6 +249,8 @@ async function askStoreAssistant(member: Membership, question: string, invalidat
   if (!done) return text(failed?.type === "error" ? failed.message : "The store's assistant did not answer.", true);
   return text({
     answer: done.message.content,
+    conversation: admin ? "the owner's conversation in the admin" : "Kaizen Life's conversation",
+    ...(admin && { where: `${siteUrl()}/admin/${member.store.slug}/assistant?c=${conversationId}` }),
     ...(approvals.length > 0 && {
       waiting_for_approval: approvals,
       where: `${siteUrl()}/admin/${member.store.slug}/assistant?c=${conversationId}`,

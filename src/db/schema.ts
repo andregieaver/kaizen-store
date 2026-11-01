@@ -9820,6 +9820,11 @@ export const assistantConversations = commerce.table(
     title: text("title").notNull().default(""),
     /** `admin`, the owner in the admin, or `kaizen-life`: Kaizen Life's assistant asking for the owner (D96). */
     source: text("source").notNull().default("admin"),
+    /**
+     * When the person pressed Stop (PSI AGT-03): a turn running then stops at its next check. A turn whose page was closed or lost its
+     * connection is not stopped by that: it finishes and is kept, and shows when the conversation is opened again.
+     */
+    stopRequestedAt: timestamp("stop_requested_at", { withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
