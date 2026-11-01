@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { drillPlan, pilotProblems, publishOutcome, type PilotTurn } from "./live-drills";
+import { dreamDrillOutcome, drillPlan, pilotProblems, publishOutcome, type PilotTurn } from "./live-drills";
 
 const turn = (over: Partial<PilotTurn> = {}): PilotTurn => ({ answer: "Done.", error: null, tools: [], kept: [], refused: [], ...over });
 
@@ -33,5 +33,13 @@ describe("the AI manager's pilot (consolidation 5)", () => {
     expect(pilotProblems("publish", turn(), { status: "active", prices: [24900] })).toEqual(["it did not try to publish", "the product went on the site without a yes"]);
     expect(pilotProblems("price", turn({ kept: ["set_prices"] }), { status: "draft", prices: [24900] })).toEqual(["kept set_prices for a yes it did not need"]);
     expect(pilotProblems("question", turn({ error: "No model.", answer: "" }), null)).toEqual(["the turn failed: No model.", "the answer gives no number"]);
+  });
+});
+
+describe("the Dream Factory's drill (PSI AGT-06)", () => {
+  it("counts as passed only once its run is ready, failed when the run failed or was stopped, and waits meanwhile", () => {
+    expect(["ready", "open"].map(dreamDrillOutcome)).toEqual(["passed", "passed"]);
+    expect(["failed", "stopped"].map(dreamDrillOutcome)).toEqual(["failed", "failed"]);
+    expect(["running", "asking", "anything else"].map(dreamDrillOutcome)).toEqual(["waiting", "waiting", "waiting"]);
   });
 });

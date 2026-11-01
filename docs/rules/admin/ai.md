@@ -168,7 +168,7 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   minute. Started by *Build my store with AI* at self-serve sign-up (`access_requests.dream`), on Your stores (`startDreamStore()`: a new
   store for an owner within their plan's stores or a platform admin, made as *Create a store* makes one, its run in their name; Platform →
   Stores and Platform → AI link there) or on `/admin/{store}/dream-factory`; scored
-  on Platform → AI (`scoreOf()`); the live drill `dream_factory` signs up through the real path with `DRILL_PROMPT`.
+  on Platform → AI (`scoreOf()`); the live drill `dream_factory` signs up through the real path with `DRILL_PROMPT`; it counts as passed only once the run is ready, waiting until then and failed when the run failed or was stopped (`settleDreamDrills()`).
 
 ## A custom app's tools (wave 9 unit J, D363, `src/lib/custom-apps.ts`, `src/server/custom-apps.ts`)
 

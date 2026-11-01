@@ -26,7 +26,8 @@ model's word, so a run can be scored the same way every time.
   (the trial counts) and opening. A step that fails its check three times becomes a question with *Try again*.
 - **A test run** is one whose owner is at the drills' test address (`@resend.dev`): its yes is pressed by the drill and counted, it pays in
   test mode, needs no plan, stays private and ends ready to open. The live drill `dream_factory` signs up through the real self-serve path
-  with the fixed prompt (`DRILL_PROMPT`) and its run is scored on Platform → AI.
+  with the fixed prompt (`DRILL_PROMPT`) and its run is scored on Platform → AI. The drill counts as passed only once the run is ready:
+  its result stays `waiting` until then, and failed when the run failed or was stopped (`settleDreamDrills()`, `dreamDrillOutcome()`).
 
 **Not yet:** the rehearsal does not place and pay a test order (paying needs Stripe's own checkout page in a browser); a domain is the
 owner's on Domains, outside the run; `/dream-factory` on Kaizena Flow's own site still says "Coming soon" (its text is the owner's page).

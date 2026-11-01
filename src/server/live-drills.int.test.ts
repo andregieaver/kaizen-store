@@ -5,7 +5,7 @@ import { closeDb, db } from "@/db/client";
 
 vi.mock("server-only", () => ({}));
 
-const { requestDrills, runLiveDrills } = await import("./live-drills");
+const { requestDrills, runLiveDrills, settleDreamDrills } = await import("./live-drills");
 
 /** Live drills (D406): only a test-mode store, only orders paid on a test account to Resend's test domain. */
 
@@ -105,5 +105,34 @@ describe("live drills (D406)", () => {
       const [done] = await db().execute<Row>(sql`select results from commerce.live_drills where id = ${asked.id}::uuid`);
       expect(done.results).toEqual([expect.objectContaining({ kind: "platform_legal_pages", outcome: "skipped" })]);
     }
+  });
+
+  it("keeps a Dream Factory drill waiting until its run ends, then passed at ready and failed when stopped", async () => {
+    const dreamStore = await newStore("drill-dream");
+    const runOf = async (status: string) =>
+      String((await db().execute<Row>(sql`
+        insert into commerce.dream_runs (store_id, prompt, test, status, finished_at)
+        values (${dreamStore}::uuid, 'A shop for hand-thrown ceramic mugs from Bergen', true, ${status}, null) returning id`))[0].id);
+    const ready = await runOf("running");
+    await db().execute(sql`update commerce.dream_runs set finished_at = now() where id = ${ready}::uuid`);
+    const stopped = await runOf("running");
+    const results = [ready, stopped].map((id) => ({ kind: "dream_factory", outcome: "waiting", run: id, detail: `Run ${id} started.` }));
+    const [drill] = await db().execute<Row>(sql`
+      insert into commerce.live_drills (store_id, kinds, status, results, finished_at) values (${dreamStore}::uuid, '{dream_factory}', 'done', ${JSON.stringify(results)}::jsonb, now())
+      returning id`);
+    const outcomes = async () =>
+      ((await db().execute<Row>(sql`select results from commerce.live_drills where id = ${String(drill.id)}::uuid`))[0].results as { outcome: string }[]).map((r) => r.outcome);
+
+    // Both still running: nothing is settled.
+    await settleDreamDrills();
+    expect(await outcomes()).toEqual(["waiting", "waiting"]);
+
+    await db().execute(sql`update commerce.dream_runs set status = 'ready' where id = ${ready}::uuid`);
+    await db().execute(sql`update commerce.dream_runs set status = 'stopped', finished_at = now() where id = ${stopped}::uuid`);
+    expect(await settleDreamDrills()).toBeGreaterThanOrEqual(2);
+    expect(await outcomes()).toEqual(["passed", "failed"]);
+    // Settled once: a second pass changes nothing.
+    await settleDreamDrills();
+    expect(await outcomes()).toEqual(["passed", "failed"]);
   });
 });

@@ -32,7 +32,7 @@ export const DRILL_WORDS: Record<DrillKind, string> = {
   agent_eval: "The agents' safety eval runs on the platform's own model and its recording is kept for CI",
   manager_pilot: "The AI manager does an owner's tasks in the store (a draft product, its price, a question, publishing never without a yes), each checked by code",
   platform_legal_pages: "Kaizena Flow's terms, privacy notice and data processing agreement are written from its business details and published; one already written is kept",
-  dream_factory: "A store is signed up for through self-serve sign-up at the test address with the Dream Factory's fixed prompt, and its run starts; Platform → AI scores it",
+  dream_factory: "A store is signed up for through self-serve sign-up at the test address with the Dream Factory's fixed prompt, and its run reaches ready; Platform → AI scores it",
 };
 
 /** The pilot's tasks (consolidation 5): what the owner says, in order, in one conversation. `{name}` is the run's own product. */
@@ -80,10 +80,21 @@ export function pilotProblems(key: PilotTaskKey, turn: PilotTurn, product: Pilot
   return problems;
 }
 
-export type DrillOutcome = "passed" | "failed" | "skipped";
+/** `waiting`: only the Dream Factory's drill, while its run goes on; settled by `dreamDrillOutcome()` once the run ends. */
+export type DrillOutcome = "passed" | "failed" | "skipped" | "waiting";
 
-/** One drill's result: plain facts (order numbers, amounts in minor units, counts), never a shopper's details. */
-export type DrillResult = { kind: DrillKind; outcome: DrillOutcome; detail: string; order?: string };
+/** One drill's result: plain facts (order numbers, amounts in minor units, counts), never a shopper's details. `run`: the Dream Factory's run. */
+export type DrillResult = { kind: DrillKind; outcome: DrillOutcome; detail: string; order?: string; run?: string };
+
+/**
+ * What a Dream Factory drill counts as from its run's status (PSI AGT-06): passed only when the run reached ready (or the store was opened
+ * after it), failed when it failed or was stopped, and still waiting while it runs or asks. Pure.
+ */
+export function dreamDrillOutcome(status: string): Exclude<DrillOutcome, "skipped"> {
+  if (status === "ready" || status === "open") return "passed";
+  if (status === "failed" || status === "stopped") return "failed";
+  return "waiting";
+}
 
 export function isDrillKind(value: unknown): value is DrillKind {
   return typeof value === "string" && (DRILL_KINDS as readonly string[]).includes(value);

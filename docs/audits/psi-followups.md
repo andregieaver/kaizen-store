@@ -314,6 +314,8 @@ The re-score ([psi-2026-10-31.md](psi-2026-10-31.md)) put the overall at 78.3 (8
 - [x] **AGT-06, AST-03** The Dream Factory starts only on a store not yet open, and stops when the store is opened by hand before its
       last step (`dream-factory.int.test.ts`).
 - [x] **REL-06** The Dream Factory's minute kept as job `dream-factory.advance`, failing when a run threw.
+- [x] **AGT-06, AGT-12** The `dream_factory` drill counts as passed only once its run is ready (waiting until then, failed when the run
+      failed or was stopped; `settleDreamDrills()`, 1 November 2026). Left: commit a test run's scorecard as a recording.
 - [x] **ACC-07** A 24 px *Add* button on each palette tile (WCAG 2.2 2.5.7); a click on the tile still adds nothing
       (`builder-palette.spec.ts`).
 - [x] **DATA-04, UX-02** Ten more addresses through `normaliseEmail()` and the scan widened; no "Try again shortly." left, the wording

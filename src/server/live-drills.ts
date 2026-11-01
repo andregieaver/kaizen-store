@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { db } from "@/db/client";
 import { DRILL_PROMPT } from "@/lib/dream-factory";
-import { DRILL_EMAIL_DOMAIN, DRILL_WORDS, drillPlan, PILOT_TASKS, pilotProblems, publishOutcome, type DrillKind, type DrillResult, type PilotProduct, type PilotTurn } from "@/lib/live-drills";
+import { DRILL_EMAIL_DOMAIN, DRILL_WORDS, dreamDrillOutcome, drillPlan, PILOT_TASKS, pilotProblems, publishOutcome, type DrillKind, type DrillResult, type PilotProduct, type PilotTurn } from "@/lib/live-drills";
 import { siteUrl } from "@/lib/site";
 
 import { runAgentEval } from "./agent-eval";
@@ -286,7 +286,42 @@ async function dreamDrill(): Promise<DrillResult> {
         where lower(a.email) = lower(${email}) order by r.created_at desc limit 1`,
   );
   if (!run) return { kind: "dream_factory", outcome: "failed", detail: `The store ${confirmed.storeName} was made, but its Dream Factory run did not start.` };
-  return { kind: "dream_factory", outcome: "passed", detail: `Store ${run.slug} made through sign-up and its run ${run.id} started; Platform → AI follows its score.` };
+  // Passed only once the run is ready (PSI AGT-06): `settleDreamDrills()` writes the outcome when the run ends.
+  return { kind: "dream_factory", outcome: "waiting", run: run.id, detail: `Store ${run.slug} made through sign-up and its run ${run.id} started; it counts once the run is ready.` };
+}
+
+const isUuid = (id: string | undefined): id is string => typeof id === "string" && z.uuid().safeParse(id).success;
+
+/**
+ * Settles each Dream Factory drill still waiting (PSI AGT-06) from its run's status: passed at ready or open, failed when the run failed or
+ * was stopped; one still running or asking stays waiting. Run by the dispatcher with the drills. Returns how many results it settled.
+ */
+export async function settleDreamDrills(): Promise<number> {
+  const waiting = await typedRows(
+    z.object({ id: col.uuid, results: z.array(z.object({ kind: z.string(), outcome: z.string(), detail: z.string(), run: z.string().optional() }).passthrough()) }),
+    sql`select id, results from commerce.live_drills where status = 'done' and results @> ${JSON.stringify([{ kind: "dream_factory", outcome: "waiting" }])}::jsonb`,
+  );
+  let settled = 0;
+  for (const drill of waiting) {
+    const runs = drill.results.map((r) => r.run).filter(isUuid);
+    if (runs.length === 0) continue;
+    const statuses = new Map(
+      (await typedRows(z.object({ id: col.uuid, status: col.text }), sql`select id, status from commerce.dream_runs where id in (${sql.join(runs.map((id) => sql`${id}::uuid`), sql`, `)})`)).map((r) => [r.id, r.status]),
+    );
+    let changed = false;
+    const results = drill.results.map((r) => {
+      if (r.kind !== "dream_factory" || r.outcome !== "waiting" || !r.run) return r;
+      const status = statuses.get(r.run) ?? "stopped";
+      const outcome = dreamDrillOutcome(status);
+      if (outcome === "waiting") return r;
+      changed = true;
+      settled += 1;
+      return { ...r, outcome, detail: `${r.detail} The run ended ${status === "open" ? "ready, and the store was opened" : status}.` };
+    });
+    if (changed) await db().execute(sql`update commerce.live_drills set results = ${JSON.stringify(results)}::jsonb where id = ${drill.id}::uuid`);
+  }
+  if (settled > 0) log("info", "live_drill.dream_settled", { settled });
+  return settled;
 }
 
 async function runOne(storeId: string, kind: DrillKind, requestedBy: string | null): Promise<DrillResult> {
@@ -308,6 +343,11 @@ async function runOne(storeId: string, kind: DrillKind, requestedBy: string | nu
 
 /** The five-minute dispatcher's part: one requested run, claimed under a lock, each drill in order, the results kept. Returns how many drills ran. */
 export async function runLiveDrills(): Promise<number> {
+  try {
+    await settleDreamDrills();
+  } catch (error) {
+    log("error", "live_drill.dream_settle_failed", {}, error);
+  }
   const [claimed] = await typedRows(
     z.object({ id: col.uuid, store_id: col.uuid, requested_by: col.uuid.nullable(), kinds: z.array(z.string()) }),
     sql`
