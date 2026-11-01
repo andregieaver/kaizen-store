@@ -83,8 +83,11 @@ maturity for the run-up to launch. Point IDs are the audit's.
       taken away with `null`).
 - [x] **AGT-01 (screens of 30–31 Oct, part 3)** `set_price_list_buyers` (gate `public`, never automatic), `set_working_hours` (gate
       `public`, a member of staff's days that change), `list_loyalty_rewards` and `switch_loyalty_reward` (gate `public`).
-- [ ] **AGT-01 (what is left)** Still without tools, all rarer edits made on their pages: a loyalty reward or level made or changed (the
-      program has `set_bonus_program`, a customer's credits `adjust_customer_credits`), a price list's scope, breaks and rules.
+- [x] **AGT-01 (what is left)** Done 1 November 2026: `save_loyalty_reward` makes or changes a reward by its name (free shipping, a
+      product free, an amount off per country; its cost in credits), `set_bonus_program` takes `levels` (D392, checked as the bonus page
+      checks them), and a price list's scope (`set_price_list_scope`: products and categories by name), quantity breaks
+      (`set_price_list_breaks`: the variants named replaced, the others kept) and quantity rules (`set_price_list_rules`, per variant), each
+      checked before the yes (`SCREEN_CHECKED`) and made by the page's own service (`screen-tools.int.test.ts`).
 - [x] **AGT-01 (reviews)** No tool, on purpose: review moderation stays on the Reviews page, since a review's words are never sent to a
       model (D301), so the agent could not judge one.
 - [x] **ACC-01** Axe on the `signed-in` Playwright project: `e2e/signed-in/a11y.spec.ts`, ten owner pages and four platform pages, no
@@ -255,6 +258,15 @@ stay in the standing document's *What comes next*.
       with it; the alternative it names, SRI hashes, is experimental. Enforcing it means giving up the admin's prerendered shells or
       trying SRI on a preview first: a decision, not a quick fix. HSTS `includeSubDomains` waits for the owner to confirm every subdomain
       of `kaizenaflow.com` serves HTTPS.
+      Looked at again 1 November 2026, against a production build: SRI cannot take `'unsafe-inline'` away either. An admin shell carries
+      three inline scripts (the admin's own bootstrap, React's `$RT` line and Turbopack's chunk list, which differs per route), and every
+      streamed part adds inline scripts whose content differs per request (the page's data, `self.__next_f.push`, and React's `$RC`
+      calls); SRI puts hashes only on scripts loaded from files, and no hash can name a per-request script. So the choice is a nonce with
+      the admin rendered per request (losing its prerendered shells), or keeping `'unsafe-inline'`. Enforcing only the origins (the pay
+      routes' form) has a cost found the same day: the HTML component (D91) draws the owner's HTML in a `srcdoc` frame, which inherits the
+      page's policy, so a widget with a script from elsewhere would stop working in the builder's canvas and the admin's previews (the
+      live site keeps it, being Report-Only). Doing that first needs the frame served from an address of its own. Both are the owner's to
+      choose.
 - [ ] **AST-09, AST-01, AGT-14 (6)** An eval that measures the model: payloads the filter does not catch, several runs per model, a model
       save gated on a pass, the replay failing on a changed model or tool description.
       Tool descriptions done 30 October 2026: every recording carries `toolsVersion()` (a hash of each tool's name, description and

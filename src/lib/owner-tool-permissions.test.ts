@@ -25,7 +25,7 @@ const CHANGING = new Set([
   "save_report",
   "set_target",
   "receive_purchase_order", "schedule_report", "set_customer_group", "decide_creator", "set_creator_rate", "record_creator_payout", "set_price_list_prices",
-  "set_price_list_buyers", "set_working_hours", "switch_loyalty_reward",
+  "set_price_list_buyers", "set_working_hours", "switch_loyalty_reward", "save_loyalty_reward", "set_price_list_scope", "set_price_list_breaks", "set_price_list_rules",
   "buy_domain", "renew_domain", "set_domain_renewal", "change_dns", "set_up_email", "verify_domain_for", "undo_dns_change", "switch_nameservers", "connect_domain",
 ]);
 

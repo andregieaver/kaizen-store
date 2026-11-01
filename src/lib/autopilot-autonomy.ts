@@ -28,6 +28,10 @@ export const TOOL_AREAS: Readonly<Record<string, AutonomyArea>> = {
   receive_purchase_order: "catalogue",
   // A price list's fixed prices (AGT-01), as set_prices.
   set_price_list_prices: "catalogue",
+  // What a price list reaches and its quantity breaks and rules (AGT-01), as its prices are.
+  set_price_list_scope: "catalogue",
+  set_price_list_breaks: "catalogue",
+  set_price_list_rules: "catalogue",
   create_field_group: "catalogue",
   set_fields: "catalogue",
   // Website
@@ -76,6 +80,8 @@ export const TOOL_AREAS: Readonly<Record<string, AutonomyArea>> = {
   switch_email_automation: "marketing",
   // A loyalty reward switched on or off (AGT-01), as a discount is.
   switch_loyalty_reward: "marketing",
+  // A loyalty reward made or changed (AGT-01), as a discount is made.
+  save_loyalty_reward: "marketing",
   // Messages to customers and staff
   mark_order_sent: "messages",
   send_draft_order: "messages",

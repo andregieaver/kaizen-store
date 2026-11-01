@@ -217,6 +217,10 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   set_working_hours: "bookings:write",
   list_loyalty_rewards: "marketing:read",
   switch_loyalty_reward: "marketing:write",
+  save_loyalty_reward: "marketing:write",
+  set_price_list_scope: "customers:write",
+  set_price_list_breaks: "customers:write",
+  set_price_list_rules: "customers:write",
   create_transfer: "products:write",
   // The redirects and the 404 report are the Website section's (D168): read like its pages, added with the right to change the website.
   redirect_overview: "website:read",

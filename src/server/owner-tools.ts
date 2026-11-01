@@ -224,8 +224,7 @@ import {
   setPriceListBuyersTool,
   setPriceListPricesTool,
   setWorkingHoursTool,
-  switchLoyaltyRewardTool,
-} from "./screen-tools";
+  switchLoyaltyRewardTool, saveLoyaltyRewardTool, setPriceListScopeTool, setPriceListBreaksTool, setPriceListRulesTool } from "./screen-tools";
 import { createTransferTool, listPurchaseOrdersTool, listTransfersTool, preflightStockTool, setBackorderTool, setStockTool, stockHistoryTool, stockLevelsTool } from "./stock-tools";
 import { pickupOrdersTool, shippingOverviewTool } from "./shipping-tools";
 import { notificationSettingsTool, orderRulesTool, parcelTrackingTool } from "./notification-tools";
@@ -1462,7 +1461,7 @@ async function getBonusProgramTool({ store }: OwnerToolContext, { customer }: Ow
 
 /** The settings a change would make: what the store has now, with what was given put over it. Problems are said for the model. */
 async function bonusSettingsFor(store: Store, input: OwnerToolInput<"set_bonus_program">): Promise<BonusSettings> {
-  if (Object.values(input).every((v) => v === undefined)) return fail("Say what to change: switch it on or off, credits back, the wait, the most of an order, the least to use or expiry.");
+  if (Object.values(input).every((v) => v === undefined)) return fail("Say what to change: switch it on or off, credits back, the wait, the most of an order, the least to use, expiry or the loyalty levels.");
   const current = await getBonusSettings(store.id);
   const next: BonusSettings = { ...BONUS_DEFAULTS, ...current };
   if (input.enabled !== undefined) next.enabled = input.enabled;
@@ -1479,6 +1478,17 @@ async function bonusSettingsFor(store: Store, input: OwnerToolInput<"set_bonus_p
     next.minRedeemMinor = minor;
   }
   if (input.expires_after_months !== undefined) next.expiresMonths = input.expires_after_months;
+  // Loyalty levels (D392), lowest first, replacing the ones there; their order and rates are checked as the bonus page's save checks them.
+  if (input.levels !== undefined) {
+    const currency = mainCurrency(store);
+    next.levels = input.levels.map((level) => {
+      const fromMinor = parsePrice(level.from, currency);
+      if (fromMinor === null || fromMinor <= 0) return fail(`"${level.from}" is not an amount in ${currency} for the level ${level.name}.`);
+      const bps = percentTextToBps(String(level.percent_back));
+      if (bps === null) return fail(`Credits back at ${level.name} is a percentage with at most two decimals, such as 7.5.`);
+      return { name: level.name, fromMinor, earnBps: bps };
+    });
+  }
   return next;
 }
 
@@ -2511,6 +2521,10 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   set_working_hours: setWorkingHoursTool,
   list_loyalty_rewards: listLoyaltyRewardsTool,
   switch_loyalty_reward: switchLoyaltyRewardTool,
+  save_loyalty_reward: saveLoyaltyRewardTool,
+  set_price_list_scope: setPriceListScopeTool,
+  set_price_list_breaks: setPriceListBreaksTool,
+  set_price_list_rules: setPriceListRulesTool,
   create_transfer: createTransferTool,
   ai_usage: aiUsageTool,
   post_to_slack: postToSlackTool,

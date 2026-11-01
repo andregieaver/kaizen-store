@@ -13,12 +13,14 @@ import type { OwnerToolInput } from "@/lib/owner-tools";
 import type { Membership } from "./auth";
 import { RESOURCE_KINDS, listResources, saveResource } from "./bookings";
 import { bonusProgram } from "./bonus";
-import { listRewards, switchReward } from "./bonus-rewards";
+import { listRewards, saveReward, switchReward } from "./bonus-rewards";
 import { listCompanies } from "./companies";
 import { decideCreator, listCreators, recordCreatorPayout, setCreatorRate } from "./creators";
 import { listTiers, setCustomerTier } from "./customer-tiers";
 import { liabilityRows } from "./liabilities";
-import { listCurrencies, listPriceLists, setAssignments, setPrices } from "./price-lists";
+import { listBreaks, listCurrencies, listPriceLists, setAssignments, setListBreaks, setListRules, setPrices, setScope } from "./price-lists";
+import { findProduct } from "./product-tools";
+import { listTerms } from "./taxonomy";
 import { OwnerToolError } from "./owner-tool-error";
 import { getPurchaseOrder, listPurchaseOrders, receivePurchaseOrder } from "./purchase-orders";
 import { listReportSchedules, reportRecipients, saveReportSchedule } from "./report-schedules";
@@ -399,12 +401,176 @@ export async function switchLoyaltyRewardTool(ctx: Ctx, input: OwnerToolInput<"s
   return { done: `"${reward.name}" is ${input.on ? "on" : "off"}${input.on ? "" : ": codes handed out for it stop working"}.` };
 }
 
+/** A reward made or changed (D401), resolved as the bonus page's form would be filled: a name that is new makes one, an existing one changes it. */
+async function rewardSave(ctx: Ctx, input: OwnerToolInput<"save_loyalty_reward">) {
+  const [rewards, program] = await Promise.all([listRewards(ctx.store.id), bonusProgram(db(), ctx.store.id)]);
+  const found = rewards.filter((r) => same(r.name, input.reward));
+  if (found.length > 1) return fail(`More than one reward is called "${input.reward}".`);
+  const current = found[0] ?? null;
+  if (!current && (!input.costs || !input.gives)) return fail(`The store has no reward "${input.reward}" yet: to make it, say what it costs and what it gives.`);
+  if (current && Object.entries(input).every(([key, value]) => key === "reward" || value === undefined)) return fail(`Say what to change about "${current.name}".`);
+  const costMinor = input.costs ? parsePrice(input.costs, program.currency) : (current?.costMinor ?? null);
+  if (costMinor === null || costMinor <= 0) return fail(`"${input.costs}" is not a cost in credits (${program.currency}), such as 100 or 99,50.`);
+  const kind = input.gives ?? current!.kind;
+  let productId = kind === "product" ? (current?.kind === "product" ? current.productId : null) : null;
+  if (kind === "product" && input.product) productId = (await findProduct(ctx.store, input.product)).id;
+  if (kind === "product" && !productId) return fail("Say which product the reward gives free (its handle or title).");
+  let amounts: Record<string, number> = kind === "amount" && current?.kind === "amount" ? current.amounts : {};
+  if (kind === "amount" && input.amounts) {
+    amounts = {};
+    for (const [code, typed] of Object.entries(input.amounts)) {
+      const market = ctx.store.markets.find((m) => m.code === code.toUpperCase());
+      if (!market) return fail(`${code.toUpperCase()} is not a country the store sells in (${ctx.store.markets.map((m) => m.code).join(", ")}).`);
+      const minor = parsePrice(typed, market.currency);
+      if (minor === null || minor <= 0) return fail(`"${typed}" is not an amount in ${market.currency}.`);
+      amounts[market.code] = minor;
+    }
+  }
+  if (kind === "amount" && Object.keys(amounts).length === 0) return fail("Say the amount off in at least one country, such as { NO: \"100\" }.");
+  const name = input.new_name ?? current?.name ?? input.reward;
+  if (input.new_name && rewards.some((r) => r.id !== current?.id && same(r.name, input.new_name!))) return fail(`Another reward is called "${input.new_name}" already.`);
+  return {
+    id: current?.id ?? null,
+    currency: program.currency,
+    form: { name, names: current?.names ?? {}, costMinor, kind, productId, amounts, active: input.on ?? current?.active ?? true },
+  };
+}
+
+export async function saveLoyaltyRewardTool(ctx: Ctx, input: OwnerToolInput<"save_loyalty_reward">) {
+  const { id, form, currency } = await rewardSave(ctx, input);
+  const saved = await saveReward(memberOf(ctx), id, form);
+  if (!saved.ok) return fail(saved.problems.join(" "));
+  return {
+    done: `${id ? "Changed" : "Made"} the loyalty reward "${form.name}": it gives ${REWARD_KIND[form.kind]} for ${money(form.costMinor, currency)} in credits, ${form.active ? "on" : "off"}.`,
+    pages: { bonus: adminLink(ctx.store, "/bonus") },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// A price list's scope, quantity breaks and rules (D321, D323 E3)
+// ---------------------------------------------------------------------------
+
+/** One price list of the store by its name; none, or more than one, is refused. */
+async function oneList(ctx: Ctx, name: string) {
+  const lists = (await listPriceLists(ctx.store.id)).filter((l) => same(l.name, name));
+  if (lists.length !== 1) return fail(lists.length === 0 ? `The store has no price list "${name}". list_price_lists lists them.` : `More than one price list is called "${name}".`);
+  return lists[0];
+}
+
+/** The store's variants by SKU (case aside); an SKU the store does not have is refused. */
+async function variantsBySku(ctx: Ctx, skus: readonly string[]): Promise<Map<string, string>> {
+  const wanted = [...new Set(skus.map((s) => s.toLowerCase()))];
+  const rows = await db().execute<Row>(sql`
+    select id, sku from commerce.product_variants where store_id = ${ctx.store.id}::uuid and lower(sku) in (${sql.join(wanted.map((k) => sql`${k}`), sql`, `)})
+  `);
+  const ids = new Map(rows.map((r) => [String(r.sku).toLowerCase(), String(r.id)]));
+  for (const sku of wanted) if (!ids.has(sku)) fail(`The store has no variant with the SKU ${sku}.`);
+  return ids;
+}
+
+async function listScope(ctx: Ctx, input: OwnerToolInput<"set_price_list_scope">) {
+  const list = await oneList(ctx, input.list);
+  const productIds = [];
+  for (const ref of input.products) productIds.push((await findProduct(ctx.store, ref)).id);
+  const categories = input.categories.length ? (await listTerms({ storeId: ctx.store.id, contentType: "product" })).filter((term) => term.kind === "category") : [];
+  const termIds = input.categories.map((name) => {
+    const found = categories.filter((c) => same(c.name, name));
+    if (found.length !== 1) return fail(found.length === 0 ? `The store has no product category "${name}".` : `More than one product category is called "${name}".`);
+    return found[0].id;
+  });
+  return { list, productIds, termIds };
+}
+
+export async function setPriceListScopeTool(ctx: Ctx, input: OwnerToolInput<"set_price_list_scope">) {
+  const { list, productIds, termIds } = await listScope(ctx, input);
+  const saved = await setScope(memberOf(ctx), list.id, { productIds, termIds });
+  if (!saved.ok) return fail(saved.problems.join(" "));
+  return {
+    done:
+      productIds.length + termIds.length === 0
+        ? `The price list "${list.name}"'s percentage reaches every product.`
+        : `The price list "${list.name}"'s percentage reaches ${productIds.length} ${productIds.length === 1 ? "product" : "products"} and ${termIds.length} ${termIds.length === 1 ? "category" : "categories"}.`,
+    pages: { price_list: adminLink(ctx.store, `/price-lists/${list.id}`) },
+  };
+}
+
+/** The list's breaks with those of the variants named replaced (the others kept as they are), in the shape the list's page saves. */
+async function listBreakRows(ctx: Ctx, input: OwnerToolInput<"set_price_list_breaks">) {
+  const list = await oneList(ctx, input.list);
+  const ids = await variantsBySku(ctx, input.variants.map((v) => v.sku));
+  const named = new Set(input.variants.map((v) => ids.get(v.sku.toLowerCase())!));
+  for (const v of input.variants) {
+    for (const b of v.breaks) {
+      const priced = b.prices && Object.keys(b.prices).length > 0;
+      if ((b.percent_off === undefined) === !priced) return fail(`${v.sku} from ${b.from}: give either a percentage off or prices, one of the two.`);
+    }
+  }
+  const kept = (await listBreaks(ctx.store.id, list.id, ctx.store.localization.locales[0] ?? "")).filter((b) => !named.has(b.variantId));
+  const keptRows = kept.map((b) => ({ variantId: b.variantId, from: b.from, percent: b.percent, prices: b.prices }));
+  const given = input.variants.flatMap((v) =>
+    v.breaks.map((b) => ({
+      variantId: ids.get(v.sku.toLowerCase())!,
+      from: b.from,
+      percent: b.percent_off ?? null,
+      prices: Object.fromEntries(Object.entries(b.prices ?? {}).map(([c, a]) => [c.toUpperCase(), a])),
+    })),
+  );
+  return { list, rows: [...keptRows, ...given], count: given.length };
+}
+
+export async function setPriceListBreaksTool(ctx: Ctx, input: OwnerToolInput<"set_price_list_breaks">) {
+  const { list, rows, count } = await listBreakRows(ctx, input);
+  const saved = await setListBreaks(memberOf(ctx), list.id, rows);
+  if (!saved.ok) return fail(saved.problems.join(" "));
+  return {
+    done: `The price list "${list.name}" has ${count} quantity ${count === 1 ? "break" : "breaks"} for the ${input.variants.length} ${input.variants.length === 1 ? "variant" : "variants"} named; its other variants keep theirs.`,
+    pages: { price_list: adminLink(ctx.store, `/price-lists/${list.id}`) },
+  };
+}
+
+/** The rules of the variants named, as the list's page saves them: each variant's own (all three empty takes it away); the list's other variants are not touched. */
+async function listRuleRows(ctx: Ctx, input: OwnerToolInput<"set_price_list_rules">) {
+  const list = await oneList(ctx, input.list);
+  const ids = await variantsBySku(ctx, input.rules.map((r) => r.sku));
+  for (const r of input.rules) {
+    if (r.min !== null && r.max !== null && r.min > r.max) return fail(`${r.sku}: the least (${r.min}) is more than the most (${r.max}).`);
+  }
+  const rows = input.rules.map((r) => ({ variantId: ids.get(r.sku.toLowerCase())!, min: r.min, max: r.max, step: r.step }));
+  const set = rows.filter((r) => r.min !== null || r.max !== null || r.step !== null).length;
+  return { list, rows, set, removed: rows.length - set };
+}
+
+export async function setPriceListRulesTool(ctx: Ctx, input: OwnerToolInput<"set_price_list_rules">) {
+  const { list, rows, set, removed } = await listRuleRows(ctx, input);
+  const saved = await setListRules(memberOf(ctx), list.id, rows);
+  if (!saved.ok) return fail(saved.problems.join(" "));
+  return {
+    done: `The price list "${list.name}" has quantity rules for ${set} ${set === 1 ? "variant" : "variants"}${removed ? ` and none for ${removed}` : ""}; its other variants keep theirs.`,
+    pages: { price_list: adminLink(ctx.store, `/price-lists/${list.id}`) },
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Checked before the owner's yes is asked
 // ---------------------------------------------------------------------------
 
 /** A change that could not be made is refused now, never kept for a yes: the same resolution the tool makes, without writing. */
-export const SCREEN_CHECKED = ["receive_purchase_order", "schedule_report", "set_customer_group", "decide_creator", "set_creator_rate", "record_creator_payout", "set_price_list_prices", "set_price_list_buyers", "set_working_hours", "switch_loyalty_reward"] as const;
+export const SCREEN_CHECKED = [
+  "receive_purchase_order",
+  "schedule_report",
+  "set_customer_group",
+  "decide_creator",
+  "set_creator_rate",
+  "record_creator_payout",
+  "set_price_list_prices",
+  "set_price_list_buyers",
+  "set_working_hours",
+  "switch_loyalty_reward",
+  "save_loyalty_reward",
+  "set_price_list_scope",
+  "set_price_list_breaks",
+  "set_price_list_rules",
+] as const;
 export type ScreenChecked = (typeof SCREEN_CHECKED)[number];
 
 export async function preflightScreenTool(ctx: Ctx, name: ScreenChecked, input: Record<string, unknown>): Promise<void> {
@@ -415,5 +581,9 @@ export async function preflightScreenTool(ctx: Ctx, name: ScreenChecked, input: 
   else if (name === "set_price_list_buyers") await listBuyers(ctx, input as OwnerToolInput<"set_price_list_buyers">);
   else if (name === "set_working_hours") await staffHours(ctx, input as OwnerToolInput<"set_working_hours">);
   else if (name === "switch_loyalty_reward") await rewardTarget(ctx, input as OwnerToolInput<"switch_loyalty_reward">);
+  else if (name === "save_loyalty_reward") await rewardSave(ctx, input as OwnerToolInput<"save_loyalty_reward">);
+  else if (name === "set_price_list_scope") await listScope(ctx, input as OwnerToolInput<"set_price_list_scope">);
+  else if (name === "set_price_list_breaks") await listBreakRows(ctx, input as OwnerToolInput<"set_price_list_breaks">);
+  else if (name === "set_price_list_rules") await listRuleRows(ctx, input as OwnerToolInput<"set_price_list_rules">);
   else await creatorChecked(ctx, name, input);
 }

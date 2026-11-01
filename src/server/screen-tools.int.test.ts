@@ -261,6 +261,74 @@ describe("list_loyalty_rewards and switch_loyalty_reward", () => {
   });
 });
 
+describe("save_loyalty_reward and loyalty levels", () => {
+  it("makes a reward by its name, changes what is given, refuses what cannot be made, and sets levels on the program", async () => {
+    const loyal = await withFeatures("bonus");
+    const ctx = { account: loyal.member.account, store: loyal.member.store, invalidate: () => {} };
+    expect(await refusal(ownerTools.preflightOwnerTool(ctx, "save_loyalty_reward", { reward: "Kaffe" }))).toContain("say what it costs and what it gives");
+    expect(await refusal(ownerTools.preflightOwnerTool(ctx, "save_loyalty_reward", { reward: "Kaffe", costs: "100", gives: "amount", amounts: { JP: "50" } }))).toContain("JP is not a country the store sells in");
+    expect(await refusal(ownerTools.preflightOwnerTool(ctx, "save_loyalty_reward", { reward: "Kaffe", costs: "free", gives: "free_shipping" }))).toContain('"free" is not a cost in credits');
+
+    const market = loyal.member.store.markets[0];
+    const made = (await ownerTools.runOwnerTool(ctx, "save_loyalty_reward", { reward: "Kaffe", costs: "100", gives: "amount", amounts: { [market.code.toLowerCase()]: "50" } })) as Answer;
+    expect(made.done).toContain('Made the loyalty reward "Kaffe": it gives an amount off');
+    const kaffe = (await listRewards(store.storeId)).find((r) => r.name === "Kaffe");
+    expect(kaffe).toMatchObject({ kind: "amount", costMinor: 10_000, amounts: { [market.code]: 5_000 }, active: true });
+
+    const changed = (await ownerTools.runOwnerTool(ctx, "save_loyalty_reward", { reward: "kaffe", new_name: "Kaffe gratis", costs: "150", on: false })) as Answer;
+    expect(changed.done).toContain('Changed the loyalty reward "Kaffe gratis"');
+    expect((await listRewards(store.storeId)).find((r) => r.id === kaffe?.id)).toMatchObject({ name: "Kaffe gratis", costMinor: 15_000, kind: "amount", active: false });
+    expect(await refusal(ownerTools.preflightOwnerTool(ctx, "save_loyalty_reward", { reward: "Kaffe gratis" }))).toContain("Say what to change");
+
+    await ownerTools.runOwnerTool(ctx, "set_bonus_program", { enabled: true, percent_back: 2 });
+    expect(await refusal(ownerTools.preflightOwnerTool(ctx, "set_bonus_program", { levels: [{ name: "Gull", from: "lots", percent_back: 5 }] }))).toContain('"lots" is not an amount');
+    await ownerTools.runOwnerTool(ctx, "set_bonus_program", { levels: [{ name: "Gull", from: "5000", percent_back: 5 }] });
+    const [settings] = await db().execute<Row>(sql`select levels from commerce.bonus_settings where store_id = ${store.storeId}::uuid`);
+    expect(settings.levels).toEqual([{ name: "Gull", fromMinor: 500_000, earnBps: 500 }]);
+    await ownerTools.runOwnerTool(ctx, "set_bonus_program", { levels: [] });
+    const [cleared] = await db().execute<Row>(sql`select levels from commerce.bonus_settings where store_id = ${store.storeId}::uuid`);
+    expect(cleared.levels).toEqual([]);
+  });
+});
+
+describe("a price list's scope, quantity breaks and rules", () => {
+  it("sets them by name and SKU, keeps the variants not named as they were, and refuses what fits nothing", async () => {
+    const made = await savePriceList(store.member, null, { name: "Kantine", percent: 15, active: true });
+    if (!made.ok) throw new Error("the list was not made");
+    const [{ id: listId }] = await db().execute<{ id: string }>(sql`select id::text from commerce.price_lists where store_id = ${store.storeId}::uuid and name = 'Kantine'`);
+    const [product] = await db().execute<Row>(sql`select p.id, p.handle from commerce.products p join commerce.product_variants v on v.product_id = p.id where v.store_id = ${store.storeId}::uuid and v.sku = ${SKU}`);
+
+    expect(await refusal(preflight("set_price_list_scope", { list: "Kantine", categories: ["Ukjent"] }))).toBe('The store has no product category "Ukjent".');
+    expect((await run("set_price_list_scope", { list: "kantine", products: [String(product.handle)] })).done).toBe('The price list "Kantine"\'s percentage reaches 1 product and 0 categories.');
+    expect((await listTargets(store.storeId, listId)).productIds).toEqual([String(product.id)]);
+    expect((await run("set_price_list_scope", { list: "Kantine" })).done).toBe('The price list "Kantine"\'s percentage reaches every product.');
+
+    const MUG = "DEMO-MUG-WHITE";
+    expect(await refusal(preflight("set_price_list_breaks", { list: "Kantine", variants: [{ sku: SKU, breaks: [{ from: 10 }] }] }))).toContain("give either a percentage off or prices");
+    expect(await refusal(preflight("set_price_list_breaks", { list: "Kantine", variants: [{ sku: "NO-SUCH", breaks: [] }] }))).toBe("The store has no variant with the SKU no-such.");
+    await run("set_price_list_breaks", { list: "Kantine", variants: [{ sku: SKU, breaks: [{ from: 10, percent_off: 10 }, { from: 50, prices: { nok: "150" } }] }] });
+    await run("set_price_list_breaks", { list: "Kantine", variants: [{ sku: MUG, breaks: [{ from: 6, percent_off: 5 }] }] });
+    const breaks = await db().execute<Row>(sql`
+      select v.sku, b.from_quantity, b.percent, b.amounts from commerce.price_list_breaks b join commerce.product_variants v on v.id = b.variant_id
+      where b.list_id = ${listId}::uuid order by v.sku, b.from_quantity`);
+    expect(breaks.map((b) => [b.sku, b.from_quantity, b.percent, b.amounts])).toEqual([
+      [MUG, 6, 5, null],
+      [SKU, 10, 10, null],
+      [SKU, 50, null, { NOK: 15_000 }],
+    ]);
+    await run("set_price_list_breaks", { list: "Kantine", variants: [{ sku: SKU, breaks: [] }] });
+    const left = await db().execute<Row>(sql`select count(*)::int as n from commerce.price_list_breaks where list_id = ${listId}::uuid`);
+    expect(left[0].n).toBe(1);
+
+    expect(await refusal(preflight("set_price_list_rules", { list: "Kantine", rules: [{ sku: SKU, min: 10, max: 5 }] }))).toContain("the least (10) is more than the most (5)");
+    expect((await run("set_price_list_rules", { list: "Kantine", rules: [{ sku: SKU, min: 6, step: 6 }, { sku: MUG, max: 24 }] })).done).toContain("quantity rules for 2 variants");
+    expect((await run("set_price_list_rules", { list: "Kantine", rules: [{ sku: MUG }] })).done).toContain("quantity rules for 0 variants and none for 1");
+    const rules = await db().execute<Row>(sql`
+      select v.sku, q.min_quantity, q.quantity_step from commerce.price_list_quantity_rules q join commerce.product_variants v on v.id = q.variant_id where q.list_id = ${listId}::uuid`);
+    expect(rules.map((r) => [r.sku, r.min_quantity, r.quantity_step])).toEqual([[SKU, 6, 6]]);
+  });
+});
+
 describe("the reads", () => {
   it("say what there is, or plainly that there is nothing, and what can be booked waits for the store's bookings to be on", async () => {
     const owed = await run("owed_to_customers");

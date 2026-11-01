@@ -583,13 +583,84 @@ export const OWNER_TOOLS = [
   ),
   tool(
     "list_loyalty_rewards",
-    "The rewards customers can buy with their bonus credits (D401): each reward's name, what it gives (free shipping, a product, an amount off), its cost in credits, and whether it is on. Read-only: switch_loyalty_reward switches one; a reward is made on the bonus program's page.",
+    "The rewards customers can buy with their bonus credits (D401): each reward's name, what it gives (free shipping, a product, an amount off), its cost in credits, and whether it is on. Read-only: save_loyalty_reward makes or changes one, switch_loyalty_reward switches one.",
     z.object({}),
   ),
   tool(
     "switch_loyalty_reward",
     "Switches one loyalty reward on or off (D401), by its name (list_loyalty_rewards). Codes already handed out for it stop or start working with it. Needs the owner's approval.",
     z.object({ reward: z.string().trim().min(1).max(120).describe("The reward's name."), on: z.boolean() }),
+    "public",
+  ),
+  tool(
+    "save_loyalty_reward",
+    "Makes a loyalty reward customers can buy with their bonus credits (D401), or changes one by its name (list_loyalty_rewards), as the bonus program's page does. A reward gives free shipping, one unit of a product free, or an amount off per country; its cost is in credits, written as the owner writes it in the credits' currency (get_bonus_program). A code already handed out takes off what the reward says after the change. Give only what changes when changing one. At most 20 rewards. Needs the owner's approval.",
+    z.object({
+      reward: z.string().trim().min(1).max(60).describe("The reward's name: a new one makes a reward, an existing one changes it."),
+      new_name: z.string().trim().min(1).max(60).optional().describe("A new name for an existing reward."),
+      costs: z.string().trim().min(1).max(20).optional().describe("Its cost in credits as written (100 or 99,50); needed for a new reward."),
+      gives: z.enum(["free_shipping", "product", "amount"]).optional().describe("What it gives; needed for a new reward."),
+      product: z.string().trim().min(1).max(200).optional().describe("For a product: the product given free, by its handle or title."),
+      amounts: z
+        .record(z.string().regex(/^[A-Za-z]{2}$/), z.string().trim().min(1).max(20))
+        .optional()
+        .describe("For an amount off: per country of the store (NO, SE ...), the amount as written in that country's currency."),
+      on: z.boolean().optional().describe("Whether customers can buy it; a new reward is on unless false."),
+    }),
+    "public",
+  ),
+  tool(
+    "set_price_list_scope",
+    "Sets what one of the store's price lists' percentage reaches (D321), as the list's page does: products by their handle or title, and product categories by name. What is given replaces what it reached; both empty makes it reach every product. Fixed prices on the list are not touched. Needs the owner's approval.",
+    z.object({
+      list: z.string().trim().min(1).max(120).describe("The price list's name (list_price_lists)."),
+      products: z.array(z.string().trim().min(1).max(200)).max(200).default([]).describe("Products, by handle or title."),
+      categories: z.array(z.string().trim().min(1).max(120)).max(100).default([]).describe("Product categories, by name."),
+    }),
+    "public",
+  ),
+  tool(
+    "set_price_list_breaks",
+    "Sets the quantity breaks of one of the store's price lists for the variants named (D323 E3), as the list's page does: from a quantity (2 or more), either a percentage off or a price per currency as written. The breaks of each variant named are replaced by those given (none given for a variant takes its breaks away); the list's other variants keep theirs. At most 10 breaks a variant. Needs the owner's approval.",
+    z.object({
+      list: z.string().trim().min(1).max(120).describe("The price list's name (list_price_lists)."),
+      variants: z
+        .array(
+          z.object({
+            sku: z.string().trim().min(1).max(64),
+            breaks: z
+              .array(
+                z.object({
+                  from: z.number().int().min(2).max(9999),
+                  percent_off: z.number().int().min(1).max(99).optional(),
+                  prices: z.record(z.string().regex(/^[A-Za-z]{3}$/), z.string().trim().min(1).max(20)).optional().describe("Per currency, the price each from this quantity, as written."),
+                }),
+              )
+              .max(10),
+          }),
+        )
+        .min(1)
+        .max(100),
+    }),
+    "public",
+  ),
+  tool(
+    "set_price_list_rules",
+    "Sets the quantity rules one of the store's price lists gives its buyers for the variants named (D323 E3): the least they may order, the most, and the step (sold by 6: 6, 12, 18). Null for one of them leaves it unset; all three null takes the list's rule for that variant away. The list's other variants keep theirs. Needs the owner's approval.",
+    z.object({
+      list: z.string().trim().min(1).max(120).describe("The price list's name (list_price_lists)."),
+      rules: z
+        .array(
+          z.object({
+            sku: z.string().trim().min(1).max(64),
+            min: z.number().int().min(1).max(9999).nullable().default(null),
+            max: z.number().int().min(1).max(9999).nullable().default(null),
+            step: z.number().int().min(1).max(9999).nullable().default(null),
+          }),
+        )
+        .min(1)
+        .max(200),
+    }),
     "public",
   ),
   tool(
@@ -1367,6 +1438,17 @@ export const OWNER_TOOLS = [
       max_percent_of_order: z.number().int().min(1).max(BONUS_REDEEM_PERCENT_MAX).optional().describe(`The most of an order's goods credits may pay, in percent, 1 to ${BONUS_REDEEM_PERCENT_MAX}.`),
       min_credits_to_use: z.string().trim().max(30).optional().describe("The least credits a customer can use at once, as the owner writes it in the store's main currency (such as 50 or 49,50); 0 for no minimum."),
       expires_after_months: z.number().int().min(1).max(BONUS_EXPIRY_MONTHS_MAX).nullable().optional().describe("Months after which unused credits expire (oldest first, with a reminder email); null so they never expire."),
+      levels: z
+        .array(
+          z.object({
+            name: z.string().trim().min(1).max(40).describe("The level's name as customers read it (Gold)."),
+            from: z.string().trim().min(1).max(30).describe("Paid for goods in the last 365 days from which it applies, as written in the credits' currency (5000)."),
+            percent_back: z.number().min(0).max(50).describe("Credits back at this level, in percent, more than the level below it."),
+          }),
+        )
+        .max(4)
+        .optional()
+        .describe("Loyalty levels (D392), lowest first, replacing the ones there; [] takes them all away."),
     }),
     "public",
   ),
@@ -2154,6 +2236,11 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
         input.max_percent_of_order !== undefined ? `credits can pay at most ${text("max_percent_of_order")} % of an order's goods` : "",
         input.min_credits_to_use !== undefined ? `least to use ${text("min_credits_to_use")}` : "",
         input.expires_after_months === null ? "credits never expire" : input.expires_after_months !== undefined ? `credits expire after ${text("expires_after_months")} months` : "",
+        Array.isArray(input.levels)
+          ? input.levels.length === 0
+            ? "no loyalty levels"
+            : `levels ${(input.levels as { name?: unknown; from?: unknown; percent_back?: unknown }[]).map((l) => `${String(l.name)} from ${String(l.from)} (${String(l.percent_back)} % back)`).join(", ")}`
+          : "",
       ].filter(Boolean);
       const sentence = parts.join("; ");
       return `Change the bonus program: ${sentence || "no change"}.`;
@@ -2239,6 +2326,37 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
       const days = Object.entries(week).map(([d, h]) => `${d} ${h ? `${h.open}–${h.close}` : "no appointments"}`);
       const switched = input.takes_bookings === undefined ? [] : [input.takes_bookings ? "takes bookings again" : "takes no new bookings"];
       return `${text("staff")}: ${[...days, ...switched].join(", ") || "nothing changes"}.`;
+    }
+    case "save_loyalty_reward": {
+      const parts = [
+        input.new_name ? `renamed "${text("new_name")}"` : "",
+        input.costs ? `costs ${text("costs")} in credits` : "",
+        input.gives === "free_shipping" ? "gives free shipping" : input.gives === "product" ? `gives the product ${text("product")} free` : input.gives === "amount" ? "gives an amount off" : "",
+        input.amounts ? Object.entries(input.amounts as Record<string, string>).map(([c, a]) => `${a} off in ${c.toUpperCase()}`).join(", ") : "",
+        input.on === false ? "off" : input.on === true ? "on" : "",
+      ].filter(Boolean);
+      return `The loyalty reward "${text("reward")}": ${parts.join("; ") || "as it is"}.`;
+    }
+    case "set_price_list_scope": {
+      const products = Array.isArray(input.products) ? (input.products as unknown[]).map(String) : [];
+      const categories = Array.isArray(input.categories) ? (input.categories as unknown[]).map(String) : [];
+      return products.length + categories.length === 0
+        ? `The price list "${text("list")}"'s percentage reaches every product.`
+        : `The price list "${text("list")}"'s percentage reaches ${[...products.map((p) => `"${p}"`), ...categories.map((c) => `the category "${c}"`)].join(", ")} only.`;
+    }
+    case "set_price_list_breaks": {
+      const variants = Array.isArray(input.variants) ? (input.variants as { sku?: unknown; breaks?: unknown[] }[]) : [];
+      const shown = variants.slice(0, 6).map((v) => `${String(v.sku)}: ${Array.isArray(v.breaks) && v.breaks.length ? `${v.breaks.length} ${v.breaks.length === 1 ? "break" : "breaks"}` : "no breaks"}`);
+      return `Quantity breaks on the price list "${text("list")}": ${shown.join("; ")}${variants.length > 6 ? `, and ${variants.length - 6} more` : ""}.`;
+    }
+    case "set_price_list_rules": {
+      const rules = Array.isArray(input.rules) ? (input.rules as { sku?: unknown; min?: unknown; max?: unknown; step?: unknown }[]) : [];
+      const shown = rules.slice(0, 6).map((r) =>
+        r.min == null && r.max == null && r.step == null
+          ? `${String(r.sku)}: no rule`
+          : `${String(r.sku)}: ${[r.min != null ? `at least ${String(r.min)}` : "", r.max != null ? `at most ${String(r.max)}` : "", r.step != null ? `by ${String(r.step)}` : ""].filter(Boolean).join(", ")}`,
+      );
+      return `Quantity rules on the price list "${text("list")}": ${shown.join("; ")}${rules.length > 6 ? `, and ${rules.length - 6} more` : ""}.`;
     }
     case "switch_loyalty_reward":
       return input.on ? `Switch the loyalty reward "${text("reward")}" on.` : `Switch the loyalty reward "${text("reward")}" off: codes handed out for it stop working.`;
