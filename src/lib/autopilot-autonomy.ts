@@ -63,6 +63,8 @@ export const TOOL_AREAS: Readonly<Record<string, AutonomyArea>> = {
   set_currencies: "setup",
   set_flat_shipping: "setup",
   save_shipping_method: "setup",
+  // A member of staff's hours (AGT-01): when shoppers can book them.
+  set_working_hours: "setup",
   connect_domain: "setup",
   // Marketing
   create_discount: "marketing",
@@ -72,6 +74,8 @@ export const TOOL_AREAS: Readonly<Record<string, AutonomyArea>> = {
   set_bonus_program: "marketing",
   set_affiliate_program: "marketing",
   switch_email_automation: "marketing",
+  // A loyalty reward switched on or off (AGT-01), as a discount is.
+  switch_loyalty_reward: "marketing",
   // Messages to customers and staff
   mark_order_sent: "messages",
   send_draft_order: "messages",
@@ -125,6 +129,8 @@ export const NEVER_AUTOMATIC: ReadonlySet<string> = new Set([
   "decide_creator",
   "set_creator_rate",
   "record_creator_payout",
+  // Who a price list is for decides who pays what (AGT-01), as a customer's group does.
+  "set_price_list_buyers",
   "issue_gift_card",
   "change_plan",
   "end_plan",

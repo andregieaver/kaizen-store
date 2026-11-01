@@ -16,7 +16,10 @@ const { saveTier } = await import("./customer-tiers");
 const { saveReport } = await import("./saved-reports");
 const { listReportSchedules } = await import("./report-schedules");
 const creators = await import("./creators");
-const { listPrices, savePriceList } = await import("./price-lists");
+const { listPrices, listTargets, savePriceList } = await import("./price-lists");
+const { storeOf } = await import("./product-data");
+const { saveReward, listRewards } = await import("./bonus-rewards");
+const { saveResource, listResources } = await import("./bookings");
 const { addLocation, clearLevels, levelsOf, newStore } = await import("./inventory-test-support");
 
 type Row = Record<string, unknown>;
@@ -191,6 +194,70 @@ describe("set_price_list_prices", () => {
       'The price list "Forhandler" has 0 fixed prices set and 1 taken away.',
     );
     expect((await fixed()).length).toBe(0);
+  });
+});
+
+/** The test store with these features on, read again so the tools see them. */
+async function withFeatures(...features: string[]) {
+  await db().execute(sql`update commerce.stores set features = array(select distinct unnest(features || ${`{${features.join(",")}}`}::text[])) where id = ${store.storeId}::uuid`);
+  const fresh = await storeOf(store.storeId);
+  if (!fresh) throw new Error("the store is gone");
+  return { ...store, member: { ...store.member, store: fresh } };
+}
+
+describe("set_price_list_buyers", () => {
+  it("gives a list to groups and companies by name, replacing who it was for, and refuses a name that fits nothing", async () => {
+    const made = await savePriceList(store.member, null, { name: "Engros", percent: 10, active: true });
+    if (!made.ok) throw new Error("the list was not made");
+    const [{ id: listId }] = await db().execute<{ id: string }>(sql`select id::text from commerce.price_lists where store_id = ${store.storeId}::uuid and name = 'Engros'`);
+    await saveTier(store.member, null, { name: "Grossist", percent: 5 });
+    const [company] = await db().execute<Row>(sql`insert into commerce.customer_companies (store_id, name) values (${store.storeId}::uuid, 'Fjord Kafé AS') returning id`);
+
+    expect(await refusal(preflight("set_price_list_buyers", { list: "Engros", groups: ["Ukjent"] }))).toBe('The store has no customer group "Ukjent".');
+    expect(await refusal(preflight("set_price_list_buyers", { list: "Engros", companies: ["Nobody AS"] }))).toBe('The store has no company "Nobody AS".');
+
+    expect((await run("set_price_list_buyers", { list: "engros", groups: ["grossist"], companies: ["fjord kafé as"] })).done).toBe('The price list "Engros" is for 1 group and 1 company.');
+    expect((await listTargets(store.storeId, listId)).companyIds).toEqual([String(company.id)]);
+    expect((await run("set_price_list_buyers", { list: "Engros", groups: ["Grossist"] })).done).toBe('The price list "Engros" is for 1 group and 0 companies.');
+    expect((await listTargets(store.storeId, listId)).companyIds).toEqual([]);
+  });
+});
+
+describe("set_working_hours", () => {
+  it("changes only the days given for a member of staff, keeps the rest, and refuses a day that ends before it starts", async () => {
+    const booked = await withFeatures("appointments");
+    const ctx = { account: booked.member.account, store: booked.member.store, invalidate: () => {} };
+    const saved = await saveResource(booked.member, null, { name: "Ingrid", email: "", capacity: 1, active: true, hours: JSON.stringify({ week: { mon: { open: "09:00", close: "17:00" }, tue: { open: "09:00", close: "17:00" }, wed: null, thu: null, fri: null, sat: null, sun: null }, exceptions: [] }) }, "staff");
+    if (!saved.ok) throw new Error(saved.problems.join());
+
+    expect(await refusal(ownerTools.preflightOwnerTool(ctx, "set_working_hours", { staff: "Nobody", week: { mon: null } }))).toContain('No member of staff called "Nobody"');
+    expect(await refusal(ownerTools.preflightOwnerTool(ctx, "set_working_hours", { staff: "Ingrid", week: { sat: { open: "14:00", close: "10:00" } } }))).toBe("On sat the day must end after it starts (14:00–10:00).");
+    expect(await refusal(ownerTools.preflightOwnerTool(ctx, "set_working_hours", { staff: "Ingrid" }))).toContain("Nothing to change");
+
+    const answer = (await ownerTools.runOwnerTool(ctx, "set_working_hours", { staff: "ingrid", week: { tue: null, sat: { open: "10:00", close: "14:00" } } })) as Answer;
+    expect(answer.done).toBe("Ingrid takes appointments: Mon 09:00–17:00, Sat 10:00–14:00.");
+    const [ingrid] = (await listResources(store.storeId, ["staff"])).filter((r) => r.name === "Ingrid");
+    expect(ingrid.hours.week).toMatchObject({ mon: { open: "09:00", close: "17:00" }, tue: null, sat: { open: "10:00", close: "14:00" } });
+
+    expect(((await ownerTools.runOwnerTool(ctx, "set_working_hours", { staff: "Ingrid", takes_bookings: false })) as Answer).done).toContain("takes no new bookings");
+  });
+});
+
+describe("list_loyalty_rewards and switch_loyalty_reward", () => {
+  it("lists the rewards with their cost in credits, and switches one off and on by name", async () => {
+    const loyal = await withFeatures("bonus");
+    const ctx = { account: loyal.member.account, store: loyal.member.store, invalidate: () => {} };
+    const made = await saveReward(loyal.member, null, { name: "Free shipping", costMinor: 5_000, kind: "free_shipping" });
+    if (!made.ok) throw new Error(made.problems.join());
+
+    const listed = (await ownerTools.runOwnerTool(ctx, "list_loyalty_rewards", {})) as Answer;
+    expect(listed.rewards).toEqual([{ name: "Free shipping", gives: "free shipping", costs: expect.stringContaining("50"), on: true }]);
+
+    expect(await refusal(ownerTools.preflightOwnerTool(ctx, "switch_loyalty_reward", { reward: "Free shipping", on: true }))).toBe('"Free shipping" is on already.');
+    expect(await refusal(ownerTools.preflightOwnerTool(ctx, "switch_loyalty_reward", { reward: "A pony", on: false }))).toContain('no loyalty reward "A pony"');
+    expect(((await ownerTools.runOwnerTool(ctx, "switch_loyalty_reward", { reward: "free shipping", on: false })) as Answer).done).toBe('"Free shipping" is off: codes handed out for it stop working.');
+    expect((await listRewards(store.storeId))[0].active).toBe(false);
+    expect(((await ownerTools.runOwnerTool(ctx, "switch_loyalty_reward", { reward: "Free shipping", on: true })) as Answer).done).toBe('"Free shipping" is on.');
   });
 });
 

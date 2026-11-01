@@ -8,8 +8,11 @@ import { AREAS } from "./permission-keys";
  * away, named by area in its description. Pure: which tools a role may use is decided before (`offeredTools()`), never here.
  */
 
-/** Under the providers' 128, with room for a tool a caller adds (`ask_kaizen_life`, `load_tools`). */
-export const TOOLS_PER_TURN = 120;
+/**
+ * Under the providers' 128, with room for a tool a caller adds (`ask_kaizen_life`, `load_tools`). 124 since 1 November 2026 (from 120): the
+ * two largest areas asked together with the core tools (marketing and website, 93 store tools beside the manager's own 28) no longer fit.
+ */
+export const TOOLS_PER_TURN = 124;
 
 export const LOAD_TOOLS = "load_tools";
 

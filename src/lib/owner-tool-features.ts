@@ -15,6 +15,7 @@ export const TOOL_FEATURES: Partial<Record<OwnerToolName, FeatureRequirement>> =
   list_bookings: BOOKED,
   cancel_booking: BOOKED,
   booking_resources: BOOKED,
+  set_working_hours: "appointments",
   // Several currencies (D178): the Currencies page is hidden while it is off.
   set_currencies: "currencies",
   reviews_overview: "reviews",
@@ -54,6 +55,9 @@ export const TOOL_FEATURES: Partial<Record<OwnerToolName, FeatureRequirement>> =
   list_customer_groups: "shop",
   set_customer_group: "shop",
   set_price_list_prices: "shop",
+  set_price_list_buyers: "shop",
+  list_loyalty_rewards: "bonus",
+  switch_loyalty_reward: "bonus",
   create_transfer: "shop",
   list_discounts: "shop",
   list_campaigns: "shop",

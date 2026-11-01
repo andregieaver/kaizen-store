@@ -559,6 +559,40 @@ export const OWNER_TOOLS = [
     "public",
   ),
   tool(
+    "set_price_list_buyers",
+    "Sets who one of the store's price lists is for (D321): the customer groups and companies, by their names (list_customer_groups, list_price_lists). What is given replaces who it was for; two empty lists leave it for nobody. Needs the owner's approval.",
+    z.object({
+      list: z.string().trim().min(1).max(120).describe("The price list's name."),
+      groups: z.array(z.string().trim().min(1).max(120)).max(100).default([]).describe("Customer groups, by name."),
+      companies: z.array(z.string().trim().min(1).max(200)).max(500).default([]).describe("Company accounts, by name."),
+    }),
+    "public",
+  ),
+  tool(
+    "set_working_hours",
+    "Changes the weekly hours a member of staff takes appointments (D65), as their page on Bookings does, and whether they take bookings at all. Give only the days that change: each `{ open: \"HH:MM\", close: \"HH:MM\" }` on a 24-hour clock, or null for no appointments that day. Bookings already made stay. Rooms and things to rent have no hours: they are booked by the day. Needs the owner's approval.",
+    z.object({
+      staff: z.string().trim().min(1).max(120).describe("The member of staff's name, as booking_resources gives it."),
+      week: z
+        .partialRecord(z.enum(["mon", "tue", "wed", "thu", "fri", "sat", "sun"]), z.object({ open: z.string().regex(/^\d{2}:\d{2}$/), close: z.string().regex(/^\d{2}:\d{2}$/) }).nullable())
+        .default({})
+        .describe("Only the days that change, mon to sun."),
+      takes_bookings: z.boolean().optional().describe("False stops new bookings with them; true starts them again."),
+    }),
+    "public",
+  ),
+  tool(
+    "list_loyalty_rewards",
+    "The rewards customers can buy with their bonus credits (D401): each reward's name, what it gives (free shipping, a product, an amount off), its cost in credits, and whether it is on. Read-only: switch_loyalty_reward switches one; a reward is made on the bonus program's page.",
+    z.object({}),
+  ),
+  tool(
+    "switch_loyalty_reward",
+    "Switches one loyalty reward on or off (D401), by its name (list_loyalty_rewards). Codes already handed out for it stop or start working with it. Needs the owner's approval.",
+    z.object({ reward: z.string().trim().min(1).max(120).describe("The reward's name."), on: z.boolean() }),
+    "public",
+  ),
+  tool(
     "stock_history",
     "The history of one variant's stock (D172): every change of a figure, newest first, with when, the location, how much it changed by, the new figure, the reason (counted, received, damaged, sale, put back after an order ...) and who or what made it (a staff member, an order, a return, the AI manager). Kept 24 months. Read-only; each line is the store's own record, so repeat it as it is. Give the variant's SKU (from stock_levels or get_product).",
     z.object({
@@ -2194,6 +2228,20 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
       const shown = rows.slice(0, 8).map((r) => (r.amount === null ? `${String(r.sku)}: no fixed price in ${String(r.currency).toUpperCase()}` : `${String(r.sku)}: ${String(r.amount)} ${String(r.currency).toUpperCase()}`));
       return `On the price list "${text("list")}": ${shown.join("; ")}${rows.length > 8 ? `, and ${rows.length - 8} more` : ""}.`;
     }
+    case "set_price_list_buyers": {
+      const groups = Array.isArray(input.groups) ? (input.groups as unknown[]).map(String) : [];
+      const companies = Array.isArray(input.companies) ? (input.companies as unknown[]).map(String) : [];
+      const who = [...groups.map((g) => `the group "${g}"`), ...companies.map((c) => `the company "${c}"`)];
+      return who.length === 0 ? `Leave the price list "${text("list")}" for nobody.` : `The price list "${text("list")}" is for ${who.join(", ")} only, in place of who it was for.`;
+    }
+    case "set_working_hours": {
+      const week = (input.week ?? {}) as Record<string, { open: string; close: string } | null>;
+      const days = Object.entries(week).map(([d, h]) => `${d} ${h ? `${h.open}–${h.close}` : "no appointments"}`);
+      const switched = input.takes_bookings === undefined ? [] : [input.takes_bookings ? "takes bookings again" : "takes no new bookings"];
+      return `${text("staff")}: ${[...days, ...switched].join(", ") || "nothing changes"}.`;
+    }
+    case "switch_loyalty_reward":
+      return input.on ? `Switch the loyalty reward "${text("reward")}" on.` : `Switch the loyalty reward "${text("reward")}" off: codes handed out for it stop working.`;
     case "set_customer_group":
       return input.group === null ? `Take ${text("customer")} out of their customer group.` : `Put ${text("customer")} in the customer group "${text("group")}": they get its discount from their next order.`;
     case "set_stock":

@@ -11,11 +11,14 @@ import { parsePrice } from "@/lib/product-input";
 import type { OwnerToolInput } from "@/lib/owner-tools";
 
 import type { Membership } from "./auth";
-import { RESOURCE_KINDS, listResources } from "./bookings";
+import { RESOURCE_KINDS, listResources, saveResource } from "./bookings";
+import { bonusProgram } from "./bonus";
+import { listRewards, switchReward } from "./bonus-rewards";
+import { listCompanies } from "./companies";
 import { decideCreator, listCreators, recordCreatorPayout, setCreatorRate } from "./creators";
 import { listTiers, setCustomerTier } from "./customer-tiers";
 import { liabilityRows } from "./liabilities";
-import { listCurrencies, listPriceLists, setPrices } from "./price-lists";
+import { listCurrencies, listPriceLists, setAssignments, setPrices } from "./price-lists";
 import { OwnerToolError } from "./owner-tool-error";
 import { getPurchaseOrder, listPurchaseOrders, receivePurchaseOrder } from "./purchase-orders";
 import { listReportSchedules, reportRecipients, saveReportSchedule } from "./report-schedules";
@@ -329,12 +332,79 @@ export async function setPriceListPricesTool(ctx: Ctx, input: OwnerToolInput<"se
   };
 }
 
+/** The list by name, and the groups and companies it is for by theirs: a name that fits none, or more than one, is refused. */
+async function listBuyers(ctx: Ctx, input: OwnerToolInput<"set_price_list_buyers">) {
+  const lists = (await listPriceLists(ctx.store.id)).filter((l) => same(l.name, input.list));
+  if (lists.length !== 1) return fail(lists.length === 0 ? `The store has no price list "${input.list}". list_price_lists lists them.` : `More than one price list is called "${input.list}".`);
+  const [tiers, companies] = await Promise.all([listTiers(ctx.store.id), input.companies.length ? listCompanies(ctx.store.id) : Promise.resolve([])]);
+  const one = <T extends { id: string; name: string }>(all: T[], name: string, what: string) => {
+    const found = all.filter((x) => same(x.name, name));
+    if (found.length !== 1) return fail(found.length === 0 ? `The store has no ${what} "${name}".` : `More than one ${what} is called "${name}".`);
+    return found[0].id;
+  };
+  return { list: lists[0], tierIds: input.groups.map((g) => one(tiers, g, "customer group")), companyIds: input.companies.map((c) => one(companies, c, "company")) };
+}
+
+export async function setPriceListBuyersTool(ctx: Ctx, input: OwnerToolInput<"set_price_list_buyers">) {
+  const { list, tierIds, companyIds } = await listBuyers(ctx, input);
+  const saved = await setAssignments(memberOf(ctx), list.id, { tierIds, companyIds });
+  if (!saved.ok) return fail(saved.problems.join(" "));
+  const count = tierIds.length + companyIds.length;
+  return { done: count === 0 ? `The price list "${list.name}" is for nobody now.` : `The price list "${list.name}" is for ${tierIds.length} ${tierIds.length === 1 ? "group" : "groups"} and ${companyIds.length} ${companyIds.length === 1 ? "company" : "companies"}.` };
+}
+
+// ---------------------------------------------------------------------------
+// Working hours (D65) and loyalty rewards (D401)
+// ---------------------------------------------------------------------------
+
+/** The member of staff by name, with their hours changed as asked, checked as their page checks them. */
+async function staffHours(ctx: Ctx, input: OwnerToolInput<"set_working_hours">) {
+  const found = (await listResources(ctx.store.id, ["staff"])).filter((r) => same(r.name, input.staff));
+  if (found.length !== 1) return fail(found.length === 0 ? `No member of staff called "${input.staff}" takes appointments here. booking_resources lists them.` : `More than one member of staff is called "${input.staff}".`);
+  const person = found[0];
+  for (const [day, h] of Object.entries(input.week)) if (h && h.open >= h.close) return fail(`On ${day} the day must end after it starts (${h.open}–${h.close}).`);
+  if (Object.keys(input.week).length === 0 && input.takes_bookings === undefined) return fail("Nothing to change: give the days that change, or whether they take bookings.");
+  const hours = { ...person.hours, week: { ...person.hours.week, ...input.week } };
+  return { person, hours, active: input.takes_bookings ?? person.active };
+}
+
+export async function setWorkingHoursTool(ctx: Ctx, input: OwnerToolInput<"set_working_hours">) {
+  const { person, hours, active } = await staffHours(ctx, input);
+  const saved = await saveResource(memberOf(ctx), person.id, { name: person.name, email: person.email, capacity: person.capacity, active, hours: JSON.stringify(hours) }, "staff");
+  if (!saved.ok) return fail(saved.problems.join(" "));
+  return { done: `${person.name} ${active ? "takes appointments" : "takes no new bookings"}: ${weekSummary(hours.week) || "no hours in the week"}.` };
+}
+
+const REWARD_KIND = { free_shipping: "free shipping", product: "a product free", amount: "an amount off" } as const;
+
+export async function listLoyaltyRewardsTool(ctx: Ctx) {
+  const [rewards, program] = await Promise.all([listRewards(ctx.store.id), bonusProgram(db(), ctx.store.id)]);
+  const currency = program.currency;
+  return {
+    rewards: rewards.map((r) => ({ name: r.name, gives: REWARD_KIND[r.kind], costs: money(r.costMinor, currency), on: r.active })),
+    note: rewards.length === 0 ? "The store has no loyalty rewards." : "A reward's cost is in bonus credits, counted in the credits' own currency.",
+  };
+}
+
+async function rewardTarget(ctx: Ctx, input: OwnerToolInput<"switch_loyalty_reward">) {
+  const found = (await listRewards(ctx.store.id)).filter((r) => same(r.name, input.reward));
+  if (found.length !== 1) return fail(found.length === 0 ? `The store has no loyalty reward "${input.reward}". list_loyalty_rewards lists them.` : `More than one reward is called "${input.reward}".`);
+  if (found[0].active === input.on) return fail(`"${found[0].name}" is ${input.on ? "on" : "off"} already.`);
+  return found[0];
+}
+
+export async function switchLoyaltyRewardTool(ctx: Ctx, input: OwnerToolInput<"switch_loyalty_reward">) {
+  const reward = await rewardTarget(ctx, input);
+  if (!(await switchReward(memberOf(ctx), reward.id, input.on))) return fail("That reward is gone.");
+  return { done: `"${reward.name}" is ${input.on ? "on" : "off"}${input.on ? "" : ": codes handed out for it stop working"}.` };
+}
+
 // ---------------------------------------------------------------------------
 // Checked before the owner's yes is asked
 // ---------------------------------------------------------------------------
 
 /** A change that could not be made is refused now, never kept for a yes: the same resolution the tool makes, without writing. */
-export const SCREEN_CHECKED = ["receive_purchase_order", "schedule_report", "set_customer_group", "decide_creator", "set_creator_rate", "record_creator_payout", "set_price_list_prices"] as const;
+export const SCREEN_CHECKED = ["receive_purchase_order", "schedule_report", "set_customer_group", "decide_creator", "set_creator_rate", "record_creator_payout", "set_price_list_prices", "set_price_list_buyers", "set_working_hours", "switch_loyalty_reward"] as const;
 export type ScreenChecked = (typeof SCREEN_CHECKED)[number];
 
 export async function preflightScreenTool(ctx: Ctx, name: ScreenChecked, input: Record<string, unknown>): Promise<void> {
@@ -342,5 +412,8 @@ export async function preflightScreenTool(ctx: Ctx, name: ScreenChecked, input: 
   else if (name === "schedule_report") await scheduleTarget(ctx, input as OwnerToolInput<"schedule_report">);
   else if (name === "set_customer_group") await groupTarget(ctx, input as OwnerToolInput<"set_customer_group">);
   else if (name === "set_price_list_prices") await priceRows(ctx, input as OwnerToolInput<"set_price_list_prices">);
+  else if (name === "set_price_list_buyers") await listBuyers(ctx, input as OwnerToolInput<"set_price_list_buyers">);
+  else if (name === "set_working_hours") await staffHours(ctx, input as OwnerToolInput<"set_working_hours">);
+  else if (name === "switch_loyalty_reward") await rewardTarget(ctx, input as OwnerToolInput<"switch_loyalty_reward">);
   else await creatorChecked(ctx, name, input);
 }

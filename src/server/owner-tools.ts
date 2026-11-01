@@ -212,6 +212,7 @@ import {
   decideCreatorTool,
   listCreatorsTool,
   listCustomerGroupsTool,
+  listLoyaltyRewardsTool,
   listReportSchedulesTool,
   owedToCustomersTool,
   preflightScreenTool,
@@ -220,7 +221,10 @@ import {
   scheduleReportTool,
   setCreatorRateTool,
   setCustomerGroupTool,
+  setPriceListBuyersTool,
   setPriceListPricesTool,
+  setWorkingHoursTool,
+  switchLoyaltyRewardTool,
 } from "./screen-tools";
 import { createTransferTool, listPurchaseOrdersTool, listTransfersTool, preflightStockTool, setBackorderTool, setStockTool, stockHistoryTool, stockLevelsTool } from "./stock-tools";
 import { pickupOrdersTool, shippingOverviewTool } from "./shipping-tools";
@@ -2503,6 +2507,10 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   set_creator_rate: setCreatorRateTool,
   record_creator_payout: recordCreatorPayoutTool,
   set_price_list_prices: setPriceListPricesTool,
+  set_price_list_buyers: setPriceListBuyersTool,
+  set_working_hours: setWorkingHoursTool,
+  list_loyalty_rewards: listLoyaltyRewardsTool,
+  switch_loyalty_reward: switchLoyaltyRewardTool,
   create_transfer: createTransferTool,
   ai_usage: aiUsageTool,
   post_to_slack: postToSlackTool,

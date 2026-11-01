@@ -81,8 +81,10 @@ maturity for the run-up to launch. Point IDs are the audit's.
 - [x] **AGT-01 (screens of 30–31 Oct, part 2)** `decide_creator` (gate `spend`), `set_creator_rate` and `record_creator_payout`
       (the owner's, gate `spend`), all three never automatic; `set_price_list_prices` (gate `public`, by list name and SKU, a price
       taken away with `null`).
-- [ ] **AGT-01 (screens of 30–31 Oct, part 3)** Still without tools: loyalty levels and rewards (the program itself has
-      `set_bonus_program`, a customer's credits `adjust_customer_credits`), a price list's buyers, scope, breaks and rules, booking hours.
+- [x] **AGT-01 (screens of 30–31 Oct, part 3)** `set_price_list_buyers` (gate `public`, never automatic), `set_working_hours` (gate
+      `public`, a member of staff's days that change), `list_loyalty_rewards` and `switch_loyalty_reward` (gate `public`).
+- [ ] **AGT-01 (what is left)** Still without tools, all rarer edits made on their pages: a loyalty reward or level made or changed (the
+      program has `set_bonus_program`, a customer's credits `adjust_customer_credits`), a price list's scope, breaks and rules.
 - [x] **AGT-01 (reviews)** No tool, on purpose: review moderation stays on the Reviews page, since a review's words are never sent to a
       model (D301), so the agent could not judge one.
 - [x] **ACC-01** Axe on the `signed-in` Playwright project: `e2e/signed-in/a11y.spec.ts`, ten owner pages and four platform pages, no
