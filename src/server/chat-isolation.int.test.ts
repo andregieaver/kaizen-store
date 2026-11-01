@@ -35,8 +35,9 @@ async function side(label: string, marker: string): Promise<Side> {
   const id = String(created.id);
   await db().execute(sql`update commerce.stores set status = 'active' where id = ${id}::uuid`);
   const [owner] = await db().execute<Row>(sql`select id from commerce.accounts where email = ${`${slug}@example.com`}`);
-  // One of the demo products becomes this store's own, by a word no other store uses.
-  const [product] = await db().execute<Row>(sql`select id, handle from commerce.products where store_id = ${id}::uuid and status = 'active' order by created_at limit 1`);
+  // One of the demo products becomes this store's own, by a word no other store uses. Goods, chosen by handle: the demo products share one
+  // creation time, and an appointment, stay or rental is left out of search while its feature is off, so an arbitrary pick made this flaky.
+  const [product] = await db().execute<Row>(sql`select id, handle from commerce.products where store_id = ${id}::uuid and status = 'active' and kind = 'goods' order by created_at, handle limit 1`);
   await db().execute(sql`update commerce.product_translations set title = ${`${marker} lampe`} where product_id = ${String(product.id)}::uuid`);
   const saved = await knowledge.saveDocument({ id: String(owner.id), email: `${slug}@example.com` } as never, id, null, {
     title: `Om ${marker}`,
