@@ -21,21 +21,24 @@ export function DualOpenDialog({
   choices,
   current,
   onOpen,
+  templates,
 }: {
   open: boolean;
   onClose: () => void;
   kinds: readonly DualKind[];
+  /** The site's saved templates (D412 step 5), offered as the last kind: a template is made with *Save as template*, never new here. */
+  templates: readonly { id: string; name: string }[];
   choices: (kind: DualKind) => Promise<DualChoice[]>;
   /** The document being edited (and, in a dual page, the other one), never offered. */
   current: readonly (string | null)[];
   onOpen: (doc: DualWith) => void;
 }) {
   const dw = useAdminText("builder").dual;
-  const [kind, setKind] = useState<DualKind>(kinds[0] ?? "page");
-  const [list, setList] = useState<{ kind: DualKind; items: DualChoice[] } | null>(null);
+  const [kind, setKind] = useState<DualKind | "template">(kinds[0] ?? "page");
+  const [list, setList] = useState<{ kind: DualKind | "template"; items: DualChoice[] } | null>(null);
   const [query, setQuery] = useState("");
   useEffect(() => {
-    if (!open) return;
+    if (!open || kind === "template") return;
     let live = true;
     choices(kind)
       .then((items) => {
@@ -48,7 +51,7 @@ export function DualOpenDialog({
       live = false;
     };
   }, [open, kind, choices]);
-  const loaded = list?.kind === kind ? list.items : null;
+  const loaded = kind === "template" ? templates.map((part) => ({ id: part.id, title: part.name })) : list?.kind === kind ? list.items : null;
   const words = query.trim().toLowerCase();
   const shown = (loaded ?? []).filter((item) => !current.includes(item.id) && (!words || item.title.toLowerCase().includes(words)));
   return (
@@ -57,8 +60,8 @@ export function DualOpenDialog({
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="flex flex-col gap-1 text-sm font-medium">
             {dw.kind}
-            <select value={kind} onChange={(event) => setKind(event.target.value as DualKind)} className={field} data-dual-kind="">
-              {kinds.map((k) => (
+            <select value={kind} onChange={(event) => setKind(event.target.value as DualKind | "template")} className={field} data-dual-kind="">
+              {[...kinds, "template" as const].map((k) => (
                 <option key={k} value={k}>
                   {dw.kinds[k]}
                 </option>
@@ -71,7 +74,7 @@ export function DualOpenDialog({
           </label>
         </div>
         <ul aria-label={dw.kinds[kind]} className="flex max-h-80 flex-col gap-1 overflow-y-auto" data-dual-choices="">
-          {kind !== "entry_layout" && (
+          {kind !== "entry_layout" && kind !== "template" && (
             <li>
               <button
                 type="button"
@@ -85,13 +88,13 @@ export function DualOpenDialog({
           {loaded === null ? (
             <li className="px-3 py-2 text-sm text-muted">{dw.loading}</li>
           ) : shown.length === 0 ? (
-            <li className="px-3 py-2 text-sm text-muted">{dw.noneYet}</li>
+            <li className="px-3 py-2 text-sm text-muted">{kind === "template" && templates.length === 0 ? dw.noTemplates : dw.noneYet}</li>
           ) : (
             shown.map((item) => (
               <li key={item.id}>
                 <button
                   type="button"
-                  onClick={() => onOpen({ kind, id: item.id })}
+                  onClick={() => onOpen(kind === "template" ? { kind: "template", id: item.id } : { kind, id: item.id })}
                   className="flex min-h-11 w-full items-center rounded-md px-3 text-left text-sm hover:bg-sunken"
                 >
                   {item.title || dw.untitled}

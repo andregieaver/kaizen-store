@@ -33,7 +33,8 @@ import {
   type PageThumbnail,
 } from "@/lib/page-content";
 import { knownClassNames } from "@/lib/css-completions";
-import { layoutOf } from "@/lib/page-layout";
+import { layoutOf, type PageLayout } from "@/lib/page-layout";
+import { partFromRows } from "@/lib/saved-part-canvas";
 import { blockingIssues, issueId, pageIssues, type PageIssue } from "@/lib/page-a11y";
 import { applyMotionPlan, type MotionPlan } from "@/lib/motion-plan";
 import { History, Redo2, Replace, Sparkles, Undo2, WandSparkles, X } from "lucide-react";
@@ -169,7 +170,13 @@ export function PageEditor({
   fieldRoles = [],
   context,
   dual = null,
+  template = null,
 }: {
+  /**
+   * A saved template (D412 step 5) edited as one of a dual page's documents: its name and its rows (the part's content as `partRows()`
+   * draws it), saved back into it (`updatePart`); nothing to publish, no address, versions or schedule.
+   */
+  template?: SavedPart | null;
   /** One of the two documents of a dual page (D412); null on a page alone. */
   dual?: EditorDual | null;
   page: EditablePage | null;
@@ -210,7 +217,7 @@ export function PageEditor({
             ? "article"
             : "page";
   // A product layout (D79), header or footer (D80) is only its name and its rows: no address, picture, search texts or categories.
-  const layout = LAYOUT_TYPES.includes(context.type);
+  const layout = LAYOUT_TYPES.includes(context.type) || template !== null;
   // A version made for an A/B test (D148) is made and removed with its test, never duplicated, unpublished or deleted on its own.
   const isVersion = context.type === "variant";
   // What a version stands in for (D148): a page, a product layout, a header or a footer, which decides what the builder offers for it.
@@ -423,9 +430,36 @@ export function PageEditor({
 
   // Saves the page (as a draft, or published); true when it was saved. *Schedule* (D341) saves a changed draft first through it.
   const save = async (publish: boolean, acknowledged?: string[]): Promise<boolean> => (await saveNow(publish, acknowledged)).ok;
+  // A saved template is saved back into itself (D412 step 5): the canvas's rows as its content again, its name from the title field.
+  // Publishing has nothing more to do for a template; its own translations stay as they are (as the builder's Saved dialog keeps them).
+  const saveTemplate = async (): Promise<DualSaveOutcome> => {
+    if (!template) return { ok: true };
+    const shaped = partFromRows(template, content.rows);
+    if (!shaped.ok) {
+      const problem = w.partCanvas.problems[shaped.problem];
+      setProblems([problem]);
+      return { ok: false, problems: [problem] };
+    }
+    const result = await actions.updatePart(template.id, {
+      kind: template.kind,
+      content: template.kind === "page" ? { ...(shaped.content as PageLayout), css: content.css ?? "" } : shaped.content,
+      name: content.title.trim() || template.name,
+      global: template.kind === "page" ? false : template.global,
+      sharing: template.sharing,
+    });
+    if (!result.ok) {
+      setProblems(result.problems);
+      return { ok: false, problems: result.problems };
+    }
+    if (result.parts.length > 0) updateParts(result.parts);
+    setDirty(false);
+    setMessage(w.dual.templateSaved);
+    return { ok: true };
+  };
   // The save itself, with why it was not: a dual page's frame (D412) asks the checker's question for both pages at once.
   const saveNow = async (publish: boolean, acknowledged?: string[]): Promise<DualSaveOutcome> => {
       setProblems([]);
+      if (template) return saveTemplate();
       if (theme.current.dirty) {
         const failed = await theme.current.save().catch(() => [w.theme.couldNotSave]);
         if (failed) {
@@ -580,7 +614,8 @@ export function PageEditor({
   const dw = w.dual;
   const pageName = content.title.trim() || `${dual?.kindName ?? ""} (${dw.untitled.toLowerCase()})`;
   const dualSave = useEffectEvent((publish: boolean, acknowledged?: string[]) => saveNow(publish, acknowledged));
-  const dualBlocking = useEffectEvent(() => (issues ? blockingIssues(issues).filter((i) => i.rule !== "pay_page_block") : []));
+  // A saved template is never published: nothing to ask before Publish both.
+  const dualBlocking = useEffectEvent(() => (issues && !template ? blockingIssues(issues).filter((i) => i.rule !== "pay_page_block") : []));
   const dualCss = useEffectEvent((css: string) => changeCss(css));
   // Saved parts changed on the other page reach this one's sidebar and uses (D98).
   const takeParts = useEffectEvent((next: SavedPart[]) => updateParts(next, false));
@@ -758,7 +793,7 @@ export function PageEditor({
             )}
             <section aria-label={layout ? ew.name : ew.titleAndAddress} className={card}>
               <label className={label}>
-                {layout ? ew.nameOf[noun] : translating ? fillWords(ew.titleIn, { lang: language.name }) : ew.title}
+                {template ? w.dual.templateName : layout ? ew.nameOf[noun] : translating ? fillWords(ew.titleIn, { lang: language.name }) : ew.title}
                 <input
                   value={view.title}
                   maxLength={PAGE_TITLE_MAX}
@@ -785,7 +820,9 @@ export function PageEditor({
                   className={`${input} min-h-12 text-xl font-medium`}
                 />
               </label>
-              {layout ? (
+              {template ? (
+                <p className={hint}>{w.dual.templateHint}</p>
+              ) : layout ? (
                 <p className={hint}>
                   {context.type === "product_layout"
                     ? ew.layoutHint
@@ -1044,6 +1081,7 @@ export function PageEditor({
             choices={context.dualPages.choices}
             current={dual ? dual.ids : [saved?.id ?? null]}
             onOpen={openBeside}
+            templates={parts}
           />
           <DualCreateDialog
             open={createOpen}
@@ -1160,7 +1198,7 @@ export function PageEditor({
             <Replace aria-hidden className="size-5" />
           </button>
           <p role="status" aria-live="polite" className="text-sm">
-            {message ?? (dirty ? ew.unsaved : context.draftOnly ? (saved ? ew.savedInProfile : ew.notSavedYet) : state ? ew.states[state] : ew.notSavedYet)}
+            {message ?? (dirty ? ew.unsaved : template ? w.dual.templateSaved : context.draftOnly ? (saved ? ew.savedInProfile : ew.notSavedYet) : state ? ew.states[state] : ew.notSavedYet)}
             {/* One undo, only while nothing else has been changed since. */}
             {coolUndo && coolUndo.after === content.rows && (
               <button type="button" onClick={undoCool} className="ml-2 underline">
@@ -1240,7 +1278,7 @@ export function PageEditor({
                 </button>
               </>
             )}
-            {saved && (
+            {saved && !template && (
               <a href={`${adminBase}/${saved.id}/preview`} target="_blank" rel="noopener" className="underline">
                 {ew.previewDraft}{dirty ? ` ${ew.lastSaved}` : ""}
               </a>
@@ -1258,13 +1296,13 @@ export function PageEditor({
                     {ew.view[noun]}
                   </a>
                 )}
-            {saved && actions.versions && (
+            {saved && actions.versions && !template && (
               <button type="button" onClick={() => setVersionsOpen(true)} aria-haspopup="dialog" className="flex items-center gap-1 underline">
                 <History aria-hidden className="size-4" />
                 {ew.versions}
               </button>
             )}
-            {!isVersion && !context.place && (
+            {!isVersion && !template && !context.place && (
               <button
                 type="button"
                 onClick={() => setTemplateOpen(true)}
@@ -1274,18 +1312,19 @@ export function PageEditor({
                 {ew.saveAsTemplate}
               </button>
             )}
-            {saved && !isVersion && !context.place && (
+            {saved && !isVersion && !template && !context.place && (
               <button type="button" onClick={duplicate} disabled={busy} className="underline disabled:opacity-50">
                 {w.tools.duplicate}
               </button>
             )}
-            {saved?.published && !isVersion && (
+            {saved?.published && !isVersion && !template && (
               <button type="button" onClick={unpublish} disabled={busy} className="underline disabled:opacity-50">
                 {ew.unpublish}
               </button>
             )}
             {saved &&
               !isVersion &&
+              !template &&
               (confirmDelete ? (
                 <span className="flex items-center gap-2">
                   {ew.deleteForGood}

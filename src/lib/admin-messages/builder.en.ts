@@ -183,6 +183,10 @@ export const builderEn = {
     notSaved: "{page} was not saved:",
     halfPublished: "{published} was published, but {other} was not:",
     notOpened: "The second page could not be opened: it is not there, or you may not open it.",
+    templateName: "Name of the template",
+    templateHint: "A saved template: what is changed here goes into it, for every page that adds it from now on. Its texts in other languages stay as they are.",
+    templateSaved: "Saved in your templates.",
+    noTemplates: "No saved templates yet. Save a page, row, column or component as a template first.",
     kinds: {
       page: "Page",
       article: "Article",

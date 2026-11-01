@@ -2,6 +2,8 @@ import { newPageContent, pageParts, PAGE_TYPES, type PageBlock, type PageColumn,
 import { pageRulesProblem } from "./page-rules";
 import { localizePage, translationOf } from "./page-translation";
 import { copyBlock, copyColumn, copyRow, findBlock, htmlIds } from "./page-rows";
+import { partRows as savedPartRows } from "./saved-part-canvas";
+import type { SavedPart } from "./saved-parts";
 
 /**
  * Dual page (D412, `docs/dual-page.md`): two of the builder's documents side by side, with drag and drop between them. What is pure
@@ -141,4 +143,34 @@ export function withCopiedTranslations(
 /** Where the other page scrolls to when they scroll together (D412): as far down as this one, by pixels from the top, or its end. */
 export function followScroll(top: number, other: { scrollHeight: number; clientHeight: number }): number {
   return Math.max(0, Math.min(top, other.scrollHeight - other.clientHeight));
+}
+
+/**
+ * A saved template as one of a dual page's documents (D412 step 5): the kind of page it is edited as (a page layout's own kind; a row,
+ * column or component as a page's), and the template as the editor holds a page: its name as the title, its content as the canvas's rows
+ * (`partRows()`), a layout's CSS as the page's, a part's translations as the page's (read when a part of it is copied to the other page).
+ */
+export function templateAsPage(part: SavedPart): {
+  shape: PageType;
+  page: { id: string; slug: string; draft: PageContent; state: "draft"; published: false; publishedAt: null; updatedAt: string };
+} {
+  const translations = part.kind !== "page" && Object.keys(part.translations ?? {}).length > 0 ? (part.translations as Record<string, PageTranslation>) : undefined;
+  return {
+    shape: part.kind === "page" ? part.content.pageType : "page",
+    page: {
+      id: part.id,
+      slug: "",
+      draft: {
+        ...newPageContent(),
+        title: part.name,
+        rows: savedPartRows(part),
+        ...(part.kind === "page" && part.content.css ? { css: part.content.css } : {}),
+        ...(translations ? { translations } : {}),
+      },
+      state: "draft",
+      published: false,
+      publishedAt: null,
+      updatedAt: part.updatedAt,
+    },
+  };
 }

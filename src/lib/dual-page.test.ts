@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { copyAcross, dropProblem, findDualPart, followScroll, formatDualWith, parseDualWith, withCopiedTranslations, type DualPart } from "./dual-page";
+import { copyAcross, dropProblem, findDualPart, followScroll, formatDualWith, parseDualWith, templateAsPage, withCopiedTranslations, type DualPart } from "./dual-page";
+import { partFromRows } from "./saved-part-canvas";
+import type { SavedPart } from "./saved-parts";
 import type { PageBlock, PageRow } from "./page-content";
 import { newBlock } from "./page-rows";
 
@@ -102,5 +104,35 @@ describe("scrolling together", () => {
     expect(followScroll(300, { scrollHeight: 2000, clientHeight: 800 })).toBe(300);
     expect(followScroll(1500, { scrollHeight: 2000, clientHeight: 800 })).toBe(1200);
     expect(followScroll(100, { scrollHeight: 500, clientHeight: 800 })).toBe(0);
+  });
+});
+
+describe("a saved template as one of the two (D412 step 5)", () => {
+  const base = { id: ID, name: "Hero", updatedAt: "2026-11-01T00:00:00Z", global: false, uses: 0, sharing: "private" as const };
+
+  it("is a row's rows under its name, edited as a page, with its translations, and saves back as the same row", () => {
+    const part = { ...base, kind: "row", content: row("r1", [heading("h1", "Hello")]), translations: { nb: { "block.h1.text": "Hei" } } } as SavedPart;
+    const { shape, page } = templateAsPage(part);
+    expect(shape).toBe("page");
+    expect(page.draft.title).toBe("Hero");
+    expect(page.draft.rows.map((r) => r.id)).toEqual(["r1"]);
+    expect(page.draft.translations).toEqual({ nb: { "block.h1.text": "Hei" } });
+    expect(partFromRows(part, page.draft.rows)).toEqual({ ok: true, content: part.content });
+  });
+
+  it("is a page layout's rows and CSS, edited as the kind of page it is for", () => {
+    const part = { ...base, kind: "page", content: { pageType: "header", rows: [row("r1", [])], css: ".a{color:red}" }, translations: {} } as SavedPart;
+    const { shape, page } = templateAsPage(part);
+    expect(shape).toBe("header");
+    expect(page.draft.css).toBe(".a{color:red}");
+    expect(page.draft.translations).toBeUndefined();
+  });
+
+  it("is a component in a row of one column, which saves back only while it stays one component", () => {
+    const block = heading("h1", "Hi");
+    const part = { ...base, kind: "block", content: block, translations: {} } as SavedPart;
+    const { page } = templateAsPage(part);
+    expect(page.draft.rows[0].columns[0].blocks).toEqual([block]);
+    expect(partFromRows(part, [...page.draft.rows, row("r2", [])])).toEqual({ ok: false, problem: "oneBlock" });
   });
 });

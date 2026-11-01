@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
+import { testDb } from "../db";
 import { E2E_STORE, OWNER } from "./accounts";
 
 /**
@@ -113,5 +114,47 @@ test.describe("dual page", () => {
     await expect(page).toHaveURL(/\/pages\/new\?with=new%3Afooter$/);
     await expect(canvas(page, "right")).toBeVisible();
     await expect(canvas(page, "right").getByText("Footer", { exact: false }).first()).toBeVisible();
+  });
+
+  test("a saved template opens beside a page, takes a row copied from it, and is saved back", async ({ page }) => {
+    await page.setViewportSize({ width: 1600, height: 1000 });
+    const name = `Dual template ${Date.now().toString(36)}`;
+    const sql = testDb();
+    let id: string;
+    try {
+      const [store] = await sql`select id from commerce.stores where slug = ${E2E_STORE}`;
+      const layout = {
+        pageType: "page",
+        css: "",
+        rows: [{ id: "tpl-row", type: "row", layout: "1", columns: [{ id: "tpl-col", blocks: [{ id: "tpl-h", type: "heading", text: "From the template", level: 2 }] }] }],
+      };
+      [{ id }] = await sql`insert into commerce.saved_parts (store_id, kind, name, content) values (${store.id}, 'page', ${name}, ${sql.json(layout)}) returning id`;
+    } finally {
+      await sql.end();
+    }
+
+    // Open beside offers the store's saved templates.
+    await page.goto(`/admin/${E2E_STORE}/pages/new`);
+    await page.getByRole("button", { name: "Open beside" }).click();
+    const dialog = page.getByRole("dialog", { name: "Open a page beside this one" });
+    await dialog.getByLabel("Kind").selectOption("template");
+    await dialog.getByRole("button", { name }).click();
+    await expect(page).toHaveURL(new RegExp(`/pages/new\\?with=template%3A${id}$`));
+    const right = canvas(page, "right");
+    await expect(right.getByText("Saved template", { exact: false }).first()).toBeVisible();
+    await expect(right.getByText("From the template")).toBeVisible();
+
+    await page.getByLabel("Title", { exact: true }).fill(`Beside a template ${Date.now().toString(36)}`);
+    await dragRowOnto(page, rowsOf(canvas(page, "left")).first(), right);
+    await expect(rowsOf(right)).toHaveCount(2);
+    await page.getByRole("button", { name: "Save both" }).click();
+    await expect(page.getByText("Both saved as drafts.")).toBeVisible({ timeout: 20_000 });
+    const check = testDb();
+    try {
+      const [saved] = await check`select content from commerce.saved_parts where id = ${id}`;
+      expect((saved.content as { rows: unknown[] }).rows).toHaveLength(2);
+    } finally {
+      await check.end();
+    }
   });
 });

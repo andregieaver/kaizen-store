@@ -92,6 +92,22 @@ The editor views (`StoreEditPageView`, `StoreNewPageView` and the platform's) re
 with a note. The documents a person can open beside come from `dualChoicesAction()` (the site's documents of each kind they may read).
 Saving uses each page's own actions, unchanged.
 
+### 3.4 A saved template beside a page (step 5)
+
+Asked for by the owner on 1 November 2026: "template" in the request means the builder's saved templates (rows, columns, components
+and page layouts, D46, D125, D127). `?with=template:{id}` opens one as the second document; *Open beside* lists them as the last kind.
+
+- `templateAsPage()` (`src/lib/dual-page.ts`) draws it as the editor holds a page: its name as the title, its content as the canvas's
+  rows (`partRows()`), a page layout's CSS as the page's and a part's translations as the page's. It is edited as the kind of page it is
+  for: a page layout as its own kind, a row, column or component as a page, so the drop check and the sidebar are that kind's.
+- `PageEditor`'s `template` mode: only its name in the settings; no address, versions, schedule, preview, duplicate or delete; in the
+  site's main language only.
+- Saving (Save both, Publish both, Ctrl/Cmd+S) saves it back through `updatePart`, the canvas's rows as its content again
+  (`partFromRows()`: a saved row stays one row, a column one column, a component one component, else the save says what to keep). A
+  template is never published; Publish both saves it and publishes the other page.
+- Its own texts in other languages are kept as they are on save, as the builder's Saved dialog keeps them: a part copied into a template
+  brings its layout and settings, not its translations. A part copied out of a template brings the template's translations.
+
 ## 4. Words
 
 Every new string is in `src/lib/messages/` for English and Norwegian (`builder.dual`): *Open beside*, *Create new*, *Side by side*,
@@ -112,5 +128,5 @@ and the refusals.
 3. The shell and the editors in dual mode: the views reading `with`, the bar (Save both, Publish both), the active page, scroll, screen
    size, the CSS panel's toggle, closing the second page.
 4. *Open beside* and *Create new* with their dialogs.
-5. A saved template as one of the two documents.
+5. A saved template as one of the two documents (built 1 November 2026, section 3.4).
 6. The end-to-end test, `docs/rules/admin/website.md`, D412.

@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { PageEditor } from "@/components/admin/page-editor";
 import { DualPageEditor, type DualDoc } from "@/components/admin/dual-page-editor";
-import { parseDualWith, type DualKind } from "@/lib/dual-page";
+import { parseDualWith, templateAsPage, type DualKind } from "@/lib/dual-page";
 import { adminText } from "@/lib/admin-text";
 import type { AdminLang } from "@/lib/admin-lang";
 import { PAGE_TYPE_COPY } from "@/components/admin/page-type-copy";
@@ -54,7 +54,22 @@ const PLATFORM_DUAL = ["page", "article", "header", "footer"] as const satisfies
 async function platformSecondDoc(first: { id: string | null }, value: string | string[] | undefined, lang: AdminLang, author: string): Promise<DualDoc | "refused" | null> {
   if (value === undefined) return null;
   const doc = parseDualWith(value);
-  if (!doc || doc.kind === "template" || !(PLATFORM_DUAL as readonly string[]).includes(doc.kind) || (doc.id !== null && doc.id === first.id)) return "refused";
+  if (!doc || (doc.id !== null && doc.id === first.id)) return "refused";
+  // A saved template of Kaizena Flow's (D412 step 5), edited as the kind of page it is for.
+  if (doc.kind === "template") {
+    const savedParts = await listSavedParts(null);
+    const part = savedParts.find((p) => p.id === doc.id);
+    if (!part) return "refused";
+    const { shape, page } = templateAsPage(part);
+    if (!(PLATFORM_DUAL as readonly string[]).includes(shape)) return "refused";
+    const [terms, gridTerms, context] = await Promise.all([listTerms({ storeId: null, contentType: termContentOf(shape) }), bothTerms(null), platformPageContext(shape, author)]);
+    return {
+      doc: { kind: "template", id: part.id },
+      kindName: adminText(lang, "builder").dual.kinds.template,
+      props: { page, template: part, savedParts, terms, gridTerms, context: { ...context, languages: context.languages.slice(0, 1), schedule: null, share: null } },
+    };
+  }
+  if (!(PLATFORM_DUAL as readonly string[]).includes(doc.kind)) return "refused";
   let page: EditablePage | null = null;
   if (doc.id !== null) {
     page = await getPageForEdit(null, doc.id, doc.kind);

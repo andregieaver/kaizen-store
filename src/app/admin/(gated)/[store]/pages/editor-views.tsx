@@ -6,7 +6,7 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { PageEditor } from "@/components/admin/page-editor";
 import { DualPageEditor, type DualDoc } from "@/components/admin/dual-page-editor";
-import { parseDualWith, type DualKind } from "@/lib/dual-page";
+import { parseDualWith, templateAsPage, type DualKind } from "@/lib/dual-page";
 import type { AdminLang } from "@/lib/admin-lang";
 import { PAGE_TYPE_COPY } from "@/components/admin/page-type-copy";
 import { adminLangOf } from "@/lib/admin-lang";
@@ -45,8 +45,8 @@ type Query = Promise<Record<string, string | string[] | undefined>>;
 async function storeSecondDoc(storeSlug: string, first: { id: string | null }, value: string | string[] | undefined, lang: AdminLang): Promise<DualDoc | "refused" | null> {
   if (value === undefined) return null;
   const doc = parseDualWith(value);
-  // A saved template beside a page is a later step of D412.
-  if (!doc || doc.kind === "template" || (doc.id !== null && doc.id === first.id)) return "refused";
+  if (!doc || (doc.id !== null && doc.id === first.id)) return "refused";
+  if (doc.kind === "template") return storeTemplateDoc(storeSlug, doc.id, lang);
   const member = await checkPageTypeAccess(storeSlug, doc.kind, "read");
   if (!member || (doc.kind === "product_layout" && requireFeature(member, "shop"))) return "refused";
   const { store, account } = member;
@@ -71,6 +71,40 @@ async function storeSecondDoc(storeSlug: string, first: { id: string | null }, v
       fieldData,
       fieldRoles: page ? Object.entries(store.pageRoles).filter(([, id]) => id === page.id).map(([role]) => role) : [],
       context,
+    },
+  };
+}
+
+/**
+ * A saved template as the second document (D412 step 5): edited as the kind of page it is for (a page layout's own kind, a row, column or
+ * component as a page's), in the store's main language only (its translations are its own, kept on save).
+ */
+async function storeTemplateDoc(storeSlug: string, id: string, lang: AdminLang): Promise<DualDoc | "refused"> {
+  const builder = await checkPageTypeAccess(storeSlug, "page", "read");
+  if (!builder) return "refused";
+  const savedParts = await listSavedParts(builder.store.id);
+  const part = savedParts.find((p) => p.id === id);
+  if (!part) return "refused";
+  const { shape, page } = templateAsPage(part);
+  const member = shape === "page" ? builder : await checkPageTypeAccess(storeSlug, shape, "read");
+  if (!member || (shape === "product_layout" && requireFeature(member, "shop"))) return "refused";
+  const { store, account } = member;
+  const [terms, gridTerms, context] = await Promise.all([
+    listTerms({ storeId: store.id, contentType: termContentOf(shape) }),
+    bothTerms(store.id),
+    storePageContext(store, shape, account.name ?? ""),
+  ]);
+  return {
+    doc: { kind: "template", id: part.id },
+    kindName: adminText(lang, "builder").dual.kinds.template,
+    props: {
+      page,
+      template: part,
+      savedParts,
+      terms,
+      gridTerms,
+      fieldRoles: [],
+      context: { ...context, languages: context.languages.slice(0, 1), schedule: null, share: null },
     },
   };
 }

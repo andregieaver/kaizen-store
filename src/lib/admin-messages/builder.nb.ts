@@ -168,6 +168,10 @@ export const builderNb: BuilderMessages = {
     notSaved: "{page} ble ikke lagret:",
     halfPublished: "{published} ble publisert, men ikke {other}:",
     notOpened: "Den andre siden kunne ikke åpnes: den finnes ikke, eller du har ikke tilgang til den.",
+    templateName: "Navn på malen",
+    templateHint: "En lagret mal: det du endrer her, går inn i den, for alle sider som legger den til fra nå av. Tekstene på andre språk forblir som de er.",
+    templateSaved: "Lagret i malene dine.",
+    noTemplates: "Ingen lagrede maler ennå. Lagre en side, rad, kolonne eller komponent som mal først.",
     kinds: {
       page: "Side",
       article: "Artikkel",
