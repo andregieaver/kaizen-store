@@ -425,6 +425,17 @@ export function pageIssues(
             ownColours();
             break;
           }
+          case "beforeAfter": {
+            // Each picture says what it shows: a screen reader hears both, and the slider names them (Before and after, D413).
+            for (const picture of [block.before, block.after]) {
+              if (!picture) continue;
+              const alt = picture.alt.trim();
+              if (alt === "") add("image_alt", place, where, "A picture in the Before and after has no alt text, so a screen reader cannot say what it shows.");
+              else if (alt.length > ALT_ADVISED_MAX) add("alt_long", place, where, `An alt text is ${alt.length} characters; aim for under ${ALT_ADVISED_MAX}.`);
+            }
+            ownColours();
+            break;
+          }
           case "image": {
             if (block.bind) break;
             if (block.image) {
@@ -557,6 +568,8 @@ function blockWords(block: PageBlock): string[] {
       return [block.first.label, block.second.label];
     case "image":
       return [block.caption, block.image?.alt ?? ""];
+    case "beforeAfter":
+      return [block.before?.alt ?? "", block.after?.alt ?? "", block.beforeLabel ?? "", block.afterLabel ?? ""];
     case "accordion":
     case "faq":
     case "tabs":

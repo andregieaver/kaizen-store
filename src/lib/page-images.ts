@@ -19,6 +19,11 @@ function picturesByKey(content: PageContent): Map<string, string> {
     for (const column of row.columns) {
       for (const block of withChildren(column.blocks)) {
         if (block.type === "image" && block.image) pictures.set(`block.${block.id}.alt`, block.image.url);
+        // A Before and after's two pictures, each described by its own alt text (`mapBlockTexts()`'s keys), or the library's.
+        if (block.type === "beforeAfter") {
+          if (block.before) pictures.set(`block.${block.id}.beforeAlt`, block.before.url);
+          if (block.after) pictures.set(`block.${block.id}.afterAlt`, block.after.url);
+        }
         // A gallery's pictures (D209), each described by its own alt text, or the library's.
         if (block.type === "gallery") for (const item of block.items) if (item.kind === "image" && item.picture) pictures.set(`block.${block.id}.${item.id}.alt`, item.picture.url);
       }
@@ -92,6 +97,15 @@ export function withSmallCopies(content: PageContent, lookup: (url: string) => s
         changed = true;
         out = { ...out, image: { ...out.image, small } };
       }
+    }
+    if (out.type === "beforeAfter") {
+      const withSmall = <P extends { url: string; small?: string } | null>(picture: P): P => {
+        const small = picture && lookup(picture.url);
+        if (!picture || !small || small === picture.url || picture.small === small) return picture;
+        changed = true;
+        return { ...picture, small };
+      };
+      out = { ...out, before: withSmall(out.before), after: withSmall(out.after) };
     }
     if (out.type === "columns") out = mapInnerColumns(out, (inner) => ({ ...inner, background: fill(inner.background) }));
     return out.type === "columns" || out.type === "faq" ? mapChildBlocks(out, fillBlock) : out;

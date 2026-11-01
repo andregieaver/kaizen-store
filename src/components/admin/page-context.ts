@@ -36,7 +36,7 @@ import type { TermsResult } from "@/server/taxonomy";
 
 import type { StartFieldFile } from "./field-file-upload";
 import type { Upload } from "./image-upload";
-import type { PictureMaker } from "./picture-maker";
+import type { PictureEditor, PictureMaker } from "./picture-maker";
 import type { StartVideo } from "./video-upload";
 
 /** A site's text styles in the builder (D393): what it starts with, and the actions that save and delete one. */
@@ -135,6 +135,8 @@ export type PageOwnerContext = {
    * elsewhere (a theme's workspace, whose pictures are the theme's).
    */
   pictures?: PictureMaker | null;
+  /** *Remove background* on any picture field (D413): the site's library edit route, where its AI has a model that edits pictures. */
+  pictureEdit?: PictureEditor | null;
   /**
    * *Change with AI* (D351): the route a described change to the open page is sent to, where the site's AI has a text model and the page is a
    * page or an article; absent or null elsewhere. The answer is the page changed, unsaved, which the editor holds as one change.

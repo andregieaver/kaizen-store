@@ -17,6 +17,7 @@ import { listContentTypes } from "@/server/content-types";
 import { siteFontStyle } from "@/server/fonts";
 import { uploadsEnabled } from "@/server/media";
 import { canMakePictures } from "@/server/picture-maker";
+import { canEditPictures } from "@/server/picture-editor";
 import { canChangePages } from "@/server/page-change-ai";
 import { platformMenuPreviews } from "@/server/menus";
 import { getPlatformChrome, getPlatformFonts } from "@/server/platform-navigation";
@@ -79,6 +80,8 @@ export async function platformPageContext(type: PageType = "page", author = ""):
     media: pickPlatformMediaAction,
     // Pictures made by prompt in Kaizena Flow's own look (D283), while its AI has a picture model.
     pictures: (await canMakePictures(null)) ? { endpoint: "/admin/platform/media/make" } : null,
+    // Remove background on picture fields (D413), while Kaizena Flow's AI has a model that edits pictures.
+    pictureEdit: (await canEditPictures(null)) ? { endpoint: "/admin/platform/media/edit" } : null,
     aiChange: (type === "page" || type === "article") && (await canChangePages(null)) ? { endpoint: "/admin/platform/pages/change" } : null,
     startVideo: uploadsEnabled() ? startPlatformVideoUploadAction : null,
     gridStores,

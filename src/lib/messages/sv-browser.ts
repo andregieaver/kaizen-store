@@ -51,6 +51,12 @@ carouselPause: "Pausa karusellen",
 carouselPlay: "Spela upp karusellen",
 galleryClose: "Stäng",
 galleryOf: (n: number, total: number) => `${n} av ${total}`,
+beforeAfter: {
+  before: "Före",
+  after: "Efter",
+  slider: "Jämför före och efter",
+  position: (before: number) => `${before} % före, ${100 - before} % efter`,
+},
 blogComments: {
   heading: "Kommentarer",
   none: "Inga kommentarer ännu. Skriv den första.",

@@ -34,6 +34,7 @@ export const BLOCK_WORDS: Record<BlockType, string> = {
   columns: "columns",
   heading: "heading",
   image: "picture",
+  beforeAfter: "before and after",
   button: "button",
   contentGrid: "grid",
   product: "product part",
@@ -347,6 +348,7 @@ export function mapTemplateMedia(kind: SavedPartKind, content: PartContent, reso
   return editPart(kind, content, {
     block: (block) => {
       if (block.type === "image") return { ...block, image: block.image ? resolved(block.image, resolve) : null };
+      if (block.type === "beforeAfter") return { ...block, before: block.before ? resolved(block.before, resolve) : null, after: block.after ? resolved(block.after, resolve) : null };
       if (block.type === "video") {
         return {
           ...block,

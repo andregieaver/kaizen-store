@@ -274,6 +274,8 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - Undo, redo and versions (D305), CSS on the live site (D306)
 - Dual page (D412, `docs/dual-page.md`, `src/lib/dual-page.ts`, `DualPageEditor`, `DualFrame`)
 - Find and replace (D307)
+- Before and after (D413, `src/components/before-after-slider.tsx`, `BeforeAfterBlock` in `src/lib/page-content.ts`)
+- Remove background on picture fields (D413, `RemoveBackgroundButton`, `PictureEditorProvider`, `editLibraryPicture()`)
 - Table component (D194, `src/components/table-view.tsx`, `src/lib/table-edit.ts`)
 - Brands (D204, `src/components/brands-view.tsx`, `src/components/brands-carousel.tsx`, `src/lib/brands.ts`)
 - Hover timing, button hover effects and logo colours (D206, `src/lib/hover-timing.ts`, `src/components/admin/hover-fields.tsx`)

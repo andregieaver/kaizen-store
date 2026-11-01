@@ -23,11 +23,18 @@ type Row = Record<string, unknown>;
  * never overwritten. Metered `per_image` under the feature `picture_edit`. Who may edit is the route's to ask (`picture-route.ts`).
  */
 
-const input = z.object({
-  mediaId: z.uuid(),
-  action: z.enum(EDIT_ACTIONS),
-  brief: z.string().trim().max(BRIEF_MAX).default(""),
-});
+/**
+ * The picture by its library id (the library's *Edit with AI*), or by its address (a picture field's *Remove background* in the page builder,
+ * which holds only the address): either way only a picture the site's own library holds, read from its row.
+ */
+const input = z
+  .object({
+    mediaId: z.uuid().optional(),
+    url: z.url({ protocol: /^https?$/ }).max(1000).optional(),
+    action: z.enum(EDIT_ACTIONS),
+    brief: z.string().trim().max(BRIEF_MAX).default(""),
+  })
+  .refine((value) => Boolean(value.mediaId) !== Boolean(value.url), "Name the picture by its id or its address.");
 
 export type EditedPicture =
   | { ok: true; picture: { id: string | null; url: string; thumbnailUrl: string | null; width: number; height: number; alt: string } }
@@ -45,7 +52,7 @@ export async function editLibraryPicture(
 ): Promise<EditedPicture> {
   const parsed = input.safeParse(raw);
   if (!parsed.success) return { ok: false, problem: "Choose a picture and an edit." };
-  const { mediaId, action, brief } = parsed.data;
+  const { mediaId, url, action, brief } = parsed.data;
   if (needsBrief(action) && brief.length < BRIEF_MIN) return { ok: false, problem: `Describe it in ${BRIEF_MIN} to ${BRIEF_MAX} characters.` };
   const storeId = owner.store?.id ?? null;
   const connection = deps.connection !== undefined ? deps.connection : await aiFor(storeId, { feature: "picture_edit", accountId: owner.accountId });
@@ -59,9 +66,14 @@ export async function editLibraryPicture(
   }
   const [row] = await db().execute<Row>(sql`
     select id, bucket, path, alt, file_name from commerce.media
-    where id = ${mediaId}::uuid and kind = 'image' and ${storeId ? sql`store_id = ${storeId}::uuid` : sql`store_id is null`}
+    where ${mediaId ? sql`id = ${mediaId}::uuid` : sql`url = ${url ?? ""}`} and kind = 'image' and ${storeId ? sql`store_id = ${storeId}::uuid` : sql`store_id is null`}
   `);
-  if (!row) return { ok: false, problem: "That picture is not in the library." };
+  if (!row) {
+    return {
+      ok: false,
+      problem: mediaId ? "That picture is not in the library." : "This picture is not in the site's media library, so the AI cannot edit it. Upload it or choose it from the library first.",
+    };
+  }
   const bytes = await (deps.read ?? downloadStoredFile)(String(row.bucket), String(row.path));
   if (!bytes) return { ok: false, problem: "The picture's file could not be read." };
   let png: Uint8Array;

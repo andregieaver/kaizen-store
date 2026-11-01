@@ -6,7 +6,7 @@ import { compressPicture, extensionOf } from "@/lib/image-compress";
 import { savingWords } from "@/lib/image-quality";
 
 import { LibraryButton } from "./media-picker";
-import { MakePictureButton, type CurrentPicture } from "./picture-maker";
+import { MakePictureButton, RemoveBackgroundButton, type CurrentPicture } from "./picture-maker";
 
 export type Upload = (data: FormData) => Promise<{ ok: true; url: string } | { ok: false; problem: string }>;
 
@@ -41,8 +41,9 @@ export async function uploadPicture(
  * thumbnail) and uploads it, as product and page pictures are. In the page
  * builder it also makes one by prompt (D283, `PictureMakerProvider`): the
  * made picture comes with its alt text as the second argument; `current` is
- * the picture the field has, which making again starts from, and `make`
- * false leaves it out where a made picture does not belong (a brand's logo).
+ * the picture the field has, which making again starts from and *Remove
+ * background* (D413, `PictureEditorProvider`) works on, and `make` false
+ * leaves making out where a made picture does not belong (a brand's logo).
  */
 export function ImageUploadButton({
   upload,
@@ -89,6 +90,8 @@ export function ImageUploadButton({
           onMade={(picture) => onUploaded({ url: picture.url, width: picture.width, height: picture.height }, { alt: picture.alt })}
         />
       )}
+      {/* The field's picture with its background taken away by the site's AI (D413); its description stays as it was. */}
+      <RemoveBackgroundButton current={current} onEdited={(picture) => onUploaded({ url: picture.url, width: picture.width, height: picture.height })} />
     </>
   );
   if (!upload) return <div className="flex flex-col gap-2"><p className="text-sm text-muted">Uploads are not set up on this server.</p><div className="flex flex-wrap gap-2">{library}</div></div>;

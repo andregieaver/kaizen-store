@@ -50,6 +50,15 @@ export function mapBlockTexts(b: PageBlock, visit: Visit): PageBlock {
         caption: str("caption", b.caption, 300, "Caption"),
         image: b.image && { ...b.image, alt: str("alt", b.image.alt, 300, "Description of the picture") },
       };
+    case "beforeAfter":
+      // Each picture's description, and the words on it where the owner wrote their own (unset, the visitor's language says them).
+      return {
+        ...b,
+        before: b.before && { ...b.before, alt: str("beforeAlt", b.before.alt, 300, "Description of the before picture") },
+        after: b.after && { ...b.after, alt: str("afterAlt", b.after.alt, 300, "Description of the after picture") },
+        ...(b.beforeLabel ? { beforeLabel: str("beforeLabel", b.beforeLabel, 40, "Words on the before picture") } : {}),
+        ...(b.afterLabel ? { afterLabel: str("afterLabel", b.afterLabel, 40, "Words on the after picture") } : {}),
+      };
     case "contentGrid":
       return {
         ...b,

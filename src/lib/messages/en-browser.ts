@@ -54,6 +54,12 @@ carouselPause: "Pause the carousel",
 carouselPlay: "Play the carousel",
 galleryClose: "Close",
 galleryOf: (n: number, total: number) => `${n} of ${total}`,
+beforeAfter: {
+  before: "Before",
+  after: "After",
+  slider: "Compare before and after",
+  position: (before: number) => `${before} % before, ${100 - before} % after`,
+},
 /** A blog's comments and its articles' authors (D341): the list, the form and what the visitor is told. Written by hand in nb, sv, da and en. */
 blogComments: {
   heading: "Comments",

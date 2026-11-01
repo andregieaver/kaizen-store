@@ -1,6 +1,6 @@
 "use client";
 
-import { Sparkles } from "lucide-react";
+import { Eraser, Sparkles } from "lucide-react";
 import { createContext, useContext, useId, useState, type ReactNode } from "react";
 
 import { BRIEF_MAX, BRIEF_MIN, PICTURE_SHAPES, shapeOf, type PictureShape } from "@/lib/picture-direction";
@@ -22,6 +22,69 @@ const MakerContext = createContext<PictureMaker | null>(null);
 
 export function PictureMakerProvider({ maker, children }: { maker: PictureMaker | null | undefined; children?: ReactNode }) {
   return <MakerContext value={maker ?? null}>{children}</MakerContext>;
+}
+
+/**
+ * Where a picture field's *Remove background* sends its picture: the site's library edit route (D349, `remove_background`), given only
+ * where the site's AI has a model that edits pictures. Without a provider, the button is not drawn.
+ */
+export type PictureEditor = { endpoint: string };
+const EditorContext = createContext<PictureEditor | null>(null);
+
+export function PictureEditorProvider({ editor, children }: { editor: PictureEditor | null | undefined; children?: ReactNode }) {
+  return <EditorContext value={editor ?? null}>{children}</EditorContext>;
+}
+
+/**
+ * *Remove background* on a picture field that has a picture: the site's AI takes the background away (D413), the result is a new picture
+ * in the media library (the original is kept, as every AI edit keeps it), and the field takes it, keeping its description. A picture that
+ * is not in the site's library is refused with the reason. Draws nothing where the site cannot edit pictures.
+ */
+export function RemoveBackgroundButton({ current, onEdited }: { current?: CurrentPicture | null; onEdited: (picture: MadePicture) => void }) {
+  const w = useAdminText("website").pictureMaker;
+  const editor = useContext(EditorContext);
+  const [busy, setBusy] = useState(false);
+  const [said, setSaid] = useState<{ ok: boolean; text: string } | null>(null);
+  if (!editor || !current?.url) return null;
+  const run = async () => {
+    setBusy(true);
+    setSaid(null);
+    try {
+      const response = await fetch(editor.endpoint, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ url: current.url, action: "remove_background" }),
+      });
+      const result = (await response.json().catch(() => null)) as { ok: true; picture: MadePicture } | { ok: false; problem: string } | null;
+      if (result?.ok) {
+        onEdited({ ...result.picture, alt: current.alt ?? result.picture.alt });
+        setSaid({ ok: true, text: w.removedBackground });
+      } else setSaid({ ok: false, text: result?.problem ?? w.notRemoved });
+    } catch {
+      setSaid({ ok: false, text: w.notReached });
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => void run()}
+        disabled={busy}
+        aria-busy={busy}
+        className="inline-flex w-fit items-center gap-1.5 rounded-pill border border-edge px-3 py-2 text-sm focus-visible:outline-2 disabled:opacity-60"
+      >
+        <Eraser aria-hidden className="size-4" />
+        {busy ? w.removingBackground : w.removeBackground}
+      </button>
+      {said && (
+        <p role={said.ok ? "status" : "alert"} className={`basis-full text-xs ${said.ok ? "text-muted" : "text-danger-text"}`}>
+          {said.text}
+        </p>
+      )}
+    </>
+  );
 }
 
 /** What each picture made in this tab was asked for, so making it again starts from the same words. Kept in memory only. */

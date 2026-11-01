@@ -148,6 +148,12 @@ import {
   type PanelItem,
   type TabsBlock,
   type VideoBlock,
+  BEFORE_AFTER_LABEL_MAX,
+  BEFORE_AFTER_START,
+  IMAGE_SHAPES,
+  type BeforeAfterBlock,
+  type BlockPicture,
+  type ImageShape,
   type ButtonShape,
   type ButtonSize,
   type ButtonVariant,
@@ -167,6 +173,7 @@ import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import { useAdminLang, useAdminText } from "./admin-text";
 import { ImageUploadButton, type Upload } from "./image-upload";
 import { VideoUploadButton, type StartVideo } from "./video-upload";
+import { ImageSizeFields } from "./image-size-fields";
 
 /**
  * The page builder's settings for the newer kinds of component, one entry
@@ -203,6 +210,12 @@ type Editors = { [K in BlockType]?: BlockEditor<Extract<PageBlock, { type: K }>>
 /** The components edited through the generic dialog. */
 export const BLOCK_EDITORS: Editors = {
   columns: { title: "Columns", General: ColumnsFields },
+  beforeAfter: {
+    title: "Before and after",
+    font: { label: "Font", fallback: "The site's body font" },
+    General: BeforeAfterFields,
+    Style: BeforeAfterStyleFields,
+  },
   separator: { title: "Separator line", General: SeparatorFields },
   accordion: {
     title: "Accordion",
@@ -1833,8 +1846,9 @@ function BrandsFields({ block, onChange, context }: BlockEditorProps<BrandsBlock
                 <ImageUploadButton
                   upload={context.upload}
                   label={item.picture ? w.chooseAnother : w.upload}
-                  // A logo is the brand's own: a picture model may not draw one (D283).
+                  // A logo is the brand's own: a picture model may not draw one (D283); its background can be taken away (D413).
                   make={false}
+                  current={item.picture}
                   onUploaded={(picture) => change({ picture })}
                 />
                 {item.picture && (
@@ -3245,5 +3259,120 @@ export function FieldsStandIn({
       )}
       <span className="text-xs text-muted">{fillWords(w.valuesRead, { thing: thing(entities, w) })}</span>
     </span>
+  );
+}
+
+/**
+ * A Before and after's two pictures (D413): each uploaded, chosen from the library or made by AI as any picture field is, and described for
+ * screen readers; the words on them (the visitor's language's "Before" and "After" unless written, or none) and where the slider starts.
+ */
+function BeforeAfterFields({ block, onChange, context }: BlockEditorProps<BeforeAfterBlock>) {
+  const w = useAdminText("blocks").beforeAfter;
+  const shapes = (picture: BlockPicture | null) => (picture ? picture.width / picture.height : null);
+  const [before, after] = [shapes(block.before), shapes(block.after)];
+  const differ = !block.shape && before !== null && after !== null && Math.abs(before - after) > 0.02;
+  return (
+    <>
+      <BeforeAfterPicture label={w.before} picture={block.before} upload={context.upload} onChange={(before) => onChange({ before })} />
+      <BeforeAfterPicture label={w.after} picture={block.after} upload={context.upload} onChange={(after) => onChange({ after })} />
+      {differ && <p className="text-xs text-muted">{w.differentShape}</p>}
+      {!(block.before && block.after) && <p className="text-xs text-muted">{w.needsBoth}</p>}
+      <Check label={w.showWords} hint={w.showWordsHint} checked={!block.hideLabels} onChange={(shown) => onChange({ hideLabels: shown ? undefined : true })} />
+      {!block.hideLabels && (
+        <>
+          <TextField
+            label={w.beforeWords}
+            value={block.beforeLabel ?? ""}
+            max={BEFORE_AFTER_LABEL_MAX}
+            hint={w.wordsHint}
+            onChange={(value) => onChange({ beforeLabel: value.trim() ? value : undefined })}
+          />
+          <TextField
+            label={w.afterWords}
+            value={block.afterLabel ?? ""}
+            max={BEFORE_AFTER_LABEL_MAX}
+            onChange={(value) => onChange({ afterLabel: value.trim() ? value : undefined })}
+          />
+        </>
+      )}
+      <NumberField
+        label={w.start}
+        value={block.start ?? BEFORE_AFTER_START}
+        min={0}
+        max={100}
+        unit="%"
+        onChange={(start) => onChange({ start: start === BEFORE_AFTER_START ? undefined : start })}
+      />
+      <p className="-mt-3 text-xs text-muted">{w.startHint}</p>
+    </>
+  );
+}
+
+/** One of a Before and after's pictures: a preview, the upload (with the library, Make with AI and Remove background) and its description. */
+function BeforeAfterPicture({
+  label,
+  picture,
+  upload,
+  onChange,
+}: {
+  label: string;
+  picture: BlockPicture | null;
+  upload: Upload | null;
+  onChange: (picture: BlockPicture | null) => void;
+}) {
+  const id = useId();
+  const w = useAdminText("blocks").beforeAfter;
+  return (
+    <fieldset className="flex flex-col gap-2">
+      <legend className="mb-1 text-sm font-medium">{label}</legend>
+      {picture ? (
+        // eslint-disable-next-line @next/next/no-img-element -- the owner's own picture, shown small
+        <img src={picture.url} alt="" className="max-h-40 w-fit rounded-md border border-line bg-card object-contain" />
+      ) : (
+        <p className="text-sm text-muted">{w.none}</p>
+      )}
+      <div className="flex flex-wrap items-center gap-2">
+        <ImageUploadButton
+          upload={upload}
+          label={picture ? w.replace : w.upload}
+          current={picture}
+          // A picture made by prompt (D283) comes described by what it was asked for.
+          onUploaded={(image, made) => onChange({ ...image, alt: made?.alt ?? picture?.alt ?? "" })}
+        />
+        {picture && (
+          <button type="button" onClick={() => onChange(null)} className={smallButton}>
+            {w.remove}
+          </button>
+        )}
+      </div>
+      {picture && (
+        <label htmlFor={`${id}-alt`} className="flex flex-col gap-1 text-sm font-medium">
+          {w.describe}
+          <input
+            id={`${id}-alt`}
+            value={picture.alt}
+            maxLength={300}
+            onChange={(event) => onChange({ ...picture, alt: event.target.value })}
+            aria-describedby={`${id}-alt-hint`}
+            className="min-h-10 rounded-md border border-line bg-card px-3 text-sm font-normal"
+          />
+          <span id={`${id}-alt-hint`} className="text-xs font-normal text-muted">
+            {w.describeHint}
+          </span>
+        </label>
+      )}
+    </fieldset>
+  );
+}
+
+/** A Before and after's shape (both pictures cropped alike), width and position, as a picture's (D151). */
+function BeforeAfterStyleFields({ block, onChange }: BlockEditorProps<BeforeAfterBlock>) {
+  const fw = useAdminText("builder").fields;
+  const options = (["original", ...(Object.keys(IMAGE_SHAPES) as ImageShape[])] as const).map((shape) => ({ value: shape, label: fw.shapes[shape] }));
+  return (
+    <>
+      <Choices legend={fw.shape} hint={fw.shapeHint} options={options} value={block.shape ?? "original"} onChange={(shape) => onChange({ shape: shape === "original" ? undefined : shape })} />
+      <ImageSizeFields block={block} onChange={(patch) => onChange(patch as Partial<BeforeAfterBlock>)} />
+    </>
   );
 }

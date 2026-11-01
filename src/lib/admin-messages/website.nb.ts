@@ -474,6 +474,10 @@ export const websiteNb: WebsiteMessages = {
   pictureMaker: {
     make: "Lag med KI",
     makeAgain: "Lag på nytt med KI",
+    removeBackground: "Fjern bakgrunnen",
+    removingBackground: "Fjerner bakgrunnen …",
+    removedBackground: "Bakgrunnen er fjernet. Originalen ligger fortsatt i mediebiblioteket.",
+    notRemoved: "Bakgrunnen kunne ikke fjernes. Prøv igjen.",
     notMade: "Bildet kunne ikke lages. Prøv igjen.",
     notReached: "Det kom ikke fram til nettstedet. Sjekk tilkoblingen og prøv igjen.",
     titleAgain: "Lag bildet på nytt",

@@ -614,6 +614,39 @@ export type ImageBlock = PartBase & Bindable & {
   align?: TextAlign;
 };
 
+/** A picture a component shows, as an image block's: uploaded and shrunk in the browser, its description for screen readers. */
+export type BlockPicture = { url: string; width: number; height: number; alt: string; small?: string };
+/** Where a Before and after's slider starts unless set: the middle. */
+export const BEFORE_AFTER_START = 50;
+export const BEFORE_AFTER_LABEL_MAX = 40;
+
+/**
+ * Before and after: two pictures of the same view, one over the other, with a slider down the middle. The visitor drags it (or moves it with
+ * the arrow keys) to show more of the before picture on the left or of the after picture on the right. It is drawn at the before picture's
+ * size, or the crop `shape` chooses, never enlarged (as an image block, D151), no wider than `maxWidth`; the after picture is fitted to it.
+ * Each picture has its words in a corner, "Before" and "After" in the visitor's language unless the owner writes their own, or none.
+ */
+export type BeforeAfterBlock = PartBase & {
+  id: string;
+  type: "beforeAfter";
+  before: BlockPicture | null;
+  after: BlockPicture | null;
+  /** The words on each picture; the visitor's language's "Before" and "After" unless written. */
+  beforeLabel?: string;
+  afterLabel?: string;
+  /** No words on the pictures. */
+  hideLabels?: boolean;
+  /** Where the slider starts, in percent of the width from the left: the middle unless set. */
+  start?: number;
+  shape?: ImageShape;
+  /** The widest it is drawn, in pixels; the before picture's own width unless set. Never enlarges. */
+  maxWidth?: number;
+  align?: TextAlign;
+};
+
+/** Whether a Before and after has both its pictures, which it needs to show. */
+export const beforeAfterShows = (block: Pick<BeforeAfterBlock, "before" | "after">): boolean => Boolean(block.before && block.after);
+
 /**
  * How big a picture block draws its picture, in pixels, and the only place that is worked out: the picture's own size (for a
  * crop, the largest crop of that shape inside it, so a crop is never enlarged), no wider than `maxWidth`. Null without a picture.
@@ -626,6 +659,14 @@ export function imageDisplaySize(block: Pick<ImageBlock, "image" | "shape" | "ma
   const width = Math.max(1, Math.round(Math.min(own, block.maxWidth ?? Infinity)));
   return { width, height: Math.max(1, Math.round(width / ratio)) };
 }
+/** How big a Before and after is drawn: as an image block of its before picture would be, the after picture fitted to it. */
+export const beforeAfterDisplaySize = (block: Pick<BeforeAfterBlock, "before" | "shape" | "maxWidth">): { width: number; height: number } | null =>
+  imageDisplaySize({ image: block.before, shape: block.shape, maxWidth: block.maxWidth });
+
+/** Whether a block draws a picture whose own width is its box's (D151): a picture, or a Before and after with its before picture. */
+export const hasPictureBox = (block: PageBlock): boolean =>
+  (block.type === "image" && block.image !== null) || (block.type === "beforeAfter" && block.before !== null);
+
 /** Heading levels: 1 is the page's main heading, used once (D49). */
 export type HeadingLevel = 1 | 2 | 3 | 4 | 5 | 6;
 /** How large a heading looked, apart from its level, before the Typography panel (D49; folded into it on read, D179). */
@@ -1844,6 +1885,7 @@ export const formShows = (block: EmailFormBlock | NewsletterBlock) =>
 export type PageBlock =
   | RichTextBlock
   | ImageBlock
+  | BeforeAfterBlock
   | HeadingBlock
   | ButtonBlock
   | ContentGridBlock
@@ -2026,6 +2068,8 @@ export function blockOwnContent(block: PageBlock): boolean {
       return !richTextIsEmpty(block.doc);
     case "image":
       return block.image !== null;
+    case "beforeAfter":
+      return beforeAfterShows(block);
     case "heading":
       return block.text.trim() !== "";
     case "button":
@@ -2106,6 +2150,8 @@ export function blockText(block: PageBlock): string {
       return richTextPlain(block.doc);
     case "image":
       return [block.image?.alt, block.caption && inlinePlain(block.caption)].filter(Boolean).join(" ");
+    case "beforeAfter":
+      return [block.before?.alt, block.after?.alt].filter(Boolean).join(" ");
     case "heading":
       return inlinePlain(block.text);
     case "accordion":
@@ -2718,6 +2764,32 @@ const imageBlock = z.object({
   maxWidth: pictureWidth,
   align: textAlign,
   bind: bindRule,
+  ...partBase,
+});
+
+const blockPicture = z
+  .object({
+    url: z.url({ protocol: /^https?$/, error: "A picture has an invalid address." }).max(1000),
+    width: z.number().int().min(1).max(10_000),
+    height: z.number().int().min(1).max(10_000),
+    alt: z.string().trim().max(ALT_MAX, `Keep a picture's description under ${ALT_MAX} characters.`),
+  })
+  .nullable();
+
+const beforeAfterLabel = z.string().trim().max(BEFORE_AFTER_LABEL_MAX, `Keep the words on a picture under ${BEFORE_AFTER_LABEL_MAX} characters.`).optional();
+
+const beforeAfterBlock = z.object({
+  id: itemId,
+  type: z.literal("beforeAfter"),
+  before: blockPicture,
+  after: blockPicture,
+  beforeLabel: beforeAfterLabel,
+  afterLabel: beforeAfterLabel,
+  hideLabels: z.boolean().optional(),
+  start: z.number().int().min(0).max(100).optional(),
+  shape: z.enum(Object.keys(IMAGE_SHAPES) as [ImageShape, ...ImageShape[]]).optional(),
+  maxWidth: pictureWidth,
+  align: textAlign,
   ...partBase,
 });
 
@@ -3470,6 +3542,7 @@ const newsletterBlock = z.object({
 const BLOCK_KINDS = [
   richTextBlock,
   imageBlock,
+  beforeAfterBlock,
   headingBlock,
   buttonBlock,
   contentGridBlock,

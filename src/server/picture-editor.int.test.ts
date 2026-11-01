@@ -134,6 +134,39 @@ describe("editing a library picture with AI (D349)", () => {
     expect(edit).not.toHaveBeenCalled();
   });
 
+  it("takes a picture field's background away by the picture's address (D413), and only a picture this site's library holds", async () => {
+    const asked: string[] = [];
+    const deps = {
+      connection: connection("edit-model"),
+      read: async () => png("#ffffff", 800),
+      edit: async (_connection: unknown, _picture: unknown, prompt: string) => {
+        asked.push(prompt);
+        return { bytes: await png("#336699", 512) };
+      },
+    };
+    const url = `https://files.example.com/${storeId}/${run}-mug.png`;
+    const result = await editor.editLibraryPicture(owner(), { url, action: "remove_background" }, deps as never);
+    expect(result).toMatchObject({ ok: true, picture: { alt: "A white mug on a table" } });
+    expect(asked).toEqual([expect.stringContaining("Remove the background entirely")]);
+    if (result.ok) {
+      const [edited] = await db().execute<Row>(sql`select made_by, edited_from from commerce.media where id = ${result.picture.id}::uuid`);
+      expect(edited).toEqual({ made_by: "ai_edited", edited_from: original });
+    }
+    // Another store's picture, or an address no library holds, is refused with the reason, and nothing is sent.
+    asked.length = 0;
+    const theirs = `https://files.example.com/${otherStore}/${run}-theirs.png`;
+    for (const address of [theirs, "https://elsewhere.example.com/photo.png"]) {
+      expect(await editor.editLibraryPicture(owner(), { url: address, action: "remove_background" }, deps as never)).toEqual({
+        ok: false,
+        problem: "This picture is not in the site's media library, so the AI cannot edit it. Upload it or choose it from the library first.",
+      });
+    }
+    // Named both ways, or neither, it is not read at all.
+    expect(await editor.editLibraryPicture(owner(), { url, mediaId: original, action: "remove_background" }, deps as never)).toMatchObject({ ok: false });
+    expect(await editor.editLibraryPicture(owner(), { action: "remove_background" }, deps as never)).toMatchObject({ ok: false });
+    expect(asked).toEqual([]);
+  });
+
   it("says why when the provider fails, and keeps nothing", async () => {
     const before = await db().execute<Row>(sql`select count(*)::int as n from commerce.media where store_id = ${storeId}::uuid`);
     const result = await editor.editLibraryPicture(

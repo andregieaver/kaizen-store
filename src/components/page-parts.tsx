@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 
 import {
   blockText,
+  hasPictureBox,
   type PageBlock,
   type PageColumn,
   type ColumnJustify,
@@ -163,7 +164,7 @@ export function blockBox(block: PageBlock, mode: PartsMode): Box {
   // it; none without a picture, so the empty block keeps the whole column. The limit is a class and a custom property
   // (`--picture-width`, by size in the part stylesheet), never an inline width: owner CSS and the page replicator's `#id`
   // rules can still say otherwise.
-  const picture = block.type === "image" && block.image !== null;
+  const picture = hasPictureBox(block);
   return {
     id: mode === "site" ? block.htmlId : undefined,
     className: cx(

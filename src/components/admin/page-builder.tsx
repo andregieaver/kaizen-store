@@ -475,7 +475,7 @@ function slotOnRow(row: PageRow, move: Move): { slot: ColumnSlot; anchor: { id: 
 }
 
 /** The palette's components, in order. */
-const BLOCK_TYPES = ["richText", "heading", "image", "video", "button", "dualButton", "columns", "tabs", "accordion", "faq", "testimonials", "iconList", "table", "brands", "gallery", "socialLinks", "emailForm", "newsletter", "contentGrid", "menu", "separator", "html"] as const satisfies readonly BlockType[];
+const BLOCK_TYPES = ["richText", "heading", "image", "beforeAfter", "video", "button", "dualButton", "columns", "tabs", "accordion", "faq", "testimonials", "iconList", "table", "brands", "gallery", "socialLinks", "emailForm", "newsletter", "contentGrid", "menu", "separator", "html"] as const satisfies readonly BlockType[];
 
 const rowHasText = (row: PageRow) => row.columns.some(columnHasText);
 const columnHasText = (column: PageColumn) => column.blocks.some(blockHasText);
@@ -2472,6 +2472,8 @@ function BlockIcon({ type }: { type: BlockType }) {
       return <LayoutPreview layout="2" />;
     case "image":
       return <ImageIcon />;
+    case "beforeAfter":
+      return <BeforeAfterIcon />;
     case "heading":
       return <LetterIcon letter="H" bold />;
     case "button":
@@ -2585,6 +2587,20 @@ function SocialIcon() {
       <span className="size-2.5 rounded-full bg-current" />
       <span className="size-2.5 rounded-full bg-current" />
       <span className="size-2.5 rounded-full bg-current" />
+    </span>
+  );
+}
+
+/** Two halves of a picture with the slider between them. */
+function BeforeAfterIcon() {
+  return (
+    <span aria-hidden className="flex h-9 items-center justify-center rounded-sm bg-foreground/75 text-background">
+      <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round">
+        <rect x="3" y="5" width="18" height="14" rx="1.5" />
+        <path d="M12 3v18" />
+        <path d="M3 5h9v14H3z" fill="currentColor" fillOpacity="0.35" stroke="none" />
+        <path d="m9.5 12-1.5 1.5M9.5 12 8 10.5M14.5 12l1.5 1.5M14.5 12l1.5-1.5" />
+      </svg>
     </span>
   );
 }

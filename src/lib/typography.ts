@@ -347,6 +347,9 @@ export function textRoles(part: TypedPart): RoleDef[] {
     case "image":
       // A picture's alignment is its Position; its caption's text is its own.
       return [role("caption", "Caption", "& figcaption", { family: "box" })];
+    case "beforeAfter":
+      // The words on the two pictures; its place is its Position, as a picture's.
+      return [role("caption", "Words on the pictures", marked("caption"), { align: false })];
     case "contentGrid":
       return [
         TEXT,
@@ -447,6 +450,7 @@ export const TEXT_FIELDS: Record<string, Record<string, TextRole>> = {
   button: { label: "text" },
   dualButton: { "first.label": "text", "second.label": "text" },
   image: { caption: "caption" },
+  beforeAfter: { beforeLabel: "caption", afterLabel: "caption" },
   contentGrid: {
     buttonLabel: "button",
     emptyText: "text",
@@ -496,6 +500,7 @@ export const TEXT_FIELDS: Record<string, Record<string, TextRole>> = {
  */
 export const UNDRAWN_TEXTS: Record<string, readonly string[]> = {
   image: ["alt"],
+  beforeAfter: ["beforeAlt", "afterAlt"],
   contentGrid: ["*.alt"],
   video: ["title"],
   html: ["title"],

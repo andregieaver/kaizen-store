@@ -481,6 +481,10 @@ export const websiteEn = {
   pictureMaker: {
     make: "Make with AI",
     makeAgain: "Make again with AI",
+    removeBackground: "Remove background",
+    removingBackground: "Removing the background …",
+    removedBackground: "Background removed. The original stays in the media library.",
+    notRemoved: "The background could not be removed. Try again.",
     notMade: "The picture could not be made. Try again.",
     notReached: "That did not reach the site. Check your connection and try again.",
     titleAgain: "Make the picture again",

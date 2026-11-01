@@ -5,12 +5,13 @@ import dynamic from "next/dynamic";
 import { lazyView, showChildren } from "./lazy-view";
 
 /**
- * The interactive parts of page components (a gallery's lightbox and fade, a logo carousel, tabs, a table that scrolls, videos,
+ * The interactive parts of page components (a Before and after's slider, a gallery's lightbox and fade, a logo carousel, tabs, a table that scrolls, videos,
  * embedded HTML, a modal, the recommended grid and search), each loaded only on a page that draws it (D211, `lazyView()`).
  * Those wrapping the server's content show it while their script loads. A form is not here, nor a listing's filter button: what
  * a visitor types or presses before its script runs would be lost, so they are in the page's first scripts.
  */
 export const GalleryLightbox = lazyView(dynamic(() => import("../gallery-lightbox").then((m) => m.GalleryLightbox)), showChildren);
+export const BeforeAfterSlider = lazyView(dynamic(() => import("../before-after-slider").then((m) => m.BeforeAfterSlider)), showChildren);
 export const GalleryFade = lazyView(dynamic(() => import("../gallery-fade").then((m) => m.GalleryFade)));
 export const BrandsCarousel = lazyView(dynamic(() => import("../brands-carousel").then((m) => m.BrandsCarousel)));
 export const TabsView = lazyView(dynamic(() => import("../tabs-view").then((m) => m.TabsView)));

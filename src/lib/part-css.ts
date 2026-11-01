@@ -4,6 +4,8 @@ import {
   ROW_PADDING,
   shadowCss,
   columnLines,
+  beforeAfterDisplaySize,
+  hasPictureBox,
   imageDisplaySize,
   rowLayouts,
   type Border,
@@ -522,15 +524,16 @@ export const MENU_JUSTIFY_CLASS = "kz-menu-justify";
  */
 export function blockStyle(block: PageBlock, mode: PartsMode): ElementStyle {
   const rules: PartRule[] = [];
-  const picture = block.type === "image" && block.image !== null;
+  const picture = hasPictureBox(block);
   rules.push({
     selector: "&",
     important: true,
     where: true,
     sizes: perSize((size) => {
       const out: Decl = { ...spacingDecl(spacingAt(block, size)), ...(block.type === "button" ? {} : frameAt(block, size)) };
-      if (block.type === "image" && picture) {
-        const shown = imageDisplaySize({ ...block, maxWidth: valueAt(block, "maxWidth", size) ?? undefined });
+      if (picture && (block.type === "image" || block.type === "beforeAfter")) {
+        const maxWidth = valueAt(block, "maxWidth", size) ?? undefined;
+        const shown = block.type === "image" ? imageDisplaySize({ ...block, maxWidth }) : beforeAfterDisplaySize({ ...block, maxWidth });
         if (shown) out["--picture-width"] = `${shown.width}px`;
       }
       if (block.type === "product" && block.part === "related") out["--grid-cols"] = String(valueAt(block, "columns", size) ?? RELATED_COLUMNS[size]);

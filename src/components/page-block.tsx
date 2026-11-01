@@ -13,6 +13,8 @@ import {
   blockHasContent,
   buttonShows,
   imageDisplaySize,
+  beforeAfterDisplaySize,
+  BEFORE_AFTER_START,
   type ButtonBlock,
   type DualButtonBlock,
   type DualButtonSide,
@@ -31,7 +33,7 @@ import { fixedSizes } from "@/lib/picture-sizes";
 import { embedUrl } from "@/lib/video-embed";
 
 import { SHAPES, buttonLook } from "./button-look";
-import { EmbeddedVideo, HtmlFrame, TabsView, UploadedVideo } from "./lazy/blocks";
+import { BeforeAfterSlider, EmbeddedVideo, HtmlFrame, TabsView, UploadedVideo } from "./lazy/blocks";
 import { blockBox } from "./page-parts";
 import { IconListView } from "./icon-list-view";
 import { TableView } from "./table-view";
@@ -134,6 +136,41 @@ export function PageBlockView({
       return block.source === "google" ? null : <Testimonials block={block} />;
     case "html":
       return block.html.trim() ? <HtmlFrame html={block.html} title={block.title} height={block.height} waitForClick={Boolean(block.waitForClick)} /> : null;
+    case "beforeAfter": {
+      // At the before picture's size or its crop, never enlarged (as a picture, D151); the after picture is cut to the same box.
+      const size = beforeAfterDisplaySize(block);
+      if (!block.before || !block.after || !size) return null;
+      const shape = block.shape ? SHAPES[block.shape] : "rounded-lg";
+      const draw = (picture: NonNullable<typeof block.before>) => (
+        <SizedPicture
+          url={picture.url}
+          small={picture.small}
+          sourceWidth={picture.width}
+          sizes={fixedSizes(size.width)}
+          alt={picture.alt}
+          width={size.width}
+          height={size.height}
+          draggable={false}
+          {...(eager ? { loading: "eager" as const, fetchPriority: "high" as const } : {})}
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+      );
+      const before = draw(block.before);
+      return (
+        <div className={`relative w-full overflow-clip ${shape}`} style={{ aspectRatio: `${size.width} / ${size.height}` }}>
+          <BeforeAfterSlider
+            before={before}
+            after={draw(block.after)}
+            start={block.start ?? BEFORE_AFTER_START}
+            beforeLabel={block.beforeLabel}
+            afterLabel={block.afterLabel}
+            hideLabels={block.hideLabels}
+          >
+            {before}
+          </BeforeAfterSlider>
+        </div>
+      );
+    }
     case "image": {
       // Its own size, never stretched to the column (D151): the box `blockBox()` draws is as wide as the picture and no wider than
       // the column, so the picture shrinks to a narrower column or a phone, keeping its shape, and the caption stays under it.
