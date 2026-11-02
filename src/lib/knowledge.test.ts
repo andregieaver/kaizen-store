@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { cleanDocumentText, cutPassages, documentInput, documentType, pageKnowledgeText } from "./knowledge";
+import type { FieldDef } from "./custom-fields";
+import { cleanDocumentText, cutPassages, documentInput, documentType, entryKnowledgeText, pageKnowledgeText } from "./knowledge";
 import { newPageContent } from "./page-content";
 
 describe("knowledge documents (D81)", () => {
@@ -77,3 +78,50 @@ describe("pageKnowledgeText", () => {
     expect(pageKnowledgeText(content)).toBe("Who we are\n\nOur shop in Bergen");
   });
 });
+
+describe("entryKnowledgeText (D428)", () => {
+  const fields = [
+    { id: "f_title1", name: "name", label: "Name", type: "text", access: "public" },
+    { id: "f_hours1", name: "hours", label: "Opening hours", labels: { "nb-NO": "Åpningstider" }, type: "textarea", access: "public" },
+    { id: "f_parks1", name: "parking", label: "Parking", type: "boolean", access: "public" },
+    { id: "f_about1", name: "about", label: "About", type: "richText", access: "public" },
+    { id: "f_notes1", name: "notes", label: "Notes", type: "textarea", access: "private" },
+    { id: "f_photo1", name: "photo", label: "Photo", type: "image", access: "public" },
+    { id: "f_where1", name: "where", label: "Entrance", type: "text", access: "public", when: [[{ field: "f_parks1", operator: "==", value: "true" }]] },
+  ] as FieldDef[];
+  const type = { fields, titleField: "f_title1" };
+  const data = (parking: boolean) => ({
+    values: { f_parks1: parking, f_photo1: { url: "https://example.com/a.jpg" } },
+    translations: {
+      "nb-NO": {
+        f_title1: "Butikken i Bergen",
+        f_hours1: "Lørdager 10–16",
+        f_about1: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Vi har kaffe." }] }] },
+        f_notes1: "Nøkkelen ligger under matta",
+        f_where1: "Bakgården",
+      },
+    },
+  });
+
+  it("has the title, then each field the site shows with words in it, in the entry's language", () => {
+    const { title, text } = entryKnowledgeText(type, data(true) as never, "nb-NO", "nb-NO");
+    expect(title).toBe("Butikken i Bergen");
+    expect(text).toBe("Butikken i Bergen\n\nÅpningstider: Lørdager 10–16\n\nParking: Ja\n\nAbout: Vi har kaffe.\n\nEntrance: Bakgården");
+  });
+
+  it("leaves out fields for staff only, pictures, and a field its rules hide", () => {
+    const { text } = entryKnowledgeText(type, data(false) as never, "nb-NO", "nb-NO");
+    expect(text).not.toContain("Nøkkelen");
+    expect(text).not.toContain("example.com");
+    expect(text).not.toContain("Bakgården");
+    expect(text).toContain("Parking: Nei");
+  });
+
+  it("reads another language's words where it has none of its own, with that language's labels", () => {
+    const { title, text } = entryKnowledgeText(type, data(true) as never, "en-GB", "nb-NO");
+    expect(title).toBe("Butikken i Bergen");
+    expect(text).toContain("Opening hours: Lørdager 10–16");
+    expect(text).toContain("Parking: Yes");
+  });
+});
+

@@ -89,6 +89,72 @@ describe("the knowledge base (D81)", () => {
     expect((await knowledge.syncPageKnowledge(storeId)).dropped).toBeGreaterThan(0);
     expect(await knowledge.searchKnowledge(storeId, "hjem og kontor", "nb-NO")).toEqual([]);
   });
+
+  it("reads the store's published content entries, only what the site shows of them, and follows their type (D428)", async () => {
+    const fields = (hours: "public" | "private") => [
+      { id: "f_title1", name: "name", label: "Name", type: "text", access: "public" },
+      { id: "f_hours1", name: "hours", label: "Åpningstider", labels: { "sv-SE": "Öppettider" }, type: "textarea", access: hours },
+      { id: "f_notes1", name: "notes", label: "Notes", type: "textarea", access: "private" },
+    ];
+    const [type] = await db().execute<Row>(sql`
+      insert into commerce.content_types (store_id, key, name, slug, fields, title_field, has_pages)
+      values (${storeId}::uuid, ${`t_${Date.now().toString(16).padStart(12, "0").slice(-12)}`}, 'Butikker', 'butikker',
+        ${JSON.stringify(fields("public"))}::jsonb, 'f_title1', true)
+      returning id
+    `);
+    const content = {
+      data: {
+        values: {},
+        translations: {
+          "nb-NO": { f_title1: "Butikken i Bergen", f_hours1: "Åpent lørdager fra ti til fire", f_notes1: "Nøkkelen ligger under matta" },
+          "sv-SE": { f_title1: "Butiken i Bergen", f_hours1: "Öppet lördagar från tio till fyra" },
+        },
+      },
+      seo: { title: "", description: "" },
+      seoTranslations: {},
+    };
+    await db().execute(sql`
+      insert into commerce.content_entries (store_id, type_id, slug, draft, published, published_at, first_published_at)
+      values (${storeId}::uuid, ${String(type.id)}::uuid, 'bergen', ${JSON.stringify(content)}::jsonb, ${JSON.stringify(content)}::jsonb, now(), now())
+    `);
+    expect((await knowledge.syncPageKnowledge(storeId)).cut).toBeGreaterThan(0);
+    expect((await knowledge.syncPageKnowledge(storeId)).cut).toBe(0);
+
+    const [nb] = await knowledge.searchKnowledge(storeId, "åpent lørdager", "nb-NO");
+    expect(nb).toMatchObject({ title: "Butikken i Bergen", path: "/butikker/bergen" });
+    expect(nb.body).toContain("Åpningstider: Åpent lørdager fra ti til fire");
+    const [sv] = await knowledge.searchKnowledge(storeId, "lördagar", "sv-SE");
+    expect(sv).toMatchObject({ title: "Butiken i Bergen" });
+    expect(sv.body).toContain("Öppettider: Öppet lördagar");
+    // A field for staff only is never the chat's to read.
+    expect(await knowledge.searchKnowledge(storeId, "nøkkelen matta", "nb-NO")).toEqual([]);
+    expect(nb.body).not.toContain("Nøkkelen");
+
+    // A field made "Only staff" leaves the passages at the next run, though the entry was not published again.
+    await db().execute(sql`update commerce.content_types set fields = ${JSON.stringify(fields("private"))}::jsonb where id = ${String(type.id)}::uuid`);
+    expect((await knowledge.syncPageKnowledge(storeId)).cut).toBe(1);
+    expect(await knowledge.searchKnowledge(storeId, "åpent lørdager", "nb-NO")).toEqual([]);
+    expect((await knowledge.searchKnowledge(storeId, "Butikken i Bergen", "nb-NO"))[0]).toMatchObject({ path: "/butikker/bergen" });
+
+    // Unpublished, it is let go.
+    await db().execute(sql`update commerce.content_entries set published = null, published_at = null where type_id = ${String(type.id)}::uuid`);
+    expect((await knowledge.syncPageKnowledge(storeId)).dropped).toBeGreaterThan(0);
+    expect(await knowledge.searchKnowledge(storeId, "Butikken i Bergen", "nb-NO")).toEqual([]);
+  });
+
+  it("gives an article its own blog's address, and moves it when it moves to another blog (D341)", async () => {
+    await knowledge.syncPageKnowledge(storeId);
+    const articles = sql`select distinct c.path from commerce.knowledge_chunks c join commerce.pages p on p.id = c.page_id
+      where p.store_id = ${storeId}::uuid and p.type = 'article' and p.slug = 'nye-produkter'`;
+    expect((await db().execute<Row>(articles)).map((row) => row.path)).toEqual(["/blog/nye-produkter"]);
+    const [blog] = await db().execute<Row>(sql`insert into commerce.blogs (store_id, handle, position) values (${storeId}::uuid, 'nyheter', 1) returning id`);
+    await db().execute(sql`
+      update commerce.pages set published = published || jsonb_build_object('blogId', ${String(blog.id)}::text)
+      where store_id = ${storeId}::uuid and type = 'article' and slug = 'nye-produkter'
+    `);
+    expect((await knowledge.syncPageKnowledge(storeId)).cut).toBe(1);
+    expect((await db().execute<Row>(articles)).map((row) => row.path)).toEqual(["/blogs/nyheter/nye-produkter"]);
+  });
 });
 
 describe("the chat's limits", () => {

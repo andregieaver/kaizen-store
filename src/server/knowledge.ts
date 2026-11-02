@@ -1,9 +1,12 @@
 import "server-only";
 
-import { sql, type SQL } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 
 import { db, readDb } from "@/db/client";
-import { cutPassages, documentInput, documentType, DOCUMENT_FILE_MAX, pageKnowledgeText } from "@/lib/knowledge";
+import { articlePath, blogOfArticle } from "@/lib/blogs";
+import { readEntryContent } from "@/lib/content-types";
+import type { FieldDef } from "@/lib/custom-fields";
+import { cutPassages, documentInput, documentType, DOCUMENT_FILE_MAX, entryKnowledgeText, pageKnowledgeText } from "@/lib/knowledge";
 import { mergeLocales } from "@/lib/localization";
 import { parsePageContent } from "@/lib/page-content";
 import { localizePage } from "@/lib/page-translation";
@@ -11,6 +14,7 @@ import { vectorLiteral } from "@/lib/vectors";
 
 import { AiError, aiFor, embedTexts, type AiConnection } from "./ai";
 import { audit, type Account } from "./auth";
+import { blogsNow } from "./blogs";
 
 type Row = Record<string, unknown>;
 
@@ -156,51 +160,100 @@ async function siteLocales(storeId: string | null): Promise<string[]> {
 }
 
 /**
- * Cuts a site's published pages and articles into passages in each of its
- * languages, where a page was published since it was last cut, and lets go
- * of those no longer published. Headers, footers and product layouts are
- * not the site's words.
+ * Cuts a site's published pages, articles and content entries (D326, D428) into passages in each of its languages, where one was
+ * published since it was last cut or now has another address, and lets go of those no longer published. An article is at its own
+ * blog's address (D341). Headers, footers and product layouts are not the site's words; an entry's fields for staff only are not either.
  */
 export async function syncPageKnowledge(storeId: string | null): Promise<{ cut: number; dropped: number }> {
   const locales = await siteLocales(storeId);
-  const pages = await db().execute<Row>(sql`
-    select p.id, p.type, p.slug, p.published, p.published_at,
-      (select min(c.version) from commerce.knowledge_chunks c where c.page_id = p.id) as version
-    from commerce.pages p
-    where ${owned(storeId, sql`p.store_id`)} and p.type in ('page', 'article') and p.published_at is not null
-  `);
+  const [pages, blogs] = await Promise.all([
+    db().execute<Row>(sql`
+      select p.id, p.type, p.slug, p.published, p.published_at,
+        (select min(c.version) from commerce.knowledge_chunks c where c.page_id = p.id) as version,
+        (select min(c.path) from commerce.knowledge_chunks c where c.page_id = p.id) as path
+      from commerce.pages p
+      where ${owned(storeId, sql`p.store_id`)} and p.type in ('page', 'article') and p.published_at is not null
+    `),
+    storeId ? blogsNow(storeId) : Promise.resolve([]),
+  ]);
   let cut = 0;
   for (const page of pages) {
     const version = new Date(String(page.published_at)).toISOString();
-    if (page.version === version) continue;
     const content = parsePageContent(page.published);
     if (!content) continue;
-    const path = page.type === "article" ? `/blog/${page.slug}` : `/${page.slug}`;
-    const rows: SQL[] = [];
-    for (const locale of locales) {
+    const slug = String(page.slug);
+    const blog = page.type === "article" ? blogOfArticle(blogs, content) : null;
+    const path = page.type === "article" ? (blog ? articlePath(blog, slug) : `/blog/${slug}`) : `/${slug}`;
+    if (page.version === version && (page.path === path || page.path === null)) continue;
+    const passages = locales.map((locale) => {
       const localized = localizePage(content, locale);
-      cutPassages(pageKnowledgeText(localized)).forEach((body, position) => {
-        rows.push(sql`(${storeId}::uuid, ${String(page.id)}::uuid, ${locale}, ${position}, ${localized.title.slice(0, 300)}, ${path}, ${body}, ${version})`);
-      });
-    }
-    await db().transaction(async (tx) => {
-      await tx.execute(sql`delete from commerce.knowledge_chunks where page_id = ${String(page.id)}::uuid`);
-      if (rows.length > 0) {
-        await tx.execute(sql`
-          insert into commerce.knowledge_chunks (store_id, page_id, locale, position, title, path, body, version)
-          values ${sql.join(rows, sql`, `)}
-        `);
-      }
+      return { locale, title: localized.title, bodies: cutPassages(pageKnowledgeText(localized)) };
     });
+    await replacePassages(storeId, { page: String(page.id) }, path, version, passages);
     cut += 1;
   }
+
+  // Content entries (D326): each published one with its type's fields, at its page's address where its type has pages. The type's
+  // fields, title field and address are part of the version: a field made "Only staff" leaves the passages at once.
+  const entries = await db().execute<Row>(sql`
+    select e.id, e.slug, e.published, e.published_at, t.slug as type_slug, t.has_pages, t.fields, t.title_field,
+      md5(t.fields::text || t.title_field || t.slug || t.has_pages::text) as type_version,
+      (select min(c.version) from commerce.knowledge_chunks c where c.entry_id = e.id) as version
+    from commerce.content_entries e join commerce.content_types t on t.id = e.type_id
+    where ${owned(storeId, sql`e.store_id`)} and e.published_at is not null
+  `);
+  // A store's entries keep their words by its locales, its first the main one; Kaizena Flow's own by language (`en`, D326 H4).
+  const main = storeId ? (locales[0] ?? "en-GB") : "en";
+  const wordsIn = (locale: string) => (storeId ? locale : locale.split("-")[0]);
+  for (const entry of entries) {
+    const version = `${new Date(String(entry.published_at)).toISOString()}|${String(entry.type_version)}`;
+    if (entry.version === version) continue;
+    const type = { fields: (entry.fields ?? []) as FieldDef[], titleField: String(entry.title_field) };
+    const data = readEntryContent(entry.published).data;
+    const path = entry.has_pages ? `/${String(entry.type_slug)}/${String(entry.slug)}` : null;
+    const passages = locales.map((locale) => {
+      const { title, text } = entryKnowledgeText(type, data, wordsIn(locale), main);
+      return { locale, title: title || String(entry.slug), bodies: cutPassages(text) };
+    });
+    await replacePassages(storeId, { entry: String(entry.id) }, path, version, passages);
+    cut += 1;
+  }
+
   const dropped = await db().execute<Row>(sql`
     delete from commerce.knowledge_chunks c
-    where ${owned(storeId, sql`c.store_id`)} and c.page_id is not null
-      and not exists (select 1 from commerce.pages p where p.id = c.page_id and p.published_at is not null)
+    where ${owned(storeId, sql`c.store_id`)}
+      and ((c.page_id is not null and not exists (select 1 from commerce.pages p where p.id = c.page_id and p.published_at is not null))
+        or (c.entry_id is not null and not exists (select 1 from commerce.content_entries e where e.id = c.entry_id and e.published_at is not null)))
     returning c.id
   `);
   return { cut, dropped: dropped.length };
+}
+
+/** A page's or an entry's passages put in place of the ones it had, in one go. */
+async function replacePassages(
+  storeId: string | null,
+  source: { page: string } | { entry: string },
+  path: string | null,
+  version: string,
+  passages: { locale: string; title: string; bodies: string[] }[],
+): Promise<void> {
+  const page = "page" in source ? source.page : null;
+  const entry = "entry" in source ? source.entry : null;
+  const rows = passages.flatMap(({ locale, title, bodies }) =>
+    bodies.map(
+      (body, position) =>
+        sql`(${storeId}::uuid, ${page}::uuid, ${entry}::uuid, ${locale}, ${position}, ${title.slice(0, 300)}, ${path}, ${body}, ${version})`,
+    ),
+  );
+  await db().transaction(async (tx) => {
+    await tx.execute(page ? sql`delete from commerce.knowledge_chunks where page_id = ${page}::uuid` : sql`delete from commerce.knowledge_chunks where entry_id = ${entry}::uuid`);
+    if (rows.length > 0) {
+      await tx.execute(sql`
+        insert into commerce.knowledge_chunks (store_id, page_id, entry_id, locale, position, title, path, body, version)
+        values ${sql.join(rows, sql`, `)}
+      `);
+    }
+  });
 }
 
 // Vectors ---------------------------------------------------------------------
@@ -273,7 +326,7 @@ export async function refreshSiteKnowledge(storeId: string | null): Promise<void
 export async function knowledgeStatus(storeId: string | null): Promise<{ pages: number; documents: number; passages: number; withMeaning: number }> {
   const connection = await aiFor(storeId);
   const [row] = await db().execute<Row>(sql`
-    select count(distinct page_id)::int as pages, count(distinct document_id)::int as documents, count(*)::int as passages,
+    select (count(distinct page_id) + count(distinct entry_id))::int as pages, count(distinct document_id)::int as documents, count(*)::int as passages,
       count(*) filter (where space is not null and space = ${connection?.space ?? ""})::int as with_meaning
     from commerce.knowledge_chunks where ${owned(storeId)}
   `);

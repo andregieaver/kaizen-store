@@ -3008,19 +3008,33 @@ describe("the chat agent (D81)", () => {
     await count(store);
     expect((await db.query<{ count: number }>("select count from commerce.chat_usage order by count")).rows.map((r) => r.count)).toEqual([1, 2]);
 
-    // A passage comes from a document or a page, never both or neither.
+    // A passage comes from a document, a page or a content entry (D428), never two of them or none.
     const { id: documentId } = await one<{ id: string }>(
       "insert into commerce.knowledge_documents (store_id, title, content) values ($1, 'Returns', 'Return within 30 days.') returning id",
       [store],
     );
-    const passage = (source: { document?: string; page?: string }, locale: string | null, body: string) =>
+    const passage = (source: { document?: string; page?: string; entry?: string }, locale: string | null, body: string) =>
       db.query(
-        `insert into commerce.knowledge_chunks (store_id, document_id, page_id, locale, position, title, body, version)
-         values ($1, $2, $3, $4, 0, 'Returns', $5, 'v1')`,
-        [store, source.document ?? null, source.page ?? null, locale, body],
+        `insert into commerce.knowledge_chunks (store_id, document_id, page_id, entry_id, locale, position, title, body, version)
+         values ($1, $2, $3, $4, $5, 0, 'Returns', $6, 'v1')`,
+        [store, source.document ?? null, source.page ?? null, source.entry ?? null, locale, body],
       );
     await passage({ document: documentId }, null, "You may return goods within 30 days of delivery.");
     await expect(passage({}, null, "Neither")).rejects.toThrow(/knowledge_chunks_source/);
+    const { id: typeId } = await one<{ id: string }>(
+      `insert into commerce.content_types (store_id, key, name, slug, fields, title_field)
+       values ($1, 't_0123456789ab', 'Shops', 'shops', '[]', 'f_title1') returning id`,
+      [store],
+    );
+    const { id: entryId } = await one<{ id: string }>(
+      "insert into commerce.content_entries (store_id, type_id, slug, draft) values ($1, $2, 'bergen', '{}') returning id",
+      [store, typeId],
+    );
+    await expect(passage({ document: documentId, entry: entryId }, null, "Both")).rejects.toThrow(/knowledge_chunks_source/);
+    await passage({ entry: entryId }, "nb-NO", "Open on Saturdays.");
+    // An entry's passages go with it.
+    await db.query("delete from commerce.content_entries where id = $1", [entryId]);
+    expect((await one<{ n: number }>("select count(*)::int as n from commerce.knowledge_chunks where entry_id is not null")).n).toBe(0);
     await expect(passage({ document: documentId }, null, "")).rejects.toThrow(/knowledge_chunks_body/);
     await expect(
       db.query("update commerce.knowledge_chunks set space = 'api.example.com|embed' where document_id = $1", [documentId]),

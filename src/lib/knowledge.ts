@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+import { entryTitle, type ContentType } from "./content-types";
+import { fieldShows, isEmptyValue, readField, valuesFor, type FieldData, type FieldType, type FieldWords } from "./custom-fields";
+import { fieldValueText } from "./field-tools";
 import { blockText, type PageContent } from "./page-content";
 import { publicRows } from "./visibility";
 
@@ -92,6 +95,51 @@ export function cutPassages(text: string, max = PASSAGE_MAX): string[] {
   }
   if (current) passages.push(current);
   return passages;
+}
+
+/**
+ * Field types whose value is words a visitor reads where the entry is shown (D326). Pictures, videos, files, colours, links and what
+ * points at other things (products, pages, entries) are not; nor are groups, repeaters and flexible content, whose rows the chat
+ * does not need to answer from.
+ */
+const READ_FIELD_TYPES: ReadonlySet<FieldType> = new Set<FieldType>([
+  "text", "textarea", "number", "measurement", "email", "url", "phone", "select", "radio", "buttons", "checkbox", "boolean", "richText",
+  "date", "datetime", "time", "money",
+]);
+
+/** "Yes" and "no" in an entry's language, for a yes-or-no field. */
+const YES_NO: Record<string, FieldWords> = {
+  en: { yes: "Yes", no: "No" },
+  nb: { yes: "Ja", no: "Nei" },
+  nn: { yes: "Ja", no: "Nei" },
+  no: { yes: "Ja", no: "Nei" },
+  sv: { yes: "Ja", no: "Nej" },
+  da: { yes: "Ja", no: "Nej" },
+  de: { yes: "Ja", no: "Nein" },
+  fi: { yes: "Kyllä", no: "Ei" },
+};
+
+/**
+ * A content type's entry (D326) for the agent, in one language: its title, then each field the site shows ("Shown on the site",
+ * by its rules) with words in it, as "Label: value". Fields for staff only never go in: the chat answers anyone.
+ */
+export function entryKnowledgeText(
+  type: Pick<ContentType, "fields" | "titleField">,
+  data: FieldData,
+  locale: string,
+  main: string,
+): { title: string; text: string } {
+  const title = entryTitle(type, data, locale, main);
+  const values = valuesFor(type.fields, data, locale, main);
+  const words = YES_NO[locale.split("-")[0]] ?? YES_NO.en;
+  const lines = type.fields
+    .filter((def) => def.access === "public" && def.id !== type.titleField && READ_FIELD_TYPES.has(def.type) && fieldShows(def, values))
+    .flatMap((def) => {
+      const value = readField(def, data, locale, main);
+      if (value === undefined || isEmptyValue(value)) return [];
+      return [`${def.labels?.[locale] ?? def.label}: ${fieldValueText(def, value, locale, words, 4000)}`];
+    });
+  return { title, text: cleanDocumentText([title, ...lines].filter(Boolean).join("\n\n")) };
 }
 
 /** A page's or article's words for the agent: its title, then every block's text in order. */

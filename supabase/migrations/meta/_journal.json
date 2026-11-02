@@ -4369,6 +4369,13 @@
       "when": 1793611995083,
       "tag": "20261102093315_store_trial_paused",
       "breakpoints": true
+    },
+    {
+      "idx": 624,
+      "version": "7",
+      "when": 1793661420236,
+      "tag": "20261102231700_knowledge_entries",
+      "breakpoints": true
     }
   ]
 }

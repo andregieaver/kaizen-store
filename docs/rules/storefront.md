@@ -379,8 +379,9 @@ changing it; a rule changes here, and its line in CLAUDE.md when its gist change
   The picture's frame (D233: fill, border, shadow; `chat_agents.avatar_style`) is read only
   through `cleanAvatarStyle()` and drawn only by `avatarFrameStyle()` (`src/lib/chat-avatar.ts`, no zod).
   Knowledge is `knowledge_chunks` (SQL only, like `product_embeddings`):
-  documents cut on save, published pages and articles by
-  `syncPageKnowledge()` in the five-minute cron, vectors by
+  documents cut on save, published pages, articles (at their own blog's address, D341) and content
+  entries (D326: their title and the fields shown on the site, never one for staff only; cut anew when
+  the type's fields change; D428) by `syncPageKnowledge()` in the five-minute cron, vectors by
   `embedKnowledge()`; `searchKnowledge()` merges keyword and meaning.
   Voice is push to talk (`/api/chat/voice`: `transcribeAudio()`, then the
   same answer, then `speakText()`), with the provider's voice models.
