@@ -15,7 +15,7 @@ Two of the builder's documents open side by side, both editable, with drag and d
 - **Publish** publishes both; **Save draft** saves both.
 - A toggle scrolls the two pages **together or independently**.
 - In **Custom CSS**, *This page* has a **Left / Right** toggle.
-- **Close** on the second page goes back to one page.
+- **Close** on either page empties its half, for another document (D424, section 7); *Close both* empties both.
 
 Homer sees two pages and one Publish. Lisa still has every setting: the sidebar, the settings on the right, undo, versions, find and
 replace and the page checker all act on the page last pointed at.
@@ -130,3 +130,56 @@ and the refusals.
 4. *Open beside* and *Create new* with their dialogs.
 5. A saved template as one of the two documents (built 1 November 2026, section 3.4).
 6. The end-to-end test, `docs/rules/admin/website.md`, D412.
+
+## 7. More ways to work with two (D424)
+
+Asked for by the owner on 2 November 2026: scroll together or apart, swap the pages, close either or both and open others, drag the
+room between them, and the same page on both sides to work on the computer's and the phone's at once.
+
+### 7.1 What a person gets
+
+- Over the two pages: **Scroll together** (a switch, as before, kept per browser), **Swap sides** and **Close both**.
+- Each page's **Close** (over its canvas) empties its half. An empty half says so and offers **Open a page here**, **Create new here**,
+  and, when the other half holds a page, **{page} on a phone** (that page again at a phone's size) and **Work on {page} alone** (its own
+  editor, one page).
+- Between the two pages an edge to **drag**: one page wider, the other narrower, from a fifth to four fifths; the arrow keys move it, a
+  double press, Enter or Home gives the usual widths back. Kept per browser; one page drawn twice keeps its own (the phone narrower).
+- **Desktop and phone** (in the editor's bar, by *Open beside*, and an empty half's *… on a phone*): the same page on both sides, the
+  second at a phone's size. One page, one editor: a change on either canvas is on both, one undo, one save. Each canvas has its own
+  screen size (its size bar), and the settings edit the size of the canvas last pressed, which is outlined. A drag between the two
+  canvases moves, as on one page. Its second view closes with **Close this view**.
+
+### 7.2 The address
+
+What is shown is the address, so a reload or a shared link shows it again (`DualLayout` in `src/lib/dual-page.ts`):
+
+- `?with=` is the second half: a document (as before), `empty`, or `mirror` (the first document again; `with` naming the first document
+  itself means the same). `?first=empty` is a closed first half (the path's document is not drawn). `?swap=1` draws the second half on
+  the left.
+- `closeHalf()` closes a half; closing either canvas of one document drawn twice leaves it once, where the other canvas was.
+  `openIn()` opens a document in a half: the other half's page again is `mirror`; a saved template, which has no address of its own, is
+  always the second half, drawn on the side asked for; two templates cannot be open. `dualHref()` writes the address.
+- Closing, swapping and drawing the first page again change nothing but the address (`replaceState`): no editor is drawn afresh and
+  nothing typed is lost. Opening another document asks the server for the new address; the address's own document keeps what it holds
+  while it stays the address's own, and a document that goes or is drawn afresh asks first about changes not saved.
+
+### 7.3 How it is built
+
+- `DualFrame` draws the halves in the order the swap asks (the halves' places move; what is portalled into them stays), and between
+  them `DualSplitter` (`useDualSplit()` in `builder-rails.tsx`, `draggedSplit()`): the share is the first document's, so a swap keeps each
+  page's width.
+- One document twice is one `PageEditor` whose `PageBuilder` gets `dual.mirror`: it draws a second canvas column into the other half
+  (its ids under `R|`), with its own `useResponsiveMode` starting at `sm`; `sizeEdit` is the pointed canvas's; a heading or text edited
+  where it stands is the canvas's it was pressed on (`inline.side`). The builder registers its drag handlers for both sides, the hub's
+  `mirror` makes the frame hand every drop to it as a move, and a column's drop place and a row's measures are the hovered canvas's.
+- Scrolling together follows a device's screen where a page scrolls inside one, and by how far through the page it is
+  (`followScrollShare()`) where the two are drawn at different sizes.
+- `DualHalf` draws an empty half's offers in its place; the Open and Create dialogs open into it.
+
+### 7.4 Tests
+
+Unit (`src/lib/dual-page.test.ts`): the address read and written back, closing, opening in a half, the split, scrolling by share.
+Signed-in end to end (`e2e/signed-in/dual-page.spec.ts`): swap, close one at a time, open a new document in an empty half, Close both;
+the edge dragged and reset with the pointer and the keys; Desktop and phone: a heading added on one canvas is on both, the phone's
+canvas pressed is the one edited, its view closed and opened again.
+

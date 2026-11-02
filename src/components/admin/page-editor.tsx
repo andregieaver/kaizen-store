@@ -127,8 +127,10 @@ export type EditorDual = {
   side: DualSide;
   active: boolean;
   onActivate: () => void;
-  /** Closes this page (the second one); null where it cannot be closed. */
+  /** Closes this page's half (D424): the half is empty then, for another document; null where it cannot be closed. */
   onClose: (() => void) | null;
+  /** This document drawn again on the other canvas, at another screen size (D424), and how that view is closed; null where it is not. */
+  mirror: { onClose: () => void } | null;
   /** Save both and Publish both, drawn in the active editor's bar in place of its own Save and Publish. */
   barStart: ReactNode;
   /** Ctrl or Cmd + S: both are saved. */
@@ -634,32 +636,34 @@ export function PageEditor({
   useEffect(() => {
     if (dualOnState && dualSide) dualOnState(dualSide, { name: pageName, dirty: dirty || themeDirty, css: content.css ?? "", noun, classNames: cssClassNames });
   }, [dualOnState, dualSide, pageName, dirty, themeDirty, content.css, noun, cssClassNames]);
+  /** Over a canvas of a dual page: what it shows, the page's name, and its Close. */
+  const canvasHeader = (line: string, onClose: (() => void) | null, closeLabel: string) => (
+    <div className="flex items-start justify-between gap-2 px-1" data-dual-header="">
+      <div className="min-w-0">
+        <p className="text-xs text-muted">{line}</p>
+        <p className="truncate font-medium text-ink">{pageName}</p>
+      </div>
+      {onClose && (
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label={closeLabel}
+          title={closeLabel}
+          className="flex size-9 shrink-0 items-center justify-center rounded-pill text-muted hover:bg-sunken hover:text-ink"
+          data-dual-close=""
+        >
+          <X aria-hidden className="size-5" />
+        </button>
+      )}
+    </div>
+  );
   const builderDual: DualBuilder | null = dual
     ? {
         side: dual.side,
         active: dual.active,
         onActivate: dual.onActivate,
-        header: (
-          <div className="flex items-start justify-between gap-2 px-1" data-dual-header="">
-            <div className="min-w-0">
-              <p className="text-xs text-muted">
-                {dual.kindName} · {dual.active ? dw.editing : dw.pointToEdit}
-              </p>
-              <p className="truncate font-medium text-ink">{pageName}</p>
-            </div>
-            {dual.onClose && (
-              <button
-                type="button"
-                onClick={dual.onClose}
-                aria-label={dw.close}
-                title={dw.close}
-                className="flex size-9 shrink-0 items-center justify-center rounded-pill text-muted hover:bg-sunken hover:text-ink"
-              >
-                <X aria-hidden className="size-5" />
-              </button>
-            )}
-          </div>
-        ),
+        header: canvasHeader(`${dual.kindName} · ${dual.active ? dw.editing : dw.pointToEdit}`, dual.onClose, dw.close),
+        mirror: dual.mirror ? { header: canvasHeader(`${dw.mirrorKind} · ${dw.mirrorHint}`, dual.mirror.onClose, dw.mirrorClose) } : null,
         source: () => ({ rows: latest.current.rows, translations: latest.current.translations }),
         onCopy: (update, translations) =>
           edit((current) => ({ ...current, rows: update(current.rows), translations: withCopiedTranslations(current.translations, translations) }), "copy"),
@@ -681,6 +685,11 @@ export function PageEditor({
     if (!mayLeave()) return;
     setDirty(false);
     router.push(`${adminBase}/${saved?.id ?? "new"}?with=${encodeURIComponent(formatDualWith(doc))}`);
+  };
+  const openMirror = () => {
+    if (!mayLeave()) return;
+    setDirty(false);
+    router.push(`${adminBase}/${saved?.id ?? "new"}?with=mirror`);
   };
   const createAlone = (kind: DualWith["kind"]) => {
     setCreateOpen(false);
@@ -1278,6 +1287,12 @@ export function PageEditor({
                 <button type="button" onClick={() => setCreateOpen(true)} aria-haspopup="dialog" className="underline" data-dual-create="">
                   {dw.createNew}
                 </button>
+                {/* The same page twice (D424): as on a computer and as on a phone, side by side; one page alone only. */}
+                {!dual && !template && (
+                  <button type="button" onClick={openMirror} className="underline" data-dual-mirror-open="">
+                    {dw.mirrorOpen}
+                  </button>
+                )}
               </>
             )}
             {saved && !template && (

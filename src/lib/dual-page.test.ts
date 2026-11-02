@@ -1,6 +1,25 @@
 import { describe, expect, it } from "vitest";
 
-import { copyAcross, dropProblem, findDualPart, followScroll, formatDualWith, parseDualWith, templateAsPage, withCopiedTranslations, type DualPart } from "./dual-page";
+import {
+  closeHalf,
+  copyAcross,
+  draggedSplit,
+  dropProblem,
+  dualHref,
+  findDualPart,
+  followScroll,
+  followScrollShare,
+  formatDualWith,
+  openIn,
+  parseDualLayout,
+  parseDualWith,
+  shownAt,
+  splitShare,
+  templateAsPage,
+  withCopiedTranslations,
+  type DualLayout,
+  type DualPart,
+} from "./dual-page";
 import { partFromRows } from "./saved-part-canvas";
 import type { SavedPart } from "./saved-parts";
 import type { PageBlock, PageRow } from "./page-content";
@@ -30,6 +49,96 @@ describe("the second document's address", () => {
       expect(parseDualWith(bad)).toBeNull();
     }
     expect(parseDualWith([`page:${ID}`, `article:${ID}`])).toBeNull();
+  });
+});
+
+describe("what a dual page shows, as its address holds it (D424)", () => {
+  const OTHER = "7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d";
+  const T = "0f0e0d0c-0b0a-4908-8706-050403020100";
+  const page = { kind: "page", id: ID } as const;
+  const base = (kind: string) => `/admin/s/${kind === "article" ? "articles" : "pages"}`;
+  const layout = (over: Partial<DualLayout> = {}): DualLayout => ({ first: page, firstOpen: true, second: { kind: "article", id: OTHER }, swap: false, ...over });
+
+  it("reads the second half, a closed first half and a swap, and writes them back", () => {
+    expect(parseDualLayout(page, { with: `article:${OTHER}` })).toEqual(layout());
+    expect(parseDualLayout(page, { with: "empty", first: "empty", swap: "1" })).toEqual(layout({ second: "empty", firstOpen: false, swap: true }));
+    expect(parseDualLayout(page, { with: "mirror" })).toEqual(layout({ second: "mirror" }));
+    for (const each of [layout(), layout({ second: "empty", firstOpen: false, swap: true }), layout({ second: "mirror" }), layout({ second: { kind: "template", id: T } })]) {
+      const href = new URL(dualHref(base, each), "https://x.test");
+      expect(href.pathname).toBe(`/admin/s/pages/${ID}`);
+      expect(parseDualLayout(page, Object.fromEntries(href.searchParams))).toEqual(each);
+    }
+    expect(dualHref(base, layout({ first: { kind: "article", id: null }, second: "empty" }))).toBe("/admin/s/articles/new?with=empty");
+  });
+
+  it("reads the first document named again as the same document twice, and asks for nothing without a second half", () => {
+    expect(parseDualLayout(page, { with: `page:${ID}` })).toEqual(layout({ second: "mirror" }));
+    // Twice with the first half closed is the document once.
+    expect(parseDualLayout(page, { with: "mirror", first: "empty" })).toEqual(layout({ second: "empty" }));
+    expect(parseDualLayout(page, {})).toBeNull();
+    expect(parseDualLayout(page, { with: "nothing" })).toBeNull();
+    // Two new pages are two pages.
+    expect(parseDualLayout({ kind: "page", id: null }, { with: "new:page" })).toEqual(layout({ first: { kind: "page", id: null }, second: { kind: "page", id: null } }));
+  });
+
+  it("closes either half, and closes the same document twice into once, where the other canvas was", () => {
+    expect(closeHalf(layout(), "right")).toEqual(layout({ second: "empty" }));
+    expect(closeHalf(layout(), "left")).toEqual(layout({ firstOpen: false }));
+    expect(closeHalf(closeHalf(layout(), "left"), "right")).toEqual(layout({ firstOpen: false, second: "empty" }));
+    expect(closeHalf(layout({ second: "mirror" }), "right")).toEqual(layout({ second: "empty" }));
+    // Its first canvas closed: it stays where its second canvas was drawn.
+    const closed = closeHalf(layout({ second: "mirror" }), "left");
+    expect(closed).toEqual(layout({ second: "empty", swap: true }));
+    expect(shownAt("left", closed.swap)).toBe("right");
+  });
+
+  it("opens a document in an empty half, where it was asked for", () => {
+    const article = { kind: "article", id: OTHER } as const;
+    expect(openIn(layout({ second: "empty" }), "right", article)).toEqual(layout());
+    expect(openIn(layout({ firstOpen: false }), "left", { kind: "header", id: null })).toEqual(layout({ first: { kind: "header", id: null } }));
+    // A saved template is always the second half, drawn on the side asked for.
+    const template = { kind: "template", id: T } as const;
+    const left = openIn(layout({ firstOpen: false }), "left", template)!;
+    expect(left).toEqual(layout({ first: article, second: template, swap: true }));
+    expect(shownAt("right", left.swap)).toBe("left");
+    const alone = openIn(layout({ firstOpen: false, second: "empty" }), "left", template)!;
+    expect(alone).toEqual(layout({ firstOpen: false, second: template, swap: true }));
+    expect(openIn(layout({ firstOpen: false, second: template }), "left", { kind: "template", id: OTHER })).toBeNull();
+  });
+
+  it("opens the other half's document again at another size, drawn in the half asked for", () => {
+    expect(openIn(layout({ second: "empty" }), "right", "mirror")).toEqual(layout({ second: "mirror" }));
+    expect(openIn(layout({ second: "empty" }), "right", page)).toEqual(layout({ second: "mirror" }));
+    // From the first half: the second's document becomes the address's own, its second canvas drawn where it was asked for.
+    const article = { kind: "article", id: OTHER } as const;
+    const twice = openIn(layout({ firstOpen: false }), "left", "mirror")!;
+    expect(twice).toEqual(layout({ first: article, second: "mirror", swap: true }));
+    expect(shownAt("right", twice.swap)).toBe("left");
+    expect(openIn(layout({ firstOpen: false }), "left", article)).toEqual(twice);
+    // Nothing to draw twice.
+    expect(openIn(layout({ firstOpen: false, second: "empty" }), "right", "mirror")).toBeNull();
+    expect(openIn(layout({ firstOpen: false, second: "empty" }), "left", "mirror")).toBeNull();
+    expect(openIn(layout({ firstOpen: false, second: { kind: "template", id: T } }), "left", "mirror")).toBeNull();
+    // The closed first document asked for in the second half is it alone again, where it was asked for.
+    expect(openIn(layout({ firstOpen: false, second: "empty" }), "right", page)).toEqual(layout({ second: "empty", swap: true }));
+  });
+
+  it("shares the width from a fifth to four fifths, dragged with the half on the left growing", () => {
+    expect(splitShare(0.5)).toBe(0.5);
+    expect(splitShare(0.05)).toBe(0.2);
+    expect(splitShare(0.95)).toBe(0.8);
+    expect(splitShare(Number.NaN)).toBe(0.5);
+    expect(draggedSplit(0.5, 100, 1000, false)).toBe(0.6);
+    // Swapped, the first document is on the right: dragging the edge right makes it narrower.
+    expect(draggedSplit(0.5, 100, 1000, true)).toBe(0.4);
+    expect(draggedSplit(0.5, 900, 1000, false)).toBe(0.8);
+    expect(draggedSplit(0.6, 100, 0, false)).toBe(0.6);
+  });
+
+  it("scrolls one document drawn twice by how far through it is, not by pixels", () => {
+    expect(followScrollShare({ scrollTop: 500, scrollHeight: 2000, clientHeight: 1000 }, { scrollHeight: 5000, clientHeight: 800 })).toBe(2100);
+    expect(followScrollShare({ scrollTop: 0, scrollHeight: 900, clientHeight: 1000 }, { scrollHeight: 5000, clientHeight: 800 })).toBe(0);
+    expect(followScrollShare({ scrollTop: 1000, scrollHeight: 2000, clientHeight: 1000 }, { scrollHeight: 600, clientHeight: 800 })).toBe(0);
   });
 });
 

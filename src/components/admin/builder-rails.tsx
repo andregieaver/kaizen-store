@@ -4,6 +4,7 @@ import { PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen } from "
 import { useCallback, useSyncExternalStore } from "react";
 
 import { fillWords } from "@/lib/admin-fill";
+import { draggedSplit, SPLIT, splitShare } from "@/lib/dual-page";
 
 import { useAdminText } from "./admin-text";
 
@@ -105,6 +106,26 @@ export function useRailWidth(side: RailSide): [number | null, (width: number | n
   );
   const set = useCallback((next: number | null) => writeStored(RAIL_WIDTH_KEYS[side], next === null ? null : String(railWidthOf(String(next)))), [side]);
   return [width, set];
+}
+
+/**
+ * How a dual page's two halves share their width (D424): the first document's share, kept in this browser, apart for one document drawn
+ * twice (a page and its phone), which starts with the phone narrower. Null is its usual share.
+ */
+const SPLIT_KEYS = { two: "kaizen_admin_dual_split", mirror: "kaizen_admin_dual_split_mirror" } as const;
+const USUAL_SPLIT = { two: SPLIT.even, mirror: 0.62 } as const;
+export function useDualSplit(mirror: boolean): [number, (share: number | null) => void] {
+  const which = mirror ? "mirror" : "two";
+  const share = useSyncExternalStore(
+    subscribe,
+    () => {
+      const kept = readStored(SPLIT_KEYS[which]);
+      return kept === null || kept === "" ? USUAL_SPLIT[which] : splitShare(Number(kept));
+    },
+    () => USUAL_SPLIT[which],
+  );
+  const set = useCallback((next: number | null) => writeStored(SPLIT_KEYS[which], next === null ? null : String(splitShare(next))), [which]);
+  return [share, set];
 }
 
 const ICONS = {
@@ -213,9 +234,93 @@ export function railTemplate(left: { folded: boolean; width: number | null }, ri
   return `${railSide(left)} ${RAIL_GAP} minmax(0,2fr) ${RAIL_GAP} ${railSide(right)}`;
 }
 
-/** A dual page's columns (D412): the sidebars as on one page, and two canvases of the same width between them. */
-export function dualRailTemplate(left: { folded: boolean; width: number | null }, right: { folded: boolean; width: number | null }): string {
-  return `${railSide(left)} ${RAIL_GAP} minmax(0,2fr) ${RAIL_GAP} minmax(0,2fr) ${RAIL_GAP} ${railSide(right)}`;
+/**
+ * A dual page's columns (D412): the sidebars as on one page, and the two canvases between them sharing what an open sidebar's usual share
+ * is four times, the one drawn on the left `share` of it (D424; half each unless the edge between them was dragged).
+ */
+export function dualRailTemplate(left: { folded: boolean; width: number | null }, right: { folded: boolean; width: number | null }, share: number = SPLIT.even): string {
+  const own = splitShare(share);
+  const fr = (part: number) => `minmax(0,${Math.round(part * 4000) / 1000}fr)`;
+  return `${railSide(left)} ${RAIL_GAP} ${fr(own)} ${RAIL_GAP} ${fr(1 - own)} ${RAIL_GAP} ${railSide(right)}`;
+}
+
+/** A dual page with no document open (D424): no sidebars, the two empty halves sharing the room as the edge between them says. */
+export function dualBareTemplate(share: number = SPLIT.even): string {
+  const own = splitShare(share);
+  const fr = (part: number) => `minmax(0,${Math.round(part * 4000) / 1000}fr)`;
+  return `${fr(own)} ${RAIL_GAP} ${fr(1 - own)}`;
+}
+
+/**
+ * The edge between a dual page's two halves (D424): dragged with the pointer, or moved with the arrow keys, to give one page more room
+ * and the other less; a double press, Enter or Home gives them their usual shares again. `share` is the first document's, which is on the right
+ * once the halves are swapped; what is said and shown is the half on the left's. On a phone, where the halves stack, it is not there.
+ */
+export function DualSplitter({
+  share,
+  swap,
+  onShare,
+  measure,
+}: {
+  share: number;
+  swap: boolean;
+  onShare: (share: number | null) => void;
+  /** The two canvases' width together, as drawn; null where they are not side by side. */
+  measure: () => number | null;
+}) {
+  const w = useAdminText("builder").dual;
+  const leftShare = swap ? 1 - share : share;
+  const left = Math.round(leftShare * 100);
+  const step = (by: number) => onShare(splitShare(share + (swap ? -by : by)));
+  return (
+    <div className="hidden justify-center lg:flex">
+      <div
+        role="separator"
+        aria-orientation="vertical"
+        aria-label={w.split}
+        aria-valuenow={left}
+        aria-valuemin={Math.round(SPLIT.min * 100)}
+        aria-valuemax={Math.round(SPLIT.max * 100)}
+        aria-valuetext={fillWords(w.splitValue, { left, right: 100 - left })}
+        tabIndex={0}
+        title={w.splitHint}
+        data-dual-split=""
+        onPointerDown={(event) => {
+          const total = measure();
+          if (!total || event.button !== 0) return;
+          event.preventDefault();
+          const target = event.currentTarget;
+          target.setPointerCapture(event.pointerId);
+          const startX = event.clientX;
+          const start = share;
+          const move = (moving: PointerEvent) => onShare(draggedSplit(start, moving.clientX - startX, total, swap));
+          const end = () => {
+            target.removeEventListener("pointermove", move);
+            target.removeEventListener("pointerup", end);
+            target.removeEventListener("pointercancel", end);
+          };
+          target.addEventListener("pointermove", move);
+          target.addEventListener("pointerup", end);
+          target.addEventListener("pointercancel", end);
+        }}
+        onDoubleClick={() => onShare(null)}
+        onKeyDown={(event) => {
+          const by = event.shiftKey ? SPLIT.step * 2 : SPLIT.step;
+          if (event.key === "ArrowLeft") step(-by);
+          else if (event.key === "ArrowRight") step(by);
+          else if (event.key === "Enter" || event.key === "Home") onShare(null);
+          else return;
+          event.preventDefault();
+        }}
+        className="group relative z-10 flex h-full w-3 cursor-col-resize touch-none justify-center rounded-pill outline-none focus-visible:ring-2 focus-visible:ring-brand"
+      >
+        <span
+          aria-hidden
+          className="my-auto h-24 w-1 rounded-pill bg-line transition-colors group-hover:bg-brand group-focus-visible:bg-brand group-active:bg-brand"
+        />
+      </div>
+    </div>
+  );
 }
 
 /** The width a sidebar is dragged to: within its limits, and leaving the canvas its room. */

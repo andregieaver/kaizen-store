@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { PageEditor } from "@/components/admin/page-editor";
 import { DualPageEditor, type DualDoc } from "@/components/admin/dual-page-editor";
-import { parseDualWith, templateAsPage, type DualKind } from "@/lib/dual-page";
+import { parseDualLayout, templateAsPage, type DualKind, type DualLayout, type DualWith } from "@/lib/dual-page";
 import { adminText } from "@/lib/admin-text";
 import type { AdminLang } from "@/lib/admin-lang";
 import { PAGE_TYPE_COPY } from "@/components/admin/page-type-copy";
@@ -48,13 +48,25 @@ type Params = Promise<{ pageId: string }>;
 const PLATFORM_DUAL = ["page", "article", "header", "footer"] as const satisfies readonly DualKind[];
 
 /**
- * The second document of a dual page (D412) on Kaizena Flow's own site, as the address asks for it (`?with=`): null where it asks for
- * none, "refused" where it names nothing that can be opened here (a theme store page is edited under Themes).
+ * What a dual page on Kaizena Flow's own site shows (D412, D424), as the address asks (`?with=`, `?first=`, `?swap=`), with its second
+ * document loaded: null where the address asks for no second half, "refused" where it names nothing that can be opened here.
  */
-async function platformSecondDoc(first: { id: string | null }, value: string | string[] | undefined, lang: AdminLang, author: string): Promise<DualDoc | "refused" | null> {
-  if (value === undefined) return null;
-  const doc = parseDualWith(value);
-  if (!doc || (doc.id !== null && doc.id === first.id)) return "refused";
+async function platformDual(
+  first: { kind: DualKind; id: string | null },
+  query: Record<string, string | string[] | undefined> | undefined,
+  lang: AdminLang,
+  author: string,
+): Promise<{ layout: DualLayout; right: DualDoc | null } | "refused" | null> {
+  if (query?.with === undefined) return null;
+  const layout = parseDualLayout(first, { with: query.with, first: query.first, swap: query.swap });
+  if (!layout) return "refused";
+  if (typeof layout.second !== "object") return { layout, right: null };
+  const right = await platformSecondDoc(layout.second, lang, author);
+  return right === "refused" ? "refused" : { layout, right };
+}
+
+/** The second document of a dual page (D412) on Kaizena Flow's own site; "refused" where it cannot be opened here (a theme store page is edited under Themes). */
+async function platformSecondDoc(doc: DualWith, lang: AdminLang, author: string): Promise<DualDoc | "refused"> {
   // A saved template of Kaizena Flow's (D412 step 5), edited as the kind of page it is for.
   if (doc.kind === "template") {
     const savedParts = await listSavedParts(null);
@@ -96,23 +108,24 @@ export async function NewPageView({ type, searchParams }: { type: PageType; sear
   ]);
   const gridTerms = await bothTerms(null);
   const { lang, w } = await platformSiteWords();
-  const second = await platformSecondDoc({ id: null }, query?.with, lang, admin.name ?? "");
+  const dual = context.dualPages ? await platformDual({ kind: type as DualKind, id: null }, query, lang, admin.name ?? "") : null;
   const props = { page: null, savedParts: saved, terms, gridTerms, context };
   const bw = adminText(lang, "builder");
   return (
     <AdminTextScope texts={adminTexts(lang, PLATFORM_SITE_AREAS)}>
       {/* Only for screen readers: the title is in the editor, and the list is in the menu. */}
       <h1 className="sr-only">{typeWords(w, type).new}</h1>
-      {second && second !== "refused" ? (
+      {dual && dual !== "refused" && context.dualPages ? (
         <DualPageEditor
           left={{ doc: { kind: type as DualKind, id: null }, kindName: bw.dual.kinds[type as DualKind], props }}
-          right={second}
-          leftBase={context.adminBase}
-          closeHref={`${context.adminBase}/new`}
+          right={dual.right}
+          layout={dual.layout}
+          root={context.dualPages.root}
+          pick={{ ...context.dualPages, templates: saved }}
           site={{ css: context.siteCss, name: bw.editor.kaizenSite, save: context.actions.saveSiteCss, versions: context.actions.cssVersions }}
         />
       ) : (
-        <PageEditor {...props} notice={second === "refused" ? bw.dual.notOpened : null} />
+        <PageEditor {...props} notice={dual === "refused" ? bw.dual.notOpened : null} />
       )}
     </AdminTextScope>
   );
@@ -146,7 +159,7 @@ async function themeStoreView(role: "themes" | "theme") {
 export async function EditPageView({ type, params, searchParams, themeStore = false }: { type: PageType; params: Params; searchParams: Query; themeStore?: boolean }) {
   await connection();
   const admin = await requirePlatformAdmin();
-  const [page, { saved: justSaved, with: withDoc }, saved, terms, base, gridTerms] = await Promise.all([
+  const [page, query, saved, terms, base, gridTerms] = await Promise.all([
     load(type, params),
     searchParams,
     listSavedParts(null),
@@ -155,6 +168,7 @@ export async function EditPageView({ type, params, searchParams, themeStore = fa
     bothTerms(null),
   ]);
   if (!page) notFound();
+  const justSaved = query.saved;
   const elsewhere = await editedElsewhere(type, page.id, themeStore);
   if (elsewhere) redirect(elsewhere);
   const role = themeStore ? await themeStoreRoleOf(page.id) : null;
@@ -180,17 +194,18 @@ export async function EditPageView({ type, params, searchParams, themeStore = fa
           : fillWords(w.pages.publishedAt, { address })
         : null;
   // A second document beside this one (D412); a theme store page (D285) has its own place and stays alone.
-  const second = role ? null : await platformSecondDoc({ id: page.id }, withDoc, lang, admin.name ?? "");
+  const dual = role || !context.dualPages ? null : await platformDual({ kind: type as DualKind, id: page.id }, query, lang, admin.name ?? "");
   const bw = adminText(lang, "builder");
-  if (second && second !== "refused") {
+  if (dual && dual !== "refused" && context.dualPages) {
     return (
       <AdminTextScope texts={adminTexts(lang, PLATFORM_SITE_AREAS)}>
         <h1 className="sr-only">{fillWords(w.tables.editTitle, { title: page.draft.title || `${w.tables.untitled} ${w.tables.pageTypes[type].one}` })}</h1>
         <DualPageEditor
           left={{ doc: { kind: type as DualKind, id: page.id }, kindName: bw.dual.kinds[type as DualKind], props: { page, notice, savedParts: saved, terms, gridTerms, context } }}
-          right={second}
-          leftBase={context.adminBase}
-          closeHref={`${context.adminBase}/${page.id}`}
+          right={dual.right}
+          layout={dual.layout}
+          root={context.dualPages.root}
+          pick={{ ...context.dualPages, templates: saved }}
           site={{ css: context.siteCss, name: bw.editor.kaizenSite, save: context.actions.saveSiteCss, versions: context.actions.cssVersions }}
         />
       </AdminTextScope>
@@ -202,7 +217,7 @@ export async function EditPageView({ type, params, searchParams, themeStore = fa
       <PageEditor
         key={page.id}
         page={page}
-        notice={second === "refused" ? bw.dual.notOpened : notice}
+        notice={dual === "refused" ? bw.dual.notOpened : notice}
         savedParts={saved}
         terms={terms}
         gridTerms={gridTerms}

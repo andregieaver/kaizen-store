@@ -18,7 +18,7 @@ import { DndContext, DragOverlay, KeyboardSensor, PointerSensor, closestCenter, 
 import { SortableContext, horizontalListSortingStrategy, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { createPortal } from "react-dom";
-import { copyAcross, dropProblem, findDualPart, type DualPart, type DualSide } from "@/lib/dual-page";
+import { copyAcross, dropProblem, findDualPart, otherSide, type DualPart, type DualSide } from "@/lib/dual-page";
 import { Fragment, createContext, useCallback, useContext, useEffect, useEffectEvent, useId, useMemo, useRef, useState, useTransition, useLayoutEffect, type CSSProperties, type RefObject, type PointerEventHandler, type ReactNode } from "react";
 import { inlinePlain } from "@/lib/inline-text";
 import { FontLinks } from "@/components/font-links";
@@ -34,7 +34,7 @@ import { MenuGlide } from "@/components/menu-glide";
 import { MenuHoverFields } from "./menu-hover-fields";
 import { PixelRange } from "./pixel-range";
 import { ModalFields, ModalPicker } from "./modal-fields";
-import { dualRailTemplate, FoldButton, Rail, RailHeader, RailResizer, RailTabsHeader, railTemplate, useFolded, useRailWidth, type RailSide } from "./builder-rails";
+import { DualSplitter, dualBareTemplate, dualRailTemplate, FoldButton, Rail, RailHeader, RailResizer, RailTabsHeader, railTemplate, useDualSplit, useFolded, useRailWidth, type RailSide } from "./builder-rails";
 import { TemplatesModal } from "./templates-modal";
 import { SharingBadge, SharingChoice, SharingSelect } from "./templates-sharing";
 import { TemplatesTab } from "./templates-tab";
@@ -211,9 +211,9 @@ function pointerOf({ active, activatorEvent, delta }: Move): { x: number; y: num
 }
 
 /** A row's columns as they lie on the canvas now, line by line; null where one is not drawn. */
-function measureLines(row: PageRow): SlotLine[] | null {
+function measureLines(row: PageRow, scope: ParentNode = document): SlotLine[] | null {
   // A row, or a Columns component's box (D294).
-  const rowElement = document.querySelector(`[data-builder-holder="${globalThis.CSS.escape(row.id)}"]`);
+  const rowElement = scope.querySelector(`[data-builder-holder="${globalThis.CSS.escape(row.id)}"]`);
   if (!rowElement) return null;
   const lines: SlotLine[] = [];
   for (const line of linesOf(row)) {
@@ -237,7 +237,9 @@ function measureLines(row: PageRow): SlotLine[] | null {
  */
 function slotOnRow(row: PageRow, move: Move): { slot: ColumnSlot; anchor: { id: string; after: boolean } | null } | null {
   const point = pointerOf(move);
-  const lines = measureLines(row);
+  // On the canvas the pointer is over: in a dual page the same row may be drawn on both (one document twice, D424, or a copy's twin).
+  const side = move.over ? sideOfId(move.over.id) : null;
+  const lines = measureLines(row, (side && document.querySelector(`[data-dual-side="${side}"]`)) || document);
   const slot = point && lines ? columnSlotAt(lines, point) : null;
   return slot && lines ? { slot, anchor: slotAnchor(lines[slot.line], slot.index, slot.reversed) } : null;
 }
@@ -324,8 +326,8 @@ type Actions = {
   motionPreview: boolean;
   /** Starts an A/B test of a row, column or component (D148); undefined where the page cannot be tested. */
   onTest?: (target: { kind: "row" | "column" | "block"; id: string }) => void;
-  /** The heading or text being edited where it stands (D191), with where it was pressed. */
-  inline: { blockId: string; point: { x: number; y: number } | null } | null;
+  /** The heading or text being edited where it stands (D191), with where it was pressed (and on which canvas, D424). */
+  inline: { blockId: string; point: { x: number; y: number } | null; side?: DualSide } | null;
   onInline: (blockId: string, point: { x: number; y: number } | null) => void;
   endInline: () => void;
 };
@@ -359,6 +361,8 @@ const sideOfId = (id: string | number): DualSide | null => {
   return key.startsWith("L|") ? "left" : key.startsWith("R|") ? "right" : null;
 };
 const withoutSide = (id: string | number) => String(id).replace(/^[LR]\|/, "");
+/** The side's start of a drag id, or none on a page alone. */
+const prefixOf = (id: string | number) => /^[LR]\|/.exec(String(id))?.[0] ?? "";
 /** A row, column or component on a page (not a sidebar's tile or a saved part). */
 const onPage = (data: DragData): data is Extract<DragData, { kind: "row" | "column" | "block" }> =>
   data.kind === "row" || data.kind === "column" || data.kind === "block";
@@ -394,6 +398,8 @@ type DualHub = {
   /** The screen size both canvases show (D179); null is as wide as they are. */
   size: Size | null;
   onSize: (size: Size | null) => void;
+  /** One document drawn on both canvases (D424): one builder answers for both sides, and a drag between them moves. */
+  mirror: boolean;
 };
 const DualHubContext = createContext<DualHub | null>(null);
 
@@ -412,6 +418,11 @@ export type DualBuilder = {
   owner: string | null;
   kind: PageType;
   variantOf: PageType | null;
+  /**
+   * The same document drawn again on the other canvas, at its own screen size (D424): what is over that canvas (its name and Close).
+   * Null where the other canvas holds another document or none.
+   */
+  mirror?: { header: ReactNode } | null;
 };
 
 /**
@@ -419,7 +430,24 @@ export type DualBuilder = {
  * it is the active page). A drop is handled by the builder of the page it lands on; a row, column or component from the other page is
  * handed over by that page's builder and copied.
  */
-export function DualFrame({ active, toolbar, children }: { active: DualSide; toolbar: ReactNode; children: ReactNode }) {
+export function DualFrame({
+  active,
+  toolbar,
+  children,
+  swap = false,
+  mirror = false,
+  bare = false,
+}: {
+  active: DualSide;
+  toolbar: ReactNode;
+  children: ReactNode;
+  /** The second document drawn on the left (D424). */
+  swap?: boolean;
+  /** One document on both canvases (D424). */
+  mirror?: boolean;
+  /** No document open (D424): no sidebars, only the two empty halves. */
+  bare?: boolean;
+}) {
   const w = useAdminText("builder");
   const fw = w.frame;
   const panelId = useId();
@@ -441,6 +469,8 @@ export function DualFrame({ active, toolbar, children }: { active: DualSide; too
   const [rightFolded] = useFolded("right");
   const [leftWidth, setLeftWidth] = useRailWidth("left");
   const [rightWidth, setRightWidth] = useRailWidth("right");
+  // How the two halves share their width (D424): the first document's share, as dragged at the edge between them.
+  const [split, setSplit] = useDualSplit(mirror);
   const call = (side: DualSide | null) => (side ? (handlers.current[side]?.current ?? null) : null);
   const register = useCallback((side: DualSide, ref: RefObject<DualHandlers | null>) => {
     handlers.current[side] = ref;
@@ -459,8 +489,9 @@ export function DualFrame({ active, toolbar, children }: { active: DualSide; too
       onTab: setTab,
       size,
       onSize: setSize,
+      mirror,
     }),
-    [panelId, active, left, right, canvasLeft, canvasRight, dragging, register, tab, size],
+    [panelId, active, left, right, canvasLeft, canvasRight, dragging, register, tab, size, mirror],
   );
   const announce = (id: string | number) => call(sideOfId(id) ?? active)?.announce(String(id)) ?? fw.announcePage;
   const clear = () => {
@@ -480,6 +511,13 @@ export function DualFrame({ active, toolbar, children }: { active: DualSide; too
         onDragMove={(move) => {
           if (!dragging) return;
           const to = move.over ? sideOfId(move.over.id) : null;
+          // One document on both canvases (D424): its one builder shows where the drag lands, on the canvas it is over.
+          if (mirror) {
+            const one = call(to ?? dragging.side);
+            if (to) one?.move(move, dragging.data);
+            else one?.clear();
+            return;
+          }
           for (const side of DUAL_SIDES) {
             if (side === to) call(side)?.move(move, asSeenFrom(dragging.data, dragging.side, side));
             else call(side)?.clear();
@@ -492,7 +530,8 @@ export function DualFrame({ active, toolbar, children }: { active: DualSide; too
           const to = end.over ? sideOfId(end.over.id) : null;
           const target = call(to);
           if (!held || !to || !target) return;
-          if (to === held.side || !onPage(held.data)) {
+          // On the page it came from, or on the same document's other canvas (D424): moved, as on one page.
+          if (mirror || to === held.side || !onPage(held.data)) {
             target.end(end, held.data, held.side, null);
             return;
           }
@@ -524,20 +563,47 @@ export function DualFrame({ active, toolbar, children }: { active: DualSide; too
           aria-label={w.dual.frame}
           data-dual-page=""
           className="grid items-start gap-6 lg:h-(--builder-h) lg:grid-cols-(--builder-cols) lg:items-stretch lg:gap-x-0"
-          style={{ "--builder-cols": dualRailTemplate({ folded: leftFolded, width: leftWidth }, { folded: rightFolded, width: rightWidth }) } as CSSProperties}
+          style={
+            {
+              "--builder-cols": bare
+                ? dualBareTemplate(swap ? 1 - split : split)
+                : dualRailTemplate({ folded: leftFolded, width: leftWidth }, { folded: rightFolded, width: rightWidth }, swap ? 1 - split : split),
+            } as CSSProperties
+          }
         >
-          <div ref={setLeft} className="contents" />
-          <RailResizer side="left" label={fw.leftLabel} folded={leftFolded} width={leftWidth} onWidth={setLeftWidth} measure={() => measureRails(gridRef.current, panelId, "left")} />
-          <div ref={setCanvasLeft} className="contents" data-dual-canvas="left" />
-          <div aria-hidden className="hidden lg:block" />
-          <div ref={setCanvasRight} className="contents" data-dual-canvas="right" />
-          <RailResizer side="right" label={fw.rightLabel} folded={rightFolded} width={rightWidth} onWidth={setRightWidth} measure={() => measureRails(gridRef.current, panelId, "right")} />
-          <div ref={setRight} className="contents" />
+          {!bare && <div ref={setLeft} className="contents" />}
+          {!bare && (
+            <RailResizer side="left" label={fw.leftLabel} folded={leftFolded} width={leftWidth} onWidth={setLeftWidth} measure={() => measureRails(gridRef.current, panelId, "left")} />
+          )}
+          {/* Swapped (D424), the second document's half is drawn first: the halves move, what is in them stays as it is. */}
+          {(swap ? ["right", "split", "left"] : ["left", "split", "right"]).map((place) =>
+            place === "split" ? (
+              <DualSplitter key="split" share={split} swap={swap} onShare={setSplit} measure={() => canvasesWidth(gridRef.current)} />
+            ) : (
+              <div
+                key={place}
+                ref={place === "left" ? setCanvasLeft : setCanvasRight}
+                className="contents"
+                data-dual-canvas={place}
+              />
+            ),
+          )}
+          {!bare && (
+            <RailResizer side="right" label={fw.rightLabel} folded={rightFolded} width={rightWidth} onWidth={setRightWidth} measure={() => measureRails(gridRef.current, panelId, "right")} />
+          )}
+          {!bare && <div ref={setRight} className="contents" />}
         </div>
         {children}
       </DndContext>
     </DualHubContext>
   );
+}
+
+/** What a dual page draws in a half no document holds (D424): in that half's place in the frame. */
+export function DualHalf({ side, children }: { side: DualSide; children: ReactNode }) {
+  const hub = useContext(DualHubContext);
+  const slot = hub?.slots.canvas[side] ?? null;
+  return slot ? createPortal(children, slot) : null;
 }
 
 export function PageBuilder({
@@ -649,8 +715,16 @@ export function PageBuilder({
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
   const [ownDragging, setDragging] = useState<DragData | null>(null);
-  // In a dual page what is held is the frame's, seen from this page: a part of the other page is one from outside.
-  const dragging = dualOn ? (hub?.dragging ? asSeenFrom(hub.dragging.data, hub.dragging.side, dualOn.side) : null) : ownDragging;
+  // In a dual page what is held is the frame's, seen from this page: a part of the other page is one from outside, unless the other
+  // canvas is this same document (D424).
+  const mirrorOn = Boolean(dualOn?.mirror);
+  const dragging = dualOn
+    ? hub?.dragging
+      ? mirrorOn
+        ? hub.dragging.data
+        : asSeenFrom(hub.dragging.data, hub.dragging.side, dualOn.side)
+      : null
+    : ownDragging;
   /** A copy made from the other page, or why not (D412), said on this canvas for a while. */
   const [dualNote, setDualNote] = useState<string | null>(null);
   useEffect(() => {
@@ -664,7 +738,7 @@ export function PageBuilder({
   const [lastColumn, setLastColumn] = useState<string | null>(null);
   const [dialog, setDialog] = useState<Dialog | null>(null);
   // The heading or text edited where it stands (D191): one at a time; opening a component's settings ends it.
-  const [inline, setInline] = useState<{ blockId: string; point: { x: number; y: number } | null } | null>(null);
+  const [inline, setInline] = useState<{ blockId: string; point: { x: number; y: number } | null; side?: DualSide } | null>(null);
   /** A saved part by id. */
   const findPart = (id: string) => parts.find((p) => p.id === id);
   /** Puts a saved part on the canvas to edit with every tool (D46, D127); the page comes back with Back or Save. */
@@ -765,9 +839,23 @@ export function PageBuilder({
   const breakpoints = fonts.theme?.breakpoints ?? DEFAULT_BREAKPOINTS;
   const room = useCallback(() => canvasRef.current?.clientWidth ?? 0, []);
   const responsive = useResponsiveMode(breakpoints, room);
+  // The same document on the other canvas too (D424): that canvas's own screen size, a phone's to begin with. The settings edit the
+  // size of the canvas last pressed or focused (`pointed`), which is outlined.
+  const mirrorRef = useRef<HTMLDivElement>(null);
+  const mirrorRoom = useCallback(() => mirrorRef.current?.clientWidth ?? 0, []);
+  const mirrorResponsive = useResponsiveMode(breakpoints, mirrorRoom);
+  const [pointed, setPointed] = useState<DualSide>("left");
+  const mirrorSlot = mirrorOn && hub ? hub.slots.canvas.right : null;
+  const startPhone = useEffectEvent(() => {
+    if (mirrorRef.current && !mirrorResponsive.view) mirrorResponsive.choose("sm");
+  });
+  useEffect(() => {
+    if (mirrorSlot) startPhone();
+  }, [mirrorSlot]);
+  const edited = mirrorOn && pointed === "right" ? mirrorResponsive : responsive;
   const sizeEdit = useMemo<SizeEdit>(
-    () => ({ size: responsive.view?.size ?? "xl", active: responsive.view !== null, choose: responsive.choose }),
-    [responsive.view, responsive.choose],
+    () => ({ size: edited.view?.size ?? "xl", active: edited.view !== null, choose: edited.choose }),
+    [edited.view, edited.choose],
   );
   /** Parts hidden at the size shown: faded with an eye, or left out as on the site. */
   const [hideHidden, setHideHidden] = useState(false);
@@ -777,13 +865,14 @@ export function PageBuilder({
   // Both canvases of a dual page show one screen size (D412): the active page says it, the other follows.
   const shownSize = responsive.view?.size ?? null;
   const tellSize = useEffectEvent((size: Size | null) => {
-    if (dualOn?.active) hub?.onSize(size);
+    // One document drawn twice keeps a size on each canvas (D424).
+    if (dualOn?.active && !mirrorOn) hub?.onSize(size);
   });
   useEffect(() => {
     tellSize(shownSize);
   }, [shownSize, dualOn?.active]);
   const followSize = useEffectEvent((size: Size | null) => {
-    if (!dualOn || dualOn.active || size === shownSize) return;
+    if (!dualOn || dualOn.active || mirrorOn || size === shownSize) return;
     if (size) responsive.choose(size);
     else responsive.exit();
   });
@@ -956,7 +1045,8 @@ export function PageBuilder({
       // Before it or right after it is where it already is.
       if (found.slot.index === at || found.slot.index === at + 1) return null;
     }
-    return { id: `${prefix}column:${found.anchor.id}`, after: found.anchor.after };
+    // Named as the canvas the pointer is over names it: one builder may draw two (D424).
+    return { id: `${move.over ? prefixOf(move.over.id) : prefix}column:${found.anchor.id}`, after: found.anchor.after };
   };
 
   /** Where a new row goes for a drop on a row (before it, or after when the pointer is in its lower half) or below the last. */
@@ -1007,7 +1097,8 @@ export function PageBuilder({
     if (!from || !to || !over) return;
     const after = below(end, over);
     // From the other page of a dual page (D412): only what this kind of page may hold, and a part of that page is copied, never moved.
-    const across = dualOn !== null && fromSide !== undefined && fromSide !== dualOn.side;
+    // Between the two canvases of one document (D424) a drag moves, as on one page.
+    const across = dualOn !== null && !mirrorOn && fromSide !== undefined && fromSide !== dualOn.side;
     let readyCopy: { part: SavedPart; apply: Rows } | null = null;
     if (across) {
       if (translate) {
@@ -1204,17 +1295,22 @@ export function PageBuilder({
   const register = hub?.register;
   useEffect(() => {
     if (!register || !dualSide) return;
-    return register(dualSide, {
+    const handlers = {
       current: {
-        move: (move, from) => dualMove(move, from),
+        move: (move: Move, from: DragData) => dualMove(move, from),
         clear: () => dualClear(),
-        end: (end, from, fromSide, foreign) => dualEnd(end, from, fromSide, foreign),
-        give: (from) => dualGive(from),
-        note: (text) => dualSay(text),
-        announce: (id) => dualAnnounce(id),
+        end: (end: DragEndEvent, from: DragData, fromSide: DualSide, foreign: Foreign | null) => dualEnd(end, from, fromSide, foreign),
+        give: (from: DragData) => dualGive(from),
+        note: (text: string) => dualSay(text),
+        announce: (id: string) => dualAnnounce(id),
       },
-    });
-  }, [register, dualSide]);
+    };
+    // One document on both canvases (D424): this builder answers for the other side too.
+    const offs = [register(dualSide, handlers), ...(mirrorOn ? [register(otherSide(dualSide), handlers)] : [])];
+    return () => {
+      for (const off of offs) off();
+    };
+  }, [register, dualSide, mirrorOn]);
 
   // What a block that takes its content from a custom field (D118) can take: the product's in a layout, the page's or article's
   // on a store's page; a header or footer has only the store's own (D120); none on Kaizen's own pages.
@@ -1281,15 +1377,56 @@ export function PageBuilder({
           )}
         </>
   );
+  // One document on both canvases (D424): a heading or text is edited where it stands on the canvas it was pressed on only.
+  const canvasActions = (side: DualSide): Actions =>
+    mirrorOn
+      ? { ...actions, inline: inline && (inline.side ?? "left") === side ? inline : null, onInline: (blockId, point) => setInline({ blockId, point, side }) }
+      : actions;
+  // In a dual page (D412) a press or focus anywhere on a canvas makes it the page the sidebars and the bar act on; on one document's
+  // two canvases (D424), the canvas whose screen size the settings edit.
+  const pointAt = (side: DualSide) => () => {
+    if (mirrorOn) setPointed(side);
+    if (dualOn && !dualOn.active) dualOn.onActivate();
+  };
+  const outlined = dualOn ? dualOn.active && (!mirrorOn || pointed === "left") : false;
+  /** The canvas itself, drawn with the site's own fonts (D59) and a store's theme (D60), as the site does. */
+  const drawCanvas = (ref: RefObject<HTMLDivElement | null>, view: CanvasView | null, drawKey: string, canvasActs: Actions, startFromLayout: (() => void) | null) => (
+          <div
+            ref={ref}
+            style={fonts.style}
+            // With owners' CSS (D100), whatever it draws stays inside the canvas, even `position: fixed`.
+            className={`min-w-0 ${fonts.theme ? "rounded-md bg-background text-foreground" : ""} ${css.some((c) => c.trim()) ? "[contain:paint]" : ""}`}
+            {...(fonts.theme && { ...fonts.theme.attributes, ...(themeNow && themeAttributes(themeNow)), "data-theme-canvas": "" })}
+            data-custom-css=""
+          >
+            <FontLinks families={siteFontFamilies(fonts.site)} />
+            {/* The families the rows' and columns' typography uses (D179); the blocks' come with each block. */}
+            <FontLinks families={pageFonts({ rows: shownRows })} />
+            {canvasTheme && <style>{canvasTheme.css}</style>}
+            {/* What the parts' settings say at each screen size (D179), measured against the canvas (`kz-page`), not the window. */}
+            <CanvasPartStyles rows={shownRows} source={rows} breakpoints={breakpoints} hideHidden={hideHidden} />
+            {/* Owners' own CSS (D100), kept inside the canvas so it never reaches the admin; its width queries follow the canvas (D179). */}
+            <ScopedCss css={css} root="[data-custom-css]" container={PAGE_CONTAINER} />
+            <Canvas
+              view={view}
+              key={drawKey}
+              rows={shownRows}
+              dragging={dragging}
+              target={target}
+              actions={canvasActs}
+              onStartFromLayout={startFromLayout}
+              blank={blankPage}
+            />
+          </div>
+  );
   // Its own scroll, with room at the sides for the rows' handles and tools, which reach past the canvas.
   const canvasColumn = (
           <div
-            className={`flex min-w-0 flex-col gap-3 lg:-mx-3 lg:px-3 lg:pb-6 ${STANDALONE} ${dualOn ? `rounded-panel lg:pt-2 ${dualOn.active ? "outline-2 outline-brand" : "outline-1 outline-line"}` : ""}`}
+            className={`flex min-w-0 flex-col gap-3 lg:-mx-3 lg:px-3 lg:pb-6 ${STANDALONE} ${dualOn ? `rounded-panel lg:pt-2 ${outlined ? "outline-2 outline-brand" : "outline-1 outline-line"}` : ""}`}
             data-dual-side={dualOn?.side}
-            data-dual-active={dualOn?.active ? "" : undefined}
-            // In a dual page (D412) a press or focus anywhere on this canvas makes it the page the sidebars and the bar act on.
-            onPointerDownCapture={dualOn && !dualOn.active ? dualOn.onActivate : undefined}
-            onFocusCapture={dualOn && !dualOn.active ? dualOn.onActivate : undefined}
+            data-dual-active={outlined ? "" : undefined}
+            onPointerDownCapture={dualOn && (mirrorOn || !dualOn.active) ? pointAt("left") : undefined}
+            onFocusCapture={dualOn && (mirrorOn || !dualOn.active) ? pointAt("left") : undefined}
           >
           {dualOn?.header}
           {dualOn && (
@@ -1338,40 +1475,48 @@ export function PageBuilder({
               onExit={responsive.exit}
             />
           )}
-          {/* The canvas draws with the site's own fonts (D59) and a store's theme (D60), as the site does. */}
-          <div
-            ref={canvasRef}
-            style={fonts.style}
-            // With owners' CSS (D100), whatever it draws stays inside the canvas, even `position: fixed`.
-            className={`min-w-0 ${fonts.theme ? "rounded-md bg-background text-foreground" : ""} ${css.some((c) => c.trim()) ? "[contain:paint]" : ""}`}
-            {...(fonts.theme && { ...fonts.theme.attributes, ...(themeNow && themeAttributes(themeNow)), "data-theme-canvas": "" })}
-            data-custom-css=""
-          >
-            <FontLinks families={siteFontFamilies(fonts.site)} />
-            {/* The families the rows' and columns' typography uses (D179); the blocks' come with each block. */}
-            <FontLinks families={pageFonts({ rows: shownRows })} />
-            {canvasTheme && <style>{canvasTheme.css}</style>}
-            {/* What the parts' settings say at each screen size (D179), measured against the canvas (`kz-page`), not the window. */}
-            <CanvasPartStyles rows={shownRows} source={rows} breakpoints={breakpoints} hideHidden={hideHidden} />
-            {/* Owners' own CSS (D100), kept inside the canvas so it never reaches the admin; its width queries follow the canvas (D179). */}
-            <ScopedCss css={css} root="[data-custom-css]" container={PAGE_CONTAINER} />
-            <Canvas
-              view={responsive.view}
-              // Switching the preview on starts every entrance again; off, the canvas is drawn plain.
-              key={motionOn ? `motion-${motionRun}` : "plain"}
-              rows={shownRows}
-              dragging={dragging}
-              target={target}
-              actions={actions}
-              // Where a store can browse templates, an empty page starts from a page layout (D127).
-              onStartFromLayout={
-                templates && !translate ? () => setBrowsing({ kind: "page" }) : null
-              }
-              blank={blankPage}
-            />
-          </div>
+          {drawCanvas(
+            canvasRef,
+            responsive.view,
+            // Switching the preview on starts every entrance again; off, the canvas is drawn plain.
+            motionOn ? `motion-${motionRun}` : "plain",
+            canvasActions("left"),
+            // Where a store can browse templates, an empty page starts from a page layout (D127).
+            templates && !translate ? () => setBrowsing({ kind: "page" }) : null,
+          )}
           </div>
   );
+  // The same document again on the other canvas (D424), at its own screen size; its motion is the first canvas's to play.
+  const mirrorColumn = mirrorOn ? (
+          <div
+            className={`flex min-w-0 flex-col gap-3 lg:-mx-3 lg:px-3 lg:pb-6 ${STANDALONE} rounded-panel lg:pt-2 ${pointed === "right" ? "outline-2 outline-brand" : "outline-1 outline-line"}`}
+            data-dual-side="right"
+            data-dual-mirror=""
+            data-dual-active={pointed === "right" ? "" : undefined}
+            onPointerDownCapture={pointAt("right")}
+            onFocusCapture={pointAt("right")}
+          >
+          {dualOn?.mirror?.header}
+          {!translate && (
+            <div role="toolbar" aria-label={fw.screenSizes} className="flex flex-wrap items-center justify-end gap-2">
+              <HiddenPartsToggle hide={hideHidden} onChange={setHideHidden} />
+              <ResponsiveToggle on={mirrorResponsive.view !== null} onToggle={mirrorResponsive.toggle} />
+            </div>
+          )}
+          {mirrorResponsive.view && (
+            <ResponsiveBar
+              view={mirrorResponsive.view}
+              breakpoints={breakpoints}
+              onSize={mirrorResponsive.choose}
+              onWidth={mirrorResponsive.setWidth}
+              onHeight={mirrorResponsive.setHeight}
+              onZoom={mirrorResponsive.setZoom}
+              onExit={mirrorResponsive.exit}
+            />
+          )}
+          {drawCanvas(mirrorRef, mirrorResponsive.view, "plain", canvasActions("right"), null)}
+          </div>
+  ) : null;
   const rightPanel = (
         <>
           {rightFolded && (
@@ -1391,6 +1536,7 @@ export function PageBuilder({
       <>
         {dualOn.active && hub.slots.left && createPortal(leftPanel, hub.slots.left)}
         {canvasSlot && createPortal(canvasColumn, canvasSlot)}
+        {mirrorSlot && mirrorColumn && createPortal(<DndPrefix value={SIDE_PREFIX.right}>{mirrorColumn}</DndPrefix>, mirrorSlot)}
         {dualOn.active && hub.slots.right && createPortal(rightPanel, hub.slots.right)}
       </>
     ) : (
@@ -1423,7 +1569,7 @@ export function PageBuilder({
   const rest = (
       <>
         {/* In a dual page the page a drag starts on draws what is held (D412). */}
-        {(!dualOn || hub?.dragging?.side === dualOn.side) && (
+        {(!dualOn || mirrorOn || hub?.dragging?.side === dualOn.side) && (
         <DragOverlay dropAnimation={null}>
           {dragging?.kind === "palette-row" ? (
             <Tile label={w.layouts[dragging.layout]} preview={<LayoutPreview layout={dragging.layout} />} lifted />
@@ -2315,6 +2461,15 @@ function Canvas({
  * absolutely inside it (a field's label for screen readers) is held by its scroll too and never makes the page itself scroll.
  */
 const STANDALONE = "lg:relative lg:h-full lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain";
+
+/** A dual page's two canvases' width together (D424), as its grid draws them; null where they are not side by side. */
+function canvasesWidth(grid: HTMLElement | null): number | null {
+  if (!grid) return null;
+  const tracks = getComputedStyle(grid).gridTemplateColumns.split(" ").map((track) => Number.parseFloat(track));
+  if (!tracks.every(Number.isFinite)) return null;
+  // The left sidebar, a gap, a canvas, the edge between them, a canvas, a gap, the right sidebar; with no document open, the halves alone.
+  return tracks.length === 7 ? tracks[2] + tracks[4] : tracks.length === 3 ? tracks[0] + tracks[2] : null;
+}
 
 /**
  * What dragging a sidebar's edge needs to know (D262): its width now, the other side's (folded or open), and the room the three

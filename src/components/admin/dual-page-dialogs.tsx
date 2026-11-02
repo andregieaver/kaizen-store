@@ -22,9 +22,12 @@ export function DualOpenDialog({
   current,
   onOpen,
   templates,
+  title,
 }: {
   open: boolean;
   onClose: () => void;
+  /** The dialog's title where it is not *Open a page beside this one* (a half of a dual page, D424). */
+  title?: string;
   kinds: readonly DualKind[];
   /** The site's saved templates (D412 step 5), offered as the last kind: a template is made with *Save as template*, never new here. */
   templates: readonly { id: string; name: string }[];
@@ -55,7 +58,7 @@ export function DualOpenDialog({
   const words = query.trim().toLowerCase();
   const shown = (loaded ?? []).filter((item) => !current.includes(item.id) && (!words || item.title.toLowerCase().includes(words)));
   return (
-    <Modal open={open} onClose={onClose} title={dw.openTitle}>
+    <Modal open={open} onClose={onClose} title={title ?? dw.openTitle}>
       <div className="flex flex-col gap-4">
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="flex flex-col gap-1 text-sm font-medium">
@@ -108,7 +111,10 @@ export function DualOpenDialog({
   );
 }
 
-/** *Create new* (D412): which kind of document, then side by side with this one or on its own. */
+/**
+ * *Create new* (D412): which kind of document, then side by side with this one or on its own; in an empty half of a dual page (D424),
+ * where there is nothing to leave, only there.
+ */
 export function DualCreateDialog({
   open,
   onClose,
@@ -120,7 +126,8 @@ export function DualCreateDialog({
   onClose: () => void;
   kinds: readonly DualKind[];
   onSideBySide: (kind: DualKind) => void;
-  onItsOwn: (kind: DualKind) => void;
+  /** Leaving for the new one; none where it opens in an empty half. */
+  onItsOwn?: (kind: DualKind) => void;
 }) {
   const dw = useAdminText("builder").dual;
   const name = useId();
@@ -139,6 +146,11 @@ export function DualCreateDialog({
             ))}
           </div>
         </fieldset>
+        {!onItsOwn ? (
+          <button type="button" onClick={() => onSideBySide(kind)} className="min-h-11 self-start rounded-pill bg-brand px-5 font-medium text-brand-ink" data-dual-side-by-side="">
+            {dw.createNew}
+          </button>
+        ) : (
         <div className="grid gap-3 sm:grid-cols-2">
           <button
             type="button"
@@ -159,6 +171,7 @@ export function DualCreateDialog({
             <span className="text-xs text-muted">{dw.onItsOwnHint}</span>
           </button>
         </div>
+        )}
       </div>
     </Modal>
   );

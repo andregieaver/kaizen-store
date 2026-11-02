@@ -6,7 +6,7 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { PageEditor } from "@/components/admin/page-editor";
 import { DualPageEditor, type DualDoc } from "@/components/admin/dual-page-editor";
-import { parseDualWith, templateAsPage, type DualKind } from "@/lib/dual-page";
+import { parseDualLayout, templateAsPage, type DualKind, type DualLayout, type DualWith } from "@/lib/dual-page";
 import type { AdminLang } from "@/lib/admin-lang";
 import { PAGE_TYPE_COPY } from "@/components/admin/page-type-copy";
 import { adminLangOf } from "@/lib/admin-lang";
@@ -39,13 +39,25 @@ type PageParams = Promise<{ store: string; pageId: string }>;
 type Query = Promise<Record<string, string | string[] | undefined>>;
 
 /**
- * The second document of a dual page (D412), as the address asks for it (`?with=`), loaded as its own editor would load it: null where
- * the address asks for none, "refused" where it names nothing this person may open (or the first document itself).
+ * What a dual page shows (D412, D424), as the address asks (`?with=`, `?first=`, `?swap=`), with its second document loaded as its own
+ * editor would load it: null where the address asks for no second half, "refused" where it names nothing this person may open.
  */
-async function storeSecondDoc(storeSlug: string, first: { id: string | null }, value: string | string[] | undefined, lang: AdminLang): Promise<DualDoc | "refused" | null> {
-  if (value === undefined) return null;
-  const doc = parseDualWith(value);
-  if (!doc || (doc.id !== null && doc.id === first.id)) return "refused";
+async function storeDual(
+  storeSlug: string,
+  first: { kind: DualKind; id: string | null },
+  query: Record<string, string | string[] | undefined> | undefined,
+  lang: AdminLang,
+): Promise<{ layout: DualLayout; right: DualDoc | null } | "refused" | null> {
+  if (query?.with === undefined) return null;
+  const layout = parseDualLayout(first, { with: query.with, first: query.first, swap: query.swap });
+  if (!layout) return "refused";
+  if (typeof layout.second !== "object") return { layout, right: null };
+  const right = await storeSecondDoc(storeSlug, layout.second, lang);
+  return right === "refused" ? "refused" : { layout, right };
+}
+
+/** The second document of a dual page (D412), loaded as its own editor would load it; "refused" where this person may not open it. */
+async function storeSecondDoc(storeSlug: string, doc: DualWith, lang: AdminLang): Promise<DualDoc | "refused"> {
   if (doc.kind === "template") return storeTemplateDoc(storeSlug, doc.id, lang);
   const member = await checkPageTypeAccess(storeSlug, doc.kind, "read");
   if (!member || (doc.kind === "product_layout" && requireFeature(member, "shop"))) return "refused";
@@ -124,22 +136,23 @@ export async function StoreNewPageView({ type, params, searchParams }: { type: P
     searchParams,
   ]);
   const context = await storePageContext(store, type, account.name ?? "");
-  const second = type === "variant" ? null : await storeSecondDoc(store.slug, { id: null }, query?.with, lang);
+  const dual = type === "variant" || !context.dualPages ? null : await storeDual(store.slug, { kind: type as DualKind, id: null }, query, lang);
   const props = { page: null, savedParts: saved, terms, gridTerms, fieldRoles: [], context };
   return (
     <AdminTextScope texts={adminTexts(lang, EDITOR_AREAS)}>
       {/* Only for screen readers: the title is in the editor, and the list is in the menu. */}
       <h1 className="sr-only">New {PAGE_TYPE_COPY[type].one}</h1>
-      {second && second !== "refused" ? (
+      {dual && dual !== "refused" && context.dualPages ? (
         <DualPageEditor
           left={{ doc: { kind: type as DualKind, id: null }, kindName: adminText(lang, "builder").dual.kinds[type as DualKind], props }}
-          right={second}
-          leftBase={storePagesBase(store, type)}
-          closeHref={`${storePagesBase(store, type)}/new`}
+          right={dual.right}
+          layout={dual.layout}
+          root={context.dualPages.root}
+          pick={{ ...context.dualPages, templates: saved }}
           site={{ css: context.siteCss, name: adminText(lang, "builder").editor.yourStore, save: context.actions.saveSiteCss, versions: context.actions.cssVersions }}
         />
       ) : (
-        <PageEditor {...props} notice={second === "refused" ? adminText(lang, "builder").dual.notOpened : null} />
+        <PageEditor {...props} notice={dual === "refused" ? adminText(lang, "builder").dual.notOpened : null} />
       )}
     </AdminTextScope>
   );
@@ -153,7 +166,7 @@ export async function StoreEditPageView({ type, params, searchParams }: { type: 
   const shopOff = type === "product_layout" ? requireFeature(gated, "shop") : null;
   if (shopOff) return shopOff;
   const { store, account } = gated;
-  const [found, { saved: justSaved, staging: stagingMode, with: withDoc }, saved, terms, gridTerms] = await Promise.all([
+  const [found, query, saved, terms, gridTerms] = await Promise.all([
     z.uuid().safeParse(pageId).success ? getPageForEdit(store.id, pageId, type) : null,
     searchParams,
     listSavedParts(store.id),
@@ -161,6 +174,7 @@ export async function StoreEditPageView({ type, params, searchParams }: { type: 
     bothTerms(store.id),
   ]);
   if (!found) notFound();
+  const { saved: justSaved, staging: stagingMode } = query;
   // The staging set's copy of the page (D385): edited here in place of the page's own draft, which stays as it is.
   const staged = stagingMode === "1" ? await stagedCopy(store.id, found.id) : null;
   if (stagingMode === "1" && (!staged || staged.type !== type)) notFound();
@@ -196,8 +210,8 @@ export async function StoreEditPageView({ type, params, searchParams }: { type: 
         : null;
   const fieldRoles = Object.entries(store.pageRoles).filter(([, id]) => id === page.id).map(([role]) => role);
   // A second document beside this one (D412): never for the staging set's copy or an A/B test's version, which have screens of their own.
-  const second = staged || type === "variant" ? null : await storeSecondDoc(store.slug, { id: page.id }, withDoc, lang);
-  if (second && second !== "refused") {
+  const dual = staged || type === "variant" || !context.dualPages ? null : await storeDual(store.slug, { kind: type as DualKind, id: page.id }, query, lang);
+  if (dual && dual !== "refused" && context.dualPages) {
     return (
       <AdminTextScope texts={adminTexts(lang, EDITOR_AREAS)}>
         <h1 className="sr-only">Edit {page.draft.title || `Untitled ${PAGE_TYPE_COPY[type].one}`}</h1>
@@ -207,9 +221,10 @@ export async function StoreEditPageView({ type, params, searchParams }: { type: 
             kindName: adminText(lang, "builder").dual.kinds[type as DualKind],
             props: { page, notice, savedParts: saved, terms, gridTerms, fieldData, fieldRoles, context },
           }}
-          right={second}
-          leftBase={storePagesBase(store, type)}
-          closeHref={`${storePagesBase(store, type)}/${page.id}`}
+          right={dual.right}
+          layout={dual.layout}
+          root={context.dualPages.root}
+          pick={{ ...context.dualPages, templates: saved }}
           site={{ css: context.siteCss, name: ew.yourStore, save: context.actions.saveSiteCss, versions: context.actions.cssVersions }}
         />
       </AdminTextScope>
@@ -246,7 +261,7 @@ export async function StoreEditPageView({ type, params, searchParams }: { type: 
       <PageEditor
         key={page.id}
         page={page}
-        notice={second === "refused" ? adminText(lang, "builder").dual.notOpened : notice}
+        notice={dual === "refused" ? adminText(lang, "builder").dual.notOpened : notice}
         savedParts={saved}
         terms={terms}
         gridTerms={gridTerms}

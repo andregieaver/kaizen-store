@@ -53,6 +53,116 @@ export function formatDualWith(doc: DualWith): string {
   return doc.id === null ? `new:${doc.kind}` : `${doc.kind}:${doc.id}`;
 }
 
+/**
+ * What a dual page's second half holds (D424): a document, nothing (closed, waiting for one to be opened there), or `mirror`: the first
+ * document again at another screen size, one document in one editor drawn on two canvases.
+ */
+export type DualSecond = DualWith | "empty" | "mirror";
+
+/** The address's `with` as the second half: `empty`, `mirror` or a document (`parseDualWith()`); null where it is none of them. */
+export function parseDualSecond(value: string | string[] | undefined): DualSecond | null {
+  if (value === "empty" || value === "mirror") return value;
+  return parseDualWith(value);
+}
+
+/** The address's `with` for the second half. */
+export const formatDualSecond = (second: DualSecond): string => (typeof second === "string" ? second : formatDualWith(second));
+
+/** The address's own document: the first half's, never a saved template, which has no address of its own. */
+export type DualFirst = { kind: DualKind; id: string | null };
+
+/**
+ * What a dual page shows, as its address holds it (D412, D424): the address's own document in the first half unless it was closed
+ * (`?first=empty`), the second half (`?with=`), and whether the halves are drawn swapped, the second on the left (`?swap=1`). A
+ * `DualSide` names a half by its document, `left` the first and `right` the second; `shownAt()` says where it is drawn.
+ */
+export type DualLayout = { first: DualFirst; firstOpen: boolean; second: DualSecond; swap: boolean };
+
+/** Where a half is drawn, and which half is drawn at a place: its own place, or the other once swapped. */
+export const shownAt = (side: DualSide, swap: boolean): DualSide => (swap ? otherSide(side) : side);
+
+/** The same document: by id, never a new one (two new pages are two pages) or a template (never the first). */
+const sameDoc = (a: DualWith, b: DualFirst): boolean => a.kind !== "template" && a.id !== null && a.id === b.id;
+
+/**
+ * The address read (D424): null where it asks for no second half or one not understood. A second half naming the first document is the
+ * same document again (`mirror`); the same document again while the first half is closed is that document alone.
+ */
+export function parseDualLayout(
+  first: DualFirst,
+  query: { with?: string | string[]; first?: string | string[]; swap?: string | string[] },
+): DualLayout | null {
+  const read = parseDualSecond(query.with);
+  if (!read) return null;
+  const second = typeof read === "object" && sameDoc(read, first) ? "mirror" : read;
+  const firstOpen = query.first !== "empty";
+  const swap = query.swap === "1";
+  if (second === "mirror" && !firstOpen) return { first, firstOpen: true, second: "empty", swap };
+  return { first, firstOpen, second, swap };
+}
+
+/** The address of what a dual page shows: the first document's editor, with the second half, a closed first half and a swap. */
+export function dualHref(base: (kind: DualKind) => string, layout: DualLayout): string {
+  const params = new URLSearchParams({ with: formatDualSecond(layout.second) });
+  if (!layout.firstOpen) params.set("first", "empty");
+  if (layout.swap) params.set("swap", "1");
+  return `${base(layout.first.kind)}/${layout.first.id ?? "new"}?${params}`;
+}
+
+/**
+ * A half closed (D424): it is empty, ready for another document. Closing either canvas of the same document twice leaves the document
+ * once, where the other canvas was.
+ */
+export function closeHalf(layout: DualLayout, side: DualSide): DualLayout {
+  if (layout.second === "mirror") return { ...layout, second: "empty", swap: side === "left" ? !layout.swap : layout.swap };
+  return side === "left" ? { ...layout, firstOpen: false } : { ...layout, second: "empty" };
+}
+
+/**
+ * A document opened in a half, empty or replaced (D424), drawn where it was asked for: `mirror` (or the other half's own document) is
+ * the other half's document again at another size; a saved template, which has no address of its own, is always the second half, drawn
+ * on the side asked for. Null where it cannot be: the same document again with no document beside, or two saved templates.
+ */
+export function openIn(layout: DualLayout, side: DualSide, pick: DualWith | "mirror"): DualLayout | null {
+  const { first, firstOpen, second, swap } = layout;
+  if (side === "right") {
+    if (pick === "mirror") return firstOpen ? { ...layout, second: "mirror" } : null;
+    if (sameDoc(pick, first)) return firstOpen ? { ...layout, second: "mirror" } : { ...layout, firstOpen: true, second: "empty", swap: !swap };
+    return { ...layout, second: pick };
+  }
+  // The first half. A document in the second half, which may become the address's own.
+  const beside = typeof second === "object" ? second : null;
+  if (pick === "mirror" || (beside && sameDoc(pick, beside as DualFirst))) {
+    if (pick === "mirror" && second === "mirror") return layout;
+    if (!beside || beside.kind === "template") return null;
+    return { first: beside, firstOpen: true, second: "mirror", swap: !swap };
+  }
+  if (pick.kind === "template") {
+    if (beside?.kind === "template") return null;
+    if (beside) return { first: beside, firstOpen: true, second: pick, swap: !swap };
+    return { ...layout, firstOpen: false, second: pick, swap: !swap };
+  }
+  return { ...layout, first: pick, firstOpen: true };
+}
+
+/** How the two halves share their width (D424): the first document's share, from a fifth to four fifths. */
+export const SPLIT = { min: 0.2, max: 0.8, even: 0.5, step: 0.05 } as const;
+
+/** A share within its limits, and half where it is not a number. */
+export function splitShare(value: number): number {
+  if (!Number.isFinite(value)) return SPLIT.even;
+  return Math.round(Math.min(SPLIT.max, Math.max(SPLIT.min, value)) * 1000) / 1000;
+}
+
+/**
+ * The first document's share once the edge between the halves is dragged `moved` pixels to the right over `total` pixels: the half drawn
+ * on the left grows, which is the first document's unless the halves are swapped.
+ */
+export function draggedSplit(start: number, moved: number, total: number, swap: boolean): number {
+  if (total <= 0) return splitShare(start);
+  return splitShare(start + ((swap ? -1 : 1) * moved) / total);
+}
+
 /** A row, column or component on its way to a page. */
 export type DualPart = { kind: "row"; content: PageRow } | { kind: "column"; content: PageColumn } | { kind: "block"; content: PageBlock };
 
@@ -143,6 +253,18 @@ export function withCopiedTranslations(
 /** Where the other page scrolls to when they scroll together (D412): as far down as this one, by pixels from the top, or its end. */
 export function followScroll(top: number, other: { scrollHeight: number; clientHeight: number }): number {
   return Math.max(0, Math.min(top, other.scrollHeight - other.clientHeight));
+}
+
+type Scroller = { scrollTop: number; scrollHeight: number; clientHeight: number };
+
+/**
+ * Where the other canvas scrolls to when one document is drawn twice at two sizes (D424): as far through its page as this one is
+ * through its own, the same part in view at either size.
+ */
+export function followScrollShare(from: Scroller, other: Omit<Scroller, "scrollTop">): number {
+  const room = from.scrollHeight - from.clientHeight;
+  const share = room > 0 ? Math.min(1, Math.max(0, from.scrollTop / room)) : 0;
+  return Math.max(0, Math.round(share * (other.scrollHeight - other.clientHeight)));
 }
 
 /**

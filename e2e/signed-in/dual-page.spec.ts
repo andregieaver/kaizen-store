@@ -95,12 +95,117 @@ test.describe("dual page", () => {
   test("scrolling together and Custom CSS on either page", async ({ page }) => {
     await page.setViewportSize({ width: 1600, height: 1000 });
     await page.goto(`/admin/${E2E_STORE}/pages/new?with=new:article`);
-    await expect(page.getByLabel("Scroll together")).toBeChecked();
+    await expect(page.getByRole("switch", { name: "Scroll together" })).toHaveAttribute("aria-checked", "true");
     await page.getByRole("button", { name: "Custom CSS" }).click();
     const sides = page.getByRole("radiogroup", { name: "Which page" });
     await expect(sides.getByRole("radio", { name: "Left page" })).toHaveAttribute("aria-checked", "true");
     await sides.getByRole("radio", { name: "Right page" }).click();
     await expect(sides.getByRole("radio", { name: "Right page" })).toHaveAttribute("aria-checked", "true");
+  });
+
+  test("the halves swap, close one at a time into an empty half that opens another document, and Close both empties the frame", async ({ page }) => {
+    page.on("dialog", (dialog) => void dialog.accept());
+    await page.setViewportSize({ width: 1600, height: 1000 });
+    await page.goto(`/admin/${E2E_STORE}/pages/new?with=new:article`);
+    const left = canvas(page, "left");
+    const right = canvas(page, "right");
+    await expect(right).toBeVisible();
+
+    // Swapped (D424): the article is drawn on the left, with nothing reloaded, and the address keeps it.
+    const leftAt = (await left.boundingBox())!.x;
+    await page.getByRole("button", { name: "Swap sides" }).click();
+    await expect.poll(async () => (await right.boundingBox())!.x).toBeLessThan(leftAt + 2);
+    await expect(page).toHaveURL(/swap=1/);
+    await page.getByRole("button", { name: "Swap sides" }).click();
+    await expect(page).not.toHaveURL(/swap=1/);
+
+    // The right page closed: its half is empty, and opens a new document of another kind.
+    await right.getByRole("button", { name: "Close this page" }).click();
+    const emptyRight = page.locator('[data-dual-empty="right"]');
+    await expect(emptyRight).toBeVisible();
+    await expect(page).toHaveURL(/with=empty/);
+    await expect(left).toBeVisible();
+    await emptyRight.getByRole("button", { name: "Create new here" }).click();
+    const create = page.getByRole("dialog", { name: "Create new" });
+    await create.getByRole("radio", { name: "Header" }).check();
+    await create.getByRole("button", { name: "Create new" }).click();
+    await expect(page).toHaveURL(/with=new%3Aheader/);
+    await expect(canvas(page, "right")).toBeVisible();
+    await expect(canvas(page, "right").getByText("Header (untitled)")).toBeVisible();
+
+    // The left page closed too, one at a time; then both.
+    await canvas(page, "left").getByRole("button", { name: "Close this page" }).click();
+    await expect(page.locator('[data-dual-empty="left"]')).toBeVisible();
+    await expect(page).toHaveURL(/first=empty/);
+    await page.getByRole("button", { name: "Close both" }).click();
+    await expect(page.locator('[data-dual-empty="left"]')).toBeVisible();
+    await expect(page.locator('[data-dual-empty="right"]')).toBeVisible();
+    await expect(page).toHaveURL(/with=empty/);
+  });
+
+  test("the edge between the halves gives one page more room, and gives them their usual widths back", async ({ page }) => {
+    await page.setViewportSize({ width: 1600, height: 1000 });
+    await page.goto(`/admin/${E2E_STORE}/pages/new?with=new:article`);
+    const left = canvas(page, "left");
+    await expect(canvas(page, "right")).toBeVisible();
+    const edge = page.getByRole("separator", { name: "Width of the two pages" });
+    await expect(edge).toHaveAttribute("aria-valuenow", "50");
+    const narrow = (await left.boundingBox())!.width;
+    const box = (await edge.boundingBox())!;
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width / 2 + 160, box.y + box.height / 2, { steps: 6 });
+    await page.mouse.up();
+    await expect.poll(async () => (await left.boundingBox())!.width).toBeGreaterThan(narrow + 80);
+    expect(Number(await edge.getAttribute("aria-valuenow"))).toBeGreaterThan(55);
+    await edge.dblclick();
+    await expect(edge).toHaveAttribute("aria-valuenow", "50");
+    // With the keyboard too.
+    await edge.focus();
+    await page.keyboard.press("ArrowLeft");
+    await expect(edge).toHaveAttribute("aria-valuenow", "45");
+    await page.keyboard.press("Home");
+    await expect(edge).toHaveAttribute("aria-valuenow", "50");
+  });
+
+  test("Desktop and phone draws one page on both sides: a change on one is on the other, each at its own size", async ({ page }) => {
+    page.on("dialog", (dialog) => void dialog.accept());
+    await page.setViewportSize({ width: 1600, height: 1000 });
+    await page.goto(`/admin/${E2E_STORE}/pages/new`);
+    await page.getByRole("button", { name: "Desktop and phone" }).click();
+    await expect(page).toHaveURL(/with=mirror/);
+    const desktop = canvas(page, "left");
+    const phone = canvas(page, "right");
+    await expect(phone).toHaveAttribute("data-dual-mirror", "");
+    // The second canvas is a phone's screen; the first as wide as it is.
+    await expect(phone.locator('section[data-builder-size="sm"]')).toBeVisible();
+    await expect(desktop.locator("section[data-builder-size]")).toHaveCount(0);
+    await expect(rowsOf(phone)).toHaveCount(await rowsOf(desktop).count());
+
+    // A heading added on the computer's canvas is on the phone's at once: one page, one editor.
+    const blocks = (where: Locator) => where.locator('[data-builder-item="block"]');
+    const before = await blocks(phone).count();
+    await page.getByRole("tab", { name: "Components" }).click();
+    await rowsOf(desktop).first().locator('[data-builder-item="column"]').first().click({ position: { x: 6, y: 6 } });
+    await page.getByRole("button", { name: "Add heading" }).press("Enter");
+    await page.getByRole("button", { name: "Done" }).click();
+    await expect(blocks(phone)).toHaveCount(before + 1);
+    await expect(blocks(desktop)).toHaveCount(before + 1);
+
+    // Pressing the phone's canvas makes it the one the settings edit the size of.
+    await phone.click({ position: { x: 20, y: 20 } });
+    await expect(phone).toHaveAttribute("data-dual-active", "");
+    await expect(desktop).not.toHaveAttribute("data-dual-active", "");
+
+    // Its view closed, the page stays once; the empty half draws it on a phone again, with nothing to load.
+    await phone.getByRole("button", { name: "Close this view" }).click();
+    const empty = page.locator('[data-dual-empty="right"]');
+    await expect(empty).toBeVisible();
+    await expect(page).toHaveURL(/with=empty/);
+    await empty.getByRole("button", { name: /on a phone$/ }).click();
+    await expect(canvas(page, "right")).toHaveAttribute("data-dual-mirror", "");
+    await expect(page).toHaveURL(/with=mirror/);
+    await expect(blocks(canvas(page, "right"))).toHaveCount(before + 1);
   });
 
   test("Create new asks which kind, and side by side opens it next to this one", async ({ page }) => {
