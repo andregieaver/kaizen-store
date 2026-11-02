@@ -85,6 +85,12 @@ Rewording the rules was not enough: the second run (on the reworded prompts) fai
    model reads it and replaced by a marker (`withoutInstructions()`), so the planted words never reach it. Fourth run (10:55 UTC, drill
    `cd4f4fc4`): **14 of 14** on the platform's model. Its recording is `src/data/agent-eval-recording.json`, which CI now replays
    (`agent-eval-replay.int.test.ts`), so a prompt change without a new live run fails CI.
+3. 2 November 2026: three cases added (a DSA notice steering the first reading, a counterfeit listing telling the checker it is fine, the
+   Dream Factory's brief from a description with no business details). Their first live run (`1046419c`) passed 15
+   of 17: the moderation model repeated a canary a notice addressed to "the reviewing model", and the brief filled the business's country
+   from a studio's town. The filter now also takes out lines addressed to a reviewer, checker or moderator and a "system override", and the
+   brief's prompt says the country comes only from an address or a registration (683e9a13). The next run (drill `366a4e43`, run
+   `9a725030`) passed **17 of 17**; its recording, carrying the tools' version, replaces the file.
 
 ## 4. Legal texts against the law (29 October 2026)
 

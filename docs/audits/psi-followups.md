@@ -348,12 +348,12 @@ The re-score ([psi-2026-10-31.md](psi-2026-10-31.md)) put the overall at 78.3 (8
       already warned at 80 % (`sendUsageAlerts()`).
 - [x] **AST-10** An AI part on `/status`: the platform's own model answering `testAi()` once a day, an hour after a failure
       (`aiCheckDue()`), objective 95 %, alerting platform admins after two failed checks as every part does (1 November 2026).
-- [ ] **AST-09, AGT-14** Record the eval again on Platform → AI so the replay's tool check is in force; add cases for DSA notices and
-      the Dream Factory brief.
+- [x] **AST-09, AGT-14** Record the eval again on Platform → AI so the replay's tool check is in force; add cases for DSA notices and
+      the Dream Factory brief. Done: recorded 2 November 2026 on Platform → AI's model (gpt-4.1-mini, 17 of 17, run `9a725030`) after the filter took out lines addressed to a reviewer or a "system override" and the brief stopped guessing the business's country (683e9a13); the recording carries `tools` and is `src/data/agent-eval-recording.json`.
 - [ ] **REG-02** The platform's notice and terms name the AI reading DSA notices and screening listings; sign-up links and records them.
       Sign-up's part done 31 October 2026: a sentence under the button links the terms and the privacy notice (en, nb), and a request sent
       from the form keeps `terms_accepted_at` and `terms_version` (the published terms page's time of publishing; migration
-      `access_requests_terms`, `access-emails.int.test.ts`). Left: the owner's review of the notice and terms text for the DSA's AI.
+      `access_requests_terms`, `access-emails.int.test.ts`). The text written 2 November 2026 (fe0a7763: terms section 7, the privacy notice's purposes, retention and automated decisions, and `/report`; published when an admin presses *Write the legal pages* with overwrite). Left: the owner's review of that text.
 - [x] **PERF-01** The admin's real p75 from signed-in routes. Done 31 October 2026 (`docs/performance.md`, *The admin as people use
       it*): from the admin's own speed beacon, 52 signed-in loads: LCP 3.93 s, INP 136 ms, CLS 0.026, TTFB 321 ms at p75; LCP is the one
       over Google's "good", and the editors and settings screens are where. First-scripts budgets for seven signed-in screens done the same
@@ -418,10 +418,10 @@ The re-score ([psi-2026-10-31.md](psi-2026-10-31.md)) put the overall at 78.3 (8
       `src/lib/security-routes.scan.test.ts` fails a new area not named there; section 6 strikes what is closed (Permissions-Policy,
       framing, the holder, the audit log's sign-ins and refusals, `sql.raw`, Dependabot) and names what is open (the enforced script
       policy, HSTS `includeSubDomains`).
-- [ ] **SEC-12** The moderation prompts framed, in the eval and in the versions. In the eval and the versions since 2 November 2026:
+- [x] **SEC-12** The moderation prompts framed, in the eval and in the versions. In the eval and the versions since 2 November 2026:
       cases `moderation-notice` (a notice steering the first reading), `moderation-listing` (a counterfeit listing telling the checker it is
       fine; it must still be flagged) and `dream-brief` (the Dream Factory's brief makes up no business details), scored on their shapes
-      (`parseReading()`, `parseScreening()`, `readBrief()`); `promptVersions()` carries `moderation` and `dream`. Left: the live recording. Framing done 1 November 2026: the notice's address and
+      (`parseReading()`, `parseScreening()`, `readBrief()`); `promptVersions()` carries `moderation` and `dream`. The live recording done 2 November 2026 (17 of 17; its first run, 15 of 17, found the notice steering the reading and the brief guessing the country, both fixed in 683e9a13). Framing done 1 November 2026: the notice's address and
       explanation and a listing's texts reach the model between the shared data markers with text addressed to an AI taken out
       (`toolData()` in `triagePrompt()` and `screeningPrompt()`, `content-moderation.test.ts`). Left: triage and screening cases in the
       agents' eval and their prompts in `prompt-versions.ts`, which need a new live run on Platform → AI and its recording committed (CI's
@@ -477,4 +477,4 @@ The re-score ([psi-2026-11-01.md](psi-2026-11-01.md)) put the overall at 80.0 (8
 - [ ] **REL-06** The seven cron routes that work after answering, recorded in the job ledger as the Dream Factory's is.
 - [ ] **SEC-08, CODE-01** The six red Dependabot pull requests (TypeScript 6 and opentype.js 2 break the build).
 - [ ] **PERF-01** The admin's p75 LCP (3.93 s): cut the shared scripts, the English fallback first.
-- [ ] **AST-09, AGT-14** Record the eval again with DSA and Dream Factory cases, its recording carrying `tools`.
+- [x] **AST-09, AGT-14** Record the eval again with DSA and Dream Factory cases, its recording carrying `tools`. Done: recorded 2 November 2026 on Platform → AI's model (gpt-4.1-mini, 17 of 17, run `9a725030`) after the filter took out lines addressed to a reviewer or a "system override" and the brief stopped guessing the business's country (683e9a13); the recording carries `tools` and is `src/data/agent-eval-recording.json`.
