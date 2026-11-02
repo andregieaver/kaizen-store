@@ -41,7 +41,8 @@ export function mapBlockTexts(b: PageBlock, visit: Visit): PageBlock {
       return typeof doc === "string" ? b : { ...b, doc };
     }
     case "heading":
-      return { ...b, text: str("text", b.text, 300, "Heading") };
+      // A dual heading's second part (D425) is translated as its first is.
+      return { ...b, text: str("text", b.text, 300, "Heading"), ...(b.second ? { second: str("second", b.second, 300, "Heading's second part") } : {}) };
     case "button":
       return { ...b, label: str("label", b.label, 100, "Button text") };
     case "image":

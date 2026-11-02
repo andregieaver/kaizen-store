@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { CustomFieldBlock, ImageBlock, PageRow, ProductBlock } from "./page-content";
+import type { BrandsBlock, CustomFieldBlock, GalleryBlock, ImageBlock, PageRow, ProductBlock } from "./page-content";
 import {
   canDuplicateColumn,
   copyBlock,
@@ -223,6 +223,18 @@ describe("settings (D48)", () => {
     expect(rows[0].columns[0].blocks[1]).toMatchObject({ type: "customField", showLabel: false, display: "cards" });
     rows = patchBlock<ProductBlock>(rows, product, { showLabel: undefined });
     expect(rows[0].columns[0].blocks[0]).not.toHaveProperty("showLabel");
+  });
+
+  it("a brands component's names and a gallery's captions and lightbox can be switched off, and on again", () => {
+    let rows = [newRow("1", id)];
+    rows[0].columns[0].blocks.push(newBlock("brands", id), newBlock("gallery", id));
+    const [brands, gallery] = rows[0].columns[0].blocks.map((b) => b.id);
+    rows = patchBlock<BrandsBlock>(rows, brands, { showNames: false });
+    rows = patchBlock<GalleryBlock>(rows, gallery, { showCaptions: false, lightbox: false });
+    expect(rows[0].columns[0].blocks[0]).toMatchObject({ type: "brands", showNames: false });
+    expect(rows[0].columns[0].blocks[1]).toMatchObject({ type: "gallery", showCaptions: false, lightbox: false });
+    rows = patchBlock<BrandsBlock>(rows, brands, { showNames: undefined });
+    expect(rows[0].columns[0].blocks[0]).not.toHaveProperty("showNames");
   });
 
   it("merges settings in and takes out those switched off", () => {

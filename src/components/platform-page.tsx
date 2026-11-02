@@ -79,7 +79,8 @@ export async function PlatformPageView({
   const header = await siteLayoutFor(null, "header");
   const over = headerOverlays(header?.content.overlay, { front, categories: c.categories, tags: c.tags, rows: c.rows });
   return (
-    <main id="main" className={`w-full flex-1 ${pageRoomClass(c, "pt-10", "pb-10")}`} data-header-overlay={over ? "" : undefined}>
+    // Room above the first row where it draws no box; none under the last, so the page meets the footer.
+    <main id="main" className={`w-full flex-1 ${pageRoomClass(c, "pt-10", "")}`} data-header-overlay={over ? "" : undefined}>
       {over && <HeaderOverlayMark />}
       {jsonLd && (
         <JsonLdScript

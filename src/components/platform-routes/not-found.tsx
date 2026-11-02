@@ -14,7 +14,7 @@ export async function NotFoundRoute({ lang }: { lang: PlatformLang }) {
   const page = await platformPageForRole("not_found");
   if (page) {
     return (
-      <main id="main" className={`w-full flex-1 ${pageRoomClass(page.content, "pt-10", "pb-10")}`}>
+      <main id="main" className={`w-full flex-1 ${pageRoomClass(page.content, "pt-10", "")}`}>
         <PageArticle content={inPlatformLang(page.content, lang)} place={{ pageId: page.id, owner: null, lang }} />
       </main>
     );

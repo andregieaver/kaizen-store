@@ -51,14 +51,14 @@ import { AnimationFields, MotionFields } from "./motion-fields";
 import { ShopPartIcon } from "./shop-part-icons";
 import { MotionMark, MotionPreviewToggle, canvasBackground, canvasFx, useCanvasMotion } from "./motion-canvas";
 import { menuHoverStyle } from "@/lib/menu-hover";
-import { BLOCKS_MAX, LINE_COLUMNS_MAX, ROW_LAYOUT_KEYS, ROWS_MAX, rowLayouts, BUTTON_LABEL_MAX, HEADING_MAX, ROW_PADDING, CONTENT_MAX_MAX, CONTENT_MAX_MIN, blockFonts, pageFonts, bindingOf, blockHasContent, blockOwnContent, blockText, pageBlocks, ownProducts, nestedColumns, pageParts, columnsAsRow, richTextPlain, ALT_MAX, type BlockType, type ButtonBlock, type HeadingBlock, type RichTextBlock, type ContentGridBlock, type PartBase, type PageBlock, type PageColumn, type ImageBlock, type PageContent, type PageRow, type PageTranslation, type RowLayout, PRODUCT_PARTS, COLUMN_JUSTIFY, LOGO_HEIGHT, RELATED_MAX, type ProductBlock, type ProductPart, type MenuBlock, type PlansBlock, type DomainSearchBlock, type ThemeStoreBlock, type SearchBlock, type CustomFieldBlock, type FieldLoopBlock, type StorePartBlock, type SiteBlock, type SitePart, type ColumnJustify, type PageType } from "@/lib/page-content";
+import { BLOCKS_MAX, LINE_COLUMNS_MAX, ROW_LAYOUT_KEYS, ROW_LAYOUTS, ROWS_MAX, rowLayouts, BUTTON_LABEL_MAX, HEADING_MAX, ROW_PADDING, CONTENT_MAX_MAX, CONTENT_MAX_MIN, blockFonts, pageFonts, bindingOf, blockHasContent, blockOwnContent, blockText, pageBlocks, ownProducts, nestedColumns, pageParts, columnsAsRow, richTextPlain, ALT_MAX, type BlockType, type ButtonBlock, type HeadingBlock, type RichTextBlock, type ContentGridBlock, type PartBase, type PageBlock, type PageColumn, type ImageBlock, type PageContent, type PageRow, type PageTranslation, type RowLayout, PRODUCT_PARTS, COLUMN_JUSTIFY, LOGO_HEIGHT, RELATED_MAX, type ProductBlock, type ProductPart, type MenuBlock, type PlansBlock, type DomainSearchBlock, type ThemeStoreBlock, type SearchBlock, type CustomFieldBlock, type FieldLoopBlock, type StorePartBlock, type SiteBlock, type SitePart, type ColumnJustify, type PageType } from "@/lib/page-content";
 import { applyPageLayout, isBlankPage, type ApplyMode } from "@/lib/page-layout-apply";
 import { hasMotion, type EnterMotion } from "@/lib/motion";
 import { drawTarget, motionSignature, type MotionPart } from "@/lib/motion-edit";
 import { PIECE_GROUPS, STORE_PART_KEYS, STORE_PARTS, piecesOf, shopPartCopy, type ShopPart } from "@/lib/store-parts";
 import { partDrawsWhenOff, partFeature, partFeatureOn } from "@/lib/part-features";
 import { requirementLabel } from "@/lib/store-features";
-import { type ColumnSpot, copyBlock, copyColumn, copyRow, duplicateBlock, addColumn, duplicateColumn, duplicateRow, findBlock, findHolder, nestColumn, newColumnsBlock, htmlIds, insertBlock, insertColumn, insertColumnAt, insertRow, moveBlock, linesOf, locateColumn, moveColumnAt, moveRow, newBlock, newRow, removeBlock, removeColumn, removeRow, setLineLayout, setLineShares, clearLineShares, partOf, patchBlock, patchColumn, patchPart, patchRow, setSpacing, updateBlock, type BlockPatch, type Styled } from "@/lib/page-rows";
+import { type ColumnSpot, type DroppedColumns, columnsLostTo, copyBlock, copyColumn, copyRow, duplicateBlock, addColumn, duplicateColumn, duplicateRow, findBlock, findHolder, nestColumn, newColumnsBlock, htmlIds, insertBlock, insertColumn, insertColumnAt, insertRow, moveBlock, linesOf, locateColumn, moveColumnAt, moveRow, newBlock, newRow, removeBlock, removeColumn, removeRow, setLineLayout, setLineShares, clearLineShares, partOf, patchBlock, patchColumn, patchPart, patchRow, setSpacing, updateBlock, type BlockPatch, type Styled } from "@/lib/page-rows";
 import { blockTextFields, setBlockText } from "@/lib/page-translation";
 import { planCurrencies, type PlanChoice } from "@/lib/plan-offer";
 import type { FieldEntity, FieldGroup } from "@/lib/custom-fields";
@@ -3478,7 +3478,7 @@ function Dialogs({
   const column = dialog?.kind === "edit-row" && dialog.columnId ? row?.columns.find((c) => c.id === dialog.columnId) : null;
   const savedPart = dialog?.kind === "edit-saved" ? parts.find((p) => p.id === dialog.partId) : null;
   const layoutChoice = (row: PageRow) => (
-    <RowLayoutChoice row={row} onLayout={(line, layout) => onRows((current) => setLineLayout(current, row.id, line, layout, newId))} />
+    <RowLayoutChoice row={row} onLayout={(line, layout, dropped) => onRows((current) => setLineLayout(current, row.id, line, layout, newId, dropped))} />
   );
   /** The id and classes of the row, column or block a dialog is for (D48). */
   const advancedFields = (target: Styled) => {
@@ -4164,6 +4164,25 @@ function Dialogs({
           row && (
             <>
               {saveAs(column ? { kind: "column", content: column } : { kind: "row", content: row })}
+              {column && (
+                // The column with everything in it, asked first when it holds text (as its tools' delete); a row keeps one column.
+                <button
+                  type="button"
+                  disabled={row.columns.length <= 1}
+                  title={row.columns.length <= 1 ? dw.onlyColumn : undefined}
+                  onClick={() => {
+                    const remove = () => onRows((current) => removeColumn(current, column.id));
+                    if (column.blocks.some(blockHasContent)) open({ kind: "delete", what: dw.thisColumnAndText, run: remove });
+                    else {
+                      remove();
+                      onClose();
+                    }
+                  }}
+                  className="min-h-10 rounded-md border border-border px-4 text-sm text-red-700 disabled:opacity-40 dark:text-red-400"
+                >
+                  {dw.deleteColumn}
+                </button>
+              )}
               {done}
             </>
           )
@@ -4605,19 +4624,107 @@ function TranslateDialogs({
 }
 
 /** A row's layout: one choice for its line, or one for each of its lines of columns (D187). */
-function RowLayoutChoice({ row, onLayout }: { row: PageRow; onLayout: (line: number, layout: RowLayout) => void }) {
+/**
+ * A row's layout, or each of its lines' (D187). A layout with fewer columns that would take away columns holding something is
+ * asked about first, under the line: what they hold is deleted with them (the main choice) or moved to the last column that stays.
+ */
+function RowLayoutChoice({ row, onLayout }: { row: PageRow; onLayout: (line: number, layout: RowLayout, dropped: DroppedColumns) => void }) {
   const layouts = rowLayouts(row);
   const lw = useAdminText("builder").layoutChoice;
-  if (layouts.length === 1) return <LayoutChoice value={row.layout} onChange={(layout) => onLayout(0, layout)} />;
+  const [asked, setAsked] = useState<{ line: number; layout: RowLayout } | null>(null);
+  const choose = (line: number, layout: RowLayout) => {
+    if (columnsLostTo(row, line, layout).length === 0) {
+      setAsked(null);
+      onLayout(line, layout, "move");
+    } else setAsked({ line, layout });
+  };
+  const question = (line: number) =>
+    asked?.line === line && (
+      <LostColumnsQuestion
+        row={row}
+        line={line}
+        layout={asked.layout}
+        onAnswer={(dropped) => {
+          setAsked(null);
+          if (dropped) onLayout(line, asked.layout, dropped);
+        }}
+      />
+    );
+  if (layouts.length === 1)
+    return (
+      <div className="flex flex-col gap-3">
+        <LayoutChoice value={row.layout} onChange={(layout) => choose(0, layout)} />
+        {question(0)}
+      </div>
+    );
   return (
     <div className="flex flex-col gap-4">
       {layouts.map((layout, i) => (
         <div key={i} className="flex flex-col gap-2">
           <p className="text-sm font-medium">{fillWords(lw.line, { n: i + 1 })}</p>
-          <LayoutChoice label={fillWords(lw.lineLayout, { n: i + 1 })} value={layout} onChange={(next) => onLayout(i, next)} />
+          <LayoutChoice label={fillWords(lw.lineLayout, { n: i + 1 })} value={layout} onChange={(next) => choose(i, next)} />
+          {question(i)}
         </div>
       ))}
       <p className="text-xs text-muted">{lw.linesHint}</p>
+    </div>
+  );
+}
+
+/**
+ * Asked when a line's new layout has fewer columns and those that go hold something: which columns, how many components, and
+ * whether they go with their columns or move to the last column that stays. Its first button takes the focus, so the keyboard is
+ * where the answer is; nothing changes until it is answered (`null`: the layout is kept).
+ */
+function LostColumnsQuestion({
+  row,
+  line,
+  layout,
+  onAnswer,
+}: {
+  row: PageRow;
+  line: number;
+  layout: RowLayout;
+  onAnswer: (dropped: DroppedColumns | null) => void;
+}) {
+  const w = useAdminText("builder");
+  const lw = w.layoutChoice;
+  const first = useRef<HTMLButtonElement>(null);
+  useEffect(() => first.current?.focus(), []);
+  const lost = columnsLostTo(row, line, layout);
+  if (lost.length === 0) return null;
+  // Columns are numbered in the row, as the canvas names them; the last that stays is the line's new last column.
+  const numbers = lost.map((column) => row.columns.findIndex((c) => c.id === column.id) + 1);
+  const offset = linesOf(row)
+    .slice(0, line)
+    .reduce((n, earlier) => n + earlier.columns.length, 0);
+  const stays = offset + ROW_LAYOUTS[layout].widths.length;
+  const listed = numbers.length === 1 ? String(numbers[0]) : `${numbers.slice(0, -1).join(", ")} ${lw.and} ${numbers[numbers.length - 1]}`;
+  const count = countWords(
+    lost.reduce((n, column) => n + column.blocks.length, 0),
+    w.saved.components,
+  );
+  return (
+    <div role="group" aria-labelledby={`lost-${row.id}-${line}`} className="flex flex-col gap-3 rounded-md border border-border bg-surface p-3">
+      <p id={`lost-${row.id}-${line}`} role="status" className="text-sm">
+        {fillWords(numbers.length === 1 ? lw.lostOne : lw.lostMany, { columns: listed, count })}
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <button
+          ref={first}
+          type="button"
+          onClick={() => onAnswer("delete")}
+          className="min-h-10 rounded-md bg-red-700 px-4 text-sm font-medium text-white"
+        >
+          {lw.deleteThem}
+        </button>
+        <button type="button" onClick={() => onAnswer("move")} className="min-h-10 rounded-md border border-border px-4 text-sm">
+          {fillWords(lw.moveThem, { n: stays })}
+        </button>
+        <button type="button" onClick={() => onAnswer(null)} className="min-h-10 rounded-md px-4 text-sm underline">
+          {lw.keepLayout}
+        </button>
+      </div>
     </div>
   );
 }
@@ -4987,7 +5094,7 @@ function SavedPartDialog({
         {part.kind === "row" && (
           <div className="flex flex-col gap-2">
             <p className="text-sm font-medium">{w.layoutChoice.layout}</p>
-            <RowLayoutChoice row={row} onLayout={(line, layout) => change((r) => setLineLayout(r, row.id, line, layout, newId))} />
+            <RowLayoutChoice row={row} onLayout={(line, layout, dropped) => change((r) => setLineLayout(r, row.id, line, layout, newId, dropped))} />
           </div>
         )}
         {row.columns.map((column, index) => (
@@ -5552,6 +5659,9 @@ function SiteStandIn({ block }: { block: SiteBlock }) {
         return <span className="text-sm text-muted underline">{shop.cookies}</span>;
       case "withdrawal":
         return <span className="text-sm text-muted underline">{shop.withdraw}</span>;
+      case "languages":
+        // Each language by its own name, as the site draws them (D312).
+        return links(["English", "Norsk"]);
     }
   })();
   return (

@@ -99,7 +99,8 @@ describe("every text a component draws has a size (owner's addition to phase 3) 
     for (const type of BLOCK_TYPES) {
       const parts = type === "product" ? ["title", "price", "description", "related"] : type === "site" ? ["logo", "business"] : [undefined];
       for (const part of parts) {
-        const roles = textRoles({ type, part }).map((def) => def.role);
+        // A heading's second part (D425) has its role only where there is one.
+        const roles = textRoles(type === "heading" ? { type, part, second: "Two" } : { type, part }).map((def) => def.role);
         for (const [field, role] of Object.entries(TEXT_FIELDS[type] ?? {})) {
           // A product title's heading is the title itself.
           if (type === "product" && part === "title" && role === "heading") continue;

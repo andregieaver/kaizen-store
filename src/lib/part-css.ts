@@ -18,6 +18,7 @@ import {
   type Spacing,
   type VerticalAlign,
   columnsAsRow,
+  isDualHeading,
   withChildren,
   withParts,
 } from "./page-content";
@@ -587,6 +588,13 @@ export function blockStyle(block: PageBlock, mode: PartsMode): ElementStyle {
   if (block.type === "brands") {
     // Logos in a row by screen size (D204): the owner's, else five, four on Medium, two on Small.
     rules.push({ selector: "& [data-brands]", important: false, where: true, sizes: perSize((size) => ({ "--brand-cols": String(brandColumns(block, size)) })) });
+  }
+  if (block.type === "heading" && isDualHeading(block)) {
+    // A dual heading's parts one under the other where it stacks (D425), else side by side on one line.
+    const stacked = SIZES.filter((size) => valueAt(block, "stack", size) === true);
+    if (stacked.length > 0) {
+      rules.push({ selector: "& [data-kz-text]", important: false, where: true, only: stacked, decl: { display: "block" } });
+    }
   }
   if (block.type === "dualButton") {
     const stacked = SIZES.filter((size) => valueAt(block, "stack", size) === true);

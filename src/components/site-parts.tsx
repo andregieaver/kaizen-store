@@ -19,6 +19,7 @@ import type { SiteLayout } from "@/server/site-layouts";
 import type { Store } from "@/server/stores";
 
 import { ReportContentLink } from "./report-content-link";
+import { LanguageSwitch } from "./language-switch";
 import { BuyerSwitch } from "./buyer";
 import { StoreColorSwitch } from "./store-color-switch";
 import { CartLink, CartLinkShell } from "./cart-link";
@@ -47,12 +48,16 @@ export type SiteContext =
   | { kind: "kaizen"; chrome: PlatformChrome; place: "header" | "footer"; lang?: PlatformLang };
 
 const ICON_LINK = "flex size-11 items-center justify-center rounded-full hover:bg-current/5";
+/** Links side by side with room between them, onto more lines where they do not fit. */
+const LINK_ROW = "flex flex-wrap items-center gap-x-4 gap-y-1";
 const COLUMN_LINK = "inline-flex min-h-10 items-center hover:underline";
 
 /** Whether a part has anything to show here: its owner's, with links or countries to show. */
 export function sitePartShows(block: SiteBlock, ctx: SiteContext): boolean {
   if (ctx.kind === "kaizen") {
     if (["search", "wishlist", "cart", "markets", "buyerSwitch", "colorMode"].includes(block.part)) return false;
+    // The site's languages (D312), while it offers more than one.
+    if (block.part === "languages") return ctx.chrome.langs.length > 1;
     return true;
   }
   const { store } = ctx;
@@ -60,6 +65,7 @@ export function sitePartShows(block: SiteBlock, ctx: SiteContext): boolean {
   if (!partFeatureOn(block, store)) return false;
   switch (block.part) {
     case "signUp":
+    case "languages":
       return false;
     case "account":
       // No sign-in or account while the store has customer accounts off (D365).
@@ -181,20 +187,21 @@ function StorePart({ block, ctx }: { block: SiteBlock; ctx: Extract<SiteContext,
       return <Business legal={legal} address={details.postalAddress} email={details.contactEmail} />;
     }
     case "cookies":
-      // What the store stores in the browser, and the choice about it (D58).
+      // What the store stores in the browser, and the choice about it (D58); spaced, never run together.
       return (
-        <>
+        <span className={LINK_ROW}>
           <Link href={marketPath(store.slug, market.slug, "/cookies")} className="inline-flex min-h-6 w-fit items-center text-muted underline">
             {m.cookies}
           </Link>
           {/* Notices of illegal content go to Kaizena Flow, which hosts the store (DSA art. 16, D411). */}
           <ReportContentLink lang={market.lang} absolute />
-        </>
+        </span>
       );
     case "withdrawal":
       // The withdrawal function, always reachable (D153).
       return <WithdrawalLink store={store} market={market} />;
     case "signUp":
+    case "languages":
       return null;
   }
 }
@@ -231,7 +238,7 @@ function KaizenPart({ block, ctx }: { block: SiteBlock; ctx: Extract<SiteContext
       // Kaizena Flow's terms, privacy notice and data processing agreement go where the cookie link is, once published (D408):
       // a theme's footer has no part of their own, and every page of a web service must reach them.
       return (
-        <>
+        <span className={LINK_ROW}>
           {legalPages(chrome, lang).map((page) => (
             <Link key={page.slug} href={platformPath(lang, `/${page.slug}`)} className="inline-flex min-h-6 w-fit items-center text-muted underline">
               {page.title}
@@ -241,7 +248,14 @@ function KaizenPart({ block, ctx }: { block: SiteBlock; ctx: Extract<SiteContext
             {m.cookies}
           </Link>
           <ReportContentLink lang={PLATFORM_LANG_FACTS[lang].messages} />
-        </>
+        </span>
+      );
+    case "languages":
+      // The page in each of the site's languages (D312), where the owner places it: nothing is added under the footer by itself.
+      return (
+        <Suspense fallback={null}>
+          <LanguageSwitch lang={lang} offered={chrome.langs} />
+        </Suspense>
       );
     default:
       return null;

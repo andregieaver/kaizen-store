@@ -685,7 +685,17 @@ export type HeadingBlock = PartBase & Bindable & {
   text: string;
   level: HeadingLevel;
   /** Its size, weight (the theme's unless set, D60), alignment, font and colour are its typography (D179, D180); its size by level unless set. */
+  /**
+   * A dual heading (D425): words after the first, in the same heading, such as "We are" and "Kaizena Flow". Each part has a
+   * look of its own (typography `first` and `second`, over the heading's `text`); the heading is one heading to a screen reader.
+   */
+  second?: string;
+  /** A dual heading's two parts one under the other, rather than side by side on one line (per size in `at`, D179). */
+  stack?: boolean;
 };
+
+/** Whether a heading has a second part to draw (D425). */
+export const isDualHeading = (block: Pick<HeadingBlock, "second">): boolean => Boolean(block.second?.trim());
 
 export const BUTTON_VARIANTS = { filled: "Filled", outline: "Outline", text: "Text link" } as const;
 export type ButtonVariant = keyof typeof BUTTON_VARIANTS;
@@ -1039,6 +1049,8 @@ export const SITE_PARTS = {
   business: "Business details",
   cookies: "Cookies link",
   withdrawal: "Withdrawal link",
+  /** Kaizena Flow's own site: a link to the page in each of its languages, where the owner places it (D312). */
+  languages: "Languages",
 } as const;
 export type SitePart = keyof typeof SITE_PARTS;
 /** The site parts that stand behind a store feature (D178), as `PRODUCT_PART_FEATURES` for a header's or footer's parts. */
@@ -1051,7 +1063,7 @@ export const SITE_PART_FEATURES: Partial<Record<SitePart, FeatureRequirement>> =
   cart: "shop",
 };
 const STORE_PARTS: readonly SitePart[] = ["search", "wishlist", "cart", "markets", "buyerSwitch", "colorMode", "withdrawal"];
-const KAIZEN_PARTS: readonly SitePart[] = ["signUp"];
+const KAIZEN_PARTS: readonly SitePart[] = ["signUp", "languages"];
 
 /** The site parts an owner's headers and footers offer: a store's (with a store id) or Kaizen's (null). */
 export const sitePartsFor = (storeId: string | null): SitePart[] =>
@@ -2099,7 +2111,7 @@ export function blockOwnContent(block: PageBlock): boolean {
     case "beforeAfter":
       return beforeAfterShows(block);
     case "heading":
-      return block.text.trim() !== "";
+      return block.text.trim() !== "" || isDualHeading(block);
     case "button":
       return block.label.trim() !== "" && block.href.trim() !== "";
     case "contentGrid":
@@ -2183,7 +2195,7 @@ export function blockText(block: PageBlock): string {
     case "beforeAfter":
       return [block.before?.alt, block.after?.alt].filter(Boolean).join(" ");
     case "heading":
-      return inlinePlain(block.text);
+      return [inlinePlain(block.text), isDualHeading(block) ? inlinePlain(block.second!) : ""].filter(Boolean).join(" ");
     case "accordion":
     case "tabs":
       return panelText(block.items);
@@ -2833,6 +2845,8 @@ const headingBlock = z.object({
   type: z.literal("heading"),
   text: z.string().trim().max(HEADING_MAX, `Keep a heading under ${HEADING_MAX} characters.`),
   level: z.literal([1, 2, 3, 4, 5, 6], "A heading has an unknown level."),
+  second: z.string().trim().max(HEADING_MAX, `Keep a heading's second part under ${HEADING_MAX} characters.`).optional(),
+  stack: z.boolean().optional(),
   bind: bindRule,
   ...partBase,
 });

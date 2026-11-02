@@ -7,6 +7,7 @@ import {
   addColumn,
   canDuplicateColumn,
   clearLineShares,
+  columnsLostTo,
   duplicateColumn,
   insertBlock,
   insertColumnAt,
@@ -191,6 +192,28 @@ describe("taking columns out and changing layouts", () => {
     expect(next.columns.find((c) => c.id === "d")!.blocks.map((b) => b.id)).toEqual(["x"]);
     expect(next.columns).toHaveLength(4);
     expect(setLineLayout(rows, "r", 5, "1", id)).toEqual(rows);
+  });
+
+  it("a line taking fewer columns can delete what the columns that go hold, and says which columns hold anything", () => {
+    let rows = [rowOf([["2", ["a", "b"]], ["4", ["c", "d", "e", "f"]]])];
+    rows = insertBlock(rows, "e", { ...newBlock("richText", id), id: "x" }, 0);
+    rows = insertBlock(rows, "d", { ...newBlock("richText", id), id: "y" }, 0);
+    // Taking two columns, the second line loses e (holding x) and f (empty): only e is asked about.
+    expect(columnsLostTo(rows[0], 1, "2").map((c) => c.id)).toEqual(["e"]);
+    expect(columnsLostTo(rows[0], 1, "3").map((c) => c.id)).toEqual([]);
+    expect(columnsLostTo(rows[0], 1, "4")).toEqual([]);
+    expect(columnsLostTo(rows[0], 0, "1")).toEqual([]);
+    const deleted = setLineLayout(rows, "r", 1, "2", id, "delete")[0];
+    expect(shape(deleted)).toEqual([
+      ["2", ["a", "b"]],
+      ["2", ["c", "d"]],
+    ]);
+    // The column that stays keeps its own; nothing of the columns that went is anywhere.
+    expect(deleted.columns.find((c) => c.id === "d")!.blocks.map((b) => b.id)).toEqual(["y"]);
+    expect(deleted.columns.flatMap((c) => c.blocks).map((b) => b.id)).not.toContain("x");
+    // Moving is still the default.
+    const moved = setLineLayout(rows, "r", 1, "2", id)[0];
+    expect(moved.columns.find((c) => c.id === "d")!.blocks.map((b) => b.id)).toEqual(["y", "x"]);
   });
 
   it("shares are set and given back for one line at a time", () => {

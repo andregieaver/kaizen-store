@@ -770,6 +770,8 @@ export const blocksEn = {
       Caption: "Caption",
       Captions: "Captions",
       "First button": "First button",
+      "First part": "First part",
+      "Second part": "Second part",
       Heading: "Heading",
       "Fields and hints": "Fields and hints",
       "Search box": "Search box",

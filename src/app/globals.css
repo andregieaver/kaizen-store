@@ -380,6 +380,22 @@ body:has([data-product-bar]) [data-default-bar] {
   opacity: 1;
   pointer-events: auto;
 }
+/*
+ * A column's tools sit a step above its top, clear of its first component's own (at the component's top left), which in a narrow
+ * column they would otherwise cover. The column's top is 8px above its first component's and the tools are 28px high, so 22px up
+ * leaves 2px between them. They never move as the pointer goes to them (moving them when a component was pointed at made them slip
+ * away from it); an empty strip under them keeps the pointer in the column on its way up.
+ */
+[data-builder-item="column"] > [data-builder-tools] {
+  top: -22px;
+}
+[data-builder-item="column"] > [data-builder-tools]::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  top: 100%;
+  height: 22px;
+}
 [data-builder-dragging] [data-builder-tools] {
   display: none;
 }

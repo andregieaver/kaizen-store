@@ -25,6 +25,7 @@ import {
   type VideoBlock,
   type TestimonialsBlock,
   testimonialShows,
+  isDualHeading,
   isLinkAddress,
 } from "@/lib/page-content";
 
@@ -225,9 +226,21 @@ export function PageBlockView({
  */
 function Heading({ block }: { block: HeadingBlock }) {
   const Tag = `h${block.level}` as const;
+  // A dual heading (D425): one heading of two parts, each marked for its own look; one under the other where it stacks.
   return (
     <Tag className="leading-tight text-balance font-heading">
-      <Inline text={block.text} links />
+      {isDualHeading(block) ? (
+        <>
+          <span data-kz-text="first">
+            <Inline text={block.text} links />
+          </span>{" "}
+          <span data-kz-text="second">
+            <Inline text={block.second!} links />
+          </span>
+        </>
+      ) : (
+        <Inline text={block.text} links />
+      )}
     </Tag>
   );
 }

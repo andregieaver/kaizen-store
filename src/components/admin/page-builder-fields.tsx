@@ -15,7 +15,7 @@ import { useAdminText } from "./admin-text";
 import { fillWords } from "@/lib/admin-fill";
 import { PixelRange } from "./pixel-range";
 import { BackgroundMotionFields, GradientFields } from "./gradient-fields";
-import { ROW_LAYOUTS, BACKDROP_BLUR_MAX, BLUR_MAX, BORDER_MAX, BORDER_STYLES, BUTTON_LABEL_MAX, GRID_COLUMNS_MAX, GRID_CONTENT, GRID_ELEMENTS, GRID_GAP_MAX, GRID_LIMIT_MAX, GRID_SORTS, PRICE_SORTS, PRODUCT_SORTS, HEADING_MAX, HTML_ID_MAX, IMAGE_SHAPES, RADIUS_MAX, CONTENT_MAX_MAX, CONTENT_MAX_MIN, COLUMN_SHARE_MAX, ROW_HEIGHT_VH, SHADOWS, shadowOpacityOf, SPACING_MAX, classNameProblem, htmlIdProblem, isLinkAddress, gridImageShape, DEFAULT_GRID_RECOMMEND, type RowBackground, type BorderStyle, type ButtonBlock, type HeadingBlock, type HeadingLevel, type Shadow, type ColumnLink, type ContentGridBlock, type GridContent, type GridElement, type GridSort, type GridSource, type ImageShape, type PartBase, type PageBlock, type PageColumn, type ImageBlock, type PageRow, type Sides, type Spacing, contentSides } from "@/lib/page-content";
+import { ROW_LAYOUTS, BACKDROP_BLUR_MAX, BLUR_MAX, BORDER_MAX, BORDER_STYLES, BUTTON_LABEL_MAX, GRID_COLUMNS_MAX, GRID_CONTENT, GRID_ELEMENTS, GRID_GAP_MAX, GRID_LIMIT_MAX, GRID_SORTS, PRICE_SORTS, PRODUCT_SORTS, HEADING_MAX, HTML_ID_MAX, IMAGE_SHAPES, RADIUS_MAX, CONTENT_MAX_MAX, CONTENT_MAX_MIN, COLUMN_SHARE_MAX, ROW_HEIGHT_VH, SHADOWS, shadowOpacityOf, SPACING_MAX, classNameProblem, htmlIdProblem, isLinkAddress, gridImageShape, DEFAULT_GRID_RECOMMEND, type RowBackground, type BorderStyle, type ButtonBlock, type HeadingBlock, type HeadingLevel, isDualHeading, type Shadow, type ColumnLink, type ContentGridBlock, type GridContent, type GridElement, type GridSort, type GridSource, type ImageShape, type PartBase, type PageBlock, type PageColumn, type ImageBlock, type PageRow, type Sides, type Spacing, contentSides } from "@/lib/page-content";
 import { type BackgroundMotion } from "@/lib/motion";
 import { backgroundMoves, switchBackground } from "@/lib/motion-edit";
 import { partFeatureOn } from "@/lib/part-features";
@@ -1340,6 +1340,24 @@ export function HeadingFields({
         {/* Its words as they look, text styles and all (D393); no tag to type. */}
         <MarkupInput id={`${id}-text`} label={hw.heading} value={block.text} max={HEADING_MAX} className="text-base font-medium" onChange={(text) => onChange({ ...block, text })} />
       </div>
+      {/* A dual heading (D425): words after the first, each part with its own look (Style, Typography). */}
+      <div className="flex flex-col gap-1">
+        <label htmlFor={`${id}-second`} className="text-sm font-medium">
+          {hw.second}
+        </label>
+        <MarkupInput
+          id={`${id}-second`}
+          label={hw.second}
+          value={block.second ?? ""}
+          max={HEADING_MAX}
+          className="text-base font-medium"
+          onChange={(second) => onChange({ ...block, second: second || undefined })}
+        />
+        <p className="text-xs text-muted">
+          {hw.secondHint}
+        </p>
+      </div>
+      {isDualHeading(block) && <HeadingStackField block={block} onChange={onChange} />}
       <div className="flex flex-col gap-1">
         <Choices
           legend={hw.level}
@@ -1352,6 +1370,23 @@ export function HeadingFields({
           {block.level === 1 ? (otherMainHeading ? hw.twoMain : hw.main) : hw.levels}
         </p>
       </div>
+    </div>
+  );
+}
+
+/** A dual heading's two parts one under the other, at the size edited (D425, D179). */
+function HeadingStackField({ block, onChange }: { block: HeadingBlock; onChange: (block: HeadingBlock) => void }) {
+  const { size } = useSizeEdit();
+  const hw = useAdminText("builder").heading;
+  return (
+    <div className={`flex flex-wrap items-start gap-1 ${inheritedClass(sizeSource(block, size, "stack"), size)}`}>
+      <Check
+        label={hw.stack}
+        hint={hw.stackHint}
+        checked={valueAt(block, "stack", size) === true}
+        onChange={(on) => onChange({ ...block, ...setAt(block, size, { stack: size === "xl" ? on || undefined : on }) })}
+      />
+      <SizeMark part={block} field="stack" label={hw.stack} onPatch={(patch) => onChange({ ...block, ...patch })} />
     </div>
   );
 }

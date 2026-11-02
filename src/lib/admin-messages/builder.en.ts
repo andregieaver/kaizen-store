@@ -115,6 +115,7 @@ export const builderEn = {
     business: "Business details",
     cookies: "Cookies link",
     withdrawal: "Withdrawal link",
+    languages: "Languages",
   },
   /** `ROW_LAYOUTS` labels. */
   layouts: {
@@ -393,8 +394,11 @@ export const builderEn = {
     /** `COLUMN_JUSTIFY`. */
     justify: { start: "Start", center: "Centre", end: "End", between: "Spread out" },
     rowLayout: "Row layout",
-    columnWidthFromRow: "A column's width comes from its row's layout. With fewer columns, the text of the columns that go moves to the last one.",
-    fewerColumns: "With fewer columns, the text of the columns that go moves to the last one.",
+    columnWidthFromRow: "A column's width comes from its row's layout. With fewer columns, you choose whether what the columns that go hold is deleted with them or moved to the last one.",
+    fewerColumns: "With fewer columns, you choose whether what the columns that go hold is deleted with them or moved to the last one.",
+    deleteColumn: "Delete column",
+    thisColumnAndText: "this column and everything in it",
+    onlyColumn: "A row keeps at least one column: delete the row instead.",
     background: "Background",
     deleteTitle: "Delete?",
     keepIt: "Keep it",
@@ -588,6 +592,11 @@ export const builderEn = {
     twoMain: "Another heading on this page is H1. A page has one main heading: make one of them H2.",
     main: "H1 is the page's main heading, used once; the page's title is then no longer read out in its place.",
     levels: "H1 is the page's main heading; sections below it are H2, and parts of those H3 and so on.",
+    /** A dual heading (D425). */
+    second: "Second part",
+    secondHint: "Optional: words after the first, in the same heading, such as a name in another colour. Each part's look is under Style, Typography.",
+    stack: "One under the other",
+    stackHint: "Each part on a line of its own; otherwise side by side on one line.",
   },
   /** A button component's text, address and width. */
   button: {
@@ -692,6 +701,13 @@ export const builderEn = {
     line: "Line {n}",
     lineLayout: "Layout of line {n}",
     linesHint: "A line of columns has its own layout. Drag a column onto another line, or into the space between lines, to move it.",
+    /** Asked when a layout with fewer columns would take away columns that hold something. */
+    lostOne: "Column {columns} holds {count}.",
+    lostMany: "Columns {columns} hold {count}.",
+    and: "and",
+    deleteThem: "Delete them",
+    moveThem: "Move them to column {n}",
+    keepLayout: "Keep this layout",
   },
   /** A part's place among globals' uses (D98). */
   global: {
@@ -848,6 +864,7 @@ export const builderEn = {
       cookies: "A link to the cookies page, where visitors change their choice.",
       withdrawal:
         "A link to the withdrawal function, where shoppers withdraw from a purchase. The law asks for it on every page, so a store's footer must have it, and it must show on phones.",
+      languages: "A link to this page in each of the site's languages, each by its own name. Nothing is added to the footer by itself: place it where visitors should find it.",
     },
     leftOut: "A part with nothing to show is left out.",
     logoHeight: "pixels, {min} to {max}; empty: the usual size",

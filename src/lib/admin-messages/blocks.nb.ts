@@ -764,6 +764,8 @@ export const blocksNb: BlocksMessages = {
       Caption: "Bildetekst",
       Captions: "Bildetekster",
       "First button": "Første knapp",
+      "First part": "Første del",
+      "Second part": "Andre del",
       Heading: "Overskrift",
       "Fields and hints": "Felt og hjelpetekster",
       "Search box": "Søkefelt",

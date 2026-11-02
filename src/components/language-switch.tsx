@@ -13,15 +13,16 @@ function sameIn(lang: PlatformLang, pathname: string, query: string): string {
 }
 
 /**
- * The site's languages, each a link to this page in it (D312), placed under the footer. A full page load, as each language is a
- * root layout of its own. Drawn in a `<Suspense>`: it reads the address.
+ * The site's languages, each a link to this page in it (D312): the *Languages* part of Kaizena Flow's header or footer, where the
+ * owner places it (nothing is added under the footer by itself). A full page load, as each language is a root layout of its own.
+ * Drawn in a `<Suspense>`: it reads the address.
  */
 export function LanguageSwitch({ lang, offered }: { lang: PlatformLang; offered: readonly PlatformLang[] }) {
   const pathname = usePathname();
   const query = useSearchParams().toString();
   if (offered.length < 2) return null;
   return (
-    <nav aria-label={LANGUAGE_HINT_TEXT[lang].switchLabel} className="mx-auto flex w-full max-w-5xl flex-wrap gap-4 px-4 pb-6 text-sm text-muted">
+    <nav aria-label={LANGUAGE_HINT_TEXT[lang].switchLabel} className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
       {offered.map((other) =>
         other === lang ? (
           <span key={other} aria-current="true" lang={PLATFORM_LANG_FACTS[other].tag} className="font-medium text-foreground">

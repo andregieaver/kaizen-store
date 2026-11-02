@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 
 import { ReportContentLink } from "@/components/report-content-link";
 import { t } from "@/lib/i18n";
@@ -9,6 +10,7 @@ import { platformText } from "@/lib/platform-text";
 import type { PlatformChrome } from "@/server/platform-navigation";
 
 import { Icon } from "./icons";
+import { LanguageSwitch } from "./language-switch";
 import { LogoPicture } from "./logo-picture";
 import type { MenuHover } from "@/lib/menu-hover";
 import { MenuTreeView, type MenuLayout, type MenuLinkNode } from "./menu-view";
@@ -214,6 +216,12 @@ export function PlatformFooter({ chrome, lang = "en" }: Props) {
               {page.title}
             </Link>
           ))}
+          {/* The site's languages (D312): this standard footer's own; a footer of the owner's has them where its Languages part is. */}
+          {chrome.langs.length > 1 && (
+            <Suspense fallback={null}>
+              <LanguageSwitch lang={lang} offered={chrome.langs} />
+            </Suspense>
+          )}
         </div>
         {platformMenu(chrome, chrome.footerMenuId).length > 0 && (
           <nav aria-label={m.footerMenu} className="sm:col-span-2">

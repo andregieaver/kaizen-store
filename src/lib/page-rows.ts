@@ -325,11 +325,15 @@ function clearColumnSharesOn(rows: PageRow[], rowId: string, size: Size): PageRo
   return rows.map((row) => (row.id === rowId ? { ...row, columns: row.columns.map((column) => withoutShareAt(column, size)) } : row));
 }
 
+/** What happens to what the columns that go hold when a line takes a layout with fewer columns: moved to the new last column, or deleted with them. */
+export type DroppedColumns = "move" | "delete";
+
 /**
  * Gives one of a row's lines another layout. Its columns are kept in order; when there are fewer, the blocks of the columns
- * that go move to the new last column, so nothing written is lost. The other lines are as they were.
+ * that go move to the new last column, so nothing written is lost, unless `dropped` is `delete`, when they go with their
+ * columns. The other lines are as they were.
  */
-function setLineLayoutOn(rows: PageRow[], rowId: string, lineIndex: number, layout: RowLayout, id: NewId): PageRow[] {
+function setLineLayoutOn(rows: PageRow[], rowId: string, lineIndex: number, layout: RowLayout, id: NewId, dropped: DroppedColumns): PageRow[] {
   return rows.map((row) => {
     if (row.id !== rowId) return row;
     const lines = linesOf(row);
@@ -338,16 +342,26 @@ function setLineLayoutOn(rows: PageRow[], rowId: string, lineIndex: number, layo
     const count = ROW_LAYOUTS[layout].widths.length;
     // A new layout brings its own shares: what dragging the columns' edges set belongs to the old one.
     const kept = line.columns.slice(0, count).map((c) => ({ ...withoutShares(c), blocks: [...c.blocks] }));
-    const dropped = line.columns.slice(count).flatMap((c) => c.blocks);
+    const moved = dropped === "move" ? line.columns.slice(count).flatMap((c) => c.blocks) : [];
     while (kept.length < count) kept.push({ id: id(), blocks: [] });
-    kept[count - 1].blocks.push(...dropped);
+    kept[count - 1].blocks.push(...moved);
     return rowOf(row, lines.map((l, i) => (i === lineIndex ? { layout, columns: kept } : l))) ?? row;
   });
 }
 
 /** Gives a row's first line (its only one, mostly) another layout. */
 function setRowLayoutOn(rows: PageRow[], rowId: string, layout: RowLayout, id: NewId): PageRow[] {
-  return setLineLayoutOn(rows, rowId, 0, layout, id);
+  return setLineLayoutOn(rows, rowId, 0, layout, id, "move");
+}
+
+/**
+ * The columns a line would lose by taking a layout (its columns past the layout's number) that hold anything, in order: what
+ * the builder asks about before the layout is taken (delete it with them, or move it to the last column that stays).
+ */
+export function columnsLostTo(row: PageRow, lineIndex: number, layout: RowLayout): PageColumn[] {
+  const line = linesOf(row)[lineIndex];
+  if (!line || line.layout === layout) return [];
+  return line.columns.slice(ROW_LAYOUTS[layout].widths.length).filter((column) => column.blocks.length > 0);
 }
 
 function mapColumnOn(rows: PageRow[], columnId: string, change: (blocks: PageBlock[]) => PageBlock[]): PageRow[] {
@@ -705,9 +719,16 @@ export type BlockPatch<T extends PageBlock = PageBlock> = Partial<Omit<T, "id" |
 /**
  * Settings that are on unless they are `false` (read as `x !== false`): for
  * these `false` is the setting, so it is kept, where any other `false` is
- * the same as the setting left out.
+ * the same as the setting left out. `on-unless-off.scan.test.ts` fails for a
+ * component's setting read that way and missing here. A key shared by another kind
+ * of block that is off unless on (a social links' `showNames`) only keeps a
+ * `false` that reads the same.
  */
-const ON_UNLESS_OFF: ReadonlySet<string> = new Set([
+export const ON_UNLESS_OFF: ReadonlySet<string> = new Set([
+  // A brands component's names, a gallery's captions and lightbox: their `false` was dropped, so unticking them did nothing.
+  "showNames",
+  "showCaptions",
+  "lightbox",
   "wishlist",
   "large",
   "thumbnails",
@@ -872,7 +893,8 @@ export const setLineShares = (rows: PageRow[], rowId: string, lineIndex: number,
 export const setColumnShares = (rows: PageRow[], rowId: string, size: Size, shares: readonly number[]) => held(rows, (h) => setColumnSharesOn(h, rowId, size, shares));
 export const clearLineShares = (rows: PageRow[], rowId: string, lineIndex: number, size: Size) => held(rows, (h) => clearLineSharesOn(h, rowId, lineIndex, size));
 export const clearColumnShares = (rows: PageRow[], rowId: string, size: Size) => held(rows, (h) => clearColumnSharesOn(h, rowId, size));
-export const setLineLayout = (rows: PageRow[], rowId: string, lineIndex: number, layout: RowLayout, id: NewId) => held(rows, (h) => setLineLayoutOn(h, rowId, lineIndex, layout, id));
+export const setLineLayout = (rows: PageRow[], rowId: string, lineIndex: number, layout: RowLayout, id: NewId, dropped: DroppedColumns = "move") =>
+  held(rows, (h) => setLineLayoutOn(h, rowId, lineIndex, layout, id, dropped));
 export const setRowLayout = (rows: PageRow[], rowId: string, layout: RowLayout, id: NewId) => held(rows, (h) => setRowLayoutOn(h, rowId, layout, id));
 export const patchColumn = (rows: PageRow[], columnId: string, patch: ColumnPatch) => held(rows, (h) => patchColumnOn(h, columnId, patch));
 export const patchBlock = <T extends PageBlock = PageBlock>(rows: PageRow[], blockId: string, patch: BlockPatch<T>) => held(rows, (h) => patchBlockOn<T>(h, blockId, patch));

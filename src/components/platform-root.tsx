@@ -11,7 +11,7 @@ import { themeAttributes } from "@/lib/theme";
 import { PlatformBottomBar, PlatformFooter, PlatformHeader, PlatformMenu } from "@/components/platform-layout";
 import { OffPayRoutes } from "@/components/off-pay-routes";
 import { KaizenChat } from "@/components/site-chat";
-import { LanguageHint, LanguageSwitch } from "@/components/language-switch";
+import { LanguageHint } from "@/components/language-switch";
 import { KaizenSiteFooter, KaizenSiteHeader } from "@/components/site-parts";
 import { t } from "@/lib/i18n";
 import { PLATFORM_LANG_FACTS, platformPath, type PlatformLang } from "@/lib/platform-lang";
@@ -90,12 +90,8 @@ export async function PlatformRoot({ lang, children }: { lang: PlatformLang; chi
         <KeepFocusEverywhere />
         {/* How fast Kaizena Flow's own pages are for their visitors (D390), as a store's (D336), never on a pay route (it has none). */}
         <SpeedBeacon own="platform" />
+        {/* The languages are a part of the header or footer the owner places (D312), never added under the footer. */}
         {footerLayout ? <KaizenSiteFooter chrome={chrome} layout={footerLayout} lang={lang} /> : <PlatformFooter chrome={chrome} lang={lang} />}
-        {chrome.langs.length > 1 && (
-          <Suspense fallback={null}>
-            <LanguageSwitch lang={lang} offered={chrome.langs} />
-          </Suspense>
-        )}
         {/* Phone enhancements, each in its own boundary, as in the storefront (D30). */}
         <Suspense fallback={null}>
           <PlatformBottomBar lang={lang} />

@@ -1,4 +1,4 @@
-import { HEADING_MAX, bindingOf, blockShowsUnbound, type PageBlock, type PageColumn, type PageContent, type PageRow, type RichTextDoc } from "./page-content";
+import { HEADING_MAX, bindingOf, blockShowsUnbound, isDualHeading, type PageBlock, type PageColumn, type PageContent, type PageRow, type RichTextDoc } from "./page-content";
 
 /**
  * Editing a page's words where they are (D191, D192): the page builder's canvas and, for signed-in staff, the live site. Only the two
@@ -12,6 +12,8 @@ export type InlineKind = "heading" | "richText";
 /** What a component is edited in place as, or null: its words must be its own, not taken from a custom field (D118). */
 export function inlineKindOf(block: PageBlock): InlineKind | null {
   if (block.type !== "heading" && block.type !== "richText") return null;
+  // A dual heading's two parts (D425) are written in its settings, where each has its own field.
+  if (block.type === "heading" && isDualHeading(block)) return null;
   return bindingOf(block) ? null : block.type;
 }
 

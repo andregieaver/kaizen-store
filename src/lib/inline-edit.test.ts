@@ -13,6 +13,11 @@ describe("what is edited in place", () => {
     expect(inlineKindOf({ id: "t", type: "richText", doc } as PageBlock)).toBe("richText");
   });
 
+  it("is not a dual heading, whose two parts are written in its settings (D425)", () => {
+    expect(inlineKindOf({ id: "h", type: "heading", text: "We are", second: "Kaizena Flow", level: 2 } as PageBlock)).toBeNull();
+    expect(inlineKindOf({ id: "h", type: "heading", text: "We are", second: " ", level: 2 } as PageBlock)).toBe("heading");
+  });
+
   it("is nothing else, and not words taken from a custom field", () => {
     expect(inlineKindOf({ id: "b", type: "button", label: "Buy", href: "/buy" } as PageBlock)).toBeNull();
     expect(inlineKindOf({ id: "i", type: "image", image: null } as PageBlock)).toBeNull();

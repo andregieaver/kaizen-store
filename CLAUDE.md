@@ -285,6 +285,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - Remove background on picture fields (D413, `RemoveBackgroundButton`, `PictureEditorProvider`, `editLibraryPicture()`)
 - Timeline (D414, `src/components/timeline-view.tsx`, `TimelineBlock` in `src/lib/page-content.ts`)
 - Icon list descriptions (D414, `IconListItem.description`)
+- Dual heading (D425, `HeadingBlock.second`, `isDualHeading()`)
 - Table component (D194, `src/components/table-view.tsx`, `src/lib/table-edit.ts`)
 - Brands (D204, `src/components/brands-view.tsx`, `src/components/brands-carousel.tsx`, `src/lib/brands.ts`)
 - Hover timing, button hover effects and logo colours (D206, `src/lib/hover-timing.ts`, `src/components/admin/hover-fields.tsx`)

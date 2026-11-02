@@ -308,8 +308,8 @@ const marked = (name: TextRole) => `& [data-kz-text=${name}]`;
 /** The product parts whose alignment is their text's (the rest are placed as they are). */
 export const ALIGNED_PRODUCT_PARTS: readonly string[] = ["back", "title", "price", "host", "description", "withdrawal", "safety"];
 
-/** What a block is, as far as its kinds of text go. */
-type TypedPart = { type?: string; part?: string };
+/** What a block is, as far as its kinds of text go; a heading's second part (D425) gives it two more. */
+type TypedPart = { type?: string; part?: string; second?: unknown };
 
 const FORM_ROLES: RoleDef[] = [
   TEXT,
@@ -332,8 +332,16 @@ export function textRoles(part: TypedPart): RoleDef[] {
       return [TEXT];
     case "richText":
       return [{ ...TEXT, selector: "& .rich-text", strong: true, align: "box" }];
-    case "heading":
-      return [{ ...TEXT, selector: "& :is(h1, h2, h3, h4, h5, h6)", align: "box" }];
+    case "heading": {
+      const whole: RoleDef = { ...TEXT, selector: "& :is(h1, h2, h3, h4, h5, h6)", align: "box" };
+      // A dual heading (D425): the whole heading, then each part's own look over it (its colour the heading's unless set).
+      if (typeof part.second !== "string" || !part.second.trim()) return [whole];
+      return [
+        whole,
+        role("first", "First part", marked("first"), { align: false, colourFrom: "text" }),
+        role("second", "Second part", marked("second"), { align: false, colourFrom: "text" }),
+      ];
+    }
     case "button":
       // Its alignment is the button's Position.
       return [{ ...TEXT, label: "Button text", selector: "& [data-button-frame]", align: false }];
@@ -451,7 +459,7 @@ export function textRoles(part: TypedPart): RoleDef[] {
  */
 export const TEXT_FIELDS: Record<string, Record<string, TextRole>> = {
   richText: { doc: "text" },
-  heading: { text: "text" },
+  heading: { text: "text", second: "second" },
   button: { label: "text" },
   dualButton: { "first.label": "text", "second.label": "text" },
   image: { caption: "caption" },

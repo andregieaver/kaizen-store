@@ -22,7 +22,7 @@ import { blend } from "./colour";
 import { classColours, classNames, colourOfClasses, type ClassColour } from "./css-class-colours";
 import { inlinePlain, parseInline, type InlineNode as InlineMarkup } from "./inline-text";
 import { contrastRatio } from "./theme";
-import { galleryItemShows, withChildren, type PageBlock, type PageColumn, type PageContent, type PageRow, type RichTextDoc, type BlockNode, type InlineNode } from "./page-content";
+import { galleryItemShows, isDualHeading, withChildren, type PageBlock, type PageColumn, type PageContent, type PageRow, type RichTextDoc, type BlockNode, type InlineNode } from "./page-content";
 import { footerHasWithdrawal, footerRequired, siteBlocks } from "./site-layout";
 import { localizePage } from "./page-translation";
 import { valueAt } from "./responsive";
@@ -501,8 +501,13 @@ export function pageIssues(
             break;
           }
           case "heading": {
-            heading(block.level, inlinePlain(block.text), Boolean(block.bind));
+            heading(block.level, [inlinePlain(block.text), isDualHeading(block) ? inlinePlain(block.second!) : ""].filter(Boolean).join(" "), Boolean(block.bind));
             ownText("The heading", TEXT_ROLE, true, true);
+            // A dual heading's parts (D425), each in its own colour or the heading's.
+            if (isDualHeading(block)) {
+              ownText("The heading's first part", { role: "first", colourFrom: "text" }, true, true);
+              ownText("The heading's second part", { role: "second", colourFrom: "text" }, true, true);
+            }
             break;
           }
           case "richText": {
@@ -615,7 +620,7 @@ function blockWords(block: PageBlock): string[] {
     case "richText":
       return [richFacts(block.doc).text];
     case "heading":
-      return [block.text];
+      return [block.text, block.second ?? ""];
     case "button":
       return [block.label];
     case "dualButton":
