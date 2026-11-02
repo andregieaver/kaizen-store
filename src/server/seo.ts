@@ -48,7 +48,7 @@ import { audit, type Account, type Membership } from "./auth";
 import { CATALOG_TAG, catalogTag, listProducts } from "./catalog";
 import { storeBlogs } from "./blogs";
 import { col, typedRows } from "./typed-rows";
-import { listPublishedPages } from "./pages";
+import { listPublishedPages, pagesTag } from "./pages";
 import { pageInMarket } from "@/lib/page-markets";
 import { getPlatformPageRoles } from "./platform-roles";
 import type { SaveResult } from "./settings";
@@ -486,8 +486,9 @@ const blogPlaceRow = z.object({ store_id: col.uuid, id: col.uuid, handle: col.te
  * The published pages and articles closed to AI crawlers of every store given, each article at its blog's address: two reads for all
  * the stores together, where robots.txt read each store's pages, articles and blogs on its own (three reads a store, too slow for the
  * build once there are thousands of stores). Pages come in the order a store lists them (by when they were made), articles newest first,
- * as `listPublishedPages()` gives them, and a page is closed as it reads (`parsePageContent()`, `aiAssistants` false). Read each time,
- * uncached: a page opened or closed shows in robots.txt at once, which one cache entry for every store could not promise.
+ * as `listPublishedPages()` gives them, and a page is closed as it reads (`parsePageContent()`, `aiAssistants` false). For all stores it
+ * is read each time, uncached: a page opened or closed shows in robots.txt at once, which one cache entry for every store could not
+ * promise (there is no tag for every store's pages); one store's is cached with its pages (`storeClosedToAi()`).
  */
 async function closedToAiOf(storeIds: readonly string[]): Promise<Map<string, ClosedToAi>> {
   const out = new Map<string, ClosedToAi>(storeIds.map((id) => [id, { pages: [], articles: [] }]));
@@ -547,8 +548,16 @@ function storeGroups(store: Pick<Store, "id" | "slug" | "seo"> & { private?: boo
 
 /** A store's robots.txt: its own on its host (P7); until then a preview of its part of the site's. */
 export async function storeRobots(store: Pick<Store, "id" | "slug" | "seo" | "privateMode">): Promise<string> {
-  const closed = store.privateMode ? NOTHING_CLOSED : ((await closedToAiOf([store.id])).get(store.id) ?? NOTHING_CLOSED);
+  const closed = store.privateMode ? NOTHING_CLOSED : await storeClosedToAi(store.id);
   return renderRobots(storeGroups(store, closed), [`${storeSiteUrl(store.slug)}${storeSitemapPath(store.slug)}`]);
+}
+
+/** One store's pages closed to AI crawlers, cached with its pages and blogs (`pagesTag()`), as its own robots.txt is read often. */
+async function storeClosedToAi(storeId: string): Promise<ClosedToAi> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(pagesTag(storeId));
+  return (await closedToAiOf([storeId])).get(storeId) ?? NOTHING_CLOSED;
 }
 
 const xml = (value: string) =>
