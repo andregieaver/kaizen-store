@@ -83,10 +83,12 @@ describe("every text a component draws has a colour (D180)", () => {
       const parts = type === "product" ? ["title", "price", "description", "related"] : type === "site" ? ["logo", "business"] : [undefined];
       for (const part of parts) {
         const roles = new Set(Object.values(TEXT_FIELDS[type] ?? {}));
-        for (const def of textRoles({ type, part })) roles.add(def.role);
+        // A heading's second part (D425) has its kind of text only where there is one.
+        const dual = type === "heading" ? { second: "Two" } : {};
+        for (const def of textRoles({ type, part, ...dual })) roles.add(def.role);
         for (const role of roles) {
           if (type === "product" && part === "title" && role === "heading") continue;
-          const block = { ...(newBlock(type, () => "x1") as PageBlock), ...(part ? { part } : {}), typography: { [role]: { color: "#123456", opacity: 70 } } } as PageBlock;
+          const block = { ...(newBlock(type, () => "x1") as PageBlock), ...(part ? { part } : {}), ...dual, typography: { [role]: { color: "#123456", opacity: 70 } } } as PageBlock;
           expect(css(block), `${type}${part ? ` (${part})` : ""}: ${role}`).toContain("color:color-mix(in srgb, #123456 70%, transparent)!important");
         }
       }
