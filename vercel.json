@@ -12,7 +12,8 @@
   "git": {
     "deploymentEnabled": {
       "main": false,
-      "claude/**": false
+      "claude/**": false,
+      "dependabot/**": false
     }
   }
 }
