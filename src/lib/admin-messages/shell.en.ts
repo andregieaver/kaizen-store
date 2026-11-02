@@ -53,7 +53,7 @@ export const shellEn = {
     yourAccount: "Your account",
     billing: "Billing",
     aiUsage: "AI usage",
-    accountMenu: "Account menu, {email}",
+    accountMenu: "{initials}, account menu, {email}",
   },
   levels: {
     controlCenter: "Control center",

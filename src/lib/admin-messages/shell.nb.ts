@@ -48,7 +48,7 @@ export const shellNb: ShellMessages = {
     yourAccount: "Din konto",
     billing: "Abonnement og faktura",
     aiUsage: "KI-bruk",
-    accountMenu: "Kontomeny, {email}",
+    accountMenu: "{initials}, kontomeny, {email}",
   },
   levels: {
     controlCenter: "Kontrollsenter",

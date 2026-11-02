@@ -181,8 +181,24 @@ export function AdminSwitcher({
   );
 }
 
-/** The account's menu: who is signed in, their account, the colours, and signing out. The rows come from the server. */
-export function AccountMenu({ avatar, name, email, children }: { avatar: ReactNode; name: string | null; email: string; children: ReactNode }) {
+/**
+ * The account's menu: who is signed in, their account, the colours, and signing out. The rows come from the server. Its name starts with
+ * the initials its picture shows (WCAG 2.5.3, label in name), so a person who speaks to their computer can say what they see.
+ */
+export function AccountMenu({
+  avatar,
+  initials,
+  name,
+  email,
+  children,
+}: {
+  avatar: ReactNode;
+  /** What the picture shows where there is no photograph. */
+  initials: string;
+  name: string | null;
+  email: string;
+  children: ReactNode;
+}) {
   const { open, toggle, box, button } = useMenu();
   const w = useAdminText("shell").switcher;
   return (
@@ -193,7 +209,7 @@ export function AccountMenu({ avatar, name, email, children }: { avatar: ReactNo
         onClick={toggle}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={fillWords(w.accountMenu, { email })}
+        aria-label={fillWords(w.accountMenu, { initials, email })}
         className="flex size-10 items-center justify-center rounded-full hover:bg-sunken"
       >
         {avatar}

@@ -41,8 +41,9 @@ export async function LevelSwitcher({ account, level, label, currentSlug }: { ac
 export function AdminAccountMenu({ account, role }: { account: Account; role?: string }) {
   // In the account's language (D312 A0).
   const w = adminText(adminLangOf(account.adminLocale), "common").accountMenu;
+  const avatar = avatarFor(account);
   return (
-    <AccountMenu avatar={<Avatar avatar={avatarFor(account)} size={32} />} name={account.name} email={account.email}>
+    <AccountMenu avatar={<Avatar avatar={avatar} size={32} />} initials={avatar.initials} name={account.name} email={account.email}>
       <MenuLink href="/admin/account">
         {w.yourAccount}
         {role ? <span className="ml-auto text-xs text-muted">{role}</span> : null}
