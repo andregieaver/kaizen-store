@@ -132,6 +132,12 @@ describe("what was made", () => {
     expect(html(createElement(DreamMade, { show: EMPTY, base: "/admin/leire", words: w }))).toBe("<div class=\"flex flex-col gap-4\"></div>");
   });
 
+  it("links nowhere for a viewer who is not the store's member (Platform → AI watching a test run)", () => {
+    const out = html(createElement(DreamMade, { show: MADE, base: null, words: w }));
+    expect(out).toContain("Morning mug");
+    expect(out).not.toContain("<a ");
+  });
+
   it("says the store is ready, with the ways on", () => {
     const out = html(createElement(DreamReady, { show: MADE, links: { store: "https://leire.kaizenaflow.com/no", front: "/admin/leire/pages/page-1", products: "/admin/leire/products" }, words: w }));
     expect(out).toContain(w.show.readyTitle);

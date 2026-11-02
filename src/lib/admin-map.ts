@@ -1177,6 +1177,9 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["tokens", "cost", "spend", "requests", "usage", "consumption", "provider", "model"],
     tasks: ["See total usage per provider and model", "See usage per store owner account and per store", "Choose the period"],
   }),
+  platform("ai.dream", "/ai/dream/[runId]", "Dream Factory run", "Platform", "A test run of the Dream Factory watched as its owner sees it (D419): the progress, every step with its minutes, a sketch of the store's front page filling in, what was just made and what was made so far. Opened from a test run's line on AI; read only.", {
+    keywords: ["dream factory", "drill", "test run", "watch", "build"],
+  }),
   platform("languages", "/languages", "Languages", "Platform", "The languages stores can offer, chosen from the world's, and where each one's interface text stands.", {
     keywords: ["translate", "locale", "multilingual", "add a language", "world languages"],
     tasks: ["Add a language", "Switch a language off"],

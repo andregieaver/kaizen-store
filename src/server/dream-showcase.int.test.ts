@@ -8,6 +8,7 @@ vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTa
 
 const { passMembership } = await import("./auth");
 const { dreamShowcase } = await import("./dream-showcase");
+const { testDreamRun } = await import("./dream-factory");
 
 /** What a Dream Factory run has made so far (D419), read from a real store's records: only what was made since the run began, only its own. */
 
@@ -79,5 +80,22 @@ describe("what a Dream Factory run has made (D419)", () => {
     const member = (await passMembership(mine.slug, mine.owner))!;
     const show = await dreamShowcase(member.store, { createdAt: new Date(Date.now() + 60_000) });
     expect(show).toMatchObject({ notes: [], products: [], productCount: 0, goals: [], legal: [], feed: [], look: null, marks: { logo: null, icon: null } });
+  });
+});
+
+describe("a test run watched from Platform → AI (D419)", () => {
+  it("returns a test run with its store's address, never a real owner's run or a bad id", async () => {
+    const [testRun] = await db().execute<Row>(sql`
+      insert into commerce.dream_runs (store_id, prompt, test, status, finished_at)
+      values (${mine.id}::uuid, 'A test run of the Dream Factory for the watch page.', true, 'failed', now()) returning id
+    `);
+    const [realRun] = await db().execute<Row>(sql`
+      insert into commerce.dream_runs (store_id, prompt, test, status, finished_at)
+      values (${other.id}::uuid, 'A real owner''s run of the Dream Factory, not to be watched.', false, 'failed', now()) returning id
+    `);
+    expect(await testDreamRun(String(testRun.id))).toMatchObject({ id: String(testRun.id), test: true, storeSlug: mine.slug, status: "failed" });
+    expect(await testDreamRun(String(realRun.id))).toBeNull();
+    expect(await testDreamRun("not-a-uuid")).toBeNull();
+    await db().execute(sql`delete from commerce.dream_runs where id in (${String(testRun.id)}::uuid, ${String(realRun.id)}::uuid)`);
   });
 });

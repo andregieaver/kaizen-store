@@ -203,7 +203,9 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   or the run's pages, the legal pages written, the goals), and every sentence is the code's catalogue (`home.dream.show`), never a model's
   narration: a step's words say what the step does, the feed says what row was made. A colour or a font from a look reaches a `style` only
   through `safeColour()` and `safeFont()`; model-written titles, taglines and findings are rendered as text. A new step needs its line in
-  `show.doing` in both languages, and a new kind of thing made a `FeedKind` with its words in `show.made`.
+  `show.doing` in both languages, and a new kind of thing made a `FeedKind` with its words in `show.made`. Platform admins watch a test run
+  at `/admin/platform/ai/dream/{run}` (`testDreamRun()` returns test runs only; `DreamMade` without `base` links nowhere): a real owner's run
+  stays on their own store's page, which only its members open.
 
 ## A custom app's tools (wave 9 unit J, D363, `src/lib/custom-apps.ts`, `src/server/custom-apps.ts`)
 

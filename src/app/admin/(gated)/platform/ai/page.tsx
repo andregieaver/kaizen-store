@@ -203,7 +203,8 @@ export default async function PlatformAiPage() {
           <ul className="mt-3 flex flex-col gap-1 text-sm">
             {dreamRuns.map((run) => (
               <li key={run.id} className={run.status === "failed" ? "text-danger-text" : "text-ink-2"}>
-                <Link href={`/admin/${run.storeSlug}/dream-factory`} className="underline">
+                {/* A test run is watched here (D419): its store belongs to the test address, so its own page is not a platform admin's. */}
+                <Link href={run.test ? `/admin/platform/ai/dream/${run.id}` : `/admin/${run.storeSlug}/dream-factory`} className="underline">
                   {fillWords(w.dreamRun, {
                     date: run.createdAt.toISOString().slice(0, 16).replace("T", " "),
                     store: run.storeName,

@@ -246,8 +246,8 @@ export function DreamFeed({ show, now, words: w }: { show: DreamShowcase; now: D
   );
 }
 
-/** What has been made so far, a card for each kind once it has something. */
-export function DreamMade({ show, base, words: w }: { show: DreamShowcase; base: string; words: Words }) {
+/** What has been made so far, a card for each kind once it has something; links into the store's admin where `base` is given (its members). */
+export function DreamMade({ show, base, words: w }: { show: DreamShowcase; base: string | null; words: Words }) {
   const s = w.show;
   const colours = show.look ? (["background", "surface", "text", "accent", "accentText"] as const).map((key) => mockColours(show.look?.light ?? null)[key]) : [];
   return (
@@ -306,9 +306,13 @@ export function DreamMade({ show, base, words: w }: { show: DreamShowcase; base:
                 ) : (
                   <span className="flex aspect-square w-full items-center justify-center rounded-md border border-dashed border-line px-2 text-center text-xs text-ink-2">{s.noPicture}</span>
                 )}
-                <Link href={`${base}/products/${p.id}`} className="truncate underline">
-                  {p.title}
-                </Link>
+                {base ? (
+                  <Link href={`${base}/products/${p.id}`} className="truncate underline">
+                    {p.title}
+                  </Link>
+                ) : (
+                  <span className="truncate">{p.title}</span>
+                )}
                 {p.price && <span className="text-ink-2">{p.price}</span>}
               </li>
             ))}
@@ -329,7 +333,7 @@ export function DreamMade({ show, base, words: w }: { show: DreamShowcase; base:
                   <Chip signal={page.status === "live" || page.status === "built" ? "positive" : page.status === "failed" ? "danger" : "insight"} dot>
                     {s.pageStatus[page.status]}
                   </Chip>
-                  {page.pageId && (
+                  {base && page.pageId && (
                     <Link href={`${base}/pages/${page.pageId}`} className="text-sm underline">
                       {s.openPage}
                     </Link>

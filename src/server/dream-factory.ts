@@ -216,6 +216,22 @@ export async function recentDreamRuns(limit = 20): Promise<DreamRunSummary[]> {
   });
 }
 
+/**
+ * A test run by its id, with its store's address, for platform admins to watch on Platform → AI (D419): a drill's store belongs to the
+ * test address, so its own Dream Factory page is not theirs to open. A real owner's run is never returned: it stays on their store's page.
+ */
+export async function testDreamRun(runId: string): Promise<(DreamRun & { storeSlug: string }) | null> {
+  if (!z.uuid().safeParse(runId).success) return null;
+  const row = await typedRow(
+    runRow.extend({ store_slug: col.text }),
+    sql`select r.id, r.store_id, r.account_id, r.prompt, r.test, r.status, r.brief, r.steps, r.conversation_id, r.owner_presses, r.created_at,
+          r.ready_at, r.finished_at, s.slug as store_slug
+        from commerce.dream_runs r join commerce.stores s on s.id = r.store_id
+        where r.id = ${runId}::uuid and r.test`,
+  );
+  return row ? { ...toRun(row), storeSlug: row.store_slug } : null;
+}
+
 type OwnerAction = { ok: true } | { ok: false; problem: string };
 
 async function ownedRun(member: Pick<Membership, "account" | "store" | "role" | "permissions" | "kind">, runId: string): Promise<DreamRun | null> {
