@@ -133,6 +133,37 @@ describe("a store's search settings", () => {
     expect(await seo.storeLlms(slug)).not.toContain("## Pages");
   });
 
+  it("closes an article to AI crawlers at its own blog's address, read for every store at once, and the store's robots.txt says the same", async () => {
+    // The store's article moves to a second blog of its own (D341), and is closed to AI assistants (D54).
+    const article = sql`slug = 'nye-produkter' and type = 'article' and store_id = (select id from commerce.stores where slug = ${slug})`;
+    const [before] = await db().execute<Row>(sql`select published from commerce.pages where ${article}`);
+    const [blog] = await db().execute<Row>(sql`
+      insert into commerce.blogs (store_id, handle, position)
+      values ((select id from commerce.stores where slug = ${slug}), 'nyheter', 1) returning id
+    `);
+    await db().execute(sql`
+      update commerce.pages set published = published || jsonb_build_object('aiAssistants', false, 'blogId', ${String(blog.id)}::text)
+      where ${article}
+    `);
+    try {
+      const robots = await seo.siteRobots();
+      const forAi = robots.slice(robots.indexOf("User-agent: GPTBot"));
+      expect(forAi).toContain(`Disallow: /s/${slug}/*/blogs/nyheter/nye-produkter$`);
+      expect(forAi).toContain(`Disallow: /s/${slug}/blogs/nyheter/nye-produkter$`);
+      // The page closed above stays closed beside it, and the article is not left at the first blog's address.
+      expect(forAi).toContain(`Disallow: /s/${slug}/*/om-oss$`);
+      expect(forAi).not.toContain(`/s/${slug}/*/blog/nye-produkter$`);
+      const store = await getStore(slug);
+      const own = await seo.storeRobots(store!);
+      expect(own).toContain(`Disallow: /s/${slug}/*/blogs/nyheter/nye-produkter$`);
+      expect(own).toContain(`Disallow: /s/${slug}/*/om-oss$`);
+    } finally {
+      // The sitemap's tests below read the article on the store's first blog, as the template made it.
+      await db().execute(sql`update commerce.pages set published = ${JSON.stringify(before.published)}::jsonb where ${article}`);
+      await db().execute(sql`delete from commerce.blogs where id = ${String(blog.id)}::uuid`);
+    }
+  });
+
   it("leaves a hidden store out of sitemaps and llms.txt", async () => {
     await seo.saveStoreSeo(member, settings({ hidden: true }));
     expect(await seo.storeSitemap(slug)).toBeNull();

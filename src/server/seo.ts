@@ -8,7 +8,7 @@ import { agentEndpoint, agentProblem, agentProfileUrl } from "./shopping-agents"
 import { sql } from "drizzle-orm";
 import type { Metadata } from "next";
 import { cacheLife, cacheTag } from "next/cache";
-import type { z } from "zod";
+import { z } from "zod";
 
 import { db, readDb } from "@/db/client";
 import { t } from "@/lib/i18n";
@@ -18,7 +18,7 @@ import { inView, offeredMarkets, shown, toMarket, type Market } from "@/lib/mark
 import { formatMoney } from "@/lib/money";
 import { marketOrigin, marketPath, marketUrl, storeBase, storeDomain, storeSiteUrl } from "@/lib/paths";
 import { articlePath, blogOfArticle, blogPath, inBlog } from "@/lib/blogs";
-import { pageExcerpt } from "@/lib/page-content";
+import { pageExcerpt, parsePageContent } from "@/lib/page-content";
 import { pageImageUrls } from "@/lib/page-images";
 import { localizePage } from "@/lib/page-translation";
 import {
@@ -47,6 +47,7 @@ import { themeStoreCards } from "./theme-store";
 import { audit, type Account, type Membership } from "./auth";
 import { CATALOG_TAG, catalogTag, listProducts } from "./catalog";
 import { storeBlogs } from "./blogs";
+import { col, typedRows } from "./typed-rows";
 import { listPublishedPages } from "./pages";
 import { pageInMarket } from "@/lib/page-markets";
 import { getPlatformPageRoles } from "./platform-roles";
@@ -466,12 +467,68 @@ export async function siteRobots(): Promise<string> {
   ];
   if (closed.length > 0) addRules(groups, [...AI_ASSISTANT_BOTS, ...AI_TRAINING_BOTS], closed);
   // Stores on their own hosts (P7) have their own robots.txt there.
-  if (!storeDomain()) for (const store of stores) mergeGroups(groups, await storeGroups(store));
+  if (!storeDomain()) {
+    // What every store closes to AI crawlers, in two reads for all of them (a private store closes everything, and needs none).
+    const closed = await closedToAiOf(stores.filter((store) => !store.private).map((store) => store.id));
+    for (const store of stores) mergeGroups(groups, storeGroups(store, closed.get(store.id) ?? NOTHING_CLOSED));
+  }
   return renderRobots(groups, [`${siteUrl()}/sitemap.xml`, ...parsed.sitemaps]);
 }
 
+/** What a store closes to AI crawlers (D54): its pages' addresses and its articles' addresses in their own blogs (D341). */
+type ClosedToAi = { pages: string[]; articles: string[] };
+const NOTHING_CLOSED: ClosedToAi = { pages: [], articles: [] };
+
+const closedPageRow = z.object({ store_id: col.uuid, type: col.text, slug: col.text, published: z.unknown() });
+const blogPlaceRow = z.object({ store_id: col.uuid, id: col.uuid, handle: col.text, main: col.bool });
+
+/**
+ * The published pages and articles closed to AI crawlers of every store given, each article at its blog's address: two reads for all
+ * the stores together, where robots.txt read each store's pages, articles and blogs on its own (three reads a store, too slow for the
+ * build once there are thousands of stores). Pages come in the order a store lists them (by when they were made), articles newest first,
+ * as `listPublishedPages()` gives them, and a page is closed as it reads (`parsePageContent()`, `aiAssistants` false). Read each time,
+ * uncached: a page opened or closed shows in robots.txt at once, which one cache entry for every store could not promise.
+ */
+async function closedToAiOf(storeIds: readonly string[]): Promise<Map<string, ClosedToAi>> {
+  const out = new Map<string, ClosedToAi>(storeIds.map((id) => [id, { pages: [], articles: [] }]));
+  if (storeIds.length === 0) return out;
+  const ids = `{${storeIds.join(",")}}`;
+  const [rows, blogs] = await Promise.all([
+    typedRows(
+      closedPageRow,
+      sql`
+        select store_id, type, slug, published from commerce.pages
+        where store_id = any(${ids}::uuid[]) and type in ('page', 'article') and published_at is not null
+          and published->>'aiAssistants' = 'false'
+        order by store_id, (type = 'article'), case when type = 'page' then created_at end,
+          case when type = 'article' then coalesce(first_published_at, published_at) end desc, slug
+      `,
+      readDb(),
+    ),
+    typedRows(
+      blogPlaceRow,
+      sql`select store_id, id, handle, main from commerce.blogs where store_id = any(${ids}::uuid[]) order by store_id, main desc, position, created_at`,
+      readDb(),
+    ),
+  ]);
+  const blogsOf = new Map<string, z.output<typeof blogPlaceRow>[]>();
+  for (const blog of blogs) blogsOf.set(blog.store_id, [...(blogsOf.get(blog.store_id) ?? []), blog]);
+  for (const row of rows) {
+    const content = parsePageContent(row.published);
+    const closed = out.get(row.store_id);
+    if (!content || content.aiAssistants || !closed) continue;
+    if (row.type === "page") closed.pages.push(row.slug);
+    else {
+      // An article is at its own blog's address (D341): `/blog/{slug}` or `/blogs/{handle}/{slug}`.
+      const blog = blogOfArticle(blogsOf.get(row.store_id) ?? [], content);
+      closed.articles.push(blog ? articlePath(blog, row.slug) : `/blog/${row.slug}`);
+    }
+  }
+  return out;
+}
+
 /** A store's rules: its own, and its pages closed to AI crawlers (D54) in every market. */
-async function storeGroups(store: Pick<Store, "id" | "slug" | "seo"> & { private?: boolean; privateMode?: boolean }) {
+function storeGroups(store: Pick<Store, "id" | "slug" | "seo"> & { private?: boolean; privateMode?: boolean }, closedToAi: ClosedToAi) {
   const base = storeBase(store.slug);
   const groups = storeRobotsGroups(store.seo, base);
   // A private store (D339): nothing of it for any crawler.
@@ -479,15 +536,9 @@ async function storeGroups(store: Pick<Store, "id" | "slug" | "seo"> & { private
     addRules(groups, ["*"], [{ allow: false, path: `${base}/` }]);
     return groups;
   }
-  const [pages, articles, blogs] = await Promise.all([listPublishedPages(store.id), listPublishedPages(store.id, "article"), storeBlogs(store.id)]);
-  // An article is at its own blog's address (D341): `/blog/{slug}` or `/blogs/{handle}/{slug}`.
-  const at = (a: (typeof articles)[number]) => {
-    const blog = blogOfArticle(blogs, a.content);
-    return blog ? articlePath(blog, a.slug) : `/blog/${a.slug}`;
-  };
   const closed = [
-    ...pages.filter((page) => !page.content.aiAssistants).flatMap((page) => [`${base}/*/${page.slug}$`, `${base}/${page.slug}$`]),
-    ...articles.filter((a) => !a.content.aiAssistants).flatMap((a) => [`${base}/*${at(a)}$`, `${base}${at(a)}$`]),
+    ...closedToAi.pages.flatMap((slug) => [`${base}/*/${slug}$`, `${base}/${slug}$`]),
+    ...closedToAi.articles.flatMap((path) => [`${base}/*${path}$`, `${base}${path}$`]),
   ].map((path) => ({ allow: false, path }));
   // In every market, and without the market for a store that sells in one country (D181).
   if (closed.length > 0) addRules(groups, [...AI_ASSISTANT_BOTS, ...AI_TRAINING_BOTS], closed);
@@ -496,7 +547,8 @@ async function storeGroups(store: Pick<Store, "id" | "slug" | "seo"> & { private
 
 /** A store's robots.txt: its own on its host (P7); until then a preview of its part of the site's. */
 export async function storeRobots(store: Pick<Store, "id" | "slug" | "seo" | "privateMode">): Promise<string> {
-  return renderRobots(await storeGroups(store), [`${storeSiteUrl(store.slug)}${storeSitemapPath(store.slug)}`]);
+  const closed = store.privateMode ? NOTHING_CLOSED : ((await closedToAiOf([store.id])).get(store.id) ?? NOTHING_CLOSED);
+  return renderRobots(storeGroups(store, closed), [`${storeSiteUrl(store.slug)}${storeSitemapPath(store.slug)}`]);
 }
 
 const xml = (value: string) =>
