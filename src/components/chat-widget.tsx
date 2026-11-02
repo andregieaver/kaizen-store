@@ -523,6 +523,8 @@ export function ChatWidget({ site, signInHref, locale, agent, deskName, privacyH
   const people = agent.mode === "people" || (agent.mode === "ai_first" && !agent.ai);
   const who = people ? deskName : `${agent.name}, ${labels.aiAssistant}`;
   const isOpen = stored.conversation !== null && stored.status === "open";
+  /** The AI is answering on a desk where a person can take over: the header offers one. */
+  const canHandOff = agent.mode === "ai_first" && Boolean(agent.ai) && isOpen && state?.handler === "ai";
   const queued = isOpen && state?.status === "open" && state.handler === "queue" ? state : null;
   // Proposals a later line settled (step 10): their cards take no more answers.
   const settled = new Set(
@@ -602,44 +604,53 @@ export function ChatWidget({ site, signInHref, locale, agent, deskName, privacyH
           onKeyDown={(event) => {
             if (event.key === "Escape") setOpen(false);
           }}
-          className="fixed inset-x-0 bottom-0 z-[90] flex h-[85dvh] flex-col overflow-hidden rounded-t-2xl border border-border bg-background text-foreground shadow-2xl md:inset-x-auto md:right-6 md:bottom-24 md:h-[36rem] md:max-h-[calc(100dvh-8rem)] md:w-[24rem] md:rounded-2xl"
+          className="fixed inset-x-0 top-0 z-[90] flex h-dvh flex-col overflow-hidden bg-background text-foreground shadow-2xl md:left-auto md:w-[24rem] md:border-l md:border-border"
         >
-          <header className="flex items-center gap-3 border-b border-border px-4 py-3">
-            {person ? <PersonPicture person={person} size="size-10" /> : avatar("size-10")}
-            <div className="min-w-0 flex-1">
-              {person ? (
-                <p className="truncate font-semibold">{person.name}</p>
-              ) : people ? (
-                <>
-                  <p className="truncate font-semibold">{deskName}</p>
-                  <p className="truncate text-sm text-muted">{labels.peopleTitle}</p>
-                </>
-              ) : (
-                <>
-                  <p className="truncate font-semibold">{agent.name}</p>
-                  <p className="flex min-w-0 items-center gap-1.5 text-sm text-muted">
-                    {agent.occupation && <span className="truncate">{agent.occupation}</span>}
-                    <span className="shrink-0 rounded-button bg-accent px-1.5 py-0.5 text-xs whitespace-nowrap text-accent-foreground">{labels.aiAssistant}</span>
-                  </p>
-                </>
-              )}
+          {/* Who answers and Close on one line, what the visitor can do on its own line under it: the name and the AI label always have
+              the width, and the buttons wrap on a narrow phone rather than cover them. The chat is the screen's whole height: the whole
+              screen on a phone (clear of its notch and home bar), a panel along the right edge on a large screen. */}
+          <header className="border-b border-border px-4 pt-[calc(0.75rem+env(safe-area-inset-top))] pb-3 md:pt-3">
+            <div className="flex items-center gap-3">
+              {person ? <PersonPicture person={person} size="size-10" /> : avatar("size-10")}
+              <div className="min-w-0 flex-1">
+                {person ? (
+                  <p className="truncate font-semibold">{person.name}</p>
+                ) : people ? (
+                  <>
+                    <p className="truncate font-semibold">{deskName}</p>
+                    <p className="truncate text-sm text-muted">{labels.peopleTitle}</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="truncate font-semibold">{agent.name}</p>
+                    <p className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-muted">
+                      {agent.occupation && <span className="min-w-0 truncate">{agent.occupation}</span>}
+                      <span className="shrink-0 rounded-button bg-accent px-1.5 py-0.5 text-xs whitespace-nowrap text-accent-foreground">{labels.aiAssistant}</span>
+                    </p>
+                  </>
+                )}
+              </div>
+              <button type="button" onClick={() => setOpen(false)} aria-label={labels.close} className="shrink-0 self-start rounded-button p-1.5 text-muted hover:text-foreground">
+                <Icon name="close" className="size-5" />
+              </button>
             </div>
-            {agent.mode === "ai_first" && agent.ai && isOpen && state?.handler === "ai" && (
-              <button type="button" onClick={() => void change("handoff")} disabled={waiting} className="rounded-button border border-border px-2 py-1 text-sm whitespace-nowrap hover:bg-surface disabled:opacity-50">
-                {labels.talkToPerson}
-              </button>
+            {(canHandOff || messages.length > 0) && (
+              <div className="mt-2 flex flex-wrap items-center gap-2 pl-13">
+                {canHandOff && (
+                  <button type="button" onClick={() => void change("handoff")} disabled={waiting} className="rounded-button border border-border px-2 py-1 text-sm whitespace-nowrap hover:bg-surface disabled:opacity-50">
+                    {labels.talkToPerson}
+                  </button>
+                )}
+                {messages.length > 0 && (
+                  <button type="button" onClick={restart} className="rounded-button px-2 py-1 text-sm whitespace-nowrap text-muted hover:text-foreground">
+                    {labels.restart}
+                  </button>
+                )}
+              </div>
             )}
-            {messages.length > 0 && (
-              <button type="button" onClick={restart} className="rounded-button px-2 py-1 text-sm text-muted hover:text-foreground">
-                {labels.restart}
-              </button>
-            )}
-            <button type="button" onClick={() => setOpen(false)} aria-label={labels.close} className="rounded-button p-1.5 text-muted hover:text-foreground">
-              <Icon name="close" className="size-5" />
-            </button>
           </header>
 
-          <ol ref={listRef} role="log" aria-label={labels.conversation} aria-live="polite" className="flex flex-1 flex-col gap-3 overflow-y-auto px-4 py-4">
+          <ol ref={listRef} role="log" aria-label={labels.conversation} aria-live="polite" className="flex flex-1 flex-col gap-3 overflow-y-auto overscroll-contain px-4 py-4">
             <li className="flex items-end gap-2">
               {avatar("size-7")}
               <p className="max-w-[85%] rounded-2xl rounded-bl-sm bg-surface px-3 py-2 whitespace-pre-line">{labels.greeting}</p>

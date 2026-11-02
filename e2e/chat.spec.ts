@@ -220,3 +220,82 @@ test("the customer sees a person join and answer within seconds, without the AI 
     await sql.end();
   }
 });
+
+/**
+ * The chat is the screen's whole height, the whole screen on a phone and a panel along the right edge on a large screen; its header
+ * shows the agent's name, the AI label, Talk to a person, New conversation and Close each whole, none over another (they once shared
+ * one line, which squeezed the name to nothing and laid the buttons over the label on a phone). The site's answers are the browser's
+ * stand-ins.
+ */
+test("the chat is full height, and its header shows every part whole, none over another, on a phone and on a large screen", async ({ page }) => {
+  const slug = `chat-header-${Date.now()}`;
+  const sql = testDb();
+  try {
+    const [access] = await sql`
+      insert into commerce.access_requests (email, name, store_name)
+      values (${`${slug}@example.com`}, 'Siri', 'Siris Butikk') returning id`;
+    const [{ id: storeId }] = await sql`select commerce.approve_access_request(${access.id}, ${slug}, 'Siris Butikk', null) as id`;
+    const key = parseKey(process.env.SETTINGS_ENCRYPTION_KEY)!;
+    await sql`
+      insert into commerce.ai_providers (store_id, provider, api_key_encrypted, api_key_hint, text_model)
+      values (${storeId}, 'openai', ${encryptSecret("sk-test", key)}, '…test', 'text-model')`;
+    await sql`insert into commerce.chat_agents (store_id, enabled, name, occupation) values (${storeId}, true, 'Ingrid', 'Kundeservice')`;
+    // The AI first, with people behind it (D216): the header offers Talk to a person while the AI answers.
+    await sql`insert into commerce.support_settings (store_id, mode, tone_on, summaries_on, partner) values (${storeId}, 'ai_first', false, false, false)`;
+
+    const ref = { id: "0b5c1d2e-3f40-4a51-8b62-7c83d94ea5f6", token: "tok_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123" };
+    const state = { status: "open", handler: "ai", mode: "ai_first", agent: null, queue: null, available: true, emailLeft: 0, signedIn: false, emailFollowup: false };
+    const at = "2026-10-13T12:00:00.000Z";
+    await page.route("**/api/chat", async (route) => {
+      const body = route.request().postDataJSON() as { message: string };
+      await route.fulfill({
+        json: { conversation: { ...ref, channel: "sc:abc" }, state, messages: [{ seq: 1, author: "customer", body: body.message, at }, { seq: 2, author: "ai", body: "Hei! Hva kan jeg hjelpe med?", at }] },
+      });
+    });
+    await page.route("**/api/chat/feed", (route) => route.fulfill({ json: { state, messages: [] } }));
+
+    for (const size of [{ width: 360, height: 740 }, { width: 1280, height: 800 }]) {
+      await page.setViewportSize(size);
+      await page.goto(`/s/${slug}`);
+      await page.getByRole("button", { name: /Chat med oss/ }).click();
+      const chat = page.getByRole("dialog", { name: "Ingrid, AI-assistent" });
+      if ((await chat.getByRole("button", { name: "Ny samtale" }).count()) === 0) {
+        await chat.getByRole("textbox", { name: "Skriv en melding" }).fill("Hei");
+        await chat.getByRole("textbox", { name: "Skriv en melding" }).press("Enter");
+      }
+      const header = chat.locator("header");
+      const parts = [
+        header.getByText("Ingrid", { exact: true }),
+        header.getByText("Kundeservice", { exact: true }),
+        header.getByText("AI-assistent", { exact: true }),
+        header.getByRole("button", { name: "Snakk med en person" }),
+        header.getByRole("button", { name: "Ny samtale" }),
+        header.getByRole("button", { name: "Lukk chatten" }),
+      ];
+      const panel = (await chat.boundingBox())!;
+      // The whole height; on a phone the whole width, on a large screen against the right edge.
+      expect(Math.round(panel.y), `${size.width}px`).toBe(0);
+      expect(Math.round(panel.height), `${size.width}px`).toBe(size.height);
+      expect(Math.round(panel.x + panel.width), `${size.width}px`).toBe(size.width);
+      if (size.width < 768) expect(Math.round(panel.width)).toBe(size.width);
+      const boxes = [];
+      for (const part of parts) {
+        await expect(part, `${size.width}px`).toBeVisible();
+        const box = (await part.boundingBox())!;
+        // Whole: as wide as its own text needs, and inside the panel.
+        expect(await part.evaluate((el) => el.scrollWidth <= el.clientWidth + 1), `${await part.textContent()} at ${size.width}px is cut`).toBe(true);
+        expect(box.x >= panel.x - 0.5 && box.x + box.width <= panel.x + panel.width + 0.5, `${size.width}px`).toBe(true);
+        boxes.push({ name: (await part.textContent()) || (await part.getAttribute("aria-label")), ...box });
+      }
+      for (const [i, a] of boxes.entries()) {
+        for (const b of boxes.slice(i + 1)) {
+          const apart = a.x + a.width <= b.x + 0.5 || b.x + b.width <= a.x + 0.5 || a.y + a.height <= b.y + 0.5 || b.y + b.height <= a.y + 0.5;
+          expect(apart, `${a.name} and ${b.name} overlap at ${size.width}px`).toBe(true);
+        }
+      }
+      await chat.getByRole("button", { name: "Lukk chatten" }).click();
+    }
+  } finally {
+    await sql.end();
+  }
+});
