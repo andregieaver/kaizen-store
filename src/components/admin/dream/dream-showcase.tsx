@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 
 import { ButtonLink, Card, Chip } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
@@ -87,8 +87,12 @@ export function DreamTimeline({
         const minutes = stepMinutes(state, now);
         const last = index === DREAM_STEPS.length - 1;
         const working = state.status === "running" || state.status === "asking";
+        // The two stages (D422): a heading where each begins.
+        const stageStarts = index === 0 || DREAM_STEPS[index - 1].stage !== step.stage;
         return (
-          <li key={step.id} className="relative flex gap-3 pb-4">
+          <Fragment key={step.id}>
+            {stageStarts && <li className={`pb-3 text-sm font-medium text-ink-2 ${index === 0 ? "" : "pt-2"}`}>{step.stage === 1 ? w.stage.one : w.stage.two}</li>}
+            <li className="relative flex gap-3 pb-4">
             {!last && <span aria-hidden="true" className={`absolute left-3.5 top-8 bottom-0 w-px ${state.status === "done" || state.status === "skipped" ? "bg-positive-text/40" : "bg-line"}`} />}
             <StepMark status={state.status} index={index + 1} />
             <div className="flex min-w-0 flex-1 flex-col gap-1 pt-0.5">
@@ -103,7 +107,8 @@ export function DreamTimeline({
               {working && <span className="text-body text-ink">{w.show.doing[step.id]}</span>}
               {state.detail && <span className="text-body text-ink-2">{state.detail}</span>}
             </div>
-          </li>
+            </li>
+          </Fragment>
         );
       })}
     </ol>

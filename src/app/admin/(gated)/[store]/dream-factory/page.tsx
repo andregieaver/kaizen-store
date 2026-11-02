@@ -8,13 +8,15 @@ import { ButtonLink, Card, Chip, KpiTile, PageHeader } from "@/components/admin/
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
-import { DREAM_STEPS, PROMPT_MAX, PROMPT_MIN, briefQuestions, ownerWaitMs, scoreOf } from "@/lib/dream-factory";
+import { DREAM_STEPS, LOOK_ROUNDS, PROMPT_MAX, PROMPT_MIN, briefQuestions, detailsQuestions, ownerWaitMs, scoreOf } from "@/lib/dream-factory";
 import { marketPath, storeHref } from "@/lib/paths";
 import { latestDreamRun } from "@/server/dream-factory";
 import { dreamShowcase } from "@/server/dream-showcase";
+import { getPageForEdit } from "@/server/pages";
 import { requirePermission } from "@/server/permissions";
 
-import { answerDreamAction, confirmDreamAction, discardDreamStoreAction, retryDreamAction, startDreamAction, startDreamOverAction, stopDreamAction } from "./actions";
+import { answerDreamAction, approveLookAction, askLookAction, confirmDreamAction, discardDreamStoreAction, retryDreamAction, startDreamAction, startDreamOverAction, stopDreamAction } from "./actions";
+import { DreamFrontPage } from "./front-page";
 
 export const metadata: Metadata = { title: "Dream Factory" };
 
@@ -63,7 +65,13 @@ export default async function DreamFactoryPage({ params }: { params: Promise<{ s
   const now = new Date();
   const score = scoreOf({ ...run, ownerWaitMs: ownerWaitMs(run.steps, now) });
   const brief = run.brief;
-  const questions = brief && run.steps.brief.status === "asking" ? briefQuestions(brief) : [];
+  // What only the owner can give (D422): stage 1 asks for the countries, stage 2 for the business details.
+  const askingBrief = Boolean(brief) && run.steps.brief.status === "asking" && (brief ? briefQuestions(brief).length > 0 : false);
+  const askingDetails = Boolean(brief) && run.steps.details.status === "asking" && (brief ? detailsQuestions(brief).length > 0 : false);
+  const look = run.steps.approve;
+  const lookOpen = look.status === "asking" || look.status === "running";
+  // The real front page in its live look, once the website step has published it (D422): it replaces the sketch.
+  const frontPage = run.steps.website.status === "done" && store.frontPageId ? await getPageForEdit(store.id, store.frontPageId, "page") : null;
   const runWords = w.run[run.status];
   const show = await dreamShowcase(store, run);
   const market = store.markets[0];
@@ -82,15 +90,15 @@ export default async function DreamFactoryPage({ params }: { params: Promise<{ s
         {ready && <DreamReady show={show} links={{ store: previewHref(slug), front: front ? `${base}/pages/${front}` : null, products: `${base}/products` }} words={w} />}
 
         {/* What only the owner can give, first: the one thing in their way. */}
-        {questions.length > 0 && brief && (
+        {(askingBrief || askingDetails) && brief && (
           <Card title={w.answers.title}>
             <ActionForm action={answerDreamAction.bind(null, slug, run.id)} className="flex flex-col gap-3">
-              {!brief.business.legalName && <Field name="legalName" label={w.answers.legalName} />}
-              {!brief.business.organisationNumber && <Field name="organisationNumber" label={w.answers.organisationNumber} />}
-              {!brief.business.postalAddress && <Field name="postalAddress" label={w.answers.postalAddress} />}
-              {!brief.business.contactEmail && <Field name="contactEmail" label={w.answers.contactEmail} type="email" />}
-              {!brief.business.country && <Field name="country" label={w.answers.country} />}
-              {brief.countries.length === 0 && <Field name="countries" label={w.answers.countries} />}
+              {askingDetails && !brief.business.legalName && <Field name="legalName" label={w.answers.legalName} />}
+              {askingDetails && !brief.business.organisationNumber && <Field name="organisationNumber" label={w.answers.organisationNumber} />}
+              {askingDetails && !brief.business.postalAddress && <Field name="postalAddress" label={w.answers.postalAddress} />}
+              {askingDetails && !brief.business.contactEmail && <Field name="contactEmail" label={w.answers.contactEmail} type="email" />}
+              {askingDetails && !brief.business.country && <Field name="country" label={w.answers.country} />}
+              {askingBrief && brief.countries.length === 0 && <Field name="countries" label={w.answers.countries} />}
               <div>
                 <SubmitButton>{w.answers.save}</SubmitButton>
               </div>
@@ -137,10 +145,62 @@ export default async function DreamFactoryPage({ params }: { params: Promise<{ s
 
         {going && <DreamProgress steps={run.steps} startedAt={run.createdAt} now={now} storeName={brief?.storeName || store.name} words={w} />}
 
+        {/* Stage 1's end (D422): the owner looks at the real front page and asks for changes until they say This is it. */}
+        {lookOpen && (
+          <section aria-labelledby="dream-look" className="flex flex-col gap-4 rounded-lg border border-line bg-card p-5">
+            <h2 id="dream-look" className="text-title text-ink">
+              {w.look.title}
+            </h2>
+            <p className="text-body text-ink-2">{w.look.text}</p>
+            {look.status === "running" ? (
+              <p role="status" className="flex items-start gap-3 text-body text-ink">
+                <span aria-hidden="true" className="mt-1 size-4 shrink-0 animate-spin rounded-full border-2 border-brand border-r-transparent" />
+                <span>
+                  <span className="font-medium">{w.look.working}</span> {look.ref}
+                </span>
+              </p>
+            ) : (
+              <>
+                {look.tries > 0 && look.detail && <p className="text-body text-ink-2">{look.detail}</p>}
+                {look.tries >= LOOK_ROUNDS ? (
+                  <p className="text-body text-ink">{fillWords(w.look.limit, { max: LOOK_ROUNDS })}</p>
+                ) : (
+                  <>
+                    <div className="flex flex-wrap gap-2">
+                      {(["colours", "fonts", "layout"] as const).map((kind) => (
+                        <ActionForm key={kind} action={askLookAction.bind(null, slug, run.id, kind)}>
+                          <SubmitButton variant="secondary">{w.look[kind]}</SubmitButton>
+                        </ActionForm>
+                      ))}
+                    </div>
+                    <ActionForm action={askLookAction.bind(null, slug, run.id, "own")} className="flex flex-col gap-2">
+                      <label className={field}>
+                        {w.look.ownLabel}
+                        <input name="ask" required minLength={3} maxLength={500} className={control} />
+                      </label>
+                      <div>
+                        <SubmitButton variant="secondary">{w.look.ask}</SubmitButton>
+                      </div>
+                    </ActionForm>
+                    {look.tries > 0 && <p className="text-sm text-ink-2">{fillWords(w.look.asked, { n: look.tries, max: LOOK_ROUNDS })}</p>}
+                  </>
+                )}
+                <ActionForm action={approveLookAction.bind(null, slug, run.id)}>
+                  <SubmitButton>{w.look.yes}</SubmitButton>
+                </ActionForm>
+              </>
+            )}
+          </section>
+        )}
+
         {/* The sketch first on a phone, where the timeline would push it out of sight; beside the timeline on a wide screen. */}
         <div className="grid gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:grid-rows-[auto_1fr]">
           <div className="min-w-0 lg:col-start-2 lg:row-start-1">
-            <DreamSketch show={show} storeName={brief?.storeName || store.name} address={address} words={w} />
+            {frontPage ? (
+              <DreamFrontPage store={store} page={frontPage} address={address} caption={w.look.caption} />
+            ) : (
+              <DreamSketch show={show} storeName={brief?.storeName || store.name} address={address} words={w} />
+            )}
           </div>
           <div className="flex min-w-0 flex-col gap-4 lg:col-start-1 lg:row-span-2 lg:row-start-1">
             <div className="rounded-lg border border-line bg-card p-5">

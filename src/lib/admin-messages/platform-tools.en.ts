@@ -50,7 +50,7 @@ export const platformToolsEn = {
     dreamText:
       "Each run from an owner's description to a store ready to open, scored by code: minutes to ready (the owner's waiting left out), the owner's presses and the steps right first time. The live drill Dream Factory starts a test run through self-serve sign-up with a fixed prompt.",
     dreamNone: "No run yet.",
-    dreamRun: "{date}: {store}, {status}, {done} of 13 steps, {minutes} min to ready, {presses} presses, {first} right first time",
+    dreamRun: "{date}: {store}, {status}, {done} of {total} steps, {minutes} min to ready, {presses} presses, {first} right first time",
     dreamTest: "test",
     /** Watching a test run (D419). */
     dreamWatchTitle: "Dream Factory: {store}",

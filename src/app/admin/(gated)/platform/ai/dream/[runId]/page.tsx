@@ -14,6 +14,8 @@ import { marketPath, storeHref } from "@/lib/paths";
 import { passMembership, requirePlatformAdmin } from "@/server/auth";
 import { testDreamRun } from "@/server/dream-factory";
 import { dreamShowcase } from "@/server/dream-showcase";
+import { getPageForEdit } from "@/server/pages";
+import { DreamFrontPage } from "@/app/admin/(gated)/[store]/dream-factory/front-page";
 import { getStore } from "@/server/stores";
 
 export const metadata: Metadata = { title: "Dream Factory run" };
@@ -42,6 +44,8 @@ export default async function PlatformDreamRunPage({ params }: { params: Promise
   const score = scoreOf({ ...run, ownerWaitMs: ownerWaitMs(run.steps, now) });
   // An admin who works in the store (the one who asked for the drill, D420) gets its own page and the members' preview from here.
   const [show, member] = await Promise.all([dreamShowcase(store, run), passMembership(store.slug, account.id)]);
+  // The real front page in its live look once the website step has published it (D422), as the owner sees it.
+  const frontPage = run.steps.website.status === "done" && store.frontPageId ? await getPageForEdit(store.id, store.frontPageId, "page") : null;
   const market = store.markets[0];
   const storeUrl = storeHref(store.slug, market ? marketPath(store.slug, market.slug) : "/");
   const name = run.brief?.storeName || store.name;
@@ -79,7 +83,11 @@ export default async function PlatformDreamRunPage({ params }: { params: Promise
 
         <div className="grid gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:grid-rows-[auto_1fr]">
           <div className="min-w-0 lg:col-start-2 lg:row-start-1">
-            <DreamSketch show={show} storeName={name} address={hostOf(storeUrl) ?? store.slug} words={words} />
+            {frontPage ? (
+              <DreamFrontPage store={store} page={frontPage} address={hostOf(storeUrl) ?? store.slug} caption={words.look.caption} />
+            ) : (
+              <DreamSketch show={show} storeName={name} address={hostOf(storeUrl) ?? store.slug} words={words} />
+            )}
           </div>
           <div className="flex min-w-0 flex-col gap-4 lg:col-start-1 lg:row-span-2 lg:row-start-1">
             <div className="rounded-lg border border-line bg-card p-5">

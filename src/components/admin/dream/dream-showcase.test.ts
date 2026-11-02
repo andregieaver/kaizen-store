@@ -62,8 +62,8 @@ describe("the run as it goes", () => {
       }),
     );
     expect(out).toContain("Building Leire");
-    expect(out).toContain("2 of 13 steps done");
-    expect(out).toContain('aria-valuenow="15"');
+    expect(out).toContain("2 of 16 steps done");
+    expect(out).toContain('aria-valuenow="13"');
     expect(out).toContain("Started 10 min ago");
     expect(out).toContain(w.show.doing.research);
     expect(out).not.toContain(`${w.show.next}: `);

@@ -25,7 +25,7 @@ describe("the run's progress", () => {
       START,
       at("2026-11-02T10:07:59Z"),
     );
-    expect(p).toEqual({ done: 3, total: 13, percent: 23, now: ["research", "brand"], next: null, minutes: 7 });
+    expect(p).toEqual({ done: 3, total: 16, percent: 19, now: ["research", "brand"], next: null, minutes: 7 });
   });
 
   it("names the next step waiting when nothing works, and never a minute before the start", () => {
@@ -35,7 +35,7 @@ describe("the run's progress", () => {
 
   it("is whole when every step has passed", () => {
     const all = Object.fromEntries(Object.keys(initialSteps()).map((id) => [id, { status: "done", tries: 1 }])) as DreamSteps;
-    expect(showcaseProgress(all, START, START)).toMatchObject({ done: 13, percent: 100, now: [], next: null });
+    expect(showcaseProgress(all, START, START)).toMatchObject({ done: 16, percent: 100, now: [], next: null });
   });
 });
 

@@ -18,7 +18,12 @@ import {
   briefPrompt,
   briefSchema,
   briefQuestions,
+  detailsQuestions,
   initialSteps,
+  LOOK_ROUNDS,
+  LOOK_TOOLS,
+  lookMessage,
+  sampleCount,
   isTestOwner,
   ownerWaitMs,
   passed,
@@ -57,8 +62,9 @@ import { setFeature } from "./store-features";
 import { createStoreForOwner } from "./platform";
 import { catalogTag } from "./catalog";
 import { deleteRedirects } from "./redirects";
+import { addOwnLook, switchToInstall } from "./theme-installs";
 import { refreshTag } from "./refresh";
-import { archiveDemoProducts, getSetupProgress } from "./setup";
+import { archiveDemoProducts, getSetupProgress, saveStoreDetails } from "./setup";
 import { checkupFindings } from "./store-checkup";
 import { grantTrial, trialEndOf } from "./store-trial";
 import { discardDraft, draftStore, openDraft, publishDraft } from "./store-drafts";
@@ -249,16 +255,40 @@ async function ownedRun(member: Pick<Membership, "account" | "store" | "role" | 
 /** The owner's answers to the brief's questions: the run goes on when nothing is left to ask. */
 export async function answerDreamBrief(member: Membership, runId: string, answers: unknown): Promise<OwnerAction> {
   const run = await ownedRun(member, runId);
-  if (!run || !run.brief || run.steps.brief.status !== "asking") return { ok: false, problem: "Nothing is waiting for an answer." };
+  // Stage 1's questions are the brief's; stage 2's, the business details (D422).
+  const stage = run?.steps.brief.status === "asking" ? "brief" : run?.steps.details.status === "asking" ? "details" : null;
+  if (!run || !run.brief || !stage) return { ok: false, problem: "Nothing is waiting for an answer." };
   let brief: DreamBrief;
   try {
     brief = answeredBrief(run.brief, answers);
   } catch {
     return { ok: false, problem: "Check the answers: a country is its two-letter code, such as NO." };
   }
-  const left = briefQuestions(brief);
-  const steps = { ...run.steps, brief: { ...run.steps.brief, ...(left.length === 0 ? { status: "done" as const, finishedAt: now() } : {}), detail: left.join(" ") || "Answered." } };
+  const left = stage === "brief" ? briefQuestions(brief) : detailsQuestions(brief);
+  // Business details answered in full are saved by the details step's next minute.
+  const finished = stage === "brief" ? { status: "done" as const, finishedAt: now() } : { status: "running" as const };
+  const steps = { ...run.steps, [stage]: { ...run.steps[stage], ...(left.length === 0 ? finished : {}), detail: left.join(" ") || "Answered." } };
   await save(run.id, { brief, steps, presses: 1 });
+  return { ok: true };
+}
+
+/** A change to the look the owner asks for (D422): one round, taken by the conductor's next minute; at most `LOOK_ROUNDS`. */
+export async function askLookChange(member: Membership, runId: string, ask: string): Promise<OwnerAction> {
+  const run = await ownedRun(member, runId);
+  if (!run || run.steps.approve.status !== "asking") return { ok: false, problem: "The look is not waiting for you." };
+  const text = ask.trim();
+  if (text.length < 3 || text.length > 500) return { ok: false, problem: "Say what to change in 3 to 500 characters." };
+  const state = run.steps.approve;
+  if (state.tries >= LOOK_ROUNDS) return { ok: false, problem: `You have asked for ${LOOK_ROUNDS} changes: choose This is it, or start over with a new description.` };
+  await save(run.id, { steps: { ...run.steps, approve: { ...state, status: "running", tries: state.tries + 1, ref: text, detail: `Working on: ${text.slice(0, 200)}` } }, presses: 1 });
+  return { ok: true };
+}
+
+/** The owner's *This is it* (D422): stage 2 starts in the look they agreed to. */
+export async function approveLook(member: Membership, runId: string): Promise<OwnerAction> {
+  const run = await ownedRun(member, runId);
+  if (!run || run.steps.approve.status !== "asking") return { ok: false, problem: "The look is not waiting for you." };
+  await save(run.id, { steps: { ...run.steps, approve: { ...run.steps.approve, status: "done", finishedAt: now(), detail: "Agreed by the owner." } }, presses: 1 });
   return { ok: true };
 }
 
@@ -442,7 +472,11 @@ async function advanceRun(runId: string, deadline: number, deps: DreamDeps): Pro
     for (const id of due) {
       if (Date.now() >= deadline) break;
       // A turn of the AI manager takes up to two minutes: one a minute. The brief is one short answer, not a turn.
-      const usesTurn = (stepOf(id).who === "ai" && id !== "brief" && run.steps[id].status !== "asking") || (id === "website" && Boolean(run.steps.website.ref));
+      const usesTurn =
+        (stepOf(id).who === "ai" && id !== "brief" && run.steps[id].status !== "asking") ||
+        (id === "website" && Boolean(run.steps.website.ref)) ||
+        // A change to the look the owner asked for (D422) is one turn of the AI.
+        (id === "approve" && run.steps.approve.status === "running" && Boolean(run.steps.approve.ref));
       if (usesTurn && (turns > 0 || deadline - Date.now() < TURN_MS)) continue;
       const before = run.steps[id];
       // The store as it is now: a step earlier in this minute may have set its country, its markets or its features.
@@ -490,11 +524,16 @@ async function runStep(id: DreamStepId, ctx: Context): Promise<StepOutcome | nul
     case "research":
     case "setup":
     case "brand":
+    case "samples":
     case "catalogue":
     case "goals":
       return state.status === "asking" ? null : aiStep(id, ctx);
     case "website":
       return websiteStep(ctx);
+    case "approve":
+      return approveStep(ctx);
+    case "details":
+      return detailsStep(ctx);
     case "legal":
       return legalStep(ctx);
     case "payments":
@@ -544,8 +583,14 @@ async function aiStep(id: AiStepId, ctx: Context): Promise<StepOutcome> {
   const { run, member } = ctx;
   const state = started(run.steps[id]);
   if (!run.brief) return { state: failedTry(run, state, "The run has no brief.") };
-  // The products are made one at a time (each with its picture, which takes a while), so a turn ends well within its time.
-  const progress = id === "catalogue" ? await catalogueCheck(member.store, run.brief) : null;
+  // The products are made one at a time (each with its picture, which takes a while), so a turn ends well within its time: the first
+  // three in stage 1 (D422), the rest in stage 2.
+  const products = id === "catalogue" || id === "samples";
+  const target = id === "samples" ? sampleCount(run.brief) : run.brief.products;
+  // The owner's yes to the brief covers replacing the demo store's products: gone before the first is made, so the front page the owner
+  // looks at in stage 1 shows only the store's own.
+  if (id === "samples" && state.tries === 0 && !state.detail) await archiveDemoProducts(member);
+  const progress = products ? await catalogueCheck(member.store, run.brief, target) : null;
   if (progress?.ok) return { state: done(state, progress.detail) };
   // The owner's yes to the brief covers its countries: selling in more than one needs Several countries (D178), a switch the AI may not
   // press on its own, so code presses it here.
@@ -555,16 +600,15 @@ async function aiStep(id: AiStepId, ctx: Context): Promise<StepOutcome> {
   }
   const home = member.store.markets[0];
   // Other countries' prices are the store's rules' (set when setup passed): the model prices in the home country only, code converts.
-  const ruled = id === "catalogue" ? (await marketPriceRules(member.store.id)).map((r) => r.market) : [];
+  const ruled = products ? (await marketPriceRules(member.store.id)).map((r) => r.market) : [];
   const pricing = ruled.length > 0 && home ? `\nPrices: give the price in ${home.code} (${home.currency}) only. ${ruled.join(", ")} are worked out by the store's price rules from it at the exchange rate: leave them out.` : "";
-  const message =
-    id === "catalogue" && progress ? `${stepMessage(id, run.brief)}${pricing}\n\nNow: ${progress.detail} Make the next product only, complete.` : stepMessage(id, run.brief);
+  const message = products && progress ? `${stepMessage(id, run.brief)}${pricing}\n\nNow: ${progress.detail} Make the next product only, complete.` : stepMessage(id, run.brief);
   // Each product in a conversation of its own: in one long one the model took to answering "I created …" like its earlier turns, making none.
-  const seen = await managerTurn(ctx, STEP_TOOLS[id], message, id === "catalogue" ? null : run.conversationId);
-  const conversationId = id === "catalogue" ? undefined : (seen.conversationId ?? undefined);
+  const seen = await managerTurn(ctx, STEP_TOOLS[id], message, products ? null : run.conversationId);
+  const conversationId = products ? undefined : (seen.conversationId ?? undefined);
   if (seen.error) return { state: failedTry(run, state, seen.error.slice(0, 300)), conversationId };
   // A price typed for a ruled country anyway goes back to the rule, as emptying the editor's field does: the arithmetic is code's.
-  if (id === "catalogue" && ruled.length > 0) await backToRule(member.store.id, await ownProductIds(member.store.id));
+  if (products && ruled.length > 0) await backToRule(member.store.id, await ownProductIds(member.store.id));
   const check = await checkAiStep(id, ctx, state);
   if (check.ok && id === "setup") {
     const priced = await priceOtherCountries(ctx);
@@ -573,7 +617,7 @@ async function aiStep(id: AiStepId, ctx: Context): Promise<StepOutcome> {
   }
   if (check.ok) return { state: done(state, check.detail), conversationId };
   // The products count up a turn at a time: a turn that added one is progress, not a failed try.
-  if (id === "catalogue" && progress && check.count > progress.count) return { state: { ...state, status: "waiting", detail: check.detail }, conversationId };
+  if (products && progress && check.count > progress.count) return { state: { ...state, status: "waiting", detail: check.detail }, conversationId };
   return { state: failedTry(run, state, check.detail), conversationId };
 }
 
@@ -655,12 +699,12 @@ async function checkAiStep(id: AiStepId, { run, member }: Context, state: StepSt
       // A country the brief does not name (one the store was made with) would need prices of its own: the store sells to the brief's only.
       const extra = wanted.length > 0 ? [...selling].filter((c) => !wanted.includes(c)) : [];
       const countryProblems = [unsold.length > 0 && `${unsold.join(", ")} not sold to`, extra.length > 0 && `${extra.join(", ")} sold to but not in the brief`].filter(Boolean);
+      // The business's details are stage 2's own step (D422): setup is countries and shipping.
       const missing = [
-        !progress.details && "business details",
         (!progress.countries || countryProblems.length > 0) && `countries${countryProblems.length > 0 ? ` (${countryProblems.join("; ")})` : ""}`,
         !progress.shipping && "a shipping price for every country",
       ].filter(Boolean);
-      return { ok: missing.length === 0, count: 3 - missing.length, detail: missing.length === 0 ? "Details, countries and shipping are set." : `Still missing: ${missing.join(", ")}.` };
+      return { ok: missing.length === 0, count: 2 - missing.length, detail: missing.length === 0 ? "Countries and shipping are set." : `Still missing: ${missing.join(", ")}.` };
     }
     case "brand": {
       const [row] = await typedRows(
@@ -671,9 +715,10 @@ async function checkAiStep(id: AiStepId, { run, member }: Context, state: StepSt
       const ok = Boolean(row?.brand) && (row?.themes ?? 0) > 0;
       return { ok, count: Number(row?.brand ?? 0) + (row?.themes ?? 0), detail: ok ? "The brand is set down and a theme is in the library." : !row?.brand ? "No brand profile yet." : "No theme in the library yet." };
     }
+    case "samples":
     case "catalogue": {
       if (!run.brief) return { ok: false, count: 0, detail: "No brief." };
-      const check = await catalogueCheck(store, run.brief);
+      const check = await catalogueCheck(store, run.brief, id === "samples" ? sampleCount(run.brief) : run.brief.products);
       return { ok: check.ok, count: check.count, detail: check.detail };
     }
     case "goals": {
@@ -694,7 +739,7 @@ async function freshStore(member: Membership): Promise<Store> {
  * store sells to (its markets as the store offers them, Several countries applied, as the product tools see them); and no demo product left
  * on the site.
  */
-async function catalogueCheck(store: Store, brief: DreamBrief): Promise<Check> {
+async function catalogueCheck(store: Store, brief: DreamBrief, target: number = brief.products): Promise<Check> {
   const [row] = await typedRows(
     z.object({ ready: col.int, own: col.int, markets: col.int }),
     sql`
@@ -721,8 +766,8 @@ async function catalogueCheck(store: Store, brief: DreamBrief): Promise<Check> {
   );
   const demo = demoRow?.n ?? 0;
   const ready = row?.ready ?? 0;
-  const ok = ready >= brief.products && demo === 0 && (row?.markets ?? 0) > 0;
-  const words = `${ready} of ${brief.products} products are on sale with a picture and a price in every country${demo > 0 ? `; ${demo} demo product(s) are still on the site` : ""}.`;
+  const ok = ready >= target && demo === 0 && (row?.markets ?? 0) > 0;
+  const words = `${ready} of ${target} products are on sale with a picture and a price in every country${demo > 0 ? `; ${demo} demo product(s) are still on the site` : ""}.`;
   return { ok, count: ready, detail: words };
 }
 
@@ -762,7 +807,80 @@ async function websiteStep(ctx: Context): Promise<StepOutcome> {
     return { state: { ...waitingOn(state, `The AI fixes the front page "${held.title}": ${held.issues.join(" ").slice(0, 300) || "a blocking problem"}.`), ref: held.id } };
   }
   if (published.published === 0) return { state: failedTry(run, state, published.notes.join(" ") || "No page could be published.") };
-  return { state: done(state, `Published ${published.published} page(s)${published.notes.length ? `: ${published.notes.join(" ")}` : ""}.`) };
+  const worn = await wearBrandLook(ctx);
+  return { state: done(state, `Published ${published.published} page(s)${published.notes.length ? `: ${published.notes.join(" ")}` : ""}.${worn ? ` ${worn}` : ""}`) };
+}
+
+/**
+ * The brand's own look on the pages (D422): the look the brand step designed (`design_look`, an own look made before the website) carries
+ * the colours, fonts and styles, but the header and footer of the store as it was then. So its theme is laid over the live look the
+ * website's draft made live (its header, footer, menus and product page kept) as a new own look, made live. Returns what was done, or null
+ * when the brand step made no look of its own.
+ */
+async function wearBrandLook({ run, member }: Context): Promise<string | null> {
+  const brand = await typedRow(
+    z.object({ title: col.text, look: z.unknown() }),
+    sql`select title, look from commerce.store_theme_installs
+        where store_id = ${member.store.id}::uuid and preset_id is null and installed_at >= ${run.createdAt.toISOString()}::timestamptz
+        order by installed_at desc limit 1`,
+  );
+  const theme = (brand?.look as { theme?: unknown } | null)?.theme;
+  if (!brand || !theme) return null;
+  const made = await addOwnLook(member.store.id, member.account.id, brand.title, theme);
+  if (!made.ok) return `The brand's look could not be laid over the pages: ${made.problems.join(" ")}`;
+  const live = await switchToInstall(member.store.id, made.id, member.account.id);
+  if (!live.ok) return `The brand's look could not be made live: ${live.problems.join(" ")}`;
+  refreshTag(storeTag(member.store.slug));
+  return `The pages wear the brand's look "${made.title}".`;
+}
+
+// The look (stage 1's end, D422) ------------------------------------------------------------------------------------------------
+
+/**
+ * The owner's look: they see the real front page and ask for changes (`askLookChange()`), each one turn of the AI with the design and page
+ * tools only (`LOOK_TOOLS`), until they say *This is it* (`approveLook()`). A test run's yes is pressed by the drill.
+ */
+async function approveStep(ctx: Context): Promise<StepOutcome | null> {
+  const { run, member } = ctx;
+  const state = run.steps.approve;
+  if (run.test) return { state: done(started(state), "Pressed by the drill (a test run)."), presses: 1 };
+  if (state.status === "running" && state.ref) {
+    const store = await freshStore(member);
+    const front = store.frontPageId ? await pageTitle(store.id, store.frontPageId) : null;
+    const seen = await managerTurn(ctx, LOOK_TOOLS, lookMessage(state.ref, front), null);
+    const asked = state.ref.replace(/\s+/g, " ").slice(0, 200);
+    return {
+      state: { ...state, status: "asking", ref: undefined, detail: seen.error ? `The change could not be made just now (${seen.error.slice(0, 160)}): ask again.` : `Changed as asked: ${asked}` },
+    };
+  }
+  return state.status === "asking" ? null : { state: asking(started(state), "Look at your store's front page: ask for a change, or say This is it.") };
+}
+
+async function pageTitle(storeId: string, pageId: string): Promise<{ id: string; title: string } | null> {
+  const row = await typedRow(
+    z.object({ title: col.text }),
+    sql`select coalesce(published ->> 'title', draft ->> 'title', '') as title from commerce.pages where id = ${pageId}::uuid and store_id = ${storeId}::uuid`,
+  );
+  return row ? { id: pageId, title: row.title } : null;
+}
+
+// Business details (stage 2, D422) -----------------------------------------------------------------------------------------------
+
+/** The store's business details: what the description gave is set by code, the rest asked of the owner (`detailsQuestions()`). */
+async function detailsStep({ run, member }: Context): Promise<StepOutcome | null> {
+  const state = run.steps.details;
+  if (!run.brief) return { state: failedTry(run, started(state), "The run has no brief.") };
+  const store = await freshStore(member);
+  if ((await getSetupProgress(store)).details) return { state: done(started(state), "The business details are set.") };
+  const questions = detailsQuestions(run.brief);
+  if (questions.length > 0) return state.status === "asking" ? null : { state: asking(started(state), questions.join(" ")) };
+  const b = run.brief.business;
+  const saved = await saveStoreDetails(
+    { ...member, store },
+    { name: store.name, legalName: b.legalName, organisationNumber: b.organisationNumber || null, contactEmail: b.contactEmail, postalAddress: b.postalAddress, country: b.country },
+  );
+  if (!saved.ok) return { state: failedTry(run, started(state), `The business details could not be saved: ${saved.problems.join(" ")}`) };
+  return { state: done(started(state), "The business details are set.") };
 }
 
 /** One turn of the AI on the held front page; done once it is published and made the store's front page. */
@@ -785,7 +903,8 @@ async function frontFix(ctx: Context, state: StepState, pageId: string): Promise
   const made = await setFrontPage(member.account, member.store.id, pageId);
   if (!made.ok) return { state: failedTry(run, state, `The front page could not be set: ${made.problems.join(" ")}`) };
   refreshTag(storeTag(member.store.slug));
-  return { state: done({ ...state, ref: undefined }, `The front page "${before.title}" was fixed by the AI and published, with the other pages.`) };
+  const worn = await wearBrandLook(ctx);
+  return { state: done({ ...state, ref: undefined }, `The front page "${before.title}" was fixed by the AI and published, with the other pages.${worn ? ` ${worn}` : ""}`) };
 }
 
 /**

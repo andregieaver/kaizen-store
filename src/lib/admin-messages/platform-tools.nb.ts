@@ -48,7 +48,7 @@ export const platformToolsNb: PlatformToolsMessages = {
     dreamText:
       "Hver kjøring fra en eiers beskrivelse til en butikk klar til å åpne, målt av kode: minutter til klar (uten eierens ventetid), eierens trykk og stegene som ble riktige første gang. Øvelsen Dream Factory starter en testkjøring gjennom selvbetjent registrering med en fast beskrivelse.",
     dreamNone: "Ingen kjøring ennå.",
-    dreamRun: "{date}: {store}, {status}, {done} av 13 steg, {minutes} min til klar, {presses} trykk, {first} riktig første gang",
+    dreamRun: "{date}: {store}, {status}, {done} av {total} steg, {minutes} min til klar, {presses} trykk, {first} riktig første gang",
     dreamTest: "test",
     dreamWatchTitle: "Dream Factory: {store}",
     dreamWatchText: "En testkjøring, slik eieren ser den. Siden leser seg selv på nytt med noen sekunders mellomrom mens butikken bygges.",

@@ -73,29 +73,41 @@ describe("the Dream Factory (D409)", () => {
     expect(latest).toMatchObject({ test: false, status: "running", ownerPresses: 1 });
   });
 
-  it("asks the owner what the description did not give, never inventing the business", async () => {
+  it("asks only what stage 1 needs and never invents the business; the business details are asked after the look (D422)", async () => {
     const complete = vi.fn(async () => ({ text: briefJson({ legalName: "Leire Keramikk AS", postalAddress: "Fjordveien 9, Bergen", contactEmail: "post@leire.no", country: "NO" }), region: null }));
     await minute(real.id, { complete, connection, turn: async () => {} });
     let latest = (await latestDreamRun(real.id))!;
     expect(complete).toHaveBeenCalledTimes(1);
-    expect(latest.steps.brief.status).toBe("asking");
-    // The description named none of these: the brief keeps none of them.
+    // The description named none of these: the brief keeps none of them, and stage 1 does not ask for them.
     expect(latest.brief?.business).toMatchObject({ legalName: "", postalAddress: "", contactEmail: "" });
-    expect(latest.status).toBe("asking");
-
-    const member = (await passMembership(real.slug, real.owner))!;
-    expect(await answerDreamBrief(member, latest.id, { legalName: "Leire Keramikk AS", postalAddress: "Storgata 1, 0155 Oslo", contactEmail: "hei@leire.no", country: "NO" })).toEqual({ ok: true });
-    latest = (await latestDreamRun(real.id))!;
     expect(latest.steps.brief.status).toBe("done");
-    expect(latest.ownerPresses).toBe(2);
 
     // The yes to the brief is the owner's: the run waits for it.
-    await minute(real.id, { complete, connection, turn: async () => {} });
-    latest = (await latestDreamRun(real.id))!;
+    const member = (await passMembership(real.slug, real.owner))!;
     expect(latest.steps.confirm.status).toBe("asking");
     expect(latest.steps.research.status).toBe("waiting");
+    expect(latest.status).toBe("asking");
     expect(await confirmDreamBrief(member, latest.id)).toEqual({ ok: true });
-    expect((await latestDreamRun(real.id))!.steps.confirm.status).toBe("done");
+    latest = (await latestDreamRun(real.id))!;
+    expect(latest.steps.confirm.status).toBe("done");
+    expect(latest.ownerPresses).toBe(2);
+
+    // Once the owner has agreed to the look, stage 2 asks for the business details the description did not give.
+    const stageOne = Object.fromEntries(["research", "setup", "brand", "samples", "website", "approve"].map((id) => [id, { status: "done", tries: 1 }]));
+    await db().execute(sql`update commerce.dream_runs set steps = steps || ${JSON.stringify(stageOne)}::jsonb where id = ${latest.id}::uuid`);
+    await minute(real.id, { complete, connection, turn: async () => {} });
+    latest = (await latestDreamRun(real.id))!;
+    expect(latest.steps.details.status).toBe("asking");
+    expect(latest.steps.details.detail).toContain("legal name");
+    // The legal pages need them: they wait.
+    expect(latest.steps.legal.status).toBe("waiting");
+    expect(await answerDreamBrief(member, latest.id, { legalName: "Leire Keramikk AS", postalAddress: "Storgata 1, 0155 Oslo", contactEmail: "hei@leire.no", country: "NO" })).toEqual({ ok: true });
+    expect((await latestDreamRun(real.id))!.steps.details.status).toBe("running");
+    await minute(real.id, { complete, connection, turn: async () => {} });
+    latest = (await latestDreamRun(real.id))!;
+    expect(latest.steps.details.status).toBe("done");
+    const [details] = await db().execute<Row>(sql`select legal_name, contact_email from commerce.stores where id = ${real.id}::uuid`);
+    expect(details).toMatchObject({ legal_name: "Leire Keramikk AS", contact_email: "hei@leire.no" });
     expect(await stopDreamRun(member, latest.id)).toEqual({ ok: true });
     expect((await latestDreamRun(real.id))!.status).toBe("stopped");
   });
@@ -179,7 +191,7 @@ describe("the Dream Factory (D409)", () => {
       insert into commerce.pages (store_id, type, slug, draft) values (${real.id}::uuid, 'page', ${`front-${run}`}, '{"title":"Velkommen"}'::jsonb) returning id
     `);
     const pageId = String(page.id);
-    const steps = { ...Object.fromEntries(["brief", "confirm", "research", "setup", "brand", "catalogue"].map((id) => [id, { status: "done", tries: 1 }])) };
+    const steps = { ...Object.fromEntries(["brief", "confirm", "research", "setup", "brand", "samples", "catalogue"].map((id) => [id, { status: "done", tries: 1 }])) };
     const website = { status: "running", tries: 0, ref: pageId, detail: "The AI fixes the front page \"Velkommen\": Picture: no alt text." };
     // The real store's earlier run was stopped: this one carries its brief, with the lanes before the website passed.
     await db().execute(sql`
@@ -210,7 +222,7 @@ describe("the Dream Factory (D409)", () => {
   });
 
   it("makes the hand-written starters as drafts when the writer's pages fail its check, and a test run steps aside", async () => {
-    const steps = { ...Object.fromEntries(["brief", "confirm", "research", "setup", "brand", "catalogue", "website"].map((id) => [id, { status: "done", tries: 1 }])) };
+    const steps = { ...Object.fromEntries(["brief", "confirm", "research", "setup", "brand", "samples", "website", "approve", "details", "catalogue"].map((id) => [id, { status: "done", tries: 1 }])) };
     const legal = { status: "running", tries: 0, detail: "Writing 2 page(s)." };
     await db().execute(sql`
       insert into commerce.dream_runs (store_id, account_id, prompt, test, steps, brief)
@@ -236,7 +248,7 @@ describe("the Dream Factory (D409)", () => {
     // A demo product left as a draft, as the Standard store's gift card is.
     await db().execute(sql`insert into commerce.products (store_id, handle, tax_code, status) values (${real.id}::uuid, ${`demo-left-${run}`}, 'txcd_99999999', 'draft')`);
     expect(Number((await db().execute<Row>(demo))[0].n)).toBeGreaterThan(0);
-    const steps = Object.fromEntries(["brief", "confirm", "research", "setup", "brand", "catalogue", "website", "legal", "payments", "plan"].map((id) => [id, { status: "done", tries: 1 }]));
+    const steps = Object.fromEntries(["brief", "confirm", "research", "setup", "brand", "samples", "website", "approve", "details", "catalogue", "legal", "payments", "plan"].map((id) => [id, { status: "done", tries: 1 }]));
     await db().execute(sql`
       insert into commerce.dream_runs (store_id, account_id, prompt, test, steps, brief)
       select store_id, account_id, prompt, true, ${JSON.stringify(steps)}::jsonb, brief from commerce.dream_runs where store_id = ${real.id}::uuid and status = 'stopped' limit 1
@@ -263,7 +275,7 @@ describe("the Dream Factory (D409)", () => {
     const store = (await passMembership(nordic.slug, nordic.owner))!.store;
     expect(await saveMarketPriceRule(store, nordic.owner, { market: "SE", base: "NO", percentBps: 0, basis: "net", roundToMinor: 100, endingMinor: null })).toMatchObject({ ok: true });
     await db().execute(sql`update commerce.dream_runs set status = 'stopped', finished_at = now() where store_id = ${nordic.id}::uuid and finished_at is null`);
-    const steps = Object.fromEntries(["brief", "confirm", "research", "setup", "brand", "website", "legal", "payments", "plan"].map((id) => [id, { status: "done", tries: 1 }]));
+    const steps = Object.fromEntries(["brief", "confirm", "research", "setup", "brand", "samples", "website", "approve", "details", "legal", "payments", "plan"].map((id) => [id, { status: "done", tries: 1 }]));
     await db().execute(sql`
       insert into commerce.dream_runs (store_id, account_id, prompt, test, steps, brief)
       select store_id, account_id, prompt, true, ${JSON.stringify(steps)}::jsonb, brief from commerce.dream_runs where store_id = ${nordic.id}::uuid order by created_at desc limit 1

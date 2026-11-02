@@ -16,8 +16,11 @@ export const DREAM_STEP_IDS = [
   "research",
   "setup",
   "brand",
-  "catalogue",
+  "samples",
   "website",
+  "approve",
+  "details",
+  "catalogue",
   "legal",
   "payments",
   "plan",
@@ -29,24 +32,29 @@ export type DreamStepId = (typeof DREAM_STEP_IDS)[number];
 
 export type DreamWho = "ai" | "owner" | "code";
 export type DreamLane = "start" | "A" | "B" | "C" | "finish";
+/** The two stages (D422): 1, the look the owner agrees to; 2, everything else, built in that look. */
+export type DreamStage = 1 | 2;
 
-export type DreamStep = { id: DreamStepId; title: string; lane: DreamLane; who: DreamWho; needs: readonly DreamStepId[] };
+export type DreamStep = { id: DreamStepId; title: string; lane: DreamLane; who: DreamWho; needs: readonly DreamStepId[]; stage: DreamStage };
 
 /** In the order the owner reads them; a step starts when every step it needs has passed. Steps in the same lane run side by side with the others. */
 export const DREAM_STEPS: readonly DreamStep[] = [
-  { id: "brief", title: "Brief", lane: "start", who: "ai", needs: [] },
-  { id: "confirm", title: "Confirm the brief", lane: "start", who: "owner", needs: ["brief"] },
-  { id: "research", title: "Research", lane: "A", who: "ai", needs: ["confirm"] },
-  { id: "setup", title: "Setup", lane: "A", who: "ai", needs: ["confirm"] },
-  { id: "brand", title: "Brand and look", lane: "A", who: "ai", needs: ["confirm"] },
-  { id: "catalogue", title: "Products", lane: "B", who: "ai", needs: ["research", "setup"] },
-  { id: "website", title: "Website", lane: "B", who: "code", needs: ["brand"] },
-  { id: "legal", title: "Legal pages", lane: "B", who: "code", needs: ["setup"] },
-  { id: "payments", title: "Payments", lane: "C", who: "owner", needs: ["setup"] },
-  { id: "plan", title: "Plan", lane: "C", who: "owner", needs: ["confirm"] },
-  { id: "rehearsal", title: "Rehearsal", lane: "finish", who: "code", needs: ["catalogue", "website", "legal"] },
-  { id: "open", title: "Open the store", lane: "finish", who: "owner", needs: ["rehearsal", "payments", "plan"] },
-  { id: "goals", title: "First goals", lane: "finish", who: "ai", needs: ["open"] },
+  { id: "brief", title: "Brief", lane: "start", who: "ai", needs: [], stage: 1 },
+  { id: "confirm", title: "Confirm the brief", lane: "start", who: "owner", needs: ["brief"], stage: 1 },
+  { id: "research", title: "Research", lane: "A", who: "ai", needs: ["confirm"], stage: 1 },
+  { id: "setup", title: "Setup", lane: "A", who: "ai", needs: ["confirm"], stage: 1 },
+  { id: "brand", title: "Brand and look", lane: "A", who: "ai", needs: ["confirm"], stage: 1 },
+  { id: "samples", title: "First products", lane: "B", who: "ai", needs: ["research", "setup", "brand"], stage: 1 },
+  { id: "website", title: "Website", lane: "B", who: "code", needs: ["brand"], stage: 1 },
+  { id: "approve", title: "Your look", lane: "B", who: "owner", needs: ["samples", "website"], stage: 1 },
+  { id: "details", title: "Business details", lane: "C", who: "owner", needs: ["approve"], stage: 2 },
+  { id: "catalogue", title: "Products", lane: "C", who: "ai", needs: ["approve"], stage: 2 },
+  { id: "legal", title: "Legal pages", lane: "C", who: "code", needs: ["setup", "details"], stage: 2 },
+  { id: "payments", title: "Payments", lane: "C", who: "owner", needs: ["approve"], stage: 2 },
+  { id: "plan", title: "Plan", lane: "C", who: "owner", needs: ["approve"], stage: 2 },
+  { id: "rehearsal", title: "Rehearsal", lane: "finish", who: "code", needs: ["catalogue", "legal"], stage: 2 },
+  { id: "open", title: "Open the store", lane: "finish", who: "owner", needs: ["rehearsal", "payments", "plan"], stage: 2 },
+  { id: "goals", title: "First goals", lane: "finish", who: "ai", needs: ["open"], stage: 2 },
 ];
 
 export const stepOf = (id: DreamStepId): DreamStep => DREAM_STEPS.find((s) => s.id === id) as DreamStep;
@@ -174,12 +182,18 @@ export function ownBusiness(brief: DreamBrief, prompt: string): DreamBrief["busi
   };
 }
 
-/** What the brief still needs from the owner, as questions; empty when the run can go on. */
+/** What stage 1 still needs from the owner (D422): the name, what is sold and the countries; empty when the run can go on. */
 export function briefQuestions(brief: DreamBrief): string[] {
   const questions: string[] = [];
   if (!brief.storeName) questions.push("What is the store called?");
   if (brief.sells.length < 10) questions.push("What will the store sell?");
   if (brief.countries.length === 0) questions.push("Which countries will you sell to?");
+  return questions;
+}
+
+/** The business details stage 2 needs before the legal pages (D422), as questions; empty when the description gave them all. */
+export function detailsQuestions(brief: DreamBrief): string[] {
+  const questions: string[] = [];
   if (!brief.business.legalName) questions.push("What is your business's legal name?");
   if (!brief.business.postalAddress) questions.push("What is your business's postal address?");
   if (!brief.business.contactEmail) questions.push("Which email address may customers write to?");
@@ -250,7 +264,7 @@ export function readBrief(answer: string, prompt: string): DreamBrief | null {
 // The AI's steps
 // ---------------------------------------------------------------------------------------------------------------------------------
 
-export type AiStepId = "research" | "setup" | "brand" | "catalogue" | "goals";
+export type AiStepId = "research" | "setup" | "brand" | "samples" | "catalogue" | "goals";
 
 /**
  * The website step's own AI turn: the draft's front page held back by a blocking problem of the builder (contrast, a picture without alt
@@ -265,6 +279,21 @@ export function frontFixMessage(page: { id: string; title: string }, issues: str
     "Read it with get_page, fix exactly those problems with edit_page (keep its words and layout otherwise), then publish it with publish_page.",
   ].join(" ");
 }
+
+/** The products' tools: the first three in stage 1 (D422) and the rest in stage 2 use the same. */
+const CATALOGUE_TOOLS = [
+  "list_products",
+  "get_product",
+  "create_product",
+  "update_product",
+  "write_product_texts",
+  "set_prices",
+  "set_product_status",
+  "archive_product",
+  "list_categories",
+  "list_research_notes",
+  "get_brand",
+] as const;
 
 /** The tools each AI step may use (the AI manager's own, D308); nothing else is offered in its turn. */
 export const STEP_TOOLS: Record<AiStepId, readonly string[]> = {
@@ -281,23 +310,42 @@ export const STEP_TOOLS: Record<AiStepId, readonly string[]> = {
     "get_tax_profile",
   ],
   brand: ["get_brand", "set_brand", "design_look", "make_brand_marks", "list_themes", "add_theme", "try_theme"],
-  catalogue: [
-    "list_products",
-    "get_product",
-    "create_product",
-    "update_product",
-    "write_product_texts",
-    "set_prices",
-    "set_product_status",
-    "archive_product",
-    "list_categories",
-    "list_research_notes",
-    "get_brand",
-  ],
+  catalogue: CATALOGUE_TOOLS,
+  samples: CATALOGUE_TOOLS,
   goals: ["list_goals", "set_goal"],
 };
 
 const country = (codes: readonly string[]) => codes.join(", ");
+
+/** How many products stage 1 makes (D422): enough for the front page to show the store's own goods. */
+export const SAMPLE_PRODUCTS = 3;
+export const sampleCount = (brief: Pick<DreamBrief, "products">): number => Math.min(SAMPLE_PRODUCTS, brief.products);
+
+/** How many changes to the look the owner may ask for in stage 1 (D422) before choosing *This is it* or starting over. */
+export const LOOK_ROUNDS = 10;
+
+/** The tools a look round may use: the design and the front page, nothing that sells, sends or costs (D422). */
+export const LOOK_TOOLS = ["get_brand", "design_look", "make_theme_live", "list_themes", "get_page", "edit_page", "publish_page"] as const;
+
+/** The owner's quick asks for the look (D422), as the AI is told them; anything else is the owner's own words. */
+export const LOOK_ASKS = {
+  colours: "Show me other colours: a different colour scheme that still suits the brand.",
+  fonts: "Show me other fonts: a different pairing of heading and text fonts that suits the brand.",
+  layout: "Show me another layout of the front page: arrange its sections differently and give it another feel, keeping what it says.",
+} as const;
+export type LookAsk = keyof typeof LOOK_ASKS;
+
+/** A look round's message (D422): the owner's ask, and what the AI may change for it. */
+export function lookMessage(ask: string, front: { id: string; title: string } | null): string {
+  return [
+    `The owner is looking at the store's front page${front ? ` "${front.title}" (page ${front.id})` : ""} and asks for a change to the store's look. The owner's words: "${ask.replace(/\s+/g, " ").slice(0, 500)}"`,
+    "Change only what they ask. For colours, fonts, buttons or corners: make a new look with design_look starting from the current look (start: current), keeping what they did not ask to change, then make it live with make_theme_live.",
+    front
+      ? "For the layout or the words of the front page: read it with get_page, change it with edit_page and publish it with publish_page."
+      : "The store has no front page yet: change the look only.",
+    "Never change products, prices, other pages or settings. End with one sentence saying what you changed.",
+  ].join(" ");
+}
 
 /** What an AI step's turn is asked to do, from the brief: the whole job, so the turn needs nothing else. */
 export function stepMessage(id: AiStepId, brief: DreamBrief): string {
@@ -311,9 +359,13 @@ export function stepMessage(id: AiStepId, brief: DreamBrief): string {
       ].join(" ");
     case "setup": {
       const b = brief.business;
+      // The business's details are stage 2's (D422): set here only where the description gave them, exactly as given.
+      const given = b.legalName && b.postalAddress && b.contactEmail && b.country;
       return [
-        `Set up ${store} so it can open.`,
-        `Business details, exactly as the owner gave them: legal name "${b.legalName}"${b.organisationNumber ? `, organisation number "${b.organisationNumber}"` : ""}, postal address "${b.postalAddress}", contact email "${b.contactEmail}", country ${b.country}.`,
+        `Set up ${store} so it can sell.`,
+        given
+          ? `Business details, exactly as the owner gave them: legal name "${b.legalName}"${b.organisationNumber ? `, organisation number "${b.organisationNumber}"` : ""}, postal address "${b.postalAddress}", contact email "${b.contactEmail}", country ${b.country}.`
+          : "Leave the business details alone: the owner gives them later.",
         `Countries to sell to, exactly these and no other (set_countries): ${country(brief.countries)}. Languages: ${brief.languages.join(", ") || "the countries' own"}. Currency: ${brief.currency || "the main country's"}.`,
         "Then a flat shipping price for each country, sensible for these products, and check the tax readiness. End with setup_progress.",
       ].join(" ");
@@ -323,6 +375,13 @@ export function stepMessage(id: AiStepId, brief: DreamBrief): string {
         `Set down the brand of ${store}: a short tagline, the voice${brief.tone ? ` (${brief.tone})` : ""}, the audience and its values, with set_brand.`,
         "Make a look for it (design_look) and its logo marks (make_brand_marks).",
         "Then choose one free theme that suits it from list_themes and add it to the store's library; do not make it live.",
+      ].join(" ");
+    case "samples":
+      return [
+        `Create the first ${sampleCount(brief)} products for ${store}, based on the research notes and the brand (get_brand): the owner sees them on the front page before the rest are made.`,
+        `Each with a title, a description in the store's voice, a price in every country the store sells to${brief.priceRange ? ` (price range: ${brief.priceRange})` : ""} and a picture the store's picture model makes (the picture's \`make\` description), in the brand's style.`,
+        "Make each product active once it has its texts, prices and picture.",
+        "Never claim a certification, origin or award the owner did not state.",
       ].join(" ");
     case "catalogue":
       return [

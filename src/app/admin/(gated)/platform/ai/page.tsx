@@ -9,6 +9,7 @@ import { EVAL_CASES, PASS_RATE } from "@/lib/query-eval";
 import { AGENT_EVAL_CASES, samePrompts, versionWords } from "@/lib/agent-eval";
 import { AgentEvalButton } from "@/components/admin/agent-eval-button";
 import { managerRatingsByVersion, promptVersions, recentAgentEvalRuns } from "@/server/agent-eval";
+import { DREAM_STEPS } from "@/lib/dream-factory";
 import { recentDreamRuns } from "@/server/dream-factory";
 import { countStoresWithOwnAi, getAiSettings } from "@/server/ai";
 import { aiAutonomyPaused } from "@/server/ai-pause";
@@ -210,6 +211,7 @@ export default async function PlatformAiPage() {
                     store: run.storeName,
                     status: run.status,
                     done: run.score.done,
+                    total: DREAM_STEPS.length,
                     minutes: run.score.minutesToReady ?? "–",
                     presses: run.score.ownerPresses,
                     first: run.score.firstTryPercent === null ? "–" : `${run.score.firstTryPercent} %`,

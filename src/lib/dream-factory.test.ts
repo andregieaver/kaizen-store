@@ -3,14 +3,21 @@ import { describe, expect, it } from "vitest";
 import {
   DREAM_STEPS,
   DRILL_PROMPT,
+  LOOK_ASKS,
+  LOOK_ROUNDS,
+  LOOK_TOOLS,
+  STEP_TOOLS,
   answeredBrief,
   briefQuestions,
+  detailsQuestions,
   initialSteps,
   isTestOwner,
+  lookMessage,
   ownerWaitMs,
   readBrief,
   readSteps,
   runStatusOf,
+  sampleCount,
   scoreOf,
   startable,
   stepMessage,
@@ -55,13 +62,26 @@ describe("the Dream Factory's steps (D409)", () => {
     steps = passedThrough(steps, ["brief"]);
     expect(startable(steps)).toEqual(["confirm"]);
     steps = passedThrough(steps, ["confirm"]);
-    expect(startable(steps)).toEqual(["research", "setup", "brand", "plan"]);
+    expect(startable(steps)).toEqual(["research", "setup", "brand"]);
     steps = passedThrough(steps, ["research", "setup"]);
-    expect(startable(steps)).toEqual(["brand", "catalogue", "legal", "payments", "plan"]);
+    expect(startable(steps)).toEqual(["brand"]);
+    steps = passedThrough(steps, ["brand"]);
+    expect(startable(steps)).toEqual(["samples", "website"]);
+  });
+
+  it("ends stage 1 on the owner's look, and starts nothing of stage 2 before it (D422)", () => {
+    const stageOne = DREAM_STEPS.filter((s) => s.stage === 1).map((s) => s.id);
+    expect(stageOne).toEqual(["brief", "confirm", "research", "setup", "brand", "samples", "website", "approve"]);
+    let steps = passedThrough(initialSteps(), ["brief", "confirm", "research", "setup", "brand", "samples", "website"]);
+    expect(startable(steps)).toEqual(["approve"]);
+    // Every step of stage 2 needs the look, directly or through another.
+    for (const step of DREAM_STEPS.filter((s) => s.stage === 2)) expect(startable(steps)).not.toContain(step.id);
+    steps = passedThrough(steps, ["approve"]);
+    expect(startable(steps)).toEqual(["details", "catalogue", "payments", "plan"]);
   });
 
   it("waits for the rehearsal, the payments and the plan before the owner opens, and sets goals after", () => {
-    let steps = passedThrough(initialSteps(), ["brief", "confirm", "research", "setup", "brand", "catalogue", "website", "legal", "payments", "plan"]);
+    let steps = passedThrough(initialSteps(), ["brief", "confirm", "research", "setup", "brand", "samples", "website", "approve", "details", "catalogue", "legal", "payments", "plan"]);
     expect(startable(steps)).toEqual(["rehearsal"]);
     steps = passedThrough(steps, ["rehearsal"]);
     expect(startable(steps)).toEqual(["open"]);
@@ -96,17 +116,21 @@ describe("the brief", () => {
     expect(brief?.business).toEqual({ legalName: "Leire Keramikk AS", organisationNumber: "912345678", postalAddress: "Storgata 1, 0155 Oslo", contactEmail: "hei@leire.no", country: "NO" });
     const invented = readBrief(answer({ legalName: "Leire Ceramics Ltd", organisationNumber: "", postalAddress: "Fjordveien 9", contactEmail: "post@leire.com", country: "NO" }), "Ceramic mugs for Norway.");
     expect(invented?.business).toEqual({ legalName: "", organisationNumber: "", postalAddress: "", contactEmail: "", country: "" });
-    expect(briefQuestions(invented!)).toEqual(expect.arrayContaining(["What is your business's legal name?", "What is your business's postal address?"]));
+    // Stage 1 asks only for what it needs; the business details are stage 2's questions (D422).
+    expect(briefQuestions(invented!)).toEqual([]);
+    expect(detailsQuestions(invented!)).toEqual(expect.arrayContaining(["What is your business's legal name?", "What is your business's postal address?"]));
   });
 
   it("asks nothing when the description had it all, and reads the owner's answers over the brief", () => {
     const brief = readBrief(answer({ legalName: "Leire Keramikk AS", organisationNumber: "912345678", postalAddress: "Storgata 1, 0155 Oslo", contactEmail: "hei@leire.no", country: "NO" }), prompt)!;
     expect(briefQuestions(brief)).toEqual([]);
+    expect(detailsQuestions(brief)).toEqual([]);
     const missing = { ...brief, business: { ...brief.business, legalName: "", country: "" } };
+    expect(detailsQuestions(missing)).toHaveLength(2);
     const answered = answeredBrief(missing, { legalName: "Leire Keramikk AS", country: "no" });
     expect(answered.business.legalName).toBe("Leire Keramikk AS");
     expect(answered.business.country).toBe("NO");
-    expect(briefQuestions(answered)).toEqual([]);
+    expect(detailsQuestions(answered)).toEqual([]);
   });
 
   it("refuses an answer that is not JSON, and keeps sensible bounds", () => {
@@ -156,3 +180,23 @@ describe("test runs and the scorecard", () => {
     expect(score.done).toBe(6);
   });
 });
+
+describe("the look rounds (D422)", () => {
+  it("tells the AI the owner's words and what it may change, and offers only the design and page tools", () => {
+    const message = lookMessage("Make it   warmer, please", { id: "p1", title: "Leire" });
+    expect(message).toContain('"Make it warmer, please"');
+    expect(message).toContain("design_look");
+    expect(message).toContain("page p1");
+    expect(lookMessage(LOOK_ASKS.colours, null)).toContain("no front page yet");
+    expect(LOOK_TOOLS).not.toContain("create_product");
+    expect(LOOK_TOOLS).not.toContain("set_prices");
+    expect(LOOK_ROUNDS).toBe(10);
+  });
+
+  it("makes at most three products in stage 1, fewer when the brief asks for fewer", () => {
+    expect(sampleCount({ products: 6 })).toBe(3);
+    expect(sampleCount({ products: 2 })).toBe(2);
+    expect(STEP_TOOLS.samples).toEqual(STEP_TOOLS.catalogue);
+  });
+});
+

@@ -59,33 +59,39 @@ The owner's page is made to be watched, not only waited on. While a run goes it 
   editor), the pages with their state (building, built, live) and a link to each, the legal pages and the first goals.
 - **When ready:** *Your store is ready*, with *See your store*, *Edit the front page* and *See the products*.
 
-On a phone the sketch comes first, then the timeline. A test run (a drill's, whose store belongs to the test address) is watched the same way from Platform → AI: its line in the scorecard opens `/admin/platform/ai/dream/{run}`, read only, with no links into the store's admin and none of the owner's buttons; a real owner's run is not shown there (`testDreamRun()`). Everything shown is read from the store's own rows made since the run began
+Once the website is published the sketch gives way to the real front page, drawn in the store's live theme as the site draws it (D422), which is what the owner looks at and changes at the end of stage 1. On a phone it comes first, then the timeline. A test run (a drill's, whose store belongs to the test address) is watched the same way from Platform → AI: its line in the scorecard opens `/admin/platform/ai/dream/{run}`, read only, with no links into the store's admin and none of the owner's buttons; a real owner's run is not shown there (`testDreamRun()`). Everything shown is read from the store's own rows made since the run began
 (`src/server/dream-showcase.ts`); every sentence is the code's own words, so nothing on the page is a model's account of what it did.
 
 ## The workflow
 
-Steps in the same lane run side by side; a lane starts when the steps it needs have passed. **Owner** marks the presses only a person
-may make: the law's (identity for payments), money (a plan, a domain) and the moment the store opens to the public.
+Two stages (D422). **Stage 1, the look:** the brief, the owner's yes, research, setup and the brand, then the first three products and
+the website, so the owner sees the real front page in the store's own look and changes it with the AI until it is right. **Stage 2,
+finish:** once the owner says *This is it*, the business details, the rest of the products, the legal pages, payments, a plan, the
+rehearsal, opening and the first goals. Steps in the same lane run side by side; a lane starts when the steps it needs have passed.
+**Owner** marks the presses only a person may make.
 
-| # | Step | Lane | Needs | Who | Done when (checked by code) |
+| # | Step | Stage | Needs | Who | Done when (checked by code) |
 |---|---|---|---|---|---|
-| 0 | **Prompt** | — | — | Owner | A description of 20 to 2,000 characters (sign-up's "What will you sell?" with *Build my store with AI* ticked, *Build a store with AI* on Your stores, or the Dream Factory page) |
-| 1 | **Brief** | — | 0 | AI | What is sold, to whom, countries, languages, currency, price range, name, tone, products (3 to 12, default 6) and up to 3 pages; the business's legal name, address, email and country only where the owner wrote them, else asked (`briefQuestions()`) |
-| 1b | **Confirm the brief** | — | 1 | Owner | One press on the brief as shown; it also agrees to the legal pages being written |
-| 2 | **Research** | A | 1b | AI | At least 3 research notes made in the step, each with a source |
-| 3 | **Setup** | A | 1b | AI | `getSetupProgress()`: business details, countries, and a shipping price for every country |
-| 4 | **Brand and look** | A | 1b | AI | A brand profile with a tagline or voice, and a theme in the library |
-| 5 | **Products** | B | 2, 3 | AI | The brief's number of the store's own products active, each with a picture and a price in every active country; no demo product on sale. The AI prices in the home country only; the other countries' prices are worked out by code (D335's rules at the ECB's rates, set when setup passes) |
-| 6 | **Website** | B | 4 | Code | The draft's pages built and published, the first the front page (D351); a front page the builder holds back for a blocking problem is fixed by the AI with the page tools until it is published |
-| 7 | **Legal pages** | B | 3 | Code | The writer's pages all settled, none failed, at least one published; skipped outside Norway, Sweden and Denmark. Pages that fail the writer's check become hand-written starters from the store's facts, as drafts the owner checks and publishes (a test run steps aside) |
-| 8 | **Payments** | C | 3 | Owner | Live card payments active; a test run skips it |
-| 9 | **Plan** | C | 1b | Owner | A plan or a running trial; a test run without one skips it |
-| 10 | **Rehearsal** | — | 5, 6, 7 | Code | The store's checkup without a blocking finding (setup, drafts, numbering, stock history) and every product still on sale everywhere |
-| 11 | **Open** | — | 10, 8, 9 | Owner | The store open; a test run stays private and skips it |
-| 12 | **First goals** | — | 11 | AI | Two active goals |
+| 0 | **Prompt** | 1 | — | Owner | A description of 20 to 2,000 characters |
+| 1 | **Brief** | 1 | 0 | AI | What is sold, to whom, countries, languages, currency, price range, name, tone, products (3 to 12, default 6) and up to 3 pages; asks only for what stage 1 needs (the name, what is sold, the countries, `briefQuestions()`). The business's details are kept only where the owner wrote them |
+| 1b | **Confirm the brief** | 1 | 1 | Owner | One press on the brief as shown; it also agrees to the demo store's products being replaced and the legal pages being written |
+| 2 | **Research** | 1 | 1b | AI | At least 3 research notes made in the step, each with a source |
+| 3 | **Setup** | 1 | 1b | AI | Countries exactly the brief's and a shipping price for every country; business details set only where the description gave them |
+| 4 | **Brand and look** | 1 | 1b | AI | A brand profile with a tagline or voice, and a theme in the library |
+| 5 | **First products** | 1 | 2, 3, 4 | AI | Three of the store's own products (fewer when the brief asks for fewer) active with a picture and a price everywhere, in the brand's style; the demo store's products archived first, so the front page shows only the store's own |
+| 6 | **Website** | 1 | 4 | Code | The draft's pages built and published (D351), then the brand's own look made live, so the pages wear it |
+| 7 | **Your look** | 1 | 5, 6 | Owner | The owner says *This is it*. Before that they see the real front page in the live look and ask for changes: *Other colours*, *Other fonts*, *Another layout*, or their own words; each request is one turn of the AI with the design and page tools only (`LOOK_TOOLS`), at most `LOOK_ROUNDS` (10) rounds, then *This is it* or *Start over*. A test run's yes is pressed by the drill |
+| 8 | **Business details** | 2 | 7 | Owner | The store's business details complete (`getSetupProgress().details`): what the description gave is set by code, the rest asked (`detailsQuestions()`) |
+| 9 | **Products** | 2 | 7 | AI | The brief's number of products, as step 5 counts them; no demo product on sale. Prices in the home country only; other countries' worked out by code (D335's rules) |
+| 10 | **Legal pages** | 2 | 3, 8 | Code | As before (D311's writer; starters for a person when the writer's check fails) |
+| 11 | **Payments** | 2 | 7 | Owner | Live card payments active; a test run skips it |
+| 12 | **Plan** | 2 | 7 | Owner | A plan, or the free trial running (D420); a test run skips it |
+| 13 | **Rehearsal** | 2 | 9, 10 | Code | The store's checkup without a blocking finding and every product still on sale everywhere |
+| 14 | **Open** | 2 | 13, 11, 12 | Owner | The store open; a test run stays private and skips it |
+| 15 | **First goals** | 2 | 14 | AI | Two active goals |
 
-**Owner presses in a full run: five** (prompt, brief, payments identity, plan, open), plus a domain if wanted. Everything else is the AI's,
-inside the levels and budgets the store already has.
+**Owner presses in a full run:** the prompt, the brief, *This is it* (plus any look requests), payments identity, the business details
+when the description did not give them, and opening. A plan is chosen within the trial.
 
 ## What a run is measured on
 
