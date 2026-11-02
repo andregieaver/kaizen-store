@@ -426,5 +426,15 @@ export const homeNb: HomeMessages = {
       editFront: "Rediger forsiden",
       seeProducts: "Se produktene",
     },
+    again: {
+      title: "Ikke helt det du håpet på?",
+      text: "Endre beskrivelsen og start på nytt, eller forkast butikken.",
+      label: "Beskrivelsen din",
+      startOver: "Start på nytt",
+      startOverHint: "Det denne kjøringen laget, fjernes: produktene arkiveres, sidene slettes og målene droppes. Bedriftsopplysningene og bildene blir værende.",
+      discard: "Forkast denne butikken",
+      discardHint: "Butikken stenges og flyttes til Stengte butikker under Dine butikker. Skriv adressen, {address}, for å bekrefte.",
+      discardLabel: "Butikkens adresse",
+    },
   },
 };

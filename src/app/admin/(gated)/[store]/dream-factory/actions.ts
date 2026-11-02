@@ -1,10 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 import type { FormState } from "@/components/admin/action-form";
 import { DREAM_STEP_IDS, type DreamStepId } from "@/lib/dream-factory";
-import { answerDreamBrief, confirmDreamBrief, retryDreamStep, startDreamRun, stopDreamRun } from "@/server/dream-factory";
+import { answerDreamBrief, confirmDreamBrief, retryDreamStep, startDreamOver, startDreamRun, stopDreamRun } from "@/server/dream-factory";
+import { closeStore } from "@/server/store-closure";
 import { NO_ACCESS, checkPermission } from "@/server/permissions";
 
 /** The Dream Factory page's presses (D409): owners only, each read again here. */
@@ -63,3 +65,20 @@ export async function stopDreamAction(storeSlug: string, runId: string): Promise
   if (!member) return { status: "error", messages: [NO_ACCESS] };
   return answer(await stopDreamRun(member, runId), storeSlug);
 }
+
+/** Start over (D421): what the run made is cleared and a new run starts from the edited description. */
+export async function startDreamOverAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const member = await owner(storeSlug);
+  if (!member) return { status: "error", messages: [NO_ACCESS] };
+  return answer(await startDreamOver(member, String(formData.get("prompt") ?? "")), storeSlug);
+}
+
+/** Discard (D421): the store is closed as its owner closes it (the address typed to confirm), then the owner is taken to Your stores. */
+export async function discardDreamStoreAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const member = await owner(storeSlug);
+  if (!member) return { status: "error", messages: [NO_ACCESS] };
+  const result = await closeStore(member.account, member.store.id, { by: "owner", typed: String(formData.get("typed") ?? "") });
+  if (!result.ok) return { status: "error", messages: result.problems };
+  redirect("/admin/stores");
+}
+

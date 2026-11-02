@@ -16,6 +16,7 @@ import { suggestSlug } from "@/lib/slug";
 import { audit, passMembership, type Account } from "./auth";
 import { startDreamRun } from "./dream-factory";
 import { log } from "./log";
+import { TRIAL_DAYS } from "./store-trial";
 import { adminAuth } from "./supabase-admin";
 import { approveAccessRequest, createAccessRequest, isSlugTaken, sendAccessEmail, type AccessRequestInput } from "./platform";
 import { sameEmail } from "@/lib/email-address";
@@ -34,7 +35,6 @@ type Row = Record<string, unknown>;
 export const SIGNUPS_PER_ADDRESS_DAY = 3;
 export const SIGNUPS_PER_NETWORK_HOUR = 20;
 export const CONFIRM_HOURS = 24;
-export const TRIAL_DAYS = 14;
 /** Requests never confirmed are deleted this many days after their link ended. */
 export const UNCONFIRMED_KEPT_DAYS = 7;
 
@@ -266,9 +266,4 @@ export async function unconfirmedCount(): Promise<number> {
   return Number(row?.n ?? 0);
 }
 
-/** A store's trial end (D359), or null. */
-export async function trialEndOf(storeId: string): Promise<Date | null> {
-  const [row] = await db().execute<Row>(sql`select trial_ends_at from commerce.store_billing where store_id = ${storeId}::uuid`);
-  return row?.trial_ends_at ? new Date(String(row.trial_ends_at)) : null;
-}
 

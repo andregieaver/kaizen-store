@@ -29,6 +29,17 @@ model's word, so a run can be scored the same way every time.
   with the fixed prompt (`DRILL_PROMPT`) and its run is scored on Platform → AI. The drill counts as passed only once the run is ready:
   its result stays `waiting` until then, and failed when the run failed or was stopped (`settleDreamDrills()`, `dreamDrillOutcome()`).
 
+**The trial and who can look (D420):** every run gives its store the 14-day free trial (once a store), and the plan step counts it, so
+an owner looks at the store, changes it and may open it before choosing a plan; when the trial ends with no plan an open store becomes
+private again until a plan starts. The platform admin who asks for the drill becomes an owner of the drill's store for 14 days, so it is on
+their Your stores, its admin opens and the watch page on Platform → AI offers *See the store* and *Open the store's admin*. *See your store*
+on a finished run goes through the members' preview, since a store not yet open is private.
+
+**Start over and discard (D421):** before the store opens, the run's page has *Not what you hoped for?* one step away. *Start over* takes an
+edited description, clears what the run made (its pages and the redirects their deletion left, its products archived, its goals dropped,
+the front page unset, an open draft discarded) and starts a new run in the same store; the brand, the pictures, the research notes and the
+business details stay. *Discard this store* closes it, the address typed to confirm, and it moves to Closed stores.
+
 **Not yet:** the rehearsal does not place and pay a test order (paying needs Stripe's own checkout page in a browser); a domain is the
 owner's on Domains, outside the run; `/dream-factory` on Kaizena Flow's own site still says "Coming soon" (its text is the owner's page).
 

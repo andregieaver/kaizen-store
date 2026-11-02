@@ -45,7 +45,7 @@ import { pagesTag } from "./pages";
 import { forgetStoreFacts } from "./redirect-resolve";
 import { STORES_TAG } from "./seo";
 import { getShippingSettings, saveShippingSettings } from "./settings";
-import { completeSetup, getSetupProgress, saveStoreDetails, setMarkets } from "./setup";
+import { completeSetup, getSetupProgress, saveStoreDetails, setMarkets, TRIAL_OVER } from "./setup";
 import { listCarriers } from "./shipping-carriers";
 import { getShippingSetup, saveShippingMethod } from "./shipping-methods";
 import { currentStore, storeTag, type Store } from "./stores";
@@ -339,6 +339,7 @@ async function prepareOpen(ctx: SetupToolContext) {
     const missing = [!progress.details && "its business details (set_store_details)", !progress.countries && "a country to sell in (set_countries)"].filter(Boolean);
     return fail(`The store cannot open yet: it needs ${missing.join(" and ")}.`);
   }
+  if (progress.trialOver) return fail(TRIAL_OVER);
   return { store, progress };
 }
 

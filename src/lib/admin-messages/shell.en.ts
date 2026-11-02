@@ -87,6 +87,10 @@ export const shellEn = {
     closedText: "It takes no orders. Its orders, invoices, returns and customer data stay here to read and download.",
     reopen: "Reopen the store",
     aboutReopening: "About reopening",
+    /** The free trial's end (D420). */
+    trialEnded: "Your free trial has ended, so your store is private again.",
+    trialEndedText: "Visitors see your landing page until you choose a plan; everything you made is kept.",
+    choosePlan: "Choose a plan",
   },
   /** The installable admin and its notifications (D361): Your account's card and the offline page. */
   push: {

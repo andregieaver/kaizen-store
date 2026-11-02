@@ -1894,6 +1894,11 @@ export const storeBilling = commerce.table(
     discountAppliedAt: timestamp("discount_applied_at", { withTimezone: true }),
     /** The end of a self-serve store's trial (D359): its first plan chosen before then is free until then (Stripe's `trial_end`). */
     trialEndsAt: timestamp("trial_ends_at", { withTimezone: true }),
+    /**
+     * When the trial's end made an open store private again, no plan having been chosen (D420, `src/server/store-trial.ts`); cleared when a
+     * plan starts and the store is made public again. Only a store the job made private is ever made public by it.
+     */
+    trialPausedAt: timestamp("trial_paused_at", { withTimezone: true }),
     updatedAt: updatedAt(),
     updatedBy: uuid("updated_by").references(() => accounts.id),
   },

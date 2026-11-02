@@ -5,13 +5,13 @@ import { notFound } from "next/navigation";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { DreamFeed, DreamMade, DreamProgress, DreamSketch, DreamTimeline } from "@/components/admin/dream/dream-showcase";
 import { RefreshWhile } from "@/components/admin/refresh-while";
-import { Chip, KpiTile, PageHeader } from "@/components/admin/ui";
+import { ButtonLink, Chip, KpiTile, PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { ownerWaitMs, scoreOf } from "@/lib/dream-factory";
 import { marketPath, storeHref } from "@/lib/paths";
-import { requirePlatformAdmin } from "@/server/auth";
+import { passMembership, requirePlatformAdmin } from "@/server/auth";
 import { testDreamRun } from "@/server/dream-factory";
 import { dreamShowcase } from "@/server/dream-showcase";
 import { getStore } from "@/server/stores";
@@ -40,7 +40,8 @@ export default async function PlatformDreamRunPage({ params }: { params: Promise
   const now = new Date();
   const going = run.status === "running" || run.status === "asking" || (run.status === "ready" && !run.finishedAt);
   const score = scoreOf({ ...run, ownerWaitMs: ownerWaitMs(run.steps, now) });
-  const show = await dreamShowcase(store, run);
+  // An admin who works in the store (the one who asked for the drill, D420) gets its own page and the members' preview from here.
+  const [show, member] = await Promise.all([dreamShowcase(store, run), passMembership(store.slug, account.id)]);
   const market = store.markets[0];
   const storeUrl = storeHref(store.slug, market ? marketPath(store.slug, market.slug) : "/");
   const name = run.brief?.storeName || store.name;
@@ -59,6 +60,16 @@ export default async function PlatformDreamRunPage({ params }: { params: Promise
           description={<>{w.dreamWatchText}</>}
           status={<Chip signal="insight">{w.dreamTest}</Chip>}
         />
+        {member && (
+          <div className="flex flex-wrap gap-2">
+            <ButtonLink kind="main" href={`/api/private/preview?store=${encodeURIComponent(store.slug)}`}>
+              {w.dreamPreview}
+            </ButtonLink>
+            <ButtonLink kind="secondary" href={`/admin/${store.slug}/dream-factory`}>
+              {w.dreamOpenStore}
+            </ButtonLink>
+          </div>
+        )}
         {/* Where the run stands in the owner's words; the ways on a ready store offers are the owner's, so none are offered here. */}
         {going ? (
           <DreamProgress steps={run.steps} startedAt={run.createdAt} now={now} storeName={name} words={words} />

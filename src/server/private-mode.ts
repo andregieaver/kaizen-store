@@ -51,7 +51,7 @@ export async function privatePasswordMatches(stored: string | null, password: st
   return timingSafeEqual(actual, expected);
 }
 
-export type PrivateResult = { ok: true } | { ok: false; problem: "not_allowed" | "short" | "long" | "never_private" };
+export type PrivateResult = { ok: true } | { ok: false; problem: "not_allowed" | "short" | "long" | "never_private" | "trial_ended" };
 
 /** The caches a change reaches: the store as read, the lists search engines read, and this instance's facts the proxy reads. */
 function refreshAfter(slug: string): void {
@@ -65,6 +65,11 @@ export async function setPrivateMode(member: Membership, on: boolean): Promise<P
   if (!memberCan(member, "settings:write")) return { ok: false, problem: "not_allowed" };
   const { store } = member;
   if (store.isTemplate || store.starter) return { ok: false, problem: "never_private" };
+  // While the trial's end keeps it private (D420), only a plan makes it public again.
+  if (!on) {
+    const [paused] = await db().execute<Row>(sql`select 1 from commerce.store_billing where store_id = ${store.id}::uuid and trial_paused_at is not null`);
+    if (paused) return { ok: false, problem: "trial_ended" };
+  }
   const [row] = await db().execute<Row>(sql`
     update commerce.stores set private_mode = ${on}
      where id = ${store.id}::uuid and private_mode is distinct from ${on}
@@ -100,6 +105,37 @@ export async function signEveryoneOut(member: Membership): Promise<PrivateResult
   await audit(member.account.id, member.store.id, "store.private_signed_out");
   refreshAfter(member.store.slug);
   return { ok: true };
+}
+
+/**
+ * The trial's end (D420, `settleTrials()`): an open store whose trial ended with no plan is made private, and the time kept, in one
+ * statement, audited as `store.private_mode` by nobody (the job). Returns whether it was made private now.
+ */
+export async function pauseAfterTrial(store: { id: string; slug: string }): Promise<boolean> {
+  const [row] = await db().execute<Row>(sql`
+    with paused as (
+      update commerce.stores set private_mode = true where id = ${store.id}::uuid and not private_mode returning id
+    )
+    update commerce.store_billing set trial_paused_at = coalesce(trial_paused_at, now()) where store_id in (select id from paused)
+    returning store_id`);
+  if (!row) return false;
+  await audit(null, store.id, "store.private_mode", { on: true, via: "trial_ended" }, { changes: { privateMode: { from: false, to: true } } });
+  refreshAfter(store.slug);
+  return true;
+}
+
+/** A plan has started for a store the trial's end made private (D420): made public again and the mark cleared, audited by nobody (the job). */
+export async function reopenAfterPlan(store: { id: string; slug: string }): Promise<boolean> {
+  const [row] = await db().execute<Row>(sql`
+    with cleared as (
+      update commerce.store_billing set trial_paused_at = null where store_id = ${store.id}::uuid and trial_paused_at is not null returning store_id
+    )
+    update commerce.stores set private_mode = false where id in (select store_id from cleared) and private_mode
+    returning id`);
+  if (!row) return false;
+  await audit(null, store.id, "store.private_mode", { on: false, via: "plan_started" }, { changes: { privateMode: { from: true, to: false } } });
+  refreshAfter(store.slug);
+  return true;
 }
 
 /**

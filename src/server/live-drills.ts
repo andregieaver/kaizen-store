@@ -10,7 +10,7 @@ import { siteUrl } from "@/lib/site";
 
 import { runAgentEval } from "./agent-eval";
 import { ownConnection } from "./ai";
-import { activeAccount, passMembership } from "./auth";
+import { activeAccount, audit, passMembership } from "./auth";
 import { log } from "./log";
 import { markSent, refundOrder, getOrderAdmin } from "./order-admin";
 import { decideApproval, runTurn, type Principal } from "./owner-assistant";
@@ -267,7 +267,7 @@ async function legalPagesDrill(requestedBy: string | null): Promise<DrillResult>
  * and *Build my store with AI* ticked; the link's token is taken as the email would bring it, and the press makes the store and starts its
  * run. The run then goes on by the minute; Platform → AI scores it. Refused while self-serve sign-up is off.
  */
-async function dreamDrill(): Promise<DrillResult> {
+async function dreamDrill(requestedBy: string | null): Promise<DrillResult> {
   if (!(await selfServeOn())) return { kind: "dream_factory", outcome: "skipped", detail: "Self-serve sign-up is off (Platform → Access requests)." };
   const stamp = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "");
   const email = `delivered+dream${stamp}${DRILL_EMAIL_DOMAIN}`;
@@ -286,8 +286,40 @@ async function dreamDrill(): Promise<DrillResult> {
         where lower(a.email) = lower(${email}) order by r.created_at desc limit 1`,
   );
   if (!run) return { kind: "dream_factory", outcome: "failed", detail: `The store ${confirmed.storeName} was made, but its Dream Factory run did not start.` };
+  // The platform admin who asked for the drill works in its store for a while (D420), so they can look at it, change it and discard it.
+  const member = await addDrillOwner(run.slug, requestedBy);
   // Passed only once the run is ready (PSI AGT-06): `settleDreamDrills()` writes the outcome when the run ends.
-  return { kind: "dream_factory", outcome: "waiting", run: run.id, detail: `Store ${run.slug} made through sign-up and its run ${run.id} started; it counts once the run is ready.` };
+  return {
+    kind: "dream_factory",
+    outcome: "waiting",
+    run: run.id,
+    detail: `Store ${run.slug} made through sign-up and its run ${run.id} started; it counts once the run is ready.${member ? ` The admin who asked works in it for ${DRILL_OWNER_DAYS} days.` : ""}`,
+  };
+}
+
+/** How long the admin who asked for a Dream Factory drill works in its store. */
+export const DRILL_OWNER_DAYS = 14;
+
+/**
+ * Makes the platform admin who asked for a Dream Factory drill an owner of its store for `DRILL_OWNER_DAYS` days (D420): the store is the
+ * test address's, so without this nobody who can sign in could open it. Only an active platform admin; audited as `store.drill_owner_added`.
+ * The test account stays the store's first owner, which is the one every "the owner" read takes. Returns whether they work there now.
+ */
+export async function addDrillOwner(storeSlug: string, accountId: string | null): Promise<boolean> {
+  const admin = accountId ? await activeAccount(accountId) : null;
+  if (!admin?.platformAdmin) return false;
+  const [added] = await typedRows(
+    z.object({ store_id: col.uuid }),
+    sql`
+      insert into commerce.store_members (store_id, account_id, role, kind, expires_at)
+      select s.id, ${admin.id}::uuid, 'owner', 'staff', now() + make_interval(days => ${DRILL_OWNER_DAYS}) from commerce.stores s where s.slug = ${storeSlug}
+      on conflict (store_id, account_id) do nothing
+      returning store_id
+    `,
+  );
+  if (!added) return false;
+  await audit(admin.id, added.store_id, "store.drill_owner_added", { days: DRILL_OWNER_DAYS }, { area: "settings", target: { type: "account", id: admin.id } });
+  return true;
 }
 
 const isUuid = (id: string | undefined): id is string => typeof id === "string" && z.uuid().safeParse(id).success;
@@ -340,7 +372,7 @@ async function runOne(storeId: string, kind: DrillKind, requestedBy: string | nu
     if (kind === "agent_eval") return await evalDrill(requestedBy);
     if (kind === "manager_pilot") return await pilotDrill(storeId, requestedBy);
     if (kind === "platform_legal_pages") return await legalPagesDrill(requestedBy);
-    if (kind === "dream_factory") return await dreamDrill();
+    if (kind === "dream_factory") return await dreamDrill(requestedBy);
     if (kind === "database_door") return await doorDrill();
     if (kind === "webhooks") return await webhooksDrill();
     if (kind === "payment_facts") return await factsDrill(storeId);

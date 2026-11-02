@@ -5,6 +5,7 @@ import { AdminTextScope } from "@/components/admin/admin-text";
 import { DreamFeed, DreamMade, DreamProgress, DreamReady, DreamSketch, DreamTimeline } from "@/components/admin/dream/dream-showcase";
 import { RefreshWhile } from "@/components/admin/refresh-while";
 import { ButtonLink, Card, Chip, KpiTile, PageHeader } from "@/components/admin/ui";
+import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { DREAM_STEPS, PROMPT_MAX, PROMPT_MIN, briefQuestions, ownerWaitMs, scoreOf } from "@/lib/dream-factory";
@@ -13,7 +14,7 @@ import { latestDreamRun } from "@/server/dream-factory";
 import { dreamShowcase } from "@/server/dream-showcase";
 import { requirePermission } from "@/server/permissions";
 
-import { answerDreamAction, confirmDreamAction, retryDreamAction, startDreamAction, stopDreamAction } from "./actions";
+import { answerDreamAction, confirmDreamAction, discardDreamStoreAction, retryDreamAction, startDreamAction, startDreamOverAction, stopDreamAction } from "./actions";
 
 export const metadata: Metadata = { title: "Dream Factory" };
 
@@ -77,7 +78,8 @@ export default async function DreamFactoryPage({ params }: { params: Promise<{ s
       <div className="flex max-w-6xl flex-col gap-6">
         <PageHeader title={w.title} description={<>{runWords}</>} status={run.test ? <Chip signal="insight">{w.test}</Chip> : undefined} />
 
-        {ready && <DreamReady show={show} links={{ store: storeUrl, front: front ? `${base}/pages/${front}` : null, products: `${base}/products` }} words={w} />}
+        {/* The store is seen through the members' preview (D339): a store not yet open is private, and a link to it would show its lock page. */}
+        {ready && <DreamReady show={show} links={{ store: previewHref(slug), front: front ? `${base}/pages/${front}` : null, products: `${base}/products` }} words={w} />}
 
         {/* What only the owner can give, first: the one thing in their way. */}
         {questions.length > 0 && brief && (
@@ -171,6 +173,36 @@ export default async function DreamFactoryPage({ params }: { params: Promise<{ s
             <DreamMade show={show} base={base} words={w} />
           </div>
         </div>
+
+        {/* Start over or discard (D421), one deliberate step away and only before the store opens. */}
+        {!store.setupCompletedAt && (
+          <details className="rounded-lg border border-line bg-card p-5">
+            <summary className="cursor-pointer text-title text-ink">{w.again.title}</summary>
+            <div className="mt-3 flex flex-col gap-6">
+              <p className="text-body text-ink-2">{w.again.text}</p>
+              <ActionForm action={startDreamOverAction.bind(null, slug)} className="flex flex-col gap-3">
+                <label className={field}>
+                  {w.again.label}
+                  <textarea name="prompt" required minLength={PROMPT_MIN} maxLength={PROMPT_MAX} rows={5} defaultValue={run.prompt} className={`${control} py-2`} />
+                  <span className="font-normal text-ink-2">{w.again.startOverHint}</span>
+                </label>
+                <div>
+                  <SubmitButton>{w.again.startOver}</SubmitButton>
+                </div>
+              </ActionForm>
+              <ActionForm action={discardDreamStoreAction.bind(null, slug)} className="flex flex-col gap-3 border-t border-line pt-5">
+                <label className={field}>
+                  {w.again.discardLabel}
+                  <input name="typed" required autoComplete="off" className={control} />
+                  <span className="font-normal text-ink-2">{fillWords(w.again.discardHint, { address: slug })}</span>
+                </label>
+                <div>
+                  <SubmitButton variant="secondary">{w.again.discard}</SubmitButton>
+                </div>
+              </ActionForm>
+            </div>
+          </details>
+        )}
       </div>
     </AdminTextScope>
   );
@@ -178,6 +210,9 @@ export default async function DreamFactoryPage({ params }: { params: Promise<{ s
 
 /** The steps that are the owner's own (their yes, payments, a plan, opening): nothing to try again. */
 const OWNER_STEPS = new Set<string>(DREAM_STEPS.filter((step) => step.who === "owner").map((step) => step.id));
+
+/** The members' preview of the store (D339): lets them in while it is private, then shows its front page. */
+const previewHref = (slug: string) => `/api/private/preview?store=${encodeURIComponent(slug)}`;
 
 /** The store's address as a visitor's browser shows it, for the sketch. */
 function hostOf(url: string): string | null {

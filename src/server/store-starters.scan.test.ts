@@ -70,6 +70,8 @@ const READERS: Record<string, "real" | "template" | "both"> = {
   "src/server/legal-writer.ts": "real",
   "src/server/page-looks.ts": "real",
   "src/server/store-closure.ts": "template",
+  // A free trial's end (D420) makes only a real, open store private.
+  "src/server/store-trial.ts": "real",
   "src/server/store-copy.ts": "real",
   "src/server/storefront-api.ts": "real",
   "src/server/stores.ts": "both",

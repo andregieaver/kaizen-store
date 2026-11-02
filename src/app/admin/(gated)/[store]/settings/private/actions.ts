@@ -25,7 +25,7 @@ function answer(result: PrivateResult, w: Awaited<ReturnType<typeof words>>["w"]
     refresh();
     return { status: "ok", messages: [ok] };
   }
-  const message = result.problem === "short" ? w.password.short : result.problem === "long" ? w.password.long : result.problem === "never_private" ? w.stateNever : w.notAllowed;
+  const message = result.problem === "short" ? w.password.short : result.problem === "long" ? w.password.long : result.problem === "never_private" ? w.stateNever : result.problem === "trial_ended" ? w.trialEnded : w.notAllowed;
   return { status: "error", messages: [message] };
 }
 

@@ -82,6 +82,17 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   change after; `completePlanCheckout()` records it on return), and create
   more stores at `/admin/stores` (`createStoreForOwner()`, decision D19).
 
+## Free trials and their end (D420, `src/server/store-trial.ts`)
+
+- **Free trials and their end (D420, `src/server/store-trial.ts`)**: self-serve sign-up and every Dream Factory run give a store
+  `TRIAL_DAYS` (14) days (`grantTrial()`, once a store: a store that had a trial or is on a plan keeps what it has). On the trial the owner
+  may look, change and open the store without a plan; a plan chosen before the end is free until then. When it ends with no plan
+  (Stripe's status not trialing, active or past due), the dispatcher's `trials` job (`settleTrials()`) makes an open store private through
+  `pauseAfterTrial()` in `src/server/private-mode.ts` (the only writer of `private_mode`) and keeps `store_billing.trial_paused_at`; while it
+  is set the owner cannot make the store public (`trial_ended`) and opening is refused (`TRIAL_OVER`), and the store's admin says why with
+  a link to the Plan page. Once a plan starts the job makes it public again (`reopenAfterPlan()`), and only a store it made private. A store
+  template or demo store is never touched.
+
 ## Usage and limits (D314, `docs/capacity.md`; the cells of phase 5 are a proposal in `docs/cells.md`)
 
 - **Usage and limits (D314, `docs/capacity.md`; the cells of phase 5 are a proposal in `docs/cells.md`)**: what each store used per UTC

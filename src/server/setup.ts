@@ -41,6 +41,8 @@ export type SetupProgress = {
   products: boolean;
   /** The store is on a plan with Kaizen. */
   plan: boolean;
+  /** Its free trial has ended and no plan was chosen (D420): it opens again only with a plan. */
+  trialOver: boolean;
   /** Everything the store needs before it can open. */
   readyToOpen: boolean;
   counts: { demoProducts: number; ownProducts: number; staff: number; units: number };
@@ -65,8 +67,8 @@ export async function getSetupProgress(store: Store): Promise<SetupProgress> {
       where r.store_id = ${store.id}::uuid
     `),
     db().execute<Row>(sql`
-      select 1 as on_plan from commerce.store_billing
-      where store_id = ${store.id}::uuid and status in ('trialing', 'active', 'past_due')
+      select status in ('trialing', 'active', 'past_due') as on_plan, trial_ends_at <= now() as trial_over from commerce.store_billing
+      where store_id = ${store.id}::uuid
     `),
     db().execute<Row>(sql`
       select
@@ -92,7 +94,8 @@ export async function getSetupProgress(store: Store): Promise<SetupProgress> {
     paymentsOn: payments.stripe.enabled,
     shipping: Number(shippingRow?.priced ?? 0) >= store.keptMarkets.length && store.keptMarkets.length > 0,
     products: ownProducts > 0 || demoProducts === 0,
-    plan: Boolean(planRow),
+    plan: Boolean(planRow?.on_plan),
+    trialOver: Boolean(planRow?.trial_over) && !planRow?.on_plan,
     readyToOpen: details && countries,
     counts: { demoProducts, ownProducts, staff: Number(facts?.staff ?? 0), units: Number(facts?.units ?? 0) },
   };
@@ -177,11 +180,15 @@ export async function archiveDemoProducts({ account, store }: Membership): Promi
   return rows.length;
 }
 
+/** Why a store whose trial ended cannot open (D420); the setup tools say the same. */
+export const TRIAL_OVER = "The free trial has ended: choose a plan on the Plan page to open the store.";
+
 export async function completeSetup({ account, store }: Membership): Promise<SaveResult> {
   const progress = await getSetupProgress(store);
   if (!progress.readyToOpen) {
     return { ok: false, problems: ["Add your business details and at least one country first."] };
   }
+  if (progress.trialOver) return { ok: false, problems: [TRIAL_OVER] };
   await db().execute(sql`
     update commerce.stores set setup_completed_at = coalesce(setup_completed_at, now())
     where id = ${store.id}::uuid

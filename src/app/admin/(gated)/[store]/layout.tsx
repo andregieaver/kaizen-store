@@ -24,6 +24,7 @@ import { ensureStorePaymentMethods, ensureTestAccount, requestIp } from "@/serve
 import { waitingCount } from "@/server/support";
 import { memberDesk } from "@/server/support-desk";
 import { starterOfStore } from "@/server/store-starters";
+import { trialPausedAt } from "@/server/store-trial";
 
 import {
   assistantHearAction,
@@ -81,6 +82,8 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
   const waiting = memberCan(member, "support:read") ? await waitingCount([memberDesk(member).desk]) : 0;
   // A starter store says what it is (D175): starting content, or a live demo store (D277) with its own page for platform admins.
   const starter = store.starter ? await starterOfStore(store.id) : null;
+  // A store whose free trial ended with no plan was made private again (D420): its members are told how to open it again.
+  const trialPaused = open ? await trialPausedAt(store.id) : null;
   const lang = adminLangOf(account.adminLocale);
   const w = adminText(lang, "shell");
   const tabs: NavItem[] = storeTabs(base, store, canOpen, { support: waiting });
@@ -172,6 +175,22 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
                 {" "}
                 <Link href={starter ? demoStoreHref(starter.id) : STARTING_CONTENT_HREF} className="font-medium underline underline-offset-2">
                   {w.store.itsPage}
+                </Link>
+              </>
+            )}
+          </p>
+        </div>
+      )}
+      {trialPaused && (
+        <div role="status" className="mb-4 rounded-panel bg-sunken p-4 text-sm">
+          <p className="font-medium">{w.store.trialEnded}</p>
+          <p className="text-muted">
+            {w.store.trialEndedText}
+            {memberCan(member, "billing:write") && (
+              <>
+                {" "}
+                <Link href={`${base}/billing`} className="font-medium underline underline-offset-2">
+                  {w.store.choosePlan}
                 </Link>
               </>
             )}

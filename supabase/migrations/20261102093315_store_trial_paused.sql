@@ -1,0 +1,1 @@
+ALTER TABLE "commerce"."store_billing" ADD COLUMN "trial_paused_at" timestamp with time zone;

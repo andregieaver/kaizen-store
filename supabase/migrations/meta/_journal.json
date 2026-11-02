@@ -4362,6 +4362,13 @@
       "when": 1793569780092,
       "tag": "20261101214940_dispute_evidence_autopilot_effects",
       "breakpoints": true
+    },
+    {
+      "idx": 623,
+      "version": "7",
+      "when": 1793611995083,
+      "tag": "20261102093315_store_trial_paused",
+      "breakpoints": true
     }
   ]
 }

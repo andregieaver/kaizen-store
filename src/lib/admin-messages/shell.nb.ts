@@ -82,6 +82,9 @@ export const shellNb: ShellMessages = {
     closedText: "Den tar ikke imot bestillinger. Bestillinger, fakturaer, returer og kundeopplysninger blir liggende her så du kan lese og laste dem ned.",
     reopen: "Åpne butikken igjen",
     aboutReopening: "Om å åpne igjen",
+    trialEnded: "Den gratis prøveperioden er over, så butikken er privat igjen.",
+    trialEndedText: "Besøkende ser landingssiden din til du velger en plan; alt du har laget, er tatt vare på.",
+    choosePlan: "Velg en plan",
   },
   push: {
     title: "Varsler på denne enheten",

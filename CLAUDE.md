@@ -132,6 +132,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - Forms use `ActionForm`, which keeps what was typed when validation fails
 - Stripe Connect (`src/server/connect.ts`, `src/server/stripe.ts`)
 - Plans and billing (`src/server/billing.ts`, decision D18)
+- Free trials and their end (D420, `src/server/store-trial.ts`)
 - Usage and limits (D314, `docs/capacity.md`; the cells of phase 5 are a proposal in `docs/cells.md`)
 - Pages (`/admin/platform/pages` for Kaizen, `/admin/{store}/pages` for a store; decisions D42, D53)
 - Copying another website's page (D150, `docs/page-replicator.md`, `src/lib/replicate*.ts` pure, `src/server/replicate*.ts`, `ReplicatePanel` on…

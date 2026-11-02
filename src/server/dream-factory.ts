@@ -48,17 +48,20 @@ import { createLegalStarter } from "./legal-starters";
 import { legalWrites, turnOnLegalAi } from "./legal-writer";
 import { log } from "./log";
 import { runTurn, type Principal, type TurnInput } from "./owner-assistant";
-import { setFrontPage } from "./pages";
+import { deletePage, setFrontPage } from "./pages";
 import { saveCurrencies } from "./localization";
 import { backToRule, marketPriceRules, rateProblem, saveMarketPriceRule } from "./market-prices";
 import { memberCan } from "./permissions";
 import type { SaveResult } from "./settings";
 import { setFeature } from "./store-features";
 import { createStoreForOwner } from "./platform";
+import { catalogTag } from "./catalog";
+import { deleteRedirects } from "./redirects";
 import { refreshTag } from "./refresh";
 import { archiveDemoProducts, getSetupProgress } from "./setup";
 import { checkupFindings } from "./store-checkup";
-import { draftStore, openDraft, publishDraft } from "./store-drafts";
+import { grantTrial, trialEndOf } from "./store-trial";
+import { discardDraft, draftStore, openDraft, publishDraft } from "./store-drafts";
 import { storeTag, type Store } from "./stores";
 import { col, typedRow, typedRows } from "./typed-rows";
 import { skipWhilePaused } from "./ai-pause";
@@ -168,6 +171,9 @@ export async function startDreamRun(member: Pick<Membership, "account" | "store"
   if (!row) return { ok: false, problem: "The Dream Factory is already building this store." };
   const id = String(row.id);
   await audit(member.account.id, member.store.id, "store.dream_started", { run: id, test }, { area: "website", target: { type: "store", id: member.store.id } });
+  // Every Dream Factory store has the free trial (D420): the owner looks, changes and may open it before choosing a plan. A store that had
+  // a trial or is on a plan keeps what it has.
+  await grantTrial(member.store.id, member.account.id, "dream_factory");
   log("info", "dream_factory.started", { run: id, test });
   return { ok: true, id };
 }
@@ -279,6 +285,58 @@ export async function stopDreamRun(member: Membership, runId: string): Promise<O
   await db().execute(sql`update commerce.dream_runs set status = 'stopped', finished_at = now(), updated_at = now() where id = ${run.id}::uuid`);
   await audit(member.account.id, member.store.id, "store.dream_stopped", { run: run.id }, { area: "website", target: { type: "store", id: member.store.id } });
   return { ok: true };
+}
+
+/**
+ * Start over (D421): the store's newest run is set aside and a new one starts from the edited description, in the same store, before it
+ * opens. What the run made is cleared first: an open draft is discarded, the front page unset and the run's pages deleted (with the
+ * redirects their deletion leaves: a store never opened has no links from outside to keep), its products archived and its goals dropped.
+ * The brand, the looks in the library, the pictures, the research notes and the business details stay; the new run sets its own brand and
+ * look. The trial is never given again. Audited as `store.dream_cleared`.
+ */
+export async function startDreamOver(member: Membership, prompt: string): Promise<StartResult> {
+  if (!memberCan(member, "owner")) return { ok: false, problem: "Only an owner of the store can start the Dream Factory again." };
+  const text = prompt.trim();
+  if (text.length < PROMPT_MIN || text.length > PROMPT_MAX) return { ok: false, problem: `Describe the store in ${PROMPT_MIN} to ${PROMPT_MAX} characters.` };
+  const [opened] = await typedRows(z.object({ open: col.bool }), sql`select setup_completed_at is not null as open from commerce.stores where id = ${member.store.id}::uuid`);
+  if (opened?.open) return { ok: false, problem: "This store is already open: the Dream Factory starts over only before a store opens." };
+  const run = await latestDreamRun(member.store.id);
+  if (!run) return startDreamRun(member, text);
+
+  const { account, store } = member;
+  if (!run.finishedAt) {
+    await db().execute(sql`update commerce.dream_runs set status = 'stopped', finished_at = now(), updated_at = now() where id = ${run.id}::uuid and finished_at is null`);
+    await audit(account.id, store.id, "store.dream_stopped", { run: run.id, why: "start_over" }, { area: "website", target: { type: "store", id: store.id } });
+  }
+  const since = run.createdAt.toISOString();
+  const draft = await openDraft(store.id);
+  if (draft) await discardDraft({ account, store }, draft.id);
+  await setFrontPage(account, store.id, null);
+  const pages = await typedRows(
+    z.object({ id: col.uuid }),
+    sql`select id from commerce.pages where store_id = ${store.id}::uuid and type = 'page' and created_at >= ${since}::timestamptz`,
+  );
+  for (const page of pages) await deletePage(account, store.id, page.id, "page");
+  // The redirects those deletions left go through the redirect service, the only writer of `commerce.redirects`.
+  const left = await typedRows(
+    z.object({ id: col.uuid }),
+    sql`select id from commerce.redirects where store_id = ${store.id}::uuid and origin = 'editor' and created_at >= ${since}::timestamptz limit 200`,
+  );
+  if (left.length > 0) await deleteRedirects(member, left.map((r) => r.id));
+  const products = await db().execute<Row>(sql`
+    update commerce.products set status = 'archived', updated_at = now()
+    where store_id = ${store.id}::uuid and created_at >= ${since}::timestamptz and status <> 'archived'
+    returning id
+  `);
+  const goals = await db().execute<Row>(sql`
+    update commerce.assistant_goals set status = 'dropped', updated_at = now()
+    where store_id = ${store.id}::uuid and created_at >= ${since}::timestamptz and status = 'active'
+    returning id
+  `);
+  refreshTag(catalogTag(store.id));
+  refreshTag(storeTag(store.slug));
+  await audit(account.id, store.id, "store.dream_cleared", { run: run.id, pages: pages.length, products: products.length, goals: goals.length }, { area: "website", target: { type: "store", id: store.id } });
+  return startDreamRun(member, text);
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -788,7 +846,9 @@ async function paymentsStep({ run, member }: Context): Promise<StepOutcome | nul
 async function planStep({ run, member }: Context): Promise<StepOutcome | null> {
   const state = run.steps.plan;
   const progress = await getSetupProgress(member.store);
-  if (progress.plan) return { state: done(started(state), "On a plan or its free trial.") };
+  if (progress.plan) return { state: done(started(state), "On a plan.") };
+  // The free trial counts (D420): the store may open on it, and its end makes the store private again until a plan is chosen.
+  if (!progress.trialOver && (await trialEndOf(member.store.id))) return { state: done(started(state), "On its free trial: a plan is chosen before it ends.") };
   if (run.test) return { state: skipped(started(state), "A test run needs no plan.") };
   return state.status === "asking" ? null : { state: asking(state, "Choose a plan on the Plan page.") };
 }

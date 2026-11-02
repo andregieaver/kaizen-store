@@ -16,7 +16,7 @@ import { storeThemePurchases, type ThemePurchase } from "@/server/theme-prices";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
-import { trialEndOf } from "@/server/self-signup";
+import { trialEndOf } from "@/server/store-trial";
 import type { BillingMessages } from "@/lib/admin-messages/billing.en";
 import { PeaksForm, UsageDays, UsageLines } from "@/components/admin/usage-limits";
 import { storePeaks } from "@/server/capacity-events";

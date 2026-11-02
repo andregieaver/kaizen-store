@@ -33,6 +33,7 @@ import { runLegalUpkeep, runLegalWrites } from "@/server/legal-writer";
 import { runPaymentJobs } from "@/server/payment-disputes";
 import { keepStripeWebhooksCurrent } from "@/server/stripe-endpoints";
 import { runLiveDrills } from "@/server/live-drills";
+import { settleTrials } from "@/server/store-trial";
 import { pruneReplications } from "@/server/replicate-store";
 import { runReturnJobs } from "@/server/return-jobs";
 import { pruneFormSubmissions } from "@/server/forms";
@@ -157,6 +158,8 @@ async function dispatch() {
     stripeWebhooks: () => keepStripeWebhooksCurrent(),
     // Live drills (D406): a requested run of a test-mode store's money paths (refunds, marking sent, payment facts, webhooks), its results kept.
     liveDrills: () => runLiveDrills(),
+    // Free trials' ends (D420): an open store whose trial ended with no plan made private, and made public again once a plan starts.
+    trials: () => settleTrials(),
     // The AI manager's follow-ups (PSI AGT-04): a few due ones given back to it, in the asker's name, and the asker emailed.
     followUps: () => runFollowUps(),
     // The autopilot's daily digests and weekly reports (D309), to the people whose plans ran lately.

@@ -53,6 +53,8 @@ export const platformToolsNb: PlatformToolsMessages = {
     dreamWatchTitle: "Dream Factory: {store}",
     dreamWatchText: "En testkjøring, slik eieren ser den. Siden leser seg selv på nytt med noen sekunders mellomrom mens butikken bygges.",
     dreamBack: "Tilbake til KI",
+    dreamPreview: "Se butikken",
+    dreamOpenStore: "Åpne butikkens admin",
   },
   prices: {
     title: "KI-priser",

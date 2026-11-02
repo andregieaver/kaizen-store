@@ -56,6 +56,8 @@ export const platformToolsEn = {
     dreamWatchTitle: "Dream Factory: {store}",
     dreamWatchText: "A test run, as its owner sees it. The page reads itself again every few seconds while the store is being built.",
     dreamBack: "Back to AI",
+    dreamPreview: "See the store",
+    dreamOpenStore: "Open the store's admin",
   },
   prices: {
     title: "AI prices",

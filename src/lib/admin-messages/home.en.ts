@@ -429,6 +429,17 @@ export const homeEn = {
       editFront: "Edit the front page",
       seeProducts: "See the products",
     },
+    /** Start over or discard (D421), one step away on the run's page while the store is not open. */
+    again: {
+      title: "Not what you hoped for?",
+      text: "Change the description and start over, or discard the store.",
+      label: "Your description",
+      startOver: "Start over",
+      startOverHint: "What this run made is cleared: its products are archived, its pages removed and its goals dropped. Your business details and pictures stay.",
+      discard: "Discard this store",
+      discardHint: "The store is closed and moves to Closed stores on Your stores. Type its address, {address}, to confirm.",
+      discardLabel: "The store's address",
+    },
   },
 };
 
