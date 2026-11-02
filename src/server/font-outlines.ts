@@ -1,6 +1,7 @@
 import "server-only";
 
-import opentype from "opentype.js";
+// opentype.js 2 is an ES module of named exports, with no default export.
+import { parse, type Font } from "opentype.js";
 
 import { log } from "./log";
 import { findFont } from "./fonts";
@@ -18,7 +19,7 @@ const FILE_HOST = "fonts.gstatic.com";
 /** The largest font file read. */
 const MAX_FONT_BYTES = 5_000_000;
 
-const kept = new Map<string, opentype.Font>();
+const kept = new Map<string, Font>();
 
 /** The weight nearest to the one wanted among a family's weights (ties go to the heavier). */
 export function nearestWeight(weights: readonly number[], wanted: number): number {
@@ -35,7 +36,7 @@ const hostIs = (url: string, host: string) => {
   }
 };
 
-export type Outlines = { ok: true; font: opentype.Font; family: string; weight: number } | { ok: false; problem: string };
+export type Outlines = { ok: true; font: Font; family: string; weight: number } | { ok: false; problem: string };
 
 /** The family's outlines at the nearest weight it has; a problem in words when the family is unknown or cannot be fetched. */
 export async function fontOutlines(family: string, weight: number, fetcher: Fetcher = fetch): Promise<Outlines> {
@@ -56,7 +57,7 @@ export async function fontOutlines(family: string, weight: number, fetcher: Fetc
     if (!response.ok) throw new Error(`Google Fonts answered ${response.status} for the file`);
     const data = await response.arrayBuffer();
     if (data.byteLength === 0 || data.byteLength > MAX_FONT_BYTES) throw new Error("The font file was empty or too large.");
-    const parsed = opentype.parse(data);
+    const parsed = parse(data);
     kept.set(key, parsed);
     return { ok: true, font: parsed, family: font.family, weight: chosen };
   } catch (error) {

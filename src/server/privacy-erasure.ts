@@ -294,7 +294,7 @@ const requestOf = (r: Row): RequestRow => ({
   channel: String(r.channel),
   subjectEmail: r.subject_email ? String(r.subject_email) : null,
   subjectCustomerId: r.subject_customer_id ? String(r.subject_customer_id) : null,
-  steps: ((r.steps ?? {}) as Record<string, unknown>) ?? {},
+  steps: (r.steps ?? {}) as Record<string, unknown>,
   handledBy: r.handled_by ? String(r.handled_by) : null,
 });
 

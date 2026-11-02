@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import opentype from "opentype.js";
+import * as opentype from "opentype.js";
 import sharp from "sharp";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 

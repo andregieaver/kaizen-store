@@ -703,7 +703,7 @@ async function readinessOf(
 
   const problems: InvoiceProblem[] = [...js.problems];
   const have = new Set(problems.map((p) => p.code));
-  const sqlCodes = ((sqlRows[0]?.problems ?? []) as string[]) ?? [];
+  const sqlCodes = (sqlRows[0]?.problems ?? []) as string[];
   for (const code of sqlCodes) {
     const known = SQL_PROBLEMS[code];
     if (!known || have.has(known.code)) continue;

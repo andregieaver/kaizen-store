@@ -475,6 +475,9 @@ The re-score ([psi-2026-11-01.md](psi-2026-11-01.md)) put the overall at 80.0 (8
       `submitContentReport(…, { quiet })`); the platform admins get one email that hour (`platform.content_report_flood`), and the
       dispatcher's `contentModeration` job reads the quiet ones a few at a time (`content-reports.int.test.ts`).
 - [ ] **REL-06** The seven cron routes that work after answering, recorded in the job ledger as the Dream Factory's is.
-- [ ] **SEC-08, CODE-01** The six red Dependabot pull requests (TypeScript 6 and opentype.js 2 break the build).
+- [x] **SEC-08, CODE-01** The six red Dependabot pull requests (TypeScript 6 and opentype.js 2 break the build). Done 2 November 2026:
+      the grouped minor and patch updates (Next.js 16.4.3, React 19.3.1, axe-core 4.14), motion 14, unpdf 2 and the Actions update merged
+      green; opentype.js 2 (named exports, no default: `font-outlines.ts` imports `parse` and `Font`) and TypeScript 6 (two `??` whose right
+      side could never be reached) upgraded on main; Vercel no longer builds Dependabot's branches (the preview has no database).
 - [ ] **PERF-01** The admin's p75 LCP (3.93 s): cut the shared scripts, the English fallback first.
 - [x] **AST-09, AGT-14** Record the eval again with DSA and Dream Factory cases, its recording carrying `tools`. Done: recorded 2 November 2026 on Platform → AI's model (gpt-4.1-mini, 17 of 17, run `9a725030`) after the filter took out lines addressed to a reviewer or a "system override" and the brief stopped guessing the business's country (683e9a13); the recording carries `tools` and is `src/data/agent-eval-recording.json`.
