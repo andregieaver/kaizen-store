@@ -12,9 +12,9 @@ overrides:
   minimatch: ^11.0.3
 
 patchedDependencies:
-  next@16.4.2:
-    hash: 34f65546f06a2dcb2553e70e5315e7f14cfef349c2366a6351d921944957c601
-    path: patches/next@16.4.2.patch
+  next:
+    hash: 9d7a8145e233988144d12c30a38c140f8c1afe90b80759a44753f66e90fa6cf2
+    path: patches/next.patch
 
 importers:
 
@@ -115,7 +115,7 @@ importers:
         version: 13.4.6(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       next:
         specifier: 16.4.2
-        version: 16.4.2(patch_hash=34f65546f06a2dcb2553e70e5315e7f14cfef349c2366a6351d921944957c601)(@babel/core@7.29.7)(@playwright/test@1.63.0)(@types/node@22.20.4)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+        version: 16.4.2(patch_hash=9d7a8145e233988144d12c30a38c140f8c1afe90b80759a44753f66e90fa6cf2)(@babel/core@7.29.7)(@playwright/test@1.63.0)(@types/node@22.20.4)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       opentype.js:
         specifier: 1.3.4
         version: 1.3.4
@@ -6433,7 +6433,7 @@ snapshots:
 
   natural-compare@1.4.0: {}
 
-  next@16.4.2(patch_hash=34f65546f06a2dcb2553e70e5315e7f14cfef349c2366a6351d921944957c601)(@babel/core@7.29.7)(@playwright/test@1.63.0)(@types/node@22.20.4)(react-dom@19.2.8(react@19.2.8))(react@19.2.8):
+  next@16.4.2(patch_hash=9d7a8145e233988144d12c30a38c140f8c1afe90b80759a44753f66e90fa6cf2)(@babel/core@7.29.7)(@playwright/test@1.63.0)(@types/node@22.20.4)(react-dom@19.2.8(react@19.2.8))(react@19.2.8):
     dependencies:
       '@next/env': 16.4.2
       '@swc/helpers': 0.5.23

@@ -14,7 +14,8 @@ overrides:
   # (checked 1 November 2026: `pnpm lint` passes, still reports a warning and still honours its ignores). Dev only: lint globs.
   minimatch: "^11.0.3"
 # Next.js's router loads a page in full when its request for the page fails, and Safari's engine cancels that request as the visitor
-# leaves, so the visitor was taken to that page and not where they asked (D423); the patch waits instead. Holds this version only:
-# a new Next.js makes pnpm refuse the install until the patch is moved or dropped.
+# leaves, so the visitor was taken to that page and not where they asked (D423); the patch waits instead. Applied to whichever Next.js
+# is installed, so its updates go on as before; where a new Next.js changes the lines it patches, pnpm refuses the install, and the
+# patch is moved to it or dropped (e2e/store-pages.spec.ts says whether it is still needed).
 patchedDependencies:
-  next@16.4.2: patches/next@16.4.2.patch
+  next: patches/next.patch

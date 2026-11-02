@@ -6,7 +6,7 @@ index b446c3b019af3eeca1858e68338def3be7689ecd..d9005e199aff49f4137b78a8f31b6ccb
      return (0, _routeparams.urlToUrlWithoutFlightMarker)(new URL(url, location.origin)).toString();
  }
  let isPageUnloading = false;
-+// Kaizena Flow patch (patches/next@16.4.2.patch, see docs/decisions.md D423): WebKit cancels a page's requests as soon as a
++// Kaizena Flow patch (patches/next.patch, see docs/decisions.md D423): WebKit cancels a page's requests as soon as a
 +// whole-page navigation starts, when `beforeunload` fires and before `pagehide`, while the page's scripts still run. A router request
 +// cancelled so must not fall back to loading its own address, which would replace the navigation the visitor asked for: it waits
 +// instead. If the visitor comes back to this page from the back-forward cache (`pageshow`), it is answered with a fresh load of the
@@ -72,7 +72,7 @@ index 306f6d58ee69eecb5f2090e198db649c97db71ff..f0256bf42f5b9dce8674b6410f46b2d5
      return urlToUrlWithoutFlightMarker(new URL(url, location.origin)).toString();
  }
  let isPageUnloading = false;
-+// Kaizena Flow patch (patches/next@16.4.2.patch, see docs/decisions.md D423): WebKit cancels a page's requests as soon as a
++// Kaizena Flow patch (patches/next.patch, see docs/decisions.md D423): WebKit cancels a page's requests as soon as a
 +// whole-page navigation starts, when `beforeunload` fires and before `pagehide`, while the page's scripts still run. A router request
 +// cancelled so must not fall back to loading its own address, which would replace the navigation the visitor asked for: it waits
 +// instead. If the visitor comes back to this page from the back-forward cache (`pageshow`), it is answered with a fresh load of the
