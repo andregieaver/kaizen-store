@@ -15037,7 +15037,7 @@ export const aiEvalRuns = commerce.table(
     total: integer("total").notNull(),
     failures: jsonb("failures").notNull().default(sql`'[]'::jsonb`),
     durationMs: integer("duration_ms").notNull(),
-    /** Each agent's prompt version the run played (`promptVersions()`, D391): `{ chat, manager, legal }`. */
+    /** Each agent's prompt version the run played (`promptVersions()`, D391): `{ chat, manager, legal, moderation, dream }`. */
     promptVersions: jsonb("prompt_versions"),
     /**
      * What the model answered at each step of each case (`EvalRecording`, D391), so CI can replay the run without a model: downloaded from

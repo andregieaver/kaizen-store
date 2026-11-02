@@ -14,6 +14,7 @@ import {
   STEP_TOOLS,
   frontFixMessage,
   answeredBrief,
+  BRIEF_OPTIONS,
   briefPrompt,
   briefSchema,
   briefQuestions,
@@ -448,7 +449,7 @@ async function briefStep({ run, member, deps }: Context): Promise<StepOutcome> {
           { role: "system", content: briefPrompt(member.store.name) },
           { role: "user", content: run.prompt },
         ],
-        { maxTokens: 1500, timeoutMs: 60_000 },
+        BRIEF_OPTIONS,
       )
     ).text;
   } catch (error) {

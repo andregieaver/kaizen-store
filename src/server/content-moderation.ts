@@ -7,6 +7,7 @@ import { db } from "@/db/client";
 import {
   SCREENING_SYSTEM,
   TRIAGE_SYSTEM,
+  MODERATION_OPTIONS,
   parseReading,
   parseScreening,
   screeningPrompt,
@@ -37,7 +38,7 @@ import { col, typedRow, typedRows } from "./typed-rows";
 export const TRIAGE_BATCH = 10;
 export const SCREEN_BATCH = 10;
 
-const OPTIONS = { maxTokens: 400, temperature: 0, reasoningEffort: "low" as const, timeoutMs: 30_000 };
+const OPTIONS = MODERATION_OPTIONS;
 
 const platformAi = () => aiFor(null, { feature: "content_moderation" });
 

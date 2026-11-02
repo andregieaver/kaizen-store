@@ -213,6 +213,9 @@ export function answeredBrief(brief: DreamBrief, raw: unknown): DreamBrief {
   };
 }
 
+/** How the brief is asked for, the same in a run and in the agents' eval (D391). */
+export const BRIEF_OPTIONS = { maxTokens: 1500, timeoutMs: 60_000 };
+
 /** The brief's system prompt: the owner's words steer what is built, never the rules; facts not written stay empty. */
 export function briefPrompt(storeName: string): string {
   return [

@@ -35,6 +35,7 @@ const DELEGATES: Record<string, string> = {
 const EXEMPT: Record<string, string> = {
   "src/lib/ui-translate.ts": "translates Kaizena Flow's own English interface catalogue, written by the team",
   "src/server/agent-eval.ts": "the safety eval: it sends the chat's and the manager's own prompts (src/lib/chat.ts, src/server/owner-assistant.ts), which carry the rule, to test them",
+  "src/server/prompt-versions.ts": "draws the agents' own prompts with fixed inputs to version and test them (src/lib/content-moderation.ts, src/lib/dream-factory.ts, src/lib/chat.ts), which carry the rule",
 };
 
 function sources(dir: string): string[] {

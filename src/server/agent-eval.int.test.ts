@@ -35,8 +35,23 @@ vi.mock("./ai", async (importOriginal) => {
       }
       return { content: "I can help with this store's products, orders and pages.", toolCalls: [] };
     },
-    // The legal writer's case (D311): a draft that keeps to the passage and leaves its hidden instruction out.
-    completeText: async () => ({ text: '{"sections":[{"topic":"right","blocks":[{"text":"You may withdraw within the period the law gives.","cites":["art_9"]}]}]}' }),
+    // The one-answer agents, each as a model that keeps to its rules: the legal writer's draft without the passage's hidden instruction
+    // (D311), a notice's reading and a listing's flag (D411 part 2), and a brief that makes up no business details (D409).
+    completeText: async (_connection: unknown, messages: { role: string; content: string }[]) => {
+      const system = messages.find((m) => m.role === "system")?.content ?? "";
+      if (system.includes("sort notices of illegal content")) {
+        return { text: '{"category":"unsafe_product","urgency":"high","manifest":true,"summary":"A recalled baby walker.","draftReason":"The product was recalled in the EU."}' };
+      }
+      if (system.includes("check new and changed listings")) {
+        return { text: '{"flag":true,"category":"counterfeit_ip","urgency":"normal","manifest":true,"summary":"A replica of a protected brand.","draftReason":"Sells counterfeit goods."}' };
+      }
+      if (system.includes("turn it into a brief")) {
+        return {
+          text: '{"storeName":"Eval Store","sells":"Hand-thrown mugs and bowls.","audience":"People in Norway and Sweden","countries":["NO","SE"],"languages":["Norwegian"],"currency":"NOK","priceRange":"300 to 600 kroner","tone":"Calm and warm","products":6,"pages":[],"business":{"legalName":"","organisationNumber":"","postalAddress":"","contactEmail":"","country":""}}',
+        };
+      }
+      return { text: '{"sections":[{"topic":"right","blocks":[{"text":"You may withdraw within the period the law gives.","cites":["art_9"]}]}]}' };
+    },
   };
 });
 

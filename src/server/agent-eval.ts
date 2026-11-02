@@ -16,6 +16,8 @@ import {
   type RecordedReply,
 } from "@/lib/agent-eval";
 import { storeTools } from "@/lib/chat";
+import { MODERATION_OPTIONS } from "@/lib/content-moderation";
+import { BRIEF_OPTIONS } from "@/lib/dream-factory";
 import type { ChatTurn } from "@/lib/legal-writer";
 import { MANAGER_TOOLS } from "@/lib/manager-tools";
 import { toolKey } from "@/lib/owner-tool-permissions";
@@ -26,7 +28,18 @@ import { AiError, chatWithTools, completeText, type AiConnection, type ToolChatM
 import type { Account } from "./auth";
 import { log } from "./log";
 import { fixedManagerPrompt, managerPromptVersion } from "./owner-assistant";
-import { chatPromptVersion, fixedChatPrompt, fixedLegalMessages, legalPromptVersion, promptHash, type PromptVersions } from "./prompt-versions";
+import {
+  chatPromptVersion,
+  dreamPromptVersion,
+  fixedBriefMessages,
+  fixedChatPrompt,
+  fixedLegalMessages,
+  fixedModerationMessages,
+  legalPromptVersion,
+  moderationPromptVersion,
+  promptHash,
+  type PromptVersions,
+} from "./prompt-versions";
 import { col, typedRow, typedRows } from "./typed-rows";
 
 /**
@@ -39,7 +52,7 @@ import { col, typedRow, typedRows } from "./typed-rows";
 
 /** Each agent's prompt version (D391): what every eval run and recording is of. */
 export function promptVersions(): PromptVersions {
-  return { chat: chatPromptVersion(), manager: managerPromptVersion(), legal: legalPromptVersion() };
+  return { chat: chatPromptVersion(), manager: managerPromptVersion(), legal: legalPromptVersion(), moderation: moderationPromptVersion(), dream: dreamPromptVersion() };
 }
 
 /**
@@ -69,8 +82,11 @@ export type AgentEvalResult = {
 /** What a case is played against: the live model, which records each answer, or a recording given back. */
 type EvalModel = {
   step(messages: ToolChatMessage[], tools: ToolDefinition[]): Promise<RecordedReply>;
-  write(messages: ChatTurn[]): Promise<string>;
+  /** One answer without tools; `options` as the agent asks its model (the legal writer's when left out). */
+  write(messages: ChatTurn[], options?: WriteOptions): Promise<string>;
 };
+
+type WriteOptions = { maxTokens: number; timeoutMs: number; temperature?: number; reasoningEffort?: "low" };
 
 function liveModel(connection: AiConnection, replies: RecordedReply[]): EvalModel {
   return {
@@ -80,8 +96,8 @@ function liveModel(connection: AiConnection, replies: RecordedReply[]): EvalMode
       replies.push(kept);
       return kept;
     },
-    async write(messages) {
-      const answer = await completeText(connection, messages, { maxTokens: 4000, timeoutMs: 120_000, temperature: 0.2 });
+    async write(messages, options) {
+      const answer = await completeText(connection, messages, options ?? { maxTokens: 4000, timeoutMs: 120_000, temperature: 0.2 });
       replies.push({ content: answer.text, toolCalls: [] });
       return answer.text;
     },
@@ -121,6 +137,10 @@ function managerTools(testCase: AgentEvalCase, wanted: ToolArea[]): ToolDefiniti
 /** One case through its agent's prompt and tools, against the model given. */
 async function runCase(model: EvalModel, testCase: AgentEvalCase): Promise<AgentRun> {
   if (testCase.agent === "legal") return { answer: await model.write(fixedLegalMessages(String(testCase.script.passage ?? ""))), calls: [] };
+  if (testCase.agent === "moderation") {
+    return { answer: await model.write(fixedModerationMessages(testCase.script as Parameters<typeof fixedModerationMessages>[0]), MODERATION_OPTIONS), calls: [] };
+  }
+  if (testCase.agent === "dream") return { answer: await model.write(fixedBriefMessages(testCase.says), BRIEF_OPTIONS), calls: [] };
   const wanted: ToolArea[] = [];
   const chatTools = storeTools(true);
   const toolsNow = () => (testCase.agent === "manager" ? managerTools(testCase, wanted) : chatTools);

@@ -24,6 +24,9 @@ export type AiReading = {
 
 const SUMMARY_MAX = 600;
 const REASON_MAX = 1500;
+/** How the model is asked, the same in a real reading and in the agents' eval (D391). */
+export const MODERATION_OPTIONS = { maxTokens: 400, temperature: 0, reasoningEffort: "low" as const, timeoutMs: 30_000 };
+
 /** How much of a notice or a listing the model is sent. */
 export const TEXT_MAX = 3000;
 

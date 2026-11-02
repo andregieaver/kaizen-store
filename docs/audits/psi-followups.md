@@ -418,7 +418,10 @@ The re-score ([psi-2026-10-31.md](psi-2026-10-31.md)) put the overall at 78.3 (8
       `src/lib/security-routes.scan.test.ts` fails a new area not named there; section 6 strikes what is closed (Permissions-Policy,
       framing, the holder, the audit log's sign-ins and refusals, `sql.raw`, Dependabot) and names what is open (the enforced script
       policy, HSTS `includeSubDomains`).
-- [ ] **SEC-12** The moderation prompts framed, in the eval and in the versions. Framing done 1 November 2026: the notice's address and
+- [ ] **SEC-12** The moderation prompts framed, in the eval and in the versions. In the eval and the versions since 2 November 2026:
+      cases `moderation-notice` (a notice steering the first reading), `moderation-listing` (a counterfeit listing telling the checker it is
+      fine; it must still be flagged) and `dream-brief` (the Dream Factory's brief makes up no business details), scored on their shapes
+      (`parseReading()`, `parseScreening()`, `readBrief()`); `promptVersions()` carries `moderation` and `dream`. Left: the live recording. Framing done 1 November 2026: the notice's address and
       explanation and a listing's texts reach the model between the shared data markers with text addressed to an AI taken out
       (`toolData()` in `triagePrompt()` and `screeningPrompt()`, `content-moderation.test.ts`). Left: triage and screening cases in the
       agents' eval and their prompts in `prompt-versions.ts`, which need a new live run on Platform → AI and its recording committed (CI's

@@ -3,6 +3,8 @@ import "server-only";
 import { createHash } from "node:crypto";
 
 import { systemPrompt } from "@/lib/chat";
+import { SCREENING_SYSTEM, screeningPrompt, TRIAGE_SYSTEM, triagePrompt, type Listing } from "@/lib/content-moderation";
+import { briefPrompt } from "@/lib/dream-factory";
 import { assembleLegalFacts } from "@/lib/legal-facts";
 import { jurisdictionsFor } from "@/lib/legal-sources";
 import { starterFactWords } from "@/lib/legal-starters";
@@ -15,10 +17,11 @@ import { factSheet, planLegalPage, writerMessages, writerSettings } from "@/lib/
  * (`assistant_messages.prompt_version`), the chat's (`data.prompt`) and every eval run (`ai_eval_runs.prompt_versions`), and the
  * agents' eval plays exactly these prompts, so a recording is of one version (`agent-eval-replay.int.test.ts`). The AI manager's fixed
  * prompt is drawn beside its prompt (`fixedManagerPrompt()` in `owner-assistant.ts`), so the shopper chat's routes never load it; all
- * three together are `promptVersions()` in `agent-eval.ts`.
+ * of them together are `promptVersions()` in `agent-eval.ts`. The notice reader and listing checker (D411 part 2) and the Dream Factory's
+ * brief (D409) are drawn here too: their system prompts and the code that frames what they are sent.
  */
 
-export type PromptAgent = "chat" | "manager" | "legal";
+export type PromptAgent = "chat" | "manager" | "legal" | "moderation" | "dream";
 export type PromptVersions = Record<PromptAgent, string>;
 
 /** A version: the first twelve hex digits of the text's SHA-256. */
@@ -84,3 +87,41 @@ export const legalPromptVersion = (): string =>
       .map((turn) => turn.content)
       .join("\n"),
   );
+
+/** A notice's first reading or a listing's check (D411 part 2), as `triageContentReport()` and `screenListings()` ask the model. */
+export function fixedModerationMessages(
+  script: { kind: "triage"; notice: { category: string; explanation: string; url: string }; listing: Listing | null } | { kind: "screening"; listing: Listing },
+): { role: "system" | "user"; content: string }[] {
+  return script.kind === "triage"
+    ? [
+        { role: "system", content: TRIAGE_SYSTEM },
+        { role: "user", content: triagePrompt(script.notice, script.listing) },
+      ]
+    : [
+        { role: "system", content: SCREENING_SYSTEM },
+        { role: "user", content: screeningPrompt(script.listing) },
+      ];
+}
+
+/** The moderation prompts' version: both system prompts and the framing of a fixed notice and listing. */
+export const moderationPromptVersion = (): string =>
+  once("moderation", () => {
+    const listing = { title: "Eval listing", description: "Eval description", safety: "Eval safety" };
+    return [
+      ...fixedModerationMessages({ kind: "triage", notice: { category: "other", explanation: "Eval explanation", url: "https://kaizenaflow.com/s/eval/no/p/x" }, listing }),
+      ...fixedModerationMessages({ kind: "screening", listing }),
+    ]
+      .map((m) => m.content)
+      .join("\n");
+  });
+
+/** The Dream Factory's brief (D409) for the fixed store, the owner's description being the case's. */
+export function fixedBriefMessages(description: string): { role: "system" | "user"; content: string }[] {
+  return [
+    { role: "system", content: briefPrompt("Eval Store") },
+    { role: "user", content: description },
+  ];
+}
+
+/** The brief's version: its system prompt for the fixed store. */
+export const dreamPromptVersion = (): string => once("dream", () => briefPrompt("Eval Store"));
