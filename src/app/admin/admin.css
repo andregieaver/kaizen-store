@@ -316,6 +316,20 @@ html[data-admin] .animate-pulse.rounded-lg:is(.bg-background, .bg-card):not(:is(
   animation: admin-shimmer 1.5s linear infinite;
 }
 
+/* The Dream Factory while it builds (D419): what was just made eases in, a part not made yet shimmers in the sketch, and the progress grows by scaling, so nothing reflows. */
+html[data-admin] .dream-new {
+  animation: admin-reveal 0.5s var(--ease) both;
+}
+html[data-admin] .dream-shimmer {
+  background-image: linear-gradient(100deg, transparent 30%, color-mix(in srgb, var(--card) 55%, transparent) 50%, transparent 70%);
+  background-size: 220% 100%;
+  animation: admin-shimmer 1.6s linear infinite;
+}
+html[data-admin] .dream-bar {
+  transform-origin: left;
+  transition: transform 0.8s var(--ease);
+}
+
 /* The bar along the top while a page loads (`AdminProgress`): it grows by scaling, so nothing reflows. */
 .admin-progress {
   position: fixed;

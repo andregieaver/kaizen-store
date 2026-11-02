@@ -2,26 +2,31 @@ import type { Metadata } from "next";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { AdminTextScope } from "@/components/admin/admin-text";
+import { DreamFeed, DreamMade, DreamProgress, DreamReady, DreamSketch, DreamTimeline } from "@/components/admin/dream/dream-showcase";
 import { RefreshWhile } from "@/components/admin/refresh-while";
 import { ButtonLink, Card, Chip, KpiTile, PageHeader } from "@/components/admin/ui";
 import { adminLangOf } from "@/lib/admin-lang";
-import type { Signal } from "@/lib/admin-schemes";
 import { adminText, adminTexts } from "@/lib/admin-text";
-import { DREAM_STEPS, PROMPT_MAX, PROMPT_MIN, briefQuestions, ownerWaitMs, scoreOf, type StepStatus } from "@/lib/dream-factory";
+import { DREAM_STEPS, PROMPT_MAX, PROMPT_MIN, briefQuestions, ownerWaitMs, scoreOf } from "@/lib/dream-factory";
+import { marketPath, storeHref } from "@/lib/paths";
 import { latestDreamRun } from "@/server/dream-factory";
+import { dreamShowcase } from "@/server/dream-showcase";
 import { requirePermission } from "@/server/permissions";
 
 import { answerDreamAction, confirmDreamAction, retryDreamAction, startDreamAction, stopDreamAction } from "./actions";
 
 export const metadata: Metadata = { title: "Dream Factory" };
 
-const SIGNAL: Record<StepStatus, Signal> = { waiting: "neutral", running: "insight", asking: "warning", done: "positive", skipped: "neutral", failed: "danger" };
+/** How often the page reads the run again while it goes: often enough to watch the store appear. */
+const REFRESH_SECONDS = 6;
 const field = "flex flex-col gap-1 text-body font-medium";
 const control = "min-h-11 rounded-md border border-line bg-card px-3 font-normal";
 
 /**
  * The Dream Factory (D409, `docs/dream-factory.md`): the owner describes the store, the AI builds it, and this page shows each step and asks
- * only for what the owner alone can give: the business's details, a yes to the brief, payments, a plan and the moment to open.
+ * only for what the owner alone can give: the business's details, a yes to the brief, payments, a plan and the moment to open. While it
+ * builds the owner watches it (D419): the progress and what is happening now, the timeline, a sketch of the front page filling in, what
+ * has been made and the feed of what was just made; when it is ready, the ways on.
  */
 export default async function DreamFactoryPage({ params }: { params: Promise<{ store: string }> }) {
   const member = await requirePermission((await params).store, "owner");
@@ -54,15 +59,25 @@ export default async function DreamFactoryPage({ params }: { params: Promise<{ s
     );
   }
 
-  const score = scoreOf({ ...run, ownerWaitMs: ownerWaitMs(run.steps, new Date()) });
+  const now = new Date();
+  const score = scoreOf({ ...run, ownerWaitMs: ownerWaitMs(run.steps, now) });
   const brief = run.brief;
   const questions = brief && run.steps.brief.status === "asking" ? briefQuestions(brief) : [];
   const runWords = w.run[run.status];
+  const show = await dreamShowcase(store, run);
+  const market = store.markets[0];
+  const storeUrl = storeHref(slug, market ? marketPath(slug, market.slug) : "/");
+  const address = hostOf(storeUrl) ?? slug;
+  // The store's front page once the website step has set it; before that the first page made, which the step makes the front page.
+  const front = store.frontPageId ?? show.pages.find((page) => page.pageId)?.pageId ?? null;
+  const ready = run.status === "ready" || run.status === "open";
   return (
     <AdminTextScope texts={adminTexts(lang, ["home"])}>
-      {going && <RefreshWhile seconds={15} />}
-      <div className="flex max-w-3xl flex-col gap-6">
+      {going && <RefreshWhile seconds={REFRESH_SECONDS} />}
+      <div className="flex max-w-6xl flex-col gap-6">
         <PageHeader title={w.title} description={<>{runWords}</>} status={run.test ? <Chip signal="insight">{w.test}</Chip> : undefined} />
+
+        {ready && <DreamReady show={show} links={{ store: storeUrl, front: front ? `${base}/pages/${front}` : null, products: `${base}/products` }} words={w} />}
 
         {/* What only the owner can give, first: the one thing in their way. */}
         {questions.length > 0 && brief && (
@@ -106,53 +121,71 @@ export default async function DreamFactoryPage({ params }: { params: Promise<{ s
             </ActionForm>
           </Card>
         )}
-        {run.steps.payments.status === "asking" && <ButtonLink href={`${base}/settings/payments`}>{w.payments}</ButtonLink>}
-        {run.steps.plan.status === "asking" && <ButtonLink href={`${base}/billing`}>{w.plan}</ButtonLink>}
-        {run.steps.open.status === "asking" && (
-          <ButtonLink kind="main" href={`${base}/setup/launch`}>
-            {w.open}
-          </ButtonLink>
+        {(run.steps.payments.status === "asking" || run.steps.plan.status === "asking" || run.steps.open.status === "asking") && (
+          <div className="flex flex-wrap gap-2">
+            {run.steps.payments.status === "asking" && <ButtonLink href={`${base}/settings/payments`}>{w.payments}</ButtonLink>}
+            {run.steps.plan.status === "asking" && <ButtonLink href={`${base}/billing`}>{w.plan}</ButtonLink>}
+            {run.steps.open.status === "asking" && (
+              <ButtonLink kind="main" href={`${base}/setup/launch`}>
+                {w.open}
+              </ButtonLink>
+            )}
+          </div>
         )}
 
-        <ol className="flex flex-col divide-y divide-line rounded-lg border border-line">
-          {DREAM_STEPS.map((step) => {
-            const state = run.steps[step.id];
-            const canRetry = step.who !== "owner" && state.status === "asking" && step.id !== "brief";
-            return (
-              <li key={step.id} className="flex flex-wrap items-start justify-between gap-3 px-4 py-3">
-                <div className="flex min-w-0 flex-col gap-1">
-                  <span className="font-medium">{w.steps[step.id]}</span>
-                  {state.detail && <span className="text-body text-ink-2">{state.detail}</span>}
-                </div>
-                <div className="flex items-center gap-2">
-                  {canRetry && (
-                    <ActionForm action={retryDreamAction.bind(null, slug, run.id, step.id)}>
+        {going && <DreamProgress steps={run.steps} startedAt={run.createdAt} now={now} storeName={brief?.storeName || store.name} words={w} />}
+
+        {/* The sketch first on a phone, where the timeline would push it out of sight; beside the timeline on a wide screen. */}
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:grid-rows-[auto_1fr]">
+          <div className="min-w-0 lg:col-start-2 lg:row-start-1">
+            <DreamSketch show={show} storeName={brief?.storeName || store.name} address={address} words={w} />
+          </div>
+          <div className="flex min-w-0 flex-col gap-4 lg:col-start-1 lg:row-span-2 lg:row-start-1">
+            <div className="rounded-lg border border-line bg-card p-5">
+              <DreamTimeline
+                steps={run.steps}
+                now={now}
+                words={w}
+                action={(id) =>
+                  run.steps[id].status === "asking" && id !== "brief" && !OWNER_STEPS.has(id) ? (
+                    <ActionForm action={retryDreamAction.bind(null, slug, run.id, id)}>
                       <SubmitButton variant="secondary">{w.retry}</SubmitButton>
                     </ActionForm>
-                  )}
-                  <Chip signal={SIGNAL[state.status]} dot>
-                    {w.status[state.status]}
-                  </Chip>
-                </div>
-              </li>
-            );
-          })}
-        </ol>
-
-        <div className="grid gap-3 sm:grid-cols-3">
-          <KpiTile label={w.score.minutes} value={score.minutesToReady === null ? "–" : String(score.minutesToReady)} />
-          <KpiTile label={w.score.presses} value={String(score.ownerPresses)} />
-          <KpiTile label={w.score.firstTry} value={score.firstTryPercent === null ? "–" : `${score.firstTryPercent} %`} />
+                  ) : null
+                }
+              />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <KpiTile label={w.score.minutes} value={score.minutesToReady === null ? "–" : String(score.minutesToReady)} />
+              <KpiTile label={w.score.presses} value={String(score.ownerPresses)} />
+              <KpiTile label={w.score.firstTry} value={score.firstTryPercent === null ? "–" : `${score.firstTryPercent} %`} />
+            </div>
+            {going && (
+              <ActionForm action={stopDreamAction.bind(null, slug, run.id)}>
+                <SubmitButton variant="secondary">{w.stop}</SubmitButton>
+              </ActionForm>
+            )}
+          </div>
+          <div className="flex min-w-0 flex-col gap-4 self-start lg:col-start-2 lg:row-start-2">
+            <DreamFeed show={show} now={now} words={w} />
+            <DreamMade show={show} base={base} words={w} />
+          </div>
         </div>
-
-        {going && (
-          <ActionForm action={stopDreamAction.bind(null, slug, run.id)}>
-            <SubmitButton variant="secondary">{w.stop}</SubmitButton>
-          </ActionForm>
-        )}
       </div>
     </AdminTextScope>
   );
+}
+
+/** The steps that are the owner's own (their yes, payments, a plan, opening): nothing to try again. */
+const OWNER_STEPS = new Set<string>(DREAM_STEPS.filter((step) => step.who === "owner").map((step) => step.id));
+
+/** The store's address as a visitor's browser shows it, for the sketch. */
+function hostOf(url: string): string | null {
+  try {
+    return new URL(url).host;
+  } catch {
+    return null;
+  }
 }
 
 function Field({ name, label, type = "text" }: { name: string; label: string; type?: string }) {

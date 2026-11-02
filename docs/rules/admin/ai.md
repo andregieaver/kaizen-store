@@ -192,6 +192,19 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   Stores and Platform → AI link there) or on `/admin/{store}/dream-factory`; scored
   on Platform → AI (`scoreOf()`); the live drill `dream_factory` signs up through the real path with `DRILL_PROMPT`; it counts as passed only once the run is ready, waiting until then and failed when the run failed or was stopped (`settleDreamDrills()`).
 
+## Watching the Dream Factory build (D419, `src/lib/dream-showcase.ts`, `src/server/dream-showcase.ts`, `src/components/admin/dream/dream-showcase.tsx`)
+
+- **Watching the Dream Factory build (D419, `src/lib/dream-showcase.ts`, `src/server/dream-showcase.ts`, `src/components/admin/dream/dream-showcase.tsx`)**:
+  while a run goes, `/admin/{store}/dream-factory` reads itself again every six seconds and shows the progress and what is happening now
+  (`showcaseProgress()`), every step on a timeline with its minutes (`stepMinutes()`), a sketch of the store's front page that fills in as
+  things are made (`DreamSketch`), the feed of what was just made and a card for each kind made (`DreamMade`); when the run is ready, the
+  ways on (`DreamReady`). What it shows is only the store's own rows made since the run began (`dreamShowcase()`: research notes, the brand,
+  the latest look installed, the logo and icon by their file names, products with a picture and the first market's price, the draft's pages
+  or the run's pages, the legal pages written, the goals), and every sentence is the code's catalogue (`home.dream.show`), never a model's
+  narration: a step's words say what the step does, the feed says what row was made. A colour or a font from a look reaches a `style` only
+  through `safeColour()` and `safeFont()`; model-written titles, taglines and findings are rendered as text. A new step needs its line in
+  `show.doing` in both languages, and a new kind of thing made a `FeedKind` with its words in `show.made`.
+
 ## A custom app's tools (wave 9 unit J, D363, `src/lib/custom-apps.ts`, `src/server/custom-apps.ts`)
 
 - **A custom app's tools (wave 9 unit J, D363, `src/lib/custom-apps.ts`, `src/server/custom-apps.ts`)**: an owner's MCP apps are written only by

@@ -32,6 +32,25 @@ model's word, so a run can be scored the same way every time.
 **Not yet:** the rehearsal does not place and pay a test order (paying needs Stripe's own checkout page in a browser); a domain is the
 owner's on Domains, outside the run; `/dream-factory` on Kaizena Flow's own site still says "Coming soon" (its text is the owner's page).
 
+## Watching it build (D419)
+
+The owner's page is made to be watched, not only waited on. While a run goes it reads itself again every six seconds and shows:
+
+- **The progress:** "Building {store}", a bar of the steps passed of all thirteen, how long ago it started, and a line for each step working
+  now in plain words ("Making the products, each with a picture, words and a price"), or the next step when nothing works.
+- **The timeline:** every step in order, ticked with its minutes once passed, turning while it works, its check's finding beneath it, *Try
+  again* where a step became a question.
+- **A sketch of the front page** in a browser frame with the store's address: the store's name or logo in the look's heading font, the pages
+  as its menu, the brand's tagline, a *Shop now* button in the look's colours and the first four products with their pictures and prices.
+  What is not made yet shimmers in grey, so the owner sees the store take shape as the brand, the logo, the pages and the products land.
+- **Just made:** the newest eight things made, with how long ago ("Made the product Morning mug, 2 min ago").
+- **Made so far:** the brand (voice, values, colours, fonts), the research notes with the sites they rest on, the products (each linked to its
+  editor), the pages with their state (building, built, live) and a link to each, the legal pages and the first goals.
+- **When ready:** *Your store is ready*, with *See your store*, *Edit the front page* and *See the products*.
+
+On a phone the sketch comes first, then the timeline. Everything shown is read from the store's own rows made since the run began
+(`src/server/dream-showcase.ts`); every sentence is the code's own words, so nothing on the page is a model's account of what it did.
+
 ## The workflow
 
 Steps in the same lane run side by side; a lane starts when the steps it needs have passed. **Owner** marks the presses only a person

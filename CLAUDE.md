@@ -212,6 +212,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - Versions compared and staging (wave 9 unit E, D358, `src/lib/version-compare.ts`, `src/server/site-staging.ts`)
 - Self-serve sign-up (wave 9 unit F, D359, `src/server/self-signup.ts`)
 - The Dream Factory (D409, `docs/dream-factory.md`, `src/lib/dream-factory.ts`, `src/server/dream-factory.ts`)
+- Watching the Dream Factory build (D419, `src/lib/dream-showcase.ts`, `src/server/dream-showcase.ts`, `src/components/admin/dream/dream-showcase.tsx`)
 - Notices of illegal content (D411, `docs/dsa.md`, `src/lib/content-reports.ts`, `src/server/content-reports.ts`, `src/server/content-moderation.ts`)
 - The status page (wave 9 unit G, D360, `src/lib/status.ts`, `src/server/status.ts`)
 - The installable admin and push (wave 9 unit H, D361, `src/lib/admin-sw.ts`, `src/lib/push.ts`, `src/server/push.ts`)
