@@ -362,7 +362,9 @@ changing it; a rule changes here, and its line in CLAUDE.md when its gist change
   `/admin/platform/chat`), shown by `StoreChat`/`KaizenChat` in the layouts
   while on and the site's AI has a text model (`chatWidgetFor()`, tagged
   `chatTag()` and `AI_TAG`). `runChat()` gives the model the rules
-  (`systemPrompt()`: only the site, facts only from tools) and the site's
+  (`systemPrompt()`: only the site, facts only from tools; whatever the site's own pages, articles or knowledge
+  base speak of is the site's, a comparison with another company included, and the model searches before it
+  says it cannot help, D428) and the site's
   own reads as tools (`storeTools()`/`kaizenTools()`); a new tool answers
   from Kaizen's own data, never the model's. `navigate` only opens the
   site's existing pages, built with `marketPath()`. Answers pass
