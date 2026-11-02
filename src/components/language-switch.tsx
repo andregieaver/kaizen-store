@@ -14,7 +14,8 @@ function sameIn(lang: PlatformLang, pathname: string, query: string): string {
 
 /**
  * The site's languages, each a link to this page in it (D312): the *Languages* part of Kaizena Flow's header or footer, where the
- * owner places it (nothing is added under the footer by itself). A full page load, as each language is a root layout of its own.
+ * owner places it (nothing is added under the footer by itself). A full page load, as each language is a root layout of its own. Each
+ * is a target of 24 px at least (WCAG 2.5.8, `e2e/target-size.spec.ts`), in a footer as anywhere.
  * Drawn in a `<Suspense>`: it reads the address.
  */
 export function LanguageSwitch({ lang, offered }: { lang: PlatformLang; offered: readonly PlatformLang[] }) {
@@ -25,11 +26,11 @@ export function LanguageSwitch({ lang, offered }: { lang: PlatformLang; offered:
     <nav aria-label={LANGUAGE_HINT_TEXT[lang].switchLabel} className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
       {offered.map((other) =>
         other === lang ? (
-          <span key={other} aria-current="true" lang={PLATFORM_LANG_FACTS[other].tag} className="font-medium text-foreground">
+          <span key={other} aria-current="true" lang={PLATFORM_LANG_FACTS[other].tag} className="inline-flex min-h-6 items-center font-medium text-foreground">
             {PLATFORM_LANG_FACTS[other].name}
           </span>
         ) : (
-          <a key={other} href={sameIn(other, pathname, query)} hrefLang={PLATFORM_LANG_FACTS[other].tag} lang={PLATFORM_LANG_FACTS[other].tag} className="underline">
+          <a key={other} href={sameIn(other, pathname, query)} hrefLang={PLATFORM_LANG_FACTS[other].tag} lang={PLATFORM_LANG_FACTS[other].tag} className="inline-flex min-h-6 min-w-6 items-center underline">
             {PLATFORM_LANG_FACTS[other].name}
           </a>
         ),

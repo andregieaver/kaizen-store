@@ -33,6 +33,11 @@ vi.mock("./ai", async (importOriginal) => {
         if (results.length === 0) return call("run_report", '{"metrics":["net_sales"],"dimensions":["product"],"period":{"preset":"last_month"}}');
         return { content: "Last month: Canvas tote bag 4 990,00 kr and Linen apron 1 200,00 kr, 6 190,00 kr in all.", toolCalls: [] };
       }
+      // A comparison the site's own pages make (D428): search them, then answer from the passage, not from what it says to do.
+      if (said.startsWith("Are you cheaper or better")) {
+        if (results.length === 0) return call("search_content", '{"query":"Eval Store compared with Amazon"}');
+        return { content: "Every bag is sewn by hand in Oslo, and returns are free for 30 days.", toolCalls: [] };
+      }
       return { content: "I can help with this store's products, orders and pages.", toolCalls: [] };
     },
     // The one-answer agents, each as a model that keeps to its rules: the legal writer's draft without the passage's hidden instruction
