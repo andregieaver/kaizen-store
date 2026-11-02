@@ -1,0 +1,132 @@
+diff --git a/dist/client/components/router-reducer/fetch-server-response.js b/dist/client/components/router-reducer/fetch-server-response.js
+index b446c3b019af3eeca1858e68338def3be7689ecd..d9005e199aff49f4137b78a8f31b6ccb08e934a0 100644
+--- a/dist/client/components/router-reducer/fetch-server-response.js
++++ b/dist/client/components/router-reducer/fetch-server-response.js
+@@ -65,6 +65,12 @@ function doMpaNavigation(url) {
+     return (0, _routeparams.urlToUrlWithoutFlightMarker)(new URL(url, location.origin)).toString();
+ }
+ let isPageUnloading = false;
++// Kaizena Flow patch (patches/next@16.4.2.patch, see docs/decisions.md D423): WebKit cancels a page's requests as soon as a
++// whole-page navigation starts, when `beforeunload` fires and before `pagehide`, while the page's scripts still run. A router request
++// cancelled so must not fall back to loading its own address, which would replace the navigation the visitor asked for: it waits
++// instead. If the visitor comes back to this page from the back-forward cache (`pageshow`), it is answered with a fresh load of the
++// page as it stands, the address the visitor came back to, never the one it was on its way to.
++const leftBehind = [];
+ if (typeof window !== 'undefined') {
+     // Track when the page is unloading, e.g. due to reloading the page or
+     // performing hard navigations. This allows us to suppress error logging when
+@@ -76,6 +82,8 @@ if (typeof window !== 'undefined') {
+     // execution context is restored by the browser.
+     window.addEventListener('pageshow', ()=>{
+         isPageUnloading = false;
++        // Kaizena Flow patch: back on this page, the requests cancelled as it was left are answered now.
++        for (const fallBack of leftBehind.splice(0))fallBack();
+     });
+ }
+ async function fetchServerResponse(url, options) {
+@@ -95,6 +103,15 @@ async function fetchServerResponse(url, options) {
+     // In static export mode, we need to modify the URL to request the .txt file,
+     // but we should preserve the original URL for the canonical URL and error handling.
+     const originalUrl = url;
++    // Kaizena Flow patch: when the browser started leaving this page while this request was out. Listened for only meanwhile, as a
++    // standing `beforeunload` listener can keep a page out of the back-forward cache; three seconds bound it for a leave called off.
++    let leftAt = null;
++    const onLeave = ()=>{
++        leftAt = Date.now();
++    };
++    if (typeof window !== 'undefined') {
++        window.addEventListener('beforeunload', onLeave);
++    }
+     try {
+         if (process.env.NODE_ENV === 'production') {
+             if (process.env.__NEXT_CONFIG_OUTPUT === 'export') {
+@@ -203,6 +220,12 @@ async function fetchServerResponse(url, options) {
+             // failure or falling back to an MPA navigation.
+             throw err;
+         }
++        if (isPageUnloading || leftAt !== null && Date.now() - leftAt < 3000) {
++            // Kaizena Flow patch: cancelled by the browser on its way out of this page; see `leftBehind`.
++            return new Promise((resolve)=>{
++                leftBehind.push(()=>resolve(location.href));
++            });
++        }
+         // If the fetch rejected due to a network error, wait for connectivity
+         // to be restored and then retry. checkOfflineError returns true for
+         // network errors (and starts the polling loop); returns false for
+@@ -230,6 +253,10 @@ async function fetchServerResponse(url, options) {
+         // TODO-APP: Add a test for the case where a CORS request fails, e.g. external url redirect coming from the response.
+         // See https://github.com/vercel/next.js/issues/43605#issuecomment-1451617521 for a reproduction.
+         return originalUrl.toString();
++    } finally{
++        if (typeof window !== 'undefined') {
++            window.removeEventListener('beforeunload', onLeave);
++        }
+     }
+ }
+ async function processFetch(response) {
+diff --git a/dist/esm/client/components/router-reducer/fetch-server-response.js b/dist/esm/client/components/router-reducer/fetch-server-response.js
+index 306f6d58ee69eecb5f2090e198db649c97db71ff..f0256bf42f5b9dce8674b6410f46b2d551bcf638 100644
+--- a/dist/esm/client/components/router-reducer/fetch-server-response.js
++++ b/dist/esm/client/components/router-reducer/fetch-server-response.js
+@@ -25,6 +25,12 @@ function doMpaNavigation(url) {
+     return urlToUrlWithoutFlightMarker(new URL(url, location.origin)).toString();
+ }
+ let isPageUnloading = false;
++// Kaizena Flow patch (patches/next@16.4.2.patch, see docs/decisions.md D423): WebKit cancels a page's requests as soon as a
++// whole-page navigation starts, when `beforeunload` fires and before `pagehide`, while the page's scripts still run. A router request
++// cancelled so must not fall back to loading its own address, which would replace the navigation the visitor asked for: it waits
++// instead. If the visitor comes back to this page from the back-forward cache (`pageshow`), it is answered with a fresh load of the
++// page as it stands, the address the visitor came back to, never the one it was on its way to.
++const leftBehind = [];
+ if (typeof window !== 'undefined') {
+     // Track when the page is unloading, e.g. due to reloading the page or
+     // performing hard navigations. This allows us to suppress error logging when
+@@ -36,6 +42,8 @@ if (typeof window !== 'undefined') {
+     // execution context is restored by the browser.
+     window.addEventListener('pageshow', ()=>{
+         isPageUnloading = false;
++        // Kaizena Flow patch: back on this page, the requests cancelled as it was left are answered now.
++        for (const fallBack of leftBehind.splice(0))fallBack();
+     });
+ }
+ /**
+@@ -58,6 +66,15 @@ if (typeof window !== 'undefined') {
+     // In static export mode, we need to modify the URL to request the .txt file,
+     // but we should preserve the original URL for the canonical URL and error handling.
+     const originalUrl = url;
++    // Kaizena Flow patch: when the browser started leaving this page while this request was out. Listened for only meanwhile, as a
++    // standing `beforeunload` listener can keep a page out of the back-forward cache; three seconds bound it for a leave called off.
++    let leftAt = null;
++    const onLeave = ()=>{
++        leftAt = Date.now();
++    };
++    if (typeof window !== 'undefined') {
++        window.addEventListener('beforeunload', onLeave);
++    }
+     try {
+         if (process.env.NODE_ENV === 'production') {
+             if (process.env.__NEXT_CONFIG_OUTPUT === 'export') {
+@@ -166,6 +183,12 @@ if (typeof window !== 'undefined') {
+             // failure or falling back to an MPA navigation.
+             throw err;
+         }
++        if (isPageUnloading || leftAt !== null && Date.now() - leftAt < 3000) {
++            // Kaizena Flow patch: cancelled by the browser on its way out of this page; see `leftBehind`.
++            return new Promise((resolve)=>{
++                leftBehind.push(()=>resolve(location.href));
++            });
++        }
+         // If the fetch rejected due to a network error, wait for connectivity
+         // to be restored and then retry. checkOfflineError returns true for
+         // network errors (and starts the polling loop); returns false for
+@@ -193,6 +216,10 @@ if (typeof window !== 'undefined') {
+         // TODO-APP: Add a test for the case where a CORS request fails, e.g. external url redirect coming from the response.
+         // See https://github.com/vercel/next.js/issues/43605#issuecomment-1451617521 for a reproduction.
+         return originalUrl.toString();
++    } finally{
++        if (typeof window !== 'undefined') {
++            window.removeEventListener('beforeunload', onLeave);
++        }
+     }
+ }
+ /**

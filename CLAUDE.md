@@ -17,7 +17,9 @@ phased build plan are in `docs/plan.md`; read it before architectural work.
 
 ## Stack
 
-- Next.js 16.4 (App Router, `cacheComponents` on), React 19, TypeScript, Tailwind 4, pnpm.
+- Next.js 16.4 (App Router, `cacheComponents` on), React 19, TypeScript, Tailwind 4, pnpm. Next.js carries one patch
+  (`patches/next@16.4.2.patch`, D423: its router no longer sends a Safari visitor back to a page they were leaving); an upgrade
+  moves it to the new version or drops it, and `e2e/store-pages.spec.ts` says which.
 - Supabase project "Kaizen Store" (`ybsozesfuxuitoacntfo`, eu-west-1 Ireland).
 - Vercel functions pinned to `dub1` (Dublin) in `vercel.json` to sit next to the
   database. Keep data processing in the EU when adding any vendor.

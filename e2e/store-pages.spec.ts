@@ -53,3 +53,33 @@ test("the store opens with its front page, a content grid of its products, at th
   await page.goto("/s/demo/se/forside");
   await expect(page).toHaveURL("/s/demo/se");
 });
+
+test("leaving while the next page is still on its way goes where the shopper asked, never to that page", async ({ page }) => {
+  // Safari's engine cancels a page's requests the moment a whole-page load starts, while the page's scripts still run. The router took
+  // its cancelled request for a failure and loaded that page's address in full instead, taking the shopper there and not where they
+  // asked (patches/next@16.4.2.patch). Here the search page is not prefetched, so going to it needs a request of its own, and that
+  // request is held, as on a slow connection.
+  const search = "/s/demo/se/search";
+  let release = () => {};
+  const held = new Promise<void>((resolve) => (release = resolve));
+  const own = (headers: Record<string, string>) => Boolean(headers.rsc) && !headers["next-router-prefetch"];
+  await page.route(
+    (url) => url.pathname === search,
+    async (route) => {
+      const headers = route.request().headers();
+      if (headers["next-router-prefetch"]) return route.abort();
+      if (!own(headers)) return route.fallback();
+      await held;
+      await route.continue().catch(() => {});
+    },
+  );
+  await page.goto("/s/demo/se");
+  const asked = page.waitForRequest((r) => new URL(r.url()).pathname === search && own(r.headers()));
+  await page.getByRole("link", { name: "Sök" }).first().click();
+  await asked;
+  // A whole-page load elsewhere before the search page came: an address typed, a bookmark, a plain link.
+  await page.goto("/s/demo/se/om-oss");
+  await expect(page.getByText("Vi säljer saker för hem och kontor.")).toBeVisible();
+  await expect(page).toHaveURL("/s/demo/se/om-oss");
+  release();
+});
