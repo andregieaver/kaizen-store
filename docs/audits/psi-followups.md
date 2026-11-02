@@ -459,9 +459,18 @@ The re-score ([psi-2026-11-01.md](psi-2026-11-01.md)) put the overall at 80.0 (8
       `page.ai_pictures_stopped`).
 - [x] **ACC-04, ACC-02** The Checks panel says how text over a picture is checked; the platform's starter hero and the page studio's hero
       pictures take a 60 % overlay, so they pass their own check; the Before and after slider's focus ring reads on any picture.
-- [ ] **REG-02** The platform's privacy notice, terms and `/report` say that an AI reads notices first and screens listings (owner and
-      lawyer).
-- [ ] **SEC-10** `/report`'s site-wide ceiling: keep notices past it without the receipt and the AI reading, or not (owner's choice).
+- [x] **REG-02** The platform's privacy notice, terms and `/report` say that an AI reads notices first and screens listings (owner and
+      lawyer). Written 2 November 2026: `/report` says an AI reads each notice first and a person decides, what the sender's name and
+      email are used for and when they go, with a link to the privacy notice (en, nb); the terms' section 7 is now *Acceptable use and
+      how we moderate content* (notices, the AI's first reading, the listing check, what may be done, the statement of reasons, how to
+      contest; DSA art. 14); the privacy notice names notices as a purpose (Art. 6(1)(c), DSA arts. 16 and 17), OpenAI's first reading,
+      the 12 months, and section 10 says a person decides each. The published pages take it when a platform admin writes them again
+      (Platform → Pages, *Write the legal pages* with Terms and Privacy ticked); the lawyer's review is the owner's.
+- [x] **SEC-10** `/report`'s site-wide ceiling: keep notices past it without the receipt and the AI reading, or not (owner's choice).
+      Done 2 November 2026 (the owner asked): past one visitor's 5 an hour a notice is refused as before; past the site's 30 it is kept
+      quietly, with no receipt, no admin email and no AI reading at once (`budgetRoom()` says which budget was passed;
+      `submitContentReport(…, { quiet })`); the platform admins get one email that hour (`platform.content_report_flood`), and the
+      dispatcher's `contentModeration` job reads the quiet ones a few at a time (`content-reports.int.test.ts`).
 - [ ] **REL-06** The seven cron routes that work after answering, recorded in the job ledger as the Dream Factory's is.
 - [ ] **SEC-08, CODE-01** The six red Dependabot pull requests (TypeScript 6 and opentype.js 2 break the build).
 - [ ] **PERF-01** The admin's p75 LCP (3.93 s): cut the shared scripts, the English fallback first.

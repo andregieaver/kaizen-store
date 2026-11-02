@@ -7,6 +7,7 @@ vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, refresh: () => {} }));
 
 const reports = await import("./content-reports");
+const { budgetRoom, BUDGETS } = await import("./request-budget");
 
 /**
  * Notices of illegal content (DSA art. 16, D411) against a real database: kept with the store the address names, a receipt to the
@@ -73,6 +74,18 @@ describe("notices of illegal content (DSA art. 16, D411)", () => {
     expect(await emailsTo(to, "platform.content_report_received")).toHaveLength(reports.RECEIPTS_A_DAY);
   });
 
+  it("keeps a notice past the site's hourly ceiling without its receipt or alerts, and tells the admins once that hour (PSI SEC-10)", async () => {
+    const to = `quiet-${run}@example.com`;
+    const first = await reports.submitContentReport(notice({ email: to }), "en", { quiet: true });
+    const second = await reports.submitContentReport(notice({ email: to }), "en", { quiet: true });
+    const kept = await db().execute<Row>(sql`select id, status from commerce.content_reports where id in (${first}::uuid, ${second}::uuid)`);
+    expect(kept.map((r) => r.status)).toEqual(["received", "received"]);
+    expect(await emailsTo(to, "platform.content_report_received")).toHaveLength(0);
+    const flood = await emailsTo(admin.email, "platform.content_report_flood");
+    expect(flood).toHaveLength(1);
+    expect(flood[0]).toContain("kept in the queue");
+  });
+
   it("takes a notice about children without a sender, and finds no store for an address outside Kaizena Flow", async () => {
     const id = await reports.submitContentReport(notice({ category: "minors", name: "", email: "", url: "https://elsewhere.example/x", explanation: `Abuse ${run}` }), "en");
     const [row] = await db().execute<Row>(sql`select store_id, reporter_name, reporter_email from commerce.content_reports where id = ${id}::uuid`);
@@ -116,5 +129,21 @@ describe("notices of illegal content (DSA art. 16, D411)", () => {
     expect(await reports.pruneContentReports()).toBeGreaterThanOrEqual(1);
     const [row] = await db().execute<Row>(sql`select reporter_name, reporter_email, decision from commerce.content_reports where id = ${id}::uuid`);
     expect(row).toEqual({ reporter_name: null, reporter_email: null, decision: "Not illegal as described." });
+  });
+});
+
+describe("the notice form's budget (PSI SEC-10)", () => {
+  it("tells one visitor's limit apart from the whole site's, so past the site's a notice can still be kept", async () => {
+    // A fresh bucket of its own: the budget for a test store keeps this apart from the form's real counters.
+    const scope = store.id;
+    const { visitor, store: site } = BUDGETS.report;
+    let room = await budgetRoom(scope, "report", `visitor-a-${run}`);
+    expect(room).toEqual({ visitor: true, store: true });
+    for (let i = 1; i < visitor; i++) room = await budgetRoom(scope, "report", `visitor-a-${run}`);
+    expect(room.visitor).toBe(true);
+    expect((await budgetRoom(scope, "report", `visitor-a-${run}`)).visitor).toBe(false);
+    // Others fill the site's ceiling; a new visitor is then within their own and past the site's.
+    for (let i = visitor + 1; i < site; i++) await budgetRoom(scope, "report", `visitor-${i}-${run}`);
+    expect(await budgetRoom(scope, "report", `visitor-new-${run}`)).toEqual({ visitor: true, store: false });
   });
 });

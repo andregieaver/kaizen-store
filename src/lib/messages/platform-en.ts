@@ -303,7 +303,7 @@ export const platformEn = {
   report: {
     title: "Report illegal content",
     description: "Tell Kaizena Flow about a product, page or picture on a store that you believe is illegal.",
-    intro: "Tell us what you found and why you think it is illegal. A person at Kaizena Flow looks at every notice, decides, and writes back with the reason.",
+    intro: "Tell us what you found and why you think it is illegal. An AI model reads each notice first, to sort it and suggest how urgent it is; then a person at Kaizena Flow looks at every notice, decides, and writes back with the reason. The AI never decides.",
     url: "Address of the content",
     urlHint: "The exact web address of the product, page or picture.",
     category: "What kind of problem is it?",
@@ -322,6 +322,8 @@ export const platformEn = {
     name: "Your name",
     email: "Your email",
     contactHint: "We send you a receipt and our decision. For abuse of children you may leave both empty.",
+    dataNote: "Your name and email are used only to handle this notice and write back to you, and are deleted 12 months after the decision.",
+    privacyLink: "How we handle notices and your data",
     goodFaith: "I believe in good faith that what I report is accurate and complete.",
     send: "Send the notice",
     received: "Thank you. We have your notice and will decide it as soon as we can. If you gave your email, a receipt is on its way.",

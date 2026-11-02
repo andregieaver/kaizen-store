@@ -72,7 +72,7 @@ Vi kan endre prisene med minst 30 dagers varsel. En endring gjelder fra neste fa
         },
         {
           topic: "use",
-          heading: "7. Akseptabel bruk",
+          heading: "7. Akseptabel bruk og hvordan vi modererer innhold",
           body: `Du kan ikke bruke Kaizena Flow til å:
 
 - selge varer eller tjenester som er ulovlige der de selges eller sendes, eller som en betalingsleverandør du bruker, ikke tillater
@@ -81,7 +81,15 @@ Vi kan endre prisene med minst 30 dagers varsel. En endring gjelder fra neste fa
 - spre skadevare, angripe, overbelaste eller teste tjenesten eller andre butikker, eller omgå grensene og sikkerheten i den
 - kopiere, videreselge eller dekompilere tjenesten, utover det loven tillater
 
-Vi kan fjerne innhold og stenge en butikk eller en konto som bryter disse reglene, som beskrevet i punkt 12.`,
+Vi kan fjerne innhold og stenge en butikk eller en konto som bryter disse reglene, som beskrevet i punkt 12.
+
+**Meldinger om ulovlig innhold.** Alle kan si fra til oss om innhold i en butikk som de mener er ulovlig, gjennom *Meld fra om ulovlig innhold* nederst på hver butikks sider og på vårt eget nettsted. En melding sier hvor innholdet er, hvorfor det er ulovlig og hvem som sender den (den som melder fra om overgrep mot barn, kan være anonym). Avsenderen får en kvittering når vedkommende oppgir en e-postadresse.
+
+**Hvordan meldinger behandles.** En KI-modell leser hver melding først, sammen med annonsens egen tekst når adressen er en annonse vi er vert for: den foreslår hva slags problem det er, hvor hastende det er, et kort sammendrag og et utkast til begrunnelse. Deretter leser en person hos Kaizena Flow meldingen, avgjør den og skriver begrunnelsen; KI-en avgjør, fjerner eller sender aldri noe selv. Vi sjekker også nye og endrede annonser i aktive butikker med en KI-modell for tydelige tegn på ulovlige produkter, som tilbakekalte, forbudte eller forfalskede varer; en annonse den markerer, havner i samme kø, og en person avgjør den på samme måte. Dette gjør vi av eget tiltak, og vi overvåker ikke innhold generelt.
+
+**Hva vi kan gjøre.** Der innhold er ulovlig eller bryter disse vilkårene, kan vi fjerne det eller gjøre det utilgjengelig, skjule et produkt, eller stenge eller avslutte en butikk eller en konto (punkt 12). Når vi begrenser innholdet ditt, forteller vi deg hva vi gjorde, hvorfor, hvilket grunnlag vi bygget på, om en melding satte det i gang og om automatiserte midler ble brukt, og hvordan du kan bestride det. Den som sendte meldingen, får vite avgjørelsen og begrunnelsen, uten personopplysningene dine.
+
+**Bestride en avgjørelse.** Svar på meldingen fra oss for å be oss se på saken igjen, så ser en person på den på nytt. Du kan også henvende deg til koordinatoren for digitale tjenester i landet ditt, eller til domstolene.`,
         },
         {
           topic: "ai",
@@ -182,7 +190,8 @@ Den gjelder ikke det butikkene gjør med opplysninger om sine egne kunder. Hver 
 - **Kundestøtte og KI-assistenten:** det du skriver til Kaizena Flows kundestøtte og til KI-assistenten, og det KI-assistenten husker for deg (som du kan se, endre og slå av), for å hjelpe deg. Grunnlag: avtalen vår (artikkel 6 nr. 1 bokstav b).
 - **E-post vi sender:** e-postene vi sender deg og om de kom fram, for å sende det tjenesten må fortelle deg. Grunnlag: avtalen vår og berettiget interesse (artikkel 6 nr. 1 bokstav b og f).
 - **Nettstedet vårt:** informasjonskapslene som trengs for at nettstedet skal virke. Informasjonskapsler for statistikk eller markedsføring, og informasjonskapselen til vervekampanjen, settes bare hvis du samtykker, og valget ditt lagres i 12 måneder. Grunnlag: samtykke (artikkel 6 nr. 1 bokstav a). Se [siden om informasjonskapsler](${f.links.cookies}).
-- **Vervekampanjen:** hvem som vervet en butikk og kreditten som er opptjent, for å betale den som vervet. Grunnlag: avtalen vår med den som vervet (artikkel 6 nr. 1 bokstav b).`,
+- **Vervekampanjen:** hvem som vervet en butikk og kreditten som er opptjent, for å betale den som vervet. Grunnlag: avtalen vår med den som vervet (artikkel 6 nr. 1 bokstav b).
+- **Meldinger om ulovlig innhold:** når du melder fra om innhold gjennom *Meld fra om ulovlig innhold*, navnet ditt, e-postadressen, adressen du melder fra om og det du skriver, for å behandle meldingen, sende deg en kvittering og fortelle deg avgjørelsen. En KI-modell leser hver melding først for å sortere den og skrive et utkast til sammendrag, og en person avgjør den (se punkt 10). Grunnlag: den rettslige plikten vi har som vertstjeneste til å ta imot og avgjøre meldinger (artikkel 6 nr. 1 bokstav c og forordningen om digitale tjenester, forordning (EU) 2022/2065, artikkel 16 og 17).`,
         },
         {
           topic: "recipients",
@@ -192,7 +201,7 @@ Den gjelder ikke det butikkene gjør med opplysninger om sine egne kunder. Hver 
 - **Vercel** (drift; funksjonene våre kjører i Dublin, Irland)
 - **Supabase** (database, innlogging og fillagring, i Irland)
 - **Resend** (utsending av e-post)
-- **OpenAI** (KI-funksjoner, når Kaizena Flows egen KI-tilkobling brukes)
+- **OpenAI** (KI-funksjoner, når Kaizena Flows egen KI-tilkobling brukes, og den første lesingen av meldinger om ulovlig innhold)
 - **Stripe** (fakturering og betaling av gebyrene våre; Stripe er også selv behandlingsansvarlig for betalingsopplysningene den behandler etter sine egne vilkår)
 
 Vi deler også opplysninger der loven krever det, for eksempel med skattemyndighetene, og med en virksomhet som overtar hele eller deler av vår, som da må følge denne erklæringen.`,
@@ -210,7 +219,8 @@ Vi deler også opplysninger der loven krever det, for eksempel med skattemyndigh
 - Aktivitetsloggen: 24 måneder.
 - Regnskapsopplysninger, som fakturaer: fem år etter utgangen av regnskapsåret (bokføringsloven § 13).
 - Samtaler med kundestøtten: så lenge det er satt for kundestøtten, og deretter anonymisert.
-- Valgene dine om informasjonskapsler: 12 måneder.`,
+- Valgene dine om informasjonskapsler: 12 måneder.
+- Meldinger om ulovlig innhold: navnet og e-postadressen til den som meldte fra, slettes 12 måneder etter at meldingen er avgjort; meldingen, KI-ens lesing og avgjørelsen vår lagres uten dem, som dokumentasjon på hvordan den ble behandlet.`,
         },
         {
           topic: "rights",
@@ -240,7 +250,7 @@ Skriv til ${f.contactEmail}. Mange av opplysningene dine kan du endre selv under
         {
           topic: "automated",
           heading: "10. Automatiserte avgjørelser",
-          body: `Vi treffer ingen avgjørelser utelukkende basert på automatisert behandling som har rettsvirkning eller på tilsvarende måte i betydelig grad påvirker deg (artikkel 22). KI-funksjonene foreslår; et menneske bestemmer.`,
+          body: `Vi treffer ingen avgjørelser utelukkende basert på automatisert behandling som har rettsvirkning eller på tilsvarende måte i betydelig grad påvirker deg (artikkel 22). KI-funksjonene foreslår; et menneske bestemmer. Det gjelder også meldinger om ulovlig innhold og sjekkene våre av annonser: en KI-modell leser hver først og foreslår, og en person hos Kaizena Flow avgjør hver eneste en.`,
         },
         {
           topic: "security",

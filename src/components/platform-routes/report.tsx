@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 
 import { sendContentReport } from "@/app/(platform)/report/actions";
 import { UrlFromAddress } from "@/app/(platform)/report/url-from-address";
 import { EXPLANATION_MAX, REPORT_CATEGORIES, URL_MAX } from "@/lib/content-reports";
-import { PLATFORM_LANG_FACTS, type PlatformLang } from "@/lib/platform-lang";
+import { PLATFORM_LANG_FACTS, platformPath, type PlatformLang } from "@/lib/platform-lang";
+import { PLATFORM_LEGAL_SLUGS } from "@/lib/platform-legal-slugs";
 import { platformText } from "@/lib/platform-text";
 import { languageMeta } from "@/server/platform-lang-meta";
 
@@ -21,7 +23,8 @@ const hint = "font-normal text-muted";
 
 /**
  * Reporting illegal content on a store (DSA art. 16, D411): one form, easy to reach from every store's footer, holding what art. 16(2) asks
- * of a notice (why, where, who, good faith). A person decides each notice and the sender hears back (`src/server/content-reports.ts`).
+ * of a notice (why, where, who, good faith). An AI reads it first and a person decides each notice; the sender hears back
+ * (`src/server/content-reports.ts`), and the page says so, with the privacy notice's account of their data (GDPR Art. 13, DSA art. 14).
  */
 export function ReportRoute({ lang }: { lang: PlatformLang }) {
   const w = platformText(lang).report;
@@ -65,7 +68,13 @@ export function ReportRoute({ lang }: { lang: PlatformLang }) {
             <input type="email" name="email" autoComplete="email" maxLength={320} className={control} />
           </label>
         </div>
-        <p className="-mt-2 text-sm text-muted">{w.contactHint}</p>
+        <p className="-mt-2 text-sm text-muted">
+          {w.contactHint} {w.dataNote}{" "}
+          <Link href={platformPath(lang, `/${PLATFORM_LEGAL_SLUGS.privacy}`)} className="underline">
+            {w.privacyLink}
+          </Link>
+          .
+        </p>
         <label className="flex items-start gap-3 text-sm">
           <input type="checkbox" name="goodFaith" required className="mt-1 size-4 shrink-0" />
           <span>{w.goodFaith}</span>

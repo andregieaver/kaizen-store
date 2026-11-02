@@ -299,7 +299,7 @@ export const platformNb: PlatformMessages = {
   report: {
     title: "Meld fra om ulovlig innhold",
     description: "Si fra til Kaizena Flow om et produkt, en side eller et bilde i en butikk som du mener er ulovlig.",
-    intro: "Fortell oss hva du fant og hvorfor du mener det er ulovlig. En person hos Kaizena Flow ser på hver melding, avgjør den og svarer deg med begrunnelsen.",
+    intro: "Fortell oss hva du fant og hvorfor du mener det er ulovlig. En KI-modell leser hver melding først, for å sortere den og foreslå hvor hastende den er; deretter ser en person hos Kaizena Flow på hver melding, avgjør den og svarer deg med begrunnelsen. KI-en avgjør aldri.",
     url: "Adressen til innholdet",
     urlHint: "Den nøyaktige nettadressen til produktet, siden eller bildet.",
     category: "Hva slags problem er det?",
@@ -318,6 +318,8 @@ export const platformNb: PlatformMessages = {
     name: "Navnet ditt",
     email: "E-posten din",
     contactHint: "Vi sender deg en kvittering og avgjørelsen vår. Gjelder det misbruk av barn, kan du la begge stå tomme.",
+    dataNote: "Navnet og e-postadressen din brukes bare til å behandle denne meldingen og svare deg, og slettes 12 måneder etter avgjørelsen.",
+    privacyLink: "Slik behandler vi meldinger og opplysningene dine",
     goodFaith: "Jeg mener i god tro at det jeg melder er riktig og fullstendig.",
     send: "Send meldingen",
     received: "Takk. Vi har fått meldingen din og avgjør den så snart vi kan. Har du oppgitt e-post, får du en kvittering.",

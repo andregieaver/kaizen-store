@@ -51,4 +51,14 @@ feature `content_moderation`), so its cost is Kaizena Flow's.
 1. The lawyer's confirmation of the roles and of art. 19 (above).
 2. A single point of contact for authorities and recipients (arts. 11 and 12), named on Kaizena Flow's site, and a legal representative only
    if Kaizena Flow is established outside the EU (art. 13).
-3. The terms of service saying how content is moderated (art. 14).
+3. The lawyer's review of the moderation wording (art. 14), written on 2 November 2026: the terms' section 7 says how notices are taken,
+   read first by an AI, decided by a person, what may be done, the statement of reasons and how to contest; the privacy notice names
+   notices as a purpose, the AI's first reading and the 12 months; `/report` says the same in a sentence. The published terms and privacy
+   pages take it when a platform admin writes them again (Platform → Pages, *Write the legal pages*, Terms and Privacy ticked).
+
+## The form's ceilings
+
+One visitor may send 5 notices an hour (past it, refused); past the whole site's 30 an hour a notice is still kept, but quietly: no receipt,
+no email to the admins and no AI reading at once (`budgetRoom()`, `submitContentReport(…, { quiet })`), so a few senders cannot keep everyone
+else's notices out. The admins get one email that hour saying the ceiling was passed (`platform.content_report_flood`), and the
+dispatcher's AI reading takes the quiet notices a few at a time.

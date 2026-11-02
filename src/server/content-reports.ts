@@ -113,8 +113,12 @@ export async function storeOfUrl(url: string): Promise<string | null> {
   return row?.id ?? null;
 }
 
-/** Keeps a notice, answers the sender with a receipt and tells the platform admins. Returns the notice's id. */
-export async function submitContentReport(input: ReportInput, lang: PlatformLang): Promise<string> {
+/**
+ * Keeps a notice, answers the sender with a receipt and tells the platform admins. Returns the notice's id. With `quiet` (the form's
+ * hourly ceiling for the whole site is passed) the notice is kept and nothing is sent: the admins are told once that hour that the
+ * ceiling was passed, and the notices wait in the queue as any other.
+ */
+export async function submitContentReport(input: ReportInput, lang: PlatformLang, options: { quiet?: boolean } = {}): Promise<string> {
   const storeId = await storeOfUrl(input.url);
   const name = input.name === "" ? null : input.name;
   const email = input.email === "" ? null : normaliseEmail(input.email);
@@ -127,7 +131,11 @@ export async function submitContentReport(input: ReportInput, lang: PlatformLang
     `,
   );
   if (!row) throw new Error("content report not kept");
-  log("info", "content_report.received", { reportId: row.id, category: input.category, store: storeId !== null });
+  log("info", "content_report.received", { reportId: row.id, category: input.category, store: storeId !== null, quiet: Boolean(options.quiet) });
+  if (options.quiet) {
+    await alertCeilingPassed();
+    return row.id;
+  }
 
   // Art. 16(4): a receipt, without undue delay, when the sender gave an address; at most RECEIPTS_A_DAY to one address, so the form
   // cannot be used to send Kaizena Flow's mail to someone again and again (the notice itself is kept either way).
@@ -167,6 +175,32 @@ export async function submitContentReport(input: ReportInput, lang: PlatformLang
     await sendEmail({ storeId: null, kind: "platform.content_report_new", to: admin.email, email: alert, fromName: "Kaizena Flow", idempotencyKey: `content-report-new:${row.id}:${admin.id}` });
   }
   return row.id;
+}
+
+/** Tells the platform admins, once an hour, that the form's ceiling for the whole site was passed and notices are kept without email. */
+async function alertCeilingPassed(): Promise<void> {
+  const hour = new Date().toISOString().slice(0, 13);
+  const admins = await typedRows(
+    z.object({ id: col.uuid, email: col.text }),
+    sql`select id, email from commerce.accounts where platform_admin and disabled_at is null and email <> ''`,
+  );
+  const alert = renderEmail({
+    subject: "Many notices of illegal content this hour",
+    preview: "The notice form passed its hourly ceiling; further notices are kept without email.",
+    lang: "en",
+    footer: ["Kaizena Flow · kaizenaflow.com"],
+    blocks: [
+      { type: "heading", text: "Many notices of illegal content this hour" },
+      {
+        type: "paragraph",
+        text: "More notices came in this hour than the form's ceiling for the whole site. Each further one is kept in the queue, without a receipt to its sender or an email to you, and the AI reads them a few at a time. Look through the queue: it may be a flood from a few senders.",
+      },
+      { type: "button", text: "Open the notices", url: `${siteUrl()}/admin/platform/reports` },
+    ],
+  });
+  for (const admin of admins) {
+    await sendEmail({ storeId: null, kind: "platform.content_report_flood", to: admin.email, email: alert, fromName: "Kaizena Flow", idempotencyKey: `content-report-flood:${hour}:${admin.id}` });
+  }
 }
 
 /** How many receipts one address may get in a day. */

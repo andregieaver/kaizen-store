@@ -37,7 +37,9 @@ export const BUDGETS = {
   ab: { window: "minute", visitor: 60, store: 6000 },
   // The site-wide Report-Only policy's reports (D389 SEC-05), counted under no store: the whole platform shares the ceiling.
   csp: { window: "minute", visitor: 20, store: 2000 },
-  // Notices of illegal content on Kaizena Flow's form (DSA art. 16, D411): each sends email and an AI reading, so a few an hour.
+  // Notices of illegal content on Kaizena Flow's form (DSA art. 16, D411): each sends email and an AI reading, so a few an hour from one
+  // visitor (past it, refused). Past the whole site's 30 a notice is still kept, without its emails or its first AI reading, so a few
+  // senders cannot keep everyone else's notices out (`sendContentReport()`).
   report: { window: "hour", visitor: 5, store: 30 },
   // Wrong admin passwords kept in the audit log (PSI SEC-02, SEC-11), which keeps entries 24 months: one visitor trying many addresses
   // writes at most this many an hour, the whole platform ten times more. The tries are still counted per address beyond it.
@@ -67,12 +69,15 @@ export function budgetVisitor(headers: Headers): string {
   return createHash("sha256").update(`${address}|${day}|kaizen-budget`).digest("hex").slice(0, 32);
 }
 
+/** Whether one ask was within each budget: the visitor's and the store's (or, under no store, the whole site's). */
+export type BudgetRoom = { visitor: boolean; store: boolean };
+
 /**
- * Counts one ask and says whether it is within both budgets; `storeId` null is Kaizena Flow's own site (its counters, `store_id` null,
- * are one bucket as the table's key treats nulls as equal). Counting never blocks the answer when the database is busy: a failure allows,
- * except for an endpoint in `FAIL_CLOSED`, where a guess is what the budget stops (a private store's password).
+ * Counts one ask and says, for each budget, whether it is within it; `storeId` null is Kaizena Flow's own site (its counters, `store_id`
+ * null, are one bucket as the table's key treats nulls as equal). Counting never blocks the answer when the database is busy: a failure
+ * allows, except for an endpoint in `FAIL_CLOSED`, where a guess is what the budget stops (a private store's password).
  */
-export async function takeBudget(storeId: string | null, endpoint: BudgetEndpoint, visitor: string): Promise<boolean> {
+export async function budgetRoom(storeId: string | null, endpoint: BudgetEndpoint, visitor: string): Promise<BudgetRoom> {
   const budget = BUDGETS[endpoint];
   const buckets = budgetBuckets(endpoint, visitor);
   const window = budget.window === "minute" ? sql`date_trunc('minute', now())` : sql`date_trunc('hour', now())`;
@@ -84,9 +89,16 @@ export async function takeBudget(storeId: string | null, endpoint: BudgetEndpoin
       returning bucket, count
     `);
     const count = (bucket: string) => Number(rows.find((r) => r.bucket === bucket)?.count ?? 0);
-    return count(buckets.visitor) <= budget.visitor && count(buckets.store) <= budget.store;
+    return { visitor: count(buckets.visitor) <= budget.visitor, store: count(buckets.store) <= budget.store };
   } catch (error) {
     log("warn", "budget.count_failed", { endpoint }, error);
-    return !FAIL_CLOSED.has(endpoint);
+    const open = !FAIL_CLOSED.has(endpoint);
+    return { visitor: open, store: open };
   }
+}
+
+/** Counts one ask and says whether it is within both budgets (`budgetRoom()`). */
+export async function takeBudget(storeId: string | null, endpoint: BudgetEndpoint, visitor: string): Promise<boolean> {
+  const room = await budgetRoom(storeId, endpoint, visitor);
+  return room.visitor && room.store;
 }

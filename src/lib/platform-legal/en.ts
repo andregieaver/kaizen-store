@@ -73,7 +73,7 @@ We may change prices with at least 30 days' notice. A change takes effect from y
         },
         {
           topic: "use",
-          heading: "7. Acceptable use",
+          heading: "7. Acceptable use and how we moderate content",
           body: `You must not use Kaizena Flow to:
 
 - sell goods or services that are illegal where they are sold or sent, or that a payment provider you use does not allow
@@ -82,7 +82,15 @@ We may change prices with at least 30 days' notice. A change takes effect from y
 - spread malware, attack, overload or probe the service or other stores, or get round its limits and security
 - copy, resell or reverse-engineer the service, except as the law allows
 
-We may remove content and suspend a store or an account that breaks these rules, as set out in section 12.`,
+We may remove content and suspend a store or an account that breaks these rules, as set out in section 12.
+
+**Notices of illegal content.** Anyone can tell us about content on a store that they believe is illegal, through *Report illegal content* in the footer of every store and of our own site. A notice says where the content is, why it is illegal, and who sends it (a sender may stay unnamed for abuse of children). The sender gets a receipt when they give an email address.
+
+**How notices are handled.** An AI model reads each notice first, beside the listing's own words when the address is a listing we host: it suggests what kind of problem it is, how urgent it is, a short summary and a draft reason. A person at Kaizena Flow then reads the notice and decides it, and writes the reason; the AI never decides, removes or emails anything. We also check new and changed listings of live stores with an AI model for clear signs of illegal products, such as recalled, banned or counterfeit goods; a listing it flags goes to the same queue and a person decides it in the same way. We do this of our own accord and do not watch content in general.
+
+**What we may do.** Where content is illegal or breaks these terms, we may remove it or make it unavailable, hide a product, or suspend or close a store or an account (section 12). When we restrict your content we tell you what we did, why, the ground we relied on, whether a notice started it and whether automated means were used, and how you can contest it. The sender of a notice is told our decision and its reason, without your personal details.
+
+**Contesting a decision.** Reply to our message to ask us to look again, and a person looks at it again. You may also turn to the Digital Services Coordinator in your country, or to the courts.`,
         },
         {
           topic: "ai",
@@ -183,7 +191,8 @@ It does not cover what stores do with their own customers' data. Each store is t
 - **Support and the AI manager:** what you write to Kaizena Flow's support and to the AI manager, and what the AI manager remembers for you (which you can see, change and turn off), to help you. Basis: our contract (Article 6(1)(b)).
 - **Emails we send:** the emails we send you and whether they were delivered, to send what the service needs to tell you. Basis: our contract and legitimate interest (Article 6(1)(b) and (f)).
 - **Our website:** the cookies needed for the site to work. Cookies for statistics or marketing, and the referral programme's cookie, are set only if you agree, and your choice is kept for 12 months. Basis: consent (Article 6(1)(a)). See the [cookies page](${f.links.cookies}).
-- **The referral programme:** who referred a store and the credit earned, to pay the referrer. Basis: our contract with the referrer (Article 6(1)(b)).`,
+- **The referral programme:** who referred a store and the credit earned, to pay the referrer. Basis: our contract with the referrer (Article 6(1)(b)).
+- **Notices of illegal content:** when you report content through *Report illegal content*, your name, email address, the address you report and what you write, to handle the notice, send you a receipt and tell you our decision. An AI model reads each notice first to sort it and draft a summary, and a person decides it (see section 10). Basis: our legal duty as a hosting service to take and decide notices (Article 6(1)(c) and the Digital Services Act, Regulation (EU) 2022/2065, Articles 16 and 17).`,
         },
         {
           topic: "recipients",
@@ -193,7 +202,7 @@ It does not cover what stores do with their own customers' data. Each store is t
 - **Vercel** (hosting; our functions run in Dublin, Ireland)
 - **Supabase** (database, sign-in and file storage, in Ireland)
 - **Resend** (sending email)
-- **OpenAI** (AI features, when Kaizena Flow's own AI connection is used)
+- **OpenAI** (AI features, when Kaizena Flow's own AI connection is used, and the first reading of notices of illegal content)
 - **Stripe** (invoicing and payment of our fees; Stripe is also the controller of the payment data it processes under its own terms)
 
 We also share data where the law requires it, for example with tax authorities, and with a business that takes over all or part of ours, who must then follow this notice.`,
@@ -211,7 +220,8 @@ We also share data where the law requires it, for example with tax authorities, 
 - The activity log: 24 months.
 - Accounting records, such as invoices: five years after the end of the financial year (the Norwegian Bookkeeping Act, section 13).
 - Support conversations: as long as set for the support desk, and then anonymised.
-- Your cookie choices: 12 months.`,
+- Your cookie choices: 12 months.
+- Notices of illegal content: the sender's name and email address are deleted 12 months after the notice is decided; the notice, the AI's reading and our decision are kept, without them, as the record of how it was handled.`,
         },
         {
           topic: "rights",
@@ -241,7 +251,7 @@ Write to ${f.contactEmail}. You can change many of your details yourself under "
         {
           topic: "automated",
           heading: "10. Automated decisions",
-          body: `We make no decisions based solely on automated processing that have legal or similarly significant effects for you (Article 22). The AI features suggest; a person decides.`,
+          body: `We make no decisions based solely on automated processing that have legal or similarly significant effects for you (Article 22). The AI features suggest; a person decides. This includes notices of illegal content and our checks of listings: an AI model reads each first and suggests, and a person at Kaizena Flow decides every one.`,
         },
         {
           topic: "security",

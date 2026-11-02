@@ -543,6 +543,7 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   "platform.content_report_received": "shopper",
   "platform.content_report_decided": "shopper",
   "platform.content_report_new": "staff",
+  "platform.content_report_flood": "staff",
   "platform.content_report_urgent": "staff",
   "platform.content_report_restricted": "staff",
   "platform.access_approved": "staff",
