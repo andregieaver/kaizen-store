@@ -23,14 +23,15 @@ export const INSTRUCTION_REMOVED = "[an instruction to an AI was removed here]";
 /**
  * Text addressed to an AI, taken out of a tool's result before a model reads it (consolidation 3): the live eval showed the platform's
  * model repeating what such text asked even when told not to, so the words never reach it. Taken out: an HTML comment, and from a line that
- * names its reader (`Assistant:`, `AI:`, `AI manager:`, `Chatbot:`, `System prompt:`, `Note to the AI …:`, `Important for the assistant:`) to the end of its
- * value, which in a tool's JSON is the next unescaped quote. Words that only mention AI are left alone. Pure.
+ * names its reader (`Assistant:`, `AI:`, `AI manager:`, `Chatbot:`, `System prompt:`, `Note to the AI …:`, `Important for the assistant:`, and since
+ * the eval of 2 November 2026 a reviewer or checker too: `SYSTEM OVERRIDE FOR THE REVIEWING MODEL:`, `Message to automated reviewers:`) to the
+ * end of its value, which in a tool's JSON is the next unescaped quote. Words that only mention AI or a system are left alone. Pure.
  */
 export function withoutInstructions(text: string): string {
   return text
     .replace(/<!--[\s\S]*?-->/g, INSTRUCTION_REMOVED)
     .replace(
-      /(?:\b(?:note|message|important|instructions?)\s+(?:to|for)\s+(?:the\s+)?(?:ai|assistant|chatbot|model|bot)(?:\s+manager)?|\b(?:ai(?:\s+manager)?|assistant|chatbot|system\s+prompt))\s*:(?:[^"\\]|\\.)*/gi,
+      /(?:\b(?:note|message|important|instructions?|(?:system\s+)?override)\s+(?:to|for)\s+(?:the\s+|any\s+|all\s+)?(?:automated\s+|reviewing\s+|moderating\s+)?(?:ai|assistant|chatbot|model|bot|reviewers?|checkers?|moderators?)(?:\s+manager)?|\bsystem\s+(?:override|prompt|instructions?|message)|\b(?:ai(?:\s+manager)?|assistant|chatbot))\s*:(?:[^"\\]|\\.)*/gi,
       INSTRUCTION_REMOVED,
     );
 }

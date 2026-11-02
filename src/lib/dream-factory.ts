@@ -225,8 +225,9 @@ export function briefPrompt(storeName: string): string {
     "Fields: storeName; sells (what is sold, 1 to 3 sentences); audience; countries (ISO 3166 two-letter codes the owner will sell to; only countries in Europe);",
     "languages (names of the languages the store is written in, the country's own first); currency (ISO 4217, the main country's); priceRange (as the owner put it, else empty);",
     "tone (how the store speaks); products (how many products to start with, 3 to 12, default 6); pages (up to 3 pages beside the front page, each with title and purpose, e.g. About us, Contact);",
-    "business: legalName, organisationNumber, postalAddress, contactEmail, country (two-letter code).",
+    "business: legalName, organisationNumber, postalAddress, contactEmail, country (two-letter code of the country the business is registered in).",
     "The business details are only what the description writes, copied exactly: never invent a name, number, address or email. Leave a field empty when it is not written.",
+    "business.country is filled only when the description gives the business's address or says where it is registered; a city, a studio's town or the countries sold to are not enough, so leave it empty then.",
   ].join("\n");
 }
 
