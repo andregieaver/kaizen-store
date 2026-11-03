@@ -35,7 +35,7 @@ const { newPlainStore } = await import("./order-ops-fixture");
 const { staffActor } = await import("./order-actor");
 const { changeLine } = await import("./cart");
 const { storeById } = await import("./shopper-emails");
-const { formFromDraft } = await import("@/lib/draft-editor");
+const { formFromDraft, inputFromForm } = await import("@/lib/draft-editor");
 
 type Row = Record<string, unknown>;
 type TestStore = Awaited<ReturnType<typeof support.newStore>>;
@@ -102,7 +102,9 @@ describe("asking for a quote", () => {
     const store = await quoteStore("quote-ask");
     expect(await ask(store)).toEqual({ status: 200, body: { ok: true } });
     const [draft] = await quotes(store);
-    expect(draft).toMatchObject({ status: "open", source: "quote", email: "kari@example.com", company_name: "Nordmann AS", request_note: "Ten of these for the office, please." });
+    // The company the shopper typed is their own words beside the note, never the draft's buyer: it would make the draft a business sale
+    // without the organisation number the draft editor asks for, and staff could not save it.
+    expect(draft).toMatchObject({ status: "open", source: "quote", email: "kari@example.com", request_company: "Nordmann AS", company_name: null, organisation_number: null, request_note: "Ten of these for the office, please." });
     expect(draft.shipping_address).toEqual({ name: "Kari Nordmann" });
     const view = (await getDraft(store.storeId, String(draft.id)))!;
     expect(view.lines).toHaveLength(1);
@@ -175,6 +177,22 @@ describe("a product priced on request", () => {
     // The receipt names what was asked about and no price.
     const [receipt] = await db().execute<Row>(sql`select html from commerce.email_messages where store_id = ${store.storeId}::uuid and kind = 'quote.received'`);
     expect(String(receipt.html)).not.toMatch(/kr\s?\d|\d\s?kr/);
+  });
+});
+
+describe("staff working on a request", () => {
+  it("save a request that named a company exactly as the draft page sends it", async () => {
+    const store = await quoteStore("quote-company");
+    expect(await ask(store)).toMatchObject({ status: 200 });
+    const [row] = await quotes(store);
+    const view = (await getDraft(store.storeId, String(row.id)))!;
+    expect(view.requestCompany).toBe("Nordmann AS");
+    const form = formFromDraft(view);
+    form.lines[0] = { ...form.lines[0], price: "199,00" };
+    const saved = await saveDraft(store.storeId, staffActor(store.accountId), String(row.id), inputFromForm(form, view.version));
+    if (!saved.ok) throw new Error(JSON.stringify(saved));
+    expect(saved.draft.lines[0]).toMatchObject({ unitPriceMinor: 19900, customPrice: true });
+    expect(saved.draft.requestCompany).toBe("Nordmann AS");
   });
 });
 

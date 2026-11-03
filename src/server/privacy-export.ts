@@ -763,7 +763,7 @@ async function loadCarts(s: PrivacySubject): Promise<{ carts: CartRow[]; abandon
     s.customerId
       ? db().execute<Row>(sql`
           select id, number, status, trim(currency) as currency, created_at, email, phone, shipping_address, billing_address, company_name, organisation_number, note_to_buyer, internal_note,
-            source, request_note, quote_reply
+            source, request_note, request_company, quote_reply
           from commerce.draft_orders where store_id = ${s.storeId}::uuid and customer_id = ${s.customerId}::uuid order by created_at, id
         `)
       : Promise.resolve([] as Row[]),
@@ -808,6 +808,7 @@ async function loadCarts(s: PrivacySubject): Promise<{ carts: CartRow[]; abandon
       internalNote: str(d.internal_note),
       source: strs(d.source),
       requestNote: str(d.request_note),
+      requestCompany: str(d.request_company),
       quoteReply: str(d.quote_reply),
       lines: draftLines
         .filter((l) => strs(l.draft_id) === strs(d.id))

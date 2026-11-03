@@ -7357,6 +7357,14 @@ describe("request a quote and price on request (D431)", () => {
     await expect(quoteDraft(store, { source: "staff" })).resolves.toBeDefined();
   });
 
+  it("holds the company a shopper typed on a quote request only, within its length (D431, the request's own words)", async () => {
+    const { id } = await quoteDraft(store);
+    await db.query("update commerce.draft_orders set request_company = 'Nordmann AS' where id = $1", [id]);
+    await expect(db.query("update commerce.draft_orders set request_company = $2 where id = $1", [id, "x".repeat(121)])).rejects.toThrow(/draft_orders_request_company/);
+    const staff = await quoteDraft(store, { source: "staff" });
+    await expect(db.query("update commerce.draft_orders set request_company = 'Nordmann AS' where id = $1", [staff.id])).rejects.toThrow(/draft_orders_request_company/);
+  });
+
   it("keeps a line waiting for its price at 0 and of a catalogue variant only", async () => {
     const { id } = await quoteDraft(store);
     const { variantId } = await createProduct();

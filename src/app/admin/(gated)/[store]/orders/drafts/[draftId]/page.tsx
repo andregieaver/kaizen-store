@@ -103,7 +103,7 @@ async function Body({ storeSlug, draftId }: { storeSlug: string; draftId: string
           // A shopper's request for a quote (D431): their note, and declining it with a reply.
           quote:
             draft.source === "quote"
-              ? { note: draft.requestNote, declinedAt: draft.quoteDeclinedAt, reply: draft.quoteReply, decline: declineQuoteAction.bind(null, store.slug, draftId) }
+              ? { note: draft.requestNote, company: draft.requestCompany, declinedAt: draft.quoteDeclinedAt, reply: draft.quoteReply, decline: declineQuoteAction.bind(null, store.slug, draftId) }
               : null,
           timeZone: store.timeZone,
           actions: {

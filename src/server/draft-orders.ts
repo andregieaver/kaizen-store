@@ -124,6 +124,8 @@ export type DraftView = {
   source: "staff" | "quote";
   /** A quote request's note as the shopper wrote it. */
   requestNote: string | null;
+  /** The company the shopper typed on a request for a quote (D431): their own words, shown beside the note; never the buyer by itself. */
+  requestCompany: string | null;
   /** A declined request: when, and the reply emailed to the shopper. */
   quoteDeclinedAt: string | null;
   quoteReply: string | null;
@@ -205,6 +207,7 @@ function viewOf(row: Row, lines: Row[]): DraftView {
     lines: lines.map(lineOf),
     source: row.source === "quote" ? "quote" : "staff",
     requestNote: row.request_note ? String(row.request_note) : null,
+    requestCompany: row.request_company ? String(row.request_company) : null,
     quoteDeclinedAt: row.quote_declined_at ? new Date(String(row.quote_declined_at)).toISOString() : null,
     quoteReply: row.quote_reply ? String(row.quote_reply) : null,
   };
@@ -277,7 +280,7 @@ export async function listDrafts(
     select d.id, d.number, d.status, d.email, d.currency, d.order_id, d.expires_at, d.created_at, d.created_at::text as created_key, d.updated_at,
       d.source, d.quote_declined_at is not null as declined,
       coalesce((select name from commerce.customers c where c.store_id = d.store_id and c.id = d.customer_id),
-        case when d.source = 'quote' then nullif(trim(coalesce(d.shipping_address->>'name', d.company_name, '')), '') end) as customer_name,
+        case when d.source = 'quote' then nullif(trim(coalesce(d.shipping_address->>'name', d.request_company, d.company_name, '')), '') end) as customer_name,
       (select count(*)::int from commerce.draft_order_lines l where l.store_id = d.store_id and l.draft_id = d.id) as line_count,
       o.number as order_number, o.total_minor as order_total
     from commerce.draft_orders d

@@ -49,7 +49,7 @@ import { uuidList } from "./sql-arrays";
 /**
  * Request a quote (D431, `src/lib/quotes.ts` for the rules): a shopper's request from a product's page or from the cart becomes a draft order of
  * source `quote` (D173), in the market view they asked from, with the lines at the market's list price as shown and a product priced on request
- * without one (`price_requested`, priced by staff before the draft can be sent). The shopper's name, email, phone, company and note are the
+ * without one (`price_requested`, priced by staff before the draft can be sent). The shopper's name, email, phone, company (`request_company`) and note are the
  * draft's; a signed-in customer's request is theirs (`customer_id`). Staff who get new orders are emailed and pushed; the shopper gets a receipt
  * in their language. Staff send it as a quote with the draft editor's *Send quote* (`sendDraft()`, the pay link worded as a quote) or decline it
  * here with a short reply. Spam is held as forms hold it (D93): a hidden field and the time taken, `VISITOR_HOURLY` sends a visitor may make to
@@ -139,6 +139,15 @@ export async function requestQuote(raw: unknown, visitor: string, path = "/"): P
   if (await overLimit(store.id, visitor)) return { status: 429, body: { ok: false, error: "busy" } };
 
   const customer = await getCustomer(store.id);
+  // The buyer's company on the draft only from a signed-in customer's own record with its organisation number (a company account, D108);
+  // a company the shopper typed is their own words (`request_company`), shown to staff, and never makes the draft a business sale by itself.
+  const buyer = customer
+    ? await typedRow(
+        z.object({ company_name: col.textOrNull, organisation_number: col.textOrNull }),
+        sql`select company_name, organisation_number from commerce.customers where store_id = ${store.id}::uuid and id = ${customer.id}::uuid`,
+      )
+    : null;
+  const company = buyer?.company_name?.trim() && buyer.organisation_number?.trim() ? { name: buyer.company_name.trim(), number: buyer.organisation_number.trim() } : null;
   const wanted = request.from === "cart" ? await cartLines(store.id, market, customer?.id ?? null) : request.lines;
   if (wanted.length === 0) return { status: 422, body: { ok: false, problems: { lines: "required" } } };
   const variants = await typedRows(
@@ -184,10 +193,10 @@ export async function requestQuote(raw: unknown, visitor: string, path = "/"): P
       z.object({ id: col.uuid, number: col.text }),
       sql`
         insert into commerce.draft_orders (store_id, number, market_code, market_slug, currency, locale, source, customer_id, email, phone,
-          shipping_address, company_name, request_note)
+          shipping_address, company_name, organisation_number, request_company, request_note)
         values (${store.id}::uuid, commerce.next_draft_number(${store.id}::uuid), ${market.code}, ${market.slug}, ${market.currency}, ${market.locale}, 'quote',
           ${customer?.id ?? null}::uuid, ${normaliseEmail(request.email)}, ${request.phone},
-          ${JSON.stringify(request.name ? { name: request.name } : {})}::jsonb, ${request.company}, ${request.note})
+          ${JSON.stringify(request.name ? { name: request.name } : {})}::jsonb, ${company?.name ?? null}, ${company?.number ?? null}, ${request.company}, ${request.note})
         returning id, number
       `,
       tx,

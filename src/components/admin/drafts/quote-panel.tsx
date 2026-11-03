@@ -15,6 +15,8 @@ import { ActionMessage } from "./draft-send";
 export type DraftQuote = {
   /** The note as the shopper wrote it (plain text). */
   note: string | null;
+  /** The company the shopper typed, as they typed it (plain text): never the draft's buyer by itself. */
+  company: string | null;
   declinedAt: string | null;
   reply: string | null;
   decline: (reply: string) => Promise<DraftActionResponse>;
@@ -43,6 +45,13 @@ export function QuotePanel({ quote, timeZone }: { quote: DraftQuote; timeZone?: 
         <p className="font-medium">{w.note}</p>
         <p className="whitespace-pre-line break-words">{quote.note ?? <span className="text-muted">{w.noNote}</span>}</p>
       </div>
+      {quote.company && (
+        <div>
+          <p className="font-medium">{w.company}</p>
+          <p className="break-words">{quote.company}</p>
+          <p className={hint}>{w.companyHint}</p>
+        </div>
+      )}
       {quote.declinedAt ? (
         <div>
           <p className="font-medium">{fillWords(w.declined, { when: when(quote.declinedAt) })}</p>
